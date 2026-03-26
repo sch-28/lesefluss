@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSVP Reader</title>
+</head>
+<body>
+    <h1>RSVP Reader</h1>
+    
+    <table border="1" cellpadding="10" cellspacing="0" width="100%">
+        <tr>
+            <th colspan="2">System Info</th>
+        </tr>
+        <tr>
+            <td><b>Disk Space:</b></td>
+            <td>{space_info}</td>
+        </tr>
+        <tr>
+            <td><b>Reading Speed:</b></td>
+            <td>{current_wpm} WPM</td>
+        </tr>
+        <tr>
+            <td><b>Dev Mode:</b></td>
+            <td>{devmode_status}</td>
+        </tr>
+    </table>
+    
+    <hr>
+    
+    <h2>Book {current_slot}</h2>
+    
+    <table border="1" cellpadding="5" cellspacing="0">
+        <tr>
+            <td><b>Select Book:</b></td>
+            <td>
+                <form method="POST" action="/select_slot" style="display:inline;">
+                    <select name="slot">
+                        <option value="1" {selected_1}>Book 1 ({book_size_1})</option>
+                        <option value="2" {selected_2}>Book 2 ({book_size_2})</option>
+                        <option value="3" {selected_3}>Book 3 ({book_size_3})</option>
+                        <option value="4" {selected_4}>Book 4 ({book_size_4})</option>
+                    </select>
+                    <button type="submit">Switch</button>
+                </form>
+            </td>
+        </tr>
+        <tr>
+            <td><b>Position:</b></td>
+            <td>
+                <form method="POST" action="/set_position" style="display:inline;">
+                    <input type="number" name="percent" value="{current_percent}" min="0" max="100" style="width:60px;">%
+                    <button type="submit">Set</button>
+                    <button type="submit" name="percent" value="0">Reset</button>
+                </form>
+            </td>
+        </tr>
+    </table>
+    
+    <br>
+    
+    <form method="POST" action="/upload" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".txt">
+        <button type="submit">Upload .txt</button>
+        <small>Current: {book_size}</small>
+    </form>
+    <br>
+    <form method="POST" action="/delete_book" onsubmit="return confirm('Delete book {current_slot}?');">
+        <button type="submit">Delete Book</button>
+    </form>
+    
+    <hr>
+    
+    <h2>Settings</h2>
+    <form method="POST" action="/save_config">
+        <table border="1" cellpadding="5" cellspacing="0">
+            <tr>
+                <td><b>Words Per Minute:</b></td>
+                <td><input type="number" name="wpm" id="wpm" value="{current_wpm}" min="100" max="1000" step="50"></td>
+            </tr>
+            <tr>
+                <td><b>Comma Delay:</b></td>
+                <td><input type="number" name="delay_comma" id="delay_comma" value="{delay_comma}" min="1.0" max="5.0" step="0.1"> x</td>
+            </tr>
+            <tr>
+                <td><b>Period Delay:</b></td>
+                <td><input type="number" name="delay_period" id="delay_period" value="{delay_period}" min="1.0" max="5.0" step="0.1"> x</td>
+            </tr>
+        </table>
+        <br>
+        <button type="submit">Save Settings</button>
+    </form>
+    
+    <hr>
+    
+    <h2>Developer Mode</h2>
+    <p>When enabled, device won't auto-start on boot.</p>
+    <form method="POST" action="/toggle_devmode">
+        <button type="submit">{devmode_button}</button>
+    </form>
+    
+    <hr>
+    
+    <p><i>Exit WiFi mode to return to reading.</i></p>
+    <form method="POST" action="/shutdown">
+        <button type="submit">Exit WiFi Mode</button>
+    </form>
+</body>
+</html>
