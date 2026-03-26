@@ -155,6 +155,24 @@ def handle_save_config(client, request, config):
                 val = float(data['delay_period'])
                 if 1.0 <= val <= 5.0:
                     config.DELAY_PERIOD = val
+            if 'accel_start' in data:
+                val = float(data['accel_start'])
+                if 1.0 <= val <= 5.0:
+                    config.ACCEL_START = val
+            if 'accel_rate' in data:
+                val = float(data['accel_rate'])
+                if 0.05 <= val <= 1.0:
+                    config.ACCEL_RATE = val
+            if 'x_offset' in data:
+                val = int(data['x_offset'])
+                if 30 <= val <= 70:
+                    config.X_OFFSET = val
+            if 'word_offset' in data:
+                val = int(data['word_offset'])
+                if 0 <= val <= 20:
+                    config.WORD_OFFSET = val
+            # Checkbox: present if checked, absent if unchecked
+            config.INVERSE = 'inverse' in data
             save_config(config)
             log(f"Saved {config.WPM}WPM")
         except:
@@ -279,6 +297,11 @@ def stream_html(sock, storage, config):
         '{current_wpm}': str(wpm),
         '{delay_comma}': str(config.DELAY_COMMA),
         '{delay_period}': str(config.DELAY_PERIOD),
+        '{accel_start}': str(config.ACCEL_START),
+        '{accel_rate}': str(config.ACCEL_RATE),
+        '{x_offset}': str(config.X_OFFSET),
+        '{word_offset}': str(getattr(config, 'WORD_OFFSET', 0)),
+        '{inverse_checked}': 'checked' if config.INVERSE else '',
         '{current_percent}': str(percent),
         '{book_size}': book_size,
         '{book_size_1}': book_sizes[1],

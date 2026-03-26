@@ -25,6 +25,15 @@ CURRENT_SLOT = 1  # Current book slot (1-4)
 DELAY_COMMA = 2      # , ; :
 DELAY_PERIOD = 3.0     # . ! ? (end of sentence)
 
+# Acceleration settings (ease-in when starting/resuming)
+ACCEL_START = 2.0    # Initial delay multiplier (2.0 = start at half speed)
+ACCEL_RATE = 0.1     # How fast to reach full speed (0.1 = 10 words, 0.2 = 5 words)
+
+# Display settings
+X_OFFSET = 50        # Horizontal position offset (30-70%: 30=left, 50=center, 70=right)
+INVERSE = False      # Inverse colors (True = black text on white bg)
+WORD_OFFSET = 5      # Number of words to go back when resuming (0-20)
+
 # RSVP focal letter settings
 FOCAL_LETTER_COLOR = (255, 0, 0)  # Red for focal letter
 FOCAL_INDICATOR_COLOR = (175, 0, 0)  # Red for focal letter

@@ -86,6 +86,28 @@
                 <td><b>Period Delay:</b></td>
                 <td><input type="number" name="delay_period" id="delay_period" value="{delay_period}" min="1.0" max="5.0" step="0.1"> x</td>
             </tr>
+            <tr>
+                <td><b>Accel Start:</b></td>
+                <td><input type="number" name="accel_start" value="{accel_start}" min="1.0" max="5.0" step="0.1"> x</td>
+            </tr>
+            <tr>
+                <td><b>Accel Rate:</b></td>
+                <td><input type="number" name="accel_rate" value="{accel_rate}" min="0.05" max="1.0" step="0.05"></td>
+            </tr>
+            <tr>
+                <td><b>X Offset:</b></td>
+                <td><input type="number" name="x_offset" value="{x_offset}" min="30" max="70" step="5"> %</td>
+            </tr>
+            <tr>
+                <td><b>Word Offset:</b></td>
+                <td><input type="number" name="word_offset" value="{word_offset}" min="0" max="20" step="1"> words back</td>
+            </tr>
+            <tr>
+                <td><b>Inverse Colors:</b></td>
+                <td>
+                    <input type="checkbox" name="inverse" value="1" {inverse_checked}>
+                </td>
+            </tr>
         </table>
         <br>
         <button type="submit">Save Settings</button>

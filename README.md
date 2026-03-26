@@ -9,14 +9,17 @@ ESP32-based speed reader using RSVP (Rapid Serial Visual Presentation). Shows wo
 
 ## Features
 
-- Adjustable WPM (words per minute)
-- Focal letter highlighting (red letter centered on screen)
+- Adjustable WPM (words per minute) with acceleration/ease-in
+- Focal letter highlighting (red letter with position markers)
 - Punctuation-aware delays (longer pauses for periods, commas, etc.)
 - 4 book slots with independent position saving
 - WiFi AP mode with web interface for uploads and settings
 - Streaming file support (handles large books, 1MB+)
+- Configurable horizontal offset (left/center/right focal position)
+- Inverse color mode (black on white)
 - Dev mode for easy development
 - On-screen logging in WiFi mode
+- Pause screen with percentage indicator
 
 ## Structure
 
@@ -52,9 +55,10 @@ First time (flashes MicroPython and uploads everything):
 ./setup.sh
 ```
 
-Upload code changes only:
+Upload code changes only (uses git diff to only upload changed files):
 ```bash
-./upload.sh
+./upload.sh          # Upload only changed files
+./upload.sh no all   # Force upload all files
 ```
 
 Test without rebooting:
@@ -84,8 +88,13 @@ Test without rebooting:
 
 Settings in `src/config.py`, overridden by `config_override.py` on device:
 - `WPM` - reading speed (default 350)
-- `DELAY_COMMA` - multiplier for `,;:` (default 1.5x)
-- `DELAY_PERIOD` - multiplier for `.!?` and long dashes (default 2.0x)
+- `DELAY_COMMA` - multiplier for `,;:` (default 2.0x)
+- `DELAY_PERIOD` - multiplier for `.!?` and long dashes (default 3.0x)
+- `ACCEL_START` - initial speed multiplier for ease-in (default 2.0 = half speed)
+- `ACCEL_RATE` - acceleration rate (default 0.1 = 10 words to full speed)
+- `X_OFFSET` - horizontal focal position percentage (default 50 = center, 30-70 range)
+- `WORD_OFFSET` - number of words to go back when resuming (default 5, range 0-20)
+- `INVERSE` - inverse colors, black on white (default False)
 - `CURRENT_SLOT` - active book slot (1-4)
 
 ## TODO
@@ -102,6 +111,12 @@ Done:
 - [x] Streaming word reader (no memory issues with large files)
 - [x] Book sizes shown in slot selector
 - [x] On-screen logging during WiFi mode
+- [x] Acceleration/ease-in when starting or resuming
+- [x] Configurable horizontal offset (left/center/right)
+- [x] Inverse color mode
+- [x] Pause screen with position percentage
+- [x] Incremental upload (only changed files)
+- [x] Word offset (start N words before saved position when resuming)
 
 Future ideas:
 - [ ] Page simulation (250 words per "page", show "Page 45 of 892")

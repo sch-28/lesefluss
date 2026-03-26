@@ -1,4 +1,5 @@
 import time
+import gc
 import config
 from text_storage import WordReader
 
@@ -30,8 +31,9 @@ class RSVPReader:
         # Get resume position (byte position in file)
         start_pos = 0
         if resume and self.storage:
-            start_pos = self.storage.load_position()
-            print(f"Resume byte position: {start_pos}")
+            word_offset = getattr(config, 'WORD_OFFSET', 0)
+            start_pos = self.storage.load_position(word_offset=word_offset)
+            print(f"Resume byte position: {start_pos} (word_offset={word_offset})")
         
         if text:
             # Small text provided directly - use simple word list
@@ -82,11 +84,15 @@ class RSVPReader:
         self.last_activity_time = time.ticks_ms()
         
         if self.paused:
-            self.display.show_pause_indicator()
             # Save byte position when pausing
             if self.storage and self.word_reader:
                 byte_pos = self.word_reader.get_position()
                 self.storage.save_position(byte_pos)
+                book_size = self.storage.get_file_size()
+                progress = int((byte_pos / book_size) * 100) if book_size > 0 else 0
+                self.display.show_pause_indicator(f"{progress}%")
+            else:
+                self.display.show_pause_indicator("0%")
         else:
             self.display.hide_pause_indicator()
     
@@ -105,7 +111,10 @@ class RSVPReader:
         if self.paused and self.current_word:
             self.display.clear()
             self.display.show_word_centered(self.current_word)
-            self.display.show_pause_indicator()
+            byte_pos = self.word_reader.get_position()
+            book_size = self.storage.get_file_size()
+            progress = int((byte_pos / book_size) * 100) if book_size > 0 else 0
+            self.display.show_pause_indicator(f"{progress}%")
     
     def display_next_word(self):
         """Display the next word in the sequence"""
@@ -160,6 +169,9 @@ class RSVPReader:
         """Main reading loop. Returns 'wifi' if long press detected, None otherwise."""
         self.display.clear()
         self.reset()
+
+        acceleration = 0
+        word_count = 0
         
         try:
             while not self.is_finished():
@@ -179,13 +191,22 @@ class RSVPReader:
                         self.display.shutdown()
                         self.handle_wakeup()
                     time.sleep(0.1)
+                    acceleration = 0
                     continue
                 
                 # Display next word and get delay
                 word = self.display_next_word()
                 if word:
-                    delay = self.get_word_delay(word)
+                    # Apply acceleration: starts at ACCEL_START, ramps down to 1.0
+                    accel_multiplier = config.ACCEL_START - acceleration
+                    delay = self.get_word_delay(word) * accel_multiplier
                     time.sleep(delay)
+                    acceleration = min(acceleration + config.ACCEL_RATE, config.ACCEL_START - 1.0)
+                    
+                    # Periodic garbage collection to prevent memory issues
+                    word_count += 1
+                    if word_count % 100 == 0:
+                        gc.collect()
             
             # Finished reading
             self.display.show_centered_message("Done!", color=(0, 255, 0))

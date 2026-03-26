@@ -36,6 +36,14 @@ def main(force_run=False):
             config.DELAY_COMMA = config_override.DELAY_COMMA
         if hasattr(config_override, 'DELAY_PERIOD'):
             config.DELAY_PERIOD = config_override.DELAY_PERIOD
+        if hasattr(config_override, 'ACCEL_START'):
+            config.ACCEL_START = config_override.ACCEL_START
+        if hasattr(config_override, 'ACCEL_RATE'):
+            config.ACCEL_RATE = config_override.ACCEL_RATE
+        if hasattr(config_override, 'X_OFFSET'):
+            config.X_OFFSET = config_override.X_OFFSET
+        if hasattr(config_override, 'INVERSE'):
+            config.INVERSE = config_override.INVERSE
         print(f"Config override loaded: WPM={config.WPM}, SLOT={config.CURRENT_SLOT}")
     except ImportError:
         print("No config override found, using defaults")

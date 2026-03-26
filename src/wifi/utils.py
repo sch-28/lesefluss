@@ -66,6 +66,11 @@ def save_config(config):
             f.write(f"CURRENT_SLOT = {config.CURRENT_SLOT}\n")
             f.write(f"DELAY_COMMA = {config.DELAY_COMMA}\n")
             f.write(f"DELAY_PERIOD = {config.DELAY_PERIOD}\n")
+            f.write(f"ACCEL_START = {config.ACCEL_START}\n")
+            f.write(f"ACCEL_RATE = {config.ACCEL_RATE}\n")
+            f.write(f"X_OFFSET = {config.X_OFFSET}\n")
+            f.write(f"WORD_OFFSET = {getattr(config, 'WORD_OFFSET', 0)}\n")
+            f.write(f"INVERSE = {config.INVERSE}\n")
         return True
     except:
         return False

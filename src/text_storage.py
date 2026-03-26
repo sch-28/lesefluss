@@ -52,27 +52,122 @@ class TextStorage:
         except:
             return False
     
-    def save_position(self, word_index):
-        """Save current reading position"""
+    def save_position(self, byte_pos):
+        """Save current reading position with backup"""
         try:
+            import gc
+            gc.collect()  # Free memory before file write
+            
+            # Backup existing position file if it exists
+            backup_file = f"{self.position_file}.bak"
+            try:
+                with open(self.position_file, 'r') as f:
+                    old_pos = f.read()
+                # Save backup
+                with open(backup_file, 'w') as f:
+                    f.write(old_pos)
+                print(f"Backed up position: {old_pos}")
+            except:
+                pass  # No existing file, that's ok
+            
+            # Write new position
             with open(self.position_file, 'w') as f:
-                f.write(str(word_index))
-            print(f"TextStorage.save_position: {word_index} to {self.position_file}")
+                f.write(str(byte_pos))
+            
+            # Verify it was written correctly
+            with open(self.position_file, 'r') as f:
+                saved = f.read().strip()
+                if saved != str(byte_pos):
+                    print(f"WARNING: Position mismatch! Wrote {byte_pos}, read {saved}")
+                    # Try to restore from backup
+                    try:
+                        with open(backup_file, 'r') as bf:
+                            backup_pos = bf.read()
+                        print(f"Restoring from backup: {backup_pos}")
+                        with open(self.position_file, 'w') as f:
+                            f.write(backup_pos)
+                    except:
+                        pass
+                    return False
+                else:
+                    print(f"Position saved: {byte_pos}")
             return True
         except Exception as e:
-            print(f"Error saving position: {e}")
+            import sys
+            print(f"ERROR saving position: {type(e).__name__}: {e}")
+            sys.print_exception(e)
+            # Try to keep backup intact
             return False
     
-    def load_position(self):
-        """Load saved reading position. Returns 0 if no saved position."""
+    def load_position(self, word_offset=0):
+        """Load saved reading position, optionally going back N words.
+        Returns 0 if no saved position.
+        
+        Args:
+            word_offset: Number of words to go back from saved position (0-20)
+        """
         try:
             with open(self.position_file, 'r') as f:
                 pos = int(f.read().strip())
                 print(f"TextStorage.load_position: {pos} from {self.position_file}")
+                
+                # Apply word offset if requested
+                if word_offset > 0 and pos > 0:
+                    adjusted_pos = self._go_back_n_words(pos, word_offset)
+                    print(f"Applied word_offset={word_offset}: {pos} -> {adjusted_pos}")
+                    return adjusted_pos
+                
                 return pos
         except Exception as e:
             print(f"TextStorage.load_position error: {e}")
             return 0
+    
+    def _go_back_n_words(self, byte_pos, n_words):
+        """Go back N words from byte position. Returns adjusted position."""
+        try:
+            if byte_pos == 0:
+                return 0
+            
+            # Read a chunk backwards from position (up to 2KB should be enough)
+            chunk_size = min(2048, byte_pos)
+            start_pos = byte_pos - chunk_size
+            
+            with open(self.filename, 'rb') as f:
+                f.seek(start_pos)
+                chunk = f.read(chunk_size).decode('utf-8', 'ignore')
+            
+            # Split into words and find position N words back
+            words = []
+            word = ""
+            positions = []  # Track byte positions for each word
+            
+            for i, c in enumerate(chunk):
+                if c in ' \t\n\r':
+                    if word:
+                        words.append(word)
+                        positions.append(start_pos + i - len(word.encode('utf-8')))
+                        word = ""
+                else:
+                    word += c
+            
+            # Add final word if any
+            if word:
+                words.append(word)
+                positions.append(start_pos + len(chunk) - len(word.encode('utf-8')))
+            
+            # Find how many words back to go
+            if len(words) <= n_words:
+                # Not enough words in chunk, go to start
+                return max(0, start_pos)
+            else:
+                # Go back N words from the end
+                target_idx = len(words) - n_words - 1
+                return positions[target_idx] if target_idx >= 0 else 0
+                
+        except Exception as e:
+            print(f"_go_back_n_words error: {e}")
+            # On error, just return original position
+            return byte_pos
     
     def clear_position(self):
         """Clear saved position"""
@@ -115,13 +210,16 @@ class WordReader:
             self.eof = False
             
             if byte_position > 0:
+                print(f"Seeking to byte {byte_position}")
                 self.file.seek(byte_position)
                 # Skip partial word at seek position
                 self._skip_to_word_boundary()
             
             return True
         except Exception as e:
-            print(f"WordReader open error: {e}")
+            import sys
+            print(f"WordReader open error: {type(e).__name__}: {e}")
+            sys.print_exception(e)
             return False
     
     def _skip_to_word_boundary(self):
@@ -178,6 +276,12 @@ class WordReader:
                     word = self.buffer
                     self.buffer = ""
                     return word if word else None
+                elif len(self.buffer) > 1000:
+                    # Buffer too large without finding space - likely corrupt data
+                    # Return what we have and reset
+                    word = self.buffer[:50]  # Take first 50 chars as a "word"
+                    self.buffer = self.buffer[50:]
+                    return word
             elif self.eof:
                 return None
             
@@ -188,7 +292,20 @@ class WordReader:
                     self.eof = True
                     continue
                 self.buffer += chunk.decode('utf-8', 'ignore')
+            except OSError as e:
+                print(f"WordReader OSError: {e}")
+                # Try to recover by reopening
+                self.eof = True
+                return None
+            except MemoryError:
+                print("WordReader MemoryError - buffer too large")
+                # Clear buffer and try to continue
+                self.buffer = ""
+                self.eof = True
+                return None
             except Exception as e:
-                print(f"WordReader read error: {e}")
+                import sys
+                print(f"WordReader read error: {type(e).__name__}: {e}")
+                sys.print_exception(e)
                 self.eof = True
                 return None
