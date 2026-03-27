@@ -13,6 +13,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "sync": "pnpm run build && cap sync",
+    "android": "pnpm run sync && cap run android --target 39131FDJG00AEF && adb logcat -s Capacitor/Console:I Capacitor/Plugin:V Capacitor:V *:S",
     "studio": "cap open android",
     "check": "tsc --noEmit"
   },
