@@ -1,0 +1,11 @@
+{
+	"name": "rsvp",
+	"integrations": {
+		"capacitor": {}
+	},
+	"type": "custom",
+	"hooks": {},
+	"engines": {
+		"npm": ">=8.0.0"
+	}
+}

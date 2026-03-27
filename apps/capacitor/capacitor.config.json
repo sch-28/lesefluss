@@ -1,15 +1,19 @@
 {
-  "appId": "tools.jan.schmidt",
-  "appName": "app",
-  "webDir": "dist",
-  "plugins": {
-    "SplashScreen": {
-      "launchAutoHide": false
-    },
-    "StatusBar": {
-      "overlaysWebView": true,
-      "style": "DARK",
-      "backgroundColor": "#00000000"
-    }
-  },
+	"appId": "tools.jan.schmidt",
+	"appName": "app",
+	"webDir": "dist",
+	"plugins": {
+		"SplashScreen": {
+			"launchAutoHide": false
+		},
+		"StatusBar": {
+			"overlaysWebView": true,
+			"style": "DARK",
+			"backgroundColor": "#00000000"
+		}
+	},
+	"server": {
+		"url": "http://localhost:3000",
+		"cleartext": true
+	}
 }
