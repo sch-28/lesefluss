@@ -44,84 +44,16 @@ const Home: React.FC = () => {
 		clearError,
 	} = useBLE();
 
-	const [showDeviceList, setShowDeviceList] = useState(false);
 	const [showDisconnectAlert, setShowDisconnectAlert] = useState(false);
-	const [hasAutoScanned, setHasAutoScanned] = useState(false);
-	const [hasAutoConnected, setHasAutoConnected] = useState(false);
-
-	// Auto-scan once on mount if not connected
-	useEffect(() => {
-		if (!isConnected && !hasAutoScanned) {
-			console.log("Auto-starting initial scan...");
-			setHasAutoScanned(true);
-			handleScanClick();
-		}
-	}, []); // Only run once on mount
-
-	// Stop scanning when component unmounts
-	useEffect(() => {
-		return () => {
-			if (isScanning) {
-				stopScan();
-			}
-		};
-	}, []);
-
-	// Auto-connect if only one device found
-	useEffect(() => {
-		console.log(`Scanned devices changed: ${scannedDevices.length} devices`, scannedDevices);
-		console.log(`Auto-connect conditions: hasAutoConnected=${hasAutoConnected}, isConnected=${isConnected}`);
-		
-		if (scannedDevices.length === 1 && !hasAutoConnected && !isConnected) {
-			console.log("Found 1 device, auto-connecting...");
-			setHasAutoConnected(true);
-			handleDeviceSelect(scannedDevices[0].device.deviceId);
-		} else if (scannedDevices.length > 1) {
-			console.log("Found multiple devices, showing list");
-			setShowDeviceList(true);
-		} else {
-			console.log("Not auto-connecting because:", {
-				deviceCount: scannedDevices.length,
-				hasAutoConnected,
-				isConnected,
-				shouldConnect: scannedDevices.length === 1 && !hasAutoConnected && !isConnected
-			});
-		}
-	}, [scannedDevices]);
-
-	const handleScanClick = async () => {
-		console.log("STARTING SCANNING");
-		// Reset auto-connect flag when starting a new scan
-		setHasAutoConnected(false);
-		await startScan();
-
-		// Auto-stop scanning after 30 seconds
-		setTimeout(() => {
-			if (isScanning) {
-				stopScan();
-			}
-		}, 30000);
-	};
-
-	const handleStopScan = async () => {
-		await stopScan();
-	};
 
 	const handleDeviceSelect = async (deviceId: string) => {
 		await stopScan();
-		const success = await connect(deviceId);
-		if (success) {
-			setShowDeviceList(false);
-		}
+		await connect(deviceId);
 	};
 
 	const handleDisconnect = async () => {
 		await disconnect();
-		setHasAutoScanned(false);
-		setHasAutoConnected(false);
 		setShowDisconnectAlert(false);
-		// Auto-scan again after disconnect
-		setTimeout(() => handleScanClick(), 1000);
 	};
 
 	const getConnectionStatusColor = () => {
@@ -137,9 +69,6 @@ const Home: React.FC = () => {
 	};
 
 	const getConnectionStatusText = () => {
-		if (isScanning) {
-			return "Scanning...";
-		}
 		switch (connectionState) {
 			case BLEConnectionState.CONNECTED:
 				return `Connected to ${connectedDevice?.name || "device"}`;
@@ -148,7 +77,7 @@ const Home: React.FC = () => {
 			case BLEConnectionState.DISCONNECTING:
 				return "Disconnecting...";
 			default:
-				return "Not connected";
+				return isScanning ? "Scanning..." : "Not connected";
 		}
 	};
 
@@ -189,12 +118,7 @@ const Home: React.FC = () => {
 							</IonText>
 						</div>
 
-						{!isConnected ? (
-							<IonButton expand="block" onClick={handleScanClick}>
-								<IonIcon slot="start" icon={bluetooth} />
-								Scan for Devices
-							</IonButton>
-						) : (
+						{isConnected && (
 							<IonButton
 								expand="block"
 								color="danger"
@@ -208,7 +132,7 @@ const Home: React.FC = () => {
 				</IonCard>
 
 				{/* Device List Modal */}
-				{showDeviceList && (
+				{scannedDevices.length > 1 && (
 					<IonCard>
 						<IonCardHeader>
 							<IonCardTitle>
@@ -260,31 +184,6 @@ const Home: React.FC = () => {
 									))}
 								</IonList>
 							)}
-
-							<div
-								style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}
-							>
-								{isScanning ? (
-									<IonButton expand="block" onClick={handleStopScan}>
-										<IonIcon slot="start" icon={closeCircle} />
-										Stop Scanning
-									</IonButton>
-								) : (
-									<>
-										<IonButton expand="block" onClick={handleScanClick}>
-											<IonIcon slot="start" icon={search} />
-											Rescan
-										</IonButton>
-										<IonButton
-											expand="block"
-											fill="outline"
-											onClick={() => setShowDeviceList(false)}
-										>
-											Cancel
-										</IonButton>
-									</>
-								)}
-							</div>
 						</IonCardContent>
 					</IonCard>
 				)}

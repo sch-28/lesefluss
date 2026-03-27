@@ -1,214 +1,259 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { BleDevice } from '@capacitor-community/bluetooth-le';
-import { bleService, ScannedDevice } from '../services/ble';
-import { BLEConnectionState } from '../constants/ble';
-import { db, RSVPSettings } from '../services/database';
+import type { BleDevice } from "@capacitor-community/bluetooth-le";
+import type React from "react";
+import {
+	createContext,
+	type ReactNode,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
+import { BLEConnectionState } from "../constants/ble";
+import { bleService, type ScannedDevice } from "../services/ble";
+import { db, type RSVPSettings } from "../services/database";
 
 interface BLEContextType {
-  // Connection state
-  isConnected: boolean;
-  connectionState: BLEConnectionState;
-  connectedDevice: BleDevice | null;
-  
-  // Scanning state
-  isScanning: boolean;
-  scannedDevices: ScannedDevice[];
-  
-  // Operations
-  startScan: () => Promise<void>;
-  stopScan: () => Promise<void>;
-  connect: (deviceId: string) => Promise<boolean>;
-  disconnect: () => Promise<void>;
-  syncToDevice: (settings: Partial<RSVPSettings>) => Promise<boolean>;
-  syncFromDevice: () => Promise<RSVPSettings | null>;
-  
-  // Error state
-  error: string | null;
-  clearError: () => void;
+	// Connection state
+	isConnected: boolean;
+	connectionState: BLEConnectionState;
+	connectedDevice: BleDevice | null;
+
+	// Scanning state
+	isScanning: boolean;
+	scannedDevices: ScannedDevice[];
+
+	// Operations
+	startScan: () => Promise<void>;
+	stopScan: () => Promise<void>;
+	connect: (deviceId: string) => Promise<boolean>;
+	disconnect: () => Promise<void>;
+	syncToDevice: (settings: Partial<RSVPSettings>) => Promise<boolean>;
+	syncFromDevice: () => Promise<RSVPSettings | null>;
+
+	// Error state
+	error: string | null;
+	clearError: () => void;
 }
 
 const BLEContext = createContext<BLEContextType | undefined>(undefined);
 
 export const useBLE = () => {
-  const context = useContext(BLEContext);
-  if (!context) {
-    throw new Error('useBLE must be used within BLEProvider');
-  }
-  return context;
+	const context = useContext(BLEContext);
+	if (!context) {
+		throw new Error("useBLE must be used within BLEProvider");
+	}
+	return context;
 };
 
 interface BLEProviderProps {
-  children: ReactNode;
+	children: ReactNode;
 }
 
 export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [connectionState, setConnectionState] = useState<BLEConnectionState>(
-    BLEConnectionState.DISCONNECTED
-  );
-  const [connectedDevice, setConnectedDevice] = useState<BleDevice | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
-  const [scannedDevices, setScannedDevices] = useState<ScannedDevice[]>([]);
-  const [error, setError] = useState<string | null>(null);
+	const [isConnected, setIsConnected] = useState(false);
+	const [connectionState, setConnectionState] = useState<BLEConnectionState>(
+		BLEConnectionState.DISCONNECTED,
+	);
+	const [connectedDevice, setConnectedDevice] = useState<BleDevice | null>(
+		null,
+	);
+	const [isScanning, setIsScanning] = useState(false);
+	const [scannedDevices, setScannedDevices] = useState<ScannedDevice[]>([]);
+	const [error, setError] = useState<string | null>(null);
+	// Ref so auto-scan effect sees the latest value synchronously (no stale closure race)
+	const isConnectingRef = useRef(false);
 
-  // Initialize BLE on mount
-  useEffect(() => {
-    const init = async () => {
-      const result = await bleService.initialize();
-      if (!result.success) {
-        setError(result.error || 'Failed to initialize BLE');
-      }
-    };
-    init();
-  }, []);
+	// Initialize BLE on mount
+	useEffect(() => {
+		const init = async () => {
+			const result = await bleService.initialize();
+			if (!result.success) {
+				setError(result.error || "Failed to initialize BLE");
+			}
+		};
+		init();
+	}, []);
 
-  // Poll connection state
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const state = bleService.getConnectionState();
-      const device = bleService.getConnectedDevice();
-      
-      setConnectionState(state);
-      setIsConnected(state === BLEConnectionState.CONNECTED);
-      setConnectedDevice(device);
-    }, 500);
+	// Poll connection state
+	useEffect(() => {
+		const interval = setInterval(() => {
+			const state = bleService.getConnectionState();
+			const device = bleService.getConnectedDevice();
 
-    return () => clearInterval(interval);
-  }, []);
+			setConnectionState(state);
+			setIsConnected(state === BLEConnectionState.CONNECTED);
+			setConnectedDevice(device);
+		}, 500);
 
-  const startScan = async () => {
-    setError(null);
-    setScannedDevices([]);
-    setIsScanning(true);
+		return () => clearInterval(interval);
+	}, []);
 
-    const result = await bleService.startScan((devices) => {
-      setScannedDevices(devices);
-    });
+	const startScan = async () => {
+		setError(null);
+		setScannedDevices([]);
+		setIsScanning(true);
 
-    if (!result.success) {
-      setError(result.error || 'Failed to start scan');
-      setIsScanning(false);
-    }
-  };
+		const result = await bleService.startScan((devices) => {
+			setScannedDevices(devices);
+		});
 
-  const stopScan = async () => {
-    const result = await bleService.stopScan();
-    setIsScanning(false);
+		if (!result.success) {
+			setError(result.error || "Failed to start scan");
+			setIsScanning(false);
+		} else {
+			console.log("Scanning for devices...");
+		}
+	};
 
-    if (!result.success) {
-      setError(result.error || 'Failed to stop scan');
-    }
-  };
+	const stopScan = async () => {
+		const result = await bleService.stopScan();
+		setIsScanning(false);
 
-  const connect = async (deviceId: string): Promise<boolean> => {
-    setError(null);
+		if (!result.success) {
+			setError(result.error || "Failed to stop scan");
+		}
+	};
 
-    const result = await bleService.connect(deviceId);
+	const connect = async (deviceId: string): Promise<boolean> => {
+		setError(null);
+		isConnectingRef.current = true;
 
-    if (result.success && result.data) {
-      setConnectedDevice(result.data);
-      setConnectionState(BLEConnectionState.CONNECTED);
-      setIsConnected(true);
+		const result = await bleService.connect(deviceId);
 
-      // Save device to database
-      try {
-        await db.saveDevice({
-          id: result.data.deviceId,
-          name: result.data.name || 'RSVP-Reader',
-          lastConnected: Date.now(),
-        });
-      } catch (err) {
-        console.error('Failed to save device to database:', err);
-      }
+		if (result.success && result.data) {
+			setConnectedDevice(result.data);
+			console.log(
+				`Connected to device: ${result.data.name} (${result.data.deviceId})`,
+			);
+			setConnectionState(BLEConnectionState.CONNECTED);
+			setIsConnected(true);
 
-      return true;
-    } else {
-      setError(result.error || 'Failed to connect');
-      return false;
-    }
-  };
+			// Save device to database
+			try {
+				await db.saveDevice({
+					id: result.data.deviceId,
+					name: result.data.name || "RSVP-Reader",
+					lastConnected: Date.now(),
+				});
+			} catch (err) {
+				console.error("Failed to save device to database:", err);
+			}
 
-  const disconnect = async () => {
-    setError(null);
+			isConnectingRef.current = false;
+			return true;
+		} else {
+			setError(result.error || "Failed to connect");
+			isConnectingRef.current = false;
+			return false;
+		}
+	};
 
-    const result = await bleService.disconnect();
+	const disconnect = async () => {
+		setError(null);
 
-    if (!result.success) {
-      setError(result.error || 'Failed to disconnect');
-    }
+		const result = await bleService.disconnect();
 
-    setIsConnected(false);
-    setConnectedDevice(null);
-    setConnectionState(BLEConnectionState.DISCONNECTED);
-  };
+		if (!result.success) {
+			setError(result.error || "Failed to disconnect");
+		}
 
-  const syncToDevice = async (settings: Partial<RSVPSettings>): Promise<boolean> => {
-    setError(null);
+		setIsConnected(false);
+		setConnectedDevice(null);
+		setConnectionState(BLEConnectionState.DISCONNECTED);
+	};
 
-    if (!isConnected) {
-      setError('Not connected to device');
-      return false;
-    }
+	const syncToDevice = async (
+		settings: Partial<RSVPSettings>,
+	): Promise<boolean> => {
+		setError(null);
 
-    const result = await bleService.writeSettings(settings);
+		if (!isConnected) {
+			setError("Not connected to device");
+			return false;
+		}
 
-    if (!result.success) {
-      setError(result.error || 'Failed to sync settings to device');
-      return false;
-    }
+		const result = await bleService.writeSettings(settings);
 
-    return true;
-  };
+		if (!result.success) {
+			setError(result.error || "Failed to sync settings to device");
+			return false;
+		}
 
-  const syncFromDevice = async (): Promise<RSVPSettings | null> => {
-    setError(null);
+		return true;
+	};
 
-    if (!isConnected) {
-      setError('Not connected to device');
-      return null;
-    }
+	const syncFromDevice = async (): Promise<RSVPSettings | null> => {
+		setError(null);
 
-    const result = await bleService.readSettings();
+		if (!isConnected) {
+			setError("Not connected to device");
+			return null;
+		}
 
-    if (!result.success || !result.data) {
-      setError(result.error || 'Failed to read settings from device');
-      return null;
-    }
+		const result = await bleService.readSettings();
 
-    // Merge with current settings (preserve ID and updatedAt)
-    try {
-      const currentSettings = await db.getSettings();
-      const mergedSettings: RSVPSettings = {
-        ...currentSettings,
-        ...result.data,
-      };
-      return mergedSettings;
-    } catch (err) {
-      console.error('Failed to merge settings:', err);
-      setError('Failed to process settings from device');
-      return null;
-    }
-  };
+		if (!result.success || !result.data) {
+			setError(result.error || "Failed to read settings from device");
+			return null;
+		}
 
-  const clearError = () => {
-    setError(null);
-  };
+		// Merge with current settings (preserve ID and updatedAt)
+		try {
+			const currentSettings = await db.getSettings();
+			const mergedSettings: RSVPSettings = {
+				...currentSettings,
+				...result.data,
+			};
+			return mergedSettings;
+		} catch (err) {
+			console.error("Failed to merge settings:", err);
+			setError("Failed to process settings from device");
+			return null;
+		}
+	};
 
-  const value: BLEContextType = {
-    isConnected,
-    connectionState,
-    connectedDevice,
-    isScanning,
-    scannedDevices,
-    startScan,
-    stopScan,
-    connect,
-    disconnect,
-    syncToDevice,
-    syncFromDevice,
-    error,
-    clearError,
-  };
+	const clearError = () => {
+		setError(null);
+	};
 
-  return <BLEContext.Provider value={value}>{children}</BLEContext.Provider>;
+	// Auto Scan
+	useEffect(() => {
+		if (!isScanning && !isConnected && !isConnectingRef.current) {
+			startScan();
+		}
+	}, [isScanning, isConnected]);
+
+	const handleDeviceSelect = async (deviceId: string) => {
+		await stopScan();
+		await connect(deviceId);
+	};
+
+	useEffect(() => {
+		console.log(
+			`Scanned devices changed: ${scannedDevices.length} devices`,
+			scannedDevices,
+		);
+		if (scannedDevices.length === 1 && !isConnected) {
+			console.log("Found 1 device, auto-connecting...");
+			handleDeviceSelect(scannedDevices[0].device.deviceId);
+		}
+	}, [scannedDevices.length, isConnected]);
+
+	const value: BLEContextType = {
+		isConnected,
+		connectionState,
+		connectedDevice,
+		isScanning,
+		scannedDevices,
+		startScan,
+		stopScan,
+		connect,
+		disconnect,
+		syncToDevice,
+		syncFromDevice,
+		error,
+		clearError,
+	};
+
+	return <BLEContext.Provider value={value}>{children}</BLEContext.Provider>;
 };
