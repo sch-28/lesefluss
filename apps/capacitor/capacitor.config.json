@@ -1,0 +1,10 @@
+{
+  "appId": "tools.jan.schmidt",
+  "appName": "app",
+  "webDir": "dist",
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false
+    }
+  }
+}

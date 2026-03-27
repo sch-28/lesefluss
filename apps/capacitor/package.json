@@ -1,0 +1,45 @@
+{
+  "name": "capacitor-app",
+  "version": "1.0.0",
+  "description": "An Amazing Capacitor App",
+  "type": "module",
+  "keywords": [
+    "capacitor",
+    "mobile"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "sync": "pnpm run build && cap sync",
+    "studio": "cap open android",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@capacitor-community/bluetooth-le": "^8.1.3",
+    "@capacitor-community/sqlite": "^8.0.1",
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/camera": "latest",
+    "@capacitor/core": "latest",
+    "@capacitor/splash-screen": "latest",
+    "@ionic/react": "^8.8.2",
+    "@ionic/react-router": "^8.8.2",
+    "ionicons": "^8.0.13",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router": "^5.3.4",
+    "react-router-dom": "^5.3.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "latest",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/react-router-dom": "^5.3.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "typescript": "^6.0.2",
+    "vite": "^7.3.1"
+  },
+  "author": "",
+  "license": "ISC"
+}
