@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { DEFAULT_SETTINGS } from "../../constants/settings";
 import { db } from "../index";
-import { settings, type Settings } from "../schema";
+import { type Settings, settings } from "../schema";
 
 const SETTINGS_ID = 1;
 
@@ -9,10 +9,7 @@ const SETTINGS_ID = 1;
  * Fetch the single settings row (id=1), inserting defaults if it doesn't exist yet.
  */
 export async function getSettings(): Promise<Settings> {
-	const rows = await db
-		.select()
-		.from(settings)
-		.where(eq(settings.id, SETTINGS_ID));
+	const rows = await db.select().from(settings).where(eq(settings.id, SETTINGS_ID));
 
 	if (rows.length > 0) return rows[0];
 

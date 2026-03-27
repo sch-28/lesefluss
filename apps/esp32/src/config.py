@@ -18,7 +18,6 @@ PIN_BOOT_BUTTON = 0
 # RSVP settings
 WPM = 350  # Words per minute
 AUTO_SHUTDOWN_TIMEOUT = 30000  # milliseconds (30 seconds)
-CURRENT_SLOT = 1  # Current book slot (1-4)
 
 # Punctuation delays (multiplier of base word delay)
 # e.g., 1.5 means pause 50% longer than normal word

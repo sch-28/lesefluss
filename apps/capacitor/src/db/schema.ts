@@ -11,7 +11,6 @@ export const devices = sqliteTable("devices", {
 
 /**
  * RSVP settings — single row (id = 1), mirrors ESP32 config.py
- * currentSlot removed: it belongs to book sync context (Phase 5)
  */
 export const settings = sqliteTable("settings", {
 	id: integer("id").primaryKey(),
@@ -40,7 +39,7 @@ export const books = sqliteTable("books", {
 	filePath: text("file_path"), // path to original file in app data dir, null for legacy/txt
 	size: integer("size").notNull().default(0), // byte length of plain text content
 	position: integer("position").notNull().default(0),
-	slot: integer("slot"), // ESP32 slot (1-4) if synced, null otherwise
+	isActive: integer("is_active", { mode: "boolean" }).notNull().default(false), // true = this book is currently on the ESP32 (at most one row at a time)
 	addedAt: integer("added_at").notNull(),
 	lastRead: integer("last_read"),
 });

@@ -13,7 +13,6 @@ export const DEFAULT_SETTINGS = {
 	WORD_OFFSET: 5, // Words to rewind on resume (0-20)
 	INVERSE: false, // Inverse colors (false = white on black)
 	BLE_ON: true, // BLE enabled for companion app
-	CURRENT_SLOT: 1, // Active book slot (1-4)
 	DEV_MODE: false,
 } as const;
 
@@ -28,5 +27,4 @@ export const SETTING_CONSTRAINTS = {
 	ACCEL_RATE: { min: 0.05, max: 1.0, step: 0.05 },
 	X_OFFSET: { min: 30, max: 70, step: 5 },
 	WORD_OFFSET: { min: 0, max: 20, step: 1 },
-	CURRENT_SLOT: { min: 1, max: 4, step: 1 },
 } as const;

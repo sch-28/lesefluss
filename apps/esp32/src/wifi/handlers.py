@@ -28,8 +28,6 @@ def handle_request(client, storage, config, wifi):
             return handle_upload(client, request, req, storage)
         elif 'POST /save_config' in req:
             return handle_save_config(client, request, config)
-        elif 'POST /select_slot' in req:
-            return handle_select_slot(client, request, config, wifi)
         elif 'POST /set_position' in req:
             return handle_set_position(client, request, storage)
         elif 'POST /delete_book' in req:
@@ -183,18 +181,7 @@ def handle_save_config(client, request, config):
 
 
 def handle_select_slot(client, request, config, wifi):
-    """Switch book slot"""
-    data = parse_post_data(request)
-    if data and 'slot' in data:
-        try:
-            slot = int(data['slot'])
-            if 1 <= slot <= 4:
-                config.CURRENT_SLOT = slot
-                save_config(config)
-                wifi.needs_reload = True
-                log(f"Slot {slot}")
-        except:
-            pass
+    """Slot switching removed — single book model. Kept as stub to avoid 404s from cached pages."""
     client.send(b"HTTP/1.1 302 Found\r\nLocation: /\r\n\r\n")
     return None
 
@@ -249,11 +236,11 @@ def handle_shutdown(client):
     return 'shutdown'
 
 
-def get_book_size(slot):
-    """Get formatted size for a book slot"""
+def get_book_size():
+    """Get formatted size for current book"""
     import os
     try:
-        size = os.stat(f"book-{slot}.txt")[6]
+        size = os.stat("book.txt")[6]
         return f"{size // 1024} KB" if size >= 1024 else f"{size} B"
     except:
         return "empty"
@@ -266,12 +253,8 @@ def stream_html(sock, storage, config):
     space = get_disk_space()
     space_info = f"{space['free']:.2f} MB free" if space else "Unknown"
     
-    slot = config.CURRENT_SLOT
     wpm = config.WPM
     pos = storage.load_position()
-    
-    # Get all book sizes
-    book_sizes = {i: get_book_size(i) for i in range(1, 5)}
     
     # Get current book size and calculate percentage from byte position
     try:
@@ -294,7 +277,6 @@ def stream_html(sock, storage, config):
     
     replacements = {
         '{space_info}': space_info,
-        '{current_slot}': str(slot),
         '{current_wpm}': str(wpm),
         '{delay_comma}': str(config.DELAY_COMMA),
         '{delay_period}': str(config.DELAY_PERIOD),
@@ -306,16 +288,8 @@ def stream_html(sock, storage, config):
         '{ble_checked}': 'checked' if getattr(config, 'BLE_ON', True) else '',
         '{current_percent}': str(percent),
         '{book_size}': book_size,
-        '{book_size_1}': book_sizes[1],
-        '{book_size_2}': book_sizes[2],
-        '{book_size_3}': book_sizes[3],
-        '{book_size_4}': book_sizes[4],
         '{devmode_status}': devmode_status,
         '{devmode_button}': devmode_button,
-        '{selected_1}': 'selected' if slot == 1 else '',
-        '{selected_2}': 'selected' if slot == 2 else '',
-        '{selected_3}': 'selected' if slot == 3 else '',
-        '{selected_4}': 'selected' if slot == 4 else '',
     }
     
     try:

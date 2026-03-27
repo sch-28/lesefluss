@@ -63,7 +63,6 @@ def save_config(config):
         with open('config_override.py', 'w') as f:
             f.write("# Auto-generated config overrides\n")
             f.write(f"WPM = {config.WPM}\n")
-            f.write(f"CURRENT_SLOT = {config.CURRENT_SLOT}\n")
             f.write(f"DELAY_COMMA = {config.DELAY_COMMA}\n")
             f.write(f"DELAY_PERIOD = {config.DELAY_PERIOD}\n")
             f.write(f"ACCEL_START = {config.ACCEL_START}\n")

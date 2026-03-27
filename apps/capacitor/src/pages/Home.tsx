@@ -16,13 +16,7 @@ import {
 	IonText,
 	IonToast,
 } from "@ionic/react";
-import {
-	bluetooth,
-	book,
-	checkmarkCircle,
-	closeCircle,
-	ellipse,
-} from "ionicons/icons";
+import { bluetooth, book, checkmarkCircle, closeCircle, ellipse } from "ionicons/icons";
 import type React from "react";
 import { useState } from "react";
 import { BLEConnectionState } from "../constants/ble";
@@ -117,11 +111,7 @@ const Home: React.FC = () => {
 						</div>
 
 						{isConnected && (
-							<IonButton
-								expand="block"
-								color="danger"
-								onClick={() => setShowDisconnectAlert(true)}
-							>
+							<IonButton expand="block" color="danger" onClick={() => setShowDisconnectAlert(true)}>
 								<IonIcon slot="start" icon={closeCircle} />
 								Disconnect
 							</IonButton>
@@ -150,8 +140,7 @@ const Home: React.FC = () => {
 							{scannedDevices.length === 0 && !isScanning && (
 								<IonText color="medium">
 									<p>
-										No RSVP Readers found. Make sure your device is powered on
-										and BLE is enabled.
+										No RSVP Readers found. Make sure your device is powered on and BLE is enabled.
 									</p>
 								</IonText>
 							)}
@@ -204,10 +193,7 @@ const Home: React.FC = () => {
 				<div className="ion-text-center ion-margin-top">
 					<IonText color="medium">
 						<p>
-							<small>
-								Connect to your ESP32 RSVP Reader to sync settings and upload
-								books
-							</small>
+							<small>Connect to your ESP32 RSVP Reader to sync settings and upload books</small>
 						</p>
 					</IonText>
 				</div>

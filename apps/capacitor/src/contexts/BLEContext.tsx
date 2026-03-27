@@ -1,13 +1,6 @@
 import type { BleDevice } from "@capacitor-community/bluetooth-le";
 import type React from "react";
-import {
-	createContext,
-	type ReactNode,
-	useContext,
-	useEffect,
-	useRef,
-	useState,
-} from "react";
+import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { BLEConnectionState } from "../constants/ble";
 import { queries } from "../db/queries";
 import { bleService, type RSVPSettings, type ScannedDevice } from "../services/ble";
@@ -54,9 +47,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	const [connectionState, setConnectionState] = useState<BLEConnectionState>(
 		BLEConnectionState.DISCONNECTED,
 	);
-	const [connectedDevice, setConnectedDevice] = useState<BleDevice | null>(
-		null,
-	);
+	const [connectedDevice, setConnectedDevice] = useState<BleDevice | null>(null);
 	const [isScanning, setIsScanning] = useState(false);
 	const [scannedDevices, setScannedDevices] = useState<ScannedDevice[]>([]);
 	const [error, setError] = useState<string | null>(null);
@@ -122,9 +113,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 
 		if (result.success && result.data) {
 			setConnectedDevice(result.data);
-			console.log(
-				`Connected to device: ${result.data.name} (${result.data.deviceId})`,
-			);
+			console.log(`Connected to device: ${result.data.name} (${result.data.deviceId})`);
 			setConnectionState(BLEConnectionState.CONNECTED);
 			setIsConnected(true);
 
@@ -141,11 +130,10 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 
 			isConnectingRef.current = false;
 			return true;
-		} else {
-			setError(result.error || "Failed to connect");
-			isConnectingRef.current = false;
-			return false;
 		}
+		setError(result.error || "Failed to connect");
+		isConnectingRef.current = false;
+		return false;
 	};
 
 	const disconnect = async () => {
@@ -162,9 +150,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		setConnectionState(BLEConnectionState.DISCONNECTED);
 	};
 
-	const syncToDevice = async (
-		settings: Partial<RSVPSettings>,
-	): Promise<boolean> => {
+	const syncToDevice = async (settings: Partial<RSVPSettings>): Promise<boolean> => {
 		setError(null);
 
 		if (!isConnected) {
@@ -229,10 +215,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	};
 
 	useEffect(() => {
-		console.log(
-			`Scanned devices changed: ${scannedDevices.length} devices`,
-			scannedDevices,
-		);
+		console.log(`Scanned devices changed: ${scannedDevices.length} devices`, scannedDevices);
 		if (scannedDevices.length === 1 && !isConnected) {
 			console.log("Found 1 device, auto-connecting...");
 			handleDeviceSelect(scannedDevices[0].device.deviceId);

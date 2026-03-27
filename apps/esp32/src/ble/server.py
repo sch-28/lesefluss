@@ -104,7 +104,6 @@ class BLEServer:
             "word_offset": self.config.WORD_OFFSET,
             "inverse": self.config.INVERSE,
             "ble_on": self.config.BLE_ON,
-            "current_slot": self.config.CURRENT_SLOT,
             "dev_mode": dev_mode,
         }
         
@@ -141,7 +140,6 @@ class BLEServer:
             self.config.WORD_OFFSET = settings.get("word_offset", self.config.WORD_OFFSET)
             self.config.INVERSE = settings.get("inverse", self.config.INVERSE)
             self.config.BLE_ON = settings.get("ble_on", self.config.BLE_ON)
-            self.config.CURRENT_SLOT = settings.get("current_slot", self.config.CURRENT_SLOT)
 
             devMode = settings.get("dev_mode", False)
             try:
@@ -189,7 +187,6 @@ X_OFFSET = {self.config.X_OFFSET}
 WORD_OFFSET = {self.config.WORD_OFFSET}
 INVERSE = {self.config.INVERSE}
 BLE_ON = {self.config.BLE_ON}
-CURRENT_SLOT = {self.config.CURRENT_SLOT}
 """
         
         try:

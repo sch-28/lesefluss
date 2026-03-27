@@ -4,10 +4,9 @@ import {
 	type SQLiteDBConnection,
 } from "@capacitor-community/sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
-import * as schema from "./schema";
-
 // Vite handles JSON imports natively
 import journal from "../../drizzle/meta/_journal.json";
+import * as schema from "./schema";
 
 // import.meta.glob with eager + raw gives us { "./0000_slippery_rhino.sql": "CREATE TABLE..." }
 // The path is relative to THIS file's location (src/db/)
@@ -65,10 +64,9 @@ async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 	// the runner doesn't try to CREATE TABLE again and fail.
 	const firstTag = journal.entries[0]?.tag;
 	if (firstTag) {
-		const alreadyTracked = await conn.query(
-			"SELECT id FROM __drizzle_migrations WHERE tag = ?",
-			[firstTag],
-		);
+		const alreadyTracked = await conn.query("SELECT id FROM __drizzle_migrations WHERE tag = ?", [
+			firstTag,
+		]);
 		const isTracked = (alreadyTracked.values?.length ?? 0) > 0;
 
 		if (!isTracked) {
@@ -80,10 +78,10 @@ async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 
 			if (tablesExist) {
 				// Legacy DB: tables exist but migration isn't tracked — baseline it
-				await conn.run(
-					"INSERT INTO __drizzle_migrations (tag, applied_at) VALUES (?, ?)",
-					[firstTag, Date.now()],
-				);
+				await conn.run("INSERT INTO __drizzle_migrations (tag, applied_at) VALUES (?, ?)", [
+					firstTag,
+					Date.now(),
+				]);
 				console.log(`Baselined existing DB at migration: ${firstTag}`);
 			}
 		}
@@ -91,10 +89,9 @@ async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 
 	for (const entry of journal.entries) {
 		// Already applied?
-		const result = await conn.query(
-			"SELECT id FROM __drizzle_migrations WHERE tag = ?",
-			[entry.tag],
-		);
+		const result = await conn.query("SELECT id FROM __drizzle_migrations WHERE tag = ?", [
+			entry.tag,
+		]);
 		if (result.values && result.values.length > 0) continue;
 
 		// Resolve the SQL content from the glob map
@@ -111,9 +108,7 @@ async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 		for (const stmt of statements) {
 			// SQLite doesn't support ALTER TABLE ADD COLUMN IF NOT EXISTS.
 			// For ADD COLUMN statements, check if the column already exists first.
-			const addColMatch = stmt.match(
-				/ALTER TABLE [`"]?(\w+)[`"]? ADD COLUMN [`"]?(\w+)[`"]?/i,
-			);
+			const addColMatch = stmt.match(/ALTER TABLE [`"]?(\w+)[`"]? ADD COLUMN [`"]?(\w+)[`"]?/i);
 			if (addColMatch) {
 				const [, table, column] = addColMatch;
 				const colCheck = await conn.query(`PRAGMA table_info(${table})`);
@@ -124,10 +119,10 @@ async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 			await conn.execute(stmt);
 		}
 
-		await conn.run(
-			"INSERT INTO __drizzle_migrations (tag, applied_at) VALUES (?, ?)",
-			[entry.tag, Date.now()],
-		);
+		await conn.run("INSERT INTO __drizzle_migrations (tag, applied_at) VALUES (?, ?)", [
+			entry.tag,
+			Date.now(),
+		]);
 
 		console.log(`Applied migration: ${entry.tag}`);
 	}

@@ -51,11 +51,12 @@ Four tables, Drizzle ORM with typed queries:
 |-------|---------|
 | `devices` | BLE device history (name, id, last connected) |
 | `settings` | ESP32 settings with defaults |
-| `books` | Metadata only (title, author, format, path, size, position, slot, timestamps) |
+| `books` | Metadata only (title, author, format, path, size, position, isActive, timestamps) |
 | `book_content` | Large data separate (content text, cover image base64, chapters JSON) |
 
 - `DatabaseProvider` context wraps the app (`src/contexts/DatabaseContext.tsx`)
 - Migrations in `drizzle/` use table-recreation pattern (SQLite ALTER TABLE compat)
+- `isActive` on `books`: boolean, at most one row true at a time — marks the book currently on the ESP32
 
 ## BLE
 
@@ -89,7 +90,7 @@ Four tables, Drizzle ORM with typed queries:
 
 ## Database queries (`src/db/queries/books.ts`)
 
-- **`updateBook(id, data)`** — generic partial updater, accepts any subset of `Book` fields. Use this instead of raw SQL or adding single-field helpers. e.g. `updateBook(id, { filePath })`, `updateBook(id, { slot: 2 })`, `updateBook(id, { position: 1234, lastRead: Date.now() })`
+- **`updateBook(id, data)`** — generic partial updater, accepts any subset of `Book` fields. Use this instead of raw SQL or adding single-field helpers. e.g. `updateBook(id, { filePath })`, `updateBook(id, { isActive: true })`, `updateBook(id, { position: 1234, lastRead: Date.now() })`
 - **`addBookWithContent(meta, content, coverImage?, chapters?)`** — inserts into both `books` and `book_content` tables
 - **`deleteBook(id)`** — deletes from both tables (content first, then metadata). For full cleanup including disk files use `removeBook()` from `bookImport.ts`
 
@@ -97,8 +98,8 @@ Four tables, Drizzle ORM with typed queries:
 
 - **2 tabs:** Library (default) + Settings
 - BLE status badge between tabs (no dedicated connection page)
-- **Library:** book list with progress bar, slot badge, last-read date; empty state; swipe-to-delete; FAB to import
-- **Settings:** sliders for WPM/delays/acceleration/offsets, toggles for inverse/BLE, slot picker, sync-to/from-device buttons, disconnect
+- **Library:** book list with progress bar, "On device" badge for active book, last-read date; empty state; swipe-to-delete; FAB to import; tap book → action sheet with "Set active on device" (enabled when BLE connected) + "Delete"
+- **Settings:** sliders for WPM/delays/acceleration/offsets, toggles for inverse/BLE, sync-to/from-device buttons, disconnect
 
 ## What's Done
 

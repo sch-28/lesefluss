@@ -21,9 +21,7 @@ const BOOKS_DIR = "books";
  * Throws an Error with message "CANCELLED" if the user dismissed the picker.
  * Throws on parse or DB errors.
  */
-export async function importBook(
-	onProgress?: (pct: number) => void,
-): Promise<Book> {
+export async function importBook(onProgress?: (pct: number) => void): Promise<Book> {
 	// 1. Open the file picker
 	const result = await FilePicker.pickFiles({
 		types: ["text/plain", "application/epub+zip"],
@@ -65,9 +63,9 @@ export async function importBook(
 			filePath: null, // updated below for EPUB
 			size: content.length,
 			position: 0,
+			isActive: false,
 			addedAt: Date.now(),
 			lastRead: null,
-			slot: null,
 		},
 		content,
 		coverImage,
@@ -96,7 +94,7 @@ export async function importBook(
 		filePath,
 		size: content.length,
 		position: 0,
-		slot: null,
+		isActive: false,
 		addedAt: Date.now(),
 		lastRead: null,
 	};
@@ -105,9 +103,7 @@ export async function importBook(
 /**
  * Remove a book: delete the file from disk (if it exists) then delete DB rows.
  */
-export async function removeBook(
-	book: Pick<Book, "id" | "filePath">,
-): Promise<void> {
+export async function removeBook(book: Pick<Book, "id" | "filePath">): Promise<void> {
 	// Delete file from disk first
 	if (book.filePath) {
 		try {
@@ -212,8 +208,7 @@ async function parseEpub(
 
 	// spine.each() doesn't provide a total count, so we need the length for progress.
 	// spine.length is not typed but exists at runtime — fall back to no-progress if missing.
-	const spineLength =
-		(book.spine as unknown as { length?: number }).length ?? 0;
+	const spineLength = (book.spine as unknown as { length?: number }).length ?? 0;
 
 	book.spine.each(() => {
 		sectionCount++;
@@ -230,9 +225,7 @@ async function parseEpub(
 			await (section.load(book.load.bind(book)) as unknown as Promise<unknown>);
 			const doc = section.document;
 			if (doc?.body) {
-				const text = (doc.body.textContent || "")
-					.replace(/\s+/g, " ")
-					.trim();
+				const text = (doc.body.textContent || "").replace(/\s+/g, " ").trim();
 				if (text.length > 0) {
 					sections.push({ text, href: section.href });
 				}

@@ -28,23 +28,9 @@
     
     <hr>
     
-    <h2>Book {current_slot}</h2>
+    <h2>Book</h2>
     
     <table border="1" cellpadding="5" cellspacing="0">
-        <tr>
-            <td><b>Select Book:</b></td>
-            <td>
-                <form method="POST" action="/select_slot" style="display:inline;">
-                    <select name="slot">
-                        <option value="1" {selected_1}>Book 1 ({book_size_1})</option>
-                        <option value="2" {selected_2}>Book 2 ({book_size_2})</option>
-                        <option value="3" {selected_3}>Book 3 ({book_size_3})</option>
-                        <option value="4" {selected_4}>Book 4 ({book_size_4})</option>
-                    </select>
-                    <button type="submit">Switch</button>
-                </form>
-            </td>
-        </tr>
         <tr>
             <td><b>Position:</b></td>
             <td>
@@ -65,7 +51,7 @@
         <small>Current: {book_size}</small>
     </form>
     <br>
-    <form method="POST" action="/delete_book" onsubmit="return confirm('Delete book {current_slot}?');">
+    <form method="POST" action="/delete_book" onsubmit="return confirm('Delete current book?');">
         <button type="submit">Delete Book</button>
     </form>
     

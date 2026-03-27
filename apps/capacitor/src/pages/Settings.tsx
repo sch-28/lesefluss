@@ -20,12 +20,7 @@ import {
 	IonToggle,
 	IonToolbar,
 } from "@ionic/react";
-import {
-	bluetooth,
-	closeCircle,
-	cloudDownload,
-	cloudUpload,
-} from "ionicons/icons";
+import { bluetooth, closeCircle, cloudDownload, cloudUpload } from "ionicons/icons";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useToast } from "../components/toast";
@@ -79,10 +74,7 @@ const Settings: React.FC = () => {
 		}
 	};
 
-	const updateSetting = <K extends keyof RSVPSettings>(
-		key: K,
-		value: RSVPSettings[K],
-	) => {
+	const updateSetting = <K extends keyof RSVPSettings>(key: K, value: RSVPSettings[K]) => {
 		if (!settings) return;
 		setSettings((prev) => ({ ...prev!, [key]: value }));
 	};
@@ -187,17 +179,13 @@ const Settings: React.FC = () => {
 							</IonListHeader>
 
 							<IonItem>
-								<IonLabel position="stacked">
-									Words Per Minute: {settings.wpm}
-								</IonLabel>
+								<IonLabel position="stacked">Words Per Minute: {settings.wpm}</IonLabel>
 								<IonRange
 									min={SETTING_CONSTRAINTS.WPM.min}
 									max={SETTING_CONSTRAINTS.WPM.max}
 									step={SETTING_CONSTRAINTS.WPM.step}
 									value={settings.wpm}
-									onIonChange={(e) =>
-										updateSetting("wpm", e.detail.value as number)
-									}
+									onIonChange={(e) => updateSetting("wpm", e.detail.value as number)}
 									pin
 									pinFormatter={(value: number) => `${value} WPM`}
 								/>
@@ -209,9 +197,8 @@ const Settings: React.FC = () => {
 
 							<IonItem>
 								<IonLabel position="stacked">
-									<div className="flex gap-2 items-center">
-										Comma Delay: {settings.delayComma.toFixed(1)}x
-										<IonNote>(, ; :)</IonNote>
+									<div className="flex items-center gap-2">
+										Comma Delay: {settings.delayComma.toFixed(1)}x<IonNote>(, ; :)</IonNote>
 									</div>
 								</IonLabel>
 								<IonRange
@@ -219,9 +206,7 @@ const Settings: React.FC = () => {
 									max={5.0}
 									step={0.1}
 									value={settings.delayComma}
-									onIonChange={(e) =>
-										updateSetting("delayComma", e.detail.value as number)
-									}
+									onIonChange={(e) => updateSetting("delayComma", e.detail.value as number)}
 									pin
 									pinFormatter={(value: number) => `${value.toFixed(1)}x`}
 								/>
@@ -229,9 +214,8 @@ const Settings: React.FC = () => {
 
 							<IonItem>
 								<IonLabel position="stacked">
-									<div className="flex gap-2 items-center">
-										Period Delay: {settings.delayPeriod.toFixed(1)}x
-										<IonNote>(. ! ?)</IonNote>
+									<div className="flex items-center gap-2">
+										Period Delay: {settings.delayPeriod.toFixed(1)}x<IonNote>(. ! ?)</IonNote>
 									</div>
 								</IonLabel>
 								<IonRange
@@ -239,9 +223,7 @@ const Settings: React.FC = () => {
 									max={5.0}
 									step={0.1}
 									value={settings.delayPeriod}
-									onIonChange={(e) =>
-										updateSetting("delayPeriod", e.detail.value as number)
-									}
+									onIonChange={(e) => updateSetting("delayPeriod", e.detail.value as number)}
 									pin
 									pinFormatter={(value: number) => `${value.toFixed(1)}x`}
 								/>
@@ -253,9 +235,8 @@ const Settings: React.FC = () => {
 
 							<IonItem>
 								<IonLabel position="stacked">
-									<div className="flex gap-2 items-center">
-										Start Speed: {settings.accelStart.toFixed(1)}x
-										<IonNote>(ease-in)</IonNote>
+									<div className="flex items-center gap-2">
+										Start Speed: {settings.accelStart.toFixed(1)}x<IonNote>(ease-in)</IonNote>
 									</div>
 								</IonLabel>
 								<IonRange
@@ -263,9 +244,7 @@ const Settings: React.FC = () => {
 									max={5.0}
 									step={0.1}
 									value={settings.accelStart}
-									onIonChange={(e) =>
-										updateSetting("accelStart", e.detail.value as number)
-									}
+									onIonChange={(e) => updateSetting("accelStart", e.detail.value as number)}
 									pin
 									pinFormatter={(value: number) => `${value.toFixed(1)}x`}
 								/>
@@ -273,7 +252,7 @@ const Settings: React.FC = () => {
 
 							<IonItem>
 								<IonLabel position="stacked">
-									<div className="flex gap-2 items-center">
+									<div className="flex items-center gap-2">
 										Acceleration Rate: {settings.accelRate.toFixed(2)}
 										<IonNote>(ramp to full speed)</IonNote>
 									</div>
@@ -283,9 +262,7 @@ const Settings: React.FC = () => {
 									max={1.0}
 									step={0.05}
 									value={settings.accelRate}
-									onIonChange={(e) =>
-										updateSetting("accelRate", e.detail.value as number)
-									}
+									onIonChange={(e) => updateSetting("accelRate", e.detail.value as number)}
 									pin
 									pinFormatter={(value: number) => value.toFixed(2)}
 								/>
@@ -297,7 +274,7 @@ const Settings: React.FC = () => {
 
 							<IonItem>
 								<IonLabel position="stacked">
-									<div className="flex gap-2 items-center">
+									<div className="flex items-center gap-2">
 										Focal Offset: {settings.xOffset}%
 										<IonNote>(30=left, 50=center, 70=right)</IonNote>
 									</div>
@@ -307,9 +284,7 @@ const Settings: React.FC = () => {
 									max={70}
 									step={5}
 									value={settings.xOffset}
-									onIonChange={(e) =>
-										updateSetting("xOffset", e.detail.value as number)
-									}
+									onIonChange={(e) => updateSetting("xOffset", e.detail.value as number)}
 									pin
 									pinFormatter={(value: number) => `${value}%`}
 								/>
@@ -317,7 +292,7 @@ const Settings: React.FC = () => {
 
 							<IonItem>
 								<IonLabel position="stacked">
-									<div className="flex gap-2 items-center">
+									<div className="flex items-center gap-2">
 										Word Offset: {settings.wordOffset}
 										<IonNote>(rewind on resume)</IonNote>
 									</div>
@@ -327,9 +302,7 @@ const Settings: React.FC = () => {
 									max={20}
 									step={1}
 									value={settings.wordOffset}
-									onIonChange={(e) =>
-										updateSetting("wordOffset", e.detail.value as number)
-									}
+									onIonChange={(e) => updateSetting("wordOffset", e.detail.value as number)}
 									pin
 									pinFormatter={(value: number) => `${value} words`}
 								/>
@@ -339,9 +312,7 @@ const Settings: React.FC = () => {
 								<IonLabel>Inverse Colors</IonLabel>
 								<IonToggle
 									checked={settings.inverse}
-									onIonChange={(e) =>
-										updateSetting("inverse", e.detail.checked)
-									}
+									onIonChange={(e) => updateSetting("inverse", e.detail.checked)}
 								/>
 							</IonItem>
 						</IonCardContent>
@@ -367,9 +338,7 @@ const Settings: React.FC = () => {
 								<IonLabel>Dev Mode</IonLabel>
 								<IonToggle
 									checked={settings.devMode}
-									onIonChange={(e) =>
-										updateSetting("devMode", e.detail.checked)
-									}
+									onIonChange={(e) => updateSetting("devMode", e.detail.checked)}
 								/>
 							</IonItem>
 
@@ -400,17 +369,9 @@ const Settings: React.FC = () => {
 
 							{!isConnected && (
 								<IonItem lines="none" style={{ marginTop: "0.5rem" }}>
-									<IonSpinner
-										name="dots"
-										slot="start"
-										style={{ marginRight: "0.75rem" }}
-									/>
+									<IonSpinner name="dots" slot="start" style={{ marginRight: "0.75rem" }} />
 									<IonLabel color="medium">
-										<p>
-											{isScanning
-												? "Scanning for RSVP-Reader..."
-												: "Not scanning"}
-										</p>
+										<p>{isScanning ? "Scanning for RSVP-Reader..." : "Not scanning"}</p>
 									</IonLabel>
 								</IonItem>
 							)}
@@ -457,7 +418,7 @@ const Settings: React.FC = () => {
 							</IonButton>
 						</div>
 						{!isConnected && (
-							<div className="flex gap-2 items-center justify-center">
+							<div className="flex items-center justify-center gap-2">
 								<IonIcon icon={bluetooth} color="medium" />
 								<IonText color="medium">
 									<p className="text-sm">Connect to the RSVP-Reader to sync</p>

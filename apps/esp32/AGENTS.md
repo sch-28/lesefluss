@@ -50,7 +50,7 @@ etc/
 - Buffer capped at 1000 chars with error recovery
 
 **TextStorage** (`src/text_storage.py`)
-- Saves/loads books and per-slot byte positions
+- Saves/loads the single book (`book.txt`) and byte position (`position.txt`)
 - `load_position(word_offset)` — optionally rewinds N words on resume
 - `.bak` backup system prevents position corruption on write failure
 
@@ -68,7 +68,7 @@ etc/
 **WiFiManager** (`src/wifi/`)
 - AP "RSVP-Reader", no password, IP `192.168.4.1`
 - HTML template streamed line-by-line (sending >3KB at once times out)
-- Upload books, change all settings, toggle dev mode, select book slot
+- Upload books, change all settings, toggle dev mode
 
 ## Configuration
 
@@ -126,7 +126,7 @@ Deep sleep (wake on GPIO 0) is not yet implemented.
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Shows sample text after upload | Binary read failed | Use `'rb'` mode + decode |
-| Position not resuming | Byte offset not saved | Check `.pos` file contents |
+| Position not resuming | Byte offset not saved | Check `position.txt` contents |
 | WiFi page times out | HTML sent in one block | Stream template line-by-line |
 | Memory error on large books | File loaded into RAM | Use `WordReader` streaming |
 | Upload fails silently | Socket not cleaned up | `gc.collect()` + 0.2s delay |

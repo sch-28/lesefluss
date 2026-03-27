@@ -1,14 +1,14 @@
 {
-  "name": "@rsvp/ble-config",
-  "version": "1.0.0",
-  "description": "Shared BLE configuration for RSVP Reader — single source of truth for UUIDs and protocol constants",
-  "type": "module",
-  "main": "index.ts",
-  "scripts": {
-    "setup": "tsx scripts/generate-py.ts"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "tsx": "^4.19.2"
-  }
+	"name": "@rsvp/ble-config",
+	"version": "1.0.0",
+	"description": "Shared BLE configuration for RSVP Reader — single source of truth for UUIDs and protocol constants",
+	"type": "module",
+	"main": "index.ts",
+	"scripts": {
+		"setup": "tsx scripts/generate-py.ts"
+	},
+	"devDependencies": {
+		"@types/node": "^22.0.0",
+		"tsx": "^4.19.2"
+	}
 }

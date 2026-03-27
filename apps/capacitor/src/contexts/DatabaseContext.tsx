@@ -7,13 +7,9 @@ interface DatabaseContextType {
 	error: Error | null;
 }
 
-const DatabaseContext = createContext<DatabaseContextType | undefined>(
-	undefined,
-);
+const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
 
-export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({
-	children,
-}) => {
+export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const [isReady, setIsReady] = useState(false);
 	const [error, setError] = useState<Error | null>(null);
 
@@ -26,11 +22,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({
 			});
 	}, []);
 
-	return (
-		<DatabaseContext.Provider value={{ isReady, error }}>
-			{children}
-		</DatabaseContext.Provider>
-	);
+	return <DatabaseContext.Provider value={{ isReady, error }}>{children}</DatabaseContext.Provider>;
 };
 
 export const useDatabase = () => {

@@ -1,13 +1,5 @@
-import {
-	BleClient,
-	type BleDevice,
-	type ScanResult,
-} from "@capacitor-community/bluetooth-le";
-import {
-	BLE_CONFIG,
-	BLEConnectionState,
-	type BLEResult,
-} from "../constants/ble";
+import { BleClient, type BleDevice, type ScanResult } from "@capacitor-community/bluetooth-le";
+import { BLE_CONFIG, BLEConnectionState, type BLEResult } from "../constants/ble";
 import type { Settings } from "../db/schema";
 
 // Re-export so callers don't need to import from two places
@@ -24,7 +16,6 @@ export interface ScannedDevice {
 
 /**
  * ESP32 Settings format (matches JSON from device).
- * current_slot is managed separately via BookSyncContext (Phase 5).
  */
 interface ESP32Settings {
 	wpm: number;
@@ -75,9 +66,7 @@ class BLEService {
 	 * Start scanning for RSVP Reader devices
 	 * @param onDeviceFound Callback when devices are found
 	 */
-	async startScan(
-		onDeviceFound: (devices: ScannedDevice[]) => void,
-	): Promise<BLEResult> {
+	async startScan(onDeviceFound: (devices: ScannedDevice[]) => void): Promise<BLEResult> {
 		try {
 			this.scannedDevices.clear();
 			this.scanCallback = onDeviceFound;
@@ -206,10 +195,7 @@ class BLEService {
 	 * Read settings from device
 	 */
 	async readSettings(): Promise<BLEResult<Partial<Settings>>> {
-		if (
-			!this.connectedDevice ||
-			this.connectionState !== BLEConnectionState.CONNECTED
-		) {
+		if (!this.connectedDevice || this.connectionState !== BLEConnectionState.CONNECTED) {
 			return { success: false, error: "Not connected to device" };
 		}
 
@@ -247,8 +233,7 @@ class BLEService {
 			console.error("Failed to read settings:", error);
 			return {
 				success: false,
-				error:
-					error instanceof Error ? error.message : "Failed to read settings",
+				error: error instanceof Error ? error.message : "Failed to read settings",
 			};
 		}
 	}
@@ -257,28 +242,24 @@ class BLEService {
 	 * Write settings to device
 	 */
 	async writeSettings(settings: Partial<Settings>): Promise<BLEResult> {
-		if (
-			!this.connectedDevice ||
-			this.connectionState !== BLEConnectionState.CONNECTED
-		) {
+		if (!this.connectedDevice || this.connectionState !== BLEConnectionState.CONNECTED) {
 			return { success: false, error: "Not connected to device" };
 		}
 
 		try {
-		// Convert app format to ESP32 format
-		// Note: current_slot is managed by BookSyncContext (Phase 5), not here
-		const esp32Settings: ESP32Settings = {
-			wpm: settings.wpm!,
-			delay_comma: settings.delayComma!,
-			delay_period: settings.delayPeriod!,
-			accel_start: settings.accelStart!,
-			accel_rate: settings.accelRate!,
-			x_offset: settings.xOffset!,
-			word_offset: settings.wordOffset!,
-			inverse: settings.inverse!,
-			ble_on: settings.bleOn!,
-			dev_mode: settings.devMode!,
-		};
+			// Convert app settings format to ESP32 JSON format
+			const esp32Settings: ESP32Settings = {
+				wpm: settings.wpm!,
+				delay_comma: settings.delayComma!,
+				delay_period: settings.delayPeriod!,
+				accel_start: settings.accelStart!,
+				accel_rate: settings.accelRate!,
+				x_offset: settings.xOffset!,
+				word_offset: settings.wordOffset!,
+				inverse: settings.inverse!,
+				ble_on: settings.bleOn!,
+				dev_mode: settings.devMode!,
+			};
 
 			// Convert to JSON string
 			const jsonString = JSON.stringify(esp32Settings);
@@ -301,8 +282,7 @@ class BLEService {
 			console.error("Failed to write settings:", error);
 			return {
 				success: false,
-				error:
-					error instanceof Error ? error.message : "Failed to write settings",
+				error: error instanceof Error ? error.message : "Failed to write settings",
 			};
 		}
 	}
@@ -311,10 +291,7 @@ class BLEService {
 	 * Check if device is connected
 	 */
 	isConnected(): boolean {
-		return (
-			this.connectionState === BLEConnectionState.CONNECTED &&
-			this.connectedDevice !== null
-		);
+		return this.connectionState === BLEConnectionState.CONNECTED && this.connectedDevice !== null;
 	}
 
 	/**

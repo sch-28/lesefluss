@@ -1,13 +1,10 @@
 class TextStorage:
     """Handles saving and loading text from ESP32 flash storage"""
     
-    def __init__(self, slot=1):
-        """Initialize with a specific book slot (1-4)"""
-        if slot < 1 or slot > 4:
-            raise ValueError("Slot must be between 1 and 4")
-        self.slot = slot
-        self.filename = f"book-{slot}.txt"
-        self.position_file = f"position-{slot}.txt"
+    def __init__(self):
+        """Initialize storage — single book model, always uses book.txt"""
+        self.filename = "book.txt"
+        self.position_file = "position.txt"
     
     def save_text(self, text):
         """Save text to file"""

@@ -184,10 +184,10 @@ const Library: React.FC = () => {
 											</div>
 										)}
 
-										{/* Slot badge overlay */}
-										{book.slot != null && (
+										{/* "On device" badge overlay */}
+										{book.isActive && (
 											<span className="absolute right-1.5 bottom-1.5 rounded-sm bg-black px-1.5 py-0.5 font-semibold text-[0.6rem] text-white">
-												Slot {book.slot}
+												On device
 											</span>
 										)}
 									</div>

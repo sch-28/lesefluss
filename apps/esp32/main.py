@@ -39,8 +39,6 @@ def main(force_run=False):
         import config_override
         if hasattr(config_override, 'WPM'):
             config.WPM = config_override.WPM
-        if hasattr(config_override, 'CURRENT_SLOT'):
-            config.CURRENT_SLOT = config_override.CURRENT_SLOT
         if hasattr(config_override, 'DELAY_COMMA'):
             config.DELAY_COMMA = config_override.DELAY_COMMA
         if hasattr(config_override, 'DELAY_PERIOD'):
@@ -57,14 +55,14 @@ def main(force_run=False):
             config.INVERSE = config_override.INVERSE
         if hasattr(config_override, 'BLE_ON'):
             config.BLE_ON = config_override.BLE_ON
-        print(f"Config override loaded: WPM={config.WPM}, SLOT={config.CURRENT_SLOT}, BLE={config.BLE_ON}")
+        print(f"Config override loaded: WPM={config.WPM}, BLE={config.BLE_ON}")
     except ImportError:
         print("No config override found, using defaults")
     
     # Initialize hardware
     display = DisplayManager()
     button = ButtonHandler()
-    storage = TextStorage(config.CURRENT_SLOT)
+    storage = TextStorage()
     wifi = WiFiManager(display)
     
     # Initialize BLE server if enabled
@@ -118,9 +116,9 @@ def main(force_run=False):
                 print("Restarting BLE advertising")
                 ble_server.start_advertising()
             
-            # Check if storage needs reload (slot changed)
+            # Check if a new book was uploaded via WiFi — reload storage
             if wifi.needs_reload:
-                storage = TextStorage(config.CURRENT_SLOT)
+                storage = TextStorage()
                 reader = RSVPReader(display, button, storage, ble_server)
                 wifi.needs_reload = False
             
@@ -158,9 +156,9 @@ def main(force_run=False):
                 print("Restarting BLE advertising")
                 ble_server.start_advertising()
             
-            # Check if storage needs reload (slot changed)
+            # Check if a new book was uploaded via WiFi — reload storage
             if wifi.needs_reload:
-                storage = TextStorage(config.CURRENT_SLOT)
+                storage = TextStorage()
                 reader = RSVPReader(display, button, storage, ble_server)
                 wifi.needs_reload = False
             

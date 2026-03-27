@@ -47,22 +47,32 @@ cd apps/esp32
 Both apps communicate over BLE. This is the shared contract:
 
 - Device name: `RSVP-Reader`
-- Service UUID: `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
-- Settings Characteristic: `6e400002-b5a3-f393-e0a9-e50e24dcca9e` (read/write)
+- Service UUID: `ad1863bc-9b9d-4098-a7ce-3ba1d2aabaf9`
 - UUIDs live in `packages/ble-config/`
 
-Single JSON payload (~100 bytes):
+| # | Characteristic | Flags | Purpose |
+|---|---|---|---|
+| 1 | Settings | R/W | RSVP settings JSON |
+| 2 | File Transfer | W + Notify | Chunked book upload (350-byte raw chunks, base64-encoded frames) |
+| 3 | Position | R/W | Current byte offset in active book (bidirectional) |
+
+**Settings payload** (~90 bytes):
 ```json
 {
   "wpm": 350, "delay_comma": 2.0, "delay_period": 3.0,
   "accel_start": 2.0, "accel_rate": 0.1, "x_offset": 50,
-  "word_offset": 5, "inverse": false, "ble_on": true, "current_slot": 1
+  "word_offset": 5, "inverse": false, "ble_on": true
 }
 ```
 
-**ESP32 side:** GATT peripheral advertises, read returns config JSON, write updates `config_override.py` and triggers soft reset. Stops advertising during WiFi mode (resource conflict).
+**Position payload**: `{ "position": 58203 }` — byte offset into `book.txt`.
+Device is authoritative on connect; app can push position when reading in-app.
 
-**App side:** scans for "RSVP-Reader", auto-stops after 30s, reads/writes settings JSON, saves last connected device to SQLite.
+**File transfer protocol**: `START:<bytes>:<filename>` → `CHUNK:<seq>:<base64>` (repeat) → `END:<crc32>`, each step ACK'd by device notify.
+
+**ESP32 side:** GATT peripheral advertises, read returns config JSON, write updates `config_override.py` and triggers soft reset. Stops advertising during WiFi mode (resource conflict). Single book stored as `book.txt` / `position.txt` on flash.
+
+**App side:** scans for "RSVP-Reader", auto-stops after 30s, reads/writes settings + position JSON, saves last connected device to SQLite. On connect, syncs position from device to active book in local DB.
 
 ## RSVP Algorithm
 
@@ -88,7 +98,6 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 | `word_offset` | 0–20 | 5 | Words to rewind on resume |
 | `inverse` | bool | false | Black on white when true |
 | `ble_on` | bool | true | Enable BLE server |
-| `current_slot` | 1–4 | 1 | Active book slot |
 
 ## Roadmap
 
@@ -105,10 +114,13 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 - [x] Navigation restructure (Library as home, BLE badge in tab bar)
 
 ### Phase 3 — Device Integration (next)
-- [ ] Upload books to ESP32 (chunked BLE file transfer)
-- [ ] Slot picker UI + BookSyncContext
-- [ ] Reading progress sync from device
-- [ ] Extended BLE protocol (Slot Info + File Transfer characteristics)
+- [ ] Upload active book to ESP32 (chunked BLE file transfer)
+- [ ] "Set active on device" action in Library UI + progress dialog
+- [ ] `BookSyncContext` (active book tracking, position sync on connect)
+- [ ] Bidirectional position sync (Position characteristic, read/write)
+- [ ] Extended BLE protocol (File Transfer + Position characteristics)
+- [x] ESP32: single-book model (`book.txt`/`position.txt`), remove slot logic
+- [ ] display remaining space on esp32 in the app
 
 ### Phase 4 — Enhanced Features
 - [ ] In-app RSVP reader (software parity with ESP32)

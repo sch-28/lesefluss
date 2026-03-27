@@ -1,10 +1,10 @@
 import { desc, eq } from "drizzle-orm";
 import { db, rawQuery } from "../index";
 import {
-	bookContent,
-	books,
 	type Book,
 	type BookContent,
+	bookContent,
+	books,
 	type Chapter,
 	type NewBook,
 } from "../schema";
@@ -14,10 +14,7 @@ import {
  * Since content now lives in a separate table, this is naturally lightweight.
  */
 export async function getBooks(): Promise<Book[]> {
-	return db
-		.select()
-		.from(books)
-		.orderBy(desc(books.lastRead), desc(books.addedAt));
+	return db.select().from(books).orderBy(desc(books.lastRead), desc(books.addedAt));
 }
 
 /**
@@ -53,13 +50,8 @@ export async function getBook(id: number): Promise<Book | undefined> {
  * Fetch book content (plain text, cover, chapters) by book id.
  * Returns undefined if the book or its content doesn't exist.
  */
-export async function getBookContent(
-	id: number,
-): Promise<BookContent | undefined> {
-	const rows = await db
-		.select()
-		.from(bookContent)
-		.where(eq(bookContent.bookId, id));
+export async function getBookContent(id: number): Promise<BookContent | undefined> {
+	const rows = await db.select().from(bookContent).where(eq(bookContent.bookId, id));
 	return rows[0];
 }
 
@@ -110,13 +102,10 @@ export async function addBookWithContent(
  *
  * Examples:
  *   updateBook(1, { filePath: "books/1.epub" })
- *   updateBook(1, { slot: 2 })
+ *   updateBook(1, { isActive: true })
  *   updateBook(1, { position: 1234, lastRead: Date.now() })
  */
-export async function updateBook(
-	id: number,
-	data: Partial<Omit<NewBook, "id">>,
-): Promise<void> {
+export async function updateBook(id: number, data: Partial<Omit<NewBook, "id">>): Promise<void> {
 	await db.update(books).set(data).where(eq(books.id, id));
 }
 
