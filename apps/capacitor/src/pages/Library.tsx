@@ -16,7 +16,6 @@ import { useDatabase } from "../contexts/DatabaseContext";
 import { queries } from "../db/queries";
 import type { Book } from "../db/schema";
 import { importBook, removeBook } from "../services/bookImport";
-import "./Library.css";
 
 /**
  * Reading progress percentage for a book.
@@ -44,10 +43,7 @@ const Library: React.FC = () => {
 
 	const loadBooks = useCallback(async () => {
 		try {
-			const [rows, coverMap] = await Promise.all([
-				queries.getBooks(),
-				queries.getBookCovers(),
-			]);
+			const [rows, coverMap] = await Promise.all([queries.getBooks(), queries.getBookCovers()]);
 			setBooks(rows);
 			setCovers(coverMap);
 		} catch (err) {
@@ -119,7 +115,7 @@ const Library: React.FC = () => {
 		return (
 			<IonPage>
 				<IonContent className="ion-padding ion-text-center">
-					<div className="library-center">
+					<div className="flex h-full flex-col items-center justify-center">
 						<IonSpinner />
 					</div>
 				</IonContent>
@@ -140,13 +136,11 @@ const Library: React.FC = () => {
 
 				{books.length === 0 ? (
 					/* ── Empty state ── */
-					<div className="library-center library-empty">
-						<IonIcon icon={bookOutline} className="library-empty-icon" />
+					<div className="flex h-full flex-col items-center justify-center p-8 text-center">
+						<IonIcon icon={bookOutline} className="mb-4 text-6xl text-[#ccc]" />
 						<IonText color="medium">
 							<h2 style={{ margin: "0 0 0.5rem" }}>No books yet</h2>
-							<p style={{ margin: 0 }}>
-								Tap the + button to import a TXT or EPUB file.
-							</p>
+							<p style={{ margin: 0 }}>Tap the + button to import a TXT or EPUB file.</p>
 						</IonText>
 						{importing && (
 							<IonText color="medium" style={{ marginTop: "1rem" }}>
@@ -156,7 +150,7 @@ const Library: React.FC = () => {
 					</div>
 				) : (
 					/* ── Book grid ── */
-					<div className="library-grid">
+					<div className="grid grid-cols-3 gap-4 p-4 pb-20">
 						{books.map((book) => {
 							const progress = readingProgress(book);
 							const started = book.position > 0;
@@ -165,7 +159,8 @@ const Library: React.FC = () => {
 							return (
 								<div
 									key={book.id}
-									className="book-card"
+									className="flex cursor-pointer select-none flex-col active:opacity-70"
+									style={{ WebkitTouchCallout: "none" }}
 									onPointerDown={() => startLongPress(book)}
 									onPointerUp={cancelLongPress}
 									onPointerLeave={cancelLongPress}
@@ -173,13 +168,17 @@ const Library: React.FC = () => {
 									onClick={() => handleTap(book)}
 								>
 									{/* Cover */}
-									<div className="book-cover">
+									<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-[#d9d9d9] bg-[#f0f0f0]">
 										{cover ? (
-											<img src={cover} alt={book.title} />
+											<img
+												src={cover}
+												alt={book.title}
+												className="block h-full w-full object-cover"
+											/>
 										) : (
-											<div className="book-cover-placeholder">
-												<IonIcon icon={bookOutline} />
-												<span className="book-cover-format">
+											<div className="flex h-full flex-col items-center justify-center gap-2 text-[#aaa]">
+												<IonIcon icon={bookOutline} className="text-[2.5rem]" />
+												<span className="font-semibold text-[#bbb] text-[0.65rem] tracking-[0.05em]">
 													{book.fileFormat.toUpperCase()}
 												</span>
 											</div>
@@ -187,32 +186,33 @@ const Library: React.FC = () => {
 
 										{/* Slot badge overlay */}
 										{book.slot != null && (
-											<span className="book-slot-badge">Slot {book.slot}</span>
+											<span className="absolute right-1.5 bottom-1.5 rounded-sm bg-black px-1.5 py-0.5 font-semibold text-[0.6rem] text-white">
+												Slot {book.slot}
+											</span>
 										)}
 									</div>
 
-									{/* Info below cover */}
-									<div className="book-info">
-										<div className="book-title">{book.title}</div>
-										{book.author && (
-											<div className="book-author">{book.author}</div>
+									{/* Progress + meta row */}
+									<div className="mt-1 flex items-center gap-1.5">
+										{!started && (
+											<>
+												<div className="flex-1 [--buffer-background:#e0e0e0] [--progress-background:#000]">
+													<IonProgressBar value={progress / 100} />
+												</div>
+												<span className="font-medium text-[#888] text-[0.7rem]">{progress}%</span>
+											</>
 										)}
-
-										{/* Progress + meta row */}
-										<div className="book-meta">
-											{started ? (
-												<>
-													<div className="book-progress-bar">
-														<IonProgressBar value={progress / 100} />
-													</div>
-													<span className="book-progress-text">
-														{progress}%
-													</span>
-												</>
-											) : (
-												<span className="book-meta-text">New</span>
-											)}
+									</div>
+									{/* Info below cover */}
+									<div className="px-0.5 pt-1">
+										<div className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
+											{book.title}
 										</div>
+										{book.author && (
+											<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[#888] text-[0.75rem]">
+												{book.author}
+											</div>
+										)}
 									</div>
 								</div>
 							);
@@ -223,11 +223,7 @@ const Library: React.FC = () => {
 				{/* FAB: import button */}
 				<IonFab vertical="bottom" horizontal="end" slot="fixed">
 					<IonFabButton onClick={handleImport} disabled={importing}>
-						{importing ? (
-							<IonSpinner name="crescent" />
-						) : (
-							<IonIcon icon={add} />
-						)}
+						{importing ? <IonSpinner name="crescent" /> : <IonIcon icon={add} />}
 					</IonFabButton>
 				</IonFab>
 
