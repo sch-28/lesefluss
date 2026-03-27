@@ -9,8 +9,8 @@ import {
 	useState,
 } from "react";
 import { BLEConnectionState } from "../constants/ble";
-import { bleService, type ScannedDevice } from "../services/ble";
-import { db, type RSVPSettings } from "../services/database";
+import { queries } from "../db/queries";
+import { bleService, type RSVPSettings, type ScannedDevice } from "../services/ble";
 
 interface BLEContextType {
 	// Connection state
@@ -130,7 +130,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 
 			// Save device to database
 			try {
-				await db.saveDevice({
+				await queries.saveDevice({
 					id: result.data.deviceId,
 					name: result.data.name || "RSVP-Reader",
 					lastConnected: Date.now(),
@@ -199,7 +199,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 
 		// Merge with current settings (preserve ID and updatedAt)
 		try {
-			const currentSettings = await db.getSettings();
+			const currentSettings = await queries.getSettings();
 			const mergedSettings: RSVPSettings = {
 				...currentSettings,
 				...result.data,

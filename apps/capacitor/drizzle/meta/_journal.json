@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1774625128072,
+      "tag": "0000_slippery_rhino",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1774625200000,
+      "tag": "0001_legacy_books_size",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1774800000000,
+      "tag": "0002_split_book_content",
+      "breakpoints": true
+    }
+  ]
+}

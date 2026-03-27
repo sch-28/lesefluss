@@ -1,0 +1,134 @@
+# RSVP Project
+
+Monorepo: ESP32 hardware speed reader + mobile companion app.
+
+## Structure
+
+```
+rsvp/
+├── apps/
+│   ├── esp32/          # MicroPython ESP32 RSVP reader       → apps/esp32/agents.md
+│   └── capacitor/      # Ionic React mobile companion app     → apps/capacitor/agents.md
+├── packages/
+│   └── ble-config/     # Shared BLE UUIDs (workspace package)
+└── agents.md           # This file
+```
+
+## What It Does
+
+Displays books word-by-word at configurable speed (RSVP — Rapid Serial Visual Presentation) on a handheld ESP32 device. The companion app manages your book library, syncs settings, and will eventually provide a software RSVP reader on your phone.
+
+## Development
+
+```bash
+# Capacitor app
+cd apps/capacitor
+pnpm install
+pnpm start          # Vite dev server at http://localhost:3000
+
+# ESP32 firmware
+cd apps/esp32
+./scripts/setup.sh              # First time: flash MicroPython + upload all
+./scripts/upload.sh             # Upload only changed files (git diff)
+./scripts/upload.sh no all      # Force upload all files
+./scripts/run.sh                # Test run without reboot
+```
+
+### Development Workflows
+
+**ESP32:** edit in `apps/esp32/` → `./scripts/upload.sh` → device auto-restarts. Use dev mode (`devmode` file on device) to prevent auto-start while iterating.
+
+**Capacitor:** edit in `apps/capacitor/` → hot reload via Vite. Use BLE simulator/mock without hardware. Test with real ESP32 for integration.
+
+**BLE end-to-end:** enable BLE on ESP32 (`BLE_ON` checkbox in web UI) → launch companion app → scan → connect → verify bidirectional settings sync → test disconnect/reconnect.
+
+## BLE Integration
+
+Both apps communicate over BLE. This is the shared contract:
+
+- Device name: `RSVP-Reader`
+- Service UUID: `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
+- Settings Characteristic: `6e400002-b5a3-f393-e0a9-e50e24dcca9e` (read/write)
+- UUIDs live in `packages/ble-config/`
+
+Single JSON payload (~100 bytes):
+```json
+{
+  "wpm": 350, "delay_comma": 2.0, "delay_period": 3.0,
+  "accel_start": 2.0, "accel_rate": 0.1, "x_offset": 50,
+  "word_offset": 5, "inverse": false, "ble_on": true, "current_slot": 1
+}
+```
+
+**ESP32 side:** GATT peripheral advertises, read returns config JSON, write updates `config_override.py` and triggers soft reset. Stops advertising during WiFi mode (resource conflict).
+
+**App side:** scans for "RSVP-Reader", auto-stops after 30s, reads/writes settings JSON, saves last connected device to SQLite.
+
+## RSVP Algorithm
+
+Both the ESP32 firmware and the companion app (when implemented) must use the same algorithm for reading parity:
+
+- **Focal position (ORP):** calculated per word length (e.g., length 6–9 → position 2)
+- **Base delay:** `60000 / WPM` milliseconds per word
+- **Punctuation multipliers:** `DELAY_COMMA` for `,;:` — `DELAY_PERIOD` for `.!?` and long dashes
+- **Acceleration:** start at `ACCEL_START` multiplier, decrease by `ACCEL_RATE` per word until 1.0
+- **Word offset on resume:** scan backwards through file to find position N words earlier
+- **Storage:** plain text `.txt` files, position saved as byte offset (not word index) for instant seeking
+
+## Shared Settings
+
+| Key | Range | Default | Description |
+|-----|-------|---------|-------------|
+| `wpm` | 100–1000 | 350 | Reading speed |
+| `delay_comma` | 1.0–5.0 | 2.0 | Multiplier for `,;:` |
+| `delay_period` | 1.0–5.0 | 3.0 | Multiplier for `.!?` and long dashes |
+| `accel_start` | 1.0–5.0 | 2.0 | Initial speed multiplier (2.0 = half speed) |
+| `accel_rate` | 0.05–1.0 | 0.1 | Rate to reach full speed (0.1 = 10 words) |
+| `x_offset` | 30–70 | 50 | Focal letter horizontal position (%) |
+| `word_offset` | 0–20 | 5 | Words to rewind on resume |
+| `inverse` | bool | false | Black on white when true |
+| `ble_on` | bool | true | Enable BLE server |
+| `current_slot` | 1–4 | 1 | Active book slot |
+
+## Roadmap
+
+### Phase 1 — BLE Integration ✅
+- [x] Settings UI matching ESP32 options
+- [x] SQLite database setup
+- [x] BLE connection (app side)
+- [x] ESP32 BLE server implementation
+- [x] End-to-end testing
+
+### Phase 2 — Book Library ✅
+- [x] Book import (TXT, EPUB → plain text)
+- [x] Local book library with metadata list
+- [x] Navigation restructure (Library as home, BLE badge in tab bar)
+
+### Phase 3 — Device Integration (next)
+- [ ] Upload books to ESP32 (chunked BLE file transfer)
+- [ ] Slot picker UI + BookSyncContext
+- [ ] Reading progress sync from device
+- [ ] Extended BLE protocol (Slot Info + File Transfer characteristics)
+
+### Phase 4 — Enhanced Features
+- [ ] In-app RSVP reader (software parity with ESP32)
+- [ ] Cloud sync
+- [ ] Web app version (PWA)
+- [ ] Advanced book management (tags, collections, search)
+- [ ] Reading statistics
+
+## Future Ideas
+
+**ESP32 Hardware:**
+- Deep sleep for power saving (wake on GPIO 0)
+- Battery level display (requires voltage divider hardware mod)
+- Page simulation (250 words per "page")
+- Font size options
+- Progress indicator during reading
+- Chapter detection and navigation
+
+**Companion App:**
+- Reading goals and streaks
+- Cross-device sync (read on phone, continue on ESP32)
+- Settings presets for different reading scenarios
+- Social features (share progress, recommendations)

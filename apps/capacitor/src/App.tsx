@@ -1,19 +1,19 @@
+import { SplashScreen } from "@capacitor/splash-screen";
 import {
 	IonApp,
+	IonIcon,
+	IonLabel,
 	IonRouterOutlet,
 	IonTabBar,
 	IonTabButton,
 	IonTabs,
-	IonIcon,
-	IonLabel,
 	setupIonicReact,
 } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
+import { bluetooth, library, settings } from "ionicons/icons";
 import type React from "react";
 import { useEffect } from "react";
 import { Redirect, Route } from "react-router-dom";
-import { SplashScreen } from "@capacitor/splash-screen";
-import { settings, reader } from "ionicons/icons";
 
 /* Core CSS required for Ionic components to work properly */
 import "@ionic/react/css/core.css";
@@ -34,16 +34,74 @@ import "@ionic/react/css/display.css";
 /* Monochrome theme */
 import "./theme/monochrome.css";
 
-import Settings from "./pages/Settings";
-import Home from "./pages/Home";
+import { BLEConnectionState } from "./constants/ble";
+import { BLEProvider, useBLE } from "./contexts/BLEContext";
 import { DatabaseProvider } from "./contexts/DatabaseContext";
-import { BLEProvider } from "./contexts/BLEContext";
+import Library from "./pages/Library";
+import Settings from "./pages/Settings";
 
 setupIonicReact();
 
+/**
+ * Hook that returns the BLE badge CSS class and label text.
+ * Used inline inside IonTabBar since Ionic only recognises
+ * literal IonTabButton children (not wrapper components).
+ */
+function useBLEBadge() {
+	const { connectionState, connectedDevice } = useBLE();
+
+	const isConnected = connectionState === BLEConnectionState.CONNECTED;
+	const isTransitioning =
+		connectionState === BLEConnectionState.CONNECTING ||
+		connectionState === BLEConnectionState.DISCONNECTING;
+
+	const label = isConnected
+		? connectedDevice?.name || "Connected"
+		: isTransitioning
+			? "Connecting..."
+			: "No device";
+
+	const cssClass = isConnected
+		? "ble-badge ble-connected"
+		: isTransitioning
+			? "ble-badge ble-transitioning"
+			: "ble-badge ble-disconnected";
+
+	return { label, cssClass };
+}
+
+const AppTabs: React.FC = () => {
+	const { label, cssClass } = useBLEBadge();
+
+	return (
+		<IonTabs>
+			<IonRouterOutlet>
+				<Route exact path="/library" component={Library} />
+				<Route exact path="/settings" component={Settings} />
+				<Route exact path="/">
+					<Redirect to="/library" />
+				</Route>
+			</IonRouterOutlet>
+			<IonTabBar slot="bottom">
+				<IonTabButton tab="library" href="/library">
+					<IonIcon icon={library} />
+					<IonLabel>Library</IonLabel>
+				</IonTabButton>
+				<IonTabButton tab="settings" href="/settings">
+					<IonIcon icon={settings} />
+					<IonLabel>Settings</IonLabel>
+				</IonTabButton>
+				<IonTabButton tab="ble-badge" href="/settings" className={cssClass}>
+					<IonIcon icon={bluetooth} />
+					<IonLabel>{label}</IonLabel>
+				</IonTabButton>
+			</IonTabBar>
+		</IonTabs>
+	);
+};
+
 const App: React.FC = () => {
 	useEffect(() => {
-		// Hide splash screen when app is ready
 		SplashScreen.hide();
 	}, []);
 
@@ -52,25 +110,7 @@ const App: React.FC = () => {
 			<DatabaseProvider>
 				<BLEProvider>
 					<IonReactRouter>
-						<IonTabs>
-							<IonRouterOutlet>
-								<Route exact path="/home" component={Home} />
-								<Route exact path="/settings" component={Settings} />
-								<Route exact path="/">
-									<Redirect to="/home" />
-								</Route>
-							</IonRouterOutlet>
-							<IonTabBar slot="bottom">
-								<IonTabButton tab="home" href="/home">
-									<IonIcon icon={reader} />
-									<IonLabel>Reader</IonLabel>
-								</IonTabButton>
-								<IonTabButton tab="settings" href="/settings">
-									<IonIcon icon={settings} />
-									<IonLabel>Settings</IonLabel>
-								</IonTabButton>
-							</IonTabBar>
-						</IonTabs>
+						<AppTabs />
 					</IonReactRouter>
 				</BLEProvider>
 			</DatabaseProvider>

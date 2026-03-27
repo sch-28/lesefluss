@@ -22,10 +22,9 @@ import {
 	checkmarkCircle,
 	closeCircle,
 	ellipse,
-	search,
 } from "ionicons/icons";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BLEConnectionState } from "../constants/ble";
 import { useBLE } from "../contexts/BLEContext";
 
@@ -36,7 +35,6 @@ const Home: React.FC = () => {
 		connectedDevice,
 		isScanning,
 		scannedDevices,
-		startScan,
 		stopScan,
 		connect,
 		disconnect,
@@ -240,6 +238,7 @@ const Home: React.FC = () => {
 					message={error || ""}
 					duration={3000}
 					color="danger"
+					position="top"
 				/>
 			</IonContent>
 		</IonPage>

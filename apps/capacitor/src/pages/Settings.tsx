@@ -1,4 +1,5 @@
 import {
+	IonAlert,
 	IonButton,
 	IonCard,
 	IonCardContent,
@@ -6,7 +7,6 @@ import {
 	IonCardTitle,
 	IonContent,
 	IonFooter,
-	IonHeader,
 	IonIcon,
 	IonItem,
 	IonLabel,
@@ -17,52 +17,48 @@ import {
 	IonRange,
 	IonSpinner,
 	IonText,
-	IonTitle,
-	IonToast,
 	IonToggle,
 	IonToolbar,
 } from "@ionic/react";
-import { bluetooth, cloudDownload, cloudUpload } from "ionicons/icons";
+import {
+	bluetooth,
+	closeCircle,
+	cloudDownload,
+	cloudUpload,
+} from "ionicons/icons";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { useToast } from "../components/toast";
 import { SETTING_CONSTRAINTS } from "../constants/settings";
 import { useBLE } from "../contexts/BLEContext";
 import { useDatabase } from "../contexts/DatabaseContext";
-import { db, type RSVPSettings } from "../services/database";
+import { queries } from "../db/queries";
+import type { Settings as RSVPSettings } from "../db/schema";
 
 const Settings: React.FC = () => {
 	const { isReady } = useDatabase();
 	const {
 		isConnected,
+		connectedDevice,
+		isScanning,
+		disconnect,
 		syncToDevice,
 		syncFromDevice,
 		error: bleError,
 	} = useBLE();
 
+	const { showToast } = useToast();
 	const [loading, setLoading] = useState(true);
 	const [syncing, setSyncing] = useState(false);
-	const [toast, setToast] = useState<{
-		show: boolean;
-		message: string;
-		color?: string;
-	}>({
-		show: false,
-		message: "",
-	});
+	const [showDisconnectAlert, setShowDisconnectAlert] = useState(false);
 
-	const [settings, setSettings] = useState<RSVPSettings | null>({
-		delayComma: 1,
-		devMode: false,
-		accelRate: 2,
-		accelStart: 2,
-		bleOn: false,
-		currentSlot: 0,
-		delayPeriod: 2,
-		inverse: false,
-		wordOffset: 2,
-		wpm: 200,
-		xOffset: 2,
-	});
+	const handleDisconnect = async () => {
+		await disconnect();
+		setShowDisconnectAlert(false);
+		showToast("Disconnected from device");
+	};
+
+	const [settings, setSettings] = useState<RSVPSettings | null>(null);
 
 	// Load settings from database on mount
 	useEffect(() => {
@@ -73,16 +69,12 @@ const Settings: React.FC = () => {
 
 	const loadSettings = async () => {
 		try {
-			const dbSettings = await db.getSettings();
+			const dbSettings = await queries.getSettings();
 			setSettings(dbSettings);
 			setLoading(false);
 		} catch (error) {
 			console.error("Failed to load settings:", error);
-			setToast({
-				show: true,
-				message: "Failed to load settings",
-				color: "danger",
-			});
+			showToast("Failed to load settings", "danger");
 			setLoading(false);
 		}
 	};
@@ -99,29 +91,17 @@ const Settings: React.FC = () => {
 		if (!settings) return;
 		try {
 			const { id, updatedAt, ...settingsToSave } = settings;
-			await db.saveSettings(settingsToSave);
-			setToast({
-				show: true,
-				message: "Settings saved",
-				color: "success",
-			});
+			await queries.saveSettings(settingsToSave);
+			showToast("Settings saved");
 		} catch (error) {
 			console.error("Failed to save settings:", error);
-			setToast({
-				show: true,
-				message: "Failed to save settings",
-				color: "danger",
-			});
+			showToast("Failed to save settings", "danger");
 		}
 	};
 
 	const handleSyncToDevice = async () => {
 		if (!isConnected) {
-			setToast({
-				show: true,
-				message: "Not connected to device. Please connect first.",
-				color: "warning",
-			});
+			showToast("Not connected to device. Please connect first.", "warning");
 			return;
 		}
 
@@ -138,25 +118,13 @@ const Settings: React.FC = () => {
 			const success = await syncToDevice(settingsToSync);
 
 			if (success) {
-				setToast({
-					show: true,
-					message: "Settings synced to device successfully",
-					color: "success",
-				});
+				showToast("Settings synced to device successfully");
 			} else {
-				setToast({
-					show: true,
-					message: bleError || "Failed to sync settings to device",
-					color: "danger",
-				});
+				showToast(bleError || "Failed to sync settings to device", "danger");
 			}
 		} catch (error) {
 			console.error("Failed to sync to device:", error);
-			setToast({
-				show: true,
-				message: "Failed to sync settings to device",
-				color: "danger",
-			});
+			showToast("Failed to sync settings to device", "danger");
 		} finally {
 			setSyncing(false);
 		}
@@ -164,11 +132,7 @@ const Settings: React.FC = () => {
 
 	const handleSyncFromDevice = async () => {
 		if (!isConnected) {
-			setToast({
-				show: true,
-				message: "Not connected to device. Please connect first.",
-				color: "warning",
-			});
+			showToast("Not connected to device. Please connect first.", "warning");
 			return;
 		}
 
@@ -184,27 +148,15 @@ const Settings: React.FC = () => {
 
 				// Save to database
 				const { id, updatedAt, ...settingsToSave } = deviceSettings;
-				await db.saveSettings(settingsToSave);
+				await queries.saveSettings(settingsToSave);
 
-				setToast({
-					show: true,
-					message: "Settings loaded from device successfully",
-					color: "success",
-				});
+				showToast("Settings loaded from device successfully");
 			} else {
-				setToast({
-					show: true,
-					message: bleError || "Failed to load settings from device",
-					color: "danger",
-				});
+				showToast(bleError || "Failed to load settings from device", "danger");
 			}
 		} catch (error) {
 			console.error("Failed to sync from device:", error);
-			setToast({
-				show: true,
-				message: "Failed to load settings from device",
-				color: "danger",
-			});
+			showToast("Failed to load settings from device", "danger");
 		} finally {
 			setSyncing(false);
 		}
@@ -213,11 +165,6 @@ const Settings: React.FC = () => {
 	if (loading || !settings) {
 		return (
 			<IonPage>
-				<IonHeader>
-					<IonToolbar>
-						<IonTitle>RSVP Settings</IonTitle>
-					</IonToolbar>
-				</IonHeader>
 				<IonContent className="ion-padding ion-text-center">
 					<IonSpinner />
 					<p>Loading settings...</p>
@@ -425,6 +372,48 @@ const Settings: React.FC = () => {
 									}
 								/>
 							</IonItem>
+
+							{isConnected && connectedDevice && (
+								<>
+									<IonListHeader>
+										<IonLabel>Connected Device</IonLabel>
+									</IonListHeader>
+									<IonItem>
+										<IonIcon icon={bluetooth} slot="start" />
+										<IonLabel>
+											<h2>{connectedDevice.name || "RSVP-Reader"}</h2>
+											<p>{connectedDevice.deviceId}</p>
+										</IonLabel>
+									</IonItem>
+									<IonButton
+										expand="block"
+										fill="outline"
+										color="danger"
+										className="ion-margin-top"
+										onClick={() => setShowDisconnectAlert(true)}
+									>
+										<IonIcon slot="start" icon={closeCircle} />
+										Disconnect
+									</IonButton>
+								</>
+							)}
+
+							{!isConnected && (
+								<IonItem lines="none" style={{ marginTop: "0.5rem" }}>
+									<IonSpinner
+										name="dots"
+										slot="start"
+										style={{ marginRight: "0.75rem" }}
+									/>
+									<IonLabel color="medium">
+										<p>
+											{isScanning
+												? "Scanning for RSVP-Reader..."
+												: "Not scanning"}
+										</p>
+									</IonLabel>
+								</IonItem>
+							)}
 						</IonCardContent>
 					</IonCard>
 				</IonList>
@@ -478,6 +467,17 @@ const Settings: React.FC = () => {
 					</div>
 				</IonToolbar>
 			</IonFooter>
+
+			<IonAlert
+				isOpen={showDisconnectAlert}
+				onDidDismiss={() => setShowDisconnectAlert(false)}
+				header="Disconnect Device"
+				message={`Disconnect from ${connectedDevice?.name || "the device"}?`}
+				buttons={[
+					{ text: "Cancel", role: "cancel" },
+					{ text: "Disconnect", role: "confirm", handler: handleDisconnect },
+				]}
+			/>
 		</IonPage>
 	);
 };

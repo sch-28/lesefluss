@@ -3,6 +3,18 @@
  * Simple black, white, and gray palette
  */
 
+/* Edge-to-edge / safe area support
+ * With viewport-fit=cover the WebView extends under the status bar and
+ * home indicator. We forward the real env() values into Ionic's own
+ * safe-area variables so that IonHeader / IonTabBar are automatically
+ * pushed into the safe zone. */
+:root {
+  --ion-safe-area-top: env(safe-area-inset-top);
+  --ion-safe-area-bottom: env(safe-area-inset-bottom);
+  --ion-safe-area-left: env(safe-area-inset-left);
+  --ion-safe-area-right: env(safe-area-inset-right);
+}
+
 :root {
   /* Monochrome palette */
   --ion-color-primary: #000000;
@@ -147,4 +159,24 @@ ion-tab-bar {
 ion-tab-button {
   --color: #666666;
   --color-selected: #000000;
+}
+
+/* BLE badge in tab bar — override selected/unselected colors based on state */
+ion-tab-button.ble-badge {
+  font-size: 0.65rem;
+}
+
+ion-tab-button.ble-connected {
+  --color: #000000;
+  --color-selected: #000000;
+}
+
+ion-tab-button.ble-transitioning {
+  --color: #888888;
+  --color-selected: #888888;
+}
+
+ion-tab-button.ble-disconnected {
+  --color: #bbbbbb;
+  --color-selected: #bbbbbb;
 }

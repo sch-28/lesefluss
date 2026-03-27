@@ -8,7 +8,10 @@ import {
 	BLEConnectionState,
 	type BLEResult,
 } from "../constants/ble";
-import type { RSVPSettings } from "./database";
+import type { Settings } from "../db/schema";
+
+// Re-export so callers don't need to import from two places
+export type { Settings as RSVPSettings };
 
 /**
  * Scanned BLE device with RSSI
@@ -20,7 +23,8 @@ export interface ScannedDevice {
 }
 
 /**
- * ESP32 Settings format (matches JSON from device)
+ * ESP32 Settings format (matches JSON from device).
+ * current_slot is managed separately via BookSyncContext (Phase 5).
  */
 interface ESP32Settings {
 	wpm: number;
@@ -32,7 +36,6 @@ interface ESP32Settings {
 	word_offset: number;
 	inverse: boolean;
 	ble_on: boolean;
-	current_slot: number;
 	dev_mode: boolean;
 }
 
@@ -202,7 +205,7 @@ class BLEService {
 	/**
 	 * Read settings from device
 	 */
-	async readSettings(): Promise<BLEResult<Partial<RSVPSettings>>> {
+	async readSettings(): Promise<BLEResult<Partial<Settings>>> {
 		if (
 			!this.connectedDevice ||
 			this.connectionState !== BLEConnectionState.CONNECTED
@@ -226,7 +229,7 @@ class BLEService {
 			const esp32Settings: ESP32Settings = JSON.parse(jsonString);
 
 			// Convert ESP32 format to app format
-			const appSettings: Partial<RSVPSettings> = {
+			const appSettings: Partial<Settings> = {
 				wpm: esp32Settings.wpm,
 				delayComma: esp32Settings.delay_comma,
 				delayPeriod: esp32Settings.delay_period,
@@ -236,7 +239,6 @@ class BLEService {
 				wordOffset: esp32Settings.word_offset,
 				inverse: esp32Settings.inverse,
 				bleOn: esp32Settings.ble_on,
-				currentSlot: esp32Settings.current_slot,
 				devMode: esp32Settings.dev_mode,
 			};
 
@@ -254,7 +256,7 @@ class BLEService {
 	/**
 	 * Write settings to device
 	 */
-	async writeSettings(settings: Partial<RSVPSettings>): Promise<BLEResult> {
+	async writeSettings(settings: Partial<Settings>): Promise<BLEResult> {
 		if (
 			!this.connectedDevice ||
 			this.connectionState !== BLEConnectionState.CONNECTED
@@ -263,20 +265,20 @@ class BLEService {
 		}
 
 		try {
-			// Convert app format to ESP32 format
-			const esp32Settings: ESP32Settings = {
-				wpm: settings.wpm!,
-				delay_comma: settings.delayComma!,
-				delay_period: settings.delayPeriod!,
-				accel_start: settings.accelStart!,
-				accel_rate: settings.accelRate!,
-				x_offset: settings.xOffset!,
-				word_offset: settings.wordOffset!,
-				inverse: settings.inverse!,
-				ble_on: settings.bleOn!,
-				current_slot: settings.currentSlot!,
-				dev_mode: settings.devMode!,
-			};
+		// Convert app format to ESP32 format
+		// Note: current_slot is managed by BookSyncContext (Phase 5), not here
+		const esp32Settings: ESP32Settings = {
+			wpm: settings.wpm!,
+			delay_comma: settings.delayComma!,
+			delay_period: settings.delayPeriod!,
+			accel_start: settings.accelStart!,
+			accel_rate: settings.accelRate!,
+			x_offset: settings.xOffset!,
+			word_offset: settings.wordOffset!,
+			inverse: settings.inverse!,
+			ble_on: settings.bleOn!,
+			dev_mode: settings.devMode!,
+		};
 
 			// Convert to JSON string
 			const jsonString = JSON.stringify(esp32Settings);
