@@ -6,9 +6,8 @@ Provides BLE GATT service for mobile app to:
 - Write new settings to device
 - Settings stored as JSON in single characteristic
 
-UUIDs match capacitor app constants:
-- Service: ad1863bc-9b9d-4098-a7ce-3ba1d2aabaf9
-- Settings Characteristic: db0d0b25-5282-4e5f-9b5d-30f65c652f2f
+UUIDs are sourced from ble_config.py (auto-generated from packages/ble-config/config.json).
+Run `pnpm setup:project` from the monorepo root to regenerate after UUID changes.
 """
 
 import os
@@ -16,6 +15,7 @@ import bluetooth
 import json
 import gc
 from micropython import const
+from .ble_config import SERVICE_UUID, SETTINGS_CHAR_UUID, DEVICE_NAME
 
 # BLE Event Constants
 _IRQ_CENTRAL_CONNECT = const(1)
@@ -25,9 +25,9 @@ _IRQ_GATTS_READ_REQUEST = const(4)
 _BMS_MTU = const(512)
 
 
-# UUIDs (must match app side)
-_SERVICE_UUID = bluetooth.UUID("ad1863bc-9b9d-4098-a7ce-3ba1d2aabaf9")
-_SETTINGS_CHAR_UUID = bluetooth.UUID("db0d0b25-5282-4e5f-9b5d-30f65c652f2f")
+# UUIDs (sourced from ble_config.py — do not hardcode here)
+_SERVICE_UUID = bluetooth.UUID(SERVICE_UUID)
+_SETTINGS_CHAR_UUID = bluetooth.UUID(SETTINGS_CHAR_UUID)
 
 # Characteristic flags
 _FLAG_READ = const(0x0002)
@@ -37,7 +37,7 @@ _FLAG_WRITE_NO_RESPONSE = const(0x0004)
 class BLEServer:
     """BLE GATT Server for RSVP Reader settings sync"""
     
-    def __init__(self, config_module, name="RSVP-Reader"):
+    def __init__(self, config_module, name=DEVICE_NAME):
         """
         Initialize BLE server
         

@@ -1,0 +1,24 @@
+{
+  "protocol_version": 2,
+  "device_name": "RSVP-Reader",
+  "service_uuid": "ad1863bc-9b9d-4098-a7ce-3ba1d2aabaf9",
+  "characteristics": {
+    "settings": {
+      "uuid": "db0d0b25-5282-4e5f-9b5d-30f65c652f2f",
+      "description": "RSVP settings JSON (read/write)"
+    },
+    "slot_info": {
+      "uuid": "e3a1b2c3-d4e5-f6a7-b8c9-d0e1f2a3b4c5",
+      "description": "Slot state JSON (read/write current_slot)"
+    },
+    "file_transfer": {
+      "uuid": "f4b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6",
+      "description": "Chunked book file upload (write + notify)"
+    }
+  },
+  "transfer": {
+    "chunk_size": 350,
+    "max_retries": 3,
+    "ack_timeout_ms": 5000
+  }
+}

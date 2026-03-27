@@ -1,19 +1,26 @@
 /**
  * BLE Configuration for RSVP Reader ESP32 Device
  *
- * UUIDs generated for custom RSVP Reader service and characteristics.
- * Using standard Bluetooth SIG format for compatibility.
+ * UUIDs and protocol constants are sourced from @rsvp/ble-config (single source
+ * of truth). The same values are used by the ESP32 via apps/esp32/src/ble_config.py
+ * (auto-generated — run `pnpm setup:project` from the repo root to regenerate).
  */
 
+import {
+	DEVICE_NAME,
+	SERVICE_UUID,
+	SETTINGS_CHAR_UUID,
+	SLOT_INFO_CHAR_UUID,
+	FILE_TRANSFER_CHAR_UUID,
+	MAX_RETRIES,
+} from '@rsvp/ble-config';
+
 export const BLE_CONFIG = {
-	// Device name to scan for
-	DEVICE_NAME: "RSVP-Reader",
-
-	// Custom service UUID for RSVP Reader
-	SERVICE_UUID: "ad1863bc-9b9d-4098-a7ce-3ba1d2aabaf9",
-
-	// Settings characteristic UUID (read/write JSON blob)
-	SETTINGS_CHARACTERISTIC_UUID: "db0d0b25-5282-4e5f-9b5d-30f65c652f2f",
+	DEVICE_NAME,
+	SERVICE_UUID,
+	SETTINGS_CHARACTERISTIC_UUID: SETTINGS_CHAR_UUID,
+	SLOT_INFO_CHARACTERISTIC_UUID: SLOT_INFO_CHAR_UUID,
+	FILE_TRANSFER_CHARACTERISTIC_UUID: FILE_TRANSFER_CHAR_UUID,
 
 	// Connection timeout in milliseconds
 	CONNECTION_TIMEOUT: 30000,
@@ -22,7 +29,7 @@ export const BLE_CONFIG = {
 	OPERATION_TIMEOUT: 10000,
 
 	// Maximum retries for failed operations
-	MAX_RETRIES: 3,
+	MAX_RETRIES,
 } as const;
 
 /**

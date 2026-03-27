@@ -11,6 +11,10 @@
     "dev": {
       "persistent": true,
       "cache": false
+    },
+    "setup": {
+      "outputs": ["../../apps/esp32/src/ble/ble_config.py"],
+      "inputs": ["config.json"]
     }
   }
 }
