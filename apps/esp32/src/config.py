@@ -34,6 +34,9 @@ X_OFFSET = 50        # Horizontal position offset (30-70%: 30=left, 50=center, 7
 INVERSE = False      # Inverse colors (True = black text on white bg)
 WORD_OFFSET = 5      # Number of words to go back when resuming (0-20)
 
+# BLE settings
+BLE_ON = True        # Enable BLE for companion app (True/False)
+
 # RSVP focal letter settings
 FOCAL_LETTER_COLOR = (255, 0, 0)  # Red for focal letter
 FOCAL_INDICATOR_COLOR = (175, 0, 0)  # Red for focal letter

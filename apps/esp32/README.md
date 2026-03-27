@@ -52,18 +52,18 @@ rsvp/
 
 First time (flashes MicroPython and uploads everything):
 ```bash
-./setup.sh
+./scripts/setup.sh
 ```
 
 Upload code changes only (uses git diff to only upload changed files):
 ```bash
-./upload.sh          # Upload only changed files
-./upload.sh no all   # Force upload all files
+./scripts/upload.sh          # Upload only changed files
+./scripts/upload.sh no all   # Force upload all files
 ```
 
 Test without rebooting:
 ```bash
-./run.sh
+./scripts/run.sh
 ```
 
 ## Usage

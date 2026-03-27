@@ -96,9 +96,12 @@ class DisplayManager:
             self.show_text(before, current_x, y, color=text_color, bg_color=bg_color)
             current_x += len(before) * config.FONT_WIDTH
         
-        # Part 2: Focal letter (highlighted) - pass bg through show_text for inverse, but keep focal red
+        # Part 2: Focal letter (highlighted)
+        # In normal mode: red text on black bg
+        # In inverse mode: red text on white bg
         focal_letter = word[focal_pos]
-        self.show_text(focal_letter, current_x, y, color=focal_color, bg_color=text_color, invert=False)
+        focal_bg = (255, 255, 255) if config.INVERSE else (0, 0, 0)
+        self.show_text(focal_letter, current_x, y, color=focal_color, bg_color=focal_bg, invert=False)
         
         # Draw indicator lines above and below focal letter (keep red, don't inverse)
         focal_indicator = st7789.color565(*config.FOCAL_INDICATOR_COLOR)

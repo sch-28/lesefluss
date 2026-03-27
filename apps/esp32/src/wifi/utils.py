@@ -71,6 +71,7 @@ def save_config(config):
             f.write(f"X_OFFSET = {config.X_OFFSET}\n")
             f.write(f"WORD_OFFSET = {getattr(config, 'WORD_OFFSET', 0)}\n")
             f.write(f"INVERSE = {config.INVERSE}\n")
+            f.write(f"BLE_ON = {getattr(config, 'BLE_ON', True)}\n")
         return True
     except:
         return False

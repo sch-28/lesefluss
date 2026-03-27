@@ -3,6 +3,13 @@
 
 set -e
 
+# Get the script directory and ESP32 app root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ESP32_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Change to ESP32 directory for relative paths
+cd "$ESP32_ROOT"
+
 PORT="/dev/ttyUSB0"
 VENV_ACTIVATE=".venv/bin/activate"
 

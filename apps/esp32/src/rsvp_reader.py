@@ -6,10 +6,11 @@ from text_storage import WordReader
 class RSVPReader:
     """Handles RSVP reading logic and state management"""
     
-    def __init__(self, display, button, storage=None):
+    def __init__(self, display, button, storage=None, ble_server=None):
         self.display = display
         self.button = button
         self.storage = storage
+        self.ble_server = ble_server
         self.word_reader = None
         self.current_word = None
         self.word_index = 0
@@ -166,7 +167,7 @@ class RSVPReader:
             self.word_reader = None
     
     def run_reading_loop(self):
-        """Main reading loop. Returns 'wifi' if long press detected, None otherwise."""
+        """Main reading loop. Returns 'wifi' if long press detected, 'restart' if settings updated, None otherwise."""
         self.display.clear()
         self.reset()
 
@@ -175,6 +176,11 @@ class RSVPReader:
         
         try:
             while not self.is_finished():
+                # Check if BLE settings were updated
+                if self.ble_server and self.ble_server.check_settings_updated():
+                    print("Settings updated via BLE during reading")
+                    return 'restart'
+                
                 # Check for button press (short or long)
                 press_result = self.button.check_press_state(5000)
                 

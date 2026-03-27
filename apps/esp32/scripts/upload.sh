@@ -4,6 +4,14 @@
 
 set -e
 
+# Get the script directory and ESP32 app root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ESP32_ROOT="$(dirname "$SCRIPT_DIR")"
+REPO_ROOT="$(cd "$ESP32_ROOT/../.." && pwd)"
+
+# Change to ESP32 directory for relative paths
+cd "$ESP32_ROOT"
+
 PORT="/dev/ttyUSB0"
 VENV_ACTIVATE=".venv/bin/activate"
 UPLOAD_DRIVERS="${1:-no}"
@@ -32,8 +40,9 @@ if [ ! -e "$PORT" ]; then
 fi
 
 # Get list of changed files (staged + unstaged + untracked)
-CHANGED_FILES=$(git diff --name-only HEAD 2>/dev/null || true)
-UNTRACKED_FILES=$(git ls-files --others --exclude-standard 2>/dev/null || true)
+# Run git from repo root, filter for apps/esp32/, then strip prefix
+CHANGED_FILES=$(cd "$REPO_ROOT" && git diff --name-only HEAD 2>/dev/null | grep "^apps/esp32/" | sed 's|^apps/esp32/||' || true)
+UNTRACKED_FILES=$(cd "$REPO_ROOT" && git ls-files --others --exclude-standard 2>/dev/null | grep "^apps/esp32/" | sed 's|^apps/esp32/||' || true)
 ALL_CHANGED="$CHANGED_FILES"$'\n'"$UNTRACKED_FILES"
 
 upload_file() {
@@ -65,6 +74,7 @@ fi
 # Create directories (fast, always do it)
 mpremote connect "$PORT" fs mkdir src 2>/dev/null || true
 mpremote connect "$PORT" fs mkdir src/wifi 2>/dev/null || true
+mpremote connect "$PORT" fs mkdir src/ble 2>/dev/null || true
 
 # Root files
 for file in boot.py main.py web_template.html; do
@@ -86,6 +96,14 @@ done
 for file in src/wifi/*.py; do
     if should_upload "$file"; then
         upload_file "$file" ":src/wifi/"
+        UPLOADED=$((UPLOADED + 1))
+    fi
+done
+
+# ble module files
+for file in src/ble/*.py; do
+    if should_upload "$file"; then
+        upload_file "$file" ":src/ble/"
         UPLOADED=$((UPLOADED + 1))
     fi
 done

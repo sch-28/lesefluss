@@ -173,6 +173,7 @@ def handle_save_config(client, request, config):
                     config.WORD_OFFSET = val
             # Checkbox: present if checked, absent if unchecked
             config.INVERSE = 'inverse' in data
+            config.BLE_ON = 'ble_on' in data
             save_config(config)
             log(f"Saved {config.WPM}WPM")
         except:
@@ -302,6 +303,7 @@ def stream_html(sock, storage, config):
         '{x_offset}': str(config.X_OFFSET),
         '{word_offset}': str(getattr(config, 'WORD_OFFSET', 0)),
         '{inverse_checked}': 'checked' if config.INVERSE else '',
+        '{ble_checked}': 'checked' if getattr(config, 'BLE_ON', True) else '',
         '{current_percent}': str(percent),
         '{book_size}': book_size,
         '{book_size_1}': book_sizes[1],

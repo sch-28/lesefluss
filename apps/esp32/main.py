@@ -13,6 +13,15 @@ from rsvp_reader import RSVPReader
 from wifi import WiFiManager
 from text_storage import TextStorage
 
+# Import BLE server if enabled
+ble_server = None
+if config.BLE_ON:
+    try:
+        from ble import BLEServer
+    except ImportError:
+        print("BLE not available on this device")
+        config.BLE_ON = False
+
 def main(force_run=False):
     """Main entry point for RSVP reader"""
     
@@ -42,9 +51,13 @@ def main(force_run=False):
             config.ACCEL_RATE = config_override.ACCEL_RATE
         if hasattr(config_override, 'X_OFFSET'):
             config.X_OFFSET = config_override.X_OFFSET
+        if hasattr(config_override, 'WORD_OFFSET'):
+            config.WORD_OFFSET = config_override.WORD_OFFSET
         if hasattr(config_override, 'INVERSE'):
             config.INVERSE = config_override.INVERSE
-        print(f"Config override loaded: WPM={config.WPM}, SLOT={config.CURRENT_SLOT}")
+        if hasattr(config_override, 'BLE_ON'):
+            config.BLE_ON = config_override.BLE_ON
+        print(f"Config override loaded: WPM={config.WPM}, SLOT={config.CURRENT_SLOT}, BLE={config.BLE_ON}")
     except ImportError:
         print("No config override found, using defaults")
     
@@ -52,11 +65,35 @@ def main(force_run=False):
     display = DisplayManager()
     button = ButtonHandler()
     storage = TextStorage(config.CURRENT_SLOT)
-    reader = RSVPReader(display, button, storage)
     wifi = WiFiManager(display)
+    
+    # Initialize BLE server if enabled
+    global ble_server
+    if config.BLE_ON and ble_server is None:
+        try:
+            import gc
+            gc.collect()
+            ble_server = BLEServer(config)
+            print("BLE server started")
+        except Exception as e:
+            print(f"Failed to start BLE server: {e}")
+            import sys
+            sys.print_exception(e)
+            config.BLE_ON = False
+    
+    # Initialize reader with BLE server reference
+    reader = RSVPReader(display, button, storage, ble_server)
     
     # Main loop
     while True:
+        # Check if BLE settings were updated
+        if ble_server and ble_server.check_settings_updated():
+            print("Settings updated via BLE, restarting...")
+            display.show_centered_message("Updating...")
+            time.sleep(1)
+            import machine
+            machine.soft_reset()
+        
         # Show idle screen
         display.show_centered_message("Press BOOT")
         
@@ -68,13 +105,23 @@ def main(force_run=False):
             display.show_centered_message("WiFi Mode")
             time.sleep(0.5)
             
+            # Stop BLE while in WiFi mode (resource conflict)
+            if ble_server and config.BLE_ON:
+                print("Stopping BLE for WiFi mode")
+                ble_server.stop_advertising()
+            
             if wifi.start_ap():
                 wifi.run(storage, config)
+            
+            # Restart BLE after WiFi mode
+            if ble_server and config.BLE_ON:
+                print("Restarting BLE advertising")
+                ble_server.start_advertising()
             
             # Check if storage needs reload (slot changed)
             if wifi.needs_reload:
                 storage = TextStorage(config.CURRENT_SLOT)
-                reader = RSVPReader(display, button, storage)
+                reader = RSVPReader(display, button, storage, ble_server)
                 wifi.needs_reload = False
             
             # WiFi mode exited, reload text
@@ -98,18 +145,35 @@ def main(force_run=False):
             display.show_centered_message("WiFi Mode")
             time.sleep(0.5)
             
+            # Stop BLE while in WiFi mode (resource conflict)
+            if ble_server and config.BLE_ON:
+                print("Stopping BLE for WiFi mode")
+                ble_server.stop_advertising()
+            
             if wifi.start_ap():
                 wifi.run(storage, config)
+            
+            # Restart BLE after WiFi mode
+            if ble_server and config.BLE_ON:
+                print("Restarting BLE advertising")
+                ble_server.start_advertising()
             
             # Check if storage needs reload (slot changed)
             if wifi.needs_reload:
                 storage = TextStorage(config.CURRENT_SLOT)
-                reader = RSVPReader(display, button, storage)
+                reader = RSVPReader(display, button, storage, ble_server)
                 wifi.needs_reload = False
             
             # WiFi mode exited, reload text
             display.show_centered_message("Loading...")
             time.sleep(0.5)
+        
+        # Check if restart was requested (settings updated via BLE)
+        elif result == 'restart':
+            display.show_centered_message("Updating...")
+            time.sleep(1)
+            import machine
+            machine.soft_reset()
 
 if __name__ == "__main__":
     main()

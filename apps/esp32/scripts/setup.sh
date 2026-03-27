@@ -4,6 +4,13 @@
 
 set -e  # Exit on error
 
+# Get the script directory and ESP32 app root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ESP32_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Change to ESP32 directory for relative paths
+cd "$ESP32_ROOT"
+
 # Configuration
 PORT="/dev/ttyUSB0"
 VENV_ACTIVATE=".venv/bin/activate"
@@ -52,7 +59,7 @@ echo "Waiting for device to be ready..."
 sleep 3
 
 # Run upload script with drivers flag
-./upload.sh yes
+./scripts/upload.sh yes all
 
 # Enable dev mode for easy development
 echo ""
