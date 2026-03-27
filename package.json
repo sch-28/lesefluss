@@ -1,17 +1,21 @@
 {
-  "name": "rsvp",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "setup:project": "turbo run setup",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "packageManager": "pnpm@10.24.0",
-  "devDependencies": {
-    "turbo": "^2.8.20"
-  }
+	"name": "rsvp",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"setup:project": "turbo run setup",
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"format": "biome format --write .",
+		"lint": "biome lint --write .",
+		"biome": "biome check --write ."
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"packageManager": "pnpm@10.24.0",
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.9",
+		"turbo": "^2.8.20"
+	}
 }
