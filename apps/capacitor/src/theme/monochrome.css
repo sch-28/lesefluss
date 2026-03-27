@@ -98,6 +98,7 @@ ion-range {
   --knob-size: 24px;
   --pin-background: #000000;
   --pin-color: #ffffff;
+  padding-top: 0.5rem;
 }
 
 /* Toggle styling */
@@ -115,6 +116,7 @@ ion-button {
   --background-hover: #1a1a1a;
   --color: #ffffff;
   --border-radius: 4px;
+  font-size: 0.875rem;
 }
 
 ion-button[fill="outline"] {

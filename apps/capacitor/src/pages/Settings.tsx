@@ -1,6 +1,11 @@
 import {
 	IonButton,
+	IonCard,
+	IonCardContent,
+	IonCardHeader,
+	IonCardTitle,
 	IonContent,
+	IonFooter,
 	IonHeader,
 	IonIcon,
 	IonItem,
@@ -45,7 +50,19 @@ const Settings: React.FC = () => {
 		message: "",
 	});
 
-	const [settings, setSettings] = useState<RSVPSettings | null>(null);
+	const [settings, setSettings] = useState<RSVPSettings | null>({
+		delayComma: 1,
+		devMode: false,
+		accelRate: 2,
+		accelStart: 2,
+		bleOn: false,
+		currentSlot: 0,
+		delayPeriod: 2,
+		inverse: false,
+		wordOffset: 2,
+		wpm: 200,
+		xOffset: 2,
+	});
 
 	// Load settings from database on mount
 	useEffect(() => {
@@ -211,266 +228,256 @@ const Settings: React.FC = () => {
 
 	return (
 		<IonPage>
-			<IonHeader>
-				<IonToolbar>
-					<IonTitle>RSVP Settings</IonTitle>
-				</IonToolbar>
-			</IonHeader>
 			<IonContent className="ion-padding">
 				<IonList>
-					<IonListHeader>
-						<IonLabel>Reading Speed</IonLabel>
-					</IonListHeader>
+					<IonCard>
+						<IonCardHeader>
+							<IonCardTitle>General</IonCardTitle>
+						</IonCardHeader>
+						<IonCardContent>
+							<IonListHeader>
+								<IonLabel>Reading Speed</IonLabel>
+							</IonListHeader>
 
-					<IonItem>
-						<IonLabel position="stacked">
-							Words Per Minute: {settings.wpm}
-						</IonLabel>
-						<IonRange
-							min={SETTING_CONSTRAINTS.WPM.min}
-							max={SETTING_CONSTRAINTS.WPM.max}
-							step={SETTING_CONSTRAINTS.WPM.step}
-							value={settings.wpm}
-							onIonChange={(e) =>
-								updateSetting("wpm", e.detail.value as number)
-							}
-							pin
-							pinFormatter={(value: number) => `${value} WPM`}
-						/>
-					</IonItem>
-
-					<IonListHeader>
-						<IonLabel>Punctuation Delays</IonLabel>
-					</IonListHeader>
-
-					<IonItem>
-						<IonLabel position="stacked">
-							Comma Delay: {settings.delayComma.toFixed(1)}x
-							<IonNote>For , ; :</IonNote>
-						</IonLabel>
-						<IonRange
-							min={1.0}
-							max={5.0}
-							step={0.1}
-							value={settings.delayComma}
-							onIonChange={(e) =>
-								updateSetting("delayComma", e.detail.value as number)
-							}
-							pin
-							pinFormatter={(value: number) => `${value.toFixed(1)}x`}
-						/>
-					</IonItem>
-
-					<IonItem>
-						<IonLabel position="stacked">
-							Period Delay: {settings.delayPeriod.toFixed(1)}x
-							<IonNote>For . ! ?</IonNote>
-						</IonLabel>
-						<IonRange
-							min={1.0}
-							max={5.0}
-							step={0.1}
-							value={settings.delayPeriod}
-							onIonChange={(e) =>
-								updateSetting("delayPeriod", e.detail.value as number)
-							}
-							pin
-							pinFormatter={(value: number) => `${value.toFixed(1)}x`}
-						/>
-					</IonItem>
-
-					<IonListHeader>
-						<IonLabel>Acceleration</IonLabel>
-					</IonListHeader>
-
-					<IonItem>
-						<IonLabel position="stacked">
-							Start Speed: {settings.accelStart.toFixed(1)}x
-							<IonNote>Initial speed multiplier (ease-in)</IonNote>
-						</IonLabel>
-						<IonRange
-							min={1.0}
-							max={5.0}
-							step={0.1}
-							value={settings.accelStart}
-							onIonChange={(e) =>
-								updateSetting("accelStart", e.detail.value as number)
-							}
-							pin
-							pinFormatter={(value: number) => `${value.toFixed(1)}x`}
-						/>
-					</IonItem>
-
-					<IonItem>
-						<IonLabel position="stacked">
-							Acceleration Rate: {settings.accelRate.toFixed(2)}
-							<IonNote>How fast to reach full speed</IonNote>
-						</IonLabel>
-						<IonRange
-							min={0.05}
-							max={1.0}
-							step={0.05}
-							value={settings.accelRate}
-							onIonChange={(e) =>
-								updateSetting("accelRate", e.detail.value as number)
-							}
-							pin
-							pinFormatter={(value: number) => value.toFixed(2)}
-						/>
-					</IonItem>
-
-					<IonListHeader>
-						<IonLabel>Display</IonLabel>
-					</IonListHeader>
-
-					<IonItem>
-						<IonLabel position="stacked">
-							Focal Offset: {settings.xOffset}%
-							<IonNote>
-								Horizontal position (30=left, 50=center, 70=right)
-							</IonNote>
-						</IonLabel>
-						<IonRange
-							min={30}
-							max={70}
-							step={5}
-							value={settings.xOffset}
-							onIonChange={(e) =>
-								updateSetting("xOffset", e.detail.value as number)
-							}
-							pin
-							pinFormatter={(value: number) => `${value}%`}
-						/>
-					</IonItem>
-
-					<IonItem>
-						<IonLabel position="stacked">
-							Word Offset: {settings.wordOffset}
-							<IonNote>Words to rewind when resuming</IonNote>
-						</IonLabel>
-						<IonRange
-							min={0}
-							max={20}
-							step={1}
-							value={settings.wordOffset}
-							onIonChange={(e) =>
-								updateSetting("wordOffset", e.detail.value as number)
-							}
-							pin
-							pinFormatter={(value: number) => `${value} words`}
-						/>
-					</IonItem>
-
-					<IonItem>
-						<IonLabel>Inverse Colors</IonLabel>
-						<IonToggle
-							checked={settings.inverse}
-							onIonChange={(e) => updateSetting("inverse", e.detail.checked)}
-						/>
-					</IonItem>
-
-					<IonListHeader>
-						<IonLabel>Connection</IonLabel>
-					</IonListHeader>
-
-					<IonItem>
-						<IonLabel>BLE Enabled</IonLabel>
-						<IonToggle
-							checked={settings.bleOn}
-							onIonChange={(e) => updateSetting("bleOn", e.detail.checked)}
-						/>
-					</IonItem>
-					<IonItem>
-						<IonLabel>Dev Mode</IonLabel>
-						<IonToggle
-							checked={settings.devMode}
-							onIonChange={(e) => updateSetting("devMode", e.detail.checked)}
-						/>
-					</IonItem>
-
-					<IonListHeader>
-						<IonLabel>Book Slot</IonLabel>
-					</IonListHeader>
-
-					<IonItem>
-						<IonLabel position="stacked">
-							Current Slot: {settings.currentSlot}
-						</IonLabel>
-						<IonRange
-							min={1}
-							max={4}
-							step={1}
-							value={settings.currentSlot}
-							onIonChange={(e) =>
-								updateSetting("currentSlot", e.detail.value as number)
-							}
-							pin
-							ticks
-							snaps
-						/>
-					</IonItem>
-				</IonList>
-
-				<div className="ion-padding">
-					<IonButton expand="block" onClick={handleSave}>
-						Save Settings
-					</IonButton>
-
-					{/* BLE Sync Section */}
-					<IonList className="ion-margin-top">
-						<IonListHeader>
-							<IonLabel>Device Sync</IonLabel>
-						</IonListHeader>
-
-						{!isConnected && (
 							<IonItem>
-								<IonIcon icon={bluetooth} slot="start" color="medium" />
-								<IonLabel>
-									<IonText color="medium">
-										<p>Connect to device on Home tab to sync settings</p>
-									</IonText>
+								<IonLabel position="stacked">
+									Words Per Minute: {settings.wpm}
 								</IonLabel>
+								<IonRange
+									min={SETTING_CONSTRAINTS.WPM.min}
+									max={SETTING_CONSTRAINTS.WPM.max}
+									step={SETTING_CONSTRAINTS.WPM.step}
+									value={settings.wpm}
+									onIonChange={(e) =>
+										updateSetting("wpm", e.detail.value as number)
+									}
+									pin
+									pinFormatter={(value: number) => `${value} WPM`}
+								/>
 							</IonItem>
-						)}
 
-						<IonButton
-							expand="block"
-							fill="outline"
-							onClick={handleSyncToDevice}
-							disabled={!isConnected || syncing}
-						>
-							{syncing ? (
-								<IonSpinner name="crescent" slot="start" />
-							) : (
-								<IonIcon slot="start" icon={cloudUpload} />
-							)}
-							Sync to Device
-						</IonButton>
+							<IonListHeader>
+								<IonLabel>Punctuation Delays</IonLabel>
+							</IonListHeader>
 
-						<IonButton
-							expand="block"
-							fill="outline"
-							onClick={handleSyncFromDevice}
-							disabled={!isConnected || syncing}
-						>
-							{syncing ? (
-								<IonSpinner name="crescent" slot="start" />
-							) : (
-								<IonIcon slot="start" icon={cloudDownload} />
-							)}
-							Load from Device
-						</IonButton>
-					</IonList>
-				</div>
+							<IonItem>
+								<IonLabel position="stacked">
+									<div className="flex gap-2 items-center">
+										Comma Delay: {settings.delayComma.toFixed(1)}x
+										<IonNote>(, ; :)</IonNote>
+									</div>
+								</IonLabel>
+								<IonRange
+									min={1.0}
+									max={5.0}
+									step={0.1}
+									value={settings.delayComma}
+									onIonChange={(e) =>
+										updateSetting("delayComma", e.detail.value as number)
+									}
+									pin
+									pinFormatter={(value: number) => `${value.toFixed(1)}x`}
+								/>
+							</IonItem>
 
-				<IonToast
-					isOpen={toast.show}
-					onDidDismiss={() => setToast({ show: false, message: "" })}
-					message={toast.message}
-					duration={2000}
-					color={toast.color}
-				/>
+							<IonItem>
+								<IonLabel position="stacked">
+									<div className="flex gap-2 items-center">
+										Period Delay: {settings.delayPeriod.toFixed(1)}x
+										<IonNote>(. ! ?)</IonNote>
+									</div>
+								</IonLabel>
+								<IonRange
+									min={1.0}
+									max={5.0}
+									step={0.1}
+									value={settings.delayPeriod}
+									onIonChange={(e) =>
+										updateSetting("delayPeriod", e.detail.value as number)
+									}
+									pin
+									pinFormatter={(value: number) => `${value.toFixed(1)}x`}
+								/>
+							</IonItem>
+
+							<IonListHeader>
+								<IonLabel>Acceleration</IonLabel>
+							</IonListHeader>
+
+							<IonItem>
+								<IonLabel position="stacked">
+									<div className="flex gap-2 items-center">
+										Start Speed: {settings.accelStart.toFixed(1)}x
+										<IonNote>(ease-in)</IonNote>
+									</div>
+								</IonLabel>
+								<IonRange
+									min={1.0}
+									max={5.0}
+									step={0.1}
+									value={settings.accelStart}
+									onIonChange={(e) =>
+										updateSetting("accelStart", e.detail.value as number)
+									}
+									pin
+									pinFormatter={(value: number) => `${value.toFixed(1)}x`}
+								/>
+							</IonItem>
+
+							<IonItem>
+								<IonLabel position="stacked">
+									<div className="flex gap-2 items-center">
+										Acceleration Rate: {settings.accelRate.toFixed(2)}
+										<IonNote>(ramp to full speed)</IonNote>
+									</div>
+								</IonLabel>
+								<IonRange
+									min={0.05}
+									max={1.0}
+									step={0.05}
+									value={settings.accelRate}
+									onIonChange={(e) =>
+										updateSetting("accelRate", e.detail.value as number)
+									}
+									pin
+									pinFormatter={(value: number) => value.toFixed(2)}
+								/>
+							</IonItem>
+
+							<IonListHeader>
+								<IonLabel>Display</IonLabel>
+							</IonListHeader>
+
+							<IonItem>
+								<IonLabel position="stacked">
+									<div className="flex gap-2 items-center">
+										Focal Offset: {settings.xOffset}%
+										<IonNote>(30=left, 50=center, 70=right)</IonNote>
+									</div>
+								</IonLabel>
+								<IonRange
+									min={30}
+									max={70}
+									step={5}
+									value={settings.xOffset}
+									onIonChange={(e) =>
+										updateSetting("xOffset", e.detail.value as number)
+									}
+									pin
+									pinFormatter={(value: number) => `${value}%`}
+								/>
+							</IonItem>
+
+							<IonItem>
+								<IonLabel position="stacked">
+									<div className="flex gap-2 items-center">
+										Word Offset: {settings.wordOffset}
+										<IonNote>(rewind on resume)</IonNote>
+									</div>
+								</IonLabel>
+								<IonRange
+									min={0}
+									max={20}
+									step={1}
+									value={settings.wordOffset}
+									onIonChange={(e) =>
+										updateSetting("wordOffset", e.detail.value as number)
+									}
+									pin
+									pinFormatter={(value: number) => `${value} words`}
+								/>
+							</IonItem>
+
+							<IonItem>
+								<IonLabel>Inverse Colors</IonLabel>
+								<IonToggle
+									checked={settings.inverse}
+									onIonChange={(e) =>
+										updateSetting("inverse", e.detail.checked)
+									}
+								/>
+							</IonItem>
+						</IonCardContent>
+					</IonCard>
+
+					<IonCard>
+						<IonCardHeader>
+							<IonCardTitle>Device Settings</IonCardTitle>
+						</IonCardHeader>
+						<IonCardContent>
+							<IonListHeader>
+								<IonLabel>Connection</IonLabel>
+							</IonListHeader>
+
+							<IonItem>
+								<IonLabel>BLE Enabled</IonLabel>
+								<IonToggle
+									checked={settings.bleOn}
+									onIonChange={(e) => updateSetting("bleOn", e.detail.checked)}
+								/>
+							</IonItem>
+							<IonItem>
+								<IonLabel>Dev Mode</IonLabel>
+								<IonToggle
+									checked={settings.devMode}
+									onIonChange={(e) =>
+										updateSetting("devMode", e.detail.checked)
+									}
+								/>
+							</IonItem>
+						</IonCardContent>
+					</IonCard>
+				</IonList>
 			</IonContent>
+
+			<IonFooter>
+				<IonToolbar>
+					<div className="flex flex-col gap-2 px-4 py-2">
+						<IonButton expand="block" onClick={handleSave}>
+							Save Settings
+						</IonButton>
+						<div className="flex gap-2">
+							<IonButton
+								expand="block"
+								fill="outline"
+								className="flex-1"
+								onClick={handleSyncToDevice}
+								disabled={!isConnected || syncing}
+							>
+								{syncing ? (
+									<IonSpinner name="crescent" slot="start" />
+								) : (
+									<IonIcon slot="start" icon={cloudUpload} />
+								)}
+								Sync to Device
+							</IonButton>
+
+							<IonButton
+								expand="block"
+								fill="outline"
+								className="flex-1"
+								onClick={handleSyncFromDevice}
+								disabled={!isConnected || syncing}
+							>
+								{syncing ? (
+									<IonSpinner name="crescent" slot="start" />
+								) : (
+									<IonIcon slot="start" icon={cloudDownload} />
+								)}
+								Load from Device
+							</IonButton>
+						</div>
+						{!isConnected && (
+							<div className="flex gap-2 items-center justify-center">
+								<IonIcon icon={bluetooth} color="medium" />
+								<IonText color="medium">
+									<p className="text-sm">Connect to the RSVP-Reader to sync</p>
+								</IonText>
+							</div>
+						)}
+					</div>
+				</IonToolbar>
+			</IonFooter>
 		</IonPage>
 	);
 };
