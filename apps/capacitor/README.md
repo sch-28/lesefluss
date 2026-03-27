@@ -84,7 +84,7 @@ pnpm preview
 Phase 1 (MVP):
 - [x] Settings UI matching ESP32 options
 - [x] BLE connection to ESP32 
-- [ ] Bidirectional settings sync
+- [x] Bidirectional settings sync
 
 Phase 2 (Device Integration):
 - [ ] Book import (TXT, EPUB convert to TXT)

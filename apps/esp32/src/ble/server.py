@@ -11,6 +11,7 @@ UUIDs match capacitor app constants:
 - Settings Characteristic: db0d0b25-5282-4e5f-9b5d-30f65c652f2f
 """
 
+import os
 import bluetooth
 import json
 import gc
@@ -21,6 +22,8 @@ _IRQ_CENTRAL_CONNECT = const(1)
 _IRQ_CENTRAL_DISCONNECT = const(2)
 _IRQ_GATTS_WRITE = const(3)
 _IRQ_GATTS_READ_REQUEST = const(4)
+_BMS_MTU = const(512)
+
 
 # UUIDs (must match app side)
 _SERVICE_UUID = bluetooth.UUID("ad1863bc-9b9d-4098-a7ce-3ba1d2aabaf9")
@@ -29,6 +32,7 @@ _SETTINGS_CHAR_UUID = bluetooth.UUID("db0d0b25-5282-4e5f-9b5d-30f65c652f2f")
 # Characteristic flags
 _FLAG_READ = const(0x0002)
 _FLAG_WRITE = const(0x0008)
+_FLAG_WRITE_NO_RESPONSE = const(0x0004)
 
 class BLEServer:
     """BLE GATT Server for RSVP Reader settings sync"""
@@ -46,6 +50,8 @@ class BLEServer:
         self.ble = bluetooth.BLE()
         self.ble.active(True)
         self.ble.irq(self._irq_handler)
+
+        self.ble.config(mtu=_BMS_MTU)
         
         self.connected = False
         self.conn_handle = None
@@ -73,12 +79,20 @@ class BLEServer:
         )
         
         ((self.settings_handle,),) = self.ble.gatts_register_services(services)
+        self.ble.gatts_write(self.settings_handle, bytes(512))
 
         print(f"GATT service registered, settings handle: {self.settings_handle}")
     
     def _get_settings_json(self):
         """Get current settings as JSON bytes"""
         gc.collect()
+
+        dev_mode = False
+        try:
+            os.stat('devmode')
+            dev_mode = True
+        except:
+            pass
         
         settings = {
             "wpm": self.config.WPM,
@@ -91,6 +105,7 @@ class BLEServer:
             "inverse": self.config.INVERSE,
             "ble_on": self.config.BLE_ON,
             "current_slot": self.config.CURRENT_SLOT,
+            "dev_mode": dev_mode,
         }
         
         json_str = json.dumps(settings)
@@ -111,6 +126,7 @@ class BLEServer:
         try:
             # Parse JSON
             json_str = json_bytes.decode('utf-8')
+            print(f"Received {len(json_bytes)} bytes: {json_str}")
             settings = json.loads(json_str)
             
             print(f"Received settings: {settings}")
@@ -126,7 +142,24 @@ class BLEServer:
             self.config.INVERSE = settings.get("inverse", self.config.INVERSE)
             self.config.BLE_ON = settings.get("ble_on", self.config.BLE_ON)
             self.config.CURRENT_SLOT = settings.get("current_slot", self.config.CURRENT_SLOT)
-            
+
+            devMode = settings.get("dev_mode", False)
+            try:
+                if devMode:
+                    with open('devmode', 'w') as f:
+                        f.write('1')
+                    print("Dev mode ON")
+                else:
+                    try:
+                        os.stat('devmode')
+                        os.remove('devmode')
+                    except:
+                        pass
+                    print("Dev mode OFF")
+            except Exception as e:
+                print(f"Error toggling dev mode: {e}")
+                
+
             # Save to config_override.py
             self._save_config_override()
             

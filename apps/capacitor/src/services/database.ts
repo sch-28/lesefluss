@@ -25,6 +25,7 @@ export interface RSVPSettings {
 	bleOn: boolean;
 	currentSlot: number;
 	updatedAt: number;
+	devMode: boolean;
 }
 
 export interface Book {
@@ -42,6 +43,7 @@ class DatabaseService {
 	private sqlite: SQLiteConnection;
 	private db: SQLiteDBConnection | null = null;
 	private readonly DB_NAME = "rsvp.db";
+	private readonly DB_VERSION = 2; // Increment this when schema changes during dev
 
 	constructor() {
 		this.sqlite = new SQLiteConnection(CapacitorSQLite);
@@ -58,6 +60,32 @@ class DatabaseService {
 				document.body.appendChild(jeepSqlite);
 				await this.sqlite.initWebStore();
 			}
+
+			// DEV MODE: Drop and recreate DB if version changed
+			const storedVersion = localStorage.getItem("db_version");
+			if (storedVersion && parseInt(storedVersion) !== this.DB_VERSION) {
+				console.log(`Database version changed (${storedVersion} → ${this.DB_VERSION}), dropping old database...`);
+				try {
+					const connExists = await this.sqlite.isConnection(this.DB_NAME, false);
+					if (connExists.result) {
+						await this.sqlite.closeConnection(this.DB_NAME, false);
+					}
+				} catch (e) {
+					console.log("No existing connection to close");
+				}
+				
+				// Check if database exists and delete it
+				try {
+					const dbExists = await this.sqlite.isDatabase(this.DB_NAME);
+					if (dbExists.result) {
+						await CapacitorSQLite.deleteDatabase({ database: this.DB_NAME });
+						console.log("Old database dropped");
+					}
+				} catch (e) {
+					console.log("Error deleting database:", e);
+				}
+			}
+			localStorage.setItem("db_version", this.DB_VERSION.toString());
 
 			// Create or open database
 			this.db = await this.sqlite.createConnection(
@@ -101,6 +129,7 @@ class DatabaseService {
         inverse INTEGER NOT NULL DEFAULT ${DEFAULT_SETTINGS.INVERSE ? 1 : 0},
         ble_on INTEGER NOT NULL DEFAULT ${DEFAULT_SETTINGS.BLE_ON ? 1 : 0},
         current_slot INTEGER NOT NULL DEFAULT ${DEFAULT_SETTINGS.CURRENT_SLOT},
+        dev_mode INTEGER NOT NULL DEFAULT ${DEFAULT_SETTINGS.DEV_MODE ? 1 : 0},
         updated_at INTEGER NOT NULL
       );
 
@@ -119,12 +148,12 @@ class DatabaseService {
       -- Initialize default settings if not exists
       INSERT OR IGNORE INTO settings (
         id, wpm, delay_comma, delay_period, accel_start, accel_rate,
-        x_offset, word_offset, inverse, ble_on, current_slot, updated_at
+        x_offset, word_offset, inverse, ble_on, current_slot, dev_mode, updated_at
       ) VALUES (
         1, ${DEFAULT_SETTINGS.WPM}, ${DEFAULT_SETTINGS.DELAY_COMMA}, ${DEFAULT_SETTINGS.DELAY_PERIOD}, 
         ${DEFAULT_SETTINGS.ACCEL_START}, ${DEFAULT_SETTINGS.ACCEL_RATE}, ${DEFAULT_SETTINGS.X_OFFSET}, 
         ${DEFAULT_SETTINGS.WORD_OFFSET}, ${DEFAULT_SETTINGS.INVERSE ? 1 : 0}, ${DEFAULT_SETTINGS.BLE_ON ? 1 : 0}, 
-        ${DEFAULT_SETTINGS.CURRENT_SLOT}, ${Date.now()}
+        ${DEFAULT_SETTINGS.CURRENT_SLOT}, ${DEFAULT_SETTINGS.DEV_MODE}, ${Date.now()}
       );
     `;
 
@@ -180,6 +209,7 @@ class DatabaseService {
 				bleOn: row.ble_on === 1,
 				currentSlot: row.current_slot,
 				updatedAt: row.updated_at,
+				devMode: row.dev_mode,
 			};
 		}
 
@@ -195,7 +225,7 @@ class DatabaseService {
 			`UPDATE settings SET 
         wpm = ?, delay_comma = ?, delay_period = ?, accel_start = ?, accel_rate = ?,
         x_offset = ?, word_offset = ?, inverse = ?, ble_on = ?, current_slot = ?,
-        updated_at = ?
+        dev_mode = ?, updated_at = ?
       WHERE id = 1`,
 			[
 				settings.wpm,
@@ -208,6 +238,7 @@ class DatabaseService {
 				settings.inverse ? 1 : 0,
 				settings.bleOn ? 1 : 0,
 				settings.currentSlot,
+				settings.devMode ? 1 : 0,
 				Date.now(),
 			],
 		);

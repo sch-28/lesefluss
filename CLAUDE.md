@@ -141,8 +141,8 @@ pnpm start
 - [x] Settings UI matching ESP32 options
 - [x] SQLite database setup
 - [x] BLE connection to ESP32 (App side complete)
-- [ ] ESP32 BLE server implementation
-- [ ] End-to-end testing
+- [x] ESP32 BLE server implementation
+- [x] End-to-end testing
 
 **Phase 2 - Device Integration**
 - [ ] Book import (TXT, EPUB convert to TXT)

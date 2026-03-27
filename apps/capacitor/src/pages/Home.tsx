@@ -1,4 +1,6 @@
 import {
+	IonAlert,
+	IonBadge,
 	IonButton,
 	IonCard,
 	IonCardContent,
@@ -6,28 +8,26 @@ import {
 	IonCardTitle,
 	IonContent,
 	IonIcon,
-	IonPage,
-	IonText,
-	IonList,
 	IonItem,
 	IonLabel,
+	IonList,
+	IonPage,
 	IonSpinner,
-	IonBadge,
+	IonText,
 	IonToast,
-	IonAlert,
 } from "@ionic/react";
 import {
 	bluetooth,
 	book,
-	search,
-	closeCircle,
 	checkmarkCircle,
+	closeCircle,
 	ellipse,
+	search,
 } from "ionicons/icons";
 import type React from "react";
-import { useState, useEffect } from "react";
-import { useBLE } from "../contexts/BLEContext";
+import { useEffect, useState } from "react";
 import { BLEConnectionState } from "../constants/ble";
+import { useBLE } from "../contexts/BLEContext";
 
 const Home: React.FC = () => {
 	const {
@@ -46,6 +46,17 @@ const Home: React.FC = () => {
 
 	const [showDeviceList, setShowDeviceList] = useState(false);
 	const [showDisconnectAlert, setShowDisconnectAlert] = useState(false);
+	const [hasAutoScanned, setHasAutoScanned] = useState(false);
+	const [hasAutoConnected, setHasAutoConnected] = useState(false);
+
+	// Auto-scan once on mount if not connected
+	useEffect(() => {
+		if (!isConnected && !hasAutoScanned) {
+			console.log("Auto-starting initial scan...");
+			setHasAutoScanned(true);
+			handleScanClick();
+		}
+	}, []); // Only run once on mount
 
 	// Stop scanning when component unmounts
 	useEffect(() => {
@@ -54,10 +65,34 @@ const Home: React.FC = () => {
 				stopScan();
 			}
 		};
-	}, [isScanning]);
+	}, []);
+
+	// Auto-connect if only one device found
+	useEffect(() => {
+		console.log(`Scanned devices changed: ${scannedDevices.length} devices`, scannedDevices);
+		console.log(`Auto-connect conditions: hasAutoConnected=${hasAutoConnected}, isConnected=${isConnected}`);
+		
+		if (scannedDevices.length === 1 && !hasAutoConnected && !isConnected) {
+			console.log("Found 1 device, auto-connecting...");
+			setHasAutoConnected(true);
+			handleDeviceSelect(scannedDevices[0].device.deviceId);
+		} else if (scannedDevices.length > 1) {
+			console.log("Found multiple devices, showing list");
+			setShowDeviceList(true);
+		} else {
+			console.log("Not auto-connecting because:", {
+				deviceCount: scannedDevices.length,
+				hasAutoConnected,
+				isConnected,
+				shouldConnect: scannedDevices.length === 1 && !hasAutoConnected && !isConnected
+			});
+		}
+	}, [scannedDevices]);
 
 	const handleScanClick = async () => {
-		setShowDeviceList(true);
+		console.log("STARTING SCANNING");
+		// Reset auto-connect flag when starting a new scan
+		setHasAutoConnected(false);
 		await startScan();
 
 		// Auto-stop scanning after 30 seconds
@@ -82,7 +117,11 @@ const Home: React.FC = () => {
 
 	const handleDisconnect = async () => {
 		await disconnect();
+		setHasAutoScanned(false);
+		setHasAutoConnected(false);
 		setShowDisconnectAlert(false);
+		// Auto-scan again after disconnect
+		setTimeout(() => handleScanClick(), 1000);
 	};
 
 	const getConnectionStatusColor = () => {
@@ -98,6 +137,9 @@ const Home: React.FC = () => {
 	};
 
 	const getConnectionStatusText = () => {
+		if (isScanning) {
+			return "Scanning...";
+		}
 		switch (connectionState) {
 			case BLEConnectionState.CONNECTED:
 				return `Connected to ${connectedDevice?.name || "device"}`;
@@ -185,7 +227,10 @@ const Home: React.FC = () => {
 						<IonCardContent>
 							{scannedDevices.length === 0 && !isScanning && (
 								<IonText color="medium">
-									<p>No RSVP Readers found. Make sure your device is powered on and BLE is enabled.</p>
+									<p>
+										No RSVP Readers found. Make sure your device is powered on
+										and BLE is enabled.
+									</p>
 								</IonText>
 							)}
 
@@ -201,9 +246,7 @@ const Home: React.FC = () => {
 										<IonItem
 											key={device.device.deviceId}
 											button
-											onClick={() =>
-												handleDeviceSelect(device.device.deviceId)
-											}
+											onClick={() => handleDeviceSelect(device.device.deviceId)}
 										>
 											<IonIcon icon={bluetooth} slot="start" />
 											<IonLabel>
@@ -218,7 +261,9 @@ const Home: React.FC = () => {
 								</IonList>
 							)}
 
-							<div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
+							<div
+								style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}
+							>
 								{isScanning ? (
 									<IonButton expand="block" onClick={handleStopScan}>
 										<IonIcon slot="start" icon={closeCircle} />
