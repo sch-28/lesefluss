@@ -122,9 +122,13 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 - [x] Extended BLE protocol (File Transfer + Position characteristics)
 - [x] ESP32: single-book model (`book.txt`/`position.txt`), remove slot logic
 - [x] Display remaining space on ESP32 in the app
+- [x] ESP32 deletes current book on receiving START: (frees flash before new content is written)
+- [x] Extend transfer dialog: confirmation modal with book size, free space estimate, replacement warning
 
 ### Phase 4 — Enhanced Features
+- [ ] Simple Epub reader 
 - [ ] In-app RSVP reader (software parity with ESP32)
+- [ ] Improve esp32: Add loading indicator when file transfer, improve "home page press boot" with actual nice homescreen
 - [ ] Cloud sync
 - [ ] Web app version (PWA)
 - [ ] Advanced book management (tags, collections, search)

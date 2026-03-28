@@ -97,8 +97,10 @@ class FileTransferHandler:
             self._nack("BAD_START")
             return
 
-        # Clean up any previous temp file
+        # Clean up any previous temp file and the current book so flash is
+        # freed before we start writing — the old book is gone from this point.
         self._delete_temp()
+        self._delete_book()
         self._reset()
 
         self.expected_size = total
@@ -191,13 +193,9 @@ class FileTransferHandler:
             self._nack("END:CRC")
             return
 
-        # Commit: rename temp → book.txt, reset position
+        # Commit: rename temp → book.txt (old book already deleted at START)
         try:
             import os
-            try:
-                os.remove(_BOOK_FILE)
-            except OSError:
-                pass
             os.rename(_TEMP_FILE, _BOOK_FILE)
         except Exception as e:
             print(f"[transfer] rename error: {e}")
@@ -265,6 +263,16 @@ class FileTransferHandler:
             os.remove(_TEMP_FILE)
         except OSError:
             pass
+
+    def _delete_book(self):
+        """Remove the current book and its associated metadata files from flash."""
+        import os
+        for path in (_BOOK_FILE, _POS_FILE, _HASH_FILE):
+            try:
+                os.remove(path)
+                print(f"[transfer] deleted {path}")
+            except OSError:
+                pass  # File didn't exist — that's fine
 
     def _reset(self):
         """Reset all transfer state. Called at init and after each transfer ends."""

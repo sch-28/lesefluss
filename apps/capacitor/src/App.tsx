@@ -38,8 +38,8 @@ import { BLEConnectionState } from "./ble";
 import { BLEProvider, useBLE } from "./contexts/BLEContext";
 import { BookSyncProvider } from "./contexts/BookSyncContext";
 import { DatabaseProvider } from "./contexts/DatabaseContext";
-import Library from "./pages/Library";
-import Settings from "./pages/Settings";
+import Library from "./pages/library";
+import Settings from "./pages/settings";
 
 setupIonicReact();
 

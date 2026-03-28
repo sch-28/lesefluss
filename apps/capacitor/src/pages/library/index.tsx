@@ -8,7 +8,6 @@ import {
 	IonFabButton,
 	IonHeader,
 	IonIcon,
-	IonModal,
 	IonPage,
 	IonProgressBar,
 	IonSpinner,
@@ -19,12 +18,14 @@ import {
 import { add, bookOutline, refreshOutline } from "ionicons/icons";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
-import { useBLE } from "../contexts/BLEContext";
-import { useBookSync } from "../contexts/BookSyncContext";
-import { useDatabase } from "../contexts/DatabaseContext";
-import { queries } from "../db/queries";
-import type { Book } from "../db/schema";
-import { importBook, removeBook } from "../services/bookImport";
+import BookCover from "../../components/BookCover";
+import { useBLE } from "../../contexts/BLEContext";
+import { useBookSync } from "../../contexts/BookSyncContext";
+import { useDatabase } from "../../contexts/DatabaseContext";
+import { queries } from "../../db/queries";
+import type { Book } from "../../db/schema";
+import { importBook, removeBook } from "../../services/bookImport";
+import TransferModal from "./transfer-modal";
 
 /**
  * Reading progress percentage for a book.
@@ -40,8 +41,6 @@ const Library: React.FC = () => {
 	const {
 		activeBookId,
 		isTransferring,
-		transferProgress,
-		transferBook,
 		syncPosition,
 		error: syncError,
 		clearError,
@@ -57,6 +56,12 @@ const Library: React.FC = () => {
 
 	// Action sheet state
 	const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+
+	// Transfer confirmation + progress modal state
+	const [pendingTransferBook, setPendingTransferBook] = useState<Book | null>(null);
+
+	// Delete confirmation state
+	const [pendingDeleteBook, setPendingDeleteBook] = useState<Book | null>(null);
 
 	const loadBooks = useCallback(async () => {
 		try {
@@ -112,19 +117,32 @@ const Library: React.FC = () => {
 		}
 	};
 
-	const handleSetActive = async (book: Book) => {
+	const handleSetActive = (book: Book) => {
 		setSelectedBook(null);
-		await transferBook(book.id, () => {});
+		setPendingTransferBook(book);
 	};
 
-	const handleDelete = async (book: Book) => {
+	const handleDelete = (book: Book) => {
 		setSelectedBook(null);
+		setPendingDeleteBook(book);
+	};
+
+	const handleDeleteConfirm = async () => {
+		if (!pendingDeleteBook) return;
+		const book = pendingDeleteBook;
+		setPendingDeleteBook(null);
 		try {
 			await removeBook(book);
 			setBooks((prev) => prev.filter((b) => b.id !== book.id));
 		} catch (err) {
 			console.error("Failed to delete book:", err);
 		}
+	};
+
+	const handleTransferDismiss = () => {
+		setPendingTransferBook(null);
+		// Reload so the "On device" badge updates immediately after the modal closes
+		if (isReady) loadBooks();
 	};
 
 	if (loading) {
@@ -199,21 +217,8 @@ const Library: React.FC = () => {
 									onClick={() => setSelectedBook(book)}
 								>
 									{/* Cover */}
-									<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-[#d9d9d9] bg-[#f0f0f0]">
-										{cover ? (
-											<img
-												src={cover}
-												alt={book.title}
-												className="block h-full w-full object-cover"
-											/>
-										) : (
-											<div className="flex h-full flex-col items-center justify-center gap-2 text-[#aaa]">
-												<IonIcon icon={bookOutline} className="text-[2.5rem]" />
-												<span className="font-semibold text-[#bbb] text-[0.65rem] tracking-[0.05em]">
-													{book.fileFormat.toUpperCase()}
-												</span>
-											</div>
-										)}
+									<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm">
+										<BookCover book={book} cover={cover} size="full" />
 
 										{/* "On device" badge overlay */}
 										{isActive && (
@@ -285,26 +290,13 @@ const Library: React.FC = () => {
 					]}
 				/>
 
-				{/* Transfer progress modal */}
-				<IonModal isOpen={isTransferring} backdropDismiss={false} className="rsvp-transfer-modal">
-					<div className="flex flex-col items-center gap-4 p-8">
-						<IonText>
-							<h3 style={{ margin: 0 }}>Uploading to device</h3>
-						</IonText>
-						<IonProgressBar
-							value={transferProgress != null ? transferProgress / 100 : 0}
-							type={
-								transferProgress == null || transferProgress === 0 ? "indeterminate" : "determinate"
-							}
-							style={{ width: "100%" }}
-						/>
-						{transferProgress != null && (
-							<IonText color="medium">
-								<p style={{ margin: 0 }}>{transferProgress}%</p>
-							</IonText>
-						)}
-					</div>
-				</IonModal>
+				{/* Transfer confirm + progress modal (self-contained) */}
+				<TransferModal
+					isOpen={!!pendingTransferBook}
+					book={pendingTransferBook}
+					activeBook={books.find((b) => b.id === activeBookId) ?? null}
+					onDismiss={handleTransferDismiss}
+				/>
 
 				{/* Import error alert */}
 				<IonAlert
@@ -323,6 +315,23 @@ const Library: React.FC = () => {
 					header="Transfer Failed"
 					message={syncError ?? undefined}
 					buttons={[{ text: "OK", role: "cancel" }]}
+					cssClass="rsvp-alert"
+				/>
+
+				{/* Delete confirmation alert */}
+				<IonAlert
+					isOpen={!!pendingDeleteBook}
+					onDidDismiss={() => setPendingDeleteBook(null)}
+					header="Delete book?"
+					message={
+						pendingDeleteBook
+							? `"${pendingDeleteBook.title}" will be removed from your library.`
+							: undefined
+					}
+					buttons={[
+						{ text: "Cancel", role: "cancel" },
+						{ text: "Delete", role: "destructive", handler: handleDeleteConfirm },
+					]}
 					cssClass="rsvp-alert"
 				/>
 			</IonContent>
