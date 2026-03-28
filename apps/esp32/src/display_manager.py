@@ -132,7 +132,6 @@ class DisplayManager:
         pause_y = self.height - 75
         self.show_text(pause_msg, pause_x, pause_y, color=(255, 255, 0))
 
-        # Show progress below PAUSED
         progress_width = len(position) * config.FONT_WIDTH
         progress_x = self.width - progress_width;
         progress_y = 40
@@ -141,7 +140,7 @@ class DisplayManager:
     def hide_pause_indicator(self):
         """Clear pause indicator and progress areas"""
         self.clear_rect(0, self.height - 75, self.width, 75)  # Clear both PAUSED and progress
-        self.clear_rect(self.width - 100, 0, 100, 40)  # Clear progress area on top right
+        self.clear_rect(self.width - 100, 40, 100, 40)  # Clear progress area on top right
     
     def shutdown(self):
         """Turn off display to save power"""
