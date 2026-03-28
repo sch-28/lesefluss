@@ -53,6 +53,9 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@7.3.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0))
+      crc-32:
+        specifier: ^1.2.2
+        version: 1.2.2
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.1(sql.js@1.14.1)
@@ -1310,6 +1313,11 @@ packages:
 
   core-util-is@1.0.3:
     resolution: {integrity: sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==}
+
+  crc-32@1.2.2:
+    resolution: {integrity: sha512-ROmzCKrTnOwybPcJApAA6WBWij23HVfGVNKqqrZpuyZOHqK2CwHSvpGuyt/UNNvaIjEd8X5IFGp4Mh+Ie1IHJQ==}
+    engines: {node: '>=0.8'}
+    hasBin: true
 
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
@@ -3005,6 +3013,8 @@ snapshots:
   core-js@3.49.0: {}
 
   core-util-is@1.0.3: {}
+
+  crc-32@1.2.2: {}
 
   cross-spawn@7.0.6:
     dependencies:

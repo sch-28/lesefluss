@@ -113,14 +113,14 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 - [x] Local book library with metadata list
 - [x] Navigation restructure (Library as home, BLE badge in tab bar)
 
-### Phase 3 — Device Integration (next)
-- [ ] Upload active book to ESP32 (chunked BLE file transfer)
-- [ ] "Set active on device" action in Library UI + progress dialog
-- [ ] `BookSyncContext` (active book tracking, position sync on connect)
-- [ ] Bidirectional position sync (Position characteristic, read/write)
-- [ ] Extended BLE protocol (File Transfer + Position characteristics)
+### Phase 3 — Device Integration ✅
+- [x] Upload active book to ESP32 (chunked BLE file transfer)
+- [x] "Set active on device" action in Library UI + progress dialog
+- [x] `BookSyncContext` (active book tracking, position sync on connect)
+- [x] Bidirectional position sync (Position characteristic, read/write)
+- [x] Extended BLE protocol (File Transfer + Position characteristics)
 - [x] ESP32: single-book model (`book.txt`/`position.txt`), remove slot logic
-- [ ] display remaining space on esp32 in the app
+- [ ] Display remaining space on ESP32 in the app
 
 ### Phase 4 — Enhanced Features
 - [ ] In-app RSVP reader (software parity with ESP32)

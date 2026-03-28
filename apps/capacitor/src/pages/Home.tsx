@@ -19,7 +19,7 @@ import {
 import { bluetooth, book, checkmarkCircle, closeCircle, ellipse } from "ionicons/icons";
 import type React from "react";
 import { useState } from "react";
-import { BLEConnectionState } from "../constants/ble";
+import { BLEConnectionState } from "../ble";
 import { useBLE } from "../contexts/BLEContext";
 
 const Home: React.FC = () => {

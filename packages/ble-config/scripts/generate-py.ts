@@ -23,11 +23,13 @@ interface BleConfig {
 	service_uuid: string;
 	characteristics: {
 		settings: { uuid: string; description: string };
-		slot_info: { uuid: string; description: string };
 		file_transfer: { uuid: string; description: string };
+		position: { uuid: string; description: string };
+		storage: { uuid: string; description: string };
 	};
 	transfer: {
 		chunk_size: number;
+		window_size: number;
 		max_retries: number;
 		ack_timeout_ms: number;
 	};
@@ -42,9 +44,11 @@ PROTOCOL_VERSION = ${config.protocol_version}
 DEVICE_NAME = "${config.device_name}"
 SERVICE_UUID = "${config.service_uuid}"
 SETTINGS_CHAR_UUID = "${config.characteristics.settings.uuid}"
-SLOT_INFO_CHAR_UUID = "${config.characteristics.slot_info.uuid}"
 FILE_TRANSFER_CHAR_UUID = "${config.characteristics.file_transfer.uuid}"
+POSITION_CHAR_UUID = "${config.characteristics.position.uuid}"
+STORAGE_CHAR_UUID = "${config.characteristics.storage.uuid}"
 CHUNK_SIZE = ${config.transfer.chunk_size}
+WINDOW_SIZE = ${config.transfer.window_size}
 MAX_RETRIES = ${config.transfer.max_retries}
 ACK_TIMEOUT_MS = ${config.transfer.ack_timeout_ms}
 `;

@@ -34,8 +34,9 @@ import "@ionic/react/css/display.css";
 /* Monochrome theme */
 import "./theme/monochrome.css";
 
-import { BLEConnectionState } from "./constants/ble";
+import { BLEConnectionState } from "./ble";
 import { BLEProvider, useBLE } from "./contexts/BLEContext";
+import { BookSyncProvider } from "./contexts/BookSyncContext";
 import { DatabaseProvider } from "./contexts/DatabaseContext";
 import Library from "./pages/Library";
 import Settings from "./pages/Settings";
@@ -109,9 +110,11 @@ const App: React.FC = () => {
 		<IonApp>
 			<DatabaseProvider>
 				<BLEProvider>
-					<IonReactRouter>
-						<AppTabs />
-					</IonReactRouter>
+					<BookSyncProvider>
+						<IonReactRouter>
+							<AppTabs />
+						</IonReactRouter>
+					</BookSyncProvider>
 				</BLEProvider>
 			</DatabaseProvider>
 		</IonApp>

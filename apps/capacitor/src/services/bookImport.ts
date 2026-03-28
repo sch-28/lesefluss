@@ -42,6 +42,10 @@ export async function importBook(onProgress?: (pct: number) => void): Promise<Bo
 	let coverImage: string | null = null;
 	let chapters: Chapter[] | null = null;
 
+	if (!file.data) {
+		throw new Error("File data is missing");
+	}
+
 	if (isEpub && file.data) {
 		({ content, title, author, coverImage, chapters } = await parseEpub(
 			file.data,
@@ -50,7 +54,7 @@ export async function importBook(onProgress?: (pct: number) => void): Promise<Bo
 		));
 	} else {
 		// TXT: data is base64-encoded
-		content = decodeBase64Utf8(file.data!);
+		content = decodeBase64Utf8(file.data);
 		title = file.name.replace(/\.txt$/i, "");
 	}
 

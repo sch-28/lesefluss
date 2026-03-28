@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, ne } from "drizzle-orm";
 import { db, rawQuery } from "../index";
 import {
 	type Book,
@@ -107,6 +107,20 @@ export async function addBookWithContent(
  */
 export async function updateBook(id: number, data: Partial<Omit<NewBook, "id">>): Promise<void> {
 	await db.update(books).set(data).where(eq(books.id, id));
+}
+
+/**
+ * Mark one book as active and clear isActive on every other book.
+ * Also resets position to 0 for the newly activated book.
+ *
+ * Two targeted UPDATE statements — no full table scan, no race window from
+ * a fetch-then-fan-out pattern.
+ */
+export async function setActiveBook(id: number): Promise<void> {
+	// Deactivate all others in one statement
+	await db.update(books).set({ isActive: false }).where(ne(books.id, id));
+	// Activate the target and reset its position
+	await db.update(books).set({ isActive: true, position: 0 }).where(eq(books.id, id));
 }
 
 /**

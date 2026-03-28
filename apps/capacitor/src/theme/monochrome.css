@@ -189,3 +189,141 @@ ion-tab-button.ble-disconnected {
 	--color: #bbbbbb;
 	--color-selected: #bbbbbb;
 }
+
+/* ── Action sheet ── */
+
+/* Outer container: gives both groups side margins, no bottom padding (cancel pill is the last thing) */
+.rsvp-action-sheet .action-sheet-container {
+	padding-left: 12px;
+	padding-right: 12px;
+	padding-bottom: 0;
+}
+
+/* Push the whole sheet above the home indicator */
+.rsvp-action-sheet .action-sheet-wrapper {
+	padding-bottom: 0 !important;
+	margin-bottom: calc(env(safe-area-inset-bottom) + 8px) !important;
+}
+
+/* Main group: fully rounded pill */
+.rsvp-action-sheet .action-sheet-container .action-sheet-group {
+	border-radius: 16px;
+	background: #ffffff;
+	overflow: hidden;
+	margin-bottom: 0;
+}
+
+/* Cancel group: separate pill with gap above, no bottom margin */
+.rsvp-action-sheet .action-sheet-container .action-sheet-group-cancel {
+	border-radius: 16px;
+	margin-top: 8px;
+	margin-bottom: 0 !important;
+	overflow: hidden;
+	background: transparent !important;
+}
+
+/* Cancel button fills the group completely */
+.rsvp-action-sheet .action-sheet-cancel {
+	color: #000000;
+	font-weight: 600;
+	background: #ffffff !important;
+	border-radius: 16px;
+}
+
+/* Header */
+.rsvp-action-sheet .action-sheet-title {
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: #888888;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	padding-top: 18px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #f0f0f0;
+}
+
+/* All buttons */
+.rsvp-action-sheet .action-sheet-button {
+	font-size: 1rem;
+	font-weight: 500;
+	color: #000000;
+	border-bottom: 1px solid #f0f0f0;
+	min-height: 54px;
+	padding-top: 0 !important;
+	padding-bottom: 0 !important;
+	contain: none !important;
+}
+
+.rsvp-action-sheet .action-sheet-button .action-sheet-button-inner {
+	height: 54px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.rsvp-action-sheet .action-sheet-button:last-child {
+	border-bottom: none;
+}
+
+/* Destructive button */
+.rsvp-action-sheet .action-sheet-destructive {
+	color: #e53935;
+	font-weight: 600;
+}
+
+/* Disabled button */
+.rsvp-action-sheet .action-sheet-button.ion-color-primary[disabled],
+.rsvp-action-sheet .action-sheet-button[disabled] {
+	color: #bbbbbb !important;
+	opacity: 1;
+}
+
+/* Pressed state */
+.rsvp-action-sheet .action-sheet-button.ion-activated {
+	background: #f5f5f5;
+}
+
+/* ── Transfer progress modal ── */
+.rsvp-transfer-modal {
+	--height: auto;
+	--width: 280px;
+	--max-width: 80%;
+	--border-radius: 16px;
+	--box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Alert (error dialogs) ── */
+.rsvp-alert .alert-wrapper {
+	border-radius: 14px;
+	padding: 0;
+	overflow: hidden;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.rsvp-alert .alert-head {
+	padding: 20px 20px 8px;
+}
+
+.rsvp-alert .alert-title {
+	font-size: 1rem;
+	font-weight: 700;
+	color: #000000;
+}
+
+.rsvp-alert .alert-message {
+	font-size: 0.9rem;
+	color: #555555;
+	padding: 0 20px 16px;
+}
+
+.rsvp-alert .alert-button-group {
+	border-top: 1px solid #f0f0f0;
+	padding: 0;
+}
+
+.rsvp-alert .alert-button {
+	font-size: 1rem;
+	font-weight: 600;
+	color: #000000;
+	height: 50px;
+}

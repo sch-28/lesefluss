@@ -28,7 +28,11 @@ src/
   rsvp_reader.py     # Core reading loop, acceleration, BLE check
   text_storage.py    # TextStorage + WordReader (streaming)
   ble/
-    server.py        # GATT peripheral, advertise, read/write JSON
+    ble_config.py          # Generated UUIDs/constants (do not edit — run pnpm setup in packages/ble-config)
+    server.py              # Thin GATT dispatcher — registers 3 characteristics, delegates to handlers
+    handler_settings.py    # Settings characteristic: read config JSON / write + soft reset
+    handler_position.py    # Position characteristic: read/write position.txt
+    handler_file_transfer.py # File transfer: START/CHUNK/END state machine, CRC verify, book.tmp→book.txt
   wifi/
     __init__.py      # WiFiManager, AP mode setup
     server.py        # HTTP server, socket polling
@@ -60,10 +64,14 @@ etc/
 - `gc.collect()` every 100 words to prevent fragmentation
 - Checks BLE for settings updates mid-reading, returns `'restart'` on change
 
-**BLE Server** (`src/ble/server.py`)
-- GATT peripheral, advertises as "RSVP-Reader"
-- Read → current config as JSON; Write → update `config_override.py` + soft reset
+**BLE Server** (`src/ble/`)
+- `server.py` — thin GATT dispatcher; registers 3 characteristics, delegates all I/O to handlers
+- `handler_settings.py` — Settings characteristic (R/W): read config JSON, write updates `config_override.py` + soft reset
+- `handler_position.py` — Position characteristic (R/W): read/write `position.txt`
+- `handler_file_transfer.py` — File Transfer characteristic (Write + Notify): START/CHUNK/END state machine, base64 chunks, CRC32 verify, `book.tmp` → `book.txt`
+- `ble_config.py` — generated from `packages/ble-config`; do not edit manually
 - Stops advertising during WiFi mode (resource conflict), restarts after
+- `server.check_settings_updated()` / `server.check_transfer_completed()` — polled by main loop
 
 **WiFiManager** (`src/wifi/`)
 - AP "RSVP-Reader", no password, IP `192.168.4.1`

@@ -7,6 +7,7 @@ import {
 	IonCardTitle,
 	IonContent,
 	IonFooter,
+	IonHeader,
 	IonIcon,
 	IonItem,
 	IonLabel,
@@ -17,6 +18,7 @@ import {
 	IonRange,
 	IonSpinner,
 	IonText,
+	IonTitle,
 	IonToggle,
 	IonToolbar,
 } from "@ionic/react";
@@ -167,6 +169,11 @@ const Settings: React.FC = () => {
 
 	return (
 		<IonPage>
+			<IonHeader class="ion-no-border">
+				<IonToolbar>
+					<IonTitle>Settings</IonTitle>
+				</IonToolbar>
+			</IonHeader>
 			<IonContent className="ion-padding">
 				<IonList>
 					<IonCard>

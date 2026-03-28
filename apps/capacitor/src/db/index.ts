@@ -129,6 +129,24 @@ async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 }
 
 /**
+ * Sanitize query parameters before passing to the Capacitor SQLite native layer.
+ *
+ * The Android SQLite plugin passes params to SQLiteStatement.bindArgs() which only
+ * accepts String, Long, Double, byte[], or null. JavaScript booleans and other types
+ * must be converted first, otherwise the native layer throws "Failed query".
+ *
+ * - boolean  → 0 | 1  (SQLite has no boolean type; Drizzle stores them as integers)
+ * - null/undefined → null  (kept as-is; the plugin handles null binding correctly)
+ * - everything else passes through unchanged
+ */
+function sanitizeParams(params: unknown[]): unknown[] {
+	return params.map((p) => {
+		if (typeof p === "boolean") return p ? 1 : 0;
+		return p;
+	});
+}
+
+/**
  * Drizzle ORM instance backed by @capacitor-community/sqlite via the proxy adapter.
  *
  * The sqlite-proxy adapter wraps any async SQLite driver with ~15 lines of glue:
@@ -140,12 +158,14 @@ export const db = drizzle<typeof schema>(
 	async (sql, params, method) => {
 		if (!_conn) throw new Error("Database not initialised — call initDb() first");
 
+		const safeParams = sanitizeParams(params as unknown[]);
+
 		if (method === "run") {
-			await _conn.run(sql, params as unknown[]);
+			await _conn.run(sql, safeParams);
 			return { rows: [] };
 		}
 
-		const result = await _conn.query(sql, params as unknown[]);
+		const result = await _conn.query(sql, safeParams);
 		const rows = result.values ?? [];
 
 		if (method === "get") {

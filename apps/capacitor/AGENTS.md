@@ -27,19 +27,28 @@ pnpm preview        # Preview production build
 ```
 src/
   pages/
-    Library.tsx             # Book list, import FAB, swipe-to-delete
+    Library.tsx             # Book grid, import FAB, tap → action sheet, transfer progress modal
     Settings.tsx            # ESP32 settings UI + BLE sync/disconnect
   contexts/
-    DatabaseContext.tsx      # Drizzle DB provider
-    BLEContext.tsx           # App-wide BLE connection state
+    DatabaseContext.tsx     # Drizzle DB provider
+    BLEContext.tsx          # App-wide BLE connection state + onConnected hook
+    BookSyncContext.tsx     # Active-book tracking, position sync, book transfer
+  ble/
+    index.ts                # Public surface — exports `ble`, `bleClient`, types
+    types.ts                # BLEConnectionState, BLEResult, BLE_CONNECTION_TIMEOUT_MS
+    client.ts               # BLEClient class (scan/connect/disconnect), `bleClient` singleton
+    characteristics/
+      index.ts              # `ble` object — single import for all characteristic ops
+      settings.ts           # ble.readSettings(), ble.writeSettings()
+      position.ts           # ble.readPosition(), ble.writePosition()
+      transfer.ts           # ble.transferBook() — START/CHUNK/END state machine
+    utils/
+      encoding.ts           # dataViewToString, stringToDataView, chunkString
   services/
-    ble.ts                  # Scan, connect, read/write characteristics
     bookImport.ts           # File picker, TXT + EPUB parsing
   db/
     schema.ts               # Drizzle table definitions
-    queries/                # Typed query helpers
-  constants/
-    ble.ts                  # Service + characteristic UUIDs
+    queries/                # Typed query helpers (import as `queries` object)
 drizzle/                    # Hand-written SQL migrations
 ```
 
@@ -60,14 +69,24 @@ Four tables, Drizzle ORM with typed queries:
 
 ## BLE
 
-**Service:** `src/services/ble.ts` — scan, connect, read/write characteristics
-**Context:** `src/contexts/BLEContext.tsx` — app-wide connection state, auto-reconnect
-**UUIDs:** `src/constants/ble.ts` (shared via `@rsvp/ble-config` workspace package)
+**Client:** `src/ble/client.ts` — `BLEClient` class, exported as `bleClient` singleton (scan, connect, disconnect, state)
+**Characteristics:** `src/ble/characteristics/` — pure functions grouped under the `ble` object
+**Context:** `src/contexts/BLEContext.tsx` — app-wide connection state, auto-scan/connect, `onConnected` hook
+**Book sync:** `src/contexts/BookSyncContext.tsx` — active book, position sync, file transfer
+**UUIDs:** imported directly from `@rsvp/ble-config` workspace package (no local constants file)
 
-- Scans for "RSVP-Reader", auto-stops after 30s
-- Reads/writes settings as JSON to settings characteristic
+Usage pattern:
+```ts
+import { ble, bleClient, BLEConnectionState } from "../ble";
+
+await ble.readSettings();
+await ble.writePosition(1234);
+await ble.transferBook(content, "book.txt", onProgress);
+```
+
+- Scans for "RSVP-Reader", auto-connects when exactly 1 device found
+- On connect: position sync runs automatically (device vs app — furthest wins)
 - Saves last connected device to SQLite
-- Connection state tracking, RSSI display, error toasts
 - BLE status badge (bluetooth icon) between the two tab bar tabs
 
 ## Book Import (`src/services/bookImport.ts`)
@@ -98,7 +117,7 @@ Four tables, Drizzle ORM with typed queries:
 
 - **2 tabs:** Library (default) + Settings
 - BLE status badge between tabs (no dedicated connection page)
-- **Library:** book list with progress bar, "On device" badge for active book, last-read date; empty state; swipe-to-delete; FAB to import; tap book → action sheet with "Set active on device" (enabled when BLE connected) + "Delete"
+- **Library:** book grid (3 cols), cover art, progress bar, "On device" badge; empty state; FAB to import; tap book → action sheet ("Set active on device" / "Delete"); transfer progress modal
 - **Settings:** sliders for WPM/delays/acceleration/offsets, toggles for inverse/BLE, sync-to/from-device buttons, disconnect
 
 ## What's Done
@@ -107,6 +126,9 @@ Four tables, Drizzle ORM with typed queries:
 |---------|--------|
 | Settings UI (all ESP32 options) | Done |
 | SQLite database (4 tables) | Done |
-| BLE scan + connect + bidirectional sync | Done |
+| BLE scan + connect + bidirectional settings sync | Done |
 | Book import (TXT + EPUB) | Done |
-| Book library UI (list, delete, progress) | Done |
+| Book library UI (grid, covers, progress, "On device" badge) | Done |
+| BLE layer refactor (bleClient + ble characteristics object) | Done |
+| BookSyncContext (position sync, book transfer) | Done |
+| Library "Set active on device" + transfer progress modal | Done |

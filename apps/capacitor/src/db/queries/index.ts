@@ -11,6 +11,7 @@ import {
 	getBookCovers,
 	getBooks,
 	parseChapters,
+	setActiveBook,
 	updateBook,
 } from "./books";
 import { getLastDevice, saveDevice } from "./devices";
@@ -33,5 +34,6 @@ export const queries = {
 	addBookWithContent,
 	parseChapters,
 	updateBook,
+	setActiveBook,
 	deleteBook,
 };

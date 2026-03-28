@@ -22,6 +22,52 @@ if config.BLE_ON:
         print("BLE not available on this device")
         config.BLE_ON = False
 
+# Settings that can be overridden via config_override.py or BLE
+_OVERRIDE_KEYS = (
+    'WPM', 'DELAY_COMMA', 'DELAY_PERIOD', 'ACCEL_START',
+    'ACCEL_RATE', 'X_OFFSET', 'WORD_OFFSET', 'INVERSE', 'BLE_ON',
+)
+
+def _load_config_overrides():
+    """Apply config_override.py values onto the config module."""
+    try:
+        import config_override
+        for key in _OVERRIDE_KEYS:
+            if hasattr(config_override, key):
+                setattr(config, key, getattr(config_override, key))
+        print(f"Config override loaded: WPM={config.WPM}, BLE={config.BLE_ON}")
+    except ImportError:
+        print("No config override found, using defaults")
+
+def _run_wifi_mode(display, wifi, storage, reader):
+    """Run WiFi AP mode, pausing BLE while active.
+    Returns (storage, reader) — may be new instances if a book was uploaded."""
+    display.show_centered_message("WiFi Mode")
+    time.sleep(0.5)
+
+    # Stop BLE while in WiFi mode (resource conflict)
+    if ble_server and config.BLE_ON:
+        print("Stopping BLE for WiFi mode")
+        ble_server.stop_advertising()
+
+    if wifi.start_ap():
+        wifi.run(storage, config)
+
+    # Restart BLE after WiFi mode
+    if ble_server and config.BLE_ON:
+        print("Restarting BLE advertising")
+        ble_server.start_advertising()
+
+    # Reload storage if a new book was uploaded
+    if wifi.needs_reload:
+        storage = TextStorage()
+        reader = RSVPReader(display, reader.button, storage, ble_server)
+        wifi.needs_reload = False
+
+    display.show_centered_message("Loading...")
+    time.sleep(0.5)
+    return storage, reader
+
 def main(force_run=False):
     """Main entry point for RSVP reader"""
     
@@ -30,34 +76,11 @@ def main(force_run=False):
         try:
             os.stat('devmode')
             print("Dev mode active - main.py not executing (use force_run=True to override)")
-            return  # Exit main() without running the app
+            return
         except:
-            pass  # Dev mode not active, continue normally
-    
-    # Load config overrides if they exist
-    try:
-        import config_override
-        if hasattr(config_override, 'WPM'):
-            config.WPM = config_override.WPM
-        if hasattr(config_override, 'DELAY_COMMA'):
-            config.DELAY_COMMA = config_override.DELAY_COMMA
-        if hasattr(config_override, 'DELAY_PERIOD'):
-            config.DELAY_PERIOD = config_override.DELAY_PERIOD
-        if hasattr(config_override, 'ACCEL_START'):
-            config.ACCEL_START = config_override.ACCEL_START
-        if hasattr(config_override, 'ACCEL_RATE'):
-            config.ACCEL_RATE = config_override.ACCEL_RATE
-        if hasattr(config_override, 'X_OFFSET'):
-            config.X_OFFSET = config_override.X_OFFSET
-        if hasattr(config_override, 'WORD_OFFSET'):
-            config.WORD_OFFSET = config_override.WORD_OFFSET
-        if hasattr(config_override, 'INVERSE'):
-            config.INVERSE = config_override.INVERSE
-        if hasattr(config_override, 'BLE_ON'):
-            config.BLE_ON = config_override.BLE_ON
-        print(f"Config override loaded: WPM={config.WPM}, BLE={config.BLE_ON}")
-    except ImportError:
-        print("No config override found, using defaults")
+            pass
+
+    _load_config_overrides()
     
     # Initialize hardware
     display = DisplayManager()
@@ -79,12 +102,11 @@ def main(force_run=False):
             sys.print_exception(e)
             config.BLE_ON = False
     
-    # Initialize reader with BLE server reference
     reader = RSVPReader(display, button, storage, ble_server)
     
     # Main loop
     while True:
-        # Check if BLE settings were updated
+        # Check if BLE settings were updated while idle
         if ble_server and ble_server.check_settings_updated():
             print("Settings updated via BLE, restarting...")
             display.show_centered_message("Updating...")
@@ -92,81 +114,25 @@ def main(force_run=False):
             import machine
             machine.soft_reset()
         
-        # Show idle screen
+        # Idle screen — wait for user
         display.show_centered_message("Press BOOT")
-        
-        # Wait for button press (short or long)
         press_type = button.wait_for_press_or_long_press(5000)
         
         if press_type == 'long':
-            # Enter WiFi mode from idle
-            display.show_centered_message("WiFi Mode")
-            time.sleep(0.5)
-            
-            # Stop BLE while in WiFi mode (resource conflict)
-            if ble_server and config.BLE_ON:
-                print("Stopping BLE for WiFi mode")
-                ble_server.stop_advertising()
-            
-            if wifi.start_ap():
-                wifi.run(storage, config)
-            
-            # Restart BLE after WiFi mode
-            if ble_server and config.BLE_ON:
-                print("Restarting BLE advertising")
-                ble_server.start_advertising()
-            
-            # Check if a new book was uploaded via WiFi — reload storage
-            if wifi.needs_reload:
-                storage = TextStorage()
-                reader = RSVPReader(display, button, storage, ble_server)
-                wifi.needs_reload = False
-            
-            # WiFi mode exited, reload text
-            display.show_centered_message("Loading...")
-            time.sleep(0.5)
+            storage, reader = _run_wifi_mode(display, wifi, storage, reader)
             continue
             
         # Load text from storage or use sample
         if storage.has_text():
-            # Use streaming reader for file
             reader.load_text(resume=True)
         else:
-            # Use sample text (small enough to fit in memory)
             reader.load_text(text=config.SAMPLE_TEXT, resume=False)
         
         # Start reading
         result = reader.run_reading_loop()
         
-        # Check if WiFi mode was triggered during reading
         if result == 'wifi':
-            display.show_centered_message("WiFi Mode")
-            time.sleep(0.5)
-            
-            # Stop BLE while in WiFi mode (resource conflict)
-            if ble_server and config.BLE_ON:
-                print("Stopping BLE for WiFi mode")
-                ble_server.stop_advertising()
-            
-            if wifi.start_ap():
-                wifi.run(storage, config)
-            
-            # Restart BLE after WiFi mode
-            if ble_server and config.BLE_ON:
-                print("Restarting BLE advertising")
-                ble_server.start_advertising()
-            
-            # Check if a new book was uploaded via WiFi — reload storage
-            if wifi.needs_reload:
-                storage = TextStorage()
-                reader = RSVPReader(display, button, storage, ble_server)
-                wifi.needs_reload = False
-            
-            # WiFi mode exited, reload text
-            display.show_centered_message("Loading...")
-            time.sleep(0.5)
-        
-        # Check if restart was requested (settings updated via BLE)
+            storage, reader = _run_wifi_mode(display, wifi, storage, reader)
         elif result == 'restart':
             display.show_centered_message("Updating...")
             time.sleep(1)
