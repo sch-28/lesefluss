@@ -1,3 +1,4 @@
+import { App as CapacitorApp } from "@capacitor/app";
 import { SplashScreen } from "@capacitor/splash-screen";
 import {
 	IonApp,
@@ -13,7 +14,7 @@ import { IonReactRouter } from "@ionic/react-router";
 import { bluetooth, library, settings } from "ionicons/icons";
 import type React from "react";
 import { useEffect } from "react";
-import { Redirect, Route } from "react-router-dom";
+import { Redirect, Route, useLocation } from "react-router-dom";
 
 /* Core CSS required for Ionic components to work properly */
 import "@ionic/react/css/core.css";
@@ -39,6 +40,7 @@ import { BLEProvider, useBLE } from "./contexts/BLEContext";
 import { BookSyncProvider } from "./contexts/BookSyncContext";
 import { DatabaseProvider } from "./contexts/DatabaseContext";
 import Library from "./pages/library";
+import BookReader from "./pages/reader";
 import Settings from "./pages/settings";
 
 setupIonicReact();
@@ -73,26 +75,29 @@ function useBLEBadge() {
 
 const AppTabs: React.FC = () => {
 	const { label, cssClass } = useBLEBadge();
+	const location = useLocation();
+	const hideTabBar = location.pathname.startsWith("/tabs/reader/");
 
 	return (
 		<IonTabs>
 			<IonRouterOutlet>
-				<Route exact path="/library" component={Library} />
-				<Route exact path="/settings" component={Settings} />
-				<Route exact path="/">
-					<Redirect to="/library" />
+				<Route exact path="/tabs/library" component={Library} />
+				<Route exact path="/tabs/settings" component={Settings} />
+				<Route exact path="/tabs/reader/:id" component={BookReader} />
+				<Route exact path="/tabs">
+					<Redirect to="/tabs/library" />
 				</Route>
 			</IonRouterOutlet>
-			<IonTabBar slot="bottom">
-				<IonTabButton tab="library" href="/library">
+			<IonTabBar slot="bottom" className={hideTabBar ? "tab-bar-hidden" : ""}>
+				<IonTabButton tab="library" href="/tabs/library">
 					<IonIcon icon={library} />
 					<IonLabel>Library</IonLabel>
 				</IonTabButton>
-				<IonTabButton tab="settings" href="/settings">
+				<IonTabButton tab="settings" href="/tabs/settings">
 					<IonIcon icon={settings} />
 					<IonLabel>Settings</IonLabel>
 				</IonTabButton>
-				<IonTabButton tab="ble-badge" href="/settings" className={cssClass}>
+				<IonTabButton tab="ble-badge" href="/tabs/settings" className={cssClass}>
 					<IonIcon icon={bluetooth} />
 					<IonLabel>{label}</IonLabel>
 				</IonTabButton>
@@ -104,6 +109,21 @@ const AppTabs: React.FC = () => {
 const App: React.FC = () => {
 	useEffect(() => {
 		SplashScreen.hide();
+
+		// Android hardware back button: go back if possible, otherwise exit.
+		// This runs at the native Capacitor level — without it the back button
+		// bypasses Ionic's router and immediately closes the Activity.
+		CapacitorApp.addListener("backButton", ({ canGoBack }) => {
+			if (canGoBack) {
+				window.history.back();
+			} else {
+				CapacitorApp.exitApp();
+			}
+		});
+
+		return () => {
+			CapacitorApp.removeAllListeners();
+		};
 	}, []);
 
 	return (
@@ -112,7 +132,15 @@ const App: React.FC = () => {
 				<BLEProvider>
 					<BookSyncProvider>
 						<IonReactRouter>
-							<AppTabs />
+							<IonRouterOutlet>
+								{/* All routes under /tabs — reader included so it shares the nav stack */}
+								<Route path="/tabs" render={() => <AppTabs />} />
+
+								{/* Root redirect */}
+								<Route exact path="/">
+									<Redirect to="/tabs/library" />
+								</Route>
+							</IonRouterOutlet>
 						</IonReactRouter>
 					</BookSyncProvider>
 				</BLEProvider>

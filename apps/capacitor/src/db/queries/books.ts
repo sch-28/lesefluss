@@ -116,8 +116,8 @@ export async function updateBook(id: string, data: Partial<Omit<NewBook, "id">>)
 export async function setActiveBook(id: string): Promise<void> {
 	// Deactivate all others in one statement
 	await db.update(books).set({ isActive: false }).where(ne(books.id, id));
-	// Activate the target and reset its position
-	await db.update(books).set({ isActive: true, position: 0 }).where(eq(books.id, id));
+	// Activate the target — preserve its current position (may have been read in-app)
+	await db.update(books).set({ isActive: true }).where(eq(books.id, id));
 }
 
 /**

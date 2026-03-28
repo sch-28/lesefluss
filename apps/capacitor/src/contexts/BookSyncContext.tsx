@@ -238,7 +238,13 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				// Mark this book as active (deactivates all others atomically)
 				await queries.setActiveBook(bookId);
 				updateActiveBookId(bookId);
-				setDevicePosition(0);
+
+				// Push the app's reading position to the device so it resumes
+				// where the user left off in the in-app reader.
+				const book = await queries.getBook(bookId);
+				const pos = book?.position ?? 0;
+				await ble.writePosition(pos);
+				setDevicePosition(pos);
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : "Transfer failed";
 				setError(msg);

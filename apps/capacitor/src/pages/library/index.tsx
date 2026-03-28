@@ -14,17 +14,19 @@ import {
 	IonText,
 	IonTitle,
 	IonToolbar,
+	useIonRouter,
+	useIonViewWillEnter,
 } from "@ionic/react";
 import { add, bookOutline, refreshOutline } from "ionicons/icons";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
-import BookCover from "../../components/BookCover";
 import { useBLE } from "../../contexts/BLEContext";
 import { useBookSync } from "../../contexts/BookSyncContext";
 import { useDatabase } from "../../contexts/DatabaseContext";
 import { queries } from "../../db/queries";
 import type { Book } from "../../db/schema";
 import { importBook, removeBook } from "../../services/bookImport";
+import BookCard from "./book-card";
 import TransferModal from "./transfer-modal";
 
 /**
@@ -45,6 +47,7 @@ const Library: React.FC = () => {
 		error: syncError,
 		clearError,
 	} = useBookSync();
+	const router = useIonRouter();
 
 	const [books, setBooks] = useState<Book[]>([]);
 	const [covers, setCovers] = useState<Map<string, string>>(new Map());
@@ -80,6 +83,13 @@ const Library: React.FC = () => {
 			loadBooks();
 		}
 	}, [isReady, loadBooks]);
+
+	// Reload when navigating back (e.g. from reader) so progress bars update
+	useIonViewWillEnter(() => {
+		if (isReady) {
+			loadBooks();
+		}
+	});
 
 	// Reload list after a transfer completes so "On device" badge updates
 	useEffect(() => {
@@ -210,46 +220,16 @@ const Library: React.FC = () => {
 							const isActive = book.id === activeBookId;
 
 							return (
-								<div
+								<BookCard
 									key={book.id}
-									className="flex cursor-pointer select-none flex-col active:opacity-70"
-									style={{ WebkitTouchCallout: "none" }}
-									onClick={() => setSelectedBook(book)}
-								>
-									{/* Cover */}
-									<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm">
-										<BookCover book={book} cover={cover} size="full" />
-
-										{/* "On device" badge overlay */}
-										{isActive && (
-											<span className="absolute right-1.5 bottom-1.5 rounded-sm bg-black px-1.5 py-0.5 font-semibold text-[0.6rem] text-white">
-												On device
-											</span>
-										)}
-									</div>
-
-									{/* Progress bar */}
-									{started && (
-										<div className="mt-1 flex items-center gap-1.5">
-											<div className="flex-1 [--buffer-background:#e0e0e0] [--progress-background:#000]">
-												<IonProgressBar value={progress / 100} />
-											</div>
-											<span className="font-medium text-[#888] text-[0.7rem]">{progress}%</span>
-										</div>
-									)}
-
-									{/* Info below cover */}
-									<div className="px-0.5 pt-1">
-										<div className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
-											{book.title}
-										</div>
-										{book.author && (
-											<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[#888] text-[0.75rem]">
-												{book.author}
-											</div>
-										)}
-									</div>
-								</div>
+									book={book}
+									cover={cover}
+									progress={progress}
+									started={started}
+									isActive={isActive}
+									onOpen={() => router.push(`/tabs/reader/${book.id}`)}
+									onMenu={() => setSelectedBook(book)}
+								/>
 							);
 						})}
 					</div>

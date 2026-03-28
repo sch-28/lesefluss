@@ -5,6 +5,12 @@ import ePub from "epubjs";
 import { queries } from "../db/queries";
 import type { Book, Chapter } from "../db/schema";
 
+/** UTF-8 byte length of a string — matches what the ESP32 sees in book.txt. */
+const encoder = new TextEncoder();
+function utf8ByteLength(s: string): number {
+	return encoder.encode(s).length;
+}
+
 /** Directory within app data where original EPUB files are stored */
 const BOOKS_DIR = "books";
 
@@ -77,7 +83,7 @@ export async function importBook(onProgress?: (pct: number) => void): Promise<Bo
 			author: author ?? null,
 			fileFormat: isEpub ? "epub" : "txt",
 			filePath: null, // updated below for EPUB
-			size: content.length,
+			size: utf8ByteLength(content),
 			position: 0,
 			isActive: false,
 			addedAt: Date.now(),
@@ -108,7 +114,7 @@ export async function importBook(onProgress?: (pct: number) => void): Promise<Bo
 		author: author ?? null,
 		fileFormat: isEpub ? "epub" : "txt",
 		filePath,
-		size: content.length,
+		size: utf8ByteLength(content),
 		position: 0,
 		isActive: false,
 		addedAt: Date.now(),
@@ -241,7 +247,7 @@ async function parseEpub(
 			await (section.load(book.load.bind(book)) as unknown as Promise<unknown>);
 			const doc = section.document;
 			if (doc?.body) {
-				const text = (doc.body.textContent || "").replace(/\s+/g, " ").trim();
+				const text = extractParagraphs(doc.body);
 				if (text.length > 0) {
 					sections.push({ text, href: section.href });
 				}
@@ -256,18 +262,18 @@ async function parseEpub(
 		}
 	}
 
-	// Build chapters with correct byte offsets in one pass
+	// Build chapters with correct UTF-8 byte offsets in one pass
 	const chapters: Chapter[] = [];
 	let byteOffset = 0;
 	for (let i = 0; i < sections.length; i++) {
-		if (i > 0) byteOffset += 2; // \n\n separator
+		if (i > 0) byteOffset += 2; // \n\n separator (always 2 UTF-8 bytes)
 
 		const chapterTitle = tocMap.get(sections[i].href);
 		if (chapterTitle) {
 			chapters.push({ title: chapterTitle, startByte: byteOffset });
 		}
 
-		byteOffset += sections[i].text.length;
+		byteOffset += utf8ByteLength(sections[i].text);
 	}
 
 	const content = sections.map((s) => s.text).join("\n\n");
@@ -275,6 +281,131 @@ async function parseEpub(
 	book.destroy();
 
 	return { content, title, author, coverImage, chapters };
+}
+
+/** Tags that are headings and should be prefixed with # markers. */
+const HEADING_TAGS = new Set(["H1", "H2", "H3", "H4", "H5", "H6"]);
+
+/** Heading tags mapped to their markdown-style # prefix depth. */
+const HEADING_PREFIX: Record<string, string> = {
+	H1: "# ",
+	H2: "## ",
+	H3: "### ",
+	H4: "#### ",
+	H5: "##### ",
+	H6: "###### ",
+};
+
+/** Tags that are direct block containers — we recurse into them for nested blocks. */
+const CONTAINER_TAGS = new Set(["DIV", "SECTION", "ARTICLE", "BLOCKQUOTE", "UL", "OL"]);
+
+/** Tags that are leaf block elements — we extract their text directly. */
+const LEAF_BLOCK_TAGS = new Set(["P", "LI"]);
+
+/**
+ * Collect text content from a heading element robustly.
+ *
+ * Many EPUBs structure headings like:
+ *   <h1>1<br/><span>Chapter Title</span></h1>
+ *
+ * Calling textContent collapses this to "1 Chapter Title".
+ * Instead we walk childNodes and:
+ *   - Skip <br> elements entirely
+ *   - Collect text from all other nodes (text nodes + inline elements)
+ *   - Join with a space, then normalise whitespace
+ *
+ * The result is still not perfect for every possible EPUB, but it handles
+ * the most common patterns (number + br + span title, plain text headings,
+ * headings with <em>/<strong> inline markup) correctly.
+ */
+function extractHeadingText(el: Element): string {
+	const parts: string[] = [];
+
+	function walk(node: Node) {
+		if (node.nodeType === Node.TEXT_NODE) {
+			const t = (node.textContent || "").replace(/\s+/g, " ").trim();
+			if (t) parts.push(t);
+		} else if (node.nodeType === Node.ELEMENT_NODE) {
+			const tag = (node as Element).tagName.toUpperCase();
+			if (tag === "BR") return; // skip line breaks — they're usually decorative separators
+			for (const child of Array.from(node.childNodes)) walk(child);
+		}
+	}
+
+	for (const child of Array.from(el.childNodes)) walk(child);
+
+	// Some EPUBs prepend a bare chapter number (e.g. "1") before the title span.
+	// If the first part is purely numeric, drop it — the title text follows.
+	if (parts.length > 1 && /^\d+$/.test(parts[0])) {
+		parts.shift();
+	}
+
+	return parts.join(" ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Walk an element and collect all readable blocks as strings.
+ * Returns a flat array of paragraph strings.
+ *
+ * Headings get a markdown # prefix.
+ * Leaf blocks (p, li) get their textContent collapsed.
+ * Container blocks (div, section, blockquote, …) are recursed so nested
+ * paragraphs are emitted separately rather than smashed together.
+ *
+ * If an element has no recognisable block children at all (e.g. a section
+ * with only inline text), it is treated as a single paragraph.
+ */
+function collectBlocks(el: Element): string[] {
+	const blocks: string[] = [];
+	let foundBlock = false;
+
+	for (const child of Array.from(el.children)) {
+		const tag = child.tagName.toUpperCase();
+
+		if (HEADING_TAGS.has(tag)) {
+			foundBlock = true;
+			const text = extractHeadingText(child);
+			if (text) blocks.push(HEADING_PREFIX[tag] + text);
+		} else if (LEAF_BLOCK_TAGS.has(tag)) {
+			foundBlock = true;
+			const text = (child.textContent || "").replace(/\s+/g, " ").trim();
+			if (text) blocks.push(text);
+		} else if (CONTAINER_TAGS.has(tag)) {
+			foundBlock = true;
+			// Recurse — a <div class="poem"> may contain multiple <p> lines
+			const nested = collectBlocks(child);
+			blocks.push(...nested);
+		}
+	}
+
+	// Fallback: no block children found — treat the whole element as one paragraph
+	if (!foundBlock) {
+		const text = (el.textContent || "").replace(/\s+/g, " ").trim();
+		if (text) blocks.push(text);
+	}
+
+	return blocks;
+}
+
+/**
+ * Walk the direct children of a `<body>` element and produce a paragraph-aware
+ * plain-text string where each block-level element becomes its own paragraph,
+ * joined with `\n\n`.
+ *
+ * Headings (H1–H6) are prefixed with markdown-style `#` markers so the reader
+ * can detect and style them with larger text.
+ *
+ * Container elements (div, section, blockquote, …) are recursed so nested
+ * paragraphs are emitted separately rather than smashed together.
+ *
+ * Internal whitespace within each block is collapsed to a single space so the
+ * resulting string is clean for RSVP display and ESP32 transfer.
+ */
+function extractParagraphs(body: Element): string {
+	const blocks = collectBlocks(body);
+	return blocks.length > 0
+		? blocks.join("\n\n")
+		: (body.textContent || "").replace(/\s+/g, " ").trim();
 }
 
 /**
