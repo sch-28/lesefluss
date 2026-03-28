@@ -88,10 +88,10 @@ class RSVPReader:
             # Save byte position when pausing
             if self.storage and self.word_reader:
                 byte_pos = self.word_reader.get_position()
-                self.storage.save_position(byte_pos)
                 book_size = self.storage.get_file_size()
                 progress = int((byte_pos / book_size) * 100) if book_size > 0 else 0
                 self.display.show_pause_indicator(f"{progress}%")
+                self.storage.save_position(byte_pos)
             else:
                 self.display.show_pause_indicator("0%")
         else:

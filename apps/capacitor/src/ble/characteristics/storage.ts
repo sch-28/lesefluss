@@ -14,6 +14,7 @@ import { dataViewToString } from "../utils/encoding";
 export interface StorageInfo {
 	free_bytes: number;
 	total_bytes: number;
+	book_hash: string; // 8-char hex ID of the book currently on the device, or "" if none
 }
 
 /** Read flash storage stats from the device. */

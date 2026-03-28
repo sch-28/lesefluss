@@ -41,9 +41,10 @@ _IRQ_GATTS_WRITE        = const(3)
 _IRQ_GATTS_READ_REQUEST = const(4)
 
 # Characteristic flags
-_FLAG_READ    = const(0x0002)
-_FLAG_WRITE   = const(0x0008)
-_FLAG_NOTIFY  = const(0x0010)
+_FLAG_READ              = const(0x0002)
+_FLAG_WRITE_NO_RESPONSE = const(0x0004)
+_FLAG_WRITE             = const(0x0008)
+_FLAG_NOTIFY            = const(0x0010)
 
 _BLE_MTU = const(512)
 
@@ -82,7 +83,7 @@ class BLEServer:
             bluetooth.UUID(SERVICE_UUID),
             (
                 (bluetooth.UUID(SETTINGS_CHAR_UUID),      _FLAG_READ | _FLAG_WRITE),
-                (bluetooth.UUID(FILE_TRANSFER_CHAR_UUID), _FLAG_WRITE | _FLAG_NOTIFY),
+                (bluetooth.UUID(FILE_TRANSFER_CHAR_UUID), _FLAG_WRITE_NO_RESPONSE | _FLAG_NOTIFY),
                 (bluetooth.UUID(POSITION_CHAR_UUID),      _FLAG_READ | _FLAG_WRITE),
                 (bluetooth.UUID(STORAGE_CHAR_UUID),       _FLAG_READ),
             ),

@@ -29,6 +29,7 @@ import binascii
 _BOOK_FILE  = "book.txt"
 _TEMP_FILE  = "book.tmp"
 _POS_FILE   = "position.txt"
+_HASH_FILE  = "book.hash"
 
 
 class FileTransferHandler:
@@ -163,7 +164,7 @@ class FileTransferHandler:
             self._nack("END:BAD_END")
             return
 
-        # Flush and close temp file before CRC check
+        # Flush and close temp file before integrity checks
         try:
             self.temp_file.flush()
             self.temp_file.close()
@@ -171,6 +172,14 @@ class FileTransferHandler:
         except Exception as e:
             print(f"[transfer] close temp error: {e}")
             self._abort("END:CLOSE_ERR")
+            return
+
+        # Size check — cheap sanity gate before the more expensive CRC comparison
+        if self.bytes_received != self.expected_size:
+            print(f"[transfer] size mismatch: got {self.bytes_received}, expected {self.expected_size}")
+            self._delete_temp()
+            self._reset()
+            self._nack("END:SIZE")
             return
 
         # CRC is stored as unsigned 32-bit; binascii.crc32 may return signed on some builds
@@ -202,9 +211,19 @@ class FileTransferHandler:
             print(f"[transfer] position reset error: {e}")
             # Non-fatal — book is still committed
 
-        print(f"[transfer] END ok — {self.bytes_received} bytes committed as book.txt")
-        self.completed = True
+        # Write the book ID so the app can verify the right book is on the device
+        try:
+            with open(_HASH_FILE, "w") as f:
+                f.write(self.filename)
+        except Exception as e:
+            print(f"[transfer] book.hash write error: {e}")
+            # Non-fatal
+
+        bytes_committed = self.bytes_received
         self._reset()
+        # Set completed AFTER _reset() — _reset() clears it to False
+        self.completed = True
+        print(f"[transfer] END ok — {bytes_committed} bytes committed as book.txt")
         self._ack("END")
 
     # ------------------------------------------------------------------

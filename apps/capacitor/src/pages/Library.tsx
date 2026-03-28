@@ -48,7 +48,7 @@ const Library: React.FC = () => {
 	} = useBookSync();
 
 	const [books, setBooks] = useState<Book[]>([]);
-	const [covers, setCovers] = useState<Map<number, string>>(new Map());
+	const [covers, setCovers] = useState<Map<string, string>>(new Map());
 	const [loading, setLoading] = useState(true);
 	const [syncing, setSyncing] = useState(false);
 	const [importing, setImporting] = useState(false);

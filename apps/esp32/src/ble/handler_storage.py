@@ -16,6 +16,8 @@ import gc
 import json
 import os
 
+_HASH_FILE = "book.hash"
+
 
 class StorageHandler:
     def __init__(self, ble, handle):
@@ -48,6 +50,14 @@ class StorageHandler:
         except Exception:
             total = 0
             free  = 0
-        data = json.dumps({"free_bytes": free, "total_bytes": total}).encode("utf-8")
+
+        book_hash = ""
+        try:
+            with open(_HASH_FILE, "r") as f:
+                book_hash = f.read().strip()
+        except OSError:
+            pass  # No book transferred yet
+
+        data = json.dumps({"free_bytes": free, "total_bytes": total, "book_hash": book_hash}).encode("utf-8")
         self.ble.gatts_write(self.handle, data)
-        print(f"[storage] read request → free={free} total={total}")
+        print(f"[storage] read request → free={free} total={total} book_hash={book_hash!r}")

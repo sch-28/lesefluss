@@ -21,6 +21,16 @@ const BOOKS_DIR = "books";
  * Throws an Error with message "CANCELLED" if the user dismissed the picker.
  * Throws on parse or DB errors.
  */
+/**
+ * Generate a random 8-character hex ID for a book.
+ * Used as the primary key in the DB and as book.hash on the ESP32.
+ */
+function generateBookId(): string {
+	const arr = new Uint8Array(4);
+	crypto.getRandomValues(arr);
+	return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export async function importBook(onProgress?: (pct: number) => void): Promise<Book> {
 	// 1. Open the file picker
 	const result = await FilePicker.pickFiles({
@@ -59,8 +69,10 @@ export async function importBook(onProgress?: (pct: number) => void): Promise<Bo
 	}
 
 	// 2. Insert into DB (metadata + content)
-	const id = await queries.addBookWithContent(
+	const id = generateBookId();
+	await queries.addBookWithContent(
 		{
+			id,
 			title,
 			author: author ?? null,
 			fileFormat: isEpub ? "epub" : "txt",
