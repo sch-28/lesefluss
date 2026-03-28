@@ -8,6 +8,7 @@
 
 import { readPosition, writePosition } from "./position";
 import { readSettings, writeSettings } from "./settings";
+import { readStorage } from "./storage";
 import { transferBook } from "./transfer";
 
 export const ble = {
@@ -21,4 +22,7 @@ export const ble = {
 
 	// File transfer characteristic (Write + Notify)
 	transferBook,
+
+	// Storage characteristic (R)
+	readStorage,
 };

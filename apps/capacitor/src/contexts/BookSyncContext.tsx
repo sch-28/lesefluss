@@ -21,6 +21,7 @@ import {
 import { ble } from "../ble";
 import { queries } from "../db/queries";
 import { useBLE } from "./BLEContext";
+import { useDatabase } from "./DatabaseContext";
 
 interface BookSyncContextType {
 	/** ID of the book currently marked as active (on device), or null. */
@@ -66,6 +67,7 @@ interface Props {
 }
 
 export const BookSyncProvider: React.FC<Props> = ({ children }) => {
+	const { isReady } = useDatabase();
 	const { isConnected, onConnected } = useBLE();
 
 	const [activeBookId, setActiveBookId] = useState<number | null>(null);
@@ -87,16 +89,16 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 		setActiveBookId(id);
 	}, []);
 
-	// Load the current active book from the DB on mount
+	// Load the current active book from the DB once it's ready
 	useEffect(() => {
-		if (loadedRef.current) return;
+		if (!isReady || loadedRef.current) return;
 		loadedRef.current = true;
 
 		queries.getBooks().then((allBooks) => {
 			const active = allBooks.find((b) => b.isActive);
 			updateActiveBookId(active?.id ?? null);
 		});
-	}, []);
+	}, [isReady, updateActiveBookId]);
 
 	// ------------------------------------------------------------------
 	// Position sync

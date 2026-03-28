@@ -42,6 +42,7 @@ src/
       settings.ts           # ble.readSettings(), ble.writeSettings()
       position.ts           # ble.readPosition(), ble.writePosition()
       transfer.ts           # ble.transferBook() — START/CHUNK/END state machine
+      storage.ts            # ble.readStorage() — flash storage info {free_bytes, total_bytes}
     utils/
       encoding.ts           # dataViewToString, stringToDataView, chunkString
   services/
@@ -132,3 +133,4 @@ await ble.transferBook(content, "book.txt", onProgress);
 | BLE layer refactor (bleClient + ble characteristics object) | Done |
 | BookSyncContext (position sync, book transfer) | Done |
 | Library "Set active on device" + transfer progress modal | Done |
+| Storage info display in Settings (free/total flash) | Done |

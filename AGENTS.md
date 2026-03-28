@@ -55,6 +55,7 @@ Both apps communicate over BLE. This is the shared contract:
 | 1 | Settings | R/W | RSVP settings JSON |
 | 2 | File Transfer | W + Notify | Chunked book upload (350-byte raw chunks, base64-encoded frames) |
 | 3 | Position | R/W | Current byte offset in active book (bidirectional) |
+| 4 | Storage | R | Flash storage info: `{"free_bytes": n, "total_bytes": n}` |
 
 **Settings payload** (~90 bytes):
 ```json
@@ -120,7 +121,7 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 - [x] Bidirectional position sync (Position characteristic, read/write)
 - [x] Extended BLE protocol (File Transfer + Position characteristics)
 - [x] ESP32: single-book model (`book.txt`/`position.txt`), remove slot logic
-- [ ] Display remaining space on ESP32 in the app
+- [x] Display remaining space on ESP32 in the app
 
 ### Phase 4 — Enhanced Features
 - [ ] In-app RSVP reader (software parity with ESP32)

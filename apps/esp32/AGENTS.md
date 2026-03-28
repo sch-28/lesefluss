@@ -33,6 +33,7 @@ src/
     handler_settings.py    # Settings characteristic: read config JSON / write + soft reset
     handler_position.py    # Position characteristic: read/write position.txt
     handler_file_transfer.py # File transfer: START/CHUNK/END state machine, CRC verify, book.tmp→book.txt
+    handler_storage.py     # Storage characteristic: read-only statvfs flash info
   wifi/
     __init__.py      # WiFiManager, AP mode setup
     server.py        # HTTP server, socket polling
@@ -65,10 +66,11 @@ etc/
 - Checks BLE for settings updates mid-reading, returns `'restart'` on change
 
 **BLE Server** (`src/ble/`)
-- `server.py` — thin GATT dispatcher; registers 3 characteristics, delegates all I/O to handlers
+- `server.py` — thin GATT dispatcher; registers 4 characteristics, delegates all I/O to handlers
 - `handler_settings.py` — Settings characteristic (R/W): read config JSON, write updates `config_override.py` + soft reset
 - `handler_position.py` — Position characteristic (R/W): read/write `position.txt`
 - `handler_file_transfer.py` — File Transfer characteristic (Write + Notify): START/CHUNK/END state machine, base64 chunks, CRC32 verify, `book.tmp` → `book.txt`
+- `handler_storage.py` — Storage characteristic (R): reads `os.statvfs('/')`, returns `{"free_bytes": n, "total_bytes": n}`
 - `ble_config.py` — generated from `packages/ble-config`; do not edit manually
 - Stops advertising during WiFi mode (resource conflict), restarts after
 - `server.check_settings_updated()` / `server.check_transfer_completed()` — polled by main loop

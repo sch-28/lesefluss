@@ -15,6 +15,7 @@ import {
 	IonListHeader,
 	IonNote,
 	IonPage,
+	IonProgressBar,
 	IonRange,
 	IonSpinner,
 	IonText,
@@ -24,7 +25,9 @@ import {
 } from "@ionic/react";
 import { bluetooth, closeCircle, cloudDownload, cloudUpload } from "ionicons/icons";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ble } from "../ble";
+import type { StorageInfo } from "../ble/characteristics/storage";
 import { useToast } from "../components/toast";
 import { SETTING_CONSTRAINTS } from "../constants/settings";
 import { useBLE } from "../contexts/BLEContext";
@@ -32,15 +35,24 @@ import { useDatabase } from "../contexts/DatabaseContext";
 import { queries } from "../db/queries";
 import type { Settings as RSVPSettings } from "../db/schema";
 
+/** Format a byte count as KB or MB, rounded to 1 decimal place. */
+function formatBytes(bytes: number): string {
+	if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
+	if (bytes >= 1_024) return `${(bytes / 1_024).toFixed(1)} KB`;
+	return `${bytes} B`;
+}
+
 const Settings: React.FC = () => {
 	const { isReady } = useDatabase();
 	const {
 		isConnected,
 		connectedDevice,
 		isScanning,
+		startScan,
 		disconnect,
 		syncToDevice,
 		syncFromDevice,
+		onConnected,
 		error: bleError,
 	} = useBLE();
 
@@ -48,6 +60,36 @@ const Settings: React.FC = () => {
 	const [loading, setLoading] = useState(true);
 	const [syncing, setSyncing] = useState(false);
 	const [showDisconnectAlert, setShowDisconnectAlert] = useState(false);
+	const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
+
+	// Keep a ref so the onConnected callback always sees the latest fetch function
+	const fetchStorageRef = useRef<(() => Promise<void>) | undefined>(undefined);
+
+	const fetchStorage = async () => {
+		const result = await ble.readStorage();
+		if (result.success && result.data) {
+			setStorageInfo(result.data);
+		}
+	};
+
+	// Store the latest fetchStorage in a ref (avoids stale closure in the callback)
+	fetchStorageRef.current = fetchStorage;
+
+	// Register post-connect hook so storage is fetched on every new connection
+	useEffect(() => {
+		onConnected(() => {
+			fetchStorageRef.current?.();
+		});
+	}, [onConnected]);
+
+	// Fetch storage immediately if we're already connected when this page mounts
+	useEffect(() => {
+		if (isConnected) {
+			fetchStorage();
+		} else {
+			setStorageInfo(null);
+		}
+	}, [isConnected]);
 
 	const handleDisconnect = async () => {
 		await disconnect();
@@ -361,6 +403,26 @@ const Settings: React.FC = () => {
 											<p>{connectedDevice.deviceId}</p>
 										</IonLabel>
 									</IonItem>
+									{storageInfo && (
+										<IonItem>
+											<IonLabel>
+												<h2>Storage</h2>
+												<IonProgressBar
+													value={
+														storageInfo.total_bytes > 0
+															? (storageInfo.total_bytes - storageInfo.free_bytes) /
+																storageInfo.total_bytes
+															: 0
+													}
+													style={{ margin: "6px 0" }}
+												/>
+												<p>
+													{formatBytes(storageInfo.free_bytes)} free of{" "}
+													{formatBytes(storageInfo.total_bytes)}
+												</p>
+											</IonLabel>
+										</IonItem>
+									)}
 									<IonButton
 										expand="block"
 										fill="outline"
@@ -376,10 +438,22 @@ const Settings: React.FC = () => {
 
 							{!isConnected && (
 								<IonItem lines="none" style={{ marginTop: "0.5rem" }}>
-									<IonSpinner name="dots" slot="start" style={{ marginRight: "0.75rem" }} />
+									{isScanning && (
+										<IonSpinner name="dots" slot="start" style={{ marginRight: "0.75rem" }} />
+									)}
 									<IonLabel color="medium">
 										<p>{isScanning ? "Scanning for RSVP-Reader..." : "Not scanning"}</p>
 									</IonLabel>
+									{!isScanning && !isConnected && (
+										<IonButton
+											size="small"
+											fill="outline"
+											onClick={startScan}
+											disabled={isConnected}
+										>
+											Scan
+										</IonButton>
+									)}
 								</IonItem>
 							)}
 						</IonCardContent>

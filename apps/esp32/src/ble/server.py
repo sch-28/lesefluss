@@ -3,7 +3,7 @@ BLE Server for RSVP Reader ESP32
 
 Thin coordinator layer — owns:
   - bluetooth.BLE instance
-  - GATT service registration (3 characteristics)
+  - GATT service registration (4 characteristics)
   - Advertising lifecycle
   - IRQ dispatch to per-characteristic handlers
 
@@ -11,6 +11,7 @@ Characteristic handlers live in separate modules:
   handler_settings.py      — settings JSON read/write
   handler_position.py      — byte-offset read/write
   handler_file_transfer.py — chunked book upload state machine
+  handler_storage.py       — flash storage info (read-only)
 
 UUIDs sourced from ble_config.py (auto-generated from packages/ble-config/config.json).
 Run `pnpm setup:project` from the monorepo root to regenerate after UUID changes.
@@ -26,10 +27,12 @@ from .ble_config import (
     POSITION_CHAR_UUID,
     SERVICE_UUID,
     SETTINGS_CHAR_UUID,
+    STORAGE_CHAR_UUID,
 )
 from .handler_file_transfer import FileTransferHandler
 from .handler_position import PositionHandler
 from .handler_settings import SettingsHandler
+from .handler_storage import StorageHandler
 
 # BLE IRQ event constants
 _IRQ_CENTRAL_CONNECT    = const(1)
@@ -81,6 +84,7 @@ class BLEServer:
                 (bluetooth.UUID(SETTINGS_CHAR_UUID),      _FLAG_READ | _FLAG_WRITE),
                 (bluetooth.UUID(FILE_TRANSFER_CHAR_UUID), _FLAG_WRITE | _FLAG_NOTIFY),
                 (bluetooth.UUID(POSITION_CHAR_UUID),      _FLAG_READ | _FLAG_WRITE),
+                (bluetooth.UUID(STORAGE_CHAR_UUID),       _FLAG_READ),
             ),
         ),)
 
@@ -88,12 +92,14 @@ class BLEServer:
             settings_handle,
             file_transfer_handle,
             position_handle,
+            storage_handle,
         ),) = self.ble.gatts_register_services(services)
 
         # Pre-fill buffers so reads before first write return valid data
         self.ble.gatts_write(settings_handle,      bytes(512))
         self.ble.gatts_write(file_transfer_handle, bytes(512))
         self.ble.gatts_write(position_handle,      bytes(64))
+        self.ble.gatts_write(storage_handle,       bytes(64))
 
         # Instantiate handlers, passing a lambda so file_transfer can notify
         # without holding a direct reference to this server object
@@ -103,12 +109,14 @@ class BLEServer:
             self.ble, file_transfer_handle,
             conn_handle_ref=lambda: self.conn_handle,
         )
+        self.storage       = StorageHandler(self.ble, storage_handle)
 
         print(
             f"[ble] service registered — handles: "
             f"settings={settings_handle}, "
             f"file_transfer={file_transfer_handle}, "
-            f"position={position_handle}"
+            f"position={position_handle}, "
+            f"storage={storage_handle}"
         )
 
     # ------------------------------------------------------------------
@@ -144,6 +152,8 @@ class BLEServer:
                 self.settings.on_read_request()
             elif attr_handle == self.position.handle:
                 self.position.on_read_request()
+            elif attr_handle == self.storage.handle:
+                self.storage.on_read_request()
             # file_transfer is write+notify only — no read handler needed
 
     # ------------------------------------------------------------------

@@ -105,26 +105,49 @@ async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 			.map((s) => s.trim())
 			.filter(Boolean);
 
-		for (const stmt of statements) {
-			// SQLite doesn't support ALTER TABLE ADD COLUMN IF NOT EXISTS.
-			// For ADD COLUMN statements, check if the column already exists first.
-			const addColMatch = stmt.match(/ALTER TABLE [`"]?(\w+)[`"]? ADD COLUMN [`"]?(\w+)[`"]?/i);
-			if (addColMatch) {
-				const [, table, column] = addColMatch;
-				const colCheck = await conn.query(`PRAGMA table_info(${table})`);
-				const exists = colCheck.values?.some((r) => r.name === column);
-				if (exists) continue;
+		// Wrap every migration in a transaction so multi-statement recreations
+		// (CREATE + INSERT + DROP + RENAME) are atomic. A partial failure won't
+		// leave the DB in a torn state — it rolls back entirely and the migration
+		// is not recorded, so the next launch will retry it cleanly.
+		await conn.execute("BEGIN");
+		try {
+			for (const stmt of statements) {
+				// SQLite doesn't support ALTER TABLE ADD COLUMN IF NOT EXISTS.
+				// For ADD COLUMN statements, check if the column already exists first.
+				const addColMatch = stmt.match(/ALTER TABLE [`"]?(\w+)[`"]? ADD COLUMN [`"]?(\w+)[`"]?/i);
+				if (addColMatch) {
+					const [, table, column] = addColMatch;
+					const colCheck = await conn.query(`PRAGMA table_info(${table})`);
+					const exists = colCheck.values?.some((r) => r.name === column);
+					if (exists) continue;
+				}
+
+				// For RENAME TABLE statements, skip if the source table doesn't exist
+				// (handles idempotent recovery migrations).
+				const renameMatch = stmt.match(/ALTER TABLE [`"]?(\w+)[`"]? RENAME TO [`"]?(\w+)[`"]?/i);
+				if (renameMatch) {
+					const [, fromTable] = renameMatch;
+					const tableCheck = await conn.query(
+						"SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+						[fromTable],
+					);
+					if ((tableCheck.values?.length ?? 0) === 0) continue;
+				}
+
+				await conn.execute(stmt);
 			}
 
-			await conn.execute(stmt);
+			await conn.run("INSERT INTO __drizzle_migrations (tag, applied_at) VALUES (?, ?)", [
+				entry.tag,
+				Date.now(),
+			]);
+
+			await conn.execute("COMMIT");
+			console.log(`Applied migration: ${entry.tag}`);
+		} catch (err) {
+			await conn.execute("ROLLBACK");
+			throw new Error(`Migration ${entry.tag} failed and was rolled back: ${err}`);
 		}
-
-		await conn.run("INSERT INTO __drizzle_migrations (tag, applied_at) VALUES (?, ?)", [
-			entry.tag,
-			Date.now(),
-		]);
-
-		console.log(`Applied migration: ${entry.tag}`);
 	}
 }
 
