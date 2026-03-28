@@ -2,8 +2,8 @@ import { IonButton, IonIcon, IonProgressBar } from "@ionic/react";
 import { CHUNK_SIZE } from "@rsvp/ble-config";
 import { checkmarkCircleOutline } from "ionicons/icons";
 import type React from "react";
-import BookCover from "../../../components/BookCover";
-import type { Book } from "../../../db/schema";
+import BookCover from "../../../components/book-cover";
+import type { Book } from "../../../services/db/schema";
 import { ESTIMATED_BPS, formatSeconds } from "./utils";
 
 interface TransferringProps {

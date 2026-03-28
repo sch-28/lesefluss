@@ -22,8 +22,8 @@ import {
 } from "@ionic/react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useBookSync } from "../../../contexts/BookSyncContext";
-import type { Book } from "../../../db/schema";
+import { useBookSync } from "../../../contexts/book-sync-context";
+import type { Book } from "../../../services/db/schema";
 import ConfirmPhase from "./confirm-phase";
 import { DonePhase, ErrorPhase, TransferringPhase } from "./progress-phases";
 

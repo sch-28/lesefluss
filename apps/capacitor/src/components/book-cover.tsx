@@ -7,8 +7,8 @@
 
 import type React from "react";
 import { useEffect, useState } from "react";
-import { queries } from "../db/queries";
-import type { Book } from "../db/schema";
+import { queries } from "../services/db/queries";
+import type { Book } from "../services/db/schema";
 
 interface Props {
 	book: Book;

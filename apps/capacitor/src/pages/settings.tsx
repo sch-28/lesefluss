@@ -26,14 +26,13 @@ import {
 import { bluetooth, closeCircle, cloudDownload, cloudUpload } from "ionicons/icons";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import { ble } from "../ble";
-import type { StorageInfo } from "../ble/characteristics/storage";
 import { useToast } from "../components/toast";
 import { SETTING_CONSTRAINTS } from "../constants/settings";
-import { useBLE } from "../contexts/BLEContext";
-import { useDatabase } from "../contexts/DatabaseContext";
-import { queries } from "../db/queries";
-import type { Settings as RSVPSettings } from "../db/schema";
+import { useBLE } from "../contexts/ble-context";
+import { ble } from "../services/ble";
+import type { StorageInfo } from "../services/ble/characteristics/storage";
+import { queries } from "../services/db/queries";
+import type { Settings as RSVPSettings } from "../services/db/schema";
 
 /** Format a byte count as KB or MB, rounded to 1 decimal place. */
 function formatBytes(bytes: number): string {
@@ -43,7 +42,6 @@ function formatBytes(bytes: number): string {
 }
 
 const Settings: React.FC = () => {
-	const { isReady } = useDatabase();
 	const {
 		isConnected,
 		connectedDevice,
@@ -101,10 +99,8 @@ const Settings: React.FC = () => {
 
 	// Load settings from database on mount
 	useEffect(() => {
-		if (isReady) {
-			loadSettings();
-		}
-	}, [isReady]);
+		loadSettings();
+	}, []);
 
 	const loadSettings = async () => {
 		try {

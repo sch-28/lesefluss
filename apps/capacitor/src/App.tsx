@@ -35,13 +35,13 @@ import "@ionic/react/css/display.css";
 /* Monochrome theme */
 import "./theme/monochrome.css";
 
-import { BLEConnectionState } from "./ble";
-import { BLEProvider, useBLE } from "./contexts/BLEContext";
-import { BookSyncProvider } from "./contexts/BookSyncContext";
-import { DatabaseProvider } from "./contexts/DatabaseContext";
+import { BLEProvider, useBLE } from "./contexts/ble-context";
+import { BookSyncProvider } from "./contexts/book-sync-context";
+import { DatabaseProvider } from "./contexts/database-context";
 import Library from "./pages/library";
 import BookReader from "./pages/reader";
 import Settings from "./pages/settings";
+import { BLEConnectionState } from "./services/ble";
 
 setupIonicReact();
 

@@ -13,8 +13,8 @@
 import { IonProgressBar } from "@ionic/react";
 import type React from "react";
 import { useCallback, useRef } from "react";
-import BookCover from "../../components/BookCover";
-import type { Book } from "../../db/schema";
+import BookCover from "../../components/book-cover";
+import type { Book } from "../../services/db/schema";
 
 const LONG_PRESS_MS = 400;
 

@@ -1,6 +1,7 @@
+import { IonContent, IonPage, IonSpinner } from "@ionic/react";
 import type React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
-import { initDb } from "../db";
+import { initDb } from "../services/db";
 
 interface DatabaseContextType {
 	isReady: boolean;
@@ -21,6 +22,16 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 				setError(err as Error);
 			});
 	}, []);
+
+	if (!isReady) {
+		return (
+			<IonPage>
+				<IonContent className="ion-padding ion-text-center">
+					<IonSpinner />
+				</IonContent>
+			</IonPage>
+		);
+	}
 
 	return <DatabaseContext.Provider value={{ isReady, error }}>{children}</DatabaseContext.Provider>;
 };

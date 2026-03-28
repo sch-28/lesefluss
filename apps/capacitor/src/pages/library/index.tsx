@@ -20,12 +20,11 @@ import {
 import { add, bookOutline, refreshOutline } from "ionicons/icons";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
-import { useBLE } from "../../contexts/BLEContext";
-import { useBookSync } from "../../contexts/BookSyncContext";
-import { useDatabase } from "../../contexts/DatabaseContext";
-import { queries } from "../../db/queries";
-import type { Book } from "../../db/schema";
-import { importBook, removeBook } from "../../services/bookImport";
+import { useBLE } from "../../contexts/ble-context";
+import { useBookSync } from "../../contexts/book-sync-context";
+import { importBook, removeBook } from "../../services/book-import";
+import { queries } from "../../services/db/queries";
+import type { Book } from "../../services/db/schema";
 import BookCard from "./book-card";
 import TransferModal from "./transfer-modal";
 
@@ -38,7 +37,6 @@ function readingProgress(book: Book): number {
 }
 
 const Library: React.FC = () => {
-	const { isReady } = useDatabase();
 	const { isConnected } = useBLE();
 	const {
 		activeBookId,
@@ -79,24 +77,20 @@ const Library: React.FC = () => {
 	}, []);
 
 	useEffect(() => {
-		if (isReady) {
-			loadBooks();
-		}
-	}, [isReady, loadBooks]);
+		loadBooks();
+	}, [loadBooks]);
 
 	// Reload when navigating back (e.g. from reader) so progress bars update
 	useIonViewWillEnter(() => {
-		if (isReady) {
-			loadBooks();
-		}
+		loadBooks();
 	});
 
 	// Reload list after a transfer completes so "On device" badge updates
 	useEffect(() => {
-		if (!isTransferring && isReady) {
+		if (!isTransferring) {
 			loadBooks();
 		}
-	}, [isTransferring, isReady, loadBooks]);
+	}, [isTransferring, loadBooks]);
 
 	const handleImport = async () => {
 		setImporting(true);
@@ -152,7 +146,7 @@ const Library: React.FC = () => {
 	const handleTransferDismiss = () => {
 		setPendingTransferBook(null);
 		// Reload so the "On device" badge updates immediately after the modal closes
-		if (isReady) loadBooks();
+		loadBooks();
 	};
 
 	if (loading) {

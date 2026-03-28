@@ -5,7 +5,7 @@ import {
 } from "@capacitor-community/sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 // Vite handles JSON imports natively
-import journal from "../../drizzle/meta/_journal.json";
+import journal from "../../../drizzle/meta/_journal.json";
 import * as schema from "./schema";
 
 // import.meta.glob with eager + raw gives us { "./0000_slippery_rhino.sql": "CREATE TABLE..." }

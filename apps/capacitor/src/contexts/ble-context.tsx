@@ -9,9 +9,9 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { BLEConnectionState, ble, bleClient, type ScannedDevice } from "../ble";
-import { queries } from "../db/queries";
-import type { Settings as RSVPSettings } from "../db/schema";
+import { BLEConnectionState, ble, bleClient, type ScannedDevice } from "../services/ble";
+import { queries } from "../services/db/queries";
+import type { Settings as RSVPSettings } from "../services/db/schema";
 
 interface BLEContextType {
 	// Connection state

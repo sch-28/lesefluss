@@ -2,8 +2,8 @@ import { Directory, Filesystem } from "@capacitor/filesystem";
 import { FilePicker } from "@capawesome/capacitor-file-picker";
 import type { Book as EpubBook } from "epubjs";
 import ePub from "epubjs";
-import { queries } from "../db/queries";
-import type { Book, Chapter } from "../db/schema";
+import { queries } from "./db/queries";
+import type { Book, Chapter } from "./db/schema";
 
 /** UTF-8 byte length of a string — matches what the ESP32 sees in book.txt. */
 const encoder = new TextEncoder();

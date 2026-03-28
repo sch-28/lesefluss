@@ -34,10 +34,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RouteComponentProps } from "react-router-dom";
 import type { CacheSnapshot, VListHandle } from "virtua";
 import { VList } from "virtua";
-import { useBookSync } from "../../contexts/BookSyncContext";
-import { useDatabase } from "../../contexts/DatabaseContext";
-import { queries } from "../../db/queries";
-import type { Book } from "../../db/schema";
+import { useBookSync } from "../../contexts/book-sync-context";
+import { queries } from "../../services/db/queries";
+import type { Book } from "../../services/db/schema";
 import Paragraph, { getHeadingLevel, getWordOffsets, utf8ByteLength } from "./paragraph";
 
 // ─── Scroll cache ────────────────────────────────────────────────────────────
@@ -71,7 +70,6 @@ interface BookReaderProps extends RouteComponentProps<{ id: string }> {}
 const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const id = match.params.id;
 	const { pushPosition } = useBookSync();
-	const { isReady } = useDatabase();
 
 	const [book, setBook] = useState<Book | null>(null);
 	const [content, setContent] = useState<string | null>(null);
@@ -92,7 +90,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	// ── Load book metadata + content in parallel ───────────────────────────
 	useEffect(() => {
-		if (!isReady) return;
 		let cancelled = false;
 
 		async function load() {
@@ -124,7 +121,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		return () => {
 			cancelled = true;
 		};
-	}, [id, isReady]);
+	}, [id]);
 
 	// ── Build paragraph index ──────────────────────────────────────────────
 	// Computed once per content load. Two cheap structures:
