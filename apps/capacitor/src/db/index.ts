@@ -23,24 +23,17 @@ let _conn: SQLiteDBConnection | null = null;
 /**
  * Initialise the SQLite connection and run any pending migrations.
  * Call once at app startup (from DatabaseProvider).
+ * Safe to call multiple times (React strict mode, hot reload) — reuses existing connection.
  */
 export async function initDb(): Promise<void> {
+	if (_conn) return; // already initialised
+
 	const sqlite = new SQLiteConnection(CapacitorSQLite);
 
 	_conn = await sqlite.createConnection(DB_NAME, false, "no-encryption", 1, false);
 	await _conn.open();
 
 	await runMigrations(_conn);
-}
-
-/**
- * Run a raw SQL query against the underlying connection.
- * Useful for things sqlite-proxy can't express (e.g. last_insert_rowid()).
- */
-export async function rawQuery(sql: string, params?: unknown[]): Promise<any[]> {
-	if (!_conn) throw new Error("Database not initialised — call initDb() first");
-	const result = await _conn.query(sql, params);
-	return result.values ?? [];
 }
 
 /**

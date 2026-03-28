@@ -1,5 +1,8 @@
 import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
+// NOTE: id is a random 8-char hex string generated at import time.
+// It doubles as the book identity on the ESP32 (stored in book.hash after transfer).
+
 /**
  * Device connection history — tracks ESP32 devices we've connected to
  */
@@ -32,7 +35,7 @@ export const settings = sqliteTable("settings", {
  * Large data (content, cover, chapters) lives in `bookContent`.
  */
 export const books = sqliteTable("books", {
-	id: integer("id").primaryKey({ autoIncrement: true }),
+	id: text("id").primaryKey(), // random 8-char hex, also used as book.hash on ESP32
 	title: text("title").notNull(),
 	author: text("author"),
 	fileFormat: text("file_format").notNull().default("txt"), // 'txt' | 'epub'
@@ -53,7 +56,7 @@ export const books = sqliteTable("books", {
  * - chapters: JSON array of [{title: string, startByte: number}]
  */
 export const bookContent = sqliteTable("book_content", {
-	bookId: integer("book_id").primaryKey(),
+	bookId: text("book_id").primaryKey(),
 	content: text("content").notNull(),
 	coverImage: text("cover_image"),
 	chapters: text("chapters"), // JSON: [{title: string, startByte: number}]

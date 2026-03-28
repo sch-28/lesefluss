@@ -1,15 +1,3 @@
-CREATE TABLE `books` (
-	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`title` text NOT NULL,
-	`author` text,
-	`content` text NOT NULL,
-	`size` integer DEFAULT 0 NOT NULL,
-	`position` integer DEFAULT 0 NOT NULL,
-	`slot` integer,
-	`added_at` integer NOT NULL,
-	`last_read` integer
-);
---> statement-breakpoint
 CREATE TABLE `devices` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -29,4 +17,24 @@ CREATE TABLE `settings` (
 	`ble_on` integer DEFAULT true NOT NULL,
 	`dev_mode` integer DEFAULT false NOT NULL,
 	`updated_at` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `books` (
+	`id` text PRIMARY KEY NOT NULL,
+	`title` text NOT NULL,
+	`author` text,
+	`file_format` text DEFAULT 'txt' NOT NULL,
+	`file_path` text,
+	`size` integer DEFAULT 0 NOT NULL,
+	`position` integer DEFAULT 0 NOT NULL,
+	`is_active` integer DEFAULT false NOT NULL,
+	`added_at` integer NOT NULL,
+	`last_read` integer
+);
+--> statement-breakpoint
+CREATE TABLE `book_content` (
+	`book_id` text PRIMARY KEY NOT NULL,
+	`content` text NOT NULL,
+	`cover_image` text,
+	`chapters` text
 );

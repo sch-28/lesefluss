@@ -1,5 +1,5 @@
 import { desc, eq, ne } from "drizzle-orm";
-import { db, rawQuery } from "../index";
+import { db } from "../index";
 import {
 	type Book,
 	type BookContent,
@@ -21,7 +21,7 @@ export async function getBooks(): Promise<Book[]> {
  * Fetch cover images for all books. Returns a map of bookId → coverImage (base64 data URL).
  * Only fetches the cover_image column — avoids loading the full content text.
  */
-export async function getBookCovers(): Promise<Map<number, string>> {
+export async function getBookCovers(): Promise<Map<string, string>> {
 	const rows = await db
 		.select({
 			bookId: bookContent.bookId,
@@ -29,7 +29,7 @@ export async function getBookCovers(): Promise<Map<number, string>> {
 		})
 		.from(bookContent);
 
-	const map = new Map<number, string>();
+	const map = new Map<string, string>();
 	for (const row of rows) {
 		if (row.coverImage) {
 			map.set(row.bookId, row.coverImage);
@@ -41,7 +41,7 @@ export async function getBookCovers(): Promise<Map<number, string>> {
 /**
  * Fetch a single book's metadata by id.
  */
-export async function getBook(id: number): Promise<Book | undefined> {
+export async function getBook(id: string): Promise<Book | undefined> {
 	const rows = await db.select().from(books).where(eq(books.id, id));
 	return rows[0];
 }
@@ -50,7 +50,7 @@ export async function getBook(id: number): Promise<Book | undefined> {
  * Fetch book content (plain text, cover, chapters) by book id.
  * Returns undefined if the book or its content doesn't exist.
  */
-export async function getBookContent(id: number): Promise<BookContent | undefined> {
+export async function getBookContent(id: string): Promise<BookContent | undefined> {
 	const rows = await db.select().from(bookContent).where(eq(bookContent.bookId, id));
 	return rows[0];
 }
@@ -69,31 +69,28 @@ export function parseChapters(raw: string | null): Chapter[] {
 }
 
 /**
- * Insert a new book with its content. Returns the new book's id.
+ * Insert a new book with its content. The id (8-char hex) is part of the book param.
  *
  * Inserts into `books` (metadata) then `book_content` (large data).
- * sqlite-proxy doesn't expose lastInsertRowid, so we query it separately.
  */
 export async function addBookWithContent(
-	book: Omit<NewBook, "id">,
+	book: NewBook,
 	content: string,
 	coverImage?: string | null,
 	chapters?: Chapter[] | null,
-): Promise<number> {
+): Promise<string> {
 	// Insert metadata
 	await db.insert(books).values(book);
-	const rows = await rawQuery("SELECT last_insert_rowid() as id");
-	const id: number = rows[0]?.id ?? 0;
 
 	// Insert content
 	await db.insert(bookContent).values({
-		bookId: id,
+		bookId: book.id,
 		content,
 		coverImage: coverImage ?? null,
 		chapters: chapters ? JSON.stringify(chapters) : null,
 	});
 
-	return id;
+	return book.id;
 }
 
 /**
@@ -101,11 +98,11 @@ export async function addBookWithContent(
  * Accepts any subset of Book columns (except id).
  *
  * Examples:
- *   updateBook(1, { filePath: "books/1.epub" })
- *   updateBook(1, { isActive: true })
- *   updateBook(1, { position: 1234, lastRead: Date.now() })
+ *   updateBook("a1b2c3d4", { filePath: "books/a1b2c3d4.epub" })
+ *   updateBook("a1b2c3d4", { isActive: true })
+ *   updateBook("a1b2c3d4", { position: 1234, lastRead: Date.now() })
  */
-export async function updateBook(id: number, data: Partial<Omit<NewBook, "id">>): Promise<void> {
+export async function updateBook(id: string, data: Partial<Omit<NewBook, "id">>): Promise<void> {
 	await db.update(books).set(data).where(eq(books.id, id));
 }
 
@@ -116,7 +113,7 @@ export async function updateBook(id: number, data: Partial<Omit<NewBook, "id">>)
  * Two targeted UPDATE statements — no full table scan, no race window from
  * a fetch-then-fan-out pattern.
  */
-export async function setActiveBook(id: number): Promise<void> {
+export async function setActiveBook(id: string): Promise<void> {
 	// Deactivate all others in one statement
 	await db.update(books).set({ isActive: false }).where(ne(books.id, id));
 	// Activate the target and reset its position
@@ -130,7 +127,7 @@ export async function setActiveBook(id: number): Promise<void> {
  * NOTE: This only handles DB cleanup. To also delete the file from disk,
  * use the `removeBook()` function from the bookImport service instead.
  */
-export async function deleteBook(id: number): Promise<void> {
+export async function deleteBook(id: string): Promise<void> {
 	// Delete content first (child), then metadata (parent)
 	await db.delete(bookContent).where(eq(bookContent.bookId, id));
 	await db.delete(books).where(eq(books.id, id));
