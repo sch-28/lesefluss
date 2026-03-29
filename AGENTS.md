@@ -11,7 +11,16 @@ rsvp/
 │   └── capacitor/      # Ionic React mobile companion app     → apps/capacitor/agents.md
 ├── packages/
 │   └── ble-config/     # Shared BLE UUIDs (workspace package)
+├── resources/
+│   └── icon.svg        # Master app icon (1024×1024, edit this)
 └── agents.md           # This file
+```
+
+## First-time setup
+
+```bash
+pnpm install
+pnpm setup:project      # generates BLE config + Android icon PNGs from resources/icon.svg
 ```
 
 ## What It Does

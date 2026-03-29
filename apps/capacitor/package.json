@@ -1,7 +1,7 @@
 {
-	"name": "capacitor-app",
+	"name": "rsvp",
 	"version": "1.0.0",
-	"description": "An Amazing Capacitor App",
+	"description": "RSVP Reader companion app",
 	"type": "module",
 	"keywords": [
 		"capacitor",
@@ -19,6 +19,9 @@
 		"ionic:serve": "vite --host 0.0.0.0 --port 3000",
 		"ionic:build": "vite build",
 		"live": "node scripts/live-reload.mjs",
+		"deploy": "node scripts/deploy.mjs",
+		"gen-icons": "node scripts/gen-icons.mjs",
+		"setup": "node scripts/gen-icons.mjs",
 		"format": "biome format --write .",
 		"lint": "biome lint --write .",
 		"biome": "biome check --write ."

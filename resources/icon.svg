@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="1024"
+   height="1024"
+   viewBox="0 0 1024 1024"
+   version="1.1"
+   id="svg10"
+   sodipodi:docname="icon.svg"
+   inkscape:version="1.4.3 (0d15f75042, 2025-12-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs10">
+    <inkscape:path-effect
+       effect="fillet_chamfer"
+       id="path-effect17"
+       is_visible="true"
+       lpeversion="1"
+       nodesatellites_param="F,0,0,1,0,0,0,1 @ F,0,0,1,0,0,0,1 @ F,0,0,1,0,10.439999,0,1 @ F,0,0,1,0,0,0,1 @ F,0,0,1,0,8.824,0,1 @ F,0,0,1,0,0,0,1"
+       radius="0"
+       unit="px"
+       method="auto"
+       mode="F"
+       chamfer_steps="1"
+       flexible="false"
+       use_knot_distance="true"
+       apply_no_radius="true"
+       apply_with_radius="true"
+       only_selected="false"
+       hide_knots="false" />
+  </defs>
+  <sodipodi:namedview
+     id="namedview10"
+     pagecolor="#ffffff"
+     bordercolor="#999999"
+     borderopacity="1"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showguides="true"
+     inkscape:zoom="1"
+     inkscape:cx="519"
+     inkscape:cy="445"
+     inkscape:window-width="2512"
+     inkscape:window-height="1635"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg10">
+    <sodipodi:guide
+       position="513.51629,767.43684"
+       orientation="0,-1"
+       id="guide11"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="511.95824,883.30182"
+       orientation="1,0"
+       id="guide12"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="68.799746,690.21754"
+       orientation="0,-1"
+       id="guide13"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="202.48688,664.41422"
+       orientation="0,-1"
+       id="guide14"
+       inkscape:locked="false" />
+  </sodipodi:namedview>
+  <!-- Background -->
+  <rect
+     width="1024"
+     height="1024"
+     fill="#1A1A1A"
+     rx="150"
+     id="rect1" />
+  <line
+     x1="511.79312"
+     y1="351.01309"
+     x2="511.79312"
+     y2="593.66644"
+     stroke="#FFFFFF"
+     stroke-width="12.1816"
+     stroke-linecap="round"
+     id="line2"
+     style="stroke:#656565;stroke-opacity:1" />
+  <!-- Open book left page -->
+  <!-- Open book right page -->
+  <!-- Spine -->
+  <!-- Left page text lines -->
+  <path
+     style="display:inline;fill:#e4e4e4;fill-opacity:1;stroke-width:1.03127"
+     d="m 510.08,280.32 -265.6,80.64 0.62236,368.44002 a 7.813706,7.813706 36.715843 0 0 10.02919,7.47983 L 511.36,661.12 769.76555,736.10099 A 6.6275311,6.6275311 143.09052 0 0 778.24,729.736 V 360.32 Z"
+     id="path10"
+     inkscape:path-effect="#path-effect17"
+     inkscape:original-d="m 510.08,280.32 -265.6,80.64 0.64,378.88 266.24,-78.72 266.88,77.44 V 360.32 Z"
+     transform="matrix(0.67675724,0,0,0.636341,165.29342,172.85054)" />
+  <line
+     x1="358.517"
+     y1="455.02307"
+     x2="477.12296"
+     y2="424.11945"
+     stroke="#888888"
+     stroke-width="9.4746"
+     stroke-linecap="round"
+     id="line3" />
+  <line
+     x1="363.86697"
+     y1="491.85822"
+     x2="482.47293"
+     y2="460.95459"
+     stroke="#888888"
+     stroke-width="9.4746"
+     stroke-linecap="round"
+     id="line4" />
+  <line
+     x1="368.30511"
+     y1="524.96136"
+     x2="458.3475"
+     y2="503.46729"
+     stroke="#888888"
+     stroke-width="9.4746"
+     stroke-linecap="round"
+     id="line5" />
+  <line
+     x1="374.56696"
+     y1="565.52856"
+     x2="479.77832"
+     y2="536.57037"
+     stroke="#888888"
+     stroke-width="9.4746"
+     stroke-linecap="round"
+     id="line6" />
+  <!-- Right page text lines -->
+  <line
+     x1="543.05994"
+     y1="424.11945"
+     x2="661.79309"
+     y2="454.53082"
+     stroke="#888888"
+     stroke-width="9.4746"
+     stroke-linecap="round"
+     id="line7" />
+  <line
+     x1="540.97327"
+     y1="461.18979"
+     x2="659.70642"
+     y2="491.60114"
+     stroke="#888888"
+     stroke-width="9.4746"
+     stroke-linecap="round"
+     id="line8" />
+  <line
+     x1="540.97327"
+     y1="501.07574"
+     x2="614.96295"
+     y2="518.96844"
+     stroke="#888888"
+     stroke-width="9.4746"
+     stroke-linecap="round"
+     id="line9" />
+  <line
+     x1="540.97327"
+     y1="535.59741"
+     x2="646.30389"
+     y2="564.1189"
+     stroke="#888888"
+     stroke-width="9.4746"
+     stroke-linecap="round"
+     id="line10" />
+  <path
+     style="fill:#7f7f7f;fill-opacity:1;stroke-width:0.676757"
+     d="m 691.97297,402.13692 -17.76435,-14.72617 -162.44376,-52.25872 -161.65504,52.25872 -19.36279,15.13343 181.04609,-51.5311 z"
+     id="path15"
+     sodipodi:nodetypes="ccccccc" />
+  <line
+     x1="511.62515"
+     y1="338.38483"
+     x2="511.62515"
+     y2="345.728"
+     stroke="#FFFFFF"
+     stroke-width="12.1816"
+     stroke-linecap="round"
+     id="line2-5"
+     style="stroke:#656565;stroke-opacity:1" />
+</svg>

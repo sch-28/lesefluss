@@ -13,8 +13,13 @@
 			"cache": false
 		},
 		"setup": {
-			"outputs": ["../../apps/esp32/src/ble/ble_config.py"],
-			"inputs": ["config.json"]
+			"outputs": [
+				"../../apps/esp32/src/ble/ble_config.py",
+				"android/app/src/main/res/mipmap-*/ic_launcher.png",
+				"android/app/src/main/res/mipmap-*/ic_launcher_round.png",
+				"android/app/src/main/res/mipmap-*/ic_launcher_foreground.png"
+			],
+			"inputs": ["config.json", "../../resources/icon.svg"]
 		}
 	}
 }

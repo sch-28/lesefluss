@@ -13,6 +13,11 @@ dist/
 # OS files
 .DS_Store
 
+# Generated icon PNGs (source of truth is resources/icon.svg — run pnpm setup:project)
+android/app/src/main/res/mipmap-*/ic_launcher.png
+android/app/src/main/res/mipmap-*/ic_launcher_round.png
+android/app/src/main/res/mipmap-*/ic_launcher_foreground.png
+
 # Android build artifacts (but keep android/ source)
 android/build/
 android/app/build/
