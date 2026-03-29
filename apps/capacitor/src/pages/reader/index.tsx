@@ -8,7 +8,7 @@
  * Per-paragraph word offsets are computed at render time inside <Paragraph>.
  * Only ~20–30 paragraphs are mounted at any time, so this is negligible work.
  *
- * Scroll → position: paragraphOffsets[ref.findItemIndex(scrollOffset)]  → O(1)
+ * Scroll → position: top-left visible word span (querySelectorAll)      → O(n) n = visible spans
  * Open  → scroll:    binary search paragraphOffsets for book.position   → O(log p)
  * Tap   → position:  data-offset attribute on the <span>                → O(1)
  *
@@ -39,7 +39,7 @@ import { useBookSync } from "../../contexts/book-sync-context";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
-import Paragraph, { getHeadingLevel, getWordOffsets, utf8ByteLength } from "./paragraph";
+import Paragraph, { utf8ByteLength } from "./paragraph";
 
 // ─── Scroll cache ────────────────────────────────────────────────────────────
 // Stored outside the component so it survives navigation away and back.
@@ -86,13 +86,14 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const [activeOffset, setActiveOffset] = useState(0);
 
 	const listRef = useRef<VListHandle>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
 
 	// Whether the initial scroll-to-position has happened
 	const didInitialScrollRef = useRef(false);
 
 	// Suppresses the handleScrollEnd that fires after the programmatic
-	// scrollToIndex on first render — prevents the pixel-fraction heuristic
-	// from overwriting the precise saved position with a ~4-word-off estimate.
+	// scrollToIndex on first render — prevents overwriting the precise
+	// saved position with whatever word happens to be at the top.
 	const suppressNextScrollEndRef = useRef(false);
 
 	// Track the last offset we set so we can flush on unmount.
@@ -173,52 +174,46 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		setActiveOffset((prev) => (prev === NO_HIGHLIGHT ? prev : NO_HIGHLIGHT));
 	}, []);
 
-	// ── Scroll end — compute highlight + save position ───────────────────
+	// ── Scroll end — find top-left visible word + save position ─────────
 	const handleScrollEnd = useCallback(() => {
-		// Skip the scroll-end fired by the programmatic scrollToIndex on mount.
-		// The DB already has the precise offset; re-estimating would drift ~4 words.
 		if (suppressNextScrollEndRef.current) {
 			suppressNextScrollEndRef.current = false;
 			return;
 		}
+		// Don't save until the initial scroll-to-position has run,
+		// otherwise a hot reload would overwrite the saved position with 0.
+		if (!didInitialScrollRef.current) return;
+		if (!listRef.current || !containerRef.current) return;
 
-		if (!listRef.current || paragraphOffsets.length === 0) return;
+		const cutoffTop = containerRef.current.getBoundingClientRect().top;
 
-		const list = listRef.current;
-		// Nudge past the top edge by one line-height so the highlighted word
-		// is comfortably visible, not in the clipped-off portion above the fold.
-		const visibleTop = list.scrollOffset + fontSize * 2;
-		let paraIdx = list.findItemIndex(visibleTop);
+		// All word <span>s currently in the DOM (only ~20-30 paragraphs via VList).
+		// Each carries a data-offset with its exact UTF-8 byte offset.
+		const spans = document.querySelectorAll<HTMLElement>("span[data-offset]");
+		if (spans.length === 0) return;
 
-		// Skip headings — they have no tappable words
-		while (paraIdx < paragraphs.length && getHeadingLevel(paragraphs[paraIdx]) > 0) {
-			paraIdx++;
+		// Find the top-left visible word: smallest Y not hidden behind the
+		// header, then smallest X to break ties on the same line.
+		let bestOffset = -1;
+		let bestTop = Number.POSITIVE_INFINITY;
+		let bestLeft = Number.POSITIVE_INFINITY;
+
+		for (const span of spans) {
+			const rect = span.getBoundingClientRect();
+			if (rect.top < cutoffTop) continue; // hidden behind header/toolbar
+			if (rect.top < bestTop || (rect.top === bestTop && rect.left < bestLeft)) {
+				bestTop = rect.top;
+				bestLeft = rect.left;
+				bestOffset = Number.parseInt(span.dataset.offset!, 10);
+			}
 		}
-		if (paraIdx >= paragraphs.length) return;
 
-		const paraText = paragraphs[paraIdx];
-		const paraStart = paragraphOffsets[paraIdx];
-		const wordOffsets = getWordOffsets(paraText, paraStart);
+		if (bestOffset < 0) return;
 
-		if (wordOffsets.length === 0) {
-			setActiveOffset(paraStart);
-			lastOffsetRef.current = paraStart;
-			savePosition(paraStart);
-			return;
-		}
-
-		// Estimate which word is at the visible top via pixel fraction
-		const paraPixelTop = list.getItemOffset(paraIdx);
-		const paraPixelHeight = list.getItemSize(paraIdx);
-		const pixelsInto = Math.max(0, visibleTop - paraPixelTop);
-		const fraction = paraPixelHeight > 0 ? pixelsInto / paraPixelHeight : 0;
-		const wordIdx = Math.min(Math.floor(fraction * wordOffsets.length), wordOffsets.length - 1);
-		const byteOffset = wordOffsets[wordIdx];
-
-		setActiveOffset(byteOffset);
-		lastOffsetRef.current = byteOffset;
-		savePosition(byteOffset);
-	}, [paragraphs, paragraphOffsets, savePosition, fontSize]);
+		setActiveOffset(bestOffset);
+		lastOffsetRef.current = bestOffset;
+		savePosition(bestOffset);
+	}, [savePosition]);
 
 	// ── Word tap handler ───────────────────────────────────────────────────
 	const handleWordTap = useCallback(
@@ -325,23 +320,25 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			</IonHeader>
 
 			<IonContent scrollY={false}>
-				<VList
-					ref={listRef}
-					cache={scrollCache.get(id)}
-					style={{ height: "100%", padding: "0 20px", fontSize: `${fontSize}px` }}
-					onScroll={handleScroll}
-					onScrollEnd={handleScrollEnd}
-				>
-					{paragraphs.map((text, i) => (
-						<Paragraph
-							key={i.toString()}
-							text={text}
-							startOffset={paragraphOffsets[i]}
-							activeOffset={activeOffset}
-							onWordTap={handleWordTap}
-						/>
-					))}
-				</VList>
+				<div ref={containerRef} style={{ height: "100%" }}>
+					<VList
+						ref={listRef}
+						cache={scrollCache.get(id)}
+						style={{ height: "100%", padding: "0 20px", fontSize: `${fontSize}px` }}
+						onScroll={handleScroll}
+						onScrollEnd={handleScrollEnd}
+					>
+						{paragraphs.map((text, i) => (
+							<Paragraph
+								key={i.toString()}
+								text={text}
+								startOffset={paragraphOffsets[i]}
+								activeOffset={activeOffset}
+								onWordTap={handleWordTap}
+							/>
+						))}
+					</VList>
+				</div>
 			</IonContent>
 		</IonPage>
 	);
