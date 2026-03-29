@@ -11,6 +11,7 @@ import {
 	setupIonicReact,
 } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { bluetooth, library, settings } from "ionicons/icons";
 import type React from "react";
 import { useEffect } from "react";
@@ -42,6 +43,7 @@ import Library from "./pages/library";
 import BookReader from "./pages/reader";
 import Settings from "./pages/settings";
 import { BLEConnectionState } from "./services/ble";
+import { queryClient } from "./services/query-client";
 
 setupIonicReact();
 
@@ -128,23 +130,25 @@ const App: React.FC = () => {
 
 	return (
 		<IonApp>
-			<DatabaseProvider>
-				<BLEProvider>
-					<BookSyncProvider>
-						<IonReactRouter>
-							<IonRouterOutlet>
-								{/* All routes under /tabs — reader included so it shares the nav stack */}
-								<Route path="/tabs" render={() => <AppTabs />} />
+			<QueryClientProvider client={queryClient}>
+				<DatabaseProvider>
+					<BLEProvider>
+						<BookSyncProvider>
+							<IonReactRouter>
+								<IonRouterOutlet>
+									{/* All routes under /tabs — reader included so it shares the nav stack */}
+									<Route path="/tabs" render={() => <AppTabs />} />
 
-								{/* Root redirect */}
-								<Route exact path="/">
-									<Redirect to="/tabs/library" />
-								</Route>
-							</IonRouterOutlet>
-						</IonReactRouter>
-					</BookSyncProvider>
-				</BLEProvider>
-			</DatabaseProvider>
+									{/* Root redirect */}
+									<Route exact path="/">
+										<Redirect to="/tabs/library" />
+									</Route>
+								</IonRouterOutlet>
+							</IonReactRouter>
+						</BookSyncProvider>
+					</BLEProvider>
+				</DatabaseProvider>
+			</QueryClientProvider>
 		</IonApp>
 	);
 };

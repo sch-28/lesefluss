@@ -37,6 +37,7 @@
 		"@ionic/react-router": "^8.8.2",
 		"@rsvp/ble-config": "workspace:*",
 		"@tailwindcss/vite": "^4.2.2",
+		"@tanstack/react-query": "^5.95.2",
 		"crc-32": "^1.2.2",
 		"drizzle-orm": "^0.45.1",
 		"epubjs": "^0.3.93",
