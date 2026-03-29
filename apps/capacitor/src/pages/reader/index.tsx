@@ -56,7 +56,7 @@ const FONT_SIZE_DEFAULT = 17;
 function loadFontSize(): number {
 	const v = localStorage.getItem(FONT_SIZE_KEY);
 	const n = v ? Number.parseInt(v, 10) : Number.NaN;
-	return isNaN(n) ? FONT_SIZE_DEFAULT : Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, n));
+	return Number.isNaN(n) ? FONT_SIZE_DEFAULT : Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, n));
 }
 
 function saveFontSize(size: number): void {
