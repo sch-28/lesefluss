@@ -26,6 +26,7 @@ import { useBookSync } from "../../contexts/book-sync-context";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import type { Book } from "../../services/db/schema";
+import { log } from "../../utils/log";
 import BookCard from "./book-card";
 import TransferModal from "./transfer-modal";
 
@@ -166,12 +167,7 @@ const Library: React.FC = () => {
 			</IonHeader>
 			<IonContent>
 				{/* Import progress bar */}
-				{importing && (
-					<IonProgressBar
-						value={importProgress / 100}
-						type={importProgress === 0 ? "indeterminate" : "determinate"}
-					/>
-				)}
+				{importing && <IonProgressBar value={importProgress / 100} type={"determinate"} />}
 
 				{books.length === 0 ? (
 					/* ── Empty state ── */
