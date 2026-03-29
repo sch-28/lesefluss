@@ -90,6 +90,11 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// Whether the initial scroll-to-position has happened
 	const didInitialScrollRef = useRef(false);
 
+	// Suppresses the handleScrollEnd that fires after the programmatic
+	// scrollToIndex on first render — prevents the pixel-fraction heuristic
+	// from overwriting the precise saved position with a ~4-word-off estimate.
+	const suppressNextScrollEndRef = useRef(false);
+
 	// Track the last offset we set so we can flush on unmount.
 	// null = not yet loaded from DB, don't overwrite on unmount.
 	const lastOffsetRef = useRef<number | null>(null);
@@ -145,6 +150,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			}
 		}
 
+		// Suppress the handleScrollEnd that this programmatic scroll will trigger,
+		// so it doesn't overwrite the precise saved offset with a pixel estimate.
+		suppressNextScrollEndRef.current = true;
 		listRef.current.scrollToIndex(lo, { align: "start" });
 	}, [paragraphs, paragraphOffsets, book]);
 
@@ -167,6 +175,13 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	// ── Scroll end — compute highlight + save position ───────────────────
 	const handleScrollEnd = useCallback(() => {
+		// Skip the scroll-end fired by the programmatic scrollToIndex on mount.
+		// The DB already has the precise offset; re-estimating would drift ~4 words.
+		if (suppressNextScrollEndRef.current) {
+			suppressNextScrollEndRef.current = false;
+			return;
+		}
+
 		if (!listRef.current || paragraphOffsets.length === 0) return;
 
 		const list = listRef.current;
