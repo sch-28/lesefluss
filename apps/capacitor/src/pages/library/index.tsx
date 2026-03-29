@@ -26,7 +26,6 @@ import { useBookSync } from "../../contexts/book-sync-context";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import type { Book } from "../../services/db/schema";
-import { log } from "../../utils/log";
 import BookCard from "./book-card";
 import TransferModal from "./transfer-modal";
 

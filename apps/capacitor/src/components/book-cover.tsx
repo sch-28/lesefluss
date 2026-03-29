@@ -6,15 +6,14 @@
  */
 
 import type React from "react";
-import { useEffect, useState } from "react";
-import { queries } from "../services/db/queries";
+import { queryHooks } from "../services/db/hooks";
 import type { Book } from "../services/db/schema";
 
 interface Props {
 	book: Book;
 	/** "sm" = 3.5×5.25rem  |  "md" = 5.5×8.25rem  |  "full" = fills parent (use with a sized container) */
 	size?: "sm" | "md" | "full";
-	/** Optionally pass a pre-loaded cover string to skip the DB lookup. */
+	/** Optionally pass a pre-loaded cover string to skip the cache lookup. */
 	cover?: string | null;
 }
 
@@ -24,17 +23,10 @@ const DIMS: Record<"sm" | "md", React.CSSProperties> = {
 };
 
 const BookCover: React.FC<Props> = ({ book, size = "md", cover: coverProp }) => {
-	const [cover, setCover] = useState<string | null>(coverProp ?? null);
-
-	useEffect(() => {
-		if (coverProp !== undefined) {
-			setCover(coverProp ?? null);
-			return;
-		}
-		queries.getBookCovers().then((map) => {
-			setCover(map.get(book.id) ?? null);
-		});
-	}, [book.id, coverProp]);
+	// When no cover prop is passed, read from the useBooks() cache.
+	// The Library page already fetched this, so it's a zero-cost cache read.
+	const { data } = queryHooks.useBooks();
+	const cover = coverProp ?? data?.covers.get(book.id) ?? null;
 
 	const style = size === "full" ? undefined : DIMS[size];
 	const className = [
