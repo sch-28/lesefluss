@@ -63,8 +63,24 @@ src/
         use-books.ts        # useBooks, useBook, useBookContent, useImportBook, useDeleteBook
         use-settings.ts     # useSettings, useSaveSettings
         index.ts            # Barrel — exports `queryHooks` object + key factories
+  utils/
+    log.ts                  # Structured logger — use instead of console.* everywhere
 drizzle/                    # Hand-written SQL migrations
 ```
+
+## Logging (`src/utils/log.ts`)
+
+All logging in the app must go through `log` — never use `console.*` directly.
+
+```ts
+import { log } from "../utils/log";
+
+log("ble", "connected:", deviceId);           // → [RSVP][ble] connected: <id>
+log.warn("booksync", "position mismatch");    // → [RSVP][booksync] position mismatch
+log.error("db", "migration failed:", err);    // → [RSVP][db] migration failed: ...
+```
+
+The `[RSVP]` prefix makes it trivial to grep logcat output. The `pnpm android` script already filters logcat to `Capacitor/Console` — all `log()` output lands there.
 
 ## Database (`src/db/schema.ts`)
 

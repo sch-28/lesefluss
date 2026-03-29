@@ -20,6 +20,7 @@ import {
 } from "react";
 import { ble } from "../services/ble";
 import { queries } from "../services/db/queries";
+import { log } from "../utils/log";
 import { useBLE } from "./ble-context";
 
 interface BookSyncContextType {
@@ -118,8 +119,9 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 		// If they don't match, the device is out of sync.
 		if (currentBookId != null) {
 			if (!deviceBookHash || deviceBookHash !== currentBookId) {
-				console.warn(
-					`[booksync] book mismatch — device has "${deviceBookHash}", app expects "${currentBookId}". Clearing isActive.`,
+				log.warn(
+					"booksync",
+					`book mismatch — device has "${deviceBookHash}", app expects "${currentBookId}". Clearing isActive.`,
 				);
 				await queries.updateBook(currentBookId, { isActive: false });
 				updateActiveBookId(null);
@@ -134,7 +136,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 			const allBooks = await queries.getBooks();
 			const match = allBooks.find((b) => b.id === deviceBookHash);
 			if (match) {
-				console.log(`[booksync] found matching book in DB (id=${match.id}), restoring isActive`);
+				log("booksync", `found matching book in DB (id=${match.id}), restoring isActive`);
 				await queries.setActiveBook(match.id);
 				updateActiveBookId(match.id);
 				// Fall through to position sync with the restored book
@@ -147,7 +149,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 		// ── Step 3: Position sync ──
 		const result = await ble.readPosition();
 		if (!result.success || result.data == null) {
-			console.warn("[booksync] readPosition failed:", result.error);
+			log.warn("booksync", "readPosition failed:", result.error);
 			return;
 		}
 
@@ -168,11 +170,11 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				// App is ahead — push its position to the device
 				winner = appPos;
 				await ble.writePosition(appPos);
-				console.log(`[booksync] app ahead (${appPos} > ${devicePos}), pushed to device`);
+				log("booksync", `app ahead (${appPos} > ${devicePos}), pushed to device`);
 			} else if (devicePos > appPos) {
 				// Device is ahead — persist into DB
 				await queries.updateBook(confirmedBookId, { position: devicePos, lastRead: Date.now() });
-				console.log(`[booksync] device ahead (${devicePos} > ${appPos}), saved to DB`);
+				log("booksync", `device ahead (${devicePos} > ${appPos}), saved to DB`);
 			}
 			// If equal, nothing to do
 		}
@@ -185,7 +187,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 			if (!isConnected) return;
 			const result = await ble.writePosition(position);
 			if (!result.success) {
-				console.warn("[booksync] writePosition failed:", result.error);
+				log.warn("booksync", "writePosition failed:", result.error);
 			} else {
 				setDevicePosition(position);
 			}
@@ -246,7 +248,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : "Transfer failed";
 				setError(msg);
-				console.error("[booksync] transferBook error:", err);
+				log.error("booksync", "transferBook error:", err);
 			} finally {
 				setIsTransferring(false);
 				setTransferProgress(null);

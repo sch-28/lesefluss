@@ -13,7 +13,7 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"sync": "pnpm run build && cap sync",
-		"android": "pnpm run sync && cap run android --target 39131FDJG00AEF && adb logcat -s Capacitor/Console:I Capacitor/Plugin:V Capacitor:V *:S",
+		"android": "pnpm run sync && cap run android --target 39131FDJG00AEF && adb logcat Capacitor/Console:I *:S | grep --line-buffered '\\[RSVP\\]' | sed -u 's/.* E Capacitor\\/Console:.*Msg: /\\x1b[31m/;s/.* W Capacitor\\/Console:.*Msg: /\\x1b[33m/;s/.*Msg: //;s/$/\\x1b[0m/'",
 		"studio": "cap open android",
 		"check": "tsc --noEmit",
 		"ionic:serve": "vite --host 0.0.0.0 --port 3000",

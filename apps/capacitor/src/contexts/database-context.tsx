@@ -2,6 +2,7 @@ import { IonContent, IonPage, IonSpinner } from "@ionic/react";
 import type React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import { initDb } from "../services/db";
+import { log } from "../utils/log";
 
 interface DatabaseContextType {
 	isReady: boolean;
@@ -18,7 +19,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		initDb()
 			.then(() => setIsReady(true))
 			.catch((err) => {
-				console.error("Database initialisation failed:", err);
+				log.error("db", "Database initialisation failed:", err);
 				setError(err as Error);
 			});
 	}, []);

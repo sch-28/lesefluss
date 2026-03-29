@@ -12,6 +12,7 @@ import {
 import { BLEConnectionState, ble, bleClient, type ScannedDevice } from "../services/ble";
 import { queries } from "../services/db/queries";
 import type { Settings as RSVPSettings } from "../services/db/schema";
+import { log } from "../utils/log";
 
 interface BLEContextType {
 	// Connection state
@@ -140,7 +141,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 					lastConnected: Date.now(),
 				});
 			} catch (err) {
-				console.error("Failed to save device to database:", err);
+				log.error("ble", "Failed to save device to database:", err);
 			}
 
 			// Notify any registered post-connect hook (e.g. BookSyncContext)
@@ -211,7 +212,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 			};
 			return mergedSettings;
 		} catch (err) {
-			console.error("Failed to merge settings:", err);
+			log.error("ble", "Failed to merge settings:", err);
 			setError("Failed to process settings from device");
 			return null;
 		}
@@ -237,7 +238,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 
 	useEffect(() => {
 		if (scannedDevices.length === 1 && !isConnected) {
-			console.log("[ble] found 1 device, auto-connecting...");
+			log("ble", "found 1 device, auto-connecting...");
 			handleDeviceSelect(scannedDevices[0].device.deviceId);
 		}
 	}, [scannedDevices.length, isConnected]);

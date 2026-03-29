@@ -5,6 +5,7 @@
 
 import { BleClient, type BleDevice, type ScanResult } from "@capacitor-community/bluetooth-le";
 import { DEVICE_NAME } from "@rsvp/ble-config";
+import { log } from "../../utils/log";
 import { BLE_CONNECTION_TIMEOUT_MS, BLEConnectionState, type BLEResult } from "./types";
 
 export interface ScannedDevice {
@@ -97,7 +98,7 @@ class BLEClient {
 			this._connectedDevice = deviceInfo?.device ?? { deviceId };
 			this._connectionState = BLEConnectionState.CONNECTED;
 
-			console.log("[ble] connected:", deviceId);
+			log("ble", "connected:", deviceId);
 			return { success: true, data: this._connectedDevice };
 		} catch (error) {
 			this._connectionState = BLEConnectionState.DISCONNECTED;
@@ -127,7 +128,7 @@ class BLEClient {
 	}
 
 	private _onDisconnect(): void {
-		console.log("[ble] disconnected");
+		log("ble", "disconnected");
 		this._connectedDevice = null;
 		this._connectionState = BLEConnectionState.DISCONNECTED;
 	}

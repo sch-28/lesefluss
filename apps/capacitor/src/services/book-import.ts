@@ -2,6 +2,7 @@ import { Directory, Filesystem } from "@capacitor/filesystem";
 import { FilePicker } from "@capawesome/capacitor-file-picker";
 import type { Book as EpubBook } from "epubjs";
 import ePub from "epubjs";
+import { log } from "../utils/log";
 import { queries } from "./db/queries";
 import type { Book, Chapter } from "./db/schema";
 
@@ -135,7 +136,7 @@ export async function removeBook(book: Pick<Book, "id" | "filePath">): Promise<v
 			});
 		} catch (err) {
 			// File may already be gone — log but don't fail
-			console.warn("Failed to delete book file:", err);
+			log.warn("book-import", "Failed to delete book file:", err);
 		}
 	}
 
@@ -254,11 +255,12 @@ async function parseEpub(
 			}
 			section.unload();
 		} catch (err) {
-			console.warn(`EPUB: failed to load spine item ${i}`, err);
+			log.warn("book-import", `EPUB: failed to load spine item ${i}`, err);
 		}
 
 		if (spineLength > 0) {
-			onProgress?.(Math.round(((i + 1) / spineLength) * 100));
+			const value = Math.round(((i + 1) / spineLength) * 100);
+			onProgress?.(value);
 		}
 	}
 
@@ -440,7 +442,7 @@ async function extractCover(book: EpubBook): Promise<string | null> {
 			reader.readAsDataURL(blob);
 		});
 	} catch (err) {
-		console.warn("EPUB: failed to extract cover image:", err);
+		log.warn("book-import", "EPUB: failed to extract cover image:", err);
 		return null;
 	}
 }

@@ -6,6 +6,7 @@ import {
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 // Vite handles JSON imports natively
 import journal from "../../../drizzle/meta/_journal.json";
+import { log } from "../../utils/log";
 import * as schema from "./schema";
 
 // import.meta.glob with eager + raw gives us { "./0000_slippery_rhino.sql": "CREATE TABLE..." }
@@ -75,7 +76,7 @@ async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 					firstTag,
 					Date.now(),
 				]);
-				console.log(`Baselined existing DB at migration: ${firstTag}`);
+				log("db", `Baselined existing DB at migration: ${firstTag}`);
 			}
 		}
 	}
@@ -136,7 +137,7 @@ async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 			]);
 
 			await conn.execute("COMMIT");
-			console.log(`Applied migration: ${entry.tag}`);
+			log("db", `Applied migration: ${entry.tag}`);
 		} catch (err) {
 			await conn.execute("ROLLBACK");
 			throw new Error(`Migration ${entry.tag} failed and was rolled back: ${err}`);

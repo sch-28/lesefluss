@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { DEFAULT_SETTINGS } from "../../../constants/settings";
+import { DEFAULT_SETTINGS } from "../../../utils/settings";
 import { db } from "../index";
 import { type Settings, settings } from "../schema";
 

@@ -27,12 +27,13 @@ import { bluetooth, closeCircle, cloudDownload, cloudUpload } from "ionicons/ico
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "../components/toast";
-import { SETTING_CONSTRAINTS } from "../constants/settings";
 import { useBLE } from "../contexts/ble-context";
 import { ble } from "../services/ble";
 import type { StorageInfo } from "../services/ble/characteristics/storage";
 import { queryHooks } from "../services/db/hooks";
 import type { Settings as RSVPSettings } from "../services/db/schema";
+import { log } from "../utils/log";
+import { SETTING_CONSTRAINTS } from "../utils/settings";
 
 /** Format a byte count as KB or MB, rounded to 1 decimal place. */
 function formatBytes(bytes: number): string {
@@ -123,7 +124,7 @@ const Settings: React.FC = () => {
 			await saveMutation.mutateAsync(settingsToSave);
 			showToast("Settings saved");
 		} catch (error) {
-			console.error("Failed to save settings:", error);
+			log.error("settings", "Failed to save settings:", error);
 			showToast("Failed to save settings", "danger");
 		}
 	};
@@ -152,7 +153,7 @@ const Settings: React.FC = () => {
 				showToast(bleError || "Failed to sync settings to device", "danger");
 			}
 		} catch (error) {
-			console.error("Failed to sync to device:", error);
+			log.error("settings", "Failed to sync to device:", error);
 			showToast("Failed to sync settings to device", "danger");
 		} finally {
 			setSyncing(false);
@@ -184,7 +185,7 @@ const Settings: React.FC = () => {
 				showToast(bleError || "Failed to load settings from device", "danger");
 			}
 		} catch (error) {
-			console.error("Failed to sync from device:", error);
+			log.error("settings", "Failed to sync from device:", error);
 			showToast("Failed to load settings from device", "danger");
 		} finally {
 			setSyncing(false);
