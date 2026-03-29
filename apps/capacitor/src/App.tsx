@@ -9,6 +9,7 @@ import {
 	IonTabButton,
 	IonTabs,
 	setupIonicReact,
+	useIonRouter,
 } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -99,7 +100,7 @@ const AppTabs: React.FC = () => {
 					<IonIcon icon={settings} />
 					<IonLabel>Settings</IonLabel>
 				</IonTabButton>
-				<IonTabButton tab="ble-badge" href="/tabs/settings" className={cssClass}>
+				<IonTabButton tab="ble-badge" disabled className={cssClass}>
 					<IonIcon icon={bluetooth} />
 					<IonLabel>{label}</IonLabel>
 				</IonTabButton>
@@ -108,24 +109,44 @@ const AppTabs: React.FC = () => {
 	);
 };
 
+/**
+ * Registers exit-app behaviour on the hardware back button via Ionic's
+ * ionBackButton event system.  Ionic already handles normal back-navigation
+ * at priority 0 — we only need to handle the "nothing left to pop" case
+ * at a lower priority (-1) to exit the app.
+ *
+ * IMPORTANT: Do NOT use CapacitorApp.addListener("backButton") directly —
+ * that fires at the Capacitor level *before* Ionic's event system and
+ * causes a double-pop (swipe back + history.back() = two pops).
+ */
+const HardwareBackButtonHandler: React.FC = () => {
+	const ionRouter = useIonRouter();
+
+	useEffect(() => {
+		const handler = (
+			event: CustomEvent<{
+				register: (priority: number, handler: (processNextHandler: () => void) => void) => void;
+			}>,
+		) => {
+			event.detail.register(-1, () => {
+				if (!ionRouter.canGoBack()) {
+					CapacitorApp.exitApp();
+				}
+			});
+		};
+
+		document.addEventListener("ionBackButton", handler as EventListener);
+		return () => {
+			document.removeEventListener("ionBackButton", handler as EventListener);
+		};
+	}, [ionRouter]);
+
+	return null;
+};
+
 const App: React.FC = () => {
 	useEffect(() => {
 		SplashScreen.hide();
-
-		// Android hardware back button: go back if possible, otherwise exit.
-		// This runs at the native Capacitor level — without it the back button
-		// bypasses Ionic's router and immediately closes the Activity.
-		CapacitorApp.addListener("backButton", ({ canGoBack }) => {
-			if (canGoBack) {
-				window.history.back();
-			} else {
-				CapacitorApp.exitApp();
-			}
-		});
-
-		return () => {
-			CapacitorApp.removeAllListeners();
-		};
 	}, []);
 
 	return (
@@ -135,6 +156,7 @@ const App: React.FC = () => {
 					<BLEProvider>
 						<BookSyncProvider>
 							<IonReactRouter>
+								<HardwareBackButtonHandler />
 								<IonRouterOutlet>
 									{/* All routes under /tabs — reader included so it shares the nav stack */}
 									<Route path="/tabs" render={() => <AppTabs />} />
