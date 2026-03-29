@@ -17,13 +17,14 @@ import {
 	useIonRouter,
 	useIonViewWillEnter,
 } from "@ionic/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { add, bookOutline, refreshOutline } from "ionicons/icons";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
-import { importBook, removeBook } from "../../services/book-import";
-import { queries } from "../../services/db/queries";
+import { queryHooks } from "../../services/db/hooks";
+import { bookKeys } from "../../services/db/hooks/query-keys";
 import type { Book } from "../../services/db/schema";
 import BookCard from "./book-card";
 import TransferModal from "./transfer-modal";
@@ -46,14 +47,20 @@ const Library: React.FC = () => {
 		clearError,
 	} = useBookSync();
 	const router = useIonRouter();
+	const qc = useQueryClient();
 
-	const [books, setBooks] = useState<Book[]>([]);
-	const [covers, setCovers] = useState<Map<string, string>>(new Map());
-	const [loading, setLoading] = useState(true);
+	// ── Data queries ─────────────────────────────────────────────────────
+	const { data, isPending } = queryHooks.useBooks();
+	const books = data?.books ?? [];
+	const covers = data?.covers ?? new Map<string, string>();
+
+	// ── Mutations ────────────────────────────────────────────────────────
+	const importMutation = queryHooks.useImportBook();
+	const deleteMutation = queryHooks.useDeleteBook();
+
+	// ── Local UI state ───────────────────────────────────────────────────
 	const [syncing, setSyncing] = useState(false);
-	const [importing, setImporting] = useState(false);
 	const [importProgress, setImportProgress] = useState(0);
-	const [importError, setImportError] = useState<string | null>(null);
 
 	// Action sheet state
 	const [selectedBook, setSelectedBook] = useState<Book | null>(null);
@@ -64,58 +71,31 @@ const Library: React.FC = () => {
 	// Delete confirmation state
 	const [pendingDeleteBook, setPendingDeleteBook] = useState<Book | null>(null);
 
-	const loadBooks = useCallback(async () => {
-		try {
-			const [rows, coverMap] = await Promise.all([queries.getBooks(), queries.getBookCovers()]);
-			setBooks(rows);
-			setCovers(coverMap);
-		} catch (err) {
-			console.error("Failed to load books:", err);
-		} finally {
-			setLoading(false);
-		}
-	}, []);
-
-	useEffect(() => {
-		loadBooks();
-	}, [loadBooks]);
-
 	// Reload when navigating back (e.g. from reader) so progress bars update
 	useIonViewWillEnter(() => {
-		loadBooks();
+		qc.invalidateQueries({ queryKey: bookKeys.all });
 	});
 
 	// Reload list after a transfer completes so "On device" badge updates
 	useEffect(() => {
 		if (!isTransferring) {
-			loadBooks();
+			qc.invalidateQueries({ queryKey: bookKeys.all });
 		}
-	}, [isTransferring, loadBooks]);
+	}, [isTransferring, qc]);
 
-	const handleImport = async () => {
-		setImporting(true);
+	const handleImport = () => {
 		setImportProgress(0);
-		setImportError(null);
-
-		try {
-			await importBook((pct: number) => setImportProgress(pct));
-			await loadBooks();
-		} catch (err: unknown) {
-			if (err instanceof Error && err.message !== "CANCELLED") {
-				console.error("Import failed:", err);
-				setImportError(err.message || "Import failed");
-			}
-		} finally {
-			setImporting(false);
-			setImportProgress(0);
-		}
+		importMutation.mutate(
+			{ onProgress: (pct: number) => setImportProgress(pct) },
+			{ onSettled: () => setImportProgress(0) },
+		);
 	};
 
 	const handleRefresh = async () => {
 		setSyncing(true);
 		try {
 			await syncPosition();
-			await loadBooks();
+			qc.invalidateQueries({ queryKey: bookKeys.all });
 		} finally {
 			setSyncing(false);
 		}
@@ -131,25 +111,28 @@ const Library: React.FC = () => {
 		setPendingDeleteBook(book);
 	};
 
-	const handleDeleteConfirm = async () => {
+	const handleDeleteConfirm = () => {
 		if (!pendingDeleteBook) return;
 		const book = pendingDeleteBook;
 		setPendingDeleteBook(null);
-		try {
-			await removeBook(book);
-			setBooks((prev) => prev.filter((b) => b.id !== book.id));
-		} catch (err) {
-			console.error("Failed to delete book:", err);
-		}
+		deleteMutation.mutate(book);
 	};
 
 	const handleTransferDismiss = () => {
 		setPendingTransferBook(null);
-		// Reload so the "On device" badge updates immediately after the modal closes
-		loadBooks();
+		// Invalidate so the "On device" badge updates immediately after the modal closes
+		qc.invalidateQueries({ queryKey: bookKeys.all });
 	};
 
-	if (loading) {
+	// ── Import error: ignore "CANCELLED" (user dismissed the file picker) ──
+	const importError =
+		importMutation.error instanceof Error && importMutation.error.message !== "CANCELLED"
+			? importMutation.error.message
+			: null;
+
+	const importing = importMutation.isPending;
+
+	if (isPending) {
 		return (
 			<IonPage>
 				<IonContent className="ion-padding ion-text-center">
@@ -275,7 +258,7 @@ const Library: React.FC = () => {
 				{/* Import error alert */}
 				<IonAlert
 					isOpen={!!importError}
-					onDidDismiss={() => setImportError(null)}
+					onDidDismiss={() => importMutation.reset()}
 					header="Import Failed"
 					message={importError ?? undefined}
 					buttons={[{ text: "OK", role: "cancel" }]}

@@ -28,6 +28,7 @@ import {
 	IonTitle,
 	IonToolbar,
 } from "@ionic/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { addOutline, removeOutline } from "ionicons/icons";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -35,8 +36,9 @@ import type { RouteComponentProps } from "react-router-dom";
 import type { CacheSnapshot, VListHandle } from "virtua";
 import { VList } from "virtua";
 import { useBookSync } from "../../contexts/book-sync-context";
+import { queryHooks } from "../../services/db/hooks";
+import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
-import type { Book } from "../../services/db/schema";
 import Paragraph, { getHeadingLevel, getWordOffsets, utf8ByteLength } from "./paragraph";
 
 // ─── Scroll cache ────────────────────────────────────────────────────────────
@@ -70,10 +72,14 @@ interface BookReaderProps extends RouteComponentProps<{ id: string }> {}
 const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const id = match.params.id;
 	const { pushPosition } = useBookSync();
+	const qc = useQueryClient();
 
-	const [book, setBook] = useState<Book | null>(null);
-	const [content, setContent] = useState<string | null>(null);
-	const [loading, setLoading] = useState(true);
+	// ── Data queries ──────────────────────────────────────────────────────
+	const { data: book, isPending: bookPending } = queryHooks.useBook(id);
+	const { data: contentRow, isPending: contentPending } = queryHooks.useBookContent(id);
+	const content = contentRow?.content ?? null;
+	const loading = bookPending || contentPending;
+
 	const [fontSize, setFontSize] = useState<number>(loadFontSize);
 
 	// The byte offset we consider "current" — used for word highlight + saves
@@ -88,40 +94,13 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// null = not yet loaded from DB, don't overwrite on unmount.
 	const lastOffsetRef = useRef<number | null>(null);
 
-	// ── Load book metadata + content in parallel ───────────────────────────
+	// ── Seed activeOffset + lastOffsetRef once book loads ─────────────────
 	useEffect(() => {
-		let cancelled = false;
-
-		async function load() {
-			try {
-				const [meta, contentRow] = await Promise.all([
-					queries.getBook(id),
-					queries.getBookContent(id),
-				]);
-
-				if (cancelled) return;
-
-				if (!meta || !contentRow?.content) {
-					setLoading(false);
-					return;
-				}
-
-				setBook(meta);
-				setContent(contentRow.content);
-				setActiveOffset(meta.position);
-				lastOffsetRef.current = meta.position;
-			} catch (_err) {
-				// loading stays true — "not found" state will be shown
-			} finally {
-				if (!cancelled) setLoading(false);
-			}
+		if (book) {
+			setActiveOffset(book.position);
+			lastOffsetRef.current = book.position;
 		}
-
-		load();
-		return () => {
-			cancelled = true;
-		};
-	}, [id]);
+	}, [book]);
 
 	// ── Build paragraph index ──────────────────────────────────────────────
 	// Computed once per content load. Two cheap structures:
@@ -147,7 +126,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// ── Initial scroll to saved position ──────────────────────────────────
 	useEffect(() => {
 		if (didInitialScrollRef.current) return;
-		if (!listRef.current || paragraphs.length === 0 || book === null) return;
+		if (!listRef.current || paragraphs.length === 0 || !book) return;
 
 		didInitialScrollRef.current = true;
 
@@ -170,6 +149,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	}, [paragraphs, paragraphOffsets, book]);
 
 	// ── Save position to DB + BLE ─────────────────────────────────────────
+	// Fire-and-forget writes — no mutation wrapper needed for high-frequency saves.
 	const savePosition = useCallback(
 		async (offset: number) => {
 			await queries.updateBook(id, { position: offset, lastRead: Date.now() });
@@ -192,7 +172,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		const list = listRef.current;
 		// Nudge past the top edge by one line-height so the highlighted word
 		// is comfortably visible, not in the clipped-off portion above the fold.
-		const visibleTop = list.scrollOffset + fontSize * 1.75;
+		const visibleTop = list.scrollOffset + fontSize * 2;
 		let paraIdx = list.findItemIndex(visibleTop);
 
 		// Skip headings — they have no tappable words
@@ -258,8 +238,11 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			if (offset !== null) {
 				queries.updateBook(id, { position: offset, lastRead: Date.now() });
 			}
+			// Invalidate the books list so the library grid picks up the new position
+			// when the user navigates back.
+			qc.invalidateQueries({ queryKey: bookKeys.all });
 		};
-	}, [id]);
+	}, [id, qc]);
 
 	// ─── Render ─────────────────────────────────────────────────────────────
 
@@ -336,7 +319,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				>
 					{paragraphs.map((text, i) => (
 						<Paragraph
-							key={i}
+							key={i.toString()}
 							text={text}
 							startOffset={paragraphOffsets[i]}
 							activeOffset={activeOffset}

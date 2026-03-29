@@ -31,7 +31,7 @@ import { SETTING_CONSTRAINTS } from "../constants/settings";
 import { useBLE } from "../contexts/ble-context";
 import { ble } from "../services/ble";
 import type { StorageInfo } from "../services/ble/characteristics/storage";
-import { queries } from "../services/db/queries";
+import { queryHooks } from "../services/db/hooks";
 import type { Settings as RSVPSettings } from "../services/db/schema";
 
 /** Format a byte count as KB or MB, rounded to 1 decimal place. */
@@ -55,7 +55,23 @@ const Settings: React.FC = () => {
 	} = useBLE();
 
 	const { showToast } = useToast();
-	const [loading, setLoading] = useState(true);
+
+	// ── Data query ───────────────────────────────────────────────────────
+	const { data: dbSettings, isPending } = queryHooks.useSettings();
+	const saveMutation = queryHooks.useSaveSettings();
+
+	// ── Local draft state ────────────────────────────────────────────────
+	// The user edits a local draft; saving persists it to the DB.
+	const [draft, setDraft] = useState<RSVPSettings | null>(null);
+
+	// Seed draft from DB once the query resolves
+	useEffect(() => {
+		if (dbSettings && !draft) {
+			setDraft(dbSettings);
+		}
+	}, [dbSettings, draft]);
+
+	// ── BLE state ────────────────────────────────────────────────────────
 	const [syncing, setSyncing] = useState(false);
 	const [showDisconnectAlert, setShowDisconnectAlert] = useState(false);
 	const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
@@ -95,35 +111,16 @@ const Settings: React.FC = () => {
 		showToast("Disconnected from device");
 	};
 
-	const [settings, setSettings] = useState<RSVPSettings | null>(null);
-
-	// Load settings from database on mount
-	useEffect(() => {
-		loadSettings();
-	}, []);
-
-	const loadSettings = async () => {
-		try {
-			const dbSettings = await queries.getSettings();
-			setSettings(dbSettings);
-			setLoading(false);
-		} catch (error) {
-			console.error("Failed to load settings:", error);
-			showToast("Failed to load settings", "danger");
-			setLoading(false);
-		}
-	};
-
 	const updateSetting = <K extends keyof RSVPSettings>(key: K, value: RSVPSettings[K]) => {
-		if (!settings) return;
-		setSettings((prev) => ({ ...prev!, [key]: value }));
+		if (!draft) return;
+		setDraft((prev) => ({ ...prev!, [key]: value }));
 	};
 
 	const handleSave = async () => {
-		if (!settings) return;
+		if (!draft) return;
 		try {
-			const { id, updatedAt, ...settingsToSave } = settings;
-			await queries.saveSettings(settingsToSave);
+			const { id, updatedAt, ...settingsToSave } = draft;
+			await saveMutation.mutateAsync(settingsToSave);
 			showToast("Settings saved");
 		} catch (error) {
 			console.error("Failed to save settings:", error);
@@ -137,7 +134,7 @@ const Settings: React.FC = () => {
 			return;
 		}
 
-		if (!settings) return;
+		if (!draft) return;
 
 		try {
 			setSyncing(true);
@@ -146,7 +143,7 @@ const Settings: React.FC = () => {
 			await handleSave();
 
 			// Sync to device
-			const { id, updatedAt, ...settingsToSync } = settings;
+			const { id, updatedAt, ...settingsToSync } = draft;
 			const success = await syncToDevice(settingsToSync);
 
 			if (success) {
@@ -175,12 +172,12 @@ const Settings: React.FC = () => {
 			const deviceSettings = await syncFromDevice();
 
 			if (deviceSettings) {
-				// Update local state
-				setSettings(deviceSettings);
+				// Update local draft
+				setDraft(deviceSettings);
 
 				// Save to database
 				const { id, updatedAt, ...settingsToSave } = deviceSettings;
-				await queries.saveSettings(settingsToSave);
+				await saveMutation.mutateAsync(settingsToSave);
 
 				showToast("Settings loaded from device successfully");
 			} else {
@@ -194,7 +191,10 @@ const Settings: React.FC = () => {
 		}
 	};
 
-	if (loading || !settings) {
+	// Use `draft` as the render source — the user edits it locally before saving.
+	const settings = draft;
+
+	if (isPending || !settings) {
 		return (
 			<IonPage>
 				<IonContent className="ion-padding ion-text-center">
