@@ -15,7 +15,7 @@ try:
         import sys
         sys.path.append('/src')
         sys.path.append('src')
-        from display_manager import DisplayManager
+        from hw.display import DisplayManager
         display = DisplayManager()
         display.show_centered_message("DEV MODE")
     except:

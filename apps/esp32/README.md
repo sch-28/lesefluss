@@ -50,18 +50,44 @@ rsvp/
 
 ## Setup
 
-First time (flashes MicroPython and uploads everything):
+### Serial port permissions (Linux)
+
+If you get `Permission denied: '/dev/ttyUSB0'`, add your user to the serial port group and re-login:
+
+```bash
+# Arch / Manjaro
+sudo usermod -a -G uucp $USER
+
+# Ubuntu / Debian
+sudo usermod -a -G dialout $USER
+```
+
+Then **log out and back in** (or `newgrp uucp` / `newgrp dialout` in the current shell) for it to take effect.
+
+### First-time flash
+
+Erases ESP32 flash, installs MicroPython firmware, creates a `.venv`, installs toolchain (`mpy-cross`, `mpremote`), and uploads everything:
+
 ```bash
 ./scripts/setup.sh
 ```
 
-Upload code changes only (uses git diff to only upload changed files):
+### Upload after code changes
+
+Compiles `src/**/*.py` to `.mpy` bytecode and pushes the full tree to the device:
+
 ```bash
-./scripts/upload.sh          # Upload only changed files
-./scripts/upload.sh no all   # Force upload all files
+./scripts/upload.sh
 ```
 
-Test without rebooting:
+To also re-upload the display drivers (only needed after a firmware reflash):
+
+```bash
+./scripts/upload.sh drivers
+```
+
+### Test without rebooting
+
 ```bash
 ./scripts/run.sh
 ```

@@ -5,6 +5,8 @@ DISPLAY_WIDTH = 240
 DISPLAY_HEIGHT = 320
 DISPLAY_ROTATION = 3
 DISPLAY_BAUDRATE = 40000000
+DISPLAY_PHYSICAL_HEIGHT = 170  # Visible screen height in pixels
+DISPLAY_Y_OFFSET = 35          # Rows the panel is shifted down within the driver canvas
 
 # Pin configuration
 PIN_SCK = 18
@@ -17,7 +19,8 @@ PIN_BOOT_BUTTON = 0
 
 # RSVP settings
 WPM = 350  # Words per minute
-AUTO_SHUTDOWN_TIMEOUT = 30000  # milliseconds (30 seconds)
+AUTO_SHUTDOWN_TIMEOUT = 60000   # ms until display turns off (60 s)
+DEEP_SLEEP_TIMEOUT    = 120000  # ms until deep sleep after last activity (120 s)
 
 # Punctuation delays (multiplier of base word delay)
 # e.g., 1.5 means pause 50% longer than normal word

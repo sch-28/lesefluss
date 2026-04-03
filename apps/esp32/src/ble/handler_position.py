@@ -26,6 +26,14 @@ class PositionHandler:
         """
         self.ble = ble
         self.handle = handle
+        self._updated = False
+
+    def check_updated(self):
+        """Return True once after a position write was received, then reset."""
+        if self._updated:
+            self._updated = False
+            return True
+        return False
 
     # ------------------------------------------------------------------
     # Read path
@@ -59,6 +67,7 @@ class PositionHandler:
             data = json.loads(raw.decode("utf-8"))
             pos = int(data.get("position", 0))
             self._write_position(pos)
+            self._updated = True
             print(f"[position] write → {pos}")
         except Exception as e:
             import sys

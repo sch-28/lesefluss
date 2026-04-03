@@ -46,16 +46,18 @@ class SettingsHandler:
             pass
 
         payload = {
-            "wpm":          self.config.WPM,
-            "delay_comma":  self.config.DELAY_COMMA,
-            "delay_period": self.config.DELAY_PERIOD,
-            "accel_start":  self.config.ACCEL_START,
-            "accel_rate":   self.config.ACCEL_RATE,
-            "x_offset":     self.config.X_OFFSET,
-            "word_offset":  self.config.WORD_OFFSET,
-            "inverse":      self.config.INVERSE,
-            "ble_on":       self.config.BLE_ON,
-            "dev_mode":     dev_mode,
+            "wpm":                  self.config.WPM,
+            "delay_comma":          self.config.DELAY_COMMA,
+            "delay_period":         self.config.DELAY_PERIOD,
+            "accel_start":          self.config.ACCEL_START,
+            "accel_rate":           self.config.ACCEL_RATE,
+            "x_offset":             self.config.X_OFFSET,
+            "word_offset":          self.config.WORD_OFFSET,
+            "inverse":              self.config.INVERSE,
+            "ble_on":               self.config.BLE_ON,
+            "dev_mode":             dev_mode,
+            "display_off_timeout":  self.config.AUTO_SHUTDOWN_TIMEOUT // 1000,
+            "deep_sleep_timeout":   self.config.DEEP_SLEEP_TIMEOUT // 1000,
         }
         return json.dumps(payload).encode("utf-8")
 
@@ -78,15 +80,17 @@ class SettingsHandler:
             data = json.loads(raw_bytes.decode("utf-8"))
             print(f"[settings] parsed: {data}")
 
-            self.config.WPM         = data.get("wpm",          self.config.WPM)
-            self.config.DELAY_COMMA = data.get("delay_comma",  self.config.DELAY_COMMA)
-            self.config.DELAY_PERIOD= data.get("delay_period", self.config.DELAY_PERIOD)
-            self.config.ACCEL_START = data.get("accel_start",  self.config.ACCEL_START)
-            self.config.ACCEL_RATE  = data.get("accel_rate",   self.config.ACCEL_RATE)
-            self.config.X_OFFSET    = data.get("x_offset",     self.config.X_OFFSET)
-            self.config.WORD_OFFSET = data.get("word_offset",  self.config.WORD_OFFSET)
-            self.config.INVERSE     = data.get("inverse",      self.config.INVERSE)
-            self.config.BLE_ON      = data.get("ble_on",       self.config.BLE_ON)
+            self.config.WPM               = data.get("wpm",                  self.config.WPM)
+            self.config.DELAY_COMMA       = data.get("delay_comma",          self.config.DELAY_COMMA)
+            self.config.DELAY_PERIOD      = data.get("delay_period",         self.config.DELAY_PERIOD)
+            self.config.ACCEL_START       = data.get("accel_start",          self.config.ACCEL_START)
+            self.config.ACCEL_RATE        = data.get("accel_rate",           self.config.ACCEL_RATE)
+            self.config.X_OFFSET          = data.get("x_offset",             self.config.X_OFFSET)
+            self.config.WORD_OFFSET       = data.get("word_offset",          self.config.WORD_OFFSET)
+            self.config.INVERSE           = data.get("inverse",              self.config.INVERSE)
+            self.config.BLE_ON            = data.get("ble_on",               self.config.BLE_ON)
+            self.config.AUTO_SHUTDOWN_TIMEOUT = data.get("display_off_timeout", self.config.AUTO_SHUTDOWN_TIMEOUT // 1000) * 1000
+            self.config.DEEP_SLEEP_TIMEOUT    = data.get("deep_sleep_timeout",  self.config.DEEP_SLEEP_TIMEOUT // 1000) * 1000
 
             # dev_mode is a filesystem flag, not a config key
             self._set_devmode(data.get("dev_mode", False))
@@ -126,6 +130,8 @@ class SettingsHandler:
             f"WORD_OFFSET = {self.config.WORD_OFFSET}\n"
             f"INVERSE = {self.config.INVERSE}\n"
             f"BLE_ON = {self.config.BLE_ON}\n"
+            f"AUTO_SHUTDOWN_TIMEOUT = {self.config.AUTO_SHUTDOWN_TIMEOUT}\n"
+            f"DEEP_SLEEP_TIMEOUT = {self.config.DEEP_SLEEP_TIMEOUT}\n"
         )
         try:
             with open("config_override.py", "w") as f:

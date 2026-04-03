@@ -30,6 +30,7 @@ _BOOK_FILE  = "book.txt"
 _TEMP_FILE  = "book.tmp"
 _POS_FILE   = "position.txt"
 _HASH_FILE  = "book.hash"
+_TITLE_FILE = "book.title"
 
 
 class FileTransferHandler:
@@ -51,6 +52,10 @@ class FileTransferHandler:
     # ------------------------------------------------------------------
     # Public flag (polled by main loop)
     # ------------------------------------------------------------------
+
+    def get_progress(self):
+        """Return (in_progress, bytes_received, expected_size) for display updates."""
+        return (self.in_progress, self.bytes_received, self.expected_size)
 
     def check_completed(self):
         """Returns True once after a successful transfer."""
@@ -88,10 +93,12 @@ class FileTransferHandler:
     # ------------------------------------------------------------------
 
     def _handle_start(self, msg):
-        # START:<total_bytes>:<filename>
+        # START:<total_bytes>:<filename>[:<title>]
         try:
-            _, total_str, filename = msg.split(":", 2)
-            total = int(total_str)
+            parts = msg.split(":", 3)
+            total = int(parts[1])
+            filename = parts[2]
+            title = parts[3].strip() if len(parts) > 3 else ""
         except Exception:
             print(f"[transfer] bad START: {msg[:60]}")
             self._nack("BAD_START")
@@ -105,10 +112,11 @@ class FileTransferHandler:
 
         self.expected_size = total
         self.filename = filename
+        self.title = title
         self.in_progress = True
         self.temp_file = open(_TEMP_FILE, "wb")
 
-        print(f"[transfer] START — {filename}, {total} bytes")
+        print(f"[transfer] START — {filename}, {total} bytes, title={title!r}")
         self._ack("START")
 
     def _handle_chunk(self, msg):
@@ -217,6 +225,22 @@ class FileTransferHandler:
             print(f"[transfer] book.hash write error: {e}")
             # Non-fatal
 
+        # Write the human-readable title for the home screen (optional — may be "")
+        if self.title:
+            try:
+                with open(_TITLE_FILE, "w") as f:
+                    f.write(self.title)
+            except Exception as e:
+                print(f"[transfer] book.title write error: {e}")
+                # Non-fatal
+        else:
+            # Remove any stale title from a previous book
+            try:
+                import os as _os
+                _os.remove(_TITLE_FILE)
+            except OSError:
+                pass
+
         bytes_committed = self.bytes_received
         self._reset()
         # Set completed AFTER _reset() — _reset() clears it to False
@@ -267,7 +291,7 @@ class FileTransferHandler:
     def _delete_book(self):
         """Remove the current book and its associated metadata files from flash."""
         import os
-        for path in (_BOOK_FILE, _POS_FILE, _HASH_FILE):
+        for path in (_BOOK_FILE, _POS_FILE, _HASH_FILE, _TITLE_FILE):
             try:
                 os.remove(path)
                 print(f"[transfer] deleted {path}")
@@ -288,4 +312,5 @@ class FileTransferHandler:
         self.next_seq       = 0
         self.crc            = 0
         self.filename       = ""
+        self.title          = ""
         self.completed      = False

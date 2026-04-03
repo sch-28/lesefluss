@@ -68,6 +68,7 @@ class BLEServer:
 
         self.connected   = False
         self.conn_handle = None
+        self._needs_advertising = False
 
         self._register_service()
         self.start_advertising()
@@ -129,17 +130,22 @@ class BLEServer:
             conn_handle, _, _ = data
             self.connected   = True
             self.conn_handle = conn_handle
-            print(f"[ble] connected: handle {conn_handle}")
+            print(f"[ble] IRQ connected: handle {conn_handle}")
 
         elif event == _IRQ_CENTRAL_DISCONNECT:
             conn_handle, _, _ = data
             self.connected   = False
             self.conn_handle = None
-            print(f"[ble] disconnected: handle {conn_handle}")
-            self.start_advertising()
+            print(f"[ble] IRQ disconnected: handle {conn_handle}")
+            # Don't restart advertising inside the IRQ — the BLE stack may
+            # not have finished cleaning up the old connection yet, causing
+            # the next connection attempt to fail.  Set a flag and let the
+            # main loop call start_advertising() after a short delay.
+            self._needs_advertising = True
 
         elif event == _IRQ_GATTS_WRITE:
             _, attr_handle = data
+            print(f"[ble] IRQ write: handle {attr_handle}")
             if attr_handle == self.settings.handle:
                 self.settings.on_write()
             elif attr_handle == self.file_transfer.handle:
@@ -149,13 +155,16 @@ class BLEServer:
 
         elif event == _IRQ_GATTS_READ_REQUEST:
             _, attr_handle = data
+            print(f"[ble] IRQ read: handle {attr_handle}")
             if attr_handle == self.settings.handle:
                 self.settings.on_read_request()
             elif attr_handle == self.position.handle:
                 self.position.on_read_request()
             elif attr_handle == self.storage.handle:
                 self.storage.on_read_request()
-            # file_transfer is write+notify only — no read handler needed
+
+        else:
+            print(f"[ble] IRQ unknown event: {event}")
 
     # ------------------------------------------------------------------
     # Advertising
@@ -185,8 +194,28 @@ class BLEServer:
     # Public API for main loop
     # ------------------------------------------------------------------
 
+    def get_transfer_progress(self):
+        """Return (in_progress, bytes_received, expected_size) from the file-transfer handler."""
+        return self.file_transfer.get_progress()
+
     def is_connected(self):
         return self.connected
+
+    def poll(self):
+        """Call from the main loop. Restarts advertising after a disconnect."""
+        if self._needs_advertising:
+            self._needs_advertising = False
+            import time
+            # Stop any stale advertising, wait for the BLE stack to fully
+            # release the old connection, then restart cleanly.
+            self.ble.gap_advertise(None)
+            time.sleep_ms(500)
+            gc.collect()
+            self.start_advertising()
+
+    def check_position_updated(self):
+        """True once after the app wrote a new position via BLE."""
+        return self.position.check_updated()
 
     def check_settings_updated(self):
         """True once after settings were written by the app."""
