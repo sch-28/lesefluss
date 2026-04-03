@@ -73,7 +73,12 @@ const BookCard: React.FC<BookCardProps> = ({
 			style={{ WebkitTouchCallout: "none", cursor: "pointer" }}
 			onTouchStart={handleTouchStart}
 			onTouchEnd={handleTouchEnd}
+			onClick={handleTouchEnd}
 			onTouchMove={cancelTimer}
+			onContextMenu={(e) => {
+				e.preventDefault();
+				onMenu();
+			}}
 		>
 			{/* Cover */}
 			<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm">

@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import type { BleDevice } from "@capacitor-community/bluetooth-le";
 import type React from "react";
 import {
@@ -13,6 +14,8 @@ import { BLEConnectionState, ble, bleClient, type ScannedDevice } from "../servi
 import { queries } from "../services/db/queries";
 import type { Settings as RSVPSettings } from "../services/db/schema";
 import { log } from "../utils/log";
+
+const IS_WEB = Capacitor.getPlatform() === "web";
 
 interface BLEContextType {
 	// Connection state
@@ -73,8 +76,9 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	// Optional post-connect hook (used by BookSyncContext)
 	const onConnectedRef = useRef<((deviceId: string) => void) | null>(null);
 
-	// Initialize BLE on mount
+	// Initialize BLE on mount (native platforms only)
 	useEffect(() => {
+		if (IS_WEB) return;
 		const init = async () => {
 			const result = await bleClient.initialize();
 			if (!result.success) {
@@ -84,8 +88,9 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		init();
 	}, []);
 
-	// Poll connection state from the bleClient singleton
+	// Poll connection state from the bleClient singleton (native only)
 	useEffect(() => {
+		if (IS_WEB) return;
 		const interval = setInterval(() => {
 			const state = bleClient.connectionState;
 			const device = bleClient.connectedDevice;
@@ -99,6 +104,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	}, []);
 
 	const startScan = async () => {
+		if (IS_WEB) return;
 		setError(null);
 		setScannedDevices([]);
 		setIsScanning(true);
@@ -114,6 +120,10 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	};
 
 	const stopScan = async () => {
+		if (IS_WEB) {
+			setIsScanning(false);
+			return;
+		}
 		const result = await bleClient.stopScan();
 		setIsScanning(false);
 
@@ -123,6 +133,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	};
 
 	const connect = async (deviceId: string): Promise<boolean> => {
+		if (IS_WEB) return false;
 		setError(null);
 		isConnectingRef.current = true;
 
@@ -157,6 +168,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	};
 
 	const disconnect = async () => {
+		if (IS_WEB) return;
 		setError(null);
 
 		const result = await bleClient.disconnect();
@@ -171,6 +183,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	};
 
 	const syncToDevice = async (settings: Partial<RSVPSettings>): Promise<boolean> => {
+		if (IS_WEB) return false;
 		setError(null);
 
 		if (!isConnected) {
@@ -189,6 +202,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	};
 
 	const syncFromDevice = async (): Promise<RSVPSettings | null> => {
+		if (IS_WEB) return null;
 		setError(null);
 
 		if (!isConnected) {
@@ -224,8 +238,9 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		onConnectedRef.current = cb;
 	}, []);
 
-	// Auto-scan when not connected and not already scanning/connecting
+	// Auto-scan when not connected and not already scanning/connecting (native only)
 	useEffect(() => {
+		if (IS_WEB) return;
 		if (!isScanning && !isConnected && !isConnectingRef.current) {
 			startScan();
 		}
