@@ -33,7 +33,14 @@ import {
 	IonToolbar,
 } from "@ionic/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { addOutline, listOutline, moonOutline, removeOutline, sunnyOutline } from "ionicons/icons";
+import {
+	addOutline,
+	listOutline,
+	moonOutline,
+	removeOutline,
+	searchOutline,
+	sunnyOutline,
+} from "ionicons/icons";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RouteComponentProps } from "react-router-dom";
@@ -46,6 +53,7 @@ import { queries } from "../../services/db/queries";
 import type { Chapter } from "../../services/db/schema";
 import DictionaryModal from "./dictionary-modal";
 import Paragraph, { utf8ByteLength } from "./paragraph";
+import SearchModal from "./search-modal";
 
 // ─── Scroll cache ────────────────────────────────────────────────────────────
 // Stored outside the component so it survives navigation away and back.
@@ -108,6 +116,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const [fontSize, setFontSize] = useState<number>(loadFontSize);
 	const [theme, setTheme] = useState<ReaderTheme>(loadTheme);
 	const [tocOpen, setTocOpen] = useState(false);
+	const [searchOpen, setSearchOpen] = useState(false);
 	const [selectedWord, setSelectedWord] = useState<string | null>(null);
 
 	// The byte offset we consider "current" — used for word highlight + saves
@@ -337,6 +346,37 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		[paragraphOffsets, id, pushPosition],
 	);
 
+	// ── Search jump ───────────────────────────────────────────────────────────
+	// The search modal gives us a JS char offset (indexOf result). We convert
+	// it to a UTF-8 byte offset by encoding the substring before the match.
+	const handleSearchJump = useCallback(
+		(charOffset: number) => {
+			if (!listRef.current || !content) return;
+			const byteOffset = utf8ByteLength(content.slice(0, charOffset));
+
+			// Binary search paragraphOffsets for the paragraph containing byteOffset
+			let lo = 0;
+			let hi = paragraphOffsets.length - 1;
+			while (lo < hi) {
+				const mid = Math.ceil((lo + hi) / 2);
+				if (paragraphOffsets[mid] <= byteOffset) {
+					lo = mid;
+				} else {
+					hi = mid - 1;
+				}
+			}
+			suppressNextScrollEndRef.current = true;
+			listRef.current.scrollToIndex(lo, { align: "start" });
+			const actualByte = paragraphOffsets[lo] ?? 0;
+			setActiveOffset(actualByte);
+			setProgressOffset(actualByte);
+			lastOffsetRef.current = actualByte;
+			queries.updateBook(id, { position: actualByte, lastRead: Date.now() });
+			pushPosition(actualByte);
+		},
+		[content, paragraphOffsets, id, pushPosition],
+	);
+
 	// ── Progress bar tap/drag ─────────────────────────────────────────────
 	const progressBarRef = useRef<HTMLDivElement>(null);
 
@@ -384,6 +424,17 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		},
 		[scrubToX],
 	);
+
+	// ── Hide tab bar while reader is mounted ──────────────────────────────
+	// Ionic's shadow DOM toggles tab-bar-hidden on keyboard show/hide, and
+	// external CSS can't override :host styles reliably. A body class lets
+	// us target ion-tab-bar from outside the shadow DOM with higher priority.
+	useEffect(() => {
+		document.body.classList.add("reader-open");
+		return () => {
+			document.body.classList.remove("reader-open");
+		};
+	}, []);
 
 	// ── Save scroll cache + flush position on unmount ─────────────────────
 	useEffect(() => {
@@ -452,6 +503,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 					</IonButtons>
 					<IonTitle>{book.title}</IonTitle>
 					<IonButtons slot="end">
+						<IonButton onClick={() => setSearchOpen(true)} aria-label="Search content">
+							<IonIcon slot="icon-only" icon={searchOutline} />
+						</IonButton>
 						{chapters.length > 0 && (
 							<IonButton onClick={() => setTocOpen(true)} aria-label="Table of contents">
 								<IonIcon slot="icon-only" icon={listOutline} />
@@ -529,6 +583,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				onDidDismiss={() => setTocOpen(false)}
 				breakpoints={[0, 0.5, 0.9]}
 				initialBreakpoint={0.5}
+				className={["rsvp-toc-modal", `reader-theme-${theme}`].join(" ")}
 			>
 				<IonHeader>
 					<IonToolbar>
@@ -554,8 +609,17 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				</IonContent>
 			</IonModal>
 
+			{/* ── Search modal ── */}
+			<SearchModal
+				isOpen={searchOpen}
+				onClose={() => setSearchOpen(false)}
+				content={content}
+				onJump={handleSearchJump}
+				theme={theme}
+			/>
+
 			{/* ── Dictionary modal ── */}
-			<DictionaryModal word={selectedWord} onClose={() => setSelectedWord(null)} />
+			<DictionaryModal word={selectedWord} onClose={() => setSelectedWord(null)} theme={theme} />
 		</IonPage>
 	);
 };

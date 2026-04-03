@@ -78,8 +78,11 @@ function useBLEBadge() {
 
 const AppTabs: React.FC = () => {
 	const { label, cssClass } = useBLEBadge();
+	const ionRouter = useIonRouter();
 	const location = useLocation();
-	const hideTabBar = location.pathname.startsWith("/tabs/reader/");
+	const hideTabBar =
+		ionRouter.routeInfo.pathname.startsWith("/tabs/reader/") ||
+		location.pathname.startsWith("/tabs/reader/");
 
 	return (
 		<IonTabs>
@@ -158,7 +161,7 @@ const App: React.FC = () => {
 							<IonReactRouter>
 								<HardwareBackButtonHandler />
 								<IonRouterOutlet>
-									{/* All routes under /tabs — reader included so it shares the nav stack */}
+									{/* All other routes under /tabs share the tab bar */}
 									<Route path="/tabs" render={() => <AppTabs />} />
 
 									{/* Root redirect */}

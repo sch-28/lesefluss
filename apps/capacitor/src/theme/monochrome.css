@@ -168,6 +168,13 @@ ion-tab-bar.tab-bar-hidden {
 	display: none;
 }
 
+/* While the reader is open, force-hide the tab bar regardless of Ionic's
+ * internal shadow-DOM :host(.tab-bar-hidden) toggling on keyboard events.
+ * External author styles beat shadow :host — no flash, pure CSS. */
+body.reader-open ion-tab-bar {
+	display: none !important;
+}
+
 ion-tab-button {
 	--color: #666666;
 	--color-selected: #000000;
@@ -304,6 +311,8 @@ ion-tab-button.ble-disconnected {
 	--ion-toolbar-color: #e4e4e4;
 	--ion-border-color: #333333;
 	--ion-toolbar-border-color: #333333;
+	--ion-item-background: #1a1a1a;
+	--ion-item-border-color: #333333;
 }
 
 .reader-theme-light,
@@ -319,12 +328,54 @@ ion-tab-button.ble-disconnected {
 	--ion-text-color: #000000;
 	--ion-toolbar-background: #ffffff;
 	--ion-toolbar-color: #000000;
+	--ion-item-background: #ffffff;
+	--ion-item-border-color: #d9d9d9;
 }
 
-/* Apply theme background to the IonContent inner scroll element */
+/* Apply theme background to IonContent on the reader page */
 .reader-theme-dark ion-content,
 .reader-theme-light ion-content {
 	--background: var(--reader-bg);
+}
+
+/* Modal sheet: make the drag handle + sheet background match the theme.
+ * Ionic portals modals to document.body, so the reader-theme-* class sits
+ * on the ion-modal element itself — selectors must be ion-modal.reader-theme-*
+ * (not .reader-theme-* ion-modal). */
+ion-modal.reader-theme-dark,
+ion-modal.reader-theme-dark ion-header,
+ion-modal.reader-theme-dark ion-toolbar,
+ion-modal.reader-theme-dark ion-content,
+ion-modal.reader-theme-dark ion-list,
+ion-modal.reader-theme-dark ion-item {
+	--ion-background-color: #1a1a1a;
+	--ion-text-color: #e4e4e4;
+	--ion-toolbar-background: #1a1a1a;
+	--ion-toolbar-color: #e4e4e4;
+	--ion-border-color: #333333;
+	--ion-toolbar-border-color: #333333;
+	--ion-item-background: #1a1a1a;
+	--ion-item-border-color: #333333;
+	--background: #1a1a1a;
+	--color: #e4e4e4;
+}
+
+ion-modal.reader-theme-light,
+ion-modal.reader-theme-light ion-header,
+ion-modal.reader-theme-light ion-toolbar,
+ion-modal.reader-theme-light ion-content,
+ion-modal.reader-theme-light ion-list,
+ion-modal.reader-theme-light ion-item {
+	--ion-background-color: #ffffff;
+	--ion-text-color: #111111;
+	--ion-toolbar-background: #ffffff;
+	--ion-toolbar-color: #000000;
+	--ion-border-color: #d9d9d9;
+	--ion-toolbar-border-color: #d9d9d9;
+	--ion-item-background: #ffffff;
+	--ion-item-border-color: #d9d9d9;
+	--background: #ffffff;
+	--color: #111111;
 }
 
 .reader-paragraph {
@@ -509,10 +560,95 @@ ion-tab-button.ble-disconnected {
 }
 
 .dict-definition {
-	color: #111111;
+	color: var(--ion-text-color, #111111);
 }
 
 .dict-example {
-	color: #666666;
+	color: var(--ion-color-medium, #666666);
 	font-style: italic;
+}
+
+/* ── Search modal ── */
+
+.rsvp-search-modal {
+	--border-radius: 20px 20px 0 0;
+}
+
+.search-input-wrap {
+	padding: 12px 16px 4px;
+}
+
+.search-input {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 10px 14px;
+	border: 1.5px solid var(--ion-border-color, #d9d9d9);
+	border-radius: 10px;
+	font-size: 1rem;
+	background: var(--ion-background-color, #ffffff);
+	color: var(--ion-text-color, #000000);
+	outline: none;
+	appearance: none;
+	-webkit-appearance: none;
+}
+
+.search-input:focus {
+	border-color: var(--ion-text-color, #000000);
+}
+
+/* Hide the native 'x' clear button — we clear on close */
+.search-input::-webkit-search-cancel-button {
+	-webkit-appearance: none;
+}
+
+.search-result-count {
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #888888;
+	margin: 8px 16px 4px;
+}
+
+.search-results-list {
+	margin: 0;
+	padding: 0;
+}
+
+.search-result-label {
+	white-space: normal !important;
+}
+
+.search-snippet {
+	font-size: 0.88rem;
+	line-height: 1.45;
+	color: var(--ion-text-color, #111111);
+	margin: 6px 0;
+	/* Clamp to 3 lines */
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.search-match {
+	font-weight: 700;
+	/* No color change — stays readable in both reader themes */
+}
+
+.search-pct {
+	font-size: 0.75rem;
+	font-weight: 500;
+	color: #888888;
+	white-space: nowrap;
+	padding-left: 8px;
+	flex-shrink: 0;
+}
+
+.search-empty {
+	font-size: 0.9rem;
+	color: #888888;
+	text-align: center;
+	padding: 32px 24px;
+	margin: 0;
 }

@@ -125,3 +125,11 @@ Future ideas:
 - [ ] Battery level display
 - [ ] Chunk mode (show 2-3 words at a time for longer words)
 - [ ] Chapter detection and navigation
+
+
+
+# case
+
+- base 65 x 33mm
+- usb c bottom: 17mm: 10mm x 4mm
+- screen 46mm x 26mm

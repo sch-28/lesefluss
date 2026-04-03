@@ -52,11 +52,12 @@ async function fetchDefinition(word: string): Promise<DictEntry[]> {
 export interface DictionaryModalProps {
 	word: string | null;
 	onClose: () => void;
+	theme?: string;
 }
 
 const MAX_DEFINITIONS = 3;
 
-const DictionaryModal: React.FC<DictionaryModalProps> = ({ word, onClose }) => {
+const DictionaryModal: React.FC<DictionaryModalProps> = ({ word, onClose, theme }) => {
 	const { data, isPending, isError } = useQuery({
 		queryKey: ["dictionary", word],
 		queryFn: () => fetchDefinition(word!),
@@ -72,7 +73,9 @@ const DictionaryModal: React.FC<DictionaryModalProps> = ({ word, onClose }) => {
 			onDidDismiss={onClose}
 			breakpoints={[0, 0.5, 1]}
 			initialBreakpoint={0.5}
-			className="rsvp-dictionary-modal"
+			className={["rsvp-dictionary-modal", theme && `reader-theme-${theme}`]
+				.filter(Boolean)
+				.join(" ")}
 		>
 			<IonHeader>
 				<IonToolbar>
