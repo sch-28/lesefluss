@@ -27,6 +27,8 @@ export const settings = sqliteTable("settings", {
 	inverse: integer("inverse", { mode: "boolean" }).notNull().default(false),
 	bleOn: integer("ble_on", { mode: "boolean" }).notNull().default(true),
 	devMode: integer("dev_mode", { mode: "boolean" }).notNull().default(false),
+	displayOffTimeout: integer("display_off_timeout").notNull().default(60),
+	deepSleepTimeout: integer("deep_sleep_timeout").notNull().default(120),
 	updatedAt: integer("updated_at").notNull(),
 });
 

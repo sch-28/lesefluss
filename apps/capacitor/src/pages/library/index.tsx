@@ -185,25 +185,27 @@ const Library: React.FC = () => {
 				) : (
 					/* ── Book grid ── */
 					<div className="grid grid-cols-3 gap-4 p-4 pb-20">
-						{books.map((book) => {
-							const progress = readingProgress(book);
-							const started = book.position > 0;
-							const cover = covers.get(book.id);
-							const isActive = book.id === activeBookId;
+						{books
+							.sort((a, b) => a.title.localeCompare(b.title))
+							.map((book) => {
+								const progress = readingProgress(book);
+								const started = book.position > 0;
+								const cover = covers.get(book.id);
+								const isActive = book.id === activeBookId;
 
-							return (
-								<BookCard
-									key={book.id}
-									book={book}
-									cover={cover}
-									progress={progress}
-									started={started}
-									isActive={isActive}
-									onOpen={() => router.push(`/tabs/reader/${book.id}`)}
-									onMenu={() => setSelectedBook(book)}
-								/>
-							);
-						})}
+								return (
+									<BookCard
+										key={book.id}
+										book={book}
+										cover={cover}
+										progress={progress}
+										started={started}
+										isActive={isActive}
+										onOpen={() => router.push(`/tabs/reader/${book.id}`)}
+										onMenu={() => setSelectedBook(book)}
+									/>
+								);
+							})}
 					</div>
 				)}
 

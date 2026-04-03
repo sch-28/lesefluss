@@ -22,6 +22,8 @@ interface ESP32Settings {
 	inverse: boolean;
 	ble_on: boolean;
 	dev_mode: boolean;
+	display_off_timeout: number;
+	deep_sleep_timeout: number;
 }
 
 /** Read settings from the device and convert to app format. */
@@ -44,6 +46,8 @@ export async function readSettings(): Promise<BLEResult<Partial<Settings>>> {
 				inverse: esp32.inverse,
 				bleOn: esp32.ble_on,
 				devMode: esp32.dev_mode,
+				displayOffTimeout: esp32.display_off_timeout,
+				deepSleepTimeout: esp32.deep_sleep_timeout,
 			},
 		};
 	} catch (error) {
@@ -70,6 +74,8 @@ export async function writeSettings(settings: Partial<Settings>): Promise<BLERes
 			inverse: settings.inverse!,
 			ble_on: settings.bleOn!,
 			dev_mode: settings.devMode!,
+			display_off_timeout: settings.displayOffTimeout!,
+			deep_sleep_timeout: settings.deepSleepTimeout!,
 		};
 
 		await BleClient.write(

@@ -7,7 +7,7 @@ For project overview, roadmap, and shared settings see `../../agents.md`.
 ## Tech Stack
 
 - **Ionic React** + Capacitor 8
-- **Drizzle ORM** + `op-sqlite` (SQLite)
+- **Drizzle ORM** + `@capacitor-community/sqlite` via `sqlite-proxy` adapter
 - **`@tanstack/react-query`** v5 for data fetching / caching
 - **`@capacitor-community/bluetooth-le`** for BLE
 - **Vite** + TypeScript
@@ -56,6 +56,10 @@ src/
     query-client.ts         # Singleton QueryClient (used by App.tsx + non-React callers)
     bookImport.ts           # File picker, TXT + EPUB parsing
     db/
+      index.ts              # Barrel — initDb(), db, sqliteConnection
+      adapter.ts            # Drizzle sqlite-proxy adapter + sanitizeParams
+      migrations.ts         # Migration runner (reads drizzle/ journal + SQL files)
+      web-setup.ts          # jeep-sqlite web bootstrap (no-op on native)
       schema.ts             # Drizzle table definitions
       queries/              # Raw async query functions (import as `queries` object)
       hooks/                # react-query wrappers (import as `queryHooks` object)

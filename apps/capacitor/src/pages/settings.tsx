@@ -23,7 +23,15 @@ import {
 	IonToggle,
 	IonToolbar,
 } from "@ionic/react";
-import { bluetooth, closeCircle, cloudDownload, cloudUpload } from "ionicons/icons";
+import {
+	bluetooth,
+	closeCircle,
+	cloudDownload,
+	cloudUpload,
+	refresh,
+	search,
+	stop,
+} from "ionicons/icons";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "../components/toast";
@@ -45,9 +53,11 @@ function formatBytes(bytes: number): string {
 const Settings: React.FC = () => {
 	const {
 		isConnected,
+		connectionState,
 		connectedDevice,
 		isScanning,
 		startScan,
+		stopScan,
 		disconnect,
 		syncToDevice,
 		syncFromDevice,
@@ -370,16 +380,39 @@ const Settings: React.FC = () => {
 						</IonCardHeader>
 						<IonCardContent>
 							<IonListHeader>
-								<IonLabel>Connection</IonLabel>
+								<IonLabel>Power</IonLabel>
 							</IonListHeader>
 
 							<IonItem>
-								<IonLabel>BLE Enabled</IonLabel>
-								<IonToggle
-									checked={settings.bleOn}
-									onIonChange={(e) => updateSetting("bleOn", e.detail.checked)}
+								<IonLabel position="stacked">Screen off: {settings.displayOffTimeout}s</IonLabel>
+								<IonRange
+									min={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.min}
+									max={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.max}
+									step={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.step}
+									value={settings.displayOffTimeout}
+									onIonChange={(e) => updateSetting("displayOffTimeout", e.detail.value as number)}
+									pin
+									pinFormatter={(value: number) => `${value}s`}
 								/>
 							</IonItem>
+
+							<IonItem>
+								<IonLabel position="stacked">Shutdown: {settings.deepSleepTimeout}s</IonLabel>
+								<IonRange
+									min={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.min}
+									max={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.max}
+									step={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.step}
+									value={settings.deepSleepTimeout}
+									onIonChange={(e) => updateSetting("deepSleepTimeout", e.detail.value as number)}
+									pin
+									pinFormatter={(value: number) => `${value}s`}
+								/>
+							</IonItem>
+
+							<IonListHeader>
+								<IonLabel>Connection</IonLabel>
+							</IonListHeader>
+
 							<IonItem>
 								<IonLabel>Dev Mode</IonLabel>
 								<IonToggle
@@ -434,24 +467,68 @@ const Settings: React.FC = () => {
 							)}
 
 							{!isConnected && (
-								<IonItem lines="none" style={{ marginTop: "0.5rem" }}>
-									{isScanning && (
-										<IonSpinner name="dots" slot="start" style={{ marginRight: "0.75rem" }} />
-									)}
-									<IonLabel color="medium">
-										<p>{isScanning ? "Scanning for RSVP-Reader..." : "Not scanning"}</p>
-									</IonLabel>
-									{!isScanning && !isConnected && (
+								<>
+									<IonItem lines="none">
+										{isScanning && (
+											<IonSpinner name="dots" slot="start" style={{ marginRight: "0.75rem" }} />
+										)}
+										<IonLabel color="medium">
+											<p>
+												{connectionState === "connecting"
+													? "Connecting..."
+													: isScanning
+														? "Scanning for RSVP-Reader..."
+														: "Not connected"}
+											</p>
+										</IonLabel>
+									</IonItem>
+									<div className="ion-margin-top flex gap-2">
+										{isScanning ? (
+											<IonButton
+												expand="block"
+												fill="outline"
+												size="small"
+												className="flex-1"
+												onClick={stopScan}
+											>
+												<IonIcon slot="start" icon={stop} />
+												Stop Scan
+											</IonButton>
+										) : (
+											<IonButton
+												expand="block"
+												fill="outline"
+												size="small"
+												className="flex-1"
+												onClick={startScan}
+											>
+												<IonIcon slot="start" icon={search} />
+												Scan
+											</IonButton>
+										)}
 										<IonButton
-											size="small"
+											expand="block"
 											fill="outline"
-											onClick={startScan}
-											disabled={isConnected}
+											size="small"
+											className="flex-1"
+											onClick={async () => {
+												await stopScan();
+												await new Promise((r) => setTimeout(r, 300));
+												await startScan();
+											}}
 										>
-											Scan
+											<IonIcon slot="start" icon={refresh} />
+											Restart Scan
 										</IonButton>
+									</div>
+									{bleError && (
+										<IonItem lines="none">
+											<IonLabel color="danger">
+												<p className="text-sm">{bleError}</p>
+											</IonLabel>
+										</IonItem>
 									)}
-								</IonItem>
+								</>
 							)}
 						</IonCardContent>
 					</IonCard>

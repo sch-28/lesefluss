@@ -90,9 +90,29 @@ class BLEClient {
 			this._connectionState = BLEConnectionState.CONNECTING;
 			await this.stopScan();
 
-			await BleClient.connect(deviceId, () => this._onDisconnect(), {
-				timeout: BLE_CONNECTION_TIMEOUT_MS,
+			let rejectOnDisconnect: (reason: Error) => void;
+			const disconnectGuard = new Promise<never>((_, reject) => {
+				rejectOnDisconnect = reject;
 			});
+
+			await Promise.race([
+				BleClient.connect(
+					deviceId,
+					() => {
+						// This callback fires both during connect (race guard)
+						// and after a successful connection drops (e.g. deep sleep).
+						if (this._connectionState === BLEConnectionState.CONNECTING) {
+							log("ble", "disconnect callback fired during connect");
+							rejectOnDisconnect(new Error("Disconnected during connect"));
+						} else {
+							log("ble", "device disconnected (link loss)");
+							this._onDisconnect();
+						}
+					},
+					{ timeout: BLE_CONNECTION_TIMEOUT_MS },
+				),
+				disconnectGuard,
+			]);
 
 			const deviceInfo = this._scannedDevices.get(deviceId);
 			this._connectedDevice = deviceInfo?.device ?? { deviceId };
@@ -101,12 +121,16 @@ class BLEClient {
 			log("ble", "connected:", deviceId);
 			return { success: true, data: this._connectedDevice };
 		} catch (error) {
+			try {
+				await BleClient.disconnect(deviceId);
+			} catch {
+				// Ignore — device may already be disconnected
+			}
 			this._connectionState = BLEConnectionState.DISCONNECTED;
 			this._connectedDevice = null;
-			return {
-				success: false,
-				error: error instanceof Error ? error.message : "Connection failed",
-			};
+			const msg = error instanceof Error ? error.message : "Connection failed";
+			log("ble", "connect failed:", msg);
+			return { success: false, error: msg };
 		}
 	}
 

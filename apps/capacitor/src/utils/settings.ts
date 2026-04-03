@@ -14,6 +14,8 @@ export const DEFAULT_SETTINGS = {
 	INVERSE: false, // Inverse colors (false = white on black)
 	BLE_ON: true, // BLE enabled for companion app
 	DEV_MODE: false,
+	DISPLAY_OFF_TIMEOUT: 60, // Seconds until display turns off (10-300)
+	DEEP_SLEEP_TIMEOUT: 120, // Seconds until deep sleep from last activity (10-300)
 } as const;
 
 /**
@@ -27,4 +29,6 @@ export const SETTING_CONSTRAINTS = {
 	ACCEL_RATE: { min: 0.05, max: 1.0, step: 0.05 },
 	X_OFFSET: { min: 30, max: 70, step: 5 },
 	WORD_OFFSET: { min: 0, max: 20, step: 1 },
+	DISPLAY_OFF_TIMEOUT: { min: 10, max: 300, step: 10 },
+	DEEP_SLEEP_TIMEOUT: { min: 10, max: 300, step: 10 },
 } as const;

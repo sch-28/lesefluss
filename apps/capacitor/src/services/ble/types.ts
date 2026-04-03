@@ -11,4 +11,4 @@ export interface BLEResult<T = void> {
 	error?: string;
 }
 
-export const BLE_CONNECTION_TIMEOUT_MS = 30_000;
+export const BLE_CONNECTION_TIMEOUT_MS = 5_000;

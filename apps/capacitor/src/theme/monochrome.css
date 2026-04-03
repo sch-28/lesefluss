@@ -431,10 +431,10 @@ ion-modal.reader-theme-light ion-item {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	height: 36px;
+	height: 48px;
 	padding: 0 16px;
-    padding-bottom: 50px;
     padding-top: 20px;
+	padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -442,6 +442,17 @@ ion-modal.reader-theme-light ion-item {
 	border-top: 1px solid var(--reader-progress-bg, #e0e0e0);
 	touch-action: none;
 	cursor: pointer;
+}
+
+.reader-progress-bar::after {
+	content: "";
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	height: env(safe-area-inset-bottom);
+	background: var(--reader-bg, #ffffff);
+	pointer-events: none;
 }
 
 .reader-progress-fill-track {

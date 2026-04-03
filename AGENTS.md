@@ -109,6 +109,23 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 | `inverse` | bool | false | Black on white when true |
 | `ble_on` | bool | true | Enable BLE server |
 
+## Adding a New Setting
+
+Touch these files in order:
+
+1. **`apps/esp32/src/config.py`** — add the constant with its default value
+2. **`apps/esp32/main.py`** — add the key name to `_OVERRIDE_KEYS`
+3. **`apps/esp32/src/ble/handler_settings.py`**
+   - `_build_json()` — include it in the payload (convert units if needed, e.g. ms → s)
+   - `_apply_json()` — read it with `.get("key", self.config.KEY)` and assign to `self.config`
+   - `_persist()` — add the `f"KEY = {self.config.KEY}\n"` line
+4. **`apps/capacitor/src/services/db/schema.ts`** — add the column to the `settings` table
+5. **`apps/capacitor/drizzle/`** — create `000N_description.sql` with `ALTER TABLE settings ADD COLUMN ...` and add an entry to `meta/_journal.json`
+6. **`apps/capacitor/src/services/db/queries/settings.ts`** — add the field to the `defaults` object in `getSettings()`
+7. **`apps/capacitor/src/utils/settings.ts`** — add to `DEFAULT_SETTINGS` and `SETTING_CONSTRAINTS`
+8. **`apps/capacitor/src/services/ble/characteristics/settings.ts`** — add to `ESP32Settings` interface, read mapping, and write mapping
+9. **`apps/capacitor/src/pages/settings.tsx`** — add the UI control (slider or toggle)
+
 ## Roadmap
 
 ### Phase 1 — BLE Integration ✅
@@ -140,15 +157,18 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 - [x] Chapter / TOC navigation (EPUB books)
 - [x] Reading themes (dark / light)
 - [x] Dictionary lookup (tap highlighted word)
-- [ ] Battery management: indicator & sleep
-- [ ] Minifying the python code & merge to single file
+- [x] Improve esp32: Add loading indicator when file transfer, improve "home page press boot" with actual nice homescreen
+- [x] sync book title to esp32
+- [ ] Battery management: deep sleep
+- [ ] Partial book sync to esp32 to combat long upload times
 - [ ] In-app RSVP reader (software parity with ESP32)
-- [ ] Improve esp32: Add loading indicator when file transfer, improve "home page press boot" with actual nice homescreen
 - [ ] Cloud sync
 - [ ] Web app version (PWA)
 - [ ] Advanced book management (tags, collections, search)
 - [ ] Reading statistics
+- [ ] Minifying the python code & merge to single file
 - [ ] Updating the esp32 code from the capacitor app
+- [ ] Battery management: indicator
 
 ## Future Ideas
 

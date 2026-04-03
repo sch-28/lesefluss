@@ -218,7 +218,10 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 			setTransferProgress(0);
 
 			try {
-				const content = await queries.getBookContent(bookId);
+				const [content, bookMeta] = await Promise.all([
+					queries.getBookContent(bookId),
+					queries.getBook(bookId),
+				]);
 				if (!content?.content) {
 					throw new Error("Book content not found");
 				}
@@ -226,10 +229,17 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				// Pass the book id as the filename in the START frame.
 				// The ESP32 saves it as book.hash after a successful transfer so
 				// we can verify the right book is on the device on future connects.
-				const result = await ble.transferBook(content.content, bookId, (pct) => {
-					setTransferProgress(pct);
-					onProgress?.(pct);
-				});
+				// The human-readable title is passed as an optional 4th field so the
+				// device can display it on the home screen.
+				const result = await ble.transferBook(
+					content.content,
+					bookId,
+					(pct) => {
+						setTransferProgress(pct);
+						onProgress?.(pct);
+					},
+					bookMeta?.title ?? undefined,
+				);
 
 				if (!result.success) {
 					throw new Error(result.error ?? "Transfer failed");

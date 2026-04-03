@@ -125,6 +125,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// is set to NO_HIGHLIGHT=-1 while scrolling, so can't be used for progress).
 	const [progressOffset, setProgressOffset] = useState(0);
 
+	// Progress bar visibility — shown on tap/word-tap, hidden when user scrolls
+	const [progressBarVisible, setProgressBarVisible] = useState(false);
+
 	const listRef = useRef<VListHandle>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 
@@ -224,6 +227,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			// Hide highlight while scrolling. Skip the state update if already hidden
 			// to avoid triggering re-renders of all visible Paragraphs every frame.
 			setActiveOffset((prev) => (prev === NO_HIGHLIGHT ? prev : NO_HIGHLIGHT));
+			// Hide progress bar — user is scrolling normally, not tapping
+			setProgressBarVisible(false);
 			// Update the progress bar live. findItemIndex maps the current scroll
 			// pixel offset to a paragraph index, which we convert to a byte offset.
 			if (listRef.current && paragraphOffsets.length > 0) {
@@ -292,6 +297,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			}
 			setActiveOffset(offset);
 			setProgressOffset(offset);
+			setProgressBarVisible(true);
 			lastOffsetRef.current = offset;
 			// Immediate save — no debounce
 			queries.updateBook(id, { position: offset, lastRead: Date.now() });
@@ -412,6 +418,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const handleProgressPointerDown = useCallback(
 		(e: React.PointerEvent<HTMLDivElement>) => {
 			e.currentTarget.setPointerCapture(e.pointerId);
+			setProgressBarVisible(true);
 			scrubToX(e.clientX);
 		},
 		[scrubToX],
@@ -424,6 +431,17 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		},
 		[scrubToX],
 	);
+
+	// ── Show progress bar on any tap in the reading area ─────────────────
+	// Native listener needed because VList's internal scroll container doesn't
+	// propagate clicks through React's synthetic event system.
+	useEffect(() => {
+		const el = containerRef.current;
+		if (!el) return;
+		const show = () => setProgressBarVisible(true);
+		el.addEventListener("click", show);
+		return () => el.removeEventListener("click", show);
+	}, []);
 
 	// ── Hide tab bar while reader is mounted ──────────────────────────────
 	// Ionic's shadow DOM toggles tab-bar-hidden on keyboard show/hide, and
@@ -559,22 +577,24 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				</div>
 
 				{/* ── Progress bar ── */}
-				<div
-					ref={progressBarRef}
-					className="reader-progress-bar"
-					onPointerDown={handleProgressPointerDown}
-					onPointerMove={handleProgressPointerMove}
-					aria-label="Reading progress"
-					role="slider"
-					aria-valuenow={Math.round(progressPct)}
-					aria-valuemin={0}
-					aria-valuemax={100}
-				>
-					<div className="reader-progress-fill-track">
-						<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
+				{progressBarVisible && (
+					<div
+						ref={progressBarRef}
+						className="reader-progress-bar"
+						onPointerDown={handleProgressPointerDown}
+						onPointerMove={handleProgressPointerMove}
+						aria-label="Reading progress"
+						role="slider"
+						aria-valuenow={Math.round(progressPct)}
+						aria-valuemin={0}
+						aria-valuemax={100}
+					>
+						<div className="reader-progress-fill-track">
+							<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
+						</div>
+						<span className="reader-progress-label">{Math.round(progressPct)}%</span>
 					</div>
-					<span className="reader-progress-label">{Math.round(progressPct)}%</span>
-				</div>
+				)}
 			</IonContent>
 
 			{/* ── TOC modal ── */}

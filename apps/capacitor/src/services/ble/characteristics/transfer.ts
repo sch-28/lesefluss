@@ -35,13 +35,15 @@ import { chunkBytes, dataViewToString, stringToDataView, uint8ToBase64 } from ".
  * Transfer a book's plain-text content to the ESP32.
  *
  * @param content     Full plain text of the book
- * @param filename    Filename hint for the START frame (e.g. "book.txt")
+ * @param filename    Book ID for the START frame (8-char hex, saved as book.hash on device)
  * @param onProgress  Called with 0–100 as chunks are acknowledged
+ * @param title       Human-readable book title (synced to device for home-screen display)
  */
 export async function transferBook(
 	content: string,
 	filename: string,
 	onProgress: (pct: number) => void,
+	title?: string,
 ): Promise<BLEResult> {
 	const device = bleClient.assertConnected();
 	const deviceId = device.deviceId;
@@ -57,14 +59,16 @@ export async function transferBook(
 	const notifyResult = await setupNotifications(deviceId, ackQueue);
 	if (!notifyResult.success) return notifyResult;
 
+	// Build START frame: START:<bytes>:<id>[:<title>]
+	// Title colons are stripped to keep the protocol unambiguous.
+	const safeTitle = title ? title.replace(/:/g, " ").trim() : "";
+	const startFrame = safeTitle
+		? `START:${totalBytes}:${filename}:${safeTitle}`
+		: `START:${totalBytes}:${filename}`;
+
 	try {
 		// ── START (strict request/response) ──
-		const startResult = await writeAndWaitAck(
-			deviceId,
-			`START:${totalBytes}:${filename}`,
-			"START",
-			ackQueue,
-		);
+		const startResult = await writeAndWaitAck(deviceId, startFrame, "START", ackQueue);
 		if (!startResult.success) return startResult;
 
 		// ── CHUNKs (sliding window) ──
