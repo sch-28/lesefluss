@@ -28,7 +28,9 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		return (
 			<IonPage>
 				<IonContent className="ion-padding ion-text-center">
-					<IonSpinner />
+					<div className="flex h-full items-center justify-center">
+						<IonSpinner />
+					</div>
 				</IonContent>
 			</IonPage>
 		);

@@ -428,11 +428,13 @@ ion-modal.reader-theme-light ion-item {
 /* ── Progress bar ── */
 .reader-progress-bar {
 	position: absolute;
-	bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+	bottom: 0;
 	left: 0;
 	right: 0;
 	height: 36px;
 	padding: 0 16px;
+    padding-bottom: 50px;
+    padding-top: 20px;
 	display: flex;
 	align-items: center;
 	gap: 8px;
