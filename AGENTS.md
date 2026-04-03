@@ -135,8 +135,13 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 - [x] Extend transfer dialog: confirmation modal with book size, free space estimate, replacement warning
 
 ### Phase 4 — Enhanced Features
-- [x] Simple Epub reader 
+- [x] Simple Epub reader
+- [x] Reader progress bar (tap/drag to scrub)
+- [x] Chapter / TOC navigation (EPUB books)
+- [x] Reading themes (dark / light)
+- [x] Dictionary lookup (tap highlighted word)
 - [ ] Battery management: indicator & sleep
+- [ ] Minifying the python code & merge to single file
 - [ ] In-app RSVP reader (software parity with ESP32)
 - [ ] Improve esp32: Add loading indicator when file transfer, improve "home page press boot" with actual nice homescreen
 - [ ] Cloud sync

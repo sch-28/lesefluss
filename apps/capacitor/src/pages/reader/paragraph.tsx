@@ -65,7 +65,7 @@ export interface ParagraphProps {
 	text: string;
 	startOffset: number;
 	activeOffset: number;
-	onWordTap: (offset: number) => void;
+	onWordTap: (offset: number, wordText: string) => void;
 }
 
 const Paragraph: React.FC<ParagraphProps> = memo(
@@ -101,7 +101,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 					key={i}
 					data-offset={tokenOffset}
 					className={isActive ? "word-active" : undefined}
-					onClick={() => onWordTap(tokenOffset)}
+					onClick={() => onWordTap(tokenOffset, token)}
 				>
 					{token}
 				</span>,

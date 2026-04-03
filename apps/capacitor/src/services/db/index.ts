@@ -9,9 +9,9 @@ import journal from "../../../drizzle/meta/_journal.json";
 import { log } from "../../utils/log";
 import * as schema from "./schema";
 
-// import.meta.glob with eager + raw gives us { "./0000_slippery_rhino.sql": "CREATE TABLE..." }
-// The path is relative to THIS file's location (src/db/)
-const migrationFiles = import.meta.glob<string>("../../drizzle/*.sql", {
+// import.meta.glob with eager + raw gives us { "./0000_initial.sql": "CREATE TABLE..." }
+// The path is relative to THIS file's location (src/services/db/) — 3 levels up to reach drizzle/
+const migrationFiles = import.meta.glob<string>("../../../drizzle/*.sql", {
 	eager: true,
 	query: "?raw",
 	import: "default",
@@ -20,21 +20,34 @@ const migrationFiles = import.meta.glob<string>("../../drizzle/*.sql", {
 const DB_NAME = "rsvp.db";
 
 let _conn: SQLiteDBConnection | null = null;
+let _initPromise: Promise<void> | null = null;
 
 /**
  * Initialise the SQLite connection and run any pending migrations.
  * Call once at app startup (from DatabaseProvider).
  * Safe to call multiple times (React strict mode, hot reload) — reuses existing connection.
+ * Uses a promise guard so concurrent calls (React Strict Mode double-effect) share one init.
  */
 export async function initDb(): Promise<void> {
-	if (_conn) return; // already initialised
+	if (_initPromise) return _initPromise;
 
-	const sqlite = new SQLiteConnection(CapacitorSQLite);
+	_initPromise = (async () => {
+		const sqlite = new SQLiteConnection(CapacitorSQLite);
 
-	_conn = await sqlite.createConnection(DB_NAME, false, "no-encryption", 1, false);
-	await _conn.open();
+		_conn = await sqlite.createConnection(DB_NAME, false, "no-encryption", 1, false);
+		await _conn.open();
 
-	await runMigrations(_conn);
+		await runMigrations(_conn);
+	})();
+
+	try {
+		return await _initPromise;
+	} catch (err) {
+		// Reset so the next call retries instead of returning a cached rejection
+		_initPromise = null;
+		_conn = null;
+		throw err;
+	}
 }
 
 /**
@@ -45,13 +58,16 @@ export async function initDb(): Promise<void> {
  * `pnpm drizzle-kit generate` and the new entry + .sql file appear automatically.
  */
 async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
-	await conn.execute(`
-		CREATE TABLE IF NOT EXISTS __drizzle_migrations (
+	// transaction: false — this execute manages its own transaction internally by default,
+	// but here we just want a single auto-committed DDL statement.
+	await conn.execute(
+		`CREATE TABLE IF NOT EXISTS __drizzle_migrations (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			tag TEXT NOT NULL UNIQUE,
 			applied_at INTEGER NOT NULL
-		)
-	`);
+		)`,
+		false,
+	);
 
 	// Baseline: if the tables from migration 0000 already exist (created by the old
 	// database.ts before Drizzle was introduced), mark that migration as applied so
@@ -72,10 +88,11 @@ async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 
 			if (tablesExist) {
 				// Legacy DB: tables exist but migration isn't tracked — baseline it
-				await conn.run("INSERT INTO __drizzle_migrations (tag, applied_at) VALUES (?, ?)", [
-					firstTag,
-					Date.now(),
-				]);
+				await conn.run(
+					"INSERT INTO __drizzle_migrations (tag, applied_at) VALUES (?, ?)",
+					[firstTag, Date.now()],
+					false,
+				);
 				log("db", `Baselined existing DB at migration: ${firstTag}`);
 			}
 		}
@@ -89,7 +106,7 @@ async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 		if (result.values && result.values.length > 0) continue;
 
 		// Resolve the SQL content from the glob map
-		const key = `../../drizzle/${entry.tag}.sql`;
+		const key = `../../../drizzle/${entry.tag}.sql`;
 		const sql = migrationFiles[key];
 		if (!sql) throw new Error(`Migration file not found: ${entry.tag}.sql`);
 
@@ -99,11 +116,12 @@ async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 			.map((s) => s.trim())
 			.filter(Boolean);
 
-		// Wrap every migration in a transaction so multi-statement recreations
-		// (CREATE + INSERT + DROP + RENAME) are atomic. A partial failure won't
-		// leave the DB in a torn state — it rolls back entirely and the migration
-		// is not recorded, so the next launch will retry it cleanly.
-		await conn.execute("BEGIN");
+		// Wrap every migration in a transaction for atomicity.
+		// IMPORTANT: pass transaction=false to every execute()/run() call inside —
+		// those methods default to transaction=true and auto-commit their own transaction,
+		// which conflicts with the outer beginTransaction() and causes
+		// "Cannot perform this operation because there is no current transaction".
+		await conn.beginTransaction();
 		try {
 			for (const stmt of statements) {
 				// SQLite doesn't support ALTER TABLE ADD COLUMN IF NOT EXISTS.
@@ -128,18 +146,23 @@ async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 					if ((tableCheck.values?.length ?? 0) === 0) continue;
 				}
 
-				await conn.execute(stmt);
+				await conn.execute(stmt, false);
 			}
 
-			await conn.run("INSERT INTO __drizzle_migrations (tag, applied_at) VALUES (?, ?)", [
-				entry.tag,
-				Date.now(),
-			]);
+			await conn.run(
+				"INSERT INTO __drizzle_migrations (tag, applied_at) VALUES (?, ?)",
+				[entry.tag, Date.now()],
+				false,
+			);
 
-			await conn.execute("COMMIT");
+			await conn.commitTransaction();
 			log("db", `Applied migration: ${entry.tag}`);
 		} catch (err) {
-			await conn.execute("ROLLBACK");
+			try {
+				await conn.rollbackTransaction();
+			} catch {
+				// Rollback may fail if the transaction was already closed — ignore
+			}
 			throw new Error(`Migration ${entry.tag} failed and was rolled back: ${err}`);
 		}
 	}

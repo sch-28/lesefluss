@@ -23,13 +23,17 @@ import {
 	IonContent,
 	IonHeader,
 	IonIcon,
+	IonItem,
+	IonLabel,
+	IonList,
+	IonModal,
 	IonPage,
 	IonSpinner,
 	IonTitle,
 	IonToolbar,
 } from "@ionic/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { addOutline, removeOutline } from "ionicons/icons";
+import { addOutline, listOutline, moonOutline, removeOutline, sunnyOutline } from "ionicons/icons";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RouteComponentProps } from "react-router-dom";
@@ -39,6 +43,8 @@ import { useBookSync } from "../../contexts/book-sync-context";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
+import type { Chapter } from "../../services/db/schema";
+import DictionaryModal from "./dictionary-modal";
 import Paragraph, { utf8ByteLength } from "./paragraph";
 
 // ─── Scroll cache ────────────────────────────────────────────────────────────
@@ -65,6 +71,25 @@ function saveFontSize(size: number): void {
 	localStorage.setItem(FONT_SIZE_KEY, String(size));
 }
 
+// ─── Theme ───────────────────────────────────────────────────────────────────
+type ReaderTheme = "dark" | "light";
+const THEME_KEY = "reader_theme";
+const THEME_CYCLE: ReaderTheme[] = ["dark", "light"];
+
+function loadTheme(): ReaderTheme {
+	const v = localStorage.getItem(THEME_KEY);
+	return (THEME_CYCLE as string[]).includes(v ?? "") ? (v as ReaderTheme) : "dark";
+}
+
+function nextTheme(current: ReaderTheme): ReaderTheme {
+	return current === "dark" ? "light" : "dark";
+}
+
+function themeIcon(theme: ReaderTheme): string {
+	// Show what you'll switch TO: sun in dark mode → go light; moon in light mode → go dark
+	return theme === "dark" ? sunnyOutline : moonOutline;
+}
+
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 interface BookReaderProps extends RouteComponentProps<{ id: string }> {}
@@ -81,9 +106,15 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const loading = bookPending || contentPending;
 
 	const [fontSize, setFontSize] = useState<number>(loadFontSize);
+	const [theme, setTheme] = useState<ReaderTheme>(loadTheme);
+	const [tocOpen, setTocOpen] = useState(false);
+	const [selectedWord, setSelectedWord] = useState<string | null>(null);
 
 	// The byte offset we consider "current" — used for word highlight + saves
 	const [activeOffset, setActiveOffset] = useState(0);
+	// Tracks position for the progress bar — updated during scroll (activeOffset
+	// is set to NO_HIGHLIGHT=-1 while scrolling, so can't be used for progress).
+	const [progressOffset, setProgressOffset] = useState(0);
 
 	const listRef = useRef<VListHandle>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -104,6 +135,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	useEffect(() => {
 		if (book) {
 			setActiveOffset(book.position);
+			setProgressOffset(book.position);
 			lastOffsetRef.current = book.position;
 		}
 	}, [book]);
@@ -128,6 +160,16 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		}
 		return { paragraphs: paras, paragraphOffsets: offsets };
 	}, [content]);
+
+	// ── Parse chapters ────────────────────────────────────────────────────
+	const chapters = useMemo<Chapter[]>(() => {
+		if (!contentRow?.chapters) return [];
+		try {
+			return JSON.parse(contentRow.chapters) as Chapter[];
+		} catch {
+			return [];
+		}
+	}, [contentRow?.chapters]);
 
 	// ── Initial scroll to saved position ──────────────────────────────────
 	useEffect(() => {
@@ -167,12 +209,24 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		[id, pushPosition],
 	);
 
-	// ── Scroll handler — hide highlight (no position save, handleScrollEnd does that) ──
-	const handleScroll = useCallback((_scrollOffset: number) => {
-		// Hide highlight while scrolling. Skip the state update if already hidden
-		// to avoid triggering re-renders of all visible Paragraphs every frame.
-		setActiveOffset((prev) => (prev === NO_HIGHLIGHT ? prev : NO_HIGHLIGHT));
-	}, []);
+	// ── Scroll handler — hide highlight + update progress bar ──────────────
+	const handleScroll = useCallback(
+		(scrollOffset: number) => {
+			// Hide highlight while scrolling. Skip the state update if already hidden
+			// to avoid triggering re-renders of all visible Paragraphs every frame.
+			setActiveOffset((prev) => (prev === NO_HIGHLIGHT ? prev : NO_HIGHLIGHT));
+			// Update the progress bar live. findItemIndex maps the current scroll
+			// pixel offset to a paragraph index, which we convert to a byte offset.
+			if (listRef.current && paragraphOffsets.length > 0) {
+				const idx = Math.min(
+					listRef.current.findItemIndex(scrollOffset),
+					paragraphOffsets.length - 1,
+				);
+				setProgressOffset(paragraphOffsets[idx] ?? 0);
+			}
+		},
+		[paragraphOffsets],
+	);
 
 	// ── Scroll end — find top-left visible word + save position ─────────
 	const handleScrollEnd = useCallback(() => {
@@ -211,20 +265,30 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		if (bestOffset < 0) return;
 
 		setActiveOffset(bestOffset);
+		setProgressOffset(bestOffset);
 		lastOffsetRef.current = bestOffset;
 		savePosition(bestOffset);
 	}, [savePosition]);
 
 	// ── Word tap handler ───────────────────────────────────────────────────
+	// First tap on a word: set position (highlight it).
+	// Second tap on the already-highlighted word: open dictionary.
 	const handleWordTap = useCallback(
-		(offset: number) => {
+		(offset: number, wordText: string) => {
+			if (offset === activeOffset) {
+				// Second tap on the highlighted word — open dictionary
+				const clean = wordText.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
+				if (clean) setSelectedWord(clean);
+				return;
+			}
 			setActiveOffset(offset);
+			setProgressOffset(offset);
 			lastOffsetRef.current = offset;
 			// Immediate save — no debounce
 			queries.updateBook(id, { position: offset, lastRead: Date.now() });
 			pushPosition(offset);
 		},
-		[id, pushPosition],
+		[id, pushPosition, activeOffset],
 	);
 
 	// ── Font size ──────────────────────────────────────────────────────────
@@ -235,6 +299,91 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			return next;
 		});
 	}, []);
+
+	// ── Theme cycle ───────────────────────────────────────────────────────
+	const handleThemeCycle = useCallback(() => {
+		setTheme((prev) => {
+			const next = nextTheme(prev);
+			localStorage.setItem(THEME_KEY, next);
+			return next;
+		});
+	}, []);
+
+	// ── Chapter jump ──────────────────────────────────────────────────────
+	// Binary search paragraphOffsets for the chapter's startByte, then scroll.
+	const handleChapterJump = useCallback(
+		(startByte: number) => {
+			if (!listRef.current) return;
+			let lo = 0;
+			let hi = paragraphOffsets.length - 1;
+			while (lo < hi) {
+				const mid = Math.ceil((lo + hi) / 2);
+				if (paragraphOffsets[mid] <= startByte) {
+					lo = mid;
+				} else {
+					hi = mid - 1;
+				}
+			}
+			suppressNextScrollEndRef.current = true;
+			listRef.current.scrollToIndex(lo, { align: "start" });
+			// Save the chapter start as the reading position
+			setActiveOffset(startByte);
+			setProgressOffset(startByte);
+			lastOffsetRef.current = startByte;
+			queries.updateBook(id, { position: startByte, lastRead: Date.now() });
+			pushPosition(startByte);
+			setTocOpen(false);
+		},
+		[paragraphOffsets, id, pushPosition],
+	);
+
+	// ── Progress bar tap/drag ─────────────────────────────────────────────
+	const progressBarRef = useRef<HTMLDivElement>(null);
+
+	const scrubToX = useCallback(
+		(clientX: number) => {
+			if (!progressBarRef.current || !book || !listRef.current) return;
+			const rect = progressBarRef.current.getBoundingClientRect();
+			const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+			const targetByte = Math.round(ratio * book.size);
+
+			// Binary search paragraphOffsets
+			let lo = 0;
+			let hi = paragraphOffsets.length - 1;
+			while (lo < hi) {
+				const mid = Math.ceil((lo + hi) / 2);
+				if (paragraphOffsets[mid] <= targetByte) {
+					lo = mid;
+				} else {
+					hi = mid - 1;
+				}
+			}
+			suppressNextScrollEndRef.current = true;
+			listRef.current.scrollToIndex(lo, { align: "start" });
+			const actualByte = paragraphOffsets[lo] ?? 0;
+			setActiveOffset(actualByte);
+			setProgressOffset(actualByte);
+			lastOffsetRef.current = actualByte;
+			savePosition(actualByte);
+		},
+		[book, paragraphOffsets, savePosition],
+	);
+
+	const handleProgressPointerDown = useCallback(
+		(e: React.PointerEvent<HTMLDivElement>) => {
+			e.currentTarget.setPointerCapture(e.pointerId);
+			scrubToX(e.clientX);
+		},
+		[scrubToX],
+	);
+
+	const handleProgressPointerMove = useCallback(
+		(e: React.PointerEvent<HTMLDivElement>) => {
+			if (e.buttons === 0) return;
+			scrubToX(e.clientX);
+		},
+		[scrubToX],
+	);
 
 	// ── Save scroll cache + flush position on unmount ─────────────────────
 	useEffect(() => {
@@ -292,8 +441,10 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		);
 	}
 
+	const progressPct = book.size > 0 ? Math.min(100, (progressOffset / book.size) * 100) : 0;
+
 	return (
-		<IonPage>
+		<IonPage className={`reader-theme-${theme}`}>
 			<IonHeader class="ion-no-border">
 				<IonToolbar>
 					<IonButtons slot="start">
@@ -301,6 +452,14 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 					</IonButtons>
 					<IonTitle>{book.title}</IonTitle>
 					<IonButtons slot="end">
+						{chapters.length > 0 && (
+							<IonButton onClick={() => setTocOpen(true)} aria-label="Table of contents">
+								<IonIcon slot="icon-only" icon={listOutline} />
+							</IonButton>
+						)}
+						<IonButton onClick={handleThemeCycle} aria-label="Switch reading theme">
+							<IonIcon slot="icon-only" icon={themeIcon(theme)} />
+						</IonButton>
 						<IonButton
 							onClick={() => handleFontSizeChange(-FONT_SIZE_STEP)}
 							disabled={fontSize <= FONT_SIZE_MIN}
@@ -324,7 +483,12 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 					<VList
 						ref={listRef}
 						cache={scrollCache.get(id)}
-						style={{ height: "100%", padding: "0 20px", fontSize: `${fontSize}px` }}
+						style={{
+							height: "100%",
+							padding: "0 20px",
+							paddingBottom: "calc(52px + env(safe-area-inset-bottom, 0px))",
+							fontSize: `${fontSize}px`,
+						}}
 						onScroll={handleScroll}
 						onScrollEnd={handleScrollEnd}
 					>
@@ -339,7 +503,59 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						))}
 					</VList>
 				</div>
+
+				{/* ── Progress bar ── */}
+				<div
+					ref={progressBarRef}
+					className="reader-progress-bar"
+					onPointerDown={handleProgressPointerDown}
+					onPointerMove={handleProgressPointerMove}
+					aria-label="Reading progress"
+					role="slider"
+					aria-valuenow={Math.round(progressPct)}
+					aria-valuemin={0}
+					aria-valuemax={100}
+				>
+					<div className="reader-progress-fill-track">
+						<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
+					</div>
+					<span className="reader-progress-label">{Math.round(progressPct)}%</span>
+				</div>
 			</IonContent>
+
+			{/* ── TOC modal ── */}
+			<IonModal
+				isOpen={tocOpen}
+				onDidDismiss={() => setTocOpen(false)}
+				breakpoints={[0, 0.5, 0.9]}
+				initialBreakpoint={0.5}
+			>
+				<IonHeader>
+					<IonToolbar>
+						<IonTitle>Contents</IonTitle>
+						<IonButtons slot="end">
+							<IonButton onClick={() => setTocOpen(false)}>Close</IonButton>
+						</IonButtons>
+					</IonToolbar>
+				</IonHeader>
+				<IonContent>
+					<IonList>
+						{chapters.map((ch, i) => (
+							<IonItem
+								key={i.toString()}
+								button
+								detail={false}
+								onClick={() => handleChapterJump(ch.startByte)}
+							>
+								<IonLabel>{ch.title}</IonLabel>
+							</IonItem>
+						))}
+					</IonList>
+				</IonContent>
+			</IonModal>
+
+			{/* ── Dictionary modal ── */}
+			<DictionaryModal word={selectedWord} onClose={() => setSelectedWord(null)} />
 		</IonPage>
 	);
 };

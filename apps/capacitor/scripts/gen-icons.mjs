@@ -18,7 +18,7 @@
  */
 
 import { execSync } from "child_process";
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
@@ -52,6 +52,7 @@ const fgTmp = join(tmpdir(), "ic_launcher_foreground.svg");
 writeFileSync(fgTmp, fgSvg, "utf8");
 
 function render(src, size, dest) {
+	mkdirSync(dirname(dest), { recursive: true });
 	execSync(`rsvg-convert -w ${size} -h ${size} "${src}" -o "${dest}"`);
 	console.log(`  ${size}x${size} → ${dest.replace(ROOT + "/", "")}`);
 }

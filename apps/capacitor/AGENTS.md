@@ -185,9 +185,10 @@ save.mutate({ wpm: 400 });
 
 ## Book Reader (`src/pages/reader/`)
 
-Full-screen virtualized scroll reader split across two files:
-- `index.tsx` — page shell, data loading, scroll/tap handlers, position sync
-- `Paragraph.tsx` — `React.memo` component for a single paragraph; word spans, heading detection, highlight
+Full-screen virtualized scroll reader split across three files:
+- `index.tsx` — page shell, data loading, scroll/tap handlers, position sync, progress bar, TOC modal, theme
+- `paragraph.tsx` — `React.memo` component for a single paragraph; word spans, heading detection, highlight
+- `dictionary-modal.tsx` — bottom-sheet modal fetching definitions from the Free Dictionary API via react-query
 
 Uses `virtua`'s `VList` for virtualisation (~20–30 paragraphs in the DOM at any time regardless of book size).
 
@@ -202,6 +203,7 @@ Computed once in `useMemo([content])` in `index.tsx`:
 ```ts
 paragraphs: string[]       // content.split("\n\n") — needed for VList item count
 paragraphOffsets: number[] // UTF-8 byte offset where each paragraph starts in content
+chapters: Chapter[]        // parsed from contentRow.chapters JSON; empty for TXT books
 ```
 
 Per-paragraph word offsets are computed at render time inside `<Paragraph>` using `utf8ByteLength()`. Only ~20–30 paragraphs are mounted at any time, so this is negligible work.
@@ -210,19 +212,45 @@ Per-paragraph word offsets are computed at render time inside `<Paragraph>` usin
 
 | Operation | How | Cost |
 |-----------|-----|------|
-| Scroll end → save position | `paragraphOffsets[ref.findItemIndex(visibleTop)]` + word estimate | O(1) |
+| Scroll end → save position | DOM span query for top-left visible word | O(n) visible spans |
 | Open → scroll to position | Binary search `paragraphOffsets` for `book.position` | O(log p) |
 | Word tap → save position | `tokenOffset` passed via `onWordTap` callback | O(1) |
 | Highlight active word | `tokenOffset === activeOffset` during render | O(1) per span |
+| Progress bar scrub | Binary search `paragraphOffsets` for target byte → `scrollToIndex` | O(log p) |
+| Chapter jump | Binary search `paragraphOffsets` for `chapter.startByte` → `scrollToIndex` | O(log p) |
 
 ### Key patterns
 
 - **`VListHandle`** via `useRef<VListHandle>` — exposes `findItemIndex`, `scrollToIndex`, `getItemOffset`, `getItemSize`, `cache`
 - **`CacheSnapshot`** stored in a module-level `Map<bookId, CacheSnapshot>` on unmount; restored via `cache` prop on mount — pixel-accurate scroll restoration without DB storage
 - **`onScrollEnd`** fires position save (no debounce timer needed — virtua calls it once after the scroll settles)
-- **Word tap is instant** — position saved and pushed to BLE immediately, no debounce
+- **`onScroll`** also calls `findItemIndex(scrollOffset)` to update `progressOffset` live during scrolling
+- **Two offset states:** `activeOffset` (word highlight, set to `-1` while scrolling) and `progressOffset` (progress bar, updated every scroll frame via `findItemIndex`)
+- **Word tap — two-stage:** first tap highlights the word and saves position; second tap on the already-highlighted word opens the dictionary modal
 - **Heading paragraphs** (prefixed `# `) are not tappable; `handleScrollEnd` skips them when finding the top word
 - **Routing** — `/reader/:id` is placed outside `IonTabs` in `App.tsx` so the tab bar is not rendered
+
+### Reading themes
+
+Two themes stored in `localStorage` under `reader_theme`:
+- **`dark`** (default) — `#1a1a1a` background, `#e4e4e4` text — actual dark mode
+- **`light`** — `#ffffff` background, `#111111` text
+
+Applied as a `reader-theme-{name}` class on `IonPage`. CSS custom properties scope all colours (background, text, toolbar, progress bar) to each theme. Only affects the reader — Library and Settings stay monochrome.
+
+Sun icon = tap to switch to light; moon icon = tap to switch to dark.
+
+### Progress bar
+
+Fixed bar at the bottom of `IonContent`, positioned `calc(env(safe-area-inset-bottom) + 8px)` above the screen edge to stay clear of the iOS swipe-home gesture zone. Tap or drag (pointer capture) anywhere on the track to scrub to that position. Updates live during scrolling via `progressOffset`.
+
+### TOC / Chapter navigation
+
+`listOutline` toolbar button — only rendered when `chapters.length > 0` (EPUB imports only; TXT has no chapters). Opens a sheet modal (`breakpoints=[0, 0.5, 0.9]`) listing all chapters. Tapping a chapter binary-searches `paragraphOffsets` for its `startByte`, scrolls there, saves the position, and closes the modal.
+
+### Dictionary lookup
+
+Tap an already-highlighted word → opens a bottom-sheet modal with the definition from `api.dictionaryapi.dev` (free, no API key). Results cached permanently by react-query (`staleTime: Infinity`). Shows phonetic, part of speech, up to 3 definitions + examples. Handles not-found and network errors gracefully.
 
 ### Library interaction model (`BookCard.tsx`)
 
@@ -236,7 +264,7 @@ Per-paragraph word offsets are computed at render time inside `<Paragraph>` usin
 - BLE status badge between tabs (no dedicated connection page)
 - **Library:** book grid (3 cols), cover art, progress bar, "On device" badge; empty state; FAB to import; short tap → reader; long press → action sheet ("Set active on device" / "Delete"); transfer progress modal
 - **Settings:** sliders for WPM/delays/acceleration/offsets, toggles for inverse/BLE, sync-to/from-device buttons, disconnect
-- **BookReader:** full-screen virtualized reader, word highlight, back button, position syncs bidirectionally with ESP32
+- **BookReader:** full-screen virtualized reader, word highlight, back button, dark/light theme toggle, progress bar, TOC navigation, dictionary lookup; position syncs bidirectionally with ESP32
 
 ## What's Done
 
@@ -252,3 +280,7 @@ Per-paragraph word offsets are computed at render time inside `<Paragraph>` usin
 | Library "Set active on device" + transfer progress modal | Done |
 | Storage info display in Settings (free/total flash) | Done |
 | In-app scroll reader (BookReader + virtua VList) | Done |
+| Reader progress bar (tap/drag scrub, live scroll update) | Done |
+| Chapter / TOC navigation modal (EPUB books) | Done |
+| Reading themes (dark / light, localStorage) | Done |
+| Dictionary lookup (tap highlighted word, Free Dictionary API) | Done |
