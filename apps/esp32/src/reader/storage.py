@@ -139,19 +139,49 @@ class WordReader:
         self.buffer = ""
         self.chunk_size = 512
         self.eof = False
+        self._carry = b""
 
-    def open(self, byte_position=0):
+    def open(self, byte_position=0, skip_boundary=True):
         try:
             self.file = open(self.filename, 'rb')
             self.buffer = ""
             self.eof = False
+            self._carry = b""
             if byte_position > 0:
                 self.file.seek(byte_position)
-                self._skip_to_word_boundary()
+                if skip_boundary:
+                    self._skip_to_word_boundary()
             return True
         except Exception as e:
             print(f"WordReader open error: {e}")
             return False
+
+    def _decode_chunk(self, raw):
+        """Decode bytes to str, carrying incomplete UTF-8 sequences to next read."""
+        raw = self._carry + raw
+        self._carry = b""
+        # Find how many trailing bytes might be an incomplete sequence (max 3).
+        # Walk back from the end to find a leading byte of a multi-byte char.
+        trim = 0
+        for i in range(1, min(4, len(raw) + 1)):
+            b = raw[-i]
+            if b >= 0xC0:
+                # Leading byte found — check if sequence is complete.
+                if b < 0xE0:
+                    expected = 2
+                elif b < 0xF0:
+                    expected = 3
+                else:
+                    expected = 4
+                if i < expected:
+                    trim = i
+                break
+            elif b < 0x80:
+                break  # ASCII — no incomplete sequence
+        if trim:
+            self._carry = raw[-trim:]
+            raw = raw[:-trim]
+        return raw.decode('utf-8', 'ignore')
 
     def _skip_to_word_boundary(self):
         while True:
@@ -159,7 +189,7 @@ class WordReader:
             if not chunk:
                 self.eof = True
                 return
-            text = chunk.decode('utf-8', 'ignore')
+            text = self._decode_chunk(chunk)
             for i, c in enumerate(text):
                 if c in ' \t\n\r':
                     self.buffer = text[i:].lstrip()
@@ -204,13 +234,30 @@ class WordReader:
             try:
                 chunk = self.file.read(self.chunk_size)
                 if not chunk:
+                    # Flush any remaining carry bytes.
+                    if self._carry:
+                        self.buffer += self._carry.decode('utf-8', 'ignore')
+                        self._carry = b""
                     self.eof = True
                     continue
-                self.buffer += chunk.decode('utf-8', 'ignore')
+                self.buffer += self._decode_chunk(chunk)
             except MemoryError:
-                self.buffer = ""
-                self.eof = True
-                return None
-            except Exception:
+                import gc
+                print(f"WordReader MemoryError at pos {self.file.tell()}, buf={len(self.buffer)}, free={gc.mem_free()}")
+                gc.collect()
+                print(f"WordReader after gc free={gc.mem_free()}, retrying")
+                try:
+                    chunk = self.file.read(self.chunk_size)
+                    if not chunk:
+                        self.eof = True
+                        continue
+                    self.buffer += self._decode_chunk(chunk)
+                except Exception as e:
+                    print(f"WordReader MemoryError retry failed: {e}")
+                    self.eof = True
+                    return None
+            except Exception as e:
+                import gc
+                print(f"WordReader read error at pos {self.file.tell()}, buf={len(self.buffer)}, free={gc.mem_free()}: {type(e).__name__}: {e}")
                 self.eof = True
                 return None
