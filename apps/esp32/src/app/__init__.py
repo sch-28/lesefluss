@@ -1,6 +1,6 @@
 """Single-loop state machine for the RSVP reader.
 
-States:  idle | reading
+States:  idle | scrubbing | reading
 BLE transfer progress is handled as an overlay on any state.
 """
 
@@ -56,11 +56,12 @@ def _progress_pct(storage):
 class App:
     """Top-level controller.  Call ``App(...).run()`` and never return."""
 
-    def __init__(self, display, button, storage, ble):
+    def __init__(self, display, button, storage, ble, encoder=None):
         self.display = display
         self.button = button
         self.storage = storage
         self.ble = ble
+        self.encoder = encoder
         self.reader = RSVPReader(display, storage, ble)
 
         self.state = 'idle'
@@ -68,6 +69,7 @@ class App:
         self._last_activity = time.ticks_ms()
         self._display_off = False
         self._display_off_at = 0
+        self._scrub_last_input_ms = 0
 
     # ------------------------------------------------------------------
     # Public
@@ -80,6 +82,8 @@ class App:
                 continue
             if self.state == 'idle':
                 self._tick_idle()
+            elif self.state == 'scrubbing':
+                self._tick_scrubbing()
             elif self.state == 'reading':
                 self._tick_reading()
 
@@ -92,13 +96,13 @@ class App:
 
         if self._display_off:
             # Display is already off — wait for button or deep sleep.
-            if self.button.is_pressed():
+            if self._any_button_pressed():
                 # Wake display, reset timers.
                 self.display.wakeup()
                 self._display_off = False
                 self._last_activity = now
                 # Wait for release so the press isn't registered as 'short'.
-                while self.button.is_pressed():
+                while self._any_button_pressed():
                     time.sleep_ms(10)
                 self._show_home()
                 return
@@ -107,10 +111,18 @@ class App:
             time.sleep_ms(50)
             return
 
-        p = self.button.check_press_state(5000)
+        # Button: start reading
+        p = self._check_any_button(5000)
         if p == 'short':
             self._start_reading()
             return
+
+        # Encoder turn from idle → enter scrubbing
+        if self.encoder:
+            steps = self.encoder.get_steps()
+            if steps != 0:
+                self._enter_scrubbing(steps)
+                return
 
         if time.ticks_diff(now, self._last_activity) > config.AUTO_SHUTDOWN_TIMEOUT:
             self.display.shutdown()
@@ -120,14 +132,50 @@ class App:
         time.sleep(0.05)
 
     # ------------------------------------------------------------------
+    # Scrubbing
+    # ------------------------------------------------------------------
+
+    def _tick_scrubbing(self):
+        now = time.ticks_ms()
+
+        # Button: start/resume reading from current position
+        p = self._check_any_button(5000)
+        if p == 'short':
+            self._start_reading_from_scrub()
+            return
+
+        # Encoder turn: step words
+        if self.encoder:
+            steps = self.encoder.get_steps()
+            if steps != 0:
+                self.reader.step_word(steps)
+                self._scrub_last_input_ms = now
+                return
+
+        # Auto-start after inactivity timeout
+        if time.ticks_diff(now, self._scrub_last_input_ms) > config.SCRUB_AUTO_START_MS:
+            self._start_reading_from_scrub()
+            return
+
+        time.sleep_ms(50)
+
+    # ------------------------------------------------------------------
     # Reading
     # ------------------------------------------------------------------
 
     def _tick_reading(self):
-        p = self.button.check_press_state(5000)
+        # Button short press: save position and return to idle home screen
+        p = self._check_any_button(5000)
         if p == 'short':
             self._pause()
             return
+
+        # Encoder turn during reading: pause and enter scrubbing
+        if self.encoder:
+            steps = self.encoder.get_steps()
+            if steps != 0:
+                self._enter_scrubbing(steps)
+                return
 
         word = self.reader.display_next_word()
         if word is None:
@@ -143,7 +191,7 @@ class App:
             # released so that check_press_state() fires 'short' on the very
             # next tick instead of seeing the button still held and racing
             # through more words.
-            while self.button.is_pressed():
+            while self._any_button_pressed():
                 time.sleep_ms(10)
             return
 
@@ -159,12 +207,39 @@ class App:
         self.display.clear()
         self.state = 'reading'
 
+    def _enter_scrubbing(self, initial_steps):
+        """Pause (if reading) and enter scrub mode, optionally applying initial steps."""
+        self.reader.save_position()
+        # Ensure the reader is loaded so we have content to scrub.
+        if self.reader.word_reader is None and self.reader._words is None:
+            if self.storage.has_text():
+                self.reader.load_text(resume=True)
+            else:
+                self.reader.load_text(text=config.SAMPLE_TEXT, resume=False)
+        self.reader.enter_scrub()
+        self.display.clear()
+        if initial_steps != 0:
+            self.reader.step_word(initial_steps)
+        else:
+            self.reader.show_current_word()
+        self.state = 'scrubbing'
+        self._scrub_last_input_ms = time.ticks_ms()
+        self._last_activity = time.ticks_ms()
+
     def _pause(self):
         self.reader.save_position()
+        self.reader.exit_scrub_to_idle()
         self.state = 'idle'
         self._display_off = False
         self._last_activity = time.ticks_ms()
         self._show_home()
+
+    def _start_reading_from_scrub(self):
+        """Resume RSVP from the current scrub position (no rewind)."""
+        self.reader.exit_scrub_to_reading()
+        self.reader.reset_acceleration()
+        self.display.clear()
+        self.state = 'reading'
 
     def _reload_storage(self):
         self.storage = TextStorage()
@@ -181,6 +256,23 @@ class App:
             esp32.WAKEUP_ALL_LOW,
         )
         machine.deepsleep()
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _any_button_pressed(self):
+        """True if BOOT button or encoder button is currently held."""
+        return self.button.is_pressed() or (self.encoder and self.encoder.is_pressed())
+
+    def _check_any_button(self, long_press_ms=5000):
+        """Check BOOT button and encoder button; return first non-None result."""
+        p = self.button.check_press_state(long_press_ms)
+        if p:
+            return p
+        if self.encoder:
+            return self.encoder.check_press_state(long_press_ms)
+        return None
 
     # ------------------------------------------------------------------
     # BLE polling

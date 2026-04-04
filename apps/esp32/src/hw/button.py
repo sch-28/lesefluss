@@ -4,10 +4,12 @@ import config
 
 
 class ButtonHandler:
-    """Debounced single-button input (BOOT on GPIO 0)."""
+    """Debounced single-button input (active-low with pull-up)."""
 
-    def __init__(self):
-        self.button = machine.Pin(config.PIN_BOOT_BUTTON, machine.Pin.IN, machine.Pin.PULL_UP)
+    def __init__(self, pin=None):
+        if pin is None:
+            pin = config.PIN_BOOT_BUTTON
+        self.button = machine.Pin(pin, machine.Pin.IN, machine.Pin.PULL_UP)
         self.last_state = 1
         self.press_start_time = 0
 

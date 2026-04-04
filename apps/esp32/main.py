@@ -48,6 +48,15 @@ def main(force_run=False):
     button  = ButtonHandler()
     storage = TextStorage()
 
+    # Rotary encoder (optional — absent if hardware not connected)
+    encoder = None
+    try:
+        from hw.encoder import RotaryEncoderHandler
+        encoder = RotaryEncoderHandler()
+        print("Encoder ready")
+    except Exception as e:
+        print(f"Encoder init failed: {e}")
+
     # BLE
     ble = None
     if config.BLE_ON:
@@ -62,7 +71,7 @@ def main(force_run=False):
 
     # Run
     from app import App
-    App(display, button, storage, ble).run()
+    App(display, button, storage, ble, encoder=encoder).run()
 
 
 if __name__ == "__main__":

@@ -65,6 +65,14 @@ def get_focal_position(word):
 FONT_WIDTH = 16  # pixels per character
 FONT_HEIGHT = 32  # pixels
 
+# Rotary encoder pins (EC11)
+PIN_ENCODER_CLK    = 26    # encoder pin A  (GPIO 32 unusable — display SPI)
+PIN_ENCODER_DT     = 33    # encoder pin B
+PIN_ENCODER_SW     = 25    # encoder pin E (button); pins C+D → GND
+
+# Scrub mode
+SCRUB_AUTO_START_MS = 3000  # ms of inactivity in scrub before auto-starting RSVP
+
 # Button debounce
 BUTTON_DEBOUNCE_MS = 200
 
