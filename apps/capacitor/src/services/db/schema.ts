@@ -29,6 +29,7 @@ export const settings = sqliteTable("settings", {
 	devMode: integer("dev_mode", { mode: "boolean" }).notNull().default(false),
 	displayOffTimeout: integer("display_off_timeout").notNull().default(60),
 	deepSleepTimeout: integer("deep_sleep_timeout").notNull().default(120),
+	brightness: integer("brightness").notNull().default(100),
 	updatedAt: integer("updated_at").notNull(),
 });
 

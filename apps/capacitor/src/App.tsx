@@ -40,6 +40,7 @@ import "./theme/monochrome.css";
 import { BLEProvider, useBLE } from "./contexts/ble-context";
 import { BookSyncProvider } from "./contexts/book-sync-context";
 import { DatabaseProvider } from "./contexts/database-context";
+import { ThemeProvider } from "./contexts/theme-context";
 import Library from "./pages/library";
 import BookReader from "./pages/reader";
 import Settings from "./pages/settings";
@@ -153,28 +154,30 @@ const App: React.FC = () => {
 	}, []);
 
 	return (
-		<IonApp>
-			<QueryClientProvider client={queryClient}>
-				<DatabaseProvider>
-					<BLEProvider>
-						<BookSyncProvider>
-							<IonReactRouter>
-								<HardwareBackButtonHandler />
-								<IonRouterOutlet>
-									{/* All other routes under /tabs share the tab bar */}
-									<Route path="/tabs" render={() => <AppTabs />} />
+		<ThemeProvider>
+			<IonApp>
+				<QueryClientProvider client={queryClient}>
+					<DatabaseProvider>
+						<BLEProvider>
+							<BookSyncProvider>
+								<IonReactRouter>
+									<HardwareBackButtonHandler />
+									<IonRouterOutlet>
+										{/* All other routes under /tabs share the tab bar */}
+										<Route path="/tabs" render={() => <AppTabs />} />
 
-									{/* Root redirect */}
-									<Route exact path="/">
-										<Redirect to="/tabs/library" />
-									</Route>
-								</IonRouterOutlet>
-							</IonReactRouter>
-						</BookSyncProvider>
-					</BLEProvider>
-				</DatabaseProvider>
-			</QueryClientProvider>
-		</IonApp>
+										{/* Root redirect */}
+										<Route exact path="/">
+											<Redirect to="/tabs/library" />
+										</Route>
+									</IonRouterOutlet>
+								</IonReactRouter>
+							</BookSyncProvider>
+						</BLEProvider>
+					</DatabaseProvider>
+				</QueryClientProvider>
+			</IonApp>
+		</ThemeProvider>
 	);
 };
 

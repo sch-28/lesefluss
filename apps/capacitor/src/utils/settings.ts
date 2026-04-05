@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS = {
 	DEV_MODE: false,
 	DISPLAY_OFF_TIMEOUT: 60, // Seconds until display turns off (10-300)
 	DEEP_SLEEP_TIMEOUT: 120, // Seconds until deep sleep from last activity (10-300)
+	BRIGHTNESS: 100, // Backlight brightness % (10-100)
 } as const;
 
 /**
@@ -31,4 +32,5 @@ export const SETTING_CONSTRAINTS = {
 	WORD_OFFSET: { min: 0, max: 20, step: 1 },
 	DISPLAY_OFF_TIMEOUT: { min: 10, max: 300, step: 10 },
 	DEEP_SLEEP_TIMEOUT: { min: 10, max: 300, step: 10 },
+	BRIGHTNESS: { min: 10, max: 100, step: 5 },
 } as const;

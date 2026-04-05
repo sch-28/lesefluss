@@ -28,14 +28,17 @@ import {
 	closeCircle,
 	cloudDownload,
 	cloudUpload,
+	moonOutline,
 	refresh,
 	search,
 	stop,
+	sunnyOutline,
 } from "ionicons/icons";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "../components/toast";
 import { useBLE } from "../contexts/ble-context";
+import { useTheme } from "../contexts/theme-context";
 import { ble } from "../services/ble";
 import type { StorageInfo } from "../services/ble/characteristics/storage";
 import { queryHooks } from "../services/db/hooks";
@@ -66,6 +69,7 @@ const Settings: React.FC = () => {
 	} = useBLE();
 
 	const { showToast } = useToast();
+	const { theme, toggleTheme } = useTheme();
 
 	// ── Data query ───────────────────────────────────────────────────────
 	const { data: dbSettings, isPending } = queryHooks.useSettings();
@@ -227,6 +231,19 @@ const Settings: React.FC = () => {
 				<IonList>
 					<IonCard>
 						<IonCardHeader>
+							<IonCardTitle>Appearance</IonCardTitle>
+						</IonCardHeader>
+						<IonCardContent>
+							<IonItem>
+								<IonIcon slot="start" icon={theme === "dark" ? moonOutline : sunnyOutline} />
+								<IonLabel>Dark Mode</IonLabel>
+								<IonToggle checked={theme === "dark"} onIonChange={toggleTheme} />
+							</IonItem>
+						</IonCardContent>
+					</IonCard>
+
+					<IonCard>
+						<IonCardHeader>
 							<IonCardTitle>General</IonCardTitle>
 						</IonCardHeader>
 						<IonCardContent>
@@ -324,28 +341,6 @@ const Settings: React.FC = () => {
 								/>
 							</IonItem>
 
-							<IonListHeader>
-								<IonLabel>Display</IonLabel>
-							</IonListHeader>
-
-							<IonItem>
-								<IonLabel position="stacked">
-									<div className="flex items-center gap-2">
-										Focal Offset: {settings.xOffset}%
-										<IonNote>(30=left, 50=center, 70=right)</IonNote>
-									</div>
-								</IonLabel>
-								<IonRange
-									min={30}
-									max={70}
-									step={5}
-									value={settings.xOffset}
-									onIonChange={(e) => updateSetting("xOffset", e.detail.value as number)}
-									pin
-									pinFormatter={(value: number) => `${value}%`}
-								/>
-							</IonItem>
-
 							<IonItem>
 								<IonLabel position="stacked">
 									<div className="flex items-center gap-2">
@@ -361,14 +356,6 @@ const Settings: React.FC = () => {
 									onIonChange={(e) => updateSetting("wordOffset", e.detail.value as number)}
 									pin
 									pinFormatter={(value: number) => `${value} words`}
-								/>
-							</IonItem>
-
-							<IonItem>
-								<IonLabel>Inverse Colors</IonLabel>
-								<IonToggle
-									checked={settings.inverse}
-									onIonChange={(e) => updateSetting("inverse", e.detail.checked)}
 								/>
 							</IonItem>
 						</IonCardContent>
@@ -406,6 +393,35 @@ const Settings: React.FC = () => {
 									onIonChange={(e) => updateSetting("deepSleepTimeout", e.detail.value as number)}
 									pin
 									pinFormatter={(value: number) => `${value}s`}
+								/>
+							</IonItem>
+
+							<IonListHeader>
+								<IonLabel>Display</IonLabel>
+							</IonListHeader>
+
+							<IonItem>
+								<IonLabel position="stacked">
+									<div className="flex items-center gap-2">
+										Brightness: {settings.brightness}%<IonNote>(backlight)</IonNote>
+									</div>
+								</IonLabel>
+								<IonRange
+									min={SETTING_CONSTRAINTS.BRIGHTNESS.min}
+									max={SETTING_CONSTRAINTS.BRIGHTNESS.max}
+									step={SETTING_CONSTRAINTS.BRIGHTNESS.step}
+									value={settings.brightness}
+									onIonChange={(e) => updateSetting("brightness", e.detail.value as number)}
+									pin
+									pinFormatter={(value: number) => `${value}%`}
+								/>
+							</IonItem>
+
+							<IonItem>
+								<IonLabel>Inverse Colors</IonLabel>
+								<IonToggle
+									checked={settings.inverse}
+									onIonChange={(e) => updateSetting("inverse", e.detail.checked)}
 								/>
 							</IonItem>
 

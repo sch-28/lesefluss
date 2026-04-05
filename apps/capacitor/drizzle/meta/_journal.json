@@ -15,6 +15,13 @@
       "when": 1743724800000,
       "tag": "0001_power_timers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1743811200000,
+      "tag": "0002_brightness",
+      "breakpoints": true
     }
   ]
 }

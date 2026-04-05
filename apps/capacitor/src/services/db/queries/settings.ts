@@ -28,6 +28,7 @@ export async function getSettings(): Promise<Settings> {
 		devMode: DEFAULT_SETTINGS.DEV_MODE,
 		displayOffTimeout: DEFAULT_SETTINGS.DISPLAY_OFF_TIMEOUT,
 		deepSleepTimeout: DEFAULT_SETTINGS.DEEP_SLEEP_TIMEOUT,
+		brightness: DEFAULT_SETTINGS.BRIGHTNESS,
 		updatedAt: Date.now(),
 	};
 

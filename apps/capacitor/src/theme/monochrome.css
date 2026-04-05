@@ -106,6 +106,128 @@ ion-content.no-header-content {
 	--ion-card-background: #ffffff;
 }
 
+/* ── App-wide dark theme ── */
+/* Applied via body.dark — set by ThemeContext on every theme toggle. */
+body.dark {
+	--ion-background-color: #1a1a1a;
+	--ion-background-color-rgb: 26, 26, 26;
+
+	--ion-text-color: #e4e4e4;
+	--ion-text-color-rgb: 228, 228, 228;
+
+	--ion-border-color: #333333;
+
+	--ion-toolbar-background: #1a1a1a;
+	--ion-toolbar-border-color: #333333;
+	--ion-toolbar-color: #e4e4e4;
+
+	--ion-item-background: #1a1a1a;
+	--ion-item-border-color: #333333;
+
+	--ion-card-background: #242424;
+
+	--ion-tab-bar-background: #1a1a1a;
+	--ion-tab-bar-border-color: #333333;
+	--ion-tab-bar-color: #888888;
+	--ion-tab-bar-color-selected: #e4e4e4;
+
+	--ion-color-primary: #e4e4e4;
+	--ion-color-primary-rgb: 228, 228, 228;
+	--ion-color-primary-contrast: #1a1a1a;
+	--ion-color-primary-contrast-rgb: 26, 26, 26;
+	--ion-color-primary-shade: #c8c8c8;
+	--ion-color-primary-tint: #e7e7e7;
+
+	--ion-color-medium: #666666;
+	--ion-color-medium-rgb: 102, 102, 102;
+	--ion-color-medium-contrast: #e4e4e4;
+	--ion-color-medium-contrast-rgb: 228, 228, 228;
+	--ion-color-medium-shade: #5a5a5a;
+	--ion-color-medium-tint: #757575;
+}
+
+/* Modals are portalled to document.body, so body.dark covers them automatically.
+ * Explicitly set --background and --color so ion-modal sheet backgrounds pick it up. */
+body.dark ion-modal {
+	--background: #1a1a1a;
+	--color: #e4e4e4;
+}
+
+body.dark ion-modal ion-header,
+body.dark ion-modal ion-toolbar {
+	--background: #1a1a1a;
+	--ion-toolbar-background: #1a1a1a;
+	--ion-toolbar-color: #e4e4e4;
+	--ion-toolbar-border-color: #333333;
+	--ion-border-color: #333333;
+}
+
+body.dark ion-modal ion-content,
+body.dark ion-modal ion-list,
+body.dark ion-modal ion-item {
+	--background: #1a1a1a;
+	--ion-item-background: #1a1a1a;
+	--ion-item-border-color: #333333;
+	--color: #e4e4e4;
+}
+
+/* Action sheets */
+body.dark ion-action-sheet {
+	--background: #242424;
+	--color: #e4e4e4;
+	--button-color: #e4e4e4;
+}
+
+/* Alerts */
+body.dark ion-alert {
+	--background: #242424;
+	--color: #e4e4e4;
+}
+
+/* Tab bar — override the hard-coded component-level values */
+body.dark ion-tab-bar {
+	--background: #1a1a1a;
+	border-top-color: #333333;
+}
+
+/* Buttons — only target expand="block" action buttons, not icon-only toolbar buttons */
+body.dark ion-button[expand] {
+	--background: #e4e4e4;
+	--background-activated: #c8c8c8;
+	--background-hover: #c8c8c8;
+	--color: #1a1a1a;
+}
+
+body.dark ion-button[expand][fill="outline"] {
+	--border-color: #e4e4e4;
+	--color: #e4e4e4;
+	--background: transparent;
+	--background-activated: rgba(228, 228, 228, 0.1);
+	--background-hover: rgba(228, 228, 228, 0.1);
+}
+
+/* Cards — override hard-coded border */
+body.dark ion-card {
+	border-color: #333333;
+}
+
+/* Range slider */
+body.dark ion-range {
+	--bar-background: #444444;
+	--bar-background-active: #e4e4e4;
+	--knob-background: #e4e4e4;
+	--pin-background: #e4e4e4;
+	--pin-color: #1a1a1a;
+}
+
+/* Toggle */
+body.dark ion-toggle {
+	--background: #444444;
+	--background-checked: #e4e4e4;
+	--handle-background: #888888;
+	--handle-background-checked: #1a1a1a;
+}
+
 /* Range slider styling */
 ion-range {
 	--bar-background: #e0e0e0;
@@ -180,6 +302,11 @@ ion-tab-button {
 	--color-selected: #000000;
 }
 
+body.dark ion-tab-button {
+	--color: #888888;
+	--color-selected: #e4e4e4;
+}
+
 /* BLE badge in tab bar — override selected/unselected colors based on state */
 ion-tab-button.ble-badge {
 	font-size: 0.65rem;
@@ -188,6 +315,11 @@ ion-tab-button.ble-badge {
 ion-tab-button.ble-connected {
 	--color: #000000;
 	--color-selected: #000000;
+}
+
+body.dark ion-tab-button.ble-connected {
+	--color: #e4e4e4;
+	--color-selected: #e4e4e4;
 }
 
 ion-tab-button.ble-transitioning {
@@ -433,7 +565,7 @@ ion-modal.reader-theme-light ion-item {
 	right: 0;
 	height: 48px;
 	padding: 0 16px;
-    padding-top: 20px;
+	padding-top: 20px;
 	padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
 	display: flex;
 	align-items: center;

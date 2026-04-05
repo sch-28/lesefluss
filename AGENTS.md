@@ -108,6 +108,7 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 | `word_offset` | 0–20 | 5 | Words to rewind on resume |
 | `inverse` | bool | false | Black on white when true |
 | `ble_on` | bool | true | Enable BLE server |
+| `brightness` | 10–100 | 100 | Backlight brightness (%) |
 
 ## Adding a New Setting
 
@@ -159,7 +160,9 @@ Touch these files in order:
 - [x] Dictionary lookup (tap highlighted word)
 - [x] Improve esp32: Add loading indicator when file transfer, improve "home page press boot" with actual nice homescreen
 - [x] sync book title to esp32
-- [ ] Battery management: deep sleep
+- [x] Battery management: deep sleep
+- [x] Dark theme for entire app
+- [x] Esp32 brightness setting
 - [ ] Partial book sync to esp32 to combat long upload times
 - [ ] In-app RSVP reader (software parity with ESP32)
 - [ ] Cloud sync

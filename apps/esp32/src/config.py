@@ -36,6 +36,9 @@ X_OFFSET = 50        # Horizontal position offset (30-70%: 30=left, 50=center, 7
 INVERSE = False      # Inverse colors (True = black text on white bg)
 WORD_OFFSET = 5      # Number of words to go back when resuming (0-20)
 
+# Display brightness (0-100%)
+BRIGHTNESS = 100     # Backlight brightness (10-100%)
+
 # BLE settings
 BLE_ON = True        # Enable BLE for companion app (True/False)
 

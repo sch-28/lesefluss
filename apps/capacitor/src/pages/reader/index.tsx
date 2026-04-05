@@ -47,6 +47,7 @@ import type { RouteComponentProps } from "react-router-dom";
 import type { CacheSnapshot, VListHandle } from "virtua";
 import { VList } from "virtua";
 import { useBookSync } from "../../contexts/book-sync-context";
+import { useTheme } from "../../contexts/theme-context";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
@@ -79,25 +80,6 @@ function saveFontSize(size: number): void {
 	localStorage.setItem(FONT_SIZE_KEY, String(size));
 }
 
-// ─── Theme ───────────────────────────────────────────────────────────────────
-type ReaderTheme = "dark" | "light";
-const THEME_KEY = "reader_theme";
-const THEME_CYCLE: ReaderTheme[] = ["dark", "light"];
-
-function loadTheme(): ReaderTheme {
-	const v = localStorage.getItem(THEME_KEY);
-	return (THEME_CYCLE as string[]).includes(v ?? "") ? (v as ReaderTheme) : "dark";
-}
-
-function nextTheme(current: ReaderTheme): ReaderTheme {
-	return current === "dark" ? "light" : "dark";
-}
-
-function themeIcon(theme: ReaderTheme): string {
-	// Show what you'll switch TO: sun in dark mode → go light; moon in light mode → go dark
-	return theme === "dark" ? sunnyOutline : moonOutline;
-}
-
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 interface BookReaderProps extends RouteComponentProps<{ id: string }> {}
@@ -114,7 +96,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const loading = bookPending || contentPending;
 
 	const [fontSize, setFontSize] = useState<number>(loadFontSize);
-	const [theme, setTheme] = useState<ReaderTheme>(loadTheme);
+	const { theme, toggleTheme } = useTheme();
 	const [tocOpen, setTocOpen] = useState(false);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [selectedWord, setSelectedWord] = useState<string | null>(null);
@@ -316,13 +298,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	}, []);
 
 	// ── Theme cycle ───────────────────────────────────────────────────────
-	const handleThemeCycle = useCallback(() => {
-		setTheme((prev) => {
-			const next = nextTheme(prev);
-			localStorage.setItem(THEME_KEY, next);
-			return next;
-		});
-	}, []);
+	// toggleTheme comes from ThemeContext — updates the whole app.
 
 	// ── Chapter jump ──────────────────────────────────────────────────────
 	// Binary search paragraphOffsets for the chapter's startByte, then scroll.
@@ -529,8 +505,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 								<IonIcon slot="icon-only" icon={listOutline} />
 							</IonButton>
 						)}
-						<IonButton onClick={handleThemeCycle} aria-label="Switch reading theme">
-							<IonIcon slot="icon-only" icon={themeIcon(theme)} />
+						<IonButton onClick={toggleTheme} aria-label="Switch reading theme">
+							<IonIcon slot="icon-only" icon={theme === "dark" ? sunnyOutline : moonOutline} />
 						</IonButton>
 						<IonButton
 							onClick={() => handleFontSizeChange(-FONT_SIZE_STEP)}

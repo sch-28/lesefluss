@@ -58,6 +58,7 @@ class SettingsHandler:
             "dev_mode":             dev_mode,
             "display_off_timeout":  self.config.AUTO_SHUTDOWN_TIMEOUT // 1000,
             "deep_sleep_timeout":   self.config.DEEP_SLEEP_TIMEOUT // 1000,
+            "brightness":           self.config.BRIGHTNESS,
         }
         return json.dumps(payload).encode("utf-8")
 
@@ -91,6 +92,7 @@ class SettingsHandler:
             self.config.BLE_ON            = data.get("ble_on",               self.config.BLE_ON)
             self.config.AUTO_SHUTDOWN_TIMEOUT = data.get("display_off_timeout", self.config.AUTO_SHUTDOWN_TIMEOUT // 1000) * 1000
             self.config.DEEP_SLEEP_TIMEOUT    = data.get("deep_sleep_timeout",  self.config.DEEP_SLEEP_TIMEOUT // 1000) * 1000
+            self.config.BRIGHTNESS        = data.get("brightness",           self.config.BRIGHTNESS)
 
             # dev_mode is a filesystem flag, not a config key
             self._set_devmode(data.get("dev_mode", False))
@@ -132,6 +134,7 @@ class SettingsHandler:
             f"BLE_ON = {self.config.BLE_ON}\n"
             f"AUTO_SHUTDOWN_TIMEOUT = {self.config.AUTO_SHUTDOWN_TIMEOUT}\n"
             f"DEEP_SLEEP_TIMEOUT = {self.config.DEEP_SLEEP_TIMEOUT}\n"
+            f"BRIGHTNESS = {self.config.BRIGHTNESS}\n"
         )
         try:
             with open("config_override.py", "w") as f:

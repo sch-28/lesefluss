@@ -11,6 +11,8 @@ class DisplayManager:
     Higher-level screens (homescreen, transfer progress) live in app/.
     """
 
+    _PWM_FREQ = 1000  # Hz — above flicker threshold
+
     def __init__(self):
         self.spi = machine.SPI(
             2,
@@ -20,8 +22,14 @@ class DisplayManager:
             mosi=machine.Pin(config.PIN_MOSI),
         )
 
-        self.backlight = machine.Pin(config.PIN_BACKLIGHT, machine.Pin.OUT)
-        self.backlight.value(1)
+        # PWM backlight — allows variable brightness (10-100%)
+        # Do NOT pass to ST7789 constructor; the driver would call .value(1)
+        # and override the duty cycle back to full brightness.
+        self._bl_pwm = machine.PWM(
+            machine.Pin(config.PIN_BACKLIGHT, machine.Pin.OUT),
+            freq=self._PWM_FREQ,
+        )
+        self._set_duty(config.BRIGHTNESS)
 
         self.display = st7789.ST7789(
             self.spi,
@@ -30,11 +38,15 @@ class DisplayManager:
             reset=machine.Pin(config.PIN_RESET, machine.Pin.OUT),
             cs=machine.Pin(config.PIN_CS, machine.Pin.OUT),
             dc=machine.Pin(config.PIN_DC, machine.Pin.OUT),
-            backlight=self.backlight,
             rotation=config.DISPLAY_ROTATION,
         )
         self.display.init([])
         self.font = font
+
+    def _set_duty(self, brightness_pct):
+        """Convert 0-100% brightness to PWM duty (0-1023) and apply."""
+        pct = max(0, min(100, brightness_pct))
+        self._bl_pwm.duty(int(pct * 1023 // 100))
 
     # -- Properties --------------------------------------------------------
 
@@ -129,9 +141,14 @@ class DisplayManager:
 
     # -- Power -------------------------------------------------------------
 
+    def set_brightness(self, brightness_pct):
+        """Apply new brightness (0-100%) immediately and persist to config."""
+        config.BRIGHTNESS = max(0, min(100, brightness_pct))
+        self._set_duty(config.BRIGHTNESS)
+
     def shutdown(self):
         self.clear()
-        self.backlight.value(0)
+        self._bl_pwm.duty(0)
 
     def wakeup(self):
-        self.backlight.value(1)
+        self._set_duty(config.BRIGHTNESS)
