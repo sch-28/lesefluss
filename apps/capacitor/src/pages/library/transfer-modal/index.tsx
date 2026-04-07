@@ -24,6 +24,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBookSync } from "../../../contexts/book-sync-context";
 import type { Book } from "../../../services/db/schema";
+import { log } from "../../../utils/log";
 import ConfirmPhase from "./confirm-phase";
 import { DonePhase, ErrorPhase, TransferringPhase } from "./progress-phases";
 
@@ -54,6 +55,7 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 	const startTimeRef = useRef<number | null>(null);
 	const [elapsed, setElapsed] = useState(0);
 	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
 	// Reset to confirm whenever the modal (re-)opens
 	useEffect(() => {
@@ -82,6 +84,33 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 		}
 		return () => {
 			if (timerRef.current) clearInterval(timerRef.current);
+		};
+	}, [phase]);
+
+	// Screen wake lock — keep display on while transferring
+	useEffect(() => {
+		if (phase === "transferring") {
+			if ("wakeLock" in navigator) {
+				navigator.wakeLock
+					.request("screen")
+					.then((lock) => {
+						wakeLockRef.current = lock;
+					})
+					.catch((err) => {
+						log.warn("transfer", "wake lock request failed:", err);
+					});
+			}
+		} else {
+			if (wakeLockRef.current) {
+				wakeLockRef.current.release().catch(() => {});
+				wakeLockRef.current = null;
+			}
+		}
+		return () => {
+			if (wakeLockRef.current) {
+				wakeLockRef.current.release().catch(() => {});
+				wakeLockRef.current = null;
+			}
 		};
 	}, [phase]);
 
