@@ -4,6 +4,47 @@ import vga1_16x32 as font
 import config
 
 
+# Transliteration map: Latin extended → ASCII equivalents.
+# The vga1_16x32 bitmap font only covers ASCII (0-127); any code point above
+# 127 is rendered as garbage or skipped by the ST7789 driver.
+_TRANSLITERATE = {
+    '\xe0': 'a', '\xe1': 'a', '\xe2': 'a', '\xe3': 'a', '\xe4': 'a', '\xe5': 'a',
+    '\xc0': 'A', '\xc1': 'A', '\xc2': 'A', '\xc3': 'A', '\xc4': 'A', '\xc5': 'A',
+    '\xe6': 'ae', '\xc6': 'AE',
+    '\xe7': 'c', '\xc7': 'C',
+    '\xe8': 'e', '\xe9': 'e', '\xea': 'e', '\xeb': 'e',
+    '\xc8': 'E', '\xc9': 'E', '\xca': 'E', '\xcb': 'E',
+    '\xec': 'i', '\xed': 'i', '\xee': 'i', '\xef': 'i',
+    '\xcc': 'I', '\xcd': 'I', '\xce': 'I', '\xcf': 'I',
+    '\xf0': 'd', '\xd0': 'D',
+    '\xf1': 'n', '\xd1': 'N',
+    '\xf2': 'o', '\xf3': 'o', '\xf4': 'o', '\xf5': 'o', '\xf6': 'o',
+    '\xd2': 'O', '\xd3': 'O', '\xd4': 'O', '\xd5': 'O', '\xd6': 'O',
+    '\xf8': 'o', '\xd8': 'O',
+    '\xf9': 'u', '\xfa': 'u', '\xfb': 'u', '\xfc': 'u',
+    '\xd9': 'U', '\xda': 'U', '\xdb': 'U', '\xdc': 'U',
+    '\xfd': 'y', '\xff': 'y', '\xdd': 'Y',
+    '\xfe': 'th', '\xde': 'TH',
+    '\xdf': 'ss',
+    '\u2018': "'", '\u2019': "'",
+    '\u201c': '"', '\u201d': '"',
+    '\u2013': '-', '\u2014': '--',
+    '\u2026': '...',
+}
+
+
+def _ascii_safe(text):
+    """Replace non-ASCII characters with ASCII equivalents for the bitmap font."""
+    if all(ord(c) < 128 for c in text):
+        return text
+    out = []
+    for c in text:
+        if ord(c) < 128:
+            out.append(c)
+        else:
+            out.append(_TRANSLITERATE.get(c, '?'))
+    return ''.join(out)
+
 class DisplayManager:
     """Low-level ST7789 display operations.
 
@@ -69,7 +110,13 @@ class DisplayManager:
 
     def clear_rect(self, x, y, w, h):
         bg = (255, 255, 255) if config.INVERSE else config.BACKGROUND_COLOR
-        self.display.fill_rect(x, y + config.DISPLAY_Y_OFFSET, w, h, st7789.color565(*bg))
+        # Clamp to valid screen bounds — fill_rect with negative x or width
+        # extending beyond the screen silently clips, leaving residual pixels.
+        x0 = max(0, x)
+        x1 = min(self.width, x + w)
+        if x1 <= x0:
+            return
+        self.display.fill_rect(x0, y + config.DISPLAY_Y_OFFSET, x1 - x0, h, st7789.color565(*bg))
 
     def hline(self, x, y, length, color):
         self.display.hline(x, y + config.DISPLAY_Y_OFFSET, length, st7789.color565(*color))
@@ -100,6 +147,7 @@ class DisplayManager:
 
     def show_word(self, word):
         """Draw a word with focal-letter highlighting.  Returns (x_start, width)."""
+        word = _ascii_safe(word)
         y = (config.DISPLAY_PHYSICAL_HEIGHT - config.FONT_HEIGHT) // 2
         focal_pos = config.get_focal_position(word)
 

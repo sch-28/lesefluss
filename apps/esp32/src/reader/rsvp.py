@@ -346,11 +346,11 @@ class RSVPReader:
         base = self._base_delay
 
         if word:
-            if word.endswith('...') or word.endswith('\u2014') or word.endswith('--'):
+            if '...' in word or '\u2014' in word or '--' in word:
                 base *= config.DELAY_PERIOD
-            elif word[-1] in '.!?':
+            elif any(c in word for c in '.!?'):
                 base *= config.DELAY_PERIOD
-            elif word[-1] in ',;:':
+            elif any(c in word for c in ',;:'):
                 base *= config.DELAY_COMMA
 
         multiplier = config.ACCEL_START - self._acceleration

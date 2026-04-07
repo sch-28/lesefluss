@@ -300,7 +300,10 @@ class App:
             pct = int(done * 100 / total) if total > 0 else 0
             draw_transfer_progress(self.display, pct, done, total)
             self._transferring = True
-            return False
+            # Keep activity timer alive so display never auto-shuts off mid-transfer.
+            self._last_activity = time.ticks_ms()
+            self._display_off = False
+            return True  # skip tick handlers — ignore button presses during transfer
 
         if self._transferring:
             self._transferring = False
