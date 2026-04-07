@@ -14,13 +14,13 @@ import {
 	IonText,
 	IonTitle,
 	IonToolbar,
-	useIonRouter,
 	useIonViewWillEnter,
 } from "@ionic/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { add, bookOutline, refreshOutline } from "ionicons/icons";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { useHistory } from "react-router-dom";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { queryHooks } from "../../services/db/hooks";
@@ -46,7 +46,7 @@ const Library: React.FC = () => {
 		error: syncError,
 		clearError,
 	} = useBookSync();
-	const router = useIonRouter();
+	const history = useHistory();
 	const qc = useQueryClient();
 
 	// ── Data queries ─────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ const Library: React.FC = () => {
 										progress={progress}
 										started={started}
 										isActive={isActive}
-										onOpen={() => router.push(`/tabs/reader/${book.id}`)}
+										onOpen={() => history.push(`/tabs/reader/${book.id}`)}
 										onMenu={() => setSelectedBook(book)}
 									/>
 								);
