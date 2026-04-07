@@ -1,3 +1,5 @@
+import type React from "react";
+import { useState } from "react";
 /**
  * BookReader — full-screen virtualized scroll reader.
  *
@@ -41,8 +43,7 @@ import {
 	searchOutline,
 	sunnyOutline,
 } from "ionicons/icons";
-import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { RouteComponentProps } from "react-router-dom";
 import type { CacheSnapshot, VListHandle } from "virtua";
 import { VList } from "virtua";
@@ -80,6 +81,11 @@ function saveFontSize(size: number): void {
 	localStorage.setItem(FONT_SIZE_KEY, String(size));
 }
 
+// Minimum horizontal travel (px) before a pointer drag on the progress bar
+// is treated as a scrub. Keeps vertical swipe-up (iOS home gesture) from
+// accidentally jumping the reading position.
+const MIN_SCRUB_PX = 8;
+
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 interface BookReaderProps extends RouteComponentProps<{ id: string }> {}
@@ -109,6 +115,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	// Progress bar visibility — shown on tap/word-tap, hidden when user scrolls
 	const [progressBarVisible, setProgressBarVisible] = useState(false);
+	const isScrubbingRef = useRef(false);
 
 	const listRef = useRef<VListHandle>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -209,8 +216,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			// Hide highlight while scrolling. Skip the state update if already hidden
 			// to avoid triggering re-renders of all visible Paragraphs every frame.
 			setActiveOffset((prev) => (prev === NO_HIGHLIGHT ? prev : NO_HIGHLIGHT));
-			// Hide progress bar — user is scrolling normally, not tapping
-			setProgressBarVisible(false);
+			// Hide progress bar — user is scrolling normally, not scrubbing
+			if (!isScrubbingRef.current) setProgressBarVisible(false);
 			// Update the progress bar live. findItemIndex maps the current scroll
 			// pixel offset to a paragraph index, which we convert to a byte offset.
 			if (listRef.current && paragraphOffsets.length > 0) {
@@ -361,6 +368,11 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	// ── Progress bar tap/drag ─────────────────────────────────────────────
 	const progressBarRef = useRef<HTMLDivElement>(null);
+	// Origin of the current pointer-down gesture — used to detect horizontal intent
+	const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
+	// Minimum horizontal travel (px) before a drag is treated as a scrub.
+	// Below this threshold a vertical swipe-up (home gesture) is ignored.
+	const MIN_SCRUB_PX = 8;
 
 	const scrubToX = useCallback(
 		(clientX: number) => {
@@ -391,19 +403,46 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		[book, paragraphOffsets, savePosition],
 	);
 
-	const handleProgressPointerDown = useCallback(
+	const handleProgressPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+		e.currentTarget.setPointerCapture(e.pointerId);
+		// Record origin — scrubbing is committed only once horizontal intent is
+		// confirmed (pointermove/pointerup). This prevents the iOS swipe-up home
+		// gesture from accidentally jumping the reading position.
+		pointerDownRef.current = { x: e.clientX, y: e.clientY };
+	}, []);
+
+	/** Returns true when the pointer has moved far enough horizontally to count as a scrub. */
+	const isHorizontalScrub = (
+		origin: { x: number; y: number },
+		clientX: number,
+		clientY: number,
+	) => {
+		const dx = Math.abs(clientX - origin.x);
+		const dy = Math.abs(clientY - origin.y);
+		return dx >= MIN_SCRUB_PX && dx > dy;
+	};
+
+	const handleProgressPointerMove = useCallback(
 		(e: React.PointerEvent<HTMLDivElement>) => {
-			e.currentTarget.setPointerCapture(e.pointerId);
-			setProgressBarVisible(true);
+			if (e.buttons === 0 || !pointerDownRef.current) return;
+			if (!isHorizontalScrub(pointerDownRef.current, e.clientX, e.clientY)) return;
+			isScrubbingRef.current = true;
 			scrubToX(e.clientX);
 		},
 		[scrubToX],
 	);
 
-	const handleProgressPointerMove = useCallback(
+	const handleProgressPointerUp = useCallback(
 		(e: React.PointerEvent<HTMLDivElement>) => {
-			if (e.buttons === 0) return;
-			scrubToX(e.clientX);
+			const origin = pointerDownRef.current;
+			pointerDownRef.current = null;
+			isScrubbingRef.current = false;
+			if (!origin) return;
+			// Plain tap (no meaningful horizontal drag) — scrub to the tap position.
+			if (!isHorizontalScrub(origin, e.clientX, e.clientY)) {
+				setProgressBarVisible(true);
+				scrubToX(e.clientX);
+			}
 		},
 		[scrubToX],
 	);
@@ -554,11 +593,13 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 				{/* ── Progress bar ── */}
 				{progressBarVisible && (
+					// biome-ignore lint/a11y/useFocusableInteractive: scrubber
 					<div
 						ref={progressBarRef}
 						className="reader-progress-bar"
 						onPointerDown={handleProgressPointerDown}
 						onPointerMove={handleProgressPointerMove}
+						onPointerUp={handleProgressPointerUp}
 						aria-label="Reading progress"
 						role="slider"
 						aria-valuenow={Math.round(progressPct)}

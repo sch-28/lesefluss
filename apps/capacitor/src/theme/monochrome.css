@@ -178,6 +178,42 @@ body.dark ion-action-sheet {
 	--button-color: #e4e4e4;
 }
 
+body.dark .rsvp-action-sheet .action-sheet-container .action-sheet-group {
+	background: #242424;
+}
+
+body.dark .rsvp-action-sheet .action-sheet-container .action-sheet-group-cancel {
+	background: transparent !important;
+}
+
+body.dark .rsvp-action-sheet .action-sheet-cancel {
+	color: #e4e4e4;
+	background: #242424 !important;
+}
+
+body.dark .rsvp-action-sheet .action-sheet-title {
+	color: #888888;
+	border-bottom-color: #333333;
+}
+
+body.dark .rsvp-action-sheet .action-sheet-button {
+	color: #e4e4e4;
+	border-bottom-color: #333333;
+}
+
+body.dark .rsvp-action-sheet .action-sheet-destructive {
+	color: #ef5350;
+}
+
+body.dark .rsvp-action-sheet .action-sheet-button.ion-color-primary[disabled],
+body.dark .rsvp-action-sheet .action-sheet-button[disabled] {
+	color: #555555 !important;
+}
+
+body.dark .rsvp-action-sheet .action-sheet-button.ion-activated {
+	background: #333333;
+}
+
 /* Alerts */
 body.dark ion-alert {
 	--background: #242424;
