@@ -163,6 +163,17 @@ Touch these files in order:
 - [x] Battery management: deep sleep
 - [x] Dark theme for entire app
 - [x] Esp32 brightness setting
+- [x] Punctuation break doesnt work sometimes?
+- [x] display turns off during transfer
+- [x] app back button and gesture (entire navigation) doesnt work on first time, needs to be pressed twice from reading to go back into library
+- [x] esp32 word clearing issue, example: "blue-dragonfly-shine" -> "was". the first word is not fully cleared
+- [x] Fix app dark mode action sheet
+- [x] Fix pressing button  during transfer causing reading mode
+- [x] Keep display on during transfer in app
+- [x] closing app srolls the progress bar at the bottom
+- [ ] split long words into multiple in esp32
+- [ ] special characters äüö not working in the rsvp esp32
+- [ ] Check if wpm actually matches (maybe display delay slows things down)
 - [ ] Partial book sync to esp32 to combat long upload times
 - [ ] In-app RSVP reader (software parity with ESP32)
 - [ ] Cloud sync
