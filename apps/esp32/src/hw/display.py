@@ -1,12 +1,11 @@
 import machine
-import st7789
-import vga1_16x32 as font
 import config
+font = __import__(config.FONT_FILE)
 
 
 # Transliteration map: Latin extended → ASCII equivalents.
 # The vga1_16x32 bitmap font only covers ASCII (0-127); any code point above
-# 127 is rendered as garbage or skipped by the ST7789 driver.
+# 127 is rendered as garbage or skipped by the display driver.
 _TRANSLITERATE = {
     '\xe0': 'a', '\xe1': 'a', '\xe2': 'a', '\xe3': 'a', '\xe4': 'a', '\xe5': 'a',
     '\xc0': 'A', '\xc1': 'A', '\xc2': 'A', '\xc3': 'A', '\xc4': 'A', '\xc5': 'A',
@@ -45,47 +44,87 @@ def _ascii_safe(text):
             out.append(_TRANSLITERATE.get(c, '?'))
     return ''.join(out)
 
-class DisplayManager:
-    """Low-level ST7789 display operations.
 
-    Handles SPI init, text drawing, color inversion, and rect fills.
-    Higher-level screens (homescreen, transfer progress) live in app/.
+class DisplayManager:
+    """Hardware-agnostic display operations.
+
+    Supports ST7789 (SPI, PWM backlight) and RM67162 (QSPI, software brightness).
+    Driver selection happens once in __init__ via config.HARDWARE; all public
+    methods are identical across both drivers — no branching outside __init__.
     """
 
-    _PWM_FREQ = 1000  # Hz — above flicker threshold
+    _PWM_FREQ = 1000  # Hz — above flicker threshold (ST7789 only)
 
     def __init__(self):
-        self.spi = machine.SPI(
-            2,
-            baudrate=config.DISPLAY_BAUDRATE,
-            polarity=1, phase=1,
-            sck=machine.Pin(config.PIN_SCK),
-            mosi=machine.Pin(config.PIN_MOSI),
-        )
+        if config.HARDWARE == "AMOLED":
+            import rm67162
+            machine.Pin(config.PIN_LED, machine.Pin.OUT).value(0)  # display power enable — keep LOW to suppress green LED
+            hspi = machine.SPI(2, sck=machine.Pin(config.PIN_SCK), mosi=None, miso=None)
+            panel = rm67162.QSPIPanel(
+                spi=hspi,
+                data=(
+                    machine.Pin(config.PIN_QSPI_D0),
+                    machine.Pin(config.PIN_QSPI_D1),
+                    machine.Pin(config.PIN_QSPI_D2),
+                    machine.Pin(config.PIN_QSPI_D3),
+                ),
+                dc=machine.Pin(config.PIN_DC),
+                cs=machine.Pin(config.PIN_CS),
+                pclk=80_000_000,
+                width=config.DISPLAY_HEIGHT,   # panel is portrait-native: 240
+                height=config.DISPLAY_WIDTH,   # panel is portrait-native: 536
+            )
+            self.display = rm67162.RM67162(panel, reset=machine.Pin(config.PIN_RESET))
+            self.display.reset()
+            self.display.init()
+            self.display.disp_on()
+            self.display.rotation(config.DISPLAY_ROTATION)
+            self.display.brightness(config.BRIGHTNESS)
+            self._color   = self.display.colorRGB
+            self._bl_pwm  = None
+        else:  # ST7789
+            import st7789
+            self.spi = machine.SPI(
+                2,
+                baudrate=config.DISPLAY_BAUDRATE,
+                polarity=1, phase=1,
+                sck=machine.Pin(config.PIN_SCK),
+                mosi=machine.Pin(config.PIN_MOSI),
+            )
+            # PWM backlight — allows variable brightness.
+            # Do NOT pass to ST7789 constructor; it would call .value(1) and
+            # override the duty cycle back to full brightness.
+            self._bl_pwm = machine.PWM(
+                machine.Pin(config.PIN_BACKLIGHT, machine.Pin.OUT),
+                freq=self._PWM_FREQ,
+            )
+            self._set_duty(config.BRIGHTNESS)
+            self.display = st7789.ST7789(
+                self.spi,
+                config.DISPLAY_WIDTH,
+                config.DISPLAY_HEIGHT,
+                reset=machine.Pin(config.PIN_RESET, machine.Pin.OUT),
+                cs=machine.Pin(config.PIN_CS, machine.Pin.OUT),
+                dc=machine.Pin(config.PIN_DC, machine.Pin.OUT),
+                rotation=config.DISPLAY_ROTATION,
+            )
+            self.display.init([])
+            self._color = st7789.color565
 
-        # PWM backlight — allows variable brightness (10-100%)
-        # Do NOT pass to ST7789 constructor; the driver would call .value(1)
-        # and override the duty cycle back to full brightness.
-        self._bl_pwm = machine.PWM(
-            machine.Pin(config.PIN_BACKLIGHT, machine.Pin.OUT),
-            freq=self._PWM_FREQ,
-        )
-        self._set_duty(config.BRIGHTNESS)
+        # AMOLED: config.DISPLAY_WIDTH is already the logical (post-rotation) width (536).
+        # ST7789: config.DISPLAY_WIDTH is the portrait panel width (240); after rotation=3
+        # the driver reports 320, which is what centering math must use.
+        if config.HARDWARE == "AMOLED":
+            self._width = config.DISPLAY_WIDTH
+        else:
+            self._width = self.display.width   # 320 after rotation=3
+        self._height = config.DISPLAY_PHYSICAL_HEIGHT
+        self.font    = font
 
-        self.display = st7789.ST7789(
-            self.spi,
-            config.DISPLAY_WIDTH,
-            config.DISPLAY_HEIGHT,
-            reset=machine.Pin(config.PIN_RESET, machine.Pin.OUT),
-            cs=machine.Pin(config.PIN_CS, machine.Pin.OUT),
-            dc=machine.Pin(config.PIN_DC, machine.Pin.OUT),
-            rotation=config.DISPLAY_ROTATION,
-        )
-        self.display.init([])
-        self.font = font
+    # -- Internal helpers --------------------------------------------------
 
     def _set_duty(self, brightness_pct):
-        """Convert 0-100% brightness to PWM duty (0-1023) and apply."""
+        """Convert 0-100% brightness to PWM duty (0-1023) and apply. ST7789 only."""
         pct = max(0, min(100, brightness_pct))
         self._bl_pwm.duty(int(pct * 1023 // 100))
 
@@ -93,65 +132,64 @@ class DisplayManager:
 
     @property
     def width(self):
-        return self.display.width
+        return self._width
 
     @property
     def height(self):
-        return self.display.height
+        return self._height
 
     # -- Primitives --------------------------------------------------------
 
     def clear(self):
         bg = (255, 255, 255) if config.INVERSE else config.BACKGROUND_COLOR
-        self.display.fill(st7789.color565(*bg))
+        self.display.fill(self._color(*bg))
 
     def fill_rect(self, x, y, w, h, color):
-        self.display.fill_rect(x, y + config.DISPLAY_Y_OFFSET, w, h, st7789.color565(*color))
+        self.display.fill_rect(x, y + config.DISPLAY_Y_OFFSET, w, h, self._color(*color))
 
     def clear_rect(self, x, y, w, h):
         bg = (255, 255, 255) if config.INVERSE else config.BACKGROUND_COLOR
-        # Clamp to valid screen bounds — fill_rect with negative x or width
-        # extending beyond the screen silently clips, leaving residual pixels.
+        # Clamp to valid screen bounds — fill_rect with out-of-bounds coords leaves residual pixels.
         x0 = max(0, x)
-        x1 = min(self.width, x + w)
+        x1 = min(self._width, x + w)
         if x1 <= x0:
             return
-        self.display.fill_rect(x0, y + config.DISPLAY_Y_OFFSET, x1 - x0, h, st7789.color565(*bg))
+        self.display.fill_rect(x0, y + config.DISPLAY_Y_OFFSET, x1 - x0, h, self._color(*bg))
 
     def hline(self, x, y, length, color):
-        self.display.hline(x, y + config.DISPLAY_Y_OFFSET, length, st7789.color565(*color))
+        self.display.hline(x, y + config.DISPLAY_Y_OFFSET, length, self._color(*color))
 
     def vline(self, x, y, length, color):
-        self.display.vline(x, y + config.DISPLAY_Y_OFFSET, length, st7789.color565(*color))
+        self.display.vline(x, y + config.DISPLAY_Y_OFFSET, length, self._color(*color))
 
     # -- Text --------------------------------------------------------------
 
     def text(self, s, x, y, color=(255, 255, 255), bg=(0, 0, 0), invert=True):
-        """Draw text.  When *invert* is True, colours are auto-flipped if INVERSE mode."""
+        """Draw text. When *invert* is True, colours are auto-flipped in INVERSE mode."""
         if config.INVERSE and invert:
             color = tuple(255 - c for c in color)
-            bg = tuple(255 - c for c in bg)
+            bg    = tuple(255 - c for c in bg)
         self.display.text(self.font, s, x, y + config.DISPLAY_Y_OFFSET,
-                          st7789.color565(*color), st7789.color565(*bg))
+                          self._color(*color), self._color(*bg))
 
     def centered_text(self, s, y, color=(255, 255, 255), bg=(0, 0, 0)):
-        x = (self.width - len(s) * config.FONT_WIDTH) // 2
+        x = (self._width - len(s) * config.FONT_WIDTH) // 2
         self.text(s, x, y, color, bg)
 
     def show_centered_message(self, message, color=(255, 255, 255)):
         self.clear()
-        y = (config.DISPLAY_PHYSICAL_HEIGHT - config.FONT_HEIGHT) // 2
+        y = (self._height - config.FONT_HEIGHT) // 2
         self.centered_text(message, y, color)
 
     # -- RSVP word rendering -----------------------------------------------
 
     def show_word(self, word):
-        """Draw a word with focal-letter highlighting.  Returns (x_start, width)."""
+        """Draw a word with focal-letter highlighting. Returns (x_start, width)."""
         word = _ascii_safe(word)
-        y = (config.DISPLAY_PHYSICAL_HEIGHT - config.FONT_HEIGHT) // 2
+        y = (self._height - config.FONT_HEIGHT) // 2
         focal_pos = config.get_focal_position(word)
 
-        offset_px = int(self.width * (config.X_OFFSET / 100.0))
+        offset_px    = int(self._width * (config.X_OFFSET / 100.0))
         focal_center = focal_pos * config.FONT_WIDTH + config.FONT_WIDTH // 2
         x = offset_px - focal_center
 
@@ -159,22 +197,19 @@ class DisplayManager:
         bg = config.BACKGROUND_COLOR
         fc = config.FOCAL_LETTER_COLOR
 
-        # Before focal letter
         if focal_pos > 0:
             self.text(word[:focal_pos], x, y, color=tc, bg=bg)
 
-        # Focal letter (red, never colour-inverted)
-        fx = x + focal_pos * config.FONT_WIDTH
+        fx       = x + focal_pos * config.FONT_WIDTH
         focal_bg = (255, 255, 255) if config.INVERSE else (0, 0, 0)
         self.text(word[focal_pos], fx, y, color=fc, bg=focal_bg, invert=False)
 
-        # Indicator lines
-        ic = config.FOCAL_INDICATOR_COLOR
-        cx = fx + config.FONT_WIDTH // 2
-        self.vline(cx, y - 12, config.FONT_WIDTH, ic)
-        self.vline(cx, y + config.FONT_HEIGHT, config.FONT_WIDTH, ic)
+        if config.SHOW_FOCAL_INDICATORS:
+            ic = config.FOCAL_INDICATOR_COLOR
+            cx = fx + config.FONT_WIDTH // 2
+            self.vline(cx, y - 12 - config.FONT_HEIGHT // 4, config.FONT_WIDTH, ic)
+            self.vline(cx, y + config.FONT_HEIGHT, config.FONT_WIDTH, ic)
 
-        # After focal letter
         ax = fx + config.FONT_WIDTH
         if focal_pos < len(word) - 1:
             self.text(word[focal_pos + 1:], ax, y, color=tc, bg=bg)
@@ -184,7 +219,7 @@ class DisplayManager:
     def clear_word(self, x, width):
         """Clear a previously drawn word area."""
         if width > 0:
-            y = (config.DISPLAY_PHYSICAL_HEIGHT - config.FONT_HEIGHT) // 2
+            y = (self._height - config.FONT_HEIGHT) // 2
             self.clear_rect(x, y, width, config.FONT_HEIGHT)
 
     # -- Power -------------------------------------------------------------
@@ -192,11 +227,22 @@ class DisplayManager:
     def set_brightness(self, brightness_pct):
         """Apply new brightness (0-100%) immediately and persist to config."""
         config.BRIGHTNESS = max(0, min(100, brightness_pct))
-        self._set_duty(config.BRIGHTNESS)
+        if self._bl_pwm is not None:
+            self._set_duty(config.BRIGHTNESS)
+        else:
+            self.display.brightness(config.BRIGHTNESS)
 
     def shutdown(self):
         self.clear()
-        self._bl_pwm.duty(0)
+        if self._bl_pwm is not None:
+            self._bl_pwm.duty(0)
+        else:
+            self.display.brightness(0)
+            self.display.disp_off()
 
     def wakeup(self):
-        self._set_duty(config.BRIGHTNESS)
+        if self._bl_pwm is not None:
+            self._set_duty(config.BRIGHTNESS)
+        else:
+            self.display.disp_on()
+            self.display.brightness(config.BRIGHTNESS)

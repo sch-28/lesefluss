@@ -10,14 +10,16 @@ try:
     print("Dev mode enabled - auto-start disabled")
     print("Delete 'devmode' file via web interface to enable auto-start")
     
-    # Show dev mode message on display
+    # Show dev mode message on display (ST7789 only — AMOLED keeps screen off to avoid burn-in)
     try:
         import sys
         sys.path.append('/src')
         sys.path.append('src')
-        from hw.display import DisplayManager
-        display = DisplayManager()
-        display.show_centered_message("DEV MODE")
+        import config
+        if config.HARDWARE != "AMOLED":
+            from hw.display import DisplayManager
+            display = DisplayManager()
+            display.show_centered_message("DEV MODE")
     except:
         pass  # If display fails, just continue
     

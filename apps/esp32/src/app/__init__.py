@@ -251,10 +251,12 @@ class App:
         if self.ble:
             self.ble.deinit()
         self.display.shutdown()
-        esp32.wake_on_ext0(
-            machine.Pin(config.PIN_BOOT_BUTTON, machine.Pin.IN, machine.Pin.PULL_UP),
-            esp32.WAKEUP_ALL_LOW,
-        )
+        btn = machine.Pin(config.PIN_BOOT_BUTTON, machine.Pin.IN, machine.Pin.PULL_UP)
+        if config.HARDWARE == "AMOLED":
+            # ESP32-S3 does not support ext0 wakeup — must use ext1
+            esp32.wake_on_ext1((btn,), esp32.WAKEUP_ALL_LOW)
+        else:
+            esp32.wake_on_ext0(btn, esp32.WAKEUP_ALL_LOW)
         machine.deepsleep()
 
     # ------------------------------------------------------------------

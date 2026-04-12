@@ -37,10 +37,10 @@ pnpm start          # Vite dev server at http://localhost:3000
 
 # ESP32 firmware
 cd apps/esp32
-./scripts/setup.sh              # First time: flash MicroPython + upload all
-./scripts/upload.sh             # Upload only changed files (git diff)
-./scripts/upload.sh no all      # Force upload all files
-./scripts/run.sh                # Test run without reboot
+./scripts/setup.sh --board ST7789   # First time: flash firmware + upload all (ST7789)
+./scripts/setup.sh --board AMOLED   # First time: flash firmware + upload all (AMOLED)
+./scripts/upload.sh --board ST7789  # Upload changed files
+./scripts/run.sh                    # Test run without reboot
 ```
 
 ### Development Workflows
@@ -171,6 +171,7 @@ Touch these files in order:
 - [x] Fix pressing button  during transfer causing reading mode
 - [x] Keep display on during transfer in app
 - [x] closing app srolls the progress bar at the bottom
+- [ ] clicking a work twice (dict modal) should also have a magnify icon to automatically search for the selected word
 - [ ] split long words into multiple in esp32
 - [ ] special characters äüö not working in the rsvp esp32
 - [ ] Check if wpm actually matches (maybe display delay slows things down)

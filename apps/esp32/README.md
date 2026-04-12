@@ -4,8 +4,14 @@ ESP32-based speed reader using RSVP (Rapid Serial Visual Presentation). Shows wo
 
 ## Hardware
 
-- ESP32 with ST7789 display (170x320, uses 240x320 driver with rotation=3)
-- BOOT button (GPIO 0) for control
+Two variants are supported. Set `HARDWARE` in `src/config.py` to switch between them.
+
+| | ST7789 (original) | AMOLED (LilyGO T-Display-S3) |
+|---|---|---|
+| MCU | ESP32 (LX6) | ESP32-S3 (LX7) |
+| Display | ST7789 SPI, 170×320 px visible | RM67162 QSPI, 536×240 px |
+| Backlight | PWM on GPIO 32 | Software brightness (AMOLED) |
+| Buttons | GPIO 0 | GPIO 0 + GPIO 21 |
 
 ## Features
 
@@ -66,25 +72,32 @@ Then **log out and back in** (or `newgrp uucp` / `newgrp dialout` in the current
 
 ### First-time flash
 
-Erases ESP32 flash, installs MicroPython firmware, creates a `.venv`, installs toolchain (`mpy-cross`, `mpremote`), and uploads everything:
+Erases flash, installs MicroPython firmware, creates a `.venv`, installs toolchain (`mpy-cross`, `mpremote`), and uploads everything.
+Pass `--board` to select the hardware variant:
 
 ```bash
-./scripts/setup.sh
+./scripts/setup.sh --board ST7789    # original ESP32 + ST7789 display
+./scripts/setup.sh --board AMOLED   # LilyGO T-Display-S3 AMOLED
 ```
+
+> **AMOLED:** download `firmware.bin` from https://github.com/nspsck/RM67162_Micropython_QSPI and save it as `etc/firmware-amoled.bin` before running setup.
 
 ### Upload after code changes
 
 Compiles `src/**/*.py` to `.mpy` bytecode and pushes the full tree to the device:
 
 ```bash
-./scripts/upload.sh
+./scripts/upload.sh --board ST7789
+./scripts/upload.sh --board AMOLED
 ```
 
 To also re-upload the display drivers (only needed after a firmware reflash):
 
 ```bash
-./scripts/upload.sh drivers
+./scripts/upload.sh --board ST7789 drivers
 ```
+
+> **AMOLED:** the `rm67162` driver is baked into the firmware — only `vga1_16x32.py` is uploaded as a driver file.
 
 ### Test without rebooting
 
