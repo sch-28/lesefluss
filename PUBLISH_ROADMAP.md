@@ -5,15 +5,17 @@
 
 - [ ] In-app RSVP reader (software parity with ESP32: ORP focal letter, punctuation delays, acceleration ramp, word offset on resume)
 - [ ] Double-tap word → magnify icon to auto-search in dictionary modal
-- [ ] Fix special characters (äüö) in ESP32 reader
-- [ ] Split long words on ESP32
+- [ ] Search, clicking result doesnt highlight the lcation
 
 ## Phase 2 — Polish & ESP32
 > Nice to have before launch, not strictly blocking
 
-- [ ] Rotary encoder support (POTENTIOMETER_PLAN.md) — needed if selling with encoder
-- [ ] Battery indicator in app (GPIO 4 voltage divider already on AMOLED board)
+<!-- - [ ] Rotary encoder support (POTENTIOMETER_PLAN.md) — needed if selling with encoder -->
+- [ ] Fix special characters (äüö) in ESP32 reader
+- [ ] Split long words on ESP32
 - [ ] Verify WPM accuracy (check if display delay affects timing)
+- [ ] Battery indicator in app (GPIO 4 voltage divider already on AMOLED board)
+- [ ] Recompile AMOLED firmware with larger NimBLE buffers (BLE transfer window_size capped at 2 — ST7789 handles 4; fork nspsck/RM67162_Micropython_QSPI, increase NimBLE buffer config)
 
 ## Phase 3 — Publishing Infrastructure
 > Everything needed to actually sell

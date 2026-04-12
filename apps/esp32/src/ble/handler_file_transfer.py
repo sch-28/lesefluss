@@ -83,9 +83,6 @@ class FileTransferHandler:
             self._handle_chunk(msg)
         elif msg.startswith("END:"):
             self._handle_end(msg)
-        else:
-            print(f"[transfer] unknown message: {msg[:40]}")
-            self._nack("UNKNOWN")
         gc.collect()
 
     # ------------------------------------------------------------------
@@ -100,12 +97,9 @@ class FileTransferHandler:
             filename = parts[2]
             title = parts[3].strip() if len(parts) > 3 else ""
         except Exception:
-            print(f"[transfer] bad START: {msg[:60]}")
             self._nack("BAD_START")
             return
 
-        # Clean up any previous temp file and the current book so flash is
-        # freed before we start writing — the old book is gone from this point.
         self._delete_temp()
         self._delete_book()
         self._reset()
@@ -116,7 +110,7 @@ class FileTransferHandler:
         self.in_progress = True
         self.temp_file = open(_TEMP_FILE, "wb")
 
-        print(f"[transfer] START — {filename}, {total} bytes, title={title!r}")
+        print(f"[transfer] START — {filename}, {total} bytes")
         self._ack("START")
 
     def _handle_chunk(self, msg):
@@ -263,9 +257,10 @@ class FileTransferHandler:
         if conn is None:
             print(f"[transfer] notify skipped (not connected): {msg}")
             return
+        encoded = msg.encode("utf-8")
         try:
-            self.ble.gatts_notify(conn, self.handle, msg.encode("utf-8"))
-            print(f"[transfer] notify → {msg}")
+            self.ble.gatts_notify(conn, self.handle, encoded)
+            print(f"[transfer] notify → {msg} ({len(encoded)} bytes)")
         except Exception as e:
             print(f"[transfer] notify error: {e}")
 
@@ -294,9 +289,8 @@ class FileTransferHandler:
         for path in (_BOOK_FILE, _POS_FILE, _HASH_FILE, _TITLE_FILE):
             try:
                 os.remove(path)
-                print(f"[transfer] deleted {path}")
             except OSError:
-                pass  # File didn't exist — that's fine
+                pass
 
     def _reset(self):
         """Reset all transfer state. Called at init and after each transfer ends."""

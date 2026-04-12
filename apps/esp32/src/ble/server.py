@@ -39,6 +39,7 @@ _IRQ_CENTRAL_CONNECT    = const(1)
 _IRQ_CENTRAL_DISCONNECT = const(2)
 _IRQ_GATTS_WRITE        = const(3)
 _IRQ_GATTS_READ_REQUEST = const(4)
+_IRQ_MTU_EXCHANGED      = const(21)
 
 # Characteristic flags
 _FLAG_READ              = const(0x0002)
@@ -64,6 +65,13 @@ class BLEServer:
         self.ble = bluetooth.BLE()
         self.ble.active(True)
         self.ble.config(mtu=_BLE_MTU)
+        # Increase the BLE receive ring buffer so the sliding-window chunk
+        # transfer (WINDOW_SIZE writes in flight) doesn't overflow.  Silently
+        # ignored if the firmware build doesn't support it.
+        try:
+            self.ble.config(rxbuf=2048)
+        except Exception:
+            pass
         self.ble.irq(self._irq_handler)
 
         self.connected   = False
@@ -145,7 +153,6 @@ class BLEServer:
 
         elif event == _IRQ_GATTS_WRITE:
             _, attr_handle = data
-            print(f"[ble] IRQ write: handle {attr_handle}")
             if attr_handle == self.settings.handle:
                 self.settings.on_write()
             elif attr_handle == self.file_transfer.handle:
@@ -162,6 +169,10 @@ class BLEServer:
                 self.position.on_read_request()
             elif attr_handle == self.storage.handle:
                 self.storage.on_read_request()
+
+        elif event == _IRQ_MTU_EXCHANGED:
+            conn_handle, mtu = data
+            print(f"[ble] MTU exchanged: conn={conn_handle} mtu={mtu}")
 
         else:
             print(f"[ble] IRQ unknown event: {event}")

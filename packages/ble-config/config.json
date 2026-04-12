@@ -23,7 +23,7 @@
 	"transfer": {
 		"chunk_size": 372,
 		"chunk_size_note": "Max raw bytes per chunk. Frame = ceil(chunk/3)*4 (base64) + 11 (header) must be <= 509 (512 MTU - 3 ATT overhead).",
-		"window_size": 4,
+		"window_size": 2,
 		"max_retries": 3,
 		"ack_timeout_ms": 5000
 	}
