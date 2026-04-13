@@ -38,7 +38,7 @@ const Settings: React.FC = () => {
 		? `${settings.wpm} WPM · Comma ${settings.delayComma.toFixed(1)}x · Period ${settings.delayPeriod.toFixed(1)}x`
 		: "Loading...";
 
-	const appearanceSubtitle = theme === "dark" ? "Dark mode" : "Light mode";
+	const appearanceSubtitle = theme === "dark" ? "Dark" : theme === "sepia" ? "Sepia" : "Light";
 
 	const deviceSubtitle = isConnected
 		? connectedDevice?.name || "Connected"

@@ -109,6 +109,11 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 | `inverse` | bool | false | Black on white when true |
 | `ble_on` | bool | true | Enable BLE server |
 | `brightness` | 10–100 | 100 | Backlight brightness (%) |
+| `reader_theme` | dark/sepia/light | dark | Reading theme |
+| `reader_font_size` | 12–28 | 17 | Reader font size (px) |
+| `reader_font_family` | sans/serif | sans | Reader font family |
+| `reader_line_spacing` | 1.2–2.4 | 1.8 | Reader line height multiplier |
+| `reader_margin` | 8–48 | 20 | Reader horizontal padding (px) |
 
 ## Adding a New Setting
 
@@ -163,6 +168,7 @@ Touch these files in order:
 - [x] Battery management: deep sleep
 - [x] Dark theme for entire app
 - [x] Esp32 brightness setting
+- [x] Font family selection, line spacing, margins, sepia theme (reader appearance)
 - [x] Punctuation break doesnt work sometimes?
 - [x] display turns off during transfer
 - [x] app back button and gesture (entire navigation) doesnt work on first time, needs to be pressed twice from reading to go back into library

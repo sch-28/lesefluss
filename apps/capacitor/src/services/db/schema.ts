@@ -30,6 +30,11 @@ export const settings = sqliteTable("settings", {
 	displayOffTimeout: integer("display_off_timeout").notNull().default(60),
 	deepSleepTimeout: integer("deep_sleep_timeout").notNull().default(120),
 	brightness: integer("brightness").notNull().default(100),
+	readerTheme: text("reader_theme").notNull().default("dark"),
+	readerFontSize: integer("reader_font_size").notNull().default(17),
+	readerFontFamily: text("reader_font_family").notNull().default("sans"),
+	readerLineSpacing: real("reader_line_spacing").notNull().default(1.8),
+	readerMargin: integer("reader_margin").notNull().default(20),
 	updatedAt: integer("updated_at").notNull(),
 });
 

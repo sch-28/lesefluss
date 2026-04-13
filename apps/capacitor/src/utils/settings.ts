@@ -17,6 +17,12 @@ export const DEFAULT_SETTINGS = {
 	DISPLAY_OFF_TIMEOUT: 60, // Seconds until display turns off (10-300)
 	DEEP_SLEEP_TIMEOUT: 120, // Seconds until deep sleep from last activity (10-300)
 	BRIGHTNESS: 100, // Backlight brightness % (10-100)
+	// Reader appearance (stored in DB, applied in-app only)
+	READER_THEME: "dark", // 'dark' | 'sepia' | 'light'
+	READER_FONT_SIZE: 17, // px (12–28)
+	READER_FONT_FAMILY: "sans", // 'sans' | 'serif'
+	READER_LINE_SPACING: 1.8, // line-height multiplier (1.2–2.4)
+	READER_MARGIN: 20, // horizontal padding px (8–48)
 } as const;
 
 /**
@@ -33,4 +39,7 @@ export const SETTING_CONSTRAINTS = {
 	DISPLAY_OFF_TIMEOUT: { min: 10, max: 300, step: 10 },
 	DEEP_SLEEP_TIMEOUT: { min: 10, max: 300, step: 10 },
 	BRIGHTNESS: { min: 10, max: 100, step: 5 },
+	READER_FONT_SIZE: { min: 12, max: 28, step: 2 },
+	READER_LINE_SPACING: { min: 1.2, max: 2.4, step: 0.1 },
+	READER_MARGIN: { min: 8, max: 48, step: 4 },
 } as const;

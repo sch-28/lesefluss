@@ -1,55 +1,44 @@
 import type React from "react";
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect } from "react";
+import { queryHooks } from "../services/db/hooks";
 
-export type AppTheme = "dark" | "light";
+export type AppTheme = "dark" | "sepia" | "light";
 
-const THEME_KEY = "reader_theme"; // reuse existing key so user preference carries over
-const VALID_THEMES: AppTheme[] = ["dark", "light"];
-
-function loadTheme(): AppTheme {
-	const v = localStorage.getItem(THEME_KEY);
-	return (VALID_THEMES as string[]).includes(v ?? "") ? (v as AppTheme) : "dark";
-}
+const VALID_THEMES: AppTheme[] = ["dark", "sepia", "light"];
 
 function applyTheme(theme: AppTheme) {
-	if (theme === "dark") {
-		document.body.classList.add("dark");
-		document.body.classList.remove("light");
-	} else {
-		document.body.classList.add("light");
-		document.body.classList.remove("dark");
-	}
+	document.body.classList.remove(...VALID_THEMES);
+	document.body.classList.add(theme);
 }
 
 interface ThemeContextValue {
 	theme: AppTheme;
-	toggleTheme: () => void;
+	setTheme: (t: AppTheme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-	const [theme, setTheme] = useState<AppTheme>(() => {
-		const initial = loadTheme();
-		applyTheme(initial); // apply immediately, before first render
-		return initial;
-	});
+	const { data: settings } = queryHooks.useSettings();
+	const saveMutation = queryHooks.useSaveSettings();
 
-	const toggleTheme = useCallback(() => {
-		setTheme((prev) => {
-			const next: AppTheme = prev === "dark" ? "light" : "dark";
-			localStorage.setItem(THEME_KEY, next);
-			applyTheme(next);
-			return next;
-		});
-	}, []);
+	const rawTheme = settings?.readerTheme;
+	const theme: AppTheme =
+		rawTheme && (VALID_THEMES as string[]).includes(rawTheme) ? (rawTheme as AppTheme) : "dark";
 
-	// Keep body class in sync if theme changes externally (e.g. hot reload)
+	const setTheme = useCallback(
+		(t: AppTheme) => {
+			saveMutation.mutate({ readerTheme: t });
+		},
+		[saveMutation],
+	);
+
+	// Keep body class in sync with theme
 	useEffect(() => {
 		applyTheme(theme);
 	}, [theme]);
 
-	return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
+	return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
 };
 
 export function useTheme(): ThemeContextValue {

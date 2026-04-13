@@ -475,9 +475,29 @@ body.dark ion-tab-button {
 	--ion-item-border-color: #d9d9d9;
 }
 
+.reader-theme-sepia,
+.reader-theme-sepia ion-header,
+.reader-theme-sepia ion-toolbar {
+	--reader-bg: #f4ecd8;
+	--reader-text: #4a3728;
+	--reader-heading: #3a2a1e;
+	--reader-progress-bg: #e0d4be;
+	--reader-progress-fill: #8b6f47;
+	--reader-progress-label: #9b8878;
+	--ion-background-color: #f4ecd8;
+	--ion-text-color: #4a3728;
+	--ion-toolbar-background: #f4ecd8;
+	--ion-toolbar-color: #4a3728;
+	--ion-border-color: #c8b89a;
+	--ion-toolbar-border-color: #c8b89a;
+	--ion-item-background: #f4ecd8;
+	--ion-item-border-color: #c8b89a;
+}
+
 /* Apply theme background to IonContent on the reader page */
 .reader-theme-dark ion-content,
-.reader-theme-light ion-content {
+.reader-theme-light ion-content,
+.reader-theme-sepia ion-content {
 	--background: var(--reader-bg);
 }
 
@@ -539,9 +559,27 @@ ion-modal.reader-theme-light ion-item {
 	--color: #111111;
 }
 
+ion-modal.reader-theme-sepia,
+ion-modal.reader-theme-sepia ion-header,
+ion-modal.reader-theme-sepia ion-toolbar,
+ion-modal.reader-theme-sepia ion-content,
+ion-modal.reader-theme-sepia ion-list,
+ion-modal.reader-theme-sepia ion-item {
+	--ion-background-color: #f4ecd8;
+	--ion-text-color: #4a3728;
+	--ion-toolbar-background: #f4ecd8;
+	--ion-toolbar-color: #4a3728;
+	--ion-border-color: #c8b89a;
+	--ion-toolbar-border-color: #c8b89a;
+	--ion-item-background: #f4ecd8;
+	--ion-item-border-color: #c8b89a;
+	--background: #f4ecd8;
+	--color: #4a3728;
+}
+
 .reader-paragraph {
 	font-size: 1em; /* em = inherits px from VList inline style */
-	line-height: 1.75;
+	line-height: var(--reader-line-height, 1.8);
 	color: var(--reader-text, #111111);
 	margin: 0 0 1.1em 0;
 	white-space: normal;
@@ -1140,4 +1178,121 @@ ion-modal.reader-theme-light ion-item {
 
 .highlight-note-textarea:focus {
 	border-color: var(--ion-color-primary, #3880ff);
+}
+
+/* ─── Appearance Popover ─────────────────────────────────────────────────── */
+
+ion-popover.appearance-popover {
+	--width: 272px;
+	--offset-y: 4px;
+}
+
+.appearance-popover-content {
+	padding: 14px 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.ap-section {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.ap-label {
+	font-size: 0.7rem;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--ion-color-medium, #888);
+	font-weight: 600;
+}
+
+.ap-chips {
+	display: flex;
+	gap: 6px;
+}
+
+.ap-chip {
+	flex: 1;
+	padding: 7px 4px;
+	border-radius: 7px;
+	border: 1.5px solid var(--ion-border-color, #444);
+	background: transparent;
+	color: var(--ion-text-color, #fff);
+	font-size: 0.82rem;
+	cursor: pointer;
+	line-height: 1;
+}
+
+.ap-chip--active {
+	background: var(--ion-color-primary, #3880ff);
+	color: var(--ion-color-primary-contrast, #fff);
+	border-color: var(--ion-color-primary, #3880ff);
+}
+
+.ap-section--rows {
+	gap: 0;
+}
+
+.ap-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 0;
+	border-top: 1px solid var(--ion-border-color, #333);
+}
+
+.ap-row-label {
+	flex: 1;
+	font-size: 0.88rem;
+	color: var(--ion-text-color, #fff);
+}
+
+.ap-row-value {
+	font-size: 0.78rem;
+	color: var(--ion-color-medium, #888);
+	min-width: 36px;
+	text-align: right;
+}
+
+.ap-row-buttons {
+	display: flex;
+	gap: 4px;
+}
+
+.ap-step-btn {
+	width: 34px;
+	height: 34px;
+	border-radius: 6px;
+	border: 1.5px solid var(--ion-border-color, #444);
+	background: transparent;
+	color: var(--ion-text-color, #fff);
+	font-size: 0.9rem;
+	font-weight: 600;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	line-height: 1;
+}
+
+.ap-step-btn:disabled {
+	opacity: 0.3;
+	cursor: not-allowed;
+}
+
+/* Settings page stepper rows */
+.ap-settings-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1;
+}
+
+.ap-settings-val {
+	font-size: 0.82rem;
+	color: var(--ion-color-medium, #888);
+	min-width: 40px;
+	text-align: right;
 }

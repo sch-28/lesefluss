@@ -29,6 +29,11 @@ export async function getSettings(): Promise<Settings> {
 		displayOffTimeout: DEFAULT_SETTINGS.DISPLAY_OFF_TIMEOUT,
 		deepSleepTimeout: DEFAULT_SETTINGS.DEEP_SLEEP_TIMEOUT,
 		brightness: DEFAULT_SETTINGS.BRIGHTNESS,
+		readerTheme: DEFAULT_SETTINGS.READER_THEME,
+		readerFontSize: DEFAULT_SETTINGS.READER_FONT_SIZE,
+		readerFontFamily: DEFAULT_SETTINGS.READER_FONT_FAMILY,
+		readerLineSpacing: DEFAULT_SETTINGS.READER_LINE_SPACING,
+		readerMargin: DEFAULT_SETTINGS.READER_MARGIN,
 		updatedAt: Date.now(),
 	};
 

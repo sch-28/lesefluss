@@ -1,16 +1,12 @@
 {
-  "appId": "tools.jan.schmidt",
-  "appName": "RSVP",
-  "webDir": "dist",
-  "plugins": {
-    "StatusBar": {
-      "overlaysWebView": true,
-      "style": "DARK",
-      "backgroundColor": "#00000000"
-    }
-  },
-  "server": {
-    "url": "http://localhost:3000",
-    "cleartext": true
-  }
+	"appId": "tools.jan.schmidt",
+	"appName": "RSVP",
+	"webDir": "dist",
+	"plugins": {
+		"StatusBar": {
+			"overlaysWebView": true,
+			"style": "DARK",
+			"backgroundColor": "#00000000"
+		}
+	}
 }

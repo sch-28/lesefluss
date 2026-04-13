@@ -29,6 +29,13 @@
       "when": 1744588800000,
       "tag": "0003_highlights",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1744934400000,
+      "tag": "0004_appearance",
+      "breakpoints": true
     }
   ]
 }

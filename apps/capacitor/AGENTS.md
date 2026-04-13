@@ -33,8 +33,11 @@ src/
       book-card.tsx        # Individual book card (short tap → reader, long press → action sheet)
       transfer-modal/
     reader/
-      index.tsx           # BookReader page — VList, scroll/tap position sync, font size controls
-      paragraph.tsx       # React.memo paragraph component — word spans, heading detection, highlight, utf8ByteLength()
+      index.tsx           # BookReader page — VList, scroll/tap/selection handlers, position sync, font size controls
+      paragraph.tsx       # React.memo paragraph component — word spans, heading detection, highlight/selection rendering, utf8ByteLength()
+      selection-toolbar.tsx   # Fixed toolbar shown during text selection (color swatches, note, cancel)
+      highlight-modal.tsx     # Bottom-sheet modal for editing an existing highlight (color, note, delete)
+      highlights-list-modal.tsx # Bottom-sheet listing all highlights for the book; tap to jump
     settings.tsx          # ESP32 settings UI + BLE sync/disconnect
   contexts/
     DatabaseContext.tsx     # Drizzle DB provider
@@ -62,9 +65,11 @@ src/
       web-setup.ts          # jeep-sqlite web bootstrap (no-op on native)
       schema.ts             # Drizzle table definitions
       queries/              # Raw async query functions (import as `queries` object)
+        highlights.ts       # getHighlightsByBook, addHighlight, updateHighlight, deleteHighlight, deleteHighlightsByBook
       hooks/                # react-query wrappers (import as `queryHooks` object)
-        query-keys.ts       # Centralised key factory (bookKeys, settingsKeys)
+        query-keys.ts       # Centralised key factory (bookKeys, settingsKeys) — bookKeys.highlights(id)
         use-books.ts        # useBooks, useBook, useBookContent, useImportBook, useDeleteBook
+        use-highlights.ts   # useHighlights, useAddHighlight, useUpdateHighlight, useDeleteHighlight
         use-settings.ts     # useSettings, useSaveSettings
         index.ts            # Barrel — exports `queryHooks` object + key factories
   utils/
@@ -88,7 +93,7 @@ The `[RSVP]` prefix makes it trivial to grep logcat output. The `pnpm android` s
 
 ## Database (`src/db/schema.ts`)
 
-Four tables, Drizzle ORM with typed queries:
+Five tables, Drizzle ORM with typed queries:
 
 | Table | Purpose |
 |-------|---------|
@@ -96,6 +101,7 @@ Four tables, Drizzle ORM with typed queries:
 | `settings` | ESP32 settings with defaults |
 | `books` | Metadata only (text id = 8-char hex PK, title, author, format, path, size, position, isActive, timestamps) |
 | `book_content` | Large data separate (content text, cover image base64, chapters JSON) |
+| `highlights` | Per-book text highlights — startOffset, endOffset (UTF-8 byte, word-start), color, note, timestamps |
 
 - `DatabaseProvider` context wraps the app (`src/contexts/DatabaseContext.tsx`)
 - Single clean migration in `drizzle/` — fresh DB, no incremental migrations
@@ -190,8 +196,11 @@ save.mutate({ wpm: 400 });
 ## Book Reader (`src/pages/reader/`)
 
 Full-screen virtualized scroll reader split across three files:
-- `index.tsx` — page shell, data loading, scroll/tap handlers, position sync, progress bar, TOC modal, theme
-- `paragraph.tsx` — `React.memo` component for a single paragraph; word spans, heading detection, highlight
+- `index.tsx` — page shell, data loading, scroll/tap/selection handlers, position sync, progress bar, TOC/highlights modals, theme
+- `paragraph.tsx` — `React.memo` component for a single paragraph; word spans, heading detection, highlight/selection rendering
+- `selection-toolbar.tsx` — fixed-position toolbar shown during text selection; color swatches, note button, cancel
+- `highlight-modal.tsx` — bottom-sheet for editing an existing highlight (color, note, delete); auto-saves on change
+- `highlights-list-modal.tsx` — bottom-sheet listing all book highlights ordered by position; tap to jump
 - `dictionary-modal.tsx` — bottom-sheet modal fetching definitions from the Free Dictionary API via react-query
 
 Uses `virtua`'s `VList` for virtualisation (~20–30 paragraphs in the DOM at any time regardless of book size).
@@ -252,6 +261,18 @@ Fixed bar at the bottom of `IonContent`, positioned `calc(env(safe-area-inset-bo
 
 `listOutline` toolbar button — only rendered when `chapters.length > 0` (EPUB imports only; TXT has no chapters). Opens a sheet modal (`breakpoints=[0, 0.5, 0.9]`) listing all chapters. Tapping a chapter binary-searches `paragraphOffsets` for its `startByte`, scrolls there, saves the position, and closes the modal.
 
+### Highlights & annotations
+
+Long-press any word to enter selection mode. Two fixed handles (start/end) appear that can be dragged to extend the range — same UX as Kindle/Apple Books. A toolbar appears above the selection with 4 color swatches and a note button. Picking a color auto-saves the highlight immediately; the toolbar stays open for further adjustments. The X closes the toolbar without deleting the saved highlight.
+
+Long-pressing a word that is already highlighted opens the **HighlightModal** to edit color/note or delete. Tapping the bookmark icon in the toolbar opens the **HighlightsListModal** showing all highlights for the book ordered by position; tapping a row jumps there.
+
+- Offsets stored as UTF-8 byte word-start offsets (same as `data-offset` on word spans)
+- Overlapping highlights allowed; most-recently-created color wins visually
+- Deleting a book cascades to its highlights (`deleteHighlightsByBook` called in `deleteBook`)
+- `highlightsByParagraph: Map<index, HighlightRange[]>` memoized in the reader so each `<Paragraph>` receives only its slice with no scroll-time overhead
+- Scroll suppressed during selection via `touch-action: none` on the VList container
+
 ### Dictionary lookup
 
 Tap an already-highlighted word → opens a bottom-sheet modal with the definition from `api.dictionaryapi.dev` (free, no API key). Results cached permanently by react-query (`staleTime: Infinity`). Shows phonetic, part of speech, up to 3 definitions + examples. Handles not-found and network errors gracefully.
@@ -288,3 +309,4 @@ Tap an already-highlighted word → opens a bottom-sheet modal with the definiti
 | Chapter / TOC navigation modal (EPUB books) | Done |
 | Reading themes (dark / light, localStorage) | Done |
 | Dictionary lookup (tap highlighted word, Free Dictionary API) | Done |
+| Highlights & annotations (long-press select, color, notes, per-book, handles UI) | Done |

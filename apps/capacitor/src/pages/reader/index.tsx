@@ -35,15 +35,12 @@ import {
 } from "@ionic/react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-	addOutline,
 	bookmarkOutline,
 	flashOffOutline,
 	flashOutline,
 	listOutline,
-	moonOutline,
-	removeOutline,
+	readerOutline,
 	searchOutline,
-	sunnyOutline,
 } from "ionicons/icons";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RouteComponentProps } from "react-router-dom";
@@ -56,6 +53,7 @@ import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import type { Chapter, Highlight } from "../../services/db/schema";
 import { DEFAULT_SETTINGS } from "../../utils/settings";
+import AppearancePopover from "./appearance-popover";
 import DictionaryModal from "./dictionary-modal";
 import HighlightModal from "./highlight-modal";
 import HighlightsListModal from "./highlights-list-modal";
@@ -72,23 +70,6 @@ const _decoder = new TextDecoder();
 
 // Sentinel value: no word highlighted (while scrolling)
 const NO_HIGHLIGHT = -1;
-
-// ─── Font size ───────────────────────────────────────────────────────────────
-const FONT_SIZE_KEY = "reader_font_size";
-const FONT_SIZE_MIN = 12;
-const FONT_SIZE_MAX = 28;
-const FONT_SIZE_STEP = 2;
-const FONT_SIZE_DEFAULT = 17;
-
-function loadFontSize(): number {
-	const v = localStorage.getItem(FONT_SIZE_KEY);
-	const n = v ? Number.parseInt(v, 10) : Number.NaN;
-	return Number.isNaN(n) ? FONT_SIZE_DEFAULT : Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, n));
-}
-
-function saveFontSize(size: number): void {
-	localStorage.setItem(FONT_SIZE_KEY, String(size));
-}
 
 // ─── Random hex id ───────────────────────────────────────────────────────────
 function randomHexId(): string {
@@ -130,8 +111,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const updateHighlightMutation = queryHooks.useUpdateHighlight();
 	const deleteHighlightMutation = queryHooks.useDeleteHighlight();
 
-	const [fontSize, setFontSize] = useState<number>(loadFontSize);
-	const { theme, toggleTheme } = useTheme();
+	const { theme } = useTheme();
 	const [tocOpen, setTocOpen] = useState(false);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [searchInitialQuery, setSearchInitialQuery] = useState<string | undefined>(undefined);
@@ -281,8 +261,14 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		return map;
 	}, [highlightRows, paragraphOffsets]);
 
-	// ── RSVP settings ─────────────────────────────────────────────────────
+	// ── Settings (RSVP + reader appearance) ──────────────────────────────
 	const { data: dbSettings } = queryHooks.useSettings();
+
+	const readerFontSize = dbSettings?.readerFontSize ?? DEFAULT_SETTINGS.READER_FONT_SIZE;
+	const readerFontFamily = dbSettings?.readerFontFamily ?? DEFAULT_SETTINGS.READER_FONT_FAMILY;
+	const readerLineSpacing = dbSettings?.readerLineSpacing ?? DEFAULT_SETTINGS.READER_LINE_SPACING;
+	const readerMargin = dbSettings?.readerMargin ?? DEFAULT_SETTINGS.READER_MARGIN;
+
 	const rsvpSettings = useMemo<RsvpSettings>(
 		() => ({
 			wpm: dbSettings?.wpm ?? DEFAULT_SETTINGS.WPM,
@@ -753,18 +739,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		[id, deleteHighlightMutation],
 	);
 
-	// ── Font size ──────────────────────────────────────────────────────────
-	const handleFontSizeChange = useCallback((delta: number) => {
-		setFontSize((prev) => {
-			const next = Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, prev + delta));
-			saveFontSize(next);
-			return next;
-		});
-	}, []);
-
-	// ── Theme cycle ───────────────────────────────────────────────────────
-	// toggleTheme comes from ThemeContext — updates the whole app.
-
 	// ── RSVP helpers ─────────────────────────────────────────────────────
 
 	const handleRsvpPositionChange = useCallback(
@@ -1055,22 +1029,11 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 								<IonIcon slot="icon-only" icon={bookmarkOutline} />
 							</IonButton>
 						)}
-						<IonButton onClick={toggleTheme} aria-label="Switch reading theme">
-							<IonIcon slot="icon-only" icon={theme === "dark" ? sunnyOutline : moonOutline} />
-						</IonButton>
 						<IonButton
-							onClick={() => handleFontSizeChange(-FONT_SIZE_STEP)}
-							disabled={fontSize <= FONT_SIZE_MIN}
-							aria-label="Decrease font size"
+							id="appearance-trigger"
+							aria-label="Appearance settings"
 						>
-							<IonIcon slot="icon-only" icon={removeOutline} />
-						</IonButton>
-						<IonButton
-							onClick={() => handleFontSizeChange(FONT_SIZE_STEP)}
-							disabled={fontSize >= FONT_SIZE_MAX}
-							aria-label="Increase font size"
-						>
-							<IonIcon slot="icon-only" icon={addOutline} />
+							<IonIcon slot="icon-only" icon={readerOutline} />
 						</IonButton>
 					</IonButtons>
 				</IonToolbar>
@@ -1084,15 +1047,25 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						))}
 					</div>
 				) : readerMode === "scroll" ? (
-					<div ref={containerRef} style={{ height: "100%" }}>
+					<div
+						ref={containerRef}
+						style={
+							{
+								height: "100%",
+								"--reader-line-height": String(readerLineSpacing),
+							} as React.CSSProperties
+						}
+					>
 						<VList
 							ref={listRef}
 							cache={scrollCache.get(id)}
 							style={{
 								height: "100%",
-								padding: "0 20px",
+								padding: `0 ${readerMargin}px`,
 								paddingBottom: "calc(52px + env(safe-area-inset-bottom, 0px))",
-								fontSize: `${fontSize}px`,
+								fontSize: `${readerFontSize}px`,
+								fontFamily:
+									readerFontFamily === "serif" ? "Georgia, 'Times New Roman', serif" : undefined,
 							}}
 							onScroll={handleScroll}
 							onScrollEnd={handleScrollEnd}
@@ -1116,7 +1089,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						content={content}
 						initialByteOffset={progressOffset}
 						settings={rsvpSettings}
-						fontSize={fontSize}
+						fontSize={readerFontSize}
 						onPositionChange={handleRsvpPositionChange}
 						onFinished={handleRsvpFinished}
 					/>
@@ -1171,6 +1144,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				style={{ display: "none" }}
 				onPointerDown={handleEndHandlePointerDown}
 			/>
+
+			{/* ── Appearance popover ── */}
+			<AppearancePopover trigger="appearance-trigger" />
 
 			{/* ── TOC modal ── */}
 			<IonModal

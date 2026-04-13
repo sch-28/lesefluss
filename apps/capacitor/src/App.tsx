@@ -159,10 +159,10 @@ const App: React.FC = () => {
 	}, []);
 
 	return (
-		<ThemeProvider>
-			<IonApp>
-				<QueryClientProvider client={queryClient}>
-					<DatabaseProvider>
+		<IonApp>
+			<QueryClientProvider client={queryClient}>
+				<DatabaseProvider>
+					<ThemeProvider>
 						<BLEProvider>
 							<BookSyncProvider>
 								<IonReactRouter>
@@ -179,10 +179,10 @@ const App: React.FC = () => {
 								</IonReactRouter>
 							</BookSyncProvider>
 						</BLEProvider>
-					</DatabaseProvider>
-				</QueryClientProvider>
-			</IonApp>
-		</ThemeProvider>
+					</ThemeProvider>
+				</DatabaseProvider>
+			</QueryClientProvider>
+		</IonApp>
 	);
 };
 
