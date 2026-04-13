@@ -58,7 +58,7 @@ import type { Chapter } from "../../services/db/schema";
 import { DEFAULT_SETTINGS } from "../../utils/settings";
 import DictionaryModal from "./dictionary-modal";
 import Paragraph, { getWordOffsets, utf8ByteLength } from "./paragraph";
-import { type RsvpSettings, buildWordIndex, findWordIndexAtOffset } from "./rsvp-engine";
+import { buildWordIndex, findWordIndexAtOffset, type RsvpSettings } from "./rsvp-engine";
 import RsvpView from "./rsvp-view";
 import SearchModal from "./search-modal";
 
@@ -224,7 +224,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		[paragraphOffsets],
 	);
 
-	/** Scroll to a byte offset, update highlight + progress, and persist. */
+	/** Scroll to a byte offset, update highlight + progress, and persist.
+	 *  After the paragraph scrolls into view, fine-tunes to the exact word
+	 *  span so the matched word lands at the top of the viewport. */
 	const jumpToOffset = useCallback(
 		(byteOffset: number, { highlight = true }: { highlight?: boolean } = {}) => {
 			if (!listRef.current) return;
@@ -236,6 +238,18 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			setProgressOffset(byteOffset);
 			lastOffsetRef.current = byteOffset;
 			savePosition(byteOffset);
+
+			// Fine-tune: after the paragraph renders, scroll to the exact word.
+			requestAnimationFrame(() => {
+				const span = document.querySelector<HTMLElement>(`span[data-offset="${byteOffset}"]`);
+				if (!span || !containerRef.current || !listRef.current) return;
+				const delta = span.getBoundingClientRect().top - containerRef.current.getBoundingClientRect().top;
+				if (delta > 2) {
+					suppressNextScrollEndRef.current = true;
+					if (highlight) suppressScrollHighlightClearRef.current = true;
+					listRef.current.scrollBy(delta);
+				}
+			});
 		},
 		[findParagraphIndex, savePosition],
 	);
@@ -258,9 +272,26 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		suppressNextScrollEndRef.current = true;
 		suppressScrollHighlightClearRef.current = true;
 		listRef.current.scrollToIndex(idx, { align: "start" });
-		// Set the highlight directly — handleScrollEnd is suppressed to
-		// avoid it picking a different top-left word.
 		setActiveOffset(target);
+
+		// Fine-tune to the exact word after the paragraph renders.
+		// Needed for long paragraphs where the saved word could be
+		// off-screen below the paragraph start. Double rAF ensures
+		// VList's layout from scrollToIndex is fully committed.
+		const listHandle = listRef.current;
+		const container = containerRef.current;
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				const span = document.querySelector<HTMLElement>(`span[data-offset="${target}"]`);
+				if (!span || !container || !listHandle) return;
+				const delta = span.getBoundingClientRect().top - container.getBoundingClientRect().top;
+				if (delta > 2) {
+					suppressNextScrollEndRef.current = true;
+					suppressScrollHighlightClearRef.current = true;
+					listHandle.scrollBy(delta);
+				}
+			});
+		});
 	}, [readerMode, paragraphs, paragraphOffsets, book, findParagraphIndex]);
 
 	// ── Scroll handler — hide highlight + update progress bar ──────────────
@@ -289,7 +320,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		[paragraphOffsets],
 	);
 
-	// ── Scroll end — find top-left visible word + save position ─────────
+	// ── Scroll end — find first fully visible word + save position ───────
 	const handleScrollEnd = useCallback(() => {
 		if (suppressNextScrollEndRef.current) {
 			suppressNextScrollEndRef.current = false;
@@ -303,24 +334,21 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 		const cutoffTop = containerRef.current.getBoundingClientRect().top;
 
-		// All word <span>s currently in the DOM (only ~20-30 paragraphs via VList).
-		// Each carries a data-offset with its exact UTF-8 byte offset.
-		const spans = document.querySelectorAll<HTMLElement>("span[data-offset]");
+		const spans = Array.from(document.querySelectorAll<HTMLElement>("span[data-offset]"));
 		if (spans.length === 0) return;
 
-		// Find the top-left visible word: smallest Y not hidden behind the
-		// header, then smallest X to break ties on the same line.
-		let bestOffset = -1;
-		let bestTop = Number.POSITIVE_INFINITY;
-		let bestLeft = Number.POSITIVE_INFINITY;
+		spans.sort((a, b) => {
+			const ra = a.getBoundingClientRect();
+			const rb = b.getBoundingClientRect();
+			return ra.top !== rb.top ? ra.top - rb.top : ra.left - rb.left;
+		});
 
+		let bestOffset = -1;
 		for (const span of spans) {
 			const rect = span.getBoundingClientRect();
-			if (rect.top < cutoffTop) continue; // hidden behind header/toolbar
-			if (rect.top < bestTop || (rect.top === bestTop && rect.left < bestLeft)) {
-				bestTop = rect.top;
-				bestLeft = rect.left;
+			if (rect.top >= cutoffTop + rect.height) {
 				bestOffset = Number.parseInt(span.dataset.offset!, 10);
+				break;
 			}
 		}
 
@@ -448,7 +476,15 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				jumpToOffset(wordByte);
 			}
 		},
-		[content, paragraphs, paragraphOffsets, readerMode, findParagraphIndex, jumpToOffset, exitRsvpToScroll],
+		[
+			content,
+			paragraphs,
+			paragraphOffsets,
+			readerMode,
+			findParagraphIndex,
+			jumpToOffset,
+			exitRsvpToScroll,
+		],
 	);
 
 	// ── Progress bar tap/drag ─────────────────────────────────────────────
@@ -617,10 +653,15 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 					<IonButtons slot="end">
 						<IonButton
 							onClick={handleRsvpToggle}
-							aria-label={readerMode === "rsvp" ? "Switch to scroll reader" : "Switch to RSVP reader"}
+							aria-label={
+								readerMode === "rsvp" ? "Switch to scroll reader" : "Switch to RSVP reader"
+							}
 							className={readerMode === "rsvp" ? "rsvp-toggle-active" : undefined}
 						>
-							<IonIcon slot="icon-only" icon={readerMode === "rsvp" ? flashOffOutline : flashOutline} />
+							<IonIcon
+								slot="icon-only"
+								icon={readerMode === "rsvp" ? flashOffOutline : flashOutline}
+							/>
 						</IonButton>
 						<IonButton onClick={() => setSearchOpen(true)} aria-label="Search content">
 							<IonIcon slot="icon-only" icon={searchOutline} />
@@ -746,7 +787,10 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			{/* ── Search modal ── */}
 			<SearchModal
 				isOpen={searchOpen}
-				onClose={() => { setSearchOpen(false); setSearchInitialQuery(undefined); }}
+				onClose={() => {
+					setSearchOpen(false);
+					setSearchInitialQuery(undefined);
+				}}
 				content={content}
 				onJump={handleSearchJump}
 				theme={theme}

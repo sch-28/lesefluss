@@ -11,6 +11,14 @@
 ## Phase 2 — Polish & ESP32
 > Nice to have before launch, not strictly blocking
 
+### Reader enhancements
+- [ ] Highlights & annotations (select text, highlight, add notes, per-book storage)
+- [ ] Font family selection (serif / sans-serif at minimum) - Adjustable line spacing & margins - font size all in one option menu in reader
+- [ ] Sepia reading theme (third option alongside dark/light)
+- [ ] Library sorting & filtering (by title, author, recent, progress)
+- [ ] Estimated reading time remaining (per book / per chapter). For rsvp mode too
+
+### ESP32
 <!-- - [ ] Rotary encoder support (POTENTIOMETER_PLAN.md) — needed if selling with encoder -->
 - [ ] Fix special characters (äüö and other characters e.g. << >>) in ESP32 reader
 - [ ] Split long words on ESP32

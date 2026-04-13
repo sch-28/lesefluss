@@ -1,6 +1,7 @@
 import { App as CapacitorApp } from "@capacitor/app";
 import { SplashScreen } from "@capacitor/splash-screen";
 import {
+	createAnimation,
 	IonApp,
 	IonIcon,
 	IonLabel,
@@ -13,7 +14,7 @@ import {
 } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { bluetooth, library, settings } from "ionicons/icons";
+import { library, settings } from "ionicons/icons";
 import type React from "react";
 import { useEffect } from "react";
 import { Redirect, Route, useLocation } from "react-router-dom";
@@ -37,59 +38,67 @@ import "@ionic/react/css/display.css";
 /* Monochrome theme */
 import "./theme/monochrome.css";
 
-import { BLEProvider, useBLE } from "./contexts/ble-context";
+import { BLEProvider } from "./contexts/ble-context";
 import { BookSyncProvider } from "./contexts/book-sync-context";
 import { DatabaseProvider } from "./contexts/database-context";
 import { ThemeProvider } from "./contexts/theme-context";
 import Library from "./pages/library";
 import BookReader from "./pages/reader";
 import Settings from "./pages/settings";
-import { BLEConnectionState } from "./services/ble";
+import AppearanceSettings from "./pages/settings/appearance";
+import DeviceSettings from "./pages/settings/device";
+import RSVPSettings from "./pages/settings/rsvp";
 import { queryClient } from "./services/query-client";
 
-setupIonicReact();
+const slideAnimation = (_: HTMLElement, opts: any) => {
+	const DURATION = 300;
+	const EASING = "cubic-bezier(0.32, 0.72, 0, 1)";
+	const enteringEl = opts.enteringEl as HTMLElement;
+	const leavingEl = opts.leavingEl as HTMLElement;
+	const isGoingBack = opts.direction === "back";
 
-/**
- * Hook that returns the BLE badge CSS class and label text.
- * Used inline inside IonTabBar since Ionic only recognises
- * literal IonTabButton children (not wrapper components).
- */
-function useBLEBadge() {
-	const { connectionState, connectedDevice } = useBLE();
+	const enterFrom = isGoingBack ? "-30%" : "100%";
+	const leaveTo = isGoingBack ? "100%" : "-30%";
 
-	const isConnected = connectionState === BLEConnectionState.CONNECTED;
-	const isTransitioning =
-		connectionState === BLEConnectionState.CONNECTING ||
-		connectionState === BLEConnectionState.DISCONNECTING;
+	const enterAnim = createAnimation()
+		.addElement(enteringEl)
+		.duration(DURATION)
+		.easing(EASING)
+		.fromTo("transform", `translateX(${enterFrom})`, "translateX(0)")
+		.fromTo("opacity", isGoingBack ? "1" : "0.6", "1");
 
-	const label = isConnected
-		? connectedDevice?.name || "Connected"
-		: isTransitioning
-			? "Connecting..."
-			: "No device";
+	const leaveAnim = createAnimation()
+		.addElement(leavingEl)
+		.duration(DURATION)
+		.easing(EASING)
+		.fromTo("transform", "translateX(0)", `translateX(${leaveTo})`)
+		.fromTo("opacity", "1", isGoingBack ? "0.6" : "1");
 
-	const cssClass = isConnected
-		? "ble-badge ble-connected"
-		: isTransitioning
-			? "ble-badge ble-transitioning"
-			: "ble-badge ble-disconnected";
+	return createAnimation().addAnimation([enterAnim, leaveAnim]);
+};
 
-	return { label, cssClass };
-}
+setupIonicReact({
+	mode: "md",
+	animated: true,
+	navAnimation: slideAnimation,
+});
 
 const AppTabs: React.FC = () => {
-	const { label, cssClass } = useBLEBadge();
 	const ionRouter = useIonRouter();
 	const location = useLocation();
-	const hideTabBar =
-		ionRouter.routeInfo.pathname.startsWith("/tabs/reader/") ||
-		location.pathname.startsWith("/tabs/reader/");
+	const isSubPage = (path: string) =>
+		path.startsWith("/tabs/reader/") ||
+		(path.startsWith("/tabs/settings/") && path !== "/tabs/settings");
+	const hideTabBar = isSubPage(ionRouter.routeInfo.pathname) || isSubPage(location.pathname);
 
 	return (
 		<IonTabs>
 			<IonRouterOutlet>
 				<Route exact path="/tabs/library" component={Library} />
 				<Route exact path="/tabs/settings" component={Settings} />
+				<Route exact path="/tabs/settings/rsvp" component={RSVPSettings} />
+				<Route exact path="/tabs/settings/appearance" component={AppearanceSettings} />
+				<Route exact path="/tabs/settings/device" component={DeviceSettings} />
 				<Route exact path="/tabs/reader/:id" component={BookReader} />
 				<Route exact path="/tabs">
 					<Redirect to="/tabs/library" />
@@ -103,10 +112,6 @@ const AppTabs: React.FC = () => {
 				<IonTabButton tab="settings" href="/tabs/settings">
 					<IonIcon icon={settings} />
 					<IonLabel>Settings</IonLabel>
-				</IonTabButton>
-				<IonTabButton tab="ble-badge" disabled className={cssClass}>
-					<IonIcon icon={bluetooth} />
-					<IonLabel>{label}</IonLabel>
 				</IonTabButton>
 			</IonTabBar>
 		</IonTabs>

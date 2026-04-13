@@ -21,6 +21,7 @@ import { add, bookOutline, refreshOutline } from "ionicons/icons";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
+import BLEIndicator from "../../components/ble-indicator";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { queryHooks } from "../../services/db/hooks";
@@ -150,6 +151,7 @@ const Library: React.FC = () => {
 				<IonToolbar>
 					<IonTitle>Library</IonTitle>
 					<IonButtons slot="end">
+						<BLEIndicator />
 						<IonButton
 							disabled={!isConnected || syncing || isTransferring}
 							onClick={handleRefresh}

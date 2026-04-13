@@ -343,31 +343,6 @@ body.dark ion-tab-button {
 	--color-selected: #e4e4e4;
 }
 
-/* BLE badge in tab bar — override selected/unselected colors based on state */
-ion-tab-button.ble-badge {
-	font-size: 0.65rem;
-}
-
-ion-tab-button.ble-connected {
-	--color: #000000;
-	--color-selected: #000000;
-}
-
-body.dark ion-tab-button.ble-connected {
-	--color: #e4e4e4;
-	--color-selected: #e4e4e4;
-}
-
-ion-tab-button.ble-transitioning {
-	--color: #888888;
-	--color-selected: #888888;
-}
-
-ion-tab-button.ble-disconnected {
-	--color: #bbbbbb;
-	--color-selected: #bbbbbb;
-}
-
 /* ── Action sheet ── */
 
 /* Outer container: gives both groups side margins, no bottom padding (cancel pill is the last thing) */
