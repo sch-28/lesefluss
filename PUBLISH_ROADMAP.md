@@ -4,8 +4,9 @@
 > Blocking for Play Store launch
 
 - [ ] In-app RSVP reader (software parity with ESP32: ORP focal letter, punctuation delays, acceleration ramp, word offset on resume)
-- [ ] Double-tap word → magnify icon to auto-search in dictionary modal
-- [ ] Search, clicking result doesnt highlight the lcation
+- [x] Double-tap word → magnify icon to auto-search in dictionary modal
+- [x] Search, clicking result doesnt highlight the location
+- [x] Search modal doesnt let scroll to the bottom (it automatically scrolls up a bit again)
 
 ## Phase 2 — Polish & ESP32
 > Nice to have before launch, not strictly blocking

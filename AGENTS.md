@@ -171,7 +171,9 @@ Touch these files in order:
 - [x] Fix pressing button  during transfer causing reading mode
 - [x] Keep display on during transfer in app
 - [x] closing app srolls the progress bar at the bottom
-- [ ] clicking a work twice (dict modal) should also have a magnify icon to automatically search for the selected word
+- [x] clicking a word twice (dict modal) should also have a magnify icon to automatically search for the selected word
+- [x] search result click highlights the matched word
+- [x] search modal last result unreachable (modal breakpoint snap-back)
 - [ ] split long words into multiple in esp32
 - [ ] special characters äüö not working in the rsvp esp32
 - [ ] Check if wpm actually matches (maybe display delay slows things down)

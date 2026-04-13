@@ -10,12 +10,14 @@ import {
 	IonButtons,
 	IonContent,
 	IonHeader,
+	IonIcon,
 	IonModal,
 	IonSpinner,
 	IonTitle,
 	IonToolbar,
 } from "@ionic/react";
 import { useQuery } from "@tanstack/react-query";
+import { searchOutline } from "ionicons/icons";
 import type React from "react";
 
 // ─── API types ───────────────────────────────────────────────────────────────
@@ -52,12 +54,13 @@ async function fetchDefinition(word: string): Promise<DictEntry[]> {
 export interface DictionaryModalProps {
 	word: string | null;
 	onClose: () => void;
+	onSearch?: (word: string) => void;
 	theme?: string;
 }
 
 const MAX_DEFINITIONS = 3;
 
-const DictionaryModal: React.FC<DictionaryModalProps> = ({ word, onClose, theme }) => {
+const DictionaryModal: React.FC<DictionaryModalProps> = ({ word, onClose, onSearch, theme }) => {
 	const { data, isPending, isError } = useQuery({
 		queryKey: ["dictionary", word],
 		queryFn: () => fetchDefinition(word!),
@@ -81,6 +84,11 @@ const DictionaryModal: React.FC<DictionaryModalProps> = ({ word, onClose, theme 
 				<IonToolbar>
 					<IonTitle style={{ textTransform: "none" }}>{word ?? ""}</IonTitle>
 					<IonButtons slot="end">
+						{onSearch && word && (
+							<IonButton onClick={() => onSearch(word)} aria-label="Search in book">
+								<IonIcon slot="icon-only" icon={searchOutline} />
+							</IonButton>
+						)}
 						<IonButton onClick={onClose}>Close</IonButton>
 					</IonButtons>
 				</IonToolbar>

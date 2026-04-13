@@ -54,7 +54,7 @@ import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import type { Chapter } from "../../services/db/schema";
 import DictionaryModal from "./dictionary-modal";
-import Paragraph, { utf8ByteLength } from "./paragraph";
+import Paragraph, { getWordOffsets, utf8ByteLength } from "./paragraph";
 import SearchModal from "./search-modal";
 
 // ─── Scroll cache ────────────────────────────────────────────────────────────
@@ -81,11 +81,6 @@ function saveFontSize(size: number): void {
 	localStorage.setItem(FONT_SIZE_KEY, String(size));
 }
 
-// Minimum horizontal travel (px) before a pointer drag on the progress bar
-// is treated as a scrub. Keeps vertical swipe-up (iOS home gesture) from
-// accidentally jumping the reading position.
-const MIN_SCRUB_PX = 8;
-
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 interface BookReaderProps extends RouteComponentProps<{ id: string }> {}
@@ -105,6 +100,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const { theme, toggleTheme } = useTheme();
 	const [tocOpen, setTocOpen] = useState(false);
 	const [searchOpen, setSearchOpen] = useState(false);
+	const [searchInitialQuery, setSearchInitialQuery] = useState<string | undefined>(undefined);
 	const [selectedWord, setSelectedWord] = useState<string | null>(null);
 
 	// The byte offset we consider "current" — used for word highlight + saves
@@ -127,6 +123,11 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// scrollToIndex on first render — prevents overwriting the precise
 	// saved position with whatever word happens to be at the top.
 	const suppressNextScrollEndRef = useRef(false);
+
+	// Suppresses handleScroll from clearing activeOffset after a
+	// programmatic jump (search, chapter). Without this the scroll
+	// event fires *after* setActiveOffset and wipes the highlight.
+	const suppressScrollHighlightClearRef = useRef(false);
 
 	// Track the last offset we set so we can flush on unmount.
 	// null = not yet loaded from DB, don't overwrite on unmount.
@@ -172,34 +173,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		}
 	}, [contentRow?.chapters]);
 
-	// ── Initial scroll to saved position ──────────────────────────────────
-	useEffect(() => {
-		if (didInitialScrollRef.current) return;
-		if (!listRef.current || paragraphs.length === 0 || !book) return;
-
-		didInitialScrollRef.current = true;
-
-		if (book.position === 0) return; // start of book — default scroll is correct
-
-		// Binary search: find the last paragraph whose offset ≤ book.position
-		const target = book.position;
-		let lo = 0;
-		let hi = paragraphOffsets.length - 1;
-		while (lo < hi) {
-			const mid = Math.ceil((lo + hi) / 2);
-			if (paragraphOffsets[mid] <= target) {
-				lo = mid;
-			} else {
-				hi = mid - 1;
-			}
-		}
-
-		// Suppress the handleScrollEnd that this programmatic scroll will trigger,
-		// so it doesn't overwrite the precise saved offset with a pixel estimate.
-		suppressNextScrollEndRef.current = true;
-		listRef.current.scrollToIndex(lo, { align: "start" });
-	}, [paragraphs, paragraphOffsets, book]);
-
 	// ── Save position to DB + BLE ─────────────────────────────────────────
 	// Fire-and-forget writes — no mutation wrapper needed for high-frequency saves.
 	const savePosition = useCallback(
@@ -210,12 +183,65 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		[id, pushPosition],
 	);
 
+	// ── Shared helpers ────────────────────────────────────────────────────
+	/** Binary search: find the last paragraph index whose offset ≤ targetByte. */
+	const findParagraphIndex = useCallback(
+		(targetByte: number): number => {
+			let lo = 0;
+			let hi = paragraphOffsets.length - 1;
+			while (lo < hi) {
+				const mid = Math.ceil((lo + hi) / 2);
+				if (paragraphOffsets[mid] <= targetByte) lo = mid;
+				else hi = mid - 1;
+			}
+			return lo;
+		},
+		[paragraphOffsets],
+	);
+
+	/** Scroll to a byte offset, update highlight + progress, and persist. */
+	const jumpToOffset = useCallback(
+		(byteOffset: number, { highlight = true }: { highlight?: boolean } = {}) => {
+			if (!listRef.current) return;
+			const idx = findParagraphIndex(byteOffset);
+			suppressNextScrollEndRef.current = true;
+			if (highlight) suppressScrollHighlightClearRef.current = true;
+			listRef.current.scrollToIndex(idx, { align: "start" });
+			setActiveOffset(byteOffset);
+			setProgressOffset(byteOffset);
+			lastOffsetRef.current = byteOffset;
+			savePosition(byteOffset);
+		},
+		[findParagraphIndex, savePosition],
+	);
+
+	// ── Initial scroll to saved position ──────────────────────────────────
+	useEffect(() => {
+		if (didInitialScrollRef.current) return;
+		if (!listRef.current || paragraphs.length === 0 || !book) return;
+
+		didInitialScrollRef.current = true;
+
+		if (book.position === 0) return; // start of book — default scroll is correct
+
+		const idx = findParagraphIndex(book.position);
+		// Suppress the handleScrollEnd that this programmatic scroll will trigger,
+		// so it doesn't overwrite the precise saved offset with a pixel estimate.
+		suppressNextScrollEndRef.current = true;
+		listRef.current.scrollToIndex(idx, { align: "start" });
+	}, [paragraphs, paragraphOffsets, book, findParagraphIndex]);
+
 	// ── Scroll handler — hide highlight + update progress bar ──────────────
 	const handleScroll = useCallback(
 		(scrollOffset: number) => {
 			// Hide highlight while scrolling. Skip the state update if already hidden
 			// to avoid triggering re-renders of all visible Paragraphs every frame.
-			setActiveOffset((prev) => (prev === NO_HIGHLIGHT ? prev : NO_HIGHLIGHT));
+			// After a programmatic jump (search/chapter) we keep the highlight.
+			if (suppressScrollHighlightClearRef.current) {
+				// Don't clear here — multiple scroll events fire; cleared in handleScrollEnd.
+			} else {
+				setActiveOffset((prev) => (prev === NO_HIGHLIGHT ? prev : NO_HIGHLIGHT));
+			}
 			// Hide progress bar — user is scrolling normally, not scrubbing
 			if (!isScrubbingRef.current) setProgressBarVisible(false);
 			// Update the progress bar live. findItemIndex maps the current scroll
@@ -235,6 +261,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const handleScrollEnd = useCallback(() => {
 		if (suppressNextScrollEndRef.current) {
 			suppressNextScrollEndRef.current = false;
+			suppressScrollHighlightClearRef.current = false;
 			return;
 		}
 		// Don't save until the initial scroll-to-position has run,
@@ -308,62 +335,38 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// toggleTheme comes from ThemeContext — updates the whole app.
 
 	// ── Chapter jump ──────────────────────────────────────────────────────
-	// Binary search paragraphOffsets for the chapter's startByte, then scroll.
 	const handleChapterJump = useCallback(
 		(startByte: number) => {
-			if (!listRef.current) return;
-			let lo = 0;
-			let hi = paragraphOffsets.length - 1;
-			while (lo < hi) {
-				const mid = Math.ceil((lo + hi) / 2);
-				if (paragraphOffsets[mid] <= startByte) {
-					lo = mid;
-				} else {
-					hi = mid - 1;
-				}
-			}
-			suppressNextScrollEndRef.current = true;
-			listRef.current.scrollToIndex(lo, { align: "start" });
-			// Save the chapter start as the reading position
-			setActiveOffset(startByte);
-			setProgressOffset(startByte);
-			lastOffsetRef.current = startByte;
-			queries.updateBook(id, { position: startByte, lastRead: Date.now() });
-			pushPosition(startByte);
+			jumpToOffset(startByte);
 			setTocOpen(false);
 		},
-		[paragraphOffsets, id, pushPosition],
+		[jumpToOffset],
 	);
 
 	// ── Search jump ───────────────────────────────────────────────────────────
 	// The search modal gives us a JS char offset (indexOf result). We convert
-	// it to a UTF-8 byte offset by encoding the substring before the match.
+	// it to a UTF-8 byte offset, then snap to the nearest word so the matched
+	// word gets highlighted.
 	const handleSearchJump = useCallback(
 		(charOffset: number) => {
-			if (!listRef.current || !content) return;
+			if (!content) return;
 			const byteOffset = utf8ByteLength(content.slice(0, charOffset));
 
-			// Binary search paragraphOffsets for the paragraph containing byteOffset
-			let lo = 0;
-			let hi = paragraphOffsets.length - 1;
-			while (lo < hi) {
-				const mid = Math.ceil((lo + hi) / 2);
-				if (paragraphOffsets[mid] <= byteOffset) {
-					lo = mid;
-				} else {
-					hi = mid - 1;
-				}
+			// Find the exact word offset within the paragraph so the matched
+			// word gets highlighted (not just the paragraph start).
+			const paraIdx = findParagraphIndex(byteOffset);
+			const paraText = paragraphs[paraIdx] ?? "";
+			const paraStart = paragraphOffsets[paraIdx] ?? 0;
+			const wordOffsets = getWordOffsets(paraText, paraStart);
+			let wordByte = paraStart;
+			for (const wo of wordOffsets) {
+				if (wo <= byteOffset) wordByte = wo;
+				else break;
 			}
-			suppressNextScrollEndRef.current = true;
-			listRef.current.scrollToIndex(lo, { align: "start" });
-			const actualByte = paragraphOffsets[lo] ?? 0;
-			setActiveOffset(actualByte);
-			setProgressOffset(actualByte);
-			lastOffsetRef.current = actualByte;
-			queries.updateBook(id, { position: actualByte, lastRead: Date.now() });
-			pushPosition(actualByte);
+
+			jumpToOffset(wordByte);
 		},
-		[content, paragraphOffsets, id, pushPosition],
+		[content, paragraphs, paragraphOffsets, findParagraphIndex, jumpToOffset],
 	);
 
 	// ── Progress bar tap/drag ─────────────────────────────────────────────
@@ -376,31 +379,15 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	const scrubToX = useCallback(
 		(clientX: number) => {
-			if (!progressBarRef.current || !book || !listRef.current) return;
+			if (!progressBarRef.current || !book) return;
 			const rect = progressBarRef.current.getBoundingClientRect();
 			const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
 			const targetByte = Math.round(ratio * book.size);
-
-			// Binary search paragraphOffsets
-			let lo = 0;
-			let hi = paragraphOffsets.length - 1;
-			while (lo < hi) {
-				const mid = Math.ceil((lo + hi) / 2);
-				if (paragraphOffsets[mid] <= targetByte) {
-					lo = mid;
-				} else {
-					hi = mid - 1;
-				}
-			}
-			suppressNextScrollEndRef.current = true;
-			listRef.current.scrollToIndex(lo, { align: "start" });
-			const actualByte = paragraphOffsets[lo] ?? 0;
-			setActiveOffset(actualByte);
-			setProgressOffset(actualByte);
-			lastOffsetRef.current = actualByte;
-			savePosition(actualByte);
+			const idx = findParagraphIndex(targetByte);
+			const actualByte = paragraphOffsets[idx] ?? 0;
+			jumpToOffset(actualByte, { highlight: false });
 		},
-		[book, paragraphOffsets, savePosition],
+		[book, paragraphOffsets, findParagraphIndex, jumpToOffset],
 	);
 
 	const handleProgressPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -649,14 +636,24 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			{/* ── Search modal ── */}
 			<SearchModal
 				isOpen={searchOpen}
-				onClose={() => setSearchOpen(false)}
+				onClose={() => { setSearchOpen(false); setSearchInitialQuery(undefined); }}
 				content={content}
 				onJump={handleSearchJump}
 				theme={theme}
+				initialQuery={searchInitialQuery}
 			/>
 
 			{/* ── Dictionary modal ── */}
-			<DictionaryModal word={selectedWord} onClose={() => setSelectedWord(null)} theme={theme} />
+			<DictionaryModal
+				word={selectedWord}
+				onClose={() => setSelectedWord(null)}
+				onSearch={(w) => {
+					setSelectedWord(null);
+					setSearchInitialQuery(w);
+					setSearchOpen(true);
+				}}
+				theme={theme}
+			/>
 		</IonPage>
 	);
 };

@@ -31,6 +31,7 @@ export interface SearchModalProps {
 	content: string;
 	onJump: (byteOffset: number) => void;
 	theme?: string;
+	initialQuery?: string;
 }
 
 interface SearchResult {
@@ -92,9 +93,19 @@ function buildResults(content: string, query: string): SearchResult[] {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose, content, onJump, theme }) => {
+const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose, content, onJump, theme, initialQuery }) => {
 	const [query, setQuery] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);
+
+	// Seed query from initialQuery when the modal opens with one
+	const lastInitialRef = useRef<string | undefined>(undefined);
+	if (isOpen && initialQuery && initialQuery !== lastInitialRef.current) {
+		lastInitialRef.current = initialQuery;
+		setQuery(initialQuery);
+	}
+	if (!isOpen) {
+		lastInitialRef.current = undefined;
+	}
 
 	const handleDidDismiss = useCallback(() => {
 		setQuery("");
@@ -123,7 +134,7 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose, content, onJ
 			isOpen={isOpen}
 			onDidPresent={handleDidPresent}
 			onDidDismiss={handleDidDismiss}
-			breakpoints={[0, 0.45, 0.9]}
+			breakpoints={[0, 0.45, 1]}
 			initialBreakpoint={0.45}
 			className={["rsvp-search-modal", theme && `reader-theme-${theme}`].filter(Boolean).join(" ")}
 		>
