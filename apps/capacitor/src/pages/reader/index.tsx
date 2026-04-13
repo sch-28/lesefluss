@@ -37,6 +37,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	addOutline,
+	flashOffOutline,
+	flashOutline,
 	listOutline,
 	moonOutline,
 	removeOutline,
@@ -53,8 +55,11 @@ import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import type { Chapter } from "../../services/db/schema";
+import { DEFAULT_SETTINGS } from "../../utils/settings";
 import DictionaryModal from "./dictionary-modal";
 import Paragraph, { getWordOffsets, utf8ByteLength } from "./paragraph";
+import { type RsvpSettings, buildWordIndex, findWordIndexAtOffset } from "./rsvp-engine";
+import RsvpView from "./rsvp-view";
 import SearchModal from "./search-modal";
 
 // ─── Scroll cache ────────────────────────────────────────────────────────────
@@ -102,6 +107,10 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [searchInitialQuery, setSearchInitialQuery] = useState<string | undefined>(undefined);
 	const [selectedWord, setSelectedWord] = useState<string | null>(null);
+
+	// ── RSVP mode ─────────────────────────────────────────────────────────
+	const [readerMode, setReaderMode] = useState<"scroll" | "rsvp">("scroll");
+	const [rsvpWordIndex, setRsvpWordIndex] = useState(0);
 
 	// The byte offset we consider "current" — used for word highlight + saves
 	const [activeOffset, setActiveOffset] = useState(0);
@@ -173,6 +182,22 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		}
 	}, [contentRow?.chapters]);
 
+	// ── RSVP word index + settings ────────────────────────────────────────
+	const wordIndex = useMemo(() => (content ? buildWordIndex(content) : []), [content]);
+
+	const { data: dbSettings } = queryHooks.useSettings();
+	const rsvpSettings = useMemo<RsvpSettings>(
+		() => ({
+			wpm: dbSettings?.wpm ?? DEFAULT_SETTINGS.WPM,
+			delayComma: dbSettings?.delayComma ?? DEFAULT_SETTINGS.DELAY_COMMA,
+			delayPeriod: dbSettings?.delayPeriod ?? DEFAULT_SETTINGS.DELAY_PERIOD,
+			accelStart: dbSettings?.accelStart ?? DEFAULT_SETTINGS.ACCEL_START,
+			accelRate: dbSettings?.accelRate ?? DEFAULT_SETTINGS.ACCEL_RATE,
+			xOffset: dbSettings?.xOffset ?? DEFAULT_SETTINGS.X_OFFSET,
+		}),
+		[dbSettings],
+	);
+
 	// ── Save position to DB + BLE ─────────────────────────────────────────
 	// Fire-and-forget writes — no mutation wrapper needed for high-frequency saves.
 	const savePosition = useCallback(
@@ -216,20 +241,27 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	);
 
 	// ── Initial scroll to saved position ──────────────────────────────────
+	// Also re-runs when readerMode changes to "scroll" (returning from RSVP).
 	useEffect(() => {
 		if (didInitialScrollRef.current) return;
+		if (readerMode !== "scroll") return;
 		if (!listRef.current || paragraphs.length === 0 || !book) return;
 
 		didInitialScrollRef.current = true;
 
-		if (book.position === 0) return; // start of book — default scroll is correct
+		// Use lastOffsetRef if available (e.g. returning from RSVP mode),
+		// otherwise fall back to the DB-stored position.
+		const target = lastOffsetRef.current ?? book.position;
+		if (target === 0) return; // start of book — default scroll is correct
 
-		const idx = findParagraphIndex(book.position);
-		// Suppress the handleScrollEnd that this programmatic scroll will trigger,
-		// so it doesn't overwrite the precise saved offset with a pixel estimate.
+		const idx = findParagraphIndex(target);
 		suppressNextScrollEndRef.current = true;
+		suppressScrollHighlightClearRef.current = true;
 		listRef.current.scrollToIndex(idx, { align: "start" });
-	}, [paragraphs, paragraphOffsets, book, findParagraphIndex]);
+		// Set the highlight directly — handleScrollEnd is suppressed to
+		// avoid it picking a different top-left word.
+		setActiveOffset(target);
+	}, [readerMode, paragraphs, paragraphOffsets, book, findParagraphIndex]);
 
 	// ── Scroll handler — hide highlight + update progress bar ──────────────
 	const handleScroll = useCallback(
@@ -334,13 +366,58 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// ── Theme cycle ───────────────────────────────────────────────────────
 	// toggleTheme comes from ThemeContext — updates the whole app.
 
+	// ── RSVP helpers ─────────────────────────────────────────────────────
+
+	const handleRsvpPositionChange = useCallback(
+		(byteOffset: number) => {
+			setProgressOffset(byteOffset);
+			lastOffsetRef.current = byteOffset;
+			savePosition(byteOffset);
+		},
+		[savePosition],
+	);
+
+	/** Switch from RSVP to scroll mode, positioning VList at the given byte offset. */
+	const exitRsvpToScroll = useCallback(
+		(byteOffset: number) => {
+			lastOffsetRef.current = byteOffset;
+			setProgressOffset(byteOffset);
+			// Clear stale scroll cache so VList doesn't restore the old position;
+			// the initial scroll effect will position it at byteOffset instead.
+			scrollCache.delete(id);
+			didInitialScrollRef.current = false;
+			setReaderMode("scroll");
+			savePosition(byteOffset);
+		},
+		[id, savePosition],
+	);
+
+	const handleRsvpToggle = useCallback(() => {
+		if (readerMode === "scroll") {
+			const idx = findWordIndexAtOffset(wordIndex, progressOffset);
+			setRsvpWordIndex(idx);
+			setReaderMode("rsvp");
+			setProgressBarVisible(true);
+		} else {
+			exitRsvpToScroll(lastOffsetRef.current ?? progressOffset);
+		}
+	}, [readerMode, progressOffset, wordIndex, exitRsvpToScroll]);
+
+	const handleRsvpFinished = useCallback(() => {
+		exitRsvpToScroll(lastOffsetRef.current ?? 0);
+	}, [exitRsvpToScroll]);
+
 	// ── Chapter jump ──────────────────────────────────────────────────────
 	const handleChapterJump = useCallback(
 		(startByte: number) => {
-			jumpToOffset(startByte);
+			if (readerMode === "rsvp") {
+				exitRsvpToScroll(startByte);
+			} else {
+				jumpToOffset(startByte);
+			}
 			setTocOpen(false);
 		},
-		[jumpToOffset],
+		[readerMode, jumpToOffset, exitRsvpToScroll],
 	);
 
 	// ── Search jump ───────────────────────────────────────────────────────────
@@ -364,9 +441,14 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				else break;
 			}
 
-			jumpToOffset(wordByte);
+			if (readerMode === "rsvp") {
+				setActiveOffset(wordByte);
+				exitRsvpToScroll(wordByte);
+			} else {
+				jumpToOffset(wordByte);
+			}
 		},
-		[content, paragraphs, paragraphOffsets, findParagraphIndex, jumpToOffset],
+		[content, paragraphs, paragraphOffsets, readerMode, findParagraphIndex, jumpToOffset, exitRsvpToScroll],
 	);
 
 	// ── Progress bar tap/drag ─────────────────────────────────────────────
@@ -383,11 +465,21 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			const rect = progressBarRef.current.getBoundingClientRect();
 			const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
 			const targetByte = Math.round(ratio * book.size);
-			const idx = findParagraphIndex(targetByte);
-			const actualByte = paragraphOffsets[idx] ?? 0;
-			jumpToOffset(actualByte, { highlight: false });
+
+			if (readerMode === "rsvp") {
+				// In RSVP mode: update the word index (pauses via initialWordIndex change)
+				const wIdx = findWordIndexAtOffset(wordIndex, targetByte);
+				setRsvpWordIndex(wIdx);
+				setProgressOffset(targetByte);
+				lastOffsetRef.current = targetByte;
+				savePosition(targetByte);
+			} else {
+				const idx = findParagraphIndex(targetByte);
+				const actualByte = paragraphOffsets[idx] ?? 0;
+				jumpToOffset(actualByte, { highlight: false });
+			}
 		},
-		[book, paragraphOffsets, findParagraphIndex, jumpToOffset],
+		[book, readerMode, wordIndex, paragraphOffsets, findParagraphIndex, jumpToOffset, savePosition],
 	);
 
 	const handleProgressPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -523,6 +615,13 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 					</IonButtons>
 					<IonTitle>{book.title}</IonTitle>
 					<IonButtons slot="end">
+						<IonButton
+							onClick={handleRsvpToggle}
+							aria-label={readerMode === "rsvp" ? "Switch to scroll reader" : "Switch to RSVP reader"}
+							className={readerMode === "rsvp" ? "rsvp-toggle-active" : undefined}
+						>
+							<IonIcon slot="icon-only" icon={readerMode === "rsvp" ? flashOffOutline : flashOutline} />
+						</IonButton>
 						<IonButton onClick={() => setSearchOpen(true)} aria-label="Search content">
 							<IonIcon slot="icon-only" icon={searchOutline} />
 						</IonButton>
@@ -553,33 +652,44 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			</IonHeader>
 
 			<IonContent scrollY={false}>
-				<div ref={containerRef} style={{ height: "100%" }}>
-					<VList
-						ref={listRef}
-						cache={scrollCache.get(id)}
-						style={{
-							height: "100%",
-							padding: "0 20px",
-							paddingBottom: "calc(52px + env(safe-area-inset-bottom, 0px))",
-							fontSize: `${fontSize}px`,
-						}}
-						onScroll={handleScroll}
-						onScrollEnd={handleScrollEnd}
-					>
-						{paragraphs.map((text, i) => (
-							<Paragraph
-								key={i.toString()}
-								text={text}
-								startOffset={paragraphOffsets[i]}
-								activeOffset={activeOffset}
-								onWordTap={handleWordTap}
-							/>
-						))}
-					</VList>
-				</div>
+				{readerMode === "scroll" ? (
+					<div ref={containerRef} style={{ height: "100%" }}>
+						<VList
+							ref={listRef}
+							cache={scrollCache.get(id)}
+							style={{
+								height: "100%",
+								padding: "0 20px",
+								paddingBottom: "calc(52px + env(safe-area-inset-bottom, 0px))",
+								fontSize: `${fontSize}px`,
+							}}
+							onScroll={handleScroll}
+							onScrollEnd={handleScrollEnd}
+						>
+							{paragraphs.map((text, i) => (
+								<Paragraph
+									key={i.toString()}
+									text={text}
+									startOffset={paragraphOffsets[i]}
+									activeOffset={activeOffset}
+									onWordTap={handleWordTap}
+								/>
+							))}
+						</VList>
+					</div>
+				) : (
+					<RsvpView
+						words={wordIndex}
+						initialWordIndex={rsvpWordIndex}
+						settings={rsvpSettings}
+						fontSize={fontSize}
+						onPositionChange={handleRsvpPositionChange}
+						onFinished={handleRsvpFinished}
+					/>
+				)}
 
 				{/* ── Progress bar ── */}
-				{progressBarVisible && (
+				{(progressBarVisible || readerMode === "rsvp") && (
 					// biome-ignore lint/a11y/useFocusableInteractive: scrubber
 					<div
 						ref={progressBarRef}

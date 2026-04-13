@@ -3,7 +3,7 @@
 ## Phase 1 — Finish the App
 > Blocking for Play Store launch
 
-- [ ] In-app RSVP reader (software parity with ESP32: ORP focal letter, punctuation delays, acceleration ramp, word offset on resume)
+- [x] In-app RSVP reader (ORP focal letter, punctuation delays, acceleration ramp, toggle from scroll reader)
 - [x] Double-tap word → magnify icon to auto-search in dictionary modal
 - [x] Search, clicking result doesnt highlight the location
 - [x] Search modal doesnt let scroll to the bottom (it automatically scrolls up a bit again)
@@ -12,7 +12,7 @@
 > Nice to have before launch, not strictly blocking
 
 <!-- - [ ] Rotary encoder support (POTENTIOMETER_PLAN.md) — needed if selling with encoder -->
-- [ ] Fix special characters (äüö) in ESP32 reader
+- [ ] Fix special characters (äüö and other characters e.g. << >>) in ESP32 reader
 - [ ] Split long words on ESP32
 - [ ] Verify WPM accuracy (check if display delay affects timing)
 - [ ] Battery indicator in app (GPIO 4 voltage divider already on AMOLED board)

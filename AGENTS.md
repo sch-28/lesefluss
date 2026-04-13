@@ -179,7 +179,7 @@ Touch these files in order:
 - [ ] Check if wpm actually matches (maybe display delay slows things down)
 - [ ] Partial book sync to esp32 to combat long upload times
 - [ ] Recompile AMOLED firmware with larger NimBLE buffers (current RM67162 build drops BLE writes at window_size>2, ST7789 handles 4 fine — need to fork nspsck/RM67162_Micropython_QSPI and increase NimBLE buffer config in sdkconfig.board)
-- [ ] In-app RSVP reader (software parity with ESP32)
+- [x] In-app RSVP reader (software parity with ESP32)
 - [ ] Cloud sync
 - [ ] Web app version (PWA)
 - [ ] Advanced book management (tags, collections, search)
