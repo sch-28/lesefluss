@@ -27,10 +27,10 @@ import {
 	WINDOW_SIZE,
 } from "@rsvp/ble-config";
 import CRC32 from "crc-32";
+import { log } from "../../../utils/log";
 import { bleClient } from "../client";
 import type { BLEResult } from "../types";
 import { chunkBytes, dataViewToString, stringToDataView, uint8ToBase64 } from "../utils/encoding";
-import { log } from "../../../utils/log";
 
 /**
  * Transfer a book's plain-text content to the ESP32.
@@ -55,7 +55,10 @@ export async function transferBook(
 	const totalBytes = utf8Bytes.length;
 	const totalChunks = chunks.length;
 
-	log("transfer", `starting — ${totalBytes} bytes, ${totalChunks} chunks, filename=${filename}, title=${JSON.stringify(title)}`);
+	log(
+		"transfer",
+		`starting — ${totalBytes} bytes, ${totalChunks} chunks, filename=${filename}, title=${JSON.stringify(title)}`,
+	);
 
 	// Subscribe to notifications before sending anything.
 	// A short delay after subscribing ensures the ESP32's BLE stack has fully
@@ -70,7 +73,10 @@ export async function transferBook(
 	// Title colons stripped for protocol, non-ASCII stripped because
 	// MicroPython on ESP32-S3 crashes on strings with chars above U+00FF.
 	const safeTitle = title
-		? title.replace(/:/g, " ").replace(/[^\x20-\x7E]/g, "").trim()
+		? title
+				.replace(/:/g, " ")
+				.replace(/[^\x20-\x7E]/g, "")
+				.trim()
 		: "";
 	const startFrame = safeTitle
 		? `START:${totalBytes}:${filename}:${safeTitle}`
@@ -220,7 +226,10 @@ async function writeAndWaitAck(
 	ackQueue: AckQueue,
 ): Promise<BLEResult> {
 	const frameBytes = new TextEncoder().encode(frame).length;
-	log("transfer", `write ${expectedToken} (${frameBytes} bytes), waiting for ACK:${expectedToken}…`);
+	log(
+		"transfer",
+		`write ${expectedToken} (${frameBytes} bytes), waiting for ACK:${expectedToken}…`,
+	);
 	try {
 		await BleClient.writeWithoutResponse(
 			deviceId,

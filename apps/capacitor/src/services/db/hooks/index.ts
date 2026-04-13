@@ -27,6 +27,7 @@
  */
 
 import { bookHooks } from "./use-books";
+import { highlightHooks } from "./use-highlights";
 import { settingsHooks } from "./use-settings";
 
 export { bookKeys, settingsKeys } from "./query-keys";
@@ -54,4 +55,17 @@ export const queryHooks = {
 
 	/** Mutation: persist a settings patch to SQLite. */
 	useSaveSettings: settingsHooks.useSaveSettings,
+
+	// ── Highlights ─────────────────────────────────────────────────────────
+	/** All highlights for a book, ordered by position. */
+	useHighlights: highlightHooks.useHighlights,
+
+	/** Mutation: add a new highlight. */
+	useAddHighlight: highlightHooks.useAddHighlight,
+
+	/** Mutation: update highlight color/note. */
+	useUpdateHighlight: highlightHooks.useUpdateHighlight,
+
+	/** Mutation: delete a highlight. */
+	useDeleteHighlight: highlightHooks.useDeleteHighlight,
 };

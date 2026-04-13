@@ -15,6 +15,13 @@ import {
 	updateBook,
 } from "./books";
 import { getLastDevice, saveDevice } from "./devices";
+import {
+	addHighlight,
+	deleteHighlight,
+	deleteHighlightsByBook,
+	getHighlightsByBook,
+	updateHighlight,
+} from "./highlights";
 import { getSettings, saveSettings } from "./settings";
 
 export const queries = {
@@ -36,4 +43,11 @@ export const queries = {
 	updateBook,
 	setActiveBook,
 	deleteBook,
+
+	// Highlights
+	getHighlightsByBook,
+	addHighlight,
+	updateHighlight,
+	deleteHighlight,
+	deleteHighlightsByBook,
 };

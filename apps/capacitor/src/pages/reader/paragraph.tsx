@@ -14,6 +14,7 @@
 import type React from "react";
 import { memo } from "react";
 import { utf8ByteLength } from "./utf8";
+
 export { utf8ByteLength };
 
 // ─── Heading helpers ─────────────────────────────────────────────────────────
@@ -54,6 +55,15 @@ export function getWordOffsets(text: string, startOffset: number): number[] {
 	return offsets;
 }
 
+// ─── Highlight types ─────────────────────────────────────────────────────────
+
+export interface HighlightRange {
+	id: string;
+	startOffset: number;
+	endOffset: number;
+	color: string;
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export interface ParagraphProps {
@@ -61,10 +71,25 @@ export interface ParagraphProps {
 	startOffset: number;
 	activeOffset: number;
 	onWordTap: (offset: number, wordText: string) => void;
+	onWordLongPress?: (offset: number) => void;
+	highlights?: HighlightRange[];
+	selectionRange?: { start: number; end: number } | null;
+}
+
+// How long (ms) a pointer must be held before triggering long-press
+const LONG_PRESS_MS = 400;
+
+// Module-level: at most one long-press timer is active at a time (one finger).
+// The reader's scroll handler calls this to cancel if the user starts scrolling.
+let _cancelActiveLongPress: (() => void) | null = null;
+
+export function cancelAnyActiveLongPress(): void {
+	_cancelActiveLongPress?.();
+	_cancelActiveLongPress = null;
 }
 
 const Paragraph: React.FC<ParagraphProps> = memo(
-	({ text, startOffset, activeOffset, onWordTap }) => {
+	({ text, startOffset, activeOffset, onWordTap, onWordLongPress, highlights, selectionRange }) => {
 		const headingLevel = getHeadingLevel(text);
 
 		if (headingLevel > 0) {
@@ -85,18 +110,92 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			const tokenOffset = startOffset + localByteOffset;
 			localByteOffset += utf8ByteLength(token);
 
-			if (/^\s+$/.test(token)) {
-				spans.push(token);
+			const isSpace = /^\s+$/.test(token);
+
+			// Build className for both words and spaces.
+			// Spaces between selected/highlighted words get the same background so
+			// the visual range looks continuous rather than dotted.
+			const classes: string[] = [];
+
+			if (!isSpace && tokenOffset === activeOffset) {
+				classes.push("word-active");
+			}
+
+			// Highlight ranges — same check for words and spaces
+			if (highlights) {
+				for (const h of highlights) {
+					if (tokenOffset >= h.startOffset && tokenOffset <= h.endOffset) {
+						classes.push(`word-highlight-${h.color}`);
+						break;
+					}
+				}
+			}
+
+			// Active selection — same check for words and spaces
+			if (
+				selectionRange &&
+				tokenOffset >= selectionRange.start &&
+				tokenOffset <= selectionRange.end
+			) {
+				classes.push("word-selecting");
+			}
+
+			if (isSpace) {
+				if (classes.length > 0) {
+					spans.push(
+						<span key={i} className={classes.join(" ")}>
+							{token}
+						</span>,
+					);
+				} else {
+					spans.push(token);
+				}
 				continue;
 			}
 
-			const isActive = tokenOffset === activeOffset;
+			const className = classes.length > 0 ? classes.join(" ") : undefined;
+
+			// Long-press detection via pointer events.
+			// The timer fires onWordLongPress if the pointer stays down ≥ LONG_PRESS_MS
+			// without significant movement. Cleared on pointerup / pointermove (> 8px).
+			const handlePointerDown = onWordLongPress
+				? (e: React.PointerEvent) => {
+						let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+						const startX = e.clientX;
+						const startY = e.clientY;
+						const cleanup = () => {
+							if (longPressTimer) {
+								clearTimeout(longPressTimer);
+								longPressTimer = null;
+							}
+							_cancelActiveLongPress = null;
+							document.removeEventListener("pointermove", onMove);
+							document.removeEventListener("pointerup", cleanup);
+						};
+						const onMove = (me: PointerEvent) => {
+							const dx = Math.abs(me.clientX - startX);
+							const dy = Math.abs(me.clientY - startY);
+							if (dx > 8 || dy > 8) cleanup();
+						};
+						// Register so the scroll handler can cancel this from outside
+						_cancelActiveLongPress = cleanup;
+						longPressTimer = setTimeout(() => {
+							_cancelActiveLongPress = null;
+							longPressTimer = null;
+							onWordLongPress(tokenOffset);
+						}, LONG_PRESS_MS);
+						document.addEventListener("pointermove", onMove);
+						document.addEventListener("pointerup", cleanup);
+					}
+				: undefined;
+
 			spans.push(
 				<span
 					key={i}
 					data-offset={tokenOffset}
-					className={isActive ? "word-active" : undefined}
+					className={className}
 					onClick={() => onWordTap(tokenOffset, token)}
+					onPointerDown={handlePointerDown}
 				>
 					{token}
 				</span>,

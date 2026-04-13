@@ -490,8 +490,13 @@ body.dark ion-tab-button {
 }
 
 @keyframes reader-skeleton-pulse {
-	0%, 100% { opacity: 0.3; }
-	50% { opacity: 0.6; }
+	0%,
+	100% {
+		opacity: 0.3;
+	}
+	50% {
+		opacity: 0.6;
+	}
 }
 
 /* Modal sheet: make the drag handle + sheet background match the theme.
@@ -891,4 +896,248 @@ ion-modal.reader-theme-light ion-item {
 /* Active RSVP toggle button styling */
 .rsvp-toggle-active {
 	color: #ff0000 !important;
+}
+
+/* ─── Highlights ─────────────────────────────────────────────────────────── */
+
+/* Highlight background colors — 35% opacity works on both dark and light themes */
+.word-highlight-yellow {
+	background: rgba(255, 235, 59, 0.35);
+	border-radius: 2px;
+}
+.word-highlight-blue {
+	background: rgba(100, 181, 246, 0.35);
+	border-radius: 2px;
+}
+.word-highlight-orange {
+	background: rgba(255, 183, 77, 0.35);
+	border-radius: 2px;
+}
+.word-highlight-pink {
+	background: rgba(240, 98, 146, 0.35);
+	border-radius: 2px;
+}
+
+/* Active selection being built (drag-to-select) */
+.word-selecting {
+	background: rgba(100, 181, 246, 0.25);
+	border-radius: 2px;
+}
+
+/* ─── Selection toolbar ──────────────────────────────────────────────────── */
+
+.selection-toolbar {
+	position: fixed;
+	/* top is set dynamically via JS (above selection start, or below selection end) */
+	top: -9999px;
+	/* centered horizontally */
+	left: 50%;
+	transform: translateX(-50%);
+	width: max-content;
+	max-width: calc(100vw - 24px);
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	height: 48px;
+	padding: 0 8px 0 16px;
+	border-radius: 10px;
+	border: 1px solid var(--ion-border-color, #d9d9d9);
+	background: var(--ion-background-color, #fff);
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Plain icon buttons inside the selection toolbar — no background, no border */
+.selection-toolbar-btn {
+	background: none;
+	border: none;
+	padding: 6px;
+	margin: 0;
+	cursor: pointer;
+	color: var(--ion-text-color, #333);
+	font-size: 22px;
+	line-height: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 4px;
+}
+
+.selection-toolbar-hint {
+	flex: 1;
+	font-size: 0.85rem;
+	color: var(--ion-color-medium, #888);
+}
+
+.selection-toolbar-colors {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-right: 4px;
+}
+
+/* Color swatch circles */
+.selection-color-swatch {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	border: 2px solid transparent;
+	cursor: pointer;
+	padding: 0;
+	transition: border-color 0.15s;
+}
+
+.selection-color-swatch--active {
+	border-color: var(--ion-text-color, #000);
+}
+
+/* ─── Selection handles ──────────────────────────────────────────────────── */
+
+/* Selection handle: a vertical bar + circle below, anchored to a word boundary.
+ * --bar-height is set per-handle via JS to match the line height of the target word.
+ *
+ * Touch area is intentionally larger than the visuals:
+ *   - 44px wide div (visual bar/circle are centred inside via margin: 0 auto)
+ *   - 10px top + 10px bottom padding for extra vertical tap area
+ * JS positions the div 10px above rect.top and 22px to the left of the edge
+ * so that the visible bar still lines up with the word boundary. */
+.selection-handle {
+	position: fixed;
+	width: 44px;
+	box-sizing: content-box;
+	padding: 10px 0;
+	/* visual height only; padding adds the extra tap area */
+	height: calc(var(--bar-height, 20px) + 20px);
+	z-index: 999;
+	touch-action: none;
+	cursor: grab;
+	display: none; /* shown by JS when selection is active */
+	user-select: none;
+}
+
+/* Vertical bar — runs the height of the target word */
+.selection-handle::before {
+	content: "";
+	display: block;
+	width: 3px;
+	height: var(--bar-height, 20px);
+	background: var(--ion-color-primary, #3880ff);
+	margin: 0 auto;
+}
+
+/* Circular grab handle below the bar */
+.selection-handle::after {
+	content: "";
+	display: block;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: var(--ion-color-primary, #3880ff);
+	border: 2px solid white;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+	margin: 0 auto;
+}
+
+/* ─── Highlight modal ────────────────────────────────────────────────────── */
+
+.rsvp-highlight-modal {
+	--border-radius: 16px 16px 0 0;
+}
+
+.highlight-modal-snippet {
+	margin: 0 0 12px 0;
+	padding: 8px 12px;
+	border-left: 3px solid var(--ion-color-medium, #999);
+	font-style: italic;
+	font-size: 0.9rem;
+	color: var(--ion-color-medium, #666);
+	line-height: 1.4;
+}
+
+/* Color swatches + delete button on one row */
+.highlight-modal-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
+}
+
+.highlight-modal-colors {
+	display: flex;
+	gap: 12px;
+}
+
+.highlight-modal-delete-btn {
+	background: none;
+	border: none;
+	padding: 4px;
+	cursor: pointer;
+	color: var(--ion-color-danger, #eb445a);
+	font-size: 22px;
+	display: flex;
+	align-items: center;
+}
+
+.highlight-modal-note {
+	--background: var(--ion-item-background, transparent);
+	margin-bottom: 0;
+}
+
+.highlight-modal-actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+/* ─── Highlights list modal ──────────────────────────────────────────────── */
+
+.highlights-list-empty {
+	padding: 32px 20px;
+	text-align: center;
+	color: var(--ion-color-medium, #888);
+	font-size: 0.95rem;
+}
+
+.highlight-list-dot {
+	display: inline-block;
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	margin-top: 2px;
+}
+
+.highlight-list-snippet {
+	font-size: 0.9rem;
+	font-style: italic;
+	color: var(--ion-text-color, #000);
+	white-space: normal;
+	margin-bottom: 2px;
+}
+
+.highlight-list-note {
+	font-size: 0.8rem;
+	color: var(--ion-color-medium, #888);
+	white-space: normal;
+	margin-top: 2px;
+}
+
+/* ─── Note textarea (in-selection note input modal) ─────────────────────── */
+
+.highlight-note-textarea {
+	width: 100%;
+	border: 1.5px solid var(--ion-border-color, #d9d9d9);
+	border-radius: 8px;
+	padding: 10px 12px;
+	font-size: 1rem;
+	font-family: inherit;
+	background: transparent;
+	color: var(--ion-text-color, #000);
+	resize: none;
+	outline: none;
+	line-height: 1.5;
+}
+
+.highlight-note-textarea:focus {
+	border-color: var(--ion-color-primary, #3880ff);
 }

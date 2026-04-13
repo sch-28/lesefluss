@@ -204,10 +204,10 @@ const Library: React.FC = () => {
 										started={started}
 										isActive={isActive}
 										onOpen={() => {
-												qc.setQueryData(bookKeys.detail(book.id), book);
-												history.push(`/tabs/reader/${book.id}`);
-											}}
-											onMenu={() => setSelectedBook(book)}
+											qc.setQueryData(bookKeys.detail(book.id), book);
+											history.push(`/tabs/reader/${book.id}`);
+										}}
+										onMenu={() => setSelectedBook(book)}
 									/>
 								);
 							})}

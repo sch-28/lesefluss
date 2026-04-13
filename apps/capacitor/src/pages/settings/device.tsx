@@ -39,7 +39,6 @@ import type { StorageInfo } from "../../services/ble/characteristics/storage";
 import { log } from "../../utils/log";
 import { SETTING_CONSTRAINTS } from "../../utils/settings";
 
-
 function formatBytes(bytes: number): string {
 	if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
 	if (bytes >= 1_024) return `${(bytes / 1_024).toFixed(1)} KB`;
@@ -62,7 +61,8 @@ const DeviceSettings: React.FC = () => {
 	} = useBLE();
 
 	const { showToast } = useToast();
-	const { draft, setDraft, updateSetting, handleSave, saveMutation, isPending } = useSettingsDraft();
+	const { draft, setDraft, updateSetting, handleSave, saveMutation, isPending } =
+		useSettingsDraft();
 
 	const [syncing, setSyncing] = useState(false);
 	const [showDisconnectAlert, setShowDisconnectAlert] = useState(false);
@@ -349,7 +349,7 @@ const DeviceSettings: React.FC = () => {
 					<IonButton expand="block" onClick={handleSave}>
 						Save Settings
 					</IonButton>
-					<div className="flex gap-2 ion-margin-top">
+					<div className="ion-margin-top flex gap-2">
 						<IonButton
 							expand="block"
 							fill="outline"
@@ -381,7 +381,7 @@ const DeviceSettings: React.FC = () => {
 						</IonButton>
 					</div>
 					{!isConnected && (
-						<div className="flex items-center justify-center gap-2 ion-margin-top">
+						<div className="ion-margin-top flex items-center justify-center gap-2">
 							<IonIcon icon={bluetooth} color="medium" />
 							<IonText color="medium">
 								<p className="text-sm">Connect to the RSVP-Reader to sync</p>

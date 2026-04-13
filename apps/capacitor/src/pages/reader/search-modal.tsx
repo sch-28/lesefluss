@@ -93,7 +93,14 @@ function buildResults(content: string, query: string): SearchResult[] {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose, content, onJump, theme, initialQuery }) => {
+const SearchModal: React.FC<SearchModalProps> = ({
+	isOpen,
+	onClose,
+	content,
+	onJump,
+	theme,
+	initialQuery,
+}) => {
 	const [query, setQuery] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);
 

@@ -49,10 +49,9 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 	initialByteOffsetRef.current = initialByteOffset;
 
 	useEffect(() => {
-		const worker = new Worker(
-			new URL("./word-index.worker.ts", import.meta.url),
-			{ type: "module" },
-		);
+		const worker = new Worker(new URL("./word-index.worker.ts", import.meta.url), {
+			type: "module",
+		});
 		worker.postMessage({ content, byteOffset: initialByteOffsetRef.current });
 		worker.onmessage = (e: MessageEvent<{ words: WordEntry[]; idx: number }>) => {
 			const { words: w, idx } = e.data;

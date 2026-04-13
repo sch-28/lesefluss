@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "../components/toast";
 import { queryHooks } from "../services/db/hooks";
 import type { Settings } from "../services/db/schema";

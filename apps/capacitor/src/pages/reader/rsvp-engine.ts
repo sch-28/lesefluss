@@ -90,10 +90,7 @@ export function calcDelay(
 	// Acceleration ramp
 	const multiplier = settings.accelStart - acceleration;
 	const delayMs = base * multiplier;
-	const nextAcceleration = Math.min(
-		acceleration + settings.accelRate,
-		settings.accelStart - 1.0,
-	);
+	const nextAcceleration = Math.min(acceleration + settings.accelRate, settings.accelStart - 1.0);
 
 	return { delayMs, nextAcceleration };
 }

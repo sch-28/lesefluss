@@ -10,7 +10,12 @@ import {
 	IonTitle,
 	IonToolbar,
 } from "@ionic/react";
-import { bookOutline, chevronForward, colorPaletteOutline, hardwareChipOutline } from "ionicons/icons";
+import {
+	bookOutline,
+	chevronForward,
+	colorPaletteOutline,
+	hardwareChipOutline,
+} from "ionicons/icons";
 import type React from "react";
 import BLEIndicator from "../components/ble-indicator";
 import { useBLE } from "../contexts/ble-context";
@@ -65,12 +70,7 @@ const Settings: React.FC = () => {
 			</IonHeader>
 			<IonContent>
 				<IonList className="ion-padding-top">
-					<IonItem
-						button
-						detail={false}
-						routerLink="/tabs/settings/rsvp"
-						routerDirection="forward"
-					>
+					<IonItem button detail={false} routerLink="/tabs/settings/rsvp" routerDirection="forward">
 						<IonIcon icon={bookOutline} slot="start" color="medium" />
 						<IonLabel>
 							<h2>RSVP</h2>

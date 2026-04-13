@@ -43,14 +43,10 @@ const BLEIndicator: React.FC = () => {
 				<IonList lines="none" style={{ padding: "4px 0" }}>
 					<IonItem>
 						<IonLabel>
-							<h3 style={{ fontWeight: 600 }}>
-								{connectedDevice?.name || "RSVP-Reader"}
-							</h3>
+							<h3 style={{ fontWeight: 600 }}>{connectedDevice?.name || "RSVP-Reader"}</h3>
 							<p>{statusLabel}</p>
 							{isConnected && connectedDevice && (
-								<p style={{ fontSize: "0.75rem", opacity: 0.6 }}>
-									{connectedDevice.deviceId}
-								</p>
+								<p style={{ fontSize: "0.75rem", opacity: 0.6 }}>{connectedDevice.deviceId}</p>
 							)}
 						</IonLabel>
 					</IonItem>

@@ -65,6 +65,21 @@ export const bookContent = sqliteTable("book_content", {
 	chapters: text("chapters"), // JSON: [{title: string, startByte: number}]
 });
 
+/**
+ * Highlights — per-book text annotations with optional notes.
+ * start_offset and end_offset are UTF-8 byte offsets of word starts (inclusive).
+ */
+export const highlights = sqliteTable("highlights", {
+	id: text("id").primaryKey(),
+	bookId: text("book_id").notNull(),
+	startOffset: integer("start_offset").notNull(),
+	endOffset: integer("end_offset").notNull(),
+	color: text("color").notNull().default("yellow"), // 'yellow' | 'blue' | 'orange' | 'pink'
+	note: text("note"),
+	createdAt: integer("created_at").notNull(),
+	updatedAt: integer("updated_at").notNull(),
+});
+
 // Inferred types for use across the app
 export type Device = typeof devices.$inferSelect;
 export type NewDevice = typeof devices.$inferInsert;
@@ -80,3 +95,6 @@ export type NewBookContent = typeof bookContent.$inferInsert;
 
 /** Chapter entry as stored in bookContent.chapters JSON column */
 export type Chapter = { title: string; startByte: number };
+
+export type Highlight = typeof highlights.$inferSelect;
+export type NewHighlight = typeof highlights.$inferInsert;

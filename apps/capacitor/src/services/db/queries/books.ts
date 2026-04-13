@@ -6,6 +6,7 @@ import {
 	bookContent,
 	books,
 	type Chapter,
+	highlights,
 	type NewBook,
 } from "../schema";
 
@@ -128,7 +129,8 @@ export async function setActiveBook(id: string): Promise<void> {
  * use the `removeBook()` function from the bookImport service instead.
  */
 export async function deleteBook(id: string): Promise<void> {
-	// Delete content first (child), then metadata (parent)
+	// Delete highlights, content, then metadata (children before parent)
+	await db.delete(highlights).where(eq(highlights.bookId, id));
 	await db.delete(bookContent).where(eq(bookContent.bookId, id));
 	await db.delete(books).where(eq(books.id, id));
 }
