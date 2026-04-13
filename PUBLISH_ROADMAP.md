@@ -16,7 +16,7 @@
 - [x] Font family selection (serif / sans-serif at minimum) - Adjustable line spacing & margins - font size all in one option menu in reader
 - [x] Sepia reading theme (third option alongside dark/light)
 - [x] Library sorting & filtering (by title, author, recent, progress)
-- [ ] Estimated reading time remaining (per book / per chapter). For rsvp mode too
+- [x] Estimated reading time remaining (per book / per chapter). For rsvp mode too
 
 ### ESP32
 <!-- - [ ] Rotary encoder support (POTENTIOMETER_PLAN.md) — needed if selling with encoder -->

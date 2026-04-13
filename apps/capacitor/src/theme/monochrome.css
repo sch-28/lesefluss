@@ -630,13 +630,12 @@ ion-modal.reader-theme-sepia ion-item {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	height: 48px;
-	padding: 0 16px;
-	padding-top: 20px;
-	padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
+	padding: 10px 16px;
+	padding-bottom: calc(env(safe-area-inset-bottom) + 10px);
 	display: flex;
+	flex-direction: column;
 	align-items: center;
-	gap: 8px;
+	gap: 6px;
 	background: var(--reader-bg, #ffffff);
 	border-top: 1px solid var(--reader-progress-bg, #e0e0e0);
 	touch-action: none;
@@ -655,7 +654,7 @@ ion-modal.reader-theme-sepia ion-item {
 }
 
 .reader-progress-fill-track {
-	flex: 1;
+	width: 100%;
 	height: 4px;
 	background: var(--reader-progress-bg, #e0e0e0);
 	border-radius: 2px;
@@ -670,11 +669,23 @@ ion-modal.reader-theme-sepia ion-item {
 }
 
 .reader-progress-label {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1px;
 	font-size: 0.72rem;
 	color: var(--reader-progress-label, #555555);
-	min-width: 32px;
-	text-align: right;
+	text-align: center;
 	user-select: none;
+}
+
+.reader-progress-chapter-time {
+	font-size: 0.62rem;
+	opacity: 0.65;
+	max-width: 160px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 /* ── Transfer progress modal ── */

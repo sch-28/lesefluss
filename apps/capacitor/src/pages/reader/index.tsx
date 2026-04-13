@@ -53,6 +53,7 @@ import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import type { Chapter, Highlight } from "../../services/db/schema";
 import { DEFAULT_SETTINGS } from "../../utils/settings";
+import { formatReadingTime } from "../../utils/reading-time";
 import AppearancePopover from "./appearance-popover";
 import DictionaryModal from "./dictionary-modal";
 import HighlightModal from "./highlight-modal";
@@ -232,6 +233,34 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			return [];
 		}
 	}, [contentRow?.chapters]);
+
+	// ── Reading time estimation ───────────────────────────────────────────
+	const contentBytes = useMemo(
+		() => (content ? _encoder.encode(content) : null),
+		[content],
+	);
+
+	const totalWordCount = useMemo(
+		() => content?.match(/\S+/g)?.length ?? 0,
+		[content],
+	);
+
+	const chapterWordCounts = useMemo(() => {
+		if (!chapters.length || !contentBytes) return [];
+		return chapters.map((ch, i) => {
+			const end = chapters[i + 1]?.startByte ?? contentBytes.length;
+			const text = _decoder.decode(contentBytes.subarray(ch.startByte, end));
+			return text.match(/\S+/g)?.length ?? 0;
+		});
+	}, [chapters, contentBytes]);
+
+	const currentChapterIndex = useMemo(() => {
+		if (!chapters.length) return -1;
+		for (let i = chapters.length - 1; i >= 0; i--) {
+			if (progressOffset >= chapters[i].startByte) return i;
+		}
+		return 0;
+	}, [progressOffset, chapters]);
 
 	// ── Per-paragraph highlight map ───────────────────────────────────────
 	// Maps paragraphIndex → HighlightRange[] that overlap that paragraph.
@@ -990,6 +1019,21 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	const progressPct = book.size > 0 ? Math.min(100, (progressOffset / book.size) * 100) : 0;
 
+	const estimateWpm = readerMode === "rsvp" ? rsvpSettings.wpm : 250;
+	const bookMinutesRemaining =
+		totalWordCount > 0 ? (totalWordCount * (1 - progressPct / 100)) / estimateWpm : 0;
+	let chapterMinutesRemaining: number | null = null;
+	if (currentChapterIndex >= 0 && contentBytes) {
+		const ch = chapters[currentChapterIndex];
+		const chapterEnd = chapters[currentChapterIndex + 1]?.startByte ?? contentBytes.length;
+		const chapterProgress =
+			chapterEnd > ch.startByte
+				? Math.max(0, (progressOffset - ch.startByte) / (chapterEnd - ch.startByte))
+				: 0;
+		chapterMinutesRemaining =
+			(chapterWordCounts[currentChapterIndex] * (1 - chapterProgress)) / estimateWpm;
+	}
+
 	return (
 		<IonPage className={`reader-theme-${theme}`}>
 			<IonHeader class="ion-no-border">
@@ -1113,7 +1157,20 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						<div className="reader-progress-fill-track">
 							<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
 						</div>
-						<span className="reader-progress-label">{Math.round(progressPct)}%</span>
+						<div className="reader-progress-label">
+							<span>
+								{Math.round(progressPct)}%
+								{bookMinutesRemaining > 0 && (
+									<> · {formatReadingTime(bookMinutesRemaining)} left</>
+								)}
+							</span>
+							{chapterMinutesRemaining != null && currentChapterIndex >= 0 && (
+								<span className="reader-progress-chapter-time">
+									{chapters[currentChapterIndex].title} ·{" "}
+									{formatReadingTime(chapterMinutesRemaining)} left
+								</span>
+							)}
+						</div>
 					</div>
 				)}
 			</IonContent>
