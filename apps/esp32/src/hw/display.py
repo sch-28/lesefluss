@@ -237,12 +237,16 @@ class DisplayManager:
         if self._bl_pwm is not None:
             self._bl_pwm.duty(0)
         else:
+            # Do NOT call disp_off() on AMOLED (RM67162): the subsequent
+            # disp_on() + QSPI drawing commands can race against the
+            # controller waking up, hanging the bus and bricking the loop.
+            # brightness(0) on a cleared (all-black) screen is visually
+            # identical and safe to resume from.
             self.display.brightness(0)
-            self.display.disp_off()
 
     def wakeup(self):
         if self._bl_pwm is not None:
             self._set_duty(config.BRIGHTNESS)
         else:
-            self.display.disp_on()
+            # disp_on() intentionally omitted — see shutdown() comment.
             self.display.brightness(config.BRIGHTNESS)
