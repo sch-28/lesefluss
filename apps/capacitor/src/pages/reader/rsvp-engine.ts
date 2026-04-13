@@ -5,7 +5,7 @@
  * See apps/esp32/src/reader/rsvp.py and apps/esp32/src/config.py.
  */
 
-import { utf8ByteLength } from "./paragraph";
+import { utf8ByteLength } from "./utf8";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

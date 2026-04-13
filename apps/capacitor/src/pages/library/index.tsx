@@ -203,8 +203,11 @@ const Library: React.FC = () => {
 										progress={progress}
 										started={started}
 										isActive={isActive}
-										onOpen={() => history.push(`/tabs/reader/${book.id}`)}
-										onMenu={() => setSelectedBook(book)}
+										onOpen={() => {
+												qc.setQueryData(bookKeys.detail(book.id), book);
+												history.push(`/tabs/reader/${book.id}`);
+											}}
+											onMenu={() => setSelectedBook(book)}
 									/>
 								);
 							})}

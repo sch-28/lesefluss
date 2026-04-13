@@ -13,6 +13,8 @@
 
 import type React from "react";
 import { memo } from "react";
+import { utf8ByteLength } from "./utf8";
+export { utf8ByteLength };
 
 // ─── Heading helpers ─────────────────────────────────────────────────────────
 
@@ -28,13 +30,6 @@ function stripHeadingPrefix(text: string): string {
 }
 
 // ─── Word offset helpers ─────────────────────────────────────────────────────
-
-const encoder = new TextEncoder();
-
-/** UTF-8 byte length of a string (matches what the ESP32 sees via file.tell()). */
-export function utf8ByteLength(s: string): number {
-	return encoder.encode(s).length;
-}
 
 /**
  * Returns the **UTF-8 byte** offsets of every word (non-whitespace token) in

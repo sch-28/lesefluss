@@ -6,44 +6,75 @@
  * rewinds by wordOffset words (matching the ESP32 behavior).
  */
 
+import { IonSpinner } from "@ionic/react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-	type RsvpSettings,
-	type WordEntry,
 	calcDelay,
 	calcOrpIndex,
+	findWordIndexAtOffset,
+	type RsvpSettings,
+	type WordEntry,
 } from "./rsvp-engine";
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
 export interface RsvpViewProps {
-	words: WordEntry[];
-	initialWordIndex: number;
+	content: string;
+	initialByteOffset: number;
 	settings: RsvpSettings;
 	fontSize: number;
 	onPositionChange: (byteOffset: number) => void;
 	onFinished: () => void;
 }
 
+const spinnerStyle = { color: "var(--reader-text, currentColor)", width: "32px", height: "32px" };
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 const RsvpView: React.FC<RsvpViewProps> = ({
-	words,
-	initialWordIndex,
+	content,
+	initialByteOffset,
 	settings,
 	fontSize,
 	onPositionChange,
 	onFinished,
 }) => {
+	// Build word index in a Web Worker so the spinner animates smoothly
+	// while the expensive tokenization runs off the main thread.
+	// Only rebuilds when content changes — scrub offset changes are handled
+	// by the scrub effect below, not by re-running the worker.
+	const [words, setWords] = useState<WordEntry[]>([]);
+	const initialByteOffsetRef = useRef(initialByteOffset);
+	initialByteOffsetRef.current = initialByteOffset;
+
+	useEffect(() => {
+		const worker = new Worker(
+			new URL("./word-index.worker.ts", import.meta.url),
+			{ type: "module" },
+		);
+		worker.postMessage({ content, byteOffset: initialByteOffsetRef.current });
+		worker.onmessage = (e: MessageEvent<{ words: WordEntry[]; idx: number }>) => {
+			const { words: w, idx } = e.data;
+			setWords(w);
+			wordIndexRef.current = idx;
+			displayedOffsetRef.current = w[idx]?.byteOffset ?? null;
+			setCurrentWord(w[idx] ?? null);
+			worker.terminate();
+		};
+		worker.onerror = () => {
+			worker.terminate();
+		};
+		return () => worker.terminate();
+	}, [content]);
+
 	// Current word to display — only React state needed for rendering
-	const [currentWord, setCurrentWord] = useState<WordEntry | null>(
-		words[initialWordIndex] ?? null,
-	);
+	const [currentWord, setCurrentWord] = useState<WordEntry | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 
 	// Refs for mutable state used in the timeout chain
-	const wordIndexRef = useRef(initialWordIndex);
+	const wordIndexRef = useRef(0);
+	const displayedOffsetRef = useRef<number | null>(null);
 	const accelRef = useRef(0);
 	const timerRef = useRef<number | null>(null);
 	const lastSaveRef = useRef(0);
@@ -72,6 +103,7 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 
 		const entry = w[idx];
 		setCurrentWord(entry);
+		displayedOffsetRef.current = entry.byteOffset;
 
 		// Position save — throttled to once per 2 seconds
 		const now = Date.now();
@@ -104,9 +136,8 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 		}
 		setIsPlaying(false);
 		// Flush position save on pause
-		const idx = wordIndexRef.current - 1;
-		if (idx >= 0 && idx < wordsRef.current.length) {
-			onPositionChangeRef.current(wordsRef.current[idx].byteOffset);
+		if (displayedOffsetRef.current !== null) {
+			onPositionChangeRef.current(displayedOffsetRef.current);
 		}
 	}, []);
 
@@ -119,21 +150,23 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 	}, [isPlaying, play, pause]);
 
 	// ── Respond to external position changes (scrub) ─────────────────────
-	// When initialWordIndex changes from outside (scrub), jump there
-	const prevInitialRef = useRef(initialWordIndex);
+	// When initialByteOffset changes from outside (scrub), jump there
+	const prevOffsetRef = useRef(initialByteOffset);
 	useEffect(() => {
-		if (initialWordIndex !== prevInitialRef.current) {
-			prevInitialRef.current = initialWordIndex;
+		if (initialByteOffset !== prevOffsetRef.current && words.length > 0) {
+			prevOffsetRef.current = initialByteOffset;
 			// Pause if playing
 			if (timerRef.current !== null) {
 				clearTimeout(timerRef.current);
 				timerRef.current = null;
 			}
 			setIsPlaying(false);
-			wordIndexRef.current = initialWordIndex;
-			setCurrentWord(words[initialWordIndex] ?? null);
+			const idx = findWordIndexAtOffset(words, initialByteOffset);
+			wordIndexRef.current = idx;
+			displayedOffsetRef.current = words[idx]?.byteOffset ?? null;
+			setCurrentWord(words[idx] ?? null);
 		}
-	}, [initialWordIndex, words]);
+	}, [initialByteOffset, words]);
 
 	// ── Visibility change — auto-pause in background ─────────────────────
 	useEffect(() => {
@@ -153,9 +186,8 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 				clearTimeout(timerRef.current);
 			}
 			// Flush final position
-			const idx = wordIndexRef.current - 1;
-			if (idx >= 0 && idx < wordsRef.current.length) {
-				onPositionChangeRef.current(wordsRef.current[idx].byteOffset);
+			if (displayedOffsetRef.current !== null) {
+				onPositionChangeRef.current(displayedOffsetRef.current);
 			}
 		};
 	}, []);
@@ -173,21 +205,27 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 	// container at xOffset% and shift left by that amount.
 	const shiftCh = orpIndex + 0.5;
 
+	if (words.length === 0) {
+		return (
+			<div className="rsvp-display">
+				<IonSpinner style={spinnerStyle} />
+			</div>
+		);
+	}
+
 	return (
-		<div
-			className="rsvp-display"
-			onClick={togglePlayPause}
-		>
+		<div className="rsvp-display" onClick={togglePlayPause}>
 			{/* Vertical indicator line at xOffset% */}
-			<div
-				className="rsvp-focal-line"
-				style={{ left: `${settings.xOffset}%` }}
-			/>
+			<div className="rsvp-focal-line" style={{ left: `${settings.xOffset}%` }} />
 
 			{word && (
 				<div
 					className="rsvp-word-container"
-					style={{ left: `${settings.xOffset}%`, transform: `translate(-${shiftCh}ch, -50%)`, fontSize: `${fontSize * 2.5}px` }}
+					style={{
+						left: `${settings.xOffset}%`,
+						transform: `translate(-${shiftCh}ch, -50%)`,
+						fontSize: `${fontSize * 2.5}px`,
+					}}
 				>
 					<span className="rsvp-before">{before}</span>
 					<span className="rsvp-focal">{focal}</span>

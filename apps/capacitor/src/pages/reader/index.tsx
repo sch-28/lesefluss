@@ -1,5 +1,4 @@
 import type React from "react";
-import { useState } from "react";
 /**
  * BookReader — full-screen virtualized scroll reader.
  *
@@ -45,7 +44,7 @@ import {
 	searchOutline,
 	sunnyOutline,
 } from "ionicons/icons";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RouteComponentProps } from "react-router-dom";
 import type { CacheSnapshot, VListHandle } from "virtua";
 import { VList } from "virtua";
@@ -58,7 +57,7 @@ import type { Chapter } from "../../services/db/schema";
 import { DEFAULT_SETTINGS } from "../../utils/settings";
 import DictionaryModal from "./dictionary-modal";
 import Paragraph, { getWordOffsets, utf8ByteLength } from "./paragraph";
-import { buildWordIndex, findWordIndexAtOffset, type RsvpSettings } from "./rsvp-engine";
+import type { RsvpSettings } from "./rsvp-engine";
 import RsvpView from "./rsvp-view";
 import SearchModal from "./search-modal";
 
@@ -86,6 +85,12 @@ function saveFontSize(size: number): void {
 	localStorage.setItem(FONT_SIZE_KEY, String(size));
 }
 
+// ─── Skeleton loading lines ──────────────────────────────────────────────────
+const skeletonLines = Array.from({ length: 40 }, (_, i) => ({
+	width: `${60 + ((i * 17) % 35)}%`,
+	marginBottom: i % 4 === 3 ? "20px" : "10px",
+}));
+
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 interface BookReaderProps extends RouteComponentProps<{ id: string }> {}
@@ -99,7 +104,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const { data: book, isPending: bookPending } = queryHooks.useBook(id);
 	const { data: contentRow, isPending: contentPending } = queryHooks.useBookContent(id);
 	const content = contentRow?.content ?? null;
-	const loading = bookPending || contentPending;
 
 	const [fontSize, setFontSize] = useState<number>(loadFontSize);
 	const { theme, toggleTheme } = useTheme();
@@ -110,7 +114,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	// ── RSVP mode ─────────────────────────────────────────────────────────
 	const [readerMode, setReaderMode] = useState<"scroll" | "rsvp">("scroll");
-	const [rsvpWordIndex, setRsvpWordIndex] = useState(0);
 
 	// The byte offset we consider "current" — used for word highlight + saves
 	const [activeOffset, setActiveOffset] = useState(0);
@@ -182,9 +185,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		}
 	}, [contentRow?.chapters]);
 
-	// ── RSVP word index + settings ────────────────────────────────────────
-	const wordIndex = useMemo(() => (content ? buildWordIndex(content) : []), [content]);
-
+	// ── RSVP settings ─────────────────────────────────────────────────────
 	const { data: dbSettings } = queryHooks.useSettings();
 	const rsvpSettings = useMemo<RsvpSettings>(
 		() => ({
@@ -422,14 +423,16 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	const handleRsvpToggle = useCallback(() => {
 		if (readerMode === "scroll") {
-			const idx = findWordIndexAtOffset(wordIndex, progressOffset);
-			setRsvpWordIndex(idx);
+			// Use lastOffsetRef (word-level accurate from handleScrollEnd)
+			// instead of progressOffset (paragraph-level from handleScroll).
+			const offset = lastOffsetRef.current ?? 0;
+			setProgressOffset(offset);
 			setReaderMode("rsvp");
 			setProgressBarVisible(true);
 		} else {
-			exitRsvpToScroll(lastOffsetRef.current ?? progressOffset);
+			exitRsvpToScroll(lastOffsetRef.current ?? 0);
 		}
-	}, [readerMode, progressOffset, wordIndex, exitRsvpToScroll]);
+	}, [readerMode, exitRsvpToScroll]);
 
 	const handleRsvpFinished = useCallback(() => {
 		exitRsvpToScroll(lastOffsetRef.current ?? 0);
@@ -503,9 +506,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			const targetByte = Math.round(ratio * book.size);
 
 			if (readerMode === "rsvp") {
-				// In RSVP mode: update the word index (pauses via initialWordIndex change)
-				const wIdx = findWordIndexAtOffset(wordIndex, targetByte);
-				setRsvpWordIndex(wIdx);
+				// In RSVP mode: update byte offset — RsvpView reacts via initialByteOffset prop
 				setProgressOffset(targetByte);
 				lastOffsetRef.current = targetByte;
 				savePosition(targetByte);
@@ -515,7 +516,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				jumpToOffset(actualByte, { highlight: false });
 			}
 		},
-		[book, readerMode, wordIndex, paragraphOffsets, findParagraphIndex, jumpToOffset, savePosition],
+		[book, readerMode, paragraphOffsets, findParagraphIndex, jumpToOffset, savePosition],
 	);
 
 	const handleProgressPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -604,7 +605,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	// ─── Render ─────────────────────────────────────────────────────────────
 
-	if (loading) {
+	if (bookPending) {
 		return (
 			<IonPage>
 				<IonContent className="ion-text-center no-header-content">
@@ -623,7 +624,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		);
 	}
 
-	if (!book || !content) {
+	if (!book) {
 		return (
 			<IonPage>
 				<IonHeader class="ion-no-border">
@@ -653,6 +654,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 					<IonButtons slot="end">
 						<IonButton
 							onClick={handleRsvpToggle}
+							disabled={!content}
 							aria-label={
 								readerMode === "rsvp" ? "Switch to scroll reader" : "Switch to RSVP reader"
 							}
@@ -663,7 +665,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 								icon={readerMode === "rsvp" ? flashOffOutline : flashOutline}
 							/>
 						</IonButton>
-						<IonButton onClick={() => setSearchOpen(true)} aria-label="Search content">
+						<IonButton onClick={() => setSearchOpen(true)} disabled={!content} aria-label="Search content">
 							<IonIcon slot="icon-only" icon={searchOutline} />
 						</IonButton>
 						{chapters.length > 0 && (
@@ -693,7 +695,13 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			</IonHeader>
 
 			<IonContent scrollY={false}>
-				{readerMode === "scroll" ? (
+				{contentPending || !content ? (
+					<div style={{ padding: "16px 20px", height: "100%", overflow: "hidden" }}>
+						{skeletonLines.map((style, i) => (
+							<div key={i} className="reader-skeleton-line" style={style} />
+						))}
+					</div>
+				) : readerMode === "scroll" ? (
 					<div ref={containerRef} style={{ height: "100%" }}>
 						<VList
 							ref={listRef}
@@ -720,8 +728,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 					</div>
 				) : (
 					<RsvpView
-						words={wordIndex}
-						initialWordIndex={rsvpWordIndex}
+						content={content}
+						initialByteOffset={progressOffset}
 						settings={rsvpSettings}
 						fontSize={fontSize}
 						onPositionChange={handleRsvpPositionChange}
@@ -791,7 +799,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 					setSearchOpen(false);
 					setSearchInitialQuery(undefined);
 				}}
-				content={content}
+				content={content ?? ""}
 				onJump={handleSearchJump}
 				theme={theme}
 				initialQuery={searchInitialQuery}

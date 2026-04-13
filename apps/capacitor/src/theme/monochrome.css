@@ -481,6 +481,19 @@ body.dark ion-tab-button {
 	--background: var(--reader-bg);
 }
 
+/* ── Reader skeleton loading lines ── */
+.reader-skeleton-line {
+	height: 14px;
+	border-radius: 4px;
+	background: var(--ion-color-light, #e0e0e0);
+	animation: reader-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes reader-skeleton-pulse {
+	0%, 100% { opacity: 0.3; }
+	50% { opacity: 0.6; }
+}
+
 /* Modal sheet: make the drag handle + sheet background match the theme.
  * Ionic portals modals to document.body, so the reader-theme-* class sits
  * on the ion-modal element itself — selectors must be ion-modal.reader-theme-*
