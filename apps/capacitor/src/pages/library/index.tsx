@@ -8,16 +8,18 @@ import {
 	IonFabButton,
 	IonHeader,
 	IonIcon,
+	IonLabel,
 	IonPage,
 	IonProgressBar,
+	IonSegment,
+	IonSegmentButton,
 	IonSpinner,
 	IonText,
-	IonTitle,
 	IonToolbar,
 	useIonViewWillEnter,
 } from "@ionic/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { add, bookOutline, refreshOutline } from "ionicons/icons";
+import { add, bookOutline, refreshOutline, swapVerticalOutline } from "ionicons/icons";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
@@ -28,15 +30,10 @@ import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import type { Book } from "../../services/db/schema";
 import BookCard from "./book-card";
+import { FILTER_LABELS, FILTER_OPTIONS, filterAndSort, readingProgress, type FilterBy, type SortBy } from "./sort-filter";
+import SortPopover from "./sort-popover";
 import TransferModal from "./transfer-modal";
 
-/**
- * Reading progress percentage for a book.
- */
-function readingProgress(book: Book): number {
-	if (!book.size || book.size === 0) return 0;
-	return Math.min(100, Math.round((book.position / book.size) * 100));
-}
 
 const Library: React.FC = () => {
 	const { isConnected } = useBLE();
@@ -62,6 +59,8 @@ const Library: React.FC = () => {
 	// ── Local UI state ───────────────────────────────────────────────────
 	const [syncing, setSyncing] = useState(false);
 	const [importProgress, setImportProgress] = useState(0);
+	const [sortBy, setSortBy] = useState<SortBy>("recent");
+	const [filterBy, setFilterBy] = useState<FilterBy>("all");
 
 	// Action sheet state
 	const [selectedBook, setSelectedBook] = useState<Book | null>(null);
@@ -132,6 +131,7 @@ const Library: React.FC = () => {
 			: null;
 
 	const importing = importMutation.isPending;
+	const visible = books.length > 0 ? filterAndSort(books, filterBy, sortBy) : [];
 
 	if (isPending) {
 		return (
@@ -149,8 +149,23 @@ const Library: React.FC = () => {
 		<IonPage>
 			<IonHeader class="ion-no-border">
 				<IonToolbar>
-					<IonTitle>Library</IonTitle>
+					<IonSegment
+						value={filterBy}
+						onIonChange={(e) => {
+							const v = e.detail.value;
+							if (v) setFilterBy(v as FilterBy);
+						}}
+					>
+						{FILTER_OPTIONS.map((f) => (
+							<IonSegmentButton key={f} value={f}>
+								<IonLabel>{FILTER_LABELS[f]}</IonLabel>
+							</IonSegmentButton>
+						))}
+					</IonSegment>
 					<IonButtons slot="end">
+						<IonButton id="sort-trigger" title="Sort">
+							<IonIcon slot="icon-only" icon={swapVerticalOutline} />
+						</IonButton>
 						<BLEIndicator />
 						<IonButton
 							disabled={!isConnected || syncing || isTransferring}
@@ -184,33 +199,38 @@ const Library: React.FC = () => {
 							</IonText>
 						)}
 					</div>
+				) : visible.length === 0 ? (
+					/* ── Filter empty state ── */
+					<div className="flex h-full flex-col items-center justify-center p-8 text-center">
+						<IonText color="medium">
+							<p style={{ margin: 0 }}>No books match this filter.</p>
+						</IonText>
+					</div>
 				) : (
 					/* ── Book grid ── */
 					<div className="grid grid-cols-3 gap-4 p-4 pb-20">
-						{books
-							.sort((a, b) => a.title.localeCompare(b.title))
-							.map((book) => {
-								const progress = readingProgress(book);
-								const started = book.position > 0;
-								const cover = covers.get(book.id);
-								const isActive = book.id === activeBookId;
+						{visible.map((book) => {
+							const progress = readingProgress(book);
+							const started = book.position > 0;
+							const cover = covers.get(book.id);
+							const isActive = book.id === activeBookId;
 
-								return (
-									<BookCard
-										key={book.id}
-										book={book}
-										cover={cover}
-										progress={progress}
-										started={started}
-										isActive={isActive}
-										onOpen={() => {
-											qc.setQueryData(bookKeys.detail(book.id), book);
-											history.push(`/tabs/reader/${book.id}`);
-										}}
-										onMenu={() => setSelectedBook(book)}
-									/>
-								);
-							})}
+							return (
+								<BookCard
+									key={book.id}
+									book={book}
+									cover={cover}
+									progress={progress}
+									started={started}
+									isActive={isActive}
+									onOpen={() => {
+										qc.setQueryData(bookKeys.detail(book.id), book);
+										history.push(`/tabs/reader/${book.id}`);
+									}}
+									onMenu={() => setSelectedBook(book)}
+								/>
+							);
+						})}
 					</div>
 				)}
 
@@ -220,6 +240,9 @@ const Library: React.FC = () => {
 						{importing ? <IonSpinner name="crescent" /> : <IonIcon icon={add} />}
 					</IonFabButton>
 				</IonFab>
+
+				{/* Sort popover */}
+				<SortPopover trigger="sort-trigger" sortBy={sortBy} onSort={setSortBy} />
 
 				{/* Book action sheet */}
 				<IonActionSheet

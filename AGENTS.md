@@ -188,6 +188,7 @@ Touch these files in order:
 - [x] In-app RSVP reader (software parity with ESP32)
 - [ ] Cloud sync
 - [ ] Web app version (PWA)
+- [x] Library sorting (title, author, recent, progress) & filtering (all, unread, reading, done)
 - [ ] Advanced book management (tags, collections, search)
 - [ ] Reading statistics
 - [ ] Minifying the python code & merge to single file
