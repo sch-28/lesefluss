@@ -5,9 +5,9 @@
  * No confirm button — the X just closes the toolbar.
  */
 
-import React from "react";
 import { IonIcon } from "@ionic/react";
 import { closeOutline, createOutline } from "ionicons/icons";
+import React from "react";
 
 export const HIGHLIGHT_COLORS = ["yellow", "blue", "orange", "pink"] as const;
 export type HighlightColor = (typeof HIGHLIGHT_COLORS)[number];
@@ -36,17 +36,27 @@ const SelectionToolbar = React.forwardRef<HTMLDivElement, SelectionToolbarProps>
 						<button
 							key={color}
 							type="button"
-							className={`selection-color-swatch${selectedColor === color ? " selection-color-swatch--active" : ""}`}
+							className={`selection-color-swatch${selectedColor === color ? "selection-color-swatch--active" : ""}`}
 							style={{ background: HIGHLIGHT_COLOR_STYLE[color] }}
 							onClick={() => onColorChange(color)}
 							aria-label={`Highlight ${color}`}
 						/>
 					))}
 				</div>
-				<button type="button" className="selection-toolbar-btn" onClick={onNote} aria-label="Add note">
+				<button
+					type="button"
+					className="selection-toolbar-btn"
+					onClick={onNote}
+					aria-label="Add note"
+				>
 					<IonIcon icon={createOutline} />
 				</button>
-				<button type="button" className="selection-toolbar-btn" onClick={onCancel} aria-label="Cancel selection">
+				<button
+					type="button"
+					className="selection-toolbar-btn"
+					onClick={onCancel}
+					aria-label="Cancel selection"
+				>
 					<IonIcon icon={closeOutline} />
 				</button>
 			</div>

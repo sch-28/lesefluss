@@ -33,6 +33,8 @@ import {
 	IonTitle,
 	IonToolbar,
 } from "@ionic/react";
+import type { RsvpSettings } from "@rsvp/rsvp-core";
+import { DEFAULT_SETTINGS } from "@rsvp/rsvp-core";
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	bookmarkOutline,
@@ -52,14 +54,17 @@ import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import type { Chapter, Highlight } from "../../services/db/schema";
-import { DEFAULT_SETTINGS } from "@rsvp/rsvp-core";
 import { formatReadingTime } from "../../utils/reading-time";
 import AppearancePopover from "./appearance-popover";
 import DictionaryModal from "./dictionary-modal";
 import HighlightModal from "./highlight-modal";
 import HighlightsListModal from "./highlights-list-modal";
-import Paragraph, { cancelAnyActiveLongPress, getWordOffsets, type HighlightRange, utf8ByteLength } from "./paragraph";
-import type { RsvpSettings } from "@rsvp/rsvp-core";
+import Paragraph, {
+	cancelAnyActiveLongPress,
+	getWordOffsets,
+	type HighlightRange,
+	utf8ByteLength,
+} from "./paragraph";
 import RsvpView from "./rsvp-view";
 import SearchModal from "./search-modal";
 import SelectionToolbar, { type HighlightColor } from "./selection-toolbar";
@@ -247,15 +252,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	}, [contentRow?.chapters]);
 
 	// ── Reading time estimation ───────────────────────────────────────────
-	const contentBytes = useMemo(
-		() => (content ? _encoder.encode(content) : null),
-		[content],
-	);
+	const contentBytes = useMemo(() => (content ? _encoder.encode(content) : null), [content]);
 
-	const totalWordCount = useMemo(
-		() => content?.match(/\S+/g)?.length ?? 0,
-		[content],
-	);
+	const totalWordCount = useMemo(() => content?.match(/\S+/g)?.length ?? 0, [content]);
 
 	const chapterWordCounts = useMemo(() => {
 		if (!chapters.length || !contentBytes) return [];
@@ -735,7 +734,14 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				});
 			}
 		},
-		[selectionRange, selectionSavedId, pendingNote, id, addHighlightMutation, updateHighlightMutation],
+		[
+			selectionRange,
+			selectionSavedId,
+			pendingNote,
+			id,
+			addHighlightMutation,
+			updateHighlightMutation,
+		],
 	);
 
 	// ── Note save — called when the note modal closes ─────────────────────
@@ -1091,10 +1097,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 								<IonIcon slot="icon-only" icon={bookmarkOutline} />
 							</IonButton>
 						)}
-						<IonButton
-							id="appearance-trigger"
-							aria-label="Appearance settings"
-						>
+						<IonButton id="appearance-trigger" aria-label="Appearance settings">
 							<IonIcon slot="icon-only" icon={readerOutline} />
 						</IonButton>
 					</IonButtons>
@@ -1178,9 +1181,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						<div className="reader-progress-label">
 							<span>
 								{Math.round(progressPct)}%
-								{bookMinutesRemaining > 0 && (
-									<> · {formatReadingTime(bookMinutesRemaining)} left</>
-								)}
+								{bookMinutesRemaining > 0 && <> · {formatReadingTime(bookMinutesRemaining)} left</>}
 							</span>
 							{chapterMinutesRemaining != null && currentChapterIndex >= 0 && (
 								<span className="reader-progress-chapter-time">

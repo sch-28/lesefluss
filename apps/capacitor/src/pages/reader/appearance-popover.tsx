@@ -1,12 +1,8 @@
 import { IonPopover } from "@ionic/react";
-import type React from "react";
-import {
-	FONT_FAMILIES,
-	THEMES,
-	useAppearanceSettings,
-} from "../../hooks/use-appearance-settings";
-import { useTheme } from "../../contexts/theme-context";
 import { SETTING_CONSTRAINTS } from "@rsvp/rsvp-core";
+import type React from "react";
+import { useTheme } from "../../contexts/theme-context";
+import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "../../hooks/use-appearance-settings";
 
 interface Props {
 	/** CSS id of the element that triggers/anchors the popover */
@@ -29,12 +25,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 	} = useAppearanceSettings();
 
 	return (
-		<IonPopover
-			trigger={trigger}
-			className="appearance-popover"
-			side="bottom"
-			alignment="end"
-		>
+		<IonPopover trigger={trigger} className="appearance-popover" side="bottom" alignment="end">
 			<div className="appearance-popover-content">
 				{/* Theme */}
 				<div className="ap-section">
@@ -44,7 +35,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 							<button
 								key={t.value}
 								type="button"
-								className={`ap-chip${theme === t.value ? " ap-chip--active" : ""}`}
+								className={`ap-chip${theme === t.value ? "ap-chip--active" : ""}`}
 								onClick={() => setTheme(t.value)}
 							>
 								{t.label}
@@ -61,7 +52,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 							<button
 								key={f.value}
 								type="button"
-								className={`ap-chip${fontFamily === f.value ? " ap-chip--active" : ""}`}
+								className={`ap-chip${fontFamily === f.value ? "ap-chip--active" : ""}`}
 								style={f.style}
 								onClick={() => setFontFamily(f.value)}
 							>
@@ -145,7 +136,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 						<span className="ap-row-label">Time remaining</span>
 						<button
 							type="button"
-							className={`ap-chip${showReadingTime ? " ap-chip--active" : ""}`}
+							className={`ap-chip${showReadingTime ? "ap-chip--active" : ""}`}
 							onClick={() => setShowReadingTime(!showReadingTime)}
 						>
 							{showReadingTime ? "On" : "Off"}

@@ -7,8 +7,6 @@
  */
 
 import { IonSpinner } from "@ionic/react";
-import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	calcDelay,
 	calcOrpIndex,
@@ -16,6 +14,8 @@ import {
 	type RsvpSettings,
 	type WordEntry,
 } from "@rsvp/rsvp-core";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 

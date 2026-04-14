@@ -15,9 +15,9 @@ import {
 	IonTitle,
 	IonToolbar,
 } from "@ionic/react";
+import { SETTING_CONSTRAINTS } from "@rsvp/rsvp-core";
 import type React from "react";
 import { useSettingsDraft } from "../../hooks/use-settings-draft";
-import { SETTING_CONSTRAINTS } from "@rsvp/rsvp-core";
 
 const RSVPSettings: React.FC = () => {
 	const { draft, updateSetting, handleSave, isPending } = useSettingsDraft();

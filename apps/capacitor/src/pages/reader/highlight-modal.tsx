@@ -97,7 +97,7 @@ const HighlightModal: React.FC<HighlightModalProps> = ({
 							<button
 								key={c}
 								type="button"
-								className={`selection-color-swatch${color === c ? " selection-color-swatch--active" : ""}`}
+								className={`selection-color-swatch${color === c ? "selection-color-swatch--active" : ""}`}
 								style={{ background: HIGHLIGHT_COLOR_STYLE[c] }}
 								onClick={() => handleColorChange(c)}
 								aria-label={`Highlight ${c}`}

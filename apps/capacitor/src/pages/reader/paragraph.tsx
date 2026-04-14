@@ -11,9 +11,9 @@
  * without per-word spans — they are not tappable reading positions.
  */
 
+import { utf8ByteLength } from "@rsvp/rsvp-core";
 import type React from "react";
 import { memo } from "react";
-import { utf8ByteLength } from "@rsvp/rsvp-core";
 
 export { utf8ByteLength };
 

@@ -30,10 +30,16 @@ import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import type { Book } from "../../services/db/schema";
 import BookCard from "./book-card";
-import { FILTER_LABELS, FILTER_OPTIONS, filterAndSort, readingProgress, type FilterBy, type SortBy } from "./sort-filter";
+import {
+	FILTER_LABELS,
+	FILTER_OPTIONS,
+	type FilterBy,
+	filterAndSort,
+	readingProgress,
+	type SortBy,
+} from "./sort-filter";
 import SortPopover from "./sort-popover";
 import TransferModal from "./transfer-modal";
-
 
 const Library: React.FC = () => {
 	const { isConnected } = useBLE();

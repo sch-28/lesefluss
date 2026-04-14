@@ -12,14 +12,10 @@ import {
 	IonToggle,
 	IonToolbar,
 } from "@ionic/react";
+import { SETTING_CONSTRAINTS } from "@rsvp/rsvp-core";
 import type React from "react";
 import { useTheme } from "../../contexts/theme-context";
-import {
-	FONT_FAMILIES,
-	THEMES,
-	useAppearanceSettings,
-} from "../../hooks/use-appearance-settings";
-import { SETTING_CONSTRAINTS } from "@rsvp/rsvp-core";
+import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "../../hooks/use-appearance-settings";
 
 const CHIP_CONTAINER_STYLE: React.CSSProperties = { flex: 1, padding: "8px 0" };
 
@@ -60,7 +56,7 @@ const AppearanceSettings: React.FC = () => {
 								<button
 									key={t.value}
 									type="button"
-									className={`ap-chip${theme === t.value ? " ap-chip--active" : ""}`}
+									className={`ap-chip${theme === t.value ? "ap-chip--active" : ""}`}
 									onClick={() => setTheme(t.value)}
 								>
 									{t.label}
@@ -79,7 +75,7 @@ const AppearanceSettings: React.FC = () => {
 								<button
 									key={f.value}
 									type="button"
-									className={`ap-chip${fontFamily === f.value ? " ap-chip--active" : ""}`}
+									className={`ap-chip${fontFamily === f.value ? "ap-chip--active" : ""}`}
 									style={f.style}
 									onClick={() => setFontFamily(f.value)}
 								>
