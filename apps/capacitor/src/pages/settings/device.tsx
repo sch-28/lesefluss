@@ -37,7 +37,7 @@ import { useSettingsDraft } from "../../hooks/use-settings-draft";
 import { ble } from "../../services/ble";
 import type { StorageInfo } from "../../services/ble/characteristics/storage";
 import { log } from "../../utils/log";
-import { SETTING_CONSTRAINTS } from "../../utils/settings";
+import { SETTING_CONSTRAINTS } from "@rsvp/rsvp-core";
 
 function formatBytes(bytes: number): string {
 	if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;

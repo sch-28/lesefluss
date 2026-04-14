@@ -6,7 +6,7 @@ import {
 	useAppearanceSettings,
 } from "../../hooks/use-appearance-settings";
 import { useTheme } from "../../contexts/theme-context";
-import { SETTING_CONSTRAINTS } from "../../utils/settings";
+import { SETTING_CONSTRAINTS } from "@rsvp/rsvp-core";
 
 interface Props {
 	/** CSS id of the element that triggers/anchors the popover */

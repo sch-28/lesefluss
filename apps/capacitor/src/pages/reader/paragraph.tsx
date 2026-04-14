@@ -13,7 +13,7 @@
 
 import type React from "react";
 import { memo } from "react";
-import { utf8ByteLength } from "./utf8";
+import { utf8ByteLength } from "@rsvp/rsvp-core";
 
 export { utf8ByteLength };
 

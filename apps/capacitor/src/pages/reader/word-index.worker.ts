@@ -1,4 +1,4 @@
-import { buildWordIndex, findWordIndexAtOffset } from "./rsvp-engine";
+import { buildWordIndex, findWordIndexAtOffset } from "@rsvp/rsvp-core";
 
 self.onmessage = (e: MessageEvent<{ content: string; byteOffset: number }>) => {
 	const { content, byteOffset } = e.data;

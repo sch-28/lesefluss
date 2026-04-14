@@ -15,7 +15,7 @@ import {
 	findWordIndexAtOffset,
 	type RsvpSettings,
 	type WordEntry,
-} from "./rsvp-engine";
+} from "@rsvp/rsvp-core";
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 

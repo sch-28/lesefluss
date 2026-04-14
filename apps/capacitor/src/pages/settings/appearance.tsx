@@ -19,7 +19,7 @@ import {
 	THEMES,
 	useAppearanceSettings,
 } from "../../hooks/use-appearance-settings";
-import { SETTING_CONSTRAINTS } from "../../utils/settings";
+import { SETTING_CONSTRAINTS } from "@rsvp/rsvp-core";
 
 const CHIP_CONTAINER_STYLE: React.CSSProperties = { flex: 1, padding: "8px 0" };
 

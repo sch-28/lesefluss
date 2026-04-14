@@ -1,7 +1,7 @@
 import type React from "react";
 import type { AppTheme } from "../contexts/theme-context";
 import { queryHooks } from "../services/db/hooks";
-import { DEFAULT_SETTINGS, SETTING_CONSTRAINTS } from "../utils/settings";
+import { DEFAULT_SETTINGS, SETTING_CONSTRAINTS } from "@rsvp/rsvp-core";
 
 export const THEMES: { value: AppTheme; label: string }[] = [
 	{ value: "dark", label: "Dark" },
