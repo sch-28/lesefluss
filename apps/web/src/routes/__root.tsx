@@ -19,9 +19,9 @@ export const Route = createRootRoute({
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       ...seo({
-        title: 'RSVP Reader — Speed Reading Device & App',
+        title: 'RSVP Reader — Speed Reading App & Device',
         description:
-          'A handheld ESP32 speed reader that displays books word-by-word at 350+ WPM. Open-source hardware with a companion mobile app.',
+          'Free, open-source speed reading app for Android. Import EPUB and TXT books, read at 350+ WPM, and optionally sync to a pocket-sized ESP32 device.',
       }),
     ],
     links: [
@@ -48,34 +48,54 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             </Link>
             <nav className="flex items-center gap-6 text-sm text-zinc-400">
               <Link
-                to="/diy"
+                to="/app"
                 activeProps={{ className: 'text-zinc-100' }}
                 className="hover:text-zinc-100 transition-colors"
               >
-                Build It
+                App
               </Link>
               <Link
-                to="/order"
+                to="/device"
                 activeProps={{ className: 'text-zinc-100' }}
-                className="rounded-md bg-zinc-100 px-4 py-1.5 font-medium text-zinc-900 hover:bg-white transition-colors"
+                className="hover:text-zinc-100 transition-colors"
               >
-                Order
+                Device
               </Link>
+              <Link
+                to="/docs"
+                activeProps={{ className: 'text-zinc-100' }}
+                className="hover:text-zinc-100 transition-colors"
+              >
+                Docs
+              </Link>
+              <a
+                href="https://github.com/sch-28/rsvp"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-zinc-100 transition-colors"
+              >
+                GitHub
+              </a>
             </nav>
           </div>
         </header>
         <main>{children}</main>
         <footer className="border-t border-zinc-800 py-10 text-center text-sm text-zinc-500">
           <div className="mx-auto max-w-5xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <span>© {CURRENT_YEAR} RSVP Reader</span>
-            <a
-              href="https://github.com/sch-28/rsvp"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-zinc-300 transition-colors"
-            >
-              GitHub
-            </a>
+            <span>© {CURRENT_YEAR} RSVP Reader — Open Source</span>
+            <div className="flex items-center gap-6">
+              <Link to="/app" className="hover:text-zinc-300 transition-colors">App</Link>
+              <Link to="/device" className="hover:text-zinc-300 transition-colors">Device</Link>
+              <Link to="/docs" className="hover:text-zinc-300 transition-colors">Docs</Link>
+              <a
+                href="https://github.com/sch-28/rsvp"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-zinc-300 transition-colors"
+              >
+                GitHub
+              </a>
+            </div>
           </div>
         </footer>
         <Scripts />

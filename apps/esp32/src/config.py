@@ -1,6 +1,6 @@
 # RSVP Reader Configuration
 
-HARDWARE = "ST7789"
+HARDWARE = "AMOLED"
 
 # ---------------------------------------------------------------------------
 # Hardware-specific constants

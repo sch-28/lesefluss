@@ -12,7 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as CustomScriptDotjsRouteImport } from './routes/customScript[.]js'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrderIndexRouteImport } from './routes/order/index'
+import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DiyIndexRouteImport } from './routes/diy/index'
+import { Route as DeviceIndexRouteImport } from './routes/device/index'
+import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as ApiUsersRouteImport } from './routes/api/users'
 import { Route as ApiUsersUserIdRouteImport } from './routes/api/users.$userId'
 
@@ -31,9 +34,24 @@ const OrderIndexRoute = OrderIndexRouteImport.update({
   path: '/order/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/docs/',
+  path: '/docs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DiyIndexRoute = DiyIndexRouteImport.update({
   id: '/diy/',
   path: '/diy/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeviceIndexRoute = DeviceIndexRouteImport.update({
+  id: '/device/',
+  path: '/device/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/app/',
+  path: '/app/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiUsersRoute = ApiUsersRouteImport.update({
@@ -51,7 +69,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/app/': typeof AppIndexRoute
+  '/device/': typeof DeviceIndexRoute
   '/diy/': typeof DiyIndexRoute
+  '/docs/': typeof DocsIndexRoute
   '/order/': typeof OrderIndexRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
@@ -59,7 +80,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/app': typeof AppIndexRoute
+  '/device': typeof DeviceIndexRoute
   '/diy': typeof DiyIndexRoute
+  '/docs': typeof DocsIndexRoute
   '/order': typeof OrderIndexRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
@@ -68,7 +92,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/app/': typeof AppIndexRoute
+  '/device/': typeof DeviceIndexRoute
   '/diy/': typeof DiyIndexRoute
+  '/docs/': typeof DocsIndexRoute
   '/order/': typeof OrderIndexRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
@@ -78,7 +105,10 @@ export interface FileRouteTypes {
     | '/'
     | '/customScript.js'
     | '/api/users'
+    | '/app/'
+    | '/device/'
     | '/diy/'
+    | '/docs/'
     | '/order/'
     | '/api/users/$userId'
   fileRoutesByTo: FileRoutesByTo
@@ -86,7 +116,10 @@ export interface FileRouteTypes {
     | '/'
     | '/customScript.js'
     | '/api/users'
+    | '/app'
+    | '/device'
     | '/diy'
+    | '/docs'
     | '/order'
     | '/api/users/$userId'
   id:
@@ -94,7 +127,10 @@ export interface FileRouteTypes {
     | '/'
     | '/customScript.js'
     | '/api/users'
+    | '/app/'
+    | '/device/'
     | '/diy/'
+    | '/docs/'
     | '/order/'
     | '/api/users/$userId'
   fileRoutesById: FileRoutesById
@@ -103,7 +139,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CustomScriptDotjsRoute: typeof CustomScriptDotjsRoute
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
+  AppIndexRoute: typeof AppIndexRoute
+  DeviceIndexRoute: typeof DeviceIndexRoute
   DiyIndexRoute: typeof DiyIndexRoute
+  DocsIndexRoute: typeof DocsIndexRoute
   OrderIndexRoute: typeof OrderIndexRoute
 }
 
@@ -130,11 +169,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrderIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/docs/': {
+      id: '/docs/'
+      path: '/docs'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/diy/': {
       id: '/diy/'
       path: '/diy'
       fullPath: '/diy/'
       preLoaderRoute: typeof DiyIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device/': {
+      id: '/device/'
+      path: '/device'
+      fullPath: '/device/'
+      preLoaderRoute: typeof DeviceIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/': {
+      id: '/app/'
+      path: '/app'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/users': {
@@ -170,7 +230,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CustomScriptDotjsRoute: CustomScriptDotjsRoute,
   ApiUsersRoute: ApiUsersRouteWithChildren,
+  AppIndexRoute: AppIndexRoute,
+  DeviceIndexRoute: DeviceIndexRoute,
   DiyIndexRoute: DiyIndexRoute,
+  DocsIndexRoute: DocsIndexRoute,
   OrderIndexRoute: OrderIndexRoute,
 }
 export const routeTree = rootRouteImport
