@@ -149,21 +149,25 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 	}, [isPlaying, play, pause]);
 
 	// ── Respond to external position changes (scrub) ─────────────────────
-	// When initialByteOffset changes from outside (scrub), jump there
+	// When initialByteOffset changes from outside (scrub), jump there.
+	// prevOffsetRef is updated unconditionally so we never accumulate a
+	// stale diff that fires a spurious re-seek when words finally load.
 	const prevOffsetRef = useRef(initialByteOffset);
 	useEffect(() => {
-		if (initialByteOffset !== prevOffsetRef.current && words.length > 0) {
+		if (initialByteOffset !== prevOffsetRef.current) {
 			prevOffsetRef.current = initialByteOffset;
-			// Pause if playing
-			if (timerRef.current !== null) {
-				clearTimeout(timerRef.current);
-				timerRef.current = null;
+			if (words.length > 0) {
+				// Pause if playing
+				if (timerRef.current !== null) {
+					clearTimeout(timerRef.current);
+					timerRef.current = null;
+				}
+				setIsPlaying(false);
+				const idx = findWordIndexAtOffset(words, initialByteOffset);
+				wordIndexRef.current = idx;
+				displayedOffsetRef.current = words[idx]?.byteOffset ?? null;
+				setCurrentWord(words[idx] ?? null);
 			}
-			setIsPlaying(false);
-			const idx = findWordIndexAtOffset(words, initialByteOffset);
-			wordIndexRef.current = idx;
-			displayedOffsetRef.current = words[idx]?.byteOffset ?? null;
-			setCurrentWord(words[idx] ?? null);
 		}
 	}, [initialByteOffset, words]);
 

@@ -163,6 +163,10 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// Tracks position for the progress bar — updated during scroll (activeOffset
 	// is set to NO_HIGHLIGHT=-1 while scrolling, so can't be used for progress).
 	const [progressOffset, setProgressOffset] = useState(0);
+	// Separate state for RsvpView's initialByteOffset — only updated on genuine
+	// user seeks (entering RSVP mode, scrubbing). NOT updated from onPositionChange
+	// callbacks, which would echo back and cause the scrub effect to pause playback.
+	const [rsvpInitOffset, setRsvpInitOffset] = useState(0);
 
 	// Progress bar visibility — shown on tap/word-tap, hidden when user scrolls
 	const [progressBarVisible, setProgressBarVisible] = useState(false);
@@ -194,11 +198,19 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// null = not yet loaded from DB, don't overwrite on unmount.
 	const lastOffsetRef = useRef<number | null>(null);
 
+	// Guards the seed effect below so it only runs once on initial load.
+	// book is a new object reference on every BLE position sync (query
+	// invalidation), so without this guard setRsvpInitOffset would fire
+	// mid-playback and pause the RSVP reader.
+	const didSeedOffsetsRef = useRef(false);
+
 	// ── Seed activeOffset + lastOffsetRef once book loads ─────────────────
 	useEffect(() => {
-		if (book) {
+		if (book && !didSeedOffsetsRef.current) {
+			didSeedOffsetsRef.current = true;
 			setActiveOffset(book.position);
 			setProgressOffset(book.position);
+			setRsvpInitOffset(book.position);
 			lastOffsetRef.current = book.position;
 		}
 	}, [book]);
@@ -800,6 +812,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			// instead of progressOffset (paragraph-level from handleScroll).
 			const offset = lastOffsetRef.current ?? 0;
 			setProgressOffset(offset);
+			setRsvpInitOffset(offset);
 			setReaderMode("rsvp");
 			setProgressBarVisible(true);
 		} else {
@@ -879,8 +892,10 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			const targetByte = Math.round(ratio * book.size);
 
 			if (readerMode === "rsvp") {
-				// In RSVP mode: update byte offset — RsvpView reacts via initialByteOffset prop
+				// In RSVP mode: scrub to position — updates both the progress bar and
+				// rsvpInitOffset so RsvpView jumps without triggering a position-save echo.
 				setProgressOffset(targetByte);
+				setRsvpInitOffset(targetByte);
 				lastOffsetRef.current = targetByte;
 				savePosition(targetByte);
 			} else {
@@ -1134,7 +1149,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				) : (
 					<RsvpView
 						content={content}
-						initialByteOffset={progressOffset}
+						initialByteOffset={rsvpInitOffset}
 						settings={rsvpSettings}
 						fontSize={readerFontSize}
 						onPositionChange={handleRsvpPositionChange}
