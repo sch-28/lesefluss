@@ -23,10 +23,10 @@
  * the config to the clean production state regardless of what live did.
  */
 
-import { execSync } from "child_process";
-import { readFileSync, writeFileSync } from "fs";
-import { dirname, resolve } from "path";
-import { fileURLToPath } from "url";
+import { execSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -45,7 +45,7 @@ if (config.server) {
 }
 
 // Write clean production config
-writeFileSync(CONFIG_PATH, JSON.stringify(config, null, "\t") + "\n", "utf8");
+writeFileSync(CONFIG_PATH, `${JSON.stringify(config, null, "\t")}\n`, "utf8");
 
 // Build
 console.log("\nRunning: vite build...");

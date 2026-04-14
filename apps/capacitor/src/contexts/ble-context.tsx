@@ -32,7 +32,7 @@ interface BLEContextType {
 	stopScan: () => Promise<void>;
 	connect: (deviceId: string) => Promise<boolean>;
 	disconnect: () => Promise<void>;
-	syncToDevice: (settings: Partial<RSVPSettings>) => Promise<boolean>;
+	syncToDevice: (settings: Omit<RSVPSettings, "id" | "updatedAt">) => Promise<boolean>;
 	syncFromDevice: () => Promise<RSVPSettings | null>;
 
 	/**
@@ -111,7 +111,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		return () => clearInterval(interval);
 	}, []);
 
-	const startScan = async () => {
+	const startScan = useCallback(async () => {
 		if (IS_WEB) return;
 		setError(null);
 		setScannedDevices([]);
@@ -125,9 +125,9 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 			setError(result.error || "Failed to start scan");
 			setIsScanning(false);
 		}
-	};
+	}, []);
 
-	const stopScan = async () => {
+	const stopScan = useCallback(async () => {
 		if (IS_WEB) {
 			setIsScanning(false);
 			return;
@@ -138,9 +138,9 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		if (!result.success) {
 			setError(result.error || "Failed to stop scan");
 		}
-	};
+	}, []);
 
-	const connect = async (deviceId: string): Promise<boolean> => {
+	const connect = useCallback(async (deviceId: string): Promise<boolean> => {
 		if (IS_WEB) return false;
 		setError(null);
 
@@ -173,9 +173,9 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		log.error("ble", "Failed to connect:", result.error);
 		setError(result.error || "Failed to connect");
 		return false;
-	};
+	}, []);
 
-	const disconnect = async () => {
+	const disconnect = useCallback(async () => {
 		if (IS_WEB) return;
 		setError(null);
 
@@ -191,26 +191,29 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		// Bump trigger so auto-scan always re-fires after a disconnect,
 		// even if isScanning was already false when the effect last ran.
 		setScanTrigger((n) => n + 1);
-	};
+	}, []);
 
-	const syncToDevice = async (settings: Partial<RSVPSettings>): Promise<boolean> => {
-		if (IS_WEB) return false;
-		setError(null);
+	const syncToDevice = useCallback(
+		async (settings: Omit<RSVPSettings, "id" | "updatedAt">): Promise<boolean> => {
+			if (IS_WEB) return false;
+			setError(null);
 
-		if (!isConnected) {
-			setError("Not connected to device");
-			return false;
-		}
+			if (!isConnected) {
+				setError("Not connected to device");
+				return false;
+			}
 
-		const result = await ble.writeSettings(settings);
+			const result = await ble.writeSettings(settings);
 
-		if (!result.success) {
-			setError(result.error || "Failed to sync settings to device");
-			return false;
-		}
+			if (!result.success) {
+				setError(result.error || "Failed to sync settings to device");
+				return false;
+			}
 
-		return true;
-	};
+			return true;
+		},
+		[isConnected],
+	);
 
 	const syncFromDevice = async (): Promise<RSVPSettings | null> => {
 		if (IS_WEB) return null;
@@ -252,42 +255,46 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	// Auto-scan when not connected and not already scanning/connecting (native only).
 	// scanTrigger is included so a disconnect or failed connect always re-fires this
 	// effect even when isScanning and isConnected haven't changed value.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: scanTrigger is an intentional re-fire trigger, not read inside the effect
 	useEffect(() => {
 		if (IS_WEB) return;
 		if (!isScanning && !isConnected && !isConnectingRef.current) {
 			startScan();
 		}
-	}, [isScanning, isConnected, scanTrigger]);
+	}, [isScanning, isConnected, scanTrigger, startScan]);
 
-	const handleDeviceSelect = async (deviceId: string) => {
-		isConnectingRef.current = true;
-		await stopScan();
+	const handleDeviceSelect = useCallback(
+		async (deviceId: string) => {
+			isConnectingRef.current = true;
+			await stopScan();
 
-		const MAX_RETRIES = 5;
-		for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-			// Backoff: 1s first attempt (ESP32 needs ~500ms to re-advertise
-			// cleanly after a disconnect), then 2s, 3s, 4s cap.
-			const backoff = Math.min(4000, (attempt + 0.5) * 1000);
-			log("ble", `connect attempt ${attempt + 1}/${MAX_RETRIES + 1}, waiting ${backoff}ms...`);
-			await new Promise((resolve) => setTimeout(resolve, backoff));
+			const MAX_RETRIES = 5;
+			for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+				// Backoff: 1s first attempt (ESP32 needs ~500ms to re-advertise
+				// cleanly after a disconnect), then 2s, 3s, 4s cap.
+				const backoff = Math.min(4000, (attempt + 0.5) * 1000);
+				log("ble", `connect attempt ${attempt + 1}/${MAX_RETRIES + 1}, waiting ${backoff}ms...`);
+				await new Promise((resolve) => setTimeout(resolve, backoff));
 
-			const success = await connect(deviceId);
-			if (success) {
-				return;
+				const success = await connect(deviceId);
+				if (success) {
+					return;
+				}
 			}
-		}
-		// All retries exhausted — fall back to scanning
-		log.warn("ble", `all ${MAX_RETRIES + 1} connect attempts failed, falling back to scan`);
-		isConnectingRef.current = false;
-		setScanTrigger((n) => n + 1);
-	};
+			// All retries exhausted — fall back to scanning
+			log.warn("ble", `all ${MAX_RETRIES + 1} connect attempts failed, falling back to scan`);
+			isConnectingRef.current = false;
+			setScanTrigger((n) => n + 1);
+		},
+		[stopScan, connect],
+	);
 
 	useEffect(() => {
 		if (scannedDevices.length === 1 && !isConnected && !isConnectingRef.current) {
 			log("ble", "found 1 device, auto-connecting...");
 			handleDeviceSelect(scannedDevices[0].device.deviceId);
 		}
-	}, [scannedDevices.length, isConnected]);
+	}, [scannedDevices.length, isConnected, handleDeviceSelect, scannedDevices[0]?.device.deviceId]);
 
 	const value: BLEContextType = {
 		isConnected,

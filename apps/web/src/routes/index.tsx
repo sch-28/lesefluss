@@ -119,6 +119,7 @@ function Home() {
 									{["Library", "Reader", "Settings"].map((tab) => (
 										<button
 											key={tab}
+											type="button"
 											tabIndex={-1}
 											className={`py-2.5 font-medium text-[10px] ${tab === "Reader" ? "text-zinc-100" : "text-zinc-500"}`}
 										>

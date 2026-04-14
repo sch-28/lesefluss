@@ -20,7 +20,7 @@ export function useSettingsDraft() {
 
 	const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
 		if (!draft) return;
-		setDraft((prev) => ({ ...prev!, [key]: value }));
+		setDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
 	};
 
 	const handleSave = async () => {

@@ -110,46 +110,43 @@ export function Header() {
 				{/* Right side: auth + mobile toggle */}
 				<div className="flex items-center gap-2">
 					{/* Auth — only render once session resolves to avoid layout shift */}
-					{!isPending && (
-						<>
-							{user ? (
-								<DropdownMenu>
-									<DropdownMenuTrigger asChild>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="size-8 rounded-full bg-muted font-semibold text-foreground text-sm"
-											aria-label="Account menu"
-										>
-											{getInitials(user.name, user.email)}
-										</Button>
-									</DropdownMenuTrigger>
-									<DropdownMenuContent align="end" className="w-52">
-										<DropdownMenuLabel className="font-normal">
-											<div className="flex flex-col gap-0.5">
-												{user.name && (
-													<span className="font-medium text-foreground text-sm">{user.name}</span>
-												)}
-												<span className="truncate text-muted-foreground text-xs">{user.email}</span>
-											</div>
-										</DropdownMenuLabel>
-										<DropdownMenuSeparator />
-										<DropdownMenuItem variant="destructive" onSelect={handleSignOut}>
-											<LogOut />
-											Sign out
-										</DropdownMenuItem>
-									</DropdownMenuContent>
-								</DropdownMenu>
-							) : (
-								<Button asChild variant="outline" size="sm" className="hidden md:flex">
-									<Link to="/login">
-										<LogIn className="size-3.5" />
-										Login
-									</Link>
-								</Button>
-							)}
-						</>
-					)}
+					{!isPending &&
+						(user ? (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="size-8 rounded-full bg-muted font-semibold text-foreground text-sm"
+										aria-label="Account menu"
+									>
+										{getInitials(user.name, user.email)}
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end" className="w-52">
+									<DropdownMenuLabel className="font-normal">
+										<div className="flex flex-col gap-0.5">
+											{user.name && (
+												<span className="font-medium text-foreground text-sm">{user.name}</span>
+											)}
+											<span className="truncate text-muted-foreground text-xs">{user.email}</span>
+										</div>
+									</DropdownMenuLabel>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem variant="destructive" onSelect={handleSignOut}>
+										<LogOut />
+										Sign out
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						) : (
+							<Button asChild variant="outline" size="sm" className="hidden md:flex">
+								<Link to="/login">
+									<LogIn className="size-3.5" />
+									Login
+								</Link>
+							</Button>
+						))}
 
 					{/* Mobile hamburger */}
 					<Button

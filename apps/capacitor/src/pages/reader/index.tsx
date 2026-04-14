@@ -99,6 +99,15 @@ const skeletonLines = Array.from({ length: 40 }, (_, i) => ({
 
 // ─── Main page ───────────────────────────────────────────────────────────────
 
+const MIN_SCRUB_PX = 8;
+
+/** Returns true when the pointer has moved far enough horizontally to count as a scrub. */
+function isHorizontalScrub(origin: { x: number; y: number }, clientX: number, clientY: number) {
+	const dx = Math.abs(clientX - origin.x);
+	const dy = Math.abs(clientY - origin.y);
+	return dx >= MIN_SCRUB_PX && dx > dy;
+}
+
 interface BookReaderProps extends RouteComponentProps<{ id: string }> {}
 
 const BookReader: React.FC<BookReaderProps> = ({ match }) => {
@@ -416,7 +425,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				}
 			});
 		});
-	}, [readerMode, paragraphs, paragraphOffsets, book, findParagraphIndex]);
+	}, [readerMode, paragraphs, book, findParagraphIndex]);
 
 	// ── Scroll handler — hide highlight + update progress bar ──────────────
 	const handleScroll = useCallback(
@@ -475,7 +484,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		for (const span of spans) {
 			const rect = span.getBoundingClientRect();
 			if (rect.top >= cutoffTop + rect.height) {
-				bestOffset = Number.parseInt(span.dataset.offset!, 10);
+				// dataset.offset is guaranteed by the "span[data-offset]" selector above
+				bestOffset = Number.parseInt(span.dataset.offset ?? "", 10);
 				break;
 			}
 		}
@@ -665,7 +675,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			const el = document.elementFromPoint(me.clientX, me.clientY);
 			const span = el?.closest<HTMLElement>("span[data-offset]");
 			if (!span) return;
-			const offset = Number.parseInt(span.dataset.offset!, 10);
+			const offset = Number.parseInt(span.dataset.offset ?? "", 10);
 			if (Number.isNaN(offset)) return;
 			if (isAnchorStart) setSelectionAnchor(offset);
 			else setSelectionEnd(offset);
@@ -691,7 +701,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			const el = document.elementFromPoint(me.clientX, me.clientY);
 			const span = el?.closest<HTMLElement>("span[data-offset]");
 			if (!span) return;
-			const offset = Number.parseInt(span.dataset.offset!, 10);
+			const offset = Number.parseInt(span.dataset.offset ?? "", 10);
 			if (Number.isNaN(offset)) return;
 			if (isAnchorEnd) setSelectionAnchor(offset);
 			else setSelectionEnd(offset);
@@ -886,9 +896,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const progressBarRef = useRef<HTMLDivElement>(null);
 	// Origin of the current pointer-down gesture — used to detect horizontal intent
 	const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
-	// Minimum horizontal travel (px) before a drag is treated as a scrub.
-	// Below this threshold a vertical swipe-up (home gesture) is ignored.
-	const MIN_SCRUB_PX = 8;
 
 	const scrubToX = useCallback(
 		(clientX: number) => {
@@ -920,17 +927,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		// gesture from accidentally jumping the reading position.
 		pointerDownRef.current = { x: e.clientX, y: e.clientY };
 	}, []);
-
-	/** Returns true when the pointer has moved far enough horizontally to count as a scrub. */
-	const isHorizontalScrub = (
-		origin: { x: number; y: number },
-		clientX: number,
-		clientY: number,
-	) => {
-		const dx = Math.abs(clientX - origin.x);
-		const dy = Math.abs(clientY - origin.y);
-		return dx >= MIN_SCRUB_PX && dx > dy;
-	};
 
 	const handleProgressPointerMove = useCallback(
 		(e: React.PointerEvent<HTMLDivElement>) => {
@@ -1108,6 +1104,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				{contentPending || !content ? (
 					<div style={{ padding: "16px 20px", height: "100%", overflow: "hidden" }}>
 						{skeletonLines.map((style, i) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: static style array, index is stable
 							<div key={i} className="reader-skeleton-line" style={style} />
 						))}
 					</div>
@@ -1206,14 +1203,12 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			)}
 
 			{/* ── Selection handles (fixed position, one at each boundary) ── */}
-			{/* biome-ignore lint/a11y/useKeyWithMouseEvents: touch-only handles */}
 			<div
 				ref={startHandleRef}
 				className="selection-handle selection-handle--start"
 				style={{ display: "none" }}
 				onPointerDown={handleStartHandlePointerDown}
 			/>
-			{/* biome-ignore lint/a11y/useKeyWithMouseEvents: touch-only handles */}
 			<div
 				ref={endHandleRef}
 				className="selection-handle selection-handle--end"

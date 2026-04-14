@@ -17,11 +17,11 @@
  *   drawable-v24/ic_launcher_foreground.xml — Android vector drawable (scales to any size)
  */
 
-import { execSync } from "child_process";
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
-import { tmpdir } from "os";
-import { dirname, join, resolve } from "path";
-import { fileURLToPath } from "url";
+import { execSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -54,10 +54,10 @@ writeFileSync(fgTmp, fgSvg, "utf8");
 function render(src, size, dest) {
 	mkdirSync(dirname(dest), { recursive: true });
 	execSync(`rsvg-convert -w ${size} -h ${size} "${src}" -o "${dest}"`);
-	console.log(`  ${size}x${size} → ${dest.replace(ROOT + "/", "")}`);
+	console.log(`  ${size}x${size} → ${dest.replace(`${ROOT}/`, "")}`);
 }
 
-console.log(`Generating icons from ${ICON_SRC.replace(REPO_ROOT + "/", "")}\n`);
+console.log(`Generating icons from ${ICON_SRC.replace(`${REPO_ROOT}/`, "")}\n`);
 
 // Legacy launcher icons (full icon with background baked in)
 console.log("Launcher icons (ic_launcher + ic_launcher_round):");
@@ -100,12 +100,12 @@ const s = (n) => (n * scale).toFixed(5);
 // Book body path — original d with transform baked in via scale
 // Original transform: matrix(0.67675724,0,0,0.636341,165.29342,172.85054)
 // Combined with our 1024→108 scale: multiply each coordinate accordingly
-const mx = 0.67675724,
-	my = 0.636341,
-	tx = 165.29342,
-	ty = 172.85054;
-const bakeX = (x) => s(x * mx + tx);
-const bakeY = (y) => s(y * my + ty);
+const mx = 0.67675724;
+const my = 0.636341;
+const tx = 165.29342;
+const ty = 172.85054;
+const _bakeX = (x) => s(x * mx + tx);
+const _bakeY = (y) => s(y * my + ty);
 
 // Book shape path points (from inkscape:original-d, pre-LPE):
 // M 510.08,280.32 -265.6,80.64 0.64,378.88 266.24,-78.72 266.88,77.44 V 360.32 Z
@@ -169,6 +169,6 @@ const vectorXml = `<?xml version="1.0" encoding="utf-8"?>
 
 const vectorDest = `${RES}/drawable-v24/ic_launcher_foreground.xml`;
 writeFileSync(vectorDest, vectorXml, "utf8");
-console.log(`\nVector drawable → ${vectorDest.replace(ROOT + "/", "")}`);
+console.log(`\nVector drawable → ${vectorDest.replace(`${ROOT}/`, "")}`);
 
 console.log("\nDone.");

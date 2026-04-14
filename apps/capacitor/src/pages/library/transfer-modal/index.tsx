@@ -66,7 +66,7 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 			setElapsed(0);
 			startTimeRef.current = null;
 		}
-	}, [isOpen, book?.id]);
+	}, [isOpen]);
 
 	// Elapsed ticker — only runs while transferring
 	useEffect(() => {

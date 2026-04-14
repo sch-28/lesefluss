@@ -29,7 +29,9 @@ const candidates = [
 const src = candidates.find(existsSync);
 if (!src) {
 	console.error("ERROR: sql-wasm.wasm not found. Tried:");
-	candidates.forEach((c) => console.error(" ", c));
+	candidates.forEach((c) => {
+		console.error(" ", c);
+	});
 	process.exit(1);
 }
 

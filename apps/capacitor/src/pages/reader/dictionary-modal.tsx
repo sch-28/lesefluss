@@ -63,7 +63,7 @@ const MAX_DEFINITIONS = 3;
 const DictionaryModal: React.FC<DictionaryModalProps> = ({ word, onClose, onSearch, theme }) => {
 	const { data, isPending, isError } = useQuery({
 		queryKey: ["dictionary", word],
-		queryFn: () => fetchDefinition(word!),
+		queryFn: () => fetchDefinition(word as string),
 		enabled: word !== null,
 		staleTime: Number.POSITIVE_INFINITY, // definitions don't change
 	});
@@ -113,12 +113,12 @@ const DictionaryModal: React.FC<DictionaryModalProps> = ({ word, onClose, onSear
 					<div className="dict-entry">
 						{entry.phonetic && <p className="dict-phonetic">{entry.phonetic}</p>}
 
-						{entry.meanings.map((meaning, mi) => (
-							<div key={mi} className="dict-meaning">
+						{entry.meanings.map((meaning) => (
+							<div key={meaning.partOfSpeech} className="dict-meaning">
 								<p className="dict-pos">{meaning.partOfSpeech}</p>
 								<ol className="dict-definitions">
-									{meaning.definitions.slice(0, MAX_DEFINITIONS).map((def, di) => (
-										<li key={di}>
+									{meaning.definitions.slice(0, MAX_DEFINITIONS).map((def) => (
+										<li key={def.definition}>
 											<span className="dict-definition">{def.definition}</span>
 											{def.example && (
 												<span className="dict-example"> &ldquo;{def.example}&rdquo;</span>

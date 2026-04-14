@@ -183,12 +183,12 @@ body.dark .rsvp-action-sheet .action-sheet-container .action-sheet-group {
 }
 
 body.dark .rsvp-action-sheet .action-sheet-container .action-sheet-group-cancel {
-	background: transparent !important;
+	background: transparent;
 }
 
 body.dark .rsvp-action-sheet .action-sheet-cancel {
 	color: #e4e4e4;
-	background: #242424 !important;
+	background: #242424;
 }
 
 body.dark .rsvp-action-sheet .action-sheet-title {
@@ -207,7 +207,7 @@ body.dark .rsvp-action-sheet .action-sheet-destructive {
 
 body.dark .rsvp-action-sheet .action-sheet-button.ion-color-primary[disabled],
 body.dark .rsvp-action-sheet .action-sheet-button[disabled] {
-	color: #555555 !important;
+	color: #555555;
 }
 
 body.dark .rsvp-action-sheet .action-sheet-button.ion-activated {
@@ -330,7 +330,7 @@ ion-tab-bar.tab-bar-hidden {
  * internal shadow-DOM :host(.tab-bar-hidden) toggling on keyboard events.
  * External author styles beat shadow :host — no flash, pure CSS. */
 body.reader-open ion-tab-bar {
-	display: none !important;
+	display: none;
 }
 
 ion-tab-button {
@@ -354,8 +354,8 @@ body.dark ion-tab-button {
 
 /* Push the whole sheet above the home indicator */
 .rsvp-action-sheet .action-sheet-wrapper {
-	padding-bottom: 0 !important;
-	margin-bottom: calc(env(safe-area-inset-bottom) + 8px) !important;
+	padding-bottom: 0;
+	margin-bottom: calc(env(safe-area-inset-bottom) + 8px);
 }
 
 /* Main group: fully rounded pill */
@@ -370,16 +370,16 @@ body.dark ion-tab-button {
 .rsvp-action-sheet .action-sheet-container .action-sheet-group-cancel {
 	border-radius: 16px;
 	margin-top: 8px;
-	margin-bottom: 0 !important;
+	margin-bottom: 0;
 	overflow: hidden;
-	background: transparent !important;
+	background: transparent;
 }
 
 /* Cancel button fills the group completely */
 .rsvp-action-sheet .action-sheet-cancel {
 	color: #000000;
 	font-weight: 600;
-	background: #ffffff !important;
+	background: #ffffff;
 	border-radius: 16px;
 }
 
@@ -402,9 +402,9 @@ body.dark ion-tab-button {
 	color: #000000;
 	border-bottom: 1px solid #f0f0f0;
 	min-height: 54px;
-	padding-top: 0 !important;
-	padding-bottom: 0 !important;
-	contain: none !important;
+	padding-top: 0;
+	padding-bottom: 0;
+	contain: none;
 }
 
 .rsvp-action-sheet .action-sheet-button .action-sheet-button-inner {
@@ -427,7 +427,7 @@ body.dark ion-tab-button {
 /* Disabled button */
 .rsvp-action-sheet .action-sheet-button.ion-color-primary[disabled],
 .rsvp-action-sheet .action-sheet-button[disabled] {
-	color: #bbbbbb !important;
+	color: #bbbbbb;
 	opacity: 1;
 }
 
@@ -839,7 +839,7 @@ ion-modal.reader-theme-sepia ion-item {
 }
 
 .search-result-label {
-	white-space: normal !important;
+	white-space: normal;
 }
 
 .search-snippet {
@@ -944,7 +944,7 @@ ion-modal.reader-theme-sepia ion-item {
 
 /* Active RSVP toggle button styling */
 .rsvp-toggle-active {
-	color: #ff0000 !important;
+	color: #ff0000;
 }
 
 /* ─── Highlights ─────────────────────────────────────────────────────────── */

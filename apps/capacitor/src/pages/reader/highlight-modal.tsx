@@ -42,7 +42,9 @@ const HighlightModal: React.FC<HighlightModalProps> = ({
 }) => {
 	const [color, setColor] = useState<HighlightColor>("yellow");
 	const [note, setNote] = useState("");
-	// Seed local state whenever a different highlight opens
+	// Seed local state whenever a different highlight opens.
+	// Intentionally keyed on id only — re-seeding on every field change would overwrite in-progress edits.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: highlight?.id is the intentional narrow dep
 	useEffect(() => {
 		if (highlight) {
 			const safeColor = (HIGHLIGHT_COLORS as readonly string[]).includes(highlight.color)
@@ -51,7 +53,7 @@ const HighlightModal: React.FC<HighlightModalProps> = ({
 			setColor(safeColor);
 			setNote(highlight.note ?? "");
 		}
-	}, [highlight?.id]); // intentional: only re-seed when a different highlight opens
+	}, [highlight?.id]);
 
 	const handleColorChange = (c: HighlightColor) => {
 		setColor(c);

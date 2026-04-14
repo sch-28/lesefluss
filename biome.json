@@ -7,7 +7,16 @@
 	},
 	"files": {
 		"ignoreUnknown": true,
-		"includes": ["**", "!**/dist/**", "!**/node_modules/**", "!**/android/**", "!**/drizzle/**", "!**/.output/**", "!apps/esp32/**"]
+		"includes": [
+			"**",
+			"!**/dist",
+			"!**/node_modules",
+			"!**/android",
+			"!**/drizzle",
+			"!**/.output",
+			"!apps/esp32",
+			"!apps/web/src/routeTree.gen.ts"
+		]
 	},
 	"formatter": {
 		"enabled": true,
@@ -38,6 +47,7 @@
 				}
 			},
 			"style": {
+				"noDescendingSpecificity": "off",
 				"noParameterAssign": "error",
 				"useAsConstAssertion": "error",
 				"useDefaultParameterLast": "error",

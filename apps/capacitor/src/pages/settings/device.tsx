@@ -31,7 +31,7 @@ import {
 	stop,
 } from "ionicons/icons";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "../../components/toast";
 import { useBLE } from "../../contexts/ble-context";
 import { useSettingsDraft } from "../../hooks/use-settings-draft";
@@ -70,12 +70,12 @@ const DeviceSettings: React.FC = () => {
 
 	const fetchStorageRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
-	const fetchStorage = async () => {
+	const fetchStorage = useCallback(async () => {
 		const result = await ble.readStorage();
 		if (result.success && result.data) {
 			setStorageInfo(result.data);
 		}
-	};
+	}, []);
 
 	fetchStorageRef.current = fetchStorage;
 
@@ -91,7 +91,7 @@ const DeviceSettings: React.FC = () => {
 		} else {
 			setStorageInfo(null);
 		}
-	}, [isConnected]);
+	}, [isConnected, fetchStorage]);
 
 	const handleDisconnect = async () => {
 		await disconnect();

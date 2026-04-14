@@ -196,10 +196,12 @@ const SearchModal: React.FC<SearchModalProps> = ({
 									<p className="search-snippet">
 										{r.parts.map((p, i) =>
 											p.highlight ? (
+												// biome-ignore lint/suspicious/noArrayIndexKey: fixed 3-element [before, match, after]
 												<strong key={i} className="search-match">
 													{p.text}
 												</strong>
 											) : (
+												// biome-ignore lint/suspicious/noArrayIndexKey: fixed 3-element [before, match, after]
 												<span key={i}>{p.text}</span>
 											),
 										)}

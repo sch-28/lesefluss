@@ -7,7 +7,9 @@ import "./theme/variables.css";
 async function bootstrap() {
 	await initWebSqlite();
 
-	ReactDOM.createRoot(document.getElementById("root")!).render(
+	const root = document.getElementById("root");
+	if (!root) throw new Error("Root element #root not found");
+	ReactDOM.createRoot(root).render(
 		<React.StrictMode>
 			<App />
 		</React.StrictMode>,

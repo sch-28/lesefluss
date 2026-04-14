@@ -51,6 +51,8 @@ function applySort(books: Book[], sortBy: SortBy): Book[] {
 				return (b.lastRead ?? b.addedAt) - (a.lastRead ?? a.addedAt);
 			case "progress":
 				return readingProgress(b) - readingProgress(a);
+			default:
+				return 0;
 		}
 	});
 }

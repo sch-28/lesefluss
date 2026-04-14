@@ -56,7 +56,7 @@ const ConfirmPhase: React.FC<Props> = ({ book, activeBook, onUpload }) => {
 			{/* Replacement warning */}
 			{replacingBook && (
 				<div className="rounded-md border border-[#e0a800] bg-[#fffbf0] px-4 py-3 text-[#7d5a00] text-sm">
-					<span className="font-semibold">"{activeBook!.title}"</span> is currently on the device
+					<span className="font-semibold">"{activeBook?.title}"</span> is currently on the device
 					and will be removed.
 				</div>
 			)}

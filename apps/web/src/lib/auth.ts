@@ -15,7 +15,9 @@ export const auth = betterAuth({
 		enabled: true,
 		requireEmailVerification: false,
 	},
+	// biome-ignore lint/style/noNonNullAssertion: required env vars, server fails at startup if missing
 	secret: process.env.BETTER_AUTH_SECRET!,
+	// biome-ignore lint/style/noNonNullAssertion: required env vars, server fails at startup if missing
 	baseURL: process.env.BETTER_AUTH_URL!,
 	basePath: "/api/auth",
 	plugins: [

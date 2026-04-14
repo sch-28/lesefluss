@@ -50,11 +50,16 @@ import DeviceSettings from "./pages/settings/device";
 import RSVPSettings from "./pages/settings/rsvp";
 import { queryClient } from "./services/query-client";
 
-const slideAnimation = (_: HTMLElement, opts: any) => {
+interface SlideAnimationOpts {
+	enteringEl: HTMLElement;
+	leavingEl: HTMLElement;
+	direction: string;
+}
+
+const slideAnimation = (_: HTMLElement, opts: SlideAnimationOpts) => {
 	const DURATION = 300;
 	const EASING = "cubic-bezier(0.32, 0.72, 0, 1)";
-	const enteringEl = opts.enteringEl as HTMLElement;
-	const leavingEl = opts.leavingEl as HTMLElement;
+	const { enteringEl, leavingEl } = opts;
 	const isGoingBack = opts.direction === "back";
 
 	const enterFrom = isGoingBack ? "-30%" : "100%";

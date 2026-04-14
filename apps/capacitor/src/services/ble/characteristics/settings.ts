@@ -60,25 +60,27 @@ export async function readSettings(): Promise<BLEResult<Partial<Settings>>> {
 	}
 }
 
+type WriteableSettings = Omit<Settings, "id" | "updatedAt">;
+
 /** Write app settings to the device. */
-export async function writeSettings(settings: Partial<Settings>): Promise<BLEResult> {
+export async function writeSettings(settings: WriteableSettings): Promise<BLEResult> {
 	try {
 		const device = bleClient.assertConnected();
 
 		const esp32: ESP32Settings = {
-			wpm: settings.wpm!,
-			delay_comma: settings.delayComma!,
-			delay_period: settings.delayPeriod!,
-			accel_start: settings.accelStart!,
-			accel_rate: settings.accelRate!,
-			x_offset: settings.xOffset!,
-			word_offset: settings.wordOffset!,
-			inverse: settings.inverse!,
-			ble_on: settings.bleOn!,
-			dev_mode: settings.devMode!,
-			display_off_timeout: settings.displayOffTimeout!,
-			deep_sleep_timeout: settings.deepSleepTimeout!,
-			brightness: settings.brightness!,
+			wpm: settings.wpm,
+			delay_comma: settings.delayComma,
+			delay_period: settings.delayPeriod,
+			accel_start: settings.accelStart,
+			accel_rate: settings.accelRate,
+			x_offset: settings.xOffset,
+			word_offset: settings.wordOffset,
+			inverse: settings.inverse,
+			ble_on: settings.bleOn,
+			dev_mode: settings.devMode,
+			display_off_timeout: settings.displayOffTimeout,
+			deep_sleep_timeout: settings.deepSleepTimeout,
+			brightness: settings.brightness,
 		};
 
 		await BleClient.write(

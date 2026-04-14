@@ -17,10 +17,10 @@
  * Redeploy the APK once after running this script for the first time.
  */
 
-import { execSync, spawn } from "child_process";
-import { readFileSync, writeFileSync } from "fs";
-import { dirname, resolve } from "path";
-import { fileURLToPath } from "url";
+import { execSync, spawn } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -40,7 +40,7 @@ function restoreConfig() {
 
 // --- Patch config ---
 const patched = { ...config, server: { url: serverUrl, cleartext: true } };
-writeFileSync(CONFIG_PATH, JSON.stringify(patched, null, 2) + "\n", "utf8");
+writeFileSync(CONFIG_PATH, `${JSON.stringify(patched, null, 2)}\n`, "utf8");
 console.log(`Patched capacitor.config.json → ${serverUrl}`);
 
 // --- cap copy android ---
