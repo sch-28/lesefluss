@@ -2,7 +2,7 @@
 
 MicroPython firmware for two hardware variants. Shows books word-by-word with focal letter highlighting, acceleration, and BLE management.
 
-For project overview, roadmap, and shared settings see `../../agents.md`.
+For project overview, roadmap, and shared settings see `../AGENTS.md`.
 
 ## Architecture
 
@@ -25,9 +25,12 @@ Set `HARDWARE` in `src/config.py` to select the active variant. All pin constant
 - BOOT button on GPIO 0
 - GPIO 38 must be pulled HIGH before display init (newer board revisions)
 - Software brightness via `display.brightness()` — no PWM pin
+- Default brightness 60% (lower than ST7789's 100% to reduce burn-in risk)
 - GPIO 4 has a voltage divider for battery ADC
 - Driver (`rm67162`) is baked into the custom MicroPython firmware — not a `.py` file
 - Firmware: download `firmware.bin` from https://github.com/nspsck/RM67162_Micropython_QSPI and place it at `etc/firmware-amoled.bin`
+
+**AMOLED burn-in note:** The focal-letter indicator vlines (`display.py:210–211`) are drawn at fixed x positions above and below the focal letter on every word render. These are the highest static burn-in risk on AMOLED. Making them configurable or skipping them on AMOLED is an open improvement.
 
 ## File Structure
 
@@ -48,9 +51,10 @@ src/
     __init__.py      # Re-exports DisplayManager, ButtonHandler
     display.py       # ST7789 ops, inverse mode, text drawing, RSVP word rendering
     button.py        # Debounced short/long press detection
+    encoder.py       # Interrupt-based quadrature decode + debounced button (EC11)
   reader/
     __init__.py      # Re-exports RSVPReader, TextStorage, WordReader
-    rsvp.py          # Slim RSVPReader: word iteration, delay calc, acceleration
+    rsvp.py          # RSVPReader + ScrubWindow (encoder scrubbing)
     storage.py       # TextStorage + WordReader (streaming)
   ble/
     ble_config.py          # Generated UUIDs/constants (do not edit — run pnpm setup in packages/ble-config)
@@ -71,16 +75,15 @@ etc/
 ## Key Classes
 
 **App** (`src/app/__init__.py`)
-- Single-loop state machine: idle → reading → paused
-- `run()` — infinite loop: polls BLE, dispatches to `_tick_idle`, `_tick_reading`, `_tick_paused`
+- Single-loop state machine: idle → reading → scrubbing
+- `run()` — infinite loop: polls BLE, dispatches to `_tick_idle`, `_tick_reading`, `_tick_scrubbing`
 - Handles BLE transfer overlay and auto-shutdown on idle
-- Short press: start / pause / resume
+- Short press: start / pause / resume; encoder turn from reading → scrubbing
 
 **Homescreen** (`src/app/homescreen.py`)
 - Pure drawing functions, no state
 - `draw_homescreen(display, title, progress_pct, wpm, paused)` — title, progress bar, stats, hint
 - `draw_transfer_progress(display, pct, bytes_done, total_bytes)` — full-screen BLE transfer overlay
-- Clean minimal design on 320x170 display (16x32 font)
 
 **DisplayManager** (`src/hw/display.py`)
 - Supports ST7789 (SPI + PWM backlight) and RM67162 (QSPI + software brightness). Driver selected once in `__init__` via `config.HARDWARE`; all public methods are driver-agnostic.
@@ -95,6 +98,12 @@ etc/
 - `check_press_state(long_ms)` — returns `'short'`, `'long'`, or `None`
 - `wait_for_press()` — blocking wait
 
+**RotaryEncoderHandler** (`src/hw/encoder.py`)
+- Interrupt-based quadrature decode + debounced button (EC11 on GPIO 26/33/25)
+- `get_steps()` — int (positive=CW, negative=CCW), resets counter
+- `check_press_state(long_ms)` — `'short'`/`'long'`/`None`
+- Encoder wiring: CLK→GPIO 26, DT→GPIO 33, SW→GPIO 25 (all internal pull-ups, common→GND)
+
 **RSVPReader** (`src/reader/rsvp.py`)
 - Thin helper — no loop, no pause, no button handling
 - `load_text(text=None, resume=True)` — opens book or sample text
@@ -104,9 +113,16 @@ etc/
 - `save_position()` / `get_progress_pct()` / `cleanup()`
 - `gc.collect()` every 100 words to prevent fragmentation
 
+**ScrubWindow** (`src/reader/rsvp.py`)
+- In-memory window of `(byte_pos, word)` pairs — no file I/O per encoder step
+- Loads ~100 words (50 before, 50 after) centered on current position
+- `step(n)` — move ±1, auto-extends at window edges
+- `current_byte_pos()` — exact word-start byte for reopening WordReader
+- Encoder turn → enter scrub; encoder/BOOT button → resume reading from scrub position
+
 **WordReader** (`src/reader/storage.py`)
 - Streams words one at a time — never loads full file into RAM
-- `open(byte_position)` — seeks instantly to saved position
+- `open(byte_position, skip_boundary=False)` — seeks instantly to saved position; `skip_boundary=False` when opening from ScrubWindow (already at exact word start)
 - `next_word()` — returns next word with buffering
 - `get_position()` — current byte offset for saving
 - Buffer capped at 1000 chars with error recovery
@@ -130,11 +146,14 @@ etc/
 
 Settings in `src/config.py`, device overrides in `config_override.py`. Settings persist across reboots. Changeable via BLE.
 
-See shared settings table in `../../agents.md`.
+See shared settings table in `../AGENTS.md`.
 
-## Button Controls
+## Button / Encoder Controls
 
-- **Short press** — start / pause / resume
+- **Short press (BOOT or encoder button)** — start / pause / resume; in scrub mode → start reading from scrub position
+- **Encoder turn (reading)** — enter scrub mode (word frozen, step ±1 per detent)
+- **Encoder turn (idle)** — enter scrub mode directly
+- **Inactivity timeout in scrub** — auto-starts reading from current scrub position
 
 ## Dev Mode
 
@@ -181,6 +200,7 @@ Create `devmode` file on device. Boot shows "DEV MODE" and skips auto-start — 
 |-----------|-------|
 | BLE stack | ~30–40KB |
 | WordReader buffer | ~1KB |
+| ScrubWindow (~100 words) | ~3KB |
 | JSON payload | ~100 bytes |
 | Everything else | remaining, managed with gc.collect() |
 
@@ -188,9 +208,9 @@ Call `gc.collect()` before/after BLE ops and every 100 words during reading.
 
 ## Battery & Power
 
-**Current state:** no voltage monitoring (GPIO 34/35/36/39 all read 0V — no voltage divider on board). Blue LED indicates charging when USB connected.
+**Current state:** no voltage monitoring on ST7789 (GPIO 34/35/36/39 all read 0V — no voltage divider on board). AMOLED (T-Display-S3) has GPIO 4 voltage divider but it's not yet used. Blue LED indicates charging when USB connected.
 
-**To add battery level display:** solder 2x 100kΩ resistors as voltage divider: `Battery+ → [100kΩ] → GPIO35 → [100kΩ] → GND`. Halves 3.0–4.2V to 1.5–2.1V (safe for ESP32 ADC).
+**To add battery level display (ST7789):** solder 2x 100kΩ resistors as voltage divider: `Battery+ → [100kΩ] → GPIO35 → [100kΩ] → GND`. Halves 3.0–4.2V to 1.5–2.1V (safe for ESP32 ADC).
 
 **Power consumption (1000mAh battery):**
 
@@ -208,7 +228,7 @@ Deep sleep is implemented. Two-stage idle: display turns off after `AUTO_SHUTDOW
 |---------|-------|-----|
 | Shows sample text after upload | Binary read failed | Use `'rb'` mode + decode |
 | Position not resuming | Byte offset not saved | Check `position.txt` contents |
-| WiFi page times out | HTML sent in one block | Stream template line-by-line |
 | Memory error on large books | File loaded into RAM | Use `WordReader` streaming |
 | Upload fails silently | Socket not cleaned up | `gc.collect()` + 0.2s delay |
 | Position file deleted | OOM during save | `gc.collect()` before file write |
+| BLE drops at window_size > 2 | Small NimBLE buffers in AMOLED firmware | Keep `window_size=2` max on AMOLED; ST7789 handles 4 fine |

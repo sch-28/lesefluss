@@ -6,14 +6,19 @@ Monorepo: ESP32 hardware speed reader + mobile companion app.
 
 ```
 rsvp/
+├── agents/
+│   ├── esp32.md        # ESP32 firmware reference
+│   ├── capacitor.md    # Capacitor app reference
+│   ├── web.md          # Website reference + roadmap
+│   └── roadmap.md      # Publishing + business roadmap (Play Store, DIY guide, monetisation)
 ├── apps/
-│   ├── esp32/          # MicroPython ESP32 RSVP reader       → apps/esp32/agents.md
-│   └── capacitor/      # Ionic React mobile companion app     → apps/capacitor/agents.md
+│   ├── esp32/          # MicroPython ESP32 RSVP reader
+│   └── capacitor/      # Ionic React mobile companion app
 ├── packages/
 │   └── ble-config/     # Shared BLE UUIDs (workspace package)
 ├── resources/
 │   └── icon.svg        # Master app icon (1024×1024, edit this)
-└── agents.md           # This file
+└── AGENTS.md           # This file
 ```
 
 ## First-time setup
@@ -133,6 +138,8 @@ Touch these files in order:
 9. **`apps/capacitor/src/pages/settings.tsx`** — add the UI control (slider or toggle)
 
 ## Roadmap
+
+Feature roadmap below. For publishing, Play Store, and monetisation see `agents/roadmap.md`.
 
 ### Phase 1 — BLE Integration ✅
 - [x] Settings UI matching ESP32 options

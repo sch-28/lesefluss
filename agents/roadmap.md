@@ -1,5 +1,7 @@
 # Publishing Roadmap
 
+Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGENTS.md`.
+
 ## Phase 1 — Finish the App
 > Blocking for Play Store launch
 
