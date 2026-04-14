@@ -12,12 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as CustomScriptDotjsRouteImport } from './routes/customScript[.]js'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrderIndexRouteImport } from './routes/order/index'
+import { Route as LoginIndexRouteImport } from './routes/login/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DiyIndexRouteImport } from './routes/diy/index'
 import { Route as DeviceIndexRouteImport } from './routes/device/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as ApiUsersRouteImport } from './routes/api/users'
 import { Route as ApiUsersUserIdRouteImport } from './routes/api/users.$userId'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const CustomScriptDotjsRoute = CustomScriptDotjsRouteImport.update({
   id: '/customScript.js',
@@ -32,6 +34,11 @@ const IndexRoute = IndexRouteImport.update({
 const OrderIndexRoute = OrderIndexRouteImport.update({
   id: '/order/',
   path: '/order/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginIndexRoute = LoginIndexRouteImport.update({
+  id: '/login/',
+  path: '/login/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocsIndexRoute = DocsIndexRouteImport.update({
@@ -64,6 +71,11 @@ const ApiUsersUserIdRoute = ApiUsersUserIdRouteImport.update({
   path: '/$userId',
   getParentRoute: () => ApiUsersRoute,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -73,7 +85,9 @@ export interface FileRoutesByFullPath {
   '/device/': typeof DeviceIndexRoute
   '/diy/': typeof DiyIndexRoute
   '/docs/': typeof DocsIndexRoute
+  '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
 export interface FileRoutesByTo {
@@ -84,7 +98,9 @@ export interface FileRoutesByTo {
   '/device': typeof DeviceIndexRoute
   '/diy': typeof DiyIndexRoute
   '/docs': typeof DocsIndexRoute
+  '/login': typeof LoginIndexRoute
   '/order': typeof OrderIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
 export interface FileRoutesById {
@@ -96,7 +112,9 @@ export interface FileRoutesById {
   '/device/': typeof DeviceIndexRoute
   '/diy/': typeof DiyIndexRoute
   '/docs/': typeof DocsIndexRoute
+  '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
 export interface FileRouteTypes {
@@ -109,7 +127,9 @@ export interface FileRouteTypes {
     | '/device/'
     | '/diy/'
     | '/docs/'
+    | '/login/'
     | '/order/'
+    | '/api/auth/$'
     | '/api/users/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -120,7 +140,9 @@ export interface FileRouteTypes {
     | '/device'
     | '/diy'
     | '/docs'
+    | '/login'
     | '/order'
+    | '/api/auth/$'
     | '/api/users/$userId'
   id:
     | '__root__'
@@ -131,7 +153,9 @@ export interface FileRouteTypes {
     | '/device/'
     | '/diy/'
     | '/docs/'
+    | '/login/'
     | '/order/'
+    | '/api/auth/$'
     | '/api/users/$userId'
   fileRoutesById: FileRoutesById
 }
@@ -143,7 +167,9 @@ export interface RootRouteChildren {
   DeviceIndexRoute: typeof DeviceIndexRoute
   DiyIndexRoute: typeof DiyIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
+  LoginIndexRoute: typeof LoginIndexRoute
   OrderIndexRoute: typeof OrderIndexRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -167,6 +193,13 @@ declare module '@tanstack/react-router' {
       path: '/order'
       fullPath: '/order/'
       preLoaderRoute: typeof OrderIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login/': {
+      id: '/login/'
+      path: '/login'
+      fullPath: '/login/'
+      preLoaderRoute: typeof LoginIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/docs/': {
@@ -211,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiUsersUserIdRouteImport
       parentRoute: typeof ApiUsersRoute
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -234,7 +274,9 @@ const rootRouteChildren: RootRouteChildren = {
   DeviceIndexRoute: DeviceIndexRoute,
   DiyIndexRoute: DiyIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
+  LoginIndexRoute: LoginIndexRoute,
   OrderIndexRoute: OrderIndexRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

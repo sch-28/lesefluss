@@ -6,8 +6,8 @@
 		"useIgnoreFile": false
 	},
 	"files": {
-		"ignoreUnknown": false,
-		"includes": ["**", "!**/dist", "!**/node_modules", "!**/android", "!**/drizzle", "!apps/esp32"]
+		"ignoreUnknown": true,
+		"includes": ["**", "!**/dist/**", "!**/node_modules/**", "!**/android/**", "!**/drizzle/**", "!**/.output/**", "!apps/esp32/**"]
 	},
 	"formatter": {
 		"enabled": true,

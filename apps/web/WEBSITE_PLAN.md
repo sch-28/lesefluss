@@ -57,7 +57,9 @@ Single-page docs with sidebar navigation (client-side tab switching). Five secti
 ### `/diy` → redirects to `/device` ✅
 ### `/order` → redirects to `/device` ✅
 
-### `/login` — not started
+### `/login` ✅
+Sign-in / sign-up page with tab toggle. Better Auth email+password. Redirects to `/` post-login (update to `/account` in Phase 3).
+
 ### `/account` (auth-gated) — not started
 User account page: connected devices, sync status, danger zone (delete account, export data).
 
@@ -66,10 +68,10 @@ User account page: connected devices, sync status, danger zone (delete account, 
 ## Backend Infrastructure
 
 ### Stack
-- **Runtime**: TanStack Start server functions (already in place)
-- **Database**: PostgreSQL via Drizzle ORM (`drizzle-orm/node-postgres`)
-- **Auth**: Better Auth (self-hosted, fits VPS deployment)
-- **Deployment**: Docker on VPS (Dockerfile already scaffolded)
+- **Runtime**: TanStack Start server functions ✅
+- **Database**: PostgreSQL via Drizzle ORM (`drizzle-orm/node-postgres`) ✅
+- **Auth**: Better Auth v1.6.x (email+password, self-hosted, Drizzle adapter, `tanstackStartCookies` plugin) ✅
+- **Deployment**: Docker on VPS (Dockerfile already scaffolded) ✅
 
 ### Database Schema (Postgres)
 
@@ -163,11 +165,11 @@ Current `/docs` is a single TSX file with inline content — good enough for now
 3. ~~Rename `/diy` → `/device`, reframe as free guide~~
 4. ~~Start `/docs` with at least the build guide~~
 
-### Phase 2 — Backend Foundation
-5. Set up Postgres (Docker Compose for local dev, VPS for prod)
-6. Drizzle schema + migrations
-7. Better Auth integration
-8. `/login` page on website
+### Phase 2 — Backend Foundation ✅
+<!-- 5. Set up Postgres (Docker Compose for local dev, VPS for prod) --> NO, instead we should just connect to an existing postgres
+6. ~~Drizzle schema + migrations~~ — `src/db/schema.ts` (sync tables) + `src/db/auth-schema.ts` (Better Auth, generated via `pnpx auth@1.6.3 generate`); `db:push` / `db:generate` / `db:migrate` scripts added
+7. ~~Better Auth integration~~ — `src/lib/auth.ts` (server), `src/lib/auth-client.ts` (browser), `src/routes/api/auth/$.ts` catch-all handler, `tanstackStartCookies` plugin wired
+8. ~~`/login` page on website~~
 
 ### Phase 3 — Sync
 9. `/api/sync` endpoints
