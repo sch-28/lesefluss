@@ -35,6 +35,7 @@ export const settings = sqliteTable("settings", {
 	readerFontFamily: text("reader_font_family").notNull().default("sans"),
 	readerLineSpacing: real("reader_line_spacing").notNull().default(1.8),
 	readerMargin: integer("reader_margin").notNull().default(20),
+	showReadingTime: integer("show_reading_time", { mode: "boolean" }).notNull().default(true),
 	updatedAt: integer("updated_at").notNull(),
 });
 

@@ -1019,11 +1019,14 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	const progressPct = book.size > 0 ? Math.min(100, (progressOffset / book.size) * 100) : 0;
 
+	const showReadingTime = dbSettings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
 	const estimateWpm = readerMode === "rsvp" ? rsvpSettings.wpm : 250;
 	const bookMinutesRemaining =
-		totalWordCount > 0 ? (totalWordCount * (1 - progressPct / 100)) / estimateWpm : 0;
+		showReadingTime && totalWordCount > 0
+			? (totalWordCount * (1 - progressPct / 100)) / estimateWpm
+			: 0;
 	let chapterMinutesRemaining: number | null = null;
-	if (currentChapterIndex >= 0 && contentBytes) {
+	if (showReadingTime && currentChapterIndex >= 0 && contentBytes) {
 		const ch = chapters[currentChapterIndex];
 		const chapterEnd = chapters[currentChapterIndex + 1]?.startByte ?? contentBytes.length;
 		const chapterProgress =

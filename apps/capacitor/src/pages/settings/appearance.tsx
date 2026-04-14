@@ -9,6 +9,7 @@ import {
 	IonListHeader,
 	IonPage,
 	IonTitle,
+	IonToggle,
 	IonToolbar,
 } from "@ionic/react";
 import type React from "react";
@@ -29,10 +30,12 @@ const AppearanceSettings: React.FC = () => {
 		fontFamily,
 		lineSpacing,
 		margin,
+		showReadingTime,
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
 		setFontFamily,
+		setShowReadingTime,
 	} = useAppearanceSettings();
 
 	return (
@@ -164,6 +167,15 @@ const AppearanceSettings: React.FC = () => {
 								</button>
 							</div>
 						</div>
+					</IonItem>
+
+					<IonItem>
+						<IonLabel>Show time remaining</IonLabel>
+						<IonToggle
+							slot="end"
+							checked={showReadingTime}
+							onIonChange={(e) => setShowReadingTime(e.detail.checked)}
+						/>
 					</IonItem>
 				</IonList>
 			</IonContent>

@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS = {
 	READER_FONT_FAMILY: "sans", // 'sans' | 'serif'
 	READER_LINE_SPACING: 1.8, // line-height multiplier (1.2–2.4)
 	READER_MARGIN: 20, // horizontal padding px (8–48)
+	SHOW_READING_TIME: true, // show time remaining in progress bar
 } as const;
 
 /**

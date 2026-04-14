@@ -25,6 +25,7 @@ export function useAppearanceSettings() {
 
 	const fontSize = settings?.readerFontSize ?? DEFAULT_SETTINGS.READER_FONT_SIZE;
 	const fontFamily = settings?.readerFontFamily ?? DEFAULT_SETTINGS.READER_FONT_FAMILY;
+	const showReadingTime = settings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
 	// round1 applied on read so disabled comparisons are reliable despite floating-point drift
 	const lineSpacing = round1(settings?.readerLineSpacing ?? DEFAULT_SETTINGS.READER_LINE_SPACING);
 	const margin = settings?.readerMargin ?? DEFAULT_SETTINGS.READER_MARGIN;
@@ -63,14 +64,20 @@ export function useAppearanceSettings() {
 		mutate({ readerFontFamily: v });
 	};
 
+	const setShowReadingTime = (v: boolean) => {
+		mutate({ showReadingTime: v });
+	};
+
 	return {
 		fontSize,
 		fontFamily,
 		lineSpacing,
 		margin,
+		showReadingTime,
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
 		setFontFamily,
+		setShowReadingTime,
 	};
 }

@@ -20,10 +20,12 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 		fontFamily,
 		lineSpacing,
 		margin,
+		showReadingTime,
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
 		setFontFamily,
+		setShowReadingTime,
 	} = useAppearanceSettings();
 
 	return (
@@ -138,6 +140,16 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 								+
 							</button>
 						</div>
+					</div>
+					<div className="ap-row">
+						<span className="ap-row-label">Time remaining</span>
+						<button
+							type="button"
+							className={`ap-chip${showReadingTime ? " ap-chip--active" : ""}`}
+							onClick={() => setShowReadingTime(!showReadingTime)}
+						>
+							{showReadingTime ? "On" : "Off"}
+						</button>
 					</div>
 				</div>
 			</div>
