@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { bearer } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { db } from "~/db";
 import * as authSchema from "~/db/auth-schema";
@@ -22,10 +23,7 @@ export const auth = betterAuth({
 	baseURL: process.env.BETTER_AUTH_URL!,
 	basePath: "/api/auth",
 	trustedOrigins: ALLOWED_ORIGINS,
-	plugins: [
-		// REQUIRED for TanStack Start: handles cookie setting on sign-in/sign-up
-		tanstackStartCookies(),
-	],
+	plugins: [tanstackStartCookies(), bearer()],
 });
 
 export type Session = typeof auth.$Infer.Session;

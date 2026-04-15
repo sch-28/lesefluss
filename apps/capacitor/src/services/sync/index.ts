@@ -61,15 +61,22 @@ export async function signIn(
 ): Promise<{ token: string; email: string }> {
 	if (!syncAuthClient) throw new Error("Sync not configured");
 
-	const result = await syncAuthClient.signIn.email({ email, password });
-	if (result.error) throw new Error(result.error.message ?? "Sign-in failed");
+	try {
+		console.log("[auth] signIn attempt", { email, url: SYNC_URL });
+		const result = await syncAuthClient.signIn.email({ email, password });
+		console.log("[auth] signIn result", JSON.stringify(result, null, 2));
+		if (result.error) throw new Error(result.error.message ?? "Sign-in failed");
 
-	const token = result.data.token;
-	if (!token) throw new Error("No session token returned");
+		const token = result.data.token;
+		if (!token) throw new Error("No session token returned");
 
-	await saveToken(token);
-	await Preferences.set({ key: USER_EMAIL_KEY, value: email });
-	return { token, email };
+		await saveToken(token);
+		await Preferences.set({ key: USER_EMAIL_KEY, value: email });
+		return { token, email };
+	} catch (err) {
+		console.error("[auth] signIn error", err, String(err));
+		throw err;
+	}
 }
 
 export async function signUp(
