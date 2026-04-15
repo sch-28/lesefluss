@@ -161,7 +161,7 @@ const DeviceSettings: React.FC = () => {
 				</IonToolbar>
 			</IonHeader>
 			<IonContent className="ion-padding">
-				<IonList>
+				<IonList className="content-container">
 					<IonListHeader>
 						<IonLabel>Display</IonLabel>
 					</IonListHeader>

@@ -1307,3 +1307,129 @@ ion-popover.appearance-popover {
 	min-width: 40px;
 	text-align: right;
 }
+
+/* ── Library toolbar ── */
+.library-toolbar {
+	display: flex;
+	align-items: center;
+	width: 100%;
+}
+
+.library-toolbar .library-filter {
+	flex: 1;
+}
+
+.library-toolbar ion-buttons {
+	flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Desktop layout (≥768px)
+ * Sidebar nav replaces the bottom tab bar. Content pages get max-width
+ * constraints for comfortable reading.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Sidebar (hidden on mobile) ── */
+.desktop-sidebar {
+	display: none;
+}
+
+/* ── Shared content max-width container ── */
+.content-container {
+	max-width: 900px;
+	width: 100%;
+}
+
+@media (min-width: 768px) {
+	/* Show sidebar, hide tab bar */
+	.desktop-sidebar {
+		display: flex;
+		flex-direction: column;
+		width: 220px;
+		min-width: 220px;
+		height: 100%;
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: 100;
+		background: var(--ion-background-color, #ffffff);
+		border-right: 1px solid var(--ion-border-color, #d9d9d9);
+		padding: 16px 0;
+	}
+
+	.desktop-sidebar-brand {
+		display: block;
+		padding: 8px 20px 24px;
+		font-size: 1.25rem;
+		font-weight: 700;
+		letter-spacing: 0.05em;
+		color: inherit;
+		text-decoration: none;
+	}
+
+	a.desktop-sidebar-brand:hover {
+		opacity: 0.7;
+	}
+
+	.desktop-sidebar-item {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 10px 20px;
+		width: 100%;
+		font-size: 0.95rem;
+		color: var(--ion-color-medium, #666);
+		background: none;
+		border: none;
+		cursor: pointer;
+		text-align: left;
+		transition: background 0.15s, color 0.15s;
+	}
+
+	.desktop-sidebar-item:hover {
+		background: var(--ion-color-light, #f5f5f5);
+	}
+
+	.desktop-sidebar-item.active {
+		color: var(--ion-text-color, #000);
+		font-weight: 600;
+	}
+
+	.desktop-sidebar-item ion-icon {
+		font-size: 1.25rem;
+	}
+
+	/* Push main content right of sidebar */
+	ion-router-outlet.desktop-main {
+		margin-left: 220px;
+	}
+
+	/* Compact library filter segment on desktop */
+	.library-toolbar .library-filter {
+		flex: none;
+		width: auto;
+		max-width: 360px;
+	}
+
+	.library-toolbar .library-filter ion-segment-button {
+		--padding-start: 12px;
+		--padding-end: 12px;
+		min-width: 0;
+		font-size: 0.85rem;
+	}
+
+	/* Hide bottom tab bar on desktop */
+	ion-tab-bar {
+		display: none !important;
+	}
+
+	/* Dark theme sidebar overrides */
+	body.dark .desktop-sidebar {
+		background: var(--ion-background-color, #1a1a1a);
+		border-right-color: var(--ion-border-color, #333);
+	}
+
+	body.dark .desktop-sidebar-item:hover {
+		background: #242424;
+	}
+}

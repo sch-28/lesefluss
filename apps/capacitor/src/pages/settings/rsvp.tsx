@@ -43,7 +43,7 @@ const RSVPSettings: React.FC = () => {
 				</IonToolbar>
 			</IonHeader>
 			<IonContent className="ion-padding">
-				<IonList>
+				<IonList className="content-container">
 					<IonListHeader>
 						<IonLabel>Reading Speed</IonLabel>
 					</IonListHeader>
@@ -157,7 +157,7 @@ const RSVPSettings: React.FC = () => {
 					</IonItem>
 				</IonList>
 
-				<div className="ion-padding">
+				<div className="ion-padding content-container">
 					<IonButton expand="block" onClick={handleSave}>
 						Save Settings
 					</IonButton>

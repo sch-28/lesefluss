@@ -156,40 +156,43 @@ const Library: React.FC = () => {
 		<IonPage>
 			<IonHeader class="ion-no-border">
 				<IonToolbar>
-					<IonSegment
-						value={filterBy}
-						onIonChange={(e) => {
-							const v = e.detail.value;
-							if (v) setFilterBy(v as FilterBy);
-						}}
-					>
-						{FILTER_OPTIONS.map((f) => (
-							<IonSegmentButton key={f} value={f}>
-								<IonLabel>{FILTER_LABELS[f]}</IonLabel>
-							</IonSegmentButton>
-						))}
-					</IonSegment>
-					<IonButtons slot="end">
-						<IonButton id="sort-trigger" title="Sort">
-							<IonIcon slot="icon-only" icon={swapVerticalOutline} />
-						</IonButton>
-						{!IS_WEB && (
-							<>
-								<BLEIndicator />
-								<IonButton
-									disabled={!isConnected || syncing || isTransferring}
-									onClick={handleRefresh}
-									title="Sync position from device"
-								>
-									{syncing ? (
-										<IonSpinner name="crescent" slot="icon-only" />
-									) : (
-										<IonIcon slot="icon-only" icon={refreshOutline} />
-									)}
-								</IonButton>
-							</>
-						)}
-					</IonButtons>
+					<div className="library-toolbar">
+						<IonSegment
+							className="library-filter"
+							value={filterBy}
+							onIonChange={(e) => {
+								const v = e.detail.value;
+								if (v) setFilterBy(v as FilterBy);
+							}}
+						>
+							{FILTER_OPTIONS.map((f) => (
+								<IonSegmentButton key={f} value={f}>
+									<IonLabel>{FILTER_LABELS[f]}</IonLabel>
+								</IonSegmentButton>
+							))}
+						</IonSegment>
+						<IonButtons>
+							<IonButton id="sort-trigger" title="Sort">
+								<IonIcon slot="icon-only" icon={swapVerticalOutline} />
+							</IonButton>
+							{!IS_WEB && (
+								<>
+									<BLEIndicator />
+									<IonButton
+										disabled={!isConnected || syncing || isTransferring}
+										onClick={handleRefresh}
+										title="Sync position from device"
+									>
+										{syncing ? (
+											<IonSpinner name="crescent" slot="icon-only" />
+										) : (
+											<IonIcon slot="icon-only" icon={refreshOutline} />
+										)}
+									</IonButton>
+								</>
+							)}
+						</IonButtons>
+					</div>
 				</IonToolbar>
 			</IonHeader>
 			<IonContent>
@@ -219,7 +222,7 @@ const Library: React.FC = () => {
 					</div>
 				) : (
 					/* ── Book grid ── */
-					<div className="grid grid-cols-3 gap-4 p-4 pb-20">
+					<div className="content-container grid grid-cols-3 gap-4 p-4 pb-20 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
 						{visible.map((book) => {
 							const progress = readingProgress(book);
 							const started = book.position > 0;

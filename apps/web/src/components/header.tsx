@@ -13,7 +13,6 @@ import {
 import { signOut, useSession } from "~/lib/auth-client";
 
 const NAV_LINKS = [
-	{ to: "/app" as const, label: "App", icon: Smartphone },
 	{ to: "/device" as const, label: "Device", icon: Cpu },
 	{ to: "/docs" as const, label: "Docs", icon: FileText },
 ];
@@ -133,6 +132,13 @@ export function Header() {
 										</div>
 									</DropdownMenuLabel>
 									<DropdownMenuSeparator />
+									<DropdownMenuItem asChild>
+										<a href="/app">
+											<Smartphone className="size-4" />
+											Open App
+										</a>
+									</DropdownMenuItem>
+									<DropdownMenuSeparator />
 									<DropdownMenuItem variant="destructive" onSelect={handleSignOut}>
 										<LogOut />
 										Sign out
@@ -185,6 +191,12 @@ export function Header() {
 							<GithubIcon className="size-4" />
 							GitHub
 						</a>
+						{user && (
+							<a href="/app" className={navLinkClass(true)}>
+								<Smartphone className="size-4" />
+								Open App
+							</a>
+						)}
 						{!user && (
 							<Link to="/login" className={navLinkClass(true)}>
 								<LogIn className="size-4" />

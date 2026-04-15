@@ -1114,6 +1114,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						style={
 							{
 								height: "100%",
+								maxWidth: "700px",
+								margin: "0 auto",
 								"--reader-line-height": String(readerLineSpacing),
 							} as React.CSSProperties
 						}

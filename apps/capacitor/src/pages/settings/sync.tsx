@@ -80,7 +80,7 @@ const SyncSettings: React.FC = () => {
 			</IonHeader>
 			<IonContent>
 				{isLoggedIn ? (
-					<IonList>
+					<IonList className="content-container">
 						<IonListHeader>
 							<IonLabel>Account</IonLabel>
 						</IonListHeader>
@@ -119,7 +119,7 @@ const SyncSettings: React.FC = () => {
 						)}
 					</IonList>
 				) : IS_WEB_BUILD ? (
-					<IonList>
+					<IonList className="content-container">
 						<IonListHeader>
 							<IonLabel>Not Signed In</IonLabel>
 						</IonListHeader>
@@ -139,7 +139,7 @@ const SyncSettings: React.FC = () => {
 						</div>
 					</IonList>
 				) : (
-					<IonList>
+					<IonList className="content-container">
 						<IonListHeader>
 							<IonLabel>{isSignUp ? "Create Account" : "Sign In"}</IonLabel>
 						</IonListHeader>

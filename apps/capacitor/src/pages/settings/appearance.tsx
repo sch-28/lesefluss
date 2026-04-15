@@ -45,7 +45,7 @@ const AppearanceSettings: React.FC = () => {
 				</IonToolbar>
 			</IonHeader>
 			<IonContent>
-				<IonList>
+				<IonList className="content-container">
 					{/* ── Theme ── */}
 					<IonListHeader>
 						<IonLabel>Theme</IonLabel>

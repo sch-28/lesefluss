@@ -79,7 +79,7 @@ const Settings: React.FC = () => {
 				</IonToolbar>
 			</IonHeader>
 			<IonContent>
-				<IonList className="ion-padding-top">
+				<IonList className="ion-padding-top content-container">
 					<IonItem button detail={false} routerLink="/tabs/settings/rsvp" routerDirection="forward">
 						<IonIcon icon={bookOutline} slot="start" color="medium" />
 						<IonLabel>

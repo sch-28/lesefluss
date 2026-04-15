@@ -38,6 +38,7 @@ import "@ionic/react/css/display.css";
 /* Monochrome theme */
 import "./theme/monochrome.css";
 
+import DesktopSidebar from "./components/desktop-sidebar";
 import { BLEProvider } from "./contexts/ble-context";
 import { BookSyncProvider } from "./contexts/book-sync-context";
 import { DatabaseProvider } from "./contexts/database-context";
@@ -178,7 +179,8 @@ const App: React.FC = () => {
 								<BookSyncProvider>
 									<IonReactRouter basename={BASENAME || undefined}>
 										<HardwareBackButtonHandler />
-										<IonRouterOutlet>
+										<DesktopSidebar />
+										<IonRouterOutlet className="desktop-main">
 											{/* All other routes under /tabs share the tab bar */}
 											<Route path="/tabs" render={() => <AppTabs />} />
 
