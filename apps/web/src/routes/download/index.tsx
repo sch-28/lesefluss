@@ -61,7 +61,7 @@ function DownloadPage() {
 						Android App — Free &amp; Open Source
 					</p>
 					<h1 className="mb-5 font-bold text-4xl leading-tight sm:text-5xl">
-						RSVP Reader
+						Lesefluss
 						<br />
 						<span className="text-muted-foreground">for Android</span>
 					</h1>
@@ -87,7 +87,7 @@ function DownloadPage() {
 						</div>
 						{/* APK direct download */}
 						<a
-							href="https://github.com/sch-28/rsvp/releases/latest"
+							href="https://github.com/sch-28/lesefluss/releases/latest"
 							target="_blank"
 							rel="noopener noreferrer"
 							className="inline-flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-foreground/30"

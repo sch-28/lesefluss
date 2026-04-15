@@ -1,4 +1,4 @@
-# ESP32 / ESP32-S3 RSVP Reader
+# ESP32 / ESP32-S3 Lesefluss Reader
 
 MicroPython firmware for two hardware variants. Shows books word-by-word with focal letter highlighting, acceleration, and BLE management.
 

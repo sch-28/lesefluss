@@ -1,5 +1,5 @@
 {
-	"name": "@rsvp/web",
+	"name": "@lesefluss/web",
 	"private": true,
 	"sideEffects": false,
 	"type": "module",
@@ -20,7 +20,7 @@
 	},
 	"dependencies": {
 		"@fontsource-variable/geist": "5.2.8",
-		"@rsvp/rsvp-core": "workspace:*",
+		"@lesefluss/rsvp-core": "workspace:*",
 		"@tanstack/react-form": "1.29.0",
 		"@tanstack/react-router": "^1.168.21",
 		"@tanstack/react-router-devtools": "^1.166.13",

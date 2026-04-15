@@ -13,7 +13,7 @@ import {
 	findWordIndexAtOffset,
 	type RsvpSettings,
 	type WordEntry,
-} from "@rsvp/rsvp-core";
+} from "@lesefluss/rsvp-core";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 

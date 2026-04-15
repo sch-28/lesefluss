@@ -4,7 +4,7 @@
  */
 
 import { BleClient, type BleDevice, type ScanResult } from "@capacitor-community/bluetooth-le";
-import { DEVICE_NAME } from "@rsvp/ble-config";
+import { DEVICE_NAME } from "@lesefluss/ble-config";
 import { log } from "../../utils/log";
 import { BLE_CONNECTION_TIMEOUT_MS, BLEConnectionState, type BLEResult } from "./types";
 

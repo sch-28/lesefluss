@@ -6,7 +6,7 @@ import {
 import { createDrizzleAdapter } from "./adapter";
 import { runMigrations } from "./migrations";
 
-const DB_NAME = "rsvp.db";
+const DB_NAME = "lesefluss.db";
 
 let _conn: SQLiteDBConnection | null = null;
 let _initPromise: Promise<void> | null = null;

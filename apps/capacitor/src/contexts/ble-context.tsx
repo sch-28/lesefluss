@@ -156,7 +156,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 			try {
 				await queries.saveDevice({
 					id: result.data.deviceId,
-					name: result.data.name || "RSVP-Reader",
+					name: result.data.name || "Lesefluss",
 					lastConnected: Date.now(),
 				});
 			} catch (err) {

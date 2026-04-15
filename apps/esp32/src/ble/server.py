@@ -1,5 +1,5 @@
 """
-BLE Server for RSVP Reader ESP32
+BLE Server for Lesefluss ESP32
 
 Thin coordinator layer — owns:
   - bluetooth.BLE instance

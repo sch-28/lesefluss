@@ -1,5 +1,5 @@
 #!/bin/bash
-# Initial setup script for RSVP Reader
+# Initial setup script for Lesefluss
 # Erases flash, reflashes firmware, installs toolchain, and uploads all files.
 #
 # Usage: setup.sh --board ST7789|AMOLED [--port /dev/ttyUSB0]
@@ -54,7 +54,7 @@ if [ -z "$PORT" ]; then
     fi
 fi
 
-echo -e "${BLUE}=== RSVP Reader Initial Setup (${BOARD}) ===${NC}"
+echo -e "${BLUE}=== Lesefluss Initial Setup (${BOARD}) ===${NC}"
 
 # ---------------------------------------------------------------------------
 # Python toolchain

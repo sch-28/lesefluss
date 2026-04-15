@@ -13,7 +13,7 @@ export const Route = createRootRoute({
 			{ charSet: "utf-8" },
 			{ name: "viewport", content: "width=device-width, initial-scale=1" },
 			...seo({
-				title: "RSVP Reader — Speed Reading App & Device",
+				title: "Lesefluss — Speed Reading App & Device",
 				description:
 					"Free, open-source speed reading app for Android. Import EPUB and TXT books, read at 350+ WPM, and optionally sync to a pocket-sized ESP32 device.",
 			}),
@@ -39,7 +39,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<main>{children}</main>
 				<footer className="border-border border-t py-10 text-center text-muted-foreground text-sm">
 					<div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
-						<span>© {new Date().getFullYear()} RSVP Reader — Open Source</span>
+						<span>© {new Date().getFullYear()} Lesefluss — Open Source</span>
 						<div className="flex items-center gap-6">
 							<Link to="/download" className="transition-colors hover:text-foreground">
 								Download
@@ -54,7 +54,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 								Docs
 							</Link>
 							<a
-								href="https://github.com/sch-28/rsvp"
+								href="https://github.com/sch-28/lesefluss"
 								target="_blank"
 								rel="noopener noreferrer"
 								className="transition-colors hover:text-foreground"

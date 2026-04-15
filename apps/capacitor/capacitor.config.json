@@ -1,6 +1,6 @@
 {
 	"appId": "tools.jan.schmidt",
-	"appName": "RSVP",
+	"appName": "Lesefluss",
 	"webDir": "dist",
 	"plugins": {
 		"StatusBar": {

@@ -25,7 +25,7 @@ import {
 	FILE_TRANSFER_CHAR_UUID,
 	SERVICE_UUID,
 	WINDOW_SIZE,
-} from "@rsvp/ble-config";
+} from "@lesefluss/ble-config";
 import CRC32 from "crc-32";
 import { log } from "../../../utils/log";
 import { bleClient } from "../client";

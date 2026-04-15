@@ -24,6 +24,9 @@ function Home() {
 					playsInline
 					className="absolute inset-0 h-full w-full object-cover"
 					onEnded={handleVideoEnded}
+					ref={(el) => {
+						if (el) el.playbackRate = 0.85;
+					}}
 				/>
 				<div className="absolute inset-0 bg-zinc-950/65" />
 				<div className="relative mx-auto max-w-5xl px-6 py-44 text-center">
@@ -64,7 +67,7 @@ function Home() {
 								no hardware required
 							</h2>
 							<p className="mb-8 text-muted-foreground leading-relaxed">
-								The RSVP Reader app works fully standalone. Manage your library, read EPUB and TXT
+								The Lesefluss app works fully standalone. Manage your library, read EPUB and TXT
 								books with the built-in reader, or switch to RSVP mode and blaze through chapters at
 								300–600 WPM.
 							</p>
@@ -94,7 +97,7 @@ function Home() {
 							<div className="w-56 overflow-hidden rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl shadow-zinc-950">
 								<div className="flex items-center gap-2 border-zinc-700 border-b bg-zinc-800/60 px-4 py-3">
 									<div className="h-2 w-2 rounded-full bg-zinc-600" />
-									<span className="font-medium text-xs text-zinc-400">RSVP Reader</span>
+									<span className="font-medium text-xs text-zinc-400">Lesefluss</span>
 								</div>
 								<div className="flex flex-col items-center p-5">
 									<p className="mb-1 text-[10px] text-zinc-500 uppercase tracking-widest">
@@ -200,7 +203,7 @@ function Home() {
 					</p>
 					<div className="flex flex-wrap justify-center gap-4">
 						<Button asChild variant="outline" className="h-auto px-6 py-2.5 font-semibold text-sm">
-							<a href="https://github.com/sch-28/rsvp" target="_blank" rel="noopener noreferrer">
+							<a href="https://github.com/sch-28/lesefluss" target="_blank" rel="noopener noreferrer">
 								View on GitHub →
 							</a>
 						</Button>

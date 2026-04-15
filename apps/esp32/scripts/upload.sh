@@ -1,5 +1,5 @@
 #!/bin/bash
-# Upload script for RSVP Reader
+# Upload script for Lesefluss
 # Compiles src/**/*.py to .mpy bytecode, then pushes everything to the device.
 # Does NOT reset the device — use run.sh to start the app.
 #
@@ -60,7 +60,7 @@ else
     MPY_ARCH="xtensa"      # ESP32   (Xtensa LX6)
 fi
 
-echo -e "${BLUE}=== RSVP Reader Upload (${BOARD}) ===${NC}"
+echo -e "${BLUE}=== Lesefluss Upload (${BOARD}) ===${NC}"
 
 if [ -f "$VENV_ACTIVATE" ]; then
     source "$VENV_ACTIVATE"

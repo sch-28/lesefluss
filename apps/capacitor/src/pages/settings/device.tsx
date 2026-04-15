@@ -20,7 +20,7 @@ import {
 	IonToggle,
 	IonToolbar,
 } from "@ionic/react";
-import { SETTING_CONSTRAINTS } from "@rsvp/rsvp-core";
+import { SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
 import {
 	bluetooth,
 	closeCircle,
@@ -242,7 +242,7 @@ const DeviceSettings: React.FC = () => {
 							<IonItem>
 								<IonIcon icon={bluetooth} slot="start" />
 								<IonLabel>
-									<h2>{connectedDevice.name || "RSVP-Reader"}</h2>
+									<h2>{connectedDevice.name || "Lesefluss"}</h2>
 									<p>{connectedDevice.deviceId}</p>
 								</IonLabel>
 							</IonItem>
@@ -290,7 +290,7 @@ const DeviceSettings: React.FC = () => {
 										{connectionState === "connecting"
 											? "Connecting..."
 											: isScanning
-												? "Scanning for RSVP-Reader..."
+												? "Scanning for Lesefluss..."
 												: "Not connected"}
 									</p>
 								</IonLabel>
@@ -384,7 +384,7 @@ const DeviceSettings: React.FC = () => {
 						<div className="ion-margin-top flex items-center justify-center gap-2">
 							<IonIcon icon={bluetooth} color="medium" />
 							<IonText color="medium">
-								<p className="text-sm">Connect to the RSVP-Reader to sync</p>
+								<p className="text-sm">Connect to Lesefluss to sync</p>
 							</IonText>
 						</div>
 					)}

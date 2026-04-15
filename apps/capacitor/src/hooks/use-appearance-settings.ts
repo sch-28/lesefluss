@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, SETTING_CONSTRAINTS } from "@rsvp/rsvp-core";
+import { DEFAULT_SETTINGS, SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
 import type React from "react";
 import type { AppTheme } from "../contexts/theme-context";
 import { queryHooks } from "../services/db/hooks";

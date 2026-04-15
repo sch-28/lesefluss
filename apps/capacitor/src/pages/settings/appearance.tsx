@@ -12,7 +12,7 @@ import {
 	IonToggle,
 	IonToolbar,
 } from "@ionic/react";
-import { SETTING_CONSTRAINTS } from "@rsvp/rsvp-core";
+import { SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
 import type React from "react";
 import { useTheme } from "../../contexts/theme-context";
 import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "../../hooks/use-appearance-settings";

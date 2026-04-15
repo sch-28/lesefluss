@@ -79,7 +79,7 @@ export function Header() {
 					className="flex items-center gap-2 font-semibold text-foreground text-lg tracking-tight"
 				>
 					<BookOpen className="size-5 text-primary" />
-					RSVP Reader
+					Lesefluss
 				</Link>
 
 				{/* Desktop nav */}
@@ -96,7 +96,7 @@ export function Header() {
 						</Link>
 					))}
 					<a
-						href="https://github.com/sch-28/rsvp"
+						href="https://github.com/sch-28/lesefluss"
 						target="_blank"
 						rel="noopener noreferrer"
 						className={navLinkClass(false)}
@@ -183,7 +183,7 @@ export function Header() {
 							</Link>
 						))}
 						<a
-							href="https://github.com/sch-28/rsvp"
+							href="https://github.com/sch-28/lesefluss"
 							target="_blank"
 							rel="noopener noreferrer"
 							className={navLinkClass(true)}

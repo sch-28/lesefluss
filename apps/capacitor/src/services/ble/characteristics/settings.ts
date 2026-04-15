@@ -4,7 +4,7 @@
  */
 
 import { BleClient } from "@capacitor-community/bluetooth-le";
-import { SERVICE_UUID, SETTINGS_CHAR_UUID } from "@rsvp/ble-config";
+import { SERVICE_UUID, SETTINGS_CHAR_UUID } from "@lesefluss/ble-config";
 import type { Settings } from "../../db/schema";
 import { bleClient } from "../client";
 import type { BLEResult } from "../types";

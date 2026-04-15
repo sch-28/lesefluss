@@ -1,5 +1,5 @@
 """
-BLE Module for RSVP Reader
+BLE Module for Lesefluss
 
 Provides BLE GATT server for mobile app communication.
 """

@@ -16,9 +16,9 @@ const DesktopSidebar: React.FC = () => {
 	return (
 		<nav className="desktop-sidebar">
 			{IS_WEB ? (
-				<a href="/" className="desktop-sidebar-brand">RSVP</a>
+				<a href="/" className="desktop-sidebar-brand">Lesefluss</a>
 			) : (
-				<div className="desktop-sidebar-brand">RSVP</div>
+				<div className="desktop-sidebar-brand">Lesefluss</div>
 			)}
 			{NAV_ITEMS.map((item) => {
 				const isActive =

@@ -1,5 +1,5 @@
 {
-	"name": "@rsvp/rsvp-core",
+	"name": "@lesefluss/rsvp-core",
 	"version": "1.0.0",
 	"description": "Shared RSVP engine, settings defaults, and UTF-8 utilities",
 	"type": "module",

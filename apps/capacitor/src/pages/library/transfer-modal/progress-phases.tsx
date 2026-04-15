@@ -1,5 +1,5 @@
 import { IonButton, IonIcon, IonProgressBar } from "@ionic/react";
-import { CHUNK_SIZE } from "@rsvp/ble-config";
+import { CHUNK_SIZE } from "@lesefluss/ble-config";
 import { checkmarkCircleOutline } from "ionicons/icons";
 import type React from "react";
 import BookCover from "../../../components/book-cover";

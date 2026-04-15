@@ -1,4 +1,4 @@
-# RSVP Website
+# Lesefluss Website
 
 TanStack Start (React SSR) project website. Open-source project site — showcases the app and device, lets people download/build freely, and optionally create an account for cloud sync.
 

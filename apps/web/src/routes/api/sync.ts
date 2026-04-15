@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { SyncHighlight, SyncPayload, SyncResponse, SyncSettings } from "@rsvp/rsvp-core";
-import { SyncPayloadSchema } from "@rsvp/rsvp-core";
+import type { SyncHighlight, SyncPayload, SyncResponse, SyncSettings } from "@lesefluss/rsvp-core";
+import { SyncPayloadSchema } from "@lesefluss/rsvp-core";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { db } from "~/db";
 import { syncBooks, syncHighlights, syncSettings } from "~/db/schema";

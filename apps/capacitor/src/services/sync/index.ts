@@ -5,7 +5,7 @@ import type {
 	SyncPayload,
 	SyncResponse,
 	SyncSettings,
-} from "@rsvp/rsvp-core";
+} from "@lesefluss/rsvp-core";
 import { log } from "../../utils/log";
 import { bookKeys, settingsKeys } from "../db/hooks/query-keys";
 import { queries } from "../db/queries";

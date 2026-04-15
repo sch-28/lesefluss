@@ -1,4 +1,4 @@
-const PREFIX = "[RSVP]";
+const PREFIX = "[Lesefluss]";
 
 function makeTag(module: string) {
 	return `${PREFIX}[${module}]`;

@@ -33,8 +33,8 @@ import {
 	IonTitle,
 	IonToolbar,
 } from "@ionic/react";
-import type { RsvpSettings } from "@rsvp/rsvp-core";
-import { DEFAULT_SETTINGS } from "@rsvp/rsvp-core";
+import type { RsvpSettings } from "@lesefluss/rsvp-core";
+import { DEFAULT_SETTINGS } from "@lesefluss/rsvp-core";
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	bookmarkOutline,

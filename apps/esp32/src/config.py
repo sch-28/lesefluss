@@ -1,4 +1,4 @@
-# RSVP Reader Configuration
+# Lesefluss Configuration
 
 HARDWARE = "AMOLED"
 

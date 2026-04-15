@@ -12,7 +12,7 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS build
 COPY packages/ ./packages/
 COPY apps/web/ ./apps/web/
-RUN pnpm --filter @rsvp/web build
+RUN pnpm --filter @lesefluss/web build
 
 FROM base AS runner
 WORKDIR /app

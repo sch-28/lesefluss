@@ -1,18 +1,18 @@
-# RSVP Project
+# Lesefluss
 
 Monorepo: ESP32 hardware speed reader + mobile companion app.
 
 ## Structure
 
 ```
-rsvp/
+lesefluss/
 ├── agents/
 │   ├── esp32.md        # ESP32 firmware reference
 │   ├── capacitor.md    # Capacitor app reference
 │   ├── web.md          # Website reference + roadmap
 │   └── roadmap.md      # Publishing + business roadmap (Play Store, DIY guide, monetisation)
 ├── apps/
-│   ├── esp32/          # MicroPython ESP32 RSVP reader
+│   ├── esp32/          # MicroPython ESP32 Lesefluss reader
 │   ├── capacitor/      # Ionic React mobile + web app
 │   └── web/            # TanStack Start website (marketing, auth, sync API, hosts capacitor web build)
 ├── packages/
@@ -62,7 +62,7 @@ cd apps/esp32
 
 Both apps communicate over BLE. This is the shared contract:
 
-- Device name: `RSVP-Reader`
+- Device name: `Lesefluss`
 - Service UUID: `ad1863bc-9b9d-4098-a7ce-3ba1d2aabaf9`
 - UUIDs live in `packages/ble-config/`
 
@@ -89,7 +89,7 @@ Device is authoritative on connect; app can push position when reading in-app.
 
 **ESP32 side:** GATT peripheral advertises, read returns config JSON, write updates `config_override.py` and triggers soft reset. Stops advertising during WiFi mode (resource conflict). Single book stored as `book.txt` / `position.txt` on flash.
 
-**App side:** scans for "RSVP-Reader", auto-stops after 30s, reads/writes settings + position JSON, saves last connected device to SQLite. On connect, syncs position from device to active book in local DB.
+**App side:** scans for "Lesefluss", auto-stops after 30s, reads/writes settings + position JSON, saves last connected device to SQLite. On connect, syncs position from device to active book in local DB.
 
 ## RSVP Algorithm
 

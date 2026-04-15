@@ -1,4 +1,4 @@
-# RSVP Reader boot script
+# Lesefluss boot script
 # This file runs automatically on ESP32 startup
 # Create a file called "devmode" to skip auto-start (for development)
 

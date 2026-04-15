@@ -1,6 +1,6 @@
-# RSVP Capacitor Companion App
+# Lesefluss Capacitor Companion App
 
-Ionic React mobile app (iOS/Android/Web) for the ESP32 RSVP Reader. Manages books, syncs settings via BLE, and provides a software RSVP reader. Also runs as an embedded web app inside the TanStack Start website at `/app`.
+Ionic React mobile app (iOS/Android/Web) for the ESP32 Lesefluss reader. Manages books, syncs settings via BLE, and provides a software RSVP reader. Also runs as an embedded web app inside the TanStack Start website at `/app`.
 
 For project overview, roadmap, and shared settings see `../AGENTS.md`.
 
@@ -110,12 +110,12 @@ All logging in the app must go through `log` — never use `console.*` directly.
 ```ts
 import { log } from "../utils/log";
 
-log("ble", "connected:", deviceId);           // → [RSVP][ble] connected: <id>
-log.warn("booksync", "position mismatch");    // → [RSVP][booksync] position mismatch
-log.error("db", "migration failed:", err);    // → [RSVP][db] migration failed: ...
+log("ble", "connected:", deviceId);           // → [Lesefluss][ble] connected: <id>
+log.warn("booksync", "position mismatch");    // → [Lesefluss][booksync] position mismatch
+log.error("db", "migration failed:", err);    // → [Lesefluss][db] migration failed: ...
 ```
 
-The `[RSVP]` prefix makes it trivial to grep logcat output. The `pnpm android` script already filters logcat to `Capacitor/Console` — all `log()` output lands there.
+The `[Lesefluss]` prefix makes it trivial to grep logcat output. The `pnpm android` script already filters logcat to `Capacitor/Console` — all `log()` output lands there.
 
 ## Database (`src/db/schema.ts`)
 
@@ -141,7 +141,7 @@ Five tables, Drizzle ORM with typed queries:
 **Characteristics:** `src/ble/characteristics/` — pure functions grouped under the `ble` object
 **Context:** `src/contexts/BLEContext.tsx` — app-wide connection state, auto-scan/connect, `onConnected` hook
 **Book sync:** `src/contexts/BookSyncContext.tsx` — active book, position sync, file transfer
-**UUIDs:** imported directly from `@rsvp/ble-config` workspace package (no local constants file)
+**UUIDs:** imported directly from `@lesefluss/ble-config` workspace package (no local constants file)
 
 Usage pattern:
 ```ts
@@ -152,7 +152,7 @@ await ble.writePosition(1234);
 await ble.transferBook(content, "book.txt", onProgress);
 ```
 
-- Scans for "RSVP-Reader", auto-connects when exactly 1 device found
+- Scans for "Lesefluss", auto-connects when exactly 1 device found
 - On connect: position sync runs automatically (device vs app — furthest wins)
 - Saves last connected device to SQLite
 - BLE status badge (bluetooth icon) between the two tab bar tabs
@@ -307,7 +307,7 @@ Tap an already-highlighted word → opens a bottom-sheet with the definition fro
 
 ## Cloud Sync (`src/services/sync/`)
 
-Full-snapshot sync with the web server. Shared Zod schemas and types in `@rsvp/rsvp-core/sync`.
+Full-snapshot sync with the web server. Shared Zod schemas and types in `@lesefluss/rsvp-core/sync`.
 
 **Auth:** Native uses Better Auth client (`auth-client.ts`) with `VITE_SYNC_URL` env var and Bearer token from `@capacitor/preferences`. Web embed uses same-domain cookie auth (no token needed).
 

@@ -8,7 +8,7 @@ class WiFiManager:
     def __init__(self, display):
         self.display = display
         self.ap = None
-        self.ssid = "RSVP-Reader"
+        self.ssid = "Lesefluss"
         self.ip = "192.168.4.1"
         self.needs_reload = False
         set_display(display)

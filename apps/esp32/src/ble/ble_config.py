@@ -2,7 +2,7 @@
 # Re-generate by running: pnpm setup (from monorepo root)
 
 PROTOCOL_VERSION = 2
-DEVICE_NAME = "RSVP-Reader"
+DEVICE_NAME = "Lesefluss"
 SERVICE_UUID = "ad1863bc-9b9d-4098-a7ce-3ba1d2aabaf9"
 SETTINGS_CHAR_UUID = "db0d0b25-5282-4e5f-9b5d-30f65c652f2f"
 FILE_TRANSFER_CHAR_UUID = "f4b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6"

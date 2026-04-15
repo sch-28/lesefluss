@@ -37,7 +37,7 @@ const sections = [
 		content: (
 			<div className="space-y-4 text-muted-foreground leading-relaxed">
 				<p>
-					RSVP Reader is a free Android app for speed reading your book library. No account is
+					Lesefluss is a free Android app for speed reading your book library. No account is
 					required — download the APK or install from the Play Store and start importing books.
 				</p>
 				<h4 className="font-semibold text-foreground">Install the app</h4>
@@ -45,7 +45,7 @@ const sections = [
 					<li>
 						Download the latest APK from{" "}
 						<a
-							href="https://github.com/sch-28/rsvp/releases"
+							href="https://github.com/sch-28/lesefluss/releases"
 							target="_blank"
 							rel="noopener noreferrer"
 							className="text-foreground underline decoration-border hover:decoration-foreground/50"
@@ -139,7 +139,7 @@ const sections = [
 					<li>
 						Clone the repo:{" "}
 						<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">
-							git clone https://github.com/sch-28/rsvp
+							git clone https://github.com/sch-28/lesefluss
 						</code>
 					</li>
 					<li>
@@ -181,7 +181,7 @@ const sections = [
 					<li>
 						Tap <strong className="text-foreground">Scan</strong> — the device appears as{" "}
 						<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">
-							RSVP-Reader
+							Lesefluss
 						</code>
 						.
 					</li>
@@ -221,7 +221,7 @@ const sections = [
 				<p className="pt-2 text-sm">
 					Still stuck?{" "}
 					<a
-						href="https://github.com/sch-28/rsvp/issues"
+						href="https://github.com/sch-28/lesefluss/issues"
 						target="_blank"
 						rel="noopener noreferrer"
 						className="text-foreground underline decoration-border hover:decoration-foreground/50"
