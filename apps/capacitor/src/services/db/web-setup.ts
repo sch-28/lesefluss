@@ -11,8 +11,15 @@ export async function initWebSqlite(): Promise<void> {
 	if (Capacitor.getPlatform() !== "web") return;
 
 	customElements.define("jeep-sqlite", JeepSqlite);
-	const el = document.createElement("jeep-sqlite") as HTMLElement & { autoSave: boolean };
+	const el = document.createElement("jeep-sqlite") as HTMLElement & {
+		autoSave: boolean;
+		wasmPath: string;
+	};
 	el.autoSave = true;
+	// When hosted under /app/ (web embed), WASM lives at /app/assets/ instead of /assets/
+	if (import.meta.env.VITE_WEB_BUILD) {
+		el.wasmPath = "/app/assets";
+	}
 	document.body.appendChild(el);
 	await customElements.whenDefined("jeep-sqlite");
 	await sqliteConnection.initWebStore();

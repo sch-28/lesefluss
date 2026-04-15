@@ -41,7 +41,7 @@ function Home() {
 					</p>
 					<div className="flex flex-col justify-center gap-4 sm:flex-row">
 						<Button asChild className="h-auto px-8 py-3 font-semibold text-base">
-							<Link to="/app">Get the app</Link>
+							<Link to="/download">Get the app</Link>
 						</Button>
 						<Button asChild variant="outline" className="h-auto px-8 py-3 font-semibold text-base">
 							<Link to="/device">Build the device</Link>
@@ -78,7 +78,7 @@ function Home() {
 							</ul>
 							<div className="flex flex-wrap gap-3">
 								<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
-									<Link to="/app">Download the app</Link>
+									<Link to="/download">Download the app</Link>
 								</Button>
 								<Button
 									asChild

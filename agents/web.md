@@ -26,12 +26,14 @@ pnpm build
 | Route | Status | Notes |
 |-------|--------|-------|
 | `/` | ✅ | Hero → App section → Features → Device section → Open source CTA |
-| `/app` | ✅ | Download buttons, feature grid, requirements |
+| `/app/*` | ✅ | Embedded capacitor web build (SPA catch-all, see Web App Embed below) |
+| `/download` | ✅ | Download buttons, feature grid, requirements |
 | `/device` | ✅ | Hardware page: AMOLED vs ST7789 cards, parts list, build guide CTA |
 | `/docs` | ✅ | Single-page docs with sidebar (Getting Started, Importing Books, ESP32 Build Guide, Connecting Device, Troubleshooting) |
 | `/login` | ✅ | Sign-in / sign-up with Better Auth email+password |
 | `/diy` | ✅ | Redirects to `/device` |
 | `/order` | ✅ | Redirects to `/device` |
+| `/api/sync` | ✅ | GET (pull) + POST (push) — full-snapshot sync, requireAuth + CORS middleware |
 | `/account` | ❌ | Not started — auth-gated; connected devices, sync status, danger zone |
 
 ## routeTree.gen.ts
@@ -47,16 +49,18 @@ users              — Better Auth managed
 accounts           — Better Auth managed
 sessions           — Better Auth managed
 
-sync_books         — mirrors capacitor `books` (user_id, book_id, title, author, file_size, word_count, cover_url, position, updated_at)
+sync_books         — mirrors capacitor `books` (user_id, book_id, title, author, file_size, word_count, position, content, cover_image, chapters, updated_at)
 sync_settings      — mirrors capacitor `settings` (user_id)
 sync_highlights    — mirrors capacitor `highlights` (user_id, highlight_id)
 ```
 
-Book *files* are **not** stored server-side — metadata + position only.
+Books store full plain text content, base64 cover image, and chapters JSON server-side for cross-device restore. Content is immutable per bookId — only pushed once.
 
 ## Auth (`src/lib/auth.ts`)
 
 Better Auth wired at `src/routes/api/auth/$.ts` (catch-all handler). Client-side hooks in `src/lib/auth-client.ts`. Environment variables needed: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`.
+
+Trusted origins and CORS allowed origins share a single list in `src/lib/allowed-origins.ts`. Dev origins (`http://localhost`, `http://localhost:3001`) are only included when `NODE_ENV !== "production"`.
 
 ## Sync Architecture
 
@@ -69,22 +73,40 @@ Simple full-snapshot sync first. Delta sync can come later.
 
 **Conflict resolution:** last-write-wins by `updated_at` for all entities. Highlights need a tombstone/soft-delete flag for deletions.
 
+## Web App Embed
+
+The capacitor app is built as a static SPA and served under `/app/*`. This gives the website the full app experience (library, reader, RSVP, highlights) without duplicating UI code.
+
+**Build:** `pnpm build:app` (runs `scripts/build-capacitor-embed.sh`) — builds capacitor with `WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true`, copies output to `public/app/`.
+
+**SPA fallback:** `src/routes/app/$.ts` and `src/routes/app/index.ts` serve the capacitor `index.html` for all `/app/*` paths. Static assets (JS, CSS, WASM) in `public/app/assets/` are served directly by Nitro.
+
+**Auth:** Same-domain cookie auth — user logs in on `/login`, the capacitor app detects the session via `/api/auth/get-session` and syncs automatically. No second login needed.
+
+**Web adaptations in capacitor app:**
+- `VITE_WEB_BUILD` env var enables: router basename `/app`, cookie auth (no Bearer token), WASM path `/app/assets`
+- BLE/device UI hidden via `Capacitor.getPlatform() === "web"` checks
+- File import uses HTML5 `<input type="file">` instead of native FilePicker
+- `public/app/` is gitignored (build artifact)
+
 ## Open Todo
 
-### Phase 3 — Sync
-- [ ] `GET /api/sync` + `POST /api/sync` endpoints
-- [ ] Capacitor app sync service + `@capacitor/preferences` for session token
-- [ ] Login/account screen in capacitor app (optional, dismissible)
-- [ ] Sync indicator in capacitor UI (last synced timestamp)
+### Phase 3 — Sync ✅
+- [x] `GET /api/sync` + `POST /api/sync` endpoints
+- [x] Capacitor app sync service + `@capacitor/preferences` for session token
+- [x] Login/account screen in capacitor app (optional, dismissible)
+- [x] Sync indicator in capacitor UI (last synced timestamp)
+- [x] Web app embed — capacitor SPA at `/app/*` with cookie auth
 
 ### Phase 4 — Polish
 - [ ] `/account` page (connected devices, sync status, danger zone)
 - [ ] Full docs (wiring diagrams, screenshots)
 - [ ] Replace Ko-fi placeholder in `/device` with real URL
-- [ ] Replace disabled Play Store badge in `/app` with real URL once published
+- [ ] Replace disabled Play Store badge in `/download` with real URL once published
 - [ ] Open Graph images, SEO pass
 - [ ] Transactional email provider for Better Auth verification emails (Resend / Postmark)
 - [ ] MDX migration for `/docs` if content grows significantly
+- [ ] Desktop UI polish for `/app` (wider layouts, sidebar nav, keyboard shortcuts)
 
 ## Open Questions
 

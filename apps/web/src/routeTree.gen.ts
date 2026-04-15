@@ -13,11 +13,14 @@ import { Route as CustomScriptDotjsRouteImport } from './routes/customScript[.]j
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrderIndexRouteImport } from './routes/order/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
+import { Route as DownloadIndexRouteImport } from './routes/download/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DiyIndexRouteImport } from './routes/diy/index'
 import { Route as DeviceIndexRouteImport } from './routes/device/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AppSplatRouteImport } from './routes/app/$'
 import { Route as ApiUsersRouteImport } from './routes/api/users'
+import { Route as ApiSyncRouteImport } from './routes/api/sync'
 import { Route as ApiUsersUserIdRouteImport } from './routes/api/users.$userId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -41,6 +44,11 @@ const LoginIndexRoute = LoginIndexRouteImport.update({
   path: '/login/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DownloadIndexRoute = DownloadIndexRouteImport.update({
+  id: '/download/',
+  path: '/download/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocsIndexRoute = DocsIndexRouteImport.update({
   id: '/docs/',
   path: '/docs/',
@@ -61,9 +69,19 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/app/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSplatRoute = AppSplatRouteImport.update({
+  id: '/app/$',
+  path: '/app/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiUsersRoute = ApiUsersRouteImport.update({
   id: '/api/users',
   path: '/api/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSyncRoute = ApiSyncRouteImport.update({
+  id: '/api/sync',
+  path: '/api/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiUsersUserIdRoute = ApiUsersUserIdRouteImport.update({
@@ -80,11 +98,14 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/customScript.js': typeof CustomScriptDotjsRoute
+  '/api/sync': typeof ApiSyncRoute
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/app/$': typeof AppSplatRoute
   '/app/': typeof AppIndexRoute
   '/device/': typeof DeviceIndexRoute
   '/diy/': typeof DiyIndexRoute
   '/docs/': typeof DocsIndexRoute
+  '/download/': typeof DownloadIndexRoute
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -93,11 +114,14 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/customScript.js': typeof CustomScriptDotjsRoute
+  '/api/sync': typeof ApiSyncRoute
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/app/$': typeof AppSplatRoute
   '/app': typeof AppIndexRoute
   '/device': typeof DeviceIndexRoute
   '/diy': typeof DiyIndexRoute
   '/docs': typeof DocsIndexRoute
+  '/download': typeof DownloadIndexRoute
   '/login': typeof LoginIndexRoute
   '/order': typeof OrderIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -107,11 +131,14 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/customScript.js': typeof CustomScriptDotjsRoute
+  '/api/sync': typeof ApiSyncRoute
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/app/$': typeof AppSplatRoute
   '/app/': typeof AppIndexRoute
   '/device/': typeof DeviceIndexRoute
   '/diy/': typeof DiyIndexRoute
   '/docs/': typeof DocsIndexRoute
+  '/download/': typeof DownloadIndexRoute
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -122,11 +149,14 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/customScript.js'
+    | '/api/sync'
     | '/api/users'
+    | '/app/$'
     | '/app/'
     | '/device/'
     | '/diy/'
     | '/docs/'
+    | '/download/'
     | '/login/'
     | '/order/'
     | '/api/auth/$'
@@ -135,11 +165,14 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/customScript.js'
+    | '/api/sync'
     | '/api/users'
+    | '/app/$'
     | '/app'
     | '/device'
     | '/diy'
     | '/docs'
+    | '/download'
     | '/login'
     | '/order'
     | '/api/auth/$'
@@ -148,11 +181,14 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/customScript.js'
+    | '/api/sync'
     | '/api/users'
+    | '/app/$'
     | '/app/'
     | '/device/'
     | '/diy/'
     | '/docs/'
+    | '/download/'
     | '/login/'
     | '/order/'
     | '/api/auth/$'
@@ -162,11 +198,14 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CustomScriptDotjsRoute: typeof CustomScriptDotjsRoute
+  ApiSyncRoute: typeof ApiSyncRoute
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
+  AppSplatRoute: typeof AppSplatRoute
   AppIndexRoute: typeof AppIndexRoute
   DeviceIndexRoute: typeof DeviceIndexRoute
   DiyIndexRoute: typeof DiyIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
+  DownloadIndexRoute: typeof DownloadIndexRoute
   LoginIndexRoute: typeof LoginIndexRoute
   OrderIndexRoute: typeof OrderIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -202,6 +241,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/download/': {
+      id: '/download/'
+      path: '/download'
+      fullPath: '/download/'
+      preLoaderRoute: typeof DownloadIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/docs/': {
       id: '/docs/'
       path: '/docs'
@@ -230,11 +276,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/$': {
+      id: '/app/$'
+      path: '/app/$'
+      fullPath: '/app/$'
+      preLoaderRoute: typeof AppSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/users': {
       id: '/api/users'
       path: '/api/users'
       fullPath: '/api/users'
       preLoaderRoute: typeof ApiUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sync': {
+      id: '/api/sync'
+      path: '/api/sync'
+      fullPath: '/api/sync'
+      preLoaderRoute: typeof ApiSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/users/$userId': {
@@ -269,11 +329,14 @@ const ApiUsersRouteWithChildren = ApiUsersRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CustomScriptDotjsRoute: CustomScriptDotjsRoute,
+  ApiSyncRoute: ApiSyncRoute,
   ApiUsersRoute: ApiUsersRouteWithChildren,
+  AppSplatRoute: AppSplatRoute,
   AppIndexRoute: AppIndexRoute,
   DeviceIndexRoute: DeviceIndexRoute,
   DiyIndexRoute: DiyIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
+  DownloadIndexRoute: DownloadIndexRoute,
   LoginIndexRoute: LoginIndexRoute,
   OrderIndexRoute: OrderIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

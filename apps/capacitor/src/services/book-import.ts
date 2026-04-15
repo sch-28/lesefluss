@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { FilePicker } from "@capawesome/capacitor-file-picker";
 import type { Book as EpubBook } from "epubjs";
@@ -38,20 +39,66 @@ function generateBookId(): string {
 	return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export async function importBook(onProgress?: (pct: number) => void): Promise<Book> {
-	// 1. Open the file picker
-	const result = await FilePicker.pickFiles({
-		types: ["text/plain", "application/epub+zip"],
-		limit: 1,
-		readData: true,
+/**
+ * Web fallback: use HTML5 file input to pick a file.
+ * Returns the file name and data as base64 (matching FilePicker's readData format).
+ */
+async function pickFileWeb(): Promise<{ name: string; data: string }> {
+	return new Promise((resolve, reject) => {
+		const input = document.createElement("input");
+		input.type = "file";
+		input.accept = ".txt,.epub";
+		let picked = false;
+		input.onchange = () => {
+			picked = true;
+			const file = input.files?.[0];
+			if (!file) return reject(new Error("CANCELLED"));
+			const reader = new FileReader();
+			reader.onload = () => {
+				const bytes = new Uint8Array(reader.result as ArrayBuffer);
+				let binary = "";
+				for (const b of bytes) binary += String.fromCharCode(b);
+				resolve({ name: file.name, data: btoa(binary) });
+			};
+			reader.onerror = () => reject(new Error("Failed to read file"));
+			reader.readAsArrayBuffer(file);
+		};
+		// Detect cancel: window regains focus but no file was picked
+		window.addEventListener(
+			"focus",
+			() => {
+				setTimeout(() => {
+					if (!picked) reject(new Error("CANCELLED"));
+				}, 300);
+			},
+			{ once: true },
+		);
+		input.click();
 	});
+}
 
-	if (!result.files || result.files.length === 0) {
-		throw new Error("CANCELLED");
+export async function importBook(onProgress?: (pct: number) => void): Promise<Book> {
+	// 1. Open the file picker (native or web fallback)
+	let fileName: string;
+	let fileData: string;
+
+	if (Capacitor.isNativePlatform()) {
+		const result = await FilePicker.pickFiles({
+			types: ["text/plain", "application/epub+zip"],
+			limit: 1,
+			readData: true,
+		});
+		if (!result.files || result.files.length === 0) throw new Error("CANCELLED");
+		if (!result.files[0].data) throw new Error("File data is missing");
+		fileName = result.files[0].name;
+		fileData = result.files[0].data;
+	} else {
+		const picked = await pickFileWeb();
+		fileName = picked.name;
+		fileData = picked.data;
 	}
 
-	const file = result.files[0];
-	const isEpub = file.name.toLowerCase().endsWith(".epub");
+	const isEpub = fileName.toLowerCase().endsWith(".epub");
 
 	let content: string;
 	let title: string;
@@ -59,20 +106,16 @@ export async function importBook(onProgress?: (pct: number) => void): Promise<Bo
 	let coverImage: string | null = null;
 	let chapters: Chapter[] | null = null;
 
-	if (!file.data) {
-		throw new Error("File data is missing");
-	}
-
-	if (isEpub && file.data) {
+	if (isEpub) {
 		({ content, title, author, coverImage, chapters } = await parseEpub(
-			file.data,
-			file.name,
+			fileData,
+			fileName,
 			onProgress,
 		));
 	} else {
 		// TXT: data is base64-encoded
-		content = decodeBase64Utf8(file.data);
-		title = file.name.replace(/\.txt$/i, "");
+		content = decodeBase64Utf8(fileData);
+		title = fileName.replace(/\.txt$/i, "");
 	}
 
 	// 2. Insert into DB (metadata + content)
@@ -95,17 +138,16 @@ export async function importBook(onProgress?: (pct: number) => void): Promise<Bo
 		chapters,
 	);
 
-	// 3. Save original EPUB file to disk
+	// 3. Save original EPUB file to disk (native only — web stores in DB only)
 	let filePath: string | null = null;
-	if (isEpub && file.data) {
+	if (isEpub && Capacitor.isNativePlatform()) {
 		filePath = `${BOOKS_DIR}/${id}.epub`;
 		await ensureBooksDir();
 		await Filesystem.writeFile({
 			path: filePath,
-			data: file.data,
+			data: fileData,
 			directory: Directory.Data,
 		});
-		// Update the book's filePath now that we have the id
 		await queries.updateBook(id, { filePath });
 	}
 

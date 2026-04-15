@@ -41,8 +41,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 					<div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
 						<span>© {new Date().getFullYear()} RSVP Reader — Open Source</span>
 						<div className="flex items-center gap-6">
+							<Link to="/download" className="transition-colors hover:text-foreground">
+								Download
+							</Link>
 							<Link to="/app" className="transition-colors hover:text-foreground">
-								App
+								Web App
 							</Link>
 							<Link to="/device" className="transition-colors hover:text-foreground">
 								Device

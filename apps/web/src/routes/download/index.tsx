@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { FeatureCard } from "~/components/feature-card";
 import { StatCard } from "~/components/stat-card";
 
-export const Route = createFileRoute("/app/")({
-	component: AppPage,
+export const Route = createFileRoute("/download/")({
+	component: DownloadPage,
 });
 
 const features = [
@@ -51,7 +51,7 @@ const requirements = [
 	{ label: "Permissions", value: "Bluetooth (optional)" },
 ];
 
-function AppPage() {
+function DownloadPage() {
 	return (
 		<div>
 			{/* ── Hero ─────────────────────────────────────────────────── */}

@@ -32,7 +32,7 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 > Everything needed to actually sell
 
 - [ ] Play Store listing — screenshots, description, privacy policy
-- [ ] Website — pitch, screenshots, "Getting books" section (Project Gutenberg, Standard Ebooks), DIY vs assembled options, account/order management
+- [x] Website — pitch, screenshots, embedded web app at `/app`, DIY vs assembled options
 - [ ] DIY guide (5€) — exact parts list with purchase links, flash + upload instructions, case print files; sold via website
 - [ ] Case STL files published on Printables / Thingiverse, linked from website and DIY guide
 - [ ] Order flow for assembled units — Tindie listing or contact form to start (50–70€, AMOLED variant)
@@ -40,11 +40,12 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 ## Phase 4 — Accounts & Monetisation
 > Website ↔ app integration, optional accounts, purchase management
 
-- [ ] Backend + auth — user accounts (optional, not required to use the app)
+- [x] Backend + auth — user accounts (Better Auth, email+password)
 - [ ] Website payment integration — handle DIY guide purchases and assembled unit orders
 - [ ] License system — purchases on website unlock content/features in the app (e.g. DIY guide download, future premium features)
-- [ ] App account sync — sign in on website, same account active in app; purchases and entitlements reflected in both
-- [ ] Cloud sync for library and reading position (account-gated)
+- [x] App account sync — sign in on website, same account active in app
+- [x] Cloud sync for library and reading position (account-gated)
+- [x] Web app embed — capacitor SPA served at `/app` on website with cookie auth
 
 ## Phase 5 — Post-launch
 - [ ] iOS build (Capacitor makes this mostly a build target)

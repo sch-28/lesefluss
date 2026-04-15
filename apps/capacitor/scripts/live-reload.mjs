@@ -26,7 +26,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const CONFIG_PATH = resolve(ROOT, "capacitor.config.json");
 
-const port = process.argv[2] ?? "3000";
+const port = process.argv[2] ?? "3001";
 const serverUrl = `http://localhost:${port}`;
 
 // --- Read original config (preserve formatting) ---

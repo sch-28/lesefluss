@@ -21,6 +21,7 @@ const wasmFile = sqlWasmCandidates.find(fs.existsSync);
 if (!wasmFile) throw new Error("sql-wasm.wasm (1.11.0) not found — run pnpm setup:web");
 
 export default defineConfig({
+	base: process.env.WEB_BUILD ? "/app/" : "/",
 	plugins: [
 		react(),
 		tailwindcss(),
@@ -42,6 +43,7 @@ export default defineConfig({
 		},
 	],
 	root: "./src",
+	envDir: "..",
 	// publicDir is relative to root (./src) → apps/capacitor/public
 	// sql-wasm.wasm lives at public/assets/sql-wasm.wasm for production builds
 	publicDir: "../public",

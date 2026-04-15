@@ -3,6 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { db } from "~/db";
 import * as authSchema from "~/db/auth-schema";
+import { ALLOWED_ORIGINS } from "./allowed-origins";
 
 // Server-only — never import this file in client components.
 // Use ~/lib/auth-client for browser-side session access.
@@ -20,6 +21,7 @@ export const auth = betterAuth({
 	// biome-ignore lint/style/noNonNullAssertion: required env vars, server fails at startup if missing
 	baseURL: process.env.BETTER_AUTH_URL!,
 	basePath: "/api/auth",
+	trustedOrigins: ALLOWED_ORIGINS,
 	plugins: [
 		// REQUIRED for TanStack Start: handles cookie setting on sign-in/sign-up
 		tanstackStartCookies(),

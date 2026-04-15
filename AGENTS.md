@@ -13,9 +13,11 @@ rsvp/
 │   └── roadmap.md      # Publishing + business roadmap (Play Store, DIY guide, monetisation)
 ├── apps/
 │   ├── esp32/          # MicroPython ESP32 RSVP reader
-│   └── capacitor/      # Ionic React mobile companion app
+│   ├── capacitor/      # Ionic React mobile + web app
+│   └── web/            # TanStack Start website (marketing, auth, sync API, hosts capacitor web build)
 ├── packages/
-│   └── ble-config/     # Shared BLE UUIDs (workspace package)
+│   ├── ble-config/     # Shared BLE UUIDs (workspace package)
+│   └── rsvp-core/      # Shared engine, settings, sync types (Zod schemas)
 ├── resources/
 │   └── icon.svg        # Master app icon (1024×1024, edit this)
 └── AGENTS.md           # This file
@@ -193,8 +195,8 @@ Feature roadmap below. For publishing, Play Store, and monetisation see `agents/
 - [ ] Partial book sync to esp32 to combat long upload times
 - [ ] Recompile AMOLED firmware with larger NimBLE buffers (current RM67162 build drops BLE writes at window_size>2, ST7789 handles 4 fine — need to fork nspsck/RM67162_Micropython_QSPI and increase NimBLE buffer config in sdkconfig.board)
 - [x] In-app RSVP reader (software parity with ESP32)
-- [ ] Cloud sync
-- [ ] Web app version (PWA)
+- [x] Cloud sync (full-snapshot, last-write-wins — books/settings/highlights via POST /api/sync)
+- [x] Web app version (capacitor web build embedded at `/app` on website)
 - [x] Library sorting (title, author, recent, progress) & filtering (all, unread, reading, done)
 - [ ] Advanced book management (tags, collections, search)
 - [ ] Reading statistics
@@ -205,15 +207,12 @@ Feature roadmap below. For publishing, Play Store, and monetisation see `agents/
 ## Future Ideas
 
 **ESP32 Hardware:**
-- Deep sleep for power saving (wake on GPIO 0)
-- Battery level display (requires voltage divider hardware mod)
+- Battery level display (requires voltage divider hardware mod — GPIO 4 ready on AMOLED)
 - Page simulation (250 words per "page")
 - Font size options
 - Progress indicator during reading
-- Chapter detection and navigation
 
 **Companion App:**
 - Reading goals and streaks
-- Cross-device sync (read on phone, continue on ESP32)
 - Settings presets for different reading scenarios
 - Social features (share progress, recommendations)

@@ -3,5 +3,8 @@
 	"version": "1.0.0",
 	"description": "Shared RSVP engine, settings defaults, and UTF-8 utilities",
 	"type": "module",
-	"main": "src/index.ts"
+	"main": "src/index.ts",
+	"dependencies": {
+		"zod": "^4.3.6"
+	}
 }

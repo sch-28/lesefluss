@@ -41,6 +41,7 @@ import "./theme/monochrome.css";
 import { BLEProvider } from "./contexts/ble-context";
 import { BookSyncProvider } from "./contexts/book-sync-context";
 import { DatabaseProvider } from "./contexts/database-context";
+import { SyncProvider } from "./contexts/sync-context";
 import { ThemeProvider } from "./contexts/theme-context";
 import Library from "./pages/library";
 import BookReader from "./pages/reader";
@@ -48,6 +49,7 @@ import Settings from "./pages/settings";
 import AppearanceSettings from "./pages/settings/appearance";
 import DeviceSettings from "./pages/settings/device";
 import RSVPSettings from "./pages/settings/rsvp";
+import SyncSettings from "./pages/settings/sync";
 import { queryClient } from "./services/query-client";
 
 interface SlideAnimationOpts {
@@ -88,6 +90,8 @@ setupIonicReact({
 	navAnimation: slideAnimation,
 });
 
+const BASENAME = import.meta.env.VITE_WEB_BUILD ? "/app" : "";
+
 const AppTabs: React.FC = () => {
 	const ionRouter = useIonRouter();
 	const location = useLocation();
@@ -104,6 +108,7 @@ const AppTabs: React.FC = () => {
 				<Route exact path="/tabs/settings/rsvp" component={RSVPSettings} />
 				<Route exact path="/tabs/settings/appearance" component={AppearanceSettings} />
 				<Route exact path="/tabs/settings/device" component={DeviceSettings} />
+				<Route exact path="/tabs/settings/sync" component={SyncSettings} />
 				<Route exact path="/tabs/reader/:id" component={BookReader} />
 				<Route exact path="/tabs">
 					<Redirect to="/tabs/library" />
@@ -167,24 +172,26 @@ const App: React.FC = () => {
 		<IonApp>
 			<QueryClientProvider client={queryClient}>
 				<DatabaseProvider>
-					<ThemeProvider>
-						<BLEProvider>
-							<BookSyncProvider>
-								<IonReactRouter>
-									<HardwareBackButtonHandler />
-									<IonRouterOutlet>
-										{/* All other routes under /tabs share the tab bar */}
-										<Route path="/tabs" render={() => <AppTabs />} />
+					<SyncProvider>
+						<ThemeProvider>
+							<BLEProvider>
+								<BookSyncProvider>
+									<IonReactRouter basename={BASENAME || undefined}>
+										<HardwareBackButtonHandler />
+										<IonRouterOutlet>
+											{/* All other routes under /tabs share the tab bar */}
+											<Route path="/tabs" render={() => <AppTabs />} />
 
-										{/* Root redirect */}
-										<Route exact path="/">
-											<Redirect to="/tabs/library" />
-										</Route>
-									</IonRouterOutlet>
-								</IonReactRouter>
-							</BookSyncProvider>
-						</BLEProvider>
-					</ThemeProvider>
+											{/* Root redirect */}
+											<Route exact path="/">
+												<Redirect to="/tabs/library" />
+											</Route>
+										</IonRouterOutlet>
+									</IonReactRouter>
+								</BookSyncProvider>
+							</BLEProvider>
+						</ThemeProvider>
+					</SyncProvider>
 				</DatabaseProvider>
 			</QueryClientProvider>
 		</IonApp>

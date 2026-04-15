@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { importBook, removeBook } from "../../book-import";
+import { scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
 import type { Book } from "../schema";
 import { bookKeys } from "./query-keys";
@@ -73,6 +74,7 @@ function useImportBook() {
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 			qc.invalidateQueries({ queryKey: bookKeys.covers });
+			scheduleSyncPush();
 		},
 	});
 }
@@ -96,6 +98,7 @@ function useDeleteBook() {
 			qc.removeQueries({ queryKey: bookKeys.content(book.id) });
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 			qc.invalidateQueries({ queryKey: bookKeys.covers });
+			scheduleSyncPush();
 		},
 	});
 }

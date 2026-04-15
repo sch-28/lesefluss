@@ -2,6 +2,7 @@
 .turbo
 dist/
 build/
+apps/web/public/app/
 
 # Dependencies
 node_modules/

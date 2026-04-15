@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+	readonly VITE_SYNC_URL?: string;
+	readonly VITE_WEB_BUILD?: string;
+}
+
 // Declare CSS modules
 declare module "*.css" {
 	const content: Record<string, string>;

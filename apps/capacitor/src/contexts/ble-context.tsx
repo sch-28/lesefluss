@@ -1,4 +1,3 @@
-import { Capacitor } from "@capacitor/core";
 import type { BleDevice } from "@capacitor-community/bluetooth-le";
 import type React from "react";
 import {
@@ -14,8 +13,7 @@ import { BLEConnectionState, ble, bleClient, type ScannedDevice } from "../servi
 import { queries } from "../services/db/queries";
 import type { Settings as RSVPSettings } from "../services/db/schema";
 import { log } from "../utils/log";
-
-const IS_WEB = Capacitor.getPlatform() === "web";
+import { IS_WEB } from "../utils/platform";
 
 interface BLEContextType {
 	// Connection state

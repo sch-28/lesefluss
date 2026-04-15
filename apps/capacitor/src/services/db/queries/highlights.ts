@@ -14,6 +14,13 @@ export async function getHighlightsByBook(bookId: string): Promise<Highlight[]> 
 }
 
 /**
+ * Fetch all highlights across all books. Used by sync to push the full snapshot.
+ */
+export async function getAllHighlights(): Promise<Highlight[]> {
+	return db.select().from(highlights);
+}
+
+/**
  * Insert a new highlight. Returns the generated id.
  */
 export async function addHighlight(highlight: NewHighlight): Promise<string> {

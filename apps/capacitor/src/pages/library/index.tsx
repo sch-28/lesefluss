@@ -29,6 +29,7 @@ import { useBookSync } from "../../contexts/book-sync-context";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import type { Book } from "../../services/db/schema";
+import { IS_WEB } from "../../utils/platform";
 import BookCard from "./book-card";
 import {
 	FILTER_LABELS,
@@ -172,18 +173,22 @@ const Library: React.FC = () => {
 						<IonButton id="sort-trigger" title="Sort">
 							<IonIcon slot="icon-only" icon={swapVerticalOutline} />
 						</IonButton>
-						<BLEIndicator />
-						<IonButton
-							disabled={!isConnected || syncing || isTransferring}
-							onClick={handleRefresh}
-							title="Sync position from device"
-						>
-							{syncing ? (
-								<IonSpinner name="crescent" slot="icon-only" />
-							) : (
-								<IonIcon slot="icon-only" icon={refreshOutline} />
-							)}
-						</IonButton>
+						{!IS_WEB && (
+							<>
+								<BLEIndicator />
+								<IonButton
+									disabled={!isConnected || syncing || isTransferring}
+									onClick={handleRefresh}
+									title="Sync position from device"
+								>
+									{syncing ? (
+										<IonSpinner name="crescent" slot="icon-only" />
+									) : (
+										<IonIcon slot="icon-only" icon={refreshOutline} />
+									)}
+								</IonButton>
+							</>
+						)}
 					</IonButtons>
 				</IonToolbar>
 			</IonHeader>
@@ -257,34 +262,42 @@ const Library: React.FC = () => {
 					header={selectedBook?.title}
 					cssClass="rsvp-action-sheet"
 					buttons={[
-						{
-							text: isConnected ? "Set active on device" : "Set active on device (not connected)",
-							disabled: !isConnected || isTransferring,
-							handler: () => {
-								if (selectedBook) handleSetActive(selectedBook);
-							},
-						},
+						...(!IS_WEB
+							? [
+									{
+										text: isConnected
+											? "Set active on device"
+											: "Set active on device (not connected)",
+										disabled: !isConnected || isTransferring,
+										handler: () => {
+											if (selectedBook) handleSetActive(selectedBook);
+										},
+									},
+								]
+							: []),
 						{
 							text: "Delete",
-							role: "destructive",
+							role: "destructive" as const,
 							handler: () => {
 								if (selectedBook) handleDelete(selectedBook);
 							},
 						},
 						{
 							text: "Cancel",
-							role: "cancel",
+							role: "cancel" as const,
 						},
 					]}
 				/>
 
-				{/* Transfer confirm + progress modal (self-contained) */}
-				<TransferModal
-					isOpen={!!pendingTransferBook}
-					book={pendingTransferBook}
-					activeBook={books.find((b) => b.id === activeBookId) ?? null}
-					onDismiss={handleTransferDismiss}
-				/>
+				{/* Transfer confirm + progress modal (self-contained, native only) */}
+				{!IS_WEB && (
+					<TransferModal
+						isOpen={!!pendingTransferBook}
+						book={pendingTransferBook}
+						activeBook={books.find((b) => b.id === activeBookId) ?? null}
+						onDismiss={handleTransferDismiss}
+					/>
+				)}
 
 				{/* Import error alert */}
 				<IonAlert

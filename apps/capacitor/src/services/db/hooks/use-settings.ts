@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
 import type { Settings } from "../schema";
 import { settingsKeys } from "./query-keys";
@@ -37,6 +38,7 @@ function useSaveSettings() {
 		mutationFn: (patch: Partial<Omit<Settings, "id" | "updatedAt">>) => queries.saveSettings(patch),
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: settingsKeys.all });
+			scheduleSyncPush(5000);
 		},
 	});
 }

@@ -4,8 +4,9 @@ import { boolean, integer, pgTable, primaryKey, real, text, timestamp } from "dr
 // Sync tables are defined below.
 
 /**
- * sync_books — book metadata keyed by (user_id, book_id).
- * Book *files* are never stored server-side — metadata + position only.
+ * sync_books — book data keyed by (user_id, book_id).
+ * Includes content (plain text), cover image, and chapters for full device restore.
+ * Content is immutable per bookId — only pushed once.
  */
 export const syncBooks = pgTable(
 	"sync_books",
@@ -17,7 +18,9 @@ export const syncBooks = pgTable(
 		fileSize: integer("file_size"),
 		wordCount: integer("word_count"),
 		position: integer("position").notNull().default(0), // byte offset
-		coverUrl: text("cover_url"), // reserved for future use
+		content: text("content"), // full plain text — null until first content push
+		coverImage: text("cover_image"), // base64-encoded cover art from EPUB
+		chapters: text("chapters"), // JSON: [{title: string, startByte: number}]
 		updatedAt: timestamp("updated_at").notNull(),
 	},
 	(t) => [primaryKey({ columns: [t.userId, t.bookId] })],

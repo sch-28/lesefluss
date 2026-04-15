@@ -1,6 +1,6 @@
 # RSVP Capacitor Companion App
 
-Ionic React mobile app (iOS/Android) for the ESP32 RSVP Reader. Manages books, syncs settings via BLE, and provides a software RSVP reader.
+Ionic React mobile app (iOS/Android/Web) for the ESP32 RSVP Reader. Manages books, syncs settings via BLE, and provides a software RSVP reader. Also runs as an embedded web app inside the TanStack Start website at `/app`.
 
 For project overview, roadmap, and shared settings see `../AGENTS.md`.
 
@@ -17,11 +17,28 @@ For project overview, roadmap, and shared settings see `../AGENTS.md`.
 
 ```bash
 pnpm install
-pnpm start          # Vite dev server, hot reload at http://localhost:3000
+pnpm start          # Vite dev server, hot reload at http://localhost:3001
 pnpm check          # Type checking
-pnpm build          # Production build
-pnpm preview        # Preview production build
+pnpm build          # Production build (native)
 ```
+
+## Web Embed Build
+
+The app can be built for embedding inside the website at `/app`:
+
+```bash
+WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true pnpm build
+# Or from the web app: pnpm build:app
+```
+
+**`VITE_WEB_BUILD=true`** enables:
+- Vite `base: "/app/"` — all asset paths prefixed
+- React Router basename `/app` — client routes become `/app/tabs/library` etc.
+- Cookie-based auth instead of Bearer token (same-domain session)
+- WASM path set to `/app/assets` for jeep-sqlite
+- BLE/device UI hidden, file import uses HTML5 File API
+
+Platform detection: `Capacitor.getPlatform() === "web"` (used throughout for BLE guards, UI hiding). Web build detection: `import.meta.env.VITE_WEB_BUILD === "true"` (used for auth and sync differences).
 
 ## File Structure
 
@@ -38,11 +55,17 @@ src/
       selection-toolbar.tsx   # Fixed toolbar shown during text selection (color swatches, note, cancel)
       highlight-modal.tsx     # Bottom-sheet modal for editing an existing highlight (color, note, delete)
       highlights-list-modal.tsx # Bottom-sheet listing all highlights for the book; tap to jump
-    settings.tsx          # ESP32 settings UI + BLE sync/disconnect
+    settings.tsx          # Settings hub — links to RSVP, Appearance, Device, Cloud Sync sub-pages
+    settings/
+      rsvp.tsx              # RSVP speed settings
+      appearance.tsx        # Theme, font, reading time settings
+      device.tsx            # ESP32 BLE connection, sync to/from device
+      sync.tsx              # Cloud sync — sign in/up, sync now, sign out
   contexts/
     DatabaseContext.tsx     # Drizzle DB provider
     BLEContext.tsx          # App-wide BLE connection state + onConnected hook
     BookSyncContext.tsx     # Active-book tracking, position sync, book transfer
+    SyncContext.tsx         # Cloud sync state — login, pull/push on mount/resume
   ble/
     index.ts                # Public surface — exports `ble`, `bleClient`, types
     types.ts                # BLEConnectionState, BLEResult, BLE_CONNECTION_TIMEOUT_MS
@@ -58,6 +81,9 @@ src/
   services/
     query-client.ts         # Singleton QueryClient (used by App.tsx + non-React callers)
     bookImport.ts           # File picker, TXT + EPUB parsing
+    sync/
+      auth-client.ts          # Better Auth client configured with VITE_SYNC_URL
+      index.ts                # pullSync, pushSync, scheduleSyncPush, signIn/signUp/signOut, token mgmt
     db/
       index.ts              # Barrel — initDb(), db, sqliteConnection
       adapter.ts            # Drizzle sqlite-proxy adapter + sanitizeParams
@@ -65,7 +91,7 @@ src/
       web-setup.ts          # jeep-sqlite web bootstrap (no-op on native)
       schema.ts             # Drizzle table definitions
       queries/              # Raw async query functions (import as `queries` object)
-        highlights.ts       # getHighlightsByBook, addHighlight, updateHighlight, deleteHighlight, deleteHighlightsByBook
+        highlights.ts       # getHighlightsByBook, getAllHighlights, addHighlight, updateHighlight, deleteHighlight, deleteHighlightsByBook
       hooks/                # react-query wrappers (import as `queryHooks` object)
         query-keys.ts       # Centralised key factory (bookKeys, settingsKeys) — bookKeys.highlights(id)
         use-books.ts        # useBooks, useBook, useBookContent, useImportBook, useDeleteBook
@@ -133,10 +159,11 @@ await ble.transferBook(content, "book.txt", onProgress);
 
 ## Book Import (`src/services/bookImport.ts`)
 
-- File picker via `@capawesome/capacitor-file-picker`
+- **Native:** File picker via `@capawesome/capacitor-file-picker`
+- **Web:** HTML5 `<input type="file">` fallback (`pickFileWeb()`)
 - **TXT:** read directly, store as plain text in `book_content`
 - **EPUB:** parsed with `epubjs` — extracts plain text, cover image (base64), chapter boundaries
-- Original `.epub` saved to `Directory.Data/books/{id}.epub` via `@capacitor/filesystem`
+- Original `.epub` saved to `Directory.Data/books/{id}.epub` via `@capacitor/filesystem` (native only, skipped on web)
 - `removeBook()` cleans up both DB rows and disk files
 - Import shows progress bar for EPUB parsing
 
@@ -278,10 +305,28 @@ Tap an already-highlighted word → opens a bottom-sheet with the definition fro
 - **Long press** (≥ 400ms) → action sheet (Set active on device / Delete)
 - `onTouchMove` cancels the long-press timer so grid scrolling never accidentally triggers the action sheet
 
+## Cloud Sync (`src/services/sync/`)
+
+Full-snapshot sync with the web server. Shared Zod schemas and types in `@rsvp/rsvp-core/sync`.
+
+**Auth:** Native uses Better Auth client (`auth-client.ts`) with `VITE_SYNC_URL` env var and Bearer token from `@capacitor/preferences`. Web embed uses same-domain cookie auth (no token needed).
+
+**Sync protocol:** `pullSync()` → GET `/api/sync`, merge (last-write-wins by `updatedAt`). `pushSync()` → POST `/api/sync` with full local snapshot. `fullSync()` = pull then push. `SYNC_ENABLED` flag controls whether sync runs (`!!SYNC_URL || IS_WEB_BUILD`).
+
+**Auto-push:** All DB mutation hooks (`useImportBook`, `useDeleteBook`, `useSaveSettings`, `useAddHighlight`, `useUpdateHighlight`, `useDeleteHighlight`) call `scheduleSyncPush()` on success — debounced 2s POST (5s for settings to absorb rapid slider changes).
+
+**Auto-pull:** `SyncContext` triggers `fullSync()` on mount (if logged in) and on app resume.
+
+**Concurrency:** `withSyncLock()` uses a promise-chain queue to prevent concurrent pull/push from racing.
+
+**What syncs:** books (metadata, position, and full content/cover/chapters for cross-device restore — content only pushed once per book), settings (syncable fields only, not device-specific like BLE/brightness), highlights (server tombstones deletions).
+
+**UI:** Settings → Cloud Sync sub-page (`settings/sync.tsx`). Sign in/up form when logged out; email, last synced, sync now, sign out when logged in.
+
 ## UI
 
 - **2 tabs:** Library (default) + Settings
 - BLE status badge between tabs (no dedicated connection page)
 - **Library:** book grid (3 cols), cover art, progress bar, "On device" badge; empty state; FAB to import; short tap → reader; long press → action sheet; transfer progress modal
-- **Settings:** sliders for WPM/delays/acceleration/offsets, toggles for inverse/BLE, sync-to/from-device buttons, disconnect; storage info display
+- **Settings:** hub page linking to RSVP, Appearance, Device, Cloud Sync sub-pages
 - **BookReader:** full-screen virtualized reader, word highlight, back button, dark/light theme toggle, progress bar, TOC navigation, dictionary lookup; position syncs bidirectionally with ESP32

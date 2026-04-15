@@ -19,6 +19,7 @@ import {
 	addHighlight,
 	deleteHighlight,
 	deleteHighlightsByBook,
+	getAllHighlights,
 	getHighlightsByBook,
 	updateHighlight,
 } from "./highlights";
@@ -46,6 +47,7 @@ export const queries = {
 
 	// Highlights
 	getHighlightsByBook,
+	getAllHighlights,
 	addHighlight,
 	updateHighlight,
 	deleteHighlight,

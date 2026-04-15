@@ -13,20 +13,26 @@ import {
 import {
 	bookOutline,
 	chevronForward,
+	cloudDone,
+	cloudOutline,
 	colorPaletteOutline,
 	hardwareChipOutline,
 } from "ionicons/icons";
 import type React from "react";
 import BLEIndicator from "../components/ble-indicator";
 import { useBLE } from "../contexts/ble-context";
+import { useSyncContext } from "../contexts/sync-context";
 import { useTheme } from "../contexts/theme-context";
 import { BLEConnectionState } from "../services/ble";
 import { queryHooks } from "../services/db/hooks";
+import { SYNC_ENABLED } from "../services/sync";
+import { IS_WEB } from "../utils/platform";
 
 const Settings: React.FC = () => {
 	const { data: settings, isPending } = queryHooks.useSettings();
 	const { connectionState, connectedDevice } = useBLE();
 	const { theme } = useTheme();
+	const { isLoggedIn, userEmail } = useSyncContext();
 
 	const isConnected = connectionState === BLEConnectionState.CONNECTED;
 	const isTransitioning =
@@ -46,6 +52,8 @@ const Settings: React.FC = () => {
 			? "Connecting..."
 			: "No device";
 
+	const syncSubtitle = isLoggedIn ? (userEmail ?? "Connected") : "Not signed in";
+
 	if (isPending) {
 		return (
 			<IonPage>
@@ -63,9 +71,11 @@ const Settings: React.FC = () => {
 			<IonHeader class="ion-no-border">
 				<IonToolbar>
 					<IonTitle>Settings</IonTitle>
-					<div slot="end" style={{ display: "flex", alignItems: "center" }}>
-						<BLEIndicator />
-					</div>
+					{!IS_WEB && (
+						<div slot="end" style={{ display: "flex", alignItems: "center" }}>
+							<BLEIndicator />
+						</div>
+					)}
 				</IonToolbar>
 			</IonHeader>
 			<IonContent>
@@ -93,19 +103,51 @@ const Settings: React.FC = () => {
 						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
 					</IonItem>
 
-					<IonItem
-						button
-						detail={false}
-						routerLink="/tabs/settings/device"
-						routerDirection="forward"
-					>
-						<IonIcon icon={hardwareChipOutline} slot="start" color="medium" />
-						<IonLabel>
-							<h2>Device</h2>
-							<p>{deviceSubtitle}</p>
-						</IonLabel>
-						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
-					</IonItem>
+					{!IS_WEB && (
+						<IonItem
+							button
+							detail={false}
+							routerLink="/tabs/settings/device"
+							routerDirection="forward"
+						>
+							<IonIcon icon={hardwareChipOutline} slot="start" color="medium" />
+							<IonLabel>
+								<h2>Device</h2>
+								<p>{deviceSubtitle}</p>
+							</IonLabel>
+							<IonIcon
+								icon={chevronForward}
+								slot="end"
+								color="medium"
+								style={{ fontSize: "16px" }}
+							/>
+						</IonItem>
+					)}
+
+					{SYNC_ENABLED && (
+						<IonItem
+							button
+							detail={false}
+							routerLink="/tabs/settings/sync"
+							routerDirection="forward"
+						>
+							<IonIcon
+								icon={isLoggedIn ? cloudDone : cloudOutline}
+								slot="start"
+								color={isLoggedIn ? "success" : "medium"}
+							/>
+							<IonLabel>
+								<h2>Cloud Sync</h2>
+								<p>{syncSubtitle}</p>
+							</IonLabel>
+							<IonIcon
+								icon={chevronForward}
+								slot="end"
+								color="medium"
+								style={{ fontSize: "16px" }}
+							/>
+						</IonItem>
+					)}
 				</IonList>
 			</IonContent>
 		</IonPage>
