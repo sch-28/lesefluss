@@ -12,7 +12,6 @@ import {
 	IonListHeader,
 	IonPage,
 	IonSpinner,
-	IonText,
 	IonTitle,
 	IonToolbar,
 } from "@ionic/react";
@@ -94,9 +93,7 @@ const SyncSettings: React.FC = () => {
 
 						{syncError && (
 							<div className="ion-padding-horizontal ion-padding-top">
-								<IonText color="danger">
-									<p style={{ margin: 0, fontSize: "14px" }}>{syncError}</p>
-								</IonText>
+								<p style={{ margin: 0, fontSize: "14px", color: "#ef4444" }}>{syncError}</p>
 							</div>
 						)}
 
@@ -184,9 +181,7 @@ const SyncSettings: React.FC = () => {
 
 						{displayError && (
 							<div className="ion-padding-horizontal ion-padding-top">
-								<IonText color="danger">
-									<p style={{ margin: 0, fontSize: "14px" }}>{displayError}</p>
-								</IonText>
+								<p style={{ margin: 0, fontSize: "14px", color: "#ef4444" }}>{displayError}</p>
 							</div>
 						)}
 

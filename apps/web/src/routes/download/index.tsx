@@ -10,38 +10,32 @@ const features = [
 	{
 		icon: "📚",
 		title: "Book library",
-		description:
-			"Import EPUB and TXT from any source. Metadata, cover art, and chapter structure are extracted automatically.",
+		description: "Import EPUB and TXT. Metadata and chapters detected automatically.",
 	},
 	{
 		icon: "⚡",
 		title: "RSVP reader",
-		description:
-			"Flash words at 100–1000 WPM with the Optimal Recognition Point (ORP) aligned for each word length.",
+		description: "Words flash at 100–1000 WPM with optimal letter alignment.",
 	},
 	{
 		icon: "📖",
 		title: "Built-in e-reader",
-		description:
-			"Full reading view with dark, sepia, and light themes. Adjust font, size, line spacing, and margins.",
+		description: "Dark, sepia, and light themes. Adjustable font, spacing, and margins.",
 	},
 	{
 		icon: "📑",
 		title: "Chapter navigation",
-		description:
-			"EPUB table of contents with chapter jump. Tap any chapter to continue reading from there.",
+		description: "EPUB table of contents with chapter jump.",
 	},
 	{
 		icon: "🔍",
 		title: "Dictionary lookup",
-		description:
-			"Tap any word in the reader to look it up instantly. Highlight and search across your notes.",
+		description: "Tap any word to look it up. Highlight and search passages.",
 	},
 	{
 		icon: "📡",
 		title: "Device sync",
-		description:
-			"Pair with an ESP32 reader over Bluetooth. Sync your active book and keep your position in sync across both.",
+		description: "Sync your book and reading position over Bluetooth.",
 	},
 ];
 
@@ -55,10 +49,10 @@ function DownloadPage() {
 	return (
 		<div>
 			{/* ── Hero ─────────────────────────────────────────────────── */}
-			<section className="border-border border-b py-20">
+			<section className="py-20">
 				<div className="mx-auto max-w-5xl px-6">
 					<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
-						Android App — Free &amp; Open Source
+						Android App
 					</p>
 					<h1 className="mb-5 font-bold text-4xl leading-tight sm:text-5xl">
 						Lesefluss
@@ -66,9 +60,8 @@ function DownloadPage() {
 						<span className="text-muted-foreground">for Android</span>
 					</h1>
 					<p className="mb-10 max-w-xl text-lg text-muted-foreground leading-relaxed">
-						A full-featured reading app with a built-in RSVP engine. Import EPUB and TXT books, read
-						at your own pace or blast through chapters at 300–600 WPM. No account required, no
-						tracking, fully offline.
+						Import EPUB and TXT books, read at your own pace or speed through chapters at
+						up to 1000 WPM. No account required, fully offline.
 					</p>
 					<div className="flex flex-wrap gap-4">
 						{/* Play Store badge — not yet published */}
@@ -113,12 +106,9 @@ function DownloadPage() {
 			</section>
 
 			{/* ── Feature Grid ─────────────────────────────────────────── */}
-			<section className="border-border border-b bg-muted/20 py-20">
+			<section className="bg-muted/30 py-20">
 				<div className="mx-auto max-w-5xl px-6">
-					<h2 className="mb-3 font-bold text-2xl">What's included</h2>
-					<p className="mb-12 text-muted-foreground">
-						Everything you need to read faster and smarter.
-					</p>
+					<h2 className="mb-12 font-bold text-2xl">Features</h2>
 					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 						{features.map((f) => (
 							<FeatureCard key={f.title} {...f} />

@@ -11,15 +11,15 @@ function DevicePage() {
 	return (
 		<div>
 			{/* ── Hero ─────────────────────────────────────────────────── */}
-			<section className="border-border border-b py-20">
+			<section className="py-20">
 				<div className="mx-auto max-w-5xl px-6">
 					<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
-						Open Source Hardware — Build Guide Free
+						DIY Hardware
 					</p>
 					<h1 className="mb-5 font-bold text-4xl leading-tight sm:text-5xl">The ESP32 Reader</h1>
 					<p className="mb-8 max-w-xl text-lg text-muted-foreground leading-relaxed">
-						A pocket-sized speed reader you build yourself. MicroPython firmware, single-button
-						operation, and Bluetooth sync with the companion app. About €25 in parts.
+						A pocket-sized speed reader you build yourself. Single-button operation,
+						Bluetooth sync with the app. About €25 in parts.
 					</p>
 					<div className="flex flex-wrap gap-4">
 						<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
@@ -35,7 +35,7 @@ function DevicePage() {
 			</section>
 
 			{/* ── Variants ─────────────────────────────────────────────── */}
-			<section className="border-border border-b py-20">
+			<section className="py-20">
 				<div className="mx-auto max-w-5xl px-6">
 					<h2 className="mb-3 font-bold text-2xl">Two display variants</h2>
 					<p className="mb-10 text-muted-foreground">
@@ -87,7 +87,7 @@ function DevicePage() {
 			</section>
 
 			{/* ── Parts List ───────────────────────────────────────────── */}
-			<section className="border-border border-b bg-muted/20 py-20">
+			<section className="bg-muted/30 py-20">
 				<div className="mx-auto max-w-5xl px-6">
 					<h2 className="mb-3 font-bold text-2xl">Parts list</h2>
 					<p className="mb-8 text-muted-foreground">
@@ -132,9 +132,8 @@ function DevicePage() {
 						<CardContent className="p-10">
 							<h2 className="mb-3 font-bold text-2xl">Ready to build?</h2>
 							<p className="mb-6 max-w-xl text-muted-foreground leading-relaxed">
-								The full build guide walks through every step: sourcing parts, wiring the display,
-								flashing the firmware, and pairing with the app. It's free. A donation to keep the
-								project alive is always appreciated but never required.
+								The build guide walks through every step: sourcing parts, wiring, flashing
+								firmware, and pairing with the app.
 							</p>
 							<div className="flex flex-wrap gap-4">
 								<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">

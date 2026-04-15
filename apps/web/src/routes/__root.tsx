@@ -15,7 +15,7 @@ export const Route = createRootRoute({
 			...seo({
 				title: "Lesefluss — Speed Reading App & Device",
 				description:
-					"Free, open-source speed reading app for Android. Import EPUB and TXT books, read at 350+ WPM, and optionally sync to a pocket-sized ESP32 device.",
+					"Speed reading app for Android. Import EPUB and TXT books, read at up to 1000 WPM, and optionally sync to a pocket-sized ESP32 device.",
 			}),
 		],
 		links: [
@@ -30,16 +30,16 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en" className="dark">
+		<html lang="en">
 			<head>
 				<HeadContent />
 			</head>
 			<body className="bg-background text-foreground antialiased">
 				<Header />
 				<main>{children}</main>
-				<footer className="border-border border-t py-10 text-center text-muted-foreground text-sm">
+				<footer className="py-10 text-center text-muted-foreground text-sm">
 					<div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
-						<span>© {new Date().getFullYear()} Lesefluss — Open Source</span>
+						<span>© {new Date().getFullYear()} Lesefluss</span>
 						<div className="flex items-center gap-6">
 							<Link to="/download" className="transition-colors hover:text-foreground">
 								Download
