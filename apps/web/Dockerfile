@@ -14,6 +14,8 @@ FROM deps AS build
 COPY packages/ ./packages/
 COPY apps/capacitor/ ./apps/capacitor/
 COPY apps/web/ ./apps/web/
+# Copy sql-wasm.wasm into capacitor public/ (gitignored, needs setup)
+RUN cd apps/capacitor && node scripts/setup-web.mjs
 # Build capacitor web embed → apps/web/public/app/
 RUN cd apps/capacitor && WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true pnpm build
 RUN rm -rf apps/web/public/app && cp -r apps/capacitor/dist apps/web/public/app
