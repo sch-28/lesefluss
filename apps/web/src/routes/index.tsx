@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Bluetooth, BookOpen, Cpu, Download, Highlighter, Library, SlidersHorizontal, Zap } from "lucide-react";
 import type * as React from "react";
 import { FeatureCard } from "~/components/feature-card";
+import { HeroRsvp } from "~/components/hero-rsvp";
 import { RsvpPreview } from "~/components/rsvp-preview";
-import { StatCard } from "~/components/stat-card";
 import { Button } from "~/components/ui/button";
 
 export const Route = createFileRoute("/")({
@@ -29,28 +30,25 @@ function Home() {
 						if (el) el.playbackRate = 0.85;
 					}}
 				/>
-				<div className="relative mx-auto max-w-5xl px-6 py-44 text-center">
-					<div className="mx-auto inline-flex flex-col items-center rounded-2xl bg-background/80 px-10 py-10 backdrop-blur-md sm:px-16">
-						<p className="mb-4 font-medium text-sm text-muted-foreground uppercase tracking-widest">
-							Rapid Serial Visual Presentation
-						</p>
-						<h1 className="mb-6 font-bold text-5xl tracking-tight text-foreground sm:text-6xl">
-							Read faster.
-							<br />
-							<span className="text-muted-foreground">One word at a time.</span>
-						</h1>
-						<p className="mx-auto mb-10 max-w-xl text-lg text-muted-foreground">
-							Speed reading app for Android. Import any book, read at up to 1000 WPM.
-							Pair it with an ESP32 device for screen-free reading.
-						</p>
-						<div className="flex flex-col justify-center gap-4 sm:flex-row">
-							<Button asChild className="h-auto px-8 py-3 font-semibold text-base">
-								<Link to="/download">Get the app</Link>
-							</Button>
-							<Button asChild variant="outline" className="h-auto px-8 py-3 font-semibold text-base">
-								<Link to="/device">Build the device</Link>
-							</Button>
-						</div>
+				<div className="relative mx-auto max-w-5xl px-6 py-44 text-center mix-blend-difference">
+					<h1 className="mb-6 font-bold text-5xl tracking-tight text-white sm:text-6xl">
+						Read <HeroRsvp />
+						<br />
+						<span className="text-white">One word at a time.</span>
+					</h1>
+					<p className="mx-auto mb-10 max-w-xl text-lg text-white/90">
+						Speed reading app for Android. Import any book, read at up to 1000 WPM.
+						Pair it with an ESP32 device for screen-free reading.
+					</p>
+					<div className="flex flex-col justify-center gap-4 sm:flex-row">
+						<Link to="/download" className="inline-flex items-center gap-2 rounded-md border-2 border-white bg-white px-8 py-3 font-semibold text-base text-black transition-colors hover:bg-white/80">
+							<Download className="h-4 w-4" />
+							Get the app
+						</Link>
+						<Link to="/device" className="inline-flex items-center gap-2 rounded-md border-2 border-white bg-transparent px-8 py-3 font-semibold text-base text-white transition-colors hover:bg-white/10">
+							<Cpu className="h-4 w-4" />
+							Build the device
+						</Link>
 					</div>
 				</div>
 			</section>
@@ -99,10 +97,10 @@ function Home() {
 			</section>
 
 			{/* ── Features ─────────────────────────────────────────────── */}
-			<section className="border-border border-t py-24">
+			<section className="bg-muted/50 py-24">
 				<div className="mx-auto max-w-5xl px-6">
 					<h2 className="mb-12 text-center font-bold text-3xl">Features</h2>
-					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+					<div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
 						{features.map((feature) => (
 							<FeatureCard key={feature.title} {...feature} />
 						))}
@@ -114,14 +112,17 @@ function Home() {
 			<section className="border-border border-t py-24">
 				<div className="mx-auto max-w-5xl px-6">
 					<div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-						<div className="order-2 lg:order-1">
-							<div className="grid grid-cols-2 gap-3">
-								{specs.map((spec) => (
-									<StatCard key={spec.label} {...spec} />
-								))}
-							</div>
+						<div className="relative flex justify-center lg:justify-start">
+							<video
+								src="/single.mp4"
+								autoPlay
+								muted
+								loop
+								playsInline
+								className="w-200"
+							/>
 						</div>
-						<div className="order-1 lg:order-2">
+						<div>
 							<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
 								Hardware
 							</p>
@@ -134,6 +135,14 @@ function Home() {
 								Pocket-sized ESP32 reader. AMOLED or TFT, single button, weeks of battery.
 								~€25 in parts.
 							</p>
+							<ul className="mb-8 space-y-3">
+								{deviceFeatures.map((f) => (
+									<li key={f} className="flex items-center gap-3 text-sm">
+										<span className="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground" />
+										{f}
+									</li>
+								))}
+							</ul>
 							<Button
 								asChild
 								variant="outline"
@@ -158,40 +167,40 @@ const appFeatures = [
 
 const features = [
 	{
-		icon: "📚",
+		icon: Library,
 		title: "Library & import",
 		description: "Import EPUB or TXT. Chapters and metadata detected automatically.",
 	},
 	{
-		icon: "⚡",
+		icon: Zap,
 		title: "RSVP reading",
 		description: "Words flash at 100–1000 WPM with optimal letter alignment.",
 	},
 	{
-		icon: "📖",
+		icon: BookOpen,
 		title: "Built-in reader",
 		description: "Dark, sepia, and light themes. Adjustable font, spacing, and margins.",
 	},
 	{
-		icon: "🔍",
+		icon: Highlighter,
 		title: "Dictionary & highlights",
 		description: "Tap any word to look it up. Highlight and search passages.",
 	},
 	{
-		icon: "🎛️",
+		icon: SlidersHorizontal,
 		title: "Tunable speed",
 		description: "Fine-tune WPM, punctuation pauses, acceleration, and focal position.",
 	},
 	{
-		icon: "📡",
+		icon: Bluetooth,
 		title: "ESP32 sync",
 		description: "Sync your book and reading position over Bluetooth.",
 	},
 ];
 
-const specs = [
-	{ label: "CPU", value: "ESP32-S3" },
-	{ label: "Display", value: "AMOLED / TFT" },
-	{ label: "Connectivity", value: "BLE 5.0" },
-	{ label: "Runtime", value: "MicroPython" },
+const deviceFeatures = [
+	"AMOLED or TFT display",
+	"Single button operation",
+	"Weeks of battery life",
+	"BLE sync to companion app",
 ];

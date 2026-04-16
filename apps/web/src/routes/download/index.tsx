@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Bluetooth, BookMarked, BookOpen, Highlighter, Library, Zap } from "lucide-react";
 import { FeatureCard } from "~/components/feature-card";
 import { StatCard } from "~/components/stat-card";
 
@@ -8,32 +9,32 @@ export const Route = createFileRoute("/download/")({
 
 const features = [
 	{
-		icon: "📚",
+		icon: Library,
 		title: "Book library",
 		description: "Import EPUB and TXT. Metadata and chapters detected automatically.",
 	},
 	{
-		icon: "⚡",
+		icon: Zap,
 		title: "RSVP reader",
 		description: "Words flash at 100–1000 WPM with optimal letter alignment.",
 	},
 	{
-		icon: "📖",
+		icon: BookOpen,
 		title: "Built-in e-reader",
 		description: "Dark, sepia, and light themes. Adjustable font, spacing, and margins.",
 	},
 	{
-		icon: "📑",
+		icon: BookMarked,
 		title: "Chapter navigation",
 		description: "EPUB table of contents with chapter jump.",
 	},
 	{
-		icon: "🔍",
+		icon: Highlighter,
 		title: "Dictionary lookup",
 		description: "Tap any word to look it up. Highlight and search passages.",
 	},
 	{
-		icon: "📡",
+		icon: Bluetooth,
 		title: "Device sync",
 		description: "Sync your book and reading position over Bluetooth.",
 	},

@@ -1,19 +1,19 @@
-import { Card, CardContent } from "~/components/ui/card";
+import type { LucideIcon } from "lucide-react";
 
 interface FeatureCardProps {
-	icon: string;
+	icon: LucideIcon;
 	title: string;
 	description: string;
 }
 
-export function FeatureCard({ icon, title, description }: FeatureCardProps) {
+export function FeatureCard({ icon: Icon, title, description }: FeatureCardProps) {
 	return (
-		<Card className="gap-0 py-0">
-			<CardContent className="p-6">
-				<div className="mb-3 text-2xl">{icon}</div>
-				<h3 className="mb-2 font-semibold">{title}</h3>
+		<div className="flex gap-3">
+			<Icon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+			<div>
+				<h3 className="mb-1 font-semibold">{title}</h3>
 				<p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
-			</CardContent>
-		</Card>
+			</div>
+		</div>
 	);
 }
