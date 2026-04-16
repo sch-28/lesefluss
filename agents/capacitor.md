@@ -57,10 +57,15 @@ src/
       highlights-list-modal.tsx # Bottom-sheet listing all highlights for the book; tap to jump
     settings.tsx          # Settings hub — links to RSVP, Appearance, Device, Cloud Sync sub-pages
     settings/
-      rsvp.tsx              # RSVP speed settings
-      appearance.tsx        # Theme, font, reading time settings
+      rsvp.tsx              # RSVP speed settings (uses useAutoSaveSettings)
+      appearance.tsx        # Theme, font, reading time settings (uses useAutoSaveSettings)
       device.tsx            # ESP32 BLE connection, sync to/from device
       sync.tsx              # Cloud sync — sign in/up, sync now, sign out
+  components/
+    desktop-sidebar.tsx    # Desktop/web sidebar nav (brand, Library, Settings links)
+  hooks/
+    use-auto-save-settings.ts  # Optimistic settings updates with debounced DB writes (replaces useSettingsDraft)
+    use-appearance-settings.ts # Reader appearance settings hook
   contexts/
     DatabaseContext.tsx     # Drizzle DB provider
     BLEContext.tsx          # App-wide BLE connection state + onConnected hook
@@ -218,7 +223,7 @@ save.mutate({ wpm: 400 });
 - **Position saves in the Reader** use raw `queries.updateBook()` directly — fire-and-forget, high-frequency writes.
 - **Non-React callers** (BLE contexts, bookImport.ts) use raw `queries.*` for writes; call `queryClient.invalidateQueries()` if UI refresh needed.
 - **`useIonViewWillEnter`** in Library calls `qc.invalidateQueries({ queryKey: bookKeys.all })` to refresh when navigating back from the reader.
-- **Settings page** uses a local `draft` state seeded from `useSettings()` — the user edits the draft, then saves it with `useSaveSettings()`.
+- **Settings pages** use `useAutoSaveSettings()` — optimistic cache update on every change, debounced DB write (300ms). Replaces the old draft-then-save pattern. `updateSetting(key, value)` for individual fields, `replaceAll(patch)` for bulk updates (e.g. loading from BLE). Flushes pending writes on unmount.
 
 ## Book Reader (`src/pages/reader/`)
 
@@ -309,7 +314,7 @@ Tap an already-highlighted word → opens a bottom-sheet with the definition fro
 
 Full-snapshot sync with the web server. Shared Zod schemas and types in `@lesefluss/rsvp-core/sync`.
 
-**Auth:** Native uses Better Auth client (`auth-client.ts`) with `VITE_SYNC_URL` env var and Bearer token from `@capacitor/preferences`. Web embed uses same-domain cookie auth (no token needed).
+**Auth:** Native uses Better Auth client (`auth-client.ts`) with `VITE_SYNC_URL` env var (points to `https://lesefluss.app`) and Bearer token from `@capacitor/preferences`. Web embed uses same-domain cookie auth (no token needed).
 
 **Sync protocol:** `pullSync()` → GET `/api/sync`, merge (last-write-wins by `updatedAt`). `pushSync()` → POST `/api/sync` with full local snapshot. `fullSync()` = pull then push. `SYNC_ENABLED` flag controls whether sync runs (`!!SYNC_URL || IS_WEB_BUILD`).
 
@@ -326,7 +331,8 @@ Full-snapshot sync with the web server. Shared Zod schemas and types in `@lesefl
 ## UI
 
 - **2 tabs:** Library (default) + Settings
-- BLE status badge between tabs (no dedicated connection page)
-- **Library:** book grid (3 cols), cover art, progress bar, "On device" badge; empty state; FAB to import; short tap → reader; long press → action sheet; transfer progress modal
+- **Desktop/web:** sidebar nav replaces tab bar (`desktop-sidebar.tsx`) — brand link (→ `/` on web, static on native), Library and Settings nav items
+- BLE status badge between tabs on mobile (no dedicated connection page)
+- **Library:** book grid (3 cols), cover art, progress bar, "On device" badge; empty state; FAB to import; sync button in header (triggers cloud sync); short tap → reader; long press → action sheet; transfer progress modal
 - **Settings:** hub page linking to RSVP, Appearance, Device, Cloud Sync sub-pages
 - **BookReader:** full-screen virtualized reader, word highlight, back button, dark/light theme toggle, progress bar, TOC navigation, dictionary lookup; position syncs bidirectionally with ESP32

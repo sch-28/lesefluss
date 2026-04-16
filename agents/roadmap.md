@@ -32,7 +32,7 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 > Everything needed to actually sell
 
 - [ ] Play Store listing — screenshots, description, privacy policy
-- [x] Website — pitch, screenshots, embedded web app at `/app`, DIY vs assembled options
+- [x] Website — live at `lesefluss.app`, pitch, live RSVP preview, embedded web app at `/app`, DIY vs assembled options, deployed via Coolify
 - [ ] DIY guide (5€) — exact parts list with purchase links, flash + upload instructions, case print files; sold via website
 - [ ] Case STL files published on Printables / Thingiverse, linked from website and DIY guide
 - [ ] Order flow for assembled units — Tindie listing or contact form to start (50–70€, AMOLED variant)

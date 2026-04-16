@@ -2,8 +2,6 @@
 
 TanStack Start (React SSR) project website. Open-source project site — showcases the app and device, lets people download/build freely, and optionally create an account for cloud sync.
 
-> **THE WEBSITE HAS NOT DEPLOYED YET — STILL IN DEV**
-
 For project overview see `../AGENTS.md`.
 
 ## Tech Stack
@@ -11,7 +9,7 @@ For project overview see `../AGENTS.md`.
 - **TanStack Start** (React SSR) + TanStack Router (file-based)
 - **Drizzle ORM** + PostgreSQL (`drizzle-orm/node-postgres`)
 - **Better Auth** v1.6.x — email+password, self-hosted, Drizzle adapter, `tanstackStartCookies` plugin
-- **Deployment**: Docker on VPS (Dockerfile scaffolded)
+- **Deployment**: Docker on VPS via Coolify (Dockerfile-based)
 
 ## Development
 
@@ -25,7 +23,7 @@ pnpm build
 
 | Route | Status | Notes |
 |-------|--------|-------|
-| `/` | ✅ | Hero → App section → Features → Device section → Open source CTA |
+| `/` | ✅ | Hero with live RSVP preview → App section → Features → Device section → Open source CTA |
 | `/app/*` | ✅ | Embedded capacitor web build (SPA catch-all, see Web App Embed below) |
 | `/download` | ✅ | Download buttons, feature grid, requirements |
 | `/device` | ✅ | Hardware page: AMOLED vs ST7789 cards, parts list, build guide CTA |
@@ -60,7 +58,7 @@ Books store full plain text content, base64 cover image, and chapters JSON serve
 
 Better Auth wired at `src/routes/api/auth/$.ts` (catch-all handler). Client-side hooks in `src/lib/auth-client.ts`. Environment variables needed: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`.
 
-Trusted origins and CORS allowed origins share a single list in `src/lib/allowed-origins.ts`. Dev origins (`http://localhost`, `http://localhost:3001`) are only included when `NODE_ENV !== "production"`.
+Trusted origins and CORS allowed origins share a single list in `src/lib/allowed-origins.ts`. Production origin is `https://lesefluss.app`. Dev origins (`http://localhost`, `http://localhost:3001`) are only included when `NODE_ENV !== "production"`.
 
 ## Sync Architecture
 
@@ -106,10 +104,22 @@ The capacitor app is built as a static SPA and served under `/app/*`. This gives
 - [ ] Open Graph images, SEO pass
 - [ ] Transactional email provider for Better Auth verification emails (Resend / Postmark)
 - [ ] MDX migration for `/docs` if content grows significantly
-- [ ] Desktop UI polish for `/app` (wider layouts, sidebar nav, keyboard shortcuts)
+- [x] Desktop sidebar nav for `/app` (brand link, Library/Settings nav)
+- [ ] Desktop UI polish for `/app` (wider layouts, keyboard shortcuts)
+
+## Deployment
+
+Deployed on Coolify at `lesefluss.app` using the repo's `apps/web/Dockerfile`. The Dockerfile builds both the capacitor web embed and the TanStack Start app in a multi-stage build. The entrypoint script (`scripts/entrypoint.sh`) runs `drizzle-kit push` on startup to apply schema changes to Postgres.
+
+Environment variables (set in Coolify): `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`.
+
+## Landing Page Components
+
+- **`src/components/rsvp-preview.tsx`** — live animated RSVP word display (Hemingway sample text at 300 WPM, ORP highlighting). Used in the hero section.
+- **`src/components/hero-rsvp.tsx`** — hero section wrapper combining the RSVP preview with headline text.
+- **`src/components/feature-card.tsx`** — reusable card for the features grid.
 
 ## Open Questions
 
 - **Donation platform**: Ko-fi vs GitHub Sponsors vs custom — placeholder in `/device` ready
-- **Play Store**: needs publish decision before `/app` badge goes live
-- **Domain**: not yet set — affects `BETTER_AUTH_URL` and CORS config
+- **Play Store**: needs publish decision before `/download` badge goes live

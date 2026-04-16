@@ -32,7 +32,7 @@ pnpm setup:project      # generates BLE config + Android icon PNGs from resource
 
 ## What It Does
 
-Displays books word-by-word at configurable speed (RSVP — Rapid Serial Visual Presentation) on a handheld ESP32 device. The companion app manages your book library, syncs settings, and will eventually provide a software RSVP reader on your phone.
+Displays books word-by-word at configurable speed (RSVP — Rapid Serial Visual Presentation) on a handheld ESP32 device. The companion app manages your book library, syncs settings via BLE, and includes a full software RSVP reader + scroll reader. The website at `lesefluss.app` hosts a web version of the app at `/app`, handles auth and cloud sync, and showcases the project.
 
 ## Development
 
@@ -40,7 +40,7 @@ Displays books word-by-word at configurable speed (RSVP — Rapid Serial Visual 
 # Capacitor app
 cd apps/capacitor
 pnpm install
-pnpm start          # Vite dev server at http://localhost:3000
+pnpm start          # Vite dev server at http://localhost:3001
 
 # ESP32 firmware
 cd apps/esp32
@@ -49,6 +49,8 @@ cd apps/esp32
 ./scripts/upload.sh --board ST7789  # Upload changed files
 ./scripts/run.sh                    # Test run without reboot
 ```
+
+**Formatter:** Biome (`biome.json` at repo root). Run `pnpm biome check` or let the IDE plugin handle it.
 
 ### Development Workflows
 
@@ -197,6 +199,8 @@ Feature roadmap below. For publishing, Play Store, and monetisation see `agents/
 - [x] In-app RSVP reader (software parity with ESP32)
 - [x] Cloud sync (full-snapshot, last-write-wins — books/settings/highlights via POST /api/sync)
 - [x] Web app version (capacitor web build embedded at `/app` on website)
+- [x] Desktop sidebar nav for web app (brand, Library, Settings)
+- [x] Auto-save settings (optimistic update + debounced DB write, replaces draft-then-save)
 - [x] Library sorting (title, author, recent, progress) & filtering (all, unread, reading, done)
 - [ ] Advanced book management (tags, collections, search)
 - [ ] Reading statistics

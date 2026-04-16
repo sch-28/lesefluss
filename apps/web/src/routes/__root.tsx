@@ -22,6 +22,15 @@ export const Route = createRootRoute({
 			{ rel: "stylesheet", href: appCss },
 			{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
 		],
+		scripts: import.meta.env.VITE_GOATCOUNTER_URL
+			? [
+					{
+						src: `${import.meta.env.VITE_GOATCOUNTER_URL}/count.js`,
+						async: true,
+						"data-goatcounter": `${import.meta.env.VITE_GOATCOUNTER_URL}/count`,
+					},
+				]
+			: [],
 	}),
 	errorComponent: DefaultCatchBoundary,
 	notFoundComponent: () => <NotFound />,
