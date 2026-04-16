@@ -26,6 +26,7 @@ import { useHistory } from "react-router-dom";
 import BLEIndicator from "../../components/ble-indicator";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
+import { useSyncContext } from "../../contexts/sync-context";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import type { Book } from "../../services/db/schema";
@@ -51,6 +52,7 @@ const Library: React.FC = () => {
 		error: syncError,
 		clearError,
 	} = useBookSync();
+	const { isLoggedIn, syncNow } = useSyncContext();
 	const history = useHistory();
 	const qc = useQueryClient();
 
@@ -101,7 +103,10 @@ const Library: React.FC = () => {
 	const handleRefresh = async () => {
 		setSyncing(true);
 		try {
-			await syncPosition();
+			await Promise.all([
+				isConnected ? syncPosition() : undefined,
+				isLoggedIn ? syncNow() : undefined,
+			]);
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 		} finally {
 			setSyncing(false);
@@ -175,21 +180,19 @@ const Library: React.FC = () => {
 							<IonButton id="sort-trigger" title="Sort">
 								<IonIcon slot="icon-only" icon={swapVerticalOutline} />
 							</IonButton>
-							{!IS_WEB && (
-								<>
-									<BLEIndicator />
-									<IonButton
-										disabled={!isConnected || syncing || isTransferring}
-										onClick={handleRefresh}
-										title="Sync position from device"
-									>
-										{syncing ? (
-											<IonSpinner name="crescent" slot="icon-only" />
-										) : (
-											<IonIcon slot="icon-only" icon={refreshOutline} />
-										)}
-									</IonButton>
-								</>
+							{!IS_WEB && <BLEIndicator />}
+							{(isConnected || isLoggedIn) && (
+								<IonButton
+									disabled={syncing || isTransferring}
+									onClick={handleRefresh}
+									title="Sync"
+								>
+									{syncing ? (
+										<IonSpinner name="crescent" slot="icon-only" />
+									) : (
+										<IonIcon slot="icon-only" icon={refreshOutline} />
+									)}
+								</IonButton>
 							)}
 						</IonButtons>
 					</div>
