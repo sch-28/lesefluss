@@ -34,7 +34,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "../../components/toast";
 import { useBLE } from "../../contexts/ble-context";
-import { useSettingsDraft } from "../../hooks/use-settings-draft";
+import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import { ble } from "../../services/ble";
 import type { StorageInfo } from "../../services/ble/characteristics/storage";
 import { log } from "../../utils/log";
@@ -61,8 +61,7 @@ const DeviceSettings: React.FC = () => {
 	} = useBLE();
 
 	const { showToast } = useToast();
-	const { draft, setDraft, updateSetting, handleSave, saveMutation, isPending } =
-		useSettingsDraft();
+	const { settings, updateSetting, flush, replaceAll, isPending } = useAutoSaveSettings();
 
 	const [syncing, setSyncing] = useState(false);
 	const [showDisconnectAlert, setShowDisconnectAlert] = useState(false);
@@ -100,11 +99,11 @@ const DeviceSettings: React.FC = () => {
 	};
 
 	const handleSyncToDevice = async () => {
-		if (!isConnected || !draft) return;
+		if (!isConnected || !settings) return;
 		try {
 			setSyncing(true);
-			await handleSave();
-			const { id, updatedAt, ...settingsToSync } = draft;
+			await flush();
+			const { id, updatedAt, ...settingsToSync } = settings;
 			const success = await syncToDevice(settingsToSync);
 			if (success) {
 				showToast("Settings synced to device successfully");
@@ -125,9 +124,8 @@ const DeviceSettings: React.FC = () => {
 			setSyncing(true);
 			const deviceSettings = await syncFromDevice();
 			if (deviceSettings) {
-				setDraft(deviceSettings);
 				const { id, updatedAt, ...settingsToSave } = deviceSettings;
-				await saveMutation.mutateAsync(settingsToSave);
+				await replaceAll(settingsToSave);
 				showToast("Settings loaded from device successfully");
 			} else {
 				showToast(bleError || "Failed to load settings from device", "danger");
@@ -140,7 +138,7 @@ const DeviceSettings: React.FC = () => {
 		}
 	};
 
-	if (isPending || !draft) {
+	if (isPending || !settings) {
 		return (
 			<IonPage>
 				<IonContent className="ion-padding ion-text-center">
@@ -169,14 +167,14 @@ const DeviceSettings: React.FC = () => {
 					<IonItem>
 						<IonLabel position="stacked">
 							<div className="flex items-center gap-2">
-								Brightness: {draft.brightness}%<IonNote>(backlight)</IonNote>
+								Brightness: {settings.brightness}%<IonNote>(backlight)</IonNote>
 							</div>
 						</IonLabel>
 						<IonRange
 							min={SETTING_CONSTRAINTS.BRIGHTNESS.min}
 							max={SETTING_CONSTRAINTS.BRIGHTNESS.max}
 							step={SETTING_CONSTRAINTS.BRIGHTNESS.step}
-							value={draft.brightness}
+							value={settings.brightness}
 							onIonChange={(e) => updateSetting("brightness", e.detail.value as number)}
 							pin
 							pinFormatter={(value: number) => `${value}%`}
@@ -186,7 +184,7 @@ const DeviceSettings: React.FC = () => {
 					<IonItem>
 						<IonLabel>Inverse Colors</IonLabel>
 						<IonToggle
-							checked={draft.inverse}
+							checked={settings.inverse}
 							onIonChange={(e) => updateSetting("inverse", e.detail.checked)}
 						/>
 					</IonItem>
@@ -196,12 +194,12 @@ const DeviceSettings: React.FC = () => {
 					</IonListHeader>
 
 					<IonItem>
-						<IonLabel position="stacked">Screen off: {draft.displayOffTimeout}s</IonLabel>
+						<IonLabel position="stacked">Screen off: {settings.displayOffTimeout}s</IonLabel>
 						<IonRange
 							min={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.min}
 							max={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.max}
 							step={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.step}
-							value={draft.displayOffTimeout}
+							value={settings.displayOffTimeout}
 							onIonChange={(e) => updateSetting("displayOffTimeout", e.detail.value as number)}
 							pin
 							pinFormatter={(value: number) => `${value}s`}
@@ -209,12 +207,12 @@ const DeviceSettings: React.FC = () => {
 					</IonItem>
 
 					<IonItem>
-						<IonLabel position="stacked">Shutdown: {draft.deepSleepTimeout}s</IonLabel>
+						<IonLabel position="stacked">Shutdown: {settings.deepSleepTimeout}s</IonLabel>
 						<IonRange
 							min={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.min}
 							max={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.max}
 							step={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.step}
-							value={draft.deepSleepTimeout}
+							value={settings.deepSleepTimeout}
 							onIonChange={(e) => updateSetting("deepSleepTimeout", e.detail.value as number)}
 							pin
 							pinFormatter={(value: number) => `${value}s`}
@@ -228,7 +226,7 @@ const DeviceSettings: React.FC = () => {
 					<IonItem>
 						<IonLabel>Dev Mode</IonLabel>
 						<IonToggle
-							checked={draft.devMode}
+							checked={settings.devMode}
 							onIonChange={(e) => updateSetting("devMode", e.detail.checked)}
 						/>
 					</IonItem>
@@ -346,10 +344,7 @@ const DeviceSettings: React.FC = () => {
 				</IonList>
 
 				<div className="ion-padding">
-					<IonButton expand="block" onClick={handleSave}>
-						Save Settings
-					</IonButton>
-					<div className="ion-margin-top flex gap-2">
+					<div className="flex gap-2">
 						<IonButton
 							expand="block"
 							fill="outline"

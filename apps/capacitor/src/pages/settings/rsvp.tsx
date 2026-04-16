@@ -1,6 +1,5 @@
 import {
 	IonBackButton,
-	IonButton,
 	IonButtons,
 	IonContent,
 	IonHeader,
@@ -17,12 +16,12 @@ import {
 } from "@ionic/react";
 import { SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
 import type React from "react";
-import { useSettingsDraft } from "../../hooks/use-settings-draft";
+import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 
 const RSVPSettings: React.FC = () => {
-	const { draft, updateSetting, handleSave, isPending } = useSettingsDraft();
+	const { settings, updateSetting, isPending } = useAutoSaveSettings();
 
-	if (isPending || !draft) {
+	if (isPending || !settings) {
 		return (
 			<IonPage>
 				<IonContent className="ion-padding ion-text-center">
@@ -49,12 +48,12 @@ const RSVPSettings: React.FC = () => {
 					</IonListHeader>
 
 					<IonItem>
-						<IonLabel position="stacked">Words Per Minute: {draft.wpm}</IonLabel>
+						<IonLabel position="stacked">Words Per Minute: {settings.wpm}</IonLabel>
 						<IonRange
 							min={SETTING_CONSTRAINTS.WPM.min}
 							max={SETTING_CONSTRAINTS.WPM.max}
 							step={SETTING_CONSTRAINTS.WPM.step}
-							value={draft.wpm}
+							value={settings.wpm}
 							onIonChange={(e) => updateSetting("wpm", e.detail.value as number)}
 							pin
 							pinFormatter={(value: number) => `${value} WPM`}
@@ -68,14 +67,14 @@ const RSVPSettings: React.FC = () => {
 					<IonItem>
 						<IonLabel position="stacked">
 							<div className="flex items-center gap-2">
-								Comma Delay: {draft.delayComma.toFixed(1)}x<IonNote>(, ; :)</IonNote>
+								Comma Delay: {settings.delayComma.toFixed(1)}x<IonNote>(, ; :)</IonNote>
 							</div>
 						</IonLabel>
 						<IonRange
 							min={1.0}
 							max={5.0}
 							step={0.1}
-							value={draft.delayComma}
+							value={settings.delayComma}
 							onIonChange={(e) => updateSetting("delayComma", e.detail.value as number)}
 							pin
 							pinFormatter={(value: number) => `${value.toFixed(1)}x`}
@@ -85,14 +84,14 @@ const RSVPSettings: React.FC = () => {
 					<IonItem>
 						<IonLabel position="stacked">
 							<div className="flex items-center gap-2">
-								Period Delay: {draft.delayPeriod.toFixed(1)}x<IonNote>(. ! ?)</IonNote>
+								Period Delay: {settings.delayPeriod.toFixed(1)}x<IonNote>(. ! ?)</IonNote>
 							</div>
 						</IonLabel>
 						<IonRange
 							min={1.0}
 							max={5.0}
 							step={0.1}
-							value={draft.delayPeriod}
+							value={settings.delayPeriod}
 							onIonChange={(e) => updateSetting("delayPeriod", e.detail.value as number)}
 							pin
 							pinFormatter={(value: number) => `${value.toFixed(1)}x`}
@@ -106,14 +105,14 @@ const RSVPSettings: React.FC = () => {
 					<IonItem>
 						<IonLabel position="stacked">
 							<div className="flex items-center gap-2">
-								Start Speed: {draft.accelStart.toFixed(1)}x<IonNote>(ease-in)</IonNote>
+								Start Speed: {settings.accelStart.toFixed(1)}x<IonNote>(ease-in)</IonNote>
 							</div>
 						</IonLabel>
 						<IonRange
 							min={1.0}
 							max={5.0}
 							step={0.1}
-							value={draft.accelStart}
+							value={settings.accelStart}
 							onIonChange={(e) => updateSetting("accelStart", e.detail.value as number)}
 							pin
 							pinFormatter={(value: number) => `${value.toFixed(1)}x`}
@@ -123,7 +122,7 @@ const RSVPSettings: React.FC = () => {
 					<IonItem>
 						<IonLabel position="stacked">
 							<div className="flex items-center gap-2">
-								Acceleration Rate: {draft.accelRate.toFixed(2)}
+								Acceleration Rate: {settings.accelRate.toFixed(2)}
 								<IonNote>(ramp to full speed)</IonNote>
 							</div>
 						</IonLabel>
@@ -131,7 +130,7 @@ const RSVPSettings: React.FC = () => {
 							min={0.05}
 							max={1.0}
 							step={0.05}
-							value={draft.accelRate}
+							value={settings.accelRate}
 							onIonChange={(e) => updateSetting("accelRate", e.detail.value as number)}
 							pin
 							pinFormatter={(value: number) => value.toFixed(2)}
@@ -141,7 +140,7 @@ const RSVPSettings: React.FC = () => {
 					<IonItem>
 						<IonLabel position="stacked">
 							<div className="flex items-center gap-2">
-								Word Offset: {draft.wordOffset}
+								Word Offset: {settings.wordOffset}
 								<IonNote>(rewind on resume)</IonNote>
 							</div>
 						</IonLabel>
@@ -149,19 +148,13 @@ const RSVPSettings: React.FC = () => {
 							min={0}
 							max={20}
 							step={1}
-							value={draft.wordOffset}
+							value={settings.wordOffset}
 							onIonChange={(e) => updateSetting("wordOffset", e.detail.value as number)}
 							pin
 							pinFormatter={(value: number) => `${value} words`}
 						/>
 					</IonItem>
 				</IonList>
-
-				<div className="ion-padding content-container">
-					<IonButton expand="block" onClick={handleSave}>
-						Save Settings
-					</IonButton>
-				</div>
 			</IonContent>
 		</IonPage>
 	);
