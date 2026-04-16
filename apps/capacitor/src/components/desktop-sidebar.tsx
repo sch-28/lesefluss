@@ -1,5 +1,5 @@
 import { IonIcon, IonLabel, useIonRouter } from "@ionic/react";
-import { library, settings } from "ionicons/icons";
+import { bookOutline, library, settings } from "ionicons/icons";
 import type React from "react";
 import { useLocation } from "react-router-dom";
 import { IS_WEB } from "../utils/platform";
@@ -17,10 +17,14 @@ const DesktopSidebar: React.FC = () => {
 		<nav className="desktop-sidebar">
 			{IS_WEB ? (
 				<a href="/" className="desktop-sidebar-brand">
+					<IonIcon icon={bookOutline} />
 					Lesefluss
 				</a>
 			) : (
-				<div className="desktop-sidebar-brand">Lesefluss</div>
+				<div className="desktop-sidebar-brand">
+					<IonIcon icon={bookOutline} />
+					Lesefluss
+				</div>
 			)}
 			{NAV_ITEMS.map((item) => {
 				const isActive =
@@ -29,7 +33,7 @@ const DesktopSidebar: React.FC = () => {
 					<button
 						key={item.href}
 						type="button"
-						className={`desktop-sidebar-item${isActive ? "active" : ""}`}
+						className={`desktop-sidebar-item${isActive ? " active" : ""}`}
 						onClick={() => ionRouter.push(item.href, "root")}
 					>
 						<IonIcon icon={item.icon} />

@@ -1407,7 +1407,9 @@ ion-popover.appearance-popover {
 	}
 
 	.desktop-sidebar-brand {
-		display: block;
+		display: flex;
+		align-items: center;
+		gap: 8px;
 		padding: 8px 20px 24px;
 		font-size: 1.25rem;
 		font-weight: 700;
