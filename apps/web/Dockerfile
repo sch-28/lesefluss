@@ -19,9 +19,6 @@ RUN cd apps/capacitor && node scripts/setup-web.mjs
 # Build capacitor web embed → apps/web/public/app/
 RUN cd apps/capacitor && WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true pnpm build
 RUN rm -rf apps/web/public/app && cp -r apps/capacitor/dist apps/web/public/app
-# GoatCounter analytics endpoint, inlined by Vite at build time. Empty = disabled.
-ARG VITE_GOATCOUNTER_URL=""
-ENV VITE_GOATCOUNTER_URL=$VITE_GOATCOUNTER_URL
 # Build web app (includes embedded capacitor build in public/app/)
 RUN pnpm --filter @lesefluss/web build
 

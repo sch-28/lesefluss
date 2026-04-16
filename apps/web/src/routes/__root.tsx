@@ -22,12 +22,12 @@ export const Route = createRootRoute({
 			{ rel: "stylesheet", href: appCss },
 			{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
 		],
-		scripts: import.meta.env.VITE_GOATCOUNTER_URL
+		scripts: process.env.GOATCOUNTER_URL
 			? [
 					{
-						src: `${import.meta.env.VITE_GOATCOUNTER_URL}/count.js`,
+						src: `${process.env.GOATCOUNTER_URL}/count.js`,
 						async: true,
-						"data-goatcounter": `${import.meta.env.VITE_GOATCOUNTER_URL}/count`,
+						"data-goatcounter": `${process.env.GOATCOUNTER_URL}/count`,
 					},
 				]
 			: [],
