@@ -39,6 +39,7 @@ function Home() {
 						if (el) el.playbackRate = 0.85;
 					}}
 				/>
+				<div className="absolute inset-0 bg-radial from-transparent via-black/10 to-black/30" />
 				<div className="relative mx-auto max-w-5xl px-6 py-44 text-center mix-blend-difference">
 					<h1 className="mb-6 font-bold text-5xl text-white tracking-tight sm:text-6xl">
 						Read <HeroRsvp />
@@ -47,7 +48,7 @@ function Home() {
 					</h1>
 					<p className="mx-auto mb-10 max-w-xl text-lg text-white/90">
 						Speed reading app for Android. Import any book, read at up to 1000 WPM. Pair it with an
-						ESP32 device for screen-free reading.
+						ESP32 device for distraction-free reading.
 					</p>
 					<div className="flex flex-col justify-center gap-4 sm:flex-row">
 						<Link
@@ -133,9 +134,9 @@ function Home() {
 								Hardware
 							</p>
 							<h2 className="mb-5 font-bold text-3xl leading-tight">
-								Take reading
+								Leave the phone
 								<br />
-								off the screen
+								behind
 							</h2>
 							<p className="mb-8 text-muted-foreground leading-relaxed">
 								Pocket-sized ESP32 reader. AMOLED or TFT, single button, weeks of battery. ~€25 in
