@@ -49,6 +49,7 @@ import type { RouteComponentProps } from "react-router-dom";
 import type { CacheSnapshot, VListHandle } from "virtua";
 import { VList } from "virtua";
 import { useBookSync } from "../../contexts/book-sync-context";
+import { scheduleSyncPush } from "../../services/sync";
 import { useTheme } from "../../contexts/theme-context";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
@@ -336,6 +337,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		async (offset: number) => {
 			await queries.updateBook(id, { position: offset, lastRead: Date.now() });
 			await pushPosition(offset);
+			scheduleSyncPush(5000);
 		},
 		[id, pushPosition],
 	);
@@ -558,11 +560,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			setProgressOffset(offset);
 			setProgressBarVisible(true);
 			lastOffsetRef.current = offset;
-			// Immediate save — no debounce
-			queries.updateBook(id, { position: offset, lastRead: Date.now() });
-			pushPosition(offset);
+			savePosition(offset);
 		},
-		[id, pushPosition, activeOffset, isSelecting, findHighlightAt, extractRangeText],
+		[savePosition, activeOffset, isSelecting, findHighlightAt, extractRangeText],
 	);
 
 	// ── Long-press handler ────────────────────────────────────────────────
@@ -988,13 +988,13 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			// Only write if we actually loaded the book (lastOffsetRef !== null).
 			const offset = lastOffsetRef.current;
 			if (offset !== null) {
-				queries.updateBook(id, { position: offset, lastRead: Date.now() });
+				savePosition(offset);
 			}
 			// Invalidate the books list so the library grid picks up the new position
 			// when the user navigates back.
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 		};
-	}, [id, qc]);
+	}, [id, qc, savePosition]);
 
 	// ─── Render ─────────────────────────────────────────────────────────────
 
