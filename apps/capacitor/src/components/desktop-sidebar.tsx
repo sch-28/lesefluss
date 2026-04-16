@@ -16,7 +16,9 @@ const DesktopSidebar: React.FC = () => {
 	return (
 		<nav className="desktop-sidebar">
 			{IS_WEB ? (
-				<a href="/" className="desktop-sidebar-brand">Lesefluss</a>
+				<a href="/" className="desktop-sidebar-brand">
+					Lesefluss
+				</a>
 			) : (
 				<div className="desktop-sidebar-brand">Lesefluss</div>
 			)}
@@ -27,7 +29,7 @@ const DesktopSidebar: React.FC = () => {
 					<button
 						key={item.href}
 						type="button"
-						className={`desktop-sidebar-item${isActive ? " active" : ""}`}
+						className={`desktop-sidebar-item${isActive ? "active" : ""}`}
 						onClick={() => ionRouter.push(item.href, "root")}
 					>
 						<IonIcon icon={item.icon} />

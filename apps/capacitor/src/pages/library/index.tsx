@@ -222,7 +222,7 @@ const Library: React.FC = () => {
 					</div>
 				) : (
 					/* ── Book grid ── */
-					<div className="content-container grid grid-cols-3 gap-4 p-4 pb-20 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+					<div className="grid grid-cols-3 gap-4 p-4 pb-20 content-container md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
 						{visible.map((book) => {
 							const progress = readingProgress(book);
 							const started = book.position > 0;

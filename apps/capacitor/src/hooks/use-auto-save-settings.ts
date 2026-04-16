@@ -1,8 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
-import { queryHooks } from "../services/db/hooks";
+import { queryHooks, settingsKeys } from "../services/db/hooks";
 import type { Settings } from "../services/db/schema";
-import { settingsKeys } from "../services/db/hooks";
 
 export function useAutoSaveSettings() {
 	const queryClient = useQueryClient();

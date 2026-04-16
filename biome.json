@@ -10,6 +10,7 @@
 		"includes": [
 			"**",
 			"!**/dist",
+			"!**/public/app",
 			"!**/node_modules",
 			"!**/android",
 			"!**/drizzle",
@@ -28,6 +29,9 @@
 		"enabled": true,
 		"rules": {
 			"recommended": true,
+			"complexity": {
+				"noImportantStyles": "off"
+			},
 			"correctness": {
 				"noUnusedImports": "warn",
 				"noUnusedVariables": "warn",

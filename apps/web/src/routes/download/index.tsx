@@ -61,8 +61,8 @@ function DownloadPage() {
 						<span className="text-muted-foreground">for Android</span>
 					</h1>
 					<p className="mb-10 max-w-xl text-lg text-muted-foreground leading-relaxed">
-						Import EPUB and TXT books, read at your own pace or speed through chapters at
-						up to 1000 WPM. No account required, fully offline.
+						Import EPUB and TXT books, read at your own pace or speed through chapters at up to 1000
+						WPM. No account required, fully offline.
 					</p>
 					<div className="flex flex-wrap gap-4">
 						{/* Play Store badge — not yet published */}

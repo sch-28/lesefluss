@@ -19,11 +19,7 @@ export const SyncBookSchema = z.object({
 });
 
 export const SyncSettingsSchema = z.object({
-	wpm: z
-		.number()
-		.int()
-		.min(SETTING_CONSTRAINTS.WPM.min)
-		.max(SETTING_CONSTRAINTS.WPM.max),
+	wpm: z.number().int().min(SETTING_CONSTRAINTS.WPM.min).max(SETTING_CONSTRAINTS.WPM.max),
 	delayComma: z
 		.number()
 		.min(SETTING_CONSTRAINTS.DELAY_COMMA.min)

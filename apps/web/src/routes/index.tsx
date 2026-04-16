@@ -1,5 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bluetooth, BookOpen, Cpu, Download, Highlighter, Library, SlidersHorizontal, Zap } from "lucide-react";
+import {
+	Bluetooth,
+	BookOpen,
+	Cpu,
+	Download,
+	Highlighter,
+	Library,
+	SlidersHorizontal,
+	Zap,
+} from "lucide-react";
 import type * as React from "react";
 import { FeatureCard } from "~/components/feature-card";
 import { HeroRsvp } from "~/components/hero-rsvp";
@@ -31,21 +40,27 @@ function Home() {
 					}}
 				/>
 				<div className="relative mx-auto max-w-5xl px-6 py-44 text-center mix-blend-difference">
-					<h1 className="mb-6 font-bold text-5xl tracking-tight text-white sm:text-6xl">
+					<h1 className="mb-6 font-bold text-5xl text-white tracking-tight sm:text-6xl">
 						Read <HeroRsvp />
 						<br />
 						<span className="text-white">One word at a time.</span>
 					</h1>
 					<p className="mx-auto mb-10 max-w-xl text-lg text-white/90">
-						Speed reading app for Android. Import any book, read at up to 1000 WPM.
-						Pair it with an ESP32 device for screen-free reading.
+						Speed reading app for Android. Import any book, read at up to 1000 WPM. Pair it with an
+						ESP32 device for screen-free reading.
 					</p>
 					<div className="flex flex-col justify-center gap-4 sm:flex-row">
-						<Link to="/download" className="inline-flex items-center gap-2 rounded-md border-2 border-white bg-white px-8 py-3 font-semibold text-base text-black transition-colors hover:bg-white/80">
+						<Link
+							to="/download"
+							className="inline-flex items-center gap-2 rounded-md border-2 border-white bg-white px-8 py-3 font-semibold text-base text-black transition-colors hover:bg-white/80"
+						>
 							<Download className="h-4 w-4" />
 							Get the app
 						</Link>
-						<Link to="/device" className="inline-flex items-center gap-2 rounded-md border-2 border-white bg-transparent px-8 py-3 font-semibold text-base text-white transition-colors hover:bg-white/10">
+						<Link
+							to="/device"
+							className="inline-flex items-center gap-2 rounded-md border-2 border-white bg-transparent px-8 py-3 font-semibold text-base text-white transition-colors hover:bg-white/10"
+						>
 							<Cpu className="h-4 w-4" />
 							Build the device
 						</Link>
@@ -61,12 +76,10 @@ function Home() {
 							<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
 								The App
 							</p>
-							<h2 className="mb-5 font-bold text-3xl leading-tight">
-								Read on your phone
-							</h2>
+							<h2 className="mb-5 font-bold text-3xl leading-tight">Read on your phone</h2>
 							<p className="mb-8 text-muted-foreground leading-relaxed">
-								Import EPUB and TXT books, read with the built-in reader, or switch to RSVP mode
-								for speed reading.
+								Import EPUB and TXT books, read with the built-in reader, or switch to RSVP mode for
+								speed reading.
 							</p>
 							<ul className="mb-8 space-y-3">
 								{appFeatures.map((f) => (
@@ -113,14 +126,7 @@ function Home() {
 				<div className="mx-auto max-w-5xl px-6">
 					<div className="grid gap-12 lg:grid-cols-2 lg:items-center">
 						<div className="relative flex justify-center lg:justify-start">
-							<video
-								src="/single.mp4"
-								autoPlay
-								muted
-								loop
-								playsInline
-								className="w-200"
-							/>
+							<video src="/single.mp4" autoPlay muted loop playsInline className="w-200" />
 						</div>
 						<div>
 							<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
@@ -132,8 +138,8 @@ function Home() {
 								off the screen
 							</h2>
 							<p className="mb-8 text-muted-foreground leading-relaxed">
-								Pocket-sized ESP32 reader. AMOLED or TFT, single button, weeks of battery.
-								~€25 in parts.
+								Pocket-sized ESP32 reader. AMOLED or TFT, single button, weeks of battery. ~€25 in
+								parts.
 							</p>
 							<ul className="mb-8 space-y-3">
 								{deviceFeatures.map((f) => (

@@ -82,9 +82,7 @@ export function RsvpPreview() {
 						<span className="font-mono text-[10px] text-slate-400 uppercase tracking-widest">
 							{WPM} WPM
 						</span>
-						<span className="text-[10px] text-slate-400">
-							{Math.round(progress)}%
-						</span>
+						<span className="text-[10px] text-slate-400">{Math.round(progress)}%</span>
 					</div>
 
 					{/* RSVP display area — fills remaining space */}
@@ -96,7 +94,7 @@ export function RsvpPreview() {
 						/>
 						{/* Word — positioned so focal letter center = screen center */}
 						<span
-							className="absolute whitespace-nowrap font-mono text-[1.3rem] font-bold text-slate-800"
+							className="absolute whitespace-nowrap font-bold font-mono text-[1.3rem] text-slate-800"
 							style={{
 								left: "50%",
 								transform: `translateX(calc(-1ch * ${orp + 0.5}))`,

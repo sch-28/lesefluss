@@ -1432,7 +1432,9 @@ ion-popover.appearance-popover {
 		border: none;
 		cursor: pointer;
 		text-align: left;
-		transition: background 0.15s, color 0.15s;
+		transition:
+			background 0.15s,
+			color 0.15s;
 	}
 
 	.desktop-sidebar-item:hover {

@@ -18,15 +18,19 @@ function DevicePage() {
 					</p>
 					<h1 className="mb-5 font-bold text-4xl leading-tight sm:text-5xl">The ESP32 Reader</h1>
 					<p className="mb-8 max-w-xl text-lg text-muted-foreground leading-relaxed">
-						A pocket-sized speed reader you build yourself. Single-button operation,
-						Bluetooth sync with the app. About €25 in parts.
+						A pocket-sized speed reader you build yourself. Single-button operation, Bluetooth sync
+						with the app. About €25 in parts.
 					</p>
 					<div className="flex flex-wrap gap-4">
 						<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
 							<Link to="/docs">View build guide →</Link>
 						</Button>
 						<Button asChild variant="outline" className="h-auto px-6 py-2.5 font-semibold text-sm">
-							<a href="https://github.com/sch-28/lesefluss" target="_blank" rel="noopener noreferrer">
+							<a
+								href="https://github.com/sch-28/lesefluss"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
 								Source on GitHub
 							</a>
 						</Button>
@@ -132,8 +136,8 @@ function DevicePage() {
 						<CardContent className="p-10">
 							<h2 className="mb-3 font-bold text-2xl">Ready to build?</h2>
 							<p className="mb-6 max-w-xl text-muted-foreground leading-relaxed">
-								The build guide walks through every step: sourcing parts, wiring, flashing
-								firmware, and pairing with the app.
+								The build guide walks through every step: sourcing parts, wiring, flashing firmware,
+								and pairing with the app.
 							</p>
 							<div className="flex flex-wrap gap-4">
 								<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">

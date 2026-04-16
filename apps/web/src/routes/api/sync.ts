@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
 import type { SyncHighlight, SyncPayload, SyncResponse, SyncSettings } from "@lesefluss/rsvp-core";
 import { SyncPayloadSchema } from "@lesefluss/rsvp-core";
+import { createFileRoute } from "@tanstack/react-router";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { db } from "~/db";
 import { syncBooks, syncHighlights, syncSettings } from "~/db/schema";
@@ -23,7 +23,10 @@ function toDate(ms: number): Date {
 
 /** Query all sync data for a user and return as SyncResponse (Unix ms timestamps).
  *  Books in `excludeContentFor` will have content/coverImage/chapters omitted. */
-async function getUserSyncData(userId: string, excludeContentFor: Set<string> = new Set()): Promise<SyncResponse> {
+async function getUserSyncData(
+	userId: string,
+	excludeContentFor: Set<string> = new Set(),
+): Promise<SyncResponse> {
 	// Fetch metadata for all books (lightweight — no content columns)
 	const metadataCols = {
 		bookId: syncBooks.bookId,
@@ -41,11 +44,12 @@ async function getUserSyncData(userId: string, excludeContentFor: Set<string> = 
 	]);
 
 	// Fetch content only for books the client doesn't have locally
-	const needContentIds = books
-		.map((b) => b.bookId)
-		.filter((id) => !excludeContentFor.has(id));
+	const needContentIds = books.map((b) => b.bookId).filter((id) => !excludeContentFor.has(id));
 
-	const contentMap = new Map<string, { content: string | null; coverImage: string | null; chapters: string | null }>();
+	const contentMap = new Map<
+		string,
+		{ content: string | null; coverImage: string | null; chapters: string | null }
+	>();
 	if (needContentIds.length > 0) {
 		const contentRows = await db
 			.select({
@@ -146,7 +150,10 @@ export const Route = createFileRoute("/api/sync")({
 				// Validate input
 				const parsed = SyncPayloadSchema.safeParse(body);
 				if (!parsed.success) {
-					return Response.json({ error: "Invalid payload", issues: parsed.error.issues }, { status: 400 });
+					return Response.json(
+						{ error: "Invalid payload", issues: parsed.error.issues },
+						{ status: 400 },
+					);
 				}
 
 				const payload: SyncPayload = parsed.data;
