@@ -14,6 +14,7 @@ import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as CustomScriptDotjsRouteImport } from './routes/customScript[.]js'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TermsIndexRouteImport } from './routes/terms/index'
+import { Route as ProfileIndexRouteImport } from './routes/profile/index'
 import { Route as PrivacyIndexRouteImport } from './routes/privacy/index'
 import { Route as OrderIndexRouteImport } from './routes/order/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
@@ -52,6 +53,11 @@ const IndexRoute = IndexRouteImport.update({
 const TermsIndexRoute = TermsIndexRouteImport.update({
   id: '/terms/',
   path: '/terms/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileIndexRoute = ProfileIndexRouteImport.update({
+  id: '/profile/',
+  path: '/profile/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyIndexRoute = PrivacyIndexRouteImport.update({
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
+  '/profile/': typeof ProfileIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginIndexRoute
   '/order': typeof OrderIndexRoute
   '/privacy': typeof PrivacyIndexRoute
+  '/profile': typeof ProfileIndexRoute
   '/terms': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
+  '/profile/': typeof ProfileIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/login/'
     | '/order/'
     | '/privacy/'
+    | '/profile/'
     | '/terms/'
     | '/api/auth/$'
     | '/api/users/$userId'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/order'
     | '/privacy'
+    | '/profile'
     | '/terms'
     | '/api/auth/$'
     | '/api/users/$userId'
@@ -250,6 +261,7 @@ export interface FileRouteTypes {
     | '/login/'
     | '/order/'
     | '/privacy/'
+    | '/profile/'
     | '/terms/'
     | '/api/auth/$'
     | '/api/users/$userId'
@@ -272,6 +284,7 @@ export interface RootRouteChildren {
   LoginIndexRoute: typeof LoginIndexRoute
   OrderIndexRoute: typeof OrderIndexRoute
   PrivacyIndexRoute: typeof PrivacyIndexRoute
+  ProfileIndexRoute: typeof ProfileIndexRoute
   TermsIndexRoute: typeof TermsIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -311,6 +324,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms/'
       preLoaderRoute: typeof TermsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/': {
+      id: '/profile/'
+      path: '/profile'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof ProfileIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy/': {
@@ -443,6 +463,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginIndexRoute: LoginIndexRoute,
   OrderIndexRoute: OrderIndexRoute,
   PrivacyIndexRoute: PrivacyIndexRoute,
+  ProfileIndexRoute: ProfileIndexRoute,
   TermsIndexRoute: TermsIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

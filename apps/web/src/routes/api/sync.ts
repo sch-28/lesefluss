@@ -125,6 +125,7 @@ async function getUserSyncData(
 					endOffset: h.endOffset,
 					color: h.color,
 					note: h.note,
+					text: h.text,
 					deleted: h.deleted,
 					createdAt: toMs(h.createdAt),
 					updatedAt: toMs(h.updatedAt),

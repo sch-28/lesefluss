@@ -8,12 +8,12 @@ interface FeatureCardProps {
 
 export function FeatureCard({ icon: Icon, title, description }: FeatureCardProps) {
 	return (
-		<div className="flex gap-3">
-			<Icon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-			<div>
-				<h3 className="mb-1 font-semibold">{title}</h3>
-				<p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
-			</div>
+		<div className="rounded-xl border border-border bg-card p-5 transition-all hover:-translate-y-1 hover:shadow-md">
+			<h3 className="mb-2 flex items-center gap-2 font-semibold">
+				<Icon className="h-4 w-4 shrink-0 text-primary" />
+				{title}
+			</h3>
+			<p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
 		</div>
 	);
 }

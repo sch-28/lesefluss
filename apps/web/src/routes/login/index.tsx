@@ -84,8 +84,7 @@ function AuthForm({ mode }: { mode: Mode }) {
 					});
 					if (result.error) throw new Error(result.error.message ?? "Sign up failed");
 				}
-				// TODO: redirect to /account once Phase 3 is done
-				navigate({ to: "/" });
+				navigate({ to: "/profile" });
 			} catch (err) {
 				setServerError(err instanceof Error ? err.message : "Something went wrong");
 			}
@@ -157,8 +156,7 @@ function LoginPage() {
 
 	React.useEffect(() => {
 		if (session?.user) {
-			// TODO: redirect to /account once Phase 3 is done
-			navigate({ to: "/" });
+			navigate({ to: "/profile" });
 		}
 	}, [session, navigate]);
 

@@ -36,7 +36,11 @@ function DevicePage() {
 							<Link to="/docs">View build guide →</Link>
 						</Button>
 						{!hideGithub && (
-							<Button asChild variant="outline" className="h-auto px-6 py-2.5 font-semibold text-sm">
+							<Button
+								asChild
+								variant="outline"
+								className="h-auto px-6 py-2.5 font-semibold text-sm"
+							>
 								<a
 									href="https://github.com/sch-28/lesefluss"
 									target="_blank"

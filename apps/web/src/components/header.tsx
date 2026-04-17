@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { BookOpen, Cpu, FileText, LogIn, LogOut, Menu, Smartphone, X } from "lucide-react";
+import { BookOpen, Cpu, FileText, LogIn, LogOut, Menu, Smartphone, User, X } from "lucide-react";
 import * as React from "react";
 import { Button } from "~/components/ui/button";
 import {
@@ -143,6 +143,12 @@ export function Header() {
 									</DropdownMenuLabel>
 									<DropdownMenuSeparator />
 									<DropdownMenuItem asChild>
+										<Link to="/profile">
+											<User className="size-4" />
+											Profile
+										</Link>
+									</DropdownMenuItem>
+									<DropdownMenuItem asChild>
 										<a href="/app">
 											<Smartphone className="size-4" />
 											Open App
@@ -202,6 +208,12 @@ export function Header() {
 								<GithubIcon className="size-4" />
 								GitHub
 							</a>
+						)}
+						{user && (
+							<Link to="/profile" className={navLinkClass(true)}>
+								<User className="size-4" />
+								Profile
+							</Link>
 						)}
 						{user && (
 							<a href="/app" className={navLinkClass(true)}>

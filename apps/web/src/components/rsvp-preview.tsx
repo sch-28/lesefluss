@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 /**
  * ORP (Optimal Recognition Point) — focal letter index.
@@ -17,6 +17,10 @@ const SAMPLE_TEXT =
 	"He was an old man who fished alone in a skiff in the Gulf Stream and he had gone eighty-four days now without taking a fish. In the first forty days a boy had been with him. But after forty days without a fish the boy's parents had told him that the old man was now definitely and finally salao, which is the worst form of unlucky, and the boy had gone at their orders in another boat which caught three good fish the first week.";
 
 const WORDS = SAMPLE_TEXT.split(/\s+/);
+
+const subscribe = () => () => {};
+const getIsClient = () => true;
+const getIsServer = () => false;
 const WPM = 300;
 const BASE_DELAY = 60000 / WPM; // 200ms
 
@@ -28,13 +32,9 @@ function getDelay(word: string): number {
 
 export function RsvpPreview() {
 	const [wordIndex, setWordIndex] = useState(0);
-	const [isClient, setIsClient] = useState(false);
+	const isClient = useSyncExternalStore(subscribe, getIsClient, getIsServer);
 	const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 	const indexRef = useRef(0);
-
-	useEffect(() => {
-		setIsClient(true);
-	}, []);
 
 	const schedule = useCallback(() => {
 		const delay = getDelay(WORDS[indexRef.current]);
@@ -66,7 +66,7 @@ export function RsvpPreview() {
 
 	return (
 		/* Phone: ~9:19.5 modern aspect ratio */
-		<div className="relative mx-auto" style={{ width: "220px" }}>
+		<div className="relative mx-auto" style={{ width: "280px" }}>
 			{/* Phone bezel */}
 			<div
 				className="rounded-[2.5rem] border-[3px] border-slate-300 bg-slate-200 p-[6px] shadow-xl"
