@@ -28,10 +28,15 @@ pnpm build
 | `/download` | ✅ | Download buttons, feature grid, requirements |
 | `/device` | ✅ | Hardware page: AMOLED vs ST7789 cards, parts list, build guide CTA |
 | `/docs` | ✅ | Single-page docs with sidebar (Getting Started, Importing Books, ESP32 Build Guide, Connecting Device, Troubleshooting) |
-| `/login` | ✅ | Sign-in / sign-up with Better Auth email+password |
+| `/login` | ✅ | Sign-in / sign-up with Better Auth email+password (`noindex`) |
+| `/privacy` | ✅ | Privacy policy |
+| `/terms` | ✅ | Terms of Service |
+| `/imprint` | ✅ | TMG §5 Impressum (postal address still TODO) |
+| `/robots.txt` | ✅ | Server route in `routes/robots[.]txt.ts` |
+| `/sitemap.xml` | ✅ | Server route in `routes/sitemap[.]xml.ts` — keep URL list in sync when adding public routes |
 | `/diy` | ✅ | Redirects to `/device` |
 | `/order` | ✅ | Redirects to `/device` |
-| `/api/sync` | ✅ | GET (pull) + POST (push) — full-snapshot sync, requireAuth + CORS middleware |
+| `/api/sync` | ✅ | GET (pull) + POST (push) — full-snapshot sync, requireAuth + CORS + rate-limited (30/min per user) |
 | `/account` | ❌ | Not started — auth-gated; connected devices, sync status, danger zone |
 
 ## routeTree.gen.ts
@@ -59,6 +64,19 @@ Books store full plain text content, base64 cover image, and chapters JSON serve
 Better Auth wired at `src/routes/api/auth/$.ts` (catch-all handler). Client-side hooks in `src/lib/auth-client.ts`. Environment variables needed: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`.
 
 Trusted origins and CORS allowed origins share a single list in `src/lib/allowed-origins.ts`. Production origin is `https://lesefluss.app`. Dev origins (`http://localhost`, `http://localhost:3001`) are only included when `NODE_ENV !== "production"`.
+
+Rate limiting: Better Auth's built-in limiter is enabled (10 req/min, memory storage).
+
+## Security & SEO
+
+- **Response headers** — set globally via Nitro `routeRules` in `vite.config.ts`: HSTS, X-Frame-Options DENY, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and a pragmatic CSP (`'unsafe-inline'` for script/style, external origins derived from `GOATCOUNTER_URL` / `BETTER_AUTH_URL` env vars).
+- **Rate limiting** — `/api/sync` uses `src/lib/rate-limit.ts` (in-memory token bucket, 30/min per user; single-instance VPS, resets on restart). Body size cap is enforced at the reverse proxy, not in Node.
+- **Meta + canonical** — `src/utils/seo.ts` exports `seo({ title, description, path })` returning `{ meta, links }`. Each public route spreads this. The root intentionally calls `seo()` without `path` so no canonical is emitted; each child route emits its own.
+- **Structured data** — `src/utils/structured-data.ts` provides `WebSite`, `Organization`, `SoftwareApplication`, and `faqPageSchema()` helpers. Root injects WebSite+Organization site-wide; `/` adds SoftwareApplication; `/docs` adds FAQPage from troubleshooting items.
+- **Verification scaffolding** — `buildVerificationMeta()` in `seo.ts` emits Google/Bing site-verification meta when `GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION` env vars are set.
+- **Legal pages** — privacy, terms, imprint share `src/components/legal-page.tsx` shell.
+- **OG image** — `public/og.png` (1200×630, split layout with Lesefluss wordmark + device render).
+- **`/app/*` is `noindex`** — injected at both runtime (`src/lib/spa-html.ts`) and build time (`scripts/build-capacitor-embed.sh` patches `public/app/index.html`).
 
 ## Sync Architecture
 
@@ -101,7 +119,9 @@ The capacitor app is built as a static SPA and served under `/app/*`. This gives
 - [ ] Full docs (wiring diagrams, screenshots)
 - [ ] Replace Ko-fi placeholder in `/device` with real URL
 - [ ] Replace disabled Play Store badge in `/download` with real URL once published
-- [ ] Open Graph images, SEO pass
+- [x] Open Graph images, SEO pass (robots.txt, sitemap.xml, JSON-LD, canonical, per-route meta)
+- [x] Security headers (CSP, HSTS, etc.) + rate limiting on auth + sync
+- [x] Legal pages (Privacy, Terms, Imprint — address TODO)
 - [ ] Transactional email provider for Better Auth verification emails (Resend / Postmark)
 - [ ] MDX migration for `/docs` if content grows significantly
 - [x] Desktop sidebar nav for `/app` (brand link, Library/Settings nav)

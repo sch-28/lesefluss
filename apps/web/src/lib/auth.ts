@@ -17,6 +17,12 @@ export const auth = betterAuth({
 		enabled: true,
 		requireEmailVerification: false,
 	},
+	rateLimit: {
+		enabled: true,
+		window: 60,
+		max: 10,
+		storage: "memory",
+	},
 	// biome-ignore lint/style/noNonNullAssertion: required env vars, server fails at startup if missing
 	secret: process.env.BETTER_AUTH_SECRET!,
 	// biome-ignore lint/style/noNonNullAssertion: required env vars, server fails at startup if missing

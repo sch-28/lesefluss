@@ -72,6 +72,12 @@ export function Header() {
 
 	return (
 		<header className="sticky top-0 z-50 border-border border-b bg-background/80 backdrop-blur">
+			<a
+				href="#main"
+				className="sr-only absolute top-4 left-4 z-50 rounded bg-background px-4 py-2 font-medium text-foreground focus:not-sr-only"
+			>
+				Skip to content
+			</a>
 			<div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
 				{/* Logo */}
 				<Link

@@ -5,33 +5,46 @@ import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary";
 import { Header } from "~/components/header";
 import { NotFound } from "~/components/NotFound";
 import appCss from "~/styles/app.css?url";
-import { seo } from "~/utils/seo";
+import { buildVerificationMeta, seo } from "~/utils/seo";
+import { organizationSchema, webSiteSchema } from "~/utils/structured-data";
 
 export const Route = createRootRoute({
-	head: () => ({
-		meta: [
-			{ charSet: "utf-8" },
-			{ name: "viewport", content: "width=device-width, initial-scale=1" },
-			...seo({
-				title: "Lesefluss — Speed Reading App & Device",
-				description:
-					"Speed reading app for Android. Import EPUB and TXT books, read at up to 1000 WPM, and optionally sync to a pocket-sized ESP32 device.",
-			}),
-		],
-		links: [
-			{ rel: "stylesheet", href: appCss },
-			{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
-		],
-		scripts: process.env.GOATCOUNTER_URL
-			? [
-					{
-						src: `${process.env.GOATCOUNTER_URL}/count.js`,
-						async: true,
-						"data-goatcounter": `${process.env.GOATCOUNTER_URL}/count`,
-					},
-				]
-			: [],
-	}),
+	head: () => {
+		const { meta } = seo({
+			title: "Lesefluss — Speed Reading App & Device",
+			description:
+				"Speed reading app for Android. Import EPUB and TXT books, read at up to 1000 WPM, and optionally sync to a pocket-sized ESP32 device.",
+		});
+		const goatcounter = process.env.GOATCOUNTER_URL;
+		return {
+			meta: [
+				{ charSet: "utf-8" },
+				{ name: "viewport", content: "width=device-width, initial-scale=1" },
+				{ name: "theme-color", content: "#ffffff" },
+				...buildVerificationMeta(),
+				...meta,
+			],
+			links: [
+				{ rel: "stylesheet", href: appCss },
+				{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+				{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+				{ rel: "manifest", href: "/site.webmanifest" },
+			],
+			scripts: [
+				webSiteSchema,
+				organizationSchema,
+				...(goatcounter
+					? [
+							{
+								src: `${goatcounter}/count.js`,
+								async: true,
+								"data-goatcounter": `${goatcounter}/count`,
+							},
+						]
+					: []),
+			],
+		};
+	},
 	errorComponent: DefaultCatchBoundary,
 	notFoundComponent: () => <NotFound />,
 	shellComponent: RootDocument,
@@ -45,7 +58,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body className="bg-background text-foreground antialiased">
 				<Header />
-				<main>{children}</main>
+				<main id="main">{children}</main>
 				<footer className="py-10 text-center text-muted-foreground text-sm">
 					<div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
 						<span>© {new Date().getFullYear()} Lesefluss</span>
@@ -64,6 +77,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 							</Link>
 							<Link to="/privacy" className="transition-colors hover:text-foreground">
 								Privacy
+							</Link>
+							<Link to="/terms" className="transition-colors hover:text-foreground">
+								Terms
+							</Link>
+							<Link to="/imprint" className="transition-colors hover:text-foreground">
+								Imprint
 							</Link>
 							<a
 								href="https://github.com/sch-28/lesefluss"

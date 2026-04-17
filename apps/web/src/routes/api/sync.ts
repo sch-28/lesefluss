@@ -5,7 +5,20 @@ import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { db } from "~/db";
 import { syncBooks, syncHighlights, syncSettings } from "~/db/schema";
 import { cors } from "~/lib/cors-middleware";
+import { checkLimit } from "~/lib/rate-limit";
 import { requireAuth } from "~/lib/session-middleware";
+
+// Body size limits are enforced at the reverse proxy (Coolify/Traefik). The
+// Content-Length header is client-controlled, so enforcing it in Node here
+// would be defense theatre — see deployment docs for the proxy-level cap.
+function enforceRateLimit(userId: string): Response | null {
+	const { ok, retryAfter } = checkLimit(`sync:${userId}`, { max: 30, windowMs: 60_000 });
+	if (ok) return null;
+	return Response.json(
+		{ error: "Too many requests" },
+		{ status: 429, headers: retryAfter ? { "Retry-After": String(retryAfter) } : undefined },
+	);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -133,6 +146,8 @@ export const Route = createFileRoute("/api/sync")({
 			// -----------------------------------------------------------------
 			GET: async ({ request, context }) => {
 				const userId = context.user.id;
+				const limited = enforceRateLimit(userId);
+				if (limited) return limited;
 				// Client sends bookIds it already has via header (avoids URL length limits with many books)
 				const haveHeader = request.headers.get("x-sync-have") ?? "";
 				const haveIds = new Set(haveHeader.split(",").filter(Boolean));
@@ -145,6 +160,9 @@ export const Route = createFileRoute("/api/sync")({
 			// -----------------------------------------------------------------
 			POST: async ({ request, context }) => {
 				const userId = context.user.id;
+				const limited = enforceRateLimit(userId);
+				if (limited) return limited;
+
 				const body = await request.json();
 
 				// Validate input

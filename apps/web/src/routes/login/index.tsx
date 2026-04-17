@@ -8,9 +8,17 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "~/components/ui/field
 import { Input } from "~/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { signIn, signUp, useSession } from "~/lib/auth-client";
+import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/login/")({
 	component: LoginPage,
+	head: () =>
+		seo({
+			title: "Sign in — Lesefluss",
+			description: "Sign in to Lesefluss to sync your library across devices.",
+			path: "/login",
+			isNoindex: true,
+		}),
 });
 
 const signInSchema = z.object({

@@ -2,9 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
+import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/device/")({
 	component: DevicePage,
+	head: () =>
+		seo({
+			title: "The ESP32 Reader — Lesefluss",
+			description:
+				"Build a pocket-sized speed reader for about €25. AMOLED or ST7789 display, single-button operation, Bluetooth sync with the app.",
+			path: "/device",
+		}),
 });
 
 function DevicePage() {

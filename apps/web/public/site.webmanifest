@@ -1,6 +1,13 @@
 {
-	"name": "",
-	"short_name": "",
+	"name": "Lesefluss",
+	"short_name": "Lesefluss",
+	"description": "Speed reading app & device — read EPUB and TXT books at up to 1000 WPM.",
+	"start_url": "/",
+	"scope": "/",
+	"lang": "en",
+	"display": "standalone",
+	"background_color": "#ffffff",
+	"theme_color": "#ffffff",
 	"icons": [
 		{
 			"src": "/android-chrome-192x192.png",
@@ -12,8 +19,5 @@
 			"sizes": "512x512",
 			"type": "image/png"
 		}
-	],
-	"theme_color": "#ffffff",
-	"background_color": "#ffffff",
-	"display": "standalone"
+	]
 }

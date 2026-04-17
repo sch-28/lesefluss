@@ -13,4 +13,10 @@ echo "Copying build output to public/app/..."
 rm -rf "$WEB_DIR/public/app"
 cp -r "$CAP_DIR/dist" "$WEB_DIR/public/app"
 
+echo "Injecting noindex meta into SPA index.html..."
+INDEX="$WEB_DIR/public/app/index.html"
+if ! grep -q 'name="robots"' "$INDEX"; then
+  sed -i 's|<head>|<head>\n    <meta name="robots" content="noindex, nofollow" />|' "$INDEX"
+fi
+
 echo "Done — capacitor web build available at public/app/"

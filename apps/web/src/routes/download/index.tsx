@@ -2,9 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Bluetooth, BookMarked, BookOpen, Highlighter, Library, Zap } from "lucide-react";
 import { FeatureCard } from "~/components/feature-card";
 import { StatCard } from "~/components/stat-card";
+import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/download/")({
 	component: DownloadPage,
+	head: () =>
+		seo({
+			title: "Download — Lesefluss",
+			description:
+				"Get the Lesefluss speed reading app for Android or open the web app. Import EPUB and TXT, read at up to 1000 WPM, fully offline.",
+			path: "/download",
+		}),
 });
 
 const features = [

@@ -1,10 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-
-export const Route = createFileRoute("/docs/")({
-	component: DocsPage,
-});
+import { seo } from "~/utils/seo";
+import { faqPageSchema } from "~/utils/structured-data";
 
 const troubleshootingItems = [
 	{
@@ -28,6 +26,19 @@ const troubleshootingItems = [
 		a: "Make sure the device is in dev mode (create a file named 'devmode' on the flash). Try disconnecting and reconnecting USB, then re-running the upload script.",
 	},
 ];
+
+export const Route = createFileRoute("/docs/")({
+	component: DocsPage,
+	head: () => ({
+		...seo({
+			title: "Docs — Lesefluss",
+			description:
+				"Getting started with Lesefluss: importing books, building the ESP32 reader, connecting your device, and troubleshooting.",
+			path: "/docs",
+		}),
+		scripts: [faqPageSchema(troubleshootingItems)],
+	}),
+});
 
 const sections = [
 	{

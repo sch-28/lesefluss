@@ -14,9 +14,20 @@ import { FeatureCard } from "~/components/feature-card";
 import { HeroRsvp } from "~/components/hero-rsvp";
 import { RsvpPreview } from "~/components/rsvp-preview";
 import { Button } from "~/components/ui/button";
+import { seo } from "~/utils/seo";
+import { softwareApplicationSchema } from "~/utils/structured-data";
 
 export const Route = createFileRoute("/")({
 	component: Home,
+	head: () => ({
+		...seo({
+			title: "Lesefluss — Speed Reading App & Device",
+			description:
+				"Read books 2–4× faster with RSVP. Import EPUB and TXT, sync settings to a pocket-sized ESP32 device, and read anywhere — fully offline.",
+			path: "/",
+		}),
+		scripts: [softwareApplicationSchema],
+	}),
 });
 
 const handleVideoEnded = (e: React.SyntheticEvent<HTMLVideoElement>) => {
@@ -30,6 +41,8 @@ function Home() {
 			<section className="relative w-full overflow-hidden">
 				<video
 					src="/landing.mp4"
+					poster="/landing-poster.jpg"
+					preload="metadata"
 					autoPlay
 					muted
 					playsInline
@@ -127,7 +140,16 @@ function Home() {
 				<div className="mx-auto max-w-5xl px-6">
 					<div className="grid gap-12 lg:grid-cols-2 lg:items-center">
 						<div className="relative flex justify-center lg:justify-start">
-							<video src="/single.mp4" autoPlay muted loop playsInline className="w-200" />
+							<video
+								src="/single.mp4"
+								poster="/single-poster.jpg"
+								preload="none"
+								autoPlay
+								muted
+								loop
+								playsInline
+								className="w-200"
+							/>
 						</div>
 						<div>
 							<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">

@@ -9,11 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as CustomScriptDotjsRouteImport } from './routes/customScript[.]js'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TermsIndexRouteImport } from './routes/terms/index'
 import { Route as PrivacyIndexRouteImport } from './routes/privacy/index'
 import { Route as OrderIndexRouteImport } from './routes/order/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
+import { Route as ImprintIndexRouteImport } from './routes/imprint/index'
 import { Route as DownloadIndexRouteImport } from './routes/download/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DiyIndexRouteImport } from './routes/diy/index'
@@ -25,6 +29,16 @@ import { Route as ApiSyncRouteImport } from './routes/api/sync'
 import { Route as ApiUsersUserIdRouteImport } from './routes/api/users.$userId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CustomScriptDotjsRoute = CustomScriptDotjsRouteImport.update({
   id: '/customScript.js',
   path: '/customScript.js',
@@ -33,6 +47,11 @@ const CustomScriptDotjsRoute = CustomScriptDotjsRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsIndexRoute = TermsIndexRouteImport.update({
+  id: '/terms/',
+  path: '/terms/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyIndexRoute = PrivacyIndexRouteImport.update({
@@ -48,6 +67,11 @@ const OrderIndexRoute = OrderIndexRouteImport.update({
 const LoginIndexRoute = LoginIndexRouteImport.update({
   id: '/login/',
   path: '/login/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImprintIndexRoute = ImprintIndexRouteImport.update({
+  id: '/imprint/',
+  path: '/imprint/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DownloadIndexRoute = DownloadIndexRouteImport.update({
@@ -104,6 +128,8 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/customScript.js': typeof CustomScriptDotjsRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/sync': typeof ApiSyncRoute
   '/api/users': typeof ApiUsersRouteWithChildren
   '/app/$': typeof AppSplatRoute
@@ -112,15 +138,19 @@ export interface FileRoutesByFullPath {
   '/diy/': typeof DiyIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/download/': typeof DownloadIndexRoute
+  '/imprint/': typeof ImprintIndexRoute
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
+  '/terms/': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/customScript.js': typeof CustomScriptDotjsRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/sync': typeof ApiSyncRoute
   '/api/users': typeof ApiUsersRouteWithChildren
   '/app/$': typeof AppSplatRoute
@@ -129,9 +159,11 @@ export interface FileRoutesByTo {
   '/diy': typeof DiyIndexRoute
   '/docs': typeof DocsIndexRoute
   '/download': typeof DownloadIndexRoute
+  '/imprint': typeof ImprintIndexRoute
   '/login': typeof LoginIndexRoute
   '/order': typeof OrderIndexRoute
   '/privacy': typeof PrivacyIndexRoute
+  '/terms': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
@@ -139,6 +171,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/customScript.js': typeof CustomScriptDotjsRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/sync': typeof ApiSyncRoute
   '/api/users': typeof ApiUsersRouteWithChildren
   '/app/$': typeof AppSplatRoute
@@ -147,9 +181,11 @@ export interface FileRoutesById {
   '/diy/': typeof DiyIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/download/': typeof DownloadIndexRoute
+  '/imprint/': typeof ImprintIndexRoute
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
+  '/terms/': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
@@ -158,6 +194,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/customScript.js'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/api/sync'
     | '/api/users'
     | '/app/$'
@@ -166,15 +204,19 @@ export interface FileRouteTypes {
     | '/diy/'
     | '/docs/'
     | '/download/'
+    | '/imprint/'
     | '/login/'
     | '/order/'
     | '/privacy/'
+    | '/terms/'
     | '/api/auth/$'
     | '/api/users/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/customScript.js'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/api/sync'
     | '/api/users'
     | '/app/$'
@@ -183,15 +225,19 @@ export interface FileRouteTypes {
     | '/diy'
     | '/docs'
     | '/download'
+    | '/imprint'
     | '/login'
     | '/order'
     | '/privacy'
+    | '/terms'
     | '/api/auth/$'
     | '/api/users/$userId'
   id:
     | '__root__'
     | '/'
     | '/customScript.js'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/api/sync'
     | '/api/users'
     | '/app/$'
@@ -200,9 +246,11 @@ export interface FileRouteTypes {
     | '/diy/'
     | '/docs/'
     | '/download/'
+    | '/imprint/'
     | '/login/'
     | '/order/'
     | '/privacy/'
+    | '/terms/'
     | '/api/auth/$'
     | '/api/users/$userId'
   fileRoutesById: FileRoutesById
@@ -210,6 +258,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CustomScriptDotjsRoute: typeof CustomScriptDotjsRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiSyncRoute: typeof ApiSyncRoute
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
   AppSplatRoute: typeof AppSplatRoute
@@ -218,14 +268,30 @@ export interface RootRouteChildren {
   DiyIndexRoute: typeof DiyIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
   DownloadIndexRoute: typeof DownloadIndexRoute
+  ImprintIndexRoute: typeof ImprintIndexRoute
   LoginIndexRoute: typeof LoginIndexRoute
   OrderIndexRoute: typeof OrderIndexRoute
   PrivacyIndexRoute: typeof PrivacyIndexRoute
+  TermsIndexRoute: typeof TermsIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/customScript.js': {
       id: '/customScript.js'
       path: '/customScript.js'
@@ -238,6 +304,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms/': {
+      id: '/terms/'
+      path: '/terms'
+      fullPath: '/terms/'
+      preLoaderRoute: typeof TermsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy/': {
@@ -259,6 +332,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login/'
       preLoaderRoute: typeof LoginIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/imprint/': {
+      id: '/imprint/'
+      path: '/imprint'
+      fullPath: '/imprint/'
+      preLoaderRoute: typeof ImprintIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/download/': {
@@ -349,6 +429,8 @@ const ApiUsersRouteWithChildren = ApiUsersRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CustomScriptDotjsRoute: CustomScriptDotjsRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiSyncRoute: ApiSyncRoute,
   ApiUsersRoute: ApiUsersRouteWithChildren,
   AppSplatRoute: AppSplatRoute,
@@ -357,9 +439,11 @@ const rootRouteChildren: RootRouteChildren = {
   DiyIndexRoute: DiyIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
   DownloadIndexRoute: DownloadIndexRoute,
+  ImprintIndexRoute: ImprintIndexRoute,
   LoginIndexRoute: LoginIndexRoute,
   OrderIndexRoute: OrderIndexRoute,
   PrivacyIndexRoute: PrivacyIndexRoute,
+  TermsIndexRoute: TermsIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
