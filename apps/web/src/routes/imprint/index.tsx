@@ -22,9 +22,11 @@ function ImprintPage() {
 				<p>
 					Jan Schmidt
 					<br />
-					[TODO — street address]
+					c/o Autorenglück #45021
 					<br />
-					[TODO — postal code, city]
+					Albert-Einstein-Straße 47
+					<br />
+					02977 Hoyerswerda
 					<br />
 					Germany
 				</p>
