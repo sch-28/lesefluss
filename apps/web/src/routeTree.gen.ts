@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as CustomScriptDotjsRouteImport } from './routes/customScript[.]js'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PrivacyIndexRouteImport } from './routes/privacy/index'
 import { Route as OrderIndexRouteImport } from './routes/order/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
 import { Route as DownloadIndexRouteImport } from './routes/download/index'
@@ -32,6 +33,11 @@ const CustomScriptDotjsRoute = CustomScriptDotjsRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyIndexRoute = PrivacyIndexRouteImport.update({
+  id: '/privacy/',
+  path: '/privacy/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrderIndexRoute = OrderIndexRouteImport.update({
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/download/': typeof DownloadIndexRoute
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
+  '/privacy/': typeof PrivacyIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/download': typeof DownloadIndexRoute
   '/login': typeof LoginIndexRoute
   '/order': typeof OrderIndexRoute
+  '/privacy': typeof PrivacyIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/download/': typeof DownloadIndexRoute
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
+  '/privacy/': typeof PrivacyIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/download/'
     | '/login/'
     | '/order/'
+    | '/privacy/'
     | '/api/auth/$'
     | '/api/users/$userId'
   fileRoutesByTo: FileRoutesByTo
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/login'
     | '/order'
+    | '/privacy'
     | '/api/auth/$'
     | '/api/users/$userId'
   id:
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/download/'
     | '/login/'
     | '/order/'
+    | '/privacy/'
     | '/api/auth/$'
     | '/api/users/$userId'
   fileRoutesById: FileRoutesById
@@ -208,6 +220,7 @@ export interface RootRouteChildren {
   DownloadIndexRoute: typeof DownloadIndexRoute
   LoginIndexRoute: typeof LoginIndexRoute
   OrderIndexRoute: typeof OrderIndexRoute
+  PrivacyIndexRoute: typeof PrivacyIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -225,6 +238,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy/': {
+      id: '/privacy/'
+      path: '/privacy'
+      fullPath: '/privacy/'
+      preLoaderRoute: typeof PrivacyIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/order/': {
@@ -339,6 +359,7 @@ const rootRouteChildren: RootRouteChildren = {
   DownloadIndexRoute: DownloadIndexRoute,
   LoginIndexRoute: LoginIndexRoute,
   OrderIndexRoute: OrderIndexRoute,
+  PrivacyIndexRoute: PrivacyIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

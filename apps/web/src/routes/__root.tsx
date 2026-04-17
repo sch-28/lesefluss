@@ -62,6 +62,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 							<Link to="/docs" className="transition-colors hover:text-foreground">
 								Docs
 							</Link>
+							<Link to="/privacy" className="transition-colors hover:text-foreground">
+								Privacy
+							</Link>
 							<a
 								href="https://github.com/sch-28/lesefluss"
 								target="_blank"
