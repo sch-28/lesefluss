@@ -732,6 +732,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			} else {
 				const newId = randomHexId();
 				setSelectionSavedId(newId);
+				const snippet = contentBytes
+					? _decoder.decode(contentBytes.subarray(selectionRange.start, selectionRange.end))
+					: null;
 				addHighlightMutation.mutate({
 					id: newId,
 					bookId: id,
@@ -739,6 +742,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 					endOffset: selectionRange.end,
 					color: newColor,
 					note: pendingNote || null,
+					text: snippet,
 					createdAt: now,
 					updatedAt: now,
 				});
@@ -749,6 +753,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			selectionSavedId,
 			pendingNote,
 			id,
+			contentBytes,
 			addHighlightMutation,
 			updateHighlightMutation,
 		],

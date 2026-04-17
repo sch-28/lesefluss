@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { and, count, desc, eq, max } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, max, or } from "drizzle-orm";
 import { db } from "~/db";
 import { syncBooks, syncHighlights, syncSettings } from "~/db/schema";
 import { auth } from "./auth";
@@ -18,7 +18,7 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 	const session = await requireSession();
 	const userId = session.user.id;
 
-	const [booksResult, highlightsResult, settingsMax, books] = await Promise.all([
+	const [booksResult, highlightsResult, settingsMax, books, highlights] = await Promise.all([
 		db
 			.select({ ts: max(syncBooks.updatedAt) })
 			.from(syncBooks)
@@ -44,6 +44,32 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 			.from(syncBooks)
 			.where(eq(syncBooks.userId, userId))
 			.orderBy(desc(syncBooks.updatedAt)),
+		db
+			.select({
+				highlightId: syncHighlights.highlightId,
+				color: syncHighlights.color,
+				text: syncHighlights.text,
+				note: syncHighlights.note,
+				updatedAt: syncHighlights.updatedAt,
+				bookTitle: syncBooks.title,
+			})
+			.from(syncHighlights)
+			.innerJoin(
+				syncBooks,
+				and(
+					eq(syncHighlights.bookId, syncBooks.bookId),
+					eq(syncHighlights.userId, syncBooks.userId),
+				),
+			)
+			.where(
+				and(
+					eq(syncHighlights.userId, userId),
+					eq(syncHighlights.deleted, false),
+					or(isNotNull(syncHighlights.text), isNotNull(syncHighlights.note)),
+				),
+			)
+			.orderBy(desc(syncHighlights.updatedAt))
+			.limit(500),
 	]);
 
 	const candidates = [booksResult[0]?.ts, highlightsResult[0]?.ts, settingsMax[0]?.ts].filter(
@@ -65,6 +91,10 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 		booksFinished,
 		wordsRead,
 		books,
+		highlights: highlights.map((h) => ({
+			...h,
+			updatedAt: h.updatedAt.getTime(),
+		})),
 	};
 });
 

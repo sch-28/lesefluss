@@ -43,6 +43,13 @@
       "when": 1744934400001,
       "tag": "0005_reading_time_toggle",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1745020800000,
+      "tag": "0006_highlight_text",
+      "breakpoints": true
     }
   ]
 }

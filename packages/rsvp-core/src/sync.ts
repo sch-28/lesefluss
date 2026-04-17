@@ -74,6 +74,7 @@ export const SyncHighlightSchema = z
 		endOffset: z.number().int().nonnegative(),
 		color: z.enum(["yellow", "blue", "orange", "pink"]),
 		note: z.string().max(2000).nullable(),
+		text: z.string().max(5000).nullable().optional(), // undefined = absent (old client), null = new client with no stored text
 		deleted: z.boolean(),
 		createdAt: z.number().int().nonnegative(),
 		updatedAt: z.number().int().nonnegative(),

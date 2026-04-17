@@ -82,6 +82,7 @@ export const highlights = sqliteTable("highlights", {
 	endOffset: integer("end_offset").notNull(),
 	color: text("color").notNull().default("yellow"), // 'yellow' | 'blue' | 'orange' | 'pink'
 	note: text("note"),
+	text: text("text"), // extracted text snippet — null for pre-existing highlights
 	createdAt: integer("created_at").notNull(),
 	updatedAt: integer("updated_at").notNull(),
 });

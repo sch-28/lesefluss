@@ -199,6 +199,7 @@ function highlightToSync(h: Highlight): SyncHighlight {
 		endOffset: h.endOffset,
 		color: h.color as SyncHighlight["color"],
 		note: h.note,
+		text: h.text,
 		deleted: false,
 		createdAt: h.createdAt,
 		updatedAt: h.updatedAt,
@@ -360,6 +361,7 @@ export async function pullSync(): Promise<Set<string>> {
 					endOffset: serverHL.endOffset,
 					color: serverHL.color,
 					note: serverHL.note,
+					text: serverHL.text ?? null,
 					createdAt: serverHL.createdAt,
 					updatedAt: serverHL.updatedAt,
 				});

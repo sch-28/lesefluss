@@ -64,6 +64,7 @@ export const syncHighlights = pgTable(
 		endOffset: integer("end_offset").notNull(),
 		color: text("color").notNull().default("yellow"), // yellow | blue | orange | pink
 		note: text("note"),
+		text: text("text"), // extracted text snippet — null for pre-existing highlights
 		deleted: boolean("deleted").notNull().default(false),
 		createdAt: timestamp("created_at").notNull(),
 		updatedAt: timestamp("updated_at").notNull(),
