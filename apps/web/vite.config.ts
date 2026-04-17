@@ -23,6 +23,21 @@ const csp = [
 	"form-action 'self'",
 ].join("; ");
 
+// /app/* embeds the capacitor SPA which uses sql.js (WebAssembly) — needs wasm-unsafe-eval.
+// Applied only to the app routes to keep the main site's policy strict.
+const appCsp = [
+	"default-src 'self'",
+	`script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${GOATCOUNTER_URL ? ` ${GOATCOUNTER_URL}` : ""}`,
+	"style-src 'self' 'unsafe-inline'",
+	"img-src 'self' data: blob:",
+	"font-src 'self' data:",
+	"media-src 'self'",
+	`connect-src 'self'${GOATCOUNTER_URL ? ` ${GOATCOUNTER_URL}` : ""}${BETTER_AUTH_URL ? ` ${BETTER_AUTH_URL}` : ""}`,
+	"frame-ancestors 'none'",
+	"base-uri 'self'",
+	"form-action 'self'",
+].join("; ");
+
 const securityHeaders = {
 	"strict-transport-security": "max-age=31536000; includeSubDomains",
 	"x-content-type-options": "nosniff",
@@ -30,6 +45,11 @@ const securityHeaders = {
 	"referrer-policy": "strict-origin-when-cross-origin",
 	"permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
 	"content-security-policy": csp,
+};
+
+const appSecurityHeaders = {
+	...securityHeaders,
+	"content-security-policy": appCsp,
 };
 
 export default defineConfig({
@@ -49,6 +69,7 @@ export default defineConfig({
 			preset: "node-server",
 			routeRules: {
 				"/**": { headers: securityHeaders },
+				"/app/**": { headers: appSecurityHeaders },
 			},
 		}),
 	],
