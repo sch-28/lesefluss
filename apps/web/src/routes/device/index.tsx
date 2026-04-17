@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
+import { useSiteFlags } from "~/lib/site-flags";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/device/")({
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/device/")({
 });
 
 function DevicePage() {
+	const { hideGithub } = useSiteFlags();
 	return (
 		<div>
 			{/* ── Hero ─────────────────────────────────────────────────── */}
@@ -33,15 +35,17 @@ function DevicePage() {
 						<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
 							<Link to="/docs">View build guide →</Link>
 						</Button>
-						<Button asChild variant="outline" className="h-auto px-6 py-2.5 font-semibold text-sm">
-							<a
-								href="https://github.com/sch-28/lesefluss"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								Source on GitHub
-							</a>
-						</Button>
+						{!hideGithub && (
+							<Button asChild variant="outline" className="h-auto px-6 py-2.5 font-semibold text-sm">
+								<a
+									href="https://github.com/sch-28/lesefluss"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Source on GitHub
+								</a>
+							</Button>
+						)}
 					</div>
 				</div>
 			</section>

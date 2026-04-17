@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Bluetooth, BookMarked, BookOpen, Highlighter, Library, Zap } from "lucide-react";
 import { FeatureCard } from "~/components/feature-card";
 import { StatCard } from "~/components/stat-card";
+import { useSiteFlags } from "~/lib/site-flags";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/download/")({
@@ -55,6 +56,7 @@ const requirements = [
 ];
 
 function DownloadPage() {
+	const { hideGithub } = useSiteFlags();
 	return (
 		<div>
 			{/* ── Hero ─────────────────────────────────────────────────── */}
@@ -88,28 +90,30 @@ function DownloadPage() {
 							</div>
 						</div>
 						{/* APK direct download */}
-						<a
-							href="https://github.com/sch-28/lesefluss/releases/latest"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="inline-flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-foreground/30"
-						>
-							<svg
-								viewBox="0 0 24 24"
-								className="h-6 w-6 fill-none stroke-2 stroke-foreground"
-								aria-hidden="true"
+						{!hideGithub && (
+							<a
+								href="https://github.com/sch-28/lesefluss/releases/latest"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="inline-flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-foreground/30"
 							>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-								/>
-							</svg>
-							<div className="text-left">
-								<p className="text-[10px] text-muted-foreground">Direct download</p>
-								<p className="font-semibold text-sm">APK (GitHub)</p>
-							</div>
-						</a>
+								<svg
+									viewBox="0 0 24 24"
+									className="h-6 w-6 fill-none stroke-2 stroke-foreground"
+									aria-hidden="true"
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+									/>
+								</svg>
+								<div className="text-left">
+									<p className="text-[10px] text-muted-foreground">Direct download</p>
+									<p className="font-semibold text-sm">APK (GitHub)</p>
+								</div>
+							</a>
+						)}
 					</div>
 				</div>
 			</section>

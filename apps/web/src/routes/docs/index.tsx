@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { useSiteFlags } from "~/lib/site-flags";
 import { seo } from "~/utils/seo";
 import { faqPageSchema } from "~/utils/structured-data";
 
@@ -40,7 +41,8 @@ export const Route = createFileRoute("/docs/")({
 	}),
 });
 
-const sections = [
+function buildSections(hideGithub: boolean) {
+	return [
 	{
 		id: "getting-started",
 		title: "Getting Started",
@@ -54,16 +56,22 @@ const sections = [
 				<h4 className="font-semibold text-foreground">Install the app</h4>
 				<ol className="list-inside list-decimal space-y-2 text-sm">
 					<li>
-						Download the latest APK from{" "}
-						<a
-							href="https://github.com/sch-28/lesefluss/releases"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="text-foreground underline decoration-border hover:decoration-foreground/50"
-						>
-							GitHub Releases
-						</a>
-						, or install from Google Play.
+						{hideGithub ? (
+							<>Download the latest APK from Google Play or direct download (coming soon).</>
+						) : (
+							<>
+								Download the latest APK from{" "}
+								<a
+									href="https://github.com/sch-28/lesefluss/releases"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="text-foreground underline decoration-border hover:decoration-foreground/50"
+								>
+									GitHub Releases
+								</a>
+								, or install from Google Play.
+							</>
+						)}
 					</li>
 					<li>Open the app — you'll land on the Library screen.</li>
 					<li>
@@ -148,10 +156,16 @@ const sections = [
 				<h4 className="font-semibold text-foreground">Flashing firmware</h4>
 				<ol className="list-inside list-decimal space-y-2 text-sm">
 					<li>
-						Clone the repo:{" "}
-						<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">
-							git clone https://github.com/sch-28/lesefluss
-						</code>
+						{hideGithub ? (
+							<>Clone the repository (link coming soon).</>
+						) : (
+							<>
+								Clone the repo:{" "}
+								<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">
+									git clone https://github.com/sch-28/lesefluss
+								</code>
+							</>
+						)}
 					</li>
 					<li>
 						Navigate to{" "}
@@ -229,24 +243,29 @@ const sections = [
 						</details>
 					))}
 				</div>
-				<p className="pt-2 text-sm">
-					Still stuck?{" "}
-					<a
-						href="https://github.com/sch-28/lesefluss/issues"
-						target="_blank"
-						rel="noopener noreferrer"
-						className="text-foreground underline decoration-border hover:decoration-foreground/50"
-					>
-						Open an issue on GitHub
-					</a>
-					.
-				</p>
+				{!hideGithub && (
+					<p className="pt-2 text-sm">
+						Still stuck?{" "}
+						<a
+							href="https://github.com/sch-28/lesefluss/issues"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-foreground underline decoration-border hover:decoration-foreground/50"
+						>
+							Open an issue on GitHub
+						</a>
+						.
+					</p>
+				)}
 			</div>
 		),
 	},
-];
+	];
+}
 
 function DocsPage() {
+	const { hideGithub } = useSiteFlags();
+	const sections = useMemo(() => buildSections(hideGithub), [hideGithub]);
 	const [active, setActive] = useState(sections[0].id);
 
 	return (
