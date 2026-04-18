@@ -1,23 +1,23 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
+	type ColumnDef,
 	flexRender,
 	getCoreRowModel,
 	getPaginationRowModel,
 	useReactTable,
-	type ColumnDef,
 } from "@tanstack/react-table";
-import * as React from "react";
 import {
 	Activity,
 	BookOpen,
 	HardDrive,
 	Highlighter,
 	Library,
+	type LucideIcon,
 	UserPlus,
 	Users,
-	type LucideIcon,
 } from "lucide-react";
+import * as React from "react";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import {
@@ -90,7 +90,7 @@ function StatCard({
 }) {
 	return (
 		<div className="relative overflow-hidden rounded-xl border bg-muted/20 p-4">
-			<Icon className="absolute right-3 top-3 size-4 text-muted-foreground/20" />
+			<Icon className="absolute top-3 right-3 size-4 text-muted-foreground/20" />
 			<dd className="font-bold text-2xl tabular-nums">{value}</dd>
 			<dt className="mt-1 text-muted-foreground text-xs">{label}</dt>
 		</div>
@@ -186,15 +186,13 @@ function UsersTable() {
 			{
 				accessorKey: "email",
 				header: "Email",
-				cell: ({ row }) => (
-					<span className="font-mono text-xs">{row.original.email}</span>
-				),
+				cell: ({ row }) => <span className="font-mono text-xs">{row.original.email}</span>,
 			},
 			{
 				accessorKey: "createdAt",
 				header: "Joined",
 				cell: ({ row }) => (
-					<span className="tabular-nums text-muted-foreground">
+					<span className="text-muted-foreground tabular-nums">
 						{formatDate(row.original.createdAt)}
 					</span>
 				),
@@ -279,7 +277,7 @@ function UsersTable() {
 								{hg.headers.map((h) => (
 									<th
 										key={h.id}
-										className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground last:pr-0"
+										className="py-2 pr-4 text-left font-medium text-muted-foreground text-xs last:pr-0"
 									>
 										{flexRender(h.column.columnDef.header, h.getContext())}
 									</th>
@@ -302,7 +300,7 @@ function UsersTable() {
 									{expanded === u.id && (
 										<tr>
 											<td colSpan={columns.length} className="bg-muted/20 px-3 py-3 text-sm">
-												<p className="mb-1.5 text-xs font-medium text-muted-foreground">Books</p>
+												<p className="mb-1.5 font-medium text-muted-foreground text-xs">Books</p>
 												{books.filter((b) => b.userId === u.id).length === 0 ? (
 													<p className="text-muted-foreground text-xs">No books.</p>
 												) : (
@@ -393,7 +391,7 @@ function BooksTable() {
 					return (
 						<div>
 							<div className="font-medium">{b.title}</div>
-							{b.author && <div className="text-xs text-muted-foreground">{b.author}</div>}
+							{b.author && <div className="text-muted-foreground text-xs">{b.author}</div>}
 						</div>
 					);
 				},
@@ -402,7 +400,7 @@ function BooksTable() {
 				id: "user",
 				header: "User",
 				cell: ({ row }) => (
-					<span className="font-mono text-xs text-muted-foreground">
+					<span className="font-mono text-muted-foreground text-xs">
 						{row.original.userEmail ?? row.original.userId}
 					</span>
 				),
@@ -411,7 +409,7 @@ function BooksTable() {
 				id: "size",
 				header: "Size",
 				cell: ({ row }) => (
-					<span className="tabular-nums text-muted-foreground">
+					<span className="text-muted-foreground tabular-nums">
 						{row.original.fileSize ? formatBytes(row.original.fileSize) : "—"}
 					</span>
 				),
@@ -420,7 +418,7 @@ function BooksTable() {
 				accessorKey: "updatedAt",
 				header: "Updated",
 				cell: ({ row }) => (
-					<span className="tabular-nums text-muted-foreground">
+					<span className="text-muted-foreground tabular-nums">
 						{formatDate(row.original.updatedAt)}
 					</span>
 				),
@@ -485,7 +483,7 @@ function BooksTable() {
 
 	const filterControl = (
 		<div className="flex items-center gap-2">
-			<label className="text-xs text-muted-foreground">Filter by user</label>
+			<label className="text-muted-foreground text-xs">Filter by user</label>
 			<select
 				value={filter}
 				onChange={(e) => {
@@ -504,8 +502,20 @@ function BooksTable() {
 		</div>
 	);
 
-	if (isLoading) return <>{filterControl}<p className="text-muted-foreground text-sm">Loading…</p></>;
-	if (filtered.length === 0) return <>{filterControl}<p className="text-muted-foreground text-sm">No books.</p></>;
+	if (isLoading)
+		return (
+			<>
+				{filterControl}
+				<p className="text-muted-foreground text-sm">Loading…</p>
+			</>
+		);
+	if (filtered.length === 0)
+		return (
+			<>
+				{filterControl}
+				<p className="text-muted-foreground text-sm">No books.</p>
+			</>
+		);
 
 	return (
 		<div className="space-y-3">
@@ -519,7 +529,7 @@ function BooksTable() {
 									{hg.headers.map((h) => (
 										<th
 											key={h.id}
-											className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground last:pr-0"
+											className="py-2 pr-4 text-left font-medium text-muted-foreground text-xs last:pr-0"
 										>
 											{flexRender(h.column.columnDef.header, h.getContext())}
 										</th>
@@ -532,9 +542,7 @@ function BooksTable() {
 								const b = row.original;
 								const key = bookKey(b);
 								const progress =
-									b.fileSize && b.position
-										? Math.round((b.position / b.fileSize) * 100)
-										: 0;
+									b.fileSize && b.position ? Math.round((b.position / b.fileSize) * 100) : 0;
 								return (
 									<React.Fragment key={key}>
 										<tr className="border-b last:border-0">
@@ -560,9 +568,7 @@ function BooksTable() {
 														</div>
 														<div>
 															<dt className="text-muted-foreground">Position</dt>
-															<dd className="tabular-nums">
-																{b.position.toLocaleString()} B
-															</dd>
+															<dd className="tabular-nums">{b.position.toLocaleString()} B</dd>
 														</div>
 														<div>
 															<dt className="text-muted-foreground">Book ID</dt>
@@ -614,22 +620,10 @@ function AdminPage() {
 				<dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
 					<StatCard icon={Users} label="Total Users" value={userTotal} />
 					<StatCard icon={BookOpen} label="Books" value={bookTotal} />
-					<StatCard
-						icon={HardDrive}
-						label="Storage"
-						value={formatBytes(storageTotalBytes)}
-					/>
+					<StatCard icon={HardDrive} label="Storage" value={formatBytes(storageTotalBytes)} />
 					<StatCard icon={Activity} label="Active Sessions" value={activeSessions} />
-					<StatCard
-						icon={UserPlus}
-						label="New (7d)"
-						value={usersLast7d}
-					/>
-					<StatCard
-						icon={UserPlus}
-						label="New (30d)"
-						value={usersLast30d}
-					/>
+					<StatCard icon={UserPlus} label="New (7d)" value={usersLast7d} />
+					<StatCard icon={UserPlus} label="New (30d)" value={usersLast30d} />
 					<StatCard icon={Library} label="Users with books" value={usersWithBooks} />
 					<StatCard icon={Highlighter} label="Highlights" value={highlightTotal} />
 				</dl>

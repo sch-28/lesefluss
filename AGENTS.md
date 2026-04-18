@@ -205,6 +205,7 @@ Feature roadmap below. For publishing, Play Store, and monetisation see `agents/
 - [x] Highlight text snippet stored at creation time (`text` column in highlights/sync_highlights — extracted from book content in reader, synced via HTTP)
 - [x] `/profile` page on website (stats, library, highlights with snippets/notes)
 - [x] `/account` page on website (change password, danger zone)
+- [x] `/changelog` page on website (public changelog, river timeline — data in `apps/web/src/data/changelog.ts`)
 - [ ] Advanced book management (tags, collections, search)
 - [ ] Reading statistics
 - [ ] Minifying the python code & merge to single file

@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
-import { createRootRoute, HeadContent, Link, Scripts, useRouter } from "@tanstack/react-router";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createRootRoute, HeadContent, Link, Scripts, useRouter } from "@tanstack/react-router";
 import * as React from "react";
 import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary";
 import { Header } from "~/components/header";
@@ -111,6 +112,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 									</Link>
 									<Link to="/docs" className="transition-colors hover:text-foreground">
 										Docs
+									</Link>
+									<Link to="/changelog" className="transition-colors hover:text-foreground">
+										Changelog
 									</Link>
 									<Link to="/privacy" className="transition-colors hover:text-foreground">
 										Privacy

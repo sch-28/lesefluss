@@ -41,6 +41,7 @@ pnpm build
 | `/profile` | ✅ | Auth-gated reading activity: stats, book library, highlights with text snippets + notes. Header links to `/account`. |
 | `/account` | ✅ | Auth-gated account settings: email display, change password, danger zone (clear cloud data, delete account). `noindex`. |
 | `/admin` | ✅ | Admin-only (requires `ADMIN_EMAIL` env var match). Stats overview + paginated user/book tables with delete. `noindex`. |
+| `/changelog` | ✅ | Public changelog — date-based entries, river timeline design. Data lives in `src/data/changelog.ts`. |
 
 ## routeTree.gen.ts
 
@@ -116,6 +117,10 @@ The capacitor app is built as a static SPA and served under `/app/*`. This gives
 - [x] Login/account screen in capacitor app (optional, dismissible)
 - [x] Sync indicator in capacitor UI (last synced timestamp)
 - [x] Web app embed — capacitor SPA at `/app/*` with cookie auth
+
+### Changelog
+
+When shipping a notable feature, add an entry to `src/data/changelog.ts`. Each entry has a `date` (ISO), `title`, `tags` (`"App" | "ESP32" | "Website"`), and `changes` (string array). Group related commits into one entry rather than one entry per commit. The page at `/changelog` renders this file automatically — no other changes needed.
 
 ### Phase 4 — Polish
 - [x] `/profile` page (stats, library, highlights)

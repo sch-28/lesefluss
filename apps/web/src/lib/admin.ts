@@ -10,8 +10,7 @@ async function requireAdminSession() {
 	const request = getRequest();
 	const s = await auth.api.getSession({ headers: request.headers });
 	if (!s) throw new Response("Unauthorized", { status: 401 });
-	if (s.user.email !== process.env.ADMIN_EMAIL)
-		throw new Response("Forbidden", { status: 403 });
+	if (s.user.email !== process.env.ADMIN_EMAIL) throw new Response("Forbidden", { status: 403 });
 	return s;
 }
 
@@ -63,13 +62,16 @@ export const getAdminUsers = createServerFn({ method: "GET" }).handler(async () 
 	await requireAdminSession();
 
 	const [users, bookCounts, highlightCounts] = await Promise.all([
-		db.select({ id: user.id, email: user.email, createdAt: user.createdAt })
+		db
+			.select({ id: user.id, email: user.email, createdAt: user.createdAt })
 			.from(user)
 			.orderBy(desc(user.createdAt)),
-		db.select({ userId: syncBooks.userId, count: count() })
+		db
+			.select({ userId: syncBooks.userId, count: count() })
 			.from(syncBooks)
 			.groupBy(syncBooks.userId),
-		db.select({ userId: syncHighlights.userId, count: count() })
+		db
+			.select({ userId: syncHighlights.userId, count: count() })
 			.from(syncHighlights)
 			.where(eq(syncHighlights.deleted, false))
 			.groupBy(syncHighlights.userId),
@@ -131,12 +133,7 @@ export const deleteAdminBook = createServerFn({ method: "POST" })
 		await db.transaction(async (tx) => {
 			await tx
 				.delete(syncHighlights)
-				.where(
-					and(
-						eq(syncHighlights.userId, data.userId),
-						eq(syncHighlights.bookId, data.bookId),
-					),
-				);
+				.where(and(eq(syncHighlights.userId, data.userId), eq(syncHighlights.bookId, data.bookId)));
 			await tx
 				.delete(syncBooks)
 				.where(and(eq(syncBooks.userId, data.userId), eq(syncBooks.bookId, data.bookId)));

@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { Cpu, FileText, LogIn, LogOut, Menu, Smartphone, User, X } from "lucide-react";
+import { Cpu, FileText, History, LogIn, LogOut, Menu, Smartphone, User, X } from "lucide-react";
 import * as React from "react";
 import { Button } from "~/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import { useSiteFlags } from "~/lib/site-flags";
 const NAV_LINKS = [
 	{ to: "/device" as const, label: "Device", icon: Cpu },
 	{ to: "/docs" as const, label: "Docs", icon: FileText },
+	{ to: "/changelog" as const, label: "Changelog", icon: History },
 ];
 
 const navLinkClass = (mobile: boolean) =>

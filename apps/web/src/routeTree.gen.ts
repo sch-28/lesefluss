@@ -23,6 +23,7 @@ import { Route as DownloadIndexRouteImport } from './routes/download/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DiyIndexRouteImport } from './routes/diy/index'
 import { Route as DeviceIndexRouteImport } from './routes/device/index'
+import { Route as ChangelogIndexRouteImport } from './routes/changelog/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AccountIndexRouteImport } from './routes/account/index'
@@ -102,6 +103,11 @@ const DeviceIndexRoute = DeviceIndexRouteImport.update({
   path: '/device/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChangelogIndexRoute = ChangelogIndexRouteImport.update({
+  id: '/changelog/',
+  path: '/changelog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/app/',
   path: '/app/',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
+  '/changelog/': typeof ChangelogIndexRoute
   '/device/': typeof DeviceIndexRoute
   '/diy/': typeof DiyIndexRoute
   '/docs/': typeof DocsIndexRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountIndexRoute
   '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
+  '/changelog': typeof ChangelogIndexRoute
   '/device': typeof DeviceIndexRoute
   '/diy': typeof DiyIndexRoute
   '/docs': typeof DocsIndexRoute
@@ -203,6 +211,7 @@ export interface FileRoutesById {
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
+  '/changelog/': typeof ChangelogIndexRoute
   '/device/': typeof DeviceIndexRoute
   '/diy/': typeof DiyIndexRoute
   '/docs/': typeof DocsIndexRoute
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
     | '/account/'
     | '/admin/'
     | '/app/'
+    | '/changelog/'
     | '/device/'
     | '/diy/'
     | '/docs/'
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/app'
+    | '/changelog'
     | '/device'
     | '/diy'
     | '/docs'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/account/'
     | '/admin/'
     | '/app/'
+    | '/changelog/'
     | '/device/'
     | '/diy/'
     | '/docs/'
@@ -302,6 +314,7 @@ export interface RootRouteChildren {
   AccountIndexRoute: typeof AccountIndexRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AppIndexRoute: typeof AppIndexRoute
+  ChangelogIndexRoute: typeof ChangelogIndexRoute
   DeviceIndexRoute: typeof DeviceIndexRoute
   DiyIndexRoute: typeof DiyIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
@@ -415,6 +428,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeviceIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/changelog/': {
+      id: '/changelog/'
+      path: '/changelog'
+      fullPath: '/changelog/'
+      preLoaderRoute: typeof ChangelogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/': {
       id: '/app/'
       path: '/app'
@@ -497,6 +517,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountIndexRoute: AccountIndexRoute,
   AdminIndexRoute: AdminIndexRoute,
   AppIndexRoute: AppIndexRoute,
+  ChangelogIndexRoute: ChangelogIndexRoute,
   DeviceIndexRoute: DeviceIndexRoute,
   DiyIndexRoute: DiyIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
