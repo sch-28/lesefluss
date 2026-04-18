@@ -4,7 +4,7 @@ import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 
-const GOATCOUNTER_URL = process.env.GOATCOUNTER_URL ?? "";
+const UMAMI_URL = process.env.UMAMI_URL ?? "";
 const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL ?? "";
 
 // BETTER_AUTH_URL is same-origin in prod (covered by 'self') but differs in dev
@@ -12,12 +12,12 @@ const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL ?? "";
 // it keeps auth calls allowed in both environments.
 const csp = [
 	"default-src 'self'",
-	`script-src 'self' 'unsafe-inline'${GOATCOUNTER_URL ? ` ${GOATCOUNTER_URL}` : ""}`,
+	`script-src 'self' 'unsafe-inline'${UMAMI_URL ? ` ${UMAMI_URL}` : ""}`,
 	"style-src 'self' 'unsafe-inline'",
 	"img-src 'self' data: blob:",
 	"font-src 'self' data:",
 	"media-src 'self'",
-	`connect-src 'self'${GOATCOUNTER_URL ? ` ${GOATCOUNTER_URL}` : ""}${BETTER_AUTH_URL ? ` ${BETTER_AUTH_URL}` : ""}`,
+	`connect-src 'self'${UMAMI_URL ? ` ${UMAMI_URL}` : ""}${BETTER_AUTH_URL ? ` ${BETTER_AUTH_URL}` : ""}`,
 	"frame-ancestors 'none'",
 	"base-uri 'self'",
 	"form-action 'self'",
@@ -27,12 +27,12 @@ const csp = [
 // wasm-unsafe-eval and unsafe-eval. Applied only to app routes to keep the main site strict.
 const appCsp = [
 	"default-src 'self'",
-	`script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' 'unsafe-eval'${GOATCOUNTER_URL ? ` ${GOATCOUNTER_URL}` : ""}`,
+	`script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' 'unsafe-eval'${UMAMI_URL ? ` ${UMAMI_URL}` : ""}`,
 	"style-src 'self' 'unsafe-inline'",
 	"img-src 'self' data: blob:",
 	"font-src 'self' data:",
 	"media-src 'self'",
-	`connect-src 'self'${GOATCOUNTER_URL ? ` ${GOATCOUNTER_URL}` : ""}${BETTER_AUTH_URL ? ` ${BETTER_AUTH_URL}` : ""}`,
+	`connect-src 'self'${UMAMI_URL ? ` ${UMAMI_URL}` : ""}${BETTER_AUTH_URL ? ` ${BETTER_AUTH_URL}` : ""}`,
 	"frame-ancestors 'none'",
 	"base-uri 'self'",
 	"form-action 'self'",

@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
-import { createRootRoute, HeadContent, Link, Scripts } from "@tanstack/react-router";
-import type * as React from "react";
+import { createRootRoute, HeadContent, Link, Scripts, useRouter } from "@tanstack/react-router";
+import * as React from "react";
 import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary";
 import { Header } from "~/components/header";
 import { NotFound } from "~/components/NotFound";
@@ -21,7 +21,8 @@ export const Route = createRootRoute({
 			description:
 				"Speed reading app for Android. Import EPUB and TXT books, read at up to 1000 WPM, and optionally sync to a pocket-sized ESP32 device.",
 		});
-		const goatcounter = process.env.GOATCOUNTER_URL;
+		const umamiUrl = process.env.UMAMI_URL;
+		const umamiWebsiteId = process.env.UMAMI_WEBSITE_ID;
 		return {
 			meta: [
 				{ charSet: "utf-8" },
@@ -40,12 +41,12 @@ export const Route = createRootRoute({
 			scripts: [
 				webSiteSchema,
 				buildOrganizationSchema(HIDE_GITHUB),
-				...(goatcounter
+				...(umamiUrl && umamiWebsiteId
 					? [
 							{
-								src: `${goatcounter}/count.js`,
-								async: true,
-								"data-goatcounter": `${goatcounter}/count`,
+								src: `${umamiUrl}/umami.js`,
+								defer: true,
+								"data-website-id": umamiWebsiteId,
 							},
 						]
 					: []),
@@ -57,8 +58,29 @@ export const Route = createRootRoute({
 	shellComponent: RootDocument,
 });
 
+declare global {
+	interface Window {
+		umami?: {
+			track(props?: { url: string; title: string }): void;
+			track(event: string, data?: Record<string, unknown>): void;
+		};
+	}
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
 	const { hideGithub } = Route.useLoaderData();
+	const router = useRouter();
+
+	React.useEffect(() => {
+		let mounted = false;
+		return router.subscribe("onLoad", () => {
+			if (!mounted) {
+				mounted = true;
+				return;
+			}
+			window.umami?.track({ url: window.location.pathname, title: document.title });
+		});
+	}, [router]);
 	return (
 		<SiteFlagsContext.Provider value={{ hideGithub }}>
 			<html lang="en">
