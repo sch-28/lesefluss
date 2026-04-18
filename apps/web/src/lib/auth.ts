@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { bearer } from "better-auth/plugins";
+import { admin, bearer } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 import { db } from "~/db";
@@ -31,7 +31,7 @@ export const auth = betterAuth({
 	baseURL: process.env.BETTER_AUTH_URL!,
 	basePath: "/api/auth",
 	trustedOrigins: ALLOWED_ORIGINS,
-	plugins: [tanstackStartCookies(), bearer()],
+	plugins: [tanstackStartCookies(), bearer(), admin()],
 	user: {
 		deleteUser: {
 			enabled: true,

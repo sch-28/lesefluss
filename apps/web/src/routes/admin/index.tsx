@@ -21,7 +21,6 @@ import * as React from "react";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import {
-	checkAdminEmail,
 	deleteAdminBook,
 	deleteAdminUser,
 	getAdminBooks,
@@ -33,9 +32,9 @@ import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/admin/")({
 	loader: async () => {
-		const [s, isAdmin] = await Promise.all([getSession(), checkAdminEmail()]);
+		const s = await getSession();
 		if (!s) throw redirect({ to: "/login" });
-		if (!isAdmin) throw redirect({ to: "/" });
+		if (s.user.role !== "admin") throw redirect({ to: "/" });
 		return getAdminStats();
 	},
 	head: () => seo({ title: "Admin - Lesefluss", isNoindex: true }),

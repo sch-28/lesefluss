@@ -10,16 +10,9 @@ async function requireAdminSession() {
 	const request = getRequest();
 	const s = await auth.api.getSession({ headers: request.headers });
 	if (!s) throw new Response("Unauthorized", { status: 401 });
-	if (s.user.email !== process.env.ADMIN_EMAIL) throw new Response("Forbidden", { status: 403 });
+	if (s.user.role !== "admin") throw new Response("Forbidden", { status: 403 });
 	return s;
 }
-
-export const checkAdminEmail = createServerFn({ method: "GET" }).handler(async () => {
-	const request = getRequest();
-	const s = await auth.api.getSession({ headers: request.headers });
-	if (!s) return false;
-	return s.user.email === process.env.ADMIN_EMAIL;
-});
 
 export const getAdminStats = createServerFn({ method: "GET" }).handler(async () => {
 	await requireAdminSession();
