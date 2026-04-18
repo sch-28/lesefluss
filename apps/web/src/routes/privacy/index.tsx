@@ -31,17 +31,16 @@ function PrivacyPage() {
 				<p>
 					Pageviews are logged with a self-hosted{" "}
 					<a
-						href="https://www.goatcounter.com"
+						href="https://umami.is"
 						target="_blank"
 						rel="noopener noreferrer"
 						className="text-foreground underline decoration-border hover:decoration-foreground/50"
 					>
-						GoatCounter
+						Umami
 					</a>{" "}
-					instance. No cookies are set, no personal data is stored. Unique visitors are counted
-					using a one-way salted hash of IP address and User-Agent that rotates daily and is never
-					saved. Recorded fields: page URL, referrer, browser, OS, screen size, country (derived
-					from IP, then IP is discarded).
+					instance running on our own server. No cookies are set, no personal data is stored, and
+					data never leaves our infrastructure. Recorded fields: page URL, referrer, browser, OS,
+					device type, country (derived from IP — the IP itself is never saved).
 				</p>
 
 				<h3 className="mt-6 mb-2 font-medium text-foreground">Session cookies</h3>

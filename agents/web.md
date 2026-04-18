@@ -7,6 +7,7 @@ For project overview see `../AGENTS.md`.
 ## Tech Stack
 
 - **TanStack Start** (React SSR) + TanStack Router (file-based)
+- **TanStack Query** (`@tanstack/react-query`) — `QueryClientProvider` in `__root.tsx`, `staleTime: 0`; **TanStack Table** (`@tanstack/react-table`) — used on `/admin`
 - **Drizzle ORM** + PostgreSQL (`drizzle-orm/node-postgres`)
 - **Better Auth** v1.6.x — email+password, self-hosted, Drizzle adapter, `tanstackStartCookies` plugin
 - **Deployment**: Docker on VPS via Coolify (Dockerfile-based)
@@ -39,6 +40,7 @@ pnpm build
 | `/api/sync` | ✅ | GET (pull) + POST (push) — full-snapshot sync, requireAuth + CORS + rate-limited (30/min per user) |
 | `/profile` | ✅ | Auth-gated reading activity: stats, book library, highlights with text snippets + notes. Header links to `/account`. |
 | `/account` | ✅ | Auth-gated account settings: email display, change password, danger zone (clear cloud data, delete account). `noindex`. |
+| `/admin` | ✅ | Admin-only (requires `ADMIN_EMAIL` env var match). Stats overview + paginated user/book tables with delete. `noindex`. |
 
 ## routeTree.gen.ts
 
@@ -133,7 +135,7 @@ The capacitor app is built as a static SPA and served under `/app/*`. This gives
 
 Deployed on Coolify at `lesefluss.app` using the repo's `apps/web/Dockerfile`. The Dockerfile builds both the capacitor web embed and the TanStack Start app in a multi-stage build. The entrypoint script (`scripts/entrypoint.sh`) runs `drizzle-kit push` on startup to apply schema changes to Postgres.
 
-Environment variables (set in Coolify): `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`.
+Environment variables (set in Coolify): `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ADMIN_EMAIL` (unlocks `/admin` for that account).
 
 ## Landing Page Components
 

@@ -24,6 +24,7 @@ import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DiyIndexRouteImport } from './routes/diy/index'
 import { Route as DeviceIndexRouteImport } from './routes/device/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AccountIndexRouteImport } from './routes/account/index'
 import { Route as AppSplatRouteImport } from './routes/app/$'
 import { Route as ApiUsersRouteImport } from './routes/api/users'
@@ -106,6 +107,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/app/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AccountIndexRoute = AccountIndexRouteImport.update({
   id: '/account/',
   path: '/account/',
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/api/users': typeof ApiUsersRouteWithChildren
   '/app/$': typeof AppSplatRoute
   '/account/': typeof AccountIndexRoute
+  '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/device/': typeof DeviceIndexRoute
   '/diy/': typeof DiyIndexRoute
@@ -169,6 +176,7 @@ export interface FileRoutesByTo {
   '/api/users': typeof ApiUsersRouteWithChildren
   '/app/$': typeof AppSplatRoute
   '/account': typeof AccountIndexRoute
+  '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
   '/device': typeof DeviceIndexRoute
   '/diy': typeof DiyIndexRoute
@@ -193,6 +201,7 @@ export interface FileRoutesById {
   '/api/users': typeof ApiUsersRouteWithChildren
   '/app/$': typeof AppSplatRoute
   '/account/': typeof AccountIndexRoute
+  '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/device/': typeof DeviceIndexRoute
   '/diy/': typeof DiyIndexRoute
@@ -218,6 +227,7 @@ export interface FileRouteTypes {
     | '/api/users'
     | '/app/$'
     | '/account/'
+    | '/admin/'
     | '/app/'
     | '/device/'
     | '/diy/'
@@ -241,6 +251,7 @@ export interface FileRouteTypes {
     | '/api/users'
     | '/app/$'
     | '/account'
+    | '/admin'
     | '/app'
     | '/device'
     | '/diy'
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '/api/users'
     | '/app/$'
     | '/account/'
+    | '/admin/'
     | '/app/'
     | '/device/'
     | '/diy/'
@@ -288,6 +300,7 @@ export interface RootRouteChildren {
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
   AppSplatRoute: typeof AppSplatRoute
   AccountIndexRoute: typeof AccountIndexRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   AppIndexRoute: typeof AppIndexRoute
   DeviceIndexRoute: typeof DeviceIndexRoute
   DiyIndexRoute: typeof DiyIndexRoute
@@ -409,6 +422,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/account/': {
       id: '/account/'
       path: '/account'
@@ -475,6 +495,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiUsersRoute: ApiUsersRouteWithChildren,
   AppSplatRoute: AppSplatRoute,
   AccountIndexRoute: AccountIndexRoute,
+  AdminIndexRoute: AdminIndexRoute,
   AppIndexRoute: AppIndexRoute,
   DeviceIndexRoute: DeviceIndexRoute,
   DiyIndexRoute: DiyIndexRoute,
