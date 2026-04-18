@@ -305,6 +305,7 @@ export async function pullSync(): Promise<Set<string>> {
 			if (serverBook.updatedAt > localUpdatedAt) {
 				await queries.updateBook(serverBook.bookId, {
 					position: serverBook.position,
+					lastRead: serverBook.updatedAt,
 				});
 				changed = true;
 			}

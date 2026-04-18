@@ -204,11 +204,11 @@ export const Route = createFileRoute("/api/sync")({
 									author: sql`excluded.author`,
 									fileSize: sql`excluded.file_size`,
 									wordCount: sql`excluded.word_count`,
-									position: sql`excluded.position`,
+									position: sql`CASE WHEN excluded.updated_at >= sync_books.updated_at THEN excluded.position ELSE sync_books.position END`,
 									content: sql`COALESCE(excluded.content, sync_books.content)`,
 									coverImage: sql`COALESCE(excluded.cover_image, sync_books.cover_image)`,
 									chapters: sql`COALESCE(excluded.chapters, sync_books.chapters)`,
-									updatedAt: sql`excluded.updated_at`,
+									updatedAt: sql`GREATEST(excluded.updated_at, sync_books.updated_at)`,
 								},
 							});
 					}
