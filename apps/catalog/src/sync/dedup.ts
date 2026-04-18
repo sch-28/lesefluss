@@ -54,6 +54,14 @@ export async function dedupSE(): Promise<{ matched: number }> {
 			WHERE b.id = m.se_id
 			RETURNING m.se_id, m.pg_id
 		),
+		copy_dc AS (
+			UPDATE catalog_books AS se
+			SET download_count = pg.download_count
+			FROM matches m
+			JOIN catalog_books pg ON pg.id = m.pg_id
+			WHERE se.id = m.se_id
+			RETURNING 1
+		),
 		suppress_pg AS (
 			UPDATE catalog_books AS b
 			SET suppressed = true

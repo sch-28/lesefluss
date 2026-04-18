@@ -17,19 +17,6 @@ function utf8ByteLength(s: string): number {
 const BOOKS_DIR = "books";
 
 /**
- * Open a file picker, parse the selected TXT or EPUB file, and save it to the
- * database. Calls `onProgress` (0–100) during EPUB spine processing.
- *
- * For EPUB files:
- *   - Plain text is extracted for RSVP/ESP32 transfer
- *   - Original EPUB is saved to Directory.Data/books/{id}.epub
- *   - Cover image is extracted as base64
- *   - Chapters are extracted as [{title, startByte}]
- *
- * Throws an Error with message "CANCELLED" if the user dismissed the picker.
- * Throws on parse or DB errors.
- */
-/**
  * Generate a random 8-character hex ID for a book.
  * Used as the primary key in the DB and as book.hash on the ESP32.
  */
@@ -77,10 +64,22 @@ async function pickFileWeb(): Promise<{ name: string; data: string }> {
 	});
 }
 
+/**
+ * Open a file picker, parse the selected TXT or EPUB file, and save it to the
+ * database. Calls `onProgress` (0–100) during EPUB spine processing.
+ *
+ * For EPUB files:
+ *   - Plain text is extracted for RSVP/ESP32 transfer
+ *   - Original EPUB is saved to Directory.Data/books/{id}.epub
+ *   - Cover image is extracted as base64
+ *   - Chapters are extracted as [{title, startByte}]
+ *
+ * Throws an Error with message "CANCELLED" if the user dismissed the picker.
+ * Throws on parse or DB errors.
+ */
 export async function importBook(onProgress?: (pct: number) => void): Promise<Book> {
-	// 1. Open the file picker (native or web fallback)
 	let fileName: string;
-	let fileData: string;
+	let base64: string;
 
 	if (Capacitor.isNativePlatform()) {
 		const result = await FilePicker.pickFiles({
@@ -91,13 +90,48 @@ export async function importBook(onProgress?: (pct: number) => void): Promise<Bo
 		if (!result.files || result.files.length === 0) throw new Error("CANCELLED");
 		if (!result.files[0].data) throw new Error("File data is missing");
 		fileName = result.files[0].name;
-		fileData = result.files[0].data;
+		base64 = result.files[0].data;
 	} else {
 		const picked = await pickFileWeb();
 		fileName = picked.name;
-		fileData = picked.data;
+		base64 = picked.data;
 	}
 
+	// Decode once, reuse for parsing; on native we re-use the already-in-hand
+	// base64 string for Filesystem.writeFile to avoid a second encode pass.
+	const buffer = base64ToArrayBuffer(base64);
+	return importBookFromArrayBuffer({ buffer, fileName, onProgress, base64ForSave: base64 });
+}
+
+export type ImportExtras = {
+	source?: string | null;
+	catalogId?: string | null;
+};
+
+/**
+ * Import a book from an already-in-memory Blob (e.g. downloaded EPUB from the catalog).
+ * Parses directly from the ArrayBuffer — skips the base64 round-trip the file-picker
+ * flow pays because FilePicker returns base64 as its native format.
+ */
+export async function importBookFromBlob(
+	blob: Blob,
+	fileName: string,
+	onProgress?: (pct: number) => void,
+	extras?: ImportExtras,
+): Promise<Book> {
+	const buffer = await blob.arrayBuffer();
+	return importBookFromArrayBuffer({ buffer, fileName, onProgress, extras });
+}
+
+async function importBookFromArrayBuffer(args: {
+	buffer: ArrayBuffer;
+	fileName: string;
+	onProgress?: (pct: number) => void;
+	extras?: ImportExtras;
+	/** Pre-computed base64 (file-picker path). If omitted, re-encoded lazily for native EPUB save. */
+	base64ForSave?: string;
+}): Promise<Book> {
+	const { buffer, fileName, onProgress, extras, base64ForSave } = args;
 	const isEpub = fileName.toLowerCase().endsWith(".epub");
 
 	let content: string;
@@ -108,44 +142,44 @@ export async function importBook(onProgress?: (pct: number) => void): Promise<Bo
 
 	if (isEpub) {
 		({ content, title, author, coverImage, chapters } = await parseEpub(
-			fileData,
+			buffer,
 			fileName,
 			onProgress,
 		));
 	} else {
-		// TXT: data is base64-encoded
-		content = decodeBase64Utf8(fileData);
+		content = new TextDecoder("utf-8").decode(buffer);
 		title = fileName.replace(/\.txt$/i, "");
 	}
 
-	// 2. Insert into DB (metadata + content)
 	const id = generateBookId();
+	const addedAt = Date.now();
 	await queries.addBookWithContent(
 		{
 			id,
 			title,
 			author: author ?? null,
 			fileFormat: isEpub ? "epub" : "txt",
-			filePath: null, // updated below for EPUB
+			filePath: null,
 			size: utf8ByteLength(content),
 			position: 0,
 			isActive: false,
-			addedAt: Date.now(),
+			addedAt,
 			lastRead: null,
+			source: extras?.source ?? null,
+			catalogId: extras?.catalogId ?? null,
 		},
 		content,
 		coverImage,
 		chapters,
 	);
 
-	// 3. Save original EPUB file to disk (native only - web stores in DB only)
 	let filePath: string | null = null;
 	if (isEpub && Capacitor.isNativePlatform()) {
 		filePath = `${BOOKS_DIR}/${id}.epub`;
 		await ensureBooksDir();
 		await Filesystem.writeFile({
 			path: filePath,
-			data: fileData,
+			data: base64ForSave ?? arrayBufferToBase64(buffer),
 			directory: Directory.Data,
 		});
 		await queries.updateBook(id, { filePath });
@@ -160,9 +194,29 @@ export async function importBook(onProgress?: (pct: number) => void): Promise<Bo
 		size: utf8ByteLength(content),
 		position: 0,
 		isActive: false,
-		addedAt: Date.now(),
+		addedAt,
 		lastRead: null,
+		source: extras?.source ?? null,
+		catalogId: extras?.catalogId ?? null,
 	};
+}
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+	const binary = atob(base64);
+	const buffer = new ArrayBuffer(binary.length);
+	const bytes = new Uint8Array(buffer);
+	for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+	return buffer;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+	const bytes = new Uint8Array(buffer);
+	let binary = "";
+	const chunkSize = 0x8000;
+	for (let i = 0; i < bytes.length; i += chunkSize) {
+		binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+	}
+	return btoa(binary);
 }
 
 /**
@@ -202,20 +256,7 @@ async function ensureBooksDir(): Promise<void> {
 }
 
 /**
- * Decode a base64 string to a UTF-8 string.
- * The FilePicker returns file data as base64 when readData=true.
- */
-function decodeBase64Utf8(base64: string): string {
-	const binary = atob(base64);
-	const bytes = new Uint8Array(binary.length);
-	for (let i = 0; i < binary.length; i++) {
-		bytes[i] = binary.charCodeAt(i);
-	}
-	return new TextDecoder("utf-8").decode(bytes);
-}
-
-/**
- * Parse an EPUB from base64 data.
+ * Parse an EPUB from an ArrayBuffer.
  * - Extracts plain text by walking spine items and stripping HTML
  * - Tracks chapter boundaries as byte offsets into the plain text
  * - Extracts cover image as base64
@@ -224,7 +265,7 @@ function decodeBase64Utf8(base64: string): string {
  * Uses epubjs which runs fine in Capacitor's WebView.
  */
 async function parseEpub(
-	base64Data: string,
+	buffer: ArrayBuffer,
 	filename: string,
 	onProgress?: (pct: number) => void,
 ): Promise<{
@@ -234,14 +275,6 @@ async function parseEpub(
 	coverImage: string | null;
 	chapters: Chapter[];
 }> {
-	// Convert base64 → ArrayBuffer
-	const binary = atob(base64Data);
-	const buffer = new ArrayBuffer(binary.length);
-	const view = new Uint8Array(buffer);
-	for (let i = 0; i < binary.length; i++) {
-		view[i] = binary.charCodeAt(i);
-	}
-
 	const book = ePub(buffer);
 	await book.ready;
 

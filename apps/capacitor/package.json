@@ -46,6 +46,7 @@
 		"@tanstack/react-query": "^5.95.2",
 		"better-auth": "^1.6.3",
 		"crc-32": "^1.2.2",
+		"dompurify": "3.4.0",
 		"drizzle-orm": "^0.45.1",
 		"epubjs": "^0.3.93",
 		"ionicons": "^8.0.13",

@@ -36,7 +36,12 @@ async function getCounts(): Promise<Counts> {
 		else if (r.source === "standard_ebooks") standardEbooks += r.count;
 	}
 
-	const value: Counts = { gutenberg, standardEbooks, suppressed, total: gutenberg + standardEbooks };
+	const value: Counts = {
+		gutenberg,
+		standardEbooks,
+		suppressed,
+		total: gutenberg + standardEbooks,
+	};
 	countsCache = { at: now, value };
 	return value;
 }

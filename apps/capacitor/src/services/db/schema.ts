@@ -54,6 +54,8 @@ export const books = sqliteTable("books", {
 	isActive: integer("is_active", { mode: "boolean" }).notNull().default(false), // true = this book is currently on the ESP32 (at most one row at a time)
 	addedAt: integer("added_at").notNull(),
 	lastRead: integer("last_read"),
+	source: text("source"), // 'gutenberg' | 'standard_ebooks' | null (null = locally imported)
+	catalogId: text("catalog_id"), // e.g. 'gutenberg:1342', 'se:mary-shelley/frankenstein'
 });
 
 /**

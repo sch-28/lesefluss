@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Bluetooth, BookMarked, Cpu, HardHat, HelpCircle, Rocket } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { Bluetooth, BookMarked, Cpu, HardHat, HelpCircle, Rocket } from "lucide-react";
 import { useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useSiteFlags } from "~/lib/site-flags";

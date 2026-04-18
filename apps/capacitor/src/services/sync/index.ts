@@ -161,6 +161,8 @@ function bookToSync(book: Book, contentData?: BookContent | null): SyncBook {
 		fileSize: book.size,
 		wordCount: null,
 		position: book.position,
+		source: book.source,
+		catalogId: book.catalogId,
 		...(contentData
 			? {
 					content: contentData.content,
@@ -278,6 +280,8 @@ export async function pullSync(): Promise<Set<string>> {
 							position: serverBook.position,
 							isActive: false,
 							addedAt: serverBook.updatedAt,
+							source: serverBook.source ?? null,
+							catalogId: serverBook.catalogId ?? null,
 						},
 						serverBook.content,
 						serverBook.coverImage,
@@ -295,6 +299,8 @@ export async function pullSync(): Promise<Set<string>> {
 						isActive: false,
 						addedAt: serverBook.updatedAt,
 						lastRead: null,
+						source: serverBook.source ?? null,
+						catalogId: serverBook.catalogId ?? null,
 					});
 					changed = true;
 				}

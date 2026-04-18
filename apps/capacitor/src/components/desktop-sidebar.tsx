@@ -1,5 +1,5 @@
 import { IonIcon, IonLabel, useIonRouter } from "@ionic/react";
-import { chevronBack, chevronForward, library, settings } from "ionicons/icons";
+import { chevronBack, chevronForward, library, searchOutline, settings } from "ionicons/icons";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
@@ -7,6 +7,7 @@ import { IS_WEB } from "../utils/platform";
 
 const NAV_ITEMS = [
 	{ href: "/tabs/library", icon: library, label: "Library" },
+	{ href: "/tabs/explore", icon: searchOutline, label: "Explore" },
 	{ href: "/tabs/settings", icon: settings, label: "Settings" },
 ] as const;
 

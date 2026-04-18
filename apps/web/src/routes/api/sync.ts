@@ -48,6 +48,8 @@ async function getUserSyncData(
 		fileSize: syncBooks.fileSize,
 		wordCount: syncBooks.wordCount,
 		position: syncBooks.position,
+		source: syncBooks.source,
+		catalogId: syncBooks.catalogId,
 		updatedAt: syncBooks.updatedAt,
 	};
 	const [books, settingsRows, highlights] = await Promise.all([
@@ -88,6 +90,8 @@ async function getUserSyncData(
 				fileSize: b.fileSize,
 				wordCount: b.wordCount,
 				position: b.position,
+				source: b.source,
+				catalogId: b.catalogId,
 				...(content
 					? {
 							content: content.content,
@@ -194,6 +198,8 @@ export const Route = createFileRoute("/api/sync")({
 									content: book.content ?? null,
 									coverImage: book.coverImage ?? null,
 									chapters: book.chapters ?? null,
+									source: book.source ?? null,
+									catalogId: book.catalogId ?? null,
 									updatedAt: toDate(book.updatedAt),
 								})),
 							)
@@ -208,6 +214,8 @@ export const Route = createFileRoute("/api/sync")({
 									content: sql`COALESCE(excluded.content, sync_books.content)`,
 									coverImage: sql`COALESCE(excluded.cover_image, sync_books.cover_image)`,
 									chapters: sql`COALESCE(excluded.chapters, sync_books.chapters)`,
+									source: sql`COALESCE(excluded.source, sync_books.source)`,
+									catalogId: sql`COALESCE(excluded.catalog_id, sync_books.catalog_id)`,
 									updatedAt: sql`GREATEST(excluded.updated_at, sync_books.updated_at)`,
 								},
 							});

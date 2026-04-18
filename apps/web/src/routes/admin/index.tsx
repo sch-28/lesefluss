@@ -630,7 +630,11 @@ function isCatalogSyncRunning(r: CatalogStatsResult | undefined): boolean {
 
 function CatalogSection() {
 	const qc = useQueryClient();
-	const { data: result, isLoading, error } = useQuery({
+	const {
+		data: result,
+		isLoading,
+		error,
+	} = useQuery({
 		queryKey: catalogKeys.stats,
 		queryFn: () => getCatalogStats(),
 		refetchInterval: (q) => (isCatalogSyncRunning(q.state.data) ? 3000 : 30_000),
@@ -657,11 +661,10 @@ function CatalogSection() {
 			: !result.ok
 				? result.error
 				: null;
-	if (errMsg)
-		return <p className="text-destructive text-sm">Catalog unavailable: {errMsg}</p>;
+	if (errMsg) return <p className="text-destructive text-sm">Catalog unavailable: {errMsg}</p>;
 
 	// Narrow: isLoading handled, errMsg null ⇒ result.ok === true
-	if (!result || !result.ok) return null;
+	if (!result?.ok) return null;
 
 	const { sync, counts } = result.data;
 	const running = sync.running;

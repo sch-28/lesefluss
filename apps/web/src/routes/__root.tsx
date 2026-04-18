@@ -103,7 +103,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 									<div className="space-y-3">
 										<Link
 											to="/"
-											className="flex items-center gap-2 font-semibold text-foreground text-base tracking-tight"
+											className="flex items-center gap-2 font-semibold text-base text-foreground tracking-tight"
 										>
 											<img src="/logo.png" alt="" className="size-6 rounded-md" />
 											Lesefluss

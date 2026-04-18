@@ -48,6 +48,16 @@ export async function getBook(id: string): Promise<Book | undefined> {
 }
 
 /**
+ * Fetch a book previously imported from the catalog by its catalog id
+ * (e.g. "gutenberg:1342", "se:mary-shelley/frankenstein").
+ * Used for idempotent re-imports and for linking Explore → Library.
+ */
+export async function getBookByCatalogId(catalogId: string): Promise<Book | undefined> {
+	const rows = await db.select().from(books).where(eq(books.catalogId, catalogId));
+	return rows[0];
+}
+
+/**
  * Fetch book content (plain text, cover, chapters) by book id.
  * Returns undefined if the book or its content doesn't exist.
  */

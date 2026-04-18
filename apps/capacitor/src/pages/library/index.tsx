@@ -268,6 +268,12 @@ const Library: React.FC = () => {
 					header={selectedBook?.title}
 					cssClass="rsvp-action-sheet"
 					buttons={[
+						{
+							text: "Details",
+							handler: () => {
+								if (selectedBook) history.push(`/tabs/library/book/${selectedBook.id}`);
+							},
+						},
 						...(!IS_WEB
 							? [
 									{

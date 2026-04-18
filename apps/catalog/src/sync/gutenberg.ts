@@ -4,7 +4,7 @@ import { catalogBooks, type NewCatalogBook } from "../db/schema.js";
 import { addBooksUpserted, setSyncPhase } from "./orchestrator.js";
 
 const GUTENDEX_URL = "https://gutendex.com/books/";
-const PAGE_CONCURRENCY = 2;
+const PAGE_CONCURRENCY = 1;
 const PAGE_DELAY_MS = 1000;
 const MAX_RETRIES = 3;
 const BASE_BACKOFF_MS = 1000;
@@ -20,6 +20,7 @@ type GutendexBook = {
 	languages?: string[];
 	summaries?: string[];
 	formats?: Record<string, string>;
+	download_count?: number;
 };
 type GutendexPage = {
 	count: number;
@@ -52,6 +53,7 @@ function mapBook(b: GutendexBook): NewCatalogBook | null {
 		description: null,
 		epubUrl: epubKey ? (formats[epubKey] ?? null) : null,
 		coverUrl: coverKey ? (formats[coverKey] ?? null) : null,
+		downloadCount: typeof b.download_count === "number" ? b.download_count : null,
 	};
 }
 
@@ -74,6 +76,7 @@ async function upsertBatch(rows: NewCatalogBook[]) {
 				summary: sql`excluded.summary`,
 				epubUrl: sql`excluded.epub_url`,
 				coverUrl: sql`excluded.cover_url`,
+				downloadCount: sql`excluded.download_count`,
 				syncedAt: sql`now()`,
 			},
 		});

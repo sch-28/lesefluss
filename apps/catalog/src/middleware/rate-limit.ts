@@ -1,13 +1,6 @@
 import type { HttpBindings } from "@hono/node-server";
 import type { MiddlewareHandler } from "hono";
 
-const CAPACITY = 60; // tokens per window
-const WINDOW_MS = 60_000; // 1 minute
-const REFILL_PER_MS = CAPACITY / WINDOW_MS;
-
-type Bucket = { tokens: number; lastRefill: number };
-const buckets = new Map<string, Bucket>();
-
 /**
  * Resolves the client IP. Trusts X-Forwarded-For — assumes deployment behind a reverse
  * proxy (Coolify in production). If ever exposed directly, clients could spoof the header
@@ -22,30 +15,66 @@ function getClientIp(c: {
 	return c.env.incoming.socket.remoteAddress ?? "unknown";
 }
 
-export const rateLimit: MiddlewareHandler<{ Bindings: HttpBindings }> = async (c, next) => {
-	const ip = getClientIp(c);
-	const now = Date.now();
-	let bucket = buckets.get(ip);
-	if (!bucket) {
-		bucket = { tokens: CAPACITY, lastRefill: now };
-		buckets.set(ip, bucket);
-	} else {
-		const elapsed = now - bucket.lastRefill;
-		bucket.tokens = Math.min(CAPACITY, bucket.tokens + elapsed * REFILL_PER_MS);
-		bucket.lastRefill = now;
-	}
+type Bucket = { tokens: number; lastRefill: number };
 
-	if (bucket.tokens < 1) {
-		return c.json({ error: "rate limit exceeded" }, 429);
-	}
-	bucket.tokens -= 1;
-	await next();
+export type RateLimitOptions = {
+	/** Maximum requests in a single window. */
+	capacity: number;
+	/** Window length in milliseconds. */
+	windowMs: number;
+	/** Namespace suffix so independent limits use independent buckets. */
+	keyPrefix?: string;
 };
 
-// Periodic cleanup of idle buckets to prevent unbounded growth
-setInterval(() => {
-	const cutoff = Date.now() - WINDOW_MS * 5;
-	for (const [ip, bucket] of buckets) {
-		if (bucket.lastRefill < cutoff) buckets.delete(ip);
-	}
-}, WINDOW_MS).unref();
+/**
+ * Create a rate-limit middleware backed by an isolated in-memory token bucket.
+ * Use separate instances for endpoints with different cost profiles (e.g. the
+ * JSON API vs. multi-megabyte EPUB downloads).
+ */
+export function createRateLimit(opts: RateLimitOptions): MiddlewareHandler<{
+	Bindings: HttpBindings;
+}> {
+	const { capacity, windowMs, keyPrefix = "" } = opts;
+	const refillPerMs = capacity / windowMs;
+	const buckets = new Map<string, Bucket>();
+
+	setInterval(() => {
+		const cutoff = Date.now() - windowMs * 5;
+		for (const [ip, bucket] of buckets) {
+			if (bucket.lastRefill < cutoff) buckets.delete(ip);
+		}
+	}, windowMs).unref();
+
+	return async (c, next) => {
+		const key = `${keyPrefix}${getClientIp(c)}`;
+		const now = Date.now();
+		let bucket = buckets.get(key);
+		if (!bucket) {
+			bucket = { tokens: capacity, lastRefill: now };
+			buckets.set(key, bucket);
+		} else {
+			const elapsed = now - bucket.lastRefill;
+			bucket.tokens = Math.min(capacity, bucket.tokens + elapsed * refillPerMs);
+			bucket.lastRefill = now;
+		}
+
+		if (bucket.tokens < 1) {
+			return c.json({ error: "rate limit exceeded" }, 429);
+		}
+		bucket.tokens -= 1;
+		await next();
+	};
+}
+
+/** Default API rate limit: 60 requests / minute / IP. */
+export const rateLimit = createRateLimit({ capacity: 60, windowMs: 60_000 });
+
+/**
+ * Stricter bucket for the EPUB download proxy. Each response is ~0.5–5 MB, so a
+ * looser limit would let a single IP trivially saturate bandwidth.
+ */
+export const epubRateLimit = createRateLimit({
+	capacity: 10,
+	windowMs: 60_000,
+	keyPrefix: "epub:",
+});

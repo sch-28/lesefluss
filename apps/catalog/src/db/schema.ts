@@ -1,4 +1,4 @@
-import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 /**
  * catalog_books — unified index of public-domain books from Gutenberg + Standard Ebooks.
@@ -23,6 +23,7 @@ export const catalogBooks = pgTable(
 		coverUrl: text("cover_url"),
 		gutenbergId: text("gutenberg_id"),
 		suppressed: boolean("suppressed").notNull().default(false),
+		downloadCount: integer("download_count"),
 		syncedAt: timestamp("synced_at", { withTimezone: true }).notNull().defaultNow(),
 	},
 	(t) => [

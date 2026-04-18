@@ -21,6 +21,8 @@ export const syncBooks = pgTable(
 		content: text("content"), // full plain text - null until first content push
 		coverImage: text("cover_image"), // base64-encoded cover art from EPUB
 		chapters: text("chapters"), // JSON: [{title: string, startByte: number}]
+		source: text("source"), // 'gutenberg' | 'standard_ebooks' | null (null = local import)
+		catalogId: text("catalog_id"), // e.g. 'gutenberg:1342'
 		updatedAt: timestamp("updated_at").notNull(),
 	},
 	(t) => [primaryKey({ columns: [t.userId, t.bookId] })],

@@ -15,6 +15,8 @@ export const SyncBookSchema = z.object({
 	content: z.string().max(20_000_000).nullable().optional(), // full plain text - only sent for new books
 	coverImage: z.string().max(5_000_000).nullable().optional(), // base64 cover - only sent for new books
 	chapters: z.string().max(500_000).nullable().optional(), // JSON chapters - only sent for new books
+	source: z.string().max(50).nullable().optional(), // 'gutenberg' | 'standard_ebooks' | null
+	catalogId: z.string().max(200).nullable().optional(), // e.g. 'gutenberg:1342'
 	updatedAt: z.number().int().nonnegative(), // Unix ms
 });
 

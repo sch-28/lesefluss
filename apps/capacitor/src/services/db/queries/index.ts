@@ -7,6 +7,7 @@ import {
 	addBookWithContent,
 	deleteBook,
 	getBook,
+	getBookByCatalogId,
 	getBookContent,
 	getBookCovers,
 	getBooks,
@@ -37,6 +38,7 @@ export const queries = {
 	// Books
 	getBooks,
 	getBook,
+	getBookByCatalogId,
 	getBookContent,
 	getBookCovers,
 	addBookWithContent,

@@ -14,7 +14,7 @@ import {
 } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { library, settings } from "ionicons/icons";
+import { library, searchOutline, settings } from "ionicons/icons";
 import type React from "react";
 import { useEffect } from "react";
 import { Redirect, Route, useLocation } from "react-router-dom";
@@ -44,7 +44,10 @@ import { BookSyncProvider } from "./contexts/book-sync-context";
 import { DatabaseProvider } from "./contexts/database-context";
 import { SyncProvider } from "./contexts/sync-context";
 import { ThemeProvider } from "./contexts/theme-context";
+import Explore from "./pages/explore";
+import ExploreBookDetail from "./pages/explore/book-detail";
 import Library from "./pages/library";
+import LibraryBookDetail from "./pages/library/book-detail";
 import BookReader from "./pages/reader";
 import Settings from "./pages/settings";
 import AppearanceSettings from "./pages/settings/appearance";
@@ -98,6 +101,8 @@ const AppTabs: React.FC = () => {
 	const location = useLocation();
 	const isSubPage = (path: string) =>
 		path.startsWith("/tabs/reader/") ||
+		path.startsWith("/tabs/library/book/") ||
+		path.startsWith("/tabs/explore/book/") ||
 		(path.startsWith("/tabs/settings/") && path !== "/tabs/settings");
 	const hideTabBar = isSubPage(ionRouter.routeInfo.pathname) || isSubPage(location.pathname);
 
@@ -105,6 +110,9 @@ const AppTabs: React.FC = () => {
 		<IonTabs>
 			<IonRouterOutlet>
 				<Route exact path="/tabs/library" component={Library} />
+				<Route exact path="/tabs/library/book/:id" component={LibraryBookDetail} />
+				<Route exact path="/tabs/explore" component={Explore} />
+				<Route exact path="/tabs/explore/book/:catalogId" component={ExploreBookDetail} />
 				<Route exact path="/tabs/settings" component={Settings} />
 				<Route exact path="/tabs/settings/rsvp" component={RSVPSettings} />
 				<Route exact path="/tabs/settings/appearance" component={AppearanceSettings} />
@@ -119,6 +127,10 @@ const AppTabs: React.FC = () => {
 				<IonTabButton tab="library" href="/tabs/library">
 					<IonIcon icon={library} />
 					<IonLabel>Library</IonLabel>
+				</IonTabButton>
+				<IonTabButton tab="explore" href="/tabs/explore">
+					<IonIcon icon={searchOutline} />
+					<IonLabel>Explore</IonLabel>
 				</IonTabButton>
 				<IonTabButton tab="settings" href="/tabs/settings">
 					<IonIcon icon={settings} />

@@ -26,6 +26,7 @@ pnpm dev
 | `GET /search?q=&page=&limit=` | Search books by title/author across all sources. Paginated. |
 | `GET /books/:id` | Single book detail — full metadata + download URL. |
 | `GET /covers/:source/*` | Cover proxy for all sources. Strips `Referer`, caches aggressively. Wildcard segment carries the source-specific id (SE ids contain `/`). |
+| `GET /books/:id/epub` | EPUB proxy — streams upstream EPUB bytes to the client. Avoids CORS issues hitting Gutenberg/SE directly from the browser and keeps all catalog traffic same-origin. |
 | `GET /health` | Simple health check — returns 200 immediately, does not wait for sync. |
 
 All covers (Gutenberg and SE) are served via the proxy for consistency. Client never hotlinks.
@@ -176,17 +177,87 @@ Separate Coolify service pointing at the same Postgres. Dockerfile at `apps/cata
 - Client polls every 3s while `running`, every 30s when idle.
 - New env on `apps/web`: `CATALOG_URL` (no trailing slash), `CATALOG_ADMIN_SECRET` (server-only).
 
-### Phase 3 — Explore tab (`apps/capacitor`)
+### Phase 3 — Explore tab (`apps/capacitor`) + book detail routes ✅
 
-- [ ] New "Explore" tab in tab bar + route (visible on web build too — no native features required)
-- [ ] Search bar → `GET /search?q=&lang=` with debounce
-- [ ] Language filter control (defaults to `en`)
-- [ ] Results list: cover thumbnail (via `/covers` proxy), title, author, source badge (SE = quality signal)
-- [ ] Infinite scroll / pagination
-- [ ] Book detail screen: full metadata + sanitized HTML description (DOMPurify / rehype-sanitize)
-- [ ] **Import** button (when `epub_url` present) → downloads EPUB into existing book import flow
-- [ ] "Not available as free EPUB" state when `epub_url` missing
-- [ ] Offline handling: gracefully disable search when no network
+- [x] 3rd tab **Library / Explore / Settings** + matching desktop sidebar entry
+- [x] Catalog `GET /books/:id/epub` — streaming proxy, SE Basic auth forwarded, `Content-Type`/`Content-Length` propagated, rate-limited via global middleware
+- [x] `books` table: nullable `source` + `catalogId` columns (migration `0007_catalog_source.sql`) + `idx_books_catalog_id` index + mirror on `sync_books` / `SyncBookSchema`
+- [x] `VITE_CATALOG_URL` env + `services/catalog/client.ts` wrapper (`searchCatalog`, `getCatalogBook`, `getCoverUrl`, `downloadCatalogEpub` with progress)
+- [x] Explore tab (`pages/explore/index.tsx`): debounced search, infinite query, language filter persisted in localStorage, empty/error states
+- [x] `/tabs/explore/book/:catalogId` pre-import detail — description sanitized via DOMPurify, swaps Import → "Open in Library" if the book is already local, navigates to `/tabs/library` after import so the new book pops into the grid
+- [x] `/tabs/library/book/:id` local detail — progress %, highlights count, On-device badge, Open reader / Set active / Delete actions, lazily enriches from catalog when `catalogId` is set, external-source link to Gutenberg/SE
+- [x] Library long-press action sheet: new **Details** entry (keeps Set active + Delete)
+- [x] Idempotent import via `queries.getBookByCatalogId`
+- [x] `book-import.ts` refactored: `importBookFromBlob(blob, filename, onProgress?, extras?)` shared between file-picker flow and catalog import
+
+**Phase 3 deviations:**
+
+- EPUB proxy folded into `routes/books.ts` (not a separate `routes/epub.ts`) — one exported `booksRoute` chains `.get("/:id{.+}/epub")` before `.get("/:id{.+}")` so the specific path matches first.
+- Detail routes live under `/tabs/...` (inside the tab bar's `IonRouterOutlet`) and hide the tab bar via the same `hideTabBar` class `/tabs/reader/:id` uses, rather than being registered at the root `IonRouterOutlet`. Keeps URL semantics consistent with the rest of the app.
+- `source` values on the local `books` table mirror the catalog literal (`gutenberg` | `standard_ebooks`); a null value means locally-imported. Simpler than a 3-value enum.
+- CORS: catalog enables `hono/cors` — any origin in dev, `CATALOG_ALLOWED_ORIGINS` (comma-separated) in production. Needed once the browser started calling the service directly.
+- Search is prefix-aware: each word becomes `word:*` in a `to_tsquery('simple', …)`, combined with `ILIKE %q%` and pg_trgm similarity. Fixes "fran" not matching "frankenstein".
+- EPUB proxy has its own stricter rate-limit bucket (`epubRateLimit`, 10/min/IP, 30 s upstream fetch timeout) on top of the global API limiter — responses are multi-megabyte, the global 60/min bucket would let a single IP saturate bandwidth.
+- Sanitized HTML rendering centralised in `components/sanitized-description.tsx` (memoised DOMPurify call). External-source URL builder lives in `services/catalog/client.ts` (`externalSourceUrl`).
+
+### Phase 3b — Explore landing + genre filter + pagination ✅
+
+Current Explore tab is search-only. This phase turns it into a proper browse surface.
+
+**Shape**: hybrid landing — one hero SE shelf, then category shelves, then a genre tile grid. Typing a query or picking a genre chip switches the page into a paginated search-results view.
+
+**Catalog service**
+
+- [x] Add `download_count INTEGER` (nullable) to `catalog_books`. Migration + `idx_catalog_books_download_count` on `(download_count DESC NULLS LAST)`.
+- [x] Gutenberg sync: populate `download_count` from Gutendex `download_count`.
+- [x] SE sync dedup step: when an SE row matches a Gutenberg row, **copy the matched Gutenberg `download_count` onto the SE row** (denormalise). That way the Most-Read shelf can sort non-suppressed books by a single column while still substituting the SE quality variant wherever one exists.
+- [x] Genre map module (`src/lib/genres.ts`): hand-curated list of buckets → array of subject ILIKE patterns. Start with 8: `fiction, science-fiction, mystery, poetry, philosophy, children, history, drama`. Used by both landing and search.
+- [x] Classics list module (`src/lib/classics.ts`): hand-picked list of ~30–50 canonical catalog IDs (e.g. `se:mary-shelley/frankenstein`, `gutenberg:1342`). Edited manually; server returns them in list order, filters by requested language.
+- [x] `GET /landing?lang=en` — aggregated endpoint:
+  ```
+  {
+    featured_se: [...12 SE, most recent synced_at]
+    classics:    [...hand-picked list, language-filtered]
+    most_read:   [...12 non-suppressed, ORDER BY download_count DESC NULLS LAST]
+    genres: [ { id, label, books: [...8, SE-first then gutenberg fill] } ]
+  }
+  ```
+  Language filter applied to every shelf.
+- [x] `GET /shelves/random?count=8&lang=en&source=se` — returns `count` random books (default 8, cap 20). Source filter optional (defaults to SE). Each call reshuffles (no server cache) so the client's "🔀 Shuffle" button just refetches.
+- [x] `GET /search` additions:
+  - Accept optional `genre` query param → applies the same subject-ILIKE patterns from the genre module.
+  - `q` becomes optional when `genre` is provided (validation tweak).
+  - Accept optional `order=popular` → sort by `download_count DESC NULLS LAST` instead of relevance.
+  - Pagination response already carries `total / page / limit` — keep it; the client will surface Prev / Next controls.
+
+**Capacitor app**
+
+- [x] `services/catalog/client.ts` — add `getLanding(lang)`, `getRandomShelf({ count?, lang?, source? })`, extend `searchCatalog` args with optional `genre` and `order`.
+- [x] `services/catalog/query-keys.ts` — add `landing(lang)`, `randomShelf(lang, source, nonce)` (nonce so reshuffle bypasses cache).
+- [x] `pages/explore/index.tsx` — orchestrator: debounced query + genre state + language. Mode switch:
+  - No query **and** no genre → `<ExploreLanding>`
+  - Query or genre set → `<ExploreSearchResults>`
+- [x] `pages/explore/landing.tsx` — fetches `/landing`, renders `<Shelf>`s (Featured SE, Classics, Most Read, Random SE, per-genre) plus the genre tile grid at the bottom.
+- [x] `pages/explore/shelf.tsx` — horizontal-scroll strip of `ResultCard`s. Supports an optional "See all →" link (genre shelves set it to `/tabs/explore?genre=fiction`) and an optional reshuffle button (Random shelf).
+- [x] `pages/explore/genre-chips.tsx` — chip row above the search results when a genre is active / selectable. Tapping a chip narrows; clearing returns to landing.
+- [x] `pages/explore/search-results.tsx` — the existing grid but with explicit **Prev / Next** pagination buttons + `Page X of Y` and `total results`. Removes infinite scroll.
+- [x] `result-card.tsx` — unchanged (already mirrors `BookCard`).
+- [x] Language: already stored in localStorage; landing + search both read from it. Keep respect-language-always behaviour.
+
+**Rollout order**
+
+1. Schema migration + backfill on next Gutenberg sync + SE dedup denormalisation step.
+2. Genre map + classics list modules.
+3. `/landing`, `/shelves/random`, and `/search` extensions on catalog.
+4. Client landing + shelves + random reshuffle button.
+5. Replace infinite scroll with Prev / Next pagination.
+6. Genre chips.
+
+**Deferred / out of scope**
+
+- Personalised recommendations ("Because you read X").
+- Per-user history, seen-tracking, or bookmarking shelves.
+- download_count for SE rows without a Gutenberg match stays NULL (bottom-sorted). Acceptable — unmatched SE rows are rare and tend to be new/niche.
 
 ## Decisions
 

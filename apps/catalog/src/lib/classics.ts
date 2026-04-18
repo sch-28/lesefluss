@@ -1,0 +1,43 @@
+/**
+ * Hand-picked canonical IDs, returned by `/landing` in this exact order
+ * (filtered by requested language). Mix Gutenberg + Standard Ebooks so the
+ * shelf shows the best-available edition of each title.
+ */
+export const CLASSIC_IDS: readonly string[] = [
+	"se:mary-shelley/frankenstein",
+	"se:jane-austen/pride-and-prejudice",
+	"se:bram-stoker/dracula",
+	"se:herman-melville/moby-dick",
+	"se:charles-dickens/a-tale-of-two-cities",
+	"se:charles-dickens/great-expectations",
+	"se:fyodor-dostoevsky/crime-and-punishment/constance-garnett",
+	"se:leo-tolstoy/anna-karenina/constance-garnett",
+	"se:leo-tolstoy/war-and-peace/louise-maude_aylmer-maude",
+	"se:oscar-wilde/the-picture-of-dorian-gray",
+	"se:h-g-wells/the-time-machine",
+	"se:h-g-wells/the-war-of-the-worlds",
+	"se:robert-louis-stevenson/the-strange-case-of-dr-jekyll-and-mr-hyde",
+	"se:arthur-conan-doyle/the-adventures-of-sherlock-holmes",
+	"se:mark-twain/the-adventures-of-huckleberry-finn",
+	"se:mark-twain/the-adventures-of-tom-sawyer",
+	"se:edgar-allan-poe/short-fiction",
+	"se:nathaniel-hawthorne/the-scarlet-letter",
+	"se:lewis-carroll/alice-in-wonderland",
+	"se:l-frank-baum/the-wonderful-wizard-of-oz",
+	"se:jules-verne/twenty-thousand-leagues-under-the-seas/f-p-walter",
+	"se:jules-verne/around-the-world-in-eighty-days/george-makepeace-towle",
+	"se:joseph-conrad/heart-of-darkness",
+	"se:franz-kafka/the-metamorphosis/david-wyllie",
+	"se:virginia-woolf/mrs-dalloway",
+	"se:f-scott-fitzgerald/the-great-gatsby",
+	"se:james-joyce/dubliners",
+	"se:james-joyce/a-portrait-of-the-artist-as-a-young-man",
+	"se:kate-chopin/the-awakening",
+	"se:louisa-may-alcott/little-women",
+	"gutenberg:1342",
+	"gutenberg:11",
+	"gutenberg:84",
+	"gutenberg:1661",
+	"gutenberg:2701",
+	"gutenberg:98",
+];
