@@ -23,11 +23,11 @@ const csp = [
 	"form-action 'self'",
 ].join("; ");
 
-// /app/* embeds the capacitor SPA which uses sql.js (WebAssembly) — needs wasm-unsafe-eval.
-// Applied only to the app routes to keep the main site's policy strict.
+// /app/* embeds the capacitor SPA which uses sql.js (WebAssembly + eval) — needs both
+// wasm-unsafe-eval and unsafe-eval. Applied only to app routes to keep the main site strict.
 const appCsp = [
 	"default-src 'self'",
-	`script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${GOATCOUNTER_URL ? ` ${GOATCOUNTER_URL}` : ""}`,
+	`script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' 'unsafe-eval'${GOATCOUNTER_URL ? ` ${GOATCOUNTER_URL}` : ""}`,
 	"style-src 'self' 'unsafe-inline'",
 	"img-src 'self' data: blob:",
 	"font-src 'self' data:",
