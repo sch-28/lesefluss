@@ -33,7 +33,9 @@ function DevicePage() {
 					</p>
 					<div className="flex flex-wrap gap-4">
 						<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
-							<Link to="/docs">View build guide →</Link>
+							<Link to="/docs" search={{ tab: "esp32-build-guide" }}>
+								View build guide →
+							</Link>
 						</Button>
 						{!hideGithub && (
 							<Button
@@ -157,7 +159,9 @@ function DevicePage() {
 							</p>
 							<div className="flex flex-wrap gap-4">
 								<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
-									<Link to="/docs">Read the build guide →</Link>
+									<Link to="/docs" search={{ tab: "esp32-build-guide" }}>
+										Read the build guide →
+									</Link>
 								</Button>
 								{/* TODO: replace with real Ko-fi/sponsor URL once set up */}
 								<span
@@ -192,7 +196,5 @@ const parts = [
 	{ name: "ESP32-S3 dev board", notes: "e.g. Waveshare ESP32-S3-Zero", cost: "~€5" },
 	{ name: "AMOLED display (RM67162)", notes: "or ST7789 TFT as alternative", cost: "~€8" },
 	{ name: "LiPo battery", notes: "300–500 mAh, JST-PH 2mm", cost: "~€4" },
-	{ name: "LiPo charger / BMS", notes: "TP4056 module", cost: "~€1" },
-	{ name: "Tactile button", notes: "6×6mm or 12×12mm", cost: "<€1" },
 	{ name: "Misc (wires, connectors)", notes: "Jumpers, JST connectors, heat shrink", cost: "~€3" },
 ];

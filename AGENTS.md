@@ -10,11 +10,13 @@ lesefluss/
 │   ├── esp32.md        # ESP32 firmware reference
 │   ├── capacitor.md    # Capacitor app reference
 │   ├── web.md          # Website reference + roadmap
+│   ├── catalog.md      # Catalog service reference
 │   └── roadmap.md      # Publishing + business roadmap (Play Store, DIY guide, monetisation)
 ├── apps/
 │   ├── esp32/          # MicroPython ESP32 Lesefluss reader
 │   ├── capacitor/      # Ionic React mobile + web app
-│   └── web/            # TanStack Start website (marketing, auth, sync API, hosts capacitor web build)
+│   ├── web/            # TanStack Start website (marketing, auth, sync API, hosts capacitor web build)
+│   └── catalog/        # Hono API service for public-domain book discovery (Gutenberg + Standard Ebooks)
 ├── packages/
 │   ├── ble-config/     # Shared BLE UUIDs (workspace package)
 │   └── rsvp-core/      # Shared engine, settings, sync types (Zod schemas)

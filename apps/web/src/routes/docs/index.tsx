@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Bluetooth, BookMarked, Cpu, HardHat, HelpCircle, Rocket } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useSiteFlags } from "~/lib/site-flags";
 import { seo } from "~/utils/seo";
@@ -30,8 +30,25 @@ const troubleshootingItems = [
 	},
 ];
 
+const SECTION_IDS = [
+	"getting-started",
+	"importing-books",
+	"esp32-build-guide",
+	"connecting-device",
+	"troubleshooting",
+] as const;
+type SectionId = (typeof SECTION_IDS)[number];
+
+type DocsSearch = { tab?: SectionId };
+
 export const Route = createFileRoute("/docs/")({
 	component: DocsPage,
+	validateSearch: (search: Record<string, unknown>): DocsSearch => {
+		const tab = search.tab;
+		return typeof tab === "string" && (SECTION_IDS as readonly string[]).includes(tab)
+			? { tab: tab as SectionId }
+			: {};
+	},
 	head: () => ({
 		...seo({
 			title: "Docs - Lesefluss",
@@ -195,7 +212,15 @@ function buildSections(hideGithub: boolean): Section[] {
 function DocsPage() {
 	const { hideGithub } = useSiteFlags();
 	const sections = useMemo(() => buildSections(hideGithub), [hideGithub]);
-	const [active, setActive] = useState(sections[0].id);
+	const { tab } = Route.useSearch();
+	const navigate = useNavigate({ from: Route.fullPath });
+	const active = tab ?? sections[0].id;
+	const setActive = (value: string) => {
+		navigate({
+			search: value === sections[0].id ? {} : { tab: value as SectionId },
+			replace: true,
+		});
+	};
 
 	return (
 		<div className="mx-auto w-full max-w-5xl px-6 py-12">
