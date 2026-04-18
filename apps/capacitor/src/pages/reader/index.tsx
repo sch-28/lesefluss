@@ -59,7 +59,7 @@ import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import type { Chapter } from "../../services/db/schema";
-import { scheduleSyncPush } from "../../services/sync";
+import { pushSync, scheduleSyncPush } from "../../services/sync";
 import { formatReadingTime } from "../../utils/reading-time";
 import AppearancePopover from "./appearance-popover";
 import DictionaryModal from "./dictionary-modal";
@@ -236,10 +236,10 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// ── Save position to DB + BLE ─────────────────────────────────────────
 	// Fire-and-forget writes — no mutation wrapper needed for high-frequency saves.
 	const savePosition = useCallback(
-		async (offset: number) => {
+		async (offset: number, { scheduleSync = true }: { scheduleSync?: boolean } = {}) => {
 			await queries.updateBook(id, { position: offset, lastRead: Date.now() });
 			await pushPosition(offset);
-			scheduleSyncPush(5000);
+			if (scheduleSync) scheduleSyncPush(5000);
 		},
 		[id, pushPosition],
 	);
@@ -547,7 +547,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		(byteOffset: number) => {
 			setProgressOffset(byteOffset);
 			lastOffsetRef.current = byteOffset;
-			savePosition(byteOffset);
+			savePosition(byteOffset, { scheduleSync: false });
 		},
 		[savePosition],
 	);
@@ -672,7 +672,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			// Only write if we actually loaded the book (lastOffsetRef !== null).
 			const offset = lastOffsetRef.current;
 			if (offset !== null) {
-				savePosition(offset);
+				savePosition(offset, { scheduleSync: false });
+				pushSync().catch(() => {});
 			}
 			// Invalidate the books list so the library grid picks up the new position
 			// when the user navigates back.
