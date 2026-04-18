@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { Bluetooth, BookMarked, Cpu, HardHat, HelpCircle, Rocket } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useSiteFlags } from "~/lib/site-flags";
@@ -41,12 +43,28 @@ export const Route = createFileRoute("/docs/")({
 	}),
 });
 
-function buildSections(hideGithub: boolean) {
+function TodoPlaceholder() {
+	return (
+		<div className="flex flex-col items-center justify-center gap-3 py-10 text-muted-foreground">
+			<HardHat className="h-10 w-10 opacity-40" />
+			<p className="text-sm">This section is coming soon.</p>
+		</div>
+	);
+}
+
+type Section = {
+	id: string;
+	title: string;
+	icon: LucideIcon;
+	content: React.ReactNode;
+};
+
+function buildSections(hideGithub: boolean): Section[] {
 	return [
 		{
 			id: "getting-started",
 			title: "Getting Started",
-			icon: "🚀",
+			icon: Rocket,
 			content: (
 				<div className="space-y-4 text-muted-foreground leading-relaxed">
 					<p>
@@ -91,7 +109,7 @@ function buildSections(hideGithub: boolean) {
 		{
 			id: "importing-books",
 			title: "Importing Books",
-			icon: "📚",
+			icon: BookMarked,
 			content: (
 				<div className="space-y-4 text-muted-foreground leading-relaxed">
 					<p>
@@ -129,112 +147,19 @@ function buildSections(hideGithub: boolean) {
 		{
 			id: "esp32-build-guide",
 			title: "ESP32 Build Guide",
-			icon: "🔧",
-			content: (
-				<div className="space-y-4 text-muted-foreground leading-relaxed">
-					<p>
-						The hardware device is optional. If you just want to read on your phone, skip this. If
-						you want a dedicated pocket reader, here's what you need.
-					</p>
-					<h4 className="font-semibold text-foreground">Parts</h4>
-					<p className="text-sm">
-						See the{" "}
-						<Link
-							to="/device"
-							className="text-foreground underline decoration-border hover:decoration-foreground/50"
-						>
-							Device page
-						</Link>{" "}
-						for the full parts list and variant comparison (AMOLED vs ST7789). Total cost is
-						approximately €25.
-					</p>
-					<h4 className="font-semibold text-foreground">Wiring</h4>
-					<p className="text-sm">
-						Wiring diagram and pin mappings are coming soon. For now, refer to the source code in{" "}
-						<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">
-							apps/esp32/src/config.py
-						</code>{" "}
-						for GPIO pin assignments.
-					</p>
-					<h4 className="font-semibold text-foreground">Flashing firmware</h4>
-					<ol className="list-inside list-decimal space-y-2 text-sm">
-						<li>
-							{hideGithub ? (
-								<>Clone the repository (link coming soon).</>
-							) : (
-								<>
-									Clone the repo:{" "}
-									<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">
-										git clone https://github.com/sch-28/lesefluss
-									</code>
-								</>
-							)}
-						</li>
-						<li>
-							Navigate to{" "}
-							<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">
-								apps/esp32/
-							</code>
-						</li>
-						<li>
-							Run{" "}
-							<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">
-								./scripts/setup.sh --board AMOLED
-							</code>{" "}
-							(or{" "}
-							<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">ST7789</code>
-							)
-						</li>
-						<li>The script flashes MicroPython firmware and uploads all source files.</li>
-					</ol>
-				</div>
-			),
+			icon: Cpu,
+			content: <TodoPlaceholder />,
 		},
 		{
 			id: "connecting-device",
 			title: "Connecting Your Device",
-			icon: "📡",
-			content: (
-				<div className="space-y-4 text-muted-foreground leading-relaxed">
-					<p>
-						The app connects to your ESP32 reader over Bluetooth Low Energy (BLE). No pairing code
-						or OS-level pairing is needed.
-					</p>
-					<h4 className="font-semibold text-foreground">First connection</h4>
-					<ol className="list-inside list-decimal space-y-2 text-sm">
-						<li>Power on your ESP32 device. Make sure BLE is enabled in its settings.</li>
-						<li>
-							In the app, tap the <strong className="text-foreground">BLE</strong> badge in the tab
-							bar.
-						</li>
-						<li>
-							Tap <strong className="text-foreground">Scan</strong> - the device appears as{" "}
-							<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">
-								Lesefluss
-							</code>
-							.
-						</li>
-						<li>Tap it to connect. Settings and position sync automatically.</li>
-					</ol>
-					<h4 className="font-semibold text-foreground">Sending a book</h4>
-					<ol className="list-inside list-decimal space-y-2 text-sm">
-						<li>While connected, open a book in your Library.</li>
-						<li>
-							Tap <strong className="text-foreground">Send to device</strong>.
-						</li>
-						<li>The app uploads the book in BLE chunks. Progress is shown in a dialog.</li>
-						<li>Once complete, the device auto-starts reading.</li>
-					</ol>
-					<p className="text-sm">
-						Position is synced bidirectionally - reading on either device keeps them in step.
-					</p>
-				</div>
-			),
+			icon: Bluetooth,
+			content: <TodoPlaceholder />,
 		},
 		{
 			id: "troubleshooting",
 			title: "Troubleshooting",
-			icon: "🛠️",
+			icon: HelpCircle,
 			content: (
 				<div className="space-y-4 text-muted-foreground leading-relaxed">
 					<div className="space-y-3">
@@ -273,7 +198,7 @@ function DocsPage() {
 	const [active, setActive] = useState(sections[0].id);
 
 	return (
-		<div className="mx-auto max-w-5xl px-6 py-12">
+		<div className="mx-auto w-full max-w-5xl px-6 py-12">
 			<div className="mb-10">
 				<h1 className="mb-2 font-bold text-3xl">Documentation</h1>
 				<p className="text-muted-foreground">
@@ -281,8 +206,8 @@ function DocsPage() {
 				</p>
 			</div>
 
-			<Tabs value={active} onValueChange={setActive}>
-				<div className="flex gap-8 lg:gap-12">
+			<Tabs value={active} onValueChange={setActive} className="w-full">
+				<div className="flex w-full gap-8 lg:gap-12">
 					{/* Desktop sidebar - single TabsList */}
 					<aside className="hidden w-52 shrink-0 lg:block">
 						<TabsList className="sticky top-24 h-auto w-full flex-col gap-1 bg-transparent p-0">
@@ -292,7 +217,7 @@ function DocsPage() {
 									value={s.id}
 									className="w-full justify-start rounded-lg px-3 py-2 text-left text-sm data-[state=active]:bg-muted data-[state=inactive]:bg-transparent data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:shadow-none data-[state=inactive]:hover:bg-muted/50 data-[state=inactive]:hover:text-foreground"
 								>
-									<span className="mr-2">{s.icon}</span>
+									<s.icon className="mr-2 h-4 w-4 shrink-0" />
 									{s.title}
 								</TabsTrigger>
 							))}
@@ -309,13 +234,14 @@ function DocsPage() {
 									role="tab"
 									aria-selected={active === s.id}
 									onClick={() => setActive(s.id)}
-									className={`rounded-lg px-3 py-1.5 font-medium text-sm transition-colors ${
+									className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium text-sm transition-colors ${
 										active === s.id
 											? "bg-muted text-foreground"
 											: "border border-border bg-transparent text-muted-foreground hover:text-foreground"
 									}`}
 								>
-									{s.icon} {s.title}
+									<s.icon className="h-3.5 w-3.5" />
+									{s.title}
 								</button>
 							))}
 						</div>
@@ -324,10 +250,10 @@ function DocsPage() {
 							<TabsContent
 								key={s.id}
 								value={s.id}
-								className="mt-0 rounded-xl border border-border bg-muted/20 p-8"
+								className="mt-0 min-h-64 w-full rounded-xl border border-border bg-muted/20 p-8"
 							>
 								<h2 className="mb-6 flex items-center gap-3 font-bold text-xl">
-									<span>{s.icon}</span>
+									<s.icon className="h-5 w-5" />
 									{s.title}
 								</h2>
 								{s.content}
