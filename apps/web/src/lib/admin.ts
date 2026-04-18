@@ -133,3 +133,88 @@ export const deleteAdminBook = createServerFn({ method: "POST" })
 		});
 		return { success: true };
 	});
+
+// ---------------------------------------------------------------------------
+// Catalog (apps/catalog) admin proxy
+// ---------------------------------------------------------------------------
+
+type CatalogStatsPayload = {
+	sync: {
+		running: boolean;
+		currentSource: "gutenberg" | "standard_ebooks" | "dedup" | null;
+		phase: string | null;
+		booksUpserted: number;
+		booksSuppressed: number;
+		lastStartedAt: string | null;
+		lastFinishedAt: string | null;
+		lastError: string | null;
+	};
+	counts: {
+		gutenberg: number;
+		standardEbooks: number;
+		suppressed: number;
+		total: number;
+	};
+};
+
+type Result<T> = { ok: true; data: T } | { ok: false; error: string };
+
+export type CatalogStatsResult = Result<CatalogStatsPayload>;
+export type CatalogSyncResult = Result<null>;
+
+export type CatalogSyncSource = "gutenberg" | "standard_ebooks" | "all";
+
+function catalogConfig(): { base: string; secret: string } | null {
+	const base = process.env.CATALOG_URL;
+	const secret = process.env.CATALOG_ADMIN_SECRET;
+	if (!base || !secret) return null;
+	return { base: base.replace(/\/+$/, ""), secret };
+}
+
+async function catalogFetch(path: string, init: RequestInit = {}): Promise<Result<Response>> {
+	const cfg = catalogConfig();
+	if (!cfg) return { ok: false, error: "Catalog service not configured" };
+	try {
+		const res = await fetch(`${cfg.base}${path}`, {
+			...init,
+			headers: {
+				...init.headers,
+				Authorization: `Bearer ${cfg.secret}`,
+			},
+			signal: AbortSignal.timeout(5000),
+		});
+		return { ok: true, data: res };
+	} catch (err) {
+		if (err instanceof DOMException && err.name === "TimeoutError") {
+			return { ok: false, error: "Catalog service timed out" };
+		}
+		return { ok: false, error: "Catalog service unreachable" };
+	}
+}
+
+export const getCatalogStats = createServerFn({ method: "GET" }).handler(
+	async (): Promise<CatalogStatsResult> => {
+		await requireAdminSession();
+		const r = await catalogFetch("/admin/stats");
+		if (!r.ok) return r;
+		if (!r.data.ok) return { ok: false, error: `Catalog stats failed: HTTP ${r.data.status}` };
+		const data = (await r.data.json()) as CatalogStatsPayload;
+		return { ok: true, data };
+	},
+);
+
+export const triggerCatalogSync = createServerFn({ method: "POST" })
+	.inputValidator((data: { source: CatalogSyncSource }) => data)
+	.handler(async ({ data }): Promise<CatalogSyncResult> => {
+		await requireAdminSession();
+		const r = await catalogFetch("/admin/sync", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ source: data.source }),
+		});
+		if (!r.ok) return r;
+		if (!r.data.ok && r.data.status !== 202) {
+			return { ok: false, error: `Catalog sync trigger failed: HTTP ${r.data.status}` };
+		}
+		return { ok: true, data: null };
+	});

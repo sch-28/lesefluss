@@ -3,6 +3,7 @@ import { XMLParser } from "fast-xml-parser";
 import { db } from "../db/index.js";
 import { catalogBooks, type NewCatalogBook } from "../db/schema.js";
 import { env } from "../env.js";
+import { addBooksUpserted, setSyncPhase } from "./orchestrator.js";
 
 const FEED_URL = "https://standardebooks.org/feeds/opds/all";
 
@@ -95,6 +96,7 @@ export async function syncStandardEbooks(): Promise<{ upserted: number; skipped:
 		console.warn("[se] SE_EMAIL/SE_PASSWORD not set, skipping sync");
 		return { upserted: 0, skipped: true };
 	}
+	setSyncPhase("standard_ebooks", "fetching_feed");
 	console.log("[se] fetching OPDS feed…");
 	const t0 = Date.now();
 
@@ -108,6 +110,7 @@ export async function syncStandardEbooks(): Promise<{ upserted: number; skipped:
 	if (!res.ok) throw new Error(`[se] feed HTTP ${res.status}`);
 
 	const xml = await res.text();
+	setSyncPhase("standard_ebooks", "parsing");
 	console.log(`[se] fetched ${(xml.length / 1024).toFixed(0)}KB in ${Date.now() - t0}ms, parsing…`);
 
 	const parser = new XMLParser({
@@ -122,6 +125,7 @@ export async function syncStandardEbooks(): Promise<{ upserted: number; skipped:
 	console.log(`[se] parsed ${entries.length} entries, mapping…`);
 
 	const rows = entries.map(mapEntry).filter((r): r is NewCatalogBook => r !== null);
+	setSyncPhase("standard_ebooks", `upserting_${rows.length}`);
 	console.log(`[se] upserting ${rows.length} rows…`);
 
 	if (rows.length > 0) {
@@ -142,6 +146,7 @@ export async function syncStandardEbooks(): Promise<{ upserted: number; skipped:
 					syncedAt: sql`now()`,
 				},
 			});
+		addBooksUpserted(rows.length);
 	}
 
 	console.log(`[se] done, upserted ${rows.length} in ${Date.now() - t0}ms`);

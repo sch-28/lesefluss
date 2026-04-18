@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { catalogBooks, type NewCatalogBook } from "../db/schema.js";
+import { addBooksUpserted, setSyncPhase } from "./orchestrator.js";
 
 const GUTENDEX_URL = "https://gutendex.com/books/";
 const PAGE_CONCURRENCY = 2;
@@ -106,6 +107,7 @@ async function processPage(page: number): Promise<number> {
 
 export async function syncGutenberg(): Promise<{ upserted: number }> {
 	console.log("[gutenberg] starting sync");
+	setSyncPhase("gutenberg", "fetching_page_1");
 	const first = await fetchPage(1);
 	const perPage = first.results.length || 32;
 	const totalPages = Math.ceil(first.count / perPage);
@@ -113,7 +115,9 @@ export async function syncGutenberg(): Promise<{ upserted: number }> {
 
 	const firstPageRows = first.results.map(mapBook).filter((r): r is NewCatalogBook => r !== null);
 	await upsertBatch(firstPageRows);
+	addBooksUpserted(firstPageRows.length);
 	let upserted = firstPageRows.length;
+	setSyncPhase("gutenberg", `fetching_page_1_of_${totalPages}`);
 
 	const queue: number[] = [];
 	for (let p = 2; p <= totalPages; p++) queue.push(p);
@@ -126,6 +130,8 @@ export async function syncGutenberg(): Promise<{ upserted: number }> {
 			try {
 				const n = await processPage(page);
 				upserted += n;
+				addBooksUpserted(n);
+				setSyncPhase("gutenberg", `fetching_page_${page}_of_${totalPages}`);
 				console.log(`[gutenberg] page ${page}/${totalPages} (+${n}, total ${upserted})`);
 			} catch (err) {
 				console.error(`[gutenberg] page ${page}/${totalPages} failed:`, err);

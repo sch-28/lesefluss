@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
 	type ColumnDef,
@@ -10,6 +10,8 @@ import {
 import {
 	Activity,
 	BookOpen,
+	Database,
+	EyeOff,
 	HardDrive,
 	Highlighter,
 	Library,
@@ -21,11 +23,15 @@ import * as React from "react";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import {
+	type CatalogStatsResult,
+	type CatalogSyncSource,
 	deleteAdminBook,
 	deleteAdminUser,
 	getAdminBooks,
 	getAdminStats,
 	getAdminUsers,
+	getCatalogStats,
+	triggerCatalogSync,
 } from "~/lib/admin";
 import { getSession } from "~/lib/get-session";
 import { seo } from "~/utils/seo";
@@ -600,6 +606,147 @@ function BooksTable() {
 }
 
 // ---------------------------------------------------------------------------
+// Catalog section
+// ---------------------------------------------------------------------------
+
+const catalogKeys = {
+	stats: ["admin", "catalog", "stats"] as const,
+};
+
+const CATALOG_SYNC_SOURCES: readonly { key: CatalogSyncSource; label: string }[] = [
+	{ key: "gutenberg", label: "Sync Gutenberg" },
+	{ key: "standard_ebooks", label: "Sync Standard Ebooks" },
+	{ key: "all", label: "Sync All" },
+];
+
+function formatDateTime(iso: string | null): string {
+	if (!iso) return "never";
+	return new Date(iso).toLocaleString();
+}
+
+function isCatalogSyncRunning(r: CatalogStatsResult | undefined): boolean {
+	return r?.ok === true && r.data.sync.running;
+}
+
+function CatalogSection() {
+	const qc = useQueryClient();
+	const { data: result, isLoading, error } = useQuery({
+		queryKey: catalogKeys.stats,
+		queryFn: () => getCatalogStats(),
+		refetchInterval: (q) => (isCatalogSyncRunning(q.state.data) ? 3000 : 30_000),
+		refetchIntervalInBackground: false,
+	});
+
+	const syncMutation = useMutation({
+		mutationFn: async (source: CatalogSyncSource) => {
+			const r = await triggerCatalogSync({ data: { source } });
+			if (!r.ok) throw new Error(r.error);
+			return r;
+		},
+		onSuccess: () => qc.invalidateQueries({ queryKey: catalogKeys.stats }),
+	});
+
+	if (isLoading) return <p className="text-muted-foreground text-sm">Loading catalog…</p>;
+
+	const errMsg = error
+		? error instanceof Error
+			? error.message
+			: "unknown error"
+		: !result
+			? "no response"
+			: !result.ok
+				? result.error
+				: null;
+	if (errMsg)
+		return <p className="text-destructive text-sm">Catalog unavailable: {errMsg}</p>;
+
+	// Narrow: isLoading handled, errMsg null ⇒ result.ok === true
+	if (!result || !result.ok) return null;
+
+	const { sync, counts } = result.data;
+	const running = sync.running;
+	const disabled = running || syncMutation.isPending;
+
+	return (
+		<div className="space-y-4">
+			<dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+				<StatCard icon={Library} label="Gutenberg" value={counts.gutenberg} />
+				<StatCard icon={BookOpen} label="Standard Ebooks" value={counts.standardEbooks} />
+				<StatCard icon={EyeOff} label="Suppressed" value={counts.suppressed} />
+				<StatCard icon={Database} label="Total" value={counts.total} />
+			</dl>
+
+			<div className="space-y-2 rounded-xl border bg-muted/20 p-4 text-sm">
+				<div className="flex items-center gap-2">
+					<span
+						className={`inline-block size-2 rounded-full ${
+							running
+								? "animate-pulse bg-blue-500"
+								: sync.lastError
+									? "bg-destructive"
+									: "bg-emerald-500"
+						}`}
+					/>
+					<span className="font-medium">
+						{running ? "Running" : sync.lastError ? "Error" : "Idle"}
+					</span>
+					{running && sync.currentSource && (
+						<span className="text-muted-foreground text-xs">
+							· {sync.currentSource}
+							{sync.phase ? ` · ${sync.phase}` : ""} · upserted{" "}
+							<span className="tabular-nums">{sync.booksUpserted.toLocaleString()}</span>
+							{sync.booksSuppressed > 0 && (
+								<>
+									{" "}
+									· suppressed{" "}
+									<span className="tabular-nums">{sync.booksSuppressed.toLocaleString()}</span>
+								</>
+							)}
+						</span>
+					)}
+				</div>
+				<dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground text-xs sm:grid-cols-3">
+					<div>
+						<dt className="inline">Last started: </dt>
+						<dd className="inline tabular-nums">{formatDateTime(sync.lastStartedAt)}</dd>
+					</div>
+					<div>
+						<dt className="inline">Last finished: </dt>
+						<dd className="inline tabular-nums">{formatDateTime(sync.lastFinishedAt)}</dd>
+					</div>
+				</dl>
+				{sync.lastError && (
+					<p className="break-words rounded border border-destructive/30 bg-destructive/10 p-2 text-destructive text-xs">
+						{sync.lastError}
+					</p>
+				)}
+			</div>
+
+			<div className="space-y-2">
+				<div className="flex flex-wrap gap-2">
+					{CATALOG_SYNC_SOURCES.map(({ key, label }) => (
+						<Button
+							key={key}
+							variant="outline"
+							size="sm"
+							disabled={disabled}
+							onClick={() => syncMutation.mutate(key)}
+						>
+							{label}
+						</Button>
+					))}
+				</div>
+				{syncMutation.error && (
+					<p className="text-destructive text-xs">
+						Sync trigger failed: {syncMutation.error.message}
+					</p>
+				)}
+			</div>
+		</div>
+	);
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -638,6 +785,11 @@ function AdminPage() {
 				<section className="space-y-4">
 					<h2 className="font-semibold text-base">All Books</h2>
 					<BooksTable />
+				</section>
+				<Separator />
+				<section className="space-y-4">
+					<h2 className="font-semibold text-base">Catalog</h2>
+					<CatalogSection />
 				</section>
 			</div>
 		</div>

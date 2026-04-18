@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "../db/index.js";
+import { addBooksSuppressed, setSyncPhase } from "./orchestrator.js";
 
 const THRESHOLD = 0.8;
 
@@ -12,6 +13,7 @@ const THRESHOLD = 0.8;
  * Runs as a single SQL pass using a LATERAL join + CTE so we don't round-trip per SE row.
  */
 export async function dedupSE(): Promise<{ matched: number }> {
+	setSyncPhase("dedup", "matching");
 	console.log("[dedup] starting");
 
 	const result = await db.execute<{ se_id: string; pg_id: string }>(sql`
@@ -63,6 +65,7 @@ export async function dedupSE(): Promise<{ matched: number }> {
 	`);
 
 	const matched = result.rows.length;
+	addBooksSuppressed(matched);
 	console.log(`[dedup] done, ${matched} SE rows matched to Gutenberg`);
 	return { matched };
 }

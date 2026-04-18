@@ -159,15 +159,22 @@ Separate Coolify service pointing at the same Postgres. Dockerfile at `apps/cata
 - Wildcard routes use Hono's named-regex form (`:id{.+}`). Plain `/*` in Hono doesn't expose the captured segment via `c.req.param("*")`.
 - `.env` loaded via Node's native `--env-file-if-exists=.env` (no `dotenv` dependency).
 
-### Phase 2 — Admin page (`apps/web`)
+### Phase 2 — Admin page (`apps/web`) ✅
 
-- [ ] Extend `/admin` with a "Catalog" section
-- [ ] Stats tiles: total book count, count per source (Gutenberg / SE), suppressed-dedup count
-- [ ] Last sync time per source + sync status (idle / running / failed with last error)
-- [ ] Manual "Trigger sync" button (per source + "all")
-- [ ] Server route `POST /api/admin/catalog/sync` on `apps/web` — verifies admin session, forwards to catalog with `Authorization: Bearer ${CATALOG_ADMIN_SECRET}`
-- [ ] Server route `GET /api/admin/catalog/stats` on `apps/web` — same forwarding pattern for stats
+- [x] Extend `/admin` with a "Catalog" section
+- [x] Stats tiles: total book count, count per source (Gutenberg / SE), suppressed-dedup count
+- [x] Last sync time per source + sync status (idle / running / failed with last error)
+- [x] Manual "Trigger sync" button (per source + "all")
+- [x] Server fn `triggerCatalogSync` in `apps/web/src/lib/admin.ts` — verifies admin session, forwards to catalog with `Authorization: Bearer ${CATALOG_ADMIN_SECRET}`
+- [x] Server fn `getCatalogStats` in `apps/web/src/lib/admin.ts` — same forwarding pattern for stats
 - [x] Catalog side: `GET /admin/stats` endpoint (bearer-auth) backing the above — implemented in Phase 1
+
+**Phase 2 deviations:**
+
+- Used TanStack Start `createServerFn` (same pattern as the rest of `lib/admin.ts`) instead of dedicated `/api/admin/catalog/*` route files — they're functionally equivalent and match the existing codebase.
+- Enriched catalog orchestrator state with `currentSource`, `phase`, `booksUpserted`, `booksSuppressed` so polling `/admin/stats` returns meaningful progress. `/admin/stats` also returns per-source `counts` (Gutenberg / SE / suppressed / total) so the admin UI has a single request for both tiles and status.
+- Client polls every 3s while `running`, every 30s when idle.
+- New env on `apps/web`: `CATALOG_URL` (no trailing slash), `CATALOG_ADMIN_SECRET` (server-only).
 
 ### Phase 3 — Explore tab (`apps/capacitor`)
 
