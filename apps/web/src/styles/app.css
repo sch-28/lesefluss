@@ -22,6 +22,7 @@
 	}
 	html {
 		@apply font-sans;
+		scrollbar-gutter: stable;
 	}
 }
 

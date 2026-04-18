@@ -51,7 +51,7 @@ type SessionUser = NonNullable<ReturnType<typeof useSession>["data"]>["user"];
 
 function UserMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => void }) {
 	return (
-		<DropdownMenu>
+		<DropdownMenu modal={false}>
 			<DropdownMenuTrigger asChild>
 				<Button
 					variant="ghost"
