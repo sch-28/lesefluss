@@ -483,8 +483,11 @@ function BooksTable() {
 
 	const filterControl = (
 		<div className="flex items-center gap-2">
-			<label className="text-muted-foreground text-xs">Filter by user</label>
+			<label htmlFor="filter-user" className="text-muted-foreground text-xs">
+				Filter by user
+			</label>
 			<select
+				id="filter-user"
 				value={filter}
 				onChange={(e) => {
 					setFilter(e.target.value);

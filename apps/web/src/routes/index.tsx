@@ -109,7 +109,12 @@ function Home() {
 				</div>
 				{/* Wave flowing into stats strip */}
 				<div className="absolute right-0 bottom-0 left-0 text-foreground leading-none">
-					<svg viewBox="0 0 1440 72" preserveAspectRatio="none" className="block h-18 w-full">
+					<svg
+						viewBox="0 0 1440 72"
+						preserveAspectRatio="none"
+						className="block h-18 w-full"
+						aria-hidden="true"
+					>
 						<path
 							d="M0,36 C240,72 480,0 720,36 C960,72 1200,0 1440,36 L1440,72 L0,72 Z"
 							fill="currentColor"
@@ -132,7 +137,12 @@ function Home() {
 				</div>
 				{/* Wave flowing into the page */}
 				<div className="absolute right-0 bottom-0 left-0 text-background leading-none">
-					<svg viewBox="0 0 1440 72" preserveAspectRatio="none" className="block h-18 w-full">
+					<svg
+						viewBox="0 0 1440 72"
+						preserveAspectRatio="none"
+						className="block h-18 w-full"
+						aria-hidden="true"
+					>
 						<path
 							d="M0,36 C240,0 480,72 720,36 C960,0 1200,72 1440,36 L1440,72 L0,72 Z"
 							fill="currentColor"
