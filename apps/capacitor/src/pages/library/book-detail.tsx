@@ -9,14 +9,19 @@ import {
 	IonPage,
 	IonSpinner,
 	IonText,
-	IonTitle,
 	IonToolbar,
 } from "@ionic/react";
 import { useQuery } from "@tanstack/react-query";
-import { bookOutline, openOutline } from "ionicons/icons";
+import {
+	bookOutline,
+	hardwareChipOutline,
+	openOutline,
+	trashOutline,
+} from "ionicons/icons";
 import type React from "react";
 import { useState } from "react";
 import { useHistory, useParams } from "react-router-dom";
+import CoverImage from "../../components/cover-image";
 import SanitizedDescription from "../../components/sanitized-description";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
@@ -95,6 +100,12 @@ const LibraryBookDetail: React.FC = () => {
 	const isActive = book.id === activeBookId;
 	const externalUrl = book.catalogId ? externalSourceUrl(book.catalogId) : null;
 	const activeBook = allBooks?.books.find((b) => b.id === activeBookId) ?? null;
+	const sourceLabel =
+		book.source === "standard_ebooks"
+			? "Standard Ebooks"
+			: book.source === "gutenberg"
+				? "Project Gutenberg"
+				: null;
 
 	return (
 		<IonPage>
@@ -103,39 +114,67 @@ const LibraryBookDetail: React.FC = () => {
 					<IonButtons slot="start">
 						<IonBackButton defaultHref="/tabs/library" />
 					</IonButtons>
-					<IonTitle>Book</IonTitle>
+					<IonButtons slot="end">
+						{externalUrl && (
+							<IonButton
+								href={externalUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								aria-label="View original source"
+								title="View original source"
+							>
+								<IonIcon slot="icon-only" icon={openOutline} />
+							</IonButton>
+						)}
+						<IonButton
+							color="danger"
+							onClick={() => setIsDeleteOpen(true)}
+							aria-label="Delete book"
+							title="Delete book"
+						>
+							<IonIcon slot="icon-only" icon={trashOutline} />
+						</IonButton>
+					</IonButtons>
 				</IonToolbar>
 			</IonHeader>
 			<IonContent>
 				<div className="book-detail-page">
-					<div className="book-detail-header">
+					<div className="book-detail-hero">
 						<div className="book-detail-cover">
-							{cover ? (
-								<img src={cover} alt="" />
-							) : (
-								<div className="book-detail-cover-placeholder">
-									<IonIcon icon={bookOutline} />
-								</div>
-							)}
+							<CoverImage
+								src={cover}
+								alt=""
+								priority
+								fallback={
+									<div className="book-detail-cover-placeholder">
+										<IonIcon icon={bookOutline} />
+									</div>
+								}
+							/>
 						</div>
 						<div className="book-detail-meta">
-							<h1>{book.title}</h1>
+							{sourceLabel && <span className="book-detail-eyebrow">{sourceLabel}</span>}
+							<h1 className="book-detail-title">{book.title}</h1>
 							{book.author && <p className="book-detail-author">{book.author}</p>}
-							<p className="book-detail-stats">
-								{Math.round(progress * 100)}% read · {highlights.length} highlight
-								{highlights.length === 1 ? "" : "s"}
-								{isActive ? " · On device" : ""}
-							</p>
-							{book.source && (
-								<span className="explore-card-badge">
-									{book.source === "standard_ebooks" ? "Standard Ebooks" : "Project Gutenberg"}
+							<div className="book-detail-stats">
+								<span>{Math.round(progress * 100)}% read</span>
+								<span>·</span>
+								<span>
+									{highlights.length} highlight{highlights.length === 1 ? "" : "s"}
 								</span>
-							)}
+								{isActive && (
+									<>
+										<span>·</span>
+										<span className="book-detail-stat-active">On device</span>
+									</>
+								)}
+							</div>
 						</div>
 					</div>
 
 					<div className="book-detail-actions">
 						<IonButton expand="block" onClick={() => history.push(`/tabs/reader/${book.id}`)}>
+							<IonIcon slot="start" icon={bookOutline} />
 							Open reader
 						</IonButton>
 						{!IS_WEB && (
@@ -145,48 +184,34 @@ const LibraryBookDetail: React.FC = () => {
 								disabled={!isConnected || isTransferring}
 								onClick={() => setIsTransferOpen(true)}
 							>
+								<IonIcon slot="start" icon={hardwareChipOutline} />
 								{isConnected ? "Set active on device" : "Device not connected"}
 							</IonButton>
 						)}
-						{externalUrl && (
-							<IonButton
-								expand="block"
-								fill="clear"
-								href={externalUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								<IonIcon slot="end" icon={openOutline} />
-								View original source
-							</IonButton>
-						)}
-						<IonButton
-							expand="block"
-							fill="clear"
-							color="danger"
-							onClick={() => setIsDeleteOpen(true)}
-						>
-							Delete
-						</IonButton>
 					</div>
-
-					{catalogMeta?.description ? (
-						<SanitizedDescription
-							className="book-detail-description"
-							html={catalogMeta.description}
-						/>
-					) : catalogMeta?.summary ? (
-						<p className="book-detail-summary">{catalogMeta.summary}</p>
-					) : null}
 
 					{catalogMeta?.subjects && catalogMeta.subjects.length > 0 && (
 						<div className="book-detail-subjects">
-							{catalogMeta.subjects.slice(0, 6).map((s) => (
+							{catalogMeta.subjects.slice(0, 8).map((s) => (
 								<span key={s} className="book-detail-subject">
 									{s}
 								</span>
 							))}
 						</div>
+					)}
+
+					{(catalogMeta?.description || catalogMeta?.summary) && (
+						<section className="book-detail-card">
+							<h2 className="book-detail-section-title">About</h2>
+							{catalogMeta.description ? (
+								<SanitizedDescription
+									className="book-detail-description"
+									html={catalogMeta.description}
+								/>
+							) : (
+								<p className="book-detail-summary">{catalogMeta.summary}</p>
+							)}
+						</section>
 					)}
 				</div>
 

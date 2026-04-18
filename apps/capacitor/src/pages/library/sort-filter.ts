@@ -18,6 +18,7 @@ export const FILTER_LABELS: Record<FilterBy, string> = {
 };
 
 export const FILTER_OPTIONS: FilterBy[] = ["all", "unread", "reading", "done"];
+export const SORT_OPTIONS: SortBy[] = ["recent", "title", "author", "progress"];
 
 export function readingProgress(book: Book): number {
 	if (!book.size || book.size === 0) return 0;

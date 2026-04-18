@@ -1,3 +1,5 @@
+import { type SQL, sql } from "drizzle-orm";
+
 /**
  * Hand-curated genre buckets. Each `subjectPatterns` entry is a lowercase
  * substring matched against any element of `catalog_books.subjects[]` via
@@ -59,9 +61,12 @@ export function findGenre(id: string): Genre | undefined {
 }
 
 /**
- * Build ILIKE patterns (`%keyword%`) for a genre's subject patterns.
- * Used with `ANY(ARRAY[...])` against `unnest(subjects)`.
+ * Build a SQL fragment expanding to `ARRAY[$a, $b, ...]` of ILIKE patterns
+ * for a genre. Each pattern becomes its own bind parameter — passing the
+ * whole array as a single parameter trips node-pg's text→text[] coercion
+ * (`malformed array literal`).
  */
-export function genreIlikePatterns(genre: Genre): string[] {
-	return genre.subjectPatterns.map((p) => `%${p}%`);
+export function genrePatternsSql(genre: Genre): SQL {
+	const fragments = genre.subjectPatterns.map((p) => sql`${`%${p}%`}`);
+	return sql`ARRAY[${sql.join(fragments, sql`, `)}]::text[]`;
 }

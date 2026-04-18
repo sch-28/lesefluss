@@ -1,29 +1,21 @@
-import { IonIcon, IonItem, IonLabel, IonList, IonPopover } from "@ionic/react";
-import { checkmarkOutline } from "ionicons/icons";
 import type React from "react";
-import { SORT_LABELS, type SortBy } from "./sort-filter";
+import SelectionPopover from "../../components/selection-popover";
+import { SORT_LABELS, SORT_OPTIONS, type SortBy } from "./sort-filter";
 
-interface SortPopoverProps {
+type Props = {
 	trigger: string;
 	sortBy: SortBy;
 	onSort: (s: SortBy) => void;
-}
-
-const SORT_OPTIONS: SortBy[] = ["recent", "title", "author", "progress"];
-
-const SortPopover: React.FC<SortPopoverProps> = ({ trigger, sortBy, onSort }) => {
-	return (
-		<IonPopover trigger={trigger} triggerAction="click" dismissOnSelect>
-			<IonList lines="none" style={{ minWidth: 140 }}>
-				{SORT_OPTIONS.map((option) => (
-					<IonItem key={option} button detail={false} onClick={() => onSort(option)}>
-						<IonLabel>{SORT_LABELS[option]}</IonLabel>
-						{sortBy === option && <IonIcon slot="end" icon={checkmarkOutline} />}
-					</IonItem>
-				))}
-			</IonList>
-		</IonPopover>
-	);
 };
+
+const SortPopover: React.FC<Props> = ({ trigger, sortBy, onSort }) => (
+	<SelectionPopover
+		trigger={trigger}
+		options={SORT_OPTIONS}
+		labels={SORT_LABELS}
+		selected={sortBy}
+		onSelect={onSort}
+	/>
+);
 
 export default SortPopover;

@@ -10,14 +10,14 @@ import {
 	IonProgressBar,
 	IonSpinner,
 	IonText,
-	IonTitle,
 	IonToolbar,
 } from "@ionic/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { bookOutline, openOutline } from "ionicons/icons";
+import { bookOutline, downloadOutline, openOutline } from "ionicons/icons";
 import type React from "react";
 import { useState } from "react";
 import { useHistory, useParams } from "react-router-dom";
+import CoverImage from "../../components/cover-image";
 import SanitizedDescription from "../../components/sanitized-description";
 import { externalSourceUrl, getCatalogBook, getCoverUrl } from "../../services/catalog/client";
 import { importFromCatalog } from "../../services/catalog/import";
@@ -27,7 +27,11 @@ import { queries } from "../../services/db/queries";
 import { scheduleSyncPush } from "../../services/sync";
 
 const ExploreBookDetail: React.FC = () => {
-	const { catalogId } = useParams<{ catalogId: string }>();
+	// react-router v5 doesn't decode path params, so SE ids arrive as
+	// `se%3Aauthor%2Ftitle`. Decode once here so every downstream call
+	// (DB lookup, catalog fetch, query keys) sees the canonical id.
+	const { catalogId: rawCatalogId } = useParams<{ catalogId: string }>();
+	const catalogId = decodeURIComponent(rawCatalogId);
 	const history = useHistory();
 	const qc = useQueryClient();
 	const [importProgress, setImportProgress] = useState(0);
@@ -71,7 +75,19 @@ const ExploreBookDetail: React.FC = () => {
 					<IonButtons slot="start">
 						<IonBackButton defaultHref="/tabs/explore" />
 					</IonButtons>
-					<IonTitle>Book</IonTitle>
+					{externalUrl && (
+						<IonButtons slot="end">
+							<IonButton
+								href={externalUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								aria-label="View original source"
+								title="View original source"
+							>
+								<IonIcon slot="icon-only" icon={openOutline} />
+							</IonButton>
+						</IonButtons>
+					)}
 				</IonToolbar>
 			</IonHeader>
 			<IonContent>
@@ -91,29 +107,23 @@ const ExploreBookDetail: React.FC = () => {
 					</div>
 				) : !book ? null : (
 					<div className="book-detail-page">
-						<div className="book-detail-header">
+						<div className="book-detail-hero">
 							<div className="book-detail-cover">
-								{coverUrl ? (
-									<img src={coverUrl} alt="" />
-								) : (
-									<div className="book-detail-cover-placeholder">
-										<IonIcon icon={bookOutline} />
-									</div>
-								)}
+								<CoverImage
+									src={coverUrl}
+									alt=""
+									priority
+									fallback={
+										<div className="book-detail-cover-placeholder">
+											<IonIcon icon={bookOutline} />
+										</div>
+									}
+								/>
 							</div>
 							<div className="book-detail-meta">
-								<h1>{book.title}</h1>
+								{isSE && <span className="book-detail-eyebrow">Standard Ebooks</span>}
+								<h1 className="book-detail-title">{book.title}</h1>
 								{book.author && <p className="book-detail-author">{book.author}</p>}
-								{isSE && <span className="explore-card-badge">Standard Ebooks</span>}
-								{book.subjects && book.subjects.length > 0 && (
-									<div className="book-detail-subjects">
-										{book.subjects.slice(0, 6).map((s) => (
-											<span key={s} className="book-detail-subject">
-												{s}
-											</span>
-										))}
-									</div>
-								)}
 							</div>
 						</div>
 
@@ -123,6 +133,7 @@ const ExploreBookDetail: React.FC = () => {
 									expand="block"
 									onClick={() => history.replace(`/tabs/library/book/${existing.id}`)}
 								>
+									<IonIcon slot="start" icon={bookOutline} />
 									Open in Library
 								</IonButton>
 							) : book.epubUrl ? (
@@ -131,39 +142,46 @@ const ExploreBookDetail: React.FC = () => {
 									disabled={isImporting}
 									onClick={() => importMutation.mutate()}
 								>
-									{isImporting ? "Importing…" : "Import"}
+									<IonIcon slot="start" icon={downloadOutline} />
+									{isImporting ? "Downloading…" : "Download"}
 								</IonButton>
 							) : (
 								<IonText color="medium">
 									<p style={{ margin: 0 }}>Not available as free EPUB.</p>
 								</IonText>
 							)}
-							{externalUrl && (
-								<IonButton
-									expand="block"
-									fill="clear"
-									href={externalUrl}
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									<IonIcon slot="end" icon={openOutline} />
-									View original source
-								</IonButton>
-							)}
 						</div>
 
-						{book.description ? (
-							<SanitizedDescription className="book-detail-description" html={book.description} />
-						) : book.summary ? (
-							<p className="book-detail-summary">{book.summary}</p>
-						) : null}
+						{book.subjects && book.subjects.length > 0 && (
+							<div className="book-detail-subjects">
+								{book.subjects.slice(0, 8).map((s) => (
+									<span key={s} className="book-detail-subject">
+										{s}
+									</span>
+								))}
+							</div>
+						)}
+
+						{(book.description || book.summary) && (
+							<section className="book-detail-card">
+								<h2 className="book-detail-section-title">About</h2>
+								{book.description ? (
+									<SanitizedDescription
+										className="book-detail-description"
+										html={book.description}
+									/>
+								) : (
+									<p className="book-detail-summary">{book.summary}</p>
+								)}
+							</section>
+						)}
 					</div>
 				)}
 
 				<IonAlert
 					isOpen={!!importMutation.error}
 					onDidDismiss={() => importMutation.reset()}
-					header="Import failed"
+					header="Download failed"
 					message={importMutation.error instanceof Error ? importMutation.error.message : undefined}
 					buttons={[{ text: "OK", role: "cancel" }]}
 					cssClass="rsvp-alert"

@@ -29,8 +29,8 @@ const Shelf: React.FC<Props> = ({
 	emptyLabel,
 }) => {
 	return (
-		<section className="mb-6">
-			<header className="mb-2 flex items-center justify-between px-4">
+		<section className="explore-shelf mb-6">
+			<header className="mb-2 flex items-center justify-between">
 				<h2 className="m-0 font-semibold text-[0.95rem]">{title}</h2>
 				<div className="flex items-center gap-1">
 					{onShuffle && (
@@ -53,14 +53,11 @@ const Shelf: React.FC<Props> = ({
 				</div>
 			</header>
 			{books.length === 0 ? (
-				<p className="px-4 text-[#888] text-[0.8rem]" style={{ margin: 0 }}>
+				<p className="text-[#888] text-[0.8rem]" style={{ margin: 0 }}>
 					{emptyLabel ?? "Nothing here yet."}
 				</p>
 			) : (
-				<div
-					className="flex gap-3 overflow-x-auto px-4 pb-2"
-					style={{ scrollSnapType: "x mandatory", scrollbarWidth: "none" }}
-				>
+				<div className="explore-shelf-scroll flex gap-3 overflow-x-auto pb-2">
 					{books.map((b) => (
 						<div
 							key={b.id}

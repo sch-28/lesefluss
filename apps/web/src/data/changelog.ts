@@ -9,6 +9,22 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-04-19",
+		title: "Explore Tab: Discover Public-Domain Books",
+		tags: ["App", "Website"],
+		changes: [
+			"Browse thousands of free books from Project Gutenberg and Standard Ebooks",
+			"Landing page with featured, classics, most-read, and random shelves",
+			"Rotating featured hero with manual navigation",
+			"Genre filtering across 8 curated categories",
+			"Full-text search with typo tolerance and language filter",
+			"Classic page-number pagination with auto scroll-to-top",
+			"One-tap download to import a book into your library",
+			"Polished book detail pages with source badge and descriptions",
+			"Smooth cover loading with skeleton shimmer and async decoding",
+		],
+	},
+	{
 		date: "2026-04-18",
 		title: "Profile, Admin & Analytics",
 		tags: ["Website"],

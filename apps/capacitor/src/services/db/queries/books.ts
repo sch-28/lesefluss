@@ -52,9 +52,9 @@ export async function getBook(id: string): Promise<Book | undefined> {
  * (e.g. "gutenberg:1342", "se:mary-shelley/frankenstein").
  * Used for idempotent re-imports and for linking Explore → Library.
  */
-export async function getBookByCatalogId(catalogId: string): Promise<Book | undefined> {
+export async function getBookByCatalogId(catalogId: string): Promise<Book | null> {
 	const rows = await db.select().from(books).where(eq(books.catalogId, catalogId));
-	return rows[0];
+	return rows[0] ?? null;
 }
 
 /**

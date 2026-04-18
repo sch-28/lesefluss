@@ -1,6 +1,6 @@
-import { IonButton, IonIcon, IonSpinner, IonText } from "@ionic/react";
+import { IonIcon, IonSpinner, IonText } from "@ionic/react";
 import { useQuery } from "@tanstack/react-query";
-import { chevronBackOutline, chevronForwardOutline, searchOutline } from "ionicons/icons";
+import { searchOutline } from "ionicons/icons";
 import type React from "react";
 import {
 	type CatalogSearchOrder,
@@ -8,6 +8,7 @@ import {
 	searchCatalog,
 } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
+import Pagination from "./pagination";
 import ResultCard from "./result-card";
 
 type Props = {
@@ -101,34 +102,17 @@ const ExploreSearchResults: React.FC<Props> = ({
 				</span>
 				{isFetching && <IonSpinner name="crescent" style={{ width: 14, height: 14 }} />}
 			</div>
-			<div className="grid grid-cols-3 gap-4 p-4 pb-4 content-container md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+			<div className="content-container grid grid-cols-3 gap-4 p-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
 				{results.map((r) => (
 					<ResultCard key={r.id} result={r} onOpen={() => onOpen(r)} />
 				))}
 			</div>
-			<nav className="flex items-center justify-between gap-2 px-4 pb-8">
-				<IonButton
-					fill="outline"
-					size="small"
-					disabled={page <= 1 || isFetching}
-					onClick={() => onPageChange(page - 1)}
-				>
-					<IonIcon slot="start" icon={chevronBackOutline} />
-					Prev
-				</IonButton>
-				<span className="text-[#888] text-[0.8rem]">
-					Page {page} of {totalPages}
-				</span>
-				<IonButton
-					fill="outline"
-					size="small"
-					disabled={page >= totalPages || isFetching}
-					onClick={() => onPageChange(page + 1)}
-				>
-					Next
-					<IonIcon slot="end" icon={chevronForwardOutline} />
-				</IonButton>
-			</nav>
+			<Pagination
+				page={page}
+				totalPages={totalPages}
+				onChange={onPageChange}
+				disabled={isFetching}
+			/>
 		</>
 	);
 };

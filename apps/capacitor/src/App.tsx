@@ -128,7 +128,19 @@ const AppTabs: React.FC = () => {
 					<IonIcon icon={library} />
 					<IonLabel>Library</IonLabel>
 				</IonTabButton>
-				<IonTabButton tab="explore" href="/tabs/explore">
+				<IonTabButton
+					tab="explore"
+					href="/tabs/explore"
+					onClick={() => {
+						// Tapping the Explore tab while already on /tabs/explore should take
+						// the user back to the landing — clear the query input and strip any
+						// ?genre=… filter. Broadcast to Explore since the search state lives
+						// there.
+						if (location.pathname.startsWith("/tabs/explore")) {
+							window.dispatchEvent(new Event("lesefluss:explore-reset"));
+						}
+					}}
+				>
 					<IonIcon icon={searchOutline} />
 					<IonLabel>Explore</IonLabel>
 				</IonTabButton>

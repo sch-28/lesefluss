@@ -180,7 +180,7 @@ export async function downloadCatalogEpub(
 	signal?: AbortSignal,
 ): Promise<Blob> {
 	const base = ensureEnabled();
-	const url = `${base}/books/${encodeURIComponent(catalogId)}/epub`;
+	const url = `${base}/books/epub/${encodeURIComponent(catalogId)}`;
 	const res = await fetch(url, { signal });
 	if (!res.ok) throw new Error(`EPUB download failed (${res.status})`);
 

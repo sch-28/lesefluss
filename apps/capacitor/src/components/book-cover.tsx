@@ -8,6 +8,7 @@
 import type React from "react";
 import { queryHooks } from "../services/db/hooks";
 import type { Book } from "../services/db/schema";
+import CoverImage from "./cover-image";
 
 interface Props {
 	book: Book;
@@ -38,13 +39,15 @@ const BookCover: React.FC<Props> = ({ book, size = "md", cover: coverProp }) => 
 
 	return (
 		<div className={className} style={style}>
-			{cover ? (
-				<img src={cover} alt={book.title} className="block h-full w-full object-cover" />
-			) : (
-				<span className="font-semibold text-[#bbb] text-[0.6rem] tracking-wide">
-					{book.fileFormat.toUpperCase()}
-				</span>
-			)}
+			<CoverImage
+				src={cover}
+				alt={book.title}
+				fallback={
+					<span className="font-semibold text-[#bbb] text-[0.6rem] tracking-wide">
+						{book.fileFormat.toUpperCase()}
+					</span>
+				}
+			/>
 		</div>
 	);
 };

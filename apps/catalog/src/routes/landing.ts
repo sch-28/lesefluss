@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { db } from "../db/index.js";
 import { type BookRow, mapBookRow } from "../lib/book-row.js";
 import { CLASSIC_IDS } from "../lib/classics.js";
-import { GENRES, genreIlikePatterns } from "../lib/genres.js";
+import { GENRES, genrePatternsSql } from "../lib/genres.js";
 import { langFilter } from "../lib/language.js";
 
 const SHELF_SIZE = 12;
@@ -22,11 +22,16 @@ export const landingRoute = new Hono().get("/", async (c) => {
 			ORDER BY synced_at DESC
 			LIMIT ${SHELF_SIZE}
 		`),
-		// Classics — hand-picked, preserve CLASSIC_IDS order, filter by language
+		// Classics — hand-picked, preserve CLASSIC_IDS order, filter by language.
+		// ARRAY[$1,$2,...]::text[] — each id is its own bind param; wrapping the
+		// JS array as a single param makes pg read it as a record literal.
 		db.execute<BookRow & { ord: number }>(sql`
 			SELECT b.id, b.source, b.title, b.author, b.language, b.subjects, b.summary, b.cover_url,
 				i.ord
-			FROM unnest(${sql`${[...CLASSIC_IDS]}::text[]`}) WITH ORDINALITY AS i(id, ord)
+			FROM unnest(ARRAY[${sql.join(
+				CLASSIC_IDS.map((id) => sql`${id}`),
+				sql`, `,
+			)}]::text[]) WITH ORDINALITY AS i(id, ord)
 			JOIN catalog_books b ON b.id = i.id
 			WHERE b.suppressed = false AND ${lf}
 			ORDER BY i.ord
@@ -47,7 +52,7 @@ export const landingRoute = new Hono().get("/", async (c) => {
 				WHERE suppressed = false AND ${lf}
 					AND EXISTS (
 						SELECT 1 FROM unnest(subjects) s
-						WHERE s ILIKE ANY(${genreIlikePatterns(g)})
+						WHERE s ILIKE ANY(${genrePatternsSql(g)})
 					)
 				ORDER BY (source = 'standard_ebooks') DESC, download_count DESC NULLS LAST
 				LIMIT ${GENRE_SHELF_SIZE}

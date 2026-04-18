@@ -6,11 +6,14 @@ import { env } from "../env.js";
 import { epubRateLimit } from "../middleware/rate-limit.js";
 
 export const booksRoute = new Hono()
-	// EPUB proxy. Registered before the detail wildcard so "/:id/epub" matches first.
+	// EPUB proxy. Mounted on `/epub/:id{.+}` to avoid a routing collision with
+	// the detail wildcard below — Hono's RegExpRouter lets `/:id{.+}` greedily
+	// swallow `/:id{.+}/epub` when the ids themselves contain slashes, sending
+	// SE epub requests (`se:author/title`) into the detail handler.
 	// For standard_ebooks, forward HTTP Basic auth (patron subscription required).
-	// Gutenberg URLs are public. Uses a stricter per-IP bucket on top of the global
-	// API rate limit because responses are multi-megabyte.
-	.get("/:id{.+}/epub", epubRateLimit, async (c) => {
+	// Gutenberg URLs are public. Uses a stricter per-IP bucket on top of the
+	// global API rate limit because responses are multi-megabyte.
+	.get("/epub/:id{.+}", epubRateLimit, async (c) => {
 		const raw = c.req.param("id");
 		if (!raw) return c.json({ error: "missing id" }, 400);
 		const id = decodeURIComponent(raw);

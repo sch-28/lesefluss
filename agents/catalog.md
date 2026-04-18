@@ -23,15 +23,19 @@ pnpm dev
 
 | Endpoint | Notes |
 |----------|-------|
-| `GET /search?q=&page=&limit=` | Search books by title/author across all sources. Paginated. |
-| `GET /books/:id` | Single book detail — full metadata + download URL. |
-| `GET /covers/:source/*` | Cover proxy for all sources. Strips `Referer`, caches aggressively. Wildcard segment carries the source-specific id (SE ids contain `/`). |
-| `GET /books/:id/epub` | EPUB proxy — streams upstream EPUB bytes to the client. Avoids CORS issues hitting Gutenberg/SE directly from the browser and keeps all catalog traffic same-origin. |
+| `GET /search?q=&genre=&order=&lang=&page=&limit=` | Search books by title/author across all sources. `q` optional when `genre` is set. `order=popular` sorts by `download_count` instead of relevance. Paginated. |
+| `GET /landing?lang=en` | Aggregated landing payload: `featured_se`, `classics`, `most_read`, and per-genre shelves. Language-filtered. |
+| `GET /shelves/random?count=8&lang=en&source=se` | Random books for the "shuffle" shelf. `count` ≤ 20, `source` defaults to SE. No server cache — each call reshuffles. |
+| `GET /books/:id{.+}` | Single book detail — full metadata + download URL. Named-wildcard so SE ids with `/` match. |
+| `GET /books/epub/:id{.+}` | EPUB proxy — streams upstream EPUB bytes to the client. Avoids CORS issues hitting Gutenberg/SE directly from the browser and keeps all catalog traffic same-origin. |
+| `GET /covers/:source/:rest{.+}` | Cover proxy for all sources. Strips `Referer`, caches aggressively. Wildcard segment carries the source-specific id (SE ids contain `/`). |
 | `GET /health` | Simple health check — returns 200 immediately, does not wait for sync. |
 
 All covers (Gutenberg and SE) are served via the proxy for consistency. Client never hotlinks.
 
-**Book ID routing:** IDs have the form `{source}:{source_id}` and SE ids contain slashes (e.g. `se:mary-shelley/frankenstein`). Use Hono wildcard routes (`/books/*`, `/covers/:source/*`) rather than `:id` params. Clients must `encodeURIComponent` the id when building URLs; server decodes.
+**Book ID routing:** IDs have the form `{source}:{source_id}` and SE ids contain slashes (e.g. `se:mary-shelley/frankenstein`). Use Hono named-wildcard routes (`:id{.+}`, `:rest{.+}`) rather than plain `:id` params. Clients must `encodeURIComponent` the id when building URLs; server decodes.
+
+The EPUB proxy is mounted at `/books/epub/:id{.+}` (not `/books/:id/epub`) because Hono's `RegExpRouter` lets `/:id{.+}` greedily swallow a trailing `/epub` segment when the id itself contains `/` — sending SE epub requests into the detail handler. Separate prefix avoids the collision.
 
 ## Database Schema (Postgres)
 
@@ -180,7 +184,7 @@ Separate Coolify service pointing at the same Postgres. Dockerfile at `apps/cata
 ### Phase 3 — Explore tab (`apps/capacitor`) + book detail routes ✅
 
 - [x] 3rd tab **Library / Explore / Settings** + matching desktop sidebar entry
-- [x] Catalog `GET /books/:id/epub` — streaming proxy, SE Basic auth forwarded, `Content-Type`/`Content-Length` propagated, rate-limited via global middleware
+- [x] Catalog `GET /books/epub/:id{.+}` — streaming proxy, SE Basic auth forwarded, `Content-Type`/`Content-Length` propagated, rate-limited via global middleware
 - [x] `books` table: nullable `source` + `catalogId` columns (migration `0007_catalog_source.sql`) + `idx_books_catalog_id` index + mirror on `sync_books` / `SyncBookSchema`
 - [x] `VITE_CATALOG_URL` env + `services/catalog/client.ts` wrapper (`searchCatalog`, `getCatalogBook`, `getCoverUrl`, `downloadCatalogEpub` with progress)
 - [x] Explore tab (`pages/explore/index.tsx`): debounced search, infinite query, language filter persisted in localStorage, empty/error states
@@ -192,7 +196,7 @@ Separate Coolify service pointing at the same Postgres. Dockerfile at `apps/cata
 
 **Phase 3 deviations:**
 
-- EPUB proxy folded into `routes/books.ts` (not a separate `routes/epub.ts`) — one exported `booksRoute` chains `.get("/:id{.+}/epub")` before `.get("/:id{.+}")` so the specific path matches first.
+- EPUB proxy folded into `routes/books.ts` (not a separate `routes/epub.ts`), but mounted at `/books/epub/:id{.+}` instead of `/books/:id{.+}/epub`. Hono's `RegExpRouter` let `/:id{.+}` greedily match over `/:id{.+}/epub` whenever ids contained slashes (SE case), sending epub requests to the detail handler. A distinct prefix avoids the ambiguity entirely.
 - Detail routes live under `/tabs/...` (inside the tab bar's `IonRouterOutlet`) and hide the tab bar via the same `hideTabBar` class `/tabs/reader/:id` uses, rather than being registered at the root `IonRouterOutlet`. Keeps URL semantics consistent with the rest of the app.
 - `source` values on the local `books` table mirror the catalog literal (`gutenberg` | `standard_ebooks`); a null value means locally-imported. Simpler than a 3-value enum.
 - CORS: catalog enables `hono/cors` — any origin in dev, `CATALOG_ALLOWED_ORIGINS` (comma-separated) in production. Needed once the browser started calling the service directly.

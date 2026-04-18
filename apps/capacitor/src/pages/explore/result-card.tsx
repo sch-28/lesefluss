@@ -1,4 +1,5 @@
 import type React from "react";
+import CoverImage from "../../components/cover-image";
 import type { CatalogSearchResult } from "../../services/catalog/client";
 import { getCoverUrl } from "../../services/catalog/client";
 
@@ -18,22 +19,11 @@ const ResultCard: React.FC<Props> = ({ result, onOpen }) => {
 	return (
 		<button
 			type="button"
-			className="flex cursor-pointer select-none flex-col border-0 bg-transparent p-0 text-left active:opacity-70"
+			className="flex w-full cursor-pointer select-none flex-col border-0 bg-transparent p-0 text-left text-[color:var(--ion-text-color,#000)] active:opacity-70"
 			onClick={onOpen}
 		>
 			<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-[#d9d9d9] bg-[#f0f0f0]">
-				{cover ? (
-					<img
-						src={cover}
-						alt={result.title}
-						loading="lazy"
-						className="block h-full w-full object-cover"
-					/>
-				) : (
-					<div className="flex h-full w-full items-center justify-center">
-						<span className="font-semibold text-[#bbb] text-[0.6rem] tracking-wide">BOOK</span>
-					</div>
-				)}
+				<CoverImage src={cover} alt={result.title} />
 				{isSE && (
 					<span className="absolute top-1.5 right-1.5 rounded-sm bg-black px-1.5 py-0.5 font-semibold text-[0.6rem] text-white">
 						SE

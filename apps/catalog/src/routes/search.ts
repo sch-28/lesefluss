@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { db } from "../db/index.js";
 import { type BookRow, escapeLike, mapBookRow } from "../lib/book-row.js";
-import { findGenre, genreIlikePatterns } from "../lib/genres.js";
+import { findGenre, genrePatternsSql } from "../lib/genres.js";
 import { langFilter } from "../lib/language.js";
 
 const DEFAULT_LIMIT = 20;
@@ -67,7 +67,7 @@ export const searchRoute = new Hono().get("/", async (c) => {
 	const genreMatch = genre
 		? sql`EXISTS (
 				SELECT 1 FROM unnest(subjects) s
-				WHERE s ILIKE ANY(${genreIlikePatterns(genre)})
+				WHERE s ILIKE ANY(${genrePatternsSql(genre)})
 			)`
 		: sql`TRUE`;
 

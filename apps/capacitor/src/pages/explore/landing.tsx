@@ -8,6 +8,7 @@ import {
 	getRandomShelf,
 } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
+import Hero from "./hero";
 import Shelf from "./shelf";
 
 type Props = {
@@ -51,9 +52,14 @@ const ExploreLanding: React.FC<Props> = ({ lang, onOpen, onGenreTap }) => {
 	}
 
 	const data = landingQuery.data;
+	// Prefer curated classics for the hero; fall back to featured SE.
+	const heroBooks =
+		data.classics.length > 0 ? data.classics.slice(0, 6) : data.featured_se.slice(0, 6);
 
 	return (
-		<div className="pt-2 pb-8">
+		<div className="p-4 pb-20 content-container">
+			{heroBooks.length > 0 && <Hero books={heroBooks} onOpen={onOpen} />}
+
 			{data.featured_se.length > 0 && (
 				<Shelf title="Featured" books={data.featured_se} onOpen={onOpen} />
 			)}
@@ -79,15 +85,15 @@ const ExploreLanding: React.FC<Props> = ({ lang, onOpen, onGenreTap }) => {
 				/>
 			))}
 
-			<section className="px-4 pt-4">
+			<section className="pt-4">
 				<h2 className="mb-3 font-semibold text-[0.95rem]">Browse genres</h2>
-				<div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+				<div className="explore-genre-grid">
 					{data.genres.map((g) => (
 						<button
 							type="button"
 							key={g.id}
+							className="explore-genre-tile"
 							onClick={() => onGenreTap(g.id)}
-							className="rounded-md border border-[#d9d9d9] bg-[#fafafa] px-3 py-4 text-left font-medium text-[0.85rem] active:opacity-70"
 						>
 							{g.label}
 						</button>

@@ -8,18 +8,21 @@ import {
 	IonFabButton,
 	IonHeader,
 	IonIcon,
-	IonLabel,
 	IonPage,
 	IonProgressBar,
-	IonSegment,
-	IonSegmentButton,
 	IonSpinner,
 	IonText,
 	IonToolbar,
 	useIonViewWillEnter,
 } from "@ionic/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { add, bookOutline, refreshOutline, swapVerticalOutline } from "ionicons/icons";
+import {
+	add,
+	bookOutline,
+	filterOutline,
+	refreshOutline,
+	swapVerticalOutline,
+} from "ionicons/icons";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
@@ -32,14 +35,8 @@ import { bookKeys } from "../../services/db/hooks/query-keys";
 import type { Book } from "../../services/db/schema";
 import { IS_WEB } from "../../utils/platform";
 import BookCard from "./book-card";
-import {
-	FILTER_LABELS,
-	FILTER_OPTIONS,
-	type FilterBy,
-	filterAndSort,
-	readingProgress,
-	type SortBy,
-} from "./sort-filter";
+import FilterPopover from "./filter-popover";
+import { type FilterBy, filterAndSort, readingProgress, type SortBy } from "./sort-filter";
 import SortPopover from "./sort-popover";
 import TransferModal from "./transfer-modal";
 
@@ -162,21 +159,14 @@ const Library: React.FC = () => {
 			<IonHeader class="ion-no-border">
 				<IonToolbar>
 					<div className="library-toolbar">
-						<IonSegment
-							className="library-filter"
-							value={filterBy}
-							onIonChange={(e) => {
-								const v = e.detail.value;
-								if (v) setFilterBy(v as FilterBy);
-							}}
-						>
-							{FILTER_OPTIONS.map((f) => (
-								<IonSegmentButton key={f} value={f}>
-									<IonLabel>{FILTER_LABELS[f]}</IonLabel>
-								</IonSegmentButton>
-							))}
-						</IonSegment>
+						<div className="app-brand">
+							<img src="/logo.png" alt="" />
+							<span>Lesefluss</span>
+						</div>
 						<IonButtons>
+							<IonButton id="filter-trigger" title="Filter">
+								<IonIcon slot="icon-only" icon={filterOutline} />
+							</IonButton>
 							<IonButton id="sort-trigger" title="Sort">
 								<IonIcon slot="icon-only" icon={swapVerticalOutline} />
 							</IonButton>
@@ -258,7 +248,8 @@ const Library: React.FC = () => {
 					</IonFabButton>
 				</IonFab>
 
-				{/* Sort popover */}
+				{/* Filter + sort popovers */}
+				<FilterPopover trigger="filter-trigger" filterBy={filterBy} onFilter={setFilterBy} />
 				<SortPopover trigger="sort-trigger" sortBy={sortBy} onSort={setSortBy} />
 
 				{/* Book action sheet */}
