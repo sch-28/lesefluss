@@ -3,8 +3,8 @@ import { db } from "../db/index.js";
 import { catalogBooks, type NewCatalogBook } from "../db/schema.js";
 
 const GUTENDEX_URL = "https://gutendex.com/books/";
-const PAGE_CONCURRENCY = 3;
-const PAGE_DELAY_MS = 500;
+const PAGE_CONCURRENCY = 2;
+const PAGE_DELAY_MS = 1000;
 const MAX_RETRIES = 3;
 const BASE_BACKOFF_MS = 1000;
 
