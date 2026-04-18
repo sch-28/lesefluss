@@ -72,6 +72,12 @@ export interface ParagraphProps {
 	activeOffset: number;
 	onWordTap: (offset: number, wordText: string) => void;
 	onWordLongPress?: (offset: number) => void;
+	/** Mouse-only: fires when a mouse drag starts on a word (pointerdown + move > 8px).
+	 *  Desktop equivalent of long-press — lets users click-drag to select words.
+	 *  The pointer event that triggered the threshold is passed through so the
+	 *  reader can extend the selection to the cursor's current position (the drag
+	 *  has already moved past the start word by the time this fires). */
+	onWordMouseDragStart?: (offset: number, event: PointerEvent) => void;
 	highlights?: HighlightRange[];
 	selectionRange?: { start: number; end: number } | null;
 }
@@ -89,7 +95,16 @@ export function cancelAnyActiveLongPress(): void {
 }
 
 const Paragraph: React.FC<ParagraphProps> = memo(
-	({ text, startOffset, activeOffset, onWordTap, onWordLongPress, highlights, selectionRange }) => {
+	({
+		text,
+		startOffset,
+		activeOffset,
+		onWordTap,
+		onWordLongPress,
+		onWordMouseDragStart,
+		highlights,
+		selectionRange,
+	}) => {
 		const headingLevel = getHeadingLevel(text);
 
 		if (headingLevel > 0) {
@@ -155,39 +170,57 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 
 			const className = classes.length > 0 ? classes.join(" ") : undefined;
 
-			// Long-press detection via pointer events.
-			// The timer fires onWordLongPress if the pointer stays down ≥ LONG_PRESS_MS
-			// without significant movement. Cleared on pointerup / pointermove (> 8px).
-			const handlePointerDown = onWordLongPress
-				? (e: React.PointerEvent) => {
-						let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-						const startX = e.clientX;
-						const startY = e.clientY;
-						const cleanup = () => {
-							if (longPressTimer) {
-								clearTimeout(longPressTimer);
-								longPressTimer = null;
+			// Long-press / mouse-drag detection via pointer events.
+			// Touch / pen: fires onWordLongPress if the pointer stays down ≥ LONG_PRESS_MS
+			// without significant movement (> 8px cancels).
+			// Mouse: fires onWordMouseDragStart the moment movement exceeds 8px —
+			// click-drag is the natural desktop equivalent of long-press. A plain click
+			// (no movement) falls through to onClick → dictionary.
+			const handlePointerDown =
+				onWordLongPress || onWordMouseDragStart
+					? (e: React.PointerEvent) => {
+							const pointerType = e.pointerType;
+							// Prevent the browser from starting a native text selection on mouse
+							// drag. Click still fires, so dictionary lookup on plain clicks works.
+							if (pointerType === "mouse") e.preventDefault();
+							let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+							const startX = e.clientX;
+							const startY = e.clientY;
+							const cleanup = () => {
+								if (longPressTimer) {
+									clearTimeout(longPressTimer);
+									longPressTimer = null;
+								}
+								_cancelActiveLongPress = null;
+								document.removeEventListener("pointermove", onMove);
+								document.removeEventListener("pointerup", cleanup);
+							};
+							const onMove = (me: PointerEvent) => {
+								const dx = Math.abs(me.clientX - startX);
+								const dy = Math.abs(me.clientY - startY);
+								if (dx > 8 || dy > 8) {
+									if (pointerType === "mouse" && onWordMouseDragStart) {
+										// Mouse-drag: start selection immediately (skip long-press timer).
+										cleanup();
+										onWordMouseDragStart(tokenOffset, me);
+									} else {
+										cleanup();
+									}
+								}
+							};
+							if (pointerType !== "mouse" && onWordLongPress) {
+								// Register so the scroll handler can cancel this from outside
+								_cancelActiveLongPress = cleanup;
+								longPressTimer = setTimeout(() => {
+									_cancelActiveLongPress = null;
+									longPressTimer = null;
+									onWordLongPress(tokenOffset);
+								}, LONG_PRESS_MS);
 							}
-							_cancelActiveLongPress = null;
-							document.removeEventListener("pointermove", onMove);
-							document.removeEventListener("pointerup", cleanup);
-						};
-						const onMove = (me: PointerEvent) => {
-							const dx = Math.abs(me.clientX - startX);
-							const dy = Math.abs(me.clientY - startY);
-							if (dx > 8 || dy > 8) cleanup();
-						};
-						// Register so the scroll handler can cancel this from outside
-						_cancelActiveLongPress = cleanup;
-						longPressTimer = setTimeout(() => {
-							_cancelActiveLongPress = null;
-							longPressTimer = null;
-							onWordLongPress(tokenOffset);
-						}, LONG_PRESS_MS);
-						document.addEventListener("pointermove", onMove);
-						document.addEventListener("pointerup", cleanup);
-					}
-				: undefined;
+							document.addEventListener("pointermove", onMove);
+							document.addEventListener("pointerup", cleanup);
+						}
+					: undefined;
 
 			spans.push(
 				<span

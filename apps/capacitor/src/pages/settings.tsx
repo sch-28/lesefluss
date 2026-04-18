@@ -150,18 +150,25 @@ const Settings: React.FC = () => {
 						</IonItem>
 					)}
 
-					{!IS_WEB && <IonItem
-						button
-						detail={false}
-						onClick={() => window.open("https://lesefluss.app", "_system")}
-					>
-						<IonIcon icon={globeOutline} slot="start" color="medium" />
-						<IonLabel>
-							<h2>Website</h2>
-							<p>lesefluss.app</p>
-						</IonLabel>
-						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
-					</IonItem>}
+					{!IS_WEB && (
+						<IonItem
+							button
+							detail={false}
+							onClick={() => window.open("https://lesefluss.app", "_system")}
+						>
+							<IonIcon icon={globeOutline} slot="start" color="medium" />
+							<IonLabel>
+								<h2>Website</h2>
+								<p>lesefluss.app</p>
+							</IonLabel>
+							<IonIcon
+								icon={chevronForward}
+								slot="end"
+								color="medium"
+								style={{ fontSize: "16px" }}
+							/>
+						</IonItem>
+					)}
 				</IonList>
 			</IonContent>
 		</IonPage>

@@ -328,6 +328,18 @@ Full-snapshot sync with the web server. Shared Zod schemas and types in `@lesefl
 
 **UI:** Settings → Cloud Sync sub-page (`settings/sync.tsx`). Sign in/up form when logged out; email, last synced, sync now, sign out when logged in.
 
+## Conditional CSS Classes
+
+Never use template literals to append conditional class names — Biome strips the leading space, breaking the output (`"foo bar"` becomes `"foobar"`). Use a plain ternary instead:
+
+```tsx
+// Wrong — Biome will remove the space before "active"
+className={`sidebar-item${isActive ? " active" : ""}`}
+
+// Correct
+className={isActive ? "sidebar-item active" : "sidebar-item"}
+```
+
 ## UI
 
 - **2 tabs:** Library (default) + Settings

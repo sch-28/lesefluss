@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { LucideIcon } from "lucide-react";
 import {
 	Battery,
 	Bluetooth,
@@ -13,7 +14,6 @@ import {
 	SlidersHorizontal,
 	Zap,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import type * as React from "react";
 import { useCallback, useEffect } from "react";
 import { FeatureCard } from "~/components/feature-card";
@@ -48,7 +48,9 @@ function Home() {
 
 	useEffect(() => {
 		import("aos")
-			.then((AOS) => AOS.default.init({ duration: 650, easing: "ease-out-cubic", once: true, offset: 60 }))
+			.then((AOS) =>
+				AOS.default.init({ duration: 650, easing: "ease-out-cubic", once: true, offset: 60 }),
+			)
 			.catch(() => {});
 	}, []);
 
@@ -73,7 +75,7 @@ function Home() {
 				/>
 				<div className="absolute inset-0 bg-radial from-transparent via-black/10 to-black/30" />
 				<div className="relative mx-auto flex min-h-[92vh] max-w-5xl flex-col items-center justify-center px-6 py-20 text-center">
-					<p className="mb-5 font-semibold text-xs uppercase tracking-[0.25em] text-white/50">
+					<p className="mb-5 font-semibold text-white/50 text-xs uppercase tracking-[0.25em]">
 						Rapid Serial Visual Presentation
 					</p>
 					<h1 className="mb-6 font-bold text-6xl text-white tracking-tight sm:text-7xl lg:text-8xl">
@@ -106,7 +108,7 @@ function Home() {
 					</div>
 				</div>
 				{/* Wave flowing into stats strip */}
-				<div className="absolute bottom-0 left-0 right-0 leading-none text-foreground">
+				<div className="absolute right-0 bottom-0 left-0 text-foreground leading-none">
 					<svg viewBox="0 0 1440 72" preserveAspectRatio="none" className="block h-18 w-full">
 						<path
 							d="M0,36 C240,72 480,0 720,36 C960,72 1200,0 1440,36 L1440,72 L0,72 Z"
@@ -129,7 +131,7 @@ function Home() {
 					</div>
 				</div>
 				{/* Wave flowing into the page */}
-				<div className="absolute bottom-0 left-0 right-0 leading-none text-background">
+				<div className="absolute right-0 bottom-0 left-0 text-background leading-none">
 					<svg viewBox="0 0 1440 72" preserveAspectRatio="none" className="block h-18 w-full">
 						<path
 							d="M0,36 C240,0 480,72 720,36 C960,0 1200,72 1440,36 L1440,72 L0,72 Z"
@@ -156,7 +158,7 @@ function Home() {
 								{appFeatures.map(({ icon: Icon, label }) => (
 									<span
 										key={label}
-										className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm text-foreground/80"
+										className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-foreground/80 text-sm"
 									>
 										<Icon className="h-3.5 w-3.5 text-muted-foreground" />
 										{label}
@@ -177,10 +179,7 @@ function Home() {
 							</div>
 						</div>
 						<div className="relative flex justify-center lg:justify-end" data-aos="fade-left">
-							<div
-								className="absolute inset-0 rounded-full bg-primary/10"
-								style={glowStyle}
-							/>
+							<div className="absolute inset-0 rounded-full bg-primary/10" style={glowStyle} />
 							<div className="relative rotate-2">
 								<RsvpPreview />
 							</div>
@@ -238,7 +237,7 @@ function Home() {
 								{deviceFeatures.map(({ icon: Icon, label }) => (
 									<span
 										key={label}
-										className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm text-foreground/80"
+										className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-foreground/80 text-sm"
 									>
 										<Icon className="h-3.5 w-3.5 text-muted-foreground" />
 										{label}

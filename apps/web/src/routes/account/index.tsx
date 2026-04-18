@@ -8,8 +8,8 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "~/components/ui/field
 import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
 import { authClient } from "~/lib/auth-client";
-import { clearCloudData } from "~/lib/profile";
 import { getSession } from "~/lib/get-session";
+import { clearCloudData } from "~/lib/profile";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/account/")({

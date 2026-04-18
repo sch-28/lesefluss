@@ -67,7 +67,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				</head>
 				<body className="flex min-h-screen flex-col bg-background text-foreground antialiased">
 					<Header />
-					<main id="main" className="flex flex-1 flex-col">{children}</main>
+					<main id="main" className="flex flex-1 flex-col">
+						{children}
+					</main>
 					<footer className="py-10 text-center text-muted-foreground text-sm">
 						<div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
 							<span>© {new Date().getFullYear()} Lesefluss</span>

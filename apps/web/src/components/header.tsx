@@ -64,9 +64,7 @@ function UserMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => voi
 			<DropdownMenuContent align="end" className="w-52">
 				<DropdownMenuLabel className="font-normal">
 					<div className="flex flex-col gap-0.5">
-						{user.name && (
-							<span className="font-medium text-foreground text-sm">{user.name}</span>
-						)}
+						{user.name && <span className="font-medium text-foreground text-sm">{user.name}</span>}
 						<span className="truncate text-muted-foreground text-xs">{user.email}</span>
 					</div>
 				</DropdownMenuLabel>

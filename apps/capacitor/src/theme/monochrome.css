@@ -633,6 +633,11 @@ ion-modal.reader-theme-sepia ion-item {
 	margin: 0 0 1.1em 0;
 	white-space: normal;
 	word-break: break-word;
+	/* Disable native text selection so it doesn't overlap our custom highlight
+	   and doesn't interfere with mouse-drag-to-select (Range rendering can shift
+	   what elementFromPoint returns during a drag). */
+	user-select: none;
+	-webkit-user-select: none;
 }
 
 .reader-paragraph span {
@@ -1390,12 +1395,22 @@ ion-popover.appearance-popover {
 }
 
 @media (min-width: 768px) {
+	/* Sidebar width drives both its own box and the router-outlet's left margin.
+	   Toggled collapsed/expanded by body.sidebar-collapsed (set by DesktopSidebar). */
+	:root {
+		--sidebar-width: 220px;
+	}
+
+	body.sidebar-collapsed {
+		--sidebar-width: 64px;
+	}
+
 	/* Show sidebar, hide tab bar */
 	.desktop-sidebar {
 		display: flex;
 		flex-direction: column;
-		width: 220px;
-		min-width: 220px;
+		width: var(--sidebar-width);
+		min-width: var(--sidebar-width);
 		height: 100%;
 		position: fixed;
 		top: 0;
@@ -1404,6 +1419,10 @@ ion-popover.appearance-popover {
 		background: var(--ion-background-color, #ffffff);
 		border-right: 1px solid var(--ion-border-color, #d9d9d9);
 		padding: 16px 0;
+		transition:
+			width 180ms ease,
+			min-width 180ms ease;
+		overflow: hidden;
 	}
 
 	.desktop-sidebar-brand {
@@ -1416,6 +1435,7 @@ ion-popover.appearance-popover {
 		letter-spacing: 0.05em;
 		color: inherit;
 		text-decoration: none;
+		white-space: nowrap;
 	}
 
 	a.desktop-sidebar-brand:hover {
@@ -1434,6 +1454,7 @@ ion-popover.appearance-popover {
 		border: none;
 		cursor: pointer;
 		text-align: left;
+		white-space: nowrap;
 		transition:
 			background 0.15s,
 			color 0.15s;
@@ -1450,11 +1471,63 @@ ion-popover.appearance-popover {
 
 	.desktop-sidebar-item ion-icon {
 		font-size: 1.25rem;
+		flex-shrink: 0;
+	}
+
+	/* Floating pill — straddles the sidebar's right edge. Position tracks
+	   --sidebar-width so the button smoothly follows the collapse animation. */
+	.desktop-sidebar-toggle {
+		position: fixed;
+		top: 22px;
+		left: calc(var(--sidebar-width) - 14px);
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 101;
+		background: var(--ion-background-color, #ffffff);
+		color: var(--ion-color-medium, #666);
+		border: 1px solid var(--ion-border-color, #d9d9d9);
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+		cursor: pointer;
+		font-size: 1rem;
+		transition:
+			left 180ms ease,
+			background 0.15s,
+			color 0.15s;
+	}
+
+	.desktop-sidebar-toggle:hover {
+		background: var(--ion-color-light, #f5f5f5);
+		color: var(--ion-text-color, #000);
+	}
+
+	/* Collapsed state — labels hidden, icons stay put.
+	   Intentionally NOT re-centering items/brand: changing justify-content or
+	   padding at the same moment the width animates makes icons jump from the
+	   left edge to the (still-wide) container center, then slide back. Keeping
+	   padding constant pins icons to x=20px throughout the transition. */
+	.desktop-sidebar.collapsed .desktop-sidebar-brand-text {
+		display: none;
+	}
+
+	.desktop-sidebar.collapsed .desktop-sidebar-item ion-label {
+		display: none;
 	}
 
 	/* Push main content right of sidebar */
 	ion-router-outlet.desktop-main {
-		margin-left: 220px;
+		margin-left: var(--sidebar-width);
+		transition: margin-left 180ms ease;
+	}
+
+	/* Leave room for the floating sidebar toggle (which extends ~14px into the
+	   main content area) so it doesn't overlap the toolbar's start slot — most
+	   visible on the reader page where IonBackButton sits there. */
+	ion-router-outlet.desktop-main ion-toolbar ion-buttons[slot="start"] {
+		margin-left: 24px;
 	}
 
 	/* Compact library filter segment on desktop */
@@ -1484,5 +1557,15 @@ ion-popover.appearance-popover {
 
 	body.dark .desktop-sidebar-item:hover {
 		background: #242424;
+	}
+
+	body.dark .desktop-sidebar-toggle {
+		background: var(--ion-background-color, #1a1a1a);
+		border-color: var(--ion-border-color, #333);
+	}
+
+	body.dark .desktop-sidebar-toggle:hover {
+		background: #242424;
+		color: var(--ion-text-color, #fff);
 	}
 }

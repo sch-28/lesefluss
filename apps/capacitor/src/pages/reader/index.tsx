@@ -15,6 +15,11 @@ import type React from "react";
  *
  * Scroll restoration: module-level Map<bookId, CacheSnapshot> so virtua
  * restores pixel-accurate position on repeat visits without any DB storage.
+ *
+ * Sub-modules:
+ *   use-highlight-selection — selection state + handles + edit modal + list modal
+ *   use-scrub-progress       — progress-bar pointer gestures
+ *   selection-overlay        — JSX for the floating toolbar + drag handles
  */
 
 import {
@@ -44,31 +49,28 @@ import {
 	readerOutline,
 	searchOutline,
 } from "ionicons/icons";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RouteComponentProps } from "react-router-dom";
 import type { CacheSnapshot, VListHandle } from "virtua";
 import { VList } from "virtua";
 import { useBookSync } from "../../contexts/book-sync-context";
-import { scheduleSyncPush } from "../../services/sync";
 import { useTheme } from "../../contexts/theme-context";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
-import type { Chapter, Highlight } from "../../services/db/schema";
+import type { Chapter } from "../../services/db/schema";
+import { scheduleSyncPush } from "../../services/sync";
 import { formatReadingTime } from "../../utils/reading-time";
 import AppearancePopover from "./appearance-popover";
 import DictionaryModal from "./dictionary-modal";
 import HighlightModal from "./highlight-modal";
 import HighlightsListModal from "./highlights-list-modal";
-import Paragraph, {
-	cancelAnyActiveLongPress,
-	getWordOffsets,
-	type HighlightRange,
-	utf8ByteLength,
-} from "./paragraph";
+import Paragraph, { cancelAnyActiveLongPress, getWordOffsets, utf8ByteLength } from "./paragraph";
 import RsvpView from "./rsvp-view";
 import SearchModal from "./search-modal";
-import SelectionToolbar, { type HighlightColor } from "./selection-toolbar";
+import SelectionOverlay from "./selection-overlay";
+import { useHighlightSelection } from "./use-highlight-selection";
+import { useScrubProgress } from "./use-scrub-progress";
 
 // ─── Module-level singletons ─────────────────────────────────────────────────
 const scrollCache = new Map<string, CacheSnapshot>();
@@ -78,20 +80,6 @@ const _decoder = new TextDecoder();
 // Sentinel value: no word highlighted (while scrolling)
 const NO_HIGHLIGHT = -1;
 
-// ─── Random hex id ───────────────────────────────────────────────────────────
-function randomHexId(): string {
-	return Array.from(crypto.getRandomValues(new Uint8Array(4)))
-		.map((b) => b.toString(16).padStart(2, "0"))
-		.join("");
-}
-
-// Must match .selection-toolbar height in monochrome.css
-const SELECTION_TOOLBAR_H = 48;
-// Must match .selection-handle width and padding in monochrome.css
-const HANDLE_WIDTH = 44;
-const HANDLE_V_PAD = 10;
-const HANDLE_H_HALF = HANDLE_WIDTH / 2;
-
 // ─── Skeleton loading lines ──────────────────────────────────────────────────
 const skeletonLines = Array.from({ length: 40 }, (_, i) => ({
 	width: `${60 + ((i * 17) % 35)}%`,
@@ -99,15 +87,6 @@ const skeletonLines = Array.from({ length: 40 }, (_, i) => ({
 }));
 
 // ─── Main page ───────────────────────────────────────────────────────────────
-
-const MIN_SCRUB_PX = 8;
-
-/** Returns true when the pointer has moved far enough horizontally to count as a scrub. */
-function isHorizontalScrub(origin: { x: number; y: number }, clientX: number, clientY: number) {
-	const dx = Math.abs(clientX - origin.x);
-	const dy = Math.abs(clientY - origin.y);
-	return dx >= MIN_SCRUB_PX && dx > dy;
-}
 
 interface BookReaderProps extends RouteComponentProps<{ id: string }> {}
 
@@ -122,53 +101,11 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const content = contentRow?.content ?? null;
 	const { data: highlightRows = [] } = queryHooks.useHighlights(id);
 
-	// ── Highlight mutations ───────────────────────────────────────────────
-	const addHighlightMutation = queryHooks.useAddHighlight();
-	const updateHighlightMutation = queryHooks.useUpdateHighlight();
-	const deleteHighlightMutation = queryHooks.useDeleteHighlight();
-
 	const { theme } = useTheme();
 	const [tocOpen, setTocOpen] = useState(false);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [searchInitialQuery, setSearchInitialQuery] = useState<string | undefined>(undefined);
 	const [selectedWord, setSelectedWord] = useState<string | null>(null);
-	const [highlightsListOpen, setHighlightsListOpen] = useState(false);
-
-	// ── Highlight modal (edit existing highlight) ─────────────────────────
-	const [editingHighlight, setEditingHighlight] = useState<Highlight | null>(null);
-	const [editingHighlightText, setEditingHighlightText] = useState("");
-
-	// ── Selection state ───────────────────────────────────────────────────
-	// selectionAnchor: byte offset of the word where long-press started (null = not selecting)
-	// selectionEnd: byte offset of the current drag end
-	// selectionColor: null = no color picked yet (nothing auto-saved yet)
-	const [selectionAnchor, setSelectionAnchor] = useState<number | null>(null);
-	// Derived: true while a selection is active (selectionAnchor is always set/cleared with mode entry/exit)
-	const isSelecting = selectionAnchor !== null;
-	const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
-	const [selectionColor, setSelectionColor] = useState<HighlightColor | null>(null);
-	// ID of the highlight that was auto-saved when the user first picked a color.
-	// null = not yet saved (user is still positioning handles).
-	const [selectionSavedId, setSelectionSavedId] = useState<string | null>(null);
-	const [pendingNote, setPendingNote] = useState("");
-	const [noteInputOpen, setNoteInputOpen] = useState(false);
-
-	// Keep refs in sync with state so event handlers can read current values without stale closures
-	useEffect(() => {
-		selectionAnchorRef.current = selectionAnchor;
-	}, [selectionAnchor]);
-	useEffect(() => {
-		selectionEndRef.current = selectionEnd;
-	}, [selectionEnd]);
-
-	// Derived: the active selection range (start <= end, both defined)
-	const selectionRange = useMemo(() => {
-		if (selectionAnchor === null || selectionEnd === null) return null;
-		return {
-			start: Math.min(selectionAnchor, selectionEnd),
-			end: Math.max(selectionAnchor, selectionEnd),
-		};
-	}, [selectionAnchor, selectionEnd]);
 
 	// ── RSVP mode ─────────────────────────────────────────────────────────
 	const [readerMode, setReaderMode] = useState<"scroll" | "rsvp">("scroll");
@@ -185,16 +122,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	// Progress bar visibility — shown on tap/word-tap, hidden when user scrolls
 	const [progressBarVisible, setProgressBarVisible] = useState(false);
-	const isScrubbingRef = useRef(false);
 
 	const listRef = useRef<VListHandle>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
-	const startHandleRef = useRef<HTMLDivElement>(null);
-	const endHandleRef = useRef<HTMLDivElement>(null);
-	const toolbarRef = useRef<HTMLDivElement>(null);
-	// Refs keep current selection values accessible inside non-reactive event handlers
-	const selectionAnchorRef = useRef<number | null>(null);
-	const selectionEndRef = useRef<number | null>(null);
 
 	// Whether the initial scroll-to-position has happened
 	const didInitialScrollRef = useRef(false);
@@ -283,34 +213,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		return 0;
 	}, [progressOffset, chapters]);
 
-	// ── Per-paragraph highlight map ───────────────────────────────────────
-	// Maps paragraphIndex → HighlightRange[] that overlap that paragraph.
-	// Recomputed only when highlights or paragraph offsets change (not on scroll).
-	const highlightsByParagraph = useMemo<Map<number, HighlightRange[]>>(() => {
-		const map = new Map<number, HighlightRange[]>();
-		if (highlightRows.length === 0 || paragraphOffsets.length === 0) return map;
-
-		for (const h of highlightRows) {
-			// Find paragraphs that overlap [h.startOffset, h.endOffset]
-			for (let i = 0; i < paragraphOffsets.length; i++) {
-				const paraStart = paragraphOffsets[i];
-				const paraEnd =
-					i + 1 < paragraphOffsets.length
-						? paragraphOffsets[i + 1] - 2 // -2 for the "\n\n"
-						: Number.POSITIVE_INFINITY;
-				if (h.startOffset <= paraEnd && h.endOffset >= paraStart) {
-					const existing = map.get(i);
-					if (existing) {
-						existing.push(h);
-					} else {
-						map.set(i, [h]);
-					}
-				}
-			}
-		}
-		return map;
-	}, [highlightRows, paragraphOffsets]);
-
 	// ── Settings (RSVP + reader appearance) ──────────────────────────────
 	const { data: dbSettings } = queryHooks.useSettings();
 
@@ -389,6 +291,28 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		[findParagraphIndex, savePosition],
 	);
 
+	// ── Highlight / selection state ──────────────────────────────────────
+	const sel = useHighlightSelection({
+		bookId: id,
+		contentBytes,
+		highlightRows,
+		paragraphOffsets,
+	});
+
+	// ── Progress-bar scrub gestures ───────────────────────────────────────
+	const scrub = useScrubProgress({
+		book,
+		readerMode,
+		paragraphOffsets,
+		findParagraphIndex,
+		jumpToOffset,
+		savePosition,
+		lastOffsetRef,
+		setProgressOffset,
+		setRsvpInitOffset,
+		setProgressBarVisible,
+	});
+
 	// ── Initial scroll to saved position ──────────────────────────────────
 	// Also re-runs when readerMode changes to "scroll" (returning from RSVP).
 	useEffect(() => {
@@ -430,6 +354,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	}, [readerMode, paragraphs, book, findParagraphIndex]);
 
 	// ── Scroll handler — hide highlight + update progress bar ──────────────
+	const { isSelecting, syncHandlesRef } = sel;
+	const { isScrubbingRef } = scrub;
 	const handleScroll = useCallback(
 		(scrollOffset: number) => {
 			// Cancel any pending long-press — user is scrolling, not selecting
@@ -456,7 +382,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				requestAnimationFrame(() => syncHandlesRef.current());
 			}
 		},
-		[paragraphOffsets, isSelecting],
+		[paragraphOffsets, isSelecting, syncHandlesRef, isScrubbingRef],
 	);
 
 	// ── Scroll end — find first fully visible word + save position ───────
@@ -500,57 +426,28 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		savePosition(bestOffset);
 	}, [savePosition]);
 
-	// ── Helper: extract text for a byte range ─────────────────────────────
-	const extractRangeText = useCallback(
-		(startOffset: number, endOffset: number): string => {
-			if (!content) return "";
-			const bytes = _encoder.encode(content);
-			// Scan forward from endOffset to end of the last word
-			let end = endOffset;
-			while (end < bytes.length && bytes[end] !== 32 && bytes[end] !== 10) {
-				end++;
-			}
-			return _decoder.decode(bytes.slice(startOffset, end)).replace(/\s+/g, " ").trim();
-		},
-		[content],
-	);
-
-	// ── Helper: find highlight covering an offset ─────────────────────────
-	const findHighlightAt = useCallback(
-		(offset: number): Highlight | undefined => {
-			return highlightRows.find((h) => offset >= h.startOffset && offset <= h.endOffset);
-		},
-		[highlightRows],
-	);
-
 	// ── Word tap handler ───────────────────────────────────────────────────
 	// During selection mode: tapping anywhere cancels the selection (user
 	// adjusts range via handles, not word taps).
 	// Normal mode — first tap: set position (highlight it).
 	// Normal mode — second tap on highlighted word: open highlight modal (if highlighted)
 	//   or dictionary (if not highlighted).
+	const { cancelSelection, findHighlightAt, openHighlightEditor } = sel;
 	const handleWordTap = useCallback(
 		(offset: number, wordText: string) => {
 			if (isSelecting) {
 				// Any tap outside the handle drag system cancels the selection
-				setSelectionAnchor(null);
-				setSelectionEnd(null);
-				setSelectionSavedId(null);
-				setSelectionColor(null);
-				setPendingNote("");
+				cancelSelection();
 				return;
 			}
 
 			if (offset === activeOffset) {
 				// Second tap on the highlighted word
-				const highlight = findHighlightAt(offset);
-				if (highlight) {
-					// Open highlight editor
-					const text = extractRangeText(highlight.startOffset, highlight.endOffset);
-					setEditingHighlight(highlight);
-					setEditingHighlightText(text);
+				const existing = findHighlightAt(offset);
+				if (existing) {
+					openHighlightEditor(existing);
 				} else {
-					// Open dictionary
+					// No existing highlight — open dictionary instead
 					const clean = wordText.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
 					if (clean) setSelectedWord(clean);
 				}
@@ -562,243 +459,86 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			lastOffsetRef.current = offset;
 			savePosition(offset);
 		},
-		[savePosition, activeOffset, isSelecting, findHighlightAt, extractRangeText],
-	);
-
-	// ── Long-press handler ────────────────────────────────────────────────
-	// If the word is already highlighted → open the highlight editor.
-	// Otherwise → enter selection mode to create a new highlight.
-	const handleWordLongPress = useCallback(
-		(offset: number) => {
-			const existing = findHighlightAt(offset);
-			if (existing) {
-				const text = extractRangeText(existing.startOffset, existing.endOffset);
-				setEditingHighlight(existing);
-				setEditingHighlightText(text);
-				return;
-			}
-			setSelectionAnchor(offset);
-			setSelectionEnd(offset);
-			setSelectionSavedId(null);
-			setSelectionColor(null);
-			setPendingNote("");
-		},
-		[findHighlightAt, extractRangeText],
-	);
-
-	// ── Handle position sync — positions the two fixed handle divs ───────
-	// Called after any selection range change or scroll event.
-	// Reads word span positions from the DOM and updates handle styles directly
-	// (bypassing React renders for smooth visual updates).
-	const syncHandlePositions = useCallback(() => {
-		if (!selectionRange) return;
-		const startSpan = document.querySelector<HTMLElement>(
-			`span[data-offset="${selectionRange.start}"]`,
-		);
-		const endSpan = document.querySelector<HTMLElement>(
-			`span[data-offset="${selectionRange.end}"]`,
-		);
-
-		// Position start handle: bar runs along the left edge of the start word.
-		if (startHandleRef.current) {
-			if (startSpan) {
-				const rect = startSpan.getBoundingClientRect();
-				startHandleRef.current.style.left = `${rect.left - HANDLE_H_HALF}px`;
-				startHandleRef.current.style.top = `${rect.top - HANDLE_V_PAD}px`;
-				startHandleRef.current.style.setProperty("--bar-height", `${rect.height}px`);
-				startHandleRef.current.style.display = "block";
-			} else {
-				startHandleRef.current.style.display = "none";
-			}
-		}
-
-		// Position end handle: bar runs along the right edge of the end word.
-		if (endHandleRef.current) {
-			if (endSpan) {
-				const rect = endSpan.getBoundingClientRect();
-				endHandleRef.current.style.left = `${rect.right - HANDLE_H_HALF}px`;
-				endHandleRef.current.style.top = `${rect.top - HANDLE_V_PAD}px`;
-				endHandleRef.current.style.setProperty("--bar-height", `${rect.height}px`);
-				endHandleRef.current.style.display = "block";
-			} else {
-				endHandleRef.current.style.display = "none";
-			}
-		}
-
-		// Position toolbar: above the selection start word if there is room,
-		// otherwise below the selection end word.
-		if (toolbarRef.current) {
-			const GAP = 4;
-			if (startSpan) {
-				const startRect = startSpan.getBoundingClientRect();
-				const above = startRect.top - SELECTION_TOOLBAR_H - GAP;
-				if (above >= 0) {
-					toolbarRef.current.style.top = `${above}px`;
-					toolbarRef.current.style.bottom = "auto";
-				} else if (endSpan) {
-					const endRect = endSpan.getBoundingClientRect();
-					// Below the end handle circle (bar-height + circle diameter ≈ end word height + 24)
-					toolbarRef.current.style.top = `${endRect.bottom + endRect.height + 20 + GAP}px`;
-					toolbarRef.current.style.bottom = "auto";
-				}
-			}
-		}
-	}, [selectionRange]);
-
-	// Keep a ref so scroll handler can call it without stale-closure issues
-	const syncHandlesRef = useRef(syncHandlePositions);
-	useEffect(() => {
-		syncHandlesRef.current = syncHandlePositions;
-	}, [syncHandlePositions]);
-
-	// Sync handle/toolbar positions after every render that changes selection or mode
-	useLayoutEffect(() => {
-		if (isSelecting) {
-			syncHandlePositions();
-		} else {
-			if (startHandleRef.current) startHandleRef.current.style.display = "none";
-			if (endHandleRef.current) endHandleRef.current.style.display = "none";
-			// Toolbar is conditionally rendered (only when isSelecting) so no reset needed
-		}
-	}, [isSelecting, syncHandlePositions]);
-
-	// ── Handle drag — pointerdown on the start (left) selection handle ────
-	// Fixes which state variable is "start" at drag-begin to avoid mid-drag role swaps.
-	const handleStartHandlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-		e.preventDefault();
-		const target = e.currentTarget;
-		target.style.pointerEvents = "none"; // transparent to elementFromPoint during drag
-		const anchor = selectionAnchorRef.current ?? 0;
-		const end = selectionEndRef.current ?? 0;
-		const isAnchorStart = anchor <= end; // which var holds the min offset?
-		const onMove = (me: PointerEvent) => {
-			const el = document.elementFromPoint(me.clientX, me.clientY);
-			const span = el?.closest<HTMLElement>("span[data-offset]");
-			if (!span) return;
-			const offset = Number.parseInt(span.dataset.offset ?? "", 10);
-			if (Number.isNaN(offset)) return;
-			if (isAnchorStart) setSelectionAnchor(offset);
-			else setSelectionEnd(offset);
-		};
-		const onUp = () => {
-			target.style.pointerEvents = "";
-			window.removeEventListener("pointermove", onMove);
-			window.removeEventListener("pointerup", onUp);
-		};
-		window.addEventListener("pointermove", onMove);
-		window.addEventListener("pointerup", onUp);
-	}, []);
-
-	// ── Handle drag — pointerdown on the end (right) selection handle ─────
-	const handleEndHandlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-		e.preventDefault();
-		const target = e.currentTarget;
-		target.style.pointerEvents = "none";
-		const anchor = selectionAnchorRef.current ?? 0;
-		const end = selectionEndRef.current ?? 0;
-		const isAnchorEnd = anchor >= end; // which var holds the max offset?
-		const onMove = (me: PointerEvent) => {
-			const el = document.elementFromPoint(me.clientX, me.clientY);
-			const span = el?.closest<HTMLElement>("span[data-offset]");
-			if (!span) return;
-			const offset = Number.parseInt(span.dataset.offset ?? "", 10);
-			if (Number.isNaN(offset)) return;
-			if (isAnchorEnd) setSelectionAnchor(offset);
-			else setSelectionEnd(offset);
-		};
-		const onUp = () => {
-			target.style.pointerEvents = "";
-			window.removeEventListener("pointermove", onMove);
-			window.removeEventListener("pointerup", onUp);
-		};
-		window.addEventListener("pointermove", onMove);
-		window.addEventListener("pointerup", onUp);
-	}, []);
-
-	// ── Selection auto-save — triggered when the user picks a color ──────
-	// First pick: creates the highlight. Subsequent picks: update color.
-	// Toolbar stays open after saving so the user can adjust or add a note.
-	const handleSelectionColorChange = useCallback(
-		(newColor: HighlightColor) => {
-			setSelectionColor(newColor);
-			if (!selectionRange || !id) return;
-			const now = Date.now();
-			if (selectionSavedId) {
-				updateHighlightMutation.mutate({
-					id: selectionSavedId,
-					bookId: id,
-					data: { color: newColor, updatedAt: now },
-				});
-			} else {
-				const newId = randomHexId();
-				setSelectionSavedId(newId);
-				const snippet = contentBytes
-					? _decoder.decode(contentBytes.subarray(selectionRange.start, selectionRange.end))
-					: null;
-				addHighlightMutation.mutate({
-					id: newId,
-					bookId: id,
-					startOffset: selectionRange.start,
-					endOffset: selectionRange.end,
-					color: newColor,
-					note: pendingNote || null,
-					text: snippet,
-					createdAt: now,
-					updatedAt: now,
-				});
-			}
-		},
 		[
-			selectionRange,
-			selectionSavedId,
-			pendingNote,
-			id,
-			contentBytes,
-			addHighlightMutation,
-			updateHighlightMutation,
+			savePosition,
+			activeOffset,
+			isSelecting,
+			cancelSelection,
+			findHighlightAt,
+			openHighlightEditor,
 		],
 	);
 
-	// ── Note save — called when the note modal closes ─────────────────────
-	const handleSelectionNoteDone = useCallback(() => {
-		setNoteInputOpen(false);
-		if (selectionSavedId && id) {
-			updateHighlightMutation.mutate({
-				id: selectionSavedId,
-				bookId: id,
-				data: { note: pendingNote || null, updatedAt: Date.now() },
-			});
-		}
-	}, [selectionSavedId, pendingNote, id, updateHighlightMutation]);
+	// ── Mouse drag-to-select ──────────────────────────────────────────────
+	// Desktop equivalent of long-press: pointerdown on a word + mousemove > 8px
+	// starts selection mode. We then track the mouse across word spans until
+	// mouseup to extend the selection range. The synthetic click that follows
+	// mouseup is swallowed so it doesn't cancel the fresh selection via
+	// handleWordTap.
+	const { startSelection, extendSelectionTo, startHandleRef, endHandleRef } = sel;
+	const handleWordMouseDragStart = useCallback(
+		(offset: number, initialEvent: PointerEvent) => {
+			// If the word is already highlighted, treat like long-press — open editor.
+			const existing = findHighlightAt(offset);
+			if (existing) {
+				openHighlightEditor(existing);
+				return;
+			}
+			startSelection(offset);
+			// Make the selection handles transparent to elementFromPoint during the
+			// drag — once they pop up they can intercept the cursor and break the
+			// word-under-cursor lookup. Restored on cleanup.
+			const prevStartPe = startHandleRef.current?.style.pointerEvents ?? "";
+			const prevEndPe = endHandleRef.current?.style.pointerEvents ?? "";
+			if (startHandleRef.current) startHandleRef.current.style.pointerEvents = "none";
+			if (endHandleRef.current) endHandleRef.current.style.pointerEvents = "none";
 
-	// ── Selection cancel / close toolbar ─────────────────────────────────
-	// Any saved highlight stays in the DB (X = "done", not "delete").
-	const handleSelectionCancel = useCallback(() => {
-		setSelectionAnchor(null);
-		setSelectionEnd(null);
-		setSelectionSavedId(null);
-		setSelectionColor(null);
-		setPendingNote("");
-	}, []);
+			// Extend the cursor's current position (the drag has already moved > 8px
+			// past the start word by the time we get here — without this the initial
+			// selection is just the start word until the next pointermove fires).
+			const extendToPoint = (clientX: number, clientY: number) => {
+				const el = document.elementFromPoint(clientX, clientY);
+				const span = el?.closest<HTMLElement>("span[data-offset]");
+				if (!span) return;
+				const wordOffset = Number.parseInt(span.dataset.offset ?? "", 10);
+				if (Number.isNaN(wordOffset)) return;
+				extendSelectionTo(wordOffset);
+			};
+			extendToPoint(initialEvent.clientX, initialEvent.clientY);
 
-	// ── Highlight save (from edit modal) ──────────────────────────────────
-	const handleHighlightSave = useCallback(
-		(highlightId: string, color: string, note: string) => {
-			updateHighlightMutation.mutate({
-				id: highlightId,
-				bookId: id,
-				data: { color, note: note || null, updatedAt: Date.now() },
-			});
+			const onMove = (me: PointerEvent) => extendToPoint(me.clientX, me.clientY);
+			const cleanup = () => {
+				if (startHandleRef.current) startHandleRef.current.style.pointerEvents = prevStartPe;
+				if (endHandleRef.current) endHandleRef.current.style.pointerEvents = prevEndPe;
+				window.removeEventListener("pointermove", onMove);
+				window.removeEventListener("pointerup", onEnd);
+				window.removeEventListener("pointercancel", cleanup);
+			};
+			const onEnd = (ue: PointerEvent) => {
+				// Final extend so the release point is captured even if pointermove
+				// didn't fire between the last move and pointerup.
+				extendToPoint(ue.clientX, ue.clientY);
+				cleanup();
+				// Swallow the next click event so it doesn't fire on the word under the
+				// release point (which would call handleWordTap → cancelSelection).
+				const swallow = (ce: MouseEvent) => {
+					ce.stopPropagation();
+					ce.preventDefault();
+				};
+				window.addEventListener("click", swallow, { once: true, capture: true });
+			};
+			window.addEventListener("pointermove", onMove);
+			window.addEventListener("pointerup", onEnd);
+			window.addEventListener("pointercancel", cleanup);
 		},
-		[id, updateHighlightMutation],
-	);
-
-	// ── Highlight delete ──────────────────────────────────────────────────
-	const handleHighlightDelete = useCallback(
-		(highlightId: string) => {
-			deleteHighlightMutation.mutate({ id: highlightId, bookId: id });
-		},
-		[id, deleteHighlightMutation],
+		[
+			findHighlightAt,
+			openHighlightEditor,
+			startSelection,
+			extendSelectionTo,
+			startHandleRef,
+			endHandleRef,
+		],
 	);
 
 	// ── RSVP helpers ─────────────────────────────────────────────────────
@@ -895,67 +635,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			jumpToOffset,
 			exitRsvpToScroll,
 		],
-	);
-
-	// ── Progress bar tap/drag ─────────────────────────────────────────────
-	const progressBarRef = useRef<HTMLDivElement>(null);
-	// Origin of the current pointer-down gesture — used to detect horizontal intent
-	const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
-
-	const scrubToX = useCallback(
-		(clientX: number) => {
-			if (!progressBarRef.current || !book) return;
-			const rect = progressBarRef.current.getBoundingClientRect();
-			const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-			const targetByte = Math.round(ratio * book.size);
-
-			if (readerMode === "rsvp") {
-				// In RSVP mode: scrub to position — updates both the progress bar and
-				// rsvpInitOffset so RsvpView jumps without triggering a position-save echo.
-				setProgressOffset(targetByte);
-				setRsvpInitOffset(targetByte);
-				lastOffsetRef.current = targetByte;
-				savePosition(targetByte);
-			} else {
-				const idx = findParagraphIndex(targetByte);
-				const actualByte = paragraphOffsets[idx] ?? 0;
-				jumpToOffset(actualByte, { highlight: false });
-			}
-		},
-		[book, readerMode, paragraphOffsets, findParagraphIndex, jumpToOffset, savePosition],
-	);
-
-	const handleProgressPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-		e.currentTarget.setPointerCapture(e.pointerId);
-		// Record origin — scrubbing is committed only once horizontal intent is
-		// confirmed (pointermove/pointerup). This prevents the iOS swipe-up home
-		// gesture from accidentally jumping the reading position.
-		pointerDownRef.current = { x: e.clientX, y: e.clientY };
-	}, []);
-
-	const handleProgressPointerMove = useCallback(
-		(e: React.PointerEvent<HTMLDivElement>) => {
-			if (e.buttons === 0 || !pointerDownRef.current) return;
-			if (!isHorizontalScrub(pointerDownRef.current, e.clientX, e.clientY)) return;
-			isScrubbingRef.current = true;
-			scrubToX(e.clientX);
-		},
-		[scrubToX],
-	);
-
-	const handleProgressPointerUp = useCallback(
-		(e: React.PointerEvent<HTMLDivElement>) => {
-			const origin = pointerDownRef.current;
-			pointerDownRef.current = null;
-			isScrubbingRef.current = false;
-			if (!origin) return;
-			// Plain tap (no meaningful horizontal drag) — scrub to the tap position.
-			if (!isHorizontalScrub(origin, e.clientX, e.clientY)) {
-				setProgressBarVisible(true);
-				scrubToX(e.clientX);
-			}
-		},
-		[scrubToX],
 	);
 
 	// ── Show progress bar on any tap in the reading area ─────────────────
@@ -1094,7 +773,10 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 							</IonButton>
 						)}
 						{highlightRows.length > 0 && (
-							<IonButton onClick={() => setHighlightsListOpen(true)} aria-label="View highlights">
+							<IonButton
+								onClick={() => sel.setHighlightsListOpen(true)}
+								aria-label="View highlights"
+							>
 								<IonIcon slot="icon-only" icon={bookmarkOutline} />
 							</IonButton>
 						)}
@@ -1146,9 +828,10 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 									startOffset={paragraphOffsets[i]}
 									activeOffset={activeOffset}
 									onWordTap={handleWordTap}
-									onWordLongPress={handleWordLongPress}
-									highlights={highlightsByParagraph.get(i)}
-									selectionRange={selectionRange}
+									onWordLongPress={sel.handleWordLongPress}
+									onWordMouseDragStart={handleWordMouseDragStart}
+									highlights={sel.highlightsByParagraph.get(i)}
+									selectionRange={sel.selectionRange}
 								/>
 							))}
 						</VList>
@@ -1168,11 +851,11 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				{(progressBarVisible || readerMode === "rsvp") && (
 					// biome-ignore lint/a11y/useFocusableInteractive: scrubber
 					<div
-						ref={progressBarRef}
+						ref={scrub.progressBarRef}
 						className="reader-progress-bar"
-						onPointerDown={handleProgressPointerDown}
-						onPointerMove={handleProgressPointerMove}
-						onPointerUp={handleProgressPointerUp}
+						onPointerDown={scrub.handleProgressPointerDown}
+						onPointerMove={scrub.handleProgressPointerMove}
+						onPointerUp={scrub.handleProgressPointerUp}
 						aria-label="Reading progress"
 						role="slider"
 						aria-valuenow={Math.round(progressPct)}
@@ -1198,29 +881,18 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				)}
 			</IonContent>
 
-			{/* ── Selection toolbar (fixed, positioned above selection by JS) ── */}
-			{isSelecting && (
-				<SelectionToolbar
-					ref={toolbarRef}
-					selectedColor={selectionColor}
-					onColorChange={handleSelectionColorChange}
-					onNote={() => setNoteInputOpen(true)}
-					onCancel={handleSelectionCancel}
-				/>
-			)}
-
-			{/* ── Selection handles (fixed position, one at each boundary) ── */}
-			<div
-				ref={startHandleRef}
-				className="selection-handle selection-handle--start"
-				style={{ display: "none" }}
-				onPointerDown={handleStartHandlePointerDown}
-			/>
-			<div
-				ref={endHandleRef}
-				className="selection-handle selection-handle--end"
-				style={{ display: "none" }}
-				onPointerDown={handleEndHandlePointerDown}
+			{/* ── Selection toolbar + handles (fixed position, sync'd by hook) ── */}
+			<SelectionOverlay
+				isSelecting={sel.isSelecting}
+				selectionColor={sel.selectionColor}
+				toolbarRef={sel.toolbarRef}
+				startHandleRef={sel.startHandleRef}
+				endHandleRef={sel.endHandleRef}
+				onColorChange={sel.handleSelectionColorChange}
+				onNote={() => sel.setNoteInputOpen(true)}
+				onCancel={sel.cancelSelection}
+				onStartHandlePointerDown={sel.handleStartHandlePointerDown}
+				onEndHandlePointerDown={sel.handleEndHandlePointerDown}
 			/>
 
 			{/* ── Appearance popover ── */}
@@ -1285,28 +957,28 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 			{/* ── Highlight edit modal ── */}
 			<HighlightModal
-				highlight={editingHighlight}
-				highlightText={editingHighlightText}
-				onClose={() => setEditingHighlight(null)}
-				onSave={handleHighlightSave}
-				onDelete={handleHighlightDelete}
+				highlight={sel.editingHighlight}
+				highlightText={sel.editingHighlightText}
+				onClose={() => sel.setEditingHighlight(null)}
+				onSave={sel.handleHighlightSave}
+				onDelete={sel.handleHighlightDelete}
 				theme={theme}
 			/>
 
 			{/* ── Highlights list modal ── */}
 			<HighlightsListModal
-				isOpen={highlightsListOpen}
+				isOpen={sel.highlightsListOpen}
 				highlights={highlightRows}
 				content={content ?? ""}
-				onClose={() => setHighlightsListOpen(false)}
+				onClose={() => sel.setHighlightsListOpen(false)}
 				onJump={jumpToOffset}
 				theme={theme}
 			/>
 
 			{/* ── Note input modal (during selection) ── */}
 			<IonModal
-				isOpen={noteInputOpen}
-				onDidDismiss={handleSelectionNoteDone}
+				isOpen={sel.noteInputOpen}
+				onDidDismiss={sel.handleSelectionNoteDone}
 				breakpoints={[0, 0.4]}
 				initialBreakpoint={0.4}
 				className={["rsvp-highlight-modal", `reader-theme-${theme}`].join(" ")}
@@ -1315,7 +987,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 					<IonToolbar>
 						<IonTitle>Add Note</IonTitle>
 						<IonButtons slot="end">
-							<IonButton onClick={handleSelectionNoteDone} strong>
+							<IonButton onClick={sel.handleSelectionNoteDone} strong>
 								Done
 							</IonButton>
 						</IonButtons>
@@ -1324,8 +996,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				<IonContent className="ion-padding">
 					<textarea
 						className="highlight-note-textarea"
-						value={pendingNote}
-						onChange={(e) => setPendingNote(e.target.value)}
+						value={sel.pendingNote}
+						onChange={(e) => sel.setPendingNote(e.target.value)}
 						placeholder="Add a note to this highlight…"
 						rows={4}
 						// biome-ignore lint/a11y/noAutofocus: intentional focus for note input

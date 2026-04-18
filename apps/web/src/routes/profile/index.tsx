@@ -124,10 +124,8 @@ function BookCard({ book }: { book: ProfileBook }) {
 				</div>
 			)}
 			<div>
-				<p className="truncate text-xs font-medium leading-tight">{book.title}</p>
-				{book.author && (
-					<p className="truncate text-xs text-muted-foreground">{book.author}</p>
-				)}
+				<p className="truncate font-medium text-xs leading-tight">{book.title}</p>
+				{book.author && <p className="truncate text-muted-foreground text-xs">{book.author}</p>}
 			</div>
 		</div>
 	);
@@ -187,17 +185,14 @@ function HighlightsSection({ highlights }: { highlights: ProfileHighlight[] }) {
 				<>
 					<div className="space-y-3">
 						{visible.map((h) => (
-							<div
-								key={h.highlightId}
-								className="flex gap-3 rounded-lg border bg-muted/30 p-4"
-							>
+							<div key={h.highlightId} className="flex gap-3 rounded-lg border bg-muted/30 p-4">
 								<div
 									className="mt-0.5 w-1 shrink-0 rounded-full"
 									style={{ background: HIGHLIGHT_COLOR[h.color] ?? HIGHLIGHT_COLOR.yellow }}
 								/>
 								<div className="min-w-0 flex-1 space-y-1.5">
 									{h.text && (
-										<p className="text-sm leading-relaxed text-foreground">
+										<p className="text-foreground text-sm leading-relaxed">
 											&ldquo;{h.text}&rdquo;
 										</p>
 									)}
@@ -248,8 +243,16 @@ function OpenAppCard() {
 // ---------------------------------------------------------------------------
 
 function ProfilePage() {
-	const { user, bookCount, highlightCount, lastSynced, booksFinished, wordsRead, books, highlights } =
-		Route.useLoaderData();
+	const {
+		user,
+		bookCount,
+		highlightCount,
+		lastSynced,
+		booksFinished,
+		wordsRead,
+		books,
+		highlights,
+	} = Route.useLoaderData();
 
 	return (
 		<div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-12">
@@ -260,7 +263,7 @@ function ProfilePage() {
 				</div>
 				<Link
 					to="/account"
-					className="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+					className="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
 				>
 					<Settings className="size-3.5" />
 					Account settings

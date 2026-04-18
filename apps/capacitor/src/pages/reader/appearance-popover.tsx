@@ -35,7 +35,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 							<button
 								key={t.value}
 								type="button"
-								className={`ap-chip${theme === t.value ? "ap-chip--active" : ""}`}
+								className={theme === t.value ? "ap-chip ap-chip--active" : "ap-chip"}
 								onClick={() => setTheme(t.value)}
 							>
 								{t.label}
@@ -52,7 +52,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 							<button
 								key={f.value}
 								type="button"
-								className={`ap-chip${fontFamily === f.value ? "ap-chip--active" : ""}`}
+								className={fontFamily === f.value ? "ap-chip ap-chip--active" : "ap-chip"}
 								style={f.style}
 								onClick={() => setFontFamily(f.value)}
 							>
@@ -136,7 +136,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 						<span className="ap-row-label">Time remaining</span>
 						<button
 							type="button"
-							className={`ap-chip${showReadingTime ? "ap-chip--active" : ""}`}
+							className={showReadingTime ? "ap-chip ap-chip--active" : "ap-chip"}
 							onClick={() => setShowReadingTime(!showReadingTime)}
 						>
 							{showReadingTime ? "On" : "Off"}

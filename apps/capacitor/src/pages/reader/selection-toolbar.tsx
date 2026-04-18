@@ -36,7 +36,11 @@ const SelectionToolbar = React.forwardRef<HTMLDivElement, SelectionToolbarProps>
 						<button
 							key={color}
 							type="button"
-							className={`selection-color-swatch${selectedColor === color ? "selection-color-swatch--active" : ""}`}
+							className={
+								selectedColor === color
+									? "selection-color-swatch selection-color-swatch--active"
+									: "selection-color-swatch"
+							}
 							style={{ background: HIGHLIGHT_COLOR_STYLE[color] }}
 							onClick={() => onColorChange(color)}
 							aria-label={`Highlight ${color}`}
