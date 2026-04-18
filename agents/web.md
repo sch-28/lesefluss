@@ -37,7 +37,8 @@ pnpm build
 | `/diy` | ✅ | Redirects to `/device` |
 | `/order` | ✅ | Redirects to `/device` |
 | `/api/sync` | ✅ | GET (pull) + POST (push) — full-snapshot sync, requireAuth + CORS + rate-limited (30/min per user) |
-| `/account` | ❌ | Not started — auth-gated; connected devices, sync status, danger zone |
+| `/profile` | ✅ | Auth-gated reading activity: stats, book library, highlights with text snippets + notes. Header links to `/account`. |
+| `/account` | ✅ | Auth-gated account settings: email display, change password, danger zone (clear cloud data, delete account). `noindex`. |
 
 ## routeTree.gen.ts
 
@@ -54,7 +55,7 @@ sessions           — Better Auth managed
 
 sync_books         — mirrors capacitor `books` (user_id, book_id, title, author, file_size, word_count, position, content, cover_image, chapters, updated_at)
 sync_settings      — mirrors capacitor `settings` (user_id)
-sync_highlights    — mirrors capacitor `highlights` (user_id, highlight_id)
+sync_highlights    — mirrors capacitor `highlights` (user_id, highlight_id, text — extracted snippet stored at highlight-creation time)
 ```
 
 Books store full plain text content, base64 cover image, and chapters JSON server-side for cross-device restore. Content is immutable per bookId — only pushed once.
@@ -115,7 +116,8 @@ The capacitor app is built as a static SPA and served under `/app/*`. This gives
 - [x] Web app embed — capacitor SPA at `/app/*` with cookie auth
 
 ### Phase 4 — Polish
-- [ ] `/account` page (connected devices, sync status, danger zone)
+- [x] `/profile` page (stats, library, highlights)
+- [x] `/account` page (change password, danger zone)
 - [ ] Full docs (wiring diagrams, screenshots)
 - [ ] Replace Ko-fi placeholder in `/device` with real URL
 - [ ] Replace disabled Play Store badge in `/download` with real URL once published

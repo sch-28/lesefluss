@@ -202,6 +202,9 @@ Feature roadmap below. For publishing, Play Store, and monetisation see `agents/
 - [x] Desktop sidebar nav for web app (brand, Library, Settings)
 - [x] Auto-save settings (optimistic update + debounced DB write, replaces draft-then-save)
 - [x] Library sorting (title, author, recent, progress) & filtering (all, unread, reading, done)
+- [x] Highlight text snippet stored at creation time (`text` column in highlights/sync_highlights — extracted from book content in reader, synced via HTTP)
+- [x] `/profile` page on website (stats, library, highlights with snippets/notes)
+- [x] `/account` page on website (change password, danger zone)
 - [ ] Advanced book management (tags, collections, search)
 - [ ] Reading statistics
 - [ ] Minifying the python code & merge to single file

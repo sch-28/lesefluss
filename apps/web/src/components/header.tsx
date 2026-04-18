@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { BookOpen, Cpu, FileText, LogIn, LogOut, Menu, Smartphone, User, X } from "lucide-react";
+import { Cpu, FileText, LogIn, LogOut, Menu, Smartphone, User, X } from "lucide-react";
 import * as React from "react";
 import { Button } from "~/components/ui/button";
 import {
@@ -46,6 +46,53 @@ function getInitials(name?: string | null, email?: string | null): string {
 	return "U";
 }
 
+type SessionUser = NonNullable<ReturnType<typeof useSession>["data"]>["user"];
+
+function UserMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => void }) {
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="size-8 rounded-full bg-muted font-semibold text-foreground text-sm"
+					aria-label="Account menu"
+				>
+					{getInitials(user.name, user.email)}
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-52">
+				<DropdownMenuLabel className="font-normal">
+					<div className="flex flex-col gap-0.5">
+						{user.name && (
+							<span className="font-medium text-foreground text-sm">{user.name}</span>
+						)}
+						<span className="truncate text-muted-foreground text-xs">{user.email}</span>
+					</div>
+				</DropdownMenuLabel>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem asChild>
+					<Link to="/profile">
+						<User className="size-4" />
+						Profile
+					</Link>
+				</DropdownMenuItem>
+				<DropdownMenuItem asChild>
+					<a href="/app">
+						<Smartphone className="size-4" />
+						Open App
+					</a>
+				</DropdownMenuItem>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem variant="destructive" onSelect={onSignOut}>
+					<LogOut />
+					Sign out
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
 export function Header() {
 	const [mobileOpen, setMobileOpen] = React.useState(false);
 	const { data: session, isPending } = useSession();
@@ -73,7 +120,7 @@ export function Header() {
 	};
 
 	return (
-		<header className="sticky top-0 z-50 border-border border-b bg-background/80 backdrop-blur">
+		<header className="sticky top-0 z-50 bg-background/95 shadow-sm backdrop-blur-md">
 			<a
 				href="#main"
 				className="sr-only absolute top-4 left-4 z-50 rounded bg-background px-4 py-2 font-medium text-foreground focus:not-sr-only"
@@ -86,95 +133,57 @@ export function Header() {
 					to="/"
 					className="flex items-center gap-2 font-semibold text-foreground text-lg tracking-tight"
 				>
-					<BookOpen className="size-5 text-primary" />
+					<img src="/logo.png" alt="" className="size-7 rounded-md" />
 					Lesefluss
 				</Link>
 
-				{/* Desktop nav */}
-				<nav className="hidden items-center gap-1 md:flex">
-					{NAV_LINKS.map(({ to, label, icon: Icon }) => (
-						<Link
-							key={to}
-							to={to}
-							activeProps={{ className: navLinkActiveClass }}
-							className={navLinkClass(false)}
-						>
-							<Icon className="size-3.5" />
-							{label}
-						</Link>
-					))}
-					{!hideGithub && (
-						<a
-							href="https://github.com/sch-28/lesefluss"
-							target="_blank"
-							rel="noopener noreferrer"
-							className={navLinkClass(false)}
-						>
-							<GithubIcon className="size-3.5" />
-							GitHub
-						</a>
-					)}
-				</nav>
+				{/* Desktop nav + auth — all right-aligned */}
+				<div className="hidden items-center gap-1 md:flex">
+					<nav className="flex items-center gap-1">
+						{NAV_LINKS.map(({ to, label }) => (
+							<Link
+								key={to}
+								to={to}
+								activeProps={{ className: navLinkActiveClass }}
+								className={navLinkClass(false)}
+							>
+								{label}
+							</Link>
+						))}
+						{!hideGithub && (
+							<a
+								href="https://github.com/sch-28/lesefluss"
+								target="_blank"
+								rel="noopener noreferrer"
+								className={navLinkClass(false)}
+							>
+								<GithubIcon className="size-3.5" />
+								GitHub
+							</a>
+						)}
+					</nav>
 
-				{/* Right side: auth + mobile toggle */}
-				<div className="flex items-center gap-2">
-					{/* Auth — only render once session resolves to avoid layout shift */}
+					<div className="mx-2 h-4 w-px bg-border" />
+
 					{!isPending &&
 						(user ? (
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button
-										variant="ghost"
-										size="icon"
-										className="size-8 rounded-full bg-muted font-semibold text-foreground text-sm"
-										aria-label="Account menu"
-									>
-										{getInitials(user.name, user.email)}
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end" className="w-52">
-									<DropdownMenuLabel className="font-normal">
-										<div className="flex flex-col gap-0.5">
-											{user.name && (
-												<span className="font-medium text-foreground text-sm">{user.name}</span>
-											)}
-											<span className="truncate text-muted-foreground text-xs">{user.email}</span>
-										</div>
-									</DropdownMenuLabel>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem asChild>
-										<Link to="/profile">
-											<User className="size-4" />
-											Profile
-										</Link>
-									</DropdownMenuItem>
-									<DropdownMenuItem asChild>
-										<a href="/app">
-											<Smartphone className="size-4" />
-											Open App
-										</a>
-									</DropdownMenuItem>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem variant="destructive" onSelect={handleSignOut}>
-										<LogOut />
-										Sign out
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
+							<UserMenu user={user} onSignOut={handleSignOut} />
 						) : (
-							<Button asChild variant="outline" size="sm" className="hidden md:flex">
+							<Button asChild size="sm">
 								<Link to="/login">
 									<LogIn className="size-3.5" />
 									Login
 								</Link>
 							</Button>
 						))}
+				</div>
 
-					{/* Mobile hamburger */}
+				{/* Mobile: auth avatar + hamburger */}
+				<div className="flex items-center gap-2 md:hidden">
+					{!isPending && user && <UserMenu user={user} onSignOut={handleSignOut} />}
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						className="md:hidden"
 						onClick={() => setMobileOpen((o) => !o)}
 						aria-label="Toggle menu"
 					>
@@ -182,6 +191,8 @@ export function Header() {
 					</Button>
 				</div>
 			</div>
+			{/* Gradient accent line */}
+			<div className="h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
 			{/* Mobile nav panel */}
 			{mobileOpen && (

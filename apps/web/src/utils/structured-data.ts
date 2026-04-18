@@ -21,7 +21,7 @@ export function buildOrganizationSchema(hideGithub = false): JsonLdScript {
 		"@type": "Organization",
 		name: "Lesefluss",
 		url: SITE_URL,
-		logo: `${SITE_URL}/android-chrome-512x512.png`,
+		logo: `${SITE_URL}/logo-512.png`,
 		...(hideGithub ? {} : { sameAs: ["https://github.com/sch-28/lesefluss"] }),
 	});
 }

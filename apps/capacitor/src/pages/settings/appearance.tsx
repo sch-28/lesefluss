@@ -56,7 +56,7 @@ const AppearanceSettings: React.FC = () => {
 								<button
 									key={t.value}
 									type="button"
-									className={`ap-chip${theme === t.value ? "ap-chip--active" : ""}`}
+									className={theme === t.value ? "ap-chip ap-chip--active" : "ap-chip"}
 									onClick={() => setTheme(t.value)}
 								>
 									{t.label}
@@ -75,7 +75,7 @@ const AppearanceSettings: React.FC = () => {
 								<button
 									key={f.value}
 									type="button"
-									className={`ap-chip${fontFamily === f.value ? "ap-chip--active" : ""}`}
+									className={fontFamily === f.value ? "ap-chip ap-chip--active" : "ap-chip"}
 									style={f.style}
 									onClick={() => setFontFamily(f.value)}
 								>

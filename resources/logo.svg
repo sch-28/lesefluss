@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 512 512"
+   width="512"
+   height="512"
+   version="1.1"
+   id="svg8"
+   sodipodi:docname="logo.svg"
+   inkscape:version="1.4.3 (0d15f75042, 2025-12-25)"
+   inkscape:export-filename="../logo.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <defs
+     id="defs8">
+    <linearGradient
+       id="swatch13"
+       inkscape:swatch="solid">
+      <stop
+         style="stop-color:#00eaff;stop-opacity:0;"
+         offset="0"
+         id="stop13" />
+    </linearGradient>
+  </defs>
+  <sodipodi:namedview
+     id="namedview8"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1"
+     inkscape:cx="151.5"
+     inkscape:cy="336"
+     inkscape:window-width="1687"
+     inkscape:window-height="1631"
+     inkscape:window-x="1026"
+     inkscape:window-y="146"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="g8" />
+  <title
+     id="title1">Lesefluss — draft 4 (revised sail + rudder)</title>
+  <rect
+     width="512"
+     height="512"
+     fill="#fef6e4"
+     rx="80"
+     id="rect1" />
+  <!-- Waves -->
+  <g
+     fill="none"
+     stroke="#5b8fb9"
+     stroke-linecap="round"
+     id="g2"
+     transform="matrix(0.88310437,0,0,1.0095448,4.4085424,-4.3381381)" />
+  <g
+     fill="none"
+     stroke="#d9543a"
+     stroke-width="18"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="g8">
+    <!-- Hull (B rotated 90° CW): spine = deck, two bumps = hull curves -->
+    <g
+       transform="matrix(0.99630441,0,0,1.1332315,255.98741,323.04585)"
+       id="g4">
+      <path
+         d="M -158.7312,-19.989444 C -169.77201,33.147493 -166.18622,83.154344 -91.332569,84.222258 -7.0630839,85.424506 1.0037093,71 1.0037093,43"
+         id="path3"
+         sodipodi:nodetypes="csc" />
+      <path
+         d="m 1.0037093,26.472968 c 0,60 -5.6607461,47.204627 52.2195287,61.193807 35.835659,8.66118 127.389902,-1.195156 95.271202,-104.878247"
+         id="path4"
+         sodipodi:nodetypes="csc" />
+    </g>
+    <!-- Sail (A): apex + long vertical leg (mast) + 45° leech + crossbar/foot -->
+    <g
+       id="g6">
+      <!-- Mast: long leg, from apex through the sail foot down to the deck -->
+      <line
+         x1="180"
+         y1="60"
+         x2="180"
+         y2="320"
+         id="line4" />
+      <!-- Leech: short leg, 45° diagonal (160 across = 160 down) -->
+      <line
+         x1="180"
+         y1="60"
+         x2="340"
+         y2="220"
+         id="line5"
+         style="fill:#d9543a;fill-opacity:1" />
+      <!-- Crossbar / sail foot: closes the sail triangle -->
+      <line
+         x1="180"
+         y1="220"
+         x2="340"
+         y2="220"
+         id="line6" />
+      <path
+         style="fill:#d9543a;fill-opacity:1;stroke:#d9543a;stroke-width:18;stroke-dasharray:none"
+         d="m 333.26745,214.47905 32.44683,28.04726"
+         id="path8" />
+    </g>
+    <!-- Rudder (C): on the right, belly extends out past the hull -->
+    <g
+       transform="matrix(-0.66368328,0.74242659,0.74577274,0.66667452,424.44443,315.9351)"
+       id="g7">
+      <path
+         d="m -0.26502427,-49.591799 q 55.00000027,0 55.00000027,54.9999997 0,55.0000003 -55.00000027,55.0000003"
+         id="path6" />
+      <path
+         style="fill:#000000;fill-opacity:1;stroke:#d9543a;stroke-width:18;stroke-linecap:round;stroke-dasharray:none"
+         d="m 413.55962,291.47153 c 10.91311,1.03949 14.68344,6.54237 19.24812,11.54888"
+         id="path10"
+         transform="matrix(-0.9364228,0.36101532,0.36264243,0.93222124,279.77028,-470.21701)"
+         sodipodi:nodetypes="cc" />
+    </g>
+    <path
+       style="fill:#fef6e4;fill-opacity:1;stroke:#3aa9d9;stroke-width:19.2983;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
+       d="m 52.900737,445.87868 c 0,0 35.861979,-16.85626 39.151172,-61.88114 19.381781,0 37.213011,59.63906 37.213011,59.63906 0,0 37.80017,-13.71736 41.08936,-58.74224 25.1963,-2.69048 52.71842,65.46845 52.71842,65.46845 0,0 37.14651,-26.92577 36.0501,-60.53589 20.15705,-0.89683 36.43774,50.67079 36.43774,50.67079 0,0 31.69205,-21.57667 33.33665,-52.01603 22.48286,-0.89683 50.78025,61.88113 50.78025,61.88113 0,0 30.46265,-20.69303 31.01084,-58.74223 21.70759,-1.34524 49.61734,57.8454 49.61734,57.8454"
+       id="path12"
+       sodipodi:nodetypes="ccccccccccc" />
+    <path
+       style="fill:none;fill-opacity:1;stroke:#d9543a;stroke-width:18;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
+       d="m 100,320.5 150.5,22 L 404,322"
+       id="path17" />
+  </g>
+  <path
+     style="fill:#000000;fill-opacity:1;stroke:#d9543a;stroke-width:18;stroke-linecap:round;stroke-dasharray:none"
+     d="m 380.56284,233.72718 c -6.73391,11.04769 -17.67408,17.88911 -29.6971,23.64769"
+     id="path9"
+     sodipodi:nodetypes="cc" />
+  <metadata
+     id="metadata17">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:title>Lesefluss — draft 4 (revised sail + rudder)</dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+</svg>

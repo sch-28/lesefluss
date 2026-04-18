@@ -178,7 +178,7 @@ function Home() {
 						</div>
 						<div className="relative flex justify-center lg:justify-end" data-aos="fade-left">
 							<div
-								className="absolute inset-0 rounded-full bg-primary/20"
+								className="absolute inset-0 rounded-full bg-primary/10"
 								style={glowStyle}
 							/>
 							<div className="relative rotate-2">

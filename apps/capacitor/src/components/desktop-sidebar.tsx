@@ -1,5 +1,5 @@
 import { IonIcon, IonLabel, useIonRouter } from "@ionic/react";
-import { bookOutline, library, settings } from "ionicons/icons";
+import { library, settings } from "ionicons/icons";
 import type React from "react";
 import { useLocation } from "react-router-dom";
 import { IS_WEB } from "../utils/platform";
@@ -9,6 +9,15 @@ const NAV_ITEMS = [
 	{ href: "/tabs/settings", icon: settings, label: "Settings" },
 ] as const;
 
+const logoStyle = { width: 28, height: 28, borderRadius: 6 } as const;
+
+const BrandContent = () => (
+	<>
+		<img src="/logo.png" alt="" style={logoStyle} />
+		Lesefluss
+	</>
+);
+
 const DesktopSidebar: React.FC = () => {
 	const location = useLocation();
 	const ionRouter = useIonRouter();
@@ -17,13 +26,11 @@ const DesktopSidebar: React.FC = () => {
 		<nav className="desktop-sidebar">
 			{IS_WEB ? (
 				<a href="/" className="desktop-sidebar-brand">
-					<IonIcon icon={bookOutline} />
-					Lesefluss
+					<BrandContent />
 				</a>
 			) : (
 				<div className="desktop-sidebar-brand">
-					<IonIcon icon={bookOutline} />
-					Lesefluss
+					<BrandContent />
 				</div>
 			)}
 			{NAV_ITEMS.map((item) => {
