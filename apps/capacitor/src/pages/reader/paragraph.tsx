@@ -1,14 +1,14 @@
 /**
- * Paragraph — renders a single paragraph as inline <span> elements.
+ * Paragraph - renders a single paragraph as inline <span> elements.
  *
- * Byte offsets are computed locally from `startOffset` — no pre-built word
+ * Byte offsets are computed locally from `startOffset` - no pre-built word
  * index needed. Only ~20–30 of these exist in the DOM at any time (virtua).
  *
  * Wrapped in React.memo: only the paragraph whose activeOffset range changed
  * will re-render on scroll, instead of all ~25 visible paragraphs.
  *
  * Headings (lines prefixed with #) are rendered as styled block elements
- * without per-word spans — they are not tappable reading positions.
+ * without per-word spans - they are not tappable reading positions.
  */
 
 import { utf8ByteLength } from "@lesefluss/rsvp-core";
@@ -73,7 +73,7 @@ export interface ParagraphProps {
 	onWordTap: (offset: number, wordText: string) => void;
 	onWordLongPress?: (offset: number) => void;
 	/** Mouse-only: fires when a mouse drag starts on a word (pointerdown + move > 8px).
-	 *  Desktop equivalent of long-press — lets users click-drag to select words.
+	 *  Desktop equivalent of long-press - lets users click-drag to select words.
 	 *  The pointer event that triggered the threshold is passed through so the
 	 *  reader can extend the selection to the cursor's current position (the drag
 	 *  has already moved past the start word by the time this fires). */
@@ -136,7 +136,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 				classes.push("word-active");
 			}
 
-			// Highlight ranges — same check for words and spaces
+			// Highlight ranges - same check for words and spaces
 			if (highlights) {
 				for (const h of highlights) {
 					if (tokenOffset >= h.startOffset && tokenOffset <= h.endOffset) {
@@ -146,7 +146,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 				}
 			}
 
-			// Active selection — same check for words and spaces
+			// Active selection - same check for words and spaces
 			if (
 				selectionRange &&
 				tokenOffset >= selectionRange.start &&
@@ -173,7 +173,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			// Long-press / mouse-drag detection via pointer events.
 			// Touch / pen: fires onWordLongPress if the pointer stays down ≥ LONG_PRESS_MS
 			// without significant movement (> 8px cancels).
-			// Mouse: fires onWordMouseDragStart the moment movement exceeds 8px —
+			// Mouse: fires onWordMouseDragStart the moment movement exceeds 8px -
 			// click-drag is the natural desktop equivalent of long-press. A plain click
 			// (no movement) falls through to onClick → dictionary.
 			const handlePointerDown =

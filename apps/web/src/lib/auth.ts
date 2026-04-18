@@ -8,7 +8,7 @@ import * as authSchema from "~/db/auth-schema";
 import { syncBooks, syncHighlights, syncSettings } from "~/db/schema";
 import { ALLOWED_ORIGINS } from "./allowed-origins";
 
-// Server-only — never import this file in client components.
+// Server-only - never import this file in client components.
 // Use ~/lib/auth-client for browser-side session access.
 export const auth = betterAuth({
 	database: drizzleAdapter(db, {

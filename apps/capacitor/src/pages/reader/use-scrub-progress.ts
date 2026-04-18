@@ -1,5 +1,5 @@
 /**
- * useScrubProgress — owns the progress-bar pointer gestures (tap + horizontal drag).
+ * useScrubProgress - owns the progress-bar pointer gestures (tap + horizontal drag).
  *
  * Returns a ref + three pointer handlers to spread onto the progress bar div,
  * plus `isScrubbingRef` which the reader's scroll handler reads to decide
@@ -48,7 +48,7 @@ export function useScrubProgress({
 	setProgressBarVisible,
 }: Params) {
 	const progressBarRef = useRef<HTMLDivElement>(null);
-	// Origin of the current pointer-down gesture — used to detect horizontal intent
+	// Origin of the current pointer-down gesture - used to detect horizontal intent
 	const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
 	const isScrubbingRef = useRef(false);
 
@@ -60,7 +60,7 @@ export function useScrubProgress({
 			const targetByte = Math.round(ratio * book.size);
 
 			if (readerMode === "rsvp") {
-				// In RSVP mode: scrub to position — updates both the progress bar and
+				// In RSVP mode: scrub to position - updates both the progress bar and
 				// rsvpInitOffset so RsvpView jumps without triggering a position-save echo.
 				setProgressOffset(targetByte);
 				setRsvpInitOffset(targetByte);
@@ -87,7 +87,7 @@ export function useScrubProgress({
 
 	const handleProgressPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
 		e.currentTarget.setPointerCapture(e.pointerId);
-		// Record origin — scrubbing is committed only once horizontal intent is
+		// Record origin - scrubbing is committed only once horizontal intent is
 		// confirmed (pointermove/pointerup). This prevents the iOS swipe-up home
 		// gesture from accidentally jumping the reading position.
 		pointerDownRef.current = { x: e.clientX, y: e.clientY };
@@ -109,7 +109,7 @@ export function useScrubProgress({
 			pointerDownRef.current = null;
 			isScrubbingRef.current = false;
 			if (!origin) return;
-			// Plain tap (no meaningful horizontal drag) — scrub to the tap position.
+			// Plain tap (no meaningful horizontal drag) - scrub to the tap position.
 			if (!isHorizontalScrub(origin, e.clientX, e.clientY)) {
 				setProgressBarVisible(true);
 				scrubToX(e.clientX);

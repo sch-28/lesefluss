@@ -16,7 +16,7 @@
  */
 
 export const bookKeys = {
-	/** All books list — invalidate this to refresh the library grid. */
+	/** All books list - invalidate this to refresh the library grid. */
 	all: ["books"] as const,
 
 	/** Single book metadata. */

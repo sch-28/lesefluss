@@ -1,8 +1,8 @@
 /**
- * SelectionToolbar — floating bar shown during text selection.
+ * SelectionToolbar - floating bar shown during text selection.
  *
  * Auto-saves: picking a color triggers an immediate save in the parent.
- * No confirm button — the X just closes the toolbar.
+ * No confirm button - the X just closes the toolbar.
  */
 
 import { IonIcon } from "@ionic/react";
@@ -20,7 +20,7 @@ export const HIGHLIGHT_COLOR_STYLE: Record<HighlightColor, string> = {
 };
 
 interface SelectionToolbarProps {
-	/** null = no color picked yet — nothing shows as active */
+	/** null = no color picked yet - nothing shows as active */
 	selectedColor: HighlightColor | null;
 	onColorChange: (color: HighlightColor) => void;
 	onNote: () => void;

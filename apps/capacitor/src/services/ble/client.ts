@@ -1,5 +1,5 @@
 /**
- * BLE Client — scan, connect, disconnect, connection state.
+ * BLE Client - scan, connect, disconnect, connection state.
  * All characteristic I/O lives in src/ble/characteristics/.
  */
 
@@ -124,7 +124,7 @@ class BLEClient {
 			try {
 				await BleClient.disconnect(deviceId);
 			} catch {
-				// Ignore — device may already be disconnected
+				// Ignore - device may already be disconnected
 			}
 			this._connectionState = BLEConnectionState.DISCONNECTED;
 			this._connectedDevice = null;
@@ -173,7 +173,7 @@ class BLEClient {
 		return this._connectionState === BLEConnectionState.CONNECTED && this._connectedDevice !== null;
 	}
 
-	/** Throw if not connected — used by characteristic helpers. */
+	/** Throw if not connected - used by characteristic helpers. */
 	assertConnected(): BleDevice {
 		if (!this._connectedDevice || !this.isConnected) {
 			throw new Error("Not connected to a device");

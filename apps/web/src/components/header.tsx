@@ -26,7 +26,7 @@ const navLinkClass = (mobile: boolean) =>
 
 const navLinkActiveClass = "text-foreground bg-muted";
 
-/** GitHub mark SVG — lucide-react 1.x removed brand icons */
+/** GitHub mark SVG - lucide-react 1.x removed brand icons */
 function GithubIcon({ className }: { className?: string }) {
 	return (
 		<svg
@@ -136,7 +136,7 @@ export function Header() {
 					Lesefluss
 				</Link>
 
-				{/* Desktop nav + auth — all right-aligned */}
+				{/* Desktop nav + auth - all right-aligned */}
 				<div className="hidden items-center gap-1 md:flex">
 					<nav className="flex items-center gap-1">
 						{NAV_LINKS.map(({ to, label }) => (

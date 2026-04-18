@@ -12,7 +12,7 @@ import { bookKeys } from "./query-keys";
  *
  * Returns `{ books: Book[], covers: Map<string, string> }`.
  * Combined into one hook because they're always rendered together in the
- * library grid — avoids two separate loading states.
+ * library grid - avoids two separate loading states.
  */
 function useBooks() {
 	return useQuery({
@@ -39,7 +39,7 @@ function useBook(id: string) {
 /**
  * Book content (large text, cover base64, chapters JSON) by id.
  * Kept in a separate query from metadata so the heavy content blob is only
- * loaded when entering the reader — not when rendering the library grid.
+ * loaded when entering the reader - not when rendering the library grid.
  * Enabled only when `id` is non-empty.
  */
 function useBookContent(id: string) {
@@ -64,7 +64,7 @@ function useBookContent(id: string) {
  *
  * The `onProgress` callback is passed as part of mutation variables so the
  * caller can drive a progress bar during EPUB spine processing.
- * `importBook` throws `Error("CANCELLED")` if the user dismissed the picker —
+ * `importBook` throws `Error("CANCELLED")` if the user dismissed the picker -
  * this is treated as a non-error and silently ignored in `onError`.
  */
 function useImportBook() {

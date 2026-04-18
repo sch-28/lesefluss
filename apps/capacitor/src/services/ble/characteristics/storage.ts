@@ -1,5 +1,5 @@
 /**
- * Storage characteristic — read-only flash storage info.
+ * Storage characteristic - read-only flash storage info.
  * Characteristic 4: R
  *
  * Returns the total and free bytes on the ESP32 flash filesystem.

@@ -7,7 +7,7 @@ export const Route = createFileRoute("/imprint/")({
 	component: ImprintPage,
 	head: () =>
 		seo({
-			title: "Imprint — Lesefluss",
+			title: "Imprint - Lesefluss",
 			description: "Legal information about the operator of lesefluss.app under § 5 TMG.",
 			path: "/imprint",
 		}),

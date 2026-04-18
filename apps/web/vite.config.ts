@@ -8,7 +8,7 @@ const UMAMI_URL = process.env.UMAMI_URL ?? "";
 const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL ?? "";
 
 // BETTER_AUTH_URL is same-origin in prod (covered by 'self') but differs in dev
-// (e.g. http://localhost:3000 while the page is loaded from another host) — listing
+// (e.g. http://localhost:3000 while the page is loaded from another host) - listing
 // it keeps auth calls allowed in both environments.
 const csp = [
 	"default-src 'self'",
@@ -23,7 +23,7 @@ const csp = [
 	"form-action 'self'",
 ].join("; ");
 
-// /app/* embeds the capacitor SPA which uses sql.js (WebAssembly + eval) — needs both
+// /app/* embeds the capacitor SPA which uses sql.js (WebAssembly + eval) - needs both
 // wasm-unsafe-eval and unsafe-eval. Applied only to app routes to keep the main site strict.
 const appCsp = [
 	"default-src 'self'",

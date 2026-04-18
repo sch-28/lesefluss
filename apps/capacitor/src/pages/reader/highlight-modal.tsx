@@ -1,8 +1,8 @@
 /**
- * HighlightModal — bottom sheet for viewing and editing an existing highlight.
+ * HighlightModal - bottom sheet for viewing and editing an existing highlight.
  *
  * Auto-saves: color change saves immediately; note saves on blur.
- * No explicit Save/Cancel — sheet is dismissed by dragging down.
+ * No explicit Save/Cancel - sheet is dismissed by dragging down.
  * Only action button is Delete.
  */
 
@@ -43,7 +43,7 @@ const HighlightModal: React.FC<HighlightModalProps> = ({
 	const [color, setColor] = useState<HighlightColor>("yellow");
 	const [note, setNote] = useState("");
 	// Seed local state whenever a different highlight opens.
-	// Intentionally keyed on id only — re-seeding on every field change would overwrite in-progress edits.
+	// Intentionally keyed on id only - re-seeding on every field change would overwrite in-progress edits.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: highlight?.id is the intentional narrow dep
 	useEffect(() => {
 		if (highlight) {
@@ -120,7 +120,7 @@ const HighlightModal: React.FC<HighlightModalProps> = ({
 					</button>
 				</div>
 
-				{/* Note textarea — auto-saves on blur */}
+				{/* Note textarea - auto-saves on blur */}
 				<IonTextarea
 					value={note}
 					onIonInput={(e) => setNote(e.detail.value ?? "")}

@@ -15,7 +15,7 @@ export const Route = createFileRoute("/profile/")({
 	},
 	head: () =>
 		seo({
-			title: "Profile — Lesefluss",
+			title: "Profile - Lesefluss",
 			isNoindex: true,
 		}),
 	component: ProfilePage,

@@ -12,7 +12,7 @@ export const cors = createMiddleware().server(async ({ next }) => {
 	const request = getRequest();
 	const origin = request.headers.get("origin");
 
-	// OPTIONS preflight — short-circuit
+	// OPTIONS preflight - short-circuit
 	if (request.method === "OPTIONS" && origin && ALLOWED_ORIGINS_SET.has(origin)) {
 		throw new Response(null, {
 			status: 204,

@@ -8,11 +8,11 @@ import { faqPageSchema } from "~/utils/structured-data";
 const troubleshootingItems = [
 	{
 		q: "The app can't find my ESP32 device",
-		a: "Make sure Bluetooth is enabled on your phone and the device is powered on. BLE advertising stops during Wi-Fi mode — if the device's web UI is open, close it. Scan range is roughly 10 metres.",
+		a: "Make sure Bluetooth is enabled on your phone and the device is powered on. BLE advertising stops during Wi-Fi mode - if the device's web UI is open, close it. Scan range is roughly 10 metres.",
 	},
 	{
 		q: "Book upload fails or gets stuck",
-		a: "Stay close to the device during transfer (within 1–2 m). The AMOLED firmware has smaller BLE buffers than ST7789 — if you're on AMOLED and seeing frequent failures, try reducing the transfer window in settings. This will be fixed in a future firmware update.",
+		a: "Stay close to the device during transfer (within 1–2 m). The AMOLED firmware has smaller BLE buffers than ST7789 - if you're on AMOLED and seeing frequent failures, try reducing the transfer window in settings. This will be fixed in a future firmware update.",
 	},
 	{
 		q: "EPUB import shows no chapters",
@@ -20,7 +20,7 @@ const troubleshootingItems = [
 	},
 	{
 		q: "The device doesn't wake from sleep",
-		a: "Press the physical button. Deep sleep is triggered after a configurable idle timeout. If the button doesn't respond, the battery may be depleted — charge via USB.",
+		a: "Press the physical button. Deep sleep is triggered after a configurable idle timeout. If the button doesn't respond, the battery may be depleted - charge via USB.",
 	},
 	{
 		q: "Firmware upload fails with mpremote",
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/docs/")({
 	component: DocsPage,
 	head: () => ({
 		...seo({
-			title: "Docs — Lesefluss",
+			title: "Docs - Lesefluss",
 			description:
 				"Getting started with Lesefluss: importing books, building the ESP32 reader, connecting your device, and troubleshooting.",
 			path: "/docs",
@@ -51,7 +51,7 @@ function buildSections(hideGithub: boolean) {
 				<div className="space-y-4 text-muted-foreground leading-relaxed">
 					<p>
 						Lesefluss is a free Android app for speed reading your book library. No account is
-						required — download the APK or install from the Play Store and start importing books.
+						required - download the APK or install from the Play Store and start importing books.
 					</p>
 					<h4 className="font-semibold text-foreground">Install the app</h4>
 					<ol className="list-inside list-decimal space-y-2 text-sm">
@@ -73,7 +73,7 @@ function buildSections(hideGithub: boolean) {
 								</>
 							)}
 						</li>
-						<li>Open the app — you'll land on the Library screen.</li>
+						<li>Open the app - you'll land on the Library screen.</li>
 						<li>
 							Tap the <strong className="text-foreground">+</strong> button to import your first
 							book.
@@ -83,7 +83,7 @@ function buildSections(hideGithub: boolean) {
 					<p className="text-sm">
 						Tap a book to open it, then tap <strong className="text-foreground">RSVP</strong> in the
 						toolbar to enter speed reading mode. Adjust WPM from the settings slider. The default is
-						350 WPM — a comfortable starting point.
+						350 WPM - a comfortable starting point.
 					</p>
 				</div>
 			),
@@ -95,18 +95,18 @@ function buildSections(hideGithub: boolean) {
 			content: (
 				<div className="space-y-4 text-muted-foreground leading-relaxed">
 					<p>
-						The app supports EPUB and plain TXT files. EPUB is recommended — chapters, TOC, and
+						The app supports EPUB and plain TXT files. EPUB is recommended - chapters, TOC, and
 						metadata are extracted automatically.
 					</p>
 					<h4 className="font-semibold text-foreground">Where to get books</h4>
 					<ul className="space-y-1.5 text-sm">
 						{[
-							["Project Gutenberg", "gutenberg.org — 70 000+ public domain books, EPUB + TXT"],
-							["Standard Ebooks", "standardebooks.org — beautifully formatted public domain EPUB"],
+							["Project Gutenberg", "gutenberg.org - 70 000+ public domain books, EPUB + TXT"],
+							["Standard Ebooks", "standardebooks.org - beautifully formatted public domain EPUB"],
 							["Your own files", "Any .epub or .txt file from your device storage"],
 						].map(([name, desc]) => (
 							<li key={name} className="flex gap-2">
-								<span className="shrink-0 text-muted-foreground/50">—</span>
+								<span className="shrink-0 text-muted-foreground/50">-</span>
 								<span>
 									<strong className="text-foreground">{name}</strong> · {desc}
 								</span>
@@ -208,7 +208,7 @@ function buildSections(hideGithub: boolean) {
 							bar.
 						</li>
 						<li>
-							Tap <strong className="text-foreground">Scan</strong> — the device appears as{" "}
+							Tap <strong className="text-foreground">Scan</strong> - the device appears as{" "}
 							<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">
 								Lesefluss
 							</code>
@@ -226,7 +226,7 @@ function buildSections(hideGithub: boolean) {
 						<li>Once complete, the device auto-starts reading.</li>
 					</ol>
 					<p className="text-sm">
-						Position is synced bidirectionally — reading on either device keeps them in step.
+						Position is synced bidirectionally - reading on either device keeps them in step.
 					</p>
 				</div>
 			),
@@ -283,7 +283,7 @@ function DocsPage() {
 
 			<Tabs value={active} onValueChange={setActive}>
 				<div className="flex gap-8 lg:gap-12">
-					{/* Desktop sidebar — single TabsList */}
+					{/* Desktop sidebar - single TabsList */}
 					<aside className="hidden w-52 shrink-0 lg:block">
 						<TabsList className="sticky top-24 h-auto w-full flex-col gap-1 bg-transparent p-0">
 							{sections.map((s) => (
@@ -300,7 +300,7 @@ function DocsPage() {
 					</aside>
 
 					<main className="min-w-0 flex-1">
-						{/* Mobile nav — plain buttons, not a second TabsList */}
+						{/* Mobile nav - plain buttons, not a second TabsList */}
 						<div className="mb-6 flex flex-wrap gap-2 lg:hidden" role="tablist">
 							{sections.map((s) => (
 								<button

@@ -37,7 +37,7 @@ interface BleConfig {
 
 const config: BleConfig = JSON.parse(readFileSync(configPath, "utf-8"));
 
-const py = `# Auto-generated from packages/ble-config/config.json — DO NOT EDIT
+const py = `# Auto-generated from packages/ble-config/config.json - DO NOT EDIT
 # Re-generate by running: pnpm setup (from monorepo root)
 
 PROTOCOL_VERSION = ${config.protocol_version}

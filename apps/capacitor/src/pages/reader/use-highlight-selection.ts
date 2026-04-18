@@ -1,5 +1,5 @@
 /**
- * useHighlightSelection — owns all highlight + selection state for the reader.
+ * useHighlightSelection - owns all highlight + selection state for the reader.
  *
  * Covers: the selection-mode state machine (anchor/end/color/note), the floating
  * toolbar + two drag handles, the edit-existing-highlight modal, and the list modal.
@@ -270,7 +270,7 @@ export function useHighlightSelection({
 		}
 	}, [isSelecting, syncHandlePositions]);
 
-	// ── Handle drag — shared factory for start/end handles ────────────────
+	// ── Handle drag - shared factory for start/end handles ────────────────
 	// `isStartHandle=true`  → we're dragging the min-offset boundary
 	// `isStartHandle=false` → we're dragging the max-offset boundary
 	// The role (anchor vs end) of each state var is fixed at drag-begin so a
@@ -315,7 +315,7 @@ export function useHighlightSelection({
 		[makeHandleDragHandler],
 	);
 
-	// ── Selection auto-save — triggered when the user picks a color ──────
+	// ── Selection auto-save - triggered when the user picks a color ──────
 	// First pick: creates the highlight. Subsequent picks: update color.
 	// Toolbar stays open after saving so the user can adjust or add a note.
 	const handleSelectionColorChange = useCallback(
@@ -359,7 +359,7 @@ export function useHighlightSelection({
 		],
 	);
 
-	// ── Note save — called when the note modal closes ─────────────────────
+	// ── Note save - called when the note modal closes ─────────────────────
 	const handleSelectionNoteDone = useCallback(() => {
 		setNoteInputOpen(false);
 		if (selectionSavedId && bookId) {

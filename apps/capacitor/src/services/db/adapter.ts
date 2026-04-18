@@ -29,7 +29,7 @@ export function createDrizzleAdapter(getConn: () => SQLiteDBConnection | null) {
 	return drizzle<typeof schema>(
 		async (sql, params, method) => {
 			const conn = getConn();
-			if (!conn) throw new Error("Database not initialised — call initDb() first");
+			if (!conn) throw new Error("Database not initialised - call initDb() first");
 
 			const safeParams = sanitizeParams(params as unknown[]);
 
@@ -45,7 +45,7 @@ export function createDrizzleAdapter(getConn: () => SQLiteDBConnection | null) {
 				return { rows: rows.length > 0 ? Object.values(rows[0]) : [] };
 			}
 
-			// "all" — return each row as a value array
+			// "all" - return each row as a value array
 			return { rows: rows.map((row) => Object.values(row)) };
 		},
 		{ schema },

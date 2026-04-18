@@ -6,7 +6,7 @@ export const Route = createFileRoute("/privacy/")({
 	component: PrivacyPage,
 	head: () =>
 		seo({
-			title: "Privacy — Lesefluss",
+			title: "Privacy - Lesefluss",
 			description: "What data Lesefluss collects, how it's used, and how to delete it.",
 			path: "/privacy",
 		}),
@@ -19,7 +19,7 @@ function PrivacyPage() {
 				<h2 className="mb-3 font-semibold text-foreground text-xl">TL;DR</h2>
 				<p>
 					Lesefluss is designed to collect as little as possible. The Android app works fully
-					offline — no account needed. This website uses cookieless analytics and sets no tracking
+					offline - no account needed. This website uses cookieless analytics and sets no tracking
 					cookies. The only cookie you may receive is a login session cookie, and only if you sign
 					in to use cloud sync.
 				</p>
@@ -40,7 +40,7 @@ function PrivacyPage() {
 					</a>{" "}
 					instance running on our own server. No cookies are set, no personal data is stored, and
 					data never leaves our infrastructure. Recorded fields: page URL, referrer, browser, OS,
-					device type, country (derived from IP — the IP itself is never saved).
+					device type, country (derived from IP - the IP itself is never saved).
 				</p>
 
 				<h3 className="mt-6 mb-2 font-medium text-foreground">Session cookies</h3>
@@ -73,29 +73,29 @@ function PrivacyPage() {
 				<p>Cloud sync is opt-in. When you create an account, we store:</p>
 				<ul className="mt-3 space-y-2 text-sm">
 					<li className="flex gap-2">
-						<span className="shrink-0 text-muted-foreground/50">—</span>
+						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>
 							<strong className="text-foreground">Account</strong>: your email, a hashed password
 							(or OAuth provider ID), and a display name.
 						</span>
 					</li>
 					<li className="flex gap-2">
-						<span className="shrink-0 text-muted-foreground/50">—</span>
+						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>
 							<strong className="text-foreground">Books</strong>: title, author, plain-text content,
-							cover image, chapter list, word count, and your reading position — everything the app
+							cover image, chapter list, word count, and your reading position - everything the app
 							needs to restore your library on a new device.
 						</span>
 					</li>
 					<li className="flex gap-2">
-						<span className="shrink-0 text-muted-foreground/50">—</span>
+						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>
 							<strong className="text-foreground">Settings</strong>: RSVP and reader preferences
 							(speed, theme, font, margins, etc.).
 						</span>
 					</li>
 					<li className="flex gap-2">
-						<span className="shrink-0 text-muted-foreground/50">—</span>
+						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>
 							<strong className="text-foreground">Highlights</strong>: the text ranges you
 							highlight, their color, and optional notes.
@@ -122,16 +122,16 @@ function PrivacyPage() {
 				<h2 className="mb-3 font-semibold text-foreground text-xl">Third parties</h2>
 				<ul className="space-y-2 text-sm">
 					<li className="flex gap-2">
-						<span className="shrink-0 text-muted-foreground/50">—</span>
+						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>
-							<strong className="text-foreground">GitHub</strong> — if you download the APK or view
+							<strong className="text-foreground">GitHub</strong> - if you download the APK or view
 							the source, GitHub processes the request under its own privacy policy.
 						</span>
 					</li>
 					<li className="flex gap-2">
-						<span className="shrink-0 text-muted-foreground/50">—</span>
+						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>
-							<strong className="text-foreground">Dictionary lookups</strong> — in-app word lookups
+							<strong className="text-foreground">Dictionary lookups</strong> - in-app word lookups
 							query a public dictionary API directly from your device. No account or identifier is
 							sent.
 						</span>

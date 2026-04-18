@@ -2,7 +2,7 @@ import { z } from "zod";
 import { SETTING_CONSTRAINTS } from "./settings";
 
 // ---------------------------------------------------------------------------
-// Zod schemas — runtime validation on server, type source-of-truth for both apps
+// Zod schemas - runtime validation on server, type source-of-truth for both apps
 // ---------------------------------------------------------------------------
 
 export const SyncBookSchema = z.object({
@@ -12,9 +12,9 @@ export const SyncBookSchema = z.object({
 	fileSize: z.number().int().nonnegative().nullable(),
 	wordCount: z.number().int().nonnegative().nullable(),
 	position: z.number().int().nonnegative(),
-	content: z.string().max(20_000_000).nullable().optional(), // full plain text — only sent for new books
-	coverImage: z.string().max(5_000_000).nullable().optional(), // base64 cover — only sent for new books
-	chapters: z.string().max(500_000).nullable().optional(), // JSON chapters — only sent for new books
+	content: z.string().max(20_000_000).nullable().optional(), // full plain text - only sent for new books
+	coverImage: z.string().max(5_000_000).nullable().optional(), // base64 cover - only sent for new books
+	chapters: z.string().max(500_000).nullable().optional(), // JSON chapters - only sent for new books
 	updatedAt: z.number().int().nonnegative(), // Unix ms
 });
 
@@ -98,7 +98,7 @@ export type SyncSettings = z.infer<typeof SyncSettingsSchema>;
 export type SyncHighlight = z.infer<typeof SyncHighlightSchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 
-/** Server response shape — same as SyncPayload but settings is always present or null */
+/** Server response shape - same as SyncPayload but settings is always present or null */
 export type SyncResponse = {
 	books: SyncBook[];
 	settings: SyncSettings | null;

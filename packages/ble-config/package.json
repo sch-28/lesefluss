@@ -1,7 +1,7 @@
 {
 	"name": "@lesefluss/ble-config",
 	"version": "1.0.0",
-	"description": "Shared BLE configuration for Lesefluss — single source of truth for UUIDs and protocol constants",
+	"description": "Shared BLE configuration for Lesefluss - single source of truth for UUIDs and protocol constants",
 	"type": "module",
 	"main": "index.ts",
 	"scripts": {

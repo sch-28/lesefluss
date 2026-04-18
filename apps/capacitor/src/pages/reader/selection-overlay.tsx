@@ -1,11 +1,11 @@
 /**
- * SelectionOverlay — renders the floating selection toolbar + two drag handles.
+ * SelectionOverlay - renders the floating selection toolbar + two drag handles.
  *
  * Positions are set imperatively by `useHighlightSelection.syncHandlePositions`
- * (via the refs passed in), so the JSX is lean — just the shell elements.
+ * (via the refs passed in), so the JSX is lean - just the shell elements.
  *
  * Rendered in a portal on `document.body` because Ionic's IonPage uses
- * `transform` for page transitions — that breaks `position: fixed` children
+ * `transform` for page transitions - that breaks `position: fixed` children
  * (they end up relative to the transformed ancestor instead of the viewport),
  * which on desktop (sidebar offset) manifests as a ~220px horizontal offset.
  */

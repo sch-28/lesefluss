@@ -131,7 +131,7 @@ class TextStorage:
 
 
 class WordReader:
-    """Streaming word reader — never loads full file into RAM."""
+    """Streaming word reader - never loads full file into RAM."""
 
     def __init__(self, filename):
         self.filename = filename
@@ -166,7 +166,7 @@ class WordReader:
         for i in range(1, min(4, len(raw) + 1)):
             b = raw[-i]
             if b >= 0xC0:
-                # Leading byte found — check if sequence is complete.
+                # Leading byte found - check if sequence is complete.
                 if b < 0xE0:
                     expected = 2
                 elif b < 0xF0:
@@ -177,7 +177,7 @@ class WordReader:
                     trim = i
                 break
             elif b < 0x80:
-                break  # ASCII — no incomplete sequence
+                break  # ASCII - no incomplete sequence
         if trim:
             self._carry = raw[-trim:]
             raw = raw[:-trim]

@@ -26,7 +26,7 @@ _QUAD_TABLE = bytearray([
     0,   1, -1,  0,   # prev 11
 ])
 
-# Minimum ms between counted transitions — rejects bounce pulses.
+# Minimum ms between counted transitions - rejects bounce pulses.
 # Set high (80ms) since one detent = one word and no one spins fast.
 _DEBOUNCE_MS = 80
 
@@ -42,28 +42,28 @@ class RotaryEncoderHandler:
         # Initialise prev AB from current pin state
         self._state[2] = (self._clk.value() << 1) | self._dt.value()
 
-        # Last time a valid transition was counted (ms) — for debounce
+        # Last time a valid transition was counted (ms) - for debounce
         self._last_ms = time.ticks_ms()
 
-        # Button — reuse the exact same ButtonHandler logic as BOOT button
+        # Button - reuse the exact same ButtonHandler logic as BOOT button
         self._button = ButtonHandler(pin=config.PIN_ENCODER_SW)
 
         self._clk.irq(trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING, handler=self._on_edge)
         self._dt.irq( trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING, handler=self._on_edge)
 
     # ------------------------------------------------------------------
-    # ISR handler — full quadrature decode on both pins, both edges
+    # ISR handler - full quadrature decode on both pins, both edges
     # ------------------------------------------------------------------
 
     def _on_edge(self, pin):
         cur = (self._clk.value() << 1) | self._dt.value()
         prev = self._state[2]
         if cur == prev:
-            return  # no state change — spurious IRQ, ignore
+            return  # no state change - spurious IRQ, ignore
         self._state[2] = cur
         now = time.ticks_ms()
         if time.ticks_diff(now, self._last_ms) < _DEBOUNCE_MS:
-            return  # too fast — bounce, ignore
+            return  # too fast - bounce, ignore
         delta = _QUAD_TABLE[(prev << 2) | cur]
         if delta == 1:
             self._state[0] += 1   # CW

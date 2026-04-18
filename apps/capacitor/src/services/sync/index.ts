@@ -106,7 +106,7 @@ export async function signOut(): Promise<void> {
 		try {
 			await syncAuthClient.signOut();
 		} catch {
-			// Ignore — clearing local token is enough
+			// Ignore - clearing local token is enough
 		}
 	}
 	await clearToken();
@@ -207,7 +207,7 @@ function highlightToSync(h: Highlight): SyncHighlight {
 }
 
 // ---------------------------------------------------------------------------
-// Sync lock — prevents concurrent pull/push from racing
+// Sync lock - prevents concurrent pull/push from racing
 // ---------------------------------------------------------------------------
 
 let _syncQueue: Promise<void> = Promise.resolve();
@@ -266,7 +266,7 @@ export async function pullSync(): Promise<Set<string>> {
 			}
 
 			if (!local) {
-				// New book from server — add locally if it has content
+				// New book from server - add locally if it has content
 				if (serverBook.content) {
 					await queries.addBookWithContent(
 						{
@@ -341,7 +341,7 @@ export async function pullSync(): Promise<Set<string>> {
 
 		for (const serverHL of data.highlights) {
 			if (serverHL.deleted) {
-				// Server says deleted — remove locally if exists
+				// Server says deleted - remove locally if exists
 				if (localHighlightMap.has(serverHL.highlightId)) {
 					await queries.deleteHighlight(serverHL.highlightId);
 					changed = true;
@@ -354,7 +354,7 @@ export async function pullSync(): Promise<Set<string>> {
 
 			const local = localHighlightMap.get(serverHL.highlightId);
 			if (!local) {
-				// New highlight from server — add locally
+				// New highlight from server - add locally
 				await queries.addHighlight({
 					id: serverHL.highlightId,
 					bookId: serverHL.bookId,
@@ -368,7 +368,7 @@ export async function pullSync(): Promise<Set<string>> {
 				});
 				changed = true;
 			} else if (serverHL.updatedAt > local.updatedAt) {
-				// Server is newer — update locally
+				// Server is newer - update locally
 				await queries.updateHighlight(serverHL.highlightId, {
 					color: serverHL.color,
 					note: serverHL.note,
@@ -394,7 +394,7 @@ export async function pullSync(): Promise<Set<string>> {
 // Push (POST /api/sync with full snapshot)
 // ---------------------------------------------------------------------------
 
-/** @param serverHasContent bookIds the server already has content for — skip content for those */
+/** @param serverHasContent bookIds the server already has content for - skip content for those */
 export async function pushSync(serverHasContent: Set<string> = new Set()): Promise<void> {
 	if (!SYNC_ENABLED) return;
 
@@ -453,7 +453,7 @@ export async function fullSync(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Debounced push — callable from mutation hooks
+// Debounced push - callable from mutation hooks
 // ---------------------------------------------------------------------------
 
 let _pushTimer: ReturnType<typeof setTimeout> | null = null;

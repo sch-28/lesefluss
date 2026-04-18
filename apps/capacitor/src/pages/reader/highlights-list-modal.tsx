@@ -1,5 +1,5 @@
 /**
- * HighlightsListModal — sheet showing all highlights for the current book.
+ * HighlightsListModal - sheet showing all highlights for the current book.
  *
  * Each row shows a color dot, text snippet, and note preview.
  * Tap a row to jump to that position in the text.
@@ -29,7 +29,7 @@ const _decoder = new TextDecoder();
 interface HighlightsListModalProps {
 	isOpen: boolean;
 	highlights: Highlight[];
-	/** Full book content — used to extract snippet text for each highlight. */
+	/** Full book content - used to extract snippet text for each highlight. */
 	content: string;
 	onClose: () => void;
 	onJump: (byteOffset: number) => void;
@@ -41,7 +41,7 @@ interface HighlightsListModalProps {
  * Truncates to ~60 chars for display.
  */
 function extractSnippet(bytes: Uint8Array, startOffset: number, endOffset: number): string {
-	// Find the end of the last word — scan forward from endOffset to end of word
+	// Find the end of the last word - scan forward from endOffset to end of word
 	let end = Math.min(endOffset + 30, bytes.length); // allow up to 30 extra bytes for tail of last word
 	// Find the first whitespace after endOffset to snap to word boundary
 	while (end < bytes.length && bytes[end] !== 32 && bytes[end] !== 10) {
@@ -60,7 +60,7 @@ const HighlightsListModal: React.FC<HighlightsListModalProps> = ({
 	onJump,
 	theme,
 }) => {
-	// Encode once per content change — not once per highlight per render
+	// Encode once per content change - not once per highlight per render
 	const contentBytes = useMemo(() => _encoder.encode(content), [content]);
 
 	return (

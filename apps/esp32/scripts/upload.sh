@@ -1,7 +1,7 @@
 #!/bin/bash
 # Upload script for Lesefluss
 # Compiles src/**/*.py to .mpy bytecode, then pushes everything to the device.
-# Does NOT reset the device — use run.sh to start the app.
+# Does NOT reset the device - use run.sh to start the app.
 #
 # Usage: upload.sh --board ST7789|AMOLED [--port /dev/ttyUSB0] [drivers]
 
@@ -130,7 +130,7 @@ def rmtree(d):
 rmtree('src')
 "
 
-# Root files (entry points — must stay as .py)
+# Root files (entry points - must stay as .py)
 for f in boot.py main.py; do
     echo -e "  ${GREEN}↑${NC} $f"
     mpremote connect "$PORT" fs cp "$f" ":"

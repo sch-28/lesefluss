@@ -40,7 +40,7 @@ const PHASE_TITLE: Record<Phase, string> = {
 interface Props {
 	isOpen: boolean;
 	book: Book | null;
-	/** Book currently on the device, if any — shown as replacement warning. */
+	/** Book currently on the device, if any - shown as replacement warning. */
 	activeBook: Book | null;
 	onDismiss: () => void;
 }
@@ -68,7 +68,7 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 		}
 	}, [isOpen]);
 
-	// Elapsed ticker — only runs while transferring
+	// Elapsed ticker - only runs while transferring
 	useEffect(() => {
 		if (phase === "transferring") {
 			timerRef.current = setInterval(() => {
@@ -87,7 +87,7 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 		};
 	}, [phase]);
 
-	// Screen wake lock — keep display on while transferring
+	// Screen wake lock - keep display on while transferring
 	useEffect(() => {
 		if (phase === "transferring") {
 			if ("wakeLock" in navigator) {

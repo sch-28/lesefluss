@@ -132,10 +132,10 @@ const AppTabs: React.FC = () => {
 /**
  * Registers exit-app behaviour on the hardware back button via Ionic's
  * ionBackButton event system.  Ionic already handles normal back-navigation
- * at priority 0 — we only need to handle the "nothing left to pop" case
+ * at priority 0 - we only need to handle the "nothing left to pop" case
  * at a lower priority (-1) to exit the app.
  *
- * IMPORTANT: Do NOT use CapacitorApp.addListener("backButton") directly —
+ * IMPORTANT: Do NOT use CapacitorApp.addListener("backButton") directly -
  * that fires at the Capacitor level *before* Ionic's event system and
  * causes a double-pop (swipe back + history.back() = two pops).
  */

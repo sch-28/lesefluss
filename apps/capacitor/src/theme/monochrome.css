@@ -107,7 +107,7 @@ ion-content.no-header-content {
 }
 
 /* ── App-wide dark theme ── */
-/* Applied via body.dark — set by ThemeContext on every theme toggle. */
+/* Applied via body.dark - set by ThemeContext on every theme toggle. */
 body.dark {
 	--ion-background-color: #1a1a1a;
 	--ion-background-color-rgb: 26, 26, 26;
@@ -269,13 +269,13 @@ body.dark ion-alert {
 	--color: #e4e4e4;
 }
 
-/* Tab bar — override the hard-coded component-level values */
+/* Tab bar - override the hard-coded component-level values */
 body.dark ion-tab-bar {
 	--background: #1a1a1a;
 	border-top-color: #333333;
 }
 
-/* Buttons — only target expand="block" action buttons, not icon-only toolbar buttons */
+/* Buttons - only target expand="block" action buttons, not icon-only toolbar buttons */
 body.dark ion-button[expand] {
 	--background: #e4e4e4;
 	--background-activated: #c8c8c8;
@@ -291,7 +291,7 @@ body.dark ion-button[expand][fill="outline"] {
 	--background-hover: rgba(228, 228, 228, 0.1);
 }
 
-/* Cards — override hard-coded border */
+/* Cards - override hard-coded border */
 body.dark ion-card {
 	border-color: #333333;
 }
@@ -377,7 +377,7 @@ ion-tab-bar.tab-bar-hidden {
 
 /* While the reader is open, force-hide the tab bar regardless of Ionic's
  * internal shadow-DOM :host(.tab-bar-hidden) toggling on keyboard events.
- * External author styles beat shadow :host — no flash, pure CSS. */
+ * External author styles beat shadow :host - no flash, pure CSS. */
 body.reader-open ion-tab-bar {
 	display: none;
 }
@@ -570,7 +570,7 @@ body.dark ion-tab-button {
 
 /* Modal sheet: make the drag handle + sheet background match the theme.
  * Ionic portals modals to document.body, so the reader-theme-* class sits
- * on the ion-modal element itself — selectors must be ion-modal.reader-theme-*
+ * on the ion-modal element itself - selectors must be ion-modal.reader-theme-*
  * (not .reader-theme-* ion-modal). */
 ion-modal.reader-theme-dark,
 ion-modal.reader-theme-dark ion-header,
@@ -643,10 +643,10 @@ ion-modal.reader-theme-sepia ion-item {
 .reader-paragraph span {
 	cursor: pointer;
 	border-radius: 2px;
-	/* No transition — removing it eliminates reflow cascade on every scroll event */
+	/* No transition - removing it eliminates reflow cascade on every scroll event */
 }
 
-/* Active word highlight — subtle underline, no layout shift */
+/* Active word highlight - subtle underline, no layout shift */
 .reader-paragraph span.word-active {
 	text-decoration: underline;
 	text-decoration-thickness: 2px;
@@ -873,7 +873,7 @@ ion-modal.reader-theme-sepia ion-item {
 	border-color: var(--ion-text-color, #000000);
 }
 
-/* Hide the native 'x' clear button — we clear on close */
+/* Hide the native 'x' clear button - we clear on close */
 .search-input::-webkit-search-cancel-button {
 	-webkit-appearance: none;
 }
@@ -910,7 +910,7 @@ ion-modal.reader-theme-sepia ion-item {
 
 .search-match {
 	font-weight: 700;
-	/* No color change — stays readable in both reader themes */
+	/* No color change - stays readable in both reader themes */
 }
 
 .search-pct {
@@ -1003,7 +1003,7 @@ ion-modal.reader-theme-sepia ion-item {
 
 /* ─── Highlights ─────────────────────────────────────────────────────────── */
 
-/* Highlight background colors — 35% opacity works on both dark and light themes */
+/* Highlight background colors - 35% opacity works on both dark and light themes */
 .word-highlight-yellow {
 	background: rgba(255, 235, 59, 0.35);
 	border-radius: 2px;
@@ -1050,7 +1050,7 @@ ion-modal.reader-theme-sepia ion-item {
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Plain icon buttons inside the selection toolbar — no background, no border */
+/* Plain icon buttons inside the selection toolbar - no background, no border */
 .selection-toolbar-btn {
 	background: none;
 	border: none;
@@ -1118,7 +1118,7 @@ ion-modal.reader-theme-sepia ion-item {
 	user-select: none;
 }
 
-/* Vertical bar — runs the height of the target word */
+/* Vertical bar - runs the height of the target word */
 .selection-handle::before {
 	content: "";
 	display: block;
@@ -1474,7 +1474,7 @@ ion-popover.appearance-popover {
 		flex-shrink: 0;
 	}
 
-	/* Floating pill — straddles the sidebar's right edge. Position tracks
+	/* Floating pill - straddles the sidebar's right edge. Position tracks
 	   --sidebar-width so the button smoothly follows the collapse animation. */
 	.desktop-sidebar-toggle {
 		position: fixed;
@@ -1504,7 +1504,7 @@ ion-popover.appearance-popover {
 		color: var(--ion-text-color, #000);
 	}
 
-	/* Collapsed state — labels hidden, icons stay put.
+	/* Collapsed state - labels hidden, icons stay put.
 	   Intentionally NOT re-centering items/brand: changing justify-content or
 	   padding at the same moment the width animates makes icons jump from the
 	   left edge to the (still-wide) container center, then slide back. Keeping
@@ -1524,7 +1524,7 @@ ion-popover.appearance-popover {
 	}
 
 	/* Leave room for the floating sidebar toggle (which extends ~14px into the
-	   main content area) so it doesn't overlap the toolbar's start slot — most
+	   main content area) so it doesn't overlap the toolbar's start slot - most
 	   visible on the reader page where IonBackButton sits there. */
 	ion-router-outlet.desktop-main ion-toolbar ion-buttons[slot="start"] {
 		margin-left: 24px;

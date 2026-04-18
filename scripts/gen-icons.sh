@@ -3,8 +3,8 @@
 # Requires: ImageMagick (magick)
 #
 # Outputs:
-#   apps/web/public/          — favicon.ico, favicon*.png, apple-touch-icon.png, logo.png
-#   apps/capacitor/android/   — mipmap-*/ic_launcher*.png, drawable-*/splash.png
+#   apps/web/public/          - favicon.ico, favicon*.png, apple-touch-icon.png, logo.png
+#   apps/capacitor/android/   - mipmap-*/ic_launcher*.png, drawable-*/splash.png
 
 set -euo pipefail
 
@@ -15,7 +15,7 @@ CAP="$REPO_ROOT/apps/capacitor/public"
 ANDROID="$REPO_ROOT/apps/capacitor/android/app/src/main/res"
 
 # Logo occupies this fraction of the icon/splash canvas (0.0–1.0)
-ICON_LOGO_SCALE=0.50   # launcher icons — logo size relative to canvas (lower = more padding)
+ICON_LOGO_SCALE=0.50   # launcher icons - logo size relative to canvas (lower = more padding)
 SPLASH_LOGO_SCALE=0.35 # splash screen (relative to shorter side)
 ICON_BG="none"
 SPLASH_BG="#ffffff"
@@ -27,7 +27,7 @@ if [ ! -f "$SRC" ]; then
 fi
 
 if ! command -v magick &>/dev/null; then
-  echo "Error: ImageMagick not found — install with: sudo apt install imagemagick"
+  echo "Error: ImageMagick not found - install with: sudo apt install imagemagick"
   exit 1
 fi
 

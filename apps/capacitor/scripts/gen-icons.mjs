@@ -12,9 +12,9 @@
  * Requires: rsvg-convert (sudo apt install librsvg2-bin)
  *
  * Outputs:
- *   ic_launcher + ic_launcher_round  — full icon (background baked in), legacy pre-API 26
- *   ic_launcher_foreground PNGs      — background rect stripped, transparent bg for adaptive icons
- *   drawable-v24/ic_launcher_foreground.xml — Android vector drawable (scales to any size)
+ *   ic_launcher + ic_launcher_round  - full icon (background baked in), legacy pre-API 26
+ *   ic_launcher_foreground PNGs      - background rect stripped, transparent bg for adaptive icons
+ *   drawable-v24/ic_launcher_foreground.xml - Android vector drawable (scales to any size)
  */
 
 import { execSync } from "node:child_process";
@@ -91,13 +91,13 @@ const s = (n) => (n * scale).toFixed(5);
 // Extract computed path data from the book shape. The SVG uses a transform:
 // matrix(0.67675724,0,0,0.636341,165.29342,172.85054) on the path.
 // We bake that transform in by applying it to the coordinate space ourselves
-// via the SVG viewBox — easier to just re-embed the original SVG elements
+// via the SVG viewBox - easier to just re-embed the original SVG elements
 // scaled to 108×108 using a nested <svg> trick in the vector drawable.
 //
 // Android Vector Drawable doesn't support <image> or nested <svg>, so we
 // translate each element manually.
 
-// Book body path — original d with transform baked in via scale
+// Book body path - original d with transform baked in via scale
 // Original transform: matrix(0.67675724,0,0,0.636341,165.29342,172.85054)
 // Combined with our 1024→108 scale: multiply each coordinate accordingly
 const mx = 0.67675724;

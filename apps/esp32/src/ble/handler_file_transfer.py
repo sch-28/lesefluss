@@ -18,7 +18,7 @@ On ACK:END  → book.tmp renamed to book.txt, position.txt reset to 0,
               `completed` flag set so main loop reloads the reader.
 On any error → book.tmp deleted, state reset (app must restart from START).
 
-Memory strategy: each chunk is decoded and written to book.tmp immediately —
+Memory strategy: each chunk is decoded and written to book.tmp immediately -
 nothing accumulates in RAM beyond a single chunk at a time.
 """
 
@@ -40,7 +40,7 @@ class FileTransferHandler:
             ble:              bluetooth.BLE instance (shared with server)
             handle:           GATT attribute handle for the file_transfer characteristic
             conn_handle_ref:  callable that returns current conn_handle (or None)
-                              — needed so we can notify without coupling to BLEServer
+                              - needed so we can notify without coupling to BLEServer
         """
         self.ble = ble
         self.handle = handle
@@ -110,7 +110,7 @@ class FileTransferHandler:
         self.in_progress = True
         self.temp_file = open(_TEMP_FILE, "wb")
 
-        print(f"[transfer] START — {filename}, {total} bytes")
+        print(f"[transfer] START - {filename}, {total} bytes")
         self._ack("START")
 
     def _handle_chunk(self, msg):
@@ -127,7 +127,7 @@ class FileTransferHandler:
             self._nack("BAD_CHUNK")
             return
 
-        # Sequence check (gaps not supported — app must resend missing chunk)
+        # Sequence check (gaps not supported - app must resend missing chunk)
         if seq != self.next_seq:
             print(f"[transfer] seq mismatch: expected {self.next_seq}, got {seq}")
             self._nack(f"{seq_str}:SEQ_ERR")
@@ -178,7 +178,7 @@ class FileTransferHandler:
             self._abort("END:CLOSE_ERR")
             return
 
-        # Size check — cheap sanity gate before the more expensive CRC comparison
+        # Size check - cheap sanity gate before the more expensive CRC comparison
         if self.bytes_received != self.expected_size:
             print(f"[transfer] size mismatch: got {self.bytes_received}, expected {self.expected_size}")
             self._delete_temp()
@@ -209,7 +209,7 @@ class FileTransferHandler:
                 f.write("0")
         except Exception as e:
             print(f"[transfer] position reset error: {e}")
-            # Non-fatal — book is still committed
+            # Non-fatal - book is still committed
 
         # Write the book ID so the app can verify the right book is on the device
         try:
@@ -219,7 +219,7 @@ class FileTransferHandler:
             print(f"[transfer] book.hash write error: {e}")
             # Non-fatal
 
-        # Write the human-readable title for the home screen (optional — may be "")
+        # Write the human-readable title for the home screen (optional - may be "")
         if self.title:
             try:
                 with open(_TITLE_FILE, "w") as f:
@@ -237,9 +237,9 @@ class FileTransferHandler:
 
         bytes_committed = self.bytes_received
         self._reset()
-        # Set completed AFTER _reset() — _reset() clears it to False
+        # Set completed AFTER _reset() - _reset() clears it to False
         self.completed = True
-        print(f"[transfer] END ok — {bytes_committed} bytes committed as book.txt")
+        print(f"[transfer] END ok - {bytes_committed} bytes committed as book.txt")
         self._ack("END")
 
     # ------------------------------------------------------------------

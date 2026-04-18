@@ -20,7 +20,7 @@ export const Route = createRootRoute({
 	}),
 	head: () => {
 		const { meta } = seo({
-			title: "Lesefluss — Speed Reading App & Device",
+			title: "Lesefluss - Speed Reading App & Device",
 			description:
 				"Speed reading app for Android. Import EPUB and TXT books, read at up to 1000 WPM, and optionally sync to a pocket-sized ESP32 device.",
 		});

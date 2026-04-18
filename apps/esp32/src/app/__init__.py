@@ -95,7 +95,7 @@ class App:
         now = time.ticks_ms()
 
         if self._display_off:
-            # Display is already off — wait for button or deep sleep.
+            # Display is already off - wait for button or deep sleep.
             if self._any_button_pressed():
                 # Wake display, reset timers.
                 self.display.wakeup()
@@ -253,7 +253,7 @@ class App:
         self.display.shutdown()
         btn = machine.Pin(config.PIN_BOOT_BUTTON, machine.Pin.IN, machine.Pin.PULL_UP)
         if config.HARDWARE == "AMOLED":
-            # ESP32-S3 does not support ext0 wakeup — must use ext1
+            # ESP32-S3 does not support ext0 wakeup - must use ext1
             esp32.wake_on_ext1((btn,), esp32.WAKEUP_ALL_LOW)
         else:
             esp32.wake_on_ext0(btn, esp32.WAKEUP_ALL_LOW)
@@ -305,7 +305,7 @@ class App:
             # Keep activity timer alive so display never auto-shuts off mid-transfer.
             self._last_activity = time.ticks_ms()
             self._display_off = False
-            return True  # skip tick handlers — ignore button presses during transfer
+            return True  # skip tick handlers - ignore button presses during transfer
 
         if self._transferring:
             self._transferring = False
@@ -318,7 +318,7 @@ class App:
                 time.sleep(1)
                 self._show_home()
                 return True
-            # Transfer failed — redraw
+            # Transfer failed - redraw
             if self.state == 'idle':
                 self._show_home()
             else:

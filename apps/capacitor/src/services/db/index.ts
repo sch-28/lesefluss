@@ -20,7 +20,7 @@ export const sqliteConnection = new SQLiteConnection(CapacitorSQLite);
 /**
  * Initialise the SQLite connection and run any pending migrations.
  * Call once at app startup (from DatabaseProvider).
- * Safe to call multiple times (React strict mode, hot reload) — reuses existing connection.
+ * Safe to call multiple times (React strict mode, hot reload) - reuses existing connection.
  * Uses a promise guard so concurrent calls (React Strict Mode double-effect) share one init.
  */
 export async function initDb(): Promise<void> {

@@ -1,5 +1,5 @@
 /**
- * DictionaryModal — bottom sheet showing the definition of a word.
+ * DictionaryModal - bottom sheet showing the definition of a word.
  *
  * Fetches from the Free Dictionary API (no key needed).
  * Results are cached by react-query so the same word won't re-fetch.

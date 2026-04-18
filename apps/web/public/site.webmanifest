@@ -1,7 +1,7 @@
 {
 	"name": "Lesefluss",
 	"short_name": "Lesefluss",
-	"description": "Speed reading app & device — read EPUB and TXT books at up to 1000 WPM.",
+	"description": "Speed reading app & device - read EPUB and TXT books at up to 1000 WPM.",
 	"start_url": "/",
 	"scope": "/",
 	"lang": "en",

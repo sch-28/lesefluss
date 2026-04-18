@@ -10,7 +10,7 @@ try:
     print("Dev mode enabled - auto-start disabled")
     print("Delete 'devmode' file via web interface to enable auto-start")
     
-    # Show dev mode message on display (ST7789 only — AMOLED keeps screen off to avoid burn-in)
+    # Show dev mode message on display (ST7789 only - AMOLED keeps screen off to avoid burn-in)
     try:
         import sys
         sys.path.append('/src')

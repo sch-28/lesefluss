@@ -9,7 +9,7 @@ export const Route = createFileRoute("/download/")({
 	component: DownloadPage,
 	head: () =>
 		seo({
-			title: "Download — Lesefluss",
+			title: "Download - Lesefluss",
 			description:
 				"Get the Lesefluss speed reading app for Android or open the web app. Import EPUB and TXT, read at up to 1000 WPM, fully offline.",
 			path: "/download",
@@ -75,7 +75,7 @@ function DownloadPage() {
 						WPM. No account required, fully offline.
 					</p>
 					<div className="flex flex-wrap gap-4">
-						{/* Play Store badge — not yet published */}
+						{/* Play Store badge - not yet published */}
 						<div
 							aria-disabled="true"
 							className="inline-flex cursor-not-allowed items-center gap-3 rounded-xl border border-border bg-card/50 px-5 py-3 opacity-50"

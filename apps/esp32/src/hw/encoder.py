@@ -24,13 +24,13 @@ class RotaryEncoderHandler:
         # ISR-safe rotation state: [0]=CW pending, [1]=CCW pending
         self._state = bytearray(2)
 
-        # Button — reuse the exact same ButtonHandler logic as BOOT button
+        # Button - reuse the exact same ButtonHandler logic as BOOT button
         self._button = ButtonHandler(pin=config.PIN_ENCODER_SW)
 
         self._clk.irq(trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING, handler=self._on_clk)
 
     # ------------------------------------------------------------------
-    # ISR handler — rotation only
+    # ISR handler - rotation only
     # ------------------------------------------------------------------
 
     def _on_clk(self, pin):

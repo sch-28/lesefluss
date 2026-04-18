@@ -9,10 +9,10 @@ import { QueryClient } from "@tanstack/react-query";
  *     (e.g. if a service function writes to the DB outside of a hook).
  *
  * Default options:
- *   staleTime: Infinity  — SQLite is local; data never goes stale on its own.
+ *   staleTime: Infinity  - SQLite is local; data never goes stale on its own.
  *                          Refetches only happen on explicit invalidation.
- *   retry: false         — DB failures are not transient; don't hammer a broken DB.
- *   gcTime: Infinity     — keep cached data forever (no background eviction).
+ *   retry: false         - DB failures are not transient; don't hammer a broken DB.
+ *   gcTime: Infinity     - keep cached data forever (no background eviction).
  *                          Fine for a small local dataset.
  */
 export const queryClient = new QueryClient({

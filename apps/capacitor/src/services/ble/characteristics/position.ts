@@ -1,5 +1,5 @@
 /**
- * Position characteristic — bidirectional byte-offset sync.
+ * Position characteristic - bidirectional byte-offset sync.
  * Characteristic 3: R/W
  *
  * Device is authoritative on connect (may have been reading without the phone).

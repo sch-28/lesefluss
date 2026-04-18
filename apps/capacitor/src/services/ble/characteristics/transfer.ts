@@ -1,5 +1,5 @@
 /**
- * File transfer characteristic — chunked book upload with sliding-window pipelining.
+ * File transfer characteristic - chunked book upload with sliding-window pipelining.
  * Characteristic 2: Write + Notify
  *
  * Protocol:
@@ -57,12 +57,12 @@ export async function transferBook(
 
 	log(
 		"transfer",
-		`starting — ${totalBytes} bytes, ${totalChunks} chunks, filename=${filename}, title=${JSON.stringify(title)}`,
+		`starting - ${totalBytes} bytes, ${totalChunks} chunks, filename=${filename}, title=${JSON.stringify(title)}`,
 	);
 
 	// Subscribe to notifications before sending anything.
 	// A short delay after subscribing ensures the ESP32's BLE stack has fully
-	// registered the CCCD before we send the first write — without this,
+	// registered the CCCD before we send the first write - without this,
 	// the ACK:START notification can be sent by the device but never delivered.
 	const ackQueue = createAckQueue();
 	const notifyResult = await setupNotifications(deviceId, ackQueue);
@@ -83,7 +83,7 @@ export async function transferBook(
 		: `START:${totalBytes}:${filename}`;
 
 	const startFrameBytes = new TextEncoder().encode(startFrame).length;
-	log("transfer", `START frame: ${startFrameBytes} bytes — "${startFrame}"`);
+	log("transfer", `START frame: ${startFrameBytes} bytes - "${startFrame}"`);
 
 	try {
 		// ── START (strict request/response) ──
@@ -117,7 +117,7 @@ export async function transferBook(
 }
 
 // ---------------------------------------------------------------------------
-// ACK queue — decouples notification arrival from the send loop
+// ACK queue - decouples notification arrival from the send loop
 // ---------------------------------------------------------------------------
 
 interface AckQueue {
@@ -140,7 +140,7 @@ function createAckQueue(): AckQueue {
 		push(msg: string) {
 			const waiter = waiters.shift();
 			if (waiter) {
-				// Someone is already waiting — deliver immediately
+				// Someone is already waiting - deliver immediately
 				waiter.resolve(msg);
 			} else {
 				buffer.push(msg);
@@ -282,7 +282,7 @@ async function sendChunksWindowed(
 				FILE_TRANSFER_CHAR_UUID,
 				stringToDataView(`CHUNK:${seq}:${b64}`),
 			);
-			return null; // write succeeded — ACK will come later
+			return null; // write succeeded - ACK will come later
 		} catch (err) {
 			return { success: false, error: err instanceof Error ? err.message : "Write failed" };
 		}
@@ -313,7 +313,7 @@ async function sendChunksWindowed(
 		nextAck++;
 		onProgress(Math.round((nextAck / totalChunks) * 100));
 
-		// Window slid — send the next chunk if available
+		// Window slid - send the next chunk if available
 		if (nextSend < totalChunks) {
 			const err = await fireChunk(nextSend);
 			if (err) return err;

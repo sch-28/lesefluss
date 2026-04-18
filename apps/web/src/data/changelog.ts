@@ -26,7 +26,7 @@ export const changelog: ChangelogEntry[] = [
 		title: "Web App & Cloud Sync",
 		tags: ["App", "Website"],
 		changes: [
-			"Web app live at lesefluss.app/app — full reader in the browser",
+			"Web app live at lesefluss.app/app - full reader in the browser",
 			"Cloud sync: books, settings, and highlights backed up automatically",
 			"Desktop sidebar navigation for the web version",
 			"Privacy policy, Terms of Service, and Imprint pages",
@@ -63,7 +63,7 @@ export const changelog: ChangelogEntry[] = [
 		title: "ESP32 Deep Sleep & Brightness",
 		tags: ["ESP32"],
 		changes: [
-			"Deep sleep with configurable idle timeout — weeks of battery life",
+			"Deep sleep with configurable idle timeout - weeks of battery life",
 			"Brightness control (10–100 %) synced from the app",
 			"Dark / inverse mode support on device",
 			"ESP32 firmware simplified and restructured; WiFi removed",

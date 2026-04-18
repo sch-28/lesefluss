@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-// IMPORTANT: must be sql.js@1.11.0 — jeep-sqlite@2.8.0 was compiled against that
+// IMPORTANT: must be sql.js@1.11.0 - jeep-sqlite@2.8.0 was compiled against that
 // version. Using a newer WASM causes a LinkError ("import object field 'I' is not a Function").
 const sqlWasmCandidates = [
 	// Explicit 1.11.0 pinned as a direct dep
@@ -18,7 +18,7 @@ const sqlWasmCandidates = [
 	path.resolve(__dirname, "node_modules/jeep-sqlite/node_modules/sql.js/dist/sql-wasm.wasm"),
 ];
 const wasmFile = sqlWasmCandidates.find(fs.existsSync);
-if (!wasmFile) throw new Error("sql-wasm.wasm (1.11.0) not found — run pnpm setup:web");
+if (!wasmFile) throw new Error("sql-wasm.wasm (1.11.0) not found - run pnpm setup:web");
 
 export default defineConfig({
 	base: process.env.WEB_BUILD ? "/app/" : "/",

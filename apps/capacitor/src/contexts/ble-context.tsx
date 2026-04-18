@@ -279,7 +279,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 					return;
 				}
 			}
-			// All retries exhausted — fall back to scanning
+			// All retries exhausted - fall back to scanning
 			log.warn("ble", `all ${MAX_RETRIES + 1} connect attempts failed, falling back to scan`);
 			isConnectingRef.current = false;
 			setScanTrigger((n) => n + 1);

@@ -1,5 +1,5 @@
 /**
- * SearchModal — bottom sheet for searching book text.
+ * SearchModal - bottom sheet for searching book text.
  *
  * - Case-insensitive scan over the full content string
  * - Results show a ~60-char snippet around each match (match bolded)

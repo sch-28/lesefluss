@@ -4,7 +4,7 @@ import journal from "../../../drizzle/meta/_journal.json";
 import { log } from "../../utils/log";
 
 // import.meta.glob with eager + raw gives us { "./0000_initial.sql": "CREATE TABLE..." }
-// The path is relative to THIS file's location (src/services/db/) — 3 levels up to reach drizzle/
+// The path is relative to THIS file's location (src/services/db/) - 3 levels up to reach drizzle/
 const migrationFiles = import.meta.glob<string>("../../../drizzle/*.sql", {
 	eager: true,
 	query: "?raw",
@@ -15,11 +15,11 @@ const migrationFiles = import.meta.glob<string>("../../../drizzle/*.sql", {
  * Walk the drizzle-kit _journal.json and apply any migrations not yet recorded.
  *
  * Each migration's SQL is loaded via Vite's import.meta.glob so you never need
- * to touch this file when adding new migrations — just run
+ * to touch this file when adding new migrations - just run
  * `pnpm drizzle-kit generate` and the new entry + .sql file appear automatically.
  */
 export async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
-	// transaction: false — avoid the auto-commit wrapper on this DDL statement
+	// transaction: false - avoid the auto-commit wrapper on this DDL statement
 	await conn.execute(
 		`CREATE TABLE IF NOT EXISTS __drizzle_migrations (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,7 +48,7 @@ export async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 			.filter(Boolean);
 
 		// Wrap every migration in a transaction for atomicity.
-		// IMPORTANT: pass transaction=false to every execute()/run() call inside —
+		// IMPORTANT: pass transaction=false to every execute()/run() call inside -
 		// those methods default to transaction=true and auto-commit their own transaction,
 		// which conflicts with the outer beginTransaction().
 		await conn.beginTransaction();
@@ -91,7 +91,7 @@ export async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 			try {
 				await conn.rollbackTransaction();
 			} catch {
-				// Rollback may fail if the transaction was already closed — ignore
+				// Rollback may fail if the transaction was already closed - ignore
 			}
 			throw new Error(`Migration ${entry.tag} failed and was rolled back: ${err}`);
 		}

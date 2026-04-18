@@ -14,7 +14,7 @@ export const Route = createFileRoute("/login/")({
 	component: LoginPage,
 	head: () =>
 		seo({
-			title: "Sign in — Lesefluss",
+			title: "Sign in - Lesefluss",
 			description: "Sign in to Lesefluss to sync your library across devices.",
 			path: "/login",
 			isNoindex: true,
@@ -194,7 +194,7 @@ function LoginPage() {
 				<AuthForm key={mode} mode={mode} />
 
 				<p className="mt-6 text-center text-muted-foreground text-xs">
-					An account is optional — the app works fully offline without one.
+					An account is optional - the app works fully offline without one.
 				</p>
 			</div>
 		</div>

@@ -13,7 +13,7 @@
 		},
 		"position": {
 			"uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-			"description": "Current byte offset in active book (read/write, bidirectional). CHUNK_SIZE below is raw bytes before base64 encoding — app-side only, ESP32 never reads this value."
+			"description": "Current byte offset in active book (read/write, bidirectional). CHUNK_SIZE below is raw bytes before base64 encoding - app-side only, ESP32 never reads this value."
 		},
 		"storage": {
 			"uuid": "b2c3d4e5-f6a7-b8c9-d0e1-f2a3b4c5d6e7",

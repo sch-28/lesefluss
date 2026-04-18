@@ -10,7 +10,7 @@ import { requireAuth } from "~/lib/session-middleware";
 
 // Body size limits are enforced at the reverse proxy (Coolify/Traefik). The
 // Content-Length header is client-controlled, so enforcing it in Node here
-// would be defense theatre — see deployment docs for the proxy-level cap.
+// would be defense theatre - see deployment docs for the proxy-level cap.
 function enforceRateLimit(userId: string): Response | null {
 	const { ok, retryAfter } = checkLimit(`sync:${userId}`, { max: 30, windowMs: 60_000 });
 	if (ok) return null;
@@ -40,7 +40,7 @@ async function getUserSyncData(
 	userId: string,
 	excludeContentFor: Set<string> = new Set(),
 ): Promise<SyncResponse> {
-	// Fetch metadata for all books (lightweight — no content columns)
+	// Fetch metadata for all books (lightweight - no content columns)
 	const metadataCols = {
 		bookId: syncBooks.bookId,
 		title: syncBooks.title,
@@ -143,7 +143,7 @@ export const Route = createFileRoute("/api/sync")({
 		middleware: [cors, requireAuth],
 		handlers: {
 			// -----------------------------------------------------------------
-			// GET /api/sync — pull all user data
+			// GET /api/sync - pull all user data
 			// -----------------------------------------------------------------
 			GET: async ({ request, context }) => {
 				const userId = context.user.id;
@@ -157,7 +157,7 @@ export const Route = createFileRoute("/api/sync")({
 			},
 
 			// -----------------------------------------------------------------
-			// POST /api/sync — push full snapshot, return merged state
+			// POST /api/sync - push full snapshot, return merged state
 			// -----------------------------------------------------------------
 			POST: async ({ request, context }) => {
 				const userId = context.user.id;
@@ -287,7 +287,7 @@ export const Route = createFileRoute("/api/sync")({
 								),
 							);
 					} else {
-						// Client sent no highlights — mark all as deleted
+						// Client sent no highlights - mark all as deleted
 						await tx
 							.update(syncHighlights)
 							.set({ deleted: true, updatedAt: new Date() })
@@ -295,7 +295,7 @@ export const Route = createFileRoute("/api/sync")({
 					}
 				});
 
-				// Return merged state — exclude content for books the client already has
+				// Return merged state - exclude content for books the client already has
 				const clientBookIds = new Set(payload.books.map((b) => b.bookId));
 				const data = await getUserSyncData(userId, clientBookIds);
 				return Response.json(data);

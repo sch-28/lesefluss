@@ -1,4 +1,4 @@
-"""Slim RSVP reader — owns word iteration, delay calculation, acceleration.
+"""Slim RSVP reader - owns word iteration, delay calculation, acceleration.
 
 No event loop, no pause logic, no button handling.
 The app state machine calls display_next_word() / get_word_delay() each tick.
@@ -15,7 +15,7 @@ class ScrubWindow:
     """In-memory window of (byte_pos, word) pairs for scrub mode.
 
     Loads ~100 words centered on a byte position.  Scrubbing is pure index
-    math — zero file I/O per step.  Extends automatically at edges.
+    math - zero file I/O per step.  Extends automatically at edges.
     """
 
     HALF = 50  # words before / after center
@@ -133,7 +133,7 @@ class ScrubWindow:
             for i in range(1, min(4, len(raw) - front + 1)):
                 b = raw[-i]
                 if b >= 0xC0:
-                    # Leading byte found — how many bytes does it expect?
+                    # Leading byte found - how many bytes does it expect?
                     if b < 0xE0:
                         expected = 2
                     elif b < 0xF0:
@@ -141,10 +141,10 @@ class ScrubWindow:
                     else:
                         expected = 4
                     if i < expected:
-                        back = i  # incomplete — trim these bytes
+                        back = i  # incomplete - trim these bytes
                     break
                 elif b < 0x80:
-                    break  # ASCII — no incomplete sequence
+                    break  # ASCII - no incomplete sequence
 
         trimmed = raw[front:len(raw) - back] if back else raw[front:]
         return trimmed, front, back
@@ -368,7 +368,7 @@ class RSVPReader:
     def enter_scrub(self):
         """Create the scrub window around the current display position."""
         if self._words is not None:
-            # Sample text mode — no ScrubWindow needed, step_word uses the list.
+            # Sample text mode - no ScrubWindow needed, step_word uses the list.
             return
         # Close the streaming reader to free its file handle and buffer memory
         # before allocating the scrub window.
@@ -390,7 +390,7 @@ class RSVPReader:
             self.word_reader = WordReader(self.storage.filename)
             self.word_reader.open(byte_position=pos, skip_boundary=False)
         elif self._words is not None:
-            # Sample text — word_reader not used, _word_index already correct.
+            # Sample text - word_reader not used, _word_index already correct.
             pass
 
     def exit_scrub_to_idle(self):
@@ -426,7 +426,7 @@ class RSVPReader:
         w = None
 
         if self._words is not None:
-            # Sample text mode — simple index math.
+            # Sample text mode - simple index math.
             new_idx = self._word_index + n
             if new_idx < 0 or new_idx >= len(self._words):
                 return None

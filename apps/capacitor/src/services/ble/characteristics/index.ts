@@ -1,5 +1,5 @@
 /**
- * Unified BLE characteristics object — import `ble` anywhere and call e.g.
+ * Unified BLE characteristics object - import `ble` anywhere and call e.g.
  * `ble.readSettings()`, `ble.transferBook(...)`.
  *
  * Individual modules stay as pure functions; this re-exports them under one

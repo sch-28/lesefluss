@@ -1,4 +1,4 @@
-// Fixed ESP32 flash total — used to estimate free space after transfer.
+// Fixed ESP32 flash total - used to estimate free space after transfer.
 export const DEVICE_TOTAL_BYTES = 1_700_000;
 
 // Fallback speed used for pre-transfer time estimate (bytes/sec).

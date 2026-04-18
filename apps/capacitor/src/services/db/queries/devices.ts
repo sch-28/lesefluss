@@ -3,7 +3,7 @@ import { db } from "../index";
 import { type Device, devices, type NewDevice } from "../schema";
 
 /**
- * Upsert a device record — inserts or replaces based on primary key (id).
+ * Upsert a device record - inserts or replaces based on primary key (id).
  */
 export async function saveDevice(device: NewDevice): Promise<void> {
 	await db

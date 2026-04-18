@@ -1,5 +1,5 @@
 /**
- * Settings characteristic — read/write RSVP settings JSON.
+ * Settings characteristic - read/write RSVP settings JSON.
  * Characteristic 1: R/W
  */
 

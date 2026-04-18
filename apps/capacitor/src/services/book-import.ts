@@ -7,7 +7,7 @@ import { log } from "../utils/log";
 import { queries } from "./db/queries";
 import type { Book, Chapter } from "./db/schema";
 
-/** UTF-8 byte length of a string — matches what the ESP32 sees in book.txt. */
+/** UTF-8 byte length of a string - matches what the ESP32 sees in book.txt. */
 const encoder = new TextEncoder();
 function utf8ByteLength(s: string): number {
 	return encoder.encode(s).length;
@@ -138,7 +138,7 @@ export async function importBook(onProgress?: (pct: number) => void): Promise<Bo
 		chapters,
 	);
 
-	// 3. Save original EPUB file to disk (native only — web stores in DB only)
+	// 3. Save original EPUB file to disk (native only - web stores in DB only)
 	let filePath: string | null = null;
 	if (isEpub && Capacitor.isNativePlatform()) {
 		filePath = `${BOOKS_DIR}/${id}.epub`;
@@ -177,7 +177,7 @@ export async function removeBook(book: Pick<Book, "id" | "filePath">): Promise<v
 				directory: Directory.Data,
 			});
 		} catch (err) {
-			// File may already be gone — log but don't fail
+			// File may already be gone - log but don't fail
 			log.warn("book-import", "Failed to delete book file:", err);
 		}
 	}
@@ -197,7 +197,7 @@ async function ensureBooksDir(): Promise<void> {
 			recursive: true,
 		});
 	} catch {
-		// Directory may already exist — that's fine
+		// Directory may already exist - that's fine
 	}
 }
 
@@ -245,7 +245,7 @@ async function parseEpub(
 	const book = ePub(buffer);
 	await book.ready;
 
-	// Extract metadata — epubjs types PackagingMetadataObject are correct here
+	// Extract metadata - epubjs types PackagingMetadataObject are correct here
 	const meta = book.packaging?.metadata;
 	const title = meta?.title || filename.replace(/\.epub$/i, "");
 	const author = meta?.creator;
@@ -258,7 +258,7 @@ async function parseEpub(
 	const tocMap = new Map<string, string>();
 	if (toc?.toc) {
 		for (const item of toc.toc) {
-			// TOC href may have fragment (#id) — strip it for matching
+			// TOC href may have fragment (#id) - strip it for matching
 			const href = item.href?.split("#")[0];
 			if (href && item.label) {
 				tocMap.set(href, item.label.trim());
@@ -267,12 +267,12 @@ async function parseEpub(
 	}
 
 	// Walk the spine to collect plain text + chapter boundaries.
-	// spine.each() is typed and iterates Section objects directly — we use it to
+	// spine.each() is typed and iterates Section objects directly - we use it to
 	// get the count, then spine.get(i) for async loading.
 	let sectionCount = 0;
 
 	// spine.each() doesn't provide a total count, so we need the length for progress.
-	// spine.length is not typed but exists at runtime — fall back to no-progress if missing.
+	// spine.length is not typed but exists at runtime - fall back to no-progress if missing.
 	const spineLength = (book.spine as unknown as { length?: number }).length ?? 0;
 
 	book.spine.each(() => {
@@ -286,7 +286,7 @@ async function parseEpub(
 			const section = book.spine.get(i);
 			if (!section) continue;
 
-			// section.load() returns Promise at runtime (types say Document — wrong)
+			// section.load() returns Promise at runtime (types say Document - wrong)
 			await (section.load(book.load.bind(book)) as unknown as Promise<unknown>);
 			const doc = section.document;
 			if (doc?.body) {
@@ -340,10 +340,10 @@ const HEADING_PREFIX: Record<string, string> = {
 	H6: "###### ",
 };
 
-/** Tags that are direct block containers — we recurse into them for nested blocks. */
+/** Tags that are direct block containers - we recurse into them for nested blocks. */
 const CONTAINER_TAGS = new Set(["DIV", "SECTION", "ARTICLE", "BLOCKQUOTE", "UL", "OL"]);
 
-/** Tags that are leaf block elements — we extract their text directly. */
+/** Tags that are leaf block elements - we extract their text directly. */
 const LEAF_BLOCK_TAGS = new Set(["P", "LI"]);
 
 /**
@@ -371,7 +371,7 @@ function extractHeadingText(el: Element): string {
 			if (t) parts.push(t);
 		} else if (node.nodeType === Node.ELEMENT_NODE) {
 			const tag = (node as Element).tagName.toUpperCase();
-			if (tag === "BR") return; // skip line breaks — they're usually decorative separators
+			if (tag === "BR") return; // skip line breaks - they're usually decorative separators
 			for (const child of Array.from(node.childNodes)) walk(child);
 		}
 	}
@@ -379,7 +379,7 @@ function extractHeadingText(el: Element): string {
 	for (const child of Array.from(el.childNodes)) walk(child);
 
 	// Some EPUBs prepend a bare chapter number (e.g. "1") before the title span.
-	// If the first part is purely numeric, drop it — the title text follows.
+	// If the first part is purely numeric, drop it - the title text follows.
 	if (parts.length > 1 && /^\d+$/.test(parts[0])) {
 		parts.shift();
 	}
@@ -416,13 +416,13 @@ function collectBlocks(el: Element): string[] {
 			if (text) blocks.push(text);
 		} else if (CONTAINER_TAGS.has(tag)) {
 			foundBlock = true;
-			// Recurse — a <div class="poem"> may contain multiple <p> lines
+			// Recurse - a <div class="poem"> may contain multiple <p> lines
 			const nested = collectBlocks(child);
 			blocks.push(...nested);
 		}
 	}
 
-	// Fallback: no block children found — treat the whole element as one paragraph
+	// Fallback: no block children found - treat the whole element as one paragraph
 	if (!foundBlock) {
 		const text = (el.textContent || "").replace(/\s+/g, " ").trim();
 		if (text) blocks.push(text);

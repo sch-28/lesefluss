@@ -13,7 +13,7 @@ export async function getSettings(): Promise<Settings> {
 
 	if (rows.length > 0) return rows[0];
 
-	// First run — seed defaults
+	// First run - seed defaults
 	const defaults = {
 		id: SETTINGS_ID,
 		wpm: DEFAULT_SETTINGS.WPM,
@@ -43,7 +43,7 @@ export async function getSettings(): Promise<Settings> {
 }
 
 /**
- * Persist updated settings. Only call with fields you want to change —
+ * Persist updated settings. Only call with fields you want to change -
  * updatedAt is always set automatically.
  */
 export async function saveSettings(

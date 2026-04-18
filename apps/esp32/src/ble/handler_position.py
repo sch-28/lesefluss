@@ -7,7 +7,7 @@ Protocol:
   Read  → {"position": <int>}   (device is authoritative on connect)
   Write → {"position": <int>}   (app pushes position when reading in-app)
 
-Storage: position.txt — a single ASCII integer, same file TextStorage uses.
+Storage: position.txt - a single ASCII integer, same file TextStorage uses.
 """
 
 import gc

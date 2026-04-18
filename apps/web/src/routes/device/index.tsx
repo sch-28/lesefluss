@@ -9,7 +9,7 @@ export const Route = createFileRoute("/device/")({
 	component: DevicePage,
 	head: () =>
 		seo({
-			title: "The ESP32 Reader — Lesefluss",
+			title: "The ESP32 Reader - Lesefluss",
 			description:
 				"Build a pocket-sized speed reader for about €25. AMOLED or ST7789 display, single-button operation, Bluetooth sync with the app.",
 			path: "/device",
@@ -71,7 +71,7 @@ function DevicePage() {
 								<p className="mb-1 text-muted-foreground text-sm">RM67162 · 1.91" · 536×240</p>
 								<p className="mt-4 mb-6 text-muted-foreground text-sm leading-relaxed">
 									Deep blacks, excellent contrast in all lighting. The preferred variant for
-									reading. Uses QSPI interface — requires the custom firmware build.
+									reading. Uses QSPI interface - requires the custom firmware build.
 								</p>
 								<ul className="space-y-2 text-muted-foreground text-sm">
 									{amoledPros.map((p) => (

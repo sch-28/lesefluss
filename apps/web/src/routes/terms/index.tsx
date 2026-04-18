@@ -6,7 +6,7 @@ export const Route = createFileRoute("/terms/")({
 	component: TermsPage,
 	head: () =>
 		seo({
-			title: "Terms of Service — Lesefluss",
+			title: "Terms of Service - Lesefluss",
 			description: "Terms governing your use of the Lesefluss website and cloud sync service.",
 			path: "/terms",
 		}),
@@ -20,7 +20,7 @@ function TermsPage() {
 				<p>
 					Lesefluss is a non-commercial open-source hobby project. These terms govern your use of
 					the website at lesefluss.app and the optional cloud sync service. The Android app and
-					ESP32 firmware are published under their repository's open-source license — these terms do
+					ESP32 firmware are published under their repository's open-source license - these terms do
 					not restrict your use of that code.
 				</p>
 			</section>
@@ -39,21 +39,21 @@ function TermsPage() {
 				<p>Do not use the service to:</p>
 				<ul className="mt-3 space-y-2 text-sm">
 					<li className="flex gap-2">
-						<span className="shrink-0 text-muted-foreground/50">—</span>
+						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>Upload content you do not have the right to store.</span>
 					</li>
 					<li className="flex gap-2">
-						<span className="shrink-0 text-muted-foreground/50">—</span>
+						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>Abuse the sync endpoint (rate-limiting applies).</span>
 					</li>
 					<li className="flex gap-2">
-						<span className="shrink-0 text-muted-foreground/50">—</span>
+						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>
 							Attempt to break, probe, or attack the service, or access accounts that are not yours.
 						</span>
 					</li>
 					<li className="flex gap-2">
-						<span className="shrink-0 text-muted-foreground/50">—</span>
+						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>Use the service in violation of applicable law.</span>
 					</li>
 				</ul>

@@ -181,7 +181,7 @@ def handle_save_config(client, request, config):
 
 
 def handle_select_slot(client, request, config, wifi):
-    """Slot switching removed — single book model. Kept as stub to avoid 404s from cached pages."""
+    """Slot switching removed - single book model. Kept as stub to avoid 404s from cached pages."""
     client.send(b"HTTP/1.1 302 Found\r\nLocation: /\r\n\r\n")
     return None
 

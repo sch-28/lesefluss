@@ -1,5 +1,5 @@
 /**
- * BookCard — individual book grid item.
+ * BookCard - individual book grid item.
  *
  * Interaction model:
  *   Short tap  (< 400ms) → onOpen  (navigate to reader)

@@ -1,5 +1,5 @@
 /**
- * `queryHooks` — react-query wrappers for all local DB operations.
+ * `queryHooks` - react-query wrappers for all local DB operations.
  *
  * Same ergonomics as the `queries` object, but returns react-query
  * `UseQueryResult` / `UseMutationResult` instead of bare promises.

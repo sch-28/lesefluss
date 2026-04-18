@@ -1,5 +1,5 @@
 /**
- * Unified query object — import `queries` anywhere and call e.g. `queries.getSettings()`.
+ * Unified query object - import `queries` anywhere and call e.g. `queries.getSettings()`.
  * Individual modules stay as pure functions for testability; this just re-exports them
  * under one namespace so callers have a single import.
  */

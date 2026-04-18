@@ -50,15 +50,15 @@ class DisplayManager:
 
     Supports ST7789 (SPI, PWM backlight) and RM67162 (QSPI, software brightness).
     Driver selection happens once in __init__ via config.HARDWARE; all public
-    methods are identical across both drivers — no branching outside __init__.
+    methods are identical across both drivers - no branching outside __init__.
     """
 
-    _PWM_FREQ = 1000  # Hz — above flicker threshold (ST7789 only)
+    _PWM_FREQ = 1000  # Hz - above flicker threshold (ST7789 only)
 
     def __init__(self):
         if config.HARDWARE == "AMOLED":
             import rm67162
-            machine.Pin(config.PIN_LED, machine.Pin.OUT).value(0)  # display power enable — keep LOW to suppress green LED
+            machine.Pin(config.PIN_LED, machine.Pin.OUT).value(0)  # display power enable - keep LOW to suppress green LED
             hspi = machine.SPI(2, sck=machine.Pin(config.PIN_SCK), mosi=None, miso=None)
             panel = rm67162.QSPIPanel(
                 spi=hspi,
@@ -91,7 +91,7 @@ class DisplayManager:
                 sck=machine.Pin(config.PIN_SCK),
                 mosi=machine.Pin(config.PIN_MOSI),
             )
-            # PWM backlight — allows variable brightness.
+            # PWM backlight - allows variable brightness.
             # Do NOT pass to ST7789 constructor; it would call .value(1) and
             # override the duty cycle back to full brightness.
             self._bl_pwm = machine.PWM(
@@ -149,7 +149,7 @@ class DisplayManager:
 
     def clear_rect(self, x, y, w, h):
         bg = (255, 255, 255) if config.INVERSE else config.BACKGROUND_COLOR
-        # Clamp to valid screen bounds — fill_rect with out-of-bounds coords leaves residual pixels.
+        # Clamp to valid screen bounds - fill_rect with out-of-bounds coords leaves residual pixels.
         x0 = max(0, x)
         x1 = min(self._width, x + w)
         if x1 <= x0:
@@ -248,5 +248,5 @@ class DisplayManager:
         if self._bl_pwm is not None:
             self._set_duty(config.BRIGHTNESS)
         else:
-            # disp_on() intentionally omitted — see shutdown() comment.
+            # disp_on() intentionally omitted - see shutdown() comment.
             self.display.brightness(config.BRIGHTNESS)

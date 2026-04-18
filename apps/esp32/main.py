@@ -32,7 +32,7 @@ def main(force_run=False):
     if not force_run:
         try:
             os.stat('devmode')
-            print("Dev mode — skipping main")
+            print("Dev mode - skipping main")
             return
         except:
             pass
@@ -48,7 +48,7 @@ def main(force_run=False):
     button  = ButtonHandler()
     storage = TextStorage()
 
-    # Rotary encoder (optional — absent if hardware not connected)
+    # Rotary encoder (optional - absent if hardware not connected)
     encoder = None
     try:
         from hw.encoder import RotaryEncoderHandler

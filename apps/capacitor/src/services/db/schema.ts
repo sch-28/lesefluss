@@ -4,7 +4,7 @@ import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 // It doubles as the book identity on the ESP32 (stored in book.hash after transfer).
 
 /**
- * Device connection history — tracks ESP32 devices we've connected to
+ * Device connection history - tracks ESP32 devices we've connected to
  */
 export const devices = sqliteTable("devices", {
 	id: text("id").primaryKey(),
@@ -13,7 +13,7 @@ export const devices = sqliteTable("devices", {
 });
 
 /**
- * RSVP settings — single row (id = 1), mirrors ESP32 config.py
+ * RSVP settings - single row (id = 1), mirrors ESP32 config.py
  */
 export const settings = sqliteTable("settings", {
 	id: integer("id").primaryKey(),
@@ -40,7 +40,7 @@ export const settings = sqliteTable("settings", {
 });
 
 /**
- * Books library — metadata only.
+ * Books library - metadata only.
  * Large data (content, cover, chapters) lives in `bookContent`.
  */
 export const books = sqliteTable("books", {
@@ -57,7 +57,7 @@ export const books = sqliteTable("books", {
 });
 
 /**
- * Book content — large data stored separately from metadata.
+ * Book content - large data stored separately from metadata.
  * Keeps list queries lightweight (no multi-MB content in result sets).
  *
  * - content: full plain text (for ESP32 transfer + RSVP reader)
@@ -72,7 +72,7 @@ export const bookContent = sqliteTable("book_content", {
 });
 
 /**
- * Highlights — per-book text annotations with optional notes.
+ * Highlights - per-book text annotations with optional notes.
  * start_offset and end_offset are UTF-8 byte offsets of word starts (inclusive).
  */
 export const highlights = sqliteTable("highlights", {
@@ -82,7 +82,7 @@ export const highlights = sqliteTable("highlights", {
 	endOffset: integer("end_offset").notNull(),
 	color: text("color").notNull().default("yellow"), // 'yellow' | 'blue' | 'orange' | 'pink'
 	note: text("note"),
-	text: text("text"), // extracted text snippet — null for pre-existing highlights
+	text: text("text"), // extracted text snippet - null for pre-existing highlights
 	createdAt: integer("created_at").notNull(),
 	updatedAt: integer("updated_at").notNull(),
 });

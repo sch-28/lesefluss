@@ -34,7 +34,7 @@ const DesktopSidebar: React.FC = () => {
 
 	// Auto-collapse when entering the reader. We compare against the previous
 	// path so this only fires on the transition, not on every re-render while
-	// already in the reader — otherwise the user couldn't manually expand
+	// already in the reader - otherwise the user couldn't manually expand
 	// without navigating away first.
 	const prevPathRef = useRef(location.pathname);
 	useEffect(() => {
@@ -80,7 +80,7 @@ const DesktopSidebar: React.FC = () => {
 					);
 				})}
 			</nav>
-			{/* Floating toggle — straddles the sidebar's right edge so it's always
+			{/* Floating toggle - straddles the sidebar's right edge so it's always
 			    visible and discoverable regardless of collapsed state. */}
 			<button
 				type="button"

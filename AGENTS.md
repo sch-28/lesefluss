@@ -32,7 +32,7 @@ pnpm setup:project      # generates BLE config + Android icon PNGs from resource
 
 ## What It Does
 
-Displays books word-by-word at configurable speed (RSVP — Rapid Serial Visual Presentation) on a handheld ESP32 device. The companion app manages your book library, syncs settings via BLE, and includes a full software RSVP reader + scroll reader. The website at `lesefluss.app` hosts a web version of the app at `/app`, handles auth and cloud sync, and showcases the project.
+Displays books word-by-word at configurable speed (RSVP - Rapid Serial Visual Presentation) on a handheld ESP32 device. The companion app manages your book library, syncs settings via BLE, and includes a full software RSVP reader + scroll reader. The website at `lesefluss.app` hosts a web version of the app at `/app`, handles auth and cloud sync, and showcases the project.
 
 ## Development
 
@@ -84,7 +84,7 @@ Both apps communicate over BLE. This is the shared contract:
 }
 ```
 
-**Position payload**: `{ "position": 58203 }` — byte offset into `book.txt`.
+**Position payload**: `{ "position": 58203 }` - byte offset into `book.txt`.
 Device is authoritative on connect; app can push position when reading in-app.
 
 **File transfer protocol**: `START:<bytes>:<filename>` → `CHUNK:<seq>:<base64>` (repeat) → `END:<crc32>`, each step ACK'd by device notify.
@@ -99,7 +99,7 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 
 - **Focal position (ORP):** calculated per word length (e.g., length 6–9 → position 2)
 - **Base delay:** `60000 / WPM` milliseconds per word
-- **Punctuation multipliers:** `DELAY_COMMA` for `,;:` — `DELAY_PERIOD` for `.!?` and long dashes
+- **Punctuation multipliers:** `DELAY_COMMA` for `,;:` - `DELAY_PERIOD` for `.!?` and long dashes
 - **Acceleration:** start at `ACCEL_START` multiplier, decrease by `ACCEL_RATE` per word until 1.0
 - **Word offset on resume:** scan backwards through file to find position N words earlier
 - **Storage:** plain text `.txt` files, position saved as byte offset (not word index) for instant seeking
@@ -128,36 +128,36 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 
 Touch these files in order:
 
-1. **`apps/esp32/src/config.py`** — add the constant with its default value
-2. **`apps/esp32/main.py`** — add the key name to `_OVERRIDE_KEYS`
+1. **`apps/esp32/src/config.py`** - add the constant with its default value
+2. **`apps/esp32/main.py`** - add the key name to `_OVERRIDE_KEYS`
 3. **`apps/esp32/src/ble/handler_settings.py`**
-   - `_build_json()` — include it in the payload (convert units if needed, e.g. ms → s)
-   - `_apply_json()` — read it with `.get("key", self.config.KEY)` and assign to `self.config`
-   - `_persist()` — add the `f"KEY = {self.config.KEY}\n"` line
-4. **`apps/capacitor/src/services/db/schema.ts`** — add the column to the `settings` table
-5. **`apps/capacitor/drizzle/`** — create `000N_description.sql` with `ALTER TABLE settings ADD COLUMN ...` and add an entry to `meta/_journal.json`
-6. **`apps/capacitor/src/services/db/queries/settings.ts`** — add the field to the `defaults` object in `getSettings()`
-7. **`apps/capacitor/src/utils/settings.ts`** — add to `DEFAULT_SETTINGS` and `SETTING_CONSTRAINTS`
-8. **`apps/capacitor/src/services/ble/characteristics/settings.ts`** — add to `ESP32Settings` interface, read mapping, and write mapping
-9. **`apps/capacitor/src/pages/settings.tsx`** — add the UI control (slider or toggle)
+   - `_build_json()` - include it in the payload (convert units if needed, e.g. ms → s)
+   - `_apply_json()` - read it with `.get("key", self.config.KEY)` and assign to `self.config`
+   - `_persist()` - add the `f"KEY = {self.config.KEY}\n"` line
+4. **`apps/capacitor/src/services/db/schema.ts`** - add the column to the `settings` table
+5. **`apps/capacitor/drizzle/`** - create `000N_description.sql` with `ALTER TABLE settings ADD COLUMN ...` and add an entry to `meta/_journal.json`
+6. **`apps/capacitor/src/services/db/queries/settings.ts`** - add the field to the `defaults` object in `getSettings()`
+7. **`apps/capacitor/src/utils/settings.ts`** - add to `DEFAULT_SETTINGS` and `SETTING_CONSTRAINTS`
+8. **`apps/capacitor/src/services/ble/characteristics/settings.ts`** - add to `ESP32Settings` interface, read mapping, and write mapping
+9. **`apps/capacitor/src/pages/settings.tsx`** - add the UI control (slider or toggle)
 
 ## Roadmap
 
 Feature roadmap below. For publishing, Play Store, and monetisation see `agents/roadmap.md`.
 
-### Phase 1 — BLE Integration ✅
+### Phase 1 - BLE Integration ✅
 - [x] Settings UI matching ESP32 options
 - [x] SQLite database setup
 - [x] BLE connection (app side)
 - [x] ESP32 BLE server implementation
 - [x] End-to-end testing
 
-### Phase 2 — Book Library ✅
+### Phase 2 - Book Library ✅
 - [x] Book import (TXT, EPUB → plain text)
 - [x] Local book library with metadata list
 - [x] Navigation restructure (Library as home, BLE badge in tab bar)
 
-### Phase 3 — Device Integration ✅
+### Phase 3 - Device Integration ✅
 - [x] Upload active book to ESP32 (chunked BLE file transfer)
 - [x] "Set active on device" action in Library UI + progress dialog
 - [x] `BookSyncContext` (active book tracking, position sync on connect)
@@ -168,7 +168,7 @@ Feature roadmap below. For publishing, Play Store, and monetisation see `agents/
 - [x] ESP32 deletes current book on receiving START: (frees flash before new content is written)
 - [x] Extend transfer dialog: confirmation modal with book size, free space estimate, replacement warning
 
-### Phase 4 — Enhanced Features
+### Phase 4 - Enhanced Features
 - [x] Simple Epub reader
 - [x] Reader progress bar (tap/drag to scrub)
 - [x] Chapter / TOC navigation (EPUB books)
@@ -195,17 +195,17 @@ Feature roadmap below. For publishing, Play Store, and monetisation see `agents/
 - [ ] special characters äüö not working in the rsvp esp32
 - [ ] Check if wpm actually matches (maybe display delay slows things down)
 - [ ] Partial book sync to esp32 to combat long upload times
-- [ ] Recompile AMOLED firmware with larger NimBLE buffers (current RM67162 build drops BLE writes at window_size>2, ST7789 handles 4 fine — need to fork nspsck/RM67162_Micropython_QSPI and increase NimBLE buffer config in sdkconfig.board)
+- [ ] Recompile AMOLED firmware with larger NimBLE buffers (current RM67162 build drops BLE writes at window_size>2, ST7789 handles 4 fine - need to fork nspsck/RM67162_Micropython_QSPI and increase NimBLE buffer config in sdkconfig.board)
 - [x] In-app RSVP reader (software parity with ESP32)
-- [x] Cloud sync (full-snapshot, last-write-wins — books/settings/highlights via POST /api/sync)
+- [x] Cloud sync (full-snapshot, last-write-wins - books/settings/highlights via POST /api/sync)
 - [x] Web app version (capacitor web build embedded at `/app` on website)
 - [x] Desktop sidebar nav for web app (brand, Library, Settings)
 - [x] Auto-save settings (optimistic update + debounced DB write, replaces draft-then-save)
 - [x] Library sorting (title, author, recent, progress) & filtering (all, unread, reading, done)
-- [x] Highlight text snippet stored at creation time (`text` column in highlights/sync_highlights — extracted from book content in reader, synced via HTTP)
+- [x] Highlight text snippet stored at creation time (`text` column in highlights/sync_highlights - extracted from book content in reader, synced via HTTP)
 - [x] `/profile` page on website (stats, library, highlights with snippets/notes)
 - [x] `/account` page on website (change password, danger zone)
-- [x] `/changelog` page on website (public changelog, river timeline — data in `apps/web/src/data/changelog.ts`)
+- [x] `/changelog` page on website (public changelog, river timeline - data in `apps/web/src/data/changelog.ts`)
 - [ ] Advanced book management (tags, collections, search)
 - [ ] Reading statistics
 - [ ] Minifying the python code & merge to single file
@@ -215,7 +215,7 @@ Feature roadmap below. For publishing, Play Store, and monetisation see `agents/
 ## Future Ideas
 
 **ESP32 Hardware:**
-- Battery level display (requires voltage divider hardware mod — GPIO 4 ready on AMOLED)
+- Battery level display (requires voltage divider hardware mod - GPIO 4 ready on AMOLED)
 - Page simulation (250 words per "page")
 - Font size options
 - Progress indicator during reading

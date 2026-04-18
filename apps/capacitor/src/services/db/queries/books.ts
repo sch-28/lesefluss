@@ -20,7 +20,7 @@ export async function getBooks(): Promise<Book[]> {
 
 /**
  * Fetch cover images for all books. Returns a map of bookId → coverImage (base64 data URL).
- * Only fetches the cover_image column — avoids loading the full content text.
+ * Only fetches the cover_image column - avoids loading the full content text.
  */
 export async function getBookCovers(): Promise<Map<string, string>> {
 	const rows = await db
@@ -111,13 +111,13 @@ export async function updateBook(id: string, data: Partial<Omit<NewBook, "id">>)
  * Mark one book as active and clear isActive on every other book.
  * Also resets position to 0 for the newly activated book.
  *
- * Two targeted UPDATE statements — no full table scan, no race window from
+ * Two targeted UPDATE statements - no full table scan, no race window from
  * a fetch-then-fan-out pattern.
  */
 export async function setActiveBook(id: string): Promise<void> {
 	// Deactivate all others in one statement
 	await db.update(books).set({ isActive: false }).where(ne(books.id, id));
-	// Activate the target — preserve its current position (may have been read in-app)
+	// Activate the target - preserve its current position (may have been read in-app)
 	await db.update(books).set({ isActive: true }).where(eq(books.id, id));
 }
 

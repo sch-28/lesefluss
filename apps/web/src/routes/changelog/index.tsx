@@ -7,8 +7,8 @@ export const Route = createFileRoute("/changelog/")({
 	component: ChangelogPage,
 	head: () =>
 		seo({
-			title: "Changelog — Lesefluss",
-			description: "See what's new in Lesefluss — app, firmware, and website updates.",
+			title: "Changelog - Lesefluss",
+			description: "See what's new in Lesefluss - app, firmware, and website updates.",
 			path: "/changelog",
 		}),
 });

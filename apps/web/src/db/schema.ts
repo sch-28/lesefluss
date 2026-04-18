@@ -4,9 +4,9 @@ import { boolean, integer, pgTable, primaryKey, real, text, timestamp } from "dr
 // Sync tables are defined below.
 
 /**
- * sync_books — book data keyed by (user_id, book_id).
+ * sync_books - book data keyed by (user_id, book_id).
  * Includes content (plain text), cover image, and chapters for full device restore.
- * Content is immutable per bookId — only pushed once.
+ * Content is immutable per bookId - only pushed once.
  */
 export const syncBooks = pgTable(
 	"sync_books",
@@ -18,7 +18,7 @@ export const syncBooks = pgTable(
 		fileSize: integer("file_size"),
 		wordCount: integer("word_count"),
 		position: integer("position").notNull().default(0), // byte offset
-		content: text("content"), // full plain text — null until first content push
+		content: text("content"), // full plain text - null until first content push
 		coverImage: text("cover_image"), // base64-encoded cover art from EPUB
 		chapters: text("chapters"), // JSON: [{title: string, startByte: number}]
 		updatedAt: timestamp("updated_at").notNull(),
@@ -27,7 +27,7 @@ export const syncBooks = pgTable(
 );
 
 /**
- * sync_settings — one row per user, mirrors app-relevant settings.
+ * sync_settings - one row per user, mirrors app-relevant settings.
  * Device-only fields (ble_on, inverse, brightness, deep_sleep, etc.) are excluded.
  */
 export const syncSettings = pgTable("sync_settings", {
@@ -51,7 +51,7 @@ export const syncSettings = pgTable("sync_settings", {
 });
 
 /**
- * sync_highlights — highlight annotations keyed by (user_id, highlight_id).
+ * sync_highlights - highlight annotations keyed by (user_id, highlight_id).
  * Uses soft-delete tombstones (deleted=true) so deletions propagate during sync.
  */
 export const syncHighlights = pgTable(
@@ -64,7 +64,7 @@ export const syncHighlights = pgTable(
 		endOffset: integer("end_offset").notNull(),
 		color: text("color").notNull().default("yellow"), // yellow | blue | orange | pink
 		note: text("note"),
-		text: text("text"), // extracted text snippet — null for pre-existing highlights
+		text: text("text"), // extracted text snippet - null for pre-existing highlights
 		deleted: boolean("deleted").notNull().default(false),
 		createdAt: timestamp("created_at").notNull(),
 		updatedAt: timestamp("updated_at").notNull(),

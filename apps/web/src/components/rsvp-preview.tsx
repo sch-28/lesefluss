@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 /**
- * ORP (Optimal Recognition Point) — focal letter index.
+ * ORP (Optimal Recognition Point) - focal letter index.
  * Matches calcOrpIndex from rsvp-core/engine.ts exactly.
  */
 function calcOrpIndex(wordLength: number): number {
@@ -85,14 +85,14 @@ export function RsvpPreview() {
 						<span className="text-[10px] text-slate-400">{Math.round(progress)}%</span>
 					</div>
 
-					{/* RSVP display area — fills remaining space */}
+					{/* RSVP display area - fills remaining space */}
 					<div className="relative flex flex-1 items-center justify-center">
-						{/* Focal indicator — top tick, fixed at screen center */}
+						{/* Focal indicator - top tick, fixed at screen center */}
 						<div
 							className="absolute left-1/2 -translate-x-1/2 bg-red-400/60"
 							style={{ width: "2px", height: "6px", top: "calc(50% - 1.1rem - 6px)" }}
 						/>
-						{/* Word — positioned so focal letter center = screen center */}
+						{/* Word - positioned so focal letter center = screen center */}
 						<span
 							className="absolute whitespace-nowrap font-bold font-mono text-[1.3rem] text-slate-800"
 							style={{
@@ -105,7 +105,7 @@ export function RsvpPreview() {
 							<span className="text-red-500">{focal}</span>
 							<span>{after}</span>
 						</span>
-						{/* Focal indicator — bottom tick, fixed at screen center */}
+						{/* Focal indicator - bottom tick, fixed at screen center */}
 						<div
 							className="absolute left-1/2 -translate-x-1/2 bg-red-400/60"
 							style={{ width: "2px", height: "6px", top: "calc(50% + 1.1rem)" }}

@@ -38,7 +38,7 @@ export const Route = createFileRoute("/admin/")({
 		if (!isAdmin) throw redirect({ to: "/" });
 		return getAdminStats();
 	},
-	head: () => seo({ title: "Admin — Lesefluss", isNoindex: true }),
+	head: () => seo({ title: "Admin - Lesefluss", isNoindex: true }),
 	component: AdminPage,
 });
 
@@ -70,7 +70,7 @@ function formatDate(ms: number): string {
 	});
 }
 
-// Stable key for a book row — module-level, no component dependencies.
+// Stable key for a book row - module-level, no component dependencies.
 function bookKey(b: Pick<AdminBook, "userId" | "bookId">): string {
 	return `${b.userId}:${b.bookId}`;
 }
@@ -148,7 +148,7 @@ function UsersTable() {
 		queryKey: adminKeys.users,
 		queryFn: () => getAdminUsers(),
 	});
-	// Books fetched here (shared key with BooksTable — react-query deduplicates)
+	// Books fetched here (shared key with BooksTable - react-query deduplicates)
 	// so we can show a user's books in the expand row without an extra request.
 	const { data: books = [] } = useQuery({
 		queryKey: adminKeys.books,
@@ -251,7 +251,7 @@ function UsersTable() {
 				},
 			},
 		],
-		[], // stable — state is read via stateRef.current at render time
+		[], // stable - state is read via stateRef.current at render time
 	);
 
 	const table = useReactTable({
@@ -310,7 +310,7 @@ function UsersTable() {
 															.map((b) => (
 																<li key={b.bookId} className="text-xs">
 																	{b.title}
-																	{b.author ? ` — ${b.author}` : ""}
+																	{b.author ? ` - ${b.author}` : ""}
 																	{b.fileSize ? ` (${formatBytes(b.fileSize)})` : ""}
 																</li>
 															))}
@@ -347,7 +347,7 @@ function BooksTable() {
 		queryKey: adminKeys.books,
 		queryFn: () => getAdminBooks(),
 	});
-	// Users fetched here (shared key with UsersTable — react-query deduplicates)
+	// Users fetched here (shared key with UsersTable - react-query deduplicates)
 	// so we can populate the filter dropdown without an extra request.
 	const { data: users = [] } = useQuery({
 		queryKey: adminKeys.users,
@@ -410,7 +410,7 @@ function BooksTable() {
 				header: "Size",
 				cell: ({ row }) => (
 					<span className="text-muted-foreground tabular-nums">
-						{row.original.fileSize ? formatBytes(row.original.fileSize) : "—"}
+						{row.original.fileSize ? formatBytes(row.original.fileSize) : "-"}
 					</span>
 				),
 			},
@@ -468,7 +468,7 @@ function BooksTable() {
 				},
 			},
 		],
-		[], // stable — state is read via stateRef.current at render time
+		[], // stable - state is read via stateRef.current at render time
 	);
 
 	const table = useReactTable({
@@ -562,7 +562,7 @@ function BooksTable() {
 														<div>
 															<dt className="text-muted-foreground">Words</dt>
 															<dd className="tabular-nums">
-																{b.wordCount?.toLocaleString() ?? "—"}
+																{b.wordCount?.toLocaleString() ?? "-"}
 															</dd>
 														</div>
 														<div>

@@ -28,9 +28,9 @@ export const Route = createFileRoute("/")({
 	component: Home,
 	head: () => ({
 		...seo({
-			title: "Lesefluss — Speed Reading App & Device",
+			title: "Lesefluss - Speed Reading App & Device",
 			description:
-				"Read books 2–4× faster with RSVP. Import EPUB and TXT, sync settings to a pocket-sized ESP32 device, and read anywhere — fully offline.",
+				"Read books 2–4× faster with RSVP. Import EPUB and TXT, sync settings to a pocket-sized ESP32 device, and read anywhere - fully offline.",
 			path: "/",
 		}),
 		scripts: [softwareApplicationSchema],

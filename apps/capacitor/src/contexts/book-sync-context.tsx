@@ -1,5 +1,5 @@
 /**
- * BookSyncContext — owns active-book tracking and device position sync.
+ * BookSyncContext - owns active-book tracking and device position sync.
  *
  * Responsibilities:
  *  - Track which book is currently on the device (activeBookId)
@@ -121,14 +121,14 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 			if (!deviceBookHash || deviceBookHash !== currentBookId) {
 				log.warn(
 					"booksync",
-					`book mismatch — device has "${deviceBookHash}", app expects "${currentBookId}". Clearing isActive.`,
+					`book mismatch - device has "${deviceBookHash}", app expects "${currentBookId}". Clearing isActive.`,
 				);
 				await queries.updateBook(currentBookId, { isActive: false });
 				updateActiveBookId(null);
 				return;
 			}
 		} else if (!deviceBookHash) {
-			// Neither side has a book — nothing to sync
+			// Neither side has a book - nothing to sync
 			return;
 		} else {
 			// Device has a book but app doesn't know which one is active.
@@ -141,7 +141,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				updateActiveBookId(match.id);
 				// Fall through to position sync with the restored book
 			} else {
-				// Device has a book we don't recognise — no action
+				// Device has a book we don't recognise - no action
 				return;
 			}
 		}
@@ -157,7 +157,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 
 		// Resolve conflict: take whichever position is further ahead.
 		// This handles the case where the user read on the app since the last
-		// device session — we don't want the device to clobber app progress.
+		// device session - we don't want the device to clobber app progress.
 		let winner = devicePos;
 		// Re-read ref in case it was updated above
 		const confirmedBookId = activeBookIdRef.current;
@@ -167,12 +167,12 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 			const appPos = book?.position ?? 0;
 
 			if (appPos > devicePos) {
-				// App is ahead — push its position to the device
+				// App is ahead - push its position to the device
 				winner = appPos;
 				await ble.writePosition(appPos);
 				log("booksync", `app ahead (${appPos} > ${devicePos}), pushed to device`);
 			} else if (devicePos > appPos) {
-				// Device is ahead — persist into DB
+				// Device is ahead - persist into DB
 				await queries.updateBook(confirmedBookId, { position: devicePos, lastRead: Date.now() });
 				log("booksync", `device ahead (${devicePos} > ${appPos}), saved to DB`);
 			}
@@ -180,7 +180,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 		}
 
 		setDevicePosition(winner);
-	}, [isConnected, updateActiveBookId]); // activeBookId intentionally omitted — read via ref
+	}, [isConnected, updateActiveBookId]); // activeBookId intentionally omitted - read via ref
 
 	const pushPosition = useCallback(
 		async (position: number) => {

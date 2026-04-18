@@ -5,7 +5,7 @@
  * in production builds.
  *
  * Run after `pnpm install` whenever the public/assets/sql-wasm.wasm file
- * is missing (e.g. fresh clone). It is gitignored — don't commit the binary.
+ * is missing (e.g. fresh clone). It is gitignored - don't commit the binary.
  */
 import { cpSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -15,7 +15,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 
 // Candidate locations for sql-wasm.wasm.
-// IMPORTANT: must be sql.js@1.11.0 — jeep-sqlite@2.8.0 was compiled against that
+// IMPORTANT: must be sql.js@1.11.0 - jeep-sqlite@2.8.0 was compiled against that
 // version. Using a newer sql.js WASM causes a LinkError at runtime.
 const candidates = [
 	// Explicit 1.11.0 in pnpm virtual store (added as direct dep to pin the version)

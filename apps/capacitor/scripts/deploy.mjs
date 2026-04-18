@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Deploy script — production build for Android.
+ * Deploy script - production build for Android.
  *
  * Usage:
  *   node scripts/deploy.mjs
@@ -16,10 +16,10 @@
  *
  * After this you need to build + install the APK:
  *   pnpm studio         (open Android Studio, then Build → Run)
- *   — or —
+ *   - or -
  *   pnpm android        (builds & installs directly via adb)
  *
- * The script is safe to run after `pnpm live` — it will always restore
+ * The script is safe to run after `pnpm live` - it will always restore
  * the config to the clean production state regardless of what live did.
  */
 

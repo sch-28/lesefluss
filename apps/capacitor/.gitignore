@@ -13,7 +13,7 @@ dist/
 # OS files
 .DS_Store
 
-# Generated icon PNGs (source of truth is resources/icon.svg — run pnpm setup:project)
+# Generated icon PNGs (source of truth is resources/icon.svg - run pnpm setup:project)
 android/app/src/main/res/mipmap-*/ic_launcher.png
 android/app/src/main/res/mipmap-*/ic_launcher_round.png
 android/app/src/main/res/mipmap-*/ic_launcher_foreground.png
@@ -33,5 +33,5 @@ ios/App/Pods/
 ios/App/build/
 ios/App/App.xcworkspace/xcuserdata/
 
-# sql.js WASM (copied from node_modules by pnpm setup:web or manually — do not commit binary)
+# sql.js WASM (copied from node_modules by pnpm setup:web or manually - do not commit binary)
 public/assets/sql-wasm.wasm

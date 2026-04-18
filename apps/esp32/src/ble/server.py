@@ -1,17 +1,17 @@
 """
 BLE Server for Lesefluss ESP32
 
-Thin coordinator layer — owns:
+Thin coordinator layer - owns:
   - bluetooth.BLE instance
   - GATT service registration (4 characteristics)
   - Advertising lifecycle
   - IRQ dispatch to per-characteristic handlers
 
 Characteristic handlers live in separate modules:
-  handler_settings.py      — settings JSON read/write
-  handler_position.py      — byte-offset read/write
-  handler_file_transfer.py — chunked book upload state machine
-  handler_storage.py       — flash storage info (read-only)
+  handler_settings.py      - settings JSON read/write
+  handler_position.py      - byte-offset read/write
+  handler_file_transfer.py - chunked book upload state machine
+  handler_storage.py       - flash storage info (read-only)
 
 UUIDs sourced from ble_config.py (auto-generated from packages/ble-config/config.json).
 Run `pnpm setup:project` from the monorepo root to regenerate after UUID changes.
@@ -51,7 +51,7 @@ _BLE_MTU = const(512)
 
 
 class BLEServer:
-    """BLE GATT Server — coordinates advertising and delegates characteristic I/O."""
+    """BLE GATT Server - coordinates advertising and delegates characteristic I/O."""
 
     def __init__(self, config_module, name=DEVICE_NAME):
         """
@@ -122,7 +122,7 @@ class BLEServer:
         self.storage       = StorageHandler(self.ble, storage_handle)
 
         print(
-            f"[ble] service registered — handles: "
+            f"[ble] service registered - handles: "
             f"settings={settings_handle}, "
             f"file_transfer={file_transfer_handle}, "
             f"position={position_handle}, "
@@ -145,7 +145,7 @@ class BLEServer:
             self.connected   = False
             self.conn_handle = None
             print(f"[ble] IRQ disconnected: handle {conn_handle}")
-            # Don't restart advertising inside the IRQ — the BLE stack may
+            # Don't restart advertising inside the IRQ - the BLE stack may
             # not have finished cleaning up the old connection yet, causing
             # the next connection attempt to fail.  Set a flag and let the
             # main loop call start_advertising() after a short delay.

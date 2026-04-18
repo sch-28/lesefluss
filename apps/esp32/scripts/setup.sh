@@ -5,8 +5,8 @@
 # Usage: setup.sh --board ST7789|AMOLED [--port /dev/ttyUSB0]
 #
 # Firmware:
-#   ST7789  — etc/ESP32_GENERIC-20251209-v1.27.0.bin  (included)
-#   AMOLED  — etc/firmware-amoled.bin  (download manually before running)
+#   ST7789  - etc/ESP32_GENERIC-20251209-v1.27.0.bin  (included)
+#   AMOLED  - etc/firmware-amoled.bin  (download manually before running)
 #             Source: https://github.com/nspsck/RM67162_Micropython_QSPI
 #             Go to Releases or the firmware/ directory and grab firmware.bin.
 #             This is the official open-source MicroPython build for ESP32-S3 + RM67162.
@@ -63,7 +63,7 @@ if [ -f "$VENV_ACTIVATE" ]; then
     echo -e "${GREEN}Activating virtual environment...${NC}"
     source "$VENV_ACTIVATE"
 else
-    echo -e "${YELLOW}No .venv found — creating one...${NC}"
+    echo -e "${YELLOW}No .venv found - creating one...${NC}"
     python3 -m venv .venv
     source "$VENV_ACTIVATE"
 fi
@@ -135,6 +135,6 @@ echo ""
 echo -e "${GREEN}✓ Initial setup complete! (${BOARD})${NC}"
 echo ""
 echo -e "${BLUE}Next steps:${NC}"
-echo "1. Reset your device — it will boot into dev mode (REPL)"
+echo "1. Reset your device - it will boot into dev mode (REPL)"
 echo "2. Or test manually: ./scripts/run.sh"
 echo "3. For quick updates: ./scripts/upload.sh --board ${BOARD}"

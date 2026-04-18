@@ -1,8 +1,8 @@
 import type React from "react";
 /**
- * BookReader — full-screen virtualized scroll reader.
+ * BookReader - full-screen virtualized scroll reader.
  *
- * Data model (lean — see AGENTS.md):
+ * Data model (lean - see AGENTS.md):
  *   paragraphs[]       string[]   content.split("\n\n"), needed for VList item count
  *   paragraphOffsets[] number[]   byte offset where each paragraph starts in content
  *
@@ -17,9 +17,9 @@ import type React from "react";
  * restores pixel-accurate position on repeat visits without any DB storage.
  *
  * Sub-modules:
- *   use-highlight-selection — selection state + handles + edit modal + list modal
- *   use-scrub-progress       — progress-bar pointer gestures
- *   selection-overlay        — JSX for the floating toolbar + drag handles
+ *   use-highlight-selection - selection state + handles + edit modal + list modal
+ *   use-scrub-progress       - progress-bar pointer gestures
+ *   selection-overlay        - JSX for the floating toolbar + drag handles
  */
 
 import {
@@ -110,17 +110,17 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// ── RSVP mode ─────────────────────────────────────────────────────────
 	const [readerMode, setReaderMode] = useState<"scroll" | "rsvp">("scroll");
 
-	// The byte offset we consider "current" — used for word highlight + saves
+	// The byte offset we consider "current" - used for word highlight + saves
 	const [activeOffset, setActiveOffset] = useState(0);
-	// Tracks position for the progress bar — updated during scroll (activeOffset
+	// Tracks position for the progress bar - updated during scroll (activeOffset
 	// is set to NO_HIGHLIGHT=-1 while scrolling, so can't be used for progress).
 	const [progressOffset, setProgressOffset] = useState(0);
-	// Separate state for RsvpView's initialByteOffset — only updated on genuine
+	// Separate state for RsvpView's initialByteOffset - only updated on genuine
 	// user seeks (entering RSVP mode, scrubbing). NOT updated from onPositionChange
 	// callbacks, which would echo back and cause the scrub effect to pause playback.
 	const [rsvpInitOffset, setRsvpInitOffset] = useState(0);
 
-	// Progress bar visibility — shown on tap/word-tap, hidden when user scrolls
+	// Progress bar visibility - shown on tap/word-tap, hidden when user scrolls
 	const [progressBarVisible, setProgressBarVisible] = useState(false);
 
 	const listRef = useRef<VListHandle>(null);
@@ -130,7 +130,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const didInitialScrollRef = useRef(false);
 
 	// Suppresses the handleScrollEnd that fires after the programmatic
-	// scrollToIndex on first render — prevents overwriting the precise
+	// scrollToIndex on first render - prevents overwriting the precise
 	// saved position with whatever word happens to be at the top.
 	const suppressNextScrollEndRef = useRef(false);
 
@@ -162,8 +162,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	// ── Build paragraph index ──────────────────────────────────────────────
 	// Computed once per content load. Two cheap structures:
-	//   paragraphs[i]       — the text of paragraph i
-	//   paragraphOffsets[i] — UTF-8 byte offset of paragraph i's first character
+	//   paragraphs[i]       - the text of paragraph i
+	//   paragraphOffsets[i] - UTF-8 byte offset of paragraph i's first character
 	//
 	// We must use UTF-8 byte lengths (not JS .length) because the ESP32 tracks
 	// position as a byte offset into book.txt. For any multi-byte character
@@ -234,7 +234,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	);
 
 	// ── Save position to DB + BLE ─────────────────────────────────────────
-	// Fire-and-forget writes — no mutation wrapper needed for high-frequency saves.
+	// Fire-and-forget writes - no mutation wrapper needed for high-frequency saves.
 	const savePosition = useCallback(
 		async (offset: number, { scheduleSync = true }: { scheduleSync?: boolean } = {}) => {
 			await queries.updateBook(id, { position: offset, lastRead: Date.now() });
@@ -325,7 +325,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		// Use lastOffsetRef if available (e.g. returning from RSVP mode),
 		// otherwise fall back to the DB-stored position.
 		const target = lastOffsetRef.current ?? book.position;
-		if (target === 0) return; // start of book — default scroll is correct
+		if (target === 0) return; // start of book - default scroll is correct
 
 		const idx = findParagraphIndex(target);
 		suppressNextScrollEndRef.current = true;
@@ -353,12 +353,12 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		});
 	}, [readerMode, paragraphs, book, findParagraphIndex]);
 
-	// ── Scroll handler — hide highlight + update progress bar ──────────────
+	// ── Scroll handler - hide highlight + update progress bar ──────────────
 	const { isSelecting, syncHandlesRef } = sel;
 	const { isScrubbingRef } = scrub;
 	const handleScroll = useCallback(
 		(scrollOffset: number) => {
-			// Cancel any pending long-press — user is scrolling, not selecting
+			// Cancel any pending long-press - user is scrolling, not selecting
 			cancelAnyActiveLongPress();
 
 			// Hide highlight while scrolling (skip if already hidden to avoid re-renders).
@@ -366,7 +366,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			if (!suppressScrollHighlightClearRef.current) {
 				setActiveOffset((prev) => (prev === NO_HIGHLIGHT ? prev : NO_HIGHLIGHT));
 			}
-			// Hide progress bar — user is scrolling normally, not scrubbing
+			// Hide progress bar - user is scrolling normally, not scrubbing
 			if (!isScrubbingRef.current) setProgressBarVisible(false);
 			// Update the progress bar live. findItemIndex maps the current scroll
 			// pixel offset to a paragraph index, which we convert to a byte offset.
@@ -385,7 +385,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		[paragraphOffsets, isSelecting, syncHandlesRef, isScrubbingRef],
 	);
 
-	// ── Scroll end — find first fully visible word + save position ───────
+	// ── Scroll end - find first fully visible word + save position ───────
 	const handleScrollEnd = useCallback(() => {
 		if (suppressNextScrollEndRef.current) {
 			suppressNextScrollEndRef.current = false;
@@ -429,8 +429,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// ── Word tap handler ───────────────────────────────────────────────────
 	// During selection mode: tapping anywhere cancels the selection (user
 	// adjusts range via handles, not word taps).
-	// Normal mode — first tap: set position (highlight it).
-	// Normal mode — second tap on highlighted word: open highlight modal (if highlighted)
+	// Normal mode - first tap: set position (highlight it).
+	// Normal mode - second tap on highlighted word: open highlight modal (if highlighted)
 	//   or dictionary (if not highlighted).
 	const { cancelSelection, findHighlightAt, openHighlightEditor } = sel;
 	const handleWordTap = useCallback(
@@ -447,7 +447,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				if (existing) {
 					openHighlightEditor(existing);
 				} else {
-					// No existing highlight — open dictionary instead
+					// No existing highlight - open dictionary instead
 					const clean = wordText.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
 					if (clean) setSelectedWord(clean);
 				}
@@ -478,7 +478,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const { startSelection, extendSelectionTo, startHandleRef, endHandleRef } = sel;
 	const handleWordMouseDragStart = useCallback(
 		(offset: number, initialEvent: PointerEvent) => {
-			// If the word is already highlighted, treat like long-press — open editor.
+			// If the word is already highlighted, treat like long-press - open editor.
 			const existing = findHighlightAt(offset);
 			if (existing) {
 				openHighlightEditor(existing);
@@ -486,7 +486,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			}
 			startSelection(offset);
 			// Make the selection handles transparent to elementFromPoint during the
-			// drag — once they pop up they can intercept the cursor and break the
+			// drag - once they pop up they can intercept the cursor and break the
 			// word-under-cursor lookup. Restored on cleanup.
 			const prevStartPe = startHandleRef.current?.style.pointerEvents ?? "";
 			const prevEndPe = endHandleRef.current?.style.pointerEvents ?? "";
@@ -494,7 +494,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			if (endHandleRef.current) endHandleRef.current.style.pointerEvents = "none";
 
 			// Extend the cursor's current position (the drag has already moved > 8px
-			// past the start word by the time we get here — without this the initial
+			// past the start word by the time we get here - without this the initial
 			// selection is just the start word until the next pointermove fires).
 			const extendToPoint = (clientX: number, clientY: number) => {
 				const el = document.elementFromPoint(clientX, clientY);

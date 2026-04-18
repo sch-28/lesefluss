@@ -10,20 +10,20 @@ if HARDWARE == "AMOLED":
     # LilyGO T-Display-S3 AMOLED (RM67162, QSPI, ESP32-S3)
     PIN_SCK          = 47
     PIN_CS           = 6
-    PIN_DC           = 7    # shared with QSPI D1 — managed internally by the QSPI bus layer
+    PIN_DC           = 7    # shared with QSPI D1 - managed internally by the QSPI bus layer
     PIN_RESET        = 17
     PIN_LED          = 38   # must be pulled HIGH before display init
     PIN_QSPI_D0      = 18
     PIN_QSPI_D1      = 7
     PIN_QSPI_D2      = 48
     PIN_QSPI_D3      = 5
-    PIN_BOOT_BUTTON  = 21   # IO21 — matches button position after 180° rotation
+    PIN_BOOT_BUTTON  = 21   # IO21 - matches button position after 180° rotation
     DISPLAY_WIDTH    = 536
     DISPLAY_HEIGHT   = 240
     DISPLAY_Y_OFFSET = 0
-    DISPLAY_ROTATION = 3    # 180° from rotation 1 — matches ST7789 orientation
+    DISPLAY_ROTATION = 3    # 180° from rotation 1 - matches ST7789 orientation
     DISPLAY_PHYSICAL_HEIGHT = 240
-    BRIGHTNESS       = 60   # lower default — AMOLED longevity
+    BRIGHTNESS       = 60   # lower default - AMOLED longevity
     SHOW_FOCAL_INDICATORS = True
     FONT_FILE        = "font_dejavu_24x40"
     FONT_WIDTH       = 24
@@ -61,7 +61,7 @@ AUTO_SHUTDOWN_TIMEOUT = 60000   # ms until display turns off (60 s)
 DEEP_SLEEP_TIMEOUT    = 120000  # ms until deep sleep after last activity (120 s)
 
 DELAY_COMMA  = 2     # , ; :
-DELAY_PERIOD = 3.0   # . ! ? — end of sentence
+DELAY_PERIOD = 3.0   # . ! ? - end of sentence
 
 ACCEL_START = 2.0    # Initial delay multiplier (2.0 = start at half speed)
 ACCEL_RATE  = 0.1    # Rate to reach full speed (0.1 = 10 words)

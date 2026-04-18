@@ -1,7 +1,7 @@
 /**
- * RSVP Engine — pure algorithm functions matching the ESP32 reader exactly.
+ * RSVP Engine - pure algorithm functions matching the ESP32 reader exactly.
  *
- * No React, no DOM — just word splitting, delay calculation, and ORP.
+ * No React, no DOM - just word splitting, delay calculation, and ORP.
  * See apps/esp32/src/reader/rsvp.py and apps/esp32/src/config.py.
  */
 
@@ -78,7 +78,7 @@ export function calcDelay(
 ): { delayMs: number; nextAcceleration: number } {
 	let base = 60000 / settings.wpm;
 
-	// Punctuation multipliers — first match wins (matches ESP32 order)
+	// Punctuation multipliers - first match wins (matches ESP32 order)
 	if (word.includes("...") || word.includes("\u2014") || word.includes("--")) {
 		base *= settings.delayPeriod;
 	} else if (/[.!?]/.test(word)) {

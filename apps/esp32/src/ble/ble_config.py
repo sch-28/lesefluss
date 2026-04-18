@@ -1,4 +1,4 @@
-# Auto-generated from packages/ble-config/config.json — DO NOT EDIT
+# Auto-generated from packages/ble-config/config.json - DO NOT EDIT
 # Re-generate by running: pnpm setup (from monorepo root)
 
 PROTOCOL_VERSION = 2

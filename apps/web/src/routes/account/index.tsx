@@ -20,7 +20,7 @@ export const Route = createFileRoute("/account/")({
 	},
 	head: () =>
 		seo({
-			title: "Account — Lesefluss",
+			title: "Account - Lesefluss",
 			isNoindex: true,
 		}),
 	component: AccountPage,

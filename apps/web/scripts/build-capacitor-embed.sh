@@ -19,4 +19,4 @@ if ! grep -q 'name="robots"' "$INDEX"; then
   sed -i 's|<head>|<head>\n    <meta name="robots" content="noindex, nofollow" />|' "$INDEX"
 fi
 
-echo "Done — capacitor web build available at public/app/"
+echo "Done - capacitor web build available at public/app/"

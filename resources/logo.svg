@@ -47,14 +47,13 @@
      inkscape:window-maximized="1"
      inkscape:current-layer="g8" />
   <title
-     id="title1">Lesefluss — draft 4 (revised sail + rudder)</title>
+     id="title1">Lesefluss</title>
   <rect
      width="512"
      height="512"
      fill="#fef6e4"
      rx="80"
      id="rect1" />
-  <!-- Waves -->
   <g
      fill="none"
      stroke="#5b8fb9"
@@ -68,7 +67,6 @@
      stroke-linecap="round"
      stroke-linejoin="round"
      id="g8">
-    <!-- Hull (B rotated 90° CW): spine = deck, two bumps = hull curves -->
     <g
        transform="matrix(0.99630441,0,0,1.1332315,255.98741,323.04585)"
        id="g4">
@@ -81,17 +79,14 @@
          id="path4"
          sodipodi:nodetypes="csc" />
     </g>
-    <!-- Sail (A): apex + long vertical leg (mast) + 45° leech + crossbar/foot -->
     <g
        id="g6">
-      <!-- Mast: long leg, from apex through the sail foot down to the deck -->
       <line
          x1="180"
          y1="60"
          x2="180"
          y2="320"
          id="line4" />
-      <!-- Leech: short leg, 45° diagonal (160 across = 160 down) -->
       <line
          x1="180"
          y1="60"
@@ -99,7 +94,6 @@
          y2="220"
          id="line5"
          style="fill:#d9543a;fill-opacity:1" />
-      <!-- Crossbar / sail foot: closes the sail triangle -->
       <line
          x1="180"
          y1="220"
@@ -111,7 +105,6 @@
          d="m 333.26745,214.47905 32.44683,28.04726"
          id="path8" />
     </g>
-    <!-- Rudder (C): on the right, belly extends out past the hull -->
     <g
        transform="matrix(-0.66368328,0.74242659,0.74577274,0.66667452,424.44443,315.9351)"
        id="g7">
@@ -145,7 +138,7 @@
     <rdf:RDF>
       <cc:Work
          rdf:about="">
-        <dc:title>Lesefluss — draft 4 (revised sail + rudder)</dc:title>
+        <dc:title>Lesefluss</dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>

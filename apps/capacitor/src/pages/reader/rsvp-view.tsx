@@ -1,5 +1,5 @@
 /**
- * RsvpView — full-screen RSVP word display with focal letter highlighting.
+ * RsvpView - full-screen RSVP word display with focal letter highlighting.
  *
  * Renders one word at a time, advancing via a setTimeout chain.
  * Tap to pause/resume. On resume, acceleration resets and position
@@ -42,7 +42,7 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 }) => {
 	// Build word index in a Web Worker so the spinner animates smoothly
 	// while the expensive tokenization runs off the main thread.
-	// Only rebuilds when content changes — scrub offset changes are handled
+	// Only rebuilds when content changes - scrub offset changes are handled
 	// by the scrub effect below, not by re-running the worker.
 	const [words, setWords] = useState<WordEntry[]>([]);
 	const initialByteOffsetRef = useRef(initialByteOffset);
@@ -67,7 +67,7 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 		return () => worker.terminate();
 	}, [content]);
 
-	// Current word to display — only React state needed for rendering
+	// Current word to display - only React state needed for rendering
 	const [currentWord, setCurrentWord] = useState<WordEntry | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 
@@ -104,7 +104,7 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 		setCurrentWord(entry);
 		displayedOffsetRef.current = entry.byteOffset;
 
-		// Position save — throttled to once per 2 seconds
+		// Position save - throttled to once per 2 seconds
 		const now = Date.now();
 		if (now - lastSaveRef.current >= 2000) {
 			lastSaveRef.current = now;
@@ -171,7 +171,7 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 		}
 	}, [initialByteOffset, words]);
 
-	// ── Visibility change — auto-pause in background ─────────────────────
+	// ── Visibility change - auto-pause in background ─────────────────────
 	useEffect(() => {
 		const handleVisibility = () => {
 			if (document.hidden && isPlaying) {
