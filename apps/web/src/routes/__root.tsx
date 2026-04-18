@@ -44,7 +44,7 @@ export const Route = createRootRoute({
 				...(umamiUrl && umamiWebsiteId
 					? [
 							{
-								src: `${umamiUrl}/umami.js`,
+								src: `${umamiUrl}/script.js`,
 								defer: true,
 								"data-website-id": umamiWebsiteId,
 							},
