@@ -3,6 +3,9 @@
 	"appName": "Lesefluss",
 	"webDir": "dist",
 	"plugins": {
+		"SplashScreen": {
+			"backgroundColor": "#fdfcfb"
+		},
 		"StatusBar": {
 			"overlaysWebView": true,
 			"style": "DARK",
