@@ -97,44 +97,98 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 						<main id="main" className="flex flex-1 flex-col">
 							{children}
 						</main>
-						<footer className="py-10 text-center text-muted-foreground text-sm">
-							<div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
-								<span>© {new Date().getFullYear()} Lesefluss</span>
-								<div className="flex items-center gap-6">
-									<Link to="/download" className="transition-colors hover:text-foreground">
-										Download
-									</Link>
-									<a href="/app" className="transition-colors hover:text-foreground">
-										Web App
-									</a>
-									<Link to="/device" className="transition-colors hover:text-foreground">
-										Device
-									</Link>
-									<Link to="/docs" className="transition-colors hover:text-foreground">
-										Docs
-									</Link>
-									<Link to="/changelog" className="transition-colors hover:text-foreground">
-										Changelog
-									</Link>
-									<Link to="/privacy" className="transition-colors hover:text-foreground">
-										Privacy
-									</Link>
-									<Link to="/terms" className="transition-colors hover:text-foreground">
-										Terms
-									</Link>
-									<Link to="/imprint" className="transition-colors hover:text-foreground">
-										Imprint
-									</Link>
-									{!hideGithub && (
-										<a
-											href="https://github.com/sch-28/lesefluss"
-											target="_blank"
-											rel="noopener noreferrer"
-											className="transition-colors hover:text-foreground"
+						<footer className="mt-16 border-border/60 border-t text-muted-foreground text-sm">
+							<div className="mx-auto max-w-5xl px-6 py-12">
+								<div className="grid gap-10 sm:grid-cols-2 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
+									<div className="space-y-3">
+										<Link
+											to="/"
+											className="flex items-center gap-2 font-semibold text-foreground text-base tracking-tight"
 										>
-											GitHub
-										</a>
-									)}
+											<img src="/logo.png" alt="" className="size-6 rounded-md" />
+											Lesefluss
+										</Link>
+										<p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
+											Speed reading for your phone and a pocket-sized ESP32 device. Open source,
+											free forever.
+										</p>
+									</div>
+									<div className="space-y-3">
+										<h3 className="font-semibold text-foreground text-xs uppercase tracking-wider">
+											Product
+										</h3>
+										<ul className="space-y-2">
+											<li>
+												<Link to="/download" className="transition-colors hover:text-foreground">
+													Download
+												</Link>
+											</li>
+											<li>
+												<a href="/app" className="transition-colors hover:text-foreground">
+													Web App
+												</a>
+											</li>
+											<li>
+												<Link to="/device" className="transition-colors hover:text-foreground">
+													Device
+												</Link>
+											</li>
+										</ul>
+									</div>
+									<div className="space-y-3">
+										<h3 className="font-semibold text-foreground text-xs uppercase tracking-wider">
+											Resources
+										</h3>
+										<ul className="space-y-2">
+											<li>
+												<Link to="/docs" className="transition-colors hover:text-foreground">
+													Docs
+												</Link>
+											</li>
+											<li>
+												<Link to="/changelog" className="transition-colors hover:text-foreground">
+													Changelog
+												</Link>
+											</li>
+											{!hideGithub && (
+												<li>
+													<a
+														href="https://github.com/sch-28/lesefluss"
+														target="_blank"
+														rel="noopener noreferrer"
+														className="transition-colors hover:text-foreground"
+													>
+														GitHub
+													</a>
+												</li>
+											)}
+										</ul>
+									</div>
+									<div className="space-y-3">
+										<h3 className="font-semibold text-foreground text-xs uppercase tracking-wider">
+											Legal
+										</h3>
+										<ul className="space-y-2">
+											<li>
+												<Link to="/privacy" className="transition-colors hover:text-foreground">
+													Privacy
+												</Link>
+											</li>
+											<li>
+												<Link to="/terms" className="transition-colors hover:text-foreground">
+													Terms
+												</Link>
+											</li>
+											<li>
+												<Link to="/imprint" className="transition-colors hover:text-foreground">
+													Imprint
+												</Link>
+											</li>
+										</ul>
+									</div>
+								</div>
+								<div className="mt-10 border-border/60 border-t pt-6 text-muted-foreground/80 text-xs">
+									© {new Date().getFullYear()} Lesefluss. All rights reserved.
 								</div>
 							</div>
 						</footer>
