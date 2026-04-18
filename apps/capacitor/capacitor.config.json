@@ -8,9 +8,5 @@
 			"style": "DARK",
 			"backgroundColor": "#00000000"
 		}
-	},
-	"server": {
-		"url": "http://localhost:3001",
-		"cleartext": true
 	}
 }

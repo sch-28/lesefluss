@@ -32,11 +32,11 @@ if ! command -v magick &>/dev/null; then
 fi
 
 # Compose logo onto a solid square canvas with padding
-# Usage: icon_compose <canvas_px> <output_path>
+# Usage: icon_compose <canvas_px> <output_path> [scale]
 icon_compose() {
-  local size=$1 out=$2
+  local size=$1 out=$2 scale=${3:-$ICON_LOGO_SCALE}
   local logo_px
-  logo_px=$(echo "$size $ICON_LOGO_SCALE" | awk '{printf "%d", $1 * $2}')
+  logo_px=$(echo "$size $scale" | awk '{printf "%d", $1 * $2}')
   magick -size "${size}x${size}" "xc:${ICON_BG}" \
     \( "$SRC" -resize "${logo_px}x${logo_px}" \) \
     -gravity center -composite "$out"
@@ -64,7 +64,7 @@ echo "=== Web (apps/web/public/) ==="
 cp "$SRC" "$WEB/logo.png"
 echo "  logo.png (raw, for header)"
 
-icon_compose 512 "$WEB/favicon.png"
+icon_compose 512 "$WEB/favicon.png" 1.0
 echo "  favicon.png (512x512)"
 
 cp "$WEB/favicon.png" "$WEB/logo-512.png"
@@ -73,16 +73,16 @@ echo "  logo-512.png"
 cp "$WEB/favicon.png" "$WEB/android-chrome-512x512.png"
 echo "  android-chrome-512x512.png"
 
-icon_compose 16  "$WEB/favicon-16x16.png"
+icon_compose 16  "$WEB/favicon-16x16.png" 1.0
 echo "  favicon-16x16.png"
 
-icon_compose 32  "$WEB/favicon-32x32.png"
+icon_compose 32  "$WEB/favicon-32x32.png" 1.0
 echo "  favicon-32x32.png"
 
-icon_compose 48  "$WEB/favicon-48x48.png"
+icon_compose 48  "$WEB/favicon-48x48.png" 1.0
 echo "  favicon-48x48.png"
 
-icon_compose 180 "$WEB/apple-touch-icon.png"
+icon_compose 180 "$WEB/apple-touch-icon.png" 1.0
 echo "  apple-touch-icon.png (180x180)"
 
 magick "$WEB/favicon-16x16.png" "$WEB/favicon-32x32.png" "$WEB/favicon-48x48.png" "$WEB/favicon.ico"
@@ -95,10 +95,10 @@ echo "=== Capacitor web (apps/capacitor/public/) ==="
 cp "$SRC" "$CAP/logo.png"
 echo "  logo.png"
 
-icon_compose 512 "$CAP/favicon.png"
+icon_compose 512 "$CAP/favicon.png" 1.0
 echo "  favicon.png (512x512)"
 
-icon_compose 180 "$CAP/apple-touch-icon.png"
+icon_compose 180 "$CAP/apple-touch-icon.png" 1.0
 echo "  apple-touch-icon.png (180x180)"
 
 # ── Android launcher icons ────────────────────────────────────────────────────
