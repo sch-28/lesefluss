@@ -1390,6 +1390,7 @@ ion-popover.appearance-popover {
 .content-container {
 	max-width: 900px;
 	width: 100%;
+	margin: 0 auto;
 }
 
 @media (min-width: 768px) {
@@ -1638,6 +1639,13 @@ ion-popover.appearance-popover {
 	);
 	background-size: 200% 100%;
 	animation: cover-shimmer 1.2s ease-in-out infinite;
+	transition: opacity 200ms ease;
+}
+
+.cover-image-shimmer--done {
+	opacity: 0;
+	animation: none;
+	pointer-events: none;
 }
 
 .cover-image-fallback {
@@ -1648,14 +1656,6 @@ ion-popover.appearance-popover {
 	justify-content: center;
 }
 
-.cover-image-img {
-	opacity: 0;
-	transition: opacity 250ms ease;
-}
-
-.cover-image-img.is-loaded {
-	opacity: 1;
-}
 
 @keyframes cover-shimmer {
 	0% {
@@ -2275,4 +2275,17 @@ body.dark .book-detail-description a {
 
 body.dark .book-detail-summary {
 	color: #bbb;
+}
+
+/* ── Desktop: hide in-toolbar brand (sidebar already shows it) ── */
+/* Separate block so it comes after .app-brand's display:flex definition. */
+@media (min-width: 768px) {
+	.app-brand {
+		display: none;
+	}
+
+	.explore-toolbar,
+	.library-toolbar {
+		justify-content: flex-end;
+	}
 }

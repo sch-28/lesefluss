@@ -40,32 +40,31 @@ const CoverImage: React.FC<Props> = ({
 
 	return (
 		<div className={`cover-image ${className ?? ""}`.trim()}>
-			{/* Skeleton shimmer — stays visible under the image until load fires. */}
-			{showImage && state === "loading" && <div className="cover-image-shimmer" />}
-
 			{/* Fallback (no src OR load error). */}
 			{showFallback && (
 				<div className="cover-image-fallback">{placeholder}</div>
 			)}
 
-			{/* Image itself — transparent until loaded, then fades in. */}
+			{/* Image itself — rendered at full opacity; shimmer fades out on top. */}
 			{showImage && (
 				<img
 					src={src}
 					alt={alt}
 					decoding="async"
 					loading={priority ? "eager" : "lazy"}
-					// fetchpriority is a standard HTML attribute but React's types
-					// lag behind. Cast is localised and documented.
 					{...({ fetchpriority: priority ? "high" : "auto" } as {
 						fetchpriority: "high" | "auto";
 					})}
 					onLoad={() => setState("loaded")}
 					onError={() => setState("error")}
-					className={`${imgClassName ?? "block h-full w-full object-cover"} cover-image-img ${
-						state === "loaded" ? "is-loaded" : ""
-					}`}
+					className={imgClassName ?? "block h-full w-full object-cover"}
 				/>
+			)}
+
+			{/* Skeleton shimmer — sits on top of the image and fades out once loaded.
+			    This prevents the container background from flashing through. */}
+			{showImage && (
+				<div className={`cover-image-shimmer${state === "loaded" ? " cover-image-shimmer--done" : ""}`} />
 			)}
 		</div>
 	);

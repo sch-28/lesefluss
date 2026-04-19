@@ -96,16 +96,18 @@ const ExploreSearchResults: React.FC<Props> = ({
 
 	return (
 		<>
-			<div className="flex items-baseline justify-between px-4 pt-2 text-[#888] text-[0.75rem]">
-				<span>
-					{data.total.toLocaleString()} result{data.total === 1 ? "" : "s"}
-				</span>
-				{isFetching && <IonSpinner name="crescent" style={{ width: 14, height: 14 }} />}
-			</div>
-			<div className="content-container grid grid-cols-3 gap-4 p-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-				{results.map((r) => (
-					<ResultCard key={r.id} result={r} onOpen={() => onOpen(r)} />
-				))}
+			<div className="content-container">
+				<div className="flex items-baseline justify-between px-4 pt-2 text-[#888] text-[0.75rem]">
+					<span>
+						{data.total.toLocaleString()} result{data.total === 1 ? "" : "s"}
+					</span>
+					{isFetching && <IonSpinner name="crescent" style={{ width: 14, height: 14 }} />}
+				</div>
+				<div className="grid grid-cols-3 gap-4 p-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+					{results.map((r) => (
+						<ResultCard key={r.id} result={r} onOpen={() => onOpen(r)} />
+					))}
+				</div>
 			</div>
 			<Pagination
 				page={page}
