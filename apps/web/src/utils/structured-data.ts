@@ -33,7 +33,7 @@ export const softwareApplicationSchema = jsonLd({
 	applicationCategory: "BookApplication",
 	operatingSystem: "Android, Web",
 	url: SITE_URL,
-	image: `${SITE_URL}/og.png`,
+	image: `${SITE_URL}/og.jpeg`,
 	description:
 		"Read books 2–4× faster with RSVP. Import EPUB and TXT, sync settings to a pocket-sized ESP32 device, and read fully offline.",
 	offers: {

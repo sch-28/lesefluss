@@ -1,5 +1,5 @@
 export const SITE_URL = "https://lesefluss.app";
-const DEFAULT_OG_IMAGE = `${SITE_URL}/og.png`;
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og.jpeg`;
 
 export function buildVerificationMeta() {
 	const tags: Array<{ name: string; content: string }> = [];
