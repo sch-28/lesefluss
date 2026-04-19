@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, Download, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { ExploreCover } from "~/lib/explore-covers";
 
 type Props = {
@@ -9,48 +9,43 @@ type Props = {
 };
 
 export function ExploreWall({ covers, variant = "section" }: Props) {
-	const hasCovers = covers.length >= 8;
-	const row1 = hasCovers ? covers.slice(0, Math.ceil(covers.length / 2)) : [];
-	const row2 = hasCovers ? covers.slice(Math.ceil(covers.length / 2)) : [];
+	const hasCovers = covers.length >= 12;
+	const third = Math.ceil(covers.length / 3);
+	const row1 = hasCovers ? covers.slice(0, third) : [];
+	const row2 = hasCovers ? covers.slice(third, third * 2) : [];
+	const row3 = hasCovers ? covers.slice(third * 2) : [];
 	const isHero = variant === "hero";
 
 	return (
-		<section
-			className={`relative isolate overflow-hidden bg-[#0c0a0a] text-white ${
-				isHero ? "flex items-center py-16" : "py-28"
-			}`}
-		>
-			{/* Ambient glows */}
-			<div
-				aria-hidden
-				className="-translate-x-1/2 absolute top-1/3 left-1/4 h-[520px] w-[520px] rounded-full bg-primary/30 blur-[120px]"
-			/>
-			<div
-				aria-hidden
-				className="absolute right-0 bottom-0 h-[420px] w-[420px] translate-x-1/3 rounded-full bg-[#4bb8d8]/20 blur-[120px]"
-			/>
-
+		<section className="relative isolate bg-foreground text-white">
+			{/* Rows in normal flow — they drive the section height, no clipping */}
 			{hasCovers && (
 				<div
 					aria-hidden
-					className="-z-10 pointer-events-none absolute inset-0 flex flex-col justify-center gap-6 opacity-60 [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]"
+					className="pointer-events-none relative z-10 flex flex-col gap-4 py-4 opacity-60 [mask-image:linear-gradient(to_right,transparent,black_3%,black_97%,transparent)]"
 				>
 					<MarqueeRow covers={row1} duration={80} direction="left" />
 					<MarqueeRow covers={row2} duration={95} direction="right" />
-					<MarqueeRow covers={row1.slice().reverse()} duration={110} direction="left" />
+					<MarqueeRow covers={row3} duration={110} direction="left" />
 				</div>
 			)}
 
-			<div
-				className={`relative mx-auto max-w-4xl px-6 text-center ${isHero ? "py-12" : ""}`}
-				data-aos="fade-up"
-			>
-				{isHero ? <HeroContent /> : <SectionContent />}
-				<Attribution />
+			{/* Dark overlay for text legibility */}
+			<div aria-hidden className="pointer-events-none absolute inset-0 z-10 bg-foreground/40" />
+
+			{/* Content overlaid and centered on top of the rows */}
+			<div className="absolute inset-0 z-20 flex items-center justify-center">
+				<div
+					className="relative mx-auto w-full max-w-4xl px-6 py-12 text-center"
+					data-aos="fade-up"
+				>
+					{isHero ? <HeroContent /> : <SectionContent />}
+					<Attribution />
+				</div>
 			</div>
 
 			{isHero && (
-				<div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-white/50">
+				<div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-white">
 					<ChevronDown className="h-6 w-6" />
 				</div>
 			)}
@@ -152,7 +147,7 @@ function SectionContent() {
 
 function Attribution() {
 	return (
-		<p className="mt-8 text-white/45 text-sm">
+		<p className="mt-8 text-sm text-white/45">
 			Covers by{" "}
 			<a
 				href="https://standardebooks.org"
@@ -187,7 +182,7 @@ function MarqueeRow({
 	// Duplicate list so the animated translate can loop seamlessly.
 	const loop = [...covers, ...covers];
 	return (
-		<div className="relative flex overflow-hidden">
+		<div className="relative flex overflow-x-clip">
 			<div
 				className="flex shrink-0 gap-5 pr-5"
 				style={{
@@ -196,7 +191,7 @@ function MarqueeRow({
 				}}
 			>
 				{loop.map((c, i) => (
-					<CoverTile key={`${c.id}-${i}`} cover={c} />
+					<CoverTile key={`${c.id}-${String(i)}`} cover={c} />
 				))}
 			</div>
 		</div>
@@ -205,12 +200,18 @@ function MarqueeRow({
 
 function CoverTile({ cover }: { cover: ExploreCover }) {
 	const [state, setState] = useState<"loading" | "loaded" | "error">("loading");
+
+	const imgRef = useCallback((el: HTMLImageElement | null) => {
+		if (!el) return;
+		if (el.complete) setState(el.naturalWidth > 0 ? "loaded" : "error");
+	}, []);
+
 	return (
-		<div className="relative h-[220px] w-[150px] shrink-0 overflow-hidden rounded-md bg-white/5 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.8)] ring-1 ring-white/10 sm:h-[240px] sm:w-[164px]">
+		<div className="relative shrink-0 rounded-md bg-white/5 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
 			{state === "loading" && (
 				<div
 					aria-hidden
-					className="absolute inset-0 animate-[explore-shimmer_1.4s_ease-in-out_infinite] bg-[linear-gradient(100deg,rgba(255,255,255,0.04)_10%,rgba(255,255,255,0.12)_40%,rgba(255,255,255,0.04)_70%)] bg-[length:200%_100%]"
+					className="absolute inset-0 animate-[explore-shimmer_1.4s_ease-in-out_infinite] bg-[length:200%_100%] bg-[linear-gradient(100deg,rgba(255,255,255,0.04)_10%,rgba(255,255,255,0.12)_40%,rgba(255,255,255,0.04)_70%)]"
 				/>
 			)}
 			{state === "error" && (
@@ -219,13 +220,14 @@ function CoverTile({ cover }: { cover: ExploreCover }) {
 				</div>
 			)}
 			<img
+				ref={imgRef}
 				src={cover.coverUrl}
 				alt=""
-				loading="lazy"
 				decoding="async"
+				fetchPriority="low"
 				onLoad={() => setState("loaded")}
 				onError={() => setState("error")}
-				className={`h-full w-full object-cover transition-opacity duration-300 ${
+				className={`block h-auto w-[150px] transition-opacity duration-300 sm:w-[164px] ${
 					state === "loaded" ? "opacity-100" : "opacity-0"
 				}`}
 			/>

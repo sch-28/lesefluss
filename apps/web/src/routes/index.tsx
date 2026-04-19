@@ -19,7 +19,8 @@ import { FeatureCard } from "~/components/feature-card";
 import { HeroRsvp } from "~/components/hero-rsvp";
 import { RsvpPreview } from "~/components/rsvp-preview";
 import { Button } from "~/components/ui/button";
-import { getCatalogCounts, getExploreCovers } from "~/lib/explore-covers";
+import { getCatalogCounts } from "~/lib/explore-covers";
+import { staticCovers } from "~/lib/static-covers";
 import { useSiteFlags } from "~/lib/site-flags";
 import { seo } from "~/utils/seo";
 import { softwareApplicationSchema } from "~/utils/structured-data";
@@ -27,8 +28,8 @@ import { softwareApplicationSchema } from "~/utils/structured-data";
 export const Route = createFileRoute("/")({
 	component: Home,
 	loader: async () => {
-		const [covers, counts] = await Promise.all([getExploreCovers(), getCatalogCounts()]);
-		return { covers, counts };
+		const counts = await getCatalogCounts();
+		return { covers: staticCovers, counts };
 	},
 	head: () => ({
 		...seo({

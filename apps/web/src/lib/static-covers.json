@@ -1,0 +1,212 @@
+[
+  {
+    "id": "se:dorothy-l-sayers/clouds-of-witness",
+    "title": "Clouds of Witness",
+    "author": "Dorothy L. Sayers",
+    "file": "dorothy-l-sayers__clouds-of-witness.webp"
+  },
+  {
+    "id": "se:daisy-ashford/the-young-visiters",
+    "title": "The Young Visiters",
+    "author": "Daisy Ashford",
+    "file": "daisy-ashford__the-young-visiters.webp"
+  },
+  {
+    "id": "se:carolyn-wells/the-clue",
+    "title": "The Clue",
+    "author": "Carolyn Wells",
+    "file": "carolyn-wells__the-clue.webp"
+  },
+  {
+    "id": "se:benjamin-franklin/the-autobiography-of-benjamin-franklin",
+    "title": "The Autobiography of Benjamin Franklin",
+    "author": "Benjamin Franklin",
+    "file": "benjamin-franklin__the-autobiography-of-benjamin-franklin.webp"
+  },
+  {
+    "id": "se:margaret-oliphant/phoebe-junior",
+    "title": "Phoebe, Junior",
+    "author": "Margaret Oliphant",
+    "file": "margaret-oliphant__phoebe-junior.webp"
+  },
+  {
+    "id": "se:margaret-oliphant/the-rector-and-the-doctors-family",
+    "title": "The Rector and The Doctor’s Family",
+    "author": "Margaret Oliphant",
+    "file": "margaret-oliphant__the-rector-and-the-doctors-family.webp"
+  },
+  {
+    "id": "se:james-de-mille/a-strange-manuscript-found-in-a-copper-cylinder",
+    "title": "A Strange Manuscript Found in a Copper Cylinder",
+    "author": "James De Mille",
+    "file": "james-de-mille__a-strange-manuscript-found-in-a-copper-cylinder.webp"
+  },
+  {
+    "id": "se:lytton-strachey/eminent-victorians",
+    "title": "Eminent Victorians",
+    "author": "Lytton Strachey",
+    "file": "lytton-strachey__eminent-victorians.webp"
+  },
+  {
+    "id": "se:friedrich-nietzsche/the-genealogy-of-morals",
+    "title": "The Genealogy of Morals",
+    "author": "Friedrich Nietzsche",
+    "file": "friedrich-nietzsche__the-genealogy-of-morals.webp"
+  },
+  {
+    "id": "se:mary-austin/the-land-of-little-rain",
+    "title": "The Land of Little Rain",
+    "author": "Mary Austin",
+    "file": "mary-austin__the-land-of-little-rain.webp"
+  },
+  {
+    "id": "se:edward-lear/nonsense-books",
+    "title": "Nonsense Books",
+    "author": "Edward Lear",
+    "file": "edward-lear__nonsense-books.webp"
+  },
+  {
+    "id": "se:edgar-rice-burroughs/tarzan-the-terrible",
+    "title": "Tarzan the Terrible",
+    "author": "Edgar Rice Burroughs",
+    "file": "edgar-rice-burroughs__tarzan-the-terrible.webp"
+  },
+  {
+    "id": "se:mary-shelley/frankenstein",
+    "title": "Frankenstein",
+    "author": "Mary Shelley",
+    "file": "mary-shelley__frankenstein.webp"
+  },
+  {
+    "id": "se:jane-austen/pride-and-prejudice",
+    "title": "Pride and Prejudice",
+    "author": "Jane Austen",
+    "file": "jane-austen__pride-and-prejudice.webp"
+  },
+  {
+    "id": "se:bram-stoker/dracula",
+    "title": "Dracula",
+    "author": "Bram Stoker",
+    "file": "bram-stoker__dracula.webp"
+  },
+  {
+    "id": "se:herman-melville/moby-dick",
+    "title": "Moby Dick",
+    "author": "Herman Melville",
+    "file": "herman-melville__moby-dick.webp"
+  },
+  {
+    "id": "se:charles-dickens/a-tale-of-two-cities",
+    "title": "A Tale of Two Cities",
+    "author": "Charles Dickens",
+    "file": "charles-dickens__a-tale-of-two-cities.webp"
+  },
+  {
+    "id": "se:charles-dickens/great-expectations",
+    "title": "Great Expectations",
+    "author": "Charles Dickens",
+    "file": "charles-dickens__great-expectations.webp"
+  },
+  {
+    "id": "se:oscar-wilde/the-picture-of-dorian-gray",
+    "title": "The Picture of Dorian Gray",
+    "author": "Oscar Wilde",
+    "file": "oscar-wilde__the-picture-of-dorian-gray.webp"
+  },
+  {
+    "id": "se:h-g-wells/the-time-machine",
+    "title": "The Time Machine",
+    "author": "H. G. Wells",
+    "file": "h-g-wells__the-time-machine.webp"
+  },
+  {
+    "id": "se:h-g-wells/the-war-of-the-worlds",
+    "title": "The War of the Worlds",
+    "author": "H. G. Wells",
+    "file": "h-g-wells__the-war-of-the-worlds.webp"
+  },
+  {
+    "id": "se:robert-louis-stevenson/the-strange-case-of-dr-jekyll-and-mr-hyde",
+    "title": "The Strange Case of Dr. Jekyll and Mr. Hyde",
+    "author": "Robert Louis Stevenson",
+    "file": "robert-louis-stevenson__the-strange-case-of-dr-jekyll-and-mr-hyde.webp"
+  },
+  {
+    "id": "se:arthur-conan-doyle/the-adventures-of-sherlock-holmes",
+    "title": "The Adventures of Sherlock Holmes",
+    "author": "Arthur Conan Doyle",
+    "file": "arthur-conan-doyle__the-adventures-of-sherlock-holmes.webp"
+  },
+  {
+    "id": "se:mark-twain/the-adventures-of-huckleberry-finn",
+    "title": "The Adventures of Huckleberry Finn",
+    "author": "Mark Twain",
+    "file": "mark-twain__the-adventures-of-huckleberry-finn.webp"
+  },
+  {
+    "id": "se:mark-twain/the-adventures-of-tom-sawyer",
+    "title": "The Adventures of Tom Sawyer",
+    "author": "Mark Twain",
+    "file": "mark-twain__the-adventures-of-tom-sawyer.webp"
+  },
+  {
+    "id": "se:edgar-allan-poe/short-fiction",
+    "title": "Short Fiction",
+    "author": "Edgar Allan Poe",
+    "file": "edgar-allan-poe__short-fiction.webp"
+  },
+  {
+    "id": "se:nathaniel-hawthorne/the-scarlet-letter",
+    "title": "The Scarlet Letter",
+    "author": "Nathaniel Hawthorne",
+    "file": "nathaniel-hawthorne__the-scarlet-letter.webp"
+  },
+  {
+    "id": "se:l-frank-baum/the-wonderful-wizard-of-oz",
+    "title": "The Wonderful Wizard of Oz",
+    "author": "L. Frank Baum",
+    "file": "l-frank-baum__the-wonderful-wizard-of-oz.webp"
+  },
+  {
+    "id": "se:joseph-conrad/heart-of-darkness",
+    "title": "Heart of Darkness",
+    "author": "Joseph Conrad",
+    "file": "joseph-conrad__heart-of-darkness.webp"
+  },
+  {
+    "id": "se:virginia-woolf/mrs-dalloway",
+    "title": "Mrs. Dalloway",
+    "author": "Virginia Woolf",
+    "file": "virginia-woolf__mrs-dalloway.webp"
+  },
+  {
+    "id": "se:f-scott-fitzgerald/the-great-gatsby",
+    "title": "The Great Gatsby",
+    "author": "F. Scott Fitzgerald",
+    "file": "f-scott-fitzgerald__the-great-gatsby.webp"
+  },
+  {
+    "id": "se:james-joyce/dubliners",
+    "title": "Dubliners",
+    "author": "James Joyce",
+    "file": "james-joyce__dubliners.webp"
+  },
+  {
+    "id": "se:james-joyce/a-portrait-of-the-artist-as-a-young-man",
+    "title": "A Portrait of the Artist as a Young Man",
+    "author": "James Joyce",
+    "file": "james-joyce__a-portrait-of-the-artist-as-a-young-man.webp"
+  },
+  {
+    "id": "se:kate-chopin/the-awakening",
+    "title": "The Awakening",
+    "author": "Kate Chopin",
+    "file": "kate-chopin__the-awakening.webp"
+  },
+  {
+    "id": "se:louisa-may-alcott/little-women",
+    "title": "Little Women",
+    "author": "Louisa May Alcott",
+    "file": "louisa-may-alcott__little-women.webp"
+  }
+]
