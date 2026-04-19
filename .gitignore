@@ -38,3 +38,15 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# FreeCAD auto-backups
+*.FCBak
+
+# Blender auto-backups
+*.blend1
+
+# Large render inputs (HDRI environment maps)
+*.exr
+
+# Generated render frames
+resources/case/oled-v1/render/screen/
