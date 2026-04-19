@@ -7,7 +7,7 @@ CAP_DIR="$WEB_DIR/../capacitor"
 
 echo "Building capacitor app for web embed..."
 cd "$CAP_DIR"
-WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true VITE_CATALOG_URL="${CATALOG_URL:-https://catalog.lesefluss.app}" pnpm build
+WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true pnpm build
 
 echo "Copying build output to public/app/..."
 rm -rf "$WEB_DIR/public/app"
