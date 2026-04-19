@@ -1,64 +1,27 @@
-import { count } from "drizzle-orm";
 import { Hono } from "hono";
-import { db } from "../db/index.js";
-import { catalogBooks } from "../db/schema.js";
+import { getCounts, invalidateCountsCache } from "../lib/counts.js";
 import { requireAdmin } from "../middleware/bearer-auth.js";
 import { getSyncState, runSync, type Source } from "../sync/orchestrator.js";
 
 const VALID_SOURCES: readonly Source[] = ["gutenberg", "standard_ebooks", "all"];
 
-type Counts = { gutenberg: number; standardEbooks: number; suppressed: number; total: number };
-const COUNTS_TTL_MS = 10_000;
-let countsCache: { at: number; value: Counts } | null = null;
-
-async function getCounts(): Promise<Counts> {
-	const now = Date.now();
-	if (countsCache && now - countsCache.at < COUNTS_TTL_MS) return countsCache.value;
-
-	const rows = await db
-		.select({
-			source: catalogBooks.source,
-			suppressed: catalogBooks.suppressed,
-			count: count(),
-		})
-		.from(catalogBooks)
-		.groupBy(catalogBooks.source, catalogBooks.suppressed);
-
-	let gutenberg = 0;
-	let standardEbooks = 0;
-	let suppressed = 0;
-	for (const r of rows) {
-		if (r.suppressed) {
-			suppressed += r.count;
-			continue;
-		}
-		if (r.source === "gutenberg") gutenberg += r.count;
-		else if (r.source === "standard_ebooks") standardEbooks += r.count;
-	}
-
-	const value: Counts = {
-		gutenberg,
-		standardEbooks,
-		suppressed,
-		total: gutenberg + standardEbooks,
-	};
-	countsCache = { at: now, value };
-	return value;
+function isSource(value: unknown): value is Source {
+	return typeof value === "string" && (VALID_SOURCES as readonly string[]).includes(value);
 }
 
 export const adminRoute = new Hono()
 	.use("*", requireAdmin)
 	.post("/sync", async (c) => {
-		const body = (await c.req.json().catch(() => ({}))) as { source?: string };
-		if (body.source && !VALID_SOURCES.includes(body.source as Source)) {
+		const body = (await c.req.json().catch(() => ({}))) as { source?: unknown };
+		if (body.source !== undefined && !isSource(body.source)) {
 			return c.json({ error: "invalid source" }, 400);
 		}
-		const source: Source = (body.source as Source) ?? "all";
+		const source: Source = isSource(body.source) ? body.source : "all";
 
 		// Fire-and-forget; orchestrator guards against concurrent runs
 		void runSync(source);
 		// Invalidate counts cache so the next /stats poll reflects the fresh run.
-		countsCache = null;
+		invalidateCountsCache();
 		return c.json({ accepted: true, source }, 202);
 	})
 	.get("/stats", async (c) => {

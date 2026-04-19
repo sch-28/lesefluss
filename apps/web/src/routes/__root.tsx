@@ -109,8 +109,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 											Lesefluss
 										</Link>
 										<p className="max-w-xs text-muted-foreground text-xs leading-relaxed">
-											Speed reading for your phone and a pocket-sized ESP32 device. Open source,
-											free forever.
+											Speed reading for your phone and a pocket-sized ESP32 device. Free forever.
 										</p>
 									</div>
 									<div className="space-y-3">

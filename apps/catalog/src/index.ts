@@ -6,7 +6,7 @@ import cron from "node-cron";
 import { db } from "./db/index.js";
 import { migrate } from "./db/migrate.js";
 import { env } from "./env.js";
-import { rateLimit } from "./middleware/rate-limit.js";
+import { coversRateLimit, rateLimit } from "./middleware/rate-limit.js";
 import { adminRoute } from "./routes/admin.js";
 import { booksRoute } from "./routes/books.js";
 import { coversRoute } from "./routes/covers.js";
@@ -14,6 +14,7 @@ import { healthRoute } from "./routes/health.js";
 import { landingRoute } from "./routes/landing.js";
 import { searchRoute } from "./routes/search.js";
 import { shelvesRoute } from "./routes/shelves.js";
+import { statsRoute } from "./routes/stats.js";
 import { runSync } from "./sync/orchestrator.js";
 
 async function main() {
@@ -46,12 +47,19 @@ async function main() {
 	// Health first, no rate limit
 	app.route("/health", healthRoute);
 
+	// Covers get their own generous bucket — first paint of the landing-page
+	// marquee or the app's Explore grid easily fires ~25 requests at once, which
+	// would tip the 60/min API bucket into 429s. Mount before the shared limiter
+	// so the two don't stack.
+	app.use("/covers/*", coversRateLimit);
+	app.route("/covers", coversRoute);
+
 	app.use("*", rateLimit);
 	app.route("/search", searchRoute);
 	app.route("/landing", landingRoute);
 	app.route("/shelves", shelvesRoute);
+	app.route("/stats", statsRoute);
 	app.route("/books", booksRoute);
-	app.route("/covers", coversRoute);
 	app.route("/admin", adminRoute);
 
 	serve({ fetch: app.fetch, port: env.PORT }, (info) => {

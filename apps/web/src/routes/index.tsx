@@ -4,8 +4,6 @@ import {
 	Battery,
 	Bluetooth,
 	BookOpen,
-	ChevronDown,
-	Cpu,
 	Download,
 	Highlighter,
 	Library,
@@ -15,17 +13,23 @@ import {
 	Zap,
 } from "lucide-react";
 import type * as React from "react";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { ExploreWall } from "~/components/explore-wall";
 import { FeatureCard } from "~/components/feature-card";
 import { HeroRsvp } from "~/components/hero-rsvp";
 import { RsvpPreview } from "~/components/rsvp-preview";
 import { Button } from "~/components/ui/button";
+import { getCatalogCounts, getExploreCovers } from "~/lib/explore-covers";
 import { useSiteFlags } from "~/lib/site-flags";
 import { seo } from "~/utils/seo";
 import { softwareApplicationSchema } from "~/utils/structured-data";
 
 export const Route = createFileRoute("/")({
 	component: Home,
+	loader: async () => {
+		const [covers, counts] = await Promise.all([getExploreCovers(), getCatalogCounts()]);
+		return { covers, counts };
+	},
 	head: () => ({
 		...seo({
 			title: "Lesefluss - Speed Reading App & Device",
@@ -45,6 +49,8 @@ const glowStyle = { filter: "blur(60px)", transform: "scale(1.4)" };
 
 function Home() {
 	const { hideGithub } = useSiteFlags();
+	const { covers, counts } = Route.useLoaderData();
+	const stats = useMemo(() => buildStats(counts), [counts]);
 
 	useEffect(() => {
 		import("aos")
@@ -55,73 +61,31 @@ function Home() {
 	}, []);
 
 	const videoRef = useCallback((el: HTMLVideoElement | null) => {
-		if (el) el.playbackRate = 0.85;
+		if (!el) return;
+		el.playbackRate = 0.85;
+		if (typeof IntersectionObserver === "undefined") {
+			el.play().catch(() => {});
+			return;
+		}
+		const obs = new IntersectionObserver(
+			(entries) => {
+				for (const e of entries) {
+					if (e.isIntersecting) {
+						el.play().catch(() => {});
+					} else {
+						el.pause();
+					}
+				}
+			},
+			{ threshold: 0.25 },
+		);
+		obs.observe(el);
 	}, []);
 
 	return (
 		<div>
-			{/* ── Hero ─────────────────────────────────────────────────── */}
-			<section className="relative w-full overflow-hidden">
-				<video
-					src="/landing.mp4"
-					poster="/landing-poster.jpg"
-					preload="metadata"
-					autoPlay
-					muted
-					playsInline
-					className="absolute inset-0 h-full w-full object-cover"
-					onEnded={handleVideoEnded}
-					ref={videoRef}
-				/>
-				<div className="absolute inset-0 bg-radial from-transparent via-black/10 to-black/30" />
-				<div className="relative mx-auto flex min-h-[92vh] max-w-5xl flex-col items-center justify-center px-6 py-20 text-center">
-					<p className="mb-5 font-semibold text-white/50 text-xs uppercase tracking-[0.25em]">
-						Rapid Serial Visual Presentation
-					</p>
-					<h1 className="mb-6 font-bold text-6xl text-white tracking-tight sm:text-7xl lg:text-8xl">
-						Read <HeroRsvp />
-						<br />
-						<span className="text-white">One word at a time.</span>
-					</h1>
-					<p className="mx-auto mb-10 max-w-xl text-lg text-white/90">
-						Speed reading app for Android. Import any book, read at up to 1000 WPM. Pair it with an
-						ESP32 device for distraction-free reading.
-					</p>
-					<div className="flex flex-col justify-center gap-4 sm:flex-row">
-						<Link
-							to="/download"
-							className="inline-flex items-center gap-2 rounded-md border-2 border-white bg-white px-8 py-3 font-semibold text-base text-black transition-colors hover:bg-white/80"
-						>
-							<Download className="h-4 w-4" />
-							Get the app
-						</Link>
-						<Link
-							to="/device"
-							className="inline-flex items-center gap-2 rounded-md border-2 border-white bg-transparent px-8 py-3 font-semibold text-base text-white transition-colors hover:bg-white/10"
-						>
-							<Cpu className="h-4 w-4" />
-							Build the device
-						</Link>
-					</div>
-					<div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-white/50">
-						<ChevronDown className="h-6 w-6" />
-					</div>
-				</div>
-				{/* Wave flowing into stats strip */}
-				<div className="absolute right-0 bottom-0 left-0 text-foreground leading-none">
-					<svg
-						viewBox="0 0 1440 72"
-						preserveAspectRatio="none"
-						className="block h-18 w-full"
-						aria-hidden="true"
-					>
-						<path
-							d="M0,36 C240,72 480,0 720,36 C960,72 1200,0 1440,36 L1440,72 L0,72 Z"
-							fill="currentColor"
-						/>
-					</svg>
-				</div>
-			</section>
+			{/* ── Hero: Explore Wall ───────────────────────────────────── */}
+			<ExploreWall covers={covers} variant="hero" />
 
 			{/* ── Stats Strip ──────────────────────────────────────────── */}
 			<section className="relative bg-foreground pt-10 pb-28 text-background">
@@ -214,8 +178,40 @@ function Home() {
 				</div>
 			</section>
 
+			{/* ── RSVP in action ───────────────────────────────────────── */}
+			<section className="relative isolate overflow-hidden border-border border-t py-24">
+				<video
+					src="/landing.mp4"
+					poster="/landing-poster.jpg"
+					preload="none"
+					muted
+					playsInline
+					className="absolute inset-0 -z-10 h-full w-full object-cover opacity-50"
+					onEnded={handleVideoEnded}
+					ref={videoRef}
+				/>
+				<div
+					aria-hidden
+					className="absolute inset-0 -z-10 bg-gradient-to-b from-background/75 via-background/55 to-background/85"
+				/>
+				<div className="mx-auto max-w-3xl px-6 text-center" data-aos="fade-up">
+					<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-[0.25em]">
+						Rapid Serial Visual Presentation
+					</p>
+					<h2 className="mb-5 font-bold text-4xl tracking-tight sm:text-5xl">
+						Read <HeroRsvp />
+						<br />
+						One word at a time.
+					</h2>
+					<p className="mx-auto max-w-xl text-foreground/80 leading-relaxed">
+						Flash words one at a time with optimal letter alignment. Your eyes stop jumping, your
+						pace stays steady, and you read 2–4× faster without losing comprehension.
+					</p>
+				</div>
+			</section>
+
 			{/* ── Device Section ───────────────────────────────────────── */}
-			<section className="border-border border-t py-24">
+			<section className="border-border py-24">
 				<div className="mx-auto max-w-5xl px-6">
 					<div className="grid gap-12 lg:grid-cols-2 lg:items-center">
 						<div className="relative flex justify-center lg:justify-start" data-aos="fade-right">
@@ -268,14 +264,14 @@ function Home() {
 				</div>
 			</section>
 
-			{/* ── Open Source CTA ──────────────────────────────────────── */}
+			{/* ── Free CTA ─────────────────────────────────────────────── */}
 			<section className="bg-foreground py-28 text-background">
 				<div className="mx-auto max-w-3xl px-6 text-center" data-aos="fade-up">
 					<p className="mb-3 font-semibold text-background/50 text-xs uppercase tracking-widest">
 						Free forever
 					</p>
 					<h2 className="mb-5 font-bold text-4xl text-background leading-tight">
-						Open source,
+						Free,
 						<br />
 						no strings attached.
 					</h2>
@@ -306,12 +302,24 @@ function Home() {
 	);
 }
 
-const stats = [
-	{ value: "1000", label: "Words per minute" },
-	{ value: "EPUB & TXT", label: "Book formats" },
-	{ value: "~€25", label: "Device cost" },
-	{ value: "Open source", label: "Always free" },
-];
+function formatCount(n: number): string {
+	if (n >= 10_000) return `${Math.floor(n / 1_000)}k+`;
+	if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}k+`;
+	return String(n);
+}
+
+function buildStats(
+	counts: { total: number; standardEbooks: number; gutenberg: number } | null,
+): { value: string; label: string }[] {
+	const total = counts ? formatCount(counts.total) : "80k+";
+	const se = counts ? formatCount(counts.standardEbooks) : "1,400+";
+	return [
+		{ value: total, label: "Free classics in the library" },
+		{ value: se, label: "Hand-typeset Standard Ebooks" },
+		{ value: "1000 WPM", label: "Top reading speed" },
+		{ value: "Free", label: "No account, no subscription" },
+	];
+}
 
 const appFeatures: { icon: LucideIcon; label: string }[] = [
 	{ icon: Library, label: "EPUB & TXT library" },

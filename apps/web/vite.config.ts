@@ -6,6 +6,7 @@ import { defineConfig } from "vite";
 
 const UMAMI_URL = process.env.UMAMI_URL ?? "";
 const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL ?? "";
+const CATALOG_URL = process.env.CATALOG_URL || "https://catalog.lesefluss.app";
 
 // BETTER_AUTH_URL is same-origin in prod (covered by 'self') but differs in dev
 // (e.g. http://localhost:3000 while the page is loaded from another host) - listing
@@ -14,10 +15,10 @@ const csp = [
 	"default-src 'self'",
 	`script-src 'self' 'unsafe-inline'${UMAMI_URL ? ` ${UMAMI_URL}` : ""}`,
 	"style-src 'self' 'unsafe-inline'",
-	"img-src 'self' data: blob:",
+	`img-src 'self' data: blob:${CATALOG_URL ? ` ${CATALOG_URL}` : ""}`,
 	"font-src 'self' data:",
 	"media-src 'self'",
-	`connect-src 'self'${UMAMI_URL ? ` ${UMAMI_URL}` : ""}${BETTER_AUTH_URL ? ` ${BETTER_AUTH_URL}` : ""}`,
+	`connect-src 'self'${UMAMI_URL ? ` ${UMAMI_URL}` : ""}${BETTER_AUTH_URL ? ` ${BETTER_AUTH_URL}` : ""}${CATALOG_URL ? ` ${CATALOG_URL}` : ""}`,
 	"frame-ancestors 'none'",
 	"base-uri 'self'",
 	"form-action 'self'",
@@ -29,10 +30,10 @@ const appCsp = [
 	"default-src 'self'",
 	`script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' 'unsafe-eval'${UMAMI_URL ? ` ${UMAMI_URL}` : ""}`,
 	"style-src 'self' 'unsafe-inline'",
-	"img-src 'self' data: blob:",
+	`img-src 'self' data: blob:${CATALOG_URL ? ` ${CATALOG_URL}` : ""}`,
 	"font-src 'self' data:",
 	"media-src 'self'",
-	`connect-src 'self'${UMAMI_URL ? ` ${UMAMI_URL}` : ""}${BETTER_AUTH_URL ? ` ${BETTER_AUTH_URL}` : ""}`,
+	`connect-src 'self'${UMAMI_URL ? ` ${UMAMI_URL}` : ""}${BETTER_AUTH_URL ? ` ${BETTER_AUTH_URL}` : ""}${CATALOG_URL ? ` ${CATALOG_URL}` : ""}`,
 	"frame-ancestors 'none'",
 	"base-uri 'self'",
 	"form-action 'self'",

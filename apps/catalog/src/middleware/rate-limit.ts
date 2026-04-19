@@ -78,3 +78,15 @@ export const epubRateLimit = createRateLimit({
 	windowMs: 60_000,
 	keyPrefix: "epub:",
 });
+
+/**
+ * Generous bucket for the cover image proxy. A single Explore page or marquee
+ * hero easily triggers 20–30 cover requests at once, so the default 60/min API
+ * bucket would 429 on first paint. Covers are tiny and aggressively cached
+ * upstream, so a higher cap is safe.
+ */
+export const coversRateLimit = createRateLimit({
+	capacity: 300,
+	windowMs: 60_000,
+	keyPrefix: "covers:",
+});
