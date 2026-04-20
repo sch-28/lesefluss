@@ -53,7 +53,9 @@ jobs:
         env:
           VITE_SYNC_URL: https://lesefluss.app
           VITE_CATALOG_URL: https://catalog.lesefluss.app
-        run: node scripts/deploy.mjs
+        run: |
+          node scripts/deploy.mjs
+          npx cap sync android
 
       - name: Decode keystore
         env:
