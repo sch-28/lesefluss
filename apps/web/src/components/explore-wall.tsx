@@ -115,9 +115,9 @@ function HeroContent() {
 			<div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
 				<PrimaryButton to="/download">
 					<Download className="h-4 w-4" />
-					Get the app
+					Download for Android
 				</PrimaryButton>
-				<SecondaryButton href="/app/tabs/explore">Explore the library</SecondaryButton>
+				<SecondaryButton href="/app">Try the web app →</SecondaryButton>
 			</div>
 		</>
 	);

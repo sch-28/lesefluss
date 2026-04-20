@@ -82,7 +82,7 @@ function Home() {
 	}, []);
 
 	return (
-		<div>
+		<div className="overflow-x-hidden">
 			{/* ── Hero: Explore Wall ───────────────────────────────────── */}
 			<ExploreWall covers={covers} />
 
@@ -143,14 +143,14 @@ function Home() {
 							</div>
 							<div className="flex flex-wrap justify-center gap-3 lg:justify-start">
 								<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
-									<Link to="/download">Download the app</Link>
+									<Link to="/download">Download for Android</Link>
 								</Button>
 								<Button
 									asChild
 									variant="outline"
 									className="h-auto px-6 py-2.5 font-semibold text-sm"
 								>
-									<Link to="/docs">Getting started →</Link>
+									<a href="/app">Try the web app →</a>
 								</Button>
 							</div>
 						</div>
@@ -283,9 +283,15 @@ function Home() {
 						<Button asChild className="h-auto px-8 py-3 font-semibold text-sm">
 							<Link to="/download">
 								<Download className="mr-2 h-4 w-4" />
-								Get the app
+								Download for Android
 							</Link>
 						</Button>
+						<a
+							href="/app"
+							className="inline-flex items-center gap-2 rounded-md border-2 border-background/30 bg-transparent px-8 py-3 font-semibold text-background text-sm transition-colors hover:bg-background/10"
+						>
+							Try the web app →
+						</a>
 						<a
 							href="https://github.com/sch-28/lesefluss"
 							target="_blank"

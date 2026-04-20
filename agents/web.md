@@ -126,7 +126,7 @@ When shipping a notable feature, add an entry to `src/data/changelog.ts`. Each e
 - [x] `/profile` page (stats, library, highlights)
 - [x] `/account` page (change password, danger zone)
 - [ ] Full docs (wiring diagrams, screenshots)
-- [ ] Replace Ko-fi placeholder in `/device` with real URL
+- [x] Replace Ko-fi placeholder in `/device` with real URL
 - [ ] Replace disabled Play Store badge in `/download` with real URL once published
 - [x] Open Graph images, SEO pass (robots.txt, sitemap.xml, JSON-LD, canonical, per-route meta)
 - [x] Security headers (CSP, HSTS, etc.) + rate limiting on auth + sync
@@ -134,7 +134,7 @@ When shipping a notable feature, add an entry to `src/data/changelog.ts`. Each e
 - [ ] Transactional email provider for Better Auth verification emails (Resend / Postmark)
 - [ ] MDX migration for `/docs` if content grows significantly
 - [x] Desktop sidebar nav for `/app` (brand link, Library/Settings nav)
-- [ ] Desktop UI polish for `/app` (wider layouts, keyboard shortcuts)
+- [x] Desktop UI polish for `/app` (wider layouts, keyboard shortcuts)
 
 ## Deployment
 

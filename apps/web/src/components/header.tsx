@@ -1,5 +1,16 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { Cpu, Download, FileText, History, LogIn, LogOut, Menu, Smartphone, User, X } from "lucide-react";
+import {
+	Cpu,
+	Download,
+	FileText,
+	History,
+	LogIn,
+	LogOut,
+	Menu,
+	Smartphone,
+	User,
+	X,
+} from "lucide-react";
 import * as React from "react";
 import { Button } from "~/components/ui/button";
 import {
@@ -105,7 +116,7 @@ export function Header() {
 
 	// Close mobile menu when resized to desktop breakpoint
 	React.useEffect(() => {
-		const mq = window.matchMedia("(min-width: 768px)");
+		const mq = window.matchMedia("(min-width: 1081px)");
 		const handler = (e: MediaQueryListEvent) => {
 			if (e.matches) setMobileOpen(false);
 		};
