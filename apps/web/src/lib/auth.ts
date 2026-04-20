@@ -53,6 +53,10 @@ export const auth = betterAuth({
 			clientSecret: requireEnv("GOOGLE_CLIENT_SECRET"),
 			prompt: "select_account",
 		},
+		discord: {
+			clientId: requireEnv("DISCORD_CLIENT_ID"),
+			clientSecret: requireEnv("DISCORD_CLIENT_SECRET"),
+		},
 	},
 	plugins: [tanstackStartCookies(), bearer(), admin()],
 	user: {

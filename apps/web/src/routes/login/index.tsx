@@ -13,7 +13,12 @@ import { sendVerificationEmail, signIn, signUp, useSession } from "~/lib/auth-cl
 import { seo } from "~/utils/seo";
 
 function isSafeRedirect(value: unknown): value is string {
-	return typeof value === "string" && value.startsWith("/") && !value.startsWith("//");
+	if (typeof value !== "string") return false;
+	if (!value.startsWith("/") || value.startsWith("//")) return false;
+	// Avoid bouncing back to login (reload loop) or exposing auth endpoints as redirect targets.
+	if (value === "/login" || value.startsWith("/login/") || value.startsWith("/login?")) return false;
+	if (value.startsWith("/api/")) return false;
+	return true;
 }
 
 export const Route = createFileRoute("/login/")({

@@ -25,6 +25,7 @@ import { Route as DiyIndexRouteImport } from './routes/diy/index'
 import { Route as DeviceIndexRouteImport } from './routes/device/index'
 import { Route as ChangelogIndexRouteImport } from './routes/changelog/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AuthMobileCallbackRouteImport } from './routes/auth/mobile-callback'
 import { Route as AppSplatRouteImport } from './routes/app/$'
 import { Route as ApiSyncRouteImport } from './routes/api/sync'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
@@ -111,6 +112,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/app/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthMobileCallbackRoute = AuthMobileCallbackRouteImport.update({
+  id: '/auth/mobile-callback',
+  path: '/auth/mobile-callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppSplatRoute = AppSplatRouteImport.update({
   id: '/app/$',
   path: '/app/$',
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/sync': typeof ApiSyncRoute
   '/app/$': typeof AppSplatRoute
+  '/auth/mobile-callback': typeof AuthMobileCallbackRoute
   '/app/': typeof AppIndexRoute
   '/changelog/': typeof ChangelogIndexRoute
   '/device/': typeof DeviceIndexRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/sync': typeof ApiSyncRoute
   '/app/$': typeof AppSplatRoute
+  '/auth/mobile-callback': typeof AuthMobileCallbackRoute
   '/app': typeof AppIndexRoute
   '/changelog': typeof ChangelogIndexRoute
   '/device': typeof DeviceIndexRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/sync': typeof ApiSyncRoute
   '/app/$': typeof AppSplatRoute
+  '/auth/mobile-callback': typeof AuthMobileCallbackRoute
   '/app/': typeof AppIndexRoute
   '/changelog/': typeof ChangelogIndexRoute
   '/device/': typeof DeviceIndexRoute
@@ -224,6 +233,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/api/sync'
     | '/app/$'
+    | '/auth/mobile-callback'
     | '/app/'
     | '/changelog/'
     | '/device/'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/api/sync'
     | '/app/$'
+    | '/auth/mobile-callback'
     | '/app'
     | '/changelog'
     | '/device'
@@ -271,6 +282,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/api/sync'
     | '/app/$'
+    | '/auth/mobile-callback'
     | '/app/'
     | '/changelog/'
     | '/device/'
@@ -296,6 +308,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiSyncRoute: typeof ApiSyncRoute
   AppSplatRoute: typeof AppSplatRoute
+  AuthMobileCallbackRoute: typeof AuthMobileCallbackRoute
   AppIndexRoute: typeof AppIndexRoute
   ChangelogIndexRoute: typeof ChangelogIndexRoute
   DeviceIndexRoute: typeof DeviceIndexRoute
@@ -424,6 +437,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/mobile-callback': {
+      id: '/auth/mobile-callback'
+      path: '/auth/mobile-callback'
+      fullPath: '/auth/mobile-callback'
+      preLoaderRoute: typeof AuthMobileCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/$': {
       id: '/app/$'
       path: '/app/$'
@@ -492,6 +512,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiSyncRoute: ApiSyncRoute,
   AppSplatRoute: AppSplatRoute,
+  AuthMobileCallbackRoute: AuthMobileCallbackRoute,
   AppIndexRoute: AppIndexRoute,
   ChangelogIndexRoute: ChangelogIndexRoute,
   DeviceIndexRoute: DeviceIndexRoute,

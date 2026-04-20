@@ -1,3 +1,4 @@
+import { Browser } from "@capacitor/browser";
 import {
 	IonBackButton,
 	IonButton,
@@ -5,7 +6,6 @@ import {
 	IonContent,
 	IonHeader,
 	IonIcon,
-	IonInput,
 	IonItem,
 	IonLabel,
 	IonList,
@@ -17,9 +17,9 @@ import {
 } from "@ionic/react";
 import { cloudDone, cloudOutline, logOutOutline, syncOutline } from "ionicons/icons";
 import type React from "react";
-import { useState } from "react";
 import { useSyncContext } from "../../contexts/sync-context";
-import { IS_WEB_BUILD } from "../../services/sync";
+import { beginMobileLogin, IS_WEB_BUILD } from "../../services/sync";
+import { SYNC_URL } from "../../services/sync/auth-client";
 
 function formatLastSynced(ms: number | null): string {
 	if (!ms) return "Never";
@@ -29,43 +29,25 @@ function formatLastSynced(ms: number | null): string {
 	return new Date(ms).toLocaleString();
 }
 
+function SyncErrorText({ children }: { children: React.ReactNode }) {
+	return (
+		<div className="ion-padding-horizontal ion-padding-top">
+			<p
+				style={{
+					margin: 0,
+					fontSize: "14px",
+					color: "var(--ion-color-danger, #ef4444)",
+				}}
+			>
+				{children}
+			</p>
+		</div>
+	);
+}
+
 const SyncSettings: React.FC = () => {
-	const {
-		isLoggedIn,
-		userEmail,
-		isSyncing,
-		lastSynced,
-		syncError,
-		login,
-		register,
-		logout,
-		syncNow,
-	} = useSyncContext();
-
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
-	const [name, setName] = useState("");
-	const [isSignUp, setIsSignUp] = useState(false);
-	const [authError, setAuthError] = useState<string | null>(null);
-	const [isSubmitting, setIsSubmitting] = useState(false);
-
-	const displayError = authError || syncError;
-
-	const handleSubmit = async () => {
-		setAuthError(null);
-		setIsSubmitting(true);
-		try {
-			if (isSignUp) {
-				await register(name, email, password);
-			} else {
-				await login(email, password);
-			}
-		} catch (err) {
-			setAuthError(err instanceof Error ? err.message : "Authentication failed");
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
+	const { isLoggedIn, userEmail, isSyncing, lastSynced, syncError, logout, syncNow } =
+		useSyncContext();
 
 	return (
 		<IonPage>
@@ -91,11 +73,7 @@ const SyncSettings: React.FC = () => {
 							</IonLabel>
 						</IonItem>
 
-						{syncError && (
-							<div className="ion-padding-horizontal ion-padding-top">
-								<p style={{ margin: 0, fontSize: "14px", color: "#ef4444" }}>{syncError}</p>
-							</div>
-						)}
+						{syncError && <SyncErrorText>{syncError}</SyncErrorText>}
 
 						<div className="ion-padding">
 							<IonButton expand="block" fill="outline" onClick={syncNow} disabled={isSyncing}>
@@ -138,68 +116,33 @@ const SyncSettings: React.FC = () => {
 				) : (
 					<IonList className="content-container">
 						<IonListHeader>
-							<IonLabel>{isSignUp ? "Create Account" : "Sign In"}</IonLabel>
+							<IonLabel>Not Signed In</IonLabel>
 						</IonListHeader>
 						<IonItem>
 							<IonIcon icon={cloudOutline} slot="start" color="medium" />
 							<IonLabel className="ion-text-wrap">
 								<p>
-									Sign in to sync your library, reading progress, and highlights across devices.
+									Sign in on the website to sync your library, reading progress, and highlights
+									across devices.
 								</p>
 							</IonLabel>
 						</IonItem>
 
-						{isSignUp && (
-							<IonItem>
-								<IonInput
-									label="Name"
-									labelPlacement="stacked"
-									type="text"
-									value={name}
-									onIonInput={(e) => setName(e.detail.value ?? "")}
-								/>
-							</IonItem>
-						)}
-						<IonItem>
-							<IonInput
-								label="Email"
-								labelPlacement="stacked"
-								type="email"
-								value={email}
-								onIonInput={(e) => setEmail(e.detail.value ?? "")}
-							/>
-						</IonItem>
-						<IonItem>
-							<IonInput
-								label="Password"
-								labelPlacement="stacked"
-								type="password"
-								value={password}
-								onIonInput={(e) => setPassword(e.detail.value ?? "")}
-							/>
-						</IonItem>
-
-						{displayError && (
-							<div className="ion-padding-horizontal ion-padding-top">
-								<p style={{ margin: 0, fontSize: "14px", color: "#ef4444" }}>{displayError}</p>
-							</div>
-						)}
+						{syncError && <SyncErrorText>{syncError}</SyncErrorText>}
 
 						<div className="ion-padding">
 							<IonButton
 								expand="block"
-								onClick={handleSubmit}
-								disabled={isSubmitting || !email || !password || (isSignUp && !name)}
+								onClick={async () => {
+									const state = await beginMobileLogin();
+									await Browser.open({
+										url: `${SYNC_URL}/auth/mobile-callback?state=${encodeURIComponent(state)}`,
+									});
+								}}
 							>
-								{isSubmitting ? <IonSpinner name="crescent" /> : isSignUp ? "Sign Up" : "Sign In"}
+								Sign In
 							</IonButton>
 						</div>
-
-						<IonItem button onClick={() => setIsSignUp(!isSignUp)} detail={false}>
-							<IonLabel color="medium" className="ion-text-center">
-								<p>{isSignUp ? "Already have an account? Sign in" : "No account? Sign up"}</p>
-							</IonLabel>
-						</IonItem>
 					</IonList>
 				)}
 			</IonContent>
