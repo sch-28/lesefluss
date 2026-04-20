@@ -18,8 +18,7 @@ ANDROID="$REPO_ROOT/apps/capacitor/android/app/src/main/res"
 ICON_LOGO_SCALE=0.50   # launcher icons - logo size relative to canvas (lower = more padding)
 SPLASH_LOGO_SCALE=0.35 # splash screen (relative to shorter side)
 ICON_BG="none"
-SPLASH_BG="#ffffff"
-FG_REMOVE_COLOR="#fef6e4"  # logo background to strip for adaptive foreground
+SPLASH_BG="none"
 
 if [ ! -f "$SRC" ]; then
   echo "Error: $SRC not found"
