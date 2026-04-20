@@ -51,6 +51,8 @@ const DeviceSettings: React.FC = () => {
 		connectionState,
 		connectedDevice,
 		isScanning,
+		bleEnabled,
+		toggleBLEEnabled,
 		startScan,
 		stopScan,
 		disconnect,
@@ -235,6 +237,16 @@ const DeviceSettings: React.FC = () => {
 						<IonLabel>Connection</IonLabel>
 					</IonListHeader>
 
+					<IonItem>
+						<IonLabel>
+							Enable Bluetooth
+							<p>
+								<IonNote>Required to connect to Lesefluss</IonNote>
+							</p>
+						</IonLabel>
+						<IonToggle checked={bleEnabled} onIonChange={toggleBLEEnabled} />
+					</IonItem>
+
 					{isConnected && connectedDevice && (
 						<>
 							<IonItem>
@@ -277,7 +289,7 @@ const DeviceSettings: React.FC = () => {
 						</>
 					)}
 
-					{!isConnected && (
+					{bleEnabled && !isConnected && (
 						<>
 							<IonItem lines="none">
 								{isScanning && (
@@ -375,7 +387,7 @@ const DeviceSettings: React.FC = () => {
 							Load from Device
 						</IonButton>
 					</div>
-					{!isConnected && (
+					{bleEnabled && !isConnected && (
 						<div className="ion-margin-top flex items-center justify-center gap-2">
 							<IonIcon icon={bluetooth} color="medium" />
 							<IonText color="medium">

@@ -1,4 +1,5 @@
 import type { BleDevice } from "@capacitor-community/bluetooth-le";
+import { Preferences } from "@capacitor/preferences";
 import type React from "react";
 import {
 	createContext,
@@ -15,6 +16,17 @@ import type { Settings as RSVPSettings } from "../services/db/schema";
 import { log } from "../utils/log";
 import { IS_WEB } from "../utils/platform";
 
+const BLE_ENABLED_KEY = "ble_enabled";
+
+async function getBLEEnabled(): Promise<boolean> {
+	const { value } = await Preferences.get({ key: BLE_ENABLED_KEY });
+	return value === "true";
+}
+
+async function saveBLEEnabled(enabled: boolean): Promise<void> {
+	await Preferences.set({ key: BLE_ENABLED_KEY, value: String(enabled) });
+}
+
 interface BLEContextType {
 	// Connection state
 	isConnected: boolean;
@@ -24,6 +36,10 @@ interface BLEContextType {
 	// Scanning state
 	isScanning: boolean;
 	scannedDevices: ScannedDevice[];
+
+	// BLE opt-in
+	bleEnabled: boolean;
+	toggleBLEEnabled: () => Promise<void>;
 
 	// Operations
 	startScan: () => Promise<void>;
@@ -69,15 +85,24 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	const [scannedDevices, setScannedDevices] = useState<ScannedDevice[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [scanTrigger, setScanTrigger] = useState(0);
+	const [bleEnabled, setBleEnabled] = useState(false);
 
 	// Ref so auto-scan effect sees the latest value synchronously (no stale closure race)
 	const isConnectingRef = useRef(false);
 	// Optional post-connect hook (used by BookSyncContext)
 	const onConnectedRef = useRef<((deviceId: string) => void) | null>(null);
 
-	// Initialize BLE on mount (native platforms only)
+	// Load persisted BLE opt-in flag on mount
+	useEffect(() => {
+		getBLEEnabled()
+			.then((val) => setBleEnabled(val))
+			.catch(() => {}); // default stays false on read failure
+	}, []);
+
+	// Initialize BLE on mount (native platforms only, when opted in)
 	useEffect(() => {
 		if (IS_WEB) return;
+		if (!bleEnabled) return;
 		const init = async () => {
 			const result = await bleClient.initialize();
 			if (!result.success) {
@@ -85,11 +110,12 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 			}
 		};
 		init();
-	}, []);
+	}, [bleEnabled]);
 
-	// Poll connection state from the bleClient singleton (native only)
+	// Poll connection state from the bleClient singleton (native only, when opted in)
 	useEffect(() => {
 		if (IS_WEB) return;
+		if (!bleEnabled) return;
 		let prevConnected = bleClient.connectionState === BLEConnectionState.CONNECTED;
 		const interval = setInterval(() => {
 			const state = bleClient.connectionState;
@@ -107,7 +133,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		}, 500);
 
 		return () => clearInterval(interval);
-	}, []);
+	}, [bleEnabled]);
 
 	const startScan = useCallback(async () => {
 		if (IS_WEB) return;
@@ -250,16 +276,17 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		onConnectedRef.current = cb;
 	}, []);
 
-	// Auto-scan when not connected and not already scanning/connecting (native only).
+	// Auto-scan when not connected and not already scanning/connecting (native only, when opted in).
 	// scanTrigger is included so a disconnect or failed connect always re-fires this
 	// effect even when isScanning and isConnected haven't changed value.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: scanTrigger is an intentional re-fire trigger, not read inside the effect
 	useEffect(() => {
 		if (IS_WEB) return;
+		if (!bleEnabled) return;
 		if (!isScanning && !isConnected && !isConnectingRef.current) {
 			startScan();
 		}
-	}, [isScanning, isConnected, scanTrigger, startScan]);
+	}, [isScanning, isConnected, scanTrigger, startScan, bleEnabled]);
 
 	const handleDeviceSelect = useCallback(
 		async (deviceId: string) => {
@@ -288,11 +315,33 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	);
 
 	useEffect(() => {
+		if (!bleEnabled) return;
 		if (scannedDevices.length === 1 && !isConnected && !isConnectingRef.current) {
 			log("ble", "found 1 device, auto-connecting...");
 			handleDeviceSelect(scannedDevices[0].device.deviceId);
 		}
-	}, [scannedDevices.length, isConnected, handleDeviceSelect, scannedDevices[0]?.device.deviceId]);
+	}, [scannedDevices.length, isConnected, handleDeviceSelect, scannedDevices[0]?.device.deviceId, bleEnabled]);
+
+	const toggleBLEEnabled = useCallback(async () => {
+		const next = !bleEnabled;
+		if (!next) {
+			if (isScanning) {
+				const r = await bleClient.stopScan();
+				if (!r.success) log.warn("ble", "stopScan during disable failed:", r.error);
+				setIsScanning(false);
+				setScannedDevices([]);
+			}
+			if (isConnected) {
+				const r = await bleClient.disconnect();
+				if (!r.success) log.warn("ble", "disconnect during disable failed:", r.error);
+				setIsConnected(false);
+				setConnectedDevice(null);
+				setConnectionState(BLEConnectionState.DISCONNECTED);
+			}
+		}
+		await saveBLEEnabled(next);
+		setBleEnabled(next);
+	}, [bleEnabled, isScanning, isConnected]);
 
 	const value: BLEContextType = {
 		isConnected,
@@ -300,6 +349,8 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		connectedDevice,
 		isScanning,
 		scannedDevices,
+		bleEnabled,
+		toggleBLEEnabled,
 		startScan,
 		stopScan,
 		connect,
