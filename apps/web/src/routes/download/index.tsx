@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bluetooth, BookMarked, BookOpen, Highlighter, Library, Zap } from "lucide-react";
+import { Bluetooth, BookMarked, BookOpen, Globe, Highlighter, Library, Zap } from "lucide-react";
 import { FeatureCard } from "~/components/feature-card";
 import { StatCard } from "~/components/stat-card";
 import { seo } from "~/utils/seo";
@@ -29,22 +29,27 @@ const features = [
 	{
 		icon: BookOpen,
 		title: "Built-in e-reader",
-		description: "Dark, sepia, and light themes. Adjustable font, spacing, and margins.",
+		description: "Dark and light themes. Adjustable font size, spacing, and margins.",
 	},
 	{
 		icon: BookMarked,
 		title: "Chapter navigation",
-		description: "EPUB table of contents with chapter jump.",
+		description: "EPUB table of contents with one-tap chapter jumps.",
 	},
 	{
 		icon: Highlighter,
-		title: "Dictionary lookup",
-		description: "Tap any word to look it up. Highlight and search passages.",
+		title: "Highlights and dictionary",
+		description: "Long-press to highlight passages with color and notes. Tap a highlighted word for its dictionary definition. Search through the full book text.",
+	},
+	{
+		icon: Globe,
+		title: "Built-in library",
+		description: "Browse and import from Project Gutenberg and Standard Ebooks. No account needed.",
 	},
 	{
 		icon: Bluetooth,
 		title: "Device sync",
-		description: "Sync your book and reading position over Bluetooth.",
+		description: "Sync your book and reading position to the ESP32 device over Bluetooth.",
 	},
 ];
 
@@ -69,8 +74,9 @@ function DownloadPage() {
 						<span className="text-muted-foreground">for Android</span>
 					</h1>
 					<p className="mb-10 max-w-xl text-lg text-muted-foreground leading-relaxed">
-						Import EPUB and TXT books, read at your own pace or speed through chapters at up to 1000
-						WPM. No account required, fully offline.
+						Import your own EPUB and TXT books, or pick from thousands of free classics on the
+						built-in Explore page. Read at your own pace or push up to 1000 WPM with RSVP. No
+						account required, fully offline.
 					</p>
 					<div className="flex flex-wrap gap-4">
 						{/* Play Store badge - not yet published */}
