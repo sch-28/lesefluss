@@ -48,6 +48,13 @@ jobs:
         working-directory: apps/capacitor
         run: pnpm install --frozen-lockfile
 
+      - name: Install rsvg-convert
+        run: sudo apt-get install -y librsvg2-bin
+
+      - name: Generate Android icons
+        working-directory: apps/capacitor
+        run: node scripts/gen-icons.mjs
+
       - name: Build web assets and sync to Android
         working-directory: apps/capacitor
         env:
@@ -80,5 +87,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "Lesefluss ${{ steps.version.outputs.name }}" \
             --generate-notes \
-            apps/capacitor/android/app/build/outputs/apk/release/app-release.apk \
-            apps/capacitor/android/app/build/outputs/bundle/release/app-release.aab
+            apps/capacitor/android/app/build/outputs/apk/release/app-release.apk
