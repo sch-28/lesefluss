@@ -21,7 +21,6 @@ import { RsvpPreview } from "~/components/rsvp-preview";
 import { Button } from "~/components/ui/button";
 import { getCatalogCounts } from "~/lib/explore-covers";
 import { staticCovers } from "~/lib/static-covers";
-import { useSiteFlags } from "~/lib/site-flags";
 import { seo } from "~/utils/seo";
 import { softwareApplicationSchema } from "~/utils/structured-data";
 
@@ -35,7 +34,7 @@ export const Route = createFileRoute("/")({
 		...seo({
 			title: "Lesefluss - Speed Reading App & Device",
 			description:
-				"Read books 2–4× faster with RSVP. Import EPUB and TXT, sync settings to a pocket-sized ESP32 device, and read anywhere - fully offline.",
+				"Read books 2–4× faster with RSVP. Web app, Android app, and an optional DIY ESP32 reader. Import EPUB or TXT, and sync your library, position and settings across all three.",
 			path: "/",
 		}),
 		scripts: [softwareApplicationSchema],
@@ -49,7 +48,6 @@ const handleVideoEnded = (e: React.SyntheticEvent<HTMLVideoElement>) => {
 const glowStyle = { filter: "blur(60px)", transform: "scale(1.4)" };
 
 function Home() {
-	const { hideGithub } = useSiteFlags();
 	const { covers, counts } = Route.useLoaderData();
 	const stats = useMemo(() => buildStats(counts), [counts]);
 
@@ -86,7 +84,7 @@ function Home() {
 	return (
 		<div>
 			{/* ── Hero: Explore Wall ───────────────────────────────────── */}
-			<ExploreWall covers={covers} variant="hero" />
+			<ExploreWall covers={covers} />
 
 			{/* ── Stats Strip ──────────────────────────────────────────── */}
 			<section className="relative bg-foreground pt-10 pb-28 text-background">
@@ -124,10 +122,13 @@ function Home() {
 							<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
 								The App
 							</p>
-							<h2 className="mb-5 font-bold text-3xl leading-tight">Read on your phone</h2>
+							<h2 className="mb-5 font-bold text-3xl leading-tight">
+								Read on your phone or in the browser
+							</h2>
 							<p className="mb-8 text-muted-foreground leading-relaxed">
-								Import EPUB and TXT books, read with the built-in reader, or switch to RSVP mode for
-								speed reading.
+								Import DRM-free EPUB or TXT books, or pick one from the built-in Explore page
+								(Project Gutenberg and Standard Ebooks). Read with the built-in reader, or switch to
+								RSVP mode for speed reading.
 							</p>
 							<div className="mb-8 flex flex-wrap justify-center gap-2 lg:justify-start">
 								{appFeatures.map(({ icon: Icon, label }) => (
@@ -265,19 +266,18 @@ function Home() {
 				</div>
 			</section>
 
-			{/* ── Free CTA ─────────────────────────────────────────────── */}
+			{/* ── Open Source CTA ──────────────────────────────────────── */}
 			<section className="bg-foreground py-28 text-background">
 				<div className="mx-auto max-w-3xl px-6 text-center" data-aos="fade-up">
 					<p className="mb-3 font-semibold text-background/50 text-xs uppercase tracking-widest">
-						Free forever
+						Open source
 					</p>
 					<h2 className="mb-5 font-bold text-4xl text-background leading-tight">
-						Free,
-						<br />
-						no strings attached.
+						No subscription needed.
 					</h2>
 					<p className="mx-auto mb-10 max-w-lg text-background/65 leading-relaxed">
-						No subscription, no account required. Build the device, fork the app, or just read.
+						The app is free. Read, import books, and sync your device — no account required.
+						Optional cloud sync available.
 					</p>
 					<div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
 						<Button asChild className="h-auto px-8 py-3 font-semibold text-sm">
@@ -286,16 +286,14 @@ function Home() {
 								Get the app
 							</Link>
 						</Button>
-						{!hideGithub && (
-							<a
-								href="https://github.com/sch-28/lesefluss"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="inline-flex items-center gap-2 rounded-md border-2 border-background/30 bg-transparent px-8 py-3 font-semibold text-background text-sm transition-colors hover:bg-background/10"
-							>
-								View on GitHub
-							</a>
-						)}
+						<a
+							href="https://github.com/sch-28/lesefluss"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="inline-flex items-center gap-2 rounded-md border-2 border-background/30 bg-transparent px-8 py-3 font-semibold text-background text-sm transition-colors hover:bg-background/10"
+						>
+							View on GitHub
+						</a>
 					</div>
 				</div>
 			</section>
@@ -358,13 +356,14 @@ const features = [
 	{
 		icon: Bluetooth,
 		title: "ESP32 sync",
-		description: "Sync your book and reading position over Bluetooth.",
+		description:
+			"Automatic Bluetooth pairing. Your book, position and settings stay in sync both ways.",
 	},
 ];
 
 const deviceFeatures: { icon: LucideIcon; label: string }[] = [
 	{ icon: Monitor, label: "AMOLED or TFT display" },
 	{ icon: Power, label: "Single button operation" },
-	{ icon: Battery, label: "Weeks of battery life" },
+	{ icon: Battery, label: "Long battery life" },
 	{ icon: Bluetooth, label: "BLE sync to companion app" },
 ];

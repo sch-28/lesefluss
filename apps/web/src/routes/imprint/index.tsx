@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LegalPage } from "~/components/legal-page";
-import { useSiteFlags } from "~/lib/site-flags";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/imprint/")({
@@ -14,7 +13,6 @@ export const Route = createFileRoute("/imprint/")({
 });
 
 function ImprintPage() {
-	const { hideGithub } = useSiteFlags();
 	return (
 		<LegalPage title="Imprint" subtitle="Angaben gemäß § 5 TMG">
 			<section>
@@ -54,22 +52,16 @@ function ImprintPage() {
 				<h2 className="mb-3 font-semibold text-foreground text-xl">Nature of the project</h2>
 				<p>
 					Lesefluss is a non-commercial open-source hobby project.{" "}
-					{hideGithub ? (
-						<>The source code will be published publicly soon.</>
-					) : (
-						<>
-							The source code is available at{" "}
-							<a
-								href="https://github.com/sch-28/lesefluss"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="text-foreground underline decoration-border hover:decoration-foreground/50"
-							>
-								github.com/sch-28/lesefluss
-							</a>
-							.
-						</>
-					)}
+					The source code is available at{" "}
+					<a
+						href="https://github.com/sch-28/lesefluss"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-foreground underline decoration-border hover:decoration-foreground/50"
+					>
+						github.com/sch-28/lesefluss
+					</a>
+					.
 				</p>
 			</section>
 

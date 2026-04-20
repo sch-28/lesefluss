@@ -11,7 +11,6 @@ import {
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { signOut, useSession } from "~/lib/auth-client";
-import { useSiteFlags } from "~/lib/site-flags";
 
 const NAV_LINKS = [
 	{ to: "/device" as const, label: "Device", icon: Cpu },
@@ -97,7 +96,6 @@ export function Header() {
 	const { data: session, isPending } = useSession();
 	const user = session?.user;
 	const router = useRouter();
-	const { hideGithub } = useSiteFlags();
 
 	// Close mobile menu on navigation (back button, programmatic, etc.)
 	React.useEffect(() => {
@@ -149,17 +147,15 @@ export function Header() {
 								{label}
 							</Link>
 						))}
-						{!hideGithub && (
-							<a
-								href="https://github.com/sch-28/lesefluss"
-								target="_blank"
-								rel="noopener noreferrer"
-								className={navLinkClass(false)}
-							>
-								<GithubIcon className="size-3.5" />
-								GitHub
-							</a>
-						)}
+						<a
+							href="https://github.com/sch-28/lesefluss"
+							target="_blank"
+							rel="noopener noreferrer"
+							className={navLinkClass(false)}
+						>
+							<GithubIcon className="size-3.5" />
+							GitHub
+						</a>
 					</nav>
 
 					<div className="mx-2 h-4 w-px bg-border" />
@@ -208,17 +204,15 @@ export function Header() {
 								{label}
 							</Link>
 						))}
-						{!hideGithub && (
-							<a
-								href="https://github.com/sch-28/lesefluss"
-								target="_blank"
-								rel="noopener noreferrer"
-								className={navLinkClass(true)}
-							>
-								<GithubIcon className="size-4" />
-								GitHub
-							</a>
-						)}
+						<a
+							href="https://github.com/sch-28/lesefluss"
+							target="_blank"
+							rel="noopener noreferrer"
+							className={navLinkClass(true)}
+						>
+							<GithubIcon className="size-4" />
+							GitHub
+						</a>
 						{user && (
 							<Link to="/profile" className={navLinkClass(true)}>
 								<User className="size-4" />

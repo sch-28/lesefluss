@@ -29,20 +29,20 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 - [ ] Recompile AMOLED firmware with larger NimBLE buffers (BLE transfer window_size capped at 2 - ST7789 handles 4; fork nspsck/RM67162_Micropython_QSPI, increase NimBLE buffer config)
 
 ## Phase 3 - Publishing Infrastructure
-> Everything needed to actually sell
+> Everything needed to actually publish
 
 - [ ] Play Store listing - screenshots, description, privacy policy
+- [ ] better auch email verification
 - [x] Website - live at `lesefluss.app`, pitch, live RSVP preview, embedded web app at `/app`, DIY vs assembled options, deployed via Coolify
-- [ ] DIY guide (5€) - exact parts list with purchase links, flash + upload instructions, case print files; sold via website
-- [ ] Case STL files published on Printables / Thingiverse, linked from website and DIY guide
-- [ ] Order flow for assembled units - Tindie listing or contact form to start (50–70€, AMOLED variant)
+- [x] Open source the monorepo on GitHub (AGPL v3)
+- [x] DIY guide page on website - parts list with purchase links, flash + upload instructions, links to case STL files in repo
+- [x] Case STL files committed to repo (e.g. `resources/case/`), linked from the DIY guide
+- [x] Optional donation button (Ko-fi) on website
 
 ## Phase 4 - Accounts & Monetisation
 > Website ↔ app integration, optional accounts, purchase management
 
 - [x] Backend + auth - user accounts (Better Auth, email+password)
-- [ ] Website payment integration - handle DIY guide purchases and assembled unit orders
-- [ ] License system - purchases on website unlock content/features in the app (e.g. DIY guide download, future premium features)
 - [x] App account sync - sign in on website, same account active in app
 - [x] Cloud sync for library and reading position (account-gated)
 - [x] Web app embed - capacitor SPA served at `/app` on website with cookie auth
@@ -53,3 +53,4 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 - [ ] OTA firmware update from app
 - [ ] Minify / merge MicroPython files for faster uploads
 - [ ] Reading statistics (account-gated, synced)
+- [ ] Contact form for assembled unit requests (no Tindie / payment integration yet - gauge demand first)

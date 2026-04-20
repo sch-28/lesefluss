@@ -8,13 +8,12 @@ type Props = {
 	variant?: "hero" | "section";
 };
 
-export function ExploreWall({ covers, variant = "section" }: Props) {
+export function ExploreWall({ covers }: Props) {
 	const hasCovers = covers.length >= 12;
 	const third = Math.ceil(covers.length / 3);
 	const row1 = hasCovers ? covers.slice(0, third) : [];
 	const row2 = hasCovers ? covers.slice(third, third * 2) : [];
 	const row3 = hasCovers ? covers.slice(third * 2) : [];
-	const isHero = variant === "hero";
 
 	return (
 		<section className="relative isolate bg-foreground text-white">
@@ -39,16 +38,14 @@ export function ExploreWall({ covers, variant = "section" }: Props) {
 					className="relative mx-auto w-full max-w-4xl px-6 py-12 text-center"
 					data-aos="fade-up"
 				>
-					{isHero ? <HeroContent /> : <SectionContent />}
+					<HeroContent />
 					<Attribution />
 				</div>
 			</div>
 
-			{isHero && (
-				<div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-white">
-					<ChevronDown className="h-6 w-6" />
-				</div>
-			)}
+			<div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-white">
+				<ChevronDown className="h-6 w-6" />
+			</div>
 		</section>
 	);
 }
@@ -112,8 +109,8 @@ function HeroContent() {
 				Read anywhere.
 			</h1>
 			<p className="mx-auto mb-10 max-w-xl text-lg text-white/75 leading-relaxed">
-				Lesefluss is a speed-reading app for phone, web, and a pocket-sized ESP32 device — with a
-				built-in library of free, beautifully typeset classics.
+				Lesefluss is a speed-reading app for phone, web, and a pocket-sized ESP32 device. It also
+				has a normal reader and a built-in library of free, beautifully typeset classics.
 			</p>
 			<div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
 				<PrimaryButton to="/download">
@@ -121,25 +118,6 @@ function HeroContent() {
 					Get the app
 				</PrimaryButton>
 				<SecondaryButton href="/app/tabs/explore">Explore the library</SecondaryButton>
-			</div>
-		</>
-	);
-}
-
-function SectionContent() {
-	return (
-		<>
-			<Pill label="New — Explore" />
-			<h2 className="mb-6 font-bold text-5xl leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
-				A library of <GradientWord>free classics</GradientWord>.<br />
-				Built right in.
-			</h2>
-			<p className="mx-auto mb-10 max-w-xl text-lg text-white/70 leading-relaxed">
-				Browse thousands of public-domain books from Project Gutenberg and the beautifully typeset
-				Standard Ebooks. Import any title in a tap — no account, no fuss.
-			</p>
-			<div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-				<PrimaryButton href="/app/tabs/explore">Explore the library</PrimaryButton>
 			</div>
 		</>
 	);
@@ -207,7 +185,7 @@ function CoverTile({ cover }: { cover: ExploreCover }) {
 	}, []);
 
 	return (
-		<div className="relative shrink-0 rounded-md bg-white/5 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
+		<div className="relative aspect-[2/3] w-[150px] shrink-0 overflow-hidden rounded-md bg-white/5 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.8)] ring-1 ring-white/10 sm:w-[164px]">
 			{state === "loading" && (
 				<div
 					aria-hidden
@@ -227,7 +205,7 @@ function CoverTile({ cover }: { cover: ExploreCover }) {
 				fetchPriority="low"
 				onLoad={() => setState("loaded")}
 				onError={() => setState("error")}
-				className={`block h-auto w-[150px] transition-opacity duration-300 sm:w-[164px] ${
+				className={`block h-full w-full object-cover transition-opacity duration-300 ${
 					state === "loaded" ? "opacity-100" : "opacity-0"
 				}`}
 			/>

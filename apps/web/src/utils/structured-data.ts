@@ -15,14 +15,14 @@ export const webSiteSchema = jsonLd({
 		"Speed reading app for Android with an optional pocket-sized ESP32 device. Import EPUB and TXT, read at up to 1000 WPM.",
 });
 
-export function buildOrganizationSchema(hideGithub = false): JsonLdScript {
+export function buildOrganizationSchema(): JsonLdScript {
 	return jsonLd({
 		"@context": "https://schema.org",
 		"@type": "Organization",
 		name: "Lesefluss",
 		url: SITE_URL,
 		logo: `${SITE_URL}/logo-512.png`,
-		...(hideGithub ? {} : { sameAs: ["https://github.com/sch-28/lesefluss"] }),
+		sameAs: ["https://github.com/sch-28/lesefluss"],
 	});
 }
 

@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
-import { useSiteFlags } from "~/lib/site-flags";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/device/")({
@@ -17,7 +16,6 @@ export const Route = createFileRoute("/device/")({
 });
 
 function DevicePage() {
-	const { hideGithub } = useSiteFlags();
 	return (
 		<div>
 			{/* ── Hero ─────────────────────────────────────────────────── */}
@@ -37,21 +35,15 @@ function DevicePage() {
 								View build guide →
 							</Link>
 						</Button>
-						{!hideGithub && (
-							<Button
-								asChild
-								variant="outline"
-								className="h-auto px-6 py-2.5 font-semibold text-sm"
+						<Button asChild variant="outline" className="h-auto px-6 py-2.5 font-semibold text-sm">
+							<a
+								href="https://github.com/sch-28/lesefluss"
+								target="_blank"
+								rel="noopener noreferrer"
 							>
-								<a
-									href="https://github.com/sch-28/lesefluss"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									Source on GitHub
-								</a>
-							</Button>
-						)}
+								Source on GitHub
+							</a>
+						</Button>
 					</div>
 				</div>
 			</section>
@@ -72,8 +64,8 @@ function DevicePage() {
 								<h3 className="mb-1 font-bold text-xl">AMOLED</h3>
 								<p className="mb-1 text-muted-foreground text-sm">RM67162 · 1.91" · 536×240</p>
 								<p className="mt-4 mb-6 text-muted-foreground text-sm leading-relaxed">
-									Deep blacks, excellent contrast in all lighting. The preferred variant for
-									reading. Uses QSPI interface - requires the custom firmware build.
+									Deep blacks, excellent contrast in all lighting and better performance. The
+									preferred variant for reading.
 								</p>
 								<ul className="space-y-2 text-muted-foreground text-sm">
 									{amoledPros.map((p) => (
@@ -92,8 +84,7 @@ function DevicePage() {
 								<h3 className="mb-1 font-bold text-xl">ST7789</h3>
 								<p className="mb-1 text-muted-foreground text-sm">TFT · 1.9" · 170×320</p>
 								<p className="mt-4 mb-6 text-muted-foreground text-sm leading-relaxed">
-									Easier to source and wire. Good for first builds. Slightly lower contrast than
-									AMOLED but perfectly readable.
+									Cheaper. Slightly lower contrast than AMOLED but perfectly readable.
 								</p>
 								<ul className="space-y-2 text-muted-foreground text-sm">
 									{st7789Pros.map((p) => (
@@ -113,36 +104,54 @@ function DevicePage() {
 				<div className="mx-auto max-w-5xl px-6">
 					<h2 className="mb-3 font-bold text-2xl">Parts list</h2>
 					<p className="mb-8 text-muted-foreground">
-						Everything you need. Total cost is approximately €20–30 depending on where you source.
+						Two parts per build plus a 3D-printed case. Case files ship with the repo and print on
+						any FDM printer in PLA.
 					</p>
-					<div className="overflow-x-auto">
-						<table className="w-full text-sm">
-							<thead>
-								<tr className="border-border border-b text-left text-muted-foreground">
-									<th className="pr-6 pb-3 font-medium">Part</th>
-									<th className="pr-6 pb-3 font-medium">Notes</th>
-									<th className="pb-3 text-right font-medium">Est. cost</th>
-								</tr>
-							</thead>
-							<tbody className="divide-y divide-border/60">
-								{parts.map((part) => (
-									<tr key={part.name}>
-										<td className="py-3 pr-6 font-medium">{part.name}</td>
-										<td className="py-3 pr-6 text-muted-foreground">{part.notes}</td>
-										<td className="py-3 text-right text-muted-foreground">{part.cost}</td>
-									</tr>
-								))}
-								<tr className="border-border border-t">
-									<td className="pt-4 pr-6 font-semibold">Total</td>
-									<td />
-									<td className="pt-4 text-right font-semibold">~€25</td>
-								</tr>
-							</tbody>
-						</table>
+
+					<div className="grid gap-6 md:grid-cols-2">
+						{variants.map((v) => (
+							<Card key={v.name} className="gap-0 py-0">
+								<CardContent className="p-6">
+									<div className="mb-4 flex items-baseline justify-between">
+										<h3 className="font-bold text-lg">{v.name}</h3>
+										<span className="font-semibold text-sm">~€{v.total}</span>
+									</div>
+									<ul className="divide-y divide-border/60 text-sm">
+										{v.parts.map((part) => (
+											<li key={part.name} className="flex items-start justify-between gap-4 py-2.5">
+												<div>
+													<a
+														href={part.href}
+														target="_blank"
+														rel="noopener noreferrer"
+														className="font-medium text-foreground underline decoration-border hover:decoration-foreground/50"
+													>
+														{part.name}
+													</a>
+													<p className="text-muted-foreground text-xs leading-relaxed">
+														{part.notes}
+													</p>
+												</div>
+												<span className="shrink-0 text-muted-foreground">~€{part.cost}</span>
+											</li>
+										))}
+										<li className="flex items-start justify-between gap-4 py-2.5">
+											<div>
+												<span className="font-medium text-foreground">3D-printed case</span>
+												<p className="text-muted-foreground text-xs leading-relaxed">
+													Body, cover and button. Files in the repo.
+												</p>
+											</div>
+											<span className="shrink-0 text-muted-foreground">-</span>
+										</li>
+									</ul>
+								</CardContent>
+							</Card>
+						))}
 					</div>
+
 					<p className="mt-6 text-muted-foreground text-xs">
-						Sourced from AliExpress, LCSC, or your local electronics shop. Exact models and links
-						are in the full build guide.
+						Exact product links, flashing and assembly are in the full build guide.
 					</p>
 				</div>
 			</section>
@@ -154,8 +163,8 @@ function DevicePage() {
 						<CardContent className="p-10">
 							<h2 className="mb-3 font-bold text-2xl">Ready to build?</h2>
 							<p className="mb-6 max-w-xl text-muted-foreground leading-relaxed">
-								The build guide walks through every step: sourcing parts, wiring, flashing firmware,
-								and pairing with the app.
+								The build guide walks through every step: ordering parts, printing the case,
+								flashing firmware, and assembly.
 							</p>
 							<div className="flex flex-wrap gap-4">
 								<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
@@ -163,14 +172,6 @@ function DevicePage() {
 										Read the build guide →
 									</Link>
 								</Button>
-								{/* TODO: replace with real Ko-fi/sponsor URL once set up */}
-								<span
-									aria-disabled="true"
-									className="inline-flex h-auto cursor-not-allowed items-center rounded-lg border border-border px-6 py-2.5 font-semibold text-muted-foreground text-sm opacity-60"
-									title="Donation link coming soon"
-								>
-									Support on Ko-fi ☕
-								</span>
 							</div>
 						</CardContent>
 					</Card>
@@ -183,18 +184,53 @@ function DevicePage() {
 const amoledPros = [
 	"True blacks, no backlight bleed",
 	"Sharp contrast at all angles",
+	"Better performance",
 	"Lower power draw when displaying dark content",
 ];
 
 const st7789Pros = [
-	"Widely available, easy to source",
-	"Standard SPI wiring, simpler setup",
+	"Cheaper",
+	"Bigger battery, longer runtime",
+	"No custom JST soldering",
 	"Works with stock MicroPython firmware",
+	"Faster book transfers (larger BLE buffers)",
 ];
 
-const parts = [
-	{ name: "ESP32-S3 dev board", notes: "e.g. Waveshare ESP32-S3-Zero", cost: "~€5" },
-	{ name: "AMOLED display (RM67162)", notes: "or ST7789 TFT as alternative", cost: "~€8" },
-	{ name: "LiPo battery", notes: "300–500 mAh, JST-PH 2mm", cost: "~€4" },
-	{ name: "Misc (wires, connectors)", notes: "Jumpers, JST connectors, heat shrink", cost: "~€3" },
+const variants = [
+	{
+		name: "AMOLED variant",
+		total: 40,
+		parts: [
+			{
+				name: "LilyGO T-Display-S3 AMOLED",
+				notes: 'ESP32-S3 with 1.91" RM67162 AMOLED',
+				href: "https://lilygo.cc/products/t-display-s3-amoled",
+				cost: 30,
+			},
+			{
+				name: "3.7V 500mAh LiPo (502248)",
+				notes: "Needs a 1.25mm JST connector soldered on",
+				href: "https://www.amazon.de/dp/B0F67DD4HK",
+				cost: 10,
+			},
+		],
+	},
+	{
+		name: "ST7789 variant",
+		total: 25,
+		parts: [
+			{
+				name: "ESP32-S3 board with ST7789 display",
+				notes: 'Integrated 1.9" TFT, no soldering required',
+				href: "https://www.amazon.de/dp/B0DWWB63YZ",
+				cost: 15,
+			},
+			{
+				name: "3.7V 1000mAh LiPo",
+				notes: "Protection board and JST 1.25mm pre-attached",
+				href: "https://www.amazon.de/-/en/YELUFT-Rechargeable-Protective-Development-Electronic/dp/B0F1CVPLZG",
+				cost: 10,
+			},
+		],
+	},
 ];
