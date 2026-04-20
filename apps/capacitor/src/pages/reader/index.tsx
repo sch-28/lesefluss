@@ -77,6 +77,41 @@ const scrollCache = new Map<string, CacheSnapshot>();
 const _encoder = new TextEncoder();
 const _decoder = new TextDecoder();
 
+// Scrolls VList so the span at `byteOffset` lands at the top of the scroll container
+// (same reference point handleScrollEnd uses for its cutoffTop).
+// Retries each frame until the span is in the DOM — VList is lazy and after a large
+// scrollToIndex jump (e.g. returning from RSVP with no scroll cache) the target items
+// may not be mounted yet. After a successful scrollBy, retries once more to catch any
+// VList height-correction that shifts the span in the following frame.
+function scheduleFineScroll(
+	listHandle: VListHandle,
+	container: HTMLElement,
+	byteOffset: number,
+	suppressScrollEnd: React.RefObject<boolean>,
+	suppressHighlight: React.RefObject<boolean>,
+	setHighlight: boolean,
+): () => void {
+	let attempts = 0;
+	let rafId: number;
+	const attempt = () => {
+		const span = document.querySelector<HTMLElement>(`span[data-offset="${byteOffset}"]`);
+		if (!span) {
+			if (attempts++ < 10) rafId = requestAnimationFrame(attempt);
+			return;
+		}
+		const targetTop = container.getBoundingClientRect().top;
+		const delta = span.getBoundingClientRect().top - targetTop - 25;
+		if (Math.abs(delta) > 2) {
+			suppressScrollEnd.current = true;
+			if (setHighlight) suppressHighlight.current = true;
+			listHandle.scrollBy(delta);
+			if (attempts++ < 10) rafId = requestAnimationFrame(attempt);
+		}
+	};
+	rafId = requestAnimationFrame(attempt);
+	return () => cancelAnimationFrame(rafId);
+}
+
 // Sentinel value: no word highlighted (while scrolling)
 const NO_HIGHLIGHT = -1;
 
@@ -275,18 +310,16 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			lastOffsetRef.current = byteOffset;
 			savePosition(byteOffset);
 
-			// Fine-tune: after the paragraph renders, scroll to the exact word.
-			requestAnimationFrame(() => {
-				const span = document.querySelector<HTMLElement>(`span[data-offset="${byteOffset}"]`);
-				if (!span || !containerRef.current || !listRef.current) return;
-				const delta =
-					span.getBoundingClientRect().top - containerRef.current.getBoundingClientRect().top;
-				if (delta > 2) {
-					suppressNextScrollEndRef.current = true;
-					if (highlight) suppressScrollHighlightClearRef.current = true;
-					listRef.current.scrollBy(delta);
-				}
-			});
+			if (containerRef.current) {
+				scheduleFineScroll(
+					listRef.current,
+					containerRef.current,
+					byteOffset,
+					suppressNextScrollEndRef,
+					suppressScrollHighlightClearRef,
+					highlight,
+				);
+			}
 		},
 		[findParagraphIndex, savePosition],
 	);
@@ -333,24 +366,16 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		listRef.current.scrollToIndex(idx, { align: "start" });
 		setActiveOffset(target);
 
-		// Fine-tune to the exact word after the paragraph renders.
-		// Needed for long paragraphs where the saved word could be
-		// off-screen below the paragraph start. Double rAF ensures
-		// VList's layout from scrollToIndex is fully committed.
-		const listHandle = listRef.current;
 		const container = containerRef.current;
-		requestAnimationFrame(() => {
-			requestAnimationFrame(() => {
-				const span = document.querySelector<HTMLElement>(`span[data-offset="${target}"]`);
-				if (!span || !container || !listHandle) return;
-				const delta = span.getBoundingClientRect().top - container.getBoundingClientRect().top;
-				if (delta > 2) {
-					suppressNextScrollEndRef.current = true;
-					suppressScrollHighlightClearRef.current = true;
-					listHandle.scrollBy(delta);
-				}
-			});
-		});
+		if (!container) return;
+		return scheduleFineScroll(
+			listRef.current,
+			container,
+			target,
+			suppressNextScrollEndRef,
+			suppressScrollHighlightClearRef,
+			true,
+		);
 	}, [readerMode, paragraphs, book, findParagraphIndex]);
 
 	// ── Scroll handler - hide highlight + update progress bar ──────────────
