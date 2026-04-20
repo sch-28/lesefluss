@@ -3,6 +3,7 @@ import { useForm } from "@tanstack/react-form";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import * as React from "react";
 import { z } from "zod";
+import { DiscordIcon } from "~/components/icons/discord";
 import { GoogleIcon } from "~/components/icons/google";
 import { Button } from "~/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "~/components/ui/field";
@@ -11,7 +12,13 @@ import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { sendVerificationEmail, signIn, signUp, useSession } from "~/lib/auth-client";
 import { seo } from "~/utils/seo";
 
+function isSafeRedirect(value: unknown): value is string {
+	return typeof value === "string" && value.startsWith("/") && !value.startsWith("//");
+}
+
 export const Route = createFileRoute("/login/")({
+	validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
+		isSafeRedirect(search.redirect) ? { redirect: search.redirect } : {},
 	component: LoginPage,
 	head: () =>
 		seo({
@@ -106,16 +113,37 @@ function VerificationSent({ email, onBack }: { email: string; onBack: () => void
 	);
 }
 
-function GoogleButton() {
+type SocialProvider = "google" | "discord";
+
+const SOCIAL_PROVIDERS: {
+	id: SocialProvider;
+	label: string;
+	Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+}[] = [
+	{ id: "google", label: "Google", Icon: GoogleIcon },
+	{ id: "discord", label: "Discord", Icon: DiscordIcon },
+];
+
+function SocialButton({
+	provider,
+	label,
+	Icon,
+	redirectTo,
+}: {
+	provider: SocialProvider;
+	label: string;
+	Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+	redirectTo: string;
+}) {
 	const [isLoading, setIsLoading] = React.useState(false);
 	const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
 	const handleClick = async () => {
 		setIsLoading(true);
 		setErrorMessage(null);
-		const { error } = await signIn.social({ provider: "google", callbackURL: "/profile" });
+		const { error } = await signIn.social({ provider, callbackURL: redirectTo });
 		if (error) {
-			setErrorMessage(error.message ?? "Google sign-in failed");
+			setErrorMessage(error.message ?? `${label} sign-in failed`);
 			setIsLoading(false);
 		}
 	};
@@ -130,15 +158,23 @@ function GoogleButton() {
 				onClick={handleClick}
 				disabled={isLoading}
 			>
-				<GoogleIcon className="mr-2 size-4" />
-				{isLoading ? "Redirecting…" : "Continue with Google"}
+				<Icon className="mr-2 size-4" />
+				{isLoading ? "Redirecting…" : `Continue with ${label}`}
 			</Button>
 			{errorMessage && <p className="mt-2 text-center text-destructive text-xs">{errorMessage}</p>}
 		</>
 	);
 }
 
-function AuthForm({ mode }: { mode: Mode }) {
+function AuthForm({
+	mode,
+	redirectTo,
+	hasExternalRedirect,
+}: {
+	mode: Mode;
+	redirectTo: string;
+	hasExternalRedirect: boolean;
+}) {
 	const navigate = useNavigate();
 	const [serverError, setServerError] = React.useState<string | null>(null);
 	const [verificationSentTo, setVerificationSentTo] = React.useState<string | null>(null);
@@ -157,7 +193,8 @@ function AuthForm({ mode }: { mode: Mode }) {
 						password: value.password,
 					});
 					if (result.error) throw new Error(result.error.message ?? "Sign in failed");
-					navigate({ to: "/profile" });
+					if (hasExternalRedirect) window.location.assign(redirectTo);
+					else navigate({ to: "/profile" });
 				} else {
 					const result = await signUp.email({
 						email: value.email,
@@ -187,7 +224,11 @@ function AuthForm({ mode }: { mode: Mode }) {
 
 	return (
 		<>
-			<GoogleButton />
+			<div className="flex flex-col gap-2">
+				{SOCIAL_PROVIDERS.map(({ id, label, Icon }) => (
+					<SocialButton key={id} provider={id} label={label} Icon={Icon} redirectTo={redirectTo} />
+				))}
+			</div>
 			<div className="my-6 flex items-center gap-3">
 				<div className="h-px flex-1 bg-border" />
 				<span className="text-muted-foreground text-xs uppercase tracking-wider">or</span>
@@ -254,13 +295,16 @@ function AuthForm({ mode }: { mode: Mode }) {
 function LoginPage() {
 	const { data: session } = useSession();
 	const navigate = useNavigate();
+	const { redirect } = Route.useSearch();
+	const hasExternalRedirect = redirect !== undefined;
+	const redirectTo = redirect ?? "/profile";
 	const [mode, setMode] = React.useState<Mode>("signin");
 
 	React.useEffect(() => {
-		if (session?.user) {
-			navigate({ to: "/profile" });
-		}
-	}, [session, navigate]);
+		if (!session?.user) return;
+		if (hasExternalRedirect) window.location.assign(redirectTo);
+		else navigate({ to: "/profile" });
+	}, [session, hasExternalRedirect, redirectTo, navigate]);
 
 	return (
 		<div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-6 py-16">
@@ -293,7 +337,12 @@ function LoginPage() {
 					</TabsList>
 				</Tabs>
 
-				<AuthForm key={mode} mode={mode} />
+				<AuthForm
+					key={mode}
+					mode={mode}
+					redirectTo={redirectTo}
+					hasExternalRedirect={hasExternalRedirect}
+				/>
 
 				<p className="mt-6 text-center text-muted-foreground text-xs">
 					An account is optional - the app works fully offline without one.
