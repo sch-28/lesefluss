@@ -16,7 +16,7 @@ export const troubleshootingItems = [
 	},
 	{
 		q: "Firmware upload fails with mpremote",
-		a: "Make sure the device is in dev mode (You can disable it in the Android app). Try disconnecting and reconnecting USB, then re-running the upload script.",
+		a: "Make sure the device is in dev mode (You can set it in the Android app). Try disconnecting and reconnecting USB, then re-running the upload script.",
 	},
 ];
 
