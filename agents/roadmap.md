@@ -33,8 +33,8 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 
 - [x] Play Store listing - screenshots, description, privacy policy
 - [ ] Play Store publish, 12 testers needed
-- [ ] better auth email verification
-- [ ] rsvp word position offset
+- [x] better auth email verification
+- [x] rsvp word position offset
 - [x] GitHub Actions CI - push tag → build signed APK → publish as GitHub release
 - [x] Web app: show a notice when using /app without being logged in that books are stored locally in the browser only and will be lost if browser data is cleared (check the full flow)
 - [x] Website - live at `lesefluss.app`, pitch, live RSVP preview, embedded web app at `/app`, DIY vs assembled options, deployed via Coolify

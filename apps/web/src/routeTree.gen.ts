@@ -12,9 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as CustomScriptDotjsRouteImport } from './routes/customScript[.]js'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TermsIndexRouteImport } from './routes/terms/index'
-import { Route as ProfileIndexRouteImport } from './routes/profile/index'
 import { Route as PrivacyIndexRouteImport } from './routes/privacy/index'
 import { Route as OrderIndexRouteImport } from './routes/order/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
@@ -25,12 +25,11 @@ import { Route as DiyIndexRouteImport } from './routes/diy/index'
 import { Route as DeviceIndexRouteImport } from './routes/device/index'
 import { Route as ChangelogIndexRouteImport } from './routes/changelog/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as AccountIndexRouteImport } from './routes/account/index'
 import { Route as AppSplatRouteImport } from './routes/app/$'
-import { Route as ApiUsersRouteImport } from './routes/api/users'
 import { Route as ApiSyncRouteImport } from './routes/api/sync'
-import { Route as ApiUsersUserIdRouteImport } from './routes/api/users.$userId'
+import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -48,6 +47,10 @@ const CustomScriptDotjsRoute = CustomScriptDotjsRouteImport.update({
   path: '/customScript.js',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -56,11 +59,6 @@ const IndexRoute = IndexRouteImport.update({
 const TermsIndexRoute = TermsIndexRouteImport.update({
   id: '/terms/',
   path: '/terms/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileIndexRoute = ProfileIndexRouteImport.update({
-  id: '/profile/',
-  path: '/profile/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyIndexRoute = PrivacyIndexRouteImport.update({
@@ -113,24 +111,9 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/app/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/admin/',
-  path: '/admin/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountIndexRoute = AccountIndexRouteImport.update({
-  id: '/account/',
-  path: '/account/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppSplatRoute = AppSplatRouteImport.update({
   id: '/app/$',
   path: '/app/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiUsersRoute = ApiUsersRouteImport.update({
-  id: '/api/users',
-  path: '/api/users',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSyncRoute = ApiSyncRouteImport.update({
@@ -138,11 +121,23 @@ const ApiSyncRoute = ApiSyncRouteImport.update({
   path: '/api/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiUsersUserIdRoute = ApiUsersUserIdRouteImport.update({
-  id: '/$userId',
-  path: '/$userId',
-  getParentRoute: () => ApiUsersRoute,
+const AuthenticatedProfileIndexRoute =
+  AuthenticatedProfileIndexRouteImport.update({
+    id: '/profile/',
+    path: '/profile/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAccountIndexRoute =
+  AuthenticatedAccountIndexRouteImport.update({
+    id: '/account/',
+    path: '/account/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -155,10 +150,7 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/sync': typeof ApiSyncRoute
-  '/api/users': typeof ApiUsersRouteWithChildren
   '/app/$': typeof AppSplatRoute
-  '/account/': typeof AccountIndexRoute
-  '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/changelog/': typeof ChangelogIndexRoute
   '/device/': typeof DeviceIndexRoute
@@ -169,10 +161,11 @@ export interface FileRoutesByFullPath {
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
-  '/profile/': typeof ProfileIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/users/$userId': typeof ApiUsersUserIdRoute
+  '/account/': typeof AuthenticatedAccountIndexRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/profile/': typeof AuthenticatedProfileIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -180,10 +173,7 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/sync': typeof ApiSyncRoute
-  '/api/users': typeof ApiUsersRouteWithChildren
   '/app/$': typeof AppSplatRoute
-  '/account': typeof AccountIndexRoute
-  '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
   '/changelog': typeof ChangelogIndexRoute
   '/device': typeof DeviceIndexRoute
@@ -194,22 +184,21 @@ export interface FileRoutesByTo {
   '/login': typeof LoginIndexRoute
   '/order': typeof OrderIndexRoute
   '/privacy': typeof PrivacyIndexRoute
-  '/profile': typeof ProfileIndexRoute
   '/terms': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/users/$userId': typeof ApiUsersUserIdRoute
+  '/account': typeof AuthenticatedAccountIndexRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
+  '/profile': typeof AuthenticatedProfileIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/sync': typeof ApiSyncRoute
-  '/api/users': typeof ApiUsersRouteWithChildren
   '/app/$': typeof AppSplatRoute
-  '/account/': typeof AccountIndexRoute
-  '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/changelog/': typeof ChangelogIndexRoute
   '/device/': typeof DeviceIndexRoute
@@ -220,10 +209,11 @@ export interface FileRoutesById {
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
-  '/profile/': typeof ProfileIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/users/$userId': typeof ApiUsersUserIdRoute
+  '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -233,10 +223,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/api/sync'
-    | '/api/users'
     | '/app/$'
-    | '/account/'
-    | '/admin/'
     | '/app/'
     | '/changelog/'
     | '/device/'
@@ -247,10 +234,11 @@ export interface FileRouteTypes {
     | '/login/'
     | '/order/'
     | '/privacy/'
-    | '/profile/'
     | '/terms/'
     | '/api/auth/$'
-    | '/api/users/$userId'
+    | '/account/'
+    | '/admin/'
+    | '/profile/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -258,10 +246,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/api/sync'
-    | '/api/users'
     | '/app/$'
-    | '/account'
-    | '/admin'
     | '/app'
     | '/changelog'
     | '/device'
@@ -272,21 +257,20 @@ export interface FileRouteTypes {
     | '/login'
     | '/order'
     | '/privacy'
-    | '/profile'
     | '/terms'
     | '/api/auth/$'
-    | '/api/users/$userId'
+    | '/account'
+    | '/admin'
+    | '/profile'
   id:
     | '__root__'
     | '/'
+    | '/_authenticated'
     | '/customScript.js'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/api/sync'
-    | '/api/users'
     | '/app/$'
-    | '/account/'
-    | '/admin/'
     | '/app/'
     | '/changelog/'
     | '/device/'
@@ -297,22 +281,21 @@ export interface FileRouteTypes {
     | '/login/'
     | '/order/'
     | '/privacy/'
-    | '/profile/'
     | '/terms/'
     | '/api/auth/$'
-    | '/api/users/$userId'
+    | '/_authenticated/account/'
+    | '/_authenticated/admin/'
+    | '/_authenticated/profile/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   CustomScriptDotjsRoute: typeof CustomScriptDotjsRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiSyncRoute: typeof ApiSyncRoute
-  ApiUsersRoute: typeof ApiUsersRouteWithChildren
   AppSplatRoute: typeof AppSplatRoute
-  AccountIndexRoute: typeof AccountIndexRoute
-  AdminIndexRoute: typeof AdminIndexRoute
   AppIndexRoute: typeof AppIndexRoute
   ChangelogIndexRoute: typeof ChangelogIndexRoute
   DeviceIndexRoute: typeof DeviceIndexRoute
@@ -323,7 +306,6 @@ export interface RootRouteChildren {
   LoginIndexRoute: typeof LoginIndexRoute
   OrderIndexRoute: typeof OrderIndexRoute
   PrivacyIndexRoute: typeof PrivacyIndexRoute
-  ProfileIndexRoute: typeof ProfileIndexRoute
   TermsIndexRoute: typeof TermsIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -351,6 +333,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomScriptDotjsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -363,13 +352,6 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms/'
       preLoaderRoute: typeof TermsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile/': {
-      id: '/profile/'
-      path: '/profile'
-      fullPath: '/profile/'
-      preLoaderRoute: typeof ProfileIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy/': {
@@ -442,32 +424,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/admin'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/account/': {
-      id: '/account/'
-      path: '/account'
-      fullPath: '/account/'
-      preLoaderRoute: typeof AccountIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/app/$': {
       id: '/app/$'
       path: '/app/$'
       fullPath: '/app/$'
       preLoaderRoute: typeof AppSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/users': {
-      id: '/api/users'
-      path: '/api/users'
-      fullPath: '/api/users'
-      preLoaderRoute: typeof ApiUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/sync': {
@@ -477,12 +438,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/users/$userId': {
-      id: '/api/users/$userId'
-      path: '/$userId'
-      fullPath: '/api/users/$userId'
-      preLoaderRoute: typeof ApiUsersUserIdRouteImport
-      parentRoute: typeof ApiUsersRoute
+    '/_authenticated/profile/': {
+      id: '/_authenticated/profile/'
+      path: '/profile'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof AuthenticatedProfileIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/account/': {
+      id: '/_authenticated/account/'
+      path: '/account'
+      fullPath: '/account/'
+      preLoaderRoute: typeof AuthenticatedAccountIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -494,28 +469,29 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface ApiUsersRouteChildren {
-  ApiUsersUserIdRoute: typeof ApiUsersUserIdRoute
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAccountIndexRoute: typeof AuthenticatedAccountIndexRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedProfileIndexRoute: typeof AuthenticatedProfileIndexRoute
 }
 
-const ApiUsersRouteChildren: ApiUsersRouteChildren = {
-  ApiUsersUserIdRoute: ApiUsersUserIdRoute,
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAccountIndexRoute: AuthenticatedAccountIndexRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedProfileIndexRoute: AuthenticatedProfileIndexRoute,
 }
 
-const ApiUsersRouteWithChildren = ApiUsersRoute._addFileChildren(
-  ApiUsersRouteChildren,
-)
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   CustomScriptDotjsRoute: CustomScriptDotjsRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiSyncRoute: ApiSyncRoute,
-  ApiUsersRoute: ApiUsersRouteWithChildren,
   AppSplatRoute: AppSplatRoute,
-  AccountIndexRoute: AccountIndexRoute,
-  AdminIndexRoute: AdminIndexRoute,
   AppIndexRoute: AppIndexRoute,
   ChangelogIndexRoute: ChangelogIndexRoute,
   DeviceIndexRoute: DeviceIndexRoute,
@@ -526,7 +502,6 @@ const rootRouteChildren: RootRouteChildren = {
   LoginIndexRoute: LoginIndexRoute,
   OrderIndexRoute: OrderIndexRoute,
   PrivacyIndexRoute: PrivacyIndexRoute,
-  ProfileIndexRoute: ProfileIndexRoute,
   TermsIndexRoute: TermsIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

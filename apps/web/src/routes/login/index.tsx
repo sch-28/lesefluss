@@ -7,7 +7,7 @@ import { Button } from "~/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { signIn, signUp, useSession } from "~/lib/auth-client";
+import { sendVerificationEmail, signIn, signUp, useSession } from "~/lib/auth-client";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/login/")({
@@ -58,9 +58,61 @@ function FormInput({
 
 type Mode = "signin" | "signup";
 
+function VerificationSent({ email, onBack }: { email: string; onBack: () => void }) {
+	const [status, setStatus] = React.useState<"idle" | "sending" | "sent" | "error">("idle");
+	const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+
+	const handleResend = async () => {
+		setStatus("sending");
+		setErrorMessage(null);
+		const { error } = await sendVerificationEmail({ email });
+		if (error) {
+			setStatus("error");
+			setErrorMessage(error.message ?? "Failed to resend");
+			return;
+		}
+		setStatus("sent");
+	};
+
+	return (
+		<div className="rounded-lg border border-border bg-card px-5 py-6 text-center">
+			<h2 className="font-semibold text-base">Check your email</h2>
+			<p className="mt-2 text-muted-foreground text-sm">
+				We sent a verification link to <span className="font-medium text-foreground">{email}</span>.
+				Click it to activate your account.
+			</p>
+			<p className="mt-3 text-muted-foreground text-xs">
+				Didn't get it? Check your spam folder.
+			</p>
+			<div className="mt-5 flex flex-col gap-2">
+				<Button
+					type="button"
+					variant="outline"
+					size="sm"
+					onClick={handleResend}
+					disabled={status === "sending" || status === "sent"}
+				>
+					{status === "sending"
+						? "Sending…"
+						: status === "sent"
+							? "Email sent"
+							: "Resend verification email"}
+				</Button>
+				<Button type="button" variant="ghost" size="sm" onClick={onBack}>
+					Use a different email
+				</Button>
+			</div>
+			{errorMessage && (
+				<p className="mt-3 text-destructive text-xs">{errorMessage}</p>
+			)}
+		</div>
+	);
+}
+
 function AuthForm({ mode }: { mode: Mode }) {
 	const navigate = useNavigate();
 	const [serverError, setServerError] = React.useState<string | null>(null);
+	const [verificationSentTo, setVerificationSentTo] = React.useState<string | null>(null);
 
 	const form = useForm({
 		defaultValues: { name: "", email: "", password: "" },
@@ -76,6 +128,7 @@ function AuthForm({ mode }: { mode: Mode }) {
 						password: value.password,
 					});
 					if (result.error) throw new Error(result.error.message ?? "Sign in failed");
+					navigate({ to: "/profile" });
 				} else {
 					const result = await signUp.email({
 						email: value.email,
@@ -83,13 +136,25 @@ function AuthForm({ mode }: { mode: Mode }) {
 						name: value.name,
 					});
 					if (result.error) throw new Error(result.error.message ?? "Sign up failed");
+					setVerificationSentTo(value.email);
 				}
-				navigate({ to: "/profile" });
 			} catch (err) {
 				setServerError(err instanceof Error ? err.message : "Something went wrong");
 			}
 		},
 	});
+
+	if (verificationSentTo) {
+		return (
+			<VerificationSent
+				email={verificationSentTo}
+				onBack={() => {
+					setVerificationSentTo(null);
+					setServerError(null);
+				}}
+			/>
+		);
+	}
 
 	return (
 		<form

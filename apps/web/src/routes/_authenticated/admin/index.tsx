@@ -33,14 +33,11 @@ import {
 	getCatalogStats,
 	triggerCatalogSync,
 } from "~/lib/admin";
-import { getSession } from "~/lib/get-session";
 import { seo } from "~/utils/seo";
 
-export const Route = createFileRoute("/admin/")({
-	loader: async () => {
-		const s = await getSession();
-		if (!s) throw redirect({ to: "/login" });
-		if (s.user.role !== "admin") throw redirect({ to: "/" });
+export const Route = createFileRoute("/_authenticated/admin/")({
+	loader: async ({ context }) => {
+		if (context.session.user.role !== "admin") throw redirect({ to: "/" });
 		return getAdminStats();
 	},
 	head: () => seo({ title: "Admin - Lesefluss", isNoindex: true }),

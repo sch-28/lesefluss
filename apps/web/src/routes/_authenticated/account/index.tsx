@@ -1,6 +1,6 @@
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import * as React from "react";
 import { z } from "zod";
 import { Button } from "~/components/ui/button";
@@ -8,16 +8,10 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "~/components/ui/field
 import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
 import { authClient } from "~/lib/auth-client";
-import { getSession } from "~/lib/get-session";
 import { clearCloudData } from "~/lib/profile";
 import { seo } from "~/utils/seo";
 
-export const Route = createFileRoute("/account/")({
-	loader: async () => {
-		const session = await getSession();
-		if (!session) throw redirect({ to: "/login" });
-		return { user: session.user };
-	},
+export const Route = createFileRoute("/_authenticated/account/")({
 	head: () =>
 		seo({
 			title: "Account - Lesefluss",
@@ -371,7 +365,8 @@ function DangerZone() {
 // ---------------------------------------------------------------------------
 
 function AccountPage() {
-	const { user } = Route.useLoaderData();
+	const { session } = Route.useRouteContext();
+	const user = session.user;
 
 	return (
 		<div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-12">

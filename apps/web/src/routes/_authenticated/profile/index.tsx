@@ -1,17 +1,15 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, BookOpen, MessageSquare, Settings } from "lucide-react";
 import * as React from "react";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
-import { getSession } from "~/lib/get-session";
 import { getProfileStats } from "~/lib/profile";
 import { seo } from "~/utils/seo";
 
-export const Route = createFileRoute("/profile/")({
-	loader: async () => {
-		const [session, stats] = await Promise.all([getSession(), getProfileStats()]);
-		if (!session) throw redirect({ to: "/login" });
-		return { user: session.user, ...stats };
+export const Route = createFileRoute("/_authenticated/profile/")({
+	loader: async ({ context }) => {
+		const stats = await getProfileStats();
+		return { user: context.session.user, ...stats };
 	},
 	head: () =>
 		seo({

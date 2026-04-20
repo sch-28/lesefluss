@@ -7,6 +7,7 @@ import { db } from "~/db";
 import * as authSchema from "~/db/auth-schema";
 import { syncBooks, syncHighlights, syncSettings } from "~/db/schema";
 import { ALLOWED_ORIGINS } from "./allowed-origins";
+import { passwordResetEmail, sendMail, verificationEmail } from "./mailer";
 
 // Server-only - never import this file in client components.
 // Use ~/lib/auth-client for browser-side session access.
@@ -17,7 +18,18 @@ export const auth = betterAuth({
 	}),
 	emailAndPassword: {
 		enabled: true,
-		requireEmailVerification: false,
+		requireEmailVerification: true,
+		sendResetPassword: async ({ user, url }) => {
+			await sendMail({ to: user.email, ...passwordResetEmail(url) });
+		},
+	},
+	emailVerification: {
+		sendOnSignUp: true,
+		sendOnSignIn: true,
+		autoSignInAfterVerification: true,
+		sendVerificationEmail: async ({ user, url }) => {
+			await sendMail({ to: user.email, ...verificationEmail(url) });
+		},
 	},
 	rateLimit: {
 		enabled: true,

@@ -124,8 +124,12 @@ export function Header() {
 		return () => mq.removeEventListener("change", handler);
 	}, []);
 
-	const handleSignOut = () => {
-		signOut().catch(console.error);
+	const handleSignOut = async () => {
+		try {
+			await signOut();
+		} finally {
+			router.navigate({ to: "/" });
+		}
 	};
 
 	return (
