@@ -50,6 +50,9 @@ jobs:
 
       - name: Build web assets and sync to Android
         working-directory: apps/capacitor
+        env:
+          VITE_SYNC_URL: https://lesefluss.app
+          VITE_CATALOG_URL: https://catalog.lesefluss.app
         run: node scripts/deploy.mjs
 
       - name: Decode keystore
