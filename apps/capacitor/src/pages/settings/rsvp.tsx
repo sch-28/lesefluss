@@ -154,6 +154,28 @@ const RSVPSettings: React.FC = () => {
 							pinFormatter={(value: number) => `${value} words`}
 						/>
 					</IonItem>
+
+					<IonListHeader>
+						<IonLabel>Display</IonLabel>
+					</IonListHeader>
+
+					<IonItem>
+						<IonLabel position="stacked">
+							<div className="flex items-center gap-2">
+								Focal Position: {settings.xOffset}%
+								<IonNote>(horizontal alignment)</IonNote>
+							</div>
+						</IonLabel>
+						<IonRange
+							min={SETTING_CONSTRAINTS.X_OFFSET.min}
+							max={SETTING_CONSTRAINTS.X_OFFSET.max}
+							step={SETTING_CONSTRAINTS.X_OFFSET.step}
+							value={settings.xOffset}
+							onIonChange={(e) => updateSetting("xOffset", e.detail.value as number)}
+							pin
+							pinFormatter={(value: number) => `${value}%`}
+						/>
+					</IonItem>
 				</IonList>
 			</IonContent>
 		</IonPage>
