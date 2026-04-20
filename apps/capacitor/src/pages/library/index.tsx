@@ -24,7 +24,7 @@ import {
 	swapVerticalOutline,
 } from "ionicons/icons";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
 import BLEIndicator from "../../components/ble-indicator";
 import { useBLE } from "../../contexts/ble-context";
@@ -40,6 +40,8 @@ import FilterPopover from "./filter-popover";
 import { type FilterBy, filterAndSort, readingProgress, type SortBy } from "./sort-filter";
 import SortPopover from "./sort-popover";
 import TransferModal from "./transfer-modal";
+
+const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
 
 const Library: React.FC = () => {
 	const { isConnected } = useBLE();
@@ -66,13 +68,8 @@ const Library: React.FC = () => {
 	// ── Local UI state ───────────────────────────────────────────────────
 	const [syncing, setSyncing] = useState(false);
 	const [noticeDismissed, setNoticeDismissed] = useState(
-		() => localStorage.getItem("lesefluss:local-notice-dismissed") === "1",
+		() => localStorage.getItem(LOCAL_NOTICE_KEY) === "1",
 	);
-
-	const dismissNotice = () => {
-		localStorage.setItem("lesefluss:local-notice-dismissed", "1");
-		setNoticeDismissed(true);
-	};
 	const [importProgress, setImportProgress] = useState(0);
 	const [sortBy, setSortBy] = useState<SortBy>("recent");
 	const [filterBy, setFilterBy] = useState<FilterBy>("all");
@@ -97,6 +94,11 @@ const Library: React.FC = () => {
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 		}
 	}, [isTransferring, qc]);
+
+	const dismissNotice = useCallback(() => {
+		localStorage.setItem(LOCAL_NOTICE_KEY, "1");
+		setNoticeDismissed(true);
+	}, []);
 
 	const handleImport = () => {
 		setImportProgress(0);
