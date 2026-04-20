@@ -50,3 +50,4 @@ temp/
 
 # Generated render frames
 resources/case/oled-v1/render/screen/
+*.keystore

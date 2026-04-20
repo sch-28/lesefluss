@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Parse version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"          # e.g. v1.2.3
+          NAME="${TAG#v}"                   # 1.2.3
+          MAJOR=$(echo "$NAME" | cut -d. -f1)
+          MINOR=$(echo "$NAME" | cut -d. -f2)
+          PATCH=$(echo "$NAME" | cut -d. -f3)
+          CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('apps/capacitor/android/**/*.gradle*') }}
+
+      - uses: pnpm/action-setup@a7487ba4b54111779c44ef2d5a8cf59c78b69467 # v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/capacitor/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: apps/capacitor
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web assets and sync to Android
+        working-directory: apps/capacitor
+        run: node scripts/deploy.mjs
+
+      - name: Decode keystore
+        run: |
+          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode \
+            > apps/capacitor/android/app/release.keystore
+
+      - name: Build APK + AAB
+        working-directory: apps/capacitor/android
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          KEYSTORE_PATH: release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease bundleRelease
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Lesefluss ${{ steps.version.outputs.name }}" \
+            --generate-notes \
+            apps/capacitor/android/app/build/outputs/apk/release/app-release.apk \
+            apps/capacitor/android/app/build/outputs/bundle/release/app-release.aab
