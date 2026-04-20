@@ -39,7 +39,8 @@ const features = [
 	{
 		icon: Highlighter,
 		title: "Highlights and dictionary",
-		description: "Long-press to highlight passages with color and notes. Tap a highlighted word for its dictionary definition. Search through the full book text.",
+		description:
+			"Long-press to highlight passages with color and notes. Tap a highlighted word for its dictionary definition. Search through the full book text.",
 	},
 	{
 		icon: Globe,

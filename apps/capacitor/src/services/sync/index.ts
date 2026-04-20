@@ -11,7 +11,7 @@ import { bookKeys, settingsKeys } from "../db/hooks/query-keys";
 import { queries } from "../db/queries";
 import type { Book, BookContent, Highlight, Settings } from "../db/schema";
 import { queryClient } from "../query-client";
-import { SYNC_URL, syncAuthClient } from "./auth-client";
+import { SYNC_URL } from "./auth-client";
 
 /** True when the capacitor app is hosted inside the website (same origin, cookie auth). */
 export const IS_WEB_BUILD = import.meta.env.VITE_WEB_BUILD === "true";
@@ -93,9 +93,7 @@ export async function consumeAuthState(): Promise<string | null> {
 
 export function hasEmail(v: unknown): v is { email: string } {
 	return (
-		typeof v === "object" &&
-		v !== null &&
-		typeof (v as { email?: unknown }).email === "string"
+		typeof v === "object" && v !== null && typeof (v as { email?: unknown }).email === "string"
 	);
 }
 
@@ -125,14 +123,17 @@ export async function finalizeVerifiedLogin(token: string): Promise<{ email: str
 }
 
 export async function signOut(): Promise<void> {
-	if (syncAuthClient) {
-		try {
-			await syncAuthClient.signOut();
-		} catch {
-			// Ignore - clearing local token is enough
-		}
-	}
+	const token = await getToken();
 	await clearToken();
+	// Server-side invalidation is best-effort: if we're offline or the request
+	// fails, the token is gone from this device but stays valid on the server
+	// until its TTL expires. Accepted trade-off for immediate UI response.
+	if (token && SYNC_URL) {
+		void fetch(`${SYNC_URL}/api/auth/sign-out`, {
+			method: "POST",
+			headers: { Authorization: `Bearer ${token}` },
+		}).catch(() => {});
+	}
 }
 
 // ---------------------------------------------------------------------------

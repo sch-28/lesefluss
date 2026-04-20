@@ -162,8 +162,7 @@ const RSVPSettings: React.FC = () => {
 					<IonItem>
 						<IonLabel position="stacked">
 							<div className="flex items-center gap-2">
-								Focal Position: {settings.xOffset}%
-								<IonNote>(horizontal alignment)</IonNote>
+								Focal Position: {settings.xOffset}%<IonNote>(horizontal alignment)</IonNote>
 							</div>
 						</IonLabel>
 						<IonRange

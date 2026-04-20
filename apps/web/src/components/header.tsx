@@ -21,7 +21,8 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { signOut, useSession } from "~/lib/auth-client";
+import { signOut } from "~/lib/auth-client";
+import { type Session, useAuthSession } from "~/lib/session-context";
 
 const NAV_LINKS = [
 	{ to: "/device" as const, label: "Device", icon: Cpu },
@@ -58,7 +59,7 @@ function getInitials(name?: string | null, email?: string | null): string {
 	return "U";
 }
 
-type SessionUser = NonNullable<ReturnType<typeof useSession>["data"]>["user"];
+type SessionUser = Session["user"];
 
 function UserMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => void }) {
 	return (
@@ -105,7 +106,7 @@ function UserMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => voi
 
 export function Header() {
 	const [mobileOpen, setMobileOpen] = React.useState(false);
-	const { data: session, isPending } = useSession();
+	const session = useAuthSession();
 	const user = session?.user;
 	const router = useRouter();
 
@@ -128,7 +129,8 @@ export function Header() {
 		try {
 			await signOut();
 		} finally {
-			router.navigate({ to: "/" });
+			await router.invalidate();
+			await router.navigate({ to: "/" });
 		}
 	};
 
@@ -176,22 +178,21 @@ export function Header() {
 
 					<div className="mx-2 h-4 w-px bg-border" />
 
-					{!isPending &&
-						(user ? (
-							<UserMenu user={user} onSignOut={handleSignOut} />
-						) : (
-							<Button asChild size="sm">
-								<Link to="/login">
-									<LogIn className="size-3.5" />
-									Login
-								</Link>
-							</Button>
-						))}
+					{user ? (
+						<UserMenu user={user} onSignOut={handleSignOut} />
+					) : (
+						<Button asChild size="sm">
+							<Link to="/login">
+								<LogIn className="size-3.5" />
+								Login
+							</Link>
+						</Button>
+					)}
 				</div>
 
 				{/* Mobile: auth avatar + hamburger */}
 				<div className="flex items-center gap-2 md:hidden">
-					{!isPending && user && <UserMenu user={user} onSignOut={handleSignOut} />}
+					{user && <UserMenu user={user} onSignOut={handleSignOut} />}
 					<Button
 						variant="ghost"
 						size="icon-sm"

@@ -1,4 +1,6 @@
-export const CATALOG_URL = (import.meta.env.VITE_CATALOG_URL ?? "https://catalog.lesefluss.app").trim();
+export const CATALOG_URL = (
+	import.meta.env.VITE_CATALOG_URL ?? "https://catalog.lesefluss.app"
+).trim();
 
 export const CATALOG_ENABLED = !!CATALOG_URL;
 

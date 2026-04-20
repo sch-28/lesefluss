@@ -133,8 +133,8 @@ function PrivacyPage() {
 					<li className="flex gap-2">
 						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>
-							<strong className="text-foreground">Discord Sign-In</strong> - if you choose to sign in
-							with Discord, Discord processes the request under its own privacy policy and shares
+							<strong className="text-foreground">Discord Sign-In</strong> - if you choose to sign
+							in with Discord, Discord processes the request under its own privacy policy and shares
 							your email address and username with us to create your account. We do not request any
 							other scopes and never act on your behalf with Discord services.
 						</span>
@@ -152,8 +152,8 @@ function PrivacyPage() {
 							>
 								Resend
 							</a>
-							, acting as a data processor on our behalf. Only your email address is shared, and only
-							when we send you one of these messages.
+							, acting as a data processor on our behalf. Only your email address is shared, and
+							only when we send you one of these messages.
 						</span>
 					</li>
 					<li className="flex gap-2">

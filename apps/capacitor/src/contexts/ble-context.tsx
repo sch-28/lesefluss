@@ -1,5 +1,5 @@
-import type { BleDevice } from "@capacitor-community/bluetooth-le";
 import { Preferences } from "@capacitor/preferences";
+import type { BleDevice } from "@capacitor-community/bluetooth-le";
 import type React from "react";
 import {
 	createContext,
@@ -320,7 +320,13 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 			log("ble", "found 1 device, auto-connecting...");
 			handleDeviceSelect(scannedDevices[0].device.deviceId);
 		}
-	}, [scannedDevices.length, isConnected, handleDeviceSelect, scannedDevices[0]?.device.deviceId, bleEnabled]);
+	}, [
+		scannedDevices.length,
+		isConnected,
+		handleDeviceSelect,
+		scannedDevices[0]?.device.deviceId,
+		bleEnabled,
+	]);
 
 	const toggleBLEEnabled = useCallback(async () => {
 		const next = !bleEnabled;

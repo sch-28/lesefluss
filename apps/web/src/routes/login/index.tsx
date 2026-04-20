@@ -1,6 +1,6 @@
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import * as React from "react";
 import { z } from "zod";
 import { DiscordIcon } from "~/components/icons/discord";
@@ -9,14 +9,16 @@ import { Button } from "~/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { sendVerificationEmail, signIn, signUp, useSession } from "~/lib/auth-client";
+import { sendVerificationEmail, signIn, signUp } from "~/lib/auth-client";
+import { useAuthSession } from "~/lib/session-context";
 import { seo } from "~/utils/seo";
 
 function isSafeRedirect(value: unknown): value is string {
 	if (typeof value !== "string") return false;
 	if (!value.startsWith("/") || value.startsWith("//")) return false;
 	// Avoid bouncing back to login (reload loop) or exposing auth endpoints as redirect targets.
-	if (value === "/login" || value.startsWith("/login/") || value.startsWith("/login?")) return false;
+	if (value === "/login" || value.startsWith("/login/") || value.startsWith("/login?"))
+		return false;
 	if (value.startsWith("/api/")) return false;
 	return true;
 }
@@ -181,6 +183,7 @@ function AuthForm({
 	hasExternalRedirect: boolean;
 }) {
 	const navigate = useNavigate();
+	const router = useRouter();
 	const [serverError, setServerError] = React.useState<string | null>(null);
 	const [verificationSentTo, setVerificationSentTo] = React.useState<string | null>(null);
 
@@ -198,8 +201,12 @@ function AuthForm({
 						password: value.password,
 					});
 					if (result.error) throw new Error(result.error.message ?? "Sign in failed");
-					if (hasExternalRedirect) window.location.assign(redirectTo);
-					else navigate({ to: "/profile" });
+					if (hasExternalRedirect) {
+						window.location.assign(redirectTo);
+					} else {
+						await router.invalidate();
+						navigate({ to: "/profile" });
+					}
 				} else {
 					const result = await signUp.email({
 						email: value.email,
@@ -298,7 +305,7 @@ function AuthForm({
 }
 
 function LoginPage() {
-	const { data: session } = useSession();
+	const session = useAuthSession();
 	const navigate = useNavigate();
 	const { redirect } = Route.useSearch();
 	const hasExternalRedirect = redirect !== undefined;

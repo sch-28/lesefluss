@@ -7,6 +7,7 @@ import * as React from "react";
 import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary";
 import { Header } from "~/components/header";
 import { NotFound } from "~/components/NotFound";
+import { getSession } from "~/lib/get-session";
 import appCss from "~/styles/app.css?url";
 import { buildVerificationMeta, seo } from "~/utils/seo";
 import { buildOrganizationSchema, webSiteSchema } from "~/utils/structured-data";
@@ -14,6 +15,7 @@ import { buildOrganizationSchema, webSiteSchema } from "~/utils/structured-data"
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 0 } } });
 
 export const Route = createRootRoute({
+	beforeLoad: async () => ({ session: await getSession() }),
 	loader: () => ({}),
 	head: () => {
 		const { meta } = seo({

@@ -51,8 +51,7 @@ function ImprintPage() {
 			<section>
 				<h2 className="mb-3 font-semibold text-foreground text-xl">Nature of the project</h2>
 				<p>
-					Lesefluss is a non-commercial open-source hobby project.{" "}
-					The source code is available at{" "}
+					Lesefluss is a non-commercial open-source hobby project. The source code is available at{" "}
 					<a
 						href="https://github.com/sch-28/lesefluss"
 						target="_blank"

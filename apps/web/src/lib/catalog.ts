@@ -4,9 +4,7 @@ export function catalogBase(): string {
 	return (process.env.CATALOG_URL || DEFAULT_CATALOG_URL).replace(/\/+$/, "");
 }
 
-type CatalogFetchResult =
-	| { ok: true; data: Response; base: string }
-	| { ok: false; error: string };
+type CatalogFetchResult = { ok: true; data: Response; base: string } | { ok: false; error: string };
 
 type CatalogFetchOptions = Omit<RequestInit, "headers" | "signal"> & {
 	/** Plain-object headers only — tuple arrays and Headers instances are not accepted. */

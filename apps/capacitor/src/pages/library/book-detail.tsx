@@ -12,12 +12,7 @@ import {
 	IonToolbar,
 } from "@ionic/react";
 import { useQuery } from "@tanstack/react-query";
-import {
-	bookOutline,
-	hardwareChipOutline,
-	openOutline,
-	trashOutline,
-} from "ionicons/icons";
+import { bookOutline, hardwareChipOutline, openOutline, trashOutline } from "ionicons/icons";
 import type React from "react";
 import { useState } from "react";
 import { useHistory, useParams } from "react-router-dom";

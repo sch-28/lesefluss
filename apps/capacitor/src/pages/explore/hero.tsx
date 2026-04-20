@@ -75,11 +75,7 @@ const Hero: React.FC<Props> = ({ books, onOpen, intervalMs = 6000 }) => {
 			</button>
 			<div className="explore-hero-meta">
 				<div className="explore-hero-eyebrow">Featured</div>
-				<button
-					type="button"
-					className="explore-hero-title-btn"
-					onClick={() => onOpen(book)}
-				>
+				<button type="button" className="explore-hero-title-btn" onClick={() => onOpen(book)}>
 					<h2 className="explore-hero-title">{book.title}</h2>
 					{book.author && <p className="explore-hero-author">{book.author}</p>}
 				</button>

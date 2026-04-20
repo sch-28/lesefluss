@@ -22,14 +22,7 @@ type Props = {
  * The shimmer placeholder keeps the skeleton visible *under* the image until
  * the `load` event fires — the image itself starts transparent and fades in.
  */
-const CoverImage: React.FC<Props> = ({
-	src,
-	alt,
-	fallback,
-	className,
-	priority,
-	imgClassName,
-}) => {
+const CoverImage: React.FC<Props> = ({ src, alt, fallback, className, priority, imgClassName }) => {
 	const [state, setState] = useState<"loading" | "loaded" | "error">("loading");
 
 	const showImage = !!src && state !== "error";
@@ -41,9 +34,7 @@ const CoverImage: React.FC<Props> = ({
 	return (
 		<div className={`cover-image ${className ?? ""}`.trim()}>
 			{/* Fallback (no src OR load error). */}
-			{showFallback && (
-				<div className="cover-image-fallback">{placeholder}</div>
-			)}
+			{showFallback && <div className="cover-image-fallback">{placeholder}</div>}
 
 			{/* Image itself — rendered at full opacity; shimmer fades out on top. */}
 			{showImage && (
@@ -64,7 +55,9 @@ const CoverImage: React.FC<Props> = ({
 			{/* Skeleton shimmer — sits on top of the image and fades out once loaded.
 			    This prevents the container background from flashing through. */}
 			{showImage && (
-				<div className={`cover-image-shimmer${state === "loaded" ? " cover-image-shimmer--done" : ""}`} />
+				<div
+					className={`cover-image-shimmer${state === "loaded" ? "cover-image-shimmer--done" : ""}`}
+				/>
 			)}
 		</div>
 	);

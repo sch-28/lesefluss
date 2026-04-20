@@ -1683,12 +1683,7 @@ body.dark .local-storage-notice__dismiss {
 .cover-image-shimmer {
 	position: absolute;
 	inset: 0;
-	background: linear-gradient(
-		100deg,
-		#ececec 10%,
-		#f7f7f7 40%,
-		#ececec 70%
-	);
+	background: linear-gradient(100deg, #ececec 10%, #f7f7f7 40%, #ececec 70%);
 	background-size: 200% 100%;
 	animation: cover-shimmer 1.2s ease-in-out infinite;
 	transition: opacity 200ms ease;
@@ -1708,7 +1703,6 @@ body.dark .local-storage-notice__dismiss {
 	justify-content: center;
 }
 
-
 @keyframes cover-shimmer {
 	0% {
 		background-position: 100% 0;
@@ -1719,12 +1713,7 @@ body.dark .local-storage-notice__dismiss {
 }
 
 body.dark .cover-image-shimmer {
-	background: linear-gradient(
-		100deg,
-		#242424 10%,
-		#2e2e2e 40%,
-		#242424 70%
-	);
+	background: linear-gradient(100deg, #242424 10%, #2e2e2e 40%, #242424 70%);
 	background-size: 200% 100%;
 }
 
@@ -1827,7 +1816,9 @@ body.dark .pagination-ellipsis {
 	font-size: 0.9rem;
 	text-align: left;
 	cursor: pointer;
-	transition: background 150ms ease, border-color 150ms ease;
+	transition:
+		background 150ms ease,
+		border-color 150ms ease;
 }
 
 .explore-genre-tile:hover {
@@ -2021,7 +2012,6 @@ body.dark .explore-genre-tile:hover {
 	width: 18px;
 	border-radius: 3px;
 }
-
 
 body.dark .explore-hero {
 	background: #1a1a1a;

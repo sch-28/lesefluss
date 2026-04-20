@@ -36,7 +36,9 @@ for (const b of [...featuredSe, ...classics, ...mostRead]) {
 	}
 }
 
-console.error(`Found ${books.length} SE books (${featuredSe.length} featured + ${classics.length} classics + ${mostRead.length} most_read)`);
+console.error(
+	`Found ${books.length} SE books (${featuredSe.length} featured + ${classics.length} classics + ${mostRead.length} most_read)`,
+);
 
 const manifest = [];
 let ok = 0;
@@ -61,9 +63,12 @@ for (const book of books) {
 		const imgRes = await fetch(coverUrl);
 		if (!imgRes.ok) throw new Error(`HTTP ${imgRes.status}`);
 		const buf = Buffer.from(await imgRes.arrayBuffer());
-		await sharp(buf).resize(WIDTH, HEIGHT, { fit: "cover", position: "attention" }).webp({ quality: QUALITY }).toFile(outPath);
+		await sharp(buf)
+			.resize(WIDTH, HEIGHT, { fit: "cover", position: "attention" })
+			.webp({ quality: QUALITY })
+			.toFile(outPath);
 		manifest.push({ id: book.id, title: book.title, author: book.author, file: outFile });
-		process.stderr.write(`ok\n`);
+		process.stderr.write("ok\n");
 		ok++;
 	} catch (err) {
 		process.stderr.write(`FAILED: ${err.message}\n`);

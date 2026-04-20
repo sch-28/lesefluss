@@ -13,5 +13,5 @@ export const docsSections: DocsSection[] = [
 	troubleshootingSection,
 ];
 
-export { troubleshootingItems };
 export type { DocsSection };
+export { troubleshootingItems };
