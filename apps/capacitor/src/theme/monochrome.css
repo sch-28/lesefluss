@@ -1445,7 +1445,7 @@ body.dark .local-storage-notice__dismiss {
 	margin: 0 auto;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1081px) {
 	/* Sidebar width drives both its own box and the router-outlet's left margin.
 	   Toggled collapsed/expanded by body.sidebar-collapsed (set by DesktopSidebar). */
 	:root {
@@ -2331,7 +2331,7 @@ body.dark .book-detail-summary {
 
 /* ── Desktop: hide in-toolbar brand (sidebar already shows it) ── */
 /* Separate block so it comes after .app-brand's display:flex definition. */
-@media (min-width: 768px) {
+@media (min-width: 1081px) {
 	.app-brand {
 		display: none;
 	}

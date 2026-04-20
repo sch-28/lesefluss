@@ -1,4 +1,4 @@
-package tools.jan.schmidt;
+package app.lesefluss;
 
 import com.getcapacitor.BridgeActivity;
 

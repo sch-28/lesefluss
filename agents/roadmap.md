@@ -33,8 +33,8 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 
 - [ ] Play Store listing - screenshots, description, privacy policy
 - [ ] better auth email verification
-- [ ] GitHub Actions CI - push tag → build signed APK → publish as GitHub release
-- [ ] Web app: show a notice when using /app without being logged in that books are stored locally in the browser only and will be lost if browser data is cleared (check the full flow)
+- [x] GitHub Actions CI - push tag → build signed APK → publish as GitHub release
+- [x] Web app: show a notice when using /app without being logged in that books are stored locally in the browser only and will be lost if browser data is cleared (check the full flow)
 - [x] Website - live at `lesefluss.app`, pitch, live RSVP preview, embedded web app at `/app`, DIY vs assembled options, deployed via Coolify
 - [x] Open source the monorepo on GitHub (AGPL v3)
 - [x] DIY guide page on website - parts list with purchase links, flash + upload instructions, links to case STL files in repo

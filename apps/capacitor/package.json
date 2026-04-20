@@ -21,6 +21,9 @@
 		"ionic:build": "vite build",
 		"live": "node scripts/live-reload.mjs",
 		"deploy": "node scripts/deploy.mjs",
+		"build:apk": "dotenv -e .env.deploy -- sh -c 'pnpm build && cap sync android && cd android && ./gradlew assembleRelease'",
+		"deploy:apk": "pnpm build:apk && adb install -r android/app/build/outputs/apk/release/app-release.apk",
+		"build:aab": "dotenv -e .env.deploy -- sh -c 'pnpm build && cap sync android && cd android && ./gradlew bundleRelease'",
 		"gen-icons": "node scripts/gen-icons.mjs",
 		"setup": "node scripts/gen-icons.mjs",
 		"format": "biome format --write .",
@@ -65,6 +68,7 @@
 		"@types/react-dom": "^19.2.3",
 		"@types/react-router-dom": "^5.3.3",
 		"@vitejs/plugin-react": "^5.2.0",
+		"dotenv-cli": "11.0.0",
 		"drizzle-kit": "^0.31.10",
 		"typescript": "^6.0.2",
 		"vite": "^7.3.1"

@@ -1,14 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "tools.jan.schmidt"
+    namespace = "app.lesefluss"
     compileSdk = rootProject.ext.compileSdkVersion
 
     def envVersionName = System.getenv("VERSION_NAME") ?: "1.0"
     def envVersionCode = (System.getenv("VERSION_CODE") ?: "1").toInteger()
 
     defaultConfig {
-        applicationId "tools.jan.schmidt"
+        applicationId "app.lesefluss"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode envVersionCode
