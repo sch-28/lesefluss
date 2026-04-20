@@ -110,6 +110,7 @@ declare -A FG_SIZES=([mdpi]=108 [hdpi]=162 [xhdpi]=216 [xxhdpi]=324 [xxxhdpi]=43
 for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
   size="${SIZES[$density]}"
   dir="$ANDROID/mipmap-$density"
+  mkdir -p "$dir"
   icon_compose "$size" "$dir/ic_launcher.png"
   icon_compose "$size" "$dir/ic_launcher_round.png"
   echo "  $density: ${size}x${size} (ic_launcher + ic_launcher_round)"
@@ -124,9 +125,10 @@ echo "=== Android (adaptive foreground, transparent bg) ==="
 for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
   size="${FG_SIZES[$density]}"
   dir="$ANDROID/mipmap-$density"
+  mkdir -p "$dir"
   logo_px=$(echo "$size $ICON_LOGO_SCALE" | awk '{printf "%d", $1 * (72/108) * $2}')
   magick -size "${size}x${size}" xc:none \
-    \( "$SRC" -fuzz 8% -transparent "$FG_REMOVE_COLOR" -resize "${logo_px}x${logo_px}" \) \
+    \( "$SRC" -resize "${logo_px}x${logo_px}" \) \
     -gravity center -composite "$dir/ic_launcher_foreground.png"
   echo "  $density: ${size}x${size}, logo ${logo_px}px (ic_launcher_foreground)"
 done
@@ -140,15 +142,18 @@ declare -A LAND_SIZES=([mdpi]="480x320" [hdpi]="800x480" [xhdpi]="1280x720" [xxh
 
 for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
   IFS='x' read -r pw ph <<< "${PORT_SIZES[$density]}"
+  mkdir -p "$ANDROID/drawable-port-${density}"
   splash_compose "$pw" "$ph" "$ANDROID/drawable-port-${density}/splash.png"
   echo "  port-$density: ${pw}x${ph}"
 
   IFS='x' read -r lw lh <<< "${LAND_SIZES[$density]}"
+  mkdir -p "$ANDROID/drawable-land-${density}"
   splash_compose "$lw" "$lh" "$ANDROID/drawable-land-${density}/splash.png"
   echo "  land-$density: ${lw}x${lh}"
 done
 
 # default fallback splash
+mkdir -p "$ANDROID/drawable"
 splash_compose 480 320 "$ANDROID/drawable/splash.png"
 echo "  drawable (fallback): 480x320"
 
