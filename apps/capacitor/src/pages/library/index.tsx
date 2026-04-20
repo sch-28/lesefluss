@@ -33,6 +33,7 @@ import { useSyncContext } from "../../contexts/sync-context";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import type { Book } from "../../services/db/schema";
+import { IS_WEB_BUILD } from "../../services/sync";
 import { IS_WEB } from "../../utils/platform";
 import BookCard from "./book-card";
 import FilterPopover from "./filter-popover";
@@ -64,6 +65,14 @@ const Library: React.FC = () => {
 
 	// ── Local UI state ───────────────────────────────────────────────────
 	const [syncing, setSyncing] = useState(false);
+	const [noticeDismissed, setNoticeDismissed] = useState(
+		() => localStorage.getItem("lesefluss:local-notice-dismissed") === "1",
+	);
+
+	const dismissNotice = () => {
+		localStorage.setItem("lesefluss:local-notice-dismissed", "1");
+		setNoticeDismissed(true);
+	};
 	const [importProgress, setImportProgress] = useState(0);
 	const [sortBy, setSortBy] = useState<SortBy>("recent");
 	const [filterBy, setFilterBy] = useState<FilterBy>("all");
@@ -191,6 +200,35 @@ const Library: React.FC = () => {
 			<IonContent>
 				{/* Import progress bar */}
 				{importing && <IonProgressBar value={importProgress / 100} type={"determinate"} />}
+
+				{/* Local-storage notice for unauthenticated web users */}
+				{IS_WEB_BUILD && !isLoggedIn && !noticeDismissed && (
+					<div className="local-storage-notice">
+						<span className="local-storage-notice__text">
+							Your books are stored locally in this browser only and will be lost if you clear
+							browser data.{" "}
+							<a
+								href="/tabs/settings/sync"
+								className="local-storage-notice__link"
+								onClick={(e) => {
+									e.preventDefault();
+									history.push("/tabs/settings/sync");
+								}}
+							>
+								Sign in
+							</a>{" "}
+							to keep them safe across devices.
+						</span>
+						<button
+							type="button"
+							onClick={dismissNotice}
+							aria-label="Dismiss"
+							className="local-storage-notice__dismiss"
+						>
+							✕
+						</button>
+					</div>
+				)}
 
 				{books.length === 0 ? (
 					/* ── Empty state ── */

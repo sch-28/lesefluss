@@ -1362,6 +1362,58 @@ ion-popover.appearance-popover {
 	text-align: right;
 }
 
+/* ── Local storage notice (web embed, unauthenticated) ── */
+.local-storage-notice {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.75rem;
+	padding: 0.7rem 1rem;
+	background: #f5f5f5;
+	border-bottom: 1px solid #d9d9d9;
+	font-size: 0.82rem;
+	line-height: 1.45;
+}
+
+.local-storage-notice__text {
+	flex: 1;
+	color: #333333;
+}
+
+.local-storage-notice__link {
+	color: #333333;
+	text-decoration: underline;
+	font-weight: 600;
+}
+
+.local-storage-notice__dismiss {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 0;
+	color: #888888;
+	font-size: 0.9rem;
+	line-height: 1;
+	flex-shrink: 0;
+	margin-top: 1px;
+}
+
+body.dark .local-storage-notice {
+	background: #242424;
+	border-bottom-color: #333333;
+}
+
+body.dark .local-storage-notice__text {
+	color: #c8c8c8;
+}
+
+body.dark .local-storage-notice__link {
+	color: #c8c8c8;
+}
+
+body.dark .local-storage-notice__dismiss {
+	color: #666666;
+}
+
 /* ── Library toolbar ── */
 .library-toolbar {
 	display: flex;
