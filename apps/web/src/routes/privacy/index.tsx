@@ -124,6 +124,32 @@ function PrivacyPage() {
 					<li className="flex gap-2">
 						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>
+							<strong className="text-foreground">Google Sign-In</strong> - if you choose to sign in
+							with Google, Google processes the request under its own privacy policy and shares your
+							email address and name with us to create your account. We do not request any other
+							scopes and never act on your behalf with Google services.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<strong className="text-foreground">Resend</strong> - account emails (verification,
+							password reset) are delivered via{" "}
+							<a
+								href="https://resend.com"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-foreground underline decoration-border hover:decoration-foreground/50"
+							>
+								Resend
+							</a>
+							, acting as a data processor on our behalf. Only your email address is shared, and only
+							when we send you one of these messages.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
 							<strong className="text-foreground">GitHub</strong> - if you download the APK or view
 							the source, GitHub processes the request under its own privacy policy.
 						</span>

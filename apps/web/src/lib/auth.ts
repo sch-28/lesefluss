@@ -9,6 +9,12 @@ import { syncBooks, syncHighlights, syncSettings } from "~/db/schema";
 import { ALLOWED_ORIGINS } from "./allowed-origins";
 import { passwordResetEmail, sendMail, verificationEmail } from "./mailer";
 
+function requireEnv(name: string): string {
+	const value = process.env[name];
+	if (!value) throw new Error(`${name} is required`);
+	return value;
+}
+
 // Server-only - never import this file in client components.
 // Use ~/lib/auth-client for browser-side session access.
 export const auth = betterAuth({
@@ -37,12 +43,17 @@ export const auth = betterAuth({
 		max: 10,
 		storage: "memory",
 	},
-	// biome-ignore lint/style/noNonNullAssertion: required env vars, server fails at startup if missing
-	secret: process.env.BETTER_AUTH_SECRET!,
-	// biome-ignore lint/style/noNonNullAssertion: required env vars, server fails at startup if missing
-	baseURL: process.env.BETTER_AUTH_URL!,
+	secret: requireEnv("BETTER_AUTH_SECRET"),
+	baseURL: requireEnv("BETTER_AUTH_URL"),
 	basePath: "/api/auth",
 	trustedOrigins: ALLOWED_ORIGINS,
+	socialProviders: {
+		google: {
+			clientId: requireEnv("GOOGLE_CLIENT_ID"),
+			clientSecret: requireEnv("GOOGLE_CLIENT_SECRET"),
+			prompt: "select_account",
+		},
+	},
 	plugins: [tanstackStartCookies(), bearer(), admin()],
 	user: {
 		deleteUser: {

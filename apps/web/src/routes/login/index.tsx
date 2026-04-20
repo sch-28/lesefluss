@@ -3,6 +3,7 @@ import { useForm } from "@tanstack/react-form";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import * as React from "react";
 import { z } from "zod";
+import { GoogleIcon } from "~/components/icons/google";
 import { Button } from "~/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
@@ -81,9 +82,7 @@ function VerificationSent({ email, onBack }: { email: string; onBack: () => void
 				We sent a verification link to <span className="font-medium text-foreground">{email}</span>.
 				Click it to activate your account.
 			</p>
-			<p className="mt-3 text-muted-foreground text-xs">
-				Didn't get it? Check your spam folder.
-			</p>
+			<p className="mt-3 text-muted-foreground text-xs">Didn't get it? Check your spam folder.</p>
 			<div className="mt-5 flex flex-col gap-2">
 				<Button
 					type="button"
@@ -102,10 +101,40 @@ function VerificationSent({ email, onBack }: { email: string; onBack: () => void
 					Use a different email
 				</Button>
 			</div>
-			{errorMessage && (
-				<p className="mt-3 text-destructive text-xs">{errorMessage}</p>
-			)}
+			{errorMessage && <p className="mt-3 text-destructive text-xs">{errorMessage}</p>}
 		</div>
+	);
+}
+
+function GoogleButton() {
+	const [isLoading, setIsLoading] = React.useState(false);
+	const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+
+	const handleClick = async () => {
+		setIsLoading(true);
+		setErrorMessage(null);
+		const { error } = await signIn.social({ provider: "google", callbackURL: "/profile" });
+		if (error) {
+			setErrorMessage(error.message ?? "Google sign-in failed");
+			setIsLoading(false);
+		}
+	};
+
+	return (
+		<>
+			<Button
+				type="button"
+				variant="outline"
+				size="lg"
+				className="w-full"
+				onClick={handleClick}
+				disabled={isLoading}
+			>
+				<GoogleIcon className="mr-2 size-4" />
+				{isLoading ? "Redirecting…" : "Continue with Google"}
+			</Button>
+			{errorMessage && <p className="mt-2 text-center text-destructive text-xs">{errorMessage}</p>}
+		</>
 	);
 }
 
@@ -157,60 +186,68 @@ function AuthForm({ mode }: { mode: Mode }) {
 	}
 
 	return (
-		<form
-			onSubmit={(e) => {
-				e.preventDefault();
-				form.handleSubmit();
-			}}
-		>
-			<FieldGroup className="gap-4">
-				{mode === "signup" && (
-					<form.Field name="name">
+		<>
+			<GoogleButton />
+			<div className="my-6 flex items-center gap-3">
+				<div className="h-px flex-1 bg-border" />
+				<span className="text-muted-foreground text-xs uppercase tracking-wider">or</span>
+				<div className="h-px flex-1 bg-border" />
+			</div>
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					form.handleSubmit();
+				}}
+			>
+				<FieldGroup className="gap-4">
+					{mode === "signup" && (
+						<form.Field name="name">
+							{(field) => (
+								<FormInput field={field} label="Name" placeholder="Your name" autoComplete="name" />
+							)}
+						</form.Field>
+					)}
+
+					<form.Field name="email">
 						{(field) => (
-							<FormInput field={field} label="Name" placeholder="Your name" autoComplete="name" />
+							<FormInput
+								field={field}
+								label="Email"
+								type="email"
+								placeholder="you@example.com"
+								autoComplete="email"
+							/>
 						)}
 					</form.Field>
+
+					<form.Field name="password">
+						{(field) => (
+							<FormInput
+								field={field}
+								label="Password"
+								type="password"
+								placeholder="••••••••"
+								autoComplete={mode === "signin" ? "current-password" : "new-password"}
+							/>
+						)}
+					</form.Field>
+				</FieldGroup>
+
+				{serverError && (
+					<p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-destructive text-sm">
+						{serverError}
+					</p>
 				)}
 
-				<form.Field name="email">
-					{(field) => (
-						<FormInput
-							field={field}
-							label="Email"
-							type="email"
-							placeholder="you@example.com"
-							autoComplete="email"
-						/>
+				<form.Subscribe selector={(s) => s.isSubmitting}>
+					{(isSubmitting) => (
+						<Button type="submit" disabled={isSubmitting} className="mt-6 w-full" size="lg">
+							{isSubmitting ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+						</Button>
 					)}
-				</form.Field>
-
-				<form.Field name="password">
-					{(field) => (
-						<FormInput
-							field={field}
-							label="Password"
-							type="password"
-							placeholder="••••••••"
-							autoComplete={mode === "signin" ? "current-password" : "new-password"}
-						/>
-					)}
-				</form.Field>
-			</FieldGroup>
-
-			{serverError && (
-				<p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-destructive text-sm">
-					{serverError}
-				</p>
-			)}
-
-			<form.Subscribe selector={(s) => s.isSubmitting}>
-				{(isSubmitting) => (
-					<Button type="submit" disabled={isSubmitting} className="mt-6 w-full" size="lg">
-						{isSubmitting ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
-					</Button>
-				)}
-			</form.Subscribe>
-		</form>
+				</form.Subscribe>
+			</form>
+		</>
 	);
 }
 
