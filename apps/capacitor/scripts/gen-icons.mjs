@@ -3,7 +3,7 @@
 /**
  * Generate Android launcher icons from the master SVG.
  *
- * Source: rsvp/resources/icon.svg
+ * Source: rsvp/resources/logo.svg
  *
  * Usage:
  *   node scripts/gen-icons.mjs
@@ -26,7 +26,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const REPO_ROOT = resolve(ROOT, "../..");
-const ICON_SRC = resolve(REPO_ROOT, "resources/icon.svg");
+const ICON_SRC = resolve(REPO_ROOT, "resources/logo.svg");
 const RES = resolve(ROOT, "android/app/src/main/res");
 
 if (!existsSync(ICON_SRC)) {
