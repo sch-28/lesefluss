@@ -1,5 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bluetooth, BookMarked, BookOpen, Check, Globe, Highlighter, Library, Zap } from "lucide-react";
+import {
+	Bluetooth,
+	BookMarked,
+	BookOpen,
+	Check,
+	Globe,
+	Highlighter,
+	Library,
+	Zap,
+} from "lucide-react";
 import * as React from "react";
 import { FeatureCard } from "~/components/feature-card";
 import { StatCard } from "~/components/stat-card";
@@ -80,18 +89,17 @@ function DownloadPage() {
 						built-in Explore page. Read at your own pace or push up to 1000 WPM with RSVP. No
 						account required, fully offline.
 					</p>
-					<div className="flex flex-wrap gap-4">
+					<div className="flex flex-col items-start gap-3">
 						<BetaAccessButton />
-						{/* APK direct download */}
 						<a
 							href="https://github.com/sch-28/lesefluss/releases/latest"
 							target="_blank"
 							rel="noopener noreferrer"
-							className="inline-flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-foreground/30"
+							className="inline-flex items-center gap-1.5 text-muted-foreground text-xs underline-offset-4 hover:text-foreground hover:underline"
 						>
 							<svg
 								viewBox="0 0 24 24"
-								className="h-6 w-6 fill-none stroke-2 stroke-foreground"
+								className="h-3.5 w-3.5 fill-none stroke-2 stroke-current"
 								aria-hidden="true"
 							>
 								<path
@@ -100,10 +108,7 @@ function DownloadPage() {
 									d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
 								/>
 							</svg>
-							<div className="text-left">
-								<p className="text-[10px] text-muted-foreground">Direct download</p>
-								<p className="font-semibold text-sm">APK (GitHub)</p>
-							</div>
+							Advanced: sideload APK from GitHub
 						</a>
 					</div>
 				</div>
@@ -202,7 +207,7 @@ function BetaAccessButton() {
 			<button
 				type="button"
 				onClick={() => setExpanded(true)}
-				className="inline-flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-foreground/30"
+				className="relative inline-flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-foreground/30"
 			>
 				<svg viewBox="0 0 24 24" className="h-6 w-6 fill-foreground" aria-hidden="true">
 					<path d="M3.18 23.76a2.5 2.5 0 0 1-1.18-2.2V2.44A2.5 2.5 0 0 1 3.18.24l11.4 11.76-11.4 11.76zM16.09 13.41l2.62 2.71-9.68 5.5 7.06-8.21zM20.13 9.7c.57.33.87.84.87 1.54 0 .62-.3 1.19-.87 1.52l-2.18 1.24-2.9-2.99 2.9-2.99 2.18 1.68zM9.03 2.38l9.68 5.5-2.62 2.71-7.06-8.21z" />
