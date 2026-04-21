@@ -1145,6 +1145,11 @@ ion-modal.reader-theme-sepia ion-item {
 	touch-action: manipulation;
 	background: var(--reader-bg);
 	overflow: hidden;
+	/* Establish a container so `cqw` units in child transforms resolve
+	 * against the display's actual width (needed for the paused-mode
+	 * focal-word offset on desktop/web embeds where the reader isn't
+	 * full viewport width). */
+	container-type: inline-size;
 }
 
 /* Paused state enables native scroll-to-scrub. The overlay-root is
@@ -1175,8 +1180,10 @@ ion-modal.reader-theme-sepia ion-item {
  * scroll/pointer gestures pass through empty areas of the display). */
 .rsvp-context-word,
 .rsvp-controls,
+.rsvp-controls ion-button,
 .rsvp-playpause,
-.rsvp-dict-button {
+.rsvp-dict-button,
+.rsvp-settings-button {
 	pointer-events: auto;
 }
 
@@ -1396,7 +1403,7 @@ ion-modal.reader-theme-sepia ion-item {
 	letter-spacing: normal;
 	color: var(--reader-progress-label, #888);
 	opacity: 0.9;
-	text-align: justify;
+	text-align: left;
 	width: min(80vw, 560px);
 	word-break: normal;
 	overflow-wrap: break-word;
@@ -1408,6 +1415,12 @@ ion-modal.reader-theme-sepia ion-item {
 
 .rsvp-context-next {
 	top: calc(100% + 0.6em);
+}
+
+.rsvp-context-break {
+	display: block;
+	width: 100%;
+	height: 1.1em;
 }
 
 .rsvp-context-word {
@@ -1432,9 +1445,9 @@ ion-modal.reader-theme-sepia ion-item {
 
 /* ── RSVP dictionary button (paused, bottom-right) ── */
 
-.rsvp-dict-button {
+.rsvp-dict-button,
+.rsvp-settings-button {
 	position: absolute;
-	right: calc(env(safe-area-inset-right, 0px) + 16px);
 	bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
 	width: 44px;
 	height: 44px;
@@ -1451,7 +1464,16 @@ ion-modal.reader-theme-sepia ion-item {
 	z-index: 10;
 }
 
-.rsvp-dict-button:active {
+.rsvp-dict-button {
+	right: calc(env(safe-area-inset-right, 0px) + 16px);
+}
+
+.rsvp-settings-button {
+	left: calc(env(safe-area-inset-left, 0px) + 16px);
+}
+
+.rsvp-dict-button:active,
+.rsvp-settings-button:active {
 	background: var(--reader-progress-track, rgba(128, 128, 128, 0.2));
 }
 
@@ -1962,6 +1984,29 @@ ion-popover.appearance-popover {
 	font-size: 0.88rem;
 	font-weight: 600;
 	cursor: pointer;
+}
+
+.rsvp-link-btn {
+	width: 100%;
+	margin-top: 8px;
+	padding: 10px;
+	background: transparent;
+	border: none;
+	color: var(--ion-color-primary, #3880ff);
+	font-size: 0.88rem;
+	font-weight: 600;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.rsvp-link-btn:hover {
+	opacity: 0.8;
+}
+
+.rsvp-link-btn:focus-visible {
+	outline: 2px solid var(--ion-color-primary, #3880ff);
+	outline-offset: 2px;
+	border-radius: 4px;
 }
 
 /* ── Local storage notice (web embed, unauthenticated) ── */

@@ -60,12 +60,7 @@ const RsvpControls: React.FC<Props> = ({
 				<IonButton fill="clear" onClick={onBackWord} aria-label="Back one word">
 					<IonIcon slot="icon-only" icon={arrowUndoOutline} />
 				</IonButton>
-				<button
-					type="button"
-					className="rsvp-playpause"
-					onClick={onPlayPause}
-					aria-label="Play"
-				>
+				<button type="button" className="rsvp-playpause" onClick={onPlayPause} aria-label="Play">
 					<IonIcon icon={playOutline} />
 				</button>
 				<IonButton fill="clear" onClick={onForwardWord} aria-label="Forward one word">

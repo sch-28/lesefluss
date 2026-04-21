@@ -48,12 +48,14 @@ import Explore from "./pages/explore";
 import ExploreBookDetail from "./pages/explore/book-detail";
 import Library from "./pages/library";
 import LibraryBookDetail from "./pages/library/book-detail";
+import Onboarding from "./pages/onboarding";
 import BookReader from "./pages/reader";
 import Settings from "./pages/settings";
 import AppearanceSettings from "./pages/settings/appearance";
 import DeviceSettings from "./pages/settings/device";
 import RSVPSettings from "./pages/settings/rsvp";
 import SyncSettings from "./pages/settings/sync";
+import { queryHooks } from "./services/db/hooks";
 import { queryClient } from "./services/query-client";
 
 interface SlideAnimationOpts {
@@ -188,6 +190,17 @@ const HardwareBackButtonHandler: React.FC = () => {
 	return null;
 };
 
+/**
+ * Picks the initial destination based on whether first-run onboarding has
+ * completed. Rendered at the root route so the app lands on /onboarding the
+ * first time and /tabs/library thereafter.
+ */
+const RootRedirect: React.FC = () => {
+	const { data: settings, isPending } = queryHooks.useSettings();
+	if (isPending || !settings) return null;
+	return <Redirect to={settings.onboardingCompleted ? "/tabs/library" : "/onboarding"} />;
+};
+
 const App: React.FC = () => {
 	useEffect(() => {
 		SplashScreen.hide();
@@ -207,11 +220,10 @@ const App: React.FC = () => {
 										<IonRouterOutlet className="desktop-main">
 											{/* All other routes under /tabs share the tab bar */}
 											<Route path="/tabs" render={() => <AppTabs />} />
+											<Route exact path="/onboarding" component={Onboarding} />
 
-											{/* Root redirect */}
-											<Route exact path="/">
-												<Redirect to="/tabs/library" />
-											</Route>
+											{/* Root redirect - gated on onboarding completion */}
+											<Route exact path="/" component={RootRedirect} />
 										</IonRouterOutlet>
 									</IonReactRouter>
 								</BookSyncProvider>

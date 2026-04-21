@@ -12,8 +12,8 @@ import {
 	type RsvpSettings,
 	type WordEntry,
 } from "@lesefluss/rsvp-core";
+import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { hapticTick } from "../../utils/haptics";
 import { cleanWord, nextSentenceIndex, sentenceStartIndex, sliceContext } from "./rsvp-engine";
 
 // ─── Tunables ───────────────────────────────────────────────────────────────
@@ -25,7 +25,6 @@ interface Options {
 	content: string;
 	initialByteOffset: number;
 	settings: RsvpSettings;
-	haptics: boolean;
 	onPositionChange: (byteOffset: number) => void;
 	onFinished: () => void;
 	onLookup: (word: string) => void;
@@ -36,7 +35,6 @@ export function useRsvpEngine({
 	content,
 	initialByteOffset,
 	settings,
-	haptics,
 	onPositionChange,
 	onFinished,
 	onLookup,
@@ -73,8 +71,6 @@ export function useRsvpEngine({
 	settingsRef.current = settings;
 	const wordsRef = useRef(words);
 	wordsRef.current = words;
-	const hapticsRef = useRef(haptics);
-	hapticsRef.current = haptics;
 	const isPlayingRef = useRef(isPlaying);
 	isPlayingRef.current = isPlaying;
 
@@ -114,11 +110,6 @@ export function useRsvpEngine({
 		setWordIndex(idx);
 		displayedOffsetRef.current = entry.byteOffset;
 
-		// Haptic tick on punctuation words only (rhythm without every-word noise)
-		if (/[.!?,;:]/.test(entry.word)) {
-			hapticTick(hapticsRef.current);
-		}
-
 		// Throttled position save
 		const now = Date.now();
 		if (now - lastSaveRef.current >= POSITION_SAVE_THROTTLE_MS) {
@@ -142,7 +133,6 @@ export function useRsvpEngine({
 		accelRef.current = 0;
 		lastSaveRef.current = Date.now();
 		setIsPlaying(true);
-		hapticTick(hapticsRef.current);
 		tick();
 	}, [tick]);
 
@@ -152,7 +142,6 @@ export function useRsvpEngine({
 			timerRef.current = null;
 		}
 		setIsPlaying(false);
-		hapticTick(hapticsRef.current);
 		if (displayedOffsetRef.current !== null) {
 			onPositionChangeRef.current(displayedOffsetRef.current);
 		}
@@ -183,7 +172,6 @@ export function useRsvpEngine({
 		displayedOffsetRef.current = entry.byteOffset;
 		setCurrentWord(entry);
 		onPositionChangeRef.current(entry.byteOffset);
-		hapticTick(hapticsRef.current);
 	}, []);
 
 	const backWord = useCallback(() => jumpToWord(wordIndexRef.current - 1), [jumpToWord]);
@@ -200,7 +188,6 @@ export function useRsvpEngine({
 	// ── WPM change ───────────────────────────────────────────────────────
 	const changeWpm = useCallback((wpm: number) => {
 		onWpmChangeRef.current(wpm);
-		hapticTick(hapticsRef.current);
 	}, []);
 
 	// ── Dictionary lookup on the focal word ──────────────────────────────
@@ -209,19 +196,31 @@ export function useRsvpEngine({
 		if (!entry) return;
 		const clean = cleanWord(entry.word);
 		if (!clean) return;
-		hapticTick(hapticsRef.current);
 		onLookupRef.current(clean);
 	}, []);
 
 	// ── Long-press (dict lookup while paused) ────────────────────────────
-	const handleWordPointerDown = useCallback(() => {
-		if (isPlayingRef.current) return;
-		if (longPressTimerRef.current !== null) clearTimeout(longPressTimerRef.current);
-		longPressTimerRef.current = window.setTimeout(() => {
-			longPressTimerRef.current = null;
-			lookupFocalWord();
-		}, LONG_PRESS_MS);
-	}, [lookupFocalWord]);
+	// Attached to the display root; bails if the gesture starts on an
+	// interactive overlay (controls, dict button, context word) so holding
+	// those buttons doesn't accidentally open the dictionary.
+	const handleDisplayPointerDown = useCallback(
+		(e: React.PointerEvent) => {
+			if (isPlayingRef.current) return;
+			const target = e.target as HTMLElement;
+			if (
+				target.closest?.(
+					".rsvp-controls, .rsvp-dict-button, .rsvp-settings-button, .rsvp-context-word",
+				)
+			)
+				return;
+			if (longPressTimerRef.current !== null) clearTimeout(longPressTimerRef.current);
+			longPressTimerRef.current = window.setTimeout(() => {
+				longPressTimerRef.current = null;
+				lookupFocalWord();
+			}, LONG_PRESS_MS);
+		},
+		[lookupFocalWord],
+	);
 
 	const cancelLongPress = useCallback(() => {
 		if (longPressTimerRef.current !== null) {
@@ -278,11 +277,13 @@ export function useRsvpEngine({
 		// state
 		words,
 		currentWord,
+		wordIndex,
 		isPlaying,
 		effectiveWpm,
 		context,
 		// actions
 		togglePlayPause,
+		pause,
 		jumpToWord,
 		backWord,
 		forwardWord,
@@ -290,8 +291,8 @@ export function useRsvpEngine({
 		forwardSentence,
 		changeWpm,
 		lookupFocalWord,
-		// long-press handlers for the focal span
-		handleWordPointerDown,
+		// long-press handlers for the display root
+		handleDisplayPointerDown,
 		cancelLongPress,
 	};
 }

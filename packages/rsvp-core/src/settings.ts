@@ -24,7 +24,6 @@ export const DEFAULT_SETTINGS = {
 	READER_LINE_SPACING: 1.8, // line-height multiplier (1.2–2.4)
 	READER_MARGIN: 20, // horizontal padding px (8–48)
 	SHOW_READING_TIME: true, // show time remaining in progress bar
-	HAPTICS: false, // vibrate on RSVP controls + punctuation
 	DEFAULT_READER_MODE: "scroll", // 'scroll' | 'rsvp' - mode to open books in
 	ONBOARDING_COMPLETED: false, // first-run onboarding completed on this device
 } as const;

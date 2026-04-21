@@ -6,7 +6,7 @@
 import type { WordEntry } from "@lesefluss/rsvp-core";
 
 /** How many surrounding words to show on each side of the focal word when paused. */
-export const CONTEXT_PEEK_WORDS = 30;
+export const CONTEXT_PEEK_WORDS = 50;
 
 /** Strip punctuation for dictionary lookup. */
 export function cleanWord(raw: string): string {
@@ -37,6 +37,7 @@ export function nextSentenceIndex(words: WordEntry[], idx: number): number {
 export interface ContextWord {
 	word: string;
 	idx: number;
+	breakBefore?: boolean;
 }
 
 /** Slice prev/next context windows around the focal word. */
@@ -45,11 +46,15 @@ export function sliceContext(
 	focalIdx: number,
 ): { prev: ContextWord[]; next: ContextWord[] } {
 	const prevStart = Math.max(0, focalIdx - CONTEXT_PEEK_WORDS);
-	const prev = words
-		.slice(prevStart, focalIdx)
-		.map((w, i) => ({ word: w.word, idx: prevStart + i }));
-	const next = words
-		.slice(focalIdx + 1, focalIdx + 1 + CONTEXT_PEEK_WORDS)
-		.map((w, i) => ({ word: w.word, idx: focalIdx + 1 + i }));
+	const prev = words.slice(prevStart, focalIdx).map((w, i) => ({
+		word: w.word,
+		idx: prevStart + i,
+		breakBefore: w.breakBefore,
+	}));
+	const next = words.slice(focalIdx + 1, focalIdx + 1 + CONTEXT_PEEK_WORDS).map((w, i) => ({
+		word: w.word,
+		idx: focalIdx + 1 + i,
+		breakBefore: w.breakBefore,
+	}));
 	return { prev, next };
 }

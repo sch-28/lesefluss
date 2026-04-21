@@ -12,6 +12,8 @@ import { utf8ByteLength } from "./utf8";
 export interface WordEntry {
 	word: string;
 	byteOffset: number;
+	/** True when this word is preceded by a paragraph break (≥2 newlines) in the source. */
+	breakBefore?: boolean;
 }
 
 export interface RsvpSettings {
@@ -33,10 +35,17 @@ export function buildWordIndex(content: string): WordEntry[] {
 	const tokens = content.split(/(\s+)/);
 	const entries: WordEntry[] = [];
 	let byteOffset = 0;
+	let pendingBreak = false;
 
 	for (const token of tokens) {
-		if (!/^\s+$/.test(token) && token.length > 0) {
-			entries.push({ word: token, byteOffset });
+		if (token.length === 0) continue;
+		if (/^\s+$/.test(token)) {
+			if ((token.match(/\n/g)?.length ?? 0) >= 2) pendingBreak = true;
+		} else {
+			const entry: WordEntry = { word: token, byteOffset };
+			if (pendingBreak && entries.length > 0) entry.breakBefore = true;
+			entries.push(entry);
+			pendingBreak = false;
 		}
 		byteOffset += utf8ByteLength(token);
 	}

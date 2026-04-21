@@ -9,6 +9,42 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-04-22",
+		title: "Reader Redesign & Onboarding",
+		tags: ["App"],
+		changes: [
+			"Guided onboarding flow: welcome, speed, theme, reader mode, and sync steps",
+			"Rebuilt RSVP reader with cleaner controls and smoother transitions",
+			"Live RSVP preview in the settings screen",
+			"Refined sepia theme with better contrast across the app",
+			"Fixed RSVP focal letter x-offset setting",
+		],
+	},
+	{
+		date: "2026-04-21",
+		title: "Play Store Beta & Polish",
+		tags: ["App", "Website"],
+		changes: [
+			"Google Play Store listing link on the download page",
+			"Smoother closed-beta request flow",
+			"Session handling fixes and formatting polish",
+			"Privacy policy updates",
+		],
+	},
+	{
+		date: "2026-04-20",
+		title: "OAuth, Mobile Login & APK Releases",
+		tags: ["App", "Website"],
+		changes: [
+			"Google and Discord OAuth sign-in",
+			"Email verification for new accounts",
+			"Mobile login with deep-link callback back into the app",
+			"BLE toggle in device settings to disable Bluetooth scanning",
+			"Automated APK release pipeline with signed builds",
+			"New download page and website login hint for web-app visitors",
+		],
+	},
+	{
 		date: "2026-04-19",
 		title: "Explore Tab: Discover Public-Domain Books",
 		tags: ["App", "Website"],

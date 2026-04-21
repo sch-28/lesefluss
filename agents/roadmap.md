@@ -43,6 +43,9 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 - [x] Case STL files committed to repo (e.g. `resources/case/`), linked from the DIY guide
 - [x] Optional donation button (Ko-fi) on website
 - [ ] Font app size
+- [x] Improve sepia theme
+- [x] Onboarding
+- [x] RSVP controls, context, dict, scroll
 
 ## Phase 4 - Accounts & Monetisation
 > Website ↔ app integration, optional accounts, purchase management

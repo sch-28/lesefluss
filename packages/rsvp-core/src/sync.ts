@@ -65,7 +65,6 @@ export const SyncSettingsSchema = z.object({
 		.min(SETTING_CONSTRAINTS.READER_MARGIN.min)
 		.max(SETTING_CONSTRAINTS.READER_MARGIN.max),
 	showReadingTime: z.boolean(),
-	haptics: z.boolean(),
 	defaultReaderMode: z.enum(["scroll", "rsvp"]),
 	updatedAt: z.number().int().nonnegative(),
 });

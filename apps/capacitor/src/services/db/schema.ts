@@ -36,7 +36,6 @@ export const settings = sqliteTable("settings", {
 	readerLineSpacing: real("reader_line_spacing").notNull().default(1.8),
 	readerMargin: integer("reader_margin").notNull().default(20),
 	showReadingTime: integer("show_reading_time", { mode: "boolean" }).notNull().default(true),
-	haptics: integer("haptics", { mode: "boolean" }).notNull().default(false),
 	defaultReaderMode: text("default_reader_mode")
 		.$type<"scroll" | "rsvp">()
 		.notNull()

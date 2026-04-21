@@ -117,7 +117,6 @@ async function getUserSyncData(
 					readerLineSpacing: settingsRows[0].readerLineSpacing,
 					readerMargin: settingsRows[0].readerMargin,
 					showReadingTime: settingsRows[0].showReadingTime,
-					haptics: settingsRows[0].haptics,
 					defaultReaderMode: settingsRows[0].defaultReaderMode as SyncSettings["defaultReaderMode"],
 					updatedAt: toMs(settingsRows[0].updatedAt),
 				} as SyncSettings)
@@ -240,7 +239,6 @@ export const Route = createFileRoute("/api/sync")({
 							readerLineSpacing: s.readerLineSpacing,
 							readerMargin: s.readerMargin,
 							showReadingTime: s.showReadingTime,
-							haptics: s.haptics,
 							defaultReaderMode: s.defaultReaderMode,
 							updatedAt: toDate(s.updatedAt),
 						};

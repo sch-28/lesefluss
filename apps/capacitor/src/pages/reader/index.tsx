@@ -889,7 +889,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						initialByteOffset={rsvpInitOffset}
 						settings={rsvpSettings}
 						fontSize={readerFontSize}
-						haptics={dbSettings?.haptics ?? false}
 						onPositionChange={handleRsvpPositionChange}
 						onFinished={handleRsvpFinished}
 						onWpmChange={handleRsvpWpmChange}
