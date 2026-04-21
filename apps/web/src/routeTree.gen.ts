@@ -28,6 +28,7 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AuthMobileCallbackRouteImport } from './routes/auth/mobile-callback'
 import { Route as AppSplatRouteImport } from './routes/app/$'
 import { Route as ApiSyncRouteImport } from './routes/api/sync'
+import { Route as ApiBetaRequestRouteImport } from './routes/api/beta-request'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
@@ -127,6 +128,11 @@ const ApiSyncRoute = ApiSyncRouteImport.update({
   path: '/api/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBetaRequestRoute = ApiBetaRequestRouteImport.update({
+  id: '/api/beta-request',
+  path: '/api/beta-request',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedProfileIndexRoute =
   AuthenticatedProfileIndexRouteImport.update({
     id: '/profile/',
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/beta-request': typeof ApiBetaRequestRoute
   '/api/sync': typeof ApiSyncRoute
   '/app/$': typeof AppSplatRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/beta-request': typeof ApiBetaRequestRoute
   '/api/sync': typeof ApiSyncRoute
   '/app/$': typeof AppSplatRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
@@ -205,6 +213,7 @@ export interface FileRoutesById {
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/beta-request': typeof ApiBetaRequestRoute
   '/api/sync': typeof ApiSyncRoute
   '/app/$': typeof AppSplatRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/customScript.js'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/api/beta-request'
     | '/api/sync'
     | '/app/$'
     | '/auth/mobile-callback'
@@ -255,6 +265,7 @@ export interface FileRouteTypes {
     | '/customScript.js'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/api/beta-request'
     | '/api/sync'
     | '/app/$'
     | '/auth/mobile-callback'
@@ -280,6 +291,7 @@ export interface FileRouteTypes {
     | '/customScript.js'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/api/beta-request'
     | '/api/sync'
     | '/app/$'
     | '/auth/mobile-callback'
@@ -306,6 +318,7 @@ export interface RootRouteChildren {
   CustomScriptDotjsRoute: typeof CustomScriptDotjsRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiBetaRequestRoute: typeof ApiBetaRequestRoute
   ApiSyncRoute: typeof ApiSyncRoute
   AppSplatRoute: typeof AppSplatRoute
   AuthMobileCallbackRoute: typeof AuthMobileCallbackRoute
@@ -458,6 +471,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/beta-request': {
+      id: '/api/beta-request'
+      path: '/api/beta-request'
+      fullPath: '/api/beta-request'
+      preLoaderRoute: typeof ApiBetaRequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/profile/': {
       id: '/_authenticated/profile/'
       path: '/profile'
@@ -510,6 +530,7 @@ const rootRouteChildren: RootRouteChildren = {
   CustomScriptDotjsRoute: CustomScriptDotjsRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiBetaRequestRoute: ApiBetaRequestRoute,
   ApiSyncRoute: ApiSyncRoute,
   AppSplatRoute: AppSplatRoute,
   AuthMobileCallbackRoute: AuthMobileCallbackRoute,

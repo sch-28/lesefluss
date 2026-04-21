@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bluetooth, BookMarked, BookOpen, Globe, Highlighter, Library, Zap } from "lucide-react";
+import { Bluetooth, BookMarked, BookOpen, Check, Globe, Highlighter, Library, Zap } from "lucide-react";
+import * as React from "react";
 import { FeatureCard } from "~/components/feature-card";
 import { StatCard } from "~/components/stat-card";
 import { seo } from "~/utils/seo";
@@ -80,21 +81,7 @@ function DownloadPage() {
 						account required, fully offline.
 					</p>
 					<div className="flex flex-wrap gap-4">
-						{/* Play Store testing link */}
-						<a
-							href="https://play.google.com/apps/testing/app.lesefluss"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="inline-flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-foreground/30"
-						>
-							<svg viewBox="0 0 24 24" className="h-6 w-6 fill-foreground" aria-hidden="true">
-								<path d="M3.18 23.76a2.5 2.5 0 0 1-1.18-2.2V2.44A2.5 2.5 0 0 1 3.18.24l11.4 11.76-11.4 11.76zM16.09 13.41l2.62 2.71-9.68 5.5 7.06-8.21zM20.13 9.7c.57.33.87.84.87 1.54 0 .62-.3 1.19-.87 1.52l-2.18 1.24-2.9-2.99 2.9-2.99 2.18 1.68zM9.03 2.38l9.68 5.5-2.62 2.71-7.06-8.21z" />
-							</svg>
-							<div className="text-left">
-								<p className="text-[10px] text-muted-foreground">Join beta on</p>
-								<p className="font-semibold text-sm">Google Play</p>
-							</div>
-						</a>
+						<BetaAccessButton />
 						{/* APK direct download */}
 						<a
 							href="https://github.com/sch-28/lesefluss/releases/latest"
@@ -149,5 +136,117 @@ function DownloadPage() {
 				</div>
 			</section>
 		</div>
+	);
+}
+
+type BetaState =
+	| { kind: "idle" }
+	| { kind: "submitting" }
+	| { kind: "success" }
+	| { kind: "error"; message: string };
+
+function BetaAccessButton() {
+	const [expanded, setExpanded] = React.useState(false);
+	const [email, setEmail] = React.useState("");
+	const [state, setState] = React.useState<BetaState>({ kind: "idle" });
+	const inputRef = React.useRef<HTMLInputElement>(null);
+
+	React.useEffect(() => {
+		if (expanded) inputRef.current?.focus();
+	}, [expanded]);
+
+	async function submit(e: React.FormEvent<HTMLFormElement>) {
+		e.preventDefault();
+		const trimmed = email.trim().toLowerCase();
+		if (!/^[^\s@]+@gmail\.com$/.test(trimmed)) {
+			setState({
+				kind: "error",
+				message: "A @gmail.com address is required for Play Store testing.",
+			});
+			return;
+		}
+		setState({ kind: "submitting" });
+		try {
+			const res = await fetch("/api/beta-request", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ email: trimmed }),
+			});
+			if (!res.ok) {
+				const data = (await res.json().catch(() => ({}))) as { error?: string };
+				setState({ kind: "error", message: data.error ?? "Something went wrong. Try again." });
+				return;
+			}
+			setState({ kind: "success" });
+		} catch {
+			setState({ kind: "error", message: "Network error. Try again." });
+		}
+	}
+
+	if (state.kind === "success") {
+		return (
+			<div className="inline-flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3">
+				<div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
+					<Check className="h-4 w-4" aria-hidden="true" />
+				</div>
+				<div className="text-left">
+					<p className="text-[10px] text-muted-foreground">Request received</p>
+					<p className="font-semibold text-sm">We&apos;ll add you within 24h</p>
+				</div>
+			</div>
+		);
+	}
+
+	if (!expanded) {
+		return (
+			<button
+				type="button"
+				onClick={() => setExpanded(true)}
+				className="inline-flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-foreground/30"
+			>
+				<svg viewBox="0 0 24 24" className="h-6 w-6 fill-foreground" aria-hidden="true">
+					<path d="M3.18 23.76a2.5 2.5 0 0 1-1.18-2.2V2.44A2.5 2.5 0 0 1 3.18.24l11.4 11.76-11.4 11.76zM16.09 13.41l2.62 2.71-9.68 5.5 7.06-8.21zM20.13 9.7c.57.33.87.84.87 1.54 0 .62-.3 1.19-.87 1.52l-2.18 1.24-2.9-2.99 2.9-2.99 2.18 1.68zM9.03 2.38l9.68 5.5-2.62 2.71-7.06-8.21z" />
+				</svg>
+				<div className="text-left">
+					<p className="text-[10px] text-muted-foreground">Request beta on</p>
+					<p className="font-semibold text-sm">Google Play</p>
+				</div>
+			</button>
+		);
+	}
+
+	const submitting = state.kind === "submitting";
+	return (
+		<form onSubmit={submit} className="flex flex-col gap-2">
+			<div className="flex items-stretch gap-2 rounded-xl border border-border bg-card px-3 py-2">
+				<input
+					ref={inputRef}
+					type="email"
+					required
+					placeholder="you@gmail.com"
+					value={email}
+					onChange={(e) => {
+						setEmail(e.target.value);
+						if (state.kind === "error") setState({ kind: "idle" });
+					}}
+					disabled={submitting}
+					className="min-w-[200px] flex-1 bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
+				/>
+				<button
+					type="submit"
+					disabled={submitting}
+					className="rounded-lg bg-foreground px-4 py-2 font-semibold text-background text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+				>
+					{submitting ? "Sending…" : "Request access"}
+				</button>
+			</div>
+			<p className="px-1 text-[11px] text-muted-foreground leading-snug">
+				{state.kind === "error" ? (
+					<span className="text-destructive">{state.message}</span>
+				) : (
+					"We add your Gmail to the closed Play Store test — no spam, just the tester invite."
+				)}
+			</p>
+		</form>
 	);
 }
