@@ -195,6 +195,95 @@ body.dark {
 	--ion-color-medium-tint: #757575;
 }
 
+/* ── App-wide sepia theme ── */
+/* Soft, warm paper palette. Dimmer than raw sepia so it's easy on the eyes. */
+body.sepia {
+	--ion-background-color: #c4b081;
+	--ion-background-color-rgb: 196, 176, 129;
+
+	--ion-text-color: #3a2e1e;
+	--ion-text-color-rgb: 58, 46, 30;
+
+	--ion-border-color: #8a7760;
+
+	--ion-toolbar-background: #c4b081;
+	--ion-toolbar-border-color: #8a7760;
+	--ion-toolbar-color: #3a2e1e;
+
+	--ion-item-background: #c4b081;
+	--ion-item-border-color: #8a7760;
+
+	--ion-card-background: #b29f6f;
+
+	--ion-tab-bar-background: #c4b081;
+	--ion-tab-bar-border-color: #8a7760;
+	--ion-tab-bar-color: #8a7a63;
+	--ion-tab-bar-color-selected: #3a2e1e;
+
+	--ion-color-primary: #3a2e1e;
+	--ion-color-primary-rgb: 58, 46, 30;
+	--ion-color-primary-contrast: #c4b081;
+	--ion-color-primary-contrast-rgb: 196, 176, 129;
+	--ion-color-primary-shade: #2d2315;
+	--ion-color-primary-tint: #4e4030;
+
+	--ion-color-secondary: #6a5a45;
+	--ion-color-secondary-rgb: 106, 90, 69;
+	--ion-color-secondary-contrast: #c4b081;
+	--ion-color-secondary-contrast-rgb: 196, 176, 129;
+	--ion-color-secondary-shade: #5a4c39;
+	--ion-color-secondary-tint: #7a6b55;
+
+	--ion-color-tertiary: #8a7a63;
+	--ion-color-tertiary-rgb: 138, 122, 99;
+	--ion-color-tertiary-contrast: #c4b081;
+	--ion-color-tertiary-contrast-rgb: 196, 176, 129;
+	--ion-color-tertiary-shade: #756852;
+	--ion-color-tertiary-tint: #988872;
+
+	--ion-color-success: #3a2e1e;
+	--ion-color-success-rgb: 58, 46, 30;
+	--ion-color-success-contrast: #c4b081;
+	--ion-color-success-contrast-rgb: 196, 176, 129;
+	--ion-color-success-shade: #2d2315;
+	--ion-color-success-tint: #4e4030;
+
+	--ion-color-warning: #8a7a63;
+	--ion-color-warning-rgb: 138, 122, 99;
+	--ion-color-warning-contrast: #c4b081;
+	--ion-color-warning-contrast-rgb: 196, 176, 129;
+	--ion-color-warning-shade: #756852;
+	--ion-color-warning-tint: #988872;
+
+	--ion-color-danger: #a03a2a;
+	--ion-color-danger-rgb: 160, 58, 42;
+	--ion-color-danger-contrast: #c4b081;
+	--ion-color-danger-contrast-rgb: 196, 176, 129;
+	--ion-color-danger-shade: #8c3225;
+	--ion-color-danger-tint: #ad4f40;
+
+	--ion-color-dark: #3a2e1e;
+	--ion-color-dark-rgb: 58, 46, 30;
+	--ion-color-dark-contrast: #c4b081;
+	--ion-color-dark-contrast-rgb: 196, 176, 129;
+	--ion-color-dark-shade: #2d2315;
+	--ion-color-dark-tint: #4e4030;
+
+	--ion-color-light: #b29f6f;
+	--ion-color-light-rgb: 221, 207, 176;
+	--ion-color-light-contrast: #3a2e1e;
+	--ion-color-light-contrast-rgb: 58, 46, 30;
+	--ion-color-light-shade: #ccbfa1;
+	--ion-color-light-tint: #e3d6ba;
+
+	--ion-color-medium: #8a7a63;
+	--ion-color-medium-rgb: 138, 122, 99;
+	--ion-color-medium-contrast: #c4b081;
+	--ion-color-medium-contrast-rgb: 196, 176, 129;
+	--ion-color-medium-shade: #756852;
+	--ion-color-medium-tint: #988872;
+}
+
 /* Modals are portalled to document.body, so body.dark covers them automatically.
  * Explicitly set --background and --color so ion-modal sheet backgrounds pick it up. */
 body.dark ion-modal {
@@ -313,6 +402,116 @@ body.dark ion-toggle {
 	--handle-background-checked: #1a1a1a;
 }
 
+/* ── Sepia theme: mirror of dark overrides ── */
+body.sepia ion-modal {
+	--background: #c4b081;
+	--color: #3a2e1e;
+}
+
+body.sepia ion-modal ion-header,
+body.sepia ion-modal ion-toolbar {
+	--background: #c4b081;
+	--ion-toolbar-background: #c4b081;
+	--ion-toolbar-color: #3a2e1e;
+	--ion-toolbar-border-color: #8a7760;
+	--ion-border-color: #8a7760;
+}
+
+body.sepia ion-modal ion-content,
+body.sepia ion-modal ion-list,
+body.sepia ion-modal ion-item {
+	--background: #c4b081;
+	--ion-item-background: #c4b081;
+	--ion-item-border-color: #8a7760;
+	--color: #3a2e1e;
+}
+
+body.sepia ion-action-sheet {
+	--background: #b29f6f;
+	--color: #3a2e1e;
+	--button-color: #3a2e1e;
+}
+
+body.sepia .rsvp-action-sheet .action-sheet-container .action-sheet-group {
+	background: #b29f6f;
+}
+
+body.sepia .rsvp-action-sheet .action-sheet-container .action-sheet-group-cancel {
+	background: transparent;
+}
+
+body.sepia .rsvp-action-sheet .action-sheet-cancel {
+	color: #3a2e1e;
+	background: #b29f6f;
+}
+
+body.sepia .rsvp-action-sheet .action-sheet-title {
+	color: #8a7a63;
+	border-bottom-color: #8a7760;
+}
+
+body.sepia .rsvp-action-sheet .action-sheet-button {
+	color: #3a2e1e;
+	border-bottom-color: #8a7760;
+}
+
+body.sepia .rsvp-action-sheet .action-sheet-destructive {
+	color: #b04030;
+}
+
+body.sepia .rsvp-action-sheet .action-sheet-button.ion-color-primary[disabled],
+body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
+	color: #a89878;
+}
+
+body.sepia .rsvp-action-sheet .action-sheet-button.ion-activated {
+	background: #c9ba9a;
+}
+
+body.sepia ion-alert {
+	--background: #b29f6f;
+	--color: #3a2e1e;
+}
+
+body.sepia ion-tab-bar {
+	--background: #c4b081;
+	border-top-color: #8a7760;
+}
+
+body.sepia ion-button[expand] {
+	--background: #3a2e1e;
+	--background-activated: #2d2315;
+	--background-hover: #2d2315;
+	--color: #c4b081;
+}
+
+body.sepia ion-button[expand][fill="outline"] {
+	--border-color: #3a2e1e;
+	--color: #3a2e1e;
+	--background: transparent;
+	--background-activated: rgba(58, 46, 30, 0.1);
+	--background-hover: rgba(58, 46, 30, 0.1);
+}
+
+body.sepia ion-card {
+	border-color: #8a7760;
+}
+
+body.sepia ion-range {
+	--bar-background: #8a7760;
+	--bar-background-active: #3a2e1e;
+	--knob-background: #3a2e1e;
+	--pin-background: #3a2e1e;
+	--pin-color: #c4b081;
+}
+
+body.sepia ion-toggle {
+	--background: #8a7760;
+	--background-checked: #3a2e1e;
+	--handle-background: #c4b081;
+	--handle-background-checked: #c4b081;
+}
+
 /* Range slider styling */
 ion-range {
 	--bar-background: #e0e0e0;
@@ -390,6 +589,11 @@ ion-tab-button {
 body.dark ion-tab-button {
 	--color: #888888;
 	--color-selected: #e4e4e4;
+}
+
+body.sepia ion-tab-button {
+	--color: #8a7a63;
+	--color-selected: #3a2e1e;
 }
 
 /* ── Action sheet ── */
@@ -527,20 +731,20 @@ body.dark ion-tab-button {
 .reader-theme-sepia,
 .reader-theme-sepia ion-header,
 .reader-theme-sepia ion-toolbar {
-	--reader-bg: #f4ecd8;
-	--reader-text: #4a3728;
-	--reader-heading: #3a2a1e;
-	--reader-progress-bg: #e0d4be;
-	--reader-progress-fill: #8b6f47;
-	--reader-progress-label: #9b8878;
-	--ion-background-color: #f4ecd8;
-	--ion-text-color: #4a3728;
-	--ion-toolbar-background: #f4ecd8;
-	--ion-toolbar-color: #4a3728;
-	--ion-border-color: #c8b89a;
-	--ion-toolbar-border-color: #c8b89a;
-	--ion-item-background: #f4ecd8;
-	--ion-item-border-color: #c8b89a;
+	--reader-bg: #c4b081;
+	--reader-text: #3a2e1e;
+	--reader-heading: #2d2112;
+	--reader-progress-bg: #d2c3a4;
+	--reader-progress-fill: #7a5f3d;
+	--reader-progress-label: #8a7a63;
+	--ion-background-color: #c4b081;
+	--ion-text-color: #3a2e1e;
+	--ion-toolbar-background: #c4b081;
+	--ion-toolbar-color: #3a2e1e;
+	--ion-border-color: #8a7760;
+	--ion-toolbar-border-color: #8a7760;
+	--ion-item-background: #c4b081;
+	--ion-item-border-color: #8a7760;
 }
 
 /* Apply theme background to IonContent on the reader page */
@@ -614,16 +818,16 @@ ion-modal.reader-theme-sepia ion-toolbar,
 ion-modal.reader-theme-sepia ion-content,
 ion-modal.reader-theme-sepia ion-list,
 ion-modal.reader-theme-sepia ion-item {
-	--ion-background-color: #f4ecd8;
-	--ion-text-color: #4a3728;
-	--ion-toolbar-background: #f4ecd8;
-	--ion-toolbar-color: #4a3728;
-	--ion-border-color: #c8b89a;
-	--ion-toolbar-border-color: #c8b89a;
-	--ion-item-background: #f4ecd8;
-	--ion-item-border-color: #c8b89a;
-	--background: #f4ecd8;
-	--color: #4a3728;
+	--ion-background-color: #c4b081;
+	--ion-text-color: #3a2e1e;
+	--ion-toolbar-background: #c4b081;
+	--ion-toolbar-color: #3a2e1e;
+	--ion-border-color: #8a7760;
+	--ion-toolbar-border-color: #8a7760;
+	--ion-item-background: #c4b081;
+	--ion-item-border-color: #8a7760;
+	--background: #c4b081;
+	--color: #3a2e1e;
 }
 
 .reader-paragraph {
@@ -935,15 +1139,45 @@ ion-modal.reader-theme-sepia ion-item {
 .rsvp-display {
 	position: relative;
 	height: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
 	cursor: pointer;
 	user-select: none;
 	-webkit-user-select: none;
 	touch-action: manipulation;
 	background: var(--reader-bg);
 	overflow: hidden;
+}
+
+/* Paused state enables native scroll-to-scrub. The overlay-root is
+ * position: sticky so it stays pinned to the viewport across the full
+ * scroll range; the spacer after it provides the scroll distance. */
+.rsvp-display--paused {
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scroll-behavior: auto;
+}
+
+.rsvp-overlay-root {
+	position: sticky;
+	top: 0;
+	height: 100%;
+	width: 100%;
+	pointer-events: none; /* children opt in via `pointer-events: auto` */
+}
+
+.rsvp-scroll-spacer {
+	width: 1px;
+	height: 300vh;
+	visibility: hidden;
+	pointer-events: none;
+}
+
+/* Interactive overlays re-enable pointer events (parent is `none` so
+ * scroll/pointer gestures pass through empty areas of the display). */
+.rsvp-context-word,
+.rsvp-controls,
+.rsvp-playpause,
+.rsvp-dict-button {
+	pointer-events: auto;
 }
 
 .rsvp-word-container {
@@ -1066,7 +1300,9 @@ ion-modal.reader-theme-sepia ion-item {
 	cursor: pointer;
 	margin: 0 4px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-	transition: transform 120ms ease, box-shadow 120ms ease;
+	transition:
+		transform 120ms ease,
+		box-shadow 120ms ease;
 }
 
 .rsvp-playpause ion-icon {
@@ -1183,7 +1419,9 @@ ion-modal.reader-theme-sepia ion-item {
 	margin: 0 1px;
 	border-radius: 3px;
 	cursor: pointer;
-	transition: background 120ms ease, color 120ms ease;
+	transition:
+		background 120ms ease,
+		color 120ms ease;
 }
 
 .rsvp-context-word:hover,
@@ -1658,6 +1896,58 @@ ion-popover.appearance-popover {
 	transform: rotate(180deg);
 }
 
+.rsvp-mode-picker {
+	display: flex;
+	gap: 10px;
+	width: 100%;
+	padding: 10px 0;
+}
+
+.rsvp-mode-card {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 6px;
+	padding: 14px 14px 12px;
+	border-radius: 10px;
+	border: 1.5px solid var(--ion-border-color, #444);
+	background: transparent;
+	color: var(--ion-text-color, #fff);
+	cursor: pointer;
+	text-align: left;
+	transition:
+		border-color 120ms ease,
+		background 120ms ease;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.rsvp-mode-card__icon {
+	font-size: 1.4rem;
+	color: var(--ion-color-medium, #888);
+}
+
+.rsvp-mode-card__label {
+	font-size: 0.95rem;
+	font-weight: 600;
+	line-height: 1.1;
+}
+
+.rsvp-mode-card__desc {
+	font-size: 0.75rem;
+	color: var(--ion-color-medium, #888);
+	line-height: 1.25;
+}
+
+.rsvp-mode-card--active {
+	border-color: var(--ion-color-primary, #3880ff);
+	background: color-mix(in srgb, var(--ion-color-primary, #3880ff) 10%, transparent);
+}
+
+.rsvp-mode-card--active .rsvp-mode-card__icon {
+	color: var(--ion-color-primary, #3880ff);
+}
+
 .rsvp-reset-wrap {
 	padding: 16px;
 }
@@ -1724,6 +2014,23 @@ body.dark .local-storage-notice__link {
 
 body.dark .local-storage-notice__dismiss {
 	color: #666666;
+}
+
+body.sepia .local-storage-notice {
+	background: #b29f6f;
+	border-bottom-color: #8a7760;
+}
+
+body.sepia .local-storage-notice__text {
+	color: #3a2e1e;
+}
+
+body.sepia .local-storage-notice__link {
+	color: #3a2e1e;
+}
+
+body.sepia .local-storage-notice__dismiss {
+	color: #8a7a63;
 }
 
 /* ── Library toolbar ── */
@@ -1917,6 +2224,25 @@ body.dark .local-storage-notice__dismiss {
 		background: #242424;
 		color: var(--ion-text-color, #fff);
 	}
+
+	body.sepia .desktop-sidebar {
+		background: var(--ion-background-color, #c4b081);
+		border-right-color: var(--ion-border-color, #8a7760);
+	}
+
+	body.sepia .desktop-sidebar-item:hover {
+		background: #b29f6f;
+	}
+
+	body.sepia .desktop-sidebar-toggle {
+		background: var(--ion-background-color, #c4b081);
+		border-color: var(--ion-border-color, #8a7760);
+	}
+
+	body.sepia .desktop-sidebar-toggle:hover {
+		background: #b29f6f;
+		color: var(--ion-text-color, #3a2e1e);
+	}
 }
 
 /* ── Explore tab ─────────────────────────────────────────────────────────── */
@@ -2029,6 +2355,11 @@ body.dark .cover-image-shimmer {
 	background-size: 200% 100%;
 }
 
+body.sepia .cover-image-shimmer {
+	background: linear-gradient(100deg, #b29f6f 10%, #e3d6ba 40%, #b29f6f 70%);
+	background-size: 200% 100%;
+}
+
 /* ── Explore: pagination ── */
 
 .pagination {
@@ -2098,6 +2429,26 @@ body.dark .pagination-btn.active {
 
 body.dark .pagination-ellipsis {
 	color: #666;
+}
+
+body.sepia .pagination-btn {
+	background: #b29f6f;
+	border-color: #8a7760;
+}
+
+body.sepia .pagination-btn:hover:not(:disabled):not(.active) {
+	background: #a08d5f;
+	border-color: #b8a785;
+}
+
+body.sepia .pagination-btn.active {
+	background: #3a2e1e;
+	border-color: #3a2e1e;
+	color: #c4b081;
+}
+
+body.sepia .pagination-ellipsis {
+	color: #8a7a63;
 }
 
 /* ── Explore: genre tiles ── */
@@ -2629,6 +2980,305 @@ body.dark .book-detail-description a {
 
 body.dark .book-detail-summary {
 	color: #bbb;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Onboarding - first-run flow
+   ───────────────────────────────────────────────────────────────── */
+
+.onboarding-page {
+	--background: var(--ion-background-color);
+}
+
+.onboarding-container {
+	display: flex;
+	flex-direction: column;
+	min-height: 100%;
+	padding: 24px 24px 32px;
+	max-width: 520px;
+	margin: 0 auto;
+	box-sizing: border-box;
+}
+
+.onboarding-top-bar {
+	display: flex;
+	justify-content: flex-end;
+	min-height: 32px;
+}
+
+.onboarding-skip {
+	background: transparent;
+	border: none;
+	color: var(--ion-text-color, #888);
+	opacity: 0.6;
+	font-size: 0.9rem;
+	cursor: pointer;
+	padding: 4px 8px;
+}
+
+.onboarding-body-wrap {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px 0;
+}
+
+.onboarding-step {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	gap: 16px;
+}
+
+.onboarding-step--welcome {
+	gap: 24px;
+}
+
+.onboarding-brand {
+	margin-top: 8vh;
+}
+
+.onboarding-title {
+	font-size: 2.4rem;
+	font-weight: 700;
+	margin: 0 0 8px;
+	letter-spacing: -0.02em;
+	color: var(--ion-text-color);
+}
+
+.onboarding-tagline {
+	margin: 0;
+	font-size: 1rem;
+	opacity: 0.65;
+	color: var(--ion-text-color);
+}
+
+.onboarding-body {
+	margin: 0;
+	font-size: 0.95rem;
+	line-height: 1.55;
+	opacity: 0.75;
+	color: var(--ion-text-color);
+	max-width: 360px;
+}
+
+.onboarding-step-title {
+	font-size: 1.5rem;
+	font-weight: 600;
+	margin: 0;
+	letter-spacing: -0.01em;
+	color: var(--ion-text-color);
+}
+
+.onboarding-step-sub {
+	margin: 0 0 8px;
+	font-size: 0.9rem;
+	line-height: 1.5;
+	opacity: 0.7;
+	color: var(--ion-text-color);
+	max-width: 340px;
+}
+
+.onboarding-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	width: 100%;
+	max-width: 320px;
+	margin-top: 12px;
+}
+
+.onboarding-btn {
+	width: 100%;
+	padding: 13px 20px;
+	border-radius: 10px;
+	border: 1.5px solid transparent;
+	font-size: 0.95rem;
+	font-weight: 500;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		opacity 120ms ease;
+	line-height: 1;
+}
+
+.onboarding-btn--primary {
+	background: var(--ion-text-color, #fff);
+	color: var(--ion-background-color, #000);
+	border-color: var(--ion-text-color, #fff);
+}
+
+.onboarding-btn--primary:active {
+	opacity: 0.85;
+}
+
+.onboarding-btn--ghost {
+	background: transparent;
+	color: var(--ion-text-color);
+	border-color: transparent;
+	opacity: 0.65;
+}
+
+.onboarding-btn--ghost:active {
+	opacity: 0.4;
+}
+
+/* ── Theme step ── */
+.onboarding-theme-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 10px;
+	width: 100%;
+	max-width: 360px;
+	margin-top: 8px;
+}
+
+.onboarding-theme-card {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 8px;
+	padding: 10px;
+	border-radius: 12px;
+	border: 1.5px solid var(--ion-border-color, #444);
+	background: transparent;
+	cursor: pointer;
+	transition:
+		border-color 120ms ease,
+		transform 120ms ease;
+}
+
+.onboarding-theme-card--active {
+	border-color: var(--ion-text-color);
+}
+
+.onboarding-theme-swatch {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	aspect-ratio: 1 / 1;
+	border-radius: 8px;
+	font-size: 1.4rem;
+	font-weight: 500;
+}
+
+.onboarding-theme-swatch--dark {
+	background: #1a1a1a;
+	color: #f0f0f0;
+}
+
+.onboarding-theme-swatch--sepia {
+	background: #c4b081;
+	color: #3a2e1e;
+}
+
+.onboarding-theme-swatch--light {
+	background: #ffffff;
+	color: #1a1a1a;
+	border: 1px solid #e0e0e0;
+}
+
+.onboarding-theme-label {
+	font-size: 0.82rem;
+	color: var(--ion-text-color);
+	opacity: 0.8;
+}
+
+/* ── Speed step ── */
+.onboarding-preview-wrap {
+	width: 100%;
+	max-width: 360px;
+}
+
+.onboarding-wpm-readout {
+	font-size: 1.8rem;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	color: var(--ion-text-color);
+	margin-top: 8px;
+}
+
+.onboarding-step ion-range {
+	width: 100%;
+	max-width: 360px;
+	padding: 0;
+}
+
+.onboarding-range-hints {
+	display: flex;
+	justify-content: space-between;
+	width: 100%;
+	max-width: 360px;
+	font-size: 0.75rem;
+	opacity: 0.5;
+	color: var(--ion-text-color);
+}
+
+/* ── Reader mode step (uses shared .rsvp-mode-picker / .rsvp-mode-card) ── */
+.onboarding-mode-picker-wrap {
+	width: 100%;
+	max-width: 360px;
+	margin-top: 8px;
+}
+
+/* ── WPM preset chips (uses shared .ap-chips / .ap-chip) ── */
+.onboarding-wpm-presets {
+	width: 100%;
+	max-width: 360px;
+}
+
+/* ── Sync step ── */
+.onboarding-sync-icon {
+	font-size: 3rem;
+	opacity: 0.4;
+	color: var(--ion-text-color);
+	margin-bottom: 8px;
+}
+
+/* ── Footer: progress dots + nav buttons ── */
+.onboarding-footer {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+	padding-top: 16px;
+}
+
+.onboarding-dots {
+	display: flex;
+	gap: 6px;
+}
+
+.onboarding-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--ion-text-color);
+	opacity: 0.2;
+	transition:
+		opacity 120ms ease,
+		width 120ms ease;
+}
+
+.onboarding-dot--active {
+	opacity: 0.9;
+	width: 18px;
+	border-radius: 3px;
+}
+
+.onboarding-nav {
+	display: flex;
+	gap: 10px;
+	width: 100%;
+	max-width: 360px;
+}
+
+.onboarding-nav .onboarding-btn {
+	flex: 1;
 }
 
 /* ── Desktop: hide in-toolbar brand (sidebar already shows it) ── */
