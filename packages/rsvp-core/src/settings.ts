@@ -9,7 +9,7 @@ export const DEFAULT_SETTINGS = {
 	DELAY_PERIOD: 3.0, // Multiplier for . ! ? (1.0-5.0)
 	ACCEL_START: 2.0, // Initial delay multiplier (1.0-5.0, 2.0 = half speed)
 	ACCEL_RATE: 0.1, // Acceleration rate (0.05-1.0, 0.1 = 10 words to full speed)
-	X_OFFSET: 50, // Horizontal focal position % (30-70, 50 = center)
+	X_OFFSET: 30, // Horizontal focal position % (30-70)
 	WORD_OFFSET: 5, // Words to rewind on resume (0-20)
 	INVERSE: false, // Inverse colors (false = white on black)
 	BLE_ON: true, // BLE enabled for companion app
@@ -19,11 +19,13 @@ export const DEFAULT_SETTINGS = {
 	BRIGHTNESS: 100, // Backlight brightness % (10-100)
 	// Reader appearance (stored in DB, applied in-app only)
 	READER_THEME: "dark", // 'dark' | 'sepia' | 'light'
-	READER_FONT_SIZE: 17, // px (12–28)
+	READER_FONT_SIZE: 16, // px (12–28)
 	READER_FONT_FAMILY: "sans", // 'sans' | 'serif'
 	READER_LINE_SPACING: 1.8, // line-height multiplier (1.2–2.4)
 	READER_MARGIN: 20, // horizontal padding px (8–48)
 	SHOW_READING_TIME: true, // show time remaining in progress bar
+	HAPTICS: false, // vibrate on RSVP controls + punctuation
+	DEFAULT_READER_MODE: "scroll", // 'scroll' | 'rsvp' - mode to open books in
 } as const;
 
 /**

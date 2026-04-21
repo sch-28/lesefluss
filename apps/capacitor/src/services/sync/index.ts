@@ -213,6 +213,8 @@ function settingsToSync(s: Settings): SyncSettings {
 		readerLineSpacing: s.readerLineSpacing,
 		readerMargin: s.readerMargin,
 		showReadingTime: s.showReadingTime,
+		haptics: s.haptics,
+		defaultReaderMode: s.defaultReaderMode as SyncSettings["defaultReaderMode"],
 		updatedAt: s.updatedAt,
 	};
 }
@@ -360,6 +362,8 @@ export async function pullSync(): Promise<Set<string>> {
 					readerLineSpacing: serverSettings.readerLineSpacing,
 					readerMargin: serverSettings.readerMargin,
 					showReadingTime: serverSettings.showReadingTime,
+					haptics: serverSettings.haptics,
+					defaultReaderMode: serverSettings.defaultReaderMode,
 				});
 				changed = true;
 			}

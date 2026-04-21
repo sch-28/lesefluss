@@ -201,15 +201,15 @@ function PrivacyPage() {
 					<li className="flex gap-2">
 						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>
-							<code className="text-foreground">openid</code> - your Google account identifier
-							(<code className="text-foreground">sub</code>) so we can recognise returning users.
+							<code className="text-foreground">openid</code> - your Google account identifier (
+							<code className="text-foreground">sub</code>) so we can recognise returning users.
 						</span>
 					</li>
 					<li className="flex gap-2">
 						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>
-							<code className="text-foreground">email</code> - your Google account email address
-							and whether it is verified.
+							<code className="text-foreground">email</code> - your Google account email address and
+							whether it is verified.
 						</span>
 					</li>
 					<li className="flex gap-2">
@@ -227,9 +227,7 @@ function PrivacyPage() {
 				</p>
 
 				<h3 className="mt-6 mb-2 font-medium text-foreground">How we use it</h3>
-				<p>
-					The data received from Google is used exclusively to:
-				</p>
+				<p>The data received from Google is used exclusively to:</p>
 				<ul className="mt-3 space-y-2 text-sm">
 					<li className="flex gap-2">
 						<span className="shrink-0 text-muted-foreground/50">-</span>
@@ -262,9 +260,9 @@ function PrivacyPage() {
 				<p>
 					Your Google account identifier, email, name, and profile picture URL are stored in our
 					authentication database (PostgreSQL, hosted in the EU) alongside your Lesefluss account.
-					Access is restricted to the Lesefluss backend and the project maintainer. We do not
-					store Google OAuth refresh tokens beyond what Better Auth needs to keep your session
-					valid, and we do not request offline access.
+					Access is restricted to the Lesefluss backend and the project maintainer. We do not store
+					Google OAuth refresh tokens beyond what Better Auth needs to keep your session valid, and
+					we do not request offline access.
 				</p>
 
 				<h3 className="mt-6 mb-2 font-medium text-foreground">How we share it</h3>
@@ -279,17 +277,17 @@ function PrivacyPage() {
 					>
 						Resend
 					</a>{" "}
-					(transactional email delivery - only your email address, only when sending you an
-					account email). Both act solely on our behalf under data processing terms.
+					(transactional email delivery - only your email address, only when sending you an account
+					email). Both act solely on our behalf under data processing terms.
 				</p>
 
 				<h3 className="mt-6 mb-2 font-medium text-foreground">Retention and deletion</h3>
 				<p>
-					Google user data is retained for as long as your Lesefluss account exists. You can
-					delete your account at any time from within the app; doing so permanently erases your
-					account record (including the Google-provided identifier, email, name, and picture URL)
-					as well as any synced books, settings, and highlights. You can additionally revoke
-					Lesefluss's access from your{" "}
+					Google user data is retained for as long as your Lesefluss account exists. You can delete
+					your account at any time from within the app; doing so permanently erases your account
+					record (including the Google-provided identifier, email, name, and picture URL) as well as
+					any synced books, settings, and highlights. You can additionally revoke Lesefluss's access
+					from your{" "}
 					<a
 						href="https://myaccount.google.com/permissions"
 						target="_blank"

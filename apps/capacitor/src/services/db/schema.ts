@@ -22,7 +22,7 @@ export const settings = sqliteTable("settings", {
 	delayPeriod: real("delay_period").notNull().default(3.0),
 	accelStart: real("accel_start").notNull().default(2.0),
 	accelRate: real("accel_rate").notNull().default(0.1),
-	xOffset: integer("x_offset").notNull().default(50),
+	xOffset: integer("x_offset").notNull().default(30),
 	wordOffset: integer("word_offset").notNull().default(5),
 	inverse: integer("inverse", { mode: "boolean" }).notNull().default(false),
 	bleOn: integer("ble_on", { mode: "boolean" }).notNull().default(true),
@@ -31,11 +31,13 @@ export const settings = sqliteTable("settings", {
 	deepSleepTimeout: integer("deep_sleep_timeout").notNull().default(120),
 	brightness: integer("brightness").notNull().default(100),
 	readerTheme: text("reader_theme").notNull().default("dark"),
-	readerFontSize: integer("reader_font_size").notNull().default(17),
+	readerFontSize: integer("reader_font_size").notNull().default(16),
 	readerFontFamily: text("reader_font_family").notNull().default("sans"),
 	readerLineSpacing: real("reader_line_spacing").notNull().default(1.8),
 	readerMargin: integer("reader_margin").notNull().default(20),
 	showReadingTime: integer("show_reading_time", { mode: "boolean" }).notNull().default(true),
+	haptics: integer("haptics", { mode: "boolean" }).notNull().default(false),
+	defaultReaderMode: text("default_reader_mode").notNull().default("scroll"),
 	updatedAt: integer("updated_at").notNull(),
 });
 

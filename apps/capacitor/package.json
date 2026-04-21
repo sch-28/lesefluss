@@ -39,6 +39,7 @@
 		"@capacitor/camera": "latest",
 		"@capacitor/core": "latest",
 		"@capacitor/filesystem": "^8.1.2",
+		"@capacitor/haptics": "^8.0.2",
 		"@capacitor/preferences": "8.0.1",
 		"@capacitor/splash-screen": "latest",
 		"@capawesome/capacitor-file-picker": "^8.0.2",

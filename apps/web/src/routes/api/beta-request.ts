@@ -35,7 +35,9 @@ export const Route = createFileRoute("/api/beta-request")({
 
 				if (!isGmail(email)) {
 					return Response.json(
-						{ error: "Please provide a valid @gmail.com address (required for Play Store testing)." },
+						{
+							error: "Please provide a valid @gmail.com address (required for Play Store testing).",
+						},
 						{ status: 400 },
 					);
 				}

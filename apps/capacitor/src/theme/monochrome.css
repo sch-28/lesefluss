@@ -941,6 +941,7 @@ ion-modal.reader-theme-sepia ion-item {
 	cursor: pointer;
 	user-select: none;
 	-webkit-user-select: none;
+	touch-action: manipulation;
 	background: var(--reader-bg);
 	overflow: hidden;
 }
@@ -948,11 +949,16 @@ ion-modal.reader-theme-sepia ion-item {
 .rsvp-word-container {
 	position: absolute;
 	top: 50%;
-	white-space: nowrap;
 	font-family: "Courier New", Consolas, monospace;
 	font-weight: 700;
 	color: var(--reader-text);
 	letter-spacing: 0.02em;
+	width: max-content;
+}
+
+.rsvp-word-line {
+	white-space: nowrap;
+	display: block;
 }
 
 .rsvp-before,
@@ -999,6 +1005,216 @@ ion-modal.reader-theme-sepia ion-item {
 /* Active RSVP toggle button styling */
 .rsvp-toggle-active {
 	color: #ff0000;
+}
+
+/* ── RSVP controls (visible when paused) ── */
+
+.rsvp-controls {
+	position: absolute;
+	left: 50%;
+	bottom: calc(env(safe-area-inset-bottom, 0px) + 64px);
+	transform: translateX(-50%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	padding: 8px 12px;
+	background: var(--reader-bg);
+	border: 1px solid var(--reader-progress-track, rgba(128, 128, 128, 0.25));
+	border-radius: 20px;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+	color: var(--reader-text);
+	z-index: 10;
+}
+
+.rsvp-controls-row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.rsvp-controls ion-button {
+	--color: var(--reader-text);
+	--background: transparent;
+	--background-hover: var(--reader-progress-track, rgba(128, 128, 128, 0.18));
+	--background-activated: var(--reader-progress-track, rgba(128, 128, 128, 0.25));
+	--box-shadow: none;
+	--padding-start: 0;
+	--padding-end: 0;
+	--border-radius: 10px;
+	margin: 0;
+	width: 40px;
+	height: 40px;
+	opacity: 0.85;
+}
+
+.rsvp-controls ion-button ion-icon {
+	font-size: 1.2rem;
+}
+
+/* Primary play/pause - inverted fill to contrast the ghost buttons */
+.rsvp-playpause {
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	border: none;
+	background: var(--reader-text);
+	color: var(--reader-bg);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	margin: 0 4px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+	transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.rsvp-playpause ion-icon {
+	font-size: 1.35rem;
+}
+
+.rsvp-playpause:active {
+	transform: scale(0.95);
+	box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
+}
+
+.rsvp-wpm-stepper {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding-top: 4px;
+	border-top: 1px solid var(--reader-progress-track, rgba(128, 128, 128, 0.25));
+	width: 100%;
+	justify-content: center;
+}
+
+.rsvp-wpm-btn {
+	background: transparent;
+	border: none;
+	color: var(--reader-text);
+	font-size: 1.25rem;
+	font-weight: 600;
+	width: 40px;
+	height: 40px;
+	border-radius: 8px;
+	cursor: pointer;
+	line-height: 1;
+	padding: 0;
+}
+
+.rsvp-wpm-btn:active {
+	background: var(--reader-progress-track, rgba(128, 128, 128, 0.2));
+}
+
+.rsvp-wpm-value {
+	font-variant-numeric: tabular-nums;
+	font-weight: 600;
+	min-width: 3ch;
+	text-align: center;
+	color: var(--reader-text);
+}
+
+.rsvp-wpm-label {
+	font-size: 0.75rem;
+	color: var(--reader-progress-label, #888);
+	text-transform: lowercase;
+}
+
+/* ── RSVP speed chip (visible while playing) ── */
+
+.rsvp-speed-chip {
+	position: absolute;
+	top: calc(env(safe-area-inset-top, 0px) + 12px);
+	right: 12px;
+	font-size: 0.72rem;
+	font-weight: 500;
+	padding: 3px 8px;
+	border-radius: 999px;
+	background: var(--reader-progress-track, rgba(128, 128, 128, 0.18));
+	color: var(--reader-progress-label, #888);
+	letter-spacing: 0.02em;
+	opacity: 0.7;
+	pointer-events: none;
+	transition: opacity 300ms ease;
+}
+
+.rsvp-speed-chip--ramping {
+	color: var(--reader-text);
+	opacity: 1;
+}
+
+/* ── RSVP context peek (paused) ──
+ * Context lines sit INSIDE .rsvp-word-container as flex-column siblings
+ * of the word. HTML handles the natural wrapping; each context block has
+ * a bounded width so long passages break cleanly.
+ */
+
+.rsvp-context-inline {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+	font-family: Georgia, "Times New Roman", serif;
+	font-weight: 400;
+	font-size: 1.1rem;
+	line-height: 1.4;
+	letter-spacing: normal;
+	color: var(--reader-progress-label, #888);
+	opacity: 0.9;
+	text-align: justify;
+	width: min(80vw, 560px);
+	word-break: normal;
+	overflow-wrap: break-word;
+}
+
+.rsvp-context-prev {
+	bottom: calc(100% + 0.6em);
+}
+
+.rsvp-context-next {
+	top: calc(100% + 0.6em);
+}
+
+.rsvp-context-word {
+	background: transparent;
+	border: none;
+	color: inherit;
+	font: inherit;
+	padding: 1px 2px;
+	margin: 0 1px;
+	border-radius: 3px;
+	cursor: pointer;
+	transition: background 120ms ease, color 120ms ease;
+}
+
+.rsvp-context-word:hover,
+.rsvp-context-word:active {
+	background: var(--reader-progress-track, rgba(128, 128, 128, 0.2));
+	color: var(--reader-text);
+}
+
+/* ── RSVP dictionary button (paused, bottom-right) ── */
+
+.rsvp-dict-button {
+	position: absolute;
+	right: calc(env(safe-area-inset-right, 0px) + 16px);
+	bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	background: var(--reader-bg);
+	border: 1px solid var(--reader-progress-track, rgba(128, 128, 128, 0.25));
+	color: var(--reader-text);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.25rem;
+	cursor: pointer;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+	z-index: 10;
+}
+
+.rsvp-dict-button:active {
+	background: var(--reader-progress-track, rgba(128, 128, 128, 0.2));
 }
 
 /* ─── Highlights ─────────────────────────────────────────────────────────── */
@@ -1360,6 +1576,102 @@ ion-popover.appearance-popover {
 	color: var(--ion-color-medium, #888);
 	min-width: 40px;
 	text-align: right;
+}
+
+/* ── RSVP settings preview + collapsible advanced ── */
+.rsvp-preview-card {
+	display: block;
+	width: 100%;
+	margin: 0 0 1rem;
+	padding: 0;
+	background: var(--reader-bg, #000);
+	border: 1px solid var(--ion-border-color, #333);
+	border-radius: 10px;
+	overflow: hidden;
+	cursor: pointer;
+	text-align: left;
+	color: var(--reader-text, #fff);
+	-webkit-tap-highlight-color: transparent;
+}
+
+.rsvp-preview-label {
+	display: block;
+	padding: 6px 10px 0;
+	font-size: 0.68rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--ion-color-medium, #888);
+	font-weight: 600;
+}
+
+.rsvp-preview-stage {
+	display: block;
+	position: relative;
+	height: 110px;
+}
+
+.rsvp-preview-word {
+	position: absolute;
+	top: 50%;
+	font-family: "Courier New", Consolas, monospace;
+	font-weight: 700;
+	font-size: 1.6rem;
+	color: var(--reader-text, #fff);
+	letter-spacing: 0.02em;
+	width: max-content;
+	pointer-events: none;
+}
+
+.rsvp-preview-stage .rsvp-focal-line {
+	top: calc(50% - 1.4rem);
+	height: 0.45rem;
+}
+
+.rsvp-preview-stage .rsvp-focal-line::after {
+	top: calc(0.45rem + 2rem);
+	height: 0.45rem;
+}
+
+.rsvp-advanced-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: 14px 16px;
+	background: transparent;
+	border: none;
+	border-top: 1px solid var(--ion-border-color, #333);
+	color: var(--ion-color-medium, #888);
+	font-size: 0.78rem;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.rsvp-advanced-chevron {
+	font-size: 1.1rem;
+	transition: transform 150ms ease;
+}
+
+.rsvp-advanced-chevron--open {
+	transform: rotate(180deg);
+}
+
+.rsvp-reset-wrap {
+	padding: 16px;
+}
+
+.rsvp-reset-btn {
+	width: 100%;
+	padding: 10px;
+	background: transparent;
+	border: 1.5px solid var(--ion-border-color, #444);
+	border-radius: 7px;
+	color: var(--ion-color-danger, #eb445a);
+	font-size: 0.88rem;
+	font-weight: 600;
+	cursor: pointer;
 }
 
 /* ── Local storage notice (web embed, unauthenticated) ── */
