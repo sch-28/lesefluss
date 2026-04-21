@@ -80,20 +80,21 @@ function DownloadPage() {
 						account required, fully offline.
 					</p>
 					<div className="flex flex-wrap gap-4">
-						{/* Play Store badge - not yet published */}
-						<div
-							aria-disabled="true"
-							className="inline-flex cursor-not-allowed items-center gap-3 rounded-xl border border-border bg-card/50 px-5 py-3 opacity-50"
-							title="Coming soon"
+						{/* Play Store testing link */}
+						<a
+							href="https://play.google.com/apps/testing/app.lesefluss"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="inline-flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-foreground/30"
 						>
-							<svg viewBox="0 0 24 24" className="h-6 w-6 fill-muted-foreground" aria-hidden="true">
+							<svg viewBox="0 0 24 24" className="h-6 w-6 fill-foreground" aria-hidden="true">
 								<path d="M3.18 23.76a2.5 2.5 0 0 1-1.18-2.2V2.44A2.5 2.5 0 0 1 3.18.24l11.4 11.76-11.4 11.76zM16.09 13.41l2.62 2.71-9.68 5.5 7.06-8.21zM20.13 9.7c.57.33.87.84.87 1.54 0 .62-.3 1.19-.87 1.52l-2.18 1.24-2.9-2.99 2.9-2.99 2.18 1.68zM9.03 2.38l9.68 5.5-2.62 2.71-7.06-8.21z" />
 							</svg>
 							<div className="text-left">
-								<p className="text-[10px] text-muted-foreground">Get it on</p>
+								<p className="text-[10px] text-muted-foreground">Join beta on</p>
 								<p className="font-semibold text-sm">Google Play</p>
 							</div>
-						</div>
+						</a>
 						{/* APK direct download */}
 						<a
 							href="https://github.com/sch-28/lesefluss/releases/latest"

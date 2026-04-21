@@ -42,6 +42,7 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 - [x] DIY guide page on website - parts list with purchase links, flash + upload instructions, links to case STL files in repo
 - [x] Case STL files committed to repo (e.g. `resources/case/`), linked from the DIY guide
 - [x] Optional donation button (Ko-fi) on website
+- [ ] Font app size
 
 ## Phase 4 - Accounts & Monetisation
 > Website ↔ app integration, optional accounts, purchase management
