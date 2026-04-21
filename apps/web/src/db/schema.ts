@@ -66,7 +66,10 @@ export const syncSettings = pgTable(
 		updatedAt: timestamp("updated_at").notNull(),
 	},
 	(table) => [
-		check("sync_settings_default_reader_mode_check", sql`${table.defaultReaderMode} IN ('scroll', 'rsvp')`),
+		check(
+			"sync_settings_default_reader_mode_check",
+			sql`${table.defaultReaderMode} IN ('scroll', 'rsvp')`,
+		),
 	],
 );
 

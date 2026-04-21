@@ -37,7 +37,13 @@ export const settings = sqliteTable("settings", {
 	readerMargin: integer("reader_margin").notNull().default(20),
 	showReadingTime: integer("show_reading_time", { mode: "boolean" }).notNull().default(true),
 	haptics: integer("haptics", { mode: "boolean" }).notNull().default(false),
-	defaultReaderMode: text("default_reader_mode").notNull().default("scroll"),
+	defaultReaderMode: text("default_reader_mode")
+		.$type<"scroll" | "rsvp">()
+		.notNull()
+		.default("scroll"),
+	onboardingCompleted: integer("onboarding_completed", { mode: "boolean" })
+		.notNull()
+		.default(false),
 	updatedAt: integer("updated_at").notNull(),
 });
 

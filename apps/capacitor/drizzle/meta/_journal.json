@@ -64,6 +64,13 @@
       "when": 1745798400000,
       "tag": "0008_rsvp_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1745884800000,
+      "tag": "0009_onboarding",
+      "breakpoints": true
     }
   ]
 }

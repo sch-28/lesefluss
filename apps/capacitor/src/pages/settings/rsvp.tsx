@@ -21,21 +21,11 @@ import { DEFAULT_SETTINGS, SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
 import { chevronDown } from "ionicons/icons";
 import type React from "react";
 import { useState } from "react";
+import { ReaderModeCards, WpmPresetChips } from "../../components/rsvp-pickers";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import RsvpPreview from "./rsvp-preview";
 
 const CHIP_CONTAINER_STYLE: React.CSSProperties = { flex: 1, padding: "8px 0" };
-
-const READER_MODES: Array<{ value: "scroll" | "rsvp"; label: string }> = [
-	{ value: "scroll", label: "Reader" },
-	{ value: "rsvp", label: "RSVP" },
-];
-
-const WPM_PRESETS: Array<{ value: number; label: string }> = [
-	{ value: 250, label: "Slow" },
-	{ value: 350, label: "Normal" },
-	{ value: 500, label: "Fast" },
-];
 
 /** RSVP-scoped subset of DEFAULT_SETTINGS for the reset button. Reader-appearance fields are untouched. */
 const RSVP_DEFAULTS_PATCH = {
@@ -154,19 +144,11 @@ const RSVPSettings: React.FC = () => {
 						</IonListHeader>
 
 						<IonItem>
-							<div className="ap-chips" style={CHIP_CONTAINER_STYLE}>
-								{WPM_PRESETS.map((p) => (
-									<button
-										key={p.value}
-										type="button"
-										className={
-											settings.wpm === p.value ? "ap-chip ap-chip--active" : "ap-chip"
-										}
-										onClick={() => updateSetting("wpm", p.value)}
-									>
-										{p.label} {p.value}
-									</button>
-								))}
+							<div style={CHIP_CONTAINER_STYLE}>
+								<WpmPresetChips
+									value={settings.wpm}
+									onChange={(wpm) => updateSetting("wpm", wpm)}
+								/>
 							</div>
 						</IonItem>
 
@@ -227,30 +209,17 @@ const RSVPSettings: React.FC = () => {
 
 						{/* ── Reading mode ── */}
 						<IonListHeader>
-							<IonLabel>Reading Mode</IonLabel>
-						</IonListHeader>
-
-						<IonItem>
-							<IonLabel position="stacked">
-								Default mode
+							<IonLabel>
+								Reading Mode
 								<IonNote className="ion-padding-start">(when opening a book)</IonNote>
 							</IonLabel>
-							<div className="ap-chips" style={CHIP_CONTAINER_STYLE}>
-								{READER_MODES.map((m) => (
-									<button
-										key={m.value}
-										type="button"
-										className={
-											settings.defaultReaderMode === m.value
-												? "ap-chip ap-chip--active"
-												: "ap-chip"
-										}
-										onClick={() => updateSetting("defaultReaderMode", m.value)}
-									>
-										{m.label}
-									</button>
-								))}
-							</div>
+						</IonListHeader>
+
+						<IonItem lines="none">
+							<ReaderModeCards
+								value={settings.defaultReaderMode}
+								onChange={(mode) => updateSetting("defaultReaderMode", mode)}
+							/>
 						</IonItem>
 
 						{/* ── Advanced (collapsible) ── */}
@@ -263,7 +232,11 @@ const RSVPSettings: React.FC = () => {
 							<span>Advanced</span>
 							<IonIcon
 								icon={chevronDown}
-								className={advancedOpen ? "rsvp-advanced-chevron rsvp-advanced-chevron--open" : "rsvp-advanced-chevron"}
+								className={
+									advancedOpen
+										? "rsvp-advanced-chevron rsvp-advanced-chevron--open"
+										: "rsvp-advanced-chevron"
+								}
 							/>
 						</button>
 
@@ -314,15 +287,10 @@ const RSVPSettings: React.FC = () => {
 								/>
 							</>
 						)}
-
 					</IonList>
 
 					<div className="rsvp-reset-wrap">
-						<button
-							type="button"
-							className="rsvp-reset-btn"
-							onClick={() => setResetOpen(true)}
-						>
+						<button type="button" className="rsvp-reset-btn" onClick={() => setResetOpen(true)}>
 							Reset RSVP settings
 						</button>
 					</div>

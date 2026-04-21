@@ -37,6 +37,7 @@ export async function getSettings(): Promise<Settings> {
 		showReadingTime: DEFAULT_SETTINGS.SHOW_READING_TIME,
 		haptics: DEFAULT_SETTINGS.HAPTICS,
 		defaultReaderMode: DEFAULT_SETTINGS.DEFAULT_READER_MODE,
+		onboardingCompleted: DEFAULT_SETTINGS.ONBOARDING_COMPLETED,
 		updatedAt: Date.now(),
 	};
 

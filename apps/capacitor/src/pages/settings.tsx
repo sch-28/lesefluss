@@ -18,8 +18,10 @@ import {
 	colorPaletteOutline,
 	globeOutline,
 	hardwareChipOutline,
+	sparklesOutline,
 } from "ionicons/icons";
 import type React from "react";
+import { useHistory } from "react-router-dom";
 import BLEIndicator from "../components/ble-indicator";
 import { useBLE } from "../contexts/ble-context";
 import { useSyncContext } from "../contexts/sync-context";
@@ -30,6 +32,7 @@ import { SYNC_ENABLED } from "../services/sync";
 import { IS_WEB } from "../utils/platform";
 
 const Settings: React.FC = () => {
+	const history = useHistory();
 	const { data: settings, isPending } = queryHooks.useSettings();
 	const { connectionState, connectedDevice } = useBLE();
 	const { theme } = useTheme();
@@ -169,6 +172,15 @@ const Settings: React.FC = () => {
 							/>
 						</IonItem>
 					)}
+
+					<IonItem button detail={false} onClick={() => history.push("/onboarding")}>
+						<IonIcon icon={sparklesOutline} slot="start" color="medium" />
+						<IonLabel>
+							<h2>Show onboarding</h2>
+							<p>Walk through the intro again</p>
+						</IonLabel>
+						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
+					</IonItem>
 				</IonList>
 			</IonContent>
 		</IonPage>

@@ -26,6 +26,7 @@ export const DEFAULT_SETTINGS = {
 	SHOW_READING_TIME: true, // show time remaining in progress bar
 	HAPTICS: false, // vibrate on RSVP controls + punctuation
 	DEFAULT_READER_MODE: "scroll", // 'scroll' | 'rsvp' - mode to open books in
+	ONBOARDING_COMPLETED: false, // first-run onboarding completed on this device
 } as const;
 
 /**
