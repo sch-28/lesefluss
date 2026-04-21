@@ -124,10 +124,9 @@ function PrivacyPage() {
 					<li className="flex gap-2">
 						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>
-							<strong className="text-foreground">Google Sign-In</strong> - if you choose to sign in
-							with Google, Google processes the request under its own privacy policy and shares your
-							email address and name with us to create your account. We do not request any other
-							scopes and never act on your behalf with Google services.
+							<strong className="text-foreground">Google Sign-In</strong> - see the dedicated{" "}
+							<em>Google user data</em> section below for a full disclosure of what we receive from
+							Google, how we use it, and how it is stored.
 						</span>
 					</li>
 					<li className="flex gap-2">
@@ -174,6 +173,132 @@ function PrivacyPage() {
 				</ul>
 				<p className="mt-4">
 					There are no advertising networks, no social-media pixels, no third-party analytics.
+				</p>
+			</section>
+
+			<section>
+				<h2 className="mb-3 font-semibold text-foreground text-xl">Google user data</h2>
+				<p>
+					This section describes how Lesefluss accesses, uses, stores, and shares Google user data,
+					in accordance with the{" "}
+					<a
+						href="https://developers.google.com/terms/api-services-user-data-policy"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-foreground underline decoration-border hover:decoration-foreground/50"
+					>
+						Google API Services User Data Policy
+					</a>
+					, including the Limited Use requirements.
+				</p>
+
+				<h3 className="mt-6 mb-2 font-medium text-foreground">What we access</h3>
+				<p>
+					When you choose to sign in with Google, we use Google's standard OAuth 2.0 sign-in flow
+					with only the following default scopes:
+				</p>
+				<ul className="mt-3 space-y-2 text-sm">
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<code className="text-foreground">openid</code> - your Google account identifier
+							(<code className="text-foreground">sub</code>) so we can recognise returning users.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<code className="text-foreground">email</code> - your Google account email address
+							and whether it is verified.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<code className="text-foreground">profile</code> - your display name and profile
+							picture URL.
+						</span>
+					</li>
+				</ul>
+				<p className="mt-4">
+					We do not request any other Google OAuth scopes. Lesefluss never accesses Gmail, Google
+					Drive, Contacts, Calendar, Photos, YouTube, or any other Google service on your behalf,
+					and never reads, writes, or modifies any data in your Google account.
+				</p>
+
+				<h3 className="mt-6 mb-2 font-medium text-foreground">How we use it</h3>
+				<p>
+					The data received from Google is used exclusively to:
+				</p>
+				<ul className="mt-3 space-y-2 text-sm">
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							Create your Lesefluss account on first sign-in and link subsequent sign-ins to the
+							same account.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							Authenticate you and maintain your signed-in session so cloud sync (books, settings,
+							highlights) works across devices.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							Display your name or email in the app UI (e.g. on your profile page) and send you
+							transactional account emails such as email verification and password reset.
+						</span>
+					</li>
+				</ul>
+				<p className="mt-4">
+					Google user data is never used for advertising, never sold, never shared with third
+					parties for their own purposes, and never used to train AI or machine-learning models.
+				</p>
+
+				<h3 className="mt-6 mb-2 font-medium text-foreground">How we store it</h3>
+				<p>
+					Your Google account identifier, email, name, and profile picture URL are stored in our
+					authentication database (PostgreSQL, hosted in the EU) alongside your Lesefluss account.
+					Access is restricted to the Lesefluss backend and the project maintainer. We do not
+					store Google OAuth refresh tokens beyond what Better Auth needs to keep your session
+					valid, and we do not request offline access.
+				</p>
+
+				<h3 className="mt-6 mb-2 font-medium text-foreground">How we share it</h3>
+				<p>
+					We do not share Google user data with any third party. The only processors involved are:
+					our EU database host (storage), and{" "}
+					<a
+						href="https://resend.com"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-foreground underline decoration-border hover:decoration-foreground/50"
+					>
+						Resend
+					</a>{" "}
+					(transactional email delivery - only your email address, only when sending you an
+					account email). Both act solely on our behalf under data processing terms.
+				</p>
+
+				<h3 className="mt-6 mb-2 font-medium text-foreground">Retention and deletion</h3>
+				<p>
+					Google user data is retained for as long as your Lesefluss account exists. You can
+					delete your account at any time from within the app; doing so permanently erases your
+					account record (including the Google-provided identifier, email, name, and picture URL)
+					as well as any synced books, settings, and highlights. You can additionally revoke
+					Lesefluss's access from your{" "}
+					<a
+						href="https://myaccount.google.com/permissions"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-foreground underline decoration-border hover:decoration-foreground/50"
+					>
+						Google Account permissions page
+					</a>
+					.
 				</p>
 			</section>
 
