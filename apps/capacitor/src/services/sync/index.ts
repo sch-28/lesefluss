@@ -213,6 +213,7 @@ function settingsToSync(s: Settings): SyncSettings {
 		readerLineSpacing: s.readerLineSpacing,
 		readerMargin: s.readerMargin,
 		showReadingTime: s.showReadingTime,
+		readerActiveWordUnderline: s.readerActiveWordUnderline,
 		defaultReaderMode: s.defaultReaderMode as SyncSettings["defaultReaderMode"],
 		updatedAt: s.updatedAt,
 	};
@@ -361,6 +362,7 @@ export async function pullSync(): Promise<Set<string>> {
 					readerLineSpacing: serverSettings.readerLineSpacing,
 					readerMargin: serverSettings.readerMargin,
 					showReadingTime: serverSettings.showReadingTime,
+					readerActiveWordUnderline: serverSettings.readerActiveWordUnderline,
 					defaultReaderMode: serverSettings.defaultReaderMode,
 				});
 				changed = true;

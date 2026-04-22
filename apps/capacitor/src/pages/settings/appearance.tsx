@@ -27,11 +27,13 @@ const AppearanceSettings: React.FC = () => {
 		lineSpacing,
 		margin,
 		showReadingTime,
+		showActiveWordUnderline,
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
 		setFontFamily,
 		setShowReadingTime,
+		setShowActiveWordUnderline,
 	} = useAppearanceSettings();
 
 	return (
@@ -171,6 +173,15 @@ const AppearanceSettings: React.FC = () => {
 							slot="end"
 							checked={showReadingTime}
 							onIonChange={(e) => setShowReadingTime(e.detail.checked)}
+						/>
+					</IonItem>
+
+					<IonItem>
+						<IonLabel>Underline active word</IonLabel>
+						<IonToggle
+							slot="end"
+							checked={showActiveWordUnderline}
+							onIonChange={(e) => setShowActiveWordUnderline(e.detail.checked)}
 						/>
 					</IonItem>
 				</IonList>

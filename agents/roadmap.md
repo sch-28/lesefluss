@@ -46,6 +46,8 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 - [x] Improve sepia theme
 - [x] Onboarding
 - [x] RSVP controls, context, dict, scroll
+- [x] Extended onboarding with sample book or more
+- [x] Hide toggle for selected word
 
 ## Phase 4 - Accounts & Monetisation
 > Website ↔ app integration, optional accounts, purchase management

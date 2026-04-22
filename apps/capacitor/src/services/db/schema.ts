@@ -35,6 +35,9 @@ export const settings = sqliteTable("settings", {
 	readerFontFamily: text("reader_font_family").notNull().default("sans"),
 	readerLineSpacing: real("reader_line_spacing").notNull().default(1.8),
 	readerMargin: integer("reader_margin").notNull().default(20),
+	readerActiveWordUnderline: integer("reader_active_word_underline", { mode: "boolean" })
+		.notNull()
+		.default(true),
 	showReadingTime: integer("show_reading_time", { mode: "boolean" }).notNull().default(true),
 	defaultReaderMode: text("default_reader_mode")
 		.$type<"scroll" | "rsvp">()

@@ -1164,7 +1164,12 @@ ion-modal.reader-theme-sepia ion-item {
 .rsvp-overlay-root {
 	position: sticky;
 	top: 0;
-	height: 100%;
+	/* Shrink by the progress-bar height so the overlay represents the
+	 * visible active area only. Focal word at `top: 50%` is then visually
+	 * centered, and bottom-anchored controls sit just above the progress
+	 * bar without per-element magic offsets. Keep in sync with
+	 * `.reader-progress-bar` (content ~52px + safe-area-inset-bottom). */
+	height: calc(100% - env(safe-area-inset-bottom) - 52px);
 	width: 100%;
 	pointer-events: none; /* children opt in via `pointer-events: auto` */
 }
@@ -1253,7 +1258,7 @@ ion-modal.reader-theme-sepia ion-item {
 .rsvp-controls {
 	position: absolute;
 	left: 50%;
-	bottom: calc(env(safe-area-inset-bottom, 0px) + 64px);
+	bottom: 8px;
 	transform: translateX(-50%);
 	display: flex;
 	flex-direction: column;
@@ -1367,7 +1372,7 @@ ion-modal.reader-theme-sepia ion-item {
 
 .rsvp-speed-chip {
 	position: absolute;
-	top: calc(env(safe-area-inset-top, 0px) + 12px);
+	top: 12px;
 	right: 12px;
 	font-size: 0.72rem;
 	font-weight: 500;
@@ -1448,7 +1453,7 @@ ion-modal.reader-theme-sepia ion-item {
 .rsvp-dict-button,
 .rsvp-settings-button {
 	position: absolute;
-	bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
+	bottom: 16px;
 	width: 44px;
 	height: 44px;
 	border-radius: 50%;
@@ -1465,11 +1470,11 @@ ion-modal.reader-theme-sepia ion-item {
 }
 
 .rsvp-dict-button {
-	right: calc(env(safe-area-inset-right, 0px) + 16px);
+	right: 16px;
 }
 
 .rsvp-settings-button {
-	left: calc(env(safe-area-inset-left, 0px) + 16px);
+	left: 16px;
 }
 
 .rsvp-dict-button:active,
@@ -3274,6 +3279,117 @@ body.dark .book-detail-summary {
 .onboarding-wpm-presets {
 	width: 100%;
 	max-width: 360px;
+}
+
+/* ── Books step ── */
+.onboarding-books-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 160px;
+}
+
+.onboarding-books-list {
+	display: flex;
+	gap: 12px;
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding: 4px 4px 8px;
+	margin: 0 -24px;
+	padding-left: 24px;
+	padding-right: 24px;
+	width: calc(100% + 48px);
+	scroll-snap-type: x mandatory;
+	-webkit-overflow-scrolling: touch;
+}
+
+.onboarding-book-card {
+	display: flex;
+	flex-direction: column;
+	flex: 0 0 auto;
+	width: 7.5rem;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: var(--ion-text-color);
+	text-align: left;
+	cursor: pointer;
+	scroll-snap-align: start;
+	transition: opacity 120ms ease;
+}
+
+.onboarding-book-card:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.onboarding-book-cover {
+	position: relative;
+	aspect-ratio: 2 / 3;
+	width: 100%;
+	overflow: hidden;
+	border-radius: 4px;
+	border: 2px solid transparent;
+	background: var(--ion-color-light, #f0f0f0);
+	transition: border-color 120ms ease;
+}
+
+.onboarding-book-card--selected .onboarding-book-cover {
+	border-color: var(--ion-text-color);
+}
+
+.onboarding-book-check {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: var(--ion-text-color);
+	color: var(--ion-background-color);
+	font-size: 0.8rem;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.onboarding-book-title {
+	margin-top: 6px;
+	font-size: 0.8rem;
+	font-weight: 500;
+	line-height: 1.2;
+	color: var(--ion-text-color);
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+}
+
+.onboarding-book-author {
+	margin-top: 2px;
+	font-size: 0.72rem;
+	opacity: 0.6;
+	color: var(--ion-text-color);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.onboarding-books-progress {
+	width: 100%;
+	max-width: 320px;
+	height: 4px;
+	border-radius: 2px;
+	background: var(--ion-border-color, #444);
+	overflow: hidden;
+}
+
+.onboarding-books-progress-bar {
+	height: 100%;
+	background: var(--ion-text-color);
+	transition: width 150ms ease;
 }
 
 /* ── Sync step ── */

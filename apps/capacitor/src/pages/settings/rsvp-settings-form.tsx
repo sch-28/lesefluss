@@ -130,10 +130,7 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 
 				<IonItem>
 					<div style={CHIP_CONTAINER_STYLE}>
-						<WpmPresetChips
-							value={settings.wpm}
-							onChange={(wpm) => updateSetting("wpm", wpm)}
-						/>
+						<WpmPresetChips value={settings.wpm} onChange={(wpm) => updateSetting("wpm", wpm)} />
 					</div>
 				</IonItem>
 

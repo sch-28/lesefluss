@@ -29,6 +29,8 @@ export function useAppearanceSettings() {
 	// round1 applied on read so disabled comparisons are reliable despite floating-point drift
 	const lineSpacing = round1(settings?.readerLineSpacing ?? DEFAULT_SETTINGS.READER_LINE_SPACING);
 	const margin = settings?.readerMargin ?? DEFAULT_SETTINGS.READER_MARGIN;
+	const showActiveWordUnderline =
+		settings?.readerActiveWordUnderline ?? DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE;
 
 	const adjustFontSize = (delta: number) => {
 		mutate({
@@ -68,16 +70,22 @@ export function useAppearanceSettings() {
 		mutate({ showReadingTime: v });
 	};
 
+	const setShowActiveWordUnderline = (v: boolean) => {
+		mutate({ readerActiveWordUnderline: v });
+	};
+
 	return {
 		fontSize,
 		fontFamily,
 		lineSpacing,
 		margin,
 		showReadingTime,
+		showActiveWordUnderline,
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
 		setFontFamily,
 		setShowReadingTime,
+		setShowActiveWordUnderline,
 	};
 }

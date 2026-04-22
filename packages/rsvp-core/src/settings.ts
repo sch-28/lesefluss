@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS = {
 	READER_FONT_FAMILY: "sans", // 'sans' | 'serif'
 	READER_LINE_SPACING: 1.8, // line-height multiplier (1.2–2.4)
 	READER_MARGIN: 20, // horizontal padding px (8–48)
+	READER_ACTIVE_WORD_UNDERLINE: true, // underline the currently active word in the scroll reader
 	SHOW_READING_TIME: true, // show time remaining in progress bar
 	DEFAULT_READER_MODE: "scroll", // 'scroll' | 'rsvp' - mode to open books in
 	ONBOARDING_COMPLETED: false, // first-run onboarding completed on this device

@@ -271,6 +271,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const readerFontFamily = dbSettings?.readerFontFamily ?? DEFAULT_SETTINGS.READER_FONT_FAMILY;
 	const readerLineSpacing = dbSettings?.readerLineSpacing ?? DEFAULT_SETTINGS.READER_LINE_SPACING;
 	const readerMargin = dbSettings?.readerMargin ?? DEFAULT_SETTINGS.READER_MARGIN;
+	const readerActiveWordUnderline =
+		dbSettings?.readerActiveWordUnderline ?? DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE;
 
 	const rsvpSettings = useMemo<RsvpSettings>(
 		() => ({
@@ -879,6 +881,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 									onWordMouseDragStart={handleWordMouseDragStart}
 									highlights={sel.highlightsByParagraph.get(i)}
 									selectionRange={sel.selectionRange}
+									showActiveWordUnderline={readerActiveWordUnderline}
 								/>
 							))}
 						</VList>

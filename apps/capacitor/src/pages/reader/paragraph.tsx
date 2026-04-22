@@ -80,6 +80,7 @@ export interface ParagraphProps {
 	onWordMouseDragStart?: (offset: number, event: PointerEvent) => void;
 	highlights?: HighlightRange[];
 	selectionRange?: { start: number; end: number } | null;
+	showActiveWordUnderline: boolean;
 }
 
 // How long (ms) a pointer must be held before triggering long-press
@@ -104,6 +105,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		onWordMouseDragStart,
 		highlights,
 		selectionRange,
+		showActiveWordUnderline,
 	}) => {
 		const headingLevel = getHeadingLevel(text);
 
@@ -132,7 +134,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			// the visual range looks continuous rather than dotted.
 			const classes: string[] = [];
 
-			if (!isSpace && tokenOffset === activeOffset) {
+			if (!isSpace && tokenOffset === activeOffset && showActiveWordUnderline) {
 				classes.push("word-active");
 			}
 

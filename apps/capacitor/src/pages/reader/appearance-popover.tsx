@@ -17,11 +17,13 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 		lineSpacing,
 		margin,
 		showReadingTime,
+		showActiveWordUnderline,
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
 		setFontFamily,
 		setShowReadingTime,
+		setShowActiveWordUnderline,
 	} = useAppearanceSettings();
 
 	return (
@@ -140,6 +142,16 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 							onClick={() => setShowReadingTime(!showReadingTime)}
 						>
 							{showReadingTime ? "On" : "Off"}
+						</button>
+					</div>
+					<div className="ap-row">
+						<span className="ap-row-label">Underline word</span>
+						<button
+							type="button"
+							className={showActiveWordUnderline ? "ap-chip ap-chip--active" : "ap-chip"}
+							onClick={() => setShowActiveWordUnderline(!showActiveWordUnderline)}
+						>
+							{showActiveWordUnderline ? "On" : "Off"}
 						</button>
 					</div>
 				</div>

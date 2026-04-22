@@ -313,9 +313,7 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 									...
 									{context.prev.map(({ word: cw, idx: ci, breakBefore }, i) => (
 										<React.Fragment key={ci}>
-											{breakBefore && i > 0 && (
-												<span className="rsvp-context-break" aria-hidden />
-											)}
+											{breakBefore && i > 0 && <span className="rsvp-context-break" aria-hidden />}
 											<button type="button" data-idx={ci} className="rsvp-context-word">
 												{cw}
 											</button>
@@ -345,9 +343,7 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 								<div className="rsvp-context-inline rsvp-context-next" onClick={handleContextClick}>
 									{context.next.map(({ word: cw, idx: ci, breakBefore }, i) => (
 										<React.Fragment key={ci}>
-											{breakBefore && i > 0 && (
-												<span className="rsvp-context-break" aria-hidden />
-											)}
+											{breakBefore && i > 0 && <span className="rsvp-context-break" aria-hidden />}
 											<button type="button" data-idx={ci} className="rsvp-context-word">
 												{cw}
 											</button>
