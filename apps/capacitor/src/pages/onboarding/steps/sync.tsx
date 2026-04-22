@@ -38,7 +38,7 @@ const SyncStep: React.FC<Props> = ({ onFinish }) => {
 				<button type="button" className="onboarding-btn onboarding-btn--primary" onClick={signIn}>
 					Sign in
 				</button>
-				<button type="button" className="onboarding-btn onboarding-btn--ghost" onClick={onFinish}>
+				<button type="button" className="onboarding-btn onboarding-btn--primary" onClick={onFinish}>
 					Not now
 				</button>
 			</div>

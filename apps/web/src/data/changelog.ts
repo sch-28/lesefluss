@@ -14,6 +14,8 @@ export const changelog: ChangelogEntry[] = [
 		tags: ["App"],
 		changes: [
 			"Guided onboarding flow: welcome, speed, theme, reader mode, and sync steps",
+			"Optional 'Start with a classic' onboarding step — tap public-domain classics to seed your library",
+			"Toggle to hide the active-word underline in the scroll reader",
 			"Rebuilt RSVP reader with cleaner controls and smoother transitions",
 			"Live RSVP preview in the settings screen",
 			"Refined sepia theme with better contrast across the app",

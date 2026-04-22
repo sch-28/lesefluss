@@ -3,6 +3,7 @@ import type React from "react";
 import { useCallback, useState } from "react";
 import { useHistory } from "react-router-dom";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
+import BooksStep from "./steps/books";
 import ReaderModeStep from "./steps/reader-mode";
 import SpeedStep from "./steps/speed";
 import SyncStep from "./steps/sync";
@@ -13,6 +14,7 @@ const Onboarding: React.FC = () => {
 	const history = useHistory();
 	const { updateSetting, flush } = useAutoSaveSettings();
 	const [step, setStep] = useState(0);
+	const [importing, setImporting] = useState(false);
 
 	const finish = useCallback(async () => {
 		updateSetting("onboardingCompleted", true);
@@ -20,28 +22,31 @@ const Onboarding: React.FC = () => {
 		history.replace("/tabs/library");
 	}, [updateSetting, flush, history]);
 
-	// Step order — single source of truth for length and rendering.
-	// Welcome (index 0) has no progress dot and owns its own CTA/skip buttons.
-	const steps: React.ReactNode[] = [
-		<WelcomeStep key="welcome" onNext={() => setStep(1)} onSkip={finish} />,
-		<ThemeStep key="theme" />,
-		<SpeedStep key="speed" />,
-		<ReaderModeStep key="reader-mode" />,
-		<SyncStep key="sync" onFinish={finish} />,
-	];
-	const totalSteps = steps.length;
-	const dotCount = totalSteps - 1;
-
 	const next = useCallback(() => {
-		setStep((s) => Math.min(totalSteps - 1, s + 1));
-	}, [totalSteps]);
+		setStep((s) => s + 1);
+	}, []);
 
 	const back = useCallback(() => {
 		setStep((s) => Math.max(0, s - 1));
 	}, []);
 
-	const canSkip = step > 0 && step < totalSteps - 1;
-	const showFooter = canSkip;
+	// Step order — single source of truth for length and rendering.
+	// Welcome (index 0) and Books (index 4) own their own CTAs; others use the footer Next.
+	const steps: React.ReactNode[] = [
+		<WelcomeStep key="welcome" onNext={() => setStep(1)} onSkip={finish} />,
+		<ThemeStep key="theme" />,
+		<SpeedStep key="speed" />,
+		<ReaderModeStep key="reader-mode" />,
+		<BooksStep key="books" onNext={next} onImportingChange={setImporting} />,
+		<SyncStep key="sync" onFinish={finish} />,
+	];
+	const totalSteps = steps.length;
+	const dotCount = totalSteps - 1;
+
+	// Books step (index 4) and Welcome (0) own their own CTAs.
+	const ownsOwnFooter = step === 0 || step === 4;
+	const canSkip = step > 0 && step < totalSteps - 1 && !importing;
+	const showFooter = canSkip && !ownsOwnFooter;
 
 	return (
 		<IonPage className="onboarding-page">
