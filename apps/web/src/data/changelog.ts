@@ -9,6 +9,19 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-04-23",
+		title: "More Ways to Import: URLs, PDFs, Share Intent",
+		tags: ["App"],
+		changes: [
+			"Paste any article URL to import it as a cleanly-extracted book",
+			"Share any webpage or text to Lesefluss from the Android share sheet",
+			"PDF import with metadata, cover from page 1, and chapters from bookmarks",
+			"Import HTML files through the file picker",
+			"Paste plain text from the clipboard as a new book",
+			"Redesigned import picker with clearer source labels and descriptions",
+		],
+	},
+	{
 		date: "2026-04-22",
 		title: "Reader Redesign & Onboarding",
 		tags: ["App"],

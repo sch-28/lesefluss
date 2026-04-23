@@ -20,6 +20,7 @@ import CoverImage from "../../components/cover-image";
 import SanitizedDescription from "../../components/sanitized-description";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
+import { displayHostname } from "../../services/book-import/utils/url-guards";
 import { externalSourceUrl, getCatalogBook, getCoverUrl } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { queryHooks } from "../../services/db/hooks";
@@ -93,14 +94,20 @@ const LibraryBookDetail: React.FC = () => {
 			: null;
 	const progress = readingProgress(book);
 	const isActive = book.id === activeBookId;
-	const externalUrl = book.catalogId ? externalSourceUrl(book.catalogId) : null;
+	const externalUrl = book.sourceUrl
+		? book.sourceUrl
+		: book.catalogId
+			? externalSourceUrl(book.catalogId)
+			: null;
 	const activeBook = allBooks?.books.find((b) => b.id === activeBookId) ?? null;
 	const sourceLabel =
 		book.source === "standard_ebooks"
 			? "Standard Ebooks"
 			: book.source === "gutenberg"
 				? "Project Gutenberg"
-				: null;
+				: book.source === "url" && book.sourceUrl
+					? displayHostname(book.sourceUrl)
+					: null;
 
 	return (
 		<IonPage>

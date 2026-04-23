@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { importBook, removeBook } from "../../book-import";
+import {
+	importBook,
+	importBookFromClipboard,
+	importBookFromText,
+	importBookFromUrl,
+	removeBook,
+} from "../../book-import";
 import { scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
 import type { Book } from "../schema";
@@ -53,30 +59,59 @@ function useBookContent(id: string) {
 // ─── Mutations ───────────────────────────────────────────────────────────────
 
 /**
- * Import a book from the file picker.
- *
- * Usage:
- *   const importBook = queryHooks.useImportBook();
- *   importBook.mutate({ onProgress: (pct) => setProgress(pct) });
- *
- * On success, invalidates `bookKeys.all` and `bookKeys.covers` so the library
- * grid refreshes automatically.
- *
- * The `onProgress` callback is passed as part of mutation variables so the
- * caller can drive a progress bar during EPUB spine processing.
- * `importBook` throws `Error("CANCELLED")` if the user dismissed the picker -
- * this is treated as a non-error and silently ignored in `onError`.
+ * Shared plumbing for every "import a book" mutation: invalidate the library
+ * + cover queries and nudge the sync scheduler on success. Every new source
+ * (file picker, clipboard, URL, share, future PDF, …) should go through this
+ * factory instead of reinventing the onSuccess block.
  */
-function useImportBook() {
+function useBookImportMutation<TVars = void>(mutationFn: (vars: TVars) => Promise<Book>) {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: ({ onProgress }: { onProgress?: (pct: number) => void }) => importBook(onProgress),
+		mutationFn,
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 			qc.invalidateQueries({ queryKey: bookKeys.covers });
 			scheduleSyncPush();
 		},
 	});
+}
+
+/**
+ * Import from the file picker. `onProgress` is plumbed through so the caller
+ * can drive a progress bar during EPUB spine processing.
+ * `importBook` throws `Error("CANCELLED")` on picker dismissal — callers treat
+ * that as a silent no-op.
+ */
+function useImportBook() {
+	return useBookImportMutation(
+		({ onProgress }: { onProgress?: (pct: number) => void }) => importBook(onProgress),
+	);
+}
+
+/**
+ * Import from the system clipboard. Throws `Error("EMPTY")` when the
+ * clipboard has no usable text — callers surface this as a toast.
+ */
+function useImportBookFromClipboard() {
+	return useBookImportMutation(() => importBookFromClipboard());
+}
+
+/**
+ * Import from a URL (fetched via the catalog proxy + extracted with
+ * Readability). See `sources/url.ts` for the error contract.
+ */
+function useImportBookFromUrl() {
+	return useBookImportMutation(({ url }: { url: string }) => importBookFromUrl(url));
+}
+
+/**
+ * Import from a plain-text string (e.g. share-intent plain text).
+ */
+function useImportBookFromText() {
+	return useBookImportMutation(
+		({ text, hint }: { text: string; hint?: { title?: string } }) =>
+			importBookFromText(text, hint),
+	);
 }
 
 /**
@@ -110,5 +145,8 @@ export const bookHooks = {
 	useBook,
 	useBookContent,
 	useImportBook,
+	useImportBookFromClipboard,
+	useImportBookFromUrl,
+	useImportBookFromText,
 	useDeleteBook,
 };

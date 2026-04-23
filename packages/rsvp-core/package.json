@@ -4,7 +4,13 @@
 	"description": "Shared RSVP engine, settings defaults, and UTF-8 utilities",
 	"type": "module",
 	"main": "src/index.ts",
+	"scripts": {
+		"check-types": "tsc --noEmit"
+	},
 	"dependencies": {
 		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"typescript": "^6.0.2"
 	}
 }

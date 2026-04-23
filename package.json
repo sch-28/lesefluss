@@ -9,7 +9,9 @@
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"format": "biome format --write .",
 		"lint": "biome lint --write .",
-		"biome": "biome check --write ."
+		"biome": "biome check --write .",
+		"check-python": "python -m compileall -q apps/esp32/boot.py apps/esp32/main.py apps/esp32/src",
+		"check-types": "biome check . && turbo run check-types && pnpm check-python"
 	},
 	"keywords": [],
 	"author": "",

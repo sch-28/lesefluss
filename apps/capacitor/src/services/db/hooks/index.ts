@@ -46,6 +46,15 @@ export const queryHooks = {
 	/** Mutation: import a book from the file picker. */
 	useImportBook: bookHooks.useImportBook,
 
+	/** Mutation: import a book from the system clipboard. */
+	useImportBookFromClipboard: bookHooks.useImportBookFromClipboard,
+
+	/** Mutation: import a book from a URL (proxied + readability-extracted). */
+	useImportBookFromUrl: bookHooks.useImportBookFromUrl,
+
+	/** Mutation: import a book from a plain-text string (share intent). */
+	useImportBookFromText: bookHooks.useImportBookFromText,
+
 	/** Mutation: delete a book (disk + DB). */
 	useDeleteBook: bookHooks.useDeleteBook,
 

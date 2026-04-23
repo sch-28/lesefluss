@@ -37,9 +37,12 @@ import { IS_WEB_BUILD } from "../../services/sync";
 import { IS_WEB } from "../../utils/platform";
 import BookCard from "./book-card";
 import FilterPopover from "./filter-popover";
+import ImportSheet from "./import-sheet";
+import PasteUrlModal from "./paste-url-modal";
 import { type FilterBy, filterAndSort, readingProgress, type SortBy } from "./sort-filter";
 import SortPopover from "./sort-popover";
 import TransferModal from "./transfer-modal";
+import { useLibraryImports } from "./use-library-imports";
 
 const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
 
@@ -62,7 +65,7 @@ const Library: React.FC = () => {
 	const covers = data?.covers ?? new Map<string, string>();
 
 	// ── Mutations ────────────────────────────────────────────────────────
-	const importMutation = queryHooks.useImportBook();
+	const imports = useLibraryImports();
 	const deleteMutation = queryHooks.useDeleteBook();
 
 	// ── Local UI state ───────────────────────────────────────────────────
@@ -70,12 +73,13 @@ const Library: React.FC = () => {
 	const [noticeDismissed, setNoticeDismissed] = useState(
 		() => localStorage.getItem(LOCAL_NOTICE_KEY) === "1",
 	);
-	const [importProgress, setImportProgress] = useState(0);
 	const [sortBy, setSortBy] = useState<SortBy>("recent");
 	const [filterBy, setFilterBy] = useState<FilterBy>("all");
 
 	// Action sheet state
 	const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+	const [importSheetOpen, setImportSheetOpen] = useState(false);
+	const [urlModalOpen, setUrlModalOpen] = useState(false);
 
 	// Transfer confirmation + progress modal state
 	const [pendingTransferBook, setPendingTransferBook] = useState<Book | null>(null);
@@ -100,12 +104,8 @@ const Library: React.FC = () => {
 		setNoticeDismissed(true);
 	}, []);
 
-	const handleImport = () => {
-		setImportProgress(0);
-		importMutation.mutate(
-			{ onProgress: (pct: number) => setImportProgress(pct) },
-			{ onSettled: () => setImportProgress(0) },
-		);
+	const handleImportUrl = (url: string) => {
+		imports.importFromUrl(url, { onSuccess: () => setUrlModalOpen(false) });
 	};
 
 	const handleRefresh = async () => {
@@ -144,13 +144,6 @@ const Library: React.FC = () => {
 		qc.invalidateQueries({ queryKey: bookKeys.all });
 	};
 
-	// ── Import error: ignore "CANCELLED" (user dismissed the file picker) ──
-	const importError =
-		importMutation.error instanceof Error && importMutation.error.message !== "CANCELLED"
-			? importMutation.error.message
-			: null;
-
-	const importing = importMutation.isPending;
 	const visible = books.length > 0 ? filterAndSort(books, filterBy, sortBy) : [];
 
 	if (isPending) {
@@ -201,7 +194,9 @@ const Library: React.FC = () => {
 			</IonHeader>
 			<IonContent>
 				{/* Import progress bar */}
-				{importing && <IonProgressBar value={importProgress / 100} type={"determinate"} />}
+				{imports.isImporting && (
+					<IonProgressBar value={imports.progress / 100} type={"determinate"} />
+				)}
 
 				{/* Local-storage notice for unauthenticated web users */}
 				{IS_WEB_BUILD && !isLoggedIn && !noticeDismissed && (
@@ -238,9 +233,9 @@ const Library: React.FC = () => {
 						<IonIcon icon={bookOutline} className="mb-4 text-6xl text-[#ccc]" />
 						<IonText color="medium">
 							<h2 style={{ margin: "0 0 0.5rem" }}>No books yet</h2>
-							<p style={{ margin: 0 }}>Tap the + button to import a TXT or EPUB file.</p>
+							<p style={{ margin: 0 }}>Tap the + button to import a file or paste text.</p>
 						</IonText>
-						{importing && (
+						{imports.isImporting && (
 							<IonText color="medium" style={{ marginTop: "1rem" }}>
 								<p>Importing...</p>
 							</IonText>
@@ -281,16 +276,34 @@ const Library: React.FC = () => {
 					</div>
 				)}
 
-				{/* FAB: import button */}
+				{/* FAB: opens import sources action sheet */}
 				<IonFab vertical="bottom" horizontal="end" slot="fixed">
-					<IonFabButton onClick={handleImport} disabled={importing || isTransferring}>
-						{importing ? <IonSpinner name="crescent" /> : <IonIcon icon={add} />}
+					<IonFabButton
+						onClick={() => setImportSheetOpen(true)}
+						disabled={imports.isImporting || isTransferring}
+					>
+						{imports.isImporting ? <IonSpinner name="crescent" /> : <IonIcon icon={add} />}
 					</IonFabButton>
 				</IonFab>
+
+				<ImportSheet
+					isOpen={importSheetOpen}
+					onClose={() => setImportSheetOpen(false)}
+					onPickFile={imports.importFromFile}
+					onPickClipboard={imports.importFromClipboard}
+					onPickUrl={() => setUrlModalOpen(true)}
+				/>
 
 				{/* Filter + sort popovers */}
 				<FilterPopover trigger="filter-trigger" filterBy={filterBy} onFilter={setFilterBy} />
 				<SortPopover trigger="sort-trigger" sortBy={sortBy} onSort={setSortBy} />
+
+				<PasteUrlModal
+					isOpen={urlModalOpen}
+					isImporting={imports.isUrlImporting}
+					onClose={() => setUrlModalOpen(false)}
+					onSubmit={handleImportUrl}
+				/>
 
 				{/* Book action sheet */}
 				<IonActionSheet
@@ -344,10 +357,10 @@ const Library: React.FC = () => {
 
 				{/* Import error alert */}
 				<IonAlert
-					isOpen={!!importError}
-					onDidDismiss={() => importMutation.reset()}
+					isOpen={!!imports.errorMessage}
+					onDidDismiss={imports.resetError}
 					header="Import Failed"
-					message={importError ?? undefined}
+					message={imports.errorMessage ?? undefined}
 					buttons={[{ text: "OK", role: "cancel" }]}
 					cssClass="rsvp-alert"
 				/>

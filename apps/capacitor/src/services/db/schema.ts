@@ -57,15 +57,16 @@ export const books = sqliteTable("books", {
 	id: text("id").primaryKey(), // random 8-char hex, also used as book.hash on ESP32
 	title: text("title").notNull(),
 	author: text("author"),
-	fileFormat: text("file_format").notNull().default("txt"), // 'txt' | 'epub'
+	fileFormat: text("file_format").notNull().default("txt"), // 'txt' | 'epub' | 'html' | 'pdf'
 	filePath: text("file_path"), // path to original file in app data dir, null for legacy/txt
 	size: integer("size").notNull().default(0), // byte length of plain text content
 	position: integer("position").notNull().default(0),
 	isActive: integer("is_active", { mode: "boolean" }).notNull().default(false), // true = this book is currently on the ESP32 (at most one row at a time)
 	addedAt: integer("added_at").notNull(),
 	lastRead: integer("last_read"),
-	source: text("source"), // 'gutenberg' | 'standard_ebooks' | null (null = locally imported)
+	source: text("source"), // 'gutenberg' | 'standard_ebooks' | 'url' | null (null = locally imported)
 	catalogId: text("catalog_id"), // e.g. 'gutenberg:1342', 'se:mary-shelley/frankenstein'
+	sourceUrl: text("source_url"), // original URL for source='url' imports
 });
 
 /**
