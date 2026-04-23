@@ -51,7 +51,7 @@ import {
 } from "ionicons/icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RouteComponentProps } from "react-router-dom";
-import type { CacheSnapshot, VListHandle } from "virtua";
+import type { VListHandle } from "virtua";
 import { VList } from "virtua";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useTheme } from "../../contexts/theme-context";
@@ -74,43 +74,138 @@ import { useHighlightSelection } from "./use-highlight-selection";
 import { useScrubProgress } from "./use-scrub-progress";
 
 // ─── Module-level singletons ─────────────────────────────────────────────────
-const scrollCache = new Map<string, CacheSnapshot>();
 const _encoder = new TextEncoder();
 const _decoder = new TextDecoder();
 
-// Scrolls VList so the span at `byteOffset` lands at the top of the scroll container
-// (same reference point handleScrollEnd uses for its cutoffTop).
-// Retries each frame until the span is in the DOM — VList is lazy and after a large
-// scrollToIndex jump (e.g. returning from RSVP with no scroll cache) the target items
-// may not be mounted yet. After a successful scrollBy, retries once more to catch any
-// VList height-correction that shifts the span in the following frame.
+// Fine-scroll tuning (see scheduleFineScroll).
+const FINE_SCROLL_MOUNT_FRAME_BUDGET = 10;
+const FINE_SCROLL_STABILITY_TICK_MS = 50;
+const FINE_SCROLL_STABILITY_TIMEOUT_MS = 600;
+
+// Locate the alignment target span within `container`.
+// Prefers the exact byte offset; falls back to the largest data-offset ≤ byteOffset
+// within [paragraphStart, paragraphEnd). The fallback handles stale saved positions
+// (older parse, drifted offsets) without leaking into the wrong paragraph.
+function findAlignmentSpan(
+	container: HTMLElement,
+	byteOffset: number,
+	paragraphStart: number,
+	paragraphEnd: number,
+): HTMLElement | null {
+	const exact = container.querySelector<HTMLElement>(`span[data-offset="${byteOffset}"]`);
+	if (exact) return exact;
+	let best: HTMLElement | null = null;
+	for (const span of container.querySelectorAll<HTMLElement>("span[data-offset]")) {
+		const off = Number.parseInt(span.dataset.offset ?? "", 10);
+		if (Number.isNaN(off) || off < paragraphStart || off >= paragraphEnd || off > byteOffset) {
+			continue;
+		}
+		if (!best || off > Number(best.dataset.offset)) best = span;
+	}
+	return best;
+}
+
+interface ScrollSuppressRefs {
+	suppressScrollEnd: React.RefObject<boolean>;
+	suppressHighlight: React.RefObject<boolean>;
+}
+
+// Scrolls so the span at `byteOffset` lands flush at the top of the container —
+// symmetric with handleScrollEnd's save rule (`rect.top >= cutoffTop`).
+//
+// Phases:
+//   1. document.fonts.ready (cold-start fallback-font guard)
+//   2. rAF retry until the target span is mounted
+//   3. Stability poll: wait until container.scrollHeight is unchanged for two
+//      consecutive 50ms samples → VList has finished reconciling estimated
+//      paragraph heights with real measurements (max 600ms timeout).
+//   4. One scrollBy(delta). Done — no watcher, no retry loop.
+//
+// `onReady` (optional) fires after the final scroll so the caller can reveal
+// hidden content.
 function scheduleFineScroll(
 	listHandle: VListHandle,
 	container: HTMLElement,
 	byteOffset: number,
-	suppressScrollEnd: React.RefObject<boolean>,
-	suppressHighlight: React.RefObject<boolean>,
-	setHighlight: boolean,
+	paragraphStart: number,
+	paragraphEnd: number,
+	suppress: ScrollSuppressRefs,
+	shouldHighlight: boolean,
+	onReady?: () => void,
 ): () => void {
-	let attempts = 0;
-	let rafId: number;
-	const attempt = () => {
-		const span = document.querySelector<HTMLElement>(`span[data-offset="${byteOffset}"]`);
-		if (!span) {
-			if (attempts++ < 10) rafId = requestAnimationFrame(attempt);
+	let mountAttempts = 0;
+	let rafId = 0;
+	let timeoutId = 0;
+	let cancelled = false;
+
+	const alignSpan = (span: HTMLElement) => {
+		if (cancelled) return;
+		const delta = span.getBoundingClientRect().top - container.getBoundingClientRect().top;
+		if (Math.abs(delta) > 2) {
+			suppress.suppressScrollEnd.current = true;
+			if (shouldHighlight) suppress.suppressHighlight.current = true;
+			listHandle.scrollBy(delta);
+		}
+		onReady?.();
+	};
+
+	const waitForStability = (span: HTMLElement) => {
+		const startedAt = performance.now();
+		let lastHeight = container.scrollHeight;
+		let stableSamples = 0;
+		const tick = () => {
+			if (cancelled) return;
+			const h = container.scrollHeight;
+			if (h === lastHeight) {
+				stableSamples++;
+				if (
+					stableSamples >= 2 ||
+					performance.now() - startedAt >= FINE_SCROLL_STABILITY_TIMEOUT_MS
+				) {
+					alignSpan(span);
+					return;
+				}
+			} else {
+				lastHeight = h;
+				stableSamples = 0;
+			}
+			timeoutId = window.setTimeout(tick, FINE_SCROLL_STABILITY_TICK_MS);
+		};
+		timeoutId = window.setTimeout(tick, FINE_SCROLL_STABILITY_TICK_MS);
+	};
+
+	const awaitMount = () => {
+		if (cancelled) return;
+		const span = findAlignmentSpan(container, byteOffset, paragraphStart, paragraphEnd);
+		if (span) {
+			waitForStability(span);
 			return;
 		}
-		const targetTop = container.getBoundingClientRect().top;
-		const delta = span.getBoundingClientRect().top - targetTop - 25;
-		if (Math.abs(delta) > 2) {
-			suppressScrollEnd.current = true;
-			if (setHighlight) suppressHighlight.current = true;
-			listHandle.scrollBy(delta);
-			if (attempts++ < 10) rafId = requestAnimationFrame(attempt);
+		if (mountAttempts++ < FINE_SCROLL_MOUNT_FRAME_BUDGET) {
+			rafId = requestAnimationFrame(awaitMount);
+		} else {
+			// Span never mounted (stale offset outside DOM after the fallback failed).
+			// Fire onReady anyway so callers don't leave the reader hidden forever.
+			onReady?.();
 		}
 	};
-	rafId = requestAnimationFrame(attempt);
-	return () => cancelAnimationFrame(rafId);
+
+	const start = () => {
+		if (cancelled) return;
+		rafId = requestAnimationFrame(awaitMount);
+	};
+
+	if (document.fonts) {
+		void document.fonts.ready.then(start);
+	} else {
+		start();
+	}
+
+	return () => {
+		cancelled = true;
+		if (rafId) cancelAnimationFrame(rafId);
+		if (timeoutId) clearTimeout(timeoutId);
+	};
 }
 
 // Sentinel value: no word highlighted (while scrolling)
@@ -121,6 +216,15 @@ const skeletonLines = Array.from({ length: 40 }, (_, i) => ({
 	width: `${60 + ((i * 17) % 35)}%`,
 	marginBottom: i % 4 === 3 ? "20px" : "10px",
 }));
+
+const ReaderSkeleton: React.FC<{ style?: React.CSSProperties }> = ({ style }) => (
+	<div style={{ padding: "16px 20px", height: "100%", overflow: "hidden", ...style }}>
+		{skeletonLines.map((lineStyle, i) => (
+			// biome-ignore lint/suspicious/noArrayIndexKey: static style array, index is stable
+			<div key={i} className="reader-skeleton-line" style={lineStyle} />
+		))}
+	</div>
+);
 
 // ─── Main page ───────────────────────────────────────────────────────────────
 
@@ -159,6 +263,11 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// Progress bar visibility - shown on tap/word-tap, hidden when user scrolls
 	const [progressBarVisible, setProgressBarVisible] = useState(false);
 
+	// Keeps the skeleton visible until the initial fine-scroll has landed, so the
+	// user never sees VList reconcile heights mid-scroll. Flipped by onReady from
+	// scheduleFineScroll. Only applies to the first open (jumps use the VList live).
+	const [isInitialScrollReady, setIsInitialScrollReady] = useState(false);
+
 	const listRef = useRef<VListHandle>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 
@@ -185,6 +294,25 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// mid-playback and pause the RSVP reader.
 	const didSeedOffsetsRef = useRef(false);
 
+	const didSeedModeRef = useRef(false);
+
+	// Reset all "has-happened-once" guards when the user navigates to a different
+	// book. The route reuses this component, so without this the skeleton stays
+	// hidden on the second book's open and the seed/initial-scroll effects
+	// don't re-run.
+	// MUST be declared BEFORE the seed effect: on first mount both effects fire
+	// in declaration order, so if reset ran after seed it would null out
+	// lastOffsetRef right after seed populated it — then a fast RSVP toggle
+	// (before the initial scroll-end repopulates it) would read null, fall
+	// back to 0, and overwrite the book's saved position with 0.
+	useEffect(() => {
+		setIsInitialScrollReady(false);
+		didInitialScrollRef.current = false;
+		didSeedOffsetsRef.current = false;
+		didSeedModeRef.current = false;
+		lastOffsetRef.current = null;
+	}, [id]);
+
 	// ── Seed activeOffset + lastOffsetRef once book loads ─────────────────
 	useEffect(() => {
 		if (book && !didSeedOffsetsRef.current) {
@@ -195,8 +323,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			lastOffsetRef.current = book.position;
 		}
 	}, [book]);
-
-	const didSeedModeRef = useRef(false);
 
 	// ── Build paragraph index ──────────────────────────────────────────────
 	// Computed once per content load. Two cheap structures:
@@ -313,6 +439,31 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		[paragraphOffsets],
 	);
 
+	/** Align the word at `byteOffset` flush with the container top via scrollIntoView.
+	 *  Paragraph-bounded so the fallback can't leak into a neighboring paragraph. */
+	const fineScrollTo = useCallback(
+		(byteOffset: number, shouldHighlight: boolean, onReady?: () => void) => {
+			if (!listRef.current || !containerRef.current) return undefined;
+			const idx = findParagraphIndex(byteOffset);
+			const start = paragraphOffsets[idx] ?? 0;
+			const end = paragraphOffsets[idx + 1] ?? Number.POSITIVE_INFINITY;
+			return scheduleFineScroll(
+				listRef.current,
+				containerRef.current,
+				byteOffset,
+				start,
+				end,
+				{
+					suppressScrollEnd: suppressNextScrollEndRef,
+					suppressHighlight: suppressScrollHighlightClearRef,
+				},
+				shouldHighlight,
+				onReady,
+			);
+		},
+		[findParagraphIndex, paragraphOffsets],
+	);
+
 	/** Scroll to a byte offset, update highlight + progress, and persist.
 	 *  After the paragraph scrolls into view, fine-tunes to the exact word
 	 *  span so the matched word lands at the top of the viewport. */
@@ -327,19 +478,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			setProgressOffset(byteOffset);
 			lastOffsetRef.current = byteOffset;
 			savePosition(byteOffset);
-
-			if (containerRef.current) {
-				scheduleFineScroll(
-					listRef.current,
-					containerRef.current,
-					byteOffset,
-					suppressNextScrollEndRef,
-					suppressScrollHighlightClearRef,
-					highlight,
-				);
-			}
+			fineScrollTo(byteOffset, highlight);
 		},
-		[findParagraphIndex, savePosition],
+		[findParagraphIndex, savePosition, fineScrollTo],
 	);
 
 	// ── Highlight / selection state ──────────────────────────────────────
@@ -368,15 +509,29 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// Also re-runs when readerMode changes to "scroll" (returning from RSVP).
 	useEffect(() => {
 		if (didInitialScrollRef.current) return;
+		// RSVP mode renders a different view, so skeleton/ready isn't relevant there.
 		if (readerMode !== "scroll") return;
-		if (!listRef.current || paragraphs.length === 0 || !book) return;
+		// Wait for refs + data. If content is loaded but paragraph list is empty
+		// (malformed book), reveal the empty reader rather than staying hidden.
+		if (!listRef.current || !book) return;
+		if (paragraphs.length === 0) {
+			// Terminal: mark initial scroll done so a later paragraphs update
+			// doesn't re-enter this effect and jerk an already-revealed reader.
+			didInitialScrollRef.current = true;
+			setIsInitialScrollReady(true);
+			return;
+		}
 
 		didInitialScrollRef.current = true;
 
 		// Use lastOffsetRef if available (e.g. returning from RSVP mode),
 		// otherwise fall back to the DB-stored position.
 		const target = lastOffsetRef.current ?? book.position;
-		if (target === 0) return; // start of book - default scroll is correct
+		if (target === 0) {
+			// start of book - default scroll is correct, nothing to wait for
+			setIsInitialScrollReady(true);
+			return;
+		}
 
 		const idx = findParagraphIndex(target);
 		suppressNextScrollEndRef.current = true;
@@ -384,17 +539,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		listRef.current.scrollToIndex(idx, { align: "start" });
 		setActiveOffset(target);
 
-		const container = containerRef.current;
-		if (!container) return;
-		return scheduleFineScroll(
-			listRef.current,
-			container,
-			target,
-			suppressNextScrollEndRef,
-			suppressScrollHighlightClearRef,
-			true,
-		);
-	}, [readerMode, paragraphs, book, findParagraphIndex]);
+		return fineScrollTo(target, true, () => setIsInitialScrollReady(true));
+	}, [readerMode, paragraphs, book, findParagraphIndex, fineScrollTo]);
 
 	// ── Scroll handler - hide highlight + update progress bar ──────────────
 	const { isSelecting, syncHandlesRef } = sel;
@@ -428,7 +574,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		[paragraphOffsets, isSelecting, syncHandlesRef, isScrubbingRef],
 	);
 
-	// ── Scroll end - find first fully visible word + save position ───────
+	// ── Scroll end - find top-of-container word + save position ──────────
 	const handleScrollEnd = useCallback(() => {
 		if (suppressNextScrollEndRef.current) {
 			suppressNextScrollEndRef.current = false;
@@ -453,9 +599,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 		let bestOffset = -1;
 		for (const span of spans) {
-			const rect = span.getBoundingClientRect();
-			if (rect.top >= cutoffTop + rect.height) {
-				// dataset.offset is guaranteed by the "span[data-offset]" selector above
+			if (span.getBoundingClientRect().top >= cutoffTop) {
 				bestOffset = Number.parseInt(span.dataset.offset ?? "", 10);
 				break;
 			}
@@ -600,9 +744,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		(byteOffset: number) => {
 			lastOffsetRef.current = byteOffset;
 			setProgressOffset(byteOffset);
-			// Clear stale scroll cache so VList doesn't restore the old position;
-			// the initial scroll effect will position it at byteOffset instead.
-			scrollCache.delete(id);
 			didInitialScrollRef.current = false;
 			setReaderMode("scroll");
 			savePosition(byteOffset);
@@ -710,12 +851,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// touch-action: none is applied directly to the handle elements via CSS
 	// so the VList container remains scrollable during selection mode.
 
-	// ── Save scroll cache + flush position on unmount ─────────────────────
+	// ── Flush position on unmount ─────────────────────────────────────────
 	useEffect(() => {
 		return () => {
-			if (listRef.current) {
-				scrollCache.set(id, listRef.current.cache);
-			}
 			// Flush position to DB so the library shows updated progress.
 			// Only write if we actually loaded the book (lastOffsetRef !== null).
 			const offset = lastOffsetRef.current;
@@ -727,7 +865,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			// when the user navigates back.
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 		};
-	}, [id, qc, savePosition]);
+	}, [qc, savePosition]);
 
 	// ─── Render ─────────────────────────────────────────────────────────────
 
@@ -838,53 +976,67 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 			<IonContent scrollY={false}>
 				{contentPending || !content ? (
-					<div style={{ padding: "16px 20px", height: "100%", overflow: "hidden" }}>
-						{skeletonLines.map((style, i) => (
-							// biome-ignore lint/suspicious/noArrayIndexKey: static style array, index is stable
-							<div key={i} className="reader-skeleton-line" style={style} />
-						))}
-					</div>
+					<ReaderSkeleton />
 				) : readerMode === "scroll" ? (
-					<div
-						ref={containerRef}
-						style={
-							{
-								height: "100%",
-								maxWidth: "700px",
-								margin: "0 auto",
-								"--reader-line-height": String(readerLineSpacing),
-							} as React.CSSProperties
-						}
-					>
-						<VList
-							ref={listRef}
-							cache={scrollCache.get(id)}
-							style={{
-								height: "100%",
-								padding: `0 ${readerMargin}px`,
-								paddingBottom: "calc(52px + env(safe-area-inset-bottom, 0px))",
-								fontSize: `${readerFontSize}px`,
-								fontFamily:
-									readerFontFamily === "serif" ? "Georgia, 'Times New Roman', serif" : undefined,
-							}}
-							onScroll={handleScroll}
-							onScrollEnd={handleScrollEnd}
+					// VList is always mounted so refs populate and the initial-scroll
+					// effect can run. Opacity+pointer-events (not visibility) so VList
+					// still lays out and measures — visibility:hidden can skip that on
+					// some engines, which would break findAlignmentSpan. Skeleton is
+					// overlaid on top until the fine-scroll onReady fires.
+					<div style={{ position: "relative", height: "100%" }}>
+						<div
+							ref={containerRef}
+							style={
+								{
+									height: "100%",
+									maxWidth: "700px",
+									margin: "0 auto",
+									opacity: isInitialScrollReady ? 1 : 0,
+									pointerEvents: isInitialScrollReady ? "auto" : "none",
+									"--reader-line-height": String(readerLineSpacing),
+								} as React.CSSProperties
+							}
 						>
-							{paragraphs.map((text, i) => (
-								<Paragraph
-									key={i.toString()}
-									text={text}
-									startOffset={paragraphOffsets[i]}
-									activeOffset={activeOffset}
-									onWordTap={handleWordTap}
-									onWordLongPress={sel.handleWordLongPress}
-									onWordMouseDragStart={handleWordMouseDragStart}
-									highlights={sel.highlightsByParagraph.get(i)}
-									selectionRange={sel.selectionRange}
-									showActiveWordUnderline={readerActiveWordUnderline}
-								/>
-							))}
-						</VList>
+							<VList
+								ref={listRef}
+								style={{
+									height: "100%",
+									padding: `0 ${readerMargin}px`,
+									paddingBottom: "calc(52px + env(safe-area-inset-bottom, 0px))",
+									fontSize: `${readerFontSize}px`,
+									fontFamily:
+										readerFontFamily === "serif"
+											? "Georgia, 'Times New Roman', serif"
+											: undefined,
+								}}
+								onScroll={handleScroll}
+								onScrollEnd={handleScrollEnd}
+							>
+								{paragraphs.map((text, i) => (
+									<Paragraph
+										key={i.toString()}
+										text={text}
+										startOffset={paragraphOffsets[i]}
+										activeOffset={activeOffset}
+										onWordTap={handleWordTap}
+										onWordLongPress={sel.handleWordLongPress}
+										onWordMouseDragStart={handleWordMouseDragStart}
+										highlights={sel.highlightsByParagraph.get(i)}
+										selectionRange={sel.selectionRange}
+										showActiveWordUnderline={readerActiveWordUnderline}
+									/>
+								))}
+							</VList>
+						</div>
+						{!isInitialScrollReady && (
+							<ReaderSkeleton
+								style={{
+									position: "absolute",
+									inset: 0,
+									background: "var(--ion-background-color)",
+								}}
+							/>
+						)}
 					</div>
 				) : (
 					<RsvpView
