@@ -163,10 +163,10 @@ function BetaAccessButton() {
 	async function submit(e: React.FormEvent<HTMLFormElement>) {
 		e.preventDefault();
 		const trimmed = email.trim().toLowerCase();
-		if (!/^[^\s@]+@gmail\.com$/.test(trimmed)) {
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
 			setState({
 				kind: "error",
-				message: "A @gmail.com address is required for Play Store testing.",
+				message: "Please enter a valid email address linked to a Google account.",
 			});
 			return;
 		}
@@ -228,7 +228,7 @@ function BetaAccessButton() {
 					ref={inputRef}
 					type="email"
 					required
-					placeholder="you@gmail.com"
+					placeholder="your Google-linked email"
 					value={email}
 					onChange={(e) => {
 						setEmail(e.target.value);
@@ -249,7 +249,7 @@ function BetaAccessButton() {
 				{state.kind === "error" ? (
 					<span className="text-destructive">{state.message}</span>
 				) : (
-					"We add your Gmail to the closed Play Store test — no spam, just the tester invite."
+					"Use an email linked to a Google account — we'll add it to the closed Play Store test. No spam, just the tester invite."
 				)}
 			</p>
 		</form>

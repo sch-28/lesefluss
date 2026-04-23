@@ -107,3 +107,4 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 ## Later / Low Priority
 - [ ] TTS
 - [ ] Browser extension (Firefox + Chrome, shared codebase) - send current page to Lesefluss web
+- [ ] German locale

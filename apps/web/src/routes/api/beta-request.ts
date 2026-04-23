@@ -3,9 +3,9 @@ import { sendMail } from "~/lib/mailer";
 
 const BETA_CONTACT = "contact@lesefluss.app";
 
-function isGmail(email: string): boolean {
+function isValidEmail(email: string): boolean {
 	const normalized = email.trim().toLowerCase();
-	return /^[^\s@]+@gmail\.com$/.test(normalized);
+	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized);
 }
 
 function escapeHtml(str: string): string {
@@ -33,10 +33,10 @@ export const Route = createFileRoute("/api/beta-request")({
 						? body.email.trim()
 						: "";
 
-				if (!isGmail(email)) {
+				if (!isValidEmail(email)) {
 					return Response.json(
 						{
-							error: "Please provide a valid @gmail.com address (required for Play Store testing).",
+							error: "Please provide a valid email address linked to a Google account.",
 						},
 						{ status: 400 },
 					);
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/api/beta-request")({
 				await sendMail({
 					to: BETA_CONTACT,
 					subject: `Lesefluss beta access request: ${email}`,
-					html: `<p>New beta tester request:</p><p><strong>${safeEmail}</strong></p><p>Add this Gmail address to the closed testing program in Play Console.</p>`,
+					html: `<p>New beta tester request:</p><p><strong>${safeEmail}</strong></p><p>Add this address to the closed testing program in Play Console (must be linked to a Google account).</p>`,
 				});
 
 				return Response.json({ ok: true });
