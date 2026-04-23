@@ -20,13 +20,6 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 - [x] Library sorting & filtering (by title, author, recent, progress)
 - [x] Estimated reading time remaining (per book / per chapter). For rsvp mode too
 
-### ESP32
-<!-- - [ ] Rotary encoder support (POTENTIOMETER_PLAN.md) - needed if selling with encoder -->
-- [ ] Fix special characters (äüö and other characters e.g. << >>) in ESP32 reader
-- [ ] Split long words on ESP32
-- [ ] Verify WPM accuracy (check if display delay affects timing)
-- [ ] Battery indicator in app (GPIO 4 voltage divider already on AMOLED board)
-- [ ] Recompile AMOLED firmware with larger NimBLE buffers (BLE transfer window_size capped at 2 - ST7789 handles 4; fork nspsck/RM67162_Micropython_QSPI, increase NimBLE buffer config)
 
 ## Phase 3 - Publishing Infrastructure
 > Everything needed to actually publish
@@ -57,10 +50,60 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 - [x] Cloud sync for library and reading position (account-gated)
 - [x] Web app embed - capacitor SPA served at `/app` on website with cookie auth
 
-## Phase 5 - Post-launch
-- [ ] iOS build (Capacitor makes this mostly a build target)
-- [ ] Partial book sync (reduce long upload times for large books)
+## Phase 5 - Content Ingestion
+> Getting text into the app from anywhere
+
+- [x] PDF support (text extraction, metadata, cover, chapters from bookmarks)
+- [x] Paste text (quick-import from clipboard)
+- [x] Paste URL → readability extraction → import as book (via catalog proxy for CORS)
+- [x] Android share intent → share any webpage or text to Lesefluss
+- [x] HTML file import (via file picker; same Readability pipeline as URL)
+- [ ] Calibre library import (multi-book source; needs `AsyncIterable<Book>` API)
+- [ ] Web novel scraping (Royal Road, ScribbleHub — see `apps/capacitor/BOOK_IMPORT.md` for strategy notes)
+- [ ] Kindle `My Clippings.txt` → highlights table (routed outside book-import)
+- [ ] iOS share extension (Android done; iOS needs its own Xcode target)
+
+## Phase 6 - Reading Experience v2
+> Quality-of-life on top of what already works
+
+- [ ] Full-text search across library (SQLite FTS5)
+- [ ] Split long words on ESP32 and capactitor reader
+- [ ] Export highlights (Markdown / CSV / Readwise-compatible)
+- [ ] Reader bookmarks (separate from highlights - "return to" markers)
+- [ ] Keyboard shortcuts for web reader (space, arrows, etc.)
+- [ ] Focal letter color setting
+- [ ] Reading statistics page (local-first; aggregates across devices automatically when logged in via existing sync)
+
+## Phase 7 - Social & Discovery
+- [ ] Suggestion form on website for user feedback and suggestions
+- [ ] Public profiles (opt-in; private by default, friends only, or public) - show books read, currently reading, progress, covers resolved from catalog where possible
+- [ ] Share highlights and notes (short quoted snippets - §51 UrhG quotation right)
+- [ ] Share public-domain books from catalog (Gutenberg / Standard Ebooks only - no user-uploaded files)
+- [ ] Friends / follow (see what friends are reading, their highlights, progress)
+- [ ] Buddy reading (sync progress with a friend on the same book, compare position, react to each other's highlights)
+- [ ] Explore/discovery: short reads filter on catalog (quick reads genre)
+- [ ] Curated article sources on Explore (Longreads, Aeon, PG essays — feeds → one-tap import via existing URL proxy)
+- [ ] Import reading history from Goodreads CSV (populate profile stats; auto-match to-read list against catalog for one-click imports of public-domain hits)
+- [ ] Open Library as additional catalog metadata source (better covers, author data, ISBN matching)
+
+> No full-book sharing of user-uploaded files - copyright exposure. Platform stays in personal-cloud-locker territory.
+
+## Phase 8 - ESP32 v2
 - [ ] OTA firmware update from app
+- [ ] Partial book sync (reduce long upload times for large books)
 - [ ] Minify / merge MicroPython files for faster uploads
-- [ ] Reading statistics (account-gated, synced)
-- [ ] Contact form for assembled unit requests (no Tindie / payment integration yet - gauge demand first)
+- [ ] WLAN transfer spike (viability check vs. BLE / partial sync)
+- [ ] Touchscreen hardware exploration (Waveshare OLED with touch, gesture controls, SD-card USB transfer) - gate on demand signals
+- [ ] Contact form for assembled unit requests (gauge demand before Tindie / payment integration)
+- [ ] Fix special characters (äüö and other characters e.g. << >>) in ESP32 reader
+- [ ] Verify WPM accuracy (check if display delay affects timing)
+- [ ] Battery indicator in app (GPIO 4 voltage divider already on AMOLED board)
+- [ ] Recompile AMOLED firmware with larger NimBLE buffers (BLE transfer window_size capped at 2 - ST7789 handles 4; fork nspsck/RM67162_Micropython_QSPI, increase NimBLE buffer config)
+
+## Phase 9 - Platform Reach
+- [ ] iOS build (Capacitor makes this mostly a build target)
+- [ ] PWA / offline for `/app` (service worker + persistent SQLite - fixes "cleared browser data" loss)
+
+## Later / Low Priority
+- [ ] TTS
+- [ ] Browser extension (Firefox + Chrome, shared codebase) - send current page to Lesefluss web

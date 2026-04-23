@@ -12,6 +12,7 @@ import { booksRoute } from "./routes/books.js";
 import { coversRoute } from "./routes/covers.js";
 import { healthRoute } from "./routes/health.js";
 import { landingRoute } from "./routes/landing.js";
+import { proxyRoute } from "./routes/proxy.js";
 import { searchRoute } from "./routes/search.js";
 import { shelvesRoute } from "./routes/shelves.js";
 import { statsRoute } from "./routes/stats.js";
@@ -60,6 +61,7 @@ async function main() {
 	app.route("/shelves", shelvesRoute);
 	app.route("/stats", statsRoute);
 	app.route("/books", booksRoute);
+	app.route("/proxy", proxyRoute);
 	app.route("/admin", adminRoute);
 
 	serve({ fetch: app.fetch, port: env.PORT }, (info) => {
