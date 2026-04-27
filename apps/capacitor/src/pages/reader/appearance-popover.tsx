@@ -1,6 +1,7 @@
 import { IonPopover } from "@ionic/react";
 import { SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
 import type React from "react";
+import { PAGINATION_STYLE_OPTIONS } from "../../components/rsvp-pickers";
 import { useTheme } from "../../contexts/theme-context";
 import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "../../hooks/use-appearance-settings";
 
@@ -16,12 +17,14 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 		fontFamily,
 		lineSpacing,
 		margin,
+		paginationStyle,
 		showReadingTime,
 		showActiveWordUnderline,
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
 		setFontFamily,
+		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,
 	} = useAppearanceSettings();
@@ -41,6 +44,23 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 								onClick={() => setTheme(t.value)}
 							>
 								{t.label}
+							</button>
+						))}
+					</div>
+				</div>
+
+				{/* Pagination */}
+				<div className="ap-section">
+					<span className="ap-label">Pagination</span>
+					<div className="ap-chips">
+						{PAGINATION_STYLE_OPTIONS.map((p) => (
+							<button
+								key={p.value}
+								type="button"
+								className={paginationStyle === p.value ? "ap-chip ap-chip--active" : "ap-chip"}
+								onClick={() => setPaginationStyle(p.value)}
+							>
+								{p.label}
 							</button>
 						))}
 					</div>
