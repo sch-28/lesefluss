@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { and, count, desc, eq, isNotNull, max, or } from "drizzle-orm";
 import { db } from "~/db";
-import { syncBooks, syncHighlights, syncSettings } from "~/db/schema";
+import { syncBooks, syncGlossaryEntries, syncHighlights, syncSettings } from "~/db/schema";
 import { auth } from "./auth";
 
 const FINISHED_THRESHOLD = 0.95;
@@ -18,7 +18,15 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 	const session = await requireSession();
 	const userId = session.user.id;
 
-	const [booksResult, highlightsResult, settingsMax, books, highlights] = await Promise.all([
+	const [
+		booksResult,
+		highlightsResult,
+		glossaryResult,
+		settingsMax,
+		books,
+		highlights,
+		glossaryEntries,
+	] = await Promise.all([
 		db
 			.select({ ts: max(syncBooks.updatedAt) })
 			.from(syncBooks)
@@ -27,6 +35,10 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 			.select({ count: count(), ts: max(syncHighlights.updatedAt) })
 			.from(syncHighlights)
 			.where(and(eq(syncHighlights.userId, userId), eq(syncHighlights.deleted, false))),
+		db
+			.select({ count: count(), ts: max(syncGlossaryEntries.updatedAt) })
+			.from(syncGlossaryEntries)
+			.where(and(eq(syncGlossaryEntries.userId, userId), eq(syncGlossaryEntries.deleted, false))),
 		db
 			.select({ ts: max(syncSettings.updatedAt) })
 			.from(syncSettings)
@@ -71,11 +83,36 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 			)
 			.orderBy(desc(syncHighlights.updatedAt))
 			.limit(500),
+		db
+			.select({
+				entryId: syncGlossaryEntries.entryId,
+				bookId: syncGlossaryEntries.bookId,
+				label: syncGlossaryEntries.label,
+				notes: syncGlossaryEntries.notes,
+				color: syncGlossaryEntries.color,
+				updatedAt: syncGlossaryEntries.updatedAt,
+				bookTitle: syncBooks.title,
+			})
+			.from(syncGlossaryEntries)
+			// LEFT JOIN so global entries (bookId IS NULL) come through
+			.leftJoin(
+				syncBooks,
+				and(
+					eq(syncGlossaryEntries.bookId, syncBooks.bookId),
+					eq(syncGlossaryEntries.userId, syncBooks.userId),
+				),
+			)
+			.where(and(eq(syncGlossaryEntries.userId, userId), eq(syncGlossaryEntries.deleted, false)))
+			.orderBy(desc(syncGlossaryEntries.updatedAt))
+			.limit(500),
 	]);
 
-	const candidates = [booksResult[0]?.ts, highlightsResult[0]?.ts, settingsMax[0]?.ts].filter(
-		Boolean,
-	) as Date[];
+	const candidates = [
+		booksResult[0]?.ts,
+		highlightsResult[0]?.ts,
+		glossaryResult[0]?.ts,
+		settingsMax[0]?.ts,
+	].filter(Boolean) as Date[];
 	const lastSynced = candidates.length ? Math.max(...candidates.map((d) => d.getTime())) : null;
 
 	let booksFinished = 0;
@@ -88,6 +125,7 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 	return {
 		bookCount: books.length,
 		highlightCount: highlightsResult[0]?.count ?? 0,
+		glossaryCount: glossaryResult[0]?.count ?? 0,
 		lastSynced,
 		booksFinished,
 		wordsRead,
@@ -95,6 +133,10 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 		highlights: highlights.map((h) => ({
 			...h,
 			updatedAt: h.updatedAt.getTime(),
+		})),
+		glossaryEntries: glossaryEntries.map((e) => ({
+			...e,
+			updatedAt: e.updatedAt.getTime(),
 		})),
 	};
 });
@@ -107,6 +149,7 @@ export const clearCloudData = createServerFn({ method: "POST" }).handler(async (
 		await Promise.all([
 			tx.delete(syncBooks).where(eq(syncBooks.userId, userId)),
 			tx.delete(syncHighlights).where(eq(syncHighlights.userId, userId)),
+			tx.delete(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId)),
 			tx.delete(syncSettings).where(eq(syncSettings.userId, userId)),
 		]);
 	});

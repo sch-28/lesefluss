@@ -22,6 +22,20 @@
       "when": 1777312881646,
       "tag": "0002_pagination_style",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777398000000,
+      "tag": "0003_glossary",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777398000001,
+      "tag": "0004_reader_glossary_underline",
+      "breakpoints": true
     }
   ]
 }

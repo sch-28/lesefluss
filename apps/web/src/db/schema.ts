@@ -64,6 +64,7 @@ export const syncSettings = pgTable(
 		readerMargin: integer("reader_margin").notNull().default(20),
 		showReadingTime: boolean("show_reading_time").notNull().default(true),
 		readerActiveWordUnderline: boolean("reader_active_word_underline").notNull().default(true),
+		readerGlossaryUnderline: boolean("reader_glossary_underline").notNull().default(true),
 		defaultReaderMode: text("default_reader_mode").notNull().default("scroll"),
 		paginationStyle: text("pagination_style").notNull().default("scroll"),
 		updatedAt: timestamp("updated_at").notNull(),
@@ -102,9 +103,31 @@ export const syncHighlights = pgTable(
 	(t) => [primaryKey({ columns: [t.userId, t.highlightId] })],
 );
 
+/**
+ * sync_glossary_entries — per-book or global glossary entries.
+ * `bookId` is nullable: NULL = global (matches in every book), non-null = book-scoped.
+ */
+export const syncGlossaryEntries = pgTable(
+	"sync_glossary_entries",
+	{
+		userId: text("user_id").notNull(),
+		entryId: text("entry_id").notNull(),
+		bookId: text("book_id"), // null = global
+		label: text("label").notNull(),
+		notes: text("notes"),
+		color: text("color").notNull(),
+		deleted: boolean("deleted").notNull().default(false),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.entryId] })],
+);
+
 export type SyncBook = typeof syncBooks.$inferSelect;
 export type NewSyncBook = typeof syncBooks.$inferInsert;
 export type SyncSettings = typeof syncSettings.$inferSelect;
 export type NewSyncSettings = typeof syncSettings.$inferInsert;
 export type SyncHighlight = typeof syncHighlights.$inferSelect;
 export type NewSyncHighlight = typeof syncHighlights.$inferInsert;
+export type SyncGlossaryEntry = typeof syncGlossaryEntries.$inferSelect;
+export type NewSyncGlossaryEntry = typeof syncGlossaryEntries.$inferInsert;

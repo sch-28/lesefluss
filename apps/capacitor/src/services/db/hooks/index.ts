@@ -27,10 +27,11 @@
  */
 
 import { bookHooks } from "./use-books";
+import { glossaryHooks } from "./use-glossary";
 import { highlightHooks } from "./use-highlights";
 import { settingsHooks } from "./use-settings";
 
-export { bookKeys, settingsKeys } from "./query-keys";
+export { bookKeys, glossaryKeys, settingsKeys } from "./query-keys";
 
 export const queryHooks = {
 	// ── Books ──────────────────────────────────────────────────────────────
@@ -80,4 +81,17 @@ export const queryHooks = {
 
 	/** Mutation: delete a highlight. */
 	useDeleteHighlight: highlightHooks.useDeleteHighlight,
+
+	// ── Glossary ──────────────────────────────────────────────────────────
+	/** Glossary entries visible from a book (book-scoped + global). */
+	useGlossary: glossaryHooks.useGlossary,
+
+	/** Mutation: add a glossary entry. */
+	useAddGlossaryEntry: glossaryHooks.useAddGlossaryEntry,
+
+	/** Mutation: update a glossary entry. */
+	useUpdateGlossaryEntry: glossaryHooks.useUpdateGlossaryEntry,
+
+	/** Mutation: delete a glossary entry. */
+	useDeleteGlossaryEntry: glossaryHooks.useDeleteGlossaryEntry,
 };

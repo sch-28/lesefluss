@@ -33,6 +33,8 @@ export function useAppearanceSettings() {
 	const paginationStyle = settings?.paginationStyle ?? DEFAULT_SETTINGS.PAGINATION_STYLE;
 	const showActiveWordUnderline =
 		settings?.readerActiveWordUnderline ?? DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE;
+	const showGlossaryUnderline =
+		settings?.readerGlossaryUnderline ?? DEFAULT_SETTINGS.READER_GLOSSARY_UNDERLINE;
 
 	const adjustFontSize = (delta: number) => {
 		mutate({
@@ -90,6 +92,10 @@ export function useAppearanceSettings() {
 		mutate({ readerActiveWordUnderline: v });
 	};
 
+	const setShowGlossaryUnderline = (v: boolean) => {
+		mutate({ readerGlossaryUnderline: v });
+	};
+
 	return {
 		fontSize,
 		appFontSize,
@@ -99,6 +105,7 @@ export function useAppearanceSettings() {
 		paginationStyle,
 		showReadingTime,
 		showActiveWordUnderline,
+		showGlossaryUnderline,
 		adjustFontSize,
 		adjustAppFontSize,
 		adjustLineSpacing,
@@ -107,5 +114,6 @@ export function useAppearanceSettings() {
 		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,
+		setShowGlossaryUnderline,
 	};
 }

@@ -6,6 +6,7 @@ import {
 	bookContent,
 	books,
 	type Chapter,
+	glossaryEntries,
 	highlights,
 	type NewBook,
 } from "../schema";
@@ -156,6 +157,8 @@ export async function setActiveBook(id: string): Promise<void> {
  * use the `removeBook()` function from the bookImport service instead.
  */
 export async function deleteBook(id: string): Promise<void> {
+	// Cascade book-scoped glossary entries; global ones (bookId IS NULL) survive
+	await db.delete(glossaryEntries).where(eq(glossaryEntries.bookId, id));
 	await db.delete(highlights).where(eq(highlights.bookId, id));
 	await db.delete(bookContent).where(eq(bookContent.bookId, id));
 	// `lastRead` is bumped so bookToSync's Math.max(lastRead, addedAt) produces a
@@ -172,6 +175,7 @@ export async function deleteBook(id: string): Promise<void> {
  * didn't originate the delete and therefore still have the local rows.
  */
 export async function hardDeleteBook(id: string): Promise<void> {
+	await db.delete(glossaryEntries).where(eq(glossaryEntries.bookId, id));
 	await db.delete(highlights).where(eq(highlights.bookId, id));
 	await db.delete(bookContent).where(eq(bookContent.bookId, id));
 	await db.delete(books).where(eq(books.id, id));

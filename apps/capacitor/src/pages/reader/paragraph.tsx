@@ -64,6 +64,14 @@ export interface HighlightRange {
 	color: string;
 }
 
+/** Inline glossary underline range — same byte-offset semantics as HighlightRange. */
+export interface GlossaryRangeProp {
+	entryId: string;
+	startOffset: number;
+	endOffset: number;
+	color: string;
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export interface ParagraphProps {
@@ -79,12 +87,13 @@ export interface ParagraphProps {
 	 *  has already moved past the start word by the time this fires). */
 	onWordMouseDragStart?: (offset: number, event: PointerEvent) => void;
 	highlights?: HighlightRange[];
+	glossaryRanges?: GlossaryRangeProp[];
 	selectionRange?: { start: number; end: number } | null;
 	showActiveWordUnderline: boolean;
 }
 
 // How long (ms) a pointer must be held before triggering long-press
-const LONG_PRESS_MS = 400;
+export const LONG_PRESS_MS = 400;
 
 // Module-level: at most one long-press timer is active at a time (one finger).
 // The reader's scroll handler calls this to cancel if the user starts scrolling.
@@ -104,6 +113,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		onWordLongPress,
 		onWordMouseDragStart,
 		highlights,
+		glossaryRanges,
 		selectionRange,
 		showActiveWordUnderline,
 	}) => {
@@ -143,6 +153,18 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 				for (const h of highlights) {
 					if (tokenOffset >= h.startOffset && tokenOffset <= h.endOffset) {
 						classes.push(`word-highlight-${h.color}`);
+						break;
+					}
+				}
+			}
+
+			// Glossary ranges - parallel to highlights, but uses an inline color via CSS var
+			let glossaryColor: string | undefined;
+			if (glossaryRanges && !isSpace) {
+				for (const g of glossaryRanges) {
+					if (tokenOffset >= g.startOffset && tokenOffset <= g.endOffset) {
+						classes.push("word-glossary");
+						glossaryColor = g.color;
 						break;
 					}
 				}
@@ -196,6 +218,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 								_cancelActiveLongPress = null;
 								document.removeEventListener("pointermove", onMove);
 								document.removeEventListener("pointerup", cleanup);
+								document.removeEventListener("pointercancel", cleanup);
 							};
 							const onMove = (me: PointerEvent) => {
 								const dx = Math.abs(me.clientX - startX);
@@ -221,6 +244,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 							}
 							document.addEventListener("pointermove", onMove);
 							document.addEventListener("pointerup", cleanup);
+							document.addEventListener("pointercancel", cleanup);
 						}
 					: undefined;
 
@@ -229,6 +253,11 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 					key={i}
 					data-offset={tokenOffset}
 					className={className}
+					style={
+						glossaryColor
+							? ({ "--glossary-color": glossaryColor } as React.CSSProperties)
+							: undefined
+					}
 					onClick={() => onWordTap(tokenOffset, token)}
 					onPointerDown={handlePointerDown}
 				>

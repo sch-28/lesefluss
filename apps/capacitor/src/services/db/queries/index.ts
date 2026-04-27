@@ -19,6 +19,14 @@ import {
 } from "./books";
 import { getLastDevice, saveDevice } from "./devices";
 import {
+	addEntry,
+	deleteEntriesByBook,
+	deleteEntry,
+	getAllEntries,
+	getEntriesForBook,
+	updateEntry,
+} from "./glossary";
+import {
 	addHighlight,
 	deleteHighlight,
 	deleteHighlightsByBook,
@@ -58,4 +66,12 @@ export const queries = {
 	updateHighlight,
 	deleteHighlight,
 	deleteHighlightsByBook,
+
+	// Glossary
+	getEntriesForBook,
+	getAllEntries,
+	addEntry,
+	updateEntry,
+	deleteEntry,
+	deleteEntriesByBook,
 };

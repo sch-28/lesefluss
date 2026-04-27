@@ -20,6 +20,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 		paginationStyle,
 		showReadingTime,
 		showActiveWordUnderline,
+		showGlossaryUnderline,
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
@@ -27,6 +28,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,
+		setShowGlossaryUnderline,
 	} = useAppearanceSettings();
 
 	return (
@@ -172,6 +174,16 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 							onClick={() => setShowActiveWordUnderline(!showActiveWordUnderline)}
 						>
 							{showActiveWordUnderline ? "On" : "Off"}
+						</button>
+					</div>
+					<div className="ap-row">
+						<span className="ap-row-label">Glossary highlights</span>
+						<button
+							type="button"
+							className={showGlossaryUnderline ? "ap-chip ap-chip--active" : "ap-chip"}
+							onClick={() => setShowGlossaryUnderline(!showGlossaryUnderline)}
+						>
+							{showGlossaryUnderline ? "On" : "Off"}
 						</button>
 					</div>
 				</div>

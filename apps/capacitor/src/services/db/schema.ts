@@ -39,6 +39,9 @@ export const settings = sqliteTable("settings", {
 	readerActiveWordUnderline: integer("reader_active_word_underline", { mode: "boolean" })
 		.notNull()
 		.default(true),
+	readerGlossaryUnderline: integer("reader_glossary_underline", { mode: "boolean" })
+		.notNull()
+		.default(true),
 	showReadingTime: integer("show_reading_time", { mode: "boolean" }).notNull().default(true),
 	defaultReaderMode: text("default_reader_mode")
 		.$type<"scroll" | "rsvp">()
@@ -49,6 +52,7 @@ export const settings = sqliteTable("settings", {
 		.notNull()
 		.default(false),
 	appFontSize: integer("app_font_size").notNull().default(16),
+	lastSeenChangelogDate: text("last_seen_changelog_date").notNull().default(""),
 	updatedAt: integer("updated_at").notNull(),
 });
 
@@ -122,3 +126,20 @@ export type Chapter = { title: string; startByte: number };
 
 export type Highlight = typeof highlights.$inferSelect;
 export type NewHighlight = typeof highlights.$inferInsert;
+
+/**
+ * Glossary entries — per-book or global recurring-name notes.
+ * `bookId` nullable: NULL = global (matches in every book), non-null = book-scoped.
+ */
+export const glossaryEntries = sqliteTable("glossary_entries", {
+	id: text("id").primaryKey(),
+	bookId: text("book_id"), // null = global
+	label: text("label").notNull(),
+	notes: text("notes"),
+	color: text("color").notNull(),
+	createdAt: integer("created_at").notNull(),
+	updatedAt: integer("updated_at").notNull(),
+});
+
+export type GlossaryEntry = typeof glossaryEntries.$inferSelect;
+export type NewGlossaryEntry = typeof glossaryEntries.$inferInsert;

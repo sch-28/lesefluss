@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from "@lesefluss/rsvp-core";
+import { changelog, DEFAULT_SETTINGS } from "@lesefluss/rsvp-core";
 import { eq } from "drizzle-orm";
 import { db } from "../index";
 import { type Settings, settings } from "../schema";
@@ -35,11 +35,15 @@ export async function getSettings(): Promise<Settings> {
 		readerLineSpacing: DEFAULT_SETTINGS.READER_LINE_SPACING,
 		readerMargin: DEFAULT_SETTINGS.READER_MARGIN,
 		readerActiveWordUnderline: DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE,
+		readerGlossaryUnderline: DEFAULT_SETTINGS.READER_GLOSSARY_UNDERLINE,
 		showReadingTime: DEFAULT_SETTINGS.SHOW_READING_TIME,
 		defaultReaderMode: DEFAULT_SETTINGS.DEFAULT_READER_MODE,
 		paginationStyle: DEFAULT_SETTINGS.PAGINATION_STYLE,
 		onboardingCompleted: DEFAULT_SETTINGS.ONBOARDING_COMPLETED,
 		appFontSize: DEFAULT_SETTINGS.APP_FONT_SIZE,
+		// Fresh installs start "caught up" — only changelog entries published
+		// after install will appear in the What's New dialog.
+		lastSeenChangelogDate: changelog[0]?.date ?? "",
 		updatedAt: Date.now(),
 	};
 

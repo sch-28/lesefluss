@@ -3,15 +3,16 @@ import {
 	pick,
 	SYNCED_SETTING_KEYS,
 	type SyncBook,
+	type SyncGlossaryEntry,
 	type SyncHighlight,
 	type SyncPayload,
 	type SyncResponse,
 	type SyncSettings,
 } from "@lesefluss/rsvp-core";
 import { log } from "../../utils/log";
-import { bookKeys, settingsKeys } from "../db/hooks/query-keys";
+import { bookKeys, glossaryKeys, settingsKeys } from "../db/hooks/query-keys";
 import { queries } from "../db/queries";
-import type { Book, BookContent, Highlight, Settings } from "../db/schema";
+import type { Book, BookContent, GlossaryEntry, Highlight, Settings } from "../db/schema";
 import { queryClient } from "../query-client";
 import { SYNC_URL } from "./auth-client";
 
@@ -223,6 +224,19 @@ function highlightToSync(h: Highlight): SyncHighlight {
 	};
 }
 
+function entryToSync(e: GlossaryEntry): SyncGlossaryEntry {
+	return {
+		entryId: e.id,
+		bookId: e.bookId,
+		label: e.label,
+		notes: e.notes,
+		color: e.color,
+		deleted: false,
+		createdAt: e.createdAt,
+		updatedAt: e.updatedAt,
+	};
+}
+
 // ---------------------------------------------------------------------------
 // Sync lock - prevents concurrent pull/push from racing
 // ---------------------------------------------------------------------------
@@ -404,10 +418,52 @@ export async function pullSync(): Promise<Set<string>> {
 			}
 		}
 
+		// --- Merge glossary entries ---
+		const localEntries = await queries.getAllEntries();
+		const localEntryMap = new Map(localEntries.map((e) => [e.id, e]));
+
+		for (const serverEntry of data.glossaryEntries ?? []) {
+			if (serverEntry.deleted) {
+				if (localEntryMap.has(serverEntry.entryId)) {
+					await queries.deleteEntry(serverEntry.entryId);
+					changed = true;
+				}
+				continue;
+			}
+
+			// Book-scoped entries for unknown books are skipped (orphan guard);
+			// global entries (bookId === null) always merge.
+			if (serverEntry.bookId !== null && !localBookMap.has(serverEntry.bookId)) continue;
+
+			const local = localEntryMap.get(serverEntry.entryId);
+			if (!local) {
+				await queries.addEntry({
+					id: serverEntry.entryId,
+					bookId: serverEntry.bookId,
+					label: serverEntry.label,
+					notes: serverEntry.notes,
+					color: serverEntry.color,
+					createdAt: serverEntry.createdAt,
+					updatedAt: serverEntry.updatedAt,
+				});
+				changed = true;
+			} else if (serverEntry.updatedAt > local.updatedAt) {
+				await queries.updateEntry(serverEntry.entryId, {
+					label: serverEntry.label,
+					notes: serverEntry.notes,
+					color: serverEntry.color,
+					bookId: serverEntry.bookId,
+					updatedAt: serverEntry.updatedAt,
+				});
+				changed = true;
+			}
+		}
+
 		// Invalidate React Query cache so UI reflects pulled changes
 		if (changed) {
 			queryClient.invalidateQueries({ queryKey: bookKeys.all });
 			queryClient.invalidateQueries({ queryKey: settingsKeys.all });
+			queryClient.invalidateQueries({ queryKey: glossaryKeys.all });
 		}
 
 		log("sync", "pull complete");
@@ -432,10 +488,11 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 	await withSyncLock(async () => {
 		log("sync", "pushing...");
 
-		const [books, settings, highlights] = await Promise.all([
+		const [books, settings, highlights, glossaryEntries] = await Promise.all([
 			queries.getBooksForSync(),
 			queries.getSettings(),
 			queries.getAllHighlights(),
+			queries.getAllEntries(),
 		]);
 
 		// Fetch content only for books the server doesn't have yet (tombstones never carry content)
@@ -453,6 +510,7 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 			books: booksWithContent,
 			settings: settingsToSync(settings),
 			highlights: highlights.map(highlightToSync),
+			glossaryEntries: glossaryEntries.map(entryToSync),
 		};
 
 		await syncFetch("/api/sync", {

@@ -29,11 +29,13 @@ export const DEFAULT_SETTINGS = {
 	READER_LINE_SPACING: 1.8, // line-height multiplier (1.2–2.4)
 	READER_MARGIN: 20, // horizontal padding px (8–48)
 	READER_ACTIVE_WORD_UNDERLINE: true, // underline the currently active word in the scroll reader
+	READER_GLOSSARY_UNDERLINE: true, // underline words that match a glossary entry label
 	SHOW_READING_TIME: true, // show time remaining in progress bar
 	DEFAULT_READER_MODE: "scroll", // 'scroll' | 'rsvp' - mode to open books in
 	PAGINATION_STYLE: "scroll", // 'scroll' | 'page' - layout for the standard (non-RSVP) reader
 	ONBOARDING_COMPLETED: false, // first-run onboarding completed on this device
 	APP_FONT_SIZE: 16, // px (12–22) - root font-size driving rem-scaled UI
+	LAST_SEEN_CHANGELOG_DATE: "", // ISO date of newest changelog entry user has seen ('' = never)
 } as const;
 
 /**
@@ -76,6 +78,7 @@ export const SYNCED_SETTING_KEYS = [
 	"readerMargin",
 	"showReadingTime",
 	"readerActiveWordUnderline",
+	"readerGlossaryUnderline",
 	"defaultReaderMode",
 	"paginationStyle",
 ] as const satisfies readonly (keyof Omit<SyncSettings, "updatedAt">)[];

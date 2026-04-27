@@ -48,7 +48,12 @@ import {
 	useState,
 } from "react";
 import { flushSync } from "react-dom";
-import { cancelAnyActiveLongPress, type HighlightRange } from "../paragraph";
+import {
+	cancelAnyActiveLongPress,
+	type GlossaryRangeProp,
+	type HighlightRange,
+	LONG_PRESS_MS,
+} from "../paragraph";
 import type { ReaderViewHandle } from "../view-types";
 import ChunkContent from "./chunk-content";
 import {
@@ -85,6 +90,7 @@ export interface PageViewProps {
 	// Active highlight + per-paragraph annotation data (passed to <Paragraph>).
 	activeOffset: number;
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
+	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	selectionRange: { start: number; end: number } | null;
 	isSelecting: boolean;
 
@@ -113,6 +119,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		showActiveWordUnderline,
 		activeOffset,
 		highlightsByParagraph,
+		glossaryByParagraph,
 		selectionRange,
 		isSelecting,
 		onWordTap,
@@ -131,9 +138,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	);
 
 	// ── State ──────────────────────────────────────────────────────────────
-	const [chunkIndex, setChunkIndex] = useState(() =>
-		findChunkForByte(chunks, initialByteOffset),
-	);
+	const [chunkIndex, setChunkIndex] = useState(() => findChunkForByte(chunks, initialByteOffset));
 	const [pageIndex, setPageIndex] = useState(0);
 	const [chunkWidths, setChunkWidths] = useState<ReadonlyMap<number, number>>(() => new Map());
 	const [viewport, setViewport] = useState<{ w: number; h: number } | null>(null);
@@ -152,6 +157,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	const dragRef = useRef<{
 		originX: number;
 		originY: number;
+		originT: number;
 		baseTranslate: number;
 		isHorizontal: boolean | null;
 		pointerId: number;
@@ -417,7 +423,16 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		if (pageIndex < currentPageCount - 1) goToPage(pageIndex + 1);
 		else if (chunkIndex < chunks.length - 1) crossToNeighbor(1);
 		else animateTo(computeTransform()); // snap back from rubber-band at end
-	}, [pageIndex, currentPageCount, chunkIndex, chunks.length, goToPage, crossToNeighbor, animateTo, computeTransform]);
+	}, [
+		pageIndex,
+		currentPageCount,
+		chunkIndex,
+		chunks.length,
+		goToPage,
+		crossToNeighbor,
+		animateTo,
+		computeTransform,
+	]);
 
 	const goPrev = useCallback(() => {
 		if (pageIndex > 0) goToPage(pageIndex - 1);
@@ -476,6 +491,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		dragRef.current = {
 			originX: e.clientX,
 			originY: e.clientY,
+			originT: e.timeStamp,
 			baseTranslate,
 			isHorizontal: null,
 			pointerId: e.pointerId,
@@ -497,6 +513,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				return;
 			}
 			cancelAnyActiveLongPress();
+			if (isSelecting) onCancelSelection();
 			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		}
 
@@ -518,10 +535,19 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 
 		const dx = d ? e.clientX - d.originX : 0;
 		const dy = d ? e.clientY - d.originY : 0;
+		const dt = d ? e.timeStamp - d.originT : 0;
 		const wasHorizontalDrag = d?.isHorizontal === true;
 
+		// A release that exceeded the long-press hold time is not a tap — the
+		// long-press handler already fired and entered selection mode, so we
+		// must not let the "tap-elsewhere dismisses selection" branch below
+		// cancel the selection the user just created.
+		const wasLongPress = dt >= LONG_PRESS_MS;
 		const isTap =
-			!wasHorizontalDrag && Math.abs(dx) < TAP_THRESHOLD_PX && Math.abs(dy) < TAP_THRESHOLD_PX;
+			!wasHorizontalDrag &&
+			!wasLongPress &&
+			Math.abs(dx) < TAP_THRESHOLD_PX &&
+			Math.abs(dy) < TAP_THRESHOLD_PX;
 		if (isTap) {
 			if (isSelecting) {
 				onCancelSelection();
@@ -596,8 +622,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 							if (!chunk) return null;
 							// Pass the real activeOffset only to the chunk that contains
 							// it — others get -1 so taps don't re-render the entire window.
-							const isActiveChunk =
-								activeOffset >= chunk.startByte && activeOffset < chunk.endByte;
+							const isActiveChunk = activeOffset >= chunk.startByte && activeOffset < chunk.endByte;
 							return (
 								<ChunkContent
 									key={idx}
@@ -616,6 +641,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									lang="en"
 									activeOffset={isActiveChunk ? activeOffset : -1}
 									highlightsByParagraph={highlightsByParagraph}
+									glossaryByParagraph={glossaryByParagraph}
 									selectionRange={selectionRange}
 									onWordTap={onWordTap}
 									onWordLongPress={onWordLongPress}

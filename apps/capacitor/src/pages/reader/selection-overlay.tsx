@@ -24,6 +24,7 @@ interface Props {
 	onColorChange: (color: HighlightColor) => void;
 	onNote: () => void;
 	onLookup: () => void;
+	onAddToGlossary: () => void;
 	onCancel: () => void;
 	onStartHandlePointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
 	onEndHandlePointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -39,6 +40,7 @@ const SelectionOverlay: React.FC<Props> = ({
 	onColorChange,
 	onNote,
 	onLookup,
+	onAddToGlossary,
 	onCancel,
 	onStartHandlePointerDown,
 	onEndHandlePointerDown,
@@ -53,6 +55,7 @@ const SelectionOverlay: React.FC<Props> = ({
 					onColorChange={onColorChange}
 					onNote={onNote}
 					onLookup={onLookup}
+					onAddToGlossary={onAddToGlossary}
 					onCancel={onCancel}
 				/>
 			)}

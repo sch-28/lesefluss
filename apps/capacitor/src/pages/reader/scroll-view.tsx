@@ -15,7 +15,11 @@ import type React from "react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { VListHandle } from "virtua";
 import { VList } from "virtua";
-import Paragraph, { cancelAnyActiveLongPress, type HighlightRange } from "./paragraph";
+import Paragraph, {
+	cancelAnyActiveLongPress,
+	type GlossaryRangeProp,
+	type HighlightRange,
+} from "./paragraph";
 import type { ReaderViewHandle } from "./view-types";
 
 // ─── Module-level singletons ─────────────────────────────────────────────────
@@ -184,6 +188,7 @@ export interface ScrollViewProps {
 	// Active highlight + per-paragraph annotation data (passed straight to <Paragraph>).
 	activeOffset: number;
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
+	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	selectionRange: { start: number; end: number } | null;
 
 	// Word interaction
@@ -220,6 +225,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		showActiveWordUnderline,
 		activeOffset,
 		highlightsByParagraph,
+		glossaryByParagraph,
 		selectionRange,
 		onWordTap,
 		onWordLongPress,
@@ -458,6 +464,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 							onWordLongPress={onWordLongPress}
 							onWordMouseDragStart={onWordMouseDragStart}
 							highlights={highlightsByParagraph?.get(i)}
+							glossaryRanges={glossaryByParagraph?.get(i)}
 							selectionRange={selectionRange}
 							showActiveWordUnderline={showActiveWordUnderline}
 						/>

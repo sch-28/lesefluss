@@ -18,11 +18,13 @@ import {
 	colorPaletteOutline,
 	globeOutline,
 	hardwareChipOutline,
+	megaphoneOutline,
 	sparklesOutline,
 } from "ionicons/icons";
 import type React from "react";
 import { useHistory } from "react-router-dom";
 import BLEIndicator from "../components/ble-indicator";
+import { SHOW_WHATS_NEW_EVENT } from "../components/whats-new-modal";
 import { useBLE } from "../contexts/ble-context";
 import { useSyncContext } from "../contexts/sync-context";
 import { useTheme } from "../contexts/theme-context";
@@ -42,6 +44,8 @@ const Settings: React.FC = () => {
 	const isTransitioning =
 		connectionState === BLEConnectionState.CONNECTING ||
 		connectionState === BLEConnectionState.DISCONNECTING;
+
+	const showWhatsNew = () => window.dispatchEvent(new Event(SHOW_WHATS_NEW_EVENT));
 
 	// Build subtitles
 	const rsvpSubtitle = settings
@@ -172,6 +176,15 @@ const Settings: React.FC = () => {
 							/>
 						</IonItem>
 					)}
+
+					<IonItem button detail={false} onClick={showWhatsNew}>
+						<IonIcon icon={megaphoneOutline} slot="start" color="medium" />
+						<IonLabel>
+							<h2>What's new</h2>
+							<p>See recent updates</p>
+						</IonLabel>
+						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
+					</IonItem>
 
 					<IonItem button detail={false} onClick={() => history.push("/onboarding")}>
 						<IonIcon icon={sparklesOutline} slot="start" color="medium" />

@@ -6,7 +6,7 @@
  */
 
 import { IonIcon } from "@ionic/react";
-import { closeOutline, createOutline, searchOutline } from "ionicons/icons";
+import { bookmarkOutline, closeOutline, createOutline, searchOutline } from "ionicons/icons";
 import React from "react";
 
 export const HIGHLIGHT_COLORS = ["yellow", "blue", "orange", "pink"] as const;
@@ -28,11 +28,15 @@ interface SelectionToolbarProps {
 	onColorChange: (color: HighlightColor) => void;
 	onNote: () => void;
 	onLookup: () => void;
+	onAddToGlossary: () => void;
 	onCancel: () => void;
 }
 
 const SelectionToolbar = React.forwardRef<HTMLDivElement, SelectionToolbarProps>(
-	({ selectedColor, isSingleWord, onColorChange, onNote, onLookup, onCancel }, ref) => {
+	(
+		{ selectedColor, isSingleWord, onColorChange, onNote, onLookup, onAddToGlossary, onCancel },
+		ref,
+	) => {
 		return (
 			<div ref={ref} className="selection-toolbar">
 				<div className="selection-toolbar-colors">
@@ -68,6 +72,14 @@ const SelectionToolbar = React.forwardRef<HTMLDivElement, SelectionToolbarProps>
 					aria-label="Add note"
 				>
 					<IonIcon icon={createOutline} />
+				</button>
+				<button
+					type="button"
+					className="selection-toolbar-btn"
+					onClick={onAddToGlossary}
+					aria-label="Add to glossary"
+				>
+					<IonIcon icon={bookmarkOutline} />
 				</button>
 				<button
 					type="button"

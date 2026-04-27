@@ -1637,6 +1637,33 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	background: rgba(128, 128, 128, 0.12);
 }
 
+.glossary-modal-context {
+	margin: 12px 0;
+	padding: 8px 12px;
+	border-left: 3px solid var(--ion-color-medium, #999);
+	background: rgba(128, 128, 128, 0.06);
+	border-radius: 4px;
+	font-size: 13px;
+	line-height: 1.45;
+	color: var(--ion-color-step-700, #444);
+}
+.glossary-modal-context mark {
+	background: var(--glossary-mark-bg, rgba(255, 235, 59, 0.45));
+	color: inherit;
+	padding: 0 2px;
+	border-radius: 2px;
+}
+/* Tone the highlight to suit each reader theme. */
+.reader-theme-sepia .glossary-modal-context mark {
+	--glossary-mark-bg: rgba(180, 130, 60, 0.28);
+}
+.reader-theme-light .glossary-modal-context mark {
+	--glossary-mark-bg: rgba(255, 220, 60, 0.5);
+}
+.reader-theme-dark .glossary-modal-context mark {
+	--glossary-mark-bg: rgba(255, 230, 80, 0.32);
+}
+
 .glossary-modal-row {
 	margin: 12px 0;
 }
@@ -1696,35 +1723,24 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	background: var(--reader-progress-track, rgba(128, 128, 128, 0.15));
 }
 
-/* ─── Glossary list (annotations sheet) ──────────────────────────────────── */
+/* ─── Annotations sheet ──────────────────────────────────────────────────── */
 
-.glossary-filter-row {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 8px 12px 4px;
+/* Push the toolbar (and its segment) down so the sheet's drag handle has clear
+ * tap space. IonToolbar exposes its inner padding via the `--padding-top` CSS
+ * variable; setting `padding-top` on the host doesn't move the slotted content. */
+.rsvp-annotations-modal ion-header ion-toolbar {
+	--padding-top: 16px;
+	--min-height: 64px;
 }
-.glossary-filter-row ion-segment {
-	flex: 1;
-}
+
+/* ─── Glossary list (annotations sheet) ──────────────────────────────────── */
 
 ion-item .glossary-avatar {
 	margin-inline-end: 12px;
 }
 
 .glossary-list-label {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-}
-
-.glossary-list-global-pill {
-	font-size: 11px;
 	font-weight: 500;
-	padding: 1px 6px;
-	border-radius: 4px;
-	background: rgba(128, 128, 128, 0.18);
-	color: var(--ion-color-step-600, #666);
 }
 
 .glossary-list-notes {

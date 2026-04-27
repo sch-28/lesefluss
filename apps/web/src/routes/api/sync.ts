@@ -1,6 +1,7 @@
 import {
 	pick,
 	SYNCED_SETTING_KEYS,
+	type SyncGlossaryEntry,
 	type SyncHighlight,
 	type SyncPayload,
 	SyncPayloadSchema,
@@ -10,7 +11,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { db } from "~/db";
-import { syncBooks, syncHighlights, syncSettings } from "~/db/schema";
+import { syncBooks, syncGlossaryEntries, syncHighlights, syncSettings } from "~/db/schema";
 import { cors } from "~/lib/cors-middleware";
 import { checkLimit } from "~/lib/rate-limit";
 import { requireAuth } from "~/lib/session-middleware";
@@ -61,10 +62,11 @@ async function getUserSyncData(
 		deleted: syncBooks.deleted,
 		updatedAt: syncBooks.updatedAt,
 	};
-	const [books, settingsRows, highlights] = await Promise.all([
+	const [books, settingsRows, highlights, glossaryRows] = await Promise.all([
 		db.select(metadataCols).from(syncBooks).where(eq(syncBooks.userId, userId)),
 		db.select().from(syncSettings).where(eq(syncSettings.userId, userId)),
 		db.select().from(syncHighlights).where(eq(syncHighlights.userId, userId)),
+		db.select().from(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId)),
 	]);
 
 	// Fetch content only for books the client doesn't have locally and which aren't tombstoned
@@ -137,6 +139,19 @@ async function getUserSyncData(
 					createdAt: toMs(h.createdAt),
 					updatedAt: toMs(h.updatedAt),
 				}) as SyncHighlight,
+		),
+		glossaryEntries: glossaryRows.map(
+			(e) =>
+				({
+					entryId: e.entryId,
+					bookId: e.bookId,
+					label: e.label,
+					notes: e.notes,
+					color: e.color,
+					deleted: e.deleted,
+					createdAt: toMs(e.createdAt),
+					updatedAt: toMs(e.updatedAt),
+				}) as SyncGlossaryEntry,
 		),
 	};
 }
@@ -297,6 +312,55 @@ export const Route = createFileRoute("/api/sync")({
 							.update(syncHighlights)
 							.set({ deleted: true, updatedAt: new Date() })
 							.where(and(eq(syncHighlights.userId, userId), eq(syncHighlights.deleted, false)));
+					}
+
+					// --- Glossary entries: batched upsert + tombstone missing ---
+					if (payload.glossaryEntries.length > 0) {
+						await tx
+							.insert(syncGlossaryEntries)
+							.values(
+								payload.glossaryEntries.map((e) => ({
+									userId,
+									entryId: e.entryId,
+									bookId: e.bookId,
+									label: e.label,
+									notes: e.notes,
+									color: e.color,
+									deleted: e.deleted,
+									createdAt: toDate(e.createdAt),
+									updatedAt: toDate(e.updatedAt),
+								})),
+							)
+							.onConflictDoUpdate({
+								target: [syncGlossaryEntries.userId, syncGlossaryEntries.entryId],
+								set: {
+									bookId: sql`excluded.book_id`,
+									label: sql`excluded.label`,
+									notes: sql`excluded.notes`,
+									color: sql`excluded.color`,
+									deleted: sql`excluded.deleted`,
+									updatedAt: sql`excluded.updated_at`,
+								},
+							});
+
+						const pushIds = payload.glossaryEntries.map((e) => e.entryId);
+						await tx
+							.update(syncGlossaryEntries)
+							.set({ deleted: true, updatedAt: new Date() })
+							.where(
+								and(
+									eq(syncGlossaryEntries.userId, userId),
+									eq(syncGlossaryEntries.deleted, false),
+									notInArray(syncGlossaryEntries.entryId, pushIds),
+								),
+							);
+					} else {
+						await tx
+							.update(syncGlossaryEntries)
+							.set({ deleted: true, updatedAt: new Date() })
+							.where(
+								and(eq(syncGlossaryEntries.userId, userId), eq(syncGlossaryEntries.deleted, false)),
+							);
 					}
 				});
 

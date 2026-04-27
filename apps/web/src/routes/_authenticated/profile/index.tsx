@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, BookOpen, MessageSquare, Settings } from "lucide-react";
+import { ArrowRight, BookOpen, Globe, MessageSquare, Settings } from "lucide-react";
 import * as React from "react";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
@@ -48,6 +48,7 @@ function formatMemberSince(date: Date | string): string {
 function StatsSection({
 	bookCount,
 	highlightCount,
+	glossaryCount,
 	lastSynced,
 	booksFinished,
 	wordsRead,
@@ -55,6 +56,7 @@ function StatsSection({
 }: {
 	bookCount: number;
 	highlightCount: number;
+	glossaryCount: number;
 	lastSynced: number | null;
 	booksFinished: number;
 	wordsRead: number;
@@ -65,6 +67,7 @@ function StatsSection({
 		{ label: "Finished", value: booksFinished },
 		{ label: "Words read", value: formatWords(wordsRead) },
 		{ label: "Highlights", value: highlightCount },
+		{ label: "Glossary", value: glossaryCount },
 		{ label: "Last synced", value: lastSynced ? formatRelative(lastSynced) : "Never" },
 		{ label: "Member since", value: formatMemberSince(memberSince) },
 	];
@@ -216,6 +219,61 @@ function HighlightsSection({ highlights }: { highlights: ProfileHighlight[] }) {
 	);
 }
 
+type ProfileGlossaryEntry = {
+	entryId: string;
+	bookId: string | null;
+	label: string;
+	notes: string | null;
+	color: string;
+	updatedAt: number;
+	bookTitle: string | null;
+};
+
+const GLOSSARY_PAGE_SIZE = 25;
+
+function GlossarySection({ entries }: { entries: ProfileGlossaryEntry[] }) {
+	const [showAll, setShowAll] = React.useState(false);
+	const visible = showAll ? entries : entries.slice(0, GLOSSARY_PAGE_SIZE);
+	const remaining = Math.max(0, entries.length - GLOSSARY_PAGE_SIZE);
+
+	return (
+		<section className="space-y-4">
+			<h2 className="font-semibold text-base">Glossary</h2>
+			{entries.length === 0 ? (
+				<p className="text-muted-foreground text-sm">No glossary entries yet.</p>
+			) : (
+				<>
+					<div className="space-y-3">
+						{visible.map((e) => (
+							<div key={e.entryId} className="flex gap-3 rounded-lg border bg-muted/30 p-4">
+								<div className="mt-0.5 w-1 shrink-0 rounded-full" style={{ background: e.color }} />
+								<div className="min-w-0 flex-1 space-y-1.5">
+									<p className="flex items-center gap-2 font-medium text-foreground text-sm">
+										{e.label}
+										{e.bookId === null && (
+											<span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-primary text-xs">
+												<Globe className="size-3" />
+												Global
+											</span>
+										)}
+									</p>
+									{e.notes && <p className="text-muted-foreground text-sm">{e.notes}</p>}
+									{e.bookTitle && <p className="text-muted-foreground/60 text-xs">{e.bookTitle}</p>}
+								</div>
+							</div>
+						))}
+					</div>
+					{!showAll && remaining > 0 && (
+						<Button variant="outline" size="sm" onClick={() => setShowAll(true)}>
+							Show {remaining} more
+						</Button>
+					)}
+				</>
+			)}
+		</section>
+	);
+}
+
 function OpenAppCard() {
 	return (
 		<a
@@ -245,11 +303,13 @@ function ProfilePage() {
 		user,
 		bookCount,
 		highlightCount,
+		glossaryCount,
 		lastSynced,
 		booksFinished,
 		wordsRead,
 		books,
 		highlights,
+		glossaryEntries,
 	} = Route.useLoaderData();
 
 	return (
@@ -271,6 +331,7 @@ function ProfilePage() {
 				<StatsSection
 					bookCount={bookCount}
 					highlightCount={highlightCount}
+					glossaryCount={glossaryCount}
 					lastSynced={lastSynced}
 					booksFinished={booksFinished}
 					wordsRead={wordsRead}
@@ -284,6 +345,8 @@ function ProfilePage() {
 				)}
 				<Separator />
 				<HighlightsSection highlights={highlights} />
+				<Separator />
+				<GlossarySection entries={glossaryEntries} />
 				<OpenAppCard />
 			</div>
 		</div>

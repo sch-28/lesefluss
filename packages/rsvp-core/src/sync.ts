@@ -68,6 +68,7 @@ export const SyncSettingsSchema = z.object({
 		.max(SETTING_CONSTRAINTS.READER_MARGIN.max),
 	showReadingTime: z.boolean(),
 	readerActiveWordUnderline: z.boolean().optional().default(true),
+	readerGlossaryUnderline: z.boolean().optional().default(true),
 	defaultReaderMode: z.enum(["scroll", "rsvp"]),
 	paginationStyle: z.enum(["scroll", "page"]),
 	updatedAt: z.number().int().nonnegative(),
@@ -90,10 +91,26 @@ export const SyncHighlightSchema = z
 		message: "endOffset must be >= startOffset",
 	});
 
+export const SyncGlossaryEntrySchema = z.object({
+	entryId: z.string().min(1).max(64),
+	// Nullable: null = global entry (matches in every book), non-null = book-scoped
+	bookId: z
+		.string()
+		.regex(/^[0-9a-f]{8}$/)
+		.nullable(),
+	label: z.string().min(1).max(200),
+	notes: z.string().max(5000).nullable(),
+	color: z.string().max(32),
+	deleted: z.boolean(),
+	createdAt: z.number().int().nonnegative(),
+	updatedAt: z.number().int().nonnegative(),
+});
+
 export const SyncPayloadSchema = z.object({
 	books: z.array(SyncBookSchema).max(500),
 	settings: SyncSettingsSchema.nullable(),
 	highlights: z.array(SyncHighlightSchema).max(5000),
+	glossaryEntries: z.array(SyncGlossaryEntrySchema).max(5000).optional().default([]),
 });
 
 // ---------------------------------------------------------------------------
@@ -103,6 +120,7 @@ export const SyncPayloadSchema = z.object({
 export type SyncBook = z.infer<typeof SyncBookSchema>;
 export type SyncSettings = z.infer<typeof SyncSettingsSchema>;
 export type SyncHighlight = z.infer<typeof SyncHighlightSchema>;
+export type SyncGlossaryEntry = z.infer<typeof SyncGlossaryEntrySchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 
 /** Server response shape - same as SyncPayload but settings is always present or null */
@@ -110,4 +128,5 @@ export type SyncResponse = {
 	books: SyncBook[];
 	settings: SyncSettings | null;
 	highlights: SyncHighlight[];
+	glossaryEntries: SyncGlossaryEntry[];
 };

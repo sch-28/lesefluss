@@ -30,48 +30,55 @@ import {
 	IonContent,
 	IonHeader,
 	IonIcon,
-	IonItem,
-	IonLabel,
-	IonList,
 	IonModal,
 	IonPage,
 	IonSpinner,
 	IonTitle,
 	IonToolbar,
+	useIonViewWillLeave,
 } from "@ionic/react";
 import type { RsvpSettings } from "@lesefluss/rsvp-core";
 import { DEFAULT_SETTINGS } from "@lesefluss/rsvp-core";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-	bookmarkOutline,
+	bookmarksOutline,
 	flashOffOutline,
 	flashOutline,
-	listOutline,
 	readerOutline,
 	searchOutline,
 } from "ionicons/icons";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RouteComponentProps } from "react-router-dom";
+import { toast } from "../../components/toast";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useTheme } from "../../contexts/theme-context";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
-import type { Chapter } from "../../services/db/schema";
+import type { Chapter, GlossaryEntry } from "../../services/db/schema";
 import { pushSync, scheduleSyncPush } from "../../services/sync";
 import { formatReadingTime } from "../../utils/reading-time";
+import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
 import DictionaryModal from "./dictionary-modal";
+import { colorFromLabel } from "./glossary-avatar";
+import GlossaryEntryModal from "./glossary-entry-modal";
+import { generateGlossaryId } from "./glossary-utils";
 import HighlightModal from "./highlight-modal";
-import HighlightsListModal from "./highlights-list-modal";
 import PageView from "./page-view";
 import { getWordOffsets, utf8ByteLength } from "./paragraph";
 import RsvpView from "./rsvp-view";
 import ScrollView, { ReaderSkeleton } from "./scroll-view";
 import SearchModal from "./search-modal";
 import SelectionOverlay from "./selection-overlay";
+import {
+	findFirstMention,
+	findNextMention,
+	getMentionContext,
+	useGlossaryDecorations,
+} from "./use-glossary-decorations";
 import { useHighlightSelection } from "./use-highlight-selection";
 import { useScrubProgress } from "./use-scrub-progress";
 import type { ReaderViewHandle } from "./view-types";
@@ -97,9 +104,19 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const { data: contentRow, isPending: contentPending } = queryHooks.useBookContent(id);
 	const content = contentRow?.content ?? null;
 	const { data: highlightRows = [] } = queryHooks.useHighlights(id);
+	const { data: glossaryEntries = [] } = queryHooks.useGlossary(id);
+	const addGlossaryEntry = queryHooks.useAddGlossaryEntry();
+	const updateGlossaryEntry = queryHooks.useUpdateGlossaryEntry();
+	const deleteGlossaryEntry = queryHooks.useDeleteGlossaryEntry();
 
 	const { theme } = useTheme();
-	const [tocOpen, setTocOpen] = useState(false);
+	const [annotationsOpen, setAnnotationsOpen] = useState(false);
+	const [editingGlossaryEntry, setEditingGlossaryEntry] = useState<GlossaryEntry | null>(null);
+	// Tracks entry IDs that exist only in component state, not in SQLite yet.
+	// "Add" creates one of these so we don't push an empty-label row to sync
+	// (which would fail SyncGlossaryEntrySchema validation and break the whole payload).
+	// First non-empty label commit promotes the draft to a real DB row.
+	const draftGlossaryIdsRef = useRef<Set<string>>(new Set());
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [searchInitialQuery, setSearchInitialQuery] = useState<string | undefined>(undefined);
 	const [selectedWord, setSelectedWord] = useState<string | null>(null);
@@ -226,6 +243,8 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const readerMargin = dbSettings?.readerMargin ?? DEFAULT_SETTINGS.READER_MARGIN;
 	const readerActiveWordUnderline =
 		dbSettings?.readerActiveWordUnderline ?? DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE;
+	const readerGlossaryUnderline =
+		dbSettings?.readerGlossaryUnderline ?? DEFAULT_SETTINGS.READER_GLOSSARY_UNDERLINE;
 	const paginationStyle = dbSettings?.paginationStyle ?? DEFAULT_SETTINGS.PAGINATION_STYLE;
 
 	// ── Apply default reader mode once settings + book are loaded ─────────
@@ -302,6 +321,29 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		paragraphOffsets,
 	});
 
+	// ── Glossary inline-underline decorations ──────────────────────────────
+	const glossaryByParagraph = useGlossaryDecorations({
+		entries: glossaryEntries,
+		paragraphs,
+		paragraphOffsets,
+		enabled: readerGlossaryUnderline,
+	});
+
+	/** Find any glossary range covering this byte offset (used by tap handlers). */
+	const findGlossaryAt = useCallback(
+		(offset: number): GlossaryEntry | undefined => {
+			for (const ranges of glossaryByParagraph.values()) {
+				for (const r of ranges) {
+					if (offset >= r.startOffset && offset <= r.endOffset) {
+						return glossaryEntries.find((e) => e.id === r.entryId);
+					}
+				}
+			}
+			return undefined;
+		},
+		[glossaryByParagraph, glossaryEntries],
+	);
+
 	// ── Progress-bar scrub gestures ───────────────────────────────────────
 	const scrub = useScrubProgress({
 		book,
@@ -359,15 +401,23 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			}
 
 			if (offset === activeOffset) {
-				// Second tap on the highlighted word
+				// Second tap on the highlighted word.
+				// Glossary takes precedence over dictionary so users can quickly review what
+				// a tracked term is. Highlights still win over glossary because they're
+				// explicit user intent on a specific range.
 				const existing = findHighlightAt(offset);
 				if (existing) {
 					openHighlightEditor(existing);
-				} else {
-					// No existing highlight - open dictionary instead
-					const clean = wordText.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
-					if (clean) setSelectedWord(clean);
+					return;
 				}
+				const glossary = findGlossaryAt(offset);
+				if (glossary) {
+					setEditingGlossaryEntry(glossary);
+					return;
+				}
+				// No annotation here — fall back to dictionary
+				const clean = wordText.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
+				if (clean) setSelectedWord(clean);
 				return;
 			}
 			setActiveOffset(offset);
@@ -383,6 +433,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			cancelSelection,
 			findHighlightAt,
 			openHighlightEditor,
+			findGlossaryAt,
 		],
 	);
 
@@ -406,6 +457,132 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		if (clean) setSelectedWord(clean);
 		sel.cancelSelection();
 	}, [sel]);
+
+	// Long-press → selection toolbar → "Add to glossary" extracts the selected
+	// text snippet. If an entry with the same label already exists (case-insensitive,
+	// global or book-scoped), open it instead of creating a duplicate. Otherwise
+	// create a new entry pre-filled with the snippet — non-empty so it commits to
+	// DB straight away.
+	const handleAddToGlossary = useCallback(() => {
+		const range = sel.selectionRange;
+		if (!range) return;
+		const snippet = sel.extractRangeText(range.start, range.end).trim();
+		if (!snippet) {
+			toast.info("Nothing selected to add to glossary");
+			sel.cancelSelection();
+			return;
+		}
+		const lower = snippet.toLowerCase();
+		const existing = glossaryEntries.find((e) => e.label.toLowerCase() === lower);
+		if (existing) {
+			setEditingGlossaryEntry(existing);
+			sel.cancelSelection();
+			return;
+		}
+		const now = Date.now();
+		const newEntry: GlossaryEntry = {
+			id: generateGlossaryId(),
+			bookId: id,
+			label: snippet,
+			notes: null,
+			color: colorFromLabel(snippet),
+			createdAt: now,
+			updatedAt: now,
+		};
+		addGlossaryEntry.mutate(newEntry, {
+			onSuccess: () => setEditingGlossaryEntry(newEntry),
+		});
+		sel.cancelSelection();
+	}, [sel, id, addGlossaryEntry, glossaryEntries]);
+
+	// "Add" from the annotations sheet — opens a *draft* entry that lives only in
+	// component state. The first label commit promotes it to a DB row. This avoids
+	// pushing empty-label rows that fail SyncGlossaryEntrySchema (label.min(1)).
+	const handleAddEntryFromSheet = useCallback(() => {
+		const now = Date.now();
+		const draft: GlossaryEntry = {
+			id: generateGlossaryId(),
+			bookId: id,
+			label: "",
+			notes: null,
+			color: colorFromLabel(""),
+			createdAt: now,
+			updatedAt: now,
+		};
+		draftGlossaryIdsRef.current.add(draft.id);
+		setAnnotationsOpen(false);
+		setEditingGlossaryEntry(draft);
+	}, [id]);
+
+	const handleGlossarySave = useCallback(
+		(
+			entryId: string,
+			patch: Partial<Pick<GlossaryEntry, "label" | "notes" | "color" | "bookId">>,
+		) => {
+			const now = Date.now();
+			setEditingGlossaryEntry((prev) => {
+				if (!prev || prev.id !== entryId) return prev;
+				const next: GlossaryEntry = { ...prev, ...patch, updatedAt: now };
+				if (draftGlossaryIdsRef.current.has(entryId)) {
+					// Promote to DB row only once the label is non-empty
+					if (next.label.trim().length > 0) {
+						addGlossaryEntry.mutate(next);
+						draftGlossaryIdsRef.current.delete(entryId);
+					}
+				} else {
+					updateGlossaryEntry.mutate({
+						id: entryId,
+						data: { ...patch, updatedAt: now },
+					});
+				}
+				return next;
+			});
+		},
+		[addGlossaryEntry, updateGlossaryEntry],
+	);
+
+	const handleGlossaryDelete = useCallback(
+		(entryId: string) => {
+			if (draftGlossaryIdsRef.current.has(entryId)) {
+				// Never made it to the DB — just discard
+				draftGlossaryIdsRef.current.delete(entryId);
+				return;
+			}
+			deleteGlossaryEntry.mutate({ id: entryId });
+		},
+		[deleteGlossaryEntry],
+	);
+
+	// On modal close, if a draft was abandoned without a label, drop it silently.
+	const handleGlossaryModalClose = useCallback(() => {
+		setEditingGlossaryEntry((prev) => {
+			if (prev && draftGlossaryIdsRef.current.has(prev.id)) {
+				draftGlossaryIdsRef.current.delete(prev.id);
+			}
+			return null;
+		});
+	}, []);
+
+	const editingMentionContext = useMemo(
+		() => (editingGlossaryEntry ? getMentionContext(editingGlossaryEntry.label, paragraphs) : null),
+		[editingGlossaryEntry, paragraphs],
+	);
+
+	const handleJumpFirstMention = useCallback(
+		(label: string) => {
+			const offset = findFirstMention(label, paragraphs, paragraphOffsets);
+			if (offset !== null) jumpToOffset(offset);
+		},
+		[paragraphs, paragraphOffsets, jumpToOffset],
+	);
+
+	const handleJumpNextMention = useCallback(
+		(label: string) => {
+			const offset = findNextMention(label, activeOffset, paragraphs, paragraphOffsets);
+			if (offset !== null) jumpToOffset(offset);
+		},
+		[paragraphs, paragraphOffsets, jumpToOffset, activeOffset],
+	);
 
 	// ── Mouse drag-to-select ──────────────────────────────────────────────
 	// Desktop equivalent of long-press: pointerdown on a word + mousemove > 8px
@@ -535,7 +712,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			} else {
 				jumpToOffset(startByte);
 			}
-			setTocOpen(false);
 		},
 		[readerMode, jumpToOffset, exitRsvpToStandard],
 	);
@@ -589,6 +765,14 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			document.body.classList.remove("reader-open");
 		};
 	}, []);
+
+	// Drop any in-progress selection at the *start* of a leave transition (back
+	// gesture, programmatic nav). The selection toolbar/handles render via a
+	// portal on document.body, so without this they'd stay pinned in place
+	// while the page slides out and visibly flash over the next page.
+	useIonViewWillLeave(() => {
+		sel.cancelSelection();
+	});
 
 	// touch-action: none is applied directly to the handle elements via CSS
 	// so the scroll container remains scrollable during selection mode.
@@ -696,19 +880,13 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						>
 							<IonIcon slot="icon-only" icon={searchOutline} />
 						</IonButton>
-						{chapters.length > 0 && (
-							<IonButton onClick={() => setTocOpen(true)} aria-label="Table of contents">
-								<IonIcon slot="icon-only" icon={listOutline} />
-							</IonButton>
-						)}
-						{highlightRows.length > 0 && (
-							<IonButton
-								onClick={() => sel.setHighlightsListOpen(true)}
-								aria-label="View highlights"
-							>
-								<IonIcon slot="icon-only" icon={bookmarkOutline} />
-							</IonButton>
-						)}
+						<IonButton
+							onClick={() => setAnnotationsOpen(true)}
+							aria-label="Annotations"
+							disabled={!content}
+						>
+							<IonIcon slot="icon-only" icon={bookmarksOutline} />
+						</IonButton>
 						<IonButton id="appearance-trigger" aria-label="Appearance settings">
 							<IonIcon slot="icon-only" icon={readerOutline} />
 						</IonButton>
@@ -745,6 +923,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						showActiveWordUnderline={readerActiveWordUnderline}
 						activeOffset={activeOffset}
 						highlightsByParagraph={sel.highlightsByParagraph}
+						glossaryByParagraph={glossaryByParagraph}
 						selectionRange={sel.selectionRange}
 						isSelecting={isSelecting}
 						onWordTap={handlePageWordTap}
@@ -770,6 +949,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						showActiveWordUnderline={readerActiveWordUnderline}
 						activeOffset={activeOffset}
 						highlightsByParagraph={sel.highlightsByParagraph}
+						glossaryByParagraph={glossaryByParagraph}
 						selectionRange={sel.selectionRange}
 						onWordTap={handleWordTap}
 						onWordLongPress={sel.handleWordLongPress}
@@ -831,6 +1011,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				onColorChange={sel.handleSelectionColorChange}
 				onNote={() => sel.setNoteInputOpen(true)}
 				onLookup={handleSelectionLookup}
+				onAddToGlossary={handleAddToGlossary}
 				onCancel={sel.cancelSelection}
 				onStartHandlePointerDown={sel.handleStartHandlePointerDown}
 				onEndHandlePointerDown={sel.handleEndHandlePointerDown}
@@ -839,37 +1020,37 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			{/* ── Appearance popover ── */}
 			<AppearancePopover trigger="appearance-trigger" />
 
-			{/* ── TOC modal ── */}
-			<IonModal
-				isOpen={tocOpen}
-				onDidDismiss={() => setTocOpen(false)}
-				breakpoints={[0, 0.5, 0.9]}
-				initialBreakpoint={0.5}
-				className={["rsvp-toc-modal", `reader-theme-${theme}`].join(" ")}
-			>
-				<IonHeader>
-					<IonToolbar>
-						<IonTitle>Contents</IonTitle>
-						<IonButtons slot="end">
-							<IonButton onClick={() => setTocOpen(false)}>Close</IonButton>
-						</IonButtons>
-					</IonToolbar>
-				</IonHeader>
-				<IonContent>
-					<IonList>
-						{chapters.map((ch, i) => (
-							<IonItem
-								key={i.toString()}
-								button
-								detail={false}
-								onClick={() => handleChapterJump(ch.startByte)}
-							>
-								<IonLabel>{ch.title}</IonLabel>
-							</IonItem>
-						))}
-					</IonList>
-				</IonContent>
-			</IonModal>
+			{/* ── Merged annotations sheet (Contents / Highlights / Glossary) ── */}
+			<AnnotationsSheet
+				isOpen={annotationsOpen}
+				onClose={() => setAnnotationsOpen(false)}
+				theme={theme}
+				chapters={chapters}
+				onJumpChapter={handleChapterJump}
+				highlights={highlightRows}
+				content={content ?? ""}
+				onJumpHighlight={jumpToOffset}
+				glossary={glossaryEntries}
+				currentBookId={id}
+				onOpenEntry={(entry) => {
+					setAnnotationsOpen(false);
+					setEditingGlossaryEntry(entry);
+				}}
+				onAddEntry={handleAddEntryFromSheet}
+			/>
+
+			{/* ── Glossary entry modal ── */}
+			<GlossaryEntryModal
+				entry={editingGlossaryEntry}
+				currentBookId={id}
+				firstMentionContext={editingMentionContext}
+				onClose={handleGlossaryModalClose}
+				onSave={handleGlossarySave}
+				onDelete={handleGlossaryDelete}
+				onJumpFirst={handleJumpFirstMention}
+				onJumpNext={handleJumpNextMention}
+				theme={theme}
+			/>
 
 			{/* ── Search modal ── */}
 			<SearchModal
@@ -903,16 +1084,6 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				onClose={() => sel.setEditingHighlight(null)}
 				onSave={sel.handleHighlightSave}
 				onDelete={sel.handleHighlightDelete}
-				theme={theme}
-			/>
-
-			{/* ── Highlights list modal ── */}
-			<HighlightsListModal
-				isOpen={sel.highlightsListOpen}
-				highlights={highlightRows}
-				content={content ?? ""}
-				onClose={() => sel.setHighlightsListOpen(false)}
-				onJump={jumpToOffset}
 				theme={theme}
 			/>
 

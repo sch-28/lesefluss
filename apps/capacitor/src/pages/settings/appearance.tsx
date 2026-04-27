@@ -15,8 +15,8 @@ import {
 import { SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
 import type React from "react";
 import { useCallback } from "react";
-import { useTheme } from "../../contexts/theme-context";
 import { PAGINATION_STYLE_OPTIONS } from "../../components/rsvp-pickers";
+import { useTheme } from "../../contexts/theme-context";
 import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "../../hooks/use-appearance-settings";
 
 const CHIP_CONTAINER_STYLE: React.CSSProperties = { flex: 1, padding: "8px 0" };

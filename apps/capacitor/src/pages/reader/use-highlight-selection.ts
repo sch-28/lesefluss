@@ -49,10 +49,9 @@ export function useHighlightSelection({
 	const updateHighlightMutation = queryHooks.useUpdateHighlight();
 	const deleteHighlightMutation = queryHooks.useDeleteHighlight();
 
-	// ── Edit + list modal state ───────────────────────────────────────────
+	// ── Edit modal state ──────────────────────────────────────────────────
 	const [editingHighlight, setEditingHighlight] = useState<Highlight | null>(null);
 	const [editingHighlightText, setEditingHighlightText] = useState("");
-	const [highlightsListOpen, setHighlightsListOpen] = useState(false);
 
 	// ── Selection state ───────────────────────────────────────────────────
 	// selectionAnchor: byte offset of the word where selection started (null = not selecting)
@@ -407,8 +406,6 @@ export function useHighlightSelection({
 		editingHighlight,
 		editingHighlightText,
 		setEditingHighlight,
-		highlightsListOpen,
-		setHighlightsListOpen,
 		highlightsByParagraph,
 
 		// Refs (consumed by SelectionOverlay)

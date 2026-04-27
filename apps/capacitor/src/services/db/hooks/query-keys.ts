@@ -30,6 +30,14 @@ export const bookKeys = {
 
 	/** All highlights for a book, ordered by position. */
 	highlights: (id: string) => ["books", id, "highlights"] as const,
+
+	/** Glossary entries visible inside a book (book-scoped + global). */
+	glossary: (id: string) => ["books", id, "glossary"] as const,
+};
+
+export const glossaryKeys = {
+	/** Every key under this prefix — invalidate when any entry changes. */
+	all: ["glossary"] as const,
 };
 
 export const settingsKeys = {
