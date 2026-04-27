@@ -67,6 +67,7 @@ export const books = sqliteTable("books", {
 	source: text("source"), // 'gutenberg' | 'standard_ebooks' | 'url' | null (null = locally imported)
 	catalogId: text("catalog_id"), // e.g. 'gutenberg:1342', 'se:mary-shelley/frankenstein'
 	sourceUrl: text("source_url"), // original URL for source='url' imports
+	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false), // tombstone — pushed to server then hard-deleted on next pull
 });
 
 /**

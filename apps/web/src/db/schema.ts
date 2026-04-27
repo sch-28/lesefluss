@@ -34,6 +34,7 @@ export const syncBooks = pgTable(
 		source: text("source"), // 'gutenberg' | 'standard_ebooks' | 'url' | null
 		catalogId: text("catalog_id"), // e.g. 'gutenberg:1342'
 		sourceUrl: text("source_url"), // original URL for source='url' imports
+		deleted: boolean("deleted").notNull().default(false), // sticky tombstone
 		updatedAt: timestamp("updated_at").notNull(),
 	},
 	(t) => [primaryKey({ columns: [t.userId, t.bookId] })],

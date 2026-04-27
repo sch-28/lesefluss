@@ -85,6 +85,13 @@
       "when": 1746057600000,
       "tag": "0011_source_url",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1746144000000,
+      "tag": "0012_book_deleted",
+      "breakpoints": true
     }
   ]
 }

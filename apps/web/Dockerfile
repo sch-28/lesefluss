@@ -25,10 +25,9 @@ RUN pnpm --filter @lesefluss/web build
 FROM base AS runner
 WORKDIR /app
 COPY --from=build /app/apps/web/.output ./.output
-# Drizzle schema + config for db:push at startup
+# Drizzle config + generated migrations for drizzle-kit migrate at startup
 COPY --from=build /app/apps/web/drizzle.config.ts ./drizzle.config.ts
-COPY --from=build /app/apps/web/src/db/schema.ts ./src/db/schema.ts
-COPY --from=build /app/apps/web/src/db/auth-schema.ts ./src/db/auth-schema.ts
+COPY --from=build /app/apps/web/drizzle ./drizzle
 RUN npm install --no-save drizzle-kit drizzle-orm pg
 COPY apps/web/scripts/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh

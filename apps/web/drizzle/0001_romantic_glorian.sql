@@ -1,0 +1,1 @@
+ALTER TABLE "sync_books" ADD COLUMN "deleted" boolean DEFAULT false NOT NULL;
