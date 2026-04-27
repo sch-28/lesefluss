@@ -62,17 +62,29 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 - [ ] Web novel scraping (Royal Road, ScribbleHub — see `apps/capacitor/BOOK_IMPORT.md` for strategy notes)
 - [ ] Kindle `My Clippings.txt` → highlights table (routed outside book-import)
 - [ ] iOS share extension (Android done; iOS needs its own Xcode target)
+- [ ] Loading indicator for import (when share from browser) and loading indicator when sync is running
 
 ## Phase 6 - Reading Experience v2
 > Quality-of-life on top of what already works
 
-- [ ] Full-text search across library (SQLite FTS5)
 - [ ] Split long words on ESP32 and capactitor reader
 - [ ] Export highlights (Markdown / CSV / Readwise-compatible)
 - [ ] Reader bookmarks (separate from highlights - "return to" markers)
 - [ ] Keyboard shortcuts for web reader (space, arrows, etc.)
 - [ ] Focal letter color setting
 - [ ] Reading statistics page (local-first; aggregates across devices automatically when logged in via existing sync)
+- [ ] Reader "ink page" mode (paginated, e-ink-style page turn instead of scroll)
+- [ ] Per-chapter / local progress display (show chapter progress instead of whole-book — feels more rewarding)
+- [ ] Quick-read button ("Finish this chapter in 3 min" — auto-tunes WPM to time budget)
+- [ ] Auto-open last book on app launch (toggle in settings)
+- [ ] Full-screen reading mode (hide chrome; ease into it gradually as the user keeps reading)
+- [ ] Do-Not-Disturb mode while reading (silence notifications via Capacitor APIs)
+- [ ] Music integration — attach a playlist (Spotify / Apple Music) to a book, auto-play on open
+- [ ] Name / character tracker — auto-extracted list of characters per book, tap for first appearance
+- [ ] Current-scene character panel — show who's "on stage" in the current scene to aid visualization
+- [ ] AI-assisted on-ramp — short summary / "where you left off" recap to lower the barrier to picking a book back up
+- [ ] Plugin architecture — expose reader/import/sync extension points so features like AI summaries, trackers, music can ship as optional modules
+- [ ] Full-text search across library (SQLite FTS5)
 
 ## Phase 7 - Social & Discovery
 - [ ] Suggestion form on website for user feedback and suggestions
@@ -81,6 +93,8 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 - [ ] Share public-domain books from catalog (Gutenberg / Standard Ebooks only - no user-uploaded files)
 - [ ] Friends / follow (see what friends are reading, their highlights, progress)
 - [ ] Buddy reading (sync progress with a friend on the same book, compare position, react to each other's highlights)
+- [ ] Multiplayer reading sessions / races (live shared session, position leaderboard, finish-line ping)
+- [ ] Comments on books and chapters (per-book or per-chapter discussion threads)
 - [ ] Explore/discovery: short reads filter on catalog (quick reads genre)
 - [ ] Curated article sources on Explore (Longreads, Aeon, PG essays — feeds → one-tap import via existing URL proxy)
 - [ ] Import reading history from Goodreads CSV (populate profile stats; auto-match to-read list against catalog for one-click imports of public-domain hits)
@@ -99,6 +113,8 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 - [ ] Verify WPM accuracy (check if display delay affects timing)
 - [ ] Battery indicator in app (GPIO 4 voltage divider already on AMOLED board)
 - [ ] Recompile AMOLED firmware with larger NimBLE buffers (BLE transfer window_size capped at 2 - ST7789 handles 4; fork nspsck/RM67162_Micropython_QSPI, increase NimBLE buffer config)
+- [ ] Check BLE radio state before scanning (prompt user / surface error if Bluetooth is off, instead of silent no-results)
+- [ ] Browser-based ESP32 flasher on website (Web Serial / esptool-js, RSVP Neo style — flash firmware from Chrome without local toolchain)
 
 ## Phase 9 - Platform Reach
 - [ ] iOS build (Capacitor makes this mostly a build target)
@@ -108,3 +124,9 @@ Publishing, Play Store, and monetisation phases. For feature roadmap see `../AGE
 - [ ] TTS
 - [ ] Browser extension (Firefox + Chrome, shared codebase) - send current page to Lesefluss web
 - [ ] German locale
+
+## Known Bugs / Fixes
+- [x] "Delete book" only deletes locally? or atleast the book gets restored when opening on web bc the book is in db there maybe?
+- [x] Admin: deleting a book while the user filter is active crashes the entire website
+- [x] Onboarding settings page doesnt  scroll (content cut off / can't reach bottom)
+- [x] App login issue on older web views

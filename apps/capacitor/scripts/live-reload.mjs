@@ -61,7 +61,7 @@ try {
 } catch {
 	console.error("adb reverse failed. Is the phone connected with USB debugging on?");
 	restoreConfig();
-	process.exit(1);
+	//process.exit(1);
 }
 
 // --- Start Vite ---

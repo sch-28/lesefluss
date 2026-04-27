@@ -128,20 +128,54 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 
 ## Adding a New Setting
 
-Touch these files in order:
+The wire-format mappers are registry-driven — `SYNCED_SETTING_KEYS` (sync) and
+`ESP32_SETTING_KEYS` (BLE) in `packages/rsvp-core/src/settings.ts` decide which
+fields cross which boundary. You almost never need to touch the mapper code in
+`apps/capacitor/src/services/sync/index.ts`, `apps/web/src/routes/api/sync.ts`,
+or `apps/capacitor/src/services/ble/characteristics/settings.ts` — adding a key
+to the right registry is enough.
 
-1. **`apps/esp32/src/config.py`** - add the constant with its default value
-2. **`apps/esp32/main.py`** - add the key name to `_OVERRIDE_KEYS`
-3. **`apps/esp32/src/ble/handler_settings.py`**
-   - `_build_json()` - include it in the payload (convert units if needed, e.g. ms → s)
-   - `_apply_json()` - read it with `.get("key", self.config.KEY)` and assign to `self.config`
-   - `_persist()` - add the `f"KEY = {self.config.KEY}\n"` line
-4. **`apps/capacitor/src/services/db/schema.ts`** - add the column to the `settings` table
-5. **`apps/capacitor/drizzle/`** - create `000N_description.sql` with `ALTER TABLE settings ADD COLUMN ...` and add an entry to `meta/_journal.json`
-6. **`apps/capacitor/src/services/db/queries/settings.ts`** - add the field to the `defaults` object in `getSettings()`
-7. **`apps/capacitor/src/utils/settings.ts`** - add to `DEFAULT_SETTINGS` and `SETTING_CONSTRAINTS`
-8. **`apps/capacitor/src/services/ble/characteristics/settings.ts`** - add to `ESP32Settings` interface, read mapping, and write mapping
-9. **`apps/capacitor/src/pages/settings.tsx`** - add the UI control (slider or toggle)
+Pick the scope first:
+
+- **Synced** (cross-device, e.g. WPM, reader theme): goes through cloud sync.
+- **Device-only** (only relevant on ESP32, e.g. `bleOn`, `brightness`): goes
+  through BLE but never crosses the cloud boundary.
+- **Local-only** (e.g. `onboardingCompleted`): lives in SQLite, nowhere else.
+
+Then touch:
+
+1. **`packages/rsvp-core/src/settings.ts`** — add to `DEFAULT_SETTINGS`
+   (UPPER_SNAKE) and, if it has a numeric range, `SETTING_CONSTRAINTS`.
+2. **`packages/rsvp-core/src/sync.ts`** — add to `SyncSettingsSchema`
+   *(synced only)*.
+3. **`packages/rsvp-core/src/settings.ts`** — add the camelCase key to
+   `SYNCED_SETTING_KEYS` *(synced)* and/or `ESP32_SETTING_KEYS`
+   *(device-only or device+synced — map to the snake_case ESP32 name)*.
+   The `satisfies` clause on `SYNCED_SETTING_KEYS` will fail compile if it
+   drifts from `SyncSettingsSchema`.
+4. **`apps/capacitor/src/services/db/schema.ts`** — add the column with a
+   default that matches `DEFAULT_SETTINGS`.
+5. **`apps/capacitor/drizzle/000N_<name>.sql`** + add an entry to
+   `meta/_journal.json` — `ALTER TABLE settings ADD COLUMN …`.
+6. **`apps/capacitor/src/services/db/queries/settings.ts`** — add the field to
+   the `defaults` object in `getSettings()`.
+7. **`apps/web/src/db/schema.ts`** + **`apps/web/drizzle/000N_<name>.sql`** —
+   *synced only*. Mirror the column with the Postgres equivalent type.
+8. **UI** — pick the right page:
+   - RSVP speed/algorithm: `apps/capacitor/src/pages/settings/rsvp-settings-form.tsx`
+   - Reader appearance: `apps/capacitor/src/pages/settings/appearance.tsx`
+     (and `apps/capacitor/src/pages/reader/appearance-popover.tsx` if it
+     should be tunable from inside the reader)
+   - ESP32 device controls: `apps/capacitor/src/pages/settings/device.tsx`
+9. **ESP32 firmware** *(device-only or device+synced)*:
+   - `apps/esp32/src/config.py` — add the constant + default.
+   - `apps/esp32/main.py` — add the key name to `_OVERRIDE_KEYS`.
+   - `apps/esp32/src/ble/handler_settings.py` — extend `_build_json()`,
+     `_apply_json()`, and `_persist()` to round-trip the field.
+
+Mapper code (`sync/index.ts`, `routes/api/sync.ts`,
+`ble/characteristics/settings.ts`) iterates over the registries and does **not**
+need editing.
 
 ## Roadmap
 

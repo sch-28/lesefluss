@@ -77,7 +77,7 @@ src/
     client.ts               # BLEClient class (scan/connect/disconnect), `bleClient` singleton
     characteristics/
       index.ts              # `ble` object - single import for all characteristic ops
-      settings.ts           # ble.readSettings(), ble.writeSettings()
+      settings.ts           # ble.readSettings(), ble.writeSettings() - mapping driven by ESP32_SETTING_KEYS in rsvp-core
       position.ts           # ble.readPosition(), ble.writePosition()
       transfer.ts           # ble.transferBook() - START/CHUNK/END state machine
       storage.ts            # ble.readStorage() - flash storage info {free_bytes, total_bytes}

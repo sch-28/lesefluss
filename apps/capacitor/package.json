@@ -15,6 +15,7 @@
 		"setup:web": "node scripts/setup-web.mjs",
 		"sync": "pnpm run build && cap sync",
 		"android": "pnpm run sync && cap run android --target 39131FDJG00AEF && adb logcat Capacitor/Console:I *:S | grep --line-buffered '\\[Lesefluss\\]' | sed -u 's/.* E Capacitor\\/Console:.*Msg: /\\x1b[31m/;s/.* W Capacitor\\/Console:.*Msg: /\\x1b[33m/;s/.*Msg: //;s/$/\\x1b[0m/'",
+		"android-raw": "pnpm run sync && cap run android && adb logcat Capacitor/Console:I *:S | grep --line-buffered '\\[Lesefluss\\]' | sed -u 's/.* E Capacitor\\/Console:.*Msg: /\\x1b[31m/;s/.* W Capacitor\\/Console:.*Msg: /\\x1b[33m/;s/.*Msg: //;s/$/\\x1b[0m/'",
 		"studio": "cap open android",
 		"check-types": "tsc --noEmit",
 		"ionic:serve": "vite --host 0.0.0.0 --port 3000",
@@ -25,7 +26,7 @@
 		"deploy:apk": "pnpm build:apk && adb install -r android/app/build/outputs/apk/release/app-release.apk",
 		"build:aab": "dotenv -e .env.deploy -- sh -c 'pnpm build && cap sync android && cd android && ./gradlew bundleRelease'",
 		"gen-icons": "node scripts/gen-icons.mjs",
-		"setup": "node scripts/gen-icons.mjs",
+		"setup": "node scripts/setup-web.mjs && node scripts/gen-icons.mjs",
 		"format": "biome format --write .",
 		"lint": "biome lint --write .",
 		"biome": "biome check --write ."
