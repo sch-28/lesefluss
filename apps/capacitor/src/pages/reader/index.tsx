@@ -1005,9 +1005,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 									paddingBottom: "calc(52px + env(safe-area-inset-bottom, 0px))",
 									fontSize: `${readerFontSize}px`,
 									fontFamily:
-										readerFontFamily === "serif"
-											? "Georgia, 'Times New Roman', serif"
-											: undefined,
+										readerFontFamily === "serif" ? "Georgia, 'Times New Roman', serif" : undefined,
 								}}
 								onScroll={handleScroll}
 								onScrollEnd={handleScrollEnd}

@@ -50,8 +50,7 @@ export const proxyRoute = new Hono()
 				signal: AbortSignal.timeout(10_000),
 				headers: {
 					// Bare UA — many sites return 403 to the default `node-fetch` one.
-					"User-Agent":
-						"Mozilla/5.0 (compatible; LesefussBot/1.0; +https://lesefluss.app/bot)",
+					"User-Agent": "Mozilla/5.0 (compatible; LesefussBot/1.0; +https://lesefluss.app/bot)",
 					Accept: "text/html,application/xhtml+xml",
 				},
 			});

@@ -50,7 +50,7 @@ const Onboarding: React.FC = () => {
 
 	return (
 		<IonPage className="onboarding-page">
-			<IonContent fullscreen scrollY={false}>
+			<IonContent fullscreen>
 				<div className="onboarding-container">
 					<div className="onboarding-top-bar">
 						{canSkip && (
