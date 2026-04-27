@@ -9,6 +9,37 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-04-28",
+		title: "Glossary",
+		tags: ["App"],
+		changes: [
+			"Keep track of names, places, and ideas with a per-book glossary",
+			"Select a word in the reader and tap 'Add to glossary' to save an entry",
+			"Each entry gets a colored avatar with initials so they're easy to scan",
+			"Words that match an entry get a soft underline. Tap to open the entry",
+			"Contents, Highlights and Glossary now live in one annotations sheet",
+			"Toggle the glossary underlines in the appearance popover if you'd rather not see them",
+			"Choose whether an entry is just for one book or available everywhere",
+			"Glossary entries sync across devices, same as highlights",
+			"This dialog now shows what's new whenever you open the app after an update",
+		],
+	},
+	{
+		date: "2026-04-27",
+		title: "Page Reader and a few rough edges",
+		tags: ["App"],
+		changes: [
+			"You can now read in pages instead of one long scroll",
+			"Switch between page and scroll right from the appearance popover",
+			"New app font size setting if the UI feels too small or too big",
+			"Importing books got smoother, with clearer toasts when something goes wrong",
+			"Really long words no longer get cut off in RSVP mode",
+			"Fixed onboarding being hard to scroll on smaller phones",
+			"Fixed a case where deleting a book left things in a weird state",
+			"Cleaned up how settings sync to the cloud",
+		],
+	},
+	{
 		date: "2026-04-23",
 		title: "More Ways to Import: URLs, PDFs, Share Intent",
 		tags: ["App"],

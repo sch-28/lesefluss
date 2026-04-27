@@ -1,6 +1,6 @@
+import { type ChangelogTag, changelog } from "@lesefluss/rsvp-core";
 import { createFileRoute } from "@tanstack/react-router";
 import { Badge } from "~/components/ui/badge";
-import { type ChangelogTag, changelog } from "~/data/changelog";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/changelog/")({
