@@ -1,0 +1,44 @@
+/* iOS-style notification toast — brand-orange surface, top-right anchored. */
+
+.lesefluss-toast {
+	--background: #c94b2a;
+	--color: #ffffff;
+	--border-radius: 22px;
+	--box-shadow: 0 10px 28px rgba(201, 75, 42, 0.35), 0 1px 3px rgba(0, 0, 0, 0.1);
+	--max-width: min(86vw, 340px);
+	--min-width: 0;
+	--width: fit-content;
+	--start: auto;
+	--end: 16px;
+
+	font-weight: 590;
+	font-size: 0.85rem;
+	letter-spacing: -0.01em;
+
+	/* Extra breathing room from the top safe-area edge. The host is the
+	 * full-screen positioning container, so padding-top here pushes the
+	 * wrapper down without affecting horizontal anchoring. */
+	padding-top: 12px;
+}
+
+.lesefluss-toast::part(container) {
+	padding: 4px;
+	min-height: 0;
+}
+
+.lesefluss-toast::part(message) {
+	line-height: 1.3;
+}
+
+.lesefluss-toast::part(icon) {
+	font-size: 1rem;
+	margin-inline-end: 4px;
+	flex-shrink: 0;
+	color: #ffffff;
+}
+
+/* Error gets the system red so a failure doesn't look identical to success. */
+.lesefluss-toast--danger {
+	--background: #ff3b30;
+	--box-shadow: 0 10px 28px rgba(255, 59, 48, 0.35), 0 1px 3px rgba(0, 0, 0, 0.1);
+}

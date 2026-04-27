@@ -10,6 +10,7 @@
 
 import type React from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { toast } from "../../components/toast";
 import { queryHooks } from "../../services/db/hooks";
 import type { Highlight } from "../../services/db/schema";
 import type { HighlightRange } from "./paragraph";
@@ -386,7 +387,10 @@ export function useHighlightSelection({
 	// ── Highlight delete ──────────────────────────────────────────────────
 	const handleHighlightDelete = useCallback(
 		(highlightId: string) => {
-			deleteHighlightMutation.mutate({ id: highlightId, bookId });
+			deleteHighlightMutation.mutate(
+				{ id: highlightId, bookId },
+				{ onSuccess: () => toast.info("Highlight removed") },
+			);
 		},
 		[bookId, deleteHighlightMutation],
 	);

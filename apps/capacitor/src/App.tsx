@@ -40,6 +40,7 @@ import "./theme/monochrome.css";
 
 import DesktopSidebar from "./components/desktop-sidebar";
 import ShareIntentHandler from "./components/share-intent-handler";
+import { Toaster } from "./components/toast";
 import { BLEProvider } from "./contexts/ble-context";
 import { BookSyncProvider } from "./contexts/book-sync-context";
 import { DatabaseProvider } from "./contexts/database-context";
@@ -218,6 +219,7 @@ const App: React.FC = () => {
 									<IonReactRouter basename={BASENAME || undefined}>
 										<HardwareBackButtonHandler />
 										<ShareIntentHandler />
+										<Toaster />
 										<DesktopSidebar />
 										<IonRouterOutlet className="desktop-main">
 											{/* All other routes under /tabs share the tab bar */}

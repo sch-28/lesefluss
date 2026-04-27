@@ -14,6 +14,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { toast } from "../components/toast";
 import {
 	consumeAuthState,
 	finalizeVerifiedLogin,
@@ -170,46 +171,83 @@ function useMobileAuthCallback(
 	setLastSynced: Dispatch<SetStateAction<number | null>>,
 	setSyncError: Dispatch<SetStateAction<string | null>>,
 ) {
-	useAppUrlOpenListener(async ({ url }) => {
-		let parsed: URL;
-		try {
-			parsed = new URL(url);
-		} catch {
-			return;
-		}
-		if (parsed.protocol !== "lesefluss:" || parsed.host !== "auth-callback") return;
+	// Dedupe: cold-start `getLaunchUrl()` and the `appUrlOpen` listener can both
+	// surface the same URL on some devices; only process each URL once.
+	const lastHandledUrl = useRef<string | null>(null);
 
-		const expectedState = await consumeAuthState();
-		const receivedState = parsed.searchParams.get("state");
-		if (!expectedState || expectedState !== receivedState) {
-			setSyncError("Sign-in rejected: invalid state");
-			log.warn("sync", "mobile login state mismatch");
-			return;
-		}
+	const handleUrl = useCallback(
+		async (url: string) => {
+			if (lastHandledUrl.current === url) return;
+			lastHandledUrl.current = url;
 
-		const token = parsed.searchParams.get("token");
-		if (!token) {
-			setSyncError("Sign-in failed: no token returned");
-			return;
-		}
+			// Prefix match instead of `parsed.host` — older Android WebViews
+			// (e.g. on the Ayn Thor) parse non-special schemes such that
+			// `new URL("lesefluss://auth-callback?…").host` is the empty string
+			// while newer WebViews return "auth-callback". The prefix check
+			// works on both.
+			if (!url.startsWith("lesefluss://auth-callback")) return;
 
-		setSyncError(null);
-		setIsSyncing(true);
-		try {
-			const { email } = await finalizeVerifiedLogin(token);
-			setIsLoggedIn(true);
-			setUserEmail(email || null);
-			await Browser.close().catch(() => {});
-			await fullSync();
-			setLastSynced(Date.now());
-		} catch (err) {
-			const msg = err instanceof Error ? err.message : "Sign-in failed";
-			setSyncError(msg);
-			log.error("sync", "mobile login failed:", err);
-		} finally {
-			setIsSyncing(false);
-		}
-	}, NATIVE_SYNC_ENABLED);
+			let parsed: URL;
+			try {
+				parsed = new URL(url);
+			} catch {
+				return;
+			}
+
+			const expectedState = await consumeAuthState();
+			const receivedState = parsed.searchParams.get("state");
+			if (!expectedState || expectedState !== receivedState) {
+				const msg = "Sign-in rejected: invalid state";
+				setSyncError(msg);
+				toast.error(msg);
+				log.warn("auth", "mobile login state mismatch");
+				return;
+			}
+
+			const token = parsed.searchParams.get("token");
+			if (!token) {
+				const msg = "Sign-in failed: no token returned";
+				setSyncError(msg);
+				toast.error(msg);
+				return;
+			}
+
+			setSyncError(null);
+			setIsSyncing(true);
+			try {
+				const { email } = await finalizeVerifiedLogin(token);
+				setIsLoggedIn(true);
+				setUserEmail(email || null);
+				await Browser.close().catch(() => {});
+				await fullSync();
+				setLastSynced(Date.now());
+				toast.success(email ? `Signed in as ${email}` : "Signed in");
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : "Sign-in failed";
+				setSyncError(msg);
+				toast.error(msg);
+				log.error("auth", "mobile login failed:", err);
+			} finally {
+				setIsSyncing(false);
+			}
+		},
+		[setIsLoggedIn, setUserEmail, setIsSyncing, setLastSynced, setSyncError],
+	);
+
+	useAppUrlOpenListener(({ url }) => void handleUrl(url), NATIVE_SYNC_ENABLED);
+
+	// Cold-start case: Android killed the app during the OAuth round-trip and
+	// re-launched it via the deep-link intent. Capacitor doesn't replay the
+	// `appUrlOpen` event for the launching intent, so we have to fetch the
+	// URL ourselves on mount.
+	useEffect(() => {
+		if (!NATIVE_SYNC_ENABLED) return;
+		CapacitorApp.getLaunchUrl()
+			.then((result) => {
+				if (result?.url) void handleUrl(result.url);
+			})
+			.catch((err) => log.warn("auth", "getLaunchUrl failed:", err));
+	}, [handleUrl]);
 }
 
 // --- Provider ---------------------------------------------------------------
@@ -239,9 +277,11 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 		try {
 			await fullSync();
 			setLastSynced(Date.now());
+			toast.success("Synced");
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : "Sync failed";
 			setSyncError(msg);
+			toast.error(msg);
 		} finally {
 			setIsSyncing(false);
 		}
