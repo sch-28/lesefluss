@@ -6,7 +6,7 @@
  */
 
 import { IonIcon } from "@ionic/react";
-import { closeOutline, createOutline } from "ionicons/icons";
+import { closeOutline, createOutline, searchOutline } from "ionicons/icons";
 import React from "react";
 
 export const HIGHLIGHT_COLORS = ["yellow", "blue", "orange", "pink"] as const;
@@ -22,13 +22,17 @@ export const HIGHLIGHT_COLOR_STYLE: Record<HighlightColor, string> = {
 interface SelectionToolbarProps {
 	/** null = no color picked yet - nothing shows as active */
 	selectedColor: HighlightColor | null;
+	/** True when the selection covers exactly one word — only then does the
+	 *  "Look up" button make sense (dictionary takes one word, not phrases). */
+	isSingleWord: boolean;
 	onColorChange: (color: HighlightColor) => void;
 	onNote: () => void;
+	onLookup: () => void;
 	onCancel: () => void;
 }
 
 const SelectionToolbar = React.forwardRef<HTMLDivElement, SelectionToolbarProps>(
-	({ selectedColor, onColorChange, onNote, onCancel }, ref) => {
+	({ selectedColor, isSingleWord, onColorChange, onNote, onLookup, onCancel }, ref) => {
 		return (
 			<div ref={ref} className="selection-toolbar">
 				<div className="selection-toolbar-colors">
@@ -47,6 +51,16 @@ const SelectionToolbar = React.forwardRef<HTMLDivElement, SelectionToolbarProps>
 						/>
 					))}
 				</div>
+				{isSingleWord && (
+					<button
+						type="button"
+						className="selection-toolbar-btn"
+						onClick={onLookup}
+						aria-label="Look up word"
+					>
+						<IonIcon icon={searchOutline} />
+					</button>
+				)}
 				<button
 					type="button"
 					className="selection-toolbar-btn"

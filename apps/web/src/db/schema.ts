@@ -65,12 +65,17 @@ export const syncSettings = pgTable(
 		showReadingTime: boolean("show_reading_time").notNull().default(true),
 		readerActiveWordUnderline: boolean("reader_active_word_underline").notNull().default(true),
 		defaultReaderMode: text("default_reader_mode").notNull().default("scroll"),
+		paginationStyle: text("pagination_style").notNull().default("scroll"),
 		updatedAt: timestamp("updated_at").notNull(),
 	},
 	(table) => [
 		check(
 			"sync_settings_default_reader_mode_check",
 			sql`${table.defaultReaderMode} IN ('scroll', 'rsvp')`,
+		),
+		check(
+			"sync_settings_pagination_style_check",
+			sql`${table.paginationStyle} IN ('scroll', 'page')`,
 		),
 	],
 );

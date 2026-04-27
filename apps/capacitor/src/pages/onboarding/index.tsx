@@ -4,15 +4,22 @@ import { useCallback, useState } from "react";
 import { useHistory } from "react-router-dom";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import BooksStep from "./steps/books";
+import PaginationStyleStep from "./steps/pagination-style";
 import ReaderModeStep from "./steps/reader-mode";
 import SpeedStep from "./steps/speed";
 import SyncStep from "./steps/sync";
 import ThemeStep from "./steps/theme";
 import WelcomeStep from "./steps/welcome";
 
+interface StepEntry {
+	node: React.ReactNode;
+	/** Step renders its own footer/CTA — the shared Next/Back is hidden. */
+	ownsFooter: boolean;
+}
+
 const Onboarding: React.FC = () => {
 	const history = useHistory();
-	const { updateSetting, flush } = useAutoSaveSettings();
+	const { settings, updateSetting, flush } = useAutoSaveSettings();
 	const [step, setStep] = useState(0);
 	const [importing, setImporting] = useState(false);
 
@@ -31,20 +38,27 @@ const Onboarding: React.FC = () => {
 	}, []);
 
 	// Step order — single source of truth for length and rendering.
-	// Welcome (index 0) and Books (index 4) own their own CTAs; others use the footer Next.
-	const steps: React.ReactNode[] = [
-		<WelcomeStep key="welcome" onNext={() => setStep(1)} onSkip={finish} />,
-		<ThemeStep key="theme" />,
-		<SpeedStep key="speed" />,
-		<ReaderModeStep key="reader-mode" />,
-		<BooksStep key="books" onNext={next} onImportingChange={setImporting} />,
-		<SyncStep key="sync" onFinish={finish} />,
+	// The pagination-style step is only relevant for users who pick the standard
+	// reader (not RSVP) on the previous step.
+	const showPaginationStep = !!settings && settings.defaultReaderMode !== "rsvp";
+	const steps: StepEntry[] = [
+		{ node: <WelcomeStep key="welcome" onNext={next} onSkip={finish} />, ownsFooter: true },
+		{ node: <ThemeStep key="theme" />, ownsFooter: false },
+		{ node: <SpeedStep key="speed" />, ownsFooter: false },
+		{ node: <ReaderModeStep key="reader-mode" />, ownsFooter: false },
+		...(showPaginationStep
+			? [{ node: <PaginationStyleStep key="pagination-style" />, ownsFooter: false }]
+			: []),
+		{
+			node: <BooksStep key="books" onNext={next} onImportingChange={setImporting} />,
+			ownsFooter: true,
+		},
+		{ node: <SyncStep key="sync" onFinish={finish} />, ownsFooter: true },
 	];
 	const totalSteps = steps.length;
 	const dotCount = totalSteps - 1;
 
-	// Books step (index 4) and Welcome (0) own their own CTAs.
-	const ownsOwnFooter = step === 0 || step === 4;
+	const ownsOwnFooter = steps[step]?.ownsFooter ?? false;
 	const canSkip = step > 0 && step < totalSteps - 1 && !importing;
 	const showFooter = canSkip && !ownsOwnFooter;
 
@@ -65,7 +79,7 @@ const Onboarding: React.FC = () => {
 						)}
 					</div>
 
-					<div className="onboarding-body-wrap">{steps[step]}</div>
+					<div className="onboarding-body-wrap">{steps[step]?.node}</div>
 
 					{step > 0 && (
 						<div className="onboarding-footer">

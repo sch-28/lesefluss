@@ -1,0 +1,2 @@
+ALTER TABLE "sync_settings" ADD COLUMN "pagination_style" text DEFAULT 'scroll' NOT NULL;--> statement-breakpoint
+ALTER TABLE "sync_settings" ADD CONSTRAINT "sync_settings_pagination_style_check" CHECK ("sync_settings"."pagination_style" IN ('scroll', 'page'));

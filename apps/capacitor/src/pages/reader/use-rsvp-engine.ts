@@ -193,23 +193,26 @@ export function useRsvpEngine({
 	}, [play, pause]);
 
 	// ── Jump helpers ─────────────────────────────────────────────────────
-	const jumpToWord = useCallback((idx: number) => {
-		const w = wordsRef.current;
-		if (w.length === 0) return;
-		const clamped = Math.max(0, Math.min(w.length - 1, idx));
-		if (timerRef.current !== null) {
-			clearTimeout(timerRef.current);
-			timerRef.current = null;
-		}
-		setIsPlaying(false);
-		resetChunks();
-		wordIndexRef.current = clamped;
-		setWordIndex(clamped);
-		const entry = w[clamped];
-		displayedOffsetRef.current = entry.byteOffset;
-		setCurrentWord(entry);
-		onPositionChangeRef.current(entry.byteOffset);
-	}, [resetChunks]);
+	const jumpToWord = useCallback(
+		(idx: number) => {
+			const w = wordsRef.current;
+			if (w.length === 0) return;
+			const clamped = Math.max(0, Math.min(w.length - 1, idx));
+			if (timerRef.current !== null) {
+				clearTimeout(timerRef.current);
+				timerRef.current = null;
+			}
+			setIsPlaying(false);
+			resetChunks();
+			wordIndexRef.current = clamped;
+			setWordIndex(clamped);
+			const entry = w[clamped];
+			displayedOffsetRef.current = entry.byteOffset;
+			setCurrentWord(entry);
+			onPositionChangeRef.current(entry.byteOffset);
+		},
+		[resetChunks],
+	);
 
 	const backWord = useCallback(() => jumpToWord(wordIndexRef.current - 1), [jumpToWord]);
 	const forwardWord = useCallback(() => jumpToWord(wordIndexRef.current + 1), [jumpToWord]);

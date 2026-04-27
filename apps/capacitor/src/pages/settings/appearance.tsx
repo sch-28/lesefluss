@@ -16,6 +16,7 @@ import { SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
 import type React from "react";
 import { useCallback } from "react";
 import { useTheme } from "../../contexts/theme-context";
+import { PAGINATION_STYLE_OPTIONS } from "../../components/rsvp-pickers";
 import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "../../hooks/use-appearance-settings";
 
 const CHIP_CONTAINER_STYLE: React.CSSProperties = { flex: 1, padding: "8px 0" };
@@ -28,6 +29,7 @@ const AppearanceSettings: React.FC = () => {
 		fontFamily,
 		lineSpacing,
 		margin,
+		paginationStyle,
 		showReadingTime,
 		showActiveWordUnderline,
 		adjustFontSize,
@@ -35,6 +37,7 @@ const AppearanceSettings: React.FC = () => {
 		adjustLineSpacing,
 		adjustMargin,
 		setFontFamily,
+		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,
 	} = useAppearanceSettings();
@@ -74,6 +77,25 @@ const AppearanceSettings: React.FC = () => {
 									onClick={() => setTheme(t.value)}
 								>
 									{t.label}
+								</button>
+							))}
+						</div>
+					</IonItem>
+
+					{/* ── Pagination ── */}
+					<IonListHeader>
+						<IonLabel>Pagination</IonLabel>
+					</IonListHeader>
+					<IonItem>
+						<div className="ap-chips" style={CHIP_CONTAINER_STYLE}>
+							{PAGINATION_STYLE_OPTIONS.map((p) => (
+								<button
+									key={p.value}
+									type="button"
+									className={paginationStyle === p.value ? "ap-chip ap-chip--active" : "ap-chip"}
+									onClick={() => setPaginationStyle(p.value)}
+								>
+									{p.label}
 								</button>
 							))}
 						</div>

@@ -22,7 +22,7 @@ import { DEFAULT_SETTINGS, SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
 import { chevronDown } from "ionicons/icons";
 import type React from "react";
 import { useState } from "react";
-import { ReaderModeCards, WpmPresetChips } from "../../components/rsvp-pickers";
+import { ModeCards, READER_MODE_OPTIONS, WpmPresetChips } from "../../components/rsvp-pickers";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 
 const CHIP_CONTAINER_STYLE: React.CSSProperties = { flex: 1, padding: "8px 0" };
@@ -188,7 +188,8 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 						</IonListHeader>
 
 						<IonItem lines="none">
-							<ReaderModeCards
+							<ModeCards
+								options={READER_MODE_OPTIONS}
 								value={settings.defaultReaderMode as "scroll" | "rsvp"}
 								onChange={(mode) => updateSetting("defaultReaderMode", mode)}
 							/>

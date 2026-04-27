@@ -99,6 +99,13 @@
       "when": 1777310676065,
       "tag": "0013_app_font_size",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1777312834776,
+      "tag": "0014_pagination_style",
+      "breakpoints": true
     }
   ]
 }

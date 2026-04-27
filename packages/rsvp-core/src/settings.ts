@@ -1,5 +1,8 @@
 import type { SyncSettings } from "./sync";
 
+/** Layout variant of the standard (non-RSVP) reader. */
+export type PaginationStyle = "scroll" | "page";
+
 /**
  * Default RSVP settings matching ESP32 config.py
  * These defaults are used when initializing the database.
@@ -28,6 +31,7 @@ export const DEFAULT_SETTINGS = {
 	READER_ACTIVE_WORD_UNDERLINE: true, // underline the currently active word in the scroll reader
 	SHOW_READING_TIME: true, // show time remaining in progress bar
 	DEFAULT_READER_MODE: "scroll", // 'scroll' | 'rsvp' - mode to open books in
+	PAGINATION_STYLE: "scroll", // 'scroll' | 'page' - layout for the standard (non-RSVP) reader
 	ONBOARDING_COMPLETED: false, // first-run onboarding completed on this device
 	APP_FONT_SIZE: 16, // px (12–22) - root font-size driving rem-scaled UI
 } as const;
@@ -73,6 +77,7 @@ export const SYNCED_SETTING_KEYS = [
 	"showReadingTime",
 	"readerActiveWordUnderline",
 	"defaultReaderMode",
+	"paginationStyle",
 ] as const satisfies readonly (keyof Omit<SyncSettings, "updatedAt">)[];
 
 /**

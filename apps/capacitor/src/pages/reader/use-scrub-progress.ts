@@ -24,7 +24,7 @@ function isHorizontalScrub(origin: { x: number; y: number }, clientX: number, cl
 
 interface Params {
 	book: Book | undefined;
-	readerMode: "scroll" | "rsvp";
+	readerMode: "standard" | "rsvp";
 	paragraphOffsets: number[];
 	findParagraphIndex: (targetByte: number) => number;
 	jumpToOffset: (byteOffset: number, opts?: { highlight?: boolean }) => void;

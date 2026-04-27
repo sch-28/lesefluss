@@ -69,6 +69,7 @@ export const SyncSettingsSchema = z.object({
 	showReadingTime: z.boolean(),
 	readerActiveWordUnderline: z.boolean().optional().default(true),
 	defaultReaderMode: z.enum(["scroll", "rsvp"]),
+	paginationStyle: z.enum(["scroll", "page"]),
 	updatedAt: z.number().int().nonnegative(),
 });
 

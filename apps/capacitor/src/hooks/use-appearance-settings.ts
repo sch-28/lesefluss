@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
+import { DEFAULT_SETTINGS, type PaginationStyle, SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
 import type React from "react";
 import type { AppTheme } from "../contexts/theme-context";
 import { queryHooks } from "../services/db/hooks";
@@ -30,6 +30,7 @@ export function useAppearanceSettings() {
 	// round1 applied on read so disabled comparisons are reliable despite floating-point drift
 	const lineSpacing = round1(settings?.readerLineSpacing ?? DEFAULT_SETTINGS.READER_LINE_SPACING);
 	const margin = settings?.readerMargin ?? DEFAULT_SETTINGS.READER_MARGIN;
+	const paginationStyle = settings?.paginationStyle ?? DEFAULT_SETTINGS.PAGINATION_STYLE;
 	const showActiveWordUnderline =
 		settings?.readerActiveWordUnderline ?? DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE;
 
@@ -77,6 +78,10 @@ export function useAppearanceSettings() {
 		mutate({ readerFontFamily: v });
 	};
 
+	const setPaginationStyle = (v: PaginationStyle) => {
+		mutate({ paginationStyle: v });
+	};
+
 	const setShowReadingTime = (v: boolean) => {
 		mutate({ showReadingTime: v });
 	};
@@ -91,6 +96,7 @@ export function useAppearanceSettings() {
 		fontFamily,
 		lineSpacing,
 		margin,
+		paginationStyle,
 		showReadingTime,
 		showActiveWordUnderline,
 		adjustFontSize,
@@ -98,6 +104,7 @@ export function useAppearanceSettings() {
 		adjustLineSpacing,
 		adjustMargin,
 		setFontFamily,
+		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,
 	};

@@ -1,3 +1,4 @@
+import type { PaginationStyle } from "@lesefluss/rsvp-core";
 import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // NOTE: id is a random 8-char hex string generated at import time.
@@ -43,6 +44,7 @@ export const settings = sqliteTable("settings", {
 		.$type<"scroll" | "rsvp">()
 		.notNull()
 		.default("scroll"),
+	paginationStyle: text("pagination_style").$type<PaginationStyle>().notNull().default("scroll"),
 	onboardingCompleted: integer("onboarding_completed", { mode: "boolean" })
 		.notNull()
 		.default(false),

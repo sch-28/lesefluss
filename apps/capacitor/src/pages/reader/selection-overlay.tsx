@@ -16,12 +16,14 @@ import SelectionToolbar, { type HighlightColor } from "./selection-toolbar";
 
 interface Props {
 	isSelecting: boolean;
+	isSingleWord: boolean;
 	selectionColor: HighlightColor | null;
 	toolbarRef: React.RefObject<HTMLDivElement | null>;
 	startHandleRef: React.RefObject<HTMLDivElement | null>;
 	endHandleRef: React.RefObject<HTMLDivElement | null>;
 	onColorChange: (color: HighlightColor) => void;
 	onNote: () => void;
+	onLookup: () => void;
 	onCancel: () => void;
 	onStartHandlePointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
 	onEndHandlePointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -29,12 +31,14 @@ interface Props {
 
 const SelectionOverlay: React.FC<Props> = ({
 	isSelecting,
+	isSingleWord,
 	selectionColor,
 	toolbarRef,
 	startHandleRef,
 	endHandleRef,
 	onColorChange,
 	onNote,
+	onLookup,
 	onCancel,
 	onStartHandlePointerDown,
 	onEndHandlePointerDown,
@@ -45,8 +49,10 @@ const SelectionOverlay: React.FC<Props> = ({
 				<SelectionToolbar
 					ref={toolbarRef}
 					selectedColor={selectionColor}
+					isSingleWord={isSingleWord}
 					onColorChange={onColorChange}
 					onNote={onNote}
+					onLookup={onLookup}
 					onCancel={onCancel}
 				/>
 			)}
