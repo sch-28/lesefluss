@@ -12,6 +12,21 @@ const migrationFiles = import.meta.glob<string>("../../../drizzle/*.sql", {
 });
 
 /**
+ * Thrown when the local database has migrations applied that this app bundle
+ * doesn't know about — e.g. user downgraded the app, or restored an Auto-Backup
+ * created by a newer build. Caught by DatabaseProvider to show a recovery UI
+ * instead of hanging on the spinner.
+ */
+export class SchemaTooNewError extends Error {
+	constructor(unknownTags: string[]) {
+		super(
+			`Local database is from a newer version of Lesefluss (unknown migrations: ${unknownTags.join(", ")}). Update the app or reset local data.`,
+		);
+		this.name = "SchemaTooNewError";
+	}
+}
+
+/**
  * Walk the drizzle-kit _journal.json and apply any migrations not yet recorded.
  *
  * Each migration's SQL is loaded via Vite's import.meta.glob so you never need
@@ -28,6 +43,15 @@ export async function runMigrations(conn: SQLiteDBConnection): Promise<void> {
 		)`,
 		false,
 	);
+
+	// Refuse to run if the DB has migrations this bundle doesn't know about.
+	// Catches downgrades and Android Auto-Backup restores from a newer build.
+	const knownTags = new Set(journal.entries.map((e) => e.tag));
+	const appliedRes = await conn.query("SELECT tag FROM __drizzle_migrations");
+	const unknownTags = (appliedRes.values ?? [])
+		.map((r) => r.tag as string)
+		.filter((tag) => !knownTags.has(tag));
+	if (unknownTags.length > 0) throw new SchemaTooNewError(unknownTags);
 
 	for (const entry of journal.entries) {
 		// Already applied?

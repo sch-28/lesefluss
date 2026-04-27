@@ -1,8 +1,12 @@
+import { Capacitor } from "@capacitor/core";
+import { Directory, Filesystem } from "@capacitor/filesystem";
+import { Preferences } from "@capacitor/preferences";
 import {
 	CapacitorSQLite,
 	SQLiteConnection,
 	type SQLiteDBConnection,
 } from "@capacitor-community/sqlite";
+import { log } from "../../utils/log";
 import { createDrizzleAdapter } from "./adapter";
 import { runMigrations } from "./migrations";
 
@@ -51,3 +55,50 @@ export async function initDb(): Promise<void> {
  *   - Results come back as rows which Drizzle maps to typed objects
  */
 export const db = createDrizzleAdapter(() => _conn);
+
+// Recovery wipe — each step is independent so a partial failure still leaves the app launchable.
+export async function resetAppData(): Promise<void> {
+	// Drain any in-flight init so closeConnection doesn't race createConnection/open.
+	if (_initPromise) {
+		try {
+			await _initPromise;
+		} catch {
+			// init failure is exactly why we're resetting; ignore.
+		}
+	}
+
+	try {
+		if (_conn) {
+			await sqliteConnection.closeConnection(DB_NAME, false);
+			_conn = null;
+		}
+	} catch (err) {
+		log.warn("db", "closeConnection during reset failed:", err);
+	}
+	_initPromise = null;
+
+	try {
+		const dbExists = (await sqliteConnection.isDatabase(DB_NAME)).result;
+		if (dbExists) await CapacitorSQLite.deleteDatabase({ database: DB_NAME });
+	} catch (err) {
+		log.warn("db", "deleteDatabase failed:", err);
+	}
+
+	try {
+		await Preferences.clear();
+	} catch (err) {
+		log.warn("db", "Preferences.clear failed:", err);
+	}
+
+	if (Capacitor.isNativePlatform()) {
+		try {
+			await Filesystem.rmdir({
+				path: "books",
+				directory: Directory.Data,
+				recursive: true,
+			});
+		} catch (err) {
+			log.warn("db", "remove books dir failed:", err);
+		}
+	}
+}
