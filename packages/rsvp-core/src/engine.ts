@@ -53,6 +53,60 @@ export function buildWordIndex(content: string): WordEntry[] {
 	return entries;
 }
 
+// ─── Long-word splitting ────────────────────────────────────────────────────
+
+/** Max characters per displayed RSVP frame before a word is split. */
+export const MAX_WORD_LEN = 13;
+
+/**
+ * Split a long word into chunks of at most `maxLen` characters for display.
+ * Prefers hyphen boundaries (keeps trailing hyphen on each part); falls back
+ * to a hard cut with an appended '-' on non-final pieces. Words at or below
+ * the threshold are returned as a single-element array.
+ *
+ * Source of truth for the algorithm. Mirrored in
+ * apps/esp32/src/reader/rsvp.py (`_split_long_word`) - keep both in sync.
+ */
+export function splitLongWord(word: string, maxLen: number = MAX_WORD_LEN): string[] {
+	if (word.length <= maxLen) return [word];
+
+	// 1. Greedy merge on hyphen boundaries (the regex keeps the '-' on the
+	//    preceding piece, so "blue-dragonfly-shine" → ["blue-", "dragonfly-", "shine"]).
+	const parts = word.split(/(?<=-)/);
+	const merged: string[] = [];
+	let buf = "";
+	for (const p of parts) {
+		if (buf.length + p.length <= maxLen) {
+			buf += p;
+		} else {
+			if (buf) merged.push(buf);
+			buf = p;
+		}
+	}
+	if (buf) merged.push(buf);
+
+	// 2. Hard-cut any merged chunk still over the limit, suffixing '-' on
+	//    non-final pieces to signal continuation.
+	const out: string[] = [];
+	for (const chunk of merged) {
+		if (chunk.length <= maxLen) {
+			out.push(chunk);
+			continue;
+		}
+		let i = 0;
+		while (i < chunk.length) {
+			const remaining = chunk.length - i;
+			if (remaining <= maxLen) {
+				out.push(chunk.slice(i));
+				break;
+			}
+			out.push(`${chunk.slice(i, i + maxLen - 1)}-`);
+			i += maxLen - 1;
+		}
+	}
+	return out;
+}
+
 // ─── ORP (Optimal Recognition Point) ────────────────────────────────────────
 
 /**

@@ -10,6 +10,7 @@ import {
 	calcDelay,
 	findWordIndexAtOffset,
 	type RsvpSettings,
+	splitLongWord,
 	type WordEntry,
 } from "@lesefluss/rsvp-core";
 import type React from "react";
@@ -55,6 +56,13 @@ export function useRsvpEngine({
 	const lastSaveRef = useRef(0);
 	const longPressTimerRef = useRef<number | null>(null);
 	const lastToggleRef = useRef(0);
+	// Chunks of the currently-displayed word (length 1 for normal words). When
+	// the cursor reaches the end, the next tick advances to the next word.
+	const chunksRef = useRef<string[]>([]);
+	const chunkCursorRef = useRef(0);
+	// The original WordEntry for the chunks above - used to restore the focal
+	// view on pause without recomputing from a possibly-advanced wordIndexRef.
+	const currentEntryRef = useRef<WordEntry | null>(null);
 	const initialByteOffsetRef = useRef(initialByteOffset);
 	initialByteOffsetRef.current = initialByteOffset;
 
@@ -106,35 +114,57 @@ export function useRsvpEngine({
 		}
 
 		const entry = w[idx];
-		setCurrentWord(entry);
-		setWordIndex(idx);
-		displayedOffsetRef.current = entry.byteOffset;
 
-		// Throttled position save
-		const now = Date.now();
-		if (now - lastSaveRef.current >= POSITION_SAVE_THROTTLE_MS) {
-			lastSaveRef.current = now;
-			onPositionChangeRef.current(entry.byteOffset);
+		// Begin a new word: split into chunks, save position once at the
+		// original word's byte offset (all chunks share the same offset).
+		if (chunkCursorRef.current >= chunksRef.current.length) {
+			chunksRef.current = splitLongWord(entry.word);
+			chunkCursorRef.current = 0;
+			currentEntryRef.current = entry;
+			displayedOffsetRef.current = entry.byteOffset;
+
+			const now = Date.now();
+			if (now - lastSaveRef.current >= POSITION_SAVE_THROTTLE_MS) {
+				lastSaveRef.current = now;
+				onPositionChangeRef.current(entry.byteOffset);
+			}
 		}
+
+		const chunk = chunksRef.current[chunkCursorRef.current];
+		chunkCursorRef.current += 1;
+		const isLastChunk = chunkCursorRef.current >= chunksRef.current.length;
+
+		// Render the chunk while keeping the original byteOffset.
+		setCurrentWord(chunk === entry.word ? entry : { word: chunk, byteOffset: entry.byteOffset });
+		setWordIndex(idx);
 
 		// Effective WPM (only update on change to avoid extra renders once ramp settles)
 		const multiplier = s.accelStart - accelRef.current;
 		const nextWpm = Math.round(s.wpm / multiplier);
 		setEffectiveWpm((prev) => (prev === nextWpm ? prev : nextWpm));
 
-		const { delayMs, nextAcceleration } = calcDelay(entry.word, s, accelRef.current);
+		// Punctuation lives at the end of the original word, so it lands on
+		// the last chunk naturally; calcDelay on the chunk does the right thing.
+		const { delayMs, nextAcceleration } = calcDelay(chunk, s, accelRef.current);
 		accelRef.current = nextAcceleration;
-		wordIndexRef.current = idx + 1;
+		if (isLastChunk) wordIndexRef.current = idx + 1;
 		timerRef.current = window.setTimeout(tick, delayMs);
 	}, []);
 
 	// ── Play / pause ─────────────────────────────────────────────────────
+	const resetChunks = useCallback(() => {
+		chunksRef.current = [];
+		chunkCursorRef.current = 0;
+		currentEntryRef.current = null;
+	}, []);
+
 	const play = useCallback(() => {
 		accelRef.current = 0;
 		lastSaveRef.current = Date.now();
+		resetChunks();
 		setIsPlaying(true);
 		tick();
-	}, [tick]);
+	}, [tick, resetChunks]);
 
 	const pause = useCallback(() => {
 		if (timerRef.current !== null) {
@@ -145,7 +175,13 @@ export function useRsvpEngine({
 		if (displayedOffsetRef.current !== null) {
 			onPositionChangeRef.current(displayedOffsetRef.current);
 		}
-	}, []);
+		// Restore the original full word so the focal/context view doesn't
+		// sit on a mid-word chunk. Use currentEntryRef rather than
+		// wordsRef[wordIndexRef] - the latter may have already advanced past
+		// the displayed word after the last-chunk tick.
+		if (currentEntryRef.current) setCurrentWord(currentEntryRef.current);
+		resetChunks();
+	}, [resetChunks]);
 
 	const togglePlayPause = useCallback(() => {
 		// Mobile can emit synthetic + real click in quick succession.
@@ -166,13 +202,14 @@ export function useRsvpEngine({
 			timerRef.current = null;
 		}
 		setIsPlaying(false);
+		resetChunks();
 		wordIndexRef.current = clamped;
 		setWordIndex(clamped);
 		const entry = w[clamped];
 		displayedOffsetRef.current = entry.byteOffset;
 		setCurrentWord(entry);
 		onPositionChangeRef.current(entry.byteOffset);
-	}, []);
+	}, [resetChunks]);
 
 	const backWord = useCallback(() => jumpToWord(wordIndexRef.current - 1), [jumpToWord]);
 	const forwardWord = useCallback(() => jumpToWord(wordIndexRef.current + 1), [jumpToWord]);
@@ -240,6 +277,7 @@ export function useRsvpEngine({
 			timerRef.current = null;
 		}
 		setIsPlaying(false);
+		resetChunks();
 		const idx = findWordIndexAtOffset(words, initialByteOffset);
 		wordIndexRef.current = idx;
 		setWordIndex(idx);

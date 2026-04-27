@@ -9,6 +9,62 @@ import config
 from reader.storage import WordReader
 
 
+# Max characters per RSVP frame before a word is split for display.
+# Source of truth: MAX_WORD_LEN in packages/rsvp-core/src/engine.ts.
+# Keep this constant and _split_long_word() in sync with that file -
+# MicroPython can't import the TS module so the algorithm is duplicated here.
+MAX_WORD_LEN = 13
+
+
+def _split_long_word(word, max_len=MAX_WORD_LEN):
+    """Split a long word into display-sized chunks.
+
+    Mirrors splitLongWord() in packages/rsvp-core/src/engine.ts: prefer
+    hyphen boundaries (hyphen kept on the preceding chunk), fall back to a
+    hard cut with trailing '-' on non-final pieces. Words within the limit
+    return [word] unchanged.
+    """
+    if len(word) <= max_len:
+        return [word]
+
+    # Hyphen-aware split: keep '-' as a suffix on each part.
+    parts = []
+    last = 0
+    for i, ch in enumerate(word):
+        if ch == '-':
+            parts.append(word[last:i + 1])
+            last = i + 1
+    if last < len(word):
+        parts.append(word[last:])
+
+    merged = []
+    buf = ''
+    for p in parts:
+        if len(buf) + len(p) <= max_len:
+            buf += p
+        else:
+            if buf:
+                merged.append(buf)
+            buf = p
+    if buf:
+        merged.append(buf)
+
+    out = []
+    for chunk in merged:
+        if len(chunk) <= max_len:
+            out.append(chunk)
+            continue
+        i = 0
+        while i < len(chunk):
+            remaining = len(chunk) - i
+            if remaining <= max_len:
+                out.append(chunk[i:])
+                break
+            out.append(chunk[i:i + max_len - 1] + '-')
+            i += max_len - 1
+    return out
+
+
 # ── ScrubWindow ──────────────────────────────────────────────────────────
 
 class ScrubWindow:
@@ -291,6 +347,7 @@ class RSVPReader:
         self._base_delay = 60.0 / config.WPM
 
         self._scrub_window = None   # ScrubWindow when in scrub mode
+        self._chunk_queue = []      # pending chunks of the current long word
 
     # -- Loading -----------------------------------------------------------
 
@@ -301,6 +358,7 @@ class RSVPReader:
         self._acceleration = 0.0
         self._word_count = 0
         self._display_pos = 0
+        self._chunk_queue = []
 
         start_pos = 0
         if resume and self.storage:
@@ -324,22 +382,31 @@ class RSVPReader:
     # -- Word-by-word API (reading mode) -----------------------------------
 
     def display_next_word(self):
-        """Draw the next word.  Returns the word str, or None at end-of-text."""
-        if self.word_reader:
-            self._display_pos = self.word_reader.get_position()
+        """Draw the next word (or next chunk of a long word).
 
-        word = self._next_word()
-        if word is None:
-            return None
+        Long words are split into multiple frames; each call emits the next
+        chunk. _display_pos is anchored to the start of the original word so
+        position save/resume always lands on a word boundary.
+        Returns the displayed string, or None at end-of-text.
+        """
+        if not self._chunk_queue:
+            if self.word_reader:
+                self._display_pos = self.word_reader.get_position()
+            word = self._next_word()
+            if word is None:
+                return None
+            self._chunk_queue = _split_long_word(word)
+
+        chunk = self._chunk_queue.pop(0)
 
         self.display.clear_word(self._prev_x, self._prev_w)
-        self._prev_x, self._prev_w = self.display.show_word(word)
+        self._prev_x, self._prev_w = self.display.show_word(chunk)
 
         self._word_count += 1
         if self._word_count % 100 == 0:
             gc.collect()
 
-        return word
+        return chunk
 
     def get_word_delay(self, word):
         """Delay in seconds for *word*, including acceleration ramp."""
@@ -367,6 +434,8 @@ class RSVPReader:
 
     def enter_scrub(self):
         """Create the scrub window around the current display position."""
+        # Drop any pending chunks - scrub navigates by full word.
+        self._chunk_queue = []
         if self._words is not None:
             # Sample text mode - no ScrubWindow needed, step_word uses the list.
             return
