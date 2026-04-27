@@ -1,3 +1,5 @@
+import type { SyncSettings } from "./sync";
+
 /**
  * Default RSVP settings matching ESP32 config.py
  * These defaults are used when initializing the database.
@@ -46,4 +48,53 @@ export const SETTING_CONSTRAINTS = {
 	READER_FONT_SIZE: { min: 12, max: 28, step: 2 },
 	READER_LINE_SPACING: { min: 1.2, max: 2.4, step: 0.1 },
 	READER_MARGIN: { min: 8, max: 48, step: 4 },
+} as const;
+
+/**
+ * Keys present in SyncSettings — single source of truth for which fields cross
+ * the wire between client and server. The `satisfies` clause makes TypeScript
+ * error if SyncSettings gains or loses a field that isn't reflected here.
+ */
+export const SYNCED_SETTING_KEYS = [
+	"wpm",
+	"delayComma",
+	"delayPeriod",
+	"accelStart",
+	"accelRate",
+	"xOffset",
+	"wordOffset",
+	"readerTheme",
+	"readerFontSize",
+	"readerFontFamily",
+	"readerLineSpacing",
+	"readerMargin",
+	"showReadingTime",
+	"readerActiveWordUnderline",
+	"defaultReaderMode",
+] as const satisfies readonly (keyof Omit<SyncSettings, "updatedAt">)[];
+
+/**
+ * App camelCase → ESP32 snake_case for the fields the device cares about.
+ * Drives the BLE Settings characteristic read/write mapping.
+ */
+export function pick<T, K extends keyof T>(obj: T, keys: readonly K[]): Pick<T, K> {
+	const out = {} as Pick<T, K>;
+	for (const k of keys) out[k] = obj[k];
+	return out;
+}
+
+export const ESP32_SETTING_KEYS = {
+	wpm: "wpm",
+	delayComma: "delay_comma",
+	delayPeriod: "delay_period",
+	accelStart: "accel_start",
+	accelRate: "accel_rate",
+	xOffset: "x_offset",
+	wordOffset: "word_offset",
+	inverse: "inverse",
+	bleOn: "ble_on",
+	devMode: "dev_mode",
+	displayOffTimeout: "display_off_timeout",
+	deepSleepTimeout: "deep_sleep_timeout",
+	brightness: "brightness",
 } as const;

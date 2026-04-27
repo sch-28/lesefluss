@@ -1,5 +1,12 @@
-import type { SyncHighlight, SyncPayload, SyncResponse, SyncSettings } from "@lesefluss/rsvp-core";
-import { SyncPayloadSchema } from "@lesefluss/rsvp-core";
+import {
+	pick,
+	SYNCED_SETTING_KEYS,
+	type SyncHighlight,
+	type SyncPayload,
+	SyncPayloadSchema,
+	type SyncResponse,
+	type SyncSettings,
+} from "@lesefluss/rsvp-core";
 import { createFileRoute } from "@tanstack/react-router";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { db } from "~/db";
@@ -51,6 +58,7 @@ async function getUserSyncData(
 		source: syncBooks.source,
 		catalogId: syncBooks.catalogId,
 		sourceUrl: syncBooks.sourceUrl,
+		deleted: syncBooks.deleted,
 		updatedAt: syncBooks.updatedAt,
 	};
 	const [books, settingsRows, highlights] = await Promise.all([
@@ -59,8 +67,10 @@ async function getUserSyncData(
 		db.select().from(syncHighlights).where(eq(syncHighlights.userId, userId)),
 	]);
 
-	// Fetch content only for books the client doesn't have locally
-	const needContentIds = books.map((b) => b.bookId).filter((id) => !excludeContentFor.has(id));
+	// Fetch content only for books the client doesn't have locally and which aren't tombstoned
+	const needContentIds = books
+		.filter((b) => !b.deleted && !excludeContentFor.has(b.bookId))
+		.map((b) => b.bookId);
 
 	const contentMap = new Map<
 		string,
@@ -94,6 +104,7 @@ async function getUserSyncData(
 				source: b.source,
 				catalogId: b.catalogId,
 				sourceUrl: b.sourceUrl,
+				deleted: b.deleted,
 				...(content
 					? {
 							content: content.content,
@@ -104,23 +115,11 @@ async function getUserSyncData(
 				updatedAt: toMs(b.updatedAt),
 			};
 		}),
+		// Cast: PG `text` columns widen enum fields to `string`; SyncSettings narrows
+		// them to literal unions. Values originate from Zod-validated input on POST.
 		settings: settingsRows[0]
 			? ({
-					wpm: settingsRows[0].wpm,
-					delayComma: settingsRows[0].delayComma,
-					delayPeriod: settingsRows[0].delayPeriod,
-					accelStart: settingsRows[0].accelStart,
-					accelRate: settingsRows[0].accelRate,
-					xOffset: settingsRows[0].xOffset,
-					wordOffset: settingsRows[0].wordOffset,
-					readerTheme: settingsRows[0].readerTheme,
-					readerFontSize: settingsRows[0].readerFontSize,
-					readerFontFamily: settingsRows[0].readerFontFamily,
-					readerLineSpacing: settingsRows[0].readerLineSpacing,
-					readerMargin: settingsRows[0].readerMargin,
-					showReadingTime: settingsRows[0].showReadingTime,
-					readerActiveWordUnderline: settingsRows[0].readerActiveWordUnderline,
-					defaultReaderMode: settingsRows[0].defaultReaderMode as SyncSettings["defaultReaderMode"],
+					...pick(settingsRows[0], SYNCED_SETTING_KEYS),
 					updatedAt: toMs(settingsRows[0].updatedAt),
 				} as SyncSettings)
 			: null,
@@ -199,12 +198,14 @@ export const Route = createFileRoute("/api/sync")({
 									fileSize: book.fileSize,
 									wordCount: book.wordCount,
 									position: book.position,
-									content: book.content ?? null,
-									coverImage: book.coverImage ?? null,
-									chapters: book.chapters ?? null,
+									// Tombstoned books shouldn't carry content; null defensively
+									content: book.deleted ? null : (book.content ?? null),
+									coverImage: book.deleted ? null : (book.coverImage ?? null),
+									chapters: book.deleted ? null : (book.chapters ?? null),
 									source: book.source ?? null,
 									catalogId: book.catalogId ?? null,
 									sourceUrl: book.sourceUrl ?? null,
+									deleted: book.deleted,
 									updatedAt: toDate(book.updatedAt),
 								})),
 							)
@@ -216,37 +217,25 @@ export const Route = createFileRoute("/api/sync")({
 									fileSize: sql`excluded.file_size`,
 									wordCount: sql`excluded.word_count`,
 									position: sql`CASE WHEN excluded.updated_at >= sync_books.updated_at THEN excluded.position ELSE sync_books.position END`,
-									content: sql`COALESCE(excluded.content, sync_books.content)`,
-									coverImage: sql`COALESCE(excluded.cover_image, sync_books.cover_image)`,
-									chapters: sql`COALESCE(excluded.chapters, sync_books.chapters)`,
+									// Once a row is deleted on the server, content stays null — no client push can refill it.
+									content: sql`CASE WHEN sync_books.deleted OR excluded.deleted THEN NULL ELSE COALESCE(excluded.content, sync_books.content) END`,
+									coverImage: sql`CASE WHEN sync_books.deleted OR excluded.deleted THEN NULL ELSE COALESCE(excluded.cover_image, sync_books.cover_image) END`,
+									chapters: sql`CASE WHEN sync_books.deleted OR excluded.deleted THEN NULL ELSE COALESCE(excluded.chapters, sync_books.chapters) END`,
 									source: sql`COALESCE(excluded.source, sync_books.source)`,
 									catalogId: sql`COALESCE(excluded.catalog_id, sync_books.catalog_id)`,
 									sourceUrl: sql`COALESCE(excluded.source_url, sync_books.source_url)`,
+									// Sticky tombstone: deleted=true cannot be flipped back by any client push.
+									deleted: sql`sync_books.deleted OR excluded.deleted`,
 									updatedAt: sql`GREATEST(excluded.updated_at, sync_books.updated_at)`,
 								},
 							});
 					}
 
-					// --- Settings: upsert (fields extracted to avoid duplication) ---
+					// --- Settings: upsert ---
 					if (payload.settings) {
-						const s = payload.settings;
 						const settingsFields = {
-							wpm: s.wpm,
-							delayComma: s.delayComma,
-							delayPeriod: s.delayPeriod,
-							accelStart: s.accelStart,
-							accelRate: s.accelRate,
-							xOffset: s.xOffset,
-							wordOffset: s.wordOffset,
-							readerTheme: s.readerTheme,
-							readerFontSize: s.readerFontSize,
-							readerFontFamily: s.readerFontFamily,
-							readerLineSpacing: s.readerLineSpacing,
-							readerMargin: s.readerMargin,
-							showReadingTime: s.showReadingTime,
-							readerActiveWordUnderline: s.readerActiveWordUnderline,
-							defaultReaderMode: s.defaultReaderMode,
-							updatedAt: toDate(s.updatedAt),
+							...pick(payload.settings, SYNCED_SETTING_KEYS),
+							updatedAt: toDate(payload.settings.updatedAt),
 						};
 						await tx
 							.insert(syncSettings)

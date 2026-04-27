@@ -1,10 +1,12 @@
 import { Preferences } from "@capacitor/preferences";
-import type {
-	SyncBook,
-	SyncHighlight,
-	SyncPayload,
-	SyncResponse,
-	SyncSettings,
+import {
+	pick,
+	SYNCED_SETTING_KEYS,
+	type SyncBook,
+	type SyncHighlight,
+	type SyncPayload,
+	type SyncResponse,
+	type SyncSettings,
 } from "@lesefluss/rsvp-core";
 import { log } from "../../utils/log";
 import { bookKeys, settingsKeys } from "../db/hooks/query-keys";
@@ -188,7 +190,8 @@ function bookToSync(book: Book, contentData?: BookContent | null): SyncBook {
 		source: book.source,
 		catalogId: book.catalogId,
 		sourceUrl: book.sourceUrl,
-		...(contentData
+		deleted: book.deleted,
+		...(contentData && !book.deleted
 			? {
 					content: contentData.content,
 					coverImage: contentData.coverImage,
@@ -200,24 +203,9 @@ function bookToSync(book: Book, contentData?: BookContent | null): SyncBook {
 }
 
 function settingsToSync(s: Settings): SyncSettings {
-	return {
-		wpm: s.wpm,
-		delayComma: s.delayComma,
-		delayPeriod: s.delayPeriod,
-		accelStart: s.accelStart,
-		accelRate: s.accelRate,
-		xOffset: s.xOffset,
-		wordOffset: s.wordOffset,
-		readerTheme: s.readerTheme as SyncSettings["readerTheme"],
-		readerFontSize: s.readerFontSize,
-		readerFontFamily: s.readerFontFamily as SyncSettings["readerFontFamily"],
-		readerLineSpacing: s.readerLineSpacing,
-		readerMargin: s.readerMargin,
-		showReadingTime: s.showReadingTime,
-		readerActiveWordUnderline: s.readerActiveWordUnderline,
-		defaultReaderMode: s.defaultReaderMode as SyncSettings["defaultReaderMode"],
-		updatedAt: s.updatedAt,
-	};
+	// Cast: SQLite columns widen enum fields to `string`; SyncSettings narrows
+	// them to literal unions. Values originate from validated UI/Zod input.
+	return { ...pick(s, SYNCED_SETTING_KEYS), updatedAt: s.updatedAt } as SyncSettings;
 }
 
 function highlightToSync(h: Highlight): SyncHighlight {
@@ -272,8 +260,8 @@ export async function pullSync(): Promise<Set<string>> {
 	await withSyncLock(async () => {
 		log("sync", "pulling...");
 
-		// Tell server which books we already have so it skips content for those
-		const localBooks = await queries.getBooks();
+		// Tell server which books we already have (including local tombstones — server can skip content)
+		const localBooks = await queries.getBooksForSync();
 		const localBookMap = new Map(localBooks.map((b) => [b.id, b]));
 
 		const res = await syncFetch("/api/sync", {
@@ -286,6 +274,16 @@ export async function pullSync(): Promise<Set<string>> {
 		// --- Merge books ---
 		for (const serverBook of data.books) {
 			const local = localBookMap.get(serverBook.bookId);
+
+			// Server tombstone: hard-delete locally if present, then move on (no content needed).
+			if (serverBook.deleted) {
+				if (local) {
+					await queries.hardDeleteBook(serverBook.bookId);
+					localBookMap.delete(serverBook.bookId);
+					changed = true;
+				}
+				continue;
+			}
 
 			// Server has content for this book if:
 			// - content was returned in this response, OR
@@ -330,9 +328,17 @@ export async function pullSync(): Promise<Set<string>> {
 						source: serverBook.source ?? null,
 						catalogId: serverBook.catalogId ?? null,
 						sourceUrl: serverBook.sourceUrl ?? null,
+						deleted: false,
 					});
 					changed = true;
 				}
+				continue;
+			}
+
+			// Local tombstone awaiting push: don't let server data resurrect or bump it.
+			// Remove from the local map so highlights for this book aren't merged either.
+			if (local.deleted) {
+				localBookMap.delete(serverBook.bookId);
 				continue;
 			}
 
@@ -350,24 +356,7 @@ export async function pullSync(): Promise<Set<string>> {
 		if (data.settings) {
 			const localSettings = await queries.getSettings();
 			if (data.settings.updatedAt > localSettings.updatedAt) {
-				const serverSettings = data.settings;
-				await queries.saveSettings({
-					wpm: serverSettings.wpm,
-					delayComma: serverSettings.delayComma,
-					delayPeriod: serverSettings.delayPeriod,
-					accelStart: serverSettings.accelStart,
-					accelRate: serverSettings.accelRate,
-					xOffset: serverSettings.xOffset,
-					wordOffset: serverSettings.wordOffset,
-					readerTheme: serverSettings.readerTheme,
-					readerFontSize: serverSettings.readerFontSize,
-					readerFontFamily: serverSettings.readerFontFamily,
-					readerLineSpacing: serverSettings.readerLineSpacing,
-					readerMargin: serverSettings.readerMargin,
-					showReadingTime: serverSettings.showReadingTime,
-					readerActiveWordUnderline: serverSettings.readerActiveWordUnderline,
-					defaultReaderMode: serverSettings.defaultReaderMode,
-				});
+				await queries.saveSettings(pick(data.settings, SYNCED_SETTING_KEYS));
 				changed = true;
 			}
 		}
@@ -444,15 +433,15 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 		log("sync", "pushing...");
 
 		const [books, settings, highlights] = await Promise.all([
-			queries.getBooks(),
+			queries.getBooksForSync(),
 			queries.getSettings(),
 			queries.getAllHighlights(),
 		]);
 
-		// Fetch content only for books the server doesn't have yet
+		// Fetch content only for books the server doesn't have yet (tombstones never carry content)
 		const booksWithContent = await Promise.all(
 			books.map(async (book) => {
-				if (serverHasContent.has(book.id)) {
+				if (book.deleted || serverHasContent.has(book.id)) {
 					return bookToSync(book);
 				}
 				const contentData = await queries.getBookContent(book.id);
