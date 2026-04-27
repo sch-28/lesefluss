@@ -66,6 +66,7 @@ export async function commitBook(payload: BookPayload, extras: ImportExtras): Pr
 		source: extras.source ?? null,
 		catalogId: extras.catalogId ?? null,
 		sourceUrl: extras.sourceUrl ?? null,
+		deleted: false,
 	};
 }
 

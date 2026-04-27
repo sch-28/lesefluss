@@ -361,7 +361,13 @@ function BooksTable() {
 	const [pending, setPending] = React.useState(false);
 	const [filter, setFilter] = React.useState("all");
 
-	const filtered = filter === "all" ? books : books.filter((b) => b.userId === filter);
+	// Stable reference: a fresh array each render fed react-table a new `data` ref,
+	// which triggered its autoResetPageIndex on every state change and caused a
+	// render loop when state (e.g. confirming) changed while a filter was active.
+	const filtered = React.useMemo(
+		() => (filter === "all" ? books : books.filter((b) => b.userId === filter)),
+		[books, filter],
+	);
 
 	// Refs so column definitions stay stable while cells always read latest state.
 	const stateRef = React.useRef({ expanded, confirming, pending });

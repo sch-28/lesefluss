@@ -1,4 +1,4 @@
-import { desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { db } from "../index";
 import {
 	type Book,
@@ -15,7 +15,18 @@ import {
  * Since content now lives in a separate table, this is naturally lightweight.
  */
 export async function getBooks(): Promise<Book[]> {
-	return db.select().from(books).orderBy(desc(books.lastRead), desc(books.addedAt));
+	return db
+		.select()
+		.from(books)
+		.where(eq(books.deleted, false))
+		.orderBy(desc(books.lastRead), desc(books.addedAt));
+}
+
+/**
+ * Fetch all books including tombstones — used by the sync push so deletions propagate.
+ */
+export async function getBooksForSync(): Promise<Book[]> {
+	return db.select().from(books);
 }
 
 /**
@@ -53,7 +64,10 @@ export async function getBook(id: string): Promise<Book | undefined> {
  * Used for idempotent re-imports and for linking Explore → Library.
  */
 export async function getBookByCatalogId(catalogId: string): Promise<Book | null> {
-	const rows = await db.select().from(books).where(eq(books.catalogId, catalogId));
+	const rows = await db
+		.select()
+		.from(books)
+		.where(and(eq(books.catalogId, catalogId), eq(books.deleted, false)));
 	return rows[0] ?? null;
 }
 
@@ -132,14 +146,32 @@ export async function setActiveBook(id: string): Promise<void> {
 }
 
 /**
- * Permanently delete a book from the database.
- * Deletes from both `book_content` and `books` tables.
+ * Soft-delete a book: drop content + highlights, keep the metadata row as a tombstone.
+ *
+ * The tombstone is pushed to the server on next sync, where it's promoted to a sticky
+ * `deleted=true` row that prevents resurrection from any other device. After other
+ * devices pull the tombstone, they hard-delete locally via `hardDeleteBook()`.
  *
  * NOTE: This only handles DB cleanup. To also delete the file from disk,
  * use the `removeBook()` function from the bookImport service instead.
  */
 export async function deleteBook(id: string): Promise<void> {
-	// Delete highlights, content, then metadata (children before parent)
+	await db.delete(highlights).where(eq(highlights.bookId, id));
+	await db.delete(bookContent).where(eq(bookContent.bookId, id));
+	// `lastRead` is bumped so bookToSync's Math.max(lastRead, addedAt) produces a
+	// current updatedAt for the tombstone payload on the next push.
+	await db
+		.update(books)
+		.set({ deleted: true, isActive: false, lastRead: Date.now() })
+		.where(eq(books.id, id));
+}
+
+/**
+ * Hard-delete the book row plus its content and highlights.
+ * Used by sync pull when the server reports a tombstone — runs on devices that
+ * didn't originate the delete and therefore still have the local rows.
+ */
+export async function hardDeleteBook(id: string): Promise<void> {
 	await db.delete(highlights).where(eq(highlights.bookId, id));
 	await db.delete(bookContent).where(eq(bookContent.bookId, id));
 	await db.delete(books).where(eq(books.id, id));

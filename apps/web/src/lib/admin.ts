@@ -34,8 +34,14 @@ export const getAdminStats = createServerFn({ method: "GET" }).handler(async () 
 		db.select({ count: count() }).from(user),
 		db.select({ count: count() }).from(user).where(gte(user.createdAt, d7)),
 		db.select({ count: count() }).from(user).where(gte(user.createdAt, d30)),
-		db.select({ count: count(), totalSize: sum(syncBooks.fileSize) }).from(syncBooks),
-		db.select({ count: countDistinct(syncBooks.userId) }).from(syncBooks),
+		db
+			.select({ count: count(), totalSize: sum(syncBooks.fileSize) })
+			.from(syncBooks)
+			.where(eq(syncBooks.deleted, false)),
+		db
+			.select({ count: countDistinct(syncBooks.userId) })
+			.from(syncBooks)
+			.where(eq(syncBooks.deleted, false)),
 		db.select({ count: count() }).from(syncHighlights).where(eq(syncHighlights.deleted, false)),
 		db.select({ count: count() }).from(session).where(gt(session.expiresAt, now)),
 	]);
@@ -63,6 +69,7 @@ export const getAdminUsers = createServerFn({ method: "GET" }).handler(async () 
 		db
 			.select({ userId: syncBooks.userId, count: count() })
 			.from(syncBooks)
+			.where(eq(syncBooks.deleted, false))
 			.groupBy(syncBooks.userId),
 		db
 			.select({ userId: syncHighlights.userId, count: count() })
@@ -100,6 +107,7 @@ export const getAdminBooks = createServerFn({ method: "GET" }).handler(async () 
 		})
 		.from(syncBooks)
 		.leftJoin(user, eq(syncBooks.userId, user.id))
+		.where(eq(syncBooks.deleted, false))
 		.orderBy(desc(syncBooks.updatedAt));
 
 	return rows.map((r) => ({ ...r, updatedAt: r.updatedAt.getTime() }));
@@ -124,14 +132,36 @@ export const deleteAdminBook = createServerFn({ method: "POST" })
 	.inputValidator((data: { userId: string; bookId: string }) => data)
 	.handler(async ({ data }) => {
 		await requireAdminSession();
-		await db.transaction(async (tx) => {
+		// Soft-delete so the tombstone propagates to the user's devices on next pull.
+		// Null out content columns to reclaim space; keeps the row as a sticky tombstone.
+		// Highlights for the book are tombstoned in the same tx so they propagate too.
+		const now = new Date();
+		const result = await db.transaction(async (tx) => {
+			const updated = await tx
+				.update(syncBooks)
+				.set({
+					deleted: true,
+					content: null,
+					coverImage: null,
+					chapters: null,
+					updatedAt: now,
+				})
+				.where(and(eq(syncBooks.userId, data.userId), eq(syncBooks.bookId, data.bookId)))
+				.returning({ bookId: syncBooks.bookId });
+			if (updated.length === 0) return updated;
 			await tx
-				.delete(syncHighlights)
-				.where(and(eq(syncHighlights.userId, data.userId), eq(syncHighlights.bookId, data.bookId)));
-			await tx
-				.delete(syncBooks)
-				.where(and(eq(syncBooks.userId, data.userId), eq(syncBooks.bookId, data.bookId)));
+				.update(syncHighlights)
+				.set({ deleted: true, updatedAt: now })
+				.where(
+					and(
+						eq(syncHighlights.userId, data.userId),
+						eq(syncHighlights.bookId, data.bookId),
+						eq(syncHighlights.deleted, false),
+					),
+				);
+			return updated;
 		});
+		if (result.length === 0) throw new Response("Book not found", { status: 404 });
 		return { success: true };
 	});
 

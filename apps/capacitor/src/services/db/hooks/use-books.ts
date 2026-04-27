@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "../../../components/toast";
 import {
 	importBook,
+	importBookFromBlob,
 	importBookFromClipboard,
 	importBookFromText,
 	importBookFromUrl,
@@ -9,7 +11,7 @@ import {
 import { scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
 import type { Book } from "../schema";
-import { bookKeys } from "./query-keys";
+import { bookImportMutationKey, bookKeys } from "./query-keys";
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
 
@@ -67,6 +69,7 @@ function useBookContent(id: string) {
 function useBookImportMutation<TVars = void>(mutationFn: (vars: TVars) => Promise<Book>) {
 	const qc = useQueryClient();
 	return useMutation({
+		mutationKey: bookImportMutationKey,
 		mutationFn,
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: bookKeys.all });
@@ -83,8 +86,8 @@ function useBookImportMutation<TVars = void>(mutationFn: (vars: TVars) => Promis
  * that as a silent no-op.
  */
 function useImportBook() {
-	return useBookImportMutation(
-		({ onProgress }: { onProgress?: (pct: number) => void }) => importBook(onProgress),
+	return useBookImportMutation(({ onProgress }: { onProgress?: (pct: number) => void }) =>
+		importBook(onProgress),
 	);
 }
 
@@ -108,9 +111,18 @@ function useImportBookFromUrl() {
  * Import from a plain-text string (e.g. share-intent plain text).
  */
 function useImportBookFromText() {
-	return useBookImportMutation(
-		({ text, hint }: { text: string; hint?: { title?: string } }) =>
-			importBookFromText(text, hint),
+	return useBookImportMutation(({ text, hint }: { text: string; hint?: { title?: string } }) =>
+		importBookFromText(text, hint),
+	);
+}
+
+/**
+ * Import from an in-memory Blob (e.g. a file received via "Open with" /
+ * share-sheet that the native plugin copied to app cache).
+ */
+function useImportBookFromBlob() {
+	return useBookImportMutation(({ blob, fileName }: { blob: Blob; fileName: string }) =>
+		importBookFromBlob(blob, fileName),
 	);
 }
 
@@ -127,14 +139,16 @@ function useImportBookFromText() {
 function useDeleteBook() {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (book: Pick<Book, "id" | "filePath">) => removeBook(book),
+		mutationFn: (book: Pick<Book, "id" | "filePath" | "title">) => removeBook(book),
 		onSuccess: (_data, book) => {
 			qc.removeQueries({ queryKey: bookKeys.detail(book.id) });
 			qc.removeQueries({ queryKey: bookKeys.content(book.id) });
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 			qc.invalidateQueries({ queryKey: bookKeys.covers });
 			scheduleSyncPush();
+			toast.success(`Removed "${book.title}"`);
 		},
+		onError: () => toast.error("Failed to remove book"),
 	});
 }
 
@@ -148,5 +162,6 @@ export const bookHooks = {
 	useImportBookFromClipboard,
 	useImportBookFromUrl,
 	useImportBookFromText,
+	useImportBookFromBlob,
 	useDeleteBook,
 };

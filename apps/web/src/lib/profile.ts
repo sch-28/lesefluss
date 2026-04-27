@@ -22,7 +22,7 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 		db
 			.select({ ts: max(syncBooks.updatedAt) })
 			.from(syncBooks)
-			.where(eq(syncBooks.userId, userId)),
+			.where(and(eq(syncBooks.userId, userId), eq(syncBooks.deleted, false))),
 		db
 			.select({ count: count(), ts: max(syncHighlights.updatedAt) })
 			.from(syncHighlights)
@@ -42,7 +42,7 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 				wordCount: syncBooks.wordCount,
 			})
 			.from(syncBooks)
-			.where(eq(syncBooks.userId, userId))
+			.where(and(eq(syncBooks.userId, userId), eq(syncBooks.deleted, false)))
 			.orderBy(desc(syncBooks.updatedAt)),
 		db
 			.select({
@@ -65,6 +65,7 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 				and(
 					eq(syncHighlights.userId, userId),
 					eq(syncHighlights.deleted, false),
+					eq(syncBooks.deleted, false),
 					or(isNotNull(syncHighlights.text), isNotNull(syncHighlights.note)),
 				),
 			)

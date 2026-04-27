@@ -11,6 +11,8 @@ import {
 	getBookContent,
 	getBookCovers,
 	getBooks,
+	getBooksForSync,
+	hardDeleteBook,
 	parseChapters,
 	setActiveBook,
 	updateBook,
@@ -37,6 +39,7 @@ export const queries = {
 
 	// Books
 	getBooks,
+	getBooksForSync,
 	getBook,
 	getBookByCatalogId,
 	getBookContent,
@@ -46,6 +49,7 @@ export const queries = {
 	updateBook,
 	setActiveBook,
 	deleteBook,
+	hardDeleteBook,
 
 	// Highlights
 	getHighlightsByBook,

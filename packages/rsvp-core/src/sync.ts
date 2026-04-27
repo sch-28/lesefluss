@@ -18,6 +18,7 @@ export const SyncBookSchema = z.object({
 	source: z.string().max(50).nullable().optional(), // 'gutenberg' | 'standard_ebooks' | 'url' | null
 	catalogId: z.string().max(200).nullable().optional(), // e.g. 'gutenberg:1342'
 	sourceUrl: z.string().max(2000).nullable().optional(), // original URL for source='url' imports
+	deleted: z.boolean().optional().default(false), // tombstone — sticky once true on server
 	updatedAt: z.number().int().nonnegative(), // Unix ms
 });
 
