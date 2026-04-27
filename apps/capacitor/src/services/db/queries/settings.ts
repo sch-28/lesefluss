@@ -38,6 +38,7 @@ export async function getSettings(): Promise<Settings> {
 		showReadingTime: DEFAULT_SETTINGS.SHOW_READING_TIME,
 		defaultReaderMode: DEFAULT_SETTINGS.DEFAULT_READER_MODE,
 		onboardingCompleted: DEFAULT_SETTINGS.ONBOARDING_COMPLETED,
+		appFontSize: DEFAULT_SETTINGS.APP_FONT_SIZE,
 		updatedAt: Date.now(),
 	};
 

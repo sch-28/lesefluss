@@ -92,6 +92,13 @@
       "when": 1746144000000,
       "tag": "0012_book_deleted",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1777310676065,
+      "tag": "0013_app_font_size",
+      "breakpoints": true
     }
   ]
 }

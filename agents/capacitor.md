@@ -135,7 +135,7 @@ Five tables, Drizzle ORM with typed queries:
 | `highlights` | Per-book text highlights - startOffset, endOffset (UTF-8 byte, word-start), color, note, timestamps |
 
 - `DatabaseProvider` context wraps the app (`src/contexts/DatabaseContext.tsx`)
-- Single clean migration in `drizzle/` - fresh DB, no incremental migrations
+- Incremental hand-written SQL migrations in `drizzle/` (e.g. `0013_app_font_size.sql`), each registered in `drizzle/meta/_journal.json`. The runner in `src/services/db/migrations.ts` applies any unapplied entries on app start. To add one: write the SQL file with the next zero-padded index, append a journal entry with `Date.now()` as `when` and the matching `tag`, and update `schema.ts`. For the full cross-package recipe (rsvp-core defaults, sync schema, ESP32 BLE, UI page) see "Adding a New Setting" in the root `AGENTS.md`.
 - `books.id` is a random 8-char hex string (generated at import), also used as `book.hash` on the ESP32 for identity verification
 - `isActive` on `books`: boolean, at most one row true at a time - marks the book currently on the ESP32
 - `books.size` is the **UTF-8 byte length** of the content string (`utf8ByteLength(content)`), not the JS `.length`. This matches the byte count the ESP32 uses for progress calculation.

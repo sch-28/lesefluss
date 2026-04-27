@@ -24,6 +24,7 @@ export function useAppearanceSettings() {
 	const { mutate } = queryHooks.useSaveSettings();
 
 	const fontSize = settings?.readerFontSize ?? DEFAULT_SETTINGS.READER_FONT_SIZE;
+	const appFontSize = settings?.appFontSize ?? DEFAULT_SETTINGS.APP_FONT_SIZE;
 	const fontFamily = settings?.readerFontFamily ?? DEFAULT_SETTINGS.READER_FONT_FAMILY;
 	const showReadingTime = settings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
 	// round1 applied on read so disabled comparisons are reliable despite floating-point drift
@@ -38,6 +39,16 @@ export function useAppearanceSettings() {
 				fontSize + delta,
 				SETTING_CONSTRAINTS.READER_FONT_SIZE.min,
 				SETTING_CONSTRAINTS.READER_FONT_SIZE.max,
+			),
+		});
+	};
+
+	const adjustAppFontSize = (delta: number) => {
+		mutate({
+			appFontSize: clamp(
+				appFontSize + delta,
+				SETTING_CONSTRAINTS.APP_FONT_SIZE.min,
+				SETTING_CONSTRAINTS.APP_FONT_SIZE.max,
 			),
 		});
 	};
@@ -76,12 +87,14 @@ export function useAppearanceSettings() {
 
 	return {
 		fontSize,
+		appFontSize,
 		fontFamily,
 		lineSpacing,
 		margin,
 		showReadingTime,
 		showActiveWordUnderline,
 		adjustFontSize,
+		adjustAppFontSize,
 		adjustLineSpacing,
 		adjustMargin,
 		setFontFamily,

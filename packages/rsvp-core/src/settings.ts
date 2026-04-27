@@ -29,6 +29,7 @@ export const DEFAULT_SETTINGS = {
 	SHOW_READING_TIME: true, // show time remaining in progress bar
 	DEFAULT_READER_MODE: "scroll", // 'scroll' | 'rsvp' - mode to open books in
 	ONBOARDING_COMPLETED: false, // first-run onboarding completed on this device
+	APP_FONT_SIZE: 16, // px (12–22) - root font-size driving rem-scaled UI
 } as const;
 
 /**
@@ -48,6 +49,7 @@ export const SETTING_CONSTRAINTS = {
 	READER_FONT_SIZE: { min: 12, max: 28, step: 2 },
 	READER_LINE_SPACING: { min: 1.2, max: 2.4, step: 0.1 },
 	READER_MARGIN: { min: 8, max: 48, step: 4 },
+	APP_FONT_SIZE: { min: 12, max: 22, step: 1 },
 } as const;
 
 /**

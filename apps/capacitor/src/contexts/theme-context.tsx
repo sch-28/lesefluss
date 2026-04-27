@@ -1,3 +1,4 @@
+import { DEFAULT_SETTINGS } from "@lesefluss/rsvp-core";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect } from "react";
 import { queryHooks } from "../services/db/hooks";
@@ -6,9 +7,10 @@ export type AppTheme = "dark" | "sepia" | "light";
 
 const VALID_THEMES: AppTheme[] = ["dark", "sepia", "light"];
 
-function applyTheme(theme: AppTheme) {
+function applyAppearance(theme: AppTheme, appFontSize: number) {
 	document.body.classList.remove(...VALID_THEMES);
 	document.body.classList.add(theme);
+	document.documentElement.style.fontSize = `${appFontSize}px`;
 }
 
 interface ThemeContextValue {
@@ -25,6 +27,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 	const rawTheme = settings?.readerTheme;
 	const theme: AppTheme =
 		rawTheme && (VALID_THEMES as string[]).includes(rawTheme) ? (rawTheme as AppTheme) : "dark";
+	const appFontSize = settings?.appFontSize ?? DEFAULT_SETTINGS.APP_FONT_SIZE;
 
 	const setTheme = useCallback(
 		(t: AppTheme) => {
@@ -33,10 +36,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 		[saveMutation],
 	);
 
-	// Keep body class in sync with theme
+	// Apply theme class + root font-size after settings hydrate
 	useEffect(() => {
-		applyTheme(theme);
-	}, [theme]);
+		applyAppearance(theme, appFontSize);
+	}, [theme, appFontSize]);
 
 	return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
 };

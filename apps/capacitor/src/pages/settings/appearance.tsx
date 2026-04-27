@@ -14,6 +14,7 @@ import {
 } from "@ionic/react";
 import { SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
 import type React from "react";
+import { useCallback } from "react";
 import { useTheme } from "../../contexts/theme-context";
 import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "../../hooks/use-appearance-settings";
 
@@ -23,18 +24,29 @@ const AppearanceSettings: React.FC = () => {
 	const { theme, setTheme } = useTheme();
 	const {
 		fontSize,
+		appFontSize,
 		fontFamily,
 		lineSpacing,
 		margin,
 		showReadingTime,
 		showActiveWordUnderline,
 		adjustFontSize,
+		adjustAppFontSize,
 		adjustLineSpacing,
 		adjustMargin,
 		setFontFamily,
 		setShowReadingTime,
 		setShowActiveWordUnderline,
 	} = useAppearanceSettings();
+
+	const decreaseAppFontSize = useCallback(
+		() => adjustAppFontSize(-SETTING_CONSTRAINTS.APP_FONT_SIZE.step),
+		[adjustAppFontSize],
+	);
+	const increaseAppFontSize = useCallback(
+		() => adjustAppFontSize(SETTING_CONSTRAINTS.APP_FONT_SIZE.step),
+		[adjustAppFontSize],
+	);
 
 	return (
 		<IonPage>
@@ -84,6 +96,30 @@ const AppearanceSettings: React.FC = () => {
 									{f.label}
 								</button>
 							))}
+						</div>
+					</IonItem>
+					<IonItem>
+						<IonLabel>App text size</IonLabel>
+						<div slot="end" className="ap-settings-row">
+							<span className="ap-settings-val">{appFontSize}px</span>
+							<div className="ap-row-buttons">
+								<button
+									type="button"
+									className="ap-step-btn"
+									disabled={appFontSize <= SETTING_CONSTRAINTS.APP_FONT_SIZE.min}
+									onClick={decreaseAppFontSize}
+								>
+									A−
+								</button>
+								<button
+									type="button"
+									className="ap-step-btn"
+									disabled={appFontSize >= SETTING_CONSTRAINTS.APP_FONT_SIZE.max}
+									onClick={increaseAppFontSize}
+								>
+									A+
+								</button>
+							</div>
 						</div>
 					</IonItem>
 

@@ -46,6 +46,7 @@ export const settings = sqliteTable("settings", {
 	onboardingCompleted: integer("onboarding_completed", { mode: "boolean" })
 		.notNull()
 		.default(false),
+	appFontSize: integer("app_font_size").notNull().default(16),
 	updatedAt: integer("updated_at").notNull(),
 });
 
