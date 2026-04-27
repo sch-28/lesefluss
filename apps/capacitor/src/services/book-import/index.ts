@@ -69,9 +69,6 @@ export async function importBookFromUrl(url: string): Promise<Book> {
  * Import from a plain-text string (e.g. shared plain text from another app).
  * `hint.title` overrides the first-line title heuristic in `textParser`.
  */
-export async function importBookFromText(
-	text: string,
-	hint?: { title?: string },
-): Promise<Book> {
+export async function importBookFromText(text: string, hint?: { title?: string }): Promise<Book> {
 	return runImportPipeline({ kind: "text", text, hint });
 }

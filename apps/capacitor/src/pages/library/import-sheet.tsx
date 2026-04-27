@@ -71,16 +71,11 @@ const ImportSheet: React.FC<ImportSheetProps> = ({
 		>
 			<IonContent>
 				<div className="px-5 pt-4 pb-2">
-					<h2 className="m-0 text-lg font-semibold">Add a book</h2>
+					<h2 className="m-0 font-semibold text-lg">Add a book</h2>
 				</div>
 				<IonList lines="full">
 					{SOURCES.map((s) => (
-						<IonItem
-							key={s.key}
-							button
-							detail={false}
-							onClick={() => handlePick(s.key)}
-						>
+						<IonItem key={s.key} button detail={false} onClick={() => handlePick(s.key)}>
 							<IonIcon icon={s.icon} slot="start" aria-hidden />
 							<IonLabel>
 								<h3>{s.title}</h3>

@@ -26,10 +26,7 @@ const ERROR_TOASTS: Record<string, { msg: string; color: "warning" | "danger" }>
  * `ERROR_TOASTS` instead. `FETCH_FAILED` still raises the alert (with a
  * friendlier message); everything else unknown also raises it verbatim.
  */
-const ALERT_SUPPRESSED: ReadonlySet<string> = new Set([
-	"CANCELLED",
-	...Object.keys(ERROR_TOASTS),
-]);
+const ALERT_SUPPRESSED: ReadonlySet<string> = new Set(["CANCELLED", ...Object.keys(ERROR_TOASTS)]);
 
 type UseLibraryImports = {
 	/** True while any import (file/clipboard/URL) is running. */
@@ -80,8 +77,7 @@ export function useLibraryImports(): UseLibraryImports {
 	}, [importFile.error, importClipboard.error, importUrl.error]);
 
 	return {
-		isImporting:
-			importFile.isPending || importClipboard.isPending || importUrl.isPending,
+		isImporting: importFile.isPending || importClipboard.isPending || importUrl.isPending,
 		progress,
 		isUrlImporting: importUrl.isPending,
 		errorMessage,

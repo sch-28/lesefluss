@@ -15,7 +15,7 @@ import {
 	IonToolbar,
 	useIonViewWillEnter,
 } from "@ionic/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 import {
 	add,
 	bookOutline,
@@ -31,7 +31,7 @@ import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { queryHooks } from "../../services/db/hooks";
-import { bookKeys } from "../../services/db/hooks/query-keys";
+import { bookImportMutationKey, bookKeys } from "../../services/db/hooks/query-keys";
 import type { Book } from "../../services/db/schema";
 import { IS_WEB_BUILD } from "../../services/sync";
 import { IS_WEB } from "../../utils/platform";
@@ -55,7 +55,7 @@ const Library: React.FC = () => {
 		error: syncError,
 		clearError,
 	} = useBookSync();
-	const { isLoggedIn, syncNow } = useSyncContext();
+	const { isLoggedIn, syncNow, isSyncing } = useSyncContext();
 	const history = useHistory();
 	const qc = useQueryClient();
 
@@ -68,8 +68,11 @@ const Library: React.FC = () => {
 	const imports = useLibraryImports();
 	const deleteMutation = queryHooks.useDeleteBook();
 
+	// True while any book-import mutation is in flight, regardless of which
+	// component fired it (library FAB, paste-URL modal, share-intent handler).
+	const isGlobalImporting = useIsMutating({ mutationKey: bookImportMutationKey }) > 0;
+
 	// ── Local UI state ───────────────────────────────────────────────────
-	const [syncing, setSyncing] = useState(false);
 	const [noticeDismissed, setNoticeDismissed] = useState(
 		() => localStorage.getItem(LOCAL_NOTICE_KEY) === "1",
 	);
@@ -109,16 +112,11 @@ const Library: React.FC = () => {
 	};
 
 	const handleRefresh = async () => {
-		setSyncing(true);
-		try {
-			await Promise.all([
-				isConnected ? syncPosition() : undefined,
-				isLoggedIn ? syncNow() : undefined,
-			]);
-			qc.invalidateQueries({ queryKey: bookKeys.all });
-		} finally {
-			setSyncing(false);
-		}
+		await Promise.all([
+			isConnected ? syncPosition() : undefined,
+			isLoggedIn ? syncNow() : undefined,
+		]);
+		qc.invalidateQueries({ queryKey: bookKeys.all });
 	};
 
 	const handleSetActive = (book: Book) => {
@@ -177,11 +175,11 @@ const Library: React.FC = () => {
 							{!IS_WEB && <BLEIndicator />}
 							{(isConnected || isLoggedIn) && (
 								<IonButton
-									disabled={syncing || isTransferring}
+									disabled={isSyncing || isTransferring}
 									onClick={handleRefresh}
 									title="Sync"
 								>
-									{syncing ? (
+									{isSyncing ? (
 										<IonSpinner name="crescent" slot="icon-only" />
 									) : (
 										<IonIcon slot="icon-only" icon={refreshOutline} />
@@ -193,10 +191,14 @@ const Library: React.FC = () => {
 				</IonToolbar>
 			</IonHeader>
 			<IonContent>
-				{/* Import progress bar */}
-				{imports.isImporting && (
-					<IonProgressBar value={imports.progress / 100} type={"determinate"} />
-				)}
+				{/* Import progress bar — determinate when we have a %, indeterminate
+				    for sources without progress (URL, clipboard, text, share-intent). */}
+				{isGlobalImporting &&
+					(imports.progress > 0 ? (
+						<IonProgressBar value={imports.progress / 100} type="determinate" />
+					) : (
+						<IonProgressBar type="indeterminate" />
+					))}
 
 				{/* Local-storage notice for unauthenticated web users */}
 				{IS_WEB_BUILD && !isLoggedIn && !noticeDismissed && (
@@ -235,7 +237,7 @@ const Library: React.FC = () => {
 							<h2 style={{ margin: "0 0 0.5rem" }}>No books yet</h2>
 							<p style={{ margin: 0 }}>Tap the + button to import a file or paste text.</p>
 						</IonText>
-						{imports.isImporting && (
+						{isGlobalImporting && (
 							<IonText color="medium" style={{ marginTop: "1rem" }}>
 								<p>Importing...</p>
 							</IonText>

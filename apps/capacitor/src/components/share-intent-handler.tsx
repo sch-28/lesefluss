@@ -1,7 +1,10 @@
 import type { PluginListenerHandle } from "@capacitor/core";
+import { Filesystem } from "@capacitor/filesystem";
 import type React from "react";
 import { useEffect, useRef } from "react";
+import { useHistory } from "react-router-dom";
 import { subscribeShareIntent } from "../services/book-import/sources/share-intent";
+import { base64ToArrayBuffer } from "../services/book-import/utils/encoding";
 import { isLikelyUrl, normalizeUrl } from "../services/book-import/utils/url-guards";
 import { queryHooks } from "../services/db/hooks";
 import { log } from "../utils/log";
@@ -9,8 +12,10 @@ import { IS_WEB } from "../utils/platform";
 import { useToast } from "./toast";
 
 /**
- * Listens for Android share intents and routes them to the appropriate import:
- *   - URL-shaped text → URL importer (fetch + Readability via catalog proxy)
+ * Listens for Android intents (ACTION_SEND share-sheet, ACTION_VIEW "Open
+ * with") and routes the payload to the appropriate import:
+ *   - file payload     → read cache copy via Filesystem → Blob → blob importer
+ *   - URL-shaped text  → URL importer (fetch + Readability via catalog proxy)
  *   - anything else    → plain-text importer
  *
  * The effect subscribes exactly once on mount. Handlers that depend on
@@ -23,10 +28,12 @@ import { useToast } from "./toast";
 const ShareIntentHandler: React.FC = () => {
 	const importUrl = queryHooks.useImportBookFromUrl();
 	const importText = queryHooks.useImportBookFromText();
+	const importBlob = queryHooks.useImportBookFromBlob();
 	const { showToast } = useToast();
+	const history = useHistory();
 
-	const handlersRef = useRef({ importUrl, importText, showToast });
-	handlersRef.current = { importUrl, importText, showToast };
+	const handlersRef = useRef({ importUrl, importText, importBlob, showToast, history });
+	handlersRef.current = { importUrl, importText, importBlob, showToast, history };
 
 	useEffect(() => {
 		if (IS_WEB) return;
@@ -36,11 +43,23 @@ const ShareIntentHandler: React.FC = () => {
 
 		(async () => {
 			try {
-				handle = await subscribeShareIntent(({ text, subject }) => {
-					const trimmed = text.trim();
-					if (!trimmed) return;
+				handle = await subscribeShareIntent((event) => {
+					const { importUrl, importText, importBlob, showToast, history } = handlersRef.current;
 
-					const { importUrl, importText, showToast } = handlersRef.current;
+					// Any incoming intent jumps to the library tab so the user sees
+					// the import land. The library route handles the redirect from
+					// onboarding / reader / settings tabs.
+					if (!history.location.pathname.startsWith("/tabs/library")) {
+						history.push("/tabs/library");
+					}
+
+					if (event.kind === "file") {
+						handleSharedFile(event.path, event.fileName, event.mimeType, importBlob, showToast);
+						return;
+					}
+
+					const trimmed = event.text.trim();
+					if (!trimmed) return;
 					const candidate = normalizeUrl(trimmed);
 
 					if (isLikelyUrl(candidate)) {
@@ -59,7 +78,7 @@ const ShareIntentHandler: React.FC = () => {
 						);
 					} else {
 						importText.mutate(
-							{ text: trimmed, hint: subject ? { title: subject } : undefined },
+							{ text: trimmed, hint: event.subject ? { title: event.subject } : undefined },
 							{
 								onSuccess: (book) => showToast(`Imported: ${book.title}`),
 								onError: () => showToast("Couldn't import shared text", "danger"),
@@ -82,5 +101,45 @@ const ShareIntentHandler: React.FC = () => {
 
 	return null;
 };
+
+type ImportBlobMutation = ReturnType<typeof queryHooks.useImportBookFromBlob>;
+type ShowToast = ReturnType<typeof useToast>["showToast"];
+
+function handleSharedFile(
+	path: string,
+	fileName: string,
+	mimeType: string | undefined,
+	importBlob: ImportBlobMutation,
+	showToast: ShowToast,
+): void {
+	void (async () => {
+		let blob: Blob;
+		try {
+			const { data } = await Filesystem.readFile({ path });
+			if (typeof data !== "string") {
+				showToast("Couldn't read shared file", "danger");
+				return;
+			}
+			blob = new Blob([base64ToArrayBuffer(data)], mimeType ? { type: mimeType } : undefined);
+		} catch (err) {
+			log.warn("share-intent", "readFile failed:", err);
+			showToast("Couldn't read shared file", "danger");
+			return;
+		}
+
+		importBlob.mutate(
+			{ blob, fileName },
+			{
+				onSuccess: (book) => showToast(`Imported: ${book.title}`),
+				onError: () => showToast("Couldn't import shared file", "danger"),
+				onSettled: () => {
+					Filesystem.deleteFile({ path }).catch((err) =>
+						log.warn("share-intent", "deleteFile failed:", err),
+					);
+				},
+			},
+		);
+	})();
+}
 
 export default ShareIntentHandler;

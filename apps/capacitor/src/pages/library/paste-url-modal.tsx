@@ -11,10 +11,7 @@ import {
 } from "@ionic/react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import {
-	isLikelyUrl,
-	normalizeUrl,
-} from "../../services/book-import/utils/url-guards";
+import { isLikelyUrl, normalizeUrl } from "../../services/book-import/utils/url-guards";
 
 interface PasteUrlModalProps {
 	isOpen: boolean;

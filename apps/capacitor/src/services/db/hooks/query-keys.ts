@@ -36,3 +36,10 @@ export const settingsKeys = {
 	/** The single settings row. */
 	all: ["settings"] as const,
 };
+
+/**
+ * Shared mutation key for every book-import source (file picker, clipboard,
+ * URL, plain text, share intent). Used by `useIsMutating` to detect any
+ * in-flight import regardless of which component fired it.
+ */
+export const bookImportMutationKey = ["book-import"] as const;

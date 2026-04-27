@@ -3,11 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import CoverImage from "../../../components/cover-image";
-import {
-	CATALOG_ENABLED,
-	getCoverUrl,
-	getLanding,
-} from "../../../services/catalog/client";
+import { CATALOG_ENABLED, getCoverUrl, getLanding } from "../../../services/catalog/client";
 import { importFromCatalog } from "../../../services/catalog/import";
 import { catalogKeys } from "../../../services/catalog/query-keys";
 import { log } from "../../../utils/log";

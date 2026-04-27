@@ -1,6 +1,6 @@
+import type { Book } from "../db/schema";
 import { commitBook } from "./commit";
 import { pickParser } from "./parsers/registry";
-import type { Book } from "../db/schema";
 import type { ImportExtras, RawInput } from "./types";
 
 /**

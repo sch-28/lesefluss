@@ -98,9 +98,7 @@ function loadPdfjs(): Promise<PdfjsModule> {
 	if (!pdfjsPromise) {
 		pdfjsPromise = (async () => {
 			const mod = await import("pdfjs-dist/legacy/build/pdf.mjs");
-			const { default: Worker } = await import(
-				"pdfjs-dist/legacy/build/pdf.worker.mjs?worker"
-			);
+			const { default: Worker } = await import("pdfjs-dist/legacy/build/pdf.worker.mjs?worker");
 			mod.GlobalWorkerOptions.workerPort = new Worker();
 			return mod;
 		})().catch((err) => {
