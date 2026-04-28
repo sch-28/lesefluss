@@ -1,0 +1,1 @@
+ALTER TABLE `glossary_entries` ADD COLUMN `hide_marker` integer NOT NULL DEFAULT 0;

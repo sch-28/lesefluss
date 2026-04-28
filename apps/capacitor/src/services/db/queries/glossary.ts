@@ -35,7 +35,9 @@ export async function addEntry(entry: NewGlossaryEntry): Promise<string> {
  */
 export async function updateEntry(
 	id: string,
-	data: Partial<Pick<GlossaryEntry, "label" | "notes" | "color" | "bookId" | "updatedAt">>,
+	data: Partial<
+		Pick<GlossaryEntry, "label" | "notes" | "color" | "bookId" | "hideMarker" | "updatedAt">
+	>,
 ): Promise<void> {
 	await db.update(glossaryEntries).set(data).where(eq(glossaryEntries.id, id));
 }

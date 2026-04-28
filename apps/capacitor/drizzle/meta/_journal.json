@@ -127,6 +127,20 @@
       "when": 1777484400000,
       "tag": "0017_last_seen_changelog",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1777369480731,
+      "tag": "0018_glossary_hide_marker",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1777571200000,
+      "tag": "0019_series",
+      "breakpoints": true
     }
   ]
 }

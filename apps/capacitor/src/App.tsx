@@ -49,8 +49,11 @@ import { SyncProvider } from "./contexts/sync-context";
 import { ThemeProvider } from "./contexts/theme-context";
 import Explore from "./pages/explore";
 import ExploreBookDetail from "./pages/explore/book-detail";
+import WebNovelPreview from "./pages/explore/web-novel-preview";
+import WebNovels from "./pages/explore/web-novels";
 import Library from "./pages/library";
 import LibraryBookDetail from "./pages/library/book-detail";
+import SeriesDetail from "./pages/library/series-detail";
 import Onboarding from "./pages/onboarding";
 import BookReader from "./pages/reader";
 import Settings from "./pages/settings";
@@ -107,7 +110,9 @@ const AppTabs: React.FC = () => {
 	const isSubPage = (path: string) =>
 		path.startsWith("/tabs/reader/") ||
 		path.startsWith("/tabs/library/book/") ||
+		path.startsWith("/tabs/library/series/") ||
 		path.startsWith("/tabs/explore/book/") ||
+		path.startsWith("/tabs/explore/web-novels") ||
 		(path.startsWith("/tabs/settings/") && path !== "/tabs/settings");
 	const hideTabBar = isSubPage(ionRouter.routeInfo.pathname) || isSubPage(location.pathname);
 
@@ -116,8 +121,11 @@ const AppTabs: React.FC = () => {
 			<IonRouterOutlet>
 				<Route exact path="/tabs/library" component={Library} />
 				<Route exact path="/tabs/library/book/:id" component={LibraryBookDetail} />
+				<Route exact path="/tabs/library/series/:id" component={SeriesDetail} />
 				<Route exact path="/tabs/explore" component={Explore} />
 				<Route exact path="/tabs/explore/book/:catalogId" component={ExploreBookDetail} />
+				<Route exact path="/tabs/explore/web-novels" component={WebNovels} />
+				<Route exact path="/tabs/explore/web-novels/preview" component={WebNovelPreview} />
 				<Route exact path="/tabs/settings" component={Settings} />
 				<Route exact path="/tabs/settings/rsvp" component={RSVPSettings} />
 				<Route exact path="/tabs/settings/appearance" component={AppearanceSettings} />

@@ -21,6 +21,9 @@ export interface GlossaryRange {
 	endOffset: number;
 	color: string;
 	label: string;
+	/** When true, the range is still tracked (so taps still open the entry) but
+	 *  the inline avatar marker is suppressed in the renderer. */
+	hideMarker: boolean;
 }
 
 const _encoder = new TextEncoder();
@@ -86,6 +89,7 @@ export function useGlossaryDecorations({
 							endOffset: startByte + matchByteLength - 1,
 							color: entry.color,
 							label: entry.label,
+							hideMarker: entry.hideMarker,
 						});
 					}
 				}

@@ -3,6 +3,9 @@
 	"appName": "Lesefluss",
 	"webDir": "dist",
 	"plugins": {
+		"CapacitorSQLite": {
+			"androidIsEncryption": false
+		},
 		"SplashScreen": {
 			"backgroundColor": "#fdfcfb"
 		},

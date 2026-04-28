@@ -31,12 +31,18 @@ import GlossaryAvatar, { colorFromLabel } from "./glossary-avatar";
 
 const GLOSSARY_PALETTE: { name: string; value: string }[] = [
 	{ name: "auto", value: "" }, // empty triggers auto-derive from label
-	{ name: "yellow", value: "#FFEB3B" },
-	{ name: "blue", value: "#64B5F6" },
+	{ name: "red", value: "#E57373" },
 	{ name: "orange", value: "#FFB74D" },
-	{ name: "pink", value: "#F06292" },
+	{ name: "yellow", value: "#FFEB3B" },
+	{ name: "lime", value: "#DCE775" },
 	{ name: "green", value: "#81C784" },
+	{ name: "teal", value: "#4DB6AC" },
+	{ name: "cyan", value: "#4DD0E1" },
+	{ name: "blue", value: "#64B5F6" },
+	{ name: "indigo", value: "#7986CB" },
 	{ name: "purple", value: "#BA68C8" },
+	{ name: "pink", value: "#F06292" },
+	{ name: "brown", value: "#A1887F" },
 ];
 
 export interface GlossaryEntryModalProps {
@@ -49,7 +55,7 @@ export interface GlossaryEntryModalProps {
 	onClose: () => void;
 	onSave: (
 		id: string,
-		patch: Partial<Pick<GlossaryEntry, "label" | "notes" | "color" | "bookId">>,
+		patch: Partial<Pick<GlossaryEntry, "label" | "notes" | "color" | "bookId" | "hideMarker">>,
 	) => void;
 	onDelete: (id: string) => void;
 	onJumpFirst: (label: string) => void;
@@ -72,6 +78,7 @@ const GlossaryEntryModal: React.FC<GlossaryEntryModalProps> = ({
 	const [notes, setNotes] = useState("");
 	const [color, setColor] = useState("");
 	const [isGlobal, setIsGlobal] = useState(false);
+	const [hideMarker, setHideMarker] = useState(false);
 	// Tap-to-edit: label renders as plain text by default so the IonInput isn't
 	// the first focusable child (Ionic's focus trap auto-focuses it on present,
 	// which pops the keyboard). Drafts go straight into edit mode since the
@@ -87,6 +94,7 @@ const GlossaryEntryModal: React.FC<GlossaryEntryModalProps> = ({
 			setNotes(entry.notes ?? "");
 			setColor(entry.color);
 			setIsGlobal(entry.bookId === null);
+			setHideMarker(entry.hideMarker);
 			setIsEditingLabel(entry.label.length === 0);
 		}
 	}, [entry?.id]);
@@ -126,6 +134,12 @@ const GlossaryEntryModal: React.FC<GlossaryEntryModalProps> = ({
 		if (!entry) return;
 		setIsGlobal(nextGlobal);
 		onSave(entry.id, { bookId: nextGlobal ? null : currentBookId });
+	};
+
+	const handleHideMarkerChange = (next: boolean) => {
+		if (!entry) return;
+		setHideMarker(next);
+		onSave(entry.id, { hideMarker: next });
 	};
 
 	const handleDelete = () => {
@@ -184,9 +198,9 @@ const GlossaryEntryModal: React.FC<GlossaryEntryModalProps> = ({
 				{/* First-mention preview from the current book */}
 				{firstMentionContext && (
 					<blockquote className="glossary-modal-context">
-						{firstMentionContext.before}
+						...{firstMentionContext.before}
 						<mark>{firstMentionContext.match}</mark>
-						{firstMentionContext.after}
+						{firstMentionContext.after}...
 					</blockquote>
 				)}
 
@@ -222,6 +236,21 @@ const GlossaryEntryModal: React.FC<GlossaryEntryModalProps> = ({
 						checked={isGlobal}
 						onIonChange={(e) => handleScopeChange(e.detail.checked)}
 						aria-label="Global glossary entry"
+					/>
+				</IonItem>
+
+				{/* Hide-marker toggle (per entry) */}
+				<IonItem className="glossary-modal-scope">
+					<IonLabel>
+						<h3>Hide marker</h3>
+						<p>
+							Don't show the colored marker next to this term. Tapping it still opens the entry.
+						</p>
+					</IonLabel>
+					<IonToggle
+						checked={hideMarker}
+						onIonChange={(e) => handleHideMarkerChange(e.detail.checked)}
+						aria-label="Hide marker for this entry"
 					/>
 				</IonItem>
 

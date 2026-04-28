@@ -73,7 +73,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 			<IonPage>
 				<IonContent className="ion-padding">
 					<div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-						<h2 className="text-lg font-semibold">Lesefluss can't start</h2>
+						<h2 className="font-semibold text-lg">Lesefluss can't start</h2>
 						<p className="max-w-sm text-sm opacity-80">{error.message}</p>
 						<p className="max-w-sm text-xs opacity-60">
 							Resetting clears local books, settings and highlights on this device. If you're signed
