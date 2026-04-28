@@ -29,9 +29,11 @@
 import { bookHooks } from "./use-books";
 import { glossaryHooks } from "./use-glossary";
 import { highlightHooks } from "./use-highlights";
+import { serialHooks } from "./use-serials";
+import { seriesHooks } from "./use-series";
 import { settingsHooks } from "./use-settings";
 
-export { bookKeys, glossaryKeys, settingsKeys } from "./query-keys";
+export { bookKeys, glossaryKeys, serialKeys, settingsKeys } from "./query-keys";
 
 export const queryHooks = {
 	// ── Books ──────────────────────────────────────────────────────────────
@@ -52,6 +54,9 @@ export const queryHooks = {
 
 	/** Mutation: import a book from a URL (proxied + readability-extracted). */
 	useImportBookFromUrl: bookHooks.useImportBookFromUrl,
+
+	/** Mutation: import a serial/web-novel from a URL (creates series + pending chapters). */
+	useImportSerialFromUrl: bookHooks.useImportSerialFromUrl,
 
 	/** Mutation: import a book from a plain-text string (share intent). */
 	useImportBookFromText: bookHooks.useImportBookFromText,
@@ -94,4 +99,26 @@ export const queryHooks = {
 
 	/** Mutation: delete a glossary entry. */
 	useDeleteGlossaryEntry: glossaryHooks.useDeleteGlossaryEntry,
+
+	// ── Serials ───────────────────────────────────────────────────────────
+	/** Free-text search across every serial provider. */
+	useSearchSerials: serialHooks.useSearchSerials,
+
+	/** All series visible in the library (excludes tombstones). */
+	useSeriesList: seriesHooks.useSeriesList,
+
+	/** Map<seriesId, chapterCount> in one query — drives every SeriesCard's badge. */
+	useSeriesChapterCounts: seriesHooks.useSeriesChapterCounts,
+
+	/** Mutation: soft-delete a series + tombstone all its chapter rows. */
+	useDeleteSeries: seriesHooks.useDeleteSeries,
+
+	/** Ordered chapter rows for a series (used by SeriesDetail chapter list). */
+	useSeriesChapters: seriesHooks.useSeriesChapters,
+
+	/**
+	 * Fire-on-mount hook: polls the upstream TOC and inserts newly published
+	 * chapters as `pending` rows. Returns `{ isSyncing }` for a subtle UI indicator.
+	 */
+	useChapterListSync: seriesHooks.useChapterListSync,
 };

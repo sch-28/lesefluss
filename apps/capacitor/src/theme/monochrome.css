@@ -329,6 +329,11 @@ body.dark .rsvp-action-sheet .action-sheet-cancel {
 	background: #242424;
 }
 
+body.dark .rsvp-action-sheet .action-sheet-cancel {
+	color: #e4e4e4;
+	background: #242424;
+}
+
 body.dark .rsvp-action-sheet .action-sheet-title {
 	color: #888888;
 	border-bottom-color: #333333;
@@ -1589,6 +1594,40 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 
 /* ─── Glossary inline underline ──────────────────────────────────────────── */
 
+.glossary-inline-avatar {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	/* Sized relative to current font; ~1.1em reads as a clear marker without
+	 * overpowering the surrounding text. */
+	width: 1.1em;
+	height: 1.1em;
+	border-radius: 50%;
+	/* Initial sized to fit comfortably inside the disc; line-height: 1 keeps the
+	 * glyph centred via flex alignment. */
+	font-size: 0.65em;
+	line-height: 1;
+	font-weight: 700;
+	color: #fff;
+	/* Outline via 4-direction text-shadow only — `-webkit-text-stroke` paints
+	 * half the stroke INSIDE the glyph, which made thin letters like "T" look
+	 * thickened and double-bordered. text-shadow draws strictly outside. */
+	text-shadow:
+		-1px 0 0 rgba(0, 0, 0, 0.75),
+		1px 0 0 rgba(0, 0, 0, 0.75),
+		0 -1px 0 rgba(0, 0, 0, 0.75),
+		0 1px 0 rgba(0, 0, 0, 0.75);
+	margin-right: 0.2em;
+	/* `middle` is close but reads slightly low because the parent x-height
+	 * midpoint sits below the visual centre of mixed-case text. Nudge up a
+	 * touch so the disc lines up with the cap-height midpoint. */
+	vertical-align: middle;
+	position: relative;
+	top: -0.08em;
+	user-select: none;
+	flex-shrink: 0;
+}
+
 .word-glossary {
 	border-bottom: 2px solid var(--glossary-color, currentColor);
 	padding-bottom: 1px;
@@ -1605,6 +1644,13 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	font-weight: 600;
 	flex-shrink: 0;
 	user-select: none;
+	/* 4-direction text-shadow outline keeps initials legible on light swatches
+	 * (yellow, lime) without `-webkit-text-stroke`'s inner-half-stroke artefact. */
+	text-shadow:
+		-1px 0 0 rgba(0, 0, 0, 0.75),
+		1px 0 0 rgba(0, 0, 0, 0.75),
+		0 -1px 0 rgba(0, 0, 0, 0.75),
+		0 1px 0 rgba(0, 0, 0, 0.75);
 }
 
 .glossary-modal-header {
@@ -1696,8 +1742,20 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	margin: 12px 0;
 	--padding-start: 12px;
 	--padding-end: 12px;
+	--padding-top: 10px;
+	--padding-bottom: 10px;
 	background: var(--reader-progress-track, rgba(128, 128, 128, 0.08));
 	border-radius: 8px;
+}
+
+/* Ionic's textarea host doesn't always forward --padding-start/end to the native
+ * <textarea> when no label slot is present, so enforce the inset directly. */
+.glossary-modal-notes textarea.native-textarea,
+.glossary-modal-notes .native-textarea {
+	padding-inline-start: 12px !important;
+	padding-inline-end: 12px !important;
+	padding-top: 10px !important;
+	padding-bottom: 10px !important;
 }
 
 .glossary-modal-actions {
@@ -3274,6 +3332,66 @@ body.dark .book-detail-summary {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   Chapter list — used in SeriesDetail via SeriesChapterList
+   ───────────────────────────────────────────────────────────────── */
+
+/* Outer wrapper — no card frame, just provides title + spacing */
+.chapter-list-section {
+	background: transparent;
+}
+
+/* Section header above the pill list */
+.chapter-list-title {
+	margin: 0;
+	padding: 0 0.25rem 0.5rem;
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: #888;
+}
+
+/* Each row is a soft "pill" with breathing room between siblings */
+.chapter-row {
+	position: relative;
+	background: #f3f3f3;
+	color: inherit;
+	border: 1px solid transparent;
+	border-radius: 10px;
+	margin-bottom: 6px;
+}
+
+.chapter-row:hover {
+	background: #ececec;
+}
+
+/* In-progress accent — 2px bar on the left edge */
+.chapter-row.is-current::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 8px;
+	bottom: 8px;
+	width: 2px;
+	border-radius: 2px;
+	background: var(--ion-color-primary);
+}
+
+/* ── Dark mode ── */
+body.dark .chapter-list-title {
+	color: #888;
+}
+
+body.dark .chapter-row {
+	background: #242424;
+	color: #fff;
+}
+
+body.dark .chapter-row:hover {
+	background: #2c2c2c;
+}
+
+/* ─────────────────────────────────────────────────────────────────
    Onboarding - first-run flow
    ───────────────────────────────────────────────────────────────── */
 
@@ -3806,4 +3924,94 @@ ion-modal.whats-new-modal {
 .whats-new-footer {
 	padding: 12px 18px 18px;
 	border-top: 1px solid var(--ion-color-step-100, rgba(0, 0, 0, 0.08));
+}
+
+/* Web-novels Explore section — soft-CTA branded provider cards.
+   Editorial-card aesthetic: clean surface, layered shadow for lift, generous
+   24px radius, brand color reduced to a small icon badge + a faint corner
+   wash. The `--brand` custom property is set per-card via inline style
+   (PROVIDER_CARD_STYLE) and `color-mix` derives every brand-tinted surface
+   from it, so the JSX stays free of dynamic background calculations. */
+.web-novels-card-row {
+	scroll-snap-type: x mandatory;
+	scrollbar-width: none;
+}
+.web-novels-card-row::-webkit-scrollbar {
+	display: none;
+}
+.web-novels-card {
+	width: 8.75rem;
+	height: 9rem;
+	padding: 0.875rem 0.75rem 0.875rem 1.125rem;
+	border-radius: 1.5rem;
+	scroll-snap-align: start;
+	background: var(--ion-card-background, #fff);
+	border: 1px solid var(--ion-color-step-100, rgba(0, 0, 0, 0.06));
+	box-shadow:
+		0 1px 2px rgba(15, 23, 42, 0.04),
+		0 12px 28px -16px rgba(15, 23, 42, 0.22);
+	transition:
+		transform 0.18s ease,
+		box-shadow 0.22s ease;
+}
+/* Brand "spine" — 4px vertical accent on the left edge. The card's rounded
+   corners clip the stripe at top/bottom so it reads as a book-spine flourish
+   rather than a hard rule. The pseudo sits under the content (z-index 0)
+   while the inner span lifts above it. */
+.web-novels-card:not(.web-novels-card--placeholder)::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 4px;
+	background: var(--brand, #444);
+	pointer-events: none;
+}
+.web-novels-card:not(.web-novels-card--placeholder):active {
+	transform: scale(0.97);
+	box-shadow:
+		0 1px 2px rgba(15, 23, 42, 0.05),
+		0 8px 18px -14px rgba(15, 23, 42, 0.2);
+}
+.web-novels-card-badge {
+	background: color-mix(in srgb, var(--brand, #444) 14%, transparent);
+	color: var(--brand, #444);
+}
+.web-novels-card--placeholder {
+	width: 8.75rem;
+	height: 9rem;
+	padding: 0.75rem;
+	border-radius: 1.5rem;
+	scroll-snap-align: start;
+	border: 1px dashed var(--ion-border-color, #d9d9d9);
+	background: transparent;
+	box-shadow: none;
+	text-align: center;
+	line-height: 1.3;
+}
+
+/* Web-novels routed search page — provider filter chips. Two visual states
+   driven by the .web-novels-filter-chip--active class so JSX stays free of
+   per-render style objects. The active chip can override its background via
+   inline style for brand color (one inline declaration, not a full object). */
+.web-novels-filter-chip {
+	cursor: pointer;
+	white-space: nowrap;
+	border-radius: 9999px;
+	border: 1px solid var(--ion-border-color, #d9d9d9);
+	background: transparent;
+	color: var(--ion-text-color, #000);
+	padding: 4px 12px;
+	font-size: 0.8rem;
+	font-weight: 500;
+	transition:
+		background-color 0.15s ease,
+		border-color 0.15s ease,
+		color 0.15s ease;
+}
+.web-novels-filter-chip--active {
+	background-color: var(--ion-color-primary, #000);
+	border-color: var(--ion-color-primary, #000);
+	color: #fff;
 }

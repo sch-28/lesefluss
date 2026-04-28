@@ -34,6 +34,23 @@ import {
 	getHighlightsByBook,
 	updateHighlight,
 } from "./highlights";
+import {
+	addSeries,
+	addSeriesWithChapters,
+	deleteSeries,
+	getNextChapter,
+	getSeries,
+	getSeriesChapterCounts,
+	getSeriesChapters,
+	getSeriesEntryChapter,
+	getSeriesForSync,
+	getSeriesList,
+	hardDeleteSeries,
+	insertChapters,
+	setChapterContent,
+	updateChapterIndex,
+	updateSeries,
+} from "./series";
 import { getSettings, saveSettings } from "./settings";
 
 export const queries = {
@@ -74,4 +91,21 @@ export const queries = {
 	updateEntry,
 	deleteEntry,
 	deleteEntriesByBook,
+
+	// Series
+	getSeries,
+	getSeriesList,
+	getSeriesForSync,
+	addSeries,
+	addSeriesWithChapters,
+	insertChapters,
+	setChapterContent,
+	updateSeries,
+	updateChapterIndex,
+	deleteSeries,
+	hardDeleteSeries,
+	getSeriesChapters,
+	getSeriesChapterCounts,
+	getSeriesEntryChapter,
+	getNextChapter,
 };

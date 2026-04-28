@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useToast } from "../../components/toast";
 import { queryHooks } from "../../services/db/hooks";
+import { isSerialUrl } from "../../services/serial-scrapers";
 
 /**
  * Error codes thrown by any source/parser in the book-import subsystem and
@@ -59,6 +60,7 @@ export function useLibraryImports(): UseLibraryImports {
 	const importFile = queryHooks.useImportBook();
 	const importClipboard = queryHooks.useImportBookFromClipboard();
 	const importUrl = queryHooks.useImportBookFromUrl();
+	const importSerial = queryHooks.useImportSerialFromUrl();
 	const { showToast } = useToast();
 
 	const [progress, setProgress] = useState(0);
@@ -69,22 +71,27 @@ export function useLibraryImports(): UseLibraryImports {
 	};
 
 	const errorMessage = useMemo(() => {
-		const err = importFile.error ?? importClipboard.error ?? importUrl.error;
+		const err = importFile.error ?? importClipboard.error ?? importUrl.error ?? importSerial.error;
 		if (!(err instanceof Error)) return null;
 		if (ALERT_SUPPRESSED.has(err.message)) return null;
 		if (err.message === "FETCH_FAILED") return "Couldn't load this page.";
 		return err.message;
-	}, [importFile.error, importClipboard.error, importUrl.error]);
+	}, [importFile.error, importClipboard.error, importUrl.error, importSerial.error]);
 
 	return {
-		isImporting: importFile.isPending || importClipboard.isPending || importUrl.isPending,
+		isImporting:
+			importFile.isPending ||
+			importClipboard.isPending ||
+			importUrl.isPending ||
+			importSerial.isPending,
 		progress,
-		isUrlImporting: importUrl.isPending,
+		isUrlImporting: importUrl.isPending || importSerial.isPending,
 		errorMessage,
 		resetError: () => {
 			importFile.reset();
 			importClipboard.reset();
 			importUrl.reset();
+			importSerial.reset();
 		},
 		importFromFile: () => {
 			setProgress(0);
@@ -97,6 +104,18 @@ export function useLibraryImports(): UseLibraryImports {
 			importClipboard.mutate(undefined, { onError: toastForKnownError });
 		},
 		importFromUrl: (url, opts) => {
+			// Route serial/web-novel URLs (AO3, ScribbleHub, …) to the scraper
+			// pipeline; everything else goes through the standard URL importer.
+			if (isSerialUrl(url)) {
+				importSerial.mutate(
+					{ url },
+					{
+						onSuccess: () => opts?.onSuccess?.(),
+						onError: toastForKnownError,
+					},
+				);
+				return;
+			}
 			importUrl.mutate(
 				{ url },
 				{

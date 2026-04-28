@@ -1,5 +1,6 @@
 import type { PaginationStyle } from "@lesefluss/rsvp-core";
-import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { check, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // NOTE: id is a random 8-char hex string generated at import time.
 // It doubles as the book identity on the ESP32 (stored in book.hash after transfer).
@@ -71,11 +72,49 @@ export const books = sqliteTable("books", {
 	isActive: integer("is_active", { mode: "boolean" }).notNull().default(false), // true = this book is currently on the ESP32 (at most one row at a time)
 	addedAt: integer("added_at").notNull(),
 	lastRead: integer("last_read"),
-	source: text("source"), // 'gutenberg' | 'standard_ebooks' | 'url' | null (null = locally imported)
+	source: text("source"), // 'gutenberg' | 'standard_ebooks' | 'url' | 'serial' | null (null = locally imported)
 	catalogId: text("catalog_id"), // e.g. 'gutenberg:1342', 'se:mary-shelley/frankenstein'
 	sourceUrl: text("source_url"), // original URL for source='url' imports
 	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false), // tombstone — pushed to server then hard-deleted on next pull
+	// Serial/web-novel chapter membership. NULL series_id = standalone book.
+	seriesId: text("series_id"),
+	chapterIndex: integer("chapter_index"), // 0-based ordering within series
+	chapterSourceUrl: text("chapter_source_url"), // stable identity key for chapter-level upstream
+	chapterStatus: text("chapter_status")
+		.$type<"pending" | "fetched" | "locked" | "error">()
+		.notNull()
+		.default("fetched"),
 });
+
+/**
+ * Series — one row per imported web-novel/serial. Chapters are `books` rows
+ * with `series_id` set; chapter count is `COUNT(*)` (no denormalized cache).
+ */
+export const series = sqliteTable(
+	"series",
+	{
+		id: text("id").primaryKey(), // 8-char hex
+		title: text("title").notNull(),
+		author: text("author"),
+		coverImage: text("cover_image"), // base64 data URL
+		description: text("description"),
+		sourceUrl: text("source_url").notNull(), // canonical series page
+		tocUrl: text("toc_url").notNull(), // URL polled for chapter list updates
+		provider: text("provider")
+			.$type<"ao3" | "scribblehub" | "royalroad" | "ffnet" | "wuxiaworld" | "rss">()
+			.notNull(),
+		lastCheckedAt: integer("last_checked_at"),
+		createdAt: integer("created_at").notNull(),
+		deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+		updatedAt: integer("updated_at").notNull(),
+	},
+	(t) => [
+		check(
+			"series_provider_check",
+			sql`${t.provider} IN ('ao3', 'scribblehub', 'royalroad', 'ffnet', 'wuxiaworld', 'rss')`,
+		),
+	],
+);
 
 /**
  * Book content - large data stored separately from metadata.
@@ -137,9 +176,16 @@ export const glossaryEntries = sqliteTable("glossary_entries", {
 	label: text("label").notNull(),
 	notes: text("notes"),
 	color: text("color").notNull(),
+	// Per-entry override: when true, the entry still tracks tap targets but no
+	// marker (avatar) is rendered. The global `readerGlossaryUnderline` setting
+	// still gates the whole feature; this only narrows the visual within "on" mode.
+	hideMarker: integer("hide_marker", { mode: "boolean" }).notNull().default(false),
 	createdAt: integer("created_at").notNull(),
 	updatedAt: integer("updated_at").notNull(),
 });
 
 export type GlossaryEntry = typeof glossaryEntries.$inferSelect;
 export type NewGlossaryEntry = typeof glossaryEntries.$inferInsert;
+
+export type Series = typeof series.$inferSelect;
+export type NewSeries = typeof series.$inferInsert;

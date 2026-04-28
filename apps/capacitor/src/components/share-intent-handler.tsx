@@ -7,6 +7,7 @@ import { subscribeShareIntent } from "../services/book-import/sources/share-inte
 import { base64ToArrayBuffer } from "../services/book-import/utils/encoding";
 import { isLikelyUrl, normalizeUrl } from "../services/book-import/utils/url-guards";
 import { queryHooks } from "../services/db/hooks";
+import { isSerialUrl } from "../services/serial-scrapers";
 import { log } from "../utils/log";
 import { IS_WEB } from "../utils/platform";
 import { useToast } from "./toast";
@@ -27,13 +28,21 @@ import { useToast } from "./toast";
  */
 const ShareIntentHandler: React.FC = () => {
 	const importUrl = queryHooks.useImportBookFromUrl();
+	const importSerial = queryHooks.useImportSerialFromUrl();
 	const importText = queryHooks.useImportBookFromText();
 	const importBlob = queryHooks.useImportBookFromBlob();
 	const { showToast } = useToast();
 	const history = useHistory();
 
-	const handlersRef = useRef({ importUrl, importText, importBlob, showToast, history });
-	handlersRef.current = { importUrl, importText, importBlob, showToast, history };
+	const handlersRef = useRef({
+		importUrl,
+		importSerial,
+		importText,
+		importBlob,
+		showToast,
+		history,
+	});
+	handlersRef.current = { importUrl, importSerial, importText, importBlob, showToast, history };
 
 	useEffect(() => {
 		if (IS_WEB) return;
@@ -44,7 +53,8 @@ const ShareIntentHandler: React.FC = () => {
 		(async () => {
 			try {
 				handle = await subscribeShareIntent((event) => {
-					const { importUrl, importText, importBlob, showToast, history } = handlersRef.current;
+					const { importUrl, importSerial, importText, importBlob, showToast, history } =
+						handlersRef.current;
 
 					// Any incoming intent jumps to the library tab so the user sees
 					// the import land. The library route handles the redirect from
@@ -63,6 +73,16 @@ const ShareIntentHandler: React.FC = () => {
 					const candidate = normalizeUrl(trimmed);
 
 					if (isLikelyUrl(candidate)) {
+						if (isSerialUrl(candidate)) {
+							importSerial.mutate(
+								{ url: candidate },
+								{
+									onSuccess: (s) => showToast(`Imported series: ${s.title}`),
+									onError: () => showToast("Couldn't import shared series", "danger"),
+								},
+							);
+							return;
+						}
 						importUrl.mutate(
 							{ url: candidate },
 							{

@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+	<head>
+		<!--
+			Royal Road injects a <style> block with a randomised class name that
+			hides the anti-piracy span. The class name changes per request, so
+			the adapter must read <head><style> to build a blacklist rather than
+			relying on the element's inline style attribute.
+		-->
+		<style>
+			.cAbCdEfGhIjKl {
+				display: none;
+				speak: never;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="chapter-inner chapter-content">
+			<p>The first paragraph of the chapter.</p>
+			<!--
+				Anti-piracy span: hidden via head-style class, not inline style.
+				collectHiddenClasses + stripHiddenClasses must remove this.
+			-->
+			<span class="cAbCdEfGhIjKl">Unauthorized reproduction: this story has been taken without approval. Report sightings.</span>
+			<p>A second visible paragraph.</p>
+			<!-- Inline-style hidden paragraph: stripped by the existing stripHidden helper. -->
+			<p style="display:none">Another hidden paragraph.</p>
+		</div>
+	</body>
+</html>

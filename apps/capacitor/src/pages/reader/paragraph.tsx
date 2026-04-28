@@ -70,6 +70,8 @@ export interface GlossaryRangeProp {
 	startOffset: number;
 	endOffset: number;
 	color: string;
+	label: string;
+	hideMarker?: boolean;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -158,13 +160,16 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 				}
 			}
 
-			// Glossary ranges - parallel to highlights, but uses an inline color via CSS var
-			let glossaryColor: string | undefined;
+			// Glossary ranges — render a small inline avatar before the FIRST token of
+			// each range instead of underlining every word. Less visual noise when
+			// many entries are tracked. `hideMarker` (legacy name) still suppresses
+			// the marker. Range stays in glossaryByParagraph so the tap target is
+			// preserved on the words themselves.
+			let glossaryAvatar: { label: string; color: string } | null = null;
 			if (glossaryRanges && !isSpace) {
 				for (const g of glossaryRanges) {
-					if (tokenOffset >= g.startOffset && tokenOffset <= g.endOffset) {
-						classes.push("word-glossary");
-						glossaryColor = g.color;
+					if (tokenOffset === g.startOffset && !g.hideMarker) {
+						glossaryAvatar = { label: g.label, color: g.color };
 						break;
 					}
 				}
@@ -248,16 +253,24 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 						}
 					: undefined;
 
+			if (glossaryAvatar) {
+				spans.push(
+					<span
+						key={`g-${i}`}
+						className="glossary-inline-avatar"
+						style={{ background: glossaryAvatar.color }}
+						aria-hidden="true"
+					>
+						{(glossaryAvatar.label.trim()[0] ?? "?").toUpperCase()}
+					</span>,
+				);
+			}
+
 			spans.push(
 				<span
 					key={i}
 					data-offset={tokenOffset}
 					className={className}
-					style={
-						glossaryColor
-							? ({ "--glossary-color": glossaryColor } as React.CSSProperties)
-							: undefined
-					}
 					onClick={() => onWordTap(tokenOffset, token)}
 					onPointerDown={handlePointerDown}
 				>

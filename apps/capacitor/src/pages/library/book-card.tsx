@@ -1,23 +1,16 @@
 /**
- * BookCard - individual book grid item.
+ * BookCard — individual book grid item.
  *
- * Interaction model:
+ * Interaction model is shared with SeriesCard via `useLongPress`:
  *   Short tap  (< 400ms) → onOpen  (navigate to reader)
  *   Long press (≥ 400ms) → onMenu  (action sheet: Set active / Delete)
- *
- * The browser context-menu is suppressed via onContextMenu. The synthetic
- * click that follows a long-press is swallowed in handleClick via firedRef
- * so onOpen doesn't race onMenu.
- * onTouchMove cancels the timer so scrolling the grid never triggers onMenu.
  */
 
 import { IonProgressBar } from "@ionic/react";
 import type React from "react";
-import { useCallback, useRef } from "react";
 import BookCover from "../../components/book-cover";
 import type { Book } from "../../services/db/schema";
-
-const LONG_PRESS_MS = 400;
+import { useLongPress } from "./use-long-press";
 
 interface BookCardProps {
 	book: Book;
@@ -38,56 +31,13 @@ const BookCard: React.FC<BookCardProps> = ({
 	onOpen,
 	onMenu,
 }) => {
-	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const firedRef = useRef(false);
-
-	const handleTouchStart = useCallback(
-		(e: React.TouchEvent) => {
-			if (e.touches.length !== 1) return;
-			firedRef.current = false;
-			timerRef.current = setTimeout(() => {
-				firedRef.current = true;
-				onMenu();
-			}, LONG_PRESS_MS);
-		},
-		[onMenu],
-	);
-
-	const cancelTimer = useCallback(() => {
-		if (timerRef.current) {
-			clearTimeout(timerRef.current);
-			timerRef.current = null;
-		}
-	}, []);
-
-	// Touch devices synthesize a click after touchend, so handling BOTH
-	// `onTouchEnd → onOpen` and `onClick → onOpen` pushes the reader route
-	// twice on a single tap — the back button then needs two presses to pop
-	// the duplicate. Let React's synthetic click fire for both touch and
-	// mouse, and use the touch handlers only to drive the long-press timer.
-	const handleClick = useCallback(() => {
-		cancelTimer();
-		if (firedRef.current) {
-			// Long-press already triggered onMenu; swallow the follow-up click.
-			firedRef.current = false;
-			return;
-		}
-		onOpen();
-	}, [cancelTimer, onOpen]);
+	const handlers = useLongPress({ onTap: onOpen, onMenu });
 
 	return (
 		<div
 			className="flex select-none flex-col active:opacity-70"
 			style={{ WebkitTouchCallout: "none", cursor: "pointer" }}
-			onTouchStart={handleTouchStart}
-			onTouchEnd={cancelTimer}
-			onTouchCancel={cancelTimer}
-			onTouchMove={cancelTimer}
-			onClick={handleClick}
-			onContextMenu={(e) => {
-				e.preventDefault();
-				onMenu();
-			}}
+			{...handlers}
 		>
 			{/* Cover */}
 			<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm">

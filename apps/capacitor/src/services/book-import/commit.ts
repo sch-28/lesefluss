@@ -67,6 +67,10 @@ export async function commitBook(payload: BookPayload, extras: ImportExtras): Pr
 		catalogId: extras.catalogId ?? null,
 		sourceUrl: extras.sourceUrl ?? null,
 		deleted: false,
+		seriesId: null,
+		chapterIndex: null,
+		chapterSourceUrl: null,
+		chapterStatus: "fetched",
 	};
 }
 

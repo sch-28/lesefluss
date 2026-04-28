@@ -9,6 +9,22 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-04-29",
+		title: "Web Novels",
+		tags: ["App"],
+		changes: [
+			"Find and read serials from AO3, ScribbleHub, Royal Road, and Wuxiaworld right inside the app",
+			"New Web Novels section on the Explore tab with a search across every provider at once",
+			"Tap a result for a preview, then add the whole series to your library in one go",
+			"Series get their own card in the library with a chapter count badge",
+			"Open a series to see the full chapter list and jump back into where you left off",
+			"Chapters download lazily when you open them, so adding a 500-chapter series is instant",
+			"Finish a chapter and the reader auto-advances to the next one",
+			"Re-open a series and it quietly checks for new chapters in the background",
+			"You can also paste a series or chapter URL and it figures out the rest",
+		],
+	},
+	{
 		date: "2026-04-28",
 		title: "Glossary",
 		tags: ["App"],
@@ -16,9 +32,9 @@ export const changelog: ChangelogEntry[] = [
 			"Keep track of names, places, and ideas with a per-book glossary",
 			"Select a word in the reader and tap 'Add to glossary' to save an entry",
 			"Each entry gets a colored avatar with initials so they're easy to scan",
-			"Words that match an entry get a soft underline. Tap to open the entry",
+			"Words that match an entry are subtly marked in the text. Tap one to open the entry",
 			"Contents, Highlights and Glossary now live in one annotations sheet",
-			"Toggle the glossary underlines in the appearance popover if you'd rather not see them",
+			"Toggle the glossary marks in the appearance popover if you'd rather not see them",
 			"Choose whether an entry is just for one book or available everywhere",
 			"Glossary entries sync across devices, same as highlights",
 			"This dialog now shows what's new whenever you open the app after an update",

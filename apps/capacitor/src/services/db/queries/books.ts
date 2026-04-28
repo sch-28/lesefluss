@@ -1,4 +1,4 @@
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, isNull, ne } from "drizzle-orm";
 import { db } from "../index";
 import {
 	type Book,
@@ -12,14 +12,17 @@ import {
 } from "../schema";
 
 /**
- * Fetch all books (metadata only) ordered by most recently read.
- * Since content now lives in a separate table, this is naturally lightweight.
+ * Fetch standalone books for the library grid (metadata only) ordered by most
+ * recently read. Chapter rows (`series_id IS NOT NULL`) are excluded — they
+ * surface in the UI via their parent series card, not as standalone books.
+ *
+ * For sync (which needs to see chapter rows too), use `getBooksForSync()`.
  */
 export async function getBooks(): Promise<Book[]> {
 	return db
 		.select()
 		.from(books)
-		.where(eq(books.deleted, false))
+		.where(and(eq(books.deleted, false), isNull(books.seriesId)))
 		.orderBy(desc(books.lastRead), desc(books.addedAt));
 }
 

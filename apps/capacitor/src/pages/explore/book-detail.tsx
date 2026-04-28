@@ -1,30 +1,16 @@
-import {
-	IonAlert,
-	IonBackButton,
-	IonButton,
-	IonButtons,
-	IonContent,
-	IonHeader,
-	IonIcon,
-	IonPage,
-	IonProgressBar,
-	IonSpinner,
-	IonText,
-	IonToolbar,
-} from "@ionic/react";
+import { IonAlert } from "@ionic/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { bookOutline, downloadOutline, openOutline } from "ionicons/icons";
+import { bookOutline, downloadOutline } from "ionicons/icons";
 import type React from "react";
 import { useState } from "react";
 import { useHistory, useParams } from "react-router-dom";
-import CoverImage from "../../components/cover-image";
-import SanitizedDescription from "../../components/sanitized-description";
 import { externalSourceUrl, getCatalogBook, getCoverUrl } from "../../services/catalog/client";
 import { importFromCatalog } from "../../services/catalog/import";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { scheduleSyncPush } from "../../services/sync";
+import { DetailShell } from "../_shared/detail-shell";
 
 const ExploreBookDetail: React.FC = () => {
 	// react-router v5 doesn't decode path params, so SE ids arrive as
@@ -63,131 +49,74 @@ const ExploreBookDetail: React.FC = () => {
 		onSettled: () => setImportProgress(0),
 	});
 
-	const coverUrl = book ? getCoverUrl(book.id, book.coverUrl) : null;
 	const externalUrl = externalSourceUrl(catalogId);
-	const isSE = book?.source === "standard_ebooks";
 	const isImporting = importMutation.isPending;
 
+	if (isPending || isError || !book) {
+		return (
+			<DetailShell
+				backHref="/tabs/explore"
+				cover={null}
+				title={isError && error instanceof Error ? "Couldn't load book" : "Loading…"}
+				primaryAction={{
+					label: "Loading",
+					onClick: () => undefined,
+					disabled: true,
+				}}
+				isLoading={isPending}
+				errorMessage={
+					isError ? (error instanceof Error ? error.message : "Failed to load book.") : undefined
+				}
+				externalLink={externalUrl ? { href: externalUrl } : undefined}
+			/>
+		);
+	}
+
+	// Branch the primary action on whether the book is already in the library
+	// or whether a downloadable EPUB exists.
+	const primary = existing
+		? {
+				label: "Open in Library",
+				icon: bookOutline,
+				onClick: () => history.replace(`/tabs/library/book/${existing.id}`),
+			}
+		: book.epubUrl
+			? {
+					label: isImporting ? "Downloading…" : "Download",
+					icon: downloadOutline,
+					onClick: () => importMutation.mutate(),
+					disabled: isImporting,
+					loading: isImporting,
+				}
+			: {
+					label: "Not available as free EPUB",
+					onClick: () => undefined,
+					disabled: true,
+				};
+
 	return (
-		<IonPage>
-			<IonHeader class="ion-no-border">
-				<IonToolbar>
-					<IonButtons slot="start">
-						<IonBackButton defaultHref="/tabs/explore" />
-					</IonButtons>
-					{externalUrl && (
-						<IonButtons slot="end">
-							<IonButton
-								href={externalUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-								aria-label="View original source"
-								title="View original source"
-							>
-								<IonIcon slot="icon-only" icon={openOutline} />
-							</IonButton>
-						</IonButtons>
-					)}
-				</IonToolbar>
-			</IonHeader>
-			<IonContent>
-				{isImporting && <IonProgressBar value={importProgress / 100} type="determinate" />}
-
-				{isPending ? (
-					<div className="flex h-full items-center justify-center">
-						<IonSpinner />
-					</div>
-				) : isError ? (
-					<div className="flex h-full flex-col items-center justify-center p-8 text-center">
-						<IonText color="medium">
-							<p style={{ margin: 0 }}>
-								{error instanceof Error ? error.message : "Failed to load book."}
-							</p>
-						</IonText>
-					</div>
-				) : !book ? null : (
-					<div className="book-detail-page">
-						<div className="book-detail-hero">
-							<div className="book-detail-cover">
-								<CoverImage
-									src={coverUrl}
-									alt=""
-									priority
-									fallback={
-										<div className="book-detail-cover-placeholder">
-											<IonIcon icon={bookOutline} />
-										</div>
-									}
-								/>
-							</div>
-							<div className="book-detail-meta">
-								{isSE && <span className="book-detail-eyebrow">Standard Ebooks</span>}
-								<h1 className="book-detail-title">{book.title}</h1>
-								{book.author && <p className="book-detail-author">{book.author}</p>}
-							</div>
-						</div>
-
-						<div className="book-detail-actions">
-							{existing ? (
-								<IonButton
-									expand="block"
-									onClick={() => history.replace(`/tabs/library/book/${existing.id}`)}
-								>
-									<IonIcon slot="start" icon={bookOutline} />
-									Open in Library
-								</IonButton>
-							) : book.epubUrl ? (
-								<IonButton
-									expand="block"
-									disabled={isImporting}
-									onClick={() => importMutation.mutate()}
-								>
-									<IonIcon slot="start" icon={downloadOutline} />
-									{isImporting ? "Downloading…" : "Download"}
-								</IonButton>
-							) : (
-								<IonText color="medium">
-									<p style={{ margin: 0 }}>Not available as free EPUB.</p>
-								</IonText>
-							)}
-						</div>
-
-						{book.subjects && book.subjects.length > 0 && (
-							<div className="book-detail-subjects">
-								{book.subjects.slice(0, 8).map((s) => (
-									<span key={s} className="book-detail-subject">
-										{s}
-									</span>
-								))}
-							</div>
-						)}
-
-						{(book.description || book.summary) && (
-							<section className="book-detail-card">
-								<h2 className="book-detail-section-title">About</h2>
-								{book.description ? (
-									<SanitizedDescription
-										className="book-detail-description"
-										html={book.description}
-									/>
-								) : (
-									<p className="book-detail-summary">{book.summary}</p>
-								)}
-							</section>
-						)}
-					</div>
-				)}
-
-				<IonAlert
-					isOpen={!!importMutation.error}
-					onDidDismiss={() => importMutation.reset()}
-					header="Download failed"
-					message={importMutation.error instanceof Error ? importMutation.error.message : undefined}
-					buttons={[{ text: "OK", role: "cancel" }]}
-					cssClass="rsvp-alert"
-				/>
-			</IonContent>
-		</IonPage>
+		<>
+			<DetailShell
+				backHref="/tabs/explore"
+				cover={getCoverUrl(book.id, book.coverUrl)}
+				eyebrow={book.source === "standard_ebooks" ? "Standard Ebooks" : undefined}
+				title={book.title}
+				author={book.author}
+				subjects={book.subjects ?? undefined}
+				primaryAction={primary}
+				description={{ html: book.description, text: book.summary }}
+				externalLink={externalUrl ? { href: externalUrl } : undefined}
+				progress={isImporting ? importProgress : undefined}
+			/>
+			<IonAlert
+				isOpen={!!importMutation.error}
+				onDidDismiss={() => importMutation.reset()}
+				header="Download failed"
+				message={importMutation.error instanceof Error ? importMutation.error.message : undefined}
+				buttons={[{ text: "OK", role: "cancel" }]}
+				cssClass="rsvp-alert"
+			/>
+		</>
 	);
 };
 

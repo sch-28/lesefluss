@@ -8,9 +8,14 @@ import type { WordEntry } from "@lesefluss/rsvp-core";
 /** How many surrounding words to show on each side of the focal word when paused. */
 export const CONTEXT_PEEK_WORDS = 50;
 
-/** Strip punctuation for dictionary lookup. */
+/** Strip everything except letters, apostrophes, and hyphens. Preserves casing. */
+export function stripPunct(raw: string): string {
+	return raw.replace(/[^a-zA-Z'-]/g, "");
+}
+
+/** Strip punctuation and lowercase for dictionary lookup. */
 export function cleanWord(raw: string): string {
-	return raw.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
+	return stripPunct(raw).toLowerCase();
 }
 
 /**

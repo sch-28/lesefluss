@@ -8,10 +8,11 @@ import {
 	importBookFromUrl,
 	removeBook,
 } from "../../book-import";
+import { importSerialFromUrl } from "../../serial-scrapers";
 import { scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
 import type { Book } from "../schema";
-import { bookImportMutationKey, bookKeys } from "./query-keys";
+import { bookImportMutationKey, bookKeys, serialKeys } from "./query-keys";
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
 
@@ -61,12 +62,23 @@ function useBookContent(id: string) {
 // ─── Mutations ───────────────────────────────────────────────────────────────
 
 /**
- * Shared plumbing for every "import a book" mutation: invalidate the library
- * + cover queries and nudge the sync scheduler on success. Every new source
- * (file picker, clipboard, URL, share, future PDF, …) should go through this
- * factory instead of reinventing the onSuccess block.
+ * Shared plumbing for every "import" mutation: invalidate the library + cover
+ * queries and nudge the sync scheduler on success. Every new source (file
+ * picker, clipboard, URL, share, serial scrapers, future PDF, …) should go
+ * through this factory instead of reinventing the onSuccess block.
+ *
+ * `TResult` defaults to `Book` for the existing book-import paths but accepts
+ * any shape — serial imports return a `Series`; both invalidate the same
+ * library queries since chapter rows surface as books in the grid.
+ *
+ * `extraInvalidations` extends the default invalidation set for sources that
+ * touch query subtrees beyond books — e.g. serial imports also need to
+ * refetch `serialKeys.all` (the library list + chapter counts).
  */
-function useBookImportMutation<TVars = void>(mutationFn: (vars: TVars) => Promise<Book>) {
+function useBookImportMutation<TVars = void, TResult = Book>(
+	mutationFn: (vars: TVars) => Promise<TResult>,
+	extraInvalidations: readonly (readonly unknown[])[] = [],
+) {
 	const qc = useQueryClient();
 	return useMutation({
 		mutationKey: bookImportMutationKey,
@@ -74,6 +86,9 @@ function useBookImportMutation<TVars = void>(mutationFn: (vars: TVars) => Promis
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 			qc.invalidateQueries({ queryKey: bookKeys.covers });
+			for (const key of extraInvalidations) {
+				qc.invalidateQueries({ queryKey: key });
+			}
 			scheduleSyncPush();
 		},
 	});
@@ -105,6 +120,24 @@ function useImportBookFromClipboard() {
  */
 function useImportBookFromUrl() {
 	return useBookImportMutation(({ url }: { url: string }) => importBookFromUrl(url));
+}
+
+/**
+ * Import a serial/web-novel from any URL within the series. Inserts a series
+ * row plus N pending chapter rows; chapters fetch lazily on reader open.
+ *
+ * Invalidates the serial subtree on top of the default book invalidations so
+ * the library's series cards and chapter-count badges refresh immediately —
+ * no app reload needed.
+ *
+ * Throws `Error("NO_SCRAPER")` for non-serial URLs (caller should branch on
+ * `isSerialUrl` first to avoid this).
+ */
+function useImportSerialFromUrl() {
+	return useBookImportMutation(
+		({ url }: { url: string }) => importSerialFromUrl(url),
+		[serialKeys.all],
+	);
 }
 
 /**
@@ -161,6 +194,7 @@ export const bookHooks = {
 	useImportBook,
 	useImportBookFromClipboard,
 	useImportBookFromUrl,
+	useImportSerialFromUrl,
 	useImportBookFromText,
 	useImportBookFromBlob,
 	useDeleteBook,

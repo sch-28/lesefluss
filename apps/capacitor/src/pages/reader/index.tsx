@@ -62,6 +62,9 @@ import { pushSync, scheduleSyncPush } from "../../services/sync";
 import { formatReadingTime } from "../../utils/reading-time";
 import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
+import { useChapterAutoAdvance } from "./chapter-auto-advance";
+import { useChapterFetch } from "./chapter-fetch";
+import { ChapterStateOverlay } from "./chapter-state-overlay";
 import DictionaryModal from "./dictionary-modal";
 import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
@@ -69,6 +72,7 @@ import { generateGlossaryId } from "./glossary-utils";
 import HighlightModal from "./highlight-modal";
 import PageView from "./page-view";
 import { getWordOffsets, utf8ByteLength } from "./paragraph";
+import { stripPunct } from "./rsvp-engine";
 import RsvpView from "./rsvp-view";
 import ScrollView, { ReaderSkeleton } from "./scroll-view";
 import SearchModal from "./search-modal";
@@ -109,6 +113,13 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const updateGlossaryEntry = queryHooks.useUpdateGlossaryEntry();
 	const deleteGlossaryEntry = queryHooks.useDeleteGlossaryEntry();
 
+	// ── Chapter (serial) integration — no-ops for standalone books ────────
+	// Both hooks early-return when `book.seriesId` is null, so the existing
+	// book flow is unaffected. New logic lives in the hooks; this file just
+	// composes them.
+	const chapterFetch = useChapterFetch(book);
+	const chapterAdvance = useChapterAutoAdvance(book);
+
 	const { theme } = useTheme();
 	const [annotationsOpen, setAnnotationsOpen] = useState(false);
 	const [editingGlossaryEntry, setEditingGlossaryEntry] = useState<GlossaryEntry | null>(null);
@@ -120,6 +131,19 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [searchInitialQuery, setSearchInitialQuery] = useState<string | undefined>(undefined);
 	const [selectedWord, setSelectedWord] = useState<string | null>(null);
+	// Original-casing form of the looked-up word, for glossary entries (the dict
+	// modal itself is fed the lowercased clean form because the API needs it).
+	const selectedWordOriginalRef = useRef<string | null>(null);
+
+	const openDictionaryModal = useCallback((clean: string, original: string) => {
+		selectedWordOriginalRef.current = original;
+		setSelectedWord(clean);
+	}, []);
+
+	const closeDictionaryModal = useCallback(() => {
+		setSelectedWord(null);
+		selectedWordOriginalRef.current = null;
+	}, []);
 
 	// ── Reader mode ───────────────────────────────────────────────────────
 	// Two top-level modes: the user toggles between them with the flash button.
@@ -368,8 +392,14 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			setProgressOffset(offset);
 			lastOffsetRef.current = offset;
 			savePosition(offset);
+			// 32-byte tolerance for word-boundary settles. The `size > 32` guard
+			// avoids firing on freshly-fetched chapters whose `size` momentarily
+			// reads 0. No-op for non-serials inside `tryAdvance` itself.
+			if (book && book.size > 32 && offset >= book.size - 32) {
+				void chapterAdvance.tryAdvance();
+			}
 		},
-		[savePosition],
+		[savePosition, chapterAdvance, book],
 	);
 
 	const handleScrollHighlightClear = useCallback(() => {
@@ -416,8 +446,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 					return;
 				}
 				// No annotation here — fall back to dictionary
-				const clean = wordText.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
-				if (clean) setSelectedWord(clean);
+				const original = stripPunct(wordText);
+				const clean = original.toLowerCase();
+				if (clean) openDictionaryModal(clean, original);
 				return;
 			}
 			setActiveOffset(offset);
@@ -434,6 +465,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			findHighlightAt,
 			openHighlightEditor,
 			findGlossaryAt,
+			openDictionaryModal,
 		],
 	);
 
@@ -453,47 +485,85 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		if (!range) return;
 		const span = document.querySelector<HTMLElement>(`span[data-offset="${range.start}"]`);
 		const raw = span?.textContent ?? "";
-		const clean = raw.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
-		if (clean) setSelectedWord(clean);
+		const original = stripPunct(raw);
+		const clean = original.toLowerCase();
+		if (clean) openDictionaryModal(clean, original);
 		sel.cancelSelection();
-	}, [sel]);
+	}, [sel, openDictionaryModal]);
+
+	// Open an existing entry whose label matches case-insensitively, or commit a
+	// new one. Used by both the selection toolbar and the dictionary modal so the
+	// dedupe/create rules stay in lockstep.
+	const findOrCreateGlossary = useCallback(
+		(snippet: string) => {
+			const trimmed = snippet.trim();
+			if (!trimmed) return;
+			const existing = glossaryEntries.find((e) => e.label.toLowerCase() === trimmed.toLowerCase());
+			if (existing) {
+				setEditingGlossaryEntry(existing);
+				return;
+			}
+			const now = Date.now();
+			const newEntry: GlossaryEntry = {
+				id: generateGlossaryId(),
+				bookId: id,
+				label: trimmed,
+				notes: null,
+				color: colorFromLabel(trimmed),
+				hideMarker: false,
+				createdAt: now,
+				updatedAt: now,
+			};
+			addGlossaryEntry.mutate(newEntry, {
+				onSuccess: () => setEditingGlossaryEntry(newEntry),
+			});
+		},
+		[id, addGlossaryEntry, glossaryEntries],
+	);
 
 	// Long-press → selection toolbar → "Add to glossary" extracts the selected
-	// text snippet. If an entry with the same label already exists (case-insensitive,
-	// global or book-scoped), open it instead of creating a duplicate. Otherwise
-	// create a new entry pre-filled with the snippet — non-empty so it commits to
-	// DB straight away.
+	// text snippet and routes it through findOrCreateGlossary.
 	const handleAddToGlossary = useCallback(() => {
 		const range = sel.selectionRange;
-		if (!range) return;
+		if (!range) {
+			sel.cancelSelection();
+			return;
+		}
 		const snippet = sel.extractRangeText(range.start, range.end).trim();
 		if (!snippet) {
 			toast.info("Nothing selected to add to glossary");
 			sel.cancelSelection();
 			return;
 		}
-		const lower = snippet.toLowerCase();
-		const existing = glossaryEntries.find((e) => e.label.toLowerCase() === lower);
-		if (existing) {
-			setEditingGlossaryEntry(existing);
-			sel.cancelSelection();
-			return;
-		}
-		const now = Date.now();
-		const newEntry: GlossaryEntry = {
-			id: generateGlossaryId(),
-			bookId: id,
-			label: snippet,
-			notes: null,
-			color: colorFromLabel(snippet),
-			createdAt: now,
-			updatedAt: now,
-		};
-		addGlossaryEntry.mutate(newEntry, {
-			onSuccess: () => setEditingGlossaryEntry(newEntry),
-		});
+		findOrCreateGlossary(snippet);
 		sel.cancelSelection();
-	}, [sel, id, addGlossaryEntry, glossaryEntries]);
+	}, [sel, findOrCreateGlossary]);
+
+	// Dictionary modal → "Add to glossary": prefers the original-cased form
+	// captured at lookup time so proper-noun casing survives (e.g. "Paris" not
+	// "paris", which is what the API saw).
+	const handleAddWordToGlossary = useCallback(
+		(word: string) => {
+			const snippet = selectedWordOriginalRef.current ?? word;
+			closeDictionaryModal();
+			findOrCreateGlossary(snippet);
+		},
+		[closeDictionaryModal, findOrCreateGlossary],
+	);
+
+	const handleRsvpLookup = useCallback(
+		(clean: string, original: string) => openDictionaryModal(clean, original),
+		[openDictionaryModal],
+	);
+
+	const handleDictSearch = useCallback(
+		(w: string) => {
+			closeDictionaryModal();
+			setSearchInitialQuery(w);
+			setSearchOpen(true);
+		},
+		[closeDictionaryModal],
+	);
 
 	// "Add" from the annotations sheet — opens a *draft* entry that lives only in
 	// component state. The first label commit promotes it to a DB row. This avoids
@@ -506,6 +576,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			label: "",
 			notes: null,
 			color: colorFromLabel(""),
+			hideMarker: false,
 			createdAt: now,
 			updatedAt: now,
 		};
@@ -517,7 +588,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const handleGlossarySave = useCallback(
 		(
 			entryId: string,
-			patch: Partial<Pick<GlossaryEntry, "label" | "notes" | "color" | "bookId">>,
+			patch: Partial<Pick<GlossaryEntry, "label" | "notes" | "color" | "bookId" | "hideMarker">>,
 		) => {
 			const now = Date.now();
 			setEditingGlossaryEntry((prev) => {
@@ -697,7 +768,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	const handleRsvpFinished = useCallback(() => {
 		exitRsvpToStandard(lastOffsetRef.current ?? 0);
-	}, [exitRsvpToStandard]);
+		// No-op for standalone books; navigates to next chapter for serials.
+		void chapterAdvance.tryAdvance();
+	}, [exitRsvpToStandard, chapterAdvance]);
 
 	const handleRsvpWpmChange = useCallback(
 		(wpm: number) => updateSetting("wpm", wpm),
@@ -895,7 +968,15 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			</IonHeader>
 
 			<IonContent scrollY={false}>
-				{contentPending || !content ? (
+				{chapterFetch.kind === "locked" ? (
+					<ChapterStateOverlay status="locked" />
+				) : chapterFetch.kind === "error" ? (
+					<ChapterStateOverlay
+						status="error"
+						reason={chapterFetch.reason}
+						onRetry={chapterFetch.retry}
+					/>
+				) : contentPending || !content || chapterFetch.kind === "loading" ? (
 					<ReaderSkeleton />
 				) : readerMode === "rsvp" ? (
 					<RsvpView
@@ -906,7 +987,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						onPositionChange={handleRsvpPositionChange}
 						onFinished={handleRsvpFinished}
 						onWpmChange={handleRsvpWpmChange}
-						onLookup={setSelectedWord}
+						onLookup={handleRsvpLookup}
 					/>
 				) : paginationStyle === "page" ? (
 					<PageView
@@ -1068,12 +1149,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			{/* ── Dictionary modal ── */}
 			<DictionaryModal
 				word={selectedWord}
-				onClose={() => setSelectedWord(null)}
-				onSearch={(w) => {
-					setSelectedWord(null);
-					setSearchInitialQuery(w);
-					setSearchOpen(true);
-				}}
+				onClose={closeDictionaryModal}
+				onSearch={handleDictSearch}
+				onAddToGlossary={handleAddWordToGlossary}
 				theme={theme}
 			/>
 

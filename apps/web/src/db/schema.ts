@@ -31,13 +31,53 @@ export const syncBooks = pgTable(
 		content: text("content"), // full plain text - null until first content push
 		coverImage: text("cover_image"), // base64-encoded cover art from EPUB
 		chapters: text("chapters"), // JSON: [{title: string, startByte: number}]
-		source: text("source"), // 'gutenberg' | 'standard_ebooks' | 'url' | null
+		source: text("source"), // 'gutenberg' | 'standard_ebooks' | 'url' | 'serial' | null
 		catalogId: text("catalog_id"), // e.g. 'gutenberg:1342'
 		sourceUrl: text("source_url"), // original URL for source='url' imports
 		deleted: boolean("deleted").notNull().default(false), // sticky tombstone
+		// Serial/web-novel chapter membership. NULL series_id = standalone book.
+		seriesId: text("series_id"),
+		chapterIndex: integer("chapter_index"),
+		chapterSourceUrl: text("chapter_source_url"),
+		chapterStatus: text("chapter_status").notNull().default("fetched"),
 		updatedAt: timestamp("updated_at").notNull(),
 	},
-	(t) => [primaryKey({ columns: [t.userId, t.bookId] })],
+	(t) => [
+		primaryKey({ columns: [t.userId, t.bookId] }),
+		check(
+			"sync_books_chapter_status_check",
+			sql`${t.chapterStatus} IN ('pending', 'fetched', 'locked', 'error')`,
+		),
+	],
+);
+
+/**
+ * sync_series — one row per imported web-novel/serial keyed by (user_id, series_id).
+ */
+export const syncSeries = pgTable(
+	"sync_series",
+	{
+		userId: text("user_id").notNull(),
+		seriesId: text("series_id").notNull(),
+		title: text("title").notNull(),
+		author: text("author"),
+		coverImage: text("cover_image"),
+		description: text("description"),
+		sourceUrl: text("source_url").notNull(),
+		tocUrl: text("toc_url").notNull(),
+		provider: text("provider").notNull(),
+		lastCheckedAt: timestamp("last_checked_at"),
+		createdAt: timestamp("created_at").notNull(),
+		deleted: boolean("deleted").notNull().default(false),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.userId, t.seriesId] }),
+		check(
+			"sync_series_provider_check",
+			sql`${t.provider} IN ('ao3', 'scribblehub', 'royalroad', 'ffnet', 'wuxiaworld', 'rss')`,
+		),
+	],
 );
 
 /**
@@ -116,6 +156,7 @@ export const syncGlossaryEntries = pgTable(
 		label: text("label").notNull(),
 		notes: text("notes"),
 		color: text("color").notNull(),
+		hideMarker: boolean("hide_marker").notNull().default(false),
 		deleted: boolean("deleted").notNull().default(false),
 		createdAt: timestamp("created_at").notNull(),
 		updatedAt: timestamp("updated_at").notNull(),
@@ -125,6 +166,8 @@ export const syncGlossaryEntries = pgTable(
 
 export type SyncBook = typeof syncBooks.$inferSelect;
 export type NewSyncBook = typeof syncBooks.$inferInsert;
+export type SyncSeries = typeof syncSeries.$inferSelect;
+export type NewSyncSeries = typeof syncSeries.$inferInsert;
 export type SyncSettings = typeof syncSettings.$inferSelect;
 export type NewSyncSettings = typeof syncSettings.$inferInsert;
 export type SyncHighlight = typeof syncHighlights.$inferSelect;

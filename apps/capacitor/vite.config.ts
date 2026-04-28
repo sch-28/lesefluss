@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import fs from "node:fs";
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
@@ -56,5 +57,17 @@ export default defineConfig({
 		outDir: "../dist",
 		minify: false,
 		emptyOutDir: true,
+	},
+	// Vitest uses this. `root: __dirname` overrides the dev-server `root: "./src"`
+	// above so test resolution is anchored at apps/capacitor/, not apps/capacitor/src.
+	// Live (network-touching) tests are excluded here and run via `pnpm test:live`
+	// against `vitest.live.config.ts`.
+	test: {
+		root: __dirname,
+		environment: "happy-dom",
+		globals: true,
+		include: ["src/**/*.{test,spec}.ts"],
+		exclude: ["**/node_modules/**", "**/*.live.test.ts"],
+		setupFiles: ["src/test/setup.ts"],
 	},
 });

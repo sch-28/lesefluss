@@ -47,7 +47,7 @@ export interface RsvpViewProps {
 	onPositionChange: (byteOffset: number) => void;
 	onFinished: () => void;
 	onWpmChange: (wpm: number) => void;
-	onLookup: (word: string) => void;
+	onLookup: (word: string, original: string) => void;
 }
 
 const spinnerStyle: React.CSSProperties = {

@@ -36,6 +36,27 @@
       "when": 1777398000001,
       "tag": "0004_reader_glossary_underline",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777369480731,
+      "tag": "0005_glossary_hide_marker",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777571200000,
+      "tag": "0006_series",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777680000000,
+      "tag": "0007_drop_chapter_content",
+      "breakpoints": true
     }
   ]
 }

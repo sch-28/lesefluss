@@ -16,7 +16,8 @@
 			"!**/drizzle",
 			"!**/.output",
 			"!apps/esp32",
-			"!apps/web/src/routeTree.gen.ts"
+			"!apps/web/src/routeTree.gen.ts",
+			"!**/__tests__/fixtures"
 		]
 	},
 	"formatter": {

@@ -15,7 +15,13 @@ import {
 } from "@lesefluss/rsvp-core";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cleanWord, nextSentenceIndex, sentenceStartIndex, sliceContext } from "./rsvp-engine";
+import {
+	cleanWord,
+	nextSentenceIndex,
+	sentenceStartIndex,
+	sliceContext,
+	stripPunct,
+} from "./rsvp-engine";
 
 // ─── Tunables ───────────────────────────────────────────────────────────────
 const POSITION_SAVE_THROTTLE_MS = 2000;
@@ -28,7 +34,7 @@ interface Options {
 	settings: RsvpSettings;
 	onPositionChange: (byteOffset: number) => void;
 	onFinished: () => void;
-	onLookup: (word: string) => void;
+	onLookup: (word: string, original: string) => void;
 	onWpmChange: (wpm: number) => void;
 }
 
@@ -236,7 +242,7 @@ export function useRsvpEngine({
 		if (!entry) return;
 		const clean = cleanWord(entry.word);
 		if (!clean) return;
-		onLookupRef.current(clean);
+		onLookupRef.current(clean, stripPunct(entry.word));
 	}, []);
 
 	// ── Long-press (dict lookup while paused) ────────────────────────────

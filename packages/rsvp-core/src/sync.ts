@@ -18,8 +18,32 @@ export const SyncBookSchema = z.object({
 	source: z.string().max(50).nullable().optional(), // 'gutenberg' | 'standard_ebooks' | 'url' | null
 	catalogId: z.string().max(200).nullable().optional(), // e.g. 'gutenberg:1342'
 	sourceUrl: z.string().max(2000).nullable().optional(), // original URL for source='url' imports
+	// Serial chapter membership (null for standalone books)
+	seriesId: z
+		.string()
+		.regex(/^[0-9a-f]{8}$/)
+		.nullable()
+		.optional(),
+	chapterIndex: z.number().int().nonnegative().nullable().optional(),
+	chapterSourceUrl: z.string().max(2000).nullable().optional(),
+	chapterStatus: z.enum(["pending", "fetched", "locked", "error"]).optional().default("fetched"),
 	deleted: z.boolean().optional().default(false), // tombstone — sticky once true on server
 	updatedAt: z.number().int().nonnegative(), // Unix ms
+});
+
+export const SyncSeriesSchema = z.object({
+	seriesId: z.string().regex(/^[0-9a-f]{8}$/),
+	title: z.string().max(500),
+	author: z.string().max(200).nullable(),
+	coverImage: z.string().max(5_000_000).nullable().optional(),
+	description: z.string().max(20_000).nullable(),
+	sourceUrl: z.string().max(2000),
+	tocUrl: z.string().max(2000),
+	provider: z.enum(["ao3", "scribblehub", "royalroad", "ffnet", "wuxiaworld", "rss"]),
+	lastCheckedAt: z.number().int().nonnegative().nullable(),
+	createdAt: z.number().int().nonnegative(),
+	deleted: z.boolean().optional().default(false),
+	updatedAt: z.number().int().nonnegative(),
 });
 
 export const SyncSettingsSchema = z.object({
@@ -101,16 +125,19 @@ export const SyncGlossaryEntrySchema = z.object({
 	label: z.string().min(1).max(200),
 	notes: z.string().max(5000).nullable(),
 	color: z.string().max(32),
+	// Optional for backwards compat with clients that pre-date the field; absent → false.
+	hideMarker: z.boolean().optional().default(false),
 	deleted: z.boolean(),
 	createdAt: z.number().int().nonnegative(),
 	updatedAt: z.number().int().nonnegative(),
 });
 
 export const SyncPayloadSchema = z.object({
-	books: z.array(SyncBookSchema).max(500),
+	books: z.array(SyncBookSchema).max(5000),
 	settings: SyncSettingsSchema.nullable(),
 	highlights: z.array(SyncHighlightSchema).max(5000),
 	glossaryEntries: z.array(SyncGlossaryEntrySchema).max(5000).optional().default([]),
+	series: z.array(SyncSeriesSchema).max(500).optional().default([]),
 });
 
 // ---------------------------------------------------------------------------
@@ -118,6 +145,7 @@ export const SyncPayloadSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export type SyncBook = z.infer<typeof SyncBookSchema>;
+export type SyncSeries = z.infer<typeof SyncSeriesSchema>;
 export type SyncSettings = z.infer<typeof SyncSettingsSchema>;
 export type SyncHighlight = z.infer<typeof SyncHighlightSchema>;
 export type SyncGlossaryEntry = z.infer<typeof SyncGlossaryEntrySchema>;
@@ -129,4 +157,5 @@ export type SyncResponse = {
 	settings: SyncSettings | null;
 	highlights: SyncHighlight[];
 	glossaryEntries: SyncGlossaryEntry[];
+	series: SyncSeries[];
 };

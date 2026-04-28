@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+	<body>
+		<div class="fiction-list">
+			<!-- Result 1: full fields — cover, description, chapter count -->
+			<div class="row fiction-list-item">
+				<figure class="col-sm-2">
+					<a href="/fiction/99999/first-fiction">
+						<img
+							data-type="cover"
+							alt="First Fiction"
+							src="https://www.royalroadcdn.com/public/covers-full/99999-first-fiction.jpg"
+						/>
+					</a>
+				</figure>
+				<div class="col-sm-10 search-content">
+					<h2 class="fiction-title">
+						<a href="/fiction/99999/first-fiction" class="font-red-sunglo bold">First Fiction</a>
+					</h2>
+					<div class="row stats">
+						<div class="col-sm-6"><i class="fa fa-users"></i> <span>5,000 Followers</span></div>
+						<div class="col-sm-6"><i class="fa fa-list"></i> <span>42 Chapters</span></div>
+					</div>
+					<!--
+						Description div has inline display:none (JS toggle).
+						Content is fully present in SSR HTML — textContent works fine.
+					-->
+					<div id="description-99999" class="col-xs-12" style="display: none">
+						<p>A summary of the first fiction.</p>
+					</div>
+				</div>
+			</div>
+
+			<!--
+				Result 2: no cover image, abbreviated chapter count (1.6k → null),
+				exercises the "unknown chapter count" path.
+			-->
+			<div class="row fiction-list-item">
+				<figure class="col-sm-2">
+					<a href="/fiction/11111/second-fiction">
+						<!-- no cover img -->
+					</a>
+				</figure>
+				<div class="col-sm-10 search-content">
+					<h2 class="fiction-title">
+						<a href="/fiction/11111/second-fiction" class="font-red-sunglo bold">Second Fiction</a>
+					</h2>
+					<div class="row stats">
+						<div class="col-sm-6"><i class="fa fa-users"></i> <span>1.2k Followers</span></div>
+						<div class="col-sm-6"><i class="fa fa-list"></i> <span>1.6k Chapters</span></div>
+					</div>
+					<div id="description-11111" class="col-xs-12" style="display: none">
+						<p>A no-cover abbreviated-chapter-count entry.</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

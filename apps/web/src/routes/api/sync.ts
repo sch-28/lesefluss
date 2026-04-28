@@ -6,12 +6,19 @@ import {
 	type SyncPayload,
 	SyncPayloadSchema,
 	type SyncResponse,
+	type SyncSeries,
 	type SyncSettings,
 } from "@lesefluss/rsvp-core";
 import { createFileRoute } from "@tanstack/react-router";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { db } from "~/db";
-import { syncBooks, syncGlossaryEntries, syncHighlights, syncSettings } from "~/db/schema";
+import {
+	syncBooks,
+	syncGlossaryEntries,
+	syncHighlights,
+	syncSeries,
+	syncSettings,
+} from "~/db/schema";
 import { cors } from "~/lib/cors-middleware";
 import { checkLimit } from "~/lib/rate-limit";
 import { requireAuth } from "~/lib/session-middleware";
@@ -59,14 +66,19 @@ async function getUserSyncData(
 		source: syncBooks.source,
 		catalogId: syncBooks.catalogId,
 		sourceUrl: syncBooks.sourceUrl,
+		seriesId: syncBooks.seriesId,
+		chapterIndex: syncBooks.chapterIndex,
+		chapterSourceUrl: syncBooks.chapterSourceUrl,
+		chapterStatus: syncBooks.chapterStatus,
 		deleted: syncBooks.deleted,
 		updatedAt: syncBooks.updatedAt,
 	};
-	const [books, settingsRows, highlights, glossaryRows] = await Promise.all([
+	const [books, settingsRows, highlights, glossaryRows, seriesRows] = await Promise.all([
 		db.select(metadataCols).from(syncBooks).where(eq(syncBooks.userId, userId)),
 		db.select().from(syncSettings).where(eq(syncSettings.userId, userId)),
 		db.select().from(syncHighlights).where(eq(syncHighlights.userId, userId)),
 		db.select().from(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId)),
+		db.select().from(syncSeries).where(eq(syncSeries.userId, userId)),
 	]);
 
 	// Fetch content only for books the client doesn't have locally and which aren't tombstoned
@@ -106,6 +118,10 @@ async function getUserSyncData(
 				source: b.source,
 				catalogId: b.catalogId,
 				sourceUrl: b.sourceUrl,
+				seriesId: b.seriesId,
+				chapterIndex: b.chapterIndex,
+				chapterSourceUrl: b.chapterSourceUrl,
+				chapterStatus: b.chapterStatus as "pending" | "fetched" | "locked" | "error",
 				deleted: b.deleted,
 				...(content
 					? {
@@ -148,10 +164,28 @@ async function getUserSyncData(
 					label: e.label,
 					notes: e.notes,
 					color: e.color,
+					hideMarker: e.hideMarker,
 					deleted: e.deleted,
 					createdAt: toMs(e.createdAt),
 					updatedAt: toMs(e.updatedAt),
 				}) as SyncGlossaryEntry,
+		),
+		series: seriesRows.map(
+			(s) =>
+				({
+					seriesId: s.seriesId,
+					title: s.title,
+					author: s.author,
+					coverImage: s.coverImage,
+					description: s.description,
+					sourceUrl: s.sourceUrl,
+					tocUrl: s.tocUrl,
+					provider: s.provider,
+					lastCheckedAt: s.lastCheckedAt ? toMs(s.lastCheckedAt) : null,
+					createdAt: toMs(s.createdAt),
+					deleted: s.deleted,
+					updatedAt: toMs(s.updatedAt),
+				}) as SyncSeries,
 		),
 	};
 }
@@ -213,13 +247,19 @@ export const Route = createFileRoute("/api/sync")({
 									fileSize: book.fileSize,
 									wordCount: book.wordCount,
 									position: book.position,
-									// Tombstoned books shouldn't carry content; null defensively
-									content: book.deleted ? null : (book.content ?? null),
-									coverImage: book.deleted ? null : (book.coverImage ?? null),
-									chapters: book.deleted ? null : (book.chapters ?? null),
+									// Tombstoned books shouldn't carry content; null defensively.
+									// Chapter rows (seriesId set) are re-derivable from upstream — never store body
+									// content for them server-side, even if an old client still pushes it.
+									content: book.deleted || book.seriesId ? null : (book.content ?? null),
+									coverImage: book.deleted || book.seriesId ? null : (book.coverImage ?? null),
+									chapters: book.deleted || book.seriesId ? null : (book.chapters ?? null),
 									source: book.source ?? null,
 									catalogId: book.catalogId ?? null,
 									sourceUrl: book.sourceUrl ?? null,
+									seriesId: book.seriesId ?? null,
+									chapterIndex: book.chapterIndex ?? null,
+									chapterSourceUrl: book.chapterSourceUrl ?? null,
+									chapterStatus: book.chapterStatus ?? "fetched",
 									deleted: book.deleted,
 									updatedAt: toDate(book.updatedAt),
 								})),
@@ -233,15 +273,59 @@ export const Route = createFileRoute("/api/sync")({
 									wordCount: sql`excluded.word_count`,
 									position: sql`CASE WHEN excluded.updated_at >= sync_books.updated_at THEN excluded.position ELSE sync_books.position END`,
 									// Once a row is deleted on the server, content stays null — no client push can refill it.
-									content: sql`CASE WHEN sync_books.deleted OR excluded.deleted THEN NULL ELSE COALESCE(excluded.content, sync_books.content) END`,
-									coverImage: sql`CASE WHEN sync_books.deleted OR excluded.deleted THEN NULL ELSE COALESCE(excluded.cover_image, sync_books.cover_image) END`,
-									chapters: sql`CASE WHEN sync_books.deleted OR excluded.deleted THEN NULL ELSE COALESCE(excluded.chapters, sync_books.chapters) END`,
+									// Chapter rows (series_id set) are re-derivable from upstream; never store body content
+									// for them, regardless of what an old client pushes or what was there before.
+									content: sql`CASE WHEN sync_books.deleted OR excluded.deleted OR excluded.series_id IS NOT NULL THEN NULL ELSE COALESCE(excluded.content, sync_books.content) END`,
+									coverImage: sql`CASE WHEN sync_books.deleted OR excluded.deleted OR excluded.series_id IS NOT NULL THEN NULL ELSE COALESCE(excluded.cover_image, sync_books.cover_image) END`,
+									chapters: sql`CASE WHEN sync_books.deleted OR excluded.deleted OR excluded.series_id IS NOT NULL THEN NULL ELSE COALESCE(excluded.chapters, sync_books.chapters) END`,
 									source: sql`COALESCE(excluded.source, sync_books.source)`,
 									catalogId: sql`COALESCE(excluded.catalog_id, sync_books.catalog_id)`,
 									sourceUrl: sql`COALESCE(excluded.source_url, sync_books.source_url)`,
+									seriesId: sql`COALESCE(excluded.series_id, sync_books.series_id)`,
+									chapterIndex: sql`COALESCE(excluded.chapter_index, sync_books.chapter_index)`,
+									chapterSourceUrl: sql`COALESCE(excluded.chapter_source_url, sync_books.chapter_source_url)`,
+									// chapter_status overwrites freely — latest write wins, gated by updated_at.
+									chapterStatus: sql`CASE WHEN excluded.updated_at >= sync_books.updated_at THEN excluded.chapter_status ELSE sync_books.chapter_status END`,
 									// Sticky tombstone: deleted=true cannot be flipped back by any client push.
 									deleted: sql`sync_books.deleted OR excluded.deleted`,
 									updatedAt: sql`GREATEST(excluded.updated_at, sync_books.updated_at)`,
+								},
+							});
+					}
+
+					// --- Series: batched upsert ---
+					if (payload.series && payload.series.length > 0) {
+						await tx
+							.insert(syncSeries)
+							.values(
+								payload.series.map((s) => ({
+									userId,
+									seriesId: s.seriesId,
+									title: s.title,
+									author: s.author,
+									coverImage: s.coverImage ?? null,
+									description: s.description,
+									sourceUrl: s.sourceUrl,
+									tocUrl: s.tocUrl,
+									provider: s.provider,
+									lastCheckedAt: s.lastCheckedAt ? toDate(s.lastCheckedAt) : null,
+									createdAt: toDate(s.createdAt),
+									deleted: s.deleted,
+									updatedAt: toDate(s.updatedAt),
+								})),
+							)
+							.onConflictDoUpdate({
+								target: [syncSeries.userId, syncSeries.seriesId],
+								set: {
+									title: sql`CASE WHEN excluded.updated_at >= sync_series.updated_at THEN excluded.title ELSE sync_series.title END`,
+									author: sql`CASE WHEN excluded.updated_at >= sync_series.updated_at THEN excluded.author ELSE sync_series.author END`,
+									coverImage: sql`CASE WHEN excluded.updated_at >= sync_series.updated_at THEN excluded.cover_image ELSE sync_series.cover_image END`,
+									description: sql`CASE WHEN excluded.updated_at >= sync_series.updated_at THEN excluded.description ELSE sync_series.description END`,
+									tocUrl: sql`CASE WHEN excluded.updated_at >= sync_series.updated_at THEN excluded.toc_url ELSE sync_series.toc_url END`,
+									lastCheckedAt: sql`CASE WHEN excluded.updated_at >= sync_series.updated_at THEN excluded.last_checked_at ELSE sync_series.last_checked_at END`,
+									// Sticky tombstone parallel to sync_books.
+									deleted: sql`sync_series.deleted OR excluded.deleted`,
+									updatedAt: sql`GREATEST(excluded.updated_at, sync_series.updated_at)`,
 								},
 							});
 					}
@@ -326,6 +410,7 @@ export const Route = createFileRoute("/api/sync")({
 									label: e.label,
 									notes: e.notes,
 									color: e.color,
+									hideMarker: e.hideMarker,
 									deleted: e.deleted,
 									createdAt: toDate(e.createdAt),
 									updatedAt: toDate(e.updatedAt),
@@ -338,6 +423,7 @@ export const Route = createFileRoute("/api/sync")({
 									label: sql`excluded.label`,
 									notes: sql`excluded.notes`,
 									color: sql`excluded.color`,
+									hideMarker: sql`excluded.hide_marker`,
 									deleted: sql`excluded.deleted`,
 									updatedAt: sql`excluded.updated_at`,
 								},

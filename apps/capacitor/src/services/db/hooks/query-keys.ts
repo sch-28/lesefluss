@@ -45,6 +45,30 @@ export const settingsKeys = {
 	all: ["settings"] as const,
 };
 
+export const serialKeys = {
+	/** Every key under this prefix — invalidate when any series changes. */
+	all: ["serials"] as const,
+
+	/** Library list of series (excludes tombstones). */
+	list: ["serials", "list"] as const,
+
+	/** Map<seriesId, chapterCount> — driven by a single COUNT(*) query. */
+	counts: ["serials", "counts"] as const,
+
+	/** Single series row by id (used by SeriesDetail). */
+	detail: (seriesId: string) => ["serials", "detail", seriesId] as const,
+
+	/** Resume target — the chapter to open when the series card is tapped. */
+	entry: (seriesId: string) => ["serials", "entry", seriesId] as const,
+
+	/** Free-text search across providers. `provider` narrows the fan-out. */
+	search: (query: string, provider?: string) =>
+		["serials", "search", query, provider ?? null] as const,
+
+	/** Ordered chapter rows (books) for a series. Subset of serialKeys.all. */
+	chapters: (seriesId: string) => ["serials", "chapters", seriesId] as const,
+};
+
 /**
  * Shared mutation key for every book-import source (file picker, clipboard,
  * URL, plain text, share intent). Used by `useIsMutating` to detect any

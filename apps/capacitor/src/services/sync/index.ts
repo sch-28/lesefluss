@@ -7,12 +7,13 @@ import {
 	type SyncHighlight,
 	type SyncPayload,
 	type SyncResponse,
+	type SyncSeries,
 	type SyncSettings,
 } from "@lesefluss/rsvp-core";
 import { log } from "../../utils/log";
 import { bookKeys, glossaryKeys, settingsKeys } from "../db/hooks/query-keys";
 import { queries } from "../db/queries";
-import type { Book, BookContent, GlossaryEntry, Highlight, Settings } from "../db/schema";
+import type { Book, BookContent, GlossaryEntry, Highlight, Series, Settings } from "../db/schema";
 import { queryClient } from "../query-client";
 import { SYNC_URL } from "./auth-client";
 
@@ -180,7 +181,7 @@ async function syncFetch(path: string, options?: RequestInit): Promise<Response>
 // Data mappers (Capacitor SQLite → API payload)
 // ---------------------------------------------------------------------------
 
-function bookToSync(book: Book, contentData?: BookContent | null): SyncBook {
+export function bookToSync(book: Book, contentData?: BookContent | null): SyncBook {
 	return {
 		bookId: book.id,
 		title: book.title,
@@ -191,8 +192,14 @@ function bookToSync(book: Book, contentData?: BookContent | null): SyncBook {
 		source: book.source,
 		catalogId: book.catalogId,
 		sourceUrl: book.sourceUrl,
+		seriesId: book.seriesId,
+		chapterIndex: book.chapterIndex,
+		chapterSourceUrl: book.chapterSourceUrl,
+		chapterStatus: book.chapterStatus,
 		deleted: book.deleted,
-		...(contentData && !book.deleted
+		// Chapter rows (seriesId set) are re-derivable from the upstream provider, so we
+		// never push their body content / cover / TOC — saves substantial bytes per series.
+		...(contentData && !book.deleted && !book.seriesId
 			? {
 					content: contentData.content,
 					coverImage: contentData.coverImage,
@@ -200,6 +207,23 @@ function bookToSync(book: Book, contentData?: BookContent | null): SyncBook {
 				}
 			: {}),
 		updatedAt: Math.max(book.lastRead ?? 0, book.addedAt),
+	};
+}
+
+function seriesToSync(s: Series): SyncSeries {
+	return {
+		seriesId: s.id,
+		title: s.title,
+		author: s.author,
+		coverImage: s.coverImage,
+		description: s.description,
+		sourceUrl: s.sourceUrl,
+		tocUrl: s.tocUrl,
+		provider: s.provider as SyncSeries["provider"],
+		lastCheckedAt: s.lastCheckedAt,
+		createdAt: s.createdAt,
+		deleted: s.deleted,
+		updatedAt: s.updatedAt,
 	};
 }
 
@@ -231,6 +255,7 @@ function entryToSync(e: GlossaryEntry): SyncGlossaryEntry {
 		label: e.label,
 		notes: e.notes,
 		color: e.color,
+		hideMarker: e.hideMarker,
 		deleted: false,
 		createdAt: e.createdAt,
 		updatedAt: e.updatedAt,
@@ -285,6 +310,72 @@ export async function pullSync(): Promise<Set<string>> {
 
 		let changed = false;
 
+		// --- Merge series (before books, so chapter rows can FK-reference them) ---
+		const localSeries = await queries.getSeriesForSync();
+		const localSeriesMap = new Map(localSeries.map((s) => [s.id, s]));
+
+		for (const serverSeries of data.series ?? []) {
+			const local = localSeriesMap.get(serverSeries.seriesId);
+
+			if (serverSeries.deleted) {
+				if (local) {
+					await queries.hardDeleteSeries(serverSeries.seriesId);
+					localSeriesMap.delete(serverSeries.seriesId);
+					changed = true;
+				}
+				continue;
+			}
+
+			if (!local) {
+				await queries.addSeries({
+					id: serverSeries.seriesId,
+					title: serverSeries.title,
+					author: serverSeries.author,
+					coverImage: serverSeries.coverImage ?? null,
+					description: serverSeries.description,
+					sourceUrl: serverSeries.sourceUrl,
+					tocUrl: serverSeries.tocUrl,
+					provider: serverSeries.provider,
+					lastCheckedAt: serverSeries.lastCheckedAt,
+					createdAt: serverSeries.createdAt,
+					deleted: false,
+					updatedAt: serverSeries.updatedAt,
+				});
+				localSeriesMap.set(serverSeries.seriesId, {
+					id: serverSeries.seriesId,
+					title: serverSeries.title,
+					author: serverSeries.author,
+					coverImage: serverSeries.coverImage ?? null,
+					description: serverSeries.description,
+					sourceUrl: serverSeries.sourceUrl,
+					tocUrl: serverSeries.tocUrl,
+					provider: serverSeries.provider,
+					lastCheckedAt: serverSeries.lastCheckedAt,
+					createdAt: serverSeries.createdAt,
+					deleted: false,
+					updatedAt: serverSeries.updatedAt,
+				});
+				changed = true;
+				continue;
+			}
+
+			// Local tombstone awaiting push: don't resurrect.
+			if (local.deleted) continue;
+
+			if (serverSeries.updatedAt > local.updatedAt) {
+				await queries.updateSeries(serverSeries.seriesId, {
+					title: serverSeries.title,
+					author: serverSeries.author,
+					coverImage: serverSeries.coverImage ?? null,
+					description: serverSeries.description,
+					tocUrl: serverSeries.tocUrl,
+					lastCheckedAt: serverSeries.lastCheckedAt,
+					updatedAt: serverSeries.updatedAt,
+				});
+				changed = true;
+			}
+		}
+
 		// --- Merge books ---
 		for (const serverBook of data.books) {
 			const local = localBookMap.get(serverBook.bookId);
@@ -307,8 +398,11 @@ export async function pullSync(): Promise<Set<string>> {
 			}
 
 			if (!local) {
-				// New book from server - add locally if it has content
-				if (serverBook.content) {
+				// New book from server. Add if we have content, OR if it's a serial chapter
+				// (pending chapters have empty content but still need a row to drive the UI).
+				const isChapter = !!serverBook.seriesId;
+				if (serverBook.content || isChapter) {
+					const chapterStatus = serverBook.chapterStatus ?? "fetched";
 					await queries.addBookWithContent(
 						{
 							id: serverBook.bookId,
@@ -322,8 +416,12 @@ export async function pullSync(): Promise<Set<string>> {
 							source: serverBook.source ?? null,
 							catalogId: serverBook.catalogId ?? null,
 							sourceUrl: serverBook.sourceUrl ?? null,
+							seriesId: serverBook.seriesId ?? null,
+							chapterIndex: serverBook.chapterIndex ?? null,
+							chapterSourceUrl: serverBook.chapterSourceUrl ?? null,
+							chapterStatus,
 						},
-						serverBook.content,
+						serverBook.content ?? "",
 						serverBook.coverImage,
 						queries.parseChapters(serverBook.chapters ?? null),
 					);
@@ -343,6 +441,10 @@ export async function pullSync(): Promise<Set<string>> {
 						catalogId: serverBook.catalogId ?? null,
 						sourceUrl: serverBook.sourceUrl ?? null,
 						deleted: false,
+						seriesId: serverBook.seriesId ?? null,
+						chapterIndex: serverBook.chapterIndex ?? null,
+						chapterSourceUrl: serverBook.chapterSourceUrl ?? null,
+						chapterStatus,
 					});
 					changed = true;
 				}
@@ -443,6 +545,7 @@ export async function pullSync(): Promise<Set<string>> {
 					label: serverEntry.label,
 					notes: serverEntry.notes,
 					color: serverEntry.color,
+					hideMarker: serverEntry.hideMarker,
 					createdAt: serverEntry.createdAt,
 					updatedAt: serverEntry.updatedAt,
 				});
@@ -453,6 +556,7 @@ export async function pullSync(): Promise<Set<string>> {
 					notes: serverEntry.notes,
 					color: serverEntry.color,
 					bookId: serverEntry.bookId,
+					hideMarker: serverEntry.hideMarker,
 					updatedAt: serverEntry.updatedAt,
 				});
 				changed = true;
@@ -488,17 +592,19 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 	await withSyncLock(async () => {
 		log("sync", "pushing...");
 
-		const [books, settings, highlights, glossaryEntries] = await Promise.all([
+		const [books, settings, highlights, glossaryEntries, seriesRows] = await Promise.all([
 			queries.getBooksForSync(),
 			queries.getSettings(),
 			queries.getAllHighlights(),
 			queries.getAllEntries(),
+			queries.getSeriesForSync(),
 		]);
 
-		// Fetch content only for books the server doesn't have yet (tombstones never carry content)
+		// Fetch content only for books the server doesn't have yet (tombstones never carry content,
+		// and chapter rows never sync content — see bookToSync).
 		const booksWithContent = await Promise.all(
 			books.map(async (book) => {
-				if (book.deleted || serverHasContent.has(book.id)) {
+				if (book.deleted || book.seriesId || serverHasContent.has(book.id)) {
 					return bookToSync(book);
 				}
 				const contentData = await queries.getBookContent(book.id);
@@ -511,6 +617,7 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 			settings: settingsToSync(settings),
 			highlights: highlights.map(highlightToSync),
 			glossaryEntries: glossaryEntries.map(entryToSync),
+			series: seriesRows.map(seriesToSync),
 		};
 
 		await syncFetch("/api/sync", {

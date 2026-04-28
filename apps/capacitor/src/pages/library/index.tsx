@@ -32,17 +32,19 @@ import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { queryHooks } from "../../services/db/hooks";
 import { bookImportMutationKey, bookKeys } from "../../services/db/hooks/query-keys";
-import type { Book } from "../../services/db/schema";
+import type { Book, Series } from "../../services/db/schema";
 import { IS_WEB_BUILD } from "../../services/sync";
 import { IS_WEB } from "../../utils/platform";
 import BookCard from "./book-card";
 import FilterPopover from "./filter-popover";
 import ImportSheet from "./import-sheet";
 import PasteUrlModal from "./paste-url-modal";
+import SeriesCard from "./series-card";
 import { type FilterBy, filterAndSort, readingProgress, type SortBy } from "./sort-filter";
 import SortPopover from "./sort-popover";
 import TransferModal from "./transfer-modal";
 import { useLibraryImports } from "./use-library-imports";
+import { useLibraryItems } from "./use-library-items";
 
 const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
 
@@ -60,13 +62,12 @@ const Library: React.FC = () => {
 	const qc = useQueryClient();
 
 	// ── Data queries ─────────────────────────────────────────────────────
-	const { data, isPending } = queryHooks.useBooks();
-	const books = data?.books ?? [];
-	const covers = data?.covers ?? new Map<string, string>();
+	const { books, series, covers, chapterCounts, isLoading: isPending } = useLibraryItems();
 
 	// ── Mutations ────────────────────────────────────────────────────────
 	const imports = useLibraryImports();
 	const deleteMutation = queryHooks.useDeleteBook();
+	const deleteSeriesMutation = queryHooks.useDeleteSeries();
 
 	// True while any book-import mutation is in flight, regardless of which
 	// component fired it (library FAB, paste-URL modal, share-intent handler).
@@ -81,6 +82,7 @@ const Library: React.FC = () => {
 
 	// Action sheet state
 	const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+	const [selectedSeries, setSelectedSeries] = useState<Series | null>(null);
 	const [importSheetOpen, setImportSheetOpen] = useState(false);
 	const [urlModalOpen, setUrlModalOpen] = useState(false);
 
@@ -89,6 +91,7 @@ const Library: React.FC = () => {
 
 	// Delete confirmation state
 	const [pendingDeleteBook, setPendingDeleteBook] = useState<Book | null>(null);
+	const [pendingDeleteSeries, setPendingDeleteSeries] = useState<Series | null>(null);
 
 	// Reload when navigating back (e.g. from reader) so progress bars update
 	useIonViewWillEnter(() => {
@@ -134,6 +137,24 @@ const Library: React.FC = () => {
 		const book = pendingDeleteBook;
 		setPendingDeleteBook(null);
 		deleteMutation.mutate(book);
+	};
+
+	const handleOpenSeries = (s: Series) => {
+		// Tap routes to the series detail page; the user clicks "Continue / Start"
+		// inside it to enter the reader. Mirrors the explore-book-detail flow.
+		history.push(`/tabs/library/series/${s.id}`);
+	};
+
+	const handleDeleteSeries = (s: Series) => {
+		setSelectedSeries(null);
+		setPendingDeleteSeries(s);
+	};
+
+	const handleDeleteSeriesConfirm = () => {
+		if (!pendingDeleteSeries) return;
+		const s = pendingDeleteSeries;
+		setPendingDeleteSeries(null);
+		deleteSeriesMutation.mutate(s);
 	};
 
 	const handleTransferDismiss = () => {
@@ -229,7 +250,7 @@ const Library: React.FC = () => {
 					</div>
 				)}
 
-				{books.length === 0 ? (
+				{books.length === 0 && series.length === 0 ? (
 					/* ── Empty state ── */
 					<div className="flex h-full flex-col items-center justify-center p-8 text-center">
 						<IonIcon icon={bookOutline} className="mb-4 text-6xl text-[#ccc]" />
@@ -243,16 +264,27 @@ const Library: React.FC = () => {
 							</IonText>
 						)}
 					</div>
-				) : visible.length === 0 ? (
-					/* ── Filter empty state ── */
+				) : visible.length === 0 && series.length === 0 ? (
+					/* ── Filter empty state — fires only when no series are around to
+					   render and the book filter zeroed out. Filter currently doesn't
+					   apply to series; if it ever does, update this message accordingly. */
 					<div className="flex h-full flex-col items-center justify-center p-8 text-center">
 						<IonText color="medium">
-							<p style={{ margin: 0 }}>No books match this filter.</p>
+							<p style={{ margin: 0 }}>No items match this filter.</p>
 						</IonText>
 					</div>
 				) : (
-					/* ── Book grid ── */
+					/* ── Mixed grid: series first, then filtered/sorted books ── */
 					<div className="grid grid-cols-3 gap-4 p-4 pb-20 content-container md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+						{series.map((s) => (
+							<SeriesCard
+								key={s.id}
+								series={s}
+								chapterCount={chapterCounts.get(s.id)}
+								onOpen={() => handleOpenSeries(s)}
+								onMenu={() => setSelectedSeries(s)}
+							/>
+						))}
 						{visible.map((book) => {
 							const progress = readingProgress(book);
 							const started = book.position > 0;
@@ -390,6 +422,47 @@ const Library: React.FC = () => {
 					buttons={[
 						{ text: "Cancel", role: "cancel" },
 						{ text: "Delete", role: "destructive", handler: handleDeleteConfirm },
+					]}
+					cssClass="rsvp-alert"
+				/>
+
+				{/* Series action sheet (long-press on a SeriesCard) */}
+				<IonActionSheet
+					isOpen={!!selectedSeries}
+					onDidDismiss={() => setSelectedSeries(null)}
+					header={selectedSeries?.title}
+					cssClass="rsvp-action-sheet"
+					buttons={[
+						{
+							text: "Details",
+							handler: () => {
+								if (selectedSeries) history.push(`/tabs/library/series/${selectedSeries.id}`);
+							},
+						},
+						{
+							text: "Delete series",
+							role: "destructive" as const,
+							handler: () => {
+								if (selectedSeries) handleDeleteSeries(selectedSeries);
+							},
+						},
+						{ text: "Cancel", role: "cancel" as const },
+					]}
+				/>
+
+				{/* Series delete confirmation alert */}
+				<IonAlert
+					isOpen={!!pendingDeleteSeries}
+					onDidDismiss={() => setPendingDeleteSeries(null)}
+					header="Delete series?"
+					message={
+						pendingDeleteSeries
+							? `"${pendingDeleteSeries.title}" and all its chapters will be removed from your library.`
+							: undefined
+					}
+					buttons={[
+						{ text: "Cancel", role: "cancel" },
+						{ text: "Delete", role: "destructive", handler: handleDeleteSeriesConfirm },
 					]}
 					cssClass="rsvp-alert"
 				/>

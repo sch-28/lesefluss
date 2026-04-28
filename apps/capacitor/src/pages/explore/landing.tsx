@@ -10,6 +10,7 @@ import {
 import { catalogKeys } from "../../services/catalog/query-keys";
 import Hero from "./hero";
 import Shelf from "./shelf";
+import WebNovelsSection from "./web-novels-section";
 
 type Props = {
 	lang: string;
@@ -59,6 +60,8 @@ const ExploreLanding: React.FC<Props> = ({ lang, onOpen, onGenreTap }) => {
 	return (
 		<div className="p-4 pb-20 content-container">
 			{heroBooks.length > 0 && <Hero books={heroBooks} onOpen={onOpen} />}
+
+			<WebNovelsSection />
 
 			{data.featured_se.length > 0 && (
 				<Shelf title="Featured" books={data.featured_se} onOpen={onOpen} />

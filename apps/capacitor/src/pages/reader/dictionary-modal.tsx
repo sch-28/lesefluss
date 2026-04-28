@@ -17,7 +17,7 @@ import {
 	IonToolbar,
 } from "@ionic/react";
 import { useQuery } from "@tanstack/react-query";
-import { searchOutline } from "ionicons/icons";
+import { bookmarkOutline, searchOutline } from "ionicons/icons";
 import type React from "react";
 
 // ─── API types ───────────────────────────────────────────────────────────────
@@ -55,12 +55,19 @@ export interface DictionaryModalProps {
 	word: string | null;
 	onClose: () => void;
 	onSearch?: (word: string) => void;
+	onAddToGlossary?: (word: string) => void;
 	theme?: string;
 }
 
 const MAX_DEFINITIONS = 3;
 
-const DictionaryModal: React.FC<DictionaryModalProps> = ({ word, onClose, onSearch, theme }) => {
+const DictionaryModal: React.FC<DictionaryModalProps> = ({
+	word,
+	onClose,
+	onSearch,
+	onAddToGlossary,
+	theme,
+}) => {
 	const { data, isPending, isError } = useQuery({
 		queryKey: ["dictionary", word],
 		queryFn: () => fetchDefinition(word as string),
@@ -87,6 +94,11 @@ const DictionaryModal: React.FC<DictionaryModalProps> = ({ word, onClose, onSear
 						{onSearch && word && (
 							<IonButton onClick={() => onSearch(word)} aria-label="Search in book">
 								<IonIcon slot="icon-only" icon={searchOutline} />
+							</IonButton>
+						)}
+						{onAddToGlossary && word && (
+							<IonButton onClick={() => onAddToGlossary(word)} aria-label="Add to glossary">
+								<IonIcon slot="icon-only" icon={bookmarkOutline} />
 							</IonButton>
 						)}
 						<IonButton onClick={onClose}>Close</IonButton>

@@ -1,0 +1,29 @@
+{
+  "items": [
+    {
+      "id": 36,
+      "name": "Martial World",
+      "slug": "martial-world",
+      "coverUrl": "https://cdn.wuxiaworld.com/covers/martial-world.jpg",
+      "synopsis": "<p>Lin Ming, a talented man for martial arts wanted to reach the pinnacle of martial arts.</p>",
+      "chapterCount": 2200,
+      "language": "Chinese",
+      "status": 0,
+      "tags": ["Chinese", "Completed"],
+      "genres": ["Action", "Fantasy"]
+    },
+    {
+      "id": 37,
+      "name": "True Martial World",
+      "slug": "true-martial-world",
+      "coverUrl": null,
+      "synopsis": "With the Kingdom's fall, a young man's journey of cultivation begins.",
+      "chapterCount": 1600,
+      "language": "Chinese",
+      "status": 0,
+      "tags": ["Chinese"],
+      "genres": ["Action", "Fantasy"]
+    }
+  ],
+  "result": true
+}
