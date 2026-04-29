@@ -185,7 +185,8 @@ async function fetchUpstream(
 		return { status: 502, body: { error: "upstream failed" } };
 	}
 	if (!res.ok || !res.body) {
-		return { status: 502, body: { error: "upstream failed" } };
+		console.warn(`[proxy/${tag}] upstream returned ${res.status} for ${url.hostname}${url.pathname}`);
+		return { status: 502, body: { error: `upstream failed (${res.status})` } };
 	}
 	return { res };
 }

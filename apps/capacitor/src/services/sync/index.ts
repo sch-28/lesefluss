@@ -15,6 +15,7 @@ import { bookKeys, glossaryKeys, settingsKeys } from "../db/hooks/query-keys";
 import { queries } from "../db/queries";
 import type { Book, BookContent, GlossaryEntry, Highlight, Series, Settings } from "../db/schema";
 import { queryClient } from "../query-client";
+import { serialKeys } from "../db/hooks/query-keys";
 import { SYNC_URL } from "./auth-client";
 
 /** True when the capacitor app is hosted inside the website (same origin, cookie auth). */
@@ -638,6 +639,7 @@ export async function pullSync(): Promise<Set<string>> {
 			queryClient.invalidateQueries({ queryKey: bookKeys.all });
 			queryClient.invalidateQueries({ queryKey: settingsKeys.all });
 			queryClient.invalidateQueries({ queryKey: glossaryKeys.all });
+			queryClient.invalidateQueries({ queryKey: serialKeys.all });
 		}
 
 		log("sync", "pull complete");
