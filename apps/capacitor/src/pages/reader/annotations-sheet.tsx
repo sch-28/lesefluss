@@ -25,10 +25,11 @@ import { addOutline } from "ionicons/icons";
 import type React from "react";
 import { memo, useEffect, useMemo, useState } from "react";
 import type { Chapter, GlossaryEntry, Highlight } from "../../services/db/schema";
+import { SeriesChapterList } from "../library/series-chapter-list";
 import GlossaryAvatar, { colorFromLabel } from "./glossary-avatar";
 import { HIGHLIGHT_COLOR_STYLE } from "./selection-toolbar";
 
-type Tab = "contents" | "highlights" | "glossary";
+type Tab = "contents" | "chapters" | "highlights" | "glossary";
 
 const _encoder = new TextEncoder();
 const _decoder = new TextDecoder();
@@ -52,6 +53,13 @@ interface AnnotationsSheetProps {
 	chapters: Chapter[];
 	onJumpChapter: (startByte: number) => void;
 
+	/**
+	 * When set, the sheet renders a "Chapters" tab listing every chapter of
+	 * the series so the user can random-access without leaving the reader.
+	 * `undefined` for standalone books — the tab is omitted entirely.
+	 */
+	seriesId?: string | null;
+
 	highlights: Highlight[];
 	/** Full book content for snippet extraction. */
 	content: string;
@@ -69,6 +77,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	theme,
 	chapters,
 	onJumpChapter,
+	seriesId,
 	highlights,
 	content,
 	onJumpHighlight,
@@ -78,11 +87,21 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	onAddEntry,
 }) => {
 	const hasContents = chapters.length > 0;
+	const hasChapters = seriesId != null;
 	const hasHighlights = highlights.length > 0;
 	// Glossary tab is always available so users can add their first entry from here.
 
-	// Pick a sensible initial tab based on what's non-empty.
-	const initialTab: Tab = hasContents ? "contents" : hasHighlights ? "highlights" : "glossary";
+	// Pick a sensible initial tab based on what's non-empty. Chapters wins
+	// over Contents when both could apply (web-novel imports also have an
+	// in-text chapter index, but the series chapter list is the more useful
+	// primary view for serial readers).
+	const initialTab: Tab = hasChapters
+		? "chapters"
+		: hasContents
+			? "contents"
+			: hasHighlights
+				? "highlights"
+				: "glossary";
 	const [tab, setTab] = useState<Tab>(initialTab);
 
 	// Reset to a sensible tab whenever the sheet opens. Intentionally NOT
@@ -123,6 +142,11 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 								<IonLabel>Contents</IonLabel>
 							</IonSegmentButton>
 						)}
+						{hasChapters && (
+							<IonSegmentButton value="chapters">
+								<IonLabel>Chapters</IonLabel>
+							</IonSegmentButton>
+						)}
 						<IonSegmentButton value="highlights">
 							<IonLabel>Highlights</IonLabel>
 						</IonSegmentButton>
@@ -151,6 +175,8 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 						))}
 					</IonList>
 				)}
+
+				{tab === "chapters" && seriesId && <SeriesChapterList seriesId={seriesId} />}
 
 				{tab === "highlights" &&
 					(highlights.length === 0 ? (

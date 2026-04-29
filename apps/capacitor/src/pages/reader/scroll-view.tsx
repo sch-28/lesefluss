@@ -208,6 +208,13 @@ export interface ScrollViewProps {
 	isSelecting: boolean;
 	syncSelectionHandles: () => void;
 
+	/**
+	 * Optional element appended after the last paragraph inside the VList.
+	 * Used by the reader to render `<NextChapterFooter />` for serial chapters
+	 * — null/undefined for standalone books.
+	 */
+	footer?: React.ReactNode;
+
 	// Lets handleScroll skip onHideProgressBar while a scrub gesture is in-flight
 	isScrubbingRef: React.RefObject<boolean>;
 }
@@ -239,6 +246,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		isSelecting,
 		syncSelectionHandles,
 		isScrubbingRef,
+		footer,
 	},
 	ref,
 ) {
@@ -469,6 +477,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 							showActiveWordUnderline={showActiveWordUnderline}
 						/>
 					))}
+					{footer}
 				</VList>
 			</div>
 			{!isInitialScrollReady && (

@@ -759,6 +759,28 @@ body.sepia ion-tab-button {
 	--background: var(--reader-bg);
 }
 
+/* End-of-chapter "Next chapter →" footer button. The global
+ * `ion-button[fill="outline"]` rule hardcodes black border + black text,
+ * which disappears against the dark + sepia reader backgrounds. Override
+ * here using the reader theme variables so the button stays legible across
+ * all three themes. */
+.next-chapter-footer {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	padding: 1.5rem;
+	text-align: center;
+}
+.next-chapter-footer-button {
+	--border-color: var(--reader-text);
+	--color: var(--reader-text);
+	--background: transparent;
+	--background-activated: rgba(127, 127, 127, 0.15);
+	--background-hover: rgba(127, 127, 127, 0.1);
+}
+
 /* ── Reader skeleton loading lines ── */
 .reader-skeleton-line {
 	height: 14px;

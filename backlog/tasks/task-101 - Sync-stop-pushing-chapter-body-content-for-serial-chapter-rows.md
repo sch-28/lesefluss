@@ -4,6 +4,7 @@ title: 'Sync: stop pushing chapter body content for serial chapter rows'
 status: To Do
 assignee: []
 created_date: '2026-04-28 23:31'
+updated_date: '2026-04-28 23:38'
 labels: []
 milestone: m-4
 dependencies:
@@ -32,4 +33,6 @@ Trade-off accepted: if the upstream provider takes a chapter offline, a fresh-de
 - [ ] #3 Server upsert in /api/sync hard-nulls content/cover/chapters when incoming `seriesId` is set
 - [ ] #4 Drizzle migration backfills existing chapter rows: NULL content/cover/chapters and reset chapter_status='pending' so reader will refetch
 - [ ] #5 `pnpm check-types` passes in apps/capacitor and apps/web
+- [ ] #6 Server upsert UPDATE clause (not just INSERT) nulls content/cover/chapters when `excluded.series_id IS NOT NULL` — invariant survives even if migration is delayed
+- [ ] #7 Unit test in `apps/capacitor/src/services/sync/__tests__/book-to-sync.test.ts` asserts chapter rows never carry heavy fields
 <!-- AC:END -->

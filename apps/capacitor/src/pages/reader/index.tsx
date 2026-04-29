@@ -42,6 +42,8 @@ import { DEFAULT_SETTINGS } from "@lesefluss/rsvp-core";
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	bookmarksOutline,
+	chevronBackOutline,
+	chevronForwardOutline,
 	flashOffOutline,
 	flashOutline,
 	readerOutline,
@@ -65,6 +67,7 @@ import AppearancePopover from "./appearance-popover";
 import { useChapterAutoAdvance } from "./chapter-auto-advance";
 import { useChapterFetch } from "./chapter-fetch";
 import { ChapterStateOverlay } from "./chapter-state-overlay";
+import { NextChapterFooter } from "./next-chapter-footer";
 import DictionaryModal from "./dictionary-modal";
 import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
@@ -119,6 +122,17 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// composes them.
 	const chapterFetch = useChapterFetch(book);
 	const chapterAdvance = useChapterAutoAdvance(book);
+
+	// Series-aware boundaries for the header chevrons. The chapter-counts map
+	// is already cached for the library grid, so this is free. `hasPrev` and
+	// `hasNext` collapse to `false` for standalone books — the chevrons aren't
+	// rendered at all in that case (the parent JSX checks `book?.seriesId`).
+	const { data: seriesChapterCounts } = queryHooks.useSeriesChapterCounts();
+	const seriesTotal =
+		book?.seriesId != null ? seriesChapterCounts?.get(book.seriesId) : undefined;
+	const hasPrev = book?.chapterIndex != null && book.chapterIndex > 0;
+	const hasNext =
+		book?.chapterIndex != null && seriesTotal != null && book.chapterIndex < seriesTotal - 1;
 
 	const { theme } = useTheme();
 	const [annotationsOpen, setAnnotationsOpen] = useState(false);
@@ -924,12 +938,37 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			(chapterWordCounts[currentChapterIndex] * (1 - chapterProgress)) / estimateWpm;
 	}
 
+	// Shared end-of-chapter footer for both views. Returns null inside
+	// `NextChapterFooter` for standalone books / last-chapter, so it's safe
+	// to drop in unconditionally.
+	const advanceFooter = (
+		<NextChapterFooter book={book} onTap={() => void chapterAdvance.tryAdvance()} />
+	);
+
 	return (
 		<IonPage className={`reader-theme-${theme}`}>
 			<IonHeader class="ion-no-border">
 				<IonToolbar>
 					<IonButtons slot="start">
 						<IonBackButton defaultHref="/tabs/library" />
+						{book.seriesId != null && (
+							<>
+								<IonButton
+									onClick={() => void chapterAdvance.tryRetreat()}
+									disabled={!hasPrev}
+									aria-label="Previous chapter"
+								>
+									<IonIcon slot="icon-only" icon={chevronBackOutline} />
+								</IonButton>
+								<IonButton
+									onClick={() => void chapterAdvance.tryAdvance()}
+									disabled={!hasNext}
+									aria-label="Next chapter"
+								>
+									<IonIcon slot="icon-only" icon={chevronForwardOutline} />
+								</IonButton>
+							</>
+						)}
 					</IonButtons>
 					<IonTitle>{book.title}</IonTitle>
 					<IonButtons slot="end">
@@ -1014,6 +1053,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						onPositionSettle={handleScrollPositionSettle}
 						onInitialActiveOffset={handleSetActiveOffset}
 						onTap={handleScrollShowProgressBar}
+						footer={advanceFooter}
 					/>
 				) : (
 					<ScrollView
@@ -1044,6 +1084,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						isSelecting={isSelecting}
 						syncSelectionHandles={syncSelectionHandles}
 						isScrubbingRef={isScrubbingRef}
+						footer={advanceFooter}
 					/>
 				)}
 
@@ -1108,6 +1149,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				theme={theme}
 				chapters={chapters}
 				onJumpChapter={handleChapterJump}
+				seriesId={book.seriesId ?? null}
 				highlights={highlightRows}
 				content={content ?? ""}
 				onJumpHighlight={jumpToOffset}

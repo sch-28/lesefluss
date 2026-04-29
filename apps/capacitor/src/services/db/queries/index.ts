@@ -39,6 +39,7 @@ import {
 	addSeriesWithChapters,
 	deleteSeries,
 	getNextChapter,
+	getPreviousChapter,
 	getSeries,
 	getSeriesChapterCounts,
 	getSeriesChapters,
@@ -108,4 +109,5 @@ export const queries = {
 	getSeriesChapterCounts,
 	getSeriesEntryChapter,
 	getNextChapter,
+	getPreviousChapter,
 };

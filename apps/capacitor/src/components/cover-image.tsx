@@ -1,5 +1,6 @@
 import type React from "react";
 import { useState } from "react";
+import { proxyImageUrl } from "../services/catalog/client";
 
 type Props = {
 	src: string | null | undefined;
@@ -25,8 +26,13 @@ type Props = {
 const CoverImage: React.FC<Props> = ({ src, alt, fallback, className, priority, imgClassName }) => {
 	const [state, setState] = useState<"loading" | "loaded" | "error">("loading");
 
-	const showImage = !!src && state !== "error";
-	const showFallback = !src || state === "error";
+	// On web, the strict CSP allows `img-src` only for self / data: / blob: / catalog
+	// origin, so cross-origin upstream covers (e.g. royalroadcdn.com) need to be
+	// routed through the catalog `/proxy/image` endpoint. On native this returns
+	// the URL unchanged.
+	const resolvedSrc = proxyImageUrl(src);
+	const showImage = !!resolvedSrc && state !== "error";
+	const showFallback = !resolvedSrc || state === "error";
 	const placeholder = fallback ?? (
 		<span className="font-semibold text-[#bbb] text-[0.6rem] tracking-wide">BOOK</span>
 	);
@@ -39,7 +45,7 @@ const CoverImage: React.FC<Props> = ({ src, alt, fallback, className, priority, 
 			{/* Image itself — rendered at full opacity; shimmer fades out on top. */}
 			{showImage && (
 				<img
-					src={src}
+					src={resolvedSrc ?? undefined}
 					alt={alt}
 					decoding="async"
 					loading={priority ? "eager" : "lazy"}

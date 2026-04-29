@@ -212,3 +212,26 @@ export async function getNextChapter(
 		.limit(1);
 	return rows[0];
 }
+
+/**
+ * The chapter immediately preceding `currentIndex` within a series, used by
+ * the reader's manual prev navigation. Returns undefined at chapter 0.
+ */
+export async function getPreviousChapter(
+	seriesId: string,
+	currentIndex: number,
+): Promise<Book | undefined> {
+	if (currentIndex <= 0) return undefined;
+	const rows = await db
+		.select()
+		.from(books)
+		.where(
+			and(
+				eq(books.seriesId, seriesId),
+				eq(books.chapterIndex, currentIndex - 1),
+				eq(books.deleted, false),
+			),
+		)
+		.limit(1);
+	return rows[0];
+}

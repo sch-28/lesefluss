@@ -1,8 +1,28 @@
+import { Capacitor } from "@capacitor/core";
+
 export const CATALOG_URL = (
 	import.meta.env.VITE_CATALOG_URL ?? "https://catalog.lesefluss.app"
 ).trim();
 
 export const CATALOG_ENABLED = !!CATALOG_URL;
+
+/**
+ * Wrap an upstream image URL through the catalog `/proxy/image` endpoint on web
+ * builds, where the strict CSP allows `img-src` only for `self` and the catalog
+ * origin. Native WebView loads remote images directly with no CSP enforcement,
+ * so we return the URL unchanged there to skip the extra hop.
+ *
+ * Pass-through cases (no proxy needed): empty/null, `data:` URIs, `blob:` URIs,
+ * and any URL already pointed at the catalog origin.
+ */
+export function proxyImageUrl(url: string | null | undefined): string | null {
+	if (!url) return null;
+	if (Capacitor.isNativePlatform()) return url;
+	if (url.startsWith("data:") || url.startsWith("blob:")) return url;
+	if (CATALOG_URL && url.startsWith(CATALOG_URL)) return url;
+	if (!CATALOG_URL) return url;
+	return `${CATALOG_URL}/proxy/image?url=${encodeURIComponent(url)}`;
+}
 
 export type CatalogSource = "gutenberg" | "standard_ebooks";
 

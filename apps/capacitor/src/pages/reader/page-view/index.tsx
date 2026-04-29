@@ -104,6 +104,14 @@ export interface PageViewProps {
 	onPositionSettle: (byteOffset: number) => void;
 	onInitialActiveOffset: (byteOffset: number) => void;
 	onTap: () => void;
+
+	/**
+	 * Optional element overlaid at the bottom of the page area, visible only
+	 * on the absolute last page of the book. Used by the reader to render
+	 * `<NextChapterFooter />` for serial chapters. Positioned outside the
+	 * transform wrapper so the page-chunk pagination math stays untouched.
+	 */
+	footer?: React.ReactNode;
 }
 
 const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
@@ -129,6 +137,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		onPositionSettle,
 		onInitialActiveOffset,
 		onTap,
+		footer,
 	},
 	ref,
 ) {
@@ -575,6 +584,13 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	};
 
 	// ── Render ────────────────────────────────────────────────────────────
+	// True when the user is on the very last page of the very last chunk.
+	// Drives the optional `footer` overlay; the same boolean shape appears
+	// inside `handlePointerMove` (rubber-band) but each usage owns its own
+	// computation to keep pointer-handler closures from going stale.
+	const isLastPage =
+		chunkIndex === chunks.length - 1 && pageIndex === currentPageCount - 1;
+
 	return (
 		<div
 			ref={containerRef}
@@ -654,6 +670,23 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 					</div>
 				)}
 			</div>
+			{/* End-of-book footer overlay (e.g. <NextChapterFooter /> for serials).
+			 *  Lives outside the page-clip / transform wrapper so it doesn't move
+			 *  with page swipes and doesn't perturb the chunk pagination math.
+			 *  Visible only when the user is on the very last page. */}
+			{footer != null && isLastPage && (
+				<div
+					style={{
+						position: "absolute",
+						left: 0,
+						right: 0,
+						bottom: "env(safe-area-inset-bottom, 0px)",
+						pointerEvents: "auto",
+					}}
+				>
+					{footer}
+				</div>
+			)}
 		</div>
 	);
 });

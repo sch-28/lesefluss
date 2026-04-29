@@ -55,6 +55,11 @@ async function main() {
 	app.use("/covers/*", coversRateLimit);
 	app.route("/covers", coversRoute);
 
+	// Image proxy shares the cover-image use case (web-novel search grids fire
+	// 10–20 cover loads on first paint), so reuse the generous covers bucket
+	// instead of the default 60/min API bucket.
+	app.use("/proxy/image", coversRateLimit);
+
 	app.use("*", rateLimit);
 	app.route("/search", searchRoute);
 	app.route("/landing", landingRoute);
