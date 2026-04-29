@@ -4,21 +4,23 @@ import {
 	Battery,
 	Bluetooth,
 	BookOpen,
+	ChevronsRight,
+	Cloud,
 	Download,
 	Highlighter,
-	Library,
 	Monitor,
+	NotebookPen,
+	Palette,
 	Power,
 	SlidersHorizontal,
-	Zap,
+	Type,
 } from "lucide-react";
-import type * as React from "react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { ExploreWall } from "~/components/explore-wall";
-import { FeatureCard } from "~/components/feature-card";
 import { HeroRsvp } from "~/components/hero-rsvp";
 import { RsvpPreview } from "~/components/rsvp-preview";
 import { Button } from "~/components/ui/button";
+import { WebNovelsCarousel } from "~/components/web-novels-carousel";
 import { getCatalogCounts } from "~/lib/explore-covers";
 import { staticCovers } from "~/lib/static-covers";
 import { seo } from "~/utils/seo";
@@ -34,16 +36,12 @@ export const Route = createFileRoute("/")({
 		...seo({
 			title: "Lesefluss - Speed Reading App & Device",
 			description:
-				"Read books 2–4× faster with RSVP. Web app, Android app, and an optional DIY ESP32 reader. Import EPUB or TXT, and sync your library, position and settings across all three.",
+				"Read books and web novels 2 to 4 times faster with RSVP. Import EPUB, PDF, or any URL. Browse free classics or follow web novels from AO3, Royal Road, ScribbleHub and Wuxiaworld. Web app, Android app, and an optional DIY ESP32 reader, all in sync.",
 			path: "/",
 		}),
 		scripts: [softwareApplicationSchema],
 	}),
 });
-
-const handleVideoEnded = (e: React.SyntheticEvent<HTMLVideoElement>) => {
-	e.currentTarget.pause();
-};
 
 const glowStyle = { filter: "blur(60px)", transform: "scale(1.4)" };
 
@@ -59,34 +57,12 @@ function Home() {
 			.catch(() => {});
 	}, []);
 
-	const videoRef = useCallback((el: HTMLVideoElement | null) => {
-		if (!el) return;
-		el.playbackRate = 0.85;
-		if (typeof IntersectionObserver === "undefined") {
-			el.play().catch(() => {});
-			return;
-		}
-		const obs = new IntersectionObserver(
-			(entries) => {
-				for (const e of entries) {
-					if (e.isIntersecting) {
-						el.play().catch(() => {});
-					} else {
-						el.pause();
-					}
-				}
-			},
-			{ threshold: 0.25 },
-		);
-		obs.observe(el);
-	}, []);
-
 	return (
 		<div className="overflow-x-hidden">
-			{/* ── Hero: Explore Wall ───────────────────────────────────── */}
+			{/* ── 1. Hero ──────────────────────────────────────────────── */}
 			<ExploreWall covers={covers} />
 
-			{/* ── Stats Strip ──────────────────────────────────────────── */}
+			{/* ── 2. Stats ─────────────────────────────────────────────── */}
 			<section className="relative bg-foreground pt-10 pb-28 text-background">
 				<div className="mx-auto max-w-5xl px-6">
 					<div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
@@ -98,7 +74,6 @@ function Home() {
 						))}
 					</div>
 				</div>
-				{/* Wave flowing into the page */}
 				<div className="absolute right-0 bottom-0 left-0 text-background leading-none">
 					<svg
 						viewBox="0 0 1440 72"
@@ -114,106 +89,80 @@ function Home() {
 				</div>
 			</section>
 
-			{/* ── App Section ──────────────────────────────────────────── */}
+			{/* ── 3. Read anything ─────────────────────────────────────── */}
 			<section className="py-24">
 				<div className="mx-auto max-w-5xl px-6">
-					<div className="grid gap-12 lg:grid-cols-[3fr_2fr] lg:items-center">
-						<div data-aos="fade-right" className="text-center lg:text-left">
-							<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
-								The App
-							</p>
-							<h2 className="mb-5 font-bold text-3xl leading-tight">
-								Read on your phone or in the browser
-							</h2>
-							<p className="mb-8 text-muted-foreground leading-relaxed">
-								Import DRM-free EPUB or TXT books, or pick one from the built-in Explore page
-								(Project Gutenberg and Standard Ebooks). Read with the built-in reader, or switch to
-								RSVP mode for speed reading.
-							</p>
-							<div className="mb-8 flex flex-wrap justify-center gap-2 lg:justify-start">
-								{appFeatures.map(({ icon: Icon, label }) => (
-									<span
-										key={label}
-										className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-foreground/80 text-sm"
-									>
-										<Icon className="h-3.5 w-3.5 text-muted-foreground" />
-										{label}
-									</span>
-								))}
-							</div>
-							<div className="flex flex-wrap justify-center gap-3 lg:justify-start">
-								<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
-									<Link to="/download">Download for Android</Link>
-								</Button>
-								<Button
-									asChild
-									variant="outline"
-									className="h-auto px-6 py-2.5 font-semibold text-sm"
-								>
-									<a href="/app">Try the web app →</a>
-								</Button>
-							</div>
-						</div>
-						<div className="relative flex justify-center lg:justify-end" data-aos="fade-left">
-							<div className="absolute inset-0 rounded-full bg-primary/10" style={glowStyle} />
-							<div className="relative rotate-2">
-								<RsvpPreview />
-							</div>
-						</div>
+					<div className="mx-auto mb-12 max-w-2xl text-center" data-aos="fade-up">
+						<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
+							Your library
+						</p>
+						<h2 className="mb-5 font-bold text-3xl leading-tight sm:text-4xl">
+							Read anything you can find
+						</h2>
+						<p className="text-muted-foreground leading-relaxed">
+							EPUBs, PDFs, HTML, plain text, an article URL, or a page shared from your browser.
+							Lesefluss pulls a clean reading copy and detects chapters and metadata automatically.
+							Browse free classics on the Explore page, or follow web novels straight from the sites
+							you already read.
+						</p>
+					</div>
+
+					<div data-aos="fade-up" data-aos-delay="80">
+						<WebNovelsCarousel />
 					</div>
 				</div>
 			</section>
 
-			{/* ── Features ─────────────────────────────────────────────── */}
-			<section className="bg-muted/50 py-24">
+			{/* ── 4. Read it your way (bento) ──────────────────────────── */}
+			<section className="bg-muted/40 py-24">
 				<div className="mx-auto max-w-5xl px-6">
-					<h2 className="mb-12 text-center font-bold text-3xl" data-aos="fade-up">
-						Features
-					</h2>
-					<div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-						{features.map((feature, i) => (
-							<div key={feature.title} data-aos="fade-up" data-aos-delay={(i % 3) * 80}>
-								<FeatureCard {...feature} />
+					<div className="mx-auto mb-12 max-w-2xl text-center" data-aos="fade-up">
+						<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
+							The reader
+						</p>
+						<h2 className="mb-5 font-bold text-3xl leading-tight sm:text-4xl">Read it your way</h2>
+						<p className="text-muted-foreground leading-relaxed">
+							Small dials, not big switches. Set the reader the way you like, and forget it.
+						</p>
+					</div>
+
+					<div className="grid gap-4 lg:grid-cols-2">
+						{/* Hero card: RSVP showpiece with the phone preview */}
+						<div
+							className="relative flex flex-col rounded-2xl border border-border bg-card px-8 pt-8 pb-10"
+							data-aos="fade-up"
+						>
+							<div className="text-center">
+								<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-[0.25em]">
+									Rapid Serial Visual Presentation
+								</p>
+								<h3 className="mb-3 font-bold text-3xl leading-tight">
+									Read <HeroRsvp />
+								</h3>
+								<p className="mx-auto max-w-md text-muted-foreground text-sm leading-relaxed">
+									One word at a time, anchored on the focal letter. Eyes stop jumping, you read 2 to
+									4 times faster.
+								</p>
 							</div>
-						))}
+							<div className="relative mt-10 flex flex-1 items-center justify-center">
+								<div className="absolute inset-0 rounded-full bg-primary/10" style={glowStyle} />
+								<div className="relative rotate-2">
+									<RsvpPreview />
+								</div>
+							</div>
+						</div>
+
+						<div className="grid gap-4 sm:grid-cols-2">
+							{bentoCards.map((card, i) => (
+								<BentoCard key={card.title} {...card} aosDelay={(i + 1) * 60} />
+							))}
+						</div>
 					</div>
 				</div>
 			</section>
 
-			{/* ── RSVP in action ───────────────────────────────────────── */}
-			<section className="relative isolate overflow-hidden border-border border-t py-24">
-				<video
-					src="/landing.mp4"
-					poster="/landing-poster.jpg"
-					preload="none"
-					muted
-					playsInline
-					className="absolute inset-0 -z-10 h-full w-full object-cover opacity-50"
-					onEnded={handleVideoEnded}
-					ref={videoRef}
-				/>
-				<div
-					aria-hidden
-					className="absolute inset-0 -z-10 bg-gradient-to-b from-background/75 via-background/55 to-background/85"
-				/>
-				<div className="mx-auto max-w-3xl px-6 text-center" data-aos="fade-up">
-					<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-[0.25em]">
-						Rapid Serial Visual Presentation
-					</p>
-					<h2 className="mb-5 font-bold text-4xl tracking-tight sm:text-5xl">
-						Read <HeroRsvp />
-						<br />
-						One word at a time.
-					</h2>
-					<p className="mx-auto max-w-xl text-foreground/80 leading-relaxed">
-						Flash words one at a time with optimal letter alignment. Your eyes stop jumping, your
-						pace stays steady, and you read 2–4× faster without losing comprehension.
-					</p>
-				</div>
-			</section>
-
-			{/* ── Device Section ───────────────────────────────────────── */}
-			<section className="border-border py-24">
+			{/* ── 5. Device ────────────────────────────────────────────── */}
+			<section className="py-20">
 				<div className="mx-auto max-w-5xl px-6">
 					<div className="grid gap-12 lg:grid-cols-2 lg:items-center">
 						<div className="relative flex justify-center lg:justify-start" data-aos="fade-right">
@@ -232,14 +181,10 @@ function Home() {
 							<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
 								Hardware
 							</p>
-							<h2 className="mb-5 font-bold text-3xl leading-tight">
-								Leave the phone
-								<br />
-								behind
-							</h2>
+							<h2 className="mb-5 font-bold text-3xl leading-tight">Leave the phone behind</h2>
 							<p className="mb-8 text-muted-foreground leading-relaxed">
-								Pocket-sized ESP32 reader. AMOLED or TFT, single button, weeks of battery. ~€25 in
-								parts.
+								Pocket-sized ESP32 reader. AMOLED or TFT, single button, weeks of battery. Around
+								€25 in parts.
 							</p>
 							<div className="mb-8 flex flex-wrap justify-center gap-2 lg:justify-start">
 								{deviceFeatures.map(({ icon: Icon, label }) => (
@@ -266,7 +211,7 @@ function Home() {
 				</div>
 			</section>
 
-			{/* ── Open Source CTA ──────────────────────────────────────── */}
+			{/* ── 6. Open Source CTA ───────────────────────────────────── */}
 			<section className="bg-foreground py-28 text-background">
 				<div className="mx-auto max-w-3xl px-6 text-center" data-aos="fade-up">
 					<p className="mb-3 font-semibold text-background/50 text-xs uppercase tracking-widest">
@@ -276,8 +221,8 @@ function Home() {
 						No subscription needed.
 					</h2>
 					<p className="mx-auto mb-10 max-w-lg text-background/65 leading-relaxed">
-						The app is free. Read, import books, and sync your device — no account required.
-						Optional cloud sync available.
+						The app is free. Read, import books, and sync your device. No account required, optional
+						cloud sync available.
 					</p>
 					<div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
 						<Button asChild className="h-auto px-8 py-3 font-semibold text-sm">
@@ -307,6 +252,32 @@ function Home() {
 	);
 }
 
+function BentoCard({
+	icon: Icon,
+	title,
+	description,
+	aosDelay,
+}: {
+	icon: LucideIcon;
+	title: string;
+	description: string;
+	aosDelay: number;
+}) {
+	return (
+		<div
+			className="rounded-2xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:shadow-md"
+			data-aos="fade-up"
+			data-aos-delay={aosDelay}
+		>
+			<div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+				<Icon className="h-4 w-4 text-primary" />
+			</div>
+			<h3 className="mb-2 font-semibold">{title}</h3>
+			<p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
+		</div>
+	);
+}
+
 function formatCount(n: number): string {
 	if (n >= 10_000) return `${Math.floor(n / 1_000)}k+`;
 	if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}k+`;
@@ -326,44 +297,48 @@ function buildStats(
 	];
 }
 
-const appFeatures: { icon: LucideIcon; label: string }[] = [
-	{ icon: Library, label: "EPUB & TXT library" },
-	{ icon: BookOpen, label: "Built-in reader" },
-	{ icon: Zap, label: "Up to 1000 WPM" },
-	{ icon: Bluetooth, label: "BLE sync (optional)" },
-];
-
-const features = [
-	{
-		icon: Library,
-		title: "Library & import",
-		description: "Import EPUB or TXT. Chapters and metadata detected automatically.",
-	},
-	{
-		icon: Zap,
-		title: "RSVP reading",
-		description: "Words flash at 100–1000 WPM with optimal letter alignment.",
-	},
+const bentoCards: { icon: LucideIcon; title: string; description: string }[] = [
 	{
 		icon: BookOpen,
-		title: "Built-in reader",
-		description: "Dark, sepia, and light themes. Adjustable font, spacing, and margins.",
+		title: "Page or scroll",
+		description: "Read in pages, scroll continuously, or flick into RSVP. Switch any time.",
 	},
 	{
-		icon: Highlighter,
-		title: "Dictionary & highlights",
-		description: "Tap any word to look it up. Highlight and search passages.",
+		icon: Palette,
+		title: "Themes",
+		description: "Dark, sepia, light. Easy on the eyes wherever you read.",
+	},
+	{
+		icon: Type,
+		title: "Typography",
+		description: "Tweak font, line spacing, margins, even the size of the app itself.",
 	},
 	{
 		icon: SlidersHorizontal,
 		title: "Tunable speed",
-		description: "Fine-tune WPM, punctuation pauses, acceleration, and focal position.",
+		description: "Fine-tune WPM, punctuation pauses, acceleration, and the focal letter offset.",
 	},
 	{
-		icon: Bluetooth,
-		title: "ESP32 sync",
+		icon: Highlighter,
+		title: "Highlights & dictionary",
+		description: "Tap any word for a definition. Save passages with colored swatches.",
+	},
+	{
+		icon: NotebookPen,
+		title: "Per-book glossary",
+		description: "Track people, places, and concepts. Matching words light up in the text.",
+	},
+	{
+		icon: ChevronsRight,
+		title: "Auto-advance",
 		description:
-			"Automatic Bluetooth pairing. Your book, position and settings stay in sync both ways.",
+			"Finish a chapter and the next one rolls in. New chapters appear in the background.",
+	},
+	{
+		icon: Cloud,
+		title: "Sync everywhere",
+		description:
+			"Sign in with Google, Discord, or email. Library, position and highlights follow you.",
 	},
 ];
 
