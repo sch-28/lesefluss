@@ -3,7 +3,7 @@ id: TASK-98
 title: Book language metadata for hyphenation
 status: To Do
 assignee: []
-created_date: '2026-04-27 19:51'
+created_date: '2026-04-26 19:51'
 labels: []
 milestone: m-5
 dependencies: []

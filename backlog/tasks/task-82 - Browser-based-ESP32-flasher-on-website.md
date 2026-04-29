@@ -3,7 +3,7 @@ id: TASK-82
 title: Browser-based ESP32 flasher on website
 status: To Do
 assignee: []
-created_date: '2026-04-27 15:59'
+created_date: '2026-04-26 15:59'
 labels: []
 milestone: m-7
 dependencies: []

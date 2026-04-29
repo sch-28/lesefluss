@@ -1,12 +1,12 @@
 ---
 id: TASK-101
 title: 'Sync: stop pushing chapter body content for serial chapter rows'
-status: To Do
+status: Done
 assignee: []
-created_date: '2026-04-28 23:31'
-updated_date: '2026-04-28 23:38'
+created_date: '2026-04-26 23:31'
+updated_date: '2026-04-26 15:40'
 labels: []
-milestone: m-4
+milestone: m-11
 dependencies:
   - TASK-37
 references:
@@ -28,11 +28,11 @@ Trade-off accepted: if the upstream provider takes a chapter offline, a fresh-de
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Capacitor `bookToSync` skips content/coverImage/chapters when `book.seriesId` is set
-- [ ] #2 Capacitor `pushSync` skips `getBookContent` for chapter rows
-- [ ] #3 Server upsert in /api/sync hard-nulls content/cover/chapters when incoming `seriesId` is set
-- [ ] #4 Drizzle migration backfills existing chapter rows: NULL content/cover/chapters and reset chapter_status='pending' so reader will refetch
-- [ ] #5 `pnpm check-types` passes in apps/capacitor and apps/web
-- [ ] #6 Server upsert UPDATE clause (not just INSERT) nulls content/cover/chapters when `excluded.series_id IS NOT NULL` — invariant survives even if migration is delayed
-- [ ] #7 Unit test in `apps/capacitor/src/services/sync/__tests__/book-to-sync.test.ts` asserts chapter rows never carry heavy fields
+- [x] #1 Capacitor `bookToSync` skips content/coverImage/chapters when `book.seriesId` is set
+- [x] #2 Capacitor `pushSync` skips `getBookContent` for chapter rows
+- [x] #3 Server upsert in /api/sync hard-nulls content/cover/chapters when incoming `seriesId` is set
+- [x] #4 Drizzle migration backfills existing chapter rows: NULL content/cover/chapters and reset chapter_status='pending' so reader will refetch
+- [x] #5 `pnpm check-types` passes in apps/capacitor and apps/web
+- [x] #6 Server upsert UPDATE clause (not just INSERT) nulls content/cover/chapters when `excluded.series_id IS NOT NULL` — invariant survives even if migration is delayed
+- [x] #7 Unit test in `apps/capacitor/src/services/sync/__tests__/book-to-sync.test.ts` asserts chapter rows never carry heavy fields
 <!-- AC:END -->

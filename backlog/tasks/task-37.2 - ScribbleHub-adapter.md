@@ -3,8 +3,8 @@ id: TASK-37.2
 title: ScribbleHub adapter
 status: Done
 assignee: []
-created_date: '2026-04-28 15:24'
-updated_date: '2026-04-28 17:24'
+created_date: '2026-04-26 15:24'
+updated_date: '2026-04-26 17:24'
 labels: []
 milestone: m-4
 dependencies: []

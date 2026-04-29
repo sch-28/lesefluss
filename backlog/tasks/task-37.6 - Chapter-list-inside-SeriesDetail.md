@@ -3,8 +3,8 @@ id: TASK-37.6
 title: Chapter list inside SeriesDetail
 status: Done
 assignee: []
-created_date: '2026-04-28 15:29'
-updated_date: '2026-04-28 20:59'
+created_date: '2026-04-26 15:29'
+updated_date: '2026-04-26 20:59'
 labels: []
 milestone: m-4
 dependencies: []

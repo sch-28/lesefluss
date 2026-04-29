@@ -3,7 +3,7 @@ id: TASK-97
 title: 'Page mode: two-page spread on wide viewports'
 status: To Do
 assignee: []
-created_date: '2026-04-27 19:45'
+created_date: '2026-04-26 19:45'
 labels: []
 milestone: m-5
 dependencies: []

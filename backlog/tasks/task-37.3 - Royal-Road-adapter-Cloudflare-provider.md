@@ -3,8 +3,8 @@ id: TASK-37.3
 title: Royal Road adapter (Cloudflare provider)
 status: Done
 assignee: []
-created_date: '2026-04-28 15:24'
-updated_date: '2026-04-28 18:03'
+created_date: '2026-04-26 15:24'
+updated_date: '2026-04-26 18:03'
 labels: []
 milestone: m-4
 dependencies: []

@@ -3,8 +3,8 @@ id: TASK-37.5
 title: Update-on-open polling for series
 status: Done
 assignee: []
-created_date: '2026-04-28 15:29'
-updated_date: '2026-04-28 21:32'
+created_date: '2026-04-26 15:29'
+updated_date: '2026-04-26 21:32'
 labels: []
 milestone: m-4
 dependencies: []

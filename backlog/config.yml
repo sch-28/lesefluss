@@ -8,9 +8,9 @@ max_column_width: 20
 default_editor: "nvim"
 auto_open_browser: false
 default_port: 6420
-remote_operations: true
+remote_operations: false
 auto_commit: false
 bypass_git_hooks: false
-check_active_branches: true
+check_active_branches: false
 active_branch_days: 30
 task_prefix: "task"

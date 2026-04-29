@@ -2,8 +2,8 @@
 id: doc-2
 title: Book import architecture — state &amp; roadmap
 type: other
-created_date: '2026-04-28 11:35'
-updated_date: '2026-04-28 22:03'
+created_date: '2026-04-26 11:35'
+updated_date: '2026-04-26 22:03'
 ---
 _Working notes for the Phase 5 (Content Ingestion) refactor in `apps/capacitor`. This file is a handoff for the next agent / session. When all Phase 5 parsers have landed, delete it._
 

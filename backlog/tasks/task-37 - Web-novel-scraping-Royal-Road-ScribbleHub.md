@@ -3,10 +3,10 @@ id: TASK-37
 title: 'Web novel scraping (Royal Road, ScribbleHub)'
 status: Done
 assignee: []
-created_date: '2026-04-27 15:59'
-updated_date: '2026-04-28 23:31'
+created_date: '2026-04-26 15:59'
+updated_date: '2026-04-26 09:35'
 labels: []
-milestone: m-4
+milestone: m-11
 dependencies: []
 documentation:
   - doc-2
@@ -90,5 +90,5 @@ Original design lived in doc-1 (Serial scraping — design plan), retired on com
 
 **Open follow-ups (not blockers):** TASK-100 (cover image resize/compress) remains the right home for fixing 500KB+ base64 covers from any source, including serials.
 
-**Follow-up landed:** chapter rows (books with `series_id` set) were initially syncing full body content/cover/TOC to `sync_books`, which bloated the server DB across users with large serial libraries. Since chapter content is re-derivable via the reader's `chapter-fetch` path on `chapter_status='pending'`, we stopped pushing those heavy fields and added a backfill migration. Lightweight chapter row metadata still syncs (preserving per-chapter position, highlight/glossary `bookId` stability, and series progress). Tracked separately as the TASK-37 follow-up created 2026-04-29.
+**Follow-up landed:** chapter rows (books with `series_id` set) were initially syncing full body content/cover/TOC to `sync_books`, which bloated the server DB across users with large serial libraries. Since chapter content is re-derivable via the reader's `chapter-fetch` path on `chapter_status='pending'`, we stopped pushing those heavy fields and added a backfill migration. Lightweight chapter row metadata still syncs (preserving per-chapter position, highlight/glossary `bookId` stability, and series progress). Tracked separately as the TASK-37 follow-up created 2026-04-26.
 <!-- SECTION:FINAL_SUMMARY:END -->

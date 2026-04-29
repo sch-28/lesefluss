@@ -3,8 +3,8 @@ id: TASK-100
 title: Cover image storage optimization (resize + compress)
 status: To Do
 assignee: []
-created_date: '2026-04-28 11:29'
-updated_date: '2026-04-28 11:35'
+created_date: '2026-04-26 11:29'
+updated_date: '2026-04-26 11:35'
 labels:
   - performance
   - storage

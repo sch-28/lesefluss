@@ -1,11 +1,12 @@
 ---
 id: TASK-37.9
 title: 'Web novels: popular shelves on empty search'
-status: To Do
+status: Done
 assignee: []
-created_date: '2026-04-28 22:41'
+created_date: '2026-04-26 22:41'
+updated_date: '2026-04-26 18:50'
 labels: []
-milestone: m-4
+milestone: m-11
 dependencies: []
 parent_task_id: TASK-37
 priority: medium

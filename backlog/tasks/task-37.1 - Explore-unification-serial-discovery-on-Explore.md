@@ -3,8 +3,8 @@ id: TASK-37.1
 title: 'Explore unification: serial discovery on Explore'
 status: Done
 assignee: []
-created_date: '2026-04-28 15:23'
-updated_date: '2026-04-28 17:25'
+created_date: '2026-04-26 15:23'
+updated_date: '2026-04-26 17:25'
 labels: []
 milestone: m-4
 dependencies: []

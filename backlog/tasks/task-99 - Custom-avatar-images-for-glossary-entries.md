@@ -3,7 +3,7 @@ id: TASK-99
 title: Custom avatar images for glossary entries
 status: To Do
 assignee: []
-created_date: '2026-04-27 21:40'
+created_date: '2026-04-26 21:40'
 labels: []
 milestone: m-5
 dependencies:
