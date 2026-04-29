@@ -4074,5 +4074,5 @@ ion-modal.whats-new-modal {
 .web-novels-filter-chip--active {
 	background-color: var(--ion-color-primary, #000);
 	border-color: var(--ion-color-primary, #000);
-	color: #fff;
+	color: var(--ion-color-primary-contrast, #fff);
 }

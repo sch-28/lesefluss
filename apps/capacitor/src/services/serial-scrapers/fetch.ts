@@ -1,33 +1,23 @@
-import { Capacitor, CapacitorHttp } from "@capacitor/core";
+import { Capacitor } from "@capacitor/core";
 import { CATALOG_URL } from "../catalog/client";
+import { NativeHttp } from "./native-http";
 
-/**
- * Single shared HTTP utility. Adapters never call `fetch` directly.
- *
- *   - Native (Capacitor) — `CapacitorHttp.request`. Bypasses CORS and presents
- *     a real User-Agent so Cloudflare-protected SSR pages serve normally.
- *   - Web/dev — falls back to the existing catalog `/proxy/article` endpoint
- *     (CORS + SSRF guards live there).
- */
+// Device-unique WebView UA pairs with Conscrypt (BoringSSL) in NativeHttpPlugin to pass Cloudflare's JA3 fingerprint check.
+function getBrowserHeaders(): Record<string, string> {
+	return {
+		"User-Agent": navigator.userAgent,
+		Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+		"Accept-Language": "en-US,en;q=0.5",
+	};
+}
+
+/** Native: OkHttp+Conscrypt (Chrome JA3, CORS-bypassed). Web: catalog /proxy/article endpoint. */
 export async function fetchHtml(url: string): Promise<string> {
 	if (Capacitor.isNativePlatform()) {
-		const res = await CapacitorHttp.request({
-			method: "GET",
-			url,
-			responseType: "text",
-		});
+		const res = await NativeHttp.request({ url, headers: getBrowserHeaders() });
+		if (res.status === 403) throw new Error("CLOUDFLARE_CHALLENGE");
 		if (res.status >= 400) throw new Error(`FETCH_FAILED:${res.status}`);
-		// CapacitorHttp auto-parses JSON responses based on Content-Type and
-		// ignores `responseType: "text"`. When the upstream returns JSON (e.g.
-		// Wuxiaworld's /api/novels/search), `res.data` is already a parsed
-		// object — `String(obj)` would yield "[object Object]" and break any
-		// adapter that JSON.parse's the result. Stringify so the round-trip
-		// is lossless. An empty / null body is treated as a fetch failure to
-		// avoid leaking `undefined` (or the literal string "undefined") into
-		// adapters that expect HTML or JSON to parse.
-		if (typeof res.data === "string") return res.data;
-		if (res.data == null) throw new Error("FETCH_FAILED:EMPTY_BODY");
-		return JSON.stringify(res.data);
+		return res.data;
 	}
 
 	let res: Response;

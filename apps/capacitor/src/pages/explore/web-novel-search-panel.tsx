@@ -1,5 +1,7 @@
-import { IonSpinner, IonText } from "@ionic/react";
+import { IonButton, IonIcon, IonSpinner, IonText } from "@ionic/react";
 import type React from "react";
+import { Capacitor } from "@capacitor/core";
+import { alertCircleOutline, sadOutline, shieldCheckmarkOutline } from "ionicons/icons";
 import CoverImage from "../../components/cover-image";
 import type { ViewMode } from "../../components/view-mode-toggle";
 import { queryHooks } from "../../services/db/hooks";
@@ -8,6 +10,8 @@ import {
 	type ProviderId,
 	type SearchResult,
 } from "../../services/serial-scrapers";
+import { NativeHttp } from "../../services/serial-scrapers/native-http";
+import { PROVIDER_CHALLENGE_URL } from "./web-novels-providers";
 
 interface Props {
 	query: string;
@@ -20,16 +24,12 @@ interface Props {
 
 export const WebNovelSearchPanel: React.FC<Props> = ({ query, provider, viewMode, onPick }) => {
 	const trimmed = query.trim();
-	const { data, isLoading, isError, error } = queryHooks.useSearchSerials(query, { provider });
+	const { data, isLoading, isError, refetch } = queryHooks.useSearchSerials(query, { provider });
 
 	if (!trimmed) return <PopularShelf provider={provider} viewMode={viewMode} onPick={onPick} />;
 
 	if (isError) {
-		return (
-			<EmptyState>
-				Search failed: {error instanceof Error ? error.message : "Unknown error"}
-			</EmptyState>
-		);
+		return <ErrorState message="Search failed. Check your connection and try again." onRetry={refetch} />;
 	}
 
 	if (isLoading || !data) {
@@ -43,20 +43,37 @@ export const WebNovelSearchPanel: React.FC<Props> = ({ query, provider, viewMode
 		);
 	}
 
-	const { results, failedProviders } = data;
+	const { results, failedProviders, challengeProviders } = data;
 
-	if (results.length === 0) {
+	if (results.length === 0 && failedProviders.length > 0 && challengeProviders.length === 0) {
+		return (
+			<ErrorState
+				message={`No results — some providers were unavailable (${failedProviders.join(", ")}). Try again.`}
+				onRetry={refetch}
+			/>
+		);
+	}
+
+	if (results.length === 0 && challengeProviders.length === 0) {
 		return <EmptyState>No results for "{trimmed}". Try a different title.</EmptyState>;
 	}
 
 	return (
 		<div className="flex flex-col gap-3 pt-3">
+			{challengeProviders.length > 0 && (
+				<ChallengeBanner providers={challengeProviders} onResolved={refetch} />
+			)}
 			{failedProviders.length > 0 && (
 				<div className="rounded-md border border-[var(--ion-color-warning,#f0a020)] bg-[var(--ion-color-warning-tint,#fff7e6)] px-3 py-2 text-[var(--ion-color-warning-shade,#a07000)] text-xs">
 					Some providers unavailable: {failedProviders.join(", ")}
 				</div>
 			)}
-			<ResultsLayout results={results} viewMode={viewMode} provider={provider} onPick={onPick} />
+			{results.length > 0 && (
+				<ResultsLayout results={results} viewMode={viewMode} provider={provider} onPick={onPick} />
+			)}
+			{results.length === 0 && challengeProviders.length > 0 && (
+				<EmptyState>Verify to load results from blocked providers.</EmptyState>
+			)}
 		</div>
 	);
 };
@@ -66,7 +83,7 @@ const PopularShelf: React.FC<{
 	viewMode: ViewMode;
 	onPick: (result: SearchResult) => void;
 }> = ({ provider, viewMode, onPick }) => {
-	const { data, isLoading } = queryHooks.usePopularSerials(provider);
+	const { data, isLoading, isError, refetch } = queryHooks.usePopularSerials(provider);
 
 	if (isLoading) {
 		return (
@@ -79,11 +96,31 @@ const PopularShelf: React.FC<{
 		);
 	}
 
-	if (!data || data.results.length === 0) return null;
+	if (isError) {
+		return <ErrorState message="Failed to load popular series." onRetry={refetch} />;
+	}
+
+	if (!data) return null;
+
+	if (data.results.length === 0 && data.failedProviders.length > 0 && data.challengeProviders.length === 0) {
+		return (
+			<ErrorState
+				message={`Failed to load popular series (${data.failedProviders.join(", ")}).`}
+				onRetry={refetch}
+			/>
+		);
+	}
+
+	if (data.results.length === 0 && data.challengeProviders.length === 0) return null;
 
 	return (
-		<div className="pt-3">
-			<ResultsLayout results={data.results} viewMode={viewMode} provider={provider} onPick={onPick} />
+		<div className="flex flex-col gap-3 pt-3">
+			{data.challengeProviders.length > 0 && (
+				<ChallengeBanner providers={data.challengeProviders} onResolved={refetch} />
+			)}
+			{data.results.length > 0 && (
+				<ResultsLayout results={data.results} viewMode={viewMode} provider={provider} onPick={onPick} />
+			)}
 		</div>
 	);
 };
@@ -159,10 +196,65 @@ const ResultListItem: React.FC<{
 	</button>
 );
 
-const EmptyState: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-	<div className="flex flex-col items-center justify-center p-8 text-center">
+const iconSmStyle = { fontSize: "1rem" };
+const iconLgStyle = { fontSize: "2rem" };
+const noMarginStyle = { margin: 0 };
+
+const ChallengeBanner: React.FC<{ providers: ProviderId[]; onResolved: () => void }> = ({
+	providers,
+	onResolved,
+}) => {
+	if (!Capacitor.isNativePlatform()) return null;
+	return (
+		<div className="flex flex-col gap-2 rounded-md border border-[var(--ion-border-color,#c8c7cc)] bg-[var(--ion-card-background,#ffffff)] px-3 py-2">
+			<div className="flex items-center gap-1.5 text-[color:var(--ion-text-color,#000000)] text-xs font-semibold">
+				<IonIcon icon={shieldCheckmarkOutline} style={iconSmStyle} />
+				Cloudflare verification required
+			</div>
+			<div className="flex flex-wrap gap-2">
+				{providers.map((p) => {
+					const challengeUrl = PROVIDER_CHALLENGE_URL[p];
+					if (!challengeUrl) return null;
+					return (
+						<IonButton
+							key={p}
+							size="small"
+							fill="outline"
+							color="dark"
+							onClick={() =>
+								NativeHttp.openChallenge({ url: challengeUrl, userAgent: navigator.userAgent })
+									.then(onResolved)
+									.catch(() => { /* user dismissed the challenge — nothing to do */ })
+							}
+						>
+							Verify {p}
+						</IonButton>
+					);
+				})}
+			</div>
+		</div>
+	);
+};
+
+const ErrorState: React.FC<{ message: string; onRetry?: () => void }> = ({ message, onRetry }) => (
+	<div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
+		<IonIcon icon={alertCircleOutline} style={iconLgStyle} color="medium" />
 		<IonText color="medium">
-			<p style={{ margin: 0 }}>{children}</p>
+			<p style={noMarginStyle}>{message}</p>
+		</IonText>
+		{onRetry && (
+			<IonButton fill="clear" size="small" onClick={onRetry}>
+				Retry
+			</IonButton>
+		)}
+	</div>
+);
+
+const EmptyState: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+	<div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
+		<IonIcon icon={sadOutline} style={iconLgStyle} color="medium" />
+		<IonText color="medium">
+			<p style={noMarginStyle}>{children}</p>
 		</IonText>
 	</div>
 );

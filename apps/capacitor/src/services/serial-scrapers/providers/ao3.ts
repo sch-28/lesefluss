@@ -123,6 +123,7 @@ function parseChapterCount(el: Element | null): number | null {
 
 export const ao3Scraper: SerialScraper = {
 	id: PROVIDER_ID,
+	isIncludedInAllPopular: false,
 
 	canHandle(url: string): boolean {
 		try {

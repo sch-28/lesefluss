@@ -28,15 +28,10 @@ export function isSerialUrl(url: string): boolean {
 	return SCRAPERS.some((s) => s.canHandle(url));
 }
 
-/**
- * Result of a fan-out across every provider that exposes a given method
- * (`search`, `getPopular`, …). The UI surfaces `failedProviders` as a discreet
- * "X unavailable" hint; merged `results` still contains everyone else's hits
- * so one bad provider never blacks out the surface.
- */
 export type SearchAllResult = {
 	results: SearchResult[];
 	failedProviders: ProviderId[];
+	challengeProviders: ProviderId[];
 };
 
 
@@ -46,7 +41,7 @@ export type SearchAllResult = {
  * the fan-out result hostage. Timed-out providers land in `failedProviders`
  * and the UI surfaces them as "unavailable" while still showing all other hits.
  */
-const PROVIDER_SEARCH_TIMEOUT_MS = 8_000;
+const PROVIDER_SEARCH_TIMEOUT_MS = 15_000;
 
 /**
  * Races `promise` against a `ms`-millisecond deadline. Clears the timer
@@ -81,7 +76,7 @@ export async function searchAll(
 	opts: { provider?: ProviderId } = {},
 ): Promise<SearchAllResult> {
 	const trimmed = query.trim();
-	if (!trimmed) return { results: [], failedProviders: [] };
+	if (!trimmed) return { results: [], failedProviders: [], challengeProviders: [] };
 	return fanOut((s) => (s.search ? s.search(trimmed) : null), {
 		provider: opts.provider,
 		label: "search",
@@ -98,6 +93,7 @@ export async function popularAll(opts: { provider?: ProviderId } = {}): Promise<
 	return fanOut((s) => (s.getPopular ? s.getPopular() : null), {
 		provider: opts.provider,
 		label: "popular",
+		applyAllViewExclusion: !opts.provider,
 	});
 }
 
@@ -109,9 +105,13 @@ export async function popularAll(opts: { provider?: ProviderId } = {}): Promise<
  */
 async function fanOut(
 	pick: (s: SerialScraper) => Promise<SearchResult[]> | null,
-	opts: { provider?: ProviderId; label: string },
+	opts: { provider?: ProviderId; label: string; applyAllViewExclusion?: boolean },
 ): Promise<SearchAllResult> {
-	const pool = opts.provider ? SCRAPERS.filter((s) => s.id === opts.provider) : SCRAPERS;
+	const pool = opts.provider
+		? SCRAPERS.filter((s) => s.id === opts.provider)
+		: opts.applyAllViewExclusion
+			? SCRAPERS.filter((s) => s.isIncludedInAllPopular ?? true)
+			: SCRAPERS;
 
 	// flatMap-then-allSettled pairs the provider id with each promise so we can
 	// report which providers failed without an extra index→id lookup.
@@ -125,10 +125,13 @@ async function fanOut(
 
 	const results: SearchResult[] = [];
 	const failedProviders: ProviderId[] = [];
+	const challengeProviders: ProviderId[] = [];
 	settled.forEach((r, i) => {
 		const providerId = tasks[i].id;
 		if (r.status === "fulfilled") {
 			results.push(...r.value);
+		} else if (r.reason instanceof Error && r.reason.message === "CLOUDFLARE_CHALLENGE") {
+			challengeProviders.push(providerId);
 		} else {
 			failedProviders.push(providerId);
 			log.warn("serial-scrapers", `${opts.label} failed for ${providerId}:`, r.reason);
@@ -141,7 +144,7 @@ async function fanOut(
 	if (!opts.provider) {
 		results.sort((a, b) => qualityScore(b) - qualityScore(a));
 	}
-	return { results, failedProviders };
+	return { results, failedProviders, challengeProviders };
 }
 
 function qualityScore(r: SearchResult): number {

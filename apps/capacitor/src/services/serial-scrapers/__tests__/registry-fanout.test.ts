@@ -103,7 +103,7 @@ describe("searchAll fan-out", () => {
 		fake.search = undefined;
 
 		const r = await searchAll("hello");
-		expect(r).toEqual({ results: [], failedProviders: [] });
+		expect(r).toEqual({ results: [], failedProviders: [], challengeProviders: [] });
 	});
 
 	it("collects rejecting provider ids in failedProviders without dropping the call", async () => {
@@ -112,6 +112,16 @@ describe("searchAll fan-out", () => {
 		const r = await searchAll("hello");
 		expect(r.results).toEqual([]);
 		expect(r.failedProviders).toEqual(["ao3"]);
+		expect(r.challengeProviders).toEqual([]);
+	});
+
+	it("routes CLOUDFLARE_CHALLENGE rejections to challengeProviders, not failedProviders", async () => {
+		vi.mocked(originalSearch).mockRejectedValue(new Error("CLOUDFLARE_CHALLENGE"));
+
+		const r = await searchAll("hello");
+		expect(r.results).toEqual([]);
+		expect(r.challengeProviders).toEqual(["ao3"]);
+		expect(r.failedProviders).toEqual([]);
 	});
 
 	it("ranks All-view results by cover then chapter bucket", async () => {
@@ -201,7 +211,7 @@ describe("searchAll fan-out", () => {
 		// Non-matching id: AO3 stays unqueried, registry returns an empty result.
 		vi.mocked(originalSearch).mockClear();
 		const skipped = await searchAll("hello", { provider: "scribblehub" });
-		expect(skipped).toEqual({ results: [], failedProviders: [] });
+		expect(skipped).toEqual({ results: [], failedProviders: [], challengeProviders: [] });
 		expect(fake.search).not.toHaveBeenCalled();
 	});
 });
@@ -228,7 +238,7 @@ describe("popularAll fan-out", () => {
 		fake.getPopular = undefined;
 
 		const r = await popularAll();
-		expect(r).toEqual({ results: [], failedProviders: [] });
+		expect(r).toEqual({ results: [], failedProviders: [], challengeProviders: [] });
 	});
 
 	it("collects rejecting provider ids in failedProviders without dropping the call", async () => {
@@ -237,6 +247,16 @@ describe("popularAll fan-out", () => {
 		const r = await popularAll();
 		expect(r.results).toEqual([]);
 		expect(r.failedProviders).toEqual(["ao3"]);
+		expect(r.challengeProviders).toEqual([]);
+	});
+
+	it("routes CLOUDFLARE_CHALLENGE rejections to challengeProviders, not failedProviders", async () => {
+		vi.mocked(originalGetPopular).mockRejectedValue(new Error("CLOUDFLARE_CHALLENGE"));
+
+		const r = await popularAll();
+		expect(r.results).toEqual([]);
+		expect(r.challengeProviders).toEqual(["ao3"]);
+		expect(r.failedProviders).toEqual([]);
 	});
 
 	it("ranks All-view popular results by qualityScore (cover then chapter bucket)", async () => {
@@ -285,5 +305,22 @@ describe("popularAll fan-out", () => {
 		const skipped = await popularAll({ provider: "scribblehub" });
 		expect(skipped.results).toEqual([]);
 		expect(fake.getPopular).not.toHaveBeenCalled();
+	});
+
+	it("excludes isIncludedInAllPopular:false scrapers from all-view but runs them when explicitly selected", async () => {
+		(fake as MutableScraper & { isIncludedInAllPopular: boolean }).isIncludedInAllPopular = false;
+		vi.mocked(originalGetPopular).mockResolvedValue([
+			{ title: "AO3-excluded", author: null, description: null, coverImage: null, sourceUrl: "https://archiveofourown.org/works/1", provider: "ao3" },
+		]);
+
+		const allView = await popularAll();
+		expect(allView.results.map((x) => x.title)).not.toContain("AO3-excluded");
+		expect(fake.getPopular).not.toHaveBeenCalled();
+
+		const explicit = await popularAll({ provider: "ao3" });
+		expect(explicit.results.map((x) => x.title)).toContain("AO3-excluded");
+		expect(fake.getPopular).toHaveBeenCalledTimes(1);
+
+		delete (fake as MutableScraper & { isIncludedInAllPopular?: boolean }).isIncludedInAllPopular;
 	});
 });

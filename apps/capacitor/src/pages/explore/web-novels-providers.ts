@@ -33,6 +33,14 @@ export const PROVIDER_SUBTITLE: Partial<Record<ProviderId, string>> = {
 	wuxiaworld: "Translated xianxia",
 };
 
+/** Homepage URL passed to the Cloudflare challenge WebView per provider. */
+export const PROVIDER_CHALLENGE_URL: Partial<Record<ProviderId, string>> = {
+	scribblehub: "https://www.scribblehub.com",
+	royalroad: "https://www.royalroad.com",
+	wuxiaworld: "https://www.wuxiaworld.com",
+	ao3: "https://archiveofourown.org",
+};
+
 /**
  * Providers shown in the section + filter chip row, in display order. Add a
  * provider here once its adapter lands in `serial-scrapers/registry.ts`.

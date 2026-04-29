@@ -35,9 +35,9 @@ describe("detectScraper", () => {
 describe("searchAll", () => {
 	it("short-circuits on empty / whitespace-only query", async () => {
 		const empty = await searchAll("");
-		expect(empty).toEqual({ results: [], failedProviders: [] });
+		expect(empty).toEqual({ results: [], failedProviders: [], challengeProviders: [] });
 
 		const ws = await searchAll("   ");
-		expect(ws).toEqual({ results: [], failedProviders: [] });
+		expect(ws).toEqual({ results: [], failedProviders: [], challengeProviders: [] });
 	});
 });

@@ -27,6 +27,8 @@ export interface SerialScraper {
 	 * contract are identical to `search` — same `sourceUrl` and same provider tag.
 	 */
 	getPopular?(): Promise<SearchResult[]>;
+	/** When false, excluded from the all-providers popular fan-out; still used when this provider is explicitly selected. Defaults to true. */
+	readonly isIncludedInAllPopular?: boolean;
 }
 
 export type SearchResult = {
