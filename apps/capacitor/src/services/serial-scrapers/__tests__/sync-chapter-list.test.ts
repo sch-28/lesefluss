@@ -73,9 +73,7 @@ beforeEach(() => {
 
 describe("syncChapterList", () => {
 	it("returns added:0 and skips insertChapters when all refs already exist", async () => {
-		vi.mocked(queries.getSeriesChapters).mockResolvedValue([
-			makeExistingBook() as never,
-		]);
+		vi.mocked(queries.getSeriesChapters).mockResolvedValue([makeExistingBook() as never]);
 
 		const result = await syncChapterList("series1", [makeRef()]);
 
@@ -164,9 +162,7 @@ describe("syncChapterList", () => {
 
 	it("calls scheduleSyncPush only when new chapters were added", async () => {
 		// No new chapters.
-		vi.mocked(queries.getSeriesChapters).mockResolvedValue([
-			makeExistingBook() as never,
-		]);
+		vi.mocked(queries.getSeriesChapters).mockResolvedValue([makeExistingBook() as never]);
 		await syncChapterList("series1", [makeRef()]);
 		expect(scheduleSyncPush).not.toHaveBeenCalled();
 

@@ -328,6 +328,25 @@ export const Route = createFileRoute("/api/sync")({
 									updatedAt: sql`GREATEST(excluded.updated_at, sync_series.updated_at)`,
 								},
 							});
+
+						// Cascade: tombstone every chapter row for an incoming deleted
+						// series. The client now hard-deletes chapter rows on series-delete
+						// and never pushes them, so without this the server would still
+						// hand them to other devices on pull. Sticky tombstone semantics on
+						// sync_books.deleted prevent later resurrection. (TASK-102)
+						const deletedSeriesIds = payload.series.filter((s) => s.deleted).map((s) => s.seriesId);
+						if (deletedSeriesIds.length > 0) {
+							await tx
+								.update(syncBooks)
+								.set({ deleted: true, updatedAt: new Date() })
+								.where(
+									and(
+										eq(syncBooks.userId, userId),
+										inArray(syncBooks.seriesId, deletedSeriesIds),
+										eq(syncBooks.deleted, false),
+									),
+								);
+						}
 					}
 
 					// --- Settings: upsert ---

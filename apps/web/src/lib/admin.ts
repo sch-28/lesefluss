@@ -30,6 +30,8 @@ export const getAdminStats = createServerFn({ method: "GET" }).handler(async () 
 		usersWithBooksResult,
 		highlightsResult,
 		sessionsResult,
+		bookTombstonesResult,
+		tombstonesByUserResult,
 	] = await Promise.all([
 		db.select({ count: count() }).from(user),
 		db.select({ count: count() }).from(user).where(gte(user.createdAt, d7)),
@@ -44,6 +46,14 @@ export const getAdminStats = createServerFn({ method: "GET" }).handler(async () 
 			.where(eq(syncBooks.deleted, false)),
 		db.select({ count: count() }).from(syncHighlights).where(eq(syncHighlights.deleted, false)),
 		db.select({ count: count() }).from(session).where(gt(session.expiresAt, now)),
+		db.select({ count: count() }).from(syncBooks).where(eq(syncBooks.deleted, true)),
+		// Per-user tombstone counts so the admin UI can show accurate per-user
+		// numbers without having to fetch every tombstoned row. (TASK-102)
+		db
+			.select({ userId: syncBooks.userId, count: count() })
+			.from(syncBooks)
+			.where(eq(syncBooks.deleted, true))
+			.groupBy(syncBooks.userId),
 	]);
 
 	return {
@@ -51,6 +61,11 @@ export const getAdminStats = createServerFn({ method: "GET" }).handler(async () 
 		usersLast7d: usersLast7dResult[0]?.count ?? 0,
 		usersLast30d: usersLast30dResult[0]?.count ?? 0,
 		bookTotal: booksResult[0]?.count ?? 0,
+		bookTombstoneTotal: bookTombstonesResult[0]?.count ?? 0,
+		bookTombstonesByUser: tombstonesByUserResult.map((r) => ({
+			userId: r.userId,
+			count: r.count,
+		})),
 		storageTotalBytes: Number(booksResult[0]?.totalSize ?? 0),
 		usersWithBooks: usersWithBooksResult[0]?.count ?? 0,
 		highlightTotal: highlightsResult[0]?.count ?? 0,
@@ -90,9 +105,19 @@ export const getAdminUsers = createServerFn({ method: "GET" }).handler(async () 
 	}));
 });
 
+/**
+ * Hard cap on rows shipped to the admin UI in a single call. Tombstones can
+ * accumulate (one user has 13k+) and the admin table paginates client-side; a
+ * 5k cap keeps the wire payload bounded while comfortably covering normal
+ * browsing. Stats provides the true totals. (TASK-102)
+ */
+const ADMIN_BOOKS_LIMIT = 5000;
+
 export const getAdminBooks = createServerFn({ method: "GET" }).handler(async () => {
 	await requireAdminSession();
 
+	// Tombstones included so admins can audit and clean up. Client-side toggle
+	// hides them by default. (TASK-102)
 	const rows = await db
 		.select({
 			bookId: syncBooks.bookId,
@@ -103,12 +128,14 @@ export const getAdminBooks = createServerFn({ method: "GET" }).handler(async () 
 			fileSize: syncBooks.fileSize,
 			wordCount: syncBooks.wordCount,
 			position: syncBooks.position,
+			deleted: syncBooks.deleted,
+			seriesId: syncBooks.seriesId,
 			updatedAt: syncBooks.updatedAt,
 		})
 		.from(syncBooks)
 		.leftJoin(user, eq(syncBooks.userId, user.id))
-		.where(eq(syncBooks.deleted, false))
-		.orderBy(desc(syncBooks.updatedAt));
+		.orderBy(desc(syncBooks.updatedAt))
+		.limit(ADMIN_BOOKS_LIMIT);
 
 	return rows.map((r) => ({ ...r, updatedAt: r.updatedAt.getTime() }));
 });
@@ -163,6 +190,43 @@ export const deleteAdminBook = createServerFn({ method: "POST" })
 		});
 		if (result.length === 0) throw new Response("Book not found", { status: 404 });
 		return { success: true };
+	});
+
+/**
+ * Hard-delete tombstoned `sync_books` rows (and tombstoned `sync_highlights`
+ * in the same scope). Optionally constrained to a single user. The server
+ * keeps tombstones forever so offline devices can still learn about deletions
+ * on next pull — this admin action lets the operator reclaim space when they
+ * know it's safe (e.g. all of the user's devices have caught up). (TASK-102)
+ */
+export const hardDeleteAdminTombstones = createServerFn({ method: "POST" })
+	.inputValidator((data: { userId?: string }) => data)
+	.handler(async ({ data }) => {
+		await requireAdminSession();
+		const userScope = data.userId;
+		const result = await db.transaction(async (tx) => {
+			const removedBooks = await tx
+				.delete(syncBooks)
+				.where(
+					userScope
+						? and(eq(syncBooks.deleted, true), eq(syncBooks.userId, userScope))
+						: eq(syncBooks.deleted, true),
+				)
+				.returning({ bookId: syncBooks.bookId });
+			const removedHighlights = await tx
+				.delete(syncHighlights)
+				.where(
+					userScope
+						? and(eq(syncHighlights.deleted, true), eq(syncHighlights.userId, userScope))
+						: eq(syncHighlights.deleted, true),
+				)
+				.returning({ highlightId: syncHighlights.highlightId });
+			return {
+				booksRemoved: removedBooks.length,
+				highlightsRemoved: removedHighlights.length,
+			};
+		});
+		return result;
 	});
 
 // ---------------------------------------------------------------------------

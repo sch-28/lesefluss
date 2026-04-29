@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRoute, HeadContent, Link, Scripts, useRouter } from "@tanstack/react-router";
-import { Coffee, Star } from "lucide-react";
+import { Coffee, MessageCircle, Star } from "lucide-react";
 import * as React from "react";
 import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary";
 import { Header } from "~/components/header";
@@ -156,6 +156,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 												GitHub
 											</a>
 										</li>
+										<li>
+											<a
+												href="https://discord.gg/A4rDBgjJ3V"
+												target="_blank"
+												rel="noopener noreferrer"
+												className="transition-colors hover:text-foreground"
+											>
+												Discord
+											</a>
+										</li>
 									</ul>
 								</div>
 								<div className="space-y-3">
@@ -192,6 +202,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 									>
 										<Star className="h-3.5 w-3.5" />
 										Star on GitHub
+									</a>
+									<a
+										href="https://discord.gg/A4rDBgjJ3V"
+										target="_blank"
+										rel="noopener noreferrer"
+										className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+									>
+										<MessageCircle className="h-3.5 w-3.5" />
+										Join the Discord
 									</a>
 									<a
 										href="https://ko-fi.com/sch28"

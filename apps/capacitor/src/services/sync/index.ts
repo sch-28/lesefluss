@@ -158,11 +158,37 @@ async function syncFetch(path: string, options?: RequestInit): Promise<Response>
 		headers.Authorization = `Bearer ${token}`;
 	}
 
-	const res = await fetch(`${SYNC_URL}${path}`, {
-		...options,
-		credentials: IS_WEB_BUILD ? "include" : undefined,
-		headers,
-	});
+	const url = `${SYNC_URL}${path}`;
+	const method = options?.method ?? "GET";
+	let res: Response;
+	try {
+		res = await fetch(url, {
+			...options,
+			credentials: IS_WEB_BUILD ? "include" : undefined,
+			headers,
+		});
+	} catch (err) {
+		// Diagnostics for "TypeError: Failed to fetch" — capture context the
+		// generic browser error strips out. (TASK-102)
+		const headerBytes = Object.entries(headers).reduce(
+			(n, [k, v]) => n + k.length + v.length + 4,
+			0,
+		);
+		const haveHeader = headers["X-Sync-Have"] ?? "";
+		const haveCount = haveHeader ? haveHeader.split(",").filter(Boolean).length : 0;
+		const bodyDesc =
+			typeof options?.body === "string"
+				? `${options.body.length}b`
+				: options?.body
+					? "non-string"
+					: "none";
+		log.error(
+			"sync",
+			`fetch threw url=${url} method=${method} online=${typeof navigator !== "undefined" ? navigator.onLine : "n/a"} headerBytes=${headerBytes} haveHeaderBytes=${haveHeader.length} haveCount=${haveCount} body=${bodyDesc} errorName=${err instanceof Error ? err.name : typeof err} errorMessage=${err instanceof Error ? err.message : String(err)}`,
+		);
+		if (err instanceof Error && err.stack) log.error("sync", "fetch threw stack:", err.stack);
+		throw err;
+	}
 
 	if (res.status === 401) {
 		if (!IS_WEB_BUILD) await clearToken();
@@ -303,8 +329,19 @@ export async function pullSync(): Promise<Set<string>> {
 		const localBooks = await queries.getBooksForSync();
 		const localBookMap = new Map(localBooks.map((b) => [b.id, b]));
 
+		// Only standalone books carry content the server might omit; chapter rows
+		// (seriesId set) and tombstones never have body content stored, so including
+		// them in `have` is pointless and bloats the header. Heavy serial readers
+		// can have 10k+ chapter rows — large enough to blow past HTTP/2's per-header
+		// frame limit and trigger ERR_HTTP2_PROTOCOL_ERROR. (TASK-102)
+		const haveHeader = localBooks
+			.filter((b) => !b.seriesId && !b.deleted)
+			.map((b) => b.id)
+			.join(",");
+		log("sync", `pull request haveCount=${localBooks.length} haveHeaderBytes=${haveHeader.length}`);
+
 		const res = await syncFetch("/api/sync", {
-			headers: { "X-Sync-Have": localBooks.map((b) => b.id).join(",") },
+			headers: { "X-Sync-Have": haveHeader },
 		});
 		const data: SyncResponse = await res.json();
 
@@ -314,10 +351,33 @@ export async function pullSync(): Promise<Set<string>> {
 		const localSeries = await queries.getSeriesForSync();
 		const localSeriesMap = new Map(localSeries.map((s) => [s.id, s]));
 
+		// seriesId → bookIds index, built once so the tombstone-cascade branch
+		// below can drop entries from `localBookMap` in O(chapters) rather than
+		// rescanning every local book per tombstoned series. (TASK-102)
+		const localBooksBySeries = new Map<string, string[]>();
+		for (const b of localBooks) {
+			if (!b.seriesId) continue;
+			const arr = localBooksBySeries.get(b.seriesId);
+			if (arr) arr.push(b.id);
+			else localBooksBySeries.set(b.seriesId, [b.id]);
+		}
+
 		for (const serverSeries of data.series ?? []) {
 			const local = localSeriesMap.get(serverSeries.seriesId);
 
 			if (serverSeries.deleted) {
+				// Cascade: drop any local chapter rows for this series (and their
+				// content/highlights/glossary). The server cascade-tombstones them on
+				// push, but we don't need to keep local tombstones around either.
+				// (TASK-102)
+				const removedChapters = await queries.hardDeleteChaptersBySeriesId(serverSeries.seriesId);
+				if (removedChapters > 0) {
+					for (const id of localBooksBySeries.get(serverSeries.seriesId) ?? []) {
+						localBookMap.delete(id);
+					}
+					localBooksBySeries.delete(serverSeries.seriesId);
+					changed = true;
+				}
 				if (local) {
 					await queries.hardDeleteSeries(serverSeries.seriesId);
 					localSeriesMap.delete(serverSeries.seriesId);
@@ -400,6 +460,14 @@ export async function pullSync(): Promise<Set<string>> {
 			if (!local) {
 				// New book from server. Add if we have content, OR if it's a serial chapter
 				// (pending chapters have empty content but still need a row to drive the UI).
+				// Don't resurrect chapter rows for series the user has deleted locally
+				// (or that don't exist locally because we cascaded). Without this, an
+				// older server that hasn't cascade-tombstoned its chapter rows yet would
+				// keep refilling the local DB. (TASK-102)
+				if (serverBook.seriesId) {
+					const parentSeries = localSeriesMap.get(serverBook.seriesId);
+					if (!parentSeries || parentSeries.deleted) continue;
+				}
 				const isChapter = !!serverBook.seriesId;
 				if (serverBook.content || isChapter) {
 					const chapterStatus = serverBook.chapterStatus ?? "fetched";
@@ -420,6 +488,7 @@ export async function pullSync(): Promise<Set<string>> {
 							chapterIndex: serverBook.chapterIndex ?? null,
 							chapterSourceUrl: serverBook.chapterSourceUrl ?? null,
 							chapterStatus,
+							chapterError: null,
 						},
 						serverBook.content ?? "",
 						serverBook.coverImage,
@@ -445,6 +514,7 @@ export async function pullSync(): Promise<Set<string>> {
 						chapterIndex: serverBook.chapterIndex ?? null,
 						chapterSourceUrl: serverBook.chapterSourceUrl ?? null,
 						chapterStatus,
+						chapterError: null,
 					});
 					changed = true;
 				}
@@ -620,9 +690,29 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 			series: seriesRows.map(seriesToSync),
 		};
 
+		// Diagnostics for the >5000 books cap — log composition so we can see what's
+		// driving the count (chapter rows from large serials vs. standalone imports).
+		// (TASK-102)
+		const chapterRowCount = booksWithContent.filter((b) => b.seriesId).length;
+		const standaloneCount = booksWithContent.length - chapterRowCount;
+		const chaptersPerSeries = new Map<string, number>();
+		for (const b of booksWithContent) {
+			if (b.seriesId)
+				chaptersPerSeries.set(b.seriesId, (chaptersPerSeries.get(b.seriesId) ?? 0) + 1);
+		}
+		const topSeries = [...chaptersPerSeries.entries()]
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 5)
+			.map(([id, n]) => `${id}:${n}`);
+		const body = JSON.stringify(payload);
+		log(
+			"sync",
+			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
+		);
+
 		await syncFetch("/api/sync", {
 			method: "POST",
-			body: JSON.stringify(payload),
+			body,
 		});
 
 		await Preferences.set({

@@ -133,7 +133,10 @@ export const SyncGlossaryEntrySchema = z.object({
 });
 
 export const SyncPayloadSchema = z.object({
-	books: z.array(SyncBookSchema).max(5000),
+	// Cap is generous because serial chapter rows (seriesId set) carry no body
+	// content/cover/TOC, so a 50k-row payload is still small in bytes. The real
+	// ceiling on push size is the proxy body limit, not the row count.
+	books: z.array(SyncBookSchema).max(50_000),
 	settings: SyncSettingsSchema.nullable(),
 	highlights: z.array(SyncHighlightSchema).max(5000),
 	glossaryEntries: z.array(SyncGlossaryEntrySchema).max(5000).optional().default([]),

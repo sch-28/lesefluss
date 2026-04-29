@@ -16,10 +16,12 @@ import {
 	Highlighter,
 	Library,
 	type LucideIcon,
+	Trash2,
 	UserPlus,
 	Users,
 } from "lucide-react";
 import * as React from "react";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import {
@@ -31,14 +33,15 @@ import {
 	getAdminStats,
 	getAdminUsers,
 	getCatalogStats,
+	hardDeleteAdminTombstones,
 	triggerCatalogSync,
 } from "~/lib/admin";
+import { cn } from "~/lib/utils";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
 	loader: async ({ context }) => {
 		if (context.session.user.role !== "admin") throw redirect({ to: "/" });
-		return getAdminStats();
 	},
 	head: () => seo({ title: "Admin - Lesefluss", isNoindex: true }),
 	component: AdminPage,
@@ -49,6 +52,7 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 // ---------------------------------------------------------------------------
 
 const adminKeys = {
+	stats: ["admin", "stats"] as const,
 	users: ["admin", "users"] as const,
 	books: ["admin", "books"] as const,
 };
@@ -87,13 +91,13 @@ function StatCard({
 	icon: Icon,
 }: {
 	label: string;
-	value: string | number;
+	value: string | number | undefined;
 	icon: LucideIcon;
 }) {
 	return (
 		<div className="relative overflow-hidden rounded-xl border bg-muted/20 p-4">
 			<Icon className="absolute top-3 right-3 size-4 text-muted-foreground/20" />
-			<dd className="font-bold text-2xl tabular-nums">{value}</dd>
+			<dd className="font-bold text-2xl tabular-nums">{value ?? "—"}</dd>
 			<dt className="mt-1 text-muted-foreground text-xs">{label}</dt>
 		</div>
 	);
@@ -355,19 +359,43 @@ function BooksTable() {
 		queryKey: adminKeys.users,
 		queryFn: () => getAdminUsers(),
 	});
+	// Stats provides authoritative tombstone counts (per-user and global) so the
+	// cleanup button label is correct even when the row list is capped server-side.
+	const { data: stats } = useQuery({
+		queryKey: adminKeys.stats,
+		queryFn: () => getAdminStats(),
+	});
 
 	const [expanded, setExpanded] = React.useState<string | null>(null);
 	const [confirming, setConfirming] = React.useState<string | null>(null);
 	const [pending, setPending] = React.useState(false);
 	const [filter, setFilter] = React.useState("all");
+	const [showTombstones, setShowTombstones] = React.useState(false);
+	const [confirmingCleanup, setConfirmingCleanup] = React.useState(false);
+	const [cleanupPending, setCleanupPending] = React.useState(false);
+	const [lastCleanup, setLastCleanup] = React.useState<{
+		books: number;
+		highlights: number;
+	} | null>(null);
 
 	// Stable reference: a fresh array each render fed react-table a new `data` ref,
 	// which triggered its autoResetPageIndex on every state change and caused a
 	// render loop when state (e.g. confirming) changed while a filter was active.
 	const filtered = React.useMemo(
-		() => (filter === "all" ? books : books.filter((b) => b.userId === filter)),
-		[books, filter],
+		() =>
+			books.filter(
+				(b) => (showTombstones || !b.deleted) && (filter === "all" || b.userId === filter),
+			),
+		[books, filter, showTombstones],
 	);
+
+	// Authoritative tombstone count for the current scope, derived from stats so
+	// it stays accurate even when the row list is capped at ADMIN_BOOKS_LIMIT.
+	const tombstonesInScope = React.useMemo(() => {
+		if (!stats) return 0;
+		if (filter === "all") return stats.bookTombstoneTotal;
+		return stats.bookTombstonesByUser.find((r) => r.userId === filter)?.count ?? 0;
+	}, [stats, filter]);
 
 	// Refs so column definitions stay stable while cells always read latest state.
 	const stateRef = React.useRef({ expanded, confirming, pending });
@@ -377,7 +405,10 @@ function BooksTable() {
 		setPending(true);
 		try {
 			await deleteAdminBook({ data: { userId, bookId } });
-			await qc.invalidateQueries({ queryKey: adminKeys.books });
+			await Promise.all([
+				qc.invalidateQueries({ queryKey: adminKeys.books }),
+				qc.invalidateQueries({ queryKey: adminKeys.stats }),
+			]);
 			setConfirming(null);
 			const key = bookKey({ userId, bookId });
 			if (stateRef.current.expanded === key) setExpanded(null);
@@ -389,6 +420,23 @@ function BooksTable() {
 	const handleDeleteRef = React.useRef(handleDelete);
 	handleDeleteRef.current = handleDelete;
 
+	async function handleCleanupTombstones() {
+		setCleanupPending(true);
+		try {
+			const result = await hardDeleteAdminTombstones({
+				data: { userId: filter === "all" ? undefined : filter },
+			});
+			await Promise.all([
+				qc.invalidateQueries({ queryKey: adminKeys.books }),
+				qc.invalidateQueries({ queryKey: adminKeys.stats }),
+			]);
+			setLastCleanup({ books: result.booksRemoved, highlights: result.highlightsRemoved });
+			setConfirmingCleanup(false);
+		} finally {
+			setCleanupPending(false);
+		}
+	}
+
 	const columns = React.useMemo<ColumnDef<AdminBook>[]>(
 		() => [
 			{
@@ -398,7 +446,23 @@ function BooksTable() {
 					const b = row.original;
 					return (
 						<div>
-							<div className="font-medium">{b.title}</div>
+							<div className="flex items-center gap-2">
+								<span
+									className={cn("font-medium", b.deleted && "text-muted-foreground line-through")}
+								>
+									{b.title}
+								</span>
+								{b.deleted && (
+									<Badge variant="outline" className="text-muted-foreground">
+										tombstone
+									</Badge>
+								)}
+								{b.seriesId && (
+									<Badge variant="outline" className="text-muted-foreground">
+										chapter
+									</Badge>
+								)}
+							</div>
 							{b.author && <div className="text-muted-foreground text-xs">{b.author}</div>}
 						</div>
 					);
@@ -447,7 +511,7 @@ function BooksTable() {
 							>
 								{expanded === key ? "Hide" : "Details"}
 							</Button>
-							{confirming === key ? (
+							{b.deleted ? null : confirming === key ? (
 								<>
 									<Button
 										variant="destructive"
@@ -490,28 +554,86 @@ function BooksTable() {
 	const { pageIndex } = table.getState().pagination;
 
 	const filterControl = (
-		<div className="flex items-center gap-2">
-			<label htmlFor="filter-user" className="text-muted-foreground text-xs">
-				Filter by user
+		<div className="flex flex-wrap items-center gap-3">
+			<div className="flex items-center gap-2">
+				<label htmlFor="filter-user" className="text-muted-foreground text-xs">
+					Filter by user
+				</label>
+				<select
+					id="filter-user"
+					value={filter}
+					onChange={(e) => {
+						setFilter(e.target.value);
+						setConfirmingCleanup(false);
+						table.setPageIndex(0);
+					}}
+					className="rounded border bg-background px-2 py-1 text-xs"
+				>
+					<option value="all">All users</option>
+					{users.map((u) => (
+						<option key={u.id} value={u.id}>
+							{u.email}
+						</option>
+					))}
+				</select>
+			</div>
+			<label className="flex items-center gap-1.5 text-muted-foreground text-xs">
+				<input
+					type="checkbox"
+					checked={showTombstones}
+					onChange={(e) => {
+						setShowTombstones(e.target.checked);
+						setConfirmingCleanup(false);
+						table.setPageIndex(0);
+					}}
+				/>
+				Show tombstones ({tombstonesInScope})
 			</label>
-			<select
-				id="filter-user"
-				value={filter}
-				onChange={(e) => {
-					setFilter(e.target.value);
-					table.setPageIndex(0);
-				}}
-				className="rounded border bg-background px-2 py-1 text-xs"
-			>
-				<option value="all">All users</option>
-				{users.map((u) => (
-					<option key={u.id} value={u.id}>
-						{u.email}
-					</option>
-				))}
-			</select>
+			<div className="ml-auto flex items-center gap-2">
+				{confirmingCleanup ? (
+					<>
+						<Button
+							variant="destructive"
+							size="sm"
+							disabled={cleanupPending}
+							onClick={handleCleanupTombstones}
+						>
+							Confirm cleanup ({tombstonesInScope})
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={cleanupPending}
+							onClick={() => setConfirmingCleanup(false)}
+						>
+							Cancel
+						</Button>
+					</>
+				) : (
+					<Button
+						variant="outline"
+						size="sm"
+						disabled={tombstonesInScope === 0}
+						onClick={() => setConfirmingCleanup(true)}
+					>
+						Cleanup tombstones
+					</Button>
+				)}
+			</div>
 		</div>
 	);
+
+	const cleanupNotice = lastCleanup && (
+		<p className="text-muted-foreground text-xs">
+			Removed {lastCleanup.books} tombstoned books and {lastCleanup.highlights} tombstoned
+			highlights.
+		</p>
+	);
+
+	const allHidden = filtered.length === 0 && tombstonesInScope > 0 && !showTombstones;
+	const emptyMessage = allHidden
+		? `All books in scope are tombstoned (${tombstonesInScope}). Toggle "Show tombstones" to view.`
+		: "No books.";
 
 	if (isLoading)
 		return (
@@ -524,13 +646,15 @@ function BooksTable() {
 		return (
 			<>
 				{filterControl}
-				<p className="text-muted-foreground text-sm">No books.</p>
+				{cleanupNotice}
+				<p className="text-muted-foreground text-sm">{emptyMessage}</p>
 			</>
 		);
 
 	return (
 		<div className="space-y-3">
 			{filterControl}
+			{cleanupNotice}
 			<div className="space-y-2">
 				<div className="overflow-x-auto">
 					<table className="w-full text-sm">
@@ -757,30 +881,29 @@ function CatalogSection() {
 // ---------------------------------------------------------------------------
 
 function AdminPage() {
-	const {
-		userTotal,
-		usersLast7d,
-		usersLast30d,
-		bookTotal,
-		storageTotalBytes,
-		usersWithBooks,
-		highlightTotal,
-		activeSessions,
-	} = Route.useLoaderData();
+	const { data: stats } = useQuery({
+		queryKey: adminKeys.stats,
+		queryFn: () => getAdminStats(),
+	});
 
 	return (
 		<div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-8">
 			<h1 className="mb-6 font-bold text-3xl tracking-tight">Admin</h1>
 			<div className="space-y-8">
 				<dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-					<StatCard icon={Users} label="Total Users" value={userTotal} />
-					<StatCard icon={BookOpen} label="Books" value={bookTotal} />
-					<StatCard icon={HardDrive} label="Storage" value={formatBytes(storageTotalBytes)} />
-					<StatCard icon={Activity} label="Active Sessions" value={activeSessions} />
-					<StatCard icon={UserPlus} label="New (7d)" value={usersLast7d} />
-					<StatCard icon={UserPlus} label="New (30d)" value={usersLast30d} />
-					<StatCard icon={Library} label="Users with books" value={usersWithBooks} />
-					<StatCard icon={Highlighter} label="Highlights" value={highlightTotal} />
+					<StatCard icon={Users} label="Total Users" value={stats?.userTotal} />
+					<StatCard icon={BookOpen} label="Books" value={stats?.bookTotal} />
+					<StatCard icon={Trash2} label="Tombstones" value={stats?.bookTombstoneTotal} />
+					<StatCard
+						icon={HardDrive}
+						label="Storage"
+						value={stats && formatBytes(stats.storageTotalBytes)}
+					/>
+					<StatCard icon={Activity} label="Active Sessions" value={stats?.activeSessions} />
+					<StatCard icon={UserPlus} label="New (7d)" value={stats?.usersLast7d} />
+					<StatCard icon={UserPlus} label="New (30d)" value={stats?.usersLast30d} />
+					<StatCard icon={Library} label="Users with books" value={stats?.usersWithBooks} />
+					<StatCard icon={Highlighter} label="Highlights" value={stats?.highlightTotal} />
 				</dl>
 				<Separator />
 				<section className="space-y-4">
