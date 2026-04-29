@@ -85,6 +85,14 @@ export function useChapterFetch(book: Book | undefined): ChapterFetchState {
 		// then suddenly snap to ready. Showing the skeleton while the retry is
 		// in flight matches the initial-fetch experience.
 		if (mutation.isPending) return { kind: "loading" };
+		// Mutation settled with a terminal result but the DB query hasn't
+		// refetched yet (book.chapterStatus is still "pending"). Surface the
+		// outcome immediately so the skeleton doesn't persist until the
+		// round-trip through SQLite completes.
+		if (mutation.data?.status === "error") {
+			return { kind: "error", reason: mutation.data.reason, retry };
+		}
+		if (mutation.data?.status === "locked") return { kind: "locked" };
 		if (book.chapterStatus === "error" || mutation.isError) {
 			// Prefer the persisted reason (set by `commitChapter` from the
 			// adapter's ChapterFetchResult) over the mutation's runtime error.
@@ -102,6 +110,7 @@ export function useChapterFetch(book: Book | undefined): ChapterFetchState {
 		book?.chapterStatus,
 		book?.chapterError,
 		mutation.isPending,
+		mutation.data,
 		mutation.isError,
 		mutation.error,
 		retry,

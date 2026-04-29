@@ -11,11 +11,10 @@ import {
 	type SyncSettings,
 } from "@lesefluss/rsvp-core";
 import { log } from "../../utils/log";
-import { bookKeys, glossaryKeys, settingsKeys } from "../db/hooks/query-keys";
+import { bookKeys, glossaryKeys, serialKeys, settingsKeys } from "../db/hooks/query-keys";
 import { queries } from "../db/queries";
 import type { Book, BookContent, GlossaryEntry, Highlight, Series, Settings } from "../db/schema";
 import { queryClient } from "../query-client";
-import { serialKeys } from "../db/hooks/query-keys";
 import { SYNC_URL } from "./auth-client";
 
 /** True when the capacitor app is hosted inside the website (same origin, cookie auth). */
@@ -471,7 +470,8 @@ export async function pullSync(): Promise<Set<string>> {
 				}
 				const isChapter = !!serverBook.seriesId;
 				if (serverBook.content || isChapter) {
-					const chapterStatus = serverBook.chapterStatus ?? "fetched";
+					const chapterStatus =
+						isChapter && !serverBook.content ? "pending" : (serverBook.chapterStatus ?? "fetched");
 					await queries.addBookWithContent(
 						{
 							id: serverBook.bookId,

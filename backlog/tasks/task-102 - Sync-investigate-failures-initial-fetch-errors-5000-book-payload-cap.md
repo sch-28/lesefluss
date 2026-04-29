@@ -1,9 +1,10 @@
 ---
 id: TASK-102
 title: 'Sync: investigate failures (initial-fetch errors + 5000-book payload cap)'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-26 00:02'
+updated_date: '2026-04-29 20:12'
 labels: []
 milestone: m-4
 dependencies:

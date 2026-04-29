@@ -41,7 +41,7 @@ export async function fetchHtml(url: string): Promise<string> {
 		throw new Error("FETCH_FAILED");
 	}
 	if (res.status === 413) throw new Error("TOO_LARGE");
-	if (!res.ok) throw new Error(`FETCH_FAILED:${res.status}`);
+	if (!res.ok) throw new Error("Chapter not available in the web app — open it in the mobile app.");
 	const data = (await res.json()) as { html?: string };
 	if (!data.html) throw new Error("FETCH_FAILED");
 	return data.html;
