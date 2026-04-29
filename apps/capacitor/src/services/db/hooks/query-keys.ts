@@ -55,6 +55,9 @@ export const serialKeys = {
 	/** Map<seriesId, chapterCount> — driven by a single COUNT(*) query. */
 	counts: ["serials", "counts"] as const,
 
+	/** Map<seriesId, SeriesActivity>. Totals + read-state per series for library filter/sort. */
+	activity: ["serials", "activity"] as const,
+
 	/** Single series row by id (used by SeriesDetail). */
 	detail: (seriesId: string) => ["serials", "detail", seriesId] as const,
 
@@ -64,6 +67,9 @@ export const serialKeys = {
 	/** Free-text search across providers. `provider` narrows the fan-out. */
 	search: (query: string, provider?: string) =>
 		["serials", "search", query, provider ?? null] as const,
+
+	/** Popular/trending shelf — empty-state surface on the web-novels page. */
+	popular: (provider?: string) => ["serials", "popular", provider ?? null] as const,
 
 	/** Ordered chapter rows (books) for a series. Subset of serialKeys.all. */
 	chapters: (seriesId: string) => ["serials", "chapters", seriesId] as const,

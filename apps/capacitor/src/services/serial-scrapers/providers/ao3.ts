@@ -7,10 +7,12 @@ import type {
 	SeriesMetadata,
 } from "../types";
 import { absolutize, extractParagraphs, parseHtml, stripHidden, textOrNull } from "../utils/html";
-import { throttle } from "../utils/throttle";
+import { platformThrottleMs, throttle } from "../utils/throttle";
 
 const PROVIDER_ID = "ao3" as const;
-const THROTTLE_MS = 5_000;
+// AO3 is volunteer-run and rate-limits aggressively against single-IP bursts,
+// so the catalog (shared-IP) gate stays at 5 s.
+const THROTTLE_MS = platformThrottleMs(2_000, 5_000);
 
 const HOST = "archiveofourown.org";
 const ORIGIN = `https://${HOST}`;
@@ -44,6 +46,16 @@ const PATHS = {
 		`${ORIGIN}/works/search?work_search%5Bquery%5D=${encodeURIComponent(query)}` +
 		"&work_search%5Bsort_column%5D=kudos_count" +
 		"&work_search%5Bsort_direction%5D=desc",
+	/**
+	 * AO3 doesn't expose a dedicated "popular" listing, but its work-search
+	 * with an empty query and `sort_column=kudos_count` returns the highest-kudos
+	 * works site-wide — effectively "most loved on AO3 right now". Same markup
+	 * as `search`, so the same parser handles both.
+	 */
+	popular: () =>
+		`${ORIGIN}/works/search?work_search%5Bquery%5D=` +
+		"&work_search%5Bsort_column%5D=kudos_count" +
+		"&work_search%5Bsort_direction%5D=desc",
 } as const;
 
 const SELECTORS = {
@@ -56,7 +68,15 @@ const SELECTORS = {
 	chapterListItem: "ol.chapter.index.group li a",
 
 	// Chapter page (fetchChapterContent). First match wins.
-	chapterContent: "#chapters .userstuff, #workskin .userstuff, .userstuff",
+	//
+	// AO3 work pages render up to three `.userstuff` elements: the work
+	// summary and notes (`<blockquote class="userstuff">`) plus the chapter
+	// body (`<div class="userstuff module" role="article">`). A bare
+	// `.userstuff` selector picks the summary (DOM order), so anchor on the
+	// body's distinguishing markers — `role="article"` is canonical, with
+	// `div.userstuff.module` as a structural fallback if AO3 ever drops the
+	// role attribute but keeps the class scheme.
+	chapterContent: ".userstuff[role='article'], div.userstuff.module",
 
 	// Search results page (search)
 	searchResult: "li.work.blurb.group",
@@ -119,10 +139,28 @@ export const ao3Scraper: SerialScraper = {
 		const tocUrl = PATHS.navigate(sourceUrl);
 
 		await throttle(PROVIDER_ID, THROTTLE_MS);
-		const doc = parseHtml(await fetchHtml(sourceUrl));
+		let doc = parseHtml(await fetchHtml(sourceUrl));
+		let title = textOrNull(doc.querySelector(SELECTORS.title));
+
+		// Multi-chapter works 302 the work root to the first chapter URL, and
+		// some HTTP clients (CapacitorHttp on Android in particular) don't
+		// surface the redirect body cleanly — we end up with no #workskin and
+		// no title. `?view_full_work=true` forces AO3 to render the work
+		// inline, no redirect. Same trick bypasses the archive-warning gate
+		// when combined with `view_adult=true`. Heavier on bandwidth (a long
+		// work renders all chapters inline), so only used as a fallback.
+		if (!title) {
+			await throttle(PROVIDER_ID, THROTTLE_MS);
+			doc = parseHtml(
+				await fetchHtml(`${sourceUrl}?view_full_work=true&view_adult=true`),
+			);
+			title = textOrNull(doc.querySelector(SELECTORS.title));
+		}
+
+		if (!title) throw new Error(`AO3_TITLE_NOT_FOUND:${sourceUrl}`);
 
 		return {
-			title: textOrNull(doc.querySelector(SELECTORS.title)) ?? "Untitled",
+			title,
 			author: textOrNull(doc.querySelector(SELECTORS.author)),
 			// AO3 works don't ship cover images; other providers (ScribbleHub,
 			// Royal Road) return one — extract it in their fetchSeriesMetadata.
@@ -163,25 +201,12 @@ export const ao3Scraper: SerialScraper = {
 		// Empty-query guarding is the public surface's job (registry.searchAll +
 		// useSearchSerials' `enabled` flag). Keep this method a pure extractor.
 		await throttle(PROVIDER_ID, THROTTLE_MS);
-		const doc = parseHtml(await fetchHtml(PATHS.search(query)));
+		return parseWorksList(parseHtml(await fetchHtml(PATHS.search(query))));
+	},
 
-		const results: SearchResult[] = [];
-		for (const li of doc.querySelectorAll(SELECTORS.searchResult)) {
-			const titleAnchor = li.querySelector(SELECTORS.searchResultTitleAnchor);
-			const href = titleAnchor?.getAttribute("href");
-			const title = textOrNull(titleAnchor);
-			if (!href || !title) continue;
-			results.push({
-				title,
-				author: textOrNull(li.querySelector(SELECTORS.searchResultAuthor)),
-				description: textOrNull(li.querySelector(SELECTORS.searchResultSummary)),
-				coverImage: null,
-				chapterCount: parseChapterCount(li.querySelector(SELECTORS.searchResultChapters)),
-				sourceUrl: abs(href),
-				provider: PROVIDER_ID,
-			});
-		}
-		return results;
+	async getPopular(): Promise<SearchResult[]> {
+		await throttle(PROVIDER_ID, THROTTLE_MS);
+		return parseWorksList(parseHtml(await fetchHtml(PATHS.popular())));
 	},
 
 	async fetchChapterContent(ref: ChapterRef): Promise<ChapterFetchResult> {
@@ -190,16 +215,41 @@ export const ao3Scraper: SerialScraper = {
 			const doc = parseHtml(await fetchHtml(ref.sourceUrl));
 
 			const root = doc.querySelector(SELECTORS.chapterContent);
-			if (!root) return { status: "error", reason: "CONTENT_NOT_FOUND" };
+			if (!root) return { status: "error", reason: `AO3_CONTENT_NOT_FOUND:${ref.sourceUrl}` };
 
 			// AO3 doesn't hide nodes inside .userstuff today; this is defensive
 			// parity with the Royal Road adapter, which does.
 			stripHidden(root);
 			const content = extractParagraphs(root);
-			if (!content.trim()) return { status: "error", reason: "EMPTY_CONTENT" };
+			if (!content.trim()) return { status: "error", reason: `AO3_EMPTY_CONTENT:${ref.sourceUrl}` };
 			return { status: "fetched", content };
 		} catch (err) {
-			return { status: "error", reason: err instanceof Error ? err.message : String(err) };
+			const msg = err instanceof Error ? err.message : String(err);
+			return { status: "error", reason: `${msg} (${ref.sourceUrl})` };
 		}
 	},
 };
+
+/**
+ * Parse an AO3 works-listing page (search results, kudos-sorted popular, …).
+ * Same `li.work.blurb.group` markup across all listings.
+ */
+function parseWorksList(doc: Document): SearchResult[] {
+	const results: SearchResult[] = [];
+	for (const li of doc.querySelectorAll(SELECTORS.searchResult)) {
+		const titleAnchor = li.querySelector(SELECTORS.searchResultTitleAnchor);
+		const href = titleAnchor?.getAttribute("href");
+		const title = textOrNull(titleAnchor);
+		if (!href || !title) continue;
+		results.push({
+			title,
+			author: textOrNull(li.querySelector(SELECTORS.searchResultAuthor)),
+			description: textOrNull(li.querySelector(SELECTORS.searchResultSummary)),
+			coverImage: null,
+			chapterCount: parseChapterCount(li.querySelector(SELECTORS.searchResultChapters)),
+			sourceUrl: abs(href),
+			provider: PROVIDER_ID,
+		});
+	}
+	return results;
+}

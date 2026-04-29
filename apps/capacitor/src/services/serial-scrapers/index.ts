@@ -11,7 +11,11 @@ export {
 	runSerialImport as importSerialFromUrl,
 } from "./pipeline";
 export type { SearchAllResult } from "./registry";
-export { isSerialUrl, searchAll as searchSerials } from "./registry";
+export {
+	isSerialUrl,
+	popularAll as popularSerials,
+	searchAll as searchSerials,
+} from "./registry";
 export type {
 	ChapterFetchResult,
 	ChapterRef,

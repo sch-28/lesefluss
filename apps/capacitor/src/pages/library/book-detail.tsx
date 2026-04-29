@@ -43,6 +43,19 @@ const LibraryBookDetail: React.FC = () => {
 	const [isTransferOpen, setIsTransferOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
+	// Must run unconditionally on every render to keep hook order stable.
+	// The early returns below would otherwise skip it on the first render and
+	// invoke it on the second, tripping React error #310.
+	const deleteHeaderAction = useMemo(
+		() => ({
+			label: "Delete",
+			icon: trashOutline,
+			destructive: true,
+			onClick: () => setIsDeleteOpen(true),
+		}),
+		[],
+	);
+
 	if (isPending) {
 		return (
 			<DetailShell
@@ -116,16 +129,6 @@ const LibraryBookDetail: React.FC = () => {
 				},
 			]
 		: [];
-
-	const deleteHeaderAction = useMemo(
-		() => ({
-			label: "Delete",
-			icon: trashOutline,
-			destructive: true,
-			onClick: () => setIsDeleteOpen(true),
-		}),
-		[],
-	);
 
 	return (
 		<>

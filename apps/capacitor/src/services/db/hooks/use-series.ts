@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "../../../components/toast";
 import { pollChapterList, removeSerial } from "../../serial-scrapers";
 import { queries } from "../queries";
+import type { SeriesActivity } from "../queries/series";
 import type { Book, Series } from "../schema";
 import { bookKeys, serialKeys } from "./query-keys";
 
@@ -17,6 +18,17 @@ function useSeriesList() {
 	});
 }
 
+/** Single series row by id. Used when the reader needs provider metadata for a chapter. */
+function useSeries(seriesId: string | undefined | null) {
+	return useQuery<Series | undefined>({
+		queryKey: serialKeys.detail(seriesId ?? ""),
+		// `enabled` gates the call when seriesId is nullish, so the empty-string
+		// fallback below is never executed in practice.
+		queryFn: () => queries.getSeries(seriesId ?? ""),
+		enabled: !!seriesId,
+	});
+}
+
 /**
  * One COUNT(*)-grouped query that returns chapter counts for every series.
  * Replaces a per-card hook that issued N round trips on library mount.
@@ -28,6 +40,18 @@ function useSeriesChapterCounts() {
 	return useQuery<Map<string, number>>({
 		queryKey: serialKeys.counts,
 		queryFn: () => queries.getSeriesChapterCounts(),
+	});
+}
+
+/**
+ * Per-series aggregates (chapter totals, started/finished counts, latest read
+ * timestamp) used by the library's filter+sort to apply book-style
+ * unread/reading/done semantics and "recent" ordering at the series level.
+ */
+function useSeriesActivity() {
+	return useQuery<Map<string, SeriesActivity>>({
+		queryKey: serialKeys.activity,
+		queryFn: () => queries.getSeriesActivity(),
 	});
 }
 
@@ -57,7 +81,7 @@ function useDeleteSeries() {
 function useSeriesChapters(seriesId: string | undefined) {
 	return useQuery<Book[]>({
 		queryKey: serialKeys.chapters(seriesId ?? ""),
-		queryFn: () => queries.getSeriesChapters(seriesId!),
+		queryFn: () => queries.getSeriesChapters(seriesId ?? ""),
 		enabled: !!seriesId,
 	});
 }
@@ -112,7 +136,9 @@ function useChapterListSync(seriesId: string | undefined): { isSyncing: boolean 
 
 export const seriesHooks = {
 	useSeriesList,
+	useSeries,
 	useSeriesChapterCounts,
+	useSeriesActivity,
 	useDeleteSeries,
 	useSeriesChapters,
 	useChapterListSync,

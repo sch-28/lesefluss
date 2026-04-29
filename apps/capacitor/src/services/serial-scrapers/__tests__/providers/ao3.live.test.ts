@@ -22,7 +22,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../../fetch", () => ({
 	fetchHtml: async (url: string): Promise<string> => {
 		const res = await fetch(url, {
-			headers: { "User-Agent": "Mozilla/5.0 (LesefllussLiveSmoke/1.0)" },
+			headers: {
+				"User-Agent": "Mozilla/5.0 (compatible; LesefussBot-Smoke/1.0; +https://lesefluss.app/bot)",
+			},
 		});
 		if (!res.ok) throw new Error(`FETCH_FAILED:${res.status}`);
 		return res.text();
@@ -30,6 +32,7 @@ vi.mock("../../fetch", () => ({
 }));
 
 import { ao3Scraper } from "../../providers/ao3";
+import { assertEndpointsReachable } from "../live-helpers";
 
 // Common-but-stable query — almost guaranteed to return results on AO3 for
 // the foreseeable future. If this ever stops returning hits we have bigger
@@ -90,5 +93,21 @@ describe("ao3 [live]", () => {
 			/^https:\/\/archiveofourown\.org\/works\/\d+\/chapters\/\d+$/,
 		);
 		expect(chapters[0].title).toBeTruthy();
+
+		// 5. Reachability: catches URL-synthesis bugs that pass the regex but
+		//    return no content. See `assertEndpointsReachable`.
+		await assertEndpointsReachable(ao3Scraper, chapters);
+	});
+
+	it("getPopular returns parseable results from the kudos-sorted works search", async () => {
+		const getPopular = ao3Scraper.getPopular;
+		if (!getPopular) throw new Error("AO3 adapter must implement `getPopular`");
+
+		const results = await getPopular();
+		expect(results.length).toBeGreaterThan(0);
+		const first = results[0];
+		expect(first.title).toBeTruthy();
+		expect(first.sourceUrl).toMatch(/^https:\/\/archiveofourown\.org\/works\/\d+/);
+		expect(first.provider).toBe("ao3");
 	});
 });

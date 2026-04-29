@@ -22,6 +22,11 @@ export const changelog: ChangelogEntry[] = [
 			"Finish a chapter and the reader auto-advances to the next one",
 			"Re-open a series and it quietly checks for new chapters in the background",
 			"You can also paste a series or chapter URL and it figures out the rest",
+			"Switch between grid and list view in the library and the explore search results",
+			"Sort and filter series the same way you sort books: by title, author, progress, or recent",
+			"Explore now shows popular titles per provider when you haven't typed a search yet",
+			"Download all pending chapters at once from the series detail page, with live progress and a cancel button",
+			"Open the current chapter on the source website straight from the reader overflow menu",
 		],
 	},
 	{

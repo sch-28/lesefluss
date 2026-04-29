@@ -5,8 +5,7 @@ import { Hono } from "hono";
 const MAX_ARTICLE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB — covers occasionally exceed 5MB before TASK-100 lands
 const UPSTREAM_TIMEOUT_MS = 10_000;
-const UPSTREAM_USER_AGENT =
-	"Mozilla/5.0 (compatible; LesefussBot/1.0; +https://lesefluss.app/bot)";
+const UPSTREAM_USER_AGENT = "Mozilla/5.0 (compatible; LesefussBot/1.0; +https://lesefluss.app/bot)";
 
 /**
  * Hostnames the image proxy is allowed to fetch from. Without this anyone could
@@ -47,7 +46,11 @@ export const proxyRoute = new Hono()
 		const validated = await validateAndCheckSsrf(rawUrl);
 		if ("status" in validated) return c.json(validated.body, validated.status);
 
-		const fetched = await fetchUpstream(validated.url, "text/html,application/xhtml+xml", "article");
+		const fetched = await fetchUpstream(
+			validated.url,
+			"text/html,application/xhtml+xml",
+			"article",
+		);
 		if ("status" in fetched) return c.json(fetched.body, fetched.status);
 		const upstream = fetched.res;
 

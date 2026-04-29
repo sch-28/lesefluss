@@ -13,6 +13,7 @@ vi.mock("../../fetch", () => ({
 // WW tests don't sit through the real 2-second gate between calls.
 vi.mock("../../utils/throttle", () => ({
 	throttle: vi.fn().mockResolvedValue(undefined),
+	platformThrottleMs: (native: number, _catalog: number) => native,
 }));
 
 import { fetchHtml } from "../../fetch";
@@ -60,7 +61,7 @@ describe("wuxiaworld.canHandle", () => {
 // ─── fetchSeriesMetadata ────────────────────────────────────────────────────
 
 describe("wuxiaworld.fetchSeriesMetadata", () => {
-	it("extracts title, author, cover, description from React Query state; tocUrl === sourceUrl", async () => {
+	it("extracts title, author, cover, description from React Query state; sourceUrl=novel root, tocUrl=/chapters", async () => {
 		mockedFetchHtml.mockResolvedValue(loadFixture("novel"));
 
 		const meta = await wuxiaworldScraper.fetchSeriesMetadata(
@@ -73,7 +74,9 @@ describe("wuxiaworld.fetchSeriesMetadata", () => {
 			coverImage: "https://cdn.wuxiaworld.com/covers/a-test-novel.jpg",
 			// `synopsis.value` is HTML in the JSON blob; stripTags removes the <p>.
 			description: "A short description of the test novel.",
-			sourceUrl: "https://www.wuxiaworld.com/novel/a-test-novel/chapters",
+			// Novel root is the user-visible link (browser-friendly); `/chapters`
+			// is the internal scraping endpoint where the React Query state lives.
+			sourceUrl: "https://www.wuxiaworld.com/novel/a-test-novel",
 			tocUrl: "https://www.wuxiaworld.com/novel/a-test-novel/chapters",
 			provider: "wuxiaworld",
 		});
@@ -86,7 +89,10 @@ describe("wuxiaworld.fetchSeriesMetadata", () => {
 			"https://www.wuxiaworld.com/novel/a-test-novel/atn-chapter-1",
 		);
 
-		expect(meta.sourceUrl).toBe("https://www.wuxiaworld.com/novel/a-test-novel/chapters");
+		expect(meta.sourceUrl).toBe("https://www.wuxiaworld.com/novel/a-test-novel");
+		// We still scrape the `/chapters` subpage for the embedded React Query
+		// state — the user-facing `sourceUrl` and the internal scrape target
+		// diverge on purpose.
 		expect(mockedFetchHtml).toHaveBeenCalledWith(
 			"https://www.wuxiaworld.com/novel/a-test-novel/chapters",
 		);
@@ -127,6 +133,61 @@ describe("wuxiaworld.fetchChapterList", () => {
 				index: 2,
 				title: "Chapter 3",
 				sourceUrl: "https://www.wuxiaworld.com/novel/a-test-novel/atn-chapter-3",
+			},
+		]);
+	});
+
+	it("uses firstChapter.slug verbatim when its suffix doesn't match its unit number", async () => {
+		// Real-world case: "The Last Place Hero's Return" lists chapter 1 with
+		// slug `tlphr-chapter-0` (units=1) while later chapters align (units=2 →
+		// `tlphr-chapter-2`). Synthesizing `prefix + units` would 404 chapter 1.
+		const reactState = {
+			queries: [
+				{
+					queryKey: ["novel", "off-by-one"],
+					state: {
+						data: {
+							item: {
+								name: "Off By One",
+								slug: "off-by-one",
+								chapterInfo: {
+									firstChapter: { slug: "obo-chapter-0", number: { units: 1 } },
+									latestChapter: { slug: "obo-chapter-3", number: { units: 3 } },
+									chapterGroups: [
+										{
+											fromChapterNumber: { units: 0 },
+											toChapterNumber: { units: 9999 },
+										},
+									],
+								},
+							},
+						},
+					},
+				},
+			],
+		};
+		const html = `<html><body><script>window.__REACT_QUERY_STATE__ = ${JSON.stringify(reactState)};</script></body></html>`;
+		mockedFetchHtml.mockResolvedValue(html);
+
+		const refs = await wuxiaworldScraper.fetchChapterList(
+			"https://www.wuxiaworld.com/novel/off-by-one/chapters",
+		);
+
+		expect(refs).toEqual([
+			{
+				index: 0,
+				title: "Chapter 1",
+				sourceUrl: "https://www.wuxiaworld.com/novel/off-by-one/obo-chapter-0",
+			},
+			{
+				index: 1,
+				title: "Chapter 2",
+				sourceUrl: "https://www.wuxiaworld.com/novel/off-by-one/obo-chapter-2",
+			},
+			{
+				index: 2,
+				title: "Chapter 3",
+				sourceUrl: "https://www.wuxiaworld.com/novel/off-by-one/obo-chapter-3",
 			},
 		]);
 	});
@@ -252,5 +313,40 @@ describe("wuxiaworld.search", () => {
 
 		const results = await search("xyzzy-no-match");
 		expect(results).toEqual([]);
+	});
+});
+
+describe("wuxiaworld.getPopular", () => {
+	const getPopular = wuxiaworldScraper.getPopular;
+	if (!getPopular) throw new Error("Wuxiaworld adapter must implement `getPopular`");
+
+	it("scrapes /novels SSR state, sorts by trendingScore desc, maps to SearchResult", async () => {
+		mockedFetchHtml.mockResolvedValue(loadFixture("novels-listing"));
+
+		const results = await getPopular();
+
+		expect(mockedFetchHtml).toHaveBeenCalledWith("https://www.wuxiaworld.com/novels");
+
+		// Bravo (200) > Charlie (100) > Alpha (50) by trendingScore.
+		expect(results.map((r) => r.title)).toEqual(["Bravo Title", "Charlie Title", "Alpha Title"]);
+
+		expect(results[0]).toEqual({
+			title: "Bravo Title",
+			author: "Bravo Author",
+			description: "Bravo synopsis.",
+			coverImage: "https://cdn.wuxiaworld.com/covers/bravo.webp",
+			chapterCount: 456,
+			sourceUrl: "https://www.wuxiaworld.com/novel/bravo-title",
+			provider: "wuxiaworld",
+		});
+
+		// Charlie has null cover/author/chapterCount — verify the nested-value
+		// guards handle missing data without throwing.
+		expect(results[1]).toMatchObject({
+			title: "Charlie Title",
+			author: null,
+			coverImage: null,
+			chapterCount: null,
+		});
 	});
 });

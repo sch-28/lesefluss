@@ -1,9 +1,11 @@
-import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
 import { db } from "../index";
 import {
 	type Book,
 	bookContent,
 	books,
+	glossaryEntries,
+	highlights,
 	type NewBook,
 	type NewSeries,
 	type Series,
@@ -83,21 +85,73 @@ export async function updateSeries(
 }
 
 /**
- * Soft-delete a series and tombstone all of its chapter rows.
- * Mirrors `deleteBook` semantics — bumps updatedAt so the tombstone pushes on next sync.
+ * Hard-delete a batch of book rows, cascading to highlights, glossary entries,
+ * and book_content (mirrors `hardDeleteBook` for many books at once). Caller
+ * passes the ids already resolved so the SELECT doesn't get repeated.
+ */
+async function cascadeDeleteBooks(ids: string[]): Promise<void> {
+	if (ids.length === 0) return;
+	await db.delete(glossaryEntries).where(inArray(glossaryEntries.bookId, ids));
+	await db.delete(highlights).where(inArray(highlights.bookId, ids));
+	await db.delete(bookContent).where(inArray(bookContent.bookId, ids));
+	await db.delete(books).where(inArray(books.id, ids));
+}
+
+/**
+ * Hard-delete every chapter row in a series, cascading to highlights, glossary
+ * entries, and book_content. Used by `deleteSeries`, by pull-sync when the
+ * server reports a series tombstone, and by the orphan cleanup pass.
+ */
+export async function hardDeleteChaptersBySeriesId(seriesId: string): Promise<number> {
+	const rows = await db.select({ id: books.id }).from(books).where(eq(books.seriesId, seriesId));
+	const ids = rows.map((r) => r.id);
+	await cascadeDeleteBooks(ids);
+	return ids.length;
+}
+
+/**
+ * Tombstone a series and hard-delete all of its chapter rows locally. The
+ * series tombstone alone carries the deletion intent through sync; the server
+ * cascade-tombstones any remote chapter rows on push. Other devices then drop
+ * their local chapter rows when they pull the series tombstone. Keeping zero
+ * per-chapter tombstones on disk avoids the multi-thousand-row payload bloat
+ * that broke sync for heavy serial readers (TASK-102).
  */
 export async function deleteSeries(id: string): Promise<void> {
 	const now = Date.now();
-	await db
-		.update(books)
-		.set({ deleted: true, isActive: false, lastRead: now })
-		.where(eq(books.seriesId, id));
+	await hardDeleteChaptersBySeriesId(id);
 	await db.update(series).set({ deleted: true, updatedAt: now }).where(eq(series.id, id));
 }
 
 /** Hard-delete a series row — used by sync pull when the server reports a tombstone. */
 export async function hardDeleteSeries(id: string): Promise<void> {
 	await db.delete(series).where(eq(series.id, id));
+}
+
+/**
+ * One-shot cleanup for chapter rows orphaned by the previous tombstone-based
+ * `deleteSeries`: any chapter row whose series is missing or tombstoned in the
+ * local series table is hard-deleted along with its highlights/glossary/content.
+ * Idempotent — once the legacy tombstones are gone subsequent runs are no-ops.
+ * (TASK-102)
+ */
+export async function cleanupOrphanedChapterRows(): Promise<number> {
+	const liveSeriesRows = await db
+		.select({ id: series.id })
+		.from(series)
+		.where(eq(series.deleted, false));
+	const liveSeriesIds = liveSeriesRows.map((r) => r.id);
+
+	// When there are no live series, every chapter row is by definition an
+	// orphan; skip the `NOT IN` clause to avoid drizzle's empty-array edge case.
+	const where =
+		liveSeriesIds.length > 0
+			? and(isNotNull(books.seriesId), notInArray(books.seriesId, liveSeriesIds))
+			: isNotNull(books.seriesId);
+	const orphanRows = await db.select({ id: books.id }).from(books).where(where);
+	const ids = orphanRows.map((r) => r.id);
+	await cascadeDeleteBooks(ids);
+	return ids.length;
 }
 
 /**
@@ -128,6 +182,54 @@ export async function getSeriesChapterCounts(): Promise<Map<string, number>> {
 	const map = new Map<string, number>();
 	for (const r of rows) {
 		if (r.seriesId) map.set(r.seriesId, Number(r.count));
+	}
+	return map;
+}
+
+/**
+ * Per-series aggregate signals used by the library's filter + sort. One
+ * GROUP BY pass returns total chapters, started/finished counts (matching the
+ * book-level "reading"/"done" thresholds in `sort-filter.ts`), and the most
+ * recent `lastRead` across the series' chapters. Undefined entries fall back
+ * to "no activity" semantics in the caller.
+ */
+export type SeriesActivity = {
+	total: number;
+	started: number;
+	finished: number;
+	latestRead: number | null;
+};
+
+/**
+ * Mirrors the "done" cutoff used by `readingProgress` + `applyFilter` in
+ * `pages/library/sort-filter.ts`. Kept in sync by hand because this query
+ * module must not import from the UI layer. If you change the JS threshold,
+ * change this constant too so the filter and sort agree.
+ */
+const FINISHED_PERCENT_THRESHOLD = 95;
+
+export async function getSeriesActivity(): Promise<Map<string, SeriesActivity>> {
+	const rows = await db
+		.select({
+			seriesId: books.seriesId,
+			total: sql<number>`COUNT(*)`,
+			started: sql<number>`SUM(CASE WHEN ${books.position} > 0 THEN 1 ELSE 0 END)`,
+			finished: sql<number>`SUM(CASE WHEN ${books.size} > 0 AND ${books.position} * 100 >= ${books.size} * ${FINISHED_PERCENT_THRESHOLD} THEN 1 ELSE 0 END)`,
+			latestRead: sql<number | null>`MAX(${books.lastRead})`,
+		})
+		.from(books)
+		.where(and(isNotNull(books.seriesId), eq(books.deleted, false)))
+		.groupBy(books.seriesId);
+
+	const map = new Map<string, SeriesActivity>();
+	for (const r of rows) {
+		if (!r.seriesId) continue;
+		map.set(r.seriesId, {
+			total: Number(r.total),
+			started: Number(r.started),
+			finished: Number(r.finished),
+			latestRead: r.latestRead == null ? null : Number(r.latestRead),
+		});
 	}
 	return map;
 }

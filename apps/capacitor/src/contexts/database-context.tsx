@@ -2,6 +2,7 @@ import { IonButton, IonContent, IonPage, IonSpinner } from "@ionic/react";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { initDb, resetAppData } from "../services/db";
+import { queries } from "../services/db/queries";
 import { log } from "../utils/log";
 
 interface DatabaseContextType {
@@ -44,7 +45,16 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 	useEffect(() => {
 		let cancelled = false;
 		withTimeout(initDb(), INIT_TIMEOUT_MS)
-			.then(() => {
+			.then(async () => {
+				// One-shot cleanup of chapter rows orphaned by the legacy
+				// tombstone-based deleteSeries — power users had accumulated 10k+
+				// dead rows that bloated every sync push. Idempotent. (TASK-102)
+				try {
+					const removed = await queries.cleanupOrphanedChapterRows();
+					if (removed > 0) log("db", `cleanup removed ${removed} orphan chapter rows`);
+				} catch (err) {
+					log.warn("db", "orphan chapter cleanup failed:", err);
+				}
 				if (!cancelled) setIsReady(true);
 			})
 			.catch((err) => {

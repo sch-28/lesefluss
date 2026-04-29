@@ -25,7 +25,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../../fetch", () => ({
 	fetchHtml: async (url: string): Promise<string> => {
 		const res = await fetch(url, {
-			headers: { "User-Agent": "Mozilla/5.0 (LeseflussLiveSmoke/1.0)" },
+			headers: {
+				"User-Agent": "Mozilla/5.0 (compatible; LesefussBot-Smoke/1.0; +https://lesefluss.app/bot)",
+			},
 		});
 		if (!res.ok) throw new Error(`FETCH_FAILED:${res.status}`);
 		return res.text();
@@ -33,6 +35,7 @@ vi.mock("../../fetch", () => ({
 }));
 
 import { royalroadScraper } from "../../providers/royalroad";
+import { assertEndpointsReachable } from "../live-helpers";
 
 // "dungeon" is one of the most common Royal Road tags and will reliably
 // return search results for the foreseeable future.
@@ -93,5 +96,21 @@ describe("royalroad [live]", () => {
 			/^https:\/\/www\.royalroad\.com\/fiction\/\d+\/.+\/chapter\/\d+/,
 		);
 		expect(chapters[0].title).toBeTruthy();
+
+		// 5. Reachability: catches URL-synthesis bugs that pass the regex but
+		//    return no content. See `assertEndpointsReachable`.
+		await assertEndpointsReachable(royalroadScraper, chapters);
+	});
+
+	it("getPopular returns parseable results from the weekly-popular page", async () => {
+		const getPopular = royalroadScraper.getPopular;
+		if (!getPopular) throw new Error("Royal Road adapter must implement `getPopular`");
+
+		const results = await getPopular();
+		expect(results.length).toBeGreaterThan(0);
+		const first = results[0];
+		expect(first.title).toBeTruthy();
+		expect(first.sourceUrl).toMatch(/^https:\/\/www\.royalroad\.com\/fiction\/\d+/);
+		expect(first.provider).toBe("royalroad");
 	});
 });

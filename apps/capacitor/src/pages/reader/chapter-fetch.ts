@@ -44,8 +44,7 @@ export function useChapterFetch(book: Book | undefined): ChapterFetchState {
 	// correct `serialKeys.chapters` entry (the one that was in flight, not the
 	// one currently rendered).
 	const mutation = useMutation({
-		mutationFn: ({ id }: { id: string; seriesId: string | null }) =>
-			fetchAndStoreChapter(id),
+		mutationFn: ({ id }: { id: string; seriesId: string | null }) => fetchAndStoreChapter(id),
 		onSettled: (_data, err, { id, seriesId }) => {
 			inflightRef.current.delete(id);
 			if (err) log.warn("reader", `chapter ${id} fetch failed:`, err);
@@ -80,10 +79,31 @@ export function useChapterFetch(book: Book | undefined): ChapterFetchState {
 		if (!book?.seriesId) return { kind: "ready" };
 		if (book.chapterStatus === "fetched") return { kind: "ready" };
 		if (book.chapterStatus === "locked") return { kind: "locked" };
+		// A retry on an `error` chapter fires the mutation but the row stays
+		// `chapterStatus = "error"` until commit. Without this guard the user
+		// sees the error overlay sit unchanged for the duration of the retry,
+		// then suddenly snap to ready. Showing the skeleton while the retry is
+		// in flight matches the initial-fetch experience.
+		if (mutation.isPending) return { kind: "loading" };
 		if (book.chapterStatus === "error" || mutation.isError) {
-			const reason = mutation.error instanceof Error ? mutation.error.message : "Unknown error";
+			// Prefer the persisted reason (set by `commitChapter` from the
+			// adapter's ChapterFetchResult) over the mutation's runtime error.
+			// `mutation.error` is null when the chapter row was committed in a
+			// prior session, so without the persisted column we'd fall through
+			// to "Unknown error".
+			const reason =
+				book.chapterError ??
+				(mutation.error instanceof Error ? mutation.error.message : "Unknown error");
 			return { kind: "error", reason, retry };
 		}
 		return { kind: "loading" };
-	}, [book?.seriesId, book?.chapterStatus, mutation.isError, mutation.error, retry]);
+	}, [
+		book?.seriesId,
+		book?.chapterStatus,
+		book?.chapterError,
+		mutation.isPending,
+		mutation.isError,
+		mutation.error,
+		retry,
+	]);
 }

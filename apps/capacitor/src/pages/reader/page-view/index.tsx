@@ -588,8 +588,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	// Drives the optional `footer` overlay; the same boolean shape appears
 	// inside `handlePointerMove` (rubber-band) but each usage owns its own
 	// computation to keep pointer-handler closures from going stale.
-	const isLastPage =
-		chunkIndex === chunks.length - 1 && pageIndex === currentPageCount - 1;
+	const isLastPage = chunkIndex === chunks.length - 1 && pageIndex === currentPageCount - 1;
 
 	return (
 		<div

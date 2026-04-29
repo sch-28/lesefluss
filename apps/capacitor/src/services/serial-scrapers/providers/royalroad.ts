@@ -7,14 +7,11 @@ import type {
 	SeriesMetadata,
 } from "../types";
 import { absolutize, extractParagraphs, parseHtml, stripHidden, textOrNull } from "../utils/html";
-import { throttle } from "../utils/throttle";
+import { platformThrottleMs, throttle } from "../utils/throttle";
 
 const PROVIDER_ID = "royalroad" as const;
-/**
- * RR has no published crawl-delay. 2s matches the conservative "polite
- * scraping" pace we use for other providers without an explicit rate limit.
- */
-const THROTTLE_MS = 2_000;
+// RR is Cloudflare-fronted and handles real load fine, so native is light.
+const THROTTLE_MS = platformThrottleMs(500, 2_000);
 
 const HOST = "www.royalroad.com";
 /** Bare domain — `canHandle` accepts both `www.` and the apex. */
@@ -36,8 +33,12 @@ const PATHS = {
 	 * back in their default order (rating + recency blend). A sort picker
 	 * should surface this when the search UI matures.
 	 */
-	search: (query: string) =>
-		`${ORIGIN}/fictions/search?title=${encodeURIComponent(query)}`,
+	search: (query: string) => `${ORIGIN}/fictions/search?title=${encodeURIComponent(query)}`,
+	/**
+	 * Royal Road's "Weekly Popular" listing — same fiction-list-item markup as
+	 * the search results page, so the same DOM parser handles both.
+	 */
+	popular: () => `${ORIGIN}/fictions/weekly-popular`,
 } as const;
 
 const SELECTORS = {
@@ -265,30 +266,41 @@ export const royalroadScraper: SerialScraper = {
 		// Empty-query guarding belongs to the public surface (registry.searchAll
 		// + useSearchSerials' `enabled` flag); keep this a pure extractor.
 		await throttle(PROVIDER_ID, THROTTLE_MS);
-		const doc = parseHtml(await fetchHtml(PATHS.search(query)));
+		return parseFictionList(parseHtml(await fetchHtml(PATHS.search(query))));
+	},
 
-		const results: SearchResult[] = [];
-		for (const item of doc.querySelectorAll(SELECTORS.searchResult)) {
-			const titleAnchor = item.querySelector(SELECTORS.searchResultTitleAnchor);
-			const href = titleAnchor?.getAttribute("href");
-			const title = textOrNull(titleAnchor);
-			if (!href || !title) continue;
-
-			const coverSrc =
-				item.querySelector(SELECTORS.searchResultCover)?.getAttribute("src") ?? null;
-
-			results.push({
-				title,
-				// Royal Road search results omit author names by design.
-				// fetchSeriesMetadata always returns the author from the fiction page.
-				author: null,
-				description: textOrNull(item.querySelector(SELECTORS.searchResultDescription)),
-				coverImage: coverSrc ? abs(coverSrc) : null,
-				chapterCount: parseChapterCount(item),
-				sourceUrl: abs(href),
-				provider: PROVIDER_ID,
-			});
-		}
-		return results;
+	async getPopular(): Promise<SearchResult[]> {
+		await throttle(PROVIDER_ID, THROTTLE_MS);
+		return parseFictionList(parseHtml(await fetchHtml(PATHS.popular())));
 	},
 };
+
+/**
+ * Parse a Royal Road fiction-listing page (search results, weekly-popular,
+ * best-rated, …). All RR listing pages render the same `div.fiction-list-item`
+ * cards with the same selectors, so one extractor serves every entry point.
+ */
+function parseFictionList(doc: Document): SearchResult[] {
+	const results: SearchResult[] = [];
+	for (const item of doc.querySelectorAll(SELECTORS.searchResult)) {
+		const titleAnchor = item.querySelector(SELECTORS.searchResultTitleAnchor);
+		const href = titleAnchor?.getAttribute("href");
+		const title = textOrNull(titleAnchor);
+		if (!href || !title) continue;
+
+		const coverSrc = item.querySelector(SELECTORS.searchResultCover)?.getAttribute("src") ?? null;
+
+		results.push({
+			title,
+			// Royal Road listing pages omit author names by design.
+			// fetchSeriesMetadata always returns the author from the fiction page.
+			author: null,
+			description: textOrNull(item.querySelector(SELECTORS.searchResultDescription)),
+			coverImage: coverSrc ? abs(coverSrc) : null,
+			chapterCount: parseChapterCount(item),
+			sourceUrl: abs(href),
+			provider: PROVIDER_ID,
+		});
+	}
+	return results;
+}

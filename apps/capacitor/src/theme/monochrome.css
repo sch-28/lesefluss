@@ -325,11 +325,7 @@ body.dark .rsvp-action-sheet .action-sheet-container .action-sheet-group-cancel 
 }
 
 body.dark .rsvp-action-sheet .action-sheet-cancel {
-	color: #e4e4e4;
-	background: #242424;
-}
-
-body.dark .rsvp-action-sheet .action-sheet-cancel {
+	--button-background: #242424;
 	color: #e4e4e4;
 	background: #242424;
 }
@@ -446,6 +442,7 @@ body.sepia .rsvp-action-sheet .action-sheet-container .action-sheet-group-cancel
 }
 
 body.sepia .rsvp-action-sheet .action-sheet-cancel {
+	--button-background: #b29f6f;
 	color: #3a2e1e;
 	background: #b29f6f;
 }
@@ -633,8 +630,12 @@ body.sepia ion-tab-button {
 	background: transparent;
 }
 
-/* Cancel button fills the group completely */
+/* Cancel button fills the group completely. Ionic v8 paints the button
+   background from the `--button-background` custom property (shadow DOM),
+   so the plain `background:` declaration alone doesn't reach it in light
+   mode the way it does in dark (where the host-level `--background` cascades). */
 .rsvp-action-sheet .action-sheet-cancel {
+	--button-background: #ffffff;
 	color: #000000;
 	font-weight: 600;
 	background: #ffffff;
@@ -659,14 +660,14 @@ body.sepia ion-tab-button {
 	font-weight: 500;
 	color: #000000;
 	border-bottom: 1px solid #f0f0f0;
-	min-height: 54px;
+	min-height: 44px;
 	padding-top: 0;
 	padding-bottom: 0;
 	contain: none;
 }
 
 .rsvp-action-sheet .action-sheet-button .action-sheet-button-inner {
-	height: 54px;
+	height: 44px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -759,26 +760,34 @@ body.sepia ion-tab-button {
 	--background: var(--reader-bg);
 }
 
-/* End-of-chapter "Next chapter →" footer button. The global
- * `ion-button[fill="outline"]` rule hardcodes black border + black text,
- * which disappears against the dark + sepia reader backgrounds. Override
- * here using the reader theme variables so the button stays legible across
- * all three themes. */
+/* The global `ion-button[fill="outline"]` rule hardcodes black border + black
+ * text, which disappears against the dark + sepia reader backgrounds. Theme
+ * any outline button rendered inside the reader using the reader-text variable
+ * so it stays legible across all three reader themes (which can differ from
+ * the app theme). Specificity (0,2,1) beats the global (0,1,1). */
+.reader-theme-dark ion-button[fill="outline"],
+.reader-theme-light ion-button[fill="outline"],
+.reader-theme-sepia ion-button[fill="outline"] {
+	--border-color: var(--reader-text);
+	--color: var(--reader-text);
+	--background: transparent;
+	--background-activated: rgba(127, 127, 127, 0.15);
+	--background-hover: rgba(127, 127, 127, 0.1);
+}
+
 .next-chapter-footer {
 	display: flex;
-	flex-direction: column;
+	flex-direction: row;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: center;
 	gap: 0.5rem;
 	padding: 1.5rem;
 	text-align: center;
 }
-.next-chapter-footer-button {
-	--border-color: var(--reader-text);
-	--color: var(--reader-text);
-	--background: transparent;
-	--background-activated: rgba(127, 127, 127, 0.15);
-	--background-hover: rgba(127, 127, 127, 0.1);
+
+.next-chapter-footer ion-button {
+	width: 9rem;
 }
 
 /* ── Reader skeleton loading lines ── */
@@ -3948,25 +3957,23 @@ ion-modal.whats-new-modal {
 	border-top: 1px solid var(--ion-color-step-100, rgba(0, 0, 0, 0.08));
 }
 
-/* Web-novels Explore section — soft-CTA branded provider cards.
-   Editorial-card aesthetic: clean surface, layered shadow for lift, generous
-   24px radius, brand color reduced to a small icon badge + a faint corner
-   wash. The `--brand` custom property is set per-card via inline style
-   (PROVIDER_CARD_STYLE) and `color-mix` derives every brand-tinted surface
-   from it, so the JSX stays free of dynamic background calculations. */
-.web-novels-card-row {
+/* Web-novels Explore section — fanned-cover provider cards. Mirror of the
+   marketing site's WebNovelsCarousel: tall card with three real covers fanned
+   at top, brand name + tagline below tinted by the per-card `--brand` custom
+   property. AO3 swaps the cover fan for a wordmark since we don't ship covers
+   for it. */
+.explore-novels-row {
 	scroll-snap-type: x mandatory;
 	scrollbar-width: none;
 }
-.web-novels-card-row::-webkit-scrollbar {
+.explore-novels-row::-webkit-scrollbar {
 	display: none;
 }
-.web-novels-card {
-	width: 8.75rem;
-	height: 9rem;
-	padding: 0.875rem 0.75rem 0.875rem 1.125rem;
-	border-radius: 1.5rem;
+.explore-novel-card {
+	width: 11.5rem;
+	flex-shrink: 0;
 	scroll-snap-align: start;
+	border-radius: 1rem;
 	background: var(--ion-card-background, #fff);
 	border: 1px solid var(--ion-color-step-100, rgba(0, 0, 0, 0.06));
 	box-shadow:
@@ -3975,42 +3982,74 @@ ion-modal.whats-new-modal {
 	transition:
 		transform 0.18s ease,
 		box-shadow 0.22s ease;
+	overflow: hidden;
+	padding: 0;
+	text-align: center;
 }
-/* Brand "spine" — 4px vertical accent on the left edge. The card's rounded
-   corners clip the stripe at top/bottom so it reads as a book-spine flourish
-   rather than a hard rule. The pseudo sits under the content (z-index 0)
-   while the inner span lifts above it. */
-.web-novels-card:not(.web-novels-card--placeholder)::before {
-	content: "";
-	position: absolute;
-	left: 0;
-	top: 0;
-	bottom: 0;
-	width: 4px;
-	background: var(--brand, #444);
-	pointer-events: none;
-}
-.web-novels-card:not(.web-novels-card--placeholder):active {
+.explore-novel-card:active {
 	transform: scale(0.97);
 	box-shadow:
 		0 1px 2px rgba(15, 23, 42, 0.05),
 		0 8px 18px -14px rgba(15, 23, 42, 0.2);
 }
-.web-novels-card-badge {
-	background: color-mix(in srgb, var(--brand, #444) 14%, transparent);
+.explore-novel-card__backdrop {
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(circle at 20% 0%, var(--brand) 0%, transparent 60%);
+	opacity: 0.07;
+	pointer-events: none;
+}
+.explore-novel-card__art {
+	position: relative;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	height: 9rem;
+	padding: 1.25rem 1rem 0.5rem;
+}
+.explore-novel-card__cover {
+	width: 84px;
+	height: 120px;
+	border-radius: 0.375rem;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	object-fit: cover;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.18);
+	transition: transform 0.3s ease;
+}
+.explore-novel-card__name {
+	color: var(--brand, #444);
+	font-weight: 700;
+	font-size: 0.95rem;
+	line-height: 1.1;
+	letter-spacing: -0.01em;
+}
+.explore-novel-card__tagline {
+	margin-top: 0.25rem;
+	color: var(--ion-color-medium, #888);
+	font-size: 0.72rem;
+	line-height: 1.25;
+}
+.explore-novel-card__ao3 {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
 	color: var(--brand, #444);
 }
-.web-novels-card--placeholder {
-	width: 8.75rem;
-	height: 9rem;
-	padding: 0.75rem;
-	border-radius: 1.5rem;
-	scroll-snap-align: start;
-	border: 1px dashed var(--ion-border-color, #d9d9d9);
-	background: transparent;
-	box-shadow: none;
-	text-align: center;
-	line-height: 1.3;
+.explore-novel-card__ao3-glyph {
+	font-weight: 700;
+	font-size: 2.25rem;
+	line-height: 1;
+	letter-spacing: -0.02em;
+}
+.explore-novel-card__ao3-sub {
+	margin-top: 0.5rem;
+	font-weight: 600;
+	font-size: 0.55rem;
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
+	opacity: 0.7;
 }
 
 /* Web-novels routed search page — provider filter chips. Two visual states

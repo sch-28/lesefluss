@@ -13,6 +13,7 @@ vi.mock("../../fetch", () => ({
 // SH tests don't sit through the real 2-second gate between calls.
 vi.mock("../../utils/throttle", () => ({
 	throttle: vi.fn().mockResolvedValue(undefined),
+	platformThrottleMs: (native: number, _catalog: number) => native,
 }));
 
 import { fetchHtml } from "../../fetch";
@@ -241,5 +242,23 @@ describe("scribblehub.search", () => {
 
 		const results = await search("zzzz");
 		expect(results).toEqual([]);
+	});
+});
+
+describe("scribblehub.getPopular", () => {
+	const getPopular = scribblehubScraper.getPopular;
+	if (!getPopular) throw new Error("ScribbleHub adapter must implement `getPopular`");
+
+	it("hits the series-ranking endpoint and parses the same search-result markup", async () => {
+		mockedFetchHtml.mockResolvedValue(loadFixture("search-results"));
+
+		const results = await getPopular();
+
+		expect(mockedFetchHtml).toHaveBeenCalledWith(
+			"https://www.scribblehub.com/series-ranking/?sort=2&order=",
+		);
+		expect(results.length).toBeGreaterThan(0);
+		expect(results[0].provider).toBe("scribblehub");
+		expect(results[0].sourceUrl).toMatch(/^https:\/\/www\.scribblehub\.com\//);
 	});
 });

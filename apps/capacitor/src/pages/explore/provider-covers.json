@@ -1,0 +1,56 @@
+[
+	{
+		"provider": "royalroad",
+		"slug": "the-wandering-inn",
+		"title": "The Wandering Inn",
+		"file": "royalroad/the-wandering-inn.webp"
+	},
+	{
+		"provider": "royalroad",
+		"slug": "mother-of-learning",
+		"title": "Mother of Learning",
+		"file": "royalroad/mother-of-learning.webp"
+	},
+	{
+		"provider": "royalroad",
+		"slug": "he-who-fights-with-monsters",
+		"title": "He Who Fights with Monsters",
+		"file": "royalroad/he-who-fights-with-monsters.webp"
+	},
+	{
+		"provider": "wuxiaworld",
+		"slug": "coiling-dragon",
+		"title": "Coiling Dragon",
+		"file": "wuxiaworld/coiling-dragon.webp"
+	},
+	{
+		"provider": "wuxiaworld",
+		"slug": "i-shall-seal-the-heavens",
+		"title": "I Shall Seal the Heavens",
+		"file": "wuxiaworld/i-shall-seal-the-heavens.webp"
+	},
+	{
+		"provider": "wuxiaworld",
+		"slug": "martial-god-asura",
+		"title": "Martial God Asura",
+		"file": "wuxiaworld/martial-god-asura.webp"
+	},
+	{
+		"provider": "scribblehub",
+		"slug": "salvos",
+		"title": "Salvos",
+		"file": "scribblehub/salvos.webp"
+	},
+	{
+		"provider": "scribblehub",
+		"slug": "re-trailer-trash",
+		"title": "RE: Trailer Trash",
+		"file": "scribblehub/re-trailer-trash.webp"
+	},
+	{
+		"provider": "scribblehub",
+		"slug": "mark-of-the-crijik",
+		"title": "Mark of the Crijik",
+		"file": "scribblehub/mark-of-the-crijik.webp"
+	}
+]

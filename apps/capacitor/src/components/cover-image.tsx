@@ -62,7 +62,11 @@ const CoverImage: React.FC<Props> = ({ src, alt, fallback, className, priority, 
 			    This prevents the container background from flashing through. */}
 			{showImage && (
 				<div
-					className={`cover-image-shimmer${state === "loaded" ? "cover-image-shimmer--done" : ""}`}
+					className={
+						state === "loaded"
+							? "cover-image-shimmer cover-image-shimmer--done"
+							: "cover-image-shimmer"
+					}
 				/>
 			)}
 		</div>

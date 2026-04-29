@@ -104,11 +104,20 @@ export const queryHooks = {
 	/** Free-text search across every serial provider. */
 	useSearchSerials: serialHooks.useSearchSerials,
 
+	/** Popular/trending shelf across providers — drives the empty-search state. */
+	usePopularSerials: serialHooks.usePopularSerials,
+
 	/** All series visible in the library (excludes tombstones). */
 	useSeriesList: seriesHooks.useSeriesList,
 
+	/** Single series row by id. */
+	useSeries: seriesHooks.useSeries,
+
 	/** Map<seriesId, chapterCount> in one query — drives every SeriesCard's badge. */
 	useSeriesChapterCounts: seriesHooks.useSeriesChapterCounts,
+
+	/** Map<seriesId, SeriesActivity>. Drives library filter+sort for series cards. */
+	useSeriesActivity: seriesHooks.useSeriesActivity,
 
 	/** Mutation: soft-delete a series + tombstone all its chapter rows. */
 	useDeleteSeries: seriesHooks.useDeleteSeries,

@@ -1,6 +1,7 @@
 import { IonSpinner, IonText } from "@ionic/react";
 import type React from "react";
 import CoverImage from "../../components/cover-image";
+import type { ViewMode } from "../../components/view-mode-toggle";
 import { queryHooks } from "../../services/db/hooks";
 import {
 	chapterCountLabel,
@@ -9,29 +10,19 @@ import {
 } from "../../services/serial-scrapers";
 
 interface Props {
-	/**
-	 * Live (un-debounced) query string from the surrounding input. The
-	 * `useSearchSerials` hook debounces internally, so passing every keystroke
-	 * here is fine — the upstream call only fires once the user pauses.
-	 */
 	query: string;
 	/** When set, fan-out is filtered to a single provider. */
 	provider?: ProviderId;
+	viewMode: ViewMode;
 	/** Called with the full chosen `SearchResult`. */
 	onPick: (result: SearchResult) => void;
 }
 
-/**
- * Provider-fan-out search results, styled to match the explore page's
- * 3-column card grid (`pages/explore/result-card.tsx`). Each card is
- * theme-aware via Ion CSS variables so dark and sepia modes look right
- * without per-mode overrides.
- */
-export const WebNovelSearchPanel: React.FC<Props> = ({ query, provider, onPick }) => {
+export const WebNovelSearchPanel: React.FC<Props> = ({ query, provider, viewMode, onPick }) => {
 	const trimmed = query.trim();
 	const { data, isLoading, isError, error } = queryHooks.useSearchSerials(query, { provider });
 
-	if (!trimmed) return null;
+	if (!trimmed) return <PopularShelf provider={provider} viewMode={viewMode} onPick={onPick} />;
 
 	if (isError) {
 		return (
@@ -65,14 +56,108 @@ export const WebNovelSearchPanel: React.FC<Props> = ({ query, provider, onPick }
 					Some providers unavailable: {failedProviders.join(", ")}
 				</div>
 			)}
-			<div className="grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-				{results.map((r) => (
-					<ResultCard key={r.sourceUrl} result={r} onPick={onPick} />
-				))}
-			</div>
+			<ResultsLayout results={results} viewMode={viewMode} provider={provider} onPick={onPick} />
 		</div>
 	);
 };
+
+const PopularShelf: React.FC<{
+	provider?: ProviderId;
+	viewMode: ViewMode;
+	onPick: (result: SearchResult) => void;
+}> = ({ provider, viewMode, onPick }) => {
+	const { data, isLoading } = queryHooks.usePopularSerials(provider);
+
+	if (isLoading) {
+		return (
+			<div className="flex items-center justify-center gap-2 p-8">
+				<IonSpinner name="dots" />
+				<IonText color="medium" className="text-sm">
+					Loading popular…
+				</IonText>
+			</div>
+		);
+	}
+
+	if (!data || data.results.length === 0) return null;
+
+	return (
+		<div className="pt-3">
+			<ResultsLayout results={data.results} viewMode={viewMode} provider={provider} onPick={onPick} />
+		</div>
+	);
+};
+
+const ResultsLayout: React.FC<{
+	results: SearchResult[];
+	viewMode: ViewMode;
+	provider?: ProviderId;
+	onPick: (result: SearchResult) => void;
+}> = ({ results, viewMode, provider, onPick }) => {
+	if (viewMode === "list") {
+		const isAo3Only = provider === "ao3";
+		return (
+			<div className="flex flex-col gap-2">
+				{results.map((r) => (
+					<ResultListItem key={r.sourceUrl} result={r} isAo3Only={isAo3Only} onPick={onPick} />
+				))}
+			</div>
+		);
+	}
+	return (
+		<div className="grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+			{results.map((r) => (
+				<ResultCard key={r.sourceUrl} result={r} onPick={onPick} />
+			))}
+		</div>
+	);
+};
+
+const ResultListItem: React.FC<{
+	result: SearchResult;
+	isAo3Only: boolean;
+	onPick: (result: SearchResult) => void;
+}> = ({ result, isAo3Only, onPick }) => (
+	<button
+		type="button"
+		onClick={() => onPick(result)}
+		className="flex w-full cursor-pointer select-none items-center gap-3 border-0 bg-transparent px-0 py-3 text-left text-[color:var(--ion-text-color,#000)] active:opacity-70"
+	>
+		{!(isAo3Only && result.provider === "ao3") && (
+			<div className="relative h-16 w-12 shrink-0 overflow-hidden rounded border border-[var(--ion-border-color,#d9d9d9)] bg-[var(--ion-color-light,#f0f0f0)]">
+				<CoverImage
+					src={result.coverImage}
+					alt={result.title}
+					fallback={
+						<span className="font-semibold text-[#bbb] text-[0.6rem] uppercase tracking-wide">
+							{result.provider}
+						</span>
+					}
+				/>
+			</div>
+		)}
+		<div className="min-w-0 flex-1">
+			<div className="overflow-hidden text-ellipsis font-semibold text-[0.9rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
+				{result.title}
+			</div>
+			{result.author && (
+				<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[#888] text-[0.8rem]">
+					{result.author}
+				</div>
+			)}
+			<div className="mt-1 flex items-center gap-2">
+				<span className="rounded-sm bg-black px-1.5 py-0.5 font-semibold text-[0.6rem] text-white uppercase tracking-wide">
+					{result.provider}
+				</span>
+				{result.chapterCount != null && (
+					<span className="text-[#888] text-[0.75rem]">
+						{chapterCountLabel(result.chapterCount)}
+					</span>
+				)}
+			</div>
+		</div>
+	</button>
+);
 
 const EmptyState: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 	<div className="flex flex-col items-center justify-center p-8 text-center">

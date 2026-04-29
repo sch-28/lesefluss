@@ -1,4 +1,16 @@
+import { Capacitor } from "@capacitor/core";
 import type { ProviderId } from "../types";
+
+/**
+ * Throttle timing helper for adapters: pick `native` ms when running on a real
+ * device (each phone is its own IP, so a lighter pace looks like a normal
+ * reader) and `catalog` ms on web (every browser funnels through the
+ * `/proxy/article` endpoint and shares the catalog server's IP, so we keep
+ * the gate conservative to avoid the upstream rate-limiting our backend).
+ */
+export function platformThrottleMs(native: number, catalog: number): number {
+	return Capacitor.isNativePlatform() ? native : catalog;
+}
 
 /**
  * Per-provider rate-limit gate. Each adapter awaits `throttle('ao3', 5000)`

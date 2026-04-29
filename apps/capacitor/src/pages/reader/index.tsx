@@ -23,7 +23,9 @@
  *   selection-overlay        - JSX for the floating toolbar + drag handles
  */
 
+import { Browser } from "@capacitor/browser";
 import {
+	IonActionSheet,
 	IonBackButton,
 	IonButton,
 	IonButtons,
@@ -44,8 +46,10 @@ import {
 	bookmarksOutline,
 	chevronBackOutline,
 	chevronForwardOutline,
+	ellipsisVerticalOutline,
 	flashOffOutline,
 	flashOutline,
+	openOutline,
 	readerOutline,
 	searchOutline,
 } from "ionicons/icons";
@@ -60,6 +64,7 @@ import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import type { Chapter, GlossaryEntry } from "../../services/db/schema";
+import { providerLabel } from "../../services/serial-scrapers";
 import { pushSync, scheduleSyncPush } from "../../services/sync";
 import { formatReadingTime } from "../../utils/reading-time";
 import AnnotationsSheet from "./annotations-sheet";
@@ -67,12 +72,12 @@ import AppearancePopover from "./appearance-popover";
 import { useChapterAutoAdvance } from "./chapter-auto-advance";
 import { useChapterFetch } from "./chapter-fetch";
 import { ChapterStateOverlay } from "./chapter-state-overlay";
-import { NextChapterFooter } from "./next-chapter-footer";
 import DictionaryModal from "./dictionary-modal";
 import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
 import { generateGlossaryId } from "./glossary-utils";
 import HighlightModal from "./highlight-modal";
+import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
 import { getWordOffsets, utf8ByteLength } from "./paragraph";
 import { stripPunct } from "./rsvp-engine";
@@ -128,14 +133,15 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// `hasNext` collapse to `false` for standalone books — the chevrons aren't
 	// rendered at all in that case (the parent JSX checks `book?.seriesId`).
 	const { data: seriesChapterCounts } = queryHooks.useSeriesChapterCounts();
-	const seriesTotal =
-		book?.seriesId != null ? seriesChapterCounts?.get(book.seriesId) : undefined;
+	const seriesTotal = book?.seriesId != null ? seriesChapterCounts?.get(book.seriesId) : undefined;
 	const hasPrev = book?.chapterIndex != null && book.chapterIndex > 0;
 	const hasNext =
 		book?.chapterIndex != null && seriesTotal != null && book.chapterIndex < seriesTotal - 1;
 
 	const { theme } = useTheme();
 	const [annotationsOpen, setAnnotationsOpen] = useState(false);
+	const [overflowOpen, setOverflowOpen] = useState(false);
+	const { data: series } = queryHooks.useSeries(book?.seriesId);
 	const [editingGlossaryEntry, setEditingGlossaryEntry] = useState<GlossaryEntry | null>(null);
 	// Tracks entry IDs that exist only in component state, not in SQLite yet.
 	// "Add" creates one of these so we don't push an empty-label row to sync
@@ -942,7 +948,12 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// `NextChapterFooter` for standalone books / last-chapter, so it's safe
 	// to drop in unconditionally.
 	const advanceFooter = (
-		<NextChapterFooter book={book} onTap={() => void chapterAdvance.tryAdvance()} />
+		<NextChapterFooter
+			hasPrev={hasPrev}
+			hasNext={hasNext}
+			onNext={() => void chapterAdvance.tryAdvance()}
+			onPrev={() => void chapterAdvance.tryRetreat()}
+		/>
 	);
 
 	return (
@@ -1002,6 +1013,11 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						<IonButton id="appearance-trigger" aria-label="Appearance settings">
 							<IonIcon slot="icon-only" icon={readerOutline} />
 						</IonButton>
+						{book.seriesId != null && book.chapterSourceUrl != null && (
+							<IonButton onClick={() => setOverflowOpen(true)} aria-label="More actions">
+								<IonIcon slot="icon-only" icon={ellipsisVerticalOutline} />
+							</IonButton>
+						)}
 					</IonButtons>
 				</IonToolbar>
 			</IonHeader>
@@ -1141,6 +1157,23 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 			{/* ── Appearance popover ── */}
 			<AppearancePopover trigger="appearance-trigger" />
+
+			{/* ── Toolbar overflow action sheet (chapter-level actions) ── */}
+			<IonActionSheet
+				isOpen={overflowOpen}
+				onDidDismiss={() => setOverflowOpen(false)}
+				cssClass="rsvp-action-sheet"
+				buttons={[
+					{
+						text: `Open on ${series ? providerLabel(series.provider) : "website"}`,
+						icon: openOutline,
+						handler: () => {
+							if (book.chapterSourceUrl) void Browser.open({ url: book.chapterSourceUrl });
+						},
+					},
+					{ text: "Cancel", role: "cancel" as const },
+				]}
+			/>
 
 			{/* ── Merged annotations sheet (Contents / Highlights / Glossary) ── */}
 			<AnnotationsSheet

@@ -13,6 +13,7 @@ import { useRef, useState } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import type { ProviderId, SearchResult } from "../../services/serial-scrapers";
 import { providerLabel } from "../../services/serial-scrapers";
+import { type ViewMode, ViewModeToggle } from "../../components/view-mode-toggle";
 import { WebNovelSearchPanel } from "./web-novel-search-panel";
 import { isVisibleProvider, PROVIDER_BRAND_COLOR, VISIBLE_PROVIDERS } from "./web-novels-providers";
 
@@ -37,6 +38,12 @@ const WebNovels: React.FC = () => {
 
 	const [query, setQuery] = useState("");
 	const inputRef = useRef<HTMLIonInputElement>(null);
+	const [viewMode, setViewMode] = useState<ViewMode>(provider === "ao3" ? "list" : "grid");
+	const [prevProvider, setPrevProvider] = useState(provider);
+	if (prevProvider !== provider) {
+		setPrevProvider(provider);
+		setViewMode(provider === "ao3" ? "list" : "grid");
+	}
 
 	const setProvider = (next?: ProviderId) => {
 		const p = new URLSearchParams(location.search);
@@ -69,6 +76,12 @@ const WebNovels: React.FC = () => {
 						<IonBackButton defaultHref="/tabs/explore" />
 					</IonButtons>
 					<IonTitle>Web novels</IonTitle>
+					<IonButtons slot="end">
+						<ViewModeToggle
+							viewMode={viewMode}
+							onToggle={() => setViewMode((m) => (m === "grid" ? "list" : "grid"))}
+						/>
+					</IonButtons>
 				</IonToolbar>
 			</IonHeader>
 			<IonContent className="ion-padding">
@@ -111,7 +124,7 @@ const WebNovels: React.FC = () => {
 					))}
 				</div>
 
-				<WebNovelSearchPanel query={query} provider={provider} onPick={handlePick} />
+				<WebNovelSearchPanel query={query} provider={provider} viewMode={viewMode} onPick={handlePick} />
 			</IonContent>
 		</IonPage>
 	);
@@ -126,7 +139,9 @@ const ProviderFilterChip: React.FC<{
 	<button
 		type="button"
 		onClick={onClick}
-		className={`web-novels-filter-chip${isActive ? " web-novels-filter-chip--active" : ""}`}
+		className={
+			isActive ? "web-novels-filter-chip web-novels-filter-chip--active" : "web-novels-filter-chip"
+		}
 		style={isActive && color ? { backgroundColor: color, borderColor: color } : undefined}
 	>
 		{label}

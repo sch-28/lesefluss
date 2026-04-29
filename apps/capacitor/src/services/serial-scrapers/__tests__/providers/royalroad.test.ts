@@ -13,6 +13,7 @@ vi.mock("../../fetch", () => ({
 // RR tests don't sit through the real 2-second gate between calls.
 vi.mock("../../utils/throttle", () => ({
 	throttle: vi.fn().mockResolvedValue(undefined),
+	platformThrottleMs: (native: number, _catalog: number) => native,
 }));
 
 import { fetchHtml } from "../../fetch";
@@ -154,8 +155,7 @@ describe("royalroad.fetchChapterContent", () => {
 	const ref = {
 		index: 0,
 		title: "1. Chapter One",
-		sourceUrl:
-			"https://www.royalroad.com/fiction/99999/a-test-fiction/chapter/1001/1-chapter-one",
+		sourceUrl: "https://www.royalroad.com/fiction/99999/a-test-fiction/chapter/1001/1-chapter-one",
 	};
 
 	it("fetches and extracts visible paragraphs", async () => {
@@ -261,5 +261,27 @@ describe("royalroad.search", () => {
 
 		const results = await search("zzzz");
 		expect(results).toEqual([]);
+	});
+});
+
+describe("royalroad.getPopular", () => {
+	const getPopular = royalroadScraper.getPopular;
+	if (!getPopular) throw new Error("Royal Road adapter must implement `getPopular`");
+
+	it("hits the weekly-popular endpoint and parses the same fiction-list markup", async () => {
+		mockedFetchHtml.mockResolvedValue(loadFixture("search-results"));
+
+		const results = await getPopular();
+
+		expect(mockedFetchHtml).toHaveBeenCalledWith(
+			"https://www.royalroad.com/fictions/weekly-popular",
+		);
+		expect(results).toHaveLength(2);
+		expect(results[0]).toMatchObject({
+			provider: "royalroad",
+			title: "First Fiction",
+			sourceUrl: "https://www.royalroad.com/fiction/99999/first-fiction",
+		});
+		expect(results[0].coverImage).toMatch(/^https:\/\//);
 	});
 });

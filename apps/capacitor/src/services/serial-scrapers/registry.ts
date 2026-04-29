@@ -9,7 +9,12 @@ import type { ProviderId, SearchResult, SerialScraper } from "./types";
  * First `canHandle()` match wins. Pasting a chapter URL imports the whole
  * series — adapters extract the series root inside `fetchSeriesMetadata`.
  */
-const SCRAPERS: SerialScraper[] = [ao3Scraper, scribblehubScraper, royalroadScraper, wuxiaworldScraper];
+const SCRAPERS: SerialScraper[] = [
+	ao3Scraper,
+	scribblehubScraper,
+	royalroadScraper,
+	wuxiaworldScraper,
+];
 
 export const scrapersById: Record<ProviderId, SerialScraper | undefined> = Object.fromEntries(
 	SCRAPERS.map((s) => [s.id, s]),
@@ -23,16 +28,17 @@ export function isSerialUrl(url: string): boolean {
 	return SCRAPERS.some((s) => s.canHandle(url));
 }
 
-/** Result of a fan-out search across every provider that exposes `search`. */
+/**
+ * Result of a fan-out across every provider that exposes a given method
+ * (`search`, `getPopular`, …). The UI surfaces `failedProviders` as a discreet
+ * "X unavailable" hint; merged `results` still contains everyone else's hits
+ * so one bad provider never blacks out the surface.
+ */
 export type SearchAllResult = {
 	results: SearchResult[];
-	/**
-	 * Providers whose `search()` rejected. The UI surfaces this as a discreet
-	 * "X unavailable" hint; merged `results` still contains everyone else's
-	 * hits so one bad provider never blacks out the search box.
-	 */
 	failedProviders: ProviderId[];
 };
+
 
 /**
  * Per-provider search timeout. Generous enough for slow connections and
@@ -76,14 +82,43 @@ export async function searchAll(
 ): Promise<SearchAllResult> {
 	const trimmed = query.trim();
 	if (!trimmed) return { results: [], failedProviders: [] };
+	return fanOut((s) => (s.search ? s.search(trimmed) : null), {
+		provider: opts.provider,
+		label: "search",
+	});
+}
 
+/**
+ * Fan-out across every provider that exposes `getPopular`. Mirrors `searchAll`
+ * — merged "All" view biases toward richer items via `qualityScore`; selecting
+ * a single provider leaves that scraper's own ordering intact. Used by the
+ * empty-state shelf on the web-novels page.
+ */
+export async function popularAll(opts: { provider?: ProviderId } = {}): Promise<SearchAllResult> {
+	return fanOut((s) => (s.getPopular ? s.getPopular() : null), {
+		provider: opts.provider,
+		label: "popular",
+	});
+}
+
+/**
+ * Shared fan-out skeleton for `searchAll` and `popularAll`. `pick` returns a
+ * Promise<SearchResult[]> for providers that implement the call, or `null` to
+ * skip them silently (mirrors the `s.search ? … : null` pattern used to drop
+ * adapters that don't expose the method).
+ */
+async function fanOut(
+	pick: (s: SerialScraper) => Promise<SearchResult[]> | null,
+	opts: { provider?: ProviderId; label: string },
+): Promise<SearchAllResult> {
 	const pool = opts.provider ? SCRAPERS.filter((s) => s.id === opts.provider) : SCRAPERS;
 
 	// flatMap-then-allSettled pairs the provider id with each promise so we can
 	// report which providers failed without an extra index→id lookup.
-	const tasks = pool.flatMap((s) =>
-		s.search ? [{ id: s.id, promise: s.search(trimmed) }] : [],
-	);
+	const tasks = pool.flatMap((s) => {
+		const promise = pick(s);
+		return promise ? [{ id: s.id, promise }] : [];
+	});
 	const settled = await Promise.allSettled(
 		tasks.map((t) => withTimeout(t.promise, PROVIDER_SEARCH_TIMEOUT_MS, t.id)),
 	);
@@ -96,15 +131,13 @@ export async function searchAll(
 			results.push(...r.value);
 		} else {
 			failedProviders.push(providerId);
-			log.warn("serial-scrapers", `search failed for ${providerId}:`, r.reason);
+			log.warn("serial-scrapers", `${opts.label} failed for ${providerId}:`, r.reason);
 		}
 	});
 
-	// "All" view: bias merged results toward richer items (cover image, then
-	// bucketed chapter count) so the user's first impression isn't dominated
-	// by AO3 (no covers) or thin SH stubs. Stable sort preserves each
-	// provider's internal ranking within ties. Skipped when a single provider
-	// is selected — that scraper's own relevance order should win.
+	// "All" view: bias merged results toward richer items. Stable sort preserves
+	// each provider's internal ranking within ties. Skipped when a single
+	// provider is selected — that scraper's own relevance order should win.
 	if (!opts.provider) {
 		results.sort((a, b) => qualityScore(b) - qualityScore(a));
 	}

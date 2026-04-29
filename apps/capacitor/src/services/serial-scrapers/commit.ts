@@ -95,6 +95,7 @@ export async function commitChapter(chapterId: string, result: ChapterFetchResul
 			const size = new TextEncoder().encode(result.content).byteLength;
 			await queries.updateBook(chapterId, {
 				chapterStatus: "fetched",
+				chapterError: null,
 				size,
 				lastRead: now,
 			});
@@ -103,13 +104,21 @@ export async function commitChapter(chapterId: string, result: ChapterFetchResul
 			return;
 		}
 		case "locked": {
-			await queries.updateBook(chapterId, { chapterStatus: "locked", lastRead: now });
+			await queries.updateBook(chapterId, {
+				chapterStatus: "locked",
+				chapterError: null,
+				lastRead: now,
+			});
 			scheduleSyncPush();
 			return;
 		}
 		case "error": {
 			log.warn("serial-scrapers", `chapter ${chapterId} fetch failed: ${result.reason}`);
-			await queries.updateBook(chapterId, { chapterStatus: "error", lastRead: now });
+			await queries.updateBook(chapterId, {
+				chapterStatus: "error",
+				chapterError: result.reason,
+				lastRead: now,
+			});
 			return;
 		}
 	}
@@ -152,9 +161,7 @@ export async function syncChapterList(
 		const found = bySourceUrl.get(ref.sourceUrl);
 		if (!found) {
 			// Brand-new chapter — create a pending placeholder row.
-			newRows.push(
-				buildChapterRow(seriesId, series.author ?? null, series.sourceUrl, ref, now),
-			);
+			newRows.push(buildChapterRow(seriesId, series.author ?? null, series.sourceUrl, ref, now));
 		} else if (found.chapterIndex !== ref.index) {
 			// Chapter already exists but upstream reordered it.
 			indexUpdates.push({ id: found.id, newIndex: ref.index });

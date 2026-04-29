@@ -13,6 +13,7 @@ vi.mock("../../fetch", () => ({
 // AO3 tests don't sit through the real 5-second gate between calls.
 vi.mock("../../utils/throttle", () => ({
 	throttle: vi.fn().mockResolvedValue(undefined),
+	platformThrottleMs: (native: number, _catalog: number) => native,
 }));
 
 import { fetchHtml } from "../../fetch";
@@ -86,6 +87,33 @@ describe("ao3.fetchSeriesMetadata", () => {
 		await expect(
 			ao3Scraper.fetchSeriesMetadata("https://archiveofourown.org/users/foo"),
 		).rejects.toThrow("AO3_URL_NOT_A_WORK");
+	});
+
+	it("retries with ?view_full_work=true when the first fetch yields no title (multi-chapter 302 case)", async () => {
+		// First fetch: AO3 302's the work root to chapter 1, but the HTTP client
+		// surfaced an empty body — no #workskin, no title. Adapter falls back.
+		mockedFetchHtml.mockResolvedValueOnce("<!doctype html><html><body></body></html>");
+		mockedFetchHtml.mockResolvedValueOnce(loadFixture("work-multi-chapter"));
+
+		const meta = await ao3Scraper.fetchSeriesMetadata("https://archiveofourown.org/works/12345");
+
+		expect(meta.title).toBe("A Test Work");
+		expect(mockedFetchHtml).toHaveBeenNthCalledWith(
+			1,
+			"https://archiveofourown.org/works/12345",
+		);
+		expect(mockedFetchHtml).toHaveBeenNthCalledWith(
+			2,
+			"https://archiveofourown.org/works/12345?view_full_work=true&view_adult=true",
+		);
+	});
+
+	it("throws AO3_TITLE_NOT_FOUND with the URL when both the primary fetch and the fallback yield no title", async () => {
+		mockedFetchHtml.mockResolvedValue("<!doctype html><html><body></body></html>");
+
+		await expect(
+			ao3Scraper.fetchSeriesMetadata("https://archiveofourown.org/works/12345"),
+		).rejects.toThrow("AO3_TITLE_NOT_FOUND:https://archiveofourown.org/works/12345");
 	});
 });
 
@@ -165,18 +193,63 @@ describe("ao3.fetchChapterContent", () => {
 		expect(result.content).not.toContain("Another hidden paragraph");
 	});
 
-	it("returns CONTENT_NOT_FOUND when the .userstuff selector misses", async () => {
+	it("returns AO3_CONTENT_NOT_FOUND with the URL when the .userstuff selector misses", async () => {
 		mockedFetchHtml.mockResolvedValue(loadFixture("chapter-empty"));
 
 		const result = await ao3Scraper.fetchChapterContent(ref);
-		expect(result).toEqual({ status: "error", reason: "CONTENT_NOT_FOUND" });
+		expect(result).toEqual({
+			status: "error",
+			reason: `AO3_CONTENT_NOT_FOUND:${ref.sourceUrl}`,
+		});
 	});
 
-	it("returns error (not throw) when fetchHtml rejects", async () => {
+	it("returns error with the URL appended when fetchHtml rejects", async () => {
 		mockedFetchHtml.mockRejectedValue(new Error("FETCH_FAILED:503"));
 
 		const result = await ao3Scraper.fetchChapterContent(ref);
-		expect(result).toEqual({ status: "error", reason: "FETCH_FAILED:503" });
+		expect(result).toEqual({
+			status: "error",
+			reason: `FETCH_FAILED:503 (${ref.sourceUrl})`,
+		});
+	});
+
+	it("picks the chapter body, not the work summary/notes blockquotes", async () => {
+		// Real AO3 work pages render up to three `.userstuff` elements:
+		//   <blockquote class="userstuff">  ← Summary (first in DOM)
+		//   <blockquote class="userstuff">  ← Notes
+		//   <div class="userstuff module" role="article">  ← actual chapter body
+		// A naive `.userstuff` selector picks the summary. Repro: "Yesterday
+		// Upon The Stair" / work 48763867.
+		const html = `
+			<div id="workskin">
+				<div class="preface group">
+					<h2 class="title heading">Test Work</h2>
+					<div class="summary module">
+						<h3 class="heading">Summary:</h3>
+						<blockquote class="userstuff">
+							<p>SUMMARY_TEXT_DO_NOT_PICK_THIS</p>
+						</blockquote>
+					</div>
+					<div class="notes module">
+						<h3 class="heading">Notes:</h3>
+						<blockquote class="userstuff">
+							<p>NOTES_TEXT_DO_NOT_PICK_THIS</p>
+						</blockquote>
+					</div>
+				</div>
+				<div class="userstuff module" role="article">
+					<h3 class="landmark heading" id="work">Chapter Text</h3>
+					<p>The actual chapter body begins here.</p>
+				</div>
+			</div>
+		`;
+		mockedFetchHtml.mockResolvedValue(html);
+
+		const result = await ao3Scraper.fetchChapterContent(ref);
+		if (result.status !== "fetched") throw new Error(`expected fetched, got ${result.status}`);
+		expect(result.content).toContain("The actual chapter body begins here");
+		expect(result.content).not.toContain("SUMMARY_TEXT_DO_NOT_PICK_THIS");
+		expect(result.content).not.toContain("NOTES_TEXT_DO_NOT_PICK_THIS");
 	});
 });
 
@@ -232,5 +305,25 @@ describe("ao3.search", () => {
 
 		const results = await search("zzzz");
 		expect(results).toEqual([]);
+	});
+});
+
+describe("ao3.getPopular", () => {
+	const getPopular = ao3Scraper.getPopular;
+	if (!getPopular) throw new Error("AO3 adapter must implement `getPopular`");
+
+	it("hits works-search with empty query + kudos sort, parses the same markup", async () => {
+		mockedFetchHtml.mockResolvedValue(loadFixture("search-results"));
+
+		const results = await getPopular();
+
+		expect(mockedFetchHtml).toHaveBeenCalledWith(
+			"https://archiveofourown.org/works/search?work_search%5Bquery%5D=" +
+				"&work_search%5Bsort_column%5D=kudos_count" +
+				"&work_search%5Bsort_direction%5D=desc",
+		);
+		expect(results.length).toBeGreaterThan(0);
+		expect(results[0].provider).toBe("ao3");
+		expect(results[0].coverImage).toBeNull();
 	});
 });

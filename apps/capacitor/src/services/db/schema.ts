@@ -84,6 +84,13 @@ export const books = sqliteTable("books", {
 		.$type<"pending" | "fetched" | "locked" | "error">()
 		.notNull()
 		.default("fetched"),
+	/**
+	 * Reason a `chapter_status = "error"` chapter failed (e.g.
+	 * `FETCH_FAILED:525`, `CONTENT_NOT_FOUND`, `AO3_TITLE_NOT_FOUND`). Cleared
+	 * on successful fetch. Surfaced verbatim in the reader's error overlay so
+	 * users (and the dev) can tell network failures from page-shape regressions.
+	 */
+	chapterError: text("chapter_error"),
 });
 
 /**

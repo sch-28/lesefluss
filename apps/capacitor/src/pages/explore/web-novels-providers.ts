@@ -1,5 +1,3 @@
-import { Feather, Mountain, PenLine, Sword } from "lucide-react";
-import type { ComponentType, CSSProperties, SVGProps } from "react";
 import type { ProviderId } from "../../services/serial-scrapers";
 
 /**
@@ -35,35 +33,11 @@ export const PROVIDER_SUBTITLE: Partial<Record<ProviderId, string>> = {
 	wuxiaworld: "Translated xianxia",
 };
 
-/** Lucide icon component used as the visual mark on each provider card. */
-export const PROVIDER_ICON: Partial<
-	Record<ProviderId, ComponentType<SVGProps<SVGSVGElement>>>
-> = {
-	ao3: Feather,
-	scribblehub: PenLine,
-	royalroad: Sword,
-	wuxiaworld: Mountain,
-};
-
-/**
- * Pre-built per-provider card style. Sets a `--brand` custom property the CSS
- * derives every brand-tinted surface from (icon badge bg, icon stroke, corner
- * wash). Hoisted out of render so the JSX doesn't allocate a fresh `style`
- * object per card on every render.
- */
-export const PROVIDER_CARD_STYLE: Partial<Record<ProviderId, CSSProperties>> =
-	Object.fromEntries(
-		(Object.entries(PROVIDER_BRAND_COLOR) as [ProviderId, string][]).map(([id, color]) => [
-			id,
-			{ "--brand": color } as CSSProperties,
-		]),
-	);
-
 /**
  * Providers shown in the section + filter chip row, in display order. Add a
  * provider here once its adapter lands in `serial-scrapers/registry.ts`.
  */
-export const VISIBLE_PROVIDERS: ProviderId[] = ["ao3", "scribblehub", "royalroad", "wuxiaworld"];
+export const VISIBLE_PROVIDERS: ProviderId[] = ["wuxiaworld", "royalroad", "ao3", "scribblehub"];
 
 /** URL-param guard for `?provider=`. */
 export const isVisibleProvider = (s: string): s is ProviderId =>

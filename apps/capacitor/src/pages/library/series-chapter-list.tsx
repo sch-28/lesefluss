@@ -58,8 +58,7 @@ function chapterRowState(book: Book): RowState {
 
 	// chapterStatus === 'fetched'
 	if (book.lastRead == null) return { kind: "unread" };
-	if (book.size > 0 && book.position >= book.size - FINISHED_TAIL)
-		return { kind: "finished" };
+	if (book.size > 0 && book.position >= book.size - FINISHED_TAIL) return { kind: "finished" };
 
 	return { kind: "in-progress", pct: readingProgress(book) };
 }
@@ -95,9 +94,7 @@ const ChapterRow = memo<ChapterRowProps>(({ book, onTap }) => {
 			className={isCurrent ? `${ROW_BASE_CLASS} is-current` : ROW_BASE_CLASS}
 		>
 			{/* Chapter number — fixed width so titles align regardless of digits */}
-			<span className="w-8 shrink-0 text-right text-sm opacity-40">
-				{displayIndex}
-			</span>
+			<span className="w-8 shrink-0 text-right text-sm opacity-40">{displayIndex}</span>
 
 			{/* Title — fills remaining space, truncated to single line */}
 			<span className="min-w-0 flex-1 truncate text-sm">{book.title}</span>
@@ -220,10 +217,7 @@ export const SeriesChapterList: React.FC<Props> = ({ seriesId, isSyncing }) => {
 	// (VList measures real heights itself), so over/undershoot of a few px
 	// just shifts the cap by one row.
 	const ROW_HEIGHT_PX = 48;
-	const listHeight = Math.min(
-		chapters.length * ROW_HEIGHT_PX,
-		window.innerHeight * 0.3,
-	);
+	const listHeight = Math.min(chapters.length * ROW_HEIGHT_PX, window.innerHeight * 0.3);
 
 	return (
 		<div className="chapter-list-section">

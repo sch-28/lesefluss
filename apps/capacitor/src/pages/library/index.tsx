@@ -27,20 +27,29 @@ import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
 import BLEIndicator from "../../components/ble-indicator";
+import { type ViewMode, ViewModeToggle } from "../../components/view-mode-toggle";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { queryHooks } from "../../services/db/hooks";
-import { bookImportMutationKey, bookKeys } from "../../services/db/hooks/query-keys";
+import { bookImportMutationKey, bookKeys, serialKeys } from "../../services/db/hooks/query-keys";
 import type { Book, Series } from "../../services/db/schema";
 import { IS_WEB_BUILD } from "../../services/sync";
 import { IS_WEB } from "../../utils/platform";
 import BookCard from "./book-card";
+import BookListItem from "./book-list-item";
 import FilterPopover from "./filter-popover";
 import ImportSheet from "./import-sheet";
 import PasteUrlModal from "./paste-url-modal";
 import SeriesCard from "./series-card";
-import { type FilterBy, filterAndSort, readingProgress, type SortBy } from "./sort-filter";
+import SeriesListItem from "./series-list-item";
+import {
+	type FilterBy,
+	filterAndSort,
+	filterAndSortSeries,
+	readingProgress,
+	type SortBy,
+} from "./sort-filter";
 import SortPopover from "./sort-popover";
 import TransferModal from "./transfer-modal";
 import { useLibraryImports } from "./use-library-imports";
@@ -62,7 +71,14 @@ const Library: React.FC = () => {
 	const qc = useQueryClient();
 
 	// ── Data queries ─────────────────────────────────────────────────────
-	const { books, series, covers, chapterCounts, isLoading: isPending } = useLibraryItems();
+	const {
+		books,
+		series,
+		covers,
+		chapterCounts,
+		seriesActivity,
+		isLoading: isPending,
+	} = useLibraryItems();
 
 	// ── Mutations ────────────────────────────────────────────────────────
 	const imports = useLibraryImports();
@@ -79,6 +95,7 @@ const Library: React.FC = () => {
 	);
 	const [sortBy, setSortBy] = useState<SortBy>("recent");
 	const [filterBy, setFilterBy] = useState<FilterBy>("all");
+	const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
 	// Action sheet state
 	const [selectedBook, setSelectedBook] = useState<Book | null>(null);
@@ -93,9 +110,12 @@ const Library: React.FC = () => {
 	const [pendingDeleteBook, setPendingDeleteBook] = useState<Book | null>(null);
 	const [pendingDeleteSeries, setPendingDeleteSeries] = useState<Series | null>(null);
 
-	// Reload when navigating back (e.g. from reader) so progress bars update
+	// Reload when navigating back (e.g. from reader) so progress bars update.
+	// Also refresh series aggregates: a chapter just read in the reader bumps
+	// the series's `latestRead` and started/finished counts that drive sort+filter.
 	useIonViewWillEnter(() => {
 		qc.invalidateQueries({ queryKey: bookKeys.all });
+		qc.invalidateQueries({ queryKey: serialKeys.all });
 	});
 
 	// Reload list after a transfer completes so "On device" badge updates
@@ -164,6 +184,8 @@ const Library: React.FC = () => {
 	};
 
 	const visible = books.length > 0 ? filterAndSort(books, filterBy, sortBy) : [];
+	const visibleSeries =
+		series.length > 0 ? filterAndSortSeries(series, filterBy, sortBy, seriesActivity) : [];
 
 	if (isPending) {
 		return (
@@ -207,6 +229,10 @@ const Library: React.FC = () => {
 									)}
 								</IonButton>
 							)}
+							<ViewModeToggle
+								viewMode={viewMode}
+								onToggle={() => setViewMode((m) => (m === "grid" ? "list" : "grid"))}
+							/>
 						</IonButtons>
 					</div>
 				</IonToolbar>
@@ -264,50 +290,85 @@ const Library: React.FC = () => {
 							</IonText>
 						)}
 					</div>
-				) : visible.length === 0 && series.length === 0 ? (
-					/* ── Filter empty state — fires only when no series are around to
-					   render and the book filter zeroed out. Filter currently doesn't
-					   apply to series; if it ever does, update this message accordingly. */
+				) : visible.length === 0 && visibleSeries.length === 0 ? (
+					/* ── Filter empty state: both books and series zeroed out. ── */
 					<div className="flex h-full flex-col items-center justify-center p-8 text-center">
 						<IonText color="medium">
 							<p style={{ margin: 0 }}>No items match this filter.</p>
 						</IonText>
 					</div>
 				) : (
-					/* ── Mixed grid: series first, then filtered/sorted books ── */
-					<div className="grid grid-cols-3 gap-4 p-4 pb-20 content-container md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-						{series.map((s) => (
-							<SeriesCard
-								key={s.id}
-								series={s}
-								chapterCount={chapterCounts.get(s.id)}
-								onOpen={() => handleOpenSeries(s)}
-								onMenu={() => setSelectedSeries(s)}
-							/>
-						))}
-						{visible.map((book) => {
-							const progress = readingProgress(book);
-							const started = book.position > 0;
-							const cover = covers.get(book.id);
-							const isActive = book.id === activeBookId;
-
-							return (
-								<BookCard
-									key={book.id}
-									book={book}
-									cover={cover}
-									progress={progress}
-									started={started}
-									isActive={isActive}
-									onOpen={() => {
-										qc.setQueryData(bookKeys.detail(book.id), book);
-										history.push(`/tabs/reader/${book.id}`);
-									}}
-									onMenu={() => setSelectedBook(book)}
+					viewMode === "grid" ? (
+						/* ── Grid view ── */
+						<div className="grid grid-cols-3 gap-4 p-4 pb-20 content-container md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+							{visibleSeries.map((s) => (
+								<SeriesCard
+									key={s.id}
+									series={s}
+									chapterCount={chapterCounts.get(s.id)}
+									onOpen={() => handleOpenSeries(s)}
+									onMenu={() => setSelectedSeries(s)}
 								/>
-							);
-						})}
-					</div>
+							))}
+							{visible.map((book) => {
+								const progress = readingProgress(book);
+								const started = book.position > 0;
+								const cover = covers.get(book.id);
+								const isActive = book.id === activeBookId;
+
+								return (
+									<BookCard
+										key={book.id}
+										book={book}
+										cover={cover}
+										progress={progress}
+										started={started}
+										isActive={isActive}
+										onOpen={() => {
+											qc.setQueryData(bookKeys.detail(book.id), book);
+											history.push(`/tabs/reader/${book.id}`);
+										}}
+										onMenu={() => setSelectedBook(book)}
+									/>
+								);
+							})}
+						</div>
+					) : (
+						/* ── List view ── */
+						<div className="flex flex-col gap-2 p-4 pb-20 content-container">
+							{visibleSeries.map((s) => (
+								<SeriesListItem
+									key={s.id}
+									series={s}
+									chapterCount={chapterCounts.get(s.id)}
+									onOpen={() => handleOpenSeries(s)}
+									onMenu={() => setSelectedSeries(s)}
+								/>
+							))}
+							{visible.map((book) => {
+								const progress = readingProgress(book);
+								const started = book.position > 0;
+								const cover = covers.get(book.id);
+								const isActive = book.id === activeBookId;
+
+								return (
+									<BookListItem
+										key={book.id}
+										book={book}
+										cover={cover}
+										progress={progress}
+										started={started}
+										isActive={isActive}
+										onOpen={() => {
+											qc.setQueryData(bookKeys.detail(book.id), book);
+											history.push(`/tabs/reader/${book.id}`);
+										}}
+										onMenu={() => setSelectedBook(book)}
+									/>
+								);
+							})}
+						</div>
+					)
 				)}
 
 				{/* FAB: opens import sources action sheet */}

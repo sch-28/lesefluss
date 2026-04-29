@@ -28,10 +28,12 @@ export default defineConfig({
 		environment: "node",
 		setupFiles: ["src/test/setup-live.ts"],
 		// Each test's wall-clock = sum of upstream latencies + per-provider throttle
-		// gates (5s for AO3, ≥2s for others) for every fetchHtml call. The smoke
-		// makes 3 AO3 calls = 10s of pure throttle + AO3 latency. 60s is a generous
-		// ceiling that still flags genuine hangs.
-		testTimeout: 60_000,
-		hookTimeout: 60_000,
+		// gates (5s for AO3, ≥2s for others) for every fetchHtml call. The AO3
+		// smoke makes 5 calls (search, metadata, list, first chapter, last
+		// chapter) = 20s of pure throttle + Cloudflare-fronted page loads,
+		// which can stretch under challenge issuance. 120s is generous but
+		// still flags genuine hangs.
+		testTimeout: 120_000,
+		hookTimeout: 120_000,
 	},
 });

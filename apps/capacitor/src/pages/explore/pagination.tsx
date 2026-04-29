@@ -59,6 +59,11 @@ const Pagination: React.FC<Props> = ({ page, totalPages, onChange, disabled }) =
 						{item}
 					</button>
 				) : (
+					// Two ellipsis slots are possible (left + right gap) and `item` is the
+					// same string for both, so the position index disambiguates them. The
+					// `items` array is rebuilt deterministically from `page`/`totalPages`,
+					// never reordered or sliced mid-render.
+					// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
 					<span key={`${item}-${i}`} className="pagination-ellipsis" aria-hidden="true">
 						…
 					</span>

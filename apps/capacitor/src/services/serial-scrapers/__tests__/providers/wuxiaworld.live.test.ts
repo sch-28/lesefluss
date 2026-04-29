@@ -23,7 +23,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../../fetch", () => ({
 	fetchHtml: async (url: string): Promise<string> => {
 		const res = await fetch(url, {
-			headers: { "User-Agent": "Mozilla/5.0 (LeseflussLiveSmoke/1.0)" },
+			headers: {
+				"User-Agent": "Mozilla/5.0 (compatible; LesefussBot-Smoke/1.0; +https://lesefluss.app/bot)",
+			},
 		});
 		if (!res.ok) throw new Error(`FETCH_FAILED:${res.status}`);
 		return res.text();
@@ -31,6 +33,7 @@ vi.mock("../../fetch", () => ({
 }));
 
 import { wuxiaworldScraper } from "../../providers/wuxiaworld";
+import { assertEndpointsReachable } from "../live-helpers";
 
 // "martial" is one of the most common WW tags and reliably returns results
 // for the foreseeable future.
@@ -46,8 +49,7 @@ describe("wuxiaworld [live]", () => {
 		expect(results.length).toBeGreaterThan(0);
 
 		const candidate =
-			results.find((r) => typeof r.chapterCount === "number" && r.chapterCount >= 50) ??
-			results[0];
+			results.find((r) => typeof r.chapterCount === "number" && r.chapterCount >= 50) ?? results[0];
 		expect(candidate.title).toBeTruthy();
 		expect(candidate.sourceUrl).toMatch(/^https:\/\/www\.wuxiaworld\.com\/novel\//);
 		expect(candidate.provider).toBe("wuxiaworld");
@@ -61,7 +63,10 @@ describe("wuxiaworld [live]", () => {
 		expect(meta.author).toBeTruthy();
 		expect(typeof meta.author).toBe("string");
 		expect(meta.provider).toBe("wuxiaworld");
-		expect(meta.tocUrl).toBe(meta.sourceUrl);
+		// `sourceUrl` is the user-visible novel root; `tocUrl` points at the
+		// SSR `/chapters` subpage where the React Query state lives. They
+		// diverge on purpose — see fetchSeriesMetadata.
+		expect(meta.tocUrl).toBe(`${meta.sourceUrl}/chapters`);
 		expect(meta.coverImage).toMatch(/^https?:\/\//);
 
 		// 3. fetchChapterList synthesizes refs from chapterGroups. We assert a
@@ -88,5 +93,22 @@ describe("wuxiaworld [live]", () => {
 		const urlRe = new RegExp(`^https://www\\.wuxiaworld\\.com/novel/${novelSlug}/[a-z0-9-]+-\\d+$`);
 		expect(chapters[0].sourceUrl).toMatch(urlRe);
 		expect(chapters[chapters.length - 1].sourceUrl).toMatch(urlRe);
+
+		// Reachability: catches off-by-one slug bugs (e.g. `tlphr-chapter-0`
+		// for units=1) that the regex check above would happily accept. See
+		// `assertEndpointsReachable`.
+		await assertEndpointsReachable(wuxiaworldScraper, chapters);
+	});
+
+	it("getPopular returns parseable results from the empty-query novels-search endpoint", async () => {
+		const getPopular = wuxiaworldScraper.getPopular;
+		if (!getPopular) throw new Error("Wuxiaworld adapter must implement `getPopular`");
+
+		const results = await getPopular();
+		expect(results.length).toBeGreaterThan(0);
+		const first = results[0];
+		expect(first.title).toBeTruthy();
+		expect(first.sourceUrl).toMatch(/^https:\/\/www\.wuxiaworld\.com\/novel\/[a-z0-9-]+/);
+		expect(first.provider).toBe("wuxiaworld");
 	});
 });

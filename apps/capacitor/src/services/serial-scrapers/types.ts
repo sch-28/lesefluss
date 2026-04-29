@@ -19,6 +19,14 @@ export interface SerialScraper {
 	 * commits the series.
 	 */
 	search?(query: string): Promise<SearchResult[]>;
+	/**
+	 * Optional popular/trending listing. Used by the empty-search shelf on the
+	 * web-novels page so a chip tap surfaces real content instead of a blank.
+	 * Adapters that don't expose a popular endpoint omit this method; the
+	 * registry filters them out of `popularAll`. Result shape and import
+	 * contract are identical to `search` — same `sourceUrl` and same provider tag.
+	 */
+	getPopular?(): Promise<SearchResult[]>;
 }
 
 export type SearchResult = {

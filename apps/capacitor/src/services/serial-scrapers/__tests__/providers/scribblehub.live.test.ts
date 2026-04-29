@@ -21,7 +21,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../../fetch", () => ({
 	fetchHtml: async (url: string): Promise<string> => {
 		const res = await fetch(url, {
-			headers: { "User-Agent": "Mozilla/5.0 (LesefllussLiveSmoke/1.0)" },
+			headers: {
+				"User-Agent": "Mozilla/5.0 (compatible; LesefussBot-Smoke/1.0; +https://lesefluss.app/bot)",
+			},
 		});
 		if (!res.ok) throw new Error(`FETCH_FAILED:${res.status}`);
 		return res.text();
@@ -29,6 +31,7 @@ vi.mock("../../fetch", () => ({
 }));
 
 import { scribblehubScraper } from "../../providers/scribblehub";
+import { assertEndpointsReachable } from "../live-helpers";
 
 // Politically-neutral, near-guaranteed-hits query on SH — the most common
 // isekai/litrpg trope on the platform.
@@ -87,5 +90,21 @@ describe("scribblehub [live]", () => {
 		expect(chapters[chapters.length - 1].sourceUrl).toMatch(
 			/^https:\/\/www\.scribblehub\.com\/read\/\d+-[a-z0-9-]+\/chapter\/\d+/,
 		);
+
+		// Reachability: catches URL-synthesis bugs that pass the regex but
+		// return no content. See `assertEndpointsReachable`.
+		await assertEndpointsReachable(scribblehubScraper, chapters);
+	});
+
+	it("getPopular returns parseable results from the series-ranking page", async () => {
+		const getPopular = scribblehubScraper.getPopular;
+		if (!getPopular) throw new Error("ScribbleHub adapter must implement `getPopular`");
+
+		const results = await getPopular();
+		expect(results.length).toBeGreaterThan(0);
+		const first = results[0];
+		expect(first.title).toBeTruthy();
+		expect(first.sourceUrl).toMatch(/^https:\/\/www\.scribblehub\.com\/series\/\d+\//);
+		expect(first.provider).toBe("scribblehub");
 	});
 });

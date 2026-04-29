@@ -9,6 +9,19 @@
  */
 import { Window } from "happy-dom";
 
+// `extractParagraphs`'s heading walker references `Node.TEXT_NODE` /
+// `Node.ELEMENT_NODE`. Happy-dom exposes these on a Window instance, not on
+// `globalThis`, so adapter code that walks an element with inner headings
+// (e.g. AO3's `<h3 class="landmark">Chapter Text</h3>`) dies with "Node is
+// not defined". Mirror happy-dom's own constructor onto globalThis — using
+// the real class (not a plain-object stub) keeps Vitest's internal
+// `instanceof Node` checks happy.
+if (typeof (globalThis as { Node?: unknown }).Node === "undefined") {
+	(globalThis as unknown as { Node: unknown }).Node = new Window({
+		url: "https://localhost/",
+	}).Node;
+}
+
 if (typeof globalThis.DOMParser === "undefined") {
 	class NodeDOMParser {
 		parseFromString(html: string, _type: DOMParserSupportedType): Document {

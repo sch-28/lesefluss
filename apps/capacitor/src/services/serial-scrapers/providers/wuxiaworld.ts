@@ -13,14 +13,10 @@ import {
 	stripHidden,
 	stripTags,
 } from "../utils/html";
-import { throttle } from "../utils/throttle";
+import { platformThrottleMs, throttle } from "../utils/throttle";
 
 const PROVIDER_ID = "wuxiaworld" as const;
-/**
- * No published crawl-delay on WW. 2s matches the conservative "polite
- * scraping" pace we use for sites without explicit guidance.
- */
-const THROTTLE_MS = 2_000;
+const THROTTLE_MS = platformThrottleMs(1_000, 2_000);
 
 const HOST = "www.wuxiaworld.com";
 /** Bare domain — `canHandle` accepts both `www.` and the apex. */
@@ -49,6 +45,13 @@ const PATHS = {
 	 * The v2 prefix was removed server-side; the live path is /api/novels/search.
 	 */
 	search: (query: string) => `${ORIGIN}/api/novels/search?query=${encodeURIComponent(query)}`,
+	/**
+	 * WW's `/novels` SPA page SSR-embeds a React Query payload at
+	 * `__REACT_QUERY_STATE__` whose `["novels", …]` query holds the rendered
+	 * novel list with `trendingScore` per item. The empty-query JSON search
+	 * endpoint returns `{ items: [] }` so we scrape the SSR'd state instead.
+	 */
+	novelsListing: () => `${ORIGIN}/novels`,
 } as const;
 
 /**
@@ -85,6 +88,7 @@ type WwNovelItem = {
 	authorName?: { value?: string | null } | null;
 	synopsis?: { value?: string | null } | null;
 	coverUrl?: { value?: string | null } | null;
+	trendingScore?: number | null;
 	chapterInfo?: {
 		chapterCount?: { value?: number | null } | null;
 		firstChapter?: { slug?: string | null; number?: { units?: number | null } | null } | null;
@@ -124,14 +128,27 @@ type WwReactQueryState = {
  * present, or its data has no `item` field.
  */
 function findQueryItem<T>(doc: Document, prefix: string): T | null {
-	const state = extractScriptAssignment(doc, "__REACT_QUERY_STATE__") as
-		| WwReactQueryState
-		| null;
+	const state = extractScriptAssignment(doc, "__REACT_QUERY_STATE__") as WwReactQueryState | null;
 	const query = state?.queries?.find(
 		(q) => Array.isArray(q.queryKey) && (q.queryKey as unknown[])[0] === prefix,
 	);
 	const item = query?.state?.data?.item;
 	return (item as T) ?? null;
+}
+
+/**
+ * `/novels` listings embed paginated items at `state.data.pages[N].items`,
+ * not a single `state.data.item`. This pulls the flattened item list across
+ * all pages, narrowed to the caller-provided shape.
+ */
+function findQueryItems<T>(doc: Document, prefix: string): T[] {
+	const state = extractScriptAssignment(doc, "__REACT_QUERY_STATE__") as WwReactQueryState | null;
+	const query = state?.queries?.find(
+		(q) => Array.isArray(q.queryKey) && (q.queryKey as unknown[])[0] === prefix,
+	);
+	const data = query?.state?.data as { pages?: Array<{ items?: unknown[] }> } | null | undefined;
+	const pages = data?.pages ?? [];
+	return pages.flatMap((p) => (Array.isArray(p?.items) ? (p.items as T[]) : []));
 }
 
 /**
@@ -170,6 +187,12 @@ function deriveChapterSlugPrefix(firstChapterSlug: string | null | undefined): s
  * each group's range is intersected with that span so sentinel values get
  * trimmed back to reality.
  *
+ * The first/last chapter slugs are taken verbatim from `firstChapter` /
+ * `latestChapter` rather than synthesized: WW occasionally numbers the
+ * first chapter from 0 (e.g. `tlphr-chapter-0` for "Chapter 1") while the
+ * rest of the book is aligned, and trusting the published slug at the
+ * endpoints avoids a guaranteed 404 on chapter 1.
+ *
  * Numbering is integer `units` only — sub-numbered teaser chapters
  * (`number.nanos > 0`) aren't surfaced because we'd have no way to
  * construct their slug. Any synthesized chapter that 404s upstream becomes
@@ -180,6 +203,7 @@ function synthesizeChapterRefs(
 	prefix: string,
 	groups: WwChapterGroup[],
 	bounds: { min: number; max: number },
+	endpoints: { firstSlug?: string | null; lastSlug?: string | null },
 ): ChapterRef[] {
 	const refs: ChapterRef[] = [];
 	let index = 0;
@@ -191,10 +215,13 @@ function synthesizeChapterRefs(
 		const to = Math.min(rawTo, bounds.max);
 		if (to < from) continue;
 		for (let n = from; n <= to; n++) {
+			let slug = `${prefix}${n}`;
+			if (n === bounds.min && endpoints.firstSlug) slug = endpoints.firstSlug;
+			else if (n === bounds.max && endpoints.lastSlug) slug = endpoints.lastSlug;
 			refs.push({
 				index,
 				title: `Chapter ${n}`,
-				sourceUrl: `${ORIGIN}/novel/${novelSlug}/${prefix}${n}`,
+				sourceUrl: `${ORIGIN}/novel/${novelSlug}/${slug}`,
 			});
 			index++;
 		}
@@ -217,16 +244,17 @@ export const wuxiaworldScraper: SerialScraper = {
 
 	async fetchSeriesMetadata(url: string): Promise<SeriesMetadata> {
 		const slug = novelSlugFromUrl(url);
-		const sourceUrl = PATHS.novelChapters(slug);
-		// WW renders the chapter list inline as part of the SSR React Query
-		// state on the same page; tocUrl === sourceUrl mirrors ScribbleHub.
-		const tocUrl = sourceUrl;
+		// User-facing landing page (the "View on Wuxiaworld" button on series
+		// detail opens this). The `/chapters` subpage is SSR-rendered and embeds
+		// our scraping payload, but WW's SPA client-side-404s on it for some
+		// novels — so the user-visible link points at the novel root, while the
+		// internal `tocUrl` keeps using `/chapters` where the React Query state
+		// (and full chapter group data) lives.
+		const sourceUrl = `${ORIGIN}/novel/${slug}`;
+		const tocUrl = PATHS.novelChapters(slug);
 
 		await throttle(PROVIDER_ID, THROTTLE_MS);
-		const item = findQueryItem<WwNovelItem>(
-			parseHtml(await fetchHtml(sourceUrl)),
-			"novel",
-		);
+		const item = findQueryItem<WwNovelItem>(parseHtml(await fetchHtml(tocUrl)), "novel");
 
 		return {
 			title: item?.name?.trim() || "Untitled",
@@ -276,7 +304,16 @@ export const wuxiaworldScraper: SerialScraper = {
 			return [{ index: 0, title: "Chapter 1", sourceUrl: tocUrl }];
 		}
 
-		return synthesizeChapterRefs(slug, prefix, groups, { min: minUnits, max: maxUnits });
+		return synthesizeChapterRefs(
+			slug,
+			prefix,
+			groups,
+			{ min: minUnits, max: maxUnits },
+			{
+				firstSlug: item?.chapterInfo?.firstChapter?.slug ?? null,
+				lastSlug: item?.chapterInfo?.latestChapter?.slug ?? null,
+			},
+		);
 	},
 
 	async fetchChapterContent(ref: ChapterRef): Promise<ChapterFetchResult> {
@@ -315,29 +352,30 @@ export const wuxiaworldScraper: SerialScraper = {
 		// Empty-query guarding belongs to the public surface (registry.searchAll
 		// + useSearchSerials' `enabled` flag); keep this a pure extractor.
 		await throttle(PROVIDER_ID, THROTTLE_MS);
+		return parseNovelsApi(await fetchHtml(PATHS.search(query)));
+	},
 
-		// WW exposes a JSON API — fetchHtml returns the raw JSON string. Any
-		// JSON.parse failure propagates intentionally so searchAll catches it
-		// and surfaces the provider in `failedProviders` (mirrors any other
-		// network error in search).
-		const raw = await fetchHtml(PATHS.search(query));
-		const parsed = JSON.parse(raw) as { items?: WwSearchItem[] };
-		const items = parsed?.items ?? [];
-
+	async getPopular(): Promise<SearchResult[]> {
+		await throttle(PROVIDER_ID, THROTTLE_MS);
+		const doc = parseHtml(await fetchHtml(PATHS.novelsListing()));
+		const items = findQueryItems<WwNovelItem>(doc, "novels");
+		// Sort by trendingScore descending — WW SSRs the page sorted by name,
+		// so we re-rank locally to surface what's actually trending.
+		const ranked = [...items].sort(
+			(a, b) => (b.trendingScore ?? 0) - (a.trendingScore ?? 0),
+		);
 		const results: SearchResult[] = [];
-		for (const item of items) {
+		for (const item of ranked) {
 			if (!item.name || !item.slug) continue;
 			results.push({
 				title: item.name,
-				// WW search results don't include a separate author/translator
-				// field; fetchSeriesMetadata returns the full author from the
-				// novel page.
-				author: null,
-				// JSON `synopsis` embeds HTML (`<p>`, `<br>`, entities). Strip
-				// to plain text so the preview UI doesn't render raw markup.
-				description: stripTags(item.synopsis),
-				coverImage: item.coverUrl ?? null,
-				chapterCount: typeof item.chapterCount === "number" ? item.chapterCount : null,
+				author: item.authorName?.value?.trim() || null,
+				description: stripTags(item.synopsis?.value),
+				coverImage: item.coverUrl?.value ?? null,
+				chapterCount:
+					typeof item.chapterInfo?.chapterCount?.value === "number"
+						? item.chapterInfo.chapterCount.value
+						: null,
 				sourceUrl: `${ORIGIN}/novel/${item.slug}`,
 				provider: PROVIDER_ID,
 			});
@@ -345,3 +383,33 @@ export const wuxiaworldScraper: SerialScraper = {
 		return results;
 	},
 };
+
+/**
+ * Parse a Wuxiaworld novels-API JSON response. The same `{ items: [...] }`
+ * shape is returned by both the `/search` and the empty-query "popular"
+ * endpoints. Any JSON.parse failure propagates intentionally so the registry
+ * fan-out catches it and reports the provider as unavailable.
+ */
+function parseNovelsApi(raw: string): SearchResult[] {
+	const parsed = JSON.parse(raw) as { items?: WwSearchItem[] };
+	const items = parsed?.items ?? [];
+	const results: SearchResult[] = [];
+	for (const item of items) {
+		if (!item.name || !item.slug) continue;
+		results.push({
+			title: item.name,
+			// WW search results don't include a separate author/translator
+			// field; fetchSeriesMetadata returns the full author from the
+			// novel page.
+			author: null,
+			// JSON `synopsis` embeds HTML (`<p>`, `<br>`, entities). Strip
+			// to plain text so the preview UI doesn't render raw markup.
+			description: stripTags(item.synopsis),
+			coverImage: item.coverUrl ?? null,
+			chapterCount: typeof item.chapterCount === "number" ? item.chapterCount : null,
+			sourceUrl: `${ORIGIN}/novel/${item.slug}`,
+			provider: PROVIDER_ID,
+		});
+	}
+	return results;
+}

@@ -7,15 +7,10 @@ import type {
 	SeriesMetadata,
 } from "../types";
 import { absolutize, extractParagraphs, parseHtml, stripHidden, textOrNull } from "../utils/html";
-import { throttle } from "../utils/throttle";
+import { platformThrottleMs, throttle } from "../utils/throttle";
 
 const PROVIDER_ID = "scribblehub" as const;
-/**
- * SH default — only AO3 and FF.net warrant the 5-second gate. SH has no
- * published rate limit; 2s mirrors the conservative-but-not-glacial pace
- * we use for "polite scraping" on sites without explicit guidance.
- */
-const THROTTLE_MS = 2_000;
+const THROTTLE_MS = platformThrottleMs(1_000, 2_000);
 
 const HOST = "www.scribblehub.com";
 /** Bare domain — `canHandle` accepts both `www.` and the apex. */
@@ -39,6 +34,12 @@ const PATHS = {
 	 * controls are exposed in the URL — SH renders default-relevance.
 	 */
 	search: (query: string) => `${ORIGIN}/?s=${encodeURIComponent(query)}&post_type=fictionposts`,
+	/**
+	 * SH's series-ranking page sorted by favorites (sort=2 in SH's numeric URL
+	 * scheme). Renders the same `div.search_main_box` cards the search page
+	 * uses, so one parser handles both.
+	 */
+	popular: () => `${ORIGIN}/series-ranking/?sort=2&order=`,
 } as const;
 
 const SELECTORS = {
@@ -215,29 +216,12 @@ export const scribblehubScraper: SerialScraper = {
 		// Empty-query guarding belongs to the public surface (registry.searchAll
 		// + useSearchSerials' `enabled` flag); keep this method a pure extractor.
 		await throttle(PROVIDER_ID, THROTTLE_MS);
-		const doc = parseHtml(await fetchHtml(PATHS.search(query)));
+		return parseSeriesList(parseHtml(await fetchHtml(PATHS.search(query))));
+	},
 
-		const results: SearchResult[] = [];
-		for (const box of doc.querySelectorAll(SELECTORS.searchResult)) {
-			const titleAnchor = box.querySelector(SELECTORS.searchResultTitleAnchor);
-			const href = titleAnchor?.getAttribute("href");
-			const title = textOrNull(titleAnchor);
-			if (!href || !title) continue;
-
-			const body = box.querySelector(SELECTORS.searchResultBody);
-			results.push({
-				title,
-				author: textOrNull(box.querySelector(SELECTORS.searchResultAuthor)),
-				description: body ? extractSearchDescription(body) : null,
-				coverImage: coverOrNull(
-					box.querySelector(SELECTORS.searchResultCover)?.getAttribute("src"),
-				),
-				chapterCount: parseChapterCount(box.querySelectorAll(SELECTORS.searchResultStats)),
-				sourceUrl: abs(href),
-				provider: PROVIDER_ID,
-			});
-		}
-		return results;
+	async getPopular(): Promise<SearchResult[]> {
+		await throttle(PROVIDER_ID, THROTTLE_MS);
+		return parseSeriesList(parseHtml(await fetchHtml(PATHS.popular())));
 	},
 
 	async fetchChapterContent(ref: ChapterRef): Promise<ChapterFetchResult> {
@@ -259,3 +243,30 @@ export const scribblehubScraper: SerialScraper = {
 		}
 	},
 };
+
+/**
+ * Parse a ScribbleHub listing page (search results, series-ranking, …). SH's
+ * `div.search_main_box` cards render with the same selectors across listings,
+ * so one extractor serves every entry point.
+ */
+function parseSeriesList(doc: Document): SearchResult[] {
+	const results: SearchResult[] = [];
+	for (const box of doc.querySelectorAll(SELECTORS.searchResult)) {
+		const titleAnchor = box.querySelector(SELECTORS.searchResultTitleAnchor);
+		const href = titleAnchor?.getAttribute("href");
+		const title = textOrNull(titleAnchor);
+		if (!href || !title) continue;
+
+		const body = box.querySelector(SELECTORS.searchResultBody);
+		results.push({
+			title,
+			author: textOrNull(box.querySelector(SELECTORS.searchResultAuthor)),
+			description: body ? extractSearchDescription(body) : null,
+			coverImage: coverOrNull(box.querySelector(SELECTORS.searchResultCover)?.getAttribute("src")),
+			chapterCount: parseChapterCount(box.querySelectorAll(SELECTORS.searchResultStats)),
+			sourceUrl: abs(href),
+			provider: PROVIDER_ID,
+		});
+	}
+	return results;
+}

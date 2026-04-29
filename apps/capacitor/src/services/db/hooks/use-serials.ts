@@ -1,10 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { useDebounced } from "../../../utils/use-debounced";
-import { type ProviderId, type SearchAllResult, searchSerials } from "../../serial-scrapers";
+import {
+	type ProviderId,
+	popularSerials,
+	type SearchAllResult,
+	searchSerials,
+} from "../../serial-scrapers";
 import { serialKeys } from "./query-keys";
 
 const DEFAULT_DEBOUNCE_MS = 400;
 const SEARCH_STALE_TIME_MS = 5 * 60 * 1000;
+const POPULAR_STALE_TIME_MS = 30 * 60 * 1000;
 
 /**
  * Free-text search across every serial provider that supports search. Returns
@@ -37,6 +43,25 @@ function useSearchSerials(
 	});
 }
 
+/**
+ * Popular/trending shelf for the web-novels page's empty state. Fans out
+ * across every provider that exposes `getPopular`; merges into a quality-sorted
+ * "All" view when no provider chip is selected, otherwise leaves that
+ * provider's own ordering alone.
+ *
+ * Cached 30 minutes — popular content moves slowly, no need to re-hit upstream
+ * every navigation.
+ */
+function usePopularSerials(provider?: ProviderId) {
+	return useQuery<SearchAllResult>({
+		queryKey: serialKeys.popular(provider),
+		queryFn: () => popularSerials({ provider }),
+		staleTime: POPULAR_STALE_TIME_MS,
+		retry: false,
+	});
+}
+
 export const serialHooks = {
 	useSearchSerials,
+	usePopularSerials,
 };
