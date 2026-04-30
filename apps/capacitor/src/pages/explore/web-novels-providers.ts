@@ -33,11 +33,15 @@ export const PROVIDER_SUBTITLE: Partial<Record<ProviderId, string>> = {
 	wuxiaworld: "Translated xianxia",
 };
 
-/** Homepage URL passed to the Cloudflare challenge WebView per provider. */
+/**
+ * URL opened in the Cloudflare challenge WebView. Points at the actual page
+ * OkHttp fetches for popular/search so CF is more likely to issue cf_clearance
+ * for the same path patterns it blocks.
+ */
 export const PROVIDER_CHALLENGE_URL: Partial<Record<ProviderId, string>> = {
-	scribblehub: "https://www.scribblehub.com",
-	royalroad: "https://www.royalroad.com",
-	wuxiaworld: "https://www.wuxiaworld.com",
+	scribblehub: "https://www.scribblehub.com/series-ranking/?sort=2&order=",
+	royalroad: "https://www.royalroad.com/fictions/best-rated",
+	wuxiaworld: "https://www.wuxiaworld.com/novels",
 	ao3: "https://archiveofourown.org",
 };
 

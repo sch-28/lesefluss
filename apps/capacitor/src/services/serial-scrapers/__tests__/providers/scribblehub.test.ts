@@ -135,6 +135,40 @@ describe("scribblehub.fetchChapterList", () => {
 
 		expect(refs).toEqual([{ index: 0, title: "Chapter 1", sourceUrl: tocUrl }]);
 	});
+
+	it("paginates via admin-ajax when chpcounter exceeds the inline 15", async () => {
+		// Dispatch by URL/method so each pagination POST returns its own fixture.
+		mockedFetchHtml.mockImplementation(async (url, opts) => {
+			if (url.includes("/wp-admin/admin-ajax.php")) {
+				expect(opts?.method).toBe("POST");
+				const body = opts?.body ?? "";
+				if (body.includes("pagenum=2")) return loadFixture("toc-page2");
+				if (body.includes("pagenum=3")) return loadFixture("toc-page3");
+				throw new Error(`unexpected ajax body: ${body}`);
+			}
+			return loadFixture("series-paginated");
+		});
+
+		const refs = await scribblehubScraper.fetchChapterList(
+			"https://www.scribblehub.com/series/111/a-paginated-novel/",
+		);
+
+		expect(refs).toHaveLength(32);
+		// ASC by `order`: Chapter 1 first, Chapter 32 last; index sequential.
+		expect(refs[0]).toEqual({
+			index: 0,
+			title: "Chapter 1",
+			sourceUrl: "https://www.scribblehub.com/read/111-paginated-novel/chapter/1001/",
+		});
+		expect(refs[31]).toEqual({
+			index: 31,
+			title: "Chapter 32",
+			sourceUrl: "https://www.scribblehub.com/read/111-paginated-novel/chapter/1032/",
+		});
+		expect(refs.map((r) => r.index)).toEqual(Array.from({ length: 32 }, (_, i) => i));
+		// Series page + page 2 + page 3 (three fetches total).
+		expect(mockedFetchHtml).toHaveBeenCalledTimes(3);
+	});
 });
 
 // ─── fetchChapterContent ────────────────────────────────────────────────────

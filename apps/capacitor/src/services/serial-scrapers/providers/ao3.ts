@@ -124,6 +124,7 @@ function parseChapterCount(el: Element | null): number | null {
 export const ao3Scraper: SerialScraper = {
 	id: PROVIDER_ID,
 	isIncludedInAllPopular: false,
+	timeoutMs: 30_000,
 
 	canHandle(url: string): boolean {
 		try {
@@ -152,9 +153,7 @@ export const ao3Scraper: SerialScraper = {
 		// work renders all chapters inline), so only used as a fallback.
 		if (!title) {
 			await throttle(PROVIDER_ID, THROTTLE_MS);
-			doc = parseHtml(
-				await fetchHtml(`${sourceUrl}?view_full_work=true&view_adult=true`),
-			);
+			doc = parseHtml(await fetchHtml(`${sourceUrl}?view_full_work=true&view_adult=true`));
 			title = textOrNull(doc.querySelector(SELECTORS.title));
 		}
 

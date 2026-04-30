@@ -310,7 +310,14 @@ describe("popularAll fan-out", () => {
 	it("excludes isIncludedInAllPopular:false scrapers from all-view but runs them when explicitly selected", async () => {
 		(fake as MutableScraper & { isIncludedInAllPopular: boolean }).isIncludedInAllPopular = false;
 		vi.mocked(originalGetPopular).mockResolvedValue([
-			{ title: "AO3-excluded", author: null, description: null, coverImage: null, sourceUrl: "https://archiveofourown.org/works/1", provider: "ao3" },
+			{
+				title: "AO3-excluded",
+				author: null,
+				description: null,
+				coverImage: null,
+				sourceUrl: "https://archiveofourown.org/works/1",
+				provider: "ao3",
+			},
 		]);
 
 		const allView = await popularAll();

@@ -361,9 +361,7 @@ export const wuxiaworldScraper: SerialScraper = {
 		const items = findQueryItems<WwNovelItem>(doc, "novels");
 		// Sort by trendingScore descending — WW SSRs the page sorted by name,
 		// so we re-rank locally to surface what's actually trending.
-		const ranked = [...items].sort(
-			(a, b) => (b.trendingScore ?? 0) - (a.trendingScore ?? 0),
-		);
+		const ranked = [...items].sort((a, b) => (b.trendingScore ?? 0) - (a.trendingScore ?? 0));
 		const results: SearchResult[] = [];
 		for (const item of ranked) {
 			if (!item.name || !item.slug) continue;

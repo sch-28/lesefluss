@@ -71,17 +71,18 @@ describe("scribblehub [live]", () => {
 		expect(meta.sourceUrl).toBe(candidate.sourceUrl);
 		expect(meta.tocUrl).toBe(candidate.sourceUrl);
 
-		// 4. fetchChapterList parses real chapter refs from the inline TOC.
+		// 4. fetchChapterList parses real chapter refs from every TOC page.
 		//    The synthetic fallback emits a single ref pointing at the series
 		//    root; a real chapter URL is `/read/{id}-{slug}/chapter/N`.
 		//    Asserting the `/read/` segment fails the broken path loudly. The
-		//    `length > 1` + ratio guards add belt-and-suspenders against a
-		//    one-real-chapter masquerade.
+		//    exact-count match below catches admin-ajax pagination regressions
+		//    (any drop in pages would silently truncate; the prior 50% threshold
+		//    let a 15-of-30 truncation pass).
 		const chapters = await scribblehubScraper.fetchChapterList(meta.tocUrl);
 		const expected = candidate.chapterCount ?? 0;
 		expect(chapters.length).toBeGreaterThan(1);
 		if (expected > 1) {
-			expect(chapters.length).toBeGreaterThanOrEqual(Math.floor(expected * 0.5));
+			expect(chapters.length).toBe(expected);
 		}
 		expect(chapters[0].title).toBeTruthy();
 		expect(chapters[0].sourceUrl).toMatch(

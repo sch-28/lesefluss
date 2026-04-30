@@ -24,12 +24,12 @@ export function providerLabel(provider: ProviderId | string): string {
 /**
  * Render a chapter count for the UI. Two variants:
  *   long  (default) → "23 chapters" / "1 chapter"  — used in detail stats lines
- *   short            → "23 chs" / "1 ch"           — used in compact badges
+ *   short            → "23 chap." / "1 chap."      — used in compact badges
  *
  * Centralized so vocabulary stays consistent across cards, badges, and detail
  * pages. Changing "chapters" to "ch." everywhere is one edit here.
  */
 export function chapterCountLabel(count: number, opts: { short?: boolean } = {}): string {
-	if (opts.short) return `${count} ${count === 1 ? "ch" : "chs"}`;
+	if (opts.short) return `${count} chap.`;
 	return `${count} chapter${count === 1 ? "" : "s"}`;
 }

@@ -11,9 +11,9 @@ import {
 import type React from "react";
 import { useRef, useState } from "react";
 import { useHistory, useLocation } from "react-router-dom";
+import { type ViewMode, ViewModeToggle } from "../../components/view-mode-toggle";
 import type { ProviderId, SearchResult } from "../../services/serial-scrapers";
 import { providerLabel } from "../../services/serial-scrapers";
-import { type ViewMode, ViewModeToggle } from "../../components/view-mode-toggle";
 import { WebNovelSearchPanel } from "./web-novel-search-panel";
 import { isVisibleProvider, PROVIDER_BRAND_COLOR, VISIBLE_PROVIDERS } from "./web-novels-providers";
 
@@ -124,7 +124,12 @@ const WebNovels: React.FC = () => {
 					))}
 				</div>
 
-				<WebNovelSearchPanel query={query} provider={provider} viewMode={viewMode} onPick={handlePick} />
+				<WebNovelSearchPanel
+					query={query}
+					provider={provider}
+					viewMode={viewMode}
+					onPick={handlePick}
+				/>
 			</IonContent>
 		</IonPage>
 	);

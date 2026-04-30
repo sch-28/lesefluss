@@ -11,6 +11,16 @@ import { platformThrottleMs, throttle } from "../utils/throttle";
 
 const PROVIDER_ID = "scribblehub" as const;
 const THROTTLE_MS = platformThrottleMs(1_000, 2_000);
+/**
+ * Separate gate for admin-ajax TOC fragments. They're tiny (~4KB) and don't
+ * justify the 1-to-2s pace used for full HTML/chapter pages. The admin-ajax
+ * endpoint only returns 15 chapters per call, so a 1500-chapter series needs
+ * ~100 fragments. At 1s each that's >100s, vs ~15s here.
+ */
+const TOC_THROTTLE_MS = platformThrottleMs(150, 300);
+const TOC_THROTTLE_KEY = `${PROVIDER_ID}:toc`;
+/** SH's TOC pagination widget hard-codes 15 chapters per page. */
+const TOC_PAGE_SIZE = 15;
 
 const HOST = "www.scribblehub.com";
 /** Bare domain — `canHandle` accepts both `www.` and the apex. */
@@ -40,15 +50,22 @@ const PATHS = {
 	 * uses, so one parser handles both.
 	 */
 	popular: () => `${ORIGIN}/series-ranking/?sort=2&order=`,
+	/** WordPress AJAX endpoint that drives the TOC pagination widget. */
+	adminAjax: () => `${ORIGIN}/wp-admin/admin-ajax.php`,
 } as const;
 
 const SELECTORS = {
-	// Series page (fetchSeriesMetadata + fetchChapterList — TOC is inline)
+	// Series page (fetchSeriesMetadata + fetchChapterList; first TOC page is inline)
 	title: "div.fic_title",
 	author: "span.auth_name_fic",
 	cover: "div.fic_image img",
 	description: "div.wi_fic_desc",
-	chapterListItem: "ol.toc_ol li a.toc_a",
+	/** TOC list item. The `order` attribute is the 1-based canonical chapter index; markup is rendered DESC. */
+	chapterListItem: "ol.toc_ol li.toc_w",
+	chapterListAnchor: "a.toc_a",
+	/** Hidden inputs the SH theme uses to drive the JS pagination widget. */
+	postIdInput: "input#mypostid",
+	chapterCountInput: "input#chpcounter",
 
 	// Chapter page (fetchChapterContent)
 	// SH applies both id="chp_raw" and class="chp_raw" to the same element;
@@ -154,6 +171,7 @@ function coverOrNull(src: string | null | undefined): string | null {
 
 export const scribblehubScraper: SerialScraper = {
 	id: PROVIDER_ID,
+	isIncludedInAllPopular: false,
 
 	canHandle(url: string): boolean {
 		try {
@@ -191,18 +209,41 @@ export const scribblehubScraper: SerialScraper = {
 		await throttle(PROVIDER_ID, THROTTLE_MS);
 		const doc = parseHtml(await fetchHtml(tocUrl));
 
-		const items = doc.querySelectorAll(SELECTORS.chapterListItem);
-		if (items.length === 0) {
+		const inlineItems = Array.from(doc.querySelectorAll(SELECTORS.chapterListItem));
+		const postId = doc.querySelector(SELECTORS.postIdInput)?.getAttribute("value") ?? "";
+		const totalRaw = doc.querySelector(SELECTORS.chapterCountInput)?.getAttribute("value") ?? "";
+		const total = Number.parseInt(totalRaw, 10);
+
+		if (inlineItems.length === 0) {
 			// Drafts / brand-new series with no published chapters: synthesize
 			// one ref pointing at the series root so the importer doesn't
 			// blow up on an empty list (mirrors AO3's navigate-empty path).
 			return [{ index: 0, title: "Chapter 1", sourceUrl: tocUrl }];
 		}
 
+		const items = [...inlineItems];
+		// SH renders the latest 15 chapters inline (DESC by `order`). Anything
+		// older lives behind the JS-driven pagination widget; replay its calls
+		// against admin-ajax to fetch the rest. Skip when the total fits in the
+		// inline page, or when the hidden inputs aren't where we expect them
+		// (fall back to inline-only rather than throw on a future SH reskin).
+		if (postId && Number.isFinite(total) && total > TOC_PAGE_SIZE) {
+			const totalPages = Math.ceil(total / TOC_PAGE_SIZE);
+			for (let page = 2; page <= totalPages; page++) {
+				items.push(...(await fetchTocPage(postId, page)));
+			}
+		}
+
+		// `order` is the canonical 1-based chapter index. Sort ASC so the
+		// importer sees chapter 1 first. Items without an `order` attr sort to
+		// the end (defensive; real SH markup always sets it).
+		items.sort((a, b) => orderOf(a) - orderOf(b));
+
 		const refs: ChapterRef[] = [];
-		items.forEach((a, i) => {
-			const href = a.getAttribute("href");
-			if (!href) return;
+		items.forEach((li, i) => {
+			const a = li.querySelector(SELECTORS.chapterListAnchor);
+			const href = a?.getAttribute("href");
+			if (!a || !href) return;
 			refs.push({
 				index: i,
 				title: a.textContent?.trim() || `Chapter ${i + 1}`,
@@ -243,6 +284,34 @@ export const scribblehubScraper: SerialScraper = {
 		}
 	},
 };
+
+/**
+ * POST a single TOC pagination page to admin-ajax. SH's pagination widget
+ * sends `action=wi_getreleases_pagination` with form-encoded `pagenum` +
+ * `mypostid`; the response is a fragment of `<ol class="toc_ol">…</ol>` with
+ * 15 chapters in DESC order. Throws on fetch failure (a partial TOC would
+ * silently truncate the import).
+ */
+async function fetchTocPage(postId: string, pageNum: number): Promise<Element[]> {
+	await throttle(TOC_THROTTLE_KEY, TOC_THROTTLE_MS);
+	const form = `action=wi_getreleases_pagination&pagenum=${pageNum}&mypostid=${encodeURIComponent(postId)}`;
+	const html = await fetchHtml(PATHS.adminAjax(), {
+		method: "POST",
+		body: form,
+		contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+	});
+	return Array.from(parseHtml(html).querySelectorAll(SELECTORS.chapterListItem));
+}
+
+/**
+ * Read the 1-based `order` attribute SH puts on each `li.toc_w`. Falls back
+ * to a large sentinel when missing so defensive sorting still terminates.
+ */
+function orderOf(li: Element): number {
+	const raw = li.getAttribute("order");
+	const n = raw ? Number.parseInt(raw, 10) : Number.NaN;
+	return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
+}
 
 /**
  * Parse a ScribbleHub listing page (search results, series-ranking, …). SH's

@@ -98,10 +98,7 @@ describe("ao3.fetchSeriesMetadata", () => {
 		const meta = await ao3Scraper.fetchSeriesMetadata("https://archiveofourown.org/works/12345");
 
 		expect(meta.title).toBe("A Test Work");
-		expect(mockedFetchHtml).toHaveBeenNthCalledWith(
-			1,
-			"https://archiveofourown.org/works/12345",
-		);
+		expect(mockedFetchHtml).toHaveBeenNthCalledWith(1, "https://archiveofourown.org/works/12345");
 		expect(mockedFetchHtml).toHaveBeenNthCalledWith(
 			2,
 			"https://archiveofourown.org/works/12345?view_full_work=true&view_adult=true",

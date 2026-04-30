@@ -34,7 +34,6 @@ export type SearchAllResult = {
 	challengeProviders: ProviderId[];
 };
 
-
 /**
  * Per-provider search timeout. Generous enough for slow connections and
  * rate-limited APIs; short enough that a single hung provider doesn't hold
@@ -117,10 +116,10 @@ async function fanOut(
 	// report which providers failed without an extra index→id lookup.
 	const tasks = pool.flatMap((s) => {
 		const promise = pick(s);
-		return promise ? [{ id: s.id, promise }] : [];
+		return promise ? [{ id: s.id, promise, timeoutMs: s.timeoutMs }] : [];
 	});
 	const settled = await Promise.allSettled(
-		tasks.map((t) => withTimeout(t.promise, PROVIDER_SEARCH_TIMEOUT_MS, t.id)),
+		tasks.map((t) => withTimeout(t.promise, t.timeoutMs ?? PROVIDER_SEARCH_TIMEOUT_MS, t.id)),
 	);
 
 	const results: SearchResult[] = [];

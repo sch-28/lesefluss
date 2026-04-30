@@ -1,7 +1,7 @@
 import { IonButton, IonIcon, IonSpinner, IonText } from "@ionic/react";
+import { alertCircleOutline, sadOutline } from "ionicons/icons";
 import type React from "react";
-import { Capacitor } from "@capacitor/core";
-import { alertCircleOutline, sadOutline, shieldCheckmarkOutline } from "ionicons/icons";
+import { CloudflareChallenge } from "../../components/cloudflare-challenge";
 import CoverImage from "../../components/cover-image";
 import type { ViewMode } from "../../components/view-mode-toggle";
 import { queryHooks } from "../../services/db/hooks";
@@ -10,8 +10,6 @@ import {
 	type ProviderId,
 	type SearchResult,
 } from "../../services/serial-scrapers";
-import { NativeHttp } from "../../services/serial-scrapers/native-http";
-import { PROVIDER_CHALLENGE_URL } from "./web-novels-providers";
 
 interface Props {
 	query: string;
@@ -24,23 +22,24 @@ interface Props {
 
 export const WebNovelSearchPanel: React.FC<Props> = ({ query, provider, viewMode, onPick }) => {
 	const trimmed = query.trim();
-	const { data, isLoading, isError, refetch } = queryHooks.useSearchSerials(query, { provider });
+	const { data, isLoading, isFetching, isError, refetch } = queryHooks.useSearchSerials(query, {
+		provider,
+	});
 
 	if (!trimmed) return <PopularShelf provider={provider} viewMode={viewMode} onPick={onPick} />;
 
-	if (isError) {
-		return <ErrorState message="Search failed. Check your connection and try again." onRetry={refetch} />;
+	if (isLoading || isFetching) {
+		return <LoadingState label="Searching providers…" />;
 	}
 
-	if (isLoading || !data) {
+	if (isError) {
 		return (
-			<div className="flex items-center justify-center gap-2 p-8">
-				<IonSpinner name="dots" />
-				<IonText color="medium" className="text-sm">
-					Searching providers…
-				</IonText>
-			</div>
+			<ErrorState message="Search failed. Check your connection and try again." onRetry={refetch} />
 		);
+	}
+
+	if (!data) {
+		return <LoadingState label="Searching providers…" />;
 	}
 
 	const { results, failedProviders, challengeProviders } = data;
@@ -61,7 +60,7 @@ export const WebNovelSearchPanel: React.FC<Props> = ({ query, provider, viewMode
 	return (
 		<div className="flex flex-col gap-3 pt-3">
 			{challengeProviders.length > 0 && (
-				<ChallengeBanner providers={challengeProviders} onResolved={refetch} />
+				<CloudflareChallenge providers={challengeProviders} onResolved={refetch} />
 			)}
 			{failedProviders.length > 0 && (
 				<div className="rounded-md border border-[var(--ion-color-warning,#f0a020)] bg-[var(--ion-color-warning-tint,#fff7e6)] px-3 py-2 text-[var(--ion-color-warning-shade,#a07000)] text-xs">
@@ -70,9 +69,6 @@ export const WebNovelSearchPanel: React.FC<Props> = ({ query, provider, viewMode
 			)}
 			{results.length > 0 && (
 				<ResultsLayout results={results} viewMode={viewMode} provider={provider} onPick={onPick} />
-			)}
-			{results.length === 0 && challengeProviders.length > 0 && (
-				<EmptyState>Verify to load results from blocked providers.</EmptyState>
 			)}
 		</div>
 	);
@@ -83,26 +79,25 @@ const PopularShelf: React.FC<{
 	viewMode: ViewMode;
 	onPick: (result: SearchResult) => void;
 }> = ({ provider, viewMode, onPick }) => {
-	const { data, isLoading, isError, refetch } = queryHooks.usePopularSerials(provider);
+	const { data, isLoading, isFetching, isError, refetch } = queryHooks.usePopularSerials(provider);
 
-	if (isLoading) {
-		return (
-			<div className="flex items-center justify-center gap-2 p-8">
-				<IonSpinner name="dots" />
-				<IonText color="medium" className="text-sm">
-					Loading popular…
-				</IonText>
-			</div>
-		);
+	if (isLoading || isFetching) {
+		return <LoadingState label="Loading popular…" />;
 	}
 
 	if (isError) {
 		return <ErrorState message="Failed to load popular series." onRetry={refetch} />;
 	}
 
-	if (!data) return null;
+	if (!data) {
+		return <LoadingState label="Loading popular…" />;
+	}
 
-	if (data.results.length === 0 && data.failedProviders.length > 0 && data.challengeProviders.length === 0) {
+	if (
+		data.results.length === 0 &&
+		data.failedProviders.length > 0 &&
+		data.challengeProviders.length === 0
+	) {
 		return (
 			<ErrorState
 				message={`Failed to load popular series (${data.failedProviders.join(", ")}).`}
@@ -116,10 +111,15 @@ const PopularShelf: React.FC<{
 	return (
 		<div className="flex flex-col gap-3 pt-3">
 			{data.challengeProviders.length > 0 && (
-				<ChallengeBanner providers={data.challengeProviders} onResolved={refetch} />
+				<CloudflareChallenge providers={data.challengeProviders} onResolved={refetch} />
 			)}
 			{data.results.length > 0 && (
-				<ResultsLayout results={data.results} viewMode={viewMode} provider={provider} onPick={onPick} />
+				<ResultsLayout
+					results={data.results}
+					viewMode={viewMode}
+					provider={provider}
+					onPick={onPick}
+				/>
 			)}
 		</div>
 	);
@@ -196,45 +196,17 @@ const ResultListItem: React.FC<{
 	</button>
 );
 
-const iconSmStyle = { fontSize: "1rem" };
 const iconLgStyle = { fontSize: "2rem" };
 const noMarginStyle = { margin: 0 };
 
-const ChallengeBanner: React.FC<{ providers: ProviderId[]; onResolved: () => void }> = ({
-	providers,
-	onResolved,
-}) => {
-	if (!Capacitor.isNativePlatform()) return null;
-	return (
-		<div className="flex flex-col gap-2 rounded-md border border-[var(--ion-border-color,#c8c7cc)] bg-[var(--ion-card-background,#ffffff)] px-3 py-2">
-			<div className="flex items-center gap-1.5 text-[color:var(--ion-text-color,#000000)] text-xs font-semibold">
-				<IonIcon icon={shieldCheckmarkOutline} style={iconSmStyle} />
-				Cloudflare verification required
-			</div>
-			<div className="flex flex-wrap gap-2">
-				{providers.map((p) => {
-					const challengeUrl = PROVIDER_CHALLENGE_URL[p];
-					if (!challengeUrl) return null;
-					return (
-						<IonButton
-							key={p}
-							size="small"
-							fill="outline"
-							color="dark"
-							onClick={() =>
-								NativeHttp.openChallenge({ url: challengeUrl, userAgent: navigator.userAgent })
-									.then(onResolved)
-									.catch(() => { /* user dismissed the challenge — nothing to do */ })
-							}
-						>
-							Verify {p}
-						</IonButton>
-					);
-				})}
-			</div>
-		</div>
-	);
-};
+const LoadingState: React.FC<{ label: string }> = ({ label }) => (
+	<div className="flex items-center justify-center gap-2 p-8">
+		<IonSpinner name="dots" />
+		<IonText color="medium" className="text-sm">
+			{label}
+		</IonText>
+	</div>
+);
 
 const ErrorState: React.FC<{ message: string; onRetry?: () => void }> = ({ message, onRetry }) => (
 	<div className="flex flex-col items-center justify-center gap-3 p-8 text-center">

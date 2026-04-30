@@ -1,5 +1,4 @@
 import { Capacitor } from "@capacitor/core";
-import type { ProviderId } from "../types";
 
 /**
  * Throttle timing helper for adapters: pick `native` ms when running on a real
@@ -13,23 +12,23 @@ export function platformThrottleMs(native: number, catalog: number): number {
 }
 
 /**
- * Per-provider rate-limit gate. Each adapter awaits `throttle('ao3', 5000)`
+ * Per-key rate-limit gate. Each adapter awaits `throttle('ao3', 5000)`
  * before fetching; the gate guarantees at least `minMs` elapses between any
- * two resolved `throttle()` calls for the same provider.
+ * two resolved `throttle()` calls for the same key.
+ *
+ * Keys are arbitrary strings so adapters can carve sub-gates off the main
+ * provider gate (e.g. `'scribblehub:toc'` for cheap admin-ajax fragments
+ * paced separately from the heavier HTML/chapter pages).
  *
  * Implemented as a chained-promise queue so concurrent callers serialize —
  * a `Promise.all(ids.map(fetchAndStoreChapter))` will pace correctly.
- *
- * Per-provider keying: a slow provider can't block another's pipeline. Two
- * concurrent imports of the same provider share the gate, which is the
- * correct behavior — the upstream doesn't care which caller sent the request.
  */
-const queues = new Map<ProviderId, Promise<void>>();
+const queues = new Map<string, Promise<void>>();
 
-export function throttle(provider: ProviderId, minMs: number): Promise<void> {
-	const previous = queues.get(provider) ?? Promise.resolve();
+export function throttle(key: string, minMs: number): Promise<void> {
+	const previous = queues.get(key) ?? Promise.resolve();
 	const slot = previous.then(() => new Promise<void>((resolve) => setTimeout(resolve, minMs)));
-	queues.set(provider, slot);
+	queues.set(key, slot);
 	return previous;
 }
 

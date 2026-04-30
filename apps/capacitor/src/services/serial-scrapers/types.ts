@@ -29,6 +29,8 @@ export interface SerialScraper {
 	getPopular?(): Promise<SearchResult[]>;
 	/** When false, excluded from the all-providers popular fan-out; still used when this provider is explicitly selected. Defaults to true. */
 	readonly isIncludedInAllPopular?: boolean;
+	/** Per-provider timeout override for search/popular fan-out. Falls back to the registry default when unset. */
+	readonly timeoutMs?: number;
 }
 
 export type SearchResult = {
