@@ -19,6 +19,7 @@ import { Route as PrivacyIndexRouteImport } from './routes/privacy/index'
 import { Route as OrderIndexRouteImport } from './routes/order/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
 import { Route as ImprintIndexRouteImport } from './routes/imprint/index'
+import { Route as FeedbackIndexRouteImport } from './routes/feedback/index'
 import { Route as DownloadIndexRouteImport } from './routes/download/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DiyIndexRouteImport } from './routes/diy/index'
@@ -28,6 +29,7 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AuthMobileCallbackRouteImport } from './routes/auth/mobile-callback'
 import { Route as AppSplatRouteImport } from './routes/app/$'
 import { Route as ApiSyncRouteImport } from './routes/api/sync'
+import { Route as ApiFeedbackRouteImport } from './routes/api/feedback'
 import { Route as ApiBetaRequestRouteImport } from './routes/api/beta-request'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
@@ -83,6 +85,11 @@ const ImprintIndexRoute = ImprintIndexRouteImport.update({
   path: '/imprint/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FeedbackIndexRoute = FeedbackIndexRouteImport.update({
+  id: '/feedback/',
+  path: '/feedback/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DownloadIndexRoute = DownloadIndexRouteImport.update({
   id: '/download/',
   path: '/download/',
@@ -128,6 +135,11 @@ const ApiSyncRoute = ApiSyncRouteImport.update({
   path: '/api/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiFeedbackRoute = ApiFeedbackRouteImport.update({
+  id: '/api/feedback',
+  path: '/api/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiBetaRequestRoute = ApiBetaRequestRouteImport.update({
   id: '/api/beta-request',
   path: '/api/beta-request',
@@ -162,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/beta-request': typeof ApiBetaRequestRoute
+  '/api/feedback': typeof ApiFeedbackRoute
   '/api/sync': typeof ApiSyncRoute
   '/app/$': typeof AppSplatRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
@@ -171,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/diy/': typeof DiyIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/download/': typeof DownloadIndexRoute
+  '/feedback/': typeof FeedbackIndexRoute
   '/imprint/': typeof ImprintIndexRoute
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
@@ -187,6 +201,7 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/beta-request': typeof ApiBetaRequestRoute
+  '/api/feedback': typeof ApiFeedbackRoute
   '/api/sync': typeof ApiSyncRoute
   '/app/$': typeof AppSplatRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
@@ -196,6 +211,7 @@ export interface FileRoutesByTo {
   '/diy': typeof DiyIndexRoute
   '/docs': typeof DocsIndexRoute
   '/download': typeof DownloadIndexRoute
+  '/feedback': typeof FeedbackIndexRoute
   '/imprint': typeof ImprintIndexRoute
   '/login': typeof LoginIndexRoute
   '/order': typeof OrderIndexRoute
@@ -214,6 +230,7 @@ export interface FileRoutesById {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/beta-request': typeof ApiBetaRequestRoute
+  '/api/feedback': typeof ApiFeedbackRoute
   '/api/sync': typeof ApiSyncRoute
   '/app/$': typeof AppSplatRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
@@ -223,6 +240,7 @@ export interface FileRoutesById {
   '/diy/': typeof DiyIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/download/': typeof DownloadIndexRoute
+  '/feedback/': typeof FeedbackIndexRoute
   '/imprint/': typeof ImprintIndexRoute
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
@@ -241,6 +259,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/api/beta-request'
+    | '/api/feedback'
     | '/api/sync'
     | '/app/$'
     | '/auth/mobile-callback'
@@ -250,6 +269,7 @@ export interface FileRouteTypes {
     | '/diy/'
     | '/docs/'
     | '/download/'
+    | '/feedback/'
     | '/imprint/'
     | '/login/'
     | '/order/'
@@ -266,6 +286,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/api/beta-request'
+    | '/api/feedback'
     | '/api/sync'
     | '/app/$'
     | '/auth/mobile-callback'
@@ -275,6 +296,7 @@ export interface FileRouteTypes {
     | '/diy'
     | '/docs'
     | '/download'
+    | '/feedback'
     | '/imprint'
     | '/login'
     | '/order'
@@ -292,6 +314,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/api/beta-request'
+    | '/api/feedback'
     | '/api/sync'
     | '/app/$'
     | '/auth/mobile-callback'
@@ -301,6 +324,7 @@ export interface FileRouteTypes {
     | '/diy/'
     | '/docs/'
     | '/download/'
+    | '/feedback/'
     | '/imprint/'
     | '/login/'
     | '/order/'
@@ -319,6 +343,7 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiBetaRequestRoute: typeof ApiBetaRequestRoute
+  ApiFeedbackRoute: typeof ApiFeedbackRoute
   ApiSyncRoute: typeof ApiSyncRoute
   AppSplatRoute: typeof AppSplatRoute
   AuthMobileCallbackRoute: typeof AuthMobileCallbackRoute
@@ -328,6 +353,7 @@ export interface RootRouteChildren {
   DiyIndexRoute: typeof DiyIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
   DownloadIndexRoute: typeof DownloadIndexRoute
+  FeedbackIndexRoute: typeof FeedbackIndexRoute
   ImprintIndexRoute: typeof ImprintIndexRoute
   LoginIndexRoute: typeof LoginIndexRoute
   OrderIndexRoute: typeof OrderIndexRoute
@@ -408,6 +434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ImprintIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/feedback/': {
+      id: '/feedback/'
+      path: '/feedback'
+      fullPath: '/feedback/'
+      preLoaderRoute: typeof FeedbackIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/download/': {
       id: '/download/'
       path: '/download'
@@ -471,6 +504,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/feedback': {
+      id: '/api/feedback'
+      path: '/api/feedback'
+      fullPath: '/api/feedback'
+      preLoaderRoute: typeof ApiFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/beta-request': {
       id: '/api/beta-request'
       path: '/api/beta-request'
@@ -531,6 +571,7 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiBetaRequestRoute: ApiBetaRequestRoute,
+  ApiFeedbackRoute: ApiFeedbackRoute,
   ApiSyncRoute: ApiSyncRoute,
   AppSplatRoute: AppSplatRoute,
   AuthMobileCallbackRoute: AuthMobileCallbackRoute,
@@ -540,6 +581,7 @@ const rootRouteChildren: RootRouteChildren = {
   DiyIndexRoute: DiyIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
   DownloadIndexRoute: DownloadIndexRoute,
+  FeedbackIndexRoute: FeedbackIndexRoute,
   ImprintIndexRoute: ImprintIndexRoute,
   LoginIndexRoute: LoginIndexRoute,
   OrderIndexRoute: OrderIndexRoute,

@@ -6,6 +6,8 @@ const urls = [
 	{ path: "/download", priority: "0.9", changefreq: "monthly" },
 	{ path: "/device", priority: "0.8", changefreq: "monthly" },
 	{ path: "/docs", priority: "0.7", changefreq: "monthly" },
+	{ path: "/changelog", priority: "0.5", changefreq: "monthly" },
+	{ path: "/feedback", priority: "0.4", changefreq: "yearly" },
 	{ path: "/privacy", priority: "0.3", changefreq: "yearly" },
 	{ path: "/terms", priority: "0.3", changefreq: "yearly" },
 	{ path: "/imprint", priority: "0.3", changefreq: "yearly" },

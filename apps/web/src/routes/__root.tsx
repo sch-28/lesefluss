@@ -147,6 +147,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 											</Link>
 										</li>
 										<li>
+											<Link to="/feedback" className="transition-colors hover:text-foreground">
+												Feedback
+											</Link>
+										</li>
+										<li>
 											<a
 												href="https://github.com/sch-28/lesefluss"
 												target="_blank"

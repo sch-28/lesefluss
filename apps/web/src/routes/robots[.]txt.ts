@@ -5,8 +5,6 @@ const body = `User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /app/
-Disallow: /diy
-Disallow: /order
 Disallow: /admin
 
 Sitemap: ${SITE_URL}/sitemap.xml

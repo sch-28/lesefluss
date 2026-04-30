@@ -4,6 +4,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import * as React from "react";
 import { Button } from "~/components/ui/button";
 import { auth } from "~/lib/auth";
+import { seo } from "~/utils/seo";
 
 const DEEP_LINK_SCHEME = "lesefluss://auth-callback";
 
@@ -20,6 +21,11 @@ function buildDeepLink(token: string, state: string | undefined): string {
 }
 
 export const Route = createFileRoute("/auth/mobile-callback")({
+	head: () =>
+		seo({
+			title: "Returning to Lesefluss",
+			isNoindex: true,
+		}),
 	validateSearch: (search: Record<string, unknown>): { state?: string } =>
 		typeof search.state === "string" ? { state: search.state } : {},
 	beforeLoad: async ({ search }) => {

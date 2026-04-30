@@ -1,16 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import {
-	Cpu,
-	Download,
-	FileText,
-	History,
-	LogIn,
-	LogOut,
-	Menu,
-	Smartphone,
-	User,
-	X,
-} from "lucide-react";
+import { Cpu, Download, FileText, LogIn, LogOut, Menu, Smartphone, User, X } from "lucide-react";
 import * as React from "react";
 import { Button } from "~/components/ui/button";
 import {
@@ -28,7 +17,6 @@ const NAV_LINKS = [
 	{ to: "/device" as const, label: "Device", icon: Cpu },
 	{ to: "/download" as const, label: "Download", icon: Download },
 	{ to: "/docs" as const, label: "Docs", icon: FileText },
-	{ to: "/changelog" as const, label: "Changelog", icon: History },
 ];
 
 const navLinkClass = (mobile: boolean) =>
@@ -169,10 +157,11 @@ export function Header() {
 							href="https://github.com/sch-28/lesefluss"
 							target="_blank"
 							rel="noopener noreferrer"
-							className={navLinkClass(false)}
+							className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+							aria-label="GitHub repository"
+							title="GitHub repository"
 						>
-							<GithubIcon className="size-3.5" />
-							GitHub
+							<GithubIcon className="size-4" />
 						</a>
 					</nav>
 
