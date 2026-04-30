@@ -297,6 +297,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 			<div
 				ref={containerRef}
 				className={isPlaying ? "rsvp-display" : "rsvp-display rsvp-display--paused"}
+				style={{ "--rsvp-focal-color": settings.focalLetterColor } as React.CSSProperties}
 				onClick={togglePlayPause}
 				onScroll={handleScroll}
 				onPointerDown={handleDisplayPointerDown}

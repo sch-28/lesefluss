@@ -43,12 +43,7 @@ import ImportSheet from "./import-sheet";
 import PasteUrlModal from "./paste-url-modal";
 import SeriesCard from "./series-card";
 import SeriesListItem from "./series-list-item";
-import {
-	type FilterBy,
-	filterAndSortLibrary,
-	readingProgress,
-	type SortBy,
-} from "./sort-filter";
+import { type FilterBy, filterAndSortLibrary, readingProgress, type SortBy } from "./sort-filter";
 import SortPopover from "./sort-popover";
 import TransferModal from "./transfer-modal";
 import { useLibraryImports } from "./use-library-imports";

@@ -3,6 +3,19 @@ import type { SyncSettings } from "./sync";
 /** Layout variant of the standard (non-RSVP) reader. */
 export type PaginationStyle = "scroll" | "page";
 
+export type HexColor = `#${string}`;
+
+export const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
+
+export const FOCAL_LETTER_COLOR_PRESETS = [
+	"#ff0000",
+	"#ff8a00",
+	"#ffcc00",
+	"#00c853",
+	"#448aff",
+	"#b388ff",
+] as const satisfies readonly HexColor[];
+
 /**
  * Default RSVP settings matching ESP32 config.py
  * These defaults are used when initializing the database.
@@ -15,6 +28,7 @@ export const DEFAULT_SETTINGS = {
 	ACCEL_START: 2.0, // Initial delay multiplier (1.0-5.0, 2.0 = half speed)
 	ACCEL_RATE: 0.1, // Acceleration rate (0.05-1.0, 0.1 = 10 words to full speed)
 	X_OFFSET: 30, // Horizontal focal position % (30-70)
+	FOCAL_LETTER_COLOR: "#ff0000", // Focal letter highlight color
 	WORD_OFFSET: 5, // Words to rewind on resume (0-20)
 	INVERSE: false, // Inverse colors (false = white on black)
 	BLE_ON: true, // BLE enabled for companion app
@@ -70,6 +84,7 @@ export const SYNCED_SETTING_KEYS = [
 	"accelStart",
 	"accelRate",
 	"xOffset",
+	"focalLetterColor",
 	"wordOffset",
 	"readerTheme",
 	"readerFontSize",
@@ -100,6 +115,7 @@ export const ESP32_SETTING_KEYS = {
 	accelStart: "accel_start",
 	accelRate: "accel_rate",
 	xOffset: "x_offset",
+	focalLetterColor: "focal_letter_color",
 	wordOffset: "word_offset",
 	inverse: "inverse",
 	bleOn: "ble_on",

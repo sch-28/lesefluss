@@ -1,4 +1,4 @@
-import type { PaginationStyle } from "@lesefluss/rsvp-core";
+import type { HexColor, PaginationStyle } from "@lesefluss/rsvp-core";
 import { sql } from "drizzle-orm";
 import { check, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -25,6 +25,7 @@ export const settings = sqliteTable("settings", {
 	accelStart: real("accel_start").notNull().default(2.0),
 	accelRate: real("accel_rate").notNull().default(0.1),
 	xOffset: integer("x_offset").notNull().default(30),
+	focalLetterColor: text("focal_letter_color").$type<HexColor>().notNull().default("#ff0000"),
 	wordOffset: integer("word_offset").notNull().default(5),
 	inverse: integer("inverse", { mode: "boolean" }).notNull().default(false),
 	bleOn: integer("ble_on", { mode: "boolean" }).notNull().default(true),

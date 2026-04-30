@@ -116,6 +116,7 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 | `accel_start` | 1.0–5.0 | 2.0 | Initial speed multiplier (2.0 = half speed) |
 | `accel_rate` | 0.05–1.0 | 0.1 | Rate to reach full speed (0.1 = 10 words) |
 | `x_offset` | 30–70 | 50 | Focal letter horizontal position (%) |
+| `focal_letter_color` | `#rrggbb` | `#ff0000` | Focal letter highlight color |
 | `word_offset` | 0–20 | 5 | Words to rewind on resume |
 | `inverse` | bool | false | Black on white when true |
 | `ble_on` | bool | true | Enable BLE server |

@@ -26,6 +26,7 @@ const Hero: React.FC<Props> = ({ books, onOpen, intervalMs = 6000 }) => {
 	// or the user manually navigates. Depending only on `books.length` would
 	// let a new set keep the stale index.
 	useEffect(() => {
+		void manualTick;
 		if (books.length <= 1) return;
 		const id = setInterval(() => {
 			if (!pausedRef.current) setIndex((i) => (i + 1) % books.length);
@@ -34,6 +35,7 @@ const Hero: React.FC<Props> = ({ books, onOpen, intervalMs = 6000 }) => {
 	}, [books, intervalMs, manualTick]);
 
 	useEffect(() => {
+		void books;
 		setIndex(0);
 	}, [books]);
 

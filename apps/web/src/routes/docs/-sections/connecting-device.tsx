@@ -1,8 +1,5 @@
-import { Link } from "@tanstack/react-router";
 import { Bluetooth } from "lucide-react";
 import type { DocsSection } from "./shared";
-
-const linkClass = "text-foreground underline decoration-border hover:decoration-foreground/50";
 
 function Content() {
 	return (

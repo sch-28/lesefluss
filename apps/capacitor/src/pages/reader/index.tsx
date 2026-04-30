@@ -210,6 +210,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// (before the initial scroll-end repopulates it) would read null, fall
 	// back to 0, and overwrite the book's saved position with 0.
 	useEffect(() => {
+		void id;
 		didSeedOffsetsRef.current = false;
 		didSeedModeRef.current = false;
 		lastOffsetRef.current = null;
@@ -315,6 +316,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			accelStart: dbSettings?.accelStart ?? DEFAULT_SETTINGS.ACCEL_START,
 			accelRate: dbSettings?.accelRate ?? DEFAULT_SETTINGS.ACCEL_RATE,
 			xOffset: dbSettings?.xOffset ?? DEFAULT_SETTINGS.X_OFFSET,
+			focalLetterColor: dbSettings?.focalLetterColor ?? DEFAULT_SETTINGS.FOCAL_LETTER_COLOR,
 		}),
 		[dbSettings],
 	);

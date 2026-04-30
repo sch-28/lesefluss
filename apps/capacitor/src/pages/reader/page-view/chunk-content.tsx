@@ -87,6 +87,8 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	// Measure scrollWidth after each layout-affecting change. Wait for fonts on
 	// cold start so column flow doesn't shift mid-measure.
 	useLayoutEffect(() => {
+		void fontSize;
+		void fontFamily;
 		if (!ref.current || pageWidth === 0 || pageHeight === 0) return;
 		let cancelled = false;
 		const apply = () => {

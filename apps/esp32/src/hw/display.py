@@ -195,7 +195,7 @@ class DisplayManager:
 
         tc = config.TEXT_COLOR
         bg = config.BACKGROUND_COLOR
-        fc = config.FOCAL_LETTER_COLOR
+        fc = config.hex_to_rgb(config.FOCAL_LETTER_COLOR)
 
         if focal_pos > 0:
             self.text(word[:focal_pos], x, y, color=tc, bg=bg)

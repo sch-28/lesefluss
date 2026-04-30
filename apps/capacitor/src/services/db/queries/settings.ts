@@ -22,6 +22,7 @@ export async function getSettings(): Promise<Settings> {
 		accelStart: DEFAULT_SETTINGS.ACCEL_START,
 		accelRate: DEFAULT_SETTINGS.ACCEL_RATE,
 		xOffset: DEFAULT_SETTINGS.X_OFFSET,
+		focalLetterColor: DEFAULT_SETTINGS.FOCAL_LETTER_COLOR,
 		wordOffset: DEFAULT_SETTINGS.WORD_OFFSET,
 		inverse: DEFAULT_SETTINGS.INVERSE,
 		bleOn: DEFAULT_SETTINGS.BLE_ON,

@@ -292,7 +292,7 @@ export function useRsvpEngine({
 		setWordIndex(idx);
 		displayedOffsetRef.current = words[idx]?.byteOffset ?? null;
 		setCurrentWord(words[idx] ?? null);
-	}, [initialByteOffset, words]);
+	}, [initialByteOffset, words, resetChunks]);
 
 	// ── Auto-pause in background ─────────────────────────────────────────
 	useEffect(() => {

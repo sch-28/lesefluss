@@ -52,6 +52,7 @@ class SettingsHandler:
             "accel_start":          self.config.ACCEL_START,
             "accel_rate":           self.config.ACCEL_RATE,
             "x_offset":             self.config.X_OFFSET,
+            "focal_letter_color":   self.config.FOCAL_LETTER_COLOR,
             "word_offset":          self.config.WORD_OFFSET,
             "inverse":              self.config.INVERSE,
             "ble_on":               self.config.BLE_ON,
@@ -87,6 +88,10 @@ class SettingsHandler:
             self.config.ACCEL_START       = data.get("accel_start",          self.config.ACCEL_START)
             self.config.ACCEL_RATE        = data.get("accel_rate",           self.config.ACCEL_RATE)
             self.config.X_OFFSET          = data.get("x_offset",             self.config.X_OFFSET)
+            self.config.FOCAL_LETTER_COLOR = self.config.normalize_hex_color(
+                data.get("focal_letter_color", self.config.FOCAL_LETTER_COLOR),
+                self.config.FOCAL_LETTER_COLOR,
+            )
             self.config.WORD_OFFSET       = data.get("word_offset",          self.config.WORD_OFFSET)
             self.config.INVERSE           = data.get("inverse",              self.config.INVERSE)
             self.config.BLE_ON            = data.get("ble_on",               self.config.BLE_ON)
@@ -129,6 +134,7 @@ class SettingsHandler:
             f"ACCEL_START = {self.config.ACCEL_START}\n"
             f"ACCEL_RATE = {self.config.ACCEL_RATE}\n"
             f"X_OFFSET = {self.config.X_OFFSET}\n"
+            f"FOCAL_LETTER_COLOR = {self.config.FOCAL_LETTER_COLOR!r}\n"
             f"WORD_OFFSET = {self.config.WORD_OFFSET}\n"
             f"INVERSE = {self.config.INVERSE}\n"
             f"BLE_ON = {self.config.BLE_ON}\n"

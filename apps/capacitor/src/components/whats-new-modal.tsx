@@ -51,7 +51,7 @@ const WhatsNewModal: React.FC = () => {
 	}, []);
 
 	const autoEntries = useMemo(() => {
-		if (!settings || !settings.onboardingCompleted) return [];
+		if (!settings?.onboardingCompleted) return [];
 		return entriesNewerThan(settings.lastSeenChangelogDate);
 	}, [settings]);
 

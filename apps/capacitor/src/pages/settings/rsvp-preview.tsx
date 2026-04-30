@@ -24,18 +24,14 @@ const RsvpPreview: React.FC<Props> = ({ settings }) => {
 	const [playing, setPlaying] = useState(true);
 	const accelRef = useRef(0);
 	const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+	const timingKey = `${settings.wpm}:${settings.accelStart}:${settings.accelRate}:${settings.delayComma}:${settings.delayPeriod}`;
 
 	// Reset ramp + rewind to first word whenever settings change so the ease-in is visible again.
 	useEffect(() => {
+		void timingKey;
 		accelRef.current = 0;
 		setIndex(0);
-	}, [
-		settings.wpm,
-		settings.accelStart,
-		settings.accelRate,
-		settings.delayComma,
-		settings.delayPeriod,
-	]);
+	}, [timingKey]);
 
 	useEffect(() => {
 		if (!playing) return;
@@ -68,6 +64,7 @@ const RsvpPreview: React.FC<Props> = ({ settings }) => {
 		<button
 			type="button"
 			className="rsvp-preview-card"
+			style={{ "--rsvp-focal-color": settings.focalLetterColor } as React.CSSProperties}
 			onClick={() => setPlaying((p) => !p)}
 			aria-label={playing ? "Pause preview" : "Play preview"}
 		>

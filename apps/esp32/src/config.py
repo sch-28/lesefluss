@@ -76,10 +76,29 @@ BLE_ON = True        # Enable BLE for companion app
 # Colors
 # ---------------------------------------------------------------------------
 
-FOCAL_LETTER_COLOR    = (255, 0, 0)
+FOCAL_LETTER_COLOR    = "#ff0000"
 FOCAL_INDICATOR_COLOR = (175, 0, 0)
 TEXT_COLOR            = (255, 255, 255)
 BACKGROUND_COLOR      = (0, 0, 0)
+
+def hex_to_rgb(value, fallback=(255, 0, 0)):
+    """Convert #rrggbb setting strings to display RGB tuples."""
+    try:
+        if not isinstance(value, str) or len(value) != 7 or value[0] != "#":
+            return fallback
+        return (int(value[1:3], 16), int(value[3:5], 16), int(value[5:7], 16))
+    except Exception:
+        return fallback
+
+def normalize_hex_color(value, fallback="#ff0000"):
+    """Return a safe lowercase #rrggbb string for persisted BLE settings."""
+    try:
+        if not isinstance(value, str) or len(value) != 7 or value[0] != "#":
+            return fallback
+        int(value[1:7], 16)
+        return value.lower()
+    except Exception:
+        return fallback
 
 # ---------------------------------------------------------------------------
 # Scrub / button

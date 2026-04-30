@@ -1336,7 +1336,7 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 }
 
 .rsvp-focal {
-	color: #ff0000;
+	color: var(--rsvp-focal-color, #ff0000);
 }
 
 .rsvp-focal-line {
@@ -1344,7 +1344,7 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	top: calc(50% - 2.2rem);
 	height: 0.6rem;
 	width: 2px;
-	background: rgba(139, 0, 0, 0.5);
+	background: color-mix(in srgb, var(--rsvp-focal-color, #ff0000) 55%, transparent);
 	pointer-events: none;
 	transform: translateX(-50%);
 }
@@ -1358,6 +1358,26 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	width: 2px;
 	height: 0.6rem;
 	background: inherit;
+}
+
+.rsvp-color-swatches {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+	padding: 0.35rem 0;
+}
+
+.rsvp-color-swatch {
+	width: 1.75rem;
+	height: 1.75rem;
+	border: 2px solid rgba(128, 128, 128, 0.35);
+	border-radius: 999px;
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.rsvp-color-swatch--active {
+	border-color: var(--ion-color-primary, #111111);
+	box-shadow: 0 0 0 2px rgba(128, 128, 128, 0.25);
 }
 
 .rsvp-paused-indicator {

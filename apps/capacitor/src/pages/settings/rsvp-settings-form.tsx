@@ -18,7 +18,12 @@ import {
 	IonRange,
 	IonSpinner,
 } from "@ionic/react";
-import { DEFAULT_SETTINGS, SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
+import {
+	DEFAULT_SETTINGS,
+	FOCAL_LETTER_COLOR_PRESETS,
+	type HexColor,
+	SETTING_CONSTRAINTS,
+} from "@lesefluss/rsvp-core";
 import { chevronDown } from "ionicons/icons";
 import type React from "react";
 import { useState } from "react";
@@ -35,6 +40,7 @@ const RSVP_DEFAULTS_PATCH = {
 	accelStart: DEFAULT_SETTINGS.ACCEL_START,
 	accelRate: DEFAULT_SETTINGS.ACCEL_RATE,
 	xOffset: DEFAULT_SETTINGS.X_OFFSET,
+	focalLetterColor: DEFAULT_SETTINGS.FOCAL_LETTER_COLOR,
 	wordOffset: DEFAULT_SETTINGS.WORD_OFFSET,
 	defaultReaderMode: DEFAULT_SETTINGS.DEFAULT_READER_MODE,
 };
@@ -206,6 +212,29 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 					step={SETTING_CONSTRAINTS.X_OFFSET.step}
 					onChange={(v) => updateSetting("xOffset", v)}
 				/>
+
+				<IonItem>
+					<IonLabel>
+						Focal letter color
+						<IonNote className="ion-padding-start">{settings.focalLetterColor}</IonNote>
+					</IonLabel>
+					<div slot="end" className="rsvp-color-swatches">
+						{FOCAL_LETTER_COLOR_PRESETS.map((color) => (
+							<button
+								key={color}
+								type="button"
+								className={
+									settings.focalLetterColor.toLowerCase() === color
+										? "rsvp-color-swatch rsvp-color-swatch--active"
+										: "rsvp-color-swatch"
+								}
+								style={{ background: color }}
+								onClick={() => updateSetting("focalLetterColor", color as HexColor)}
+								aria-label={`Set focal letter color to ${color}`}
+							/>
+						))}
+					</div>
+				</IonItem>
 
 				{/* ── Advanced (collapsible) ── */}
 				<button

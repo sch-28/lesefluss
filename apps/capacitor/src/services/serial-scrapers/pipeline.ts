@@ -28,7 +28,7 @@ export async function runSerialImport(url: string): Promise<Series> {
  */
 export async function fetchAndStoreChapter(chapterId: string): Promise<ChapterFetchResult> {
 	const chapter = await queries.getBook(chapterId);
-	if (!chapter || !chapter.seriesId || chapter.chapterIndex === null) {
+	if (!chapter?.seriesId || chapter.chapterIndex === null) {
 		throw new Error("NOT_A_CHAPTER");
 	}
 	const series = await queries.getSeries(chapter.seriesId);

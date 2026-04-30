@@ -76,5 +76,5 @@ for (const book of books) {
 	}
 }
 
-await writeFile(MANIFEST, JSON.stringify(manifest, null, 2) + "\n");
+await writeFile(MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`);
 console.error(`\nDone: ${ok} ok, ${fail} failed. Manifest written to ${MANIFEST}`);

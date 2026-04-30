@@ -146,9 +146,7 @@ function useRestoreSession(
 				log.warn("sync", "initial sync failed:", err);
 			}
 		})();
-		// Mount-only: setters are stable by React contract.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+	}, [setIsLoggedIn, setLastSynced, setUserEmail]);
 }
 
 function useResumeSync(setLastSynced: Dispatch<SetStateAction<number | null>>) {

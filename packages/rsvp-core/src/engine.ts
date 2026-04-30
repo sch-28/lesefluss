@@ -23,6 +23,7 @@ export interface RsvpSettings {
 	accelStart: number;
 	accelRate: number;
 	xOffset: number;
+	focalLetterColor: string;
 }
 
 // ─── Word index ─────────────────────────────────────────────────────────────

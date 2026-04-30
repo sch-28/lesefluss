@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SETTING_CONSTRAINTS } from "./settings";
+import { HEX_COLOR_REGEX, SETTING_CONSTRAINTS } from "./settings";
 
 // ---------------------------------------------------------------------------
 // Zod schemas - runtime validation on server, type source-of-truth for both apps
@@ -69,6 +69,9 @@ export const SyncSettingsSchema = z.object({
 		.int()
 		.min(SETTING_CONSTRAINTS.X_OFFSET.min)
 		.max(SETTING_CONSTRAINTS.X_OFFSET.max),
+	focalLetterColor: z.custom<`#${string}`>(
+		(value) => typeof value === "string" && HEX_COLOR_REGEX.test(value),
+	),
 	wordOffset: z
 		.number()
 		.int()

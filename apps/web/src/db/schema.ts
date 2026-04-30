@@ -95,6 +95,7 @@ export const syncSettings = pgTable(
 		accelStart: real("accel_start").notNull().default(2.0),
 		accelRate: real("accel_rate").notNull().default(0.1),
 		xOffset: integer("x_offset").notNull().default(30),
+		focalLetterColor: text("focal_letter_color").notNull().default("#ff0000"),
 		wordOffset: integer("word_offset").notNull().default(5),
 		// Reader appearance
 		readerTheme: text("reader_theme").notNull().default("dark"),
@@ -113,6 +114,10 @@ export const syncSettings = pgTable(
 		check(
 			"sync_settings_default_reader_mode_check",
 			sql`${table.defaultReaderMode} IN ('scroll', 'rsvp')`,
+		),
+		check(
+			"sync_settings_focal_letter_color_check",
+			sql`${table.focalLetterColor} ~ '^#[0-9A-Fa-f]{6}$'`,
 		),
 		check(
 			"sync_settings_pagination_style_check",

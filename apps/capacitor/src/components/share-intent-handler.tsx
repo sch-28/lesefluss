@@ -48,7 +48,6 @@ const ShareIntentHandler: React.FC = () => {
 	});
 	handlersRef.current = { importUrl, importSerial, importText, importBlob, showToast, history };
 
-
 	useEffect(() => {
 		if (IS_WEB) return;
 

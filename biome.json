@@ -9,6 +9,7 @@
 		"ignoreUnknown": true,
 		"includes": [
 			"**",
+			"!**/.turbo",
 			"!**/dist",
 			"!**/public/app",
 			"!**/node_modules",

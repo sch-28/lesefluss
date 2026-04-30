@@ -118,5 +118,7 @@ export function filterAndSortLibrary(
 			return { kind: "series", series: s, activity: a, sortKey: seriesSortKey(s, a) };
 		}),
 	];
-	return items.filter((it) => matchesFilter(it, filterBy)).sort((a, b) => compareItems(a, b, sortBy));
+	return items
+		.filter((it) => matchesFilter(it, filterBy))
+		.sort((a, b) => compareItems(a, b, sortBy));
 }

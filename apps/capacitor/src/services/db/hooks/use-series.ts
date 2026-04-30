@@ -112,6 +112,7 @@ function useChapterListSync(seriesId: string | undefined): {
 	const hasFired = useRef(false);
 
 	useEffect(() => {
+		void attempt;
 		if (!seriesId || hasFired.current) return;
 		hasFired.current = true;
 		let mounted = true;

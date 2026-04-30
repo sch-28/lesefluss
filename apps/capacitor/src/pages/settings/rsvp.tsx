@@ -23,6 +23,7 @@ const RSVPSettings: React.FC = () => {
 				accelStart: settings.accelStart,
 				accelRate: settings.accelRate,
 				xOffset: settings.xOffset,
+				focalLetterColor: settings.focalLetterColor,
 			}
 		: null;
 
