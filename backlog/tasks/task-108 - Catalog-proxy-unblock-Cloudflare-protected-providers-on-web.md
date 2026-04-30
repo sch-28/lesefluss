@@ -4,10 +4,12 @@ title: 'Catalog proxy: unblock Cloudflare-protected providers on web'
 status: To Do
 assignee: []
 created_date: '2026-04-29 20:14'
+updated_date: '2026-04-30 21:49'
 labels:
   - catalog
   - web
   - scraping
+milestone: m-4
 dependencies: []
 references:
   - apps/catalog/src/routes/proxy.ts

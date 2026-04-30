@@ -4,11 +4,12 @@ title: Cover image storage optimization (resize + compress)
 status: To Do
 assignee: []
 created_date: '2026-04-26 11:29'
-updated_date: '2026-04-26 11:35'
+updated_date: '2026-04-30 21:49'
 labels:
   - performance
   - storage
   - images
+milestone: m-4
 dependencies: []
 documentation:
   - doc-1
