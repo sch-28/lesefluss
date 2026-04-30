@@ -13,6 +13,7 @@ export const changelog: ChangelogEntry[] = [
 		title: "Feedback, Error Tracking, and Reader Polish",
 		tags: ["App", "Website"],
 		changes: [
+			"You can now change the color of the focal letter",
 			"Added a public feedback page and API endpoint",
 			"Improved SEO and sitemap routing",
 			"Integrated GlitchTip error tracking (browser + server)",
