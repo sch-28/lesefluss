@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "../index";
 import { type Highlight, highlights, type NewHighlight } from "../schema";
 
@@ -11,6 +11,18 @@ export async function getHighlightsByBook(bookId: string): Promise<Highlight[]> 
 		.from(highlights)
 		.where(eq(highlights.bookId, bookId))
 		.orderBy(asc(highlights.startOffset));
+}
+
+/**
+ * Fetch highlights for a set of books without issuing one query per book.
+ */
+export async function getHighlightsByBooks(bookIds: string[]): Promise<Highlight[]> {
+	if (bookIds.length === 0) return [];
+	return db
+		.select()
+		.from(highlights)
+		.where(inArray(highlights.bookId, bookIds))
+		.orderBy(asc(highlights.bookId), asc(highlights.startOffset));
 }
 
 /**

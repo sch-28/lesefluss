@@ -12,6 +12,10 @@ import {
 	series,
 } from "../schema";
 
+// Chunk bulk inserts to stay under SQLite's SQLITE_MAX_VARIABLE_NUMBER (32766) and avoid
+// blowing the JS call stack. 200 rows × ~16 cols ≈ 3200 params keeps both limits comfortable.
+const BULK_CHUNK = 200;
+
 export async function getSeries(id: string): Promise<Series | undefined> {
 	const rows = await db.select().from(series).where(eq(series.id, id));
 	return rows[0];
@@ -55,16 +59,8 @@ export async function addSeriesWithChapters(
 	await db.insert(series).values(seriesRow);
 	if (chapterRows.length === 0) return;
 
-	// Chunk bulk inserts. A long serial (e.g. a 2000-chapter web novel) would
-	// otherwise build one huge VALUES clause: drizzle's parameter spread blows
-	// the JS call stack ("Maximum call stack size exceeded") around a few
-	// thousand args, and SQLite's SQLITE_MAX_VARIABLE_NUMBER (32766 default)
-	// caps params per statement regardless. 200 rows × ~16 cols ≈ 3200 vars
-	// keeps both limits comfortable and is small enough that any future
-	// schema widening doesn't push us back over the line.
-	const CHUNK = 200;
-	for (let i = 0; i < chapterRows.length; i += CHUNK) {
-		await db.insert(books).values(chapterRows.slice(i, i + CHUNK));
+	for (let i = 0; i < chapterRows.length; i += BULK_CHUNK) {
+		await db.insert(books).values(chapterRows.slice(i, i + BULK_CHUNK));
 	}
 	const contentRows = chapterRows.map((b) => ({
 		bookId: b.id,
@@ -72,8 +68,8 @@ export async function addSeriesWithChapters(
 		coverImage: null,
 		chapters: null,
 	}));
-	for (let i = 0; i < contentRows.length; i += CHUNK) {
-		await db.insert(bookContent).values(contentRows.slice(i, i + CHUNK));
+	for (let i = 0; i < contentRows.length; i += BULK_CHUNK) {
+		await db.insert(bookContent).values(contentRows.slice(i, i + BULK_CHUNK));
 	}
 }
 
@@ -270,18 +266,24 @@ export async function getSeriesEntryChapter(seriesId: string): Promise<Book | un
  */
 export async function insertChapters(rows: NewBook[]): Promise<void> {
 	if (rows.length === 0) return;
-	await db.insert(books).values(rows).onConflictDoNothing();
-	await db
-		.insert(bookContent)
-		.values(
-			rows.map((b) => ({
-				bookId: b.id,
-				content: "",
-				coverImage: null,
-				chapters: null,
-			})),
-		)
-		.onConflictDoNothing();
+	for (let i = 0; i < rows.length; i += BULK_CHUNK) {
+		await db
+			.insert(books)
+			.values(rows.slice(i, i + BULK_CHUNK))
+			.onConflictDoNothing();
+	}
+	const contentRows = rows.map((b) => ({
+		bookId: b.id,
+		content: "",
+		coverImage: null,
+		chapters: null,
+	}));
+	for (let i = 0; i < contentRows.length; i += BULK_CHUNK) {
+		await db
+			.insert(bookContent)
+			.values(contentRows.slice(i, i + BULK_CHUNK))
+			.onConflictDoNothing();
+	}
 }
 
 /**

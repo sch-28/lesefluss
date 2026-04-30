@@ -59,6 +59,7 @@ import BookReader from "./pages/reader";
 import Settings from "./pages/settings";
 import AppearanceSettings from "./pages/settings/appearance";
 import DeviceSettings from "./pages/settings/device";
+import ExportSettings from "./pages/settings/export";
 import RSVPSettings from "./pages/settings/rsvp";
 import SyncSettings from "./pages/settings/sync";
 import { queryHooks } from "./services/db/hooks";
@@ -131,6 +132,7 @@ const AppTabs: React.FC = () => {
 				<Route exact path="/tabs/settings/appearance" component={AppearanceSettings} />
 				<Route exact path="/tabs/settings/device" component={DeviceSettings} />
 				<Route exact path="/tabs/settings/sync" component={SyncSettings} />
+				<Route exact path="/tabs/settings/export" component={ExportSettings} />
 				<Route exact path="/tabs/reader/:id" component={BookReader} />
 				<Route exact path="/tabs">
 					<Redirect to="/tabs/library" />

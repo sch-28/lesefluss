@@ -27,6 +27,13 @@ export async function getBooks(): Promise<Book[]> {
 }
 
 /**
+ * Fetch all non-deleted books including series chapters.
+ */
+export async function getAllBooks(): Promise<Book[]> {
+	return db.select().from(books).where(eq(books.deleted, false));
+}
+
+/**
  * Fetch all books including tombstones — used by the sync push so deletions propagate.
  */
 export async function getBooksForSync(): Promise<Book[]> {
