@@ -11,6 +11,8 @@ COPY apps/capacitor/package.json ./apps/capacitor/
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
+ARG VITE_SENTRY_DSN=
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
 COPY packages/ ./packages/
 COPY apps/capacitor/ ./apps/capacitor/
 COPY apps/web/ ./apps/web/

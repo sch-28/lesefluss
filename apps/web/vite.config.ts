@@ -9,6 +9,13 @@ export default defineConfig(({ mode }) => {
 	const UMAMI_URL = env.UMAMI_URL ?? "";
 	const BETTER_AUTH_URL = env.BETTER_AUTH_URL ?? "";
 	const CATALOG_URL = env.CATALOG_URL || "https://catalog.lesefluss.app";
+	const sentryDsn = env.VITE_SENTRY_DSN || env.SENTRY_DSN || "";
+	let sentryOrigin = "";
+	try {
+		sentryOrigin = sentryDsn ? new URL(sentryDsn).origin : "";
+	} catch {
+		sentryOrigin = "";
+	}
 
 	// BETTER_AUTH_URL is same-origin in prod (covered by 'self') but differs in dev
 	// (e.g. http://localhost:3000 while the page is loaded from another host) - listing
@@ -22,7 +29,7 @@ export default defineConfig(({ mode }) => {
 			`img-src 'self' data: blob:${CATALOG_URL ? ` ${CATALOG_URL}` : ""}`,
 			"font-src 'self' data:",
 			"media-src 'self'",
-			`connect-src 'self'${UMAMI_URL ? ` ${UMAMI_URL}` : ""}${BETTER_AUTH_URL ? ` ${BETTER_AUTH_URL}` : ""}${CATALOG_URL ? ` ${CATALOG_URL}` : ""}`,
+			`connect-src 'self'${UMAMI_URL ? ` ${UMAMI_URL}` : ""}${BETTER_AUTH_URL ? ` ${BETTER_AUTH_URL}` : ""}${CATALOG_URL ? ` ${CATALOG_URL}` : ""}${sentryOrigin ? ` ${sentryOrigin}` : ""}`,
 			"frame-ancestors 'none'",
 			"base-uri 'self'",
 			"form-action 'self'",

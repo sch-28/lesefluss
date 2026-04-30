@@ -1,6 +1,7 @@
 import { createRouter } from "@tanstack/react-router";
 import { DefaultCatchBoundary } from "./components/DefaultCatchBoundary";
 import { NotFound } from "./components/NotFound";
+import { initBrowserErrorTracking } from "./lib/error-tracking";
 import { routeTree } from "./routeTree.gen";
 
 export function getRouter() {
@@ -11,5 +12,6 @@ export function getRouter() {
 		defaultNotFoundComponent: () => <NotFound />,
 		scrollRestoration: true,
 	});
+	initBrowserErrorTracking(router);
 	return router;
 }

@@ -64,6 +64,15 @@ function PrivacyPage() {
 					Our host may keep short-lived request logs (IP, timestamp, path) for security and abuse
 					prevention. These are not correlated with accounts and are rotated out quickly.
 				</p>
+
+				<h3 className="mt-6 mb-2 font-medium text-foreground">Error diagnostics</h3>
+				<p>
+					If error reporting is enabled, browser and server errors are sent to a self-hosted
+					GlitchTip instance on our own infrastructure. Reports contain technical diagnostics such
+					as the error message, stack trace, app version, browser, operating system, and affected
+					page. We do not enable session replay, performance tracing, profiling, tracking cookies,
+					or default collection of personal data.
+				</p>
 			</section>
 
 			<section>

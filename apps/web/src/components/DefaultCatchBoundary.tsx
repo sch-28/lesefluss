@@ -1,5 +1,7 @@
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { ErrorComponent, Link, rootRouteId, useMatch, useRouter } from "@tanstack/react-router";
+import * as React from "react";
+import { captureException } from "~/lib/error-tracking";
 
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
 	const router = useRouter();
@@ -7,6 +9,10 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
 		strict: false,
 		select: (state) => state.id === rootRouteId,
 	});
+
+	React.useEffect(() => {
+		captureException(error, { tags: { kind: "route-boundary" } });
+	}, [error]);
 
 	console.error("DefaultCatchBoundary Error:", error);
 
