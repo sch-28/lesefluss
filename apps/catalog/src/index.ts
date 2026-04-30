@@ -2,10 +2,12 @@ import { type HttpBindings, serve } from "@hono/node-server";
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { HTTPException } from "hono/http-exception";
 import cron from "node-cron";
 import { db } from "./db/index.js";
 import { migrate } from "./db/migrate.js";
 import { env } from "./env.js";
+import { captureException, flushErrorTracking } from "./lib/error-tracking.js";
 import { coversRateLimit, rateLimit } from "./middleware/rate-limit.js";
 import { adminRoute } from "./routes/admin.js";
 import { booksRoute } from "./routes/books.js";
@@ -22,6 +24,35 @@ async function main() {
 	await migrate();
 
 	const app = new Hono<{ Bindings: HttpBindings }>();
+
+	app.onError((err, c) => {
+		if (err instanceof HTTPException) {
+			if (err.status >= 500) {
+				captureException(err, {
+					tags: {
+						kind: "request",
+						method: c.req.method,
+						status: String(err.status),
+					},
+					extra: {
+						path: new URL(c.req.url).pathname,
+					},
+				});
+			}
+			return err.getResponse();
+		}
+		captureException(err, {
+			tags: {
+				kind: "request",
+				method: c.req.method,
+			},
+			extra: {
+				path: new URL(c.req.url).pathname,
+			},
+		});
+		console.error("[catalog] unhandled request error:", err);
+		return c.json({ error: "internal server error" }, 500);
+	});
 
 	// CORS: all catalog endpoints are public reads, no credentials. Allow any
 	// origin in dev and explicit origins listed via CATALOG_ALLOWED_ORIGINS
@@ -91,7 +122,13 @@ async function main() {
 	});
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
 	console.error("[catalog] fatal startup error:", err);
+	captureException(err, { tags: { kind: "startup" } });
+	try {
+		await flushErrorTracking();
+	} catch (flushErr) {
+		console.error("[catalog] failed to flush error tracking:", flushErr);
+	}
 	process.exit(1);
 });

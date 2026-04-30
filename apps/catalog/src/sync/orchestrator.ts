@@ -1,3 +1,4 @@
+import { captureException } from "../lib/error-tracking.js";
 import { dedupSE } from "./dedup.js";
 import { syncGutenberg } from "./gutenberg.js";
 import { syncStandardEbooks } from "./standard-ebooks.js";
@@ -65,6 +66,18 @@ export async function runSync(source: Source = "all"): Promise<void> {
 		}
 	} catch (err) {
 		state.lastError = err instanceof Error ? err.message : String(err);
+		captureException(err, {
+			tags: {
+				kind: "sync",
+				source,
+				currentSource: state.currentSource ?? "none",
+			},
+			extra: {
+				phase: state.phase,
+				booksUpserted: state.booksUpserted,
+				booksSuppressed: state.booksSuppressed,
+			},
+		});
 		console.error("[sync] failed:", err);
 	} finally {
 		state.running = false;

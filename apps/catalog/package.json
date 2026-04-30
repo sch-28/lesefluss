@@ -15,6 +15,7 @@
 	},
 	"dependencies": {
 		"@hono/node-server": "^1.19.14",
+		"@sentry/node": "^10.51.0",
 		"drizzle-orm": "^0.45.1",
 		"fast-xml-parser": "^5.7.1",
 		"hono": "^4.12.14",

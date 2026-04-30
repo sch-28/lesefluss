@@ -312,6 +312,33 @@ async function withSyncLock(fn: () => Promise<void>): Promise<void> {
 // Pull (GET /api/sync → merge into local DB)
 // ---------------------------------------------------------------------------
 
+function buildBookRowFromServer(
+	serverBook: SyncBook,
+	chapterStatus: NonNullable<Book["chapterStatus"]>,
+): Book {
+	return {
+		id: serverBook.bookId,
+		title: serverBook.title,
+		author: serverBook.author ?? null,
+		fileFormat: "txt",
+		filePath: null,
+		size: serverBook.fileSize ?? 0,
+		position: serverBook.position,
+		isActive: false,
+		addedAt: serverBook.updatedAt,
+		lastRead: null,
+		source: serverBook.source ?? null,
+		catalogId: serverBook.catalogId ?? null,
+		sourceUrl: serverBook.sourceUrl ?? null,
+		deleted: false,
+		seriesId: serverBook.seriesId ?? null,
+		chapterIndex: serverBook.chapterIndex ?? null,
+		chapterSourceUrl: serverBook.chapterSourceUrl ?? null,
+		chapterStatus,
+		chapterError: null,
+	};
+}
+
 /** Returns the set of bookIds the server has content for. */
 export async function pullSync(): Promise<Set<string>> {
 	const serverHasContent = new Set<string>();
@@ -437,6 +464,12 @@ export async function pullSync(): Promise<Set<string>> {
 		}
 
 		// --- Merge books ---
+		// Chapter rows from the server never carry content (bookToSync/server both suppress it),
+		// so inserting them via addBookWithContent one-by-one wastes 2N sequential DB round-trips.
+		// Buffer them here and bulk-insert below after the loop — same chunk strategy as
+		// addSeriesWithChapters. Standalone books with real content still use addBookWithContent.
+		const newChapterRows: Book[] = [];
+
 		for (const serverBook of data.books) {
 			const local = localBookMap.get(serverBook.bookId);
 
@@ -450,10 +483,10 @@ export async function pullSync(): Promise<Set<string>> {
 				continue;
 			}
 
-			// Server has content for this book if:
-			// - content was returned in this response, OR
-			// - the book is in our local DB (we sent it in `have`, server omitted content because it already has it)
-			if (serverBook.content || localBookMap.has(serverBook.bookId)) {
+			// Server content tracking only applies to standalone books. Chapter rows are
+			// intentionally contentless in sync payloads; marking them as content-present
+			// would suppress future standalone uploads if schemas ever drift.
+			if (!serverBook.seriesId && (serverBook.content || localBookMap.has(serverBook.bookId))) {
 				serverHasContent.add(serverBook.bookId);
 			}
 
@@ -472,51 +505,22 @@ export async function pullSync(): Promise<Set<string>> {
 				if (serverBook.content || isChapter) {
 					const chapterStatus =
 						isChapter && !serverBook.content ? "pending" : (serverBook.chapterStatus ?? "fetched");
-					await queries.addBookWithContent(
-						{
-							id: serverBook.bookId,
-							title: serverBook.title,
-							author: serverBook.author,
-							fileFormat: "txt", // synced content is always extracted plain text
-							size: serverBook.fileSize ?? 0,
-							position: serverBook.position,
-							isActive: false,
-							addedAt: serverBook.updatedAt,
-							source: serverBook.source ?? null,
-							catalogId: serverBook.catalogId ?? null,
-							sourceUrl: serverBook.sourceUrl ?? null,
-							seriesId: serverBook.seriesId ?? null,
-							chapterIndex: serverBook.chapterIndex ?? null,
-							chapterSourceUrl: serverBook.chapterSourceUrl ?? null,
-							chapterStatus,
-							chapterError: null,
-						},
-						serverBook.content ?? "",
-						serverBook.coverImage,
-						queries.parseChapters(serverBook.chapters ?? null),
-					);
-					// Track so highlights for this book aren't skipped
-					localBookMap.set(serverBook.bookId, {
-						id: serverBook.bookId,
-						title: serverBook.title,
-						author: serverBook.author,
-						fileFormat: "txt",
-						filePath: null,
-						size: serverBook.fileSize ?? 0,
-						position: serverBook.position,
-						isActive: false,
-						addedAt: serverBook.updatedAt,
-						lastRead: null,
-						source: serverBook.source ?? null,
-						catalogId: serverBook.catalogId ?? null,
-						sourceUrl: serverBook.sourceUrl ?? null,
-						deleted: false,
-						seriesId: serverBook.seriesId ?? null,
-						chapterIndex: serverBook.chapterIndex ?? null,
-						chapterSourceUrl: serverBook.chapterSourceUrl ?? null,
-						chapterStatus,
-						chapterError: null,
-					});
+					const row = buildBookRowFromServer(serverBook, chapterStatus);
+
+					if (isChapter && !serverBook.content) {
+						// Buffer for batch insert; no content to store. Map updated after flush
+						// so it only references rows that actually committed.
+						newChapterRows.push(row);
+					} else {
+						// Standalone book with content (or rare: chapter that carries content).
+						await queries.addBookWithContent(
+							row,
+							serverBook.content ?? "",
+							serverBook.coverImage,
+							queries.parseChapters(serverBook.chapters ?? null),
+						);
+						localBookMap.set(serverBook.bookId, row);
+					}
 					changed = true;
 				}
 				continue;
@@ -537,6 +541,17 @@ export async function pullSync(): Promise<Set<string>> {
 				});
 				changed = true;
 			}
+		}
+
+		// Flush buffered chapter rows as chunked bulk inserts. insertChapters uses
+		// onConflictDoNothing so this is safe even if rows arrive from the server twice.
+		// Only update localBookMap after the flush succeeds. The highlights merge below
+		// uses localBookMap.has() to guard against orphans, so rows that fail to commit
+		// must not appear there.
+		if (newChapterRows.length > 0) {
+			log("sync", `pull: batch-inserting ${newChapterRows.length} new chapter rows`);
+			await queries.insertChapters(newChapterRows);
+			for (const row of newChapterRows) localBookMap.set(row.id, row);
 		}
 
 		// --- Merge settings ---
@@ -652,6 +667,18 @@ export async function pullSync(): Promise<Set<string>> {
 // Push (POST /api/sync with full snapshot)
 // ---------------------------------------------------------------------------
 
+/**
+ * Pristine pending chapter rows carry zero user data (position=0, lastRead=null,
+ * chapterStatus="pending"). They are pure TOC placeholders re-derivable from the
+ * upstream provider via useChapterListSync, so there is nothing to sync.
+ * commitChapter() always sets lastRead=now on any status transition, making this
+ * a precise "never touched by the user" gate. Tombstones always pass through.
+ */
+export function shouldPushBook(b: Book): boolean {
+	if (!b.seriesId || b.deleted) return true;
+	return b.chapterStatus !== "pending" || b.position > 0 || b.lastRead !== null;
+}
+
 /** @param serverHasContent bookIds the server already has content for - skip content for those */
 export async function pushSync(serverHasContent: Set<string> = new Set()): Promise<void> {
 	if (!SYNC_ENABLED) return;
@@ -672,10 +699,17 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 			queries.getSeriesForSync(),
 		]);
 
+		// Pristine pending chapter rows carry zero user data and are excluded from the
+		// push payload — they will be recreated on any device via useChapterListSync.
+		const booksForPush = books.filter(shouldPushBook);
+		const pushedBookIds = new Set(booksForPush.map((book) => book.id));
+		const filteredOut = books.length - booksForPush.length;
+		if (filteredOut > 0) log("sync", `push: excluded ${filteredOut} pristine pending chapter rows`);
+
 		// Fetch content only for books the server doesn't have yet (tombstones never carry content,
 		// and chapter rows never sync content — see bookToSync).
 		const booksWithContent = await Promise.all(
-			books.map(async (book) => {
+			booksForPush.map(async (book) => {
 				if (book.deleted || book.seriesId || serverHasContent.has(book.id)) {
 					return bookToSync(book);
 				}
@@ -687,8 +721,12 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 		const payload: SyncPayload = {
 			books: booksWithContent,
 			settings: settingsToSync(settings),
-			highlights: highlights.map(highlightToSync),
-			glossaryEntries: glossaryEntries.map(entryToSync),
+			highlights: highlights
+				.filter((highlight) => pushedBookIds.has(highlight.bookId))
+				.map(highlightToSync),
+			glossaryEntries: glossaryEntries
+				.filter((entry) => entry.bookId === null || pushedBookIds.has(entry.bookId))
+				.map(entryToSync),
 			series: seriesRows.map(seriesToSync),
 		};
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Book, BookContent } from "../../db/schema";
-import { bookToSync } from "../index";
+import { bookToSync, shouldPushBook } from "../index";
 
 function makeBook(overrides: Partial<Book> = {}): Book {
 	return {
@@ -54,5 +54,46 @@ describe("bookToSync", () => {
 	it("omits content for tombstoned books", () => {
 		const out = bookToSync(makeBook({ deleted: true }), content);
 		expect(out).not.toHaveProperty("content");
+	});
+});
+
+describe("shouldPushBook", () => {
+	it("excludes pristine pending chapter rows", () => {
+		const ch = makeBook({ seriesId: "abc", chapterStatus: "pending", position: 0, lastRead: null });
+		expect(shouldPushBook(ch)).toBe(false);
+	});
+
+	it("includes pending chapter with reading progress", () => {
+		expect(
+			shouldPushBook(makeBook({ seriesId: "abc", chapterStatus: "pending", position: 42 })),
+		).toBe(true);
+	});
+
+	it("includes pending chapter that has been touched (lastRead set)", () => {
+		expect(
+			shouldPushBook(makeBook({ seriesId: "abc", chapterStatus: "pending", lastRead: 1000 })),
+		).toBe(true);
+	});
+
+	it("includes fetched chapter", () => {
+		expect(
+			shouldPushBook(makeBook({ seriesId: "abc", chapterStatus: "fetched", lastRead: 1000 })),
+		).toBe(true);
+	});
+
+	it("includes locked chapter", () => {
+		expect(
+			shouldPushBook(makeBook({ seriesId: "abc", chapterStatus: "locked", lastRead: 1000 })),
+		).toBe(true);
+	});
+
+	it("always includes deleted chapter (tombstone must propagate)", () => {
+		expect(
+			shouldPushBook(makeBook({ seriesId: "abc", chapterStatus: "pending", deleted: true })),
+		).toBe(true);
+	});
+
+	it("always includes standalone book regardless of chapterStatus", () => {
+		expect(shouldPushBook(makeBook({ seriesId: null, chapterStatus: "pending" }))).toBe(true);
 	});
 });
