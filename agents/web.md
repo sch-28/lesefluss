@@ -42,6 +42,8 @@ pnpm build
 | `/account` | ✅ | Auth-gated account settings: email display, change password, danger zone (clear cloud data, delete account). `noindex`. |
 | `/admin` | ✅ | Admin-only (requires `ADMIN_EMAIL` env var match). Stats overview + paginated user/book tables with delete. `noindex`. |
 | `/changelog` | ✅ | Public changelog - date-based entries, river timeline design. Data lives in `src/data/changelog.ts`. |
+| `/feedback` | ✅ | Public feedback form for suggestions, bug reports, questions. Posts to `/api/feedback` and emails `feedback@lesefluss.app`. |
+| `/api/feedback` | ✅ | POST feedback endpoint with validation, honeypot, and IP rate limiting. |
 
 ## routeTree.gen.ts
 

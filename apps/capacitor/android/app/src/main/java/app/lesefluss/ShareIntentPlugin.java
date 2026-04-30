@@ -60,13 +60,13 @@ public class ShareIntentPlugin extends Plugin {
 
         if (Intent.ACTION_SEND.equals(action)) {
             String type = intent.getType();
-            // text/html shares are file-shaped (EXTRA_STREAM, not EXTRA_TEXT) on
-            // Android — treat them as files so they hit the import pipeline.
-            if (type != null && type.startsWith("text/") && !"text/html".equals(type)) {
+            Uri stream = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            // text/html and text/markdown shares are file-shaped (EXTRA_STREAM, not
+            // EXTRA_TEXT) on Android — treat them as files so they hit the import pipeline.
+            if (type != null && type.startsWith("text/") && (stream == null || (!"text/html".equals(type) && !"text/markdown".equals(type)))) {
                 handleSharedText(intent);
                 return;
             }
-            Uri stream = intent.getParcelableExtra(Intent.EXTRA_STREAM);
             if (stream != null) {
                 handleSharedFile(stream, type);
             }

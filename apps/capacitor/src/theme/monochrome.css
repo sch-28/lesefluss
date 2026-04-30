@@ -1289,6 +1289,14 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	pointer-events: none; /* children opt in via `pointer-events: auto` */
 }
 
+.rsvp-display-inner {
+	max-width: 700px;
+	margin: 0 auto;
+	height: 100%;
+	position: relative;
+	container-type: inline-size;
+}
+
 .rsvp-scroll-spacer {
 	width: 1px;
 	height: 300vh;

@@ -297,78 +297,76 @@ const Library: React.FC = () => {
 							<p style={{ margin: 0 }}>No items match this filter.</p>
 						</IonText>
 					</div>
+				) : viewMode === "grid" ? (
+					/* ── Grid view ── */
+					<div className="grid grid-cols-3 gap-4 p-4 pb-20 content-container md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+						{visibleSeries.map((s) => (
+							<SeriesCard
+								key={s.id}
+								series={s}
+								chapterCount={chapterCounts.get(s.id)}
+								onOpen={() => handleOpenSeries(s)}
+								onMenu={() => setSelectedSeries(s)}
+							/>
+						))}
+						{visible.map((book) => {
+							const progress = readingProgress(book);
+							const started = book.position > 0;
+							const cover = covers.get(book.id);
+							const isActive = book.id === activeBookId;
+
+							return (
+								<BookCard
+									key={book.id}
+									book={book}
+									cover={cover}
+									progress={progress}
+									started={started}
+									isActive={isActive}
+									onOpen={() => {
+										qc.setQueryData(bookKeys.detail(book.id), book);
+										history.push(`/tabs/reader/${book.id}`);
+									}}
+									onMenu={() => setSelectedBook(book)}
+								/>
+							);
+						})}
+					</div>
 				) : (
-					viewMode === "grid" ? (
-						/* ── Grid view ── */
-						<div className="grid grid-cols-3 gap-4 p-4 pb-20 content-container md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-							{visibleSeries.map((s) => (
-								<SeriesCard
-									key={s.id}
-									series={s}
-									chapterCount={chapterCounts.get(s.id)}
-									onOpen={() => handleOpenSeries(s)}
-									onMenu={() => setSelectedSeries(s)}
-								/>
-							))}
-							{visible.map((book) => {
-								const progress = readingProgress(book);
-								const started = book.position > 0;
-								const cover = covers.get(book.id);
-								const isActive = book.id === activeBookId;
+					/* ── List view ── */
+					<div className="flex flex-col gap-2 p-4 pb-20 content-container">
+						{visibleSeries.map((s) => (
+							<SeriesListItem
+								key={s.id}
+								series={s}
+								chapterCount={chapterCounts.get(s.id)}
+								onOpen={() => handleOpenSeries(s)}
+								onMenu={() => setSelectedSeries(s)}
+							/>
+						))}
+						{visible.map((book) => {
+							const progress = readingProgress(book);
+							const started = book.position > 0;
+							const cover = covers.get(book.id);
+							const isActive = book.id === activeBookId;
 
-								return (
-									<BookCard
-										key={book.id}
-										book={book}
-										cover={cover}
-										progress={progress}
-										started={started}
-										isActive={isActive}
-										onOpen={() => {
-											qc.setQueryData(bookKeys.detail(book.id), book);
-											history.push(`/tabs/reader/${book.id}`);
-										}}
-										onMenu={() => setSelectedBook(book)}
-									/>
-								);
-							})}
-						</div>
-					) : (
-						/* ── List view ── */
-						<div className="flex flex-col gap-2 p-4 pb-20 content-container">
-							{visibleSeries.map((s) => (
-								<SeriesListItem
-									key={s.id}
-									series={s}
-									chapterCount={chapterCounts.get(s.id)}
-									onOpen={() => handleOpenSeries(s)}
-									onMenu={() => setSelectedSeries(s)}
+							return (
+								<BookListItem
+									key={book.id}
+									book={book}
+									cover={cover}
+									progress={progress}
+									started={started}
+									isActive={isActive}
+									onOpen={() => {
+										qc.setQueryData(bookKeys.detail(book.id), book);
+										history.push(`/tabs/reader/${book.id}`);
+									}}
+									onMenu={() => setSelectedBook(book)}
 								/>
-							))}
-							{visible.map((book) => {
-								const progress = readingProgress(book);
-								const started = book.position > 0;
-								const cover = covers.get(book.id);
-								const isActive = book.id === activeBookId;
-
-								return (
-									<BookListItem
-										key={book.id}
-										book={book}
-										cover={cover}
-										progress={progress}
-										started={started}
-										isActive={isActive}
-										onOpen={() => {
-											qc.setQueryData(bookKeys.detail(book.id), book);
-											history.push(`/tabs/reader/${book.id}`);
-										}}
-										onMenu={() => setSelectedBook(book)}
-									/>
-								);
-							})}
-						</div>
-					)
+							);
+						})}
+					</div>
 				)}
 
 				{/* FAB: opens import sources action sheet */}

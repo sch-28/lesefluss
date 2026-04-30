@@ -35,11 +35,12 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
                 <data android:mimeType="text/html" />
+                <data android:mimeType="text/markdown" />
                 <data android:mimeType="application/pdf" />
                 <data android:mimeType="application/epub+zip" />
             </intent-filter>
 
-            <!-- "Open with Lesefluss" for epub/pdf/html files via MIME type. -->
+            <!-- "Open with Lesefluss" for epub/pdf/html/md files via MIME type. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -49,6 +50,7 @@
                 <data android:mimeType="application/epub+zip" />
                 <data android:mimeType="application/pdf" />
                 <data android:mimeType="text/html" />
+                <data android:mimeType="text/markdown" />
             </intent-filter>
 
             <!-- Extension-based fallback for file managers that don't set a MIME. -->
@@ -64,6 +66,7 @@
                 <data android:pathPattern=".*\\.pdf" />
                 <data android:pathPattern=".*\\.html" />
                 <data android:pathPattern=".*\\.htm" />
+                <data android:pathPattern=".*\\.md" />
             </intent-filter>
 
         </activity>

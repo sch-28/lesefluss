@@ -53,7 +53,7 @@ const BookListItem: React.FC<BookListItemProps> = ({
 					</div>
 				)}
 				{isActive && (
-					<div className="mt-0.5 font-semibold text-[0.7rem] text-[#888] uppercase tracking-wide">
+					<div className="mt-0.5 font-semibold text-[#888] text-[0.7rem] uppercase tracking-wide">
 						On device
 					</div>
 				)}

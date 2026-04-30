@@ -12,10 +12,12 @@ import {
 } from "@ionic/react";
 import {
 	bookOutline,
+	chatbubbleEllipsesOutline,
 	chevronForward,
 	cloudDone,
 	cloudOutline,
 	colorPaletteOutline,
+	downloadOutline,
 	globeOutline,
 	hardwareChipOutline,
 	megaphoneOutline,
@@ -61,6 +63,11 @@ const Settings: React.FC = () => {
 			: "No device";
 
 	const syncSubtitle = isLoggedIn ? (userEmail ?? "Connected") : "Not signed in";
+
+	const openFeedback = () => {
+		const url = IS_WEB ? "/feedback?source=web-app" : "https://lesefluss.app/feedback?source=app";
+		window.open(url, IS_WEB ? "_blank" : "_system");
+	};
 
 	if (isPending) {
 		return (
@@ -177,11 +184,34 @@ const Settings: React.FC = () => {
 						</IonItem>
 					)}
 
+					<IonItem
+						button
+						detail={false}
+						routerLink="/tabs/settings/export"
+						routerDirection="forward"
+					>
+						<IonIcon icon={downloadOutline} slot="start" color="medium" />
+						<IonLabel>
+							<h2>Export Highlights</h2>
+							<p>Markdown, CSV</p>
+						</IonLabel>
+						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
+					</IonItem>
+
 					<IonItem button detail={false} onClick={showWhatsNew}>
 						<IonIcon icon={megaphoneOutline} slot="start" color="medium" />
 						<IonLabel>
 							<h2>What's new</h2>
 							<p>See recent updates</p>
+						</IonLabel>
+						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
+					</IonItem>
+
+					<IonItem button detail={false} onClick={openFeedback}>
+						<IonIcon icon={chatbubbleEllipsesOutline} slot="start" color="medium" />
+						<IonLabel>
+							<h2>Send feedback</h2>
+							<p>Ideas, bugs, or rough edges</p>
 						</IonLabel>
 						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
 					</IonItem>

@@ -10,7 +10,13 @@ import { base64ToArrayBuffer } from "../utils/encoding";
 export async function pickFileFromPicker(): Promise<RawInput> {
 	if (Capacitor.isNativePlatform()) {
 		const result = await FilePicker.pickFiles({
-			types: ["text/plain", "application/epub+zip", "text/html", "application/pdf"],
+			types: [
+				"text/plain",
+				"text/markdown",
+				"application/epub+zip",
+				"text/html",
+				"application/pdf",
+			],
 			limit: 1,
 			readData: true,
 		});
@@ -41,7 +47,7 @@ function pickFileWeb(): Promise<{ name: string; bytes: ArrayBuffer }> {
 	return new Promise((resolve, reject) => {
 		const input = document.createElement("input");
 		input.type = "file";
-		input.accept = ".txt,.epub,.html,.htm,.pdf";
+		input.accept = ".txt,.md,.epub,.html,.htm,.pdf";
 		let picked = false;
 		input.onchange = () => {
 			picked = true;

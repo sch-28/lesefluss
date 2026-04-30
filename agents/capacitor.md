@@ -55,7 +55,7 @@ src/
       selection-toolbar.tsx   # Fixed toolbar shown during text selection (color swatches, note, cancel)
       highlight-modal.tsx     # Bottom-sheet modal for editing an existing highlight (color, note, delete)
       highlights-list-modal.tsx # Bottom-sheet listing all highlights for the book; tap to jump
-    settings.tsx          # Settings hub - links to RSVP, Appearance, Device, Cloud Sync sub-pages
+    settings.tsx          # Settings hub - links to RSVP, Appearance, Device, Cloud Sync sub-pages, feedback
     settings/
       rsvp.tsx              # RSVP speed settings (uses useAutoSaveSettings)
       appearance.tsx        # Theme, font, reading time settings (uses useAutoSaveSettings)
@@ -346,5 +346,5 @@ className={isActive ? "sidebar-item active" : "sidebar-item"}
 - **Desktop/web:** sidebar nav replaces tab bar (`desktop-sidebar.tsx`) - brand link (→ `/` on web, static on native), Library and Settings nav items
 - BLE status badge between tabs on mobile (no dedicated connection page)
 - **Library:** book grid (3 cols), cover art, progress bar, "On device" badge; empty state; FAB to import; sync button in header (triggers cloud sync); short tap → reader; long press → action sheet; transfer progress modal
-- **Settings:** hub page linking to RSVP, Appearance, Device, Cloud Sync sub-pages
+- **Settings:** hub page linking to RSVP, Appearance, Device, Cloud Sync sub-pages, export, changelog, onboarding, and the website feedback form
 - **BookReader:** full-screen virtualized reader, word highlight, back button, dark/light theme toggle, progress bar, TOC navigation, dictionary lookup; position syncs bidirectionally with ESP32

@@ -22,7 +22,7 @@ const SOURCES: Source[] = [
 		key: "file",
 		icon: documentOutline,
 		title: "Import file",
-		subtitle: "TXT, EPUB, HTML, PDF",
+		subtitle: "TXT, EPUB, HTML, PDF, Markdown",
 	},
 	{
 		key: "clipboard",
@@ -34,7 +34,7 @@ const SOURCES: Source[] = [
 		key: "url",
 		icon: linkOutline,
 		title: "Import from URL",
-		subtitle: "Fetch an article",
+		subtitle: "Articles and web novels",
 	},
 ];
 

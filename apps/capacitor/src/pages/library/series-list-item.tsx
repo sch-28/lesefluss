@@ -47,9 +47,7 @@ const SeriesListItem: React.FC<SeriesListItemProps> = ({
 					</div>
 				)}
 				{chapterCount !== undefined && (
-					<div className="mt-0.5 text-[#888] text-[0.75rem]">
-						{chapterCountLabel(chapterCount)}
-					</div>
+					<div className="mt-0.5 text-[#888] text-[0.75rem]">{chapterCountLabel(chapterCount)}</div>
 				)}
 			</div>
 		</div>

@@ -18,6 +18,8 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
     restart: unless-stopped
     ports:
       - "${PORT:-3000}:3000"
@@ -25,6 +27,7 @@ services:
       DATABASE_URL: postgres://lesefluss:${POSTGRES_PASSWORD}@db:5432/lesefluss
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+      SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       db:
         condition: service_healthy

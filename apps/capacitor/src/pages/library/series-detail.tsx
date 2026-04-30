@@ -9,6 +9,7 @@ import {
 import type React from "react";
 import { useMemo, useState } from "react";
 import { useHistory, useParams } from "react-router-dom";
+import { CloudflareChallenge } from "../../components/cloudflare-challenge";
 import { queryHooks } from "../../services/db/hooks";
 import { serialKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
@@ -41,7 +42,11 @@ const SeriesDetail: React.FC = () => {
 	const chapterCount = counts?.get(id);
 
 	const deleteMutation = queryHooks.useDeleteSeries();
-	const { isSyncing } = queryHooks.useChapterListSync(series?.id);
+	const {
+		isSyncing,
+		error: syncError,
+		retry: retrySync,
+	} = queryHooks.useChapterListSync(series?.id);
 
 	const { data: chapters } = queryHooks.useSeriesChapters(series?.id);
 	const pendingChapterIds = useMemo(
@@ -152,6 +157,11 @@ const SeriesDetail: React.FC = () => {
 				externalLink={{ href: series.sourceUrl, label: `View on ${provider}` }}
 				headerAction={deleteHeaderAction}
 			>
+				{syncError?.message === "CLOUDFLARE_CHALLENGE" && (
+					<div className="px-4 pt-3">
+						<CloudflareChallenge provider={series.provider} onResolved={retrySync} />
+					</div>
+				)}
 				<SeriesChapterList seriesId={series.id} isSyncing={isSyncing} />
 			</DetailShell>
 

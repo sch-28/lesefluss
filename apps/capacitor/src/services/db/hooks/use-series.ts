@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "../../../components/toast";
 import { pollChapterList, removeSerial } from "../../serial-scrapers";
 import { queries } from "../queries";
@@ -93,12 +93,18 @@ function useSeriesChapters(seriesId: string | undefined) {
  *
  * Polling runs once per mount — the throttle inside each scraper's
  * `fetchChapterList` gates rapid repeated calls at the network level.
- * Errors are swallowed silently: a failed poll just means no new chapters
- * appear this time; the user isn't blocked from reading.
+ * Errors don't block reading. The caller decides whether to surface `error`.
+ * `retry()` re-runs the poll.
  */
-function useChapterListSync(seriesId: string | undefined): { isSyncing: boolean } {
+function useChapterListSync(seriesId: string | undefined): {
+	isSyncing: boolean;
+	error: Error | null;
+	retry: () => void;
+} {
 	const qc = useQueryClient();
 	const [isSyncing, setIsSyncing] = useState(false);
+	const [error, setError] = useState<Error | null>(null);
+	const [attempt, setAttempt] = useState(0);
 	// Prevent re-polling when seriesId changes from undefined to a value while
 	// this component is already mounted (e.g. series data arrives after the hook
 	// initialises). React Strict Mode's double-effect runs on the same fiber so
@@ -111,6 +117,7 @@ function useChapterListSync(seriesId: string | undefined): { isSyncing: boolean 
 		let mounted = true;
 
 		setIsSyncing(true);
+		setError(null);
 		pollChapterList(seriesId)
 			.then(({ added }) => {
 				if (!mounted) return;
@@ -119,8 +126,9 @@ function useChapterListSync(seriesId: string | undefined): { isSyncing: boolean 
 					qc.invalidateQueries({ queryKey: serialKeys.counts });
 				}
 			})
-			.catch(() => {
-				// Silent — polling failure never blocks the user from reading.
+			.catch((err) => {
+				if (!mounted) return;
+				setError(err instanceof Error ? err : new Error(String(err)));
 			})
 			.finally(() => {
 				if (mounted) setIsSyncing(false);
@@ -129,9 +137,14 @@ function useChapterListSync(seriesId: string | undefined): { isSyncing: boolean 
 		return () => {
 			mounted = false;
 		};
-	}, [seriesId, qc]);
+	}, [seriesId, qc, attempt]);
 
-	return { isSyncing };
+	const retry = useCallback(() => {
+		hasFired.current = false;
+		setAttempt((n) => n + 1);
+	}, []);
+
+	return { isSyncing, error, retry };
 }
 
 export const seriesHooks = {

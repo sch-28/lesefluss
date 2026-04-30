@@ -5,6 +5,7 @@ import {
 	IonHeader,
 	IonInput,
 	IonModal,
+	IonNote,
 	IonSpinner,
 	IonTitle,
 	IonToolbar,
@@ -54,14 +55,14 @@ const PasteUrlModal: React.FC<PasteUrlModalProps> = ({
 			</IonHeader>
 			<IonContent className="ion-padding">
 				<IonInput
-					label="Article URL"
+					label="Article or web novel URL"
 					labelPlacement="stacked"
 					type="url"
 					inputmode="url"
 					autocapitalize="off"
 					autocorrect="off"
 					spellcheck={false}
-					placeholder="https://example.com/article"
+					placeholder="https://www.royalroad.com/fiction/..."
 					value={value}
 					onIonInput={(e) => setValue(String(e.detail.value ?? ""))}
 					onKeyDown={(e) => {
@@ -70,6 +71,10 @@ const PasteUrlModal: React.FC<PasteUrlModalProps> = ({
 					clearInput
 					disabled={isImporting}
 				/>
+				<IonNote className="ion-margin-top block">
+					Paste an article link or a supported web novel URL from Royal Road, ScribbleHub, Archive
+					of Our Own, or Wuxiaworld.
+				</IonNote>
 				<IonButton
 					expand="block"
 					className="ion-margin-top"
