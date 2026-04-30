@@ -9,6 +9,20 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-04-30",
+		title: "Feedback, Error Tracking, and Reader Polish",
+		tags: ["App", "Website"],
+		changes: [
+			"Added a public feedback page and API endpoint",
+			"Improved SEO and sitemap routing",
+			"Integrated GlitchTip error tracking (browser + server)",
+			"You can now export highlights from the settings",
+			"Keyboard and mouse controls for the web reader",
+			"Markdown (.md) import support",
+			"Improved sync behavior and web novel scraping reliability",
+		],
+	},
+	{
 		date: "2026-04-29",
 		title: "Web Novels",
 		tags: ["App"],

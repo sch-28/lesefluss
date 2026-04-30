@@ -40,6 +40,12 @@ public class ShareIntentPlugin extends Plugin {
 
     private static final String TAG = "ShareIntentPlugin";
 
+    // Tracks the last Intent object we forwarded to JS so that load() and
+    // onNewIntent() never both process the same logical share. Android can
+    // deliver the same Intent reference through both paths (e.g. when the
+    // process is recreated with a retained task whose root intent is a share).
+    private Intent lastHandledIntent = null;
+
     @Override
     public void load() {
         Intent intent = getActivity().getIntent();
@@ -54,7 +60,8 @@ public class ShareIntentPlugin extends Plugin {
      * recognised actions/types are forwarded.
      */
     public void handleIntent(Intent intent) {
-        if (intent == null) return;
+        if (intent == null || intent == lastHandledIntent) return;
+        lastHandledIntent = intent;
         String action = intent.getAction();
         if (action == null) return;
 

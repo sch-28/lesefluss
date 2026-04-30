@@ -5,7 +5,11 @@ import { useEffect, useRef } from "react";
 import { useHistory } from "react-router-dom";
 import { subscribeShareIntent } from "../services/book-import/sources/share-intent";
 import { base64ToArrayBuffer } from "../services/book-import/utils/encoding";
-import { isLikelyUrl, normalizeUrl } from "../services/book-import/utils/url-guards";
+import {
+	extractEmbeddedUrl,
+	isLikelyUrl,
+	normalizeUrl,
+} from "../services/book-import/utils/url-guards";
 import { queryHooks } from "../services/db/hooks";
 import { isSerialUrl } from "../services/serial-scrapers";
 import { log } from "../utils/log";
@@ -43,6 +47,7 @@ const ShareIntentHandler: React.FC = () => {
 		history,
 	});
 	handlersRef.current = { importUrl, importSerial, importText, importBlob, showToast, history };
+
 
 	useEffect(() => {
 		if (IS_WEB) return;
@@ -97,13 +102,42 @@ const ShareIntentHandler: React.FC = () => {
 							},
 						);
 					} else {
-						importText.mutate(
-							{ text: trimmed, hint: event.subject ? { title: event.subject } : undefined },
-							{
-								onSuccess: (book) => showToast(`Imported: ${book.title}`),
-								onError: () => showToast("Couldn't import shared text", "danger"),
-							},
-						);
+						// Mixed text like "Article title https://share.google/xyz" — extract
+						// the embedded URL and import the article rather than the raw text.
+						const embeddedUrl = extractEmbeddedUrl(trimmed);
+						if (embeddedUrl) {
+							if (isSerialUrl(embeddedUrl)) {
+								importSerial.mutate(
+									{ url: embeddedUrl },
+									{
+										onSuccess: (s) => showToast(`Imported series: ${s.title}`),
+										onError: () => showToast("Couldn't import shared series", "danger"),
+									},
+								);
+							} else {
+								importUrl.mutate(
+									{ url: embeddedUrl },
+									{
+										onSuccess: (book) => showToast(`Imported: ${book.title}`),
+										onError: (err: Error) => {
+											if (err.message === "TOO_LARGE") {
+												showToast("Shared page too large", "warning");
+											} else {
+												showToast("Couldn't import shared link", "danger");
+											}
+										},
+									},
+								);
+							}
+						} else {
+							importText.mutate(
+								{ text: trimmed, hint: event.subject ? { title: event.subject } : undefined },
+								{
+									onSuccess: (book) => showToast(`Imported: ${book.title}`),
+									onError: () => showToast("Couldn't import shared text", "danger"),
+								},
+							);
+						}
 					}
 				});
 			} catch (err) {
