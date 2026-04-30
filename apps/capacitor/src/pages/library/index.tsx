@@ -45,8 +45,7 @@ import SeriesCard from "./series-card";
 import SeriesListItem from "./series-list-item";
 import {
 	type FilterBy,
-	filterAndSort,
-	filterAndSortSeries,
+	filterAndSortLibrary,
 	readingProgress,
 	type SortBy,
 } from "./sort-filter";
@@ -183,9 +182,7 @@ const Library: React.FC = () => {
 		qc.invalidateQueries({ queryKey: bookKeys.all });
 	};
 
-	const visible = books.length > 0 ? filterAndSort(books, filterBy, sortBy) : [];
-	const visibleSeries =
-		series.length > 0 ? filterAndSortSeries(series, filterBy, sortBy, seriesActivity) : [];
+	const visibleItems = filterAndSortLibrary(books, series, seriesActivity, filterBy, sortBy);
 
 	if (isPending) {
 		return (
@@ -290,7 +287,7 @@ const Library: React.FC = () => {
 							</IonText>
 						)}
 					</div>
-				) : visible.length === 0 && visibleSeries.length === 0 ? (
+				) : visibleItems.length === 0 ? (
 					/* ── Filter empty state: both books and series zeroed out. ── */
 					<div className="flex h-full flex-col items-center justify-center p-8 text-center">
 						<IonText color="medium">
@@ -300,16 +297,20 @@ const Library: React.FC = () => {
 				) : viewMode === "grid" ? (
 					/* ── Grid view ── */
 					<div className="grid grid-cols-3 gap-4 p-4 pb-20 content-container md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-						{visibleSeries.map((s) => (
-							<SeriesCard
-								key={s.id}
-								series={s}
-								chapterCount={chapterCounts.get(s.id)}
-								onOpen={() => handleOpenSeries(s)}
-								onMenu={() => setSelectedSeries(s)}
-							/>
-						))}
-						{visible.map((book) => {
+						{visibleItems.map((item) => {
+							if (item.kind === "series") {
+								const s = item.series;
+								return (
+									<SeriesCard
+										key={s.id}
+										series={s}
+										chapterCount={chapterCounts.get(s.id)}
+										onOpen={() => handleOpenSeries(s)}
+										onMenu={() => setSelectedSeries(s)}
+									/>
+								);
+							}
+							const { book } = item;
 							const progress = readingProgress(book);
 							const started = book.position > 0;
 							const cover = covers.get(book.id);
@@ -335,16 +336,20 @@ const Library: React.FC = () => {
 				) : (
 					/* ── List view ── */
 					<div className="flex flex-col gap-2 p-4 pb-20 content-container">
-						{visibleSeries.map((s) => (
-							<SeriesListItem
-								key={s.id}
-								series={s}
-								chapterCount={chapterCounts.get(s.id)}
-								onOpen={() => handleOpenSeries(s)}
-								onMenu={() => setSelectedSeries(s)}
-							/>
-						))}
-						{visible.map((book) => {
+						{visibleItems.map((item) => {
+							if (item.kind === "series") {
+								const s = item.series;
+								return (
+									<SeriesListItem
+										key={s.id}
+										series={s}
+										chapterCount={chapterCounts.get(s.id)}
+										onOpen={() => handleOpenSeries(s)}
+										onMenu={() => setSelectedSeries(s)}
+									/>
+								);
+							}
+							const { book } = item;
 							const progress = readingProgress(book);
 							const started = book.position > 0;
 							const cover = covers.get(book.id);

@@ -26,43 +26,6 @@ export function readingProgress(book: Book): number {
 	return Math.min(100, Math.round((book.position / book.size) * 100));
 }
 
-function applyFilter(books: Book[], filterBy: FilterBy): Book[] {
-	switch (filterBy) {
-		case "unread":
-			return books.filter((b) => readingProgress(b) === 0);
-		case "reading":
-			return books.filter((b) => {
-				const p = readingProgress(b);
-				return p > 0 && p < 95;
-			});
-		case "done":
-			return books.filter((b) => readingProgress(b) >= 95);
-		default:
-			return books;
-	}
-}
-
-function applySort(books: Book[], sortBy: SortBy): Book[] {
-	return [...books].sort((a, b) => {
-		switch (sortBy) {
-			case "title":
-				return a.title.localeCompare(b.title);
-			case "author":
-				return (a.author ?? "").localeCompare(b.author ?? "");
-			case "recent":
-				return (b.lastRead ?? b.addedAt) - (a.lastRead ?? a.addedAt);
-			case "progress":
-				return readingProgress(b) - readingProgress(a);
-			default:
-				return 0;
-		}
-	});
-}
-
-export function filterAndSort(books: Book[], filterBy: FilterBy, sortBy: SortBy): Book[] {
-	return applySort(applyFilter(books, filterBy), sortBy);
-}
-
 /**
  * Series progress as a 0..100 number, parallel to `readingProgress` for books.
  * Series with no chapters yet (placeholder after import before the first poll)
@@ -82,58 +45,78 @@ function seriesRecency(s: Series, activity: SeriesActivity | undefined): number 
 	return activity?.latestRead ?? s.createdAt;
 }
 
-function applySeriesFilter(
-	list: Series[],
-	filterBy: FilterBy,
-	activity: Map<string, SeriesActivity>,
-): Series[] {
-	switch (filterBy) {
-		case "unread":
-			// No chapter started yet. A zero-chapter series (rare placeholder state
-			// before the first TOC poll completes) also counts as unread.
-			return list.filter((s) => (activity.get(s.id)?.started ?? 0) === 0);
-		case "reading":
-			return list.filter((s) => {
-				const a = activity.get(s.id);
-				if (!a || a.total === 0) return false;
-				return a.started > 0 && a.finished < a.total;
-			});
-		case "done":
-			return list.filter((s) => {
-				const a = activity.get(s.id);
-				return !!a && a.total > 0 && a.finished >= a.total;
-			});
-		default:
-			return list;
+type SortKey = { title: string; author: string; recency: number; progress: number };
+
+export type LibraryItem =
+	| { kind: "book"; book: Book; sortKey: SortKey }
+	| {
+			kind: "series";
+			series: Series;
+			activity: SeriesActivity | undefined;
+			sortKey: SortKey;
+	  };
+
+function bookSortKey(b: Book): SortKey {
+	return {
+		title: b.title,
+		author: b.author ?? "",
+		recency: b.lastRead ?? b.addedAt,
+		progress: readingProgress(b),
+	};
+}
+
+function seriesSortKey(s: Series, activity: SeriesActivity | undefined): SortKey {
+	return {
+		title: s.title,
+		author: s.author ?? "",
+		recency: seriesRecency(s, activity),
+		progress: seriesProgress(activity),
+	};
+}
+
+function matchesFilter(item: LibraryItem, filterBy: FilterBy): boolean {
+	if (filterBy === "all") return true;
+	if (item.kind === "book") {
+		const p = item.sortKey.progress;
+		if (filterBy === "unread") return p === 0;
+		if (filterBy === "reading") return p > 0 && p < 95;
+		return p >= 95;
+	}
+	const a = item.activity;
+	if (filterBy === "unread") return (a?.started ?? 0) === 0;
+	if (filterBy === "reading") {
+		if (!a || a.total === 0) return false;
+		return a.started > 0 && a.finished < a.total;
+	}
+	return !!a && a.total > 0 && a.finished >= a.total;
+}
+
+function compareItems(a: LibraryItem, b: LibraryItem, sortBy: SortBy): number {
+	switch (sortBy) {
+		case "title":
+			return a.sortKey.title.localeCompare(b.sortKey.title);
+		case "author":
+			return a.sortKey.author.localeCompare(b.sortKey.author);
+		case "recent":
+			return b.sortKey.recency - a.sortKey.recency;
+		case "progress":
+			return b.sortKey.progress - a.sortKey.progress;
 	}
 }
 
-function applySeriesSort(
-	list: Series[],
-	sortBy: SortBy,
+export function filterAndSortLibrary(
+	books: Book[],
+	series: Series[],
 	activity: Map<string, SeriesActivity>,
-): Series[] {
-	return [...list].sort((a, b) => {
-		switch (sortBy) {
-			case "title":
-				return a.title.localeCompare(b.title);
-			case "author":
-				return (a.author ?? "").localeCompare(b.author ?? "");
-			case "recent":
-				return seriesRecency(b, activity.get(b.id)) - seriesRecency(a, activity.get(a.id));
-			case "progress":
-				return seriesProgress(activity.get(b.id)) - seriesProgress(activity.get(a.id));
-			default:
-				return 0;
-		}
-	});
-}
-
-export function filterAndSortSeries(
-	list: Series[],
 	filterBy: FilterBy,
 	sortBy: SortBy,
-	activity: Map<string, SeriesActivity>,
-): Series[] {
-	return applySeriesSort(applySeriesFilter(list, filterBy, activity), sortBy, activity);
+): LibraryItem[] {
+	const items: LibraryItem[] = [
+		...books.map<LibraryItem>((book) => ({ kind: "book", book, sortKey: bookSortKey(book) })),
+		...series.map<LibraryItem>((s) => {
+			const a = activity.get(s.id);
+			return { kind: "series", series: s, activity: a, sortKey: seriesSortKey(s, a) };
+		}),
+	];
+	return items.filter((it) => matchesFilter(it, filterBy)).sort((a, b) => compareItems(a, b, sortBy));
 }
