@@ -6,4 +6,7 @@
  */
 export interface ReaderViewHandle {
 	jumpTo(byteOffset: number, opts?: { highlight?: boolean }): void;
+	scrollBy?(pixels: number): void;
+	goNext?(): void;
+	goPrev?(): void;
 }

@@ -20,7 +20,15 @@ import {
 } from "@ionic/react";
 import { calcOrpIndex, type RsvpSettings } from "@lesefluss/rsvp-core";
 import { bookOutline, settingsOutline } from "ionicons/icons";
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, {
+	forwardRef,
+	useCallback,
+	useEffect,
+	useImperativeHandle,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import { useHistory } from "react-router-dom";
 import RsvpSettingsForm from "../settings/rsvp-settings-form";
 import RsvpControls from "./rsvp-controls";
@@ -38,6 +46,15 @@ const WHEEL_PX_PER_WORD = 50;
 // Visual constants.
 const FOCAL_FONT_MULTIPLIER = 2; // focal word is this many × the reader font size
 const X_OFFSET_CENTER = 50; // xOffset value that corresponds to horizontal center
+
+export type RsvpViewHandle = {
+	togglePlayPause(): void;
+	backWord(): void;
+	forwardWord(): void;
+	backSentence(): void;
+	forwardSentence(): void;
+	changeWpm(wpm: number): void;
+};
 
 export interface RsvpViewProps {
 	content: string;
@@ -60,16 +77,19 @@ const spinnerStyle: React.CSSProperties = {
 	transform: "translate(-50%, -50%)",
 };
 
-const RsvpView: React.FC<RsvpViewProps> = ({
-	content,
-	initialByteOffset,
-	settings,
-	fontSize,
-	onPositionChange,
-	onFinished,
-	onWpmChange,
-	onLookup,
-}) => {
+const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
+	{
+		content,
+		initialByteOffset,
+		settings,
+		fontSize,
+		onPositionChange,
+		onFinished,
+		onWpmChange,
+		onLookup,
+	},
+	ref,
+) {
 	const {
 		words,
 		currentWord,
@@ -97,6 +117,12 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 		onLookup,
 		onWpmChange,
 	});
+
+	useImperativeHandle(
+		ref,
+		() => ({ togglePlayPause, backWord, forwardWord, backSentence, forwardSentence, changeWpm }),
+		[togglePlayPause, backWord, forwardWord, backSentence, forwardSentence, changeWpm],
+	);
 
 	// Single stable click handler for all context words - uses data-idx
 	// on the target button instead of an inline closure per word.
@@ -282,110 +308,122 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 			    container scrolls. All visual elements + interactive controls
 			    live here; the spacer below provides the scroll distance. */}
 				<div className="rsvp-overlay-root">
-					<div className="rsvp-focal-line" style={{ left: `${settings.xOffset}%` }} />
+					<div className="rsvp-display-inner">
+						<div className="rsvp-focal-line" style={{ left: `${settings.xOffset}%` }} />
 
-					{isPlaying && effectiveWpm > 0 && (
-						<div
-							className={
-								effectiveWpm < settings.wpm
-									? "rsvp-speed-chip rsvp-speed-chip--ramping"
-									: "rsvp-speed-chip"
-							}
-						>
-							{effectiveWpm} wpm
-						</div>
-					)}
+						{isPlaying && effectiveWpm > 0 && (
+							<div
+								className={
+									effectiveWpm < settings.wpm
+										? "rsvp-speed-chip rsvp-speed-chip--ramping"
+										: "rsvp-speed-chip"
+								}
+							>
+								{effectiveWpm} wpm
+							</div>
+						)}
 
-					{word && (
-						<div
-							className="rsvp-word-container"
-							style={{
-								// While paused the container is centered so the context peek
-								// sits on the horizontal center-line of the display; while
-								// playing the whole word stack moves to xOffset%.
-								left: isPlaying ? `${settings.xOffset}%` : `${X_OFFSET_CENTER}%`,
-								transform: "translate(-50%, -50%)",
-								fontSize: `${fontSize * FOCAL_FONT_MULTIPLIER}px`,
-							}}
-						>
-							{context && context.prev.length > 0 && (
-								<div className="rsvp-context-inline rsvp-context-prev" onClick={handleContextClick}>
-									...
-									{context.prev.map(({ word: cw, idx: ci, breakBefore }, i) => (
-										<React.Fragment key={ci}>
-											{breakBefore && i > 0 && <span className="rsvp-context-break" aria-hidden />}
-											<button type="button" data-idx={ci} className="rsvp-context-word">
-												{cw}
-											</button>
-										</React.Fragment>
-									))}
-								</div>
-							)}
-							<span
-								className="rsvp-word-line"
+						{word && (
+							<div
+								className="rsvp-word-container"
 								style={{
-									// When paused, shift the word-line out to xOffset% of the display
-									// (container stays centered). When playing, only the focal-shift.
-									// `cqw` = container-query width, relative to `.rsvp-display`
-									// (which sets `container-type: inline-size`), so this stays
-									// accurate even when the display is narrower than the viewport
-									// (e.g. web desktop embed with sidebar).
-									transform: isPlaying
-										? `translateX(${wordShiftCh}ch)`
-										: `translateX(calc(${settings.xOffset - X_OFFSET_CENTER}cqw + ${wordShiftCh}ch))`,
+									// While paused the container is centered so the context peek
+									// sits on the horizontal center-line of the display; while
+									// playing the whole word stack moves to xOffset%.
+									left: isPlaying ? `${settings.xOffset}%` : `${X_OFFSET_CENTER}%`,
+									transform: "translate(-50%, -50%)",
+									fontSize: `${fontSize * FOCAL_FONT_MULTIPLIER}px`,
 								}}
 							>
-								<span className="rsvp-before">{before}</span>
-								<span className="rsvp-focal">{focal}</span>
-								<span className="rsvp-after">{after}</span>
-							</span>
-							{context && context.next.length > 0 && (
-								<div className="rsvp-context-inline rsvp-context-next" onClick={handleContextClick}>
-									{context.next.map(({ word: cw, idx: ci, breakBefore }, i) => (
-										<React.Fragment key={ci}>
-											{breakBefore && i > 0 && <span className="rsvp-context-break" aria-hidden />}
-											<button type="button" data-idx={ci} className="rsvp-context-word">
-												{cw}
-											</button>
-										</React.Fragment>
-									))}
-									...
-								</div>
-							)}
-						</div>
-					)}
+								{context && context.prev.length > 0 && (
+									<div
+										className="rsvp-context-inline rsvp-context-prev"
+										onClick={handleContextClick}
+									>
+										...
+										{context.prev.map(({ word: cw, idx: ci, breakBefore }, i) => (
+											<React.Fragment key={ci}>
+												{breakBefore && i > 0 && (
+													<span className="rsvp-context-break" aria-hidden />
+												)}
+												<button type="button" data-idx={ci} className="rsvp-context-word">
+													{cw}
+												</button>
+											</React.Fragment>
+										))}
+									</div>
+								)}
+								<span
+									className="rsvp-word-line"
+									style={{
+										// When paused, shift the word-line out to xOffset% of the display
+										// (container stays centered). When playing, only the focal-shift.
+										// `cqw` = container-query width, relative to `.rsvp-display-inner`
+										// (which sets `container-type: inline-size` and caps at 700px).
+										transform: isPlaying
+											? `translateX(${wordShiftCh}ch)`
+											: `translateX(calc(${settings.xOffset - X_OFFSET_CENTER}cqw + ${wordShiftCh}ch))`,
+									}}
+								>
+									<span className="rsvp-before">{before}</span>
+									<span className="rsvp-focal">{focal}</span>
+									<span className="rsvp-after">{after}</span>
+								</span>
+								{context && context.next.length > 0 && (
+									<div
+										className="rsvp-context-inline rsvp-context-next"
+										onClick={handleContextClick}
+									>
+										{context.next.map(({ word: cw, idx: ci, breakBefore }, i) => (
+											<React.Fragment key={ci}>
+												{breakBefore && i > 0 && (
+													<span className="rsvp-context-break" aria-hidden />
+												)}
+												<button type="button" data-idx={ci} className="rsvp-context-word">
+													{cw}
+												</button>
+											</React.Fragment>
+										))}
+										...
+									</div>
+								)}
+							</div>
+						)}
 
-					{!isPlaying && !currentWord && <div className="rsvp-paused-indicator">Tap to start</div>}
+						{!isPlaying && !currentWord && (
+							<div className="rsvp-paused-indicator">Tap to start</div>
+						)}
 
-					{!isPlaying && (
-						<>
-							<RsvpControls
-								wpm={settings.wpm}
-								onBackSentence={backSentence}
-								onBackWord={backWord}
-								onPlayPause={togglePlayPause}
-								onForwardWord={forwardWord}
-								onForwardSentence={forwardSentence}
-								onWpmChange={changeWpm}
-							/>
-							<button
-								type="button"
-								className="rsvp-dict-button"
-								onClick={handleDictClick}
-								aria-label="Dictionary lookup"
-							>
-								<IonIcon icon={bookOutline} />
-							</button>
-							<button
-								type="button"
-								className="rsvp-settings-button"
-								onClick={handleSettingsClick}
-								aria-label="RSVP settings"
-							>
-								<IonIcon icon={settingsOutline} />
-							</button>
-						</>
-					)}
+						{!isPlaying && (
+							<>
+								<RsvpControls
+									wpm={settings.wpm}
+									onBackSentence={backSentence}
+									onBackWord={backWord}
+									onPlayPause={togglePlayPause}
+									onForwardWord={forwardWord}
+									onForwardSentence={forwardSentence}
+									onWpmChange={changeWpm}
+								/>
+								<button
+									type="button"
+									className="rsvp-dict-button"
+									onClick={handleDictClick}
+									aria-label="Dictionary lookup"
+								>
+									<IonIcon icon={bookOutline} />
+								</button>
+								<button
+									type="button"
+									className="rsvp-settings-button"
+									onClick={handleSettingsClick}
+									aria-label="RSVP settings"
+								>
+									<IonIcon icon={settingsOutline} />
+								</button>
+							</>
+						)}
+					</div>
 				</div>
 
 				{/* Spacer provides scroll distance while paused. Rendered after
@@ -419,6 +457,6 @@ const RsvpView: React.FC<RsvpViewProps> = ({
 			</IonModal>
 		</>
 	);
-};
+});
 
 export default React.memo(RsvpView);

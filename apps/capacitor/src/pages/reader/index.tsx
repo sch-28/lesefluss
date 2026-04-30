@@ -81,7 +81,7 @@ import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
 import { getWordOffsets, utf8ByteLength } from "./paragraph";
 import { stripPunct } from "./rsvp-engine";
-import RsvpView from "./rsvp-view";
+import RsvpView, { type RsvpViewHandle } from "./rsvp-view";
 import ScrollView, { ReaderSkeleton } from "./scroll-view";
 import SearchModal from "./search-modal";
 import SelectionOverlay from "./selection-overlay";
@@ -92,6 +92,7 @@ import {
 	useGlossaryDecorations,
 } from "./use-glossary-decorations";
 import { useHighlightSelection } from "./use-highlight-selection";
+import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import { useScrubProgress } from "./use-scrub-progress";
 import type { ReaderViewHandle } from "./view-types";
 
@@ -185,6 +186,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const [progressBarVisible, setProgressBarVisible] = useState(false);
 
 	const scrollViewRef = useRef<ReaderViewHandle>(null);
+	const rsvpViewRef = useRef<RsvpViewHandle>(null);
 
 	// Track the last offset we set so we can flush on unmount.
 	// null = not yet loaded from DB, don't overwrite on unmount.
@@ -848,6 +850,26 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		],
 	);
 
+	// ── Keyboard shortcuts ────────────────────────────────────────────────
+	useKeyboardShortcuts({
+		readerMode,
+		paginationStyle,
+		currentWpm: rsvpSettings.wpm,
+		isBlocked:
+			selectedWord !== null ||
+			annotationsOpen ||
+			searchOpen ||
+			sel.isSelecting ||
+			editingGlossaryEntry !== null ||
+			sel.editingHighlight !== null ||
+			sel.noteInputOpen,
+		scrollViewRef,
+		rsvpViewRef,
+		lastOffsetRef,
+		handleRsvpToggle,
+		exitRsvpToStandard,
+	});
+
 	// ── Hide tab bar while reader is mounted ──────────────────────────────
 	// Ionic's shadow DOM toggles tab-bar-hidden on keyboard show/hide, and
 	// external CSS can't override :host styles reliably. A body class lets
@@ -1029,12 +1051,14 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 					<ChapterStateOverlay
 						status="error"
 						reason={chapterFetch.reason}
+						provider={series?.provider}
 						onRetry={chapterFetch.retry}
 					/>
 				) : contentPending || !content || chapterFetch.kind === "loading" ? (
 					<ReaderSkeleton />
 				) : readerMode === "rsvp" ? (
 					<RsvpView
+						ref={rsvpViewRef}
 						content={content}
 						initialByteOffset={rsvpInitOffset}
 						settings={rsvpSettings}

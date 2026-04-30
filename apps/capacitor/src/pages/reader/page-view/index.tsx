@@ -468,8 +468,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				const targetPage = findPageForByte(el, pageWidth, currentPageCount, byteOffset);
 				goToPage(targetPage);
 			},
+			goNext,
+			goPrev,
 		}),
-		[chunks, chunkIndex, pageWidth, currentPageCount, isLayoutReady, goToPage],
+		[chunks, chunkIndex, pageWidth, currentPageCount, isLayoutReady, goToPage, goNext, goPrev],
 	);
 
 	// ── Pointer gestures ──────────────────────────────────────────────────

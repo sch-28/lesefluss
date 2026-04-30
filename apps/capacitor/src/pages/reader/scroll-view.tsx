@@ -342,6 +342,9 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 				listRef.current.scrollToIndex(idx, { align: "start" });
 				fineScrollTo(byteOffset, highlight);
 			},
+			scrollBy(pixels) {
+				listRef.current?.scrollBy(pixels);
+			},
 		}),
 		[findParagraphIndex, fineScrollTo],
 	);
