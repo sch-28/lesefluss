@@ -14,6 +14,7 @@ import {
 	EyeOff,
 	HardDrive,
 	Highlighter,
+	Layers,
 	Library,
 	type LucideIcon,
 	Trash2,
@@ -28,11 +29,14 @@ import {
 	type CatalogStatsResult,
 	type CatalogSyncSource,
 	deleteAdminBook,
+	deleteAdminSeries,
 	deleteAdminUser,
 	getAdminBooks,
+	getAdminSeries,
 	getAdminStats,
 	getAdminUsers,
 	getCatalogStats,
+	hardDeleteAdminSeriesTombstones,
 	hardDeleteAdminTombstones,
 	triggerCatalogSync,
 } from "~/lib/admin";
@@ -55,6 +59,7 @@ const adminKeys = {
 	stats: ["admin", "stats"] as const,
 	users: ["admin", "users"] as const,
 	books: ["admin", "books"] as const,
+	series: ["admin", "series"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -109,6 +114,11 @@ function StatCard({
 
 type AdminUser = Awaited<ReturnType<typeof getAdminUsers>>[number];
 type AdminBook = Awaited<ReturnType<typeof getAdminBooks>>[number];
+type AdminSeries = Awaited<ReturnType<typeof getAdminSeries>>[number];
+
+function seriesKey(s: Pick<AdminSeries, "userId" | "seriesId">): string {
+	return `${s.userId}:${s.seriesId}`;
+}
 
 // ---------------------------------------------------------------------------
 // Pagination controls
@@ -145,6 +155,304 @@ function Pagination({
 }
 
 // ---------------------------------------------------------------------------
+// Shared table primitives
+// ---------------------------------------------------------------------------
+
+type TableInstance<T> = ReturnType<typeof useReactTable<T>>;
+
+function TableShell<T>({
+	table,
+	getRowKey,
+	expandedKey,
+	renderExpandedRow,
+}: {
+	table: TableInstance<T>;
+	getRowKey: (row: T) => string;
+	expandedKey?: string | null;
+	renderExpandedRow?: (row: T) => React.ReactNode;
+}) {
+	const colSpan = table.getAllColumns().length;
+	const { pageIndex } = table.getState().pagination;
+
+	return (
+		<div className="space-y-2">
+			<div className="overflow-x-auto">
+				<table className="w-full text-sm">
+					<thead>
+						{table.getHeaderGroups().map((hg) => (
+							<tr key={hg.id} className="border-b">
+								{hg.headers.map((h) => (
+									<th
+										key={h.id}
+										className="py-2 pr-4 text-left font-medium text-muted-foreground text-xs last:pr-0"
+									>
+										{flexRender(h.column.columnDef.header, h.getContext())}
+									</th>
+								))}
+							</tr>
+						))}
+					</thead>
+					<tbody>
+						{table.getRowModel().rows.map((row) => {
+							const key = getRowKey(row.original);
+							return (
+								<React.Fragment key={key}>
+									<tr className="border-b last:border-0">
+										{row.getVisibleCells().map((cell) => (
+											<td key={cell.id} className="py-2 pr-4 last:pr-0">
+												{flexRender(cell.column.columnDef.cell, cell.getContext())}
+											</td>
+										))}
+									</tr>
+									{renderExpandedRow && expandedKey === key && (
+										<tr>
+											<td colSpan={colSpan} className="bg-muted/20 px-3 py-3 text-sm">
+												{renderExpandedRow(row.original)}
+											</td>
+										</tr>
+									)}
+								</React.Fragment>
+							);
+						})}
+					</tbody>
+				</table>
+			</div>
+			<Pagination
+				pageIndex={pageIndex}
+				pageCount={table.getPageCount()}
+				canPrev={table.getCanPreviousPage()}
+				canNext={table.getCanNextPage()}
+				onPrev={() => table.previousPage()}
+				onNext={() => table.nextPage()}
+			/>
+		</div>
+	);
+}
+
+function DeleteAction({
+	isActive,
+	isPending,
+	onActivate,
+	onConfirm,
+	onCancel,
+}: {
+	isActive: boolean;
+	isPending: boolean;
+	onActivate: () => void;
+	onConfirm: () => void;
+	onCancel: () => void;
+}) {
+	if (isActive) {
+		return (
+			<>
+				<Button variant="destructive" size="sm" disabled={isPending} onClick={onConfirm}>
+					Confirm
+				</Button>
+				<Button variant="outline" size="sm" disabled={isPending} onClick={onCancel}>
+					Cancel
+				</Button>
+			</>
+		);
+	}
+	return (
+		<Button variant="outline" size="sm" onClick={onActivate}>
+			Delete
+		</Button>
+	);
+}
+
+type CleanupController = {
+	isConfirming: boolean;
+	isPending: boolean;
+	onActivate: () => void;
+	onCancel: () => void;
+	onConfirm: () => void;
+};
+
+function TombstoneToolbar({
+	users,
+	filter,
+	onFilterChange,
+	showTombstones,
+	onShowTombstonesChange,
+	tombstonesInScope,
+	cleanupLabel,
+	cleanup,
+}: {
+	users: AdminUser[];
+	filter: string;
+	onFilterChange: (id: string) => void;
+	showTombstones: boolean;
+	onShowTombstonesChange: (next: boolean) => void;
+	tombstonesInScope: number;
+	cleanupLabel: string;
+	cleanup: CleanupController;
+}) {
+	const filterId = React.useId();
+	return (
+		<div className="flex flex-wrap items-center gap-3">
+			<div className="flex items-center gap-2">
+				<label htmlFor={filterId} className="text-muted-foreground text-xs">
+					Filter by user
+				</label>
+				<select
+					id={filterId}
+					value={filter}
+					onChange={(e) => onFilterChange(e.target.value)}
+					className="rounded border bg-background px-2 py-1 text-xs"
+				>
+					<option value="all">All users</option>
+					{users.map((u) => (
+						<option key={u.id} value={u.id}>
+							{u.email}
+						</option>
+					))}
+				</select>
+			</div>
+			<label className="flex items-center gap-1.5 text-muted-foreground text-xs">
+				<input
+					type="checkbox"
+					checked={showTombstones}
+					onChange={(e) => onShowTombstonesChange(e.target.checked)}
+				/>
+				Show tombstones ({tombstonesInScope})
+			</label>
+			<div className="ml-auto flex items-center gap-2">
+				{cleanup.isConfirming ? (
+					<>
+						<Button
+							variant="destructive"
+							size="sm"
+							disabled={cleanup.isPending}
+							onClick={cleanup.onConfirm}
+						>
+							Confirm cleanup ({tombstonesInScope})
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={cleanup.isPending}
+							onClick={cleanup.onCancel}
+						>
+							Cancel
+						</Button>
+					</>
+				) : (
+					<Button
+						variant="outline"
+						size="sm"
+						disabled={tombstonesInScope === 0}
+						onClick={cleanup.onActivate}
+					>
+						{cleanupLabel}
+					</Button>
+				)}
+			</div>
+		</div>
+	);
+}
+
+// Owns the filter/show-tombstones/cleanup-confirm state for any tombstone-aware
+// table. Generic over the cleanup result so each table can format its own
+// post-cleanup notice. Callbacks are ref-stabilized so the parent can pass
+// inline arrows without invalidating handleCleanup on every render.
+function useTombstoneState<TResult>(opts: {
+	cleanup: (scope: { userId?: string }) => Promise<TResult>;
+	onInvalidate: () => Promise<void> | void;
+}) {
+	const cleanupRef = React.useRef(opts.cleanup);
+	cleanupRef.current = opts.cleanup;
+	const onInvalidateRef = React.useRef(opts.onInvalidate);
+	onInvalidateRef.current = opts.onInvalidate;
+
+	const [filter, setFilterState] = React.useState("all");
+	const [showTombstones, setShowTombstonesState] = React.useState(false);
+	const [isConfirmingCleanup, setConfirmingCleanup] = React.useState(false);
+	const [isCleanupPending, setCleanupPending] = React.useState(false);
+	const [lastCleanup, setLastCleanup] = React.useState<TResult | null>(null);
+
+	const setFilter = React.useCallback((id: string) => {
+		setFilterState(id);
+		setConfirmingCleanup(false);
+	}, []);
+
+	const setShowTombstones = React.useCallback((next: boolean) => {
+		setShowTombstonesState(next);
+		setConfirmingCleanup(false);
+	}, []);
+
+	const handleCleanup = React.useCallback(async () => {
+		setCleanupPending(true);
+		try {
+			const result = await cleanupRef.current({
+				userId: filter === "all" ? undefined : filter,
+			});
+			await onInvalidateRef.current();
+			setLastCleanup(result);
+			setConfirmingCleanup(false);
+		} finally {
+			setCleanupPending(false);
+		}
+	}, [filter]);
+
+	const cleanupController = React.useMemo<CleanupController>(
+		() => ({
+			isConfirming: isConfirmingCleanup,
+			isPending: isCleanupPending,
+			onActivate: () => setConfirmingCleanup(true),
+			onCancel: () => setConfirmingCleanup(false),
+			onConfirm: handleCleanup,
+		}),
+		[isConfirmingCleanup, isCleanupPending, handleCleanup],
+	);
+
+	return {
+		filter,
+		setFilter,
+		showTombstones,
+		setShowTombstones,
+		lastCleanup,
+		cleanupController,
+	};
+}
+
+// Owns the per-row delete confirmation state and ref-stabilized handler for any
+// table. Returns a `stateRef` plus a `handleDeleteRef` so column definitions
+// stay stable while reading the latest state and mutation closure. The hook
+// return itself is memoized so consumers can use it as a useMemo dep.
+function useConfirmDelete<TArgs extends unknown[]>(opts: {
+	mutate: (...args: TArgs) => Promise<unknown>;
+	onAfterSuccess?: (...args: TArgs) => void;
+}) {
+	const mutateRef = React.useRef(opts.mutate);
+	mutateRef.current = opts.mutate;
+	const onAfterSuccessRef = React.useRef(opts.onAfterSuccess);
+	onAfterSuccessRef.current = opts.onAfterSuccess;
+
+	const [confirming, setConfirming] = React.useState<string | null>(null);
+	const [isPending, setPending] = React.useState(false);
+
+	const stateRef = React.useRef({ confirming, isPending });
+	stateRef.current = { confirming, isPending };
+
+	const handleDelete = async (...args: TArgs) => {
+		setPending(true);
+		try {
+			await mutateRef.current(...args);
+			setConfirming(null);
+			onAfterSuccessRef.current?.(...args);
+		} finally {
+			setPending(false);
+		}
+	};
+
+	const handleDeleteRef = React.useRef(handleDelete);
+	handleDeleteRef.current = handleDelete;
+
+	return React.useMemo(() => ({ setConfirming, stateRef, handleDeleteRef }), []);
+}
+
+// ---------------------------------------------------------------------------
 // Users table
 // ---------------------------------------------------------------------------
 
@@ -162,30 +470,23 @@ function UsersTable() {
 	});
 
 	const [expanded, setExpanded] = React.useState<string | null>(null);
-	const [confirming, setConfirming] = React.useState<string | null>(null);
-	const [pending, setPending] = React.useState(false);
+	const expandedRef = React.useRef(expanded);
+	expandedRef.current = expanded;
 
-	// Refs so column definitions stay stable while cells always read latest state.
-	const stateRef = React.useRef({ expanded, confirming, pending });
-	stateRef.current = { expanded, confirming, pending };
-
-	async function handleDelete(userId: string) {
-		setPending(true);
-		try {
+	const del = useConfirmDelete<[userId: string]>({
+		mutate: async (userId) => {
 			await deleteAdminUser({ data: { userId } });
 			await Promise.all([
 				qc.invalidateQueries({ queryKey: adminKeys.users }),
 				qc.invalidateQueries({ queryKey: adminKeys.books }),
+				qc.invalidateQueries({ queryKey: adminKeys.series }),
+				qc.invalidateQueries({ queryKey: adminKeys.stats }),
 			]);
-			setConfirming(null);
-			if (stateRef.current.expanded === userId) setExpanded(null);
-		} finally {
-			setPending(false);
-		}
-	}
-
-	const handleDeleteRef = React.useRef(handleDelete);
-	handleDeleteRef.current = handleDelete;
+		},
+		onAfterSuccess: (userId) => {
+			if (expandedRef.current === userId) setExpanded(null);
+		},
+	});
 
 	const columns = React.useMemo<ColumnDef<AdminUser>[]>(
 		() => [
@@ -218,46 +519,29 @@ function UsersTable() {
 				header: () => <span className="block text-right">Actions</span>,
 				cell: ({ row }) => {
 					const u = row.original;
-					const { expanded, confirming, pending } = stateRef.current;
+					const s = del.stateRef.current;
 					return (
 						<div className="flex items-center justify-end gap-2">
 							<Button
 								variant="outline"
 								size="sm"
-								onClick={() => setExpanded(expanded === u.id ? null : u.id)}
+								onClick={() => setExpanded(expandedRef.current === u.id ? null : u.id)}
 							>
-								{expanded === u.id ? "Hide" : "Details"}
+								{expandedRef.current === u.id ? "Hide" : "Details"}
 							</Button>
-							{confirming === u.id ? (
-								<>
-									<Button
-										variant="destructive"
-										size="sm"
-										disabled={pending}
-										onClick={() => handleDeleteRef.current(u.id)}
-									>
-										Confirm
-									</Button>
-									<Button
-										variant="outline"
-										size="sm"
-										disabled={pending}
-										onClick={() => setConfirming(null)}
-									>
-										Cancel
-									</Button>
-								</>
-							) : (
-								<Button variant="outline" size="sm" onClick={() => setConfirming(u.id)}>
-									Delete
-								</Button>
-							)}
+							<DeleteAction
+								isActive={s.confirming === u.id}
+								isPending={s.isPending}
+								onActivate={() => del.setConfirming(u.id)}
+								onCancel={() => del.setConfirming(null)}
+								onConfirm={() => del.handleDeleteRef.current(u.id)}
+							/>
 						</div>
 					);
 				},
 			},
 		],
-		[], // stable - state is read via stateRef.current at render time
+		[del],
 	);
 
 	const table = useReactTable({
@@ -271,75 +555,35 @@ function UsersTable() {
 	if (isLoading) return <p className="text-muted-foreground text-sm">Loading…</p>;
 	if (users.length === 0) return <p className="text-muted-foreground text-sm">No users.</p>;
 
-	const { pageIndex } = table.getState().pagination;
+	const renderExpanded = (u: AdminUser) => {
+		const userBooks = books.filter((b) => b.userId === u.id);
+		return (
+			<>
+				<p className="mb-1.5 font-medium text-muted-foreground text-xs">Books</p>
+				{userBooks.length === 0 ? (
+					<p className="text-muted-foreground text-xs">No books.</p>
+				) : (
+					<ul className="space-y-0.5">
+						{userBooks.map((b) => (
+							<li key={b.bookId} className="text-xs">
+								{b.title}
+								{b.author ? ` - ${b.author}` : ""}
+								{b.fileSize ? ` (${formatBytes(b.fileSize)})` : ""}
+							</li>
+						))}
+					</ul>
+				)}
+			</>
+		);
+	};
 
 	return (
-		<div className="space-y-2">
-			<div className="overflow-x-auto">
-				<table className="w-full text-sm">
-					<thead>
-						{table.getHeaderGroups().map((hg) => (
-							<tr key={hg.id} className="border-b">
-								{hg.headers.map((h) => (
-									<th
-										key={h.id}
-										className="py-2 pr-4 text-left font-medium text-muted-foreground text-xs last:pr-0"
-									>
-										{flexRender(h.column.columnDef.header, h.getContext())}
-									</th>
-								))}
-							</tr>
-						))}
-					</thead>
-					<tbody>
-						{table.getRowModel().rows.map((row) => {
-							const u = row.original;
-							return (
-								<React.Fragment key={u.id}>
-									<tr className="border-b last:border-0">
-										{row.getVisibleCells().map((cell) => (
-											<td key={cell.id} className="py-2 pr-4 last:pr-0">
-												{flexRender(cell.column.columnDef.cell, cell.getContext())}
-											</td>
-										))}
-									</tr>
-									{expanded === u.id && (
-										<tr>
-											<td colSpan={columns.length} className="bg-muted/20 px-3 py-3 text-sm">
-												<p className="mb-1.5 font-medium text-muted-foreground text-xs">Books</p>
-												{books.filter((b) => b.userId === u.id).length === 0 ? (
-													<p className="text-muted-foreground text-xs">No books.</p>
-												) : (
-													<ul className="space-y-0.5">
-														{books
-															.filter((b) => b.userId === u.id)
-															.map((b) => (
-																<li key={b.bookId} className="text-xs">
-																	{b.title}
-																	{b.author ? ` - ${b.author}` : ""}
-																	{b.fileSize ? ` (${formatBytes(b.fileSize)})` : ""}
-																</li>
-															))}
-													</ul>
-												)}
-											</td>
-										</tr>
-									)}
-								</React.Fragment>
-							);
-						})}
-					</tbody>
-				</table>
-			</div>
-			<Pagination
-				pageIndex={pageIndex}
-				pageCount={table.getPageCount()}
-				canPrev={table.getCanPreviousPage()}
-				canNext={table.getCanNextPage()}
-				onPrev={() => table.previousPage()}
-				onNext={() => table.nextPage()}
-			/>
-		</div>
+		<TableShell
+			table={table}
+			getRowKey={(u) => u.id}
+			expandedKey={expanded}
+			renderExpandedRow={renderExpanded}
+		/>
 	);
 }
 
@@ -367,20 +611,22 @@ function BooksTable() {
 	});
 
 	const [expanded, setExpanded] = React.useState<string | null>(null);
-	const [confirming, setConfirming] = React.useState<string | null>(null);
-	const [pending, setPending] = React.useState(false);
-	const [filter, setFilter] = React.useState("all");
-	const [showTombstones, setShowTombstones] = React.useState(false);
-	const [confirmingCleanup, setConfirmingCleanup] = React.useState(false);
-	const [cleanupPending, setCleanupPending] = React.useState(false);
-	const [lastCleanup, setLastCleanup] = React.useState<{
-		books: number;
-		highlights: number;
-	} | null>(null);
+	const expandedRef = React.useRef(expanded);
+	expandedRef.current = expanded;
 
-	// Stable reference: a fresh array each render fed react-table a new `data` ref,
-	// which triggered its autoResetPageIndex on every state change and caused a
-	// render loop when state (e.g. confirming) changed while a filter was active.
+	const invalidateBooks = React.useCallback(async () => {
+		await Promise.all([
+			qc.invalidateQueries({ queryKey: adminKeys.books }),
+			qc.invalidateQueries({ queryKey: adminKeys.stats }),
+		]);
+	}, [qc]);
+
+	const { filter, setFilter, showTombstones, setShowTombstones, lastCleanup, cleanupController } =
+		useTombstoneState({
+			cleanup: (scope) => hardDeleteAdminTombstones({ data: scope }),
+			onInvalidate: invalidateBooks,
+		});
+
 	const filtered = React.useMemo(
 		() =>
 			books.filter(
@@ -389,53 +635,22 @@ function BooksTable() {
 		[books, filter, showTombstones],
 	);
 
-	// Authoritative tombstone count for the current scope, derived from stats so
-	// it stays accurate even when the row list is capped at ADMIN_BOOKS_LIMIT.
 	const tombstonesInScope = React.useMemo(() => {
 		if (!stats) return 0;
 		if (filter === "all") return stats.bookTombstoneTotal;
 		return stats.bookTombstonesByUser.find((r) => r.userId === filter)?.count ?? 0;
 	}, [stats, filter]);
 
-	// Refs so column definitions stay stable while cells always read latest state.
-	const stateRef = React.useRef({ expanded, confirming, pending });
-	stateRef.current = { expanded, confirming, pending };
-
-	async function handleDelete(userId: string, bookId: string) {
-		setPending(true);
-		try {
+	const del = useConfirmDelete<[userId: string, bookId: string]>({
+		mutate: async (userId, bookId) => {
 			await deleteAdminBook({ data: { userId, bookId } });
-			await Promise.all([
-				qc.invalidateQueries({ queryKey: adminKeys.books }),
-				qc.invalidateQueries({ queryKey: adminKeys.stats }),
-			]);
-			setConfirming(null);
+			await invalidateBooks();
+		},
+		onAfterSuccess: (userId, bookId) => {
 			const key = bookKey({ userId, bookId });
-			if (stateRef.current.expanded === key) setExpanded(null);
-		} finally {
-			setPending(false);
-		}
-	}
-
-	const handleDeleteRef = React.useRef(handleDelete);
-	handleDeleteRef.current = handleDelete;
-
-	async function handleCleanupTombstones() {
-		setCleanupPending(true);
-		try {
-			const result = await hardDeleteAdminTombstones({
-				data: { userId: filter === "all" ? undefined : filter },
-			});
-			await Promise.all([
-				qc.invalidateQueries({ queryKey: adminKeys.books }),
-				qc.invalidateQueries({ queryKey: adminKeys.stats }),
-			]);
-			setLastCleanup({ books: result.booksRemoved, highlights: result.highlightsRemoved });
-			setConfirmingCleanup(false);
-		} finally {
-			setCleanupPending(false);
-		}
-	}
+			if (expandedRef.current === key) setExpanded(null);
+		},
+	});
 
 	const columns = React.useMemo<ColumnDef<AdminBook>[]>(
 		() => [
@@ -455,11 +670,6 @@ function BooksTable() {
 								{b.deleted && (
 									<Badge variant="outline" className="text-muted-foreground">
 										tombstone
-									</Badge>
-								)}
-								{b.seriesId && (
-									<Badge variant="outline" className="text-muted-foreground">
-										chapter
 									</Badge>
 								)}
 							</div>
@@ -501,46 +711,31 @@ function BooksTable() {
 				cell: ({ row }) => {
 					const b = row.original;
 					const key = bookKey(b);
-					const { expanded, confirming, pending } = stateRef.current;
+					const s = del.stateRef.current;
 					return (
 						<div className="flex items-center justify-end gap-2">
 							<Button
 								variant="outline"
 								size="sm"
-								onClick={() => setExpanded(expanded === key ? null : key)}
+								onClick={() => setExpanded(expandedRef.current === key ? null : key)}
 							>
-								{expanded === key ? "Hide" : "Details"}
+								{expandedRef.current === key ? "Hide" : "Details"}
 							</Button>
-							{b.deleted ? null : confirming === key ? (
-								<>
-									<Button
-										variant="destructive"
-										size="sm"
-										disabled={pending}
-										onClick={() => handleDeleteRef.current(b.userId, b.bookId)}
-									>
-										Confirm
-									</Button>
-									<Button
-										variant="outline"
-										size="sm"
-										disabled={pending}
-										onClick={() => setConfirming(null)}
-									>
-										Cancel
-									</Button>
-								</>
-							) : (
-								<Button variant="outline" size="sm" onClick={() => setConfirming(key)}>
-									Delete
-								</Button>
+							{!b.deleted && (
+								<DeleteAction
+									isActive={s.confirming === key}
+									isPending={s.isPending}
+									onActivate={() => del.setConfirming(key)}
+									onCancel={() => del.setConfirming(null)}
+									onConfirm={() => del.handleDeleteRef.current(b.userId, b.bookId)}
+								/>
 							)}
 						</div>
 					);
 				},
 			},
 		],
-		[], // stable - state is read via stateRef.current at render time
+		[del],
 	);
 
 	const table = useReactTable({
@@ -551,82 +746,32 @@ function BooksTable() {
 		initialState: { pagination: { pageSize: 20 } },
 	});
 
-	const { pageIndex } = table.getState().pagination;
+	const handleFilterChange = (id: string) => {
+		setFilter(id);
+		table.setPageIndex(0);
+	};
+	const handleShowTombstonesChange = (next: boolean) => {
+		setShowTombstones(next);
+		table.setPageIndex(0);
+	};
 
-	const filterControl = (
-		<div className="flex flex-wrap items-center gap-3">
-			<div className="flex items-center gap-2">
-				<label htmlFor="filter-user" className="text-muted-foreground text-xs">
-					Filter by user
-				</label>
-				<select
-					id="filter-user"
-					value={filter}
-					onChange={(e) => {
-						setFilter(e.target.value);
-						setConfirmingCleanup(false);
-						table.setPageIndex(0);
-					}}
-					className="rounded border bg-background px-2 py-1 text-xs"
-				>
-					<option value="all">All users</option>
-					{users.map((u) => (
-						<option key={u.id} value={u.id}>
-							{u.email}
-						</option>
-					))}
-				</select>
-			</div>
-			<label className="flex items-center gap-1.5 text-muted-foreground text-xs">
-				<input
-					type="checkbox"
-					checked={showTombstones}
-					onChange={(e) => {
-						setShowTombstones(e.target.checked);
-						setConfirmingCleanup(false);
-						table.setPageIndex(0);
-					}}
-				/>
-				Show tombstones ({tombstonesInScope})
-			</label>
-			<div className="ml-auto flex items-center gap-2">
-				{confirmingCleanup ? (
-					<>
-						<Button
-							variant="destructive"
-							size="sm"
-							disabled={cleanupPending}
-							onClick={handleCleanupTombstones}
-						>
-							Confirm cleanup ({tombstonesInScope})
-						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							disabled={cleanupPending}
-							onClick={() => setConfirmingCleanup(false)}
-						>
-							Cancel
-						</Button>
-					</>
-				) : (
-					<Button
-						variant="outline"
-						size="sm"
-						disabled={tombstonesInScope === 0}
-						onClick={() => setConfirmingCleanup(true)}
-					>
-						Cleanup tombstones
-					</Button>
-				)}
-			</div>
-		</div>
+	const toolbar = (
+		<TombstoneToolbar
+			users={users}
+			filter={filter}
+			onFilterChange={handleFilterChange}
+			showTombstones={showTombstones}
+			onShowTombstonesChange={handleShowTombstonesChange}
+			tombstonesInScope={tombstonesInScope}
+			cleanupLabel="Cleanup tombstones"
+			cleanup={cleanupController}
+		/>
 	);
 
 	const cleanupNotice = lastCleanup && (
 		<p className="text-muted-foreground text-xs">
-			Removed {lastCleanup.books} tombstoned books and {lastCleanup.highlights} tombstoned
-			highlights.
+			Removed {lastCleanup.booksRemoved} tombstoned books and {lastCleanup.highlightsRemoved}{" "}
+			tombstoned highlights.
 		</p>
 	);
 
@@ -638,14 +783,250 @@ function BooksTable() {
 	if (isLoading)
 		return (
 			<>
-				{filterControl}
+				{toolbar}
 				<p className="text-muted-foreground text-sm">Loading…</p>
 			</>
 		);
 	if (filtered.length === 0)
 		return (
 			<>
-				{filterControl}
+				{toolbar}
+				{cleanupNotice}
+				<p className="text-muted-foreground text-sm">{emptyMessage}</p>
+			</>
+		);
+
+	const renderExpanded = (b: AdminBook) => {
+		const progress = b.fileSize && b.position ? Math.round((b.position / b.fileSize) * 100) : 0;
+		return (
+			<dl className="grid grid-cols-3 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
+				<div>
+					<dt className="text-muted-foreground">Words</dt>
+					<dd className="tabular-nums">{b.wordCount?.toLocaleString() ?? "-"}</dd>
+				</div>
+				<div>
+					<dt className="text-muted-foreground">Progress</dt>
+					<dd className="tabular-nums">{progress}%</dd>
+				</div>
+				<div>
+					<dt className="text-muted-foreground">Position</dt>
+					<dd className="tabular-nums">{b.position.toLocaleString()} B</dd>
+				</div>
+				<div>
+					<dt className="text-muted-foreground">Book ID</dt>
+					<dd className="font-mono">{b.bookId}</dd>
+				</div>
+			</dl>
+		);
+	};
+
+	return (
+		<div className="space-y-3">
+			{toolbar}
+			{cleanupNotice}
+			<TableShell
+				table={table}
+				getRowKey={bookKey}
+				expandedKey={expanded}
+				renderExpandedRow={renderExpanded}
+			/>
+		</div>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Series table
+// ---------------------------------------------------------------------------
+
+function SeriesTable() {
+	const qc = useQueryClient();
+	const { data: series = [], isLoading } = useQuery({
+		queryKey: adminKeys.series,
+		queryFn: () => getAdminSeries(),
+	});
+	const { data: users = [] } = useQuery({
+		queryKey: adminKeys.users,
+		queryFn: () => getAdminUsers(),
+	});
+	const { data: stats } = useQuery({
+		queryKey: adminKeys.stats,
+		queryFn: () => getAdminStats(),
+	});
+
+	const invalidateSeries = React.useCallback(async () => {
+		await Promise.all([
+			qc.invalidateQueries({ queryKey: adminKeys.series }),
+			qc.invalidateQueries({ queryKey: adminKeys.books }),
+			qc.invalidateQueries({ queryKey: adminKeys.stats }),
+		]);
+	}, [qc]);
+
+	const { filter, setFilter, showTombstones, setShowTombstones, lastCleanup, cleanupController } =
+		useTombstoneState({
+			cleanup: (scope) => hardDeleteAdminSeriesTombstones({ data: scope }),
+			onInvalidate: invalidateSeries,
+		});
+
+	const filtered = React.useMemo(
+		() =>
+			series.filter(
+				(s) => (showTombstones || !s.deleted) && (filter === "all" || s.userId === filter),
+			),
+		[series, filter, showTombstones],
+	);
+
+	const tombstonesInScope = React.useMemo(() => {
+		if (!stats) return 0;
+		if (filter === "all") return stats.seriesTombstoneTotal;
+		return stats.seriesTombstonesByUser.find((r) => r.userId === filter)?.count ?? 0;
+	}, [stats, filter]);
+
+	const del = useConfirmDelete<[userId: string, seriesId: string]>({
+		mutate: async (userId, seriesId) => {
+			await deleteAdminSeries({ data: { userId, seriesId } });
+			await invalidateSeries();
+		},
+	});
+
+	const columns = React.useMemo<ColumnDef<AdminSeries>[]>(
+		() => [
+			{
+				id: "title",
+				header: "Title",
+				cell: ({ row }) => {
+					const s = row.original;
+					return (
+						<div>
+							<div className="flex items-center gap-2">
+								<span
+									className={cn("font-medium", s.deleted && "text-muted-foreground line-through")}
+								>
+									{s.title}
+								</span>
+								<Badge variant="outline" className="text-muted-foreground">
+									{s.provider}
+								</Badge>
+								{s.deleted && (
+									<Badge variant="outline" className="text-muted-foreground">
+										tombstone
+									</Badge>
+								)}
+							</div>
+							{s.author && <div className="text-muted-foreground text-xs">{s.author}</div>}
+						</div>
+					);
+				},
+			},
+			{
+				id: "user",
+				header: "User",
+				cell: ({ row }) => (
+					<span className="font-mono text-muted-foreground text-xs">
+						{row.original.userEmail ?? row.original.userId}
+					</span>
+				),
+			},
+			{
+				id: "chapters",
+				header: "Chapters",
+				cell: ({ row }) => <span className="tabular-nums">{row.original.chapterCount}</span>,
+			},
+			{
+				id: "size",
+				header: "Size",
+				cell: ({ row }) => (
+					<span className="text-muted-foreground tabular-nums">
+						{row.original.totalSize > 0 ? formatBytes(row.original.totalSize) : "-"}
+					</span>
+				),
+			},
+			{
+				accessorKey: "updatedAt",
+				header: "Updated",
+				cell: ({ row }) => (
+					<span className="text-muted-foreground tabular-nums">
+						{formatDate(row.original.updatedAt)}
+					</span>
+				),
+			},
+			{
+				id: "actions",
+				header: () => <span className="block text-right">Actions</span>,
+				cell: ({ row }) => {
+					const s = row.original;
+					const key = seriesKey(s);
+					const ref = del.stateRef.current;
+					if (s.deleted) return null;
+					return (
+						<div className="flex items-center justify-end gap-2">
+							<DeleteAction
+								isActive={ref.confirming === key}
+								isPending={ref.isPending}
+								onActivate={() => del.setConfirming(key)}
+								onCancel={() => del.setConfirming(null)}
+								onConfirm={() => del.handleDeleteRef.current(s.userId, s.seriesId)}
+							/>
+						</div>
+					);
+				},
+			},
+		],
+		[del],
+	);
+
+	const table = useReactTable({
+		data: filtered,
+		columns,
+		getCoreRowModel: getCoreRowModel(),
+		getPaginationRowModel: getPaginationRowModel(),
+		initialState: { pagination: { pageSize: 20 } },
+	});
+
+	const handleFilterChange = (id: string) => {
+		setFilter(id);
+		table.setPageIndex(0);
+	};
+	const handleShowTombstonesChange = (next: boolean) => {
+		setShowTombstones(next);
+		table.setPageIndex(0);
+	};
+
+	const toolbar = (
+		<TombstoneToolbar
+			users={users}
+			filter={filter}
+			onFilterChange={handleFilterChange}
+			showTombstones={showTombstones}
+			onShowTombstonesChange={handleShowTombstonesChange}
+			tombstonesInScope={tombstonesInScope}
+			cleanupLabel="Cleanup series tombstones"
+			cleanup={cleanupController}
+		/>
+	);
+
+	const cleanupNotice = lastCleanup && (
+		<p className="text-muted-foreground text-xs">
+			Removed {lastCleanup.seriesRemoved} tombstoned series and {lastCleanup.chaptersRemoved}{" "}
+			tombstoned chapters.
+		</p>
+	);
+
+	const allHidden = filtered.length === 0 && tombstonesInScope > 0 && !showTombstones;
+	const emptyMessage = allHidden
+		? `All series in scope are tombstoned (${tombstonesInScope}). Toggle "Show tombstones" to view.`
+		: "No series.";
+
+	if (isLoading)
+		return (
+			<>
+				{toolbar}
+				<p className="text-muted-foreground text-sm">Loading…</p>
+			</>
+		);
+	if (filtered.length === 0)
+		return (
+			<>
+				{toolbar}
 				{cleanupNotice}
 				<p className="text-muted-foreground text-sm">{emptyMessage}</p>
 			</>
@@ -653,81 +1034,9 @@ function BooksTable() {
 
 	return (
 		<div className="space-y-3">
-			{filterControl}
+			{toolbar}
 			{cleanupNotice}
-			<div className="space-y-2">
-				<div className="overflow-x-auto">
-					<table className="w-full text-sm">
-						<thead>
-							{table.getHeaderGroups().map((hg) => (
-								<tr key={hg.id} className="border-b">
-									{hg.headers.map((h) => (
-										<th
-											key={h.id}
-											className="py-2 pr-4 text-left font-medium text-muted-foreground text-xs last:pr-0"
-										>
-											{flexRender(h.column.columnDef.header, h.getContext())}
-										</th>
-									))}
-								</tr>
-							))}
-						</thead>
-						<tbody>
-							{table.getRowModel().rows.map((row) => {
-								const b = row.original;
-								const key = bookKey(b);
-								const progress =
-									b.fileSize && b.position ? Math.round((b.position / b.fileSize) * 100) : 0;
-								return (
-									<React.Fragment key={key}>
-										<tr className="border-b last:border-0">
-											{row.getVisibleCells().map((cell) => (
-												<td key={cell.id} className="py-2 pr-4 last:pr-0">
-													{flexRender(cell.column.columnDef.cell, cell.getContext())}
-												</td>
-											))}
-										</tr>
-										{expanded === key && (
-											<tr>
-												<td colSpan={columns.length} className="bg-muted/20 px-3 py-3">
-													<dl className="grid grid-cols-3 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
-														<div>
-															<dt className="text-muted-foreground">Words</dt>
-															<dd className="tabular-nums">
-																{b.wordCount?.toLocaleString() ?? "-"}
-															</dd>
-														</div>
-														<div>
-															<dt className="text-muted-foreground">Progress</dt>
-															<dd className="tabular-nums">{progress}%</dd>
-														</div>
-														<div>
-															<dt className="text-muted-foreground">Position</dt>
-															<dd className="tabular-nums">{b.position.toLocaleString()} B</dd>
-														</div>
-														<div>
-															<dt className="text-muted-foreground">Book ID</dt>
-															<dd className="font-mono">{b.bookId}</dd>
-														</div>
-													</dl>
-												</td>
-											</tr>
-										)}
-									</React.Fragment>
-								);
-							})}
-						</tbody>
-					</table>
-				</div>
-				<Pagination
-					pageIndex={pageIndex}
-					pageCount={table.getPageCount()}
-					canPrev={table.getCanPreviousPage()}
-					canNext={table.getCanNextPage()}
-					onPrev={() => table.previousPage()}
-					onNext={() => table.nextPage()}
-				/>
-			</div>
+			<TableShell table={table} getRowKey={seriesKey} />
 		</div>
 	);
 }
@@ -893,6 +1202,7 @@ function AdminPage() {
 				<dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
 					<StatCard icon={Users} label="Total Users" value={stats?.userTotal} />
 					<StatCard icon={BookOpen} label="Books" value={stats?.bookTotal} />
+					<StatCard icon={Layers} label="Series" value={stats?.seriesTotal} />
 					<StatCard icon={Trash2} label="Tombstones" value={stats?.bookTombstoneTotal} />
 					<StatCard
 						icon={HardDrive}
@@ -914,6 +1224,11 @@ function AdminPage() {
 				<section className="space-y-4">
 					<h2 className="font-semibold text-base">All Books</h2>
 					<BooksTable />
+				</section>
+				<Separator />
+				<section className="space-y-4">
+					<h2 className="font-semibold text-base">All Series</h2>
+					<SeriesTable />
 				</section>
 				<Separator />
 				<section className="space-y-4">
