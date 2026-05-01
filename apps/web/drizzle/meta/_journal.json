@@ -64,6 +64,13 @@
       "when": 1777689600001,
       "tag": "0008_focal_letter_color",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777776000000,
+      "tag": "0009_reading_sessions",
+      "breakpoints": true
     }
   ]
 }

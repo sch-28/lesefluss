@@ -45,6 +45,11 @@ export const settings = sqliteTable("settings", {
 		.notNull()
 		.default(true),
 	showReadingTime: integer("show_reading_time", { mode: "boolean" }).notNull().default(true),
+	// Local-only sync opt-outs. Never added to SYNCED_SETTING_KEYS; off-state is
+	// non-destructive (server keeps its copy, this device stops pushing/merging).
+	syncHighlights: integer("sync_highlights", { mode: "boolean" }).notNull().default(true),
+	syncGlossary: integer("sync_glossary", { mode: "boolean" }).notNull().default(true),
+	syncStats: integer("sync_stats", { mode: "boolean" }).notNull().default(true),
 	defaultReaderMode: text("default_reader_mode")
 		.$type<"scroll" | "rsvp">()
 		.notNull()
@@ -197,3 +202,28 @@ export type NewGlossaryEntry = typeof glossaryEntries.$inferInsert;
 
 export type Series = typeof series.$inferSelect;
 export type NewSeries = typeof series.$inferInsert;
+
+/**
+ * Reading sessions: one row per in-app reading sitting (RSVP, scroll, or page).
+ * Append-only; no edit or delete UI. ESP32 reading is NOT tracked here (no clock,
+ * would double-count via position sync).
+ *
+ * `bookId` is intentionally not a FK: rows must outlive the book for all-time totals.
+ * `wpmAvg` is RSVP-only (null for scroll/page).
+ */
+export const readingSessions = sqliteTable("reading_sessions", {
+	id: text("id").primaryKey(), // random 8-char hex, generated client-side
+	bookId: text("book_id").notNull(),
+	mode: text("mode").$type<"rsvp" | "scroll" | "page">().notNull(),
+	startedAt: integer("started_at").notNull(), // epoch ms
+	endedAt: integer("ended_at").notNull(), // epoch ms
+	durationMs: integer("duration_ms").notNull(), // ended - started - paused
+	wordsRead: integer("words_read").notNull(),
+	startPos: integer("start_pos").notNull(), // byte offset
+	endPos: integer("end_pos").notNull(),
+	wpmAvg: integer("wpm_avg"), // rsvp only; null otherwise
+	updatedAt: integer("updated_at").notNull(), // for last-write-wins sync
+});
+
+export type ReadingSession = typeof readingSessions.$inferSelect;
+export type NewReadingSession = typeof readingSessions.$inferInsert;

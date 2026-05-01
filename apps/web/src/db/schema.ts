@@ -169,6 +169,33 @@ export const syncGlossaryEntries = pgTable(
 	(t) => [primaryKey({ columns: [t.userId, t.entryId] })],
 );
 
+/**
+ * sync_reading_sessions: one row per in-app reading sitting keyed by (user_id, session_id).
+ * Append-only; no soft-delete (sessions are never edited or deleted from the UI).
+ * Last-write-wins on `updated_at`.
+ */
+export const syncReadingSessions = pgTable(
+	"sync_reading_sessions",
+	{
+		userId: text("user_id").notNull(),
+		sessionId: text("session_id").notNull(),
+		bookId: text("book_id").notNull(),
+		mode: text("mode").notNull(), // 'rsvp' | 'scroll' | 'page'
+		startedAt: timestamp("started_at").notNull(),
+		endedAt: timestamp("ended_at").notNull(),
+		durationMs: integer("duration_ms").notNull(),
+		wordsRead: integer("words_read").notNull(),
+		startPos: integer("start_pos").notNull(),
+		endPos: integer("end_pos").notNull(),
+		wpmAvg: integer("wpm_avg"),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.userId, t.sessionId] }),
+		check("sync_reading_sessions_mode_check", sql`${t.mode} IN ('rsvp', 'scroll', 'page')`),
+	],
+);
+
 export type SyncBook = typeof syncBooks.$inferSelect;
 export type NewSyncBook = typeof syncBooks.$inferInsert;
 export type SyncSeries = typeof syncSeries.$inferSelect;
@@ -179,3 +206,5 @@ export type SyncHighlight = typeof syncHighlights.$inferSelect;
 export type NewSyncHighlight = typeof syncHighlights.$inferInsert;
 export type SyncGlossaryEntry = typeof syncGlossaryEntries.$inferSelect;
 export type NewSyncGlossaryEntry = typeof syncGlossaryEntries.$inferInsert;
+export type SyncReadingSession = typeof syncReadingSessions.$inferSelect;
+export type NewSyncReadingSession = typeof syncReadingSessions.$inferInsert;

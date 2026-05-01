@@ -1,10 +1,10 @@
 ---
 id: TASK-46.4
 title: Per-book stats card on book detail page
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-30 23:30'
-updated_date: '2026-04-30 23:31'
+updated_date: '2026-05-01 01:30'
 labels: []
 milestone: m-5
 dependencies:
@@ -54,9 +54,9 @@ Single SQL aggregation over `reading_sessions WHERE book_id = ?`. No join needed
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Book detail page renders a stats card below metadata, above actions, when the book has ≥1 session
-- [ ] #2 Card is hidden entirely when zero sessions exist for the book
-- [ ] #3 Total time, session count, and last-read are correct against the underlying rows
-- [ ] #4 Average WPM line appears only when there is at least one RSVP session for the book
-- [ ] #5 `getBookStats(bookId)` lives alongside the other stats queries
+- [x] #1 Book detail page renders a stats card below metadata, above actions, when the book has ≥1 session
+- [x] #2 Card is hidden entirely when zero sessions exist for the book
+- [x] #3 Total time, session count, and last-read are correct against the underlying rows
+- [x] #4 Average WPM line appears only when there is at least one RSVP session for the book
+- [x] #5 `getBookStats(bookId)` lives alongside the other stats queries
 <!-- AC:END -->

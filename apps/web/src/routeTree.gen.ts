@@ -34,6 +34,7 @@ import { Route as ApiBetaRequestRouteImport } from './routes/api/beta-request'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
+import { Route as ApiSyncWipeSessionsRouteImport } from './routes/api/sync/wipe-sessions'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -162,6 +163,11 @@ const AuthenticatedAccountIndexRoute =
     path: '/account/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiSyncWipeSessionsRoute = ApiSyncWipeSessionsRouteImport.update({
+  id: '/wipe-sessions',
+  path: '/wipe-sessions',
+  getParentRoute: () => ApiSyncRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -175,7 +181,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/beta-request': typeof ApiBetaRequestRoute
   '/api/feedback': typeof ApiFeedbackRoute
-  '/api/sync': typeof ApiSyncRoute
+  '/api/sync': typeof ApiSyncRouteWithChildren
   '/app/$': typeof AppSplatRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
   '/app/': typeof AppIndexRoute
@@ -191,6 +197,7 @@ export interface FileRoutesByFullPath {
   '/privacy/': typeof PrivacyIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/profile/': typeof AuthenticatedProfileIndexRoute
@@ -202,7 +209,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/beta-request': typeof ApiBetaRequestRoute
   '/api/feedback': typeof ApiFeedbackRoute
-  '/api/sync': typeof ApiSyncRoute
+  '/api/sync': typeof ApiSyncRouteWithChildren
   '/app/$': typeof AppSplatRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
   '/app': typeof AppIndexRoute
@@ -218,6 +225,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyIndexRoute
   '/terms': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/account': typeof AuthenticatedAccountIndexRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/profile': typeof AuthenticatedProfileIndexRoute
@@ -231,7 +239,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/beta-request': typeof ApiBetaRequestRoute
   '/api/feedback': typeof ApiFeedbackRoute
-  '/api/sync': typeof ApiSyncRoute
+  '/api/sync': typeof ApiSyncRouteWithChildren
   '/app/$': typeof AppSplatRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
   '/app/': typeof AppIndexRoute
@@ -247,6 +255,7 @@ export interface FileRoutesById {
   '/privacy/': typeof PrivacyIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
@@ -276,6 +285,7 @@ export interface FileRouteTypes {
     | '/privacy/'
     | '/terms/'
     | '/api/auth/$'
+    | '/api/sync/wipe-sessions'
     | '/account/'
     | '/admin/'
     | '/profile/'
@@ -303,6 +313,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/api/auth/$'
+    | '/api/sync/wipe-sessions'
     | '/account'
     | '/admin'
     | '/profile'
@@ -331,6 +342,7 @@ export interface FileRouteTypes {
     | '/privacy/'
     | '/terms/'
     | '/api/auth/$'
+    | '/api/sync/wipe-sessions'
     | '/_authenticated/account/'
     | '/_authenticated/admin/'
     | '/_authenticated/profile/'
@@ -344,7 +356,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiBetaRequestRoute: typeof ApiBetaRequestRoute
   ApiFeedbackRoute: typeof ApiFeedbackRoute
-  ApiSyncRoute: typeof ApiSyncRoute
+  ApiSyncRoute: typeof ApiSyncRouteWithChildren
   AppSplatRoute: typeof AppSplatRoute
   AuthMobileCallbackRoute: typeof AuthMobileCallbackRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -539,6 +551,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/sync/wipe-sessions': {
+      id: '/api/sync/wipe-sessions'
+      path: '/wipe-sessions'
+      fullPath: '/api/sync/wipe-sessions'
+      preLoaderRoute: typeof ApiSyncWipeSessionsRouteImport
+      parentRoute: typeof ApiSyncRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -564,6 +583,17 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ApiSyncRouteChildren {
+  ApiSyncWipeSessionsRoute: typeof ApiSyncWipeSessionsRoute
+}
+
+const ApiSyncRouteChildren: ApiSyncRouteChildren = {
+  ApiSyncWipeSessionsRoute: ApiSyncWipeSessionsRoute,
+}
+
+const ApiSyncRouteWithChildren =
+  ApiSyncRoute._addFileChildren(ApiSyncRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -572,7 +602,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiBetaRequestRoute: ApiBetaRequestRoute,
   ApiFeedbackRoute: ApiFeedbackRoute,
-  ApiSyncRoute: ApiSyncRoute,
+  ApiSyncRoute: ApiSyncRouteWithChildren,
   AppSplatRoute: AppSplatRoute,
   AuthMobileCallbackRoute: AuthMobileCallbackRoute,
   AppIndexRoute: AppIndexRoute,

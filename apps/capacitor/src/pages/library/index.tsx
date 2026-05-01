@@ -21,6 +21,7 @@ import {
 	bookOutline,
 	filterOutline,
 	refreshOutline,
+	statsChartOutline,
 	swapVerticalOutline,
 } from "ionicons/icons";
 import type React from "react";
@@ -206,6 +207,9 @@ const Library: React.FC = () => {
 							</IonButton>
 							<IonButton id="sort-trigger" title="Sort">
 								<IonIcon slot="icon-only" icon={swapVerticalOutline} />
+							</IonButton>
+							<IonButton onClick={() => history.push("/tabs/library/stats")} title="Reading stats">
+								<IonIcon slot="icon-only" icon={statsChartOutline} />
 							</IonButton>
 							{!IS_WEB && <BLEIndicator />}
 							{(isConnected || isLoggedIn) && (

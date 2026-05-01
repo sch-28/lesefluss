@@ -1,15 +1,15 @@
 ---
 id: TASK-46.1
 title: 'Reading sessions: schema, tracking, sync wire'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-30 23:30'
-updated_date: '2026-04-30 23:33'
+updated_date: '2026-05-01 00:17'
 labels: []
 milestone: m-5
 dependencies: []
 parent_task_id: TASK-46
-ordinal: 1000
+ordinal: 6000
 ---
 
 ## Description
@@ -73,11 +73,11 @@ A `useReadingSession({ bookId, mode })` hook in `apps/capacitor/src/hooks/` (or 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 `reading_sessions` table exists in capacitor SQLite schema with the columns listed in the description and a Drizzle migration
-- [ ] #2 Web Postgres schema mirrors the table with a matching migration
-- [ ] #3 `useReadingSession` (or equivalent) logs sessions from both the in-app RSVP reader and the scroll reader, with pause-on-hidden, periodic heartbeat flush, and noise filtering (<5s or <5 words discarded)
-- [ ] #4 `SyncReadingSessionSchema` is added to `packages/rsvp-core/src/sync.ts` with a sensible array cap
-- [ ] #5 Push and pull merge sessions with last-write-wins on `updated_at`
-- [ ] #6 ESP32 reading does NOT create session rows
-- [ ] #7 Manual end-to-end test: read a book on two devices signed into the same account; session rows from device A appear on device B after sync
+- [x] #1 `reading_sessions` table exists in capacitor SQLite schema with the columns listed in the description and a Drizzle migration
+- [x] #2 Web Postgres schema mirrors the table with a matching migration
+- [x] #3 `useReadingSession` (or equivalent) logs sessions from both the in-app RSVP reader and the scroll reader, with pause-on-hidden, periodic heartbeat flush, and noise filtering (<5s or <5 words discarded)
+- [x] #4 `SyncReadingSessionSchema` is added to `packages/rsvp-core/src/sync.ts` with a sensible array cap
+- [x] #5 Push and pull merge sessions with last-write-wins on `updated_at`
+- [x] #6 ESP32 reading does NOT create session rows
+- [x] #7 Manual end-to-end test: read a book on two devices signed into the same account; session rows from device A appear on device B after sync
 <!-- AC:END -->

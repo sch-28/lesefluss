@@ -49,13 +49,14 @@ import {
 	ellipsisVerticalOutline,
 	flashOffOutline,
 	flashOutline,
+	informationCircleOutline,
 	openOutline,
 	readerOutline,
 	searchOutline,
 } from "ionicons/icons";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { RouteComponentProps } from "react-router-dom";
+import { type RouteComponentProps, useHistory } from "react-router-dom";
 import { toast } from "../../components/toast";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useTheme } from "../../contexts/theme-context";
@@ -64,6 +65,7 @@ import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import type { Chapter, GlossaryEntry } from "../../services/db/schema";
+import { externalSourceUrl } from "../../services/catalog/client";
 import { providerLabel } from "../../services/serial-scrapers";
 import { pushSync, scheduleSyncPush } from "../../services/sync";
 import { formatReadingTime } from "../../utils/reading-time";
@@ -93,6 +95,7 @@ import {
 } from "./use-glossary-decorations";
 import { useHighlightSelection } from "./use-highlight-selection";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
+import { type ReadingSessionMode, useReadingSession } from "./use-reading-session";
 import { useScrubProgress } from "./use-scrub-progress";
 import type { ReaderViewHandle } from "./view-types";
 
@@ -111,6 +114,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const id = match.params.id;
 	const { pushPosition } = useBookSync();
 	const qc = useQueryClient();
+	const history = useHistory();
 
 	// ── Data queries ──────────────────────────────────────────────────────
 	const { data: book, isPending: bookPending } = queryHooks.useBook(id);
@@ -872,6 +876,22 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		exitRsvpToStandard,
 	});
 
+	// ── Reading session tracking ──────────────────────────────────────────
+	// `isActive` here means "data loaded and reader is on screen". Real activity
+	// detection (visibility, RSVP pause via no-progress idle, 60s timeout) is
+	// handled inside the hook, so we can pass a coarse-grained signal here.
+	const sessionMode: ReadingSessionMode =
+		readerMode === "rsvp" ? "rsvp" : paginationStyle === "page" ? "page" : "scroll";
+	const getReadingPosition = useCallback(() => lastOffsetRef.current ?? 0, []);
+	useReadingSession({
+		bookId: id,
+		mode: sessionMode,
+		isActive: !!content && lastOffsetRef.current !== null,
+		getPosition: getReadingPosition,
+		content: content ?? "",
+		wpmSetting: rsvpSettings.wpm,
+	});
+
 	// ── Hide tab bar while reader is mounted ──────────────────────────────
 	// Ionic's shadow DOM toggles tab-bar-hidden on keyboard show/hide, and
 	// external CSS can't override :host styles reliably. A body class lets
@@ -980,6 +1000,11 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		/>
 	);
 
+	const overflowSourceUrl =
+		book.chapterSourceUrl ??
+		book.sourceUrl ??
+		(book.catalogId ? externalSourceUrl(book.catalogId) : null);
+
 	return (
 		<IonPage className={`reader-theme-${theme}`}>
 			<IonHeader class="ion-no-border">
@@ -1037,11 +1062,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 						<IonButton id="appearance-trigger" aria-label="Appearance settings">
 							<IonIcon slot="icon-only" icon={readerOutline} />
 						</IonButton>
-						{book.seriesId != null && book.chapterSourceUrl != null && (
-							<IonButton onClick={() => setOverflowOpen(true)} aria-label="More actions">
-								<IonIcon slot="icon-only" icon={ellipsisVerticalOutline} />
-							</IonButton>
-						)}
+						<IonButton onClick={() => setOverflowOpen(true)} aria-label="More actions">
+							<IonIcon slot="icon-only" icon={ellipsisVerticalOutline} />
+						</IonButton>
 					</IonButtons>
 				</IonToolbar>
 			</IonHeader>
@@ -1190,11 +1213,26 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				onDidDismiss={() => setOverflowOpen(false)}
 				cssClass="rsvp-action-sheet"
 				buttons={[
+					...(overflowSourceUrl
+						? [
+								{
+									text: `Open on ${series ? providerLabel(series.provider) : "website"}`,
+									icon: openOutline,
+									handler: () => {
+										void Browser.open({ url: overflowSourceUrl });
+									},
+								},
+							]
+						: []),
 					{
-						text: `Open on ${series ? providerLabel(series.provider) : "website"}`,
-						icon: openOutline,
+						text: book.seriesId != null ? "View series" : "View book",
+						icon: informationCircleOutline,
 						handler: () => {
-							if (book.chapterSourceUrl) void Browser.open({ url: book.chapterSourceUrl });
+							history.push(
+								book.seriesId != null
+									? `/tabs/library/series/${book.seriesId}`
+									: `/tabs/library/book/${book.id}`,
+							);
 						},
 					},
 					{ text: "Cancel", role: "cancel" as const },

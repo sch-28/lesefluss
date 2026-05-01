@@ -14,6 +14,7 @@ import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { IS_WEB } from "../../utils/platform";
 import { DetailShell } from "../_shared/detail-shell";
+import { BookStatsCard } from "./book-stats-card";
 import { readingProgress } from "./sort-filter";
 import TransferModal from "./transfer-modal";
 
@@ -150,7 +151,9 @@ const LibraryBookDetail: React.FC = () => {
 				}
 				externalLink={externalUrl ? { href: externalUrl } : undefined}
 				headerAction={deleteHeaderAction}
-			/>
+			>
+				<BookStatsCard bookId={book.id} />
+			</DetailShell>
 
 			{!IS_WEB && (
 				<TransferModal

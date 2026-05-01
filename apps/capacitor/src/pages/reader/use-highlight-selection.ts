@@ -13,6 +13,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "../../components/toast";
 import { queryHooks } from "../../services/db/hooks";
 import type { Highlight } from "../../services/db/schema";
+import { randomHexId } from "../../utils/random-id";
 import type { HighlightRange } from "./paragraph";
 import type { HighlightColor } from "./selection-toolbar";
 
@@ -24,12 +25,6 @@ const SELECTION_TOOLBAR_H = 48;
 const HANDLE_WIDTH = 44;
 const HANDLE_V_PAD = 10;
 const HANDLE_H_HALF = HANDLE_WIDTH / 2;
-
-function randomHexId(): string {
-	return Array.from(crypto.getRandomValues(new Uint8Array(4)))
-		.map((b) => b.toString(16).padStart(2, "0"))
-		.join("");
-}
 
 interface Params {
 	bookId: string;

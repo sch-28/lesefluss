@@ -1,10 +1,10 @@
 ---
 id: TASK-46
 title: Reading statistics page
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-04-26 15:59'
-updated_date: '2026-04-30 23:33'
+updated_date: '2026-05-01 01:31'
 labels: []
 milestone: m-5
 dependencies: []
@@ -51,9 +51,9 @@ Parent stays open until all four are done.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 All four child tasks (46.1, 46.2, 46.3, 46.4) are Done
+- [x] #1 All four child tasks (46.1, 46.2, 46.3, 46.4) are Done
 - [ ] #2 Reading sessions are logged for in-app scroll and RSVP modes only (ESP32 sessions explicitly out of scope)
-- [ ] #3 Stats are reachable from a Library header icon and a per-book card on book detail — no new tab
-- [ ] #4 Sync settings page exposes per-resource toggles for highlights, glossary, and stats; defaults on; toggling off is non-destructive (cloud data preserved)
-- [ ] #5 Privacy posture documented in-app where relevant: stats live on-device unless the user is signed in and has the stats sync toggle on
+- [x] #3 Stats are reachable from a Library header icon and a per-book card on book detail — no new tab
+- [x] #4 Sync settings page exposes per-resource toggles for highlights, glossary, and stats; defaults on; toggling off is non-destructive (cloud data preserved)
+- [x] #5 Privacy posture documented in-app where relevant: stats live on-device unless the user is signed in and has the stats sync toggle on
 <!-- AC:END -->

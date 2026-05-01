@@ -45,6 +45,14 @@ export const settingsKeys = {
 	all: ["settings"] as const,
 };
 
+export const readingSessionKeys = {
+	/** All reading sessions across all books. */
+	all: ["reading-sessions"] as const,
+
+	/** Sessions for a single book (book detail card). */
+	byBook: (bookId: string) => ["reading-sessions", "by-book", bookId] as const,
+};
+
 export const serialKeys = {
 	/** Every key under this prefix — invalidate when any series changes. */
 	all: ["serials"] as const,
@@ -73,6 +81,35 @@ export const serialKeys = {
 
 	/** Ordered chapter rows (books) for a series. Subset of serialKeys.all. */
 	chapters: (seriesId: string) => ["serials", "chapters", seriesId] as const,
+};
+
+export const statsKeys = {
+	/** Every key under this prefix. Invalidate when sessions change. */
+	all: ["stats"] as const,
+
+	/** Period totals scoped by [start, end]. */
+	periodTotals: (start: number, end: number) => ["stats", "period", start, end] as const,
+
+	/** Streak headline + 90-day series. */
+	streak: ["stats", "streak"] as const,
+
+	/** Top-N books since a cutoff. */
+	topBooks: (since: number, limit: number) => ["stats", "top-books", since, limit] as const,
+
+	/** Weekly WPM trend, last N weeks. */
+	weeklyWpm: (weeks: number) => ["stats", "weekly-wpm", weeks] as const,
+
+	/** Hour-of-day histogram. */
+	hourHistogram: ["stats", "hour-histogram"] as const,
+
+	/** Single-stat callouts. */
+	personality: ["stats", "personality"] as const,
+
+	/** Whole-page empty-state gate. */
+	sessionCount: ["stats", "session-count"] as const,
+
+	/** Per-book stats card on book detail. */
+	book: (bookId: string) => ["stats", "book", bookId] as const,
 };
 
 /**
