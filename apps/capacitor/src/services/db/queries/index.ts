@@ -20,6 +20,7 @@ import {
 import { getLastDevice, saveDevice } from "./devices";
 import {
 	addEntry,
+	deleteAllEntries,
 	deleteEntriesByBook,
 	deleteEntry,
 	getAllEntries,
@@ -28,12 +29,20 @@ import {
 } from "./glossary";
 import {
 	addHighlight,
+	deleteAllHighlights,
 	deleteHighlight,
 	deleteHighlightsByBook,
 	getAllHighlights,
 	getHighlightsByBook,
 	updateHighlight,
 } from "./highlights";
+import {
+	addReadingSession,
+	deleteAllReadingSessions,
+	getAllReadingSessions,
+	getReadingSessionsByBook,
+	upsertReadingSession,
+} from "./reading-sessions";
 import {
 	addSeries,
 	addSeriesWithChapters,
@@ -56,6 +65,16 @@ import {
 	updateSeries,
 } from "./series";
 import { getSettings, saveSettings } from "./settings";
+import {
+	getBookStats,
+	getHourHistogram,
+	getPeriodTotals,
+	getPersonalityStats,
+	getSessionCount,
+	getStreak,
+	getTopBooks,
+	getWeeklyWpm,
+} from "./stats";
 
 export const queries = {
 	// Settings
@@ -87,6 +106,24 @@ export const queries = {
 	updateHighlight,
 	deleteHighlight,
 	deleteHighlightsByBook,
+	deleteAllHighlights,
+
+	// Reading sessions
+	getAllReadingSessions,
+	getReadingSessionsByBook,
+	addReadingSession,
+	upsertReadingSession,
+	deleteAllReadingSessions,
+
+	// Stats
+	getPeriodTotals,
+	getStreak,
+	getTopBooks,
+	getWeeklyWpm,
+	getHourHistogram,
+	getPersonalityStats,
+	getSessionCount,
+	getBookStats,
 
 	// Glossary
 	getEntriesForBook,
@@ -95,6 +132,7 @@ export const queries = {
 	updateEntry,
 	deleteEntry,
 	deleteEntriesByBook,
+	deleteAllEntries,
 
 	// Series
 	getSeries,

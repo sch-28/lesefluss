@@ -135,6 +135,25 @@ export const SyncGlossaryEntrySchema = z.object({
 	updatedAt: z.number().int().nonnegative(),
 });
 
+export const SyncReadingSessionSchema = z
+	.object({
+		sessionId: z.string().min(1).max(64),
+		bookId: z.string().regex(/^[0-9a-f]{8}$/),
+		mode: z.enum(["rsvp", "scroll", "page"]),
+		startedAt: z.number().int().nonnegative(),
+		endedAt: z.number().int().nonnegative(),
+		durationMs: z.number().int().nonnegative(),
+		wordsRead: z.number().int().nonnegative(),
+		startPos: z.number().int().nonnegative(),
+		endPos: z.number().int().nonnegative(),
+		// RSVP-only; null for scroll and page.
+		wpmAvg: z.number().int().positive().nullable(),
+		updatedAt: z.number().int().nonnegative(),
+	})
+	.refine((d) => d.endedAt >= d.startedAt, {
+		message: "endedAt must be >= startedAt",
+	});
+
 export const SyncPayloadSchema = z.object({
 	// Cap is generous because serial chapter rows (seriesId set) carry no body
 	// content/cover/TOC, so a 50k-row payload is still small in bytes. The real
@@ -144,6 +163,9 @@ export const SyncPayloadSchema = z.object({
 	highlights: z.array(SyncHighlightSchema).max(5000),
 	glossaryEntries: z.array(SyncGlossaryEntrySchema).max(5000).optional().default([]),
 	series: z.array(SyncSeriesSchema).max(500).optional().default([]),
+	// Reading sessions are append-only; cap matches server-side row cap per user.
+	// Clients with more local rows clip newest-first before pushing.
+	readingSessions: z.array(SyncReadingSessionSchema).max(50_000).optional().default([]),
 });
 
 // ---------------------------------------------------------------------------
@@ -155,6 +177,7 @@ export type SyncSeries = z.infer<typeof SyncSeriesSchema>;
 export type SyncSettings = z.infer<typeof SyncSettingsSchema>;
 export type SyncHighlight = z.infer<typeof SyncHighlightSchema>;
 export type SyncGlossaryEntry = z.infer<typeof SyncGlossaryEntrySchema>;
+export type SyncReadingSession = z.infer<typeof SyncReadingSessionSchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 
 /** Server response shape - same as SyncPayload but settings is always present or null */
@@ -164,4 +187,5 @@ export type SyncResponse = {
 	highlights: SyncHighlight[];
 	glossaryEntries: SyncGlossaryEntry[];
 	series: SyncSeries[];
+	readingSessions: SyncReadingSession[];
 };

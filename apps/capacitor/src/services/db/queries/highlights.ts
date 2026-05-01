@@ -63,3 +63,11 @@ export async function deleteHighlight(id: string): Promise<void> {
 export async function deleteHighlightsByBook(bookId: string): Promise<void> {
 	await db.delete(highlights).where(eq(highlights.bookId, bookId));
 }
+
+/**
+ * Delete every highlight row. Used by the danger-zone "Delete all highlights"
+ * action. The next sync push then tombstones the missing rows server-side.
+ */
+export async function deleteAllHighlights(): Promise<void> {
+	await db.delete(highlights);
+}

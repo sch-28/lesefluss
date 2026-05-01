@@ -5,6 +5,7 @@ import {
 	type SyncHighlight,
 	type SyncPayload,
 	SyncPayloadSchema,
+	type SyncReadingSession,
 	type SyncResponse,
 	type SyncSeries,
 	type SyncSettings,
@@ -16,6 +17,7 @@ import {
 	syncBooks,
 	syncGlossaryEntries,
 	syncHighlights,
+	syncReadingSessions,
 	syncSeries,
 	syncSettings,
 } from "~/db/schema";
@@ -73,13 +75,15 @@ async function getUserSyncData(
 		deleted: syncBooks.deleted,
 		updatedAt: syncBooks.updatedAt,
 	};
-	const [books, settingsRows, highlights, glossaryRows, seriesRows] = await Promise.all([
-		db.select(metadataCols).from(syncBooks).where(eq(syncBooks.userId, userId)),
-		db.select().from(syncSettings).where(eq(syncSettings.userId, userId)),
-		db.select().from(syncHighlights).where(eq(syncHighlights.userId, userId)),
-		db.select().from(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId)),
-		db.select().from(syncSeries).where(eq(syncSeries.userId, userId)),
-	]);
+	const [books, settingsRows, highlights, glossaryRows, seriesRows, readingSessionRows] =
+		await Promise.all([
+			db.select(metadataCols).from(syncBooks).where(eq(syncBooks.userId, userId)),
+			db.select().from(syncSettings).where(eq(syncSettings.userId, userId)),
+			db.select().from(syncHighlights).where(eq(syncHighlights.userId, userId)),
+			db.select().from(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId)),
+			db.select().from(syncSeries).where(eq(syncSeries.userId, userId)),
+			db.select().from(syncReadingSessions).where(eq(syncReadingSessions.userId, userId)),
+		]);
 
 	// Fetch content only for books the client doesn't have locally and which aren't tombstoned
 	const needContentIds = books
@@ -186,6 +190,22 @@ async function getUserSyncData(
 					deleted: s.deleted,
 					updatedAt: toMs(s.updatedAt),
 				}) as SyncSeries,
+		),
+		readingSessions: readingSessionRows.map(
+			(r) =>
+				({
+					sessionId: r.sessionId,
+					bookId: r.bookId,
+					mode: r.mode,
+					startedAt: toMs(r.startedAt),
+					endedAt: toMs(r.endedAt),
+					durationMs: r.durationMs,
+					wordsRead: r.wordsRead,
+					startPos: r.startPos,
+					endPos: r.endPos,
+					wpmAvg: r.wpmAvg,
+					updatedAt: toMs(r.updatedAt),
+				}) as SyncReadingSession,
 		),
 	};
 }
@@ -466,6 +486,47 @@ export const Route = createFileRoute("/api/sync")({
 							.where(
 								and(eq(syncGlossaryEntries.userId, userId), eq(syncGlossaryEntries.deleted, false)),
 							);
+					}
+
+					// --- Reading sessions: append-only upsert (no tombstone-on-omission) ---
+					// Sessions are never edited or deleted from the client; the row with the
+					// higher updatedAt wins. We do NOT mark missing rows as deleted: clients
+					// with >50k local sessions clip newest-first when pushing, and we would
+					// lose older rows that other devices have not seen yet.
+					if (payload.readingSessions.length > 0) {
+						await tx
+							.insert(syncReadingSessions)
+							.values(
+								payload.readingSessions.map((r) => ({
+									userId,
+									sessionId: r.sessionId,
+									bookId: r.bookId,
+									mode: r.mode,
+									startedAt: toDate(r.startedAt),
+									endedAt: toDate(r.endedAt),
+									durationMs: r.durationMs,
+									wordsRead: r.wordsRead,
+									startPos: r.startPos,
+									endPos: r.endPos,
+									wpmAvg: r.wpmAvg,
+									updatedAt: toDate(r.updatedAt),
+								})),
+							)
+							.onConflictDoUpdate({
+								target: [syncReadingSessions.userId, syncReadingSessions.sessionId],
+								set: {
+									bookId: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.book_id ELSE sync_reading_sessions.book_id END`,
+									mode: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.mode ELSE sync_reading_sessions.mode END`,
+									startedAt: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.started_at ELSE sync_reading_sessions.started_at END`,
+									endedAt: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.ended_at ELSE sync_reading_sessions.ended_at END`,
+									durationMs: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.duration_ms ELSE sync_reading_sessions.duration_ms END`,
+									wordsRead: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.words_read ELSE sync_reading_sessions.words_read END`,
+									startPos: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.start_pos ELSE sync_reading_sessions.start_pos END`,
+									endPos: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.end_pos ELSE sync_reading_sessions.end_pos END`,
+									wpmAvg: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.wpm_avg ELSE sync_reading_sessions.wpm_avg END`,
+									updatedAt: sql`GREATEST(excluded.updated_at, sync_reading_sessions.updated_at)`,
+								},
+							});
 					}
 				});
 

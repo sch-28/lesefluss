@@ -1,15 +1,15 @@
 ---
 id: TASK-46.2
 title: 'Per-resource sync toggles (highlights, glossary, stats)'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-30 23:30'
-updated_date: '2026-04-30 23:31'
+updated_date: '2026-05-01 00:17'
 labels: []
 milestone: m-5
 dependencies: []
 parent_task_id: TASK-46
-ordinal: 2000
+ordinal: 7000
 ---
 
 ## Description
@@ -51,10 +51,10 @@ For the stats toggle specifically, append: "Stats are only collected on this dev
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Three boolean columns added to settings table with migration; defaults `true`
-- [ ] #2 Settings → Cloud Sync shows three toggles when logged in: Highlights, Glossary entries, Reading stats
-- [ ] #3 Toggle off prevents both push and pull merge for that resource on this device
-- [ ] #4 Toggle off does NOT delete cloud data (verify by toggling off, syncing, then toggling on and observing data returns)
-- [ ] #5 Toggles are not themselves synced (changing on device A doesn't change device B)
-- [ ] #6 Helper copy explains the non-destructive behavior in plain language
+- [x] #1 Three boolean columns added to settings table with migration; defaults `true`
+- [x] #2 Settings → Cloud Sync shows three toggles when logged in: Highlights, Glossary entries, Reading stats
+- [x] #3 Toggle off prevents both push and pull merge for that resource on this device
+- [x] #4 Toggle off does NOT delete cloud data (verify by toggling off, syncing, then toggling on and observing data returns)
+- [x] #5 Toggles are not themselves synced (changing on device A doesn't change device B)
+- [x] #6 Helper copy explains the non-destructive behavior in plain language
 <!-- AC:END -->

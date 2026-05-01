@@ -6,14 +6,29 @@ import {
 	type SyncGlossaryEntry,
 	type SyncHighlight,
 	type SyncPayload,
+	type SyncReadingSession,
 	type SyncResponse,
 	type SyncSeries,
 	type SyncSettings,
 } from "@lesefluss/rsvp-core";
 import { log } from "../../utils/log";
-import { bookKeys, glossaryKeys, serialKeys, settingsKeys } from "../db/hooks/query-keys";
+import {
+	bookKeys,
+	glossaryKeys,
+	readingSessionKeys,
+	serialKeys,
+	settingsKeys,
+} from "../db/hooks/query-keys";
 import { queries } from "../db/queries";
-import type { Book, BookContent, GlossaryEntry, Highlight, Series, Settings } from "../db/schema";
+import type {
+	Book,
+	BookContent,
+	GlossaryEntry,
+	Highlight,
+	ReadingSession,
+	Series,
+	Settings,
+} from "../db/schema";
 import { queryClient } from "../query-client";
 import { SYNC_URL } from "./auth-client";
 
@@ -203,6 +218,16 @@ async function syncFetch(path: string, options?: RequestInit): Promise<Response>
 	return res;
 }
 
+/**
+ * Hard-delete every reading session for the current user on the server.
+ * Sessions are append-only with no tombstone column, so the danger-zone
+ * "Delete reading stats" flow uses this dedicated endpoint instead of
+ * relying on the diff-on-push behaviour used for highlights/glossary.
+ */
+export async function wipeServerSessions(): Promise<void> {
+	await syncFetch("/api/sync/wipe-sessions", { method: "POST" });
+}
+
 // ---------------------------------------------------------------------------
 // Data mappers (Capacitor SQLite → API payload)
 // ---------------------------------------------------------------------------
@@ -271,6 +296,22 @@ function highlightToSync(h: Highlight): SyncHighlight {
 		deleted: false,
 		createdAt: h.createdAt,
 		updatedAt: h.updatedAt,
+	};
+}
+
+function sessionToSync(s: ReadingSession): SyncReadingSession {
+	return {
+		sessionId: s.id,
+		bookId: s.bookId,
+		mode: s.mode,
+		startedAt: s.startedAt,
+		endedAt: s.endedAt,
+		durationMs: s.durationMs,
+		wordsRead: s.wordsRead,
+		startPos: s.startPos,
+		endPos: s.endPos,
+		wpmAvg: s.wpmAvg,
+		updatedAt: s.updatedAt,
 	};
 }
 
@@ -555,8 +596,8 @@ export async function pullSync(): Promise<Set<string>> {
 		}
 
 		// --- Merge settings ---
+		const localSettings = await queries.getSettings();
 		if (data.settings) {
-			const localSettings = await queries.getSettings();
 			if (data.settings.updatedAt > localSettings.updatedAt) {
 				await queries.saveSettings(pick(data.settings, SYNCED_SETTING_KEYS));
 				changed = true;
@@ -564,86 +605,112 @@ export async function pullSync(): Promise<Set<string>> {
 		}
 
 		// --- Merge highlights ---
-		const localHighlights = await queries.getAllHighlights();
-		const localHighlightMap = new Map(localHighlights.map((h) => [h.id, h]));
+		if (localSettings.syncHighlights) {
+			const localHighlights = await queries.getAllHighlights();
+			const localHighlightMap = new Map(localHighlights.map((h) => [h.id, h]));
 
-		for (const serverHL of data.highlights) {
-			if (serverHL.deleted) {
-				// Server says deleted - remove locally if exists
-				if (localHighlightMap.has(serverHL.highlightId)) {
-					await queries.deleteHighlight(serverHL.highlightId);
+			for (const serverHL of data.highlights) {
+				if (serverHL.deleted) {
+					// Server says deleted - remove locally if exists
+					if (localHighlightMap.has(serverHL.highlightId)) {
+						await queries.deleteHighlight(serverHL.highlightId);
+						changed = true;
+					}
+					continue;
+				}
+
+				// Skip highlights for books not in local DB (avoids orphans)
+				if (!localBookMap.has(serverHL.bookId)) continue;
+
+				const local = localHighlightMap.get(serverHL.highlightId);
+				if (!local) {
+					// New highlight from server - add locally
+					await queries.addHighlight({
+						id: serverHL.highlightId,
+						bookId: serverHL.bookId,
+						startOffset: serverHL.startOffset,
+						endOffset: serverHL.endOffset,
+						color: serverHL.color,
+						note: serverHL.note,
+						text: serverHL.text ?? null,
+						createdAt: serverHL.createdAt,
+						updatedAt: serverHL.updatedAt,
+					});
+					changed = true;
+				} else if (serverHL.updatedAt > local.updatedAt) {
+					// Server is newer - update locally
+					await queries.updateHighlight(serverHL.highlightId, {
+						color: serverHL.color,
+						note: serverHL.note,
+						updatedAt: serverHL.updatedAt,
+					});
 					changed = true;
 				}
-				continue;
-			}
-
-			// Skip highlights for books not in local DB (avoids orphans)
-			if (!localBookMap.has(serverHL.bookId)) continue;
-
-			const local = localHighlightMap.get(serverHL.highlightId);
-			if (!local) {
-				// New highlight from server - add locally
-				await queries.addHighlight({
-					id: serverHL.highlightId,
-					bookId: serverHL.bookId,
-					startOffset: serverHL.startOffset,
-					endOffset: serverHL.endOffset,
-					color: serverHL.color,
-					note: serverHL.note,
-					text: serverHL.text ?? null,
-					createdAt: serverHL.createdAt,
-					updatedAt: serverHL.updatedAt,
-				});
-				changed = true;
-			} else if (serverHL.updatedAt > local.updatedAt) {
-				// Server is newer - update locally
-				await queries.updateHighlight(serverHL.highlightId, {
-					color: serverHL.color,
-					note: serverHL.note,
-					updatedAt: serverHL.updatedAt,
-				});
-				changed = true;
 			}
 		}
 
 		// --- Merge glossary entries ---
-		const localEntries = await queries.getAllEntries();
-		const localEntryMap = new Map(localEntries.map((e) => [e.id, e]));
+		if (localSettings.syncGlossary) {
+			const localEntries = await queries.getAllEntries();
+			const localEntryMap = new Map(localEntries.map((e) => [e.id, e]));
 
-		for (const serverEntry of data.glossaryEntries ?? []) {
-			if (serverEntry.deleted) {
-				if (localEntryMap.has(serverEntry.entryId)) {
-					await queries.deleteEntry(serverEntry.entryId);
+			for (const serverEntry of data.glossaryEntries ?? []) {
+				if (serverEntry.deleted) {
+					if (localEntryMap.has(serverEntry.entryId)) {
+						await queries.deleteEntry(serverEntry.entryId);
+						changed = true;
+					}
+					continue;
+				}
+
+				// Book-scoped entries for unknown books are skipped (orphan guard);
+				// global entries (bookId === null) always merge.
+				if (serverEntry.bookId !== null && !localBookMap.has(serverEntry.bookId)) continue;
+
+				const local = localEntryMap.get(serverEntry.entryId);
+				if (!local) {
+					await queries.addEntry({
+						id: serverEntry.entryId,
+						bookId: serverEntry.bookId,
+						label: serverEntry.label,
+						notes: serverEntry.notes,
+						color: serverEntry.color,
+						hideMarker: serverEntry.hideMarker,
+						createdAt: serverEntry.createdAt,
+						updatedAt: serverEntry.updatedAt,
+					});
+					changed = true;
+				} else if (serverEntry.updatedAt > local.updatedAt) {
+					await queries.updateEntry(serverEntry.entryId, {
+						label: serverEntry.label,
+						notes: serverEntry.notes,
+						color: serverEntry.color,
+						bookId: serverEntry.bookId,
+						hideMarker: serverEntry.hideMarker,
+						updatedAt: serverEntry.updatedAt,
+					});
 					changed = true;
 				}
-				continue;
 			}
+		}
 
-			// Book-scoped entries for unknown books are skipped (orphan guard);
-			// global entries (bookId === null) always merge.
-			if (serverEntry.bookId !== null && !localBookMap.has(serverEntry.bookId)) continue;
-
-			const local = localEntryMap.get(serverEntry.entryId);
-			if (!local) {
-				await queries.addEntry({
-					id: serverEntry.entryId,
-					bookId: serverEntry.bookId,
-					label: serverEntry.label,
-					notes: serverEntry.notes,
-					color: serverEntry.color,
-					hideMarker: serverEntry.hideMarker,
-					createdAt: serverEntry.createdAt,
-					updatedAt: serverEntry.updatedAt,
-				});
-				changed = true;
-			} else if (serverEntry.updatedAt > local.updatedAt) {
-				await queries.updateEntry(serverEntry.entryId, {
-					label: serverEntry.label,
-					notes: serverEntry.notes,
-					color: serverEntry.color,
-					bookId: serverEntry.bookId,
-					hideMarker: serverEntry.hideMarker,
-					updatedAt: serverEntry.updatedAt,
+		// --- Merge reading sessions ---
+		// Append-only: no `deleted` branch, no orphan guard. Sessions intentionally
+		// outlive their book row for all-time totals. LWW on updatedAt.
+		if (localSettings.syncStats) {
+			for (const serverSession of data.readingSessions ?? []) {
+				await queries.upsertReadingSession({
+					id: serverSession.sessionId,
+					bookId: serverSession.bookId,
+					mode: serverSession.mode,
+					startedAt: serverSession.startedAt,
+					endedAt: serverSession.endedAt,
+					durationMs: serverSession.durationMs,
+					wordsRead: serverSession.wordsRead,
+					startPos: serverSession.startPos,
+					endPos: serverSession.endPos,
+					wpmAvg: serverSession.wpmAvg,
+					updatedAt: serverSession.updatedAt,
 				});
 				changed = true;
 			}
@@ -655,6 +722,7 @@ export async function pullSync(): Promise<Set<string>> {
 			queryClient.invalidateQueries({ queryKey: settingsKeys.all });
 			queryClient.invalidateQueries({ queryKey: glossaryKeys.all });
 			queryClient.invalidateQueries({ queryKey: serialKeys.all });
+			queryClient.invalidateQueries({ queryKey: readingSessionKeys.all });
 		}
 
 		log("sync", "pull complete");
@@ -691,13 +759,15 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 	await withSyncLock(async () => {
 		log("sync", "pushing...");
 
-		const [books, settings, highlights, glossaryEntries, seriesRows] = await Promise.all([
-			queries.getBooksForSync(),
-			queries.getSettings(),
-			queries.getAllHighlights(),
-			queries.getAllEntries(),
-			queries.getSeriesForSync(),
-		]);
+		const [books, settings, highlights, glossaryEntries, seriesRows, readingSessionsRows] =
+			await Promise.all([
+				queries.getBooksForSync(),
+				queries.getSettings(),
+				queries.getAllHighlights(),
+				queries.getAllEntries(),
+				queries.getSeriesForSync(),
+				queries.getAllReadingSessions(),
+			]);
 
 		// Pristine pending chapter rows carry zero user data and are excluded from the
 		// push payload — they will be recreated on any device via useChapterListSync.
@@ -718,16 +788,28 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 			}),
 		);
 
+		// Reading sessions are NOT filtered by pushedBookIds. Rows must outlive the
+		// book for all-time totals. Clip newest-first if local exceeds the schema cap.
+		const SESSIONS_CAP = 50_000;
+		const sessionsForPush = (
+			readingSessionsRows.length > SESSIONS_CAP
+				? [...readingSessionsRows].sort((a, b) => b.startedAt - a.startedAt).slice(0, SESSIONS_CAP)
+				: readingSessionsRows
+		).map(sessionToSync);
+
 		const payload: SyncPayload = {
 			books: booksWithContent,
 			settings: settingsToSync(settings),
-			highlights: highlights
-				.filter((highlight) => pushedBookIds.has(highlight.bookId))
-				.map(highlightToSync),
-			glossaryEntries: glossaryEntries
-				.filter((entry) => entry.bookId === null || pushedBookIds.has(entry.bookId))
-				.map(entryToSync),
+			highlights: settings.syncHighlights
+				? highlights.filter((highlight) => pushedBookIds.has(highlight.bookId)).map(highlightToSync)
+				: [],
+			glossaryEntries: settings.syncGlossary
+				? glossaryEntries
+						.filter((entry) => entry.bookId === null || pushedBookIds.has(entry.bookId))
+						.map(entryToSync)
+				: [],
 			series: seriesRows.map(seriesToSync),
+			readingSessions: settings.syncStats ? sessionsForPush : [],
 		};
 
 		// Diagnostics for the >5000 books cap — log composition so we can see what's
@@ -747,7 +829,7 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 		const body = JSON.stringify(payload);
 		log(
 			"sync",
-			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
+			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
 		);
 
 		await syncFetch("/api/sync", {

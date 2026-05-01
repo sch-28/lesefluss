@@ -56,3 +56,12 @@ export async function deleteEntry(id: string): Promise<void> {
 export async function deleteEntriesByBook(bookId: string): Promise<void> {
 	await db.delete(glossaryEntries).where(eq(glossaryEntries.bookId, bookId));
 }
+
+/**
+ * Delete every glossary entry, including global ones (`bookId IS NULL`). Used by
+ * the danger-zone "Delete glossary entries" action. The next sync push then
+ * tombstones the missing rows server-side.
+ */
+export async function deleteAllEntries(): Promise<void> {
+	await db.delete(glossaryEntries);
+}

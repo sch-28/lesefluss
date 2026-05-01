@@ -27,13 +27,15 @@
  */
 
 import { bookHooks } from "./use-books";
+import { dangerZoneHooks } from "./use-danger-zone";
 import { glossaryHooks } from "./use-glossary";
 import { highlightHooks } from "./use-highlights";
 import { serialHooks } from "./use-serials";
 import { seriesHooks } from "./use-series";
 import { settingsHooks } from "./use-settings";
+import { statsHooks } from "./use-stats";
 
-export { bookKeys, glossaryKeys, serialKeys, settingsKeys } from "./query-keys";
+export { bookKeys, glossaryKeys, serialKeys, settingsKeys, statsKeys } from "./query-keys";
 
 export const queryHooks = {
 	// ── Books ──────────────────────────────────────────────────────────────
@@ -130,4 +132,30 @@ export const queryHooks = {
 	 * chapters as `pending` rows. Returns `{ isSyncing }` for a subtle UI indicator.
 	 */
 	useChapterListSync: seriesHooks.useChapterListSync,
+
+	// ── Stats ─────────────────────────────────────────────────────────────
+	useStatsPeriodTotals: statsHooks.usePeriodTotals,
+	useStatsStreak: statsHooks.useStreak,
+	useStatsTopBooks: statsHooks.useTopBooks,
+	useStatsWeeklyWpm: statsHooks.useWeeklyWpm,
+	useStatsHourHistogram: statsHooks.useHourHistogram,
+	useStatsPersonality: statsHooks.usePersonality,
+	useStatsSessionCount: statsHooks.useSessionCount,
+	useStatsBook: statsHooks.useBookStats,
+
+	// ── Danger Zone (bulk deletions) ───────────────────────────────────────
+	/** Mutation: hard-delete every highlight on this device + sync. */
+	useDeleteAllHighlights: dangerZoneHooks.useDeleteAllHighlights,
+
+	/** Mutation: hard-delete every glossary entry (including global) + sync. */
+	useDeleteAllGlossary: dangerZoneHooks.useDeleteAllGlossary,
+
+	/** Mutation: wipe reading sessions on server + locally. */
+	useDeleteAllReadingSessions: dangerZoneHooks.useDeleteAllReadingSessions,
+
+	/** Mutation: tombstone every series + book and clean up files on disk. */
+	useDeleteLibrary: dangerZoneHooks.useDeleteLibrary,
+
+	/** Mutation: run every danger-zone deletion in sequence (preserves auth/settings). */
+	useDeleteEverything: dangerZoneHooks.useDeleteEverything,
 };

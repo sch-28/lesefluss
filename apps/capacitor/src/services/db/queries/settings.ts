@@ -42,6 +42,10 @@ export async function getSettings(): Promise<Settings> {
 		paginationStyle: DEFAULT_SETTINGS.PAGINATION_STYLE,
 		onboardingCompleted: DEFAULT_SETTINGS.ONBOARDING_COMPLETED,
 		appFontSize: DEFAULT_SETTINGS.APP_FONT_SIZE,
+		// Per-resource sync opt-outs default on; local-only, never synced.
+		syncHighlights: true,
+		syncGlossary: true,
+		syncStats: true,
 		// Fresh installs start "caught up" — only changelog entries published
 		// after install will appear in the What's New dialog.
 		lastSeenChangelogDate: changelog[0]?.date ?? "",
