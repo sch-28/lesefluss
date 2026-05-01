@@ -9,6 +9,21 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-05-01",
+		title: "Reading Statistics",
+		tags: ["App", "Website"],
+		changes: [
+			"New reading stats page in the library with totals, streak heatmap, top books, and reading personality",
+			"Per-book stats card on the book detail page: total time, sessions, last read, and a speed sparkline",
+			"Reading speed trends split into three series: RSVP target, RSVP delivered, and natural scroll/page reading, with a 250 WPM reference line",
+			"Reading sessions now sync across your devices like the rest of your data",
+			"Per-resource sync toggles in Sync settings so you can opt out of syncing highlights, glossary, or reading sessions",
+			"Danger zone in Sync settings to bulk-delete highlights, glossary, reading stats, your library, or everything",
+			"Reorganised the Settings page so related items are grouped together",
+			"Admin page on the website rebuilt with better filtering and bulk actions",
+		],
+	},
+	{
 		date: "2026-04-30",
 		title: "Feedback, Error Tracking, and Reader Polish",
 		tags: ["App", "Website"],
