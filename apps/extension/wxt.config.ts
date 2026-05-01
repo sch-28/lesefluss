@@ -2,7 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "wxt";
 
 const CHROME_EXTENSION_KEY =
-	"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5a/V2hpWy9osFTYAflcewAJ9GVa1dvEekmrCMm2/Py/YLhWQN8MCZ5DMWIpUv9KdaqXEgFX14OzTKCsT0ZmR7ZAYkTayG2hPOeDUvxdotQoI0louarH/LF7bkfouAEW/Pop4dt4TnbuWO3clPaP7fAsuBcdOdPTygx7fCYDmD6XGhqeZVg4NxyvGwlJFAl6hosvIh0GIOPwvwhwm06DZ2YkS6lTsk+4FxblICv+OJ+GiLy8oHFKUjXGfI15va9dUe2AYzI/D/sBvHuUWoyyOqSXeIkjNc4c52Sqy4O9TjeGim1wKIssxphEbcZQVFoAFejBbLZw97/sH0YG8dg2pGwIDAQAB";
+	"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqVfUxbZJ3HlYYpHDtQln1xBTPHkgV2csVbQDcYxZ0F8Usas87QaMNn9LU1nGiTH7aXEkviNFk7tIpMZkZdC8jWpLW6hm+KHGODm7JlrzYtB8Ty32i0Dy5di+PUhb+/E9A0VH6Jy1EJFyicrX9yx2U9ZcajLfahomL69ewnLIdD4MNTIYMLwNdebHsA34xZcIBTOXkBmxspKkfbxn7ZOe8aC7Z66BcSE5FbHYFO/C7y+HlQmUmOqFWvHHuupwpPhRMwOMQrSINJ63o9cdsvzTN78JAvxLzN5eFrCUeSXL3SyTPsbIsxM0zPrGD8VKRpOIGaUgIIUB14VCCkq0hLR7oQIDAQAB";
 const FIREFOX_EXTENSION_ID = "{33eb4261-e623-4961-aadf-99d982f2c082}";
 const DEFAULT_LESEFLUSS_URL = "https://lesefluss.app";
 
@@ -18,12 +18,15 @@ export default defineConfig({
 		name: "Lesefluss",
 		short_name: "Lesefluss",
 		description: "Save articles from the web to your Lesefluss library.",
-		permissions: ["identity", "storage", "contextMenus", "notifications", "activeTab"],
+		permissions: ["identity", "storage", "contextMenus", "notifications", "activeTab", "scripting"],
 		host_permissions: [
 			hostPermissionFor(process.env.WXT_PUBLIC_LESEFLUSS_URL ?? DEFAULT_LESEFLUSS_URL),
 			...(mode === "production" ? [] : ["http://localhost/*"]),
 		],
-		...(browser === "chrome" ? { key: CHROME_EXTENSION_KEY } : {}),
+		// Chrome Web Store rejects manifests that include a `key`. We only need
+		// it locally to keep the dev extension ID stable; production builds are
+		// uploaded to the store, which assigns its own ID on first publish.
+		...(browser === "chrome" && mode !== "production" ? { key: CHROME_EXTENSION_KEY } : {}),
 		...(browser === "firefox"
 			? {
 					browser_specific_settings: {

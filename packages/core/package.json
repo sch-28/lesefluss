@@ -4,6 +4,12 @@
 	"description": "Shared RSVP engine, settings defaults, and UTF-8 utilities",
 	"type": "module",
 	"main": "src/index.ts",
+	"exports": {
+		".": {
+			"default": "./src/index.ts"
+		},
+		"./auth-handoff": "./src/auth-handoff.ts"
+	},
 	"scripts": {
 		"check-types": "tsc --noEmit",
 		"test": "vitest run"

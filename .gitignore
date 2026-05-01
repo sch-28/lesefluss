@@ -5,6 +5,7 @@ build/
 apps/web/public/app/
 .output/
 .wxt/
+apps/extension/*.zip
 
 # Dependencies
 node_modules/

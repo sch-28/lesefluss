@@ -13,6 +13,8 @@ export type BackgroundRequest =
 
 export type ContentScriptRequest = { type: "extract:page" } | { type: "extract:selection" };
 
+export type ContentScriptResponse = PageCapturePayload | { type: "lesefluss:page-capture-ready" };
+
 export type BackgroundResponse<T = unknown> = { ok: true; data: T } | { ok: false; error: string };
 
 export interface SaveArticleResponse {

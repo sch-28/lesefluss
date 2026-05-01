@@ -1,7 +1,11 @@
 import { Readability } from "@mozilla/readability";
 import { browser } from "wxt/browser";
 import { defineContentScript } from "wxt/utils/define-content-script";
-import type { ContentScriptRequest, PageCapturePayload } from "../src/lib/messages";
+import type {
+	ContentScriptRequest,
+	ContentScriptResponse,
+	PageCapturePayload,
+} from "../src/lib/messages";
 
 function isContentScriptRequest(value: unknown): value is ContentScriptRequest {
 	if (typeof value !== "object" || value === null) return false;
@@ -9,11 +13,19 @@ function isContentScriptRequest(value: unknown): value is ContentScriptRequest {
 	return type === "extract:page" || type === "extract:selection";
 }
 
+function serializeNode(node: Node): string {
+	return new XMLSerializer().serializeToString(node);
+}
+
+function serializeChildren(node: Node): string {
+	return Array.from(node.childNodes, serializeNode).join("");
+}
+
 function extractPage(): PageCapturePayload {
 	// Readability mutates the document it parses; clone first so the live page
 	// keeps its DOM.
 	const cloned = document.cloneNode(true) as Document;
-	const article = new Readability(cloned).parse();
+	const article = new Readability(cloned, { serializer: serializeChildren }).parse();
 	if (article?.content) {
 		return {
 			html: article.content,
@@ -22,7 +34,7 @@ function extractPage(): PageCapturePayload {
 		};
 	}
 	return {
-		html: document.documentElement.outerHTML,
+		html: serializeNode(document.documentElement),
 		url: location.href,
 		title: document.title,
 	};
@@ -40,17 +52,30 @@ function extractSelection(): PageCapturePayload {
 	}
 
 	return {
-		html: container.innerHTML.trim(),
+		html: serializeChildren(container).trim(),
 		url: location.href,
 		title: document.title,
 	};
 }
 
+function sendContentResponse(sendResponse: (response: ContentScriptResponse) => void) {
+	sendResponse({ type: "lesefluss:page-capture-ready" });
+}
+
 export default defineContentScript({
-	matches: ["<all_urls>"],
+	// Bundled but not auto-registered. The background injects this script via
+	// chrome.scripting.executeScript on user gesture (activeTab). Matches is
+	// kept narrow so WXT doesn't add <all_urls> to host_permissions.
+	registration: "runtime",
+	matches: ["https://lesefluss.app/*"],
 	runAt: "document_idle",
 	main() {
 		browser.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+			if (message === "lesefluss:page-capture-ping") {
+				sendContentResponse(sendResponse);
+				return false;
+			}
+
 			// runtime.onMessage is shared across the whole extension. Returning
 			// false here (and not calling sendResponse) leaves messages addressed
 			// to the background untouched.

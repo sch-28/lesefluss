@@ -65,7 +65,7 @@ function StatusPanel({ status }: { status: Status }) {
 				: "border-border bg-muted text-muted-foreground";
 
 	return (
-		<div className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${className}`}>
+		<div className={`flex min-h-14 items-center gap-2 rounded-lg border p-3 text-sm ${className}`}>
 			<Icon className={`mt-0.5 size-4 ${status.type === "loading" ? "animate-spin" : ""}`} />
 			<p className="leading-snug">{status.message}</p>
 		</div>
@@ -76,8 +76,7 @@ export function Popup() {
 	const [session, setSession] = React.useState<AuthSession | null>(null);
 	const [savedBook, setSavedBook] = React.useState<SavedBookState | null>(null);
 	const [status, setStatus] = React.useState<Status>({
-		type: "loading",
-		message: "Loading session...",
+		type: "idle",
 	});
 
 	React.useEffect(() => {
@@ -149,8 +148,8 @@ export function Popup() {
 		setStatus({ type: "loading", message: "Capturing and importing this page..." });
 		try {
 			const saved = await sendMessage<SaveArticleResponse>({ type: "article:save-page" });
-			setSavedBook({ ...saved, existing: false });
-			setStatus({ type: "success", message: "Saved to your Lesefluss library." });
+			setSavedBook({ ...saved, existing: true });
+			setStatus({ type: "idle" });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Could not save this page.";
 			setStatus({ type: "error", message });
@@ -201,12 +200,18 @@ export function Popup() {
 						</Badge>
 					</div>
 				</CardHeader>
-				<CardContent className="relative space-y-2">
+				<CardContent className="relative flex flex-col gap-2 overflow-hidden">
 					{session ? (
 						<div className="rounded-lg border bg-muted/40 p-4">
-							<div className="flex items-center gap-2 text-sm">
-								<UserRound className="size-4 text-primary" />
-								<span className="truncate font-medium">{session.email ?? "Signed in"}</span>
+							<div className="flex items-center justify-between gap-2 text-sm">
+								<div className="flex min-w-0 items-center gap-2">
+									<UserRound className="size-4 shrink-0 text-primary" />
+									<span className="truncate font-medium">{session.email ?? "Signed in"}</span>
+								</div>
+								<Button size="sm" variant="ghost" onClick={handleSignOut} disabled={busy}>
+									<LogOut />
+									Sign out
+								</Button>
 							</div>
 							<p className="mt-1 text-muted-foreground text-xs">
 								Articles are imported into your cloud library at{" "}
@@ -224,8 +229,6 @@ export function Popup() {
 							</p>
 						</div>
 					)}
-
-					<StatusPanel status={status} />
 
 					{savedBook ? (
 						<div className="rounded-lg border bg-card/70 p-3 shadow-sm">
@@ -257,19 +260,14 @@ export function Popup() {
 							</Button>
 						</div>
 					) : null}
+					<StatusPanel status={status} />
 
 					<div className="grid gap-2">
 						{session ? (
-							<>
-								<Button size="lg" onClick={handleSavePage} disabled={busy}>
-									{busy ? <Loader2 className="animate-spin" /> : <Save />}
-									{savedBook?.existing ? "Rescan page" : "Save this page"}
-								</Button>
-								<Button variant="outline" onClick={handleSignOut} disabled={busy}>
-									<LogOut />
-									Sign out
-								</Button>
-							</>
+							<Button size="lg" onClick={handleSavePage} disabled={busy}>
+								{busy ? <Loader2 className="animate-spin" /> : <Save />}
+								{savedBook?.existing ? "Rescan page" : "Save this page"}
+							</Button>
 						) : (
 							<Button size="lg" onClick={handleSignIn} disabled={busy}>
 								{busy ? null : <UserRound />}

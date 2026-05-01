@@ -7,6 +7,7 @@ import {
 	type BackgroundRequest,
 	type BackgroundResponse,
 	type ContentScriptRequest,
+	type ContentScriptResponse,
 	type PageCapturePayload,
 	type SaveArticleResponse,
 	UnauthorizedError,
@@ -34,17 +35,47 @@ function isPageCapturePayload(value: unknown): value is PageCapturePayload {
 	);
 }
 
+function isPageCaptureReady(value: unknown): value is { type: "lesefluss:page-capture-ready" } {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		(value as { type?: unknown }).type === "lesefluss:page-capture-ready"
+	);
+}
+
+async function isPageCaptureInjected(tabId: number): Promise<boolean> {
+	try {
+		const response: unknown = await browser.tabs.sendMessage(tabId, "lesefluss:page-capture-ping");
+		return isPageCaptureReady(response);
+	} catch {
+		return false;
+	}
+}
+
+async function injectPageCapture(tabId: number): Promise<void> {
+	if (await isPageCaptureInjected(tabId)) return;
+	await browser.scripting.executeScript({
+		target: { tabId },
+		files: ["/content-scripts/page-capture.js"],
+	});
+}
+
 async function capture(tabId: number, mode: "page" | "selection"): Promise<PageCapturePayload> {
 	const request: ContentScriptRequest =
 		mode === "page" ? { type: "extract:page" } : { type: "extract:selection" };
 
-	let result: unknown;
+	try {
+		await injectPageCapture(tabId);
+	} catch {
+		// Injection refused on chrome://, about:, the web store, PDF viewers,
+		// or file:// without explicit permission.
+		throw new Error("Lesefluss can't capture this page (it may be a browser-internal page).");
+	}
+
+	let result: ContentScriptResponse | unknown;
 	try {
 		result = await browser.tabs.sendMessage(tabId, request);
 	} catch {
-		// Content scripts can't load on chrome://, about:, the web store, PDF
-		// viewers, or file:// without explicit permission. Map the raw messaging
-		// failure to a friendly message so the popup doesn't show a runtime trace.
 		throw new Error("Lesefluss can't capture this page (it may be a browser-internal page).");
 	}
 

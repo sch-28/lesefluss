@@ -3,7 +3,7 @@ import {
 	beginAuthHandoff,
 	consumeAuthHandoffState,
 	finalizeVerifiedAuthHandoffLogin,
-} from "@lesefluss/core";
+} from "@lesefluss/core/auth-handoff";
 import { browser } from "wxt/browser";
 
 import { parseAuthCallback } from "./auth-parse";

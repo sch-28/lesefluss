@@ -37,21 +37,32 @@ function isProduction(): boolean {
 	return process.env.NODE_ENV === "production";
 }
 
+// Firefox uses the addon UUID for the moz-extension origin and a SHA-1 hash of
+// the addon ID for the identity redirect URI host. Both forms can be listed in
+// LESEFLUSS_FIREFOX_EXTENSION_IDS; we route each to the allowlist that matches
+// its shape.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const SHA1_RE = /^[0-9a-f]{40}$/;
+
 function configuredExtensionOrigins(): Set<string> {
+	const firefoxUuids = configuredValues("LESEFLUSS_FIREFOX_EXTENSION_IDS").filter((v) =>
+		UUID_RE.test(v),
+	);
 	return new Set([
 		...configuredValues("LESEFLUSS_CHROME_EXTENSION_IDS").map((id) => `chrome-extension://${id}`),
-		...configuredValues("LESEFLUSS_FIREFOX_EXTENSION_IDS").map((id) => `moz-extension://${id}`),
+		...firefoxUuids.map((id) => `moz-extension://${id}`),
 	]);
 }
 
 function configuredExtensionRedirectUris(): Set<string> {
+	const firefoxRedirectHosts = configuredValues("LESEFLUSS_FIREFOX_EXTENSION_IDS").filter((v) =>
+		SHA1_RE.test(v),
+	);
 	return new Set([
 		...configuredValues("LESEFLUSS_CHROME_EXTENSION_IDS").map(
 			(id) => `https://${id}.chromiumapp.org/`,
 		),
-		...configuredValues("LESEFLUSS_FIREFOX_EXTENSION_IDS").map(
-			(id) => `https://${id}.extensions.allizom.org/`,
-		),
+		...firefoxRedirectHosts.map((host) => `https://${host}.extensions.allizom.org/`),
 	]);
 }
 
