@@ -11,7 +11,7 @@ dependencies:
   - TASK-37
   - TASK-101
 references:
-  - packages/rsvp-core/src/sync.ts
+  - packages/core/src/sync.ts
   - apps/capacitor/src/services/sync/index.ts
   - apps/web/src/routes/api/sync.ts
 priority: high
@@ -31,7 +31,7 @@ debounced push failed: Error: Sync failed (400):
      "inclusive":true,"path":["books"],"message":"Invalid input"}]}
 ```
 
-Source: `packages/rsvp-core/src/sync.ts` — `SyncPayloadSchema.books: z.array(SyncBookSchema).max(5000)`.
+Source: `packages/core/src/sync.ts` — `SyncPayloadSchema.books: z.array(SyncBookSchema).max(5000)`.
 
 The 5000-row cap predates web-novel support, when `books` meant *imported books*. Since TASK-37 chapter rows are also stored in `books` (with `series_id` set), a user with a handful of large RoyalRoad / Wuxiaworld serials can easily blow past 5000 — RR serials routinely run 1000–2000 chapters each.
 

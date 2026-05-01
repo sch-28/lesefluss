@@ -36,6 +36,7 @@ import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
 import { Route as ApiSyncWipeSessionsRouteImport } from './routes/api/sync/wipe-sessions'
+import { Route as ApiImportArticleRouteImport } from './routes/api/import/article'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -174,6 +175,11 @@ const ApiSyncWipeSessionsRoute = ApiSyncWipeSessionsRouteImport.update({
   path: '/wipe-sessions',
   getParentRoute: () => ApiSyncRoute,
 } as any)
+const ApiImportArticleRoute = ApiImportArticleRouteImport.update({
+  id: '/api/import/article',
+  path: '/api/import/article',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/privacy/': typeof PrivacyIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/import/article': typeof ApiImportArticleRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -233,6 +240,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyIndexRoute
   '/terms': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/import/article': typeof ApiImportArticleRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/account': typeof AuthenticatedAccountIndexRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -264,6 +272,7 @@ export interface FileRoutesById {
   '/privacy/': typeof PrivacyIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/import/article': typeof ApiImportArticleRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -295,6 +304,7 @@ export interface FileRouteTypes {
     | '/privacy/'
     | '/terms/'
     | '/api/auth/$'
+    | '/api/import/article'
     | '/api/sync/wipe-sessions'
     | '/account/'
     | '/admin/'
@@ -324,6 +334,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/api/auth/$'
+    | '/api/import/article'
     | '/api/sync/wipe-sessions'
     | '/account'
     | '/admin'
@@ -354,6 +365,7 @@ export interface FileRouteTypes {
     | '/privacy/'
     | '/terms/'
     | '/api/auth/$'
+    | '/api/import/article'
     | '/api/sync/wipe-sessions'
     | '/_authenticated/account/'
     | '/_authenticated/admin/'
@@ -385,6 +397,7 @@ export interface RootRouteChildren {
   PrivacyIndexRoute: typeof PrivacyIndexRoute
   TermsIndexRoute: typeof TermsIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiImportArticleRoute: typeof ApiImportArticleRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -578,6 +591,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSyncWipeSessionsRouteImport
       parentRoute: typeof ApiSyncRoute
     }
+    '/api/import/article': {
+      id: '/api/import/article'
+      path: '/api/import/article'
+      fullPath: '/api/import/article'
+      preLoaderRoute: typeof ApiImportArticleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -639,6 +659,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyIndexRoute: PrivacyIndexRoute,
   TermsIndexRoute: TermsIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiImportArticleRoute: ApiImportArticleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

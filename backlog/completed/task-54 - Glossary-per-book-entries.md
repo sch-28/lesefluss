@@ -41,7 +41,7 @@ Long books often introduce many recurring entities (people, places, factions). R
 **Storage & sync**
 - New `glossary_entries` table in capacitor SQLite (Drizzle migration). Columns: `id`, `bookId`, `label`, `notes`, `color`, `createdAt`, `updatedAt`.
 - Mirror table in web Postgres schema (`apps/web/src/db/schema.ts` + migration).
-- Add to `@lesefluss/rsvp-core/sync` Zod schema. Full-snapshot sync, last-write-wins by `updatedAt`, tombstones on delete (mirror highlights).
+- Add to `@lesefluss/core` Zod schema. Full-snapshot sync, last-write-wins by `updatedAt`, tombstones on delete (mirror highlights).
 - Auto-push via `scheduleSyncPush()` on every mutation hook (mirror highlights pattern).
 - Cascade delete with the parent book (same as `deleteHighlightsByBook`).
 
@@ -70,7 +70,7 @@ Capture but do not build now:
 <!-- AC:BEGIN -->
 - [x] #1 New `glossary_entries` table exists in capacitor SQLite (Drizzle migration `0015_glossary` registered in `_journal.json`) with columns id, bookId (nullable), label, notes, color, createdAt, updatedAt
 - [x] #2 Mirror `sync_glossary_entries` table + migration `0003_glossary` added to `apps/web/src/db/schema.ts`
-- [x] #3 Glossary entries are part of full-snapshot cloud sync (`SyncGlossaryEntrySchema` in `@lesefluss/rsvp-core/sync`, last-write-wins, tombstones on delete) and auto-push via `scheduleSyncPush()` on every mutation
+- [x] #3 Glossary entries are part of full-snapshot cloud sync (`SyncGlossaryEntrySchema` in `@lesefluss/core`, last-write-wins, tombstones on delete) and auto-push via `scheduleSyncPush()` on every mutation
 - [x] #4 Selection toolbar gains an 'Add to glossary' action that pre-fills the label with the selected text; if a matching label already exists, opens that entry instead of creating a duplicate
 - [x] #5 Reader toolbar exposes a single 'annotations' icon (bookmarksOutline) that opens a sheet with `IonSegment` tabs: Contents / Highlights / Glossary; empty segments are hidden; existing TOC + bookmark icons removed
 - [x] #6 Glossary tab lists entries with auto-generated avatar (HSL color + initials derived from label), grouped into 'This book' and 'Global' sections; floating + button bottom-right adds a new entry
@@ -93,7 +93,7 @@ Per-book + global glossary with full cloud sync, inline reader highlights, merge
 ### Data + sync
 - Capacitor SQLite: `glossary_entries` table (`bookId` nullable), migrations `0015_glossary` and `0016_reader_glossary_underline`.
 - Postgres: `sync_glossary_entries` table with composite PK (userId, entryId), migrations `0003_glossary` and `0004_reader_glossary_underline`.
-- `SyncGlossaryEntrySchema` in `@lesefluss/rsvp-core/sync`; full-snapshot pull/push with sticky tombstones on the server side; auto-push debounced 2s on every mutation.
+- `SyncGlossaryEntrySchema` in `@lesefluss/core`; full-snapshot pull/push with sticky tombstones on the server side; auto-push debounced 2s on every mutation.
 - Cascade in `deleteBook` + `hardDeleteBook` only deletes book-scoped entries; globals survive.
 
 ### Reader UI

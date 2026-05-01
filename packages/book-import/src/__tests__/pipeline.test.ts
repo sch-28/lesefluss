@@ -25,4 +25,20 @@ describe("runImportPipeline", () => {
 		expect(payload.title).toBe("plain");
 		expect(payload.fileFormat).toBe("txt");
 	});
+
+	it("parses HTML with an injected DOM parser", async () => {
+		const bytes = new TextEncoder().encode(
+			"<html><head><title>Injected DOM</title></head><body><article><p>Hello article.</p></article></body></html>",
+		).buffer as ArrayBuffer;
+		const payload = await runImportPipeline(
+			{ kind: "bytes", bytes, fileName: "article.html", mimeType: "text/html" },
+			{ domParser: () => new DOMParser() },
+		);
+
+		expect(payload).toMatchObject({
+			title: "Injected DOM",
+			content: "Hello article.",
+			fileFormat: "html",
+		});
+	});
 });

@@ -4,7 +4,7 @@ title: Book language metadata for hyphenation
 status: To Do
 assignee: []
 created_date: '2026-04-26 19:51'
-updated_date: '2026-04-30 23:33'
+updated_date: '2026-05-01 15:36'
 labels: []
 milestone: m-5
 dependencies: []
@@ -19,7 +19,7 @@ Books currently have no `language` field on the SQLite schema, so PageView's col
 Plumbing required:
 1. `apps/capacitor/src/services/db/schema.ts` — add `language: text("language")` column to `books` (BCP 47 tag, e.g. "en", "de", "fr"). Migration.
 2. `apps/web/src/db/schema.ts` — mirror on syncBooks. Migration.
-3. `packages/rsvp-core/src/sync.ts` — add `language: z.string().nullable().optional()` to `SyncBookSchema`.
+3. `packages/core/src/sync.ts` — add `language: z.string().nullable().optional()` to `SyncBookSchema`.
 4. Import paths to populate it:
    - Catalog imports already get `language` from the catalog API — wire it through (apps/capacitor/src/services/catalog/client.ts already returns it).
    - EPUB import — extract `<dc:language>` from the OPF.

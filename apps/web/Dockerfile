@@ -4,8 +4,9 @@ RUN corepack enable
 FROM base AS deps
 WORKDIR /app
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY packages/rsvp-core/package.json ./packages/rsvp-core/
 COPY packages/ble-config/package.json ./packages/ble-config/
+COPY packages/book-import/package.json ./packages/book-import/
+COPY packages/core/package.json ./packages/core/
 COPY apps/web/package.json ./apps/web/
 COPY apps/capacitor/package.json ./apps/capacitor/
 RUN pnpm install --frozen-lockfile

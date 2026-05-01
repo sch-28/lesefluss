@@ -3,7 +3,7 @@ id: doc-2
 title: Book import architecture — state &amp; roadmap
 type: other
 created_date: '2026-04-26 11:35'
-updated_date: '2026-04-26 22:03'
+updated_date: '2026-05-01 15:37'
 ---
 _Working notes for the Phase 5 (Content Ingestion) refactor in `apps/capacitor`. This file is a handoff for the next agent / session. When all Phase 5 parsers have landed, delete it._
 
@@ -170,7 +170,7 @@ invalidation code.
 - `apps/capacitor/drizzle/0010_source_url.sql` + journal entry
 - `apps/web/src/db/schema.ts` — `sourceUrl: text("source_url")` on `syncBooks`
   (remote uses `drizzle-kit push`, no per-migration file)
-- `packages/rsvp-core/src/sync.ts` — `sourceUrl` on `SyncBookSchema`
+- `packages/core/src/sync.ts` — `sourceUrl` on `SyncBookSchema`
 - `apps/capacitor/src/services/sync/index.ts` — `bookToSync` + inbound apply
 - `apps/web/src/routes/api/sync.ts` — pull select, push upsert, COALESCE preserve
 

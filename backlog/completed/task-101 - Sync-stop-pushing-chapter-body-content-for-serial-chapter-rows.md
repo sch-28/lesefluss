@@ -13,7 +13,7 @@ references:
   - apps/capacitor/src/services/sync/index.ts
   - apps/web/src/routes/api/sync.ts
   - apps/web/drizzle/0007_drop_chapter_content.sql
-  - packages/rsvp-core/src/sync.ts
+  - packages/core/src/sync.ts
 ---
 
 ## Description

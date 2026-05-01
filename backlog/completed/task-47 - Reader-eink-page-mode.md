@@ -29,7 +29,7 @@ Users can now choose between scroll, page, and RSVP. The page mode delivers e-in
 ## What changed
 
 ### Setting + UI
-- New synced setting `paginationStyle: "scroll" | "page"` (default `scroll`) wired end-to-end per AGENTS.md: rsvp-core defaults + sync schema + `SYNCED_SETTING_KEYS`, capacitor schema + migration `0014_pagination_style.sql`, capacitor queries default, web schema + migration `0002_pagination_style.sql` (regenerated via drizzle-kit so the snapshot is consistent). Type alias `PaginationStyle` exported from rsvp-core.
+- New synced setting `paginationStyle: "scroll" | "page"` (default `scroll`) wired end-to-end per AGENTS.md: core defaults + sync schema + `SYNCED_SETTING_KEYS`, capacitor schema + migration `0014_pagination_style.sql`, capacitor queries default, web schema + migration `0002_pagination_style.sql` (regenerated via drizzle-kit so the snapshot is consistent). Type alias `PaginationStyle` exported from core.
 - Toolbar unchanged: the existing flash button still toggles between RSVP and the standard reader. The standard reader's variant (scroll vs page) comes from the global setting, decided at render time — no swap effects, no in-session mode-state duplication.
 - Appearance settings: new "Pagination" chip section directly under Theme, using the existing chip pattern.
 - Onboarding: new conditional `pagination-style` step. Shown only when the user picked the standard reader (not RSVP) on the previous step.
@@ -82,8 +82,8 @@ Both `ScrollView` and `PageView` are `forwardRef` components exposing the same `
 - TASK-98 — book language metadata for hyphenation (PageView's `lang="en"` is currently hardcoded with a TODO)
 
 ## Files added
-- `packages/rsvp-core/src/settings.ts` — `PaginationStyle` type, `PAGINATION_STYLE` default, added to `SYNCED_SETTING_KEYS`
-- `packages/rsvp-core/src/sync.ts` — `paginationStyle` in `SyncSettingsSchema`
+- `packages/core/src/settings.ts` — `PaginationStyle` type, `PAGINATION_STYLE` default, added to `SYNCED_SETTING_KEYS`
+- `packages/core/src/sync.ts` — `paginationStyle` in `SyncSettingsSchema`
 - `apps/capacitor/drizzle/0014_pagination_style.sql` + journal entry
 - `apps/web/drizzle/0002_pagination_style.sql` + snapshot + journal entry (regenerated via `drizzle-kit generate`)
 - `apps/capacitor/src/services/db/schema.ts` — pagination_style column on settings

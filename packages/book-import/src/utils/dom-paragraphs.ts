@@ -1,5 +1,7 @@
 /** Tags that are headings and should be prefixed with # markers. */
 const HEADING_TAGS = new Set(["H1", "H2", "H3", "H4", "H5", "H6"]);
+const ELEMENT_NODE = 1;
+const TEXT_NODE = 3;
 
 /** Heading tags mapped to their markdown-style # prefix depth. */
 const HEADING_PREFIX: Record<string, string> = {
@@ -33,10 +35,10 @@ function extractHeadingText(el: Element): string {
 	const parts: string[] = [];
 
 	function walk(node: Node) {
-		if (node.nodeType === Node.TEXT_NODE) {
+		if (node.nodeType === TEXT_NODE) {
 			const t = (node.textContent || "").replace(/\s+/g, " ").trim();
 			if (t) parts.push(t);
-		} else if (node.nodeType === Node.ELEMENT_NODE) {
+		} else if (node.nodeType === ELEMENT_NODE) {
 			const tag = (node as Element).tagName.toUpperCase();
 			if (tag === "BR") return;
 			for (const child of Array.from(node.childNodes)) walk(child);

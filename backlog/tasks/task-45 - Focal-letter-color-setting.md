@@ -5,7 +5,7 @@ status: Done
 assignee:
   - OpenCode
 created_date: '2026-04-26 15:59'
-updated_date: '2026-04-30 21:10'
+updated_date: '2026-05-01 15:36'
 labels: []
 milestone: m-5
 dependencies: []
@@ -17,7 +17,7 @@ ordinal: 5000
 <!-- SECTION:PLAN:BEGIN -->
 Implement `focalLetterColor` as a synced app + ESP32 setting stored as a hex color string, while the UI exposes curated preset swatches.
 
-1. Shared settings: add a focal-letter color default and hex validation helper/regex in `packages/rsvp-core/src/settings.ts`, include `focalLetterColor` in `SYNCED_SETTING_KEYS`, and map it to ESP32 wire key `focal_letter_color` in `ESP32_SETTING_KEYS`.
+1. Shared settings: add a focal-letter color default and hex validation helper/regex in `packages/core/src/settings.ts`, include `focalLetterColor` in `SYNCED_SETTING_KEYS`, and map it to ESP32 wire key `focal_letter_color` in `ESP32_SETTING_KEYS`.
 2. Sync schema: add `focalLetterColor` to `SyncSettingsSchema` as a strict `#rrggbb` string so cloud sync validates and transports future-proof color values.
 3. Local persistence: add `focal_letter_color TEXT NOT NULL DEFAULT '#ff0000'` to Capacitor settings schema, defaults query, and new SQLite migration + journal entry.
 4. Cloud persistence: add `focal_letter_color TEXT NOT NULL DEFAULT '#ff0000'` to web sync settings schema and new Postgres migration + journal entry with a hex-format check constraint.

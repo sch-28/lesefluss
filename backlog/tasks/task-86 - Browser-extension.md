@@ -1,10 +1,11 @@
 ---
 id: TASK-86
 title: Browser extension
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@OpenCode'
 created_date: '2026-04-26 15:59'
-updated_date: '2026-05-01 13:45'
+updated_date: '2026-05-01 15:47'
 labels: []
 milestone: m-9
 dependencies:
@@ -47,3 +48,26 @@ Distribution: Chrome Web Store + Firefox AMO listings. Two separate review proce
 - [ ] #7 Manual cross-browser smoke test passes on latest Chrome + Firefox stable
 - [ ] #8 Listings prepared (icons, screenshots, store descriptions) for Chrome Web Store and Firefox AMO
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Approved implementation plan:
+
+1. Scaffold `apps/extension` as a WXT + React + TypeScript workspace app.
+2. Add dependencies aligned with web styling: `react`, `react-dom`, `@wxt-dev/module-react`, `lucide-react`, `class-variance-authority`, `clsx`, `tailwind-merge`, `tailwindcss`, `@tailwindcss/vite`, `tw-animate-css`, `shadcn`, and `@fontsource-variable/geist`.
+3. Configure WXT for Chrome MV3 and Firefox MV3 builds with scripts for dev/build/zip on both browsers plus `postinstall: wxt prepare`.
+4. Configure manifest permissions: `identity`, `storage`, `contextMenus`, `notifications`, `activeTab`, `scripting`, plus `host_permissions` for the configured Lesefluss URL.
+5. Pin deterministic extension IDs from the start: Chrome `key` in manifest config and Firefox `browser_specific_settings.gecko.id`; document that production must add published IDs to `LESEFLUSS_CHROME_EXTENSION_IDS` / `LESEFLUSS_FIREFOX_EXTENSION_IDS`.
+6. Add WXT runtime config/env handling: `WXT_PUBLIC_LESEFLUSS_URL`, defaulting to `https://lesefluss.app`, with local override for dev.
+7. Build a polished React popup: Lesefluss-like card layout, Geist font, warm dark/light tokens from `apps/web/src/styles/app.css`, lucide icons, and shadcn-style local `Button`, `Card`, `Badge`, and status UI.
+8. Implement auth module using `@lesefluss/core` auth handoff helpers with a `browser.storage.local` adapter.
+9. Implement sign-in with `browser.identity.launchWebAuthFlow`: create state, use `browser.identity.getRedirectURL()`, call `/auth/extension-callback`, validate returned state, extract hash token, finalize via shared helper, persist token/email.
+10. Implement sign-out: clear local token/email/state and call `/api/auth/sign-out` with bearer token when available.
+11. Implement background worker: create context menu, handle popup messages, run page/selection capture, call `POST /api/import/article`, and return structured status/errors.
+12. Implement capture logic: full page sends `document.documentElement.outerHTML`, `location.href`, `document.title`; selection sends cloned selected range HTML with current URL/title.
+13. UX behavior: popup save shows inline loading/success/error state; context-menu save uses browser notification because popup is closed.
+14. Add extension README with dev setup, deterministic ID notes, env allowlist notes, Chrome/Firefox smoke-test checklist, and store listing preparation checklist.
+15. Verify with extension typecheck, Chrome build, Firefox build, and broader repo checks if feasible.
+16. Copy/adapt only the needed shadcn-style primitives into `apps/extension/src/components/ui` so the extension remains standalone and does not depend on web app aliases.
+<!-- SECTION:PLAN:END -->

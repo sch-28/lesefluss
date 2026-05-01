@@ -46,21 +46,21 @@ function hasEmail(v: unknown): v is { email: string } {
 }
 
 async function clearStoredAuth(
-	storage: AuthHandoffStorage,
+	authStorage: AuthHandoffStorage,
 	options?: AuthHandoffOptions,
 ): Promise<void> {
 	await Promise.all([
-		storage.remove(getTokenKey(options)),
-		storage.remove(getUserEmailKey(options)),
-		storage.remove(getStateKey(options)),
+		authStorage.remove(getTokenKey(options)),
+		authStorage.remove(getUserEmailKey(options)),
+		authStorage.remove(getStateKey(options)),
 	]);
 }
 
-function getConsumeLocks(storage: AuthHandoffStorage): Set<string> {
-	let locks = consumeLocks.get(storage);
+function getConsumeLocks(authStorage: AuthHandoffStorage): Set<string> {
+	let locks = consumeLocks.get(authStorage);
 	if (!locks) {
 		locks = new Set<string>();
-		consumeLocks.set(storage, locks);
+		consumeLocks.set(authStorage, locks);
 	}
 	return locks;
 }
@@ -70,11 +70,11 @@ function getConsumeLocks(storage: AuthHandoffStorage): Set<string> {
  * include the returned state in the web callback URL and verify it on return.
  */
 export async function beginAuthHandoff(
-	storage: AuthHandoffStorage,
+	authStorage: AuthHandoffStorage,
 	options?: AuthHandoffOptions,
 ): Promise<string> {
 	const state = (options?.generateState ?? defaultGenerateState)();
-	await storage.set(getStateKey(options), state);
+	await authStorage.set(getStateKey(options), state);
 	return state;
 }
 
@@ -83,16 +83,16 @@ export async function beginAuthHandoff(
  * the same storage key get null while the first consume is in flight.
  */
 export async function consumeAuthHandoffState(
-	storage: AuthHandoffStorage,
+	authStorage: AuthHandoffStorage,
 	options?: AuthHandoffOptions,
 ): Promise<string | null> {
 	const stateKey = getStateKey(options);
-	const locks = getConsumeLocks(storage);
+	const locks = getConsumeLocks(authStorage);
 	if (locks.has(stateKey)) return null;
 	locks.add(stateKey);
 	try {
-		const value = await storage.get(stateKey);
-		await storage.remove(stateKey);
+		const value = await authStorage.get(stateKey);
+		await authStorage.remove(stateKey);
 		return value;
 	} finally {
 		locks.delete(stateKey);
@@ -104,11 +104,11 @@ export async function consumeAuthHandoffState(
  * Only call this after the caller has verified the handoff nonce state.
  */
 export async function finalizeVerifiedAuthHandoffLogin(
-	storage: AuthHandoffStorage,
+	authStorage: AuthHandoffStorage,
 	options: FinalizeAuthHandoffLoginOptions,
 ): Promise<{ email: string }> {
 	const fetchImpl = options.fetch ?? fetch;
-	await storage.set(getTokenKey(options), options.token);
+	await authStorage.set(getTokenKey(options), options.token);
 
 	let res: Response;
 	try {
@@ -116,11 +116,11 @@ export async function finalizeVerifiedAuthHandoffLogin(
 			headers: { Authorization: `Bearer ${options.token}` },
 		});
 	} catch (err) {
-		await clearStoredAuth(storage, options);
+		await clearStoredAuth(authStorage, options);
 		throw err;
 	}
 	if (!res.ok) {
-		await clearStoredAuth(storage, options);
+		await clearStoredAuth(authStorage, options);
 		throw new Error(`Failed to verify session (${res.status})`);
 	}
 
@@ -129,14 +129,14 @@ export async function finalizeVerifiedAuthHandoffLogin(
 		const user =
 			typeof data === "object" && data !== null ? (data as { user?: unknown }).user : undefined;
 		if (!hasEmail(user)) {
-			await clearStoredAuth(storage, options);
+			await clearStoredAuth(authStorage, options);
 			throw new Error("Invalid session response");
 		}
 
-		await storage.set(getUserEmailKey(options), user.email);
+		await authStorage.set(getUserEmailKey(options), user.email);
 		return { email: user.email };
 	} catch (err) {
-		await clearStoredAuth(storage, options);
+		await clearStoredAuth(authStorage, options);
 		throw err;
 	}
 }

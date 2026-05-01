@@ -66,7 +66,7 @@ Original design lived in doc-1 (Serial scraping — design plan), retired on com
 
 **Providers (4):** AO3, ScribbleHub, Royal Road (Cloudflare via CapacitorHttp), Wuxiaworld (locked-chapter path). FF.net dropped (audience overlap with AO3, mid-quality content, no first-party search, hardest-to-scrape Cloudflare wall) — `'ffnet'` provider id reserved in the schema CHECK constraint to avoid a future migration.
 
-**Schema:** new `series` table on capacitor + web (`source_url`, `toc_url`, `provider`, `last_checked_at`, soft-delete), new columns on `books` (`series_id`, `chapter_index`, `chapter_source_url`, `chapter_status`), partial unique index on `(series_id, chapter_index)`. Sync wired through `packages/rsvp-core/src/sync.ts` with CHECK constraints defending the wire.
+**Schema:** new `series` table on capacitor + web (`source_url`, `toc_url`, `provider`, `last_checked_at`, soft-delete), new columns on `books` (`series_id`, `chapter_index`, `chapter_source_url`, `chapter_status`), partial unique index on `(series_id, chapter_index)`. Sync wired through `packages/core/src/sync.ts` with CHECK constraints defending the wire.
 
 **Discovery:** web-novel search unified under the Explore tab as a soft-CTA section (`<WebNovelsSection>`) plus a routed search page (`/tabs/explore/web-novels`) with provider filter chips and a routed preview (`/tabs/explore/web-novels/preview`). The original Library `SerialSearchModal` was deleted as part of TASK-37.1.
 

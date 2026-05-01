@@ -17,7 +17,7 @@ ordinal: 12000
 Added a user-controlled `appFontSize` setting (12–22 px, default 16, step 1) that drives the Capacitor app's root `font-size` for app-wide rem scaling. Local-only (per device, not synced and not pushed to ESP32).
 
 **Changes**
-- `packages/rsvp-core/src/settings.ts`: `APP_FONT_SIZE` added to `DEFAULT_SETTINGS` + `SETTING_CONSTRAINTS`. Not added to `SYNCED_SETTING_KEYS`/`ESP32_SETTING_KEYS`.
+- `packages/core/src/settings.ts`: `APP_FONT_SIZE` added to `DEFAULT_SETTINGS` + `SETTING_CONSTRAINTS`. Not added to `SYNCED_SETTING_KEYS`/`ESP32_SETTING_KEYS`.
 - `apps/capacitor/src/services/db/schema.ts`: `appFontSize` column (default 16).
 - `apps/capacitor/drizzle/0013_app_font_size.sql` + `meta/_journal.json`: migration registered.
 - `apps/capacitor/src/services/db/queries/settings.ts`: first-run seed includes the field.

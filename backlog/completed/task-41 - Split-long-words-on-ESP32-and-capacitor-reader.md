@@ -24,7 +24,7 @@ Long words exceed the RSVP focal display and are hard to read in a single frame.
 - [x] #3 Dictionary lookup, context peek, sentence/word navigation, scrub, progress bar work as before
 - [x] #4 Punctuation delay multipliers fire only on the chunk that contains the punctuation (naturally the last chunk for trailing punct)
 - [x] #5 ESP32 scrub mode shows full words (no chunking)
-- [x] #6 Shared splitLongWord helper in rsvp-core with matching Python implementation in esp32
+- [x] #6 Shared splitLongWord helper in core with matching Python implementation in esp32
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -32,8 +32,8 @@ Long words exceed the RSVP focal display and are hard to read in a single frame.
 <!-- SECTION:PLAN:BEGIN -->
 ## Plan
 
-### 1. Shared splitter (rsvp-core)
-- Add `splitLongWord(word, maxLen = 13): string[]` to `packages/rsvp-core/src/engine.ts`.
+### 1. Shared splitter (core)
+- Add `splitLongWord(word, maxLen = 13): string[]` to `packages/core/src/engine.ts`.
 - Algorithm: split on hyphens first (keep hyphen at end of each part), greedily merge parts up to `maxLen`. Any chunk still > `maxLen` gets hard-cut at `maxLen-1` with a trailing '-' appended (last piece keeps original tail).
 - Export `MAX_WORD_LEN = 13`.
 
@@ -57,7 +57,7 @@ Long words exceed the RSVP focal display and are hard to read in a single frame.
 
 ### 4. Verify
 - `pnpm check-types` in `apps/capacitor`.
-- `pnpm --filter @lesefluss/rsvp-core build` (or whatever the core build is).
+- `pnpm --filter @lesefluss/core build` (or whatever the core build is).
 - Manual sanity: long words like "Antidisestablishmentarianism" and "blue-dragonfly-shine" split as expected.
 <!-- SECTION:PLAN:END -->
 
@@ -70,7 +70,7 @@ Long words now display as multiple consecutive RSVP frames so 14+ char words are
 
 ### Changes
 
-**`packages/rsvp-core/src/engine.ts`**
+**`packages/core/src/engine.ts`**
 - New exports: `MAX_WORD_LEN = 13`, `splitLongWord(word, maxLen?)`.
 - Hyphen-aware: greedily merges hyphen-delimited parts up to `maxLen`. Falls back to hard-cut with trailing `-` on non-final pieces. Words at/below the limit return `[word]`.
 

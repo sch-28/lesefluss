@@ -10,10 +10,11 @@ export const htmlParser: Parser = {
 
 	canParse: canParseHtml,
 
-	async parse(input): Promise<BookPayload> {
+	async parse(input, _onProgress, options): Promise<BookPayload> {
 		assertBytes(input);
 		const html = new TextDecoder("utf-8").decode(input.bytes);
-		const doc = new DOMParser().parseFromString(html, "text/html");
+		const domParser = options?.domParser?.() ?? new DOMParser();
+		const doc = domParser.parseFromString(html, "text/html");
 
 		// Readability mutates the document it receives, so give it a clone.
 		const article = new Readability(doc.cloneNode(true) as Document).parse();
@@ -23,10 +24,13 @@ export const htmlParser: Parser = {
 		let author: string | null;
 
 		if (article?.content) {
-			const articleDoc = new DOMParser().parseFromString(article.content, "text/html");
+			const articleDoc = domParser.parseFromString(article.content, "text/html");
 			content = extractParagraphs(articleDoc.body);
 			title = article.title?.trim() || doc.title?.trim() || deriveTitle(content);
 			author = article.byline?.trim() || null;
+			if (!content) {
+				content = extractParagraphs(doc.body);
+			}
 		} else {
 			// Fallback: walk the entire body. Noisier (nav/footer leak in) but
 			// still better than failing the import outright.

@@ -27,8 +27,15 @@ export type PdfjsModuleLike = {
 
 export type LoadPdfjs = () => Promise<PdfjsModuleLike>;
 
+export type DomParserLike = {
+	parseFromString(html: string, type: DOMParserSupportedType | string): Document;
+};
+
+export type DomParserFactory = () => DomParserLike;
+
 export type ImportPipelineOptions = {
 	loadPdfjs?: LoadPdfjs;
+	domParser?: DomParserFactory;
 };
 
 /**

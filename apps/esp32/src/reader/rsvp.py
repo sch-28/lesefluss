@@ -10,7 +10,7 @@ from reader.storage import WordReader
 
 
 # Max characters per RSVP frame before a word is split for display.
-# Source of truth: MAX_WORD_LEN in packages/rsvp-core/src/engine.ts.
+# Source of truth: MAX_WORD_LEN in packages/core/src/engine.ts.
 # Keep this constant and _split_long_word() in sync with that file -
 # MicroPython can't import the TS module so the algorithm is duplicated here.
 MAX_WORD_LEN = 13
@@ -19,7 +19,7 @@ MAX_WORD_LEN = 13
 def _split_long_word(word, max_len=MAX_WORD_LEN):
     """Split a long word into display-sized chunks.
 
-    Mirrors splitLongWord() in packages/rsvp-core/src/engine.ts: prefer
+    Mirrors splitLongWord() in packages/core/src/engine.ts: prefer
     hyphen boundaries (hyphen kept on the preceding chunk), fall back to a
     hard cut with trailing '-' on non-final pieces. Words within the limit
     return [word] unchanged.

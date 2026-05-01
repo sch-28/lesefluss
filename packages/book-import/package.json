@@ -21,6 +21,7 @@
 		"./sources/url": "./src/sources/url.ts",
 		"./utils/dom-paragraphs": "./src/utils/dom-paragraphs.ts",
 		"./utils/encoding": "./src/utils/encoding.ts",
+		"./utils/id": "./src/utils/id.ts",
 		"./utils/raw-input": "./src/utils/raw-input.ts",
 		"./utils/title-heuristic": "./src/utils/title-heuristic.ts",
 		"./utils/url-guards": "./src/utils/url-guards.ts"
