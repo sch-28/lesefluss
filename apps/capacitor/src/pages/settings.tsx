@@ -5,6 +5,7 @@ import {
 	IonItem,
 	IonLabel,
 	IonList,
+	IonListHeader,
 	IonPage,
 	IonSpinner,
 	IonTitle,
@@ -35,6 +36,38 @@ import { queryHooks } from "../services/db/hooks";
 import { SYNC_ENABLED } from "../services/sync";
 import { IS_WEB } from "../utils/platform";
 
+const TOOLBAR_END_STYLE: React.CSSProperties = { display: "flex", alignItems: "center" };
+const CHEVRON_STYLE: React.CSSProperties = { fontSize: "16px" };
+const SECTION_GAP_STYLE: React.CSSProperties = { height: "8px" };
+
+type SettingsRowProps = {
+	icon: string;
+	iconColor?: string;
+	title: string;
+	subtitle: string;
+	onClick?: () => void;
+	routerLink?: string;
+};
+
+function SettingsRow({ icon, iconColor = "medium", title, subtitle, onClick, routerLink }: SettingsRowProps) {
+	return (
+		<IonItem
+			button
+			detail={false}
+			onClick={onClick}
+			routerLink={routerLink}
+			routerDirection={routerLink ? "forward" : undefined}
+		>
+			<IonIcon icon={icon} slot="start" color={iconColor} />
+			<IonLabel>
+				<h2>{title}</h2>
+				<p>{subtitle}</p>
+			</IonLabel>
+			<IonIcon icon={chevronForward} slot="end" color="medium" style={CHEVRON_STYLE} />
+		</IonItem>
+	);
+}
+
 const Settings: React.FC = () => {
 	const history = useHistory();
 	const { data: settings, isPending } = queryHooks.useSettings();
@@ -49,7 +82,6 @@ const Settings: React.FC = () => {
 
 	const showWhatsNew = () => window.dispatchEvent(new Event(SHOW_WHATS_NEW_EVENT));
 
-	// Build subtitles
 	const rsvpSubtitle = settings
 		? `${settings.wpm} WPM · Comma ${settings.delayComma.toFixed(1)}x · Period ${settings.delayPeriod.toFixed(1)}x`
 		: "Loading...";
@@ -69,6 +101,9 @@ const Settings: React.FC = () => {
 		window.open(url, IS_WEB ? "_blank" : "_system");
 	};
 
+	const openWebsite = () => window.open("https://lesefluss.app", "_system");
+	const replayOnboarding = () => history.push("/onboarding");
+
 	if (isPending) {
 		return (
 			<IonPage>
@@ -81,13 +116,15 @@ const Settings: React.FC = () => {
 		);
 	}
 
+	const showDevicesAndSync = (!IS_WEB) || SYNC_ENABLED;
+
 	return (
 		<IonPage>
 			<IonHeader class="ion-no-border">
 				<IonToolbar>
 					<IonTitle>Settings</IonTitle>
 					{!IS_WEB && (
-						<div slot="end" style={{ display: "flex", alignItems: "center" }}>
+						<div slot="end" style={TOOLBAR_END_STYLE}>
 							<BLEIndicator />
 						</div>
 					)}
@@ -95,135 +132,88 @@ const Settings: React.FC = () => {
 			</IonHeader>
 			<IonContent>
 				<IonList className="ion-padding-top content-container">
-					<IonItem button detail={false} routerLink="/tabs/settings/rsvp" routerDirection="forward">
-						<IonIcon icon={bookOutline} slot="start" color="medium" />
-						<IonLabel>
-							<h2>RSVP</h2>
-							<p>{rsvpSubtitle}</p>
-						</IonLabel>
-						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
-					</IonItem>
-
-					<IonItem
-						button
-						detail={false}
+					<IonListHeader>
+						<IonLabel>Reading</IonLabel>
+					</IonListHeader>
+					<SettingsRow
+						icon={bookOutline}
+						title="RSVP"
+						subtitle={rsvpSubtitle}
+						routerLink="/tabs/settings/rsvp"
+					/>
+					<SettingsRow
+						icon={colorPaletteOutline}
+						title="Appearance"
+						subtitle={appearanceSubtitle}
 						routerLink="/tabs/settings/appearance"
-						routerDirection="forward"
-					>
-						<IonIcon icon={colorPaletteOutline} slot="start" color="medium" />
-						<IonLabel>
-							<h2>Appearance</h2>
-							<p>{appearanceSubtitle}</p>
-						</IonLabel>
-						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
-					</IonItem>
-
-					{!IS_WEB && (
-						<IonItem
-							button
-							detail={false}
-							routerLink="/tabs/settings/device"
-							routerDirection="forward"
-						>
-							<IonIcon icon={hardwareChipOutline} slot="start" color="medium" />
-							<IonLabel>
-								<h2>Device</h2>
-								<p>{deviceSubtitle}</p>
-							</IonLabel>
-							<IonIcon
-								icon={chevronForward}
-								slot="end"
-								color="medium"
-								style={{ fontSize: "16px" }}
-							/>
-						</IonItem>
-					)}
-
-					{SYNC_ENABLED && (
-						<IonItem
-							button
-							detail={false}
-							routerLink="/tabs/settings/sync"
-							routerDirection="forward"
-						>
-							<IonIcon
-								icon={isLoggedIn ? cloudDone : cloudOutline}
-								slot="start"
-								color={isLoggedIn ? "success" : "medium"}
-							/>
-							<IonLabel>
-								<h2>Cloud Sync</h2>
-								<p>{syncSubtitle}</p>
-							</IonLabel>
-							<IonIcon
-								icon={chevronForward}
-								slot="end"
-								color="medium"
-								style={{ fontSize: "16px" }}
-							/>
-						</IonItem>
-					)}
-
-					{!IS_WEB && (
-						<IonItem
-							button
-							detail={false}
-							onClick={() => window.open("https://lesefluss.app", "_system")}
-						>
-							<IonIcon icon={globeOutline} slot="start" color="medium" />
-							<IonLabel>
-								<h2>Website</h2>
-								<p>lesefluss.app</p>
-							</IonLabel>
-							<IonIcon
-								icon={chevronForward}
-								slot="end"
-								color="medium"
-								style={{ fontSize: "16px" }}
-							/>
-						</IonItem>
-					)}
-
-					<IonItem
-						button
-						detail={false}
+					/>
+					<SettingsRow
+						icon={downloadOutline}
+						title="Export highlights"
+						subtitle="Markdown, CSV"
 						routerLink="/tabs/settings/export"
-						routerDirection="forward"
-					>
-						<IonIcon icon={downloadOutline} slot="start" color="medium" />
-						<IonLabel>
-							<h2>Export Highlights</h2>
-							<p>Markdown, CSV</p>
-						</IonLabel>
-						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
-					</IonItem>
+					/>
+				</IonList>
 
-					<IonItem button detail={false} onClick={showWhatsNew}>
-						<IonIcon icon={megaphoneOutline} slot="start" color="medium" />
-						<IonLabel>
-							<h2>What's new</h2>
-							<p>See recent updates</p>
-						</IonLabel>
-						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
-					</IonItem>
+				{showDevicesAndSync && (
+					<>
+						<div style={SECTION_GAP_STYLE} />
+						<IonList className="content-container">
+							<IonListHeader>
+								<IonLabel>Devices & Sync</IonLabel>
+							</IonListHeader>
+							{!IS_WEB && (
+								<SettingsRow
+									icon={hardwareChipOutline}
+									title="Device"
+									subtitle={deviceSubtitle}
+									routerLink="/tabs/settings/device"
+								/>
+							)}
+							{SYNC_ENABLED && (
+								<SettingsRow
+									icon={isLoggedIn ? cloudDone : cloudOutline}
+									iconColor={isLoggedIn ? "success" : "medium"}
+									title="Cloud Sync"
+									subtitle={syncSubtitle}
+									routerLink="/tabs/settings/sync"
+								/>
+							)}
+						</IonList>
+					</>
+				)}
 
-					<IonItem button detail={false} onClick={openFeedback}>
-						<IonIcon icon={chatbubbleEllipsesOutline} slot="start" color="medium" />
-						<IonLabel>
-							<h2>Send feedback</h2>
-							<p>Ideas, bugs, or rough edges</p>
-						</IonLabel>
-						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
-					</IonItem>
-
-					<IonItem button detail={false} onClick={() => history.push("/onboarding")}>
-						<IonIcon icon={sparklesOutline} slot="start" color="medium" />
-						<IonLabel>
-							<h2>Show onboarding</h2>
-							<p>Walk through the intro again</p>
-						</IonLabel>
-						<IonIcon icon={chevronForward} slot="end" color="medium" style={{ fontSize: "16px" }} />
-					</IonItem>
+				<div style={SECTION_GAP_STYLE} />
+				<IonList className="content-container">
+					<IonListHeader>
+						<IonLabel>About</IonLabel>
+					</IonListHeader>
+					{!IS_WEB && (
+						<SettingsRow
+							icon={globeOutline}
+							title="Website"
+							subtitle="lesefluss.app"
+							onClick={openWebsite}
+						/>
+					)}
+					<SettingsRow
+						icon={megaphoneOutline}
+						title="What's new"
+						subtitle="See recent updates"
+						onClick={showWhatsNew}
+					/>
+					<SettingsRow
+						icon={chatbubbleEllipsesOutline}
+						title="Send feedback"
+						subtitle="Ideas, bugs, or rough edges"
+						onClick={openFeedback}
+					/>
+					<SettingsRow
+						icon={sparklesOutline}
+						title="Show onboarding"
+						subtitle="Walk through the intro again"
+						onClick={replayOnboarding}
+					/>
 				</IonList>
 			</IonContent>
 		</IonPage>
