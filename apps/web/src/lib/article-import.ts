@@ -8,6 +8,7 @@ import {
 	runImportPipeline,
 	utf8ByteLength,
 } from "@lesefluss/book-import";
+import { and, eq } from "drizzle-orm";
 import { DOMParser as LinkedomDOMParser } from "linkedom";
 import { z } from "zod";
 import { db } from "~/db";
@@ -46,6 +47,16 @@ type ImportInput = {
 	titleOverride?: string;
 };
 
+type ArticleLookupBook = {
+	id: string;
+	title: string;
+	url: string | null;
+};
+
+export type ArticleLookupDeps = {
+	lookupBookByUrl?: (userId: string, url: string) => Promise<ArticleLookupBook | null>;
+};
+
 export type ArticleImportDeps = {
 	fetchUrl?: typeof fetchUrlToRawInput;
 	domParser?: DomParserFactory;
@@ -54,6 +65,48 @@ export type ArticleImportDeps = {
 	checkLimit?: typeof checkLimit;
 	catalogUrl?: string;
 };
+
+export async function handleArticleLookupRequest(
+	request: Request,
+	userId: string,
+	deps: ArticleLookupDeps = {},
+): Promise<Response> {
+	const url = new URL(request.url).searchParams.get("url");
+	if (!url) return Response.json({ error: "Missing URL" }, { status: 400 });
+
+	let normalized: string;
+	try {
+		const parsed = new URL(url);
+		if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("INVALID_URL");
+		normalized = parsed.toString();
+	} catch {
+		return Response.json({ error: "Invalid URL" }, { status: 400 });
+	}
+
+	const lookup = deps.lookupBookByUrl ?? lookupSyncBookByUrl;
+	return Response.json({ book: await lookup(userId, normalized) });
+}
+
+async function lookupSyncBookByUrl(userId: string, url: string): Promise<ArticleLookupBook | null> {
+	const [book] = await db
+		.select({
+			id: syncBooks.bookId,
+			title: syncBooks.title,
+			url: syncBooks.sourceUrl,
+		})
+		.from(syncBooks)
+		.where(
+			and(
+				eq(syncBooks.userId, userId),
+				eq(syncBooks.source, "url"),
+				eq(syncBooks.sourceUrl, url),
+				eq(syncBooks.deleted, false),
+			),
+		)
+		.limit(1);
+
+	return book ?? null;
+}
 
 export async function handleArticleImportRequest(
 	request: Request,
@@ -103,7 +156,7 @@ export async function handleArticleImportRequest(
 	const insert = deps.insertBook ?? insertSyncBook;
 	const title = importInput.titleOverride ?? payload.title;
 
-	// 8 hex chars = 32 bits — collisions are rare but possible for power users.
+	// 8 hex chars = 32 bits, so collisions are rare but possible for power users.
 	// On unique-violation against (user_id, book_id), retry once with a fresh id.
 	let bookId = genId();
 	let inserted = await insert(buildRow(bookId));

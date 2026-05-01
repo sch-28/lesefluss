@@ -5,6 +5,16 @@ import { assertBytes } from "../utils/raw-input";
 import { deriveTitle } from "../utils/title-heuristic";
 import { canParseHtml } from "./matchers";
 
+// linkedom's parseFromString silently produces an empty body when the input
+// is a body fragment without <html>/<body> wrapping, so any caller that hands
+// us already-extracted article HTML (e.g. the browser extension after running
+// Readability in-page) needs the wrapper added back before parsing.
+function ensureFullDocument(html: string): string {
+	const head = html.slice(0, 256).toLowerCase();
+	if (head.includes("<!doctype") || head.includes("<html")) return html;
+	return `<!DOCTYPE html><html><head></head><body>${html}</body></html>`;
+}
+
 export const htmlParser: Parser = {
 	id: "html",
 
@@ -14,10 +24,17 @@ export const htmlParser: Parser = {
 		assertBytes(input);
 		const html = new TextDecoder("utf-8").decode(input.bytes);
 		const domParser = options?.domParser?.() ?? new DOMParser();
-		const doc = domParser.parseFromString(html, "text/html");
+		const doc = domParser.parseFromString(ensureFullDocument(html), "text/html");
 
 		// Readability mutates the document it receives, so give it a clone.
-		const article = new Readability(doc.cloneNode(true) as Document).parse();
+		// It also throws on already-extracted fragments lacking a real <body>;
+		// treat that the same as a null result and fall through to the body walk.
+		let article: ReturnType<Readability["parse"]> = null;
+		try {
+			article = new Readability(doc.cloneNode(true) as Document).parse();
+		} catch {
+			article = null;
+		}
 
 		let content: string;
 		let title: string;

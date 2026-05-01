@@ -41,7 +41,7 @@ export const Route = createFileRoute("/auth/extension-callback")({
 	}),
 	beforeLoad: async ({ search }) => {
 		if (!search.redirectUri || !isAllowedExtensionRedirectUri(search.redirectUri)) {
-			throw new Response("Invalid extension redirect_uri", { status: 400 });
+			return { kind: "error" as const };
 		}
 
 		const token = await getExtensionToken();
@@ -51,19 +51,39 @@ export const Route = createFileRoute("/auth/extension-callback")({
 				search: { redirect: buildRouteSearch(search.redirectUri, search.state) },
 			});
 		}
-		return { redirectUri: search.redirectUri, state: search.state, token };
+		return {
+			kind: "ok" as const,
+			redirectUri: search.redirectUri,
+			state: search.state,
+			token,
+		};
 	},
 	loader: ({ context }) => context,
 	component: ExtensionCallback,
 });
 
 function ExtensionCallback() {
-	const { redirectUri, state, token } = Route.useLoaderData();
-	const callbackUrl = buildCallbackUrl(redirectUri, token, state);
+	const data = Route.useLoaderData();
+	const callbackUrl =
+		data.kind === "ok" ? buildCallbackUrl(data.redirectUri, data.token, data.state) : undefined;
 
 	React.useEffect(() => {
-		window.location.href = callbackUrl;
+		if (callbackUrl) window.location.href = callbackUrl;
 	}, [callbackUrl]);
+
+	if (data.kind === "error") {
+		return (
+			<div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-6 py-16">
+				<div className="w-full max-w-sm text-center">
+					<h1 className="font-bold text-2xl tracking-tight">Sign-in could not continue</h1>
+					<p className="mt-2 text-muted-foreground text-sm">
+						The extension's redirect URI was not recognised by this server. Make sure the
+						extension's published ID is on the allowlist.
+					</p>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-6 py-16">

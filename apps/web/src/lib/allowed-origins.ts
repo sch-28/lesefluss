@@ -3,7 +3,10 @@ const DEV_ORIGINS = ["http://localhost", "http://localhost:3001"];
 
 const CHROME_EXTENSION_ORIGIN_ID = "[a-p]{32}";
 const CHROME_REDIRECT_ID = CHROME_EXTENSION_ORIGIN_ID;
+// Firefox internal origin uses the addon UUID; the identity redirect URI uses
+// a SHA-1 hash of the addon ID, surfaced as 40 hex chars (no dashes).
 const FIREFOX_EXTENSION_ID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const FIREFOX_REDIRECT_HOST_HASH = "[0-9a-f]{40}";
 
 const EXTENSION_ORIGIN_PATTERNS = [
 	new RegExp(`^chrome-extension://${CHROME_EXTENSION_ORIGIN_ID}$`),
@@ -12,7 +15,7 @@ const EXTENSION_ORIGIN_PATTERNS = [
 
 const EXTENSION_REDIRECT_URI_PATTERNS = [
 	new RegExp(`^https://${CHROME_REDIRECT_ID}\\.chromiumapp\\.org/?$`),
-	new RegExp(`^https://${FIREFOX_EXTENSION_ID}\\.extensions\\.allizom\\.org/?$`),
+	new RegExp(`^https://${FIREFOX_REDIRECT_HOST_HASH}\\.extensions\\.allizom\\.org/?$`),
 ];
 
 export const ALLOWED_ORIGINS: string[] = [

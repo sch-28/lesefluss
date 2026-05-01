@@ -1,6 +1,10 @@
 import type { RawInput } from "@lesefluss/book-import";
 import { describe, expect, it, vi } from "vitest";
-import { type ArticleImportDeps, handleArticleImportRequest } from "./article-import";
+import {
+	type ArticleImportDeps,
+	handleArticleImportRequest,
+	handleArticleLookupRequest,
+} from "./article-import";
 
 function jsonRequest(body: unknown): Request {
 	return new Request("https://lesefluss.test/api/import/article", {
@@ -164,5 +168,47 @@ describe("handleArticleImportRequest", () => {
 		expect(res.status).toBe(429);
 		expect(res.headers.get("Retry-After")).toBe("12");
 		expect(deps.insertBook).not.toHaveBeenCalled();
+	});
+});
+
+describe("handleArticleLookupRequest", () => {
+	it("rejects missing url", async () => {
+		const res = await handleArticleLookupRequest(
+			new Request("https://lesefluss.test/api/import/article"),
+			"u1",
+		);
+		expect(res.status).toBe(400);
+	});
+
+	it("rejects non-http lookup URLs", async () => {
+		const lookupBookByUrl = vi.fn();
+		const res = await handleArticleLookupRequest(
+			new Request("https://lesefluss.test/api/import/article?url=javascript%3Aalert(1)"),
+			"u1",
+			{ lookupBookByUrl },
+		);
+
+		expect(res.status).toBe(400);
+		await expect(res.json()).resolves.toEqual({ error: "Invalid URL" });
+		expect(lookupBookByUrl).not.toHaveBeenCalled();
+	});
+
+	it("returns an existing URL import for the user", async () => {
+		const lookupBookByUrl = vi.fn(async () => ({
+			id: "book-1",
+			title: "Saved Article",
+			url: "https://example.com/read",
+		}));
+		const res = await handleArticleLookupRequest(
+			new Request("https://lesefluss.test/api/import/article?url=https%3A%2F%2Fexample.com%2Fread"),
+			"user-1",
+			{ lookupBookByUrl },
+		);
+
+		expect(res.status).toBe(200);
+		await expect(res.json()).resolves.toEqual({
+			book: { id: "book-1", title: "Saved Article", url: "https://example.com/read" },
+		});
+		expect(lookupBookByUrl).toHaveBeenCalledWith("user-1", "https://example.com/read");
 	});
 });

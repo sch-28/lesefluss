@@ -4,6 +4,7 @@
 #
 # Outputs:
 #   apps/web/public/          - favicon.ico, favicon*.png, apple-touch-icon.png, logo.png
+#   apps/extension/public/    - icon-*.png, logo.png
 #   apps/capacitor/android/   - mipmap-*/ic_launcher*.png, drawable-*/splash.png
 
 set -euo pipefail
@@ -11,6 +12,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$REPO_ROOT/resources/logo.png"
 WEB="$REPO_ROOT/apps/web/public"
+EXT="$REPO_ROOT/apps/extension/public"
 CAP="$REPO_ROOT/apps/capacitor/public"
 ANDROID="$REPO_ROOT/apps/capacitor/android/app/src/main/res"
 
@@ -86,6 +88,19 @@ echo "  apple-touch-icon.png (180x180)"
 
 magick "$WEB/favicon-16x16.png" "$WEB/favicon-32x32.png" "$WEB/favicon-48x48.png" "$WEB/favicon.ico"
 echo "  favicon.ico (16+32+48)"
+
+# ── Browser extension ────────────────────────────────────────────────────────
+echo ""
+echo "=== Extension (apps/extension/public/) ==="
+
+mkdir -p "$EXT"
+cp "$SRC" "$EXT/logo.png"
+echo "  logo.png"
+
+for size in 16 32 48 96 128; do
+  icon_compose "$size" "$EXT/icon-${size}.png" 1.0
+  echo "  icon-${size}.png (${size}x${size})"
+done
 
 # ── Capacitor web ─────────────────────────────────────────────────────────────
 echo ""

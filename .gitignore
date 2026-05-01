@@ -3,6 +3,8 @@
 dist/
 build/
 apps/web/public/app/
+.output/
+.wxt/
 
 # Dependencies
 node_modules/

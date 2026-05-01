@@ -16,7 +16,8 @@ lesefluss/
 │   ├── esp32/          # MicroPython ESP32 Lesefluss reader
 │   ├── capacitor/      # Ionic React mobile + web app
 │   ├── web/            # TanStack Start website (marketing, auth, sync API, hosts capacitor web build)
-│   └── catalog/        # Hono API service for public-domain book discovery (Gutenberg + Standard Ebooks)
+│   ├── catalog/        # Hono API service for public-domain book discovery (Gutenberg + Standard Ebooks)
+│   └── extension/      # WXT React browser extension for saving articles
 ├── packages/
 │   ├── ble-config/     # Shared BLE UUIDs (workspace package)
 │   ├── book-import/    # Shared book import pipeline/parsers/sources (no app deps)
@@ -30,7 +31,7 @@ lesefluss/
 
 ```bash
 pnpm install
-pnpm setup:project      # generates BLE config + Android icon PNGs from resources/icon.svg
+pnpm setup:project      # generates BLE config + app/extension icon PNGs from resources/logo.png
 ```
 
 ## What It Does

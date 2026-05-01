@@ -11,6 +11,8 @@
 			"**",
 			"!**/.turbo",
 			"!**/dist",
+			"!**/.claude",
+			"!**/.wxt",
 			"!**/public/app",
 			"!**/node_modules",
 			"!**/android",

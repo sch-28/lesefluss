@@ -6,7 +6,10 @@ import {
 } from "./allowed-origins";
 
 const chromeId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+// Firefox internal extension origin uses the addon UUID; the identity redirect
+// URI host is a 40-char SHA-1 hash derived from the addon ID.
 const firefoxId = "12345678-1234-1234-1234-123456789abc";
+const firefoxRedirectHost = "0123456789abcdef0123456789abcdef01234567";
 
 afterEach(() => {
 	vi.unstubAllEnvs();
@@ -15,9 +18,9 @@ afterEach(() => {
 describe("extension redirect URI allowlist", () => {
 	it("accepts browser-generated extension redirect URIs only", () => {
 		expect(isAllowedExtensionRedirectUri(`https://${chromeId}.chromiumapp.org/`)).toBe(true);
-		expect(isAllowedExtensionRedirectUri(`https://${firefoxId}.extensions.allizom.org/`)).toBe(
-			true,
-		);
+		expect(
+			isAllowedExtensionRedirectUri(`https://${firefoxRedirectHost}.extensions.allizom.org/`),
+		).toBe(true);
 	});
 
 	it("rejects redirect URIs with wrong hosts or extra URL parts", () => {
@@ -43,7 +46,9 @@ describe("extension CORS origin allowlist", () => {
 
 	it("does not treat redirect URI hostnames as CORS extension origins", () => {
 		expect(isAllowedExtensionOrigin(`https://${chromeId}.chromiumapp.org`)).toBe(false);
-		expect(isAllowedExtensionOrigin(`https://${firefoxId}.extensions.allizom.org`)).toBe(false);
+		expect(isAllowedExtensionOrigin(`https://${firefoxRedirectHost}.extensions.allizom.org`)).toBe(
+			false,
+		);
 	});
 
 	it("rejects malformed extension origins", () => {

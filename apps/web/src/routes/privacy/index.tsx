@@ -14,7 +14,7 @@ export const Route = createFileRoute("/privacy/")({
 
 function PrivacyPage() {
 	return (
-		<LegalPage title="Privacy" subtitle="Last updated: April 2026">
+		<LegalPage title="Privacy" subtitle="Last updated: May 2026">
 			<section>
 				<h2 className="mb-3 font-semibold text-foreground text-xl">TL;DR</h2>
 				<p>
@@ -124,6 +124,28 @@ function PrivacyPage() {
 					SQLite database on your device. Nothing leaves the device unless you explicitly sign in to
 					sync. Bluetooth is used only to talk to the optional ESP32 device and transmits nothing to
 					us.
+				</p>
+			</section>
+
+			<section>
+				<h2 className="mb-3 font-semibold text-foreground text-xl">Browser extension</h2>
+				<p>
+					The Chrome/Firefox extension is optional and only works after you sign in. It stores your
+					Lesefluss session token and account email in browser extension storage so it can import
+					articles into your cloud library without asking you to sign in every time.
+				</p>
+				<p className="mt-4">
+					When you click <strong className="text-foreground">Save this page</strong> or use the
+					selection context menu, the extension reads the current page URL, page title, and the
+					readable article HTML or selected HTML. That content is sent to Lesefluss only for the
+					page or selection you explicitly save, converted to plain text, and stored as a book in
+					your synced library. The extension also checks the active tab URL against your library to
+					show whether the page was already saved.
+				</p>
+				<p className="mt-4">
+					The extension does not run analytics, does not collect browsing history, does not capture
+					pages automatically, and does not sell or share extension data. You can remove imported
+					articles or delete your account from Lesefluss to delete synced extension imports.
 				</p>
 			</section>
 
