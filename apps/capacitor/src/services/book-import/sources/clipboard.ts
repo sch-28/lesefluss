@@ -1,6 +1,6 @@
 import { Clipboard } from "@capacitor/clipboard";
 import { Capacitor } from "@capacitor/core";
-import type { RawInput } from "../types";
+import type { RawInput } from "@lesefluss/book-import";
 
 /**
  * Read the current clipboard contents as a `RawInput` of kind "text".

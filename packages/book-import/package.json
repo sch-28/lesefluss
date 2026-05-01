@@ -1,0 +1,56 @@
+{
+	"name": "@lesefluss/book-import",
+	"version": "1.0.0",
+	"description": "Shared book import pipeline, parsers, sources, and utilities for Lesefluss",
+	"type": "module",
+	"sideEffects": false,
+	"main": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./pipeline": "./src/pipeline.ts",
+		"./types": "./src/types.ts",
+		"./parsers/epub": "./src/parsers/epub.ts",
+		"./parsers/html": "./src/parsers/html.ts",
+		"./parsers/matchers": "./src/parsers/matchers.ts",
+		"./parsers/md": "./src/parsers/md.ts",
+		"./parsers/pdf": "./src/parsers/pdf.ts",
+		"./parsers/registry": "./src/parsers/registry.ts",
+		"./parsers/text": "./src/parsers/text.ts",
+		"./parsers/txt": "./src/parsers/txt.ts",
+		"./sources/blob": "./src/sources/blob.ts",
+		"./sources/url": "./src/sources/url.ts",
+		"./utils/dom-paragraphs": "./src/utils/dom-paragraphs.ts",
+		"./utils/encoding": "./src/utils/encoding.ts",
+		"./utils/raw-input": "./src/utils/raw-input.ts",
+		"./utils/title-heuristic": "./src/utils/title-heuristic.ts",
+		"./utils/url-guards": "./src/utils/url-guards.ts"
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"peerDependencies": {
+		"@mozilla/readability": "^0.6.0",
+		"epubjs": "^0.3.93",
+		"pdfjs-dist": "^5.6.205"
+	},
+	"peerDependenciesMeta": {
+		"@mozilla/readability": {
+			"optional": true
+		},
+		"epubjs": {
+			"optional": true
+		},
+		"pdfjs-dist": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@mozilla/readability": "^0.6.0",
+		"epubjs": "^0.3.93",
+		"happy-dom": "^20.9.0",
+		"pdfjs-dist": "^5.6.205",
+		"typescript": "^6.0.2",
+		"vitest": "^4.1.5"
+	}
+}

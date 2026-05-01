@@ -16,19 +16,24 @@ import {
 } from "react";
 import { toast } from "../components/toast";
 import {
-	consumeAuthState,
-	finalizeVerifiedLogin,
+	consumeAuthLoginHandoffState,
+	finalizeVerifiedAuthLoginHandoff,
 	fullSync,
 	getLastSynced,
 	getToken,
 	getUserEmail,
-	hasEmail,
 	IS_WEB_BUILD,
 	NATIVE_SYNC_ENABLED,
 	SYNC_ENABLED,
 	signOut as syncSignOut,
 } from "../services/sync";
 import { log } from "../utils/log";
+
+function hasEmail(v: unknown): v is { email: string } {
+	return (
+		typeof v === "object" && v !== null && typeof (v as { email?: unknown }).email === "string"
+	);
+}
 
 interface SyncContextType {
 	isLoggedIn: boolean;
@@ -192,7 +197,7 @@ function useMobileAuthCallback(
 				return;
 			}
 
-			const expectedState = await consumeAuthState();
+			const expectedState = await consumeAuthLoginHandoffState();
 			const receivedState = parsed.searchParams.get("state");
 			if (!expectedState || expectedState !== receivedState) {
 				const msg = "Sign-in rejected: invalid state";
@@ -213,7 +218,7 @@ function useMobileAuthCallback(
 			setSyncError(null);
 			setIsSyncing(true);
 			try {
-				const { email } = await finalizeVerifiedLogin(token);
+				const { email } = await finalizeVerifiedAuthLoginHandoff(token);
 				setIsLoggedIn(true);
 				setUserEmail(email || null);
 				await Browser.close().catch(() => {});

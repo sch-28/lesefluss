@@ -3,16 +3,12 @@ import type { BookPayload, Parser } from "../types";
 import { extractParagraphs } from "../utils/dom-paragraphs";
 import { assertBytes } from "../utils/raw-input";
 import { deriveTitle } from "../utils/title-heuristic";
+import { canParseHtml } from "./matchers";
 
 export const htmlParser: Parser = {
 	id: "html",
 
-	canParse(input) {
-		if (input.kind !== "bytes") return false;
-		const name = input.fileName.toLowerCase();
-		if (name.endsWith(".html") || name.endsWith(".htm")) return true;
-		return input.mimeType === "text/html" || input.mimeType === "application/xhtml+xml";
-	},
+	canParse: canParseHtml,
 
 	async parse(input): Promise<BookPayload> {
 		assertBytes(input);

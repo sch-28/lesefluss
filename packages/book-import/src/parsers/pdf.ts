@@ -1,9 +1,129 @@
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
-import type { Chapter } from "../../db/schema";
-import { utf8ByteLength } from "./encoding";
+import type { BookPayload, Chapter, Parser, PdfjsModuleLike } from "../types";
+import { utf8ByteLength } from "../utils/encoding";
+import { assertBytes } from "../utils/raw-input";
+import { canParsePdf } from "./matchers";
 
-// ─── Tunables ──────────────────────────────────────────────────────────────
+/**
+ * Error codes surfaced to the UI (handled by `use-library-imports`):
+ *   PDF_ENCRYPTED — password-protected, not supported in V1.
+ *   PDF_NO_TEXT   — scanned PDFs with no text layer; OCR not supported.
+ */
+
+export const pdfParser: Parser = {
+	id: "pdf",
+
+	canParse: canParsePdf,
+
+	async parse(input, onProgress, options): Promise<BookPayload> {
+		assertBytes(input);
+		const pdfjs = await loadPdfjs(options?.loadPdfjs);
+
+		let doc: PDFDocumentProxy;
+		try {
+			// Defensive clone: pdfjs may detach or retain the ArrayBuffer
+			// internally. We pass `input.bytes` unchanged to `payload.original`
+			// so the original file can be persisted to disk — sharing it with
+			// pdfjs risks a detached buffer by the time commit reads it.
+			const copy = input.bytes.slice(0, input.bytes.byteLength);
+			doc = (await pdfjs.getDocument({ data: copy }).promise) as PDFDocumentProxy;
+		} catch (err) {
+			if (isPasswordError(err)) throw new Error("PDF_ENCRYPTED");
+			throw err;
+		}
+
+		try {
+			const meta = await doc.getMetadata().catch(() => null);
+			const info = (meta?.info ?? {}) as { Title?: string; Author?: string };
+			const title = info.Title?.trim() || input.fileName.replace(/\.pdf$/i, "");
+			const author = info.Author?.trim() || null;
+
+			// Text extraction, per page. Reserve 5% of the progress bar for the
+			// cover render + chapter resolution that happen after the loop.
+			const pageTexts: string[] = [];
+			for (let i = 1; i <= doc.numPages; i++) {
+				const page = await doc.getPage(i);
+				const text = await extractPageText(page);
+				pageTexts.push(text);
+				page.cleanup();
+				onProgress?.(Math.round((i / doc.numPages) * 95));
+			}
+
+			const content = pageTexts.join("\n\n").trim();
+			if (!content) throw new Error("PDF_NO_TEXT");
+
+			// Both only read from the loaded doc — run together. Either can fail
+			// independently without aborting the import; chapters surface null,
+			// the cover returns null via its own catch.
+			const [chapters, coverImage] = await Promise.all([
+				extractChapters(doc, pageTexts).catch(() => null),
+				renderCover(doc),
+			]);
+			onProgress?.(100);
+
+			return {
+				content,
+				title,
+				author,
+				coverImage,
+				chapters,
+				fileFormat: "pdf",
+				original: { bytes: input.bytes, extension: "pdf" },
+			};
+		} finally {
+			await doc.destroy().catch(() => undefined);
+		}
+	},
+};
+
+// ─── Lazy pdfjs loader ─────────────────────────────────────────────────────
+
+let defaultPdfjsPromise: Promise<PdfjsModuleLike> | null = null;
+const injectedPdfjsPromises = new WeakMap<
+	() => Promise<PdfjsModuleLike>,
+	Promise<PdfjsModuleLike>
+>();
+
+/**
+ * Dynamically import pdfjs so the PDF parser is excluded from the main chunk.
+ * Browser consumers can inject a loader that also configures their bundler's
+ * worker strategy before returning the module.
+ *
+ * On rejection, the cache is cleared so the next call retries — otherwise
+ * a transient failure (worker file missing from the cache, network hiccup
+ * on the first import) would stick for the entire session.
+ */
+function loadPdfjs(loader?: () => Promise<PdfjsModuleLike>): Promise<PdfjsModuleLike> {
+	if (loader) {
+		const cached = injectedPdfjsPromises.get(loader);
+		if (cached) return cached;
+		const promise = loader().catch((err) => {
+			injectedPdfjsPromises.delete(loader);
+			throw err;
+		});
+		injectedPdfjsPromises.set(loader, promise);
+		return promise;
+	}
+
+	if (!defaultPdfjsPromise) {
+		defaultPdfjsPromise = import("pdfjs-dist/legacy/build/pdf.mjs").catch((err) => {
+			defaultPdfjsPromise = null;
+			throw err;
+		});
+	}
+	return defaultPdfjsPromise;
+}
+
+function isPasswordError(err: unknown): boolean {
+	// PasswordException is thrown when a PDF requires a password. The class
+	// name is the most reliable detector across pdfjs minor versions.
+	if (!err || typeof err !== "object") return false;
+	const name = (err as { name?: unknown }).name;
+	return name === "PasswordException";
+}
+
+// ─── Page text extraction ──────────────────────────────────────────────────
 
 /** Fraction of item height within which two items are considered the same line. */
 const LINE_Y_TOLERANCE = 0.5;
@@ -14,8 +134,6 @@ const COVER_WIDTH_PX = 200;
 /** JPEG quality for the cover data URL. */
 const COVER_JPEG_QUALITY = 0.75;
 
-// ─── Page text extraction ──────────────────────────────────────────────────
-
 /**
  * Turn a single PDF page's positioned glyph runs into plain text with soft
  * line-wrapping reflowed and paragraph boundaries preserved.
@@ -23,7 +141,7 @@ const COVER_JPEG_QUALITY = 0.75;
  * V1 assumes single-column body text — multi-column layouts will interleave.
  * Follow-up PR can cluster items by x-coordinate bands before line grouping.
  */
-export async function extractPageText(page: PDFPageProxy): Promise<string> {
+async function extractPageText(page: PDFPageProxy): Promise<string> {
 	const { items } = await page.getTextContent();
 	// `items` also contains marked-content objects (no `str`/`transform`); filter them.
 	const textItems = items.filter((it): it is TextItem => "str" in it && "transform" in it);
@@ -93,8 +211,6 @@ export async function extractPageText(page: PDFPageProxy): Promise<string> {
 	return out.trim();
 }
 
-// ─── Chapters from outline ─────────────────────────────────────────────────
-
 type OutlineNode = {
 	title: string;
 	dest: string | unknown[] | null;
@@ -104,20 +220,14 @@ type OutlineNode = {
 /**
  * Map the PDF's outline (bookmarks) to `Chapter[]` keyed by UTF-8 byte
  * offsets in the concatenated `content` string the parser builds.
- *
- * Returns `null` if the PDF has no outline or resolution fails entirely.
- * Entries whose destination can't be resolved are skipped; the rest are
- * returned sorted by offset and deduped.
  */
-export async function extractChapters(
+async function extractChapters(
 	doc: PDFDocumentProxy,
 	pageTexts: string[],
 ): Promise<Chapter[] | null> {
 	const outline = (await doc.getOutline().catch(() => null)) as OutlineNode[] | null;
 	if (!outline || outline.length === 0) return null;
 
-	// Byte offsets where each page's text starts in the joined content.
-	// Page join separator is "\n\n" = 2 UTF-8 bytes.
 	const pageOffsets: number[] = new Array(pageTexts.length);
 	let cumulative = 0;
 	for (let i = 0; i < pageTexts.length; i++) {
@@ -138,7 +248,6 @@ export async function extractChapters(
 
 	if (chapters.length === 0) return null;
 
-	// Sort by offset, dedup identical offsets (outlines sometimes repeat pages).
 	chapters.sort((a, b) => a.startByte - b.startByte);
 	const deduped: Chapter[] = [];
 	for (const ch of chapters) {
@@ -158,20 +267,14 @@ async function resolvePageIndex(
 		const explicit = typeof dest === "string" ? await doc.getDestination(dest) : dest;
 		if (!Array.isArray(explicit) || explicit.length === 0) return null;
 		const ref = explicit[0];
-		// Page ref shape: { num, gen } from pdfjs. `getPageIndex` handles it.
 		return await doc.getPageIndex(ref as { num: number; gen: number });
 	} catch {
 		return null;
 	}
 }
 
-// ─── Cover rendering ───────────────────────────────────────────────────────
-
-/**
- * Render page 1 to an offscreen canvas and return it as a base64 JPEG data
- * URL. Returns null on any failure — cover is nice-to-have, never fatal.
- */
-export async function renderCover(doc: PDFDocumentProxy): Promise<string | null> {
+/** Render page 1 to a cover data URL. Cover extraction is best-effort. */
+async function renderCover(doc: PDFDocumentProxy): Promise<string | null> {
 	try {
 		const page = await doc.getPage(1);
 		const base = page.getViewport({ scale: 1 });
@@ -190,8 +293,6 @@ export async function renderCover(doc: PDFDocumentProxy): Promise<string | null>
 		return null;
 	}
 }
-
-// ─── Helpers ───────────────────────────────────────────────────────────────
 
 function median(values: number[]): number {
 	if (values.length === 0) return 0;

@@ -3,13 +3,13 @@
  * Characteristic 1: R/W
  *
  * The set of fields exchanged with the device — and their snake_case names —
- * is defined by ESP32_SETTING_KEYS in @lesefluss/rsvp-core. Adding a device
+ * is defined by ESP32_SETTING_KEYS in @lesefluss/core. Adding a device
  * field there makes it flow through both directions automatically.
  */
 
 import { BleClient } from "@capacitor-community/bluetooth-le";
 import { SERVICE_UUID, SETTINGS_CHAR_UUID } from "@lesefluss/ble-config";
-import { ESP32_SETTING_KEYS } from "@lesefluss/rsvp-core";
+import { ESP32_SETTING_KEYS } from "@lesefluss/core";
 import type { Settings } from "../../db/schema";
 import { bleClient } from "../client";
 import type { BLEResult } from "../types";

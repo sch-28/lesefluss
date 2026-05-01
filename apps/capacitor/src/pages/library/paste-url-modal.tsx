@@ -10,9 +10,9 @@ import {
 	IonTitle,
 	IonToolbar,
 } from "@ionic/react";
+import { isLikelyUrl, normalizeUrl } from "@lesefluss/book-import";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { isLikelyUrl, normalizeUrl } from "../../services/book-import/utils/url-guards";
 
 interface PasteUrlModalProps {
 	isOpen: boolean;

@@ -1,4 +1,4 @@
-import type { HexColor, PaginationStyle } from "@lesefluss/rsvp-core";
+import type { HexColor, PaginationStyle } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import { check, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 

@@ -1,5 +1,9 @@
 import { Preferences } from "@capacitor/preferences";
 import {
+	type AuthHandoffStorage,
+	beginAuthHandoff,
+	consumeAuthHandoffState,
+	finalizeVerifiedAuthHandoffLogin,
 	pick,
 	SYNCED_SETTING_KEYS,
 	type SyncBook,
@@ -10,7 +14,7 @@ import {
 	type SyncResponse,
 	type SyncSeries,
 	type SyncSettings,
-} from "@lesefluss/rsvp-core";
+} from "@lesefluss/core";
 import { log } from "../../utils/log";
 import {
 	bookKeys,
@@ -50,13 +54,28 @@ const LAST_SYNCED_KEY = "sync_last_synced";
 const USER_EMAIL_KEY = "sync_user_email";
 const AUTH_STATE_KEY = "sync_auth_state";
 
+const preferencesAuthStorage: AuthHandoffStorage = {
+	async get(key) {
+		const { value } = await Preferences.get({ key });
+		return value;
+	},
+	async set(key, value) {
+		await Preferences.set({ key, value });
+	},
+	async remove(key) {
+		await Preferences.remove({ key });
+	},
+};
+
+const authHandoffOptions = {
+	stateKey: AUTH_STATE_KEY,
+	tokenKey: TOKEN_KEY,
+	userEmailKey: USER_EMAIL_KEY,
+};
+
 export async function getToken(): Promise<string | null> {
 	const { value } = await Preferences.get({ key: TOKEN_KEY });
 	return value;
-}
-
-async function saveToken(token: string): Promise<void> {
-	await Preferences.set({ key: TOKEN_KEY, value: token });
 }
 
 async function clearToken(): Promise<void> {
@@ -80,17 +99,13 @@ export async function getUserEmail(): Promise<string | null> {
 // ---------------------------------------------------------------------------
 
 /**
- * Start a mobile login handoff: generate a random state, persist it, and return
- * it to be embedded in the web callback URL. Paired with {@link consumeAuthState}
+ * Start an auth handoff: generate a random state, persist it, and return
+ * it to be embedded in the web callback URL. Paired with {@link consumeAuthLoginHandoffState}
  * to defend the deep-link callback against session fixation from other apps.
  */
-export async function beginMobileLogin(): Promise<string> {
-	const state = crypto.randomUUID();
-	await Preferences.set({ key: AUTH_STATE_KEY, value: state });
-	return state;
+export async function beginAuthLoginHandoff(): Promise<string> {
+	return beginAuthHandoff(preferencesAuthStorage, authHandoffOptions);
 }
-
-let consumeInFlight = false;
 
 /**
  * Read and clear the pending login state. Call from the deep-link handler and
@@ -98,22 +113,8 @@ let consumeInFlight = false;
  * get `null` — only the first wins, which prevents two racing `appUrlOpen`
  * events from both passing the state check off the same pending nonce.
  */
-export async function consumeAuthState(): Promise<string | null> {
-	if (consumeInFlight) return null;
-	consumeInFlight = true;
-	try {
-		const { value } = await Preferences.get({ key: AUTH_STATE_KEY });
-		await Preferences.remove({ key: AUTH_STATE_KEY });
-		return value;
-	} finally {
-		consumeInFlight = false;
-	}
-}
-
-export function hasEmail(v: unknown): v is { email: string } {
-	return (
-		typeof v === "object" && v !== null && typeof (v as { email?: unknown }).email === "string"
-	);
+export async function consumeAuthLoginHandoffState(): Promise<string | null> {
+	return consumeAuthHandoffState(preferencesAuthStorage, authHandoffOptions);
 }
 
 /**
@@ -121,24 +122,12 @@ export function hasEmail(v: unknown): v is { email: string } {
  * email to populate local state. Only call this after verifying the nonce state
  * — the caller is trusted to have confirmed the token is ours, not an attacker's.
  */
-export async function finalizeVerifiedLogin(token: string): Promise<{ email: string }> {
-	await saveToken(token);
-	const res = await fetch(`${SYNC_URL}/api/auth/get-session`, {
-		headers: { Authorization: `Bearer ${token}` },
+export async function finalizeVerifiedAuthLoginHandoff(token: string): Promise<{ email: string }> {
+	return finalizeVerifiedAuthHandoffLogin(preferencesAuthStorage, {
+		...authHandoffOptions,
+		token,
+		syncUrl: SYNC_URL,
 	});
-	if (!res.ok) {
-		await clearToken();
-		throw new Error(`Failed to verify session (${res.status})`);
-	}
-	const data: unknown = await res.json();
-	const user =
-		typeof data === "object" && data !== null ? (data as { user?: unknown }).user : undefined;
-	if (!hasEmail(user)) {
-		await clearToken();
-		throw new Error("Invalid session response");
-	}
-	await Preferences.set({ key: USER_EMAIL_KEY, value: user.email });
-	return { email: user.email };
 }
 
 export async function signOut(): Promise<void> {

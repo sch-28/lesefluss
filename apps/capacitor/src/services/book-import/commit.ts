@@ -1,10 +1,10 @@
 import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
+import { arrayBufferToBase64, type BookPayload, utf8ByteLength } from "@lesefluss/book-import";
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
 import type { Book } from "../db/schema";
-import type { BookPayload, ImportExtras } from "./types";
-import { arrayBufferToBase64, utf8ByteLength } from "./utils/encoding";
+import type { ImportExtras } from "./types";
 import { generateBookId } from "./utils/id";
 
 /** Directory within app data where original book files (EPUB, …) are stored. */

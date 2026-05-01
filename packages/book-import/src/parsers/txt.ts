@@ -1,14 +1,11 @@
 import type { BookPayload, Parser } from "../types";
 import { assertBytes } from "../utils/raw-input";
+import { canParseTxt } from "./matchers";
 
 export const txtParser: Parser = {
 	id: "txt",
 
-	canParse(input) {
-		if (input.kind !== "bytes") return false;
-		if (input.fileName.toLowerCase().endsWith(".txt")) return true;
-		return input.mimeType?.startsWith("text/") ?? false;
-	},
+	canParse: canParseTxt,
 
 	async parse(input): Promise<BookPayload> {
 		assertBytes(input);

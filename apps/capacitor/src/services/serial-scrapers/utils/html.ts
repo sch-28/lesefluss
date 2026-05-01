@@ -1,9 +1,9 @@
 /**
  * Shared DOM helpers for serial scrapers. Re-exports `extractParagraphs` from
- * book-import/utils for parity with HTML/EPUB parsing, plus serial-specific
- * helpers for stripping anti-piracy / hidden nodes.
+ * the shared book-import package for parity with HTML/EPUB parsing, plus
+ * serial-specific helpers for stripping anti-piracy / hidden nodes.
  */
-export { extractParagraphs } from "../../book-import/utils/dom-paragraphs";
+export { extractParagraphs } from "@lesefluss/book-import";
 
 export function parseHtml(html: string): Document {
 	return new DOMParser().parseFromString(html, "text/html");

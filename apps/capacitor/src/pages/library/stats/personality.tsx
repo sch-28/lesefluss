@@ -110,4 +110,3 @@ export function Personality() {
 		</motion.section>
 	);
 }
-

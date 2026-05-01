@@ -1,5 +1,5 @@
 import { IonPopover } from "@ionic/react";
-import { SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
+import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 import type React from "react";
 import { PAGINATION_STYLE_OPTIONS } from "../../components/rsvp-pickers";
 import { useTheme } from "../../contexts/theme-context";

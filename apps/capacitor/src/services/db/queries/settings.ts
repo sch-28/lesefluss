@@ -1,4 +1,4 @@
-import { changelog, DEFAULT_SETTINGS } from "@lesefluss/rsvp-core";
+import { changelog, DEFAULT_SETTINGS } from "@lesefluss/core";
 import { eq } from "drizzle-orm";
 import { db } from "../index";
 import { type Settings, settings } from "../schema";

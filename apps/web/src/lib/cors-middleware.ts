@@ -1,8 +1,6 @@
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { ALLOWED_ORIGINS } from "./allowed-origins";
-
-const ALLOWED_ORIGINS_SET = new Set(ALLOWED_ORIGINS);
+import { isAllowedCorsOrigin } from "./allowed-origins";
 
 /**
  * Middleware that handles CORS for cross-origin requests from the Capacitor app.
@@ -14,7 +12,7 @@ const ALLOWED_ORIGINS_SET = new Set(ALLOWED_ORIGINS);
 export const cors = createMiddleware().server(async ({ next }) => {
 	const request = getRequest();
 	const origin = request.headers.get("origin");
-	const isAllowedOrigin = !!origin && ALLOWED_ORIGINS_SET.has(origin);
+	const isAllowedOrigin = isAllowedCorsOrigin(origin);
 
 	// OPTIONS preflight - short-circuit
 	if (request.method === "OPTIONS" && isAllowedOrigin) {

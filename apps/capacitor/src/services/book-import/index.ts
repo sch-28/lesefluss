@@ -11,16 +11,30 @@
  * `runImportPipeline`. Anything more complex belongs in the pipeline itself.
  */
 
+import type { ImportPipelineOptions, RawInput } from "@lesefluss/book-import";
+import { blobToRawInput, fetchUrlToRawInput, runImportPipeline } from "@lesefluss/book-import";
+import { CATALOG_URL } from "../catalog/client";
 import type { Book } from "../db/schema";
-import { runImportPipeline } from "./pipeline";
-import { blobToRawInput } from "./sources/blob";
+import { commitBook } from "./commit";
 import { readClipboardToRawInput } from "./sources/clipboard";
 import { pickFileFromPicker } from "./sources/file-picker";
-import { fetchUrlToRawInput } from "./sources/url";
 import type { ImportExtras } from "./types";
 
 export { removeBook } from "./commit";
 export type { ImportExtras } from "./types";
+
+const pipelineOptions: ImportPipelineOptions = {
+	loadPdfjs,
+};
+
+async function parseAndCommit(
+	input: RawInput,
+	extras: ImportExtras = {},
+	onProgress?: (pct: number) => void,
+): Promise<Book> {
+	const payload = await runImportPipeline(input, pipelineOptions, onProgress);
+	return commitBook(payload, extras);
+}
 
 /**
  * Open the system file picker, parse the selected file (TXT / EPUB / HTML),
@@ -30,7 +44,7 @@ export type { ImportExtras } from "./types";
  */
 export async function importBook(onProgress?: (pct: number) => void): Promise<Book> {
 	const input = await pickFileFromPicker();
-	return runImportPipeline(input, {}, onProgress);
+	return parseAndCommit(input, {}, onProgress);
 }
 
 /**
@@ -44,7 +58,7 @@ export async function importBookFromBlob(
 	extras?: ImportExtras,
 ): Promise<Book> {
 	const input = await blobToRawInput(blob, fileName);
-	return runImportPipeline(input, extras ?? {}, onProgress);
+	return parseAndCommit(input, extras ?? {}, onProgress);
 }
 
 /**
@@ -53,7 +67,7 @@ export async function importBookFromBlob(
  */
 export async function importBookFromClipboard(): Promise<Book> {
 	const input = await readClipboardToRawInput();
-	return runImportPipeline(input);
+	return parseAndCommit(input);
 }
 
 /**
@@ -61,8 +75,8 @@ export async function importBookFromClipboard(): Promise<Book> {
  * for the error contract (`INVALID_URL`, `TOO_LARGE`, `FETCH_FAILED`).
  */
 export async function importBookFromUrl(url: string): Promise<Book> {
-	const { input, finalUrl } = await fetchUrlToRawInput(url);
-	return runImportPipeline(input, { source: "url", sourceUrl: finalUrl });
+	const { input, finalUrl } = await fetchUrlToRawInput(url, { catalogUrl: CATALOG_URL });
+	return parseAndCommit(input, { source: "url", sourceUrl: finalUrl });
 }
 
 /**
@@ -70,5 +84,12 @@ export async function importBookFromUrl(url: string): Promise<Book> {
  * `hint.title` overrides the first-line title heuristic in `textParser`.
  */
 export async function importBookFromText(text: string, hint?: { title?: string }): Promise<Book> {
-	return runImportPipeline({ kind: "text", text, hint });
+	return parseAndCommit({ kind: "text", text, hint });
+}
+
+async function loadPdfjs() {
+	const mod = await import("pdfjs-dist/legacy/build/pdf.mjs");
+	const { default: Worker } = await import("pdfjs-dist/legacy/build/pdf.worker.mjs?worker");
+	mod.GlobalWorkerOptions.workerPort = new Worker();
+	return mod;
 }

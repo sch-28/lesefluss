@@ -9,7 +9,7 @@ import {
 	type SyncResponse,
 	type SyncSeries,
 	type SyncSettings,
-} from "@lesefluss/rsvp-core";
+} from "@lesefluss/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { db } from "~/db";

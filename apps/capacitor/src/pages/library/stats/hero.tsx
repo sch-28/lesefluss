@@ -60,7 +60,7 @@ export function Hero({ wordsThisWeek, currentStreak, topCover, topBookId, deltaV
 			)}
 
 			<div
-				className="absolute inset-0 mix-blend-overlay opacity-60"
+				className="absolute inset-0 opacity-60 mix-blend-overlay"
 				style={{
 					background: `linear-gradient(135deg, ${accent.from}, ${accent.to})`,
 				}}

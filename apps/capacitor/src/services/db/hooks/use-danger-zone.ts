@@ -2,13 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { removeBook } from "../../book-import";
 import { scheduleSyncPush, wipeServerSessions } from "../../sync";
 import { queries } from "../queries";
-import {
-	bookKeys,
-	glossaryKeys,
-	readingSessionKeys,
-	serialKeys,
-	statsKeys,
-} from "./query-keys";
+import { bookKeys, glossaryKeys, readingSessionKeys, serialKeys, statsKeys } from "./query-keys";
 
 /**
  * Bulk-delete every highlight on this device. Sync push then tombstones any

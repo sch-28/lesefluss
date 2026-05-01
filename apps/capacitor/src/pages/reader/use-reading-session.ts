@@ -186,8 +186,8 @@ export function useReadingSession({
 		// one. Open it here instead.
 		if (isActiveRef.current && !sessionRef.current) {
 			sessionRef.current = startSession({
-				bookId: argsRef.current.bookId,
-				mode: argsRef.current.mode,
+				bookId,
+				mode,
 				content: argsRef.current.content,
 				getPosition: argsRef.current.getPosition,
 				wpmSetting: argsRef.current.wpmSetting ?? null,

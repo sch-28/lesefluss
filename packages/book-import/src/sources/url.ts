@@ -1,6 +1,9 @@
-import { CATALOG_URL } from "../../catalog/client";
 import type { RawInput } from "../types";
 import { displayHostname, isLikelyUrl, normalizeUrl } from "../utils/url-guards";
+
+export type UrlSourceOptions = {
+	catalogUrl: string;
+};
 
 /**
  * Fetch an article URL through the catalog proxy and return its HTML as a
@@ -12,16 +15,28 @@ import { displayHostname, isLikelyUrl, normalizeUrl } from "../utils/url-guards"
  *   - `Error("TOO_LARGE")` — upstream response exceeded 5MB.
  *   - `Error("FETCH_FAILED")` — any other non-2xx from the proxy.
  */
-export async function fetchUrlToRawInput(url: string): Promise<{
+export async function fetchUrlToRawInput(
+	url: string,
+	options: UrlSourceOptions,
+): Promise<{
+	input: RawInput;
+	finalUrl: string;
+}>;
+export async function fetchUrlToRawInput(
+	url: string,
+	options: UrlSourceOptions,
+): Promise<{
 	input: RawInput;
 	finalUrl: string;
 }> {
 	const normalized = normalizeUrl(url);
 	if (!isLikelyUrl(normalized)) throw new Error("INVALID_URL");
+	const catalogUrl = normalizeCatalogUrl(options.catalogUrl);
+	if (!catalogUrl) throw new Error("FETCH_FAILED");
 
 	let res: Response;
 	try {
-		res = await fetch(`${CATALOG_URL}/proxy/article`, {
+		res = await fetch(`${catalogUrl}/proxy/article`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ url: normalized }),
@@ -48,4 +63,14 @@ export async function fetchUrlToRawInput(url: string): Promise<{
 			mimeType: "text/html",
 		},
 	};
+}
+
+function normalizeCatalogUrl(raw: string): string {
+	try {
+		const url = new URL(raw);
+		if (url.protocol !== "http:" && url.protocol !== "https:") return "";
+		return url.toString().replace(/\/+$/, "");
+	} catch {
+		return "";
+	}
 }

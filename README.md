@@ -34,7 +34,7 @@ apps/
   catalog/     Hono service for public-domain book discovery
 packages/
   ble-config/  Shared BLE UUIDs
-  rsvp-core/   Shared RSVP engine, settings, sync types
+  core/        Shared RSVP engine, settings, sync/auth types and utilities
 resources/
   case/        3D-printable cases for the ESP32 variants
 ```

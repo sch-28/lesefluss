@@ -39,8 +39,8 @@ import {
 	IonToolbar,
 	useIonViewWillLeave,
 } from "@ionic/react";
-import type { RsvpSettings } from "@lesefluss/rsvp-core";
-import { DEFAULT_SETTINGS } from "@lesefluss/rsvp-core";
+import type { RsvpSettings } from "@lesefluss/core";
+import { DEFAULT_SETTINGS } from "@lesefluss/core";
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	bookmarksOutline,
@@ -61,11 +61,11 @@ import { toast } from "../../components/toast";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useTheme } from "../../contexts/theme-context";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
+import { externalSourceUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import type { Chapter, GlossaryEntry } from "../../services/db/schema";
-import { externalSourceUrl } from "../../services/catalog/client";
 import { providerLabel } from "../../services/serial-scrapers";
 import { pushSync, scheduleSyncPush } from "../../services/sync";
 import { formatReadingTime } from "../../utils/reading-time";

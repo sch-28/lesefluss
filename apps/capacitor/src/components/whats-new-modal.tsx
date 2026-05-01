@@ -13,7 +13,7 @@
  */
 
 import { IonButton, IonModal } from "@ionic/react";
-import { type ChangelogEntry, type ChangelogTag, changelog } from "@lesefluss/rsvp-core";
+import { type ChangelogEntry, type ChangelogTag, changelog } from "@lesefluss/core";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { queryHooks } from "../services/db/hooks";

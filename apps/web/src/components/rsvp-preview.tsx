@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 
 /**
  * ORP (Optimal Recognition Point) - focal letter index.
- * Matches calcOrpIndex from rsvp-core/engine.ts exactly.
+ * Matches calcOrpIndex from core/engine.ts exactly.
  */
 function calcOrpIndex(wordLength: number): number {
 	if (wordLength <= 2) return 0;

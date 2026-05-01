@@ -1,21 +1,15 @@
 import type { Book as EpubBook } from "epubjs";
 import ePub from "epubjs";
-import { log } from "../../../utils/log";
-import type { Chapter } from "../../db/schema";
-import type { BookPayload, Parser } from "../types";
+import type { BookPayload, Chapter, Parser } from "../types";
 import { extractParagraphs } from "../utils/dom-paragraphs";
 import { utf8ByteLength } from "../utils/encoding";
 import { assertBytes } from "../utils/raw-input";
+import { canParseEpub } from "./matchers";
 
 export const epubParser: Parser = {
 	id: "epub",
 
-	canParse(input) {
-		if (input.kind !== "bytes") return false;
-		if (input.fileName.toLowerCase().endsWith(".epub")) return true;
-		if (input.mimeType === "application/epub+zip") return true;
-		return false;
-	},
+	canParse: canParseEpub,
 
 	async parse(input, onProgress): Promise<BookPayload> {
 		assertBytes(input);
@@ -101,8 +95,9 @@ async function parseEpub(
 				}
 			}
 			section.unload();
-		} catch (err) {
-			log.warn("book-import", `EPUB: failed to load spine item ${i}`, err);
+		} catch {
+			// Skip unreadable spine items; partial content is better than aborting
+			// otherwise valid EPUB imports.
 		}
 
 		onProgress?.(Math.round(((i + 1) / spineLength) * 100));
@@ -153,8 +148,7 @@ async function extractCover(book: EpubBook): Promise<string | null> {
 			reader.onerror = () => resolve(null);
 			reader.readAsDataURL(blob);
 		});
-	} catch (err) {
-		log.warn("book-import", "EPUB: failed to extract cover image:", err);
+	} catch {
 		return null;
 	}
 }

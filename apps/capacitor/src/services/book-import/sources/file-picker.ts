@@ -1,7 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { FilePicker } from "@capawesome/capacitor-file-picker";
-import type { RawInput } from "../types";
-import { base64ToArrayBuffer } from "../utils/encoding";
+import { base64ToArrayBuffer, type RawInput } from "@lesefluss/book-import";
 
 /**
  * Open a file picker (native or web) and return the selected file as a

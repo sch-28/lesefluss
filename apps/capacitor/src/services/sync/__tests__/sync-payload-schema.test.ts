@@ -1,4 +1,4 @@
-import { type SyncBook, SyncPayloadSchema } from "@lesefluss/rsvp-core";
+import { type SyncBook, SyncPayloadSchema } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
 
 function chapterRow(i: number): SyncBook {

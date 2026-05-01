@@ -77,7 +77,7 @@ src/
     client.ts               # BLEClient class (scan/connect/disconnect), `bleClient` singleton
     characteristics/
       index.ts              # `ble` object - single import for all characteristic ops
-      settings.ts           # ble.readSettings(), ble.writeSettings() - mapping driven by ESP32_SETTING_KEYS in rsvp-core
+      settings.ts           # ble.readSettings(), ble.writeSettings() - mapping driven by ESP32_SETTING_KEYS in core
       position.ts           # ble.readPosition(), ble.writePosition()
       transfer.ts           # ble.transferBook() - START/CHUNK/END state machine
       storage.ts            # ble.readStorage() - flash storage info {free_bytes, total_bytes}
@@ -85,7 +85,7 @@ src/
       encoding.ts           # dataViewToString, stringToDataView, chunkString
   services/
     query-client.ts         # Singleton QueryClient (used by App.tsx + non-React callers)
-    bookImport.ts           # File picker, TXT + EPUB parsing
+    book-import/            # Capacitor import wrapper: file/clipboard/share sources + SQLite/filesystem commit
     sync/
       auth-client.ts          # Better Auth client configured with VITE_SYNC_URL
       index.ts                # pullSync, pushSync, scheduleSyncPush, signIn/signUp/signOut, token mgmt
@@ -135,7 +135,7 @@ Five tables, Drizzle ORM with typed queries:
 | `highlights` | Per-book text highlights - startOffset, endOffset (UTF-8 byte, word-start), color, note, timestamps |
 
 - `DatabaseProvider` context wraps the app (`src/contexts/DatabaseContext.tsx`)
-- Incremental hand-written SQL migrations in `drizzle/` (e.g. `0013_app_font_size.sql`), each registered in `drizzle/meta/_journal.json`. The runner in `src/services/db/migrations.ts` applies any unapplied entries on app start. To add one: write the SQL file with the next zero-padded index, append a journal entry with `Date.now()` as `when` and the matching `tag`, and update `schema.ts`. For the full cross-package recipe (rsvp-core defaults, sync schema, ESP32 BLE, UI page) see "Adding a New Setting" in the root `AGENTS.md`.
+- Incremental hand-written SQL migrations in `drizzle/` (e.g. `0013_app_font_size.sql`), each registered in `drizzle/meta/_journal.json`. The runner in `src/services/db/migrations.ts` applies any unapplied entries on app start. To add one: write the SQL file with the next zero-padded index, append a journal entry with `Date.now()` as `when` and the matching `tag`, and update `schema.ts`. For the full cross-package recipe (core defaults, sync schema, ESP32 BLE, UI page) see "Adding a New Setting" in the root `AGENTS.md`.
 - `books.id` is a random 8-char hex string (generated at import), also used as `book.hash` on the ESP32 for identity verification
 - `isActive` on `books`: boolean, at most one row true at a time - marks the book currently on the ESP32
 - `books.size` is the **UTF-8 byte length** of the content string (`utf8ByteLength(content)`), not the JS `.length`. This matches the byte count the ESP32 uses for progress calculation.
@@ -162,15 +162,17 @@ await ble.transferBook(content, "book.txt", onProgress);
 - Saves last connected device to SQLite
 - BLE status badge (bluetooth icon) between the two tab bar tabs
 
-## Book Import (`src/services/bookImport.ts`)
+## Book Import (`src/services/book-import/` + `packages/book-import`)
 
-- **Native:** File picker via `@capawesome/capacitor-file-picker`
-- **Web:** HTML5 `<input type="file">` fallback (`pickFileWeb()`)
-- **TXT:** read directly, store as plain text in `book_content`
-- **EPUB:** parsed with `epubjs` - extracts plain text, cover image (base64), chapter boundaries
-- Original `.epub` saved to `Directory.Data/books/{id}.epub` via `@capacitor/filesystem` (native only, skipped on web)
-- `removeBook()` cleans up both DB rows and disk files
-- Import shows progress bar for EPUB parsing
+- Shared parser/source logic lives in `packages/book-import`: pipeline, parser registry, TXT/MD/HTML/EPUB/PDF parsers, shared utilities, and `sources/blob` / `sources/url`.
+- `runImportPipeline(input, options, onProgress)` returns a `BookPayload` only. It never writes SQLite or the filesystem.
+- `src/services/book-import/index.ts` is the app compatibility wrapper used by hooks. It composes source acquisition → shared parse → `commitBook()` and preserves the existing public API (`importBook`, `importBookFromBlob`, `importBookFromClipboard`, `importBookFromUrl`, `importBookFromText`).
+- Capacitor-only sources stay local: file picker via `@capawesome/capacitor-file-picker`, clipboard via `@capacitor/clipboard`, and Android share intent plugin glue.
+- `commit.ts` stays local because it writes SQLite and saves original files to `Directory.Data/books/{id}.ext` via `@capacitor/filesystem` on native.
+- URL imports pass the app's `CATALOG_URL` into the shared URL source; PDF imports pass the Vite `pdf.worker.mjs?worker` loader into the shared PDF parser.
+- Original `.epub` / `.pdf` files are saved on native only; TXT/HTML/MD content is stored as plain text in `book_content`.
+- `removeBook()` cleans up both DB rows and disk files.
+- Import shows parser progress where supported (EPUB/PDF).
 
 ### epubjs quirks (types are incomplete/wrong)
 
@@ -312,7 +314,7 @@ Tap an already-highlighted word → opens a bottom-sheet with the definition fro
 
 ## Cloud Sync (`src/services/sync/`)
 
-Full-snapshot sync with the web server. Shared Zod schemas and types in `@lesefluss/rsvp-core/sync`.
+Full-snapshot sync with the web server. Shared Zod schemas and types in `@lesefluss/core`.
 
 **Auth:** Native uses Better Auth client (`auth-client.ts`) with `VITE_SYNC_URL` env var (points to `https://lesefluss.app`) and Bearer token from `@capacitor/preferences`. Web embed uses same-domain cookie auth (no token needed).
 

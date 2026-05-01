@@ -1,15 +1,15 @@
 import type { PluginListenerHandle } from "@capacitor/core";
 import { Filesystem } from "@capacitor/filesystem";
+import {
+	base64ToArrayBuffer,
+	extractEmbeddedUrl,
+	isLikelyUrl,
+	normalizeUrl,
+} from "@lesefluss/book-import";
 import type React from "react";
 import { useEffect, useRef } from "react";
 import { useHistory } from "react-router-dom";
 import { subscribeShareIntent } from "../services/book-import/sources/share-intent";
-import { base64ToArrayBuffer } from "../services/book-import/utils/encoding";
-import {
-	extractEmbeddedUrl,
-	isLikelyUrl,
-	normalizeUrl,
-} from "../services/book-import/utils/url-guards";
 import { queryHooks } from "../services/db/hooks";
 import { isSerialUrl } from "../services/serial-scrapers";
 import { log } from "../utils/log";

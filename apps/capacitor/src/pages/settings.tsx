@@ -49,7 +49,14 @@ type SettingsRowProps = {
 	routerLink?: string;
 };
 
-function SettingsRow({ icon, iconColor = "medium", title, subtitle, onClick, routerLink }: SettingsRowProps) {
+function SettingsRow({
+	icon,
+	iconColor = "medium",
+	title,
+	subtitle,
+	onClick,
+	routerLink,
+}: SettingsRowProps) {
 	return (
 		<IonItem
 			button
@@ -116,7 +123,7 @@ const Settings: React.FC = () => {
 		);
 	}
 
-	const showDevicesAndSync = (!IS_WEB) || SYNC_ENABLED;
+	const showDevicesAndSync = !IS_WEB || SYNC_ENABLED;
 
 	return (
 		<IonPage>

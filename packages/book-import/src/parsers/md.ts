@@ -1,14 +1,11 @@
 import type { BookPayload, Parser } from "../types";
 import { assertBytes } from "../utils/raw-input";
+import { canParseMarkdown } from "./matchers";
 
 export const mdParser: Parser = {
 	id: "md",
 
-	canParse(input) {
-		if (input.kind !== "bytes") return false;
-		if (input.fileName.toLowerCase().endsWith(".md")) return true;
-		return input.mimeType === "text/markdown";
-	},
+	canParse: canParseMarkdown,
 
 	async parse(input): Promise<BookPayload> {
 		assertBytes(input);

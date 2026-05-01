@@ -1,4 +1,5 @@
 import { IonAlert } from "@ionic/react";
+import { displayHostname } from "@lesefluss/book-import";
 import { useQuery } from "@tanstack/react-query";
 import { bookOutline, hardwareChipOutline, trashOutline } from "ionicons/icons";
 import type React from "react";
@@ -6,7 +7,6 @@ import { useMemo, useState } from "react";
 import { useHistory, useParams } from "react-router-dom";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
-import { displayHostname } from "../../services/book-import/utils/url-guards";
 import { externalSourceUrl, getCatalogBook, getCoverUrl } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { queryHooks } from "../../services/db/hooks";

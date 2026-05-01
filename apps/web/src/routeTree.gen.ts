@@ -27,6 +27,7 @@ import { Route as DeviceIndexRouteImport } from './routes/device/index'
 import { Route as ChangelogIndexRouteImport } from './routes/changelog/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AuthMobileCallbackRouteImport } from './routes/auth/mobile-callback'
+import { Route as AuthExtensionCallbackRouteImport } from './routes/auth/extension-callback'
 import { Route as AppSplatRouteImport } from './routes/app/$'
 import { Route as ApiSyncRouteImport } from './routes/api/sync'
 import { Route as ApiFeedbackRouteImport } from './routes/api/feedback'
@@ -126,6 +127,11 @@ const AuthMobileCallbackRoute = AuthMobileCallbackRouteImport.update({
   path: '/auth/mobile-callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthExtensionCallbackRoute = AuthExtensionCallbackRouteImport.update({
+  id: '/auth/extension-callback',
+  path: '/auth/extension-callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppSplatRoute = AppSplatRouteImport.update({
   id: '/app/$',
   path: '/app/$',
@@ -183,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
   '/app/$': typeof AppSplatRoute
+  '/auth/extension-callback': typeof AuthExtensionCallbackRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
   '/app/': typeof AppIndexRoute
   '/changelog/': typeof ChangelogIndexRoute
@@ -211,6 +218,7 @@ export interface FileRoutesByTo {
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
   '/app/$': typeof AppSplatRoute
+  '/auth/extension-callback': typeof AuthExtensionCallbackRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
   '/app': typeof AppIndexRoute
   '/changelog': typeof ChangelogIndexRoute
@@ -241,6 +249,7 @@ export interface FileRoutesById {
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
   '/app/$': typeof AppSplatRoute
+  '/auth/extension-callback': typeof AuthExtensionCallbackRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
   '/app/': typeof AppIndexRoute
   '/changelog/': typeof ChangelogIndexRoute
@@ -271,6 +280,7 @@ export interface FileRouteTypes {
     | '/api/feedback'
     | '/api/sync'
     | '/app/$'
+    | '/auth/extension-callback'
     | '/auth/mobile-callback'
     | '/app/'
     | '/changelog/'
@@ -299,6 +309,7 @@ export interface FileRouteTypes {
     | '/api/feedback'
     | '/api/sync'
     | '/app/$'
+    | '/auth/extension-callback'
     | '/auth/mobile-callback'
     | '/app'
     | '/changelog'
@@ -328,6 +339,7 @@ export interface FileRouteTypes {
     | '/api/feedback'
     | '/api/sync'
     | '/app/$'
+    | '/auth/extension-callback'
     | '/auth/mobile-callback'
     | '/app/'
     | '/changelog/'
@@ -358,6 +370,7 @@ export interface RootRouteChildren {
   ApiFeedbackRoute: typeof ApiFeedbackRoute
   ApiSyncRoute: typeof ApiSyncRouteWithChildren
   AppSplatRoute: typeof AppSplatRoute
+  AuthExtensionCallbackRoute: typeof AuthExtensionCallbackRoute
   AuthMobileCallbackRoute: typeof AuthMobileCallbackRoute
   AppIndexRoute: typeof AppIndexRoute
   ChangelogIndexRoute: typeof ChangelogIndexRoute
@@ -502,6 +515,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthMobileCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/extension-callback': {
+      id: '/auth/extension-callback'
+      path: '/auth/extension-callback'
+      fullPath: '/auth/extension-callback'
+      preLoaderRoute: typeof AuthExtensionCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/$': {
       id: '/app/$'
       path: '/app/$'
@@ -604,6 +624,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiFeedbackRoute: ApiFeedbackRoute,
   ApiSyncRoute: ApiSyncRouteWithChildren,
   AppSplatRoute: AppSplatRoute,
+  AuthExtensionCallbackRoute: AuthExtensionCallbackRoute,
   AuthMobileCallbackRoute: AuthMobileCallbackRoute,
   AppIndexRoute: AppIndexRoute,
   ChangelogIndexRoute: ChangelogIndexRoute,

@@ -72,7 +72,11 @@ export function WpmTrend() {
 	const headlineAvg = headlineId ? avgOf(seriesData[headlineId]) : 0;
 	const headlineLabel = headlineId ? `${LABELS[headlineId]} avg` : "";
 
-	const chartData = present.map((id) => ({ id: LABELS[id], color: colors[id], data: seriesData[id] }));
+	const chartData = present.map((id) => ({
+		id: LABELS[id],
+		color: colors[id],
+		data: seriesData[id],
+	}));
 
 	return (
 		<motion.section
@@ -93,7 +97,9 @@ export function WpmTrend() {
 					<div className="font-bold text-3xl tabular-nums leading-none tracking-tight">
 						{headlineAvg}
 					</div>
-					<div className="mt-1 text-[11px] uppercase tracking-wider opacity-60">{headlineLabel}</div>
+					<div className="mt-1 text-[11px] uppercase tracking-wider opacity-60">
+						{headlineLabel}
+					</div>
 				</div>
 			</header>
 
@@ -110,7 +116,7 @@ export function WpmTrend() {
 					</span>
 				))}
 				<span className="flex items-center gap-1.5">
-					<span className="inline-block h-px w-4 border-t border-current/40 border-dashed" />
+					<span className="inline-block h-px w-4 border-current/40 border-t border-dashed" />
 					<span className="opacity-60">Avg reader · {AVG_READER_WPM}</span>
 				</span>
 			</div>

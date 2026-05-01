@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { db } from "~/db";
 import * as authSchema from "~/db/auth-schema";
 import { syncBooks, syncHighlights, syncSettings } from "~/db/schema";
-import { ALLOWED_ORIGINS } from "./allowed-origins";
+import { getTrustedAuthOrigins } from "./allowed-origins";
 import { passwordResetEmail, sendMail, verificationEmail } from "./mailer";
 
 function requireEnv(name: string): string {
@@ -46,7 +46,7 @@ export const auth = betterAuth({
 	secret: requireEnv("BETTER_AUTH_SECRET"),
 	baseURL: requireEnv("BETTER_AUTH_URL"),
 	basePath: "/api/auth",
-	trustedOrigins: ALLOWED_ORIGINS,
+	trustedOrigins: getTrustedAuthOrigins,
 	socialProviders: {
 		google: {
 			clientId: requireEnv("GOOGLE_CLIENT_ID"),

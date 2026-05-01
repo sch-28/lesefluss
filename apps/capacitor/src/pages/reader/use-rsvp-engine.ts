@@ -12,7 +12,7 @@ import {
 	type RsvpSettings,
 	splitLongWord,
 	type WordEntry,
-} from "@lesefluss/rsvp-core";
+} from "@lesefluss/core";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {

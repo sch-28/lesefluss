@@ -10,7 +10,7 @@
  * setting is off.
  */
 
-import { utf8ByteLength } from "@lesefluss/rsvp-core";
+import { utf8ByteLength } from "@lesefluss/core";
 import { useMemo } from "react";
 import type { GlossaryEntry } from "../../services/db/schema";
 import { escapeRegex } from "./glossary-utils";

@@ -1,13 +1,12 @@
 import type { BookPayload, Parser } from "../types";
 import { assertText } from "../utils/raw-input";
 import { deriveTitle } from "../utils/title-heuristic";
+import { canParseText } from "./matchers";
 
 export const textParser: Parser = {
 	id: "text",
 
-	canParse(input) {
-		return input.kind === "text";
-	},
+	canParse: canParseText,
 
 	async parse(input): Promise<BookPayload> {
 		assertText(input);

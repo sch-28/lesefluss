@@ -1,4 +1,4 @@
-import { type ChangelogTag, changelog } from "@lesefluss/rsvp-core";
+import { type ChangelogTag, changelog } from "@lesefluss/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { Badge } from "~/components/ui/badge";
 import { seo } from "~/utils/seo";

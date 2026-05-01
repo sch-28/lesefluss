@@ -1,16 +1,18 @@
 {
-	"name": "@lesefluss/rsvp-core",
+	"name": "@lesefluss/core",
 	"version": "1.0.0",
 	"description": "Shared RSVP engine, settings defaults, and UTF-8 utilities",
 	"type": "module",
 	"main": "src/index.ts",
 	"scripts": {
-		"check-types": "tsc --noEmit"
+		"check-types": "tsc --noEmit",
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
-		"typescript": "^6.0.2"
+		"typescript": "^6.0.2",
+		"vitest": "^4.1.5"
 	}
 }

@@ -3,7 +3,7 @@
  * and token cleanup. No React, no DOM, no side effects.
  */
 
-import type { WordEntry } from "@lesefluss/rsvp-core";
+import type { WordEntry } from "@lesefluss/core";
 
 /** How many surrounding words to show on each side of the focal word when paused. */
 export const CONTEXT_PEEK_WORDS = 50;

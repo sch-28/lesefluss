@@ -18,7 +18,7 @@ import {
 	IonTitle,
 	IonToolbar,
 } from "@ionic/react";
-import { calcOrpIndex, type RsvpSettings } from "@lesefluss/rsvp-core";
+import { calcOrpIndex, type RsvpSettings } from "@lesefluss/core";
 import { bookOutline, settingsOutline } from "ionicons/icons";
 import React, {
 	forwardRef,

@@ -3,7 +3,7 @@ import { IonIcon } from "@ionic/react";
 import { cloudOutline } from "ionicons/icons";
 import type React from "react";
 import { useCallback } from "react";
-import { beginMobileLogin, IS_WEB_BUILD } from "../../../services/sync";
+import { beginAuthLoginHandoff, IS_WEB_BUILD } from "../../../services/sync";
 import { SYNC_URL } from "../../../services/sync/auth-client";
 
 interface Props {
@@ -19,7 +19,7 @@ const SyncStep: React.FC<Props> = ({ onFinish }) => {
 			window.location.href = "/login";
 			return;
 		}
-		const state = await beginMobileLogin();
+		const state = await beginAuthLoginHandoff();
 		await onFinish();
 		await Browser.open({
 			url: `${SYNC_URL}/auth/mobile-callback?state=${encodeURIComponent(state)}`,

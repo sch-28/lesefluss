@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, type PaginationStyle, SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
+import { DEFAULT_SETTINGS, type PaginationStyle, SETTING_CONSTRAINTS } from "@lesefluss/core";
 import type React from "react";
 import type { AppTheme } from "../contexts/theme-context";
 import { queryHooks } from "../services/db/hooks";

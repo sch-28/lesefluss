@@ -23,7 +23,7 @@ import {
 	FOCAL_LETTER_COLOR_PRESETS,
 	type HexColor,
 	SETTING_CONSTRAINTS,
-} from "@lesefluss/rsvp-core";
+} from "@lesefluss/core";
 import { chevronDown } from "ionicons/icons";
 import type React from "react";
 import { useState } from "react";

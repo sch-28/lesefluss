@@ -6,7 +6,7 @@
  * live. Restarts the ramp on every setting change so changes are visible.
  */
 
-import { calcDelay, calcOrpIndex, type RsvpSettings } from "@lesefluss/rsvp-core";
+import { calcDelay, calcOrpIndex, type RsvpSettings } from "@lesefluss/core";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 

@@ -5,7 +5,7 @@
  */
 
 import { IonIcon } from "@ionic/react";
-import type { PaginationStyle } from "@lesefluss/rsvp-core";
+import type { PaginationStyle } from "@lesefluss/core";
 import { bookOutline, flashOutline, swapVerticalOutline } from "ionicons/icons";
 import type React from "react";
 

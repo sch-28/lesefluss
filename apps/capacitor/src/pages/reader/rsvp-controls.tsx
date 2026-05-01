@@ -7,7 +7,7 @@
  */
 
 import { IonButton, IonIcon } from "@ionic/react";
-import { SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
+import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 import {
 	arrowRedoOutline,
 	arrowUndoOutline,

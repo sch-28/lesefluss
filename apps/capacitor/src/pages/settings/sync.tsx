@@ -36,7 +36,7 @@ import { useState } from "react";
 import { useToast } from "../../components/toast";
 import { useSyncContext } from "../../contexts/sync-context";
 import { queryHooks } from "../../services/db/hooks";
-import { beginMobileLogin, IS_WEB_BUILD } from "../../services/sync";
+import { beginAuthLoginHandoff, IS_WEB_BUILD } from "../../services/sync";
 import { SYNC_URL } from "../../services/sync/auth-client";
 
 function formatLastSynced(ms: number | null): string {
@@ -315,12 +315,8 @@ const SyncSettings: React.FC = () => {
 												style={DANGER_ICON_STYLE}
 											/>
 											<IonLabel>
-												<h2 style={DANGER_LABEL_STYLE}>
-													{DANGER_ACTIONS.everything.label}
-												</h2>
-												<p style={ITEM_SUBTITLE_STYLE}>
-													{DANGER_ACTIONS.everything.subtitle}
-												</p>
+												<h2 style={DANGER_LABEL_STYLE}>{DANGER_ACTIONS.everything.label}</h2>
+												<p style={ITEM_SUBTITLE_STYLE}>{DANGER_ACTIONS.everything.subtitle}</p>
 											</IonLabel>
 										</IonItem>
 									</IonList>
@@ -402,7 +398,7 @@ const SyncSettings: React.FC = () => {
 								<IonButton
 									expand="block"
 									onClick={async () => {
-										const state = await beginMobileLogin();
+										const state = await beginAuthLoginHandoff();
 										await Browser.open({
 											url: `${SYNC_URL}/auth/mobile-callback?state=${encodeURIComponent(state)}`,
 										});

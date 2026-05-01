@@ -19,7 +19,8 @@ lesefluss/
 │   └── catalog/        # Hono API service for public-domain book discovery (Gutenberg + Standard Ebooks)
 ├── packages/
 │   ├── ble-config/     # Shared BLE UUIDs (workspace package)
-│   └── rsvp-core/      # Shared engine, settings, sync types (Zod schemas)
+│   ├── book-import/    # Shared book import pipeline/parsers/sources (no app deps)
+│   └── core/           # Shared engine, settings, sync/auth types and utilities
 ├── resources/
 │   └── icon.svg        # Master app icon (1024×1024, edit this)
 └── AGENTS.md           # This file
@@ -130,7 +131,7 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 ## Adding a New Setting
 
 The wire-format mappers are registry-driven — `SYNCED_SETTING_KEYS` (sync) and
-`ESP32_SETTING_KEYS` (BLE) in `packages/rsvp-core/src/settings.ts` decide which
+`ESP32_SETTING_KEYS` (BLE) in `packages/core/src/settings.ts` decide which
 fields cross which boundary. You almost never need to touch the mapper code in
 `apps/capacitor/src/services/sync/index.ts`, `apps/web/src/routes/api/sync.ts`,
 or `apps/capacitor/src/services/ble/characteristics/settings.ts` — adding a key
@@ -145,11 +146,11 @@ Pick the scope first:
 
 Then touch:
 
-1. **`packages/rsvp-core/src/settings.ts`** — add to `DEFAULT_SETTINGS`
+1. **`packages/core/src/settings.ts`** — add to `DEFAULT_SETTINGS`
    (UPPER_SNAKE) and, if it has a numeric range, `SETTING_CONSTRAINTS`.
-2. **`packages/rsvp-core/src/sync.ts`** — add to `SyncSettingsSchema`
+2. **`packages/core/src/sync.ts`** — add to `SyncSettingsSchema`
    *(synced only)*.
-3. **`packages/rsvp-core/src/settings.ts`** — add the camelCase key to
+3. **`packages/core/src/settings.ts`** — add the camelCase key to
    `SYNCED_SETTING_KEYS` *(synced)* and/or `ESP32_SETTING_KEYS`
    *(device-only or device+synced — map to the snake_case ESP32 name)*.
    The `satisfies` clause on `SYNCED_SETTING_KEYS` will fail compile if it

@@ -32,7 +32,7 @@ export function TopBooks({ now }: Props) {
 					This month · by time read
 				</p>
 			</header>
-			<div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-2">
+			<div className="flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2">
 				{books.map((b, i) => {
 					const minutes = Math.round(b.durationMs / 60_000);
 					return (

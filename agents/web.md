@@ -59,7 +59,7 @@ accounts           - Better Auth managed
 sessions           - Better Auth managed
 
 sync_books         - mirrors capacitor `books` (user_id, book_id, title, author, file_size, word_count, position, content, cover_image, chapters, updated_at)
-sync_settings      - mirrors capacitor `settings` (user_id) - columns driven by SYNCED_SETTING_KEYS in rsvp-core
+sync_settings      - mirrors capacitor `settings` (user_id) - columns driven by SYNCED_SETTING_KEYS in core
 sync_highlights    - mirrors capacitor `highlights` (user_id, highlight_id, text - extracted snippet stored at highlight-creation time)
 ```
 

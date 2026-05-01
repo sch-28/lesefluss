@@ -1,5 +1,5 @@
 import { IonRange } from "@ionic/react";
-import { SETTING_CONSTRAINTS } from "@lesefluss/rsvp-core";
+import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 import type React from "react";
 import { WpmPresetChips } from "../../../components/rsvp-pickers";
 import { useAutoSaveSettings } from "../../../hooks/use-auto-save-settings";

@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from "@lesefluss/rsvp-core";
+import { DEFAULT_SETTINGS } from "@lesefluss/core";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect } from "react";
 import { queryHooks } from "../services/db/hooks";

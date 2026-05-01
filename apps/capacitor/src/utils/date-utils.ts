@@ -52,6 +52,19 @@ export function formatRelative(epochMs: number, now: number = Date.now()): strin
 	if (days < 7) return `${days}d ago`;
 	if (days < 60) return `${Math.floor(days / 7)}w ago`;
 	const d = new Date(epochMs);
-	const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+	const months = [
+		"Jan",
+		"Feb",
+		"Mar",
+		"Apr",
+		"May",
+		"Jun",
+		"Jul",
+		"Aug",
+		"Sep",
+		"Oct",
+		"Nov",
+		"Dec",
+	];
 	return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
