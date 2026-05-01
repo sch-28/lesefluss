@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@OpenCode'
 created_date: '2026-04-26 15:59'
-updated_date: '2026-05-01 15:47'
+updated_date: '2026-05-01 17:59'
 labels: []
 milestone: m-9
 dependencies:
@@ -71,3 +71,9 @@ Approved implementation plan:
 15. Verify with extension typecheck, Chrome build, Firefox build, and broader repo checks if feasible.
 16. Copy/adapt only the needed shadcn-style primitives into `apps/extension/src/components/ui` so the extension remains standalone and does not depend on web app aliases.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Review/fix pass completed. Added injectable lookup dependency and positive/invalid lookup tests for the article duplicate-detection endpoint; fixed generated/local Biome exclusions for WXT artifacts and Claude local settings; fixed extension callback hook ordering/type issue; added a browser-extension section to the public privacy page covering stored auth data, explicit page/selection capture, duplicate URL lookup, and no browsing-history/analytics collection. Verification passing: `pnpm check-types`, `pnpm --filter @lesefluss/web test`, `pnpm --filter @lesefluss/extension test`, `pnpm --filter @lesefluss/extension build`, and `pnpm --filter @lesefluss/extension build:firefox`. Not finalized as Done yet because manual Chrome/Firefox smoke testing and store listing preparation acceptance criteria still need confirmation/assets.
+<!-- SECTION:NOTES:END -->

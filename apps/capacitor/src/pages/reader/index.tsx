@@ -59,6 +59,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type RouteComponentProps, useHistory } from "react-router-dom";
 import { toast } from "../../components/toast";
 import { useBookSync } from "../../contexts/book-sync-context";
+import { useSyncContext } from "../../contexts/sync-context";
 import { useTheme } from "../../contexts/theme-context";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import { externalSourceUrl } from "../../services/catalog/client";
@@ -113,6 +114,7 @@ interface BookReaderProps extends RouteComponentProps<{ id: string }> {}
 const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const id = match.params.id;
 	const { pushPosition } = useBookSync();
+	const { isSyncing } = useSyncContext();
 	const qc = useQueryClient();
 	const history = useHistory();
 
@@ -932,7 +934,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 
 	// ─── Render ─────────────────────────────────────────────────────────────
 
-	if (bookPending) {
+	if (bookPending || (!book && isSyncing)) {
 		return (
 			<IonPage>
 				<IonContent className="ion-text-center no-header-content">

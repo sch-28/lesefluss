@@ -120,38 +120,51 @@ function useAppResumeListener(handler: () => void | Promise<void>, enabled: bool
 function useRestoreSession(
 	setIsLoggedIn: Dispatch<SetStateAction<boolean>>,
 	setUserEmail: Dispatch<SetStateAction<string | null>>,
+	setIsSyncing: Dispatch<SetStateAction<boolean>>,
 	setLastSynced: Dispatch<SetStateAction<number | null>>,
+	setSyncError: Dispatch<SetStateAction<string | null>>,
 ) {
 	useEffect(() => {
 		if (!SYNC_ENABLED) return;
+		let cancelled = false;
 
 		(async () => {
+			setSyncError(null);
+			setIsSyncing(true);
 			try {
 				if (IS_WEB_BUILD) {
 					const res = await fetch("/api/auth/get-session", { credentials: "include" });
-					if (!res.ok) return;
+					if (!res.ok || cancelled) return;
 					const data: unknown = await res.json();
 					const user =
 						typeof data === "object" && data !== null
 							? (data as { user?: unknown }).user
 							: undefined;
-					if (!hasEmail(user)) return;
+					if (!hasEmail(user) || cancelled) return;
 					setIsLoggedIn(true);
 					setUserEmail(user.email);
 				} else {
 					const token = await getToken();
-					if (!token) return;
+					if (!token || cancelled) return;
 					setIsLoggedIn(true);
 					setUserEmail(await getUserEmail());
 					setLastSynced(await getLastSynced());
 				}
 				await fullSync();
-				setLastSynced(Date.now());
+				if (!cancelled) setLastSynced(Date.now());
 			} catch (err) {
+				if (cancelled) return;
+				setSyncError(err instanceof Error ? err.message : "Initial sync failed");
 				log.warn("sync", "initial sync failed:", err);
+			} finally {
+				if (!cancelled) setIsSyncing(false);
 			}
 		})();
-	}, [setIsLoggedIn, setLastSynced, setUserEmail]);
+
+		return () => {
+			cancelled = true;
+		};
+	}, [setIsLoggedIn, setIsSyncing, setLastSynced, setSyncError, setUserEmail]);
 }
 
 function useResumeSync(setLastSynced: Dispatch<SetStateAction<number | null>>) {
@@ -262,7 +275,7 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 	const [lastSynced, setLastSynced] = useState<number | null>(null);
 	const [syncError, setSyncError] = useState<string | null>(null);
 
-	useRestoreSession(setIsLoggedIn, setUserEmail, setLastSynced);
+	useRestoreSession(setIsLoggedIn, setUserEmail, setIsSyncing, setLastSynced, setSyncError);
 	useResumeSync(setLastSynced);
 	useMobileAuthCallback(setIsLoggedIn, setUserEmail, setIsSyncing, setLastSynced, setSyncError);
 
