@@ -4,9 +4,11 @@ title: Book language metadata for hyphenation
 status: To Do
 assignee: []
 created_date: '2026-04-26 19:51'
+updated_date: '2026-04-30 23:33'
 labels: []
 milestone: m-5
 dependencies: []
+ordinal: 21000
 ---
 
 ## Description

@@ -4,10 +4,12 @@ title: Custom avatar images for glossary entries
 status: To Do
 assignee: []
 created_date: '2026-04-26 21:40'
+updated_date: '2026-04-30 23:33'
 labels: []
 milestone: m-5
 dependencies:
   - TASK-54
+ordinal: 22000
 ---
 
 ## Description

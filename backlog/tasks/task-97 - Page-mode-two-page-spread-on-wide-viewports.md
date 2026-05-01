@@ -4,11 +4,12 @@ title: 'Page mode: two-page spread on wide viewports'
 status: To Do
 assignee: []
 created_date: '2026-04-26 19:45'
-updated_date: '2026-04-30 21:57'
+updated_date: '2026-04-30 23:33'
 labels: []
 milestone: m-5
 dependencies: []
 priority: high
+ordinal: 20000
 ---
 
 ## Description
