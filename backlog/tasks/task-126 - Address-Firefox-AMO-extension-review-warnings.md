@@ -4,11 +4,12 @@ title: Address Firefox AMO extension review warnings
 status: Done
 assignee: []
 created_date: '2026-05-01 23:07'
-updated_date: '2026-05-01 23:11'
+updated_date: '2026-05-01 23:26'
 labels:
   - extension
   - firefox
   - security
+milestone: m-9
 dependencies: []
 priority: medium
 ---

@@ -4,10 +4,11 @@ title: Inject extension page capture only after user action
 status: Done
 assignee: []
 created_date: '2026-05-01 22:37'
-updated_date: '2026-05-01 22:42'
+updated_date: '2026-05-01 23:26'
 labels:
   - extension
   - privacy
+milestone: m-9
 dependencies: []
 priority: medium
 ---

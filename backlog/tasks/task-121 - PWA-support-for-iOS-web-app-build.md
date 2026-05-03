@@ -4,10 +4,12 @@ title: PWA support for iOS (web app build)
 status: To Do
 assignee: []
 created_date: '2026-05-01 14:03'
+updated_date: '2026-05-01 23:25'
 labels:
   - pwa
   - ios
   - web
+milestone: m-8
 dependencies: []
 priority: medium
 ---

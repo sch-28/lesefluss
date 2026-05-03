@@ -1,17 +1,17 @@
 ---
 id: TASK-86
 title: Browser extension
-status: In Progress
+status: Done
 assignee:
   - '@OpenCode'
 created_date: '2026-04-26 15:59'
-updated_date: '2026-05-01 17:59'
+updated_date: '2026-05-01 23:25'
 labels: []
 milestone: m-9
 dependencies:
   - TASK-119
   - TASK-120
-ordinal: 2000
+ordinal: 2900
 ---
 
 ## Description
@@ -39,14 +39,14 @@ Distribution: Chrome Web Store + Firefox AMO listings. Two separate review proce
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 WXT-based project under `apps/extension` builds both Chrome MV3 and Firefox MV3 artifacts from one codebase
-- [ ] #2 Sign-in flow uses `browser.identity.launchWebAuthFlow` and the shared auth helper from TASK-120
-- [ ] #3 Bearer token persisted in `chrome.storage.local`; survives popup close and browser restart
-- [ ] #4 "Save this page" captures rendered HTML and POSTs to `/api/import/article`; success toast confirms; saved article appears on web/mobile after sync
-- [ ] #5 Context-menu "Save selection" sends selected HTML to the same endpoint
-- [ ] #6 Sign-out clears local token and invalidates server session
-- [ ] #7 Manual cross-browser smoke test passes on latest Chrome + Firefox stable
-- [ ] #8 Listings prepared (icons, screenshots, store descriptions) for Chrome Web Store and Firefox AMO
+- [x] #1 WXT-based project under `apps/extension` builds both Chrome MV3 and Firefox MV3 artifacts from one codebase
+- [x] #2 Sign-in flow uses `browser.identity.launchWebAuthFlow` and the shared auth helper from TASK-120
+- [x] #3 Bearer token persisted in `chrome.storage.local`; survives popup close and browser restart
+- [x] #4 "Save this page" captures rendered HTML and POSTs to `/api/import/article`; success toast confirms; saved article appears on web/mobile after sync
+- [x] #5 Context-menu "Save selection" sends selected HTML to the same endpoint
+- [x] #6 Sign-out clears local token and invalidates server session
+- [x] #7 Manual cross-browser smoke test passes on latest Chrome + Firefox stable
+- [x] #8 Listings prepared (icons, screenshots, store descriptions) for Chrome Web Store and Firefox AMO
 <!-- AC:END -->
 
 ## Implementation Plan
