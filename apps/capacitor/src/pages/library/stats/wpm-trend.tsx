@@ -11,7 +11,7 @@ const COLORS = {
 	read: { dark: "#94a3b8", light: "#475569" }, // slate
 } as const;
 
-const AVG_READER_WPM = 250;
+const AVG_READER_WPM = 225;
 
 type SeriesId = "rsvpTarget" | "rsvpDelivered" | "read";
 

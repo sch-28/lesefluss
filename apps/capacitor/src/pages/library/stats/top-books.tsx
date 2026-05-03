@@ -50,7 +50,8 @@ export function TopBooks({ now }: Props) {
 							<div className="relative aspect-[2/3] overflow-hidden rounded-xl">
 								<CoverImage src={b.coverImage} alt={b.title} />
 								<div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent" />
-								<span className="absolute top-1 left-2 font-black text-[64px] text-white/85 leading-none mix-blend-overlay drop-shadow-md">
+								<div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_top_left,rgba(0,0,0,0.7),transparent_70%)]" />
+								<span className="absolute top-1 left-2 font-black text-[64px] text-white leading-none mix-blend-overlay drop-shadow-md">
 									{i + 1}
 								</span>
 								<div className="absolute right-2 bottom-1.5 rounded-full bg-black/60 px-2 py-0.5 font-medium text-[10px] text-white tabular-nums backdrop-blur">

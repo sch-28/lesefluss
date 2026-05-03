@@ -56,3 +56,12 @@ export async function upsertReadingSession(session: NewReadingSession): Promise<
 export async function deleteAllReadingSessions(): Promise<void> {
 	await db.delete(readingSessions);
 }
+
+/**
+ * Hard-delete a single reading session by id. Pairs with a server-side delete
+ * call so the next sync pull does not re-create the row (sessions have no
+ * tombstone column).
+ */
+export async function deleteReadingSession(id: string): Promise<void> {
+	await db.delete(readingSessions).where(eq(readingSessions.id, id));
+}

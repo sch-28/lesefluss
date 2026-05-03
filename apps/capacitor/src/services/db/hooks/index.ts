@@ -30,12 +30,20 @@ import { bookHooks } from "./use-books";
 import { dangerZoneHooks } from "./use-danger-zone";
 import { glossaryHooks } from "./use-glossary";
 import { highlightHooks } from "./use-highlights";
+import { readingSessionHooks } from "./use-reading-sessions";
 import { serialHooks } from "./use-serials";
 import { seriesHooks } from "./use-series";
 import { settingsHooks } from "./use-settings";
 import { statsHooks } from "./use-stats";
 
-export { bookKeys, glossaryKeys, serialKeys, settingsKeys, statsKeys } from "./query-keys";
+export {
+	bookKeys,
+	glossaryKeys,
+	readingSessionKeys,
+	serialKeys,
+	settingsKeys,
+	statsKeys,
+} from "./query-keys";
 
 export const queryHooks = {
 	// ── Books ──────────────────────────────────────────────────────────────
@@ -142,6 +150,16 @@ export const queryHooks = {
 	useStatsPersonality: statsHooks.usePersonality,
 	useStatsSessionCount: statsHooks.useSessionCount,
 	useStatsBook: statsHooks.useBookStats,
+
+	// ── Reading sessions ──────────────────────────────────────────────────
+	/** All reading sessions across all books, newest first. */
+	useAllReadingSessions: readingSessionHooks.useAllReadingSessions,
+
+	/** Sessions for a single book, newest first. */
+	useReadingSessionsByBook: readingSessionHooks.useReadingSessionsByBook,
+
+	/** Mutation: delete one reading session (server + local). */
+	useDeleteReadingSession: readingSessionHooks.useDeleteReadingSession,
 
 	// ── Danger Zone (bulk deletions) ───────────────────────────────────────
 	/** Mutation: hard-delete every highlight on this device + sync. */

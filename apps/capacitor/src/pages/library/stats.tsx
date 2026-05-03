@@ -11,6 +11,7 @@ import {
 import { useMemo } from "react";
 import { queryHooks } from "../../services/db/hooks";
 import { startOfLocalDay } from "../../utils/date-utils";
+import { SessionTable } from "./session-table";
 import { ActivityHeatmap } from "./stats/activity-heatmap";
 import { EmptyState } from "./stats/empty-state";
 import { Hero } from "./stats/hero";
@@ -80,6 +81,7 @@ const Stats: React.FC = () => {
 						<TopBooks now={now} />
 						<WpmTrend />
 						<Personality />
+						<SessionTable mode="global" />
 					</>
 				)}
 			</IonContent>

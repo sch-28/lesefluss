@@ -217,6 +217,20 @@ export async function wipeServerSessions(): Promise<void> {
 	await syncFetch("/api/sync/wipe-sessions", { method: "POST" });
 }
 
+/**
+ * Hard-delete a single reading session for the current user on the server.
+ * Sessions have no tombstone column, so a plain push would not propagate a
+ * deletion: the row would be re-upserted on the next pull. Mirrors
+ * `wipeServerSessions` for the per-row case.
+ */
+export async function deleteServerSession(sessionId: string): Promise<void> {
+	await syncFetch("/api/sync/delete-session", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ sessionId }),
+	});
+}
+
 // ---------------------------------------------------------------------------
 // Data mappers (Capacitor SQLite → API payload)
 // ---------------------------------------------------------------------------

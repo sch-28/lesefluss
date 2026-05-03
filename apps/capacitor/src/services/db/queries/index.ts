@@ -6,6 +6,7 @@
 import {
 	addBookWithContent,
 	deleteBook,
+	getAllBooks,
 	getBook,
 	getBookByCatalogId,
 	getBookContent,
@@ -39,6 +40,7 @@ import {
 import {
 	addReadingSession,
 	deleteAllReadingSessions,
+	deleteReadingSession,
 	getAllReadingSessions,
 	getReadingSessionsByBook,
 	upsertReadingSession,
@@ -87,6 +89,7 @@ export const queries = {
 
 	// Books
 	getBooks,
+	getAllBooks,
 	getBooksForSync,
 	getBook,
 	getBookByCatalogId,
@@ -114,6 +117,7 @@ export const queries = {
 	addReadingSession,
 	upsertReadingSession,
 	deleteAllReadingSessions,
+	deleteReadingSession,
 
 	// Stats
 	getPeriodTotals,

@@ -9,6 +9,15 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-05-03",
+		title: "Stats Polish",
+		tags: ["App"],
+		changes: [
+			"Browse and delete individual reading sessions from the stats page and book detail",
+			"Small tweaks to the reading-speed reference line and top-books rank numerals",
+		],
+	},
+	{
 		date: "2026-05-01",
 		title: "Reading Statistics",
 		tags: ["App", "Website"],

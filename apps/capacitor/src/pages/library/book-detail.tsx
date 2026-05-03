@@ -15,6 +15,7 @@ import { queries } from "../../services/db/queries";
 import { IS_WEB } from "../../utils/platform";
 import { DetailShell } from "../_shared/detail-shell";
 import { BookStatsCard } from "./book-stats-card";
+import { SessionTable } from "./session-table";
 import { readingProgress } from "./sort-filter";
 import TransferModal from "./transfer-modal";
 
@@ -106,7 +107,7 @@ const LibraryBookDetail: React.FC = () => {
 
 	const statsLine = (
 		<>
-			<span>{Math.round(progress * 100)}% read</span>
+			<span>{progress}% read</span>
 			<span>·</span>
 			<span>
 				{highlights.length} highlight{highlights.length === 1 ? "" : "s"}
@@ -153,6 +154,7 @@ const LibraryBookDetail: React.FC = () => {
 				headerAction={deleteHeaderAction}
 			>
 				<BookStatsCard bookId={book.id} />
+				<SessionTable mode="book" bookId={book.id} />
 			</DetailShell>
 
 			{!IS_WEB && (

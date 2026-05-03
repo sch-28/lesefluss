@@ -28,6 +28,9 @@ export const bookKeys = {
 	/** Cover images map (bookId → base64 data URL). */
 	covers: ["book-covers"] as const,
 
+	/** Every non-tombstoned book row including series chapters. */
+	allIncludingChapters: ["books", "all-including-chapters"] as const,
+
 	/** All highlights for a book, ordered by position. */
 	highlights: (id: string) => ["books", id, "highlights"] as const,
 
