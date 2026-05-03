@@ -174,13 +174,11 @@ function Home() {
 							<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
 								Android app
 							</p>
-							<h2 className="mb-5 font-bold text-3xl leading-tight">
-								Your library in your pocket
-							</h2>
+							<h2 className="mb-5 font-bold text-3xl leading-tight">Your library in your pocket</h2>
 							<p className="mb-8 text-muted-foreground leading-relaxed">
-								Import EPUB, PDF, HTML, Markdown, or plain text. Browse thousands of free
-								classics. Read at up to 1000 WPM, fully offline. Optional cloud sync keeps your
-								position across devices.
+								Import EPUB, PDF, HTML, Markdown, or plain text. Browse thousands of free classics.
+								Read at up to 1000 WPM, fully offline. Optional cloud sync keeps your position
+								across devices.
 							</p>
 							<div className="flex justify-center lg:justify-start">
 								<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
@@ -193,18 +191,21 @@ function Home() {
 						</div>
 						<div className="relative flex justify-center lg:justify-end" data-aos="fade-left">
 							<div className="relative">
-								<div
-									className="absolute inset-0 rounded-full bg-primary/15"
-									style={glowStyle}
-								/>
-								<div className="relative rotate-2">
-									<div className="rounded-[2.75rem] border-[10px] border-foreground bg-foreground shadow-2xl">
-										<img
-											src="/phone-rsvp.png"
-											alt="Lesefluss Android app showing the RSVP reader"
-											loading="lazy"
-											className="block w-full max-w-[240px] rounded-[2rem]"
-										/>
+								<div className="absolute inset-0 rounded-full bg-primary/15" style={glowStyle} />
+								<div className="relative mx-auto rotate-2" style={{ width: "260px" }}>
+									<div
+										className="rounded-[2.5rem] border-[3px] border-slate-300 bg-slate-200 p-[6px] shadow-xl"
+										style={{ aspectRatio: "9 / 19.5" }}
+									>
+										<div className="relative z-10 mx-auto -mb-2 h-[14px] w-16 rounded-full bg-slate-800" />
+										<div className="h-full overflow-hidden rounded-[2rem] bg-white p-3">
+											<img
+												src="/library.png"
+												alt="Lesefluss Android app showing the library"
+												loading="lazy"
+												className="block h-full w-full object-cover object-top"
+											/>
+										</div>
 									</div>
 								</div>
 							</div>
@@ -267,10 +268,7 @@ function Home() {
 			<section className="bg-muted/40 py-20">
 				<div className="mx-auto max-w-5xl px-6">
 					<div className="grid gap-4 lg:grid-cols-2">
-						<div
-							className="rounded-2xl border border-border bg-card p-6"
-							data-aos="fade-up"
-						>
+						<div className="rounded-2xl border border-border bg-card p-6" data-aos="fade-up">
 							<div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
 								<Globe className="h-4 w-4 text-primary" />
 							</div>
@@ -297,8 +295,8 @@ function Home() {
 							</div>
 							<h3 className="mb-2 font-semibold">Browser extension</h3>
 							<p className="mb-5 text-muted-foreground text-sm leading-relaxed">
-								Save articles you find on the web straight into your library. One click, no copy
-								and paste.
+								Save articles you find on the web straight into your library. One click, no copy and
+								paste.
 							</p>
 							<div className="flex flex-wrap gap-2">
 								<ExtensionStoreButton label="Chrome" url={chromeExtensionUrl} />
