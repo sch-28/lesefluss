@@ -6,18 +6,20 @@ import {
 	BookOpen,
 	ChevronsRight,
 	Cloud,
-	Download,
+	Globe,
 	Highlighter,
 	Monitor,
 	NotebookPen,
 	Palette,
 	Power,
+	Puzzle,
 	SlidersHorizontal,
 	Type,
 } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { ExploreWall } from "~/components/explore-wall";
 import { HeroRsvp } from "~/components/hero-rsvp";
+import { GooglePlayIcon } from "~/components/icons/google-play";
 import { RsvpPreview } from "~/components/rsvp-preview";
 import { Button } from "~/components/ui/button";
 import { WebNovelsCarousel } from "~/components/web-novels-carousel";
@@ -44,6 +46,9 @@ export const Route = createFileRoute("/")({
 });
 
 const glowStyle = { filter: "blur(60px)", transform: "scale(1.4)" };
+
+const chromeExtensionUrl = import.meta.env.VITE_CHROME_EXTENSION_URL?.trim() || null;
+const firefoxExtensionUrl = import.meta.env.VITE_FIREFOX_EXTENSION_URL?.trim() || null;
 
 function Home() {
 	const { covers, counts } = Route.useLoaderData();
@@ -161,7 +166,54 @@ function Home() {
 				</div>
 			</section>
 
-			{/* ── 5. Device ────────────────────────────────────────────── */}
+			{/* ── 5. Android app ──────────────────────────────────────── */}
+			<section className="py-20">
+				<div className="mx-auto max-w-5xl px-6">
+					<div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+						<div data-aos="fade-right" className="text-center lg:text-left">
+							<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
+								Android app
+							</p>
+							<h2 className="mb-5 font-bold text-3xl leading-tight">
+								Your library in your pocket
+							</h2>
+							<p className="mb-8 text-muted-foreground leading-relaxed">
+								Import EPUB, PDF, HTML, Markdown, or plain text. Browse thousands of free
+								classics. Read at up to 1000 WPM, fully offline. Optional cloud sync keeps your
+								position across devices.
+							</p>
+							<div className="flex justify-center lg:justify-start">
+								<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
+									<Link to="/download">
+										<GooglePlayIcon className="mr-2 h-4 w-4 fill-current" />
+										Get on Android
+									</Link>
+								</Button>
+							</div>
+						</div>
+						<div className="relative flex justify-center lg:justify-end" data-aos="fade-left">
+							<div className="relative">
+								<div
+									className="absolute inset-0 rounded-full bg-primary/15"
+									style={glowStyle}
+								/>
+								<div className="relative rotate-2">
+									<div className="rounded-[2.75rem] border-[10px] border-foreground bg-foreground shadow-2xl">
+										<img
+											src="/phone-rsvp.png"
+											alt="Lesefluss Android app showing the RSVP reader"
+											loading="lazy"
+											className="block w-full max-w-[240px] rounded-[2rem]"
+										/>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			{/* ── 6. Device ────────────────────────────────────────────── */}
 			<section className="py-20">
 				<div className="mx-auto max-w-5xl px-6">
 					<div className="grid gap-12 lg:grid-cols-2 lg:items-center">
@@ -211,7 +263,53 @@ function Home() {
 				</div>
 			</section>
 
-			{/* ── 6. Open Source CTA ───────────────────────────────────── */}
+			{/* ── 7. Web app + Extension ───────────────────────────────── */}
+			<section className="bg-muted/40 py-20">
+				<div className="mx-auto max-w-5xl px-6">
+					<div className="grid gap-4 lg:grid-cols-2">
+						<div
+							className="rounded-2xl border border-border bg-card p-6"
+							data-aos="fade-up"
+						>
+							<div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+								<Globe className="h-4 w-4 text-primary" />
+							</div>
+							<h3 className="mb-2 font-semibold">Web app</h3>
+							<p className="mb-5 text-muted-foreground text-sm leading-relaxed">
+								Same reader, same library, no install. Sign in to sync across devices, or read
+								straight from the browser.
+							</p>
+							<a
+								href="/app"
+								className="inline-flex items-center gap-1.5 font-semibold text-foreground text-sm hover:underline"
+							>
+								Try the web app →
+							</a>
+						</div>
+
+						<div
+							className="rounded-2xl border border-border bg-card p-6"
+							data-aos="fade-up"
+							data-aos-delay="80"
+						>
+							<div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+								<Puzzle className="h-4 w-4 text-primary" />
+							</div>
+							<h3 className="mb-2 font-semibold">Browser extension</h3>
+							<p className="mb-5 text-muted-foreground text-sm leading-relaxed">
+								Save articles you find on the web straight into your library. One click, no copy
+								and paste.
+							</p>
+							<div className="flex flex-wrap gap-2">
+								<ExtensionStoreButton label="Chrome" url={chromeExtensionUrl} />
+								<ExtensionStoreButton label="Firefox" url={firefoxExtensionUrl} />
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			{/* ── 8. Open Source CTA ───────────────────────────────────── */}
 			<section className="bg-foreground py-28 text-background">
 				<div className="mx-auto max-w-3xl px-6 text-center" data-aos="fade-up">
 					<p className="mb-3 font-semibold text-background/50 text-xs uppercase tracking-widest">
@@ -224,19 +322,7 @@ function Home() {
 						The app is free. Read, import books, and sync your device. No account required, optional
 						cloud sync available.
 					</p>
-					<div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-						<Button asChild className="h-auto px-8 py-3 font-semibold text-sm">
-							<Link to="/download">
-								<Download className="mr-2 h-4 w-4" />
-								Download for Android
-							</Link>
-						</Button>
-						<a
-							href="/app"
-							className="inline-flex items-center gap-2 rounded-md border-2 border-background/30 bg-transparent px-8 py-3 font-semibold text-background text-sm transition-colors hover:bg-background/10"
-						>
-							Try the web app →
-						</a>
+					<div className="flex justify-center">
 						<a
 							href="https://github.com/sch-28/lesefluss"
 							target="_blank"
@@ -275,6 +361,33 @@ function BentoCard({
 			<h3 className="mb-2 font-semibold">{title}</h3>
 			<p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
 		</div>
+	);
+}
+
+function ExtensionStoreButton({ label, url }: { label: string; url: string | null }) {
+	if (url) {
+		return (
+			<a
+				href={url}
+				target="_blank"
+				rel="noopener noreferrer"
+				className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-4 py-2 font-semibold text-foreground text-sm transition-colors hover:border-foreground/30"
+			>
+				{label}
+			</a>
+		);
+	}
+	return (
+		<span
+			aria-disabled="true"
+			className="inline-flex cursor-not-allowed items-center gap-2 rounded-md border border-border bg-background/50 px-4 py-2 font-semibold text-muted-foreground text-sm leading-none"
+			title="Coming soon"
+		>
+			<span className="leading-none">{label}</span>
+			<span className="rounded bg-muted px-1.5 py-0.5 font-semibold text-[10px] uppercase leading-none tracking-wider">
+				Soon
+			</span>
+		</span>
 	);
 }
 

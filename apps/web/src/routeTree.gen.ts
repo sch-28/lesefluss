@@ -36,6 +36,7 @@ import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
 import { Route as ApiSyncWipeSessionsRouteImport } from './routes/api/sync/wipe-sessions'
+import { Route as ApiSyncDeleteSessionRouteImport } from './routes/api/sync/delete-session'
 import { Route as ApiImportArticleRouteImport } from './routes/api/import/article'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -175,6 +176,11 @@ const ApiSyncWipeSessionsRoute = ApiSyncWipeSessionsRouteImport.update({
   path: '/wipe-sessions',
   getParentRoute: () => ApiSyncRoute,
 } as any)
+const ApiSyncDeleteSessionRoute = ApiSyncDeleteSessionRouteImport.update({
+  id: '/delete-session',
+  path: '/delete-session',
+  getParentRoute: () => ApiSyncRoute,
+} as any)
 const ApiImportArticleRoute = ApiImportArticleRouteImport.update({
   id: '/api/import/article',
   path: '/api/import/article',
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/terms/': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/import/article': typeof ApiImportArticleRoute
+  '/api/sync/delete-session': typeof ApiSyncDeleteSessionRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -241,6 +248,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/import/article': typeof ApiImportArticleRoute
+  '/api/sync/delete-session': typeof ApiSyncDeleteSessionRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/account': typeof AuthenticatedAccountIndexRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -273,6 +281,7 @@ export interface FileRoutesById {
   '/terms/': typeof TermsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/import/article': typeof ApiImportArticleRoute
+  '/api/sync/delete-session': typeof ApiSyncDeleteSessionRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -305,6 +314,7 @@ export interface FileRouteTypes {
     | '/terms/'
     | '/api/auth/$'
     | '/api/import/article'
+    | '/api/sync/delete-session'
     | '/api/sync/wipe-sessions'
     | '/account/'
     | '/admin/'
@@ -335,6 +345,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/auth/$'
     | '/api/import/article'
+    | '/api/sync/delete-session'
     | '/api/sync/wipe-sessions'
     | '/account'
     | '/admin'
@@ -366,6 +377,7 @@ export interface FileRouteTypes {
     | '/terms/'
     | '/api/auth/$'
     | '/api/import/article'
+    | '/api/sync/delete-session'
     | '/api/sync/wipe-sessions'
     | '/_authenticated/account/'
     | '/_authenticated/admin/'
@@ -591,6 +603,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSyncWipeSessionsRouteImport
       parentRoute: typeof ApiSyncRoute
     }
+    '/api/sync/delete-session': {
+      id: '/api/sync/delete-session'
+      path: '/delete-session'
+      fullPath: '/api/sync/delete-session'
+      preLoaderRoute: typeof ApiSyncDeleteSessionRouteImport
+      parentRoute: typeof ApiSyncRoute
+    }
     '/api/import/article': {
       id: '/api/import/article'
       path: '/api/import/article'
@@ -624,10 +643,12 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface ApiSyncRouteChildren {
+  ApiSyncDeleteSessionRoute: typeof ApiSyncDeleteSessionRoute
   ApiSyncWipeSessionsRoute: typeof ApiSyncWipeSessionsRoute
 }
 
 const ApiSyncRouteChildren: ApiSyncRouteChildren = {
+  ApiSyncDeleteSessionRoute: ApiSyncDeleteSessionRoute,
   ApiSyncWipeSessionsRoute: ApiSyncWipeSessionsRoute,
 }
 
