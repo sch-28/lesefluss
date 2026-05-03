@@ -30,6 +30,7 @@ import React, {
 	useState,
 } from "react";
 import { useHistory } from "react-router-dom";
+import { ReaderEngineBroadcast } from "../../services/reader-broadcast";
 import RsvpSettingsForm from "../settings/rsvp-settings-form";
 import RsvpControls from "./rsvp-controls";
 import { useRsvpEngine } from "./use-rsvp-engine";
@@ -294,6 +295,20 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 
 	return (
 		<>
+			<ReaderEngineBroadcast
+				word={currentWord?.word ?? null}
+				wordIndex={wordIndex}
+				isPlaying={isPlaying}
+				wpm={effectiveWpm}
+				togglePlayPause={togglePlayPause}
+				pause={pause}
+				changeWpm={changeWpm}
+				backWord={backWord}
+				forwardWord={forwardWord}
+				backSentence={backSentence}
+				forwardSentence={forwardSentence}
+				jumpToWord={jumpToWord}
+			/>
 			<div
 				ref={containerRef}
 				className={isPlaying ? "rsvp-display" : "rsvp-display rsvp-display--paused"}

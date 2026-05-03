@@ -12,6 +12,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(ShareIntentPlugin.class);
         registerPlugin(NativeHttpPlugin.class);
+        registerPlugin(DualScreenPlugin.class);
         super.onCreate(savedInstanceState);
         getBridge().getWebView().setWebViewClient(new ImageProxyWebViewClient(getBridge()));
     }

@@ -63,6 +63,7 @@ import { useSyncContext } from "../../contexts/sync-context";
 import { useTheme } from "../../contexts/theme-context";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import { externalSourceUrl } from "../../services/catalog/client";
+import { ReaderContextBroadcast } from "../../services/reader-broadcast";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
@@ -1084,17 +1085,29 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 				) : contentPending || !content || chapterFetch.kind === "loading" ? (
 					<ReaderSkeleton />
 				) : readerMode === "rsvp" ? (
-					<RsvpView
-						ref={rsvpViewRef}
-						content={content}
-						initialByteOffset={rsvpInitOffset}
-						settings={rsvpSettings}
-						fontSize={readerFontSize}
-						onPositionChange={handleRsvpPositionChange}
-						onFinished={handleRsvpFinished}
-						onWpmChange={handleRsvpWpmChange}
-						onLookup={handleRsvpLookup}
-					/>
+					<>
+						<ReaderContextBroadcast
+							bookTitle={book?.title ?? null}
+							bookAuthor={book?.author ?? null}
+							chapterTitle={chapters[currentChapterIndex]?.title ?? null}
+							chapterIndex={currentChapterIndex}
+							totalChapters={chapters.length}
+							progressBytes={progressOffset}
+							totalBytes={book?.size ?? 0}
+							focalColor={rsvpSettings.focalLetterColor}
+						/>
+						<RsvpView
+							ref={rsvpViewRef}
+							content={content}
+							initialByteOffset={rsvpInitOffset}
+							settings={rsvpSettings}
+							fontSize={readerFontSize}
+							onPositionChange={handleRsvpPositionChange}
+							onFinished={handleRsvpFinished}
+							onWpmChange={handleRsvpWpmChange}
+							onLookup={handleRsvpLookup}
+						/>
+					</>
 				) : paginationStyle === "page" ? (
 					<PageView
 						ref={scrollViewRef}

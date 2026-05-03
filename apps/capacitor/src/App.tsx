@@ -20,24 +20,8 @@ import type React from "react";
 import { lazy, Suspense, useEffect } from "react";
 import { Redirect, Route, useLocation } from "react-router-dom";
 
-/* Core CSS required for Ionic components to work properly */
-import "@ionic/react/css/core.css";
-
-/* Basic CSS for apps built with Ionic */
-import "@ionic/react/css/normalize.css";
-import "@ionic/react/css/structure.css";
-import "@ionic/react/css/typography.css";
-
-/* Optional CSS utils that can be commented out */
-import "@ionic/react/css/padding.css";
-import "@ionic/react/css/float-elements.css";
-import "@ionic/react/css/text-alignment.css";
-import "@ionic/react/css/text-transformation.css";
-import "@ionic/react/css/flex-utils.css";
-import "@ionic/react/css/display.css";
-
-/* Monochrome theme */
-import "./theme/monochrome.css";
+/* Ionic CSS lives in main.tsx so both the primary and secondary WebView entries
+ * pick it up — secondary reuses Ionic components (RsvpSettingsForm). */
 
 import DesktopSidebar from "./components/desktop-sidebar";
 import ShareIntentHandler from "./components/share-intent-handler";
@@ -67,7 +51,9 @@ import ExportSettings from "./pages/settings/export";
 import RSVPSettings from "./pages/settings/rsvp";
 import SyncSettings from "./pages/settings/sync";
 import { queryHooks } from "./services/db/hooks";
+import { tryEnableDualScreen } from "./services/dual-screen";
 import { queryClient } from "./services/query-client";
+import { SecondaryPublisher } from "./services/secondary-publisher";
 
 interface SlideAnimationOpts {
 	enteringEl: HTMLElement;
@@ -234,9 +220,11 @@ const RootRedirect: React.FC = () => {
 	return <Redirect to={settings.onboardingCompleted ? "/tabs/library" : "/onboarding"} />;
 };
 
+
 const App: React.FC = () => {
 	useEffect(() => {
 		SplashScreen.hide();
+		tryEnableDualScreen();
 	}, []);
 
 	return (
@@ -248,6 +236,7 @@ const App: React.FC = () => {
 							<BLEProvider>
 								<BookSyncProvider>
 									<IonReactRouter basename={BASENAME || undefined}>
+										<SecondaryPublisher />
 										<HardwareBackButtonHandler />
 										<ShareIntentHandler />
 										<Toaster />

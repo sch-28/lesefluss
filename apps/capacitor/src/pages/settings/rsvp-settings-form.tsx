@@ -29,6 +29,7 @@ import type React from "react";
 import { useState } from "react";
 import { ModeCards, READER_MODE_OPTIONS, WpmPresetChips } from "../../components/rsvp-pickers";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
+import type { Settings } from "../../services/db/schema";
 
 const CHIP_CONTAINER_STYLE: React.CSSProperties = { flex: 1, padding: "8px 0" };
 
