@@ -57,7 +57,7 @@ export function TopBooks({ now }: Props) {
 									{minutes}m
 								</div>
 							</div>
-							<div className="mt-2 px-0.5">
+							<div className="mt-2 px-0.5 text-[color:var(--ion-text-color)]">
 								<div className="line-clamp-1 font-medium text-sm">{b.title}</div>
 								{b.author && (
 									<div className="mt-0.5 line-clamp-1 text-[11px] opacity-60">{b.author}</div>

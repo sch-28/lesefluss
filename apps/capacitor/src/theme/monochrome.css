@@ -4104,3 +4104,34 @@ ion-modal.whats-new-modal {
 	border-color: var(--ion-color-primary, #000);
 	color: var(--ion-color-primary-contrast, #fff);
 }
+
+/* ── Global: Apple-style overlay scrollbars (web only) ──
+   Firefox already auto-hides; this brings Chromium in line:
+   transparent track, thin thumb that only appears on hover/scroll. */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: transparent transparent;
+}
+*:hover,
+*:focus-within {
+	scrollbar-color: rgba(128, 128, 128, 0.45) transparent;
+}
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background-color: transparent;
+	border-radius: 4px;
+	transition: background-color 0.2s ease;
+}
+:hover::-webkit-scrollbar-thumb,
+:focus-within::-webkit-scrollbar-thumb {
+	background-color: rgba(128, 128, 128, 0.45);
+}
+::-webkit-scrollbar-thumb:hover {
+	background-color: rgba(128, 128, 128, 0.7);
+}
