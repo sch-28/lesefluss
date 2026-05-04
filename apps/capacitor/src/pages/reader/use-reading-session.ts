@@ -8,11 +8,13 @@
  *   1. Armed on mount; only commits a row if the user actually progresses past
  *      the noise floor (>= 5s of active time AND >= 5 words read).
  *   2. Pauses on `document.visibilitychange === "hidden"`; resumes on visible.
- *   3. 60s without position progress flushes (idle detection, also catches
- *      RSVP pause since wordIndex stops advancing while paused).
- *   4. 5min heartbeat while active flushes + restarts so a crash loses <= 5min.
- *   5. bookId or mode change flushes the prior session, opens a new one.
- *   6. Unmount flushes.
+ *   3. 60s without position progress finalizes the row (idle detection, also
+ *      catches RSVP pause since wordIndex stops advancing while paused).
+ *   4. 5min heartbeat while active checkpoints (UPSERTs) the same row in place
+ *      so a crash loses <= 5min. The sitting stays one row regardless of
+ *      length, so aggregates like longestSessionMs reflect the true duration.
+ *   5. bookId or mode change finalizes the prior session, opens a new one.
+ *   6. Unmount finalizes.
  */
 
 import { useEffect, useRef } from "react";
@@ -66,6 +68,9 @@ type Args = {
 };
 
 type SessionState = {
+	/** Stable row id, generated once at session start. The 5min heartbeat
+	 * checkpoints (upserts) the same id so a sitting maps to one row. */
+	id: string;
 	bookId: string;
 	mode: ReadingSessionMode;
 	/** Pre-encoded UTF-8 bytes of the book content. Encoded once at session
@@ -76,6 +81,10 @@ type SessionState = {
 	startPos: number;
 	lastPos: number;
 	lastProgressAt: number;
+	/** Wall-clock ms of the last successful checkpoint write. Used to throttle
+	 * the heartbeat to one upsert per HEARTBEAT_MS of real time, since
+	 * accumulators are no longer reset between checkpoints. */
+	lastCheckpointAt: number;
 	accumulatedActiveMs: number;
 	/** Wall-clock ms when the current "active" period began. null = currently paused. */
 	activeSinceMs: number | null;
@@ -96,16 +105,17 @@ function wordsInBytes(bytes: Uint8Array, a: number, b: number): number {
 	return matches ? matches.length : 0;
 }
 
-function flush(session: SessionState | null): void {
-	if (!session) return;
-	const now = Date.now();
+/** Build the row to persist, or null when the session is still below the noise
+ * floor and shouldn't be written yet. Used by both checkpoint (in-place
+ * heartbeat) and flush (terminal end-of-sitting). */
+function buildRow(session: SessionState, now: number) {
 	const finalActiveMs =
 		session.accumulatedActiveMs +
 		(session.activeSinceMs !== null ? now - session.activeSinceMs : 0);
-	if (finalActiveMs < MIN_DURATION_MS) return;
-	const endPos = session.getPosition();
+	if (finalActiveMs < MIN_DURATION_MS) return null;
 	const wordsRead = session.wordsAccumulated;
-	if (wordsRead < MIN_WORDS) return;
+	if (wordsRead < MIN_WORDS) return null;
+	const endPos = session.getPosition();
 	// RSVP: store the dial setting (the engine's effective rate is lower due
 	// to punctuation/accel; users want to see what they configured).
 	// Scroll/page: store the delivered rate, capped at SANE_WPM_CEILING to
@@ -116,20 +126,25 @@ function flush(session: SessionState | null): void {
 		session.mode !== "rsvp" && computedWpm != null && computedWpm > SANE_WPM_CEILING;
 	const wpmAvg =
 		session.mode === "rsvp" ? (session.wpmSetting ?? null) : wasCapped ? null : computedWpm;
+	return {
+		id: session.id,
+		bookId: session.bookId,
+		mode: session.mode,
+		startedAt: session.startedAt,
+		endedAt: now,
+		durationMs: finalActiveMs,
+		wordsRead,
+		startPos: session.startPos,
+		endPos,
+		wpmAvg,
+		updatedAt: now,
+	};
+}
+
+function persistRow(row: ReturnType<typeof buildRow>, label: string): void {
+	if (!row) return;
 	queries
-		.addReadingSession({
-			id: randomHexId(),
-			bookId: session.bookId,
-			mode: session.mode,
-			startedAt: session.startedAt,
-			endedAt: now,
-			durationMs: finalActiveMs,
-			wordsRead,
-			startPos: session.startPos,
-			endPos,
-			wpmAvg,
-			updatedAt: now,
-		})
+		.upsertReadingSession(row)
 		.then(() => {
 			// Refresh anything that aggregates over reading_sessions: the global
 			// stats page, the per-book card, and the library sort/progress data
@@ -138,7 +153,22 @@ function flush(session: SessionState | null): void {
 			queryClient.invalidateQueries({ queryKey: bookKeys.all });
 			scheduleSyncPush(2000);
 		})
-		.catch((err) => log.error("reading-session", "flush failed:", err));
+		.catch((err) => log.error("reading-session", `${label} failed:`, err));
+}
+
+/** In-place checkpoint: writes the current state of the sitting under the
+ * stable session id and keeps the session running. Crash safety without
+ * fragmenting a long sitting into many rows. */
+function checkpoint(session: SessionState | null): void {
+	if (!session) return;
+	persistRow(buildRow(session, Date.now()), "checkpoint");
+}
+
+/** Terminal write at the natural end of a sitting. The caller is responsible
+ * for clearing `sessionRef` after this returns. */
+function flush(session: SessionState | null): void {
+	if (!session) return;
+	persistRow(buildRow(session, Date.now()), "flush");
 }
 
 function startSession(args: {
@@ -151,6 +181,7 @@ function startSession(args: {
 	const now = Date.now();
 	const pos = args.getPosition();
 	return {
+		id: randomHexId(),
 		bookId: args.bookId,
 		mode: args.mode,
 		contentBytes: new TextEncoder().encode(args.content),
@@ -159,6 +190,7 @@ function startSession(args: {
 		startPos: pos,
 		lastPos: pos,
 		lastProgressAt: now,
+		lastCheckpointAt: now,
 		accumulatedActiveMs: 0,
 		activeSinceMs: now,
 		wpmSetting: args.wpmSetting,
@@ -259,19 +291,9 @@ export function useReadingSession({
 				sessionRef.current = null;
 				return;
 			}
-			const totalActive =
-				s.accumulatedActiveMs + (s.activeSinceMs !== null ? now - s.activeSinceMs : 0);
-			if (totalActive > HEARTBEAT_MS) {
-				flush(s);
-				sessionRef.current = isActiveRef.current
-					? startSession({
-							bookId: argsRef.current.bookId,
-							mode: argsRef.current.mode,
-							content: argsRef.current.content,
-							getPosition: argsRef.current.getPosition,
-							wpmSetting: argsRef.current.wpmSetting ?? null,
-						})
-					: null;
+			if (now - s.lastCheckpointAt > HEARTBEAT_MS) {
+				checkpoint(s);
+				s.lastCheckpointAt = now;
 			}
 		}, POLL_MS);
 		return () => clearInterval(interval);

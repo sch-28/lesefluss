@@ -4,7 +4,7 @@ title: 'Reading sessions: schema, tracking, sync wire'
 status: Done
 assignee: []
 created_date: '2026-04-30 23:30'
-updated_date: '2026-05-01 15:36'
+updated_date: '2026-05-04 10:58'
 labels: []
 milestone: m-5
 dependencies: []
@@ -77,3 +77,9 @@ A `useReadingSession({ bookId, mode })` hook in `apps/capacitor/src/hooks/` (or 
 - [x] #6 ESP32 reading does NOT create session rows
 - [x] #7 Manual end-to-end test: read a book on two devices signed into the same account; session rows from device A appear on device B after sync
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Heartbeat semantics later changed in TASK-129: the 5-min heartbeat now checkpoints (UPSERTs) the same row in place instead of flushing + starting a new one. A sitting maps to one `reading_sessions` row regardless of length.
+<!-- SECTION:NOTES:END -->
