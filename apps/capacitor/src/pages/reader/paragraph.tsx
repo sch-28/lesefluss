@@ -137,7 +137,9 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		for (let i = 0; i < tokens.length; i++) {
 			const token = tokens[i];
 			const tokenOffset = startOffset + localByteOffset;
-			localByteOffset += utf8ByteLength(token);
+			const tokenByteLen = utf8ByteLength(token);
+			localByteOffset += tokenByteLen;
+			const tokenByteEnd = tokenOffset + tokenByteLen;
 
 			const isSpace = /^\s+$/.test(token);
 
@@ -167,8 +169,11 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			// preserved on the words themselves.
 			let glossaryAvatar: { label: string; color: string } | null = null;
 			if (glossaryRanges && !isSpace) {
+				// Range may start mid-token when the term is glued to leading
+				// punctuation (e.g. `"Problem`), so we accept any range whose start
+				// falls within this token's byte span.
 				for (const g of glossaryRanges) {
-					if (tokenOffset === g.startOffset && !g.hideMarker) {
+					if (g.startOffset >= tokenOffset && g.startOffset < tokenByteEnd && !g.hideMarker) {
 						glossaryAvatar = { label: g.label, color: g.color };
 						break;
 					}
@@ -253,20 +258,30 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 						}
 					: undefined;
 
+			let wordChildren: React.ReactNode = token;
 			if (glossaryAvatar) {
-				spans.push(
-					<span
-						key={`g-${i}`}
-						className="glossary-inline-avatar"
-						style={{ background: glossaryAvatar.color }}
-						aria-hidden="true"
-					>
-						{(glossaryAvatar.label.trim()[0] ?? "?").toUpperCase()}
-					</span>,
+				// If the term is glued to leading punctuation (e.g. `"Problem`), split
+				// the token so the avatar lands directly before the matched label
+				// rather than before the punctuation.
+				const matchIdx = token.toLowerCase().indexOf(glossaryAvatar.label.toLowerCase());
+				const prefix = matchIdx > 0 ? token.slice(0, matchIdx) : "";
+				const rest = matchIdx > 0 ? token.slice(matchIdx) : token;
+				wordChildren = (
+					<>
+						{prefix}
+						<span
+							className="glossary-inline-avatar"
+							style={{ background: glossaryAvatar.color }}
+							aria-hidden="true"
+						>
+							{(glossaryAvatar.label.trim()[0] ?? "?").toUpperCase()}
+						</span>
+						{rest}
+					</>
 				);
 			}
 
-			spans.push(
+			const wordSpan = (
 				<span
 					key={i}
 					data-offset={tokenOffset}
@@ -274,9 +289,20 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 					onClick={() => onWordTap(tokenOffset, token)}
 					onPointerDown={handlePointerDown}
 				>
-					{token}
-				</span>,
+					{wordChildren}
+				</span>
 			);
+
+			if (glossaryAvatar) {
+				// nowrap keeps prefix + avatar + matched word on the same line.
+				spans.push(
+					<span key={`gg-${i}`} className="glossary-marker-group">
+						{wordSpan}
+					</span>,
+				);
+			} else {
+				spans.push(wordSpan);
+			}
 		}
 
 		return <p className="reader-paragraph">{spans}</p>;

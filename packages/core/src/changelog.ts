@@ -9,6 +9,17 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-05-08",
+		title: "Play Store Launch",
+		tags: ["App"],
+		changes: [
+			"First public Play Store release",
+			"Glossary marker no longer gets stranded at the end of a line while its term wraps to the next",
+			"Glossary terms with surrounding punctuation or quotes (e.g. \"Problem\", Harmony.) are now matched and marked",
+			"Adding a glossary entry from a selection like \"pause.\" automatically strips surrounding punctuation",
+		],
+	},
+	{
 		date: "2026-05-03",
 		title: "Stats Polish",
 		tags: ["App"],

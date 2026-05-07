@@ -28,6 +28,21 @@ export interface GlossaryRange {
 
 const _encoder = new TextEncoder();
 
+const WORD_CHAR = "[\\p{L}\\p{N}_]";
+
+/**
+ * Build a label-matching regex with lookaround "word boundaries" that work
+ * even when the label's first or last character is itself non-word
+ * (e.g. labels containing literal quotes or trailing punctuation). `\b` would
+ * silently fail in those cases.
+ */
+function buildLabelRegex(escapedAlternation: string, flags: string): RegExp {
+	return new RegExp(
+		`(?<!${WORD_CHAR})(?:${escapedAlternation})(?!${WORD_CHAR})`,
+		`${flags}u`,
+	);
+}
+
 /** Convert a UTF-16 character index in `text` to its UTF-8 byte offset. */
 function charIndexToByteOffset(text: string, charIdx: number): number {
 	if (charIdx <= 0) return 0;
@@ -54,16 +69,20 @@ export function useGlossaryDecorations({
 		if (entries.length === 0 || paragraphs.length === 0) return empty;
 
 		// Build a single alternation regex; group N corresponds to entries[N].
-		const usable = entries.filter((e) => e.label.trim().length > 0);
+		// Trim labels: stray whitespace stored on older entries would otherwise
+		// bake into the regex and prevent matches.
+		const usable = entries
+			.map((e) => ({ entry: e, label: e.label.trim() }))
+			.filter((x) => x.label.length > 0);
 		if (usable.length === 0) return empty;
-		const re = new RegExp(`\\b(?:${usable.map((e) => escapeRegex(e.label)).join("|")})\\b`, "gi");
+		const re = buildLabelRegex(usable.map((x) => escapeRegex(x.label)).join("|"), "gi");
 
 		// Lookup from lower-cased label → all entries with that label.
 		// Multiple entries can share a label (e.g. one global + one book-scoped); we
 		// emit a range per entry so highlights and tap targets don't silently collapse.
 		const byLowerLabel = new Map<string, GlossaryEntry[]>();
-		for (const e of usable) {
-			const key = e.label.toLowerCase();
+		for (const { entry: e, label } of usable) {
+			const key = label.toLowerCase();
 			const arr = byLowerLabel.get(key);
 			if (arr) arr.push(e);
 			else byLowerLabel.set(key, [e]);
@@ -113,7 +132,7 @@ export function findFirstMention(
 	paragraphOffsets: number[],
 ): number | null {
 	if (!label.trim()) return null;
-	const re = new RegExp(`\\b${escapeRegex(label)}\\b`, "i");
+	const re = buildLabelRegex(escapeRegex(label), "i");
 	for (let i = 0; i < paragraphs.length; i++) {
 		const m = re.exec(paragraphs[i]);
 		if (m) {
@@ -133,7 +152,7 @@ export function getMentionContext(
 	contextChars = 60,
 ): { before: string; match: string; after: string } | null {
 	if (!label.trim()) return null;
-	const re = new RegExp(`\\b${escapeRegex(label)}\\b`, "i");
+	const re = buildLabelRegex(escapeRegex(label), "i");
 	for (const para of paragraphs) {
 		const m = re.exec(para);
 		if (!m) continue;
@@ -165,7 +184,7 @@ export function findNextMention(
 	paragraphOffsets: number[],
 ): number | null {
 	if (!label.trim()) return null;
-	const re = new RegExp(`\\b${escapeRegex(label)}\\b`, "gi");
+	const re = buildLabelRegex(escapeRegex(label), "gi");
 	for (let i = 0; i < paragraphs.length; i++) {
 		const paraOffset = paragraphOffsets[i] ?? 0;
 		re.lastIndex = 0;

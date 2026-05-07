@@ -78,7 +78,7 @@ import { ChapterStateOverlay } from "./chapter-state-overlay";
 import DictionaryModal from "./dictionary-modal";
 import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
-import { generateGlossaryId } from "./glossary-utils";
+import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
 import HighlightModal from "./highlight-modal";
 import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
@@ -526,7 +526,9 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	// dedupe/create rules stay in lockstep.
 	const findOrCreateGlossary = useCallback(
 		(snippet: string) => {
-			const trimmed = snippet.trim();
+			// Strip surrounding punctuation so a selection like "pause." or `"Harmony"`
+			// becomes the clean label "pause" / "Harmony".
+			const trimmed = normalizeGlossaryLabel(snippet);
 			if (!trimmed) return;
 			const existing = glossaryEntries.find((e) => e.label.toLowerCase() === trimmed.toLowerCase());
 			if (existing) {

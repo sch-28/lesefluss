@@ -1653,6 +1653,13 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 
 /* ─── Glossary inline underline ──────────────────────────────────────────── */
 
+.glossary-marker-group {
+	/* Keeps the inline avatar and the first word of a glossary term on the
+	 * same line. The preceding whitespace is outside this group, so normal
+	 * wrapping at the previous word boundary still works. */
+	white-space: nowrap;
+}
+
 .glossary-inline-avatar {
 	display: inline-flex;
 	align-items: center;
