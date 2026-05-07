@@ -31,7 +31,6 @@ import { Route as AuthExtensionCallbackRouteImport } from './routes/auth/extensi
 import { Route as AppSplatRouteImport } from './routes/app/$'
 import { Route as ApiSyncRouteImport } from './routes/api/sync'
 import { Route as ApiFeedbackRouteImport } from './routes/api/feedback'
-import { Route as ApiBetaRequestRouteImport } from './routes/api/beta-request'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
@@ -149,11 +148,6 @@ const ApiFeedbackRoute = ApiFeedbackRouteImport.update({
   path: '/api/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiBetaRequestRoute = ApiBetaRequestRouteImport.update({
-  id: '/api/beta-request',
-  path: '/api/beta-request',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedProfileIndexRoute =
   AuthenticatedProfileIndexRouteImport.update({
     id: '/profile/',
@@ -197,7 +191,6 @@ export interface FileRoutesByFullPath {
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/api/beta-request': typeof ApiBetaRequestRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
   '/app/$': typeof AppSplatRoute
@@ -228,7 +221,6 @@ export interface FileRoutesByTo {
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/api/beta-request': typeof ApiBetaRequestRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
   '/app/$': typeof AppSplatRoute
@@ -261,7 +253,6 @@ export interface FileRoutesById {
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/api/beta-request': typeof ApiBetaRequestRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
   '/app/$': typeof AppSplatRoute
@@ -294,7 +285,6 @@ export interface FileRouteTypes {
     | '/customScript.js'
     | '/robots.txt'
     | '/sitemap.xml'
-    | '/api/beta-request'
     | '/api/feedback'
     | '/api/sync'
     | '/app/$'
@@ -325,7 +315,6 @@ export interface FileRouteTypes {
     | '/customScript.js'
     | '/robots.txt'
     | '/sitemap.xml'
-    | '/api/beta-request'
     | '/api/feedback'
     | '/api/sync'
     | '/app/$'
@@ -357,7 +346,6 @@ export interface FileRouteTypes {
     | '/customScript.js'
     | '/robots.txt'
     | '/sitemap.xml'
-    | '/api/beta-request'
     | '/api/feedback'
     | '/api/sync'
     | '/app/$'
@@ -390,7 +378,6 @@ export interface RootRouteChildren {
   CustomScriptDotjsRoute: typeof CustomScriptDotjsRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
-  ApiBetaRequestRoute: typeof ApiBetaRequestRoute
   ApiFeedbackRoute: typeof ApiFeedbackRoute
   ApiSyncRoute: typeof ApiSyncRouteWithChildren
   AppSplatRoute: typeof AppSplatRoute
@@ -568,13 +555,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFeedbackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/beta-request': {
-      id: '/api/beta-request'
-      path: '/api/beta-request'
-      fullPath: '/api/beta-request'
-      preLoaderRoute: typeof ApiBetaRequestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/profile/': {
       id: '/_authenticated/profile/'
       path: '/profile'
@@ -661,7 +641,6 @@ const rootRouteChildren: RootRouteChildren = {
   CustomScriptDotjsRoute: CustomScriptDotjsRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
-  ApiBetaRequestRoute: ApiBetaRequestRoute,
   ApiFeedbackRoute: ApiFeedbackRoute,
   ApiSyncRoute: ApiSyncRouteWithChildren,
   AppSplatRoute: AppSplatRoute,

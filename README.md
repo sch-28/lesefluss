@@ -12,7 +12,13 @@ time in a fixed spot so you can read without moving your eyes. The app also
 includes a regular scroll reader, making it easy to switch between fast focused
 reading and a calmer long-form reading mode.
 
-[Website](https://lesefluss.app) · [Docs and build guide](https://lesefluss.app/docs)
+[Website](https://lesefluss.app) · [Docs and build guide](https://lesefluss.app/docs) · [Google Play](https://play.google.com/store/apps/details?id=app.lesefluss) · [Chrome](https://chromewebstore.google.com/detail/lesefluss/pkiibeadmochdpmbbpmjaoogmcgocnho) · [Firefox](https://addons.mozilla.org/en-US/firefox/addon/lesefluss/)
+
+## Install
+
+- **Android app**: [Google Play](https://play.google.com/store/apps/details?id=app.lesefluss), or sideload the APK from [GitHub releases](https://github.com/sch-28/lesefluss/releases/latest).
+- **Browser extension**: [Chrome Web Store](https://chromewebstore.google.com/detail/lesefluss/pkiibeadmochdpmbbpmjaoogmcgocnho) or [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/lesefluss/). Sends the current article into your library with one click.
+- **Web app**: open [lesefluss.app](https://lesefluss.app) and sign in.
 
 ## Features
 
