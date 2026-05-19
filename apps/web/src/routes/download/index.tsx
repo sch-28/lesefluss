@@ -1,13 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-	Bluetooth,
-	BookMarked,
-	BookOpen,
-	Globe,
-	Highlighter,
-	Library,
-	Zap,
-} from "lucide-react";
+import { Bluetooth, BookMarked, BookOpen, Globe, Highlighter, Library, Zap } from "lucide-react";
 import { FeatureCard } from "~/components/feature-card";
 import { GooglePlayIcon } from "~/components/icons/google-play";
 import { StatCard } from "~/components/stat-card";

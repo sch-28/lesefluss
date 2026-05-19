@@ -15,8 +15,8 @@ export const changelog: ChangelogEntry[] = [
 		changes: [
 			"First public Play Store release",
 			"Glossary marker no longer gets stranded at the end of a line while its term wraps to the next",
-			"Glossary terms with surrounding punctuation or quotes (e.g. \"Problem\", Harmony.) are now matched and marked",
-			"Adding a glossary entry from a selection like \"pause.\" automatically strips surrounding punctuation",
+			'Glossary terms with surrounding punctuation or quotes (e.g. "Problem", Harmony.) are now matched and marked',
+			'Adding a glossary entry from a selection like "pause." automatically strips surrounding punctuation',
 		],
 	},
 	{

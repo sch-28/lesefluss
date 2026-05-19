@@ -416,12 +416,19 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	const { isSelecting, syncHandlesRef } = sel;
 	const { isScrubbingRef } = scrub;
 
+	// Forward-declared activity callback. `useReadingSession` (called later in
+	// the component) assigns into this ref so handlers above the hook can call
+	// it without circular reference. Stays null until the hook mounts; safely
+	// noop during the first render.
+	const markActivityRef = useRef<(() => void) | null>(null);
+
 	const handleScrollPositionSettle = useCallback(
 		(offset: number) => {
 			setActiveOffset(offset);
 			setProgressOffset(offset);
 			lastOffsetRef.current = offset;
 			savePosition(offset);
+			markActivityRef.current?.();
 			// 32-byte tolerance for word-boundary settles. The `size > 32` guard
 			// avoids firing on freshly-fetched chapters whose `size` momentarily
 			// reads 0. No-op for non-serials inside `tryAdvance` itself.
@@ -437,9 +444,15 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	}, []);
 
 	const handleScrollHideProgressBar = useCallback(() => setProgressBarVisible(false), []);
-	const handleScrollShowProgressBar = useCallback(() => setProgressBarVisible(true), []);
+	const handleScrollShowProgressBar = useCallback(() => {
+		setProgressBarVisible(true);
+		markActivityRef.current?.();
+	}, []);
 	const handleSetActiveOffset = useCallback((offset: number) => setActiveOffset(offset), []);
-	const handleSetProgressOffset = useCallback((offset: number) => setProgressOffset(offset), []);
+	const handleSetProgressOffset = useCallback((offset: number) => {
+		setProgressOffset(offset);
+		markActivityRef.current?.();
+	}, []);
 
 	const syncSelectionHandles = useCallback(() => {
 		syncHandlesRef.current();
@@ -766,6 +779,7 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 			setProgressOffset(byteOffset);
 			lastOffsetRef.current = byteOffset;
 			savePosition(byteOffset, { scheduleSync: false });
+			markActivityRef.current?.();
 		},
 		[savePosition],
 	);
@@ -881,20 +895,24 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 	});
 
 	// ── Reading session tracking ──────────────────────────────────────────
-	// `isActive` here means "data loaded and reader is on screen". Real activity
-	// detection (visibility, RSVP pause via no-progress idle, 60s timeout) is
-	// handled inside the hook, so we can pass a coarse-grained signal here.
+	// `isReading` is the coarse "reader page is mounted with content". The
+	// hook subscribes visibility + Capacitor App state itself for pause/resume;
+	// `markActivity` is fed from scroll/page/RSVP callbacks so long-paragraph
+	// reading (no position change for minutes) doesn't trigger spurious idle.
 	const sessionMode: ReadingSessionMode =
 		readerMode === "rsvp" ? "rsvp" : paginationStyle === "page" ? "page" : "scroll";
 	const getReadingPosition = useCallback(() => lastOffsetRef.current ?? 0, []);
-	useReadingSession({
+	const { markActivity: markReadingActivity } = useReadingSession({
 		bookId: id,
 		mode: sessionMode,
-		isActive: !!content && lastOffsetRef.current !== null,
+		isReading: !!content && lastOffsetRef.current !== null,
 		getPosition: getReadingPosition,
 		content: content ?? "",
 		wpmSetting: rsvpSettings.wpm,
 	});
+	useEffect(() => {
+		markActivityRef.current = markReadingActivity;
+	}, [markReadingActivity]);
 
 	// ── Hide tab bar while reader is mounted ──────────────────────────────
 	// Ionic's shadow DOM toggles tab-bar-hidden on keyboard show/hide, and

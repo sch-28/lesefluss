@@ -37,10 +37,7 @@ const WORD_CHAR = "[\\p{L}\\p{N}_]";
  * silently fail in those cases.
  */
 function buildLabelRegex(escapedAlternation: string, flags: string): RegExp {
-	return new RegExp(
-		`(?<!${WORD_CHAR})(?:${escapedAlternation})(?!${WORD_CHAR})`,
-		`${flags}u`,
-	);
+	return new RegExp(`(?<!${WORD_CHAR})(?:${escapedAlternation})(?!${WORD_CHAR})`, `${flags}u`);
 }
 
 /** Convert a UTF-16 character index in `text` to its UTF-8 byte offset. */

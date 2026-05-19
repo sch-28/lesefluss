@@ -177,16 +177,12 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 					<div className="truncate text-sm">
 						{showBook ? (book?.title ?? "Unknown book") : dateLabel}
 					</div>
-					{showBook && (
-						<div className="mt-0.5 truncate text-[0.75rem] opacity-60">{dateLabel}</div>
-					)}
+					{showBook && <div className="mt-0.5 truncate text-[0.75rem] opacity-60">{dateLabel}</div>}
 				</div>
 				<div className="shrink-0 text-right text-xs tabular-nums opacity-80">
 					<div>
 						{formatDuration(session.durationMs)}
-						{session.wpmAvg != null && (
-							<span className="opacity-70"> · {session.wpmAvg} wpm</span>
-						)}
+						{session.wpmAvg != null && <span className="opacity-70"> · {session.wpmAvg} wpm</span>}
 					</div>
 					{deltaPct !== null && (
 						<div className="opacity-60">
