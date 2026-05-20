@@ -1,6 +1,5 @@
-import { IonIcon } from "@ionic/react";
 import { motion } from "framer-motion";
-import { bookOutline } from "ionicons/icons";
+import { BookOpen } from "lucide-react";
 
 export function EmptyState() {
 	return (
@@ -11,12 +10,12 @@ export function EmptyState() {
 					opacity: [0.6, 0.9, 0.6],
 				}}
 				transition={{ duration: 2.4, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-				className="mb-6 grid h-20 w-20 place-items-center rounded-full bg-current/5"
+				className="mb-6 grid h-20 w-20 place-items-center rounded-full bg-muted"
 			>
-				<IonIcon icon={bookOutline} className="text-4xl opacity-70" />
+				<BookOpen className="size-10 text-muted-foreground" />
 			</motion.div>
 			<h2 className="mb-2 font-semibold text-lg">No stats yet</h2>
-			<p className="max-w-xs text-sm opacity-70">
+			<p className="max-w-xs text-muted-foreground text-sm">
 				Read a book to start tracking your time, words, and streak.
 			</p>
 		</div>

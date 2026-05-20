@@ -21,7 +21,7 @@ import { ExploreWall } from "~/components/explore-wall";
 import { HeroRsvp } from "~/components/hero-rsvp";
 import { GooglePlayIcon } from "~/components/icons/google-play";
 import { RsvpPreview } from "~/components/rsvp-preview";
-import { Button } from "~/components/ui/button";
+import { Button } from "@lesefluss/ui/button";
 import { WebNovelsCarousel } from "~/components/web-novels-carousel";
 import { getCatalogCounts } from "~/lib/explore-covers";
 import { staticCovers } from "~/lib/static-covers";

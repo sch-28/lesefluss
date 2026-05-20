@@ -1,4 +1,4 @@
-import { Card, CardContent } from "~/components/ui/card";
+import { Card, CardContent } from "@lesefluss/ui/card";
 
 interface StatCardProps {
 	label: string;

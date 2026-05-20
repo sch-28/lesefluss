@@ -1,5 +1,7 @@
-import { IonSpinner } from "@ionic/react";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
+import { Check, Loader2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import CoverImage from "../../../components/cover-image";
@@ -29,7 +31,7 @@ const BooksStep: React.FC<Props> = ({ onNext, onImportingChange }) => {
 		enabled: CATALOG_ENABLED,
 	});
 
-	// If the catalog isn't configured for this build, skip the step immediately.
+	// Catalog not configured for this build → skip the step immediately.
 	useEffect(() => {
 		if (!CATALOG_ENABLED) onNext();
 	}, [onNext]);
@@ -44,7 +46,6 @@ const BooksStep: React.FC<Props> = ({ onNext, onImportingChange }) => {
 		onImportingChange?.(importing);
 	}, [importing, onImportingChange]);
 
-	// On unmount, signal the import loop to stop applying state updates.
 	useEffect(() => {
 		return () => {
 			cancelledRef.current = true;
@@ -87,28 +88,28 @@ const BooksStep: React.FC<Props> = ({ onNext, onImportingChange }) => {
 	};
 
 	const addLabel = importing
-		? `Adding… ${progress}%`
+		? `Adding... ${progress}%`
 		: selected.size
 			? `Add ${selected.size}`
 			: "Add";
 
 	return (
-		<div className="onboarding-step">
-			<h2 className="onboarding-step-title">Start with a classic</h2>
-			<p className="onboarding-step-sub">
+		<div>
+			<h2 className="font-semibold text-2xl tracking-tight">Start with a classic</h2>
+			<p className="mt-2 text-muted-foreground">
 				Tap any that catch your eye — we'll add them to your library. Optional.
 			</p>
 
 			{landingQuery.isPending ? (
-				<div className="onboarding-books-loading">
-					<IonSpinner />
+				<div className="mt-10 flex justify-center">
+					<Loader2 className="size-6 animate-spin text-muted-foreground" />
 				</div>
 			) : landingQuery.isError || classics.length === 0 ? (
-				<p className="onboarding-step-sub" style={{ opacity: 0.6 }}>
+				<p className="mt-8 text-muted-foreground/70 text-sm">
 					{landingQuery.isError ? "Couldn't reach the catalog." : "No classics available."}
 				</p>
 			) : (
-				<div className="onboarding-books-list">
+				<div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
 					{classics.map((b) => {
 						const isSelected = selected.has(b.id);
 						const cover = getCoverUrl(b.id, b.coverUrl);
@@ -116,21 +117,28 @@ const BooksStep: React.FC<Props> = ({ onNext, onImportingChange }) => {
 							<button
 								type="button"
 								key={b.id}
-								className={
-									isSelected
-										? "onboarding-book-card onboarding-book-card--selected"
-										: "onboarding-book-card"
-								}
 								onClick={() => toggle(b.id)}
 								disabled={importing}
 								aria-pressed={isSelected}
+								className={cn(
+									"flex flex-col gap-2 rounded-lg border-2 p-2 text-left transition-colors disabled:opacity-50",
+									isSelected
+										? "border-primary bg-primary/5"
+										: "border-border bg-card hover:border-muted-foreground/30",
+								)}
 							>
-								<div className="onboarding-book-cover">
+								<div className="relative aspect-[2/3] overflow-hidden rounded-md bg-muted">
 									<CoverImage src={cover} alt={b.title} />
-									{isSelected && <span className="onboarding-book-check">✓</span>}
+									{isSelected && (
+										<span className="absolute top-1 right-1 inline-flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+											<Check className="size-4" />
+										</span>
+									)}
 								</div>
-								<div className="onboarding-book-title">{b.title}</div>
-								{b.author && <div className="onboarding-book-author">{b.author}</div>}
+								<div className="font-medium text-foreground text-xs leading-tight">{b.title}</div>
+								{b.author && (
+									<div className="text-muted-foreground text-xs leading-tight">{b.author}</div>
+								)}
 							</button>
 						);
 					})}
@@ -139,34 +147,27 @@ const BooksStep: React.FC<Props> = ({ onNext, onImportingChange }) => {
 
 			{importing && (
 				<div
-					className="onboarding-books-progress"
+					className="mt-6 h-1.5 w-full overflow-hidden rounded-full bg-muted"
 					role="progressbar"
 					aria-label="Importing books"
 					aria-valuenow={progress}
 					aria-valuemin={0}
 					aria-valuemax={100}
 				>
-					<div className="onboarding-books-progress-bar" style={{ width: `${progress}%` }} />
+					<div
+						className="h-full bg-primary transition-[width]"
+						style={{ width: `${progress}%` }}
+					/>
 				</div>
 			)}
 
-			<div className="onboarding-actions">
-				<button
-					type="button"
-					className="onboarding-btn onboarding-btn--primary"
-					onClick={addSelected}
-					disabled={selected.size === 0 || importing}
-				>
+			<div className="mt-8 flex flex-col gap-3">
+				<Button size="lg" onClick={addSelected} disabled={selected.size === 0 || importing}>
 					{addLabel}
-				</button>
-				<button
-					type="button"
-					className="onboarding-btn onboarding-btn--primary"
-					onClick={onNext}
-					disabled={importing}
-				>
+				</Button>
+				<Button size="lg" variant="outline" onClick={onNext} disabled={importing}>
 					Skip
-				</button>
+				</Button>
 			</div>
 		</div>
 	);

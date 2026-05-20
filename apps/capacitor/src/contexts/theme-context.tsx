@@ -8,6 +8,11 @@ export type AppTheme = "dark" | "sepia" | "light";
 const VALID_THEMES: AppTheme[] = ["dark", "sepia", "light"];
 
 function applyAppearance(theme: AppTheme, appFontSize: number) {
+	// Apply to both: <html> so shadcn portals inherit, <body> so legacy Ionic
+	// CSS (monochrome.css uses `body.dark` selectors) still fires during the
+	// migration. Drop the body class once Ionic is fully removed.
+	document.documentElement.classList.remove(...VALID_THEMES);
+	document.documentElement.classList.add(theme);
 	document.body.classList.remove(...VALID_THEMES);
 	document.body.classList.add(theme);
 	document.documentElement.style.fontSize = `${appFontSize}px`;

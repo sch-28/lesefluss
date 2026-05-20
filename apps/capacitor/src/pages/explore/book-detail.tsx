@@ -1,9 +1,17 @@
-import { IonAlert } from "@ionic/react";
+import { useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { bookOutline, downloadOutline } from "ionicons/icons";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@lesefluss/ui/alert-dialog";
+import { BookOpen, Download } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { useHistory, useParams } from "react-router-dom";
 import { externalSourceUrl, getCatalogBook, getCoverUrl } from "../../services/catalog/client";
 import { importFromCatalog } from "../../services/catalog/import";
 import { catalogKeys } from "../../services/catalog/query-keys";
@@ -12,13 +20,15 @@ import { queries } from "../../services/db/queries";
 import { scheduleSyncPush } from "../../services/sync";
 import { DetailShell } from "../_shared/detail-shell";
 
-const ExploreBookDetail: React.FC = () => {
-	// react-router v5 doesn't decode path params, so SE ids arrive as
-	// `se%3Aauthor%2Ftitle`. Decode once here so every downstream call
-	// (DB lookup, catalog fetch, query keys) sees the canonical id.
-	const { catalogId: rawCatalogId } = useParams<{ catalogId: string }>();
-	const catalogId = decodeURIComponent(rawCatalogId);
-	const history = useHistory();
+interface Props {
+	catalogId?: string;
+}
+
+const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
+	// react-router v5 path params arrive URL-encoded. Decode once so every
+	// downstream call (DB lookup, catalog fetch, query keys) sees canonical id.
+	const catalogId = decodeURIComponent(propCatalogId ?? "");
+	const router = useRouter();
 	const qc = useQueryClient();
 	const [importProgress, setImportProgress] = useState(0);
 
@@ -30,11 +40,13 @@ const ExploreBookDetail: React.FC = () => {
 	} = useQuery({
 		queryKey: catalogKeys.book(catalogId),
 		queryFn: ({ signal }) => getCatalogBook(catalogId, signal),
+		enabled: !!catalogId,
 	});
 
 	const { data: existing } = useQuery({
 		queryKey: catalogKeys.localByCatalogId(catalogId),
 		queryFn: () => queries.getBookByCatalogId(catalogId),
+		enabled: !!catalogId,
 	});
 
 	const importMutation = useMutation({
@@ -44,7 +56,7 @@ const ExploreBookDetail: React.FC = () => {
 			qc.invalidateQueries({ queryKey: bookKeys.covers });
 			qc.invalidateQueries({ queryKey: catalogKeys.localByCatalogId(catalogId) });
 			if (!existed) scheduleSyncPush();
-			history.replace("/tabs/library");
+			router.navigate({ to: "/tabs/library", replace: true });
 		},
 		onSettled: () => setImportProgress(0),
 	});
@@ -57,7 +69,7 @@ const ExploreBookDetail: React.FC = () => {
 			<DetailShell
 				backHref="/tabs/explore"
 				cover={null}
-				title={isError && error instanceof Error ? "Couldn't load book" : "Loading…"}
+				title={isError && error instanceof Error ? "Couldn't load book" : "Loading..."}
 				primaryAction={{
 					label: "Loading",
 					onClick: () => undefined,
@@ -72,18 +84,21 @@ const ExploreBookDetail: React.FC = () => {
 		);
 	}
 
-	// Branch the primary action on whether the book is already in the library
-	// or whether a downloadable EPUB exists.
 	const primary = existing
 		? {
 				label: "Open in Library",
-				icon: bookOutline,
-				onClick: () => history.replace(`/tabs/library/book/${existing.id}`),
+				icon: BookOpen,
+				onClick: () =>
+					router.navigate({
+						to: "/tabs/library/book/$id",
+						params: { id: existing.id },
+						replace: true,
+					}),
 			}
 		: book.epubUrl
 			? {
-					label: isImporting ? "Downloading…" : "Download",
-					icon: downloadOutline,
+					label: isImporting ? "Downloading..." : "Download",
+					icon: Download,
 					onClick: () => importMutation.mutate(),
 					disabled: isImporting,
 					loading: isImporting,
@@ -108,14 +123,24 @@ const ExploreBookDetail: React.FC = () => {
 				externalLink={externalUrl ? { href: externalUrl } : undefined}
 				progress={isImporting ? importProgress : undefined}
 			/>
-			<IonAlert
-				isOpen={!!importMutation.error}
-				onDidDismiss={() => importMutation.reset()}
-				header="Download failed"
-				message={importMutation.error instanceof Error ? importMutation.error.message : undefined}
-				buttons={[{ text: "OK", role: "cancel" }]}
-				cssClass="rsvp-alert"
-			/>
+			<AlertDialog
+				open={!!importMutation.error}
+				onOpenChange={(open) => !open && importMutation.reset()}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Download failed</AlertDialogTitle>
+						<AlertDialogDescription>
+							{importMutation.error instanceof Error
+								? importMutation.error.message
+								: "An unknown error occurred."}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogAction onClick={() => importMutation.reset()}>OK</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	);
 };

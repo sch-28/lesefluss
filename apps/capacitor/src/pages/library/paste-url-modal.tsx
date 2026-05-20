@@ -1,18 +1,10 @@
-import {
-	IonButton,
-	IonButtons,
-	IonContent,
-	IonHeader,
-	IonInput,
-	IonModal,
-	IonNote,
-	IonSpinner,
-	IonTitle,
-	IonToolbar,
-} from "@ionic/react";
 import { isLikelyUrl, normalizeUrl } from "@lesefluss/book-import";
+import { Button } from "@lesefluss/ui/button";
+import { Input } from "@lesefluss/ui/input";
+import { Loader2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { Modal } from "../../components/modal";
 
 interface PasteUrlModalProps {
 	isOpen: boolean;
@@ -29,7 +21,6 @@ const PasteUrlModal: React.FC<PasteUrlModalProps> = ({
 }) => {
 	const [value, setValue] = useState("");
 
-	// Clear the field whenever the modal (re)opens.
 	useEffect(() => {
 		if (isOpen) setValue("");
 	}, [isOpen]);
@@ -42,49 +33,34 @@ const PasteUrlModal: React.FC<PasteUrlModalProps> = ({
 	};
 
 	return (
-		<IonModal isOpen={isOpen} onDidDismiss={onClose}>
-			<IonHeader className="ion-no-border">
-				<IonToolbar>
-					<IonTitle>Import from URL</IonTitle>
-					<IonButtons slot="end">
-						<IonButton onClick={onClose} disabled={isImporting}>
-							Cancel
-						</IonButton>
-					</IonButtons>
-				</IonToolbar>
-			</IonHeader>
-			<IonContent className="ion-padding">
-				<IonInput
-					label="Article or web novel URL"
-					labelPlacement="stacked"
-					type="url"
-					inputmode="url"
-					autocapitalize="off"
-					autocorrect="off"
-					spellcheck={false}
-					placeholder="https://www.royalroad.com/fiction/..."
-					value={value}
-					onIonInput={(e) => setValue(String(e.detail.value ?? ""))}
-					onKeyDown={(e) => {
-						if (e.key === "Enter") handleSubmit();
-					}}
-					clearInput
-					disabled={isImporting}
-				/>
-				<IonNote className="ion-margin-top block">
-					Paste an article link or a supported web novel URL from Royal Road, ScribbleHub, Archive
-					of Our Own, or Wuxiaworld.
-				</IonNote>
-				<IonButton
-					expand="block"
-					className="ion-margin-top"
-					disabled={!canSubmit}
-					onClick={handleSubmit}
-				>
-					{isImporting ? <IonSpinner name="crescent" /> : "Import"}
-				</IonButton>
-			</IonContent>
-		</IonModal>
+		<Modal
+			open={isOpen}
+			onOpenChange={(open) => {
+				if (!open) onClose();
+			}}
+			title="Import from URL"
+			description="Paste an article link or a supported web novel URL from Royal Road, ScribbleHub, Archive of Our Own, or Wuxiaworld."
+			dismissable={!isImporting}
+		>
+			<Input
+				type="url"
+				inputMode="url"
+				autoCapitalize="off"
+				autoCorrect="off"
+				spellCheck={false}
+				placeholder="https://www.royalroad.com/fiction/..."
+				value={value}
+				onChange={(e) => setValue(e.target.value)}
+				onKeyDown={(e) => {
+					if (e.key === "Enter") handleSubmit();
+				}}
+				disabled={isImporting}
+			/>
+			<Button onClick={handleSubmit} disabled={!canSubmit} className="w-full">
+				{isImporting ? <Loader2 className="animate-spin" /> : null}
+				{isImporting ? "Importing..." : "Import"}
+			</Button>
+		</Modal>
 	);
 };
 

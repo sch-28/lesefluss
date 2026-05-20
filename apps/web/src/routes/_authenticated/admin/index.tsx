@@ -22,9 +22,9 @@ import {
 	Users,
 } from "lucide-react";
 import * as React from "react";
-import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
-import { Separator } from "~/components/ui/separator";
+import { Badge } from "@lesefluss/ui/badge";
+import { Button } from "@lesefluss/ui/button";
+import { Separator } from "@lesefluss/ui/separator";
 import {
 	type CatalogStatsResult,
 	type CatalogSyncSource,
@@ -40,7 +40,7 @@ import {
 	hardDeleteAdminTombstones,
 	triggerCatalogSync,
 } from "~/lib/admin";
-import { cn } from "~/lib/utils";
+import { cn } from "@lesefluss/ui/utils";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/_authenticated/admin/")({

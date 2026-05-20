@@ -1,10 +1,19 @@
-import { IonAlert } from "@ionic/react";
 import { displayHostname } from "@lesefluss/book-import";
+import { useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { bookOutline, hardwareChipOutline, trashOutline } from "ionicons/icons";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@lesefluss/ui/alert-dialog";
+import { BookOpen, Cpu, Trash2 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
-import { useHistory, useParams } from "react-router-dom";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { externalSourceUrl, getCatalogBook, getCoverUrl } from "../../services/catalog/client";
@@ -19,9 +28,13 @@ import { SessionTable } from "./session-table";
 import { readingProgress } from "./sort-filter";
 import TransferModal from "./transfer-modal";
 
-const LibraryBookDetail: React.FC = () => {
-	const { id } = useParams<{ id: string }>();
-	const history = useHistory();
+interface Props {
+	id?: string;
+}
+
+const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
+	const id = propId ?? "";
+	const router = useRouter();
 	const { isConnected } = useBLE();
 	const { activeBookId, isTransferring } = useBookSync();
 
@@ -45,13 +58,12 @@ const LibraryBookDetail: React.FC = () => {
 	const [isTransferOpen, setIsTransferOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-	// Must run unconditionally on every render to keep hook order stable.
-	// The early returns below would otherwise skip it on the first render and
-	// invoke it on the second, tripping React error #310.
+	// Hoisted so hook order stays stable across the early returns below
+	// (otherwise React error #310 on the first→second render transition).
 	const deleteHeaderAction = useMemo(
 		() => ({
 			label: "Delete",
-			icon: trashOutline,
+			icon: Trash2,
 			destructive: true,
 			onClick: () => setIsDeleteOpen(true),
 		}),
@@ -62,7 +74,7 @@ const LibraryBookDetail: React.FC = () => {
 		return (
 			<DetailShell
 				cover={null}
-				title="Loading…"
+				title="Loading..."
 				primaryAction={{ label: "Loading", onClick: () => undefined, disabled: true }}
 				isLoading
 			/>
@@ -76,7 +88,7 @@ const LibraryBookDetail: React.FC = () => {
 				title="Book not found"
 				primaryAction={{
 					label: "Back to library",
-					onClick: () => history.replace("/tabs/library"),
+					onClick: () => router.navigate({ to: "/tabs/library", replace: true }),
 				}}
 				errorMessage="Book not found."
 			/>
@@ -115,7 +127,7 @@ const LibraryBookDetail: React.FC = () => {
 			{isActive && (
 				<>
 					<span>·</span>
-					<span className="book-detail-stat-active">On device</span>
+					<span className="text-primary">On device</span>
 				</>
 			)}
 		</>
@@ -125,7 +137,7 @@ const LibraryBookDetail: React.FC = () => {
 		? [
 				{
 					label: isConnected ? "Set active on device" : "Device not connected",
-					icon: hardwareChipOutline,
+					icon: Cpu,
 					onClick: () => setIsTransferOpen(true),
 					disabled: !isConnected || isTransferring,
 				},
@@ -143,8 +155,9 @@ const LibraryBookDetail: React.FC = () => {
 				subjects={catalogMeta?.subjects ?? undefined}
 				primaryAction={{
 					label: "Open reader",
-					icon: bookOutline,
-					onClick: () => history.push(`/tabs/reader/${book.id}`),
+					icon: BookOpen,
+					onClick: () =>
+						router.navigate({ to: "/tabs/reader/$id", params: { id: book.id } }),
 				}}
 				secondaryActions={secondaryActions}
 				description={
@@ -166,25 +179,30 @@ const LibraryBookDetail: React.FC = () => {
 				/>
 			)}
 
-			<IonAlert
-				isOpen={isDeleteOpen}
-				onDidDismiss={() => setIsDeleteOpen(false)}
-				header="Delete book?"
-				message={`"${book.title}" will be removed from your library.`}
-				buttons={[
-					{ text: "Cancel", role: "cancel" },
-					{
-						text: "Delete",
-						role: "destructive",
-						handler: () => {
-							deleteMutation.mutate(book, {
-								onSuccess: () => history.replace("/tabs/library"),
-							});
-						},
-					},
-				]}
-				cssClass="rsvp-alert"
-			/>
+			<AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete book?</AlertDialogTitle>
+						<AlertDialogDescription>
+							"{book.title}" will be removed from your library.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							onClick={() => {
+								deleteMutation.mutate(book, {
+									onSuccess: () =>
+										router.navigate({ to: "/tabs/library", replace: true }),
+								});
+							}}
+						>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	);
 };

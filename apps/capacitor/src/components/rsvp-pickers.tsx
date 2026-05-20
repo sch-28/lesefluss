@@ -4,9 +4,10 @@
  * onboarding flow.
  */
 
-import { IonIcon } from "@ionic/react";
+import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
 import type { PaginationStyle } from "@lesefluss/core";
-import { bookOutline, flashOutline, swapVerticalOutline } from "ionicons/icons";
+import { ArrowUpDown, BookOpen, type LucideIcon, Zap } from "lucide-react";
 import type React from "react";
 
 export const WPM_PRESETS: Array<{ value: number; label: string }> = [
@@ -19,7 +20,7 @@ export interface ModeOption<T extends string> {
 	value: T;
 	label: string;
 	description: string;
-	icon: string;
+	icon: LucideIcon;
 }
 
 export const READER_MODE_OPTIONS: ReadonlyArray<ModeOption<"scroll" | "rsvp">> = [
@@ -27,13 +28,13 @@ export const READER_MODE_OPTIONS: ReadonlyArray<ModeOption<"scroll" | "rsvp">> =
 		value: "scroll",
 		label: "Reader",
 		description: "Scroll through pages",
-		icon: bookOutline,
+		icon: BookOpen,
 	},
 	{
 		value: "rsvp",
 		label: "RSVP",
 		description: "Flash one word at a time",
-		icon: flashOutline,
+		icon: Zap,
 	},
 ];
 
@@ -42,13 +43,13 @@ export const PAGINATION_STYLE_OPTIONS: ReadonlyArray<ModeOption<PaginationStyle>
 		value: "scroll",
 		label: "Scroll",
 		description: "One long flowing page",
-		icon: swapVerticalOutline,
+		icon: ArrowUpDown,
 	},
 	{
 		value: "page",
 		label: "Pages",
 		description: "Tap or swipe to turn",
-		icon: bookOutline,
+		icon: BookOpen,
 	},
 ];
 
@@ -58,17 +59,20 @@ interface WpmPresetChipsProps {
 }
 
 export const WpmPresetChips: React.FC<WpmPresetChipsProps> = ({ value, onChange }) => (
-	<div className="ap-chips">
-		{WPM_PRESETS.map((p) => (
-			<button
-				key={p.value}
-				type="button"
-				className={value === p.value ? "ap-chip ap-chip--active" : "ap-chip"}
-				onClick={() => onChange(p.value)}
-			>
-				{p.label} {p.value}
-			</button>
-		))}
+	<div className="flex flex-wrap gap-2">
+		{WPM_PRESETS.map((p) => {
+			const isActive = value === p.value;
+			return (
+				<Button
+					key={p.value}
+					variant={isActive ? "default" : "outline"}
+					className="flex-1"
+					onClick={() => onChange(p.value)}
+				>
+					{p.label} {p.value}
+				</Button>
+			);
+		})}
 	</div>
 );
 
@@ -80,20 +84,31 @@ interface ModeCardsProps<T extends string> {
 
 export function ModeCards<T extends string>({ options, value, onChange }: ModeCardsProps<T>) {
 	return (
-		<div className="rsvp-mode-picker">
+		<div className="grid grid-cols-2 gap-3">
 			{options.map((m) => {
 				const isActive = value === m.value;
+				const Icon = m.icon;
 				return (
 					<button
 						key={m.value}
 						type="button"
-						className={isActive ? "rsvp-mode-card rsvp-mode-card--active" : "rsvp-mode-card"}
 						onClick={() => onChange(m.value)}
 						aria-pressed={isActive}
+						className={cn(
+							"flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-center transition-colors",
+							isActive
+								? "border-primary bg-primary/5"
+								: "border-border bg-card hover:border-muted-foreground/30",
+						)}
 					>
-						<IonIcon icon={m.icon} className="rsvp-mode-card__icon" />
-						<span className="rsvp-mode-card__label">{m.label}</span>
-						<span className="rsvp-mode-card__desc">{m.description}</span>
+						<Icon
+							className={cn(
+								"size-6",
+								isActive ? "text-primary" : "text-muted-foreground",
+							)}
+						/>
+						<span className="font-semibold text-foreground text-sm">{m.label}</span>
+						<span className="text-muted-foreground text-xs leading-tight">{m.description}</span>
 					</button>
 				);
 			})}

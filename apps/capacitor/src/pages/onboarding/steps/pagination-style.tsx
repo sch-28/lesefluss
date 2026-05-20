@@ -7,10 +7,10 @@ const PaginationStyleStep: React.FC = () => {
 	if (!settings) return null;
 
 	return (
-		<div className="onboarding-step">
-			<h2 className="onboarding-step-title">Reading layout</h2>
-			<p className="onboarding-step-sub">How would you like pages to flow?</p>
-			<div className="onboarding-mode-picker-wrap">
+		<div>
+			<h2 className="font-semibold text-2xl tracking-tight">Reading layout</h2>
+			<p className="mt-2 text-muted-foreground">How would you like pages to flow?</p>
+			<div className="mt-8">
 				<ModeCards
 					options={PAGINATION_STYLE_OPTIONS}
 					value={settings.paginationStyle}

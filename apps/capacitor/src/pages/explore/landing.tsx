@@ -1,5 +1,5 @@
-import { IonSpinner, IonText } from "@ionic/react";
 import { useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import {
@@ -33,21 +33,19 @@ const ExploreLanding: React.FC<Props> = ({ lang, onOpen, onGenreTap }) => {
 
 	if (landingQuery.isPending) {
 		return (
-			<div className="flex h-full items-center justify-center p-8">
-				<IonSpinner />
+			<div className="flex min-h-[60vh] items-center justify-center p-8">
+				<Loader2 className="size-6 animate-spin text-muted-foreground" />
 			</div>
 		);
 	}
 	if (landingQuery.isError) {
 		return (
-			<div className="flex h-full flex-col items-center justify-center p-8 text-center">
-				<IonText color="medium">
-					<p style={{ margin: 0 }}>
-						{landingQuery.error instanceof Error
-							? landingQuery.error.message
-							: "Failed to load catalog."}
-					</p>
-				</IonText>
+			<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center">
+				<p className="m-0 text-muted-foreground">
+					{landingQuery.error instanceof Error
+						? landingQuery.error.message
+						: "Failed to load catalog."}
+				</p>
 			</div>
 		);
 	}
@@ -58,7 +56,7 @@ const ExploreLanding: React.FC<Props> = ({ lang, onOpen, onGenreTap }) => {
 		data.classics.length > 0 ? data.classics.slice(0, 6) : data.featured_se.slice(0, 6);
 
 	return (
-		<div className="p-4 pb-20 content-container">
+		<div className="mx-auto max-w-5xl p-4 pb-20">
 			{heroBooks.length > 0 && <Hero books={heroBooks} onOpen={onOpen} />}
 
 			<WebNovelsSection />
@@ -66,7 +64,9 @@ const ExploreLanding: React.FC<Props> = ({ lang, onOpen, onGenreTap }) => {
 			{data.featured_se.length > 0 && (
 				<Shelf title="Featured" books={data.featured_se} onOpen={onOpen} />
 			)}
-			{data.classics.length > 0 && <Shelf title="Classics" books={data.classics} onOpen={onOpen} />}
+			{data.classics.length > 0 && (
+				<Shelf title="Classics" books={data.classics} onOpen={onOpen} />
+			)}
 			{data.most_read.length > 0 && (
 				<Shelf title="Most read" books={data.most_read} onOpen={onOpen} />
 			)}
@@ -76,7 +76,7 @@ const ExploreLanding: React.FC<Props> = ({ lang, onOpen, onGenreTap }) => {
 				onOpen={onOpen}
 				onShuffle={() => setShuffleNonce((n) => n + 1)}
 				isShuffling={randomQuery.isFetching}
-				emptyLabel={randomQuery.isPending ? "Loading…" : "Nothing here yet."}
+				emptyLabel={randomQuery.isPending ? "Loading..." : "Nothing here yet."}
 			/>
 			{data.genres.map((g) => (
 				<Shelf
@@ -90,12 +90,12 @@ const ExploreLanding: React.FC<Props> = ({ lang, onOpen, onGenreTap }) => {
 
 			<section className="pt-4">
 				<h2 className="mb-3 font-semibold text-[0.95rem]">Browse genres</h2>
-				<div className="explore-genre-grid">
+				<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
 					{data.genres.map((g) => (
 						<button
 							type="button"
 							key={g.id}
-							className="explore-genre-tile"
+							className="rounded-lg border border-border bg-card px-3 py-3 text-left font-medium text-foreground text-sm transition-colors hover:bg-muted"
 							onClick={() => onGenreTap(g.id)}
 						>
 							{g.label}

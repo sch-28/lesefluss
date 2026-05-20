@@ -3,7 +3,7 @@ import SelectionPopover from "../../components/selection-popover";
 import { SORT_LABELS, SORT_OPTIONS, type SortBy } from "./sort-filter";
 
 type Props = {
-	trigger: string;
+	trigger: React.ReactNode;
 	sortBy: SortBy;
 	onSort: (s: SortBy) => void;
 };

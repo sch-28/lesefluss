@@ -1,14 +1,6 @@
-import {
-	IonBackButton,
-	IonButtons,
-	IonContent,
-	IonHeader,
-	IonPage,
-	IonSpinner,
-	IonTitle,
-	IonToolbar,
-} from "@ionic/react";
+import { BarChart3, Loader2 } from "lucide-react";
 import { useMemo } from "react";
+import { PageHeader } from "../../components/app-shell/page-header";
 import { queryHooks } from "../../services/db/hooks";
 import { startOfLocalDay } from "../../utils/date-utils";
 import { SessionTable } from "./session-table";
@@ -23,9 +15,8 @@ import { WpmTrend } from "./stats/wpm-trend";
 const MS_PER_DAY = 86_400_000;
 
 const Stats: React.FC = () => {
-	// Lock "now" for the lifetime of the page so every query key derived from it
-	// stays stable across renders. Without this React Query treats every render
-	// as a new key and refetches forever.
+	// Lock "now" for the lifetime of the page so query keys derived from it
+	// stay stable. Without this React Query refetches forever.
 	const now = useMemo(() => Date.now(), []);
 
 	const sessionCount = queryHooks.useStatsSessionCount();
@@ -51,41 +42,32 @@ const Stats: React.FC = () => {
 	const currentStreak = streak.data?.current ?? 0;
 
 	return (
-		<IonPage>
-			<IonHeader translucent={true}>
-				<IonToolbar>
-					<IonButtons slot="start">
-						<IonBackButton defaultHref="/tabs/library" />
-					</IonButtons>
-					<IonTitle>Reading stats</IonTitle>
-				</IonToolbar>
-			</IonHeader>
-			<IonContent fullscreen={true}>
-				{isInitialLoading ? (
-					<div className="flex items-center justify-center py-24">
-						<IonSpinner name="crescent" />
-					</div>
-				) : !hasSessions ? (
-					<EmptyState />
-				) : (
-					<>
-						<Hero
-							wordsThisWeek={wordsThisWeek}
-							currentStreak={currentStreak}
-							topCover={topCover}
-							topBookId={topBookId}
-							deltaVsPrev={deltaVsPrev}
-						/>
-						<PeriodTotals now={now} />
-						<ActivityHeatmap />
-						<TopBooks now={now} />
-						<WpmTrend />
-						<Personality />
-						<SessionTable mode="global" />
-					</>
-				)}
-			</IonContent>
-		</IonPage>
+		<div className="min-h-screen bg-background text-foreground">
+			<PageHeader title="Reading stats" icon={BarChart3} />
+			{isInitialLoading ? (
+				<div className="flex min-h-[60vh] items-center justify-center">
+					<Loader2 className="size-6 animate-spin text-muted-foreground" />
+				</div>
+			) : !hasSessions ? (
+				<EmptyState />
+			) : (
+				<>
+					<Hero
+						wordsThisWeek={wordsThisWeek}
+						currentStreak={currentStreak}
+						topCover={topCover}
+						topBookId={topBookId}
+						deltaVsPrev={deltaVsPrev}
+					/>
+					<PeriodTotals now={now} />
+					<ActivityHeatmap />
+					<TopBooks now={now} />
+					<WpmTrend />
+					<Personality />
+					<SessionTable mode="global" />
+				</>
+			)}
+		</div>
 	);
 };
 

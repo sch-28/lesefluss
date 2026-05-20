@@ -1,4 +1,4 @@
-import { IonLabel, IonSegment, IonSegmentButton } from "@ionic/react";
+import { Tabs, TabsList, TabsTrigger } from "@lesefluss/ui/tabs";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { queryHooks } from "../../../services/db/hooks";
@@ -68,26 +68,20 @@ export function PeriodTotals({ now }: Props) {
 
 	return (
 		<section className="mb-8 px-4">
-			<IonSegment
+			<Tabs
 				value={period}
-				onIonChange={(e) => {
-					if (isPeriod(e.detail.value)) setPeriod(e.detail.value);
+				onValueChange={(v) => {
+					if (isPeriod(v)) setPeriod(v);
 				}}
 				className="mb-5"
 			>
-				<IonSegmentButton value="today">
-					<IonLabel>Today</IonLabel>
-				</IonSegmentButton>
-				<IonSegmentButton value="7d">
-					<IonLabel>7d</IonLabel>
-				</IonSegmentButton>
-				<IonSegmentButton value="30d">
-					<IonLabel>30d</IonLabel>
-				</IonSegmentButton>
-				<IonSegmentButton value="all">
-					<IonLabel>All</IonLabel>
-				</IonSegmentButton>
-			</IonSegment>
+				<TabsList className="w-full">
+					<TabsTrigger value="today">Today</TabsTrigger>
+					<TabsTrigger value="7d">7d</TabsTrigger>
+					<TabsTrigger value="30d">30d</TabsTrigger>
+					<TabsTrigger value="all">All</TabsTrigger>
+				</TabsList>
+			</Tabs>
 
 			<AnimatePresence mode="wait">
 				<motion.div
@@ -128,7 +122,7 @@ function Stat({
 			<div className="font-bold text-3xl tabular-nums tracking-tight">
 				<AnimatedNumber value={value} />
 			</div>
-			<div className="mt-1 text-[11px] uppercase tracking-wider opacity-60">{label}</div>
+			<div className="mt-1 text-[11px] text-muted-foreground uppercase tracking-wider">{label}</div>
 			{period !== "all" && delta != null && (
 				<div
 					className={`mt-1 font-medium text-[10px] ${

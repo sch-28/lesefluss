@@ -1,25 +1,22 @@
+import { useRouter, useSearch } from "@tanstack/react-router";
+import { Button } from "@lesefluss/ui/button";
+import { Input } from "@lesefluss/ui/input";
 import {
-	IonButton,
-	IonButtons,
-	IonContent,
-	IonHeader,
-	IonIcon,
-	IonPage,
-	IonSearchbar,
-	IonSelect,
-	IonSelectOption,
-	IonText,
-	IonToolbar,
-} from "@ionic/react";
-import { searchOutline } from "ionicons/icons";
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@lesefluss/ui/select";
+import { Compass, Search, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import { useHistory, useLocation } from "react-router-dom";
 import {
 	CATALOG_ENABLED,
 	type CatalogSearchOrder,
 	type CatalogSearchResult,
 } from "../../services/catalog/client";
+import { TabHeader } from "../../components/app-shell/tab-header";
 import { useDebounced } from "../../utils/use-debounced";
 import GenreChips from "./genre-chips";
 import ExploreLanding from "./landing";
@@ -36,13 +33,9 @@ const LANG_OPTIONS = [
 
 const LANG_STORAGE_KEY = "explore-lang";
 const DEBOUNCE_MS = 300;
-// Gives IonHeader / IonSearchbar time to mount before we poke setFocus().
-// Short enough to feel instant; long enough to clear Ionic's portal animation.
-const AUTOFOCUS_DELAY_MS = 60;
 
 // Genre labels for the active-chip display. Kept in sync with
-// apps/catalog/src/lib/genres.ts — if the catalog adds/removes a genre,
-// update this map. Unknown ids fall back to the raw id.
+// apps/catalog/src/lib/genres.ts. Unknown ids fall back to the raw id.
 const GENRE_LABELS: Record<string, string> = {
 	fiction: "Fiction",
 	"science-fiction": "Science Fiction",
@@ -55,29 +48,21 @@ const GENRE_LABELS: Record<string, string> = {
 };
 
 const Explore: React.FC = () => {
-	const history = useHistory();
-	const location = useLocation();
+	const router = useRouter();
+	const search = useSearch({ strict: false }) as { genre?: string };
+	const genre = search.genre ?? null;
 
 	const [query, setQuery] = useState("");
 	const [isSearchOpen, setSearchOpen] = useState(false);
 	const [lang, setLang] = useState<string>(() => localStorage.getItem(LANG_STORAGE_KEY) ?? "en");
 	const [page, setPage] = useState(1);
 	const debouncedQuery = useDebounced(query.trim(), DEBOUNCE_MS);
-	const searchbarRef = useRef<HTMLIonSearchbarElement>(null);
-	const contentRef = useRef<HTMLIonContentElement>(null);
+	const searchInputRef = useRef<HTMLInputElement>(null);
 
-	// Classic pagination UX: every page change jumps back to the top of the
-	// results list. IonContent manages its own scroll container, so
-	// window.scrollTo is a no-op here — use the element's imperative API.
 	const changePage = (next: number) => {
 		setPage(next);
-		contentRef.current?.scrollToTop(200);
+		window.scrollTo({ top: 0, behavior: "smooth" });
 	};
-
-	// Hydrate genre from ?genre=... so deep-links like
-	// /tabs/explore?genre=fiction (used by "See all →" shelves) land directly
-	// in the filtered results view.
-	const genre = new URLSearchParams(location.search).get("genre");
 
 	// Popular ordering when genre-browsing without a text query, relevance otherwise.
 	const order: CatalogSearchOrder = !debouncedQuery && genre ? "popular" : "relevance";
@@ -91,127 +76,115 @@ const Explore: React.FC = () => {
 		setPage(1);
 	}, [debouncedQuery, lang, genre, order]);
 
-	// Autofocus the searchbar when opened.
 	useEffect(() => {
 		if (isSearchOpen) {
-			const id = setTimeout(() => searchbarRef.current?.setFocus(), AUTOFOCUS_DELAY_MS);
-			return () => clearTimeout(id);
+			searchInputRef.current?.focus();
 		}
 	}, [isSearchOpen]);
 
-	// Reset to landing when the Explore tab is re-tapped (dispatched from
-	// App.tsx's IonTabButton onClick). Clears the search input, closes the
-	// searchbar, and drops any ?genre= filter from the URL.
-	useEffect(() => {
-		const handler = () => {
-			setQuery("");
-			setSearchOpen(false);
-			history.replace("/tabs/explore");
-		};
-		window.addEventListener("lesefluss:explore-reset", handler);
-		return () => window.removeEventListener("lesefluss:explore-reset", handler);
-	}, [history]);
-
 	const setGenre = (id: string | null) => {
-		const params = new URLSearchParams(location.search);
-		if (id) params.set("genre", id);
-		else params.delete("genre");
-		const search = params.toString();
-		history.replace(`/tabs/explore${search ? `?${search}` : ""}`);
+		router.navigate({
+			to: "/tabs/explore",
+			search: id ? { genre: id } : {},
+			replace: true,
+		});
 	};
 
 	const openResult = (r: CatalogSearchResult) => {
-		history.push(`/tabs/explore/book/${encodeURIComponent(r.id)}`);
+		router.navigate({
+			to: "/tabs/explore/book/$catalogId",
+			params: { catalogId: r.id },
+		});
 	};
 
 	if (!CATALOG_ENABLED) {
 		return (
-			<IonPage>
-				<IonContent className="ion-padding">
-					<IonText color="medium">
-						<p>Catalog is not configured (VITE_CATALOG_URL missing).</p>
-					</IonText>
-				</IonContent>
-			</IonPage>
+			<div className="flex min-h-screen items-center justify-center bg-background p-8">
+				<p className="text-muted-foreground">Catalog is not configured (VITE_CATALOG_URL missing).</p>
+			</div>
 		);
 	}
 
 	const showResults = debouncedQuery.length > 0 || genre !== null;
-	const langShort = LANG_OPTIONS.find((o) => o.value === lang)?.short ?? lang.toUpperCase();
 
 	return (
-		<IonPage>
-			<IonHeader class="ion-no-border">
-				<IonToolbar>
-					<div className="explore-toolbar">
-						{isSearchOpen ? (
-							<IonSearchbar
-								ref={searchbarRef}
-								value={query}
-								onIonInput={(e) => setQuery(e.detail.value ?? "")}
-								onIonBlur={() => {
-									// Collapse the searchbar back to the brand when the user
-									// dismisses it with an empty input. If there's still a
-									// query they're likely scrolling results — keep it open.
-									if (!query) setSearchOpen(false);
-								}}
-								placeholder="Search..."
-								debounce={0}
-								className="explore-searchbar"
-							/>
-						) : (
-							<div className="app-brand">
-								<img src="/logo.png" alt="" />
-								<span>Lesefluss</span>
-							</div>
-						)}
-						<IonButtons className="explore-actions">
-							{!isSearchOpen && (
-								<IonButton onClick={() => setSearchOpen(true)} aria-label="Search">
-									<IonIcon slot="icon-only" icon={searchOutline} />
-								</IonButton>
-							)}
-							<IonSelect
-								value={lang}
-								onIonChange={(e) => setLang(e.detail.value)}
-								interface="popover"
-								className="explore-lang-compact"
-								aria-label="Language"
-								selectedText={langShort}
-							>
-								{LANG_OPTIONS.map((o) => (
-									<IonSelectOption key={o.value} value={o.value}>
-										{o.label}
-									</IonSelectOption>
-								))}
-							</IonSelect>
-						</IonButtons>
-					</div>
-				</IonToolbar>
-			</IonHeader>
-			<IonContent ref={contentRef}>
-				{showResults ? (
+		<div className="min-h-screen bg-background">
+			<TabHeader>
+				{isSearchOpen ? (
 					<>
-						<GenreChips
-							activeGenre={genre}
-							activeLabel={genre ? GENRE_LABELS[genre] : undefined}
-							onClear={() => setGenre(null)}
+						<Input
+							ref={searchInputRef}
+							type="search"
+							value={query}
+							onChange={(e) => setQuery(e.target.value)}
+							onBlur={() => {
+								// Collapse searchbar back to brand on empty dismiss. If there's
+								// still a query the user is likely scrolling results, keep open.
+								if (!query) setSearchOpen(false);
+							}}
+							placeholder="Search..."
+							className="flex-1"
 						/>
-						<ExploreSearchResults
-							q={debouncedQuery}
-							lang={lang}
-							genre={genre}
-							order={order}
-							page={page}
-							onPageChange={changePage}
-							onOpen={openResult}
-						/>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={() => {
+								setQuery("");
+								setSearchOpen(false);
+							}}
+							aria-label="Close search"
+						>
+							<X />
+						</Button>
 					</>
 				) : (
-					<ExploreLanding lang={lang} onOpen={openResult} onGenreTap={setGenre} />
+					<>
+						<Compass className="size-5 shrink-0 text-muted-foreground" />
+						<h1 className="m-0 flex-1 font-semibold text-base leading-none">Explore</h1>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={() => setSearchOpen(true)}
+							aria-label="Search"
+						>
+							<Search />
+						</Button>
+					</>
 				)}
-			</IonContent>
-		</IonPage>
+				<Select value={lang} onValueChange={setLang}>
+					<SelectTrigger className="w-auto gap-1 border-0 bg-transparent shadow-none">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent align="end">
+						{LANG_OPTIONS.map((o) => (
+							<SelectItem key={o.value} value={o.value}>
+								{o.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</TabHeader>
+			{showResults ? (
+				<>
+					<GenreChips
+						activeGenre={genre}
+						activeLabel={genre ? GENRE_LABELS[genre] : undefined}
+						onClear={() => setGenre(null)}
+					/>
+					<ExploreSearchResults
+						q={debouncedQuery}
+						lang={lang}
+						genre={genre}
+						order={order}
+						page={page}
+						onPageChange={changePage}
+						onOpen={openResult}
+					/>
+				</>
+			) : (
+				<ExploreLanding lang={lang} onOpen={openResult} onGenreTap={setGenre} />
+			)}
+		</div>
 	);
 };
 

@@ -37,7 +37,6 @@ import {
 	IonSpinner,
 	IonTitle,
 	IonToolbar,
-	useIonViewWillLeave,
 } from "@ionic/react";
 import type { RsvpSettings } from "@lesefluss/core";
 import { DEFAULT_SETTINGS } from "@lesefluss/core";
@@ -56,7 +55,7 @@ import {
 } from "ionicons/icons";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type RouteComponentProps, useHistory } from "react-router-dom";
+import { useHistory, useParams } from "react-router-dom";
 import { toast } from "../../components/toast";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
@@ -109,10 +108,8 @@ const NO_HIGHLIGHT = -1;
 
 // ─── Main page ───────────────────────────────────────────────────────────────
 
-interface BookReaderProps extends RouteComponentProps<{ id: string }> {}
-
-const BookReader: React.FC<BookReaderProps> = ({ match }) => {
-	const id = match.params.id;
+const BookReader: React.FC = () => {
+	const { id } = useParams<{ id: string }>();
 	const { pushPosition } = useBookSync();
 	const { isSyncing } = useSyncContext();
 	const qc = useQueryClient();
@@ -922,16 +919,13 @@ const BookReader: React.FC<BookReaderProps> = ({ match }) => {
 		document.body.classList.add("reader-open");
 		return () => {
 			document.body.classList.remove("reader-open");
+			// Drop any in-progress selection on unmount (back gesture, programmatic
+			// nav). The selection toolbar/handles render via a portal on
+			// document.body, so without this they'd stay pinned while the page
+			// slides out and visibly flash over the next page.
+			sel.cancelSelection();
 		};
-	}, []);
-
-	// Drop any in-progress selection at the *start* of a leave transition (back
-	// gesture, programmatic nav). The selection toolbar/handles render via a
-	// portal on document.body, so without this they'd stay pinned in place
-	// while the page slides out and visibly flash over the next page.
-	useIonViewWillLeave(() => {
-		sel.cancelSelection();
-	});
+	}, [sel]);
 
 	// touch-action: none is applied directly to the handle elements via CSS
 	// so the scroll container remains scrollable during selection mode.

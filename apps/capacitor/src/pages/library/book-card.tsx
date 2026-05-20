@@ -1,12 +1,12 @@
 /**
- * BookCard — individual book grid item.
+ * BookCard: individual book grid item.
  *
  * Interaction model is shared with SeriesCard via `useLongPress`:
  *   Short tap  (< 400ms) → onOpen  (navigate to reader)
  *   Long press (≥ 400ms) → onMenu  (action sheet: Set active / Delete)
  */
 
-import { IonProgressBar } from "@ionic/react";
+import { Progress } from "@lesefluss/ui/progress";
 import type React from "react";
 import BookCover from "../../components/book-cover";
 import type { Book } from "../../services/db/schema";
@@ -35,39 +35,33 @@ const BookCard: React.FC<BookCardProps> = ({
 
 	return (
 		<div
-			className="flex select-none flex-col active:opacity-70"
-			style={{ WebkitTouchCallout: "none", cursor: "pointer" }}
+			className="flex cursor-pointer select-none flex-col [-webkit-touch-callout:none] active:opacity-70"
 			{...handlers}
 		>
-			{/* Cover */}
 			<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm">
 				<BookCover book={book} cover={cover} size="full" />
-
-				{/* "On device" badge overlay */}
 				{isActive && (
-					<span className="absolute right-1.5 bottom-1.5 rounded-sm bg-black px-1.5 py-0.5 font-semibold text-[0.6rem] text-white">
+					<span className="absolute right-1.5 bottom-1.5 rounded-sm bg-foreground px-1.5 py-0.5 font-semibold text-[0.6rem] text-background">
 						On device
 					</span>
 				)}
 			</div>
 
-			{/* Progress bar */}
 			{started && (
 				<div className="mt-1 flex items-center gap-1.5">
-					<div className="flex-1 [--buffer-background:#e0e0e0] [--progress-background:#000]">
-						<IonProgressBar value={progress / 100} />
-					</div>
-					<span className="font-medium text-[#888] text-[0.7rem]">{progress}%</span>
+					<Progress value={progress} className="h-1 flex-1" />
+					<span className="font-medium text-[0.7rem] text-muted-foreground tabular-nums">
+						{progress}%
+					</span>
 				</div>
 			)}
 
-			{/* Title / author */}
 			<div className="px-0.5 pt-1">
-				<div className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
+				<div className="line-clamp-2 overflow-hidden font-semibold text-[0.85rem] leading-[1.2]">
 					{book.title}
 				</div>
 				{book.author && (
-					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[#888] text-[0.75rem]">
+					<div className="mt-0.5 truncate text-[0.75rem] text-muted-foreground">
 						{book.author}
 					</div>
 				)}

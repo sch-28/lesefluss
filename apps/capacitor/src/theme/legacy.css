@@ -1,0 +1,21 @@
+/* Legacy stylesheets loaded outside the Tailwind v4 pipeline.
+ *
+ * The @tailwindcss/vite plugin processes any CSS file containing
+ * `@import "tailwindcss/..."` and silently drops other @import statements.
+ * Ionic core + monochrome must live in a plain CSS entry so they survive
+ * bundling. Layer assignment here also makes them lose to Tailwind utilities
+ * on cascade. Utilities layer is declared last in variables.css. */
+@layer theme, base, ionic, legacy, tokens, utilities;
+
+@import "@ionic/react/css/core.css" layer(ionic);
+@import "@ionic/react/css/normalize.css" layer(ionic);
+@import "@ionic/react/css/structure.css" layer(ionic);
+@import "@ionic/react/css/typography.css" layer(ionic);
+@import "@ionic/react/css/padding.css" layer(ionic);
+@import "@ionic/react/css/float-elements.css" layer(ionic);
+@import "@ionic/react/css/text-alignment.css" layer(ionic);
+@import "@ionic/react/css/text-transformation.css" layer(ionic);
+@import "@ionic/react/css/flex-utils.css" layer(ionic);
+@import "@ionic/react/css/display.css" layer(ionic);
+
+@import "./monochrome.css" layer(legacy);

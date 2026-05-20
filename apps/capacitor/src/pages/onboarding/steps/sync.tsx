@@ -1,6 +1,6 @@
 import { Browser } from "@capacitor/browser";
-import { IonIcon } from "@ionic/react";
-import { cloudOutline } from "ionicons/icons";
+import { Button } from "@lesefluss/ui/button";
+import { Cloud } from "lucide-react";
 import type React from "react";
 import { useCallback } from "react";
 import { beginAuthLoginHandoff, IS_WEB_BUILD } from "../../../services/sync";
@@ -13,8 +13,8 @@ interface Props {
 const SyncStep: React.FC<Props> = ({ onFinish }) => {
 	const signIn = useCallback(async () => {
 		if (IS_WEB_BUILD) {
-			// Mark onboarding complete before navigating so the flag is persisted before
-			// the full-page redirect kills any in-flight mutation.
+			// Mark onboarding complete before navigating so the flag is persisted
+			// before the full-page redirect kills any in-flight mutation.
 			await onFinish();
 			window.location.href = "/login";
 			return;
@@ -27,20 +27,22 @@ const SyncStep: React.FC<Props> = ({ onFinish }) => {
 	}, [onFinish]);
 
 	return (
-		<div className="onboarding-step">
-			<IonIcon icon={cloudOutline} className="onboarding-sync-icon" />
-			<h2 className="onboarding-step-title">Sync across devices?</h2>
-			<p className="onboarding-step-sub">
+		<div className="flex flex-col items-center text-center">
+			<div className="mb-6 flex size-16 items-center justify-center rounded-full bg-primary/10">
+				<Cloud className="size-8 text-primary" />
+			</div>
+			<h2 className="font-semibold text-2xl tracking-tight">Sync across devices?</h2>
+			<p className="mt-3 max-w-sm text-muted-foreground leading-relaxed">
 				Sign in to keep your library, progress, and highlights in step across phones and web.
 				Optional — you can do this later in Settings.
 			</p>
-			<div className="onboarding-actions">
-				<button type="button" className="onboarding-btn onboarding-btn--primary" onClick={signIn}>
+			<div className="mt-10 flex w-full max-w-xs flex-col gap-3">
+				<Button size="lg" onClick={signIn}>
 					Sign in
-				</button>
-				<button type="button" className="onboarding-btn onboarding-btn--primary" onClick={onFinish}>
+				</Button>
+				<Button size="lg" variant="outline" onClick={onFinish}>
 					Not now
-				</button>
+				</Button>
 			</div>
 		</div>
 	);

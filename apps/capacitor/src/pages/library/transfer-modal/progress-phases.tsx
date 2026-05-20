@@ -1,6 +1,7 @@
-import { IonButton, IonIcon, IonProgressBar } from "@ionic/react";
 import { CHUNK_SIZE } from "@lesefluss/ble-config";
-import { checkmarkCircleOutline } from "ionicons/icons";
+import { Button } from "@lesefluss/ui/button";
+import { Progress } from "@lesefluss/ui/progress";
+import { CheckCircle2 } from "lucide-react";
 import type React from "react";
 import BookCover from "../../../components/book-cover";
 import type { Book } from "../../../services/db/schema";
@@ -8,8 +9,8 @@ import { ESTIMATED_BPS, formatSeconds } from "./utils";
 
 interface TransferringProps {
 	book: Book;
-	progress: number; // 0–100
-	elapsed: number; // seconds
+	progress: number;
+	elapsed: number;
 }
 
 export const TransferringPhase: React.FC<TransferringProps> = ({ book, progress, elapsed }) => {
@@ -31,30 +32,23 @@ export const TransferringPhase: React.FC<TransferringProps> = ({ book, progress,
 				<BookCover book={book} size="sm" />
 				<div className="min-w-0">
 					<div className="line-clamp-2 font-semibold text-sm leading-snug">{book.title}</div>
-					{book.author && <div className="mt-0.5 truncate text-[#888] text-xs">{book.author}</div>}
+					{book.author && (
+						<div className="mt-0.5 truncate text-muted-foreground text-xs">{book.author}</div>
+					)}
 				</div>
 			</div>
 
 			<div className="flex flex-col gap-3">
-				<IonProgressBar
-					value={progress / 100}
-					type={progress === 0 ? "indeterminate" : "determinate"}
-					style={
-						{
-							"--progress-background": "#000",
-							"--buffer-background": "#e0e0e0",
-						} as React.CSSProperties
-					}
-				/>
-				<div className="flex justify-between text-[#555] text-sm">
+				<Progress value={progress} className="h-1.5" />
+				<div className="flex justify-between text-muted-foreground text-sm">
 					<span>
 						Chunk {ackedChunks} / {totalChunks}
 					</span>
-					<span className="font-medium">{progress}%</span>
+					<span className="font-medium text-foreground">{progress}%</span>
 				</div>
 			</div>
 
-			<div className="flex justify-between text-[#888] text-sm">
+			<div className="flex justify-between text-muted-foreground text-sm">
 				<span>Elapsed: {formatSeconds(elapsed)}</span>
 				{timeRemainingStr && <span>~{timeRemainingStr} remaining</span>}
 			</div>
@@ -69,14 +63,14 @@ interface DoneProps {
 
 export const DonePhase: React.FC<DoneProps> = ({ book, onClose }) => (
 	<div className="flex flex-col items-center gap-6 py-8">
-		<IonIcon icon={checkmarkCircleOutline} style={{ fontSize: "4rem", color: "#2dd36f" }} />
+		<CheckCircle2 className="size-16 text-green-500" />
 		<div className="text-center">
 			<div className="font-semibold text-base">{book.title}</div>
-			<div className="mt-1 text-[#888] text-sm">Successfully uploaded to device</div>
+			<div className="mt-1 text-muted-foreground text-sm">Successfully uploaded to device</div>
 		</div>
-		<IonButton expand="block" fill="outline" onClick={onClose}>
+		<Button variant="outline" className="w-full" onClick={onClose}>
 			Close
-		</IonButton>
+		</Button>
 	</div>
 );
 
@@ -87,11 +81,11 @@ interface ErrorProps {
 
 export const ErrorPhase: React.FC<ErrorProps> = ({ message, onClose }) => (
 	<div className="flex flex-col gap-5 pt-4">
-		<div className="rounded-md border border-[#e74c3c] bg-[#fdf3f2] px-4 py-3 text-[#c0392b] text-sm">
+		<div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive text-sm">
 			{message ?? "An unknown error occurred."}
 		</div>
-		<IonButton expand="block" fill="outline" onClick={onClose}>
+		<Button variant="outline" className="w-full" onClick={onClose}>
 			Close
-		</IonButton>
+		</Button>
 	</div>
 );

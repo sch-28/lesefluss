@@ -1,13 +1,11 @@
-import { IonIcon, IonItem, IonLabel, IonList, IonPopover } from "@ionic/react";
-import { bluetooth } from "ionicons/icons";
+import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
+import { Bluetooth } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
 import { useBLE } from "../contexts/ble-context";
 import { BLEConnectionState } from "../services/ble";
 
 const BLEIndicator: React.FC = () => {
 	const { connectionState, connectedDevice } = useBLE();
-	const [popoverEvent, setPopoverEvent] = useState<MouseEvent | undefined>(undefined);
 
 	const isConnected = connectionState === BLEConnectionState.CONNECTED;
 	const isTransitioning =
@@ -23,36 +21,26 @@ const BLEIndicator: React.FC = () => {
 			: "Disconnecting...";
 
 	return (
-		<>
-			<IonIcon
-				icon={bluetooth}
-				onClick={(e) => setPopoverEvent(e.nativeEvent)}
-				style={{
-					fontSize: "18px",
-					opacity: isTransitioning ? 0.4 : 0.6,
-					marginRight: "12px",
-					cursor: "pointer",
-				}}
-			/>
-			<IonPopover
-				isOpen={!!popoverEvent}
-				event={popoverEvent}
-				onDidDismiss={() => setPopoverEvent(undefined)}
-				dismissOnSelect
-			>
-				<IonList lines="none" style={{ padding: "4px 0" }}>
-					<IonItem>
-						<IonLabel>
-							<h3 style={{ fontWeight: 600 }}>{connectedDevice?.name || "Lesefluss"}</h3>
-							<p>{statusLabel}</p>
-							{isConnected && connectedDevice && (
-								<p style={{ fontSize: "0.75rem", opacity: 0.6 }}>{connectedDevice.deviceId}</p>
-							)}
-						</IonLabel>
-					</IonItem>
-				</IonList>
-			</IonPopover>
-		</>
+		<Popover>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					aria-label="Bluetooth device status"
+					className={`mr-3 inline-flex size-7 items-center justify-center text-foreground transition-opacity ${isTransitioning ? "opacity-40" : "opacity-60"}`}
+				>
+					<Bluetooth className="size-[18px]" />
+				</button>
+			</PopoverTrigger>
+			<PopoverContent align="end" className="w-auto min-w-[200px]">
+				<div className="flex flex-col gap-1">
+					<h3 className="font-semibold text-sm">{connectedDevice?.name || "Lesefluss"}</h3>
+					<p className="text-muted-foreground text-sm">{statusLabel}</p>
+					{isConnected && connectedDevice && (
+						<p className="text-muted-foreground/70 text-xs">{connectedDevice.deviceId}</p>
+					)}
+				</div>
+			</PopoverContent>
+		</Popover>
 	);
 };
 

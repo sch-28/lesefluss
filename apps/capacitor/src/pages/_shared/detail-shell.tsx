@@ -1,39 +1,24 @@
 /**
- * DetailShell — presentational layout for every detail-style page.
+ * DetailShell. Shared presentational layout for every detail-style page
+ * (catalog book, library book, library series, serial-search preview).
  *
- * Composers (catalog book, library book, library series, serial-search
- * preview) supply their own data + actions; the shell owns layout, theming,
- * scroll, and the `IonPage`/`IonHeader`/`IonContent` chrome. The visual
- * rhythm is the same `.book-detail-*` skeleton both existing detail pages
- * already used; this file just formalizes the seam so the rules apply
- * identically across kinds.
- *
- * The CSS class names live in `theme/monochrome.css` (the global theme file)
- * so they participate in light/dark/sepia inheritance the same way every
- * other page does — no per-component stylesheets to keep in sync.
+ * Composers supply data + actions; the shell owns layout, theming, scroll, and
+ * the page chrome (back button + optional external link + optional
+ * destructive header action). Visual rhythm is consistent across all 4 pages.
  */
 
-import {
-	IonBackButton,
-	IonButton,
-	IonButtons,
-	IonContent,
-	IonHeader,
-	IonIcon,
-	IonPage,
-	IonProgressBar,
-	IonSpinner,
-	IonText,
-	IonToolbar,
-} from "@ionic/react";
-import { bookOutline, openOutline } from "ionicons/icons";
+import { Button } from "@lesefluss/ui/button";
+import { Progress } from "@lesefluss/ui/progress";
+import { cn } from "@lesefluss/ui/utils";
+import { BookOpen, ExternalLink, Loader2, type LucideIcon } from "lucide-react";
 import type React from "react";
+import { PageHeader } from "../../components/app-shell/page-header";
 import CoverImage from "../../components/cover-image";
 import SanitizedDescription from "../../components/sanitized-description";
 
 export interface DetailAction {
 	label: string;
-	icon?: string;
+	icon?: LucideIcon;
 	onClick: () => void;
 	disabled?: boolean;
 	loading?: boolean;
@@ -42,46 +27,33 @@ export interface DetailAction {
 }
 
 export interface DetailShellProps {
-	// ── Hero ─────────────────────────────────────────────────────────
-	/** `null` and `undefined` both render the fallback — composers can pass either. */
+	// Hero
 	cover: string | null | undefined;
-	/** Custom fallback rendered when `cover` is null/fails. Defaults to a book outline icon. */
 	coverFallback?: React.ReactNode;
-	/** Small uppercase label above the title (e.g. "Standard Ebooks", "AO3"). */
 	eyebrow?: string | null;
 	title: string;
 	author?: string | null;
 
-	// ── Stats / subjects ─────────────────────────────────────────────
-	/** Inline status line under the title (e.g. "12% read · 5 highlights · On device"). */
+	// Stats / subjects
 	statsLine?: React.ReactNode;
-	/** Pill-style genre/topic tags rendered between hero and actions. */
 	subjects?: readonly string[];
 
-	// ── Actions ──────────────────────────────────────────────────────
+	// Actions
 	primaryAction: DetailAction;
 	secondaryActions?: readonly DetailAction[];
 
-	// ── Body ─────────────────────────────────────────────────────────
-	/** Description rendered in a card beneath actions. `html` takes precedence over `text`. */
+	// Body
 	description?: { html?: string | null; text?: string | null };
-	/** Catch-all for kind-specific extras (chapter lists, related items). */
 	children?: React.ReactNode;
 
-	// ── Page chrome ──────────────────────────────────────────────────
-	/** Back-button target. Defaults to `/tabs/library`. */
+	// Page chrome
+	/** Back-button target. Currently informational only; PageHeader uses router.history.back(). */
 	backHref?: string;
-	/** External link rendered as an icon button in the toolbar (e.g. source page). */
+	/** External link rendered as an icon button in the toolbar end slot. */
 	externalLink?: { href: string; label?: string };
-	/**
-	 * Icon-only action rendered in the toolbar end slot (e.g. delete).
-	 * Same shape as `DetailAction` minus disabled/loading (toolbar buttons
-	 * stay simple) and with `icon` required since the button is icon-only.
-	 */
-	headerAction?: Pick<DetailAction, "label" | "onClick" | "destructive"> & {
-		icon: string;
-	};
-	/** Determinate progress bar at the top (e.g. import progress 0-100). */
+	/** Icon-only header action (e.g. delete). */
+	headerAction?: Pick<DetailAction, "label" | "onClick" | "destructive"> & { icon: LucideIcon };
+	/** Determinate progress bar at the top (0-100). */
 	progress?: number;
 	/** Centered loading spinner instead of the body. */
 	isLoading?: boolean;
@@ -101,149 +73,157 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 	secondaryActions,
 	description,
 	children,
-	backHref = "/tabs/library",
 	externalLink,
 	headerAction,
 	progress,
 	isLoading,
 	errorMessage,
 }) => {
+	const HeaderActionIcon = headerAction?.icon;
 	return (
-		<IonPage>
-			<IonHeader class="ion-no-border">
-				<IonToolbar>
-					<IonButtons slot="start">
-						<IonBackButton defaultHref={backHref} />
-					</IonButtons>
-					{(externalLink || headerAction) && (
-						<IonButtons slot="end">
-							{externalLink && (
-								<IonButton
-									href={externalLink.href}
-									target="_blank"
-									rel="noopener noreferrer"
-									aria-label={externalLink.label ?? "View original source"}
-									title={externalLink.label ?? "View original source"}
-								>
-									<IonIcon slot="icon-only" icon={openOutline} />
-								</IonButton>
-							)}
-							{headerAction && (
-								<IonButton
-									onClick={headerAction.onClick}
-									color={headerAction.destructive ? "danger" : undefined}
-									aria-label={headerAction.label}
-									title={headerAction.label}
-								>
-									<IonIcon slot="icon-only" icon={headerAction.icon} />
-								</IonButton>
-							)}
-						</IonButtons>
-					)}
-				</IonToolbar>
-			</IonHeader>
-			<IonContent>
-				{progress !== undefined && progress > 0 && (
-					<IonProgressBar value={progress / 100} type="determinate" />
-				)}
+		<>
+			<PageHeader
+				title={title}
+				right={
+					<div className="flex items-center gap-1">
+						{externalLink && (
+							<Button
+								asChild
+								variant="ghost"
+								size="icon"
+								aria-label={externalLink.label ?? "View original source"}
+							>
+								<a href={externalLink.href} target="_blank" rel="noopener noreferrer">
+									<ExternalLink />
+								</a>
+							</Button>
+						)}
+						{headerAction && HeaderActionIcon && (
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={headerAction.onClick}
+								aria-label={headerAction.label}
+								className={
+									headerAction.destructive ? "text-destructive hover:text-destructive" : undefined
+								}
+							>
+								<HeaderActionIcon />
+							</Button>
+						)}
+					</div>
+				}
+			/>
 
-				{isLoading ? (
-					<div className="flex h-full items-center justify-center">
-						<IonSpinner />
-					</div>
-				) : errorMessage ? (
-					<div className="flex h-full flex-col items-center justify-center p-8 text-center">
-						<IonText color="medium">
-							<p style={{ margin: 0 }}>{errorMessage}</p>
-						</IonText>
-					</div>
-				) : (
-					<div className="book-detail-page">
-						<div className="book-detail-hero">
-							<div className="book-detail-cover">
-								<CoverImage
-									src={cover}
-									alt=""
-									priority
-									fallback={
-										coverFallback ?? (
-											<div className="book-detail-cover-placeholder">
-												<IonIcon icon={bookOutline} />
-											</div>
-										)
-									}
-								/>
-							</div>
-							<div className="book-detail-meta">
-								{eyebrow && <span className="book-detail-eyebrow">{eyebrow}</span>}
-								<h1 className="book-detail-title">{title}</h1>
-								{author && <p className="book-detail-author">{author}</p>}
-								{statsLine && <div className="book-detail-stats">{statsLine}</div>}
-							</div>
+			{progress !== undefined && progress > 0 && (
+				<Progress value={progress} className="h-0.5 rounded-none" />
+			)}
+
+			{isLoading ? (
+				<div className="flex min-h-[60vh] items-center justify-center">
+					<Loader2 className="size-6 animate-spin text-muted-foreground" />
+				</div>
+			) : errorMessage ? (
+				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center">
+					<p className="m-0 text-muted-foreground">{errorMessage}</p>
+				</div>
+			) : (
+				<div className="mx-auto max-w-3xl px-4 pb-12 pt-4">
+					<section className="flex gap-4">
+						<div className="aspect-2/3 w-28 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+							<CoverImage
+								src={cover}
+								alt=""
+								priority
+								fallback={
+									coverFallback ?? (
+										<div className="flex h-full items-center justify-center text-muted-foreground">
+											<BookOpen className="size-8" />
+										</div>
+									)
+								}
+							/>
 						</div>
+						<div className="flex min-w-0 flex-1 flex-col">
+							{eyebrow && (
+								<span className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+									{eyebrow}
+								</span>
+							)}
+							<h1 className="mt-1 font-semibold text-xl leading-tight">{title}</h1>
+							{author && <p className="mt-1 text-muted-foreground text-sm">{author}</p>}
+							{statsLine && (
+								<div className="mt-2 flex flex-wrap items-center gap-1.5 text-muted-foreground text-xs">
+									{statsLine}
+								</div>
+							)}
+						</div>
+					</section>
 
-						<div className="book-detail-actions">
-							<ActionButton action={primaryAction} primary />
-							{secondaryActions?.map((a, i) => (
-								// Index key is safe: the array is constructed once per render
-								// from a static composition in each page; never reordered or
-								// sliced. Using `a.label` would collide if two actions shared
-								// the same label.
-								// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
-								<ActionButton key={i} action={a} primary={false} />
+					<div className="mt-6 flex flex-col gap-2">
+						<ActionButton action={primaryAction} primary />
+						{secondaryActions?.map((a, i) => (
+							// Index key safe: array reconstructed each render, never reordered.
+							// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
+							<ActionButton key={i} action={a} primary={false} />
+						))}
+					</div>
+
+					{subjects && subjects.length > 0 && (
+						<div className="mt-4 flex flex-wrap gap-1.5">
+							{subjects.slice(0, 8).map((s) => (
+								<span
+									key={s}
+									className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-muted-foreground text-xs"
+								>
+									{s}
+								</span>
 							))}
 						</div>
+					)}
 
-						{subjects && subjects.length > 0 && (
-							<div className="book-detail-subjects">
-								{subjects.slice(0, 8).map((s) => (
-									<span key={s} className="book-detail-subject">
-										{s}
-									</span>
-								))}
-							</div>
-						)}
+					{(description?.html || description?.text) && (
+						<section className="mt-6 rounded-lg border border-border bg-card p-4 text-card-foreground">
+							<h2 className="m-0 mb-3 font-semibold text-base">About</h2>
+							{description.html ? (
+								<SanitizedDescription
+									className="prose prose-sm max-w-none text-foreground/80 [&_a]:text-primary [&_a]:underline-offset-4 [&_a:hover]:underline"
+									html={description.html}
+								/>
+							) : (
+								<p className="m-0 text-foreground/80 text-sm leading-relaxed">{description.text}</p>
+							)}
+						</section>
+					)}
 
-						{(description?.html || description?.text) && (
-							<section className="book-detail-card">
-								<h2 className="book-detail-section-title">About</h2>
-								{description.html ? (
-									<SanitizedDescription
-										className="book-detail-description"
-										html={description.html}
-									/>
-								) : (
-									<p className="book-detail-summary">{description.text}</p>
-								)}
-							</section>
-						)}
-
-						{children}
-					</div>
-				)}
-			</IonContent>
-		</IonPage>
+					{children}
+				</div>
+			)}
+		</>
 	);
 };
 
 const ActionButton: React.FC<{ action: DetailAction; primary: boolean }> = ({
 	action,
 	primary,
-}) => (
-	<IonButton
-		expand="block"
-		fill={primary ? "solid" : "outline"}
-		color={action.destructive ? "danger" : undefined}
-		disabled={action.disabled || action.loading}
-		onClick={action.onClick}
-	>
-		{action.loading ? (
-			<IonSpinner name="crescent" />
-		) : (
-			<>
-				{action.icon && <IonIcon slot="start" icon={action.icon} />}
-				{action.label}
-			</>
-		)}
-	</IonButton>
-);
+}) => {
+	const Icon = action.icon;
+	return (
+		<Button
+			variant={primary ? "default" : "outline"}
+			size="lg"
+			disabled={action.disabled || action.loading}
+			onClick={action.onClick}
+			className={cn(
+				"w-full",
+				action.destructive &&
+					(primary
+						? "bg-destructive hover:bg-destructive/90"
+						: "border-destructive/40 text-destructive hover:bg-destructive/10"),
+			)}
+		>
+			{action.loading ? <Loader2 className="animate-spin" /> : Icon && <Icon />}
+			{action.label}
+		</Button>
+	);
+};

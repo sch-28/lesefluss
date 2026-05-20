@@ -1,62 +1,27 @@
 @import "tailwindcss" source('../');
-@import "tw-animate-css";
+@import "@lesefluss/ui/styles/tokens.css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
 @source "../../entrypoints";
-
-@custom-variant dark (&:is(.dark *));
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
 
 @theme inline {
 	--font-sans: "Geist Variable", sans-serif;
-	--color-ring: var(--ring);
-	--color-input: var(--input);
-	--color-border: var(--border);
-	--color-destructive: var(--destructive);
-	--color-accent-foreground: var(--accent-foreground);
-	--color-accent: var(--accent);
-	--color-muted-foreground: var(--muted-foreground);
-	--color-muted: var(--muted);
-	--color-secondary-foreground: var(--secondary-foreground);
-	--color-secondary: var(--secondary);
-	--color-primary-foreground: var(--primary-foreground);
-	--color-primary: var(--primary);
-	--color-card-foreground: var(--card-foreground);
-	--color-card: var(--card);
-	--color-foreground: var(--foreground);
-	--color-background: var(--background);
-	--radius-sm: calc(var(--radius) * 0.6);
-	--radius-md: calc(var(--radius) * 0.8);
-	--radius-lg: var(--radius);
-	--radius-xl: calc(var(--radius) * 1.4);
 }
 
-:root {
-	--background: #fdfcfb;
-	--foreground: #18181b;
-	--card: #ffffff;
-	--card-foreground: #18181b;
-	--primary: #c94b2a;
-	--primary-foreground: #ffffff;
-	--secondary: #f5f0ee;
-	--secondary-foreground: #18181b;
-	--muted: #f5f0ee;
-	--muted-foreground: #71717a;
-	--accent: #f5f0ee;
-	--accent-foreground: #18181b;
-	--destructive: oklch(0.577 0.245 27.325);
-	--border: #e8e2df;
-	--input: #e8e2df;
-	--ring: #c94b2a;
-	--radius: 0.625rem;
-}
-
+/* System preference, not the `.dark` class: extension popup has no theme toggle. */
 @media (prefers-color-scheme: dark) {
-	:root {
+	html {
+		color-scheme: dark;
+	}
+	:root:not(.light) {
 		--background: oklch(0.155 0.01 35);
 		--foreground: oklch(0.93 0.008 35);
 		--card: oklch(0.2 0.01 35);
 		--card-foreground: oklch(0.93 0.008 35);
+		--popover: oklch(0.2 0.01 35);
+		--popover-foreground: oklch(0.93 0.008 35);
 		--primary: oklch(0.62 0.16 35);
 		--primary-foreground: oklch(0.98 0 0);
 		--secondary: oklch(0.25 0.01 35);
@@ -73,11 +38,7 @@
 }
 
 @layer base {
-	* {
-		@apply border-border outline-ring/50;
-	}
 	body {
-		@apply bg-background text-foreground;
 		min-width: 360px;
 		font-family: var(--font-sans);
 	}

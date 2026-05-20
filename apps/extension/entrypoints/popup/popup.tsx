@@ -12,15 +12,15 @@ import {
 import * as React from "react";
 import { browser } from "wxt/browser";
 
-import { Badge } from "../../src/components/ui/badge";
-import { Button } from "../../src/components/ui/button";
+import { Badge } from "@lesefluss/ui/badge";
+import { Button } from "@lesefluss/ui/button";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "../../src/components/ui/card";
+} from "@lesefluss/ui/card";
 import type { AuthSession } from "../../src/lib/auth";
 import { LESEFLUSS_URL } from "../../src/lib/config";
 import type {

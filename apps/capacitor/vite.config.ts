@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -23,7 +24,18 @@ if (!wasmFile) throw new Error("sql-wasm.wasm (1.11.0) not found - run pnpm setu
 
 export default defineConfig({
 	base: process.env.WEB_BUILD ? "/app/" : "/",
+	resolve: {
+		alias: {
+			"@": path.resolve(__dirname, "src"),
+		},
+	},
 	plugins: [
+		tanstackRouter({
+			target: "react",
+			autoCodeSplitting: true,
+			routesDirectory: path.resolve(__dirname, "src/routes"),
+			generatedRouteTree: path.resolve(__dirname, "src/routeTree.gen.ts"),
+		}),
 		react(),
 		tailwindcss(),
 		// Serve sql-wasm.wasm at any path ending in /sql-wasm.wasm during dev.

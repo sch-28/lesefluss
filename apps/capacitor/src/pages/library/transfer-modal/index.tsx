@@ -11,17 +11,9 @@
  *   error       → ErrorPhase      (error message + Close)
  */
 
-import {
-	IonButton,
-	IonButtons,
-	IonContent,
-	IonHeader,
-	IonModal,
-	IonTitle,
-	IonToolbar,
-} from "@ionic/react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Modal } from "../../../components/modal";
 import { useBookSync } from "../../../contexts/book-sync-context";
 import type { Book } from "../../../services/db/schema";
 import { log } from "../../../utils/log";
@@ -40,7 +32,6 @@ const PHASE_TITLE: Record<Phase, string> = {
 interface Props {
 	isOpen: boolean;
 	book: Book | null;
-	/** Book currently on the device, if any - shown as replacement warning. */
 	activeBook: Book | null;
 	onDismiss: () => void;
 }
@@ -57,7 +48,6 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
-	// Reset to confirm whenever the modal (re-)opens
 	useEffect(() => {
 		if (isOpen) {
 			setPhase("confirm");
@@ -68,7 +58,6 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 		}
 	}, [isOpen]);
 
-	// Elapsed ticker - only runs while transferring
 	useEffect(() => {
 		if (phase === "transferring") {
 			timerRef.current = setInterval(() => {
@@ -87,7 +76,6 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 		};
 	}, [phase]);
 
-	// Screen wake lock - keep display on while transferring
 	useEffect(() => {
 		if (phase === "transferring") {
 			if ("wakeLock" in navigator) {
@@ -131,29 +119,23 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 	if (!book) return null;
 
 	return (
-		<IonModal isOpen={isOpen} onDidDismiss={onDismiss} backdropDismiss={phase === "confirm"}>
-			<IonHeader class="ion-no-border">
-				<IonToolbar>
-					<IonTitle>{PHASE_TITLE[phase]}</IonTitle>
-					{phase === "confirm" && (
-						<IonButtons slot="end">
-							<IonButton onClick={onDismiss}>Cancel</IonButton>
-						</IonButtons>
-					)}
-				</IonToolbar>
-			</IonHeader>
-
-			<IonContent className="ion-padding">
-				{phase === "confirm" && (
-					<ConfirmPhase book={book} activeBook={activeBook} onUpload={handleUpload} />
-				)}
-				{phase === "transferring" && (
-					<TransferringPhase book={book} progress={progress} elapsed={elapsed} />
-				)}
-				{phase === "done" && <DonePhase book={book} onClose={onDismiss} />}
-				{phase === "error" && <ErrorPhase message={errorMsg} onClose={onDismiss} />}
-			</IonContent>
-		</IonModal>
+		<Modal
+			open={isOpen}
+			onOpenChange={(open) => {
+				if (!open) onDismiss();
+			}}
+			title={PHASE_TITLE[phase]}
+			dismissable={phase === "confirm"}
+		>
+			{phase === "confirm" && (
+				<ConfirmPhase book={book} activeBook={activeBook} onUpload={handleUpload} />
+			)}
+			{phase === "transferring" && (
+				<TransferringPhase book={book} progress={progress} elapsed={elapsed} />
+			)}
+			{phase === "done" && <DonePhase book={book} onClose={onDismiss} />}
+			{phase === "error" && <ErrorPhase message={errorMsg} onClose={onDismiss} />}
+		</Modal>
 	);
 };
 

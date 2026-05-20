@@ -1,4 +1,4 @@
-import { IonProgressBar } from "@ionic/react";
+import { Progress } from "@lesefluss/ui/progress";
 import type React from "react";
 import BookCover from "../../components/book-cover";
 import type { Book } from "../../services/db/schema";
@@ -27,8 +27,7 @@ const BookListItem: React.FC<BookListItemProps> = ({
 
 	return (
 		<div
-			className="flex cursor-pointer select-none items-center gap-3 active:opacity-70"
-			style={{ WebkitTouchCallout: "none" }}
+			className="flex cursor-pointer select-none items-center gap-3 [-webkit-touch-callout:none] active:opacity-70"
 			{...handlers}
 		>
 			<div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-sm">
@@ -36,24 +35,24 @@ const BookListItem: React.FC<BookListItemProps> = ({
 			</div>
 
 			<div className="min-w-0 flex-1">
-				<div className="overflow-hidden text-ellipsis font-semibold text-[0.9rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
+				<div className="line-clamp-2 overflow-hidden font-semibold text-[0.9rem] leading-[1.2]">
 					{book.title}
 				</div>
 				{book.author && (
-					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[#888] text-[0.8rem]">
+					<div className="mt-0.5 truncate text-[0.8rem] text-muted-foreground">
 						{book.author}
 					</div>
 				)}
 				{started && (
 					<div className="mt-1 flex items-center gap-1.5">
-						<div className="flex-1 [--buffer-background:#e0e0e0] [--progress-background:#000]">
-							<IonProgressBar value={progress / 100} />
-						</div>
-						<span className="font-medium text-[#888] text-[0.7rem]">{progress}%</span>
+						<Progress value={progress} className="h-1 flex-1" />
+						<span className="font-medium text-[0.7rem] text-muted-foreground tabular-nums">
+							{progress}%
+						</span>
 					</div>
 				)}
 				{isActive && (
-					<div className="mt-0.5 font-semibold text-[#888] text-[0.7rem] uppercase tracking-wide">
+					<div className="mt-0.5 font-semibold text-[0.7rem] text-muted-foreground uppercase tracking-wide">
 						On device
 					</div>
 				)}

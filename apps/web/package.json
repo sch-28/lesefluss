@@ -23,6 +23,7 @@
 		"@fontsource-variable/geist": "5.2.8",
 		"@lesefluss/book-import": "workspace:*",
 		"@lesefluss/core": "workspace:*",
+		"@lesefluss/ui": "workspace:*",
 		"@mozilla/readability": "^0.6.0",
 		"@sentry/tanstackstart-react": "^10.51.0",
 		"@tanstack/react-form": "1.29.0",

@@ -1,5 +1,5 @@
 /**
- * WhatsNewModal — centered dialog that shows changelog entries.
+ * WhatsNewModal: centered dialog that shows changelog entries.
  *
  * Two trigger modes:
  *   1. Auto: opens after an update if there are entries newer than
@@ -12,11 +12,12 @@
  * won't re-fire until the next changelog entry ships.
  */
 
-import { IonButton, IonModal } from "@ionic/react";
 import { type ChangelogEntry, type ChangelogTag, changelog } from "@lesefluss/core";
+import { Button } from "@lesefluss/ui/button";
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { queryHooks } from "../services/db/hooks";
+import { Modal } from "./modal";
 
 const RELEVANT_TAGS = new Set<ChangelogTag>(["App", "ESP32"]);
 
@@ -41,7 +42,6 @@ function formatDate(iso: string) {
 const WhatsNewModal: React.FC = () => {
 	const { data: settings } = queryHooks.useSettings();
 	const saveSettings = queryHooks.useSaveSettings();
-	const modalRef = useRef<HTMLIonModalElement>(null);
 	const [manualOpen, setManualOpen] = useState(false);
 
 	useEffect(() => {
@@ -58,9 +58,6 @@ const WhatsNewModal: React.FC = () => {
 	const isOpen = manualOpen || autoEntries.length > 0;
 	const entries = manualOpen ? ALL_RELEVANT_ENTRIES : autoEntries;
 
-	// Dismissing always advances `lastSeenChangelogDate` to the newest entry,
-	// even when opened manually from Settings. Manually peeking the changelog
-	// counts as "seen" and silences any pending auto-popup.
 	const handleDismiss = () => {
 		setManualOpen(false);
 		const latest = changelog[0]?.date;
@@ -70,45 +67,42 @@ const WhatsNewModal: React.FC = () => {
 	};
 
 	return (
-		<IonModal
-			ref={modalRef}
-			isOpen={isOpen}
-			onDidDismiss={handleDismiss}
-			className="whats-new-modal"
+		<Modal
+			open={isOpen}
+			onOpenChange={(open) => {
+				if (!open) handleDismiss();
+			}}
+			title={manualOpen ? "Changelog" : "Recent updates"}
+			contentClassName="max-h-[85vh] overflow-hidden"
+			footer={
+				<Button
+					className="w-full"
+					onClick={handleDismiss}
+					disabled={saveSettings.isPending}
+				>
+					Got it
+				</Button>
+			}
 		>
-			<div className="whats-new-shell">
-				<div className="whats-new-body">
-					<p className="whats-new-eyebrow">What's new</p>
-					<h2 className="whats-new-heading">{manualOpen ? "Changelog" : "Recent updates"}</h2>
-
-					<div className="whats-new-entries">
-						{entries.map((entry) => (
-							<section key={entry.date} className="whats-new-entry">
-								<header className="whats-new-entry-head">
-									<h3>{entry.title}</h3>
-									<span className="whats-new-date">{formatDate(entry.date)}</span>
-								</header>
-								<ul>
-									{entry.changes.map((change) => (
-										<li key={change}>{change}</li>
-									))}
-								</ul>
-							</section>
-						))}
-					</div>
-				</div>
-
-				<div className="whats-new-footer">
-					<IonButton
-						expand="block"
-						onClick={() => modalRef.current?.dismiss()}
-						disabled={saveSettings.isPending}
-					>
-						Got it
-					</IonButton>
-				</div>
+			<p className="-mt-1 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+				What's new
+			</p>
+			<div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">
+				{entries.map((entry) => (
+					<section key={entry.date} className="flex flex-col gap-2">
+						<header className="flex items-baseline justify-between gap-3">
+							<h3 className="font-semibold text-base">{entry.title}</h3>
+							<span className="text-muted-foreground text-xs">{formatDate(entry.date)}</span>
+						</header>
+						<ul className="m-0 list-disc pl-5 text-foreground/85 text-sm">
+							{entry.changes.map((change) => (
+								<li key={change}>{change}</li>
+							))}
+						</ul>
+					</section>
+				))}
 			</div>
-		</IonModal>
+		</Modal>
 	);
 };
 

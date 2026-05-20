@@ -1,5 +1,5 @@
-import { IonContent, IonIcon, IonItem, IonLabel, IonList, IonModal } from "@ionic/react";
-import { clipboardOutline, documentOutline, linkOutline } from "ionicons/icons";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
+import { ClipboardList, FileText, Link as LinkIcon, type LucideIcon } from "lucide-react";
 import type React from "react";
 
 interface ImportSheetProps {
@@ -12,7 +12,7 @@ interface ImportSheetProps {
 
 type Source = {
 	key: "file" | "clipboard" | "url";
-	icon: string;
+	icon: LucideIcon;
 	title: string;
 	subtitle: string;
 };
@@ -20,29 +20,24 @@ type Source = {
 const SOURCES: Source[] = [
 	{
 		key: "file",
-		icon: documentOutline,
+		icon: FileText,
 		title: "Import file",
 		subtitle: "TXT, EPUB, HTML, PDF, Markdown",
 	},
 	{
 		key: "clipboard",
-		icon: clipboardOutline,
+		icon: ClipboardList,
 		title: "Paste text",
 		subtitle: "From clipboard",
 	},
 	{
 		key: "url",
-		icon: linkOutline,
+		icon: LinkIcon,
 		title: "Import from URL",
 		subtitle: "Articles and web novels",
 	},
 ];
 
-/**
- * Bottom-sheet picker for import sources. Opens from the library FAB and
- * scales cleanly as new sources (PDF, Calibre, …) are added — each is a row
- * with icon + title + subtitle instead of one ragged centered label.
- */
 const ImportSheet: React.FC<ImportSheetProps> = ({
 	isOpen,
 	onClose,
@@ -62,30 +57,37 @@ const ImportSheet: React.FC<ImportSheetProps> = ({
 	};
 
 	return (
-		<IonModal
-			isOpen={isOpen}
-			onDidDismiss={onClose}
-			breakpoints={[0, 0.45]}
-			initialBreakpoint={0.45}
-			handle
+		<Drawer
+			open={isOpen}
+			onOpenChange={(open) => {
+				if (!open) onClose();
+			}}
 		>
-			<IonContent>
-				<div className="px-5 pt-4 pb-2">
-					<h2 className="m-0 font-semibold text-lg">Add a book</h2>
+			<DrawerContent>
+				<DrawerHeader>
+					<DrawerTitle>Add a book</DrawerTitle>
+				</DrawerHeader>
+				<div className="flex flex-col px-2 pb-2">
+					{SOURCES.map((s) => {
+						const Icon = s.icon;
+						return (
+							<button
+								key={s.key}
+								type="button"
+								onClick={() => handlePick(s.key)}
+								className="flex items-center gap-4 rounded-md px-3 py-3 text-left transition-colors hover:bg-muted"
+							>
+								<Icon className="size-5 shrink-0 text-muted-foreground" />
+								<div className="flex flex-col">
+									<span className="font-medium text-base text-foreground">{s.title}</span>
+									<span className="text-muted-foreground text-sm">{s.subtitle}</span>
+								</div>
+							</button>
+						);
+					})}
 				</div>
-				<IonList lines="full">
-					{SOURCES.map((s) => (
-						<IonItem key={s.key} button detail={false} onClick={() => handlePick(s.key)}>
-							<IonIcon icon={s.icon} slot="start" aria-hidden />
-							<IonLabel>
-								<h3>{s.title}</h3>
-								<p>{s.subtitle}</p>
-							</IonLabel>
-						</IonItem>
-					))}
-				</IonList>
-			</IonContent>
-		</IonModal>
+			</DrawerContent>
+		</Drawer>
 	);
 };
 

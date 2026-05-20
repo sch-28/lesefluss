@@ -1,14 +1,18 @@
-import { IonAlert } from "@ionic/react";
+import { useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-	bookOutline,
-	closeCircleOutline,
-	cloudDownloadOutline,
-	trashOutline,
-} from "ionicons/icons";
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@lesefluss/ui/alert-dialog";
+import { BookOpen, CircleX, CloudDownload, Trash2 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
-import { useHistory, useParams } from "react-router-dom";
 import { CloudflareChallenge } from "../../components/cloudflare-challenge";
 import { queryHooks } from "../../services/db/hooks";
 import { serialKeys } from "../../services/db/hooks/query-keys";
@@ -19,9 +23,13 @@ import { type DetailAction, DetailShell } from "../_shared/detail-shell";
 import { SeriesChapterList } from "./series-chapter-list";
 import { useChapterBatchDownload } from "./use-chapter-batch-download";
 
-const SeriesDetail: React.FC = () => {
-	const { id } = useParams<{ id: string }>();
-	const history = useHistory();
+interface Props {
+	id?: string;
+}
+
+const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
+	const id = propId ?? "";
+	const router = useRouter();
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
 	const { data: series, isPending: seriesPending } = useQuery({
@@ -30,8 +38,8 @@ const SeriesDetail: React.FC = () => {
 		enabled: !!id,
 	});
 
-	// Entry chapter (last-read or chapter 0). Used by the primary "Continue / Start"
-	// action — looked up here so the button label can name the actual chapter.
+	// Entry chapter (last-read or chapter 0). Drives the primary "Continue / Start"
+	// action so the button label can name the actual chapter.
 	const { data: entryChapter } = useQuery({
 		queryKey: serialKeys.entry(id),
 		queryFn: () => queries.getSeriesEntryChapter(id),
@@ -56,15 +64,11 @@ const SeriesDetail: React.FC = () => {
 	);
 	const batch = useChapterBatchDownload(series?.id);
 
-	// Hoisted above the conditional returns below — React's rules of hooks
-	// require the hook order to be stable across renders. The first render
-	// (series pending) used to early-return before this `useMemo` ran; the
-	// second render (data loaded) then called it, tripping React error #310
-	// "Rendered more hooks than during the previous render".
+	// Hoisted so hook order stays stable across early returns (React error #310).
 	const deleteHeaderAction = useMemo(
 		() => ({
 			label: "Delete series",
-			icon: trashOutline,
+			icon: Trash2,
 			destructive: true,
 			onClick: () => setIsDeleteOpen(true),
 		}),
@@ -75,7 +79,7 @@ const SeriesDetail: React.FC = () => {
 		return (
 			<DetailShell
 				cover={null}
-				title="Loading…"
+				title="Loading..."
 				primaryAction={{ label: "Loading", onClick: () => undefined, disabled: true }}
 				isLoading
 			/>
@@ -89,16 +93,13 @@ const SeriesDetail: React.FC = () => {
 				title="Series not found"
 				primaryAction={{
 					label: "Back to library",
-					onClick: () => history.replace("/tabs/library"),
+					onClick: () => router.navigate({ to: "/tabs/library", replace: true }),
 				}}
 				errorMessage="Series not found."
 			/>
 		);
 	}
 
-	// Continue from last-read chapter; fall back to "Start reading" for a brand-new
-	// series. If the series somehow has no chapters at all (shouldn't happen
-	// post-import), the button is disabled with a clear label.
 	const hasStarted = entryChapter && (entryChapter.lastRead ?? 0) > 0;
 	const primaryLabel = !entryChapter
 		? "No chapters yet"
@@ -110,9 +111,9 @@ const SeriesDetail: React.FC = () => {
 
 	const provider = providerLabel(series.provider);
 
-	// Hidden on web: chapter fetches there go through the catalog `/proxy/article`
-	// endpoint (see `services/serial-scrapers/fetch.ts`), so a "Download all" on a
-	// long series would hammer our backend. Native fetches go device-direct.
+	// Hidden on web: chapter fetches go through the catalog `/proxy/article`
+	// endpoint there, so "Download all" on a long series would hammer our
+	// backend. Native fetches go device-direct.
 	const downloadAction: DetailAction | null = IS_WEB
 		? null
 		: batch.isRunning
@@ -120,13 +121,13 @@ const SeriesDetail: React.FC = () => {
 					label: batch.progress
 						? `Cancel download (${batch.progress.current} / ${batch.progress.total})`
 						: "Cancel download",
-					icon: closeCircleOutline,
+					icon: CircleX,
 					onClick: () => batch.cancel(),
 				}
 			: pendingChapterIds.length > 0
 				? {
 						label: `Download all chapters (${pendingChapterIds.length})`,
-						icon: cloudDownloadOutline,
+						icon: CloudDownload,
 						onClick: () => void batch.start(pendingChapterIds),
 					}
 				: null;
@@ -145,10 +146,11 @@ const SeriesDetail: React.FC = () => {
 				statsLine={statsLine}
 				primaryAction={{
 					label: primaryLabel,
-					icon: bookOutline,
+					icon: BookOpen,
 					disabled: !entryChapter,
 					onClick: () => {
-						if (entryChapter) history.push(`/tabs/reader/${entryChapter.id}`);
+						if (entryChapter)
+							router.navigate({ to: "/tabs/reader/$id", params: { id: entryChapter.id } });
 					},
 				}}
 				secondaryActions={downloadAction ? [downloadAction] : undefined}
@@ -165,26 +167,33 @@ const SeriesDetail: React.FC = () => {
 				<SeriesChapterList seriesId={series.id} isSyncing={isSyncing} />
 			</DetailShell>
 
-			<IonAlert
-				isOpen={isDeleteOpen}
-				onDidDismiss={() => setIsDeleteOpen(false)}
-				header="Delete series?"
-				message={`"${series.title}" and all its chapters will be removed from your library.`}
-				buttons={[
-					{ text: "Cancel", role: "cancel" },
-					{
-						text: "Delete",
-						role: "destructive",
-						handler: () => {
-							deleteMutation.mutate(
-								{ id: series.id, title: series.title },
-								{ onSuccess: () => history.replace("/tabs/library") },
-							);
-						},
-					},
-				]}
-				cssClass="rsvp-alert"
-			/>
+			<AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete series?</AlertDialogTitle>
+						<AlertDialogDescription>
+							"{series.title}" and all its chapters will be removed from your library.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							onClick={() => {
+								deleteMutation.mutate(
+									{ id: series.id, title: series.title },
+									{
+										onSuccess: () =>
+											router.navigate({ to: "/tabs/library", replace: true }),
+									},
+								);
+							}}
+						>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	);
 };

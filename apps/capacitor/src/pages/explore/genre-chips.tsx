@@ -1,5 +1,5 @@
-import { IonChip, IonIcon, IonLabel } from "@ionic/react";
-import { closeOutline } from "ionicons/icons";
+import { Button } from "@lesefluss/ui/button";
+import { X } from "lucide-react";
 import type React from "react";
 
 type Props = {
@@ -16,10 +16,10 @@ const GenreChips: React.FC<Props> = ({ activeGenre, activeLabel, onClear }) => {
 	if (!activeGenre) return null;
 	return (
 		<div className="flex items-center gap-2 px-4 pt-2 pb-1">
-			<IonChip onClick={onClear}>
-				<IonLabel>{activeLabel ?? activeGenre}</IonLabel>
-				<IonIcon icon={closeOutline} />
-			</IonChip>
+			<Button variant="secondary" size="sm" onClick={onClear} className="gap-1">
+				{activeLabel ?? activeGenre}
+				<X className="size-3.5" />
+			</Button>
 		</div>
 	);
 };

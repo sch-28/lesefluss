@@ -1,7 +1,67 @@
-@layer theme, utilities;
+/* Cascade layer order matches legacy.css (loaded first in main.tsx).
+ * - base: Tailwind preflight (button/list/heading resets); shadcn expects it.
+ * - ionic + legacy: Ionic core + monochrome (in legacy.css) beat preflight.
+ * - utilities: Tailwind utility classes beat everything else. */
+@layer theme, base, ionic, legacy, tokens, utilities;
+
 @import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/preflight" layer(base);
+/* tokens.css imports tw-animate-css which uses @utility; @utility cannot live
+ * inside @layer, so this import stays unlayered. Its :root/.dark/.sepia
+ * blocks only declare custom properties → no selector competition with Ionic. */
+@import "@lesefluss/ui/styles/tokens.css";
 @import "tailwindcss/utilities" layer(utilities);
+
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+
+/* Unlayered base. Wins over Ionic body bg + removes browser anchor underline.
+ * Paint html so the gap behind the fixed-positioned body never shows the
+ * browser default. var(--background) resolves through the .dark/.sepia class
+ * on <html> set by theme-context.tsx. */
+html,
+body,
+#root,
+ion-app {
+	background-color: var(--background);
+	color: var(--foreground);
+}
+
+html,
+body {
+	margin: 0;
+	min-height: 100%;
+}
+
+a {
+	text-decoration: none;
+	color: inherit;
+}
 
 :root {
 	font-size: 16px;
+	--side-nav-w: 15rem;
+	--tab-bar-h: 3.5rem;
+	--content-left-inset: 1rem;
+}
+
+body.sidebar-collapsed {
+	--side-nav-w: 4rem;
+}
+
+@media (min-width: 768px) {
+	:root {
+		--content-left-inset: calc(
+			var(--side-nav-w, 15rem) + 1.5rem +
+				max(0px, (100vw - var(--side-nav-w, 15rem) - 80rem) / 2)
+		);
+	}
+}
+
+@keyframes indeterminate-progress {
+	0% {
+		transform: translateX(-100%);
+	}
+	100% {
+		transform: translateX(400%);
+	}
 }

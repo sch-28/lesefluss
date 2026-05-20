@@ -1,5 +1,5 @@
-import { IonButton, IonIcon } from "@ionic/react";
-import { chevronForwardOutline, shuffleOutline } from "ionicons/icons";
+import { Button } from "@lesefluss/ui/button";
+import { ChevronRight, Shuffle } from "lucide-react";
 import type React from "react";
 import type { CatalogSearchResult } from "../../services/catalog/client";
 import ResultCard from "./result-card";
@@ -15,9 +15,9 @@ type Props = {
 };
 
 /**
- * Horizontal-scroll strip of catalog cards. CSS `overflow-x:auto` +
- * `scroll-snap-type: x mandatory` gives each card a crisp snap target on
- * touch devices without any JS.
+ * Horizontal-scroll strip of catalog cards. CSS overflow-x:auto +
+ * scroll-snap-type: x mandatory gives each card a crisp snap target on touch
+ * devices without any JS.
  */
 const Shelf: React.FC<Props> = ({
 	title,
@@ -29,35 +29,38 @@ const Shelf: React.FC<Props> = ({
 	emptyLabel,
 }) => {
 	return (
-		<section className="explore-shelf mb-6">
+		<section className="mb-6">
 			<header className="mb-2 flex items-center justify-between">
 				<h2 className="m-0 font-semibold text-[0.95rem]">{title}</h2>
 				<div className="flex items-center gap-1">
 					{onShuffle && (
-						<IonButton
-							fill="clear"
-							size="small"
+						<Button
+							variant="ghost"
+							size="icon-sm"
 							onClick={onShuffle}
 							disabled={isShuffling}
 							aria-label="Shuffle"
 						>
-							<IonIcon slot="icon-only" icon={shuffleOutline} />
-						</IonButton>
+							<Shuffle />
+						</Button>
 					)}
 					{onSeeAll && (
-						<IonButton fill="clear" size="small" onClick={onSeeAll}>
+						<Button variant="ghost" size="sm" onClick={onSeeAll}>
 							See all
-							<IonIcon slot="end" icon={chevronForwardOutline} />
-						</IonButton>
+							<ChevronRight />
+						</Button>
 					)}
 				</div>
 			</header>
 			{books.length === 0 ? (
-				<p className="text-[#888] text-[0.8rem]" style={{ margin: 0 }}>
+				<p className="m-0 text-muted-foreground text-[0.8rem]">
 					{emptyLabel ?? "Nothing here yet."}
 				</p>
 			) : (
-				<div className="explore-shelf-scroll flex gap-3 overflow-x-auto pb-2">
+				<div
+					className="flex gap-3 overflow-x-auto pb-2"
+					style={{ scrollSnapType: "x mandatory" }}
+				>
 					{books.map((b) => (
 						<div
 							key={b.id}

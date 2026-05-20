@@ -1,38 +1,28 @@
 /**
- * RsvpSettingsForm - the RSVP settings controls (speed, punctuation,
- * reading mode, focal position, advanced ramp, reset). Shared between the
- * dedicated settings page (`/tabs/settings/rsvp`) and the in-reader sheet
- * opened from RsvpView. The `minimal` prop trims reader-mode + word-offset
- * + reset for the in-reader sheet and enables an "Open full settings" link.
+ * RsvpSettingsForm: the RSVP settings controls (speed, punctuation, reading
+ * mode, focal position, advanced ramp, reset). Shared between the dedicated
+ * settings page (`/tabs/settings/rsvp`) and the in-reader sheet opened from
+ * RsvpView. The `minimal` prop trims reader-mode + word-offset + reset for the
+ * in-reader sheet and enables an "Open full settings" link.
+ *
  * Does not render any page chrome (header, preview); callers wrap as appropriate.
  */
 
-import {
-	IonAlert,
-	IonIcon,
-	IonItem,
-	IonLabel,
-	IonList,
-	IonListHeader,
-	IonNote,
-	IonRange,
-	IonSpinner,
-} from "@ionic/react";
 import {
 	DEFAULT_SETTINGS,
 	FOCAL_LETTER_COLOR_PRESETS,
 	type HexColor,
 	SETTING_CONSTRAINTS,
 } from "@lesefluss/core";
-import { chevronDown } from "ionicons/icons";
+import { Slider } from "@lesefluss/ui/slider";
+import { cn } from "@lesefluss/ui/utils";
+import { ChevronDown, Loader2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ModeCards, READER_MODE_OPTIONS, WpmPresetChips } from "../../components/rsvp-pickers";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 
-const CHIP_CONTAINER_STYLE: React.CSSProperties = { flex: 1, padding: "8px 0" };
-
-/** RSVP-scoped subset of DEFAULT_SETTINGS for the reset button. Reader-appearance fields are untouched. */
 const RSVP_DEFAULTS_PATCH = {
 	wpm: DEFAULT_SETTINGS.WPM,
 	delayComma: DEFAULT_SETTINGS.DELAY_COMMA,
@@ -44,6 +34,30 @@ const RSVP_DEFAULTS_PATCH = {
 	wordOffset: DEFAULT_SETTINGS.WORD_OFFSET,
 	defaultReaderMode: DEFAULT_SETTINGS.DEFAULT_READER_MODE,
 };
+
+const SectionHeader: React.FC<{ children: React.ReactNode; hint?: string }> = ({
+	children,
+	hint,
+}) => (
+	<div className="flex items-baseline gap-2 px-4 pt-5 pb-2">
+		<h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">{children}</h3>
+		{hint && <span className="text-muted-foreground text-xs">{hint}</span>}
+	</div>
+);
+
+const Row: React.FC<{ children: React.ReactNode; className?: string }> = ({
+	children,
+	className,
+}) => (
+	<div
+		className={cn(
+			"flex min-h-12 items-center justify-between gap-3 border-border border-b px-4 py-2 last:border-b-0",
+			className,
+		)}
+	>
+		{children}
+	</div>
+);
 
 interface StepperRowProps {
 	label: string;
@@ -71,12 +85,12 @@ const StepperRow: React.FC<StepperRowProps> = ({
 		return Math.min(max, Math.max(min, Number(snapped.toFixed(4))));
 	};
 	return (
-		<IonItem>
-			<IonLabel>
-				{label}
-				{hint && <IonNote className="ion-padding-start">{hint}</IonNote>}
-			</IonLabel>
-			<div slot="end" className="ap-settings-row">
+		<Row>
+			<div className="flex min-w-0 flex-col">
+				<span className="text-foreground text-sm">{label}</span>
+				{hint && <span className="text-muted-foreground text-xs">{hint}</span>}
+			</div>
+			<div className="ap-settings-row">
 				<span className="ap-settings-val">{display}</span>
 				<div className="ap-row-buttons">
 					<button
@@ -99,7 +113,7 @@ const StepperRow: React.FC<StepperRowProps> = ({
 					</button>
 				</div>
 			</div>
-		</IonItem>
+		</Row>
 	);
 };
 
@@ -120,46 +134,36 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 
 	if (isPending || !settings) {
 		return (
-			<div className="ion-text-center ion-padding">
-				<IonSpinner />
+			<div className="flex justify-center p-8">
+				<Loader2 className="size-5 animate-spin text-muted-foreground" />
 			</div>
 		);
 	}
 
 	return (
 		<>
-			<IonList>
-				{/* ── Speed ── */}
-				<IonListHeader>
-					<IonLabel>Speed</IonLabel>
-				</IonListHeader>
+			<div className="flex flex-col">
+				<SectionHeader>Speed</SectionHeader>
 
-				<IonItem>
-					<div style={CHIP_CONTAINER_STYLE}>
-						<WpmPresetChips value={settings.wpm} onChange={(wpm) => updateSetting("wpm", wpm)} />
+				<Row className="flex-col items-stretch gap-3 py-3">
+					<WpmPresetChips value={settings.wpm} onChange={(wpm) => updateSetting("wpm", wpm)} />
+				</Row>
+
+				<Row className="flex-col items-stretch gap-2 py-3">
+					<div className="flex items-baseline justify-between">
+						<span className="text-foreground text-sm">Words per minute</span>
+						<span className="font-medium text-foreground text-sm tabular-nums">{settings.wpm}</span>
 					</div>
-				</IonItem>
-
-				<IonItem>
-					<IonLabel position="stacked">Words per minute</IonLabel>
-					<IonRange
+					<Slider
 						min={SETTING_CONSTRAINTS.WPM.min}
 						max={SETTING_CONSTRAINTS.WPM.max}
 						step={SETTING_CONSTRAINTS.WPM.step}
-						value={settings.wpm}
-						onIonChange={(e) => updateSetting("wpm", e.detail.value as number)}
-						pin
-						pinFormatter={(value: number) => `${value}`}
-					>
-						<IonNote slot="start">{SETTING_CONSTRAINTS.WPM.min}</IonNote>
-						<IonNote slot="end">{settings.wpm}</IonNote>
-					</IonRange>
-				</IonItem>
+						value={[settings.wpm]}
+						onValueChange={(values) => updateSetting("wpm", values[0])}
+					/>
+				</Row>
 
-				{/* ── Punctuation ── */}
-				<IonListHeader>
-					<IonLabel>Punctuation</IonLabel>
-				</IonListHeader>
+				<SectionHeader>Punctuation</SectionHeader>
 
 				<StepperRow
 					label="Comma delay"
@@ -183,23 +187,16 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 					onChange={(v) => updateSetting("delayPeriod", v)}
 				/>
 
-				{/* ── Reading mode ── */}
 				{!minimal && (
 					<>
-						<IonListHeader>
-							<IonLabel>
-								Reading Mode
-								<IonNote className="ion-padding-start">(when opening a book)</IonNote>
-							</IonLabel>
-						</IonListHeader>
-
-						<IonItem lines="none">
+						<SectionHeader hint="(when opening a book)">Reading Mode</SectionHeader>
+						<Row className="py-3">
 							<ModeCards
 								options={READER_MODE_OPTIONS}
 								value={settings.defaultReaderMode as "scroll" | "rsvp"}
 								onChange={(mode) => updateSetting("defaultReaderMode", mode)}
 							/>
-						</IonItem>
+						</Row>
 					</>
 				)}
 
@@ -213,44 +210,45 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 					onChange={(v) => updateSetting("xOffset", v)}
 				/>
 
-				<IonItem>
-					<IonLabel>
-						Focal letter color
-						<IonNote className="ion-padding-start">{settings.focalLetterColor}</IonNote>
-					</IonLabel>
-					<div slot="end" className="rsvp-color-swatches">
-						{FOCAL_LETTER_COLOR_PRESETS.map((color) => (
-							<button
-								key={color}
-								type="button"
-								className={
-									settings.focalLetterColor.toLowerCase() === color
-										? "rsvp-color-swatch rsvp-color-swatch--active"
-										: "rsvp-color-swatch"
-								}
-								style={{ background: color }}
-								onClick={() => updateSetting("focalLetterColor", color as HexColor)}
-								aria-label={`Set focal letter color to ${color}`}
-							/>
-						))}
+				<Row>
+					<div className="flex min-w-0 flex-col">
+						<span className="text-foreground text-sm">Focal letter color</span>
+						<span className="text-muted-foreground text-xs tabular-nums">
+							{settings.focalLetterColor}
+						</span>
 					</div>
-				</IonItem>
+					<div className="flex gap-1.5">
+						{FOCAL_LETTER_COLOR_PRESETS.map((color) => {
+							const isActive = settings.focalLetterColor.toLowerCase() === color;
+							return (
+								<button
+									key={color}
+									type="button"
+									className={cn(
+										"size-6 rounded-full border-2 transition-transform",
+										isActive ? "scale-110 border-foreground" : "border-border",
+									)}
+									style={{ background: color }}
+									onClick={() => updateSetting("focalLetterColor", color as HexColor)}
+									aria-label={`Set focal letter color to ${color}`}
+								/>
+							);
+						})}
+					</div>
+				</Row>
 
-				{/* ── Advanced (collapsible) ── */}
 				<button
 					type="button"
-					className="rsvp-advanced-toggle"
+					className="mt-2 flex items-center justify-between border-border border-b px-4 py-3 text-left transition-colors hover:bg-muted"
 					onClick={() => setAdvancedOpen((o) => !o)}
 					aria-expanded={advancedOpen}
 				>
-					<span>Advanced</span>
-					<IonIcon
-						icon={chevronDown}
-						className={
-							advancedOpen
-								? "rsvp-advanced-chevron rsvp-advanced-chevron--open"
-								: "rsvp-advanced-chevron"
-						}
+					<span className="font-medium text-foreground text-sm">Advanced</span>
+					<ChevronDown
+						className={cn(
+							"size-4 text-muted-foreground transition-transform",
+							advancedOpen && "rotate-180",
+						)}
 					/>
 				</button>
 
@@ -266,7 +264,6 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 							step={SETTING_CONSTRAINTS.ACCEL_START.step}
 							onChange={(v) => updateSetting("accelStart", v)}
 						/>
-
 						<StepperRow
 							label="Acceleration rate"
 							hint="(ramp to full speed)"
@@ -277,7 +274,6 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 							step={SETTING_CONSTRAINTS.ACCEL_RATE.step}
 							onChange={(v) => updateSetting("accelRate", v)}
 						/>
-
 						{!minimal && (
 							<StepperRow
 								label="Word offset"
@@ -292,36 +288,39 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 						)}
 					</>
 				)}
-			</IonList>
+			</div>
 
-			<div className="rsvp-reset-wrap">
+			<div className="flex justify-center px-4 pt-6 pb-2">
 				{!minimal && (
-					<button type="button" className="rsvp-reset-btn" onClick={() => setResetOpen(true)}>
+					<button
+						type="button"
+						className="text-destructive text-sm transition-opacity hover:opacity-70"
+						onClick={() => setResetOpen(true)}
+					>
 						Reset RSVP settings
 					</button>
 				)}
 				{minimal && onOpenFullSettings && (
-					<button type="button" className="rsvp-link-btn" onClick={onOpenFullSettings}>
+					<button
+						type="button"
+						className="text-primary text-sm underline-offset-4 hover:underline"
+						onClick={onOpenFullSettings}
+					>
 						Open full RSVP settings
 					</button>
 				)}
 			</div>
 
-			<IonAlert
-				isOpen={resetOpen}
-				onDidDismiss={() => setResetOpen(false)}
-				header="Reset RSVP settings?"
-				message="All RSVP settings will return to their defaults. Reader appearance is untouched."
-				buttons={[
-					{ text: "Cancel", role: "cancel" },
-					{
-						text: "Reset",
-						role: "destructive",
-						handler: () => {
-							void replaceAll(RSVP_DEFAULTS_PATCH);
-						},
-					},
-				]}
+			<ConfirmDialog
+				open={resetOpen}
+				onOpenChange={setResetOpen}
+				title="Reset RSVP settings?"
+				description="All RSVP settings will return to their defaults. Reader appearance is untouched."
+				confirmLabel="Reset"
+				destructive
+				onConfirm={() => {
+					void replaceAll(RSVP_DEFAULTS_PATCH);
+				}}
 			/>
 		</>
 	);

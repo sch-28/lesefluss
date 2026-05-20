@@ -1,5 +1,6 @@
-import { IonIcon } from "@ionic/react";
-import { chevronBackOutline, chevronForwardOutline } from "ionicons/icons";
+import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type React from "react";
 
 type Props = {
@@ -12,7 +13,7 @@ type Props = {
 type PageItem = number | "ellipsis-left" | "ellipsis-right";
 
 /**
- * Build a classic pagination strip: 1 … (current-1) current (current+1) … last.
+ * Classic pagination strip: 1 ... (current-1) current (current+1) ... last.
  * Always shows first + last; current sits in a 3-wide window in the middle;
  * collapses with ellipsis on whichever side needs it.
  */
@@ -36,48 +37,48 @@ const Pagination: React.FC<Props> = ({ page, totalPages, onChange, disabled }) =
 	const items = pageItems(page, totalPages);
 
 	return (
-		<nav className="pagination" aria-label="Pagination">
-			<button
-				type="button"
-				className="pagination-btn"
+		<nav className="flex items-center justify-center gap-1 px-4 py-4" aria-label="Pagination">
+			<Button
+				variant="outline"
+				size="icon"
 				disabled={page <= 1 || disabled}
 				onClick={() => onChange(page - 1)}
 				aria-label="Previous page"
 			>
-				<IonIcon icon={chevronBackOutline} />
-			</button>
+				<ChevronLeft />
+			</Button>
 			{items.map((item, i) =>
 				typeof item === "number" ? (
-					<button
-						type="button"
+					<Button
 						key={item}
-						className={item === page ? "pagination-btn active" : "pagination-btn"}
+						variant={item === page ? "default" : "outline"}
+						size="icon"
 						disabled={disabled}
 						onClick={() => onChange(item)}
 						aria-current={item === page ? "page" : undefined}
 					>
 						{item}
-					</button>
+					</Button>
 				) : (
-					// Two ellipsis slots are possible (left + right gap) and `item` is the
-					// same string for both, so the position index disambiguates them. The
-					// `items` array is rebuilt deterministically from `page`/`totalPages`,
-					// never reordered or sliced mid-render.
-					// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
-					<span key={`${item}-${i}`} className="pagination-ellipsis" aria-hidden="true">
+					<span
+						// biome-ignore lint/suspicious/noArrayIndexKey: deterministic position
+						key={`${item}-${i}`}
+						className={cn("inline-flex size-8 items-center justify-center text-muted-foreground")}
+						aria-hidden="true"
+					>
 						…
 					</span>
 				),
 			)}
-			<button
-				type="button"
-				className="pagination-btn"
+			<Button
+				variant="outline"
+				size="icon"
 				disabled={page >= totalPages || disabled}
 				onClick={() => onChange(page + 1)}
 				aria-label="Next page"
 			>
-				<IonIcon icon={chevronForwardOutline} />
-			</button>
+				<ChevronRight />
+			</Button>
 		</nav>
 	);
 };

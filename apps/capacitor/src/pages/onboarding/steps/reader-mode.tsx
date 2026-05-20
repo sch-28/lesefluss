@@ -7,10 +7,10 @@ const ReaderModeStep: React.FC = () => {
 	if (!settings) return null;
 
 	return (
-		<div className="onboarding-step">
-			<h2 className="onboarding-step-title">Default reading mode</h2>
-			<p className="onboarding-step-sub">Which view opens first when you tap a book?</p>
-			<div className="onboarding-mode-picker-wrap">
+		<div>
+			<h2 className="font-semibold text-2xl tracking-tight">Default reading mode</h2>
+			<p className="mt-2 text-muted-foreground">Which view opens first when you tap a book?</p>
+			<div className="mt-8">
 				<ModeCards
 					options={READER_MODE_OPTIONS}
 					value={settings.defaultReaderMode}

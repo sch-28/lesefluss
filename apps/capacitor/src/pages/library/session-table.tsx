@@ -1,16 +1,19 @@
-import { IonAlert, IonButton, IonIcon, IonSpinner } from "@ionic/react";
+import { useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
 import {
-	chevronDown,
-	chevronUp,
-	flashOutline,
-	openOutline,
-	timeOutline,
-	trashOutline,
-} from "ionicons/icons";
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@lesefluss/ui/alert-dialog";
+import { Button } from "@lesefluss/ui/button";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronDown, ChevronUp, Clock, ExternalLink, Loader2, Trash2, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useHistory } from "react-router-dom";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
@@ -72,10 +75,10 @@ export function SessionTable(props: Props) {
 
 	if (sessionsQuery.isPending) {
 		return (
-			<section className="book-detail-card mt-4">
-				<h2 className="book-detail-section-title">Sessions</h2>
+			<section className="mt-6 rounded-lg border border-border bg-card p-4 text-card-foreground">
+				<h2 className="m-0 mb-3 font-semibold text-base">Sessions</h2>
 				<div className="flex items-center justify-center py-6">
-					<IonSpinner name="crescent" />
+					<Loader2 className="size-5 animate-spin text-muted-foreground" />
 				</div>
 			</section>
 		);
@@ -89,13 +92,13 @@ export function SessionTable(props: Props) {
 			whileInView={{ opacity: 1, y: 0 }}
 			viewport={{ once: true, amount: 0.15 }}
 			transition={{ duration: 0.4 }}
-			className="book-detail-card mt-4"
+			className="mt-6 rounded-lg border border-border bg-card p-4 text-card-foreground"
 		>
-			<h2 className="book-detail-section-title">
-				Sessions <span className="opacity-60">· {sessions.length}</span>
+			<h2 className="m-0 mb-3 font-semibold text-base">
+				Sessions <span className="text-muted-foreground">· {sessions.length}</span>
 			</h2>
 
-			<ul className="session-table-list mt-2">
+			<ul className="m-0 list-none divide-y divide-border p-0">
 				{visible.map((s) => (
 					<SessionRow
 						key={s.id}
@@ -110,37 +113,40 @@ export function SessionTable(props: Props) {
 			</ul>
 
 			{hasMore && (
-				<div className="mt-2 flex justify-center">
-					<IonButton
-						fill="clear"
-						size="small"
-						onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-					>
+				<div className="mt-3 flex justify-center">
+					<Button variant="ghost" size="sm" onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}>
 						Show more ({sessions.length - visibleCount} left)
-					</IonButton>
+					</Button>
 				</div>
 			)}
 
-			<IonAlert
-				isOpen={pendingDeleteId !== null}
-				onDidDismiss={() => setPendingDeleteId(null)}
-				header="Delete session?"
-				message="This session will be removed from your reading history on every device."
-				buttons={[
-					{ text: "Cancel", role: "cancel" },
-					{
-						text: "Delete",
-						role: "destructive",
-						handler: () => {
-							const id = pendingDeleteId;
-							if (!id) return;
-							deleteMutation.mutate(id);
-							if (expandedId === id) setExpandedId(null);
-						},
-					},
-				]}
-				cssClass="rsvp-alert"
-			/>
+			<AlertDialog
+				open={pendingDeleteId !== null}
+				onOpenChange={(open) => !open && setPendingDeleteId(null)}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete session?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This session will be removed from your reading history on every device.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							onClick={() => {
+								const id = pendingDeleteId;
+								if (!id) return;
+								deleteMutation.mutate(id);
+								if (expandedId === id) setExpandedId(null);
+							}}
+						>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</motion.section>
 	);
 }
@@ -155,7 +161,7 @@ type RowProps = {
 };
 
 function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDelete }: RowProps) {
-	const history = useHistory();
+	const router = useRouter();
 	const dateLabel = formatSessionDate(session.startedAt);
 
 	const size = book?.size ?? 0;
@@ -163,13 +169,14 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 	const startPct = size > 0 ? (session.startPos / size) * 100 : null;
 	const endPct = size > 0 ? (session.endPos / size) * 100 : null;
 
-	const openBook = () => history.push(`/tabs/library/book/${session.bookId}`);
+	const openBook = () =>
+		router.navigate({ to: "/tabs/library/book/$id", params: { id: session.bookId } });
 
 	return (
-		<li className="session-table-row">
+		<li>
 			<button
 				type="button"
-				className="session-table-row-button"
+				className="flex w-full cursor-pointer items-center gap-3 border-0 bg-transparent px-0 py-3 text-left text-foreground"
 				onClick={onToggle}
 				aria-expanded={isExpanded}
 			>
@@ -177,23 +184,28 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 					<div className="truncate text-sm">
 						{showBook ? (book?.title ?? "Unknown book") : dateLabel}
 					</div>
-					{showBook && <div className="mt-0.5 truncate text-[0.75rem] opacity-60">{dateLabel}</div>}
+					{showBook && (
+						<div className="mt-0.5 truncate text-muted-foreground text-xs">{dateLabel}</div>
+					)}
 				</div>
-				<div className="shrink-0 text-right text-xs tabular-nums opacity-80">
+				<div className="shrink-0 text-right text-foreground/80 text-xs tabular-nums">
 					<div>
 						{formatDuration(session.durationMs)}
-						{session.wpmAvg != null && <span className="opacity-70"> · {session.wpmAvg} wpm</span>}
+						{session.wpmAvg != null && (
+							<span className="text-muted-foreground"> · {session.wpmAvg} wpm</span>
+						)}
 					</div>
 					{deltaPct !== null && (
-						<div className="opacity-60">
+						<div className="text-muted-foreground">
 							{formatPercent(deltaPct)} · {session.wordsRead} words
 						</div>
 					)}
 				</div>
-				<IonIcon
-					icon={isExpanded ? chevronUp : chevronDown}
-					className="shrink-0 text-base opacity-50"
-				/>
+				{isExpanded ? (
+					<ChevronUp className="size-4 shrink-0 text-muted-foreground" />
+				) : (
+					<ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+				)}
 			</button>
 
 			<AnimatePresence initial={false}>
@@ -209,41 +221,42 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 							<div className="flex items-center gap-3">
 								<div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
 									<ModeBadge mode={session.mode} />
-									<span className="inline-flex items-center gap-1 opacity-80">
-										<IonIcon icon={timeOutline} className="text-sm opacity-70" />
+									<span className="inline-flex items-center gap-1 text-foreground/80">
+										<Clock className="size-3.5 text-muted-foreground" />
 										{formatTimeRange(session.startedAt, session.endedAt)}
 									</span>
 									{session.wpmAvg != null && (
-										<span className="inline-flex items-center gap-1 opacity-80">
-											<IonIcon icon={flashOutline} className="text-sm opacity-70" />
+										<span className="inline-flex items-center gap-1 text-foreground/80">
+											<Zap className="size-3.5 text-muted-foreground" />
 											{session.wpmAvg} wpm
 										</span>
 									)}
 								</div>
-								<div className="flex shrink-0 items-center gap-2">
+								<div className="flex shrink-0 items-center gap-1">
 									{showBook && (
-										<button
-											type="button"
+										<Button
+											variant="ghost"
+											size="icon-xs"
 											onClick={openBook}
 											aria-label="Open book"
-											className="flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-inherit opacity-70 active:opacity-40"
 										>
-											<IonIcon icon={openOutline} className="text-base" />
-										</button>
+											<ExternalLink />
+										</Button>
 									)}
-									<button
-										type="button"
+									<Button
+										variant="ghost"
+										size="icon-xs"
 										onClick={onRequestDelete}
 										aria-label="Delete session"
-										className="flex h-6 w-6 items-center justify-center border-0 bg-transparent p-0 text-[color:var(--ion-color-danger)] opacity-80 active:opacity-40"
+										className="text-destructive hover:text-destructive"
 									>
-										<IonIcon icon={trashOutline} className="text-base" />
-									</button>
+										<Trash2 />
+									</Button>
 								</div>
 							</div>
 							{startPct !== null && endPct !== null && (
-								<div className="opacity-70">
-									<span className="opacity-70">Position:</span>{" "}
+								<div className="text-muted-foreground">
+									<span>Position:</span>{" "}
 									<span className="tabular-nums">
 										{formatPercent(startPct)} → {formatPercent(endPct)}
 									</span>
@@ -259,7 +272,11 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 
 function ModeBadge({ mode }: { mode: ReadingSession["mode"] }) {
 	const label = mode === "rsvp" ? "RSVP" : mode === "scroll" ? "Scroll" : "Page";
-	return <span className="session-table-mode-badge">{label}</span>;
+	return (
+		<span className="inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 font-semibold text-[0.65rem] text-muted-foreground uppercase tracking-wide">
+			{label}
+		</span>
+	);
 }
 
 function formatPercent(value: number): string {

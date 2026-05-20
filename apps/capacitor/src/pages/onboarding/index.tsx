@@ -1,7 +1,8 @@
-import { IonContent, IonPage } from "@ionic/react";
+import { useRouter } from "@tanstack/react-router";
+import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
 import { useCallback, useState } from "react";
-import { useHistory } from "react-router-dom";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import BooksStep from "./steps/books";
 import PaginationStyleStep from "./steps/pagination-style";
@@ -13,12 +14,12 @@ import WelcomeStep from "./steps/welcome";
 
 interface StepEntry {
 	node: React.ReactNode;
-	/** Step renders its own footer/CTA — the shared Next/Back is hidden. */
+	/** Step renders its own footer/CTA. Shared Next/Back is hidden. */
 	ownsFooter: boolean;
 }
 
 const Onboarding: React.FC = () => {
-	const history = useHistory();
+	const router = useRouter();
 	const { settings, updateSetting, flush } = useAutoSaveSettings();
 	const [step, setStep] = useState(0);
 	const [importing, setImporting] = useState(false);
@@ -26,8 +27,8 @@ const Onboarding: React.FC = () => {
 	const finish = useCallback(async () => {
 		updateSetting("onboardingCompleted", true);
 		await flush();
-		history.replace("/tabs/library");
-	}, [updateSetting, flush, history]);
+		router.navigate({ to: "/tabs/library", replace: true });
+	}, [updateSetting, flush, router]);
 
 	const next = useCallback(() => {
 		setStep((s) => s + 1);
@@ -37,9 +38,7 @@ const Onboarding: React.FC = () => {
 		setStep((s) => Math.max(0, s - 1));
 	}, []);
 
-	// Step order — single source of truth for length and rendering.
-	// The pagination-style step is only relevant for users who pick the standard
-	// reader (not RSVP) on the previous step.
+	// Pagination-style step is only relevant when user picks the standard reader.
 	const showPaginationStep = !!settings && settings.defaultReaderMode !== "rsvp";
 	const steps: StepEntry[] = [
 		{ node: <WelcomeStep key="welcome" onNext={next} onSkip={finish} />, ownsFooter: true },
@@ -63,60 +62,46 @@ const Onboarding: React.FC = () => {
 	const showFooter = canSkip && !ownsOwnFooter;
 
 	return (
-		<IonPage className="onboarding-page">
-			<IonContent fullscreen>
-				<div className="onboarding-container">
-					<div className="onboarding-top-bar">
-						{canSkip && (
-							<button
-								type="button"
-								className="onboarding-skip"
-								onClick={finish}
-								aria-label="Skip onboarding"
-							>
-								Skip
-							</button>
-						)}
+		<div className="flex min-h-screen flex-col bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-foreground">
+			<div className="flex h-12 items-center justify-end px-4">
+				{canSkip && (
+					<Button variant="ghost" size="sm" onClick={finish} aria-label="Skip onboarding">
+						Skip
+					</Button>
+				)}
+			</div>
+
+			<main className="flex flex-1 flex-col overflow-y-auto px-6 pb-8">
+				<div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
+					{steps[step]?.node}
+				</div>
+			</main>
+
+			{step > 0 && (
+				<div className="flex flex-col gap-3 border-border border-t bg-background/95 px-6 py-4 backdrop-blur">
+					<div className="flex items-center justify-center gap-1.5" aria-hidden>
+						{Array.from({ length: dotCount }).map((_, i) => (
+							<span
+								// biome-ignore lint/suspicious/noArrayIndexKey: decorative dots
+								key={i}
+								className={cn(
+									"size-1.5 rounded-full transition-colors",
+									i === step - 1 ? "bg-primary" : "bg-muted-foreground/30",
+								)}
+							/>
+						))}
 					</div>
-
-					<div className="onboarding-body-wrap">{steps[step]?.node}</div>
-
-					{step > 0 && (
-						<div className="onboarding-footer">
-							<div className="onboarding-dots" aria-hidden>
-								{Array.from({ length: dotCount }).map((_, i) => (
-									<span
-										// biome-ignore lint/suspicious/noArrayIndexKey: decorative dots
-										key={i}
-										className={
-											i === step - 1 ? "onboarding-dot onboarding-dot--active" : "onboarding-dot"
-										}
-									/>
-								))}
-							</div>
-							{showFooter && (
-								<div className="onboarding-nav">
-									<button
-										type="button"
-										className="onboarding-btn onboarding-btn--ghost"
-										onClick={back}
-									>
-										Back
-									</button>
-									<button
-										type="button"
-										className="onboarding-btn onboarding-btn--primary"
-										onClick={next}
-									>
-										Next
-									</button>
-								</div>
-							)}
+					{showFooter && (
+						<div className="flex items-center justify-between gap-3">
+							<Button variant="ghost" onClick={back}>
+								Back
+							</Button>
+							<Button onClick={next}>Next</Button>
 						</div>
 					)}
 				</div>
-			</IonContent>
-		</IonPage>
+			)}
+		</div>
 	);
 };
 

@@ -1,33 +1,25 @@
-import {
-	IonActionSheet,
-	IonAlert,
-	IonButton,
-	IonButtons,
-	IonContent,
-	IonFab,
-	IonFabButton,
-	IonHeader,
-	IonIcon,
-	IonPage,
-	IonProgressBar,
-	IonSpinner,
-	IonText,
-	IonToolbar,
-	useIonViewWillEnter,
-} from "@ionic/react";
+import { useLocation } from "@tanstack/react-router";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@lesefluss/ui/button";
+import { Progress } from "@lesefluss/ui/progress";
 import {
-	add,
-	bookOutline,
-	filterOutline,
-	refreshOutline,
-	statsChartOutline,
-	swapVerticalOutline,
-} from "ionicons/icons";
+	BookOpen,
+	Filter as FilterIcon,
+	ArrowUpDown,
+	BarChart3,
+	BookText,
+	Plus,
+	RefreshCcw,
+	Loader2,
+	X,
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
+import { ActionSheet } from "../../components/action-sheet";
+import { TabHeader } from "../../components/app-shell/tab-header";
 import BLEIndicator from "../../components/ble-indicator";
+import { ConfirmDialog } from "../../components/confirm-dialog";
 import { type ViewMode, ViewModeToggle } from "../../components/view-mode-toggle";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
@@ -52,6 +44,10 @@ import { useLibraryItems } from "./use-library-items";
 
 const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
 
+const FAB_STYLE: React.CSSProperties = {
+	bottom: "calc(var(--tab-bar-h,4rem) + env(safe-area-inset-bottom) + 1rem)",
+};
+
 const Library: React.FC = () => {
 	const { isConnected } = useBLE();
 	const {
@@ -65,7 +61,6 @@ const Library: React.FC = () => {
 	const history = useHistory();
 	const qc = useQueryClient();
 
-	// ── Data queries ─────────────────────────────────────────────────────
 	const {
 		books,
 		series,
@@ -75,16 +70,12 @@ const Library: React.FC = () => {
 		isLoading: isPending,
 	} = useLibraryItems();
 
-	// ── Mutations ────────────────────────────────────────────────────────
 	const imports = useLibraryImports();
 	const deleteMutation = queryHooks.useDeleteBook();
 	const deleteSeriesMutation = queryHooks.useDeleteSeries();
 
-	// True while any book-import mutation is in flight, regardless of which
-	// component fired it (library FAB, paste-URL modal, share-intent handler).
 	const isGlobalImporting = useIsMutating({ mutationKey: bookImportMutationKey }) > 0;
 
-	// ── Local UI state ───────────────────────────────────────────────────
 	const [noticeDismissed, setNoticeDismissed] = useState(
 		() => localStorage.getItem(LOCAL_NOTICE_KEY) === "1",
 	);
@@ -92,28 +83,27 @@ const Library: React.FC = () => {
 	const [filterBy, setFilterBy] = useState<FilterBy>("all");
 	const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
-	// Action sheet state
 	const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 	const [selectedSeries, setSelectedSeries] = useState<Series | null>(null);
 	const [importSheetOpen, setImportSheetOpen] = useState(false);
 	const [urlModalOpen, setUrlModalOpen] = useState(false);
 
-	// Transfer confirmation + progress modal state
 	const [pendingTransferBook, setPendingTransferBook] = useState<Book | null>(null);
 
-	// Delete confirmation state
 	const [pendingDeleteBook, setPendingDeleteBook] = useState<Book | null>(null);
 	const [pendingDeleteSeries, setPendingDeleteSeries] = useState<Series | null>(null);
 
-	// Reload when navigating back (e.g. from reader) so progress bars update.
-	// Also refresh series aggregates: a chapter just read in the reader bumps
-	// the series's `latestRead` and started/finished counts that drive sort+filter.
-	useIonViewWillEnter(() => {
-		qc.invalidateQueries({ queryKey: bookKeys.all });
-		qc.invalidateQueries({ queryKey: serialKeys.all });
-	});
+	// Reload when route becomes active (back from reader) so progress bars update.
+	// Series aggregates also refresh: a chapter just read bumps latestRead and
+	// started/finished counts that drive sort+filter.
+	const location = useLocation();
+	useEffect(() => {
+		if (location.pathname === "/tabs/library") {
+			qc.invalidateQueries({ queryKey: bookKeys.all });
+			qc.invalidateQueries({ queryKey: serialKeys.all });
+		}
+	}, [location.pathname, qc]);
 
-	// Reload list after a transfer completes so "On device" badge updates
 	useEffect(() => {
 		if (!isTransferring) {
 			qc.invalidateQueries({ queryKey: bookKeys.all });
@@ -155,8 +145,6 @@ const Library: React.FC = () => {
 	};
 
 	const handleOpenSeries = (s: Series) => {
-		// Tap routes to the series detail page; the user clicks "Continue / Start"
-		// inside it to enter the reader. Mirrors the explore-book-detail flow.
 		history.push(`/tabs/library/series/${s.id}`);
 	};
 
@@ -174,7 +162,6 @@ const Library: React.FC = () => {
 
 	const handleTransferDismiss = () => {
 		setPendingTransferBook(null);
-		// Invalidate so the "On device" badge updates immediately after the modal closes
 		qc.invalidateQueries({ queryKey: bookKeys.all });
 	};
 
@@ -182,355 +169,344 @@ const Library: React.FC = () => {
 
 	if (isPending) {
 		return (
-			<IonPage>
-				<IonContent className="ion-padding ion-text-center">
-					<div className="flex h-full flex-col items-center justify-center">
-						<IonSpinner />
-					</div>
-				</IonContent>
-			</IonPage>
+			<div className="flex min-h-screen items-center justify-center bg-background">
+				<Loader2 className="size-6 animate-spin text-muted-foreground" />
+			</div>
 		);
 	}
 
+	const showSync = isConnected || isLoggedIn;
+
 	return (
-		<IonPage>
-			<IonHeader class="ion-no-border">
-				<IonToolbar>
-					<div className="library-toolbar">
-						<div className="app-brand">
-							<img src="/logo.png" alt="" />
-							<span>Lesefluss</span>
-						</div>
-						<IonButtons>
-							<IonButton id="filter-trigger" title="Filter">
-								<IonIcon slot="icon-only" icon={filterOutline} />
-							</IonButton>
-							<IonButton id="sort-trigger" title="Sort">
-								<IonIcon slot="icon-only" icon={swapVerticalOutline} />
-							</IonButton>
-							<IonButton onClick={() => history.push("/tabs/library/stats")} title="Reading stats">
-								<IonIcon slot="icon-only" icon={statsChartOutline} />
-							</IonButton>
-							{!IS_WEB && <BLEIndicator />}
-							{(isConnected || isLoggedIn) && (
-								<IonButton
-									disabled={isSyncing || isTransferring}
-									onClick={handleRefresh}
-									title="Sync"
-								>
-									{isSyncing ? (
-										<IonSpinner name="crescent" slot="icon-only" />
-									) : (
-										<IonIcon slot="icon-only" icon={refreshOutline} />
-									)}
-								</IonButton>
-							)}
-							<ViewModeToggle
-								viewMode={viewMode}
-								onToggle={() => setViewMode((m) => (m === "grid" ? "list" : "grid"))}
-							/>
-						</IonButtons>
-					</div>
-				</IonToolbar>
-			</IonHeader>
-			<IonContent>
-				{/* Import progress bar — determinate when we have a %, indeterminate
-				    for sources without progress (URL, clipboard, text, share-intent). */}
-				{isGlobalImporting &&
-					(imports.progress > 0 ? (
-						<IonProgressBar value={imports.progress / 100} type="determinate" />
-					) : (
-						<IonProgressBar type="indeterminate" />
-					))}
-
-				{/* Local-storage notice for unauthenticated web users */}
-				{IS_WEB_BUILD && !isLoggedIn && !noticeDismissed && (
-					<div className="local-storage-notice">
-						<span className="local-storage-notice__text">
-							Your books are stored locally in this browser only and will be lost if you clear
-							browser data.{" "}
-							<a
-								href="/tabs/settings/sync"
-								className="local-storage-notice__link"
-								onClick={(e) => {
-									e.preventDefault();
-									history.push("/tabs/settings/sync");
-								}}
-							>
-								Sign in
-							</a>{" "}
-							to keep them safe across devices.
-						</span>
-						<button
-							type="button"
-							onClick={dismissNotice}
-							aria-label="Dismiss"
-							className="local-storage-notice__dismiss"
+		<div className="min-h-screen bg-background">
+			<TabHeader
+				logo="/logo.png"
+				title="Lesefluss"
+				right={
+					<>
+						<FilterPopover
+							trigger={
+								<Button variant="ghost" size="icon" aria-label="Filter">
+									<FilterIcon />
+								</Button>
+							}
+							filterBy={filterBy}
+							onFilter={setFilterBy}
+						/>
+						<SortPopover
+							trigger={
+								<Button variant="ghost" size="icon" aria-label="Sort">
+									<ArrowUpDown />
+								</Button>
+							}
+							sortBy={sortBy}
+							onSort={setSortBy}
+						/>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={() => history.push("/tabs/library/stats")}
+							aria-label="Reading stats"
 						>
-							✕
-						</button>
-					</div>
-				)}
-
-				{books.length === 0 && series.length === 0 ? (
-					/* ── Empty state ── */
-					<div className="flex h-full flex-col items-center justify-center p-8 text-center">
-						<IonIcon icon={bookOutline} className="mb-4 text-6xl text-[#ccc]" />
-						<IonText color="medium">
-							<h2 style={{ margin: "0 0 0.5rem" }}>No books yet</h2>
-							<p style={{ margin: 0 }}>Tap the + button to import a file or paste text.</p>
-						</IonText>
-						{isGlobalImporting && (
-							<IonText color="medium" style={{ marginTop: "1rem" }}>
-								<p>Importing...</p>
-							</IonText>
+							<BarChart3 />
+						</Button>
+						{!IS_WEB && <BLEIndicator />}
+						{showSync && (
+							<Button
+								variant="ghost"
+								size="icon"
+								disabled={isSyncing || isTransferring}
+								onClick={handleRefresh}
+								aria-label="Sync"
+							>
+								{isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
+							</Button>
 						)}
-					</div>
-				) : visibleItems.length === 0 ? (
-					/* ── Filter empty state: both books and series zeroed out. ── */
-					<div className="flex h-full flex-col items-center justify-center p-8 text-center">
-						<IonText color="medium">
-							<p style={{ margin: 0 }}>No items match this filter.</p>
-						</IonText>
-					</div>
-				) : viewMode === "grid" ? (
-					/* ── Grid view ── */
-					<div className="grid grid-cols-3 gap-4 p-4 pb-20 content-container md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-						{visibleItems.map((item) => {
-							if (item.kind === "series") {
-								const s = item.series;
-								return (
-									<SeriesCard
-										key={s.id}
-										series={s}
-										chapterCount={chapterCounts.get(s.id)}
-										onOpen={() => handleOpenSeries(s)}
-										onMenu={() => setSelectedSeries(s)}
-									/>
-								);
-							}
-							const { book } = item;
-							const progress = readingProgress(book);
-							const started = book.position > 0;
-							const cover = covers.get(book.id);
-							const isActive = book.id === activeBookId;
+						<ViewModeToggle
+							viewMode={viewMode}
+							onToggle={() => setViewMode((m) => (m === "grid" ? "list" : "grid"))}
+						/>
+					</>
+				}
+			/>
 
-							return (
-								<BookCard
-									key={book.id}
-									book={book}
-									cover={cover}
-									progress={progress}
-									started={started}
-									isActive={isActive}
-									onOpen={() => {
-										qc.setQueryData(bookKeys.detail(book.id), book);
-										history.push(`/tabs/reader/${book.id}`);
-									}}
-									onMenu={() => setSelectedBook(book)}
-								/>
-							);
-						})}
-					</div>
+			{/* Import progress. Determinate when we have a %, otherwise an animated stripe for sources without progress (URL, clipboard, share-intent). */}
+			{isGlobalImporting &&
+				(imports.progress > 0 ? (
+					<Progress value={imports.progress} className="h-0.5 rounded-none" />
 				) : (
-					/* ── List view ── */
-					<div className="flex flex-col gap-2 p-4 pb-20 content-container">
-						{visibleItems.map((item) => {
-							if (item.kind === "series") {
-								const s = item.series;
-								return (
-									<SeriesListItem
-										key={s.id}
-										series={s}
-										chapterCount={chapterCounts.get(s.id)}
-										onOpen={() => handleOpenSeries(s)}
-										onMenu={() => setSelectedSeries(s)}
-									/>
-								);
-							}
-							const { book } = item;
-							const progress = readingProgress(book);
-							const started = book.position > 0;
-							const cover = covers.get(book.id);
-							const isActive = book.id === activeBookId;
+					<div className="h-0.5 overflow-hidden bg-muted">
+						<div className="h-full w-1/3 animate-[indeterminate-progress_1.2s_ease-in-out_infinite] bg-primary" />
+					</div>
+				))}
 
+			{IS_WEB_BUILD && !isLoggedIn && !noticeDismissed && (
+				<div className="flex items-start gap-3 border-border border-b bg-muted/60 px-4 py-3 text-sm">
+					<span className="flex-1 text-muted-foreground">
+						Your books are stored locally in this browser only and will be lost if you clear
+						browser data.{" "}
+						<a
+							href="/tabs/settings/sync"
+							className="font-medium text-primary underline-offset-4 hover:underline"
+							onClick={(e) => {
+								e.preventDefault();
+								history.push("/tabs/settings/sync");
+							}}
+						>
+							Sign in
+						</a>{" "}
+						to keep them safe across devices.
+					</span>
+					<button
+						type="button"
+						onClick={dismissNotice}
+						aria-label="Dismiss"
+						className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+					>
+						<X className="size-4" />
+					</button>
+				</div>
+			)}
+
+			{books.length === 0 && series.length === 0 ? (
+				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
+					<BookOpen className="mb-4 size-16 opacity-40" />
+					<h2 className="m-0 mb-2 font-semibold text-foreground text-lg">No books yet</h2>
+					<p className="m-0">Tap the + button to import a file or paste text.</p>
+					{isGlobalImporting && <p className="mt-4 m-0">Importing...</p>}
+				</div>
+			) : visibleItems.length === 0 ? (
+				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
+					<p className="m-0">No items match this filter.</p>
+				</div>
+			) : viewMode === "grid" ? (
+				<div className="grid grid-cols-3 gap-4 p-4 pb-24 content-container md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+					{visibleItems.map((item) => {
+						if (item.kind === "series") {
+							const s = item.series;
 							return (
-								<BookListItem
-									key={book.id}
-									book={book}
-									cover={cover}
-									progress={progress}
-									started={started}
-									isActive={isActive}
-									onOpen={() => {
-										qc.setQueryData(bookKeys.detail(book.id), book);
-										history.push(`/tabs/reader/${book.id}`);
-									}}
-									onMenu={() => setSelectedBook(book)}
+								<SeriesCard
+									key={s.id}
+									series={s}
+									chapterCount={chapterCounts.get(s.id)}
+									onOpen={() => handleOpenSeries(s)}
+									onMenu={() => setSelectedSeries(s)}
 								/>
 							);
-						})}
-					</div>
+						}
+						const { book } = item;
+						const progress = readingProgress(book);
+						const started = book.position > 0;
+						const cover = covers.get(book.id);
+						const isActive = book.id === activeBookId;
+						return (
+							<BookCard
+								key={book.id}
+								book={book}
+								cover={cover}
+								progress={progress}
+								started={started}
+								isActive={isActive}
+								onOpen={() => {
+									qc.setQueryData(bookKeys.detail(book.id), book);
+									history.push(`/tabs/reader/${book.id}`);
+								}}
+								onMenu={() => setSelectedBook(book)}
+							/>
+						);
+					})}
+				</div>
+			) : (
+				<div className="flex flex-col gap-2 p-4 pb-24 content-container">
+					{visibleItems.map((item) => {
+						if (item.kind === "series") {
+							const s = item.series;
+							return (
+								<SeriesListItem
+									key={s.id}
+									series={s}
+									chapterCount={chapterCounts.get(s.id)}
+									onOpen={() => handleOpenSeries(s)}
+									onMenu={() => setSelectedSeries(s)}
+								/>
+							);
+						}
+						const { book } = item;
+						const progress = readingProgress(book);
+						const started = book.position > 0;
+						const cover = covers.get(book.id);
+						const isActive = book.id === activeBookId;
+						return (
+							<BookListItem
+								key={book.id}
+								book={book}
+								cover={cover}
+								progress={progress}
+								started={started}
+								isActive={isActive}
+								onOpen={() => {
+									qc.setQueryData(bookKeys.detail(book.id), book);
+									history.push(`/tabs/reader/${book.id}`);
+								}}
+								onMenu={() => setSelectedBook(book)}
+							/>
+						);
+					})}
+				</div>
+			)}
+
+			<button
+				type="button"
+				onClick={() => setImportSheetOpen(true)}
+				disabled={imports.isImporting || isTransferring}
+				aria-label="Add book"
+				className="fixed right-4 z-30 inline-flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+				style={FAB_STYLE}
+			>
+				{imports.isImporting ? (
+					<Loader2 className="size-6 animate-spin" />
+				) : (
+					<Plus className="size-6" />
 				)}
+			</button>
 
-				{/* FAB: opens import sources action sheet */}
-				<IonFab vertical="bottom" horizontal="end" slot="fixed">
-					<IonFabButton
-						onClick={() => setImportSheetOpen(true)}
-						disabled={imports.isImporting || isTransferring}
-					>
-						{imports.isImporting ? <IonSpinner name="crescent" /> : <IonIcon icon={add} />}
-					</IonFabButton>
-				</IonFab>
+			<ImportSheet
+				isOpen={importSheetOpen}
+				onClose={() => setImportSheetOpen(false)}
+				onPickFile={imports.importFromFile}
+				onPickClipboard={imports.importFromClipboard}
+				onPickUrl={() => setUrlModalOpen(true)}
+			/>
 
-				<ImportSheet
-					isOpen={importSheetOpen}
-					onClose={() => setImportSheetOpen(false)}
-					onPickFile={imports.importFromFile}
-					onPickClipboard={imports.importFromClipboard}
-					onPickUrl={() => setUrlModalOpen(true)}
-				/>
+			<PasteUrlModal
+				isOpen={urlModalOpen}
+				isImporting={imports.isUrlImporting}
+				onClose={() => setUrlModalOpen(false)}
+				onSubmit={handleImportUrl}
+			/>
 
-				{/* Filter + sort popovers */}
-				<FilterPopover trigger="filter-trigger" filterBy={filterBy} onFilter={setFilterBy} />
-				<SortPopover trigger="sort-trigger" sortBy={sortBy} onSort={setSortBy} />
-
-				<PasteUrlModal
-					isOpen={urlModalOpen}
-					isImporting={imports.isUrlImporting}
-					onClose={() => setUrlModalOpen(false)}
-					onSubmit={handleImportUrl}
-				/>
-
-				{/* Book action sheet */}
-				<IonActionSheet
-					isOpen={!!selectedBook}
-					onDidDismiss={() => setSelectedBook(null)}
-					header={selectedBook?.title}
-					cssClass="rsvp-action-sheet"
-					buttons={[
-						{
-							text: "Details",
-							handler: () => {
-								if (selectedBook) history.push(`/tabs/library/book/${selectedBook.id}`);
-							},
+			<ActionSheet
+				open={!!selectedBook}
+				onOpenChange={(open) => {
+					if (!open) setSelectedBook(null);
+				}}
+				title={selectedBook?.title}
+				items={[
+					{
+						label: "Details",
+						icon: BookText,
+						onSelect: () => {
+							if (selectedBook) history.push(`/tabs/library/book/${selectedBook.id}`);
 						},
-						...(!IS_WEB
-							? [
-									{
-										text: isConnected
-											? "Set active on device"
-											: "Set active on device (not connected)",
-										disabled: !isConnected || isTransferring,
-										handler: () => {
-											if (selectedBook) handleSetActive(selectedBook);
-										},
+					},
+					...(!IS_WEB
+						? [
+								{
+									label: isConnected
+										? "Set active on device"
+										: "Set active on device (not connected)",
+									disabled: !isConnected || isTransferring,
+									onSelect: () => {
+										if (selectedBook) handleSetActive(selectedBook);
 									},
-								]
-							: []),
-						{
-							text: "Delete",
-							role: "destructive" as const,
-							handler: () => {
-								if (selectedBook) handleDelete(selectedBook);
-							},
+								},
+							]
+						: []),
+					{
+						label: "Delete",
+						destructive: true,
+						onSelect: () => {
+							if (selectedBook) handleDelete(selectedBook);
 						},
-						{
-							text: "Cancel",
-							role: "cancel" as const,
+					},
+				]}
+			/>
+
+			{!IS_WEB && (
+				<TransferModal
+					isOpen={!!pendingTransferBook}
+					book={pendingTransferBook}
+					activeBook={books.find((b) => b.id === activeBookId) ?? null}
+					onDismiss={handleTransferDismiss}
+				/>
+			)}
+
+			<ConfirmDialog
+				open={!!imports.errorMessage}
+				onOpenChange={(open) => {
+					if (!open) imports.resetError();
+				}}
+				variant="info"
+				title="Import Failed"
+				description={imports.errorMessage ?? undefined}
+			/>
+
+			<ConfirmDialog
+				open={!!syncError}
+				onOpenChange={(open) => {
+					if (!open) clearError();
+				}}
+				variant="info"
+				title="Transfer Failed"
+				description={syncError ?? undefined}
+			/>
+
+			<ConfirmDialog
+				open={!!pendingDeleteBook}
+				onOpenChange={(open) => {
+					if (!open) setPendingDeleteBook(null);
+				}}
+				title="Delete book?"
+				description={
+					pendingDeleteBook
+						? `"${pendingDeleteBook.title}" will be removed from your library.`
+						: undefined
+				}
+				confirmLabel="Delete"
+				destructive
+				onConfirm={handleDeleteConfirm}
+			/>
+
+			<ActionSheet
+				open={!!selectedSeries}
+				onOpenChange={(open) => {
+					if (!open) setSelectedSeries(null);
+				}}
+				title={selectedSeries?.title}
+				items={[
+					{
+						label: "Details",
+						icon: BookText,
+						onSelect: () => {
+							if (selectedSeries) history.push(`/tabs/library/series/${selectedSeries.id}`);
 						},
-					]}
-				/>
-
-				{/* Transfer confirm + progress modal (self-contained, native only) */}
-				{!IS_WEB && (
-					<TransferModal
-						isOpen={!!pendingTransferBook}
-						book={pendingTransferBook}
-						activeBook={books.find((b) => b.id === activeBookId) ?? null}
-						onDismiss={handleTransferDismiss}
-					/>
-				)}
-
-				{/* Import error alert */}
-				<IonAlert
-					isOpen={!!imports.errorMessage}
-					onDidDismiss={imports.resetError}
-					header="Import Failed"
-					message={imports.errorMessage ?? undefined}
-					buttons={[{ text: "OK", role: "cancel" }]}
-					cssClass="rsvp-alert"
-				/>
-
-				{/* Transfer error alert */}
-				<IonAlert
-					isOpen={!!syncError}
-					onDidDismiss={clearError}
-					header="Transfer Failed"
-					message={syncError ?? undefined}
-					buttons={[{ text: "OK", role: "cancel" }]}
-					cssClass="rsvp-alert"
-				/>
-
-				{/* Delete confirmation alert */}
-				<IonAlert
-					isOpen={!!pendingDeleteBook}
-					onDidDismiss={() => setPendingDeleteBook(null)}
-					header="Delete book?"
-					message={
-						pendingDeleteBook
-							? `"${pendingDeleteBook.title}" will be removed from your library.`
-							: undefined
-					}
-					buttons={[
-						{ text: "Cancel", role: "cancel" },
-						{ text: "Delete", role: "destructive", handler: handleDeleteConfirm },
-					]}
-					cssClass="rsvp-alert"
-				/>
-
-				{/* Series action sheet (long-press on a SeriesCard) */}
-				<IonActionSheet
-					isOpen={!!selectedSeries}
-					onDidDismiss={() => setSelectedSeries(null)}
-					header={selectedSeries?.title}
-					cssClass="rsvp-action-sheet"
-					buttons={[
-						{
-							text: "Details",
-							handler: () => {
-								if (selectedSeries) history.push(`/tabs/library/series/${selectedSeries.id}`);
-							},
+					},
+					{
+						label: "Delete series",
+						destructive: true,
+						onSelect: () => {
+							if (selectedSeries) handleDeleteSeries(selectedSeries);
 						},
-						{
-							text: "Delete series",
-							role: "destructive" as const,
-							handler: () => {
-								if (selectedSeries) handleDeleteSeries(selectedSeries);
-							},
-						},
-						{ text: "Cancel", role: "cancel" as const },
-					]}
-				/>
+					},
+				]}
+			/>
 
-				{/* Series delete confirmation alert */}
-				<IonAlert
-					isOpen={!!pendingDeleteSeries}
-					onDidDismiss={() => setPendingDeleteSeries(null)}
-					header="Delete series?"
-					message={
-						pendingDeleteSeries
-							? `"${pendingDeleteSeries.title}" and all its chapters will be removed from your library.`
-							: undefined
-					}
-					buttons={[
-						{ text: "Cancel", role: "cancel" },
-						{ text: "Delete", role: "destructive", handler: handleDeleteSeriesConfirm },
-					]}
-					cssClass="rsvp-alert"
-				/>
-			</IonContent>
-		</IonPage>
+			<ConfirmDialog
+				open={!!pendingDeleteSeries}
+				onOpenChange={(open) => {
+					if (!open) setPendingDeleteSeries(null);
+				}}
+				title="Delete series?"
+				description={
+					pendingDeleteSeries
+						? `"${pendingDeleteSeries.title}" and all its chapters will be removed from your library.`
+						: undefined
+				}
+				confirmLabel="Delete"
+				destructive
+				onConfirm={handleDeleteSeriesConfirm}
+			/>
+		</div>
 	);
 };
 

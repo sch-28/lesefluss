@@ -1,9 +1,9 @@
-import { IonIcon } from "@ionic/react";
-import { chevronForwardOutline } from "ionicons/icons";
+import { useRouter } from "@tanstack/react-router";
+import { Button } from "@lesefluss/ui/button";
+import { ChevronRight } from "lucide-react";
 import type React from "react";
 import type { CSSProperties } from "react";
 import { useCallback } from "react";
-import { useHistory } from "react-router-dom";
 import { type ProviderId, providerLabel } from "../../services/serial-scrapers";
 import { type ProviderCover, providerCovers } from "./provider-covers";
 import {
@@ -23,31 +23,27 @@ const COVER_H = 120;
 const COVER_OVERLAP = 52;
 
 const WebNovelsSection: React.FC = () => {
-	const history = useHistory();
+	const router = useRouter();
 
 	const handleBrowseAll = useCallback(() => {
-		history.push("/tabs/explore/web-novels");
-	}, [history]);
+		router.navigate({ to: "/tabs/explore/web-novels" });
+	}, [router]);
 	const handleProviderTap = useCallback(
-		(id: ProviderId) => history.push(`/tabs/explore/web-novels?provider=${id}`),
-		[history],
+		(id: ProviderId) =>
+			router.navigate({ to: "/tabs/explore/web-novels", search: { provider: id } }),
+		[router],
 	);
 
 	return (
-		<section className="explore-shelf mb-6">
+		<section className="mb-6">
 			<header className="mb-2 flex items-center justify-between">
 				<h2 className="m-0 font-semibold text-[0.95rem]">Web novels</h2>
-				<button
-					type="button"
-					onClick={handleBrowseAll}
-					className="flex items-center gap-0.5 border-0 bg-transparent p-1 text-[0.85rem] text-[var(--ion-color-primary,#000)]"
-					aria-label="Browse all web novels"
-				>
+				<Button variant="ghost" size="sm" onClick={handleBrowseAll} aria-label="Browse all web novels">
 					Browse
-					<IonIcon icon={chevronForwardOutline} aria-hidden />
-				</button>
+					<ChevronRight />
+				</Button>
 			</header>
-			<div className="explore-novels-row -mx-1 flex gap-3 overflow-x-auto px-1 pt-2 pb-5">
+			<div className="-mx-1 flex gap-3 overflow-x-auto px-1 pt-2 pb-5">
 				{VISIBLE_PROVIDERS.map((id) => (
 					<ProviderCard
 						key={id}
@@ -82,16 +78,20 @@ function ProviderCard({ id, label, subtitle, color, covers, onTap }: ProviderCar
 			type="button"
 			onClick={handleClick}
 			style={{ "--brand": color } as CSSProperties}
-			className="explore-novel-card relative"
+			className="relative w-44 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-border bg-card text-left text-card-foreground transition-transform active:scale-95"
 			aria-label={`Browse ${label}`}
 		>
-			<span aria-hidden className="explore-novel-card__backdrop" />
-			<span className="explore-novel-card__art">
+			<span
+				aria-hidden
+				className="absolute inset-x-0 top-0 h-24 opacity-15"
+				style={{ background: "var(--brand)" }}
+			/>
+			<span className="relative flex h-32 items-end justify-center pt-4">
 				{isAo3 ? <Ao3Mark label={label} /> : <CoverFan covers={covers} />}
 			</span>
 			<span className="relative block px-3 pt-3 pb-4">
-				<span className="explore-novel-card__name block">{label}</span>
-				<span className="explore-novel-card__tagline block">{subtitle}</span>
+				<span className="block font-semibold text-sm">{label}</span>
+				<span className="mt-0.5 block text-muted-foreground text-xs">{subtitle}</span>
 			</span>
 		</button>
 	);
@@ -112,7 +112,7 @@ function CoverFan({ covers }: { covers: ProviderCover[] }) {
 					decoding="async"
 					width={COVER_W}
 					height={COVER_H}
-					className="explore-novel-card__cover"
+					className="rounded-sm border border-border shadow-sm"
 					style={{
 						marginLeft: i === 0 ? 0 : `-${COVER_OVERLAP}px`,
 						transform: `rotate(${angles[i]}deg)`,
@@ -126,9 +126,9 @@ function CoverFan({ covers }: { covers: ProviderCover[] }) {
 
 function Ao3Mark({ label }: { label: string }) {
 	return (
-		<span className="explore-novel-card__ao3">
-			<span className="explore-novel-card__ao3-glyph">{label}</span>
-			<span className="explore-novel-card__ao3-sub">Archive of Our Own</span>
+		<span className="flex flex-col items-center justify-end pb-2">
+			<span className="font-serif text-3xl text-foreground">{label}</span>
+			<span className="mt-1 text-muted-foreground text-xs">Archive of Our Own</span>
 		</span>
 	);
 }

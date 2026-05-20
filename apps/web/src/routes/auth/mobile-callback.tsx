@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import * as React from "react";
-import { Button } from "~/components/ui/button";
+import { Button } from "@lesefluss/ui/button";
 import { auth } from "~/lib/auth";
 import { seo } from "~/utils/seo";
 
