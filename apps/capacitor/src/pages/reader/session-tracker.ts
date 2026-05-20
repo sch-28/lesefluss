@@ -180,7 +180,19 @@ export class SessionTracker {
 			const delta = Math.abs(pos - this.session.lastPos);
 			const threshold = JUMP_BYTES_PER_TICK[this.opts.mode];
 			if (delta < threshold) {
-				this.session.wordsAccumulated += wordsInBytes(this.contentBytes, this.session.lastPos, pos);
+				// ADR-0002: prefer the WordIndex when available (integer subtraction);
+				// fall back to the legacy byte rescan for not-yet-backfilled books.
+				const lastW = this.opts.byteToWord?.(this.session.lastPos);
+				const curW = this.opts.byteToWord?.(pos);
+				if (lastW != null && curW != null) {
+					this.session.wordsAccumulated += Math.abs(curW - lastW);
+				} else {
+					this.session.wordsAccumulated += wordsInBytes(
+						this.contentBytes,
+						this.session.lastPos,
+						pos,
+					);
+				}
 			}
 			this.session.lastPos = pos;
 			this.lastActivityAt = now;
