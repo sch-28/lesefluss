@@ -60,6 +60,8 @@ export interface RsvpViewProps {
 	onFinished: () => void;
 	onWpmChange: (wpm: number) => void;
 	onLookup: (word: string, original: string) => void;
+	/** Cached WordIndex (ADR-0002). When present, the engine skips rebuild. */
+	bookWordIndex?: import("@lesefluss/core").WordIndex | null;
 }
 
 const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
@@ -72,6 +74,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		onFinished,
 		onWpmChange,
 		onLookup,
+		bookWordIndex,
 	},
 	ref,
 ) {
@@ -101,6 +104,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		onFinished,
 		onLookup,
 		onWpmChange,
+		bookWordIndex,
 	});
 
 	useImperativeHandle(

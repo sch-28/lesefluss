@@ -1153,6 +1153,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						onFinished={handleRsvpFinished}
 						onWpmChange={handleRsvpWpmChange}
 						onLookup={handleRsvpLookup}
+						bookWordIndex={wordIndex}
 					/>
 				) : paginationStyle === "page" ? (
 					<PageView
