@@ -1,0 +1,4 @@
+[submodule "apps/rsvpnano"]
+	path = apps/rsvpnano
+	url = git@github.com:sch-28/rsvpnano-lesefluss.git
+	branch = lesefluss-ble
