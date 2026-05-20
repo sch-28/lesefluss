@@ -25,7 +25,7 @@
 
 import { Browser } from "@capacitor/browser";
 import type { RsvpSettings } from "@lesefluss/core";
-import { DEFAULT_SETTINGS } from "@lesefluss/core";
+import { DEFAULT_SETTINGS, wordPos } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import {
 	Drawer,
@@ -227,15 +227,28 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	}, [id]);
 
 	// ── Seed activeOffset + lastOffsetRef once book loads ─────────────────
+	// ADR-0002 transitional read: prefer the canonical word_position when the
+	// book is flagged 'word' AND the WordIndex is ready, converting back to a
+	// byte offset for the existing byte-typed downstream state. Falls back to
+	// the legacy `book.position` byte read for not-yet-backfilled rows or
+	// before the WordIndex finishes loading. Stage H replaces this dual-path
+	// with a pure word-unit read after the downstream state types flip.
 	useEffect(() => {
-		if (book && !didSeedOffsetsRef.current) {
-			didSeedOffsetsRef.current = true;
-			setActiveOffset(book.position);
-			setProgressOffset(book.position);
-			setRsvpInitOffset(book.position);
-			lastOffsetRef.current = book.position;
-		}
-	}, [book]);
+		if (!book || didSeedOffsetsRef.current) return;
+		const seed =
+			book.positionUnit === "word" && wordIndex
+				? wordIndex.byteOf(
+						wordPos(
+							Math.min(Math.max(book.wordPosition, 0), Math.max(wordIndex.wordCount - 1, 0)),
+						),
+					)
+				: book.position;
+		didSeedOffsetsRef.current = true;
+		setActiveOffset(seed);
+		setProgressOffset(seed);
+		setRsvpInitOffset(seed);
+		lastOffsetRef.current = seed;
+	}, [book, wordIndex]);
 
 	// ── Build paragraph index ──────────────────────────────────────────────
 	// Computed once per content load. Two cheap structures:
