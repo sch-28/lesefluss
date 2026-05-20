@@ -90,6 +90,7 @@ import {
 } from "./use-glossary-decorations";
 import { useHighlightSelection } from "./use-highlight-selection";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
+import { SessionDebugBadge } from "./session-debug-badge";
 import { type ReadingSessionMode, useReadingSession } from "./use-reading-session";
 import { useScrubProgress } from "./use-scrub-progress";
 import type { ReaderViewHandle } from "./view-types";
@@ -906,7 +907,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const sessionMode: ReadingSessionMode =
 		readerMode === "rsvp" ? "rsvp" : paginationStyle === "page" ? "page" : "scroll";
 	const getReadingPosition = useCallback(() => lastOffsetRef.current ?? 0, []);
-	const { markActivity: markReadingActivity } = useReadingSession({
+	const { markActivity: markReadingActivity, getDebugSnapshot } = useReadingSession({
 		bookId: id,
 		mode: sessionMode,
 		isReading: !!content && lastOffsetRef.current !== null,
@@ -1372,6 +1373,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					</div>
 				</DrawerContent>
 			</Drawer>
+			<SessionDebugBadge getSnapshot={getDebugSnapshot} />
 		</div>
 	);
 };

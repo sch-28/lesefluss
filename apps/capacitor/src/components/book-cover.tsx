@@ -31,7 +31,7 @@ const BookCover: React.FC<Props> = ({ book, size = "md", cover: coverProp }) => 
 
 	const style = size === "full" ? undefined : DIMS[size];
 	const className = [
-		"flex items-center justify-center overflow-hidden rounded-sm border border-[#d9d9d9] bg-[#f0f0f0]",
+		"flex items-center justify-center overflow-hidden rounded-sm border border-border bg-muted",
 		size === "full" ? "w-full h-full" : "",
 	]
 		.join(" ")
@@ -43,7 +43,7 @@ const BookCover: React.FC<Props> = ({ book, size = "md", cover: coverProp }) => 
 				src={cover}
 				alt={book.title}
 				fallback={
-					<span className="font-semibold text-[#bbb] text-[0.6rem] tracking-wide">
+					<span className="font-semibold text-[0.6rem] text-muted-foreground tracking-wide">
 						{book.fileFormat.toUpperCase()}
 					</span>
 				}

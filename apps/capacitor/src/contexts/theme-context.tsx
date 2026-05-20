@@ -16,6 +16,11 @@ function applyAppearance(theme: AppTheme, appFontSize: number) {
 	document.body.classList.remove(...VALID_THEMES);
 	document.body.classList.add(theme);
 	document.documentElement.style.fontSize = `${appFontSize}px`;
+	// Cache so index.html's inline script can apply synchronously on next load,
+	// avoiding a flash of unstyled background before the DB hydrates.
+	try {
+		localStorage.setItem("app-theme", theme);
+	} catch {}
 }
 
 interface ThemeContextValue {

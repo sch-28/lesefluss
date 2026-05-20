@@ -95,7 +95,10 @@ type SessionState = {
 
 export class SessionTracker {
 	private readonly opts: TrackerOpts;
-	private readonly contentBytes: Uint8Array;
+	/** Pre-encoded UTF-8 bytes of the current content. Mutable: refreshed via
+	 *  `setContent` when the book content loads (it may be empty at tracker
+	 *  construction) or on chapter advance within a sitting. */
+	private contentBytes: Uint8Array;
 	private foreground = true;
 	private reading = false;
 	private session: SessionState | null = null;
@@ -108,6 +111,10 @@ export class SessionTracker {
 		const now = this.now();
 		this.lastActivityAt = now;
 		this.lastPollAt = now;
+	}
+
+	setContent(content: string): void {
+		this.contentBytes = new TextEncoder().encode(content);
 	}
 
 	private now(): number {
@@ -332,4 +339,44 @@ export class SessionTracker {
 			lastActivityAt: this.lastActivityAt,
 		};
 	}
+
+	/** Snapshot for the on-screen debug badge. Computes the *currently
+	 *  accruing* duration (includes the open active interval) so the badge
+	 *  ticks visibly while the user reads. */
+	getDebugSnapshot(): DebugSnapshot {
+		const now = this.now();
+		const s = this.session;
+		if (!s) {
+			return {
+				hasSession: false,
+				durationMs: 0,
+				wordsAccumulated: 0,
+				paused: true,
+				foreground: this.foreground,
+				reading: this.reading,
+				msSinceLastActivity: now - this.lastActivityAt,
+			};
+		}
+		const durationMs =
+			s.accumulatedActiveMs + (s.activeSinceMs !== null ? now - s.activeSinceMs : 0);
+		return {
+			hasSession: true,
+			durationMs,
+			wordsAccumulated: s.wordsAccumulated,
+			paused: s.activeSinceMs === null,
+			foreground: this.foreground,
+			reading: this.reading,
+			msSinceLastActivity: now - this.lastActivityAt,
+		};
+	}
 }
+
+export type DebugSnapshot = {
+	hasSession: boolean;
+	durationMs: number;
+	wordsAccumulated: number;
+	paused: boolean;
+	foreground: boolean;
+	reading: boolean;
+	msSinceLastActivity: number;
+};

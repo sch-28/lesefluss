@@ -11,19 +11,20 @@
  */
 import { App as CapacitorApp } from "@capacitor/app";
 import { useCallback, useEffect, useRef } from "react";
-import { bookKeys, statsKeys } from "../../services/db/hooks/query-keys";
+import { bookKeys, readingSessionKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { queryClient } from "../../services/query-client";
 import { scheduleSyncPush } from "../../services/sync";
 import { log } from "../../utils/log";
 import {
+	type DebugSnapshot,
 	POLL_MS,
 	type ReadingSessionMode,
 	type SessionRow,
 	SessionTracker,
 } from "./session-tracker";
 
-export type { ReadingSessionMode } from "./session-tracker";
+export type { DebugSnapshot, ReadingSessionMode } from "./session-tracker";
 
 type Args = {
 	bookId: string;
@@ -46,6 +47,9 @@ type Return = {
 	 *  RSVP word advance, tap). Keeps the session alive past the soft idle
 	 *  threshold without depending on position deltas. */
 	markActivity: () => void;
+	/** Snapshot reader for the on-screen debug badge. Returns null when no
+	 *  tracker is mounted (book hasn't loaded yet). */
+	getDebugSnapshot: () => DebugSnapshot | null;
 };
 
 function persistRow(row: SessionRow, kind: "checkpoint" | "flush"): void {
@@ -54,6 +58,7 @@ function persistRow(row: SessionRow, kind: "checkpoint" | "flush"): void {
 		.then(() => {
 			queryClient.invalidateQueries({ queryKey: statsKeys.all });
 			queryClient.invalidateQueries({ queryKey: bookKeys.all });
+			queryClient.invalidateQueries({ queryKey: readingSessionKeys.all });
 			scheduleSyncPush(2000);
 		})
 		.catch((err) => log.error("reading-session", `${kind} failed:`, err));
@@ -95,6 +100,15 @@ export function useReadingSession({
 			trackerRef.current = null;
 		};
 	}, [bookId, mode]);
+
+	// Push content updates into the tracker. The tracker may have been
+	// constructed before `content` finished loading (initial empty string), and
+	// chapter advance updates content within a sitting. Without this, word
+	// counts stay at zero because the pre-encoded byte buffer is stale/empty
+	// and `MIN_WORDS` drops the row at finalize.
+	useEffect(() => {
+		trackerRef.current?.setContent(content);
+	}, [content]);
 
 	// `isReading` && (RSVP not paused) → reading.
 	useEffect(() => {
@@ -138,5 +152,9 @@ export function useReadingSession({
 		trackerRef.current?.markActivity();
 	}, []);
 
-	return { markActivity };
+	const getDebugSnapshot = useCallback(() => {
+		return trackerRef.current?.getDebugSnapshot() ?? null;
+	}, []);
+
+	return { markActivity, getDebugSnapshot };
 }

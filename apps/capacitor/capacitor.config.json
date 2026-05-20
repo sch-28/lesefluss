@@ -7,7 +7,7 @@
 			"androidIsEncryption": false
 		},
 		"SplashScreen": {
-			"launchShowDuration": 0,
+			"launchShowDuration": 8000,
 			"launchAutoHide": true,
 			"backgroundColor": "#fdfcfb"
 		},

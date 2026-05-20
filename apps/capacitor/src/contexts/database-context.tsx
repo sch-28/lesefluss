@@ -1,5 +1,4 @@
 import { Button } from "@lesefluss/ui/button";
-import { Loader2 } from "lucide-react";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { initDb, resetAppData } from "../services/db";
@@ -97,13 +96,10 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		);
 	}
 
-	if (!isReady) {
-		return (
-			<div className="flex h-screen items-center justify-center bg-background">
-				<Loader2 className="size-6 animate-spin text-muted-foreground" />
-			</div>
-		);
-	}
+	// Render nothing while DB initializes so the native splash stays visible
+	// (Capacitor SplashScreen plugin is hidden by __root once children mount).
+	// Avoids the flash of an in-app spinner between native splash and AppShell.
+	if (!isReady) return null;
 
 	return <DatabaseContext.Provider value={{ isReady, error }}>{children}</DatabaseContext.Provider>;
 };

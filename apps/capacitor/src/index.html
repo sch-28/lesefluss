@@ -6,6 +6,27 @@
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Lesefluss</title>
+    <style>
+      /* Paint themed background immediately so the WebView doesn't flash white
+         before React mounts and theme-context applies the user's saved theme. */
+      html, body { margin: 0; background: #fdfcfb; }
+      html.dark, body.dark { background: #0c0d0e; }
+      html.sepia, body.sepia { background: #c4b081; }
+    </style>
+    <script>
+      // Apply cached theme synchronously so the first paint matches the user's
+      // saved choice without waiting for the async DB hydrate in ThemeProvider.
+      // Falls back to system dark mode if no cached value.
+      (function () {
+        try {
+          var cached = localStorage.getItem("app-theme");
+          var sys = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          var t = cached || sys;
+          document.documentElement.classList.add(t);
+          document.body.classList.add(t);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

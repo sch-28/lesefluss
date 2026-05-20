@@ -328,6 +328,33 @@ describe("SessionTracker", () => {
 		expect(env.persisted.at(-1)!.row.durationMs).toBe(30_000);
 	});
 
+	it("setContent updates byte buffer for late-loading content", () => {
+		// Regression: tracker constructed with empty string (content not yet
+		// loaded), then setContent called after content arrives. Word counts
+		// must use the new buffer, not the stale empty one.
+		let clock = 1_000_000;
+		const persisted: Array<{ row: SessionRow; kind: "checkpoint" | "flush" }> = [];
+		let position = 0;
+		const tracker = new SessionTracker({
+			bookId: "book1",
+			mode: "scroll",
+			content: "", // empty at construction
+			getPosition: () => position,
+			wpmSetting: null,
+			persist: (row, kind) => persisted.push({ row, kind }),
+			now: () => clock,
+			newId: () => "id1",
+		});
+		tracker.setContent(BOOK);
+		tracker.setReading(true);
+		clock += 30_000;
+		position = 100; // 20 words in BOOK
+		tracker.tick();
+		tracker.finalize();
+		expect(persisted).toHaveLength(1);
+		expect(persisted[0]!.row.wordsRead).toBe(20);
+	});
+
 	it("finalize on already-finalized tracker is a no-op", () => {
 		const env = setup();
 		env.tracker.setReading(true);
