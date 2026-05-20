@@ -244,6 +244,11 @@ export function bookToSync(book: Book, contentData?: BookContent | null): SyncBo
 		fileSize: book.size,
 		wordCount: book.wordCount > 0 ? book.wordCount : null,
 		position: book.position,
+		// ADR-0002 mirrored write: ship the canonical word-unit position when
+		// the book has been backfilled. Older clients ignore the field.
+		...(book.positionUnit === "word"
+			? { wordPosition: book.wordPosition, positionUnit: "word" as const }
+			: {}),
 		source: book.source,
 		catalogId: book.catalogId,
 		sourceUrl: book.sourceUrl,
@@ -289,11 +294,24 @@ function settingsToSync(s: Settings): SyncSettings {
 }
 
 function highlightToSync(h: Highlight): SyncHighlight {
+	const wordAnchor =
+		h.startWord !== null &&
+		h.startCharInWord !== null &&
+		h.endWord !== null &&
+		h.endCharInWord !== null
+			? {
+					startWord: h.startWord,
+					startCharInWord: h.startCharInWord,
+					endWord: h.endWord,
+					endCharInWord: h.endCharInWord,
+				}
+			: {};
 	return {
 		highlightId: h.id,
 		bookId: h.bookId,
 		startOffset: h.startOffset,
 		endOffset: h.endOffset,
+		...wordAnchor,
 		color: h.color as SyncHighlight["color"],
 		note: h.note,
 		text: h.text,
@@ -304,6 +322,10 @@ function highlightToSync(h: Highlight): SyncHighlight {
 }
 
 function sessionToSync(s: ReadingSession): SyncReadingSession {
+	const wordBounds =
+		s.startWord !== null && s.endWord !== null
+			? { startWord: s.startWord, endWord: s.endWord }
+			: {};
 	return {
 		sessionId: s.id,
 		bookId: s.bookId,
@@ -314,6 +336,7 @@ function sessionToSync(s: ReadingSession): SyncReadingSession {
 		wordsRead: s.wordsRead,
 		startPos: s.startPos,
 		endPos: s.endPos,
+		...wordBounds,
 		wpmAvg: s.wpmAvg,
 		updatedAt: s.updatedAt,
 	};
@@ -369,9 +392,11 @@ function buildBookRowFromServer(
 		filePath: null,
 		size: serverBook.fileSize ?? 0,
 		position: serverBook.position,
-		wordPosition: wordPos(0),
+		// ADR-0002 mirrored read: trust the server's canonical word fields
+		// when present. Local backfill will populate them otherwise.
+		wordPosition: wordPos(serverBook.wordPosition ?? 0),
 		wordCount: serverBook.wordCount ?? 0,
-		positionUnit: "byte",
+		positionUnit: serverBook.positionUnit ?? "byte",
 		isActive: false,
 		addedAt: serverBook.updatedAt,
 		lastRead: null,
@@ -631,12 +656,17 @@ export async function pullSync(): Promise<Set<string>> {
 
 				const local = localHighlightMap.get(serverHL.highlightId);
 				if (!local) {
-					// New highlight from server - add locally
+					// New highlight from server - add locally. Pull canonical
+					// word anchors when present (ADR-0002 mirrored upload).
 					await queries.addHighlight({
 						id: serverHL.highlightId,
 						bookId: serverHL.bookId,
 						startOffset: serverHL.startOffset,
 						endOffset: serverHL.endOffset,
+						startWord: serverHL.startWord ?? null,
+						startCharInWord: serverHL.startCharInWord ?? null,
+						endWord: serverHL.endWord ?? null,
+						endCharInWord: serverHL.endCharInWord ?? null,
 						color: serverHL.color,
 						note: serverHL.note,
 						text: serverHL.text ?? null,
@@ -716,6 +746,8 @@ export async function pullSync(): Promise<Set<string>> {
 					wordsRead: serverSession.wordsRead,
 					startPos: serverSession.startPos,
 					endPos: serverSession.endPos,
+					startWord: serverSession.startWord ?? null,
+					endWord: serverSession.endWord ?? null,
 					wpmAvg: serverSession.wpmAvg,
 					updatedAt: serverSession.updatedAt,
 				});
