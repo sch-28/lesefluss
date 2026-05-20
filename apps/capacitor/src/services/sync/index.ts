@@ -368,6 +368,8 @@ function buildBookRowFromServer(
 		filePath: null,
 		size: serverBook.fileSize ?? 0,
 		position: serverBook.position,
+		wordPosition: 0,
+		positionUnit: "byte",
 		isActive: false,
 		addedAt: serverBook.updatedAt,
 		lastRead: null,

@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lesefluss — B · Workshop</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Caveat:wght@400..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #fef6e4;
+    --cream-2: #fbe9c0;
+    --ink: #1a1817;
+    --ink-2: #44403c;
+    --muted: #8a8378;
+    --rust: #d9543a;
+    --cyan: #3aa9d9;
+    --sage: #a8c4a0;
+    --pink: #f4b8b0;
+    --yellow: #f7d063;
+    --plum: #8a6cb5;
+  }
+  html, body { background: var(--cream); color: var(--ink); }
+  body { font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .mono { font-family: "Geist Mono", monospace; }
+  .hand { font-family: "Caveat", cursive; }
+  .rust { color: var(--rust); }
+  .cyan { color: var(--cyan); }
+  .sticker {
+    background: var(--cream-2);
+    border: 2px solid var(--ink);
+    box-shadow: 5px 5px 0 0 var(--ink);
+    border-radius: 14px;
+  }
+  .sticker-rust { background: var(--rust); color: var(--cream); border: 2px solid var(--ink); box-shadow: 5px 5px 0 0 var(--ink); border-radius: 14px; }
+  .sticker-cyan { background: var(--cyan); color: var(--cream); border: 2px solid var(--ink); box-shadow: 5px 5px 0 0 var(--ink); border-radius: 14px; }
+  .sticker-sage { background: var(--sage); color: var(--ink); border: 2px solid var(--ink); box-shadow: 5px 5px 0 0 var(--ink); border-radius: 14px; }
+  .sticker-pink { background: var(--pink); color: var(--ink); border: 2px solid var(--ink); box-shadow: 5px 5px 0 0 var(--ink); border-radius: 14px; }
+  .sticker-yellow { background: var(--yellow); color: var(--ink); border: 2px solid var(--ink); box-shadow: 5px 5px 0 0 var(--ink); border-radius: 14px; }
+  .sticker-plum { background: var(--plum); color: var(--cream); border: 2px solid var(--ink); box-shadow: 5px 5px 0 0 var(--ink); border-radius: 14px; }
+  .pill {
+    border: 2px solid var(--ink); border-radius: 999px; padding: 4px 14px;
+    background: var(--cream);
+  }
+  .tape {
+    position: absolute; width: 70px; height: 22px; background: rgba(58,169,217,.5);
+    border-left: 1px dashed rgba(0,0,0,.3); border-right: 1px dashed rgba(0,0,0,.3);
+    transform: rotate(-4deg); top: -12px; left: 30px;
+  }
+  .arrow-svg { color: var(--rust); }
+  .squiggle-underline {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='10' viewBox='0 0 80 10'><path d='M0 6 Q 10 1 20 6 T 40 6 T 60 6 T 80 6' stroke='%23d9543a' stroke-width='2.5' fill='none' stroke-linecap='round'/></svg>");
+    background-repeat: repeat-x;
+    background-position: bottom 0px left;
+    padding-bottom: 6px;
+  }
+  @keyframes wiggle { 0%, 100% { transform: rotate(-1deg); } 50% { transform: rotate(1deg); } }
+  .wiggle:hover { animation: wiggle .3s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<!-- Top -->
+<header class="px-6 py-5">
+  <div class="max-w-6xl mx-auto flex items-center justify-between">
+    <a href="/" class="flex items-center gap-3">
+      <img src="logo.svg" class="w-12 h-12 rotate-[-4deg]" alt="">
+      <div>
+        <p class="text-2xl font-semibold leading-none">Lesefluss</p>
+        <p class="hand text-[var(--rust)] text-lg leading-tight -mt-1">a reading app</p>
+      </div>
+    </a>
+    <nav class="hidden md:flex items-center gap-2">
+      <a href="#read" class="pill mono text-xs hover:bg-[var(--yellow)]">read</a>
+      <a href="#library" class="pill mono text-xs hover:bg-[var(--sage)]">library</a>
+      <a href="#android" class="pill mono text-xs hover:bg-[var(--pink)]">android</a>
+      <a href="#device" class="pill mono text-xs hover:bg-[var(--cyan)] hover:text-[var(--cream)]">device</a>
+      <a href="https://github.com/sch-28/lesefluss" class="pill mono text-xs hover:bg-[var(--ink)] hover:text-[var(--cream)]">github</a>
+    </nav>
+    <a href="/app" class="sticker-rust mono text-sm px-5 py-2 wiggle">open app →</a>
+  </div>
+</header>
+
+<!-- Hero - chaotic but readable -->
+<section class="px-6 py-10 md:py-16">
+  <div class="max-w-6xl mx-auto relative">
+
+    <!-- floating arrow comment -->
+    <p class="hand text-2xl text-[var(--cyan)] absolute right-0 top-2 rotate-[4deg] hidden md:block">
+      ← it's free, btw
+    </p>
+
+    <h1 class="text-5xl md:text-7xl font-semibold leading-[0.95] tracking-tight max-w-4xl">
+      Read books, web novels,<br>
+      and anything you can<br>
+      <span class="squiggle-underline">paste.</span>
+    </h1>
+    <p class="text-xl mt-8 max-w-xl text-[var(--ink-2)] leading-relaxed">
+      Drop in an EPUB, a PDF, an article URL. Read it in pages, scroll, or one word at a time (somehow 2–4× faster).
+    </p>
+
+    <div class="flex flex-wrap items-center gap-4 mt-10">
+      <a href="/app" class="sticker-rust px-6 py-3 font-medium wiggle">open web app</a>
+      <a href="/download" class="sticker px-6 py-3 font-medium wiggle">▶ android</a>
+      <span class="hand text-2xl text-[var(--rust)] rotate-[-3deg] ml-2">or build the €25 reader ↓</span>
+    </div>
+
+    <!-- Grid of stuff: RSVP demo + sticky-notes + book peek -->
+    <div class="grid md:grid-cols-12 gap-5 mt-14">
+      <!-- RSVP card big -->
+      <div class="md:col-span-7 sticker p-6 rotate-[-1deg] relative">
+        <span class="tape"></span>
+        <p class="mono text-xs text-[var(--muted)] mb-4">[ RSVP @ 600 wpm ]</p>
+        <div class="aspect-[16/8] flex items-center justify-center relative">
+          <div class="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-px h-12 bg-[var(--rust)]/30"></div>
+          <p class="text-6xl md:text-7xl font-medium tracking-tight">
+            <span>p</span><span class="rust">a</span><span>tience</span>
+          </p>
+        </div>
+        <p class="text-sm text-[var(--ink-2)] mt-4 italic">"...he counted them quietly, with the same <span class="rust font-semibold not-italic">patience</span> a fisherman shows the tide."</p>
+      </div>
+
+      <!-- Side stickies stack -->
+      <div class="md:col-span-5 grid grid-cols-2 gap-4 content-start">
+        <div class="sticker-yellow p-4 rotate-[2deg]">
+          <p class="mono text-xs mb-1">[ themes ]</p>
+          <p class="text-lg font-semibold">3 — light, dark, sepia</p>
+          <div class="flex gap-1 mt-2">
+            <span class="w-5 h-5 rounded-full bg-[var(--ink)] border-2 border-[var(--ink)]"></span>
+            <span class="w-5 h-5 rounded-full bg-[#e8dcc4] border-2 border-[var(--ink)]"></span>
+            <span class="w-5 h-5 rounded-full bg-[var(--cream)] border-2 border-[var(--ink)]"></span>
+          </div>
+        </div>
+        <div class="sticker-sage p-4 rotate-[-2deg]">
+          <p class="mono text-xs mb-1">[ classics ]</p>
+          <p class="text-2xl font-semibold leading-none">80k+</p>
+          <p class="text-xs mt-1">free, indexed, ready</p>
+        </div>
+        <div class="sticker-pink p-4 rotate-[-1deg] col-span-2">
+          <p class="mono text-xs mb-1">[ price ]</p>
+          <p class="text-3xl font-semibold leading-tight">Free, forever.<br><span class="text-sm font-normal opacity-70">no account, no ads, no subscription</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Library -->
+<section id="library" class="px-6 py-16 relative">
+  <div class="max-w-6xl mx-auto">
+    <div class="flex items-end justify-between flex-wrap gap-4 mb-10">
+      <h2 class="text-4xl md:text-5xl font-semibold leading-tight">
+        <span class="rust">Read</span> anything you can find.
+      </h2>
+      <p class="hand text-2xl text-[var(--cyan)] rotate-[-2deg]">browse 80k+ classics →</p>
+    </div>
+
+    <p class="text-lg text-[var(--ink-2)] max-w-2xl mb-10">
+      EPUBs, PDFs, HTML, plain text, or any URL. Lesefluss pulls a clean reading copy and detects chapters.
+    </p>
+
+    <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+      <div class="aspect-[2/3] sticker bg-[#1f2c38] flex items-end p-2.5 rotate-[-2deg]" style="background:#1f2c38;color:white"><p class="text-xs leading-tight">Pride &amp; Prejudice</p></div>
+      <div class="aspect-[2/3] sticker-rust flex items-end p-2.5 rotate-[1deg]"><p class="text-xs leading-tight">Frankenstein</p></div>
+      <div class="aspect-[2/3] sticker-cyan flex items-end p-2.5 rotate-[-1deg]"><p class="text-xs leading-tight">Wandering Inn</p></div>
+      <div class="aspect-[2/3] sticker bg-[#3d3329] flex items-end p-2.5 rotate-[2deg]" style="background:#3d3329;color:white"><p class="text-xs leading-tight">Moby-Dick</p></div>
+      <div class="aspect-[2/3] sticker-plum flex items-end p-2.5 rotate-[-2deg]"><p class="text-xs leading-tight">Worm</p></div>
+      <div class="aspect-[2/3] sticker flex items-center justify-center rotate-[3deg] bg-[var(--cream)]">
+        <p class="hand text-2xl text-[var(--rust)] text-center leading-tight">paste<br>any URL!</p>
+      </div>
+    </div>
+
+    <p class="mono text-xs text-[var(--muted)] mt-8">sources · Standard Ebooks · Project Gutenberg · Royal Road · AO3 · ScribbleHub · Wuxiaworld</p>
+  </div>
+</section>
+
+<!-- Reader features -->
+<section id="read" class="px-6 py-16">
+  <div class="max-w-6xl mx-auto">
+    <h2 class="text-4xl md:text-5xl font-semibold leading-tight mb-3">
+      Small dials, <span class="cyan">not big switches.</span>
+    </h2>
+    <p class="text-lg text-[var(--ink-2)] max-w-xl mb-10">Set the reader the way you like, forget it.</p>
+
+    <div class="grid md:grid-cols-3 gap-5">
+      <div class="sticker-yellow p-5 rotate-[-1deg]">
+        <p class="hand text-2xl">typography</p>
+        <p class="mt-2 text-sm">Font, line spacing, margins. Even the app's own size.</p>
+      </div>
+      <div class="sticker-cyan p-5 rotate-[1deg]">
+        <p class="hand text-2xl">speed</p>
+        <p class="mt-2 text-sm">WPM, pauses, acceleration, focal-letter offset.</p>
+      </div>
+      <div class="sticker-pink p-5 rotate-[-1deg]">
+        <p class="hand text-2xl">highlights</p>
+        <p class="mt-2 text-sm">Tap a word for a definition. Save passages with colors.</p>
+      </div>
+      <div class="sticker-sage p-5 rotate-[1deg]">
+        <p class="hand text-2xl">glossary</p>
+        <p class="mt-2 text-sm">Per-book. Names and places light up in the text.</p>
+      </div>
+      <div class="sticker-plum p-5 rotate-[-1deg]">
+        <p class="hand text-2xl">auto-advance</p>
+        <p class="mt-2 text-sm">Next chapter rolls in. Pre-fetched in the background.</p>
+      </div>
+      <div class="sticker-rust p-5 rotate-[1deg]">
+        <p class="hand text-2xl">offline</p>
+        <p class="mt-2 text-sm">No connection? No problem. Everything works.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Android + device side by side -->
+<section id="android" class="px-6 py-16">
+  <div class="max-w-6xl mx-auto grid md:grid-cols-2 gap-8 items-center">
+    <div>
+      <p class="hand text-3xl text-[var(--rust)] rotate-[-2deg] mb-2">in your pocket →</p>
+      <h2 class="text-4xl font-semibold leading-tight mb-4">Android app.</h2>
+      <p class="text-lg text-[var(--ink-2)] mb-6">
+        Same reader, offline. Import EPUB/PDF/HTML/text. Up to 1000 wpm. Optional sync.
+      </p>
+      <a href="/download" class="sticker-rust inline-block px-6 py-3 font-medium wiggle">▶ get on android</a>
+    </div>
+    <div class="flex justify-center">
+      <div class="w-[240px] aspect-[9/19.5] sticker p-2 rotate-[3deg]" style="background:var(--ink);">
+        <div class="h-full bg-[var(--cream)] rounded-[10px] overflow-hidden p-3 flex flex-col gap-2">
+          <p class="font-semibold">Library</p>
+          <div class="grid grid-cols-3 gap-1.5 flex-1">
+            <div class="bg-[#1f2c38] rounded-sm"></div>
+            <div class="bg-[var(--rust)] rounded-sm"></div>
+            <div class="bg-[var(--cyan)] rounded-sm"></div>
+            <div class="bg-[var(--sage)] rounded-sm"></div>
+            <div class="bg-[var(--plum)] rounded-sm"></div>
+            <div class="bg-[var(--yellow)] rounded-sm"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Device -->
+<section id="device" class="px-6 py-16">
+  <div class="max-w-6xl mx-auto grid md:grid-cols-2 gap-8 items-center">
+    <div class="flex justify-center order-2 md:order-1 relative">
+      <div class="sticker w-fit p-5 rotate-[-3deg] relative">
+        <span class="tape" style="left:auto;right:20px"></span>
+        <div class="w-32 h-44 bg-[var(--ink)] rounded-2xl p-2">
+          <div class="w-full h-full bg-[var(--rust)] rounded-xl flex flex-col items-center justify-center gap-1">
+            <span class="text-[var(--cream)] text-xs font-medium">patience</span>
+            <span class="mono text-[8px] text-[var(--cream)]/70">600 wpm</span>
+          </div>
+        </div>
+        <p class="hand text-xl text-center mt-3">~€25 in parts</p>
+      </div>
+    </div>
+    <div class="order-1 md:order-2">
+      <p class="hand text-3xl text-[var(--cyan)] rotate-[2deg] mb-2">DIY hardware ↓</p>
+      <h2 class="text-4xl font-semibold leading-tight mb-4">Pocket reader. €25.</h2>
+      <p class="text-lg text-[var(--ink-2)] mb-6">
+        ESP32, AMOLED or TFT, one button, weeks of battery. Syncs your position over BLE.
+      </p>
+      <a href="/device" class="sticker inline-block px-6 py-3 font-medium wiggle">build guide →</a>
+    </div>
+  </div>
+</section>
+
+<!-- OSS -->
+<section class="px-6 py-20" style="background:var(--ink);color:var(--cream)">
+  <div class="max-w-3xl mx-auto text-center">
+    <img src="logo.svg" class="w-16 h-16 mx-auto mb-6 rotate-[-4deg]" alt="">
+    <h2 class="text-5xl md:text-6xl font-semibold leading-tight">
+      Free. <span class="rust">Forever.</span>
+    </h2>
+    <p class="hand text-3xl text-[var(--cyan)] mt-3 rotate-[-1deg] inline-block">no catch, promise.</p>
+    <p class="text-lg mt-6 max-w-md mx-auto opacity-80">
+      No account required. Optional cloud sync. Source under MIT. Issues and PRs welcome.
+    </p>
+    <div class="mt-10 flex flex-wrap justify-center gap-4">
+      <a href="https://github.com/sch-28/lesefluss" class="sticker-rust inline-block px-6 py-3 font-medium wiggle">★ github</a>
+      <a href="/app" class="sticker-cyan inline-block px-6 py-3 font-medium wiggle">→ open the app</a>
+    </div>
+  </div>
+</section>
+
+<footer class="px-6 py-8">
+  <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
+    <span class="font-semibold">Lesefluss</span>
+    <nav class="mono text-sm flex gap-4 text-[var(--muted)]">
+      <a class="hover:text-[var(--ink)]" href="/changelog">changelog</a>
+      <a class="hover:text-[var(--ink)]" href="/privacy">privacy</a>
+      <a class="hover:text-[var(--ink)]" href="/imprint">imprint</a>
+      <a class="hover:text-[var(--ink)]" href="https://github.com/sch-28/lesefluss">github</a>
+    </nav>
+    <span class="hand text-xl text-[var(--rust)]">made for slow afternoons</span>
+  </div>
+</footer>
+
+</body>
+</html>

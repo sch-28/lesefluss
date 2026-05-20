@@ -31,6 +31,7 @@ const content: BookContent = {
 	content: "body text",
 	coverImage: "cover-bytes",
 	chapters: '[{"title":"a","startByte":0}]',
+	wordIndex: null,
 };
 
 describe("bookToSync", () => {

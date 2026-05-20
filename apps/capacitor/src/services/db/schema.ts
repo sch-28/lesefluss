@@ -1,6 +1,6 @@
 import type { HexColor, PaginationStyle } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
-import { check, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { blob, check, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // NOTE: id is a random 8-char hex string generated at import time.
 // It doubles as the book identity on the ESP32 (stored in book.hash after transfer).
@@ -80,6 +80,17 @@ export const books = sqliteTable("books", {
 	filePath: text("file_path"), // path to original file in app data dir, null for legacy/txt
 	size: integer("size").notNull().default(0), // byte length of plain text content
 	position: integer("position").notNull().default(0),
+	/**
+	 * Canonical reading position in word units. Populated by the backfill sweep
+	 * (TASK-134) and read by all production code from TASK-135 onwards. Legacy
+	 * `position` column persists for one release (ADR-0002).
+	 */
+	wordPosition: integer("word_position").notNull().default(0),
+	/**
+	 * Migration marker: 'byte' until backfill converts this book, then 'word'.
+	 * Dropped in Release N+1 once every row is 'word'.
+	 */
+	positionUnit: text("position_unit").$type<"byte" | "word">().notNull().default("byte"),
 	isActive: integer("is_active", { mode: "boolean" }).notNull().default(false), // true = this book is currently on the ESP32 (at most one row at a time)
 	addedAt: integer("added_at").notNull(),
 	lastRead: integer("last_read"),
@@ -146,7 +157,13 @@ export const bookContent = sqliteTable("book_content", {
 	bookId: text("book_id").primaryKey(),
 	content: text("content").notNull(),
 	coverImage: text("cover_image"),
-	chapters: text("chapters"), // JSON: [{title: string, startByte: number}]
+	chapters: text("chapters"), // JSON: [{title: string, startByte: number, startWord?: number}]
+	/**
+	 * Serialized WordIndex (see @lesefluss/core). Populated lazily by the
+	 * backfill sweep (TASK-134) or on chapter-fetch commit. NULL until then.
+	 * Invalidated by setting to NULL when `content` changes.
+	 */
+	wordIndex: blob("word_index", { mode: "buffer" }),
 });
 
 /**
@@ -158,6 +175,15 @@ export const highlights = sqliteTable("highlights", {
 	bookId: text("book_id").notNull(),
 	startOffset: integer("start_offset").notNull(),
 	endOffset: integer("end_offset").notNull(),
+	/**
+	 * Option A word-snap anchor (ADR-0002). Nullable until the per-book backfill
+	 * (TASK-134) converts byte offsets → word + char-in-word. Production code
+	 * reads these from TASK-135.
+	 */
+	startWord: integer("start_word"),
+	startCharInWord: integer("start_char_in_word"),
+	endWord: integer("end_word"),
+	endCharInWord: integer("end_char_in_word"),
 	color: text("color").notNull().default("yellow"), // 'yellow' | 'blue' | 'orange' | 'pink'
 	note: text("note"),
 	text: text("text"), // extracted text snippet - null for pre-existing highlights
@@ -178,8 +204,11 @@ export type NewBook = typeof books.$inferInsert;
 export type BookContent = typeof bookContent.$inferSelect;
 export type NewBookContent = typeof bookContent.$inferInsert;
 
-/** Chapter entry as stored in bookContent.chapters JSON column */
-export type Chapter = { title: string; startByte: number };
+/**
+ * Chapter entry as stored in bookContent.chapters JSON column.
+ * `startWord` populated by backfill (TASK-134); `startByte` kept until Release N+1.
+ */
+export type Chapter = { title: string; startByte: number; startWord?: number };
 
 export type Highlight = typeof highlights.$inferSelect;
 export type NewHighlight = typeof highlights.$inferInsert;
@@ -224,8 +253,14 @@ export const readingSessions = sqliteTable("reading_sessions", {
 	endedAt: integer("ended_at").notNull(), // epoch ms
 	durationMs: integer("duration_ms").notNull(), // ended - started - paused
 	wordsRead: integer("words_read").notNull(),
-	startPos: integer("start_pos").notNull(), // byte offset
+	startPos: integer("start_pos").notNull(), // byte offset (legacy; dropped in Release N+1)
 	endPos: integer("end_pos").notNull(),
+	/**
+	 * Canonical session bounds in word units. Nullable until backfill (TASK-134)
+	 * converts existing rows. Production code reads these from TASK-135.
+	 */
+	startWord: integer("start_word"),
+	endWord: integer("end_word"),
 	wpmAvg: integer("wpm_avg"), // rsvp only; null otherwise
 	updatedAt: integer("updated_at").notNull(), // for last-write-wins sync
 });

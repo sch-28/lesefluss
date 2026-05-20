@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lesefluss — Design Explorations</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  body { font-family: "Geist", system-ui, sans-serif; background: #fef6e4; color: #14110d; }
+  .mono { font-family: "JetBrains Mono", monospace; }
+</style>
+</head>
+<body class="p-8 md:p-16">
+  <div class="max-w-3xl">
+    <div class="flex items-center gap-3 mb-8">
+      <img src="logo.svg" class="w-12 h-12" alt="">
+      <div>
+        <p class="text-2xl font-semibold leading-none">Lesefluss</p>
+        <p class="mono text-xs text-[#82796a] mt-1">design explorations · all iterations preserved</p>
+      </div>
+    </div>
+
+    <!-- v4 — current preferred direction -->
+    <p class="mono text-xs uppercase tracking-widest text-[#d9543a] mb-4">latest · v4 — restored v2 + real logo + palette</p>
+    <div class="space-y-4 mb-16">
+      <a href="A-quiet.html" class="block border-2 border-current p-6 rounded-lg hover:bg-[#14110d] hover:text-[#fef6e4] transition">
+        <p class="mono text-xs opacity-60 mb-2">A · quiet</p>
+        <h2 class="text-2xl font-semibold mb-2">Geist · cream</h2>
+        <p class="text-sm leading-relaxed">Geist sans throughout. Cream #fcfaf3 bg, rust + cyan accents from logo. Linear/Bear vibe. Calmest.</p>
+      </a>
+
+      <a href="B-notebook.html" class="block border-2 border-current p-6 rounded-lg hover:bg-[#14110d] hover:text-[#fef6e4] transition">
+        <p class="mono text-xs opacity-60 mb-2">B · notebook</p>
+        <h2 class="text-2xl font-semibold mb-2">IBM Plex · dotgrid</h2>
+        <p class="text-sm leading-relaxed">IBM Plex Sans + Mono. Cream #fef6e4 bg, faint dot grid, mono <code class="mono text-xs">// comments</code>, <code class="mono text-xs">[ tag ]</code> labels, squiggle underline. Personal-project energy.</p>
+      </a>
+
+      <a href="C-clean.html" class="block border-2 border-current p-6 rounded-lg hover:bg-[#14110d] hover:text-[#fef6e4] transition">
+        <p class="mono text-xs opacity-60 mb-2">C · clean</p>
+        <h2 class="text-2xl font-semibold mb-2">Inter · white + cream bands</h2>
+        <p class="text-sm leading-relaxed">Inter + JetBrains Mono. White and cream #fef6e4 alternating. Sticky header. Stripe/Linear marketing without bro energy.</p>
+      </a>
+    </div>
+
+    <!-- v3 — distinct layouts attempt -->
+    <p class="mono text-xs uppercase tracking-widest text-[#82796a] mb-4">v3 — structurally distinct layouts (parked)</p>
+    <div class="space-y-3 mb-8 opacity-70">
+      <a href="A-quarterly.html" class="block border border-current/30 p-4 rounded-lg hover:opacity-100 hover:border-current transition">
+        <p class="mono text-xs opacity-60">A-quarterly · Read</p>
+        <p class="text-sm">Newsreader serif, narrow essay column. Hero is a paragraph.</p>
+      </a>
+      <a href="B-paper.html" class="block border border-current/30 p-4 rounded-lg hover:opacity-100 hover:border-current transition">
+        <p class="mono text-xs opacity-60">B-paper · Workshop</p>
+        <p class="text-sm">Bricolage Grotesque + Caveat. Sticker panels, tape, hand-drawn captions.</p>
+      </a>
+      <a href="C-imprint.html" class="block border border-current/30 p-4 rounded-lg hover:opacity-100 hover:border-current transition">
+        <p class="mono text-xs opacity-60">C-imprint · Docs</p>
+        <p class="text-sm">Sticky sidebar TOC, terminal blocks, ASCII art. htmx.org/sqlite.org energy.</p>
+      </a>
+    </div>
+
+    <div class="mt-10 mono text-xs leading-relaxed text-[#82796a] border-t border-current/20 pt-6">
+      <p>Open: <span class="mono">file:///home/jan/dev/lesefluss/docs/design-explorations/index.html</span></p>
+      <p class="mt-2">Or serve: <span class="mono">cd docs/design-explorations &amp;&amp; python3 -m http.server 8000</span></p>
+    </div>
+  </div>
+</body>
+</html>
