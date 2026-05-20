@@ -86,6 +86,8 @@ export const books = sqliteTable("books", {
 	 * `position` column persists for one release (ADR-0002).
 	 */
 	wordPosition: integer("word_position").notNull().default(0),
+	/** Total words in the book (ADR-0002). Populated by backfill. */
+	wordCount: integer("word_count").notNull().default(0),
 	/**
 	 * Migration marker: 'byte' until backfill converts this book, then 'word'.
 	 * Dropped in Release N+1 once every row is 'word'.

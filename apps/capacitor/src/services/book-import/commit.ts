@@ -75,6 +75,7 @@ export async function commitBook(payload: BookPayload, extras: ImportExtras): Pr
 		size,
 		position: 0,
 		wordPosition: 0,
+		wordCount: 0,
 		positionUnit: "word",
 		isActive: false,
 		addedAt,

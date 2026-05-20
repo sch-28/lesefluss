@@ -183,7 +183,11 @@ export async function backfillBookToWord(bookId: string): Promise<"converted" | 
 	// flagged 'byte' and the next sweep redoes the work (idempotent).
 	await db
 		.update(books)
-		.set({ wordPosition: result.wordPosition, positionUnit: "word" })
+		.set({
+			wordPosition: result.wordPosition,
+			wordCount: result.wordIndex.wordCount,
+			positionUnit: "word",
+		})
 		.where(eq(books.id, bookId));
 
 	return "converted";

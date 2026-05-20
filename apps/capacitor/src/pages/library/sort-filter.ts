@@ -22,6 +22,11 @@ export const FILTER_OPTIONS: FilterBy[] = ["all", "unread", "reading", "done"];
 export const SORT_OPTIONS: SortBy[] = ["recent", "title", "author", "progress"];
 
 export function readingProgress(book: Book): number {
+	// ADR-0002: prefer word units when backfilled. Falls back to byte ratio
+	// for pre-backfill rows or pending chapters with wordCount === 0.
+	if (book.wordCount > 0) {
+		return Math.min(100, Math.round((book.wordPosition / book.wordCount) * 100));
+	}
 	if (!book.size || book.size === 0) return 0;
 	return Math.min(100, Math.round((book.position / book.size) * 100));
 }
