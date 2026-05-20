@@ -1,12 +1,11 @@
-export { transportBleClient } from "./client";
-export { createBleAdapter, type Adapter } from "./adapter";
+export { type Adapter, createBleAdapter } from "./adapter";
 export { jsonCodec, stringCodec } from "./codecs";
 export type {
-	BLEResult,
 	BLEConnectionState,
-	Codec,
+	BLEResult,
 	CharAccess,
 	CharDescriptor,
+	Codec,
 	DeviceDescriptor,
 	ScannedDevice,
 	TransferImpl,

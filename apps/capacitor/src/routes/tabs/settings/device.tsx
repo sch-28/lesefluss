@@ -27,11 +27,13 @@ import { Progress } from "@lesefluss/ui/progress";
 import { Slider } from "@lesefluss/ui/slider";
 import { Switch } from "@lesefluss/ui/switch";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { DeviceSync } from "@/components/device-sync";
 import { useToast } from "@/components/toast";
 import { useBLE } from "@/contexts/ble-context";
 import { useAutoSaveSettings } from "@/hooks/use-auto-save-settings";
 import { ble } from "@/services/ble";
 import type { StorageInfo } from "@/services/ble/characteristics/storage";
+import { MULTI_BOOK_DESCRIPTOR_ID } from "@/services/devices";
 import { log } from "@/utils/log";
 
 export const Route = createFileRoute("/tabs/settings/device")({
@@ -127,6 +129,7 @@ function DeviceSettings() {
 		syncToDevice,
 		syncFromDevice,
 		onConnected,
+		connectedDescriptorId,
 		error: bleError,
 	} = useBLE();
 
@@ -219,6 +222,9 @@ function DeviceSettings() {
 		);
 	}
 
+	const isMultiBookConnected =
+		isConnected && connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID;
+
 	const storageUsedPct =
 		storageInfo && storageInfo.total_bytes > 0
 			? ((storageInfo.total_bytes - storageInfo.free_bytes) / storageInfo.total_bytes) * 100
@@ -228,6 +234,9 @@ function DeviceSettings() {
 		<div className="bg-background">
 			<PageHeader title="Device" icon={Cpu} />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
+				{isMultiBookConnected && connectedDescriptorId && (
+					<DeviceSync descriptorId={connectedDescriptorId} />
+				)}
 				<Section title="Display">
 					<SliderRow
 						title="Brightness"

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { findDescriptor } from "../services/devices";
-import { deriveCapabilities, type DeviceCapabilities } from "../services/devices/capabilities";
+import { type DeviceCapabilities, deriveCapabilities } from "../services/devices/capabilities";
 
 /**
  * Look up device capabilities from a persisted descriptorId.

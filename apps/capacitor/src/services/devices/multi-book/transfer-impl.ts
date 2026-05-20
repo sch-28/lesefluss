@@ -72,8 +72,7 @@ export const transferMultiBook: TransferImpl = async (
 		await BleClient.startNotifications(deviceId, SERVICE_UUID, TRANSFER_CHAR_UUID, (view) => {
 			const msg = decoder.decode(view).replace(/\0+$/, "");
 			log("multibook-transfer", "ack:", msg);
-			const parsed: AckMessage =
-				msg === "ACK:START" || msg === "ACK:END" ? msg : { nack: msg };
+			const parsed: AckMessage = msg === "ACK:START" || msg === "ACK:END" ? msg : { nack: msg };
 			if (resolveAck) {
 				resolveAck(parsed);
 			} else {

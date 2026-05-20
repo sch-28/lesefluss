@@ -8,21 +8,9 @@
  */
 
 import type { DeviceDescriptor } from "../ble-transport/types";
-import {
-	SINGLE_BOOK_DESCRIPTOR_ID,
-	singleBookDescriptor,
-} from "./single-book/descriptor";
-import {
-	MULTI_BOOK_DESCRIPTOR_ID,
-	multiBookDescriptor,
-} from "./multi-book/descriptor";
+import { MULTI_BOOK_DESCRIPTOR_ID, multiBookDescriptor } from "./multi-book/descriptor";
+import { SINGLE_BOOK_DESCRIPTOR_ID, singleBookDescriptor } from "./single-book/descriptor";
 
-export { SINGLE_BOOK_DESCRIPTOR_ID, singleBookDescriptor };
-export { MULTI_BOOK_DESCRIPTOR_ID, multiBookDescriptor };
-export type {
-	SingleBookPosition,
-	SingleBookStorage,
-} from "./single-book/descriptor";
 export type {
 	MultiBookActive,
 	MultiBookInfo,
@@ -31,6 +19,16 @@ export type {
 	MultiBookSettings,
 	MultiBookStorage,
 } from "./multi-book/descriptor";
+export type {
+	SingleBookPosition,
+	SingleBookStorage,
+} from "./single-book/descriptor";
+export {
+	MULTI_BOOK_DESCRIPTOR_ID,
+	multiBookDescriptor,
+	SINGLE_BOOK_DESCRIPTOR_ID,
+	singleBookDescriptor,
+};
 
 export const DEVICE_DESCRIPTORS: readonly DeviceDescriptor[] = [
 	singleBookDescriptor,

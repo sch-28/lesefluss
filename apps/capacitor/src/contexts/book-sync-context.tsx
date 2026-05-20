@@ -19,9 +19,34 @@ import {
 	useState,
 } from "react";
 import { ble } from "../services/ble";
+import { createBleAdapter } from "../services/ble-transport";
 import { queries } from "../services/db/queries";
+import { MULTI_BOOK_DESCRIPTOR_ID, multiBookDescriptor } from "../services/devices";
 import { log } from "../utils/log";
 import { useBLE } from "./ble-context";
+
+const encoder = new TextEncoder();
+
+function escapeRsvpDirective(value: string): string {
+	return value.replace(/\r?\n/g, " ").trim();
+}
+
+function buildRsvpDocument(opts: { title: string; author: string; body: string }): Uint8Array {
+	const lines: string[] = [];
+	lines.push("@rsvp 1");
+	if (opts.title) {
+		lines.push(`@title ${escapeRsvpDirective(opts.title)}`);
+	}
+	if (opts.author) {
+		lines.push(`@author ${escapeRsvpDirective(opts.author)}`);
+	}
+	lines.push("@para");
+	// Body lines beginning with literal "@" must be escaped to "@@" per the
+	// rsvp format spec, so they aren't mistaken for directives.
+	const escapedBody = opts.body.replace(/(^|\n)@/g, (_m, p1) => `${p1}@@`);
+	lines.push(escapedBody);
+	return encoder.encode(`${lines.join("\n")}\n`);
+}
 
 interface BookSyncContextType {
 	/** ID (8-char hex) of the book currently marked as active (on device), or null. */
@@ -67,7 +92,7 @@ interface Props {
 }
 
 export const BookSyncProvider: React.FC<Props> = ({ children }) => {
-	const { isConnected, onConnected } = useBLE();
+	const { isConnected, onConnected, connectedDescriptorId, connectedDevice } = useBLE();
 
 	const [activeBookId, setActiveBookId] = useState<string | null>(null);
 	const [devicePosition, setDevicePosition] = useState<number | null>(null);
@@ -226,35 +251,57 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					throw new Error("Book content not found");
 				}
 
-				// Pass the book id as the filename in the START frame.
-				// The ESP32 saves it as book.hash after a successful transfer so
-				// we can verify the right book is on the device on future connects.
-				// The human-readable title is passed as an optional 4th field so the
-				// device can display it on the home screen.
-				const result = await ble.transferBook(
-					content.content,
-					bookId,
-					(pct) => {
-						setTransferProgress(pct);
-						onProgress?.(pct);
-					},
-					bookMeta?.title ?? undefined,
-				);
+				const onProgressBoth = (pct: number) => {
+					setTransferProgress(pct);
+					onProgress?.(pct);
+				};
 
-				if (!result.success) {
-					throw new Error(result.error ?? "Transfer failed");
+				if (
+					connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID &&
+					connectedDevice?.deviceId
+				) {
+					// Multi-book devices keep many books on disk. Uploading just
+					// stockpiles. Which book the device is currently reading is
+					// controlled separately via the multibook `active` characteristic
+					// (set from the MultiBookSync component). Do NOT touch the app's
+					// activeBookId on upload here.
+					const rsvpBytes = buildRsvpDocument({
+						title: bookMeta?.title ?? "",
+						author: bookMeta?.author ?? "",
+						body: content.content,
+					});
+					const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
+					if (!adapter.transferFile) {
+						throw new Error("Adapter missing transfer support");
+					}
+					const result = await adapter.transferFile(
+						rsvpBytes,
+						{ filename: `${bookId}.rsvp`, category: "book" },
+						onProgressBoth,
+					);
+					if (!result.success) {
+						throw new Error(result.error ?? "Transfer failed");
+					}
+				} else {
+					// Single-book device holds exactly one book. Uploading replaces
+					// the existing book and implicitly makes it active in both app
+					// and device.
+					const result = await ble.transferBook(
+						content.content,
+						bookId,
+						onProgressBoth,
+						bookMeta?.title ?? undefined,
+					);
+					if (!result.success) {
+						throw new Error(result.error ?? "Transfer failed");
+					}
+					const book = await queries.getBook(bookId);
+					const pos = book?.position ?? 0;
+					await ble.writePosition(pos);
+					setDevicePosition(pos);
+					await queries.setActiveBook(bookId);
+					updateActiveBookId(bookId);
 				}
-
-				// Mark this book as active (deactivates all others atomically)
-				await queries.setActiveBook(bookId);
-				updateActiveBookId(bookId);
-
-				// Push the app's reading position to the device so it resumes
-				// where the user left off in the in-app reader.
-				const book = await queries.getBook(bookId);
-				const pos = book?.position ?? 0;
-				await ble.writePosition(pos);
-				setDevicePosition(pos);
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : "Transfer failed";
 				setError(msg);
@@ -264,7 +311,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				setTransferProgress(null);
 			}
 		},
-		[isConnected, updateActiveBookId],
+		[isConnected, updateActiveBookId, connectedDescriptorId, connectedDevice?.deviceId],
 	);
 
 	// ------------------------------------------------------------------
