@@ -514,7 +514,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// Paragraph now emits word indices. Convert to a byte offset for the
 			// byte-typed downstream state (active/progress/save). findHighlightAt
 			// is still byte-keyed; findGlossaryAt is word-keyed after stage H.
-			const offset = wordIndex ? wordIndex.byteOf(wordPos(wIdx)) : 0;
+			// Bail when the WordIndex hasn't loaded yet — a tap that maps every
+			// word to byte 0 would clobber the saved position.
+			if (!wordIndex) return;
+			const offset = wordIndex.byteOf(wordPos(wIdx));
 
 			if (offset === activeOffset) {
 				const existing = findHighlightAt(offset);
@@ -757,8 +760,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const handleWordMouseDragStart = useCallback(
 		(wIdx: number, initialEvent: PointerEvent) => {
 			// Paragraph emits word index; convert at the boundary for byte-keyed
-			// selection internals.
-			const offset = wordIndex ? wordIndex.byteOf(wordPos(wIdx)) : 0;
+			// selection internals. Bail when the WordIndex isn't loaded — a
+			// drag-start at byte 0 would clobber the active position.
+			if (!wordIndex) return;
+			const offset = wordIndex.byteOf(wordPos(wIdx));
 			const existing = findHighlightAt(offset);
 			if (existing) {
 				openHighlightEditor(existing);
