@@ -57,3 +57,4 @@ resources/case/oled-v1/render/screen/
 *.keystore
 
 __pycache__
+resources/.logo-dark.png
