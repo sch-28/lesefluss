@@ -113,6 +113,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// ── Data queries ──────────────────────────────────────────────────────
 	const { data: book, isPending: bookPending } = queryHooks.useBook(id);
 	const { data: contentRow, isPending: contentPending } = queryHooks.useBookContent(id);
+	// ADR-0002 canonical position lookup. Returns null while loading or for
+	// books without a content row yet (pending/locked chapters). Downstream
+	// stages (C-G) consume this; for now it just rides through props.
+	const { data: wordIndex } = queryHooks.useBookWordIndex(id);
 	const content = contentRow?.content ?? null;
 	const { data: highlightRows = [] } = queryHooks.useHighlights(id);
 	const { data: glossaryEntries = [] } = queryHooks.useGlossary(id);
@@ -1175,6 +1179,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						paragraphOffsets={paragraphOffsets}
 						findParagraphIndex={findParagraphIndex}
 						initialByteOffset={lastOffsetRef.current ?? book.position}
+						wordIndex={wordIndex ?? null}
 						fontSize={readerFontSize}
 						fontFamily={readerFontFamily}
 						lineSpacing={readerLineSpacing}

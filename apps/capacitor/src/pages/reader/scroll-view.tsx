@@ -177,6 +177,12 @@ export interface ScrollViewProps {
 	paragraphOffsets: number[];
 	findParagraphIndex: (targetByte: number) => number;
 	initialByteOffset: number;
+	/**
+	 * Optional WordIndex for byte ↔ word conversion at this view's seam.
+	 * Wired in TASK-135 stage B; consumed in stage C. Null while loading or
+	 * for not-yet-backfilled books (stage C must handle the null case).
+	 */
+	wordIndex?: import("@lesefluss/core").WordIndex | null;
 
 	// Appearance
 	fontSize: number;
