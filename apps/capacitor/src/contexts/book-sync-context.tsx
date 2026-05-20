@@ -200,7 +200,11 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				// Device is ahead - persist into DB. ADR-0002: dual-write
 				// word_position via the cached WordIndex so the canonical
 				// column stays current when the device wins the conflict.
-				const update: { position: number; lastRead: number; wordPosition?: number } = {
+				const update: {
+					position: number;
+					lastRead: number;
+					wordPosition?: import("@lesefluss/core").WordPosition;
+				} = {
 					position: devicePos,
 					lastRead: Date.now(),
 				};

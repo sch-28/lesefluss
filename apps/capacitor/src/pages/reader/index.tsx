@@ -25,7 +25,7 @@
 
 import { Browser } from "@capacitor/browser";
 import type { RsvpSettings } from "@lesefluss/core";
-import { DEFAULT_SETTINGS, wordPos } from "@lesefluss/core";
+import { DEFAULT_SETTINGS, wordPos, type WordPosition } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import {
 	Drawer,
@@ -362,7 +362,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// switchover (TASK-135 stage H) drops the byte write.
 	const savePosition = useCallback(
 		async (offset: number, { scheduleSync = true }: { scheduleSync?: boolean } = {}) => {
-			const update: { position: number; lastRead: number; wordPosition?: number } = {
+			const update: { position: number; lastRead: number; wordPosition?: WordPosition } = {
 				position: offset,
 				lastRead: Date.now(),
 			};
@@ -505,19 +505,23 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// Normal mode - second tap on highlighted word: open highlight modal (if highlighted)
 	//   or dictionary (if not highlighted).
 	const { cancelSelection, findHighlightAt, openHighlightEditor } = sel;
+
+	// Paragraph emits word indices; byte-typed handlers below convert at the
+	// edge. Returns null when the WordIndex hasn't loaded yet — handlers must
+	// bail rather than fall through to a `0` that would clobber state.
+	const wordTapToOffset = useCallback(
+		(wIdx: number): number | null => (wordIndex ? wordIndex.byteOf(wordPos(wIdx)) : null),
+		[wordIndex],
+	);
+
 	const handleWordTap = useCallback(
 		(wIdx: number, wordText: string) => {
 			if (isSelecting) {
 				cancelSelection();
 				return;
 			}
-			// Paragraph now emits word indices. Convert to a byte offset for the
-			// byte-typed downstream state (active/progress/save). findHighlightAt
-			// is still byte-keyed; findGlossaryAt is word-keyed after stage H.
-			// Bail when the WordIndex hasn't loaded yet — a tap that maps every
-			// word to byte 0 would clobber the saved position.
-			if (!wordIndex) return;
-			const offset = wordIndex.byteOf(wordPos(wIdx));
+			const offset = wordTapToOffset(wIdx);
+			if (offset === null) return;
 
 			if (offset === activeOffset) {
 				const existing = findHighlightAt(offset);
@@ -551,7 +555,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			openHighlightEditor,
 			findGlossaryAt,
 			openDictionaryModal,
-			wordIndex,
+			wordTapToOffset,
 		],
 	);
 
@@ -759,11 +763,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const { startSelection, extendSelectionTo, startHandleRef, endHandleRef } = sel;
 	const handleWordMouseDragStart = useCallback(
 		(wIdx: number, initialEvent: PointerEvent) => {
-			// Paragraph emits word index; convert at the boundary for byte-keyed
-			// selection internals. Bail when the WordIndex isn't loaded — a
-			// drag-start at byte 0 would clobber the active position.
-			if (!wordIndex) return;
-			const offset = wordIndex.byteOf(wordPos(wIdx));
+			const offset = wordTapToOffset(wIdx);
+			if (offset === null) return;
 			const existing = findHighlightAt(offset);
 			if (existing) {
 				openHighlightEditor(existing);
@@ -823,7 +824,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			extendSelectionTo,
 			startHandleRef,
 			endHandleRef,
-			wordIndex,
+			wordTapToOffset,
 		],
 	);
 
@@ -1223,7 +1224,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						lineSpacing={readerLineSpacing}
 						margin={readerMargin}
 						showActiveWordUnderline={readerActiveWordUnderline}
-						activeOffset={activeOffset}
 						activeWord={activeWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}

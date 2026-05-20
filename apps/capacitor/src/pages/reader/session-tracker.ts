@@ -81,11 +81,14 @@ const JUMP_BYTES_PER_TICK: Record<ReadingSessionMode, number> = {
 	rsvp: 2000,
 };
 
+const _encoder = new TextEncoder();
+const _decoder = new TextDecoder();
+
 function wordsInBytes(bytes: Uint8Array, a: number, b: number): number {
 	const lo = Math.min(a, b);
 	const hi = Math.max(a, b);
 	if (hi <= lo) return 0;
-	const slice = new TextDecoder().decode(bytes.slice(lo, hi));
+	const slice = _decoder.decode(bytes.slice(lo, hi));
 	const matches = slice.match(/\S+/g);
 	return matches ? matches.length : 0;
 }
@@ -116,14 +119,14 @@ export class SessionTracker {
 
 	constructor(opts: TrackerOpts) {
 		this.opts = opts;
-		this.contentBytes = new TextEncoder().encode(opts.content);
+		this.contentBytes = _encoder.encode(opts.content);
 		const now = this.now();
 		this.lastActivityAt = now;
 		this.lastPollAt = now;
 	}
 
 	setContent(content: string): void {
-		this.contentBytes = new TextEncoder().encode(content);
+		this.contentBytes = _encoder.encode(content);
 	}
 
 	private now(): number {

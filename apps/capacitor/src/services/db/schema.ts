@@ -1,6 +1,6 @@
-import type { HexColor, PaginationStyle } from "@lesefluss/core";
+import type { HexColor, PaginationStyle, WordPosition } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
-import { blob, check, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { check, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // NOTE: id is a random 8-char hex string generated at import time.
 // It doubles as the book identity on the ESP32 (stored in book.hash after transfer).
@@ -85,7 +85,7 @@ export const books = sqliteTable("books", {
 	 * (TASK-134) and read by all production code from TASK-135 onwards. Legacy
 	 * `position` column persists for one release (ADR-0002).
 	 */
-	wordPosition: integer("word_position").notNull().default(0),
+	wordPosition: integer("word_position").$type<WordPosition>().notNull().default(0 as WordPosition),
 	/** Total words in the book (ADR-0002). Populated by backfill. */
 	wordCount: integer("word_count").notNull().default(0),
 	/**
@@ -161,11 +161,14 @@ export const bookContent = sqliteTable("book_content", {
 	coverImage: text("cover_image"),
 	chapters: text("chapters"), // JSON: [{title: string, startByte: number, startWord?: number}]
 	/**
-	 * Serialized WordIndex (see @lesefluss/core). Populated lazily by the
-	 * backfill sweep (TASK-134) or on chapter-fetch commit. NULL until then.
-	 * Invalidated by setting to NULL when `content` changes.
+	 * Serialized WordIndex (see @lesefluss/core). UTF-8 JSON text. Populated
+	 * lazily by the backfill sweep (TASK-134) or on chapter-fetch commit.
+	 * NULL until then. Invalidated by setting to NULL when `content` changes.
+	 * Stored as text rather than blob so the drizzle column type matches the
+	 * runtime (Capacitor's sqlite-proxy returns strings for TEXT columns and
+	 * the blob/Buffer round-trip wanted a cast).
 	 */
-	wordIndex: blob("word_index", { mode: "buffer" }),
+	wordIndex: text("word_index"),
 });
 
 /**

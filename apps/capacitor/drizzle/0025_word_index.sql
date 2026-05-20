@@ -2,7 +2,7 @@ ALTER TABLE `books` ADD `word_position` integer DEFAULT 0 NOT NULL;
 --> statement-breakpoint
 ALTER TABLE `books` ADD `position_unit` text DEFAULT 'byte' NOT NULL;
 --> statement-breakpoint
-ALTER TABLE `book_content` ADD `word_index` blob;
+ALTER TABLE `book_content` ADD `word_index` text;
 --> statement-breakpoint
 ALTER TABLE `highlights` ADD `start_word` integer;
 --> statement-breakpoint

@@ -661,8 +661,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									// TODO (TASK-98): source from book metadata once available —
 									// affects hyphenation quality on non-English books.
 									lang="en"
-									activeOffset={isActiveChunk ? activeOffset : -1}
-									activeWord={activeWord}
+									activeWord={isActiveChunk ? activeWord : -1}
 									highlightsByParagraph={highlightsByParagraph}
 									glossaryByParagraph={glossaryByParagraph}
 									selectionRange={selectionRange}

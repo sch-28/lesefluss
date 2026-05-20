@@ -13,7 +13,7 @@
  * without per-word spans - they are not tappable reading positions.
  */
 
-import { utf8ByteLength } from "@lesefluss/core";
+import { utf8ByteLength, type WordPosition } from "@lesefluss/core";
 import type React from "react";
 import { memo } from "react";
 
@@ -36,16 +36,16 @@ function stripHeadingPrefix(text: string): string {
 
 export interface HighlightRange {
 	id: string;
-	startWord: number;
-	endWord: number;
+	startWord: WordPosition;
+	endWord: WordPosition;
 	color: string;
 }
 
 /** Inline glossary underline range — word-index span on this paragraph. */
 export interface GlossaryRangeProp {
 	entryId: string;
-	startWord: number;
-	endWord: number;
+	startWord: WordPosition;
+	endWord: WordPosition;
 	color: string;
 	label: string;
 	hideMarker?: boolean;

@@ -1,6 +1,9 @@
 import { buildWordIndex, type WordEntry } from "./engine";
 import { utf8ByteLength } from "./utf8";
 
+const _encoder = new TextEncoder();
+const _decoder = new TextDecoder("utf-8");
+
 declare const wordPositionBrand: unique symbol;
 
 export type WordPosition = number & { readonly [wordPositionBrand]: true };
@@ -141,16 +144,14 @@ function rebuildEntries(
 	byteOffsets: number[],
 	breakBeforeMask: number[],
 ): WordEntry[] {
-	const encoder = new TextEncoder();
-	const decoder = new TextDecoder("utf-8");
-	const contentBytes = encoder.encode(content);
+	const contentBytes = _encoder.encode(content);
 
 	const entries: WordEntry[] = [];
 	for (let i = 0; i < byteOffsets.length; i++) {
 		const start = byteOffsets[i];
 		const end = i + 1 < byteOffsets.length ? byteOffsets[i + 1] : contentBytes.length;
 		const slice = contentBytes.subarray(start, end);
-		const word = decoder.decode(slice).replace(/\s+$/, "");
+		const word = _decoder.decode(slice).replace(/\s+$/, "");
 		const entry: WordEntry = { word, byteOffset: start };
 		if (maskBit(breakBeforeMask, i)) entry.breakBefore = true;
 		entries.push(entry);

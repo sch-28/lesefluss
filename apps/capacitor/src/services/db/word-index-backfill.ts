@@ -1,4 +1,4 @@
-import { WordIndex, wordPos } from "@lesefluss/core";
+import { WordIndex, wordPos, type WordPosition } from "@lesefluss/core";
 import { eq } from "drizzle-orm";
 import { db } from "./index";
 import { queries } from "./queries";
@@ -41,7 +41,7 @@ export interface BookConversionInput {
 
 export interface BookConversionResult {
 	wordIndex: WordIndex;
-	wordPosition: number;
+	wordPosition: WordPosition;
 	chapters: Chapter[] | null;
 	highlights: ConvertedHighlight[];
 	sessions: ConvertedSession[];
@@ -92,21 +92,11 @@ export function computeBookConversion(input: BookConversionInput): BookConversio
 }
 
 /**
- * Serialize a WordIndex for the `book_content.word_index` blob column.
- * UTF-8 JSON. Decoded with the same encoding on read.
+ * Serialize a WordIndex for the `book_content.word_index` text column.
+ * UTF-8 JSON. Parsed via JSON.parse on read.
  */
-export function serializeWordIndexBlob(idx: WordIndex): Uint8Array {
-	const json = JSON.stringify(idx.serialize());
-	return new TextEncoder().encode(json);
-}
-
-/**
- * Drizzle's `blob({ mode: "buffer" })` types the column as `Buffer`, but the
- * sqlite-proxy runtime accepts any byte-array-shaped value. We produce
- * Uint8Array (browser-native, no Node polyfill) and bridge the type here.
- */
-function toBlobValue(bytes: Uint8Array): Buffer {
-	return bytes as unknown as Buffer;
+export function serializeWordIndexBlob(idx: WordIndex): string {
+	return JSON.stringify(idx.serialize());
 }
 
 /**
@@ -149,18 +139,20 @@ export async function backfillBookToWord(bookId: string): Promise<"converted" | 
 		})),
 	});
 
-	const blob = toBlobValue(serializeWordIndexBlob(result.wordIndex));
+	const indexJson = serializeWordIndexBlob(result.wordIndex);
 
+	// Sequence: persist content updates first, then highlight + session
+	// updates in parallel, THEN flip position_unit. Any thrown error short-
+	// circuits the function before the flag flips, so the book stays marked
+	// 'byte' and the next sweep retries cleanly.
 	await db
 		.update(bookContent)
 		.set({
-			wordIndex: blob,
+			wordIndex: indexJson,
 			chapters: result.chapters ? JSON.stringify(result.chapters) : contentRow.chapters,
 		})
 		.where(eq(bookContent.bookId, bookId));
 
-	// Highlight + session updates are independent of each other and of the
-	// bookContent write above — kick both groups off in parallel.
 	await Promise.all([
 		...result.highlights.map((h) =>
 			db
@@ -181,8 +173,7 @@ export async function backfillBookToWord(bookId: string): Promise<"converted" | 
 		),
 	]);
 
-	// Flip position_unit last — a crash anywhere above leaves the book still
-	// flagged 'byte' and the next sweep redoes the work (idempotent).
+	// Final flip — only reached when every preceding write resolved.
 	await db
 		.update(books)
 		.set({

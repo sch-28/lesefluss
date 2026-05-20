@@ -113,8 +113,7 @@ export async function loadBookWordIndex(id: string): Promise<WordIndex | null> {
 	if (!row) return null;
 	if (row.wordIndex) {
 		try {
-			const json = new TextDecoder().decode(row.wordIndex as unknown as Uint8Array);
-			return WordIndex.deserialize(JSON.parse(json) as SerializedWordIndex);
+			return WordIndex.deserialize(JSON.parse(row.wordIndex) as SerializedWordIndex);
 		} catch {
 			// Fall through to rebuild from content.
 		}

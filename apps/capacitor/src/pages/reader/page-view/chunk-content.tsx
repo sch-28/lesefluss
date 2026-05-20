@@ -35,8 +35,7 @@ export interface ChunkContentProps {
 	lang: string;
 
 	// Highlight + selection passthrough to <Paragraph>.
-	activeOffset: number; // -1 if active word is in a different chunk
-	activeWord: number;
+	activeWord: number; // -1 if active word is in a different chunk
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	selectionRange: { startWord: number; endWord: number } | null;
@@ -68,7 +67,6 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	fontFamily,
 	showActiveWordUnderline,
 	lang,
-	activeOffset,
 	activeWord,
 	highlightsByParagraph,
 	glossaryByParagraph,
@@ -135,13 +133,8 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 			{paragraphs.slice(chunk.paragraphFrom, chunk.paragraphTo).map((text, i) => {
 				const paraGlobalIndex = chunk.paragraphFrom + i;
 				const paraStart = paragraphOffsets[paraGlobalIndex];
-				const paraEnd = paragraphOffsets[paraGlobalIndex + 1] ?? Number.POSITIVE_INFINITY;
 				const paraStartWord = paragraphStartWords[paraGlobalIndex] ?? 0;
 				const paraEndWord = paragraphStartWords[paraGlobalIndex + 1] ?? Number.POSITIVE_INFINITY;
-				// Pass the real activeWord only to the paragraph that contains it.
-				void activeOffset;
-				void paraStart;
-				void paraEnd;
 				const isActiveWordHere = activeWord >= paraStartWord && activeWord < paraEndWord;
 				return (
 					<Paragraph

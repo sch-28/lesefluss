@@ -18,12 +18,7 @@ import { memo, useCallback } from "react";
 import { VList } from "virtua";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
-import { readingProgress } from "./sort-filter";
-
-// Tail tolerance for "finished". Word units when backfilled (ADR-0002);
-// byte fallback (32 bytes) for not-yet-backfilled rows. Matches sort-filter.ts.
-const FINISHED_TAIL_BYTES = 32;
-const FINISHED_TAIL_WORDS = 5;
+import { isBookFinished, readingProgress } from "./sort-filter";
 
 type RowState =
 	| { kind: "unread" }
@@ -40,11 +35,7 @@ function chapterRowState(book: Book): RowState {
 
 	// chapterStatus === 'fetched'
 	if (book.lastRead == null) return { kind: "unread" };
-	if (book.wordCount > 0) {
-		if (book.wordPosition >= book.wordCount - FINISHED_TAIL_WORDS) return { kind: "finished" };
-	} else if (book.size > 0 && book.position >= book.size - FINISHED_TAIL_BYTES) {
-		return { kind: "finished" };
-	}
+	if (isBookFinished(book)) return { kind: "finished" };
 
 	return { kind: "in-progress", pct: readingProgress(book) };
 }

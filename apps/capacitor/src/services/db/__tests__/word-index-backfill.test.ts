@@ -142,7 +142,7 @@ describe("computeBookConversion", () => {
 });
 
 describe("serializeWordIndexBlob", () => {
-	it("produces a Uint8Array decodable back to the same WordIndex queries", () => {
+	it("produces a JSON string parseable back to the WordIndex serialized shape", () => {
 		const out = computeBookConversion({
 			position: 0,
 			content: SIMPLE,
@@ -150,10 +150,9 @@ describe("serializeWordIndexBlob", () => {
 			highlights: [],
 			sessions: [],
 		});
-		const blob = serializeWordIndexBlob(out.wordIndex);
-		expect(blob).toBeInstanceOf(Uint8Array);
-		const decoded = new TextDecoder().decode(blob);
-		const parsed = JSON.parse(decoded);
+		const json = serializeWordIndexBlob(out.wordIndex);
+		expect(typeof json).toBe("string");
+		const parsed = JSON.parse(json);
 		expect(parsed.v).toBe(1);
 		expect(parsed.byteOffsets.length).toBe(out.wordIndex.wordCount);
 	});

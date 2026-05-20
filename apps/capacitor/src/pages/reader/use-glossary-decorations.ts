@@ -12,15 +12,15 @@
  * setting is off or the WordIndex hasn't loaded.
  */
 
-import { utf8ByteLength, type WordIndex } from "@lesefluss/core";
+import { utf8ByteLength, type WordIndex, type WordPosition } from "@lesefluss/core";
 import { useMemo } from "react";
 import type { GlossaryEntry } from "../../services/db/schema";
 import { escapeRegex } from "./glossary-utils";
 
 export interface GlossaryRange {
 	entryId: string;
-	startWord: number;
-	endWord: number;
+	startWord: WordPosition;
+	endWord: WordPosition;
 	color: string;
 	label: string;
 	/** When true, the range is still tracked (so taps still open the entry) but

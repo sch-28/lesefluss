@@ -120,9 +120,11 @@ export function useHighlightSelection({
 		if (highlightRows.length === 0 || paragraphOffsets.length === 0) return map;
 
 		for (const h of highlightRows) {
-			const startWord = h.startWord ?? wordIndex?.wordOf(h.startOffset);
-			const endWord = h.endWord ?? wordIndex?.wordOf(h.endOffset);
-			if (startWord === undefined || endWord === undefined) continue;
+			const startWord =
+				h.startWord !== null ? wordPos(h.startWord) : (wordIndex?.wordOf(h.startOffset) ?? null);
+			const endWord =
+				h.endWord !== null ? wordPos(h.endWord) : (wordIndex?.wordOf(h.endOffset) ?? null);
+			if (startWord === null || endWord === null) continue;
 
 			const range: HighlightRange = {
 				id: h.id,

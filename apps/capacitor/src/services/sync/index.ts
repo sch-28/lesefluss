@@ -14,6 +14,7 @@ import {
 	type SyncResponse,
 	type SyncSeries,
 	type SyncSettings,
+	wordPos,
 } from "@lesefluss/core";
 import { log } from "../../utils/log";
 import {
@@ -368,7 +369,7 @@ function buildBookRowFromServer(
 		filePath: null,
 		size: serverBook.fileSize ?? 0,
 		position: serverBook.position,
-		wordPosition: 0,
+		wordPosition: wordPos(0),
 		wordCount: serverBook.wordCount ?? 0,
 		positionUnit: "byte",
 		isActive: false,

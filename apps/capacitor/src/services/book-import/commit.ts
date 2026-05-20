@@ -6,6 +6,7 @@ import {
 	generateBookId,
 	utf8ByteLength,
 } from "@lesefluss/book-import";
+import { wordPos } from "@lesefluss/core";
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
 import type { Book } from "../db/schema";
@@ -74,7 +75,7 @@ export async function commitBook(payload: BookPayload, extras: ImportExtras): Pr
 		filePath,
 		size,
 		position: 0,
-		wordPosition: 0,
+		wordPosition: wordPos(0),
 		wordCount: 0,
 		positionUnit: "word",
 		isActive: false,

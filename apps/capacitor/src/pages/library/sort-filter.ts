@@ -31,6 +31,16 @@ export function readingProgress(book: Book): number {
 	return Math.min(100, Math.round((book.position / book.size) * 100));
 }
 
+/** Tail tolerance for "finished" — word-aware (ADR-0002) with byte fallback. */
+const FINISHED_TAIL_BYTES = 32;
+const FINISHED_TAIL_WORDS = 5;
+
+export function isBookFinished(book: Book): boolean {
+	if (book.wordCount > 0) return book.wordPosition >= book.wordCount - FINISHED_TAIL_WORDS;
+	if (book.size <= 0) return false;
+	return book.position >= book.size - FINISHED_TAIL_BYTES;
+}
+
 /**
  * Series progress as a 0..100 number, parallel to `readingProgress` for books.
  * Series with no chapters yet (placeholder after import before the first poll)

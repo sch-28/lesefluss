@@ -190,8 +190,7 @@ export interface ScrollViewProps {
 	showActiveWordUnderline: boolean;
 
 	// Active highlight + per-paragraph annotation data (passed straight to <Paragraph>).
-	activeOffset: number;
-	/** Active word index (-1 to hide). Mirrors activeOffset but in word units. */
+	/** Active word index (-1 to hide). */
 	activeWord: number;
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
@@ -237,7 +236,6 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		lineSpacing,
 		margin,
 		showActiveWordUnderline,
-		activeOffset: _activeOffset,
 		activeWord,
 		highlightsByParagraph,
 		glossaryByParagraph,
