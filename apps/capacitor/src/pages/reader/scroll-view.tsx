@@ -11,7 +11,7 @@
  * Behavior here is a verbatim extraction — see git history of index.tsx for
  * the original logic. No semantic changes.
  */
-import { wordPos } from "@lesefluss/core";
+import { type WordIndex, wordPos, type WordPosition } from "@lesefluss/core";
 import type React from "react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { VListHandle } from "virtua";
@@ -36,8 +36,8 @@ const FINE_SCROLL_STABILITY_TIMEOUT_MS = 600;
 // stale saved position doesn't leak into the wrong paragraph.
 function findAlignmentSpan(
 	container: HTMLElement,
-	wordIdx: number,
-	paragraphStartWord: number,
+	wordIdx: WordPosition,
+	paragraphStartWord: WordPosition,
 	paragraphEndWord: number,
 ): HTMLElement | null {
 	const exact = container.querySelector<HTMLElement>(`span[data-word="${wordIdx}"]`);
@@ -79,8 +79,8 @@ interface ScrollSuppressRefs {
 function scheduleFineScroll(
 	listHandle: VListHandle,
 	container: HTMLElement,
-	wordIdx: number,
-	paragraphStartWord: number,
+	wordIdx: WordPosition,
+	paragraphStartWord: WordPosition,
 	paragraphEndWord: number,
 	suppress: ScrollSuppressRefs,
 	shouldHighlight: boolean,
@@ -186,7 +186,7 @@ export interface ScrollViewProps {
 	findParagraphIndex: (targetByte: number) => number;
 	initialByteOffset: number;
 	/** Per-book WordIndex for byte ↔ word conversion at this view's seam. */
-	wordIndex?: import("@lesefluss/core").WordIndex | null;
+	wordIndex?: WordIndex | null;
 
 	// Appearance
 	fontSize: number;
@@ -292,7 +292,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		(byteOffset: number, shouldHighlight: boolean, onReady?: () => void) => {
 			if (!listRef.current || !containerRef.current || !wordIndex) return undefined;
 			const idx = findParagraphIndex(byteOffset);
-			const startWord = paragraphStartWords[idx] ?? 0;
+			const startWord = wordPos(paragraphStartWords[idx] ?? 0);
 			const endWord = paragraphStartWords[idx + 1] ?? Number.POSITIVE_INFINITY;
 			const targetWord = wordIndex.wordOf(byteOffset);
 			return scheduleFineScroll(

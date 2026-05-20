@@ -1,4 +1,4 @@
-import type { HexColor, PaginationStyle, WordPosition } from "@lesefluss/core";
+import { type HexColor, type PaginationStyle, wordPos, type WordPosition } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import { check, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -85,7 +85,7 @@ export const books = sqliteTable("books", {
 	 * (TASK-134) and read by all production code from TASK-135 onwards. Legacy
 	 * `position` column persists for one release (ADR-0002).
 	 */
-	wordPosition: integer("word_position").$type<WordPosition>().notNull().default(0 as WordPosition),
+	wordPosition: integer("word_position").$type<WordPosition>().notNull().default(wordPos(0)),
 	/** Total words in the book (ADR-0002). Populated by backfill. */
 	wordCount: integer("word_count").notNull().default(0),
 	/**

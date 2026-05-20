@@ -8,6 +8,7 @@
  *  - Orchestrate the full book-transfer flow (upload + mark isActive in DB)
  */
 
+import type { WordPosition } from "@lesefluss/core";
 import type React from "react";
 import {
 	createContext,
@@ -203,7 +204,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				const update: {
 					position: number;
 					lastRead: number;
-					wordPosition?: import("@lesefluss/core").WordPosition;
+					wordPosition?: WordPosition;
 				} = {
 					position: devicePos,
 					lastRead: Date.now(),

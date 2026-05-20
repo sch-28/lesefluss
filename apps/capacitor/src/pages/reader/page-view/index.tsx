@@ -63,7 +63,7 @@ import {
 	relativeOffsets,
 	visibleWindow,
 } from "./chunks";
-import { wordPos } from "@lesefluss/core";
+import { type WordIndex, wordPos } from "@lesefluss/core";
 import { findPageForWord, readFirstVisibleWord } from "./measurements";
 
 // ─── Tuning ──────────────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ export interface PageViewProps {
 	activeOffset: number;
 	activeWord: number;
 	paragraphStartWords: number[];
-	wordIndex: import("@lesefluss/core").WordIndex | null;
+	wordIndex: WordIndex | null;
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	selectionRange: { startWord: number; endWord: number } | null;

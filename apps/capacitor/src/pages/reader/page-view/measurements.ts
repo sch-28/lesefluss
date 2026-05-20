@@ -20,11 +20,11 @@ export function findPageForWord(
 	const exact = columns.querySelector<HTMLElement>(`span[data-word="${wordIdx}"]`);
 	let span: HTMLElement | null = exact;
 	if (!span) {
-		let bestW = -1;
+		let bestW: number | null = null;
 		for (const s of columns.querySelectorAll<HTMLElement>("span[data-word]")) {
 			const w = Number.parseInt(s.dataset.word ?? "", 10);
 			if (Number.isNaN(w) || w > wordIdx) continue;
-			if (w > bestW) {
+			if (bestW === null || w > bestW) {
 				bestW = w;
 				span = s;
 			}

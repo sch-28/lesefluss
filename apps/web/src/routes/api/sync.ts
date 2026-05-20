@@ -312,10 +312,15 @@ export const Route = createFileRoute("/api/sync")({
 									fileSize: sql`excluded.file_size`,
 									wordCount: sql`excluded.word_count`,
 									position: sql`CASE WHEN excluded.updated_at >= sync_books.updated_at THEN excluded.position ELSE sync_books.position END`,
-									// ADR-0002 mirrored write: word_position + position_unit
-									// follow the same last-write-wins rule as position.
-									wordPosition: sql`CASE WHEN excluded.updated_at >= sync_books.updated_at THEN excluded.word_position ELSE sync_books.word_position END`,
-									positionUnit: sql`CASE WHEN excluded.updated_at >= sync_books.updated_at THEN excluded.position_unit ELSE sync_books.position_unit END`,
+									// ADR-0002 mirrored write: only update word_position +
+									// position_unit when the client explicitly sent word
+									// data (excluded.position_unit = 'word'). An old client
+									// posting byte-only carries position_unit = 'byte' and
+									// the insert default of 0 for word_position; without
+									// this guard the upsert would clobber a previously
+									// uploaded word position with 0.
+									wordPosition: sql`CASE WHEN excluded.position_unit = 'word' AND excluded.updated_at >= sync_books.updated_at THEN excluded.word_position ELSE sync_books.word_position END`,
+									positionUnit: sql`CASE WHEN excluded.position_unit = 'word' THEN excluded.position_unit ELSE sync_books.position_unit END`,
 									// Once a row is deleted on the server, content stays null — no client push can refill it.
 									// Chapter rows (series_id set) are re-derivable from upstream; never store body content
 									// for them, regardless of what an old client pushes or what was there before.

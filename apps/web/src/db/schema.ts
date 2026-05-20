@@ -52,6 +52,10 @@ export const syncBooks = pgTable(
 			"sync_books_chapter_status_check",
 			sql`${t.chapterStatus} IN ('pending', 'fetched', 'locked', 'error')`,
 		),
+		check(
+			"sync_books_position_unit_check",
+			sql`${t.positionUnit} IN ('byte', 'word')`,
+		),
 	],
 );
 

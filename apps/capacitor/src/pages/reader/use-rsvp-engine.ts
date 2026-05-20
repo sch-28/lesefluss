@@ -13,6 +13,7 @@ import {
 	type RsvpSettings,
 	splitLongWord,
 	type WordEntry,
+	type WordIndex,
 } from "@lesefluss/core";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -43,7 +44,7 @@ interface Options {
 	 * indirection (ADR-0002). When null, falls back to a synchronous rebuild
 	 * from `content`.
 	 */
-	bookWordIndex?: import("@lesefluss/core").WordIndex | null;
+	bookWordIndex?: WordIndex | null;
 }
 
 export function useRsvpEngine({
