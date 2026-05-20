@@ -59,6 +59,20 @@ function useBookContent(id: string) {
 	});
 }
 
+/**
+ * Deserialized WordIndex for a book (ADR-0002 canonical position lookup).
+ * Returns null while loading or when the book has no content yet (pending
+ * chapter, fresh import before backfill commit). Cached per bookId.
+ */
+function useBookWordIndex(id: string) {
+	return useQuery({
+		queryKey: bookKeys.wordIndex(id),
+		queryFn: () => queries.loadBookWordIndex(id),
+		enabled: !!id,
+		staleTime: Number.POSITIVE_INFINITY,
+	});
+}
+
 // ─── Mutations ───────────────────────────────────────────────────────────────
 
 /**
@@ -191,6 +205,7 @@ export const bookHooks = {
 	useBooks,
 	useBook,
 	useBookContent,
+	useBookWordIndex,
 	useImportBook,
 	useImportBookFromClipboard,
 	useImportBookFromUrl,

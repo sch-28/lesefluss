@@ -3,9 +3,10 @@ id: TASK-135
 title: >-
   Switchover: reader + highlights + sessions + chapters + single-book BLE all
   use WordPosition
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-05-20 19:40'
+updated_date: '2026-05-20 20:57'
 labels:
   - refactor
   - word-index
@@ -68,3 +69,33 @@ Reference: ADR-0002 (full plan), CONTEXT.md (Word position, Highlight anchor).
 - [ ] #10 Existing reader, sync, highlight, glossary, session, and chapter tests are updated or replaced to assert WordPosition semantics
 - [ ] #11 Manual verification: open a book imported under bytes (backfilled), scrub, switch to RSVP, place a highlight, exit and reopen, confirm position + highlights preserved; do the same with a freshly imported book
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+## Approach — incremental surface flip
+
+TASK-134 backfill ensures every fetched book has BOTH `position`/`startOffset`/`startPos`/`startByte` (byte) AND `wordPosition`/`startWord`/etc (word). The reader surfaces can flip read sites one at a time without breaking compile. Final pass enforces `WordPosition` brand + deletes byte reads.
+
+Staged so compile + tests stay green at every checkpoint:
+
+- **A** — Add `WordIndex` loader hook + flip reader top-level (book.wordPosition reads, position state). Reader views still receive byte offsets so scroll/page/RSVP unchanged.
+- **B** — Scroll view + page view consume `WordPosition`. Update `data-offset` → `data-word`. Reader passes wordPosition down instead of byte.
+- **C** — RSVP engine reads persisted `word_index` blob, drops worker. `initialWordPosition` replaces `initialByteOffset`.
+- **D** — Paragraph render compares word positions. Highlights flip to Option A anchor model on read + write. Selection capture produces word anchors.
+- **E** — Glossary decorations + search modal return WordPosition. `extractRangeText` / `findFirstMention` use WordIndex.
+- **F** — Session tracker stores word deltas; drop `wordsInBytes`. Chapter consumers read `startWord`.
+- **G** — Library progress / sort / started badge use `wordPosition` + `wordCount`. BookSyncContext converts at the single-book BLE seam.
+- **H** — Final brand enforcement pass: typed `WordPosition` flow end-to-end. Delete dead byte readers and the RSVP worker. Update tests.
+
+## Verification at each stage
+
+- `pnpm --filter capacitor check-types` — must pass
+- `pnpm --filter capacitor test` — must pass
+
+## Out of scope
+
+- Dropping any byte column → TASK-137.
+- Cloud sync mirrored writes → TASK-136.
+- Firmware changes — esp32 still speaks bytes on the wire.
+<!-- SECTION:PLAN:END -->
