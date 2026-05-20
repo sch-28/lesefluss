@@ -15,11 +15,12 @@
 		"setup": {
 			"outputs": [
 				"../../apps/esp32/src/ble/ble_config.py",
+				"../../apps/rsvpnano/src/ble/ble_config.h",
 				"android/app/src/main/res/mipmap-*/ic_launcher.png",
 				"android/app/src/main/res/mipmap-*/ic_launcher_round.png",
 				"android/app/src/main/res/mipmap-*/ic_launcher_foreground.png"
 			],
-			"inputs": ["config.json", "../../resources/icon.svg"]
+			"inputs": ["config.json", "config-multibook.json", "../../resources/icon.svg"]
 		}
 	}
 }

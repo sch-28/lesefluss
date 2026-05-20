@@ -32,6 +32,7 @@ interface BLEContextType {
 	isConnected: boolean;
 	connectionState: BLEConnectionState;
 	connectedDevice: BleDevice | null;
+	connectedDescriptorId: string | null;
 
 	// Scanning state
 	isScanning: boolean;
@@ -81,6 +82,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		BLEConnectionState.DISCONNECTED,
 	);
 	const [connectedDevice, setConnectedDevice] = useState<BleDevice | null>(null);
+	const [connectedDescriptorId, setConnectedDescriptorId] = useState<string | null>(null);
 	const [isScanning, setIsScanning] = useState(false);
 	const [scannedDevices, setScannedDevices] = useState<ScannedDevice[]>([]);
 	const [error, setError] = useState<string | null>(null);
@@ -125,6 +127,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 			setConnectionState(state);
 			setIsConnected(nowConnected);
 			setConnectedDevice(device);
+			setConnectedDescriptorId(bleClient.connectedDescriptorId);
 
 			if (prevConnected && !nowConnected) {
 				setScanTrigger((n) => n + 1);
@@ -173,6 +176,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 
 		if (result.success && result.data) {
 			setConnectedDevice(result.data);
+			setConnectedDescriptorId(bleClient.connectedDescriptorId);
 			setConnectionState(BLEConnectionState.CONNECTED);
 			setIsConnected(true);
 			setScannedDevices([]);
@@ -184,6 +188,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 					id: result.data.deviceId,
 					name: result.data.name || "Lesefluss",
 					lastConnected: Date.now(),
+					descriptorId: bleClient.connectedDescriptorId,
 				});
 			} catch (err) {
 				log.error("ble", "Failed to save device to database:", err);
@@ -211,6 +216,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 
 		setIsConnected(false);
 		setConnectedDevice(null);
+		setConnectedDescriptorId(null);
 		setConnectionState(BLEConnectionState.DISCONNECTED);
 		// Bump trigger so auto-scan always re-fires after a disconnect,
 		// even if isScanning was already false when the effect last ran.
@@ -342,6 +348,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 				if (!r.success) log.warn("ble", "disconnect during disable failed:", r.error);
 				setIsConnected(false);
 				setConnectedDevice(null);
+				setConnectedDescriptorId(null);
 				setConnectionState(BLEConnectionState.DISCONNECTED);
 			}
 		}
@@ -353,6 +360,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		isConnected,
 		connectionState,
 		connectedDevice,
+		connectedDescriptorId,
 		isScanning,
 		scannedDevices,
 		bleEnabled,

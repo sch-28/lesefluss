@@ -12,6 +12,11 @@ export const devices = sqliteTable("devices", {
 	id: text("id").primaryKey(),
 	name: text("name").notNull(),
 	lastConnected: integer("last_connected").notNull(),
+	/**
+	 * Descriptor id (see services/devices/index.ts registry). Null on legacy
+	 * rows; treat null as the single-book descriptor.
+	 */
+	descriptorId: text("descriptor_id"),
 });
 
 /**

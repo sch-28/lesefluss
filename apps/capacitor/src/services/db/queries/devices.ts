@@ -14,6 +14,7 @@ export async function saveDevice(device: NewDevice): Promise<void> {
 			set: {
 				name: device.name,
 				lastConnected: device.lastConnected,
+				descriptorId: device.descriptorId,
 			},
 		});
 }

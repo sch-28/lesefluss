@@ -5,7 +5,7 @@
 	"type": "module",
 	"main": "index.ts",
 	"scripts": {
-		"setup": "tsx scripts/generate-py.ts",
+		"setup": "tsx scripts/generate-py.ts && tsx scripts/generate-cpp.ts",
 		"check-types": "tsc --noEmit"
 	},
 	"devDependencies": {

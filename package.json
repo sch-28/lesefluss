@@ -12,7 +12,11 @@
 		"lint": "biome lint --write .",
 		"biome": "biome check --write .",
 		"check-python": "python -m compileall -q apps/esp32/boot.py apps/esp32/main.py apps/esp32/src",
-		"check-types": "biome check . && turbo run check-types && pnpm check-python"
+		"check-types": "biome check . && turbo run check-types && pnpm check-python",
+		"rsvpnano:build": "pio run -d apps/rsvpnano -e waveshare_esp32s3_usb_msc",
+		"rsvpnano:upload": "pio run -d apps/rsvpnano -e waveshare_esp32s3_usb_msc -t upload",
+		"rsvpnano:monitor": "pio device monitor -d apps/rsvpnano -b 115200",
+		"rsvpnano:flash": "pnpm rsvpnano:build && pnpm rsvpnano:upload && pnpm rsvpnano:monitor"
 	},
 	"keywords": [],
 	"author": "",

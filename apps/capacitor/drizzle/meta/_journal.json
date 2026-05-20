@@ -169,6 +169,13 @@
       "when": 1777862400000,
       "tag": "0023_sync_toggles",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1779494400000,
+      "tag": "0024_device_descriptor",
+      "breakpoints": true
     }
   ]
 }

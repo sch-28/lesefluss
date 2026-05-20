@@ -4,19 +4,21 @@
  */
 
 import { BleClient, type BleDevice, type ScanResult } from "@capacitor-community/bluetooth-le";
-import { DEVICE_NAME } from "@lesefluss/ble-config";
 import { log } from "../../utils/log";
+import { DEVICE_DESCRIPTORS, SINGLE_BOOK_DESCRIPTOR_ID } from "../devices";
 import { BLE_CONNECTION_TIMEOUT_MS, BLEConnectionState, type BLEResult } from "./types";
 
 export interface ScannedDevice {
 	device: BleDevice;
 	rssi: number;
 	name: string;
+	descriptorId: string;
 }
 
 class BLEClient {
 	private _connectionState: BLEConnectionState = BLEConnectionState.DISCONNECTED;
 	private _connectedDevice: BleDevice | null = null;
+	private _connectedDescriptorId: string | null = null;
 	private _scannedDevices = new Map<string, ScannedDevice>();
 	private _scanCallback: ((devices: ScannedDevice[]) => void) | null = null;
 
@@ -45,11 +47,31 @@ class BLEClient {
 			this._scannedDevices.clear();
 			this._scanCallback = onDevicesFound;
 
-			await BleClient.requestLEScan({ namePrefix: DEVICE_NAME }, (result: ScanResult) => {
+			// Match each scan result against the descriptor registry. We accept
+			// either advertised service UUID (multi-book device firmware does this)
+			// or device-name prefix (legacy esp32 firmware only advertises name).
+			const byServiceUuid = new Map(
+				DEVICE_DESCRIPTORS.map((d) => [d.serviceUuid.toLowerCase(), d]),
+			);
+
+			await BleClient.requestLEScan({}, (result: ScanResult) => {
+				const advertisedUuids = (result.uuids ?? []).map((u) => u.toLowerCase());
+				const advertisedName = result.localName || result.device.name || "";
+
+				let matched = advertisedUuids
+					.map((u) => byServiceUuid.get(u))
+					.find((d) => d !== undefined);
+				if (!matched) {
+					matched = DEVICE_DESCRIPTORS.find((d) => advertisedName.startsWith(d.deviceName));
+				}
+				if (!matched) {
+					return;
+				}
 				const device: ScannedDevice = {
 					device: result.device,
 					rssi: result.rssi ?? -100,
-					name: result.localName || result.device.name || "Unknown",
+					name: advertisedName || matched.deviceName,
+					descriptorId: matched.id,
 				};
 				this._scannedDevices.set(result.device.deviceId, device);
 				this._scanCallback?.(Array.from(this._scannedDevices.values()));
@@ -116,9 +138,10 @@ class BLEClient {
 
 			const deviceInfo = this._scannedDevices.get(deviceId);
 			this._connectedDevice = deviceInfo?.device ?? { deviceId };
+			this._connectedDescriptorId = deviceInfo?.descriptorId ?? SINGLE_BOOK_DESCRIPTOR_ID;
 			this._connectionState = BLEConnectionState.CONNECTED;
 
-			log("ble", "connected:", deviceId);
+			log("ble", "connected:", deviceId, "as", this._connectedDescriptorId);
 			return { success: true, data: this._connectedDevice };
 		} catch (error) {
 			try {
@@ -128,6 +151,7 @@ class BLEClient {
 			}
 			this._connectionState = BLEConnectionState.DISCONNECTED;
 			this._connectedDevice = null;
+			this._connectedDescriptorId = null;
 			const msg = error instanceof Error ? error.message : "Connection failed";
 			log("ble", "connect failed:", msg);
 			return { success: false, error: msg };
@@ -154,7 +178,12 @@ class BLEClient {
 	private _onDisconnect(): void {
 		log("ble", "disconnected");
 		this._connectedDevice = null;
+		this._connectedDescriptorId = null;
 		this._connectionState = BLEConnectionState.DISCONNECTED;
+	}
+
+	get connectedDescriptorId(): string | null {
+		return this._connectedDescriptorId;
 	}
 
 	// ------------------------------------------------------------------
