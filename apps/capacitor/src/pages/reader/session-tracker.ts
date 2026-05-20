@@ -34,6 +34,9 @@ export type SessionRow = {
 	wordsRead: number;
 	startPos: number;
 	endPos: number;
+	/** Canonical word-unit bounds (ADR-0002). Populated when a WordIndex is wired. */
+	startWord?: number;
+	endWord?: number;
 	wpmAvg: number | null;
 	updatedAt: number;
 };
@@ -49,6 +52,12 @@ export type TrackerOpts = {
 	persist: (row: SessionRow, kind: PersistKind) => void;
 	now?: () => number;
 	newId?: () => string;
+	/**
+	 * Optional byte→word converter. Returns null when the WordIndex isn't
+	 * available yet (book still loading). When non-null on both endpoints,
+	 * SessionRow gains startWord/endWord.
+	 */
+	byteToWord?: (byteOffset: number) => number | null;
 };
 
 export const POLL_MS = 5_000;
@@ -311,6 +320,12 @@ export class SessionTracker {
 			this.opts.mode !== "rsvp" && computedWpm !== null && computedWpm > SANE_WPM_CEILING;
 		const wpmAvg =
 			this.opts.mode === "rsvp" ? (this.opts.wpmSetting ?? null) : wasCapped ? null : computedWpm;
+		const sw = this.opts.byteToWord?.(s.startPos);
+		const ew = this.opts.byteToWord?.(endPos);
+		const wordCols =
+			sw !== undefined && sw !== null && ew !== undefined && ew !== null
+				? { startWord: sw, endWord: ew }
+				: {};
 		return {
 			id: s.id,
 			bookId: this.opts.bookId,
@@ -321,6 +336,7 @@ export class SessionTracker {
 			wordsRead: s.wordsAccumulated,
 			startPos: s.startPos,
 			endPos,
+			...wordCols,
 			wpmAvg,
 			updatedAt: now,
 		};

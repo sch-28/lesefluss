@@ -8,6 +8,7 @@
  * wires the returned handlers/refs to word events + overlay JSX.
  */
 
+import type { WordIndex } from "@lesefluss/core";
 import type React from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "../../components/toast";
@@ -31,6 +32,12 @@ interface Params {
 	contentBytes: Uint8Array | null;
 	highlightRows: Highlight[];
 	paragraphOffsets: number[];
+	/**
+	 * WordIndex for the active book. When present, new highlight inserts
+	 * also persist the Option A word-anchor columns (ADR-0002). Null
+	 * during initial load — Stage H drops the byte fallback path.
+	 */
+	wordIndex?: WordIndex | null;
 }
 
 export function useHighlightSelection({
@@ -38,6 +45,7 @@ export function useHighlightSelection({
 	contentBytes,
 	highlightRows,
 	paragraphOffsets,
+	wordIndex,
 }: Params) {
 	// ── Mutations ─────────────────────────────────────────────────────────
 	const addHighlightMutation = queryHooks.useAddHighlight();
@@ -330,11 +338,20 @@ export function useHighlightSelection({
 				const snippet = contentBytes
 					? _decoder.decode(contentBytes.subarray(selectionRange.start, selectionRange.end))
 					: null;
+				const wordAnchor = wordIndex
+					? {
+							startWord: wordIndex.wordAndCharOf(selectionRange.start).word,
+							startCharInWord: wordIndex.wordAndCharOf(selectionRange.start).charInWord,
+							endWord: wordIndex.wordAndCharOf(selectionRange.end).word,
+							endCharInWord: wordIndex.wordAndCharOf(selectionRange.end).charInWord,
+						}
+					: {};
 				addHighlightMutation.mutate({
 					id: newId,
 					bookId,
 					startOffset: selectionRange.start,
 					endOffset: selectionRange.end,
+					...wordAnchor,
 					color: newColor,
 					note: pendingNote || null,
 					text: snippet,
@@ -349,6 +366,7 @@ export function useHighlightSelection({
 			pendingNote,
 			bookId,
 			contentBytes,
+			wordIndex,
 			addHighlightMutation,
 			updateHighlightMutation,
 		],

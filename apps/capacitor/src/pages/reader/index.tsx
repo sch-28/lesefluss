@@ -386,6 +386,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		contentBytes,
 		highlightRows,
 		paragraphOffsets,
+		wordIndex,
 	});
 
 	// ── Glossary inline-underline decorations ──────────────────────────────
@@ -926,6 +927,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		getPosition: getReadingPosition,
 		content: content ?? "",
 		wpmSetting: rsvpSettings.wpm,
+		wordIndex,
 	});
 	useEffect(() => {
 		markActivityRef.current = markReadingActivity;

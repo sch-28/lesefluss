@@ -10,6 +10,7 @@
  * alone — long-paragraph reading no longer triggers spurious idle flush.
  */
 import { App as CapacitorApp } from "@capacitor/app";
+import type { WordIndex } from "@lesefluss/core";
 import { useCallback, useEffect, useRef } from "react";
 import { bookKeys, readingSessionKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
@@ -40,6 +41,8 @@ type Args = {
 	content: string;
 	/** RSVP dial setting (persisted as wpmAvg for RSVP sessions). */
 	wpmSetting?: number;
+	/** Active book's WordIndex. When present, written rows include startWord/endWord (ADR-0002). */
+	wordIndex?: WordIndex | null;
 };
 
 type Return = {
@@ -72,6 +75,7 @@ export function useReadingSession({
 	getPosition,
 	content,
 	wpmSetting,
+	wordIndex,
 }: Args): Return {
 	const trackerRef = useRef<SessionTracker | null>(null);
 	const getPositionRef = useRef(getPosition);
@@ -80,6 +84,8 @@ export function useReadingSession({
 	contentRef.current = content;
 	const wpmRef = useRef(wpmSetting);
 	wpmRef.current = wpmSetting;
+	const wordIndexRef = useRef(wordIndex);
+	wordIndexRef.current = wordIndex;
 
 	// Construct a tracker per (bookId, mode). Prior tracker is finalized so
 	// the row for the previous sitting is written before we open a new one.
@@ -94,6 +100,7 @@ export function useReadingSession({
 			getPosition: () => getPositionRef.current(),
 			wpmSetting: wpmRef.current ?? null,
 			persist: persistRow,
+			byteToWord: (b) => wordIndexRef.current?.wordOf(b) ?? null,
 		});
 		return () => {
 			trackerRef.current?.finalize();
