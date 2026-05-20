@@ -8,7 +8,7 @@ import {
 } from "@lesefluss/book-import";
 import type React from "react";
 import { useEffect, useRef } from "react";
-import { useHistory } from "react-router-dom";
+import { useRouter } from "@tanstack/react-router";
 import { subscribeShareIntent } from "../services/book-import/sources/share-intent";
 import { queryHooks } from "../services/db/hooks";
 import { isSerialUrl } from "../services/serial-scrapers";
@@ -36,7 +36,7 @@ const ShareIntentHandler: React.FC = () => {
 	const importText = queryHooks.useImportBookFromText();
 	const importBlob = queryHooks.useImportBookFromBlob();
 	const { showToast } = useToast();
-	const history = useHistory();
+	const history = useRouter().history;
 
 	const handlersRef = useRef({
 		importUrl,

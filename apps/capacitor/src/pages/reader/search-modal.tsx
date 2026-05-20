@@ -1,29 +1,22 @@
 /**
- * SearchModal - bottom sheet for searching book text.
+ * SearchModal: bottom drawer for searching book text.
  *
- * - Case-insensitive scan over the full content string
- * - Results show a ~60-char snippet around each match (match bolded)
- *   plus a right-aligned % position indicator
- * - Capped at MAX_RESULTS to avoid overwhelming the list
- * - Tap a result → jumps to that byte offset and closes the sheet
+ * Case-insensitive scan over the full content string. Results show a ~60-char
+ * snippet around each match (match bolded) plus a right-aligned % position
+ * indicator. Capped at MAX_RESULTS to avoid overwhelming the list.
+ * Tap a result jumps to that byte offset and closes the drawer.
  */
 
+import { Button } from "@lesefluss/ui/button";
 import {
-	IonButton,
-	IonButtons,
-	IonContent,
-	IonHeader,
-	IonItem,
-	IonLabel,
-	IonList,
-	IonModal,
-	IonTitle,
-	IonToolbar,
-} from "@ionic/react";
+	Drawer,
+	DrawerContent,
+	DrawerHeader,
+	DrawerTitle,
+} from "@lesefluss/ui/drawer";
+import { Input } from "@lesefluss/ui/input";
 import type React from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export interface SearchModalProps {
 	isOpen: boolean;
@@ -37,25 +30,15 @@ export interface SearchModalProps {
 interface SearchResult {
 	/** JS char offset of the match start in content */
 	offset: number;
-	/** 0–100 percentage position in the book */
+	/** 0 to 100 percentage position in the book */
 	pct: number;
-	/** Parts of the snippet: alternating normal/highlighted text */
 	parts: { text: string; highlight: boolean }[];
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const MAX_RESULTS = 100;
-const SNIPPET_BEFORE = 40; // chars before match
-const SNIPPET_AFTER = 60; // chars after match end
+const SNIPPET_BEFORE = 40;
+const SNIPPET_AFTER = 60;
 
-// ─── Search logic ─────────────────────────────────────────────────────────────
-
-/**
- * Scan `content` case-insensitively for `query`.
- * Returns up to MAX_RESULTS matches with JS char offsets + snippets.
- * The parent converts char offsets to UTF-8 byte offsets via utf8ByteLength.
- */
 function buildResults(content: string, query: string): SearchResult[] {
 	if (!query) return [];
 	const lower = content.toLowerCase();
@@ -91,8 +74,6 @@ function buildResults(content: string, query: string): SearchResult[] {
 	return results;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 const SearchModal: React.FC<SearchModalProps> = ({
 	isOpen,
 	onClose,
@@ -104,7 +85,6 @@ const SearchModal: React.FC<SearchModalProps> = ({
 	const [query, setQuery] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);
 
-	// Seed query from initialQuery when the modal opens with one
 	const lastInitialRef = useRef<string | undefined>(undefined);
 	if (isOpen && initialQuery && initialQuery !== lastInitialRef.current) {
 		lastInitialRef.current = initialQuery;
@@ -114,14 +94,13 @@ const SearchModal: React.FC<SearchModalProps> = ({
 		lastInitialRef.current = undefined;
 	}
 
-	const handleDidDismiss = useCallback(() => {
-		setQuery("");
-		onClose();
-	}, [onClose]);
-
-	const handleDidPresent = useCallback(() => {
-		inputRef.current?.focus();
-	}, []);
+	useEffect(() => {
+		if (isOpen) {
+			// Delay so the drawer mount animation doesn't steal focus.
+			const t = setTimeout(() => inputRef.current?.focus(), 100);
+			return () => clearTimeout(t);
+		}
+	}, [isOpen]);
 
 	const results = useMemo(() => buildResults(content, query.trim()), [content, query]);
 
@@ -137,88 +116,87 @@ const SearchModal: React.FC<SearchModalProps> = ({
 	const isCapped = resultCount === MAX_RESULTS;
 
 	return (
-		<IonModal
-			isOpen={isOpen}
-			onDidPresent={handleDidPresent}
-			onDidDismiss={handleDidDismiss}
-			breakpoints={[0, 0.45, 1]}
-			initialBreakpoint={0.45}
-			className={["rsvp-search-modal", theme && `reader-theme-${theme}`].filter(Boolean).join(" ")}
+		<Drawer
+			open={isOpen}
+			onOpenChange={(open) => {
+				if (!open) {
+					setQuery("");
+					onClose();
+				}
+			}}
 		>
-			<IonHeader>
-				<IonToolbar>
-					<IonTitle>Search</IonTitle>
-					<IonButtons slot="end">
-						<IonButton onClick={onClose}>Close</IonButton>
-					</IonButtons>
-				</IonToolbar>
-			</IonHeader>
+			<DrawerContent className={theme ? `reader-theme-${theme}` : undefined}>
+				<DrawerHeader className="flex flex-row items-center justify-between gap-2">
+					<DrawerTitle className="flex-1">Search</DrawerTitle>
+					<Button variant="ghost" size="sm" onClick={onClose}>
+						Close
+					</Button>
+				</DrawerHeader>
 
-			<IonContent>
-				{/* ── Search input ── */}
-				<div className="search-input-wrap">
-					<input
-						ref={inputRef}
-						className="search-input"
-						type="search"
-						placeholder="Search in book…"
-						value={query}
-						onChange={(e) => setQuery(e.target.value)}
-						autoComplete="off"
-						autoCorrect="off"
-						autoCapitalize="off"
-						spellCheck={false}
-					/>
+				<div className="flex flex-col overflow-hidden">
+					<div className="px-5 pb-3">
+						<Input
+							ref={inputRef}
+							type="search"
+							placeholder="Search in book…"
+							value={query}
+							onChange={(e) => setQuery(e.target.value)}
+							autoComplete="off"
+							autoCorrect="off"
+							autoCapitalize="off"
+							spellCheck={false}
+						/>
+					</div>
+
+					{query.trim() && (
+						<p className="m-0 px-5 pb-2 text-muted-foreground text-xs">
+							{resultCount === 0
+								? "No results"
+								: isCapped
+									? `${MAX_RESULTS}+ results`
+									: `${resultCount} result${resultCount === 1 ? "" : "s"}`}
+						</p>
+					)}
+
+					{results.length > 0 && (
+						<ul className="m-0 flex flex-col overflow-y-auto pb-6">
+							{results.map((r) => (
+								<li key={r.offset}>
+									<button
+										type="button"
+										onClick={() => handleResultTap(r.offset)}
+										className="flex w-full items-center gap-3 border-border border-t px-5 py-3 text-left transition-colors hover:bg-muted"
+									>
+										<p className="m-0 flex-1 text-foreground text-sm leading-snug">
+											{r.parts.map((p, i) =>
+												p.highlight ? (
+													// biome-ignore lint/suspicious/noArrayIndexKey: fixed 3-element [before, match, after]
+													<strong key={i} className="bg-yellow-200/60 px-0.5 dark:bg-yellow-500/30">
+														{p.text}
+													</strong>
+												) : (
+													// biome-ignore lint/suspicious/noArrayIndexKey: fixed 3-element [before, match, after]
+													<span key={i}>{p.text}</span>
+												),
+											)}
+										</p>
+										<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
+											{r.pct}%
+										</span>
+									</button>
+								</li>
+							))}
+						</ul>
+					)}
+
+					{!query.trim() && (
+						<p className="m-0 px-5 py-8 text-center text-muted-foreground text-sm">
+							Type to search through the book text.
+						</p>
+					)}
 				</div>
-
-				{/* ── Result count ── */}
-				{query.trim() && (
-					<p className="search-result-count">
-						{resultCount === 0
-							? "No results"
-							: isCapped
-								? `${MAX_RESULTS}+ results`
-								: `${resultCount} result${resultCount === 1 ? "" : "s"}`}
-					</p>
-				)}
-
-				{/* ── Results list ── */}
-				{results.length > 0 && (
-					<IonList lines="full" className="search-results-list">
-						{results.map((r) => (
-							<IonItem
-								key={r.offset}
-								button
-								detail={false}
-								onClick={() => handleResultTap(r.offset)}
-							>
-								<IonLabel className="search-result-label">
-									<p className="search-snippet">
-										{r.parts.map((p, i) =>
-											p.highlight ? (
-												// biome-ignore lint/suspicious/noArrayIndexKey: fixed 3-element [before, match, after]
-												<strong key={i} className="search-match">
-													{p.text}
-												</strong>
-											) : (
-												// biome-ignore lint/suspicious/noArrayIndexKey: fixed 3-element [before, match, after]
-												<span key={i}>{p.text}</span>
-											),
-										)}
-									</p>
-								</IonLabel>
-								<span slot="end" className="search-pct">
-									{r.pct}%
-								</span>
-							</IonItem>
-						))}
-					</IonList>
-				)}
-
-				{/* ── Empty state ── */}
-				{!query.trim() && <p className="search-empty">Type to search through the book text.</p>}
-			</IonContent>
-		</IonModal>
+			</DrawerContent>
+		</Drawer>
 	);
 };
 

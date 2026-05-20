@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useHistory } from "react-router-dom";
+import { useRouter } from "@tanstack/react-router";
 import CoverImage from "../../../components/cover-image";
 import { queryHooks } from "../../../services/db/hooks";
 
@@ -13,7 +13,7 @@ interface Props {
 export function TopBooks({ now }: Props) {
 	const since = now - 30 * MS_PER_DAY;
 	const top = queryHooks.useStatsTopBooks(since, 5);
-	const history = useHistory();
+	const history = useRouter().history;
 
 	const books = top.data ?? [];
 	if (books.length === 0) return null;
@@ -58,7 +58,7 @@ export function TopBooks({ now }: Props) {
 									{minutes}m
 								</div>
 							</div>
-							<div className="mt-2 px-0.5 text-[color:var(--ion-text-color)]">
+							<div className="mt-2 px-0.5 text-foreground">
 								<div className="line-clamp-1 font-medium text-sm">{b.title}</div>
 								{b.author && (
 									<div className="mt-0.5 line-clamp-1 text-[11px] opacity-60">{b.author}</div>

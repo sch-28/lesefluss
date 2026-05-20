@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef } from "react";
-import { useHistory } from "react-router-dom";
+import { useRouter } from "@tanstack/react-router";
 import { queries } from "../../services/db/queries";
 import type { Book } from "../../services/db/schema";
 import { log } from "../../utils/log";
@@ -33,7 +33,7 @@ export function useChapterAutoAdvance(book: Book | undefined): {
 	tryAdvance: () => Promise<void>;
 	tryRetreat: () => Promise<void>;
 } {
-	const history = useHistory();
+	const history = useRouter().history;
 	const navigatingRef = useRef(false);
 
 	const navigate = useCallback(

@@ -1,4 +1,5 @@
-import { IonButton, IonContent, IonPage, IonSpinner } from "@ionic/react";
+import { Button } from "@lesefluss/ui/button";
+import { Loader2 } from "lucide-react";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { initDb, resetAppData } from "../services/db";
@@ -47,8 +48,8 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		withTimeout(initDb(), INIT_TIMEOUT_MS)
 			.then(async () => {
 				// One-shot cleanup of chapter rows orphaned by the legacy
-				// tombstone-based deleteSeries — power users had accumulated 10k+
-				// dead rows that bloated every sync push. Idempotent. (TASK-102)
+				// tombstone-based deleteSeries. Power users had accumulated 10k+
+				// dead rows that bloated every sync push. Idempotent.
 				try {
 					const removed = await queries.cleanupOrphanedChapterRows();
 					if (removed > 0) log("db", `cleanup removed ${removed} orphan chapter rows`);
@@ -80,33 +81,27 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 	if (error) {
 		return (
-			<IonPage>
-				<IonContent className="ion-padding">
-					<div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-						<h2 className="font-semibold text-lg">Lesefluss can't start</h2>
-						<p className="max-w-sm text-sm opacity-80">{error.message}</p>
-						<p className="max-w-sm text-xs opacity-60">
-							Resetting clears local books, settings and highlights on this device. If you're signed
-							in to cloud sync, they'll restore on next sign-in.
-						</p>
-						<IonButton onClick={handleReset} disabled={isResetting}>
-							{isResetting ? "Resetting…" : "Reset app data"}
-						</IonButton>
-					</div>
-				</IonContent>
-			</IonPage>
+			<div className="flex h-screen items-center justify-center bg-background p-6">
+				<div className="flex max-w-sm flex-col items-center gap-4 text-center">
+					<h2 className="m-0 font-semibold text-lg">Lesefluss can't start</h2>
+					<p className="m-0 text-sm opacity-80">{error.message}</p>
+					<p className="m-0 text-xs opacity-60">
+						Resetting clears local books, settings and highlights on this device. If you're signed
+						in to cloud sync, they'll restore on next sign-in.
+					</p>
+					<Button onClick={handleReset} disabled={isResetting}>
+						{isResetting ? "Resetting…" : "Reset app data"}
+					</Button>
+				</div>
+			</div>
 		);
 	}
 
 	if (!isReady) {
 		return (
-			<IonPage>
-				<IonContent className="ion-padding ion-text-center">
-					<div className="flex h-full items-center justify-center">
-						<IonSpinner />
-					</div>
-				</IonContent>
-			</IonPage>
+			<div className="flex h-screen items-center justify-center bg-background">
+				<Loader2 className="size-6 animate-spin text-muted-foreground" />
+			</div>
 		);
 	}
 

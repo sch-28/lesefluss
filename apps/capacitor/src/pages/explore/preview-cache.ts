@@ -2,9 +2,8 @@ import type { SearchResult } from "../../services/serial-scrapers";
 
 /**
  * In-memory cache passing a SearchResult from the web-novels search page to
- * the preview page. tanstack router state and react-router-dom history.state
- * are separate, so direct state-passing breaks. The preview reads from this
- * cache; if absent (deep link, refresh), it falls back to the explore landing.
+ * the preview page. The preview reads from this cache; if absent (deep link,
+ * refresh), it falls back to the explore landing.
  */
 const cache = new Map<string, SearchResult>();
 

@@ -171,9 +171,9 @@ export function WpmTrend() {
 						return (
 							<div
 								style={{
-									background: "var(--ion-card-background)",
-									color: "var(--ion-text-color)",
-									border: "1px solid var(--ion-border-color)",
+									background: "var(--popover)",
+									color: "var(--foreground)",
+									border: "1px solid var(--border)",
 									borderRadius: 8,
 									padding: "8px 10px",
 									boxShadow: "0 6px 18px rgba(0,0,0,0.18)",

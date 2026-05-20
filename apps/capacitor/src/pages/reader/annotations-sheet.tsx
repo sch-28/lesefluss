@@ -1,27 +1,20 @@
 /**
- * AnnotationsSheet — single bottom sheet that merges three reader navigations:
- * Contents (chapter list), Highlights, and Glossary.
+ * AnnotationsSheet: single bottom drawer that merges three reader navigations:
+ * Contents (chapter list), Highlights, and Glossary. Empty segments hide
+ * automatically, so a TXT book without chapters opens straight on Highlights
+ * or Glossary.
  *
- * Empty segments hide automatically, so a TXT book without chapters opens
- * straight on Highlights or Glossary.
+ * Snap points keep the iOS-like half-then-full sheet behavior.
  */
 
 import {
-	IonContent,
-	IonFab,
-	IonFabButton,
-	IonHeader,
-	IonIcon,
-	IonItem,
-	IonItemDivider,
-	IonLabel,
-	IonList,
-	IonModal,
-	IonSegment,
-	IonSegmentButton,
-	IonToolbar,
-} from "@ionic/react";
-import { addOutline } from "ionicons/icons";
+	Drawer,
+	DrawerContent,
+	DrawerHeader,
+} from "@lesefluss/ui/drawer";
+import { ToggleGroup, ToggleGroupItem } from "@lesefluss/ui/toggle-group";
+import { cn } from "@lesefluss/ui/utils";
+import { Plus } from "lucide-react";
 import type React from "react";
 import { memo, useEffect, useMemo, useState } from "react";
 import type { Chapter, GlossaryEntry, Highlight } from "../../services/db/schema";
@@ -48,28 +41,19 @@ interface AnnotationsSheetProps {
 	isOpen: boolean;
 	onClose: () => void;
 	theme?: string;
-
-	/** Chapters — empty array hides the Contents tab. */
 	chapters: Chapter[];
 	onJumpChapter: (startByte: number) => void;
-
-	/**
-	 * When set, the sheet renders a "Chapters" tab listing every chapter of
-	 * the series so the user can random-access without leaving the reader.
-	 * `undefined` for standalone books — the tab is omitted entirely.
-	 */
 	seriesId?: string | null;
-
 	highlights: Highlight[];
-	/** Full book content for snippet extraction. */
 	content: string;
 	onJumpHighlight: (byteOffset: number) => void;
-
 	glossary: GlossaryEntry[];
 	currentBookId: string;
 	onOpenEntry: (entry: GlossaryEntry) => void;
 	onAddEntry: () => void;
 }
+
+const SNAP_POINTS = [0.5, 0.9];
 
 const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	isOpen,
@@ -89,12 +73,9 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	const hasContents = chapters.length > 0;
 	const hasChapters = seriesId != null;
 	const hasHighlights = highlights.length > 0;
-	// Glossary tab is always available so users can add their first entry from here.
 
-	// Pick a sensible initial tab based on what's non-empty. Chapters wins
-	// over Contents when both could apply (web-novel imports also have an
-	// in-text chapter index, but the series chapter list is the more useful
-	// primary view for serial readers).
+	// Chapters wins over Contents when both apply (web-novel imports have both;
+	// the series chapter list is the more useful primary view for serial readers).
 	const initialTab: Tab = hasChapters
 		? "chapters"
 		: hasContents
@@ -103,13 +84,17 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 				? "highlights"
 				: "glossary";
 	const [tab, setTab] = useState<Tab>(initialTab);
+	const [snap, setSnap] = useState<number | string | null>(SNAP_POINTS[0]);
 
-	// Reset to a sensible tab whenever the sheet opens. Intentionally NOT
-	// reactive to data changes mid-open — a user adding a highlight from another
-	// path shouldn't yank them off the Glossary tab.
+	// Reset tab when sheet opens. Intentionally not reactive to data changes
+	// mid-open: a user adding a highlight from another path shouldn't yank
+	// them off the Glossary tab.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: only react to isOpen
 	useEffect(() => {
-		if (isOpen) setTab(initialTab);
+		if (isOpen) {
+			setTab(initialTab);
+			setSnap(SNAP_POINTS[0]);
+		}
 	}, [isOpen]);
 
 	const contentBytes = useMemo(() => _encoder.encode(content), [content]);
@@ -125,137 +110,147 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	}, [glossary, currentBookId]);
 
 	return (
-		<IonModal
-			isOpen={isOpen}
-			onDidDismiss={onClose}
-			breakpoints={[0, 0.5, 0.9]}
-			initialBreakpoint={0.5}
-			className={["rsvp-annotations-modal", theme && `reader-theme-${theme}`]
-				.filter(Boolean)
-				.join(" ")}
+		<Drawer
+			open={isOpen}
+			onOpenChange={(open) => {
+				if (!open) onClose();
+			}}
+			snapPoints={SNAP_POINTS}
+			activeSnapPoint={snap}
+			setActiveSnapPoint={setSnap}
 		>
-			<IonHeader className="ion-no-border">
-				<IonToolbar>
-					<IonSegment value={tab} onIonChange={(e) => setTab(e.detail.value as Tab)}>
-						{hasContents && (
-							<IonSegmentButton value="contents">
-								<IonLabel>Contents</IonLabel>
-							</IonSegmentButton>
-						)}
-						{hasChapters && (
-							<IonSegmentButton value="chapters">
-								<IonLabel>Chapters</IonLabel>
-							</IonSegmentButton>
-						)}
-						<IonSegmentButton value="highlights">
-							<IonLabel>Highlights</IonLabel>
-						</IonSegmentButton>
-						<IonSegmentButton value="glossary">
-							<IonLabel>Glossary</IonLabel>
-						</IonSegmentButton>
-					</IonSegment>
-				</IonToolbar>
-			</IonHeader>
+			<DrawerContent
+				className={cn("h-full", theme ? `reader-theme-${theme}` : undefined)}
+			>
+				<DrawerHeader className="px-3">
+					<ToggleGroup
+						type="single"
+						variant="outline"
+						value={tab}
+						onValueChange={(v) => {
+							if (v) setTab(v as Tab);
+						}}
+						className="w-full"
+					>
+						{hasContents && <ToggleGroupItem value="contents">Contents</ToggleGroupItem>}
+						{hasChapters && <ToggleGroupItem value="chapters">Chapters</ToggleGroupItem>}
+						<ToggleGroupItem value="highlights">Highlights</ToggleGroupItem>
+						<ToggleGroupItem value="glossary">Glossary</ToggleGroupItem>
+					</ToggleGroup>
+				</DrawerHeader>
 
-			<IonContent>
-				{tab === "contents" && (
-					<IonList>
-						{chapters.map((ch, i) => (
-							<IonItem
-								key={i.toString()}
-								button
-								detail={false}
-								onClick={() => {
-									onJumpChapter(ch.startByte);
-									onClose();
-								}}
-							>
-								<IonLabel>{ch.title}</IonLabel>
-							</IonItem>
-						))}
-					</IonList>
-				)}
-
-				{tab === "chapters" && seriesId && <SeriesChapterList seriesId={seriesId} />}
-
-				{tab === "highlights" &&
-					(highlights.length === 0 ? (
-						<p className="highlights-list-empty">No highlights yet.</p>
-					) : (
-						<IonList>
-							{highlights.map((h) => {
-								const snippet = extractSnippet(contentBytes, h.startOffset, h.endOffset);
-								return (
-									<IonItem
-										key={h.id}
-										button
-										detail={false}
+				<div className="relative flex-1 overflow-y-auto">
+					{tab === "contents" && (
+						<ul className="flex flex-col">
+							{chapters.map((ch, i) => (
+								<li key={i.toString()}>
+									<button
+										type="button"
 										onClick={() => {
-											onJumpHighlight(h.startOffset);
+											onJumpChapter(ch.startByte);
 											onClose();
 										}}
+										className="w-full border-border border-b px-5 py-3 text-left text-sm text-foreground transition-colors hover:bg-muted"
 									>
-										<span
-											className="highlight-list-dot"
-											style={{
-												background:
-													HIGHLIGHT_COLOR_STYLE[h.color as keyof typeof HIGHLIGHT_COLOR_STYLE] ??
-													HIGHLIGHT_COLOR_STYLE.yellow,
-											}}
-											slot="start"
-										/>
-										<IonLabel>
-											<p className="highlight-list-snippet">"{snippet}"</p>
-											{h.note && <p className="highlight-list-note">{h.note}</p>}
-										</IonLabel>
-									</IonItem>
-								);
-							})}
-						</IonList>
-					))}
+										{ch.title}
+									</button>
+								</li>
+							))}
+						</ul>
+					)}
 
-				{tab === "glossary" && (
-					<>
-						{bookEntries.length === 0 && globalEntries.length === 0 ? (
-							<p className="highlights-list-empty">No entries yet. Tap + to add one.</p>
+					{tab === "chapters" && seriesId && <SeriesChapterList seriesId={seriesId} />}
+
+					{tab === "highlights" &&
+						(highlights.length === 0 ? (
+							<p className="m-0 px-5 py-8 text-center text-muted-foreground text-sm">
+								No highlights yet.
+							</p>
 						) : (
-							<IonList>
-								{bookEntries.length > 0 && (
-									<>
-										<IonItemDivider sticky>
-											<IonLabel>This book</IonLabel>
-										</IonItemDivider>
-										{bookEntries.map((e) => (
-											<GlossaryRow key={e.id} entry={e} onOpen={onOpenEntry} />
-										))}
-									</>
-								)}
-								{globalEntries.length > 0 && (
-									<>
-										<IonItemDivider sticky>
-											<IonLabel>Global</IonLabel>
-										</IonItemDivider>
-										{globalEntries.map((e) => (
-											<GlossaryRow key={e.id} entry={e} onOpen={onOpenEntry} />
-										))}
-									</>
-								)}
-							</IonList>
-						)}
-						<IonFab
-							slot="fixed"
-							vertical="bottom"
-							horizontal="end"
-							style={{ marginBottom: "env(safe-area-inset-bottom)" }}
-						>
-							<IonFabButton size="small" onClick={onAddEntry} aria-label="Add glossary entry">
-								<IonIcon icon={addOutline} />
-							</IonFabButton>
-						</IonFab>
-					</>
-				)}
-			</IonContent>
-		</IonModal>
+							<ul className="flex flex-col">
+								{highlights.map((h) => {
+									const snippet = extractSnippet(contentBytes, h.startOffset, h.endOffset);
+									return (
+										<li key={h.id}>
+											<button
+												type="button"
+												onClick={() => {
+													onJumpHighlight(h.startOffset);
+													onClose();
+												}}
+												className="flex w-full items-start gap-3 border-border border-b px-5 py-3 text-left transition-colors hover:bg-muted"
+											>
+												<span
+													aria-hidden
+													className="mt-1.5 size-3 shrink-0 rounded-full"
+													style={{
+														background:
+															HIGHLIGHT_COLOR_STYLE[
+																h.color as keyof typeof HIGHLIGHT_COLOR_STYLE
+															] ?? HIGHLIGHT_COLOR_STYLE.yellow,
+													}}
+												/>
+												<div className="min-w-0 flex-1">
+													<p className="m-0 text-foreground text-sm leading-snug">
+														"{snippet}"
+													</p>
+													{h.note && (
+														<p className="mt-1 m-0 text-muted-foreground text-xs italic">
+															{h.note}
+														</p>
+													)}
+												</div>
+											</button>
+										</li>
+									);
+								})}
+							</ul>
+						))}
+
+					{tab === "glossary" && (
+						<>
+							{bookEntries.length === 0 && globalEntries.length === 0 ? (
+								<p className="m-0 px-5 py-8 text-center text-muted-foreground text-sm">
+									No entries yet. Tap + to add one.
+								</p>
+							) : (
+								<div className="flex flex-col">
+									{bookEntries.length > 0 && (
+										<>
+											<div className="sticky top-0 z-10 border-border border-b bg-popover px-5 py-2 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+												This book
+											</div>
+											{bookEntries.map((e) => (
+												<GlossaryRow key={e.id} entry={e} onOpen={onOpenEntry} />
+											))}
+										</>
+									)}
+									{globalEntries.length > 0 && (
+										<>
+											<div className="sticky top-0 z-10 border-border border-b bg-popover px-5 py-2 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+												Global
+											</div>
+											{globalEntries.map((e) => (
+												<GlossaryRow key={e.id} entry={e} onOpen={onOpenEntry} />
+											))}
+										</>
+									)}
+								</div>
+							)}
+							<button
+								type="button"
+								onClick={onAddEntry}
+								aria-label="Add glossary entry"
+								className="fixed right-4 bottom-4 inline-flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
+								style={{ marginBottom: "env(safe-area-inset-bottom)" }}
+							>
+								<Plus className="size-5" />
+							</button>
+						</>
+					)}
+				</div>
+			</DrawerContent>
+		</Drawer>
 	);
 };
 
@@ -267,13 +262,19 @@ interface GlossaryRowProps {
 const GlossaryRow: React.FC<GlossaryRowProps> = memo(({ entry, onOpen }) => {
 	const color = entry.color || colorFromLabel(entry.label);
 	return (
-		<IonItem button detail={false} onClick={() => onOpen(entry)}>
+		<button
+			type="button"
+			onClick={() => onOpen(entry)}
+			className="flex w-full items-center gap-3 border-border border-b px-5 py-3 text-left transition-colors hover:bg-muted"
+		>
 			<GlossaryAvatar label={entry.label} color={color} size={32} />
-			<IonLabel>
-				<h3 className="glossary-list-label">{entry.label}</h3>
-				{entry.notes && <p className="glossary-list-notes">{entry.notes}</p>}
-			</IonLabel>
-		</IonItem>
+			<div className="min-w-0 flex-1">
+				<h3 className="m-0 font-semibold text-foreground text-sm">{entry.label}</h3>
+				{entry.notes && (
+					<p className="mt-0.5 m-0 truncate text-muted-foreground text-xs">{entry.notes}</p>
+				)}
+			</div>
+		</button>
 	);
 });
 

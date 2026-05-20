@@ -1,27 +1,21 @@
 /* Cascade layer order matches legacy.css (loaded first in main.tsx).
  * - base: Tailwind preflight (button/list/heading resets); shadcn expects it.
- * - ionic + legacy: Ionic core + monochrome (in legacy.css) beat preflight.
+ * - legacy: monochrome.css residual reader styles (ap-step-btn, rsvp-display, etc).
  * - utilities: Tailwind utility classes beat everything else. */
-@layer theme, base, ionic, legacy, tokens, utilities;
+@layer theme, base, legacy, tokens, utilities;
 
 @import "tailwindcss/theme" layer(theme);
 @import "tailwindcss/preflight" layer(base);
 /* tokens.css imports tw-animate-css which uses @utility; @utility cannot live
- * inside @layer, so this import stays unlayered. Its :root/.dark/.sepia
- * blocks only declare custom properties → no selector competition with Ionic. */
+ * inside @layer, so this import stays unlayered. */
 @import "@lesefluss/ui/styles/tokens.css";
 @import "tailwindcss/utilities" layer(utilities);
 
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 
-/* Unlayered base. Wins over Ionic body bg + removes browser anchor underline.
- * Paint html so the gap behind the fixed-positioned body never shows the
- * browser default. var(--background) resolves through the .dark/.sepia class
- * on <html> set by theme-context.tsx. */
 html,
 body,
-#root,
-ion-app {
+#root {
 	background-color: var(--background);
 	color: var(--foreground);
 }

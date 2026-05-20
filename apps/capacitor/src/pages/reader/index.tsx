@@ -24,38 +24,33 @@
  */
 
 import { Browser } from "@capacitor/browser";
-import {
-	IonActionSheet,
-	IonBackButton,
-	IonButton,
-	IonButtons,
-	IonContent,
-	IonHeader,
-	IonIcon,
-	IonModal,
-	IonPage,
-	IonSpinner,
-	IonTitle,
-	IonToolbar,
-} from "@ionic/react";
 import type { RsvpSettings } from "@lesefluss/core";
 import { DEFAULT_SETTINGS } from "@lesefluss/core";
+import { Button } from "@lesefluss/ui/button";
+import {
+	Drawer,
+	DrawerContent,
+	DrawerHeader,
+	DrawerTitle,
+} from "@lesefluss/ui/drawer";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-	bookmarksOutline,
-	chevronBackOutline,
-	chevronForwardOutline,
-	ellipsisVerticalOutline,
-	flashOffOutline,
-	flashOutline,
-	informationCircleOutline,
-	openOutline,
-	readerOutline,
-	searchOutline,
-} from "ionicons/icons";
+	Bookmark,
+	ChevronLeft,
+	ChevronRight,
+	ExternalLink,
+	Info,
+	Loader2,
+	MoreVertical,
+	Search,
+	Type,
+	Zap,
+	ZapOff,
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useHistory, useParams } from "react-router-dom";
+import { useRouter } from "@tanstack/react-router";
+import { ActionSheet } from "../../components/action-sheet";
 import { toast } from "../../components/toast";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
@@ -108,12 +103,11 @@ const NO_HIGHLIGHT = -1;
 
 // ─── Main page ───────────────────────────────────────────────────────────────
 
-const BookReader: React.FC = () => {
-	const { id } = useParams<{ id: string }>();
+const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const { pushPosition } = useBookSync();
 	const { isSyncing } = useSyncContext();
 	const qc = useQueryClient();
-	const history = useHistory();
+	const history = useRouter().history;
 
 	// ── Data queries ──────────────────────────────────────────────────────
 	const { data: book, isPending: bookPending } = queryHooks.useBook(id);
@@ -194,6 +188,13 @@ const BookReader: React.FC = () => {
 	// Track the last offset we set so we can flush on unmount.
 	// null = not yet loaded from DB, don't overwrite on unmount.
 	const lastOffsetRef = useRef<number | null>(null);
+	// Flips true the first time the user actually moves position (scroll
+	// settle, word tap, jump, RSVP, scrub). Gates the unmount-flush so a
+	// brief re-mount (tanstack route transition double-render) whose seed
+	// effect re-populates `lastOffsetRef.current` from a stale `book.position`
+	// query-cache value doesn't write that stale value back over the real
+	// position written by the prior unmount.
+	const userMovedRef = useRef(false);
 
 	// Guards the seed effect below so it only runs once on initial load.
 	// book is a new object reference on every BLE position sync (query
@@ -217,6 +218,7 @@ const BookReader: React.FC = () => {
 		didSeedOffsetsRef.current = false;
 		didSeedModeRef.current = false;
 		lastOffsetRef.current = null;
+		userMovedRef.current = false;
 	}, [id]);
 
 	// ── Seed activeOffset + lastOffsetRef once book loads ─────────────────
@@ -358,6 +360,7 @@ const BookReader: React.FC = () => {
 			setActiveOffset(byteOffset);
 			setProgressOffset(byteOffset);
 			lastOffsetRef.current = byteOffset;
+			userMovedRef.current = true;
 			savePosition(byteOffset);
 			scrollViewRef.current?.jumpTo(byteOffset, { highlight });
 		},
@@ -424,6 +427,7 @@ const BookReader: React.FC = () => {
 			setActiveOffset(offset);
 			setProgressOffset(offset);
 			lastOffsetRef.current = offset;
+			userMovedRef.current = true;
 			savePosition(offset);
 			markActivityRef.current?.();
 			// 32-byte tolerance for word-boundary settles. The `size > 32` guard
@@ -495,6 +499,7 @@ const BookReader: React.FC = () => {
 			setProgressOffset(offset);
 			setProgressBarVisible(true);
 			lastOffsetRef.current = offset;
+			userMovedRef.current = true;
 			savePosition(offset);
 		},
 		[
@@ -775,6 +780,7 @@ const BookReader: React.FC = () => {
 		(byteOffset: number) => {
 			setProgressOffset(byteOffset);
 			lastOffsetRef.current = byteOffset;
+			userMovedRef.current = true;
 			savePosition(byteOffset, { scheduleSync: false });
 			markActivityRef.current?.();
 		},
@@ -788,6 +794,7 @@ const BookReader: React.FC = () => {
 	const exitRsvpToStandard = useCallback(
 		(byteOffset: number) => {
 			lastOffsetRef.current = byteOffset;
+			userMovedRef.current = true;
 			setProgressOffset(byteOffset);
 			setReaderMode("standard");
 			savePosition(byteOffset);
@@ -931,56 +938,58 @@ const BookReader: React.FC = () => {
 	// so the scroll container remains scrollable during selection mode.
 
 	// ── Flush position on unmount ─────────────────────────────────────────
+	// `savePosition` and `qc` are routed through refs so the effect cleanup
+	// fires only on actual unmount — not every time `savePosition` recreates
+	// (which happens on every BLE `isConnected` flicker).
+	const savePositionRef = useRef(savePosition);
+	savePositionRef.current = savePosition;
+	const qcRef = useRef(qc);
+	qcRef.current = qc;
 	useEffect(() => {
 		return () => {
 			// Flush position to DB so the library shows updated progress.
-			// Only write if we actually loaded the book (lastOffsetRef !== null).
+			// Only write if the user actually moved the position. A brief
+			// re-mount during the route transition seeds `lastOffsetRef` from
+			// the (possibly-stale) `book.position` query cache; flushing that
+			// would clobber the real value the prior unmount just wrote.
 			const offset = lastOffsetRef.current;
-			if (offset !== null) {
-				savePosition(offset, { scheduleSync: false });
+			if (offset !== null && userMovedRef.current) {
+				savePositionRef.current(offset, { scheduleSync: false });
 				pushSync().catch(() => {});
 			}
 			// Invalidate the books list so the library grid picks up the new position
 			// when the user navigates back.
-			qc.invalidateQueries({ queryKey: bookKeys.all });
+			qcRef.current.invalidateQueries({ queryKey: bookKeys.all });
 		};
-	}, [qc, savePosition]);
+	}, []);
 
 	// ─── Render ─────────────────────────────────────────────────────────────
 
 	if (bookPending || (!book && isSyncing)) {
 		return (
-			<IonPage>
-				<IonContent className="ion-text-center no-header-content">
-					<div
-						style={{
-							display: "flex",
-							height: "100%",
-							alignItems: "center",
-							justifyContent: "center",
-						}}
-					>
-						<IonSpinner />
-					</div>
-				</IonContent>
-			</IonPage>
+			<div className="flex h-screen items-center justify-center bg-background">
+				<Loader2 className="size-6 animate-spin text-muted-foreground" />
+			</div>
 		);
 	}
 
 	if (!book) {
 		return (
-			<IonPage>
-				<IonHeader class="ion-no-border">
-					<IonToolbar>
-						<IonButtons slot="start">
-							<IonBackButton defaultHref="/tabs/library" />
-						</IonButtons>
-					</IonToolbar>
-				</IonHeader>
-				<IonContent className="ion-padding ion-text-center">
-					<p>Book not found.</p>
-				</IonContent>
-			</IonPage>
+			<div className="flex h-screen flex-col bg-background">
+				<header className="flex h-12 items-center border-border border-b px-2">
+					<button
+						type="button"
+						onClick={() => history.back()}
+						aria-label="Back"
+						className="-ml-1 inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+					>
+						<ChevronLeft className="size-5" />
+					</button>
+				</header>
+				<div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
+					<p className="m-0">Book not found.</p>
+				</div>
+			</div>
 		);
 	}
 
@@ -1022,70 +1031,89 @@ const BookReader: React.FC = () => {
 		(book.catalogId ? externalSourceUrl(book.catalogId) : null);
 
 	return (
-		<IonPage className={`reader-theme-${theme}`}>
-			<IonHeader class="ion-no-border">
-				<IonToolbar>
-					<IonButtons slot="start">
-						<IonBackButton defaultHref="/tabs/library" />
-						{book.seriesId != null && (
-							<>
-								<IonButton
-									onClick={() => void chapterAdvance.tryRetreat()}
-									disabled={!hasPrev}
-									aria-label="Previous chapter"
-								>
-									<IonIcon slot="icon-only" icon={chevronBackOutline} />
-								</IonButton>
-								<IonButton
-									onClick={() => void chapterAdvance.tryAdvance()}
-									disabled={!hasNext}
-									aria-label="Next chapter"
-								>
-									<IonIcon slot="icon-only" icon={chevronForwardOutline} />
-								</IonButton>
-							</>
-						)}
-					</IonButtons>
-					<IonTitle>{book.title}</IonTitle>
-					<IonButtons slot="end">
-						<IonButton
-							onClick={handleRsvpToggle}
-							disabled={!content}
-							aria-label={
-								readerMode === "rsvp" ? "Switch to standard reader" : "Switch to RSVP reader"
-							}
-							className={readerMode === "rsvp" ? "rsvp-toggle-active" : undefined}
+		<div className={`reader-theme-${theme} flex h-screen flex-col bg-background pt-[env(safe-area-inset-top)] text-foreground`}>
+			<header className="flex h-12 shrink-0 items-center gap-0.5 border-border border-b bg-background/95 px-1 backdrop-blur">
+				<button
+					type="button"
+					onClick={() => history.back()}
+					aria-label="Back"
+					className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+				>
+					<ChevronLeft className="size-5" />
+				</button>
+				{book.seriesId != null && (
+					<>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={() => void chapterAdvance.tryRetreat()}
+							disabled={!hasPrev}
+							aria-label="Previous chapter"
 						>
-							<IonIcon
-								slot="icon-only"
-								icon={readerMode === "rsvp" ? flashOffOutline : flashOutline}
-							/>
-						</IonButton>
-						<IonButton
-							onClick={() => setSearchOpen(true)}
-							disabled={!content}
-							aria-label="Search content"
+							<ChevronLeft />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={() => void chapterAdvance.tryAdvance()}
+							disabled={!hasNext}
+							aria-label="Next chapter"
 						>
-							<IonIcon slot="icon-only" icon={searchOutline} />
-						</IonButton>
-						<IonButton
-							onClick={() => setAnnotationsOpen(true)}
-							aria-label="Annotations"
-							disabled={!content}
-						>
-							<IonIcon slot="icon-only" icon={bookmarksOutline} />
-						</IonButton>
-						<IonButton id="appearance-trigger" aria-label="Appearance settings">
-							<IonIcon slot="icon-only" icon={readerOutline} />
-						</IonButton>
-						<IonButton onClick={() => setOverflowOpen(true)} aria-label="More actions">
-							<IonIcon slot="icon-only" icon={ellipsisVerticalOutline} />
-						</IonButton>
-					</IonButtons>
-				</IonToolbar>
-			</IonHeader>
+							<ChevronRight />
+						</Button>
+					</>
+				)}
+				<h1 className="m-0 flex-1 truncate px-1 font-semibold text-base leading-none">
+					{book.title}
+				</h1>
+				<Button
+					variant="ghost"
+					size="icon"
+					onClick={handleRsvpToggle}
+					disabled={!content}
+					aria-label={
+						readerMode === "rsvp" ? "Switch to standard reader" : "Switch to RSVP reader"
+					}
+					className={readerMode === "rsvp" ? "text-primary" : undefined}
+				>
+					{readerMode === "rsvp" ? <ZapOff /> : <Zap />}
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					onClick={() => setSearchOpen(true)}
+					disabled={!content}
+					aria-label="Search content"
+				>
+					<Search />
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					onClick={() => setAnnotationsOpen(true)}
+					disabled={!content}
+					aria-label="Annotations"
+				>
+					<Bookmark />
+				</Button>
+				<AppearancePopover
+					trigger={
+						<Button variant="ghost" size="icon" aria-label="Appearance settings">
+							<Type />
+						</Button>
+					}
+				/>
+				<Button
+					variant="ghost"
+					size="icon"
+					onClick={() => setOverflowOpen(true)}
+					aria-label="More actions"
+				>
+					<MoreVertical />
+				</Button>
+			</header>
 
-			<IonContent scrollY={false}>
+			<div className="relative flex-1 overflow-hidden">
 				{chapterFetch.kind === "locked" ? (
 					<ChapterStateOverlay status="locked" />
 				) : chapterFetch.kind === "error" ? (
@@ -1201,9 +1229,9 @@ const BookReader: React.FC = () => {
 						</div>
 					</div>
 				)}
-			</IonContent>
+			</div>
 
-			{/* ── Selection toolbar + handles (fixed position, sync'd by hook) ── */}
+			{/* Selection toolbar + handles (fixed position, sync'd by hook). */}
 			<SelectionOverlay
 				isSelecting={sel.isSelecting}
 				isSingleWord={!!sel.selectionRange && sel.selectionRange.start === sel.selectionRange.end}
@@ -1220,30 +1248,26 @@ const BookReader: React.FC = () => {
 				onEndHandlePointerDown={sel.handleEndHandlePointerDown}
 			/>
 
-			{/* ── Appearance popover ── */}
-			<AppearancePopover trigger="appearance-trigger" />
-
-			{/* ── Toolbar overflow action sheet (chapter-level actions) ── */}
-			<IonActionSheet
-				isOpen={overflowOpen}
-				onDidDismiss={() => setOverflowOpen(false)}
-				cssClass="rsvp-action-sheet"
-				buttons={[
+			{/* Toolbar overflow action sheet (chapter-level actions). */}
+			<ActionSheet
+				open={overflowOpen}
+				onOpenChange={setOverflowOpen}
+				items={[
 					...(overflowSourceUrl
 						? [
 								{
-									text: `Open on ${series ? providerLabel(series.provider) : "website"}`,
-									icon: openOutline,
-									handler: () => {
+									label: `Open on ${series ? providerLabel(series.provider) : "website"}`,
+									icon: ExternalLink,
+									onSelect: () => {
 										void Browser.open({ url: overflowSourceUrl });
 									},
 								},
 							]
 						: []),
 					{
-						text: book.seriesId != null ? "View series" : "View book",
-						icon: informationCircleOutline,
-						handler: () => {
+						label: book.seriesId != null ? "View series" : "View book",
+						icon: Info,
+						onSelect: () => {
 							history.push(
 								book.seriesId != null
 									? `/tabs/library/series/${book.seriesId}`
@@ -1251,7 +1275,6 @@ const BookReader: React.FC = () => {
 							);
 						},
 					},
-					{ text: "Cancel", role: "cancel" as const },
 				]}
 			/>
 
@@ -1320,37 +1343,34 @@ const BookReader: React.FC = () => {
 				theme={theme}
 			/>
 
-			{/* ── Note input modal (during selection) ── */}
-			<IonModal
-				isOpen={sel.noteInputOpen}
-				onDidDismiss={sel.handleSelectionNoteDone}
-				breakpoints={[0, 0.4]}
-				initialBreakpoint={0.4}
-				className={["rsvp-highlight-modal", `reader-theme-${theme}`].join(" ")}
+			{/* Note input drawer (during selection). */}
+			<Drawer
+				open={sel.noteInputOpen}
+				onOpenChange={(open) => {
+					if (!open) sel.handleSelectionNoteDone();
+				}}
 			>
-				<IonHeader>
-					<IonToolbar>
-						<IonTitle>Add Note</IonTitle>
-						<IonButtons slot="end">
-							<IonButton onClick={sel.handleSelectionNoteDone} strong>
-								Done
-							</IonButton>
-						</IonButtons>
-					</IonToolbar>
-				</IonHeader>
-				<IonContent className="ion-padding">
-					<textarea
-						className="highlight-note-textarea"
-						value={sel.pendingNote}
-						onChange={(e) => sel.setPendingNote(e.target.value)}
-						placeholder="Add a note to this highlight…"
-						rows={4}
-						// biome-ignore lint/a11y/noAutofocus: intentional focus for note input
-						autoFocus
-					/>
-				</IonContent>
-			</IonModal>
-		</IonPage>
+				<DrawerContent className={`reader-theme-${theme}`}>
+					<DrawerHeader className="flex flex-row items-center justify-between gap-2">
+						<DrawerTitle className="flex-1">Add Note</DrawerTitle>
+						<Button variant="ghost" size="sm" onClick={sel.handleSelectionNoteDone}>
+							Done
+						</Button>
+					</DrawerHeader>
+					<div className="px-5 pb-6">
+						<textarea
+							value={sel.pendingNote}
+							onChange={(e) => sel.setPendingNote(e.target.value)}
+							placeholder="Add a note to this highlight…"
+							rows={4}
+							className="min-h-24 w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
+							// biome-ignore lint/a11y/noAutofocus: intentional focus for note input
+							autoFocus
+						/>
+					</div>
+				</DrawerContent>
+			</Drawer>
+		</div>
 	);
 };
 

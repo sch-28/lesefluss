@@ -30,7 +30,9 @@
 		"./sheet": "./src/components/sheet.tsx",
 		"./drawer": "./src/components/drawer.tsx",
 		"./popover": "./src/components/popover.tsx",
-		"./sonner": "./src/components/sonner.tsx"
+		"./sonner": "./src/components/sonner.tsx",
+		"./toggle": "./src/components/toggle.tsx",
+		"./toggle-group": "./src/components/toggle-group.tsx"
 	},
 	"scripts": {
 		"check-types": "tsc --noEmit"

@@ -1,12 +1,11 @@
 /**
- * SelectionToolbar - floating bar shown during text selection.
+ * SelectionToolbar: floating bar shown during text selection.
  *
- * Auto-saves: picking a color triggers an immediate save in the parent.
- * No confirm button - the X just closes the toolbar.
+ * Picking a color triggers an immediate save in the parent. No confirm button:
+ * the X just closes the toolbar.
  */
 
-import { IonIcon } from "@ionic/react";
-import { bookmarkOutline, closeOutline, createOutline, searchOutline } from "ionicons/icons";
+import { Bookmark, Pencil, Search, X } from "lucide-react";
 import React from "react";
 
 export const HIGHLIGHT_COLORS = ["yellow", "blue", "orange", "pink"] as const;
@@ -20,10 +19,10 @@ export const HIGHLIGHT_COLOR_STYLE: Record<HighlightColor, string> = {
 };
 
 interface SelectionToolbarProps {
-	/** null = no color picked yet - nothing shows as active */
+	/** null = no color picked yet, nothing shows as active. */
 	selectedColor: HighlightColor | null;
-	/** True when the selection covers exactly one word — only then does the
-	 *  "Look up" button make sense (dictionary takes one word, not phrases). */
+	/** True when selection covers exactly one word. Only then does "Look up"
+	 * make sense (dictionary takes one word, not phrases). */
 	isSingleWord: boolean;
 	onColorChange: (color: HighlightColor) => void;
 	onNote: () => void;
@@ -62,7 +61,7 @@ const SelectionToolbar = React.forwardRef<HTMLDivElement, SelectionToolbarProps>
 						onClick={onLookup}
 						aria-label="Look up word"
 					>
-						<IonIcon icon={searchOutline} />
+						<Search className="size-4" />
 					</button>
 				)}
 				<button
@@ -71,7 +70,7 @@ const SelectionToolbar = React.forwardRef<HTMLDivElement, SelectionToolbarProps>
 					onClick={onNote}
 					aria-label="Add note"
 				>
-					<IonIcon icon={createOutline} />
+					<Pencil className="size-4" />
 				</button>
 				<button
 					type="button"
@@ -79,7 +78,7 @@ const SelectionToolbar = React.forwardRef<HTMLDivElement, SelectionToolbarProps>
 					onClick={onAddToGlossary}
 					aria-label="Add to glossary"
 				>
-					<IonIcon icon={bookmarkOutline} />
+					<Bookmark className="size-4" />
 				</button>
 				<button
 					type="button"
@@ -87,7 +86,7 @@ const SelectionToolbar = React.forwardRef<HTMLDivElement, SelectionToolbarProps>
 					onClick={onCancel}
 					aria-label="Cancel selection"
 				>
-					<IonIcon icon={closeOutline} />
+					<X className="size-4" />
 				</button>
 			</div>
 		);

@@ -1,26 +1,17 @@
 import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { Switch } from "@lesefluss/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@lesefluss/ui/toggle-group";
 import { Eye } from "lucide-react";
 import { useCallback } from "react";
 import { PAGINATION_STYLE_OPTIONS } from "@/components/rsvp-pickers";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { useTheme } from "@/contexts/theme-context";
 import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "@/hooks/use-appearance-settings";
-import { cn } from "@lesefluss/ui/utils";
 
 export const Route = createFileRoute("/tabs/settings/appearance")({
 	component: AppearanceSettings,
 });
-
-function chipClass(isActive: boolean) {
-	return cn(
-		"inline-flex items-center justify-center rounded-md border px-3 py-1.5 font-medium text-sm transition-colors",
-		isActive
-			? "border-primary bg-primary text-primary-foreground"
-			: "border-border bg-card text-foreground hover:bg-muted",
-	);
-}
 
 function StepperRow({
 	label,
@@ -117,48 +108,56 @@ function AppearanceSettings() {
 			<PageHeader title="Appearance" icon={Eye} />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				<Section title="Theme">
-					<div className="flex flex-wrap gap-2 p-3">
-						{THEMES.map((t) => (
-							<button
-								key={t.value}
-								type="button"
-								className={chipClass(theme === t.value)}
-								onClick={() => setTheme(t.value)}
-							>
-								{t.label}
-							</button>
-						))}
+					<div className="p-3">
+						<ToggleGroup
+							type="single"
+							variant="outline"
+							value={theme}
+							onValueChange={(v) => v && setTheme(v as typeof theme)}
+							className="w-full"
+						>
+							{THEMES.map((t) => (
+								<ToggleGroupItem key={t.value} value={t.value}>
+									{t.label}
+								</ToggleGroupItem>
+							))}
+						</ToggleGroup>
 					</div>
 				</Section>
 
 				<Section title="Pagination">
-					<div className="flex flex-wrap gap-2 p-3">
-						{PAGINATION_STYLE_OPTIONS.map((p) => (
-							<button
-								key={p.value}
-								type="button"
-								className={chipClass(paginationStyle === p.value)}
-								onClick={() => setPaginationStyle(p.value)}
-							>
-								{p.label}
-							</button>
-						))}
+					<div className="p-3">
+						<ToggleGroup
+							type="single"
+							variant="outline"
+							value={paginationStyle}
+							onValueChange={(v) => v && setPaginationStyle(v as typeof paginationStyle)}
+							className="w-full"
+						>
+							{PAGINATION_STYLE_OPTIONS.map((p) => (
+								<ToggleGroupItem key={p.value} value={p.value}>
+									{p.label}
+								</ToggleGroupItem>
+							))}
+						</ToggleGroup>
 					</div>
 				</Section>
 
 				<Section title="Font">
-					<div className="flex flex-wrap gap-2 p-3">
-						{FONT_FAMILIES.map((f) => (
-							<button
-								key={f.value}
-								type="button"
-								className={chipClass(fontFamily === f.value)}
-								style={f.style}
-								onClick={() => setFontFamily(f.value)}
-							>
-								{f.label}
-							</button>
-						))}
+					<div className="p-3">
+						<ToggleGroup
+							type="single"
+							variant="outline"
+							value={fontFamily}
+							onValueChange={(v) => v && setFontFamily(v as typeof fontFamily)}
+							className="w-full"
+						>
+							{FONT_FAMILIES.map((f) => (
+								<ToggleGroupItem key={f.value} value={f.value} style={f.style}>
+									{f.label}
+								</ToggleGroupItem>
+							))}
+						</ToggleGroup>
 					</div>
 					<StepperRow
 						label="App text size"

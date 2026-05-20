@@ -1,24 +1,18 @@
 /**
- * RsvpControls - control bar shown when RSVP is paused.
+ * RsvpControls: control bar shown when RSVP is paused.
  *
- * Contains: sentence-back, word-back, play/pause, word-forward, sentence-forward,
- * dictionary, WPM stepper. All button clicks call stopPropagation so the
- * underlying display's tap-to-toggle doesn't fire after a button press.
+ * Sentence-back, word-back, play/pause, word-forward, sentence-forward, WPM
+ * stepper. All button clicks stopPropagation so the underlying display's
+ * tap-to-toggle doesn't fire after a button press.
  */
 
-import { IonButton, IonIcon } from "@ionic/react";
+import { Button } from "@lesefluss/ui/button";
 import { SETTING_CONSTRAINTS } from "@lesefluss/core";
-import {
-	arrowRedoOutline,
-	arrowUndoOutline,
-	playOutline,
-	playSkipBackOutline,
-	playSkipForwardOutline,
-} from "ionicons/icons";
+import { ChevronsLeft, ChevronsRight, Play, Undo2, Redo2 } from "lucide-react";
 import type React from "react";
 
-// Controls only render while playback is paused, so the play/pause button
-// always shows the play glyph - no isPlaying prop needed.
+// Controls only render while paused, so the play/pause button always shows
+// the play glyph. No isPlaying prop needed.
 interface Props {
 	wpm: number;
 	onBackSentence: () => void;
@@ -49,31 +43,31 @@ const RsvpControls: React.FC<Props> = ({
 	return (
 		<div className="rsvp-controls" onClick={stop} onPointerDown={stop}>
 			<div className="rsvp-controls-row">
-				<IonButton
-					fill="clear"
-					size="small"
+				<Button
+					variant="ghost"
+					size="icon"
 					onClick={onBackSentence}
 					aria-label="Back to sentence start"
 				>
-					<IonIcon slot="icon-only" icon={playSkipBackOutline} />
-				</IonButton>
-				<IonButton fill="clear" onClick={onBackWord} aria-label="Back one word">
-					<IonIcon slot="icon-only" icon={arrowUndoOutline} />
-				</IonButton>
+					<ChevronsLeft />
+				</Button>
+				<Button variant="ghost" size="icon" onClick={onBackWord} aria-label="Back one word">
+					<Undo2 />
+				</Button>
 				<button type="button" className="rsvp-playpause" onClick={onPlayPause} aria-label="Play">
-					<IonIcon icon={playOutline} />
+					<Play className="size-6" />
 				</button>
-				<IonButton fill="clear" onClick={onForwardWord} aria-label="Forward one word">
-					<IonIcon slot="icon-only" icon={arrowRedoOutline} />
-				</IonButton>
-				<IonButton
-					fill="clear"
-					size="small"
+				<Button variant="ghost" size="icon" onClick={onForwardWord} aria-label="Forward one word">
+					<Redo2 />
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
 					onClick={onForwardSentence}
 					aria-label="Forward to next sentence"
 				>
-					<IonIcon slot="icon-only" icon={playSkipForwardOutline} />
-				</IonButton>
+					<ChevronsRight />
+				</Button>
 			</div>
 
 			<div className="rsvp-wpm-stepper">

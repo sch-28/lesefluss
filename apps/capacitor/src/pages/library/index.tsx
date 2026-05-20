@@ -1,4 +1,4 @@
-import { useLocation } from "@tanstack/react-router";
+import { useLocation, useRouter } from "@tanstack/react-router";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
-import { useHistory } from "react-router-dom";
 import { ActionSheet } from "../../components/action-sheet";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import BLEIndicator from "../../components/ble-indicator";
@@ -58,7 +57,7 @@ const Library: React.FC = () => {
 		clearError,
 	} = useBookSync();
 	const { isLoggedIn, syncNow, isSyncing } = useSyncContext();
-	const history = useHistory();
+	const history = useRouter().history;
 	const qc = useQueryClient();
 
 	const {

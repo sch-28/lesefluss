@@ -1,5 +1,5 @@
-import { IonButton, IonIcon } from "@ionic/react";
-import { chevronBackOutline, chevronForwardOutline } from "ionicons/icons";
+import { Button } from "@lesefluss/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type React from "react";
 
 type Props = {
@@ -12,9 +12,9 @@ type Props = {
 /**
  * End-of-chapter previous/next navigation rendered after the last paragraph
  * (scroll view) or overlaid on the last page (page view). Boundary handling
- * is left to the caller: pass `hasPrev=false` on chapter 0 and `hasNext=false`
- * on the last chapter (or while the chapter-counts query is still loading) to
- * hide the respective button. Returns `null` when both are false.
+ * is the caller's: pass `hasPrev=false` on chapter 0 and `hasNext=false` on
+ * the last chapter (or while the chapter-counts query is loading). Returns
+ * null when both are false.
  */
 export const NextChapterFooter: React.FC<Props> = ({ hasPrev, hasNext, onNext, onPrev }) => {
 	if (!hasPrev && !hasNext) return null;
@@ -22,16 +22,16 @@ export const NextChapterFooter: React.FC<Props> = ({ hasPrev, hasNext, onNext, o
 	return (
 		<div className="next-chapter-footer">
 			{hasPrev && (
-				<IonButton fill="outline" onClick={onPrev}>
-					<IonIcon slot="start" icon={chevronBackOutline} />
+				<Button variant="outline" onClick={onPrev}>
+					<ChevronLeft />
 					Previous
-				</IonButton>
+				</Button>
 			)}
 			{hasNext && (
-				<IonButton fill="outline" onClick={onNext}>
+				<Button variant="outline" onClick={onNext}>
 					Next
-					<IonIcon slot="end" icon={chevronForwardOutline} />
-				</IonButton>
+					<ChevronRight />
+				</Button>
 			)}
 		</div>
 	);

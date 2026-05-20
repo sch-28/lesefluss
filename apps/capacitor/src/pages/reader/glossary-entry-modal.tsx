@@ -1,36 +1,28 @@
 /**
- * GlossaryEntryModal — bottom sheet for viewing / editing one glossary entry.
+ * GlossaryEntryModal: bottom drawer for viewing / editing one glossary entry.
  *
- * - Auto-saves on blur for label + notes; instant save on color/scope changes.
- * - "Available in all books" toggle flips bookId between the current book and null.
- * - Jump buttons close the sheet and seek the reader.
- * - Delete removes the entry and closes.
- *
- * Mirrors HighlightModal's shape: one IonModal, gated by `isOpen={!!entry}`,
- * so close animations work and breakpoints aren't fighting a re-mount.
+ * Auto-saves on blur for label + notes; instant save on color/scope changes.
+ * "Available in all books" toggle flips bookId between the current book and null.
+ * Jump buttons close the drawer and seek the reader. Delete removes and closes.
  */
 
+import { Button } from "@lesefluss/ui/button";
 import {
-	IonContent,
-	IonHeader,
-	IonIcon,
-	IonInput,
-	IonItem,
-	IonLabel,
-	IonModal,
-	IonTextarea,
-	IonTitle,
-	IonToggle,
-	IonToolbar,
-} from "@ionic/react";
-import { trashOutline } from "ionicons/icons";
+	Drawer,
+	DrawerContent,
+	DrawerHeader,
+	DrawerTitle,
+} from "@lesefluss/ui/drawer";
+import { Switch } from "@lesefluss/ui/switch";
+import { cn } from "@lesefluss/ui/utils";
+import { Trash2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import type { GlossaryEntry } from "../../services/db/schema";
 import GlossaryAvatar, { colorFromLabel } from "./glossary-avatar";
 
 const GLOSSARY_PALETTE: { name: string; value: string }[] = [
-	{ name: "auto", value: "" }, // empty triggers auto-derive from label
+	{ name: "auto", value: "" },
 	{ name: "red", value: "#E57373" },
 	{ name: "orange", value: "#FFB74D" },
 	{ name: "yellow", value: "#FFEB3B" },
@@ -46,11 +38,8 @@ const GLOSSARY_PALETTE: { name: string; value: string }[] = [
 ];
 
 export interface GlossaryEntryModalProps {
-	/** The entry being edited. null = modal closed. */
 	entry: GlossaryEntry | null;
-	/** ID of the book the reader is currently in — used when the user toggles scope back to "this book". */
 	currentBookId: string;
-	/** Surrounding text from the first occurrence of the label in the current book. */
 	firstMentionContext: { before: string; match: string; after: string } | null;
 	onClose: () => void;
 	onSave: (
@@ -79,12 +68,11 @@ const GlossaryEntryModal: React.FC<GlossaryEntryModalProps> = ({
 	const [color, setColor] = useState("");
 	const [isGlobal, setIsGlobal] = useState(false);
 	const [hideMarker, setHideMarker] = useState(false);
-	// Tap-to-edit: label renders as plain text by default so the IonInput isn't
-	// the first focusable child (Ionic's focus trap auto-focuses it on present,
-	// which pops the keyboard). Drafts go straight into edit mode since the
-	// label starts empty and the user came here to type one.
+	// Tap-to-edit: label renders as plain text by default so the input isn't the
+	// first focusable child (radix focus trap auto-focuses on present, popping the
+	// keyboard). Drafts go straight into edit mode since label starts empty.
 	const [isEditingLabel, setIsEditingLabel] = useState(false);
-	const labelInputRef = useRef<HTMLIonInputElement>(null);
+	const labelInputRef = useRef<HTMLInputElement>(null);
 
 	// Re-seed only when a different entry opens; keep in-progress edits otherwise.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: entry?.id is the intentional narrow dep
@@ -99,11 +87,8 @@ const GlossaryEntryModal: React.FC<GlossaryEntryModalProps> = ({
 		}
 	}, [entry?.id]);
 
-	// When entering edit mode, focus the input so the user can type immediately.
 	useEffect(() => {
-		if (isEditingLabel) {
-			labelInputRef.current?.setFocus();
-		}
+		if (isEditingLabel) labelInputRef.current?.focus();
 	}, [isEditingLabel]);
 
 	const effectiveLabel = label || entry?.label || "";
@@ -149,150 +134,143 @@ const GlossaryEntryModal: React.FC<GlossaryEntryModalProps> = ({
 	};
 
 	return (
-		<IonModal
-			isOpen={!!entry}
-			onDidDismiss={onClose}
-			breakpoints={[0, 0.5, 1]}
-			initialBreakpoint={0.5}
-			className={["rsvp-glossary-modal", theme && `reader-theme-${theme}`]
-				.filter(Boolean)
-				.join(" ")}
+		<Drawer
+			open={!!entry}
+			onOpenChange={(open) => {
+				if (!open) onClose();
+			}}
 		>
-			<IonHeader>
-				<IonToolbar>
-					<IonTitle>Glossary entry</IonTitle>
-				</IonToolbar>
-			</IonHeader>
+			<DrawerContent className={theme ? `reader-theme-${theme}` : undefined}>
+				<DrawerHeader>
+					<DrawerTitle>Glossary entry</DrawerTitle>
+				</DrawerHeader>
 
-			<IonContent className="ion-padding">
-				<div className="glossary-modal-header">
-					<GlossaryAvatar label={effectiveLabel} color={effectiveColor} size={48} />
-					{isEditingLabel ? (
-						<IonInput
-							ref={labelInputRef}
-							value={label}
-							onIonInput={(e) => setLabel(e.detail.value ?? "")}
-							onIonBlur={commitLabel}
-							placeholder="Name"
-							className="glossary-modal-label"
-						/>
-					) : (
+				<div className="flex flex-col gap-4 overflow-y-auto px-5 pb-6">
+					<div className="flex items-center gap-3">
+						<GlossaryAvatar label={effectiveLabel} color={effectiveColor} size={48} />
+						{isEditingLabel ? (
+							<input
+								ref={labelInputRef}
+								type="text"
+								value={label}
+								onChange={(e) => setLabel(e.target.value)}
+								onBlur={commitLabel}
+								placeholder="Name"
+								className="flex-1 border-border border-b bg-transparent py-1 text-foreground text-lg outline-none focus:border-foreground"
+							/>
+						) : (
+							<button
+								type="button"
+								className="flex-1 truncate text-left font-semibold text-foreground text-lg"
+								onClick={() => setIsEditingLabel(true)}
+							>
+								{effectiveLabel || "Untitled"}
+							</button>
+						)}
 						<button
 							type="button"
-							className="glossary-modal-label-display"
-							onClick={() => setIsEditingLabel(true)}
+							onClick={handleDelete}
+							aria-label="Delete entry"
+							className="inline-flex size-9 items-center justify-center rounded-md text-destructive transition-colors hover:bg-destructive/10"
 						>
-							{effectiveLabel || "Untitled"}
+							<Trash2 className="size-5" />
 						</button>
+					</div>
+
+					{firstMentionContext && (
+						<blockquote className="m-0 border-border border-l-2 pl-3 text-muted-foreground text-sm italic">
+							...{firstMentionContext.before}
+							<mark className="bg-yellow-200/60 px-0.5 not-italic dark:bg-yellow-500/30">
+								{firstMentionContext.match}
+							</mark>
+							{firstMentionContext.after}...
+						</blockquote>
 					)}
-					<button
-						type="button"
-						className="glossary-modal-delete-btn"
-						onClick={handleDelete}
-						aria-label="Delete entry"
-					>
-						<IonIcon icon={trashOutline} />
-					</button>
-				</div>
 
-				{/* First-mention preview from the current book */}
-				{firstMentionContext && (
-					<blockquote className="glossary-modal-context">
-						...{firstMentionContext.before}
-						<mark>{firstMentionContext.match}</mark>
-						{firstMentionContext.after}...
-					</blockquote>
-				)}
+					<div className="flex flex-wrap gap-2">
+						{GLOSSARY_PALETTE.map((c) => {
+							const isActive = (c.value === "" && color === "") || color === c.value;
+							return (
+								<button
+									key={c.name}
+									type="button"
+									className={cn(
+										"size-7 rounded-full border-2 transition-transform",
+										isActive ? "scale-110 border-foreground" : "border-border",
+									)}
+									style={{
+										background: c.value === "" ? colorFromLabel(effectiveLabel) : c.value,
+									}}
+									onClick={() => handleColorChange(c.value)}
+									aria-label={`Color ${c.name}`}
+								/>
+							);
+						})}
+					</div>
 
-				{/* Color row */}
-				<div className="glossary-modal-row">
-					<div className="glossary-modal-colors">
-						{GLOSSARY_PALETTE.map((c) => (
-							<button
-								key={c.name}
-								type="button"
-								className={
-									(c.value === "" && color === "") || color === c.value
-										? "glossary-color-swatch glossary-color-swatch--active"
-										: "glossary-color-swatch"
-								}
-								style={{
-									background: c.value === "" ? colorFromLabel(effectiveLabel) : c.value,
-								}}
-								onClick={() => handleColorChange(c.value)}
-								aria-label={`Color ${c.name}`}
-							/>
-						))}
+					<div className="flex items-start justify-between gap-3 border-border border-b py-3">
+						<div className="flex flex-col gap-0.5">
+							<span className="font-medium text-foreground text-sm">Available in all books</span>
+							<span className="text-muted-foreground text-xs">
+								Highlight this term in every book, not just the current one.
+							</span>
+						</div>
+						<Switch
+							checked={isGlobal}
+							onCheckedChange={handleScopeChange}
+							aria-label="Global glossary entry"
+						/>
+					</div>
+
+					<div className="flex items-start justify-between gap-3 border-border border-b py-3">
+						<div className="flex flex-col gap-0.5">
+							<span className="font-medium text-foreground text-sm">Hide marker</span>
+							<span className="text-muted-foreground text-xs">
+								Don't show the colored marker next to this term. Tapping still opens the entry.
+							</span>
+						</div>
+						<Switch
+							checked={hideMarker}
+							onCheckedChange={handleHideMarkerChange}
+							aria-label="Hide marker for this entry"
+						/>
+					</div>
+
+					<textarea
+						value={notes}
+						onChange={(e) => setNotes(e.target.value)}
+						onBlur={commitNotes}
+						placeholder="Notes…"
+						rows={3}
+						className="min-h-20 w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
+					/>
+
+					{/* Jump buttons disabled when label has no mention in current book. */}
+					<div className="flex flex-col gap-2">
+						<Button
+							variant="outline"
+							disabled={!firstMentionContext}
+							onClick={() => {
+								onJumpFirst(effectiveLabel);
+								onClose();
+							}}
+						>
+							Jump to first mention
+						</Button>
+						<Button
+							variant="outline"
+							disabled={!firstMentionContext}
+							onClick={() => {
+								onJumpNext(effectiveLabel);
+								onClose();
+							}}
+						>
+							Jump to next mention
+						</Button>
 					</div>
 				</div>
-
-				{/* Scope toggle */}
-				<IonItem className="glossary-modal-scope">
-					<IonLabel>
-						<h3>Available in all books</h3>
-						<p>Highlight this term in every book, not just the current one.</p>
-					</IonLabel>
-					<IonToggle
-						checked={isGlobal}
-						onIonChange={(e) => handleScopeChange(e.detail.checked)}
-						aria-label="Global glossary entry"
-					/>
-				</IonItem>
-
-				{/* Hide-marker toggle (per entry) */}
-				<IonItem className="glossary-modal-scope">
-					<IonLabel>
-						<h3>Hide marker</h3>
-						<p>
-							Don't show the colored marker next to this term. Tapping it still opens the entry.
-						</p>
-					</IonLabel>
-					<IonToggle
-						checked={hideMarker}
-						onIonChange={(e) => handleHideMarkerChange(e.detail.checked)}
-						aria-label="Hide marker for this entry"
-					/>
-				</IonItem>
-
-				{/* Notes */}
-				<IonTextarea
-					value={notes}
-					onIonInput={(e) => setNotes(e.detail.value ?? "")}
-					onIonBlur={commitNotes}
-					placeholder="Notes…"
-					autoGrow
-					rows={2}
-					className="glossary-modal-notes"
-				/>
-
-				{/* Jump actions — disabled when label has no mention in the current book
-				    (firstMentionContext is the upstream "found a match" signal). */}
-				<div className="glossary-modal-actions">
-					<button
-						type="button"
-						className="glossary-modal-action-btn"
-						disabled={!firstMentionContext}
-						onClick={() => {
-							onJumpFirst(effectiveLabel);
-							onClose();
-						}}
-					>
-						Jump to first mention
-					</button>
-					<button
-						type="button"
-						className="glossary-modal-action-btn"
-						disabled={!firstMentionContext}
-						onClick={() => {
-							onJumpNext(effectiveLabel);
-							onClose();
-						}}
-					>
-						Jump to next mention
-					</button>
-				</div>
-			</IonContent>
-		</IonModal>
+			</DrawerContent>
+		</Drawer>
 	);
 };
 

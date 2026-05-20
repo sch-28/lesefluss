@@ -8,313 +8,27 @@
  * home indicator. We forward the real env() values into Ionic's own
  * safe-area variables so that IonHeader / IonTabBar are automatically
  * pushed into the safe zone. */
-:root {
-	--ion-safe-area-top: env(safe-area-inset-top);
-	--ion-safe-area-bottom: env(safe-area-inset-bottom);
-	--ion-safe-area-left: env(safe-area-inset-left);
-	--ion-safe-area-right: env(safe-area-inset-right);
-}
 
 /* Pages that render IonContent without an IonHeader need manual status-bar
  * offset (Ionic only auto-offsets when a header is present in the same page).
  * Apply the .no-header-content class to those IonContent elements. */
-ion-content.no-header-content {
-	--padding-top: calc(env(safe-area-inset-top) + 8px);
-}
 
 :root {
 	/* Monochrome palette */
-	--ion-color-primary: #000000;
-	--ion-color-primary-rgb: 0, 0, 0;
-	--ion-color-primary-contrast: #ffffff;
-	--ion-color-primary-contrast-rgb: 255, 255, 255;
-	--ion-color-primary-shade: #000000;
-	--ion-color-primary-tint: #1a1a1a;
-
-	--ion-color-secondary: #404040;
-	--ion-color-secondary-rgb: 64, 64, 64;
-	--ion-color-secondary-contrast: #ffffff;
-	--ion-color-secondary-contrast-rgb: 255, 255, 255;
-	--ion-color-secondary-shade: #383838;
-	--ion-color-secondary-tint: #4d4d4d;
-
-	--ion-color-tertiary: #666666;
-	--ion-color-tertiary-rgb: 102, 102, 102;
-	--ion-color-tertiary-contrast: #ffffff;
-	--ion-color-tertiary-contrast-rgb: 255, 255, 255;
-	--ion-color-tertiary-shade: #5a5a5a;
-	--ion-color-tertiary-tint: #757575;
-
-	--ion-color-success: #2d2d2d;
-	--ion-color-success-rgb: 45, 45, 45;
-	--ion-color-success-contrast: #ffffff;
-	--ion-color-success-contrast-rgb: 255, 255, 255;
-	--ion-color-success-shade: #282828;
-	--ion-color-success-tint: #424242;
-
-	--ion-color-warning: #808080;
-	--ion-color-warning-rgb: 128, 128, 128;
-	--ion-color-warning-contrast: #000000;
-	--ion-color-warning-contrast-rgb: 0, 0, 0;
-	--ion-color-warning-shade: #717171;
-	--ion-color-warning-tint: #8d8d8d;
-
-	--ion-color-danger: #1a1a1a;
-	--ion-color-danger-rgb: 26, 26, 26;
-	--ion-color-danger-contrast: #ffffff;
-	--ion-color-danger-contrast-rgb: 255, 255, 255;
-	--ion-color-danger-shade: #171717;
-	--ion-color-danger-tint: #313131;
-
-	--ion-color-light: #f5f5f5;
-	--ion-color-light-rgb: 245, 245, 245;
-	--ion-color-light-contrast: #000000;
-	--ion-color-light-contrast-rgb: 0, 0, 0;
-	--ion-color-light-shade: #d8d8d8;
-	--ion-color-light-tint: #f6f6f6;
-
-	--ion-color-medium: #999999;
-	--ion-color-medium-rgb: 153, 153, 153;
-	--ion-color-medium-contrast: #000000;
-	--ion-color-medium-contrast-rgb: 0, 0, 0;
-	--ion-color-medium-shade: #868686;
-	--ion-color-medium-tint: #a3a3a3;
-
-	--ion-color-dark: #1a1a1a;
-	--ion-color-dark-rgb: 26, 26, 26;
-	--ion-color-dark-contrast: #ffffff;
-	--ion-color-dark-contrast-rgb: 255, 255, 255;
-	--ion-color-dark-shade: #171717;
-	--ion-color-dark-tint: #313131;
 
 	/* Background colors */
-	--ion-background-color: #ffffff;
-	--ion-background-color-rgb: 255, 255, 255;
-
-	--ion-text-color: #000000;
-	--ion-text-color-rgb: 0, 0, 0;
-
-	--ion-border-color: #d9d9d9;
-
-	--ion-toolbar-background: #ffffff;
-	--ion-toolbar-border-color: #d9d9d9;
-	--ion-toolbar-color: #000000;
-
-	--ion-item-background: #ffffff;
-	--ion-item-border-color: #d9d9d9;
-
-	--ion-card-background: #ffffff;
 }
 
 /* ── App-wide dark theme ── */
 /* Applied via body.dark - set by ThemeContext on every theme toggle. */
-body.dark {
-	--ion-background-color: #1a1a1a;
-	--ion-background-color-rgb: 26, 26, 26;
-
-	--ion-text-color: #e4e4e4;
-	--ion-text-color-rgb: 228, 228, 228;
-
-	--ion-border-color: #333333;
-
-	--ion-toolbar-background: #1a1a1a;
-	--ion-toolbar-border-color: #333333;
-	--ion-toolbar-color: #e4e4e4;
-
-	--ion-item-background: #1a1a1a;
-	--ion-item-border-color: #333333;
-
-	--ion-card-background: #242424;
-
-	--ion-tab-bar-background: #1a1a1a;
-	--ion-tab-bar-border-color: #333333;
-	--ion-tab-bar-color: #888888;
-	--ion-tab-bar-color-selected: #e4e4e4;
-
-	--ion-color-primary: #e4e4e4;
-	--ion-color-primary-rgb: 228, 228, 228;
-	--ion-color-primary-contrast: #1a1a1a;
-	--ion-color-primary-contrast-rgb: 26, 26, 26;
-	--ion-color-primary-shade: #c8c8c8;
-	--ion-color-primary-tint: #e7e7e7;
-
-	--ion-color-secondary: #b0b0b0;
-	--ion-color-secondary-rgb: 176, 176, 176;
-	--ion-color-secondary-contrast: #1a1a1a;
-	--ion-color-secondary-contrast-rgb: 26, 26, 26;
-	--ion-color-secondary-shade: #9b9b9b;
-	--ion-color-secondary-tint: #b8b8b8;
-
-	--ion-color-tertiary: #888888;
-	--ion-color-tertiary-rgb: 136, 136, 136;
-	--ion-color-tertiary-contrast: #1a1a1a;
-	--ion-color-tertiary-contrast-rgb: 26, 26, 26;
-	--ion-color-tertiary-shade: #787878;
-	--ion-color-tertiary-tint: #949494;
-
-	--ion-color-success: #c8c8c8;
-	--ion-color-success-rgb: 200, 200, 200;
-	--ion-color-success-contrast: #1a1a1a;
-	--ion-color-success-contrast-rgb: 26, 26, 26;
-	--ion-color-success-shade: #b0b0b0;
-	--ion-color-success-tint: #d0d0d0;
-
-	--ion-color-warning: #999999;
-	--ion-color-warning-rgb: 153, 153, 153;
-	--ion-color-warning-contrast: #1a1a1a;
-	--ion-color-warning-contrast-rgb: 26, 26, 26;
-	--ion-color-warning-shade: #868686;
-	--ion-color-warning-tint: #a3a3a3;
-
-	--ion-color-danger: #e4e4e4;
-	--ion-color-danger-rgb: 228, 228, 228;
-	--ion-color-danger-contrast: #1a1a1a;
-	--ion-color-danger-contrast-rgb: 26, 26, 26;
-	--ion-color-danger-shade: #c8c8c8;
-	--ion-color-danger-tint: #e7e7e7;
-
-	--ion-color-dark: #e4e4e4;
-	--ion-color-dark-rgb: 228, 228, 228;
-	--ion-color-dark-contrast: #1a1a1a;
-	--ion-color-dark-contrast-rgb: 26, 26, 26;
-	--ion-color-dark-shade: #c8c8c8;
-	--ion-color-dark-tint: #e7e7e7;
-
-	--ion-color-light: #2d2d2d;
-	--ion-color-light-rgb: 45, 45, 45;
-	--ion-color-light-contrast: #e4e4e4;
-	--ion-color-light-contrast-rgb: 228, 228, 228;
-	--ion-color-light-shade: #262626;
-	--ion-color-light-tint: #3a3a3a;
-
-	--ion-color-medium: #666666;
-	--ion-color-medium-rgb: 102, 102, 102;
-	--ion-color-medium-contrast: #e4e4e4;
-	--ion-color-medium-contrast-rgb: 228, 228, 228;
-	--ion-color-medium-shade: #5a5a5a;
-	--ion-color-medium-tint: #757575;
-}
 
 /* ── App-wide sepia theme ── */
 /* Soft, warm paper palette. Dimmer than raw sepia so it's easy on the eyes. */
-body.sepia {
-	--ion-background-color: #c4b081;
-	--ion-background-color-rgb: 196, 176, 129;
-
-	--ion-text-color: #3a2e1e;
-	--ion-text-color-rgb: 58, 46, 30;
-
-	--ion-border-color: #8a7760;
-
-	--ion-toolbar-background: #c4b081;
-	--ion-toolbar-border-color: #8a7760;
-	--ion-toolbar-color: #3a2e1e;
-
-	--ion-item-background: #c4b081;
-	--ion-item-border-color: #8a7760;
-
-	--ion-card-background: #b29f6f;
-
-	--ion-tab-bar-background: #c4b081;
-	--ion-tab-bar-border-color: #8a7760;
-	--ion-tab-bar-color: #8a7a63;
-	--ion-tab-bar-color-selected: #3a2e1e;
-
-	--ion-color-primary: #3a2e1e;
-	--ion-color-primary-rgb: 58, 46, 30;
-	--ion-color-primary-contrast: #c4b081;
-	--ion-color-primary-contrast-rgb: 196, 176, 129;
-	--ion-color-primary-shade: #2d2315;
-	--ion-color-primary-tint: #4e4030;
-
-	--ion-color-secondary: #6a5a45;
-	--ion-color-secondary-rgb: 106, 90, 69;
-	--ion-color-secondary-contrast: #c4b081;
-	--ion-color-secondary-contrast-rgb: 196, 176, 129;
-	--ion-color-secondary-shade: #5a4c39;
-	--ion-color-secondary-tint: #7a6b55;
-
-	--ion-color-tertiary: #8a7a63;
-	--ion-color-tertiary-rgb: 138, 122, 99;
-	--ion-color-tertiary-contrast: #c4b081;
-	--ion-color-tertiary-contrast-rgb: 196, 176, 129;
-	--ion-color-tertiary-shade: #756852;
-	--ion-color-tertiary-tint: #988872;
-
-	--ion-color-success: #3a2e1e;
-	--ion-color-success-rgb: 58, 46, 30;
-	--ion-color-success-contrast: #c4b081;
-	--ion-color-success-contrast-rgb: 196, 176, 129;
-	--ion-color-success-shade: #2d2315;
-	--ion-color-success-tint: #4e4030;
-
-	--ion-color-warning: #8a7a63;
-	--ion-color-warning-rgb: 138, 122, 99;
-	--ion-color-warning-contrast: #c4b081;
-	--ion-color-warning-contrast-rgb: 196, 176, 129;
-	--ion-color-warning-shade: #756852;
-	--ion-color-warning-tint: #988872;
-
-	--ion-color-danger: #a03a2a;
-	--ion-color-danger-rgb: 160, 58, 42;
-	--ion-color-danger-contrast: #c4b081;
-	--ion-color-danger-contrast-rgb: 196, 176, 129;
-	--ion-color-danger-shade: #8c3225;
-	--ion-color-danger-tint: #ad4f40;
-
-	--ion-color-dark: #3a2e1e;
-	--ion-color-dark-rgb: 58, 46, 30;
-	--ion-color-dark-contrast: #c4b081;
-	--ion-color-dark-contrast-rgb: 196, 176, 129;
-	--ion-color-dark-shade: #2d2315;
-	--ion-color-dark-tint: #4e4030;
-
-	--ion-color-light: #b29f6f;
-	--ion-color-light-rgb: 221, 207, 176;
-	--ion-color-light-contrast: #3a2e1e;
-	--ion-color-light-contrast-rgb: 58, 46, 30;
-	--ion-color-light-shade: #ccbfa1;
-	--ion-color-light-tint: #e3d6ba;
-
-	--ion-color-medium: #8a7a63;
-	--ion-color-medium-rgb: 138, 122, 99;
-	--ion-color-medium-contrast: #c4b081;
-	--ion-color-medium-contrast-rgb: 196, 176, 129;
-	--ion-color-medium-shade: #756852;
-	--ion-color-medium-tint: #988872;
-}
 
 /* Modals are portalled to document.body, so body.dark covers them automatically.
  * Explicitly set --background and --color so ion-modal sheet backgrounds pick it up. */
-body.dark ion-modal {
-	--background: #1a1a1a;
-	--color: #e4e4e4;
-}
-
-body.dark ion-modal ion-header,
-body.dark ion-modal ion-toolbar {
-	--background: #1a1a1a;
-	--ion-toolbar-background: #1a1a1a;
-	--ion-toolbar-color: #e4e4e4;
-	--ion-toolbar-border-color: #333333;
-	--ion-border-color: #333333;
-}
-
-body.dark ion-modal ion-content,
-body.dark ion-modal ion-list,
-body.dark ion-modal ion-item {
-	--background: #1a1a1a;
-	--ion-item-background: #1a1a1a;
-	--ion-item-border-color: #333333;
-	--color: #e4e4e4;
-}
 
 /* Action sheets */
-body.dark ion-action-sheet {
-	--background: #242424;
-	--color: #e4e4e4;
-	--button-color: #e4e4e4;
-}
 
 body.dark .rsvp-action-sheet .action-sheet-container .action-sheet-group {
 	background: #242424;
@@ -344,94 +58,23 @@ body.dark .rsvp-action-sheet .action-sheet-destructive {
 	color: #ef5350;
 }
 
-body.dark .rsvp-action-sheet .action-sheet-button.ion-color-primary[disabled],
 body.dark .rsvp-action-sheet .action-sheet-button[disabled] {
 	color: #555555;
 }
 
-body.dark .rsvp-action-sheet .action-sheet-button.ion-activated {
-	background: #333333;
-}
-
 /* Alerts */
-body.dark ion-alert {
-	--background: #242424;
-	--color: #e4e4e4;
-}
 
 /* Tab bar - override the hard-coded component-level values */
-body.dark ion-tab-bar {
-	--background: #1a1a1a;
-	border-top-color: #333333;
-}
 
 /* Buttons - only target expand="block" action buttons, not icon-only toolbar buttons */
-body.dark ion-button[expand] {
-	--background: #e4e4e4;
-	--background-activated: #c8c8c8;
-	--background-hover: #c8c8c8;
-	--color: #1a1a1a;
-}
-
-body.dark ion-button[expand][fill="outline"] {
-	--border-color: #e4e4e4;
-	--color: #e4e4e4;
-	--background: transparent;
-	--background-activated: rgba(228, 228, 228, 0.1);
-	--background-hover: rgba(228, 228, 228, 0.1);
-}
 
 /* Cards - override hard-coded border */
-body.dark ion-card {
-	border-color: #333333;
-}
 
 /* Range slider */
-body.dark ion-range {
-	--bar-background: #444444;
-	--bar-background-active: #e4e4e4;
-	--knob-background: #e4e4e4;
-	--pin-background: #e4e4e4;
-	--pin-color: #1a1a1a;
-}
 
 /* Toggle */
-body.dark ion-toggle {
-	--background: #444444;
-	--background-checked: #e4e4e4;
-	--handle-background: #888888;
-	--handle-background-checked: #1a1a1a;
-}
 
 /* ── Sepia theme: mirror of dark overrides ── */
-body.sepia ion-modal {
-	--background: #c4b081;
-	--color: #3a2e1e;
-}
-
-body.sepia ion-modal ion-header,
-body.sepia ion-modal ion-toolbar {
-	--background: #c4b081;
-	--ion-toolbar-background: #c4b081;
-	--ion-toolbar-color: #3a2e1e;
-	--ion-toolbar-border-color: #8a7760;
-	--ion-border-color: #8a7760;
-}
-
-body.sepia ion-modal ion-content,
-body.sepia ion-modal ion-list,
-body.sepia ion-modal ion-item {
-	--background: #c4b081;
-	--ion-item-background: #c4b081;
-	--ion-item-border-color: #8a7760;
-	--color: #3a2e1e;
-}
-
-body.sepia ion-action-sheet {
-	--background: #b29f6f;
-	--color: #3a2e1e;
-	--button-color: #3a2e1e;
-}
 
 body.sepia .rsvp-action-sheet .action-sheet-container .action-sheet-group {
 	background: #b29f6f;
@@ -461,319 +104,90 @@ body.sepia .rsvp-action-sheet .action-sheet-destructive {
 	color: #b04030;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-button.ion-color-primary[disabled],
 body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	color: #a89878;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-button.ion-activated {
-	background: #c9ba9a;
-}
-
-body.sepia ion-alert {
-	--background: #b29f6f;
-	--color: #3a2e1e;
-}
-
-body.sepia ion-tab-bar {
-	--background: #c4b081;
-	border-top-color: #8a7760;
-}
-
-body.sepia ion-button[expand] {
-	--background: #3a2e1e;
-	--background-activated: #2d2315;
-	--background-hover: #2d2315;
-	--color: #c4b081;
-}
-
-body.sepia ion-button[expand][fill="outline"] {
-	--border-color: #3a2e1e;
-	--color: #3a2e1e;
-	--background: transparent;
-	--background-activated: rgba(58, 46, 30, 0.1);
-	--background-hover: rgba(58, 46, 30, 0.1);
-}
-
-body.sepia ion-card {
-	border-color: #8a7760;
-}
-
-body.sepia ion-range {
-	--bar-background: #8a7760;
-	--bar-background-active: #3a2e1e;
-	--knob-background: #3a2e1e;
-	--pin-background: #3a2e1e;
-	--pin-color: #c4b081;
-}
-
-body.sepia ion-toggle {
-	--background: #8a7760;
-	--background-checked: #3a2e1e;
-	--handle-background: #c4b081;
-	--handle-background-checked: #c4b081;
-}
-
 /* Range slider styling */
-ion-range {
-	--bar-background: #e0e0e0;
-	--bar-background-active: #000000;
-	--bar-height: 2px;
-	--bar-border-radius: 1px;
-	--height: 42px;
-	--knob-background: #000000;
-	--knob-size: 24px;
-	--pin-background: #000000;
-	--pin-color: #ffffff;
-	padding-top: 0.5rem;
-}
 
 /* Toggle styling */
-ion-toggle {
-	--background: #e0e0e0;
-	--background-checked: #000000;
-	--handle-background: #ffffff;
-	--handle-background-checked: #ffffff;
-}
 
 /* Button styling */
-ion-button {
-	--background: #000000;
-	--background-activated: #1a1a1a;
-	--background-hover: #1a1a1a;
-	--color: #ffffff;
-	--border-radius: 4px;
-	font-size: 0.875rem;
-}
-
-ion-button[fill="outline"] {
-	--border-color: #000000;
-	--color: #000000;
-	--background: transparent;
-	--background-activated: #f5f5f5;
-	--background-hover: #f5f5f5;
-}
 
 /* Card styling */
-ion-card {
-	border: 1px solid #d9d9d9;
-	box-shadow: none;
-}
 
 /* Toolbar styling */
-ion-toolbar {
-	--border-width: 0 0 1px 0;
-}
 
 /* Tab bar styling */
-ion-tab-bar {
-	border-top: 1px solid #d9d9d9;
-	--background: #ffffff;
-}
 
 /* Hide tab bar on full-screen pages (e.g. reader) */
-ion-tab-bar.tab-bar-hidden {
-	display: none;
-}
 
 /* While the reader is open, force-hide the tab bar regardless of Ionic's
  * internal shadow-DOM :host(.tab-bar-hidden) toggling on keyboard events.
  * External author styles beat shadow :host - no flash, pure CSS. */
-body.reader-open ion-tab-bar {
-	display: none;
-}
-
-ion-tab-button {
-	--color: #666666;
-	--color-selected: #000000;
-}
-
-body.dark ion-tab-button {
-	--color: #888888;
-	--color-selected: #e4e4e4;
-}
-
-body.sepia ion-tab-button {
-	--color: #8a7a63;
-	--color-selected: #3a2e1e;
-}
 
 /* ── Action sheet ── */
 
 /* Outer container: gives both groups side margins, no bottom padding (cancel pill is the last thing) */
-.rsvp-action-sheet .action-sheet-container {
-	padding-left: 12px;
-	padding-right: 12px;
-	padding-bottom: 0;
-}
 
 /* Push the whole sheet above the home indicator */
-.rsvp-action-sheet .action-sheet-wrapper {
-	padding-bottom: 0;
-	margin-bottom: calc(env(safe-area-inset-bottom) + 8px);
-}
 
 /* Main group: fully rounded pill */
-.rsvp-action-sheet .action-sheet-container .action-sheet-group {
-	border-radius: 16px;
-	background: #ffffff;
-	overflow: hidden;
-	margin-bottom: 0;
-}
 
 /* Cancel group: separate pill with gap above, no bottom margin */
-.rsvp-action-sheet .action-sheet-container .action-sheet-group-cancel {
-	border-radius: 16px;
-	margin-top: 8px;
-	margin-bottom: 0;
-	overflow: hidden;
-	background: transparent;
-}
 
 /* Cancel button fills the group completely. Ionic v8 paints the button
    background from the `--button-background` custom property (shadow DOM),
    so the plain `background:` declaration alone doesn't reach it in light
    mode the way it does in dark (where the host-level `--background` cascades). */
-.rsvp-action-sheet .action-sheet-cancel {
-	--button-background: #ffffff;
-	color: #000000;
-	font-weight: 600;
-	background: #ffffff;
-	border-radius: 16px;
-}
 
 /* Header */
-.rsvp-action-sheet .action-sheet-title {
-	font-size: 0.8rem;
-	font-weight: 600;
-	color: #888888;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	padding-top: 18px;
-	padding-bottom: 10px;
-	border-bottom: 1px solid #f0f0f0;
-}
 
 /* All buttons */
-.rsvp-action-sheet .action-sheet-button {
-	font-size: 1rem;
-	font-weight: 500;
-	color: #000000;
-	border-bottom: 1px solid #f0f0f0;
-	min-height: 44px;
-	padding-top: 0;
-	padding-bottom: 0;
-	contain: none;
-}
-
-.rsvp-action-sheet .action-sheet-button .action-sheet-button-inner {
-	height: 44px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.rsvp-action-sheet .action-sheet-button:last-child {
-	border-bottom: none;
-}
 
 /* Destructive button */
-.rsvp-action-sheet .action-sheet-destructive {
-	color: #e53935;
-	font-weight: 600;
-}
 
 /* Disabled button */
-.rsvp-action-sheet .action-sheet-button.ion-color-primary[disabled],
-.rsvp-action-sheet .action-sheet-button[disabled] {
-	color: #bbbbbb;
-	opacity: 1;
-}
 
 /* Pressed state */
-.rsvp-action-sheet .action-sheet-button.ion-activated {
-	background: #f5f5f5;
-}
 
 /* ── Book Reader ── */
 
 /* ── Reader theme variables ── */
-.reader-theme-dark,
-.reader-theme-dark ion-header,
-.reader-theme-dark ion-toolbar {
-	--reader-bg: #1a1a1a;
+.reader-theme-dark {
+	--reader-bg: var(--background);
 	--reader-text: #e4e4e4;
 	--reader-heading: #f0f0f0;
 	--reader-progress-bg: #333333;
 	--reader-progress-fill: #d0d0d0;
 	--reader-progress-label: #888888;
-	--ion-background-color: #1a1a1a;
-	--ion-text-color: #e4e4e4;
-	--ion-toolbar-background: #1a1a1a;
-	--ion-toolbar-color: #e4e4e4;
-	--ion-border-color: #333333;
-	--ion-toolbar-border-color: #333333;
-	--ion-item-background: #1a1a1a;
-	--ion-item-border-color: #333333;
 }
 
-.reader-theme-light,
-.reader-theme-light ion-header,
-.reader-theme-light ion-toolbar {
-	--reader-bg: #ffffff;
+.reader-theme-light {
+	--reader-bg: var(--background);
 	--reader-text: #111111;
 	--reader-heading: #111111;
 	--reader-progress-bg: #e0e0e0;
 	--reader-progress-fill: #000000;
 	--reader-progress-label: #555555;
-	--ion-background-color: #ffffff;
-	--ion-text-color: #000000;
-	--ion-toolbar-background: #ffffff;
-	--ion-toolbar-color: #000000;
-	--ion-item-background: #ffffff;
-	--ion-item-border-color: #d9d9d9;
 }
 
-.reader-theme-sepia,
-.reader-theme-sepia ion-header,
-.reader-theme-sepia ion-toolbar {
-	--reader-bg: #c4b081;
+.reader-theme-sepia {
+	--reader-bg: var(--background);
 	--reader-text: #3a2e1e;
 	--reader-heading: #2d2112;
 	--reader-progress-bg: #d2c3a4;
 	--reader-progress-fill: #7a5f3d;
 	--reader-progress-label: #8a7a63;
-	--ion-background-color: #c4b081;
-	--ion-text-color: #3a2e1e;
-	--ion-toolbar-background: #c4b081;
-	--ion-toolbar-color: #3a2e1e;
-	--ion-border-color: #8a7760;
-	--ion-toolbar-border-color: #8a7760;
-	--ion-item-background: #c4b081;
-	--ion-item-border-color: #8a7760;
 }
 
 /* Apply theme background to IonContent on the reader page */
-.reader-theme-dark ion-content,
-.reader-theme-light ion-content,
-.reader-theme-sepia ion-content {
-	--background: var(--reader-bg);
-}
 
 /* The global `ion-button[fill="outline"]` rule hardcodes black border + black
  * text, which disappears against the dark + sepia reader backgrounds. Theme
  * any outline button rendered inside the reader using the reader-text variable
  * so it stays legible across all three reader themes (which can differ from
  * the app theme). Specificity (0,2,1) beats the global (0,1,1). */
-.reader-theme-dark ion-button[fill="outline"],
-.reader-theme-light ion-button[fill="outline"],
-.reader-theme-sepia ion-button[fill="outline"] {
-	--border-color: var(--reader-text);
-	--color: var(--reader-text);
-	--background: transparent;
-	--background-activated: rgba(127, 127, 127, 0.15);
-	--background-hover: rgba(127, 127, 127, 0.1);
-}
 
 .next-chapter-footer {
 	display: flex;
@@ -786,15 +200,11 @@ body.sepia ion-tab-button {
 	text-align: center;
 }
 
-.next-chapter-footer ion-button {
-	width: 9rem;
-}
-
 /* ── Reader skeleton loading lines ── */
 .reader-skeleton-line {
 	height: 14px;
 	border-radius: 4px;
-	background: var(--ion-color-light, #e0e0e0);
+	background: var(--muted);
 	animation: reader-skeleton-pulse 1.2s ease-in-out infinite;
 }
 
@@ -812,59 +222,6 @@ body.sepia ion-tab-button {
  * Ionic portals modals to document.body, so the reader-theme-* class sits
  * on the ion-modal element itself - selectors must be ion-modal.reader-theme-*
  * (not .reader-theme-* ion-modal). */
-ion-modal.reader-theme-dark,
-ion-modal.reader-theme-dark ion-header,
-ion-modal.reader-theme-dark ion-toolbar,
-ion-modal.reader-theme-dark ion-content,
-ion-modal.reader-theme-dark ion-list,
-ion-modal.reader-theme-dark ion-item {
-	--ion-background-color: #1a1a1a;
-	--ion-text-color: #e4e4e4;
-	--ion-toolbar-background: #1a1a1a;
-	--ion-toolbar-color: #e4e4e4;
-	--ion-border-color: #333333;
-	--ion-toolbar-border-color: #333333;
-	--ion-item-background: #1a1a1a;
-	--ion-item-border-color: #333333;
-	--background: #1a1a1a;
-	--color: #e4e4e4;
-}
-
-ion-modal.reader-theme-light,
-ion-modal.reader-theme-light ion-header,
-ion-modal.reader-theme-light ion-toolbar,
-ion-modal.reader-theme-light ion-content,
-ion-modal.reader-theme-light ion-list,
-ion-modal.reader-theme-light ion-item {
-	--ion-background-color: #ffffff;
-	--ion-text-color: #111111;
-	--ion-toolbar-background: #ffffff;
-	--ion-toolbar-color: #000000;
-	--ion-border-color: #d9d9d9;
-	--ion-toolbar-border-color: #d9d9d9;
-	--ion-item-background: #ffffff;
-	--ion-item-border-color: #d9d9d9;
-	--background: #ffffff;
-	--color: #111111;
-}
-
-ion-modal.reader-theme-sepia,
-ion-modal.reader-theme-sepia ion-header,
-ion-modal.reader-theme-sepia ion-toolbar,
-ion-modal.reader-theme-sepia ion-content,
-ion-modal.reader-theme-sepia ion-list,
-ion-modal.reader-theme-sepia ion-item {
-	--ion-background-color: #c4b081;
-	--ion-text-color: #3a2e1e;
-	--ion-toolbar-background: #c4b081;
-	--ion-toolbar-color: #3a2e1e;
-	--ion-border-color: #8a7760;
-	--ion-toolbar-border-color: #8a7760;
-	--ion-item-background: #c4b081;
-	--ion-item-border-color: #8a7760;
-	--background: #c4b081;
-	--color: #3a2e1e;
-}
 
 .reader-paragraph {
 	font-size: 1em; /* em = inherits px from VList inline style */
@@ -900,22 +257,6 @@ ion-modal.reader-theme-sepia ion-item {
 	margin: 1.6em 0 0.4em 0;
 	line-height: 1.3;
 	word-break: break-word;
-}
-
-.reader-heading-1,
-.reader-heading-2 {
-	font-size: 1.4em;
-}
-
-.reader-heading-3,
-.reader-heading-4 {
-	font-size: 1.2em;
-}
-
-.reader-heading-5,
-.reader-heading-6 {
-	font-size: 1em;
-	font-style: italic;
 }
 
 /* ── Progress bar ── */
@@ -983,114 +324,20 @@ ion-modal.reader-theme-sepia ion-item {
 }
 
 /* ── Transfer progress modal ── */
-.rsvp-transfer-modal {
-	--height: auto;
-	--width: 280px;
-	--max-width: 80%;
-	--border-radius: 16px;
-	--box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-}
 
 /* ── shadcn-style Alert ──
  * Solid surface with subtle border + soft shadow, generous padding,
  * left-aligned title/description, footer buttons right-aligned. Destructive
  * action is filled red, cancel is an outline ghost button. */
-.rsvp-alert {
-	--backdrop-opacity: 0.6;
-}
-
-.rsvp-alert .alert-wrapper {
-	width: min(92vw, 420px);
-	max-width: 420px;
-	border-radius: 12px;
-	padding: 8px;
-	background: var(--ion-background-color);
-	color: var(--ion-text-color);
-	border: 1px solid var(--ion-border-color);
-	box-shadow:
-		0 24px 48px rgba(0, 0, 0, 0.18),
-		0 4px 12px rgba(0, 0, 0, 0.06);
-	overflow: hidden;
-}
-
-.rsvp-alert .alert-head {
-	padding: 0 0 8px;
-	text-align: left;
-}
-
-.rsvp-alert .alert-title {
-	font-size: 1.125rem;
-	font-weight: 600;
-	color: var(--ion-text-color);
-	letter-spacing: -0.01em;
-	margin: 0;
-}
-
-.rsvp-alert .alert-sub-title {
-	display: none;
-}
-
-.rsvp-alert .alert-message {
-	font-size: 0.875rem;
-	color: var(--ion-color-medium);
-	text-align: left;
-	padding: 0;
-	margin: 0;
-	line-height: 1.5;
-}
-
-.rsvp-alert .alert-button-group {
-	border-top: none;
-	padding: 24px 0 0;
-	display: flex;
-	flex-direction: row;
-	justify-content: flex-end;
-	flex-wrap: nowrap;
-	gap: 8px;
-}
-
-.rsvp-alert .alert-button {
-	flex: 0 0 auto;
-	height: 36px;
-	min-height: 0;
-	margin: 0;
-	padding: 0 16px;
-	border-radius: 8px;
-	font-size: 0.875rem;
-	font-weight: 500;
-	text-transform: none;
-	letter-spacing: 0;
-	background: transparent;
-	color: var(--ion-text-color);
-	border: 1px solid var(--ion-border-color);
-}
-
-.rsvp-alert .alert-button-inner {
-	justify-content: center;
-}
-
-.rsvp-alert .alert-button ion-ripple-effect {
-	display: none;
-}
 
 /* Destructive — filled red. */
-.rsvp-alert .alert-button.alert-button-role-destructive {
-	background: #dc2626;
-	color: #ffffff;
-	border-color: #dc2626;
-}
 
 /* Confirm (non-destructive primary) — filled in current text color. */
-.rsvp-alert .alert-button.alert-button-role-confirm {
-	background: var(--ion-text-color);
-	color: var(--ion-background-color);
-	border-color: var(--ion-text-color);
-}
 
 /* Dark mode — surface uses the elevated card background so the dialog reads
  * as a layer above the page. */
 body.dark .rsvp-alert .alert-wrapper {
-	background: var(--ion-card-background);
+	background: var(--card);
 	border-color: rgba(255, 255, 255, 0.1);
 	box-shadow:
 		0 24px 48px rgba(0, 0, 0, 0.55),
@@ -1108,138 +355,9 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 
 /* ── Dictionary modal ── */
 
-.dict-center {
-	display: flex;
-	justify-content: center;
-	padding: 32px 0;
-}
-
-.dict-not-found {
-	color: #666666;
-	font-size: 0.95rem;
-	text-align: center;
-	padding: 24px 0;
-}
-
-.dict-entry {
-	padding-bottom: 32px;
-}
-
-.dict-phonetic {
-	font-size: 0.9rem;
-	color: #666666;
-	margin: 0 0 12px 0;
-}
-
-.dict-meaning {
-	margin-bottom: 20px;
-}
-
-.dict-pos {
-	font-size: 0.8rem;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	color: #888888;
-	margin: 0 0 8px 0;
-}
-
-.dict-definitions {
-	margin: 0;
-	padding-left: 18px;
-}
-
-.dict-definitions li {
-	margin-bottom: 8px;
-	font-size: 0.95rem;
-	line-height: 1.5;
-}
-
-.dict-definition {
-	color: var(--ion-text-color, #111111);
-}
-
-.dict-example {
-	color: var(--ion-color-medium, #666666);
-	font-style: italic;
-}
-
 /* ── Search modal ── */
 
-.rsvp-search-modal {
-	--border-radius: 20px 20px 0 0;
-}
-
-.search-input-wrap {
-	padding: 12px 16px 4px;
-}
-
-.search-input {
-	width: 100%;
-	box-sizing: border-box;
-	padding: 10px 14px;
-	border: 1.5px solid var(--ion-border-color, #d9d9d9);
-	border-radius: 10px;
-	font-size: 1rem;
-	background: var(--ion-background-color, #ffffff);
-	color: var(--ion-text-color, #000000);
-	outline: none;
-	appearance: none;
-	-webkit-appearance: none;
-}
-
-.search-input:focus {
-	border-color: var(--ion-text-color, #000000);
-}
-
 /* Hide the native 'x' clear button - we clear on close */
-.search-input::-webkit-search-cancel-button {
-	-webkit-appearance: none;
-}
-
-.search-result-count {
-	font-size: 0.75rem;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	color: #888888;
-	margin: 8px 16px 4px;
-}
-
-.search-results-list {
-	margin: 0;
-	padding: 0;
-}
-
-.search-result-label {
-	white-space: normal;
-}
-
-.search-snippet {
-	font-size: 0.88rem;
-	line-height: 1.45;
-	color: var(--ion-text-color, #111111);
-	margin: 6px 0;
-	/* Clamp to 3 lines */
-	display: -webkit-box;
-	-webkit-line-clamp: 3;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-}
-
-.search-match {
-	font-weight: 700;
-	/* No color change - stays readable in both reader themes */
-}
-
-.search-pct {
-	font-size: 0.75rem;
-	font-weight: 500;
-	color: #888888;
-	white-space: nowrap;
-	padding-left: 8px;
-	flex-shrink: 0;
-}
 
 .search-empty {
 	font-size: 0.9rem;
@@ -1308,7 +426,6 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
  * scroll/pointer gestures pass through empty areas of the display). */
 .rsvp-context-word,
 .rsvp-controls,
-.rsvp-controls ion-button,
 .rsvp-playpause,
 .rsvp-dict-button,
 .rsvp-settings-button {
@@ -1360,26 +477,6 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	background: inherit;
 }
 
-.rsvp-color-swatches {
-	display: flex;
-	gap: 0.5rem;
-	align-items: center;
-	padding: 0.35rem 0;
-}
-
-.rsvp-color-swatch {
-	width: 1.75rem;
-	height: 1.75rem;
-	border: 2px solid rgba(128, 128, 128, 0.35);
-	border-radius: 999px;
-	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
-}
-
-.rsvp-color-swatch--active {
-	border-color: var(--ion-color-primary, #111111);
-	box-shadow: 0 0 0 2px rgba(128, 128, 128, 0.25);
-}
-
 .rsvp-paused-indicator {
 	position: absolute;
 	bottom: 80px;
@@ -1392,16 +489,13 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 }
 
 /* Active RSVP toggle button styling */
-.rsvp-toggle-active {
-	color: #ff0000;
-}
 
 /* ── RSVP controls (visible when paused) ── */
 
 .rsvp-controls {
 	position: absolute;
 	left: 50%;
-	bottom: 8px;
+	bottom: 24px;
 	transform: translateX(-50%);
 	display: flex;
 	flex-direction: column;
@@ -1422,25 +516,6 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	gap: 4px;
 }
 
-.rsvp-controls ion-button {
-	--color: var(--reader-text);
-	--background: transparent;
-	--background-hover: var(--reader-progress-track, rgba(128, 128, 128, 0.18));
-	--background-activated: var(--reader-progress-track, rgba(128, 128, 128, 0.25));
-	--box-shadow: none;
-	--padding-start: 0;
-	--padding-end: 0;
-	--border-radius: 10px;
-	margin: 0;
-	width: 40px;
-	height: 40px;
-	opacity: 0.85;
-}
-
-.rsvp-controls ion-button ion-icon {
-	font-size: 1.2rem;
-}
-
 /* Primary play/pause - inverted fill to contrast the ghost buttons */
 .rsvp-playpause {
 	width: 44px;
@@ -1458,10 +533,6 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	transition:
 		transform 120ms ease,
 		box-shadow 120ms ease;
-}
-
-.rsvp-playpause ion-icon {
-	font-size: 1.35rem;
 }
 
 .rsvp-playpause:active {
@@ -1596,7 +667,7 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 .rsvp-dict-button,
 .rsvp-settings-button {
 	position: absolute;
-	bottom: 16px;
+	bottom: 24px;
 	width: 44px;
 	height: 44px;
 	border-radius: 50%;
@@ -1628,22 +699,6 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 /* ─── Highlights ─────────────────────────────────────────────────────────── */
 
 /* Highlight background colors - 35% opacity works on both dark and light themes */
-.word-highlight-yellow {
-	background: rgba(255, 235, 59, 0.35);
-	border-radius: 2px;
-}
-.word-highlight-blue {
-	background: rgba(100, 181, 246, 0.35);
-	border-radius: 2px;
-}
-.word-highlight-orange {
-	background: rgba(255, 183, 77, 0.35);
-	border-radius: 2px;
-}
-.word-highlight-pink {
-	background: rgba(240, 98, 146, 0.35);
-	border-radius: 2px;
-}
 
 /* Active selection being built (drag-to-select) */
 .word-selecting {
@@ -1694,11 +749,6 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	flex-shrink: 0;
 }
 
-.word-glossary {
-	border-bottom: 2px solid var(--glossary-color, currentColor);
-	padding-bottom: 1px;
-}
-
 /* ─── Glossary entry modal ───────────────────────────────────────────────── */
 
 .glossary-avatar {
@@ -1718,53 +768,6 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 		0 -1px 0 rgba(0, 0, 0, 0.75),
 		0 1px 0 rgba(0, 0, 0, 0.75);
 }
-
-.glossary-modal-header {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	margin-bottom: 16px;
-}
-
-.glossary-modal-label {
-	flex: 1;
-	font-size: 18px;
-	font-weight: 600;
-	--padding-start: 8px;
-	--padding-end: 8px;
-}
-
-.glossary-modal-delete-btn {
-	background: none;
-	border: none;
-	padding: 8px;
-	cursor: pointer;
-	color: var(--ion-color-step-600, #666);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 8px;
-}
-.glossary-modal-delete-btn:hover {
-	background: rgba(128, 128, 128, 0.12);
-}
-
-.glossary-modal-context {
-	margin: 12px 0;
-	padding: 8px 12px;
-	border-left: 3px solid var(--ion-color-medium, #999);
-	background: rgba(128, 128, 128, 0.06);
-	border-radius: 4px;
-	font-size: 13px;
-	line-height: 1.45;
-	color: var(--ion-color-step-700, #444);
-}
-.glossary-modal-context mark {
-	background: var(--glossary-mark-bg, rgba(255, 235, 59, 0.45));
-	color: inherit;
-	padding: 0 2px;
-	border-radius: 2px;
-}
 /* Tone the highlight to suit each reader theme. */
 .reader-theme-sepia .glossary-modal-context mark {
 	--glossary-mark-bg: rgba(180, 130, 60, 0.28);
@@ -1776,102 +779,16 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	--glossary-mark-bg: rgba(255, 230, 80, 0.32);
 }
 
-.glossary-modal-row {
-	margin: 12px 0;
-}
-
-.glossary-modal-colors {
-	display: flex;
-	gap: 10px;
-	flex-wrap: wrap;
-}
-
-.glossary-color-swatch {
-	width: 28px;
-	height: 28px;
-	border-radius: 50%;
-	border: 2px solid transparent;
-	cursor: pointer;
-	padding: 0;
-}
-.glossary-color-swatch--active {
-	border-color: var(--ion-color-primary, #3880ff);
-}
-
-.glossary-modal-scope {
-	margin: 12px 0;
-	--padding-start: 0;
-	--inner-padding-end: 0;
-}
-
-.glossary-modal-notes {
-	margin: 12px 0;
-	--padding-start: 12px;
-	--padding-end: 12px;
-	--padding-top: 10px;
-	--padding-bottom: 10px;
-	background: var(--reader-progress-track, rgba(128, 128, 128, 0.08));
-	border-radius: 8px;
-}
-
 /* Ionic's textarea host doesn't always forward --padding-start/end to the native
  * <textarea> when no label slot is present, so enforce the inset directly. */
-.glossary-modal-notes textarea.native-textarea,
-.glossary-modal-notes .native-textarea {
-	padding-inline-start: 12px !important;
-	padding-inline-end: 12px !important;
-	padding-top: 10px !important;
-	padding-bottom: 10px !important;
-}
-
-.glossary-modal-actions {
-	display: flex;
-	gap: 8px;
-	flex-wrap: wrap;
-	margin-top: 16px;
-}
-
-.glossary-modal-action-btn {
-	flex: 1;
-	min-width: 140px;
-	padding: 10px 14px;
-	border-radius: 8px;
-	border: 1px solid var(--ion-border-color, #d9d9d9);
-	background: transparent;
-	color: var(--ion-text-color, inherit);
-	font-size: 14px;
-	font-weight: 500;
-	cursor: pointer;
-}
-.glossary-modal-action-btn:active {
-	background: var(--reader-progress-track, rgba(128, 128, 128, 0.15));
-}
 
 /* ─── Annotations sheet ──────────────────────────────────────────────────── */
 
 /* Push the toolbar (and its segment) down so the sheet's drag handle has clear
  * tap space. IonToolbar exposes its inner padding via the `--padding-top` CSS
  * variable; setting `padding-top` on the host doesn't move the slotted content. */
-.rsvp-annotations-modal ion-header ion-toolbar {
-	--padding-top: 16px;
-	--min-height: 64px;
-}
 
 /* ─── Glossary list (annotations sheet) ──────────────────────────────────── */
-
-ion-item .glossary-avatar {
-	margin-inline-end: 12px;
-}
-
-.glossary-list-label {
-	font-weight: 500;
-}
-
-.glossary-list-notes {
-	font-size: 13px;
-	color: var(--ion-color-step-500, #888);
-	margin-top: 2px;
-}
 
 /* ─── Selection toolbar ──────────────────────────────────────────────────── */
 
@@ -1891,8 +808,8 @@ ion-item .glossary-avatar {
 	height: 48px;
 	padding: 0 8px 0 16px;
 	border-radius: 10px;
-	border: 1px solid var(--ion-border-color, #d9d9d9);
-	background: var(--ion-background-color, #fff);
+	border: 1px solid var(--border);
+	background: var(--background);
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -1903,19 +820,13 @@ ion-item .glossary-avatar {
 	padding: 6px;
 	margin: 0;
 	cursor: pointer;
-	color: var(--ion-text-color, #333);
+	color: var(--foreground);
 	font-size: 22px;
 	line-height: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	border-radius: 4px;
-}
-
-.selection-toolbar-hint {
-	flex: 1;
-	font-size: 0.85rem;
-	color: var(--ion-color-medium, #888);
 }
 
 .selection-toolbar-colors {
@@ -1937,7 +848,7 @@ ion-item .glossary-avatar {
 }
 
 .selection-color-swatch--active {
-	border-color: var(--ion-text-color, #000);
+	border-color: var(--foreground);
 }
 
 /* ─── Selection handles ──────────────────────────────────────────────────── */
@@ -1970,7 +881,7 @@ ion-item .glossary-avatar {
 	display: block;
 	width: 3px;
 	height: var(--bar-height, 20px);
-	background: var(--ion-color-primary, #3880ff);
+	background: var(--primary);
 	margin: 0 auto;
 }
 
@@ -1981,7 +892,7 @@ ion-item .glossary-avatar {
 	width: 20px;
 	height: 20px;
 	border-radius: 50%;
-	background: var(--ion-color-primary, #3880ff);
+	background: var(--primary);
 	border: 2px solid white;
 	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 	margin: 0 auto;
@@ -1989,114 +900,13 @@ ion-item .glossary-avatar {
 
 /* ─── Highlight modal ────────────────────────────────────────────────────── */
 
-.rsvp-highlight-modal {
-	--border-radius: 16px 16px 0 0;
-}
-
-.highlight-modal-snippet {
-	margin: 0 0 12px 0;
-	padding: 8px 12px;
-	border-left: 3px solid var(--ion-color-medium, #999);
-	font-style: italic;
-	font-size: 0.9rem;
-	color: var(--ion-color-medium, #666);
-	line-height: 1.4;
-}
-
 /* Color swatches + delete button on one row */
-.highlight-modal-row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	margin-bottom: 12px;
-}
-
-.highlight-modal-colors {
-	display: flex;
-	gap: 12px;
-}
-
-.highlight-modal-delete-btn {
-	background: none;
-	border: none;
-	padding: 4px;
-	cursor: pointer;
-	color: var(--ion-color-danger, #eb445a);
-	font-size: 22px;
-	display: flex;
-	align-items: center;
-}
-
-.highlight-modal-note {
-	--background: var(--ion-item-background, transparent);
-	margin-bottom: 0;
-}
-
-.highlight-modal-actions {
-	display: flex;
-	gap: 8px;
-	flex-wrap: wrap;
-}
 
 /* ─── Highlights list modal ──────────────────────────────────────────────── */
 
-.highlights-list-empty {
-	padding: 32px 20px;
-	text-align: center;
-	color: var(--ion-color-medium, #888);
-	font-size: 0.95rem;
-}
-
-.highlight-list-dot {
-	display: inline-block;
-	width: 12px;
-	height: 12px;
-	border-radius: 50%;
-	flex-shrink: 0;
-	margin-top: 2px;
-}
-
-.highlight-list-snippet {
-	font-size: 0.9rem;
-	font-style: italic;
-	color: var(--ion-text-color, #000);
-	white-space: normal;
-	margin-bottom: 2px;
-}
-
-.highlight-list-note {
-	font-size: 0.8rem;
-	color: var(--ion-color-medium, #888);
-	white-space: normal;
-	margin-top: 2px;
-}
-
 /* ─── Note textarea (in-selection note input modal) ─────────────────────── */
 
-.highlight-note-textarea {
-	width: 100%;
-	border: 1.5px solid var(--ion-border-color, #d9d9d9);
-	border-radius: 8px;
-	padding: 10px 12px;
-	font-size: 1rem;
-	font-family: inherit;
-	background: transparent;
-	color: var(--ion-text-color, #000);
-	resize: none;
-	outline: none;
-	line-height: 1.5;
-}
-
-.highlight-note-textarea:focus {
-	border-color: var(--ion-color-primary, #3880ff);
-}
-
 /* ─── Appearance Popover ─────────────────────────────────────────────────── */
-
-ion-popover.appearance-popover {
-	--width: 272px;
-	--offset-y: 4px;
-}
 
 .appearance-popover-content {
 	padding: 14px 12px;
@@ -2115,31 +925,8 @@ ion-popover.appearance-popover {
 	font-size: 0.7rem;
 	text-transform: uppercase;
 	letter-spacing: 0.07em;
-	color: var(--ion-color-medium, #888);
+	color: var(--muted-foreground);
 	font-weight: 600;
-}
-
-.ap-chips {
-	display: flex;
-	gap: 6px;
-}
-
-.ap-chip {
-	flex: 1;
-	padding: 7px 4px;
-	border-radius: 7px;
-	border: 1.5px solid var(--ion-border-color, #444);
-	background: transparent;
-	color: var(--ion-text-color, #fff);
-	font-size: 0.82rem;
-	cursor: pointer;
-	line-height: 1;
-}
-
-.ap-chip--active {
-	background: var(--ion-color-primary, #3880ff);
-	color: var(--ion-color-primary-contrast, #fff);
-	border-color: var(--ion-color-primary, #3880ff);
 }
 
 .ap-section--rows {
@@ -2151,18 +938,18 @@ ion-popover.appearance-popover {
 	align-items: center;
 	gap: 8px;
 	padding: 8px 0;
-	border-top: 1px solid var(--ion-border-color, #333);
+	border-top: 1px solid var(--border);
 }
 
 .ap-row-label {
 	flex: 1;
 	font-size: 0.88rem;
-	color: var(--ion-text-color, #fff);
+	color: var(--foreground);
 }
 
 .ap-row-value {
 	font-size: 0.78rem;
-	color: var(--ion-color-medium, #888);
+	color: var(--muted-foreground);
 	min-width: 36px;
 	text-align: right;
 }
@@ -2176,9 +963,9 @@ ion-popover.appearance-popover {
 	width: 34px;
 	height: 34px;
 	border-radius: 6px;
-	border: 1.5px solid var(--ion-border-color, #444);
+	border: 1.5px solid var(--border);
 	background: transparent;
-	color: var(--ion-text-color, #fff);
+	color: var(--foreground);
 	font-size: 0.9rem;
 	font-weight: 600;
 	cursor: pointer;
@@ -2203,7 +990,7 @@ ion-popover.appearance-popover {
 
 .ap-settings-val {
 	font-size: 0.82rem;
-	color: var(--ion-color-medium, #888);
+	color: var(--muted-foreground);
 	min-width: 40px;
 	text-align: right;
 }
@@ -2215,7 +1002,7 @@ ion-popover.appearance-popover {
 	margin: 0 0 1rem;
 	padding: 0;
 	background: var(--reader-bg, #000);
-	border: 1px solid var(--ion-border-color, #333);
+	border: 1px solid var(--border);
 	border-radius: 10px;
 	overflow: hidden;
 	cursor: pointer;
@@ -2230,7 +1017,7 @@ ion-popover.appearance-popover {
 	font-size: 0.68rem;
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
-	color: var(--ion-color-medium, #888);
+	color: var(--muted-foreground);
 	font-weight: 600;
 }
 
@@ -2262,157 +1049,7 @@ ion-popover.appearance-popover {
 	height: 0.45rem;
 }
 
-.rsvp-advanced-toggle {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	width: 100%;
-	padding: 14px 16px;
-	background: transparent;
-	border: none;
-	border-top: 1px solid var(--ion-border-color, #333);
-	color: var(--ion-color-medium, #888);
-	font-size: 0.78rem;
-	text-transform: uppercase;
-	letter-spacing: 0.07em;
-	font-weight: 600;
-	cursor: pointer;
-}
-
-.rsvp-advanced-chevron {
-	font-size: 1.1rem;
-	transition: transform 150ms ease;
-}
-
-.rsvp-advanced-chevron--open {
-	transform: rotate(180deg);
-}
-
-.rsvp-mode-picker {
-	display: flex;
-	gap: 10px;
-	width: 100%;
-	padding: 10px 0;
-}
-
-.rsvp-mode-card {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: 6px;
-	padding: 14px 14px 12px;
-	border-radius: 10px;
-	border: 1.5px solid var(--ion-border-color, #444);
-	background: transparent;
-	color: var(--ion-text-color, #fff);
-	cursor: pointer;
-	text-align: left;
-	transition:
-		border-color 120ms ease,
-		background 120ms ease;
-	-webkit-tap-highlight-color: transparent;
-}
-
-.rsvp-mode-card__icon {
-	font-size: 1.4rem;
-	color: var(--ion-color-medium, #888);
-}
-
-.rsvp-mode-card__label {
-	font-size: 0.95rem;
-	font-weight: 600;
-	line-height: 1.1;
-}
-
-.rsvp-mode-card__desc {
-	font-size: 0.75rem;
-	color: var(--ion-color-medium, #888);
-	line-height: 1.25;
-}
-
-.rsvp-mode-card--active {
-	border-color: var(--ion-color-primary, #3880ff);
-	background: color-mix(in srgb, var(--ion-color-primary, #3880ff) 10%, transparent);
-}
-
-.rsvp-mode-card--active .rsvp-mode-card__icon {
-	color: var(--ion-color-primary, #3880ff);
-}
-
-.rsvp-reset-wrap {
-	padding: 16px;
-}
-
-.rsvp-reset-btn {
-	width: 100%;
-	padding: 10px;
-	background: transparent;
-	border: 1.5px solid var(--ion-border-color, #444);
-	border-radius: 7px;
-	color: var(--ion-color-danger, #eb445a);
-	font-size: 0.88rem;
-	font-weight: 600;
-	cursor: pointer;
-}
-
-.rsvp-link-btn {
-	width: 100%;
-	margin-top: 8px;
-	padding: 10px;
-	background: transparent;
-	border: none;
-	color: var(--ion-color-primary, #3880ff);
-	font-size: 0.88rem;
-	font-weight: 600;
-	text-decoration: underline;
-	cursor: pointer;
-}
-
-.rsvp-link-btn:hover {
-	opacity: 0.8;
-}
-
-.rsvp-link-btn:focus-visible {
-	outline: 2px solid var(--ion-color-primary, #3880ff);
-	outline-offset: 2px;
-	border-radius: 4px;
-}
-
 /* ── Local storage notice (web embed, unauthenticated) ── */
-.local-storage-notice {
-	display: flex;
-	align-items: flex-start;
-	gap: 0.75rem;
-	padding: 0.7rem 1rem;
-	background: #f5f5f5;
-	border-bottom: 1px solid #d9d9d9;
-	font-size: 0.82rem;
-	line-height: 1.45;
-}
-
-.local-storage-notice__text {
-	flex: 1;
-	color: #333333;
-}
-
-.local-storage-notice__link {
-	color: #333333;
-	text-decoration: underline;
-	font-weight: 600;
-}
-
-.local-storage-notice__dismiss {
-	background: none;
-	border: none;
-	cursor: pointer;
-	padding: 0;
-	color: #888888;
-	font-size: 0.9rem;
-	line-height: 1;
-	flex-shrink: 0;
-	margin-top: 1px;
-}
 
 body.dark .local-storage-notice {
 	background: #242424;
@@ -2449,17 +1086,6 @@ body.sepia .local-storage-notice__dismiss {
 }
 
 /* ── Library toolbar ── */
-.library-toolbar {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	width: 100%;
-	padding-inline: 1rem;
-}
-
-.library-toolbar ion-buttons {
-	flex-shrink: 0;
-}
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Desktop layout (≥768px)
@@ -2468,9 +1094,6 @@ body.sepia .local-storage-notice__dismiss {
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Sidebar (hidden on mobile) ── */
-.desktop-sidebar {
-	display: none;
-}
 
 /* ── Shared content max-width container ── */
 .content-container {
@@ -2491,139 +1114,28 @@ body.sepia .local-storage-notice__dismiss {
 	}
 
 	/* Show sidebar, hide tab bar */
-	.desktop-sidebar {
-		display: flex;
-		flex-direction: column;
-		width: var(--sidebar-width);
-		min-width: var(--sidebar-width);
-		height: 100%;
-		position: fixed;
-		top: 0;
-		left: 0;
-		z-index: 100;
-		background: var(--ion-background-color, #ffffff);
-		border-right: 1px solid var(--ion-border-color, #d9d9d9);
-		padding: 16px 0;
-		transition:
-			width 180ms ease,
-			min-width 180ms ease;
-		overflow: hidden;
-	}
-
-	.desktop-sidebar-brand {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 8px 20px 24px;
-		font-size: 1.25rem;
-		font-weight: 700;
-		letter-spacing: 0.05em;
-		color: inherit;
-		text-decoration: none;
-		white-space: nowrap;
-	}
-
-	a.desktop-sidebar-brand:hover {
-		opacity: 0.7;
-	}
-
-	.desktop-sidebar-item {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		padding: 10px 20px;
-		width: 100%;
-		font-size: 0.95rem;
-		color: var(--ion-color-medium, #666);
-		background: none;
-		border: none;
-		cursor: pointer;
-		text-align: left;
-		white-space: nowrap;
-		transition:
-			background 0.15s,
-			color 0.15s;
-	}
-
-	.desktop-sidebar-item:hover {
-		background: var(--ion-color-light, #f5f5f5);
-	}
-
-	.desktop-sidebar-item.active {
-		color: var(--ion-text-color, #000);
-		font-weight: 600;
-	}
-
-	.desktop-sidebar-item ion-icon {
-		font-size: 1.25rem;
-		flex-shrink: 0;
-	}
 
 	/* Floating pill - straddles the sidebar's right edge. Position tracks
 	   --sidebar-width so the button smoothly follows the collapse animation. */
-	.desktop-sidebar-toggle {
-		position: fixed;
-		top: 22px;
-		left: calc(var(--sidebar-width) - 14px);
-		width: 28px;
-		height: 28px;
-		border-radius: 50%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 101;
-		background: var(--ion-background-color, #ffffff);
-		color: var(--ion-color-medium, #666);
-		border: 1px solid var(--ion-border-color, #d9d9d9);
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-		cursor: pointer;
-		font-size: 1rem;
-		transition:
-			left 180ms ease,
-			background 0.15s,
-			color 0.15s;
-	}
-
-	.desktop-sidebar-toggle:hover {
-		background: var(--ion-color-light, #f5f5f5);
-		color: var(--ion-text-color, #000);
-	}
 
 	/* Collapsed state - labels hidden, icons stay put.
 	   Intentionally NOT re-centering items/brand: changing justify-content or
 	   padding at the same moment the width animates makes icons jump from the
 	   left edge to the (still-wide) container center, then slide back. Keeping
 	   padding constant pins icons to x=20px throughout the transition. */
-	.desktop-sidebar.collapsed .desktop-sidebar-brand-text {
-		display: none;
-	}
-
-	.desktop-sidebar.collapsed .desktop-sidebar-item ion-label {
-		display: none;
-	}
 
 	/* Push main content right of sidebar */
-	ion-router-outlet.desktop-main {
-		margin-left: var(--sidebar-width);
-		transition: margin-left 180ms ease;
-	}
 
 	/* Leave room for the floating sidebar toggle (which extends ~14px into the
 	   main content area) so it doesn't overlap the toolbar's start slot - most
 	   visible on the reader page where IonBackButton sits there. */
-	ion-router-outlet.desktop-main ion-toolbar ion-buttons[slot="start"] {
-		margin-left: 24px;
-	}
 
 	/* Hide bottom tab bar on desktop */
-	ion-tab-bar {
-		display: none !important;
-	}
 
 	/* Dark theme sidebar overrides */
 	body.dark .desktop-sidebar {
-		background: var(--ion-background-color, #1a1a1a);
-		border-right-color: var(--ion-border-color, #333);
+		background: var(--background);
+		border-right-color: var(--border);
 	}
 
 	body.dark .desktop-sidebar-item:hover {
@@ -2631,18 +1143,18 @@ body.sepia .local-storage-notice__dismiss {
 	}
 
 	body.dark .desktop-sidebar-toggle {
-		background: var(--ion-background-color, #1a1a1a);
-		border-color: var(--ion-border-color, #333);
+		background: var(--background);
+		border-color: var(--border);
 	}
 
 	body.dark .desktop-sidebar-toggle:hover {
 		background: #242424;
-		color: var(--ion-text-color, #fff);
+		color: var(--foreground);
 	}
 
 	body.sepia .desktop-sidebar {
-		background: var(--ion-background-color, #c4b081);
-		border-right-color: var(--ion-border-color, #8a7760);
+		background: var(--background);
+		border-right-color: var(--border);
 	}
 
 	body.sepia .desktop-sidebar-item:hover {
@@ -2650,77 +1162,17 @@ body.sepia .local-storage-notice__dismiss {
 	}
 
 	body.sepia .desktop-sidebar-toggle {
-		background: var(--ion-background-color, #c4b081);
-		border-color: var(--ion-border-color, #8a7760);
+		background: var(--background);
+		border-color: var(--border);
 	}
 
 	body.sepia .desktop-sidebar-toggle:hover {
 		background: #b29f6f;
-		color: var(--ion-text-color, #3a2e1e);
+		color: var(--foreground);
 	}
 }
 
 /* ── Explore tab ─────────────────────────────────────────────────────────── */
-
-.explore-toolbar {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	width: 100%;
-	padding-inline: 1rem;
-}
-
-.app-brand {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	flex: 1;
-	min-width: 0;
-	font-weight: 600;
-	font-size: 1rem;
-}
-
-.app-brand img {
-	width: 24px;
-	height: 24px;
-	border-radius: 5px;
-	flex-shrink: 0;
-}
-
-.app-brand span {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.explore-searchbar {
-	flex: 1;
-	--background: transparent;
-	--box-shadow: none;
-	padding: 0;
-}
-
-.explore-actions {
-	flex-shrink: 0;
-	display: flex;
-	align-items: center;
-	gap: 0.25rem;
-}
-
-.explore-lang-compact {
-	font-size: 0.8rem;
-	font-weight: 600;
-	min-height: 2rem;
-	padding-inline: 0.5rem;
-	border-radius: 6px;
-	--padding-start: 0.5rem;
-	--padding-end: 0.5rem;
-}
-
-.explore-lang-compact::part(container) {
-	text-transform: uppercase;
-	letter-spacing: 0.03em;
-}
 
 /* ── Cover images ── */
 
@@ -2777,55 +1229,6 @@ body.sepia .cover-image-shimmer {
 
 /* ── Explore: pagination ── */
 
-.pagination {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: center;
-	gap: 0.25rem;
-	padding: 1rem 1rem 2rem;
-}
-
-.pagination-btn {
-	min-width: 2.25rem;
-	height: 2.25rem;
-	padding: 0 0.5rem;
-	border: 1px solid #d9d9d9;
-	border-radius: 6px;
-	background: #fff;
-	color: inherit;
-	font-size: 0.85rem;
-	font-weight: 500;
-	cursor: pointer;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.pagination-btn:hover:not(:disabled):not(.active) {
-	background: #f3f3f3;
-	border-color: #c0c0c0;
-}
-
-.pagination-btn.active {
-	background: #1a1a1a;
-	border-color: #1a1a1a;
-	color: #fff;
-	cursor: default;
-}
-
-.pagination-btn:disabled {
-	opacity: 0.4;
-	cursor: not-allowed;
-}
-
-.pagination-ellipsis {
-	min-width: 1.5rem;
-	text-align: center;
-	color: #888;
-	user-select: none;
-}
-
 body.dark .pagination-btn {
 	background: #242424;
 	border-color: #333;
@@ -2868,44 +1271,7 @@ body.sepia .pagination-ellipsis {
 
 /* ── Explore: genre tiles ── */
 
-.explore-genre-grid {
-	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 0.5rem;
-}
-
 @media (min-width: 640px) {
-	.explore-genre-grid {
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-	}
-}
-
-.explore-genre-tile {
-	display: flex;
-	align-items: center;
-	justify-content: flex-start;
-	min-height: 3rem;
-	padding: 0.75rem 1rem;
-	border: 1px solid #d9d9d9;
-	border-radius: 8px;
-	background: #fafafa;
-	color: inherit;
-	font-weight: 500;
-	font-size: 0.9rem;
-	text-align: left;
-	cursor: pointer;
-	transition:
-		background 150ms ease,
-		border-color 150ms ease;
-}
-
-.explore-genre-tile:hover {
-	background: #f0f0f0;
-	border-color: #c0c0c0;
-}
-
-.explore-genre-tile:active {
-	opacity: 0.75;
 }
 
 body.dark .explore-genre-tile {
@@ -2920,176 +1286,7 @@ body.dark .explore-genre-tile:hover {
 
 /* ── Explore: shelves ── */
 
-.explore-shelf-scroll {
-	scroll-snap-type: x mandatory;
-	scrollbar-width: none;
-}
-
-.explore-shelf-scroll::-webkit-scrollbar {
-	display: none;
-}
-
 /* ── Explore: hero ── */
-
-.explore-hero {
-	display: flex;
-	gap: 1rem;
-	width: 100%;
-	max-height: 50vh;
-	margin-bottom: 1.5rem;
-	padding: 1rem;
-	background: #fafafa;
-	border: 1px solid #e5e5e5;
-	border-radius: 10px;
-	text-align: left;
-	overflow: hidden;
-}
-
-.explore-hero-cover {
-	flex-shrink: 0;
-	aspect-ratio: 2 / 3;
-	width: clamp(6rem, 28vw, 10rem);
-	max-height: 100%;
-	padding: 0;
-	border: 0;
-	border-radius: 6px;
-	overflow: hidden;
-	background: #f0f0f0;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-	cursor: pointer;
-}
-
-.explore-hero-cover:active {
-	opacity: 0.85;
-}
-
-.explore-hero-cover img {
-	display: block;
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-}
-
-.explore-hero-cover-placeholder {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	height: 100%;
-	color: #bbb;
-	font-size: 0.7rem;
-	font-weight: 600;
-	letter-spacing: 0.05em;
-}
-
-.explore-hero-meta {
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	gap: 0.25rem;
-	min-width: 0;
-	flex: 1;
-}
-
-.explore-hero-eyebrow {
-	font-size: 0.65rem;
-	font-weight: 600;
-	letter-spacing: 0.1em;
-	text-transform: uppercase;
-	color: #888;
-}
-
-.explore-hero-title {
-	margin: 0;
-	font-size: 1.15rem;
-	font-weight: 700;
-	line-height: 1.25;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	display: -webkit-box;
-	-webkit-line-clamp: 3;
-	-webkit-box-orient: vertical;
-}
-
-.explore-hero-author {
-	margin: 0;
-	font-size: 0.85rem;
-	color: #666;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.explore-hero-title-btn {
-	display: block;
-	width: 100%;
-	padding: 0;
-	border: 0;
-	background: transparent;
-	color: inherit;
-	text-align: left;
-	cursor: pointer;
-}
-
-.explore-hero-title-btn:active {
-	opacity: 0.7;
-}
-
-.explore-hero-controls {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	margin-top: 0.75rem;
-}
-
-.explore-hero-arrow {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 2rem;
-	height: 2rem;
-	padding: 0;
-	border: 1px solid transparent;
-	border-radius: 50%;
-	background: transparent;
-	color: inherit;
-	font-size: 1rem;
-	cursor: pointer;
-	flex-shrink: 0;
-}
-
-.explore-hero-arrow:hover {
-	background: #ececec;
-}
-
-.explore-hero-arrow:active {
-	opacity: 0.7;
-}
-
-.explore-hero-dots {
-	display: flex;
-	align-items: center;
-	gap: 0.35rem;
-}
-
-.explore-hero-dot {
-	width: 6px;
-	height: 6px;
-	padding: 0;
-	border: 0;
-	border-radius: 50%;
-	background: #d0d0d0;
-	cursor: pointer;
-	transition:
-		background 200ms ease,
-		width 200ms ease;
-}
-
-.explore-hero-dot.active {
-	background: #333;
-	width: 18px;
-	border-radius: 3px;
-}
 
 body.dark .explore-hero {
 	background: #1a1a1a;
@@ -3119,196 +1316,8 @@ body.dark .explore-hero-arrow:hover {
 
 /* Dark-mode searchbar: Ionic's default dark colors make the input almost
    unreadable over our toolbar background. Override the CSS vars it exposes. */
-body.dark ion-searchbar {
-	--background: #1f1f1f;
-	--color: #eaeaea;
-	--placeholder-color: #888;
-	--icon-color: #888;
-	--clear-button-color: #888;
-}
-
-.explore-card {
-	display: flex;
-	flex-direction: column;
-	gap: 0.35rem;
-	text-align: left;
-	background: transparent;
-	border: none;
-	padding: 0;
-	cursor: pointer;
-	color: inherit;
-	font: inherit;
-}
-
-.explore-card-cover {
-	position: relative;
-	aspect-ratio: 2 / 3;
-	background: var(--ion-color-step-100, #eee);
-	border-radius: 4px;
-	overflow: hidden;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.explore-card-cover img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	display: block;
-}
-
-.explore-card-cover-placeholder {
-	color: var(--ion-color-step-500, #999);
-	font-size: 2rem;
-	display: flex;
-}
-
-.explore-card-badge {
-	position: absolute;
-	top: 0.25rem;
-	right: 0.25rem;
-	background: rgba(0, 0, 0, 0.7);
-	color: #fff;
-	padding: 0.1rem 0.4rem;
-	border-radius: 3px;
-	font-size: 0.65rem;
-	font-weight: 600;
-	letter-spacing: 0.03em;
-	text-transform: uppercase;
-}
-
-.explore-card-title {
-	font-size: 0.8rem;
-	font-weight: 600;
-	line-height: 1.2;
-	overflow: hidden;
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-}
-
-.explore-card-author {
-	font-size: 0.7rem;
-	color: var(--ion-color-step-600, #666);
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
-}
-
-.explore-load-more {
-	background: transparent;
-	border: 1px solid var(--ion-border-color, #ddd);
-	border-radius: 999px;
-	padding: 0.5rem 1.25rem;
-	font-size: 0.85rem;
-	cursor: pointer;
-	color: inherit;
-}
 
 /* ── Book detail pages (shared explore + library) ───────────────────────── */
-
-.book-detail-page {
-	padding: 1.25rem 1rem 4rem;
-	max-width: 44rem;
-	margin: 0 auto;
-	display: flex;
-	flex-direction: column;
-	gap: 1.25rem;
-}
-
-.book-detail-hero {
-	display: flex;
-	gap: 1.25rem;
-	align-items: flex-start;
-}
-
-.book-detail-cover {
-	flex: 0 0 8.5rem;
-	aspect-ratio: 2 / 3;
-	background: #f0f0f0;
-	border-radius: 8px;
-	overflow: hidden;
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-}
-
-.book-detail-cover-placeholder {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	height: 100%;
-	color: #bbb;
-	font-size: 2.5rem;
-}
-
-.book-detail-meta {
-	flex: 1 1 auto;
-	display: flex;
-	flex-direction: column;
-	gap: 0.4rem;
-	min-width: 0;
-	padding-top: 0.25rem;
-}
-
-.book-detail-eyebrow {
-	display: inline-block;
-	align-self: flex-start;
-	font-size: 0.65rem;
-	font-weight: 600;
-	letter-spacing: 0.1em;
-	text-transform: uppercase;
-	color: #888;
-}
-
-.book-detail-title {
-	margin: 0;
-	font-size: 1.35rem;
-	font-weight: 700;
-	line-height: 1.25;
-}
-
-.book-detail-author {
-	margin: 0;
-	color: #666;
-	font-size: 0.95rem;
-}
-
-.book-detail-stats {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: baseline;
-	gap: 0.35rem;
-	margin-top: 0.35rem;
-	font-size: 0.8rem;
-	color: #888;
-}
-
-.book-detail-stat-active {
-	color: #1a1a1a;
-	font-weight: 600;
-}
-
-.book-detail-subjects {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.35rem;
-}
-
-.book-detail-subject {
-	background: #f3f3f3;
-	color: #444;
-	padding: 0.25rem 0.6rem;
-	border-radius: 999px;
-	font-size: 0.72rem;
-	border: 1px solid #e8e8e8;
-}
-
-.book-detail-actions {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
-}
 
 .book-detail-card {
 	display: flex;
@@ -3327,32 +1336,6 @@ body.dark ion-searchbar {
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
 	color: #888;
-}
-
-.book-detail-description {
-	font-size: 0.95rem;
-	line-height: 1.6;
-	color: #222;
-}
-
-.book-detail-description p {
-	margin: 0 0 0.75rem;
-}
-
-.book-detail-description p:last-child {
-	margin-bottom: 0;
-}
-
-.book-detail-description a {
-	color: #1a1a1a;
-	text-decoration: underline;
-}
-
-.book-detail-summary {
-	font-size: 0.95rem;
-	line-height: 1.6;
-	color: #444;
-	margin: 0;
 }
 
 body.dark .book-detail-cover {
@@ -3402,46 +1385,12 @@ body.dark .book-detail-summary {
    ───────────────────────────────────────────────────────────────── */
 
 /* Outer wrapper — no card frame, just provides title + spacing */
-.chapter-list-section {
-	background: transparent;
-}
 
 /* Section header above the pill list */
-.chapter-list-title {
-	margin: 0;
-	padding: 0 0.25rem 0.5rem;
-	font-size: 0.75rem;
-	font-weight: 600;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-	color: #888;
-}
 
 /* Each row is a soft "pill" with breathing room between siblings */
-.chapter-row {
-	position: relative;
-	background: #f3f3f3;
-	color: inherit;
-	border: 1px solid transparent;
-	border-radius: 10px;
-	margin-bottom: 6px;
-}
-
-.chapter-row:hover {
-	background: #ececec;
-}
 
 /* In-progress accent — 2px bar on the left edge */
-.chapter-row.is-current::before {
-	content: "";
-	position: absolute;
-	left: 0;
-	top: 8px;
-	bottom: 8px;
-	width: 2px;
-	border-radius: 2px;
-	background: var(--ion-color-primary);
-}
 
 /* ── Dark mode ── */
 body.dark .chapter-list-title {
@@ -3461,656 +1410,37 @@ body.dark .chapter-row:hover {
    Onboarding - first-run flow
    ───────────────────────────────────────────────────────────────── */
 
-.onboarding-page {
-	--background: var(--ion-background-color);
-}
-
-.onboarding-container {
-	display: flex;
-	flex-direction: column;
-	min-height: 100%;
-	padding: 24px 24px 32px;
-	max-width: 520px;
-	margin: 0 auto;
-	box-sizing: border-box;
-}
-
-.onboarding-top-bar {
-	display: flex;
-	justify-content: flex-end;
-	min-height: 32px;
-}
-
-.onboarding-skip {
-	background: transparent;
-	border: none;
-	color: var(--ion-text-color, #888);
-	opacity: 0.6;
-	font-size: 0.9rem;
-	cursor: pointer;
-	padding: 4px 8px;
-}
-
-.onboarding-body-wrap {
-	flex: 1;
-	display: flex;
-	align-items: center;
-	/* `safe center` falls back to flex-start when content overflows so the top
-	   of the step stays reachable on tall steps (e.g. the speed picker). */
-	justify-content: safe center;
-	padding: 24px 0;
-}
-
-.onboarding-step {
-	width: 100%;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	text-align: center;
-	gap: 16px;
-}
-
-.onboarding-step--welcome {
-	gap: 24px;
-}
-
-.onboarding-brand {
-	margin-top: 8vh;
-}
-
-.onboarding-title {
-	font-size: 2.4rem;
-	font-weight: 700;
-	margin: 0 0 8px;
-	letter-spacing: -0.02em;
-	color: var(--ion-text-color);
-}
-
-.onboarding-tagline {
-	margin: 0;
-	font-size: 1rem;
-	opacity: 0.65;
-	color: var(--ion-text-color);
-}
-
-.onboarding-body {
-	margin: 0;
-	font-size: 0.95rem;
-	line-height: 1.55;
-	opacity: 0.75;
-	color: var(--ion-text-color);
-	max-width: 360px;
-}
-
-.onboarding-step-title {
-	font-size: 1.5rem;
-	font-weight: 600;
-	margin: 0;
-	letter-spacing: -0.01em;
-	color: var(--ion-text-color);
-}
-
-.onboarding-step-sub {
-	margin: 0 0 8px;
-	font-size: 0.9rem;
-	line-height: 1.5;
-	opacity: 0.7;
-	color: var(--ion-text-color);
-	max-width: 340px;
-}
-
-.onboarding-actions {
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
-	width: 100%;
-	max-width: 320px;
-	margin-top: 12px;
-}
-
-.onboarding-btn {
-	width: 100%;
-	padding: 13px 20px;
-	border-radius: 10px;
-	border: 1.5px solid transparent;
-	font-size: 0.95rem;
-	font-weight: 500;
-	cursor: pointer;
-	transition:
-		background-color 120ms ease,
-		border-color 120ms ease,
-		opacity 120ms ease;
-	line-height: 1;
-}
-
-.onboarding-btn--primary {
-	background: var(--ion-text-color, #fff);
-	color: var(--ion-background-color, #000);
-	border-color: var(--ion-text-color, #fff);
-}
-
-.onboarding-btn--primary:active {
-	opacity: 0.85;
-}
-
-.onboarding-btn--ghost {
-	background: transparent;
-	color: var(--ion-text-color);
-	border-color: transparent;
-	opacity: 0.65;
-}
-
-.onboarding-btn--ghost:active {
-	opacity: 0.4;
-}
-
 /* ── Theme step ── */
-.onboarding-theme-grid {
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: 10px;
-	width: 100%;
-	max-width: 360px;
-	margin-top: 8px;
-}
-
-.onboarding-theme-card {
-	display: flex;
-	flex-direction: column;
-	align-items: stretch;
-	gap: 8px;
-	padding: 10px;
-	border-radius: 12px;
-	border: 1.5px solid var(--ion-border-color, #444);
-	background: transparent;
-	cursor: pointer;
-	transition:
-		border-color 120ms ease,
-		transform 120ms ease;
-}
-
-.onboarding-theme-card--active {
-	border-color: var(--ion-text-color);
-}
-
-.onboarding-theme-swatch {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	aspect-ratio: 1 / 1;
-	border-radius: 8px;
-	font-size: 1.4rem;
-	font-weight: 500;
-}
-
-.onboarding-theme-swatch--dark {
-	background: #1a1a1a;
-	color: #f0f0f0;
-}
-
-.onboarding-theme-swatch--sepia {
-	background: #c4b081;
-	color: #3a2e1e;
-}
-
-.onboarding-theme-swatch--light {
-	background: #ffffff;
-	color: #1a1a1a;
-	border: 1px solid #e0e0e0;
-}
-
-.onboarding-theme-label {
-	font-size: 0.82rem;
-	color: var(--ion-text-color);
-	opacity: 0.8;
-}
 
 /* ── Speed step ── */
-.onboarding-preview-wrap {
-	width: 100%;
-	max-width: 360px;
-}
-
-.onboarding-wpm-readout {
-	font-size: 1.8rem;
-	font-weight: 600;
-	font-variant-numeric: tabular-nums;
-	color: var(--ion-text-color);
-	margin-top: 8px;
-}
-
-.onboarding-step ion-range {
-	width: 100%;
-	max-width: 360px;
-	padding: 0;
-}
-
-.onboarding-range-hints {
-	display: flex;
-	justify-content: space-between;
-	width: 100%;
-	max-width: 360px;
-	font-size: 0.75rem;
-	opacity: 0.5;
-	color: var(--ion-text-color);
-}
 
 /* ── Reader mode step (uses shared .rsvp-mode-picker / .rsvp-mode-card) ── */
-.onboarding-mode-picker-wrap {
-	width: 100%;
-	max-width: 360px;
-	margin-top: 8px;
-}
 
 /* ── WPM preset chips (uses shared .ap-chips / .ap-chip) ── */
-.onboarding-wpm-presets {
-	width: 100%;
-	max-width: 360px;
-}
 
 /* ── Books step ── */
-.onboarding-books-loading {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 160px;
-}
-
-.onboarding-books-list {
-	display: flex;
-	gap: 12px;
-	overflow-x: auto;
-	overflow-y: hidden;
-	padding: 4px 4px 8px;
-	margin: 0 -24px;
-	padding-left: 24px;
-	padding-right: 24px;
-	width: calc(100% + 48px);
-	scroll-snap-type: x mandatory;
-	-webkit-overflow-scrolling: touch;
-}
-
-.onboarding-book-card {
-	display: flex;
-	flex-direction: column;
-	flex: 0 0 auto;
-	width: 7.5rem;
-	padding: 0;
-	border: none;
-	background: transparent;
-	color: var(--ion-text-color);
-	text-align: left;
-	cursor: pointer;
-	scroll-snap-align: start;
-	transition: opacity 120ms ease;
-}
-
-.onboarding-book-card:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-}
-
-.onboarding-book-cover {
-	position: relative;
-	aspect-ratio: 2 / 3;
-	width: 100%;
-	overflow: hidden;
-	border-radius: 4px;
-	border: 2px solid transparent;
-	background: var(--ion-color-light, #f0f0f0);
-	transition: border-color 120ms ease;
-}
-
-.onboarding-book-card--selected .onboarding-book-cover {
-	border-color: var(--ion-text-color);
-}
-
-.onboarding-book-check {
-	position: absolute;
-	top: 6px;
-	right: 6px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 22px;
-	height: 22px;
-	border-radius: 50%;
-	background: var(--ion-text-color);
-	color: var(--ion-background-color);
-	font-size: 0.8rem;
-	font-weight: 700;
-	line-height: 1;
-}
-
-.onboarding-book-title {
-	margin-top: 6px;
-	font-size: 0.8rem;
-	font-weight: 500;
-	line-height: 1.2;
-	color: var(--ion-text-color);
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 2;
-	overflow: hidden;
-}
-
-.onboarding-book-author {
-	margin-top: 2px;
-	font-size: 0.72rem;
-	opacity: 0.6;
-	color: var(--ion-text-color);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.onboarding-books-progress {
-	width: 100%;
-	max-width: 320px;
-	height: 4px;
-	border-radius: 2px;
-	background: var(--ion-border-color, #444);
-	overflow: hidden;
-}
-
-.onboarding-books-progress-bar {
-	height: 100%;
-	background: var(--ion-text-color);
-	transition: width 150ms ease;
-}
 
 /* ── Sync step ── */
-.onboarding-sync-icon {
-	font-size: 3rem;
-	opacity: 0.4;
-	color: var(--ion-text-color);
-	margin-bottom: 8px;
-}
 
 /* ── Footer: progress dots + nav buttons ── */
-.onboarding-footer {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 16px;
-	padding-top: 16px;
-}
-
-.onboarding-dots {
-	display: flex;
-	gap: 6px;
-}
-
-.onboarding-dot {
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: var(--ion-text-color);
-	opacity: 0.2;
-	transition:
-		opacity 120ms ease,
-		width 120ms ease;
-}
-
-.onboarding-dot--active {
-	opacity: 0.9;
-	width: 18px;
-	border-radius: 3px;
-}
-
-.onboarding-nav {
-	display: flex;
-	gap: 10px;
-	width: 100%;
-	max-width: 360px;
-}
-
-.onboarding-nav .onboarding-btn {
-	flex: 1;
-}
 
 /* ── Desktop: hide in-toolbar brand (sidebar already shows it) ── */
 /* Separate block so it comes after .app-brand's display:flex definition. */
 @media (min-width: 1081px) {
-	.app-brand {
-		display: none;
-	}
-
-	.explore-toolbar,
-	.library-toolbar {
-		justify-content: flex-end;
-	}
 }
 
 /* ─── What's New dialog ───────────────────────────────────────────────────── */
-
-ion-modal.whats-new-modal {
-	--width: min(440px, 92vw);
-	--height: min(620px, 80vh);
-	--border-radius: 16px;
-	--box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
-	--backdrop-opacity: 0.55;
-	--background: var(--ion-background-color, #fff);
-}
-
-.whats-new-shell {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	background: var(--ion-background-color, #fff);
-}
-
-.whats-new-body {
-	flex: 1 1 auto;
-	min-height: 0;
-	padding: 24px 22px 8px;
-	overflow-y: auto;
-	-webkit-overflow-scrolling: touch;
-}
-
-.whats-new-eyebrow {
-	margin: 0 0 6px;
-	font-size: 0.7rem;
-	font-weight: 600;
-	letter-spacing: 0.12em;
-	text-transform: uppercase;
-	color: var(--ion-color-medium, #888);
-}
-
-.whats-new-heading {
-	margin: 0 0 18px;
-	font-size: 1.4rem;
-	font-weight: 700;
-	line-height: 1.2;
-	color: var(--ion-text-color, #111);
-}
-
-.whats-new-entries {
-	display: flex;
-	flex-direction: column;
-	gap: 18px;
-}
-
-.whats-new-entry {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-
-.whats-new-entry-head {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: 8px;
-}
-
-.whats-new-entry-head h3 {
-	margin: 0;
-	font-size: 0.98rem;
-	font-weight: 600;
-	color: var(--ion-text-color, #111);
-}
-
-.whats-new-date {
-	font-size: 0.72rem;
-	color: var(--ion-color-medium, #888);
-	white-space: nowrap;
-}
-
-.whats-new-entry ul {
-	margin: 4px 0 0;
-	padding: 0;
-	list-style: none;
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
-
-.whats-new-entry li {
-	position: relative;
-	padding-left: 14px;
-	font-size: 0.84rem;
-	line-height: 1.45;
-	color: var(--ion-text-color, #111);
-	opacity: 0.78;
-}
-
-.whats-new-entry li::before {
-	content: "";
-	position: absolute;
-	left: 2px;
-	top: 0.55em;
-	width: 4px;
-	height: 4px;
-	border-radius: 50%;
-	background: var(--ion-color-medium, #888);
-	opacity: 0.6;
-}
-
-.whats-new-footer {
-	padding: 12px 18px 18px;
-	border-top: 1px solid var(--ion-color-step-100, rgba(0, 0, 0, 0.08));
-}
 
 /* Web-novels Explore section — fanned-cover provider cards. Mirror of the
    marketing site's WebNovelsCarousel: tall card with three real covers fanned
    at top, brand name + tagline below tinted by the per-card `--brand` custom
    property. AO3 swaps the cover fan for a wordmark since we don't ship covers
    for it. */
-.explore-novels-row {
-	scroll-snap-type: x mandatory;
-	scrollbar-width: none;
-}
-.explore-novels-row::-webkit-scrollbar {
-	display: none;
-}
-.explore-novel-card {
-	width: 11.5rem;
-	flex-shrink: 0;
-	scroll-snap-align: start;
-	border-radius: 1rem;
-	background: var(--ion-card-background, #fff);
-	border: 1px solid var(--ion-color-step-100, rgba(0, 0, 0, 0.06));
-	box-shadow:
-		0 1px 2px rgba(15, 23, 42, 0.04),
-		0 12px 28px -16px rgba(15, 23, 42, 0.22);
-	transition:
-		transform 0.18s ease,
-		box-shadow 0.22s ease;
-	overflow: hidden;
-	padding: 0;
-	text-align: center;
-}
-.explore-novel-card:active {
-	transform: scale(0.97);
-	box-shadow:
-		0 1px 2px rgba(15, 23, 42, 0.05),
-		0 8px 18px -14px rgba(15, 23, 42, 0.2);
-}
-.explore-novel-card__backdrop {
-	position: absolute;
-	inset: 0;
-	background: radial-gradient(circle at 20% 0%, var(--brand) 0%, transparent 60%);
-	opacity: 0.07;
-	pointer-events: none;
-}
-.explore-novel-card__art {
-	position: relative;
-	display: flex;
-	align-items: flex-end;
-	justify-content: center;
-	height: 9rem;
-	padding: 1.25rem 1rem 0.5rem;
-}
-.explore-novel-card__cover {
-	width: 84px;
-	height: 120px;
-	border-radius: 0.375rem;
-	border: 1px solid rgba(0, 0, 0, 0.1);
-	object-fit: cover;
-	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.18);
-	transition: transform 0.3s ease;
-}
-.explore-novel-card__name {
-	color: var(--brand, #444);
-	font-weight: 700;
-	font-size: 0.95rem;
-	line-height: 1.1;
-	letter-spacing: -0.01em;
-}
-.explore-novel-card__tagline {
-	margin-top: 0.25rem;
-	color: var(--ion-color-medium, #888);
-	font-size: 0.72rem;
-	line-height: 1.25;
-}
-.explore-novel-card__ao3 {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	height: 100%;
-	color: var(--brand, #444);
-}
-.explore-novel-card__ao3-glyph {
-	font-weight: 700;
-	font-size: 2.25rem;
-	line-height: 1;
-	letter-spacing: -0.02em;
-}
-.explore-novel-card__ao3-sub {
-	margin-top: 0.5rem;
-	font-weight: 600;
-	font-size: 0.55rem;
-	letter-spacing: 0.2em;
-	text-transform: uppercase;
-	opacity: 0.7;
-}
 
 /* Web-novels routed search page — provider filter chips. Two visual states
    driven by the .web-novels-filter-chip--active class so JSX stays free of
    per-render style objects. The active chip can override its background via
    inline style for brand color (one inline declaration, not a full object). */
-.web-novels-filter-chip {
-	cursor: pointer;
-	white-space: nowrap;
-	border-radius: 9999px;
-	border: 1px solid var(--ion-border-color, #d9d9d9);
-	background: transparent;
-	color: var(--ion-text-color, #000);
-	padding: 4px 12px;
-	font-size: 0.8rem;
-	font-weight: 500;
-	transition:
-		background-color 0.15s ease,
-		border-color 0.15s ease,
-		color 0.15s ease;
-}
-.web-novels-filter-chip--active {
-	background-color: var(--ion-color-primary, #000);
-	border-color: var(--ion-color-primary, #000);
-	color: var(--ion-color-primary-contrast, #fff);
-}
 
 /* ── Global: Apple-style overlay scrollbars (web only) ──
    Firefox already auto-hides; this brings Chromium in line:
@@ -4141,42 +1471,4 @@ ion-modal.whats-new-modal {
 }
 ::-webkit-scrollbar-thumb:hover {
 	background-color: rgba(128, 128, 128, 0.7);
-}
-
-.session-table-list {
-	list-style: none;
-	margin: 0;
-	padding: 0;
-}
-
-.session-table-row + .session-table-row {
-	border-top: 1px solid var(--ion-border-color, #e8e8e8);
-}
-
-.session-table-row-button {
-	display: flex;
-	width: 100%;
-	align-items: center;
-	gap: 0.75rem;
-	padding: 0.6rem 0;
-	background: transparent;
-	color: inherit;
-	text-align: left;
-	cursor: pointer;
-}
-
-.session-table-row-button:active {
-	opacity: 0.6;
-}
-
-.session-table-mode-badge {
-	display: inline-block;
-	padding: 0.1rem 0.45rem;
-	border-radius: 3px;
-	border: 1px solid var(--ion-border-color, #d9d9d9);
-	color: inherit;
-	font-size: 0.65rem;
-	font-weight: 600;
-	letter-spacing: 0.05em;
-	text-transform: uppercase;
 }

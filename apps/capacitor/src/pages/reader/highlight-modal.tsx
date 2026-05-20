@@ -1,21 +1,18 @@
 /**
- * HighlightModal - bottom sheet for viewing and editing an existing highlight.
+ * HighlightModal: bottom drawer for viewing and editing an existing highlight.
  *
  * Auto-saves: color change saves immediately; note saves on blur.
- * No explicit Save/Cancel - sheet is dismissed by dragging down.
- * Only action button is Delete.
+ * No explicit Save/Cancel: dismissed by drag-down. Only action button is Delete.
  */
 
 import {
-	IonContent,
-	IonHeader,
-	IonIcon,
-	IonModal,
-	IonTextarea,
-	IonTitle,
-	IonToolbar,
-} from "@ionic/react";
-import { trashOutline } from "ionicons/icons";
+	Drawer,
+	DrawerContent,
+	DrawerHeader,
+	DrawerTitle,
+} from "@lesefluss/ui/drawer";
+import { cn } from "@lesefluss/ui/utils";
+import { Trash2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import type { Highlight } from "../../services/db/schema";
@@ -24,7 +21,6 @@ import { HIGHLIGHT_COLOR_STYLE, HIGHLIGHT_COLORS, type HighlightColor } from "./
 interface HighlightModalProps {
 	/** The highlight being viewed/edited. null = modal closed. */
 	highlight: Highlight | null;
-	/** Extracted text snippet for the highlighted range. */
 	highlightText: string;
 	onClose: () => void;
 	onSave: (id: string, color: string, note: string) => void;
@@ -42,8 +38,7 @@ const HighlightModal: React.FC<HighlightModalProps> = ({
 }) => {
 	const [color, setColor] = useState<HighlightColor>("yellow");
 	const [note, setNote] = useState("");
-	// Seed local state whenever a different highlight opens.
-	// Intentionally keyed on id only - re-seeding on every field change would overwrite in-progress edits.
+	// Keyed on id only. Re-seeding on every field change would overwrite in-progress edits.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: highlight?.id is the intentional narrow dep
 	useEffect(() => {
 		if (highlight) {
@@ -71,67 +66,61 @@ const HighlightModal: React.FC<HighlightModalProps> = ({
 	};
 
 	return (
-		<IonModal
-			isOpen={!!highlight}
-			onDidDismiss={onClose}
-			breakpoints={[0, 0.5, 1]}
-			initialBreakpoint={0.5}
-			className={["rsvp-highlight-modal", theme && `reader-theme-${theme}`]
-				.filter(Boolean)
-				.join(" ")}
+		<Drawer
+			open={!!highlight}
+			onOpenChange={(open) => {
+				if (!open) onClose();
+			}}
 		>
-			<IonHeader>
-				<IonToolbar>
-					<IonTitle>Highlight</IonTitle>
-				</IonToolbar>
-			</IonHeader>
+			<DrawerContent className={theme ? `reader-theme-${theme}` : undefined}>
+				<DrawerHeader>
+					<DrawerTitle>Highlight</DrawerTitle>
+				</DrawerHeader>
 
-			<IonContent className="ion-padding">
-				{/* Quoted text snippet */}
-				{highlightText && (
-					<blockquote className="highlight-modal-snippet">"{highlightText}"</blockquote>
-				)}
+				<div className="flex flex-col gap-4 px-5 pb-6">
+					{highlightText && (
+						<blockquote className="m-0 border-border border-l-2 pl-3 text-muted-foreground text-sm italic">
+							"{highlightText}"
+						</blockquote>
+					)}
 
-				{/* Color picker + delete on one row */}
-				<div className="highlight-modal-row">
-					<div className="highlight-modal-colors">
-						{HIGHLIGHT_COLORS.map((c) => (
-							<button
-								key={c}
-								type="button"
-								className={
-									color === c
-										? "selection-color-swatch selection-color-swatch--active"
-										: "selection-color-swatch"
-								}
-								style={{ background: HIGHLIGHT_COLOR_STYLE[c] }}
-								onClick={() => handleColorChange(c)}
-								aria-label={`Highlight ${c}`}
-							/>
-						))}
+					<div className="flex items-center justify-between gap-2">
+						<div className="flex gap-2">
+							{HIGHLIGHT_COLORS.map((c) => (
+								<button
+									key={c}
+									type="button"
+									className={cn(
+										"size-7 rounded-full border-2 transition-transform",
+										color === c ? "scale-110 border-foreground" : "border-border",
+									)}
+									style={{ background: HIGHLIGHT_COLOR_STYLE[c] }}
+									onClick={() => handleColorChange(c)}
+									aria-label={`Highlight ${c}`}
+								/>
+							))}
+						</div>
+						<button
+							type="button"
+							onClick={handleDelete}
+							aria-label="Delete highlight"
+							className="inline-flex size-9 items-center justify-center rounded-md text-destructive transition-colors hover:bg-destructive/10"
+						>
+							<Trash2 className="size-5" />
+						</button>
 					</div>
-					<button
-						type="button"
-						className="highlight-modal-delete-btn"
-						onClick={handleDelete}
-						aria-label="Delete highlight"
-					>
-						<IonIcon icon={trashOutline} />
-					</button>
-				</div>
 
-				{/* Note textarea - auto-saves on blur */}
-				<IonTextarea
-					value={note}
-					onIonInput={(e) => setNote(e.detail.value ?? "")}
-					onIonBlur={handleNoteBlur}
-					placeholder="Add a note…"
-					autoGrow
-					rows={1}
-					className="highlight-modal-note"
-				/>
-			</IonContent>
-		</IonModal>
+					<textarea
+						value={note}
+						onChange={(e) => setNote(e.target.value)}
+						onBlur={handleNoteBlur}
+						placeholder="Add a note…"
+						rows={3}
+						className="min-h-20 w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
+					/>
+				</div>
+			</DrawerContent>
+		</Drawer>
 	);
 };
 

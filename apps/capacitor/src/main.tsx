@@ -1,5 +1,4 @@
 import { RouterProvider } from "@tanstack/react-router";
-import React from "react";
 import ReactDOM from "react-dom/client";
 import { bootstrapCapacitor } from "./lib/bootstrap-capacitor";
 import { Providers } from "./providers";
@@ -16,12 +15,14 @@ async function bootstrap() {
 
 	const root = document.getElementById("root");
 	if (!root) throw new Error("Root element #root not found");
+	// StrictMode disabled: its mount→cleanup→mount cycle cancels the
+	// ScrollView initial-scroll's fineScrollTo rAF chain before onReady fires,
+	// leaving the reader skeleton stuck. Worked under Ionic because IonPage
+	// deferred the mount past the StrictMode cycle.
 	ReactDOM.createRoot(root).render(
-		<React.StrictMode>
-			<Providers>
-				<RouterProvider router={router} />
-			</Providers>
-		</React.StrictMode>,
+		<Providers>
+			<RouterProvider router={router} />
+		</Providers>,
 	);
 }
 

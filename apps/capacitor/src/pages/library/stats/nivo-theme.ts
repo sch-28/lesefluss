@@ -11,10 +11,10 @@ type PartialTheme = Record<string, unknown>;
  */
 export function buildNivoTheme(appTheme: AppTheme): PartialTheme {
 	const styles = getComputedStyle(document.body);
-	const text = styles.getPropertyValue("--ion-text-color").trim() || "#000";
-	const muted = styles.getPropertyValue("--ion-color-medium").trim() || "#999";
-	const border = styles.getPropertyValue("--ion-border-color").trim() || "#d9d9d9";
-	const card = styles.getPropertyValue("--ion-card-background").trim() || "#fff";
+	const text = styles.getPropertyValue("--foreground").trim() || "#000";
+	const muted = styles.getPropertyValue("--muted-foreground").trim() || "#999";
+	const border = styles.getPropertyValue("--border").trim() || "#d9d9d9";
+	const card = styles.getPropertyValue("--popover").trim() || "#fff";
 
 	return {
 		background: "transparent",

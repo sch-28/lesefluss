@@ -1,25 +1,20 @@
 /**
- * RsvpView - full-screen RSVP word display with focal letter highlighting.
+ * RsvpView: full-screen RSVP word display with focal letter highlighting.
  *
- * Renders one word at a time via the useRsvpEngine hook (tick chain,
- * acceleration ramp, position save). Tap to play/pause. When paused,
- * shows surrounding words (clickable to scrub), a control bar, and a
- * dictionary-lookup button.
+ * Renders one word at a time via the useRsvpEngine hook (tick chain, accel
+ * ramp, position save). Tap to play/pause. When paused, shows surrounding
+ * words (clickable to scrub), a control bar, and a dictionary-lookup button.
  */
 
+import { Button } from "@lesefluss/ui/button";
 import {
-	IonButton,
-	IonButtons,
-	IonContent,
-	IonHeader,
-	IonIcon,
-	IonModal,
-	IonSpinner,
-	IonTitle,
-	IonToolbar,
-} from "@ionic/react";
+	Drawer,
+	DrawerContent,
+	DrawerHeader,
+	DrawerTitle,
+} from "@lesefluss/ui/drawer";
 import { calcOrpIndex, type RsvpSettings } from "@lesefluss/core";
-import { bookOutline, settingsOutline } from "ionicons/icons";
+import { BookOpen, Loader2, Settings } from "lucide-react";
 import React, {
 	forwardRef,
 	useCallback,
@@ -29,23 +24,23 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { useHistory } from "react-router-dom";
+import { useRouter } from "@tanstack/react-router";
 import RsvpSettingsForm from "../settings/rsvp-settings-form";
 import RsvpControls from "./rsvp-controls";
 import { useRsvpEngine } from "./use-rsvp-engine";
 
-// Scroll-scrub tunables. `PX_PER_WORD` sets the scroll distance for one
-// word step on touch; the spacer is sized so the middle is 1 viewport away
-// from each edge, giving ~one-flick headroom before re-anchoring.
+// PX_PER_WORD sets the scroll distance for one word step on touch. Spacer is
+// sized so the middle is one viewport away from each edge, giving roughly
+// one flick of headroom before re-anchoring.
 const PX_PER_WORD = 32;
 const SCROLL_END_MS = 150;
-// Wheel is handled separately from touch: a typical mouse notch is ~100px,
-// so we want roughly one word per notch (trackpad sends smaller deltas that
-// accumulate).
+// Wheel handled separately from touch: a typical mouse notch is ~100px, so we
+// want roughly one word per notch (trackpad sends smaller deltas that accumulate).
 const WHEEL_PX_PER_WORD = 50;
-// Visual constants.
-const FOCAL_FONT_MULTIPLIER = 2; // focal word is this many × the reader font size
-const X_OFFSET_CENTER = 50; // xOffset value that corresponds to horizontal center
+const FOCAL_FONT_MULTIPLIER = 2;
+const X_OFFSET_CENTER = 50;
+
+const SETTINGS_SNAP_POINTS = [0.3, 0.5, 0.95];
 
 export type RsvpViewHandle = {
 	togglePlayPause(): void;
@@ -66,16 +61,6 @@ export interface RsvpViewProps {
 	onWpmChange: (wpm: number) => void;
 	onLookup: (word: string, original: string) => void;
 }
-
-const spinnerStyle: React.CSSProperties = {
-	color: "var(--reader-text, currentColor)",
-	width: "32px",
-	height: "32px",
-	position: "absolute",
-	top: "50%",
-	left: "50%",
-	transform: "translate(-50%, -50%)",
-};
 
 const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 	{
@@ -124,8 +109,8 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		[togglePlayPause, backWord, forwardWord, backSentence, forwardSentence, changeWpm],
 	);
 
-	// Single stable click handler for all context words - uses data-idx
-	// on the target button instead of an inline closure per word.
+	// Single stable click handler for all context words. Uses data-idx on the
+	// target button instead of an inline closure per word.
 	const handleContextClick = useCallback(
 		(e: React.MouseEvent<HTMLDivElement>) => {
 			e.stopPropagation();
@@ -145,11 +130,10 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		[lookupFocalWord],
 	);
 
-	// ─── Scroll-to-scrub (paused only) ────────────────────────────────────
-	// Container has a tall invisible spacer; scrollTop delta from the anchor
-	// is mapped to a word delta. On scroll-end the container re-centers so
-	// scrolling can continue indefinitely. During playback overflow is
-	// hidden via CSS so none of this runs.
+	// Scroll-to-scrub (paused only). Container has a tall invisible spacer;
+	// scrollTop delta from the anchor is mapped to a word delta. On scroll-end
+	// the container re-centers so scrolling can continue indefinitely. During
+	// playback overflow is hidden via CSS so none of this runs.
 	const containerRef = useRef<HTMLDivElement>(null);
 	const anchorIdxRef = useRef(0);
 	const anchorScrollTopRef = useRef(0);
@@ -157,26 +141,27 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 	const suppressScrollRef = useRef(false);
 	const scrollEndTimerRef = useRef<number | null>(null);
 
-	// Mirror wordIndex and isPlaying into refs so the wheel handler and
-	// setTimeout-scheduled callbacks always read fresh values.
 	const wordIndexRef = useRef(wordIndex);
 	wordIndexRef.current = wordIndex;
 	const isPlayingRef = useRef(isPlaying);
 	isPlayingRef.current = isPlaying;
 
-	// Settings modal - pauses playback directly (bypassing togglePlayPause's
-	// 120 ms debounce) so the modal never opens with the tick chain still
-	// running behind it.
+	// Settings sheet pauses playback directly (bypassing togglePlayPause's
+	// 120ms debounce) so the sheet never opens with the tick chain still running.
 	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [settingsSnap, setSettingsSnap] = useState<number | string | null>(
+		SETTINGS_SNAP_POINTS[0],
+	);
 	const handleSettingsClick = useCallback(
 		(e: React.MouseEvent) => {
 			e.stopPropagation();
 			if (isPlayingRef.current) pause();
+			setSettingsSnap(SETTINGS_SNAP_POINTS[0]);
 			setSettingsOpen(true);
 		},
 		[pause],
 	);
-	const history = useHistory();
+	const history = useRouter().history;
 	const navigateAfterDismissRef = useRef<string | null>(null);
 	const closeSettings = useCallback(() => setSettingsOpen(false), []);
 	const handleSettingsDismiss = useCallback(() => {
@@ -202,17 +187,15 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		if (Math.abs(container.scrollTop - middle) > 1) {
 			suppressScrollRef.current = true;
 			container.scrollTop = middle;
-			// Clear suppress on the next frame - the scroll event fires async
 			requestAnimationFrame(() => {
 				suppressScrollRef.current = false;
 			});
 		}
 	}, []);
 
-	// Re-anchor whenever wordIndex diverges from what our scroll drove -
-	// i.e. an external jump (context-peek click, progress-bar scrub, play→pause).
-	// useLayoutEffect so measurement happens before the browser paints,
-	// preventing a flash at scrollTop:0 on first mount.
+	// Re-anchor when wordIndex diverges from what our scroll drove (external
+	// jump: context-peek click, progress-bar scrub, play→pause). useLayoutEffect
+	// so measurement happens before paint, preventing a scrollTop:0 flash.
 	useLayoutEffect(() => {
 		if (isPlaying) return;
 		if (scrollEndTimerRef.current !== null) return;
@@ -224,8 +207,8 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 
 	const handleScroll = useCallback(() => {
 		if (suppressScrollRef.current) return;
-		// Ignore scroll events emitted during the paused→playing transition
-		// (overflow flips to hidden → browser resets scrollTop → spurious event).
+		// Ignore scroll events during paused→playing transition (overflow flips
+		// to hidden → browser resets scrollTop → spurious event).
 		if (isPlayingRef.current) return;
 		const container = containerRef.current;
 		if (!container) return;
@@ -237,7 +220,6 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 			jumpToWord(anchorIdxRef.current + deltaWords);
 		}
 
-		// Debounced re-anchor after scroll momentum settles
 		if (scrollEndTimerRef.current !== null) clearTimeout(scrollEndTimerRef.current);
 		scrollEndTimerRef.current = window.setTimeout(() => {
 			scrollEndTimerRef.current = null;
@@ -251,9 +233,9 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		};
 	}, []);
 
-	// ── Wheel: intercept so one notch ≈ one word, independent of native
-	// scroll's px-per-notch. Touch still uses native overflow scroll, which
-	// is tuned for drag distance via PX_PER_WORD.
+	// Wheel: intercept so one notch ≈ one word, independent of native scroll's
+	// px-per-notch. Touch still uses native overflow scroll, tuned for drag
+	// distance via PX_PER_WORD.
 	const wheelAccumRef = useRef(0);
 	useEffect(() => {
 		const container = containerRef.current;
@@ -275,7 +257,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 	if (words.length === 0) {
 		return (
 			<div className="rsvp-display">
-				<IonSpinner style={spinnerStyle} />
+				<Loader2 className="absolute top-1/2 left-1/2 size-8 -translate-x-1/2 -translate-y-1/2 animate-spin text-[var(--reader-text,currentColor)]" />
 			</div>
 		);
 	}
@@ -286,9 +268,9 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 	const focal = word[orpIndex] ?? "";
 	const after = word.slice(orpIndex + 1);
 
-	// Anchor the container center at xOffset%. The word-line inside is then
-	// shifted so its focal letter coincides with the container center - that
-	// way context (centered on container) and focal letter share an axis.
+	// Anchor container center at xOffset%. The word-line inside is then shifted
+	// so its focal letter coincides with the container center, so context
+	// (centered on container) and focal letter share an axis.
 	const shiftCh = orpIndex + 0.5;
 	const wordShiftCh = word.length / 2 - shiftCh;
 
@@ -305,9 +287,9 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 				onPointerLeave={cancelLongPress}
 				onPointerCancel={cancelLongPress}
 			>
-				{/* Sticky overlay root - stays pinned to the viewport while the
-			    container scrolls. All visual elements + interactive controls
-			    live here; the spacer below provides the scroll distance. */}
+				{/* Sticky overlay root stays pinned to viewport while container scrolls.
+				    All visual + interactive elements live here; spacer below provides
+				    the scroll distance. */}
 				<div className="rsvp-overlay-root">
 					<div className="rsvp-display-inner">
 						<div className="rsvp-focal-line" style={{ left: `${settings.xOffset}%` }} />
@@ -328,9 +310,8 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 							<div
 								className="rsvp-word-container"
 								style={{
-									// While paused the container is centered so the context peek
-									// sits on the horizontal center-line of the display; while
-									// playing the whole word stack moves to xOffset%.
+									// Paused: container centered so context peek sits on horizontal
+									// center-line. Playing: whole word stack moves to xOffset%.
 									left: isPlaying ? `${settings.xOffset}%` : `${X_OFFSET_CENTER}%`,
 									transform: "translate(-50%, -50%)",
 									fontSize: `${fontSize * FOCAL_FONT_MULTIPLIER}px`,
@@ -357,9 +338,9 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 								<span
 									className="rsvp-word-line"
 									style={{
-										// When paused, shift the word-line out to xOffset% of the display
-										// (container stays centered). When playing, only the focal-shift.
-										// `cqw` = container-query width, relative to `.rsvp-display-inner`
+										// Paused: shift word-line to xOffset% of display (container
+										// stays centered). Playing: focal-shift only. `cqw` is
+										// container-query width relative to `.rsvp-display-inner`
 										// (which sets `container-type: inline-size` and caps at 700px).
 										transform: isPlaying
 											? `translateX(${wordShiftCh}ch)`
@@ -412,7 +393,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 									onClick={handleDictClick}
 									aria-label="Dictionary lookup"
 								>
-									<IonIcon icon={bookOutline} />
+									<BookOpen className="size-5" />
 								</button>
 								<button
 									type="button"
@@ -420,7 +401,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 									onClick={handleSettingsClick}
 									aria-label="RSVP settings"
 								>
-									<IonIcon icon={settingsOutline} />
+									<Settings className="size-5" />
 								</button>
 							</>
 						)}
@@ -428,34 +409,34 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 				</div>
 
 				{/* Spacer provides scroll distance while paused. Rendered after
-			    the sticky overlay so the overlay's natural position is at
-			    top:0 (sticky then pins it there across the full scroll). */}
+				    the sticky overlay so the overlay's natural position is at
+				    top:0 (sticky then pins it across the full scroll). */}
 				{!isPlaying && <div className="rsvp-scroll-spacer" aria-hidden />}
 			</div>
 
-			{/* Modal is a sibling of the display (not a child) so clicks inside
-		    don't bubble through React's virtual DOM to the display's
-		    onClick={togglePlayPause}. */}
-			<IonModal
-				isOpen={settingsOpen}
-				onDidDismiss={handleSettingsDismiss}
-				className="rsvp-settings-modal"
-				breakpoints={[0, 0.3, 0.5, 0.95]}
-				initialBreakpoint={0.3}
-				expandToScroll={false}
+			{/* Drawer is a sibling of the display (not a child) so clicks inside
+			    don't bubble to the display's onClick={togglePlayPause}. */}
+			<Drawer
+				open={settingsOpen}
+				onOpenChange={(open) => {
+					if (!open) handleSettingsDismiss();
+				}}
+				snapPoints={SETTINGS_SNAP_POINTS}
+				activeSnapPoint={settingsSnap}
+				setActiveSnapPoint={setSettingsSnap}
 			>
-				<IonHeader class="ion-no-border">
-					<IonToolbar>
-						<IonTitle>RSVP settings</IonTitle>
-						<IonButtons slot="end">
-							<IonButton onClick={closeSettings}>Close</IonButton>
-						</IonButtons>
-					</IonToolbar>
-				</IonHeader>
-				<IonContent className="ion-padding">
-					<RsvpSettingsForm minimal onOpenFullSettings={openFullSettings} />
-				</IonContent>
-			</IonModal>
+				<DrawerContent className="h-full">
+					<DrawerHeader className="flex flex-row items-center justify-between gap-2">
+						<DrawerTitle className="flex-1">RSVP settings</DrawerTitle>
+						<Button variant="ghost" size="sm" onClick={closeSettings}>
+							Close
+						</Button>
+					</DrawerHeader>
+					<div className="flex-1 overflow-y-auto px-1 pb-6">
+						<RsvpSettingsForm minimal onOpenFullSettings={openFullSettings} />
+					</div>
+				</DrawerContent>
+			</Drawer>
 		</>
 	);
 });

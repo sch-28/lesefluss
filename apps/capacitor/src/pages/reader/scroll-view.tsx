@@ -488,7 +488,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 					style={{
 						position: "absolute",
 						inset: 0,
-						background: "var(--ion-background-color)",
+						background: "var(--background)",
 					}}
 				/>
 			)}

@@ -1,26 +1,20 @@
 /**
- * DictionaryModal - bottom sheet showing the definition of a word.
+ * DictionaryModal: bottom drawer showing the definition of a word.
  *
  * Fetches from the Free Dictionary API (no key needed).
  * Results are cached by react-query so the same word won't re-fetch.
  */
 
+import { Button } from "@lesefluss/ui/button";
 import {
-	IonButton,
-	IonButtons,
-	IonContent,
-	IonHeader,
-	IonIcon,
-	IonModal,
-	IonSpinner,
-	IonTitle,
-	IonToolbar,
-} from "@ionic/react";
+	Drawer,
+	DrawerContent,
+	DrawerHeader,
+	DrawerTitle,
+} from "@lesefluss/ui/drawer";
 import { useQuery } from "@tanstack/react-query";
-import { bookmarkOutline, searchOutline } from "ionicons/icons";
+import { Bookmark, Loader2, Search } from "lucide-react";
 import type React from "react";
-
-// ─── API types ───────────────────────────────────────────────────────────────
 
 interface DictDefinition {
 	definition: string;
@@ -38,8 +32,6 @@ interface DictEntry {
 	meanings: DictMeaning[];
 }
 
-// ─── Fetch helper ─────────────────────────────────────────────────────────────
-
 async function fetchDefinition(word: string): Promise<DictEntry[]> {
 	const res = await fetch(
 		`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
@@ -48,8 +40,6 @@ async function fetchDefinition(word: string): Promise<DictEntry[]> {
 	if (!res.ok) throw new Error(`Dictionary API error: ${res.status}`);
 	return res.json() as Promise<DictEntry[]>;
 }
-
-// ─── Component ───────────────────────────────────────────────────────────────
 
 export interface DictionaryModalProps {
 	word: string | null;
@@ -72,78 +62,99 @@ const DictionaryModal: React.FC<DictionaryModalProps> = ({
 		queryKey: ["dictionary", word],
 		queryFn: () => fetchDefinition(word as string),
 		enabled: word !== null,
-		staleTime: Number.POSITIVE_INFINITY, // definitions don't change
+		staleTime: Number.POSITIVE_INFINITY,
 	});
 
 	const entry = data?.[0];
+	const isOpen = word !== null;
 
 	return (
-		<IonModal
-			isOpen={word !== null}
-			onDidDismiss={onClose}
-			breakpoints={[0, 0.5, 1]}
-			initialBreakpoint={0.5}
-			className={["rsvp-dictionary-modal", theme && `reader-theme-${theme}`]
-				.filter(Boolean)
-				.join(" ")}
+		<Drawer
+			open={isOpen}
+			onOpenChange={(open) => {
+				if (!open) onClose();
+			}}
 		>
-			<IonHeader>
-				<IonToolbar>
-					<IonTitle style={{ textTransform: "none" }}>{word ?? ""}</IonTitle>
-					<IonButtons slot="end">
+			<DrawerContent className={theme ? `reader-theme-${theme}` : undefined}>
+				<DrawerHeader className="flex flex-row items-center justify-between gap-2">
+					<DrawerTitle className="flex-1 truncate">{word ?? ""}</DrawerTitle>
+					<div className="flex items-center gap-1">
 						{onSearch && word && (
-							<IonButton onClick={() => onSearch(word)} aria-label="Search in book">
-								<IonIcon slot="icon-only" icon={searchOutline} />
-							</IonButton>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => onSearch(word)}
+								aria-label="Search in book"
+							>
+								<Search />
+							</Button>
 						)}
 						{onAddToGlossary && word && (
-							<IonButton onClick={() => onAddToGlossary(word)} aria-label="Add to glossary">
-								<IonIcon slot="icon-only" icon={bookmarkOutline} />
-							</IonButton>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => onAddToGlossary(word)}
+								aria-label="Add to glossary"
+							>
+								<Bookmark />
+							</Button>
 						)}
-						<IonButton onClick={onClose}>Close</IonButton>
-					</IonButtons>
-				</IonToolbar>
-			</IonHeader>
-
-			<IonContent className="ion-padding">
-				{isPending && (
-					<div className="dict-center">
-						<IonSpinner />
+						<Button variant="ghost" size="sm" onClick={onClose}>
+							Close
+						</Button>
 					</div>
-				)}
+				</DrawerHeader>
 
-				{isError && (
-					<p className="dict-not-found">Could not load definition. Check your connection.</p>
-				)}
+				<div className="flex flex-col overflow-y-auto px-5 pb-6">
+					{isPending && (
+						<div className="flex justify-center py-8">
+							<Loader2 className="size-5 animate-spin text-muted-foreground" />
+						</div>
+					)}
 
-				{!isPending && !isError && !entry && (
-					<p className="dict-not-found">No definition found for &ldquo;{word}&rdquo;.</p>
-				)}
+					{isError && (
+						<p className="text-center text-muted-foreground text-sm">
+							Could not load definition. Check your connection.
+						</p>
+					)}
 
-				{entry && (
-					<div className="dict-entry">
-						{entry.phonetic && <p className="dict-phonetic">{entry.phonetic}</p>}
+					{!isPending && !isError && !entry && (
+						<p className="text-center text-muted-foreground text-sm">
+							No definition found for &ldquo;{word}&rdquo;.
+						</p>
+					)}
 
-						{entry.meanings.map((meaning) => (
-							<div key={meaning.partOfSpeech} className="dict-meaning">
-								<p className="dict-pos">{meaning.partOfSpeech}</p>
-								<ol className="dict-definitions">
-									{meaning.definitions.slice(0, MAX_DEFINITIONS).map((def) => (
-										<li key={def.definition}>
-											<span className="dict-definition">{def.definition}</span>
-											{def.example && (
-												<span className="dict-example"> &ldquo;{def.example}&rdquo;</span>
-											)}
-										</li>
-									))}
-								</ol>
-							</div>
-						))}
-					</div>
-				)}
-			</IonContent>
-		</IonModal>
+					{entry && (
+						<div className="flex flex-col gap-4">
+							{entry.phonetic && (
+								<p className="m-0 text-muted-foreground text-sm">{entry.phonetic}</p>
+							)}
+
+							{entry.meanings.map((meaning) => (
+								<div key={meaning.partOfSpeech} className="flex flex-col gap-2">
+									<p className="m-0 font-semibold text-foreground text-xs uppercase tracking-wide">
+										{meaning.partOfSpeech}
+									</p>
+									<ol className="m-0 flex flex-col gap-2 pl-5 text-sm">
+										{meaning.definitions.slice(0, MAX_DEFINITIONS).map((def) => (
+											<li key={def.definition}>
+												<span className="text-foreground">{def.definition}</span>
+												{def.example && (
+													<span className="text-muted-foreground italic">
+														{" "}
+														&ldquo;{def.example}&rdquo;
+													</span>
+												)}
+											</li>
+										))}
+									</ol>
+								</div>
+							))}
+						</div>
+					)}
+				</div>
+			</DrawerContent>
+		</Drawer>
 	);
 };
 
