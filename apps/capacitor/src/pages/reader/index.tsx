@@ -333,13 +333,21 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	// ── Save position to DB + BLE ─────────────────────────────────────────
 	// Fire-and-forget writes - no mutation wrapper needed for high-frequency saves.
+	// Dual-writes byte (`position`) and word (`word_position`) columns so the
+	// canonical word column stays current after the backfill (ADR-0002). The
+	// switchover (TASK-135 stage H) drops the byte write.
 	const savePosition = useCallback(
 		async (offset: number, { scheduleSync = true }: { scheduleSync?: boolean } = {}) => {
-			await queries.updateBook(id, { position: offset, lastRead: Date.now() });
+			const update: { position: number; lastRead: number; wordPosition?: number } = {
+				position: offset,
+				lastRead: Date.now(),
+			};
+			if (wordIndex) update.wordPosition = wordIndex.wordOf(offset);
+			await queries.updateBook(id, update);
 			await pushPosition(offset);
 			if (scheduleSync) scheduleSyncPush(5000);
 		},
-		[id, pushPosition],
+		[id, pushPosition, wordIndex],
 	);
 
 	// ── Shared helpers ────────────────────────────────────────────────────
