@@ -175,13 +175,11 @@ const ReaderSkeleton: React.FC<{ style?: React.CSSProperties }> = ({ style }) =>
 export interface ScrollViewProps {
 	paragraphs: string[];
 	paragraphOffsets: number[];
+	/** Word index of each paragraph's first word (ADR-0002). */
+	paragraphStartWords: number[];
 	findParagraphIndex: (targetByte: number) => number;
 	initialByteOffset: number;
-	/**
-	 * Optional WordIndex for byte ↔ word conversion at this view's seam.
-	 * Wired in TASK-135 stage B; consumed in stage C. Null while loading or
-	 * for not-yet-backfilled books (stage C must handle the null case).
-	 */
+	/** Per-book WordIndex for byte ↔ word conversion at this view's seam. */
 	wordIndex?: import("@lesefluss/core").WordIndex | null;
 
 	// Appearance
@@ -193,9 +191,11 @@ export interface ScrollViewProps {
 
 	// Active highlight + per-paragraph annotation data (passed straight to <Paragraph>).
 	activeOffset: number;
+	/** Active word index (-1 to hide). Mirrors activeOffset but in word units. */
+	activeWord: number;
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
-	selectionRange: { start: number; end: number } | null;
+	selectionRange: { startWord: number; endWord: number } | null;
 
 	// Word interaction
 	onWordTap: (offset: number, text: string) => void;
@@ -229,6 +229,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	{
 		paragraphs,
 		paragraphOffsets,
+		paragraphStartWords,
 		findParagraphIndex,
 		initialByteOffset,
 		fontSize,
@@ -236,7 +237,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		lineSpacing,
 		margin,
 		showActiveWordUnderline,
-		activeOffset,
+		activeOffset: _activeOffset,
+		activeWord,
 		highlightsByParagraph,
 		glossaryByParagraph,
 		selectionRange,
@@ -475,8 +477,9 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 						<Paragraph
 							key={i.toString()}
 							text={text}
-							startOffset={paragraphOffsets[i]}
-							activeOffset={activeOffset}
+							startWord={paragraphStartWords[i] ?? 0}
+							startOffset={paragraphOffsets[i] ?? 0}
+							activeWord={activeWord}
 							onWordTap={onWordTap}
 							onWordLongPress={onWordLongPress}
 							onWordMouseDragStart={onWordMouseDragStart}

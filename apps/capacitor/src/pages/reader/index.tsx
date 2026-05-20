@@ -76,7 +76,7 @@ import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
 import HighlightModal from "./highlight-modal";
 import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
-import { getWordOffsets, utf8ByteLength } from "./paragraph";
+import { utf8ByteLength } from "@lesefluss/core";
 import { stripPunct } from "./rsvp-engine";
 import RsvpView, { type RsvpViewHandle } from "./rsvp-view";
 import ScrollView, { ReaderSkeleton } from "./scroll-view";
@@ -271,6 +271,17 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		return { paragraphs: paras, paragraphOffsets: offsets };
 	}, [content]);
 
+	// Per-paragraph word index of the first word (ADR-0002). Derived from
+	// paragraphOffsets via the cached WordIndex; defaults to zero when the
+	// WordIndex isn't loaded yet.
+	const paragraphStartWords = useMemo(() => {
+		if (!wordIndex) return paragraphOffsets.map(() => 0);
+		return paragraphOffsets.map((b) => wordIndex.wordOf(b));
+	}, [paragraphOffsets, wordIndex]);
+
+	// Active word index mirrors activeOffset (computed on every render — cheap).
+	const activeWord = wordIndex && activeOffset >= 0 ? wordIndex.wordOf(activeOffset) : -1;
+
 	// ── Parse chapters ────────────────────────────────────────────────────
 	const chapters = useMemo<Chapter[]>(() => {
 		if (!contentRow?.chapters) return [];
@@ -408,14 +419,15 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		paragraphs,
 		paragraphOffsets,
 		enabled: readerGlossaryUnderline,
+		wordIndex: wordIndex ?? null,
 	});
 
-	/** Find any glossary range covering this byte offset (used by tap handlers). */
+	/** Find any glossary range covering this word index (used by tap handlers). */
 	const findGlossaryAt = useCallback(
-		(offset: number): GlossaryEntry | undefined => {
+		(wordIdx: number): GlossaryEntry | undefined => {
 			for (const ranges of glossaryByParagraph.values()) {
 				for (const r of ranges) {
-					if (offset >= r.startOffset && offset <= r.endOffset) {
+					if (wordIdx >= r.startWord && wordIdx <= r.endWord) {
 						return glossaryEntries.find((e) => e.id === r.entryId);
 					}
 				}
@@ -494,29 +506,27 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	//   or dictionary (if not highlighted).
 	const { cancelSelection, findHighlightAt, openHighlightEditor } = sel;
 	const handleWordTap = useCallback(
-		(offset: number, wordText: string) => {
+		(wIdx: number, wordText: string) => {
 			if (isSelecting) {
-				// Any tap outside the handle drag system cancels the selection
 				cancelSelection();
 				return;
 			}
+			// Paragraph now emits word indices. Convert to a byte offset for the
+			// byte-typed downstream state (active/progress/save). findHighlightAt
+			// is still byte-keyed; findGlossaryAt is word-keyed after stage H.
+			const offset = wordIndex ? wordIndex.byteOf(wordPos(wIdx)) : 0;
 
 			if (offset === activeOffset) {
-				// Second tap on the highlighted word.
-				// Glossary takes precedence over dictionary so users can quickly review what
-				// a tracked term is. Highlights still win over glossary because they're
-				// explicit user intent on a specific range.
 				const existing = findHighlightAt(offset);
 				if (existing) {
 					openHighlightEditor(existing);
 					return;
 				}
-				const glossary = findGlossaryAt(offset);
+				const glossary = findGlossaryAt(wIdx);
 				if (glossary) {
 					setEditingGlossaryEntry(glossary);
 					return;
 				}
-				// No annotation here — fall back to dictionary
 				const original = stripPunct(wordText);
 				const clean = original.toLowerCase();
 				if (clean) openDictionaryModal(clean, original);
@@ -538,6 +548,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			openHighlightEditor,
 			findGlossaryAt,
 			openDictionaryModal,
+			wordIndex,
 		],
 	);
 
@@ -715,18 +726,25 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const handleJumpFirstMention = useCallback(
 		(label: string) => {
-			const offset = findFirstMention(label, paragraphs, paragraphOffsets);
-			if (offset !== null) jumpToOffset(offset);
+			const wordIdx = findFirstMention(label, paragraphs, paragraphOffsets, wordIndex ?? null);
+			if (wordIdx !== null && wordIndex) jumpToOffset(wordIndex.byteOf(wordPos(wordIdx)));
 		},
-		[paragraphs, paragraphOffsets, jumpToOffset],
+		[paragraphs, paragraphOffsets, jumpToOffset, wordIndex],
 	);
 
 	const handleJumpNextMention = useCallback(
 		(label: string) => {
-			const offset = findNextMention(label, activeOffset, paragraphs, paragraphOffsets);
-			if (offset !== null) jumpToOffset(offset);
+			const fromWord = wordIndex ? wordIndex.wordOf(activeOffset) : 0;
+			const wordIdx = findNextMention(
+				label,
+				fromWord,
+				paragraphs,
+				paragraphOffsets,
+				wordIndex ?? null,
+			);
+			if (wordIdx !== null && wordIndex) jumpToOffset(wordIndex.byteOf(wordPos(wordIdx)));
 		},
-		[paragraphs, paragraphOffsets, jumpToOffset, activeOffset],
+		[paragraphs, paragraphOffsets, jumpToOffset, activeOffset, wordIndex],
 	);
 
 	// ── Mouse drag-to-select ──────────────────────────────────────────────
@@ -737,8 +755,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// handleWordTap.
 	const { startSelection, extendSelectionTo, startHandleRef, endHandleRef } = sel;
 	const handleWordMouseDragStart = useCallback(
-		(offset: number, initialEvent: PointerEvent) => {
-			// If the word is already highlighted, treat like long-press - open editor.
+		(wIdx: number, initialEvent: PointerEvent) => {
+			// Paragraph emits word index; convert at the boundary for byte-keyed
+			// selection internals.
+			const offset = wordIndex ? wordIndex.byteOf(wordPos(wIdx)) : 0;
 			const existing = findHighlightAt(offset);
 			if (existing) {
 				openHighlightEditor(existing);
@@ -798,6 +818,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			extendSelectionTo,
 			startHandleRef,
 			endHandleRef,
+			wordIndex,
 		],
 	);
 
@@ -874,18 +895,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		(charOffset: number) => {
 			if (!content) return;
 			const byteOffset = utf8ByteLength(content.slice(0, charOffset));
-
-			// Find the exact word offset within the paragraph so the matched
-			// word gets highlighted (not just the paragraph start).
-			const paraIdx = findParagraphIndex(byteOffset);
-			const paraText = paragraphs[paraIdx] ?? "";
-			const paraStart = paragraphOffsets[paraIdx] ?? 0;
-			const wordOffsets = getWordOffsets(paraText, paraStart);
-			let wordByte = paraStart;
-			for (const wo of wordOffsets) {
-				if (wo <= byteOffset) wordByte = wo;
-				else break;
-			}
+			// Snap to the start of the word containing this byte via WordIndex
+			// (ADR-0002). Falls back to the raw byte position pre-backfill.
+			const wordByte = wordIndex
+				? wordIndex.byteOf(wordIndex.wordOf(byteOffset))
+				: byteOffset;
 
 			if (readerMode === "rsvp") {
 				setActiveOffset(wordByte);
@@ -894,15 +908,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				jumpToOffset(wordByte);
 			}
 		},
-		[
-			content,
-			paragraphs,
-			paragraphOffsets,
-			readerMode,
-			findParagraphIndex,
-			jumpToOffset,
-			exitRsvpToStandard,
-		],
+		[content, readerMode, jumpToOffset, exitRsvpToStandard, wordIndex],
 	);
 
 	// ── Keyboard shortcuts ────────────────────────────────────────────────
@@ -1174,6 +1180,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						key={`page-${id}`}
 						paragraphs={paragraphs}
 						paragraphOffsets={paragraphOffsets}
+						paragraphStartWords={paragraphStartWords}
 						contentLength={contentBytes?.length ?? content.length}
 						initialByteOffset={lastOffsetRef.current ?? book.position}
 						fontSize={readerFontSize}
@@ -1182,9 +1189,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						margin={readerMargin}
 						showActiveWordUnderline={readerActiveWordUnderline}
 						activeOffset={activeOffset}
+						activeWord={activeWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}
-						selectionRange={sel.selectionRange}
+						selectionRange={sel.selectionRangeWord}
 						isSelecting={isSelecting}
 						onWordTap={handlePageWordTap}
 						onWordLongPress={sel.handleWordLongPress}
@@ -1201,6 +1209,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						key={`scroll-${id}`}
 						paragraphs={paragraphs}
 						paragraphOffsets={paragraphOffsets}
+						paragraphStartWords={paragraphStartWords}
 						findParagraphIndex={findParagraphIndex}
 						initialByteOffset={lastOffsetRef.current ?? book.position}
 						wordIndex={wordIndex ?? null}
@@ -1210,9 +1219,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						margin={readerMargin}
 						showActiveWordUnderline={readerActiveWordUnderline}
 						activeOffset={activeOffset}
+						activeWord={activeWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}
-						selectionRange={sel.selectionRange}
+						selectionRange={sel.selectionRangeWord}
 						onWordTap={handleWordTap}
 						onWordLongPress={sel.handleWordLongPress}
 						onWordMouseDragStart={handleWordMouseDragStart}

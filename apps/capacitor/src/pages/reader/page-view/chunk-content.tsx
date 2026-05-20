@@ -19,6 +19,7 @@ export interface ChunkContentProps {
 	chunkIndex: number;
 	paragraphs: string[];
 	paragraphOffsets: number[];
+	paragraphStartWords: number[];
 
 	// Position in the transform wrapper (relative to current chunk; 0 for current).
 	leftOffset: number;
@@ -35,9 +36,10 @@ export interface ChunkContentProps {
 
 	// Highlight + selection passthrough to <Paragraph>.
 	activeOffset: number; // -1 if active word is in a different chunk
+	activeWord: number;
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
-	selectionRange: { start: number; end: number } | null;
+	selectionRange: { startWord: number; endWord: number } | null;
 
 	// Word interaction
 	onWordTap: (offset: number, text: string) => void;
@@ -58,6 +60,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	chunkIndex,
 	paragraphs,
 	paragraphOffsets,
+	paragraphStartWords,
 	leftOffset,
 	pageWidth,
 	pageHeight,
@@ -66,6 +69,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	showActiveWordUnderline,
 	lang,
 	activeOffset,
+	activeWord,
 	highlightsByParagraph,
 	glossaryByParagraph,
 	selectionRange,
@@ -132,14 +136,20 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 				const paraGlobalIndex = chunk.paragraphFrom + i;
 				const paraStart = paragraphOffsets[paraGlobalIndex];
 				const paraEnd = paragraphOffsets[paraGlobalIndex + 1] ?? Number.POSITIVE_INFINITY;
-				// Pass the real activeOffset only to the paragraph that contains it.
-				const isActiveHere = activeOffset >= paraStart && activeOffset < paraEnd;
+				const paraStartWord = paragraphStartWords[paraGlobalIndex] ?? 0;
+				const paraEndWord = paragraphStartWords[paraGlobalIndex + 1] ?? Number.POSITIVE_INFINITY;
+				// Pass the real activeWord only to the paragraph that contains it.
+				void activeOffset;
+				void paraStart;
+				void paraEnd;
+				const isActiveWordHere = activeWord >= paraStartWord && activeWord < paraEndWord;
 				return (
 					<Paragraph
 						key={paraGlobalIndex.toString()}
 						text={text}
+						startWord={paraStartWord}
 						startOffset={paraStart}
-						activeOffset={isActiveHere ? activeOffset : -1}
+						activeWord={isActiveWordHere ? activeWord : -1}
 						onWordTap={onWordTap}
 						onWordLongPress={onWordLongPress}
 						onWordMouseDragStart={onWordMouseDragStart}

@@ -89,9 +89,11 @@ export interface PageViewProps {
 
 	// Active highlight + per-paragraph annotation data (passed to <Paragraph>).
 	activeOffset: number;
+	activeWord: number;
+	paragraphStartWords: number[];
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
-	selectionRange: { start: number; end: number } | null;
+	selectionRange: { startWord: number; endWord: number } | null;
 	isSelecting: boolean;
 
 	// Word interaction
@@ -118,6 +120,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	{
 		paragraphs,
 		paragraphOffsets,
+		paragraphStartWords,
 		contentLength,
 		initialByteOffset,
 		fontSize,
@@ -126,6 +129,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		margin,
 		showActiveWordUnderline,
 		activeOffset,
+		activeWord,
 		highlightsByParagraph,
 		glossaryByParagraph,
 		selectionRange,
@@ -647,6 +651,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									chunk={chunk}
 									paragraphs={paragraphs}
 									paragraphOffsets={paragraphOffsets}
+									paragraphStartWords={paragraphStartWords}
 									leftOffset={offsets.get(idx) ?? 0}
 									pageWidth={pageWidth}
 									pageHeight={pageHeight}
@@ -657,6 +662,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									// affects hyphenation quality on non-English books.
 									lang="en"
 									activeOffset={isActiveChunk ? activeOffset : -1}
+									activeWord={activeWord}
 									highlightsByParagraph={highlightsByParagraph}
 									glossaryByParagraph={glossaryByParagraph}
 									selectionRange={selectionRange}

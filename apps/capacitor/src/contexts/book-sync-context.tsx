@@ -197,8 +197,20 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				await ble.writePosition(appPos);
 				log("booksync", `app ahead (${appPos} > ${devicePos}), pushed to device`);
 			} else if (devicePos > appPos) {
-				// Device is ahead - persist into DB
-				await queries.updateBook(confirmedBookId, { position: devicePos, lastRead: Date.now() });
+				// Device is ahead - persist into DB. ADR-0002: dual-write
+				// word_position via the cached WordIndex so the canonical
+				// column stays current when the device wins the conflict.
+				const update: { position: number; lastRead: number; wordPosition?: number } = {
+					position: devicePos,
+					lastRead: Date.now(),
+				};
+				try {
+					const idx = await queries.loadBookWordIndex(confirmedBookId);
+					if (idx) update.wordPosition = idx.wordOf(devicePos);
+				} catch (err) {
+					log.warn("booksync", "loadBookWordIndex failed during device sync:", err);
+				}
+				await queries.updateBook(confirmedBookId, update);
 				log("booksync", `device ahead (${devicePos} > ${appPos}), saved to DB`);
 			}
 			// If equal, nothing to do

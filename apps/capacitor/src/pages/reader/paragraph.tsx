@@ -1,10 +1,12 @@
 /**
  * Paragraph - renders a single paragraph as inline <span> elements.
  *
- * Byte offsets are computed locally from `startOffset` - no pre-built word
- * index needed. Only ~20–30 of these exist in the DOM at any time (virtua).
+ * Positions are word indices (ADR-0002). The paragraph receives the word
+ * index of its first word; each non-space token increments a local counter
+ * so word-unit comparisons (active, highlight, glossary, selection) match
+ * against per-token word index.
  *
- * Wrapped in React.memo: only the paragraph whose activeOffset range changed
+ * Wrapped in React.memo: only the paragraph whose activeWord range changed
  * will re-render on scroll, instead of all ~25 visible paragraphs.
  *
  * Headings (lines prefixed with #) are rendered as styled block elements
@@ -30,45 +32,20 @@ function stripHeadingPrefix(text: string): string {
 	return text.replace(/^#{1,6} /, "");
 }
 
-// ─── Word offset helpers ─────────────────────────────────────────────────────
-
-/**
- * Returns the **UTF-8 byte** offsets of every word (non-whitespace token) in
- * `text`, relative to `startOffset`. Uses the same split logic as the render
- * path so offsets always match the `data-offset` attributes on rendered spans.
- *
- * We must use UTF-8 byte lengths (not JS `.length`) because the ESP32 tracks
- * position as a byte offset into the file. For any non-ASCII character (smart
- * quotes, em-dashes, accented letters, etc.) JS `.length` and UTF-8 byte
- * length diverge, causing the reading position to drift.
- */
-export function getWordOffsets(text: string, startOffset: number): number[] {
-	const tokens = text.split(/(\s+)/);
-	const offsets: number[] = [];
-	let localByteOffset = 0;
-	for (const token of tokens) {
-		if (!/^\s+$/.test(token)) {
-			offsets.push(startOffset + localByteOffset);
-		}
-		localByteOffset += utf8ByteLength(token);
-	}
-	return offsets;
-}
-
 // ─── Highlight types ─────────────────────────────────────────────────────────
 
 export interface HighlightRange {
 	id: string;
-	startOffset: number;
-	endOffset: number;
+	startWord: number;
+	endWord: number;
 	color: string;
 }
 
-/** Inline glossary underline range — same byte-offset semantics as HighlightRange. */
+/** Inline glossary underline range — word-index span on this paragraph. */
 export interface GlossaryRangeProp {
 	entryId: string;
-	startOffset: number;
-	endOffset: number;
+	startWord: number;
+	endWord: number;
 	color: string;
 	label: string;
 	hideMarker?: boolean;
@@ -78,19 +55,25 @@ export interface GlossaryRangeProp {
 
 export interface ParagraphProps {
 	text: string;
+	/** Word index of the FIRST word in this paragraph (ADR-0002). */
+	startWord: number;
+	/**
+	 * Byte offset of this paragraph's first character. Used to emit
+	 * `data-offset` attributes alongside `data-word` so scroll-view's
+	 * DOM-driven span lookups still work during the transition. Stage H+
+	 * will drop data-offset entirely.
+	 */
 	startOffset: number;
-	activeOffset: number;
-	onWordTap: (offset: number, wordText: string) => void;
-	onWordLongPress?: (offset: number) => void;
+	/** Currently focused word index, or -1 to hide the active-word underline. */
+	activeWord: number;
+	onWordTap: (wordIdx: number, wordText: string) => void;
+	onWordLongPress?: (wordIdx: number) => void;
 	/** Mouse-only: fires when a mouse drag starts on a word (pointerdown + move > 8px).
-	 *  Desktop equivalent of long-press - lets users click-drag to select words.
-	 *  The pointer event that triggered the threshold is passed through so the
-	 *  reader can extend the selection to the cursor's current position (the drag
-	 *  has already moved past the start word by the time this fires). */
-	onWordMouseDragStart?: (offset: number, event: PointerEvent) => void;
+	 *  Desktop equivalent of long-press - lets users click-drag to select words. */
+	onWordMouseDragStart?: (wordIdx: number, event: PointerEvent) => void;
 	highlights?: HighlightRange[];
 	glossaryRanges?: GlossaryRangeProp[];
-	selectionRange?: { start: number; end: number } | null;
+	selectionRange?: { startWord: number; endWord: number } | null;
 	showActiveWordUnderline: boolean;
 }
 
@@ -109,8 +92,9 @@ export function cancelAnyActiveLongPress(): void {
 const Paragraph: React.FC<ParagraphProps> = memo(
 	({
 		text,
+		startWord,
 		startOffset,
-		activeOffset,
+		activeWord,
 		onWordTap,
 		onWordLongPress,
 		onWordMouseDragStart,
@@ -127,66 +111,67 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			return <Tag className={`reader-heading reader-heading-${headingLevel}`}>{headingText}</Tag>;
 		}
 
-		// Split on whitespace, keeping the separators so we can track byte offsets.
+		// Split on whitespace, keeping the separators so we can track positions.
 		// Example: "Hello world" → ["Hello", " ", "world"]
 		const tokens = text.split(/(\s+)/);
 
+		// Word index of the last word emitted (or startWord - 1 before the first).
+		// Whitespace tokens use this to test whether they sit between two words
+		// both inside a range, in which case they get the same background to keep
+		// the visual range continuous.
+		let lastWordIdx = startWord - 1;
 		let localByteOffset = 0;
 		const spans: React.ReactNode[] = [];
 
+		const wordInRange = (wIdx: number, s: number, e: number) => wIdx >= s && wIdx <= e;
+		const spaceInRange = (lastW: number, s: number, e: number) => lastW >= s && lastW < e;
+
 		for (let i = 0; i < tokens.length; i++) {
 			const token = tokens[i];
-			const tokenOffset = startOffset + localByteOffset;
-			const tokenByteLen = utf8ByteLength(token);
-			localByteOffset += tokenByteLen;
-			const tokenByteEnd = tokenOffset + tokenByteLen;
-
+			if (token.length === 0) continue;
 			const isSpace = /^\s+$/.test(token);
 
-			// Build className for both words and spaces.
-			// Spaces between selected/highlighted words get the same background so
-			// the visual range looks continuous rather than dotted.
+			const tokenWord = isSpace ? lastWordIdx : lastWordIdx + 1;
+			if (!isSpace) lastWordIdx = tokenWord;
+			const tokenByteOffset = startOffset + localByteOffset;
+			localByteOffset += utf8ByteLength(token);
+
 			const classes: string[] = [];
 
-			if (!isSpace && tokenOffset === activeOffset && showActiveWordUnderline) {
+			if (!isSpace && tokenWord === activeWord && showActiveWordUnderline) {
 				classes.push("word-active");
 			}
 
-			// Highlight ranges - same check for words and spaces
 			if (highlights) {
 				for (const h of highlights) {
-					if (tokenOffset >= h.startOffset && tokenOffset <= h.endOffset) {
+					const hit = isSpace
+						? spaceInRange(tokenWord, h.startWord, h.endWord)
+						: wordInRange(tokenWord, h.startWord, h.endWord);
+					if (hit) {
 						classes.push(`word-highlight-${h.color}`);
 						break;
 					}
 				}
 			}
 
-			// Glossary ranges — render a small inline avatar before the FIRST token of
-			// each range instead of underlining every word. Less visual noise when
-			// many entries are tracked. `hideMarker` (legacy name) still suppresses
-			// the marker. Range stays in glossaryByParagraph so the tap target is
-			// preserved on the words themselves.
+			// Glossary ranges — render a small inline avatar before the FIRST
+			// token of each range instead of underlining every word. `hideMarker`
+			// suppresses the marker; range stays so the tap target is preserved.
 			let glossaryAvatar: { label: string; color: string } | null = null;
 			if (glossaryRanges && !isSpace) {
-				// Range may start mid-token when the term is glued to leading
-				// punctuation (e.g. `"Problem`), so we accept any range whose start
-				// falls within this token's byte span.
 				for (const g of glossaryRanges) {
-					if (g.startOffset >= tokenOffset && g.startOffset < tokenByteEnd && !g.hideMarker) {
+					if (tokenWord === g.startWord && !g.hideMarker) {
 						glossaryAvatar = { label: g.label, color: g.color };
 						break;
 					}
 				}
 			}
 
-			// Active selection - same check for words and spaces
-			if (
-				selectionRange &&
-				tokenOffset >= selectionRange.start &&
-				tokenOffset <= selectionRange.end
-			) {
-				classes.push("word-selecting");
+			if (selectionRange) {
+				const hit = isSpace
+					? spaceInRange(tokenWord, selectionRange.startWord, selectionRange.endWord)
+					: wordInRange(tokenWord, selectionRange.startWord, selectionRange.endWord);
+				if (hit) classes.push("word-selecting");
 			}
 
 			if (isSpace) {
@@ -203,19 +188,12 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			}
 
 			const className = classes.length > 0 ? classes.join(" ") : undefined;
+			const wIdx = tokenWord;
 
-			// Long-press / mouse-drag detection via pointer events.
-			// Touch / pen: fires onWordLongPress if the pointer stays down ≥ LONG_PRESS_MS
-			// without significant movement (> 8px cancels).
-			// Mouse: fires onWordMouseDragStart the moment movement exceeds 8px -
-			// click-drag is the natural desktop equivalent of long-press. A plain click
-			// (no movement) falls through to onClick → dictionary.
 			const handlePointerDown =
 				onWordLongPress || onWordMouseDragStart
 					? (e: React.PointerEvent) => {
 							const pointerType = e.pointerType;
-							// Prevent the browser from starting a native text selection on mouse
-							// drag. Click still fires, so dictionary lookup on plain clicks works.
 							if (pointerType === "mouse") e.preventDefault();
 							let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 							const startX = e.clientX;
@@ -235,21 +213,19 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 								const dy = Math.abs(me.clientY - startY);
 								if (dx > 8 || dy > 8) {
 									if (pointerType === "mouse" && onWordMouseDragStart) {
-										// Mouse-drag: start selection immediately (skip long-press timer).
 										cleanup();
-										onWordMouseDragStart(tokenOffset, me);
+										onWordMouseDragStart(wIdx, me);
 									} else {
 										cleanup();
 									}
 								}
 							};
 							if (pointerType !== "mouse" && onWordLongPress) {
-								// Register so the scroll handler can cancel this from outside
 								_cancelActiveLongPress = cleanup;
 								longPressTimer = setTimeout(() => {
 									_cancelActiveLongPress = null;
 									longPressTimer = null;
-									onWordLongPress(tokenOffset);
+									onWordLongPress(wIdx);
 								}, LONG_PRESS_MS);
 							}
 							document.addEventListener("pointermove", onMove);
@@ -260,9 +236,6 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 
 			let wordChildren: React.ReactNode = token;
 			if (glossaryAvatar) {
-				// If the term is glued to leading punctuation (e.g. `"Problem`), split
-				// the token so the avatar lands directly before the matched label
-				// rather than before the punctuation.
 				const matchIdx = token.toLowerCase().indexOf(glossaryAvatar.label.toLowerCase());
 				const prefix = matchIdx > 0 ? token.slice(0, matchIdx) : "";
 				const rest = matchIdx > 0 ? token.slice(matchIdx) : token;
@@ -284,9 +257,10 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			const wordSpan = (
 				<span
 					key={i}
-					data-offset={tokenOffset}
+					data-word={wIdx}
+					data-offset={tokenByteOffset}
 					className={className}
-					onClick={() => onWordTap(tokenOffset, token)}
+					onClick={() => onWordTap(wIdx, token)}
 					onPointerDown={handlePointerDown}
 				>
 					{wordChildren}
@@ -294,7 +268,6 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			);
 
 			if (glossaryAvatar) {
-				// nowrap keeps prefix + avatar + matched word on the same line.
 				spans.push(
 					<span key={`gg-${i}`} className="glossary-marker-group">
 						{wordSpan}

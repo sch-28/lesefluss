@@ -91,23 +91,46 @@ export function useHighlightSelection({
 		setSelectionEnd(offset);
 	}, []);
 
-	// Derived: the active selection range (start <= end, both defined)
+	// Derived: the active selection range (start <= end, both defined).
+	// Byte-anchored internally; emits {startByte, endByte} for legacy callers
+	// and {startWord, endWord} for the word-unit paragraph renderer.
 	const selectionRange = useMemo(() => {
 		if (selectionAnchor === null || selectionEnd === null) return null;
-		return {
-			start: Math.min(selectionAnchor, selectionEnd),
-			end: Math.max(selectionAnchor, selectionEnd),
-		};
+		const startByte = Math.min(selectionAnchor, selectionEnd);
+		const endByte = Math.max(selectionAnchor, selectionEnd);
+		return { start: startByte, end: endByte };
 	}, [selectionAnchor, selectionEnd]);
+
+	const selectionRangeWord = useMemo(() => {
+		if (!selectionRange || !wordIndex) return null;
+		return {
+			startWord: wordIndex.wordOf(selectionRange.start),
+			endWord: wordIndex.wordOf(selectionRange.end),
+		};
+	}, [selectionRange, wordIndex]);
 
 	// ── Per-paragraph highlight map ───────────────────────────────────────
 	// Maps paragraphIndex → HighlightRange[] that overlap that paragraph.
-	// Recomputed only when highlights or paragraph offsets change (not on scroll).
+	// Highlights store byte AND word fields after backfill (ADR-0002); when a
+	// row's word fields are still null (transitional state pre-backfill) we
+	// derive them on the fly via the active WordIndex. Rows without either
+	// fallback are dropped from rendering — the next backfill pass fixes them.
 	const highlightsByParagraph = useMemo<Map<number, HighlightRange[]>>(() => {
 		const map = new Map<number, HighlightRange[]>();
 		if (highlightRows.length === 0 || paragraphOffsets.length === 0) return map;
 
 		for (const h of highlightRows) {
+			const startWord = h.startWord ?? wordIndex?.wordOf(h.startOffset);
+			const endWord = h.endWord ?? wordIndex?.wordOf(h.endOffset);
+			if (startWord === undefined || endWord === undefined) continue;
+
+			const range: HighlightRange = {
+				id: h.id,
+				startWord,
+				endWord,
+				color: h.color,
+			};
+
 			for (let i = 0; i < paragraphOffsets.length; i++) {
 				const paraStart = paragraphOffsets[i];
 				const paraEnd =
@@ -117,15 +140,15 @@ export function useHighlightSelection({
 				if (h.startOffset <= paraEnd && h.endOffset >= paraStart) {
 					const existing = map.get(i);
 					if (existing) {
-						existing.push(h);
+						existing.push(range);
 					} else {
-						map.set(i, [h]);
+						map.set(i, [range]);
 					}
 				}
 			}
 		}
 		return map;
-	}, [highlightRows, paragraphOffsets]);
+	}, [highlightRows, paragraphOffsets, wordIndex]);
 
 	// ── Text extraction + highlight lookup ────────────────────────────────
 	const extractRangeText = useCallback(
@@ -410,6 +433,7 @@ export function useHighlightSelection({
 	return {
 		// Render state
 		selectionRange,
+		selectionRangeWord,
 		isSelecting,
 		selectionColor,
 		pendingNote,
