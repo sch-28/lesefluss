@@ -57,7 +57,7 @@ const WebNovels: React.FC = () => {
 	};
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="bg-background">
 			<PageHeader
 				title="Web novels"
 				icon={BookOpen}

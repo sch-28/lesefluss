@@ -104,7 +104,7 @@ function AppearanceSettings() {
 	);
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="bg-background">
 			<PageHeader title="Appearance" icon={Eye} />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				<Section title="Theme">

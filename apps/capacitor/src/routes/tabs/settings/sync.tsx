@@ -185,7 +185,7 @@ function SyncSettings() {
 	const pendingCfg = pendingAction ? DANGER_ACTIONS[pendingAction] : null;
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="bg-background">
 			<PageHeader title="Cloud sync" icon={isLoggedIn ? CloudCheck : Cloud} />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				{isLoggedIn ? (

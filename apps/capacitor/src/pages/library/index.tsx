@@ -177,7 +177,7 @@ const Library: React.FC = () => {
 	const showSync = isConnected || isLoggedIn;
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="bg-background">
 			<TabHeader
 				logo="/logo.png"
 				title="Lesefluss"

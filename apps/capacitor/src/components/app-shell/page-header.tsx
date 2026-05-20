@@ -13,22 +13,24 @@ export function PageHeader({
 }) {
 	const router = useRouter();
 	return (
-		<header className="sticky top-0 z-20 flex h-12 items-center gap-2 border-border border-b bg-background/95 px-2 backdrop-blur">
-			<a
-				href="#"
-				role="button"
-				onClick={(e) => {
-					e.preventDefault();
-					router.history.back();
-				}}
-				aria-label="Back"
-				className="-ml-1 inline-flex size-9 items-center justify-center rounded-md text-muted-foreground no-underline hover:bg-muted hover:text-foreground"
-			>
-				<ChevronLeft className="size-5" />
-			</a>
-			{Icon && <Icon className="size-5 shrink-0 text-muted-foreground" />}
-			<h1 className="m-0 flex-1 font-semibold text-base leading-none">{title}</h1>
-			{right}
+		<header className="sticky top-0 z-20 flex flex-col border-border border-b bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur">
+			<div className="flex h-12 items-center gap-2 px-2">
+				<a
+					href="#"
+					role="button"
+					onClick={(e) => {
+						e.preventDefault();
+						router.history.back();
+					}}
+					aria-label="Back"
+					className="-ml-1 inline-flex size-9 items-center justify-center rounded-md text-muted-foreground no-underline hover:bg-muted hover:text-foreground"
+				>
+					<ChevronLeft className="size-5" />
+				</a>
+				{Icon && <Icon className="size-5 shrink-0 text-muted-foreground" />}
+				<h1 className="m-0 flex-1 font-semibold text-base leading-none">{title}</h1>
+				{right}
+			</div>
 		</header>
 	);
 }

@@ -1031,8 +1031,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		(book.catalogId ? externalSourceUrl(book.catalogId) : null);
 
 	return (
-		<div className={`reader-theme-${theme} flex h-screen flex-col bg-background pt-[env(safe-area-inset-top)] text-foreground`}>
-			<header className="flex h-12 shrink-0 items-center gap-0.5 border-border border-b bg-background/95 px-1 backdrop-blur">
+		<div className={`reader-theme-${theme} flex h-screen flex-col bg-background text-foreground`}>
+			<header className="flex shrink-0 flex-col border-border border-b bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur">
+				<div className="flex h-12 items-center gap-0.5 px-1">
 				<button
 					type="button"
 					onClick={() => history.back()}
@@ -1111,6 +1112,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				>
 					<MoreVertical />
 				</Button>
+				</div>
 			</header>
 
 			<div className="relative flex-1 overflow-hidden">

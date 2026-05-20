@@ -128,7 +128,7 @@ function SettingsLanding() {
 	}
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="bg-background">
 			<TabHeader title="Settings" icon={Cog} right={!IS_WEB && <BLEIndicator />} />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				<Section title="Reading">

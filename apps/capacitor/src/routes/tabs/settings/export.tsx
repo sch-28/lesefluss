@@ -43,7 +43,7 @@ function ExportSettings() {
 	});
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="bg-background">
 			<PageHeader title="Export highlights" icon={Download} />
 			<div className="mx-auto max-w-2xl space-y-6 px-4 pb-10 pt-4">
 				<div>

@@ -108,7 +108,7 @@ const Explore: React.FC = () => {
 	const showResults = debouncedQuery.length > 0 || genre !== null;
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="bg-background">
 			<TabHeader>
 				{isSearchOpen ? (
 					<>

@@ -1,4 +1,4 @@
-import { useMatchRoute } from "@tanstack/react-router";
+import { useLocation } from "@tanstack/react-router";
 import { Compass, LibraryBig, Settings } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
@@ -15,6 +15,10 @@ export const NAV_ITEMS: readonly NavTarget[] = [
 ];
 
 export function useActiveNavTo(): NavTarget["to"] | null {
-	const matchRoute = useMatchRoute();
-	return NAV_ITEMS.find((item) => matchRoute({ to: item.to, fuzzy: true }))?.to ?? null;
+	const { pathname } = useLocation();
+	return (
+		NAV_ITEMS.find(
+			(item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
+		)?.to ?? null
+	);
 }

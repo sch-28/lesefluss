@@ -24,7 +24,7 @@ function RsvpSettings() {
 		: null;
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="bg-background">
 			<PageHeader title="RSVP" icon={Zap} />
 			<div className="mx-auto max-w-2xl space-y-4 px-4 pb-10 pt-4">
 				{previewSettings && <RsvpPreview settings={previewSettings} />}

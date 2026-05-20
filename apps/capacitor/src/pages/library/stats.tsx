@@ -42,7 +42,7 @@ const Stats: React.FC = () => {
 	const currentStreak = streak.data?.current ?? 0;
 
 	return (
-		<div className="min-h-screen bg-background text-foreground">
+		<div className="bg-background text-foreground">
 			<PageHeader title="Reading stats" icon={BarChart3} />
 			{isInitialLoading ? (
 				<div className="flex min-h-[60vh] items-center justify-center">

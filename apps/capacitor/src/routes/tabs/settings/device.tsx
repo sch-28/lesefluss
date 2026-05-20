@@ -210,7 +210,7 @@ function DeviceSettings() {
 
 	if (isPending || !settings) {
 		return (
-			<div className="min-h-screen bg-background">
+			<div className="bg-background">
 				<PageHeader title="Device" icon={Cpu} />
 				<div className="flex items-center justify-center py-20">
 					<Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -225,7 +225,7 @@ function DeviceSettings() {
 			: 0;
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="bg-background">
 			<PageHeader title="Device" icon={Cpu} />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				<Section title="Display">
