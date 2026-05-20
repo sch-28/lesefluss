@@ -27,7 +27,7 @@ export function PageHeader({
 				>
 					<ChevronLeft className="size-5" />
 				</a>
-				{Icon && <Icon className="size-5 shrink-0 text-muted-foreground" />}
+				{Icon && <Icon className="size-5 shrink-0  text-muted-foreground" />}
 				<h1 className="m-0 flex-1 font-semibold text-base leading-5">{title}</h1>
 				{right}
 			</div>
