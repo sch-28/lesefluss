@@ -567,13 +567,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	}, [isSelecting, cancelSelection]);
 
 	// Long-press → selection toolbar → "Look up" reads the word's rendered text
-	// straight from the DOM (selection.start is the data-offset of a word span)
-	// and opens the existing dictionary modal. Cleans punctuation the same way
-	// handleWordTap's dictionary path does.
+	// straight from the DOM (selection.startWord targets a word span via
+	// `data-word`) and opens the dictionary modal. ADR-0002.
 	const handleSelectionLookup = useCallback(() => {
-		const range = sel.selectionRange;
+		const range = sel.selectionRangeWord;
 		if (!range) return;
-		const span = document.querySelector<HTMLElement>(`span[data-offset="${range.start}"]`);
+		const span = document.querySelector<HTMLElement>(`span[data-word="${range.startWord}"]`);
 		const raw = span?.textContent ?? "";
 		const original = stripPunct(raw);
 		const clean = original.toLowerCase();
@@ -784,11 +783,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// selection is just the start word until the next pointermove fires).
 			const extendToPoint = (clientX: number, clientY: number) => {
 				const el = document.elementFromPoint(clientX, clientY);
-				const span = el?.closest<HTMLElement>("span[data-offset]");
-				if (!span) return;
-				const wordOffset = Number.parseInt(span.dataset.offset ?? "", 10);
-				if (Number.isNaN(wordOffset)) return;
-				extendSelectionTo(wordOffset);
+				const span = el?.closest<HTMLElement>("span[data-word]");
+				if (!span || !wordIndex) return;
+				const wIdx = Number.parseInt(span.dataset.word ?? "", 10);
+				if (Number.isNaN(wIdx)) return;
+				// Selection internals byte-anchored; convert at the DOM boundary.
+				extendSelectionTo(wordIndex.byteOf(wordPos(wIdx)));
 			};
 			extendToPoint(initialEvent.clientX, initialEvent.clientY);
 
@@ -1187,6 +1187,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						paragraphs={paragraphs}
 						paragraphOffsets={paragraphOffsets}
 						paragraphStartWords={paragraphStartWords}
+						wordIndex={wordIndex ?? null}
 						contentLength={contentBytes?.length ?? content.length}
 						initialByteOffset={lastOffsetRef.current ?? book.position}
 						fontSize={readerFontSize}

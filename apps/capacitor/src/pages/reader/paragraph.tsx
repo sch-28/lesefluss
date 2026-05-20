@@ -13,11 +13,9 @@
  * without per-word spans - they are not tappable reading positions.
  */
 
-import { utf8ByteLength, type WordPosition } from "@lesefluss/core";
+import type { WordPosition } from "@lesefluss/core";
 import type React from "react";
 import { memo } from "react";
-
-export { utf8ByteLength };
 
 // ─── Heading helpers ─────────────────────────────────────────────────────────
 
@@ -57,13 +55,6 @@ export interface ParagraphProps {
 	text: string;
 	/** Word index of the FIRST word in this paragraph (ADR-0002). */
 	startWord: number;
-	/**
-	 * Byte offset of this paragraph's first character. Used to emit
-	 * `data-offset` attributes alongside `data-word` so scroll-view's
-	 * DOM-driven span lookups still work during the transition. Stage H+
-	 * will drop data-offset entirely.
-	 */
-	startOffset: number;
 	/** Currently focused word index, or -1 to hide the active-word underline. */
 	activeWord: number;
 	onWordTap: (wordIdx: number, wordText: string) => void;
@@ -93,7 +84,6 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 	({
 		text,
 		startWord,
-		startOffset,
 		activeWord,
 		onWordTap,
 		onWordLongPress,
@@ -120,7 +110,6 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		// both inside a range, in which case they get the same background to keep
 		// the visual range continuous.
 		let lastWordIdx = startWord - 1;
-		let localByteOffset = 0;
 		const spans: React.ReactNode[] = [];
 
 		const wordInRange = (wIdx: number, s: number, e: number) => wIdx >= s && wIdx <= e;
@@ -133,8 +122,6 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 
 			const tokenWord = isSpace ? lastWordIdx : lastWordIdx + 1;
 			if (!isSpace) lastWordIdx = tokenWord;
-			const tokenByteOffset = startOffset + localByteOffset;
-			localByteOffset += utf8ByteLength(token);
 
 			const classes: string[] = [];
 
@@ -258,7 +245,6 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 				<span
 					key={i}
 					data-word={wIdx}
-					data-offset={tokenByteOffset}
 					className={className}
 					onClick={() => onWordTap(wIdx, token)}
 					onPointerDown={handlePointerDown}

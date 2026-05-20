@@ -235,13 +235,13 @@ export function useHighlightSelection({
 	// positions from the DOM and updates handle styles directly (bypassing
 	// React renders for smooth visual updates).
 	const syncHandlePositions = useCallback(() => {
-		if (!selectionRange) return;
-		const startSpan = document.querySelector<HTMLElement>(
-			`span[data-offset="${selectionRange.start}"]`,
-		);
-		const endSpan = document.querySelector<HTMLElement>(
-			`span[data-offset="${selectionRange.end}"]`,
-		);
+		if (!selectionRange || !wordIndex) return;
+		// ADR-0002: DOM is keyed by data-word; convert the byte-anchored
+		// selectionRange via WordIndex.wordOf to query spans.
+		const startWord = wordIndex.wordOf(selectionRange.start);
+		const endWord = wordIndex.wordOf(selectionRange.end);
+		const startSpan = document.querySelector<HTMLElement>(`span[data-word="${startWord}"]`);
+		const endSpan = document.querySelector<HTMLElement>(`span[data-word="${endWord}"]`);
 
 		// Position start handle: bar runs along the left edge of the start word.
 		if (startHandleRef.current) {
@@ -287,7 +287,7 @@ export function useHighlightSelection({
 				}
 			}
 		}
-	}, [selectionRange]);
+	}, [selectionRange, wordIndex]);
 
 	// Keep a ref so scroll handler can call it without stale-closure issues
 	const syncHandlesRef = useRef(syncHandlePositions);
@@ -320,10 +320,12 @@ export function useHighlightSelection({
 			const anchorHoldsDraggedEdge = isStartHandle ? anchor <= end : anchor >= end;
 			const onMove = (me: PointerEvent) => {
 				const el = document.elementFromPoint(me.clientX, me.clientY);
-				const span = el?.closest<HTMLElement>("span[data-offset]");
-				if (!span) return;
-				const offset = Number.parseInt(span.dataset.offset ?? "", 10);
-				if (Number.isNaN(offset)) return;
+				const span = el?.closest<HTMLElement>("span[data-word]");
+				if (!span || !wordIndex) return;
+				const wIdx = Number.parseInt(span.dataset.word ?? "", 10);
+				if (Number.isNaN(wIdx)) return;
+				// Selection internals are byte-anchored; convert at the boundary.
+				const offset = wordIndex.byteOf(wordPos(wIdx));
 				if (anchorHoldsDraggedEdge) writeAnchor(offset);
 				else writeEnd(offset);
 			};
@@ -337,7 +339,7 @@ export function useHighlightSelection({
 			window.addEventListener("pointerup", cleanup);
 			window.addEventListener("pointercancel", cleanup);
 		},
-		[writeAnchor, writeEnd],
+		[writeAnchor, writeEnd, wordIndex],
 	);
 
 	const handleStartHandlePointerDown = useMemo(

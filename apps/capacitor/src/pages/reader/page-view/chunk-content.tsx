@@ -18,7 +18,6 @@ export interface ChunkContentProps {
 	chunk: Chunk;
 	chunkIndex: number;
 	paragraphs: string[];
-	paragraphOffsets: number[];
 	paragraphStartWords: number[];
 
 	// Position in the transform wrapper (relative to current chunk; 0 for current).
@@ -58,7 +57,6 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	chunk,
 	chunkIndex,
 	paragraphs,
-	paragraphOffsets,
 	paragraphStartWords,
 	leftOffset,
 	pageWidth,
@@ -132,7 +130,6 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 		>
 			{paragraphs.slice(chunk.paragraphFrom, chunk.paragraphTo).map((text, i) => {
 				const paraGlobalIndex = chunk.paragraphFrom + i;
-				const paraStart = paragraphOffsets[paraGlobalIndex];
 				const paraStartWord = paragraphStartWords[paraGlobalIndex] ?? 0;
 				const paraEndWord = paragraphStartWords[paraGlobalIndex + 1] ?? Number.POSITIVE_INFINITY;
 				const isActiveWordHere = activeWord >= paraStartWord && activeWord < paraEndWord;
@@ -141,7 +138,6 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 						key={paraGlobalIndex.toString()}
 						text={text}
 						startWord={paraStartWord}
-						startOffset={paraStart}
 						activeWord={isActiveWordHere ? activeWord : -1}
 						onWordTap={onWordTap}
 						onWordLongPress={onWordLongPress}

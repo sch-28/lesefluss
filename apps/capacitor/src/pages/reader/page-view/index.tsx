@@ -63,7 +63,8 @@ import {
 	relativeOffsets,
 	visibleWindow,
 } from "./chunks";
-import { findPageForByte, readFirstVisibleByteOffset } from "./measurements";
+import { wordPos } from "@lesefluss/core";
+import { findPageForWord, readFirstVisibleWord } from "./measurements";
 
 // ─── Tuning ──────────────────────────────────────────────────────────────────
 const TAP_THRESHOLD_PX = 8; // movement under this is a tap, not a swipe
@@ -91,6 +92,7 @@ export interface PageViewProps {
 	activeOffset: number;
 	activeWord: number;
 	paragraphStartWords: number[];
+	wordIndex: import("@lesefluss/core").WordIndex | null;
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	selectionRange: { startWord: number; endWord: number } | null;
@@ -121,6 +123,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		paragraphs,
 		paragraphOffsets,
 		paragraphStartWords,
+		wordIndex,
 		contentLength,
 		initialByteOffset,
 		fontSize,
@@ -268,7 +271,13 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		const el = chunkRefs.current.get(chunkIndex);
 		if (!el) return;
 		pendingTargetRef.current = null;
-		const targetPage = findPageForByte(el, pageWidth, currentPageCount, target);
+		if (!wordIndex) return;
+		const targetPage = findPageForWord(
+			el,
+			pageWidth,
+			currentPageCount,
+			wordIndex.wordOf(target),
+		);
 		setPageIndex(targetPage);
 		// Transform sync runs in its own layout effect below — by the time it
 		// fires, pageIndex has been committed and the transform lands cleanly.
@@ -369,8 +378,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		(p: number) => {
 			const el = chunkRefs.current.get(chunkIndex);
 			if (!el) return;
-			const byte = readFirstVisibleByteOffset(el, pageWidth, p);
-			if (byte !== null) onPositionSettle(byte);
+			const w = readFirstVisibleWord(el, pageWidth, p);
+			if (w !== null && wordIndex) onPositionSettle(wordIndex.byteOf(wordPos(w)));
 		},
 		[chunkIndex, pageWidth, onPositionSettle],
 	);
@@ -414,8 +423,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				setPageIndex(targetPage);
 				const el = chunkRefs.current.get(neighborIdx);
 				if (el) {
-					const byte = readFirstVisibleByteOffset(el, pageWidth, targetPage);
-					if (byte !== null) onPositionSettle(byte);
+					const w = readFirstVisibleWord(el, pageWidth, targetPage);
+					if (w !== null && wordIndex) onPositionSettle(wordIndex.byteOf(wordPos(w)));
 				}
 			});
 		},
@@ -468,8 +477,13 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				}
 				if (!isLayoutReady) return;
 				const el = chunkRefs.current.get(chunkIndex);
-				if (!el) return;
-				const targetPage = findPageForByte(el, pageWidth, currentPageCount, byteOffset);
+				if (!el || !wordIndex) return;
+				const targetPage = findPageForWord(
+					el,
+					pageWidth,
+					currentPageCount,
+					wordIndex.wordOf(byteOffset),
+				);
 				goToPage(targetPage);
 			},
 			goNext,
@@ -650,7 +664,6 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									chunkIndex={idx}
 									chunk={chunk}
 									paragraphs={paragraphs}
-									paragraphOffsets={paragraphOffsets}
 									paragraphStartWords={paragraphStartWords}
 									leftOffset={offsets.get(idx) ?? 0}
 									pageWidth={pageWidth}
