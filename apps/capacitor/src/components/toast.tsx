@@ -46,5 +46,5 @@ export function useToast() {
 }
 
 export const Toaster: React.FC = () => {
-	return <SonnerToaster richColors closeButton />;
+	return <SonnerToaster richColors />;
 };

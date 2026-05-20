@@ -30,7 +30,7 @@ export function TabHeader({ title, icon: Icon, logo, right, children }: TabHeade
 			<div className={innerClass}>
 				{logo && <img src={logo} alt="" className="size-5" />}
 				{Icon && <Icon className="size-5 shrink-0 text-muted-foreground" />}
-				<h1 className="m-0 flex-1 font-semibold text-base leading-none">{title}</h1>
+				<h1 className="m-0 flex-1 font-semibold text-base leading-5">{title}</h1>
 				{right}
 			</div>
 		</header>
