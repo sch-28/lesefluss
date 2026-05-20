@@ -8,7 +8,7 @@
  * wires the returned handlers/refs to word events + overlay JSX.
  */
 
-import type { WordIndex } from "@lesefluss/core";
+import { type WordIndex, wordPos } from "@lesefluss/core";
 import type React from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "../../components/toast";
@@ -192,9 +192,15 @@ export function useHighlightSelection({
 		[writeAnchor, writeEnd],
 	);
 
-	/** Long-press on a word: open editor if highlighted, else start selection. */
+	/**
+	 * Long-press on a word: open editor if highlighted, else start selection.
+	 * Paragraph emits a word index; convert to a byte offset for the
+	 * byte-anchored selection internals (ADR-0002 transition).
+	 */
 	const handleWordLongPress = useCallback(
-		(offset: number) => {
+		(wIdx: number) => {
+			if (!wordIndex) return;
+			const offset = wordIndex.byteOf(wordPos(wIdx));
 			const existing = findHighlightAt(offset);
 			if (existing) {
 				openHighlightEditor(existing);
@@ -202,7 +208,7 @@ export function useHighlightSelection({
 			}
 			startSelection(offset);
 		},
-		[findHighlightAt, openHighlightEditor, startSelection],
+		[findHighlightAt, openHighlightEditor, startSelection, wordIndex],
 	);
 
 	/** Extend the current selection's end to a new offset. No-op if not selecting. */

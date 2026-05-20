@@ -118,7 +118,9 @@ function toBlobValue(bytes: Uint8Array): Buffer {
 export async function backfillBookToWord(bookId: string): Promise<"converted" | "skipped"> {
 	const book = await queries.getBook(bookId);
 	if (!book) return "skipped";
-	if (book.positionUnit === "word") return "skipped";
+	// Already-word books with a populated wordCount are done; the wordCount
+	// === 0 case re-runs to pick up the new column (migration 0026).
+	if (book.positionUnit === "word" && book.wordCount > 0) return "skipped";
 	if (book.chapterStatus !== "fetched") return "skipped";
 
 	const contentRow = await queries.getBookContent(bookId);
@@ -214,8 +216,15 @@ export async function backfillAllBooks(
 	onProgress?: (progress: BackfillProgress) => void,
 ): Promise<BackfillSummary> {
 	const all = await queries.getAllBooks();
+	// ADR-0002: include books that were converted on a prior release but
+	// haven't yet picked up `word_count` (added in migration 0026). The
+	// per-book step is idempotent so re-running on already-word books is
+	// effectively just a `wordCount` backfill.
 	const pending = all.filter(
-		(b) => b.positionUnit === "byte" && b.chapterStatus === "fetched" && !b.deleted,
+		(b) =>
+			(b.positionUnit === "byte" || b.wordCount === 0) &&
+			b.chapterStatus === "fetched" &&
+			!b.deleted,
 	);
 	const total = pending.length;
 
