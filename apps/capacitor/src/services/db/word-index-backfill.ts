@@ -19,16 +19,16 @@ export interface BackfillSessionInput {
 
 export interface ConvertedHighlight {
 	id: string;
-	startWord: number;
+	startWord: WordPosition;
 	startCharInWord: number;
-	endWord: number;
+	endWord: WordPosition;
 	endCharInWord: number;
 }
 
 export interface ConvertedSession {
 	id: string;
-	startWord: number;
-	endWord: number;
+	startWord: WordPosition;
+	endWord: WordPosition;
 }
 
 export interface BookConversionInput {
@@ -92,10 +92,10 @@ export function computeBookConversion(input: BookConversionInput): BookConversio
 }
 
 /**
- * Serialize a WordIndex for the `book_content.word_index` text column.
- * UTF-8 JSON. Parsed via JSON.parse on read.
+ * Serialize a WordIndex to its `book_content.word_index` TEXT column form.
+ * JSON-stringified `SerializedWordIndex`; the loader uses JSON.parse.
  */
-export function serializeWordIndexBlob(idx: WordIndex): string {
+export function serializeWordIndex(idx: WordIndex): string {
 	return JSON.stringify(idx.serialize());
 }
 
@@ -139,7 +139,7 @@ export async function backfillBookToWord(bookId: string): Promise<"converted" | 
 		})),
 	});
 
-	const indexJson = serializeWordIndexBlob(result.wordIndex);
+	const indexJson = serializeWordIndex(result.wordIndex);
 
 	// Sequence: persist content updates first, then highlight + session
 	// updates in parallel, THEN flip position_unit. Any thrown error short-

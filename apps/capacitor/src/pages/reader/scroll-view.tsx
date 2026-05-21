@@ -47,6 +47,7 @@ function findAlignmentSpan(
 		const w = Number.parseInt(span.dataset.word ?? "", 10);
 		if (
 			Number.isNaN(w) ||
+			w < 0 ||
 			w < paragraphStartWord ||
 			w >= paragraphEndWord ||
 			w > wordIdx
@@ -326,14 +327,22 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			return;
 		}
 
-		didInitialScrollRef.current = true;
-
 		const target = initialByteOffset;
 		if (target === 0) {
-			// start of book - default scroll is correct, nothing to wait for
+			// start of book - default scroll is correct, nothing to wait for.
+			didInitialScrollRef.current = true;
 			setIsInitialScrollReady(true);
 			return;
 		}
+
+		// ADR-0002: fineScrollTo needs the WordIndex to convert the byte
+		// target into a `data-word` DOM query. Defer the initial scroll
+		// until the React Query for the WordIndex resolves; this effect
+		// re-fires on wordIndex change. Without this guard the skeleton
+		// sticks forever because onReady is never called.
+		if (!wordIndex) return;
+
+		didInitialScrollRef.current = true;
 
 		const idx = findParagraphIndex(target);
 		suppressNextScrollEndRef.current = true;
@@ -342,7 +351,14 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		onInitialActiveOffset(target);
 
 		return fineScrollTo(target, true, () => setIsInitialScrollReady(true));
-	}, [paragraphs, initialByteOffset, findParagraphIndex, fineScrollTo, onInitialActiveOffset]);
+	}, [
+		paragraphs,
+		initialByteOffset,
+		findParagraphIndex,
+		fineScrollTo,
+		onInitialActiveOffset,
+		wordIndex,
+	]);
 
 	// ── Imperative jumpTo (chapter / search / highlight-list) ─────────────
 	// Visual scroll only — parent has already updated active/progress/last/saved
@@ -429,7 +445,9 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		let bestWord = -1;
 		for (const span of spans) {
 			if (span.getBoundingClientRect().top >= cutoffTop) {
-				bestWord = Number.parseInt(span.dataset.word ?? "", 10);
+				const w = Number.parseInt(span.dataset.word ?? "", 10);
+				if (Number.isNaN(w) || w < 0) continue;
+				bestWord = w;
 				break;
 			}
 		}

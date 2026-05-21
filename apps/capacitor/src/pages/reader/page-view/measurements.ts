@@ -8,6 +8,8 @@
  * layout flush.
  */
 
+import type { WordPosition } from "@lesefluss/core";
+
 /** Find the page index containing the span with the exact data-word, or the
  *  closest one ≤ wordIdx. Returns 0 if no span found (empty chunk / stale
  *  saved position past the chunk's last word). */
@@ -15,7 +17,7 @@ export function findPageForWord(
 	columns: HTMLElement,
 	pageWidth: number,
 	pageCount: number,
-	wordIdx: number,
+	wordIdx: WordPosition,
 ): number {
 	const exact = columns.querySelector<HTMLElement>(`span[data-word="${wordIdx}"]`);
 	let span: HTMLElement | null = exact;
@@ -23,7 +25,7 @@ export function findPageForWord(
 		let bestW: number | null = null;
 		for (const s of columns.querySelectorAll<HTMLElement>("span[data-word]")) {
 			const w = Number.parseInt(s.dataset.word ?? "", 10);
-			if (Number.isNaN(w) || w > wordIdx) continue;
+			if (Number.isNaN(w) || w < 0 || w > wordIdx) continue;
 			if (bestW === null || w > bestW) {
 				bestW = w;
 				span = s;
@@ -55,7 +57,7 @@ export function readFirstVisibleWord(
 		const onThisPage = Math.floor(xWithin / pageWidth) === pageIndex;
 		if (!onThisPage) continue;
 		const w = Number.parseInt(s.dataset.word ?? "", 10);
-		if (Number.isNaN(w)) continue;
+		if (Number.isNaN(w) || w < 0) continue;
 		if (!best || r.top < best.top || (r.top === best.top && r.left < best.left)) {
 			best = { word: w, top: r.top, left: r.left };
 		}

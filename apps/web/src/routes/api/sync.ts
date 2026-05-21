@@ -320,7 +320,7 @@ export const Route = createFileRoute("/api/sync")({
 									// this guard the upsert would clobber a previously
 									// uploaded word position with 0.
 									wordPosition: sql`CASE WHEN excluded.position_unit = 'word' AND excluded.updated_at >= sync_books.updated_at THEN excluded.word_position ELSE sync_books.word_position END`,
-									positionUnit: sql`CASE WHEN excluded.position_unit = 'word' THEN excluded.position_unit ELSE sync_books.position_unit END`,
+									positionUnit: sql`CASE WHEN excluded.position_unit = 'word' AND excluded.updated_at >= sync_books.updated_at THEN excluded.position_unit ELSE sync_books.position_unit END`,
 									// Once a row is deleted on the server, content stays null — no client push can refill it.
 									// Chapter rows (series_id set) are re-derivable from upstream; never store body content
 									// for them, regardless of what an old client pushes or what was there before.

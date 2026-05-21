@@ -185,9 +185,9 @@ export const highlights = sqliteTable("highlights", {
 	 * (TASK-134) converts byte offsets → word + char-in-word. Production code
 	 * reads these from TASK-135.
 	 */
-	startWord: integer("start_word"),
+	startWord: integer("start_word").$type<WordPosition>(),
 	startCharInWord: integer("start_char_in_word"),
-	endWord: integer("end_word"),
+	endWord: integer("end_word").$type<WordPosition>(),
 	endCharInWord: integer("end_char_in_word"),
 	color: text("color").notNull().default("yellow"), // 'yellow' | 'blue' | 'orange' | 'pink'
 	note: text("note"),
@@ -264,8 +264,8 @@ export const readingSessions = sqliteTable("reading_sessions", {
 	 * Canonical session bounds in word units. Nullable until backfill (TASK-134)
 	 * converts existing rows. Production code reads these from TASK-135.
 	 */
-	startWord: integer("start_word"),
-	endWord: integer("end_word"),
+	startWord: integer("start_word").$type<WordPosition>(),
+	endWord: integer("end_word").$type<WordPosition>(),
 	wpmAvg: integer("wpm_avg"), // rsvp only; null otherwise
 	updatedAt: integer("updated_at").notNull(), // for last-write-wins sync
 });

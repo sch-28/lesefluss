@@ -1,6 +1,6 @@
 import { utf8ByteLength } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
-import { computeBookConversion, serializeWordIndexBlob } from "../word-index-backfill";
+import { computeBookConversion, serializeWordIndex } from "../word-index-backfill";
 import type { Chapter } from "../schema";
 
 const SIMPLE = "alpha beta gamma delta epsilon";
@@ -141,7 +141,7 @@ describe("computeBookConversion", () => {
 	});
 });
 
-describe("serializeWordIndexBlob", () => {
+describe("serializeWordIndex", () => {
 	it("produces a JSON string parseable back to the WordIndex serialized shape", () => {
 		const out = computeBookConversion({
 			position: 0,
@@ -150,7 +150,7 @@ describe("serializeWordIndexBlob", () => {
 			highlights: [],
 			sessions: [],
 		});
-		const json = serializeWordIndexBlob(out.wordIndex);
+		const json = serializeWordIndex(out.wordIndex);
 		expect(typeof json).toBe("string");
 		const parsed = JSON.parse(json);
 		expect(parsed.v).toBe(1);

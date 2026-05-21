@@ -50,7 +50,12 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { ActionSheet } from "../../components/action-sheet";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@lesefluss/ui/dropdown-menu";
 import { toast } from "../../components/toast";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
@@ -143,7 +148,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const { theme } = useTheme();
 	const [annotationsOpen, setAnnotationsOpen] = useState(false);
-	const [overflowOpen, setOverflowOpen] = useState(false);
 	const { data: series } = queryHooks.useSeries(book?.seriesId);
 	const [editingGlossaryEntry, setEditingGlossaryEntry] = useState<GlossaryEntry | null>(null);
 	// Tracks entry IDs that exist only in component state, not in SQLite yet.
@@ -235,14 +239,35 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// with a pure word-unit read after the downstream state types flip.
 	useEffect(() => {
 		if (!book || didSeedOffsetsRef.current) return;
-		const seed =
-			book.positionUnit === "word" && wordIndex
-				? wordIndex.byteOf(
-						wordPos(
-							Math.min(Math.max(book.wordPosition, 0), Math.max(wordIndex.wordCount - 1, 0)),
-						),
-					)
-				: book.position;
+		// Wait for the WordIndex before seeding a word-flagged book, otherwise
+		// we'd fall back to the legacy `book.position` byte value when the
+		// queries resolve out of order, then bail on the follow-up re-run
+		// because the seed flag is already set.
+		if (book.positionUnit === "word" && !wordIndex) return;
+		// Empty books (wordCount=0) cannot be converted — `wordIndex.byteOf`
+		// would call `wordAt(0)` on an empty entries array and throw
+		// RangeError. Fall through to the byte path which seeds 0.
+		const useWord =
+			book.positionUnit === "word" && wordIndex && wordIndex.wordCount > 0;
+		const seed = useWord
+			? wordIndex.byteOf(
+					wordPos(Math.min(Math.max(book.wordPosition, 0), wordIndex.wordCount - 1)),
+				)
+			: book.position;
+		// Dev-only invariant: when both legacy + canonical positions are
+		// populated, they should agree to within a tokenization word.
+		// Divergence ⇒ content drifted since last backfill or schema bug.
+		if (
+			import.meta.env.DEV &&
+			useWord &&
+			book.position > 0 &&
+			Math.abs(seed - book.position) > 64
+		) {
+			console.warn(
+				"[reader] seed byte/word mismatch:",
+				{ wordPosition: book.wordPosition, wordSeedByte: seed, storedByte: book.position },
+			);
+		}
 		didSeedOffsetsRef.current = true;
 		setActiveOffset(seed);
 		setProgressOffset(seed);
@@ -962,6 +987,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// Ionic's shadow DOM toggles tab-bar-hidden on keyboard show/hide, and
 	// external CSS can't override :host styles reliably. A body class lets
 	// us target ion-tab-bar from outside the shadow DOM with higher priority.
+	// Stable ref so the unmount cleanup below doesn't re-run every render when
+	// `sel` (a fresh object literal from useHighlightSelection) changes ref.
+	// Re-running the cleanup mid-selection wiped the just-started selection,
+	// which is why long-press appeared to flicker for ~50ms then vanish.
+	const cancelSelectionRef = useRef(sel.cancelSelection);
+	cancelSelectionRef.current = sel.cancelSelection;
+
 	useEffect(() => {
 		document.body.classList.add("reader-open");
 		return () => {
@@ -970,9 +1002,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// nav). The selection toolbar/handles render via a portal on
 			// document.body, so without this they'd stay pinned while the page
 			// slides out and visibly flash over the next page.
-			sel.cancelSelection();
+			cancelSelectionRef.current();
 		};
-	}, [sel]);
+	}, []);
 
 	// touch-action: none is applied directly to the handle elements via CSS
 	// so the scroll container remains scrollable during selection mode.
@@ -1144,14 +1176,39 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						</Button>
 					}
 				/>
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={() => setOverflowOpen(true)}
-					aria-label="More actions"
-				>
-					<MoreVertical />
-				</Button>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button variant="ghost" size="icon" aria-label="More actions">
+							<MoreVertical />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-56">
+						{overflowSourceUrl && (
+							<DropdownMenuItem
+								onSelect={() => {
+									void Browser.open({ url: overflowSourceUrl });
+								}}
+							>
+								<ExternalLink />
+								<span>
+									Open on {series ? providerLabel(series.provider) : "website"}
+								</span>
+							</DropdownMenuItem>
+						)}
+						<DropdownMenuItem
+							onSelect={() => {
+								history.push(
+									book.seriesId != null
+										? `/tabs/library/series/${book.seriesId}`
+										: `/tabs/library/book/${book.id}`,
+								);
+							}}
+						>
+							<Info />
+							<span>{book.seriesId != null ? "View series" : "View book"}</span>
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
 				</div>
 			</header>
 
@@ -1294,36 +1351,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				onCancel={sel.cancelSelection}
 				onStartHandlePointerDown={sel.handleStartHandlePointerDown}
 				onEndHandlePointerDown={sel.handleEndHandlePointerDown}
-			/>
-
-			{/* Toolbar overflow action sheet (chapter-level actions). */}
-			<ActionSheet
-				open={overflowOpen}
-				onOpenChange={setOverflowOpen}
-				items={[
-					...(overflowSourceUrl
-						? [
-								{
-									label: `Open on ${series ? providerLabel(series.provider) : "website"}`,
-									icon: ExternalLink,
-									onSelect: () => {
-										void Browser.open({ url: overflowSourceUrl });
-									},
-								},
-							]
-						: []),
-					{
-						label: book.seriesId != null ? "View series" : "View book",
-						icon: Info,
-						onSelect: () => {
-							history.push(
-								book.seriesId != null
-									? `/tabs/library/series/${book.seriesId}`
-									: `/tabs/library/book/${book.id}`,
-							);
-						},
-					},
-				]}
 			/>
 
 			{/* ── Merged annotations sheet (Contents / Highlights / Glossary) ── */}

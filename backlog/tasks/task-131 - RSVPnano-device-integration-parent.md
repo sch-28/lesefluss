@@ -4,6 +4,7 @@ title: RSVPnano device integration (parent)
 status: To Do
 assignee: []
 created_date: '2026-05-20 22:18'
+updated_date: '2026-05-21 01:32'
 labels: []
 dependencies: []
 references:
@@ -22,6 +23,8 @@ Scope:
 - Capacitor app gains a second BLE adapter targeting the multi-book schema; existing adapter unchanged. Device type discriminated by advertised service UUID.
 - Transport for v1 = BLE only. WiFi-AP fast-path for book transfer is deferred.
 - App-side reads on screen open; simple poll (2s position, 5s library) replaces notify. No notify chars in v1.
+
+Position sync (multi-book per-book) is no longer deferred — ADR-0002 made WordPosition the canonical app-side unit, so the multibook descriptor's wordIndex field flows end-to-end with no conversion. Tracked as TASK-131.15.
 
 Out of scope:
 - Porting our ESP32 firmware to multi-book.

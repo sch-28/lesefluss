@@ -19,6 +19,7 @@
  *   - poll gap > POLL_THROTTLE_GUARD_MS → assume timer was suspended;
  *     don't count gap as idle (resets activity clock to now)
  */
+import type { WordPosition } from "@lesefluss/core";
 import { log } from "../../utils/log";
 import { randomHexId } from "../../utils/random-id";
 
@@ -35,8 +36,8 @@ export type SessionRow = {
 	startPos: number;
 	endPos: number;
 	/** Canonical word-unit bounds (ADR-0002). Populated when a WordIndex is wired. */
-	startWord?: number;
-	endWord?: number;
+	startWord?: WordPosition;
+	endWord?: WordPosition;
 	wpmAvg: number | null;
 	updatedAt: number;
 };
@@ -57,7 +58,7 @@ export type TrackerOpts = {
 	 * available yet (book still loading). When non-null on both endpoints,
 	 * SessionRow gains startWord/endWord.
 	 */
-	byteToWord?: (byteOffset: number) => number | null;
+	byteToWord?: (byteOffset: number) => WordPosition | null;
 };
 
 export const POLL_MS = 5_000;

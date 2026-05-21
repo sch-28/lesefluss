@@ -213,6 +213,23 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 									_cancelActiveLongPress = null;
 									longPressTimer = null;
 									onWordLongPress(wIdx);
+									// Swallow the trailing `click` from the same pointer
+									// sequence so handleWordTap (which sees isSelecting=true)
+									// doesn't immediately cancel the just-started selection.
+									// Mirror of the mouse-drag-start path. Best-effort: if
+									// a capture-phase ancestor handler fires before the
+									// next click the swallow is consumed by that event
+									// instead; in practice the timeout callback runs
+									// synchronously before the pointerup→click sequence
+									// continues, so the listener is registered first.
+									const swallow = (ce: MouseEvent) => {
+										ce.stopPropagation();
+										ce.preventDefault();
+									};
+									window.addEventListener("click", swallow, {
+										once: true,
+										capture: true,
+									});
 								}, LONG_PRESS_MS);
 							}
 							document.addEventListener("pointermove", onMove);
