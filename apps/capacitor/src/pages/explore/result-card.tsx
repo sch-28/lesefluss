@@ -35,7 +35,7 @@ const ResultCard: React.FC<Props> = ({ result, onOpen }) => {
 					{result.title}
 				</div>
 				{result.author && (
-					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-muted-foreground text-[0.75rem]">
+					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
 						{result.author}
 					</div>
 				)}

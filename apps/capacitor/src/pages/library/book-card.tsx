@@ -49,9 +49,7 @@ const BookCard: React.FC<BookCardProps> = ({ book, cover, progress, started, onO
 					{book.title}
 				</div>
 				{book.author && (
-					<div className="mt-0.5 truncate text-[0.75rem] text-muted-foreground">
-						{book.author}
-					</div>
+					<div className="mt-0.5 truncate text-[0.75rem] text-muted-foreground">{book.author}</div>
 				)}
 			</div>
 		</div>

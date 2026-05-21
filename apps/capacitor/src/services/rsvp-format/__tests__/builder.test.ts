@@ -52,9 +52,7 @@ describe("buildRsvpDocument", () => {
 	});
 
 	it("escapes body lines that start with @ to @@", () => {
-		const out = decode(
-			buildRsvpDocument({ title: "T", body: "first\n@danger\nlast" }),
-		);
+		const out = decode(buildRsvpDocument({ title: "T", body: "first\n@danger\nlast" }));
 		expect(out).toContain("first\n@@danger\nlast");
 	});
 

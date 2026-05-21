@@ -1,4 +1,4 @@
-import { type HexColor, type PaginationStyle, wordPos, type WordPosition } from "@lesefluss/core";
+import { type HexColor, type PaginationStyle, type WordPosition, wordPos } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import { check, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 

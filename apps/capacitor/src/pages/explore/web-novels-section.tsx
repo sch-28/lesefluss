@@ -1,5 +1,5 @@
-import { useRouter } from "@tanstack/react-router";
 import { Button } from "@lesefluss/ui/button";
+import { useRouter } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import type React from "react";
 import type { CSSProperties } from "react";
@@ -38,7 +38,12 @@ const WebNovelsSection: React.FC = () => {
 		<section className="mb-6">
 			<header className="mb-2 flex items-center justify-between">
 				<h2 className="m-0 font-semibold text-[0.95rem]">Web novels</h2>
-				<Button variant="ghost" size="sm" onClick={handleBrowseAll} aria-label="Browse all web novels">
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={handleBrowseAll}
+					aria-label="Browse all web novels"
+				>
 					Browse
 					<ChevronRight />
 				</Button>

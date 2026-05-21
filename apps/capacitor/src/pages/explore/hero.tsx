@@ -90,9 +90,7 @@ const Hero: React.FC<Props> = ({ books, onOpen, intervalMs = 6000 }) => {
 					onClick={() => onOpen(book)}
 				>
 					<h2 className="m-0 font-semibold text-base leading-tight">{book.title}</h2>
-					{book.author && (
-						<p className="mt-1 text-muted-foreground text-sm">{book.author}</p>
-					)}
+					{book.author && <p className="mt-1 text-muted-foreground text-sm">{book.author}</p>}
 				</button>
 				{hasMultiple && (
 					<div className="mt-auto flex items-center gap-2 pt-3">

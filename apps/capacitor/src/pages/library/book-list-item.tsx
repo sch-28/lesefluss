@@ -38,9 +38,7 @@ const BookListItem: React.FC<BookListItemProps> = ({
 					{book.title}
 				</div>
 				{book.author && (
-					<div className="mt-0.5 truncate text-[0.8rem] text-muted-foreground">
-						{book.author}
-					</div>
+					<div className="mt-0.5 truncate text-[0.8rem] text-muted-foreground">{book.author}</div>
 				)}
 				{started && (
 					<div className="mt-1 flex items-center gap-1.5">
@@ -51,7 +49,6 @@ const BookListItem: React.FC<BookListItemProps> = ({
 					</div>
 				)}
 				<DeviceBadge bookId={book.id} style="block" />
-
 			</div>
 		</div>
 	);

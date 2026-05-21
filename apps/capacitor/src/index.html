@@ -17,7 +17,7 @@
       // Apply cached theme synchronously so the first paint matches the user's
       // saved choice without waiting for the async DB hydrate in ThemeProvider.
       // Falls back to system dark mode if no cached value.
-      (function () {
+      (() => {
         try {
           var cached = localStorage.getItem("app-theme");
           var sys = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";

@@ -1,11 +1,11 @@
 import { SETTING_CONSTRAINTS } from "@lesefluss/core";
-import { createFileRoute } from "@tanstack/react-router";
 import { Switch } from "@lesefluss/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@lesefluss/ui/toggle-group";
+import { createFileRoute } from "@tanstack/react-router";
 import { Eye } from "lucide-react";
 import { useCallback } from "react";
-import { PAGINATION_STYLE_OPTIONS } from "@/components/rsvp-pickers";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { PAGINATION_STYLE_OPTIONS } from "@/components/rsvp-pickers";
 import { useTheme } from "@/contexts/theme-context";
 import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "@/hooks/use-appearance-settings";
 

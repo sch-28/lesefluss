@@ -5,12 +5,7 @@
  * No explicit Save/Cancel: dismissed by drag-down. Only action button is Delete.
  */
 
-import {
-	Drawer,
-	DrawerContent,
-	DrawerHeader,
-	DrawerTitle,
-} from "@lesefluss/ui/drawer";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
 import { cn } from "@lesefluss/ui/utils";
 import { Trash2 } from "lucide-react";
 import type React from "react";

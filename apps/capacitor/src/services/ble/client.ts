@@ -58,9 +58,7 @@ class BLEClient {
 				const advertisedUuids = (result.uuids ?? []).map((u) => u.toLowerCase());
 				const advertisedName = result.localName || result.device.name || "";
 
-				let matched = advertisedUuids
-					.map((u) => byServiceUuid.get(u))
-					.find((d) => d !== undefined);
+				let matched = advertisedUuids.map((u) => byServiceUuid.get(u)).find((d) => d !== undefined);
 				if (!matched) {
 					matched = DEVICE_DESCRIPTORS.find((d) => advertisedName.startsWith(d.deviceName));
 				}

@@ -6,9 +6,9 @@ import {
 	isLikelyUrl,
 	normalizeUrl,
 } from "@lesefluss/book-import";
+import { useRouter } from "@tanstack/react-router";
 import type React from "react";
 import { useEffect, useRef } from "react";
-import { useRouter } from "@tanstack/react-router";
 import { subscribeShareIntent } from "../services/book-import/sources/share-intent";
 import { queryHooks } from "../services/db/hooks";
 import { isSerialUrl } from "../services/serial-scrapers";

@@ -1,6 +1,6 @@
+import { SplashScreen } from "@capacitor/splash-screen";
 import { createRootRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { SplashScreen } from "@capacitor/splash-screen";
 import { AppShell } from "@/components/app-shell/AppShell";
 import { HardwareBack } from "@/components/app-shell/hardware-back";
 import ShareIntentHandler from "@/components/share-intent-handler";
@@ -27,7 +27,13 @@ function RootLayout() {
 			<ShareIntentHandler />
 			<Toaster />
 			<WhatsNewModal />
-			{isFullScreen ? <Outlet /> : <AppShell><Outlet /></AppShell>}
+			{isFullScreen ? (
+				<Outlet />
+			) : (
+				<AppShell>
+					<Outlet />
+				</AppShell>
+			)}
 		</>
 	);
 }

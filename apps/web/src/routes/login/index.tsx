@@ -1,3 +1,7 @@
+import { Button } from "@lesefluss/ui/button";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@lesefluss/ui/field";
+import { Input } from "@lesefluss/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@lesefluss/ui/tabs";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { useForm } from "@tanstack/react-form";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
@@ -5,10 +9,6 @@ import * as React from "react";
 import { z } from "zod";
 import { DiscordIcon } from "~/components/icons/discord";
 import { GoogleIcon } from "~/components/icons/google";
-import { Button } from "@lesefluss/ui/button";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@lesefluss/ui/field";
-import { Input } from "@lesefluss/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@lesefluss/ui/tabs";
 import { sendVerificationEmail, signIn, signUp } from "~/lib/auth-client";
 import { useAuthSession } from "~/lib/session-context";
 import { seo } from "~/utils/seo";

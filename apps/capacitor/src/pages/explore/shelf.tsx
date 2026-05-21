@@ -53,14 +53,11 @@ const Shelf: React.FC<Props> = ({
 				</div>
 			</header>
 			{books.length === 0 ? (
-				<p className="m-0 text-muted-foreground text-[0.8rem]">
+				<p className="m-0 text-[0.8rem] text-muted-foreground">
 					{emptyLabel ?? "Nothing here yet."}
 				</p>
 			) : (
-				<div
-					className="flex gap-3 overflow-x-auto pb-2"
-					style={{ scrollSnapType: "x mandatory" }}
-				>
+				<div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollSnapType: "x mandatory" }}>
 					{books.map((b) => (
 						<div
 							key={b.id}

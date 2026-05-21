@@ -10,8 +10,8 @@
  * page.
  */
 
-import { useRouter } from "@tanstack/react-router";
 import { cn } from "@lesefluss/ui/utils";
+import { useRouter } from "@tanstack/react-router";
 import { AlertCircle, CheckCircle2, Circle, CloudDownload, Loader2, Lock } from "lucide-react";
 import type React from "react";
 import { memo, useCallback } from "react";
@@ -94,7 +94,10 @@ const StateGlyph: React.FC<{ state: RowState }> = ({ state }) => {
 			return <CheckCircle2 className="size-4 shrink-0 text-emerald-500" aria-label="Finished" />;
 		case "pending":
 			return (
-				<CloudDownload className="size-4 shrink-0 text-muted-foreground" aria-label="Pending download" />
+				<CloudDownload
+					className="size-4 shrink-0 text-muted-foreground"
+					aria-label="Pending download"
+				/>
 			);
 		case "locked":
 			return <Lock className="size-4 shrink-0 text-muted-foreground" aria-label="Locked" />;

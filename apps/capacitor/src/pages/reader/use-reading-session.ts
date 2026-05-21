@@ -12,7 +12,7 @@
 import { App as CapacitorApp } from "@capacitor/app";
 import type { WordIndex } from "@lesefluss/core";
 import { useCallback, useEffect, useRef } from "react";
-import { bookKeys, readingSessionKeys, statsKeys } from "../../services/db/hooks/query-keys";
+import { readingSessionKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { queryClient } from "../../services/query-client";
 import { scheduleSyncPush } from "../../services/sync";
@@ -59,10 +59,15 @@ function persistRow(row: SessionRow, kind: "checkpoint" | "flush"): void {
 	queries
 		.upsertReadingSession(row)
 		.then(() => {
-			queryClient.invalidateQueries({ queryKey: statsKeys.all });
-			queryClient.invalidateQueries({ queryKey: bookKeys.all });
-			queryClient.invalidateQueries({ queryKey: readingSessionKeys.all });
-			scheduleSyncPush(2000);
+			// Heartbeat checkpoints fire every 30s while reading. The write
+			// only touches `reading_sessions`, so book queries don't need to
+			// refetch. Stats + session queries feed the stats/library screens
+			// (not the reader) and can wait for the sitting-end flush.
+			if (kind === "flush") {
+				queryClient.invalidateQueries({ queryKey: statsKeys.all });
+				queryClient.invalidateQueries({ queryKey: readingSessionKeys.all });
+				scheduleSyncPush(2000);
+			}
 		})
 		.catch((err) => log.error("reading-session", `${kind} failed:`, err));
 }

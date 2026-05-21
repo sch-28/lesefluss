@@ -6,12 +6,7 @@
  */
 
 import { Button } from "@lesefluss/ui/button";
-import {
-	Drawer,
-	DrawerContent,
-	DrawerHeader,
-	DrawerTitle,
-} from "@lesefluss/ui/drawer";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
 import { useQuery } from "@tanstack/react-query";
 import { Bookmark, Loader2, Search } from "lucide-react";
 import type React from "react";

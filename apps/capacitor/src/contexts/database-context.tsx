@@ -3,7 +3,7 @@ import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { initDb, resetAppData } from "../services/db";
 import { queries } from "../services/db/queries";
-import { backfillAllBooks, type BackfillProgress } from "../services/db/word-index-backfill";
+import { type BackfillProgress, backfillAllBooks } from "../services/db/word-index-backfill";
 import { log } from "../utils/log";
 
 interface DatabaseContextType {

@@ -1,5 +1,3 @@
-import { useRouter } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -11,6 +9,8 @@ import {
 	AlertDialogTitle,
 } from "@lesefluss/ui/alert-dialog";
 import { Button } from "@lesefluss/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronUp, Clock, ExternalLink, Loader2, Trash2, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -168,8 +168,7 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 	// ratio fallback for legacy rows.
 	const size = book?.size ?? 0;
 	const wordCount = book?.wordCount ?? 0;
-	const useWord =
-		wordCount > 0 && session.startWord != null && session.endWord != null;
+	const useWord = wordCount > 0 && session.startWord != null && session.endWord != null;
 	const deltaPct = useWord
 		? ((session.endWord! - session.startWord!) / wordCount) * 100
 		: size > 0

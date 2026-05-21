@@ -1,5 +1,5 @@
-import { motion } from "framer-motion";
 import { useRouter } from "@tanstack/react-router";
+import { motion } from "framer-motion";
 import CoverImage from "../../../components/cover-image";
 import { queryHooks } from "../../../services/db/hooks";
 

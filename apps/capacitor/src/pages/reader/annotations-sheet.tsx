@@ -7,11 +7,7 @@
  * Snap points keep the iOS-like half-then-full sheet behavior.
  */
 
-import {
-	Drawer,
-	DrawerContent,
-	DrawerHeader,
-} from "@lesefluss/ui/drawer";
+import { Drawer, DrawerContent, DrawerHeader } from "@lesefluss/ui/drawer";
 import { ToggleGroup, ToggleGroupItem } from "@lesefluss/ui/toggle-group";
 import { cn } from "@lesefluss/ui/utils";
 import { Plus } from "lucide-react";
@@ -119,9 +115,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 			activeSnapPoint={snap}
 			setActiveSnapPoint={setSnap}
 		>
-			<DrawerContent
-				className={cn("h-full", theme ? `reader-theme-${theme}` : undefined)}
-			>
+			<DrawerContent className={cn("h-full", theme ? `reader-theme-${theme}` : undefined)}>
 				<DrawerHeader className="px-3">
 					<ToggleGroup
 						type="single"
@@ -150,7 +144,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 											onJumpChapter(ch.startByte);
 											onClose();
 										}}
-										className="w-full border-border border-b px-5 py-3 text-left text-sm text-foreground transition-colors hover:bg-muted"
+										className="w-full border-border border-b px-5 py-3 text-left text-foreground text-sm transition-colors hover:bg-muted"
 									>
 										{ch.title}
 									</button>
@@ -191,11 +185,9 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 													}}
 												/>
 												<div className="min-w-0 flex-1">
-													<p className="m-0 text-foreground text-sm leading-snug">
-														"{snippet}"
-													</p>
+													<p className="m-0 text-foreground text-sm leading-snug">"{snippet}"</p>
 													{h.note && (
-														<p className="mt-1 m-0 text-muted-foreground text-xs italic">
+														<p className="m-0 mt-1 text-muted-foreground text-xs italic">
 															{h.note}
 														</p>
 													)}
@@ -271,7 +263,7 @@ const GlossaryRow: React.FC<GlossaryRowProps> = memo(({ entry, onOpen }) => {
 			<div className="min-w-0 flex-1">
 				<h3 className="m-0 font-semibold text-foreground text-sm">{entry.label}</h3>
 				{entry.notes && (
-					<p className="mt-0.5 m-0 truncate text-muted-foreground text-xs">{entry.notes}</p>
+					<p className="m-0 mt-0.5 truncate text-muted-foreground text-xs">{entry.notes}</p>
 				)}
 			</div>
 		</button>

@@ -14,14 +14,7 @@
  */
 
 import type React from "react";
-import {
-	createContext,
-	type ReactNode,
-	useCallback,
-	useContext,
-	useEffect,
-	useState,
-} from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { useBLE } from "../contexts/ble-context";
 import { ble } from "../services/ble";
 import { createBleAdapter } from "../services/ble-transport";
@@ -64,10 +57,7 @@ export const DeviceLibraryProvider: React.FC<{ children: ReactNode }> = ({ child
 			return;
 		}
 
-		if (
-			connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID &&
-			connectedDevice?.deviceId
-		) {
+		if (connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID && connectedDevice?.deviceId) {
 			const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
 			const [libRes, activeRes] = await Promise.all([
 				adapter.read("library"),

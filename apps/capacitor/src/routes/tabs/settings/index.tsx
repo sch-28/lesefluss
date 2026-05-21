@@ -9,8 +9,8 @@ import {
 	Eye,
 	Globe,
 	Loader2,
-	MessageCircle,
 	Megaphone,
+	MessageCircle,
 	Sparkles,
 	Zap,
 } from "lucide-react";
@@ -33,7 +33,12 @@ type RowProps = {
 	icon: React.ComponentType<{ className?: string }>;
 	title: string;
 	subtitle: string;
-	to?: "/tabs/settings/rsvp" | "/tabs/settings/appearance" | "/tabs/settings/export" | "/tabs/settings/device" | "/tabs/settings/sync";
+	to?:
+		| "/tabs/settings/rsvp"
+		| "/tabs/settings/appearance"
+		| "/tabs/settings/export"
+		| "/tabs/settings/device"
+		| "/tabs/settings/sync";
 	onClick?: () => void;
 	iconClassName?: string;
 };
@@ -42,7 +47,7 @@ function Row({ icon: Icon, title, subtitle, to, onClick, iconClassName }: RowPro
 	const content = (
 		<>
 			<Icon className={iconClassName ?? "size-5 text-muted-foreground"} />
-			<div className="flex-1 min-w-0">
+			<div className="min-w-0 flex-1">
 				<div className="font-medium text-foreground text-sm">{title}</div>
 				<div className="text-muted-foreground text-xs">{subtitle}</div>
 			</div>
@@ -150,12 +155,7 @@ function SettingsLanding() {
 				{showDevicesAndSync && (
 					<Section title="Devices & sync">
 						{!IS_WEB && (
-							<Row
-								icon={Cpu}
-								title="Device"
-								subtitle={deviceSubtitle}
-								to="/tabs/settings/device"
-							/>
+							<Row icon={Cpu} title="Device" subtitle={deviceSubtitle} to="/tabs/settings/device" />
 						)}
 						{SYNC_ENABLED && (
 							<Row
@@ -173,12 +173,7 @@ function SettingsLanding() {
 
 				<Section title="About">
 					{!IS_WEB && (
-						<Row
-							icon={Globe}
-							title="Website"
-							subtitle="lesefluss.app"
-							onClick={openWebsite}
-						/>
+						<Row icon={Globe} title="Website" subtitle="lesefluss.app" onClick={openWebsite} />
 					)}
 					<Row
 						icon={Megaphone}

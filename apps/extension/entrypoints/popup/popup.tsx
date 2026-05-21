@@ -1,3 +1,6 @@
+import { Badge } from "@lesefluss/ui/badge";
+import { Button } from "@lesefluss/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@lesefluss/ui/card";
 import {
 	CheckCircle2,
 	ExternalLink,
@@ -11,16 +14,6 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { browser } from "wxt/browser";
-
-import { Badge } from "@lesefluss/ui/badge";
-import { Button } from "@lesefluss/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@lesefluss/ui/card";
 import type { AuthSession } from "../../src/lib/auth";
 import { LESEFLUSS_URL } from "../../src/lib/config";
 import type {

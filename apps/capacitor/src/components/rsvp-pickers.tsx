@@ -4,9 +4,9 @@
  * onboarding flow.
  */
 
+import type { PaginationStyle } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
-import type { PaginationStyle } from "@lesefluss/core";
 import { ArrowUpDown, BookOpen, type LucideIcon, Zap } from "lucide-react";
 import type React from "react";
 
@@ -101,12 +101,7 @@ export function ModeCards<T extends string>({ options, value, onChange }: ModeCa
 								: "border-border bg-card hover:border-muted-foreground/30",
 						)}
 					>
-						<Icon
-							className={cn(
-								"size-6",
-								isActive ? "text-primary" : "text-muted-foreground",
-							)}
-						/>
+						<Icon className={cn("size-6", isActive ? "text-primary" : "text-muted-foreground")} />
 						<span className="font-semibold text-foreground text-sm">{m.label}</span>
 						<span className="text-muted-foreground text-xs leading-tight">{m.description}</span>
 					</button>

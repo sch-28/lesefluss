@@ -17,8 +17,6 @@ export const NAV_ITEMS: readonly NavTarget[] = [
 export function useActiveNavTo(): NavTarget["to"] | null {
 	const { pathname } = useLocation();
 	return (
-		NAV_ITEMS.find(
-			(item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
-		)?.to ?? null
+		NAV_ITEMS.find((item) => pathname === item.to || pathname.startsWith(`${item.to}/`))?.to ?? null
 	);
 }

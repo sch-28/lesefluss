@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
 import { Badge } from "@lesefluss/ui/badge";
 import { Button } from "@lesefluss/ui/button";
 import { Card, CardContent } from "@lesefluss/ui/card";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/device/")({

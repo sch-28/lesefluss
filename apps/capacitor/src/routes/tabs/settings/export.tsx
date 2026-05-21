@@ -1,7 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
-import { Download, Loader2 } from "lucide-react";
-import { useState } from "react";
 import { Button } from "@lesefluss/ui/button";
 import { Label } from "@lesefluss/ui/label";
 import { RadioGroup, RadioGroupItem } from "@lesefluss/ui/radio-group";
@@ -12,6 +8,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@lesefluss/ui/select";
+import { useMutation } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { Download, Loader2 } from "lucide-react";
+import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { useToast } from "@/components/toast";
 import { queryHooks } from "@/services/db/hooks";
@@ -45,7 +45,7 @@ function ExportSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Export highlights" icon={Download} />
-			<div className="mx-auto max-w-2xl space-y-6 px-4 pb-10 pt-4">
+			<div className="mx-auto max-w-2xl space-y-6 px-4 pt-4 pb-10">
 				<div>
 					<Label htmlFor="export-scope" className="mb-2 block">
 						Source

@@ -3,10 +3,7 @@ import { Plus } from "lucide-react";
 import type React from "react";
 import { toast } from "../../components/toast";
 import { queryHooks } from "../../services/db/hooks";
-import {
-	chapterCountLabel,
-	providerLabel,
-} from "../../services/serial-scrapers";
+import { chapterCountLabel, providerLabel } from "../../services/serial-scrapers";
 import { DetailShell } from "../_shared/detail-shell";
 import { previewCache } from "./preview-cache";
 

@@ -64,9 +64,7 @@ const ExploreLanding: React.FC<Props> = ({ lang, onOpen, onGenreTap }) => {
 			{data.featured_se.length > 0 && (
 				<Shelf title="Featured" books={data.featured_se} onOpen={onOpen} />
 			)}
-			{data.classics.length > 0 && (
-				<Shelf title="Classics" books={data.classics} onOpen={onOpen} />
-			)}
+			{data.classics.length > 0 && <Shelf title="Classics" books={data.classics} onOpen={onOpen} />}
 			{data.most_read.length > 0 && (
 				<Shelf title="Most read" books={data.most_read} onOpen={onOpen} />
 			)}

@@ -1,6 +1,4 @@
 import { displayHostname } from "@lesefluss/book-import";
-import { useRouter } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -11,6 +9,8 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@lesefluss/ui/alert-dialog";
+import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { BookOpen, Cpu, Trash2 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
@@ -160,8 +160,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				primaryAction={{
 					label: "Open reader",
 					icon: BookOpen,
-					onClick: () =>
-						router.navigate({ to: "/tabs/reader/$id", params: { id: book.id } }),
+					onClick: () => router.navigate({ to: "/tabs/reader/$id", params: { id: book.id } }),
 				}}
 				secondaryActions={secondaryActions}
 				description={
@@ -197,8 +196,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 							onClick={() => {
 								deleteMutation.mutate(book, {
-									onSuccess: () =>
-										router.navigate({ to: "/tabs/library", replace: true }),
+									onSuccess: () => router.navigate({ to: "/tabs/library", replace: true }),
 								});
 							}}
 						>

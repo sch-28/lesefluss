@@ -7,12 +7,7 @@
  */
 
 import { Button } from "@lesefluss/ui/button";
-import {
-	Drawer,
-	DrawerContent,
-	DrawerHeader,
-	DrawerTitle,
-} from "@lesefluss/ui/drawer";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
 import { Switch } from "@lesefluss/ui/switch";
 import { cn } from "@lesefluss/ui/utils";
 import { Trash2 } from "lucide-react";

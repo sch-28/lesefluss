@@ -31,10 +31,7 @@ export const WebNovelSearchPanel: React.FC<Props> = ({ query, provider, viewMode
 
 	if (isError) {
 		return (
-			<ErrorState
-				message="Search failed. Check your connection and try again."
-				onRetry={refetch}
-			/>
+			<ErrorState message="Search failed. Check your connection and try again." onRetry={refetch} />
 		);
 	}
 
@@ -66,12 +63,7 @@ export const WebNovelSearchPanel: React.FC<Props> = ({ query, provider, viewMode
 				</div>
 			)}
 			{results.length > 0 && (
-				<ResultsLayout
-					results={results}
-					viewMode={viewMode}
-					provider={provider}
-					onPick={onPick}
-				/>
+				<ResultsLayout results={results} viewMode={viewMode} provider={provider} onPick={onPick} />
 			)}
 		</div>
 	);

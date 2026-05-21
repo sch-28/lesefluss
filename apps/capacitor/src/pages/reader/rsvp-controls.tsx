@@ -6,9 +6,9 @@
  * tap-to-toggle doesn't fire after a button press.
  */
 
-import { Button } from "@lesefluss/ui/button";
 import { SETTING_CONSTRAINTS } from "@lesefluss/core";
-import { ChevronsLeft, ChevronsRight, Play, Undo2, Redo2 } from "lucide-react";
+import { Button } from "@lesefluss/ui/button";
+import { ChevronsLeft, ChevronsRight, Play, Redo2, Undo2 } from "lucide-react";
 import type React from "react";
 
 // Controls only render while paused, so the play/pause button always shows

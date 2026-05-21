@@ -6,14 +6,10 @@
  * words (clickable to scrub), a control bar, and a dictionary-lookup button.
  */
 
-import { Button } from "@lesefluss/ui/button";
-import {
-	Drawer,
-	DrawerContent,
-	DrawerHeader,
-	DrawerTitle,
-} from "@lesefluss/ui/drawer";
 import { calcOrpIndex, type RsvpSettings, type WordIndex } from "@lesefluss/core";
+import { Button } from "@lesefluss/ui/button";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
+import { useRouter } from "@tanstack/react-router";
 import { BookOpen, Loader2, Settings } from "lucide-react";
 import React, {
 	forwardRef,
@@ -24,7 +20,6 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { useRouter } from "@tanstack/react-router";
 import RsvpSettingsForm from "../settings/rsvp-settings-form";
 import RsvpControls from "./rsvp-controls";
 import { useRsvpEngine } from "./use-rsvp-engine";
@@ -153,9 +148,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 	// Settings sheet pauses playback directly (bypassing togglePlayPause's
 	// 120ms debounce) so the sheet never opens with the tick chain still running.
 	const [settingsOpen, setSettingsOpen] = useState(false);
-	const [settingsSnap, setSettingsSnap] = useState<number | string | null>(
-		SETTINGS_SNAP_POINTS[0],
-	);
+	const [settingsSnap, setSettingsSnap] = useState<number | string | null>(SETTINGS_SNAP_POINTS[0]);
 	const handleSettingsClick = useCallback(
 		(e: React.MouseEvent) => {
 			e.stopPropagation();

@@ -20,8 +20,6 @@ export const WINDOW_SIZE = config.transfer.window_size;
 export const MAX_RETRIES = config.transfer.max_retries;
 export const ACK_TIMEOUT_MS = config.transfer.ack_timeout_ms;
 
-// Multibook schema for rsvpnano (separate service, fresh UUIDs).
-export { multibook } from "./multibook.js";
 export type {
 	MultibookDeleteRequest,
 	MultibookInfo,
@@ -31,3 +29,5 @@ export type {
 	MultibookStorage,
 	MultibookTransferHeader,
 } from "./multibook.js";
+// Multibook schema for rsvpnano (separate service, fresh UUIDs).
+export { multibook } from "./multibook.js";

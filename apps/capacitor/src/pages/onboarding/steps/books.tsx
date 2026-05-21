@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
+import { useQuery } from "@tanstack/react-query";
 import { Check, Loader2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -154,10 +154,7 @@ const BooksStep: React.FC<Props> = ({ onNext, onImportingChange }) => {
 					aria-valuemin={0}
 					aria-valuemax={100}
 				>
-					<div
-						className="h-full bg-primary transition-[width]"
-						style={{ width: `${progress}%` }}
-					/>
+					<div className="h-full bg-primary transition-[width]" style={{ width: `${progress}%` }} />
 				</div>
 			)}
 

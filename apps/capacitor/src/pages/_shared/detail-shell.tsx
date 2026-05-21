@@ -128,7 +128,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 					<p className="m-0 text-muted-foreground">{errorMessage}</p>
 				</div>
 			) : (
-				<div className="mx-auto max-w-3xl px-4 pb-12 pt-4">
+				<div className="mx-auto max-w-3xl px-4 pt-4 pb-12">
 					<section className="flex gap-4">
 						<div className="aspect-2/3 w-28 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
 							<CoverImage
@@ -187,7 +187,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 							<h2 className="m-0 mb-3 font-semibold text-base">About</h2>
 							{description.html ? (
 								<SanitizedDescription
-									className="prose prose-sm max-w-none text-foreground/80 [&_a]:text-primary [&_a]:underline-offset-4 [&_a:hover]:underline"
+									className="prose prose-sm max-w-none text-foreground/80 [&_a:hover]:underline [&_a]:text-primary [&_a]:underline-offset-4"
 									html={description.html}
 								/>
 							) : (

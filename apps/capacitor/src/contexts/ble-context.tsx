@@ -235,10 +235,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 				return false;
 			}
 
-			if (
-				connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID &&
-				connectedDevice?.deviceId
-			) {
+			if (connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID && connectedDevice?.deviceId) {
 				// Most rsvp/display/typography fields are device-specific and stay
 				// local to whichever device the user is configuring. WPM is the
 				// one canonical reading-speed concept that maps cleanly across
@@ -272,10 +269,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 			return null;
 		}
 
-		if (
-			connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID &&
-			connectedDevice?.deviceId
-		) {
+		if (connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID && connectedDevice?.deviceId) {
 			// Multi-book settings JSON shape ≠ RSVPSettings; only fields with a
 			// clean cross-device meaning get mapped. Today: WPM (under
 			// `reading.wpm`). The rest stays device-local.

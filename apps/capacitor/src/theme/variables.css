@@ -45,8 +45,9 @@ body.sidebar-collapsed {
 @media (min-width: 768px) {
 	:root {
 		--content-left-inset: calc(
-			var(--side-nav-w, 15rem) + 1.5rem +
-				max(0px, (100vw - var(--side-nav-w, 15rem) - 80rem) / 2)
+			var(--side-nav-w, 15rem) +
+			1.5rem +
+			max(0px, (100vw - var(--side-nav-w, 15rem) - 80rem) / 2)
 		);
 	}
 }

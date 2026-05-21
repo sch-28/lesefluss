@@ -1,4 +1,3 @@
-import { useRouter, useSearch } from "@tanstack/react-router";
 import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
 import {
@@ -8,15 +7,16 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@lesefluss/ui/select";
+import { useRouter, useSearch } from "@tanstack/react-router";
 import { Compass, Search, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { TabHeader } from "../../components/app-shell/tab-header";
 import {
 	CATALOG_ENABLED,
 	type CatalogSearchOrder,
 	type CatalogSearchResult,
 } from "../../services/catalog/client";
-import { TabHeader } from "../../components/app-shell/tab-header";
 import { useDebounced } from "../../utils/use-debounced";
 import GenreChips from "./genre-chips";
 import ExploreLanding from "./landing";
@@ -100,7 +100,9 @@ const Explore: React.FC = () => {
 	if (!CATALOG_ENABLED) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-background p-8">
-				<p className="text-muted-foreground">Catalog is not configured (VITE_CATALOG_URL missing).</p>
+				<p className="text-muted-foreground">
+					Catalog is not configured (VITE_CATALOG_URL missing).
+				</p>
 			</div>
 		);
 	}

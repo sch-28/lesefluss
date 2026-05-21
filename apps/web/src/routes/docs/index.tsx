@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@lesefluss/ui/tabs";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { seo } from "~/utils/seo";
 import { faqPageSchema } from "~/utils/structured-data";
 import { docsSections, troubleshootingItems } from "./-sections";

@@ -27,7 +27,7 @@ function DrawerOverlay({
 		<DrawerPrimitive.Overlay
 			data-slot="drawer-overlay"
 			className={cn(
-				"fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+				"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=closed]:animate-out data-[state=open]:animate-in",
 				className,
 			)}
 			{...props}
@@ -61,7 +61,7 @@ function DrawerContent({
 				{showHandle && (
 					<div
 						aria-hidden
-						className="mx-auto mt-2 mb-1 hidden h-1.5 w-10 shrink-0 rounded-full bg-muted-foreground/30 group-data-[vaul-drawer-direction=bottom]/drawer-content:block group-data-[vaul-drawer-direction=top]/drawer-content:order-last group-data-[vaul-drawer-direction=top]/drawer-content:mt-1 group-data-[vaul-drawer-direction=top]/drawer-content:mb-2 group-data-[vaul-drawer-direction=top]/drawer-content:block"
+						className="mx-auto mt-2 mb-1 hidden h-1.5 w-10 shrink-0 rounded-full bg-muted-foreground/30 group-data-[vaul-drawer-direction=top]/drawer-content:order-last group-data-[vaul-drawer-direction=top]/drawer-content:mt-1 group-data-[vaul-drawer-direction=top]/drawer-content:mb-2 group-data-[vaul-drawer-direction=bottom]/drawer-content:block group-data-[vaul-drawer-direction=top]/drawer-content:block"
 					/>
 				)}
 				{children}
@@ -90,10 +90,7 @@ function DrawerFooter({ className, ...props }: React.ComponentProps<"div">) {
 	);
 }
 
-function DrawerTitle({
-	className,
-	...props
-}: React.ComponentProps<typeof DrawerPrimitive.Title>) {
+function DrawerTitle({ className, ...props }: React.ComponentProps<typeof DrawerPrimitive.Title>) {
 	return (
 		<DrawerPrimitive.Title
 			data-slot="drawer-title"

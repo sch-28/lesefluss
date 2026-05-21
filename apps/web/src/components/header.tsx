@@ -1,6 +1,3 @@
-import { Link, useRouter } from "@tanstack/react-router";
-import { Cpu, Download, FileText, LogIn, LogOut, Menu, Smartphone, User, X } from "lucide-react";
-import * as React from "react";
 import { Button } from "@lesefluss/ui/button";
 import {
 	DropdownMenu,
@@ -10,6 +7,9 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@lesefluss/ui/dropdown-menu";
+import { Link, useRouter } from "@tanstack/react-router";
+import { Cpu, Download, FileText, LogIn, LogOut, Menu, Smartphone, User, X } from "lucide-react";
+import * as React from "react";
 import { signOut } from "~/lib/auth-client";
 import { type Session, useAuthSession } from "~/lib/session-context";
 

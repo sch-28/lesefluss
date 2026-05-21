@@ -28,7 +28,7 @@ function SheetOverlay({
 		<SheetPrimitive.Overlay
 			data-slot="sheet-overlay"
 			className={cn(
-				"fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:[animation-duration:240ms] data-[state=closed]:[animation-duration:200ms] data-[state=open]:[animation-timing-function:cubic-bezier(0.32,0.72,0,1)] data-[state=closed]:[animation-timing-function:cubic-bezier(0.32,0.72,0,1)]",
+				"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:[animation-duration:200ms] data-[state=closed]:[animation-timing-function:cubic-bezier(0.32,0.72,0,1)] data-[state=open]:[animation-duration:240ms] data-[state=open]:[animation-timing-function:cubic-bezier(0.32,0.72,0,1)]",
 				className,
 			)}
 			{...props}
@@ -60,8 +60,8 @@ function SheetContent({
 				data-slot="sheet-content"
 				className={cn(
 					"fixed z-50 flex flex-col gap-0 bg-popover text-popover-foreground shadow-2xl outline-none",
-					"data-[state=open]:animate-in data-[state=closed]:animate-out",
-					"data-[state=open]:[animation-duration:320ms] data-[state=closed]:[animation-duration:220ms]",
+					"data-[state=closed]:animate-out data-[state=open]:animate-in",
+					"data-[state=closed]:[animation-duration:220ms] data-[state=open]:[animation-duration:320ms]",
 					"data-[state=open]:[animation-timing-function:cubic-bezier(0.32,0.72,0,1)]",
 					"data-[state=closed]:[animation-timing-function:cubic-bezier(0.32,0.72,0,1)]",
 					side === "right" &&
@@ -113,10 +113,7 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
 	);
 }
 
-function SheetTitle({
-	className,
-	...props
-}: React.ComponentProps<typeof SheetPrimitive.Title>) {
+function SheetTitle({ className, ...props }: React.ComponentProps<typeof SheetPrimitive.Title>) {
 	return (
 		<SheetPrimitive.Title
 			data-slot="sheet-title"

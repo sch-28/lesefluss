@@ -1,17 +1,4 @@
 import { SETTING_CONSTRAINTS } from "@lesefluss/core";
-import { createFileRoute } from "@tanstack/react-router";
-import {
-	Bluetooth,
-	CircleX,
-	CloudDownload,
-	CloudUpload,
-	Cpu,
-	Loader2,
-	RefreshCw,
-	Search,
-	Square,
-} from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -26,6 +13,19 @@ import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
 import { Slider } from "@lesefluss/ui/slider";
 import { Switch } from "@lesefluss/ui/switch";
+import { createFileRoute } from "@tanstack/react-router";
+import {
+	Bluetooth,
+	CircleX,
+	CloudDownload,
+	CloudUpload,
+	Cpu,
+	Loader2,
+	RefreshCw,
+	Search,
+	Square,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { DeviceSync } from "@/components/device-sync";
 import { useToast } from "@/components/toast";
@@ -222,8 +222,7 @@ function DeviceSettings() {
 		);
 	}
 
-	const isMultiBookConnected =
-		isConnected && connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID;
+	const isMultiBookConnected = isConnected && connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID;
 
 	const storageUsedPct =
 		storageInfo && storageInfo.total_bytes > 0
@@ -360,9 +359,7 @@ function DeviceSettings() {
 									Restart scan
 								</Button>
 							</div>
-							{bleError && (
-								<div className="px-4 py-2 text-destructive text-sm">{bleError}</div>
-							)}
+							{bleError && <div className="px-4 py-2 text-destructive text-sm">{bleError}</div>}
 						</>
 					)}
 				</Section>

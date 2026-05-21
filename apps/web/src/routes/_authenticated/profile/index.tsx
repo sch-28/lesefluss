@@ -1,8 +1,8 @@
+import { Button } from "@lesefluss/ui/button";
+import { Separator } from "@lesefluss/ui/separator";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, BookOpen, Globe, MessageSquare, Settings } from "lucide-react";
 import * as React from "react";
-import { Button } from "@lesefluss/ui/button";
-import { Separator } from "@lesefluss/ui/separator";
 import { getProfileStats } from "~/lib/profile";
 import { seo } from "~/utils/seo";
 

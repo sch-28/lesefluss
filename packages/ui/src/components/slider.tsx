@@ -17,10 +17,7 @@ function Slider({ className, ...props }: React.ComponentProps<typeof SliderPrimi
 				data-slot="slider-track"
 				className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-muted"
 			>
-				<SliderPrimitive.Range
-					data-slot="slider-range"
-					className="absolute h-full bg-primary"
-				/>
+				<SliderPrimitive.Range data-slot="slider-range" className="absolute h-full bg-primary" />
 			</SliderPrimitive.Track>
 			<SliderPrimitive.Thumb
 				data-slot="slider-thumb"

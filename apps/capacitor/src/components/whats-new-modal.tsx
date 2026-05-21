@@ -75,11 +75,7 @@ const WhatsNewModal: React.FC = () => {
 			title={manualOpen ? "Changelog" : "Recent updates"}
 			contentClassName="max-h-[85vh] overflow-hidden"
 			footer={
-				<Button
-					className="w-full"
-					onClick={handleDismiss}
-					disabled={saveSettings.isPending}
-				>
+				<Button className="w-full" onClick={handleDismiss} disabled={saveSettings.isPending}>
 					Got it
 				</Button>
 			}

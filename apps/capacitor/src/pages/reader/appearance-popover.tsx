@@ -1,6 +1,6 @@
+import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@lesefluss/ui/toggle-group";
-import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 import type React from "react";
 import { PAGINATION_STYLE_OPTIONS } from "../../components/rsvp-pickers";
 import { useTheme } from "../../contexts/theme-context";

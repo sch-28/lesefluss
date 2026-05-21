@@ -1,18 +1,10 @@
 import { Browser } from "@capacitor/browser";
-import { createFileRoute } from "@tanstack/react-router";
 import {
-	AlertCircle,
-	BookOpen,
-	BookmarkIcon,
-	Cloud,
-	CloudCheck,
-	Library,
-	LogOut,
-	RefreshCw,
-	BarChart3,
-	TriangleAlert,
-} from "lucide-react";
-import { useState } from "react";
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from "@lesefluss/ui/accordion";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -25,14 +17,22 @@ import {
 } from "@lesefluss/ui/alert-dialog";
 import { Button } from "@lesefluss/ui/button";
 import { Switch } from "@lesefluss/ui/switch";
+import { createFileRoute } from "@tanstack/react-router";
+import {
+	AlertCircle,
+	BarChart3,
+	BookmarkIcon,
+	BookOpen,
+	Cloud,
+	CloudCheck,
+	Library,
+	LogOut,
+	RefreshCw,
+	TriangleAlert,
+} from "lucide-react";
+import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { useToast } from "@/components/toast";
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from "@lesefluss/ui/accordion";
 import { useSyncContext } from "@/contexts/sync-context";
 import { queryHooks } from "@/services/db/hooks";
 import { beginAuthLoginHandoff, IS_WEB_BUILD } from "@/services/sync";
@@ -202,12 +202,7 @@ function SyncSettings() {
 							</div>
 							{syncError && <div className="px-4 py-2 text-destructive text-sm">{syncError}</div>}
 							<div className="p-3">
-								<Button
-									variant="outline"
-									className="w-full"
-									onClick={syncNow}
-									disabled={isSyncing}
-								>
+								<Button variant="outline" className="w-full" onClick={syncNow} disabled={isSyncing}>
 									<RefreshCw className={isSyncing ? "animate-spin" : ""} />
 									{isSyncing ? "Syncing..." : "Sync now"}
 								</Button>
@@ -255,33 +250,33 @@ function SyncSettings() {
 												and other devices on next sync. This cannot be undone.
 											</p>
 											<div className="divide-y divide-border">
-												{(["highlights", "glossary", "stats", "library", "everything"] as const).map(
-													(action) => {
-														const cfg = DANGER_ACTIONS[action];
-														return (
-															<button
-																key={action}
-																type="button"
-																onClick={() => setPendingAction(action)}
-																className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60"
-															>
-																<cfg.icon className="size-5 text-destructive" />
-																<div className="flex-1">
-																	<div
-																		className={
-																			action === "everything"
-																				? "font-semibold text-destructive text-sm"
-																				: "font-medium text-foreground text-sm"
-																		}
-																	>
-																		{cfg.label}
-																	</div>
-																	<div className="text-muted-foreground text-xs">{cfg.subtitle}</div>
+												{(
+													["highlights", "glossary", "stats", "library", "everything"] as const
+												).map((action) => {
+													const cfg = DANGER_ACTIONS[action];
+													return (
+														<button
+															key={action}
+															type="button"
+															onClick={() => setPendingAction(action)}
+															className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60"
+														>
+															<cfg.icon className="size-5 text-destructive" />
+															<div className="flex-1">
+																<div
+																	className={
+																		action === "everything"
+																			? "font-semibold text-destructive text-sm"
+																			: "font-medium text-foreground text-sm"
+																	}
+																>
+																	{cfg.label}
 																</div>
-															</button>
-														);
-													},
-												)}
+																<div className="text-muted-foreground text-xs">{cfg.subtitle}</div>
+															</div>
+														</button>
+													);
+												})}
 											</div>
 										</AccordionContent>
 									</AccordionItem>

@@ -1,5 +1,3 @@
-import { useRouter } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -10,6 +8,8 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@lesefluss/ui/alert-dialog";
+import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { BookOpen, CircleX, CloudDownload, Trash2 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
@@ -183,8 +183,7 @@ const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 								deleteMutation.mutate(
 									{ id: series.id, title: series.title },
 									{
-										onSuccess: () =>
-											router.navigate({ to: "/tabs/library", replace: true }),
+										onSuccess: () => router.navigate({ to: "/tabs/library", replace: true }),
 									},
 								);
 							}}
