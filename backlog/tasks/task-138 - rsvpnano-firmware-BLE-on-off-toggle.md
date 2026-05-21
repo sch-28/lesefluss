@@ -1,26 +1,24 @@
 ---
-id: TASK-131.5
-title: 'rsvpnano settings UI: BLE on/off toggle'
-status: Done
+id: TASK-138
+title: 'rsvpnano firmware: BLE on/off toggle'
+status: To Do
 assignee: []
-created_date: '2026-05-20 22:19'
-updated_date: '2026-05-21 02:13'
+created_date: '2026-05-21 02:13'
 labels: []
 dependencies: []
-parent_task_id: TASK-131
-ordinal: 31000
+ordinal: 42000
 ---
 
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+Originally tracked as TASK-131.5. Moved out of the TASK-131 parent because it requires non-trivial rsvpnano on-device settings UI work and was not blocking the feature-complete milestone.
+
 Add a toggle to the rsvpnano on-device settings UI to enable/disable the BLE GATT service. Saves RAM and radio power when the user doesn't need phone sync.
 
-Setting persists in NVS namespace "rsvp" alongside existing settings. Wifi toggle nearby is the model to follow (web/library.js handles UI for /api/settings, on-device renderer in src/app/ for the device-side settings screen).
+Setting persists in NVS namespace "rsvp" alongside existing settings. WiFi toggle nearby is the model to follow.
 
 When BLE is off, NimBLE stack is fully de-inited (not just advertising stopped) to free RAM.
-
-Depends on task-131.3 (NimBLE service implementation).
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -30,9 +28,3 @@ Depends on task-131.3 (NimBLE service implementation).
 - [ ] #3 Setting persists across reboot
 - [ ] #4 Default value documented (recommend: off by default; user enables when pairing)
 <!-- AC:END -->
-
-## Final Summary
-
-<!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Moved out of TASK-131 to TASK-138. The on-device BLE toggle is non-blocking polish that needs significant rsvpnano UI work, deferred indefinitely.
-<!-- SECTION:FINAL_SUMMARY:END -->

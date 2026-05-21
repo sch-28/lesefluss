@@ -13,6 +13,7 @@ import { SINGLE_BOOK_DESCRIPTOR_ID, singleBookDescriptor } from "./single-book/d
 
 export type {
 	MultiBookActive,
+	MultiBookDeleteRequest,
 	MultiBookInfo,
 	MultiBookLibraryEntry,
 	MultiBookPosition,

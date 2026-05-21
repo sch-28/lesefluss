@@ -1,9 +1,10 @@
 ---
 id: TASK-131.14
 title: Adaptive book action sheet
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-20 18:01'
+updated_date: '2026-05-21 01:57'
 labels: []
 dependencies:
   - TASK-131.9
@@ -48,10 +49,34 @@ Out of scope:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Disconnected from any device: device-related actions are hidden from the sheet
-- [ ] #2 Single-book device: existing 'Send to device' action present and functional, no behavior change
-- [ ] #3 Multi-book + not on device: only 'Upload to device' shown; opens upload modal
-- [ ] #4 Multi-book + on device + inactive: 'Open on device' and 'Remove from device' shown; 'Open' writes active char
-- [ ] #5 Multi-book + on device + active: 'Reading on device' visible as disabled state plus 'Remove from device' available
-- [ ] #6 No 'Replace' or 'Re-upload' option exists for any state
+- [x] #1 Disconnected from any device: device-related actions are hidden from the sheet
+- [x] #2 Single-book device: existing 'Send to device' action present and functional, no behavior change
+- [x] #3 Multi-book + not on device: only 'Upload to device' shown; opens upload modal
+- [x] #4 Multi-book + on device + inactive: 'Open on device' and 'Remove from device' shown; 'Open' writes active char
+- [x] #5 Multi-book + on device + active: 'Reading on device' visible as disabled state plus 'Remove from device' available
+- [x] #6 No 'Replace' or 'Re-upload' option exists for any state
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+New hook `useBookDeviceActions({bookId, bookTitle, onUpload})` returns an `ActionSheetItem[]` shaped per device-kind + book-state matrix:
+
+- No device connected OR bookId null: returns `[]` (callers spread unconditionally).
+- Single-book esp32: `["Send to device" → onUpload]` (preserves existing flow).
+- Multi-book rsvpnano + book NOT on device: `["Upload to device" → onUpload]`.
+- Multi-book + on device + inactive: `["Open on device" (writes active char), "Remove from device" (writes delete char)]`.
+- Multi-book + on device + active: `["Reading on device" (disabled), "Remove from device"]`.
+
+No replace / re-upload option in any state (D0).
+
+Multi-book actions:
+- `openOnDevice`: tries both category hashes (`book`, `article`) and writes whichever the device accepts. Refreshes the device library on success.
+- `removeFromDevice`: same hash candidates, writes to the `delete` characteristic (TASK-131.12). Refreshes.
+
+Consumers:
+- `pages/library/index.tsx`: hook drives the device portion of the action sheet, spread between "Details" and "Delete". `handleSetActive` renamed to `openUploadModal` to reflect what it actually does now.
+- `pages/library/book-detail.tsx`: `secondaryActions` now come from the same hook, replacing the single hard-coded "Set active on device" button.
+
+tsc + 203 tests green. Disconnected-state still renders "Details" and "Delete" only; device actions hidden by the hook returning empty.
+<!-- SECTION:FINAL_SUMMARY:END -->

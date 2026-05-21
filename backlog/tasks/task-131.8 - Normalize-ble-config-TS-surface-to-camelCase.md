@@ -1,9 +1,10 @@
 ---
 id: TASK-131.8
 title: Normalize ble-config TS surface to camelCase
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-20 23:13'
+updated_date: '2026-05-21 02:13'
 labels: []
 dependencies: []
 parent_task_id: TASK-131
@@ -38,3 +39,9 @@ Out of scope: changing the underlying JSON files; touching the esp32 MicroPython
 - [ ] #5 pnpm check-types passes across the monorepo
 - [ ] #6 Existing ESP32 BLE flow still works end-to-end (single-book book transfer, position, settings, storage)
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Moved out of TASK-131 to TASK-139. Pure TS-polish refactor, not required for the feature-complete milestone.
+<!-- SECTION:FINAL_SUMMARY:END -->

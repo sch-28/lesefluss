@@ -1,9 +1,10 @@
 ---
 id: TASK-131.15
 title: Multi-book per-book position sync
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-21 01:32'
+updated_date: '2026-05-21 02:02'
 labels: []
 dependencies:
   - TASK-131.9
@@ -42,10 +43,35 @@ Depends on: TASK-131.9 (`useBookDeviceState` + hash computation), TASK-135 (read
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Opening a book in-app while connected to a multi-book device that holds the same book reads the device position and merges with `books.wordPosition` using max()
-- [ ] #2 Advancing the in-app reader pushes throttled `adapter.write('position', {hash, wordIndex})` writes to the device
-- [ ] #3 Position writes are gated to the case where the device's active book matches the book the in-app reader is showing
-- [ ] #4 Multi-book upload (TASK-131.11) seeds the per-book position on the device alongside the active-book write
-- [ ] #5 Single-book position sync behavior is unchanged
-- [ ] #6 Multi-book descriptor's `wordIndex` field is typed as `WordPosition` (ADR-0002 §27), not raw `number`
+- [x] #1 Opening a book in-app while connected to a multi-book device that holds the same book reads the device position and merges with `books.wordPosition` using max()
+- [x] #2 Advancing the in-app reader pushes throttled `adapter.write('position', {hash, wordIndex})` writes to the device
+- [x] #3 Position writes are gated to the case where the device's active book matches the book the in-app reader is showing
+- [x] #4 Multi-book upload (TASK-131.11) seeds the per-book position on the device alongside the active-book write
+- [x] #5 Single-book position sync behavior is unchanged
+- [x] #6 Multi-book descriptor's `wordIndex` field is typed as `WordPosition` (ADR-0002 §27), not raw `number`
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Multi-book per-book position sync wired end-to-end via the descriptor adapter; conversion-free thanks to ADR-0002's WordPosition canonical unit.
+
+Descriptor:
+- `MultiBookPosition.wordIndex` tightened from raw `number` to the `WordPosition` brand from `@lesefluss/core` (ADR-0002 §27).
+
+Read flow (`syncPosition` in book-sync-context):
+- Branches at top on `connectedDescriptorId`. For multi-book: `adapter.read("position")` returns `{hash, wordIndex}` for the device's currently-active book.
+- Looks up which app book maps to that hash (tries both category hashes via `computeOnDeviceHash`).
+- Max-merges with `books.wordPosition`: device ahead → write to DB; app ahead → push to device. Equal → no-op.
+- No-op when the device's active book isn't in the app library.
+
+Write flow (`pushPosition`):
+- Signature changed to `pushPosition(bookId, position)` (`position` stays byte for single-book compat).
+- Multi-book branch: reads fresh `book.wordPosition` from DB (savePosition writes it before pushing), gates the write to when the device's active hash matches one of the book's category hashes (avoids clobbering whatever the device is currently displaying), then `adapter.write("position", {hash, wordIndex: book.wordPosition})`.
+- Reader (`pages/reader/index.tsx`) now calls `pushPosition(id, offset)`.
+
+Upload seed (TASK-131.11 + 131.15 AC #4):
+- After a multi-book transfer success the multibook branch writes the book's app-side `wordPosition` to the device's per-book position char (when > 0) alongside the existing `active` write. The on-device reader resumes at the in-app position.
+
+Single-book sync behavior unchanged. tsc + 203 tests green.
+<!-- SECTION:FINAL_SUMMARY:END -->

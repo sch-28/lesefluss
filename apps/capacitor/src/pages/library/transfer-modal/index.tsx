@@ -14,8 +14,11 @@
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Modal } from "../../../components/modal";
+import { useBLE } from "../../../contexts/ble-context";
 import { useBookSync } from "../../../contexts/book-sync-context";
 import type { Book } from "../../../services/db/schema";
+import { MULTI_BOOK_DESCRIPTOR_ID } from "../../../services/devices";
+import type { DeviceCategory } from "../../../services/devices/hash";
 import { log } from "../../../utils/log";
 import ConfirmPhase from "./confirm-phase";
 import { DonePhase, ErrorPhase, TransferringPhase } from "./progress-phases";
@@ -38,10 +41,13 @@ interface Props {
 
 const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss }) => {
 	const { transferBook } = useBookSync();
+	const { connectedDescriptorId } = useBLE();
+	const isMultiBook = connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID;
 
 	const [phase, setPhase] = useState<Phase>("confirm");
 	const [progress, setProgress] = useState(0);
 	const [errorMsg, setErrorMsg] = useState<string | null>(null);
+	const [category, setCategory] = useState<DeviceCategory>("book");
 
 	const startTimeRef = useRef<number | null>(null);
 	const [elapsed, setElapsed] = useState(0);
@@ -54,6 +60,7 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 			setProgress(0);
 			setErrorMsg(null);
 			setElapsed(0);
+			setCategory("book");
 			startTimeRef.current = null;
 		}
 	}, [isOpen]);
@@ -108,13 +115,13 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 		setProgress(0);
 		startTimeRef.current = Date.now();
 		try {
-			await transferBook(book.id, (pct) => setProgress(pct));
+			await transferBook(book.id, (pct) => setProgress(pct), category);
 			setPhase("done");
 		} catch (err) {
 			setErrorMsg(err instanceof Error ? err.message : "Transfer failed");
 			setPhase("error");
 		}
-	}, [book, transferBook]);
+	}, [book, transferBook, category]);
 
 	if (!book) return null;
 
@@ -128,7 +135,14 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 			dismissable={phase === "confirm"}
 		>
 			{phase === "confirm" && (
-				<ConfirmPhase book={book} activeBook={activeBook} onUpload={handleUpload} />
+				<ConfirmPhase
+					book={book}
+					activeBook={activeBook}
+					isMultiBook={isMultiBook}
+					category={category}
+					onCategoryChange={setCategory}
+					onUpload={handleUpload}
+				/>
 			)}
 			{phase === "transferring" && (
 				<TransferringPhase book={book} progress={progress} elapsed={elapsed} />

@@ -23,31 +23,34 @@ import { ble } from "../services/ble";
 import { createBleAdapter } from "../services/ble-transport";
 import { queries } from "../services/db/queries";
 import { MULTI_BOOK_DESCRIPTOR_ID, multiBookDescriptor } from "../services/devices";
+import { computeOnDeviceHash, type DeviceCategory } from "../services/devices/hash";
+import { buildRsvpDocument, type RsvpChapter } from "../services/rsvp-format/builder";
 import { log } from "../utils/log";
 import { useBLE } from "./ble-context";
+import { useDeviceLibrary } from "./device-library-context";
 
-const encoder = new TextEncoder();
+const DISCONNECTED_DEVICE_ACTIVE_HASH = "";
 
-function escapeRsvpDirective(value: string): string {
-	return value.replace(/\r?\n/g, " ").trim();
+function parseChapters(json: string | null | undefined): RsvpChapter[] {
+	if (!json) return [];
+	try {
+		const parsed = JSON.parse(json) as Array<{
+			title?: string;
+			startByte?: number;
+		}>;
+		if (!Array.isArray(parsed)) return [];
+		const out: RsvpChapter[] = [];
+		for (const c of parsed) {
+			if (typeof c?.title === "string" && typeof c?.startByte === "number") {
+				out.push({ title: c.title, startByte: c.startByte });
+			}
+		}
+		return out;
+	} catch {
+		return [];
+	}
 }
 
-function buildRsvpDocument(opts: { title: string; author: string; body: string }): Uint8Array {
-	const lines: string[] = [];
-	lines.push("@rsvp 1");
-	if (opts.title) {
-		lines.push(`@title ${escapeRsvpDirective(opts.title)}`);
-	}
-	if (opts.author) {
-		lines.push(`@author ${escapeRsvpDirective(opts.author)}`);
-	}
-	lines.push("@para");
-	// Body lines beginning with literal "@" must be escaped to "@@" per the
-	// rsvp format spec, so they aren't mistaken for directives.
-	const escapedBody = opts.body.replace(/(^|\n)@/g, (_m, p1) => `${p1}@@`);
-	lines.push(escapedBody);
-	return encoder.encode(`${lines.join("\n")}\n`);
-}
 
 interface BookSyncContextType {
 	/** ID (8-char hex) of the book currently marked as active (on device), or null. */
@@ -58,7 +61,7 @@ interface BookSyncContextType {
 	/** Read Position characteristic → update active book position in DB. */
 	syncPosition: () => Promise<void>;
 	/** Write a byte offset to the device (in-app reader). */
-	pushPosition: (position: number) => Promise<void>;
+	pushPosition: (bookId: string, position: number) => Promise<void>;
 
 	/**
 	 * Upload a book to the device:
@@ -69,7 +72,11 @@ interface BookSyncContextType {
 	 * @param bookId    ID (8-char hex) of the book to transfer
 	 * @param onProgress  Called with 0–100 during transfer
 	 */
-	transferBook: (bookId: string, onProgress?: (pct: number) => void) => Promise<void>;
+	transferBook: (
+		bookId: string,
+		onProgress?: (pct: number) => void,
+		category?: DeviceCategory,
+	) => Promise<void>;
 
 	/** True while a file transfer is in progress. */
 	isTransferring: boolean;
@@ -94,6 +101,11 @@ interface Props {
 
 export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 	const { isConnected, onConnected, connectedDescriptorId, connectedDevice } = useBLE();
+	const { snapshot: deviceLibrarySnapshot, refresh: refreshDeviceLibrary } = useDeviceLibrary();
+	const deviceActiveHash =
+		deviceLibrarySnapshot.kind === "multi"
+			? deviceLibrarySnapshot.activeHash
+			: DISCONNECTED_DEVICE_ACTIVE_HASH;
 
 	const [activeBookId, setActiveBookId] = useState<string | null>(null);
 	const [devicePosition, setDevicePosition] = useState<number | null>(null);
@@ -131,6 +143,46 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 
 	const syncPosition = useCallback(async () => {
 		if (!isConnected) return;
+
+		// Multi-book devices have their own per-book position model. Branch
+		// early; the rest of this function is single-book esp32 logic.
+		if (
+			connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID &&
+			connectedDevice?.deviceId
+		) {
+			const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
+			const posRes = await adapter.read("position");
+			if (!posRes.success || !posRes.data) {
+				log.warn("booksync", "multibook readPosition failed:", posRes.error);
+				return;
+			}
+			const { hash: deviceHash, wordIndex: devicePos } = posRes.data;
+			if (!deviceHash || devicePos == null) {
+				return;
+			}
+			// Find which app book maps to this device hash (try both categories).
+			const allBooks = await queries.getBooks();
+			const matchedBook = allBooks.find((b) => {
+				const bookHash = computeOnDeviceHash(b.id, "book");
+				const articleHash = computeOnDeviceHash(b.id, "article");
+				return bookHash === deviceHash || articleHash === deviceHash;
+			});
+			if (!matchedBook) {
+				return;
+			}
+			const appPos = matchedBook.wordPosition;
+			if (devicePos > appPos) {
+				await queries.updateBook(matchedBook.id, {
+					wordPosition: devicePos,
+					lastRead: Date.now(),
+				});
+				log("booksync", `multibook: device ahead (${devicePos} > ${appPos}), saved`);
+			} else if (appPos > devicePos) {
+				await adapter.write("position", { hash: deviceHash, wordIndex: appPos });
+				log("booksync", `multibook: app ahead (${appPos} > ${devicePos}), pushed`);
+			}
+			return;
+		}
 
 		// ── Step 1: Read storage info (includes book_hash) ──
 		// This tells us which book the device currently has, so we can verify
@@ -229,11 +281,59 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 		}
 
 		setDevicePosition(winner);
-	}, [isConnected, updateActiveBookId]); // activeBookId intentionally omitted - read via ref
+	}, [
+		isConnected,
+		updateActiveBookId,
+		connectedDescriptorId,
+		connectedDevice?.deviceId,
+	]); // activeBookId intentionally omitted - read via ref
 
 	const pushPosition = useCallback(
-		async (position: number) => {
-			if (!isConnected) return;
+		async (bookId: string, position: number) => {
+			if (!isConnected) {
+				log("booksync", "pushPosition skipped: not connected");
+				return;
+			}
+
+			if (
+				connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID &&
+				connectedDevice?.deviceId
+			) {
+				if (!deviceActiveHash) {
+					log("booksync", "multibook pushPosition skipped: no active hash in snapshot");
+					return;
+				}
+				const candidates = [
+					computeOnDeviceHash(bookId, "book"),
+					computeOnDeviceHash(bookId, "article"),
+				];
+				const matchedHash = candidates.find((h) => h === deviceActiveHash);
+				if (!matchedHash) {
+					log(
+						"booksync",
+						`multibook pushPosition skipped: device active=${deviceActiveHash}, ` +
+							`candidates=${candidates.join(",")}`,
+					);
+					return;
+				}
+				const book = await queries.getBook(bookId);
+				if (!book) {
+					log("booksync", "multibook pushPosition: book not in DB");
+					return;
+				}
+				const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
+				const write = await adapter.write("position", {
+					hash: matchedHash,
+					wordIndex: book.wordPosition,
+				});
+				if (!write.success) {
+					log.warn("booksync", "multibook writePosition failed:", write.error);
+				} else {
+					log("booksync", `multibook pushPosition ok: word=${book.wordPosition} hash=${matchedHash}`);
+				}
+				return;
+			}
+
 			const result = await ble.writePosition(position);
 			if (!result.success) {
 				log.warn("booksync", "writePosition failed:", result.error);
@@ -241,7 +341,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				setDevicePosition(position);
 			}
 		},
-		[isConnected],
+		[isConnected, connectedDescriptorId, connectedDevice?.deviceId, deviceActiveHash],
 	);
 
 	// Register the syncPosition hook so it fires every time BLE connects
@@ -256,7 +356,11 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 	// ------------------------------------------------------------------
 
 	const transferBook = useCallback(
-		async (bookId: string, onProgress?: (pct: number) => void) => {
+		async (
+			bookId: string,
+			onProgress?: (pct: number) => void,
+			category: DeviceCategory = "book",
+		) => {
 			if (!isConnected) {
 				setError("Not connected to device");
 				return;
@@ -289,10 +393,12 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					// controlled separately via the multibook `active` characteristic
 					// (set from the MultiBookSync component). Do NOT touch the app's
 					// activeBookId on upload here.
+					const parsedChapters = parseChapters(content.chapters);
 					const rsvpBytes = buildRsvpDocument({
 						title: bookMeta?.title ?? "",
-						author: bookMeta?.author ?? "",
+						author: bookMeta?.author,
 						body: content.content,
+						chapters: parsedChapters,
 					});
 					const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
 					if (!adapter.transferFile) {
@@ -300,12 +406,38 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					}
 					const result = await adapter.transferFile(
 						rsvpBytes,
-						{ filename: `${bookId}.rsvp`, category: "book" },
+						{ filename: `${bookId}.rsvp`, category },
 						onProgressBoth,
 					);
 					if (!result.success) {
 						throw new Error(result.error ?? "Transfer failed");
 					}
+					// Give the device's SD bus a moment to flush after the heavy
+					// upload before issuing the next BLE writes. Without this slack
+					// the active/position writes can time out and the connection
+					// drops.
+					await new Promise((r) => setTimeout(r, 500));
+					// Auto-open the uploaded book on the device (D2). Compute the
+					// hash client-side from the same filename + category the
+					// firmware will see, so we don't need a round-trip to learn it.
+					const newHash = computeOnDeviceHash(bookId, category);
+					const activeRes = await adapter.write("active", { hash: newHash });
+					if (!activeRes.success) {
+						log.warn("booksync", "auto-open after upload failed:", activeRes.error);
+					}
+					// Seed the device's per-book position with the app's word
+					// position so the on-device reader resumes where the user left
+					// off in-app (TASK-131.15 AC #4).
+					if (bookMeta?.wordPosition != null && bookMeta.wordPosition > 0) {
+						const seedRes = await adapter.write("position", {
+							hash: newHash,
+							wordIndex: bookMeta.wordPosition,
+						});
+						if (!seedRes.success) {
+							log.warn("booksync", "seed position after upload failed:", seedRes.error);
+						}
+					}
+					await refreshDeviceLibrary();
 				} else {
 					// Single-book device holds exactly one book. Uploading replaces
 					// the existing book and implicitly makes it active in both app
@@ -344,7 +476,13 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				setTransferProgress(null);
 			}
 		},
-		[isConnected, updateActiveBookId, connectedDescriptorId, connectedDevice?.deviceId],
+		[
+			isConnected,
+			updateActiveBookId,
+			connectedDescriptorId,
+			connectedDevice?.deviceId,
+			refreshDeviceLibrary,
+		],
 	);
 
 	// ------------------------------------------------------------------

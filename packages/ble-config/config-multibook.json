@@ -30,6 +30,10 @@
 		"storage": {
 			"uuid": "f5988368-a011-42db-bc3a-b61d0ec8e325",
 			"description": "Read-only storage info JSON: {freeBytes, totalBytes, bookCount}."
+		},
+		"delete": {
+			"uuid": "fd6d4fe1-2269-469b-8917-3f152961e902",
+			"description": "Write-only delete request JSON: {hash}. Removes the book file and clears its NVS position/word-count keys. Idempotent for unknown hashes."
 		}
 	},
 	"transfer": {

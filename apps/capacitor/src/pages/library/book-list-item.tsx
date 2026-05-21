@@ -1,25 +1,24 @@
 import { Progress } from "@lesefluss/ui/progress";
 import type React from "react";
 import BookCover from "../../components/book-cover";
+import { DeviceBadge } from "../../components/device-sync";
 import type { Book } from "../../services/db/schema";
 import { useLongPress } from "./use-long-press";
 
-interface BookListItemProps {
+type BookListItemProps = {
 	book: Book;
 	cover: string | undefined;
 	progress: number;
 	started: boolean;
-	isActive: boolean;
 	onOpen: () => void;
 	onMenu: () => void;
-}
+};
 
 const BookListItem: React.FC<BookListItemProps> = ({
 	book,
 	cover,
 	progress,
 	started,
-	isActive,
 	onOpen,
 	onMenu,
 }) => {
@@ -51,11 +50,8 @@ const BookListItem: React.FC<BookListItemProps> = ({
 						</span>
 					</div>
 				)}
-				{isActive && (
-					<div className="mt-0.5 font-semibold text-[0.7rem] text-muted-foreground uppercase tracking-wide">
-						On device
-					</div>
-				)}
+				<DeviceBadge bookId={book.id} style="block" />
+
 			</div>
 		</div>
 	);

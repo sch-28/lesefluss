@@ -14,8 +14,10 @@ import {
 import { BookOpen, Cpu, Trash2 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
-import { useBLE } from "../../contexts/ble-context";
+import { DeviceBadge } from "../../components/device-sync";
 import { useBookSync } from "../../contexts/book-sync-context";
+import { useBookDeviceState } from "../../contexts/device-library-context";
+import { useBookDeviceActions } from "../../hooks/use-book-device-actions";
 import { externalSourceUrl, getCatalogBook, getCoverUrl } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { queryHooks } from "../../services/db/hooks";
@@ -35,7 +37,6 @@ interface Props {
 const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const id = propId ?? "";
 	const router = useRouter();
-	const { isConnected } = useBLE();
 	const { activeBookId, isTransferring } = useBookSync();
 
 	const { data: book, isPending } = queryHooks.useBook(id);
@@ -101,7 +102,12 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 			? getCoverUrl(book.catalogId)
 			: null;
 	const progress = readingProgress(book);
-	const isActive = book.id === activeBookId;
+	const deviceState = useBookDeviceState(book.id);
+	const deviceActions = useBookDeviceActions({
+		bookId: book.id,
+		bookTitle: book.title,
+		onUpload: () => setIsTransferOpen(true),
+	});
 	const externalUrl = book.sourceUrl
 		? book.sourceUrl
 		: book.catalogId
@@ -124,24 +130,22 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 			<span>
 				{highlights.length} highlight{highlights.length === 1 ? "" : "s"}
 			</span>
-			{isActive && (
+			{deviceState.isReachable && deviceState.isOnDevice && (
 				<>
 					<span>·</span>
-					<span className="text-primary">On device</span>
+					<DeviceBadge bookId={book.id} style="text" />
 				</>
 			)}
 		</>
 	);
 
 	const secondaryActions = !IS_WEB
-		? [
-				{
-					label: isConnected ? "Set active on device" : "Device not connected",
-					icon: Cpu,
-					onClick: () => setIsTransferOpen(true),
-					disabled: !isConnected || isTransferring,
-				},
-			]
+		? deviceActions.map((a) => ({
+				label: a.label,
+				icon: a.icon ?? Cpu,
+				onClick: a.onSelect,
+				disabled: a.disabled || isTransferring,
+			}))
 		: [];
 
 	return (

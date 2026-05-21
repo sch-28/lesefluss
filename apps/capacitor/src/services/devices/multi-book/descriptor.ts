@@ -7,6 +7,7 @@
  */
 
 import { multibook } from "@lesefluss/ble-config";
+import type { WordPosition } from "@lesefluss/core";
 import { jsonCodec } from "../../ble-transport/codecs";
 import type { DeviceDescriptor } from "../../ble-transport/types";
 import { transferMultiBook } from "./transfer-impl";
@@ -27,13 +28,14 @@ export type MultiBookLibraryEntry = {
 };
 
 export type MultiBookActive = { hash: string };
-export type MultiBookPosition = { hash: string; wordIndex: number };
+export type MultiBookPosition = { hash: string; wordIndex: WordPosition };
 export type MultiBookStorage = {
 	freeBytes: number;
 	totalBytes: number;
 	bookCount: number;
 };
 export type MultiBookSettings = Record<string, unknown>;
+export type MultiBookDeleteRequest = { hash: string };
 
 export const MULTI_BOOK_DESCRIPTOR_ID = "rsvpnano-multi-book-v1";
 
@@ -73,6 +75,11 @@ export const multiBookDescriptor = {
 			uuid: chars.storage.uuid,
 			access: "R",
 			codec: jsonCodec<MultiBookStorage>(),
+		},
+		delete: {
+			uuid: chars.delete.uuid,
+			access: "W+N",
+			codec: jsonCodec<MultiBookDeleteRequest>(),
 		},
 	},
 	transfer: transferMultiBook,

@@ -1,0 +1,36 @@
+---
+id: TASK-139
+title: 'ble-config TS surface: normalize to camelCase'
+status: To Do
+assignee: []
+created_date: '2026-05-21 02:13'
+labels: []
+dependencies: []
+ordinal: 43000
+---
+
+## Description
+
+<!-- SECTION:DESCRIPTION:BEGIN -->
+Originally tracked as TASK-131.8. Moved out of TASK-131 because it's pure polish, not required for the feature-complete milestone.
+
+Bring the ble-config TS surface to one casing convention: camelCase namespaces, no flat screaming-snake exports. JSON files stay as-is (single source of truth for codegen).
+
+Target:
+- packages/ble-config/index.ts exports a `singleBook` namespace mirroring the shape of `multibook` (protocolVersion, deviceName, serviceUuid, characteristics, transfer with chunkSize / windowSize / maxRetries / ackTimeoutMs).
+- multibook.ts has no nested fields with snake_case keys; JSON-only fields like `chunk_size_note` do not surface.
+- Flat screaming-snake exports removed.
+- All capacitor consumers (position.ts, client.ts, transfer.ts, settings.ts, storage.ts, progress-phases.tsx) migrate to the namespace.
+
+Out of scope: changing the underlying JSON files; touching the esp32 MicroPython firmware.
+<!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 packages/ble-config/index.ts exports a `singleBook` namespace with the same shape as `multibook`
+- [ ] #2 Flat screaming-snake exports removed (SERVICE_UUID, POSITION_CHAR_UUID, FILE_TRANSFER_CHAR_UUID, STORAGE_CHAR_UUID, SETTINGS_CHAR_UUID, CHUNK_SIZE, WINDOW_SIZE, MAX_RETRIES, ACK_TIMEOUT_MS, DEVICE_NAME, PROTOCOL_VERSION)
+- [ ] #3 All capacitor consumers updated to import from the namespace
+- [ ] #4 multibook.ts has no nested snake_case keys; JSON-only fields do not surface
+- [ ] #5 pnpm check-types passes
+- [ ] #6 Existing ESP32 BLE flow still works end-to-end
+<!-- AC:END -->

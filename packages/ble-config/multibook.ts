@@ -42,6 +42,10 @@ export type MultibookStorage = {
 	bookCount: number;
 };
 
+export type MultibookDeleteRequest = {
+	hash: string;
+};
+
 // Settings shape mirrors rsvpnano `settingsJson()` (CompanionSyncManager.cpp:1048-1110).
 // Sub-paths: reading.{wpm, readerMode, pauseMode, accurateTimeEstimate, pacing.*},
 // display.{brightnessIndex, darkMode, nightMode, handedness, footerMetric, batteryLabel,

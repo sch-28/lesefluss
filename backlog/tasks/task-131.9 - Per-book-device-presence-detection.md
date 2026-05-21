@@ -1,9 +1,10 @@
 ---
 id: TASK-131.9
 title: Per-book device-presence detection
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-20 17:59'
+updated_date: '2026-05-21 01:43'
 labels: []
 dependencies: []
 parent_task_id: TASK-131
@@ -38,9 +39,25 @@ Depends on TASK-131.4 (transport + adapter) which has landed.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 `computeOnDeviceHash(bookId, category)` is pure, exported, and matches the device's FNV-1a result for the same SD path
-- [ ] #2 Device library is fetched once per connect and after each upload/delete, exposed to consumers via context
-- [ ] #3 `useBookDeviceState(bookId)` returns the four-field shape and updates when the underlying device library changes
-- [ ] #4 When disconnected from any device, the hook returns isReachable=false and consumers can suppress badges
-- [ ] #5 Existing single-book on-device detection (today derived from `book_hash` in storage char) still works; no regression
+- [x] #1 `computeOnDeviceHash(bookId, category)` is pure, exported, and matches the device's FNV-1a result for the same SD path
+- [x] #2 Device library is fetched once per connect and after each upload/delete, exposed to consumers via context
+- [x] #3 `useBookDeviceState(bookId)` returns the four-field shape and updates when the underlying device library changes
+- [x] #4 When disconnected from any device, the hook returns isReachable=false and consumers can suppress badges
+- [x] #5 Existing single-book on-device detection (today derived from `book_hash` in storage char) still works; no regression
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Foundation for 131.10-14 landed.
+
+- `services/devices/hash.ts`: pure `computeOnDeviceHash(bookId, category)` + `onDevicePath()` helpers. FNV-1a 32-bit matching the firmware's `RsvpDataStore::hashBookPath` algorithm by construction (same offset 0x811c9dc5 + prime 0x01000193 over UTF-8 bytes).
+- Test coverage in `services/devices/__tests__/hash.test.ts`: 8-char-hex shape, per-category routing, determinism, regression value.
+- `contexts/device-library-context.tsx`: new `DeviceLibraryProvider` + `useDeviceLibrary` exposing a tagged-union `snapshot` ({kind: 'multi'|'single'|'none'}) and a `refresh()` to re-pull after upload/delete.
+- `useBookDeviceState(bookId)` co-located in the same file. Returns `{isReachable, isOnDevice, isActiveOnDevice, descriptorId}`. Tries both categories for multi-book lookup, collapses to single-book branch when connected to esp32, suppresses to disconnected default when no device.
+- Provider tree updated (`providers.tsx`): `DeviceLibraryProvider` sits between `BLEProvider` and `BookSyncProvider`.
+- MultiBookSync component refactored to read library + active hash from the new context instead of pulling them itself.
+- Book transfer flow (`book-sync-context.tsx`) calls `refreshDeviceLibrary()` after a successful multi-book upload so badges + library pickers update immediately.
+
+203/203 tests pass. tsc clean. Pre-existing reader diagnostics from the in-flight word-index refactor are unrelated.
+<!-- SECTION:FINAL_SUMMARY:END -->

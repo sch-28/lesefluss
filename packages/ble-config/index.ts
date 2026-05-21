@@ -23,10 +23,11 @@ export const ACK_TIMEOUT_MS = config.transfer.ack_timeout_ms;
 // Multibook schema for rsvpnano (separate service, fresh UUIDs).
 export { multibook } from "./multibook.js";
 export type {
+	MultibookDeleteRequest,
+	MultibookInfo,
 	MultibookLibraryEntry,
 	MultibookPosition,
-	MultibookTransferHeader,
-	MultibookInfo,
-	MultibookStorage,
 	MultibookSettings,
+	MultibookStorage,
+	MultibookTransferHeader,
 } from "./multibook.js";

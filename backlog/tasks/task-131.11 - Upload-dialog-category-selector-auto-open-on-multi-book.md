@@ -1,9 +1,10 @@
 ---
 id: TASK-131.11
 title: 'Upload dialog: category selector + auto-open on multi-book'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-20 18:00'
+updated_date: '2026-05-21 01:49'
 labels: []
 dependencies:
   - TASK-131.9
@@ -41,9 +42,24 @@ Out of scope:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 TransferModal confirm phase shows a Book/Article radio only when connected to multi-book device
-- [ ] #2 Selected category propagates through `transferBook` and into the BLE transfer header
-- [ ] #3 Filename on device is always `{bookId}.rsvp`; firmware places it under `/books/books` or `/books/articles` per category
-- [ ] #4 After a successful multi-book upload, the device's `active` characteristic is written with the new book's hash automatically
-- [ ] #5 Single-book transfer flow unchanged in behavior and UI
+- [x] #1 TransferModal confirm phase shows a Book/Article radio only when connected to multi-book device
+- [x] #2 Selected category propagates through `transferBook` and into the BLE transfer header
+- [x] #3 Filename on device is always `{bookId}.rsvp`; firmware places it under `/books/books` or `/books/articles` per category
+- [x] #4 After a successful multi-book upload, the device's `active` characteristic is written with the new book's hash automatically
+- [x] #5 Single-book transfer flow unchanged in behavior and UI
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Upload flow now handles category + auto-opens on multi-book.
+
+- TransferModal owns a `category` state, reset to "book" each time the modal opens.
+- ConfirmPhase shows a Book/Article radio only when `isMultiBook` (derived from `connectedDescriptorId`). On single-book devices the radio is hidden and the device-fit warning + replacing-book line render as before.
+- The device-fit warning + "free on device" section are skipped on multi-book (SD has gigabytes of headroom; the single-book ~3MB flash cap is irrelevant).
+- `transferBook(bookId, onProgress, category)` signature gains the optional category parameter (default "book").
+- BookSyncContext multi-book branch threads category to `adapter.transferFile({filename, category, sizeBytes})` and, on success, writes the `active` characteristic with `computeOnDeviceHash(bookId, category)` (D2 auto-open). Failure to write `active` is logged but doesn't fail the upload — user can still set active from the device library section.
+- Single-book transfer flow unchanged.
+
+203/203 tests pass.
+<!-- SECTION:FINAL_SUMMARY:END -->

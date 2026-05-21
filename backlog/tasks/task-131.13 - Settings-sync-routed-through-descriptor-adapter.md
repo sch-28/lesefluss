@@ -1,9 +1,10 @@
 ---
 id: TASK-131.13
 title: Settings sync routed through descriptor adapter
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-20 18:00'
+updated_date: '2026-05-21 01:59'
 labels: []
 dependencies: []
 parent_task_id: TASK-131
@@ -31,8 +32,21 @@ Out of scope:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Settings sync buttons remain visible when connected to either device kind
-- [ ] #2 Single-book settings sync behavior is unchanged (no regression)
-- [ ] #3 Multi-book settings sync goes through `multiBookAdapter.read/write('settings', ...)` and surfaces any error in the existing toast UI
-- [ ] #4 When the firmware returns its stub error envelope, the toast shows a sensible message
+- [x] #1 Settings sync buttons remain visible when connected to either device kind
+- [x] #2 Single-book settings sync behavior is unchanged (no regression)
+- [x] #3 Multi-book settings sync goes through `multiBookAdapter.read/write('settings', ...)` and surfaces any error in the existing toast UI
+- [x] #4 When the firmware returns its stub error envelope, the toast shows a sensible message
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+`syncToDevice` and `syncFromDevice` in BleContext now branch on `connectedDescriptorId`:
+
+- Single-book esp32: existing `ble.writeSettings` / `ble.readSettings` path, unchanged behavior.
+- Multi-book rsvpnano: instantiates the multi-book adapter and calls `adapter.write("settings", patch)` / `adapter.read("settings")`. The stub firmware returns `{ok:false, error:"settings not yet wired"}`; that error string is surfaced verbatim through the existing `setError` channel (toast on the device settings page).
+
+For the multi-book path the lesefluss `RSVPSettings` shape is sent as-is; the lesefluss ↔ rsvpnano shape mapping lands with TASK-131.3 follow-up. Until then the read path special-cases `envelope.ok === false` to surface the firmware's error message; a future success envelope will populate the partial settings merge as before.
+
+Settings sync buttons in the device settings page stay visible for both device kinds (D7). 203 tests + tsc green.
+<!-- SECTION:FINAL_SUMMARY:END -->

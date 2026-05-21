@@ -393,7 +393,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			};
 			if (wordIndex) update.wordPosition = wordIndex.wordOf(offset);
 			await queries.updateBook(id, update);
-			await pushPosition(offset);
+			await pushPosition(id, offset);
 			if (scheduleSync) scheduleSyncPush(5000);
 		},
 		[id, pushPosition, wordIndex],

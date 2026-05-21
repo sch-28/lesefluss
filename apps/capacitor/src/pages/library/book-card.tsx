@@ -9,28 +9,20 @@
 import { Progress } from "@lesefluss/ui/progress";
 import type React from "react";
 import BookCover from "../../components/book-cover";
+import { DeviceBadge } from "../../components/device-sync";
 import type { Book } from "../../services/db/schema";
 import { useLongPress } from "./use-long-press";
 
-interface BookCardProps {
+type BookCardProps = {
 	book: Book;
 	cover: string | undefined;
 	progress: number;
 	started: boolean;
-	isActive: boolean;
 	onOpen: () => void;
 	onMenu: () => void;
-}
+};
 
-const BookCard: React.FC<BookCardProps> = ({
-	book,
-	cover,
-	progress,
-	started,
-	isActive,
-	onOpen,
-	onMenu,
-}) => {
+const BookCard: React.FC<BookCardProps> = ({ book, cover, progress, started, onOpen, onMenu }) => {
 	const handlers = useLongPress({ onTap: onOpen, onMenu });
 
 	return (
@@ -40,11 +32,7 @@ const BookCard: React.FC<BookCardProps> = ({
 		>
 			<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm">
 				<BookCover book={book} cover={cover} size="full" />
-				{isActive && (
-					<span className="absolute right-1.5 bottom-1.5 rounded-sm bg-foreground px-1.5 py-0.5 font-semibold text-[0.6rem] text-background">
-						On device
-					</span>
-				)}
+				<DeviceBadge bookId={book.id} />
 			</div>
 
 			{started && (

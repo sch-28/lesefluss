@@ -40,6 +40,7 @@ import SortPopover from "./sort-popover";
 import TransferModal from "./transfer-modal";
 import { useLibraryImports } from "./use-library-imports";
 import { useLibraryItems } from "./use-library-items";
+import { useBookDeviceActions } from "../../hooks/use-book-device-actions";
 
 const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
 
@@ -126,10 +127,18 @@ const Library: React.FC = () => {
 		qc.invalidateQueries({ queryKey: bookKeys.all });
 	};
 
-	const handleSetActive = (book: Book) => {
+	const openUploadModal = (book: Book) => {
 		setSelectedBook(null);
 		setPendingTransferBook(book);
 	};
+
+	const deviceActionsForSelectedBook = useBookDeviceActions({
+		bookId: selectedBook?.id ?? null,
+		bookTitle: selectedBook?.title,
+		onUpload: () => {
+			if (selectedBook) openUploadModal(selectedBook);
+		},
+	});
 
 	const handleDelete = (book: Book) => {
 		setSelectedBook(null);
@@ -297,7 +306,6 @@ const Library: React.FC = () => {
 						const progress = readingProgress(book);
 						const started = book.position > 0;
 						const cover = covers.get(book.id);
-						const isActive = book.id === activeBookId;
 						return (
 							<BookCard
 								key={book.id}
@@ -305,7 +313,6 @@ const Library: React.FC = () => {
 								cover={cover}
 								progress={progress}
 								started={started}
-								isActive={isActive}
 								onOpen={() => {
 									qc.setQueryData(bookKeys.detail(book.id), book);
 									history.push(`/tabs/reader/${book.id}`);
@@ -334,7 +341,6 @@ const Library: React.FC = () => {
 						const progress = readingProgress(book);
 						const started = book.position > 0;
 						const cover = covers.get(book.id);
-						const isActive = book.id === activeBookId;
 						return (
 							<BookListItem
 								key={book.id}
@@ -342,7 +348,6 @@ const Library: React.FC = () => {
 								cover={cover}
 								progress={progress}
 								started={started}
-								isActive={isActive}
 								onOpen={() => {
 									qc.setQueryData(bookKeys.detail(book.id), book);
 									history.push(`/tabs/reader/${book.id}`);
@@ -399,17 +404,10 @@ const Library: React.FC = () => {
 						},
 					},
 					...(!IS_WEB
-						? [
-								{
-									label: isConnected
-										? "Set active on device"
-										: "Set active on device (not connected)",
-									disabled: !isConnected || isTransferring,
-									onSelect: () => {
-										if (selectedBook) handleSetActive(selectedBook);
-									},
-								},
-							]
+						? deviceActionsForSelectedBook.map((a) => ({
+								...a,
+								disabled: a.disabled || isTransferring,
+							}))
 						: []),
 					{
 						label: "Delete",

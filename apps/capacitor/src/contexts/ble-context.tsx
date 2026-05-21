@@ -11,8 +11,10 @@ import {
 	useState,
 } from "react";
 import { BLEConnectionState, ble, bleClient, type ScannedDevice } from "../services/ble";
+import { createBleAdapter } from "../services/ble-transport";
 import { queries } from "../services/db/queries";
 import type { Settings as RSVPSettings } from "../services/db/schema";
+import { MULTI_BOOK_DESCRIPTOR_ID, multiBookDescriptor } from "../services/devices";
 import { log } from "../utils/log";
 import { IS_WEB } from "../utils/platform";
 
@@ -233,16 +235,32 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 				return false;
 			}
 
-			const result = await ble.writeSettings(settings);
+			if (
+				connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID &&
+				connectedDevice?.deviceId
+			) {
+				// Most rsvp/display/typography fields are device-specific and stay
+				// local to whichever device the user is configuring. WPM is the
+				// one canonical reading-speed concept that maps cleanly across
+				// devices, so we sync just that for now. Future fields land here
+				// as the rsvpnano ↔ lesefluss shape mapping grows.
+				const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
+				const result = await adapter.write("settings", { wpm: settings.wpm });
+				if (!result.success) {
+					setError(result.error || "Failed to sync settings to device");
+					return false;
+				}
+				return true;
+			}
 
+			const result = await ble.writeSettings(settings);
 			if (!result.success) {
 				setError(result.error || "Failed to sync settings to device");
 				return false;
 			}
-
 			return true;
 		},
-		[isConnected],
+		[isConnected, connectedDescriptorId, connectedDevice?.deviceId],
 	);
 
 	const syncFromDevice = async (): Promise<RSVPSettings | null> => {
@@ -254,21 +272,44 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 			return null;
 		}
 
-		const result = await ble.readSettings();
+		if (
+			connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID &&
+			connectedDevice?.deviceId
+		) {
+			// Multi-book settings JSON shape ≠ RSVPSettings; only fields with a
+			// clean cross-device meaning get mapped. Today: WPM (under
+			// `reading.wpm`). The rest stays device-local.
+			const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
+			const result = await adapter.read("settings");
+			if (!result.success || !result.data) {
+				setError(result.error || "Failed to read settings from device");
+				return null;
+			}
+			const envelope = result.data as Record<string, unknown>;
+			if (envelope.ok === false) {
+				setError(typeof envelope.error === "string" ? envelope.error : "Settings unavailable");
+				return null;
+			}
+			const reading = envelope.reading as { wpm?: number } | undefined;
+			const wpm = typeof reading?.wpm === "number" ? reading.wpm : null;
+			try {
+				const currentSettings = await queries.getSettings();
+				return wpm == null ? currentSettings : { ...currentSettings, wpm };
+			} catch (err) {
+				log.error("ble", "Failed to merge settings:", err);
+				setError("Failed to process settings from device");
+				return null;
+			}
+		}
 
+		const result = await ble.readSettings();
 		if (!result.success || !result.data) {
 			setError(result.error || "Failed to read settings from device");
 			return null;
 		}
-
-		// Merge with current settings (preserve id and updatedAt)
 		try {
 			const currentSettings = await queries.getSettings();
-			const mergedSettings: RSVPSettings = {
-				...currentSettings,
-				...result.data,
-			};
-			return mergedSettings;
+			return { ...currentSettings, ...result.data };
 		} catch (err) {
 			log.error("ble", "Failed to merge settings:", err);
 			setError("Failed to process settings from device");

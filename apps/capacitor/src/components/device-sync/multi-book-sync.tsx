@@ -1,8 +1,10 @@
 import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
+import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useDeviceLibrary } from "../../contexts/device-library-context";
 import { useMultiBookAdapter } from "../../hooks/use-multi-book-adapter";
-import type { MultiBookLibraryEntry, MultiBookStorage } from "../../services/devices";
+import type { MultiBookStorage } from "../../services/devices";
 import type { DeviceCapabilities } from "../../services/devices/capabilities";
 import { log } from "../../utils/log";
 
@@ -26,44 +28,29 @@ function progressLabel(words: number, total: number): string {
 
 export function MultiBookSync(_props: MultiBookSyncProps) {
 	const adapter = useMultiBookAdapter();
-	const [library, setLibrary] = useState<MultiBookLibraryEntry[]>([]);
-	const [activeHash, setActiveHash] = useState<string>("");
+	const { snapshot, refresh: refreshLibrary } = useDeviceLibrary();
 	const [storage, setStorage] = useState<MultiBookStorage | null>(null);
-	const [refreshKey, setRefreshKey] = useState(0);
 
-	const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+	const library = snapshot.kind === "multi" ? snapshot.library : [];
+	const activeHash = snapshot.kind === "multi" ? snapshot.activeHash : "";
 
 	useEffect(() => {
 		if (!adapter) {
 			return;
 		}
 		let cancelled = false;
-		const load = async () => {
-			const [libRes, activeRes, storageRes] = await Promise.all([
-				adapter.read("library"),
-				adapter.read("active"),
-				adapter.read("storage"),
-			]);
+		void adapter.read("storage").then((res) => {
 			if (cancelled) {
 				return;
 			}
-			if (libRes.success && libRes.data) {
-				setLibrary(libRes.data);
-			} else if (!libRes.success) {
-				log.warn("multibook-ui", "library read failed:", libRes.error);
+			if (res.success && res.data) {
+				setStorage(res.data);
 			}
-			if (activeRes.success && activeRes.data) {
-				setActiveHash(activeRes.data.hash);
-			}
-			if (storageRes.success && storageRes.data) {
-				setStorage(storageRes.data);
-			}
-		};
-		void load();
+		});
 		return () => {
 			cancelled = true;
 		};
-	}, [adapter, refreshKey]);
+	}, [adapter, snapshot]);
 
 	const selectActive = useCallback(
 		async (hash: string) => {
@@ -72,13 +59,36 @@ export function MultiBookSync(_props: MultiBookSyncProps) {
 			}
 			const result = await adapter.write("active", { hash });
 			if (result.success) {
-				setActiveHash(hash);
+				await refreshLibrary();
 			} else {
 				log.warn("multibook-ui", "set active failed:", result.error);
 			}
 		},
-		[adapter],
+		[adapter, refreshLibrary],
 	);
+
+	const deleteEntry = useCallback(
+		async (hash: string, title: string) => {
+			if (!adapter) {
+				return;
+			}
+			const confirmed = window.confirm(`Remove "${title}" from device?`);
+			if (!confirmed) {
+				return;
+			}
+			const result = await adapter.write("delete", { hash });
+			if (result.success) {
+				await refreshLibrary();
+			} else {
+				log.warn("multibook-ui", "delete failed:", result.error);
+			}
+		},
+		[adapter, refreshLibrary],
+	);
+
+	const refresh = useCallback(() => {
+		void refreshLibrary();
+	}, [refreshLibrary]);
 
 	if (!adapter) {
 		return <p className="px-4 py-6 text-muted-foreground text-sm">Not connected.</p>;
@@ -102,10 +112,10 @@ export function MultiBookSync(_props: MultiBookSyncProps) {
 						{library.map((book) => {
 							const isActive = book.hash === activeHash;
 							return (
-								<li key={book.hash}>
+								<li key={book.hash} className="flex items-stretch">
 									<button
 										type="button"
-										className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left ${
+										className={`flex flex-1 items-center justify-between gap-3 px-4 py-3 text-left ${
 											isActive ? "bg-accent/40" : ""
 										}`}
 										onClick={() => selectActive(book.hash)}
@@ -121,6 +131,14 @@ export function MultiBookSync(_props: MultiBookSyncProps) {
 										<span className="shrink-0 text-muted-foreground text-xs">
 											{progressLabel(book.progressWords, book.words)}
 										</span>
+									</button>
+									<button
+										type="button"
+										className="flex shrink-0 items-center justify-center px-3 text-muted-foreground hover:text-destructive"
+										aria-label={`Remove ${book.title || book.hash} from device`}
+										onClick={() => deleteEntry(book.hash, book.title || book.hash)}
+									>
+										<Trash2 className="size-4" />
 									</button>
 								</li>
 							);

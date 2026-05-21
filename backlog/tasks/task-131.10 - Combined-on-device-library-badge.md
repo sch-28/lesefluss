@@ -1,9 +1,10 @@
 ---
 id: TASK-131.10
 title: Combined "on device" library badge
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-20 18:00'
+updated_date: '2026-05-21 01:48'
 labels: []
 dependencies:
   - TASK-131.9
@@ -36,9 +37,29 @@ Out of scope:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Badge appears on library rows for any book whose `useBookDeviceState` returns `isOnDevice: true`
-- [ ] #2 Badge variant flips to 'Reading on device' when `isActiveOnDevice: true`
-- [ ] #3 No badge renders when disconnected
-- [ ] #4 Behavior parity for single-book device: the single uploaded book shows the active variant
-- [ ] #5 Badge appears on book-detail header in the same conditions
+- [x] #1 Badge appears on library rows for any book whose `useBookDeviceState` returns `isOnDevice: true`
+- [x] #2 Badge variant flips to 'Reading on device' when `isActiveOnDevice: true`
+- [x] #3 No badge renders when disconnected
+- [x] #4 Behavior parity for single-book device: the single uploaded book shows the active variant
+- [x] #5 Badge appears on book-detail header in the same conditions
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+DeviceBadge component reads live device state via useBookDeviceState (TASK-131.9) and renders:
+- "Reading on device" variant (accent color) when the connected device is currently showing the book
+- "On device" variant (neutral) when uploaded but not the device's active book
+- Nothing when disconnected or absent
+
+Three style variants: `inline` (default — absolute pill for card corners), `block` (stacked uppercase label for list rows), `text` (plain span for composing into existing inline statlines).
+
+Wired into:
+- pages/library/book-card.tsx (inline pill)
+- pages/library/book-list-item.tsx (block label)
+- pages/library/book-detail.tsx (text composed into the stats line)
+
+Removed the stale `isActive` prop from book-card / book-list-item (it was deriving from app-side activeBookId which is the wrong source for the device-presence question, especially for multi-book devices). Parent `pages/library/index.tsx` stopped computing it.
+
+203/203 tests pass.
+<!-- SECTION:FINAL_SUMMARY:END -->

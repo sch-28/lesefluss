@@ -29,6 +29,7 @@ interface MultibookConfig {
 		transfer: { uuid: string; description: string };
 		settings: { uuid: string; description: string };
 		storage: { uuid: string; description: string };
+		delete: { uuid: string; description: string };
 	};
 	transfer: {
 		chunk_size: number;
@@ -58,6 +59,7 @@ constexpr const char* POSITION_CHAR_UUID = "${config.characteristics.position.uu
 constexpr const char* TRANSFER_CHAR_UUID = "${config.characteristics.transfer.uuid}";
 constexpr const char* SETTINGS_CHAR_UUID = "${config.characteristics.settings.uuid}";
 constexpr const char* STORAGE_CHAR_UUID = "${config.characteristics.storage.uuid}";
+constexpr const char* DELETE_CHAR_UUID = "${config.characteristics.delete.uuid}";
 constexpr uint32_t CHUNK_SIZE = ${config.transfer.chunk_size};
 constexpr uint32_t WINDOW_SIZE = ${config.transfer.window_size};
 constexpr uint32_t MAX_RETRIES = ${config.transfer.max_retries};
