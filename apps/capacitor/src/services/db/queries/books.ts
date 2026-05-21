@@ -111,9 +111,9 @@ export async function loadBookWordIndex(id: string): Promise<WordIndex | null> {
 		.where(eq(bookContent.bookId, id));
 	const row = rows[0];
 	if (!row) return null;
-	if (row.wordIndex) {
+	if (row.wordIndex && row.content) {
 		try {
-			return WordIndex.deserialize(JSON.parse(row.wordIndex) as SerializedWordIndex);
+			return WordIndex.deserialize(JSON.parse(row.wordIndex) as SerializedWordIndex, row.content);
 		} catch {
 			// Fall through to rebuild from content.
 		}

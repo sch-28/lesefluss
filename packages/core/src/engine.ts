@@ -5,8 +5,6 @@
  * See apps/esp32/src/reader/rsvp.py and apps/esp32/src/config.py.
  */
 
-import { utf8ByteLength } from "./utf8";
-
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface WordEntry {
@@ -15,6 +13,10 @@ export interface WordEntry {
 	/** True when this word is preceded by a paragraph break (≥2 newlines) in the source. */
 	breakBefore?: boolean;
 }
+
+// Re-export so callers can keep using `import { ... } from "./engine"` while
+// the implementation lives in tokenizer.ts.
+export { buildWordIndexFromTokenizer as buildWordIndex } from "./tokenizer";
 
 export interface RsvpSettings {
 	wpm: number;
@@ -27,32 +29,10 @@ export interface RsvpSettings {
 }
 
 // ─── Word index ─────────────────────────────────────────────────────────────
-
-/**
- * Split content into words with their UTF-8 byte offsets.
- * Matches the ESP32's whitespace splitting (space, tab, newline, CR).
- */
-export function buildWordIndex(content: string): WordEntry[] {
-	const tokens = content.split(/(\s+)/);
-	const entries: WordEntry[] = [];
-	let byteOffset = 0;
-	let pendingBreak = false;
-
-	for (const token of tokens) {
-		if (token.length === 0) continue;
-		if (/^\s+$/.test(token)) {
-			if ((token.match(/\n/g)?.length ?? 0) >= 2) pendingBreak = true;
-		} else {
-			const entry: WordEntry = { word: token, byteOffset };
-			if (pendingBreak && entries.length > 0) entry.breakBefore = true;
-			entries.push(entry);
-			pendingBreak = false;
-		}
-		byteOffset += utf8ByteLength(token);
-	}
-
-	return entries;
-}
+// Implementation lives in ./tokenizer (re-exported above as `buildWordIndex`).
+// The tokenizer mirrors the rsvpnano firmware's effective tokenization so the
+// app's word stream and BLE position writes stay aligned with what the device
+// reads on screen.
 
 // ─── Long-word splitting ────────────────────────────────────────────────────
 
@@ -113,11 +93,11 @@ export function splitLongWord(word: string, maxLen: number = MAX_WORD_LEN): stri
 /**
  * Focal letter index for a word. Exact replica of config.get_focal_position().
  *
- *   length 1–2  → 0
- *   length 3–5  → 1
- *   length 6–9  → 2
- *   length 10–13 → 3
- *   length 14+  → 4
+ *   length 1-2   -> 0
+ *   length 3-5   -> 1
+ *   length 6-9   -> 2
+ *   length 10-13 -> 3
+ *   length 14+   -> 4
  */
 export function calcOrpIndex(wordLength: number): number {
 	if (wordLength <= 2) return 0;

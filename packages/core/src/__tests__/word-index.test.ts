@@ -31,17 +31,27 @@ describe("WordIndex.build", () => {
 		expect(idx.wordAt(wordPos(0)).word).toBe("blue-dragonfly-shine");
 	});
 
-	it("does not split on em-dash or en-dash", () => {
+	it("splits on em-dash / en-dash, emitting a standalone hyphen token", () => {
+		// Device approximates em/en dash to ' - ' (spaced), which the tokenizer
+		// then emits as a standalone hyphen between the surrounding words.
 		const idx = WordIndex.build("foo—bar baz–qux");
-		expect(idx.wordCount).toBe(2);
-		expect(idx.wordAt(wordPos(0)).word).toBe("foo—bar");
-		expect(idx.wordAt(wordPos(1)).word).toBe("baz–qux");
+		expect(idx.wordCount).toBe(6);
+		expect(idx.listEntries().map((e) => e.word)).toEqual([
+			"foo",
+			"-",
+			"bar",
+			"baz",
+			"-",
+			"qux",
+		]);
 	});
 
-	it("keeps soft hyphen inside a word", () => {
+	it("drops soft hyphens (Unicode 0x00AD) from words", () => {
+		// Soft hyphens are typographic hints, not part of the word; device drops
+		// them, app mirrors.
 		const idx = WordIndex.build("co­operate test");
 		expect(idx.wordCount).toBe(2);
-		expect(idx.wordAt(wordPos(0)).word).toBe("co­operate");
+		expect(idx.wordAt(wordPos(0)).word).toBe("cooperate");
 	});
 
 	it("marks breakBefore on 2+ newlines", () => {
@@ -56,15 +66,13 @@ describe("WordIndex.build", () => {
 	});
 
 	it("tracks UTF-8 byte offsets across multi-byte characters", () => {
+		// Latin-1 letters (ä) are kept; emoji are dropped (device cannot display
+		// them and we mirror that, keeping word-stream parity over BLE sync).
 		const content = "ä 🦋 bee";
 		const idx = WordIndex.build(content);
-		expect(idx.wordCount).toBe(3);
+		expect(idx.wordCount).toBe(2);
 		expect(idx.wordAt(wordPos(0))).toMatchObject({ word: "ä", byteOffset: 0 });
 		expect(idx.wordAt(wordPos(1))).toMatchObject({
-			word: "🦋",
-			byteOffset: utf8ByteLength("ä "),
-		});
-		expect(idx.wordAt(wordPos(2))).toMatchObject({
 			word: "bee",
 			byteOffset: utf8ByteLength("ä 🦋 "),
 		});
@@ -178,7 +186,7 @@ describe("WordIndex serialize / deserialize", () => {
 	const built = WordIndex.build(content);
 
 	it("roundtrips through serialize/deserialize", () => {
-		const roundtripped = WordIndex.deserialize(built.serialize());
+		const roundtripped = WordIndex.deserialize(built.serialize(), content);
 		expect(roundtripped.wordCount).toBe(built.wordCount);
 		for (let w = 0; w < built.wordCount; w++) {
 			expect(roundtripped.wordAt(wordPos(w))).toEqual(built.wordAt(wordPos(w)));
@@ -186,7 +194,7 @@ describe("WordIndex serialize / deserialize", () => {
 	});
 
 	it("preserves byte ↔ word query results after a roundtrip", () => {
-		const roundtripped = WordIndex.deserialize(built.serialize());
+		const roundtripped = WordIndex.deserialize(built.serialize(), content);
 		const totalBytes = utf8ByteLength(content);
 		for (let b = 0; b < totalBytes; b += 3) {
 			expect(roundtripped.wordOf(b)).toBe(built.wordOf(b));
@@ -194,7 +202,7 @@ describe("WordIndex serialize / deserialize", () => {
 	});
 
 	it("preserves breakBefore through a roundtrip", () => {
-		const roundtripped = WordIndex.deserialize(built.serialize());
+		const roundtripped = WordIndex.deserialize(built.serialize(), content);
 		expect(roundtripped.wordAt(wordPos(2)).breakBefore).toBe(true);
 	});
 });

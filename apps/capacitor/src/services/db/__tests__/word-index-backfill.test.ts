@@ -1,7 +1,7 @@
 import { utf8ByteLength } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
-import { computeBookConversion, serializeWordIndex } from "../word-index-backfill";
 import type { Chapter } from "../schema";
+import { computeBookConversion, serializeWordIndex } from "../word-index-backfill";
 
 const SIMPLE = "alpha beta gamma delta epsilon";
 
@@ -103,6 +103,8 @@ describe("computeBookConversion", () => {
 	});
 
 	it("handles multi-byte UTF-8 content for all conversions", () => {
+		// Tokenizer drops emoji (device cannot display them), so the word stream
+		// for "café 🦋 latte" is ["café", "latte"]: 2 words, not 3.
 		const content = "café 🦋 latte";
 		const startOfButterfly = utf8ByteLength("café ");
 		const startOfLatte = utf8ByteLength("café 🦋 ");
@@ -113,8 +115,9 @@ describe("computeBookConversion", () => {
 			highlights: [{ id: "h1", startOffset: 0, endOffset: utf8ByteLength("café") - 1 }],
 			sessions: [{ id: "s1", startPos: startOfButterfly, endPos: startOfLatte }],
 		});
-		expect(out.wordPosition).toBe(1);
-		expect(out.chapters?.[0].startWord).toBe(2);
+		// position byte lands inside the dropped emoji region → snaps back to "café".
+		expect(out.wordPosition).toBe(0);
+		expect(out.chapters?.[0].startWord).toBe(1);
 		expect(out.highlights[0]).toEqual({
 			id: "h1",
 			startWord: 0,
@@ -122,7 +125,7 @@ describe("computeBookConversion", () => {
 			endWord: 0,
 			endCharInWord: 3,
 		});
-		expect(out.sessions[0]).toEqual({ id: "s1", startWord: 1, endWord: 2 });
+		expect(out.sessions[0]).toEqual({ id: "s1", startWord: 0, endWord: 1 });
 	});
 
 	it("word-snaps a highlight whose start byte lands in whitespace", () => {
@@ -131,9 +134,7 @@ describe("computeBookConversion", () => {
 			position: 0,
 			content: SIMPLE,
 			chapters: null,
-			highlights: [
-				{ id: "h", startOffset: inSpace, endOffset: utf8ByteLength("alpha beta") - 1 },
-			],
+			highlights: [{ id: "h", startOffset: inSpace, endOffset: utf8ByteLength("alpha beta") - 1 }],
 			sessions: [],
 		});
 		expect(out.highlights[0].startWord).toBe(1);
@@ -153,7 +154,7 @@ describe("serializeWordIndex", () => {
 		const json = serializeWordIndex(out.wordIndex);
 		expect(typeof json).toBe("string");
 		const parsed = JSON.parse(json);
-		expect(parsed.v).toBe(1);
+		expect(parsed.v).toBe(2);
 		expect(parsed.byteOffsets.length).toBe(out.wordIndex.wordCount);
 	});
 });
