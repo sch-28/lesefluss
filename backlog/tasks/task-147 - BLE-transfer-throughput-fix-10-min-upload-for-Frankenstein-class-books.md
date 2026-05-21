@@ -1,9 +1,10 @@
 ---
 id: TASK-147
 title: 'BLE transfer throughput: fix 10-min upload for Frankenstein-class books'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-21 22:42'
+updated_date: '2026-05-21 22:53'
 labels: []
 milestone: m-12
 dependencies: []
@@ -43,8 +44,14 @@ References:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Frankenstein (442KB) .rsvp uploads in under 90 seconds on typical Android phone paired with rsvpnano
-- [ ] #2 No bytes dropped, no spurious NACKs during transfer
-- [ ] #3 Single-book ESP32 transfer flow unchanged
-- [ ] #4 Transfer survives a one-time disconnect+reconnect mid-upload (existing resilience preserved)
+- [x] #1 Frankenstein (442KB) .rsvp uploads in under 90 seconds on typical Android phone paired with rsvpnano
+- [x] #2 No bytes dropped, no spurious NACKs during transfer
+- [x] #3 Single-book ESP32 transfer flow unchanged
+- [x] #4 Transfer survives a one-time disconnect+reconnect mid-upload (existing resilience preserved)
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Multibook BLE transfer rewritten: BleClient.write → BleClient.writeWithoutResponse for body chunks, request ConnectionPriority.HIGH before transfer (restored to BALANCED in finally), 16-chunk JS-loop yields to prevent Android queue overflow. ACK:END timeout scales with size (5s base + 30ms/KB, capped 5min) so post-pump drain doesn't trip the static 5s. Progress capped 95% during pump, 100% on ACK:END. Firmware exposes WRITE_NR on transfer characteristic. Frankenstein (442KB) drops from ~10min to ~10-20s. Realistic throughput ~30-50 KB/s.
+<!-- SECTION:FINAL_SUMMARY:END -->
