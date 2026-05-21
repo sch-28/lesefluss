@@ -11,12 +11,13 @@
  * Behavior here is a verbatim extraction — see git history of index.tsx for
  * the original logic. No semantic changes.
  */
-import { type WordIndex, wordPos, type WordPosition } from "@lesefluss/core";
+import { type WordIndex, type WordPosition, wordPos } from "@lesefluss/core";
 import type React from "react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { VListHandle } from "virtua";
 import { VList } from "virtua";
 import Paragraph, {
+	type ParagraphWordEntry,
 	cancelAnyActiveLongPress,
 	type GlossaryRangeProp,
 	type HighlightRange,
@@ -184,6 +185,8 @@ export interface ScrollViewProps {
 	paragraphOffsets: number[];
 	/** Word index of each paragraph's first word (ADR-0002). */
 	paragraphStartWords: number[];
+	/** Canonical WordIndex entries sliced per paragraph for span rendering. */
+	entriesByParagraph: ParagraphWordEntry[][];
 	findParagraphIndex: (targetByte: number) => number;
 	initialByteOffset: number;
 	/** Per-book WordIndex for byte ↔ word conversion at this view's seam. */
@@ -236,6 +239,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		paragraphs,
 		paragraphOffsets,
 		paragraphStartWords,
+		entriesByParagraph,
 		wordIndex,
 		findParagraphIndex,
 		initialByteOffset,
@@ -284,6 +288,22 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	// user never sees VList reconcile heights mid-scroll. Flipped by onReady from
 	// scheduleFineScroll. Only applies to the first open (jumps use the VList live).
 	const [isInitialScrollReady, setIsInitialScrollReady] = useState(false);
+	// Mirror of isInitialScrollReady for synchronous reads inside handlers that
+	// fire before React commits state. handleScrollEnd uses it to ignore the
+	// post-initial-scroll scrollend(s) so opening a book doesn't trigger a
+	// save (which would bump `lastRead` and re-broadcast the row as updated).
+	const initialSettledRef = useRef(false);
+	const markInitialSettled = useCallback(() => {
+		initialSettledRef.current = true;
+		setIsInitialScrollReady(true);
+	}, []);
+
+	// Cleanup for the in-flight initial scroll. Hoisted out of the init effect
+	// so that effect re-runs (initialByteOffset prop flips after parent seed,
+	// fineScrollTo identity changes when wordIndex resolves, etc.) don't cancel
+	// the scroll mid-flight and leave the skeleton stuck. Only fires on unmount.
+	const initialScrollCleanupRef = useRef<(() => void) | null>(null);
+	useEffect(() => () => initialScrollCleanupRef.current?.(), []);
 
 	/** Align the word at `byteOffset` flush with the container top via scrollIntoView.
 	 *  Paragraph-bounded so the fallback can't leak into a neighboring paragraph.
@@ -323,15 +343,14 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			// Terminal: mark initial scroll done so a later paragraphs update
 			// doesn't re-enter this effect and jerk an already-revealed reader.
 			didInitialScrollRef.current = true;
-			setIsInitialScrollReady(true);
+			markInitialSettled();
 			return;
 		}
 
 		const target = initialByteOffset;
 		if (target === 0) {
-			// start of book - default scroll is correct, nothing to wait for.
 			didInitialScrollRef.current = true;
-			setIsInitialScrollReady(true);
+			markInitialSettled();
 			return;
 		}
 
@@ -350,7 +369,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		listRef.current.scrollToIndex(idx, { align: "start" });
 		onInitialActiveOffset(target);
 
-		return fineScrollTo(target, true, () => setIsInitialScrollReady(true));
+		initialScrollCleanupRef.current =
+			fineScrollTo(target, true, () => markInitialSettled()) ?? null;
 	}, [
 		paragraphs,
 		initialByteOffset,
@@ -426,9 +446,12 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			suppressScrollHighlightClearRef.current = false;
 			return;
 		}
-		// Don't save until the initial scroll-to-position has run,
-		// otherwise a hot reload would overwrite the saved position with 0.
-		if (!didInitialScrollRef.current) return;
+		// Don't save during the initial scroll-to-position sequence. Programmatic
+		// scrollToIndex + fineScrollTo's scrollBy each emit their own scrollend;
+		// the single-shot `suppressNextScrollEndRef` only catches one. Without
+		// this gate the second scrollend lands savePosition on open, bumping
+		// lastRead and broadcasting the book as updated.
+		if (!initialSettledRef.current) return;
 		if (!listRef.current || !containerRef.current) return;
 
 		const cutoffTop = containerRef.current.getBoundingClientRect().top;
@@ -504,7 +527,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 						<Paragraph
 							key={i.toString()}
 							text={text}
-							startWord={paragraphStartWords[i] ?? 0}
+							entries={entriesByParagraph[i] ?? []}
 							activeWord={activeWord}
 							onWordTap={onWordTap}
 							onWordLongPress={onWordLongPress}

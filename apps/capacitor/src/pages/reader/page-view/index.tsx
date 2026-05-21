@@ -36,6 +36,8 @@
  *   - Cross-chunk highlight selection (TASK-96).
  *   - Per-book hyphenation language (TASK-98).
  */
+
+import { type WordIndex, wordPos } from "@lesefluss/core";
 import type React from "react";
 import {
 	forwardRef,
@@ -55,6 +57,7 @@ import {
 	LONG_PRESS_MS,
 } from "../paragraph";
 import type { ReaderViewHandle } from "../view-types";
+import type { ParagraphWordEntry } from "../paragraph";
 import ChunkContent from "./chunk-content";
 import {
 	buildChunks,
@@ -63,7 +66,6 @@ import {
 	relativeOffsets,
 	visibleWindow,
 } from "./chunks";
-import { type WordIndex, wordPos } from "@lesefluss/core";
 import { findPageForWord, readFirstVisibleWord } from "./measurements";
 
 // ─── Tuning ──────────────────────────────────────────────────────────────────
@@ -92,6 +94,7 @@ export interface PageViewProps {
 	activeOffset: number;
 	activeWord: number;
 	paragraphStartWords: number[];
+	entriesByParagraph: ParagraphWordEntry[][];
 	wordIndex: WordIndex | null;
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
@@ -123,6 +126,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		paragraphs,
 		paragraphOffsets,
 		paragraphStartWords,
+		entriesByParagraph,
 		wordIndex,
 		contentLength,
 		initialByteOffset,
@@ -272,12 +276,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		if (!el) return;
 		pendingTargetRef.current = null;
 		if (!wordIndex) return;
-		const targetPage = findPageForWord(
-			el,
-			pageWidth,
-			currentPageCount,
-			wordIndex.wordOf(target),
-		);
+		const targetPage = findPageForWord(el, pageWidth, currentPageCount, wordIndex.wordOf(target));
 		setPageIndex(targetPage);
 		// Transform sync runs in its own layout effect below — by the time it
 		// fires, pageIndex has been committed and the transform lands cleanly.
@@ -665,6 +664,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									chunk={chunk}
 									paragraphs={paragraphs}
 									paragraphStartWords={paragraphStartWords}
+									entriesByParagraph={entriesByParagraph}
 									leftOffset={offsets.get(idx) ?? 0}
 									pageWidth={pageWidth}
 									pageHeight={pageHeight}

@@ -1,13 +1,11 @@
 /**
  * Paragraph - renders a single paragraph as inline <span> elements.
  *
- * Positions are word indices (ADR-0002). The paragraph receives the word
- * index of its first word; each non-space token increments a local counter
- * so word-unit comparisons (active, highlight, glossary, selection) match
- * against per-token word index.
- *
- * Wrapped in React.memo: only the paragraph whose activeWord range changed
- * will re-render on scroll, instead of all ~25 visible paragraphs.
+ * Each rendered word's `data-word` attribute is the absolute canonical word
+ * index from the WordIndex (ADR-0002). The parent slices `entries` per
+ * paragraph; the component never tokenises text on its own. This keeps the
+ * DOM aligned with `wordIndex.wordOf(byteOffset)` lookups so scroll-position
+ * alignment and tap handling cannot drift from the canonical stream.
  *
  * Headings (lines prefixed with #) are rendered as styled block elements
  * without per-word spans - they are not tappable reading positions.
@@ -17,20 +15,14 @@ import type { WordPosition } from "@lesefluss/core";
 import type React from "react";
 import { memo } from "react";
 
-// ─── Heading helpers ─────────────────────────────────────────────────────────
-
-/** Returns the heading level (1–6) if the paragraph starts with # markers, else 0. */
 export function getHeadingLevel(text: string): number {
 	const m = text.match(/^(#{1,6}) /);
 	return m ? m[1].length : 0;
 }
 
-/** Strip the leading `# ` prefix from a heading paragraph. */
 function stripHeadingPrefix(text: string): string {
 	return text.replace(/^#{1,6} /, "");
 }
-
-// ─── Highlight types ─────────────────────────────────────────────────────────
 
 export interface HighlightRange {
 	id: string;
@@ -39,7 +31,6 @@ export interface HighlightRange {
 	color: string;
 }
 
-/** Inline glossary underline range — word-index span on this paragraph. */
 export interface GlossaryRangeProp {
 	entryId: string;
 	startWord: WordPosition;
@@ -49,18 +40,24 @@ export interface GlossaryRangeProp {
 	hideMarker?: boolean;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+/**
+ * One canonical word's slot in the paragraph text. `charStart`..`charEnd`
+ * covers the word plus any trailing whitespace before the next word. The
+ * trailing whitespace is rendered separately so highlight backgrounds extend
+ * across spaces between two in-range words.
+ */
+export interface ParagraphWordEntry {
+	charStart: number;
+	charEnd: number;
+	wordIndex: WordPosition;
+}
 
 export interface ParagraphProps {
 	text: string;
-	/** Word index of the FIRST word in this paragraph (ADR-0002). */
-	startWord: number;
-	/** Currently focused word index, or -1 to hide the active-word underline. */
+	entries: readonly ParagraphWordEntry[];
 	activeWord: number;
 	onWordTap: (wordIdx: number, wordText: string) => void;
 	onWordLongPress?: (wordIdx: number) => void;
-	/** Mouse-only: fires when a mouse drag starts on a word (pointerdown + move > 8px).
-	 *  Desktop equivalent of long-press - lets users click-drag to select words. */
 	onWordMouseDragStart?: (wordIdx: number, event: PointerEvent) => void;
 	highlights?: HighlightRange[];
 	glossaryRanges?: GlossaryRangeProp[];
@@ -68,11 +65,9 @@ export interface ParagraphProps {
 	showActiveWordUnderline: boolean;
 }
 
-// How long (ms) a pointer must be held before triggering long-press
 export const LONG_PRESS_MS = 400;
 
-// Module-level: at most one long-press timer is active at a time (one finger).
-// The reader's scroll handler calls this to cancel if the user starts scrolling.
+// Module-level: at most one long-press timer is active at a time.
 let _cancelActiveLongPress: (() => void) | null = null;
 
 export function cancelAnyActiveLongPress(): void {
@@ -80,10 +75,29 @@ export function cancelAnyActiveLongPress(): void {
 	_cancelActiveLongPress = null;
 }
 
+function wordInRange(wIdx: number, s: number, e: number): boolean {
+	return wIdx >= s && wIdx <= e;
+}
+
+function spaceAfterInRange(prevWordIdx: number, s: number, e: number): boolean {
+	return prevWordIdx >= s && prevWordIdx < e;
+}
+
+/** Position past the last non-whitespace char of `text.slice(start, end)`. */
+function trimEnd(text: string, start: number, end: number): number {
+	let i = end;
+	while (i > start) {
+		const c = text.charCodeAt(i - 1);
+		if (c !== 0x20 && c !== 0x09 && c !== 0x0a && c !== 0x0d && c !== 0x0c && c !== 0x0b) break;
+		i--;
+	}
+	return i;
+}
+
 const Paragraph: React.FC<ParagraphProps> = memo(
 	({
 		text,
-		startWord,
+		entries,
 		activeWord,
 		onWordTap,
 		onWordLongPress,
@@ -101,90 +115,56 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			return <Tag className={`reader-heading reader-heading-${headingLevel}`}>{headingText}</Tag>;
 		}
 
-		// Split on whitespace, keeping the separators so we can track positions.
-		// Example: "Hello world" → ["Hello", " ", "world"]
-		const tokens = text.split(/(\s+)/);
+		const children: React.ReactNode[] = [];
 
-		// Word index of the last word emitted (or startWord - 1 before the first).
-		// Whitespace tokens use this to test whether they sit between two words
-		// both inside a range, in which case they get the same background to keep
-		// the visual range continuous.
-		let lastWordIdx = startWord - 1;
-		const spans: React.ReactNode[] = [];
+		if (entries.length > 0 && entries[0].charStart > 0) {
+			children.push(text.slice(0, entries[0].charStart));
+		}
 
-		const wordInRange = (wIdx: number, s: number, e: number) => wIdx >= s && wIdx <= e;
-		const spaceInRange = (lastW: number, s: number, e: number) => lastW >= s && lastW < e;
+		for (let k = 0; k < entries.length; k++) {
+			const e = entries[k];
+			const wordEnd = trimEnd(text, e.charStart, e.charEnd);
+			const wordText = text.slice(e.charStart, wordEnd);
+			const trailingWhitespace = wordEnd < e.charEnd ? text.slice(wordEnd, e.charEnd) : "";
+			const wIdx = e.wordIndex;
 
-		for (let i = 0; i < tokens.length; i++) {
-			const token = tokens[i];
-			if (token.length === 0) continue;
-			const isSpace = /^\s+$/.test(token);
-
-			const tokenWord = isSpace ? lastWordIdx : lastWordIdx + 1;
-			if (!isSpace) lastWordIdx = tokenWord;
-
-			const classes: string[] = [];
-
-			if (!isSpace && tokenWord === activeWord && showActiveWordUnderline) {
-				classes.push("word-active");
-			}
+			const wordClasses: string[] = [];
+			if (wIdx === activeWord && showActiveWordUnderline) wordClasses.push("word-active");
 
 			if (highlights) {
 				for (const h of highlights) {
-					const hit = isSpace
-						? spaceInRange(tokenWord, h.startWord, h.endWord)
-						: wordInRange(tokenWord, h.startWord, h.endWord);
-					if (hit) {
-						classes.push(`word-highlight-${h.color}`);
+					if (wordInRange(wIdx, h.startWord, h.endWord)) {
+						wordClasses.push(`word-highlight-${h.color}`);
 						break;
 					}
 				}
 			}
 
-			// Glossary ranges — render a small inline avatar before the FIRST
-			// token of each range instead of underlining every word. `hideMarker`
-			// suppresses the marker; range stays so the tap target is preserved.
+			if (
+				selectionRange &&
+				wordInRange(wIdx, selectionRange.startWord, selectionRange.endWord)
+			) {
+				wordClasses.push("word-selecting");
+			}
+
 			let glossaryAvatar: { label: string; color: string } | null = null;
-			if (glossaryRanges && !isSpace) {
+			if (glossaryRanges) {
 				for (const g of glossaryRanges) {
-					if (tokenWord === g.startWord && !g.hideMarker) {
+					if (wIdx === g.startWord && !g.hideMarker) {
 						glossaryAvatar = { label: g.label, color: g.color };
 						break;
 					}
 				}
 			}
 
-			if (selectionRange) {
-				const hit = isSpace
-					? spaceInRange(tokenWord, selectionRange.startWord, selectionRange.endWord)
-					: wordInRange(tokenWord, selectionRange.startWord, selectionRange.endWord);
-				if (hit) classes.push("word-selecting");
-			}
-
-			if (isSpace) {
-				if (classes.length > 0) {
-					spans.push(
-						<span key={i} className={classes.join(" ")}>
-							{token}
-						</span>,
-					);
-				} else {
-					spans.push(token);
-				}
-				continue;
-			}
-
-			const className = classes.length > 0 ? classes.join(" ") : undefined;
-			const wIdx = tokenWord;
-
 			const handlePointerDown =
 				onWordLongPress || onWordMouseDragStart
-					? (e: React.PointerEvent) => {
-							const pointerType = e.pointerType;
-							if (pointerType === "mouse") e.preventDefault();
+					? (ev: React.PointerEvent) => {
+							const pointerType = ev.pointerType;
+							if (pointerType === "mouse") ev.preventDefault();
 							let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-							const startX = e.clientX;
-							const startY = e.clientY;
+							const startX = ev.clientX;
+							const startY = ev.clientY;
 							const cleanup = () => {
 								if (longPressTimer) {
 									clearTimeout(longPressTimer);
@@ -213,15 +193,9 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 									_cancelActiveLongPress = null;
 									longPressTimer = null;
 									onWordLongPress(wIdx);
-									// Swallow the trailing `click` from the same pointer
-									// sequence so handleWordTap (which sees isSelecting=true)
-									// doesn't immediately cancel the just-started selection.
-									// Mirror of the mouse-drag-start path. Best-effort: if
-									// a capture-phase ancestor handler fires before the
-									// next click the swallow is consumed by that event
-									// instead; in practice the timeout callback runs
-									// synchronously before the pointerup→click sequence
-									// continues, so the listener is registered first.
+									// Swallow the trailing click from the same pointer
+									// sequence so handleWordTap doesn't cancel the just-
+									// started selection.
 									const swallow = (ce: MouseEvent) => {
 										ce.stopPropagation();
 										ce.preventDefault();
@@ -238,11 +212,11 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 						}
 					: undefined;
 
-			let wordChildren: React.ReactNode = token;
+			let wordChildren: React.ReactNode = wordText;
 			if (glossaryAvatar) {
-				const matchIdx = token.toLowerCase().indexOf(glossaryAvatar.label.toLowerCase());
-				const prefix = matchIdx > 0 ? token.slice(0, matchIdx) : "";
-				const rest = matchIdx > 0 ? token.slice(matchIdx) : token;
+				const matchIdx = wordText.toLowerCase().indexOf(glossaryAvatar.label.toLowerCase());
+				const prefix = matchIdx > 0 ? wordText.slice(0, matchIdx) : "";
+				const rest = matchIdx > 0 ? wordText.slice(matchIdx) : wordText;
 				wordChildren = (
 					<>
 						{prefix}
@@ -260,10 +234,10 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 
 			const wordSpan = (
 				<span
-					key={i}
+					key={`w${k}`}
 					data-word={wIdx}
-					className={className}
-					onClick={() => onWordTap(wIdx, token)}
+					className={wordClasses.length > 0 ? wordClasses.join(" ") : undefined}
+					onClick={() => onWordTap(wIdx, wordText)}
 					onPointerDown={handlePointerDown}
 				>
 					{wordChildren}
@@ -271,17 +245,53 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			);
 
 			if (glossaryAvatar) {
-				spans.push(
-					<span key={`gg-${i}`} className="glossary-marker-group">
+				children.push(
+					<span key={`gg${k}`} className="glossary-marker-group">
 						{wordSpan}
 					</span>,
 				);
 			} else {
-				spans.push(wordSpan);
+				children.push(wordSpan);
+			}
+
+			if (trailingWhitespace.length > 0) {
+				const spaceClasses: string[] = [];
+				if (highlights) {
+					for (const h of highlights) {
+						if (spaceAfterInRange(wIdx, h.startWord, h.endWord)) {
+							spaceClasses.push(`word-highlight-${h.color}`);
+							break;
+						}
+					}
+				}
+				if (
+					selectionRange &&
+					spaceAfterInRange(wIdx, selectionRange.startWord, selectionRange.endWord)
+				) {
+					spaceClasses.push("word-selecting");
+				}
+				if (spaceClasses.length > 0) {
+					children.push(
+						<span key={`s${k}`} className={spaceClasses.join(" ")}>
+							{trailingWhitespace}
+						</span>,
+					);
+				} else {
+					children.push(trailingWhitespace);
+				}
 			}
 		}
 
-		return <p className="reader-paragraph">{spans}</p>;
+		if (entries.length === 0) {
+			return <p className="reader-paragraph">{text}</p>;
+		}
+
+		const lastEnd = entries[entries.length - 1].charEnd;
+		if (lastEnd < text.length) {
+			children.push(text.slice(lastEnd));
+		}
+
+		return <p className="reader-paragraph">{children}</p>;
 	},
 );
 

@@ -11,7 +11,11 @@
  */
 import type React from "react";
 import { memo, useEffect, useLayoutEffect, useRef } from "react";
-import Paragraph, { type GlossaryRangeProp, type HighlightRange } from "../paragraph";
+import Paragraph, {
+	type GlossaryRangeProp,
+	type HighlightRange,
+	type ParagraphWordEntry,
+} from "../paragraph";
 import type { Chunk } from "./chunks";
 
 export interface ChunkContentProps {
@@ -19,6 +23,7 @@ export interface ChunkContentProps {
 	chunkIndex: number;
 	paragraphs: string[];
 	paragraphStartWords: number[];
+	entriesByParagraph: ParagraphWordEntry[][];
 
 	// Position in the transform wrapper (relative to current chunk; 0 for current).
 	leftOffset: number;
@@ -58,6 +63,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	chunkIndex,
 	paragraphs,
 	paragraphStartWords,
+	entriesByParagraph,
 	leftOffset,
 	pageWidth,
 	pageHeight,
@@ -137,7 +143,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 					<Paragraph
 						key={paraGlobalIndex.toString()}
 						text={text}
-						startWord={paraStartWord}
+						entries={entriesByParagraph[paraGlobalIndex] ?? []}
 						activeWord={isActiveWordHere ? activeWord : -1}
 						onWordTap={onWordTap}
 						onWordLongPress={onWordLongPress}

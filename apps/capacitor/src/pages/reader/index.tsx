@@ -25,15 +25,23 @@
 
 import { Browser } from "@capacitor/browser";
 import type { RsvpSettings } from "@lesefluss/core";
-import { DEFAULT_SETTINGS, wordPos, type WordPosition } from "@lesefluss/core";
-import { Button } from "@lesefluss/ui/button";
 import {
-	Drawer,
-	DrawerContent,
-	DrawerHeader,
-	DrawerTitle,
-} from "@lesefluss/ui/drawer";
+	DEFAULT_SETTINGS,
+	utf8ByteLength,
+	utf8ByteLengthOfCodePoint,
+	type WordPosition,
+	wordPos,
+} from "@lesefluss/core";
+import { Button } from "@lesefluss/ui/button";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@lesefluss/ui/dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import {
 	Bookmark,
 	ChevronLeft,
@@ -49,26 +57,22 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "@tanstack/react-router";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@lesefluss/ui/dropdown-menu";
 import { toast } from "../../components/toast";
+import type { ParagraphWordEntry } from "./paragraph";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { useTheme } from "../../contexts/theme-context";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import { externalSourceUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
-import { bookKeys } from "../../services/db/hooks/query-keys";
+import { bookKeys, serialKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
-import type { Chapter, GlossaryEntry } from "../../services/db/schema";
+import type { SeriesActivity } from "../../services/db/queries/series";
+import type { Book, Chapter, GlossaryEntry } from "../../services/db/schema";
 import { providerLabel } from "../../services/serial-scrapers";
 import { pushSync, scheduleSyncPush } from "../../services/sync";
 import { formatReadingTime } from "../../utils/reading-time";
+import { setJustRead } from "../library/just-read-pin";
 import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
 import { useChapterAutoAdvance } from "./chapter-auto-advance";
@@ -81,12 +85,12 @@ import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
 import HighlightModal from "./highlight-modal";
 import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
-import { utf8ByteLength } from "@lesefluss/core";
 import { stripPunct } from "./rsvp-engine";
 import RsvpView, { type RsvpViewHandle } from "./rsvp-view";
 import ScrollView, { ReaderSkeleton } from "./scroll-view";
 import SearchModal from "./search-modal";
 import SelectionOverlay from "./selection-overlay";
+import { SessionDebugBadge } from "./session-debug-badge";
 import {
 	findFirstMention,
 	findNextMention,
@@ -95,7 +99,6 @@ import {
 } from "./use-glossary-decorations";
 import { useHighlightSelection } from "./use-highlight-selection";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
-import { SessionDebugBadge } from "./session-debug-badge";
 import { type ReadingSessionMode, useReadingSession } from "./use-reading-session";
 import { useScrubProgress } from "./use-scrub-progress";
 import type { ReaderViewHandle } from "./view-types";
@@ -247,12 +250,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		// Empty books (wordCount=0) cannot be converted — `wordIndex.byteOf`
 		// would call `wordAt(0)` on an empty entries array and throw
 		// RangeError. Fall through to the byte path which seeds 0.
-		const useWord =
-			book.positionUnit === "word" && wordIndex && wordIndex.wordCount > 0;
+		const useWord = book.positionUnit === "word" && wordIndex && wordIndex.wordCount > 0;
 		const seed = useWord
-			? wordIndex.byteOf(
-					wordPos(Math.min(Math.max(book.wordPosition, 0), wordIndex.wordCount - 1)),
-				)
+			? wordIndex.byteOf(wordPos(Math.min(Math.max(book.wordPosition, 0), wordIndex.wordCount - 1)))
 			: book.position;
 		// Dev-only invariant: when both legacy + canonical positions are
 		// populated, they should agree to within a tokenization word.
@@ -263,10 +263,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			book.position > 0 &&
 			Math.abs(seed - book.position) > 64
 		) {
-			console.warn(
-				"[reader] seed byte/word mismatch:",
-				{ wordPosition: book.wordPosition, wordSeedByte: seed, storedByte: book.position },
-			);
+			console.warn("[reader] seed byte/word mismatch:", {
+				wordPosition: book.wordPosition,
+				wordSeedByte: seed,
+				storedByte: book.position,
+			});
 		}
 		didSeedOffsetsRef.current = true;
 		setActiveOffset(seed);
@@ -283,8 +284,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// We must use UTF-8 byte lengths (not JS .length) because the ESP32 tracks
 	// position as a byte offset into book.txt. For any multi-byte character
 	// (smart quotes, em-dashes, accented letters) the two diverge.
-	const { paragraphs, paragraphOffsets } = useMemo(() => {
-		if (!content) return { paragraphs: [], paragraphOffsets: [] };
+	const { paragraphs, paragraphOffsets, contentByteLength } = useMemo(() => {
+		if (!content) return { paragraphs: [], paragraphOffsets: [], contentByteLength: 0 };
 
 		const paras = content.split("\n\n");
 		const offsets: number[] = new Array(paras.length);
@@ -293,7 +294,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			offsets[i] = offset;
 			offset += utf8ByteLength(paras[i]) + 2; // +2 for the "\n\n" separator (always 2 UTF-8 bytes)
 		}
-		return { paragraphs: paras, paragraphOffsets: offsets };
+		return { paragraphs: paras, paragraphOffsets: offsets, contentByteLength: offset - 2 };
 	}, [content]);
 
 	// Per-paragraph word index of the first word (ADR-0002). Derived from
@@ -303,6 +304,53 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		if (!wordIndex) return paragraphOffsets.map(() => 0);
 		return paragraphOffsets.map((b) => wordIndex.wordOf(b));
 	}, [paragraphOffsets, wordIndex]);
+
+	// Per-paragraph slice of canonical WordIndex entries with paragraph-local
+	// char offsets. The Paragraph component renders one span per entry with
+	// `data-word=entry.wordIndex`, so DOM word indices are always the canonical
+	// ones from the WordIndex.
+	const entriesByParagraph = useMemo<ParagraphWordEntry[][]>(() => {
+		if (!wordIndex || paragraphs.length === 0) return paragraphs.map(() => []);
+		const all = wordIndex.listEntries();
+		const result: ParagraphWordEntry[][] = new Array(paragraphs.length);
+		let cursor = 0;
+		for (let p = 0; p < paragraphs.length; p++) {
+			const paraText = paragraphs[p];
+			const paraByteStart = paragraphOffsets[p];
+			// Paragraph end byte = next paragraph's start minus the "\n\n" separator,
+			// or the content byte length for the last paragraph. Avoids an extra
+			// O(n) UTF-8 scan per paragraph.
+			const paraByteEnd =
+				p + 1 < paragraphOffsets.length ? paragraphOffsets[p + 1] - 2 : contentByteLength;
+
+			while (cursor < all.length && all[cursor].byteOffset < paraByteStart) cursor++;
+			let end = cursor;
+			while (end < all.length && all[end].byteOffset < paraByteEnd) end++;
+
+			const items: ParagraphWordEntry[] = [];
+			let i = 0;
+			let b = paraByteStart;
+			for (let k = cursor; k < end; k++) {
+				const entry = all[k];
+				while (b < entry.byteOffset && i < paraText.length) {
+					const cp = paraText.codePointAt(i) ?? 0;
+					b += utf8ByteLengthOfCodePoint(cp);
+					i += cp >= 0x10000 ? 2 : 1;
+				}
+				const charStart = i;
+				const nextByte = k + 1 < end ? all[k + 1].byteOffset : paraByteEnd;
+				while (b < nextByte && i < paraText.length) {
+					const cp = paraText.codePointAt(i) ?? 0;
+					b += utf8ByteLengthOfCodePoint(cp);
+					i += cp >= 0x10000 ? 2 : 1;
+				}
+				items.push({ charStart, charEnd: i, wordIndex: wordPos(k) });
+			}
+			result[p] = items;
+			cursor = end;
+		}
+		return result;
+	}, [paragraphs, paragraphOffsets, contentByteLength, wordIndex]);
 
 	// Active word index mirrors activeOffset (computed on every render — cheap).
 	const activeWord = wordIndex && activeOffset >= 0 ? wordIndex.wordOf(activeOffset) : -1;
@@ -387,16 +435,50 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// switchover (TASK-135 stage H) drops the byte write.
 	const savePosition = useCallback(
 		async (offset: number, { scheduleSync = true }: { scheduleSync?: boolean } = {}) => {
+			const now = Date.now();
 			const update: { position: number; lastRead: number; wordPosition?: WordPosition } = {
 				position: offset,
-				lastRead: Date.now(),
+				lastRead: now,
 			};
 			if (wordIndex) update.wordPosition = wordIndex.wordOf(offset);
+
+			// Optimistic cache update so the library lands already-sorted when
+			// the user navigates back, instead of shifting under their finger
+			// after the async refetch finishes.
+			const seriesId = book?.seriesId ?? null;
+			qc.setQueryData<{ books: Book[]; covers: Map<string, string> } | undefined>(
+				bookKeys.all,
+				(prev) => {
+					if (!prev) return prev;
+					let changed = false;
+					const next = prev.books.map((b) => {
+						if (b.id !== id) return b;
+						changed = true;
+						return { ...b, position: offset, lastRead: now };
+					});
+					return changed ? { ...prev, books: next } : prev;
+				},
+			);
+			if (seriesId) {
+				qc.setQueryData<Map<string, SeriesActivity> | undefined>(serialKeys.activity, (prev) => {
+					if (!prev) return prev;
+					const current = prev.get(seriesId);
+					if (!current) return prev;
+					const merged = new Map(prev);
+					merged.set(seriesId, {
+						...current,
+						latestRead: Math.max(current.latestRead ?? 0, now),
+					});
+					return merged;
+				});
+			}
+			setJustRead(seriesId ? `series:${seriesId}` : `book:${id}`);
+
 			await queries.updateBook(id, update);
 			await pushPosition(id, offset);
 			if (scheduleSync) scheduleSyncPush(5000);
 		},
-		[id, pushPosition, wordIndex],
+		[id, pushPosition, wordIndex, book?.seriesId, qc],
 	);
 
 	// ── Shared helpers ────────────────────────────────────────────────────
@@ -928,9 +1010,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			const byteOffset = utf8ByteLength(content.slice(0, charOffset));
 			// Snap to the start of the word containing this byte via WordIndex
 			// (ADR-0002). Falls back to the raw byte position pre-backfill.
-			const wordByte = wordIndex
-				? wordIndex.byteOf(wordIndex.wordOf(byteOffset))
-				: byteOffset;
+			const wordByte = wordIndex ? wordIndex.byteOf(wordIndex.wordOf(byteOffset)) : byteOffset;
 
 			if (readerMode === "rsvp") {
 				setActiveOffset(wordByte);
@@ -1106,109 +1186,107 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		<div className={`reader-theme-${theme} flex h-screen flex-col bg-background text-foreground`}>
 			<header className="flex shrink-0 flex-col border-border border-b bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur">
 				<div className="flex h-12 items-center gap-0.5 px-1">
-				<button
-					type="button"
-					onClick={() => history.back()}
-					aria-label="Back"
-					className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-				>
-					<ChevronLeft className="size-5" />
-				</button>
-				{book.seriesId != null && (
-					<>
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={() => void chapterAdvance.tryRetreat()}
-							disabled={!hasPrev}
-							aria-label="Previous chapter"
-						>
-							<ChevronLeft />
-						</Button>
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={() => void chapterAdvance.tryAdvance()}
-							disabled={!hasNext}
-							aria-label="Next chapter"
-						>
-							<ChevronRight />
-						</Button>
-					</>
-				)}
-				<h1 className="m-0 flex-1 truncate px-1 font-semibold text-base leading-none">
-					{book.title}
-				</h1>
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={handleRsvpToggle}
-					disabled={!content}
-					aria-label={
-						readerMode === "rsvp" ? "Switch to standard reader" : "Switch to RSVP reader"
-					}
-					className={readerMode === "rsvp" ? "text-primary" : undefined}
-				>
-					{readerMode === "rsvp" ? <ZapOff /> : <Zap />}
-				</Button>
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={() => setSearchOpen(true)}
-					disabled={!content}
-					aria-label="Search content"
-				>
-					<Search />
-				</Button>
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={() => setAnnotationsOpen(true)}
-					disabled={!content}
-					aria-label="Annotations"
-				>
-					<Bookmark />
-				</Button>
-				<AppearancePopover
-					trigger={
-						<Button variant="ghost" size="icon" aria-label="Appearance settings">
-							<Type />
-						</Button>
-					}
-				/>
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button variant="ghost" size="icon" aria-label="More actions">
-							<MoreVertical />
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end" className="w-56">
-						{overflowSourceUrl && (
+					<button
+						type="button"
+						onClick={() => history.back()}
+						aria-label="Back"
+						className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+					>
+						<ChevronLeft className="size-5" />
+					</button>
+					{book.seriesId != null && (
+						<>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => void chapterAdvance.tryRetreat()}
+								disabled={!hasPrev}
+								aria-label="Previous chapter"
+							>
+								<ChevronLeft />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => void chapterAdvance.tryAdvance()}
+								disabled={!hasNext}
+								aria-label="Next chapter"
+							>
+								<ChevronRight />
+							</Button>
+						</>
+					)}
+					<h1 className="m-0 flex-1 truncate px-1 font-semibold text-base leading-none">
+						{book.title}
+					</h1>
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={handleRsvpToggle}
+						disabled={!content}
+						aria-label={
+							readerMode === "rsvp" ? "Switch to standard reader" : "Switch to RSVP reader"
+						}
+						className={readerMode === "rsvp" ? "text-primary" : undefined}
+					>
+						{readerMode === "rsvp" ? <ZapOff /> : <Zap />}
+					</Button>
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={() => setSearchOpen(true)}
+						disabled={!content}
+						aria-label="Search content"
+					>
+						<Search />
+					</Button>
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={() => setAnnotationsOpen(true)}
+						disabled={!content}
+						aria-label="Annotations"
+					>
+						<Bookmark />
+					</Button>
+					<AppearancePopover
+						trigger={
+							<Button variant="ghost" size="icon" aria-label="Appearance settings">
+								<Type />
+							</Button>
+						}
+					/>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="ghost" size="icon" aria-label="More actions">
+								<MoreVertical />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-56">
+							{overflowSourceUrl && (
+								<DropdownMenuItem
+									onSelect={() => {
+										void Browser.open({ url: overflowSourceUrl });
+									}}
+								>
+									<ExternalLink />
+									<span>Open on {series ? providerLabel(series.provider) : "website"}</span>
+								</DropdownMenuItem>
+							)}
 							<DropdownMenuItem
 								onSelect={() => {
-									void Browser.open({ url: overflowSourceUrl });
+									history.push(
+										book.seriesId != null
+											? `/tabs/library/series/${book.seriesId}`
+											: `/tabs/library/book/${book.id}`,
+									);
 								}}
 							>
-								<ExternalLink />
-								<span>
-									Open on {series ? providerLabel(series.provider) : "website"}
-								</span>
+								<Info />
+								<span>{book.seriesId != null ? "View series" : "View book"}</span>
 							</DropdownMenuItem>
-						)}
-						<DropdownMenuItem
-							onSelect={() => {
-								history.push(
-									book.seriesId != null
-										? `/tabs/library/series/${book.seriesId}`
-										: `/tabs/library/book/${book.id}`,
-								);
-							}}
-						>
-							<Info />
-							<span>{book.seriesId != null ? "View series" : "View book"}</span>
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 			</header>
 
@@ -1244,6 +1322,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						paragraphs={paragraphs}
 						paragraphOffsets={paragraphOffsets}
 						paragraphStartWords={paragraphStartWords}
+						entriesByParagraph={entriesByParagraph}
 						wordIndex={wordIndex ?? null}
 						contentLength={contentBytes?.length ?? content.length}
 						initialByteOffset={lastOffsetRef.current ?? book.position}
@@ -1274,6 +1353,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						paragraphs={paragraphs}
 						paragraphOffsets={paragraphOffsets}
 						paragraphStartWords={paragraphStartWords}
+						entriesByParagraph={entriesByParagraph}
 						findParagraphIndex={findParagraphIndex}
 						initialByteOffset={lastOffsetRef.current ?? book.position}
 						wordIndex={wordIndex ?? null}
