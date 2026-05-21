@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lesefluss — A · Read</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #fef6e4;
+    --cream-2: #f7ecd1;
+    --ink: #1a1817;
+    --ink-2: #44403c;
+    --muted: #8a8378;
+    --rust: #d9543a;
+    --cyan: #3aa9d9;
+    --line: #ead9b9;
+  }
+  html, body { background: var(--cream); color: var(--ink); }
+  body {
+    font-family: "Newsreader", Georgia, serif;
+    font-optical-sizing: auto;
+    font-size: 19px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: "Geist Mono", ui-monospace, monospace; font-size: 13px; }
+  .rust { color: var(--rust); }
+  .cyan { color: var(--cyan); }
+  .line { border-color: var(--line); }
+  a.underline-rust { text-decoration: underline; text-decoration-color: var(--rust); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+  a.underline-rust:hover { background: var(--rust); color: var(--cream); text-decoration: none; padding: 0 3px; }
+  .marker { background: linear-gradient(180deg, transparent 55%, rgba(58,169,217,.25) 55%); }
+  hr { border: none; border-top: 1px solid var(--line); margin: 3rem 0; }
+  hr.sym::before { content: "❦"; display: block; text-align: center; color: var(--rust); margin-top: -.8em; background: var(--cream); width: 2em; margin-left: auto; margin-right: auto; }
+  @keyframes flip { 0%, 30% { opacity: 1; } 33%, 100% { opacity: 0; } }
+  .w1 { animation: flip 1.6s steps(1) infinite; animation-delay: 0s; }
+  .w2 { animation: flip 1.6s steps(1) infinite; animation-delay: .4s; opacity: 0; }
+  .w3 { animation: flip 1.6s steps(1) infinite; animation-delay: .8s; opacity: 0; }
+  .w4 { animation: flip 1.6s steps(1) infinite; animation-delay: 1.2s; opacity: 0; }
+</style>
+</head>
+<body>
+
+<!-- Narrow single column. Almost a long-form essay. -->
+<main class="max-w-[640px] mx-auto px-6 py-12 md:py-20">
+
+  <!-- Header -->
+  <header class="flex items-center justify-between mb-16">
+    <a href="/" class="flex items-center gap-3">
+      <img src="logo.svg" alt="" class="w-9 h-9">
+      <span class="font-medium text-lg">Lesefluss</span>
+    </a>
+    <nav class="mono flex items-center gap-5 text-[var(--muted)]">
+      <a href="/app" class="hover:text-[var(--ink)]">app</a>
+      <a href="/download" class="hover:text-[var(--ink)]">android</a>
+      <a href="https://github.com/sch-28/lesefluss" class="hover:text-[var(--ink)]">github</a>
+    </nav>
+  </header>
+
+  <!-- Hero: literal paragraph -->
+  <p class="mono text-[var(--muted)] mb-4">a reading app · open source · free</p>
+  <h1 class="text-[2.6rem] md:text-[3.2rem] font-light leading-[1.1] tracking-tight mb-10">
+    Read books, web novels, and<br>
+    anything you can <span class="italic rust">paste.</span>
+  </h1>
+
+  <p class="text-[var(--ink-2)] mb-5">
+    Lesefluss takes an <span class="marker">EPUB, PDF, HTML, plain text, or any URL</span>, pulls a clean reading copy, and gives you back the words. You read them in pages, as a scroll, or one at a time.
+  </p>
+
+  <p class="text-[var(--ink-2)] mb-5">
+    The one-at-a-time mode is called RSVP. Each word lands on the same spot —
+    <span class="inline-block align-baseline border-b-2 border-[var(--rust)] px-1.5 mx-1 font-medium relative min-w-[5rem] text-center">
+      <span class="w1">read</span><span class="w2 absolute inset-0 flex items-center justify-center">f<span class="rust">a</span>ster</span><span class="w3 absolute inset-0 flex items-center justify-center">no eye</span><span class="w4 absolute inset-0 flex items-center justify-center">jumps</span>
+    </span>
+    — so your eyes don't have to jump back. Many people read 2 to 4× faster like that. It feels weird for a minute, then it doesn't.
+  </p>
+
+  <p class="text-[var(--ink-2)] mb-10">
+    Browse <span class="rust">80,000+</span> free classics from <a class="underline-rust">Standard Ebooks</a>, <a class="underline-rust">Project Gutenberg</a>, or follow web novels straight from <a class="underline-rust">Royal Road</a>, <a class="underline-rust">AO3</a>, <a class="underline-rust">ScribbleHub</a>, <a class="underline-rust">Wuxiaworld</a>. Or paste any link and read it.
+  </p>
+
+  <div class="flex flex-wrap items-baseline gap-x-6 gap-y-3 mono">
+    <a href="/app" class="bg-[var(--ink)] text-[var(--cream)] px-5 py-2.5 rounded-sm hover:bg-[var(--rust)]">→ open web app</a>
+    <a href="/download" class="underline decoration-[var(--rust)] decoration-2 underline-offset-4 hover:text-[var(--rust)]">get on android</a>
+    <span class="text-[var(--muted)]">or read on a <a class="underline-rust">€25 ESP32 device</a></span>
+  </div>
+
+  <hr class="sym">
+
+  <!-- Stats inline -->
+  <p class="text-[var(--ink-2)]">
+    Today: <span class="font-medium rust">80,000+</span> free classics indexed,
+    <span class="font-medium rust">1,400</span> hand-typeset Standard Ebooks, top reading speed
+    <span class="font-medium rust">1000 wpm</span>. App is free. Cloud sync is free. No account required.
+  </p>
+
+  <hr class="sym">
+
+  <!-- Read modes -->
+  <p class="mono text-[var(--muted)] mb-3">§ 1 · read</p>
+  <h2 class="text-3xl font-light italic mb-6">Three ways. Same book.</h2>
+  <p class="text-[var(--ink-2)] mb-5">
+    Pages turn like paper. Scroll glides forever. RSVP shows one word, then the next.
+    Switch any time — position, highlights, glossary all stay put.
+  </p>
+
+  <div class="grid grid-cols-3 gap-3 my-8 mono text-xs text-[var(--muted)]">
+    <div class="border-2 line rounded p-3 aspect-[3/4] flex flex-col">
+      <p class="mb-2">pages</p>
+      <div class="flex-1 bg-[var(--cream-2)] rounded p-2 text-[6px] leading-snug text-[var(--ink-2)] overflow-hidden">
+        Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna.
+      </div>
+      <p class="mt-2 text-[var(--ink-2)]">← →</p>
+    </div>
+    <div class="border-2 line rounded p-3 aspect-[3/4] flex flex-col">
+      <p class="mb-2">scroll</p>
+      <div class="flex-1 bg-[var(--cream-2)] rounded p-2 text-[6px] leading-snug text-[var(--ink-2)] overflow-hidden relative">
+        Lorem ipsum dolor. Sed do eiusmod tempor. Ut enim ad minim. Duis aute irure dolor in reprehenderit.
+        <span class="absolute right-1 top-1 bottom-4 w-1 bg-[var(--rust)]/40 rounded"></span>
+      </div>
+      <p class="mt-2 text-[var(--ink-2)]">↕</p>
+    </div>
+    <div class="border-2 line rounded p-3 aspect-[3/4] flex flex-col">
+      <p class="mb-2">rsvp</p>
+      <div class="flex-1 bg-[var(--cream-2)] rounded flex items-center justify-center text-sm font-medium text-[var(--ink)]">
+        <span>p</span><span class="rust">a</span><span>tience</span>
+      </div>
+      <p class="mt-2 text-[var(--ink-2)]">⏵ 600 wpm</p>
+    </div>
+  </div>
+
+  <hr class="sym">
+
+  <!-- Library -->
+  <p class="mono text-[var(--muted)] mb-3">§ 2 · library</p>
+  <h2 class="text-3xl font-light italic mb-6">Read anything you can find.</h2>
+  <p class="text-[var(--ink-2)] mb-6">
+    The catalog has eighty thousand free classics — every Project Gutenberg book, every Standard Ebook, and a healthy slice of public-domain web fiction. Search, filter, click, read.
+    Or do nothing fancy and just <span class="marker">paste a URL</span>: Lesefluss extracts the article, finds chapters, and drops it on your shelf.
+  </p>
+
+  <div class="grid grid-cols-5 gap-2 my-8">
+    <div class="aspect-[2/3] bg-[#1f2c38] rounded-sm flex items-end p-1.5"><p class="text-white text-[8px] leading-tight">Pride &amp; P.</p></div>
+    <div class="aspect-[2/3] bg-[var(--rust)] rounded-sm flex items-end p-1.5"><p class="text-white text-[8px] leading-tight">Frankenstein</p></div>
+    <div class="aspect-[2/3] bg-[var(--cyan)] rounded-sm flex items-end p-1.5"><p class="text-white text-[8px] leading-tight">Wandering Inn</p></div>
+    <div class="aspect-[2/3] bg-[#3d3329] rounded-sm flex items-end p-1.5"><p class="text-white text-[8px] leading-tight">Moby-Dick</p></div>
+    <div class="aspect-[2/3] bg-[var(--ink)] rounded-sm flex items-end p-1.5"><p class="text-white text-[8px] leading-tight">Worm</p></div>
+  </div>
+
+  <p class="mono text-xs text-[var(--muted)]">
+    sources · Standard Ebooks · Project Gutenberg · Royal Road · AO3 · ScribbleHub · Wuxiaworld
+  </p>
+
+  <hr class="sym">
+
+  <!-- Reader features as prose -->
+  <p class="mono text-[var(--muted)] mb-3">§ 3 · reader</p>
+  <h2 class="text-3xl font-light italic mb-6">Small dials, not big switches.</h2>
+
+  <p class="text-[var(--ink-2)] mb-5">
+    Three themes: <span class="marker">light, dark, sepia</span>. Pick a font, line spacing, margin, even the size of the app itself. Tune WPM, punctuation pauses, acceleration, focal-letter offset. Tap any word for a dictionary entry. Save passages with colored highlights. Keep a per-book glossary that lights up names and places as they appear. When a chapter ends, the next one rolls in.
+  </p>
+
+  <p class="text-[var(--ink-2)]">
+    All of it works offline. Sign in if you want your library on every device; don't if you don't.
+  </p>
+
+  <hr class="sym">
+
+  <!-- Three surfaces -->
+  <p class="mono text-[var(--muted)] mb-3">§ 4 · everywhere</p>
+  <h2 class="text-3xl font-light italic mb-6">Web, Android, and a small device.</h2>
+
+  <p class="text-[var(--ink-2)] mb-5">
+    Same library, three surfaces. Read in a browser tab. Read on Android, offline. Or build the optional <a class="underline-rust">€25 ESP32 reader</a> — AMOLED or TFT, one button, weeks of battery, BLE-synced to your phone.
+  </p>
+
+  <p class="text-[var(--ink-2)] mb-5">
+    There's also a <a class="underline-rust">Chrome extension</a> that saves whatever article you're looking at straight to your library. One click. Firefox version coming.
+  </p>
+
+  <div class="mt-8 flex gap-4 items-center">
+    <img src="logo.svg" class="w-16 h-16" alt="">
+    <div class="mono text-sm text-[var(--muted)]">
+      <p>web · android · device · extension</p>
+      <p>one library, four ways in.</p>
+    </div>
+  </div>
+
+  <hr class="sym">
+
+  <!-- OSS CTA -->
+  <p class="mono text-[var(--muted)] mb-3">§ 5 · free</p>
+  <h2 class="text-4xl font-light italic mb-6">No subscription. <span class="rust">No catch.</span></h2>
+
+  <p class="text-[var(--ink-2)] mb-8">
+    The app is free. The cloud sync is free. The source is on GitHub under MIT. Issues, PRs, and friendly suggestions welcome.
+  </p>
+
+  <div class="flex flex-wrap gap-3 mono">
+    <a href="https://github.com/sch-28/lesefluss" class="bg-[var(--ink)] text-[var(--cream)] px-5 py-2.5 rounded-sm hover:bg-[var(--rust)]">★ github.com/sch-28/lesefluss</a>
+    <a href="/app" class="underline decoration-[var(--rust)] decoration-2 underline-offset-4 self-center hover:text-[var(--rust)]">→ open the app</a>
+  </div>
+
+  <!-- Footer -->
+  <footer class="mt-24 pt-8 border-t line flex flex-wrap items-center justify-between gap-4 mono text-xs text-[var(--muted)]">
+    <span>Lesefluss · made for slow afternoons</span>
+    <nav class="flex gap-4">
+      <a href="/changelog">changelog</a>
+      <a href="/privacy">privacy</a>
+      <a href="/imprint">imprint</a>
+    </nav>
+    <span>© 2024–2026</span>
+  </footer>
+
+</main>
+
+</body>
+</html>

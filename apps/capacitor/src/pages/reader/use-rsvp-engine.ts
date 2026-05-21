@@ -7,11 +7,13 @@
  */
 
 import {
+	buildWordIndex,
 	calcDelay,
 	findWordIndexAtOffset,
 	type RsvpSettings,
 	splitLongWord,
 	type WordEntry,
+	type WordIndex,
 } from "@lesefluss/core";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -36,6 +38,13 @@ interface Options {
 	onFinished: () => void;
 	onLookup: (word: string, original: string) => void;
 	onWpmChange: (wpm: number) => void;
+	/**
+	 * Optional preloaded WordIndex. When present, tokenization is reused from
+	 * the cached blob instead of being rebuilt — replaces the prior worker
+	 * indirection (ADR-0002). When null, falls back to a synchronous rebuild
+	 * from `content`.
+	 */
+	bookWordIndex?: WordIndex | null;
 }
 
 export function useRsvpEngine({
@@ -46,6 +55,7 @@ export function useRsvpEngine({
 	onFinished,
 	onLookup,
 	onWpmChange,
+	bookWordIndex,
 }: Options) {
 	// ── Rendered state ───────────────────────────────────────────────────
 	const [words, setWords] = useState<WordEntry[]>([]);
@@ -88,24 +98,21 @@ export function useRsvpEngine({
 	const isPlayingRef = useRef(isPlaying);
 	isPlayingRef.current = isPlaying;
 
-	// ── Word index built in a worker ─────────────────────────────────────
+	// ── Word index (preloaded blob, else synchronous rebuild) ────────────
+	// ADR-0002: the WordIndex is normally cached per-book in
+	// `book_content.word_index`. Falling back to `buildWordIndex` keeps the
+	// reader functional for not-yet-backfilled rows or fresh imports whose
+	// inline backfill hasn't committed yet. The prior worker indirection is
+	// no longer worth its complexity now that we cache.
 	useEffect(() => {
-		const worker = new Worker(new URL("./word-index.worker.ts", import.meta.url), {
-			type: "module",
-		});
-		worker.postMessage({ content, byteOffset: initialByteOffsetRef.current });
-		worker.onmessage = (e: MessageEvent<{ words: WordEntry[]; idx: number }>) => {
-			const { words: w, idx } = e.data;
-			setWords(w);
-			setWordIndex(idx);
-			wordIndexRef.current = idx;
-			displayedOffsetRef.current = w[idx]?.byteOffset ?? null;
-			setCurrentWord(w[idx] ?? null);
-			worker.terminate();
-		};
-		worker.onerror = () => worker.terminate();
-		return () => worker.terminate();
-	}, [content]);
+		const w = bookWordIndex ? bookWordIndex.listEntries().slice() : buildWordIndex(content);
+		const idx = findWordIndexAtOffset(w, initialByteOffsetRef.current);
+		setWords(w);
+		setWordIndex(idx);
+		wordIndexRef.current = idx;
+		displayedOffsetRef.current = w[idx]?.byteOffset ?? null;
+		setCurrentWord(w[idx] ?? null);
+	}, [content, bookWordIndex]);
 
 	// ── Tick ─────────────────────────────────────────────────────────────
 	const tick = useCallback(() => {

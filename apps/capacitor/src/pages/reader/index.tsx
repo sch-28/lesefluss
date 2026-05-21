@@ -25,7 +25,7 @@
 
 import { Browser } from "@capacitor/browser";
 import type { RsvpSettings } from "@lesefluss/core";
-import { DEFAULT_SETTINGS } from "@lesefluss/core";
+import { DEFAULT_SETTINGS, wordPos, type WordPosition } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import {
 	Drawer,
@@ -50,7 +50,12 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { ActionSheet } from "../../components/action-sheet";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@lesefluss/ui/dropdown-menu";
 import { toast } from "../../components/toast";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
@@ -76,7 +81,7 @@ import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
 import HighlightModal from "./highlight-modal";
 import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
-import { getWordOffsets, utf8ByteLength } from "./paragraph";
+import { utf8ByteLength } from "@lesefluss/core";
 import { stripPunct } from "./rsvp-engine";
 import RsvpView, { type RsvpViewHandle } from "./rsvp-view";
 import ScrollView, { ReaderSkeleton } from "./scroll-view";
@@ -113,6 +118,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// ── Data queries ──────────────────────────────────────────────────────
 	const { data: book, isPending: bookPending } = queryHooks.useBook(id);
 	const { data: contentRow, isPending: contentPending } = queryHooks.useBookContent(id);
+	// ADR-0002 canonical position lookup. Returns null while loading or for
+	// books without a content row yet (pending/locked chapters). Downstream
+	// stages (C-G) consume this; for now it just rides through props.
+	const { data: wordIndex } = queryHooks.useBookWordIndex(id);
 	const content = contentRow?.content ?? null;
 	const { data: highlightRows = [] } = queryHooks.useHighlights(id);
 	const { data: glossaryEntries = [] } = queryHooks.useGlossary(id);
@@ -139,7 +148,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const { theme } = useTheme();
 	const [annotationsOpen, setAnnotationsOpen] = useState(false);
-	const [overflowOpen, setOverflowOpen] = useState(false);
 	const { data: series } = queryHooks.useSeries(book?.seriesId);
 	const [editingGlossaryEntry, setEditingGlossaryEntry] = useState<GlossaryEntry | null>(null);
 	// Tracks entry IDs that exist only in component state, not in SQLite yet.
@@ -223,15 +231,49 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	}, [id]);
 
 	// ── Seed activeOffset + lastOffsetRef once book loads ─────────────────
+	// ADR-0002 transitional read: prefer the canonical word_position when the
+	// book is flagged 'word' AND the WordIndex is ready, converting back to a
+	// byte offset for the existing byte-typed downstream state. Falls back to
+	// the legacy `book.position` byte read for not-yet-backfilled rows or
+	// before the WordIndex finishes loading. Stage H replaces this dual-path
+	// with a pure word-unit read after the downstream state types flip.
 	useEffect(() => {
-		if (book && !didSeedOffsetsRef.current) {
-			didSeedOffsetsRef.current = true;
-			setActiveOffset(book.position);
-			setProgressOffset(book.position);
-			setRsvpInitOffset(book.position);
-			lastOffsetRef.current = book.position;
+		if (!book || didSeedOffsetsRef.current) return;
+		// Wait for the WordIndex before seeding a word-flagged book, otherwise
+		// we'd fall back to the legacy `book.position` byte value when the
+		// queries resolve out of order, then bail on the follow-up re-run
+		// because the seed flag is already set.
+		if (book.positionUnit === "word" && !wordIndex) return;
+		// Empty books (wordCount=0) cannot be converted — `wordIndex.byteOf`
+		// would call `wordAt(0)` on an empty entries array and throw
+		// RangeError. Fall through to the byte path which seeds 0.
+		const useWord =
+			book.positionUnit === "word" && wordIndex && wordIndex.wordCount > 0;
+		const seed = useWord
+			? wordIndex.byteOf(
+					wordPos(Math.min(Math.max(book.wordPosition, 0), wordIndex.wordCount - 1)),
+				)
+			: book.position;
+		// Dev-only invariant: when both legacy + canonical positions are
+		// populated, they should agree to within a tokenization word.
+		// Divergence ⇒ content drifted since last backfill or schema bug.
+		if (
+			import.meta.env.DEV &&
+			useWord &&
+			book.position > 0 &&
+			Math.abs(seed - book.position) > 64
+		) {
+			console.warn(
+				"[reader] seed byte/word mismatch:",
+				{ wordPosition: book.wordPosition, wordSeedByte: seed, storedByte: book.position },
+			);
 		}
-	}, [book]);
+		didSeedOffsetsRef.current = true;
+		setActiveOffset(seed);
+		setProgressOffset(seed);
+		setRsvpInitOffset(seed);
+		lastOffsetRef.current = seed;
+	}, [book, wordIndex]);
 
 	// ── Build paragraph index ──────────────────────────────────────────────
 	// Computed once per content load. Two cheap structures:
@@ -253,6 +295,17 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		}
 		return { paragraphs: paras, paragraphOffsets: offsets };
 	}, [content]);
+
+	// Per-paragraph word index of the first word (ADR-0002). Derived from
+	// paragraphOffsets via the cached WordIndex; defaults to zero when the
+	// WordIndex isn't loaded yet.
+	const paragraphStartWords = useMemo(() => {
+		if (!wordIndex) return paragraphOffsets.map(() => 0);
+		return paragraphOffsets.map((b) => wordIndex.wordOf(b));
+	}, [paragraphOffsets, wordIndex]);
+
+	// Active word index mirrors activeOffset (computed on every render — cheap).
+	const activeWord = wordIndex && activeOffset >= 0 ? wordIndex.wordOf(activeOffset) : -1;
 
 	// ── Parse chapters ────────────────────────────────────────────────────
 	const chapters = useMemo<Chapter[]>(() => {
@@ -329,13 +382,21 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	// ── Save position to DB + BLE ─────────────────────────────────────────
 	// Fire-and-forget writes - no mutation wrapper needed for high-frequency saves.
+	// Dual-writes byte (`position`) and word (`word_position`) columns so the
+	// canonical word column stays current after the backfill (ADR-0002). The
+	// switchover (TASK-135 stage H) drops the byte write.
 	const savePosition = useCallback(
 		async (offset: number, { scheduleSync = true }: { scheduleSync?: boolean } = {}) => {
-			await queries.updateBook(id, { position: offset, lastRead: Date.now() });
+			const update: { position: number; lastRead: number; wordPosition?: WordPosition } = {
+				position: offset,
+				lastRead: Date.now(),
+			};
+			if (wordIndex) update.wordPosition = wordIndex.wordOf(offset);
+			await queries.updateBook(id, update);
 			await pushPosition(offset);
 			if (scheduleSync) scheduleSyncPush(5000);
 		},
-		[id, pushPosition],
+		[id, pushPosition, wordIndex],
 	);
 
 	// ── Shared helpers ────────────────────────────────────────────────────
@@ -374,6 +435,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		contentBytes,
 		highlightRows,
 		paragraphOffsets,
+		wordIndex,
 	});
 
 	// ── Glossary inline-underline decorations ──────────────────────────────
@@ -382,14 +444,15 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		paragraphs,
 		paragraphOffsets,
 		enabled: readerGlossaryUnderline,
+		wordIndex: wordIndex ?? null,
 	});
 
-	/** Find any glossary range covering this byte offset (used by tap handlers). */
+	/** Find any glossary range covering this word index (used by tap handlers). */
 	const findGlossaryAt = useCallback(
-		(offset: number): GlossaryEntry | undefined => {
+		(wordIdx: number): GlossaryEntry | undefined => {
 			for (const ranges of glossaryByParagraph.values()) {
 				for (const r of ranges) {
-					if (offset >= r.startOffset && offset <= r.endOffset) {
+					if (wordIdx >= r.startWord && wordIdx <= r.endWord) {
 						return glossaryEntries.find((e) => e.id === r.entryId);
 					}
 				}
@@ -467,30 +530,35 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// Normal mode - second tap on highlighted word: open highlight modal (if highlighted)
 	//   or dictionary (if not highlighted).
 	const { cancelSelection, findHighlightAt, openHighlightEditor } = sel;
+
+	// Paragraph emits word indices; byte-typed handlers below convert at the
+	// edge. Returns null when the WordIndex hasn't loaded yet — handlers must
+	// bail rather than fall through to a `0` that would clobber state.
+	const wordTapToOffset = useCallback(
+		(wIdx: number): number | null => (wordIndex ? wordIndex.byteOf(wordPos(wIdx)) : null),
+		[wordIndex],
+	);
+
 	const handleWordTap = useCallback(
-		(offset: number, wordText: string) => {
+		(wIdx: number, wordText: string) => {
 			if (isSelecting) {
-				// Any tap outside the handle drag system cancels the selection
 				cancelSelection();
 				return;
 			}
+			const offset = wordTapToOffset(wIdx);
+			if (offset === null) return;
 
 			if (offset === activeOffset) {
-				// Second tap on the highlighted word.
-				// Glossary takes precedence over dictionary so users can quickly review what
-				// a tracked term is. Highlights still win over glossary because they're
-				// explicit user intent on a specific range.
 				const existing = findHighlightAt(offset);
 				if (existing) {
 					openHighlightEditor(existing);
 					return;
 				}
-				const glossary = findGlossaryAt(offset);
+				const glossary = findGlossaryAt(wIdx);
 				if (glossary) {
 					setEditingGlossaryEntry(glossary);
 					return;
 				}
-				// No annotation here — fall back to dictionary
 				const original = stripPunct(wordText);
 				const clean = original.toLowerCase();
 				if (clean) openDictionaryModal(clean, original);
@@ -512,6 +580,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			openHighlightEditor,
 			findGlossaryAt,
 			openDictionaryModal,
+			wordTapToOffset,
 		],
 	);
 
@@ -523,13 +592,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	}, [isSelecting, cancelSelection]);
 
 	// Long-press → selection toolbar → "Look up" reads the word's rendered text
-	// straight from the DOM (selection.start is the data-offset of a word span)
-	// and opens the existing dictionary modal. Cleans punctuation the same way
-	// handleWordTap's dictionary path does.
+	// straight from the DOM (selection.startWord targets a word span via
+	// `data-word`) and opens the dictionary modal. ADR-0002.
 	const handleSelectionLookup = useCallback(() => {
-		const range = sel.selectionRange;
+		const range = sel.selectionRangeWord;
 		if (!range) return;
-		const span = document.querySelector<HTMLElement>(`span[data-offset="${range.start}"]`);
+		const span = document.querySelector<HTMLElement>(`span[data-word="${range.startWord}"]`);
 		const raw = span?.textContent ?? "";
 		const original = stripPunct(raw);
 		const clean = original.toLowerCase();
@@ -689,18 +757,25 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const handleJumpFirstMention = useCallback(
 		(label: string) => {
-			const offset = findFirstMention(label, paragraphs, paragraphOffsets);
-			if (offset !== null) jumpToOffset(offset);
+			const wordIdx = findFirstMention(label, paragraphs, paragraphOffsets, wordIndex ?? null);
+			if (wordIdx !== null && wordIndex) jumpToOffset(wordIndex.byteOf(wordPos(wordIdx)));
 		},
-		[paragraphs, paragraphOffsets, jumpToOffset],
+		[paragraphs, paragraphOffsets, jumpToOffset, wordIndex],
 	);
 
 	const handleJumpNextMention = useCallback(
 		(label: string) => {
-			const offset = findNextMention(label, activeOffset, paragraphs, paragraphOffsets);
-			if (offset !== null) jumpToOffset(offset);
+			const fromWord = wordIndex ? wordIndex.wordOf(activeOffset) : 0;
+			const wordIdx = findNextMention(
+				label,
+				fromWord,
+				paragraphs,
+				paragraphOffsets,
+				wordIndex ?? null,
+			);
+			if (wordIdx !== null && wordIndex) jumpToOffset(wordIndex.byteOf(wordPos(wordIdx)));
 		},
-		[paragraphs, paragraphOffsets, jumpToOffset, activeOffset],
+		[paragraphs, paragraphOffsets, jumpToOffset, activeOffset, wordIndex],
 	);
 
 	// ── Mouse drag-to-select ──────────────────────────────────────────────
@@ -711,8 +786,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// handleWordTap.
 	const { startSelection, extendSelectionTo, startHandleRef, endHandleRef } = sel;
 	const handleWordMouseDragStart = useCallback(
-		(offset: number, initialEvent: PointerEvent) => {
-			// If the word is already highlighted, treat like long-press - open editor.
+		(wIdx: number, initialEvent: PointerEvent) => {
+			const offset = wordTapToOffset(wIdx);
+			if (offset === null) return;
 			const existing = findHighlightAt(offset);
 			if (existing) {
 				openHighlightEditor(existing);
@@ -732,11 +808,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// selection is just the start word until the next pointermove fires).
 			const extendToPoint = (clientX: number, clientY: number) => {
 				const el = document.elementFromPoint(clientX, clientY);
-				const span = el?.closest<HTMLElement>("span[data-offset]");
-				if (!span) return;
-				const wordOffset = Number.parseInt(span.dataset.offset ?? "", 10);
-				if (Number.isNaN(wordOffset)) return;
-				extendSelectionTo(wordOffset);
+				const span = el?.closest<HTMLElement>("span[data-word]");
+				if (!span || !wordIndex) return;
+				const wIdx = Number.parseInt(span.dataset.word ?? "", 10);
+				if (Number.isNaN(wIdx)) return;
+				// Selection internals byte-anchored; convert at the DOM boundary.
+				extendSelectionTo(wordIndex.byteOf(wordPos(wIdx)));
 			};
 			extendToPoint(initialEvent.clientX, initialEvent.clientY);
 
@@ -772,6 +849,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			extendSelectionTo,
 			startHandleRef,
 			endHandleRef,
+			wordTapToOffset,
 		],
 	);
 
@@ -848,18 +926,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		(charOffset: number) => {
 			if (!content) return;
 			const byteOffset = utf8ByteLength(content.slice(0, charOffset));
-
-			// Find the exact word offset within the paragraph so the matched
-			// word gets highlighted (not just the paragraph start).
-			const paraIdx = findParagraphIndex(byteOffset);
-			const paraText = paragraphs[paraIdx] ?? "";
-			const paraStart = paragraphOffsets[paraIdx] ?? 0;
-			const wordOffsets = getWordOffsets(paraText, paraStart);
-			let wordByte = paraStart;
-			for (const wo of wordOffsets) {
-				if (wo <= byteOffset) wordByte = wo;
-				else break;
-			}
+			// Snap to the start of the word containing this byte via WordIndex
+			// (ADR-0002). Falls back to the raw byte position pre-backfill.
+			const wordByte = wordIndex
+				? wordIndex.byteOf(wordIndex.wordOf(byteOffset))
+				: byteOffset;
 
 			if (readerMode === "rsvp") {
 				setActiveOffset(wordByte);
@@ -868,15 +939,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				jumpToOffset(wordByte);
 			}
 		},
-		[
-			content,
-			paragraphs,
-			paragraphOffsets,
-			readerMode,
-			findParagraphIndex,
-			jumpToOffset,
-			exitRsvpToStandard,
-		],
+		[content, readerMode, jumpToOffset, exitRsvpToStandard, wordIndex],
 	);
 
 	// ── Keyboard shortcuts ────────────────────────────────────────────────
@@ -914,6 +977,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		getPosition: getReadingPosition,
 		content: content ?? "",
 		wpmSetting: rsvpSettings.wpm,
+		wordIndex,
 	});
 	useEffect(() => {
 		markActivityRef.current = markReadingActivity;
@@ -923,6 +987,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// Ionic's shadow DOM toggles tab-bar-hidden on keyboard show/hide, and
 	// external CSS can't override :host styles reliably. A body class lets
 	// us target ion-tab-bar from outside the shadow DOM with higher priority.
+	// Stable ref so the unmount cleanup below doesn't re-run every render when
+	// `sel` (a fresh object literal from useHighlightSelection) changes ref.
+	// Re-running the cleanup mid-selection wiped the just-started selection,
+	// which is why long-press appeared to flicker for ~50ms then vanish.
+	const cancelSelectionRef = useRef(sel.cancelSelection);
+	cancelSelectionRef.current = sel.cancelSelection;
+
 	useEffect(() => {
 		document.body.classList.add("reader-open");
 		return () => {
@@ -931,9 +1002,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// nav). The selection toolbar/handles render via a portal on
 			// document.body, so without this they'd stay pinned while the page
 			// slides out and visibly flash over the next page.
-			sel.cancelSelection();
+			cancelSelectionRef.current();
 		};
-	}, [sel]);
+	}, []);
 
 	// touch-action: none is applied directly to the handle elements via CSS
 	// so the scroll container remains scrollable during selection mode.
@@ -1105,14 +1176,39 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						</Button>
 					}
 				/>
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={() => setOverflowOpen(true)}
-					aria-label="More actions"
-				>
-					<MoreVertical />
-				</Button>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button variant="ghost" size="icon" aria-label="More actions">
+							<MoreVertical />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-56">
+						{overflowSourceUrl && (
+							<DropdownMenuItem
+								onSelect={() => {
+									void Browser.open({ url: overflowSourceUrl });
+								}}
+							>
+								<ExternalLink />
+								<span>
+									Open on {series ? providerLabel(series.provider) : "website"}
+								</span>
+							</DropdownMenuItem>
+						)}
+						<DropdownMenuItem
+							onSelect={() => {
+								history.push(
+									book.seriesId != null
+										? `/tabs/library/series/${book.seriesId}`
+										: `/tabs/library/book/${book.id}`,
+								);
+							}}
+						>
+							<Info />
+							<span>{book.seriesId != null ? "View series" : "View book"}</span>
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
 				</div>
 			</header>
 
@@ -1139,6 +1235,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						onFinished={handleRsvpFinished}
 						onWpmChange={handleRsvpWpmChange}
 						onLookup={handleRsvpLookup}
+						bookWordIndex={wordIndex}
 					/>
 				) : paginationStyle === "page" ? (
 					<PageView
@@ -1146,6 +1243,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						key={`page-${id}`}
 						paragraphs={paragraphs}
 						paragraphOffsets={paragraphOffsets}
+						paragraphStartWords={paragraphStartWords}
+						wordIndex={wordIndex ?? null}
 						contentLength={contentBytes?.length ?? content.length}
 						initialByteOffset={lastOffsetRef.current ?? book.position}
 						fontSize={readerFontSize}
@@ -1154,9 +1253,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						margin={readerMargin}
 						showActiveWordUnderline={readerActiveWordUnderline}
 						activeOffset={activeOffset}
+						activeWord={activeWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}
-						selectionRange={sel.selectionRange}
+						selectionRange={sel.selectionRangeWord}
 						isSelecting={isSelecting}
 						onWordTap={handlePageWordTap}
 						onWordLongPress={sel.handleWordLongPress}
@@ -1173,17 +1273,19 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						key={`scroll-${id}`}
 						paragraphs={paragraphs}
 						paragraphOffsets={paragraphOffsets}
+						paragraphStartWords={paragraphStartWords}
 						findParagraphIndex={findParagraphIndex}
 						initialByteOffset={lastOffsetRef.current ?? book.position}
+						wordIndex={wordIndex ?? null}
 						fontSize={readerFontSize}
 						fontFamily={readerFontFamily}
 						lineSpacing={readerLineSpacing}
 						margin={readerMargin}
 						showActiveWordUnderline={readerActiveWordUnderline}
-						activeOffset={activeOffset}
+						activeWord={activeWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}
-						selectionRange={sel.selectionRange}
+						selectionRange={sel.selectionRangeWord}
 						onWordTap={handleWordTap}
 						onWordLongPress={sel.handleWordLongPress}
 						onWordMouseDragStart={handleWordMouseDragStart}
@@ -1249,36 +1351,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				onCancel={sel.cancelSelection}
 				onStartHandlePointerDown={sel.handleStartHandlePointerDown}
 				onEndHandlePointerDown={sel.handleEndHandlePointerDown}
-			/>
-
-			{/* Toolbar overflow action sheet (chapter-level actions). */}
-			<ActionSheet
-				open={overflowOpen}
-				onOpenChange={setOverflowOpen}
-				items={[
-					...(overflowSourceUrl
-						? [
-								{
-									label: `Open on ${series ? providerLabel(series.provider) : "website"}`,
-									icon: ExternalLink,
-									onSelect: () => {
-										void Browser.open({ url: overflowSourceUrl });
-									},
-								},
-							]
-						: []),
-					{
-						label: book.seriesId != null ? "View series" : "View book",
-						icon: Info,
-						onSelect: () => {
-							history.push(
-								book.seriesId != null
-									? `/tabs/library/series/${book.seriesId}`
-									: `/tabs/library/book/${book.id}`,
-							);
-						},
-					},
-				]}
 			/>
 
 			{/* ── Merged annotations sheet (Contents / Highlights / Glossary) ── */}

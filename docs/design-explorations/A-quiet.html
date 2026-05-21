@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lesefluss — Quiet</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fcfaf3;
+    --bg-2: #f5efdc;
+    --ink: #1a1817;
+    --ink-2: #3a3530;
+    --muted: #76706a;
+    --line: #ead9b9;
+    --accent: #d9543a;
+    --accent-2: #3aa9d9;
+  }
+  html, body { background: var(--bg); color: var(--ink); }
+  body { font-family: "Geist", ui-sans-serif, system-ui, sans-serif; font-feature-settings: "ss01","cv11"; -webkit-font-smoothing: antialiased; }
+  .mono { font-family: "Geist Mono", ui-monospace, monospace; }
+  .line { border-color: var(--line); }
+  .accent { color: var(--accent); }
+  .accent-2 { color: var(--accent-2); }
+  .bg-accent { background: var(--accent); }
+  .tabular { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<header class="border-b line">
+  <div class="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-2.5">
+      <img src="logo.svg" class="w-8 h-8" alt="">
+      <span class="text-base font-semibold">Lesefluss</span>
+      <span class="mono text-xs text-[var(--muted)] hidden sm:inline">v0.9</span>
+    </a>
+    <nav class="hidden md:flex items-center gap-7 text-sm text-[var(--ink-2)]">
+      <a href="#read" class="hover:text-[var(--ink)]">Read</a>
+      <a href="#library" class="hover:text-[var(--ink)]">Library</a>
+      <a href="#apps" class="hover:text-[var(--ink)]">Apps</a>
+      <a href="#device" class="hover:text-[var(--ink)]">Device</a>
+      <a href="https://github.com/sch-28/lesefluss" class="hover:text-[var(--ink)]">GitHub</a>
+    </nav>
+    <a href="/app" class="text-sm bg-[var(--ink)] text-[var(--bg)] px-3.5 py-1.5 rounded hover:bg-[var(--accent)]">Open app</a>
+  </div>
+</header>
+
+<section class="border-b line">
+  <div class="mx-auto max-w-6xl px-6 py-20 md:py-28">
+    <p class="mono text-xs text-[var(--muted)] mb-6">Open source · MIT</p>
+    <h1 class="text-4xl md:text-6xl font-medium leading-[1.05] tracking-tight max-w-3xl">
+      A reader for books,<br>
+      web novels, and anything<br>
+      you can paste.
+    </h1>
+    <p class="mt-6 text-lg text-[var(--ink-2)] leading-relaxed max-w-xl">
+      EPUBs, PDFs, HTML, plain text, or a URL. Read in pages, scroll, or one word at a time — many people read 2 to 4× faster.
+    </p>
+    <div class="mt-8 flex flex-wrap items-center gap-3">
+      <a href="/app" class="text-sm bg-[var(--ink)] text-[var(--bg)] px-5 py-2.5 rounded hover:bg-[var(--accent)]">Open the web app</a>
+      <a href="/download" class="text-sm border line px-5 py-2.5 rounded hover:border-[var(--ink)]">Get on Android</a>
+      <a href="https://github.com/sch-28/lesefluss" class="mono text-sm text-[var(--muted)] hover:text-[var(--ink)] ml-2">github.com/sch-28/lesefluss ↗</a>
+    </div>
+
+    <div class="mt-16 grid md:grid-cols-3 gap-4">
+      <div class="md:col-span-2 border line rounded-lg bg-white overflow-hidden">
+        <div class="border-b line px-4 h-9 flex items-center justify-between bg-[var(--bg-2)]">
+          <p class="mono text-xs text-[var(--muted)]">Reader · 600 wpm</p>
+          <span class="mono text-xs accent">● live</span>
+        </div>
+        <div class="aspect-[16/9] flex flex-col items-center justify-center relative">
+          <div class="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-px h-12 bg-[var(--accent)]/30"></div>
+          <div class="text-5xl md:text-6xl tracking-tight">
+            <span>p</span><span class="accent">a</span><span>tience</span>
+          </div>
+          <p class="mono text-xs text-[var(--muted)] mt-6">one word, then the next</p>
+        </div>
+      </div>
+      <div class="border line rounded-lg bg-white p-6">
+        <p class="mono text-xs text-[var(--muted)] mb-3">What it is</p>
+        <ul class="text-sm space-y-2 text-[var(--ink-2)]">
+          <li>· Pages, scroll, or RSVP</li>
+          <li>· Light, dark, sepia</li>
+          <li>· Highlights &amp; dictionary</li>
+          <li>· Per-book glossary</li>
+          <li>· Offline · optional sync</li>
+          <li>· Free forever</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="border-b line bg-[var(--bg-2)]">
+  <div class="mx-auto max-w-6xl px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+    <div>
+      <p class="text-3xl font-medium tabular">80k+</p>
+      <p class="mono text-xs text-[var(--muted)] mt-1">free classics</p>
+    </div>
+    <div>
+      <p class="text-3xl font-medium tabular">1,400</p>
+      <p class="mono text-xs text-[var(--muted)] mt-1">Standard Ebooks</p>
+    </div>
+    <div>
+      <p class="text-3xl font-medium tabular">1000<span class="text-base text-[var(--muted)] ml-1">wpm</span></p>
+      <p class="mono text-xs text-[var(--muted)] mt-1">top reading speed</p>
+    </div>
+    <div>
+      <p class="text-3xl font-medium accent">free</p>
+      <p class="mono text-xs text-[var(--muted)] mt-1">no account, no ads</p>
+    </div>
+  </div>
+</section>
+
+<section id="read" class="border-b line">
+  <div class="mx-auto max-w-6xl px-6 py-20">
+    <div class="grid md:grid-cols-12 gap-10">
+      <div class="md:col-span-5">
+        <p class="mono text-xs text-[var(--muted)] mb-3">Read</p>
+        <h2 class="text-3xl font-medium leading-tight mb-4">Three ways. Same book.</h2>
+        <p class="text-[var(--ink-2)] leading-relaxed">
+          Pages, scroll, or one word at a time. Switch any time — your position and highlights stay put.
+        </p>
+        <p class="text-[var(--ink-2)] leading-relaxed mt-4">
+          RSVP shows one word at a time, anchored on a focal letter. Eyes don't have to jump back to re-read.
+        </p>
+      </div>
+      <div class="md:col-span-7 grid grid-cols-3 gap-3">
+        <div class="border line rounded-lg p-4 bg-white">
+          <p class="mono text-xs text-[var(--muted)] mb-3">pages</p>
+          <div class="aspect-[3/4] bg-[var(--bg)] border line rounded p-3 text-[7px] leading-[1.4] text-[var(--ink-2)] overflow-hidden">
+            <p>Lorem ipsum dolor sit amet consectetur adipiscing elit. Sed do eiusmod tempor incididunt.</p>
+            <p class="mt-1">Ut enim ad minim veniam quis nostrud exercitation.</p>
+          </div>
+        </div>
+        <div class="border line rounded-lg p-4 bg-white">
+          <p class="mono text-xs text-[var(--muted)] mb-3">scroll</p>
+          <div class="aspect-[3/4] bg-[var(--bg)] border line rounded p-3 text-[7px] leading-[1.4] text-[var(--ink-2)] overflow-hidden relative">
+            <p>Lorem ipsum dolor.</p>
+            <p class="mt-1">Sed do eiusmod tempor.</p>
+            <p class="mt-1">Ut enim ad minim veniam.</p>
+            <p class="mt-1">Duis aute irure dolor.</p>
+            <div class="absolute right-1 top-1/3 bottom-1/4 w-1 bg-[var(--accent)]/30 rounded"></div>
+          </div>
+        </div>
+        <div class="border line rounded-lg p-4 bg-white">
+          <p class="mono text-xs text-[var(--muted)] mb-3">rsvp</p>
+          <div class="aspect-[3/4] bg-[var(--bg)] border line rounded flex items-center justify-center">
+            <div class="text-base"><span>p</span><span class="accent">a</span><span>tience</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="library" class="border-b line bg-[var(--bg-2)]">
+  <div class="mx-auto max-w-6xl px-6 py-20">
+    <div class="flex items-end justify-between mb-10 flex-wrap gap-4">
+      <div>
+        <p class="mono text-xs text-[var(--muted)] mb-3">Library</p>
+        <h2 class="text-3xl font-medium leading-tight">Read anything you can find.</h2>
+        <p class="text-[var(--ink-2)] leading-relaxed mt-3 max-w-xl">
+          EPUBs, PDFs, HTML, plain text, or a URL. Lesefluss pulls a clean reading copy and detects chapters.
+        </p>
+      </div>
+      <a class="mono text-sm accent">Browse catalog →</a>
+    </div>
+
+    <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+      <div class="aspect-[2/3] bg-[#1f2c38] rounded flex items-end p-2.5"><p class="text-white text-xs leading-tight">Pride &amp; Prejudice</p></div>
+      <div class="aspect-[2/3] bg-[var(--accent)] rounded flex items-end p-2.5"><p class="text-white text-xs leading-tight">Frankenstein</p></div>
+      <div class="aspect-[2/3] bg-[var(--accent-2)] rounded flex items-end p-2.5"><p class="text-white text-xs leading-tight">The Wandering Inn</p></div>
+      <div class="aspect-[2/3] bg-[#3d3329] rounded flex items-end p-2.5"><p class="text-white text-xs leading-tight">Moby-Dick</p></div>
+      <div class="aspect-[2/3] bg-[var(--ink)] rounded flex items-end p-2.5"><p class="text-white text-xs leading-tight">Worm</p></div>
+      <div class="aspect-[2/3] border-2 border-dashed line rounded flex items-center justify-center">
+        <p class="mono text-[10px] text-[var(--muted)] text-center px-2">paste any URL</p>
+      </div>
+    </div>
+
+    <p class="mono text-xs text-[var(--muted)] mt-8 leading-relaxed">
+      sources: Standard Ebooks · Project Gutenberg · Royal Road · AO3 · ScribbleHub · Wuxiaworld
+    </p>
+  </div>
+</section>
+
+<section class="border-b line">
+  <div class="mx-auto max-w-6xl px-6 py-20">
+    <p class="mono text-xs text-[var(--muted)] mb-3">Reader</p>
+    <h2 class="text-3xl font-medium leading-tight mb-10">Small dials, not big switches.</h2>
+
+    <div class="grid md:grid-cols-3 gap-px bg-[var(--line)] border line rounded-lg overflow-hidden">
+      <div class="bg-white p-6"><h3 class="text-base font-semibold mb-2">Themes</h3><p class="text-sm text-[var(--ink-2)] leading-relaxed">Dark, sepia, light.</p>
+        <div class="flex gap-2 mt-3"><span class="w-5 h-5 rounded-full bg-[var(--ink)]"></span><span class="w-5 h-5 rounded-full bg-[#e8dcc4] border line"></span><span class="w-5 h-5 rounded-full bg-white border line"></span></div>
+      </div>
+      <div class="bg-white p-6"><h3 class="text-base font-semibold mb-2">Typography</h3><p class="text-sm text-[var(--ink-2)] leading-relaxed">Font, spacing, margins. Even the app's own size.</p></div>
+      <div class="bg-white p-6"><h3 class="text-base font-semibold mb-2">Speed</h3><p class="text-sm text-[var(--ink-2)] leading-relaxed">WPM, punctuation pauses, acceleration, focal offset.</p></div>
+      <div class="bg-white p-6"><h3 class="text-base font-semibold mb-2">Highlights</h3><p class="text-sm text-[var(--ink-2)] leading-relaxed">Tap a word for a definition. Save passages with colors.</p></div>
+      <div class="bg-white p-6"><h3 class="text-base font-semibold mb-2">Glossary</h3><p class="text-sm text-[var(--ink-2)] leading-relaxed">Per-book. Names and concepts light up in the text.</p></div>
+      <div class="bg-white p-6"><h3 class="text-base font-semibold mb-2">Auto-advance</h3><p class="text-sm text-[var(--ink-2)] leading-relaxed">Next chapter rolls in. New chapters fetched in the background.</p></div>
+      <div class="bg-white p-6"><h3 class="text-base font-semibold mb-2">Offline</h3><p class="text-sm text-[var(--ink-2)] leading-relaxed">Everything works without a connection.</p></div>
+      <div class="bg-white p-6"><h3 class="text-base font-semibold mb-2">Sync</h3><p class="text-sm text-[var(--ink-2)] leading-relaxed">Optional. Google, Discord, or email. Library follows you.</p></div>
+      <div class="bg-white p-6"><h3 class="text-base font-semibold mb-2">No subscription</h3><p class="text-sm text-[var(--ink-2)] leading-relaxed">App is free. Cloud sync is free.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="apps" class="border-b line">
+  <div class="mx-auto max-w-6xl px-6 py-20 grid md:grid-cols-2 gap-12 items-center">
+    <div>
+      <p class="mono text-xs text-[var(--muted)] mb-3">Android</p>
+      <h2 class="text-3xl font-medium leading-tight mb-4">Library in your pocket.</h2>
+      <p class="text-[var(--ink-2)] leading-relaxed mb-6">
+        Import EPUB, PDF, HTML, Markdown, or plain text. Browse thousands of free classics. Read offline. Sync if you want.
+      </p>
+      <a href="/download" class="inline-flex items-center gap-2 text-sm bg-[var(--ink)] text-[var(--bg)] px-5 py-2.5 rounded hover:bg-[var(--accent)]">▶ Get on Android</a>
+    </div>
+    <div class="flex justify-center">
+      <div class="w-[220px] aspect-[9/19.5] bg-[var(--ink)] rounded-[2rem] p-1.5 shadow-2xl">
+        <div class="h-full bg-white rounded-[1.7rem] overflow-hidden p-3 flex flex-col gap-2">
+          <p class="font-semibold text-sm">Library</p>
+          <div class="grid grid-cols-3 gap-1.5 flex-1">
+            <div class="bg-[#1f2c38] rounded-sm"></div>
+            <div class="bg-[var(--accent)] rounded-sm"></div>
+            <div class="bg-[#3d3329] rounded-sm"></div>
+            <div class="bg-white border line rounded-sm"></div>
+            <div class="bg-[var(--accent-2)] rounded-sm"></div>
+            <div class="bg-[var(--bg-2)] border line rounded-sm"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="device" class="border-b line bg-[var(--bg-2)]">
+  <div class="mx-auto max-w-6xl px-6 py-20 grid md:grid-cols-2 gap-12 items-center">
+    <div class="flex justify-center order-2 md:order-1">
+      <div class="w-32 h-44 bg-[var(--ink)] rounded-2xl p-2 shadow-xl rotate-[-3deg]">
+        <div class="w-full h-full bg-[var(--accent)] rounded-xl flex flex-col items-center justify-center gap-1">
+          <span class="text-white text-xs">patience</span>
+          <span class="mono text-[8px] text-white/60">600 wpm</span>
+        </div>
+      </div>
+    </div>
+    <div class="order-1 md:order-2">
+      <p class="mono text-xs text-[var(--muted)] mb-3">Device · optional · DIY</p>
+      <h2 class="text-3xl font-medium leading-tight mb-4">A pocket reader for ~€25.</h2>
+      <p class="text-[var(--ink-2)] leading-relaxed mb-6">
+        ESP32 with an AMOLED or TFT screen. One button. Weeks of battery. Syncs your position over BLE.
+      </p>
+      <a href="/device" class="inline-flex items-center gap-2 text-sm border line bg-white px-5 py-2.5 rounded hover:border-[var(--ink)]">Build guide →</a>
+    </div>
+  </div>
+</section>
+
+<section class="border-b line">
+  <div class="mx-auto max-w-6xl px-6 py-20">
+    <p class="mono text-xs text-[var(--muted)] mb-3">Everywhere</p>
+    <h2 class="text-3xl font-medium leading-tight mb-10">Same library on web, Android, and the device.</h2>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="border line rounded-lg p-6 bg-white">
+        <p class="mono text-xs text-[var(--muted)] mb-3">Web</p>
+        <h3 class="text-lg font-semibold mb-2">Read in a tab</h3>
+        <p class="text-sm text-[var(--ink-2)] leading-relaxed mb-4">No install. Sign in to sync. Or use it as a guest.</p>
+        <a class="text-sm accent hover:underline">Open web app →</a>
+      </div>
+      <div class="border line rounded-lg p-6 bg-white">
+        <p class="mono text-xs text-[var(--muted)] mb-3">Android</p>
+        <h3 class="text-lg font-semibold mb-2">Offline reader</h3>
+        <p class="text-sm text-[var(--ink-2)] leading-relaxed mb-4">Import anywhere. Read anywhere. Up to 1000 wpm.</p>
+        <a class="text-sm accent hover:underline">Get on Android →</a>
+      </div>
+      <div class="border line rounded-lg p-6 bg-white">
+        <p class="mono text-xs text-[var(--muted)] mb-3">Browser extension</p>
+        <h3 class="text-lg font-semibold mb-2">Save while you browse</h3>
+        <p class="text-sm text-[var(--ink-2)] leading-relaxed mb-4">One click saves the article into your library.</p>
+        <div class="flex gap-2">
+          <span class="mono text-xs border line px-2.5 py-1 rounded">Chrome</span>
+          <span class="mono text-xs border line px-2.5 py-1 rounded opacity-50">Firefox · soon</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="bg-[var(--ink)] text-[var(--bg)]">
+  <div class="mx-auto max-w-3xl px-6 py-24 text-center">
+    <img src="logo.svg" class="w-14 h-14 mx-auto mb-6" alt="">
+    <p class="mono text-xs text-[var(--bg)]/50 mb-4">Open source · MIT</p>
+    <h2 class="text-4xl md:text-5xl font-medium leading-tight">
+      Free. <span class="accent">Forever.</span>
+    </h2>
+    <p class="mt-6 text-[var(--bg)]/70 leading-relaxed max-w-md mx-auto">
+      No account required. Optional cloud sync. Source on GitHub. Issues and PRs welcome.
+    </p>
+    <div class="mt-8 flex flex-wrap justify-center gap-3">
+      <a href="https://github.com/sch-28/lesefluss" class="text-sm border-2 border-[var(--bg)]/30 px-5 py-2.5 rounded hover:bg-[var(--bg)]/10">View on GitHub</a>
+      <a href="/app" class="text-sm bg-[var(--accent)] text-white px-5 py-2.5 rounded hover:opacity-90">Open the app</a>
+    </div>
+  </div>
+</section>
+
+<footer class="border-t line">
+  <div class="mx-auto max-w-6xl px-6 py-8 flex flex-wrap items-center justify-between gap-4 text-sm text-[var(--muted)]">
+    <div class="flex items-center gap-2">
+      <img src="logo.svg" class="w-5 h-5" alt="">
+      <span class="text-[var(--ink)] font-semibold">Lesefluss</span>
+    </div>
+    <nav class="flex gap-5">
+      <a href="/changelog">Changelog</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/imprint">Imprint</a>
+      <a href="https://github.com/sch-28/lesefluss">GitHub</a>
+    </nav>
+    <span class="mono text-xs">© 2024–2026</span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -3,6 +3,7 @@ import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { initDb, resetAppData } from "../services/db";
 import { queries } from "../services/db/queries";
+import { backfillAllBooks, type BackfillProgress } from "../services/db/word-index-backfill";
 import { log } from "../utils/log";
 
 interface DatabaseContextType {
@@ -41,6 +42,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 	const [isReady, setIsReady] = useState(false);
 	const [error, setError] = useState<Error | null>(null);
 	const [isResetting, setIsResetting] = useState(false);
+	const [backfill, setBackfill] = useState<BackfillProgress | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -55,6 +57,23 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 				} catch (err) {
 					log.warn("db", "orphan chapter cleanup failed:", err);
 				}
+
+				// ADR-0002 word-index backfill: idempotent, runs every boot but
+				// skips books already flagged `position_unit = 'word'`. Blocks
+				// isReady so the reader cannot open a byte-only book.
+				try {
+					const summary = await backfillAllBooks((p) => {
+						if (!cancelled) setBackfill(p);
+					});
+					if (summary.converted > 0) {
+						log("db", `word-index backfill converted ${summary.converted} books`);
+					}
+				} catch (err) {
+					log.error("db", "word-index backfill failed:", err);
+					if (!cancelled) setError(err as Error);
+					return;
+				}
+
 				if (!cancelled) setIsReady(true);
 			})
 			.catch((err) => {
@@ -99,7 +118,24 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 	// Render nothing while DB initializes so the native splash stays visible
 	// (Capacitor SplashScreen plugin is hidden by __root once children mount).
 	// Avoids the flash of an in-app spinner between native splash and AppShell.
-	if (!isReady) return null;
+	// Exception: the word-index backfill (ADR-0002) can take seconds on large
+	// libraries, so we surface a minimal progress overlay instead of leaving
+	// the native splash up indefinitely.
+	if (!isReady) {
+		if (backfill && backfill.total > 0) {
+			return (
+				<div className="flex h-screen items-center justify-center bg-background p-6">
+					<div className="flex flex-col items-center gap-3 text-center">
+						<p className="m-0 font-medium text-sm">Migrating reading positions…</p>
+						<p className="m-0 text-xs opacity-60">
+							{backfill.done} / {backfill.total}
+						</p>
+					</div>
+				</div>
+			);
+		}
+		return null;
+	}
 
 	return <DatabaseContext.Provider value={{ isReady, error }}>{children}</DatabaseContext.Provider>;
 };

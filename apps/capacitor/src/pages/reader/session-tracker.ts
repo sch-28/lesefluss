@@ -19,6 +19,7 @@
  *   - poll gap > POLL_THROTTLE_GUARD_MS → assume timer was suspended;
  *     don't count gap as idle (resets activity clock to now)
  */
+import type { WordPosition } from "@lesefluss/core";
 import { log } from "../../utils/log";
 import { randomHexId } from "../../utils/random-id";
 
@@ -34,6 +35,9 @@ export type SessionRow = {
 	wordsRead: number;
 	startPos: number;
 	endPos: number;
+	/** Canonical word-unit bounds (ADR-0002). Populated when a WordIndex is wired. */
+	startWord?: WordPosition;
+	endWord?: WordPosition;
 	wpmAvg: number | null;
 	updatedAt: number;
 };
@@ -49,6 +53,12 @@ export type TrackerOpts = {
 	persist: (row: SessionRow, kind: PersistKind) => void;
 	now?: () => number;
 	newId?: () => string;
+	/**
+	 * Optional byte→word converter. Returns null when the WordIndex isn't
+	 * available yet (book still loading). When non-null on both endpoints,
+	 * SessionRow gains startWord/endWord.
+	 */
+	byteToWord?: (byteOffset: number) => WordPosition | null;
 };
 
 export const POLL_MS = 5_000;
@@ -72,11 +82,14 @@ const JUMP_BYTES_PER_TICK: Record<ReadingSessionMode, number> = {
 	rsvp: 2000,
 };
 
+const _encoder = new TextEncoder();
+const _decoder = new TextDecoder();
+
 function wordsInBytes(bytes: Uint8Array, a: number, b: number): number {
 	const lo = Math.min(a, b);
 	const hi = Math.max(a, b);
 	if (hi <= lo) return 0;
-	const slice = new TextDecoder().decode(bytes.slice(lo, hi));
+	const slice = _decoder.decode(bytes.slice(lo, hi));
 	const matches = slice.match(/\S+/g);
 	return matches ? matches.length : 0;
 }
@@ -107,14 +120,14 @@ export class SessionTracker {
 
 	constructor(opts: TrackerOpts) {
 		this.opts = opts;
-		this.contentBytes = new TextEncoder().encode(opts.content);
+		this.contentBytes = _encoder.encode(opts.content);
 		const now = this.now();
 		this.lastActivityAt = now;
 		this.lastPollAt = now;
 	}
 
 	setContent(content: string): void {
-		this.contentBytes = new TextEncoder().encode(content);
+		this.contentBytes = _encoder.encode(content);
 	}
 
 	private now(): number {
@@ -171,7 +184,19 @@ export class SessionTracker {
 			const delta = Math.abs(pos - this.session.lastPos);
 			const threshold = JUMP_BYTES_PER_TICK[this.opts.mode];
 			if (delta < threshold) {
-				this.session.wordsAccumulated += wordsInBytes(this.contentBytes, this.session.lastPos, pos);
+				// ADR-0002: prefer the WordIndex when available (integer subtraction);
+				// fall back to the legacy byte rescan for not-yet-backfilled books.
+				const lastW = this.opts.byteToWord?.(this.session.lastPos);
+				const curW = this.opts.byteToWord?.(pos);
+				if (lastW != null && curW != null) {
+					this.session.wordsAccumulated += Math.abs(curW - lastW);
+				} else {
+					this.session.wordsAccumulated += wordsInBytes(
+						this.contentBytes,
+						this.session.lastPos,
+						pos,
+					);
+				}
 			}
 			this.session.lastPos = pos;
 			this.lastActivityAt = now;
@@ -311,6 +336,12 @@ export class SessionTracker {
 			this.opts.mode !== "rsvp" && computedWpm !== null && computedWpm > SANE_WPM_CEILING;
 		const wpmAvg =
 			this.opts.mode === "rsvp" ? (this.opts.wpmSetting ?? null) : wasCapped ? null : computedWpm;
+		const sw = this.opts.byteToWord?.(s.startPos);
+		const ew = this.opts.byteToWord?.(endPos);
+		const wordCols =
+			sw !== undefined && sw !== null && ew !== undefined && ew !== null
+				? { startWord: sw, endWord: ew }
+				: {};
 		return {
 			id: s.id,
 			bookId: this.opts.bookId,
@@ -321,6 +352,7 @@ export class SessionTracker {
 			wordsRead: s.wordsAccumulated,
 			startPos: s.startPos,
 			endPos,
+			...wordCols,
 			wpmAvg,
 			updatedAt: now,
 		};

@@ -1,6 +1,7 @@
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
 import type { NewBook, NewSeries, Series } from "../db/schema";
+import { backfillBookToWord } from "../db/word-index-backfill";
 import { scheduleSyncPush } from "../sync";
 import type { ChapterFetchResult, ChapterRef, SeriesMetadata } from "./types";
 
@@ -100,6 +101,13 @@ export async function commitChapter(chapterId: string, result: ChapterFetchResul
 				lastRead: now,
 			});
 			await queries.setChapterContent(chapterId, result.content);
+			// ADR-0002: a freshly fetched chapter has new content → invalidate
+			// any prior WordIndex blob and re-tokenize in the same step.
+			try {
+				await backfillBookToWord(chapterId);
+			} catch (err) {
+				log.warn("scraper", `word-index backfill on chapter commit failed for ${chapterId}:`, err);
+			}
 			scheduleSyncPush();
 			return;
 		}

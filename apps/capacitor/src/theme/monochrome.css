@@ -250,6 +250,24 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	text-underline-offset: 3px;
 }
 
+/* Highlight background colors — 35% opacity reads on both dark and light. */
+.word-highlight-yellow {
+	background: rgba(255, 235, 59, 0.35);
+	border-radius: 2px;
+}
+.word-highlight-blue {
+	background: rgba(100, 181, 246, 0.35);
+	border-radius: 2px;
+}
+.word-highlight-orange {
+	background: rgba(255, 183, 77, 0.35);
+	border-radius: 2px;
+}
+.word-highlight-pink {
+	background: rgba(240, 98, 146, 0.35);
+	border-radius: 2px;
+}
+
 /* Chapter headings detected from # prefixes */
 .reader-heading {
 	font-weight: 700;
@@ -378,6 +396,10 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	touch-action: manipulation;
 	background: var(--reader-bg);
 	overflow: hidden;
+	/* Reserve scrollbar gutter always so paused-mode (overflow-y: auto)
+	 * doesn't narrow the inner width — keeps focal X consistent between
+	 * play/pause when xOffset != 50. */
+	scrollbar-gutter: stable;
 	/* Establish a container so `cqw` units in child transforms resolve
 	 * against the display's actual width (needed for the paused-mode
 	 * focal-word offset on desktop/web embeds where the reader isn't

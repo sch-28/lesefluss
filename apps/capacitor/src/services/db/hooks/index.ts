@@ -56,6 +56,9 @@ export const queryHooks = {
 	/** Single book content (large text, cover base64, chapters). */
 	useBookContent: bookHooks.useBookContent,
 
+	/** Deserialized WordIndex for the book (ADR-0002). */
+	useBookWordIndex: bookHooks.useBookWordIndex,
+
 	/** Mutation: import a book from the file picker. */
 	useImportBook: bookHooks.useImportBook,
 

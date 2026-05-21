@@ -11,6 +11,7 @@
  * Behavior here is a verbatim extraction — see git history of index.tsx for
  * the original logic. No semantic changes.
  */
+import { type WordIndex, wordPos, type WordPosition } from "@lesefluss/core";
 import type React from "react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { VListHandle } from "virtua";
@@ -29,25 +30,31 @@ const FINE_SCROLL_MOUNT_FRAME_BUDGET = 10;
 const FINE_SCROLL_STABILITY_TICK_MS = 50;
 const FINE_SCROLL_STABILITY_TIMEOUT_MS = 600;
 
-// Locate the alignment target span within `container`.
-// Prefers the exact byte offset; falls back to the largest data-offset ≤ byteOffset
-// within [paragraphStart, paragraphEnd). The fallback handles stale saved positions
-// (older parse, drifted offsets) without leaking into the wrong paragraph.
+// Locate the alignment target span within `container`. ADR-0002: queries by
+// `data-word` only. The byte offset coming in is converted to a target word
+// index via the active WordIndex; the paragraph-bounded fallback ensures a
+// stale saved position doesn't leak into the wrong paragraph.
 function findAlignmentSpan(
 	container: HTMLElement,
-	byteOffset: number,
-	paragraphStart: number,
-	paragraphEnd: number,
+	wordIdx: WordPosition,
+	paragraphStartWord: WordPosition,
+	paragraphEndWord: number,
 ): HTMLElement | null {
-	const exact = container.querySelector<HTMLElement>(`span[data-offset="${byteOffset}"]`);
+	const exact = container.querySelector<HTMLElement>(`span[data-word="${wordIdx}"]`);
 	if (exact) return exact;
 	let best: HTMLElement | null = null;
-	for (const span of container.querySelectorAll<HTMLElement>("span[data-offset]")) {
-		const off = Number.parseInt(span.dataset.offset ?? "", 10);
-		if (Number.isNaN(off) || off < paragraphStart || off >= paragraphEnd || off > byteOffset) {
+	for (const span of container.querySelectorAll<HTMLElement>("span[data-word]")) {
+		const w = Number.parseInt(span.dataset.word ?? "", 10);
+		if (
+			Number.isNaN(w) ||
+			w < 0 ||
+			w < paragraphStartWord ||
+			w >= paragraphEndWord ||
+			w > wordIdx
+		) {
 			continue;
 		}
-		if (!best || off > Number(best.dataset.offset)) best = span;
+		if (!best || w > Number(best.dataset.word)) best = span;
 	}
 	return best;
 }
@@ -73,9 +80,9 @@ interface ScrollSuppressRefs {
 function scheduleFineScroll(
 	listHandle: VListHandle,
 	container: HTMLElement,
-	byteOffset: number,
-	paragraphStart: number,
-	paragraphEnd: number,
+	wordIdx: WordPosition,
+	paragraphStartWord: WordPosition,
+	paragraphEndWord: number,
 	suppress: ScrollSuppressRefs,
 	shouldHighlight: boolean,
 	onReady?: () => void,
@@ -123,7 +130,7 @@ function scheduleFineScroll(
 
 	const awaitMount = () => {
 		if (cancelled) return;
-		const span = findAlignmentSpan(container, byteOffset, paragraphStart, paragraphEnd);
+		const span = findAlignmentSpan(container, wordIdx, paragraphStartWord, paragraphEndWord);
 		if (span) {
 			waitForStability(span);
 			return;
@@ -175,8 +182,12 @@ const ReaderSkeleton: React.FC<{ style?: React.CSSProperties }> = ({ style }) =>
 export interface ScrollViewProps {
 	paragraphs: string[];
 	paragraphOffsets: number[];
+	/** Word index of each paragraph's first word (ADR-0002). */
+	paragraphStartWords: number[];
 	findParagraphIndex: (targetByte: number) => number;
 	initialByteOffset: number;
+	/** Per-book WordIndex for byte ↔ word conversion at this view's seam. */
+	wordIndex?: WordIndex | null;
 
 	// Appearance
 	fontSize: number;
@@ -186,10 +197,11 @@ export interface ScrollViewProps {
 	showActiveWordUnderline: boolean;
 
 	// Active highlight + per-paragraph annotation data (passed straight to <Paragraph>).
-	activeOffset: number;
+	/** Active word index (-1 to hide). */
+	activeWord: number;
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
-	selectionRange: { start: number; end: number } | null;
+	selectionRange: { startWord: number; endWord: number } | null;
 
 	// Word interaction
 	onWordTap: (offset: number, text: string) => void;
@@ -223,6 +235,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	{
 		paragraphs,
 		paragraphOffsets,
+		paragraphStartWords,
+		wordIndex,
 		findParagraphIndex,
 		initialByteOffset,
 		fontSize,
@@ -230,7 +244,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		lineSpacing,
 		margin,
 		showActiveWordUnderline,
-		activeOffset,
+		activeWord,
 		highlightsByParagraph,
 		glossaryByParagraph,
 		selectionRange,
@@ -272,19 +286,22 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	const [isInitialScrollReady, setIsInitialScrollReady] = useState(false);
 
 	/** Align the word at `byteOffset` flush with the container top via scrollIntoView.
-	 *  Paragraph-bounded so the fallback can't leak into a neighboring paragraph. */
+	 *  Paragraph-bounded so the fallback can't leak into a neighboring paragraph.
+	 *  ADR-0002: byte input is converted to a word index via the active
+	 *  WordIndex at the seam; the DOM is keyed by `data-word` only. */
 	const fineScrollTo = useCallback(
 		(byteOffset: number, shouldHighlight: boolean, onReady?: () => void) => {
-			if (!listRef.current || !containerRef.current) return undefined;
+			if (!listRef.current || !containerRef.current || !wordIndex) return undefined;
 			const idx = findParagraphIndex(byteOffset);
-			const start = paragraphOffsets[idx] ?? 0;
-			const end = paragraphOffsets[idx + 1] ?? Number.POSITIVE_INFINITY;
+			const startWord = wordPos(paragraphStartWords[idx] ?? 0);
+			const endWord = paragraphStartWords[idx + 1] ?? Number.POSITIVE_INFINITY;
+			const targetWord = wordIndex.wordOf(byteOffset);
 			return scheduleFineScroll(
 				listRef.current,
 				containerRef.current,
-				byteOffset,
-				start,
-				end,
+				targetWord,
+				startWord,
+				endWord,
 				{
 					suppressScrollEnd: suppressNextScrollEndRef,
 					suppressHighlight: suppressScrollHighlightClearRef,
@@ -293,7 +310,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 				onReady,
 			);
 		},
-		[findParagraphIndex, paragraphOffsets],
+		[findParagraphIndex, paragraphStartWords, wordIndex],
 	);
 
 	// ── Initial scroll to saved position ──────────────────────────────────
@@ -310,14 +327,22 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			return;
 		}
 
-		didInitialScrollRef.current = true;
-
 		const target = initialByteOffset;
 		if (target === 0) {
-			// start of book - default scroll is correct, nothing to wait for
+			// start of book - default scroll is correct, nothing to wait for.
+			didInitialScrollRef.current = true;
 			setIsInitialScrollReady(true);
 			return;
 		}
+
+		// ADR-0002: fineScrollTo needs the WordIndex to convert the byte
+		// target into a `data-word` DOM query. Defer the initial scroll
+		// until the React Query for the WordIndex resolves; this effect
+		// re-fires on wordIndex change. Without this guard the skeleton
+		// sticks forever because onReady is never called.
+		if (!wordIndex) return;
+
+		didInitialScrollRef.current = true;
 
 		const idx = findParagraphIndex(target);
 		suppressNextScrollEndRef.current = true;
@@ -326,7 +351,14 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		onInitialActiveOffset(target);
 
 		return fineScrollTo(target, true, () => setIsInitialScrollReady(true));
-	}, [paragraphs, initialByteOffset, findParagraphIndex, fineScrollTo, onInitialActiveOffset]);
+	}, [
+		paragraphs,
+		initialByteOffset,
+		findParagraphIndex,
+		fineScrollTo,
+		onInitialActiveOffset,
+		wordIndex,
+	]);
 
 	// ── Imperative jumpTo (chapter / search / highlight-list) ─────────────
 	// Visual scroll only — parent has already updated active/progress/last/saved
@@ -401,8 +433,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 
 		const cutoffTop = containerRef.current.getBoundingClientRect().top;
 
-		const spans = Array.from(document.querySelectorAll<HTMLElement>("span[data-offset]"));
-		if (spans.length === 0) return;
+		const spans = Array.from(document.querySelectorAll<HTMLElement>("span[data-word]"));
+		if (spans.length === 0 || !wordIndex) return;
 
 		spans.sort((a, b) => {
 			const ra = a.getBoundingClientRect();
@@ -410,18 +442,21 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			return ra.top !== rb.top ? ra.top - rb.top : ra.left - rb.left;
 		});
 
-		let bestOffset = -1;
+		let bestWord = -1;
 		for (const span of spans) {
 			if (span.getBoundingClientRect().top >= cutoffTop) {
-				bestOffset = Number.parseInt(span.dataset.offset ?? "", 10);
+				const w = Number.parseInt(span.dataset.word ?? "", 10);
+				if (Number.isNaN(w) || w < 0) continue;
+				bestWord = w;
 				break;
 			}
 		}
 
-		if (bestOffset < 0) return;
+		if (bestWord < 0) return;
 
-		onPositionSettle(bestOffset);
-	}, [onPositionSettle]);
+		// Convert back to byte offset for the byte-typed downstream state.
+		onPositionSettle(wordIndex.byteOf(wordPos(bestWord)));
+	}, [onPositionSettle, wordIndex]);
 
 	// ── Show progress bar on any tap in the reading area ─────────────────
 	// Native listener needed because VList's internal scroll container doesn't
@@ -469,8 +504,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 						<Paragraph
 							key={i.toString()}
 							text={text}
-							startOffset={paragraphOffsets[i]}
-							activeOffset={activeOffset}
+							startWord={paragraphStartWords[i] ?? 0}
+							activeWord={activeWord}
 							onWordTap={onWordTap}
 							onWordLongPress={onWordLongPress}
 							onWordMouseDragStart={onWordMouseDragStart}

@@ -36,6 +36,9 @@ export const bookKeys = {
 
 	/** Glossary entries visible inside a book (book-scoped + global). */
 	glossary: (id: string) => ["books", id, "glossary"] as const,
+
+	/** Deserialized WordIndex for a book (ADR-0002). Keyed separately from content. */
+	wordIndex: (id: string) => ["books", id, "word-index"] as const,
 };
 
 export const glossaryKeys = {

@@ -8,6 +8,7 @@
  * wires the returned handlers/refs to word events + overlay JSX.
  */
 
+import { type WordIndex, wordPos } from "@lesefluss/core";
 import type React from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "../../components/toast";
@@ -31,6 +32,12 @@ interface Params {
 	contentBytes: Uint8Array | null;
 	highlightRows: Highlight[];
 	paragraphOffsets: number[];
+	/**
+	 * WordIndex for the active book. When present, new highlight inserts
+	 * also persist the Option A word-anchor columns (ADR-0002). Null
+	 * during initial load — Stage H drops the byte fallback path.
+	 */
+	wordIndex?: WordIndex | null;
 }
 
 export function useHighlightSelection({
@@ -38,6 +45,7 @@ export function useHighlightSelection({
 	contentBytes,
 	highlightRows,
 	paragraphOffsets,
+	wordIndex,
 }: Params) {
 	// ── Mutations ─────────────────────────────────────────────────────────
 	const addHighlightMutation = queryHooks.useAddHighlight();
@@ -83,23 +91,48 @@ export function useHighlightSelection({
 		setSelectionEnd(offset);
 	}, []);
 
-	// Derived: the active selection range (start <= end, both defined)
+	// Derived: the active selection range (start <= end, both defined).
+	// Byte-anchored internally; emits {startByte, endByte} for legacy callers
+	// and {startWord, endWord} for the word-unit paragraph renderer.
 	const selectionRange = useMemo(() => {
 		if (selectionAnchor === null || selectionEnd === null) return null;
-		return {
-			start: Math.min(selectionAnchor, selectionEnd),
-			end: Math.max(selectionAnchor, selectionEnd),
-		};
+		const startByte = Math.min(selectionAnchor, selectionEnd);
+		const endByte = Math.max(selectionAnchor, selectionEnd);
+		return { start: startByte, end: endByte };
 	}, [selectionAnchor, selectionEnd]);
+
+	const selectionRangeWord = useMemo(() => {
+		if (!selectionRange || !wordIndex) return null;
+		return {
+			startWord: wordIndex.wordOf(selectionRange.start),
+			endWord: wordIndex.wordOf(selectionRange.end),
+		};
+	}, [selectionRange, wordIndex]);
 
 	// ── Per-paragraph highlight map ───────────────────────────────────────
 	// Maps paragraphIndex → HighlightRange[] that overlap that paragraph.
-	// Recomputed only when highlights or paragraph offsets change (not on scroll).
+	// Highlights store byte AND word fields after backfill (ADR-0002); when a
+	// row's word fields are still null (transitional state pre-backfill) we
+	// derive them on the fly via the active WordIndex. Rows without either
+	// fallback are dropped from rendering — the next backfill pass fixes them.
 	const highlightsByParagraph = useMemo<Map<number, HighlightRange[]>>(() => {
 		const map = new Map<number, HighlightRange[]>();
 		if (highlightRows.length === 0 || paragraphOffsets.length === 0) return map;
 
 		for (const h of highlightRows) {
+			const startWord =
+				h.startWord !== null ? wordPos(h.startWord) : (wordIndex?.wordOf(h.startOffset) ?? null);
+			const endWord =
+				h.endWord !== null ? wordPos(h.endWord) : (wordIndex?.wordOf(h.endOffset) ?? null);
+			if (startWord === null || endWord === null) continue;
+
+			const range: HighlightRange = {
+				id: h.id,
+				startWord,
+				endWord,
+				color: h.color,
+			};
+
 			for (let i = 0; i < paragraphOffsets.length; i++) {
 				const paraStart = paragraphOffsets[i];
 				const paraEnd =
@@ -109,15 +142,15 @@ export function useHighlightSelection({
 				if (h.startOffset <= paraEnd && h.endOffset >= paraStart) {
 					const existing = map.get(i);
 					if (existing) {
-						existing.push(h);
+						existing.push(range);
 					} else {
-						map.set(i, [h]);
+						map.set(i, [range]);
 					}
 				}
 			}
 		}
 		return map;
-	}, [highlightRows, paragraphOffsets]);
+	}, [highlightRows, paragraphOffsets, wordIndex]);
 
 	// ── Text extraction + highlight lookup ────────────────────────────────
 	const extractRangeText = useCallback(
@@ -161,9 +194,15 @@ export function useHighlightSelection({
 		[writeAnchor, writeEnd],
 	);
 
-	/** Long-press on a word: open editor if highlighted, else start selection. */
+	/**
+	 * Long-press on a word: open editor if highlighted, else start selection.
+	 * Paragraph emits a word index; convert to a byte offset for the
+	 * byte-anchored selection internals (ADR-0002 transition).
+	 */
 	const handleWordLongPress = useCallback(
-		(offset: number) => {
+		(wIdx: number) => {
+			if (!wordIndex) return;
+			const offset = wordIndex.byteOf(wordPos(wIdx));
 			const existing = findHighlightAt(offset);
 			if (existing) {
 				openHighlightEditor(existing);
@@ -171,7 +210,7 @@ export function useHighlightSelection({
 			}
 			startSelection(offset);
 		},
-		[findHighlightAt, openHighlightEditor, startSelection],
+		[findHighlightAt, openHighlightEditor, startSelection, wordIndex],
 	);
 
 	/** Extend the current selection's end to a new offset. No-op if not selecting. */
@@ -196,13 +235,13 @@ export function useHighlightSelection({
 	// positions from the DOM and updates handle styles directly (bypassing
 	// React renders for smooth visual updates).
 	const syncHandlePositions = useCallback(() => {
-		if (!selectionRange) return;
-		const startSpan = document.querySelector<HTMLElement>(
-			`span[data-offset="${selectionRange.start}"]`,
-		);
-		const endSpan = document.querySelector<HTMLElement>(
-			`span[data-offset="${selectionRange.end}"]`,
-		);
+		if (!selectionRange || !wordIndex) return;
+		// ADR-0002: DOM is keyed by data-word; convert the byte-anchored
+		// selectionRange via WordIndex.wordOf to query spans.
+		const startWord = wordIndex.wordOf(selectionRange.start);
+		const endWord = wordIndex.wordOf(selectionRange.end);
+		const startSpan = document.querySelector<HTMLElement>(`span[data-word="${startWord}"]`);
+		const endSpan = document.querySelector<HTMLElement>(`span[data-word="${endWord}"]`);
 
 		// Position start handle: bar runs along the left edge of the start word.
 		if (startHandleRef.current) {
@@ -248,7 +287,7 @@ export function useHighlightSelection({
 				}
 			}
 		}
-	}, [selectionRange]);
+	}, [selectionRange, wordIndex]);
 
 	// Keep a ref so scroll handler can call it without stale-closure issues
 	const syncHandlesRef = useRef(syncHandlePositions);
@@ -281,10 +320,12 @@ export function useHighlightSelection({
 			const anchorHoldsDraggedEdge = isStartHandle ? anchor <= end : anchor >= end;
 			const onMove = (me: PointerEvent) => {
 				const el = document.elementFromPoint(me.clientX, me.clientY);
-				const span = el?.closest<HTMLElement>("span[data-offset]");
-				if (!span) return;
-				const offset = Number.parseInt(span.dataset.offset ?? "", 10);
-				if (Number.isNaN(offset)) return;
+				const span = el?.closest<HTMLElement>("span[data-word]");
+				if (!span || !wordIndex) return;
+				const wIdx = Number.parseInt(span.dataset.word ?? "", 10);
+				if (Number.isNaN(wIdx)) return;
+				// Selection internals are byte-anchored; convert at the boundary.
+				const offset = wordIndex.byteOf(wordPos(wIdx));
 				if (anchorHoldsDraggedEdge) writeAnchor(offset);
 				else writeEnd(offset);
 			};
@@ -298,7 +339,7 @@ export function useHighlightSelection({
 			window.addEventListener("pointerup", cleanup);
 			window.addEventListener("pointercancel", cleanup);
 		},
-		[writeAnchor, writeEnd],
+		[writeAnchor, writeEnd, wordIndex],
 	);
 
 	const handleStartHandlePointerDown = useMemo(
@@ -330,11 +371,20 @@ export function useHighlightSelection({
 				const snippet = contentBytes
 					? _decoder.decode(contentBytes.subarray(selectionRange.start, selectionRange.end))
 					: null;
+				const wordAnchor = wordIndex
+					? {
+							startWord: wordIndex.wordAndCharOf(selectionRange.start).word,
+							startCharInWord: wordIndex.wordAndCharOf(selectionRange.start).charInWord,
+							endWord: wordIndex.wordAndCharOf(selectionRange.end).word,
+							endCharInWord: wordIndex.wordAndCharOf(selectionRange.end).charInWord,
+						}
+					: {};
 				addHighlightMutation.mutate({
 					id: newId,
 					bookId,
 					startOffset: selectionRange.start,
 					endOffset: selectionRange.end,
+					...wordAnchor,
 					color: newColor,
 					note: pendingNote || null,
 					text: snippet,
@@ -349,6 +399,7 @@ export function useHighlightSelection({
 			pendingNote,
 			bookId,
 			contentBytes,
+			wordIndex,
 			addHighlightMutation,
 			updateHighlightMutation,
 		],
@@ -392,6 +443,7 @@ export function useHighlightSelection({
 	return {
 		// Render state
 		selectionRange,
+		selectionRangeWord,
 		isSelecting,
 		selectionColor,
 		pendingNote,

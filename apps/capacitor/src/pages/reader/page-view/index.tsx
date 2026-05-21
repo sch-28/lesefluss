@@ -63,7 +63,8 @@ import {
 	relativeOffsets,
 	visibleWindow,
 } from "./chunks";
-import { findPageForByte, readFirstVisibleByteOffset } from "./measurements";
+import { type WordIndex, wordPos } from "@lesefluss/core";
+import { findPageForWord, readFirstVisibleWord } from "./measurements";
 
 // ─── Tuning ──────────────────────────────────────────────────────────────────
 const TAP_THRESHOLD_PX = 8; // movement under this is a tap, not a swipe
@@ -89,9 +90,12 @@ export interface PageViewProps {
 
 	// Active highlight + per-paragraph annotation data (passed to <Paragraph>).
 	activeOffset: number;
+	activeWord: number;
+	paragraphStartWords: number[];
+	wordIndex: WordIndex | null;
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
-	selectionRange: { start: number; end: number } | null;
+	selectionRange: { startWord: number; endWord: number } | null;
 	isSelecting: boolean;
 
 	// Word interaction
@@ -118,6 +122,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	{
 		paragraphs,
 		paragraphOffsets,
+		paragraphStartWords,
+		wordIndex,
 		contentLength,
 		initialByteOffset,
 		fontSize,
@@ -126,6 +132,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		margin,
 		showActiveWordUnderline,
 		activeOffset,
+		activeWord,
 		highlightsByParagraph,
 		glossaryByParagraph,
 		selectionRange,
@@ -264,7 +271,13 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		const el = chunkRefs.current.get(chunkIndex);
 		if (!el) return;
 		pendingTargetRef.current = null;
-		const targetPage = findPageForByte(el, pageWidth, currentPageCount, target);
+		if (!wordIndex) return;
+		const targetPage = findPageForWord(
+			el,
+			pageWidth,
+			currentPageCount,
+			wordIndex.wordOf(target),
+		);
 		setPageIndex(targetPage);
 		// Transform sync runs in its own layout effect below — by the time it
 		// fires, pageIndex has been committed and the transform lands cleanly.
@@ -365,8 +378,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		(p: number) => {
 			const el = chunkRefs.current.get(chunkIndex);
 			if (!el) return;
-			const byte = readFirstVisibleByteOffset(el, pageWidth, p);
-			if (byte !== null) onPositionSettle(byte);
+			const w = readFirstVisibleWord(el, pageWidth, p);
+			if (w !== null && wordIndex) onPositionSettle(wordIndex.byteOf(wordPos(w)));
 		},
 		[chunkIndex, pageWidth, onPositionSettle],
 	);
@@ -410,8 +423,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				setPageIndex(targetPage);
 				const el = chunkRefs.current.get(neighborIdx);
 				if (el) {
-					const byte = readFirstVisibleByteOffset(el, pageWidth, targetPage);
-					if (byte !== null) onPositionSettle(byte);
+					const w = readFirstVisibleWord(el, pageWidth, targetPage);
+					if (w !== null && wordIndex) onPositionSettle(wordIndex.byteOf(wordPos(w)));
 				}
 			});
 		},
@@ -464,8 +477,13 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				}
 				if (!isLayoutReady) return;
 				const el = chunkRefs.current.get(chunkIndex);
-				if (!el) return;
-				const targetPage = findPageForByte(el, pageWidth, currentPageCount, byteOffset);
+				if (!el || !wordIndex) return;
+				const targetPage = findPageForWord(
+					el,
+					pageWidth,
+					currentPageCount,
+					wordIndex.wordOf(byteOffset),
+				);
 				goToPage(targetPage);
 			},
 			goNext,
@@ -646,7 +664,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									chunkIndex={idx}
 									chunk={chunk}
 									paragraphs={paragraphs}
-									paragraphOffsets={paragraphOffsets}
+									paragraphStartWords={paragraphStartWords}
 									leftOffset={offsets.get(idx) ?? 0}
 									pageWidth={pageWidth}
 									pageHeight={pageHeight}
@@ -656,7 +674,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									// TODO (TASK-98): source from book metadata once available —
 									// affects hyphenation quality on non-English books.
 									lang="en"
-									activeOffset={isActiveChunk ? activeOffset : -1}
+									activeWord={isActiveChunk ? activeWord : -1}
 									highlightsByParagraph={highlightsByParagraph}
 									glossaryByParagraph={glossaryByParagraph}
 									selectionRange={selectionRange}

@@ -18,11 +18,7 @@ import { memo, useCallback } from "react";
 import { VList } from "virtua";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
-import { readingProgress } from "./sort-filter";
-
-// 32-byte tail tolerance: positions within the last 32 bytes are "finished".
-// Matches sort-filter.ts:24.
-const FINISHED_TAIL = 32;
+import { isBookFinished, readingProgress } from "./sort-filter";
 
 type RowState =
 	| { kind: "unread" }
@@ -39,7 +35,7 @@ function chapterRowState(book: Book): RowState {
 
 	// chapterStatus === 'fetched'
 	if (book.lastRead == null) return { kind: "unread" };
-	if (book.size > 0 && book.position >= book.size - FINISHED_TAIL) return { kind: "finished" };
+	if (isBookFinished(book)) return { kind: "finished" };
 
 	return { kind: "in-progress", pct: readingProgress(book) };
 }

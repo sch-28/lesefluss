@@ -13,7 +13,7 @@ import {
 	DrawerHeader,
 	DrawerTitle,
 } from "@lesefluss/ui/drawer";
-import { calcOrpIndex, type RsvpSettings } from "@lesefluss/core";
+import { calcOrpIndex, type RsvpSettings, type WordIndex } from "@lesefluss/core";
 import { BookOpen, Loader2, Settings } from "lucide-react";
 import React, {
 	forwardRef,
@@ -60,6 +60,8 @@ export interface RsvpViewProps {
 	onFinished: () => void;
 	onWpmChange: (wpm: number) => void;
 	onLookup: (word: string, original: string) => void;
+	/** Cached WordIndex (ADR-0002). When present, the engine skips rebuild. */
+	bookWordIndex?: WordIndex | null;
 }
 
 const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
@@ -72,6 +74,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		onFinished,
 		onWpmChange,
 		onLookup,
+		bookWordIndex,
 	},
 	ref,
 ) {
@@ -101,6 +104,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		onFinished,
 		onLookup,
 		onWpmChange,
+		bookWordIndex,
 	});
 
 	useImperativeHandle(

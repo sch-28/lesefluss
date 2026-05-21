@@ -1,3 +1,4 @@
+import { type SerializedWordIndex, WordIndex } from "@lesefluss/core";
 import { and, desc, eq, isNull, ne } from "drizzle-orm";
 import { db } from "../index";
 import {
@@ -89,6 +90,36 @@ export async function getBookByCatalogId(catalogId: string): Promise<Book | null
 export async function getBookContent(id: string): Promise<BookContent | undefined> {
 	const rows = await db.select().from(bookContent).where(eq(bookContent.bookId, id));
 	return rows[0];
+}
+
+/**
+ * Load and deserialize the persisted WordIndex blob for a book.
+ *
+ * Returns null when the blob is missing — happens for pre-Release-N books that
+ * haven't been backfilled yet, or for `chapter_status != 'fetched'` rows that
+ * have no content row. Callers should treat null as "not ready, retry later"
+ * rather than as an empty book.
+ *
+ * Falls back to rebuilding from `content` if the blob is missing but content
+ * exists — covers the brief window between import and the inline backfill on
+ * commit, plus any corruption recovery.
+ */
+export async function loadBookWordIndex(id: string): Promise<WordIndex | null> {
+	const rows = await db
+		.select({ wordIndex: bookContent.wordIndex, content: bookContent.content })
+		.from(bookContent)
+		.where(eq(bookContent.bookId, id));
+	const row = rows[0];
+	if (!row) return null;
+	if (row.wordIndex) {
+		try {
+			return WordIndex.deserialize(JSON.parse(row.wordIndex) as SerializedWordIndex);
+		} catch {
+			// Fall through to rebuild from content.
+		}
+	}
+	if (row.content) return WordIndex.build(row.content);
+	return null;
 }
 
 /**
