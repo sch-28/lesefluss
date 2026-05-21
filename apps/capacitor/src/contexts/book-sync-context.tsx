@@ -8,7 +8,7 @@
  *  - Orchestrate the full book-transfer flow (upload + mark isActive in DB)
  */
 
-import { wordPos, type WordPosition } from "@lesefluss/core";
+import { type WordPosition, wordPos } from "@lesefluss/core";
 import type React from "react";
 import {
 	createContext,
@@ -50,7 +50,6 @@ function parseChapters(json: string | null | undefined): RsvpChapter[] {
 		return [];
 	}
 }
-
 
 interface BookSyncContextType {
 	/** ID (8-char hex) of the book currently marked as active (on device), or null. */
@@ -141,15 +140,40 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 	// Position sync
 	// ------------------------------------------------------------------
 
+	// App and device tokenize independently; their word counts drift by a small
+	// fraction (firmware Latin8 normalization, our TS approximation table, etc.).
+	// Scaling word positions proportionally between the two streams keeps the
+	// on-screen position visually aligned to within rounding error, without
+	// either side needing a byte-perfect tokenizer mirror.
+	const scaleWord = (word: number, fromCount: number, toCount: number): number => {
+		if (fromCount <= 0 || toCount <= 0 || fromCount === toCount) return word;
+		return Math.round((word * toCount) / fromCount);
+	};
+
+	const lookupDeviceWordCount = (hash: string): number | null => {
+		if (deviceLibrarySnapshot.kind !== "multi") return null;
+		const entry = deviceLibrarySnapshot.library.find((e) => e.hash === hash);
+		return entry?.words ?? null;
+	};
+
+	const scaleForBook = (
+		bookWordCount: number,
+		hash: string,
+		word: number,
+		direction: "toDevice" | "toApp",
+	): number => {
+		const deviceCount = lookupDeviceWordCount(hash) ?? bookWordCount;
+		return direction === "toDevice"
+			? scaleWord(word, bookWordCount, deviceCount)
+			: scaleWord(word, deviceCount, bookWordCount);
+	};
+
 	const syncPosition = useCallback(async () => {
 		if (!isConnected) return;
 
 		// Multi-book devices have their own per-book position model. Branch
 		// early; the rest of this function is single-book esp32 logic.
-		if (
-			connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID &&
-			connectedDevice?.deviceId
-		) {
+		if (connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID && connectedDevice?.deviceId) {
 			const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
 			const posRes = await adapter.read("position");
 			if (!posRes.success || !posRes.data) {
@@ -170,16 +194,26 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 			if (!matchedBook) {
 				return;
 			}
+			const devicePosAsApp = wordPos(
+				scaleForBook(matchedBook.wordCount, deviceHash, devicePos, "toApp"),
+			);
 			const appPos = matchedBook.wordPosition;
-			if (devicePos > appPos) {
+			if (devicePosAsApp > appPos) {
 				await queries.updateBook(matchedBook.id, {
-					wordPosition: devicePos,
+					wordPosition: devicePosAsApp,
 					lastRead: Date.now(),
 				});
-				log("booksync", `multibook: device ahead (${devicePos} > ${appPos}), saved`);
-			} else if (appPos > devicePos) {
-				await adapter.write("position", { hash: deviceHash, wordIndex: appPos });
-				log("booksync", `multibook: app ahead (${appPos} > ${devicePos}), pushed`);
+				log(
+					"booksync",
+					`multibook: device ahead (deviceWord=${devicePos} appWord=${devicePosAsApp} > ${appPos}), saved`,
+				);
+			} else if (appPos > devicePosAsApp) {
+				const scaledOut = scaleForBook(matchedBook.wordCount, deviceHash, appPos, "toDevice");
+				await adapter.write("position", { hash: deviceHash, wordIndex: wordPos(scaledOut) });
+				log(
+					"booksync",
+					`multibook: app ahead (${appPos} > appView=${devicePosAsApp}), pushed deviceWord=${scaledOut}`,
+				);
 			}
 			return;
 		}
@@ -252,9 +286,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 			});
 			const appPos =
 				book && idx && book.positionUnit === "word" && idx.wordCount > 0
-					? idx.byteOf(
-							wordPos(Math.min(Math.max(book.wordPosition, 0), idx.wordCount - 1)),
-						)
+					? idx.byteOf(wordPos(Math.min(Math.max(book.wordPosition, 0), idx.wordCount - 1)))
 					: (book?.position ?? 0);
 
 			if (appPos > devicePos) {
@@ -281,12 +313,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 		}
 
 		setDevicePosition(winner);
-	}, [
-		isConnected,
-		updateActiveBookId,
-		connectedDescriptorId,
-		connectedDevice?.deviceId,
-	]); // activeBookId intentionally omitted - read via ref
+	}, [isConnected, updateActiveBookId, connectedDescriptorId, connectedDevice?.deviceId]); // activeBookId intentionally omitted - read via ref
 
 	const pushPosition = useCallback(
 		async (bookId: string, position: number) => {
@@ -295,10 +322,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				return;
 			}
 
-			if (
-				connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID &&
-				connectedDevice?.deviceId
-			) {
+			if (connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID && connectedDevice?.deviceId) {
 				if (!deviceActiveHash) {
 					log("booksync", "multibook pushPosition skipped: no active hash in snapshot");
 					return;
@@ -322,14 +346,20 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					return;
 				}
 				const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
+				const scaledWord = wordPos(
+					scaleForBook(book.wordCount, matchedHash, book.wordPosition, "toDevice"),
+				);
 				const write = await adapter.write("position", {
 					hash: matchedHash,
-					wordIndex: book.wordPosition,
+					wordIndex: scaledWord,
 				});
 				if (!write.success) {
 					log.warn("booksync", "multibook writePosition failed:", write.error);
 				} else {
-					log("booksync", `multibook pushPosition ok: word=${book.wordPosition} hash=${matchedHash}`);
+					log(
+						"booksync",
+						`multibook pushPosition ok: appWord=${book.wordPosition} deviceWord=${scaledWord} hash=${matchedHash}`,
+					);
 				}
 				return;
 			}
@@ -384,10 +414,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					onProgress?.(pct);
 				};
 
-				if (
-					connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID &&
-					connectedDevice?.deviceId
-				) {
+				if (connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID && connectedDevice?.deviceId) {
 					// Multi-book devices keep many books on disk. Uploading just
 					// stockpiles. Which book the device is currently reading is
 					// controlled separately via the multibook `active` characteristic
@@ -427,7 +454,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					}
 					// Seed the device's per-book position with the app's word
 					// position so the on-device reader resumes where the user left
-					// off in-app (TASK-131.15 AC #4).
+					// off in-app.
 					if (bookMeta?.wordPosition != null && bookMeta.wordPosition > 0) {
 						const seedRes = await adapter.write("position", {
 							hash: newHash,
@@ -458,9 +485,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					const idx = await queries.loadBookWordIndex(bookId).catch(() => null);
 					const pos =
 						book && idx && book.positionUnit === "word" && idx.wordCount > 0
-							? idx.byteOf(
-									wordPos(Math.min(Math.max(book.wordPosition, 0), idx.wordCount - 1)),
-								)
+							? idx.byteOf(wordPos(Math.min(Math.max(book.wordPosition, 0), idx.wordCount - 1)))
 							: (book?.position ?? 0);
 					await ble.writePosition(pos);
 					setDevicePosition(pos);
