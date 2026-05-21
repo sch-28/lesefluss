@@ -47,16 +47,23 @@ export function useBookDeviceActions({
 		return candidates.find((h) => snapshot.library.some((e) => e.hash === h)) ?? null;
 	})();
 
+	// Firmware processes active + delete writes on the Arduino loop tick, not
+	// on the NimBLE host task. Refreshing immediately after the write resolves
+	// races the drain and reads a stale library. The adapter mutex serializes
+	// the BLE ops; this delay covers the on-device drain.
+	const POST_WRITE_DRAIN_MS = 150;
+
 	const openOnDevice = useCallback(async () => {
 		if (!multiBookAdapter || !resolvedHash) {
 			return;
 		}
 		const result = await multiBookAdapter.write("active", { hash: resolvedHash });
-		if (result.success) {
-			await refreshDeviceLibrary();
-		} else {
+		if (!result.success) {
 			log.warn("book-actions", "open on device write failed:", result.error);
+			return;
 		}
+		await new Promise((r) => setTimeout(r, POST_WRITE_DRAIN_MS));
+		await refreshDeviceLibrary();
 	}, [multiBookAdapter, resolvedHash, refreshDeviceLibrary]);
 
 	const removeFromDevice = useCallback(async () => {
@@ -64,11 +71,12 @@ export function useBookDeviceActions({
 			return;
 		}
 		const result = await multiBookAdapter.write("delete", { hash: resolvedHash });
-		if (result.success) {
-			await refreshDeviceLibrary();
-		} else {
+		if (!result.success) {
 			log.warn("book-actions", "remove from device failed:", result.error);
+			return;
 		}
+		await new Promise((r) => setTimeout(r, POST_WRITE_DRAIN_MS));
+		await refreshDeviceLibrary();
 	}, [multiBookAdapter, resolvedHash, refreshDeviceLibrary]);
 
 	if (!bookId || !isConnected) {

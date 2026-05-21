@@ -59,14 +59,14 @@ export const DeviceLibraryProvider: React.FC<{ children: ReactNode }> = ({ child
 
 		if (connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID && connectedDevice?.deviceId) {
 			const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
-			const [libRes, activeRes] = await Promise.all([
-				adapter.read("library"),
-				adapter.read("active"),
-			]);
+			// Android BluetoothGatt rejects concurrent ops; adapter mutex would
+			// serialize anyway.
+			const libRes = await adapter.read("library");
 			if (!libRes.success) {
 				log.warn("device-library", "library read failed:", libRes.error);
 				return;
 			}
+			const activeRes = await adapter.read("active");
 			setSnapshot({
 				kind: "multi",
 				library: libRes.data ?? [],

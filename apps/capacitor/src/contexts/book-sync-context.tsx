@@ -8,7 +8,7 @@
  *  - Orchestrate the full book-transfer flow (upload + mark isActive in DB)
  */
 
-import { type WordPosition, wordPos } from "@lesefluss/core";
+import { WordIndex, type WordPosition, wordPos } from "@lesefluss/core";
 import type React from "react";
 import {
 	createContext,
@@ -69,7 +69,7 @@ interface BookSyncContextType {
 	 *  3. Mark book as isActive in DB, clear other active books
 	 *
 	 * @param bookId    ID (8-char hex) of the book to transfer
-	 * @param onProgress  Called with 0–100 during transfer
+	 * @param onProgress  Called with 0-100 during transfer
 	 */
 	transferBook: (
 		bookId: string,
@@ -79,7 +79,7 @@ interface BookSyncContextType {
 
 	/** True while a file transfer is in progress. */
 	isTransferring: boolean;
-	/** 0–100 progress of the current transfer, or null when idle. */
+	/** 0-100 progress of the current transfer, or null when idle. */
 	transferProgress: number | null;
 	/** Error message from the last failed operation, or null. */
 	error: string | null;
@@ -408,6 +408,13 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				if (!content?.content) {
 					throw new Error("Book content not found");
 				}
+				// Build a FRESH WordIndex from content for the upload. The lazily
+				// rebuilt entries from a deserialized blob can have whitespace
+				// embedded in `word` (materializeEntry trims trailing whitespace
+				// but not internal whitespace introduced by ellipsis-across-newline
+				// merges). Building from content runs the tokenizer state machine
+				// which guarantees no whitespace inside any word.
+				const uploadWordIndex = WordIndex.build(content.content);
 
 				const onProgressBoth = (pct: number) => {
 					setTransferProgress(pct);
@@ -421,12 +428,30 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					// (set from the MultiBookSync component). Do NOT touch the app's
 					// activeBookId on upload here.
 					const parsedChapters = parseChapters(content.chapters);
+					log(
+						"booksync",
+						`multibook upload: bookId=${bookId} version=2 wordCount=${uploadWordIndex.wordCount} chapters=${parsedChapters.length}`,
+					);
 					const rsvpBytes = buildRsvpDocument({
 						title: bookMeta?.title ?? "",
 						author: bookMeta?.author,
 						body: content.content,
 						chapters: parsedChapters,
+						wordIndex: uploadWordIndex,
+						version: 2,
 					});
+					const text = new TextDecoder().decode(rsvpBytes);
+					const blines = text.split("\n");
+					const wIdx = blines.findIndex((l) => l.startsWith("@words "));
+					const pIdx = blines.findIndex((l) => l.startsWith("@paragraphs "));
+					const cIdx = blines.findIndex((l) => l.startsWith("@chapters "));
+					const wordLines = pIdx > wIdx ? pIdx - wIdx - 1 : -1;
+					const paraLines = cIdx > pIdx ? cIdx - pIdx - 1 : -1;
+					const chapLines = cIdx >= 0 ? blines.length - cIdx - 2 : -1;
+					log(
+						"booksync",
+						`multibook upload: rsvp size=${rsvpBytes.byteLength}B totalLines=${blines.length} wordLines=${wordLines} listEntries=${uploadWordIndex.wordCount} paraLines=${paraLines} chapLines=${chapLines}`,
+					);
 					const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
 					if (!adapter.transferFile) {
 						throw new Error("Adapter missing transfer support");

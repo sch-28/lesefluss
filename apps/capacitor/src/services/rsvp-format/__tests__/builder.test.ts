@@ -112,3 +112,46 @@ describe("buildRsvpDocument", () => {
 		expect(decoded).toContain("café");
 	});
 });
+
+describe("buildRsvpDocument v2", () => {
+	it("emits exactly entries.length word lines + matching @words directive", async () => {
+		const { WordIndex } = await import("@lesefluss/core");
+		// Frankenstein-style text fragment with mixed punctuation + smart quotes.
+		const content =
+			"It was on a dreary night of November that I beheld the accomplishment of my toils.\n\n" +
+			"With an anxiety that almost amounted to agony, I collected the instruments of life around me...\n\n" +
+			"How can I describe my emotions at this catastrophe, or how delineate the wretch whom—" +
+			"with such infinite pains and care I had endeavoured to form?";
+		const idx = WordIndex.build(content);
+		const bytes = buildRsvpDocument({
+			title: "T",
+			body: content,
+			wordIndex: idx,
+			version: 2,
+		});
+		const text = decode(bytes);
+		const lines = text.split("\n");
+		const wordsIdx = lines.findIndex((l) => l.startsWith("@words "));
+		expect(wordsIdx).toBeGreaterThan(0);
+		const declared = Number.parseInt(lines[wordsIdx].slice("@words ".length), 10);
+		const parasIdx = lines.findIndex((l) => l.startsWith("@paragraphs "));
+		expect(parasIdx).toBeGreaterThan(wordsIdx);
+		const actualWordLines = parasIdx - wordsIdx - 1;
+		expect(declared).toBe(idx.listEntries().length);
+		expect(actualWordLines).toBe(declared);
+	});
+
+	it("does not emit \\n inside any word line", async () => {
+		const { WordIndex } = await import("@lesefluss/core");
+		const content = "alpha beta\n\ngamma\ndelta epsilon";
+		const idx = WordIndex.build(content);
+		const bytes = buildRsvpDocument({ title: "T", body: content, wordIndex: idx, version: 2 });
+		const text = decode(bytes);
+		const lines = text.split("\n");
+		const wordsIdx = lines.findIndex((l) => l.startsWith("@words "));
+		const parasIdx = lines.findIndex((l) => l.startsWith("@paragraphs "));
+		const wordLines = lines.slice(wordsIdx + 1, parasIdx);
+		expect(wordLines.length).toBe(idx.listEntries().length);
+		for (const w of wordLines) expect(w).not.toContain("\n");
+	});
+});
