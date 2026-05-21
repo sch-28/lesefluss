@@ -1,42 +1,52 @@
 ---
 id: TASK-143
-title: >-
-  rsvpnano BLE position wire format: word index vs book id vs offset — pick the
-  right unit
+title: Port rsvpnano device tokenizer to @lesefluss/core (align app on device)
 status: To Do
 assignee: []
 created_date: '2026-05-21 02:52'
+updated_date: '2026-05-21 22:48'
 labels: []
+milestone: m-12
 dependencies: []
+priority: high
 ordinal: 47000
 ---
 
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-The multibook BLE position characteristic currently exchanges `{hash, wordIndex}` where `hash` identifies the book on the device's SD card and `wordIndex` is the canonical app-side WordPosition. This pairing was chosen because rsvpnano's reader natively works in word index.
+Decision made (2026-05-21): Option B — port the rsvpnano firmware's tokenizer to TypeScript and adopt it as the canonical word-stream algorithm. Replaces the simple `content.split(/(\s+)/)` in `packages/core/src/engine.ts:35`.
 
-In practice the position model has friction:
-- Word index is unstable across content edits — if the user re-uploads a book, the device's hash changes (filename includes `bookId`, so same lesefluss book keeps the same hash, but the word stream may have shifted slightly due to whitespace / chapter handling).
-- The app's word index is derived from `book_content.content` plus the canonical tokenization rule (ADR-0002). The device's word index is derived from the on-disk `.rsvp` content via its own tokenizer (in `apps/rsvpnano/src/reader/ReadingLoop` and `apps/rsvpnano/src/storage/IndexedBookStore`). The two tokenizers MUST produce identical word streams for the same content. Today this is asserted by convention; there is no integration test.
+Why: empirical hardware test on Frankenstein showed app's tokenizer and device's tokenizer produce divergent word streams → BLE position sync arrives at the right word index but the wrong word. Device tokenizer is objectively better for RSVP reading (Unicode/whitespace normalization, BOM strip, ellipsis merging into prev word, hyphen disambiguation, punctuation-only filtering). The app is pre-deployment so re-running the WordIndex backfill is safe.
 
-Investigation needed:
-- Is word index actually the right unit? Alternatives:
-  - **Byte offset of the word's first character.** Stable as long as content bytes match exactly. The on-device reader has the bytes; converting byte → word index inside the device's reader is cheap (it already maintains a word index for the open book). The app converts word → byte via its own WordIndex (already present).
-  - **Paragraph + offset.** Lossy. Probably not.
-  - **Percent-progress.** Lossy. Probably not.
-- Confirm whether the two tokenizers produce identical word streams over a representative book (Frankenstein with chapters). Diff their output offline; if they diverge by even one boundary, word-index sync is broken for that book.
-- If word index stays: document the tokenization rule contract explicitly between app and firmware, and add a per-book sanity check (`words_app == words_device` on connect; surface a warning if they differ).
-- If switching to byte offset: update the BLE schema, app-side conversion via WordIndex.byteOf, firmware-side conversion in the reader.
+Source of truth = rsvpnano firmware:
+- `apps/rsvpnano/src/storage/StorageManager.cpp::appendTokenizedLineWords` (1275) — main state machine.
+- `pushIndexedWord` (1798) — per-token BOM strip + readable-char filter.
+- `normalizeDisplayText` — Unicode normalization (smart quotes, NBSP, ligatures).
+- `tokenHasReadableCharacter`, `isStandaloneRhythmToken`, `isHyphenToken`, `isEllipsisToken`, `isInlineWordHyphen`, `isWordBoundary` — helpers.
+
+Required port:
+1. Replace `buildWordIndex` body in `packages/core/src/engine.ts` with the char-by-char state machine + ellipsis/hyphen rules + normalize-display + readable-char filter.
+2. Port `normalizeDisplayText` helper to TS — covers ASCII whitespace coercion, smart-quote folding, NBSP → space, ligature decomposition (whatever the device does today).
+3. Preserve `WordEntry.byteOffset` (UTF-8 byte offset into the original content) so existing consumers keep working.
+4. Re-derive `breakBefore` flag: the device emits explicit paragraph markers; the app derives from blank-line whitespace runs. Keep the app's blank-line-derived `breakBefore` as a function of the same normalized stream so chapter-aware UI doesn't break.
+5. Add a property-style test suite that runs ~10 representative books through both algorithms and asserts identical token streams. Update existing `__tests__/word-index.test.ts` for the new expected outputs.
+6. Bump `SerializedWordIndex.v` to `2` and run the existing backfill sweep (TASK-134's machinery) on app start to rebuild blobs from `book_content.content`.
+7. ADR update: extend ADR-0002 with the tokenizer rules as the canonical contract; reference `apps/rsvpnano/src/storage/StorageManager.cpp` as the implementation we ported from. Document the contract so device tokenizer changes are gated on a parallel TS update.
 
 Out of scope:
-- Other BLE characteristics (library, active, settings) are unaffected.
+- Changing the on-disk `.rsvp` builder (`apps/capacitor/src/services/rsvp-format/builder.ts`) — its body bytes are still emitted from `book.content`, just consumed by a tokenizer that matches the app's.
+- Touching the rsvpnano firmware tokenizer.
+
+Risk: WordIndex blobs version bump invalidates highlights' word-position references if any persisted highlights live across the migration. Confirm with `services/db/word-index-backfill.ts` that backfill remaps positions or that highlights are recomputed.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Decision documented (word index vs byte offset vs hybrid) with the reasoning attached to ADR-0002 or a new ADR-0003
-- [ ] #2 If word index stays: the app + firmware tokenizers are confirmed identical for at least three representative books (no off-by-one boundary), and a per-book word-count sanity check is wired into the connect-time sync
-- [ ] #3 If byte offset wins: the multibook position char schema is updated, app conversion via WordIndex.byteOf is wired in BookSyncContext, and the firmware reader converts byte → word on receive
-- [ ] #4 No regression to single-book esp32 position sync
+- [ ] #1 buildWordIndex in packages/core/src/engine.ts implements the same word-boundary + normalize + ellipsis/hyphen rules as apps/rsvpnano/src/storage/StorageManager.cpp::appendTokenizedLineWords
+- [ ] #2 Property-style test fixture (≥10 books, including Frankenstein) asserts byte-for-byte identical token streams between the TS port and a captured firmware tokenization (golden file generated from the device or from a faithful C++→TS reference port)
+- [ ] #3 SerializedWordIndex.v bumped to 2; existing backfill machinery rebuilds blobs from book_content.content on next app start without manual intervention
+- [ ] #4 BLE position sync test: advancing in-app while the same book is open on the rsvpnano shows the SAME word on both screens, verified on Frankenstein at multiple positions
+- [ ] #5 ADR-0002 amended (or ADR-0003 created) with the canonical tokenizer rules and a contract clause: changes to the device tokenizer must be paired with a TS update + WordIndex version bump
+- [ ] #6 Existing app-side reading flow (reader, highlights, sessions) regresses zero on the new tokenizer
 <!-- AC:END -->

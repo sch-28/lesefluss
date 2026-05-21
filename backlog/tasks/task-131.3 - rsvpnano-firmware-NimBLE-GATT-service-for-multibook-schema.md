@@ -1,10 +1,12 @@
 ---
 id: TASK-131.3
 title: 'rsvpnano firmware: NimBLE GATT service for multibook schema'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-20 22:19'
+updated_date: '2026-05-21 22:21'
 labels: []
+milestone: m-12
 dependencies: []
 parent_task_id: TASK-131
 ordinal: 29000
@@ -35,10 +37,16 @@ Deferred to later task: settings UI toggle for BLE on/off.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 NimBLE service advertises with the service UUID from packages/ble-config/config-multibook.json
-- [ ] #2 All 7 characteristics (info, library, active, position, transfer, settings, storage) implemented and readable/writable per schema
-- [ ] #3 Book uploaded via BLE transfer chr ends up in /books/books or /books/articles based on category, identical end state to HTTP upload
-- [ ] #4 Position written via BLE updates same NVS key that HTTP/on-device reader uses (no divergent storage)
-- [ ] #5 Firmware still builds and existing WiFi-AP HTTP sync remains functional
+- [x] #1 NimBLE service advertises with the service UUID from packages/ble-config/config-multibook.json
+- [x] #2 All 7 characteristics (info, library, active, position, transfer, settings, storage) implemented and readable/writable per schema
+- [x] #3 Book uploaded via BLE transfer chr ends up in /books/books or /books/articles based on category, identical end state to HTTP upload
+- [x] #4 Position written via BLE updates same NVS key that HTTP/on-device reader uses (no divergent storage)
+- [x] #5 Firmware still builds and existing WiFi-AP HTTP sync remains functional
 - [ ] #6 Branch lesefluss-ble on fork has a clean commit history suitable for eventual upstream PR
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+NimBLE GATT service landed in apps/rsvpnano/src/sync/BleSyncManager.{h,cpp} + RsvpDataStore.{h,cpp}. All 7 chars (info, library, active, position, transfer, settings, storage) + delete (added by 131.12) implemented. Verified parent TASK-131 final summary. Upstream PR (#6) is the separate concern.
+<!-- SECTION:FINAL_SUMMARY:END -->

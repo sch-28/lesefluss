@@ -1,11 +1,12 @@
 ---
 id: TASK-131.4
 title: BLE transport seam + per-device descriptors + dispatch
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-20 22:19'
-updated_date: '2026-05-20 23:12'
+updated_date: '2026-05-21 22:21'
 labels: []
+milestone: m-12
 dependencies: []
 parent_task_id: TASK-131
 ordinal: 30000
@@ -43,11 +44,17 @@ Depends on task-131.1 (schema). Supersedes original 131.7 (shared-utils extracti
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 services/ble-transport/ implements descriptor-driven adapter creation, with chunked transfer + ACK state machine living in one place
-- [ ] #2 Both single-book and multi-book descriptors live under services/devices/ and produce typed adapters via the transport
-- [ ] #3 useDeviceCapabilities() hook returns derived caps from the connected descriptor
-- [ ] #4 <DeviceSync> dispatch wrapper exists and renders <SingleBookSync> or <MultiBookSync> per caps
-- [ ] #5 Existing single-book functionality regresses zero: book transfer, position sync, settings, storage all still work on the esp32
-- [ ] #6 Saved-device record persists descriptorId; UI list view can render device label without connecting
-- [ ] #7 No services/ble-multibook/ folder is created; no parallel transfer.ts copies exist
+- [x] #1 services/ble-transport/ implements descriptor-driven adapter creation, with chunked transfer + ACK state machine living in one place
+- [x] #2 Both single-book and multi-book descriptors live under services/devices/ and produce typed adapters via the transport
+- [x] #3 useDeviceCapabilities() hook returns derived caps from the connected descriptor
+- [x] #4 <DeviceSync> dispatch wrapper exists and renders <SingleBookSync> or <MultiBookSync> per caps
+- [x] #5 Existing single-book functionality regresses zero: book transfer, position sync, settings, storage all still work on the esp32
+- [x] #6 Saved-device record persists descriptorId; UI list view can render device label without connecting
+- [x] #7 No services/ble-multibook/ folder is created; no parallel transfer.ts copies exist
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Transport seam landed: apps/capacitor/src/services/ble-transport/ (adapter.ts, codecs.ts, types.ts) + apps/capacitor/src/services/devices/{single-book,multi-book,capabilities,hash}. No services/ble-multibook/ parallel folder created. DeviceSync wrapper at components/device-sync/device-sync.tsx.
+<!-- SECTION:FINAL_SUMMARY:END -->

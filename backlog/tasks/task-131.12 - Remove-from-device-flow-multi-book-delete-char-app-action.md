@@ -4,8 +4,9 @@ title: Remove-from-device flow (multi-book delete char + app action)
 status: Done
 assignee: []
 created_date: '2026-05-20 18:00'
-updated_date: '2026-05-21 01:54'
+updated_date: '2026-05-21 22:20'
 labels: []
+milestone: m-12
 dependencies: []
 parent_task_id: TASK-131
 ordinal: 38000

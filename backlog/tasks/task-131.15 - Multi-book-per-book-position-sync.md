@@ -4,8 +4,9 @@ title: Multi-book per-book position sync
 status: Done
 assignee: []
 created_date: '2026-05-21 01:32'
-updated_date: '2026-05-21 02:02'
+updated_date: '2026-05-21 22:20'
 labels: []
+milestone: m-12
 dependencies:
   - TASK-131.9
   - TASK-135

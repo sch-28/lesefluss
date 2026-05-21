@@ -4,7 +4,9 @@ title: 'rsvpnano firmware: BLE on/off toggle'
 status: To Do
 assignee: []
 created_date: '2026-05-21 02:13'
+updated_date: '2026-05-21 22:20'
 labels: []
+milestone: m-12
 dependencies: []
 ordinal: 42000
 ---

@@ -1,11 +1,12 @@
 ---
 id: TASK-141
 title: 'rsvpnano firmware: live position updates between app and reader'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-21 02:41'
-updated_date: '2026-05-21 02:51'
+updated_date: '2026-05-21 22:21'
 labels: []
+milestone: m-12
 dependencies: []
 ordinal: 45000
 ---
@@ -50,3 +51,9 @@ References:
 <!-- SECTION:NOTES:BEGIN -->
 2026-05-21: initial impl landed (setPositionListener + App::onBlePositionUpdate seek hook). Verified on hardware: behavior is inconsistent — seeks fire sometimes but device reader does not catch up reliably. Reopen-after-close still loses position. Subsumed into TASK-142 (live sync deep-dive) since the rsvpnano reader state machine needs a deeper audit than the listener-hook approach assumed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Subsumed into TASK-142. Initial listener-hook impl (BleSyncManager::PositionListener + App::onBlePositionUpdate seek) shipped + builds, but hardware testing showed seeks fire inconsistently and reopen-after-close still loses position. Deeper audit of the rsvpnano reader state machine moved to TASK-142.
+<!-- SECTION:FINAL_SUMMARY:END -->

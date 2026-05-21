@@ -1,10 +1,12 @@
 ---
 id: TASK-131.1
 title: 'Multibook BLE schema: config-multibook.json + TS exports'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-20 22:18'
+updated_date: '2026-05-21 22:20'
 labels: []
+milestone: m-12
 dependencies: []
 parent_task_id: TASK-131
 ordinal: 27000
@@ -35,8 +37,14 @@ Deliverables:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 config-multibook.json exists with fresh random v4 UUIDs for service + each characteristic
-- [ ] #2 TS exports importable as `import { multibook } from '@lesefluss/ble-config'`
-- [ ] #3 Existing single-book exports unchanged and untouched
-- [ ] #4 pnpm check-types passes in packages/ble-config
+- [x] #1 config-multibook.json exists with fresh random v4 UUIDs for service + each characteristic
+- [x] #2 TS exports importable as `import { multibook } from '@lesefluss/ble-config'`
+- [x] #3 Existing single-book exports unchanged and untouched
+- [x] #4 pnpm check-types passes in packages/ble-config
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Schema landed: packages/ble-config/config-multibook.json + multibook.ts namespace exporting MultibookLibraryEntry/Position/TransferHeader/etc. All 4 ACs covered per code inspection. Parent TASK-131 confirmed delivered.
+<!-- SECTION:FINAL_SUMMARY:END -->
