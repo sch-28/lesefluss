@@ -58,3 +58,12 @@ resources/case/oled-v1/render/screen/
 
 __pycache__
 resources/.logo-dark.png
+
+# Local / per-user
+.claude/
+.npmrc
+temp.md
+
+# Store assets + listing copy (managed outside repo)
+resources/screenshots/
+store-description.md
