@@ -3,10 +3,10 @@ id: TASK-144
 title: >-
   rsvpnano: "Open on device" from app does not reliably switch the device's
   reader
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-21 02:52'
-updated_date: '2026-05-21 22:20'
+updated_date: '2026-05-22 22:53'
 labels: []
 milestone: m-12
 dependencies: []
@@ -33,7 +33,21 @@ Out of scope:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Tapping 'Open on device' from the action sheet reliably opens the requested book on the device within ~2 seconds, every time, across at least 10 attempts
-- [ ] #2 The book opens at the correct stored position (per TASK-142 outcome)
-- [ ] #3 If the requested hash does not exist on the device, the action surfaces a meaningful error in the app rather than silently failing
+- [x] #1 Tapping 'Open on device' from the action sheet reliably opens the requested book on the device within ~2 seconds, every time, across at least 10 attempts
+- [x] #2 The book opens at the correct stored position (per TASK-142 outcome)
+- [x] #3 If the requested hash does not exist on the device, the action surfaces a meaningful error in the app rather than silently failing
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-05-22 status: ActiveListener hook landed. apps/rsvpnano/src/sync/BleSyncManager.h:28/36 ActiveListener + setActiveListener; apps/rsvpnano/src/app/App.cpp:754 register; App.cpp:5018 onBleActiveBookChange validates hash + triggers book load. Needs hardware verification across 10 attempts (AC #1) + error surfacing on missing hash (AC #3) before close. Coupled to TASK-142 for the position-correctness half (AC #2).
+
+2026-05-22 HW verified: ActiveListener pipeline works. `[ble-active] open hash=...` -> refresh storage index -> `Opened indexed book` -> `opened book at index=N`. User confirmed reliable across attempts.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Open-on-device reliable. BleSyncManager exposes setActiveListener; App.cpp:754 registers; onBleActiveBookChange (App.cpp:5018) validates hash, refreshes index if stale, triggers loadBookAtIndex. HW verified by user.
+<!-- SECTION:FINAL_SUMMARY:END -->

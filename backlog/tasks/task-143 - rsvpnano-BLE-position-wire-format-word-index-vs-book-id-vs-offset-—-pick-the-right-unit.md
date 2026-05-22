@@ -4,7 +4,7 @@ title: Port rsvpnano device tokenizer to @lesefluss/core (align app on device)
 status: To Do
 assignee: []
 created_date: '2026-05-21 02:52'
-updated_date: '2026-05-21 22:48'
+updated_date: '2026-05-22 22:30'
 labels: []
 milestone: m-12
 dependencies: []
@@ -43,10 +43,16 @@ Risk: WordIndex blobs version bump invalidates highlights' word-position referen
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 buildWordIndex in packages/core/src/engine.ts implements the same word-boundary + normalize + ellipsis/hyphen rules as apps/rsvpnano/src/storage/StorageManager.cpp::appendTokenizedLineWords
+- [x] #1 buildWordIndex in packages/core/src/engine.ts implements the same word-boundary + normalize + ellipsis/hyphen rules as apps/rsvpnano/src/storage/StorageManager.cpp::appendTokenizedLineWords
 - [ ] #2 Property-style test fixture (≥10 books, including Frankenstein) asserts byte-for-byte identical token streams between the TS port and a captured firmware tokenization (golden file generated from the device or from a faithful C++→TS reference port)
-- [ ] #3 SerializedWordIndex.v bumped to 2; existing backfill machinery rebuilds blobs from book_content.content on next app start without manual intervention
+- [x] #3 SerializedWordIndex.v bumped to 2; existing backfill machinery rebuilds blobs from book_content.content on next app start without manual intervention
 - [ ] #4 BLE position sync test: advancing in-app while the same book is open on the rsvpnano shows the SAME word on both screens, verified on Frankenstein at multiple positions
 - [ ] #5 ADR-0002 amended (or ADR-0003 created) with the canonical tokenizer rules and a contract clause: changes to the device tokenizer must be paired with a TS update + WordIndex version bump
 - [ ] #6 Existing app-side reading flow (reader, highlights, sessions) regresses zero on the new tokenizer
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-05-22 verification: tokenizer port shipped. packages/core/src/tokenizer.ts:229 `buildWordIndexFromTokenizer` implements char-by-char state machine. packages/core/src/engine.ts:19 re-exports as `buildWordIndex`. packages/core/src/word-index.ts:18 `SerializedWordIndex.v = 2`. Note: TASK-148 (v2 .rsvp ships pre-tokenized list) makes this port largely moot for device parity, but the canonical-tokenizer goal stands for app-side highlights + sessions. AC #2 (property tests vs firmware golden), #4 (HW position parity), #5 (ADR update) remain open.
+<!-- SECTION:NOTES:END -->

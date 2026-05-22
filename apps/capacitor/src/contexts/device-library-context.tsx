@@ -14,7 +14,15 @@
  */
 
 import type React from "react";
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import {
+	createContext,
+	type ReactNode,
+	useCallback,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { useBLE } from "../contexts/ble-context";
 import { ble } from "../services/ble";
 import { createBleAdapter } from "../services/ble-transport";
@@ -50,23 +58,40 @@ export const useDeviceLibrary = () => {
 export const DeviceLibraryProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 	const { isConnected, connectedDescriptorId, connectedDevice } = useBLE();
 	const [snapshot, setSnapshot] = useState<DeviceLibrarySnapshot>({ kind: "none" });
+	// Connection identity used to drop stale async results. A library fetch
+	// can take seconds; if the user reconnects to a different device mid-fetch
+	// the stale resolve would otherwise overwrite the new snapshot.
+	const refreshTokenRef = useRef(0);
 
 	const refresh = useCallback(async () => {
+		const token = ++refreshTokenRef.current;
+		const isCurrent = () => refreshTokenRef.current === token;
+
 		if (!isConnected) {
-			setSnapshot({ kind: "none" });
+			if (isCurrent()) {
+				setSnapshot({ kind: "none" });
+			}
 			return;
 		}
 
 		if (connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID && connectedDevice?.deviceId) {
 			const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
-			// Android BluetoothGatt rejects concurrent ops; adapter mutex would
-			// serialize anyway.
-			const libRes = await adapter.read("library");
+			// Library char now streams a tag-framed notify sequence (TASK-150).
+			// fetchLibrary handles subscribe + trigger write + CRC validation +
+			// one retry on transient drop. Adapter mutex serializes it against
+			// other GATT ops on the same connection.
+			if (!adapter.fetchLibrary) {
+				log.warn("device-library", "adapter missing fetchLibrary; descriptor misconfigured");
+				return;
+			}
+			const libRes = await adapter.fetchLibrary();
+			if (!isCurrent()) return;
 			if (!libRes.success) {
-				log.warn("device-library", "library read failed:", libRes.error);
+				log.warn("device-library", "library fetch failed:", libRes.error);
 				return;
 			}
 			const activeRes = await adapter.read("active");
+			if (!isCurrent()) return;
 			setSnapshot({
 				kind: "multi",
 				library: libRes.data ?? [],
@@ -77,6 +102,7 @@ export const DeviceLibraryProvider: React.FC<{ children: ReactNode }> = ({ child
 
 		if (connectedDescriptorId === SINGLE_BOOK_DESCRIPTOR_ID) {
 			const storageRes = await ble.readStorage();
+			if (!isCurrent()) return;
 			if (!storageRes.success) {
 				log.warn("device-library", "storage read failed:", storageRes.error);
 				return;
@@ -85,11 +111,18 @@ export const DeviceLibraryProvider: React.FC<{ children: ReactNode }> = ({ child
 			return;
 		}
 
-		setSnapshot({ kind: "none" });
+		if (isCurrent()) {
+			setSnapshot({ kind: "none" });
+		}
 	}, [isConnected, connectedDescriptorId, connectedDevice?.deviceId]);
 
 	useEffect(() => {
 		void refresh();
+		// Bump the token on unmount / dep change so any in-flight refresh
+		// observes !isCurrent() and bails out before calling setSnapshot.
+		return () => {
+			refreshTokenRef.current += 1;
+		};
 	}, [refresh]);
 
 	return (

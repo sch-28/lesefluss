@@ -10,6 +10,7 @@ import { multibook } from "@lesefluss/ble-config";
 import type { WordPosition } from "@lesefluss/core";
 import { jsonCodec } from "../../ble-transport/codecs";
 import type { DeviceDescriptor } from "../../ble-transport/types";
+import { fetchMultiBookLibrary } from "./library-fetch-impl";
 import { transferMultiBook } from "./transfer-impl";
 
 export type MultiBookInfo = {
@@ -52,8 +53,11 @@ export const multiBookDescriptor = {
 			codec: jsonCodec<MultiBookInfo>(),
 		},
 		library: {
+			// Notify-stream only. Adapter exposes `fetchLibrary()`; this codec is
+			// kept to satisfy the CharDescriptor type but is never invoked (the
+			// adapter has no `read`/`write` path that would touch it).
 			uuid: chars.library.uuid,
-			access: "R",
+			access: "W+N",
 			codec: jsonCodec<MultiBookLibraryEntry[]>(),
 		},
 		active: {
@@ -83,4 +87,5 @@ export const multiBookDescriptor = {
 		},
 	},
 	transfer: transferMultiBook,
+	libraryFetch: fetchMultiBookLibrary,
 } as const satisfies DeviceDescriptor;

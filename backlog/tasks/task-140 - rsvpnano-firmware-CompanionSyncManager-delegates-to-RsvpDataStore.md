@@ -4,7 +4,7 @@ title: 'rsvpnano firmware: CompanionSyncManager delegates to RsvpDataStore'
 status: To Do
 assignee: []
 created_date: '2026-05-21 02:13'
-updated_date: '2026-05-21 22:20'
+updated_date: '2026-05-22 22:30'
 labels: []
 milestone: m-12
 dependencies: []
@@ -36,3 +36,9 @@ Out of scope:
 - [ ] #3 RsvpDataStore continues to provide the same surface, no API regressions
 - [ ] #4 Firmware builds and existing HTTP + BLE sync paths remain functional end-to-end
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-05-22 status: still partial. apps/rsvpnano/src/sync/CompanionSyncManager.cpp continues to define private hashBookPath (line ~72), bookPositionKey (~70), readRsvpMetadata (~68), settingsJson (~59) instead of delegating to RsvpDataStore. RsvpDataStore exposes wrapper methods but CompanionSyncManager has not been migrated. No code change toward this task on `redesign` branch.
+<!-- SECTION:NOTES:END -->

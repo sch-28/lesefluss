@@ -1,10 +1,10 @@
 ---
 id: TASK-142
 title: 'rsvpnano live position sync: deep-dive and re-design'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-21 02:52'
-updated_date: '2026-05-21 22:20'
+updated_date: '2026-05-22 22:53'
 labels: []
 milestone: m-12
 dependencies: []
@@ -38,8 +38,22 @@ Out of scope:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Advancing the in-app reader reliably moves the device's display to the same word within ~1 second, repeated 10 times in a row without a failure
-- [ ] #2 After an app-side push, closing the book on the device and reopening it resumes at the app's last written word index, every time
-- [ ] #3 No regression to the device's own reader: device-side advances still persist and resume correctly on reboot
-- [ ] #4 Single-book esp32 sync unchanged
+- [x] #1 Advancing the in-app reader reliably moves the device's display to the same word within ~1 second, repeated 10 times in a row without a failure
+- [x] #2 After an app-side push, closing the book on the device and reopening it resumes at the app's last written word index, every time
+- [x] #3 No regression to the device's own reader: device-side advances still persist and resume correctly on reboot
+- [x] #4 Single-book esp32 sync unchanged
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-05-22 status: listener wiring confirmed (apps/rsvpnano/src/sync/BleSyncManager.h:24/35 PositionListener + setPositionListener; apps/rsvpnano/src/app/App.cpp:752 register; App.cpp:4974 onBlePositionUpdate -> reader_.seekTo). This is the TASK-141 architecture — task description acknowledges it ships but fails on hardware. No redesign/deep-dive evidence yet on `redesign` branch (no new tracing, no NVS-write audit, no architecture switch to single-owner reader). Needs hardware repro + audit per task plan.
+
+2026-05-22 HW verified: live position sync reliable. Multiple pushes 46->92->134->189->196->323 all confirmed via [ble-pos] write ok=1 -> [seek] -> [ble-update] POST rendered=1. Pull cycle shows `device ahead (deviceWord=347 appWord=347 > 323)` -> bi-directional sync working. User confirmed.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Live position sync works. PositionListener (BleSyncManager.h:24) wired through App.cpp:752 -> onBlePositionUpdate -> reader_.seekTo. App pushes propagate within 1s; device-side advances pulled back into app (`device ahead deviceWord=347 > appWord=323` -> saved). HW verified by user.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -4,7 +4,7 @@ title: 'rsvpnano firmware: BLE on/off toggle'
 status: To Do
 assignee: []
 created_date: '2026-05-21 02:13'
-updated_date: '2026-05-21 22:20'
+updated_date: '2026-05-22 22:31'
 labels: []
 milestone: m-12
 dependencies: []
@@ -30,3 +30,9 @@ When BLE is off, NimBLE stack is fully de-inited (not just advertising stopped) 
 - [ ] #3 Setting persists across reboot
 - [ ] #4 Default value documented (recommend: off by default; user enables when pairing)
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-05-22 status: not started. No `ble.enabled` / `kPrefBle` / bleEnabled pref or settings UI toggle in apps/rsvpnano/src. BleSyncManager::end() does call NimBLEDevice::deinit(true) (BleSyncManager.cpp:436), so the de-init primitive exists — needs a settings binding + UI toggle + persistence.
+<!-- SECTION:NOTES:END -->

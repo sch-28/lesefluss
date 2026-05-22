@@ -32,6 +32,12 @@ type CharKey<D extends DeviceDescriptor> = keyof CharsOf<D> & string;
 type CharValue<D extends DeviceDescriptor, K extends CharKey<D>> =
 	CharsOf<D>[K] extends CharDescriptor<infer T> ? T : never;
 
+type LibraryFetchData<D extends DeviceDescriptor> = D["libraryFetch"] extends (
+	deviceId: string,
+) => Promise<BLEResult<infer T>>
+	? T
+	: unknown;
+
 export type Adapter<D extends DeviceDescriptor> = {
 	descriptor: D;
 	read: <K extends CharKey<D>>(charName: K) => Promise<BLEResult<CharValue<D, K>>>;
@@ -41,6 +47,7 @@ export type Adapter<D extends DeviceDescriptor> = {
 		meta: TransferMeta,
 		onProgress: (pct: number) => void,
 	) => Promise<BLEResult>;
+	fetchLibrary?: () => Promise<BLEResult<LibraryFetchData<D>>>;
 };
 
 export function createBleAdapter<D extends DeviceDescriptor>(
@@ -99,6 +106,18 @@ export function createBleAdapter<D extends DeviceDescriptor>(
 		const transferImpl = descriptor.transfer;
 		adapter.transferFile = (content, meta, onProgress) =>
 			transferImpl(deviceId, content, meta, onProgress);
+	}
+
+	if (descriptor.libraryFetch) {
+		const libraryFetchImpl = descriptor.libraryFetch;
+		// Serialize the trigger write + initial CCCD-write through the op chain
+		// (Android tolerates one in-flight GATT op only). Once startNotifications
+		// has resolved inside the impl, async notify packets arrive outside the
+		// chain — that's expected, same as the transfer flow.
+		adapter.fetchLibrary = () =>
+			enqueueDeviceOp(deviceId, () => libraryFetchImpl(deviceId)) as Promise<
+				BLEResult<LibraryFetchData<D>>
+			>;
 	}
 
 	return adapter;

@@ -49,6 +49,17 @@ export type TransferMeta = {
 	category?: "book" | "article";
 };
 
+/**
+ * Notify-stream fetch for a characteristic whose JSON payload exceeds MTU.
+ * Mirrors the transfer escape-hatch pattern: the adapter exposes a typed
+ * method, the descriptor supplies the implementation, and the adapter wires
+ * one to the other at creation time. Used today only by the multi-book
+ * library char (see services/devices/multi-book/library-fetch-impl.ts).
+ */
+export type LibraryFetchImpl<T = unknown> = (
+	deviceId: string,
+) => Promise<BLEResult<T>>;
+
 export type DeviceDescriptor = {
 	/** Stable identifier persisted with the saved-device record. */
 	id: string;
@@ -56,6 +67,7 @@ export type DeviceDescriptor = {
 	serviceUuid: string;
 	chars: Record<string, CharDescriptor<unknown>>;
 	transfer?: TransferImpl;
+	libraryFetch?: LibraryFetchImpl<unknown>;
 };
 
 export type ScannedDevice = {

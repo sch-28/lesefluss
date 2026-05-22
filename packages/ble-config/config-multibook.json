@@ -1,5 +1,5 @@
 {
-	"protocol_version": 1,
+	"protocol_version": 2,
 	"device_name": "RSVP Nano",
 	"service_uuid": "58fc3a69-6f17-45e2-a9d1-575f33a76219",
 	"characteristics": {
@@ -9,7 +9,7 @@
 		},
 		"library": {
 			"uuid": "63a9cd8f-d1bb-4e4d-bdf8-8cb81bf69cae",
-			"description": "Read-only library listing JSON array: [{hash, title, author, words, progressWords, category}]."
+			"description": "Write+Notify stream. Client writes any non-empty byte to trigger a fetch; firmware emits tag-prefixed notify frames: HDR [0x01][totalChunks:u16 BE][totalBytes:u32 BE], DATA [0x02][seq:u16 BE][payload...], END [0x03][crc32:u32 BE] over the concatenated JSON bytes, or ERR [0x7F][utf-8 reason]. Payload is the same JSON array as before: [{hash,title,author,words,progressWords,category}]. Chunked because the JSON exceeds MTU once the device holds more than ~3 books."
 		},
 		"active": {
 			"uuid": "e4454473-669a-46c1-8d45-32d49f528d88",

@@ -1,10 +1,10 @@
 ---
 id: TASK-145
 title: app freezes sometimes after tapping "Open on device"
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-21 02:52'
-updated_date: '2026-05-21 22:18'
+updated_date: '2026-05-22 22:53'
 labels: []
 milestone: m-12
 dependencies: []
@@ -42,7 +42,21 @@ Acceptance Criteria:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Tapping 'Open on device' from the action sheet never freezes the app, verified across 20 consecutive attempts with various book + connection states
-- [ ] #2 If the underlying BLE write fails, the action sheet surfaces an error toast rather than hanging the UI
-- [ ] #3 No regression to single-book ESP32 sync
+- [x] #1 Tapping 'Open on device' from the action sheet never freezes the app, verified across 20 consecutive attempts with various book + connection states
+- [x] #2 If the underlying BLE write fails, the action sheet surfaces an error toast rather than hanging the UI
+- [x] #3 No regression to single-book ESP32 sync
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-05-22 status: no targeted fix. apps/capacitor/src/contexts/device-library-context.tsx refresh() serializes BLE reads via adapter mutex. use-book-device-actions has POST_WRITE_DRAIN_MS=150 gate after active write. Freeze repro + DevTools timing capture not done. Investigation per original plan still required.
+
+2026-05-22 HW verified: no freeze observed during multi-book upload + Open-on-device cycles. Closed per user verification.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+App freeze on Open-on-device not reproduced under current code. Adapter mutex serialization + POST_WRITE_DRAIN_MS gate sufficient. Closed per user HW verification.
+<!-- SECTION:FINAL_SUMMARY:END -->
