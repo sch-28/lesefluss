@@ -59,6 +59,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "../../components/toast";
 import type { ParagraphWordEntry } from "./paragraph";
+import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { useTheme } from "../../contexts/theme-context";
@@ -113,7 +114,8 @@ const NO_HIGHLIGHT = -1;
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 const BookReader: React.FC<{ id: string }> = ({ id }) => {
-	const { pushPosition } = useBookSync();
+	const { pushPosition, onDevicePositionUpdate } = useBookSync();
+	const { isConnected: isBleConnected } = useBLE();
 	const { isSyncing } = useSyncContext();
 	const qc = useQueryClient();
 	const history = useRouter().history;
@@ -193,6 +195,22 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	// Progress bar visibility - shown on tap/word-tap, hidden when user scrolls
 	const [progressBarVisible, setProgressBarVisible] = useState(false);
+	// Mirror of progressBarVisible accessible from refs-only callbacks. Lets
+	// per-scroll-tick handlers skip setProgressOffset when the bar is hidden,
+	// removing the React reconciliation cost during hold-scroll.
+	const progressBarVisibleRef = useRef(false);
+	useEffect(() => {
+		progressBarVisibleRef.current = progressBarVisible;
+	}, [progressBarVisible]);
+	// Latest progress offset, written every scroll tick. setProgressOffset
+	// (state) only flushed when the bar becomes visible or on scroll settle.
+	const progressOffsetRef = useRef(0);
+	// Keep ref in sync with state so other call sites (jumps, scrubs, init seed)
+	// don't need to write the ref explicitly. Skip during the per-tick hidden
+	// phase since the ref is the authoritative writer there.
+	useEffect(() => {
+		progressOffsetRef.current = progressOffset;
+	}, [progressOffset]);
 
 	const scrollViewRef = useRef<ReaderViewHandle>(null);
 	const rsvpViewRef = useRef<RsvpViewHandle>(null);
@@ -275,6 +293,41 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		setRsvpInitOffset(seed);
 		lastOffsetRef.current = seed;
 	}, [book, wordIndex]);
+
+	// Live-seek when the device pushes a new position for this book over BLE.
+	// book-sync-context applies the conflict-resolution tolerance gate first,
+	// so we only see notifies the user should visibly follow. Gated on
+	// isBleConnected so a user who never pairs pays nothing. We mirror what
+	// jumpToOffset does (state + scroll) but skip savePosition/pushPosition:
+	// the DB row was already updated by applyDevicePosition, and pushing back
+	// to the device would echo the value it just sent us.
+	useEffect(() => {
+		if (!isBleConnected) return;
+		if (!wordIndex || book?.positionUnit !== "word") return;
+		const unsubscribe = onDevicePositionUpdate((bookId, newWordPosition) => {
+			if (bookId !== id) return;
+			if (newWordPosition < 0 || newWordPosition >= wordIndex.wordCount) return;
+			const byteOffset = wordIndex.byteOf(wordPos(newWordPosition));
+			setActiveOffset(byteOffset);
+			setProgressOffset(byteOffset);
+			setRsvpInitOffset(byteOffset);
+			lastOffsetRef.current = byteOffset;
+			// Mark so the unmount-flush effect doesn't overwrite the device's
+			// fresh position with a stale book.position seed during a route
+			// re-mount (see reader unmount double-fire memory).
+			userMovedRef.current = true;
+			// Scroll the viewport so the new active word is visible. fine=true
+			// skips the coarse paragraph snap (which would double-scroll for
+			// small nudges); smooth=true animates the move so the highlight
+			// glides instead of snapping.
+			scrollViewRef.current?.jumpTo(byteOffset, {
+				highlight: true,
+				fine: true,
+				smooth: true,
+			});
+		});
+		return unsubscribe;
+	}, [id, wordIndex, book?.positionUnit, isBleConnected, onDevicePositionUpdate]);
 
 	// ── Build paragraph index ──────────────────────────────────────────────
 	// Computed once per content load. Two cheap structures:
@@ -593,11 +646,19 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const handleScrollHideProgressBar = useCallback(() => setProgressBarVisible(false), []);
 	const handleScrollShowProgressBar = useCallback(() => {
 		setProgressBarVisible(true);
+		// Bar just became visible — flush latest offset accumulated during the
+		// hidden phase so it reflects the current scroll position immediately.
+		setProgressOffset(progressOffsetRef.current);
 		markActivityRef.current?.();
 	}, []);
 	const handleSetActiveOffset = useCallback((offset: number) => setActiveOffset(offset), []);
 	const handleSetProgressOffset = useCallback((offset: number) => {
-		setProgressOffset(offset);
+		progressOffsetRef.current = offset;
+		// Skip state update when bar is hidden: nothing in the visible UI
+		// depends on progressOffset, and the per-tick reconciliation was the
+		// dominant scripting cost during hold-scroll. handleScrollPositionSettle
+		// (scroll-end) writes the final value to state.
+		if (progressBarVisibleRef.current) setProgressOffset(offset);
 		markActivityRef.current?.();
 	}, []);
 

@@ -8,6 +8,8 @@
  *  - Orchestrate the full book-transfer flow (upload + mark isActive in DB)
  */
 
+import { BleClient } from "@capacitor-community/bluetooth-le";
+import { multibook } from "@lesefluss/ble-config";
 import { WordIndex, type WordPosition, wordPos } from "@lesefluss/core";
 import type React from "react";
 import {
@@ -28,6 +30,8 @@ import { buildRsvpDocument, type RsvpChapter } from "../services/rsvp-format/bui
 import { log } from "../utils/log";
 import { useBLE } from "./ble-context";
 import { useDeviceLibrary } from "./device-library-context";
+
+const positionNotifyDecoder = new TextDecoder("utf-8");
 
 const DISCONNECTED_DEVICE_ACTIVE_HASH = "";
 
@@ -84,6 +88,14 @@ interface BookSyncContextType {
 	/** Error message from the last failed operation, or null. */
 	error: string | null;
 	clearError: () => void;
+	/**
+	 * Subscribe to device-driven position updates. Fires after the device
+	 * notifies a position that's ahead of the app, so consumers (like the
+	 * reader page) can move their UI in real time. Returns an unsubscribe.
+	 */
+	onDevicePositionUpdate: (
+		cb: (bookId: string, wordPosition: number) => void,
+	) => () => void;
 }
 
 const BookSyncContext = createContext<BookSyncContextType | undefined>(undefined);
@@ -168,6 +180,123 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 			: scaleWord(word, deviceCount, bookWordCount);
 	};
 
+	// Snapshot of the device library read through a ref so applyDevicePosition's
+	// identity stays stable across library refreshes. Without this the notify
+	// subscription effect would churn (stop+start) every time the snapshot
+	// changes, e.g. during a library stream or post-upload refresh.
+	const deviceLibrarySnapshotRef = useRef(deviceLibrarySnapshot);
+	useEffect(() => {
+		deviceLibrarySnapshotRef.current = deviceLibrarySnapshot;
+	}, [deviceLibrarySnapshot]);
+
+	// Listeners for device-driven position updates. Reader page subscribes so
+	// it can move the currently displayed word in real time.
+	const devicePositionListenersRef = useRef<Set<(bookId: string, wordPosition: number) => void>>(
+		new Set(),
+	);
+	const onDevicePositionUpdate = useCallback(
+		(cb: (bookId: string, wordPosition: number) => void) => {
+			devicePositionListenersRef.current.add(cb);
+			return () => {
+				devicePositionListenersRef.current.delete(cb);
+			};
+		},
+		[],
+	);
+
+	// Echo guard. After the app pushes a position to the device, the device
+	// echoes it back via its save→notify path. Without this, the echo trips
+	// the "device ahead" branch (small scale-rounding diff) or the helper
+	// double-fires on a position the app already knows. A blanket tolerance
+	// would also swallow legit 1-2 word device-side advances; time-windowing
+	// it to the most recent push fixes both.
+	const lastPushRef = useRef<{ hash: string; wordIndex: number; ms: number } | null>(null);
+	const ECHO_WINDOW_MS = 1500;
+	const ECHO_TOLERANCE = 2;
+
+	// Resolve a device-reported (hash, wordIndex) against the local DB. Pushes
+	// the app position back to the device when the app is genuinely ahead.
+	const applyDevicePosition = useCallback(
+		async (deviceHash: string, devicePosRaw: number) => {
+			if (!deviceHash) return;
+			if (!Number.isFinite(devicePosRaw) || devicePosRaw < 0) return;
+			if (connectedDescriptorId !== MULTI_BOOK_DESCRIPTOR_ID || !connectedDevice?.deviceId) {
+				return;
+			}
+			// Drop the echo of our own recent push so it doesn't trip either
+			// branch. Match on hash + nearby word within a short window.
+			const recentPush = lastPushRef.current;
+			if (
+				recentPush &&
+				recentPush.hash === deviceHash &&
+				Date.now() - recentPush.ms < ECHO_WINDOW_MS &&
+				Math.abs(devicePosRaw - recentPush.wordIndex) <= ECHO_TOLERANCE
+			) {
+				return;
+			}
+			const snapshot = deviceLibrarySnapshotRef.current;
+			const lookupCount = (hash: string): number | null => {
+				if (snapshot.kind !== "multi") return null;
+				return snapshot.library.find((e) => e.hash === hash)?.words ?? null;
+			};
+			const scale = (
+				bookWordCount: number,
+				hash: string,
+				word: number,
+				direction: "toDevice" | "toApp",
+			): number => {
+				const deviceCount = lookupCount(hash) ?? bookWordCount;
+				return direction === "toDevice"
+					? scaleWord(word, bookWordCount, deviceCount)
+					: scaleWord(word, deviceCount, bookWordCount);
+			};
+
+			const allBooks = await queries.getBooks();
+			const matchedBook = allBooks.find((b) => {
+				const bookHash = computeOnDeviceHash(b.id, "book");
+				const articleHash = computeOnDeviceHash(b.id, "article");
+				return bookHash === deviceHash || articleHash === deviceHash;
+			});
+			if (!matchedBook) return;
+
+			const devicePosAsApp = wordPos(
+				scale(matchedBook.wordCount, deviceHash, devicePosRaw, "toApp"),
+			);
+			const appPos = matchedBook.wordPosition;
+			if (devicePosAsApp > appPos) {
+				await queries.updateBook(matchedBook.id, {
+					wordPosition: devicePosAsApp,
+					lastRead: Date.now(),
+				});
+				log(
+					"booksync",
+					`multibook: device ahead (deviceWord=${devicePosRaw} appWord=${devicePosAsApp} > ${appPos}), saved`,
+				);
+				devicePositionListenersRef.current.forEach((cb) => {
+					try {
+						cb(matchedBook.id, devicePosAsApp);
+					} catch (err) {
+						log.warn("booksync", "device position listener threw:", err);
+					}
+				});
+			} else if (appPos > devicePosAsApp + ECHO_TOLERANCE) {
+				const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
+				const scaledOut = scale(matchedBook.wordCount, deviceHash, appPos, "toDevice");
+				await adapter.write("position", { hash: deviceHash, wordIndex: wordPos(scaledOut) });
+				lastPushRef.current = {
+					hash: deviceHash,
+					wordIndex: scaledOut,
+					ms: Date.now(),
+				};
+				log(
+					"booksync",
+					`multibook: app ahead (${appPos} > appView=${devicePosAsApp}), pushed deviceWord=${scaledOut}`,
+				);
+			}
+		},
+		[connectedDescriptorId, connectedDevice?.deviceId],
+	);
+
 	const syncPosition = useCallback(async () => {
 		if (!isConnected) return;
 
@@ -181,40 +310,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				return;
 			}
 			const { hash: deviceHash, wordIndex: devicePos } = posRes.data;
-			if (!deviceHash || devicePos == null) {
-				return;
-			}
-			// Find which app book maps to this device hash (try both categories).
-			const allBooks = await queries.getBooks();
-			const matchedBook = allBooks.find((b) => {
-				const bookHash = computeOnDeviceHash(b.id, "book");
-				const articleHash = computeOnDeviceHash(b.id, "article");
-				return bookHash === deviceHash || articleHash === deviceHash;
-			});
-			if (!matchedBook) {
-				return;
-			}
-			const devicePosAsApp = wordPos(
-				scaleForBook(matchedBook.wordCount, deviceHash, devicePos, "toApp"),
-			);
-			const appPos = matchedBook.wordPosition;
-			if (devicePosAsApp > appPos) {
-				await queries.updateBook(matchedBook.id, {
-					wordPosition: devicePosAsApp,
-					lastRead: Date.now(),
-				});
-				log(
-					"booksync",
-					`multibook: device ahead (deviceWord=${devicePos} appWord=${devicePosAsApp} > ${appPos}), saved`,
-				);
-			} else if (appPos > devicePosAsApp) {
-				const scaledOut = scaleForBook(matchedBook.wordCount, deviceHash, appPos, "toDevice");
-				await adapter.write("position", { hash: deviceHash, wordIndex: wordPos(scaledOut) });
-				log(
-					"booksync",
-					`multibook: app ahead (${appPos} > appView=${devicePosAsApp}), pushed deviceWord=${scaledOut}`,
-				);
-			}
+			await applyDevicePosition(deviceHash, devicePos as number);
 			return;
 		}
 
@@ -356,6 +452,11 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				if (!write.success) {
 					log.warn("booksync", "multibook writePosition failed:", write.error);
 				} else {
+					lastPushRef.current = {
+						hash: matchedHash,
+						wordIndex: scaledWord,
+						ms: Date.now(),
+					};
 					log(
 						"booksync",
 						`multibook pushPosition ok: appWord=${book.wordPosition} deviceWord=${scaledWord} hash=${matchedHash}`,
@@ -380,6 +481,62 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 			syncPosition();
 		});
 	}, [onConnected, syncPosition]);
+
+	// Subscribe to the position char so device-side reader advances stream into
+	// the app in real time. Stays alive for the duration of the multibook
+	// connection. Each notify carries the same JSON shape buildPositionJson()
+	// emits on a read.
+	useEffect(() => {
+		if (
+			!isConnected ||
+			connectedDescriptorId !== MULTI_BOOK_DESCRIPTOR_ID ||
+			!connectedDevice?.deviceId
+		) {
+			return;
+		}
+		const deviceId = connectedDevice.deviceId;
+		const serviceUuid = multibook.serviceUuid;
+		const charUuid = multibook.characteristics.position.uuid;
+
+		let cancelled = false;
+		const startedAt = Date.now();
+		const handle = (view: DataView) => {
+			try {
+				const text = positionNotifyDecoder.decode(view).replace(/\0+$/, "");
+				if (!text) return;
+				const parsed = JSON.parse(text) as { hash?: string; wordIndex?: number };
+				if (!parsed.hash || typeof parsed.wordIndex !== "number") return;
+				if (!Number.isFinite(parsed.wordIndex) || parsed.wordIndex < 0) return;
+				void applyDevicePosition(parsed.hash, parsed.wordIndex);
+			} catch (err) {
+				log.warn("booksync", "position notify decode failed:", err);
+			}
+		};
+
+		BleClient.startNotifications(deviceId, serviceUuid, charUuid, handle)
+			.then(() => {
+				if (cancelled) {
+					BleClient.stopNotifications(deviceId, serviceUuid, charUuid).catch(() => {});
+					return;
+				}
+				log("booksync", `position notify subscribed in ${Date.now() - startedAt}ms`);
+			})
+			.catch((err) => {
+				log.warn("booksync", "position notify subscribe failed:", err);
+			});
+
+		return () => {
+			cancelled = true;
+			BleClient.stopNotifications(deviceId, serviceUuid, charUuid).catch((err) => {
+				log("booksync", "position notify unsubscribe failed (likely disconnected):", err);
+			});
+		};
+	}, [
+		isConnected,
+		connectedDescriptorId,
+		connectedDevice?.deviceId,
+		applyDevicePosition,
+	]);
 
 	// ------------------------------------------------------------------
 	// Book transfer
@@ -549,6 +706,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 		transferProgress,
 		error,
 		clearError,
+		onDevicePositionUpdate,
 	};
 
 	return <BookSyncContext.Provider value={value}>{children}</BookSyncContext.Provider>;

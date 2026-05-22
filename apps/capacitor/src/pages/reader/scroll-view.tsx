@@ -26,6 +26,10 @@ import type { ReaderViewHandle } from "./view-types";
 
 // ─── Module-level singletons ─────────────────────────────────────────────────
 
+// Stable empty-entries fallback so memoized Paragraph doesn't bust on every
+// render for entry-less paragraphs (e.g. headings).
+const EMPTY_ENTRIES: readonly ParagraphWordEntry[] = [];
+
 // Fine-scroll tuning (see scheduleFineScroll).
 const FINE_SCROLL_MOUNT_FRAME_BUDGET = 10;
 const FINE_SCROLL_STABILITY_TICK_MS = 50;
@@ -87,11 +91,14 @@ function scheduleFineScroll(
 	suppress: ScrollSuppressRefs,
 	shouldHighlight: boolean,
 	onReady?: () => void,
+	smooth = false,
 ): () => void {
 	let mountAttempts = 0;
 	let rafId = 0;
 	let timeoutId = 0;
 	let cancelled = false;
+
+	const SMOOTH_DURATION_MS = 250;
 
 	const alignSpan = (span: HTMLElement) => {
 		if (cancelled) return;
@@ -99,7 +106,29 @@ function scheduleFineScroll(
 		if (Math.abs(delta) > 2) {
 			suppress.suppressScrollEnd.current = true;
 			if (shouldHighlight) suppress.suppressHighlight.current = true;
-			listHandle.scrollBy(delta);
+			if (!smooth) {
+				listHandle.scrollBy(delta);
+			} else {
+				// VList only exposes scrollBy(offset), no smooth/behavior arg, so
+				// drive the animation by hand: ease-out-cubic over a fixed window,
+				// applying the per-frame delta. Cancelled if a newer scheduleFineScroll
+				// starts (cancelled flag) or component unmounts.
+				const startTime = performance.now();
+				let appliedSoFar = 0;
+				const tick = (now: number) => {
+					if (cancelled) return;
+					const t = Math.min(1, (now - startTime) / SMOOTH_DURATION_MS);
+					const eased = 1 - (1 - t) ** 3;
+					const target = delta * eased;
+					const step = target - appliedSoFar;
+					if (step !== 0) listHandle.scrollBy(step);
+					appliedSoFar = target;
+					if (t < 1) {
+						rafId = requestAnimationFrame(tick);
+					}
+				};
+				rafId = requestAnimationFrame(tick);
+			}
 		}
 		onReady?.();
 	};
@@ -310,7 +339,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	 *  ADR-0002: byte input is converted to a word index via the active
 	 *  WordIndex at the seam; the DOM is keyed by `data-word` only. */
 	const fineScrollTo = useCallback(
-		(byteOffset: number, shouldHighlight: boolean, onReady?: () => void) => {
+		(byteOffset: number, shouldHighlight: boolean, onReady?: () => void, smooth = false) => {
 			if (!listRef.current || !containerRef.current || !wordIndex) return undefined;
 			const idx = findParagraphIndex(byteOffset);
 			const startWord = wordPos(paragraphStartWords[idx] ?? 0);
@@ -328,6 +357,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 				},
 				shouldHighlight,
 				onReady,
+				smooth,
 			);
 		},
 		[findParagraphIndex, paragraphStartWords, wordIndex],
@@ -386,13 +416,15 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	useImperativeHandle(
 		ref,
 		() => ({
-			jumpTo(byteOffset, { highlight = true } = {}) {
+			jumpTo(byteOffset, { highlight = true, fine = false, smooth = false } = {}) {
 				if (!listRef.current) return;
-				const idx = findParagraphIndex(byteOffset);
 				suppressNextScrollEndRef.current = true;
 				if (highlight) suppressScrollHighlightClearRef.current = true;
-				listRef.current.scrollToIndex(idx, { align: "start" });
-				fineScrollTo(byteOffset, highlight);
+				if (!fine) {
+					const idx = findParagraphIndex(byteOffset);
+					listRef.current.scrollToIndex(idx, { align: "start" });
+				}
+				fineScrollTo(byteOffset, highlight, undefined, smooth);
 			},
 			scrollBy(pixels) {
 				listRef.current?.scrollBy(pixels);
@@ -527,7 +559,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 						<Paragraph
 							key={i.toString()}
 							text={text}
-							entries={entriesByParagraph[i] ?? []}
+							entries={entriesByParagraph[i] ?? EMPTY_ENTRIES}
 							activeWord={activeWord}
 							onWordTap={onWordTap}
 							onWordLongPress={onWordLongPress}
