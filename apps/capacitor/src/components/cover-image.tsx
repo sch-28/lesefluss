@@ -2,6 +2,8 @@ import type React from "react";
 import { useState } from "react";
 import { proxyImageUrl } from "../services/catalog/client";
 
+const preventDragStart = (e: React.DragEvent<HTMLImageElement>) => e.preventDefault();
+
 type Props = {
 	src: string | null | undefined;
 	alt: string;
@@ -49,6 +51,8 @@ const CoverImage: React.FC<Props> = ({ src, alt, fallback, className, priority, 
 					alt={alt}
 					decoding="async"
 					loading={priority ? "eager" : "lazy"}
+					draggable={false}
+					onDragStart={preventDragStart}
 					{...({ fetchpriority: priority ? "high" : "auto" } as {
 						fetchpriority: "high" | "auto";
 					})}

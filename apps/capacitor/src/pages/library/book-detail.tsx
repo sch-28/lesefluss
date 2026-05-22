@@ -59,8 +59,11 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const [isTransferOpen, setIsTransferOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-	// Hoisted so hook order stays stable across the early returns below
-	// (otherwise React error #310 on the first→second render transition).
+	// Everything below this line MUST stay above the `if (isPending)` /
+	// `if (!book)` early returns. Hooks called only on the loaded-book path
+	// (e.g. useBookDeviceState, useBookDeviceActions) trigger React error
+	// #310 on the first to second render transition because the hook count
+	// would differ between renders.
 	const deleteHeaderAction = useMemo(
 		() => ({
 			label: "Delete",
@@ -70,6 +73,12 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		}),
 		[],
 	);
+	const deviceState = useBookDeviceState(book?.id ?? null);
+	const deviceActions = useBookDeviceActions({
+		bookId: book?.id ?? null,
+		bookTitle: book?.title,
+		onUpload: () => setIsTransferOpen(true),
+	});
 
 	if (isPending) {
 		return (
@@ -102,12 +111,6 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 			? getCoverUrl(book.catalogId)
 			: null;
 	const progress = readingProgress(book);
-	const deviceState = useBookDeviceState(book.id);
-	const deviceActions = useBookDeviceActions({
-		bookId: book.id,
-		bookTitle: book.title,
-		onUpload: () => setIsTransferOpen(true),
-	});
 	const externalUrl = book.sourceUrl
 		? book.sourceUrl
 		: book.catalogId

@@ -78,6 +78,12 @@ interface BLEProviderProps {
 	children: ReactNode;
 }
 
+const sameDevice = (a: BleDevice | null, b: BleDevice | null): boolean => {
+	if (a === b) return true;
+	if (a == null || b == null) return false;
+	return a.deviceId === b.deviceId && a.name === b.name;
+};
+
 export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	const [isConnected, setIsConnected] = useState(false);
 	const [connectionState, setConnectionState] = useState<BLEConnectionState>(
@@ -116,7 +122,13 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		init();
 	}, [bleEnabled]);
 
-	// Poll connection state from the bleClient singleton (native only, when opted in)
+	// Poll connection state from the bleClient singleton (native only, when opted in).
+	// Each tick MUST early-out when nothing changed: bleClient.connectedDevice is a
+	// getter that may return a fresh object reference per call. Unconditional
+	// setState would re-render every BLE-context consumer (and their downstream
+	// trees) at 2 Hz forever, starving the main thread once enough subscribers
+	// accumulate. Symptom: touch events stop dispatching while console.log + scroll
+	// + programmatic .click() still work.
 	useEffect(() => {
 		if (IS_WEB) return;
 		if (!bleEnabled) return;
@@ -124,12 +136,13 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		const interval = setInterval(() => {
 			const state = bleClient.connectionState;
 			const device = bleClient.connectedDevice;
+			const descId = bleClient.connectedDescriptorId;
 			const nowConnected = state === BLEConnectionState.CONNECTED;
 
-			setConnectionState(state);
-			setIsConnected(nowConnected);
-			setConnectedDevice(device);
-			setConnectedDescriptorId(bleClient.connectedDescriptorId);
+			setConnectionState((prev) => (prev === state ? prev : state));
+			setIsConnected((prev) => (prev === nowConnected ? prev : nowConnected));
+			setConnectedDevice((prev) => (sameDevice(prev, device) ? prev : device));
+			setConnectedDescriptorId((prev) => (prev === descId ? prev : descId));
 
 			if (prevConnected && !nowConnected) {
 				setScanTrigger((n) => n + 1);
