@@ -20,7 +20,7 @@ import {
 	setActiveBook,
 	updateBook,
 } from "./books";
-import { getLastDevice, saveDevice } from "./devices";
+import { clearAllDevices, forgetDevice, getPairedDevices, saveDevice } from "./devices";
 import {
 	addEntry,
 	deleteAllEntries,
@@ -87,7 +87,9 @@ export const queries = {
 
 	// Devices
 	saveDevice,
-	getLastDevice,
+	getPairedDevices,
+	forgetDevice,
+	clearAllDevices,
 
 	// Books
 	getBooks,

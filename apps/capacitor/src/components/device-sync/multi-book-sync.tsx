@@ -1,3 +1,13 @@
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@lesefluss/ui/alert-dialog";
 import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
 import { Trash2 } from "lucide-react";
@@ -30,6 +40,7 @@ export function MultiBookSync(_props: MultiBookSyncProps) {
 	const adapter = useMultiBookAdapter();
 	const { snapshot, refresh: refreshLibrary } = useDeviceLibrary();
 	const [storage, setStorage] = useState<MultiBookStorage | null>(null);
+	const [deleteTarget, setDeleteTarget] = useState<{ hash: string; title: string } | null>(null);
 
 	const library = snapshot.kind === "multi" ? snapshot.library : [];
 	const activeHash = snapshot.kind === "multi" ? snapshot.activeHash : "";
@@ -67,24 +78,19 @@ export function MultiBookSync(_props: MultiBookSyncProps) {
 		[adapter, refreshLibrary],
 	);
 
-	const deleteEntry = useCallback(
-		async (hash: string, title: string) => {
-			if (!adapter) {
-				return;
-			}
-			const confirmed = window.confirm(`Remove "${title}" from device?`);
-			if (!confirmed) {
-				return;
-			}
-			const result = await adapter.write("delete", { hash });
-			if (result.success) {
-				await refreshLibrary();
-			} else {
-				log.warn("multibook-ui", "delete failed:", result.error);
-			}
-		},
-		[adapter, refreshLibrary],
-	);
+	const confirmDelete = useCallback(async () => {
+		const target = deleteTarget;
+		setDeleteTarget(null);
+		if (!adapter || !target) {
+			return;
+		}
+		const result = await adapter.write("delete", { hash: target.hash });
+		if (result.success) {
+			await refreshLibrary();
+		} else {
+			log.warn("multibook-ui", "delete failed:", result.error);
+		}
+	}, [adapter, deleteTarget, refreshLibrary]);
 
 	const refresh = useCallback(() => {
 		void refreshLibrary();
@@ -136,7 +142,12 @@ export function MultiBookSync(_props: MultiBookSyncProps) {
 										type="button"
 										className="flex shrink-0 items-center justify-center px-3 text-muted-foreground hover:text-destructive"
 										aria-label={`Remove ${book.title || book.hash} from device`}
-										onClick={() => deleteEntry(book.hash, book.title || book.hash)}
+										onClick={() =>
+											setDeleteTarget({
+												hash: book.hash,
+												title: book.title || book.hash,
+											})
+										}
 									>
 										<Trash2 className="size-4" />
 									</button>
@@ -146,6 +157,26 @@ export function MultiBookSync(_props: MultiBookSyncProps) {
 					</ul>
 				)}
 			</section>
+
+			<AlertDialog
+				open={deleteTarget !== null}
+				onOpenChange={(open) => {
+					if (!open) setDeleteTarget(null);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Remove from device</AlertDialogTitle>
+						<AlertDialogDescription>
+							Remove "{deleteTarget?.title}" from the device? Your local copy stays.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction onClick={confirmDelete}>Remove</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 
 			{storage && (
 				<section>

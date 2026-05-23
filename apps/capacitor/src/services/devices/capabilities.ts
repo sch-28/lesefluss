@@ -21,10 +21,17 @@ export type DeviceCapabilities = {
 	positionUnit: "byte" | "word";
 	/** Human-readable label for the device-list UI. */
 	label: string;
+	/** Brightness + inverse colors (ESP32 single-book only today). */
+	hasDisplaySettings: boolean;
+	/** Display-off + deep-sleep timeouts (ESP32 single-book only today). */
+	hasPowerSettings: boolean;
+	/** Dev-mode toggle (ESP32 single-book only today). */
+	hasDevMode: boolean;
 };
 
 export function deriveCapabilities(descriptor: DeviceDescriptor): DeviceCapabilities {
 	const hasLibrary = "library" in descriptor.chars;
+	const isSingleBook = !hasLibrary;
 	return {
 		descriptorId: descriptor.id,
 		isMultiBook: hasLibrary,
@@ -32,5 +39,8 @@ export function deriveCapabilities(descriptor: DeviceDescriptor): DeviceCapabili
 		hasCategorizedUploads: hasLibrary,
 		positionUnit: hasLibrary ? "word" : "byte",
 		label: descriptor.deviceName,
+		hasDisplaySettings: isSingleBook,
+		hasPowerSettings: isSingleBook,
+		hasDevMode: isSingleBook,
 	};
 }

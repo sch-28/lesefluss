@@ -24,6 +24,7 @@ import {
 	RefreshCw,
 	Search,
 	Square,
+	Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
@@ -31,6 +32,7 @@ import { DeviceSync } from "@/components/device-sync";
 import { useToast } from "@/components/toast";
 import { useBLE } from "@/contexts/ble-context";
 import { useAutoSaveSettings } from "@/hooks/use-auto-save-settings";
+import { useDeviceCapabilities } from "@/hooks/use-device-capabilities";
 import { ble } from "@/services/ble";
 import type { StorageInfo } from "@/services/ble/characteristics/storage";
 import { MULTI_BOOK_DESCRIPTOR_ID } from "@/services/devices";
@@ -121,11 +123,14 @@ function DeviceSettings() {
 		connectionState,
 		connectedDevice,
 		isScanning,
+		scannedDevices,
 		bleEnabled,
 		toggleBLEEnabled,
 		startScan,
 		stopScan,
+		connect,
 		disconnect,
+		forget,
 		syncToDevice,
 		syncFromDevice,
 		onConnected,
@@ -138,6 +143,7 @@ function DeviceSettings() {
 
 	const [syncing, setSyncing] = useState(false);
 	const [showDisconnectAlert, setShowDisconnectAlert] = useState(false);
+	const [forgetTarget, setForgetTarget] = useState<{ id: string; name: string } | null>(null);
 	const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
 
 	const fetchStorageRef = useRef<(() => Promise<void>) | undefined>(undefined);
@@ -169,6 +175,14 @@ function DeviceSettings() {
 		await disconnect();
 		setShowDisconnectAlert(false);
 		showToast("Disconnected from device");
+	};
+
+	const handleForget = async () => {
+		const target = forgetTarget;
+		setForgetTarget(null);
+		if (!target) return;
+		await forget(target.id);
+		showToast("Device forgotten");
 	};
 
 	const handleSyncToDevice = async () => {
@@ -211,6 +225,9 @@ function DeviceSettings() {
 		}
 	};
 
+	const isMultiBookConnected = isConnected && connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID;
+	const caps = useDeviceCapabilities(isConnected ? connectedDescriptorId : null);
+
 	if (isPending || !settings) {
 		return (
 			<div className="bg-background">
@@ -221,8 +238,6 @@ function DeviceSettings() {
 			</div>
 		);
 	}
-
-	const isMultiBookConnected = isConnected && connectedDescriptorId === MULTI_BOOK_DESCRIPTOR_ID;
 
 	const storageUsedPct =
 		storageInfo && storageInfo.total_bytes > 0
@@ -236,51 +251,58 @@ function DeviceSettings() {
 				{isMultiBookConnected && connectedDescriptorId && (
 					<DeviceSync descriptorId={connectedDescriptorId} />
 				)}
-				<Section title="Display">
-					<SliderRow
-						title="Brightness"
-						value={settings.brightness}
-						displayValue={`${settings.brightness}%`}
-						min={SETTING_CONSTRAINTS.BRIGHTNESS.min}
-						max={SETTING_CONSTRAINTS.BRIGHTNESS.max}
-						step={SETTING_CONSTRAINTS.BRIGHTNESS.step}
-						onChange={(v) => updateSetting("brightness", v)}
-					/>
-					<ToggleRow
-						title="Inverse colors"
-						checked={settings.inverse}
-						onCheckedChange={(v) => updateSetting("inverse", v)}
-					/>
-				</Section>
 
-				<Section title="Power">
-					<SliderRow
-						title="Screen off"
-						value={settings.displayOffTimeout}
-						displayValue={`${settings.displayOffTimeout}s`}
-						min={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.min}
-						max={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.max}
-						step={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.step}
-						onChange={(v) => updateSetting("displayOffTimeout", v)}
-					/>
-					<SliderRow
-						title="Shutdown"
-						value={settings.deepSleepTimeout}
-						displayValue={`${settings.deepSleepTimeout}s`}
-						min={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.min}
-						max={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.max}
-						step={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.step}
-						onChange={(v) => updateSetting("deepSleepTimeout", v)}
-					/>
-				</Section>
+				{caps?.hasDisplaySettings && (
+					<Section title="Display">
+						<SliderRow
+							title="Brightness"
+							value={settings.brightness}
+							displayValue={`${settings.brightness}%`}
+							min={SETTING_CONSTRAINTS.BRIGHTNESS.min}
+							max={SETTING_CONSTRAINTS.BRIGHTNESS.max}
+							step={SETTING_CONSTRAINTS.BRIGHTNESS.step}
+							onChange={(v) => updateSetting("brightness", v)}
+						/>
+						<ToggleRow
+							title="Inverse colors"
+							checked={settings.inverse}
+							onCheckedChange={(v) => updateSetting("inverse", v)}
+						/>
+					</Section>
+				)}
 
-				<Section title="Developer">
-					<ToggleRow
-						title="Dev mode"
-						checked={settings.devMode}
-						onCheckedChange={(v) => updateSetting("devMode", v)}
-					/>
-				</Section>
+				{caps?.hasPowerSettings && (
+					<Section title="Power">
+						<SliderRow
+							title="Screen off"
+							value={settings.displayOffTimeout}
+							displayValue={`${settings.displayOffTimeout}s`}
+							min={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.min}
+							max={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.max}
+							step={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.step}
+							onChange={(v) => updateSetting("displayOffTimeout", v)}
+						/>
+						<SliderRow
+							title="Shutdown"
+							value={settings.deepSleepTimeout}
+							displayValue={`${settings.deepSleepTimeout}s`}
+							min={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.min}
+							max={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.max}
+							step={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.step}
+							onChange={(v) => updateSetting("deepSleepTimeout", v)}
+						/>
+					</Section>
+				)}
+
+				{caps?.hasDevMode && (
+					<Section title="Developer">
+						<ToggleRow
+							title="Dev mode"
+							checked={settings.devMode}
+							onCheckedChange={(v) => updateSetting("devMode", v)}
+						/>
+					</Section>
+				)}
 
 				<Section title="Connection">
 					<ToggleRow
@@ -310,30 +332,62 @@ function DeviceSettings() {
 									</div>
 								</div>
 							)}
-							<div className="p-3">
+							<div className="flex gap-2 p-3">
 								<Button
 									variant="outline"
-									className="w-full text-destructive"
+									className="flex-1 text-destructive"
 									onClick={() => setShowDisconnectAlert(true)}
 								>
 									<CircleX />
 									Disconnect
+								</Button>
+								<Button
+									variant="outline"
+									className="flex-1 text-destructive"
+									onClick={() =>
+										setForgetTarget({
+											id: connectedDevice.deviceId,
+											name: connectedDevice.name || "Lesefluss",
+										})
+									}
+								>
+									<Trash2 />
+									Forget
 								</Button>
 							</div>
 						</>
 					)}
 					{bleEnabled && !isConnected && (
 						<>
-							<div className="flex items-center gap-3 px-4 py-3 text-muted-foreground text-sm">
-								{isScanning && <Loader2 className="size-4 animate-spin" />}
-								<span>
-									{connectionState === "connecting"
-										? "Connecting..."
-										: isScanning
-											? "Scanning for Lesefluss..."
-											: "Not connected"}
-								</span>
-							</div>
+							{connectionState === "connecting" ? (
+								<div className="flex items-center gap-3 px-4 py-3 text-muted-foreground text-sm">
+									<Loader2 className="size-4 animate-spin" />
+									<span>Connecting...</span>
+								</div>
+							) : scannedDevices.length === 0 ? (
+								<div className="flex items-center gap-3 px-4 py-3 text-muted-foreground text-sm">
+									{isScanning && <Loader2 className="size-4 animate-spin" />}
+									<span>{isScanning ? "Scanning for device..." : "Not connected"}</span>
+								</div>
+							) : null}
+							{scannedDevices.map((d) => (
+								<button
+									type="button"
+									key={d.device.deviceId}
+									className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 active:bg-muted"
+									onClick={() => connect(d.device.deviceId)}
+								>
+									<Bluetooth className="size-5 text-primary" />
+									<div className="min-w-0 flex-1">
+										<div className="truncate font-medium text-foreground text-sm">
+											{d.name || "Lesefluss"}
+										</div>
+										<div className="truncate text-muted-foreground text-xs">
+											{d.device.deviceId} · {d.rssi} dBm
+										</div>
+									</div>
+								</button>
+							))}
 							<div className="flex gap-2 p-3">
 								{isScanning ? (
 									<Button variant="outline" className="flex-1" onClick={stopScan}>
@@ -364,13 +418,13 @@ function DeviceSettings() {
 					)}
 				</Section>
 
-				<div className="mt-6 space-y-3">
-					<div className="flex gap-2">
+				{isConnected && caps && !caps.isMultiBook && (
+					<div className="mt-6 flex gap-2">
 						<Button
 							variant="outline"
 							className="flex-1"
 							onClick={handleSyncToDevice}
-							disabled={!isConnected || syncing}
+							disabled={syncing}
 						>
 							{syncing ? <Loader2 className="animate-spin" /> : <CloudUpload />}
 							Sync to device
@@ -379,19 +433,13 @@ function DeviceSettings() {
 							variant="outline"
 							className="flex-1"
 							onClick={handleSyncFromDevice}
-							disabled={!isConnected || syncing}
+							disabled={syncing}
 						>
 							{syncing ? <Loader2 className="animate-spin" /> : <CloudDownload />}
 							Load from device
 						</Button>
 					</div>
-					{bleEnabled && !isConnected && (
-						<div className="flex items-center justify-center gap-2 text-muted-foreground text-sm">
-							<Bluetooth className="size-4" />
-							<span>Connect to Lesefluss to sync</span>
-						</div>
-					)}
-				</div>
+				)}
 			</div>
 
 			<AlertDialog open={showDisconnectAlert} onOpenChange={setShowDisconnectAlert}>
@@ -405,6 +453,27 @@ function DeviceSettings() {
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction onClick={handleDisconnect}>Disconnect</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<AlertDialog
+				open={forgetTarget !== null}
+				onOpenChange={(open) => {
+					if (!open) setForgetTarget(null);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Forget this device</AlertDialogTitle>
+						<AlertDialogDescription>
+							{forgetTarget?.name ?? "This device"} will be removed and won't auto-connect again
+							until you pair it from the scan list.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction onClick={handleForget}>Forget</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

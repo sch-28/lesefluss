@@ -5,7 +5,7 @@
 
 import { BleClient, type BleDevice, type ScanResult } from "@capacitor-community/bluetooth-le";
 import { log } from "../../utils/log";
-import { DEVICE_DESCRIPTORS, SINGLE_BOOK_DESCRIPTOR_ID } from "../devices";
+import { DEVICE_DESCRIPTORS } from "../devices";
 import { BLE_CONNECTION_TIMEOUT_MS, BLEConnectionState, type BLEResult } from "./types";
 
 export interface ScannedDevice {
@@ -59,10 +59,21 @@ class BLEClient {
 				const advertisedName = result.localName || result.device.name || "";
 
 				let matched = advertisedUuids.map((u) => byServiceUuid.get(u)).find((d) => d !== undefined);
+				const matchedByUuid = matched !== undefined;
 				if (!matched) {
 					matched = DEVICE_DESCRIPTORS.find((d) => advertisedName.startsWith(d.deviceName));
 				}
 				if (!matched) {
+					return;
+				}
+				// A device can emit multiple advertisement frames per scan: a
+				// UUID-bearing one and a name-only one. The UUID match is
+				// authoritative; never let a later name-only frame overwrite
+				// it (otherwise a multi-book device whose name happens to
+				// prefix-match the single-book descriptor would silently get
+				// re-tagged as single-book between connect attempts).
+				const existing = this._scannedDevices.get(result.device.deviceId);
+				if (existing && !matchedByUuid && existing.descriptorId !== matched.id) {
 					return;
 				}
 				const device: ScannedDevice = {
@@ -135,8 +146,17 @@ class BLEClient {
 			]);
 
 			const deviceInfo = this._scannedDevices.get(deviceId);
-			this._connectedDevice = deviceInfo?.device ?? { deviceId };
-			this._connectedDescriptorId = deviceInfo?.descriptorId ?? SINGLE_BOOK_DESCRIPTOR_ID;
+			if (!deviceInfo) {
+				// No scan record → we'd be guessing the descriptor. Force a
+				// re-scan by failing the connect; silently defaulting to
+				// SINGLE_BOOK_DESCRIPTOR_ID misroutes rsvpnano sessions through
+				// the ESP32 char set and shows the wrong settings UI.
+				await BleClient.disconnect(deviceId).catch(() => {});
+				this._connectionState = BLEConnectionState.DISCONNECTED;
+				return { success: false, error: "Device not in current scan results" };
+			}
+			this._connectedDevice = deviceInfo.device;
+			this._connectedDescriptorId = deviceInfo.descriptorId;
 			this._connectionState = BLEConnectionState.CONNECTED;
 
 			log("ble", "connected:", deviceId, "as", this._connectedDescriptorId);

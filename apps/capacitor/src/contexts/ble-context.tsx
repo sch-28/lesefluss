@@ -19,6 +19,7 @@ import { log } from "../utils/log";
 import { IS_WEB } from "../utils/platform";
 
 const BLE_ENABLED_KEY = "ble_enabled";
+const PAIRING_V2_MIGRATED_KEY = "paired_v2_migrated";
 
 async function getBLEEnabled(): Promise<boolean> {
 	const { value } = await Preferences.get({ key: BLE_ENABLED_KEY });
@@ -27,6 +28,18 @@ async function getBLEEnabled(): Promise<boolean> {
 
 async function saveBLEEnabled(enabled: boolean): Promise<void> {
 	await Preferences.set({ key: BLE_ENABLED_KEY, value: String(enabled) });
+}
+
+/**
+ * One-shot: wipe the legacy `devices` row so the new explicit-pair flow
+ * doesn't silently treat the last auto-connected device as paired. The flag
+ * is only set on success so a failed wipe is retried on next launch.
+ */
+async function runPairingV2MigrationOnce(): Promise<void> {
+	const { value } = await Preferences.get({ key: PAIRING_V2_MIGRATED_KEY });
+	if (value === "true") return;
+	await queries.clearAllDevices();
+	await Preferences.set({ key: PAIRING_V2_MIGRATED_KEY, value: "true" });
 }
 
 interface BLEContextType {
@@ -49,6 +62,11 @@ interface BLEContextType {
 	stopScan: () => Promise<void>;
 	connect: (deviceId: string) => Promise<boolean>;
 	disconnect: () => Promise<void>;
+	/**
+	 * Remove a device from the paired set. If currently connected to it,
+	 * disconnect first. Auto-scan resumes afterwards.
+	 */
+	forget: (deviceId: string) => Promise<void>;
 	syncToDevice: (settings: Omit<RSVPSettings, "id" | "updatedAt">) => Promise<boolean>;
 	syncFromDevice: () => Promise<RSVPSettings | null>;
 
@@ -96,18 +114,38 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	const [error, setError] = useState<string | null>(null);
 	const [scanTrigger, setScanTrigger] = useState(0);
 	const [bleEnabled, setBleEnabled] = useState(false);
+	// `lastConnected DESC` so the find() in the auto-connect effect picks the
+	// most-recently-paired visible device.
+	const [pairedIds, setPairedIds] = useState<string[]>([]);
+
+	const refreshPaired = useCallback(async () => {
+		try {
+			const rows = await queries.getPairedDevices();
+			setPairedIds(rows.map((r) => r.id));
+		} catch (err) {
+			log.error("ble", "Failed to load paired devices:", err);
+		}
+	}, []);
 
 	// Ref so auto-scan effect sees the latest value synchronously (no stale closure race)
 	const isConnectingRef = useRef(false);
 	// Optional post-connect hook (used by BookSyncContext)
 	const onConnectedRef = useRef<((deviceId: string) => void) | null>(null);
 
-	// Load persisted BLE opt-in flag on mount
+	// Migration must finish before paired-set load so legacy rows don't leak in.
+	// getBLEEnabled is independent of both so it runs in parallel.
 	useEffect(() => {
-		getBLEEnabled()
-			.then((val) => setBleEnabled(val))
-			.catch(() => {}); // default stays false on read failure
-	}, []);
+		(async () => {
+			const [, enabled] = await Promise.all([
+				runPairingV2MigrationOnce().catch((err) => {
+					log.error("ble", "pairing v2 migration failed:", err);
+				}),
+				getBLEEnabled().catch(() => false),
+			]);
+			setBleEnabled(enabled);
+			await refreshPaired();
+		})();
+	}, [refreshPaired]);
 
 	// Initialize BLE on mount (native platforms only, when opted in)
 	useEffect(() => {
@@ -197,7 +235,8 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 			setScannedDevices([]);
 			isConnectingRef.current = false;
 
-			// Save device to database
+			// Save device row = pair. Presence in `devices` is what gates future
+			// silent auto-connect.
 			try {
 				await queries.saveDevice({
 					id: result.data.deviceId,
@@ -205,6 +244,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 					lastConnected: Date.now(),
 					descriptorId: bleClient.connectedDescriptorId,
 				});
+				await refreshPaired();
 			} catch (err) {
 				log.error("ble", "Failed to save device to database:", err);
 			}
@@ -217,7 +257,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		log.error("ble", "Failed to connect:", result.error);
 		setError(result.error || "Failed to connect");
 		return false;
-	}, []);
+	}, [refreshPaired]);
 
 	const disconnect = useCallback(async () => {
 		if (IS_WEB) return;
@@ -368,19 +408,46 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		[stopScan, connect],
 	);
 
+	// Pick the most-recently-paired device visible in the current scan results.
+	// Unknown devices stay in the list for the user to tap (= pair).
 	useEffect(() => {
 		if (!bleEnabled) return;
-		if (scannedDevices.length === 1 && !isConnected && !isConnectingRef.current) {
-			log("ble", "found 1 device, auto-connecting...");
-			handleDeviceSelect(scannedDevices[0].device.deviceId);
-		}
-	}, [
-		scannedDevices.length,
-		isConnected,
-		handleDeviceSelect,
-		scannedDevices[0]?.device.deviceId,
-		bleEnabled,
-	]);
+		if (isConnected || isConnectingRef.current) return;
+		if (pairedIds.length === 0 || scannedDevices.length === 0) return;
+		const scannedById = new Map(scannedDevices.map((d) => [d.device.deviceId, d]));
+		const match = pairedIds.find((id) => scannedById.has(id));
+		if (!match) return;
+		log("ble", `paired device ${match} in range, auto-connecting...`);
+		handleDeviceSelect(match);
+	}, [scannedDevices, isConnected, handleDeviceSelect, bleEnabled, pairedIds]);
+
+	const forget = useCallback(
+		async (deviceId: string) => {
+			if (IS_WEB) return;
+			// Drop pairedIds + scannedDevices BEFORE any await so the auto-connect
+			// effect can't re-fire with stale state in the same tick the native
+			// disconnect callback flips bleClient.connectionState.
+			setPairedIds((prev) => prev.filter((id) => id !== deviceId));
+			setScannedDevices((prev) => prev.filter((d) => d.device.deviceId !== deviceId));
+
+			if (isConnected && connectedDevice?.deviceId === deviceId) {
+				const r = await bleClient.disconnect();
+				if (!r.success) log.warn("ble", "disconnect during forget failed:", r.error);
+				setIsConnected(false);
+				setConnectedDevice(null);
+				setConnectedDescriptorId(null);
+				setConnectionState(BLEConnectionState.DISCONNECTED);
+			}
+			try {
+				await queries.forgetDevice(deviceId);
+			} catch (err) {
+				log.error("ble", "Failed to forget device:", err);
+			}
+			await refreshPaired();
+			setScanTrigger((n) => n + 1);
+		},
+		[isConnected, connectedDevice?.deviceId, refreshPaired],
+	);
 
 	const toggleBLEEnabled = useCallback(async () => {
 		const next = !bleEnabled;
@@ -417,6 +484,7 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		stopScan,
 		connect,
 		disconnect,
+		forget,
 		syncToDevice,
 		syncFromDevice,
 		onConnected,
