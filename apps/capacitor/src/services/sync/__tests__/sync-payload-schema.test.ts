@@ -9,7 +9,7 @@ function chapterRow(i: number): SyncBook {
 		author: null,
 		fileSize: 0,
 		wordCount: null,
-		position: 0,
+		wordPosition: 0,
 		seriesId: "9d95aaa3",
 		chapterIndex: i,
 		chapterSourceUrl: `https://example.com/c/${i}`,
@@ -45,22 +45,20 @@ describe("SyncPayloadSchema (TASK-102 regression)", () => {
 	});
 });
 
-// ADR-0002 (TASK-136): sync accepts both byte-only and word+byte shapes
-// during Release N. Release N+1 will drop the byte fields.
-describe("SyncPayloadSchema accepts byte-only and word-mirrored shapes", () => {
+describe("SyncPayloadSchema word-only shape", () => {
 	const baseBook: SyncBook = {
 		bookId: "deadbeef",
 		title: "Test",
 		author: null,
 		fileSize: 100,
 		wordCount: 50,
-		position: 42,
+		wordPosition: 7,
 		chapterStatus: "fetched",
 		deleted: false,
 		updatedAt: 1700000000000,
 	};
 
-	it("accepts an old-client byte-only book", () => {
+	it("accepts a book with word-unit position", () => {
 		const result = SyncPayloadSchema.safeParse({
 			books: [baseBook],
 			settings: null,
@@ -71,18 +69,7 @@ describe("SyncPayloadSchema accepts byte-only and word-mirrored shapes", () => {
 		expect(result.success).toBe(true);
 	});
 
-	it("accepts a new-client book with both byte and word fields", () => {
-		const result = SyncPayloadSchema.safeParse({
-			books: [{ ...baseBook, wordPosition: 7, positionUnit: "word" }],
-			settings: null,
-			highlights: [],
-			glossaryEntries: [],
-			series: [],
-		});
-		expect(result.success).toBe(true);
-	});
-
-	it("accepts a highlight with mirrored Option A anchors", () => {
+	it("accepts a word-anchored highlight", () => {
 		const result = SyncPayloadSchema.safeParse({
 			books: [],
 			settings: null,
@@ -90,8 +77,6 @@ describe("SyncPayloadSchema accepts byte-only and word-mirrored shapes", () => {
 				{
 					highlightId: "h1",
 					bookId: "deadbeef",
-					startOffset: 10,
-					endOffset: 20,
 					startWord: 2,
 					startCharInWord: 0,
 					endWord: 4,
@@ -110,7 +95,7 @@ describe("SyncPayloadSchema accepts byte-only and word-mirrored shapes", () => {
 		expect(result.success).toBe(true);
 	});
 
-	it("accepts a reading session with both byte and word bounds", () => {
+	it("accepts a reading session with word bounds", () => {
 		const result = SyncPayloadSchema.safeParse({
 			books: [],
 			settings: null,
@@ -126,8 +111,6 @@ describe("SyncPayloadSchema accepts byte-only and word-mirrored shapes", () => {
 					endedAt: 2,
 					durationMs: 1,
 					wordsRead: 5,
-					startPos: 0,
-					endPos: 50,
 					startWord: 0,
 					endWord: 5,
 					wpmAvg: 350,

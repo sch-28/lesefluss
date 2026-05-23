@@ -1,3 +1,4 @@
+import type { Chapter as ImportChapter } from "@lesefluss/book-import";
 import { type SerializedWordIndex, WordIndex } from "@lesefluss/core";
 import { and, desc, eq, isNull, ne } from "drizzle-orm";
 import { db } from "../index";
@@ -144,19 +145,54 @@ export async function addBookWithContent(
 	book: NewBook,
 	content: string,
 	coverImage?: string | null,
-	chapters?: Chapter[] | null,
+	importChapters?: ImportChapter[] | null,
 ): Promise<string> {
-	// Insert metadata
-	await db.insert(books).values(book);
+	// Build WordIndex once at import so chapter byte offsets convert to word
+	// offsets in the same pass + the serialized blob lands in book_content
+	// for fast reader open without a rebuild.
+	const wi = WordIndex.build(content);
+	const dbChapters: Chapter[] = (importChapters ?? []).map((ch) => ({
+		title: ch.title,
+		startWord: wi.wordOf(ch.startByte),
+	}));
 
-	// Insert content
+	await db.insert(books).values({ ...book, wordCount: wi.wordCount });
+
 	await db.insert(bookContent).values({
 		bookId: book.id,
 		content,
 		coverImage: coverImage ?? null,
-		chapters: chapters ? JSON.stringify(chapters) : null,
+		chapters: dbChapters.length ? JSON.stringify(dbChapters) : null,
+		wordIndex: JSON.stringify(wi.serialize()),
 	});
 
+	return book.id;
+}
+
+/**
+ * Pull-sync insert path. Server delivers chapters already in DB shape
+ * ({title, startWord}); preserve the server's wordCount when available so
+ * chapter offsets stay coherent across devices. We still build a local
+ * WordIndex blob for fast reader open, but the count of record stays the
+ * server's. Inserts run sequentially; if the second insert fails the first
+ * is rolled back by the surrounding sync transaction.
+ */
+export async function addServerBookWithContent(
+	book: NewBook,
+	content: string,
+	coverImage?: string | null,
+	chaptersJson?: string | null,
+): Promise<string> {
+	const wi = WordIndex.build(content);
+	const wordCount = book.wordCount && book.wordCount > 0 ? book.wordCount : wi.wordCount;
+	await db.insert(books).values({ ...book, wordCount });
+	await db.insert(bookContent).values({
+		bookId: book.id,
+		content,
+		coverImage: coverImage ?? null,
+		chapters: chaptersJson ?? null,
+		wordIndex: JSON.stringify(wi.serialize()),
+	});
 	return book.id;
 }
 

@@ -159,7 +159,7 @@ export const getAdminBooks = createServerFn({ method: "GET" }).handler(async () 
 			author: syncBooks.author,
 			fileSize: syncBooks.fileSize,
 			wordCount: syncBooks.wordCount,
-			position: syncBooks.position,
+			wordPosition: syncBooks.wordPosition,
 			deleted: syncBooks.deleted,
 			updatedAt: syncBooks.updatedAt,
 		})

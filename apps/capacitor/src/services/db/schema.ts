@@ -79,20 +79,10 @@ export const books = sqliteTable("books", {
 	fileFormat: text("file_format").notNull().default("txt"), // 'txt' | 'epub' | 'html' | 'pdf'
 	filePath: text("file_path"), // path to original file in app data dir, null for legacy/txt
 	size: integer("size").notNull().default(0), // byte length of plain text content
-	position: integer("position").notNull().default(0),
-	/**
-	 * Canonical reading position in word units. Populated by the backfill sweep
-	 * (TASK-134) and read by all production code from TASK-135 onwards. Legacy
-	 * `position` column persists for one release (ADR-0002).
-	 */
+	/** Canonical reading position in word units. See ADR-0002. */
 	wordPosition: integer("word_position").$type<WordPosition>().notNull().default(wordPos(0)),
-	/** Total words in the book (ADR-0002). Populated by backfill. */
+	/** Total words in the book. */
 	wordCount: integer("word_count").notNull().default(0),
-	/**
-	 * Migration marker: 'byte' until backfill converts this book, then 'word'.
-	 * Dropped in Release N+1 once every row is 'word'.
-	 */
-	positionUnit: text("position_unit").$type<"byte" | "word">().notNull().default("byte"),
 	isActive: integer("is_active", { mode: "boolean" }).notNull().default(false), // true = this book is currently on the ESP32 (at most one row at a time)
 	addedAt: integer("added_at").notNull(),
 	lastRead: integer("last_read"),
@@ -153,42 +143,34 @@ export const series = sqliteTable(
  *
  * - content: full plain text (for ESP32 transfer + RSVP reader)
  * - coverImage: base64-encoded cover art extracted from EPUB
- * - chapters: JSON array of [{title: string, startByte: number}]
+ * - chapters: JSON array of [{title: string, startWord: number}]
  */
 export const bookContent = sqliteTable("book_content", {
 	bookId: text("book_id").primaryKey(),
 	content: text("content").notNull(),
 	coverImage: text("cover_image"),
-	chapters: text("chapters"), // JSON: [{title: string, startByte: number, startWord?: number}]
+	chapters: text("chapters"), // JSON: [{title: string, startWord: number}]
 	/**
 	 * Serialized WordIndex (see @lesefluss/core). UTF-8 JSON text. Populated
-	 * lazily by the backfill sweep (TASK-134) or on chapter-fetch commit.
-	 * NULL until then. Invalidated by setting to NULL when `content` changes.
-	 * Stored as text rather than blob so the drizzle column type matches the
-	 * runtime (Capacitor's sqlite-proxy returns strings for TEXT columns and
-	 * the blob/Buffer round-trip wanted a cast).
+	 * on book import and chapter-fetch commit. NULL until then. Invalidated
+	 * by setting to NULL when `content` changes. Stored as text rather than
+	 * blob so the column matches the runtime (Capacitor's sqlite-proxy
+	 * returns strings for TEXT columns).
 	 */
 	wordIndex: text("word_index"),
 });
 
 /**
  * Highlights - per-book text annotations with optional notes.
- * start_offset and end_offset are UTF-8 byte offsets of word starts (inclusive).
+ * Anchored on word + char-in-word (ADR-0002).
  */
 export const highlights = sqliteTable("highlights", {
 	id: text("id").primaryKey(),
 	bookId: text("book_id").notNull(),
-	startOffset: integer("start_offset").notNull(),
-	endOffset: integer("end_offset").notNull(),
-	/**
-	 * Option A word-snap anchor (ADR-0002). Nullable until the per-book backfill
-	 * (TASK-134) converts byte offsets → word + char-in-word. Production code
-	 * reads these from TASK-135.
-	 */
-	startWord: integer("start_word").$type<WordPosition>(),
-	startCharInWord: integer("start_char_in_word"),
-	endWord: integer("end_word").$type<WordPosition>(),
-	endCharInWord: integer("end_char_in_word"),
+	startWord: integer("start_word").$type<WordPosition>().notNull(),
+	startCharInWord: integer("start_char_in_word").notNull().default(0),
+	endWord: integer("end_word").$type<WordPosition>().notNull(),
+	endCharInWord: integer("end_char_in_word").notNull().default(0),
 	color: text("color").notNull().default("yellow"), // 'yellow' | 'blue' | 'orange' | 'pink'
 	note: text("note"),
 	text: text("text"), // extracted text snippet - null for pre-existing highlights
@@ -211,9 +193,8 @@ export type NewBookContent = typeof bookContent.$inferInsert;
 
 /**
  * Chapter entry as stored in bookContent.chapters JSON column.
- * `startWord` populated by backfill (TASK-134); `startByte` kept until Release N+1.
  */
-export type Chapter = { title: string; startByte: number; startWord?: number };
+export type Chapter = { title: string; startWord: number };
 
 export type Highlight = typeof highlights.$inferSelect;
 export type NewHighlight = typeof highlights.$inferInsert;
@@ -258,14 +239,8 @@ export const readingSessions = sqliteTable("reading_sessions", {
 	endedAt: integer("ended_at").notNull(), // epoch ms
 	durationMs: integer("duration_ms").notNull(), // ended - started - paused
 	wordsRead: integer("words_read").notNull(),
-	startPos: integer("start_pos").notNull(), // byte offset (legacy; dropped in Release N+1)
-	endPos: integer("end_pos").notNull(),
-	/**
-	 * Canonical session bounds in word units. Nullable until backfill (TASK-134)
-	 * converts existing rows. Production code reads these from TASK-135.
-	 */
-	startWord: integer("start_word").$type<WordPosition>(),
-	endWord: integer("end_word").$type<WordPosition>(),
+	startWord: integer("start_word").$type<WordPosition>().notNull(),
+	endWord: integer("end_word").$type<WordPosition>().notNull(),
 	wpmAvg: integer("wpm_avg"), // rsvp only; null otherwise
 	updatedAt: integer("updated_at").notNull(), // for last-write-wins sync
 });

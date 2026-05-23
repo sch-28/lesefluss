@@ -1,4 +1,5 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: test fixture array access */
+import type { WordPosition } from "@lesefluss/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	HARD_END_MS,
@@ -33,6 +34,8 @@ function setup(opts?: {
 		persist: (row, kind) => persisted.push({ row, kind }),
 		now: () => clock,
 		newId: () => `id${++idCounter}`,
+		// BOOK = "aaaa " × N → exactly 5 bytes per word; map by integer division.
+		byteToWord: (byte) => Math.floor(byte / 5) as unknown as WordPosition,
 	});
 
 	return {
@@ -344,6 +347,7 @@ describe("SessionTracker", () => {
 			persist: (row, kind) => persisted.push({ row, kind }),
 			now: () => clock,
 			newId: () => "id1",
+			byteToWord: (byte) => Math.floor(byte / 5) as unknown as WordPosition,
 		});
 		tracker.setContent(BOOK);
 		tracker.setReading(true);

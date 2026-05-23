@@ -6,11 +6,9 @@ import {
 	generateBookId,
 	utf8ByteLength,
 } from "@lesefluss/book-import";
-import { wordPos } from "@lesefluss/core";
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
 import type { Book } from "../db/schema";
-import { backfillBookToWord } from "../db/word-index-backfill";
 import type { ImportExtras } from "./types";
 
 /** Directory within app data where original book files (EPUB, …) are stored. */
@@ -33,7 +31,6 @@ export async function commitBook(payload: BookPayload, extras: ImportExtras): Pr
 			fileFormat: payload.fileFormat,
 			filePath: null,
 			size,
-			position: 0,
 			isActive: false,
 			addedAt,
 			lastRead: null,
@@ -58,39 +55,9 @@ export async function commitBook(payload: BookPayload, extras: ImportExtras): Pr
 		await queries.updateBook(id, { filePath });
 	}
 
-	// ADR-0002: born word-indexed. Backfill is idempotent + a no-op for any
-	// book with `position_unit = 'word'`, so on the freshly-inserted row it
-	// just tokenizes content, persists the WordIndex blob, and flips the flag.
-	try {
-		await backfillBookToWord(id);
-	} catch (err) {
-		log.warn("import", `word-index backfill on commit failed for ${id}:`, err);
-	}
-
-	return {
-		id,
-		title: payload.title,
-		author: payload.author ?? null,
-		fileFormat: payload.fileFormat,
-		filePath,
-		size,
-		position: 0,
-		wordPosition: wordPos(0),
-		wordCount: 0,
-		positionUnit: "word",
-		isActive: false,
-		addedAt,
-		lastRead: null,
-		source: extras.source ?? null,
-		catalogId: extras.catalogId ?? null,
-		sourceUrl: extras.sourceUrl ?? null,
-		deleted: false,
-		seriesId: null,
-		chapterIndex: null,
-		chapterSourceUrl: null,
-		chapterStatus: "fetched",
-		chapterError: null,
-	};
+	const stored = await queries.getBook(id);
+	if (!stored) throw new Error(`commitBook: ${id} disappeared after insert`);
+	return stored;
 }
 
 /**

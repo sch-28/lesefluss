@@ -243,12 +243,7 @@ export function bookToSync(book: Book, contentData?: BookContent | null): SyncBo
 		author: book.author,
 		fileSize: book.size,
 		wordCount: book.wordCount > 0 ? book.wordCount : null,
-		position: book.position,
-		// ADR-0002 mirrored write: ship the canonical word-unit position when
-		// the book has been backfilled. Older clients ignore the field.
-		...(book.positionUnit === "word"
-			? { wordPosition: book.wordPosition, positionUnit: "word" as const }
-			: {}),
+		wordPosition: book.wordPosition,
 		source: book.source,
 		catalogId: book.catalogId,
 		sourceUrl: book.sourceUrl,
@@ -257,8 +252,8 @@ export function bookToSync(book: Book, contentData?: BookContent | null): SyncBo
 		chapterSourceUrl: book.chapterSourceUrl,
 		chapterStatus: book.chapterStatus,
 		deleted: book.deleted,
-		// Chapter rows (seriesId set) are re-derivable from the upstream provider, so we
-		// never push their body content / cover / TOC — saves substantial bytes per series.
+		// Chapter rows (seriesId set) are re-derivable from upstream so body
+		// content / cover / TOC are skipped to save sync bytes.
 		...(contentData && !book.deleted && !book.seriesId
 			? {
 					content: contentData.content,
@@ -294,24 +289,13 @@ function settingsToSync(s: Settings): SyncSettings {
 }
 
 function highlightToSync(h: Highlight): SyncHighlight {
-	const wordAnchor =
-		h.startWord !== null &&
-		h.startCharInWord !== null &&
-		h.endWord !== null &&
-		h.endCharInWord !== null
-			? {
-					startWord: h.startWord,
-					startCharInWord: h.startCharInWord,
-					endWord: h.endWord,
-					endCharInWord: h.endCharInWord,
-				}
-			: {};
 	return {
 		highlightId: h.id,
 		bookId: h.bookId,
-		startOffset: h.startOffset,
-		endOffset: h.endOffset,
-		...wordAnchor,
+		startWord: h.startWord,
+		startCharInWord: h.startCharInWord,
+		endWord: h.endWord,
+		endCharInWord: h.endCharInWord,
 		color: h.color as SyncHighlight["color"],
 		note: h.note,
 		text: h.text,
@@ -322,10 +306,6 @@ function highlightToSync(h: Highlight): SyncHighlight {
 }
 
 function sessionToSync(s: ReadingSession): SyncReadingSession {
-	const wordBounds =
-		s.startWord !== null && s.endWord !== null
-			? { startWord: s.startWord, endWord: s.endWord }
-			: {};
 	return {
 		sessionId: s.id,
 		bookId: s.bookId,
@@ -334,9 +314,8 @@ function sessionToSync(s: ReadingSession): SyncReadingSession {
 		endedAt: s.endedAt,
 		durationMs: s.durationMs,
 		wordsRead: s.wordsRead,
-		startPos: s.startPos,
-		endPos: s.endPos,
-		...wordBounds,
+		startWord: s.startWord,
+		endWord: s.endWord,
 		wpmAvg: s.wpmAvg,
 		updatedAt: s.updatedAt,
 	};
@@ -391,12 +370,8 @@ function buildBookRowFromServer(
 		fileFormat: "txt",
 		filePath: null,
 		size: serverBook.fileSize ?? 0,
-		position: serverBook.position,
-		// ADR-0002 mirrored read: trust the server's canonical word fields
-		// when present. Local backfill will populate them otherwise.
-		wordPosition: wordPos(serverBook.wordPosition ?? 0),
+		wordPosition: wordPos(serverBook.wordPosition),
 		wordCount: serverBook.wordCount ?? 0,
-		positionUnit: serverBook.positionUnit ?? "byte",
 		isActive: false,
 		addedAt: serverBook.updatedAt,
 		lastRead: null,
@@ -586,11 +561,11 @@ export async function pullSync(): Promise<Set<string>> {
 						newChapterRows.push(row);
 					} else {
 						// Standalone book with content (or rare: chapter that carries content).
-						await queries.addBookWithContent(
+						await queries.addServerBookWithContent(
 							row,
 							serverBook.content ?? "",
 							serverBook.coverImage,
-							queries.parseChapters(serverBook.chapters ?? null),
+							serverBook.chapters ?? null,
 						);
 						localBookMap.set(serverBook.bookId, row);
 					}
@@ -608,10 +583,17 @@ export async function pullSync(): Promise<Set<string>> {
 
 			const localUpdatedAt = Math.max(local.lastRead ?? 0, local.addedAt);
 			if (serverBook.updatedAt > localUpdatedAt) {
-				await queries.updateBook(serverBook.bookId, {
-					position: serverBook.position,
+				const update: Parameters<typeof queries.updateBook>[1] = {
+					wordPosition: wordPos(serverBook.wordPosition),
 					lastRead: serverBook.updatedAt,
-				});
+				};
+				// Refresh wordCount when the server has a definitive value so
+				// chapter/highlight bounds derived from it stay coherent. Skipping
+				// this leaves local count stale after a server-side content refresh.
+				if (serverBook.wordCount != null && serverBook.wordCount !== local.wordCount) {
+					update.wordCount = serverBook.wordCount;
+				}
+				await queries.updateBook(serverBook.bookId, update);
 				changed = true;
 			}
 		}
@@ -661,12 +643,10 @@ export async function pullSync(): Promise<Set<string>> {
 					await queries.addHighlight({
 						id: serverHL.highlightId,
 						bookId: serverHL.bookId,
-						startOffset: serverHL.startOffset,
-						endOffset: serverHL.endOffset,
-						startWord: serverHL.startWord != null ? wordPos(serverHL.startWord) : null,
-						startCharInWord: serverHL.startCharInWord ?? null,
-						endWord: serverHL.endWord != null ? wordPos(serverHL.endWord) : null,
-						endCharInWord: serverHL.endCharInWord ?? null,
+						startWord: wordPos(serverHL.startWord),
+						startCharInWord: serverHL.startCharInWord,
+						endWord: wordPos(serverHL.endWord),
+						endCharInWord: serverHL.endCharInWord,
 						color: serverHL.color,
 						note: serverHL.note,
 						text: serverHL.text ?? null,
@@ -744,10 +724,8 @@ export async function pullSync(): Promise<Set<string>> {
 					endedAt: serverSession.endedAt,
 					durationMs: serverSession.durationMs,
 					wordsRead: serverSession.wordsRead,
-					startPos: serverSession.startPos,
-					endPos: serverSession.endPos,
-					startWord: serverSession.startWord != null ? wordPos(serverSession.startWord) : null,
-					endWord: serverSession.endWord != null ? wordPos(serverSession.endWord) : null,
+					startWord: wordPos(serverSession.startWord),
+					endWord: wordPos(serverSession.endWord),
 					wpmAvg: serverSession.wpmAvg,
 					updatedAt: serverSession.updatedAt,
 				});
@@ -783,7 +761,7 @@ export async function pullSync(): Promise<Set<string>> {
  */
 export function shouldPushBook(b: Book): boolean {
 	if (!b.seriesId || b.deleted) return true;
-	return b.chapterStatus !== "pending" || b.position > 0 || b.lastRead !== null;
+	return b.chapterStatus !== "pending" || b.wordPosition > 0 || b.lastRead !== null;
 }
 
 /** @param serverHasContent bookIds the server already has content for - skip content for those */

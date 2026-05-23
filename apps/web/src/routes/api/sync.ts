@@ -64,9 +64,7 @@ async function getUserSyncData(
 		author: syncBooks.author,
 		fileSize: syncBooks.fileSize,
 		wordCount: syncBooks.wordCount,
-		position: syncBooks.position,
 		wordPosition: syncBooks.wordPosition,
-		positionUnit: syncBooks.positionUnit,
 		source: syncBooks.source,
 		catalogId: syncBooks.catalogId,
 		sourceUrl: syncBooks.sourceUrl,
@@ -120,9 +118,7 @@ async function getUserSyncData(
 				author: b.author,
 				fileSize: b.fileSize,
 				wordCount: b.wordCount,
-				position: b.position,
 				wordPosition: b.wordPosition,
-				positionUnit: b.positionUnit as "byte" | "word",
 				source: b.source,
 				catalogId: b.catalogId,
 				sourceUrl: b.sourceUrl,
@@ -154,19 +150,10 @@ async function getUserSyncData(
 				({
 					highlightId: h.highlightId,
 					bookId: h.bookId,
-					startOffset: h.startOffset,
-					endOffset: h.endOffset,
-					...(h.startWord !== null &&
-					h.startCharInWord !== null &&
-					h.endWord !== null &&
-					h.endCharInWord !== null
-						? {
-								startWord: h.startWord,
-								startCharInWord: h.startCharInWord,
-								endWord: h.endWord,
-								endCharInWord: h.endCharInWord,
-							}
-						: {}),
+					startWord: h.startWord,
+					startCharInWord: h.startCharInWord,
+					endWord: h.endWord,
+					endCharInWord: h.endCharInWord,
 					color: h.color,
 					note: h.note,
 					text: h.text,
@@ -216,11 +203,8 @@ async function getUserSyncData(
 					endedAt: toMs(r.endedAt),
 					durationMs: r.durationMs,
 					wordsRead: r.wordsRead,
-					startPos: r.startPos,
-					endPos: r.endPos,
-					...(r.startWord !== null && r.endWord !== null
-						? { startWord: r.startWord, endWord: r.endWord }
-						: {}),
+					startWord: r.startWord,
+					endWord: r.endWord,
 					wpmAvg: r.wpmAvg,
 					updatedAt: toMs(r.updatedAt),
 				}) as SyncReadingSession,
@@ -284,9 +268,7 @@ export const Route = createFileRoute("/api/sync")({
 									author: book.author,
 									fileSize: book.fileSize,
 									wordCount: book.wordCount,
-									position: book.position,
-									wordPosition: book.wordPosition ?? 0,
-									positionUnit: book.positionUnit ?? "byte",
+									wordPosition: book.wordPosition,
 									// Tombstoned books shouldn't carry content; null defensively.
 									// Chapter rows (seriesId set) are re-derivable from upstream — never store body
 									// content for them server-side, even if an old client still pushes it.
@@ -311,16 +293,7 @@ export const Route = createFileRoute("/api/sync")({
 									author: sql`excluded.author`,
 									fileSize: sql`excluded.file_size`,
 									wordCount: sql`excluded.word_count`,
-									position: sql`CASE WHEN excluded.updated_at >= sync_books.updated_at THEN excluded.position ELSE sync_books.position END`,
-									// ADR-0002 mirrored write: only update word_position +
-									// position_unit when the client explicitly sent word
-									// data (excluded.position_unit = 'word'). An old client
-									// posting byte-only carries position_unit = 'byte' and
-									// the insert default of 0 for word_position; without
-									// this guard the upsert would clobber a previously
-									// uploaded word position with 0.
-									wordPosition: sql`CASE WHEN excluded.position_unit = 'word' AND excluded.updated_at >= sync_books.updated_at THEN excluded.word_position ELSE sync_books.word_position END`,
-									positionUnit: sql`CASE WHEN excluded.position_unit = 'word' AND excluded.updated_at >= sync_books.updated_at THEN excluded.position_unit ELSE sync_books.position_unit END`,
+									wordPosition: sql`CASE WHEN excluded.updated_at >= sync_books.updated_at THEN excluded.word_position ELSE sync_books.word_position END`,
 									// Once a row is deleted on the server, content stays null — no client push can refill it.
 									// Chapter rows (series_id set) are re-derivable from upstream; never store body content
 									// for them, regardless of what an old client pushes or what was there before.
@@ -422,12 +395,10 @@ export const Route = createFileRoute("/api/sync")({
 									userId,
 									highlightId: h.highlightId,
 									bookId: h.bookId,
-									startOffset: h.startOffset,
-									endOffset: h.endOffset,
-									startWord: h.startWord ?? null,
-									startCharInWord: h.startCharInWord ?? null,
-									endWord: h.endWord ?? null,
-									endCharInWord: h.endCharInWord ?? null,
+									startWord: h.startWord,
+									startCharInWord: h.startCharInWord,
+									endWord: h.endWord,
+									endCharInWord: h.endCharInWord,
 									color: h.color,
 									note: h.note,
 									text: h.text ?? null,
@@ -440,14 +411,10 @@ export const Route = createFileRoute("/api/sync")({
 								target: [syncHighlights.userId, syncHighlights.highlightId],
 								set: {
 									bookId: sql`excluded.book_id`,
-									startOffset: sql`excluded.start_offset`,
-									endOffset: sql`excluded.end_offset`,
-									// ADR-0002 mirrored write: don't blank existing word anchors
-									// when the client omits them (old client during transition).
-									startWord: sql`COALESCE(excluded.start_word, sync_highlights.start_word)`,
-									startCharInWord: sql`COALESCE(excluded.start_char_in_word, sync_highlights.start_char_in_word)`,
-									endWord: sql`COALESCE(excluded.end_word, sync_highlights.end_word)`,
-									endCharInWord: sql`COALESCE(excluded.end_char_in_word, sync_highlights.end_char_in_word)`,
+									startWord: sql`excluded.start_word`,
+									startCharInWord: sql`excluded.start_char_in_word`,
+									endWord: sql`excluded.end_word`,
+									endCharInWord: sql`excluded.end_char_in_word`,
 									color: sql`excluded.color`,
 									note: sql`excluded.note`,
 									text: sql`COALESCE(excluded.text, sync_highlights.text)`,
@@ -545,10 +512,8 @@ export const Route = createFileRoute("/api/sync")({
 									endedAt: toDate(r.endedAt),
 									durationMs: r.durationMs,
 									wordsRead: r.wordsRead,
-									startPos: r.startPos,
-									endPos: r.endPos,
-									startWord: r.startWord ?? null,
-									endWord: r.endWord ?? null,
+									startWord: r.startWord,
+									endWord: r.endWord,
 									wpmAvg: r.wpmAvg,
 									updatedAt: toDate(r.updatedAt),
 								})),
@@ -562,12 +527,8 @@ export const Route = createFileRoute("/api/sync")({
 									endedAt: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.ended_at ELSE sync_reading_sessions.ended_at END`,
 									durationMs: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.duration_ms ELSE sync_reading_sessions.duration_ms END`,
 									wordsRead: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.words_read ELSE sync_reading_sessions.words_read END`,
-									startPos: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.start_pos ELSE sync_reading_sessions.start_pos END`,
-									endPos: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.end_pos ELSE sync_reading_sessions.end_pos END`,
-									// ADR-0002 mirrored write: don't blank existing word bounds
-									// when the client omits them.
-									startWord: sql`COALESCE(excluded.start_word, sync_reading_sessions.start_word)`,
-									endWord: sql`COALESCE(excluded.end_word, sync_reading_sessions.end_word)`,
+									startWord: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.start_word ELSE sync_reading_sessions.start_word END`,
+									endWord: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.end_word ELSE sync_reading_sessions.end_word END`,
 									wpmAvg: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.wpm_avg ELSE sync_reading_sessions.wpm_avg END`,
 									updatedAt: sql`GREATEST(excluded.updated_at, sync_reading_sessions.updated_at)`,
 								},

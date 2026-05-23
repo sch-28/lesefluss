@@ -106,7 +106,6 @@ import type { ReaderViewHandle } from "./view-types";
 
 // ─── Module-level singletons ─────────────────────────────────────────────────
 const _encoder = new TextEncoder();
-const _decoder = new TextDecoder();
 
 // Sentinel value: no word highlighted (while scrolling)
 const NO_HIGHLIGHT = -1;
@@ -255,44 +254,24 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// ADR-0002 transitional read: prefer the canonical word_position when the
 	// book is flagged 'word' AND the WordIndex is ready, converting back to a
 	// byte offset for the existing byte-typed downstream state. Falls back to
-	// the legacy `book.position` byte read for not-yet-backfilled rows or
-	// before the WordIndex finishes loading. Stage H replaces this dual-path
-	// with a pure word-unit read after the downstream state types flip.
-	useEffect(() => {
-		if (!book || didSeedOffsetsRef.current) return;
-		// Wait for the WordIndex before seeding a word-flagged book, otherwise
-		// we'd fall back to the legacy `book.position` byte value when the
-		// queries resolve out of order, then bail on the follow-up re-run
-		// because the seed flag is already set.
-		if (book.positionUnit === "word" && !wordIndex) return;
-		// Empty books (wordCount=0) cannot be converted — `wordIndex.byteOf`
-		// would call `wordAt(0)` on an empty entries array and throw
-		// RangeError. Fall through to the byte path which seeds 0.
-		const useWord = book.positionUnit === "word" && wordIndex && wordIndex.wordCount > 0;
-		const seed = useWord
-			? wordIndex.byteOf(wordPos(Math.min(Math.max(book.wordPosition, 0), wordIndex.wordCount - 1)))
-			: book.position;
-		// Dev-only invariant: when both legacy + canonical positions are
-		// populated, they should agree to within a tokenization word.
-		// Divergence ⇒ content drifted since last backfill or schema bug.
-		if (
-			import.meta.env.DEV &&
-			useWord &&
-			book.position > 0 &&
-			Math.abs(seed - book.position) > 64
-		) {
-			console.warn("[reader] seed byte/word mismatch:", {
-				wordPosition: book.wordPosition,
-				wordSeedByte: seed,
-				storedByte: book.position,
-			});
-		}
-		didSeedOffsetsRef.current = true;
-		setActiveOffset(seed);
-		setProgressOffset(seed);
-		setRsvpInitOffset(seed);
-		lastOffsetRef.current = seed;
+	// Seed byte computed from canonical word position. Stable across renders
+	// once both book + wordIndex resolve. Used as the view's initialByteOffset
+	// so a slow wordIndex query doesn't open the view at byte 0 and short-
+	// circuit scroll-view's initial seek.
+	const seedByte = useMemo<number | null>(() => {
+		if (!book || !wordIndex) return null;
+		return wordIndex.byteOfClamped(book.wordPosition);
 	}, [book, wordIndex]);
+
+	// Apply the seed to local state once.
+	useEffect(() => {
+		if (didSeedOffsetsRef.current || seedByte === null) return;
+		didSeedOffsetsRef.current = true;
+		setActiveOffset(seedByte);
+		setProgressOffset(seedByte);
+		setRsvpInitOffset(seedByte);
+		lastOffsetRef.current = seedByte;
+	}, [seedByte]);
 
 	// Live-seek when the device pushes a new position for this book over BLE.
 	// book-sync-context applies the conflict-resolution tolerance gate first,
@@ -303,7 +282,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// to the device would echo the value it just sent us.
 	useEffect(() => {
 		if (!isBleConnected) return;
-		if (!wordIndex || book?.positionUnit !== "word") return;
+		if (!wordIndex) return;
 		const unsubscribe = onDevicePositionUpdate((bookId, newWordPosition) => {
 			if (bookId !== id) return;
 			if (newWordPosition < 0 || newWordPosition >= wordIndex.wordCount) return;
@@ -327,7 +306,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			});
 		});
 		return unsubscribe;
-	}, [id, wordIndex, book?.positionUnit, isBleConnected, onDevicePositionUpdate]);
+	}, [id, wordIndex, isBleConnected, onDevicePositionUpdate]);
 
 	// ── Build paragraph index ──────────────────────────────────────────────
 	// Computed once per content load. Two cheap structures:
@@ -421,24 +400,25 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// ── Reading time estimation ───────────────────────────────────────────
 	const contentBytes = useMemo(() => (content ? _encoder.encode(content) : null), [content]);
 
-	const totalWordCount = useMemo(() => content?.match(/\S+/g)?.length ?? 0, [content]);
+	const totalWordCount = book?.wordCount ?? wordIndex?.wordCount ?? 0;
 
 	const chapterWordCounts = useMemo(() => {
-		if (!chapters.length || !contentBytes) return [];
+		if (!chapters.length) return [];
+		const totalWords = book?.wordCount ?? wordIndex?.wordCount ?? 0;
 		return chapters.map((ch, i) => {
-			const end = chapters[i + 1]?.startByte ?? contentBytes.length;
-			const text = _decoder.decode(contentBytes.subarray(ch.startByte, end));
-			return text.match(/\S+/g)?.length ?? 0;
+			const nextStart = chapters[i + 1]?.startWord ?? totalWords;
+			return Math.max(0, nextStart - ch.startWord);
 		});
-	}, [chapters, contentBytes]);
+	}, [chapters, book?.wordCount, wordIndex?.wordCount]);
 
 	const currentChapterIndex = useMemo(() => {
-		if (!chapters.length) return -1;
+		if (!chapters.length || !wordIndex) return -1;
+		const currentWord = wordIndex.wordOf(progressOffset);
 		for (let i = chapters.length - 1; i >= 0; i--) {
-			if (progressOffset >= chapters[i].startByte) return i;
+			if (currentWord >= chapters[i].startWord) return i;
 		}
 		return 0;
-	}, [progressOffset, chapters]);
+	}, [progressOffset, chapters, wordIndex]);
 
 	// ── Settings (RSVP + reader appearance) ──────────────────────────────
 	const { data: dbSettings } = queryHooks.useSettings();
@@ -482,18 +462,17 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	);
 
 	// ── Save position to DB + BLE ─────────────────────────────────────────
-	// Fire-and-forget writes - no mutation wrapper needed for high-frequency saves.
-	// Dual-writes byte (`position`) and word (`word_position`) columns so the
-	// canonical word column stays current after the backfill (ADR-0002). The
-	// switchover (TASK-135 stage H) drops the byte write.
+	// Fire-and-forget writes. Word-position is the only stored unit; the byte
+	// offset is the runtime working unit but never persisted (ADR-0002).
 	const savePosition = useCallback(
 		async (offset: number, { scheduleSync = true }: { scheduleSync?: boolean } = {}) => {
+			if (!wordIndex) return; // can't compute word without index
 			const now = Date.now();
-			const update: { position: number; lastRead: number; wordPosition?: WordPosition } = {
-				position: offset,
+			const wordPosition = wordIndex.wordOf(offset);
+			const update: { lastRead: number; wordPosition: WordPosition } = {
 				lastRead: now,
+				wordPosition,
 			};
-			if (wordIndex) update.wordPosition = wordIndex.wordOf(offset);
 
 			// Optimistic cache update so the library lands already-sorted when
 			// the user navigates back, instead of shifting under their finger
@@ -507,7 +486,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					const next = prev.books.map((b) => {
 						if (b.id !== id) return b;
 						changed = true;
-						return { ...b, position: offset, lastRead: now };
+						return { ...b, wordPosition, lastRead: now };
 					});
 					return changed ? { ...prev, books: next } : prev;
 				},
@@ -1051,14 +1030,24 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	// ── Chapter jump ──────────────────────────────────────────────────────
 	const handleChapterJump = useCallback(
-		(startByte: number) => {
+		(startWord: number) => {
+			if (!wordIndex || wordIndex.wordCount === 0) return;
+			const byteOffset = wordIndex.byteOfClamped(startWord);
 			if (readerMode === "rsvp") {
-				exitRsvpToStandard(startByte);
+				exitRsvpToStandard(byteOffset);
 			} else {
-				jumpToOffset(startByte);
+				jumpToOffset(byteOffset);
 			}
 		},
-		[readerMode, jumpToOffset, exitRsvpToStandard],
+		[readerMode, jumpToOffset, exitRsvpToStandard, wordIndex],
+	);
+
+	const handleHighlightJump = useCallback(
+		(h: { startWord: number }) => {
+			if (!wordIndex || wordIndex.wordCount === 0) return;
+			jumpToOffset(wordIndex.byteOfClamped(h.startWord));
+		},
+		[jumpToOffset, wordIndex],
 	);
 
 	// ── Search jump ───────────────────────────────────────────────────────────
@@ -1071,7 +1060,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			const byteOffset = utf8ByteLength(content.slice(0, charOffset));
 			// Snap to the start of the word containing this byte via WordIndex
 			// (ADR-0002). Falls back to the raw byte position pre-backfill.
-			const wordByte = wordIndex ? wordIndex.byteOf(wordIndex.wordOf(byteOffset)) : byteOffset;
+			const wordByte =
+				wordIndex && wordIndex.wordCount > 0
+					? wordIndex.byteOfClamped(wordIndex.wordOf(byteOffset))
+					: byteOffset;
 
 			if (readerMode === "rsvp") {
 				setActiveOffset(wordByte);
@@ -1215,12 +1207,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			? (totalWordCount * (1 - progressPct / 100)) / estimateWpm
 			: 0;
 	let chapterMinutesRemaining: number | null = null;
-	if (showReadingTime && currentChapterIndex >= 0 && contentBytes) {
+	if (showReadingTime && currentChapterIndex >= 0 && wordIndex) {
 		const ch = chapters[currentChapterIndex];
-		const chapterEnd = chapters[currentChapterIndex + 1]?.startByte ?? contentBytes.length;
+		const totalWords = book?.wordCount ?? wordIndex.wordCount;
+		const chapterEndWord = chapters[currentChapterIndex + 1]?.startWord ?? totalWords;
+		const currentWord = wordIndex.wordOf(progressOffset);
 		const chapterProgress =
-			chapterEnd > ch.startByte
-				? Math.max(0, (progressOffset - ch.startByte) / (chapterEnd - ch.startByte))
+			chapterEndWord > ch.startWord
+				? Math.max(0, (currentWord - ch.startWord) / (chapterEndWord - ch.startWord))
 				: 0;
 		chapterMinutesRemaining =
 			(chapterWordCounts[currentChapterIndex] * (1 - chapterProgress)) / estimateWpm;
@@ -1361,7 +1355,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						provider={series?.provider}
 						onRetry={chapterFetch.retry}
 					/>
-				) : contentPending || !content || chapterFetch.kind === "loading" ? (
+				) : contentPending || !content || !wordIndex || chapterFetch.kind === "loading" ? (
 					<ReaderSkeleton />
 				) : readerMode === "rsvp" ? (
 					<RsvpView
@@ -1386,7 +1380,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						entriesByParagraph={entriesByParagraph}
 						wordIndex={wordIndex ?? null}
 						contentLength={contentBytes?.length ?? content.length}
-						initialByteOffset={lastOffsetRef.current ?? book.position}
+						initialByteOffset={lastOffsetRef.current ?? seedByte ?? 0}
 						fontSize={readerFontSize}
 						fontFamily={readerFontFamily}
 						lineSpacing={readerLineSpacing}
@@ -1416,7 +1410,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						paragraphStartWords={paragraphStartWords}
 						entriesByParagraph={entriesByParagraph}
 						findParagraphIndex={findParagraphIndex}
-						initialByteOffset={lastOffsetRef.current ?? book.position}
+						initialByteOffset={lastOffsetRef.current ?? seedByte ?? 0}
 						wordIndex={wordIndex ?? null}
 						fontSize={readerFontSize}
 						fontFamily={readerFontFamily}
@@ -1503,8 +1497,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				onJumpChapter={handleChapterJump}
 				seriesId={book.seriesId ?? null}
 				highlights={highlightRows}
-				content={content ?? ""}
-				onJumpHighlight={jumpToOffset}
+				onJumpHighlight={handleHighlightJump}
 				glossary={glossaryEntries}
 				currentBookId={id}
 				onOpenEntry={(entry) => {

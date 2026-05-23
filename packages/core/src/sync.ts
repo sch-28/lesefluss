@@ -11,15 +11,7 @@ export const SyncBookSchema = z.object({
 	author: z.string().max(200).nullable(),
 	fileSize: z.number().int().nonnegative().nullable(),
 	wordCount: z.number().int().nonnegative().nullable(),
-	// Byte offset (legacy; dropped Release N+1). Required on the wire so
-	// Release N-1 clients keep working.
-	position: z.number().int().nonnegative(),
-	// Canonical word-unit position (ADR-0002). Optional during Release N so
-	// Release N-1 uploads still validate. Release N+1 makes this required.
-	wordPosition: z.number().int().nonnegative().optional(),
-	// Migration marker: 'byte' until the client has backfilled this book, then
-	// 'word'. Optional same reason as wordPosition.
-	positionUnit: z.enum(["byte", "word"]).optional(),
+	wordPosition: z.number().int().nonnegative(),
 	content: z.string().max(20_000_000).nullable().optional(), // full plain text - only sent for new books
 	coverImage: z.string().max(5_000_000).nullable().optional(), // base64 cover - only sent for new books
 	chapters: z.string().max(500_000).nullable().optional(), // JSON chapters - only sent for new books
@@ -113,23 +105,19 @@ export const SyncHighlightSchema = z
 	.object({
 		highlightId: z.string().min(1).max(64),
 		bookId: z.string().regex(/^[0-9a-f]{8}$/),
-		// Legacy byte anchors (dropped Release N+1).
-		startOffset: z.number().int().nonnegative(),
-		endOffset: z.number().int().nonnegative(),
-		// Option A word-anchor (ADR-0002). Optional during Release N.
-		startWord: z.number().int().nonnegative().optional(),
-		startCharInWord: z.number().int().nonnegative().optional(),
-		endWord: z.number().int().nonnegative().optional(),
-		endCharInWord: z.number().int().nonnegative().optional(),
+		startWord: z.number().int().nonnegative(),
+		startCharInWord: z.number().int().nonnegative(),
+		endWord: z.number().int().nonnegative(),
+		endCharInWord: z.number().int().nonnegative(),
 		color: z.enum(["yellow", "blue", "orange", "pink"]),
 		note: z.string().max(2000).nullable(),
-		text: z.string().max(5000).nullable().optional(), // undefined = absent (old client), null = new client with no stored text
+		text: z.string().max(5000).nullable().optional(),
 		deleted: z.boolean(),
 		createdAt: z.number().int().nonnegative(),
 		updatedAt: z.number().int().nonnegative(),
 	})
-	.refine((d) => d.endOffset >= d.startOffset, {
-		message: "endOffset must be >= startOffset",
+	.refine((d) => d.endWord >= d.startWord, {
+		message: "endWord must be >= startWord",
 	});
 
 export const SyncGlossaryEntrySchema = z.object({
@@ -158,13 +146,8 @@ export const SyncReadingSessionSchema = z
 		endedAt: z.number().int().nonnegative(),
 		durationMs: z.number().int().nonnegative(),
 		wordsRead: z.number().int().nonnegative(),
-		// Legacy byte bounds (dropped Release N+1).
-		startPos: z.number().int().nonnegative(),
-		endPos: z.number().int().nonnegative(),
-		// Canonical word-unit bounds (ADR-0002). Optional during Release N.
-		startWord: z.number().int().nonnegative().optional(),
-		endWord: z.number().int().nonnegative().optional(),
-		// RSVP-only; null for scroll and page.
+		startWord: z.number().int().nonnegative(),
+		endWord: z.number().int().nonnegative(),
 		wpmAvg: z.number().int().positive().nullable(),
 		updatedAt: z.number().int().nonnegative(),
 	})

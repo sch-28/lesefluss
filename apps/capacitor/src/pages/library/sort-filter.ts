@@ -22,23 +22,15 @@ export const FILTER_OPTIONS: FilterBy[] = ["all", "unread", "reading", "done"];
 export const SORT_OPTIONS: SortBy[] = ["recent", "title", "author", "progress"];
 
 export function readingProgress(book: Book): number {
-	// ADR-0002: prefer word units when backfilled. Falls back to byte ratio
-	// for pre-backfill rows or pending chapters with wordCount === 0.
-	if (book.wordCount > 0) {
-		return Math.min(100, Math.round((book.wordPosition / book.wordCount) * 100));
-	}
-	if (!book.size || book.size === 0) return 0;
-	return Math.min(100, Math.round((book.position / book.size) * 100));
+	if (book.wordCount <= 0) return 0;
+	return Math.min(100, Math.round((book.wordPosition / book.wordCount) * 100));
 }
 
-/** Tail tolerance for "finished" — word-aware (ADR-0002) with byte fallback. */
-const FINISHED_TAIL_BYTES = 32;
 const FINISHED_TAIL_WORDS = 5;
 
 export function isBookFinished(book: Book): boolean {
-	if (book.wordCount > 0) return book.wordPosition >= book.wordCount - FINISHED_TAIL_WORDS;
-	if (book.size <= 0) return false;
-	return book.position >= book.size - FINISHED_TAIL_BYTES;
+	if (book.wordCount <= 0) return false;
+	return book.wordPosition >= book.wordCount - FINISHED_TAIL_WORDS;
 }
 
 /**

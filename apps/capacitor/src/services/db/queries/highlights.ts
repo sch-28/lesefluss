@@ -2,15 +2,13 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "../index";
 import { type Highlight, highlights, type NewHighlight } from "../schema";
 
-/**
- * Fetch all highlights for a book, ordered by position (start_offset ascending).
- */
+/** Fetch all highlights for a book, ordered by start word. */
 export async function getHighlightsByBook(bookId: string): Promise<Highlight[]> {
 	return db
 		.select()
 		.from(highlights)
 		.where(eq(highlights.bookId, bookId))
-		.orderBy(asc(highlights.startOffset));
+		.orderBy(asc(highlights.startWord));
 }
 
 /**
@@ -22,7 +20,7 @@ export async function getHighlightsByBooks(bookIds: string[]): Promise<Highlight
 		.select()
 		.from(highlights)
 		.where(inArray(highlights.bookId, bookIds))
-		.orderBy(asc(highlights.bookId), asc(highlights.startOffset));
+		.orderBy(asc(highlights.bookId), asc(highlights.startWord));
 }
 
 /**

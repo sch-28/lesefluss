@@ -178,7 +178,6 @@ export async function handleArticleImportRequest(
 			author: payload.author ?? null,
 			fileSize: utf8ByteLength(payload.content),
 			wordCount: countWords(payload.content),
-			position: 0,
 			content: payload.content,
 			coverImage: payload.coverImage ?? null,
 			// HTML parser doesn't emit chapters today; defensive for future parsers.

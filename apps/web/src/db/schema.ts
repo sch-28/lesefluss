@@ -27,14 +27,10 @@ export const syncBooks = pgTable(
 		author: text("author"),
 		fileSize: integer("file_size"),
 		wordCount: integer("word_count"),
-		position: integer("position").notNull().default(0), // byte offset (legacy; dropped in Release N+1)
-		// Canonical position in word units (ADR-0002). Mirrors books.word_position.
 		wordPosition: integer("word_position").notNull().default(0),
-		// Migration marker: 'byte' or 'word'. Dropped in Release N+1.
-		positionUnit: text("position_unit").notNull().default("byte"),
 		content: text("content"), // full plain text - null until first content push
 		coverImage: text("cover_image"), // base64-encoded cover art from EPUB
-		chapters: text("chapters"), // JSON: [{title: string, startByte: number}]
+		chapters: text("chapters"), // JSON: [{title: string, startWord: number}]
 		source: text("source"), // 'gutenberg' | 'standard_ebooks' | 'url' | 'serial' | null
 		catalogId: text("catalog_id"), // e.g. 'gutenberg:1342'
 		sourceUrl: text("source_url"), // original URL for source='url' imports
@@ -52,7 +48,6 @@ export const syncBooks = pgTable(
 			"sync_books_chapter_status_check",
 			sql`${t.chapterStatus} IN ('pending', 'fetched', 'locked', 'error')`,
 		),
-		check("sync_books_position_unit_check", sql`${t.positionUnit} IN ('byte', 'word')`),
 	],
 );
 
@@ -141,13 +136,10 @@ export const syncHighlights = pgTable(
 		userId: text("user_id").notNull(),
 		highlightId: text("highlight_id").notNull(), // client UUID
 		bookId: text("book_id").notNull(),
-		startOffset: integer("start_offset").notNull(), // UTF-8 byte offset (legacy)
-		endOffset: integer("end_offset").notNull(),
-		// Option A word-snap anchor (ADR-0002). Nullable until client backfill populates.
-		startWord: integer("start_word"),
-		startCharInWord: integer("start_char_in_word"),
-		endWord: integer("end_word"),
-		endCharInWord: integer("end_char_in_word"),
+		startWord: integer("start_word").notNull(),
+		startCharInWord: integer("start_char_in_word").notNull().default(0),
+		endWord: integer("end_word").notNull(),
+		endCharInWord: integer("end_char_in_word").notNull().default(0),
 		color: text("color").notNull().default("yellow"), // yellow | blue | orange | pink
 		note: text("note"),
 		text: text("text"), // extracted text snippet - null for pre-existing highlights
@@ -195,11 +187,8 @@ export const syncReadingSessions = pgTable(
 		endedAt: timestamp("ended_at").notNull(),
 		durationMs: integer("duration_ms").notNull(),
 		wordsRead: integer("words_read").notNull(),
-		startPos: integer("start_pos").notNull(),
-		endPos: integer("end_pos").notNull(),
-		// Canonical session bounds in word units (ADR-0002). Populated by backfill.
-		startWord: integer("start_word"),
-		endWord: integer("end_word"),
+		startWord: integer("start_word").notNull(),
+		endWord: integer("end_word").notNull(),
 		wpmAvg: integer("wpm_avg"),
 		updatedAt: timestamp("updated_at").notNull(),
 	},

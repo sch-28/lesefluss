@@ -155,8 +155,18 @@ export async function cleanupOrphanedChapterRows(): Promise<number> {
  * fetch — `addSeriesWithChapters` inserts a placeholder; this swaps it for the
  * real text once the scraper resolves.
  */
-export async function setChapterContent(bookId: string, content: string): Promise<void> {
-	await db.update(bookContent).set({ content }).where(eq(bookContent.bookId, bookId));
+export async function setChapterContent(
+	bookId: string,
+	content: string,
+	opts?: { wordIndexSerialized?: string },
+): Promise<void> {
+	await db
+		.update(bookContent)
+		.set({
+			content,
+			...(opts?.wordIndexSerialized ? { wordIndex: opts.wordIndexSerialized } : {}),
+		})
+		.where(eq(bookContent.bookId, bookId));
 }
 
 /**
@@ -209,8 +219,8 @@ export async function getSeriesActivity(): Promise<Map<string, SeriesActivity>> 
 		.select({
 			seriesId: books.seriesId,
 			total: sql<number>`COUNT(*)`,
-			started: sql<number>`SUM(CASE WHEN ${books.position} > 0 THEN 1 ELSE 0 END)`,
-			finished: sql<number>`SUM(CASE WHEN ${books.size} > 0 AND ${books.position} * 100 >= ${books.size} * ${FINISHED_PERCENT_THRESHOLD} THEN 1 ELSE 0 END)`,
+			started: sql<number>`SUM(CASE WHEN ${books.wordPosition} > 0 THEN 1 ELSE 0 END)`,
+			finished: sql<number>`SUM(CASE WHEN ${books.wordCount} > 0 AND ${books.wordPosition} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD} THEN 1 ELSE 0 END)`,
 			latestRead: sql<number | null>`MAX(${books.lastRead})`,
 		})
 		.from(books)

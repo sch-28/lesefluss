@@ -33,11 +33,8 @@ export type SessionRow = {
 	endedAt: number;
 	durationMs: number;
 	wordsRead: number;
-	startPos: number;
-	endPos: number;
-	/** Canonical word-unit bounds (ADR-0002). Populated when a WordIndex is wired. */
-	startWord?: WordPosition;
-	endWord?: WordPosition;
+	startWord: WordPosition;
+	endWord: WordPosition;
 	wpmAvg: number | null;
 	updatedAt: number;
 };
@@ -338,10 +335,16 @@ export class SessionTracker {
 			this.opts.mode === "rsvp" ? (this.opts.wpmSetting ?? null) : wasCapped ? null : computedWpm;
 		const sw = this.opts.byteToWord?.(s.startPos);
 		const ew = this.opts.byteToWord?.(endPos);
-		const wordCols =
-			sw !== undefined && sw !== null && ew !== undefined && ew !== null
-				? { startWord: sw, endWord: ew }
-				: {};
+		if (sw == null || ew == null) {
+			// No WordIndex wired (lazy load not yet resolved, or content invalidated
+			// mid-session). Distinct from the noise-floor drop above so the cause
+			// is debuggable from logs.
+			log.warn(
+				"reading-session",
+				`dropped (no WordIndex): duration=${finalActiveMs}ms words=${s.wordsAccumulated}`,
+			);
+			return null;
+		}
 		return {
 			id: s.id,
 			bookId: this.opts.bookId,
@@ -350,9 +353,8 @@ export class SessionTracker {
 			endedAt: now,
 			durationMs: finalActiveMs,
 			wordsRead: s.wordsAccumulated,
-			startPos: s.startPos,
-			endPos,
-			...wordCols,
+			startWord: sw,
+			endWord: ew,
 			wpmAvg,
 			updatedAt: now,
 		};

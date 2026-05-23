@@ -164,26 +164,11 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 	const router = useRouter();
 	const dateLabel = formatSessionDate(session.startedAt);
 
-	// ADR-0002: word units when both session row and book carry them; byte
-	// ratio fallback for legacy rows.
-	const size = book?.size ?? 0;
 	const wordCount = book?.wordCount ?? 0;
-	const useWord = wordCount > 0 && session.startWord != null && session.endWord != null;
-	const deltaPct = useWord
-		? ((session.endWord! - session.startWord!) / wordCount) * 100
-		: size > 0
-			? ((session.endPos - session.startPos) / size) * 100
-			: null;
-	const startPct = useWord
-		? (session.startWord! / wordCount) * 100
-		: size > 0
-			? (session.startPos / size) * 100
-			: null;
-	const endPct = useWord
-		? (session.endWord! / wordCount) * 100
-		: size > 0
-			? (session.endPos / size) * 100
-			: null;
+	const hasRange = wordCount > 0;
+	const deltaPct = hasRange ? ((session.endWord - session.startWord) / wordCount) * 100 : null;
+	const startPct = hasRange ? (session.startWord / wordCount) * 100 : null;
+	const endPct = hasRange ? (session.endWord / wordCount) * 100 : null;
 
 	const openBook = () =>
 		router.navigate({ to: "/tabs/library/book/$id", params: { id: session.bookId } });

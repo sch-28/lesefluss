@@ -1,7 +1,7 @@
+import { WordIndex } from "@lesefluss/core";
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
 import type { NewBook, NewSeries, Series } from "../db/schema";
-import { backfillBookToWord } from "../db/word-index-backfill";
 import { scheduleSyncPush } from "../sync";
 import type { ChapterFetchResult, ChapterRef, SeriesMetadata } from "./types";
 
@@ -47,7 +47,6 @@ function buildChapterRow(
 		fileFormat: "txt",
 		filePath: null,
 		size: 0,
-		position: 0,
 		isActive: false,
 		addedAt: now,
 		lastRead: null,
@@ -94,20 +93,17 @@ export async function commitChapter(chapterId: string, result: ChapterFetchResul
 	switch (result.status) {
 		case "fetched": {
 			const size = new TextEncoder().encode(result.content).byteLength;
+			const wi = WordIndex.build(result.content);
 			await queries.updateBook(chapterId, {
 				chapterStatus: "fetched",
 				chapterError: null,
 				size,
+				wordCount: wi.wordCount,
 				lastRead: now,
 			});
-			await queries.setChapterContent(chapterId, result.content);
-			// ADR-0002: a freshly fetched chapter has new content → invalidate
-			// any prior WordIndex blob and re-tokenize in the same step.
-			try {
-				await backfillBookToWord(chapterId);
-			} catch (err) {
-				log.warn("scraper", `word-index backfill on chapter commit failed for ${chapterId}:`, err);
-			}
+			await queries.setChapterContent(chapterId, result.content, {
+				wordIndexSerialized: JSON.stringify(wi.serialize()),
+			});
 			scheduleSyncPush();
 			return;
 		}

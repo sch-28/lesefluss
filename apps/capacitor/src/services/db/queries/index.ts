@@ -5,6 +5,7 @@
  */
 import {
 	addBookWithContent,
+	addServerBookWithContent,
 	deleteBook,
 	getAllBooks,
 	getBook,
@@ -97,6 +98,7 @@ export const queries = {
 	getBookContent,
 	getBookCovers,
 	addBookWithContent,
+	addServerBookWithContent,
 	loadBookWordIndex,
 	parseChapters,
 	updateBook,

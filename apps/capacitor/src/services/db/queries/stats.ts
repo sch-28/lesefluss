@@ -44,7 +44,7 @@ export async function getPeriodTotals(
 				isNotNull(books.lastRead),
 				gte(books.lastRead, periodStart),
 				lt(books.lastRead, periodEnd),
-				sql`${books.size} > 0 AND ${books.position} * 100 >= ${books.size} * ${FINISHED_PERCENT_THRESHOLD}`,
+				sql`${books.wordCount} > 0 AND ${books.wordPosition} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD}`,
 			),
 		);
 

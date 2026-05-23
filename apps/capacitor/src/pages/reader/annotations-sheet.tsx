@@ -20,17 +20,10 @@ import { HIGHLIGHT_COLOR_STYLE } from "./selection-toolbar";
 
 type Tab = "contents" | "chapters" | "highlights" | "glossary";
 
-const _encoder = new TextEncoder();
-const _decoder = new TextDecoder();
-
-function extractSnippet(bytes: Uint8Array, startOffset: number, endOffset: number): string {
-	let end = Math.min(endOffset + 30, bytes.length);
-	while (end < bytes.length && bytes[end] !== 32 && bytes[end] !== 10) {
-		end++;
-	}
-	const slice = bytes.slice(startOffset, end);
-	const text = _decoder.decode(slice).replace(/\s+/g, " ").trim();
-	return text.length > 60 ? `${text.slice(0, 60)}…` : text;
+function snippetFromText(text: string | null): string {
+	if (!text) return "(no preview)";
+	const cleaned = text.replace(/\s+/g, " ").trim();
+	return cleaned.length > 60 ? `${cleaned.slice(0, 60)}…` : cleaned;
 }
 
 interface AnnotationsSheetProps {
@@ -38,11 +31,10 @@ interface AnnotationsSheetProps {
 	onClose: () => void;
 	theme?: string;
 	chapters: Chapter[];
-	onJumpChapter: (startByte: number) => void;
+	onJumpChapter: (startWord: number) => void;
 	seriesId?: string | null;
 	highlights: Highlight[];
-	content: string;
-	onJumpHighlight: (byteOffset: number) => void;
+	onJumpHighlight: (highlight: Highlight) => void;
 	glossary: GlossaryEntry[];
 	currentBookId: string;
 	onOpenEntry: (entry: GlossaryEntry) => void;
@@ -59,7 +51,6 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	onJumpChapter,
 	seriesId,
 	highlights,
-	content,
 	onJumpHighlight,
 	glossary,
 	currentBookId,
@@ -92,8 +83,6 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 			setSnap(SNAP_POINTS[0]);
 		}
 	}, [isOpen]);
-
-	const contentBytes = useMemo(() => _encoder.encode(content), [content]);
 
 	const { bookEntries, globalEntries } = useMemo(() => {
 		const book: GlossaryEntry[] = [];
@@ -141,7 +130,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 									<button
 										type="button"
 										onClick={() => {
-											onJumpChapter(ch.startByte);
+											onJumpChapter(ch.startWord);
 											onClose();
 										}}
 										className="w-full border-border border-b px-5 py-3 text-left text-foreground text-sm transition-colors hover:bg-muted"
@@ -163,13 +152,13 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 						) : (
 							<ul className="flex flex-col">
 								{highlights.map((h) => {
-									const snippet = extractSnippet(contentBytes, h.startOffset, h.endOffset);
+									const snippet = snippetFromText(h.text);
 									return (
 										<li key={h.id}>
 											<button
 												type="button"
 												onClick={() => {
-													onJumpHighlight(h.startOffset);
+													onJumpHighlight(h);
 													onClose();
 												}}
 												className="flex w-full items-start gap-3 border-border border-b px-5 py-3 text-left transition-colors hover:bg-muted"

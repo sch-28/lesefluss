@@ -10,7 +10,7 @@
 
 import { BleClient } from "@capacitor-community/bluetooth-le";
 import { multibook } from "@lesefluss/ble-config";
-import { WordIndex, type WordPosition, wordPos } from "@lesefluss/core";
+import { WordIndex, wordPos } from "@lesefluss/core";
 import type React from "react";
 import {
 	createContext,
@@ -371,41 +371,34 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 		const confirmedBookId = activeBookIdRef.current;
 
 		if (confirmedBookId != null) {
-			// ADR-0002 §56-57: BookSyncContext owns the BLE byte ↔ word
-			// conversion. Read the canonical `word_position` column + the
-			// per-book WordIndex; convert to byte at the codec boundary for
-			// comparison with the single-book esp32's byte payload.
+			// BookSyncContext owns the BLE byte ↔ word conversion (ADR-0002).
+			// Convert app's canonical word position to bytes at the codec
+			// boundary so the single-book esp32 (byte protocol) can compare.
 			const book = await queries.getBook(confirmedBookId);
 			const idx = await queries.loadBookWordIndex(confirmedBookId).catch((err) => {
 				log.warn("booksync", "loadBookWordIndex failed during device sync:", err);
 				return null;
 			});
 			const appPos =
-				book && idx && book.positionUnit === "word" && idx.wordCount > 0
+				book && idx && idx.wordCount > 0
 					? idx.byteOf(wordPos(Math.min(Math.max(book.wordPosition, 0), idx.wordCount - 1)))
-					: (book?.position ?? 0);
+					: 0;
 
 			if (appPos > devicePos) {
-				// App is ahead - push its position to the device.
 				winner = appPos;
 				await ble.writePosition(appPos);
 				log("booksync", `app ahead (${appPos} > ${devicePos}), pushed to device`);
 			} else if (devicePos > appPos) {
-				// Device is ahead - persist into DB. Dual-write byte +
-				// canonical word column so both stay current.
-				const update: {
-					position: number;
-					lastRead: number;
-					wordPosition?: WordPosition;
-				} = {
-					position: devicePos,
-					lastRead: Date.now(),
-				};
-				if (idx) update.wordPosition = idx.wordOf(devicePos);
-				await queries.updateBook(confirmedBookId, update);
-				log("booksync", `device ahead (${devicePos} > ${appPos}), saved to DB`);
+				if (!idx) {
+					log.warn("booksync", "device ahead but no WordIndex; cannot persist");
+				} else {
+					await queries.updateBook(confirmedBookId, {
+						wordPosition: idx.wordOf(devicePos),
+						lastRead: Date.now(),
+					});
+					log("booksync", `device ahead (${devicePos} > ${appPos}), saved to DB`);
+				}
 			}
-			// If equal, nothing to do
 		}
 
 		setDevicePosition(winner);
@@ -666,9 +659,9 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					const book = await queries.getBook(bookId);
 					const idx = await queries.loadBookWordIndex(bookId).catch(() => null);
 					const pos =
-						book && idx && book.positionUnit === "word" && idx.wordCount > 0
+						book && idx && idx.wordCount > 0
 							? idx.byteOf(wordPos(Math.min(Math.max(book.wordPosition, 0), idx.wordCount - 1)))
-							: (book?.position ?? 0);
+							: 0;
 					await ble.writePosition(pos);
 					setDevicePosition(pos);
 					await queries.setActiveBook(bookId);

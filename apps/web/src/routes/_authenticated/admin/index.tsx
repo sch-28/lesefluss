@@ -797,7 +797,8 @@ function BooksTable() {
 		);
 
 	const renderExpanded = (b: AdminBook) => {
-		const progress = b.fileSize && b.position ? Math.round((b.position / b.fileSize) * 100) : 0;
+		const progress =
+			b.wordCount && b.wordPosition ? Math.round((b.wordPosition / b.wordCount) * 100) : 0;
 		return (
 			<dl className="grid grid-cols-3 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
 				<div>
@@ -810,7 +811,7 @@ function BooksTable() {
 				</div>
 				<div>
 					<dt className="text-muted-foreground">Position</dt>
-					<dd className="tabular-nums">{b.position.toLocaleString()} B</dd>
+					<dd className="tabular-nums">{b.wordPosition.toLocaleString()} w</dd>
 				</div>
 				<div>
 					<dt className="text-muted-foreground">Book ID</dt>

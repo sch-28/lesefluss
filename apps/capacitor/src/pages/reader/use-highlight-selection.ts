@@ -111,20 +111,20 @@ export function useHighlightSelection({
 
 	// ── Per-paragraph highlight map ───────────────────────────────────────
 	// Maps paragraphIndex → HighlightRange[] that overlap that paragraph.
-	// Highlights store byte AND word fields after backfill (ADR-0002); when a
-	// row's word fields are still null (transitional state pre-backfill) we
-	// derive them on the fly via the active WordIndex. Rows without either
-	// fallback are dropped from rendering — the next backfill pass fixes them.
+	// Highlights are anchored on word units (ADR-0002). Convert each to its
+	// paragraph(s) via the WordIndex byte mapping for paragraph-membership.
+	// Out-of-range word values (re-tokenization or cross-device drift) are
+	// clamped instead of throwing, so a stale highlight degrades gracefully
+	// rather than crashing the reader.
 	const highlightsByParagraph = useMemo<Map<number, HighlightRange[]>>(() => {
 		const map = new Map<number, HighlightRange[]>();
-		if (highlightRows.length === 0 || paragraphOffsets.length === 0) return map;
+		if (highlightRows.length === 0 || paragraphOffsets.length === 0 || !wordIndex) return map;
 
 		for (const h of highlightRows) {
-			const startWord =
-				h.startWord !== null ? wordPos(h.startWord) : (wordIndex?.wordOf(h.startOffset) ?? null);
-			const endWord =
-				h.endWord !== null ? wordPos(h.endWord) : (wordIndex?.wordOf(h.endOffset) ?? null);
-			if (startWord === null || endWord === null) continue;
+			const startWord = wordPos(h.startWord);
+			const endWord = wordPos(h.endWord);
+			const startByte = wordIndex.byteOfClamped(h.startWord);
+			const endByte = wordIndex.byteOfClamped(h.endWord);
 
 			const range: HighlightRange = {
 				id: h.id,
@@ -137,9 +137,9 @@ export function useHighlightSelection({
 				const paraStart = paragraphOffsets[i];
 				const paraEnd =
 					i + 1 < paragraphOffsets.length
-						? paragraphOffsets[i + 1] - 2 // -2 for the "\n\n"
+						? paragraphOffsets[i + 1] - 2
 						: Number.POSITIVE_INFINITY;
-				if (h.startOffset <= paraEnd && h.endOffset >= paraStart) {
+				if (startByte <= paraEnd && endByte >= paraStart) {
 					const existing = map.get(i);
 					if (existing) {
 						existing.push(range);
@@ -168,18 +168,26 @@ export function useHighlightSelection({
 
 	const findHighlightAt = useCallback(
 		(offset: number): Highlight | undefined => {
-			return highlightRows.find((h) => offset >= h.startOffset && offset <= h.endOffset);
+			if (!wordIndex) return undefined;
+			const word = wordIndex.wordOf(offset);
+			return highlightRows.find((h) => word >= h.startWord && word <= h.endWord);
 		},
-		[highlightRows],
+		[highlightRows, wordIndex],
 	);
 
 	/** Open the edit modal for a known highlight. */
 	const openHighlightEditor = useCallback(
 		(highlight: Highlight) => {
 			setEditingHighlight(highlight);
-			setEditingHighlightText(extractRangeText(highlight.startOffset, highlight.endOffset));
+			if (!wordIndex) {
+				setEditingHighlightText(highlight.text ?? "");
+				return;
+			}
+			const startByte = wordIndex.byteOfClamped(highlight.startWord);
+			const endByte = wordIndex.byteOfClamped(highlight.endWord);
+			setEditingHighlightText(extractRangeText(startByte, endByte));
 		},
-		[extractRangeText],
+		[extractRangeText, wordIndex],
 	);
 
 	/** Enter selection mode anchored at `offset` (both anchor + end). */
@@ -366,25 +374,21 @@ export function useHighlightSelection({
 					data: { color: newColor, updatedAt: now },
 				});
 			} else {
+				if (!wordIndex) return;
 				const newId = randomHexId();
 				setSelectionSavedId(newId);
 				const snippet = contentBytes
 					? _decoder.decode(contentBytes.subarray(selectionRange.start, selectionRange.end))
 					: null;
-				const wordAnchor = wordIndex
-					? {
-							startWord: wordIndex.wordAndCharOf(selectionRange.start).word,
-							startCharInWord: wordIndex.wordAndCharOf(selectionRange.start).charInWord,
-							endWord: wordIndex.wordAndCharOf(selectionRange.end).word,
-							endCharInWord: wordIndex.wordAndCharOf(selectionRange.end).charInWord,
-						}
-					: {};
+				const start = wordIndex.wordAndCharOf(selectionRange.start);
+				const end = wordIndex.wordAndCharOf(selectionRange.end);
 				addHighlightMutation.mutate({
 					id: newId,
 					bookId,
-					startOffset: selectionRange.start,
-					endOffset: selectionRange.end,
-					...wordAnchor,
+					startWord: start.word,
+					startCharInWord: start.charInWord,
+					endWord: end.word,
+					endCharInWord: end.charInWord,
 					color: newColor,
 					note: pendingNote || null,
 					text: snippet,

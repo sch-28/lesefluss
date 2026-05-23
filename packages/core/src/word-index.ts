@@ -90,6 +90,20 @@ export class WordIndex {
 		return off;
 	}
 
+	/**
+	 * Like {@link byteOf} but clamps the input into `[0, wordCount-1]` and
+	 * returns 0 on an empty index. Use when the word position originates from
+	 * persisted state that may have drifted (re-tokenization, cross-device
+	 * sync, schema migration) so a stale or out-of-range value doesn't crash
+	 * the caller.
+	 */
+	byteOfClamped(pos: number): number {
+		const n = this.byteOffsets.length;
+		if (n === 0) return 0;
+		const clamped = Math.min(n - 1, Math.max(0, Math.floor(pos)));
+		return this.byteOffsets[clamped];
+	}
+
 	wordOf(byteOffset: number): WordPosition {
 		const offsets = this.byteOffsets;
 		if (offsets.length === 0) return wordPos(0);

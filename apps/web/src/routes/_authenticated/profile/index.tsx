@@ -95,13 +95,13 @@ type ProfileBook = {
 	title: string;
 	author: string | null;
 	coverImage: string | null;
-	position: number;
+	wordPosition: number;
 	fileSize: number | null;
 	wordCount: number | null;
 };
 
 function BookCard({ book }: { book: ProfileBook }) {
-	const progress = book.fileSize ? Math.round((book.position / book.fileSize) * 100) : null;
+	const progress = book.wordCount ? Math.round((book.wordPosition / book.wordCount) * 100) : null;
 
 	return (
 		<div className="flex flex-col gap-1.5">

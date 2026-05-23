@@ -49,7 +49,7 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 				title: syncBooks.title,
 				author: syncBooks.author,
 				coverImage: syncBooks.coverImage,
-				position: syncBooks.position,
+				wordPosition: syncBooks.wordPosition,
 				fileSize: syncBooks.fileSize,
 				wordCount: syncBooks.wordCount,
 			})
@@ -118,8 +118,8 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 	let booksFinished = 0;
 	let wordsRead = 0;
 	for (const b of books) {
-		if (b.fileSize && b.position / b.fileSize > FINISHED_THRESHOLD) booksFinished++;
-		if (b.fileSize && b.wordCount) wordsRead += Math.round((b.position / b.fileSize) * b.wordCount);
+		if (b.wordCount && b.wordPosition / b.wordCount > FINISHED_THRESHOLD) booksFinished++;
+		if (b.wordCount) wordsRead += b.wordPosition;
 	}
 
 	return {

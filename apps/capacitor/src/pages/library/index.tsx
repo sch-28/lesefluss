@@ -304,7 +304,7 @@ const Library: React.FC = () => {
 						}
 						const { book } = item;
 						const progress = readingProgress(book);
-						const started = book.position > 0;
+						const started = book.wordPosition > 0;
 						const cover = covers.get(book.id);
 						return (
 							<BookCard
@@ -339,7 +339,7 @@ const Library: React.FC = () => {
 						}
 						const { book } = item;
 						const progress = readingProgress(book);
-						const started = book.position > 0;
+						const started = book.wordPosition > 0;
 						const cover = covers.get(book.id);
 						return (
 							<BookListItem
