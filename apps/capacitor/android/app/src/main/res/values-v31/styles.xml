@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBarPostSplash</item>
+        <!-- Keep edge-to-edge bars consistent with AppTheme.NoActionBar so the
+             system splash doesn't flash opaque status/nav bars on API 31+. -->
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Used as postSplashScreenTheme so the window has a solid bg the moment
+         the system splash dismisses (AppTheme.NoActionBar sets background=@null,
+         which causes a flash before Capacitor's plugin paints). -->
+    <style name="AppTheme.NoActionBarPostSplash" parent="AppTheme.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+</resources>

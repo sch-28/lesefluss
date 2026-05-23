@@ -9,7 +9,8 @@
 		"SplashScreen": {
 			"launchShowDuration": 8000,
 			"launchAutoHide": true,
-			"backgroundColor": "#fdfcfb"
+			"backgroundColor": "#fef6e4",
+			"androidScaleType": "CENTER_CROP"
 		},
 		"StatusBar": {
 			"overlaysWebView": true,
