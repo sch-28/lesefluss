@@ -58,6 +58,16 @@ export function WpmTrend() {
 		[seriesData],
 	);
 
+	const chartData = useMemo(
+		() =>
+			present.map((id) => ({
+				id: LABELS[id],
+				color: colors[id],
+				data: seriesData[id],
+			})),
+		[present, colors, seriesData],
+	);
+
 	if (!weekly.isLoading && present.length === 0) {
 		return (
 			<motion.section
@@ -81,16 +91,6 @@ export function WpmTrend() {
 		(["rsvpTarget", "read", "rsvpDelivered"] as const).find((id) => present.includes(id)) ?? null;
 	const headlineAvg = headlineId ? avgOf(seriesData[headlineId]) : 0;
 	const headlineLabel = headlineId ? `${LABELS[headlineId]} avg` : "";
-
-	const chartData = useMemo(
-		() =>
-			present.map((id) => ({
-				id: LABELS[id],
-				color: colors[id],
-				data: seriesData[id],
-			})),
-		[present, colors, seriesData],
-	);
 
 	return (
 		<motion.section
