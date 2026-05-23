@@ -21,9 +21,8 @@ const POLL_MS = 500;
 function isEnabled(): boolean {
 	try {
 		const v = localStorage.getItem("lesefluss.debug.reading");
-		// Default on while diagnosing session-tracking regressions. Disable
-		// from the console with: localStorage.setItem("lesefluss.debug.reading", "0")
-		if (v === null) return true;
+		// Off by default. Testers can enable from the console with:
+		// localStorage.setItem("lesefluss.debug.reading", "1")
 		return v === "1";
 	} catch {
 		return false;

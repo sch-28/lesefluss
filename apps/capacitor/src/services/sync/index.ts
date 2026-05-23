@@ -849,6 +849,35 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
 		);
 
+		// TASK-151 diagnostics: if push body crosses 1MB, break down which section
+		// is driving the size and surface the worst offender within that section.
+		const SPIKE_THRESHOLD = 1_000_000;
+		if (body.length > SPIKE_THRESHOLD) {
+			const sectionBytes = {
+				books: JSON.stringify(payload.books).length,
+				highlights: JSON.stringify(payload.highlights).length,
+				glossaryEntries: JSON.stringify(payload.glossaryEntries).length,
+				series: JSON.stringify(payload.series ?? []).length,
+				readingSessions: JSON.stringify(payload.readingSessions ?? []).length,
+			};
+			const sizedRow = <T>(rows: T[]): { row: T; bytes: number } | null => {
+				if (rows.length === 0) return null;
+				let worst = { row: rows[0] as T, bytes: JSON.stringify(rows[0]).length };
+				for (const row of rows) {
+					const bytes = JSON.stringify(row).length;
+					if (bytes > worst.bytes) worst = { row, bytes };
+				}
+				return worst;
+			};
+			const worstBook = sizedRow(payload.books);
+			const worstHighlight = sizedRow(payload.highlights);
+			const worstSession = sizedRow(payload.readingSessions ?? []);
+			log(
+				"sync",
+				`push payload SPIKE bodyBytes=${body.length} sections=${JSON.stringify(sectionBytes)} worstBook=${worstBook ? `${(worstBook.row as { id?: string }).id ?? "?"}:${worstBook.bytes}` : "none"} worstHighlight=${worstHighlight ? `${(worstHighlight.row as { id?: string }).id ?? "?"}:${worstHighlight.bytes}` : "none"} worstSession=${worstSession ? `${(worstSession.row as { id?: string }).id ?? "?"}:${worstSession.bytes}` : "none"}`,
+			);
+		}
+
 		await syncFetch("/api/sync", {
 			method: "POST",
 			body,

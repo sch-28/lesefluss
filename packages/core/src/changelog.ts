@@ -9,6 +9,21 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-05-23",
+		title: "Redesign, Live Sync, and rsvpnano Firmware",
+		tags: ["App", "ESP32"],
+		changes: [
+			"Refreshed app and reader design",
+			"Live bi-directional position sync between the app and your device while you read",
+			"More reliable position sync across devices and font sizes (positions are now tracked by word, not byte offset)",
+			"New rsvpnano firmware track with an improved BLE transfer pipeline",
+			"Improved BLE settings screen with clearer device status and controls",
+			"More accurate reading session tracking and a fix for the WPM trend chart",
+			"Faster and smoother chapter loading in long serials",
+			"Various reader fixes around taps, drag scrubbing, and font sizing",
+		],
+	},
+	{
 		date: "2026-05-08",
 		title: "Play Store Launch",
 		tags: ["App"],

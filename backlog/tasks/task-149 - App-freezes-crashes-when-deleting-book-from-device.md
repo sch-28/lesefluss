@@ -1,9 +1,10 @@
 ---
 id: TASK-149
 title: App freezes/crashes when deleting book from device
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-21 22:58'
+updated_date: '2026-05-23 16:17'
 labels: []
 milestone: m-12
 dependencies:
@@ -45,3 +46,9 @@ Acceptance:
 - [ ] #3 No regression to upload / open-on-device / settings sync flows on the multi-book device
 - [ ] #4 Single-book ESP32 delete flow unchanged
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Fixed prior to release. Remove-from-device no longer freezes app.
+<!-- SECTION:FINAL_SUMMARY:END -->

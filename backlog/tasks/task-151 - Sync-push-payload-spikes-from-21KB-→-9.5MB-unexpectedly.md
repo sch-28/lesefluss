@@ -1,9 +1,10 @@
 ---
 id: TASK-151
 title: Sync push payload spikes from 21KB → 9.5MB unexpectedly
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-21 22:12'
+updated_date: '2026-05-23 16:17'
 labels: []
 milestone: m-10
 dependencies: []
@@ -48,3 +49,9 @@ Acceptance:
 - [ ] #2 If bug: payload reduced to expected KB size when no real change happened
 - [ ] #3 If intended: documented why and gated behind a one-time / opt-in flag rather than firing on every push
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Added spike diagnostic in apps/capacitor/src/services/sync/index.ts: when push body > 1MB, logs per-section bytes + worst-row id for books/highlights/sessions. Verified on device — pushes stable at ~26KB across 4 consecutive pushes, no spike reproduced. Closing; diagnostic remains in place to catch future recurrence.
+<!-- SECTION:FINAL_SUMMARY:END -->
