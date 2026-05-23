@@ -19,6 +19,7 @@
 			"!**/drizzle",
 			"!**/.output",
 			"!apps/esp32",
+			"!apps/rsvpnano",
 			"!**/routeTree.gen.ts",
 			"!**/__tests__/fixtures"
 		]

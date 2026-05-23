@@ -41,13 +41,11 @@ interface MultibookConfig {
 
 const config: MultibookConfig = JSON.parse(readFileSync(configPath, "utf-8"));
 
-const hpp = `// Auto-generated from packages/ble-config/config-multibook.json - DO NOT EDIT
-// Re-generate by running: pnpm setup (from monorepo root)
-#pragma once
+const hpp = `#pragma once
 
 #include <cstdint>
 
-namespace lesefluss::ble {
+namespace rsvpnano::ble {
 
 constexpr int PROTOCOL_VERSION = ${config.protocol_version};
 constexpr const char* DEVICE_NAME = "${config.device_name}";
@@ -65,7 +63,7 @@ constexpr uint32_t WINDOW_SIZE = ${config.transfer.window_size};
 constexpr uint32_t MAX_RETRIES = ${config.transfer.max_retries};
 constexpr uint32_t ACK_TIMEOUT_MS = ${config.transfer.ack_timeout_ms};
 
-} // namespace lesefluss::ble
+}  // namespace rsvpnano::ble
 `;
 
 mkdirSync(dirname(outputPath), { recursive: true });
