@@ -42,6 +42,7 @@ import {
 	useState,
 } from "react";
 import { flushSync } from "react-dom";
+import type { ParagraphWordEntry } from "../paragraph";
 import {
 	cancelAnyActiveLongPress,
 	type GlossaryRangeProp,
@@ -49,7 +50,6 @@ import {
 	LONG_PRESS_MS,
 } from "../paragraph";
 import type { ReaderViewHandle } from "../view-types";
-import type { ParagraphWordEntry } from "../paragraph";
 import ChunkContent from "./chunk-content";
 import {
 	buildChunks,

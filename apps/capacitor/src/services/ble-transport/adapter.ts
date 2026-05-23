@@ -71,10 +71,7 @@ export function createBleAdapter<D extends DeviceDescriptor>(
 			}
 		});
 
-	const write = <K extends CharKey<D>>(
-		charName: K,
-		value: CharValue<D, K>,
-	): Promise<BLEResult> =>
+	const write = <K extends CharKey<D>>(charName: K, value: CharValue<D, K>): Promise<BLEResult> =>
 		enqueueDeviceOp(deviceId, async () => {
 			const char = descriptor.chars[charName] as CharDescriptor<CharValue<D, K>> | undefined;
 			if (!char) {

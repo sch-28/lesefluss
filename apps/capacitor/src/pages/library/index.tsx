@@ -1,16 +1,16 @@
-import { useLocation, useRouter } from "@tanstack/react-router";
-import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
+import { useIsMutating, useQueryClient } from "@tanstack/react-query";
+import { useLocation, useRouter } from "@tanstack/react-router";
 import {
-	BookOpen,
-	Filter as FilterIcon,
 	ArrowUpDown,
 	BarChart3,
+	BookOpen,
 	BookText,
+	Filter as FilterIcon,
+	Loader2,
 	Plus,
 	RefreshCcw,
-	Loader2,
 	X,
 } from "lucide-react";
 import type React from "react";
@@ -23,6 +23,7 @@ import { type ViewMode, ViewModeToggle } from "../../components/view-mode-toggle
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
+import { useBookDeviceActions } from "../../hooks/use-book-device-actions";
 import { queryHooks } from "../../services/db/hooks";
 import { bookImportMutationKey, bookKeys, serialKeys } from "../../services/db/hooks/query-keys";
 import type { Book, Series } from "../../services/db/schema";
@@ -40,7 +41,6 @@ import SortPopover from "./sort-popover";
 import TransferModal from "./transfer-modal";
 import { useLibraryImports } from "./use-library-imports";
 import { useLibraryItems } from "./use-library-items";
-import { useBookDeviceActions } from "../../hooks/use-book-device-actions";
 
 const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
 
@@ -251,8 +251,8 @@ const Library: React.FC = () => {
 			{IS_WEB_BUILD && !isLoggedIn && !noticeDismissed && (
 				<div className="flex items-start gap-3 border-border border-b bg-muted/60 px-4 py-3 text-sm">
 					<span className="flex-1 text-muted-foreground">
-						Your books are stored locally in this browser only and will be lost if you clear
-						browser data.{" "}
+						Your books are stored locally in this browser only and will be lost if you clear browser
+						data.{" "}
 						<a
 							href="/tabs/settings/sync"
 							className="font-medium text-primary underline-offset-4 hover:underline"
@@ -281,7 +281,7 @@ const Library: React.FC = () => {
 					<BookOpen className="mb-4 size-16 opacity-40" />
 					<h2 className="m-0 mb-2 font-semibold text-foreground text-lg">No books yet</h2>
 					<p className="m-0">Tap the + button to import a file or paste text.</p>
-					{isGlobalImporting && <p className="mt-4 m-0">Importing...</p>}
+					{isGlobalImporting && <p className="m-0 mt-4">Importing...</p>}
 				</div>
 			) : visibleItems.length === 0 ? (
 				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">

@@ -47,10 +47,7 @@ export const transferMultiBook: TransferImpl = async (
 	let resolveAck: ((msg: AckMessage) => void) | null = null;
 	let lastAck: AckMessage | null = null;
 
-	const waitForAck = (
-		expected: "ACK:START" | "ACK:END",
-		timeoutMs: number,
-	): Promise<BLEResult> =>
+	const waitForAck = (expected: "ACK:START" | "ACK:END", timeoutMs: number): Promise<BLEResult> =>
 		new Promise((resolve) => {
 			const timer = setTimeout(() => {
 				resolveAck = null;

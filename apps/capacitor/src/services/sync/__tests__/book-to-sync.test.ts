@@ -61,13 +61,20 @@ describe("bookToSync", () => {
 
 describe("shouldPushBook", () => {
 	it("excludes pristine pending chapter rows", () => {
-		const ch = makeBook({ seriesId: "abc", chapterStatus: "pending", wordPosition: wordPos(0), lastRead: null });
+		const ch = makeBook({
+			seriesId: "abc",
+			chapterStatus: "pending",
+			wordPosition: wordPos(0),
+			lastRead: null,
+		});
 		expect(shouldPushBook(ch)).toBe(false);
 	});
 
 	it("includes pending chapter with reading progress", () => {
 		expect(
-			shouldPushBook(makeBook({ seriesId: "abc", chapterStatus: "pending", wordPosition: wordPos(42) })),
+			shouldPushBook(
+				makeBook({ seriesId: "abc", chapterStatus: "pending", wordPosition: wordPos(42) }),
+			),
 		).toBe(true);
 	});
 

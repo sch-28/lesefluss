@@ -19,12 +19,12 @@
       // Falls back to system dark mode if no cached value.
       (() => {
         try {
-          var cached = localStorage.getItem("app-theme");
-          var sys = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-          var t = cached || sys;
+          const cached = localStorage.getItem("app-theme");
+          const sys = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          const t = cached || sys;
           document.documentElement.classList.add(t);
           document.body.classList.add(t);
-        } catch (e) {}
+        } catch (_e) {}
       })();
     </script>
   </head>

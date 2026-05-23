@@ -64,17 +64,9 @@ function Row({ icon: Icon, title, subtitle, to, onClick, iconClassName }: RowPro
 		);
 	}
 	return (
-		<a
-			href="#"
-			role="button"
-			onClick={(e) => {
-				e.preventDefault();
-				onClick?.();
-			}}
-			className={cls}
-		>
+		<button type="button" onClick={() => onClick?.()} className={cls}>
 			{content}
-		</a>
+		</button>
 	);
 }
 

@@ -140,10 +140,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 				}
 			}
 
-			if (
-				selectionRange &&
-				wordInRange(wIdx, selectionRange.startWord, selectionRange.endWord)
-			) {
+			if (selectionRange && wordInRange(wIdx, selectionRange.startWord, selectionRange.endWord)) {
 				wordClasses.push("word-selecting");
 			}
 

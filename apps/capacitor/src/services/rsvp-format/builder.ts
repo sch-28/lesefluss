@@ -78,7 +78,7 @@ function sliceBody(body: string, start: number, end: number): string {
 
 function buildV1(input: BuildRsvpDocumentInput): Uint8Array {
 	const lines: string[] = [];
-	lines.push(`@rsvp 1`);
+	lines.push("@rsvp 1");
 	const title = directiveText(input.title || "Untitled");
 	lines.push(`@title ${title}`);
 	const author = input.author ? directiveText(input.author) : "";
@@ -137,7 +137,7 @@ function buildV2(input: BuildRsvpDocumentInput & { wordIndex: WordIndex }): Uint
 	}));
 
 	const lines: string[] = [];
-	lines.push(`@rsvp 2`);
+	lines.push("@rsvp 2");
 	lines.push(`@title ${directiveText(input.title || "Untitled")}`);
 	if (input.author) lines.push(`@author ${directiveText(input.author)}`);
 	if (input.source) lines.push(`@source ${directiveText(input.source)}`);

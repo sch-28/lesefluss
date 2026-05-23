@@ -50,7 +50,7 @@ export function MultiBookSync(_props: MultiBookSyncProps) {
 		return () => {
 			cancelled = true;
 		};
-	}, [adapter, snapshot]);
+	}, [adapter]);
 
 	const selectActive = useCallback(
 		async (hash: string) => {

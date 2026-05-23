@@ -19,7 +19,7 @@
 			"!**/drizzle",
 			"!**/.output",
 			"!apps/esp32",
-			"!apps/web/src/routeTree.gen.ts",
+			"!**/routeTree.gen.ts",
 			"!**/__tests__/fixtures"
 		]
 	},

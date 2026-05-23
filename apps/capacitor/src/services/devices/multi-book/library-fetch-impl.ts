@@ -347,37 +347,36 @@ export const fetchMultiBookLibrary: LibraryFetchImpl<MultiBookLibraryEntry[]> = 
 	}
 
 	async function fetchWithRetries(): Promise<BLEResult<MultiBookLibraryEntry[]>> {
-	for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-		const result = await fetchOnce(deviceId);
-		if (result.success) {
-			const payload = result.data;
-			if (!payload) {
-				lastError = "empty payload";
-				continue;
+		for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+			const result = await fetchOnce(deviceId);
+			if (result.success) {
+				const payload = result.data;
+				if (!payload) {
+					lastError = "empty payload";
+					continue;
+				}
+				try {
+					const json = textDecoder.decode(payload);
+					const entries = JSON.parse(json) as MultiBookLibraryEntry[];
+					log(
+						"library-fetch",
+						`ok in ${Date.now() - startedAt}ms (${payload.byteLength}B, ${entries.length} entries, attempt ${attempt}/${MAX_ATTEMPTS})`,
+					);
+					return { success: true, data: entries };
+				} catch (err) {
+					lastError = err instanceof Error ? `JSON parse: ${err.message}` : "JSON parse failed";
+				}
+			} else {
+				lastError = result.error ?? "unknown";
 			}
-			try {
-				const json = textDecoder.decode(payload);
-				const entries = JSON.parse(json) as MultiBookLibraryEntry[];
-				log(
-					"library-fetch",
-					`ok in ${Date.now() - startedAt}ms (${payload.byteLength}B, ${entries.length} entries, attempt ${attempt}/${MAX_ATTEMPTS})`,
-				);
-				return { success: true, data: entries };
-			} catch (err) {
-				lastError =
-					err instanceof Error ? `JSON parse: ${err.message}` : `JSON parse failed`;
-			}
-		} else {
-			lastError = result.error ?? "unknown";
+			log(
+				"library-fetch",
+				`attempt ${attempt}/${MAX_ATTEMPTS} failed: ${lastError}${
+					attempt < MAX_ATTEMPTS ? ", retrying" : ""
+				}`,
+			);
 		}
-		log(
-			"library-fetch",
-			`attempt ${attempt}/${MAX_ATTEMPTS} failed: ${lastError}${
-				attempt < MAX_ATTEMPTS ? ", retrying" : ""
-			}`,
-		);
-	}
 
-	return { success: false, error: lastError };
+		return { success: false, error: lastError };
 	}
 };

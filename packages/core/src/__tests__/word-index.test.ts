@@ -36,14 +36,7 @@ describe("WordIndex.build", () => {
 		// then emits as a standalone hyphen between the surrounding words.
 		const idx = WordIndex.build("foo—bar baz–qux");
 		expect(idx.wordCount).toBe(6);
-		expect(idx.listEntries().map((e) => e.word)).toEqual([
-			"foo",
-			"-",
-			"bar",
-			"baz",
-			"-",
-			"qux",
-		]);
+		expect(idx.listEntries().map((e) => e.word)).toEqual(["foo", "-", "bar", "baz", "-", "qux"]);
 	});
 
 	it("drops soft hyphens (Unicode 0x00AD) from words", () => {

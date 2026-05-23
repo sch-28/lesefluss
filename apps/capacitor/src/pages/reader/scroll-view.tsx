@@ -10,10 +10,10 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 import type { VListHandle } from "virtua";
 import { VList } from "virtua";
 import Paragraph, {
-	type ParagraphWordEntry,
 	cancelAnyActiveLongPress,
 	type GlossaryRangeProp,
 	type HighlightRange,
+	type ParagraphWordEntry,
 } from "./paragraph";
 import type { ReaderViewHandle } from "./view-types";
 
@@ -386,7 +386,14 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 
 		initialScrollCleanupRef.current =
 			fineScrollTo(target, true, () => markInitialSettled()) ?? null;
-	}, [paragraphs, initialWord, findParagraphIndexForWord, fineScrollTo, onInitialActiveOffset]);
+	}, [
+		paragraphs,
+		initialWord,
+		findParagraphIndexForWord,
+		fineScrollTo,
+		onInitialActiveOffset,
+		markInitialSettled,
+	]);
 
 	// ── Imperative jumpTo (chapter / search / highlight-list) ─────────────
 	// Visual scroll only: parent has already updated active/progress/last/saved

@@ -56,9 +56,7 @@ export type TransferMeta = {
  * one to the other at creation time. Used today only by the multi-book
  * library char (see services/devices/multi-book/library-fetch-impl.ts).
  */
-export type LibraryFetchImpl<T = unknown> = (
-	deviceId: string,
-) => Promise<BLEResult<T>>;
+export type LibraryFetchImpl<T = unknown> = (deviceId: string) => Promise<BLEResult<T>>;
 
 export type DeviceDescriptor = {
 	/** Stable identifier persisted with the saved-device record. */

@@ -105,7 +105,8 @@ describe("v2 round-trip: builder → parser", () => {
 
 	describe("Vector 5a: multiple paragraphs + chapter markers", () => {
 		it("emits chapter markers at the right word indices", () => {
-			const content = "Chapter One\n\nThe first paragraph.\n\nMore body.\n\nChapter Two\n\nSecond chapter starts here.";
+			const content =
+				"Chapter One\n\nThe first paragraph.\n\nMore body.\n\nChapter Two\n\nSecond chapter starts here.";
 			const chapters = [
 				{ title: "Chapter One", startByte: 0 },
 				{
@@ -133,7 +134,7 @@ describe("v2 round-trip: builder → parser", () => {
 			{ name: "tiny", content: "hello world" },
 			{
 				name: "smart quotes + em-dash",
-				content: 'She said, “don’t go there—please”.',
+				content: "She said, “don’t go there—please”.",
 			},
 			{ name: "many short words", content: Array(500).fill("the").join(" ") },
 			{
@@ -226,9 +227,7 @@ describe("v2 round-trip: builder → parser", () => {
 			const parsed = parseRsvpV2(bytes);
 			for (let i = 0; i < parsed.words.length; i++) {
 				if (/[\n\r\t]/.test(parsed.words[i])) {
-					throw new Error(
-						`word ${i} contains whitespace: ${JSON.stringify(parsed.words[i])}`,
-					);
+					throw new Error(`word ${i} contains whitespace: ${JSON.stringify(parsed.words[i])}`);
 				}
 			}
 		});

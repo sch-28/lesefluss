@@ -45,7 +45,6 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "../../components/toast";
-import type { ParagraphWordEntry } from "./paragraph";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
@@ -73,6 +72,7 @@ import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
 import HighlightModal from "./highlight-modal";
 import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
+import type { ParagraphWordEntry } from "./paragraph";
 import { stripPunct } from "./rsvp-engine";
 import RsvpView, { type RsvpViewHandle } from "./rsvp-view";
 import ScrollView, { ReaderSkeleton } from "./scroll-view";
@@ -1134,8 +1134,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		);
 	}
 
-	const progressPct =
-		totalWordCount > 0 ? Math.min(100, (progressWord / totalWordCount) * 100) : 0;
+	const progressPct = totalWordCount > 0 ? Math.min(100, (progressWord / totalWordCount) * 100) : 0;
 
 	const showReadingTime = dbSettings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
 	const estimateWpm = readerMode === "rsvp" ? rsvpSettings.wpm : 250;

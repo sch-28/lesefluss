@@ -93,9 +93,7 @@ interface BookSyncContextType {
 	 * notifies a position that's ahead of the app, so consumers (like the
 	 * reader page) can move their UI in real time. Returns an unsubscribe.
 	 */
-	onDevicePositionUpdate: (
-		cb: (bookId: string, wordPosition: number) => void,
-	) => () => void;
+	onDevicePositionUpdate: (cb: (bookId: string, wordPosition: number) => void) => () => void;
 }
 
 const BookSyncContext = createContext<BookSyncContextType | undefined>(undefined);
@@ -294,7 +292,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				);
 			}
 		},
-		[connectedDescriptorId, connectedDevice?.deviceId],
+		[connectedDescriptorId, connectedDevice?.deviceId, scaleWord],
 	);
 
 	const syncPosition = useCallback(async () => {
@@ -402,7 +400,13 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 		}
 
 		setDevicePosition(winner);
-	}, [isConnected, updateActiveBookId, connectedDescriptorId, connectedDevice?.deviceId]); // activeBookId intentionally omitted - read via ref
+	}, [
+		isConnected,
+		updateActiveBookId,
+		connectedDescriptorId,
+		connectedDevice?.deviceId,
+		applyDevicePosition,
+	]); // activeBookId intentionally omitted - read via ref
 
 	const pushPosition = useCallback(
 		async (bookId: string, word: number) => {
@@ -479,7 +483,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				setDevicePosition(bytePosition);
 			}
 		},
-		[isConnected, connectedDescriptorId, connectedDevice?.deviceId, deviceActiveHash],
+		[isConnected, connectedDescriptorId, connectedDevice?.deviceId, deviceActiveHash, scaleForBook],
 	);
 
 	// Register the syncPosition hook so it fires every time BLE connects
@@ -538,12 +542,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				log("booksync", "position notify unsubscribe failed (likely disconnected):", err);
 			});
 		};
-	}, [
-		isConnected,
-		connectedDescriptorId,
-		connectedDevice?.deviceId,
-		applyDevicePosition,
-	]);
+	}, [isConnected, connectedDescriptorId, connectedDevice?.deviceId, applyDevicePosition]);
 
 	// ------------------------------------------------------------------
 	// Book transfer
