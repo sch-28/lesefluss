@@ -1,8 +1,10 @@
 /**
- * SessionTracker — pure (no React, no DB) state machine for one reading
- * sitting. The hook in `use-reading-session.ts` is a thin wrapper that
- * subscribes lifecycle signals (visibility, App state, isReading, RSVP
- * isPlaying) and persistence into this class.
+ * SessionTracker: pure (no React, no DB) state machine for one reading
+ * sitting. The hook in `use-reading-session.ts` subscribes lifecycle
+ * signals (visibility, App state, isReading, RSVP isPlaying) and
+ * persistence into this class.
+ *
+ * Positions are word indices.
  *
  * State machine:
  *   - no-session: idle, nothing accruing
@@ -19,7 +21,7 @@
  *   - poll gap > POLL_THROTTLE_GUARD_MS → assume timer was suspended;
  *     don't count gap as idle (resets activity clock to now)
  */
-import type { WordPosition } from "@lesefluss/core";
+import { type WordPosition, wordPos } from "@lesefluss/core";
 import { log } from "../../utils/log";
 import { randomHexId } from "../../utils/random-id";
 
@@ -44,18 +46,12 @@ export type PersistKind = "checkpoint" | "flush";
 export type TrackerOpts = {
 	bookId: string;
 	mode: ReadingSessionMode;
-	content: string;
+	/** Returns the current word position. */
 	getPosition: () => number;
 	wpmSetting: number | null;
 	persist: (row: SessionRow, kind: PersistKind) => void;
 	now?: () => number;
 	newId?: () => string;
-	/**
-	 * Optional byte→word converter. Returns null when the WordIndex isn't
-	 * available yet (book still loading). When non-null on both endpoints,
-	 * SessionRow gains startWord/endWord.
-	 */
-	byteToWord?: (byteOffset: number) => WordPosition | null;
 };
 
 export const POLL_MS = 5_000;
@@ -70,45 +66,30 @@ export const MIN_WORDS = 5;
 
 const SANE_WPM_CEILING = 800;
 
-/** Per-poll-tick byte distance above which we treat position movement as a
+/** Per-poll-tick word distance above which we treat position movement as a
  *  jump (TOC nav, scrub) rather than reading. Mode-specific because page-mode
- *  page-turns advance ~one page of bytes per turn. */
-const JUMP_BYTES_PER_TICK: Record<ReadingSessionMode, number> = {
-	scroll: 1000,
-	page: 3000,
-	rsvp: 2000,
+ *  page-turns advance roughly one page of words per turn. */
+const JUMP_WORDS_PER_TICK: Record<ReadingSessionMode, number> = {
+	scroll: 400, // ~2 screens of phone-font prose per 5s = fast scroll, not jump
+	page: 1200, // ~5 default-font pages per 5s = power flipping, not jump
+	rsvp: 800, // ~600 WPM cap × 5s = engine ceiling
 };
-
-const _encoder = new TextEncoder();
-const _decoder = new TextDecoder();
-
-function wordsInBytes(bytes: Uint8Array, a: number, b: number): number {
-	const lo = Math.min(a, b);
-	const hi = Math.max(a, b);
-	if (hi <= lo) return 0;
-	const slice = _decoder.decode(bytes.slice(lo, hi));
-	const matches = slice.match(/\S+/g);
-	return matches ? matches.length : 0;
-}
 
 type SessionState = {
 	id: string;
 	startedAt: number;
 	startPos: number;
 	lastPos: number;
+	/** Highest word position reached this sitting (forward-progress only). */
+	maxPos: number;
 	accumulatedActiveMs: number;
 	/** Wall-clock ms when current "active" interval began; null = paused. */
 	activeSinceMs: number | null;
-	wordsAccumulated: number;
 	lastCheckpointAt: number;
 };
 
 export class SessionTracker {
 	private readonly opts: TrackerOpts;
-	/** Pre-encoded UTF-8 bytes of the current content. Mutable: refreshed via
-	 *  `setContent` when the book content loads (it may be empty at tracker
-	 *  construction) or on chapter advance within a sitting. */
-	private contentBytes: Uint8Array;
 	private foreground = true;
 	private reading = false;
 	private session: SessionState | null = null;
@@ -117,14 +98,9 @@ export class SessionTracker {
 
 	constructor(opts: TrackerOpts) {
 		this.opts = opts;
-		this.contentBytes = _encoder.encode(opts.content);
 		const now = this.now();
 		this.lastActivityAt = now;
 		this.lastPollAt = now;
-	}
-
-	setContent(content: string): void {
-		this.contentBytes = _encoder.encode(content);
 	}
 
 	private now(): number {
@@ -171,29 +147,16 @@ export class SessionTracker {
 		if (!this.session) return;
 		if (!this.shouldBeActive) return;
 
-		// Position polling first: catches scroll/page progress that wasn't
-		// reported via markActivity. Smooth deltas accumulate words; jumps
-		// reset the baseline but still count as activity. Runs even on a
-		// throttle-detected tick — bytes-read between ticks are real even if
-		// the timer was suspended.
+		// Smooth forward deltas advance maxPos so re-reading the same range
+		// doesn't double-count. Jumps still count as activity but don't
+		// advance maxPos. Runs even on throttle-detected ticks because words
+		// read between ticks are real even if the timer was suspended.
 		const pos = this.opts.getPosition();
 		if (pos !== this.session.lastPos) {
 			const delta = Math.abs(pos - this.session.lastPos);
-			const threshold = JUMP_BYTES_PER_TICK[this.opts.mode];
-			if (delta < threshold) {
-				// ADR-0002: prefer the WordIndex when available (integer subtraction);
-				// fall back to the legacy byte rescan for not-yet-backfilled books.
-				const lastW = this.opts.byteToWord?.(this.session.lastPos);
-				const curW = this.opts.byteToWord?.(pos);
-				if (lastW != null && curW != null) {
-					this.session.wordsAccumulated += Math.abs(curW - lastW);
-				} else {
-					this.session.wordsAccumulated += wordsInBytes(
-						this.contentBytes,
-						this.session.lastPos,
-						pos,
-					);
-				}
+			const threshold = JUMP_WORDS_PER_TICK[this.opts.mode];
+			if (delta < threshold && pos > this.session.maxPos) {
+				this.session.maxPos = pos;
 			}
 			this.session.lastPos = pos;
 			this.lastActivityAt = now;
@@ -264,7 +227,7 @@ export class SessionTracker {
 		} else {
 			log(
 				"reading-session",
-				`dropped (below noise floor): duration=${this.session.accumulatedActiveMs}ms words=${this.session.wordsAccumulated}`,
+				`dropped (below noise floor): duration=${this.session.accumulatedActiveMs}ms words=${this.session.maxPos - this.session.startPos}`,
 			);
 		}
 		this.session = null;
@@ -310,9 +273,9 @@ export class SessionTracker {
 			startedAt: now,
 			startPos: pos,
 			lastPos: pos,
+			maxPos: pos,
 			accumulatedActiveMs: 0,
 			activeSinceMs: now,
-			wordsAccumulated: 0,
 			lastCheckpointAt: now,
 		};
 		this.lastActivityAt = now;
@@ -325,26 +288,15 @@ export class SessionTracker {
 		const finalActiveMs =
 			s.accumulatedActiveMs + (s.activeSinceMs !== null ? now - s.activeSinceMs : 0);
 		if (finalActiveMs < MIN_DURATION_MS) return null;
-		if (s.wordsAccumulated < MIN_WORDS) return null;
+		const wordsRead = Math.max(0, s.maxPos - s.startPos);
+		if (wordsRead < MIN_WORDS) return null;
 		const endPos = this.opts.getPosition();
 		const computedWpm =
-			finalActiveMs > 1000 ? Math.round(s.wordsAccumulated / (finalActiveMs / 60_000)) : null;
+			finalActiveMs > 1000 ? Math.round(wordsRead / (finalActiveMs / 60_000)) : null;
 		const wasCapped =
 			this.opts.mode !== "rsvp" && computedWpm !== null && computedWpm > SANE_WPM_CEILING;
 		const wpmAvg =
 			this.opts.mode === "rsvp" ? (this.opts.wpmSetting ?? null) : wasCapped ? null : computedWpm;
-		const sw = this.opts.byteToWord?.(s.startPos);
-		const ew = this.opts.byteToWord?.(endPos);
-		if (sw == null || ew == null) {
-			// No WordIndex wired (lazy load not yet resolved, or content invalidated
-			// mid-session). Distinct from the noise-floor drop above so the cause
-			// is debuggable from logs.
-			log.warn(
-				"reading-session",
-				`dropped (no WordIndex): duration=${finalActiveMs}ms words=${s.wordsAccumulated}`,
-			);
-			return null;
-		}
 		return {
 			id: s.id,
 			bookId: this.opts.bookId,
@@ -352,9 +304,9 @@ export class SessionTracker {
 			startedAt: s.startedAt,
 			endedAt: now,
 			durationMs: finalActiveMs,
-			wordsRead: s.wordsAccumulated,
-			startWord: sw,
-			endWord: ew,
+			wordsRead,
+			startWord: wordPos(s.startPos),
+			endWord: wordPos(endPos),
 			wpmAvg,
 			updatedAt: now,
 		};
@@ -367,7 +319,7 @@ export class SessionTracker {
 			sessionId: this.session?.id ?? null,
 			activeSinceMs: this.session?.activeSinceMs ?? null,
 			accumulatedActiveMs: this.session?.accumulatedActiveMs ?? 0,
-			wordsAccumulated: this.session?.wordsAccumulated ?? 0,
+			wordsAccumulated: this.session ? Math.max(0, this.session.maxPos - this.session.startPos) : 0,
 			foreground: this.foreground,
 			reading: this.reading,
 			lastActivityAt: this.lastActivityAt,
@@ -396,7 +348,7 @@ export class SessionTracker {
 		return {
 			hasSession: true,
 			durationMs,
-			wordsAccumulated: s.wordsAccumulated,
+			wordsAccumulated: Math.max(0, s.maxPos - s.startPos),
 			paused: s.activeSinceMs === null,
 			foreground: this.foreground,
 			reading: this.reading,

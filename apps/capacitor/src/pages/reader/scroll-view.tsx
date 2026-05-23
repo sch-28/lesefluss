@@ -1,17 +1,10 @@
 /**
- * ScrollView - the virtualized scroll-mode reader, extracted from the parent
- * BookReader so it sits as a sibling of RsvpView (and the upcoming PageView).
- *
- * Owns scroll-mode internals: the VList, fine-scroll machinery, skeleton
- * overlay, scroll handlers, and the suppress-refs that keep programmatic
- * jumps from clobbering saved positions. State that crosses modes
- * (activeOffset, progressOffset, lastOffsetRef, savePosition) lives in the
- * parent and is plumbed in via callbacks.
- *
- * Behavior here is a verbatim extraction — see git history of index.tsx for
- * the original logic. No semantic changes.
+ * ScrollView: virtualized scroll-mode reader. Owns VList, fine-scroll
+ * machinery, skeleton overlay, scroll handlers, and the suppress-refs
+ * that keep programmatic jumps from clobbering saved positions. Cross-mode
+ * state (activeWord, progressWord, lastWordRef, savePosition) lives in
+ * the parent and is plumbed in via callbacks. Word units throughout.
  */
-import { type WordIndex, type WordPosition, wordPos } from "@lesefluss/core";
 import type React from "react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { VListHandle } from "virtua";
@@ -34,15 +27,15 @@ const EMPTY_ENTRIES: readonly ParagraphWordEntry[] = [];
 const FINE_SCROLL_MOUNT_FRAME_BUDGET = 10;
 const FINE_SCROLL_STABILITY_TICK_MS = 50;
 const FINE_SCROLL_STABILITY_TIMEOUT_MS = 600;
+const INIT_SETTLE_COOLDOWN_MS = 500;
 
-// Locate the alignment target span within `container`. ADR-0002: queries by
-// `data-word` only. The byte offset coming in is converted to a target word
-// index via the active WordIndex; the paragraph-bounded fallback ensures a
-// stale saved position doesn't leak into the wrong paragraph.
+// Locate the alignment target span within `container`. Queries by `data-word`
+// only. The paragraph-bounded fallback ensures a stale saved position
+// doesn't leak into the wrong paragraph.
 function findAlignmentSpan(
 	container: HTMLElement,
-	wordIdx: WordPosition,
-	paragraphStartWord: WordPosition,
+	wordIdx: number,
+	paragraphStartWord: number,
 	paragraphEndWord: number,
 ): HTMLElement | null {
 	const exact = container.querySelector<HTMLElement>(`span[data-word="${wordIdx}"]`);
@@ -69,7 +62,7 @@ interface ScrollSuppressRefs {
 	suppressHighlight: React.RefObject<boolean>;
 }
 
-// Scrolls so the span at `byteOffset` lands flush at the top of the container —
+// Scrolls so the span at `wordIdx` lands flush at the top of the container,
 // symmetric with handleScrollEnd's save rule (`rect.top >= cutoffTop`).
 //
 // Phases:
@@ -78,15 +71,15 @@ interface ScrollSuppressRefs {
 //   3. Stability poll: wait until container.scrollHeight is unchanged for two
 //      consecutive 50ms samples → VList has finished reconciling estimated
 //      paragraph heights with real measurements (max 600ms timeout).
-//   4. One scrollBy(delta). Done — no watcher, no retry loop.
+//   4. One scrollBy(delta). Done, no watcher, no retry loop.
 //
 // `onReady` (optional) fires after the final scroll so the caller can reveal
 // hidden content.
 function scheduleFineScroll(
 	listHandle: VListHandle,
 	container: HTMLElement,
-	wordIdx: WordPosition,
-	paragraphStartWord: WordPosition,
+	wordIdx: number,
+	paragraphStartWord: number,
 	paragraphEndWord: number,
 	suppress: ScrollSuppressRefs,
 	shouldHighlight: boolean,
@@ -211,19 +204,17 @@ const ReaderSkeleton: React.FC<{ style?: React.CSSProperties }> = ({ style }) =>
 
 export interface ScrollViewProps {
 	paragraphs: string[];
-	paragraphOffsets: number[];
-	/** Word index of each paragraph's first word (ADR-0002). */
+	/** Word index of each paragraph's first word. */
 	paragraphStartWords: number[];
 	/** Canonical WordIndex entries sliced per paragraph for span rendering. */
 	entriesByParagraph: ParagraphWordEntry[][];
-	findParagraphIndex: (targetByte: number) => number;
-	initialByteOffset: number;
-	/** Per-book WordIndex for byte ↔ word conversion at this view's seam. */
-	wordIndex?: WordIndex | null;
+	/** Binary-search helper: paragraph index whose start word is ≤ targetWord. */
+	findParagraphIndexForWord: (targetWord: number) => number;
+	initialWord: number;
 
 	// Appearance
 	fontSize: number;
-	fontFamily: string; // "sans" | "serif" — db column is plain text
+	fontFamily: string; // "sans" | "serif" (db column is plain text)
 	lineSpacing: number;
 	margin: number;
 	showActiveWordUnderline: boolean;
@@ -240,10 +231,10 @@ export interface ScrollViewProps {
 	onWordLongPress: (offset: number) => void;
 	onWordMouseDragStart: (offset: number, ev: PointerEvent) => void;
 
-	// Scroll-driven side effects routed back to parent
-	onPositionSettle: (byteOffset: number) => void; // handleScrollEnd → final saved offset
-	onInitialActiveOffset: (byteOffset: number) => void; // fires once during initial scroll — sets the highlight without saving
-	onProgressChange: (byteOffset: number) => void; // continuous during scroll
+	// Scroll-driven side effects routed back to parent (word units)
+	onPositionSettle: (word: number) => void; // handleScrollEnd → final saved word
+	onInitialActiveOffset: (word: number) => void; // fires once on initial scroll, sets highlight without saving
+	onProgressChange: (word: number) => void; // continuous during scroll
 	onHighlightClear: () => void; // scroll started → hide highlight (parent decides on NO_HIGHLIGHT optimization)
 	onHideProgressBar: () => void; // scroll started (and not scrubbing) → hide bar
 	onTap: () => void; // any click inside container → show progress bar
@@ -254,8 +245,8 @@ export interface ScrollViewProps {
 
 	/**
 	 * Optional element appended after the last paragraph inside the VList.
-	 * Used by the reader to render `<NextChapterFooter />` for serial chapters
-	 * — null/undefined for standalone books.
+	 * Used by the reader to render `<NextChapterFooter />` for serial chapters;
+	 * null/undefined for standalone books.
 	 */
 	footer?: React.ReactNode;
 
@@ -266,12 +257,10 @@ export interface ScrollViewProps {
 const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function ScrollView(
 	{
 		paragraphs,
-		paragraphOffsets,
 		paragraphStartWords,
 		entriesByParagraph,
-		wordIndex,
-		findParagraphIndex,
-		initialByteOffset,
+		findParagraphIndexForWord,
+		initialWord,
 		fontSize,
 		fontFamily,
 		lineSpacing,
@@ -322,33 +311,36 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	// post-initial-scroll scrollend(s) so opening a book doesn't trigger a
 	// save (which would bump `lastRead` and re-broadcast the row as updated).
 	const initialSettledRef = useRef(false);
+	// Cooldown window for straggler scrollends from the init scroll sequence
+	// (scrollToIndex + alignSpan's scrollBy each fire one; suppressNextScrollEndRef
+	// is single-shot). Without this the second scrollend saves a top-of-viewport
+	// word that's often off-by-one from the seed.
+	const initialScrollDoneAtRef = useRef<number | null>(null);
 	const markInitialSettled = useCallback(() => {
 		initialSettledRef.current = true;
+		initialScrollDoneAtRef.current = performance.now();
 		setIsInitialScrollReady(true);
 	}, []);
 
 	// Cleanup for the in-flight initial scroll. Hoisted out of the init effect
-	// so that effect re-runs (initialByteOffset prop flips after parent seed,
-	// fineScrollTo identity changes when wordIndex resolves, etc.) don't cancel
-	// the scroll mid-flight and leave the skeleton stuck. Only fires on unmount.
+	// so that effect re-runs don't cancel the scroll mid-flight and leave the
+	// skeleton stuck. Only fires on unmount.
 	const initialScrollCleanupRef = useRef<(() => void) | null>(null);
 	useEffect(() => () => initialScrollCleanupRef.current?.(), []);
 
-	/** Align the word at `byteOffset` flush with the container top via scrollIntoView.
+	/** Align the word at `wordIdx` flush with the container top via scrollIntoView.
 	 *  Paragraph-bounded so the fallback can't leak into a neighboring paragraph.
-	 *  ADR-0002: byte input is converted to a word index via the active
-	 *  WordIndex at the seam; the DOM is keyed by `data-word` only. */
+	 *  DOM is keyed by `data-word` only. */
 	const fineScrollTo = useCallback(
-		(byteOffset: number, shouldHighlight: boolean, onReady?: () => void, smooth = false) => {
-			if (!listRef.current || !containerRef.current || !wordIndex) return undefined;
-			const idx = findParagraphIndex(byteOffset);
-			const startWord = wordPos(paragraphStartWords[idx] ?? 0);
+		(wordIdx: number, shouldHighlight: boolean, onReady?: () => void, smooth = false) => {
+			if (!listRef.current || !containerRef.current) return undefined;
+			const idx = findParagraphIndexForWord(wordIdx);
+			const startWord = paragraphStartWords[idx] ?? 0;
 			const endWord = paragraphStartWords[idx + 1] ?? Number.POSITIVE_INFINITY;
-			const targetWord = wordIndex.wordOf(byteOffset);
 			return scheduleFineScroll(
 				listRef.current,
 				containerRef.current,
-				targetWord,
+				wordIdx,
 				startWord,
 				endWord,
 				{
@@ -360,7 +352,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 				smooth,
 			);
 		},
-		[findParagraphIndex, paragraphStartWords, wordIndex],
+		[findParagraphIndexForWord, paragraphStartWords],
 	);
 
 	// ── Initial scroll to saved position ──────────────────────────────────
@@ -377,23 +369,16 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			return;
 		}
 
-		const target = initialByteOffset;
+		const target = initialWord;
 		if (target === 0) {
 			didInitialScrollRef.current = true;
 			markInitialSettled();
 			return;
 		}
 
-		// ADR-0002: fineScrollTo needs the WordIndex to convert the byte
-		// target into a `data-word` DOM query. Defer the initial scroll
-		// until the React Query for the WordIndex resolves; this effect
-		// re-fires on wordIndex change. Without this guard the skeleton
-		// sticks forever because onReady is never called.
-		if (!wordIndex) return;
-
 		didInitialScrollRef.current = true;
 
-		const idx = findParagraphIndex(target);
+		const idx = findParagraphIndexForWord(target);
 		suppressNextScrollEndRef.current = true;
 		suppressScrollHighlightClearRef.current = true;
 		listRef.current.scrollToIndex(idx, { align: "start" });
@@ -401,36 +386,29 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 
 		initialScrollCleanupRef.current =
 			fineScrollTo(target, true, () => markInitialSettled()) ?? null;
-	}, [
-		paragraphs,
-		initialByteOffset,
-		findParagraphIndex,
-		fineScrollTo,
-		onInitialActiveOffset,
-		wordIndex,
-	]);
+	}, [paragraphs, initialWord, findParagraphIndexForWord, fineScrollTo, onInitialActiveOffset]);
 
 	// ── Imperative jumpTo (chapter / search / highlight-list) ─────────────
-	// Visual scroll only — parent has already updated active/progress/last/saved
-	// via its jumpToOffset wrapper before calling this.
+	// Visual scroll only: parent has already updated active/progress/last/saved
+	// via its jumpToWord wrapper before calling this.
 	useImperativeHandle(
 		ref,
 		() => ({
-			jumpTo(byteOffset, { highlight = true, fine = false, smooth = false } = {}) {
+			jumpTo(wordIdx, { highlight = true, fine = false, smooth = false } = {}) {
 				if (!listRef.current) return;
 				suppressNextScrollEndRef.current = true;
 				if (highlight) suppressScrollHighlightClearRef.current = true;
 				if (!fine) {
-					const idx = findParagraphIndex(byteOffset);
+					const idx = findParagraphIndexForWord(wordIdx);
 					listRef.current.scrollToIndex(idx, { align: "start" });
 				}
-				fineScrollTo(byteOffset, highlight, undefined, smooth);
+				fineScrollTo(wordIdx, highlight, undefined, smooth);
 			},
 			scrollBy(pixels) {
 				listRef.current?.scrollBy(pixels);
 			},
 		}),
-		[findParagraphIndex, fineScrollTo],
+		[findParagraphIndexForWord, fineScrollTo],
 	);
 
 	// ── Scroll handler - hide highlight + update progress bar ──────────────
@@ -439,21 +417,27 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			// Cancel any pending long-press - user is scrolling, not selecting
 			cancelAnyActiveLongPress();
 
-			// Hide highlight while scrolling. After a programmatic jump
-			// (search/chapter) we keep the highlight.
-			if (!suppressScrollHighlightClearRef.current) {
+			// Hide highlight while scrolling. Programmatic jumps keep the
+			// highlight via suppressScrollHighlightClearRef. The init-cooldown
+			// branch covers VList height-reconciliation micro-scrolls that
+			// fire after markInitialSettled clears the suppress flag, which
+			// would otherwise wipe the underline ~500ms after open.
+			const doneAt = initialScrollDoneAtRef.current;
+			const inInitCooldown =
+				doneAt !== null && performance.now() - doneAt < INIT_SETTLE_COOLDOWN_MS;
+			if (!suppressScrollHighlightClearRef.current && !inInitCooldown) {
 				onHighlightClear();
 			}
 			// Hide progress bar - user is scrolling normally, not scrubbing
-			if (!isScrubbingRef.current) onHideProgressBar();
+			if (!isScrubbingRef.current && !inInitCooldown) onHideProgressBar();
 			// Update the progress bar live. findItemIndex maps the current scroll
-			// pixel offset to a paragraph index, which we convert to a byte offset.
-			if (listRef.current && paragraphOffsets.length > 0) {
+			// pixel offset to a paragraph index, which we convert to a word offset.
+			if (listRef.current && paragraphStartWords.length > 0) {
 				const idx = Math.min(
 					listRef.current.findItemIndex(scrollOffset),
-					paragraphOffsets.length - 1,
+					paragraphStartWords.length - 1,
 				);
-				onProgressChange(paragraphOffsets[idx] ?? 0);
+				onProgressChange(paragraphStartWords[idx] ?? 0);
 			}
 			// Re-sync handle positions when scrolling during selection
 			if (isSelecting) {
@@ -461,7 +445,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			}
 		},
 		[
-			paragraphOffsets,
+			paragraphStartWords,
 			isSelecting,
 			syncSelectionHandles,
 			isScrubbingRef,
@@ -478,18 +462,15 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			suppressScrollHighlightClearRef.current = false;
 			return;
 		}
-		// Don't save during the initial scroll-to-position sequence. Programmatic
-		// scrollToIndex + fineScrollTo's scrollBy each emit their own scrollend;
-		// the single-shot `suppressNextScrollEndRef` only catches one. Without
-		// this gate the second scrollend lands savePosition on open, bumping
-		// lastRead and broadcasting the book as updated.
 		if (!initialSettledRef.current) return;
+		const doneAt = initialScrollDoneAtRef.current;
+		if (doneAt !== null && performance.now() - doneAt < INIT_SETTLE_COOLDOWN_MS) return;
 		if (!listRef.current || !containerRef.current) return;
 
 		const cutoffTop = containerRef.current.getBoundingClientRect().top;
 
 		const spans = Array.from(document.querySelectorAll<HTMLElement>("span[data-word]"));
-		if (spans.length === 0 || !wordIndex) return;
+		if (spans.length === 0) return;
 
 		spans.sort((a, b) => {
 			const ra = a.getBoundingClientRect();
@@ -509,9 +490,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 
 		if (bestWord < 0) return;
 
-		// Convert back to byte offset for the byte-typed downstream state.
-		onPositionSettle(wordIndex.byteOf(wordPos(bestWord)));
-	}, [onPositionSettle, wordIndex]);
+		onPositionSettle(bestWord);
+	}, [onPositionSettle]);
 
 	// ── Show progress bar on any tap in the reading area ─────────────────
 	// Native listener needed because VList's internal scroll container doesn't
@@ -526,8 +506,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	return (
 		// VList is always mounted so refs populate and the initial-scroll
 		// effect can run. Opacity+pointer-events (not visibility) so VList
-		// still lays out and measures — visibility:hidden can skip that on
-		// some engines, which would break findAlignmentSpan. Skeleton is
+		// still lays out and measures (visibility:hidden can skip that on
+		// some engines, which would break findAlignmentSpan). Skeleton is
 		// overlaid on top until the fine-scroll onReady fires.
 		<div style={{ position: "relative", height: "100%" }}>
 			<div

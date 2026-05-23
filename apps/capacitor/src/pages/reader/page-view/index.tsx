@@ -26,18 +26,10 @@
  *       .transform-wrapper — the element that gets translateX
  *         <ChunkContent>×N — absolutely-positioned chunks in the wrapper
  *
- * Position model: same UTF-8 byte offsets as scroll mode. On page settle
- * the first fully-visible word span on the current page is the saved
- * position.
- *
- * What this file deliberately doesn't do (planned follow-ups, see Backlog):
- *   - Skeleton overlay during initial mount.
- *   - Two-page spread on wide viewports (TASK-97).
- *   - Cross-chunk highlight selection (TASK-96).
- *   - Per-book hyphenation language (TASK-98).
+ * Positions are word indices. On page settle the first fully-visible word
+ * span on the current page is the saved position.
  */
 
-import { type WordIndex, wordPos } from "@lesefluss/core";
 import type React from "react";
 import {
 	forwardRef,
@@ -61,7 +53,7 @@ import type { ParagraphWordEntry } from "../paragraph";
 import ChunkContent from "./chunk-content";
 import {
 	buildChunks,
-	findChunkForByte,
+	findChunkForWord,
 	pageCountOf,
 	relativeOffsets,
 	visibleWindow,
@@ -79,9 +71,9 @@ const TAP_ZONE_FRACTION = 0.33; // left/right third of viewport
 
 export interface PageViewProps {
 	paragraphs: string[];
-	paragraphOffsets: number[];
-	contentLength: number;
-	initialByteOffset: number;
+	paragraphStartWords: number[];
+	totalWords: number;
+	initialWord: number;
 
 	// Appearance
 	fontSize: number;
@@ -91,11 +83,8 @@ export interface PageViewProps {
 	showActiveWordUnderline: boolean;
 
 	// Active highlight + per-paragraph annotation data (passed to <Paragraph>).
-	activeOffset: number;
 	activeWord: number;
-	paragraphStartWords: number[];
 	entriesByParagraph: ParagraphWordEntry[][];
-	wordIndex: WordIndex | null;
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	selectionRange: { startWord: number; endWord: number } | null;
@@ -107,9 +96,9 @@ export interface PageViewProps {
 	onWordMouseDragStart: (offset: number, ev: PointerEvent) => void;
 	onCancelSelection: () => void;
 
-	// Position reporting
-	onPositionSettle: (byteOffset: number) => void;
-	onInitialActiveOffset: (byteOffset: number) => void;
+	// Position reporting (word units)
+	onPositionSettle: (word: number) => void;
+	onInitialActiveOffset: (word: number) => void;
 	onTap: () => void;
 
 	/**
@@ -124,18 +113,15 @@ export interface PageViewProps {
 const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	{
 		paragraphs,
-		paragraphOffsets,
 		paragraphStartWords,
 		entriesByParagraph,
-		wordIndex,
-		contentLength,
-		initialByteOffset,
+		totalWords,
+		initialWord,
 		fontSize,
 		fontFamily,
 		lineSpacing,
 		margin,
 		showActiveWordUnderline,
-		activeOffset,
 		activeWord,
 		highlightsByParagraph,
 		glossaryByParagraph,
@@ -153,12 +139,12 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	ref,
 ) {
 	const chunks = useMemo(
-		() => buildChunks(paragraphs, paragraphOffsets, contentLength),
-		[paragraphs, paragraphOffsets, contentLength],
+		() => buildChunks(paragraphs, paragraphStartWords, totalWords),
+		[paragraphs, paragraphStartWords, totalWords],
 	);
 
 	// ── State ──────────────────────────────────────────────────────────────
-	const [chunkIndex, setChunkIndex] = useState(() => findChunkForByte(chunks, initialByteOffset));
+	const [chunkIndex, setChunkIndex] = useState(() => findChunkForWord(chunks, initialWord));
 	const [pageIndex, setPageIndex] = useState(0);
 	const [chunkWidths, setChunkWidths] = useState<ReadonlyMap<number, number>>(() => new Map());
 	const [viewport, setViewport] = useState<{ w: number; h: number } | null>(null);
@@ -170,7 +156,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	const containerRef = useRef<HTMLDivElement>(null);
 	const transformWrapperRef = useRef<HTMLDivElement>(null);
 	const chunkRefs = useRef<Map<number, HTMLDivElement>>(new Map());
-	const pendingTargetRef = useRef<number | null>(initialByteOffset);
+	const pendingTargetRef = useRef<number | null>(initialWord);
 	const animationTimeoutRef = useRef<number | null>(null);
 
 	// Drag/swipe — refs not state, since pointermove updates at 60Hz.
@@ -266,8 +252,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 
 	// ── Initial-mount / chunk-swap lander ─────────────────────────────────
 	// Fires once the current chunk has been measured. Finds the page that
-	// contains the pending target byte offset, lands on it, reveals the view,
-	// and emits the initial-active or position-settle callback.
+	// contains the pending target word, lands on it, reveals the view, and
+	// emits the initial-active or position-settle callback.
 	useLayoutEffect(() => {
 		if (!isLayoutReady || !currentChunkWidth) return;
 		const target = pendingTargetRef.current;
@@ -275,11 +261,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		const el = chunkRefs.current.get(chunkIndex);
 		if (!el) return;
 		pendingTargetRef.current = null;
-		if (!wordIndex) return;
-		const targetPage = findPageForWord(el, pageWidth, currentPageCount, wordIndex.wordOf(target));
+		const targetPage = findPageForWord(el, pageWidth, currentPageCount, target);
 		setPageIndex(targetPage);
-		// Transform sync runs in its own layout effect below — by the time it
-		// fires, pageIndex has been committed and the transform lands cleanly.
 		if (!isReadyRef.current) {
 			isReadyRef.current = true;
 			setIsReady(true);
@@ -378,7 +361,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			const el = chunkRefs.current.get(chunkIndex);
 			if (!el) return;
 			const w = readFirstVisibleWord(el, pageWidth, p);
-			if (w !== null && wordIndex) onPositionSettle(wordIndex.byteOf(wordPos(w)));
+			if (w !== null) onPositionSettle(w);
 		},
 		[chunkIndex, pageWidth, onPositionSettle],
 	);
@@ -423,7 +406,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				const el = chunkRefs.current.get(neighborIdx);
 				if (el) {
 					const w = readFirstVisibleWord(el, pageWidth, targetPage);
-					if (w !== null && wordIndex) onPositionSettle(wordIndex.byteOf(wordPos(w)));
+					if (w !== null) onPositionSettle(w);
 				}
 			});
 		},
@@ -465,24 +448,19 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	useImperativeHandle(
 		ref,
 		() => ({
-			jumpTo(byteOffset) {
-				const targetChunk = findChunkForByte(chunks, byteOffset);
+			jumpTo(wordIdx) {
+				const targetChunk = findChunkForWord(chunks, wordIdx);
 				if (targetChunk !== chunkIndex) {
 					// Cross-chunk jump: reset the chunk window to the target and let
 					// the lander effect place us on the right page once it measures.
-					pendingTargetRef.current = byteOffset;
+					pendingTargetRef.current = wordIdx;
 					setChunkIndex(targetChunk);
 					return;
 				}
 				if (!isLayoutReady) return;
 				const el = chunkRefs.current.get(chunkIndex);
-				if (!el || !wordIndex) return;
-				const targetPage = findPageForWord(
-					el,
-					pageWidth,
-					currentPageCount,
-					wordIndex.wordOf(byteOffset),
-				);
+				if (!el) return;
+				const targetPage = findPageForWord(el, pageWidth, currentPageCount, wordIdx);
 				goToPage(targetPage);
 			},
 			goNext,
@@ -654,9 +632,9 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 						{visibleIndices.map((idx) => {
 							const chunk = chunks[idx];
 							if (!chunk) return null;
-							// Pass the real activeOffset only to the chunk that contains
+							// Pass the real activeWord only to the chunk that contains
 							// it — others get -1 so taps don't re-render the entire window.
-							const isActiveChunk = activeOffset >= chunk.startByte && activeOffset < chunk.endByte;
+							const isActiveChunk = activeWord >= chunk.startWord && activeWord < chunk.endWord;
 							return (
 								<ChunkContent
 									key={idx}
@@ -671,8 +649,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									fontSize={fontSize}
 									fontFamily={fontFamily}
 									showActiveWordUnderline={showActiveWordUnderline}
-									// TODO (TASK-98): source from book metadata once available —
-									// affects hyphenation quality on non-English books.
+									// TODO: source from book metadata when available; affects
+									// hyphenation quality on non-English books.
 									lang="en"
 									activeWord={isActiveChunk ? activeWord : -1}
 									highlightsByParagraph={highlightsByParagraph}

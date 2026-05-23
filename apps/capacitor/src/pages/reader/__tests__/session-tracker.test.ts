@@ -1,5 +1,4 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: test fixture array access */
-import type { WordPosition } from "@lesefluss/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	HARD_END_MS,
@@ -10,10 +9,6 @@ import {
 	SessionTracker,
 	SOFT_IDLE_MS,
 } from "../session-tracker";
-
-/** A book content string with predictable word density: 1 word per 5 bytes
- *  ("aaaa " repeated). Position deltas translate cleanly into word counts. */
-const BOOK = "aaaa ".repeat(20_000); // 100k bytes, 20k words
 
 function setup(opts?: {
 	mode?: "scroll" | "page" | "rsvp";
@@ -28,14 +23,11 @@ function setup(opts?: {
 	const tracker = new SessionTracker({
 		bookId: "book1",
 		mode: opts?.mode ?? "scroll",
-		content: BOOK,
 		getPosition: () => position,
 		wpmSetting: opts?.wpm ?? 250,
 		persist: (row, kind) => persisted.push({ row, kind }),
 		now: () => clock,
 		newId: () => `id${++idCounter}`,
-		// BOOK = "aaaa " × N → exactly 5 bytes per word; map by integer division.
-		byteToWord: (byte) => Math.floor(byte / 5) as unknown as WordPosition,
 	});
 
 	return {
@@ -69,7 +61,7 @@ describe("SessionTracker", () => {
 		env.tracker.setReading(true);
 		env.advance(30_000);
 		// Move position so word count clears MIN_WORDS.
-		env.movePosition(100); // 20 words
+		env.movePosition(20);
 		env.tracker.tick();
 		env.tracker.finalize();
 		expect(env.persisted).toHaveLength(1);
@@ -83,7 +75,7 @@ describe("SessionTracker", () => {
 		const env = setup();
 		env.tracker.setReading(true);
 		env.advance(MIN_DURATION_MS - 1);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.finalize();
 		expect(env.persisted).toHaveLength(0);
 	});
@@ -92,7 +84,7 @@ describe("SessionTracker", () => {
 		const env = setup();
 		env.tracker.setReading(true);
 		env.advance(30_000);
-		env.movePosition(10); // 2 words
+		env.movePosition(2); // below MIN_WORDS=5
 		env.tracker.tick();
 		env.tracker.finalize();
 		expect(env.persisted).toHaveLength(0);
@@ -106,7 +98,7 @@ describe("SessionTracker", () => {
 		env.advance(60_000); // 60s in background, must not count
 		env.tracker.setForeground(true);
 		env.advance(10_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		env.tracker.finalize();
 		expect(env.persisted.at(-1)!.row.durationMs).toBe(30_000);
@@ -116,7 +108,7 @@ describe("SessionTracker", () => {
 		const env = setup();
 		env.tracker.setReading(true);
 		env.advance(30_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		const beforeBg = env.persisted.length;
 		env.tracker.setForeground(false);
@@ -129,7 +121,7 @@ describe("SessionTracker", () => {
 		const env = setup();
 		env.tracker.setReading(true);
 		env.advance(30_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		// Idle for > SOFT_IDLE_MS, ticking periodically.
 		for (let elapsed = 0; elapsed < SOFT_IDLE_MS + POLL_MS; elapsed += POLL_MS) {
@@ -142,7 +134,7 @@ describe("SessionTracker", () => {
 		env.tracker.markActivity();
 		expect(env.tracker._inspect().activeSinceMs).not.toBeNull();
 		env.advance(10_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		env.tracker.finalize();
 		// 30s before idle + 10s after resume = 40s; idle gap excluded.
@@ -153,7 +145,7 @@ describe("SessionTracker", () => {
 		const env = setup();
 		env.tracker.setReading(true);
 		env.advance(30_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		// Tick past HARD_END_MS with no activity.
 		for (let elapsed = 0; elapsed < HARD_END_MS + POLL_MS; elapsed += POLL_MS) {
@@ -169,7 +161,7 @@ describe("SessionTracker", () => {
 		const env = setup();
 		env.tracker.setReading(true);
 		env.advance(30_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		for (let elapsed = 0; elapsed < HARD_END_MS + POLL_MS; elapsed += POLL_MS) {
 			env.advance(POLL_MS);
@@ -178,7 +170,7 @@ describe("SessionTracker", () => {
 		const firstId = env.persisted.find((p) => p.kind === "flush")!.row.id;
 		env.tracker.markActivity();
 		env.advance(20_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		env.tracker.finalize();
 		const secondFlush = env.persisted.filter((p) => p.kind === "flush").pop()!;
@@ -190,14 +182,14 @@ describe("SessionTracker", () => {
 		const env = setup();
 		env.tracker.setReading(true);
 		env.advance(30_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		env.tracker.setForeground(false);
 		env.advance(HARD_END_MS + 60_000); // long background
 		env.tracker.setForeground(true);
 		const firstId = env.persisted.find((p) => p.kind === "flush")!.row.id;
 		env.advance(20_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		env.tracker.finalize();
 		const secondFlush = env.persisted.filter((p) => p.kind === "flush").pop()!;
@@ -209,14 +201,14 @@ describe("SessionTracker", () => {
 		const env = setup();
 		env.tracker.setReading(true);
 		env.advance(30_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		const sessionId = env.tracker._inspect().sessionId;
 		env.tracker.setForeground(false);
 		env.advance(60_000); // 1 min background
 		env.tracker.setForeground(true);
 		env.advance(20_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		env.tracker.finalize();
 		// One flush row, same id.
@@ -231,7 +223,7 @@ describe("SessionTracker", () => {
 		const env = setup();
 		env.tracker.setReading(true);
 		env.advance(30_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		// Simulate setInterval not firing for 5 minutes (screen lock).
 		env.advance(SOFT_IDLE_MS + 60_000);
@@ -242,7 +234,7 @@ describe("SessionTracker", () => {
 		// Time accrued = pre-gap only; gap itself doesn't count.
 		// Continue reading for 20s.
 		env.advance(20_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		env.tracker.finalize();
 		// 30s pre-gap + ~20s after; the throttled-tick path resets activeSinceMs
@@ -256,10 +248,10 @@ describe("SessionTracker", () => {
 		const env = setup();
 		env.tracker.setReading(true);
 		// Need MIN_WORDS reached before checkpoint writes.
-		env.movePosition(100);
+		env.movePosition(20);
 		for (let elapsed = 0; elapsed <= HEARTBEAT_MS * 3; elapsed += POLL_MS) {
 			env.advance(POLL_MS);
-			env.movePosition(5); // 1 word per tick to keep activity fresh
+			env.movePosition(1); // 1 word per tick to keep activity fresh
 			env.tracker.tick();
 		}
 		const checkpoints = env.persisted.filter((p) => p.kind === "checkpoint");
@@ -277,7 +269,7 @@ describe("SessionTracker", () => {
 		// 2 min, then small scroll, repeat. Each scroll within SOFT_IDLE_MS.
 		for (let i = 0; i < 5; i++) {
 			env.advance(2 * 60_000);
-			env.movePosition(50); // 10 words; below jump threshold (1000)
+			env.movePosition(10); // 10 words; below jump threshold (scroll = 200)
 			env.tracker.tick();
 		}
 		env.tracker.finalize();
@@ -290,7 +282,7 @@ describe("SessionTracker", () => {
 		const env = setup({ mode: "scroll" });
 		env.tracker.setReading(true);
 		env.advance(20_000);
-		env.movePosition(5000); // jump (> scroll threshold 1000)
+		env.movePosition(500); // jump (> scroll threshold 200 words)
 		env.tracker.tick();
 		// Words not counted from the jump → below MIN_WORDS.
 		env.tracker.finalize();
@@ -301,7 +293,7 @@ describe("SessionTracker", () => {
 		const env = setup({ mode: "rsvp", wpm: 300 });
 		env.tracker.setReading(true);
 		env.advance(60_000);
-		env.movePosition(500); // 100 words
+		env.movePosition(100); // 100 words
 		env.tracker.tick();
 		env.tracker.finalize();
 		expect(env.persisted.at(-1)!.row.wpmAvg).toBe(300);
@@ -309,7 +301,7 @@ describe("SessionTracker", () => {
 		const env2 = setup({ mode: "scroll" });
 		env2.tracker.setReading(true);
 		env2.advance(60_000);
-		env2.movePosition(500); // 100 words in 60s = 100 WPM
+		env2.movePosition(100); // 100 words in 60s = 100 WPM
 		env2.tracker.tick();
 		env2.tracker.finalize();
 		expect(env2.persisted.at(-1)!.row.wpmAvg).toBe(100);
@@ -319,51 +311,23 @@ describe("SessionTracker", () => {
 		const env = setup({ mode: "rsvp", wpm: 300 });
 		env.tracker.setReading(true);
 		env.advance(20_000);
-		env.movePosition(100); // 20 words
+		env.movePosition(20);
 		env.tracker.tick();
 		env.tracker.setReading(false); // RSVP paused
 		env.advance(60_000); // 1 min paused — must not count
 		env.tracker.setReading(true);
 		env.advance(10_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		env.tracker.finalize();
 		expect(env.persisted.at(-1)!.row.durationMs).toBe(30_000);
-	});
-
-	it("setContent updates byte buffer for late-loading content", () => {
-		// Regression: tracker constructed with empty string (content not yet
-		// loaded), then setContent called after content arrives. Word counts
-		// must use the new buffer, not the stale empty one.
-		let clock = 1_000_000;
-		const persisted: Array<{ row: SessionRow; kind: "checkpoint" | "flush" }> = [];
-		let position = 0;
-		const tracker = new SessionTracker({
-			bookId: "book1",
-			mode: "scroll",
-			content: "", // empty at construction
-			getPosition: () => position,
-			wpmSetting: null,
-			persist: (row, kind) => persisted.push({ row, kind }),
-			now: () => clock,
-			newId: () => "id1",
-			byteToWord: (byte) => Math.floor(byte / 5) as unknown as WordPosition,
-		});
-		tracker.setContent(BOOK);
-		tracker.setReading(true);
-		clock += 30_000;
-		position = 100; // 20 words in BOOK
-		tracker.tick();
-		tracker.finalize();
-		expect(persisted).toHaveLength(1);
-		expect(persisted[0]!.row.wordsRead).toBe(20);
 	});
 
 	it("finalize on already-finalized tracker is a no-op", () => {
 		const env = setup();
 		env.tracker.setReading(true);
 		env.advance(30_000);
-		env.movePosition(100);
+		env.movePosition(20);
 		env.tracker.tick();
 		env.tracker.finalize();
 		const count = env.persisted.length;

@@ -405,7 +405,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 	}, [isConnected, updateActiveBookId, connectedDescriptorId, connectedDevice?.deviceId]); // activeBookId intentionally omitted - read via ref
 
 	const pushPosition = useCallback(
-		async (bookId: string, position: number) => {
+		async (bookId: string, word: number) => {
 			if (!isConnected) {
 				log("booksync", "pushPosition skipped: not connected");
 				return;
@@ -458,11 +458,25 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				return;
 			}
 
-			const result = await ble.writePosition(position);
+			// Single-book ESP32 protocol is byte-typed. Convert word to byte
+			// here. Skip the write entirely when no WordIndex; writing 0
+			// would yank the device to the start of the book and clobber
+			// the local devicePosition mirror.
+			const idx = await queries.loadBookWordIndex(bookId).catch((err) => {
+				log.warn("booksync", "loadBookWordIndex failed during pushPosition:", err);
+				return null;
+			});
+			if (!idx || idx.wordCount === 0) {
+				log("booksync", `single-book pushPosition skipped: no WordIndex for ${bookId}`);
+				return;
+			}
+			const clamped = Math.max(0, Math.min(idx.wordCount - 1, word));
+			const bytePosition = idx.byteOf(wordPos(clamped));
+			const result = await ble.writePosition(bytePosition);
 			if (!result.success) {
 				log.warn("booksync", "writePosition failed:", result.error);
 			} else {
-				setDevicePosition(position);
+				setDevicePosition(bytePosition);
 			}
 		},
 		[isConnected, connectedDescriptorId, connectedDevice?.deviceId, deviceActiveHash],

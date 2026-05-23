@@ -48,21 +48,21 @@ export type RsvpViewHandle = {
 
 export interface RsvpViewProps {
 	content: string;
-	initialByteOffset: number;
+	initialWord: number;
 	settings: RsvpSettings;
 	fontSize: number;
-	onPositionChange: (byteOffset: number) => void;
+	onPositionChange: (word: number) => void;
 	onFinished: () => void;
 	onWpmChange: (wpm: number) => void;
 	onLookup: (word: string, original: string) => void;
-	/** Cached WordIndex (ADR-0002). When present, the engine skips rebuild. */
+	/** Cached WordIndex. When present, the engine skips rebuild. */
 	bookWordIndex?: WordIndex | null;
 }
 
 const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 	{
 		content,
-		initialByteOffset,
+		initialWord,
 		settings,
 		fontSize,
 		onPositionChange,
@@ -93,7 +93,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		cancelLongPress,
 	} = useRsvpEngine({
 		content,
-		initialByteOffset,
+		initialWord,
 		settings,
 		onPositionChange,
 		onFinished,

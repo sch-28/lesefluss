@@ -13,10 +13,7 @@ export interface ReaderViewHandle {
 	// instantly. Only meaningful in combination with `fine` (the coarse step
 	// is always instant). Use for live BLE updates so the highlight glides
 	// rather than snapping.
-	jumpTo(
-		byteOffset: number,
-		opts?: { highlight?: boolean; fine?: boolean; smooth?: boolean },
-	): void;
+	jumpTo(word: number, opts?: { highlight?: boolean; fine?: boolean; smooth?: boolean }): void;
 	scrollBy?(pixels: number): void;
 	goNext?(): void;
 	goPrev?(): void;

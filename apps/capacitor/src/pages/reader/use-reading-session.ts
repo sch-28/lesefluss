@@ -10,7 +10,6 @@
  * alone — long-paragraph reading no longer triggers spurious idle flush.
  */
 import { App as CapacitorApp } from "@capacitor/app";
-import type { WordIndex } from "@lesefluss/core";
 import { useCallback, useEffect, useRef } from "react";
 import { readingSessionKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
@@ -37,12 +36,10 @@ type Args = {
 	/** When mode === 'rsvp', true while the engine is playing. Passing false
 	 *  pauses the session immediately rather than waiting for soft idle. */
 	rsvpIsPlaying?: boolean;
+	/** Returns the current word position. */
 	getPosition: () => number;
-	content: string;
 	/** RSVP dial setting (persisted as wpmAvg for RSVP sessions). */
 	wpmSetting?: number;
-	/** Active book's WordIndex. When present, written rows include startWord/endWord (ADR-0002). */
-	wordIndex?: WordIndex | null;
 };
 
 type Return = {
@@ -78,49 +75,32 @@ export function useReadingSession({
 	isReading,
 	rsvpIsPlaying,
 	getPosition,
-	content,
 	wpmSetting,
-	wordIndex,
 }: Args): Return {
 	const trackerRef = useRef<SessionTracker | null>(null);
 	const getPositionRef = useRef(getPosition);
 	getPositionRef.current = getPosition;
-	const contentRef = useRef(content);
-	contentRef.current = content;
 	const wpmRef = useRef(wpmSetting);
 	wpmRef.current = wpmSetting;
-	const wordIndexRef = useRef(wordIndex);
-	wordIndexRef.current = wordIndex;
 
 	// Construct a tracker per (bookId, mode). Prior tracker is finalized so
 	// the row for the previous sitting is written before we open a new one.
-	// `content` and `wpmSetting` are read via refs so chapter advances /
-	// dial changes inside a sitting don't tear down the session.
+	// `wpmSetting` is read via a ref so dial changes inside a sitting don't
+	// tear down the session.
 	useEffect(() => {
 		trackerRef.current?.finalize();
 		trackerRef.current = new SessionTracker({
 			bookId,
 			mode,
-			content: contentRef.current,
 			getPosition: () => getPositionRef.current(),
 			wpmSetting: wpmRef.current ?? null,
 			persist: persistRow,
-			byteToWord: (b) => wordIndexRef.current?.wordOf(b) ?? null,
 		});
 		return () => {
 			trackerRef.current?.finalize();
 			trackerRef.current = null;
 		};
 	}, [bookId, mode]);
-
-	// Push content updates into the tracker. The tracker may have been
-	// constructed before `content` finished loading (initial empty string), and
-	// chapter advance updates content within a sitting. Without this, word
-	// counts stay at zero because the pre-encoded byte buffer is stale/empty
-	// and `MIN_WORDS` drops the row at finalize.
-	useEffect(() => {
-		trackerRef.current?.setContent(content);
-	}, [content]);
 
 	// `isReading` && (RSVP not paused) → reading.
 	useEffect(() => {

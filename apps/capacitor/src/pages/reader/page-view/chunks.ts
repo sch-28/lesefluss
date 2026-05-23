@@ -5,66 +5,73 @@
  * routinely puts an entire novel inside a single chapter, which would yield a
  * megachunk that takes seconds to lay out. Chunking exists purely so each
  * mount-and-layout pass stays fast; chapters remain a navigation concept (TOC
- * jumps go via byte offset and are routed through findChunkForByte).
+ * jumps go via word position and are routed through findChunkForWord).
  */
 
-/** Target chunk size in bytes. With the sliding-window model (always 3 chunks
- *  mounted), the user can't perceive chunk boundaries — so smaller chunks just
- *  mean smaller per-mount work when re-anchoring, which is the cost users DO
- *  feel. ~10 KB ≈ 6–8 pages on phone at default font. Going much smaller adds
- *  re-anchor frequency without further reducing the per-anchor cost meaningfully. */
-export const CHUNK_TARGET_BYTES = 10_000;
+/** Target chunk size in words. With the sliding-window model (3 chunks
+ *  mounted) the user can't perceive chunk boundaries, so smaller chunks
+ *  only mean smaller per-mount work at re-anchor (the user-visible cost).
+ *  ~2000 words is roughly 6 to 8 phone pages at default font. */
+export const CHUNK_TARGET_WORDS = 2_000;
 
-/** Pages a chunk's measured scrollWidth maps to. Centralised so the formula
- *  stays in one place — operator-precedence bugs in repeated `Math.round(x / y) - 1`
- *  expressions have bitten us before. */
+/** Pages a chunk's measured scrollWidth maps to. Use ceil so a partial
+ *  last column still counts (Math.round would under-count pageCount, then
+ *  findPageForWord clamps the target down by one page). */
 export const pageCountOf = (chunkWidth: number, pageWidth: number) =>
-	Math.max(1, Math.round(chunkWidth / pageWidth));
+	Math.max(1, Math.ceil(chunkWidth / pageWidth));
 
 export interface Chunk {
-	startByte: number;
-	endByte: number;
+	startWord: number;
+	endWord: number;
 	paragraphFrom: number; // index into props.paragraphs
 	paragraphTo: number; // exclusive
 }
 
 export function buildChunks(
 	paragraphs: string[],
-	paragraphOffsets: number[],
-	contentLength: number,
+	paragraphStartWords: number[],
+	totalWords: number,
 ): Chunk[] {
 	const chunks: Chunk[] = [];
 	if (paragraphs.length === 0) return chunks;
 
-	let chunkStart = paragraphOffsets[0] ?? 0;
+	let chunkStart = paragraphStartWords[0] ?? 0;
 	let chunkParaFrom = 0;
-	let bytesInChunk = 0;
+	let wordsInChunk = 0;
 	for (let i = 0; i < paragraphs.length; i++) {
-		const next = paragraphOffsets[i + 1] ?? contentLength;
-		bytesInChunk += next - paragraphOffsets[i];
+		const next = paragraphStartWords[i + 1] ?? totalWords;
+		wordsInChunk += next - paragraphStartWords[i];
 		const isLast = i === paragraphs.length - 1;
-		if (bytesInChunk >= CHUNK_TARGET_BYTES || isLast) {
-			chunks.push({
-				startByte: chunkStart,
-				endByte: next,
-				paragraphFrom: chunkParaFrom,
-				paragraphTo: i + 1,
-			});
+		if (wordsInChunk >= CHUNK_TARGET_WORDS || isLast) {
+			// Empty-paragraph runs would produce a zero-width chunk that
+			// findChunkForWord picks at the shared startWord boundary, then
+			// findPageForWord finds no spans inside. Merge into the previous
+			// chunk so the empty-paragraph DOM still renders.
+			if (next === chunkStart && chunks.length > 0) {
+				chunks[chunks.length - 1].paragraphTo = i + 1;
+			} else {
+				chunks.push({
+					startWord: chunkStart,
+					endWord: next,
+					paragraphFrom: chunkParaFrom,
+					paragraphTo: i + 1,
+				});
+			}
 			chunkStart = next;
 			chunkParaFrom = i + 1;
-			bytesInChunk = 0;
+			wordsInChunk = 0;
 		}
 	}
 	return chunks;
 }
 
-/** Binary search for the chunk containing the given byte offset. */
-export function findChunkForByte(chunks: Chunk[], byte: number): number {
+/** Binary search for the chunk containing the given word index. */
+export function findChunkForWord(chunks: Chunk[], word: number): number {
 	let lo = 0;
 	let hi = chunks.length - 1;
 	while (lo < hi) {
 		const mid = Math.ceil((lo + hi) / 2);
-		if (chunks[mid].startByte <= byte) lo = mid;
+		if (chunks[mid].startWord <= word) lo = mid;
 		else hi = mid - 1;
 	}
 	return lo;

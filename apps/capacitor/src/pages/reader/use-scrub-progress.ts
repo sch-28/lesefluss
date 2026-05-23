@@ -25,26 +25,28 @@ function isHorizontalScrub(origin: { x: number; y: number }, clientX: number, cl
 interface Params {
 	book: Book | undefined;
 	readerMode: "standard" | "rsvp";
-	paragraphOffsets: number[];
-	findParagraphIndex: (targetByte: number) => number;
-	jumpToOffset: (byteOffset: number, opts?: { highlight?: boolean }) => void;
-	savePosition: (offset: number) => Promise<void> | void;
-	lastOffsetRef: React.RefObject<number | null>;
-	setProgressOffset: (offset: number) => void;
-	setRsvpInitOffset: (offset: number) => void;
+	totalWords: number;
+	paragraphStartWords: number[];
+	findParagraphIndexForWord: (targetWord: number) => number;
+	jumpToWord: (word: number, opts?: { highlight?: boolean }) => void;
+	savePosition: (word: number) => Promise<void> | void;
+	lastWordRef: React.RefObject<number | null>;
+	setProgressWord: (word: number) => void;
+	setRsvpInitWord: (word: number) => void;
 	setProgressBarVisible: (v: boolean) => void;
 }
 
 export function useScrubProgress({
 	book,
 	readerMode,
-	paragraphOffsets,
-	findParagraphIndex,
-	jumpToOffset,
+	totalWords,
+	paragraphStartWords,
+	findParagraphIndexForWord,
+	jumpToWord,
 	savePosition,
-	lastOffsetRef,
-	setProgressOffset,
-	setRsvpInitOffset,
+	lastWordRef,
+	setProgressWord,
+	setRsvpInitWord,
 	setProgressBarVisible,
 }: Params) {
 	const progressBarRef = useRef<HTMLDivElement>(null);
@@ -54,34 +56,37 @@ export function useScrubProgress({
 
 	const scrubToX = useCallback(
 		(clientX: number) => {
-			if (!progressBarRef.current || !book) return;
+			if (!progressBarRef.current || !book || totalWords === 0) return;
 			const rect = progressBarRef.current.getBoundingClientRect();
 			const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-			const targetByte = Math.round(ratio * book.size);
+			const targetWord = Math.min(totalWords - 1, Math.round(ratio * totalWords));
 
 			if (readerMode === "rsvp") {
 				// In RSVP mode: scrub to position - updates both the progress bar and
-				// rsvpInitOffset so RsvpView jumps without triggering a position-save echo.
-				setProgressOffset(targetByte);
-				setRsvpInitOffset(targetByte);
-				lastOffsetRef.current = targetByte;
-				savePosition(targetByte);
+				// rsvpInitWord so RsvpView jumps without triggering a position-save echo.
+				setProgressWord(targetWord);
+				setRsvpInitWord(targetWord);
+				lastWordRef.current = targetWord;
+				savePosition(targetWord);
 			} else {
-				const idx = findParagraphIndex(targetByte);
-				const actualByte = paragraphOffsets[idx] ?? 0;
-				jumpToOffset(actualByte, { highlight: false });
+				// Standard mode: snap to the nearest paragraph start so the scroll
+				// lands at a clean edge (mirrors the byte-era paragraph snap).
+				const idx = findParagraphIndexForWord(targetWord);
+				const actualWord = paragraphStartWords[idx] ?? 0;
+				jumpToWord(actualWord, { highlight: false });
 			}
 		},
 		[
 			book,
 			readerMode,
-			paragraphOffsets,
-			findParagraphIndex,
-			jumpToOffset,
+			totalWords,
+			paragraphStartWords,
+			findParagraphIndexForWord,
+			jumpToWord,
 			savePosition,
-			lastOffsetRef,
-			setProgressOffset,
-			setRsvpInitOffset,
+			lastWordRef,
+			setProgressWord,
+			setRsvpInitWord,
 		],
 	);
 

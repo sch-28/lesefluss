@@ -9,7 +9,6 @@
 import {
 	buildWordIndex,
 	calcDelay,
-	findWordIndexAtOffset,
 	type RsvpSettings,
 	splitLongWord,
 	type WordEntry,
@@ -32,24 +31,23 @@ const LONG_PRESS_MS = 450;
 
 interface Options {
 	content: string;
-	initialByteOffset: number;
+	initialWord: number;
 	settings: RsvpSettings;
-	onPositionChange: (byteOffset: number) => void;
+	onPositionChange: (word: number) => void;
 	onFinished: () => void;
 	onLookup: (word: string, original: string) => void;
 	onWpmChange: (wpm: number) => void;
 	/**
-	 * Optional preloaded WordIndex. When present, tokenization is reused from
-	 * the cached blob instead of being rebuilt — replaces the prior worker
-	 * indirection (ADR-0002). When null, falls back to a synchronous rebuild
-	 * from `content`.
+	 * Optional preloaded WordIndex. When present, tokenization is reused
+	 * from the cached blob; null falls back to a synchronous rebuild from
+	 * `content`.
 	 */
 	bookWordIndex?: WordIndex | null;
 }
 
 export function useRsvpEngine({
 	content,
-	initialByteOffset,
+	initialWord,
 	settings,
 	onPositionChange,
 	onFinished,
@@ -66,7 +64,9 @@ export function useRsvpEngine({
 
 	// ── Refs for the tick loop ───────────────────────────────────────────
 	const wordIndexRef = useRef(0);
-	const displayedOffsetRef = useRef<number | null>(null);
+	// Last word index pushed to the parent via onPositionChange. Null until
+	// the engine has displayed a word.
+	const displayedWordRef = useRef<number | null>(null);
 	const accelRef = useRef(0);
 	const timerRef = useRef<number | null>(null);
 	const lastSaveRef = useRef(0);
@@ -79,8 +79,8 @@ export function useRsvpEngine({
 	// The original WordEntry for the chunks above - used to restore the focal
 	// view on pause without recomputing from a possibly-advanced wordIndexRef.
 	const currentEntryRef = useRef<WordEntry | null>(null);
-	const initialByteOffsetRef = useRef(initialByteOffset);
-	initialByteOffsetRef.current = initialByteOffset;
+	const initialWordRef = useRef(initialWord);
+	initialWordRef.current = initialWord;
 
 	// ── Ref copies of props (avoid stale closures in the tick chain) ─────
 	const onPositionChangeRef = useRef(onPositionChange);
@@ -98,19 +98,15 @@ export function useRsvpEngine({
 	const isPlayingRef = useRef(isPlaying);
 	isPlayingRef.current = isPlaying;
 
-	// ── Word index (preloaded blob, else synchronous rebuild) ────────────
-	// ADR-0002: the WordIndex is normally cached per-book in
-	// `book_content.word_index`. Falling back to `buildWordIndex` keeps the
-	// reader functional for not-yet-backfilled rows or fresh imports whose
-	// inline backfill hasn't committed yet. The prior worker indirection is
-	// no longer worth its complexity now that we cache.
+	// Synchronous rebuild on a cache miss keeps the reader functional for
+	// fresh imports whose inline backfill hasn't committed yet.
 	useEffect(() => {
 		const w = bookWordIndex ? bookWordIndex.listEntries().slice() : buildWordIndex(content);
-		const idx = findWordIndexAtOffset(w, initialByteOffsetRef.current);
+		const idx = Math.max(0, Math.min(w.length - 1, initialWordRef.current));
 		setWords(w);
 		setWordIndex(idx);
 		wordIndexRef.current = idx;
-		displayedOffsetRef.current = w[idx]?.byteOffset ?? null;
+		displayedWordRef.current = w.length > 0 ? idx : null;
 		setCurrentWord(w[idx] ?? null);
 	}, [content, bookWordIndex]);
 
@@ -129,17 +125,17 @@ export function useRsvpEngine({
 		const entry = w[idx];
 
 		// Begin a new word: split into chunks, save position once at the
-		// original word's byte offset (all chunks share the same offset).
+		// original word index (all chunks share the same word).
 		if (chunkCursorRef.current >= chunksRef.current.length) {
 			chunksRef.current = splitLongWord(entry.word);
 			chunkCursorRef.current = 0;
 			currentEntryRef.current = entry;
-			displayedOffsetRef.current = entry.byteOffset;
+			displayedWordRef.current = idx;
 
 			const now = Date.now();
 			if (now - lastSaveRef.current >= POSITION_SAVE_THROTTLE_MS) {
 				lastSaveRef.current = now;
-				onPositionChangeRef.current(entry.byteOffset);
+				onPositionChangeRef.current(idx);
 			}
 		}
 
@@ -185,8 +181,8 @@ export function useRsvpEngine({
 			timerRef.current = null;
 		}
 		setIsPlaying(false);
-		if (displayedOffsetRef.current !== null) {
-			onPositionChangeRef.current(displayedOffsetRef.current);
+		if (displayedWordRef.current !== null) {
+			onPositionChangeRef.current(displayedWordRef.current);
 		}
 		// Restore the original full word so the focal/context view doesn't
 		// sit on a mid-word chunk. Use currentEntryRef rather than
@@ -220,9 +216,9 @@ export function useRsvpEngine({
 			wordIndexRef.current = clamped;
 			setWordIndex(clamped);
 			const entry = w[clamped];
-			displayedOffsetRef.current = entry.byteOffset;
+			displayedWordRef.current = clamped;
 			setCurrentWord(entry);
-			onPositionChangeRef.current(entry.byteOffset);
+			onPositionChangeRef.current(clamped);
 		},
 		[resetChunks],
 	);
@@ -282,11 +278,11 @@ export function useRsvpEngine({
 		}
 	}, []);
 
-	// ── External scrub (initialByteOffset changes from parent) ───────────
-	const prevOffsetRef = useRef(initialByteOffset);
+	// ── External scrub (initialWord changes from parent) ─────────────────
+	const prevWordRef = useRef(initialWord);
 	useEffect(() => {
-		if (initialByteOffset === prevOffsetRef.current) return;
-		prevOffsetRef.current = initialByteOffset;
+		if (initialWord === prevWordRef.current) return;
+		prevWordRef.current = initialWord;
 		if (words.length === 0) return;
 		if (timerRef.current !== null) {
 			clearTimeout(timerRef.current);
@@ -294,12 +290,12 @@ export function useRsvpEngine({
 		}
 		setIsPlaying(false);
 		resetChunks();
-		const idx = findWordIndexAtOffset(words, initialByteOffset);
+		const idx = Math.max(0, Math.min(words.length - 1, initialWord));
 		wordIndexRef.current = idx;
 		setWordIndex(idx);
-		displayedOffsetRef.current = words[idx]?.byteOffset ?? null;
+		displayedWordRef.current = idx;
 		setCurrentWord(words[idx] ?? null);
-	}, [initialByteOffset, words, resetChunks]);
+	}, [initialWord, words, resetChunks]);
 
 	// ── Auto-pause in background ─────────────────────────────────────────
 	useEffect(() => {
@@ -315,8 +311,8 @@ export function useRsvpEngine({
 		return () => {
 			if (timerRef.current !== null) clearTimeout(timerRef.current);
 			if (longPressTimerRef.current !== null) clearTimeout(longPressTimerRef.current);
-			if (displayedOffsetRef.current !== null) {
-				onPositionChangeRef.current(displayedOffsetRef.current);
+			if (displayedWordRef.current !== null) {
+				onPositionChangeRef.current(displayedWordRef.current);
 			}
 		};
 	}, []);

@@ -1,26 +1,13 @@
 /**
- * BookReader - chrome + state owner for the in-app book reader.
+ * BookReader: state owner for the in-app book reader. Owns data queries,
+ * mode state (scroll | page | rsvp), current word position, chapters,
+ * selection + scrub hooks, and all overlay modals. Dispatches rendering
+ * to a sibling view component (ScrollView, PageView, RsvpView).
  *
- * Owns: book/content/highlight queries, mode state (scroll | rsvp),
- * the current byte offset (active/progress/last), chapters + paragraph index,
- * the selection + scrub hooks, and all overlay modals (TOC, search,
- * dictionary, highlight editor, highlights list, note input). Dispatches
- * the actual rendering of the book to a sibling view component:
- *
- *   - <ScrollView />    virtualized scrolling reader (default)
- *   - <RsvpView />      word-by-word RSVP reader
- *
- * Data model:
- *   paragraphs[]       string[]   content.split("\n\n")
- *   paragraphOffsets[] number[]   UTF-8 byte offset where each paragraph starts
- *
- * Position model: byte offsets into the original UTF-8 content. The ESP32
- * uses the same offsets, so writes round-trip cleanly.
- *
- * Sub-modules:
- *   use-highlight-selection - selection state + handles + edit modal + list modal
- *   use-scrub-progress       - progress-bar pointer gestures
- *   selection-overlay        - JSX for the floating toolbar + drag handles
+ * Position model is word units end-to-end. `paragraphOffsets` (bytes) stays
+ * for string-edge ops (paragraph entry slicing, glossary regex matching).
+ * The legacy single-book ESP32 still speaks bytes on BLE; conversion lives
+ * in book-sync-context.tsx.
  */
 
 import { Browser } from "@capacitor/browser";
@@ -122,9 +109,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// ── Data queries ──────────────────────────────────────────────────────
 	const { data: book, isPending: bookPending } = queryHooks.useBook(id);
 	const { data: contentRow, isPending: contentPending } = queryHooks.useBookContent(id);
-	// ADR-0002 canonical position lookup. Returns null while loading or for
-	// books without a content row yet (pending/locked chapters). Downstream
-	// stages (C-G) consume this; for now it just rides through props.
 	const { data: wordIndex } = queryHooks.useBookWordIndex(id);
 	const content = contentRow?.content ?? null;
 	const { data: highlightRows = [] } = queryHooks.useHighlights(id);
@@ -182,41 +166,37 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// paginationStyle setting (decided at render time, not stored here).
 	const [readerMode, setReaderMode] = useState<"standard" | "rsvp">("standard");
 
-	// The byte offset we consider "current" - used for word highlight + saves
-	const [activeOffset, setActiveOffset] = useState(0);
-	// Tracks position for the progress bar - updated during scroll (activeOffset
-	// is set to NO_HIGHLIGHT=-1 while scrolling, so can't be used for progress).
-	const [progressOffset, setProgressOffset] = useState(0);
-	// Separate state for RsvpView's initialByteOffset - only updated on genuine
-	// user seeks (entering RSVP mode, scrubbing). NOT updated from onPositionChange
-	// callbacks, which would echo back and cause the scrub effect to pause playback.
-	const [rsvpInitOffset, setRsvpInitOffset] = useState(0);
+	const [activeWord, setActiveWord] = useState(0);
+	const [progressWord, setProgressWord] = useState(0);
+	// Updated only on genuine user seeks (entering RSVP, scrubbing). Skipping
+	// `onPositionChange` writes here prevents an echo that would pause playback.
+	const [rsvpInitWord, setRsvpInitWord] = useState(0);
 
 	// Progress bar visibility - shown on tap/word-tap, hidden when user scrolls
 	const [progressBarVisible, setProgressBarVisible] = useState(false);
 	// Mirror of progressBarVisible accessible from refs-only callbacks. Lets
-	// per-scroll-tick handlers skip setProgressOffset when the bar is hidden,
+	// per-scroll-tick handlers skip setProgressWord when the bar is hidden,
 	// removing the React reconciliation cost during hold-scroll.
 	const progressBarVisibleRef = useRef(false);
 	useEffect(() => {
 		progressBarVisibleRef.current = progressBarVisible;
 	}, [progressBarVisible]);
-	// Latest progress offset, written every scroll tick. setProgressOffset
+	// Latest progress word, written every scroll tick. setProgressWord
 	// (state) only flushed when the bar becomes visible or on scroll settle.
-	const progressOffsetRef = useRef(0);
+	const progressWordRef = useRef(0);
 	// Keep ref in sync with state so other call sites (jumps, scrubs, init seed)
 	// don't need to write the ref explicitly. Skip during the per-tick hidden
 	// phase since the ref is the authoritative writer there.
 	useEffect(() => {
-		progressOffsetRef.current = progressOffset;
-	}, [progressOffset]);
+		progressWordRef.current = progressWord;
+	}, [progressWord]);
 
 	const scrollViewRef = useRef<ReaderViewHandle>(null);
 	const rsvpViewRef = useRef<RsvpViewHandle>(null);
 
-	// Track the last offset we set so we can flush on unmount.
+	// Track the last word we set so we can flush on unmount.
 	// null = not yet loaded from DB, don't overwrite on unmount.
-	const lastOffsetRef = useRef<number | null>(null);
+	const lastWordRef = useRef<number | null>(null);
 	// Flips true the first time the user actually moves position (scroll
 	// settle, word tap, jump, RSVP, scrub). Gates the unmount-flush so a
 	// brief re-mount (tanstack route transition double-render) whose seed
@@ -233,80 +213,59 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const didSeedModeRef = useRef(false);
 
-	// Reset all "has-happened-once" guards when the user navigates to a different
-	// book. The route reuses this component, so without this the skeleton stays
-	// hidden on the second book's open and the seed/initial-scroll effects
-	// don't re-run.
-	// MUST be declared BEFORE the seed effect: on first mount both effects fire
-	// in declaration order, so if reset ran after seed it would null out
-	// lastOffsetRef right after seed populated it — then a fast RSVP toggle
-	// (before the initial scroll-end repopulates it) would read null, fall
-	// back to 0, and overwrite the book's saved position with 0.
+	// MUST run before the seed effect: on first mount both effects fire in
+	// declaration order, and a reset after seed would null lastWordRef back
+	// out, letting a fast RSVP toggle overwrite the saved position with 0.
 	useEffect(() => {
 		void id;
 		didSeedOffsetsRef.current = false;
 		didSeedModeRef.current = false;
-		lastOffsetRef.current = null;
+		lastWordRef.current = null;
 		userMovedRef.current = false;
 	}, [id]);
 
-	// ── Seed activeOffset + lastOffsetRef once book loads ─────────────────
-	// ADR-0002 transitional read: prefer the canonical word_position when the
-	// book is flagged 'word' AND the WordIndex is ready, converting back to a
-	// byte offset for the existing byte-typed downstream state. Falls back to
-	// Seed byte computed from canonical word position. Stable across renders
-	// once both book + wordIndex resolve. Used as the view's initialByteOffset
-	// so a slow wordIndex query doesn't open the view at byte 0 and short-
-	// circuit scroll-view's initial seek.
-	const seedByte = useMemo<number | null>(() => {
-		if (!book || !wordIndex) return null;
-		return wordIndex.byteOfClamped(book.wordPosition);
-	}, [book, wordIndex]);
+	const seedWord = book?.wordPosition ?? null;
 
-	// Apply the seed to local state once.
 	useEffect(() => {
-		if (didSeedOffsetsRef.current || seedByte === null) return;
+		if (didSeedOffsetsRef.current || seedWord === null) return;
 		didSeedOffsetsRef.current = true;
-		setActiveOffset(seedByte);
-		setProgressOffset(seedByte);
-		setRsvpInitOffset(seedByte);
-		lastOffsetRef.current = seedByte;
-	}, [seedByte]);
+		setActiveWord(seedWord);
+		setProgressWord(seedWord);
+		setRsvpInitWord(seedWord);
+		lastWordRef.current = seedWord;
+	}, [seedWord]);
 
 	// Live-seek when the device pushes a new position for this book over BLE.
 	// book-sync-context applies the conflict-resolution tolerance gate first,
 	// so we only see notifies the user should visibly follow. Gated on
 	// isBleConnected so a user who never pairs pays nothing. We mirror what
-	// jumpToOffset does (state + scroll) but skip savePosition/pushPosition:
+	// jumpToWord does (state + scroll) but skip savePosition/pushPosition:
 	// the DB row was already updated by applyDevicePosition, and pushing back
 	// to the device would echo the value it just sent us.
 	useEffect(() => {
 		if (!isBleConnected) return;
-		if (!wordIndex) return;
 		const unsubscribe = onDevicePositionUpdate((bookId, newWordPosition) => {
 			if (bookId !== id) return;
-			if (newWordPosition < 0 || newWordPosition >= wordIndex.wordCount) return;
-			const byteOffset = wordIndex.byteOf(wordPos(newWordPosition));
-			setActiveOffset(byteOffset);
-			setProgressOffset(byteOffset);
-			setRsvpInitOffset(byteOffset);
-			lastOffsetRef.current = byteOffset;
-			// Mark so the unmount-flush effect doesn't overwrite the device's
-			// fresh position with a stale book.position seed during a route
-			// re-mount (see reader unmount double-fire memory).
+			const totalWords = wordIndex?.wordCount ?? book?.wordCount ?? 0;
+			// Without a known upper bound a malformed notify would persist a
+			// huge word index via the unmount-flush.
+			if (totalWords === 0) return;
+			if (newWordPosition < 0 || newWordPosition >= totalWords) return;
+			setActiveWord(newWordPosition);
+			setProgressWord(newWordPosition);
+			setRsvpInitWord(newWordPosition);
+			lastWordRef.current = newWordPosition;
+			// Stops the unmount-flush from overwriting the device's fresh
+			// position with a stale seed during a route re-mount.
 			userMovedRef.current = true;
-			// Scroll the viewport so the new active word is visible. fine=true
-			// skips the coarse paragraph snap (which would double-scroll for
-			// small nudges); smooth=true animates the move so the highlight
-			// glides instead of snapping.
-			scrollViewRef.current?.jumpTo(byteOffset, {
+			scrollViewRef.current?.jumpTo(newWordPosition, {
 				highlight: true,
 				fine: true,
 				smooth: true,
 			});
 		});
 		return unsubscribe;
-	}, [id, wordIndex, isBleConnected, onDevicePositionUpdate]);
+	}, [id, wordIndex?.wordCount, book?.wordCount, isBleConnected, onDevicePositionUpdate]);
 
 	// ── Build paragraph index ──────────────────────────────────────────────
 	// Computed once per content load. Two cheap structures:
@@ -329,9 +288,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		return { paragraphs: paras, paragraphOffsets: offsets, contentByteLength: offset - 2 };
 	}, [content]);
 
-	// Per-paragraph word index of the first word (ADR-0002). Derived from
-	// paragraphOffsets via the cached WordIndex; defaults to zero when the
-	// WordIndex isn't loaded yet.
 	const paragraphStartWords = useMemo(() => {
 		if (!wordIndex) return paragraphOffsets.map(() => 0);
 		return paragraphOffsets.map((b) => wordIndex.wordOf(b));
@@ -384,9 +340,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		return result;
 	}, [paragraphs, paragraphOffsets, contentByteLength, wordIndex]);
 
-	// Active word index mirrors activeOffset (computed on every render — cheap).
-	const activeWord = wordIndex && activeOffset >= 0 ? wordIndex.wordOf(activeOffset) : -1;
-
 	// ── Parse chapters ────────────────────────────────────────────────────
 	const chapters = useMemo<Chapter[]>(() => {
 		if (!contentRow?.chapters) return [];
@@ -412,13 +365,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	}, [chapters, book?.wordCount, wordIndex?.wordCount]);
 
 	const currentChapterIndex = useMemo(() => {
-		if (!chapters.length || !wordIndex) return -1;
-		const currentWord = wordIndex.wordOf(progressOffset);
+		if (!chapters.length) return -1;
 		for (let i = chapters.length - 1; i >= 0; i--) {
-			if (currentWord >= chapters[i].startWord) return i;
+			if (progressWord >= chapters[i].startWord) return i;
 		}
 		return 0;
-	}, [progressOffset, chapters, wordIndex]);
+	}, [progressWord, chapters]);
 
 	// ── Settings (RSVP + reader appearance) ──────────────────────────────
 	const { data: dbSettings } = queryHooks.useSettings();
@@ -462,13 +414,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	);
 
 	// ── Save position to DB + BLE ─────────────────────────────────────────
-	// Fire-and-forget writes. Word-position is the only stored unit; the byte
-	// offset is the runtime working unit but never persisted (ADR-0002).
 	const savePosition = useCallback(
-		async (offset: number, { scheduleSync = true }: { scheduleSync?: boolean } = {}) => {
-			if (!wordIndex) return; // can't compute word without index
+		async (word: number, { scheduleSync = true }: { scheduleSync?: boolean } = {}) => {
 			const now = Date.now();
-			const wordPosition = wordIndex.wordOf(offset);
+			const wordPosition = wordPos(word);
 			const update: { lastRead: number; wordPosition: WordPosition } = {
 				lastRead: now,
 				wordPosition,
@@ -507,38 +456,38 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			setJustRead(seriesId ? `series:${seriesId}` : `book:${id}`);
 
 			await queries.updateBook(id, update);
-			await pushPosition(id, offset);
+			await pushPosition(id, word);
 			if (scheduleSync) scheduleSyncPush(5000);
 		},
-		[id, pushPosition, wordIndex, book?.seriesId, qc],
+		[id, pushPosition, book?.seriesId, qc],
 	);
 
 	// ── Shared helpers ────────────────────────────────────────────────────
-	/** Binary search: find the last paragraph index whose offset ≤ targetByte. */
-	const findParagraphIndex = useCallback(
-		(targetByte: number): number => {
+	/** Binary search: find the last paragraph index whose start word ≤ targetWord. */
+	const findParagraphIndexForWord = useCallback(
+		(targetWord: number): number => {
 			let lo = 0;
-			let hi = paragraphOffsets.length - 1;
+			let hi = paragraphStartWords.length - 1;
 			while (lo < hi) {
 				const mid = Math.ceil((lo + hi) / 2);
-				if (paragraphOffsets[mid] <= targetByte) lo = mid;
+				if ((paragraphStartWords[mid] ?? 0) <= targetWord) lo = mid;
 				else hi = mid - 1;
 			}
 			return lo;
 		},
-		[paragraphOffsets],
+		[paragraphStartWords],
 	);
 
 	/** Update parent state for a programmatic position change, then delegate the
 	 *  visual scroll to whichever view is mounted. */
-	const jumpToOffset = useCallback(
-		(byteOffset: number, { highlight = true }: { highlight?: boolean } = {}) => {
-			setActiveOffset(byteOffset);
-			setProgressOffset(byteOffset);
-			lastOffsetRef.current = byteOffset;
+	const jumpToWord = useCallback(
+		(word: number, { highlight = true }: { highlight?: boolean } = {}) => {
+			setActiveWord(word);
+			setProgressWord(word);
+			lastWordRef.current = word;
 			userMovedRef.current = true;
-			savePosition(byteOffset);
-			scrollViewRef.current?.jumpTo(byteOffset, { highlight });
+			savePosition(word);
+			scrollViewRef.current?.jumpTo(word, { highlight });
 		},
 		[savePosition],
 	);
@@ -548,7 +497,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		bookId: id,
 		contentBytes,
 		highlightRows,
-		paragraphOffsets,
+		paragraphStartWords,
+		totalWords: totalWordCount,
 		wordIndex,
 	});
 
@@ -580,13 +530,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const scrub = useScrubProgress({
 		book,
 		readerMode,
-		paragraphOffsets,
-		findParagraphIndex,
-		jumpToOffset,
+		totalWords: totalWordCount,
+		paragraphStartWords,
+		findParagraphIndexForWord,
+		jumpToWord,
 		savePosition,
-		lastOffsetRef,
-		setProgressOffset,
-		setRsvpInitOffset,
+		lastWordRef,
+		setProgressWord,
+		setRsvpInitWord,
 		setProgressBarVisible,
 	});
 
@@ -601,43 +552,55 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const markActivityRef = useRef<(() => void) | null>(null);
 
 	const handleScrollPositionSettle = useCallback(
-		(offset: number) => {
-			setActiveOffset(offset);
-			setProgressOffset(offset);
-			lastOffsetRef.current = offset;
+		(word: number) => {
+			// Always restore the underline. Skip the save/lastRead bump when
+			// the word didn't actually change so opening a book or scrolling
+			// back to the same position doesn't mark it as updated.
+			setActiveWord(word);
+			setProgressWord(word);
+			if (lastWordRef.current === word) return;
+			lastWordRef.current = word;
 			userMovedRef.current = true;
-			savePosition(offset);
+			savePosition(word);
 			markActivityRef.current?.();
-			// 32-byte tolerance for word-boundary settles. The `size > 32` guard
-			// avoids firing on freshly-fetched chapters whose `size` momentarily
-			// reads 0. No-op for non-serials inside `tryAdvance` itself.
-			if (book && book.size > 32 && offset >= book.size - 32) {
+			// End-of-book chapter advance. Settle must hit the literal last
+			// word; the `wordCount > 32` guard mirrors the prior 32-byte
+			// safety floor so freshly-fetched short chapters (wordCount
+			// momentarily 0, or one-word stubs) don't auto-advance the
+			// instant they mount. No-op for non-serials inside `tryAdvance`.
+			const totalWords = book?.wordCount ?? 0;
+			if (totalWords > 32 && word >= totalWords - 1) {
 				void chapterAdvance.tryAdvance();
 			}
 		},
-		[savePosition, chapterAdvance, book],
+		[savePosition, chapterAdvance, book?.wordCount],
 	);
 
 	const handleScrollHighlightClear = useCallback(() => {
-		setActiveOffset((prev) => (prev === NO_HIGHLIGHT ? prev : NO_HIGHLIGHT));
+		setActiveWord((prev) => (prev === NO_HIGHLIGHT ? prev : NO_HIGHLIGHT));
 	}, []);
 
 	const handleScrollHideProgressBar = useCallback(() => setProgressBarVisible(false), []);
 	const handleScrollShowProgressBar = useCallback(() => {
 		setProgressBarVisible(true);
-		// Bar just became visible — flush latest offset accumulated during the
-		// hidden phase so it reflects the current scroll position immediately.
-		setProgressOffset(progressOffsetRef.current);
+		// Flush the latest word accumulated while the bar was hidden so it
+		// reflects the current scroll position the moment it appears.
+		setProgressWord(progressWordRef.current);
 		markActivityRef.current?.();
 	}, []);
-	const handleSetActiveOffset = useCallback((offset: number) => setActiveOffset(offset), []);
-	const handleSetProgressOffset = useCallback((offset: number) => {
-		progressOffsetRef.current = offset;
+	const handleSetActiveWord = useCallback((word: number) => setActiveWord(word), []);
+	const handleSetProgressWord = useCallback((word: number) => {
+		progressWordRef.current = word;
+		// Track per-tick so a paginationStyle toggle mid-scroll seeds the next
+		// view from the user's current visual position rather than the last
+		// settled word (which may be from before the in-flight scroll).
+		lastWordRef.current = word;
+		userMovedRef.current = true;
 		// Skip state update when bar is hidden: nothing in the visible UI
-		// depends on progressOffset, and the per-tick reconciliation was the
+		// depends on progressWord, and the per-tick reconciliation was the
 		// dominant scripting cost during hold-scroll. handleScrollPositionSettle
 		// (scroll-end) writes the final value to state.
-		if (progressBarVisibleRef.current) setProgressOffset(offset);
+		if (progressBarVisibleRef.current) setProgressWord(word);
 		markActivityRef.current?.();
 	}, []);
 
@@ -653,25 +616,15 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	//   or dictionary (if not highlighted).
 	const { cancelSelection, findHighlightAt, openHighlightEditor } = sel;
 
-	// Paragraph emits word indices; byte-typed handlers below convert at the
-	// edge. Returns null when the WordIndex hasn't loaded yet — handlers must
-	// bail rather than fall through to a `0` that would clobber state.
-	const wordTapToOffset = useCallback(
-		(wIdx: number): number | null => (wordIndex ? wordIndex.byteOf(wordPos(wIdx)) : null),
-		[wordIndex],
-	);
-
 	const handleWordTap = useCallback(
 		(wIdx: number, wordText: string) => {
 			if (isSelecting) {
 				cancelSelection();
 				return;
 			}
-			const offset = wordTapToOffset(wIdx);
-			if (offset === null) return;
 
-			if (offset === activeOffset) {
-				const existing = findHighlightAt(offset);
+			if (wIdx === activeWord) {
+				const existing = findHighlightAt(wIdx);
 				if (existing) {
 					openHighlightEditor(existing);
 					return;
@@ -686,23 +639,22 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				if (clean) openDictionaryModal(clean, original);
 				return;
 			}
-			setActiveOffset(offset);
-			setProgressOffset(offset);
+			setActiveWord(wIdx);
+			setProgressWord(wIdx);
 			setProgressBarVisible(true);
-			lastOffsetRef.current = offset;
+			lastWordRef.current = wIdx;
 			userMovedRef.current = true;
-			savePosition(offset);
+			savePosition(wIdx);
 		},
 		[
 			savePosition,
-			activeOffset,
+			activeWord,
 			isSelecting,
 			cancelSelection,
 			findHighlightAt,
 			openHighlightEditor,
 			findGlossaryAt,
 			openDictionaryModal,
-			wordTapToOffset,
 		],
 	);
 
@@ -715,9 +667,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	// Long-press → selection toolbar → "Look up" reads the word's rendered text
 	// straight from the DOM (selection.startWord targets a word span via
-	// `data-word`) and opens the dictionary modal. ADR-0002.
+	// `data-word`) and opens the dictionary modal.
 	const handleSelectionLookup = useCallback(() => {
-		const range = sel.selectionRangeWord;
+		const range = sel.selectionRange;
 		if (!range) return;
 		const span = document.querySelector<HTMLElement>(`span[data-word="${range.startWord}"]`);
 		const raw = span?.textContent ?? "";
@@ -767,7 +719,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			sel.cancelSelection();
 			return;
 		}
-		const snippet = sel.extractRangeText(range.start, range.end).trim();
+		const snippet = sel.extractRangeText(range.startWord, range.endWord).trim();
 		if (!snippet) {
 			toast.info("Nothing selected to add to glossary");
 			sel.cancelSelection();
@@ -880,24 +832,23 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const handleJumpFirstMention = useCallback(
 		(label: string) => {
 			const wordIdx = findFirstMention(label, paragraphs, paragraphOffsets, wordIndex ?? null);
-			if (wordIdx !== null && wordIndex) jumpToOffset(wordIndex.byteOf(wordPos(wordIdx)));
+			if (wordIdx !== null) jumpToWord(wordIdx);
 		},
-		[paragraphs, paragraphOffsets, jumpToOffset, wordIndex],
+		[paragraphs, paragraphOffsets, jumpToWord, wordIndex],
 	);
 
 	const handleJumpNextMention = useCallback(
 		(label: string) => {
-			const fromWord = wordIndex ? wordIndex.wordOf(activeOffset) : 0;
 			const wordIdx = findNextMention(
 				label,
-				fromWord,
+				activeWord,
 				paragraphs,
 				paragraphOffsets,
 				wordIndex ?? null,
 			);
-			if (wordIdx !== null && wordIndex) jumpToOffset(wordIndex.byteOf(wordPos(wordIdx)));
+			if (wordIdx !== null) jumpToWord(wordIdx);
 		},
-		[paragraphs, paragraphOffsets, jumpToOffset, activeOffset, wordIndex],
+		[paragraphs, paragraphOffsets, jumpToWord, activeWord, wordIndex],
 	);
 
 	// ── Mouse drag-to-select ──────────────────────────────────────────────
@@ -909,14 +860,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const { startSelection, extendSelectionTo, startHandleRef, endHandleRef } = sel;
 	const handleWordMouseDragStart = useCallback(
 		(wIdx: number, initialEvent: PointerEvent) => {
-			const offset = wordTapToOffset(wIdx);
-			if (offset === null) return;
-			const existing = findHighlightAt(offset);
+			const existing = findHighlightAt(wIdx);
 			if (existing) {
 				openHighlightEditor(existing);
 				return;
 			}
-			startSelection(offset);
+			startSelection(wIdx);
 			// Make the selection handles transparent to elementFromPoint during the
 			// drag - once they pop up they can intercept the cursor and break the
 			// word-under-cursor lookup. Restored on cleanup.
@@ -931,11 +880,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			const extendToPoint = (clientX: number, clientY: number) => {
 				const el = document.elementFromPoint(clientX, clientY);
 				const span = el?.closest<HTMLElement>("span[data-word]");
-				if (!span || !wordIndex) return;
+				if (!span) return;
 				const wIdx = Number.parseInt(span.dataset.word ?? "", 10);
 				if (Number.isNaN(wIdx)) return;
-				// Selection internals byte-anchored; convert at the DOM boundary.
-				extendSelectionTo(wordIndex.byteOf(wordPos(wIdx)));
+				extendSelectionTo(wIdx);
 			};
 			extendToPoint(initialEvent.clientX, initialEvent.clientY);
 
@@ -971,54 +919,53 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			extendSelectionTo,
 			startHandleRef,
 			endHandleRef,
-			wordTapToOffset,
 		],
 	);
 
 	// ── RSVP helpers ─────────────────────────────────────────────────────
 
 	const handleRsvpPositionChange = useCallback(
-		(byteOffset: number) => {
-			setProgressOffset(byteOffset);
-			lastOffsetRef.current = byteOffset;
+		(word: number) => {
+			setProgressWord(word);
+			lastWordRef.current = word;
 			userMovedRef.current = true;
-			savePosition(byteOffset, { scheduleSync: false });
+			savePosition(word, { scheduleSync: false });
 			markActivityRef.current?.();
 		},
 		[savePosition],
 	);
 
 	/** Switch from RSVP back to the standard reader, positioning the
-	 *  next-mounted view at the given byte offset (consumed via
-	 *  initialByteOffset on remount). The actual scroll-vs-page choice
-	 *  happens at render time based on paginationStyle. */
+	 *  next-mounted view at the given word (consumed via initialWord on
+	 *  remount). The actual scroll-vs-page choice happens at render time
+	 *  based on paginationStyle. */
 	const exitRsvpToStandard = useCallback(
-		(byteOffset: number) => {
-			lastOffsetRef.current = byteOffset;
+		(word: number) => {
+			lastWordRef.current = word;
 			userMovedRef.current = true;
-			setProgressOffset(byteOffset);
+			setProgressWord(word);
 			setReaderMode("standard");
-			savePosition(byteOffset);
+			savePosition(word);
 		},
 		[savePosition],
 	);
 
 	const handleRsvpToggle = useCallback(() => {
 		if (readerMode !== "rsvp") {
-			// Use lastOffsetRef (word-level accurate from handleScrollEnd)
-			// instead of progressOffset (paragraph-level from handleScroll).
-			const offset = lastOffsetRef.current ?? 0;
-			setProgressOffset(offset);
-			setRsvpInitOffset(offset);
+			// Use lastWordRef (word-level accurate from handleScrollEnd)
+			// instead of progressWord (paragraph-level from handleScroll).
+			const word = lastWordRef.current ?? 0;
+			setProgressWord(word);
+			setRsvpInitWord(word);
 			setReaderMode("rsvp");
 			setProgressBarVisible(true);
 		} else {
-			exitRsvpToStandard(lastOffsetRef.current ?? 0);
+			exitRsvpToStandard(lastWordRef.current ?? 0);
 		}
 	}, [readerMode, exitRsvpToStandard]);
 
 	const handleRsvpFinished = useCallback(() => {
-		exitRsvpToStandard(lastOffsetRef.current ?? 0);
+		exitRsvpToStandard(lastWordRef.current ?? 0);
 		// No-op for standalone books; navigates to next chapter for serials.
 		void chapterAdvance.tryAdvance();
 	}, [exitRsvpToStandard, chapterAdvance]);
@@ -1031,48 +978,39 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// ── Chapter jump ──────────────────────────────────────────────────────
 	const handleChapterJump = useCallback(
 		(startWord: number) => {
-			if (!wordIndex || wordIndex.wordCount === 0) return;
-			const byteOffset = wordIndex.byteOfClamped(startWord);
 			if (readerMode === "rsvp") {
-				exitRsvpToStandard(byteOffset);
+				exitRsvpToStandard(startWord);
 			} else {
-				jumpToOffset(byteOffset);
+				jumpToWord(startWord);
 			}
 		},
-		[readerMode, jumpToOffset, exitRsvpToStandard, wordIndex],
+		[readerMode, jumpToWord, exitRsvpToStandard],
 	);
 
 	const handleHighlightJump = useCallback(
 		(h: { startWord: number }) => {
-			if (!wordIndex || wordIndex.wordCount === 0) return;
-			jumpToOffset(wordIndex.byteOfClamped(h.startWord));
+			jumpToWord(h.startWord);
 		},
-		[jumpToOffset, wordIndex],
+		[jumpToWord],
 	);
 
 	// ── Search jump ───────────────────────────────────────────────────────────
-	// The search modal gives us a JS char offset (indexOf result). We convert
-	// it to a UTF-8 byte offset, then snap to the nearest word so the matched
-	// word gets highlighted.
+	// The search modal gives us a JS char offset (indexOf result). String-edge
+	// case: convert char → byte → word via WordIndex before handing off.
 	const handleSearchJump = useCallback(
 		(charOffset: number) => {
-			if (!content) return;
+			if (!content || !wordIndex) return;
 			const byteOffset = utf8ByteLength(content.slice(0, charOffset));
-			// Snap to the start of the word containing this byte via WordIndex
-			// (ADR-0002). Falls back to the raw byte position pre-backfill.
-			const wordByte =
-				wordIndex && wordIndex.wordCount > 0
-					? wordIndex.byteOfClamped(wordIndex.wordOf(byteOffset))
-					: byteOffset;
+			const word = wordIndex.wordOf(byteOffset);
 
 			if (readerMode === "rsvp") {
-				setActiveOffset(wordByte);
-				exitRsvpToStandard(wordByte);
+				setActiveWord(word);
+				exitRsvpToStandard(word);
 			} else {
-				jumpToOffset(wordByte);
+				jumpToWord(word);
 			}
 		},
-		[content, readerMode, jumpToOffset, exitRsvpToStandard, wordIndex],
+		[content, readerMode, jumpToWord, exitRsvpToStandard, wordIndex],
 	);
 
 	// ── Keyboard shortcuts ────────────────────────────────────────────────
@@ -1090,7 +1028,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			sel.noteInputOpen,
 		scrollViewRef,
 		rsvpViewRef,
-		lastOffsetRef,
+		lastOffsetRef: lastWordRef,
 		handleRsvpToggle,
 		exitRsvpToStandard,
 	});
@@ -1102,15 +1040,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// reading (no position change for minutes) doesn't trigger spurious idle.
 	const sessionMode: ReadingSessionMode =
 		readerMode === "rsvp" ? "rsvp" : paginationStyle === "page" ? "page" : "scroll";
-	const getReadingPosition = useCallback(() => lastOffsetRef.current ?? 0, []);
+	const getReadingPosition = useCallback(() => lastWordRef.current ?? 0, []);
 	const { markActivity: markReadingActivity, getDebugSnapshot } = useReadingSession({
 		bookId: id,
 		mode: sessionMode,
-		isReading: !!content && lastOffsetRef.current !== null,
+		isReading: !!content && lastWordRef.current !== null,
 		getPosition: getReadingPosition,
-		content: content ?? "",
 		wpmSetting: rsvpSettings.wpm,
-		wordIndex,
 	});
 	useEffect(() => {
 		markActivityRef.current = markReadingActivity;
@@ -1154,12 +1090,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		return () => {
 			// Flush position to DB so the library shows updated progress.
 			// Only write if the user actually moved the position. A brief
-			// re-mount during the route transition seeds `lastOffsetRef` from
-			// the (possibly-stale) `book.position` query cache; flushing that
-			// would clobber the real value the prior unmount just wrote.
-			const offset = lastOffsetRef.current;
-			if (offset !== null && userMovedRef.current) {
-				savePositionRef.current(offset, { scheduleSync: false });
+			// re-mount during the route transition seeds `lastWordRef` from
+			// the (possibly-stale) `book.wordPosition` query cache; flushing
+			// that would clobber the real value the prior unmount just wrote.
+			const word = lastWordRef.current;
+			if (word !== null && userMovedRef.current) {
+				savePositionRef.current(word, { scheduleSync: false });
 				pushSync().catch(() => {});
 			}
 			// Invalidate the books list so the library grid picks up the new position
@@ -1198,7 +1134,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		);
 	}
 
-	const progressPct = book.size > 0 ? Math.min(100, (progressOffset / book.size) * 100) : 0;
+	const progressPct =
+		totalWordCount > 0 ? Math.min(100, (progressWord / totalWordCount) * 100) : 0;
 
 	const showReadingTime = dbSettings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
 	const estimateWpm = readerMode === "rsvp" ? rsvpSettings.wpm : 250;
@@ -1207,14 +1144,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			? (totalWordCount * (1 - progressPct / 100)) / estimateWpm
 			: 0;
 	let chapterMinutesRemaining: number | null = null;
-	if (showReadingTime && currentChapterIndex >= 0 && wordIndex) {
+	if (showReadingTime && currentChapterIndex >= 0) {
 		const ch = chapters[currentChapterIndex];
-		const totalWords = book?.wordCount ?? wordIndex.wordCount;
-		const chapterEndWord = chapters[currentChapterIndex + 1]?.startWord ?? totalWords;
-		const currentWord = wordIndex.wordOf(progressOffset);
+		const chapterEndWord = chapters[currentChapterIndex + 1]?.startWord ?? totalWordCount;
 		const chapterProgress =
 			chapterEndWord > ch.startWord
-				? Math.max(0, (currentWord - ch.startWord) / (chapterEndWord - ch.startWord))
+				? Math.max(0, (progressWord - ch.startWord) / (chapterEndWord - ch.startWord))
 				: 0;
 		chapterMinutesRemaining =
 			(chapterWordCounts[currentChapterIndex] * (1 - chapterProgress)) / estimateWpm;
@@ -1361,7 +1296,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					<RsvpView
 						ref={rsvpViewRef}
 						content={content}
-						initialByteOffset={rsvpInitOffset}
+						initialWord={rsvpInitWord}
 						settings={rsvpSettings}
 						fontSize={readerFontSize}
 						onPositionChange={handleRsvpPositionChange}
@@ -1375,29 +1310,26 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						ref={scrollViewRef}
 						key={`page-${id}`}
 						paragraphs={paragraphs}
-						paragraphOffsets={paragraphOffsets}
 						paragraphStartWords={paragraphStartWords}
 						entriesByParagraph={entriesByParagraph}
-						wordIndex={wordIndex ?? null}
-						contentLength={contentBytes?.length ?? content.length}
-						initialByteOffset={lastOffsetRef.current ?? seedByte ?? 0}
+						totalWords={totalWordCount}
+						initialWord={lastWordRef.current ?? seedWord ?? 0}
 						fontSize={readerFontSize}
 						fontFamily={readerFontFamily}
 						lineSpacing={readerLineSpacing}
 						margin={readerMargin}
 						showActiveWordUnderline={readerActiveWordUnderline}
-						activeOffset={activeOffset}
 						activeWord={activeWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}
-						selectionRange={sel.selectionRangeWord}
+						selectionRange={sel.selectionRange}
 						isSelecting={isSelecting}
 						onWordTap={handlePageWordTap}
 						onWordLongPress={sel.handleWordLongPress}
 						onWordMouseDragStart={handleWordMouseDragStart}
 						onCancelSelection={sel.cancelSelection}
 						onPositionSettle={handleScrollPositionSettle}
-						onInitialActiveOffset={handleSetActiveOffset}
+						onInitialActiveOffset={handleSetActiveWord}
 						onTap={handleScrollShowProgressBar}
 						footer={advanceFooter}
 					/>
@@ -1406,12 +1338,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						ref={scrollViewRef}
 						key={`scroll-${id}`}
 						paragraphs={paragraphs}
-						paragraphOffsets={paragraphOffsets}
 						paragraphStartWords={paragraphStartWords}
 						entriesByParagraph={entriesByParagraph}
-						findParagraphIndex={findParagraphIndex}
-						initialByteOffset={lastOffsetRef.current ?? seedByte ?? 0}
-						wordIndex={wordIndex ?? null}
+						findParagraphIndexForWord={findParagraphIndexForWord}
+						initialWord={lastWordRef.current ?? seedWord ?? 0}
 						fontSize={readerFontSize}
 						fontFamily={readerFontFamily}
 						lineSpacing={readerLineSpacing}
@@ -1420,13 +1350,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						activeWord={activeWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}
-						selectionRange={sel.selectionRangeWord}
+						selectionRange={sel.selectionRange}
 						onWordTap={handleWordTap}
 						onWordLongPress={sel.handleWordLongPress}
 						onWordMouseDragStart={handleWordMouseDragStart}
 						onPositionSettle={handleScrollPositionSettle}
-						onInitialActiveOffset={handleSetActiveOffset}
-						onProgressChange={handleSetProgressOffset}
+						onInitialActiveOffset={handleSetActiveWord}
+						onProgressChange={handleSetProgressWord}
 						onHighlightClear={handleScrollHighlightClear}
 						onHideProgressBar={handleScrollHideProgressBar}
 						onTap={handleScrollShowProgressBar}
@@ -1474,7 +1404,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			{/* Selection toolbar + handles (fixed position, sync'd by hook). */}
 			<SelectionOverlay
 				isSelecting={sel.isSelecting}
-				isSingleWord={!!sel.selectionRange && sel.selectionRange.start === sel.selectionRange.end}
+				isSingleWord={
+					!!sel.selectionRange && sel.selectionRange.startWord === sel.selectionRange.endWord
+				}
 				selectionColor={sel.selectionColor}
 				toolbarRef={sel.toolbarRef}
 				startHandleRef={sel.startHandleRef}
