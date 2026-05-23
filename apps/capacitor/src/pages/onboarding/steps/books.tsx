@@ -1,23 +1,19 @@
-import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import CoverImage from "../../../components/cover-image";
 import { CATALOG_ENABLED, getCoverUrl, getLanding } from "../../../services/catalog/client";
 import { importFromCatalog } from "../../../services/catalog/import";
 import { catalogKeys } from "../../../services/catalog/query-keys";
 import { log } from "../../../utils/log";
-
-interface Props {
-	onNext: () => void;
-	onImportingChange?: (importing: boolean) => void;
-}
+import { useOnboardingFooter } from "../footer-context";
 
 const LANG_STORAGE_KEY = "explore-lang";
 
-const BooksStep: React.FC<Props> = ({ onNext, onImportingChange }) => {
+const BooksStep: React.FC = () => {
+	const { next, setFooter } = useOnboardingFooter();
 	const lang = localStorage.getItem(LANG_STORAGE_KEY) ?? "en";
 
 	const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -33,18 +29,14 @@ const BooksStep: React.FC<Props> = ({ onNext, onImportingChange }) => {
 
 	// Catalog not configured for this build → skip the step immediately.
 	useEffect(() => {
-		if (!CATALOG_ENABLED) onNext();
-	}, [onNext]);
+		if (!CATALOG_ENABLED) next();
+	}, [next]);
 
 	useEffect(() => {
 		if (landingQuery.isError) {
 			log.warn("onboarding", "landing failed:", landingQuery.error);
 		}
 	}, [landingQuery.isError, landingQuery.error]);
-
-	useEffect(() => {
-		onImportingChange?.(importing);
-	}, [importing, onImportingChange]);
 
 	useEffect(() => {
 		return () => {
@@ -63,8 +55,12 @@ const BooksStep: React.FC<Props> = ({ onNext, onImportingChange }) => {
 		});
 	};
 
-	const addSelected = async () => {
-		if (selected.size === 0 || importing) return;
+	const addSelected = useCallback(async () => {
+		if (importing) return;
+		if (selected.size === 0) {
+			next();
+			return;
+		}
 		setImporting(true);
 		setProgress(0);
 		const ids = Array.from(selected);
@@ -84,14 +80,17 @@ const BooksStep: React.FC<Props> = ({ onNext, onImportingChange }) => {
 		}
 		if (cancelledRef.current) return;
 		setImporting(false);
-		onNext();
-	};
+		next();
+	}, [importing, selected, next]);
 
-	const addLabel = importing
-		? `Adding... ${progress}%`
-		: selected.size
-			? `Add ${selected.size}`
-			: "Add";
+	useEffect(() => {
+		const label = importing
+			? `Adding... ${progress}%`
+			: selected.size
+				? `Add ${selected.size}`
+				: "Continue";
+		setFooter({ primary: { label, onClick: addSelected, disabled: importing } });
+	}, [importing, progress, selected, addSelected, setFooter]);
 
 	return (
 		<div>
@@ -101,8 +100,18 @@ const BooksStep: React.FC<Props> = ({ onNext, onImportingChange }) => {
 			</p>
 
 			{landingQuery.isPending ? (
-				<div className="mt-10 flex justify-center">
-					<Loader2 className="size-6 animate-spin text-muted-foreground" />
+				<div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3" aria-hidden>
+					{Array.from({ length: 6 }).map((_, i) => (
+						<div
+							// biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders
+							key={i}
+							className="flex flex-col gap-2 rounded-lg border-2 border-border p-2"
+						>
+							<div className="aspect-[2/3] animate-pulse rounded-md bg-muted" />
+							<div className="h-3 w-3/4 animate-pulse rounded bg-muted" />
+							<div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
+						</div>
+					))}
 				</div>
 			) : landingQuery.isError || classics.length === 0 ? (
 				<p className="mt-8 text-muted-foreground/70 text-sm">
@@ -157,15 +166,6 @@ const BooksStep: React.FC<Props> = ({ onNext, onImportingChange }) => {
 					<div className="h-full bg-primary transition-[width]" style={{ width: `${progress}%` }} />
 				</div>
 			)}
-
-			<div className="mt-8 flex flex-col gap-3">
-				<Button size="lg" onClick={addSelected} disabled={selected.size === 0 || importing}>
-					{addLabel}
-				</Button>
-				<Button size="lg" variant="outline" onClick={onNext} disabled={importing}>
-					Skip
-				</Button>
-			</div>
 		</div>
 	);
 };

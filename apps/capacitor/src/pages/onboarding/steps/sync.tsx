@@ -1,30 +1,33 @@
 import { Browser } from "@capacitor/browser";
-import { Button } from "@lesefluss/ui/button";
 import { Cloud } from "lucide-react";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { beginAuthLoginHandoff, IS_WEB_BUILD } from "../../../services/sync";
 import { SYNC_URL } from "../../../services/sync/auth-client";
+import { useOnboardingFooter } from "../footer-context";
 
-interface Props {
-	onFinish: () => Promise<void>;
-}
+const SyncStep: React.FC = () => {
+	const { finish, setFooter } = useOnboardingFooter();
 
-const SyncStep: React.FC<Props> = ({ onFinish }) => {
 	const signIn = useCallback(async () => {
 		if (IS_WEB_BUILD) {
-			// Mark onboarding complete before navigating so the flag is persisted
-			// before the full-page redirect kills any in-flight mutation.
-			await onFinish();
+			await finish();
 			window.location.href = "/login";
 			return;
 		}
 		const state = await beginAuthLoginHandoff();
-		await onFinish();
+		await finish();
 		await Browser.open({
 			url: `${SYNC_URL}/auth/mobile-callback?state=${encodeURIComponent(state)}`,
 		});
-	}, [onFinish]);
+	}, [finish]);
+
+	useEffect(() => {
+		setFooter({
+			primary: { label: "Sign in", onClick: signIn },
+			secondary: { label: "Not now", onClick: finish },
+		});
+	}, [signIn, finish, setFooter]);
 
 	return (
 		<div className="flex flex-col items-center text-center">
@@ -36,14 +39,6 @@ const SyncStep: React.FC<Props> = ({ onFinish }) => {
 				Sign in to keep your library, progress, and highlights in step across phones and web.
 				Optional — you can do this later in Settings.
 			</p>
-			<div className="mt-10 flex w-full max-w-xs flex-col gap-3">
-				<Button size="lg" onClick={signIn}>
-					Sign in
-				</Button>
-				<Button size="lg" variant="outline" onClick={onFinish}>
-					Not now
-				</Button>
-			</div>
 		</div>
 	);
 };
