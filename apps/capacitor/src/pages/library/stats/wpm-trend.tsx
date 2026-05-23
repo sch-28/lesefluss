@@ -32,20 +32,30 @@ export function WpmTrend() {
 	const weekly = queryHooks.useStatsWeeklyWpm(12);
 	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme]);
 
-	const colors: Record<SeriesId, string> = {
-		rsvpTarget: COLORS.rsvpTarget,
-		rsvpDelivered: COLORS.rsvpDelivered,
-		read: theme === "dark" ? COLORS.read.dark : COLORS.read.light,
-	};
+	const colors: Record<SeriesId, string> = useMemo(
+		() => ({
+			rsvpTarget: COLORS.rsvpTarget,
+			rsvpDelivered: COLORS.rsvpDelivered,
+			read: theme === "dark" ? COLORS.read.dark : COLORS.read.light,
+		}),
+		[theme],
+	);
 
-	const seriesData: Record<SeriesId, Array<{ x: number; y: number }>> = {
-		rsvpTarget: (weekly.data?.rsvpTarget ?? []).map((w, i) => ({ x: i, y: w.avgWpm })),
-		rsvpDelivered: (weekly.data?.rsvpDelivered ?? []).map((w, i) => ({ x: i, y: w.avgWpm })),
-		read: (weekly.data?.read ?? []).map((w, i) => ({ x: i, y: w.avgWpm })),
-	};
+	const seriesData: Record<SeriesId, Array<{ x: number; y: number }>> = useMemo(
+		() => ({
+			rsvpTarget: (weekly.data?.rsvpTarget ?? []).map((w, i) => ({ x: i, y: w.avgWpm })),
+			rsvpDelivered: (weekly.data?.rsvpDelivered ?? []).map((w, i) => ({ x: i, y: w.avgWpm })),
+			read: (weekly.data?.read ?? []).map((w, i) => ({ x: i, y: w.avgWpm })),
+		}),
+		[weekly.data],
+	);
 
-	const present: SeriesId[] = (["rsvpTarget", "rsvpDelivered", "read"] as const).filter((id) =>
-		seriesData[id].some((p) => p.y > 0),
+	const present: SeriesId[] = useMemo(
+		() =>
+			(["rsvpTarget", "rsvpDelivered", "read"] as const).filter((id) =>
+				seriesData[id].some((p) => p.y > 0),
+			),
+		[seriesData],
 	);
 
 	if (!weekly.isLoading && present.length === 0) {
@@ -72,11 +82,15 @@ export function WpmTrend() {
 	const headlineAvg = headlineId ? avgOf(seriesData[headlineId]) : 0;
 	const headlineLabel = headlineId ? `${LABELS[headlineId]} avg` : "";
 
-	const chartData = present.map((id) => ({
-		id: LABELS[id],
-		color: colors[id],
-		data: seriesData[id],
-	}));
+	const chartData = useMemo(
+		() =>
+			present.map((id) => ({
+				id: LABELS[id],
+				color: colors[id],
+				data: seriesData[id],
+			})),
+		[present, colors, seriesData],
+	);
 
 	return (
 		<motion.section

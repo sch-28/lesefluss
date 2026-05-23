@@ -40,7 +40,7 @@ export function ActivityHeatmap() {
 					</div>
 				</div>
 			</header>
-			<div className="h-[160px] rounded-xl" style={{ background: "transparent" }}>
+			<div className="h-[160px] rounded-xl bg-transparent">
 				{from && to && (
 					<ResponsiveCalendar
 						data={data}
