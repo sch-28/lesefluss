@@ -439,7 +439,14 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			if (!isScrubbingRef.current && !inInitCooldown) onHideProgressBar();
 			// Update the progress bar live. findItemIndex maps the current scroll
 			// pixel offset to a paragraph index, which we convert to a word offset.
-			if (listRef.current && paragraphStartWords.length > 0) {
+			// Skip during init scroll / cooldown so VList reconciliation micro-scrolls
+			// don't flip userMovedRef in the parent and trigger an unmount-flush save.
+			if (
+				initialSettledRef.current &&
+				!inInitCooldown &&
+				listRef.current &&
+				paragraphStartWords.length > 0
+			) {
 				const idx = Math.min(
 					listRef.current.findItemIndex(scrollOffset),
 					paragraphStartWords.length - 1,
