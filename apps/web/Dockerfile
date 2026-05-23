@@ -7,7 +7,6 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/ble-config/package.json ./packages/ble-config/
 COPY packages/book-import/package.json ./packages/book-import/
 COPY packages/core/package.json ./packages/core/
-COPY packages/rsvp-core/package.json ./packages/rsvp-core/
 COPY packages/ui/package.json ./packages/ui/
 COPY apps/web/package.json ./apps/web/
 COPY apps/capacitor/package.json ./apps/capacitor/
