@@ -16,7 +16,7 @@ export const changelog: ChangelogEntry[] = [
 			"Refreshed app and reader design",
 			"Live bi-directional position sync between the app and your device while you read",
 			"More reliable position sync across devices and font sizes (positions are now tracked by word, not byte offset)",
-			"New rsvpnano firmware track with an improved BLE transfer pipeline",
+			"rsvpnano firmware integration with an improved BLE transfer pipeline",
 			"Improved BLE settings screen with clearer device status and controls",
 			"More accurate reading session tracking and a fix for the WPM trend chart",
 			"Faster and smoother chapter loading in long serials",
