@@ -1,66 +1,46 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { queryHooks, settingsKeys } from "../services/db/hooks";
 import type { Settings } from "../services/db/schema";
 
 export function useAutoSaveSettings() {
 	const queryClient = useQueryClient();
 	const { data: settings, isPending } = queryHooks.useSettings();
-	const { mutate, mutateAsync } = queryHooks.useSaveSettings();
+	const { mutateAsync } = queryHooks.useSaveSettings();
 
-	const pendingRef = useRef<Partial<Omit<Settings, "id" | "updatedAt">>>({});
-	const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-	const flush = useCallback(async () => {
-		clearTimeout(timerRef.current);
-		if (Object.keys(pendingRef.current).length === 0) return;
-		const patch = { ...pendingRef.current };
-		pendingRef.current = {};
-		await mutateAsync(patch);
-	}, [mutateAsync]);
-
-	// Persist pending changes on unmount (fire-and-forget to avoid unmount errors)
-	useEffect(() => {
-		return () => {
-			clearTimeout(timerRef.current);
-			if (Object.keys(pendingRef.current).length > 0) {
-				const patch = { ...pendingRef.current };
-				pendingRef.current = {};
-				mutate(patch);
-			}
-		};
-	}, [mutate]);
+	// Track the latest in-flight write so `flush()` can wait for the actual
+	// SQLite commit (onboarding "finish" + BLE settings sync need this).
+	const lastWriteRef = useRef<Promise<unknown> | null>(null);
 
 	const updateSetting = useCallback(
 		<K extends keyof Omit<Settings, "id" | "updatedAt">>(key: K, value: Settings[K]) => {
-			// Optimistic cache update for instant UI feedback
+			// Optimistic cache update for instant UI feedback.
 			queryClient.setQueryData(settingsKeys.all, (old: Settings | undefined) =>
 				old ? { ...old, [key]: value } : old,
 			);
-
-			// Accumulate into pending patch
-			pendingRef.current = { ...pendingRef.current, [key]: value };
-
-			// Debounce the actual DB write
-			clearTimeout(timerRef.current);
-			timerRef.current = setTimeout(() => {
-				const patch = { ...pendingRef.current };
-				pendingRef.current = {};
-				mutate(patch);
-			}, 300);
+			// Write immediately. Single-row upsert in sql.js is sub-ms; the prior
+			// 300ms debounce dropped settings when the form unmounted (route nav)
+			// before the timer fired.
+			lastWriteRef.current = mutateAsync({ [key]: value } as Partial<
+				Omit<Settings, "id" | "updatedAt">
+			>);
 		},
-		[queryClient, mutate],
+		[queryClient, mutateAsync],
 	);
+
+	/** Block until the most recent `updateSetting` write has committed. */
+	const flush = useCallback(async () => {
+		if (lastWriteRef.current) await lastWriteRef.current;
+	}, []);
 
 	/** Bulk-replace settings and persist immediately (e.g. loading from BLE device). */
 	const replaceAll = useCallback(
 		async (patch: Partial<Omit<Settings, "id" | "updatedAt">>) => {
-			clearTimeout(timerRef.current);
-			pendingRef.current = {};
 			queryClient.setQueryData(settingsKeys.all, (old: Settings | undefined) =>
 				old ? { ...old, ...patch } : old,
 			);
-			await mutateAsync(patch);
+			lastWriteRef.current = mutateAsync(patch);
+			await lastWriteRef.current;
 		},
 		[queryClient, mutateAsync],
 	);

@@ -35,3 +35,8 @@ ios/App/App.xcworkspace/xcuserdata/
 
 # sql.js WASM (copied from node_modules by pnpm setup:web or manually - do not commit binary)
 public/assets/sql-wasm.wasm
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/

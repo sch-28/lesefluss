@@ -9,11 +9,19 @@ import { settingsKeys } from "./query-keys";
 /**
  * The single RSVP settings row.
  * Seeds defaults on first run (handled inside `queries.getSettings()`).
+ *
+ * `staleTime: Infinity` + `refetchOnMount: false` is load-bearing. Settings
+ * change only through `useSaveSettings`, which invalidates this query in its
+ * `onSuccess` after the DB write commits. Without this, a fresh component
+ * mount (route change) refetches against the DB and races the debounced write
+ * in `useAutoSaveSettings`, clobbering the optimistic cache update.
  */
 function useSettings() {
 	return useQuery({
 		queryKey: settingsKeys.all,
 		queryFn: queries.getSettings,
+		staleTime: Number.POSITIVE_INFINITY,
+		refetchOnMount: false,
 	});
 }
 

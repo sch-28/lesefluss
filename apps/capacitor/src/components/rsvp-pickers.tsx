@@ -47,7 +47,7 @@ export const PAGINATION_STYLE_OPTIONS: ReadonlyArray<ModeOption<PaginationStyle>
 	},
 	{
 		value: "page",
-		label: "Pages",
+		label: "Page",
 		description: "Tap or swipe to turn",
 		icon: BookOpen,
 	},

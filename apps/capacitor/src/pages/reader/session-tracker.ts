@@ -225,9 +225,13 @@ export class SessionTracker {
 		if (row) {
 			this.opts.persist(row, "flush");
 		} else {
-			log(
+			// Noise floor is deliberate: brief tab-switches, accidental opens,
+			// and < MIN_DURATION_MS skims would otherwise pollute stats. Promote
+			// the drop to `warn` so the cause of a "missing" session is easy to
+			// spot in the console without scanning routine info logs.
+			log.warn(
 				"reading-session",
-				`dropped (below noise floor): duration=${this.session.accumulatedActiveMs}ms words=${this.session.maxPos - this.session.startPos}`,
+				`dropped (noise floor): duration=${this.session.accumulatedActiveMs}ms words=${this.session.maxPos - this.session.startPos} (thresholds: ${MIN_DURATION_MS}ms / ${MIN_WORDS} words)`,
 			);
 		}
 		this.session = null;

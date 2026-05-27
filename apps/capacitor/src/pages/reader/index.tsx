@@ -87,6 +87,7 @@ import {
 } from "./use-glossary-decorations";
 import { useHighlightSelection } from "./use-highlight-selection";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
+import { publishPositionSave, publishProgressWord } from "../../test-hooks/reader";
 import { type ReadingSessionMode, useReadingSession } from "./use-reading-session";
 import { useScrubProgress } from "./use-scrub-progress";
 import type { ReaderViewHandle } from "./view-types";
@@ -189,6 +190,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// phase since the ref is the authoritative writer there.
 	useEffect(() => {
 		progressWordRef.current = progressWord;
+		if (import.meta.env.DEV) publishProgressWord(progressWord);
 	}, [progressWord]);
 
 	const scrollViewRef = useRef<ReaderViewHandle>(null);
@@ -204,6 +206,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// query-cache value doesn't write that stale value back over the real
 	// position written by the prior unmount.
 	const userMovedRef = useRef(false);
+	// Timestamp of the last programmatic jump (TOC click, highlight nav, search
+	// jump, etc.). The scroll view's `onPositionSettle` fires shortly after a
+	// jump as the virtual list reconciles its scroll target; that settle's
+	// reported word is the viewport-top word, which can sit BEFORE the jumped
+	// word. Gating settle saves within this window prevents the settle from
+	// stomping a fresh jump position. 0 = no recent jump.
+	const lastJumpAtRef = useRef(0);
+	const JUMP_SETTLE_GUARD_MS = 1500;
 
 	// Guards the seed effect below so it only runs once on initial load.
 	// book is a new object reference on every BLE position sync (query
@@ -458,6 +468,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			await queries.updateBook(id, update);
 			await pushPosition(id, word);
 			if (scheduleSync) scheduleSyncPush(5000);
+			if (import.meta.env.DEV) publishPositionSave(id, word);
 		},
 		[id, pushPosition, book?.seriesId, qc],
 	);
@@ -486,6 +497,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			setProgressWord(word);
 			lastWordRef.current = word;
 			userMovedRef.current = true;
+			lastJumpAtRef.current = Date.now();
 			savePosition(word);
 			scrollViewRef.current?.jumpTo(word, { highlight });
 		},
@@ -559,6 +571,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			setActiveWord(word);
 			setProgressWord(word);
 			if (lastWordRef.current === word) return;
+			// Reject settle events fired by the virtual list reconciling a fresh
+			// jump's scroll target. Within JUMP_SETTLE_GUARD_MS of jumpToWord,
+			// the settle word is the viewport-top, which sits BEFORE the jumped
+			// chapter heading; writing it would silently rewind the user's
+			// just-set position.
+			if (Date.now() - lastJumpAtRef.current < JUMP_SETTLE_GUARD_MS) return;
 			lastWordRef.current = word;
 			userMovedRef.current = true;
 			savePosition(word);

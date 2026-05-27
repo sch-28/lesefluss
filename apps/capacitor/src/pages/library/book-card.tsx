@@ -27,6 +27,8 @@ const BookCard: React.FC<BookCardProps> = ({ book, cover, progress, started, onO
 
 	return (
 		<div
+			data-testid="library-card"
+			data-book-title={book.title}
 			className="flex cursor-pointer select-none flex-col [-webkit-touch-callout:none] active:opacity-70"
 			{...handlers}
 		>

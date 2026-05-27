@@ -20,6 +20,8 @@
 		"check-types": "tsc --noEmit && vitest run",
 		"test": "vitest run",
 		"test:watch": "vitest",
+		"e2e": "playwright test",
+		"e2e:ui": "playwright test --ui",
 		"test:live": "vitest run --config vitest.live.config.ts",
 		"ionic:serve": "vite --host 0.0.0.0 --port 3000",
 		"ionic:build": "vite build",
@@ -85,6 +87,7 @@
 	},
 	"devDependencies": {
 		"@capacitor/cli": "latest",
+		"@playwright/test": "^1.60.0",
 		"@tanstack/router-plugin": "^1.168.6",
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
@@ -92,6 +95,7 @@
 		"dotenv-cli": "11.0.0",
 		"drizzle-kit": "^0.31.10",
 		"happy-dom": "^20.9.0",
+		"jszip": "^3.10.1",
 		"typescript": "^6.0.2",
 		"vite": "^7.3.1",
 		"vitest": "^4.1.5"

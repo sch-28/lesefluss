@@ -1,5 +1,6 @@
 import type { Book as EpubBook } from "epubjs";
 import ePub from "epubjs";
+import type { NavItem } from "epubjs/types/navigation";
 import type { BookPayload, Chapter, Parser } from "../types";
 import { extractParagraphs } from "../utils/dom-paragraphs";
 import { utf8ByteLength } from "../utils/encoding";
@@ -38,6 +39,22 @@ export const epubParser: Parser = {
  * - Extracts cover image as base64
  * - Extracts title/author from metadata
  */
+/** Empty / partial-header EPUB inputs caused epubjs + JSZip to hang at
+ *  `book.ready` indefinitely (Importing… stuck forever). Fail fast on bytes
+ *  that obviously aren't a zip, and bound the time we'll wait on a maybe-zip
+ *  that's actually malformed inside.
+ */
+const EPUB_READY_TIMEOUT_MS = 15_000;
+
+function assertLooksLikeZip(buffer: ArrayBuffer): void {
+	if (buffer.byteLength < 4) throw new Error("EPUB_INVALID");
+	const head = new Uint8Array(buffer, 0, 4);
+	// ZIP local-file header magic: PK\x03\x04
+	if (head[0] !== 0x50 || head[1] !== 0x4b || head[2] !== 0x03 || head[3] !== 0x04) {
+		throw new Error("EPUB_INVALID");
+	}
+}
+
 async function parseEpub(
 	buffer: ArrayBuffer,
 	filename: string,
@@ -49,8 +66,27 @@ async function parseEpub(
 	coverImage: string | null;
 	chapters: Chapter[];
 }> {
+	assertLooksLikeZip(buffer);
 	const book = ePub(buffer);
-	await book.ready;
+	// Race the parser ready against a timeout. Clear the timeout when ready
+	// wins so we don't leak a 15s pending setTimeout for every successful
+	// import. After a timeout-loss, attach a sink `.catch` to `book.ready` so
+	// the abandoned promise's eventual rejection doesn't surface as an
+	// unhandled-rejection warning.
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		await Promise.race([
+			book.ready,
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(() => reject(new Error("EPUB_INVALID")), EPUB_READY_TIMEOUT_MS);
+			}),
+		]);
+	} catch (err) {
+		book.ready.catch(() => undefined);
+		throw err;
+	} finally {
+		if (timer !== undefined) clearTimeout(timer);
+	}
 
 	const meta = book.packaging?.metadata;
 	const title = meta?.title || filename.replace(/\.epub$/i, "");
@@ -58,16 +94,22 @@ async function parseEpub(
 
 	const coverImage = await extractCover(book);
 
-	// Build TOC lookup: spine href → chapter title
+	// NCX/nav docs nest chapters under parts via `subitems`, so walk the tree.
 	const toc = await book.loaded.navigation;
 	const tocMap = new Map<string, string>();
-	if (toc?.toc) {
-		for (const item of toc.toc) {
+	const walkToc = (items: NavItem[]) => {
+		for (const item of items) {
 			const href = item.href?.split("#")[0];
 			if (href && item.label) {
 				tocMap.set(href, item.label.trim());
 			}
+			if (item.subitems?.length) {
+				walkToc(item.subitems);
+			}
 		}
+	};
+	if (toc?.toc) {
+		walkToc(toc.toc);
 	}
 
 	// spine.length is not typed but exists at runtime; fall back to counting via
@@ -79,25 +121,31 @@ async function parseEpub(
 		});
 	}
 
+	// Fetch each spine item as XHTML. epubjs picks the parser mime from the file
+	// extension, so `.htm`/`.html` chapters get parsed as text/html. EPUB2
+	// chapters routinely contain self-closed page anchors (`<a id="pageN"/>`)
+	// that HTML5's adoption-agency algorithm reshuffles out of `<body>`'s direct
+	// children in strict parsers (Chromium WebView), silently dropping most
+	// paragraphs. Forcing xhtml mime sidesteps it.
 	const sections: { text: string; href: string }[] = [];
 	for (let i = 0; i < spineLength; i++) {
+		const section = book.spine.get(i);
 		try {
-			const section = book.spine.get(i);
-			if (!section) continue;
+			if (!section?.url) continue;
 
-			// section.load() returns Promise at runtime (types say Document - wrong)
-			await (section.load(book.load.bind(book)) as unknown as Promise<unknown>);
-			const doc = section.document;
-			if (doc?.body) {
-				const text = extractParagraphs(doc.body);
+			const body = await loadSectionBody(book, section.url);
+			if (body) {
+				const text = extractParagraphs(body);
 				if (text.length > 0) {
 					sections.push({ text, href: section.href });
 				}
 			}
 			section.unload();
-		} catch {
-			// Skip unreadable spine items; partial content is better than aborting
-			// otherwise valid EPUB imports.
+		} catch (err) {
+			// Partial content beats aborting a valid EPUB, but a silent drop is
+			// what masked the Golden Son truncation bug for hours. Warn so
+			// missing chapters leave a trace.
+			console.warn(`[book-import/epub] skipped spine[${i}] (${section?.href ?? "?"}):`, err);
 		}
 
 		onProgress?.(Math.round(((i + 1) / spineLength) * 100));
@@ -122,6 +170,23 @@ async function parseEpub(
 	book.destroy();
 
 	return { content, title, author, coverImage, chapters };
+}
+
+async function loadSectionBody(book: EpubBook, url: string): Promise<Element | null> {
+	const result = await book.archive.request(url, "xhtml");
+	// Duck-type by callable `querySelector`. `instanceof Document` would be
+	// stricter but fails in happy-dom/jsdom where the parser's Document doesn't
+	// match the global one. archive.request with type="xhtml" routes through
+	// `parse(text, "application/xhtml+xml")` which only returns a Document-shape.
+	if (!result || typeof (result as { querySelector?: unknown }).querySelector !== "function") {
+		console.warn(`[book-import/epub] section ${url} returned non-Document shape; skipping`);
+		return null;
+	}
+	const body = (result as Document).querySelector("body");
+	if (!body) {
+		console.warn(`[book-import/epub] section ${url} has no <body>; skipping`);
+	}
+	return body;
 }
 
 async function extractCover(book: EpubBook): Promise<string | null> {

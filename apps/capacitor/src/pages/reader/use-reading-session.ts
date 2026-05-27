@@ -16,6 +16,7 @@ import { queries } from "../../services/db/queries";
 import { queryClient } from "../../services/query-client";
 import { scheduleSyncPush } from "../../services/sync";
 import { log } from "../../utils/log";
+import { publishSessionPersist } from "../../test-hooks/reader";
 import {
 	type DebugSnapshot,
 	POLL_MS,
@@ -65,6 +66,7 @@ function persistRow(row: SessionRow, kind: "checkpoint" | "flush"): void {
 				queryClient.invalidateQueries({ queryKey: readingSessionKeys.all });
 				scheduleSyncPush(2000);
 			}
+			if (import.meta.env.DEV) publishSessionPersist(row.bookId, kind);
 		})
 		.catch((err) => log.error("reading-session", `${kind} failed:`, err));
 }
