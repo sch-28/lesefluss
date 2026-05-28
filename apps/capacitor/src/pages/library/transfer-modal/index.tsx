@@ -19,7 +19,7 @@ import { useBookSync } from "../../../contexts/book-sync-context";
 import type { Book } from "../../../services/db/schema";
 import { MULTI_BOOK_DESCRIPTOR_ID } from "../../../services/devices";
 import type { DeviceCategory } from "../../../services/devices/hash";
-import { log } from "../../../utils/log";
+import { useWakeLock } from "../../reader/use-wake-lock";
 import ConfirmPhase from "./confirm-phase";
 import { DonePhase, ErrorPhase, TransferringPhase } from "./progress-phases";
 
@@ -52,7 +52,10 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 	const startTimeRef = useRef<number | null>(null);
 	const [elapsed, setElapsed] = useState(0);
 	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-	const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+	// Hold screen wake lock during the transfer so the display does not sleep
+	// and interrupt the BLE upload.
+	useWakeLock(phase === "transferring", "transfer");
 
 	useEffect(() => {
 		if (isOpen) {
@@ -80,32 +83,6 @@ const TransferModal: React.FC<Props> = ({ isOpen, book, activeBook, onDismiss })
 		}
 		return () => {
 			if (timerRef.current) clearInterval(timerRef.current);
-		};
-	}, [phase]);
-
-	useEffect(() => {
-		if (phase === "transferring") {
-			if ("wakeLock" in navigator) {
-				navigator.wakeLock
-					.request("screen")
-					.then((lock) => {
-						wakeLockRef.current = lock;
-					})
-					.catch((err) => {
-						log.warn("transfer", "wake lock request failed:", err);
-					});
-			}
-		} else {
-			if (wakeLockRef.current) {
-				wakeLockRef.current.release().catch(() => {});
-				wakeLockRef.current = null;
-			}
-		}
-		return () => {
-			if (wakeLockRef.current) {
-				wakeLockRef.current.release().catch(() => {});
-				wakeLockRef.current = null;
-			}
 		};
 	}, [phase]);
 

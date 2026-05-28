@@ -23,6 +23,7 @@ import React, {
 import RsvpSettingsForm from "../settings/rsvp-settings-form";
 import RsvpControls from "./rsvp-controls";
 import { useRsvpEngine } from "./use-rsvp-engine";
+import { useWakeLock } from "./use-wake-lock";
 
 // PX_PER_WORD sets the scroll distance for one word step on touch. Spacer is
 // sized so the middle is one viewport away from each edge, giving roughly
@@ -107,6 +108,10 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		() => ({ togglePlayPause, backWord, forwardWord, backSentence, forwardSentence, changeWpm }),
 		[togglePlayPause, backWord, forwardWord, backSentence, forwardSentence, changeWpm],
 	);
+
+	// Keep the screen awake for the whole RSVP session: playback has no touch
+	// input so the display would otherwise time out mid-read.
+	useWakeLock(true, "rsvp");
 
 	// Single stable click handler for all context words. Uses data-idx on the
 	// target button instead of an inline closure per word.
