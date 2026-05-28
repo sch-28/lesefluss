@@ -9,6 +9,17 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-05-29",
+		title: "RSVP Wake Lock and Sync Fixes",
+		tags: ["App"],
+		changes: [
+			"The screen now stays awake while you're reading in RSVP mode",
+			"Refreshed app icon and splash screens, including a themed monochrome launcher icon",
+			"Logged-out users no longer hit sync errors — server calls are skipped when sync is off",
+			"More reliable chapter auto-advance and back-button behavior in serials",
+		],
+	},
+	{
 		date: "2026-05-23",
 		title: "Redesign, Live Sync, and rsvpnano Firmware",
 		tags: ["App", "ESP32"],
