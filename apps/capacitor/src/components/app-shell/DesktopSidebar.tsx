@@ -28,7 +28,13 @@ export function DesktopSidebar() {
 					aria-label="Lesefluss"
 				>
 					<span className="flex w-16 shrink-0 items-center justify-center">
-						<img src="/logo.svg" alt="" width={28} height={28} className="size-7" />
+						<img
+								src={`${import.meta.env.BASE_URL}logo.svg`}
+								alt=""
+								width={28}
+								height={28}
+								className="size-7"
+							/>
 					</span>
 					{!isCollapsed && (
 						<span className="whitespace-nowrap font-semibold text-base">Lesefluss</span>

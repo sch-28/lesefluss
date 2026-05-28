@@ -1,4 +1,4 @@
-import { useRouter } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef } from "react";
 import { queries } from "../../services/db/queries";
 import type { Book } from "../../services/db/schema";
@@ -18,10 +18,9 @@ import { log } from "../../utils/log";
  * and a rapid prev/next double-tap should land on the right chapter rather
  * than racing two replaces.
  *
- * Both directions use `history.replace` (not `push`) so the back button
- * always returns to the library, not chapter N-1, N-2, … This matches the
- * convention from auto-advance — readers who want to revisit a specific
- * chapter go through the series-detail chapter list.
+ * Both directions navigate with `replace: true` (not push) so the back button
+ * always returns to the library, not chapter N-1, N-2, etc. Readers who want
+ * to revisit a specific chapter go through the series-detail chapter list.
  *
  * No-op for standalone books and at series boundaries (last chapter for
  * `tryAdvance`, chapter 0 for `tryRetreat`).
@@ -33,10 +32,10 @@ export function useChapterAutoAdvance(book: Book | undefined): {
 	tryAdvance: () => Promise<void>;
 	tryRetreat: () => Promise<void>;
 } {
-	const history = useRouter().history;
+	const navigate = useNavigate();
 	const navigatingRef = useRef(false);
 
-	const navigate = useCallback(
+	const advance = useCallback(
 		async (direction: "next" | "prev") => {
 			if (navigatingRef.current) return;
 			if (!book?.seriesId || book.chapterIndex == null) return;
@@ -49,17 +48,17 @@ export function useChapterAutoAdvance(book: Book | undefined): {
 						: await queries.getPreviousChapter(book.seriesId, book.chapterIndex);
 				if (target) {
 					log("reader", `${direction} ${book.id} → ${target.id} (chapter ${target.chapterIndex})`);
-					history.replace(`/tabs/reader/${target.id}`);
+					navigate({ to: "/tabs/reader/$id", params: { id: target.id }, replace: true });
 				}
 			} finally {
 				navigatingRef.current = false;
 			}
 		},
-		[book?.id, book?.seriesId, book?.chapterIndex, history],
+		[book?.id, book?.seriesId, book?.chapterIndex, navigate],
 	);
 
-	const tryAdvance = useCallback(() => navigate("next"), [navigate]);
-	const tryRetreat = useCallback(() => navigate("prev"), [navigate]);
+	const tryAdvance = useCallback(() => advance("next"), [advance]);
+	const tryRetreat = useCallback(() => advance("prev"), [advance]);
 
 	return useMemo(() => ({ tryAdvance, tryRetreat }), [tryAdvance, tryRetreat]);
 }

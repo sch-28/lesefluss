@@ -11,7 +11,13 @@ const WelcomeStep: React.FC = () => {
 
 	return (
 		<div className="flex flex-col items-center text-center">
-			<img src="/logo.svg" alt="" width={72} height={72} className="mb-6 size-18" />
+			<img
+				src={`${import.meta.env.BASE_URL}logo.svg`}
+				alt=""
+				width={72}
+				height={72}
+				className="mb-6 size-18"
+			/>
 			<h1 className="font-semibold text-4xl tracking-tight">Lesefluss</h1>
 			<p className="mt-2 text-lg text-muted-foreground">Read faster, one word at a time.</p>
 			<p className="mt-8 max-w-sm text-foreground/80 leading-relaxed">

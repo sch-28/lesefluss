@@ -173,7 +173,7 @@ export async function getTopBooks(opts: { since: number; limit?: number }): Prom
 			author: books.author,
 		})
 		.from(books)
-		.where(inArray(books.id, ids));
+		.where(and(inArray(books.id, ids), eq(books.deleted, false)));
 	const bookMap = new Map(bookRows.map((b) => [b.id, b]));
 
 	const coverRows = await db

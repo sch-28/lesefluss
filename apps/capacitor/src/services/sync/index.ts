@@ -85,6 +85,17 @@ async function clearToken(): Promise<void> {
 	await Preferences.remove({ key: AUTH_STATE_KEY });
 }
 
+/**
+ * Whether a sync request can be made now: sync must be enabled, and on native
+ * a Bearer token must be present. Logged-out / non-syncing users skip server
+ * calls instead of erroring.
+ */
+async function isSyncReady(): Promise<boolean> {
+	if (!SYNC_ENABLED) return false;
+	if (!IS_WEB_BUILD && !(await getToken())) return false;
+	return true;
+}
+
 export async function getLastSynced(): Promise<number | null> {
 	const { value } = await Preferences.get({ key: LAST_SYNCED_KEY });
 	return value ? Number(value) : null;
@@ -215,6 +226,7 @@ async function syncFetch(path: string, options?: RequestInit): Promise<Response>
  * relying on the diff-on-push behaviour used for highlights/glossary.
  */
 export async function wipeServerSessions(): Promise<void> {
+	if (!(await isSyncReady())) return;
 	await syncFetch("/api/sync/wipe-sessions", { method: "POST" });
 }
 
@@ -225,6 +237,7 @@ export async function wipeServerSessions(): Promise<void> {
  * `wipeServerSessions` for the per-row case.
  */
 export async function deleteServerSession(sessionId: string): Promise<void> {
+	if (!(await isSyncReady())) return;
 	await syncFetch("/api/sync/delete-session", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
@@ -390,12 +403,7 @@ function buildBookRowFromServer(
 /** Returns the set of bookIds the server has content for. */
 export async function pullSync(): Promise<Set<string>> {
 	const serverHasContent = new Set<string>();
-	if (!SYNC_ENABLED) return serverHasContent;
-
-	if (!IS_WEB_BUILD) {
-		const token = await getToken();
-		if (!token) return serverHasContent;
-	}
+	if (!(await isSyncReady())) return serverHasContent;
 
 	await withSyncLock(async () => {
 		log("sync", "pulling...");
@@ -766,12 +774,7 @@ export function shouldPushBook(b: Book): boolean {
 
 /** @param serverHasContent bookIds the server already has content for - skip content for those */
 export async function pushSync(serverHasContent: Set<string> = new Set()): Promise<void> {
-	if (!SYNC_ENABLED) return;
-
-	if (!IS_WEB_BUILD) {
-		const token = await getToken();
-		if (!token) return;
-	}
+	if (!(await isSyncReady())) return;
 
 	await withSyncLock(async () => {
 		log("sync", "pushing...");

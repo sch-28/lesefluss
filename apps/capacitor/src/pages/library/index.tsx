@@ -1,7 +1,7 @@
 import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
-import { useLocation, useRouter } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
 	ArrowUpDown,
 	BarChart3,
@@ -58,7 +58,7 @@ const Library: React.FC = () => {
 		clearError,
 	} = useBookSync();
 	const { isLoggedIn, syncNow, isSyncing } = useSyncContext();
-	const history = useRouter().history;
+	const navigate = useNavigate();
 	const qc = useQueryClient();
 
 	const {
@@ -153,7 +153,7 @@ const Library: React.FC = () => {
 	};
 
 	const handleOpenSeries = (s: Series) => {
-		history.push(`/tabs/library/series/${s.id}`);
+		navigate({ to: "/tabs/library/series/$id", params: { id: s.id } });
 	};
 
 	const handleDeleteSeries = (s: Series) => {
@@ -213,7 +213,7 @@ const Library: React.FC = () => {
 						<Button
 							variant="ghost"
 							size="icon"
-							onClick={() => history.push("/tabs/library/stats")}
+							onClick={() => navigate({ to: "/tabs/library/stats" })}
 							aria-label="Reading stats"
 						>
 							<BarChart3 />
@@ -258,7 +258,7 @@ const Library: React.FC = () => {
 							className="font-medium text-primary underline-offset-4 hover:underline"
 							onClick={(e) => {
 								e.preventDefault();
-								history.push("/tabs/settings/sync");
+								navigate({ to: "/tabs/settings/sync" });
 							}}
 						>
 							Sign in
@@ -315,7 +315,7 @@ const Library: React.FC = () => {
 								started={started}
 								onOpen={() => {
 									qc.setQueryData(bookKeys.detail(book.id), book);
-									history.push(`/tabs/reader/${book.id}`);
+									navigate({ to: "/tabs/reader/$id", params: { id: book.id } });
 								}}
 								onMenu={() => setSelectedBook(book)}
 							/>
@@ -350,7 +350,7 @@ const Library: React.FC = () => {
 								started={started}
 								onOpen={() => {
 									qc.setQueryData(bookKeys.detail(book.id), book);
-									history.push(`/tabs/reader/${book.id}`);
+									navigate({ to: "/tabs/reader/$id", params: { id: book.id } });
 								}}
 								onMenu={() => setSelectedBook(book)}
 							/>
@@ -400,7 +400,8 @@ const Library: React.FC = () => {
 						label: "Details",
 						icon: BookText,
 						onSelect: () => {
-							if (selectedBook) history.push(`/tabs/library/book/${selectedBook.id}`);
+							if (selectedBook)
+								navigate({ to: "/tabs/library/book/$id", params: { id: selectedBook.id } });
 						},
 					},
 					...(!IS_WEB
@@ -475,7 +476,8 @@ const Library: React.FC = () => {
 						label: "Details",
 						icon: BookText,
 						onSelect: () => {
-							if (selectedSeries) history.push(`/tabs/library/series/${selectedSeries.id}`);
+							if (selectedSeries)
+								navigate({ to: "/tabs/library/series/$id", params: { id: selectedSeries.id } });
 						},
 					},
 					{

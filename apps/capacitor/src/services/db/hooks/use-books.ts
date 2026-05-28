@@ -12,7 +12,7 @@ import { importSerialFromUrl } from "../../serial-scrapers";
 import { scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
 import type { Book } from "../schema";
-import { bookImportMutationKey, bookKeys, serialKeys } from "./query-keys";
+import { bookImportMutationKey, bookKeys, serialKeys, statsKeys } from "./query-keys";
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
 
@@ -192,6 +192,7 @@ function useDeleteBook() {
 			qc.removeQueries({ queryKey: bookKeys.content(book.id) });
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 			qc.invalidateQueries({ queryKey: bookKeys.covers });
+			qc.invalidateQueries({ queryKey: statsKeys.all });
 			scheduleSyncPush();
 			toast.success(`Removed "${book.title}"`);
 		},

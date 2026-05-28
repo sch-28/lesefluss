@@ -82,40 +82,42 @@ const Onboarding: React.FC = () => {
 					<div className="mx-auto my-auto w-full max-w-md">{stepNodes[step]}</div>
 				</main>
 
-				<div className="flex flex-col gap-2 border-border border-t bg-background/95 px-6 py-4 backdrop-blur">
-					{step > 0 && (
-						<div className="mb-1 flex items-center justify-center gap-1.5" aria-hidden>
-							{Array.from({ length: dotCount }).map((_, i) => (
-								<span
-									// biome-ignore lint/suspicious/noArrayIndexKey: decorative dots
-									key={i}
-									className={cn(
-										"size-1.5 rounded-full transition-colors",
-										i === step - 1 ? "bg-primary" : "bg-muted-foreground/30",
-									)}
-								/>
-							))}
-						</div>
-					)}
-					<Button
-						size="lg"
-						className="w-full"
-						onClick={primary?.onClick ?? next}
-						disabled={primary?.disabled}
-					>
-						{primary?.label ?? "Continue"}
-					</Button>
-					{secondary && (
+				<div className="border-border border-t bg-background/95 px-6 py-4 backdrop-blur">
+					<div className="mx-auto flex w-full max-w-md flex-col gap-2">
+						{step > 0 && (
+							<div className="mb-1 flex items-center justify-center gap-1.5" aria-hidden>
+								{Array.from({ length: dotCount }).map((_, i) => (
+									<span
+										// biome-ignore lint/suspicious/noArrayIndexKey: decorative dots
+										key={i}
+										className={cn(
+											"size-1.5 rounded-full transition-colors",
+											i === step - 1 ? "bg-primary" : "bg-muted-foreground/30",
+										)}
+									/>
+								))}
+							</div>
+						)}
 						<Button
 							size="lg"
-							variant="outline"
 							className="w-full"
-							onClick={secondary.onClick}
-							disabled={secondary.disabled}
+							onClick={primary?.onClick ?? next}
+							disabled={primary?.disabled}
 						>
-							{secondary.label}
+							{primary?.label ?? "Continue"}
 						</Button>
-					)}
+						{secondary && (
+							<Button
+								size="lg"
+								variant="outline"
+								className="w-full"
+								onClick={secondary.onClick}
+								disabled={secondary.disabled}
+							>
+								{secondary.label}
+							</Button>
+						)}
+					</div>
 				</div>
 			</div>
 		</OnboardingFooterContext.Provider>
