@@ -306,6 +306,23 @@ export function useRsvpEngine({
 		return () => document.removeEventListener("visibilitychange", handleVisibility);
 	}, [isPlaying, pause]);
 
+	// ── Flush position on teardown ───────────────────────────────────────
+	// Saves are throttled to every POSITION_SAVE_THROTTLE_MS during playback,
+	// so the displayed word runs ahead of the last write for up to ~2s. A web
+	// tab close / bfcache fires `pagehide` without a React unmount, and the
+	// visibility auto-pause above only fires when the document goes hidden;
+	// flush the freshest displayed word here so backgrounding mid-window
+	// doesn't rewind resume to the last throttled save.
+	useEffect(() => {
+		const flush = () => {
+			if (displayedWordRef.current !== null) {
+				onPositionChangeRef.current(displayedWordRef.current);
+			}
+		};
+		window.addEventListener("pagehide", flush);
+		return () => window.removeEventListener("pagehide", flush);
+	}, []);
+
 	// ── Cleanup on unmount ───────────────────────────────────────────────
 	useEffect(() => {
 		return () => {

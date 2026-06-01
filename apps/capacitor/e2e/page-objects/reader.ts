@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { pendingPositionKey } from "../../src/pages/reader/pending-position";
 
 export type HighlightColor = "yellow" | "blue" | "orange" | "pink";
 
@@ -103,7 +104,8 @@ export const reader = {
 	},
 
 	expectNoHighlight: async (page: Page, wordPosition: number) => {
-		const cls = (await page.locator(`span[data-word="${wordPosition}"]`).getAttribute("class")) ?? "";
+		const cls =
+			(await page.locator(`span[data-word="${wordPosition}"]`).getAttribute("class")) ?? "";
 		if (cls.includes("word-highlight-")) {
 			throw new Error(`word ${wordPosition} still highlighted (class: ${cls})`);
 		}
@@ -144,7 +146,9 @@ export const reader = {
 		// listener picks it up off the bubbled native event.
 		await span.dispatchEvent("click");
 		// Wait for the drawer to mount.
-		await page.getByRole("heading", { name: "Glossary entry" }).waitFor({ state: "visible", timeout: 5000 });
+		await page
+			.getByRole("heading", { name: "Glossary entry" })
+			.waitFor({ state: "visible", timeout: 5000 });
 	},
 
 	setGlossaryLabelFromEditor: async (page: Page, label: string) => {
@@ -243,4 +247,56 @@ export const reader = {
 			{ timeout: 10_000 },
 		);
 	},
+
+	/** Monotonic count of position saves observed so far (0 before any save). */
+	saveCount: async (page: Page): Promise<number> =>
+		page.evaluate(() => window.__lesefluss_e2e_save?.count ?? 0),
+
+	/**
+	 * Wait for a save to land beyond `prevCount` within `timeoutMs`. Unlike
+	 * `waitForNextSave`, the caller supplies the baseline and a tight timeout so
+	 * a test can assert that a save fired in a bounded window (e.g. distinguishing
+	 * a teardown flush from the next throttled autosave).
+	 */
+	waitForSaveAbove: async (page: Page, prevCount: number, timeoutMs: number) => {
+		await page.waitForFunction(
+			(prev) => (window.__lesefluss_e2e_save?.count ?? 0) > prev,
+			prevCount,
+			{ timeout: timeoutMs },
+		);
+	},
+
+	// ── Durable-resume fallback (localStorage) ───────────────────────────
+	// Drives src/pages/reader/pending-position.ts so a test can simulate an
+	// orphaned (uncommitted) save and assert the mount reconcile.
+
+	/** The current book id, parsed from the `/tabs/reader/<id>` route. */
+	bookIdFromUrl: (page: Page): string => {
+		const match = /\/tabs\/reader\/([^/?#]+)/.exec(page.url());
+		if (!match) throw new Error(`Not on a reader route: ${page.url()}`);
+		return decodeURIComponent(match[1]);
+	},
+
+	/**
+	 * Plant a pending-position entry as if a teardown had left an uncommitted
+	 * save. `atOffsetMs` is added to the browser's `Date.now()` so a positive
+	 * value is newer than the row's lastRead (should recover) and a negative one
+	 * is older (should be ignored).
+	 */
+	setPendingPosition: async (page: Page, bookId: string, word: number, atOffsetMs: number) => {
+		await page.evaluate(
+			({ key, word, atOffsetMs }) =>
+				localStorage.setItem(key, JSON.stringify({ word, at: Date.now() + atOffsetMs })),
+			{ key: pendingPositionKey(bookId), word, atOffsetMs },
+		);
+	},
+
+	getPendingPosition: async (
+		page: Page,
+		bookId: string,
+	): Promise<{ word: number; at: number } | null> =>
+		page.evaluate((key) => {
+			const raw = localStorage.getItem(key);
+			return raw ? (JSON.parse(raw) as { word: number; at: number }) : null;
+		}, pendingPositionKey(bookId)),
 };

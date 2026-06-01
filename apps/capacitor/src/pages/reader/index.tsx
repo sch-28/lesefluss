@@ -10,6 +10,7 @@
  * in book-sync-context.tsx.
  */
 
+import { App as CapacitorApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import type { RsvpSettings } from "@lesefluss/core";
 import {
@@ -73,6 +74,12 @@ import HighlightModal from "./highlight-modal";
 import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
 import type { ParagraphWordEntry } from "./paragraph";
+import {
+	clearPendingPosition,
+	type PendingPosition,
+	readPendingPosition,
+	writePendingPosition,
+} from "./pending-position";
 import { stripPunct } from "./rsvp-engine";
 import RsvpView, { type RsvpViewHandle } from "./rsvp-view";
 import ScrollView, { ReaderSkeleton } from "./scroll-view";
@@ -223,6 +230,20 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const didSeedModeRef = useRef(false);
 
+	// Carries a position recovered from the durable localStorage fallback so a
+	// later effect can persist it to the DB once `savePosition` is in scope.
+	// null = nothing to recover.
+	const pendingRecoveredRef = useRef<number | null>(null);
+
+	// Snapshot the durable fallback ONCE per book, during render, before any
+	// save in this session (e.g. a reload-time init-scroll settle) can overwrite
+	// the localStorage entry. The reconcile reads this snapshot, so it can only
+	// ever recover the PREVIOUS session's orphaned write, never this mount's own.
+	const pendingSnapshotRef = useRef<{ id: string; value: PendingPosition | null } | null>(null);
+	if (pendingSnapshotRef.current?.id !== id) {
+		pendingSnapshotRef.current = { id, value: readPendingPosition(id) };
+	}
+
 	// MUST run before the seed effect: on first mount both effects fire in
 	// declaration order, and a reset after seed would null lastWordRef back
 	// out, letting a fast RSVP toggle overwrite the saved position with 0.
@@ -235,15 +256,32 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	}, [id]);
 
 	const seedWord = book?.wordPosition ?? null;
+	const seedLastRead = book?.lastRead ?? 0;
 
 	useEffect(() => {
 		if (didSeedOffsetsRef.current || seedWord === null) return;
 		didSeedOffsetsRef.current = true;
-		setActiveWord(seedWord);
-		setProgressWord(seedWord);
-		setRsvpInitWord(seedWord);
-		lastWordRef.current = seedWord;
-	}, [seedWord]);
+
+		// Durable-resume reconcile: a teardown may have left a synchronously
+		// persisted position whose async DB write never committed. Prefer it
+		// ONLY when strictly newer than the row's lastRead, so a committed save
+		// or a cloud-synced position from another device always wins. Hand the
+		// recovered word to the persist effect below (we do NOT set userMovedRef
+		// here. That flag gates the unmount flush against the transient-remount
+		// clobber, and seeding is not a user move). Consume the entry either way.
+		let resolved = seedWord;
+		const pending = pendingSnapshotRef.current?.value ?? null;
+		if (pending && pending.at > seedLastRead && pending.word !== seedWord) {
+			resolved = wordPos(pending.word);
+			pendingRecoveredRef.current = resolved;
+		}
+		clearPendingPosition(id);
+
+		setActiveWord(resolved);
+		setProgressWord(resolved);
+		setRsvpInitWord(resolved);
+		lastWordRef.current = resolved;
+	}, [seedWord, seedLastRead, id]);
 
 	// Live-seek when the device pushes a new position for this book over BLE.
 	// book-sync-context applies the conflict-resolution tolerance gate first,
@@ -433,6 +471,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				wordPosition,
 			};
 
+			// Durable fallback: mirror the position to localStorage synchronously
+			// BEFORE the async DB write, stamped with the same `now` that becomes
+			// the row's lastRead. If a teardown abandons the write below, this
+			// survives and the next mount recovers it; if the write commits, we
+			// clear it just after so a stale entry never outlives a real save.
+			writePendingPosition(id, word, now);
+
 			// Optimistic cache update so the library lands already-sorted when
 			// the user navigates back, instead of shifting under their finger
 			// after the async refetch finishes.
@@ -466,12 +511,28 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			setJustRead(seriesId ? `series:${seriesId}` : `book:${id}`);
 
 			await queries.updateBook(id, update);
+			// The row is now durable; drop the synchronous fallback so it can't
+			// later be mistaken for an uncommitted write on the next mount.
+			clearPendingPosition(id);
 			await pushPosition(id, word);
 			if (scheduleSync) scheduleSyncPush(5000);
 			if (import.meta.env.DEV) publishPositionSave(id, word);
 		},
 		[id, pushPosition, book?.seriesId, qc],
 	);
+
+	// Persist a position recovered from the durable fallback (set by the seed
+	// effect above) to the DB, so it survives forward even if the user never
+	// moves before leaving again. `seedWord` is in the deps so this fires in the
+	// same commit the seed effect ran (declaration order: seed first, this
+	// second); later re-runs are no-ops once the ref is consumed.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: seedWord is an intentional trigger (same commit as the seed effect), not a value this body reads.
+	useEffect(() => {
+		const recovered = pendingRecoveredRef.current;
+		if (recovered === null) return;
+		pendingRecoveredRef.current = null;
+		void savePosition(recovered);
+	}, [seedWord, savePosition]);
 
 	// ── Shared helpers ────────────────────────────────────────────────────
 	/** Binary search: find the last paragraph index whose start word ≤ targetWord. */
@@ -611,9 +672,16 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		progressWordRef.current = word;
 		// Track per-tick so a paginationStyle toggle mid-scroll seeds the next
 		// view from the user's current visual position rather than the last
-		// settled word (which may be from before the in-flight scroll).
-		lastWordRef.current = word;
-		userMovedRef.current = true;
+		// settled word (which may be from before the in-flight scroll). But
+		// within the post-jump guard window the scroll is still animating toward
+		// the jump target, so its intermediate words must not overwrite the saved
+		// position (same guard as handleScrollPositionSettle). Without it, a flush
+		// mid-jump-scroll would persist a transient word instead of the jump
+		// target, and the durable fallback would even resurrect it.
+		if (Date.now() - lastJumpAtRef.current >= JUMP_SETTLE_GUARD_MS) {
+			lastWordRef.current = word;
+			userMovedRef.current = true;
+		}
 		// Skip state update when bar is hidden: nothing in the visible UI
 		// depends on progressWord, and the per-tick reconciliation was the
 		// dominant scripting cost during hold-scroll. handleScrollPositionSettle
@@ -1119,6 +1187,38 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// Invalidate the books list so the library grid picks up the new position
 			// when the user navigates back.
 			qcRef.current.invalidateQueries({ queryKey: bookKeys.all });
+		};
+	}, []);
+
+	// ── Flush position on background / teardown ───────────────────────────
+	// The unmount cleanup above only runs on a clean React unmount. A web tab
+	// close / bfcache (`pagehide`), a tab switch (`visibilitychange` hidden),
+	// or a mobile app suspend (Capacitor `pause`) tears the document down, or
+	// freezes it before the OS kills it, without ever unmounting. Mirror the
+	// flush on those signals so the latest position isn't stranded in memory.
+	// In RSVP mode the freshest word lives in the engine; `use-rsvp-engine`
+	// flushes its own `pagehide`, which routes through `savePosition` here too.
+	useEffect(() => {
+		const flush = () => {
+			const word = lastWordRef.current;
+			if (word !== null && userMovedRef.current) {
+				savePositionRef.current(word, { scheduleSync: false });
+			}
+		};
+		const onVisibility = () => {
+			if (document.visibilityState === "hidden") flush();
+		};
+		window.addEventListener("pagehide", flush);
+		document.addEventListener("visibilitychange", onVisibility);
+		const pauseListener = CapacitorApp.addListener("pause", flush);
+		return () => {
+			window.removeEventListener("pagehide", flush);
+			document.removeEventListener("visibilitychange", onVisibility);
+			void pauseListener
+				.then((handle) => handle.remove())
+				.catch(() => {
+					/* listener never attached; nothing to remove */
+				});
 		};
 	}, []);
 
