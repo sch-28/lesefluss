@@ -17,6 +17,7 @@ import {
 	hardDeleteBook,
 	loadBookWordIndex,
 	parseChapters,
+	parseLinkRanges,
 	setActiveBook,
 	updateBook,
 } from "./books";
@@ -103,6 +104,7 @@ export const queries = {
 	addServerBookWithContent,
 	loadBookWordIndex,
 	parseChapters,
+	parseLinkRanges,
 	updateBook,
 	setActiveBook,
 	deleteBook,

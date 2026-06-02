@@ -33,21 +33,24 @@ const content: BookContent = {
 	coverImage: "cover-bytes",
 	chapters: '[{"title":"a","startByte":0}]',
 	wordIndex: null,
+	linkRanges: '[{"href":"https://e.example","startWord":1,"endWord":2}]',
 };
 
 describe("bookToSync", () => {
-	it("includes content/coverImage/chapters for standalone books", () => {
+	it("includes content/coverImage/chapters/linkRanges for standalone books", () => {
 		const out = bookToSync(makeBook(), content);
 		expect(out.content).toBe("body text");
 		expect(out.coverImage).toBe("cover-bytes");
 		expect(out.chapters).toBe('[{"title":"a","startByte":0}]');
+		expect(out.linkRanges).toBe('[{"href":"https://e.example","startWord":1,"endWord":2}]');
 	});
 
-	it("omits content/coverImage/chapters for chapter rows even when contentData is supplied", () => {
+	it("omits content/coverImage/chapters/linkRanges for chapter rows even when contentData is supplied", () => {
 		const out = bookToSync(makeBook({ seriesId: "abc12345", chapterIndex: 0 }), content);
 		expect(out).not.toHaveProperty("content");
 		expect(out).not.toHaveProperty("coverImage");
 		expect(out).not.toHaveProperty("chapters");
+		expect(out).not.toHaveProperty("linkRanges");
 		// Lightweight chapter metadata still flows through.
 		expect(out.seriesId).toBe("abc12345");
 		expect(out.chapterIndex).toBe(0);

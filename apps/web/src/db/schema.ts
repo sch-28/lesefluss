@@ -31,6 +31,7 @@ export const syncBooks = pgTable(
 		content: text("content"), // full plain text - null until first content push
 		coverImage: text("cover_image"), // base64-encoded cover art from EPUB
 		chapters: text("chapters"), // JSON: [{title: string, startWord: number}]
+		linkRanges: text("link_ranges"), // JSON: [{href: string, startWord: number, endWord: number}]
 		source: text("source"), // 'gutenberg' | 'standard_ebooks' | 'url' | 'serial' | null
 		catalogId: text("catalog_id"), // e.g. 'gutenberg:1342'
 		sourceUrl: text("source_url"), // original URL for source='url' imports

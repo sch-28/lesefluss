@@ -14,6 +14,7 @@ import { memo, useEffect, useLayoutEffect, useRef } from "react";
 import Paragraph, {
 	type GlossaryRangeProp,
 	type HighlightRange,
+	type LinkRangeProp,
 	type ParagraphWordEntry,
 } from "../paragraph";
 import type { Chunk } from "./chunks";
@@ -42,6 +43,7 @@ export interface ChunkContentProps {
 	activeWord: number; // -1 if active word is in a different chunk
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
+	linksByParagraph: Map<number, LinkRangeProp[]> | undefined;
 	selectionRange: { startWord: number; endWord: number } | null;
 
 	// Word interaction
@@ -74,6 +76,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	activeWord,
 	highlightsByParagraph,
 	glossaryByParagraph,
+	linksByParagraph,
 	selectionRange,
 	onWordTap,
 	onWordLongPress,
@@ -150,6 +153,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 						onWordMouseDragStart={onWordMouseDragStart}
 						highlights={highlightsByParagraph?.get(paraGlobalIndex)}
 						glossaryRanges={glossaryByParagraph?.get(paraGlobalIndex)}
+						links={linksByParagraph?.get(paraGlobalIndex)}
 						selectionRange={selectionRange}
 						showActiveWordUnderline={showActiveWordUnderline}
 					/>

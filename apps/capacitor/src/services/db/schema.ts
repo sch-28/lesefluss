@@ -158,6 +158,12 @@ export const bookContent = sqliteTable("book_content", {
 	 * returns strings for TEXT columns).
 	 */
 	wordIndex: text("word_index"),
+	/**
+	 * External hyperlinks captured at import, as JSON `[{href, startWord, endWord}]`
+	 * (ADR-0002 word positions). NULL for books imported before links were
+	 * supported; the reader still linkifies bare URLs at render time.
+	 */
+	linkRanges: text("link_ranges"),
 });
 
 /**
@@ -195,6 +201,12 @@ export type NewBookContent = typeof bookContent.$inferInsert;
  * Chapter entry as stored in bookContent.chapters JSON column.
  */
 export type Chapter = { title: string; startWord: number };
+
+/**
+ * External hyperlink as stored in bookContent.linkRanges JSON column.
+ * Word positions are inclusive of startWord through endWord.
+ */
+export type LinkRange = { href: string; startWord: number; endWord: number };
 
 export type Highlight = typeof highlights.$inferSelect;
 export type NewHighlight = typeof highlights.$inferInsert;

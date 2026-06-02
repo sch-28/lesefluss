@@ -1,6 +1,7 @@
 import { Readability } from "@mozilla/readability";
-import type { BookPayload, Parser } from "../types";
-import { extractParagraphs } from "../utils/dom-paragraphs";
+import type { BookPayload, ImportLink, Parser } from "../types";
+import { type ContentLink, extractParagraphsWithLinks } from "../utils/dom-paragraphs";
+import { utf8ByteLength } from "../utils/encoding";
 import { assertBytes } from "../utils/raw-input";
 import { deriveTitle } from "../utils/title-heuristic";
 import { canParseHtml } from "./matchers";
@@ -37,24 +38,31 @@ export const htmlParser: Parser = {
 		}
 
 		let content: string;
+		let links: ContentLink[];
 		let title: string;
 		let author: string | null;
 
 		if (article?.content) {
 			const articleDoc = domParser.parseFromString(article.content, "text/html");
-			content = extractParagraphs(articleDoc.body);
+			({ content, links } = extractParagraphsWithLinks(articleDoc.body));
 			title = article.title?.trim() || doc.title?.trim() || deriveTitle(content);
 			author = article.byline?.trim() || null;
 			if (!content) {
-				content = extractParagraphs(doc.body);
+				({ content, links } = extractParagraphsWithLinks(doc.body));
 			}
 		} else {
 			// Fallback: walk the entire body. Noisier (nav/footer leak in) but
 			// still better than failing the import outright.
-			content = extractParagraphs(doc.body);
+			({ content, links } = extractParagraphsWithLinks(doc.body));
 			title = doc.title?.trim() || deriveTitle(content);
 			author = null;
 		}
+
+		const linkRanges: ImportLink[] = links.map((l) => ({
+			href: l.href,
+			startByte: utf8ByteLength(content.slice(0, l.startChar)),
+			endByte: utf8ByteLength(content.slice(0, l.endChar)),
+		}));
 
 		return {
 			content,
@@ -62,6 +70,7 @@ export const htmlParser: Parser = {
 			author,
 			coverImage: null,
 			chapters: null,
+			linkRanges: linkRanges.length > 0 ? linkRanges : null,
 			fileFormat: "html",
 			original: null,
 		};

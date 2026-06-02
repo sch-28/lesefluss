@@ -41,6 +41,7 @@ export async function commitBook(payload: BookPayload, extras: ImportExtras): Pr
 		payload.content,
 		payload.coverImage ?? null,
 		payload.chapters ?? null,
+		payload.linkRanges ?? null,
 	);
 
 	let filePath: string | null = null;

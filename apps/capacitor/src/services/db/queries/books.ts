@@ -1,5 +1,5 @@
-import type { Chapter as ImportChapter } from "@lesefluss/book-import";
-import { type SerializedWordIndex, WordIndex } from "@lesefluss/core";
+import type { Chapter as ImportChapter, ImportLink } from "@lesefluss/book-import";
+import { byteRangeToWordRange, type SerializedWordIndex, WordIndex } from "@lesefluss/core";
 import { and, desc, eq, isNull, ne } from "drizzle-orm";
 import { db } from "../index";
 import {
@@ -10,6 +10,7 @@ import {
 	type Chapter,
 	glossaryEntries,
 	highlights,
+	type LinkRange,
 	type NewBook,
 } from "../schema";
 
@@ -137,6 +138,19 @@ export function parseChapters(raw: string | null): Chapter[] {
 }
 
 /**
+ * Parse the linkRanges JSON column into typed LinkRange[].
+ * Returns empty array if null or invalid.
+ */
+export function parseLinkRanges(raw: string | null): LinkRange[] {
+	if (!raw) return [];
+	try {
+		return JSON.parse(raw) as LinkRange[];
+	} catch {
+		return [];
+	}
+}
+
+/**
  * Insert a new book with its content. The id (8-char hex) is part of the book param.
  *
  * Inserts into `books` (metadata) then `book_content` (large data).
@@ -146,14 +160,19 @@ export async function addBookWithContent(
 	content: string,
 	coverImage?: string | null,
 	importChapters?: ImportChapter[] | null,
+	importLinks?: ImportLink[] | null,
 ): Promise<string> {
-	// Build WordIndex once at import so chapter byte offsets convert to word
-	// offsets in the same pass + the serialized blob lands in book_content
+	// Build WordIndex once at import so chapter + link byte offsets convert to
+	// word offsets in the same pass + the serialized blob lands in book_content
 	// for fast reader open without a rebuild.
 	const wi = WordIndex.build(content);
 	const dbChapters: Chapter[] = (importChapters ?? []).map((ch) => ({
 		title: ch.title,
 		startWord: wi.wordOf(ch.startByte),
+	}));
+	const dbLinks: LinkRange[] = (importLinks ?? []).map((l) => ({
+		href: l.href,
+		...byteRangeToWordRange(wi, l.startByte, l.endByte),
 	}));
 
 	await db.insert(books).values({ ...book, wordCount: wi.wordCount });
@@ -164,6 +183,7 @@ export async function addBookWithContent(
 		coverImage: coverImage ?? null,
 		chapters: dbChapters.length ? JSON.stringify(dbChapters) : null,
 		wordIndex: JSON.stringify(wi.serialize()),
+		linkRanges: dbLinks.length ? JSON.stringify(dbLinks) : null,
 	});
 
 	return book.id;
@@ -182,6 +202,7 @@ export async function addServerBookWithContent(
 	content: string,
 	coverImage?: string | null,
 	chaptersJson?: string | null,
+	linkRangesJson?: string | null,
 ): Promise<string> {
 	const wi = WordIndex.build(content);
 	const wordCount = book.wordCount && book.wordCount > 0 ? book.wordCount : wi.wordCount;
@@ -192,6 +213,7 @@ export async function addServerBookWithContent(
 		coverImage: coverImage ?? null,
 		chapters: chaptersJson ?? null,
 		wordIndex: JSON.stringify(wi.serialize()),
+		linkRanges: linkRangesJson ?? null,
 	});
 	return book.id;
 }

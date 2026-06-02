@@ -1,8 +1,8 @@
 import type { Book as EpubBook } from "epubjs";
 import ePub from "epubjs";
 import type { NavItem } from "epubjs/types/navigation";
-import type { BookPayload, Chapter, Parser } from "../types";
-import { extractParagraphs } from "../utils/dom-paragraphs";
+import type { BookPayload, Chapter, ImportLink, Parser } from "../types";
+import { type ContentLink, extractParagraphsWithLinks } from "../utils/dom-paragraphs";
 import { utf8ByteLength } from "../utils/encoding";
 import { assertBytes } from "../utils/raw-input";
 import { canParseEpub } from "./matchers";
@@ -14,7 +14,7 @@ export const epubParser: Parser = {
 
 	async parse(input, onProgress): Promise<BookPayload> {
 		assertBytes(input);
-		const { content, title, author, coverImage, chapters } = await parseEpub(
+		const { content, title, author, coverImage, chapters, linkRanges } = await parseEpub(
 			input.bytes,
 			input.fileName,
 			onProgress,
@@ -26,6 +26,7 @@ export const epubParser: Parser = {
 			author: author ?? null,
 			coverImage,
 			chapters,
+			linkRanges,
 			fileFormat: "epub",
 			original: { bytes: input.bytes, extension: "epub" },
 		};
@@ -65,6 +66,7 @@ async function parseEpub(
 	author?: string;
 	coverImage: string | null;
 	chapters: Chapter[];
+	linkRanges: ImportLink[] | null;
 }> {
 	assertLooksLikeZip(buffer);
 	const book = ePub(buffer);
@@ -127,7 +129,7 @@ async function parseEpub(
 	// that HTML5's adoption-agency algorithm reshuffles out of `<body>`'s direct
 	// children in strict parsers (Chromium WebView), silently dropping most
 	// paragraphs. Forcing xhtml mime sidesteps it.
-	const sections: { text: string; href: string }[] = [];
+	const sections: { text: string; href: string; links: ContentLink[] }[] = [];
 	for (let i = 0; i < spineLength; i++) {
 		const section = book.spine.get(i);
 		try {
@@ -135,9 +137,9 @@ async function parseEpub(
 
 			const body = await loadSectionBody(book, section.url);
 			if (body) {
-				const text = extractParagraphs(body);
+				const { content: text, links } = extractParagraphsWithLinks(body);
 				if (text.length > 0) {
-					sections.push({ text, href: section.href });
+					sections.push({ text, href: section.href, links });
 				}
 			}
 			section.unload();
@@ -151,15 +153,25 @@ async function parseEpub(
 		onProgress?.(Math.round(((i + 1) / spineLength) * 100));
 	}
 
-	// Build chapters with correct UTF-8 byte offsets in one pass
+	// Build chapters + link ranges with correct UTF-8 byte offsets in one pass
 	const chapters: Chapter[] = [];
+	const linkRanges: ImportLink[] = [];
 	let byteOffset = 0;
 	for (let i = 0; i < sections.length; i++) {
 		if (i > 0) byteOffset += 2; // \n\n separator (always 2 UTF-8 bytes)
+		const sectionStart = byteOffset;
 
 		const chapterTitle = tocMap.get(sections[i].href);
 		if (chapterTitle) {
 			chapters.push({ title: chapterTitle, startByte: byteOffset });
+		}
+
+		for (const link of sections[i].links) {
+			linkRanges.push({
+				href: link.href,
+				startByte: sectionStart + utf8ByteLength(sections[i].text.slice(0, link.startChar)),
+				endByte: sectionStart + utf8ByteLength(sections[i].text.slice(0, link.endChar)),
+			});
 		}
 
 		byteOffset += utf8ByteLength(sections[i].text);
@@ -169,7 +181,14 @@ async function parseEpub(
 
 	book.destroy();
 
-	return { content, title, author, coverImage, chapters };
+	return {
+		content,
+		title,
+		author,
+		coverImage,
+		chapters,
+		linkRanges: linkRanges.length > 0 ? linkRanges : null,
+	};
 }
 
 async function loadSectionBody(book: EpubBook, url: string): Promise<Element | null> {

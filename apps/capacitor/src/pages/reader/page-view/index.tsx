@@ -47,6 +47,7 @@ import {
 	cancelAnyActiveLongPress,
 	type GlossaryRangeProp,
 	type HighlightRange,
+	type LinkRangeProp,
 	LONG_PRESS_MS,
 } from "../paragraph";
 import type { ReaderViewHandle } from "../view-types";
@@ -87,6 +88,7 @@ export interface PageViewProps {
 	entriesByParagraph: ParagraphWordEntry[][];
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
+	linksByParagraph: Map<number, LinkRangeProp[]> | undefined;
 	selectionRange: { startWord: number; endWord: number } | null;
 	isSelecting: boolean;
 
@@ -125,6 +127,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		activeWord,
 		highlightsByParagraph,
 		glossaryByParagraph,
+		linksByParagraph,
 		selectionRange,
 		isSelecting,
 		onWordTap,
@@ -655,6 +658,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									activeWord={isActiveChunk ? activeWord : -1}
 									highlightsByParagraph={highlightsByParagraph}
 									glossaryByParagraph={glossaryByParagraph}
+									linksByParagraph={linksByParagraph}
 									selectionRange={selectionRange}
 									onWordTap={onWordTap}
 									onWordLongPress={onWordLongPress}

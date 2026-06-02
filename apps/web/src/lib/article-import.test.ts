@@ -84,11 +84,33 @@ describe("handleArticleImportRequest", () => {
 				content: "Hello article body.",
 				fileSize: 19,
 				wordCount: 3,
-				position: 0,
 				source: "url",
 				sourceUrl: "https://example.com/read",
 				deleted: false,
 				chapterStatus: "fetched",
+			}),
+		);
+	});
+
+	it("captures external links as word-offset ranges, dropping in-content anchors", async () => {
+		const deps = testDeps();
+		const res = await handleArticleImportRequest(
+			jsonRequest({
+				html:
+					"<html><head><title>T</title></head><body><article>" +
+					'<p>Hello <a href="#foot">skip</a> <a href="https://example.com/x">article</a> body.</p>' +
+					"</article></body></html>",
+				url: "https://example.com/read",
+			}),
+			"user-1",
+			deps,
+		);
+
+		expect(res.status).toBe(200);
+		expect(deps.insertBook).toHaveBeenCalledWith(
+			expect.objectContaining({
+				content: "Hello skip article body.",
+				linkRanges: '[{"href":"https://example.com/x","startWord":2,"endWord":2}]',
 			}),
 		);
 	});

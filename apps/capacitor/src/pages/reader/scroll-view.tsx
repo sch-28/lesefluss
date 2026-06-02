@@ -13,6 +13,7 @@ import Paragraph, {
 	cancelAnyActiveLongPress,
 	type GlossaryRangeProp,
 	type HighlightRange,
+	type LinkRangeProp,
 	type ParagraphWordEntry,
 } from "./paragraph";
 import type { ReaderViewHandle } from "./view-types";
@@ -224,6 +225,7 @@ export interface ScrollViewProps {
 	activeWord: number;
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
+	linksByParagraph: Map<number, LinkRangeProp[]> | undefined;
 	selectionRange: { startWord: number; endWord: number } | null;
 
 	// Word interaction
@@ -269,6 +271,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		activeWord,
 		highlightsByParagraph,
 		glossaryByParagraph,
+		linksByParagraph,
 		selectionRange,
 		onWordTap,
 		onWordLongPress,
@@ -560,6 +563,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 							onWordMouseDragStart={onWordMouseDragStart}
 							highlights={highlightsByParagraph?.get(i)}
 							glossaryRanges={glossaryByParagraph?.get(i)}
+							links={linksByParagraph?.get(i)}
 							selectionRange={selectionRange}
 							showActiveWordUnderline={showActiveWordUnderline}
 						/>

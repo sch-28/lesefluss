@@ -15,6 +15,17 @@ export type Chapter = {
 	startByte: number;
 };
 
+/**
+ * An external hyperlink captured at import, anchored to byte offsets in the
+ * book's full `content`. Only http/https links are captured; the commit step
+ * converts these to word-position ranges via the `WordIndex`.
+ */
+export type ImportLink = {
+	href: string;
+	startByte: number;
+	endByte: number;
+};
+
 export type ProgressCallback = (pct: number) => void;
 
 export type PdfDocumentLoadingTaskLike = {
@@ -48,6 +59,8 @@ export type BookPayload = {
 	author?: string | null;
 	coverImage?: string | null;
 	chapters?: Chapter[] | null;
+	/** External hyperlinks (byte ranges into `content`). Null when none found. */
+	linkRanges?: ImportLink[] | null;
 	fileFormat: "txt" | "epub" | "html" | "pdf";
 	/**
 	 * Original file bytes to persist to disk (native only). Parsers set this

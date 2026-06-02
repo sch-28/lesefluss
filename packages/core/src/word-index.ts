@@ -231,3 +231,31 @@ function maskBit(mask: readonly number[], i: number): boolean {
 	const word = mask[Math.floor(i / 32)] ?? 0;
 	return (word & (1 << (i % 32))) !== 0;
 }
+
+/**
+ * Convert an exclusive byte range `[startByte, endByte)` to an inclusive word
+ * range. `endByte` is exclusive, so the end maps from `endByte - 1`, keeping the
+ * range within the last covered word.
+ */
+export function byteRangeToWordRange(
+	wi: WordIndex,
+	startByte: number,
+	endByte: number,
+): { startWord: WordPosition; endWord: WordPosition } {
+	return { startWord: wi.wordOf(startByte), endWord: wi.wordOf(endByte - 1) };
+}
+
+/**
+ * Index of the last paragraph whose start word is `<= word` (binary search over
+ * ascending paragraph start-word offsets).
+ */
+export function paragraphIndexForWord(paragraphStartWords: number[], word: number): number {
+	let lo = 0;
+	let hi = paragraphStartWords.length - 1;
+	while (lo < hi) {
+		const mid = Math.ceil((lo + hi) / 2);
+		if ((paragraphStartWords[mid] ?? 0) <= word) lo = mid;
+		else hi = mid - 1;
+	}
+	return lo;
+}

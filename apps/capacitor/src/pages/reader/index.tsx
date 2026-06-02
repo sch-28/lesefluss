@@ -15,6 +15,7 @@ import { Browser } from "@capacitor/browser";
 import type { RsvpSettings } from "@lesefluss/core";
 import {
 	DEFAULT_SETTINGS,
+	paragraphIndexForWord,
 	utf8ByteLength,
 	utf8ByteLengthOfCodePoint,
 	type WordPosition,
@@ -93,8 +94,9 @@ import {
 	useGlossaryDecorations,
 } from "./use-glossary-decorations";
 import { useHighlightSelection } from "./use-highlight-selection";
+import { useLinkDecorations } from "./use-link-decorations";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
-import { publishPositionSave, publishProgressWord } from "../../test-hooks/reader";
+import { publishLinkOpen, publishPositionSave, publishProgressWord } from "../../test-hooks/reader";
 import { type ReadingSessionMode, useReadingSession } from "./use-reading-session";
 import { useScrubProgress } from "./use-scrub-progress";
 import type { ReaderViewHandle } from "./view-types";
@@ -535,18 +537,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	}, [seedWord, savePosition]);
 
 	// ── Shared helpers ────────────────────────────────────────────────────
-	/** Binary search: find the last paragraph index whose start word ≤ targetWord. */
 	const findParagraphIndexForWord = useCallback(
-		(targetWord: number): number => {
-			let lo = 0;
-			let hi = paragraphStartWords.length - 1;
-			while (lo < hi) {
-				const mid = Math.ceil((lo + hi) / 2);
-				if ((paragraphStartWords[mid] ?? 0) <= targetWord) lo = mid;
-				else hi = mid - 1;
-			}
-			return lo;
-		},
+		(targetWord: number): number => paragraphIndexForWord(paragraphStartWords, targetWord),
 		[paragraphStartWords],
 	);
 
@@ -598,6 +590,37 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		},
 		[glossaryByParagraph, glossaryEntries],
 	);
+
+	// ── External hyperlink decorations ─────────────────────────────────────
+	const storedLinks = useMemo(
+		() => queries.parseLinkRanges(contentRow?.linkRanges ?? null),
+		[contentRow?.linkRanges],
+	);
+	const linksByParagraph = useLinkDecorations({
+		storedLinks,
+		paragraphs,
+		paragraphOffsets,
+		paragraphStartWords,
+		wordIndex: wordIndex ?? null,
+	});
+
+	/** Find the href of any link range covering this word index. */
+	const findLinkAt = useCallback(
+		(wordIdx: number): string | undefined => {
+			for (const ranges of linksByParagraph.values()) {
+				for (const r of ranges) {
+					if (wordIdx >= r.startWord && wordIdx <= r.endWord) return r.href;
+				}
+			}
+			return undefined;
+		},
+		[linksByParagraph],
+	);
+
+	const handleLinkTap = useCallback((href: string) => {
+		if (import.meta.env.DEV) publishLinkOpen(href);
+		void Browser.open({ url: href });
+	}, []);
 
 	// ── Progress-bar scrub gestures ───────────────────────────────────────
 	const scrub = useScrubProgress({
@@ -709,6 +732,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				return;
 			}
 
+			const href = findLinkAt(wIdx);
+			if (href) {
+				handleLinkTap(href);
+				return;
+			}
+
 			if (wIdx === activeWord) {
 				const existing = findHighlightAt(wIdx);
 				if (existing) {
@@ -740,6 +769,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			findHighlightAt,
 			openHighlightEditor,
 			findGlossaryAt,
+			findLinkAt,
+			handleLinkTap,
 			openDictionaryModal,
 		],
 	);
@@ -1421,6 +1452,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						onWpmChange={handleRsvpWpmChange}
 						onLookup={handleRsvpLookup}
 						bookWordIndex={wordIndex}
+						linkHrefAt={findLinkAt}
+						onLinkTap={handleLinkTap}
 					/>
 				) : paginationStyle === "page" ? (
 					<PageView
@@ -1439,6 +1472,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						activeWord={activeWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}
+						linksByParagraph={linksByParagraph}
 						selectionRange={sel.selectionRange}
 						isSelecting={isSelecting}
 						onWordTap={handlePageWordTap}
@@ -1467,6 +1501,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						activeWord={activeWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}
+						linksByParagraph={linksByParagraph}
 						selectionRange={sel.selectionRange}
 						onWordTap={handleWordTap}
 						onWordLongPress={sel.handleWordLongPress}

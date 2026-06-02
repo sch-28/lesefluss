@@ -1,0 +1,1 @@
+ALTER TABLE "sync_books" ADD COLUMN "link_ranges" text;

@@ -58,6 +58,10 @@ export interface RsvpViewProps {
 	onLookup: (word: string, original: string) => void;
 	/** Cached WordIndex. When present, the engine skips rebuild. */
 	bookWordIndex?: WordIndex | null;
+	/** Href of an external link covering this word, if any. */
+	linkHrefAt?: (wordIdx: number) => string | undefined;
+	/** Open an external link (paused context tap). */
+	onLinkTap?: (href: string) => void;
 }
 
 const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
@@ -71,6 +75,8 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		onWpmChange,
 		onLookup,
 		bookWordIndex,
+		linkHrefAt,
+		onLinkTap,
 	},
 	ref,
 ) {
@@ -121,9 +127,17 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 			const target = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-idx]");
 			if (!target) return;
 			const idx = Number.parseInt(target.dataset.idx ?? "", 10);
-			if (Number.isFinite(idx)) jumpToWord(idx);
+			if (!Number.isFinite(idx)) return;
+			// Context is only shown while paused, so a tap on a linked word opens
+			// the link instead of scrubbing to it.
+			const href = linkHrefAt?.(idx);
+			if (href && onLinkTap) {
+				onLinkTap(href);
+				return;
+			}
+			jumpToWord(idx);
 		},
-		[jumpToWord],
+		[jumpToWord, linkHrefAt, onLinkTap],
 	);
 
 	const handleDictClick = useCallback(
@@ -330,7 +344,15 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 												{breakBefore && i > 0 && (
 													<span className="rsvp-context-break" aria-hidden />
 												)}
-												<button type="button" data-idx={ci} className="rsvp-context-word">
+												<button
+													type="button"
+													data-idx={ci}
+													className={
+														linkHrefAt?.(ci)
+															? "rsvp-context-word rsvp-context-link"
+															: "rsvp-context-word"
+													}
+												>
 													{cw}
 												</button>
 											</React.Fragment>
@@ -350,7 +372,13 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 									}}
 								>
 									<span className="rsvp-before">{before}</span>
-									<span className="rsvp-focal">{focal}</span>
+									<span
+										className={
+											linkHrefAt?.(wordIndex) ? "rsvp-focal rsvp-focal--link" : "rsvp-focal"
+										}
+									>
+										{focal}
+									</span>
 									<span className="rsvp-after">{after}</span>
 								</span>
 								{context && context.next.length > 0 && (
@@ -363,7 +391,15 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 												{breakBefore && i > 0 && (
 													<span className="rsvp-context-break" aria-hidden />
 												)}
-												<button type="button" data-idx={ci} className="rsvp-context-word">
+												<button
+													type="button"
+													data-idx={ci}
+													className={
+														linkHrefAt?.(ci)
+															? "rsvp-context-word rsvp-context-link"
+															: "rsvp-context-word"
+													}
+												>
 													{cw}
 												</button>
 											</React.Fragment>

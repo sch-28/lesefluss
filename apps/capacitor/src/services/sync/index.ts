@@ -272,6 +272,7 @@ export function bookToSync(book: Book, contentData?: BookContent | null): SyncBo
 					content: contentData.content,
 					coverImage: contentData.coverImage,
 					chapters: contentData.chapters,
+					linkRanges: contentData.linkRanges,
 				}
 			: {}),
 		updatedAt: Math.max(book.lastRead ?? 0, book.addedAt),
@@ -574,6 +575,7 @@ export async function pullSync(): Promise<Set<string>> {
 							serverBook.content ?? "",
 							serverBook.coverImage,
 							serverBook.chapters ?? null,
+							serverBook.linkRanges ?? null,
 						);
 						localBookMap.set(serverBook.bookId, row);
 					}

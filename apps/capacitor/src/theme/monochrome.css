@@ -267,6 +267,30 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	border-radius: 2px;
 }
 
+/* External hyperlinks in reader content. --primary is theme-aware (dark/sepia/
+   light). Hover/focus only meaningful with a pointer/keyboard, so scope them to
+   (hover: hover) to skip touch. */
+.reader-paragraph span.word-link {
+	color: var(--primary, #c94b2a);
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 2px;
+	cursor: pointer;
+}
+.reader-paragraph span.word-link:active {
+	opacity: 0.7;
+}
+@media (hover: hover) {
+	.reader-paragraph span.word-link:hover {
+		opacity: 0.8;
+	}
+	.reader-paragraph span.word-link:focus-visible {
+		outline: 2px solid var(--primary, #c94b2a);
+		outline-offset: 1px;
+		border-radius: 2px;
+	}
+}
+
 /* Chapter headings detected from # prefixes */
 .reader-heading {
 	font-weight: 700;
@@ -475,6 +499,18 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 
 .rsvp-focal {
 	color: var(--rsvp-focal-color, #ff0000);
+}
+
+/* A focal/context word that is part of an external link. */
+.rsvp-focal--link {
+	text-decoration: underline;
+	text-decoration-thickness: 2px;
+	text-underline-offset: 3px;
+}
+.rsvp-context-link {
+	color: var(--primary, #c94b2a);
+	text-decoration: underline;
+	text-underline-offset: 2px;
 }
 
 .rsvp-focal-line {

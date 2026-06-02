@@ -1,0 +1,1 @@
+ALTER TABLE `book_content` ADD `link_ranges` text;

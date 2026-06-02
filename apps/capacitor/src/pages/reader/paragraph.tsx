@@ -40,6 +40,12 @@ export interface GlossaryRangeProp {
 	hideMarker?: boolean;
 }
 
+export interface LinkRangeProp {
+	startWord: number;
+	endWord: number;
+	href: string;
+}
+
 /**
  * One canonical word's slot in the paragraph text. `charStart`..`charEnd`
  * covers the word plus any trailing whitespace before the next word. The
@@ -61,6 +67,7 @@ export interface ParagraphProps {
 	onWordMouseDragStart?: (wordIdx: number, event: PointerEvent) => void;
 	highlights?: HighlightRange[];
 	glossaryRanges?: GlossaryRangeProp[];
+	links?: LinkRangeProp[];
 	selectionRange?: { startWord: number; endWord: number } | null;
 	showActiveWordUnderline: boolean;
 }
@@ -104,6 +111,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		onWordMouseDragStart,
 		highlights,
 		glossaryRanges,
+		links,
 		selectionRange,
 		showActiveWordUnderline,
 	}) => {
@@ -142,6 +150,15 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 
 			if (selectionRange && wordInRange(wIdx, selectionRange.startWord, selectionRange.endWord)) {
 				wordClasses.push("word-selecting");
+			}
+
+			if (links) {
+				for (const l of links) {
+					if (wordInRange(wIdx, l.startWord, l.endWord)) {
+						wordClasses.push("word-link");
+						break;
+					}
+				}
 			}
 
 			let glossaryAvatar: { label: string; color: string } | null = null;
@@ -266,6 +283,14 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 					spaceAfterInRange(wIdx, selectionRange.startWord, selectionRange.endWord)
 				) {
 					spaceClasses.push("word-selecting");
+				}
+				if (links) {
+					for (const l of links) {
+						if (spaceAfterInRange(wIdx, l.startWord, l.endWord)) {
+							spaceClasses.push("word-link");
+							break;
+						}
+					}
 				}
 				if (spaceClasses.length > 0) {
 					children.push(

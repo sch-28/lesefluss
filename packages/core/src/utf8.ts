@@ -5,6 +5,13 @@ export function utf8ByteLength(s: string): number {
 	return encoder.encode(s).length;
 }
 
+/** UTF-8 byte offset of a UTF-16 character index within `s`. */
+export function charIndexToByteOffset(s: string, charIdx: number): number {
+	if (charIdx <= 0) return 0;
+	if (charIdx >= s.length) return encoder.encode(s).length;
+	return encoder.encode(s.slice(0, charIdx)).length;
+}
+
 /** UTF-8 byte length of a single codepoint. */
 export function utf8ByteLengthOfCodePoint(cp: number): number {
 	if (cp < 0x80) return 1;

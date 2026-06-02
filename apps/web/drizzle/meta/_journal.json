@@ -92,6 +92,13 @@
       "when": 1779753600000,
       "tag": "0012_drop_byte_positions",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1779840000000,
+      "tag": "0013_link_ranges",
+      "breakpoints": true
     }
   ]
 }

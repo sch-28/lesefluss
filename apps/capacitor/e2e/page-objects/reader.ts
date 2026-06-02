@@ -299,4 +299,28 @@ export const reader = {
 			const raw = localStorage.getItem(key);
 			return raw ? (JSON.parse(raw) as { word: number; at: number }) : null;
 		}, pendingPositionKey(bookId)),
+
+	// ── External hyperlinks ──────────────────────────────────────────────
+	// `Browser.open` does not navigate in the Playwright web build, so taps are
+	// asserted via the dev-only `__lesefluss_e2e_link_open` hook the reader
+	// publishes (mirrors `__lesefluss_e2e_save`).
+
+	/** The href of the most recently opened link. Throws if none opened yet. */
+	lastLinkOpened: async (page: Page): Promise<string> => {
+		const href = await page.evaluate(() => window.__lesefluss_e2e_link_open?.href ?? null);
+		if (href === null) throw new Error("No link open observed yet");
+		return href;
+	},
+
+	/** Wait for a link open (optionally matching `expectedHref`). */
+	waitForLinkOpen: async (page: Page, expectedHref?: string) => {
+		await page.waitForFunction(
+			(expected) => {
+				const hook = window.__lesefluss_e2e_link_open;
+				return !!hook && (!expected || hook.href === expected);
+			},
+			expectedHref,
+			{ timeout: 5000 },
+		);
+	},
 };

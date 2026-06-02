@@ -20,10 +20,17 @@ export type E2ESessionHook = {
 	bookId: string;
 };
 
+export type E2ELinkOpenHook = {
+	href: string;
+	at: number;
+	count: number;
+};
+
 type E2EWindow = {
 	__lesefluss_e2e_progress_word?: number;
 	__lesefluss_e2e_save?: E2ESaveHook;
 	__lesefluss_e2e_session?: E2ESessionHook;
+	__lesefluss_e2e_link_open?: E2ELinkOpenHook;
 };
 
 function w(): E2EWindow {
@@ -50,5 +57,14 @@ export function publishSessionPersist(bookId: string, kind: "checkpoint" | "flus
 		bookId,
 		lastKind: kind,
 		count: (e.__lesefluss_e2e_session?.count ?? 0) + 1,
+	};
+}
+
+export function publishLinkOpen(href: string): void {
+	const e = w();
+	e.__lesefluss_e2e_link_open = {
+		href,
+		at: Date.now(),
+		count: (e.__lesefluss_e2e_link_open?.count ?? 0) + 1,
 	};
 }

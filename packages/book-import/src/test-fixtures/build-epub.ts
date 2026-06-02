@@ -75,7 +75,8 @@ function buildZip(fixture: EpubFixture): JSZip {
 
 	const useNav = fixture.useEpub3Nav === true;
 	const navHref = fixture.navHref ?? "nav.xhtml";
-	const navPoints = fixture.navPoints ?? fixture.chapters.map((c) => ({ label: c.title ?? c.id, href: c.href }));
+	const navPoints =
+		fixture.navPoints ?? fixture.chapters.map((c) => ({ label: c.title ?? c.id, href: c.href }));
 
 	const manifest = [
 		...fixture.chapters.map(
@@ -164,6 +165,28 @@ export function strayAnchorFixture(): EpubFixture {
 		navPoints: [
 			{ label: "1: First", href: "c1.htm" },
 			{ label: "2: Second", href: "c2.htm" },
+		],
+	};
+}
+
+/** Two chapters, each with one external hyperlink and one in-content anchor that
+ *  must be dropped (only http/https is captured). */
+export function linkFixture(): EpubFixture {
+	return {
+		title: "Hyperlink Test",
+		chapters: [
+			{
+				id: "c1",
+				href: "c1.xhtml",
+				title: "One",
+				body: '<p>Read the <a href="https://example.com/docs">documentation</a> now.</p>',
+			},
+			{
+				id: "c2",
+				href: "c2.xhtml",
+				title: "Two",
+				body: '<p>See <a href="#note">this note</a> and <a href="https://other.org/x">another link</a> here.</p>',
+			},
 		],
 	};
 }

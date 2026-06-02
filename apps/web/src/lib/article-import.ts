@@ -8,6 +8,7 @@ import {
 	runImportPipeline,
 	utf8ByteLength,
 } from "@lesefluss/book-import";
+import { byteRangeToWordRange, WordIndex } from "@lesefluss/core";
 import { and, eq } from "drizzle-orm";
 import { DOMParser as LinkedomDOMParser } from "linkedom";
 import { z } from "zod";
@@ -155,6 +156,7 @@ export async function handleArticleImportRequest(
 	const genId = deps.generateBookId ?? generateBookId;
 	const insert = deps.insertBook ?? insertSyncBook;
 	const title = importInput.titleOverride ?? payload.title;
+	const linkRangesJson = serializeLinkRanges(payload);
 
 	// 8 hex chars = 32 bits, so collisions are rare but possible for power users.
 	// On unique-violation against (user_id, book_id), retry once with a fresh id.
@@ -182,6 +184,7 @@ export async function handleArticleImportRequest(
 			coverImage: payload.coverImage ?? null,
 			// HTML parser doesn't emit chapters today; defensive for future parsers.
 			chapters: payload.chapters ? JSON.stringify(payload.chapters) : null,
+			linkRanges: linkRangesJson,
 			source: "url",
 			catalogId: null,
 			sourceUrl: importInput.finalUrl,
@@ -245,6 +248,22 @@ function enforceImportRateLimit(userId: string, limit: typeof checkLimit): Respo
 
 function createLinkedomParser(): DomParserLike {
 	return new LinkedomDOMParser() as unknown as DomParserLike;
+}
+
+/**
+ * Convert the parser's byte-offset link ranges to the word-offset JSON the
+ * device stores and the reader renders. Uses the same WordIndex tokenization
+ * the reader rebuilds on pull, so offsets match. Returns null when there are no
+ * links.
+ */
+function serializeLinkRanges(payload: BookPayload): string | null {
+	if (!payload.linkRanges?.length) return null;
+	const wi = WordIndex.build(payload.content);
+	const ranges = payload.linkRanges.map((l) => ({
+		href: l.href,
+		...byteRangeToWordRange(wi, l.startByte, l.endByte),
+	}));
+	return JSON.stringify(ranges);
 }
 
 function countWords(content: string): number {

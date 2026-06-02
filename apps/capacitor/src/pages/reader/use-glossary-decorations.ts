@@ -12,7 +12,12 @@
  * setting is off or the WordIndex hasn't loaded.
  */
 
-import { utf8ByteLength, type WordIndex, type WordPosition } from "@lesefluss/core";
+import {
+	charIndexToByteOffset,
+	utf8ByteLength,
+	type WordIndex,
+	type WordPosition,
+} from "@lesefluss/core";
 import { useMemo } from "react";
 import type { GlossaryEntry } from "../../services/db/schema";
 import { escapeRegex } from "./glossary-utils";
@@ -28,19 +33,10 @@ export interface GlossaryRange {
 	hideMarker: boolean;
 }
 
-const _encoder = new TextEncoder();
-
 const WORD_CHAR = "[\\p{L}\\p{N}_]";
 
 function buildLabelRegex(escapedAlternation: string, flags: string): RegExp {
 	return new RegExp(`(?<!${WORD_CHAR})(?:${escapedAlternation})(?!${WORD_CHAR})`, `${flags}u`);
-}
-
-/** Convert a UTF-16 character index in `text` to its UTF-8 byte offset. */
-function charIndexToByteOffset(text: string, charIdx: number): number {
-	if (charIdx <= 0) return 0;
-	if (charIdx >= text.length) return _encoder.encode(text).length;
-	return _encoder.encode(text.slice(0, charIdx)).length;
 }
 
 interface UseGlossaryDecorationsParams {
