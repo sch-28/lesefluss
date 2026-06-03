@@ -9,6 +9,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-06-02",
+		title: "Reader Links and Resume Reliability",
+		tags: ["App"],
+		changes: [
+			"Hyperlinks in imported articles and EPUBs are now shown and tappable, opening in your browser",
+			"Plain URLs written in any book are clickable too",
+			"Your reading position is restored more reliably after closing or backgrounding the app",
+		],
+	},
+	{
 		date: "2026-05-29",
 		title: "RSVP Wake Lock and Sync Fixes",
 		tags: ["App"],
