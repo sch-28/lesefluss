@@ -3,6 +3,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { and, count, desc, eq, isNotNull, max, or } from "drizzle-orm";
 import { db } from "~/db";
 import { syncBooks, syncGlossaryEntries, syncHighlights, syncSettings } from "~/db/schema";
+import { deleteUserAccount } from "./account-deletion";
 import { auth } from "./auth";
 
 const FINISHED_THRESHOLD = 0.95;
@@ -154,5 +155,13 @@ export const clearCloudData = createServerFn({ method: "POST" }).handler(async (
 		]);
 	});
 
+	return { success: true };
+});
+
+// Authorized by the active session alone; see deleteUserAccount for why no
+// password is required and how the deletion cascades.
+export const deleteAccount = createServerFn({ method: "POST" }).handler(async () => {
+	const session = await requireSession();
+	await deleteUserAccount(session.user.id);
 	return { success: true };
 });

@@ -2,10 +2,9 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, bearer } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
-import { eq } from "drizzle-orm";
 import { db } from "~/db";
 import * as authSchema from "~/db/auth-schema";
-import { syncBooks, syncHighlights, syncSettings } from "~/db/schema";
+import { purgeUserSyncData } from "./account-deletion";
 import { getTrustedAuthOrigins } from "./allowed-origins";
 import { passwordResetEmail, sendMail, verificationEmail } from "./mailer";
 
@@ -63,11 +62,7 @@ export const auth = betterAuth({
 		deleteUser: {
 			enabled: true,
 			afterDelete: async (user) => {
-				await Promise.all([
-					db.delete(syncBooks).where(eq(syncBooks.userId, user.id)),
-					db.delete(syncHighlights).where(eq(syncHighlights.userId, user.id)),
-					db.delete(syncSettings).where(eq(syncSettings.userId, user.id)),
-				]);
+				await db.transaction((tx) => purgeUserSyncData(tx, user.id));
 			},
 		},
 	},

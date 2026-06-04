@@ -8,7 +8,7 @@ import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import * as React from "react";
 import { z } from "zod";
 import { authClient } from "~/lib/auth-client";
-import { clearCloudData } from "~/lib/profile";
+import { clearCloudData, deleteAccount } from "~/lib/profile";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/_authenticated/account/")({
@@ -199,7 +199,6 @@ function DangerZone() {
 
 	const [deleteState, setDeleteState] = React.useState<ConfirmState>("idle");
 	const [deleteInput, setDeleteInput] = React.useState("");
-	const [deletePassword, setDeletePassword] = React.useState("");
 	const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
 	async function handleClear() {
@@ -220,13 +219,11 @@ function DangerZone() {
 		setDeleteState("loading");
 		setDeleteError(null);
 		try {
-			const result = await authClient.deleteUser({ password: deletePassword });
-			if (result.error) {
-				setDeleteError(result.error.message ?? "Account deletion failed");
-				setDeleteState("confirming");
-			} else {
-				navigate({ to: "/" });
-			}
+			await deleteAccount();
+			// The user delete cascaded the session row, so drop the cached auth
+			// context before leaving to avoid re-entering an authenticated route.
+			await router.invalidate();
+			navigate({ to: "/" });
 		} catch {
 			setDeleteError("Something went wrong. Please try again.");
 			setDeleteState("confirming");
@@ -309,7 +306,7 @@ function DangerZone() {
 					{(deleteState === "confirming" || deleteState === "loading") && (
 						<div className="space-y-3">
 							<p className="text-muted-foreground text-sm">
-								Type <strong>DELETE</strong> and enter your password to confirm.
+								Type <strong>DELETE</strong> to confirm.
 							</p>
 							<Input
 								value={deleteInput}
@@ -317,24 +314,12 @@ function DangerZone() {
 								placeholder="DELETE"
 								className="max-w-48"
 							/>
-							<Input
-								type="password"
-								value={deletePassword}
-								onChange={(e) => setDeletePassword(e.target.value)}
-								placeholder="Your password"
-								autoComplete="current-password"
-								className="max-w-48"
-							/>
 							{deleteError && <p className="text-destructive text-sm">{deleteError}</p>}
 							<div className="flex gap-2">
 								<Button
 									variant="destructive"
 									size="sm"
-									disabled={
-										deleteInput !== "DELETE" ||
-										deletePassword.length === 0 ||
-										deleteState === "loading"
-									}
+									disabled={deleteInput !== "DELETE" || deleteState === "loading"}
 									onClick={handleDelete}
 								>
 									{deleteState === "loading" ? "Deleting…" : "Delete my account"}
@@ -345,7 +330,6 @@ function DangerZone() {
 									onClick={() => {
 										setDeleteState("idle");
 										setDeleteInput("");
-										setDeletePassword("");
 										setDeleteError(null);
 									}}
 								>
