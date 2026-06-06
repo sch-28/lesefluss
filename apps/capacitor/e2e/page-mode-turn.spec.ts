@@ -1,10 +1,7 @@
+import { buildEpubBuffer, type EpubFixture } from "@lesefluss/book-import/test-fixtures/build-epub";
 import { expect, test } from "@playwright/test";
-import {
-	buildEpubBuffer,
-	type EpubFixture,
-} from "@lesefluss/book-import/test-fixtures/build-epub";
-import { reader } from "./page-objects/reader";
 import { importEpubViaFilePicker, openBookFromLibrary, resetStorage } from "./helpers/seed";
+import { reader } from "./page-objects/reader";
 
 /** Many-paragraph fixture so page-mode definitely paginates into >1 page. */
 function bigBookFixture(): EpubFixture {

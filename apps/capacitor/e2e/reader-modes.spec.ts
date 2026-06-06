@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { reader } from "./page-objects/reader";
 import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
+import { reader } from "./page-objects/reader";
 
 /**
  * ADR-0002: Word position is canonical. After a tour through every reader view

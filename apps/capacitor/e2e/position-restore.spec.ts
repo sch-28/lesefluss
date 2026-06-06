@@ -1,12 +1,16 @@
 import { expect, test } from "@playwright/test";
-import { reader } from "./page-objects/reader";
 import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
+import { reader } from "./page-objects/reader";
 
-test("reader restores saved word position after closing and reopening the book", async ({ page }) => {
+test("reader restores saved word position after closing and reopening the book", async ({
+	page,
+}) => {
 	const title = await seedStrayAnchorBook(page);
 
 	await openBookFromLibrary(page, title);
-	await expect(page.locator("body")).toContainText("Chapter 1 opening paragraph anchors the scene.");
+	await expect(page.locator("body")).toContainText(
+		"Chapter 1 opening paragraph anchors the scene.",
+	);
 
 	// Jump to chapter 2 via TOC. savePosition() writes books.wordPosition.
 	const savePending = reader.waitForNextSave(page);

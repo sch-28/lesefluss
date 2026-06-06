@@ -26,10 +26,9 @@ test("opening then closing a book writes a reading_sessions flush row", async ({
 	await page.waitForURL(/\/tabs\/library/, { timeout: 5000 });
 
 	await expect
-		.poll(
-			async () => page.evaluate(() => window.__lesefluss_e2e_session?.count ?? 0),
-			{ timeout: 10_000 },
-		)
+		.poll(async () => page.evaluate(() => window.__lesefluss_e2e_session?.count ?? 0), {
+			timeout: 10_000,
+		})
 		.toBeGreaterThanOrEqual(1);
 
 	const session = await page.evaluate(() => window.__lesefluss_e2e_session ?? null);

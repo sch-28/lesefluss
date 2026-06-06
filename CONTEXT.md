@@ -46,6 +46,27 @@ A continuous reading session: start, end, words read, target book. Lives in the 
 
 ---
 
+## Storage
+
+### Chunked column
+
+A large TEXT column in `book_content` (`content`, `wordIndex`) read and written in
+bridge-sized pieces rather than one value. Moving a multi-megabyte string across the Capacitor
+SQLite bridge in a single statement OOMs the native side (`JSONObject.toString` on the whole
+param/result). The chunked-column module (`services/db/long-text.ts`) appends with
+`SET col = col || ?` and reads with `substr`/`length`, capped at a fixed character count per
+round-trip. See ADR-0003.
+
+### Local-only book
+
+A book whose plain-text `content` exceeds [`MAX_SYNCED_CONTENT_BYTES`](packages/core/src/sync.ts)
+(20 MB). It is stored and read on the importing device but excluded from cloud sync: its content
+and wordIndex would exceed the bridge and server-body limits, and its wordIndex is not persisted
+(rebuilt on open). Eligibility is a pure function of `books.size` via `isSyncEligible(book)`; there
+is no separate flag. See ADR-0003.
+
+---
+
 ## Devices
 
 ### Reader device

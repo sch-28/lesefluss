@@ -220,44 +220,47 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		}
 	}, []);
 
-	const connect = useCallback(async (deviceId: string): Promise<boolean> => {
-		if (IS_WEB) return false;
-		setError(null);
+	const connect = useCallback(
+		async (deviceId: string): Promise<boolean> => {
+			if (IS_WEB) return false;
+			setError(null);
 
-		const result = await bleClient.connect(deviceId);
-		log("ble", "connect result:", JSON.stringify(result));
+			const result = await bleClient.connect(deviceId);
+			log("ble", "connect result:", JSON.stringify(result));
 
-		if (result.success && result.data) {
-			setConnectedDevice(result.data);
-			setConnectedDescriptorId(bleClient.connectedDescriptorId);
-			setConnectionState(BLEConnectionState.CONNECTED);
-			setIsConnected(true);
-			setScannedDevices([]);
-			isConnectingRef.current = false;
+			if (result.success && result.data) {
+				setConnectedDevice(result.data);
+				setConnectedDescriptorId(bleClient.connectedDescriptorId);
+				setConnectionState(BLEConnectionState.CONNECTED);
+				setIsConnected(true);
+				setScannedDevices([]);
+				isConnectingRef.current = false;
 
-			// Save device row = pair. Presence in `devices` is what gates future
-			// silent auto-connect.
-			try {
-				await queries.saveDevice({
-					id: result.data.deviceId,
-					name: result.data.name || "Lesefluss",
-					lastConnected: Date.now(),
-					descriptorId: bleClient.connectedDescriptorId,
-				});
-				await refreshPaired();
-			} catch (err) {
-				log.error("ble", "Failed to save device to database:", err);
+				// Save device row = pair. Presence in `devices` is what gates future
+				// silent auto-connect.
+				try {
+					await queries.saveDevice({
+						id: result.data.deviceId,
+						name: result.data.name || "Lesefluss",
+						lastConnected: Date.now(),
+						descriptorId: bleClient.connectedDescriptorId,
+					});
+					await refreshPaired();
+				} catch (err) {
+					log.error("ble", "Failed to save device to database:", err);
+				}
+
+				// Notify any registered post-connect hook (e.g. BookSyncContext)
+				onConnectedRef.current?.(result.data.deviceId);
+
+				return true;
 			}
-
-			// Notify any registered post-connect hook (e.g. BookSyncContext)
-			onConnectedRef.current?.(result.data.deviceId);
-
-			return true;
-		}
-		log.error("ble", "Failed to connect:", result.error);
-		setError(result.error || "Failed to connect");
-		return false;
-	}, [refreshPaired]);
+			log.error("ble", "Failed to connect:", result.error);
+			setError(result.error || "Failed to connect");
+			return false;
+		},
+		[refreshPaired],
+	);
 
 	const disconnect = useCallback(async () => {
 		if (IS_WEB) return;

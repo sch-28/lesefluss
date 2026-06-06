@@ -15,5 +15,7 @@ test("catalog book detail 404 surfaces a 'Couldn't load book' message", async ({
 
 	await page.goto(`/tabs/explore/book/${encodeURIComponent(CATALOG_ID)}`);
 
-	await expect(page.getByRole("heading", { name: "Couldn't load book" })).toBeVisible({ timeout: 10_000 });
+	await expect(page.getByRole("heading", { name: "Couldn't load book" })).toBeVisible({
+		timeout: 10_000,
+	});
 });

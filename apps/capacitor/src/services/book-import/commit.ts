@@ -15,6 +15,14 @@ import type { ImportExtras } from "./types";
 const BOOKS_DIR = "books";
 
 /**
+ * Chunk size for writing the original file. A multiple of 3 so each slice
+ * base64-encodes to a self-contained block with no interior `=` padding, which
+ * keeps the on-disk concatenation valid. Bounds peak base64 string size (~4MB)
+ * instead of encoding the whole file into one ~67MB string.
+ */
+const CHUNK_BYTES = 3 * 1024 * 1024;
+
+/**
  * Persist a parsed `BookPayload` to the database and (on native) save the
  * original file bytes to disk. Single writer for all import paths.
  */
@@ -44,16 +52,20 @@ export async function commitBook(payload: BookPayload, extras: ImportExtras): Pr
 		payload.linkRanges ?? null,
 	);
 
-	let filePath: string | null = null;
 	if (payload.original && Capacitor.isNativePlatform()) {
-		filePath = `${BOOKS_DIR}/${id}.${payload.original.extension}`;
-		await ensureBooksDir();
-		await Filesystem.writeFile({
-			path: filePath,
-			data: arrayBufferToBase64(payload.original.bytes),
-			directory: Directory.Data,
-		});
-		await queries.updateBook(id, { filePath });
+		const filePath = `${BOOKS_DIR}/${id}.${payload.original.extension}`;
+		try {
+			await ensureBooksDir();
+			await writeFileInChunks(filePath, payload.original.bytes);
+			await queries.updateBook(id, { filePath });
+		} catch (err) {
+			// The book row + content are already committed and fully readable; the
+			// original file is only kept for re-parse. A partial chunked write would
+			// leave a corrupt file, so drop it and keep the book without a filePath
+			// (same state as txt imports, which never store an original).
+			log.warn("book-import", "Failed to save original file; keeping book without it:", err);
+			await Filesystem.deleteFile({ path: filePath, directory: Directory.Data }).catch(() => {});
+		}
 	}
 
 	const stored = await queries.getBook(id);
@@ -77,6 +89,23 @@ export async function removeBook(book: Pick<Book, "id" | "filePath">): Promise<v
 	}
 
 	await queries.deleteBook(book.id);
+}
+
+/**
+ * Write `bytes` to `path` under `Directory.Data` in base64 chunks. The first
+ * chunk creates/replaces the file, the rest append, so peak memory stays bounded
+ * by `CHUNK_BYTES` rather than the whole file.
+ */
+async function writeFileInChunks(path: string, bytes: ArrayBuffer): Promise<void> {
+	for (let offset = 0; offset < bytes.byteLength; offset += CHUNK_BYTES) {
+		const slice = bytes.slice(offset, offset + CHUNK_BYTES);
+		const data = arrayBufferToBase64(slice);
+		if (offset === 0) {
+			await Filesystem.writeFile({ path, data, directory: Directory.Data });
+		} else {
+			await Filesystem.appendFile({ path, data, directory: Directory.Data });
+		}
+	}
 }
 
 async function ensureBooksDir(): Promise<void> {

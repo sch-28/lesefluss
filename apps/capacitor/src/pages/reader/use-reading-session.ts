@@ -15,8 +15,8 @@ import { readingSessionKeys, statsKeys } from "../../services/db/hooks/query-key
 import { queries } from "../../services/db/queries";
 import { queryClient } from "../../services/query-client";
 import { scheduleSyncPush } from "../../services/sync";
-import { log } from "../../utils/log";
 import { publishSessionPersist } from "../../test-hooks/reader";
+import { log } from "../../utils/log";
 import {
 	type DebugSnapshot,
 	POLL_MS,

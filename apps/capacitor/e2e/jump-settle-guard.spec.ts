@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { reader } from "./page-objects/reader";
 import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
+import { reader } from "./page-objects/reader";
 
 /**
  * Regression for the jump → scroll-settle race: after a TOC jump,

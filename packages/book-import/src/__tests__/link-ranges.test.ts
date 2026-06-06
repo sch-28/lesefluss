@@ -27,16 +27,15 @@ describe("extractParagraphsWithLinks", () => {
 		const { content, links } = extractParagraphsWithLinks(body);
 
 		expect(content).toBe("See link one here.\n\nAnd link two there.");
-		expect(links.map((l) => l.href)).toEqual([
-			"https://a.example/one",
-			"https://b.example/two",
-		]);
+		expect(links.map((l) => l.href)).toEqual(["https://a.example/one", "https://b.example/two"]);
 		expect(content.slice(links[0].startChar, links[0].endChar)).toBe("link one");
 		expect(content.slice(links[1].startChar, links[1].endChar)).toBe("link two");
 	});
 
 	it("handles a link whose text has nested markup and inner whitespace", () => {
-		const body = parse('<p>Go to <a href="https://x.example/y"> the  <em>big</em>  site </a> ok.</p>');
+		const body = parse(
+			'<p>Go to <a href="https://x.example/y"> the  <em>big</em>  site </a> ok.</p>',
+		);
 		const { content, links } = extractParagraphsWithLinks(body);
 
 		expect(content).toBe("Go to the big site ok.");
@@ -45,13 +44,13 @@ describe("extractParagraphsWithLinks", () => {
 
 	it("drops anchors, relative paths, and dangerous schemes", () => {
 		const body = parse(
-			'<p>' +
+			"<p>" +
 				'<a href="#footnote">note</a> ' +
 				'<a href="chapter2.xhtml">next</a> ' +
 				'<a href="javascript:alert(1)">evil</a> ' +
 				'<a href="data:text/html,x">data</a> ' +
 				'<a href="https://safe.example">safe</a>' +
-				'</p>',
+				"</p>",
 		);
 		const { links } = extractParagraphsWithLinks(body);
 
@@ -60,7 +59,8 @@ describe("extractParagraphsWithLinks", () => {
 	});
 
 	it("produces content identical to extractParagraphs", () => {
-		const html = '<h1>Title</h1><p>Has a <a href="https://e.example">link</a>.</p><ul><li>One</li></ul>';
+		const html =
+			'<h1>Title</h1><p>Has a <a href="https://e.example">link</a>.</p><ul><li>One</li></ul>';
 		const body = parse(html);
 		expect(extractParagraphsWithLinks(body).content).toBe(extractParagraphs(body));
 	});

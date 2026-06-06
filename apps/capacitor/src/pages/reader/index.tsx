@@ -60,6 +60,7 @@ import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Chapter, GlossaryEntry } from "../../services/db/schema";
 import { providerLabel } from "../../services/serial-scrapers";
 import { pushSync, scheduleSyncPush } from "../../services/sync";
+import { publishLinkOpen, publishPositionSave, publishProgressWord } from "../../test-hooks/reader";
 import { formatReadingTime } from "../../utils/reading-time";
 import { setJustRead } from "../library/just-read-pin";
 import AnnotationsSheet from "./annotations-sheet";
@@ -94,9 +95,8 @@ import {
 	useGlossaryDecorations,
 } from "./use-glossary-decorations";
 import { useHighlightSelection } from "./use-highlight-selection";
-import { useLinkDecorations } from "./use-link-decorations";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
-import { publishLinkOpen, publishPositionSave, publishProgressWord } from "../../test-hooks/reader";
+import { useLinkDecorations } from "./use-link-decorations";
 import { type ReadingSessionMode, useReadingSession } from "./use-reading-session";
 import { useScrubProgress } from "./use-scrub-progress";
 import type { ReaderViewHandle } from "./view-types";

@@ -3,6 +3,7 @@ import type React from "react";
 import BookCover from "../../components/book-cover";
 import { DeviceBadge } from "../../components/device-sync";
 import type { Book } from "../../services/db/schema";
+import { SyncExcludedBadge } from "./sync-excluded-badge";
 import { useLongPress } from "./use-long-press";
 
 type BookListItemProps = {
@@ -48,7 +49,10 @@ const BookListItem: React.FC<BookListItemProps> = ({
 						</span>
 					</div>
 				)}
-				<DeviceBadge bookId={book.id} style="block" />
+				<div className="mt-1 flex flex-wrap items-center gap-1.5">
+					<DeviceBadge bookId={book.id} style="block" />
+					<SyncExcludedBadge book={book} />
+				</div>
 			</div>
 		</div>
 	);

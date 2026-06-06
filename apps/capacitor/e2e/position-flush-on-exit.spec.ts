@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { reader } from "./page-objects/reader";
 import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
+import { reader } from "./page-objects/reader";
 
 /**
  * Companion to position-restore.spec.ts. That test waits for `savePosition()`

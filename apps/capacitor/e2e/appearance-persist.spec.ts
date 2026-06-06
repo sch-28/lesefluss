@@ -31,7 +31,10 @@ test("font-size adjustment persists across a reload", async ({ page }) => {
 	await openBookFromLibrary(page, title);
 
 	await page.getByRole("button", { name: "Appearance settings" }).click();
-	const restoredText = await page.locator(".ap-row-value", { hasText: /^\d+px$/ }).first().textContent();
+	const restoredText = await page
+		.locator(".ap-row-value", { hasText: /^\d+px$/ })
+		.first()
+		.textContent();
 	const restoredSize = Number.parseInt((restoredText ?? "0").replace("px", ""), 10);
 	expect(restoredSize).toBe(afterSize);
 });

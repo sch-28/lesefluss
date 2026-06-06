@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
-import { reader } from "./page-objects/reader";
 import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
+import { reader } from "./page-objects/reader";
 
 /**
  * Durable-resume layer (src/pages/reader/pending-position.ts). `savePosition`

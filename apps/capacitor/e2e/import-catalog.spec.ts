@@ -1,8 +1,8 @@
-import { expect, test } from "@playwright/test";
 import {
 	buildEpubBuffer,
 	strayAnchorFixture,
 } from "@lesefluss/book-import/test-fixtures/build-epub";
+import { expect, test } from "@playwright/test";
 import { mockCatalogBook } from "./helpers/catalog-mock";
 import { resetStorage } from "./helpers/seed";
 
@@ -31,13 +31,18 @@ test("imports a book via the catalog flow with mocked endpoints", async ({ page 
 		await epubResponse;
 		await page.waitForURL(/\/tabs\/library/, { timeout: 20_000 });
 
-		const card = page.locator(`[data-testid="library-card"][data-book-title="${fixture.title ?? ""}"]`);
+		const card = page.locator(
+			`[data-testid="library-card"][data-book-title="${fixture.title ?? ""}"]`,
+		);
 		await expect(card).toBeVisible({ timeout: 15_000 });
 		await card.click();
 		await page.waitForURL(/\/tabs\/reader\//, { timeout: 10_000 });
-		await expect(page.locator("body")).toContainText("Chapter 1 sixth paragraph closes the chapter completely.", {
-			timeout: 10_000,
-		});
+		await expect(page.locator("body")).toContainText(
+			"Chapter 1 sixth paragraph closes the chapter completely.",
+			{
+				timeout: 10_000,
+			},
+		);
 	} finally {
 		await cleanup();
 	}

@@ -17,6 +17,8 @@ const ERROR_TOASTS: Record<string, { msg: string; color: "warning" | "danger" }>
 	EMPTY: { msg: "Nothing to paste", color: "warning" },
 	INVALID_URL: { msg: "That doesn't look like a URL", color: "warning" },
 	TOO_LARGE: { msg: "Page too large to import", color: "warning" },
+	FILE_TOO_LARGE: { msg: "File too large to import", color: "warning" },
+	FILE_READ_FAILED: { msg: "Couldn't read this file", color: "warning" },
 	PDF_ENCRYPTED: { msg: "Password-protected PDFs aren't supported", color: "warning" },
 	PDF_NO_TEXT: { msg: "This PDF has no selectable text", color: "warning" },
 	EPUB_INVALID: { msg: "This EPUB file is corrupted or unsupported", color: "warning" },

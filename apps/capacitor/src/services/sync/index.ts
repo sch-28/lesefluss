@@ -4,6 +4,7 @@ import {
 	beginAuthHandoff,
 	consumeAuthHandoffState,
 	finalizeVerifiedAuthHandoffLogin,
+	isSyncEligible,
 	pick,
 	SYNCED_SETTING_KEYS,
 	type SyncBook,
@@ -793,10 +794,18 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 
 		// Pristine pending chapter rows carry zero user data and are excluded from the
 		// push payload — they will be recreated on any device via useChapterListSync.
-		const booksForPush = books.filter(shouldPushBook);
+		const pushable = books.filter(shouldPushBook);
+		// Oversized books are local-only: their content/wordIndex exceed the bridge +
+		// server limits, so they never leave the importing device. Their highlights and
+		// glossary entries drop out automatically below (filtered by pushedBookIds);
+		// reading sessions intentionally outlive the book, as for deletions.
+		const booksForPush = pushable.filter(isSyncEligible);
 		const pushedBookIds = new Set(booksForPush.map((book) => book.id));
-		const filteredOut = books.length - booksForPush.length;
+		const filteredOut = books.length - pushable.length;
 		if (filteredOut > 0) log("sync", `push: excluded ${filteredOut} pristine pending chapter rows`);
+		const localOnly = pushable.length - booksForPush.length;
+		if (localOnly > 0)
+			log("sync", `push: excluded ${localOnly} local-only books (too large to sync)`);
 
 		// Fetch content only for books the server doesn't have yet (tombstones never carry content,
 		// and chapter rows never sync content — see bookToSync).

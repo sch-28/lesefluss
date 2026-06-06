@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { reader } from "./page-objects/reader";
 import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
+import { reader } from "./page-objects/reader";
 
 test("RSVP play advances the active word; pause stops it", async ({ page }) => {
 	const title = await seedStrayAnchorBook(page);

@@ -1,7 +1,13 @@
 import type { Chapter as ImportChapter, ImportLink } from "@lesefluss/book-import";
-import { byteRangeToWordRange, type SerializedWordIndex, WordIndex } from "@lesefluss/core";
+import {
+	byteRangeToWordRange,
+	MAX_SYNCED_CONTENT_BYTES,
+	type SerializedWordIndex,
+	WordIndex,
+} from "@lesefluss/core";
 import { and, desc, eq, isNull, ne } from "drizzle-orm";
 import { db } from "../index";
+import { appendLongText, LONG_TEXT_CHUNK, type LongTextExecutor, readLongText } from "../long-text";
 import {
 	type Book,
 	type BookContent,
@@ -13,6 +19,12 @@ import {
 	type LinkRange,
 	type NewBook,
 } from "../schema";
+
+/** The production drizzle proxy as a chunked-column executor (see long-text.ts). */
+const longText: LongTextExecutor = {
+	run: (q) => db.run(q),
+	get: (q) => db.get(q) as Promise<unknown[] | undefined>,
+};
 
 /**
  * Fetch standalone books for the library grid (metadata only) ordered by most
@@ -88,10 +100,33 @@ export async function getBookByCatalogId(catalogId: string): Promise<Book | null
 /**
  * Fetch book content (plain text, cover, chapters) by book id.
  * Returns undefined if the book or its content doesn't exist.
+ *
+ * `content` is read in chunks so a large book doesn't cross the Capacitor bridge
+ * as one giant string (see long-text.ts). `wordIndex` is omitted here; callers
+ * that need it use `loadBookWordIndex`, and folding it in would double the
+ * chunked read for nothing.
  */
 export async function getBookContent(id: string): Promise<BookContent | undefined> {
-	const rows = await db.select().from(bookContent).where(eq(bookContent.bookId, id));
-	return rows[0];
+	const rows = await db
+		.select({
+			bookId: bookContent.bookId,
+			coverImage: bookContent.coverImage,
+			chapters: bookContent.chapters,
+			linkRanges: bookContent.linkRanges,
+		})
+		.from(bookContent)
+		.where(eq(bookContent.bookId, id));
+	const row = rows[0];
+	if (!row) return undefined;
+	const content = await readLongText(
+		longText,
+		bookContent,
+		bookContent.content,
+		bookContent.bookId,
+		id,
+	);
+	if (content === null) return undefined;
+	return { ...row, content, wordIndex: null };
 }
 
 /**
@@ -107,21 +142,30 @@ export async function getBookContent(id: string): Promise<BookContent | undefine
  * commit, plus any corruption recovery.
  */
 export async function loadBookWordIndex(id: string): Promise<WordIndex | null> {
-	const rows = await db
-		.select({ wordIndex: bookContent.wordIndex, content: bookContent.content })
-		.from(bookContent)
-		.where(eq(bookContent.bookId, id));
-	const row = rows[0];
-	if (!row) return null;
-	if (row.wordIndex && row.content) {
+	const content = await readLongText(
+		longText,
+		bookContent,
+		bookContent.content,
+		bookContent.bookId,
+		id,
+	);
+	if (content === null) return null;
+	// Oversized books store word_index = NULL (see commitBookContent); rebuild here.
+	const wiJson = await readLongText(
+		longText,
+		bookContent,
+		bookContent.wordIndex,
+		bookContent.bookId,
+		id,
+	);
+	if (wiJson) {
 		try {
-			return WordIndex.deserialize(JSON.parse(row.wordIndex) as SerializedWordIndex, row.content);
+			return WordIndex.deserialize(JSON.parse(wiJson) as SerializedWordIndex, content);
 		} catch {
 			// Fall through to rebuild from content.
 		}
 	}
-	if (row.content) return WordIndex.build(row.content);
-	return null;
+	return WordIndex.build(content);
 }
 
 /**
@@ -150,10 +194,93 @@ export function parseLinkRanges(raw: string | null): LinkRange[] {
 	}
 }
 
+type BookContentColumns = {
+	coverImage: string | null;
+	chapters: string | null;
+	linkRanges: string | null;
+	/** Serialized WordIndex, or null for oversized books (rebuilt on open). */
+	wordIndexJson: string | null;
+};
+
+/**
+ * Single writer for a book + its content row. Owns the chunked-write and
+ * atomicity invariant so both import paths share it.
+ *
+ * `content` and `wordIndex` can each be tens of MB; writing them in one insert
+ * OOMs the Capacitor bridge (see long-text.ts). When everything fits one bridge
+ * chunk we keep the plain single insert (the common path, unchanged). Otherwise
+ * we seed the row with the small columns and append the large ones in chunks. On
+ * any failure both rows are deleted so a partial write doesn't orphan content.
+ */
+async function commitBookContent(
+	book: NewBook,
+	content: string,
+	cols: BookContentColumns,
+): Promise<void> {
+	const { coverImage, chapters, linkRanges, wordIndexJson } = cols;
+	const fitsOneChunk =
+		content.length <= LONG_TEXT_CHUNK && (wordIndexJson?.length ?? 0) <= LONG_TEXT_CHUNK;
+
+	try {
+		await db.insert(books).values(book);
+		if (fitsOneChunk) {
+			await db.insert(bookContent).values({
+				bookId: book.id,
+				content,
+				coverImage,
+				chapters,
+				wordIndex: wordIndexJson,
+				linkRanges,
+			});
+			return;
+		}
+		await db.insert(bookContent).values({
+			bookId: book.id,
+			content: "",
+			coverImage,
+			chapters,
+			wordIndex: wordIndexJson === null ? null : "",
+			linkRanges,
+		});
+		await appendLongText(
+			longText,
+			bookContent,
+			bookContent.content,
+			bookContent.bookId,
+			book.id,
+			content,
+		);
+		if (wordIndexJson !== null) {
+			await appendLongText(
+				longText,
+				bookContent,
+				bookContent.wordIndex,
+				bookContent.bookId,
+				book.id,
+				wordIndexJson,
+			);
+		}
+	} catch (err) {
+		await db
+			.delete(bookContent)
+			.where(eq(bookContent.bookId, book.id))
+			.catch(() => {});
+		await db
+			.delete(books)
+			.where(eq(books.id, book.id))
+			.catch(() => {});
+		throw err;
+	}
+}
+
+/** Serialize the WordIndex unless the book is too large to sync. Oversized books
+ *  store word_index = NULL and rebuild it on open, avoiding a ~100MB chunked blob. */
+function wordIndexJsonFor(book: NewBook, wi: WordIndex): string | null {
+	return (book.size ?? 0) > MAX_SYNCED_CONTENT_BYTES ? null : JSON.stringify(wi.serialize());
+}
+
 /**
  * Insert a new book with its content. The id (8-char hex) is part of the book param.
- *
- * Inserts into `books` (metadata) then `book_content` (large data).
  */
 export async function addBookWithContent(
 	book: NewBook,
@@ -175,15 +302,11 @@ export async function addBookWithContent(
 		...byteRangeToWordRange(wi, l.startByte, l.endByte),
 	}));
 
-	await db.insert(books).values({ ...book, wordCount: wi.wordCount });
-
-	await db.insert(bookContent).values({
-		bookId: book.id,
-		content,
+	await commitBookContent({ ...book, wordCount: wi.wordCount }, content, {
 		coverImage: coverImage ?? null,
 		chapters: dbChapters.length ? JSON.stringify(dbChapters) : null,
-		wordIndex: JSON.stringify(wi.serialize()),
 		linkRanges: dbLinks.length ? JSON.stringify(dbLinks) : null,
+		wordIndexJson: wordIndexJsonFor(book, wi),
 	});
 
 	return book.id;
@@ -192,10 +315,7 @@ export async function addBookWithContent(
 /**
  * Pull-sync insert path. Server delivers chapters already in DB shape
  * ({title, startWord}); preserve the server's wordCount when available so
- * chapter offsets stay coherent across devices. We still build a local
- * WordIndex blob for fast reader open, but the count of record stays the
- * server's. Inserts run sequentially; if the second insert fails the first
- * is rolled back by the surrounding sync transaction.
+ * chapter offsets stay coherent across devices.
  */
 export async function addServerBookWithContent(
 	book: NewBook,
@@ -206,14 +326,11 @@ export async function addServerBookWithContent(
 ): Promise<string> {
 	const wi = WordIndex.build(content);
 	const wordCount = book.wordCount && book.wordCount > 0 ? book.wordCount : wi.wordCount;
-	await db.insert(books).values({ ...book, wordCount });
-	await db.insert(bookContent).values({
-		bookId: book.id,
-		content,
+	await commitBookContent({ ...book, wordCount }, content, {
 		coverImage: coverImage ?? null,
 		chapters: chaptersJson ?? null,
-		wordIndex: JSON.stringify(wi.serialize()),
 		linkRanges: linkRangesJson ?? null,
+		wordIndexJson: wordIndexJsonFor(book, wi),
 	});
 	return book.id;
 }

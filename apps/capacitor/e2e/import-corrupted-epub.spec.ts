@@ -14,7 +14,13 @@ test("corrupted EPUB surfaces a user-visible toast", async ({ page }) => {
 	const chooserPromise = page.waitForEvent("filechooser");
 	await page.getByRole("button", { name: "Import file" }).click();
 	const chooser = await chooserPromise;
-	await chooser.setFiles({ name: "broken.epub", mimeType: "application/epub+zip", buffer: garbage });
+	await chooser.setFiles({
+		name: "broken.epub",
+		mimeType: "application/epub+zip",
+		buffer: garbage,
+	});
 
-	await expect(page.getByText("This EPUB file is corrupted or unsupported")).toBeVisible({ timeout: 10_000 });
+	await expect(page.getByText("This EPUB file is corrupted or unsupported")).toBeVisible({
+		timeout: 10_000,
+	});
 });

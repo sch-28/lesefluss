@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
 
-test("readerActiveWordUnderline toggle adds/removes .word-active on the active span", async ({ page }) => {
+test("readerActiveWordUnderline toggle adds/removes .word-active on the active span", async ({
+	page,
+}) => {
 	const title = await seedStrayAnchorBook(page);
 	await openBookFromLibrary(page, title);
 

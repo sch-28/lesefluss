@@ -11,6 +11,7 @@ import type React from "react";
 import BookCover from "../../components/book-cover";
 import { DeviceBadge } from "../../components/device-sync";
 import type { Book } from "../../services/db/schema";
+import { SyncExcludedBadge } from "./sync-excluded-badge";
 import { useLongPress } from "./use-long-press";
 
 type BookCardProps = {
@@ -53,6 +54,7 @@ const BookCard: React.FC<BookCardProps> = ({ book, cover, progress, started, onO
 				{book.author && (
 					<div className="mt-0.5 truncate text-[0.75rem] text-muted-foreground">{book.author}</div>
 				)}
+				<SyncExcludedBadge book={book} className="mt-1" />
 			</div>
 		</div>
 	);

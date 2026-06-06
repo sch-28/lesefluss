@@ -1,4 +1,5 @@
 import { displayHostname } from "@lesefluss/book-import";
+import { isSyncEligible } from "@lesefluss/core";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -17,6 +18,7 @@ import { useMemo, useState } from "react";
 import { DeviceBadge } from "../../components/device-sync";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useBookDeviceState } from "../../contexts/device-library-context";
+import { useSyncContext } from "../../contexts/sync-context";
 import { useBookDeviceActions } from "../../hooks/use-book-device-actions";
 import { externalSourceUrl, getCatalogBook, getCoverUrl } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
@@ -38,6 +40,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const id = propId ?? "";
 	const router = useRouter();
 	const { activeBookId, isTransferring } = useBookSync();
+	const { isLoggedIn } = useSyncContext();
 
 	const { data: book, isPending } = queryHooks.useBook(id);
 	const { data: content } = queryHooks.useBookContent(id);
@@ -172,6 +175,11 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				externalLink={externalUrl ? { href: externalUrl } : undefined}
 				headerAction={deleteHeaderAction}
 			>
+				{isLoggedIn && !isSyncEligible(book) && (
+					<div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
+						Stored on this device only. Too large to sync to the cloud.
+					</div>
+				)}
 				<BookStatsCard bookId={book.id} />
 				<SessionTable mode="book" bookId={book.id} />
 			</DetailShell>

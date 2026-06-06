@@ -1,6 +1,23 @@
 import { z } from "zod";
 import { HEX_COLOR_REGEX, SETTING_CONSTRAINTS } from "./settings";
 
+/**
+ * Max plain-text content size (UTF-8 bytes) a book may have to be eligible for
+ * cloud sync. Larger books stay **local-only**: their `content` (and the
+ * ~1.5-2x larger wordIndex) would blow the Capacitor bridge marshalling on the
+ * client and the request-body limit on the server. Single source of truth for
+ * the client exclusion filter, the server Zod cap, and the UI warning.
+ */
+export const MAX_SYNCED_CONTENT_BYTES = 20_000_000;
+
+/**
+ * Whether a book participates in cloud sync. Oversized books are local-only.
+ * Tombstones always sync so deletions propagate regardless of size.
+ */
+export function isSyncEligible(book: { size: number; deleted?: boolean | null }): boolean {
+	return Boolean(book.deleted) || book.size <= MAX_SYNCED_CONTENT_BYTES;
+}
+
 // ---------------------------------------------------------------------------
 // Zod schemas - runtime validation on server, type source-of-truth for both apps
 // ---------------------------------------------------------------------------
@@ -12,7 +29,7 @@ export const SyncBookSchema = z.object({
 	fileSize: z.number().int().nonnegative().nullable(),
 	wordCount: z.number().int().nonnegative().nullable(),
 	wordPosition: z.number().int().nonnegative(),
-	content: z.string().max(20_000_000).nullable().optional(), // full plain text - only sent for new books
+	content: z.string().max(MAX_SYNCED_CONTENT_BYTES).nullable().optional(), // full plain text - only sent for new books
 	coverImage: z.string().max(5_000_000).nullable().optional(), // base64 cover - only sent for new books
 	chapters: z.string().max(500_000).nullable().optional(), // JSON chapters - only sent for new books
 	linkRanges: z.string().max(500_000).nullable().optional(), // JSON external hyperlinks - only sent for new books

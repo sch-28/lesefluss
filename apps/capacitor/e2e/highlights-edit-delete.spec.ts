@@ -1,6 +1,6 @@
 import { test } from "@playwright/test";
-import { reader } from "./page-objects/reader";
 import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
+import { reader } from "./page-objects/reader";
 
 test("highlight color edit persists across reload", async ({ page }) => {
 	const title = await seedStrayAnchorBook(page);

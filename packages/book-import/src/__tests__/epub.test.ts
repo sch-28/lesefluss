@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { epubParser } from "../parsers/epub";
-import { utf8ByteLength } from "../utils/encoding";
 import { buildEpub } from "../test-fixtures/build-epub";
+import { utf8ByteLength } from "../utils/encoding";
 
 async function parse(bytes: ArrayBuffer) {
 	return epubParser.parse({ kind: "bytes", bytes, fileName: "test.epub" });

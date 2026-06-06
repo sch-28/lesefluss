@@ -1,15 +1,17 @@
-import { expect, test } from "@playwright/test";
 import {
 	buildEpubBuffer,
 	strayAnchorFixture,
 } from "@lesefluss/book-import/test-fixtures/build-epub";
+import { expect, test } from "@playwright/test";
 import { importEpubViaFilePicker, openBookFromLibrary, resetStorage } from "./helpers/seed";
 
 test.beforeEach(async ({ page }) => {
 	await resetStorage(page);
 });
 
-test("imports an EPUB with stray page anchors and renders full chapter content", async ({ page }) => {
+test("imports an EPUB with stray page anchors and renders full chapter content", async ({
+	page,
+}) => {
 	const fixture = strayAnchorFixture();
 	const buffer = await buildEpubBuffer(fixture);
 	await importEpubViaFilePicker(page, {
