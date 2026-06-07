@@ -1,4 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@lesefluss/ui/dialog";
 import { Check, Mail, MessageSquareText, Send } from "lucide-react";
 import * as React from "react";
 import { seo } from "~/utils/seo";
@@ -30,8 +38,9 @@ function FeedbackPage() {
 	const [email, setEmail] = React.useState("");
 	const [company, setCompany] = React.useState("");
 	const [state, setState] = React.useState<SubmitState>({ kind: "idle" });
+	const [showEmailWarning, setShowEmailWarning] = React.useState(false);
 
-	async function submit(e: React.FormEvent<HTMLFormElement>) {
+	function submit(e: React.FormEvent<HTMLFormElement>) {
 		e.preventDefault();
 		const trimmedMessage = message.trim();
 		if (trimmedMessage.length < 10) {
@@ -39,6 +48,16 @@ function FeedbackPage() {
 			return;
 		}
 
+		if (email.trim().length === 0) {
+			setShowEmailWarning(true);
+			return;
+		}
+
+		void sendFeedback(trimmedMessage);
+	}
+
+	async function sendFeedback(trimmedMessage: string) {
+		setShowEmailWarning(false);
 		setState({ kind: "submitting" });
 		try {
 			const res = await fetch("/api/feedback", {
@@ -209,6 +228,48 @@ function FeedbackPage() {
 					)}
 				</div>
 			</section>
+
+			<Dialog open={showEmailWarning} onOpenChange={setShowEmailWarning}>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Send without an email?</DialogTitle>
+						<DialogDescription>
+							Without an email I won't be able to reach you for details or follow-up questions. You
+							can add one below, or send anyway.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-2">
+						<label htmlFor="feedback-email-warning" className="font-medium text-sm">
+							Email <span className="font-normal text-muted-foreground">(optional)</span>
+						</label>
+						<input
+							id="feedback-email-warning"
+							type="email"
+							placeholder="you@example.com"
+							value={email}
+							onChange={(e) => setEmail(e.target.value)}
+							className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground/40"
+						/>
+					</div>
+					<DialogFooter>
+						<button
+							type="button"
+							onClick={() => setShowEmailWarning(false)}
+							className="rounded-xl border border-border px-4 py-2.5 font-semibold text-sm transition-colors hover:bg-muted"
+						>
+							Go back
+						</button>
+						<button
+							type="button"
+							onClick={() => void sendFeedback(message.trim())}
+							className="inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-5 py-2.5 font-semibold text-background text-sm transition-opacity hover:opacity-90"
+						>
+							<Send className="size-4" aria-hidden="true" />
+							Send anyway
+						</button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }
