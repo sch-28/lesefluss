@@ -9,6 +9,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-06-07",
+		title: "Large Book Imports and Cover Fixes",
+		tags: ["App"],
+		changes: [
+			"Large EPUBs (over 50 MB) now import reliably instead of freezing or crashing the app",
+			"Very large books are kept on the device that imported them and clearly marked as local only, since they're too big to sync to the cloud",
+			"Book cover thumbnails now load for many more EPUBs, including files that previously showed a blank placeholder",
+		],
+	},
+	{
 		date: "2026-06-02",
 		title: "Reader Links and Resume Reliability",
 		tags: ["App"],

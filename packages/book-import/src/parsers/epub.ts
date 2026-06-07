@@ -208,31 +208,130 @@ async function loadSectionBody(book: EpubBook, url: string): Promise<Element | n
 	return body;
 }
 
-async function extractCover(book: EpubBook): Promise<string | null> {
+const IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|avif|svg)$/i;
+const WRAPPER_EXT_RE = /\.(xhtml|html?)$/i;
+
+/**
+ * Collect candidate cover hrefs (relative to the OPF) in priority order. epubjs'
+ * own `coverPath` only resolves the two standard declarations (EPUB3
+ * `properties="cover-image"`, EPUB2 `<meta name="cover">`); many real files
+ * declare the cover differently, so we fall back to scanning the manifest for a
+ * cover-named image, then a cover-named page to unwrap. Deduped, order-preserving.
+ */
+function coverCandidateHrefs(book: EpubBook): string[] {
+	const out: string[] = [];
+	const push = (href?: string | null) => {
+		if (href && !out.includes(href)) out.push(href);
+	};
+
+	push(book.packaging?.coverPath);
+
+	const manifest = book.packaging?.manifest ?? {};
+	const items = Object.entries(manifest).map(([id, item]) => ({ id, ...item }));
+	const isImageType = (t?: string) => !!t && t.startsWith("image/");
+
+	push(items.find((it) => it.properties?.includes("cover-image"))?.href);
+	push(items.find((it) => /cover/i.test(it.id) && isImageType(it.type))?.href);
+	push(
+		items.find(
+			(it) => /cover/i.test(it.href) && (isImageType(it.type) || IMAGE_EXT_RE.test(it.href)),
+		)?.href,
+	);
+	// Last resort: a cover-named HTML/XHTML page that wraps the image.
+	push(items.find((it) => /cover/i.test(it.href) && WRAPPER_EXT_RE.test(it.href))?.href);
+
+	return out;
+}
+
+/** Resolve `rel` (an href inside `basePath`) to a full archive path, preserving
+ *  the leading slash epubjs' resolved paths carry (getBlob expects that form). */
+function resolveRelative(basePath: string, rel: string): string {
+	if (/^(https?:|data:)/i.test(rel)) return rel;
+	const absolute = basePath.startsWith("/");
+	const baseDir = basePath.replace(/[^/]*$/, "");
+	const parts = `${baseDir}${rel}`.split("/");
+	const stack: string[] = [];
+	for (const part of parts) {
+		if (part === "" || part === ".") continue;
+		if (part === "..") stack.pop();
+		else stack.push(part);
+	}
+	return (absolute ? "/" : "") + stack.join("/");
+}
+
+function blobToDataUrl(blob: Blob): Promise<string | null> {
+	return new Promise((resolve) => {
+		const reader = new FileReader();
+		reader.onloadend = () => {
+			const result = reader.result;
+			resolve(typeof result === "string" && result.startsWith("data:image") ? result : null);
+		};
+		reader.onerror = () => resolve(null);
+		reader.readAsDataURL(blob);
+	});
+}
+
+/** Find the first image referenced by a cover wrapper page (`<img>` or SVG `<image>`). */
+async function findImageInWrapper(book: EpubBook, archivePath: string): Promise<string | null> {
 	try {
-		const coverUrl = await book.loaded.cover;
-		if (!coverUrl) return null;
-
-		const archive = book.archive;
-		if (!archive?.getBlob) return null;
-
-		const blob = await archive.getBlob(coverUrl);
-		if (!blob || blob.size === 0) return null;
-
-		return new Promise<string | null>((resolve) => {
-			const reader = new FileReader();
-			reader.onloadend = () => {
-				const result = reader.result;
-				if (typeof result === "string" && result.startsWith("data:")) {
-					resolve(result);
-				} else {
-					resolve(null);
-				}
-			};
-			reader.onerror = () => resolve(null);
-			reader.readAsDataURL(blob);
-		});
+		const result = await book.archive.request(archivePath, "xhtml");
+		const doc = result as { querySelector?: (s: string) => Element | null };
+		if (typeof doc.querySelector !== "function") return null;
+		const img = doc.querySelector("img[src]");
+		if (img) return img.getAttribute("src");
+		const image = doc.querySelector("image");
+		if (image) return image.getAttribute("xlink:href") ?? image.getAttribute("href");
+		return null;
 	} catch {
 		return null;
 	}
+}
+
+/**
+ * Load `archivePath` as a cover data URL. If it points at an HTML/XHTML wrapper
+ * page (a common cover.xhtml that embeds the real image), unwrap one level to
+ * the embedded image. SVG images load directly (renderable in <img>).
+ */
+async function loadCoverDataUrl(
+	book: EpubBook,
+	archivePath: string,
+	depth = 0,
+): Promise<string | null> {
+	if (depth > 2) return null;
+	const cleanPath = archivePath.split(/[#?]/)[0];
+
+	if (WRAPPER_EXT_RE.test(cleanPath)) {
+		const innerHref = await findImageInWrapper(book, archivePath);
+		if (!innerHref) return null;
+		return loadCoverDataUrl(book, resolveRelative(archivePath, innerHref), depth + 1);
+	}
+
+	let blob: Blob | null = null;
+	try {
+		blob = await book.archive.getBlob(archivePath);
+	} catch {
+		return null;
+	}
+	if (!blob || blob.size === 0) return null;
+	return blobToDataUrl(blob);
+}
+
+async function extractCover(book: EpubBook): Promise<string | null> {
+	if (!book.archive?.getBlob) return null;
+	for (const href of coverCandidateHrefs(book)) {
+		let archivePath: string;
+		try {
+			archivePath = book.resolve(href);
+		} catch {
+			archivePath = href;
+		}
+		const dataUrl = await loadCoverDataUrl(book, archivePath);
+		if (dataUrl) return dataUrl;
+	}
+	// A cover was declared but nothing usable loaded. Leave a trace, fall back to
+	// the format placeholder in the UI (cover is cosmetic, never blocks import).
+	if (book.packaging?.coverPath) {
+		console.warn("[book-import/epub] cover declared but could not be loaded as an image");
+	}
+	return null;
 }

@@ -22,6 +22,16 @@ export type FixtureNavPoint = {
 	children?: FixtureNavPoint[];
 };
 
+/**
+ * How the fixture declares its cover, exercising each branch of the cover
+ * extraction fallback chain:
+ * - `epub3-property`: manifest item with `properties="cover-image"`.
+ * - `epub2-meta`: `<meta name="cover" content="id">` in metadata.
+ * - `named-only`: a cover-named image with no property/meta (heuristic scan).
+ * - `xhtml-wrapper`: a non-cover-named image embedded in a `cover.xhtml` page.
+ */
+export type FixtureCoverKind = "epub3-property" | "epub2-meta" | "named-only" | "xhtml-wrapper";
+
 export type EpubFixture = {
 	title?: string;
 	creator?: string;
@@ -30,7 +40,12 @@ export type EpubFixture = {
 	navPoints?: FixtureNavPoint[];
 	useEpub3Nav?: boolean;
 	navHref?: string;
+	cover?: FixtureCoverKind;
 };
+
+/** 1x1 transparent PNG. */
+const COVER_PNG_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
 function xhtml(title: string, body: string): string {
 	return `<?xml version="1.0" encoding="UTF-8"?>
@@ -58,6 +73,38 @@ function navOlItems(points: FixtureNavPoint[]): string {
 		.join("");
 }
 
+function addCover(
+	zip: JSZip,
+	kind: FixtureCoverKind,
+): { items: string; meta: string; guide: string } {
+	if (kind === "xhtml-wrapper") {
+		zip.file("images/frontpic.png", COVER_PNG_BASE64, { base64: true });
+		zip.file(
+			"cover.xhtml",
+			`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Cover</title></head>
+<body><img src="images/frontpic.png" alt="Cover"/></body></html>`,
+		);
+		return {
+			items: `<item id="frontpic" href="images/frontpic.png" media-type="image/png"/>
+<item id="coverpage" href="cover.xhtml" media-type="application/xhtml+xml"/>`,
+			meta: "",
+			guide: `<guide><reference type="cover" title="Cover" href="cover.xhtml"/></guide>`,
+		};
+	}
+
+	zip.file("images/cover.png", COVER_PNG_BASE64, { base64: true });
+	const id = kind === "named-only" ? "coverimage" : "cover-img";
+	const properties = kind === "epub3-property" ? ' properties="cover-image"' : "";
+	const meta = kind === "epub2-meta" ? `<meta name="cover" content="${id}"/>` : "";
+	return {
+		items: `<item id="${id}" href="images/cover.png" media-type="image/png"${properties}/>`,
+		meta,
+		guide: "",
+	};
+}
+
 function buildZip(fixture: EpubFixture): JSZip {
 	const zip = new JSZip();
 	zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
@@ -78,6 +125,8 @@ function buildZip(fixture: EpubFixture): JSZip {
 	const navPoints =
 		fixture.navPoints ?? fixture.chapters.map((c) => ({ label: c.title ?? c.id, href: c.href }));
 
+	const cover = fixture.cover ? addCover(zip, fixture.cover) : { items: "", meta: "", guide: "" };
+
 	const manifest = [
 		...fixture.chapters.map(
 			(c) =>
@@ -86,7 +135,10 @@ function buildZip(fixture: EpubFixture): JSZip {
 		useNav
 			? `<item id="nav" href="${xmlEscape(navHref)}" media-type="application/xhtml+xml" properties="nav"/>`
 			: `<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>`,
-	].join("\n");
+		cover.items,
+	]
+		.filter(Boolean)
+		.join("\n");
 
 	const spineIds = fixture.spineIds ?? fixture.chapters.map((c) => c.id);
 	const spine = spineIds.map((id) => `<itemref idref="${xmlEscape(id)}"/>`).join("\n");
@@ -101,9 +153,11 @@ function buildZip(fixture: EpubFixture): JSZip {
 <dc:title>${xmlEscape(fixture.title ?? "Test")}</dc:title>
 <dc:creator>${xmlEscape(fixture.creator ?? "Tester")}</dc:creator>
 <dc:language>en</dc:language>
+${cover.meta}
 </metadata>
 <manifest>${manifest}</manifest>
 <spine${spineAttr}>${spine}</spine>
+${cover.guide}
 </package>`,
 	);
 

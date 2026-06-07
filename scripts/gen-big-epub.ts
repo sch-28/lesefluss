@@ -28,7 +28,7 @@ const WORDS = (() => {
 		const n = 2 + (i % 3);
 		let w = "";
 		for (let j = 0; j < n; j++) w += syl[(i * 7 + j * 13) % syl.length];
-		pool.push(w + i.toString(36));
+		pool.push(`${w}${i.toString(36)}`);
 	}
 	return pool;
 })();

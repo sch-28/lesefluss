@@ -1,11 +1,34 @@
 import { describe, expect, it } from "vitest";
 import { epubParser } from "../parsers/epub";
-import { buildEpub } from "../test-fixtures/build-epub";
+import { buildEpub, type FixtureCoverKind } from "../test-fixtures/build-epub";
 import { utf8ByteLength } from "../utils/encoding";
 
 async function parse(bytes: ArrayBuffer) {
 	return epubParser.parse({ kind: "bytes", bytes, fileName: "test.epub" });
 }
+
+describe("epub cover extraction", () => {
+	const chapters = [{ id: "c1", href: "c1.xhtml", title: "One", body: "<p>Hi.</p>" }];
+
+	for (const kind of [
+		"epub3-property",
+		"epub2-meta",
+		"named-only",
+		"xhtml-wrapper",
+	] satisfies FixtureCoverKind[]) {
+		it(`extracts the cover declared via ${kind}`, async () => {
+			const bytes = await buildEpub({ chapters, cover: kind });
+			const r = await parse(bytes);
+			expect(r.coverImage).toMatch(/^data:image\//);
+		});
+	}
+
+	it("returns null when no cover is declared", async () => {
+		const bytes = await buildEpub({ chapters });
+		const r = await parse(bytes);
+		expect(r.coverImage).toBeNull();
+	});
+});
 
 describe("epubParser", () => {
 	it("joins spine sections with \\n\\n and reports epub format", async () => {
