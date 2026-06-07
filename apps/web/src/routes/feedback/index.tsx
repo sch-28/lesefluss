@@ -32,8 +32,15 @@ function getSource(): string {
 	return new URLSearchParams(window.location.search).get("source") || "website";
 }
 
+const PLATFORMS = [
+	{ value: "web", label: "Web app" },
+	{ value: "extension", label: "Browser extension" },
+	{ value: "android", label: "Android app" },
+] as const;
+
 function FeedbackPage() {
 	const [type, setType] = React.useState("suggestion");
+	const [platform, setPlatform] = React.useState("");
 	const [message, setMessage] = React.useState("");
 	const [email, setEmail] = React.useState("");
 	const [company, setCompany] = React.useState("");
@@ -65,6 +72,7 @@ function FeedbackPage() {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					type,
+					platform,
 					message: trimmedMessage,
 					email: email.trim(),
 					source: getSource(),
@@ -152,6 +160,26 @@ function FeedbackPage() {
 									<option value="bug">Bug report</option>
 									<option value="question">Question</option>
 									<option value="other">Other</option>
+								</select>
+							</div>
+
+							<div className="space-y-2">
+								<label htmlFor="feedback-platform" className="font-medium text-sm">
+									Platform <span className="font-normal text-muted-foreground">(optional)</span>
+								</label>
+								<select
+									id="feedback-platform"
+									value={platform}
+									onChange={(e) => setPlatform(e.target.value)}
+									disabled={submitting}
+									className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-foreground/40"
+								>
+									<option value="">Not specified</option>
+									{PLATFORMS.map((p) => (
+										<option key={p.value} value={p.value}>
+											{p.label}
+										</option>
+									))}
 								</select>
 							</div>
 

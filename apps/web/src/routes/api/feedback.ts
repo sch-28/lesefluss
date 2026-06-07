@@ -4,6 +4,11 @@ import { checkLimit } from "~/lib/rate-limit";
 
 const FEEDBACK_TO = "feedback@lesefluss.app";
 const FEEDBACK_TYPES = ["suggestion", "bug", "question", "other"] as const;
+const PLATFORM_LABELS: Record<string, string> = {
+	web: "Web app",
+	extension: "Browser extension",
+	android: "Android app",
+};
 const MAX_BODY_BYTES = 12_000;
 
 type FeedbackType = (typeof FEEDBACK_TYPES)[number];
@@ -127,6 +132,7 @@ export const Route = createFileRoute("/api/feedback")({
 				if (limited) return limited;
 
 				const type = parseFeedbackType(getString(payload, "type"));
+				const platform = PLATFORM_LABELS[getString(payload, "platform")] ?? "Not specified";
 				const message = getString(payload, "message");
 				const email = getString(payload, "email").toLowerCase();
 				const source = getString(payload, "source").slice(0, 80) || "website";
@@ -155,6 +161,7 @@ export const Route = createFileRoute("/api/feedback")({
 						subject: `Lesefluss feedback: ${type}`,
 						html: `<p>New Lesefluss feedback:</p>
 						<p><strong>Type:</strong> ${escapeHtml(type)}</p>
+						<p><strong>Platform:</strong> ${escapeHtml(platform)}</p>
 						<p><strong>Source:</strong> ${escapeHtml(source)}</p>
 						<p><strong>Email:</strong> ${email ? escapeHtml(email) : "Not provided"}</p>
 						<hr>
