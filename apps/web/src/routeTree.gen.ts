@@ -31,6 +31,7 @@ import { Route as AuthExtensionCallbackRouteImport } from './routes/auth/extensi
 import { Route as AppSplatRouteImport } from './routes/app/$'
 import { Route as ApiTelemetryRouteImport } from './routes/api/telemetry'
 import { Route as ApiSyncRouteImport } from './routes/api/sync'
+import { Route as ApiLatestVersionRouteImport } from './routes/api/latest-version'
 import { Route as ApiFeedbackRouteImport } from './routes/api/feedback'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
@@ -149,6 +150,11 @@ const ApiSyncRoute = ApiSyncRouteImport.update({
   path: '/api/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLatestVersionRoute = ApiLatestVersionRouteImport.update({
+  id: '/api/latest-version',
+  path: '/api/latest-version',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiFeedbackRoute = ApiFeedbackRouteImport.update({
   id: '/api/feedback',
   path: '/api/feedback',
@@ -198,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/feedback': typeof ApiFeedbackRoute
+  '/api/latest-version': typeof ApiLatestVersionRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
   '/api/telemetry': typeof ApiTelemetryRoute
   '/app/$': typeof AppSplatRoute
@@ -229,6 +236,7 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/feedback': typeof ApiFeedbackRoute
+  '/api/latest-version': typeof ApiLatestVersionRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
   '/api/telemetry': typeof ApiTelemetryRoute
   '/app/$': typeof AppSplatRoute
@@ -262,6 +270,7 @@ export interface FileRoutesById {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/feedback': typeof ApiFeedbackRoute
+  '/api/latest-version': typeof ApiLatestVersionRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
   '/api/telemetry': typeof ApiTelemetryRoute
   '/app/$': typeof AppSplatRoute
@@ -295,6 +304,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/api/feedback'
+    | '/api/latest-version'
     | '/api/sync'
     | '/api/telemetry'
     | '/app/$'
@@ -326,6 +336,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/api/feedback'
+    | '/api/latest-version'
     | '/api/sync'
     | '/api/telemetry'
     | '/app/$'
@@ -358,6 +369,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/api/feedback'
+    | '/api/latest-version'
     | '/api/sync'
     | '/api/telemetry'
     | '/app/$'
@@ -391,6 +403,7 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiFeedbackRoute: typeof ApiFeedbackRoute
+  ApiLatestVersionRoute: typeof ApiLatestVersionRoute
   ApiSyncRoute: typeof ApiSyncRouteWithChildren
   ApiTelemetryRoute: typeof ApiTelemetryRoute
   AppSplatRoute: typeof AppSplatRoute
@@ -568,6 +581,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/latest-version': {
+      id: '/api/latest-version'
+      path: '/api/latest-version'
+      fullPath: '/api/latest-version'
+      preLoaderRoute: typeof ApiLatestVersionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/feedback': {
       id: '/api/feedback'
       path: '/api/feedback'
@@ -662,6 +682,7 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiFeedbackRoute: ApiFeedbackRoute,
+  ApiLatestVersionRoute: ApiLatestVersionRoute,
   ApiSyncRoute: ApiSyncRouteWithChildren,
   ApiTelemetryRoute: ApiTelemetryRoute,
   AppSplatRoute: AppSplatRoute,

@@ -65,6 +65,27 @@ function coarseOsVersion(): string | undefined {
 	return undefined;
 }
 
+function webViewVersion(): string | undefined {
+	const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+	return ua.match(/Chrome\/(\d+(?:\.\d+)*)/)?.[1];
+}
+
+export type DeviceDiagnostics = {
+	version: string;
+	platform: string;
+	os?: string;
+	webview?: string;
+};
+
+export async function getDeviceDiagnostics(): Promise<DeviceDiagnostics> {
+	return {
+		version: await getAppVersion(),
+		platform: Capacitor.getPlatform(),
+		os: coarseOsVersion(),
+		webview: webViewVersion(),
+	};
+}
+
 // Per-type throttle + per-launch cap so a device stuck in a failure loop can't
 // flood the endpoint.
 const MIN_INTERVAL_MS = 30_000;

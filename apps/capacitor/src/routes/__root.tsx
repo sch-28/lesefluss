@@ -6,6 +6,7 @@ import { HardwareBack } from "@/components/app-shell/hardware-back";
 import ShareIntentHandler from "@/components/share-intent-handler";
 import { Toaster } from "@/components/toast";
 import WhatsNewModal from "@/components/whats-new-modal";
+import { checkForUpdate } from "@/services/update-check";
 
 export const Route = createRootRoute({
 	component: RootLayout,
@@ -19,6 +20,7 @@ function RootLayout() {
 
 	useEffect(() => {
 		SplashScreen.hide().catch(() => {});
+		void checkForUpdate();
 	}, []);
 
 	return (

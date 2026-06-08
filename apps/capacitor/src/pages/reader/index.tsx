@@ -81,6 +81,7 @@ import {
 	clearPendingPosition,
 	type PendingPosition,
 	readPendingPosition,
+	recoverPendingWord,
 	writePendingPosition,
 } from "./pending-position";
 import { stripPunct } from "./rsvp-engine";
@@ -233,6 +234,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// query-cache value doesn't write that stale value back over the real
 	// position written by the prior unmount.
 	const userMovedRef = useRef(false);
+	// The word this mount resumed at (set by the seed effect). Used only for
+	// diagnostics: on teardown, a position that differs from this but is being
+	// SKIPPED (userMovedRef false) is a candidate "lost on back/quit" save.
+	const seededWordRef = useRef<number | null>(null);
 	// Timestamp of the last programmatic jump (TOC click, highlight nav, search
 	// jump, etc.). The scroll view's `onPositionSettle` fires shortly after a
 	// jump as the virtual list reconciles its scroll target; that settle's
@@ -272,6 +277,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		didSeedOffsetsRef.current = false;
 		didSeedModeRef.current = false;
 		lastWordRef.current = null;
+		seededWordRef.current = null;
 		userMovedRef.current = false;
 	}, [id]);
 
@@ -291,8 +297,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		// clobber, and seeding is not a user move). Consume the entry either way.
 		let resolved = seedWord;
 		const pending = pendingSnapshotRef.current?.value ?? null;
-		if (pending && pending.at > seedLastRead && pending.word !== seedWord) {
-			resolved = wordPos(pending.word);
+		const recovered = recoverPendingWord(seedWord, seedLastRead, pending);
+		if (recovered !== null) {
+			resolved = wordPos(recovered);
 			pendingRecoveredRef.current = resolved;
 		}
 		clearPendingPosition(id);
@@ -301,6 +308,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		setProgressWord(resolved);
 		setRsvpInitWord(resolved);
 		lastWordRef.current = resolved;
+		seededWordRef.current = resolved;
 	}, [seedWord, seedLastRead, id]);
 
 	// Live-seek when the device pushes a new position for this book over BLE.
@@ -1255,6 +1263,18 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			if (word !== null && userMovedRef.current) {
 				savePositionRef.current(word, { scheduleSync: false });
 				pushSync().catch(() => {});
+			} else if (word !== null && seededWordRef.current !== null && word !== seededWordRef.current) {
+				// We moved away from the resumed position but the gated DB save was
+				// skipped (userMovedRef false, e.g. a transient remount reset it).
+				// Without this, the moved position reaches NEITHER the DB nor the
+				// in-savePosition fallback and is lost on reopen. Mirror it to the
+				// durable fallback directly; the timestamp-gated reconcile recovers it
+				// next open and can't clobber a newer committed/synced value.
+				writePendingPosition(id, word, Date.now());
+				// Report it too so the field confirms this is the lost-progress path.
+				reportEvent("position_flush_skipped", {
+					extra: { origin: "unmount", word, seed: seededWordRef.current },
+				});
 			}
 			// Invalidate the books list so the library grid picks up the new position
 			// when the user navigates back.
@@ -1275,6 +1295,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			const word = lastWordRef.current;
 			if (word !== null && userMovedRef.current) {
 				savePositionRef.current(word, { scheduleSync: false });
+			} else if (word !== null && seededWordRef.current !== null && word !== seededWordRef.current) {
+				// Same safety net as the unmount path: durably mirror a moved-but-
+				// skipped position so a background teardown can't lose it.
+				writePendingPosition(id, word, Date.now());
+				reportEvent("position_flush_skipped", {
+					extra: { origin: "background", word, seed: seededWordRef.current },
+				});
 			}
 		};
 		const onVisibility = () => {

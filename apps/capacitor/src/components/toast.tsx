@@ -8,26 +8,34 @@ import type React from "react";
 
 export type ToastKind = "success" | "danger" | "warning" | "info";
 
+export interface ToastAction {
+	label: string;
+	onClick: () => void;
+}
+
 export interface ToastOptions {
 	duration?: number;
+	action?: ToastAction;
+	cancel?: ToastAction;
 }
 
 const DEFAULT_DURATION = 2500;
 
 function emit(message: string, kind: ToastKind, opts: ToastOptions = {}) {
-	const duration = opts.duration ?? DEFAULT_DURATION;
+	const { action, cancel } = opts;
+	const data = { duration: opts.duration ?? DEFAULT_DURATION, action, cancel };
 	switch (kind) {
 		case "success":
-			sonnerToast.success(message, { duration });
+			sonnerToast.success(message, data);
 			break;
 		case "danger":
-			sonnerToast.error(message, { duration });
+			sonnerToast.error(message, data);
 			break;
 		case "warning":
-			sonnerToast.warning(message, { duration });
+			sonnerToast.warning(message, data);
 			break;
 		default:
-			sonnerToast.info(message, { duration });
+			sonnerToast.info(message, data);
 	}
 }
 

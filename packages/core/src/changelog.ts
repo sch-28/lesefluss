@@ -14,6 +14,7 @@ export const changelog: ChangelogEntry[] = [
 		tags: ["App"],
 		changes: [
 			"The library now remembers your chosen layout (grid or list) and sort order between sessions",
+			"More reliable saving of your reading position when you leave a book or background the app",
 			"If your reading progress can't be saved on your device, the app now warns you instead of failing silently",
 			"New Settings → Privacy toggle to opt out of anonymous diagnostics (on by default, no account or personal data)",
 		],

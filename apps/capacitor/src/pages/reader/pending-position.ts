@@ -60,3 +60,23 @@ export function clearPendingPosition(bookId: string): void {
 		// ignore
 	}
 }
+
+/**
+ * Decide whether a pending fallback should override the DB-seeded resume word.
+ * Returns the recovered word, or null to keep the seeded value.
+ *
+ * Prefer the pending entry ONLY when it is strictly newer than the row's
+ * `lastRead` AND points somewhere different, so a committed save or a cloud sync
+ * from another device always wins, and writing the seed back to the fallback can
+ * never clobber a real position on the next open.
+ */
+export function recoverPendingWord(
+	seedWord: number,
+	seedLastRead: number,
+	pending: PendingPosition | null,
+): number | null {
+	if (pending && pending.at > seedLastRead && pending.word !== seedWord) {
+		return pending.word;
+	}
+	return null;
+}

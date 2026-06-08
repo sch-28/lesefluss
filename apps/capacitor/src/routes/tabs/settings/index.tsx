@@ -14,8 +14,9 @@ import {
 	Sparkles,
 	Zap,
 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { Switch } from "@lesefluss/ui/switch";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TabHeader } from "@/components/app-shell/tab-header";
 import BLEIndicator from "@/components/ble-indicator";
 import { SHOW_WHATS_NEW_EVENT } from "@/components/whats-new-modal";
@@ -25,7 +26,12 @@ import { useTheme } from "@/contexts/theme-context";
 import { BLEConnectionState } from "@/services/ble";
 import { queryHooks } from "@/services/db/hooks";
 import { SYNC_ENABLED } from "@/services/sync";
-import { isTelemetryEnabled, setTelemetryEnabled } from "@/services/telemetry";
+import {
+	type DeviceDiagnostics,
+	getDeviceDiagnostics,
+	isTelemetryEnabled,
+	setTelemetryEnabled,
+} from "@/services/telemetry";
 import { IS_WEB } from "@/utils/platform";
 
 export const Route = createFileRoute("/tabs/settings/")({
@@ -93,6 +99,13 @@ function SettingsLanding() {
 	const { theme } = useTheme();
 	const { isLoggedIn, userEmail } = useSyncContext();
 	const [telemetry, setTelemetry] = useState(isTelemetryEnabled());
+	const [diagnostics, setDiagnostics] = useState<DeviceDiagnostics | null>(null);
+
+	useEffect(() => {
+		getDeviceDiagnostics()
+			.then(setDiagnostics)
+			.catch(() => {});
+	}, []);
 
 	const toggleTelemetry = (value: boolean) => {
 		setTelemetryEnabled(value);
@@ -117,8 +130,16 @@ function SettingsLanding() {
 
 	const showWhatsNew = () => window.dispatchEvent(new Event(SHOW_WHATS_NEW_EVENT));
 	const openFeedback = () => {
-		const url = IS_WEB ? "/feedback?source=web-app" : "https://lesefluss.app/feedback?source=app";
-		window.open(url, IS_WEB ? "_blank" : "_system");
+		const params = new URLSearchParams({
+			source: IS_WEB ? "web-app" : "app",
+			platform: Capacitor.getPlatform(),
+			account: isLoggedIn ? "signed" : "none",
+		});
+		if (diagnostics?.version) params.set("v", diagnostics.version);
+		if (diagnostics?.os) params.set("os", diagnostics.os);
+		if (diagnostics?.webview) params.set("wv", diagnostics.webview);
+		const base = IS_WEB ? "/feedback" : "https://lesefluss.app/feedback";
+		window.open(`${base}?${params.toString()}`, IS_WEB ? "_blank" : "_system");
 	};
 	const openWebsite = () => window.open("https://lesefluss.app", "_system");
 	const replayOnboarding = () => navigate({ to: "/onboarding" });

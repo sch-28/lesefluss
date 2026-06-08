@@ -36,6 +36,23 @@ function parseFeedbackType(value: string): FeedbackType {
 	return FEEDBACK_TYPES.includes(value as FeedbackType) ? (value as FeedbackType) : "other";
 }
 
+const DIAGNOSTIC_FIELDS = [
+	{ key: "v", label: "App version" },
+	{ key: "os", label: "OS" },
+	{ key: "wv", label: "WebView" },
+	{ key: "account", label: "Account" },
+] as const;
+
+function formatDiagnostics(raw: unknown): string {
+	if (!raw || typeof raw !== "object") return "";
+	const obj = raw as Record<string, unknown>;
+	return DIAGNOSTIC_FIELDS.flatMap(({ key, label }) => {
+		const value = obj[key];
+		if (typeof value !== "string" || !value.trim()) return [];
+		return [`<p><strong>${label}:</strong> ${escapeHtml(value.trim().slice(0, 120))}</p>`];
+	}).join("\n");
+}
+
 function rejectOversizedRequest(request: Request): Response | null {
 	const rawLength = request.headers.get("content-length");
 	if (!rawLength) return null;
@@ -123,6 +140,7 @@ export const Route = createFileRoute("/api/feedback")({
 
 				const type = parseFeedbackType(getString(payload, "type"));
 				const platform = PLATFORM_LABELS[getString(payload, "platform")] ?? "Not specified";
+				const diagnostics = formatDiagnostics(payload.diagnostics);
 				const message = getString(payload, "message");
 				const email = getString(payload, "email").toLowerCase();
 				const source = getString(payload, "source").slice(0, 80) || "website";
@@ -154,6 +172,7 @@ export const Route = createFileRoute("/api/feedback")({
 						<p><strong>Platform:</strong> ${escapeHtml(platform)}</p>
 						<p><strong>Source:</strong> ${escapeHtml(source)}</p>
 						<p><strong>Email:</strong> ${email ? escapeHtml(email) : "Not provided"}</p>
+						${diagnostics}
 						<hr>
 						<p style="white-space: pre-wrap;">${escapeHtml(message)}</p>`,
 					});

@@ -32,6 +32,19 @@ function getSource(): string {
 	return new URLSearchParams(window.location.search).get("source") || "website";
 }
 
+const DIAGNOSTIC_KEYS = ["v", "os", "wv", "account"] as const;
+
+function getDiagnostics(): Record<string, string> {
+	if (typeof window === "undefined") return {};
+	const params = new URLSearchParams(window.location.search);
+	const out: Record<string, string> = {};
+	for (const key of DIAGNOSTIC_KEYS) {
+		const value = params.get(key);
+		if (value) out[key] = value;
+	}
+	return out;
+}
+
 const PLATFORMS = [
 	{ value: "web", label: "Web app" },
 	{ value: "extension", label: "Browser extension" },
@@ -46,6 +59,13 @@ function FeedbackPage() {
 	const [company, setCompany] = React.useState("");
 	const [state, setState] = React.useState<SubmitState>({ kind: "idle" });
 	const [showEmailWarning, setShowEmailWarning] = React.useState(false);
+
+	React.useEffect(() => {
+		const urlPlatform = new URLSearchParams(window.location.search).get("platform");
+		if (urlPlatform && PLATFORMS.some((p) => p.value === urlPlatform)) {
+			setPlatform(urlPlatform);
+		}
+	}, []);
 
 	function submit(e: React.FormEvent<HTMLFormElement>) {
 		e.preventDefault();
@@ -76,6 +96,7 @@ function FeedbackPage() {
 					message: trimmedMessage,
 					email: email.trim(),
 					source: getSource(),
+					diagnostics: getDiagnostics(),
 					company,
 				}),
 			});
