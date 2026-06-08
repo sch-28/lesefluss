@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { sendMail } from "~/lib/mailer";
-import { checkLimit } from "~/lib/rate-limit";
+import { checkLimit, getClientKey } from "~/lib/rate-limit";
 
 const FEEDBACK_TO = "feedback@lesefluss.app";
 const FEEDBACK_TYPES = ["suggestion", "bug", "question", "other"] as const;
@@ -34,16 +34,6 @@ function getString(body: Record<string, unknown>, key: string): string {
 
 function parseFeedbackType(value: string): FeedbackType {
 	return FEEDBACK_TYPES.includes(value as FeedbackType) ? (value as FeedbackType) : "other";
-}
-
-function getClientKey(request: Request): string {
-	const cfConnectingIp = request.headers.get("cf-connecting-ip")?.trim();
-	if (cfConnectingIp) return cfConnectingIp;
-
-	// Forwarded headers are client-spoofable unless a trusted edge normalizes them.
-	// Cloudflare supplies cf-connecting-ip in production; direct/dev traffic shares a
-	// conservative bucket rather than trusting x-forwarded-for/x-real-ip.
-	return "unknown";
 }
 
 function rejectOversizedRequest(request: Request): Response | null {

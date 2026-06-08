@@ -9,6 +9,8 @@ export default defineConfig({
 	tablesFilter: [
 		// sync tables (schema.ts)
 		"sync_*",
+		// anonymous diagnostics (schema.ts)
+		"telemetry_events",
 		// better-auth tables (auth-schema.ts)
 		"user",
 		"session",

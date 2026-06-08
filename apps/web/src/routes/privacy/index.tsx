@@ -14,7 +14,7 @@ export const Route = createFileRoute("/privacy/")({
 
 function PrivacyPage() {
 	return (
-		<LegalPage title="Privacy" subtitle="Last updated: May 2026">
+		<LegalPage title="Privacy" subtitle="Last updated: June 2026">
 			<section>
 				<h2 className="mb-3 font-semibold text-foreground text-xl">TL;DR</h2>
 				<p>
@@ -73,6 +73,14 @@ function PrivacyPage() {
 					page. We do not enable session replay, performance tracing, profiling, tracking cookies,
 					or default collection of personal data.
 				</p>
+				<p className="mt-4">
+					The Android app sends anonymized diagnostics to our own server to help us find bugs that
+					would otherwise be invisible (for example, a reading position that silently fails to
+					save). These reports contain no account or personal data: an error type and message, the
+					app version, platform, a coarse OS version, and a random session id that is regenerated
+					every time the app starts. They are never linked to an identity or used for tracking. You
+					can turn this off any time under Settings &rarr; Privacy in the app.
+				</p>
 			</section>
 
 			<section>
@@ -121,9 +129,10 @@ function PrivacyPage() {
 				<h2 className="mb-3 font-semibold text-foreground text-xl">The Android app</h2>
 				<p>
 					The app runs fully offline by default. Books, settings, and highlights live in a local
-					SQLite database on your device. Nothing leaves the device unless you explicitly sign in to
-					sync. Bluetooth is used only to talk to the optional ESP32 device and transmits nothing to
-					us.
+					SQLite database on your device. Apart from the anonymized error diagnostics described
+					above (which you can turn off under Settings &rarr; Privacy), nothing leaves the device
+					unless you explicitly sign in to sync. Bluetooth is used only to talk to the optional ESP32
+					device and transmits nothing to us.
 				</p>
 			</section>
 

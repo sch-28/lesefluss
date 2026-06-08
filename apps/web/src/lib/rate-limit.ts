@@ -41,3 +41,12 @@ export function checkLimit(key: string, { max, windowMs }: RateLimitOptions): Ra
 	bucket.count += 1;
 	return { ok: true };
 }
+
+/**
+ * Rate-limit bucket key for a request. Trusts only Cloudflare's `cf-connecting-ip`;
+ * `x-forwarded-for` / `x-real-ip` are client-spoofable, so direct/dev traffic shares
+ * one conservative "unknown" bucket rather than letting spoofed headers bypass limits.
+ */
+export function getClientKey(request: Request): string {
+	return request.headers.get("cf-connecting-ip")?.trim() || "unknown";
+}

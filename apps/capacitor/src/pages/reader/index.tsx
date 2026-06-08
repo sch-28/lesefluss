@@ -60,6 +60,7 @@ import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Chapter, GlossaryEntry } from "../../services/db/schema";
 import { providerLabel } from "../../services/serial-scrapers";
 import { pushSync, scheduleSyncPush } from "../../services/sync";
+import { reportEvent } from "../../services/telemetry";
 import { publishLinkOpen, publishPositionSave, publishProgressWord } from "../../test-hooks/reader";
 import { formatReadingTime } from "../../utils/reading-time";
 import { setJustRead } from "../library/just-read-pin";
@@ -106,6 +107,23 @@ const _encoder = new TextEncoder();
 
 // Sentinel value: no word highlighted (while scrolling)
 const NO_HIGHLIGHT = -1;
+
+// A position write that hasn't settled in this long is treated as wedged/stalled
+// and reported as diagnostics (see savePosition).
+const POSITION_WRITE_TIMEOUT_MS = 8000;
+
+// Throttle the user-facing "couldn't save" toast so a write that fails on every
+// attempt can't spam a toast on every scroll settle.
+const SAVE_ERROR_TOAST_THROTTLE_MS = 120_000;
+let lastSaveErrorToastAt = 0;
+function notifyLocalSaveFailure() {
+	const now = Date.now();
+	if (now - lastSaveErrorToastAt < SAVE_ERROR_TOAST_THROTTLE_MS) return;
+	lastSaveErrorToastAt = now;
+	toast.error("Couldn't save your reading progress on this device. Try restarting the app.", {
+		duration: 6000,
+	});
+}
 
 // ─── Main page ───────────────────────────────────────────────────────────────
 
@@ -512,7 +530,30 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			}
 			setJustRead(seriesId ? `series:${seriesId}` : `book:${id}`);
 
-			await queries.updateBook(id, update);
+			// Watchdog: a wedged write queue or a stalled native bridge makes the
+			// write hang without ever rejecting, so the adapter's error path can't
+			// see it. If the write hasn't settled in time, report it as a likely
+			// cause of "progress never saves" and leave the durable fallback intact.
+			let settled = false;
+			const watchdog = setTimeout(() => {
+				if (!settled) {
+					reportEvent("position_write_timeout");
+					notifyLocalSaveFailure();
+				}
+			}, POSITION_WRITE_TIMEOUT_MS);
+			try {
+				await queries.updateBook(id, update);
+			} catch {
+				// The adapter already reports the underlying db_write_error. Tell the
+				// user it didn't save so they know it's not intended, keep the
+				// synchronous fallback (do NOT clear it) so the next mount can recover,
+				// and skip the post-commit steps below.
+				notifyLocalSaveFailure();
+				return;
+			} finally {
+				settled = true;
+				clearTimeout(watchdog);
+			}
 			// The row is now durable; drop the synchronous fallback so it can't
 			// later be mistaken for an uncommitted write on the next mount.
 			clearPendingPosition(id);

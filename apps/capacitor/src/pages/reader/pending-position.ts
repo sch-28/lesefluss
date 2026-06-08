@@ -16,6 +16,8 @@
  * one book's fallback never bleeds into another.
  */
 
+import { errorMessage, reportEvent } from "../../services/telemetry";
+
 const PREFIX = "lesefluss:pending-pos:";
 
 export type PendingPosition = { word: number; at: number };
@@ -28,9 +30,12 @@ export function pendingPositionKey(bookId: string): string {
 export function writePendingPosition(bookId: string, word: number, at: number): void {
 	try {
 		localStorage.setItem(pendingPositionKey(bookId), JSON.stringify({ word, at }));
-	} catch {
+	} catch (err) {
 		// Private mode / quota / disabled storage: durability is best-effort and
-		// must never interfere with the real (async) save path.
+		// must never interfere with the real (async) save path. If localStorage is
+		// unavailable the durable fallback is silently gone, which is one way
+		// resume could break, so surface it as diagnostics.
+		reportEvent("localstorage_unavailable", { message: errorMessage(err) });
 	}
 }
 

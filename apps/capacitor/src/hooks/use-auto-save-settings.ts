@@ -21,9 +21,13 @@ export function useAutoSaveSettings() {
 			// Write immediately. Single-row upsert in sql.js is sub-ms; the prior
 			// 300ms debounce dropped settings when the form unmounted (route nav)
 			// before the timer fired.
+			// Fire-and-forget: swallow rejection so a failed write can't surface as an
+			// unhandled promise rejection (the DB adapter propagates write errors). The
+			// failure is still reported via diagnostics; `flush()` just resolves instead
+			// of throwing at its callers.
 			lastWriteRef.current = mutateAsync({ [key]: value } as Partial<
 				Omit<Settings, "id" | "updatedAt">
-			>);
+			>).catch(() => {});
 		},
 		[queryClient, mutateAsync],
 	);

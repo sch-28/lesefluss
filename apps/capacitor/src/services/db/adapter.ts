@@ -1,6 +1,12 @@
 import type { SQLiteDBConnection } from "@capacitor-community/sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
+import { errorMessage, reportEvent } from "../telemetry";
 import * as schema from "./schema";
+
+/** First SQL keyword (UPDATE/INSERT/DELETE), for telemetry without leaking params. */
+function sqlOp(sql: string): string {
+	return sql.trim().split(/\s+/, 1)[0]?.toUpperCase() ?? "UNKNOWN";
+}
 
 /**
  * Sanitize query parameters before passing to the Capacitor SQLite native layer.
@@ -49,7 +55,19 @@ export function createDrizzleAdapter(getConn: () => SQLiteDBConnection | null) {
 
 			if (method === "run") {
 				return enqueueWrite(async () => {
-					await conn.run(sql, safeParams);
+					try {
+						await conn.run(sql, safeParams);
+					} catch (err) {
+						// Previously swallowed by the queue's `.catch`, leaving write
+						// failures completely invisible. Surface them so a device that
+						// silently can't persist (e.g. reading position never saving)
+						// shows up in diagnostics. Params are never sent.
+						reportEvent("db_write_error", {
+							message: errorMessage(err),
+							extra: { op: sqlOp(sql) },
+						});
+						throw err;
+					}
 					return { rows: [] };
 				});
 			}

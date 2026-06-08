@@ -14,6 +14,8 @@ import {
 	Sparkles,
 	Zap,
 } from "lucide-react";
+import { Switch } from "@lesefluss/ui/switch";
+import { useState } from "react";
 import { TabHeader } from "@/components/app-shell/tab-header";
 import BLEIndicator from "@/components/ble-indicator";
 import { SHOW_WHATS_NEW_EVENT } from "@/components/whats-new-modal";
@@ -23,6 +25,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { BLEConnectionState } from "@/services/ble";
 import { queryHooks } from "@/services/db/hooks";
 import { SYNC_ENABLED } from "@/services/sync";
+import { isTelemetryEnabled, setTelemetryEnabled } from "@/services/telemetry";
 import { IS_WEB } from "@/utils/platform";
 
 export const Route = createFileRoute("/tabs/settings/")({
@@ -89,6 +92,12 @@ function SettingsLanding() {
 	const { connectionState, connectedDevice } = useBLE();
 	const { theme } = useTheme();
 	const { isLoggedIn, userEmail } = useSyncContext();
+	const [telemetry, setTelemetry] = useState(isTelemetryEnabled());
+
+	const toggleTelemetry = (value: boolean) => {
+		setTelemetryEnabled(value);
+		setTelemetry(value);
+	};
 
 	const isConnected = connectionState === BLEConnectionState.CONNECTED;
 	const isTransitioning =
@@ -185,6 +194,18 @@ function SettingsLanding() {
 						subtitle="Walk through the intro again"
 						onClick={replayOnboarding}
 					/>
+				</Section>
+
+				<Section title="Privacy">
+					<div className="flex items-center justify-between gap-3 px-4 py-3">
+						<label htmlFor="telemetry" className="min-w-0 flex-1">
+							<div className="font-medium text-foreground text-sm">Anonymous diagnostics</div>
+							<div className="text-muted-foreground text-xs">
+								Send anonymized error reports to help fix bugs. No account or personal data.
+							</div>
+						</label>
+						<Switch id="telemetry" checked={telemetry} onCheckedChange={toggleTelemetry} />
+					</div>
 				</Section>
 			</div>
 		</div>

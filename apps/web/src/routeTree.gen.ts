@@ -29,6 +29,7 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AuthMobileCallbackRouteImport } from './routes/auth/mobile-callback'
 import { Route as AuthExtensionCallbackRouteImport } from './routes/auth/extension-callback'
 import { Route as AppSplatRouteImport } from './routes/app/$'
+import { Route as ApiTelemetryRouteImport } from './routes/api/telemetry'
 import { Route as ApiSyncRouteImport } from './routes/api/sync'
 import { Route as ApiFeedbackRouteImport } from './routes/api/feedback'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
@@ -138,6 +139,11 @@ const AppSplatRoute = AppSplatRouteImport.update({
   path: '/app/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTelemetryRoute = ApiTelemetryRouteImport.update({
+  id: '/api/telemetry',
+  path: '/api/telemetry',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSyncRoute = ApiSyncRouteImport.update({
   id: '/api/sync',
   path: '/api/sync',
@@ -193,6 +199,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
+  '/api/telemetry': typeof ApiTelemetryRoute
   '/app/$': typeof AppSplatRoute
   '/auth/extension-callback': typeof AuthExtensionCallbackRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
@@ -223,6 +230,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
+  '/api/telemetry': typeof ApiTelemetryRoute
   '/app/$': typeof AppSplatRoute
   '/auth/extension-callback': typeof AuthExtensionCallbackRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
@@ -255,6 +263,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
+  '/api/telemetry': typeof ApiTelemetryRoute
   '/app/$': typeof AppSplatRoute
   '/auth/extension-callback': typeof AuthExtensionCallbackRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
@@ -287,6 +296,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/api/feedback'
     | '/api/sync'
+    | '/api/telemetry'
     | '/app/$'
     | '/auth/extension-callback'
     | '/auth/mobile-callback'
@@ -317,6 +327,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/api/feedback'
     | '/api/sync'
+    | '/api/telemetry'
     | '/app/$'
     | '/auth/extension-callback'
     | '/auth/mobile-callback'
@@ -348,6 +359,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/api/feedback'
     | '/api/sync'
+    | '/api/telemetry'
     | '/app/$'
     | '/auth/extension-callback'
     | '/auth/mobile-callback'
@@ -380,6 +392,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiFeedbackRoute: typeof ApiFeedbackRoute
   ApiSyncRoute: typeof ApiSyncRouteWithChildren
+  ApiTelemetryRoute: typeof ApiTelemetryRoute
   AppSplatRoute: typeof AppSplatRoute
   AuthExtensionCallbackRoute: typeof AuthExtensionCallbackRoute
   AuthMobileCallbackRoute: typeof AuthMobileCallbackRoute
@@ -541,6 +554,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/telemetry': {
+      id: '/api/telemetry'
+      path: '/api/telemetry'
+      fullPath: '/api/telemetry'
+      preLoaderRoute: typeof ApiTelemetryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/sync': {
       id: '/api/sync'
       path: '/api/sync'
@@ -643,6 +663,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiFeedbackRoute: ApiFeedbackRoute,
   ApiSyncRoute: ApiSyncRouteWithChildren,
+  ApiTelemetryRoute: ApiTelemetryRoute,
   AppSplatRoute: AppSplatRoute,
   AuthExtensionCallbackRoute: AuthExtensionCallbackRoute,
   AuthMobileCallbackRoute: AuthMobileCallbackRoute,
