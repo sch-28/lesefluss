@@ -9,6 +9,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-06-08",
+		title: "Library Layout Memory and Save Warnings",
+		tags: ["App"],
+		changes: [
+			"The library now remembers your chosen layout (grid or list) and sort order between sessions",
+			"If your reading progress can't be saved on your device, the app now warns you instead of failing silently",
+			"New Settings → Privacy toggle to opt out of anonymous diagnostics (on by default, no account or personal data)",
+		],
+	},
+	{
 		date: "2026-06-07",
 		title: "Large Book Imports and Cover Fixes",
 		tags: ["App"],
