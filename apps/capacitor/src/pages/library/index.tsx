@@ -24,6 +24,7 @@ import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { useBookDeviceActions } from "../../hooks/use-book-device-actions";
+import { usePersistentString } from "../../hooks/use-persistent-string";
 import { queryHooks } from "../../services/db/hooks";
 import { bookImportMutationKey, bookKeys, serialKeys } from "../../services/db/hooks/query-keys";
 import type { Book, Series } from "../../services/db/schema";
@@ -43,6 +44,13 @@ import { useLibraryImports } from "./use-library-imports";
 import { useLibraryItems } from "./use-library-items";
 
 const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
+const SORT_BY_KEY = "lesefluss:library-sort";
+const VIEW_MODE_KEY = "lesefluss:library-view-mode";
+
+const SORT_VALUES: readonly SortBy[] = ["title", "author", "recent", "progress"];
+const isSortBy = (value: string): value is SortBy =>
+	(SORT_VALUES as readonly string[]).includes(value);
+const isViewMode = (value: string): value is ViewMode => value === "grid" || value === "list";
 
 const FAB_STYLE: React.CSSProperties = {
 	bottom: "calc(var(--tab-bar-h,4rem) + env(safe-area-inset-bottom) + 1rem)",
@@ -79,9 +87,9 @@ const Library: React.FC = () => {
 	const [noticeDismissed, setNoticeDismissed] = useState(
 		() => localStorage.getItem(LOCAL_NOTICE_KEY) === "1",
 	);
-	const [sortBy, setSortBy] = useState<SortBy>("recent");
+	const [sortBy, setSortBy] = usePersistentString(SORT_BY_KEY, isSortBy, "recent");
 	const [filterBy, setFilterBy] = useState<FilterBy>("all");
-	const [viewMode, setViewMode] = useState<ViewMode>("grid");
+	const [viewMode, setViewMode] = usePersistentString(VIEW_MODE_KEY, isViewMode, "grid");
 
 	const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 	const [selectedSeries, setSelectedSeries] = useState<Series | null>(null);
