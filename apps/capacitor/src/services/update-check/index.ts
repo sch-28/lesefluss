@@ -1,9 +1,9 @@
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
-import { toast } from "@/components/toast";
 import { SYNC_URL } from "../sync/auth-client";
 import { shouldPromptUpdate } from "./compare-versions";
+import { showUpdateToast } from "./update-toast";
 
 /**
  * Nudges users on an outdated Android build to update, so fixes actually reach
@@ -33,23 +33,12 @@ function muteVersion(version: string): void {
 	}
 }
 
-function showUpdateToast(latest: string): void {
-	toast.warning("A new version of Lesefluss is available.", {
-		duration: 10_000,
-		action: {
-			label: "Update",
-			onClick: () => {
-				void Browser.open({ url: PLAY_STORE_URL });
-			},
-		},
-		cancel: {
-			label: "Hide",
-			onClick: () => muteVersion(latest),
-		},
-	});
-}
+// Survives a transient root re-mount so the nudge fires at most once per launch.
+let didCheck = false;
 
 export async function checkForUpdate(): Promise<void> {
+	if (didCheck) return;
+	didCheck = true;
 	try {
 		if (Capacitor.getPlatform() !== "android") return;
 		if (!SYNC_URL) return;
@@ -62,7 +51,11 @@ export async function checkForUpdate(): Promise<void> {
 		const { version: current } = await App.getInfo();
 		if (!shouldPromptUpdate(current, latest, readMutedVersion())) return;
 
-		showUpdateToast(latest);
+		showUpdateToast({
+			version: latest,
+			onUpdate: () => void Browser.open({ url: PLAY_STORE_URL }),
+			onHide: () => muteVersion(latest),
+		});
 	} catch {
 		// Update check is best-effort and must never affect the app.
 	}
