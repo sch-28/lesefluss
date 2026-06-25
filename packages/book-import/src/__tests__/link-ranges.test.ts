@@ -71,7 +71,9 @@ describe("epubParser link ranges", () => {
 		const bytes = await buildEpub(linkFixture());
 		const r = await epubParser.parse({ kind: "bytes", bytes, fileName: "links.epub" });
 
-		expect(r.content).toBe("Read the documentation now.\n\nSee this note and another link here.");
+		expect(r.content).toBe(
+			"# One\n\nRead the documentation now.\n\n# Two\n\nSee this note and another link here.",
+		);
 		expect(r.linkRanges).toHaveLength(2);
 		// Fixture content is ASCII, so byte offsets equal char offsets here.
 		const slice = (l: { startByte: number; endByte: number }) =>

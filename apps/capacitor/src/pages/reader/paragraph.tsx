@@ -70,6 +70,24 @@ export interface ParagraphProps {
 	links?: LinkRangeProp[];
 	selectionRange?: { startWord: number; endWord: number } | null;
 	showActiveWordUnderline: boolean;
+	/** Title rendered as a chapter heading above this paragraph. Set only for the
+	 *  first paragraph of a TOC chapter that has no heading of its own (e.g. EPUBs
+	 *  whose chapter titles were images). Lets the reader show a header at a TOC
+	 *  jump without re-importing the book. */
+	chapterHeading?: string;
+}
+
+function withChapterHeading(
+	title: string | undefined,
+	body: React.ReactElement,
+): React.ReactElement {
+	if (!title) return body;
+	return (
+		<>
+			<h2 className="reader-heading reader-heading-1 reader-chapter-heading">{title}</h2>
+			{body}
+		</>
+	);
 }
 
 export const LONG_PRESS_MS = 400;
@@ -114,6 +132,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		links,
 		selectionRange,
 		showActiveWordUnderline,
+		chapterHeading,
 	}) => {
 		const headingLevel = getHeadingLevel(text);
 
@@ -305,7 +324,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		}
 
 		if (entries.length === 0) {
-			return <p className="reader-paragraph">{text}</p>;
+			return withChapterHeading(chapterHeading, <p className="reader-paragraph">{text}</p>);
 		}
 
 		const lastEnd = entries[entries.length - 1].charEnd;
@@ -313,7 +332,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			children.push(text.slice(lastEnd));
 		}
 
-		return <p className="reader-paragraph">{children}</p>;
+		return withChapterHeading(chapterHeading, <p className="reader-paragraph">{children}</p>);
 	},
 );
 

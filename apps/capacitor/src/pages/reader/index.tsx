@@ -68,6 +68,7 @@ import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
 import { useChapterAutoAdvance } from "./chapter-auto-advance";
 import { useChapterFetch } from "./chapter-fetch";
+import { buildChapterHeadingMap } from "./chapter-headings";
 import { ChapterStateOverlay } from "./chapter-state-overlay";
 import DictionaryModal from "./dictionary-modal";
 import { colorFromLabel } from "./glossary-avatar";
@@ -425,6 +426,17 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			return [];
 		}
 	}, [contentRow?.chapters]);
+
+	// Chapter titles to render inline as headers. Older imports (and EPUBs whose
+	// chapter titles were images) have no heading in `content` at the chapter
+	// start, so a TOC jump shows no header. Fall back to the stored TOC title,
+	// keyed by the paragraph the chapter starts in. Skipped when the chapter's
+	// first paragraph already carries a heading (real <h1>-<h6> or an importer-
+	// injected "# " line) so headers never double up.
+	const chapterHeadingByParagraph = useMemo(
+		() => buildChapterHeadingMap(chapters, paragraphs, paragraphStartWords),
+		[chapters, paragraphs, paragraphStartWords],
+	);
 
 	// ── Reading time estimation ───────────────────────────────────────────
 	const contentBytes = useMemo(() => (content ? _encoder.encode(content) : null), [content]);
@@ -1263,7 +1275,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			if (word !== null && userMovedRef.current) {
 				savePositionRef.current(word, { scheduleSync: false });
 				pushSync().catch(() => {});
-			} else if (word !== null && seededWordRef.current !== null && word !== seededWordRef.current) {
+			} else if (
+				word !== null &&
+				seededWordRef.current !== null &&
+				word !== seededWordRef.current
+			) {
 				// We moved away from the resumed position but the gated DB save was
 				// skipped (userMovedRef false, e.g. a transient remount reset it).
 				// Without this, the moved position reaches NEITHER the DB nor the
@@ -1295,7 +1311,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			const word = lastWordRef.current;
 			if (word !== null && userMovedRef.current) {
 				savePositionRef.current(word, { scheduleSync: false });
-			} else if (word !== null && seededWordRef.current !== null && word !== seededWordRef.current) {
+			} else if (
+				word !== null &&
+				seededWordRef.current !== null &&
+				word !== seededWordRef.current
+			) {
 				// Same safety net as the unmount path: durably mirror a moved-but-
 				// skipped position so a background teardown can't lose it.
 				writePendingPosition(id, word, Date.now());
@@ -1530,6 +1550,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						paragraphs={paragraphs}
 						paragraphStartWords={paragraphStartWords}
 						entriesByParagraph={entriesByParagraph}
+						chapterHeadingByParagraph={chapterHeadingByParagraph}
 						totalWords={totalWordCount}
 						initialWord={lastWordRef.current ?? seedWord ?? 0}
 						fontSize={readerFontSize}
@@ -1559,6 +1580,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						paragraphs={paragraphs}
 						paragraphStartWords={paragraphStartWords}
 						entriesByParagraph={entriesByParagraph}
+						chapterHeadingByParagraph={chapterHeadingByParagraph}
 						findParagraphIndexForWord={findParagraphIndexForWord}
 						initialWord={lastWordRef.current ?? seedWord ?? 0}
 						fontSize={readerFontSize}

@@ -300,6 +300,14 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	word-break: break-word;
 }
 
+/* Inline chapter title (reader-side TOC fallback). Keep it glued to the
+ * paragraph it precedes so page-mode columns never orphan a title at a column
+ * foot, away from its chapter body. */
+.reader-chapter-heading {
+	break-after: avoid;
+	break-inside: avoid;
+}
+
 /* ── Progress bar ── */
 .reader-progress-bar {
 	position: absolute;

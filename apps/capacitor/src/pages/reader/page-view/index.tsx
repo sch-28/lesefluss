@@ -89,6 +89,8 @@ export interface PageViewProps {
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	linksByParagraph: Map<number, LinkRangeProp[]> | undefined;
+	/** Paragraph index → chapter title rendered as an inline header above it. */
+	chapterHeadingByParagraph?: Map<number, string>;
 	selectionRange: { startWord: number; endWord: number } | null;
 	isSelecting: boolean;
 
@@ -117,6 +119,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		paragraphs,
 		paragraphStartWords,
 		entriesByParagraph,
+		chapterHeadingByParagraph,
 		totalWords,
 		initialWord,
 		fontSize,
@@ -646,6 +649,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									paragraphs={paragraphs}
 									paragraphStartWords={paragraphStartWords}
 									entriesByParagraph={entriesByParagraph}
+									chapterHeadingByParagraph={chapterHeadingByParagraph}
 									leftOffset={offsets.get(idx) ?? 0}
 									pageWidth={pageWidth}
 									pageHeight={pageHeight}

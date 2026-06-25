@@ -25,6 +25,8 @@ export interface ChunkContentProps {
 	paragraphs: string[];
 	paragraphStartWords: number[];
 	entriesByParagraph: ParagraphWordEntry[][];
+	/** Paragraph index → chapter title rendered as an inline header above it. */
+	chapterHeadingByParagraph?: Map<number, string>;
 
 	// Position in the transform wrapper (relative to current chunk; 0 for current).
 	leftOffset: number;
@@ -66,6 +68,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	paragraphs,
 	paragraphStartWords,
 	entriesByParagraph,
+	chapterHeadingByParagraph,
 	leftOffset,
 	pageWidth,
 	pageHeight,
@@ -154,6 +157,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 						highlights={highlightsByParagraph?.get(paraGlobalIndex)}
 						glossaryRanges={glossaryByParagraph?.get(paraGlobalIndex)}
 						links={linksByParagraph?.get(paraGlobalIndex)}
+						chapterHeading={chapterHeadingByParagraph?.get(paraGlobalIndex)}
 						selectionRange={selectionRange}
 						showActiveWordUnderline={showActiveWordUnderline}
 					/>

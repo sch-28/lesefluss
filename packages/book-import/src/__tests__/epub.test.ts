@@ -42,7 +42,7 @@ describe("epubParser", () => {
 		});
 		const r = await parse(bytes);
 		expect(r.fileFormat).toBe("epub");
-		expect(r.content).toBe("Hello.\n\nWorld.");
+		expect(r.content).toBe("# One\n\nHello.\n\n# Two\n\nWorld.");
 	});
 
 	it("emits chapter markers for a flat NCX", async () => {
@@ -55,7 +55,36 @@ describe("epubParser", () => {
 		const r = await parse(bytes);
 		expect(r.chapters?.map((c) => c.title)).toEqual(["One", "Two"]);
 		expect(r.chapters?.[0].startByte).toBe(0);
-		expect(r.chapters?.[1].startByte).toBe(utf8ByteLength("Alpha.") + 2);
+		// Second chapter starts after the first section, whose text now carries the
+		// injected "# One\n\n" heading.
+		expect(r.chapters?.[1].startByte).toBe(utf8ByteLength("# One\n\nAlpha.") + 2);
+	});
+
+	it("injects the TOC title as a heading when the chapter title is an image", async () => {
+		// Morning Star encodes chapter titles as <img alt> with no <h1>-<h6>, so the
+		// reader rendered no header after a TOC jump. The TOC label fills the gap.
+		const bytes = await buildEpub({
+			chapters: [
+				{
+					id: "c1",
+					href: "c1.xhtml",
+					body: '<div class="figure_heading"><img alt="1 Only the Dark" src="../images/ch1.jpg"/></div><p>Deep in darkness.</p>',
+				},
+			],
+			navPoints: [{ label: "Chapter 1: Only the Dark", href: "c1.xhtml" }],
+		});
+		const r = await parse(bytes);
+		expect(r.content).toBe("# Chapter 1: Only the Dark\n\nDeep in darkness.");
+		expect(r.chapters?.[0]).toMatchObject({ title: "Chapter 1: Only the Dark", startByte: 0 });
+	});
+
+	it("does not double-inject when the chapter already has a heading tag", async () => {
+		const bytes = await buildEpub({
+			chapters: [{ id: "c1", href: "c1.xhtml", body: "<h1>Real Heading</h1><p>Body.</p>" }],
+			navPoints: [{ label: "TOC Label", href: "c1.xhtml" }],
+		});
+		const r = await parse(bytes);
+		expect(r.content).toBe("# Real Heading\n\nBody.");
 	});
 
 	it("emits chapter markers for a nested NCX (chapters under parts)", async () => {
@@ -118,7 +147,8 @@ describe("epubParser", () => {
 		const r = await parse(bytes);
 		const firstBytes = utf8ByteLength("Café—€");
 		expect(firstBytes).toBeGreaterThan("Café—€".length);
-		expect(r.chapters?.[1].startByte).toBe(firstBytes + 2);
+		// First section carries the injected "# One\n\n" heading ahead of the body.
+		expect(r.chapters?.[1].startByte).toBe(utf8ByteLength("# One\n\nCafé—€") + 2);
 	});
 
 	it("skips sections with no extractable text without breaking chapter offsets", async () => {
@@ -136,7 +166,7 @@ describe("epubParser", () => {
 		// Empty section dropped from sections[]; its TOC entry has no matching href.
 		expect(r.chapters?.map((c) => c.title)).toEqual(["Real"]);
 		expect(r.chapters?.[0].startByte).toBe(0);
-		expect(r.content).toBe("Body.");
+		expect(r.content).toBe("# Real\n\nBody.");
 	});
 
 	// happy-dom's CSS selector engine cannot parse epubjs's `nav[*|type="toc"]` namespace

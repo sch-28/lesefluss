@@ -56,6 +56,34 @@ function assertLooksLikeZip(buffer: ArrayBuffer): void {
 	}
 }
 
+/** A `# `…`###### ` markdown-style heading prefix at the start of a block. */
+const HEADING_LINE_RE = /^#{1,6} /;
+
+/**
+ * Many EPUBs encode a chapter's title as an image (`<img alt="Chapter 1">`) or
+ * leave it out of the body entirely, relying on the TOC alone. extractParagraphs
+ * emits no `# ` heading line for those, so the reader (which renders chapter
+ * headers from `# ` markers) shows no title after a TOC jump. When the section
+ * maps to a TOC entry and has no heading of its own, prepend the TOC label as a
+ * level-1 heading. Link offsets shift by the injected prefix length.
+ */
+function injectTocHeading(
+	text: string,
+	links: ContentLink[],
+	tocTitle: string | undefined,
+): { text: string; links: ContentLink[] } {
+	if (!tocTitle || HEADING_LINE_RE.test(text)) return { text, links };
+	const prefix = `# ${tocTitle}\n\n`;
+	return {
+		text: prefix + text,
+		links: links.map((l) => ({
+			...l,
+			startChar: l.startChar + prefix.length,
+			endChar: l.endChar + prefix.length,
+		})),
+	};
+}
+
 async function parseEpub(
 	buffer: ArrayBuffer,
 	filename: string,
@@ -103,7 +131,10 @@ async function parseEpub(
 		for (const item of items) {
 			const href = item.href?.split("#")[0];
 			if (href && item.label) {
-				tocMap.set(href, item.label.trim());
+				// Collapse interior whitespace so a nav label with a stray newline
+				// can't break the single-line `# ` heading invariant the reader and
+				// injectTocHeading rely on (a `\n\n` would split it into two paragraphs).
+				tocMap.set(href, item.label.replace(/\s+/g, " ").trim());
 			}
 			if (item.subitems?.length) {
 				walkToc(item.subitems);
@@ -139,7 +170,8 @@ async function parseEpub(
 			if (body) {
 				const { content: text, links } = extractParagraphsWithLinks(body);
 				if (text.length > 0) {
-					sections.push({ text, href: section.href, links });
+					const headed = injectTocHeading(text, links, tocMap.get(section.href));
+					sections.push({ text: headed.text, href: section.href, links: headed.links });
 				}
 			}
 			section.unload();

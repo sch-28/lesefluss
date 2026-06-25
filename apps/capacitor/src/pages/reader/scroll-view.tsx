@@ -226,6 +226,8 @@ export interface ScrollViewProps {
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	linksByParagraph: Map<number, LinkRangeProp[]> | undefined;
+	/** Paragraph index → chapter title rendered as an inline header above it. */
+	chapterHeadingByParagraph?: Map<number, string>;
 	selectionRange: { startWord: number; endWord: number } | null;
 
 	// Word interaction
@@ -272,6 +274,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		highlightsByParagraph,
 		glossaryByParagraph,
 		linksByParagraph,
+		chapterHeadingByParagraph,
 		selectionRange,
 		onWordTap,
 		onWordLongPress,
@@ -411,6 +414,13 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 				if (!fine) {
 					const idx = findParagraphIndexForWord(wordIdx);
 					listRef.current.scrollToIndex(idx, { align: "start" });
+					// When the target is the start of a chapter whose title is rendered
+					// inline above its first paragraph, the paragraph-top alignment above
+					// already puts the header at the container top. A fine word-scroll
+					// would pin the first word to the top and push the header out of view.
+					if (chapterHeadingByParagraph?.has(idx) && paragraphStartWords[idx] === wordIdx) {
+						return;
+					}
 				}
 				fineScrollTo(wordIdx, highlight, undefined, smooth);
 			},
@@ -418,7 +428,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 				listRef.current?.scrollBy(pixels);
 			},
 		}),
-		[findParagraphIndexForWord, fineScrollTo],
+		[findParagraphIndexForWord, fineScrollTo, chapterHeadingByParagraph, paragraphStartWords],
 	);
 
 	// ── Scroll handler - hide highlight + update progress bar ──────────────
@@ -564,6 +574,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 							highlights={highlightsByParagraph?.get(i)}
 							glossaryRanges={glossaryByParagraph?.get(i)}
 							links={linksByParagraph?.get(i)}
+							chapterHeading={chapterHeadingByParagraph?.get(i)}
 							selectionRange={selectionRange}
 							showActiveWordUnderline={showActiveWordUnderline}
 						/>
