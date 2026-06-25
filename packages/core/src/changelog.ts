@@ -9,6 +9,14 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-06-25",
+		title: "Chapter Title Fallback",
+		tags: ["App"],
+		changes: [
+			"Fixed an issue where the chapter titles where not shown",
+		],
+	},
+	{
 		date: "2026-06-08",
 		title: "Library Layout Memory and Save Warnings",
 		tags: ["App"],
