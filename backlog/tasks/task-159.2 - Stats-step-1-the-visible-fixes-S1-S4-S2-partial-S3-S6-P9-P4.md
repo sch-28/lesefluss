@@ -1,16 +1,29 @@
 ---
 id: TASK-159.2
 title: 'Stats step 1: the visible fixes (S1, S4, S2 partial, S3, S6, P9, P4)'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-28 19:38'
-updated_date: '2026-07-28 19:40'
+updated_date: '2026-07-28 22:29'
 labels: []
 milestone: m-7
 dependencies:
   - TASK-159.1
 documentation:
   - STATS-IMPROVEMENTS.md
+modified_files:
+  - packages/ui/src/components/tabs.tsx
+  - packages/ui/src/components/separator.tsx
+  - packages/ui/src/components/field.tsx
+  - apps/web/src/routes/docs/index.tsx
+  - apps/capacitor/src/pages/library/stats.tsx
+  - apps/capacitor/src/pages/library/stats/period.ts
+  - apps/capacitor/src/pages/library/stats/period-totals.tsx
+  - apps/capacitor/src/pages/library/stats/top-books.tsx
+  - apps/capacitor/src/pages/library/stats/wpm-trend.tsx
+  - apps/capacitor/src/pages/library/stats/personality.tsx
+  - apps/capacitor/src/services/stats/aggregate.ts
+  - apps/capacitor/src/services/stats/__tests__/aggregate.test.ts
 parent_task_id: TASK-159
 priority: high
 ordinal: 65000
@@ -42,13 +55,39 @@ Reasoning and rejected alternatives: `STATS-IMPROVEMENTS.md` sections 1 and 2.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The selected time-range tab is visually distinguishable in light, dark and sepia
-- [ ] #2 The web docs and login tab layouts are reviewed after the orientation fix and render as intended
-- [ ] #3 Durations over an hour render as hours and minutes everywhere, including the all-time period
-- [ ] #4 Selecting a period updates Top Books, and an all-time view of Top Books is reachable
-- [ ] #5 The reading-speed headline reports a measurement or is labelled unambiguously as a target, never an unlabelled dial value
-- [ ] #6 Headline and legend averages are words-weighted, matching the query
-- [ ] #7 A user with no sessions sees no fabricated favourite hour
-- [ ] #8 Switching to a period with no data leaves every section present with an empty state rather than removing it
-- [ ] #9 The page states that reading done on the ESP32 device is not counted (P11)
+- [x] #1 The selected time-range tab is visually distinguishable in light, dark and sepia
+- [x] #2 The web docs and login tab layouts are reviewed after the orientation fix and render as intended
+- [x] #3 Durations over an hour render as hours and minutes everywhere, including the all-time period
+- [x] #4 Selecting a period updates Top Books, and an all-time view of Top Books is reachable
+- [x] #5 The reading-speed headline reports a measurement or is labelled unambiguously as a target, never an unlabelled dial value
+- [x] #6 Headline and legend averages are words-weighted, matching the query
+- [x] #7 A user with no sessions sees no fabricated favourite hour
+- [x] #8 Switching to a period with no data leaves every section present with an empty state rather than removing it
+- [x] #9 The page states that reading done on the ESP32 device is not counted (P11)
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+**S1 — the tabs had no selected state anywhere in the app.** `data-active:` compiled to `[data-active]`; Radix emits `data-state="active"`. Migrated to `data-[state=active]:` and `data-[orientation=...]:`, verified in built CSS rather than source: capacitor now has 12 `[data-state="active"]` selectors and 0 stale, web has 13.
+
+The fix uncovered the same bug in two more shared components. `separator.tsx` had `data-horizontal:h-px data-horizontal:w-full` against a `data-orientation` attribute, so separators had **no width and no height** and were invisible — they now render on the profile, admin and account pages. `field.tsx` had a variant of it; note the first attempt at that one was still dead, because `has-` matches descendants while `data-orientation` sits on the group element itself.
+
+Making the orientation variants live also caused a regression, caught in review: `group-data-[orientation=horizontal]/tabs:h-8` (0,2,0) beats the docs sidebar's `h-auto` (0,1,0), and tailwind-merge does not dedupe across different modifier prefixes. The docs nav would have collapsed to 32px at desktop width. Fixed with `h-auto!` at the call site, verified as `height:auto!important` in the built web CSS.
+
+**S4** — `formatDuration` in Top Books, and the "Minutes" stat is now "Time", so the all-time period stops rendering a five-digit number.
+
+**S2 (partial)** — period lifted to `stats.tsx` via a shared `period.ts` and threaded to Top Books, so all-time top books are reachable. Sections that still own their window (heatmap 90d, trend 12w, personality all-time) are unchanged; that is step 4.
+
+**S3 + S6** — headline priority prefers measurements over the dial, with the target as a secondary line. `averages` is returned from the aggregation words-weighted and the component's own unweighted `avgOf` is deleted; two tests pin it (unweighted reports 550 where words-weighted reports 100).
+
+**P9, P11, P4** — favourite hour shows a dash on empty data, a note states device reading is not counted, and Top Books renders an empty state instead of vanishing, gated on `isPending` so it does not flash during a period switch.
+
+**Review findings applied:** the docs regression above; the still-dead `field.tsx` variant; the empty-state flash; the hero artwork following the period while its numbers stayed weekly (reverted, hero keeps the week window); and a headline caption that named no series and rendered "0 / words per minute" while loading.
+
+**Left as-is deliberately:** `BookStatsCard` still returns null for a never-read book. P4 named it, but it is not period-driven, and an empty stats card on an unopened book is noise.
+
+**Found but out of scope**, tracked separately: `dropdown-menu.tsx` uses `data-open:` / `data-closed:` against `data-state="open"|"closed"`, so dropdown open/close animation and sub-trigger highlight are dead; `field.tsx:99` uses `has-data-checked:` against `data-state="checked"`.
+
+328 tests, tsc clean, biome clean, both apps build.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -1,50 +1,19 @@
 import { Tabs, TabsList, TabsTrigger } from "@lesefluss/ui/tabs";
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
 import { queryHooks } from "../../../services/db/hooks";
-import { startOfLocalDay } from "../../../utils/date-utils";
+import { formatDuration } from "../../../utils/date-utils";
 import { AnimatedNumber } from "./animated-number";
-
-const MS_PER_DAY = 86_400_000;
-
-const PERIODS = ["today", "7d", "30d", "all"] as const;
-type Period = (typeof PERIODS)[number];
-
-function isPeriod(value: unknown): value is Period {
-	return typeof value === "string" && (PERIODS as readonly string[]).includes(value);
-}
-
-function periodWindow(
-	p: Period,
-	now: number,
-): { start: number; prevStart: number; prevEnd: number } {
-	switch (p) {
-		case "today": {
-			const start = startOfLocalDay(now);
-			return { start, prevStart: start - MS_PER_DAY, prevEnd: start };
-		}
-		case "7d": {
-			const start = startOfLocalDay(now) - 6 * MS_PER_DAY;
-			return { start, prevStart: start - 7 * MS_PER_DAY, prevEnd: start };
-		}
-		case "30d": {
-			const start = startOfLocalDay(now) - 29 * MS_PER_DAY;
-			return { start, prevStart: start - 30 * MS_PER_DAY, prevEnd: start };
-		}
-		default: {
-			return { start: 0, prevStart: 0, prevEnd: 0 };
-		}
-	}
-}
+import { isPeriod, type Period, type PeriodWindow } from "./period";
 
 interface Props {
 	/** Page-level locked "now" so query keys stay stable across renders. */
 	now: number;
+	period: Period;
+	range: PeriodWindow;
+	onPeriodChange: (period: Period) => void;
 }
 
-export function PeriodTotals({ now }: Props) {
-	const [period, setPeriod] = useState<Period>("7d");
-	const win = useMemo(() => periodWindow(period, now), [period, now]);
+export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props) {
 	const showPrev = period !== "all";
 
 	const totals = queryHooks.useStatsPeriodTotals(win.start, now);
@@ -71,7 +40,7 @@ export function PeriodTotals({ now }: Props) {
 			<Tabs
 				value={period}
 				onValueChange={(v) => {
-					if (isPeriod(v)) setPeriod(v);
+					if (isPeriod(v)) onPeriodChange(v);
 				}}
 				className="mb-5"
 			>
@@ -92,7 +61,13 @@ export function PeriodTotals({ now }: Props) {
 					transition={{ duration: 0.25 }}
 					className="grid grid-cols-3 gap-3"
 				>
-					<Stat label="Minutes" value={data.minutes} delta={deltas.minutes} period={period} />
+					<Stat
+						label="Time"
+						value={data.minutes}
+						format={(v) => formatDuration(v * 60_000)}
+						delta={deltas.minutes}
+						period={period}
+					/>
 					<Stat label="Words" value={data.words} delta={deltas.words} period={period} />
 					<Stat
 						label="Finished"
@@ -109,18 +84,20 @@ export function PeriodTotals({ now }: Props) {
 function Stat({
 	label,
 	value,
+	format,
 	delta,
 	period,
 }: {
 	label: string;
 	value: number;
+	format?: (value: number) => string;
 	delta: number | null;
 	period: Period;
 }) {
 	return (
 		<div className="text-center">
 			<div className="font-bold text-3xl tabular-nums tracking-tight">
-				<AnimatedNumber value={value} />
+				<AnimatedNumber value={value} format={format} />
 			</div>
 			<div className="mt-1 text-[11px] text-muted-foreground uppercase tracking-wider">{label}</div>
 			{period !== "all" && delta != null && (

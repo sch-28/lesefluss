@@ -19,8 +19,10 @@ export function Personality() {
 	}));
 
 	const peakHourIdx = data.reduce((acc, d, i) => (d.minutes > data[acc].minutes ? i : acc), 0);
-	const peakLabel =
-		peakHourIdx === 0
+	const hasHourData = data[peakHourIdx].minutes > 0;
+	const peakLabel = !hasHourData
+		? "—"
+		: peakHourIdx === 0
 			? "midnight"
 			: peakHourIdx < 12
 				? `${peakHourIdx} AM`

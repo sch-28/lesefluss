@@ -185,6 +185,31 @@ describe.each(["Europe/Berlin", "America/New_York"])("buildWeeklyWpm in %s", (tz
 		expect(series.read.at(-1)?.avgWpm).toBe(190);
 	});
 
+	// Averaging the weekly averages would give the 10-word week equal say and
+	// report 550 instead of 100.
+	it("weights the window average by words, not by week", () => {
+		const now = at(2026, 4, 20);
+		const rows: WpmSession[] = [
+			{ startedAt: now, mode: "scroll", wpmAvg: 100, words: 100_000, durationMs: minutes(10) },
+			{
+				startedAt: now - 7 * 86_400_000,
+				mode: "scroll",
+				wpmAvg: 1000,
+				words: 10,
+				durationMs: minutes(1),
+			},
+		];
+		expect(buildWeeklyWpm(rows, 12, now).averages.read).toBe(100);
+	});
+
+	it("reports a zero average for a series with no sessions", () => {
+		expect(buildWeeklyWpm([], 12, at(2026, 4, 20)).averages).toEqual({
+			rsvpTarget: 0,
+			rsvpDelivered: 0,
+			read: 0,
+		});
+	});
+
 	it("keeps rsvp target and delivered apart", () => {
 		const now = at(2026, 4, 20);
 		// 1000 words in 10 minutes delivers 100 wpm against a 300 dial.

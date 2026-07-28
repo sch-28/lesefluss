@@ -1,5 +1,5 @@
 import { BarChart3, Loader2 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PageHeader } from "../../components/app-shell/page-header";
 import { queryHooks } from "../../services/db/hooks";
 import { startOfLocalDay } from "../../utils/date-utils";
@@ -7,6 +7,7 @@ import { SessionTable } from "./session-table";
 import { ActivityHeatmap } from "./stats/activity-heatmap";
 import { EmptyState } from "./stats/empty-state";
 import { Hero } from "./stats/hero";
+import { PERIOD_LABELS, type Period, periodWindow } from "./stats/period";
 import { PeriodTotals } from "./stats/period-totals";
 import { Personality } from "./stats/personality";
 import { TopBooks } from "./stats/top-books";
@@ -18,17 +19,17 @@ const Stats: React.FC = () => {
 	// Lock "now" for the lifetime of the page so query keys derived from it
 	// stay stable. Without this React Query refetches forever.
 	const now = useMemo(() => Date.now(), []);
+	const [period, setPeriod] = useState<Period>("7d");
+	const range = useMemo(() => periodWindow(period, now), [period, now]);
 
 	const sessionCount = queryHooks.useStatsSessionCount();
 
-	const weekWindow = useMemo(() => {
-		const start = startOfLocalDay(now) - 6 * MS_PER_DAY;
-		return { start, prevStart: start - 7 * MS_PER_DAY, prevEnd: start };
-	}, [now]);
-	const weekTotals = queryHooks.useStatsPeriodTotals(weekWindow.start, now);
-	const prevWeek = queryHooks.useStatsPeriodTotals(weekWindow.prevStart, weekWindow.prevEnd);
+	const weekStart = useMemo(() => startOfLocalDay(now) - 6 * MS_PER_DAY, [now]);
+	const weekTotals = queryHooks.useStatsPeriodTotals(weekStart, now);
+	const prevWeek = queryHooks.useStatsPeriodTotals(weekStart - 7 * MS_PER_DAY, weekStart);
 	const streak = queryHooks.useStatsStreak();
-	const top = queryHooks.useStatsTopBooks(weekWindow.start, 1);
+	// The hero's numbers are week-scoped, so its artwork has to be too.
+	const heroBook = queryHooks.useStatsTopBooks(weekStart, 1);
 
 	const hasSessions = (sessionCount.data ?? 0) > 0;
 	const isInitialLoading = sessionCount.isLoading;
@@ -37,8 +38,8 @@ const Stats: React.FC = () => {
 	const prevWords = prevWeek.data?.words;
 	const deltaVsPrev =
 		prevWords && prevWords > 0 ? ((wordsThisWeek - prevWords) / prevWords) * 100 : null;
-	const topCover = top.data?.[0]?.coverImage ?? null;
-	const topBookId = top.data?.[0]?.bookId ?? null;
+	const topCover = heroBook.data?.[0]?.coverImage ?? null;
+	const topBookId = heroBook.data?.[0]?.bookId ?? null;
 	const currentStreak = streak.data?.current ?? 0;
 
 	return (
@@ -59,12 +60,15 @@ const Stats: React.FC = () => {
 						topBookId={topBookId}
 						deltaVsPrev={deltaVsPrev}
 					/>
-					<PeriodTotals now={now} />
+					<PeriodTotals now={now} period={period} range={range} onPeriodChange={setPeriod} />
+					<TopBooks since={range.start} periodLabel={PERIOD_LABELS[period]} />
 					<ActivityHeatmap />
-					<TopBooks now={now} />
 					<WpmTrend />
 					<Personality />
 					<SessionTable mode="global" />
+					<p className="px-4 pb-6 text-[11px] text-muted-foreground">
+						Reading on a connected device isn't counted here; only sessions in the app are tracked.
+					</p>
 				</>
 			)}
 		</div>

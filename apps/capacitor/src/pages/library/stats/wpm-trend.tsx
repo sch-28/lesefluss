@@ -21,12 +21,6 @@ const LABELS: Record<SeriesId, string> = {
 	read: "Reading speed",
 };
 
-function avgOf(series: Array<{ y: number }>): number {
-	const nonZero = series.filter((p) => p.y > 0);
-	if (nonZero.length === 0) return 0;
-	return Math.round(nonZero.reduce((a, p) => a + p.y, 0) / nonZero.length);
-}
-
 export function WpmTrend() {
 	const { theme } = useTheme();
 	const weekly = queryHooks.useStatsWeeklyWpm(12);
@@ -87,10 +81,14 @@ export function WpmTrend() {
 		);
 	}
 
+	// Measurements first. The dial setting is an input, not a reading speed, and
+	// headlining it told RSVP users their own slider position.
+	const averages = weekly.data?.averages ?? { rsvpTarget: 0, rsvpDelivered: 0, read: 0 };
 	const headlineId: SeriesId | null =
-		(["rsvpTarget", "read", "rsvpDelivered"] as const).find((id) => present.includes(id)) ?? null;
-	const headlineAvg = headlineId ? avgOf(seriesData[headlineId]) : 0;
-	const headlineLabel = headlineId ? `${LABELS[headlineId]} avg` : "";
+		(["rsvpDelivered", "read", "rsvpTarget"] as const).find((id) => present.includes(id)) ?? null;
+	const headlineAvg = headlineId ? averages[headlineId] : 0;
+	const headlineLabel = headlineId ? LABELS[headlineId] : "";
+	const hasRsvpTarget = headlineId === "rsvpDelivered" && averages.rsvpTarget > 0;
 
 	return (
 		<motion.section
@@ -114,6 +112,9 @@ export function WpmTrend() {
 					<div className="mt-1 text-[11px] uppercase tracking-wider opacity-60">
 						{headlineLabel}
 					</div>
+					{hasRsvpTarget && (
+						<div className="mt-0.5 text-[11px] opacity-60">at a {averages.rsvpTarget} target</div>
+					)}
 				</div>
 			</header>
 
@@ -125,7 +126,7 @@ export function WpmTrend() {
 							style={{ backgroundColor: colors[id] }}
 						/>
 						<span className="opacity-80">
-							{LABELS[id]} · {avgOf(seriesData[id])}
+							{LABELS[id]} · {averages[id]}
 						</span>
 					</span>
 				))}

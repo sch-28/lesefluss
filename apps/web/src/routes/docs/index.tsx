@@ -49,7 +49,7 @@ function DocsPage() {
 			<Tabs value={active} onValueChange={setActive} className="w-full">
 				<div className="flex w-full gap-8 lg:gap-12">
 					<aside className="hidden w-52 shrink-0 lg:block">
-						<TabsList className="sticky top-24 h-auto w-full flex-col gap-1 bg-transparent p-0">
+						<TabsList className="sticky top-24 h-auto! w-full flex-col gap-1 bg-transparent p-0">
 							{docsSections.map((s) => (
 								<TabsTrigger
 									key={s.id}

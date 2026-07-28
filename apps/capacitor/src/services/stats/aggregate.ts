@@ -110,6 +110,12 @@ export interface WeeklyWpmSeries {
 	rsvpDelivered: WeeklyWpm[];
 	/** Natural reading speed in scroll/page modes. */
 	read: WeeklyWpm[];
+	/**
+	 * Words-weighted average per series over the whole window. Returned rather
+	 * than derived from the points, because averaging the weekly averages gives a
+	 * week with one 10-word session the same say as a week with 300k.
+	 */
+	averages: Record<"rsvpTarget" | "rsvpDelivered" | "read", number>;
 }
 
 export interface WpmSession {
@@ -165,10 +171,27 @@ export function buildWeeklyWpm(rows: WpmSession[], weeks: number, now: number): 
 		});
 	}
 
+	function averageOver(buckets: Map<number, Bucket>): number {
+		let sumWordsWpm = 0;
+		let sumWords = 0;
+		for (const weekStart of weekStarts) {
+			const b = buckets.get(weekStart);
+			if (!b) continue;
+			sumWordsWpm += b.sumWordsWpm;
+			sumWords += b.sumWords;
+		}
+		return sumWords > 0 ? Math.round(sumWordsWpm / sumWords) : 0;
+	}
+
 	return {
 		rsvpTarget: buildSeries(targetBuckets),
 		rsvpDelivered: buildSeries(deliveredBuckets),
 		read: buildSeries(readBuckets),
+		averages: {
+			rsvpTarget: averageOver(targetBuckets),
+			rsvpDelivered: averageOver(deliveredBuckets),
+			read: averageOver(readBuckets),
+		},
 	};
 }
 
