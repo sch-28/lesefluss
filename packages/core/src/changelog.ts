@@ -9,12 +9,20 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-07-28",
+		title: "Much Lighter Syncing",
+		tags: ["App", "Website"],
+		changes: [
+			"Syncing while you read now uses up to 500x less mobile data. The bigger your library, the bigger the difference",
+			"Reading stats sync as they happen instead of sending your whole history every time",
+			"Noticeably less battery drain on long reading sessions",
+		],
+	},
+	{
 		date: "2026-06-25",
 		title: "Chapter Title Fallback",
 		tags: ["App"],
-		changes: [
-			"Fixed an issue where the chapter titles where not shown",
-		],
+		changes: ["Fixed an issue where the chapter titles where not shown"],
 	},
 	{
 		date: "2026-06-08",

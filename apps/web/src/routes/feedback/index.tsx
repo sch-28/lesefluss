@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import {
 	Dialog,
 	DialogContent,
@@ -7,6 +6,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@lesefluss/ui/dialog";
+import { createFileRoute } from "@tanstack/react-router";
 import { Check, Mail, MessageSquareText, Send } from "lucide-react";
 import * as React from "react";
 import { seo } from "~/utils/seo";

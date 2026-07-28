@@ -22,7 +22,10 @@ export const Route = createFileRoute("/api/latest-version")({
 				if (!ok) {
 					return Response.json(
 						{ error: "Too many requests" },
-						{ status: 429, headers: retryAfter ? { "Retry-After": String(retryAfter) } : undefined },
+						{
+							status: 429,
+							headers: retryAfter ? { "Retry-After": String(retryAfter) } : undefined,
+						},
 					);
 				}
 				return Response.json({ android: LATEST_ANDROID_VERSION });

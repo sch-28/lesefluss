@@ -74,6 +74,9 @@ async function getUserSyncData(
 		chapterStatus: syncBooks.chapterStatus,
 		deleted: syncBooks.deleted,
 		updatedAt: syncBooks.updatedAt,
+		// Presence flag only. The content itself is fetched separately below, and
+		// only for books the client says it doesn't have.
+		hasContent: sql<boolean>`${syncBooks.content} IS NOT NULL`,
 	};
 	const [books, settingsRows, highlights, glossaryRows, seriesRows, readingSessionRows] =
 		await Promise.all([
@@ -110,6 +113,7 @@ async function getUserSyncData(
 	}
 
 	return {
+		contentBookIds: books.filter((b) => !b.deleted && b.hasContent).map((b) => b.bookId),
 		books: books.map((b) => {
 			const content = contentMap.get(b.bookId);
 			return {
@@ -536,10 +540,10 @@ export const Route = createFileRoute("/api/sync")({
 					}
 				});
 
-				// Return merged state - exclude content for books the client already has
-				const clientBookIds = new Set(payload.books.map((b) => b.bookId));
-				const data = await getUserSyncData(userId, clientBookIds);
-				return Response.json(data);
+				// No body: the client pulls with GET and discards whatever POST returns,
+				// so building a full merged snapshot here is a wasted query and a wasted
+				// download on every push.
+				return new Response(null, { status: 204 });
 			},
 		},
 	},

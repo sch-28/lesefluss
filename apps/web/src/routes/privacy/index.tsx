@@ -131,8 +131,8 @@ function PrivacyPage() {
 					The app runs fully offline by default. Books, settings, and highlights live in a local
 					SQLite database on your device. Apart from the anonymized error diagnostics described
 					above (which you can turn off under Settings &rarr; Privacy), nothing leaves the device
-					unless you explicitly sign in to sync. Bluetooth is used only to talk to the optional ESP32
-					device and transmits nothing to us.
+					unless you explicitly sign in to sync. Bluetooth is used only to talk to the optional
+					ESP32 device and transmits nothing to us.
 				</p>
 			</section>
 

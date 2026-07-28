@@ -16,6 +16,7 @@ import {
 } from "react";
 import { toast } from "../components/toast";
 import {
+	adoptSyncIdentity,
 	consumeAuthLoginHandoffState,
 	finalizeVerifiedAuthLoginHandoff,
 	fullSync,
@@ -141,6 +142,9 @@ function useRestoreSession(
 							? (data as { user?: unknown }).user
 							: undefined;
 					if (!hasEmail(user) || cancelled) return;
+					// Before any sync runs: drops caches describing the previous
+					// account's server state if a different user signed in.
+					await adoptSyncIdentity(user.email);
 					setIsLoggedIn(true);
 					setUserEmail(user.email);
 				} else {

@@ -37,6 +37,12 @@ import type {
 } from "../db/schema";
 import { queryClient } from "../query-client";
 import { SYNC_URL } from "./auth-client";
+import {
+	addServerContentIds,
+	clearServerContentIds,
+	getServerContentIds,
+	setServerContentIds,
+} from "./server-content-cache";
 
 /** True when the capacitor app is hosted inside the website (same origin, cookie auth). */
 export const IS_WEB_BUILD = import.meta.env.VITE_WEB_BUILD === "true";
@@ -55,6 +61,7 @@ const TOKEN_KEY = "sync_token";
 const LAST_SYNCED_KEY = "sync_last_synced";
 const USER_EMAIL_KEY = "sync_user_email";
 const AUTH_STATE_KEY = "sync_auth_state";
+const SESSIONS_PUSHED_KEY = "sync_sessions_pushed_at";
 
 const preferencesAuthStorage: AuthHandoffStorage = {
 	async get(key) {
@@ -84,6 +91,47 @@ async function clearToken(): Promise<void> {
 	await Preferences.remove({ key: TOKEN_KEY });
 	await Preferences.remove({ key: USER_EMAIL_KEY });
 	await Preferences.remove({ key: AUTH_STATE_KEY });
+	await clearAccountScopedState();
+}
+
+/**
+ * Drop everything that describes what one specific account's server already holds.
+ * Carried into another account it suppresses uploads that account still needs.
+ */
+async function clearAccountScopedState(): Promise<void> {
+	await clearServerContentIds();
+	await resetSessionPushWatermark();
+}
+
+/**
+ * Bind the local caches to whoever is signed in now, clearing them on a change of
+ * account. The web build has no in-app sign-out (the site header calls better-auth
+ * directly) and its 401 path never clears a token, so this is the only point where
+ * a browser-side account switch is noticed.
+ */
+export async function adoptSyncIdentity(email: string | null): Promise<void> {
+	const { value: previous } = await Preferences.get({ key: USER_EMAIL_KEY });
+	if (previous === email) return;
+	await clearAccountScopedState();
+	if (email) await Preferences.set({ key: USER_EMAIL_KEY, value: email });
+	else await Preferences.remove({ key: USER_EMAIL_KEY });
+}
+
+/**
+ * Reading sessions are pushed incrementally against this watermark. Reset it to
+ * force the next push to resend every local session, needed after any flow that
+ * wipes sessions server-side, otherwise local rows stay permanently unpushable.
+ */
+export async function resetSessionPushWatermark(): Promise<void> {
+	await Preferences.remove({ key: SESSIONS_PUSHED_KEY });
+}
+
+async function getSessionPushWatermark(): Promise<number> {
+	const { value } = await Preferences.get({ key: SESSIONS_PUSHED_KEY });
+	const parsed = value ? Number(value) : 0;
+	// A corrupt value would otherwise reach the query as NaN, which binds NULL and
+	// matches no rows, silently stopping session sync for good.
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
 /**
@@ -145,7 +193,10 @@ export async function finalizeVerifiedAuthLoginHandoff(token: string): Promise<{
 
 export async function signOut(): Promise<void> {
 	const token = await getToken();
-	await clearToken();
+	// Behind the sync lock: a push in flight persists what the server now holds once
+	// it resolves, which would write this account's caches straight back after the
+	// clear and hand them to whoever signs in next.
+	await withSyncLock(clearToken);
 	// Server-side invalidation is best-effort: if we're offline or the request
 	// fails, the token is gone from this device but stays valid on the server
 	// until its TTL expires. Accepted trade-off for immediate UI response.
@@ -209,6 +260,9 @@ async function syncFetch(path: string, options?: RequestInit): Promise<Response>
 
 	if (res.status === 401) {
 		if (!IS_WEB_BUILD) await clearToken();
+		// The web build keeps no token to clear, but the account-scoped caches are
+		// still stale the moment the session is gone.
+		else await clearAccountScopedState();
 		throw new Error("Session expired");
 	}
 
@@ -430,6 +484,10 @@ export async function pullSync(): Promise<Set<string>> {
 		});
 		const data: SyncResponse = await res.json();
 
+		// The server tells us outright which books it stores content for. Older
+		// servers omit the field; fall back to inferring it per book below.
+		const authoritativeContentIds = data.contentBookIds;
+
 		let changed = false;
 
 		// --- Merge series (before books, so chapter rows can FK-reference them) ---
@@ -541,10 +599,17 @@ export async function pullSync(): Promise<Set<string>> {
 				continue;
 			}
 
-			// Server content tracking only applies to standalone books. Chapter rows are
-			// intentionally contentless in sync payloads; marking them as content-present
-			// would suppress future standalone uploads if schemas ever drift.
-			if (!serverBook.seriesId && (serverBook.content || localBookMap.has(serverBook.bookId))) {
+			// Fallback inference for servers that don't report `contentBookIds`. Only
+			// applies to standalone books: chapter rows are intentionally contentless in
+			// sync payloads, and marking them content-present would suppress future
+			// standalone uploads if schemas ever drift. Note this can only ever add ids:
+			// it treats "the server has a row and so do I" as proof the content is there,
+			// which is why the authoritative list is preferred.
+			if (
+				!authoritativeContentIds &&
+				!serverBook.seriesId &&
+				(serverBook.content || localBookMap.has(serverBook.bookId))
+			) {
 				serverHasContent.add(serverBook.bookId);
 			}
 
@@ -744,6 +809,13 @@ export async function pullSync(): Promise<Set<string>> {
 			}
 		}
 
+		if (authoritativeContentIds) {
+			for (const id of authoritativeContentIds) serverHasContent.add(id);
+		}
+		// Persist so a debounced push that runs before the next pull still knows what
+		// the server holds. Without this every push re-uploads the whole library.
+		await setServerContentIds(serverHasContent);
+
 		// Invalidate React Query cache so UI reflects pulled changes
 		if (changed) {
 			queryClient.invalidateQueries({ queryKey: bookKeys.all });
@@ -775,12 +847,75 @@ export function shouldPushBook(b: Book): boolean {
 	return b.chapterStatus !== "pending" || b.wordPosition > 0 || b.lastRead !== null;
 }
 
-/** @param serverHasContent bookIds the server already has content for - skip content for those */
-export async function pushSync(serverHasContent: Set<string> = new Set()): Promise<void> {
+/**
+ * Book ids whose body content still has to be uploaded. Tombstones and chapter
+ * rows never carry content (see bookToSync), and anything the server already
+ * stores is skipped. The server keeps its stored value when the field is absent.
+ */
+export function booksNeedingContent(books: Book[], serverContentIds: Set<string>): Set<string> {
+	const ids = new Set<string>();
+	for (const book of books) {
+		if (book.deleted || book.seriesId || serverContentIds.has(book.id)) continue;
+		ids.add(book.id);
+	}
+	return ids;
+}
+
+/** Schema cap on `readingSessions` in a single payload. */
+const SESSIONS_CAP = 50_000;
+
+/**
+ * Reading sessions are NOT filtered by pushedBookIds. Rows must outlive the book
+ * for all-time totals.
+ *
+ * Over the cap, take the OLDEST rows by `updatedAt`, the same field the watermark
+ * advances on. Clipping by `startedAt` instead would drop rows sitting below the
+ * batch maximum, and the watermark would then move past them so they could never
+ * be selected again. Taking the oldest keeps the watermark monotone and leaves the
+ * remainder above it for the next push.
+ */
+export function clipSessionsForPush<T extends { updatedAt: number }>(
+	rows: T[],
+	cap: number = SESSIONS_CAP,
+): T[] {
+	if (rows.length <= cap) return rows;
+	return [...rows].sort((a, b) => a.updatedAt - b.updatedAt).slice(0, cap);
+}
+
+/**
+ * Highest `updatedAt` among the pushed rows, never moving backwards and never past
+ * this device's clock.
+ *
+ * The clamp matters: sessions pulled from another device keep that device's
+ * `updatedAt` (see the pull merge), so a peer running fast would otherwise push the
+ * watermark into the future. Every session recorded here until real time caught up
+ * would sort below it and never be uploaded at all.
+ */
+export function nextSessionWatermark(
+	rows: { updatedAt: number }[],
+	current: number,
+	nowMs: number = Date.now(),
+): number {
+	let max = current;
+	for (const row of rows) if (row.updatedAt > max) max = row.updatedAt;
+	return Math.min(max, Math.max(current, nowMs));
+}
+
+/**
+ * @param serverHasContent bookIds the server already has content for, whose content
+ * is omitted. Defaults to the persisted cache rather than an empty set:
+ * an empty set means "the server has nothing", which re-uploads the entire library.
+ */
+export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 	if (!(await isSyncReady())) return;
 
 	await withSyncLock(async () => {
 		log("sync", "pushing...");
+
+		// Read inside the lock: a queued push must see what the one ahead of it just
+		// committed, or it re-uploads the same content and resends the same sessions.
+		const knownContentIds = serverHasContent ?? (await getServerContentIds());
+		const sessionWatermark = await getSessionPushWatermark();
 
 		const [books, settings, highlights, glossaryEntries, seriesRows, readingSessionsRows] =
 			await Promise.all([
@@ -789,7 +924,7 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 				queries.getAllHighlights(),
 				queries.getAllEntries(),
 				queries.getSeriesForSync(),
-				queries.getAllReadingSessions(),
+				queries.getReadingSessionsSince(sessionWatermark),
 			]);
 
 		// Pristine pending chapter rows carry zero user data and are excluded from the
@@ -807,26 +942,24 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 		if (localOnly > 0)
 			log("sync", `push: excluded ${localOnly} local-only books (too large to sync)`);
 
-		// Fetch content only for books the server doesn't have yet (tombstones never carry content,
-		// and chapter rows never sync content — see bookToSync).
+		// Reading content back out of SQLite costs a bridge round-trip per 512 KB
+		// chunk, so only books the server is actually missing are touched.
+		const needContent = booksNeedingContent(booksForPush, knownContentIds);
+		// Ids whose content actually made it into the payload. A missing content row
+		// yields no content, and recording it as uploaded would tell every later push
+		// the server has a body it never received.
+		const uploadedContentIds = new Set<string>();
 		const booksWithContent = await Promise.all(
 			booksForPush.map(async (book) => {
-				if (book.deleted || book.seriesId || serverHasContent.has(book.id)) {
-					return bookToSync(book);
-				}
+				if (!needContent.has(book.id)) return bookToSync(book);
 				const contentData = await queries.getBookContent(book.id);
+				if (contentData) uploadedContentIds.add(book.id);
 				return bookToSync(book, contentData);
 			}),
 		);
 
-		// Reading sessions are NOT filtered by pushedBookIds. Rows must outlive the
-		// book for all-time totals. Clip newest-first if local exceeds the schema cap.
-		const SESSIONS_CAP = 50_000;
-		const sessionsForPush = (
-			readingSessionsRows.length > SESSIONS_CAP
-				? [...readingSessionsRows].sort((a, b) => b.startedAt - a.startedAt).slice(0, SESSIONS_CAP)
-				: readingSessionsRows
-		).map(sessionToSync);
+		const clippedSessions = clipSessionsForPush(readingSessionsRows);
+		const sessionsForPush = clippedSessions.map(sessionToSync);
 
 		const payload: SyncPayload = {
 			books: booksWithContent,
@@ -860,42 +993,23 @@ export async function pushSync(serverHasContent: Set<string> = new Set()): Promi
 		const body = JSON.stringify(payload);
 		log(
 			"sync",
-			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
+			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} contentUploads=${uploadedContentIds.size} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
 		);
-
-		// TASK-151 diagnostics: if push body crosses 1MB, break down which section
-		// is driving the size and surface the worst offender within that section.
-		const SPIKE_THRESHOLD = 1_000_000;
-		if (body.length > SPIKE_THRESHOLD) {
-			const sectionBytes = {
-				books: JSON.stringify(payload.books).length,
-				highlights: JSON.stringify(payload.highlights).length,
-				glossaryEntries: JSON.stringify(payload.glossaryEntries).length,
-				series: JSON.stringify(payload.series ?? []).length,
-				readingSessions: JSON.stringify(payload.readingSessions ?? []).length,
-			};
-			const sizedRow = <T>(rows: T[]): { row: T; bytes: number } | null => {
-				if (rows.length === 0) return null;
-				let worst = { row: rows[0] as T, bytes: JSON.stringify(rows[0]).length };
-				for (const row of rows) {
-					const bytes = JSON.stringify(row).length;
-					if (bytes > worst.bytes) worst = { row, bytes };
-				}
-				return worst;
-			};
-			const worstBook = sizedRow(payload.books);
-			const worstHighlight = sizedRow(payload.highlights);
-			const worstSession = sizedRow(payload.readingSessions ?? []);
-			log(
-				"sync",
-				`push payload SPIKE bodyBytes=${body.length} sections=${JSON.stringify(sectionBytes)} worstBook=${worstBook ? `${(worstBook.row as { id?: string }).id ?? "?"}:${worstBook.bytes}` : "none"} worstHighlight=${worstHighlight ? `${(worstHighlight.row as { id?: string }).id ?? "?"}:${worstHighlight.bytes}` : "none"} worstSession=${worstSession ? `${(worstSession.row as { id?: string }).id ?? "?"}:${worstSession.bytes}` : "none"}`,
-			);
-		}
 
 		await syncFetch("/api/sync", {
 			method: "POST",
 			body,
 		});
+
+		// Only after the server has accepted them: a failed push must not convince the
+		// next one that content is already stored, or that sessions were delivered.
+		if (uploadedContentIds.size > 0) await addServerContentIds(uploadedContentIds);
+		if (settings.syncStats && clippedSessions.length > 0) {
+			await Preferences.set({
+				key: SESSIONS_PUSHED_KEY,
+				value: String(nextSessionWatermark(clippedSessions, sessionWatermark)),
+			});
+		}
 
 		await Preferences.set({
 			key: LAST_SYNCED_KEY,

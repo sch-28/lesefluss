@@ -207,4 +207,12 @@ export type SyncResponse = {
 	glossaryEntries: SyncGlossaryEntry[];
 	series: SyncSeries[];
 	readingSessions: SyncReadingSession[];
+	/**
+	 * Book ids the server currently holds body content for. Lets the client skip
+	 * re-uploading content it has already stored, which it cannot otherwise know:
+	 * content is omitted from the response for every book listed in `X-Sync-Have`,
+	 * so its absence there is ambiguous. Optional so a client pointed at an older
+	 * server can fall back instead of treating every book as missing.
+	 */
+	contentBookIds?: string[];
 };

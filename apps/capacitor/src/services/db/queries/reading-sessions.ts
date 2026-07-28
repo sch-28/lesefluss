@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, gte } from "drizzle-orm";
 import { db } from "../index";
 import { type NewReadingSession, type ReadingSession, readingSessions } from "../schema";
 
@@ -8,6 +8,23 @@ import { type NewReadingSession, type ReadingSession, readingSessions } from "..
  */
 export async function getAllReadingSessions(): Promise<ReadingSession[]> {
 	return db.select().from(readingSessions).orderBy(desc(readingSessions.startedAt));
+}
+
+/**
+ * Fetch sessions touched at or after `sinceMs`. Sync pushes only these: the server
+ * upserts sessions and never tombstones omitted rows, so a partial set is safe and
+ * keeps a push from re-sending a reading history that only ever grows.
+ *
+ * `>=` rather than `>` so a row sharing a millisecond with the watermark can't slip
+ * through. The server-side upsert is idempotent, so the overlap costs nothing.
+ */
+export async function getReadingSessionsSince(sinceMs: number): Promise<ReadingSession[]> {
+	if (sinceMs <= 0) return getAllReadingSessions();
+	return db
+		.select()
+		.from(readingSessions)
+		.where(gte(readingSessions.updatedAt, sinceMs))
+		.orderBy(desc(readingSessions.startedAt));
 }
 
 /**

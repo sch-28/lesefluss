@@ -28,7 +28,10 @@ export const Route = createFileRoute("/api/telemetry")({
 				if (!ok) {
 					return Response.json(
 						{ error: "Too many requests" },
-						{ status: 429, headers: retryAfter ? { "Retry-After": String(retryAfter) } : undefined },
+						{
+							status: 429,
+							headers: retryAfter ? { "Retry-After": String(retryAfter) } : undefined,
+						},
 					);
 				}
 
@@ -47,7 +50,8 @@ export const Route = createFileRoute("/api/telemetry")({
 					body?.extra && typeof body.extra === "object" && !Array.isArray(body.extra)
 						? (body.extra as Record<string, unknown>)
 						: null;
-				const extra = rawExtra && JSON.stringify(rawExtra).length <= MAX_EXTRA_CHARS ? rawExtra : null;
+				const extra =
+					rawExtra && JSON.stringify(rawExtra).length <= MAX_EXTRA_CHARS ? rawExtra : null;
 
 				await db.insert(telemetryEvents).values({
 					type,

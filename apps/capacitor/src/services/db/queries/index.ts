@@ -46,6 +46,7 @@ import {
 	deleteReadingSession,
 	getAllReadingSessions,
 	getReadingSessionsByBook,
+	getReadingSessionsSince,
 	upsertReadingSession,
 } from "./reading-sessions";
 import {
@@ -121,6 +122,7 @@ export const queries = {
 
 	// Reading sessions
 	getAllReadingSessions,
+	getReadingSessionsSince,
 	getReadingSessionsByBook,
 	addReadingSession,
 	upsertReadingSession,

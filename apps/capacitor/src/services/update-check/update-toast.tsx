@@ -35,7 +35,11 @@ function UpdateToastCard({ version, onUpdate, onHide }: UpdateToastProps) {
 	);
 }
 
-export function showUpdateToast(opts: { version: string; onUpdate: () => void; onHide: () => void }): void {
+export function showUpdateToast(opts: {
+	version: string;
+	onUpdate: () => void;
+	onHide: () => void;
+}): void {
 	sonnerToast.custom(
 		(id) => (
 			<UpdateToastCard

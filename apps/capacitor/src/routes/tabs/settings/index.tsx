@@ -1,3 +1,5 @@
+import { Capacitor } from "@capacitor/core";
+import { Switch } from "@lesefluss/ui/switch";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
 	ChevronRight,
@@ -14,8 +16,6 @@ import {
 	Sparkles,
 	Zap,
 } from "lucide-react";
-import { Capacitor } from "@capacitor/core";
-import { Switch } from "@lesefluss/ui/switch";
 import { useEffect, useState } from "react";
 import { TabHeader } from "@/components/app-shell/tab-header";
 import BLEIndicator from "@/components/ble-indicator";
