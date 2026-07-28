@@ -44,6 +44,14 @@ The position pair identifying a highlight in a book. Shape: `{ startWord, startC
 
 A continuous reading session: start, end, words read, target book. Lives in the local database. Syncs to the server.
 
+*Words read* (`reading_sessions.wordsRead`) is the total length of the [read spans](#read-span), not the distance between start and end position.
+
+### Read span
+
+A range of the book travelled forward at reading pace within one [session](#session). Movement above the mode's per-tick threshold is a jump (TOC navigation, a progress-bar scrub) and crosses its range without reading it; moving backwards reads nothing, though the range is credited if it is later travelled forward again.
+
+Spans are merged, so a passage re-read in the same sitting counts once, while a gap skipped earlier and read later does count. They are a tracker-internal accounting device: never persisted, never synced. Only their total length is stored.
+
 ---
 
 ## Storage

@@ -1,12 +1,16 @@
 import { and, desc, eq, gte, inArray, isNotNull, lt, sql } from "drizzle-orm";
-import { localDateKey, previousLocalDayStart, startOfLocalDay } from "../../../utils/date-utils";
+import {
+	buildWeeklyWpm,
+	type StreakResult,
+	summariseStreak,
+	type WeeklyWpmSeries,
+	weekStartsFor,
+} from "../../stats/aggregate";
 import { db } from "../index";
 import { bookContent, books, readingSessions } from "../schema";
 
 /** Same threshold as `series.ts` / `sort-filter.ts`. Keep both in sync. */
 const FINISHED_PERCENT_THRESHOLD = 95;
-
-const MS_PER_DAY = 86_400_000;
 
 export interface PeriodTotals {
 	minutes: number;
@@ -56,33 +60,14 @@ export async function getPeriodTotals(
 	};
 }
 
-export interface DailyMinutes {
-	/** YYYY-MM-DD local date key. */
-	date: string;
-	/** Epoch ms at start of that local day (sortable). */
-	dayStart: number;
-	minutes: number;
-}
-
-export interface StreakResult {
-	current: number;
-	longest: number;
-	/** Last 90 local days, oldest → newest. Days with no activity have minutes = 0. */
-	last90Days: DailyMinutes[];
-}
-
 /**
  * Compute current/longest streak and a 90-day per-day-minutes series for the
- * heatmap. A "day" is any local day with ≥1 minute of reading. Aggregation
- * happens in JS because session timestamps must be bucketed in device-local
- * time, which SQLite cannot reliably do without timezone info.
+ * heatmap. Aggregation happens in JS because session timestamps must be
+ * bucketed in device-local time, which SQLite cannot reliably do without
+ * timezone info.
  */
 export async function getStreak(): Promise<StreakResult> {
-	const now = Date.now();
-	const horizon = startOfLocalDay(now) - 89 * MS_PER_DAY;
-
-	// Pull every session from horizon onward (cheap; one row per sitting).
-	// We also need older sessions to compute "longest streak" properly.
+	// Every session, not just the heatmap window: "longest streak" is all-time.
 	const rows = await db
 		.select({
 			startedAt: readingSessions.startedAt,
@@ -91,55 +76,7 @@ export async function getStreak(): Promise<StreakResult> {
 		.from(readingSessions)
 		.orderBy(readingSessions.startedAt);
 
-	const minutesByDay = new Map<string, number>();
-	for (const r of rows) {
-		const minutes = r.durationMs / 60_000;
-		if (minutes < 1) continue;
-		const key = localDateKey(r.startedAt);
-		minutesByDay.set(key, (minutesByDay.get(key) ?? 0) + minutes);
-	}
-
-	// Build the 90-day window oldest → newest.
-	const last90Days: DailyMinutes[] = [];
-	for (let i = 0; i < 90; i++) {
-		const dayStart = horizon + i * MS_PER_DAY;
-		const date = localDateKey(dayStart);
-		last90Days.push({
-			date,
-			dayStart,
-			minutes: Math.round(minutesByDay.get(date) ?? 0),
-		});
-	}
-
-	// Current streak: walk back from today (or yesterday if today is empty).
-	// Walking via previousLocalDayStart keeps the math correct across DST.
-	let current = 0;
-	let cursor = startOfLocalDay(now);
-	if (!minutesByDay.has(localDateKey(cursor))) {
-		cursor = previousLocalDayStart(cursor);
-	}
-	while (minutesByDay.has(localDateKey(cursor))) {
-		current++;
-		cursor = previousLocalDayStart(cursor);
-	}
-
-	// Longest streak: scan all keys sorted ascending. Two keys count as
-	// consecutive when the previous local day of `curr` equals `prev`, which
-	// avoids the 23h/25h DST trap that `=== MS_PER_DAY` would fall into.
-	const keysSet = new Set(minutesByDay.keys());
-	const sortedKeys = [...keysSet].sort();
-	let longest = 0;
-	let run = 0;
-	let prevKey: string | null = null;
-	for (const key of sortedKeys) {
-		const dayStart = startOfLocalDay(new Date(key).getTime());
-		const isAdjacent = prevKey != null && localDateKey(previousLocalDayStart(dayStart)) === prevKey;
-		run = isAdjacent ? run + 1 : 1;
-		if (run > longest) longest = run;
-		prevKey = key;
-	}
-
-	return { current, longest: Math.max(longest, current), last90Days };
+	return summariseStreak(rows, Date.now());
 }
 
 export interface TopBook {
@@ -200,36 +137,8 @@ export async function getTopBooks(opts: { since: number; limit?: number }): Prom
 		.filter((x): x is TopBook => x !== null);
 }
 
-export interface WeeklyWpm {
-	weekStart: number;
-	avgWpm: number;
-}
-
-export interface WeeklyWpmSeries {
-	/** Configured RSVP dial setting, weighted by words. */
-	rsvpTarget: WeeklyWpm[];
-	/** Actual rate the RSVP engine delivered (lower than target due to
-	 * punctuation pauses + accel ramp). Computed from words / active minutes. */
-	rsvpDelivered: WeeklyWpm[];
-	/** Natural reading speed in scroll/page modes. */
-	read: WeeklyWpm[];
-}
-
-function weekStartLocal(epochMs: number): number {
-	const d = new Date(startOfLocalDay(epochMs));
-	const dow = (d.getDay() + 6) % 7;
-	return d.getTime() - dow * MS_PER_DAY;
-}
-
-/**
- * Weekly WPM trend with three series, all words-weighted so one short session
- * can't dominate a week. Each session contributes to whichever buckets apply
- * to its mode.
- */
 export async function getWeeklyWpm(opts: { weeks: number }): Promise<WeeklyWpmSeries> {
 	const now = Date.now();
-	const horizon = startOfLocalDay(now) - (opts.weeks * 7 - 1) * MS_PER_DAY;
-
 	const rows = await db
 		.select({
 			startedAt: readingSessions.startedAt,
@@ -239,51 +148,9 @@ export async function getWeeklyWpm(opts: { weeks: number }): Promise<WeeklyWpmSe
 			durationMs: readingSessions.durationMs,
 		})
 		.from(readingSessions)
-		.where(gte(readingSessions.startedAt, horizon));
+		.where(gte(readingSessions.startedAt, weekStartsFor(opts.weeks, now)[0] as number));
 
-	type Bucket = { sumWordsWpm: number; sumWords: number };
-	const targetBuckets = new Map<number, Bucket>();
-	const deliveredBuckets = new Map<number, Bucket>();
-	const readBuckets = new Map<number, Bucket>();
-
-	function add(map: Map<number, Bucket>, weekStart: number, wpm: number, words: number) {
-		const bucket = map.get(weekStart) ?? { sumWordsWpm: 0, sumWords: 0 };
-		bucket.sumWordsWpm += wpm * words;
-		bucket.sumWords += words;
-		map.set(weekStart, bucket);
-	}
-
-	for (const r of rows) {
-		const w = weekStartLocal(r.startedAt);
-		const words = Math.max(1, r.words);
-		if (r.mode === "rsvp") {
-			if (r.wpmAvg != null) add(targetBuckets, w, r.wpmAvg, words);
-			if (r.durationMs > 1000) {
-				const delivered = Math.round(r.words / (r.durationMs / 60_000));
-				if (delivered > 0) add(deliveredBuckets, w, delivered, words);
-			}
-		} else if (r.wpmAvg != null) {
-			add(readBuckets, w, r.wpmAvg, words);
-		}
-	}
-
-	const lastWeek = weekStartLocal(now);
-	function buildSeries(buckets: Map<number, Bucket>): WeeklyWpm[] {
-		const out: WeeklyWpm[] = [];
-		for (let i = opts.weeks - 1; i >= 0; i--) {
-			const weekStart = lastWeek - i * 7 * MS_PER_DAY;
-			const b = buckets.get(weekStart);
-			const avg = b && b.sumWords > 0 ? Math.round(b.sumWordsWpm / b.sumWords) : 0;
-			out.push({ weekStart, avgWpm: avg });
-		}
-		return out;
-	}
-
-	return {
-		rsvpTarget: buildSeries(targetBuckets),
-		rsvpDelivered: buildSeries(deliveredBuckets),
-		read: buildSeries(readBuckets),
-	};
+	return buildWeeklyWpm(rows, opts.weeks, now);
 }
 
 /** Sessions bucketed by local hour-of-day. Returns a 24-length minutes-array. */

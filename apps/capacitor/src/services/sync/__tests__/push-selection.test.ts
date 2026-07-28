@@ -1,7 +1,12 @@
-import { wordPos } from "@lesefluss/core";
+import { type SyncReadingSession, wordPos } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
 import type { Book, ReadingSession } from "../../db/schema";
-import { booksNeedingContent, clipSessionsForPush, nextSessionWatermark } from "../index";
+import {
+	booksNeedingContent,
+	clipSessionsForPush,
+	nextSessionWatermark,
+	partitionPushableSessions,
+} from "../index";
 
 function makeBook(overrides: Partial<Book> = {}): Book {
 	return {
@@ -45,6 +50,43 @@ function makeSession(overrides: Partial<ReadingSession> = {}): ReadingSession {
 		...overrides,
 	};
 }
+
+function makeSyncSession(overrides: Partial<SyncReadingSession> = {}): SyncReadingSession {
+	return {
+		sessionId: "s1",
+		bookId: "deadbeef",
+		mode: "scroll",
+		startedAt: 1_000,
+		endedAt: 2_000,
+		durationMs: 1_000,
+		wordsRead: 10,
+		startWord: 0,
+		endWord: 10,
+		wpmAvg: 100,
+		updatedAt: 2_000,
+		...overrides,
+	};
+}
+
+describe("partitionPushableSessions", () => {
+	it("passes valid rows through", () => {
+		const rows = [makeSyncSession(), makeSyncSession({ sessionId: "s2" })];
+		const { pushable, rejected } = partitionPushableSessions(rows);
+		expect(pushable).toHaveLength(2);
+		expect(rejected).toHaveLength(0);
+	});
+
+	it("isolates a malformed row instead of failing the batch", () => {
+		const rows = [
+			makeSyncSession({ sessionId: "good1" }),
+			makeSyncSession({ sessionId: "bad", startedAt: 5_000, endedAt: 1_000 }),
+			makeSyncSession({ sessionId: "good2" }),
+		];
+		const { pushable, rejected } = partitionPushableSessions(rows);
+		expect(pushable.map((s) => s.sessionId)).toEqual(["good1", "good2"]);
+		expect(rejected.map((s) => s.sessionId)).toEqual(["bad"]);
+	});
+});
 
 describe("booksNeedingContent", () => {
 	it("skips books the server already stores content for", () => {

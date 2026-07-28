@@ -12,6 +12,7 @@ import {
 	type SyncHighlight,
 	type SyncPayload,
 	type SyncReadingSession,
+	SyncReadingSessionSchema,
 	type SyncResponse,
 	type SyncSeries,
 	type SyncSettings,
@@ -883,6 +884,30 @@ export function clipSessionsForPush<T extends { updatedAt: number }>(
 }
 
 /**
+ * Split rows the server will accept from rows it would reject.
+ *
+ * The server `safeParse`s the whole payload and 400s it, so a single malformed row
+ * would otherwise fail every other row in the push, forever: the watermark only
+ * advances on acceptance, so the same row is reselected and rejected on every retry.
+ *
+ * This closes that door for sessions only. The other payload arrays are neither
+ * screened nor clipped client-side, so an over-cap highlight set or an over-long
+ * book title still fails the whole batch the same way.
+ */
+export function partitionPushableSessions(rows: SyncReadingSession[]): {
+	pushable: SyncReadingSession[];
+	rejected: SyncReadingSession[];
+} {
+	const pushable: SyncReadingSession[] = [];
+	const rejected: SyncReadingSession[] = [];
+	for (const row of rows) {
+		if (SyncReadingSessionSchema.safeParse(row).success) pushable.push(row);
+		else rejected.push(row);
+	}
+	return { pushable, rejected };
+}
+
+/**
  * Highest `updatedAt` among the pushed rows, never moving backwards and never past
  * this device's clock.
  *
@@ -959,7 +984,17 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 		);
 
 		const clippedSessions = clipSessionsForPush(readingSessionsRows);
-		const sessionsForPush = clippedSessions.map(sessionToSync);
+		const { pushable: sessionsForPush, rejected: rejectedSessions } = partitionPushableSessions(
+			clippedSessions.map(sessionToSync),
+		);
+		if (rejectedSessions.length > 0) {
+			log(
+				"sync",
+				`push: dropped ${rejectedSessions.length} malformed session(s), ids=[${rejectedSessions
+					.map((s) => s.sessionId)
+					.join(",")}]`,
+			);
+		}
 
 		const payload: SyncPayload = {
 			books: booksWithContent,

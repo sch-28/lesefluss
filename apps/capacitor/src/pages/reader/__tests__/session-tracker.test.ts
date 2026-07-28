@@ -289,6 +289,210 @@ describe("SessionTracker", () => {
 		expect(env.persisted).toHaveLength(0);
 	});
 
+	it("does not absorb the skipped span on the tick after a jump", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(5000); // jump, far above the scroll threshold of 400
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(20);
+		env.tracker.tick();
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(20);
+	});
+
+	it("keeps words read before a jump as well as after it", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(100);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(5000);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(20);
+		env.tracker.tick();
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(120);
+	});
+
+	it("does not re-credit a range already read when the user jumps back over it", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		for (let i = 0; i < 3; i++) {
+			env.movePosition(300);
+			env.tracker.tick();
+			env.advance(POLL_MS);
+		}
+		env.setPosition(0); // scrub back to the start
+		env.tracker.tick();
+		for (let i = 0; i < 3; i++) {
+			env.advance(POLL_MS);
+			env.movePosition(300);
+			env.tracker.tick();
+		}
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(900);
+	});
+
+	it("keeps crediting after peeking ahead and scrubbing back", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(300);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.setPosition(40_000); // peek at the end
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.setPosition(300); // scrub back to where reading stopped
+		env.tracker.tick();
+		for (let i = 0; i < 9; i++) {
+			env.advance(POLL_MS);
+			env.movePosition(300);
+			env.tracker.tick();
+		}
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(3000);
+	});
+
+	it("credits a range read after having been skipped past earlier", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(300); // read [0, 300]
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.setPosition(5000);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(300); // read [5000, 5300]
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.setPosition(1000);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(300); // read [1000, 1300], never seen before
+		env.tracker.tick();
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(900);
+	});
+
+	it("does not re-credit a range on a jump back into it", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		for (let i = 0; i < 3; i++) {
+			env.movePosition(300);
+			env.tracker.tick();
+			env.advance(POLL_MS);
+		}
+		env.setPosition(0);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(400); // re-reads [0, 400], already credited
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.setPosition(5000);
+		env.tracker.tick();
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(900);
+	});
+
+	it("treats movement exactly at the threshold as a jump", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(400); // exactly JUMP_WORDS_PER_TICK.scroll
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(20);
+		env.tracker.tick();
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(20);
+	});
+
+	it("credits each segment across several jumps in one sitting", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(100);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.setPosition(2000);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(50);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.setPosition(5000);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(70);
+		env.tracker.tick();
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(220);
+	});
+
+	it("keeps the closed segment when a jump is followed straight by finalize", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(100);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(5000);
+		env.tracker.tick();
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(100);
+	});
+
+	it("never reports fewer words at flush than at the preceding checkpoint", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(100);
+		env.tracker.tick();
+		env.advance(HEARTBEAT_MS + POLL_MS);
+		env.movePosition(20);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(5000);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(30);
+		env.tracker.tick();
+		env.tracker.finalize();
+		const checkpoint = env.persisted.find((p) => p.kind === "checkpoint");
+		const flush = env.persisted.at(-1)!;
+		expect(checkpoint).toBeDefined();
+		expect(flush.kind).toBe("flush");
+		expect(flush.row.wordsRead).toBeGreaterThanOrEqual(checkpoint!.row.wordsRead);
+		expect(flush.row.wordsRead).toBe(150);
+	});
+
+	it("discards a jump-sized span that appeared while the poll timer was suspended", () => {
+		// The threshold is per-tick, so a long poll gap makes ordinary reading
+		// indistinguishable from a jump and the span is not credited. Undercounts
+		// rather than inflating, which is the safer direction for a stat.
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(100);
+		env.tracker.tick();
+		env.advance(60_000);
+		env.movePosition(1000);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(50);
+		env.tracker.tick();
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(150);
+	});
+
 	it("stores wpmSetting for rsvp mode, computed wpm for scroll", () => {
 		const env = setup({ mode: "rsvp", wpm: 300 });
 		env.tracker.setReading(true);

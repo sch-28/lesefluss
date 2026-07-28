@@ -166,7 +166,8 @@ export const SyncReadingSessionSchema = z
 		wordsRead: z.number().int().nonnegative(),
 		startWord: z.number().int().nonnegative(),
 		endWord: z.number().int().nonnegative(),
-		wpmAvg: z.number().int().positive().nullable(),
+		// A slow scroll session legitimately rounds to 0 wpm.
+		wpmAvg: z.number().int().nonnegative().nullable(),
 		updatedAt: z.number().int().nonnegative(),
 	})
 	.refine((d) => d.endedAt >= d.startedAt, {

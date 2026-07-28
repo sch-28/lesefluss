@@ -20,6 +20,10 @@
  *   - background returns within 10 min → resume same session
  *   - poll gap > POLL_THROTTLE_GUARD_MS → assume timer was suspended;
  *     don't count gap as idle (resets activity clock to now)
+ *
+ * Words read is the merged length of the ranges travelled forward at reading
+ * pace (see "read span" in CONTEXT.md), not the distance between the first and
+ * last position.
  */
 import { type WordPosition, wordPos } from "@lesefluss/core";
 import { log } from "../../utils/log";
@@ -80,13 +84,40 @@ type SessionState = {
 	startedAt: number;
 	startPos: number;
 	lastPos: number;
-	/** Highest word position reached this sitting (forward-progress only). */
-	maxPos: number;
+	/** Ranges read this sitting, disjoint and ascending. A set rather than a
+	 *  high-water mark: the reader can leave a gap behind and come back to it,
+	 *  and that gap is new reading, not a re-read. */
+	readSpans: Span[];
 	accumulatedActiveMs: number;
 	/** Wall-clock ms when current "active" interval began; null = paused. */
 	activeSinceMs: number | null;
 	lastCheckpointAt: number;
 };
+
+/** An inclusive-start, exclusive-end range of word positions. */
+type Span = [start: number, end: number];
+
+/** Merge `[start, end)` into a disjoint ascending span list, in place. */
+function creditSpan(spans: Span[], start: number, end: number): void {
+	if (end <= start) return;
+	let first = 0;
+	while (first < spans.length && spans[first][1] < start) first++;
+	let last = first;
+	let mergedStart = start;
+	let mergedEnd = end;
+	while (last < spans.length && spans[last][0] <= end) {
+		mergedStart = Math.min(mergedStart, spans[last][0]);
+		mergedEnd = Math.max(mergedEnd, spans[last][1]);
+		last++;
+	}
+	spans.splice(first, last - first, [mergedStart, mergedEnd]);
+}
+
+function wordsReadIn(s: SessionState): number {
+	let total = 0;
+	for (const [start, end] of s.readSpans) total += end - start;
+	return total;
+}
 
 export class SessionTracker {
 	private readonly opts: TrackerOpts;
@@ -147,16 +178,14 @@ export class SessionTracker {
 		if (!this.session) return;
 		if (!this.shouldBeActive) return;
 
-		// Smooth forward deltas advance maxPos so re-reading the same range
-		// doesn't double-count. Jumps still count as activity but don't
-		// advance maxPos. Runs even on throttle-detected ticks because words
-		// read between ticks are real even if the timer was suspended.
+		// Only the ground actually travelled forward at reading pace is credited.
+		// A jump crosses its span without reading it, and moving backwards reads
+		// nothing; the range gets credited if and when it is travelled forward.
 		const pos = this.opts.getPosition();
 		if (pos !== this.session.lastPos) {
 			const delta = Math.abs(pos - this.session.lastPos);
-			const threshold = JUMP_WORDS_PER_TICK[this.opts.mode];
-			if (delta < threshold && pos > this.session.maxPos) {
-				this.session.maxPos = pos;
+			if (delta < JUMP_WORDS_PER_TICK[this.opts.mode]) {
+				creditSpan(this.session.readSpans, this.session.lastPos, pos);
 			}
 			this.session.lastPos = pos;
 			this.lastActivityAt = now;
@@ -231,7 +260,7 @@ export class SessionTracker {
 			// spot in the console without scanning routine info logs.
 			log.warn(
 				"reading-session",
-				`dropped (noise floor): duration=${this.session.accumulatedActiveMs}ms words=${this.session.maxPos - this.session.startPos} (thresholds: ${MIN_DURATION_MS}ms / ${MIN_WORDS} words)`,
+				`dropped (noise floor): duration=${this.session.accumulatedActiveMs}ms words=${wordsReadIn(this.session)} (thresholds: ${MIN_DURATION_MS}ms / ${MIN_WORDS} words)`,
 			);
 		}
 		this.session = null;
@@ -277,7 +306,7 @@ export class SessionTracker {
 			startedAt: now,
 			startPos: pos,
 			lastPos: pos,
-			maxPos: pos,
+			readSpans: [],
 			accumulatedActiveMs: 0,
 			activeSinceMs: now,
 			lastCheckpointAt: now,
@@ -292,7 +321,7 @@ export class SessionTracker {
 		const finalActiveMs =
 			s.accumulatedActiveMs + (s.activeSinceMs !== null ? now - s.activeSinceMs : 0);
 		if (finalActiveMs < MIN_DURATION_MS) return null;
-		const wordsRead = Math.max(0, s.maxPos - s.startPos);
+		const wordsRead = wordsReadIn(s);
 		if (wordsRead < MIN_WORDS) return null;
 		const endPos = this.opts.getPosition();
 		const computedWpm =
@@ -323,7 +352,7 @@ export class SessionTracker {
 			sessionId: this.session?.id ?? null,
 			activeSinceMs: this.session?.activeSinceMs ?? null,
 			accumulatedActiveMs: this.session?.accumulatedActiveMs ?? 0,
-			wordsAccumulated: this.session ? Math.max(0, this.session.maxPos - this.session.startPos) : 0,
+			wordsAccumulated: this.session ? wordsReadIn(this.session) : 0,
 			foreground: this.foreground,
 			reading: this.reading,
 			lastActivityAt: this.lastActivityAt,
@@ -352,7 +381,7 @@ export class SessionTracker {
 		return {
 			hasSession: true,
 			durationMs,
-			wordsAccumulated: Math.max(0, s.maxPos - s.startPos),
+			wordsAccumulated: wordsReadIn(s),
 			paused: s.activeSinceMs === null,
 			foreground: this.foreground,
 			reading: this.reading,
