@@ -1,5 +1,5 @@
 import { displayHostname } from "@lesefluss/book-import";
-import { isSyncEligible } from "@lesefluss/core";
+import { isSyncEligible, wordPos } from "@lesefluss/core";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -10,11 +10,11 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@lesefluss/ui/alert-dialog";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { BookOpen, Cpu, Trash2 } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DeviceBadge } from "../../components/device-sync";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useBookDeviceState } from "../../contexts/device-library-context";
@@ -25,10 +25,15 @@ import { catalogKeys } from "../../services/catalog/query-keys";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
+import { parseChapters } from "../../services/db/queries/books";
 import { IS_WEB } from "../../utils/platform";
 import { readingProgress } from "../../utils/reading-progress";
 import { bookPageCount } from "../../utils/reading-time";
 import { DetailShell } from "../_shared/detail-shell";
+import { BookChapters } from "./book-chapters";
+import { BookFileCard } from "./book-file-card";
+import { BookJourney } from "./book-journey";
+import { BookHighlights } from "./book-highlights";
 import { BookStatsCard } from "./book-stats-card";
 import { SessionTable } from "./session-table";
 
@@ -60,6 +65,15 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		enabled: !!book?.catalogId,
 	});
 
+	const queryClient = useQueryClient();
+	const jumpInFlightRef = useRef(false);
+	const isMountedRef = useRef(true);
+	useEffect(() => {
+		isMountedRef.current = true;
+		return () => {
+			isMountedRef.current = false;
+		};
+	}, []);
 	const deleteMutation = queryHooks.useDeleteBook();
 	const [isTransferOpen, setIsTransferOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -134,28 +148,48 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	// Pages, not time: time measures the reader, so two books at nine and four
 	// hours say nothing comparable about the books.
 	const pages = bookPageCount(book);
+	const chapters = parseChapters(content?.chapters ?? null);
+	const chapterCount = chapters.length;
 
-	const statsLine = (
-		<>
-			{pages !== null && (
-				<>
-					<span>~{pages.toLocaleString()} pages</span>
-					<span>·</span>
-				</>
-			)}
-			<span>{progress}% read</span>
-			<span>·</span>
-			<span>
-				{highlights.length} highlight{highlights.length === 1 ? "" : "s"}
-			</span>
-			{deviceState.isReachable && deviceState.isOnDevice && (
-				<>
-					<span>·</span>
-					<DeviceBadge bookId={book.id} style="text" />
-				</>
-			)}
-		</>
-	);
+	// Same two steps the reader takes for an in-book jump: persist the position,
+	// then let the seed effect resume from it.
+	//
+	// `finishedAt` is passed through deliberately. `updateBook` stamps it whenever
+	// a written position crosses the finished threshold, so jumping to a trailing
+	// chapter (an epilogue, acknowledgements) would mark an unread book finished,
+	// permanently: the column is never cleared. Supplying the current value skips
+	// that branch entirely.
+	const handleChapterJump = async (startWord: number) => {
+		if (jumpInFlightRef.current) return;
+		jumpInFlightRef.current = true;
+		try {
+			await queries.updateBook(book.id, {
+				wordPosition: wordPos(startWord),
+				finishedAt: book.finishedAt,
+			});
+			// `exact` matters: bookKeys.detail is a prefix of the content and
+			// word-index keys, so a broad invalidation re-reads the whole book text
+			// before navigating.
+			await queryClient.invalidateQueries({ queryKey: bookKeys.detail(book.id), exact: true });
+			if (!isMountedRef.current) return;
+			router.navigate({ to: "/tabs/reader/$id", params: { id: book.id } });
+		} finally {
+			jumpInFlightRef.current = false;
+		}
+	};
+
+	const facts = [
+		pages !== null ? `${pages.toLocaleString()} pages` : null,
+		chapterCount > 0 ? `${chapterCount} chapters` : null,
+		`${progress}% read`,
+		book.fileFormat.toUpperCase(),
+		highlights.length > 0
+			? `${highlights.length} highlight${highlights.length === 1 ? "" : "s"}`
+			: null,
+		deviceState.isReachable && deviceState.isOnDevice ? (
+			<DeviceBadge bookId={book.id} style="text" />
+		) : null,
+	].filter((fact) => fact !== null);
 
 	const secondaryActions = !IS_WEB
 		? deviceActions.map((a) => ({
@@ -173,7 +207,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				eyebrow={eyebrow}
 				title={book.title}
 				author={book.author}
-				statsLine={statsLine}
+				facts={facts}
 				subjects={catalogMeta?.subjects ?? undefined}
 				primaryAction={{
 					label: "Open reader",
@@ -193,6 +227,15 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					</div>
 				)}
 				<BookStatsCard book={book} />
+				<BookJourney book={book} />
+				<BookFileCard book={book} chapterCount={chapterCount} />
+				<BookChapters
+					chapters={chapters}
+					wordCount={book.wordCount}
+					wordPosition={book.wordPosition}
+					onJump={handleChapterJump}
+				/>
+				<BookHighlights highlights={highlights} />
 				<SessionTable mode="book" bookId={book.id} />
 			</DetailShell>
 

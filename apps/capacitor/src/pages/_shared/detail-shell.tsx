@@ -15,6 +15,7 @@ import type React from "react";
 import { PageHeader } from "../../components/app-shell/page-header";
 import CoverImage from "../../components/cover-image";
 import SanitizedDescription from "../../components/sanitized-description";
+import { CollapsibleProse } from "./collapsible-prose";
 
 export interface DetailAction {
 	label: string;
@@ -36,6 +37,10 @@ export interface DetailShellProps {
 
 	// Stats / subjects
 	statsLine?: React.ReactNode;
+	/** Hero facts as badges. Preferred over `statsLine`: a badge row fills the
+	 *  column beside the cover, where a single line of small grey text left a
+	 *  hole on every book that carries no catalog metadata. */
+	facts?: readonly React.ReactNode[];
 	subjects?: readonly string[];
 
 	// Actions
@@ -68,6 +73,7 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 	title,
 	author,
 	statsLine,
+	facts,
 	subjects,
 	primaryAction,
 	secondaryActions,
@@ -152,22 +158,42 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 							)}
 							<h1 className="mt-1 font-semibold text-xl leading-tight">{title}</h1>
 							{author && <p className="mt-1 text-muted-foreground text-sm">{author}</p>}
+							{facts && facts.length > 0 && (
+								<div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+									{facts.map((fact, i) => (
+										<span
+											// Index key safe: array rebuilt each render, never reordered.
+											// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
+											key={i}
+											className="rounded-md border border-border bg-muted/60 px-2 py-1 text-[11px] text-muted-foreground leading-none"
+										>
+											{fact}
+										</span>
+									))}
+								</div>
+							)}
 							{statsLine && (
 								<div className="mt-2 flex flex-wrap items-center gap-1.5 text-muted-foreground text-xs">
 									{statsLine}
 								</div>
 							)}
+							{/* Pinned to the bottom of the column so the hero is one filled
+							    block rather than text floating above dead space. */}
+							<div className="mt-auto pt-3">
+								<ActionButton action={primaryAction} primary />
+							</div>
 						</div>
 					</section>
 
-					<div className="mt-6 flex flex-col gap-2">
-						<ActionButton action={primaryAction} primary />
-						{secondaryActions?.map((a, i) => (
-							// Index key safe: array reconstructed each render, never reordered.
-							// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
-							<ActionButton key={i} action={a} primary={false} />
-						))}
-					</div>
+					{secondaryActions && secondaryActions.length > 0 && (
+						<div className="mt-3 flex flex-col gap-2">
+							{secondaryActions.map((a, i) => (
+								// Index key safe: array reconstructed each render, never reordered.
+								// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
+								<ActionButton key={i} action={a} primary={false} />
+							))}
+						</div>
+					)}
 
 					{subjects && subjects.length > 0 && (
 						<div className="mt-4 flex flex-wrap gap-1.5">
@@ -185,14 +211,18 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 					{(description?.html || description?.text) && (
 						<section className="mt-6 rounded-lg border border-border bg-card p-4 text-card-foreground">
 							<h2 className="m-0 mb-3 font-semibold text-base">About</h2>
-							{description.html ? (
-								<SanitizedDescription
-									className="prose prose-sm max-w-none text-foreground/80 [&_a:hover]:underline [&_a]:text-primary [&_a]:underline-offset-4"
-									html={description.html}
-								/>
-							) : (
-								<p className="m-0 text-foreground/80 text-sm leading-relaxed">{description.text}</p>
-							)}
+							<CollapsibleProse>
+								{description.html ? (
+									<SanitizedDescription
+										className="prose prose-sm max-w-none text-foreground/80 [&_a:hover]:underline [&_a]:text-primary [&_a]:underline-offset-4"
+										html={description.html}
+									/>
+								) : (
+									<p className="m-0 text-foreground/80 text-sm leading-relaxed">
+										{description.text}
+									</p>
+								)}
+							</CollapsibleProse>
 						</section>
 					)}
 

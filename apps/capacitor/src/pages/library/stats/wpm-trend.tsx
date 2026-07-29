@@ -7,6 +7,7 @@ import type { TrendGranularity, TrendPeriod } from "../../../services/stats/aggr
 import { AVERAGE_READER_WPM } from "../../../utils/reading-time";
 import { evenTickIndices, formatDayTick } from "./chart-axis";
 import { ChartTooltip } from "./chart-tooltip";
+import { summariseWpmTrend } from "../../../services/stats/summaries";
 import { buildNivoTheme } from "./nivo-theme";
 
 const COLORS = {
@@ -77,6 +78,11 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 	const tickIndices = evenTickIndices(bucketStarts.length, MAX_AXIS_TICKS);
 	const hasRsvpTarget = averages.rsvpTarget > 0;
 	const yMax = Math.max(AVERAGE_READER_WPM, averages.rsvpTarget, ...points.map((point) => point.y));
+	// nivo already puts role="img" on the svg; this gives it a label, so the chart
+	// reads as one sentence rather than a pile of numbers.
+	const chartSummary = trend.data
+		? summariseWpmTrend(trend.data, periodLabel)
+		: "Reading speed chart";
 
 	return (
 		<motion.section
@@ -106,8 +112,9 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 				</div>
 			</header>
 
-			<div className="h-[220px]">
+			<div className="h-[220px]" role="img" aria-label={chartSummary}>
 				<ResponsiveLine
+					role="presentation"
 					data={chartData}
 					margin={{ top: 12, right: 12, bottom: 48, left: 56 }}
 					xScale={{ type: "linear" }}

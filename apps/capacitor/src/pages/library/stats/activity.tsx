@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useMemo } from "react";
 import { useTheme } from "../../../contexts/theme-context";
 import { queryHooks } from "../../../services/db/hooks";
+import { summariseHeatmap, summariseHours } from "../../../services/stats/summaries";
 import { buildNivoTheme, getAccentStops } from "./nivo-theme";
 
 export function Activity() {
@@ -25,6 +26,11 @@ export function Activity() {
 	const from = days[0]?.date;
 	const to = days[days.length - 1]?.date;
 
+	// Charts render as SVG, which a screen reader reads as loose numbers or skips
+	// entirely. nivo already puts role="img" on the svg; these give it a label.
+	const heatmapSummary = useMemo(() => summariseHeatmap(days), [days]);
+	const hoursSummary = useMemo(() => summariseHours(hours.data ?? []), [hours.data]);
+
 	return (
 		<motion.section
 			initial={{ opacity: 0, y: 12 }}
@@ -36,9 +42,10 @@ export function Activity() {
 			<header className="mb-3">
 				<h2 className="font-semibold text-lg">Activity</h2>
 			</header>
-			<div className="h-[160px] rounded-xl bg-transparent">
+			<div className="h-[160px] rounded-xl bg-transparent" role="img" aria-label={heatmapSummary}>
 				{from && to && (
 					<ResponsiveCalendar
+						role="presentation"
 						data={data}
 						from={from}
 						to={to}
@@ -73,8 +80,9 @@ export function Activity() {
 				<span>More · minutes read, last 90 days</span>
 			</div>
 
-			<div className="mt-6 h-[180px]">
+			<div className="mt-6 h-[180px]" role="img" aria-label={hoursSummary}>
 				<ResponsiveBar
+					role="presentation"
 					data={hourData}
 					keys={["minutes"]}
 					indexBy="hour"

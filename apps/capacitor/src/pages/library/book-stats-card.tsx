@@ -7,6 +7,7 @@ import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
 import { bucketSpeedSeries, type SpeedBucket } from "../../services/stats/aggregate";
 import { summariseBookReading } from "../../services/stats/book-summary";
+import { summariseSpeedBuckets } from "../../services/stats/summaries";
 import { formatDuration, formatRelative } from "../../utils/date-utils";
 import { formatReadingTime } from "../../utils/reading-time";
 
@@ -91,6 +92,7 @@ export function BookStatsCard({ book }: Props) {
 		}),
 		[buckets],
 	);
+	const sparklineSummary = useMemo(() => summariseSpeedBuckets(buckets), [buckets]);
 	const renderTooltip = useCallback(
 		({ point }: { point: { data: { x: unknown } } }) => {
 			const bucket = buckets[Number(point.data.x)];
@@ -119,11 +121,10 @@ export function BookStatsCard({ book }: Props) {
 			<div className="mt-3 flex items-end justify-between gap-4">
 				<div>
 					<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
-						{data.measuredWpm != null ? <AnimatedNumber value={data.measuredWpm} /> : "—"}
+						<AnimatedNumber value={data.totalDurationMs} format={formatDuration} />
 					</div>
 					<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
-						words per minute
-						{data.dominantMode && ` · mostly ${MODE_LABELS[data.dominantMode]}`}
+						time read · {data.sessionCount} {data.sessionCount === 1 ? "sitting" : "sittings"}
 					</div>
 				</div>
 				{isFinished ? (
@@ -178,23 +179,26 @@ export function BookStatsCard({ book }: Props) {
 
 			<div className="mt-4 grid grid-cols-3 gap-3 border-current/10 border-t pt-3">
 				<Stat
-					value={<AnimatedNumber value={data.totalDurationMs} format={formatDuration} />}
-					label="Time read"
-				/>
-				<Stat
-					value={<AnimatedNumber value={data.sessionCount} />}
-					label={data.sessionCount === 1 ? "Sitting" : "Sittings"}
+					value={
+						data.measuredWpm != null ? <AnimatedNumber value={data.measuredWpm} /> : <span>—</span>
+					}
+					label={data.dominantMode ? `wpm · ${MODE_LABELS[data.dominantMode]}` : "words per minute"}
 				/>
 				<Stat
 					value={<span>{formatRelative(data.lastReadAt ?? Date.now())}</span>}
 					label="Last read"
 				/>
+				<Stat
+					value={<span>{data.firstReadAt != null ? formatRelative(data.firstReadAt) : "—"}</span>}
+					label="Started"
+				/>
 			</div>
 
 			{showSparkline && (
 				<div className="mt-4">
-					<div className="h-[130px]">
+					<div className="h-[130px]" role="img" aria-label={sparklineSummary}>
 						<ResponsiveLine
+							role="presentation"
 							data={chartData}
 							margin={CHART_MARGIN}
 							xScale={X_SCALE}

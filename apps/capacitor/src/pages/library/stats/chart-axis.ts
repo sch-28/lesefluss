@@ -14,6 +14,4 @@ export function evenTickIndices(count: number, maxTicks: number): number[] {
 	return Array.from({ length: maxTicks }, (_, i) => Math.round(i * step));
 }
 
-export function formatDayTick(epochMs: number): string {
-	return new Date(epochMs).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
+export { formatShortDate as formatDayTick } from "../../../utils/date-utils";

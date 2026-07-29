@@ -63,7 +63,23 @@ function useBookStats(bookId: string) {
 	});
 }
 
+function useCurrentlyReading() {
+	return useQuery({
+		queryKey: statsKeys.currentlyReading,
+		queryFn: () => queries.getCurrentlyReading(),
+	});
+}
+
+function useFinishedBooks() {
+	return useQuery({
+		queryKey: statsKeys.finishedBooks,
+		queryFn: () => queries.getFinishedBooks(),
+	});
+}
+
 export const statsHooks = {
+	useCurrentlyReading,
+	useFinishedBooks,
 	usePeriodTotals,
 	useClosedPeriodTotals,
 	useStreak,

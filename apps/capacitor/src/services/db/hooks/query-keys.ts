@@ -134,6 +134,10 @@ export const statsKeys = {
 
 	/** Per-book stats card on book detail. */
 	book: (bookId: string) => ["stats", "book", bookId] as const,
+
+	/** Cover shelves on the stats page. */
+	currentlyReading: ["stats", "currently-reading"] as const,
+	finishedBooks: ["stats", "finished-books"] as const,
 };
 
 /**

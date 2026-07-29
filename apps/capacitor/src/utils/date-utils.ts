@@ -68,3 +68,9 @@ export function formatRelative(epochMs: number, now: number = Date.now()): strin
 	];
 	return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
+
+/** Short calendar date, e.g. "3 May". Used for chart ticks, shelf dates and the
+ *  reading journey, which were each formatting this independently. */
+export function formatShortDate(epochMs: number): string {
+	return new Date(epochMs).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}

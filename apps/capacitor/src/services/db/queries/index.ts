@@ -79,6 +79,8 @@ import {
 	getPeriodTotals,
 	getReadingRates,
 	getStreak,
+	getCurrentlyReading,
+	getFinishedBooks,
 	getTopBooks,
 	getWpmTrend,
 } from "./stats";
@@ -135,6 +137,8 @@ export const queries = {
 	// Stats
 	getPeriodTotals,
 	getStreak,
+	getCurrentlyReading,
+	getFinishedBooks,
 	getTopBooks,
 	getWpmTrend,
 	getHourHistogram,

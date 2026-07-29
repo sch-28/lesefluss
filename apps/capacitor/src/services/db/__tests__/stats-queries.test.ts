@@ -20,7 +20,8 @@ vi.mock("../index", () => ({
 }));
 afterAll(close);
 
-const { getBookStats, getPeriodTotals, getTopBooks } = await import("../queries/stats");
+const { getBookStats, getCurrentlyReading, getFinishedBooks, getPeriodTotals, getTopBooks } =
+	await import("../queries/stats");
 
 const BOOK_ID = "b1";
 const MINUTE = 60_000;
@@ -112,6 +113,24 @@ describe("getBookStats", () => {
 		expect(s.measuredWpm).toBe(300);
 	});
 
+	it("reports the first and last sitting, not the row order", async () => {
+		insertBook();
+		// Inserted newest-first so a query that trusted insertion order would fail.
+		insertSession({ startedAt: 9000, ...HONEST });
+		insertSession({ startedAt: 1000, ...HONEST });
+
+		const s = await getBookStats(BOOK_ID);
+		expect(s.firstReadAt).toBe(1000);
+		expect(s.lastReadAt).toBe(9000);
+	});
+
+	it("has no first sitting when the book was never read", async () => {
+		insertBook();
+		const s = await getBookStats(BOOK_ID);
+		expect(s.firstReadAt).toBeNull();
+		expect(s.sessionCount).toBe(0);
+	});
+
 	it("leaves the speed unmeasured when every sitting is implausible", async () => {
 		insertBook();
 		insertSession({ startedAt: 1000, ...JUMP });
@@ -145,6 +164,76 @@ describe("getPeriodTotals", () => {
 
 		const totals = await getPeriodTotals(1000, 10_000);
 		expect(totals.words).toBe(HONEST.wordsRead);
+	});
+});
+
+describe("getBookStats longest sitting", () => {
+	it("reports the longest sitting and when it happened", async () => {
+		insertBook();
+		insertSession({ startedAt: 1000, durationMs: 5 * MINUTE, wordsRead: 1500 });
+		insertSession({ startedAt: 2000, durationMs: 20 * MINUTE, wordsRead: 6000 });
+		insertSession({ startedAt: 3000, durationMs: 9 * MINUTE, wordsRead: 2700 });
+
+		const s = await getBookStats(BOOK_ID);
+		expect(s.longestSessionMs).toBe(20 * MINUTE);
+		expect(s.longestSessionAt).toBe(2000);
+	});
+
+	it("has no longest sitting when the book was never read", async () => {
+		insertBook();
+		const s = await getBookStats(BOOK_ID);
+		expect(s.longestSessionMs).toBe(0);
+		expect(s.longestSessionAt).toBeNull();
+	});
+});
+
+describe("getCurrentlyReading", () => {
+	it("lists started, unfinished books newest first", async () => {
+		insertBook({ id: "a", word_position: 500, last_read: 1000 });
+		insertBook({ id: "b", word_position: 900, last_read: 5000 });
+		const shelf = await getCurrentlyReading();
+		expect(shelf.map((book) => book.id)).toEqual(["b", "a"]);
+		expect(shelf[0]?.href).toBe("/tabs/library/book/b");
+	});
+
+	it("excludes unopened books, finished books and serial chapters", async () => {
+		insertBook({ id: "unopened", word_position: 0 });
+		insertBook({ id: "done", word_position: 900, finished_at: 4000 });
+		insertBook({ id: "chapter", word_position: 900, series_id: "s1" });
+		insertBook({ id: "reading", word_position: 900 });
+
+		expect((await getCurrentlyReading()).map((book) => book.id)).toEqual(["reading"]);
+	});
+
+	it("reports progress as a clamped percentage", async () => {
+		insertBook({ id: "a", word_position: 25_000, word_count: 100_000 });
+		expect((await getCurrentlyReading())[0]?.percent).toBe(25);
+	});
+});
+
+describe("getFinishedBooks", () => {
+	it("lists finished books newest first", async () => {
+		insertBook({ id: "old", finished_at: 1000 });
+		insertBook({ id: "new", finished_at: 9000 });
+		const { books: shelf } = await getFinishedBooks();
+		expect(shelf.map((book) => book.id)).toEqual(["new", "old"]);
+	});
+
+	it("excludes unfinished books and serial chapters", async () => {
+		insertBook({ id: "reading", word_position: 500 });
+		insertBook({ id: "chapter", series_id: "s1", finished_at: 2000 });
+		insertBook({ id: "done", finished_at: 3000 });
+		const { books: shelf } = await getFinishedBooks();
+		expect(shelf.map((book) => book.id)).toEqual(["done"]);
+	});
+
+	// The shelf is capped, so counting the returned rows would freeze the
+	// subtitle at the cap once the reader passes it.
+	it("counts every finished book, not just the page it returns", async () => {
+		for (let i = 0; i < 25; i++) insertBook({ id: `b${i}`, finished_at: 1000 + i });
+		const { books: shelf, total } = await getFinishedBooks();
+		expect(shelf.length).toBe(20);
+		expect(total).toBe(25);
 	});
 });
 

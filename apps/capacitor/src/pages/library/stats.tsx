@@ -9,6 +9,8 @@ import { EmptyState } from "./stats/empty-state";
 import { Hero } from "./stats/hero";
 import { PERIOD_LABELS, type Period, periodWindow } from "./stats/period";
 import { PeriodTotals } from "./stats/period-totals";
+import { CurrentlyReadingShelf } from "./stats/currently-reading-shelf";
+import { FinishedShelf } from "./stats/finished-shelf";
 import { TopBooks } from "./stats/top-books";
 import { WpmTrend } from "./stats/wpm-trend";
 
@@ -27,7 +29,9 @@ const Stats: React.FC = () => {
 		document.addEventListener("visibilitychange", onVisible);
 		return () => document.removeEventListener("visibilitychange", onVisible);
 	}, []);
-	const [period, setPeriod] = useState<Period>("7d");
+	// All time is the honest landing state for a habit: a reader three days in
+	// sees an empty page under any shorter default.
+	const [period, setPeriod] = useState<Period>("all");
 	const range = useMemo(() => periodWindow(period, now), [period, now]);
 
 	const sessionCount = queryHooks.useReadingSessionCount();
@@ -59,7 +63,17 @@ const Stats: React.FC = () => {
 
 					{/* Period control sits with the sections it drives. */}
 					<PeriodTotals now={now} period={period} range={range} onPeriodChange={setPeriod} />
-					<TopBooks since={range.start} periodLabel={PERIOD_LABELS[period]} />
+
+					<CurrentlyReadingShelf />
+					<FinishedShelf />
+
+					{/* At all time this is the finished shelf re-sorted: on real data the
+					    top five by time read were the same five books. It only says
+					    something new when scoped to a window, where it also surfaces
+					    books still in progress. */}
+					{period !== "all" && (
+						<TopBooks since={range.start} periodLabel={PERIOD_LABELS[period]} />
+					)}
 
 					<WpmTrend period={period} periodLabel={PERIOD_LABELS[period]} now={now} />
 

@@ -1,4 +1,5 @@
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { wordPos } from "@lesefluss/core";
+import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import {
 	bucketMinutesByHour,
 	buildWpmTrend,
@@ -12,6 +13,8 @@ import {
 	trendBucketsFor,
 	type WpmTrend,
 } from "../../stats/aggregate";
+import { formatShortDate } from "../../../utils/date-utils";
+import { readingProgress } from "../../../utils/reading-progress";
 import { db } from "../index";
 import { bookContent, books, readingSessions, series } from "../schema";
 
@@ -186,6 +189,114 @@ export async function getTopBooks(opts: { since: number; limit?: number }): Prom
 	});
 }
 
+export interface ShelfBook {
+	id: string;
+	title: string;
+	author: string | null;
+	coverImage: string | null;
+	/** One line of context under the cover, already formatted for display. */
+	detail: string;
+	/** Progress bar over the cover. Absent where progress is not the point. */
+	percent?: number;
+	/** Where tapping goes. Carried per item because a rolled-up serial belongs on
+	 *  the series route, not the book route. */
+	href: string;
+}
+
+const CURRENTLY_READING_LIMIT = 10;
+
+/**
+ * Books the reader is in the middle of: started, not finished, most recently
+ * read first. Serial chapters are excluded because a chapter is not a book the
+ * reader would say they are "currently reading".
+ */
+export async function getCurrentlyReading(): Promise<ShelfBook[]> {
+	const rows = await db
+		.select({
+			id: books.id,
+			title: books.title,
+			author: books.author,
+			wordCount: books.wordCount,
+			wordPosition: books.wordPosition,
+			lastRead: books.lastRead,
+		})
+		.from(books)
+		.where(
+			and(
+				eq(books.deleted, false),
+				isNull(books.seriesId),
+				isNull(books.finishedAt),
+				gt(books.wordPosition, wordPos(0)),
+			),
+		)
+		.orderBy(desc(books.lastRead))
+		.limit(CURRENTLY_READING_LIMIT);
+
+	const covers = await coversFor(rows.map((row) => row.id));
+	return rows.map((row) => {
+		const percent = readingProgress(row);
+		return {
+			id: row.id,
+			title: row.title,
+			author: row.author,
+			coverImage: covers.get(row.id) ?? null,
+			detail: `${percent}% read`,
+			percent,
+			href: `/tabs/library/book/${row.id}`,
+		};
+	});
+}
+
+/** Rows on the finished shelf. The count in its subtitle comes from a separate
+ *  COUNT so it reports the library, not the page size. */
+const FINISHED_SHELF_LIMIT = 20;
+
+export interface FinishedBooks {
+	books: ShelfBook[];
+	total: number;
+}
+
+/** Books that crossed the finished threshold, most recently finished first. */
+export async function getFinishedBooks(): Promise<FinishedBooks> {
+	const rows = await db
+		.select({
+			id: books.id,
+			title: books.title,
+			author: books.author,
+			finishedAt: books.finishedAt,
+		})
+		.from(books)
+		.where(and(eq(books.deleted, false), isNull(books.seriesId), isNotNull(books.finishedAt)))
+		.orderBy(desc(books.finishedAt))
+		.limit(FINISHED_SHELF_LIMIT);
+
+	const totalRow = await db
+		.select({ count: sql<number>`COUNT(*)`.as("count") })
+		.from(books)
+		.where(and(eq(books.deleted, false), isNull(books.seriesId), isNotNull(books.finishedAt)));
+
+	const covers = await coversFor(rows.map((row) => row.id));
+	const shelf = rows.map((row) => ({
+		id: row.id,
+		title: row.title,
+		author: row.author,
+		coverImage: covers.get(row.id) ?? null,
+		detail: row.finishedAt != null ? formatShortDate(row.finishedAt) : "",
+		href: `/tabs/library/book/${row.id}`,
+	}));
+
+	return { books: shelf, total: Number(totalRow[0]?.count ?? shelf.length) };
+}
+
+async function coversFor(ids: string[]): Promise<Map<string, string | null>> {
+	if (ids.length === 0) return new Map();
+	const rows = await db
+		.select({ bookId: bookContent.bookId, coverImage: bookContent.coverImage })
+		.from(bookContent)
+		.where(inArray(bookContent.bookId, ids));
+	return new Map(rows.map((row) => [row.bookId, row.coverImage]));
+}
+
 export async function getWpmTrend(opts: { period: TrendPeriod; now: number }): Promise<WpmTrend> {
 	const now = opts.now;
 	// All-time granularity depends on how far back the history goes, so ask the
@@ -241,6 +352,11 @@ export interface BookStats {
 	totalDurationMs: number;
 	sessionCount: number;
 	lastReadAt: number | null;
+	/** First recorded sitting. Null when nothing has been read. */
+	firstReadAt: number | null;
+	/** The single longest sitting, for the journey summary. */
+	longestSessionMs: number;
+	longestSessionAt: number | null;
 	/** Words-weighted measured rate across every mode, and the mode that
 	 *  contributed most of those words. */
 	measuredWpm: number | null;
@@ -289,6 +405,9 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 			totalDurationMs: 0,
 			sessionCount: 0,
 			lastReadAt: null,
+			firstReadAt: null,
+			longestSessionMs: 0,
+			longestSessionAt: null,
 			measuredWpm: null,
 			dominantMode: null,
 			speedSeries: [],
@@ -297,6 +416,8 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 
 	let totalDurationMs = 0;
 	let lastReadAt = 0;
+	let longestSessionMs = 0;
+	let longestSessionAt: number | null = null;
 	// Measured, not the dial: `wpmAvg` holds the RSVP target on rsvp rows, so it
 	// answers "how fast is the engine set", not "how fast was this book read".
 	let sumWords = 0;
@@ -307,6 +428,10 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 	for (const r of rows) {
 		totalDurationMs += r.durationMs;
 		if (r.startedAt > lastReadAt) lastReadAt = r.startedAt;
+		if (r.durationMs > longestSessionMs) {
+			longestSessionMs = r.durationMs;
+			longestSessionAt = r.startedAt;
+		}
 		// Totals above are unconditional; only the derived rate is gated, so a
 		// position jump still counts as time spent and words covered.
 		if (isPlausibleRate(r.wordsRead, r.durationMs)) {
@@ -335,6 +460,10 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 		totalDurationMs,
 		sessionCount: rows.length,
 		lastReadAt,
+		// Rows are ordered by startedAt, so the first is the earliest sitting.
+		firstReadAt: rows[0]?.startedAt ?? null,
+		longestSessionMs,
+		longestSessionAt,
 		measuredWpm: sumActiveMs > 0 ? Math.round(sumWords / (sumActiveMs / 60_000)) : null,
 		dominantMode,
 		speedSeries,

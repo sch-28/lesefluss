@@ -153,6 +153,8 @@ export const queryHooks = {
 	useStatsHourHistogram: statsHooks.useHourHistogram,
 	useStatsReadingRates: statsHooks.useReadingRates,
 	useStatsBook: statsHooks.useBookStats,
+	useStatsCurrentlyReading: statsHooks.useCurrentlyReading,
+	useStatsFinishedBooks: statsHooks.useFinishedBooks,
 
 	// ── Reading sessions ──────────────────────────────────────────────────
 	useReadingSessionsPage: readingSessionHooks.useReadingSessionsPage,
