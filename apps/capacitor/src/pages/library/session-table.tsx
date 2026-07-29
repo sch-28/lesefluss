@@ -80,7 +80,7 @@ export function SessionTable(props: Props) {
 	if (sessionsQuery.isPending) {
 		return (
 			<section className="mt-6 rounded-lg border border-border bg-card p-4 text-card-foreground">
-				<h2 className="m-0 mb-3 font-semibold text-base">Sessions</h2>
+				<h2 className="m-0 mb-3 font-semibold text-base">Recent sessions</h2>
 				<div className="flex items-center justify-center py-6">
 					<Loader2 className="size-5 animate-spin text-muted-foreground" />
 				</div>
@@ -99,7 +99,8 @@ export function SessionTable(props: Props) {
 			className="mt-6 rounded-lg border border-border bg-card p-4 text-card-foreground"
 		>
 			<h2 className="m-0 mb-3 font-semibold text-base">
-				Sessions {total != null && <span className="text-muted-foreground">· {total}</span>}
+				{isGlobal ? "Recent sessions" : "Sessions"}{" "}
+				{total != null && <span className="text-muted-foreground">· {total}</span>}
 			</h2>
 
 			<ul className="m-0 list-none divide-y divide-border p-0">

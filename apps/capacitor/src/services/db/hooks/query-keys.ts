@@ -127,10 +127,7 @@ export const statsKeys = {
 	wpmTrend: (period: string, dayStart: number) => ["stats", "wpm-trend", period, dayStart] as const,
 
 	/** Hour-of-day histogram. */
-	hourHistogram: (since: number) => ["stats", "hour-histogram", since] as const,
-
-	/** Single-stat callouts. */
-	personality: (since: number) => ["stats", "personality", since] as const,
+	hourHistogram: ["stats", "hour-histogram"] as const,
 
 	/** Per-book stats card on book detail. */
 	book: (bookId: string) => ["stats", "book", bookId] as const,

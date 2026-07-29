@@ -6,6 +6,7 @@ title: >-
 status: Draft
 assignee: []
 created_date: '2026-07-28 19:40'
+updated_date: '2026-07-29 01:26'
 labels: []
 milestone: m-7
 dependencies: []
@@ -42,3 +43,15 @@ The open question: the stats page is seven sections, six different time windows,
 - [ ] #3 Items that the structure decision removes are struck from the document rather than silently dropped
 - [ ] #4 The average-reader baseline has one value and a stated source or an honest label
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Section 6 resolved: the page is being restructured (TASK-159.8). That settles the blocker but also changes what is left here.
+
+**P5 dissolves.** The all-time block is not built; the restructure gives the 'how much' group its own scope, and the `all` period already yields all-time totals.
+
+**P6** still needs its own answer: three unsourced values for 'a typical reader' (225 in the trend, 250 in task-46.3, 250 hardcoded in the reader's estimate). Reconcile before displaying it more widely.
+
+**B4, P8, P12 and D7** are unchanged judgement calls. Build them against the restructured page, not the current one.
+<!-- SECTION:NOTES:END -->

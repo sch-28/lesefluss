@@ -81,14 +81,18 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 		[seriesData],
 	);
 
+	const headlineId: SeriesId | null = useMemo(
+		() =>
+			(["rsvpDelivered", "read", "rsvpTarget"] as const).find((id) => present.includes(id)) ?? null,
+		[present],
+	);
+
 	const chartData = useMemo(
 		() =>
-			present.map((id) => ({
-				id: LABELS[id],
-				color: colors[id],
-				data: seriesData[id],
-			})),
-		[present, colors, seriesData],
+			headlineId
+				? [{ id: LABELS[headlineId], color: colors[headlineId], data: seriesData[headlineId] }]
+				: [],
+		[headlineId, colors, seriesData],
 	);
 
 	if (!trend.isLoading && present.length === 0) {
@@ -116,11 +120,14 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 	const granularity = trend.data?.granularity ?? "week";
 	const bucketStarts = (trend.data?.read ?? []).map((p) => p.bucketStart);
 	const tickIndices = evenTickIndices(bucketStarts.length);
-	const headlineId: SeriesId | null =
-		(["rsvpDelivered", "read", "rsvpTarget"] as const).find((id) => present.includes(id)) ?? null;
 	const headlineAvg = headlineId ? averages[headlineId] : 0;
 	const headlineLabel = headlineId ? LABELS[headlineId] : "";
 	const hasRsvpTarget = headlineId === "rsvpDelivered" && averages.rsvpTarget > 0;
+	const yMax = Math.max(
+		AVG_READER_WPM,
+		hasRsvpTarget ? averages.rsvpTarget : 0,
+		...(headlineId ? seriesData[headlineId].map((point) => point.y) : [0]),
+	);
 
 	return (
 		<motion.section
@@ -150,32 +157,16 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 				</div>
 			</header>
 
-			<div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px]">
-				{present.map((id) => (
-					<span key={id} className="flex items-center gap-1.5">
-						<span
-							className="inline-block h-2.5 w-2.5 rounded-full"
-							style={{ backgroundColor: colors[id] }}
-						/>
-						<span className="opacity-80">
-							{LABELS[id]} · {averages[id]}
-						</span>
-					</span>
-				))}
-				<span className="flex items-center gap-1.5">
-					<span className="inline-block h-px w-4 border-current/40 border-t border-dashed" />
-					<span className="opacity-60">Avg reader · {AVG_READER_WPM}</span>
-				</span>
-			</div>
-
 			<div className="h-[220px]">
 				<ResponsiveLine
 					data={chartData}
 					margin={{ top: 12, right: 12, bottom: 48, left: 56 }}
 					xScale={{ type: "linear" }}
-					yScale={{ type: "linear", min: 0, max: "auto", stacked: false }}
+					// Markers never enter the scale, so the reference lines have to be
+					// folded in by hand or they render off-plot and get clipped.
+					yScale={{ type: "linear", min: 0, max: yMax, stacked: false }}
 					curve="monotoneX"
-					enableArea={chartData.length === 1}
+					enableArea={true}
 					areaOpacity={0.18}
 					colors={chartData.map((d) => d.color)}
 					lineWidth={2.5}
@@ -253,8 +244,27 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 								strokeDasharray: "4 4",
 								strokeOpacity: 0.6,
 							},
-							legend: "",
+							legend: `Avg reader ${AVG_READER_WPM}`,
+							legendPosition: "top-left",
+							textStyle: { fontSize: 10, fill: "var(--muted-foreground)" },
 						},
+						...(hasRsvpTarget
+							? [
+									{
+										axis: "y" as const,
+										value: averages.rsvpTarget,
+										lineStyle: {
+											stroke: COLORS.rsvpTarget,
+											strokeWidth: 1,
+											strokeDasharray: "4 4",
+											strokeOpacity: 0.7,
+										},
+										legend: `Target ${averages.rsvpTarget}`,
+										legendPosition: "top-right" as const,
+										textStyle: { fontSize: 10, fill: "var(--muted-foreground)" },
+									},
+								]
+							: []),
 					]}
 				/>
 			</div>

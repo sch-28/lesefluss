@@ -4,7 +4,7 @@ title: 'Stats step 5: context numbers on both surfaces (S5, B1, B2, S8, P1, P7, 
 status: To Do
 assignee: []
 created_date: '2026-07-28 19:39'
-updated_date: '2026-07-28 19:40'
+updated_date: '2026-07-29 01:26'
 labels: []
 milestone: m-7
 dependencies:
@@ -47,3 +47,15 @@ Reasoning: `STATS-IMPROVEMENTS.md` sections 1 and 2, decisions D2 and D6.
 - [ ] #7 Speed figures state which mode produced them
 - [ ] #8 A multi-chapter serial aggregates as one work in Top Books, and has a stats surface on the series page
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Not blocked after all. Section 6 is resolved as a restructure (TASK-159.8), but what it moves — book length, time remaining, per-mode splits, chapter tables — already lives on book detail, which is where this task's items are. What section 6 threatens is DRAFT-1.
+
+Two decisions taken for this task:
+
+**D8, `finished_at` syncs.** The first instinct was local-only, on the reasoning that each device derives it from inputs that already sync. That is wrong: it holds only while stats sync is on, and that is user-toggleable. A device with it off never sees the crossing session and would derive a different answer or none, so two devices would disagree on a headline figure in period totals. Cost is migrations on both apps plus an optional nullable `SyncBookSchema` field. Writing the column must bump `books.updatedAt` or last-write-wins discards it.
+
+**D9, the serial roll-up stops at Top Books.** Aggregate a series' chapters into one entry linking to the series page, so a 400-chapter web novel stops crowding out books. Giving series detail its own stats card and session table is explicitly out: `series-detail.tsx` has no stats surface at all today, so that is a new surface rather than a fix, and it earns its own task if the roll-up shows it is wanted.
+<!-- SECTION:NOTES:END -->

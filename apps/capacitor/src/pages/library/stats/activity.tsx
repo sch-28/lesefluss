@@ -1,3 +1,4 @@
+import { ResponsiveBar } from "@nivo/bar";
 import { ResponsiveCalendar } from "@nivo/calendar";
 import { motion } from "framer-motion";
 import { useMemo } from "react";
@@ -5,15 +6,21 @@ import { useTheme } from "../../../contexts/theme-context";
 import { queryHooks } from "../../../services/db/hooks";
 import { buildNivoTheme, getAccentStops } from "./nivo-theme";
 
-export function ActivityHeatmap() {
+export function Activity() {
 	const { theme } = useTheme();
 	const streak = queryHooks.useStatsStreak();
+	const hours = queryHooks.useStatsHourHistogram();
 
 	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme]);
 	const accent = useMemo(() => getAccentStops(theme), [theme]);
 
 	const days = streak.data?.last90Days ?? [];
 	const data = days.filter((d) => d.minutes > 0).map((d) => ({ day: d.date, value: d.minutes }));
+
+	const hourData = (hours.data ?? new Array<number>(24).fill(0)).map((minutes, hour) => ({
+		hour: hour.toString().padStart(2, "0"),
+		minutes,
+	}));
 
 	const from = days[0]?.date;
 	const to = days[days.length - 1]?.date;
@@ -26,21 +33,8 @@ export function ActivityHeatmap() {
 			transition={{ duration: 0.5 }}
 			className="mb-10 px-4"
 		>
-			<header className="mb-3 flex items-end justify-between">
-				<div>
-					<h2 className="font-semibold text-lg">Activity</h2>
-					<p className="mt-0.5 text-[11px] uppercase tracking-wider opacity-60">
-						Always last 90 days
-					</p>
-				</div>
-				<div className="text-right">
-					<div className="font-bold text-3xl tabular-nums leading-none tracking-tight">
-						{streak.data?.current ?? 0}
-					</div>
-					<div className="mt-1 text-[11px] uppercase tracking-wider opacity-60">
-						day streak · longest {streak.data?.longest ?? 0}
-					</div>
-				</div>
+			<header className="mb-3">
+				<h2 className="font-semibold text-lg">Activity</h2>
 			</header>
 			<div className="h-[160px] rounded-xl bg-transparent">
 				{from && to && (
@@ -76,7 +70,41 @@ export function ActivityHeatmap() {
 					className="inline-block h-2.5 w-2.5 rounded-sm"
 					style={{ backgroundColor: accent.to }}
 				/>
-				<span>More · minutes read</span>
+				<span>More · minutes read, last 90 days</span>
+			</div>
+
+			<div className="mt-6 h-[180px]">
+				<ResponsiveBar
+					data={hourData}
+					keys={["minutes"]}
+					indexBy="hour"
+					margin={{ top: 8, right: 8, bottom: 44, left: 44 }}
+					padding={0.35}
+					colors={[accent.from]}
+					borderRadius={3}
+					axisBottom={{
+						tickSize: 0,
+						tickPadding: 6,
+						tickValues: ["00", "06", "12", "18"],
+						format: (v) => `${v}:00`,
+						legend: "Hour of day · all time",
+						legendPosition: "middle",
+						legendOffset: 34,
+					}}
+					axisLeft={{
+						tickSize: 0,
+						tickPadding: 6,
+						tickValues: 3,
+						legend: "Minutes",
+						legendPosition: "middle",
+						legendOffset: -34,
+					}}
+					enableLabel={false}
+					enableGridY={false}
+					theme={nivoTheme}
+					animate={true}
+					motionConfig="gentle"
+				/>
 			</div>
 		</motion.section>
 	);

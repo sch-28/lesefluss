@@ -77,7 +77,6 @@ import {
 	getBookStats,
 	getHourHistogram,
 	getPeriodTotals,
-	getPersonalityStats,
 	getStreak,
 	getTopBooks,
 	getWpmTrend,
@@ -138,7 +137,6 @@ export const queries = {
 	getTopBooks,
 	getWpmTrend,
 	getHourHistogram,
-	getPersonalityStats,
 	getBookStats,
 
 	// Glossary

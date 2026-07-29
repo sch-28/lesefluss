@@ -6,24 +6,15 @@ import { extractAccent } from "./cover-accent";
 import { getAccentStops } from "./nivo-theme";
 
 interface Props {
-	words: number;
-	periodLabel: string;
 	currentStreak: number;
+	longestStreak: number;
 	topCover: string | null;
 	/** Stable id used as the accent cache key, so we don't keep ~500KB base64
 	 * strings as Map keys. */
 	topBookId: string | null;
-	deltaVsPrev?: number | null;
 }
 
-export function Hero({
-	words,
-	periodLabel,
-	currentStreak,
-	topCover,
-	topBookId,
-	deltaVsPrev,
-}: Props) {
+export function Hero({ currentStreak, longestStreak, topCover, topBookId }: Props) {
 	const { theme } = useTheme();
 	const [accent, setAccent] = useState(() => getAccentStops(theme));
 
@@ -82,7 +73,7 @@ export function Hero({
 					transition={{ duration: 0.5 }}
 					className="text-[11px] uppercase tracking-[0.2em] opacity-80"
 				>
-					{periodLabel}
+					Reading streak
 				</motion.p>
 				<motion.div
 					initial={{ opacity: 0, y: 14 }}
@@ -91,10 +82,10 @@ export function Hero({
 					className="mt-2 flex items-baseline gap-2"
 				>
 					<AnimatedNumber
-						value={words}
+						value={currentStreak}
 						className="font-bold text-5xl tabular-nums tracking-tight"
 					/>
-					<span className="text-base opacity-80">words</span>
+					<span className="text-base opacity-80">{currentStreak === 1 ? "day" : "days"}</span>
 				</motion.div>
 				<motion.div
 					initial={{ opacity: 0 }}
@@ -103,17 +94,8 @@ export function Hero({
 					className="mt-3 flex flex-wrap items-center gap-2"
 				>
 					<span className="rounded-full bg-white/15 px-3 py-1 font-medium text-xs backdrop-blur">
-						🔥 {currentStreak}-day streak
+						🔥 Best {longestStreak} {longestStreak === 1 ? "day" : "days"}
 					</span>
-					{deltaVsPrev != null && (
-						<span
-							className={`rounded-full px-3 py-1 font-medium text-xs backdrop-blur ${
-								deltaVsPrev >= 0 ? "bg-emerald-500/30" : "bg-rose-500/30"
-							}`}
-						>
-							{deltaVsPrev >= 0 ? "▲" : "▼"} {Math.abs(Math.round(deltaVsPrev))}% vs previous
-						</span>
-					)}
 				</motion.div>
 			</div>
 		</div>

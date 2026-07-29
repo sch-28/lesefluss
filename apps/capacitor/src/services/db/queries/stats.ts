@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import {
 	bucketMinutesByHour,
 	buildWpmTrend,
@@ -158,54 +158,20 @@ export async function getWpmTrend(opts: { period: TrendPeriod; now: number }): P
 	return buildWpmTrend(rows, buckets);
 }
 
-/** Sessions bucketed by local hour-of-day. Returns a 24-length minutes-array. */
-export async function getHourHistogram(since: number): Promise<number[]> {
+/**
+ * Sessions bucketed by local hour-of-day. Returns a 24-length minutes-array.
+ * All-time on purpose: "your favourite reading hour, today" is not a statistic.
+ */
+export async function getHourHistogram(): Promise<number[]> {
 	const rows = await db
 		.select({
 			startedAt: readingSessions.startedAt,
 			endedAt: readingSessions.endedAt,
 			durationMs: readingSessions.durationMs,
 		})
-		.from(readingSessions)
-		.where(gte(readingSessions.startedAt, since));
+		.from(readingSessions);
 
 	return bucketMinutesByHour(rows);
-}
-
-export interface PersonalityStats {
-	longestSessionMs: number;
-	fastestWpm: number;
-	mostReadBookId: string | null;
-	totalSessions: number;
-}
-
-export async function getPersonalityStats(since: number): Promise<PersonalityStats> {
-	const aggRow = await db
-		.select({
-			longest: sql<number>`COALESCE(MAX(${readingSessions.durationMs}), 0)`,
-			fastest: sql<number>`COALESCE(MAX(${readingSessions.wpmAvg}), 0)`,
-			total: sql<number>`COUNT(*)`,
-		})
-		.from(readingSessions)
-		.where(gte(readingSessions.startedAt, since));
-
-	const topRow = await db
-		.select({
-			bookId: readingSessions.bookId,
-			total: sql<number>`SUM(${readingSessions.durationMs})`,
-		})
-		.from(readingSessions)
-		.where(gte(readingSessions.startedAt, since))
-		.groupBy(readingSessions.bookId)
-		.orderBy(desc(sql`SUM(${readingSessions.durationMs})`))
-		.limit(1);
-
-	return {
-		longestSessionMs: Number(aggRow[0]?.longest ?? 0),
-		fastestWpm: Number(aggRow[0]?.fastest ?? 0),
-		mostReadBookId: topRow[0]?.bookId ?? null,
-		totalSessions: Number(aggRow[0]?.total ?? 0),
-	};
 }
 
 export interface SpeedPoint {

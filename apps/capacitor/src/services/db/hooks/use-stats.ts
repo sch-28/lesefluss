@@ -41,17 +41,10 @@ function useWpmTrend(period: TrendPeriod, now: number) {
 	});
 }
 
-function useHourHistogram(since: number) {
+function useHourHistogram() {
 	return useQuery({
-		queryKey: statsKeys.hourHistogram(since),
-		queryFn: () => queries.getHourHistogram(since),
-	});
-}
-
-function usePersonality(since: number) {
-	return useQuery({
-		queryKey: statsKeys.personality(since),
-		queryFn: () => queries.getPersonalityStats(since),
+		queryKey: statsKeys.hourHistogram,
+		queryFn: () => queries.getHourHistogram(),
 	});
 }
 
@@ -70,6 +63,5 @@ export const statsHooks = {
 	useTopBooks,
 	useWpmTrend,
 	useHourHistogram,
-	usePersonality,
 	useBookStats,
 };
