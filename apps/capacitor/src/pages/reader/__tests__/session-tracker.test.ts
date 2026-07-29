@@ -17,6 +17,7 @@ function setup(opts?: {
 }) {
 	let clock = 1_000_000; // arbitrary epoch ms
 	let position = opts?.initialPos ?? 0;
+	let wpm: number | null = opts?.wpm === undefined ? 250 : opts.wpm;
 	let idCounter = 0;
 	const persisted: Array<{ row: SessionRow; kind: "checkpoint" | "flush" }> = [];
 
@@ -24,7 +25,7 @@ function setup(opts?: {
 		bookId: "book1",
 		mode: opts?.mode ?? "scroll",
 		getPosition: () => position,
-		wpmSetting: opts?.wpm ?? 250,
+		getWpmSetting: () => wpm,
 		persist: (row, kind) => persisted.push({ row, kind }),
 		now: () => clock,
 		newId: () => `id${++idCounter}`,
@@ -44,6 +45,9 @@ function setup(opts?: {
 		},
 		setPosition(p: number) {
 			position = p;
+		},
+		setWpm(value: number | null) {
+			wpm = value;
 		},
 		get clock() {
 			return clock;
@@ -521,6 +525,32 @@ describe("SessionTracker", () => {
 		env.tracker.tick();
 		env.tracker.finalize();
 		expect(env.persisted.at(-1)!.row.endedAt).toBe(env.clock);
+	});
+
+	it("ends at the last observed position, not at whatever the reader reports later", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(300);
+		env.tracker.tick();
+		env.advance(POLL_MS);
+		env.movePosition(200);
+		env.tracker.tick();
+
+		env.setPosition(0); // the reader's ref is cleared on book switch
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.endWord).toBe(500);
+	});
+
+	it("reads the rsvp target when the row is written, not when the tracker was built", () => {
+		const env = setup({ mode: "rsvp", wpm: null });
+		env.tracker.setReading(true);
+		env.advance(60_000);
+		env.movePosition(100);
+		env.setWpm(400); // settings resolve mid-sitting
+		env.tracker.tick();
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wpmAvg).toBe(400);
 	});
 
 	it("stores wpmSetting for rsvp mode, computed wpm for scroll", () => {

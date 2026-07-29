@@ -44,7 +44,7 @@ function actualWordsRead(positions: number[]): number {
 		bookId: "book1",
 		mode: "scroll",
 		getPosition: () => positions[index] as number,
-		wpmSetting: 250,
+		getWpmSetting: () => 250,
 		persist: (row) => persisted.push(row),
 		now: () => clock,
 		newId: () => "id1",

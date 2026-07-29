@@ -95,7 +95,7 @@ export function useReadingSession({
 			bookId,
 			mode,
 			getPosition: () => getPositionRef.current(),
-			wpmSetting: wpmRef.current ?? null,
+			getWpmSetting: () => wpmRef.current ?? null,
 			persist: persistRow,
 		});
 		return () => {

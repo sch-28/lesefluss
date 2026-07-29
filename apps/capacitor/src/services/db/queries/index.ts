@@ -49,6 +49,7 @@ import {
 	getReadingSessionsPage,
 	getReadingSessionsSince,
 	upsertReadingSession,
+	upsertReadingSessions,
 } from "./reading-sessions";
 import {
 	addSeries,
@@ -127,6 +128,7 @@ export const queries = {
 	countReadingSessions,
 	addReadingSession,
 	upsertReadingSession,
+	upsertReadingSessions,
 	deleteAllReadingSessions,
 	deleteReadingSession,
 

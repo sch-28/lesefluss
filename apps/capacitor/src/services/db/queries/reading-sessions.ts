@@ -1,6 +1,11 @@
-import { desc, eq, gte, sql } from "drizzle-orm";
+import { desc, eq, gte, lt, sql } from "drizzle-orm";
+
 import { db } from "../index";
 import { type NewReadingSession, type ReadingSession, readingSessions } from "../schema";
+
+// Same bound as series.ts: stay under SQLite's SQLITE_MAX_VARIABLE_NUMBER (32766).
+// 200 rows x 11 cols is comfortably inside it.
+const UPSERT_CHUNK_SIZE = 200;
 
 /**
  * Fetch all reading sessions across all books. Used by sync push and stats UI.
@@ -52,24 +57,58 @@ export async function addReadingSession(session: NewReadingSession): Promise<voi
 }
 
 /**
- * Insert-or-update used by sync pull. Last-write-wins on `updatedAt`:
- * if a row with the same id exists and the local row is newer, leaves it alone.
+ * Insert-or-update used by the reader's checkpoints and by sync pull.
+ * Last-write-wins on `updatedAt`.
+ *
+ * Single statement on purpose: a read-then-write let a heartbeat checkpoint and
+ * a terminal flush for the same id both observe no row and both insert, losing
+ * one write. Since the push watermark advances on `updatedAt`, a row left stale
+ * that way is never selected again and stays local forever.
  */
 export async function upsertReadingSession(session: NewReadingSession): Promise<void> {
-	const existing = await db
-		.select()
-		.from(readingSessions)
-		.where(eq(readingSessions.id, session.id))
-		.limit(1);
-	const local = existing[0];
-	if (!local) {
-		await db.insert(readingSessions).values(session);
-		return;
-	}
-	if (session.updatedAt > local.updatedAt) {
-		await db.update(readingSessions).set(session).where(eq(readingSessions.id, session.id));
+	await db
+		.insert(readingSessions)
+		.values(session)
+		.onConflictDoUpdate({
+			target: readingSessions.id,
+			set: session,
+			where: lt(readingSessions.updatedAt, session.updatedAt),
+		});
+}
+
+/**
+ * Batched last-write-wins upsert, used by sync pull. One statement per chunk
+ * rather than per row: the pull is unbounded, and every statement is a Capacitor
+ * bridge round-trip.
+ */
+export async function upsertReadingSessions(sessions: NewReadingSession[]): Promise<void> {
+	for (let i = 0; i < sessions.length; i += UPSERT_CHUNK_SIZE) {
+		const chunk = sessions.slice(i, i + UPSERT_CHUNK_SIZE);
+		await db
+			.insert(readingSessions)
+			.values(chunk)
+			.onConflictDoUpdate({
+				target: readingSessions.id,
+				set: EXCLUDED_SESSION_COLUMNS,
+				where: lt(readingSessions.updatedAt, sql`excluded.updated_at`),
+			});
 	}
 }
+
+/** Every column taken from the incoming row, so a chunk of differing rows each
+ *  update to their own values rather than to one shared literal. */
+const EXCLUDED_SESSION_COLUMNS = {
+	bookId: sql`excluded.book_id`,
+	mode: sql`excluded.mode`,
+	startedAt: sql`excluded.started_at`,
+	endedAt: sql`excluded.ended_at`,
+	durationMs: sql`excluded.duration_ms`,
+	wordsRead: sql`excluded.words_read`,
+	startWord: sql`excluded.start_word`,
+	endWord: sql`excluded.end_word`,
+	wpmAvg: sql`excluded.wpm_avg`,
+	updatedAt: sql`excluded.updated_at`,
+};
 
 /**
  * Hard-delete every reading session row locally. Sessions are append-only and

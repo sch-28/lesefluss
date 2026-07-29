@@ -793,20 +793,32 @@ export async function pullSync(): Promise<Set<string>> {
 		// Append-only: no `deleted` branch, no orphan guard. Sessions intentionally
 		// outlive their book row for all-time totals. LWW on updatedAt.
 		if (localSettings.syncStats) {
+			const incoming: ReadingSession[] = [];
+			let rejected = 0;
 			for (const serverSession of data.readingSessions ?? []) {
-				await queries.upsertReadingSession({
-					id: serverSession.sessionId,
-					bookId: serverSession.bookId,
-					mode: serverSession.mode,
-					startedAt: serverSession.startedAt,
-					endedAt: serverSession.endedAt,
-					durationMs: serverSession.durationMs,
-					wordsRead: serverSession.wordsRead,
-					startWord: wordPos(serverSession.startWord),
-					endWord: wordPos(serverSession.endWord),
-					wpmAvg: serverSession.wpmAvg,
-					updatedAt: serverSession.updatedAt,
+				const parsed = SyncReadingSessionSchema.safeParse(serverSession);
+				if (!parsed.success) {
+					rejected++;
+					continue;
+				}
+				const row = parsed.data;
+				incoming.push({
+					id: row.sessionId,
+					bookId: row.bookId,
+					mode: row.mode,
+					startedAt: row.startedAt,
+					endedAt: row.endedAt,
+					durationMs: row.durationMs,
+					wordsRead: row.wordsRead,
+					startWord: wordPos(row.startWord),
+					endWord: wordPos(row.endWord),
+					wpmAvg: row.wpmAvg,
+					updatedAt: row.updatedAt,
 				});
+			}
+			if (rejected > 0) log("sync", `pull: skipped ${rejected} malformed session(s)`);
+			if (incoming.length > 0) {
+				await queries.upsertReadingSessions(incoming);
 				changed = true;
 			}
 		}
@@ -990,10 +1002,13 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 			clippedSessions.map(sessionToSync),
 		);
 		if (rejectedSessions.length > 0) {
+			// Ids, not just a count: a rejected row stays local, and this is the only
+			// way to find out which one. `resetSessionPushWatermark` re-offers them
+			// all if a schema change later makes them acceptable.
 			log(
 				"sync",
 				`push: dropped ${rejectedSessions.length} malformed session(s), ids=[${rejectedSessions
-					.map((s) => s.sessionId)
+					.map((row) => row.sessionId)
 					.join(",")}]`,
 			);
 		}

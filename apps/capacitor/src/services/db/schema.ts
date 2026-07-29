@@ -244,7 +244,7 @@ export type NewSeries = typeof series.$inferInsert;
  * `wpmAvg` is RSVP-only (null for scroll/page).
  */
 export const readingSessions = sqliteTable("reading_sessions", {
-	id: text("id").primaryKey(), // random 8-char hex, generated client-side
+	id: text("id").primaryKey(), // random hex, generated client-side
 	bookId: text("book_id").notNull(),
 	mode: text("mode").$type<"rsvp" | "scroll" | "page">().notNull(),
 	startedAt: integer("started_at").notNull(), // epoch ms

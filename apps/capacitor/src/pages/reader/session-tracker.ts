@@ -27,7 +27,7 @@
  */
 import { type WordPosition, wordPos } from "@lesefluss/core";
 import { log } from "../../utils/log";
-import { randomHexId } from "../../utils/random-id";
+import { randomSessionId } from "../../utils/random-id";
 
 export type ReadingSessionMode = "rsvp" | "scroll" | "page";
 
@@ -52,7 +52,9 @@ export type TrackerOpts = {
 	mode: ReadingSessionMode;
 	/** Returns the current word position. */
 	getPosition: () => number;
-	wpmSetting: number | null;
+	/** Read at write time, not at construction: a tracker built before settings
+	 *  resolve would otherwise record null for the whole sitting. */
+	getWpmSetting: () => number | null;
 	persist: (row: SessionRow, kind: PersistKind) => void;
 	now?: () => number;
 	newId?: () => string;
@@ -139,7 +141,7 @@ export class SessionTracker {
 	}
 
 	private newId(): string {
-		return this.opts.newId?.() ?? randomHexId();
+		return this.opts.newId?.() ?? randomSessionId();
 	}
 
 	private get shouldBeActive(): boolean {
@@ -323,13 +325,15 @@ export class SessionTracker {
 		if (finalActiveMs < MIN_DURATION_MS) return null;
 		const wordsRead = wordsReadIn(s);
 		if (wordsRead < MIN_WORDS) return null;
-		const endPos = this.opts.getPosition();
+		// On an in-place book switch the reader clears its position ref before this
+		// runs, so re-reading it would record the outgoing session as ending at 0.
+		const endPos = s.lastPos;
 		const computedWpm =
 			finalActiveMs > 1000 ? Math.round(wordsRead / (finalActiveMs / 60_000)) : null;
 		const wasCapped =
 			this.opts.mode !== "rsvp" && computedWpm !== null && computedWpm > SANE_WPM_CEILING;
 		const wpmAvg =
-			this.opts.mode === "rsvp" ? (this.opts.wpmSetting ?? null) : wasCapped ? null : computedWpm;
+			this.opts.mode === "rsvp" ? this.opts.getWpmSetting() : wasCapped ? null : computedWpm;
 		return {
 			id: s.id,
 			bookId: this.opts.bookId,
