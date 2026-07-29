@@ -6,7 +6,8 @@ import { extractAccent } from "./cover-accent";
 import { getAccentStops } from "./nivo-theme";
 
 interface Props {
-	wordsThisWeek: number;
+	words: number;
+	periodLabel: string;
 	currentStreak: number;
 	topCover: string | null;
 	/** Stable id used as the accent cache key, so we don't keep ~500KB base64
@@ -15,7 +16,14 @@ interface Props {
 	deltaVsPrev?: number | null;
 }
 
-export function Hero({ wordsThisWeek, currentStreak, topCover, topBookId, deltaVsPrev }: Props) {
+export function Hero({
+	words,
+	periodLabel,
+	currentStreak,
+	topCover,
+	topBookId,
+	deltaVsPrev,
+}: Props) {
 	const { theme } = useTheme();
 	const [accent, setAccent] = useState(() => getAccentStops(theme));
 
@@ -74,7 +82,7 @@ export function Hero({ wordsThisWeek, currentStreak, topCover, topBookId, deltaV
 					transition={{ duration: 0.5 }}
 					className="text-[11px] uppercase tracking-[0.2em] opacity-80"
 				>
-					This week
+					{periodLabel}
 				</motion.p>
 				<motion.div
 					initial={{ opacity: 0, y: 14 }}
@@ -83,7 +91,7 @@ export function Hero({ wordsThisWeek, currentStreak, topCover, topBookId, deltaV
 					className="mt-2 flex items-baseline gap-2"
 				>
 					<AnimatedNumber
-						value={wordsThisWeek}
+						value={words}
 						className="font-bold text-5xl tabular-nums tracking-tight"
 					/>
 					<span className="text-base opacity-80">words</span>
@@ -103,7 +111,7 @@ export function Hero({ wordsThisWeek, currentStreak, topCover, topBookId, deltaV
 								deltaVsPrev >= 0 ? "bg-emerald-500/30" : "bg-rose-500/30"
 							}`}
 						>
-							{deltaVsPrev >= 0 ? "▲" : "▼"} {Math.abs(Math.round(deltaVsPrev))}% vs last week
+							{deltaVsPrev >= 0 ? "▲" : "▼"} {Math.abs(Math.round(deltaVsPrev))}% vs previous
 						</span>
 					)}
 				</motion.div>

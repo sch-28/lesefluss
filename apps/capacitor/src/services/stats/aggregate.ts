@@ -6,6 +6,7 @@
 import { localDateKey, previousLocalDayStart, startOfLocalDay } from "../../utils/date-utils";
 
 const HEATMAP_DAYS = 90;
+const MS_PER_DAY = 86_400_000;
 
 /** A local day counts toward a streak once its sessions sum to this much. */
 const MIN_STREAK_MINUTES = 1;
@@ -154,23 +155,24 @@ export function bucketMinutesByHour(rows: SessionSpan[]): number[] {
 	return hours.map((minutes) => Math.round(minutes));
 }
 
-export interface WeeklyWpm {
-	weekStart: number;
+export interface WpmPoint {
+	bucketStart: number;
 	avgWpm: number;
 }
 
-export interface WeeklyWpmSeries {
+export interface WpmTrend {
+	granularity: TrendGranularity;
 	/** Configured RSVP dial setting, weighted by words. */
-	rsvpTarget: WeeklyWpm[];
+	rsvpTarget: WpmPoint[];
 	/** Actual rate the RSVP engine delivered (lower than target due to
 	 * punctuation pauses + accel ramp). Computed from words / active minutes. */
-	rsvpDelivered: WeeklyWpm[];
+	rsvpDelivered: WpmPoint[];
 	/** Natural reading speed in scroll/page modes. */
-	read: WeeklyWpm[];
+	read: WpmPoint[];
 	/**
 	 * Words-weighted average per series over the whole window. Returned rather
-	 * than derived from the points, because averaging the weekly averages gives a
-	 * week with one 10-word session the same say as a week with 300k.
+	 * than derived from the points, because averaging the per-bucket averages
+	 * gives a bucket holding one 10-word session the same say as one holding 300k.
 	 */
 	averages: Record<"rsvpTarget" | "rsvpDelivered" | "read", number>;
 }
@@ -185,54 +187,55 @@ export interface WpmSession {
 
 type Bucket = { sumWordsWpm: number; sumWords: number };
 
-function addToBucket(map: Map<number, Bucket>, weekStart: number, wpm: number, words: number) {
-	const bucket = map.get(weekStart) ?? { sumWordsWpm: 0, sumWords: 0 };
+function addToBucket(map: Map<number, Bucket>, bucketStart: number, wpm: number, words: number) {
+	const bucket = map.get(bucketStart) ?? { sumWordsWpm: 0, sumWords: 0 };
 	bucket.sumWordsWpm += wpm * words;
 	bucket.sumWords += words;
-	map.set(weekStart, bucket);
+	map.set(bucketStart, bucket);
 }
 
 /**
- * Weekly WPM trend with three series, all words-weighted so one short session
- * can't dominate a week. Each session contributes to whichever buckets apply
- * to its mode.
+ * WPM trend with three series, all words-weighted so one short session can't
+ * dominate a bucket. Each session contributes to whichever buckets apply to its
+ * mode. Bucket width follows the selected period.
  */
-export function buildWeeklyWpm(rows: WpmSession[], weeks: number, now: number): WeeklyWpmSeries {
+export function buildWpmTrend(
+	rows: WpmSession[],
+	buckets: { granularity: TrendGranularity; starts: number[] },
+): WpmTrend {
 	const targetBuckets = new Map<number, Bucket>();
 	const deliveredBuckets = new Map<number, Bucket>();
 	const readBuckets = new Map<number, Bucket>();
 
 	for (const r of rows) {
-		const week = weekStartLocal(r.startedAt);
+		const bucketStart = bucketStartFor(buckets.granularity, r.startedAt);
 		const words = Math.max(1, r.words);
 		if (r.mode === "rsvp") {
-			if (r.wpmAvg != null) addToBucket(targetBuckets, week, r.wpmAvg, words);
+			if (r.wpmAvg != null) addToBucket(targetBuckets, bucketStart, r.wpmAvg, words);
 			if (r.durationMs > 1000) {
 				const delivered = Math.round(r.words / (r.durationMs / 60_000));
-				if (delivered > 0) addToBucket(deliveredBuckets, week, delivered, words);
+				if (delivered > 0) addToBucket(deliveredBuckets, bucketStart, delivered, words);
 			}
 		} else if (r.wpmAvg != null) {
-			addToBucket(readBuckets, week, r.wpmAvg, words);
+			addToBucket(readBuckets, bucketStart, r.wpmAvg, words);
 		}
 	}
 
-	const weekStarts = weekStartsFor(weeks, now);
-
-	function buildSeries(buckets: Map<number, Bucket>): WeeklyWpm[] {
-		return weekStarts.map((weekStart) => {
-			const b = buckets.get(weekStart);
+	function buildSeries(source: Map<number, Bucket>): WpmPoint[] {
+		return buckets.starts.map((bucketStart) => {
+			const b = source.get(bucketStart);
 			return {
-				weekStart,
+				bucketStart,
 				avgWpm: b && b.sumWords > 0 ? Math.round(b.sumWordsWpm / b.sumWords) : 0,
 			};
 		});
 	}
 
-	function averageOver(buckets: Map<number, Bucket>): number {
+	function averageOver(source: Map<number, Bucket>): number {
 		let sumWordsWpm = 0;
 		let sumWords = 0;
-		for (const weekStart of weekStarts) {
-			const b = buckets.get(weekStart);
+		for (const bucketStart of buckets.starts) {
+			const b = source.get(bucketStart);
 			if (!b) continue;
 			sumWordsWpm += b.sumWordsWpm;
 			sumWords += b.sumWords;
@@ -241,6 +244,7 @@ export function buildWeeklyWpm(rows: WpmSession[], weeks: number, now: number): 
 	}
 
 	return {
+		granularity: buckets.granularity,
 		rsvpTarget: buildSeries(targetBuckets),
 		rsvpDelivered: buildSeries(deliveredBuckets),
 		read: buildSeries(readBuckets),
@@ -257,7 +261,6 @@ export function buildWeeklyWpm(rows: WpmSession[], weeks: number, now: number): 
  * local days: a fixed `i * 7 * MS_PER_DAY` grid drifts by an hour past a DST
  * change, so every bucket before it misses and renders as zero.
  *
- * Also the fetch horizon, so the query window and the buckets cannot disagree.
  */
 export function weekStartsFor(weeks: number, now: number): number[] {
 	const starts: number[] = [];
@@ -267,4 +270,95 @@ export function weekStartsFor(weeks: number, now: number): number[] {
 		cursor = previousLocalWeekStart(cursor);
 	}
 	return starts.reverse();
+}
+
+export type TrendGranularity = "hour" | "day" | "week" | "month";
+export type TrendPeriod = "today" | "7d" | "30d" | "all";
+
+/** Weeks of all-time history shown before the trend switches to months. */
+const ALL_TIME_WEEK_LIMIT = 26;
+
+function hourStartLocal(epochMs: number): number {
+	return new Date(epochMs).setMinutes(0, 0, 0);
+}
+
+function monthStartLocal(epochMs: number): number {
+	const d = new Date(epochMs);
+	return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+}
+
+function previousMonthStart(monthStart: number): number {
+	const d = new Date(monthStart);
+	return new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime();
+}
+
+export function bucketStartFor(granularity: TrendGranularity, epochMs: number): number {
+	switch (granularity) {
+		case "hour":
+			return hourStartLocal(epochMs);
+		case "day":
+			return startOfLocalDay(epochMs);
+		case "week":
+			return weekStartLocal(epochMs);
+		default:
+			return monthStartLocal(epochMs);
+	}
+}
+
+/**
+ * Bucket starts for a period, oldest first, plus the granularity used. Every
+ * step walks local calendar units rather than fixed milliseconds so the keys
+ * survive a DST change.
+ *
+ * The oldest entry doubles as the fetch horizon, so the query window and the
+ * buckets cannot disagree.
+ */
+export function trendBucketsFor(
+	period: TrendPeriod,
+	now: number,
+	oldestSessionAt?: number,
+): { granularity: TrendGranularity; starts: number[] } {
+	if (period === "today") {
+		// Deduped because a spring-forward day has no 02:00 and `setHours` folds it
+		// onto 03:00, which would plot one hour twice and double its weight in the
+		// averages. Stopped at the current hour so the chart doesn't trail a line of
+		// zeroes across hours that have not happened.
+		const dayStart = startOfLocalDay(now);
+		const currentHour = hourStartLocal(now);
+		const starts: number[] = [];
+		for (let hour = 0; hour < 24; hour++) {
+			const start = new Date(dayStart).setHours(hour, 0, 0, 0);
+			if (start > currentHour) break;
+			if (starts.at(-1) !== start) starts.push(start);
+		}
+		return { granularity: "hour", starts };
+	}
+
+	if (period === "7d" || period === "30d") {
+		const days = period === "7d" ? 7 : 30;
+		const starts: number[] = [];
+		let cursor = startOfLocalDay(now);
+		for (let i = 0; i < days; i++) {
+			starts.push(cursor);
+			cursor = previousLocalDayStart(cursor);
+		}
+		return { granularity: "day", starts: starts.reverse() };
+	}
+
+	// All time: weeks while the history is short enough to read, months beyond.
+	const oldest = oldestSessionAt ?? now;
+	const weeksBack =
+		Math.ceil((weekStartLocal(now) - weekStartLocal(oldest)) / (7 * MS_PER_DAY)) + 1;
+	if (weeksBack <= ALL_TIME_WEEK_LIMIT) {
+		return { granularity: "week", starts: weekStartsFor(Math.max(1, weeksBack), now) };
+	}
+
+	const starts: number[] = [];
+	let cursor = monthStartLocal(now);
+	const oldestMonth = monthStartLocal(oldest);
+	while (cursor >= oldestMonth) {
+		starts.push(cursor);
+		cursor = previousMonthStart(cursor);
+	}
+	return { granularity: "month", starts: starts.reverse() };
 }

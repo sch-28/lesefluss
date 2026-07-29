@@ -2,8 +2,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { localDateKey, previousLocalDayStart } from "../../../utils/date-utils";
 import {
 	bucketMinutesByHour,
-	buildWeeklyWpm,
+	buildWpmTrend,
 	summariseStreak,
+	trendBucketsFor,
 	type WpmSession,
 	weekStartsFor,
 } from "../aggregate";
@@ -229,26 +230,26 @@ describe("weekStartsFor", () => {
 	});
 });
 
-describe.each(["Europe/Berlin", "America/New_York"])("buildWeeklyWpm in %s", (tz) => {
+describe.each(["Europe/Berlin", "America/New_York"])("buildWpmTrend in %s", (tz) => {
 	useTimezone(tz);
 
 	// Spring-forward is inside this window in both zones. Looking buckets up on a
 	// fixed 7-day millisecond grid drifts an hour past the transition, so every
 	// week before it misses and renders as zero.
-	it("fills every bucket when each week has a session, across a DST transition", () => {
+	it("fills every bucket when each day has a session, across a DST transition", () => {
 		const now = at(2026, 4, 20);
 		const rows: WpmSession[] = [];
-		for (let week = 0; week < 12; week++) {
-			rows.push(rsvpSession(now - week * 7 * 86_400_000, 300));
+		for (let day = 0; day < 30; day++) {
+			rows.push(rsvpSession(at(2026, 4, 20 - day), 300));
 		}
-		const series = buildWeeklyWpm(rows, 12, now);
-		expect(series.rsvpTarget).toHaveLength(12);
-		expect(series.rsvpTarget.filter((w) => w.avgWpm === 0)).toHaveLength(0);
+		const series = buildWpmTrend(rows, trendBucketsFor("30d", now));
+		expect(series.rsvpTarget).toHaveLength(30);
+		expect(series.rsvpTarget.filter((p) => p.avgWpm === 0)).toHaveLength(0);
 	});
 
 	it("orders buckets oldest to newest", () => {
-		const series = buildWeeklyWpm([], 12, at(2026, 4, 20));
-		const starts = series.rsvpTarget.map((w) => w.weekStart);
+		const series = buildWpmTrend([], trendBucketsFor("30d", at(2026, 4, 20)));
+		const starts = series.rsvpTarget.map((p) => p.bucketStart);
 		expect([...starts].sort((a, b) => a - b)).toEqual(starts);
 	});
 
@@ -258,7 +259,7 @@ describe.each(["Europe/Berlin", "America/New_York"])("buildWeeklyWpm in %s", (tz
 			{ startedAt: now, mode: "scroll", wpmAvg: 100, words: 9000, durationMs: minutes(10) },
 			{ startedAt: now, mode: "scroll", wpmAvg: 1000, words: 1000, durationMs: minutes(1) },
 		];
-		const series = buildWeeklyWpm(rows, 12, now);
+		const series = buildWpmTrend(rows, trendBucketsFor("30d", now));
 		expect(series.read.at(-1)?.avgWpm).toBe(190);
 	});
 
@@ -276,11 +277,11 @@ describe.each(["Europe/Berlin", "America/New_York"])("buildWeeklyWpm in %s", (tz
 				durationMs: minutes(1),
 			},
 		];
-		expect(buildWeeklyWpm(rows, 12, now).averages.read).toBe(100);
+		expect(buildWpmTrend(rows, trendBucketsFor("30d", now)).averages.read).toBe(100);
 	});
 
 	it("reports a zero average for a series with no sessions", () => {
-		expect(buildWeeklyWpm([], 12, at(2026, 4, 20)).averages).toEqual({
+		expect(buildWpmTrend([], trendBucketsFor("30d", at(2026, 4, 20))).averages).toEqual({
 			rsvpTarget: 0,
 			rsvpDelivered: 0,
 			read: 0,
@@ -290,9 +291,69 @@ describe.each(["Europe/Berlin", "America/New_York"])("buildWeeklyWpm in %s", (tz
 	it("keeps rsvp target and delivered apart", () => {
 		const now = at(2026, 4, 20);
 		// 1000 words in 10 minutes delivers 100 wpm against a 300 dial.
-		const series = buildWeeklyWpm([rsvpSession(now, 300)], 12, now);
+		const series = buildWpmTrend([rsvpSession(now, 300)], trendBucketsFor("30d", now));
 		expect(series.rsvpTarget.at(-1)?.avgWpm).toBe(300);
 		expect(series.rsvpDelivered.at(-1)?.avgWpm).toBe(100);
 		expect(series.read.at(-1)?.avgWpm).toBe(0);
+	});
+});
+
+describe.each(["Europe/Berlin", "America/New_York"])("trendBucketsFor in %s", (tz) => {
+	useTimezone(tz);
+
+	// Charting all 24 would trail a line of zeroes across hours that have not
+	// happened yet, while every other section on the page stops at now.
+	it("gives one bucket per elapsed hour of today", () => {
+		const buckets = trendBucketsFor("today", at(2026, 5, 10, 15));
+		expect(buckets.granularity).toBe("hour");
+		expect(buckets.starts).toHaveLength(16);
+		expect(new Date(buckets.starts[0] as number).getHours()).toBe(0);
+		expect(new Date(buckets.starts.at(-1) as number).getHours()).toBe(15);
+	});
+
+	it("gives a single bucket at the start of the day", () => {
+		const buckets = trendBucketsFor("today", at(2026, 5, 10, 0));
+		expect(buckets.starts).toHaveLength(1);
+	});
+
+	it("gives one bucket per day for the short ranges", () => {
+		expect(trendBucketsFor("7d", at(2026, 5, 10)).starts).toHaveLength(7);
+		expect(trendBucketsFor("30d", at(2026, 5, 10)).starts).toHaveLength(30);
+		expect(trendBucketsFor("7d", at(2026, 5, 10)).granularity).toBe("day");
+	});
+
+	it("stays weekly while all-time history is short", () => {
+		const now = at(2026, 5, 10);
+		const buckets = trendBucketsFor("all", now, at(2026, 3, 10));
+		expect(buckets.granularity).toBe("week");
+		expect(buckets.starts.length).toBeGreaterThan(1);
+	});
+
+	// Years of weekly points would be unreadable, and one point per week over a
+	// decade is more buckets than pixels.
+	it("switches to months once all-time history is long", () => {
+		const buckets = trendBucketsFor("all", at(2026, 5, 10), at(2022, 1, 5));
+		expect(buckets.granularity).toBe("month");
+		expect(new Date(buckets.starts[0] as number).getDate()).toBe(1);
+	});
+
+	// A spring-forward day has no 02:00 local, and setHours folds it onto 03:00.
+	// A duplicated start plots the hour twice and double-weights it in averages.
+	it("does not repeat an hour on a spring-forward day", () => {
+		const buckets = trendBucketsFor("today", at(2026, 3, 29, 20));
+		expect(new Set(buckets.starts).size).toBe(buckets.starts.length);
+	});
+
+	it("never returns an empty bucket list", () => {
+		for (const period of ["today", "7d", "30d", "all"] as const) {
+			expect(trendBucketsFor(period, at(2026, 5, 10)).starts.length).toBeGreaterThan(0);
+		}
+	});
+
+	it("orders every bucket list oldest first", () => {
+		for (const period of ["today", "7d", "30d", "all"] as const) {
+			const starts = trendBucketsFor(period, at(2026, 5, 10), at(2020, 1, 1)).starts;
+			expect([...starts].sort((a, b) => a - b)).toEqual(starts);
+		}
 	});
 });

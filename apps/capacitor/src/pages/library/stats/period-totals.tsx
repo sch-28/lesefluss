@@ -17,7 +17,7 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 	const showPrev = period !== "all";
 
 	const totals = queryHooks.useStatsPeriodTotals(win.start, now);
-	const prev = queryHooks.useStatsPeriodTotals(win.prevStart, win.prevEnd, showPrev);
+	const prev = queryHooks.useStatsClosedPeriodTotals(win.prevStart, win.prevEnd, showPrev);
 
 	const data = totals.data ?? { minutes: 0, words: 0, booksFinished: 0 };
 	const prevData = showPrev ? prev.data : undefined;

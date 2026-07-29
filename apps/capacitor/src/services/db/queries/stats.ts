@@ -1,11 +1,12 @@
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import {
 	bucketMinutesByHour,
-	buildWeeklyWpm,
+	buildWpmTrend,
 	type StreakResult,
 	summariseStreak,
-	type WeeklyWpmSeries,
-	weekStartsFor,
+	type TrendPeriod,
+	trendBucketsFor,
+	type WpmTrend,
 } from "../../stats/aggregate";
 import { db } from "../index";
 import { bookContent, books, readingSessions } from "../schema";
@@ -130,8 +131,19 @@ export async function getTopBooks(opts: { since: number; limit?: number }): Prom
 	}));
 }
 
-export async function getWeeklyWpm(opts: { weeks: number }): Promise<WeeklyWpmSeries> {
-	const now = Date.now();
+export async function getWpmTrend(opts: { period: TrendPeriod; now: number }): Promise<WpmTrend> {
+	const now = opts.now;
+	// All-time granularity depends on how far back the history goes, so ask the
+	// cheapest possible question first rather than fetching every row to find out.
+	const oldest =
+		opts.period === "all"
+			? await db
+					.select({ startedAt: sql<number>`MIN(${readingSessions.startedAt})` })
+					.from(readingSessions)
+					.then((rows) => Number(rows[0]?.startedAt ?? now))
+			: undefined;
+
+	const buckets = trendBucketsFor(opts.period, now, oldest);
 	const rows = await db
 		.select({
 			startedAt: readingSessions.startedAt,
@@ -141,20 +153,21 @@ export async function getWeeklyWpm(opts: { weeks: number }): Promise<WeeklyWpmSe
 			durationMs: readingSessions.durationMs,
 		})
 		.from(readingSessions)
-		.where(gte(readingSessions.startedAt, weekStartsFor(opts.weeks, now)[0] as number));
+		.where(gte(readingSessions.startedAt, buckets.starts[0] as number));
 
-	return buildWeeklyWpm(rows, opts.weeks, now);
+	return buildWpmTrend(rows, buckets);
 }
 
 /** Sessions bucketed by local hour-of-day. Returns a 24-length minutes-array. */
-export async function getHourHistogram(): Promise<number[]> {
+export async function getHourHistogram(since: number): Promise<number[]> {
 	const rows = await db
 		.select({
 			startedAt: readingSessions.startedAt,
 			endedAt: readingSessions.endedAt,
 			durationMs: readingSessions.durationMs,
 		})
-		.from(readingSessions);
+		.from(readingSessions)
+		.where(gte(readingSessions.startedAt, since));
 
 	return bucketMinutesByHour(rows);
 }
@@ -166,14 +179,15 @@ export interface PersonalityStats {
 	totalSessions: number;
 }
 
-export async function getPersonalityStats(): Promise<PersonalityStats> {
+export async function getPersonalityStats(since: number): Promise<PersonalityStats> {
 	const aggRow = await db
 		.select({
 			longest: sql<number>`COALESCE(MAX(${readingSessions.durationMs}), 0)`,
 			fastest: sql<number>`COALESCE(MAX(${readingSessions.wpmAvg}), 0)`,
 			total: sql<number>`COUNT(*)`,
 		})
-		.from(readingSessions);
+		.from(readingSessions)
+		.where(gte(readingSessions.startedAt, since));
 
 	const topRow = await db
 		.select({
@@ -181,6 +195,7 @@ export async function getPersonalityStats(): Promise<PersonalityStats> {
 			total: sql<number>`SUM(${readingSessions.durationMs})`,
 		})
 		.from(readingSessions)
+		.where(gte(readingSessions.startedAt, since))
 		.groupBy(readingSessions.bookId)
 		.orderBy(desc(sql`SUM(${readingSessions.durationMs})`))
 		.limit(1);

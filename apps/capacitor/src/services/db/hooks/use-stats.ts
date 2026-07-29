@@ -1,10 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
+import { startOfLocalDay } from "../../../utils/date-utils";
+import type { TrendPeriod } from "../../stats/aggregate";
 import { queries } from "../queries";
 import { statsKeys } from "./query-keys";
 
 function usePeriodTotals(start: number, end: number, enabled = true) {
 	return useQuery({
 		queryKey: statsKeys.periodTotals(start, end),
+		queryFn: () => queries.getPeriodTotals(start, end),
+		enabled,
+	});
+}
+
+function useClosedPeriodTotals(start: number, end: number, enabled = true) {
+	return useQuery({
+		queryKey: statsKeys.closedPeriodTotals(start, end),
 		queryFn: () => queries.getPeriodTotals(start, end),
 		enabled,
 	});
@@ -24,24 +34,24 @@ function useTopBooks(since: number, limit = 5) {
 	});
 }
 
-function useWeeklyWpm(weeks = 12) {
+function useWpmTrend(period: TrendPeriod, now: number) {
 	return useQuery({
-		queryKey: statsKeys.weeklyWpm(weeks),
-		queryFn: () => queries.getWeeklyWpm({ weeks }),
+		queryKey: statsKeys.wpmTrend(period, startOfLocalDay(now)),
+		queryFn: () => queries.getWpmTrend({ period, now }),
 	});
 }
 
-function useHourHistogram() {
+function useHourHistogram(since: number) {
 	return useQuery({
-		queryKey: statsKeys.hourHistogram,
-		queryFn: () => queries.getHourHistogram(),
+		queryKey: statsKeys.hourHistogram(since),
+		queryFn: () => queries.getHourHistogram(since),
 	});
 }
 
-function usePersonality() {
+function usePersonality(since: number) {
 	return useQuery({
-		queryKey: statsKeys.personality,
-		queryFn: () => queries.getPersonalityStats(),
+		queryKey: statsKeys.personality(since),
+		queryFn: () => queries.getPersonalityStats(since),
 	});
 }
 
@@ -55,9 +65,10 @@ function useBookStats(bookId: string) {
 
 export const statsHooks = {
 	usePeriodTotals,
+	useClosedPeriodTotals,
 	useStreak,
 	useTopBooks,
-	useWeeklyWpm,
+	useWpmTrend,
 	useHourHistogram,
 	usePersonality,
 	useBookStats,

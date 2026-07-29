@@ -108,20 +108,29 @@ export const statsKeys = {
 	periodTotals: (start: number, end: number) =>
 		["stats", "period", start, startOfLocalDay(end)] as const,
 
+	/**
+	 * Totals for a closed historical window. Unlike the live one this cannot
+	 * quantise its end: the comparison window is clipped to the same elapsed
+	 * offset as the current one, so two times of day on the same date describe
+	 * genuinely different windows.
+	 */
+	closedPeriodTotals: (start: number, end: number) =>
+		["stats", "period", "closed", start, end] as const,
+
 	/** Streak headline + 90-day series. */
 	streak: ["stats", "streak"] as const,
 
 	/** Top-N books since a cutoff. */
 	topBooks: (since: number, limit: number) => ["stats", "top-books", since, limit] as const,
 
-	/** Weekly WPM trend, last N weeks. */
-	weeklyWpm: (weeks: number) => ["stats", "weekly-wpm", weeks] as const,
+	/** WPM trend, bucketed to the selected period. */
+	wpmTrend: (period: string, dayStart: number) => ["stats", "wpm-trend", period, dayStart] as const,
 
 	/** Hour-of-day histogram. */
-	hourHistogram: ["stats", "hour-histogram"] as const,
+	hourHistogram: (since: number) => ["stats", "hour-histogram", since] as const,
 
 	/** Single-stat callouts. */
-	personality: ["stats", "personality"] as const,
+	personality: (since: number) => ["stats", "personality", since] as const,
 
 	/** Per-book stats card on book detail. */
 	book: (bookId: string) => ["stats", "book", bookId] as const,

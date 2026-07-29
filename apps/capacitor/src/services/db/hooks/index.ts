@@ -146,9 +146,10 @@ export const queryHooks = {
 
 	// ── Stats ─────────────────────────────────────────────────────────────
 	useStatsPeriodTotals: statsHooks.usePeriodTotals,
+	useStatsClosedPeriodTotals: statsHooks.useClosedPeriodTotals,
 	useStatsStreak: statsHooks.useStreak,
 	useStatsTopBooks: statsHooks.useTopBooks,
-	useStatsWeeklyWpm: statsHooks.useWeeklyWpm,
+	useStatsWpmTrend: statsHooks.useWpmTrend,
 	useStatsHourHistogram: statsHooks.useHourHistogram,
 	useStatsPersonality: statsHooks.usePersonality,
 	useStatsBook: statsHooks.useBookStats,

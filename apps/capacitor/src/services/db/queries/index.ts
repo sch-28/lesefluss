@@ -80,7 +80,7 @@ import {
 	getPersonalityStats,
 	getStreak,
 	getTopBooks,
-	getWeeklyWpm,
+	getWpmTrend,
 } from "./stats";
 
 export const queries = {
@@ -136,7 +136,7 @@ export const queries = {
 	getPeriodTotals,
 	getStreak,
 	getTopBooks,
-	getWeeklyWpm,
+	getWpmTrend,
 	getHourHistogram,
 	getPersonalityStats,
 	getBookStats,

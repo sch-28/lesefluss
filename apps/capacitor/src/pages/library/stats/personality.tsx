@@ -6,10 +6,15 @@ import { queryHooks } from "../../../services/db/hooks";
 import { formatDuration } from "../../../utils/date-utils";
 import { buildNivoTheme, getAccentStops } from "./nivo-theme";
 
-export function Personality() {
+interface Props {
+	since: number;
+	periodLabel: string;
+}
+
+export function Personality({ since, periodLabel }: Props) {
 	const { theme } = useTheme();
-	const hours = queryHooks.useStatsHourHistogram();
-	const personality = queryHooks.useStatsPersonality();
+	const hours = queryHooks.useStatsHourHistogram(since);
+	const personality = queryHooks.useStatsPersonality(since);
 	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme]);
 	const accent = useMemo(() => getAccentStops(theme), [theme]);
 
@@ -56,7 +61,7 @@ export function Personality() {
 			<header className="mb-3">
 				<h2 className="font-semibold text-lg">Reading personality</h2>
 				<p className="mt-0.5 text-[11px] uppercase tracking-wider opacity-60">
-					When you read, how deep, how fast
+					{periodLabel} · when you read, how deep, how fast
 				</p>
 			</header>
 			<div className="mb-5 grid grid-cols-3 gap-3">

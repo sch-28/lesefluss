@@ -29,7 +29,9 @@ export function ActivityHeatmap() {
 			<header className="mb-3 flex items-end justify-between">
 				<div>
 					<h2 className="font-semibold text-lg">Activity</h2>
-					<p className="mt-0.5 text-[11px] uppercase tracking-wider opacity-60">Last 90 days</p>
+					<p className="mt-0.5 text-[11px] uppercase tracking-wider opacity-60">
+						Always last 90 days
+					</p>
 				</div>
 				<div className="text-right">
 					<div className="font-bold text-3xl tabular-nums leading-none tracking-tight">

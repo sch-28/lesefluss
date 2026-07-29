@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useMemo } from "react";
 import { useTheme } from "../../../contexts/theme-context";
 import { queryHooks } from "../../../services/db/hooks";
+import type { TrendGranularity, TrendPeriod } from "../../../services/stats/aggregate";
 import { buildNivoTheme } from "./nivo-theme";
 
 const COLORS = {
@@ -13,6 +14,28 @@ const COLORS = {
 
 const AVG_READER_WPM = 225;
 
+const MAX_AXIS_TICKS = 5;
+
+function evenTickIndices(count: number): number[] {
+	if (count <= MAX_AXIS_TICKS) return Array.from({ length: count }, (_, i) => i);
+	const step = (count - 1) / (MAX_AXIS_TICKS - 1);
+	return Array.from({ length: MAX_AXIS_TICKS }, (_, i) => Math.round(i * step));
+}
+
+function formatBucketTick(starts: number[], granularity: TrendGranularity, index: number): string {
+	const start = starts[index];
+	if (start === undefined) return "";
+	const d = new Date(start);
+	switch (granularity) {
+		case "hour":
+			return `${String(d.getHours()).padStart(2, "0")}:00`;
+		case "month":
+			return d.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+		default:
+			return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+	}
+}
+
 type SeriesId = "rsvpTarget" | "rsvpDelivered" | "read";
 
 const LABELS: Record<SeriesId, string> = {
@@ -21,9 +44,15 @@ const LABELS: Record<SeriesId, string> = {
 	read: "Reading speed",
 };
 
-export function WpmTrend() {
+interface Props {
+	period: TrendPeriod;
+	periodLabel: string;
+	now: number;
+}
+
+export function WpmTrend({ period, periodLabel, now }: Props) {
 	const { theme } = useTheme();
-	const weekly = queryHooks.useStatsWeeklyWpm(12);
+	const trend = queryHooks.useStatsWpmTrend(period, now);
 	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme]);
 
 	const colors: Record<SeriesId, string> = useMemo(
@@ -37,11 +66,11 @@ export function WpmTrend() {
 
 	const seriesData: Record<SeriesId, Array<{ x: number; y: number }>> = useMemo(
 		() => ({
-			rsvpTarget: (weekly.data?.rsvpTarget ?? []).map((w, i) => ({ x: i, y: w.avgWpm })),
-			rsvpDelivered: (weekly.data?.rsvpDelivered ?? []).map((w, i) => ({ x: i, y: w.avgWpm })),
-			read: (weekly.data?.read ?? []).map((w, i) => ({ x: i, y: w.avgWpm })),
+			rsvpTarget: (trend.data?.rsvpTarget ?? []).map((p, i) => ({ x: i, y: p.avgWpm })),
+			rsvpDelivered: (trend.data?.rsvpDelivered ?? []).map((p, i) => ({ x: i, y: p.avgWpm })),
+			read: (trend.data?.read ?? []).map((p, i) => ({ x: i, y: p.avgWpm })),
 		}),
-		[weekly.data],
+		[trend.data],
 	);
 
 	const present: SeriesId[] = useMemo(
@@ -62,7 +91,7 @@ export function WpmTrend() {
 		[present, colors, seriesData],
 	);
 
-	if (!weekly.isLoading && present.length === 0) {
+	if (!trend.isLoading && present.length === 0) {
 		return (
 			<motion.section
 				initial={{ opacity: 0, y: 12 }}
@@ -83,7 +112,10 @@ export function WpmTrend() {
 
 	// Measurements first. The dial setting is an input, not a reading speed, and
 	// headlining it told RSVP users their own slider position.
-	const averages = weekly.data?.averages ?? { rsvpTarget: 0, rsvpDelivered: 0, read: 0 };
+	const averages = trend.data?.averages ?? { rsvpTarget: 0, rsvpDelivered: 0, read: 0 };
+	const granularity = trend.data?.granularity ?? "week";
+	const bucketStarts = (trend.data?.read ?? []).map((p) => p.bucketStart);
+	const tickIndices = evenTickIndices(bucketStarts.length);
 	const headlineId: SeriesId | null =
 		(["rsvpDelivered", "read", "rsvpTarget"] as const).find((id) => present.includes(id)) ?? null;
 	const headlineAvg = headlineId ? averages[headlineId] : 0;
@@ -102,7 +134,7 @@ export function WpmTrend() {
 				<div>
 					<h2 className="font-semibold text-lg">Reading speed</h2>
 					<p className="mt-0.5 text-[11px] uppercase tracking-wider opacity-60">
-						12-week avg · words per minute
+						{periodLabel} · words per minute
 					</p>
 				</div>
 				<div className="text-right">
@@ -156,13 +188,9 @@ export function WpmTrend() {
 					axisBottom={{
 						tickSize: 0,
 						tickPadding: 8,
-						tickValues: [0, 3, 6, 9, 11],
-						format: (v) => {
-							const n = typeof v === "number" ? v : Number(v);
-							const weeksAgo = 11 - n;
-							return weeksAgo === 0 ? "now" : `${weeksAgo}w ago`;
-						},
-						legend: "Past 12 weeks",
+						tickValues: tickIndices,
+						format: (v) => formatBucketTick(bucketStarts, granularity, Number(v)),
+						legend: periodLabel,
 						legendPosition: "middle",
 						legendOffset: 36,
 					}}
@@ -181,8 +209,7 @@ export function WpmTrend() {
 					tooltip={({ point }) => {
 						const x = Number(point.data.x);
 						const y = Number(point.data.y);
-						const weeksAgo = 11 - x;
-						const when = weeksAgo === 0 ? "this week" : `${weeksAgo}w ago`;
+						const when = formatBucketTick(bucketStarts, granularity, x);
 						return (
 							<div
 								style={{
