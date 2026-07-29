@@ -69,7 +69,9 @@ const Stats: React.FC = () => {
 
 					<WpmTrend period={period} periodLabel={PERIOD_LABELS[period]} now={now} />
 
-					<SessionTable mode="global" />
+					<div className="px-4">
+						<SessionTable mode="global" />
+					</div>
 					<p className="px-4 pb-6 text-[11px] text-muted-foreground">
 						Reading on a connected device isn't counted here; only sessions in the app are tracked.
 					</p>

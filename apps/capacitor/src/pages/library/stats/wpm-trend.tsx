@@ -9,8 +9,7 @@ import { buildNivoTheme } from "./nivo-theme";
 
 const COLORS = {
 	rsvpTarget: "#c94b2a", // brand orange
-	rsvpDelivered: "#f4a261", // soft sand
-	read: { dark: "#94a3b8", light: "#475569" }, // slate
+	measured: { dark: "#94a3b8", light: "#475569" }, // slate
 } as const;
 
 const MAX_AXIS_TICKS = 5;
@@ -35,14 +34,6 @@ function formatBucketTick(starts: number[], granularity: TrendGranularity, index
 	}
 }
 
-type SeriesId = "rsvpTarget" | "rsvpDelivered" | "read";
-
-const LABELS: Record<SeriesId, string> = {
-	rsvpTarget: "RSVP target",
-	rsvpDelivered: "RSVP delivered",
-	read: "Reading speed",
-};
-
 interface Props {
 	period: TrendPeriod;
 	periodLabel: string;
@@ -54,47 +45,18 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 	const trend = queryHooks.useStatsWpmTrend(period, now);
 	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme]);
 
-	const colors: Record<SeriesId, string> = useMemo(
-		() => ({
-			rsvpTarget: COLORS.rsvpTarget,
-			rsvpDelivered: COLORS.rsvpDelivered,
-			read: theme === "dark" ? COLORS.read.dark : COLORS.read.light,
-		}),
-		[theme],
-	);
-
-	const seriesData: Record<SeriesId, Array<{ x: number; y: number }>> = useMemo(
-		() => ({
-			rsvpTarget: (trend.data?.rsvpTarget ?? []).map((p, i) => ({ x: i, y: p.avgWpm })),
-			rsvpDelivered: (trend.data?.rsvpDelivered ?? []).map((p, i) => ({ x: i, y: p.avgWpm })),
-			read: (trend.data?.read ?? []).map((p, i) => ({ x: i, y: p.avgWpm })),
-		}),
+	const points = useMemo(
+		() => (trend.data?.measured ?? []).map((p, i) => ({ x: i, y: p.avgWpm })),
 		[trend.data],
 	);
-
-	const present: SeriesId[] = useMemo(
-		() =>
-			(["rsvpTarget", "rsvpDelivered", "read"] as const).filter((id) =>
-				seriesData[id].some((p) => p.y > 0),
-			),
-		[seriesData],
-	);
-
-	const headlineId: SeriesId | null = useMemo(
-		() =>
-			(["rsvpDelivered", "read", "rsvpTarget"] as const).find((id) => present.includes(id)) ?? null,
-		[present],
-	);
-
+	const hasReading = points.some((p) => p.y > 0);
+	const lineColor = theme === "dark" ? COLORS.measured.dark : COLORS.measured.light;
 	const chartData = useMemo(
-		() =>
-			headlineId
-				? [{ id: LABELS[headlineId], color: colors[headlineId], data: seriesData[headlineId] }]
-				: [],
-		[headlineId, colors, seriesData],
+		() => [{ id: "Reading speed", color: lineColor, data: points }],
+		[lineColor, points],
 	);
 
-	if (!trend.isLoading && present.length === 0) {
+	if (!trend.isLoading && !hasReading) {
 		return (
 			<motion.section
 				initial={{ opacity: 0, y: 12 }}
@@ -113,20 +75,12 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 		);
 	}
 
-	// Measurements first. The dial setting is an input, not a reading speed, and
-	// headlining it told RSVP users their own slider position.
-	const averages = trend.data?.averages ?? { rsvpTarget: 0, rsvpDelivered: 0, read: 0 };
+	const averages = trend.data?.averages ?? { measured: 0, rsvpTarget: 0 };
 	const granularity = trend.data?.granularity ?? "week";
-	const bucketStarts = (trend.data?.read ?? []).map((p) => p.bucketStart);
+	const bucketStarts = (trend.data?.measured ?? []).map((p) => p.bucketStart);
 	const tickIndices = evenTickIndices(bucketStarts.length);
-	const headlineAvg = headlineId ? averages[headlineId] : 0;
-	const headlineLabel = headlineId ? LABELS[headlineId] : "";
-	const hasRsvpTarget = headlineId === "rsvpDelivered" && averages.rsvpTarget > 0;
-	const yMax = Math.max(
-		AVERAGE_READER_WPM,
-		hasRsvpTarget ? averages.rsvpTarget : 0,
-		...(headlineId ? seriesData[headlineId].map((point) => point.y) : [0]),
-	);
+	const hasRsvpTarget = averages.rsvpTarget > 0;
+	const yMax = Math.max(AVERAGE_READER_WPM, averages.rsvpTarget, ...points.map((point) => point.y));
 
 	return (
 		<motion.section
@@ -145,13 +99,13 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 				</div>
 				<div className="text-right">
 					<div className="font-bold text-3xl tabular-nums leading-none tracking-tight">
-						{headlineAvg}
+						{averages.measured}
 					</div>
 					<div className="mt-1 text-[11px] uppercase tracking-wider opacity-60">
-						{headlineLabel}
+						words per minute
 					</div>
 					{hasRsvpTarget && (
-						<div className="mt-0.5 text-[11px] opacity-60">at a {averages.rsvpTarget} target</div>
+						<div className="mt-0.5 text-[11px] opacity-60">RSVP set to {averages.rsvpTarget}</div>
 					)}
 				</div>
 			</header>

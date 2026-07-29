@@ -4,6 +4,7 @@ import {
 	bucketMinutesByHour,
 	buildWpmTrend,
 	type RateSession,
+	rollUpWorks,
 	summariseReadingRates,
 	summariseStreak,
 	trendBucketsFor,
@@ -245,58 +246,79 @@ describe.each(["Europe/Berlin", "America/New_York"])("buildWpmTrend in %s", (tz)
 			rows.push(rsvpSession(at(2026, 4, 20 - day), 300));
 		}
 		const series = buildWpmTrend(rows, trendBucketsFor("30d", now));
-		expect(series.rsvpTarget).toHaveLength(30);
-		expect(series.rsvpTarget.filter((p) => p.avgWpm === 0)).toHaveLength(0);
+		expect(series.measured).toHaveLength(30);
+		expect(series.measured.filter((p) => p.avgWpm === 0)).toHaveLength(0);
 	});
 
 	it("orders buckets oldest to newest", () => {
 		const series = buildWpmTrend([], trendBucketsFor("30d", at(2026, 4, 20)));
-		const starts = series.rsvpTarget.map((p) => p.bucketStart);
+		const starts = series.measured.map((p) => p.bucketStart);
 		expect([...starts].sort((a, b) => a - b)).toEqual(starts);
 	});
 
 	it("weights each session by words read", () => {
 		const now = at(2026, 4, 20);
 		const rows: WpmSession[] = [
-			{ startedAt: now, mode: "scroll", wpmAvg: 100, words: 9000, durationMs: minutes(10) },
-			{ startedAt: now, mode: "scroll", wpmAvg: 1000, words: 1000, durationMs: minutes(1) },
+			// 9000 words over 90 minutes is 100 wpm; 1000 words in 1 minute is 1000.
+			{ startedAt: now, mode: "scroll", wpmAvg: null, words: 9000, durationMs: minutes(90) },
+			{ startedAt: now, mode: "scroll", wpmAvg: null, words: 1000, durationMs: minutes(1) },
 		];
 		const series = buildWpmTrend(rows, trendBucketsFor("30d", now));
-		expect(series.read.at(-1)?.avgWpm).toBe(190);
+		expect(series.measured.at(-1)?.avgWpm).toBe(190);
 	});
 
-	// Averaging the weekly averages would give the 10-word week equal say and
-	// report 550 instead of 100.
-	it("weights the window average by words, not by week", () => {
+	it("weights the window average by words, not by bucket", () => {
 		const now = at(2026, 4, 20);
 		const rows: WpmSession[] = [
-			{ startedAt: now, mode: "scroll", wpmAvg: 100, words: 100_000, durationMs: minutes(10) },
+			// 100 wpm carrying ~all the words, and 10 wpm in a different day bucket.
+			{ startedAt: now, mode: "scroll", wpmAvg: null, words: 100_000, durationMs: minutes(1000) },
 			{
-				startedAt: now - 7 * 86_400_000,
+				startedAt: at(2026, 4, 13),
 				mode: "scroll",
-				wpmAvg: 1000,
+				wpmAvg: null,
 				words: 10,
 				durationMs: minutes(1),
 			},
 		];
-		expect(buildWpmTrend(rows, trendBucketsFor("30d", now)).averages.read).toBe(100);
+		const series = buildWpmTrend(rows, trendBucketsFor("30d", now));
+		// Two populated buckets, so averaging the bucket averages would give 55.
+		expect(series.measured.filter((p) => p.avgWpm > 0)).toHaveLength(2);
+		expect(series.averages.measured).toBe(100);
 	});
 
 	it("reports a zero average for a series with no sessions", () => {
 		expect(buildWpmTrend([], trendBucketsFor("30d", at(2026, 4, 20))).averages).toEqual({
+			measured: 0,
 			rsvpTarget: 0,
-			rsvpDelivered: 0,
-			read: 0,
 		});
 	});
 
-	it("keeps rsvp target and delivered apart", () => {
+	// The dial is what the engine was set to; the measured line is what the
+	// reader actually got through. Keeping them apart is the whole point of
+	// showing the target as a reference rather than as a speed.
+	it("measures rsvp by words actually read, not by the dial", () => {
 		const now = at(2026, 4, 20);
-		// 1000 words in 10 minutes delivers 100 wpm against a 300 dial.
+		// 1000 words in 10 minutes is 100 wpm, whatever the dial says.
 		const series = buildWpmTrend([rsvpSession(now, 300)], trendBucketsFor("30d", now));
+		expect(series.measured.at(-1)?.avgWpm).toBe(100);
 		expect(series.rsvpTarget.at(-1)?.avgWpm).toBe(300);
-		expect(series.rsvpDelivered.at(-1)?.avgWpm).toBe(100);
-		expect(series.read.at(-1)?.avgWpm).toBe(0);
+	});
+
+	// The reported speed used to pick one mode by priority, so a reader who used
+	// both saw only the winner and could not see their reading speed at all.
+	it("combines rsvp and scroll into one measured figure", () => {
+		const now = at(2026, 4, 20);
+		const series = buildWpmTrend(
+			[
+				{ startedAt: now, mode: "rsvp", wpmAvg: 400, words: 1000, durationMs: minutes(10) },
+				// wpmAvg deliberately unrelated to the measured rate: reading the dial
+			// instead of words/duration on a non-RSVP row has to change the answer.
+			{ startedAt: now, mode: "scroll", wpmAvg: 999, words: 3000, durationMs: minutes(10) },
+			],
+			trendBucketsFor("30d", now),
+		);
+		// 100 wpm over 1000 words and 300 wpm over 3000 words, words-weighted.
+		expect(series.averages.measured).toBe(250);
 	});
 });
 
@@ -429,5 +451,69 @@ describe("summariseReadingRates", () => {
 			scrollWpm: null,
 			pageWpm: null,
 		});
+	});
+});
+
+describe("rollUpWorks", () => {
+	function book(overrides: Partial<Parameters<typeof rollUpWorks>[0][number]> = {}) {
+		return {
+			bookId: "b1",
+			seriesId: null,
+			title: "A Book",
+			author: "Someone",
+			wordCount: 50_000,
+			durationMs: minutes(60),
+			wordsRead: 12_000,
+			...overrides,
+		};
+	}
+
+	it("keeps standalone books as their own work", () => {
+		const works = rollUpWorks([book({ bookId: "a" }), book({ bookId: "b" })]);
+		expect(works.map((w) => w.workId)).toEqual(["a", "b"]);
+		expect(works.every((w) => !w.isSeries)).toBe(true);
+	});
+
+	// The whole point: 400 chapter rows must not crowd out every real book.
+	it("folds a serial's chapters into one entry", () => {
+		const chapters = Array.from({ length: 40 }, (_, i) =>
+			book({ bookId: `c${i}`, seriesId: "s1", title: `Chapter ${i}`, durationMs: minutes(3) }),
+		);
+		const works = rollUpWorks([...chapters, book({ bookId: "solo", durationMs: minutes(30) })]);
+		expect(works).toHaveLength(2);
+		const serial = works.find((w) => w.workId === "s1");
+		expect(serial?.isSeries).toBe(true);
+		expect(serial?.durationMs).toBe(minutes(120));
+		expect(serial?.wordsRead).toBe(40 * 12_000);
+	});
+
+	// A serial's length is the sum of every chapter, fetched separately; counting
+	// only the chapters read in this window would understate it badly.
+	it("leaves a serial's length to be filled in later", () => {
+		const works = rollUpWorks([book({ seriesId: "s1" })]);
+		expect(works[0]?.wordCount).toBe(0);
+	});
+
+	it("orders by time read, longest first", () => {
+		const works = rollUpWorks([
+			book({ bookId: "short", durationMs: minutes(5) }),
+			book({ bookId: "long", durationMs: minutes(50) }),
+		]);
+		expect(works.map((w) => w.workId)).toEqual(["long", "short"]);
+	});
+
+	// The bridge adapter maps rows positionally, so a driver returning undefined
+	// or an empty string for a null column must not send books down the series path.
+	it("treats a missing series id as standalone", () => {
+		const works = rollUpWorks([
+			book({ bookId: "a", seriesId: undefined as unknown as null }),
+			book({ bookId: "b", seriesId: "" }),
+		]);
+		expect(works.every((w) => !w.isSeries)).toBe(true);
+		expect(works.map((w) => w.workId).sort()).toEqual(["a", "b"]);
+	});
+
+	it("returns nothing for no rows", () => {
+		expect(rollUpWorks([])).toEqual([]);
 	});
 });

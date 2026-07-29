@@ -162,19 +162,24 @@ export interface WpmPoint {
 
 export interface WpmTrend {
 	granularity: TrendGranularity;
-	/** Configured RSVP dial setting, weighted by words. */
+	/**
+	 * Reading speed: words actually read per active minute, across every mode.
+	 *
+	 * One series, not one per mode. The reader wants to know how fast they get
+	 * through a book; whether a given sitting used RSVP or scrolling is a detail
+	 * of how, not a different quantity. Splitting it meant a reader who used both
+	 * saw only whichever mode won a priority list.
+	 */
+	measured: WpmPoint[];
+	/** Configured RSVP dial, words-weighted. An input, not a speed — shown only
+	 *  as a reference against the measured line. */
 	rsvpTarget: WpmPoint[];
-	/** Actual rate the RSVP engine delivered (lower than target due to
-	 * punctuation pauses + accel ramp). Computed from words / active minutes. */
-	rsvpDelivered: WpmPoint[];
-	/** Natural reading speed in scroll/page modes. */
-	read: WpmPoint[];
 	/**
 	 * Words-weighted average per series over the whole window. Returned rather
 	 * than derived from the points, because averaging the per-bucket averages
 	 * gives a bucket holding one 10-word session the same say as one holding 300k.
 	 */
-	averages: Record<"rsvpTarget" | "rsvpDelivered" | "read", number>;
+	averages: Record<"measured" | "rsvpTarget", number>;
 }
 
 export interface WpmSession {
@@ -195,29 +200,28 @@ function addToBucket(map: Map<number, Bucket>, bucketStart: number, wpm: number,
 }
 
 /**
- * WPM trend with three series, all words-weighted so one short session can't
- * dominate a bucket. Each session contributes to whichever buckets apply to its
- * mode. Bucket width follows the selected period.
+ * WPM trend, words-weighted so one short session can't dominate a bucket. Every
+ * session feeds `measured` regardless of mode — that is the one figure the user
+ * asked for. `rsvpTarget` is a reference line built from the dial on RSVP rows
+ * only. Bucket width follows the selected period.
  */
 export function buildWpmTrend(
 	rows: WpmSession[],
 	buckets: { granularity: TrendGranularity; starts: number[] },
 ): WpmTrend {
+	const measuredBuckets = new Map<number, Bucket>();
 	const targetBuckets = new Map<number, Bucket>();
-	const deliveredBuckets = new Map<number, Bucket>();
-	const readBuckets = new Map<number, Bucket>();
 
 	for (const r of rows) {
 		const bucketStart = bucketStartFor(buckets.granularity, r.startedAt);
-		const words = Math.max(1, r.words);
-		if (r.mode === "rsvp") {
-			if (r.wpmAvg != null) addToBucket(targetBuckets, bucketStart, r.wpmAvg, words);
-			if (r.durationMs > 1000) {
-				const delivered = Math.round(r.words / (r.durationMs / 60_000));
-				if (delivered > 0) addToBucket(deliveredBuckets, bucketStart, delivered, words);
-			}
-		} else if (r.wpmAvg != null) {
-			addToBucket(readBuckets, bucketStart, r.wpmAvg, words);
+		// Every mode contributes to one measured series. `wpmAvg` is not usable
+		// here: on rsvp rows it holds the dial, which is an input.
+		if (r.durationMs > MIN_MEASURABLE_MS && r.words > 0) {
+			const wpm = Math.round(r.words / (r.durationMs / 60_000));
+			if (wpm > 0) addToBucket(measuredBuckets, bucketStart, wpm, r.words);
+		}
+		if (r.mode === "rsvp" && r.wpmAvg != null) {
+			addToBucket(targetBuckets, bucketStart, r.wpmAvg, Math.max(1, r.words));
 		}
 	}
 
@@ -245,13 +249,11 @@ export function buildWpmTrend(
 
 	return {
 		granularity: buckets.granularity,
+		measured: buildSeries(measuredBuckets),
 		rsvpTarget: buildSeries(targetBuckets),
-		rsvpDelivered: buildSeries(deliveredBuckets),
-		read: buildSeries(readBuckets),
 		averages: {
+			measured: averageOver(measuredBuckets),
 			rsvpTarget: averageOver(targetBuckets),
-			rsvpDelivered: averageOver(deliveredBuckets),
-			read: averageOver(readBuckets),
 		},
 	};
 }
@@ -436,4 +438,59 @@ export function summariseReadingRates(rows: RateSession[]): ReadingRates {
 		scrollWpm: wpmOf("scroll"),
 		pageWpm: wpmOf("page"),
 	};
+}
+
+export interface BookTotals {
+	bookId: string;
+	seriesId: string | null;
+	title: string;
+	author: string | null;
+	wordCount: number;
+	durationMs: number;
+	wordsRead: number;
+}
+
+export interface WorkTotals {
+	workId: string;
+	isSeries: boolean;
+	title: string;
+	author: string | null;
+	wordCount: number;
+	durationMs: number;
+	wordsRead: number;
+}
+
+/**
+ * Fold per-book totals into per-work totals, longest first.
+ *
+ * Every chapter of a serial is its own book row, so without this one
+ * 400-chapter web novel fills the whole list and no single-file book can rank
+ * against it.
+ */
+export function rollUpWorks(rows: BookTotals[]): WorkTotals[] {
+	const works = new Map<string, WorkTotals>();
+
+	for (const row of rows) {
+		const isSeries = row.seriesId != null && row.seriesId !== "";
+		const workId = isSeries ? (row.seriesId as string) : row.bookId;
+		const existing = works.get(workId);
+		if (existing) {
+			existing.durationMs += Number(row.durationMs);
+			existing.wordsRead += Number(row.wordsRead);
+			continue;
+		}
+		works.set(workId, {
+			workId,
+			isSeries,
+			title: row.title,
+			author: row.author,
+			// A serial's length is the sum of its chapters, fetched separately;
+			// counting the one chapter seen here would understate it.
+			wordCount: isSeries ? 0 : row.wordCount,
+			durationMs: Number(row.durationMs),
+			wordsRead: Number(row.wordsRead),
+		});
+	}
+
+	return [...works.values()].sort((a, b) => b.durationMs - a.durationMs);
 }

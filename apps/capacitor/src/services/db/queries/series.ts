@@ -180,7 +180,7 @@ export async function getSeriesChapterCounts(): Promise<Map<string, number>> {
 	const rows = await db
 		.select({
 			seriesId: books.seriesId,
-			count: sql<number>`COUNT(*)`,
+			count: sql<number>`COUNT(*)`.as("count"),
 		})
 		.from(books)
 		.where(and(isNotNull(books.seriesId), eq(books.deleted, false)))
@@ -211,10 +211,13 @@ export async function getSeriesActivity(): Promise<Map<string, SeriesActivity>> 
 	const rows = await db
 		.select({
 			seriesId: books.seriesId,
-			total: sql<number>`COUNT(*)`,
-			started: sql<number>`SUM(CASE WHEN ${books.wordPosition} > 0 THEN 1 ELSE 0 END)`,
-			finished: sql<number>`SUM(CASE WHEN ${books.wordCount} > 0 AND ${books.wordPosition} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD} THEN 1 ELSE 0 END)`,
-			latestRead: sql<number | null>`MAX(${books.lastRead})`,
+			total: sql<number>`COUNT(*)`.as("total"),
+			started: sql<number>`SUM(CASE WHEN ${books.wordPosition} > 0 THEN 1 ELSE 0 END)`.as("started"),
+			finished:
+				sql<number>`SUM(CASE WHEN ${books.wordCount} > 0 AND ${books.wordPosition} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD} THEN 1 ELSE 0 END)`.as(
+					"finished",
+				),
+			latestRead: sql<number | null>`MAX(${books.lastRead})`.as("latest_read"),
 		})
 		.from(books)
 		.where(and(isNotNull(books.seriesId), eq(books.deleted, false)))

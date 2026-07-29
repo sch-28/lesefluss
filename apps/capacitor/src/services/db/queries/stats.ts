@@ -4,6 +4,7 @@ import {
 	buildWpmTrend,
 	MIN_MEASURABLE_MS,
 	type ReadingRates,
+	rollUpWorks,
 	type StreakResult,
 	summariseReadingRates,
 	summariseStreak,
@@ -31,8 +32,8 @@ export async function getPeriodTotals(
 ): Promise<PeriodTotals> {
 	const sessionsRow = await db
 		.select({
-			durationMs: sql<number>`COALESCE(SUM(${readingSessions.durationMs}), 0)`,
-			words: sql<number>`COALESCE(SUM(${readingSessions.wordsRead}), 0)`,
+			durationMs: sql<number>`COALESCE(SUM(${readingSessions.durationMs}), 0)`.as("duration_ms"),
+			words: sql<number>`COALESCE(SUM(${readingSessions.wordsRead}), 0)`.as("words"),
 		})
 		.from(readingSessions)
 		.where(
@@ -100,44 +101,31 @@ export interface TopBook {
 
 export async function getTopBooks(opts: { since: number; limit?: number }): Promise<TopBook[]> {
 	const limit = opts.limit ?? 5;
-	// Grouped by work, not by book row: every chapter of a serial is its own
-	// books row, so one 400-chapter web novel would fill the whole list and no
-	// single-file book could ever rank against it.
-	//
-	// Joined rather than filtered afterwards, because applying the limit first
-	// and then dropping deleted books returns fewer cards than asked for.
-	const workId = sql<string>`COALESCE(${books.seriesId}, ${books.id})`;
+	// Aggregated per book in SQL, then rolled up per work in JS: a serial's rank
+	// is only known after its chapters are folded, so a SQL LIMIT would truncate
+	// before the ranking exists. Cost is one row per book read in the window.
 	const rows = await db
 		.select({
-			workId,
-			seriesId: sql<string | null>`MAX(${books.seriesId})`,
-			durationMs: sql<number>`SUM(${readingSessions.durationMs})`,
-			wordsRead: sql<number>`SUM(${readingSessions.wordsRead})`,
+			bookId: readingSessions.bookId,
+			seriesId: books.seriesId,
+			title: books.title,
+			author: books.author,
+			wordCount: books.wordCount,
+			durationMs: sql<number>`SUM(${readingSessions.durationMs})`.as("duration_ms"),
+			wordsRead: sql<number>`SUM(${readingSessions.wordsRead})`.as("words_read"),
 		})
 		.from(readingSessions)
 		.innerJoin(books, eq(books.id, readingSessions.bookId))
 		.where(and(gte(readingSessions.startedAt, opts.since), eq(books.deleted, false)))
-		.groupBy(workId)
-		.orderBy(sql`SUM(${readingSessions.durationMs}) DESC`)
-		.limit(limit);
+		.groupBy(readingSessions.bookId, books.seriesId, books.title, books.author, books.wordCount);
 
-	if (rows.length === 0) return [];
+	const works = rollUpWorks(rows).slice(0, limit);
+	if (works.length === 0) return [];
 
-	const seriesIds = rows.map((r) => r.seriesId).filter((id): id is string => id !== null);
-	const standaloneIds = rows.filter((r) => r.seriesId === null).map((r) => r.workId);
+	const seriesIds = works.filter((w) => w.isSeries).map((w) => w.workId);
+	const standaloneIds = works.filter((w) => !w.isSeries).map((w) => w.workId);
 
-	const [standaloneRows, seriesRows, chapterTotals, coverRows] = await Promise.all([
-		standaloneIds.length > 0
-			? db
-					.select({
-						id: books.id,
-						title: books.title,
-						author: books.author,
-						wordCount: books.wordCount,
-					})
-					.from(books)
-					.where(inArray(books.id, standaloneIds))
-			: [],
+	const [seriesRows, chapterTotals, coverRows] = await Promise.all([
 		seriesIds.length > 0
 			? db
 					.select({
@@ -151,7 +139,10 @@ export async function getTopBooks(opts: { since: number; limit?: number }): Prom
 			: [],
 		seriesIds.length > 0
 			? db
-					.select({ seriesId: books.seriesId, wordCount: sql<number>`SUM(${books.wordCount})` })
+					.select({
+						seriesId: books.seriesId,
+						wordCount: sql<number>`SUM(${books.wordCount})`.as("word_count"),
+					})
 					.from(books)
 					.where(and(inArray(books.seriesId, seriesIds), eq(books.deleted, false)))
 					.groupBy(books.seriesId)
@@ -164,44 +155,25 @@ export async function getTopBooks(opts: { since: number; limit?: number }): Prom
 			: [],
 	]);
 
-	const bookMap = new Map(standaloneRows.map((b) => [b.id, b]));
 	const seriesMap = new Map(seriesRows.map((entry) => [entry.id, entry]));
 	const chapterWords = new Map(chapterTotals.map((c) => [c.seriesId, Number(c.wordCount)]));
 	const coverMap = new Map(coverRows.map((c) => [c.bookId, c.coverImage]));
 
-	return rows
-		.map((r): TopBook | null => {
-			const base = {
-				workId: r.workId,
-				durationMs: Number(r.durationMs),
-				wordsRead: Number(r.wordsRead),
-			};
-			if (r.seriesId !== null) {
-				const entry = seriesMap.get(r.seriesId);
-				return entry
-					? {
-							...base,
-							isSeries: true,
-							title: entry.title,
-							author: entry.author,
-							wordCount: chapterWords.get(r.seriesId) ?? 0,
-							coverImage: entry.coverImage,
-						}
-					: null;
-			}
-			const entry = bookMap.get(r.workId);
-			return entry
-				? {
-						...base,
-						isSeries: false,
-						title: entry.title,
-						author: entry.author,
-						wordCount: entry.wordCount,
-						coverImage: coverMap.get(r.workId) ?? null,
-					}
-				: null;
-		})
-		.filter((x): x is TopBook => x !== null);
+	return works.map((w) => {
+		const entry = w.isSeries ? seriesMap.get(w.workId) : undefined;
+		return {
+			workId: w.workId,
+			isSeries: w.isSeries,
+			// A series row can be missing if the chapters outlived their series;
+			// the chapter title is a better fallback than dropping the entry.
+			title: entry?.title ?? w.title,
+			author: entry?.author ?? w.author,
+			durationMs: w.durationMs,
+			wordsRead: w.wordsRead,
+			wordCount: w.isSeries ? (chapterWords.get(w.workId) ?? 0) : w.wordCount,
+			coverImage: w.isSeries ? (entry?.coverImage ?? null) : (coverMap.get(w.workId) ?? null),
+		};
+	});
 }
 
 export async function getWpmTrend(opts: { period: TrendPeriod; now: number }): Promise<WpmTrend> {
@@ -211,7 +183,7 @@ export async function getWpmTrend(opts: { period: TrendPeriod; now: number }): P
 	const oldest =
 		opts.period === "all"
 			? await db
-					.select({ startedAt: sql<number>`MIN(${readingSessions.startedAt})` })
+					.select({ startedAt: sql<number>`MIN(${readingSessions.startedAt})`.as("started_at") })
 					.from(readingSessions)
 					.then((rows) => Number(rows[0]?.startedAt ?? now))
 			: undefined;
