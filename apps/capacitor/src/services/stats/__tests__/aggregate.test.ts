@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { localDateKey, previousLocalDayStart } from "../../../utils/date-utils";
-import { buildWeeklyWpm, summariseStreak, type WpmSession, weekStartsFor } from "../aggregate";
+import {
+	bucketMinutesByHour,
+	buildWeeklyWpm,
+	summariseStreak,
+	type WpmSession,
+	weekStartsFor,
+} from "../aggregate";
 
 const ORIGINAL_TZ = process.env.TZ;
 
@@ -122,6 +128,77 @@ describe.each([
 		}));
 		const result = summariseStreak(rows, at(2026, 11, 2, 20));
 		expect(result.current).toBe(3);
+	});
+});
+
+describe("bucketMinutesByHour", () => {
+	useTimezone("Europe/Berlin");
+
+	it("keeps a session inside its own hour", () => {
+		const hours = bucketMinutesByHour([
+			{
+				startedAt: at(2026, 5, 10, 14),
+				endedAt: at(2026, 5, 10, 14) + minutes(30),
+				durationMs: minutes(30),
+			},
+		]);
+		expect(hours[14]).toBe(30);
+		expect(hours.reduce((a, b) => a + b, 0)).toBe(30);
+	});
+
+	it("splits a sitting across the hours it covers", () => {
+		const start = new Date(at(2026, 5, 10, 22)).setMinutes(30, 0, 0);
+		const hours = bucketMinutesByHour([
+			{ startedAt: start, endedAt: start + minutes(105), durationMs: minutes(105) },
+		]);
+		expect(hours[22]).toBe(30);
+		expect(hours[23]).toBe(60);
+		expect(hours[0]).toBe(15);
+	});
+
+	it("carries a midnight-spanning sitting onto the next day's hours", () => {
+		const start = new Date(at(2026, 5, 10, 23)).setMinutes(30, 0, 0);
+		const hours = bucketMinutesByHour([
+			{ startedAt: start, endedAt: start + minutes(60), durationMs: minutes(60) },
+		]);
+		expect(hours[23]).toBe(30);
+		expect(hours[0]).toBe(30);
+	});
+
+	// Active time excludes pauses, so it is spread over the elapsed span rather
+	// than assumed to fill it.
+	it("distributes active time, not elapsed time", () => {
+		const start = new Date(at(2026, 5, 10, 22)).setMinutes(0, 0, 0);
+		const hours = bucketMinutesByHour([
+			{ startedAt: start, endedAt: start + minutes(120), durationMs: minutes(60) },
+		]);
+		expect(hours[22]).toBe(30);
+		expect(hours[23]).toBe(30);
+	});
+
+	it("falls back to the start hour when a sitting has no elapsed span", () => {
+		const start = at(2026, 5, 10, 9);
+		const hours = bucketMinutesByHour([
+			{ startedAt: start, endedAt: start, durationMs: minutes(20) },
+		]);
+		expect(hours[9]).toBe(20);
+	});
+
+	// A sitting left in the background records its end as the moment the user
+	// returned, so the raw span would credit hours that had no reading at all.
+	it("does not smear a backgrounded sitting across the whole night", () => {
+		const start = new Date(at(2026, 5, 10, 22)).setMinutes(0, 0, 0);
+		const hours = bucketMinutesByHour([
+			{ startedAt: start, endedAt: start + minutes(600), durationMs: minutes(20) },
+		]);
+		expect(hours[22]).toBe(20);
+		// Pins the ratio: a looser clamp would bleed into the following hour.
+		expect(hours[23]).toBe(0);
+		expect(hours.slice(0, 6).every((m) => m === 0)).toBe(true);
+	});
+
+	it("returns 24 zeroes for no sessions", () => {
+		expect(bucketMinutesByHour([])).toEqual(new Array(24).fill(0));
 	});
 });
 

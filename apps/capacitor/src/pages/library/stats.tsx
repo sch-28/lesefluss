@@ -22,7 +22,7 @@ const Stats: React.FC = () => {
 	const [period, setPeriod] = useState<Period>("7d");
 	const range = useMemo(() => periodWindow(period, now), [period, now]);
 
-	const sessionCount = queryHooks.useStatsSessionCount();
+	const sessionCount = queryHooks.useReadingSessionCount();
 
 	const weekStart = useMemo(() => startOfLocalDay(now) - 6 * MS_PER_DAY, [now]);
 	const weekTotals = queryHooks.useStatsPeriodTotals(weekStart, now);

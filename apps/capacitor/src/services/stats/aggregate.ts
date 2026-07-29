@@ -97,6 +97,63 @@ export function summariseStreak(rows: SessionTiming[], now: number): StreakResul
 	return { current, longest: Math.max(longest, current), last90Days };
 }
 
+export interface SessionSpan {
+	startedAt: number;
+	endedAt: number;
+	durationMs: number;
+}
+
+const HOURS_IN_DAY = 24;
+
+/** A sitting may contain plenty of short pauses, so elapsed time legitimately
+ *  exceeds active time. Beyond this multiple the span is not trustworthy.
+ *
+ *  The tracker no longer produces such rows: it now ends a sitting at its last
+ *  activity rather than when the row happens to be written. This guard is for
+ *  the rows already recorded and synced under the old behaviour. */
+const MAX_ELAPSED_TO_ACTIVE_RATIO = 3;
+
+/**
+ * Minutes read per local hour of day. A sitting is spread across the wall-clock
+ * hours it actually covers, so a 22:30 to 00:15 session credits three hours
+ * rather than dumping all of it on hour 22.
+ *
+ * Active time is distributed evenly over the sitting's elapsed span. That is an
+ * approximation: pauses are not timestamped, so there is no way to know which
+ * hour the idle time fell in.
+ *
+ * The span is clamped because a sitting that was backgrounded and resumed hours
+ * later records `endedAt` as the moment the user came back. Smearing over the
+ * raw span would credit hours the tracker's own idle rule says had no reading.
+ */
+export function bucketMinutesByHour(rows: SessionSpan[]): number[] {
+	const hours = new Array<number>(HOURS_IN_DAY).fill(0);
+
+	for (const row of rows) {
+		const span = Math.min(
+			row.endedAt - row.startedAt,
+			row.durationMs * MAX_ELAPSED_TO_ACTIVE_RATIO,
+		);
+		const endedAt = row.startedAt + span;
+		if (span <= 0) {
+			hours[new Date(row.startedAt).getHours()] += row.durationMs / 60_000;
+			continue;
+		}
+
+		let cursor = row.startedAt;
+		while (cursor < endedAt) {
+			const hourOfDay = new Date(cursor).getHours();
+			const nextHour = new Date(cursor).setMinutes(60, 0, 0);
+			const sliceEnd = Math.min(nextHour, endedAt);
+			const share = (sliceEnd - cursor) / span;
+			hours[hourOfDay] += (row.durationMs * share) / 60_000;
+			cursor = sliceEnd;
+		}
+	}
+
+	return hours.map((minutes) => Math.round(minutes));
+}
+
 export interface WeeklyWpm {
 	weekStart: number;
 	avgWpm: number;

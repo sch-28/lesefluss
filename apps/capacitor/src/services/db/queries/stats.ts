@@ -1,5 +1,6 @@
-import { and, desc, eq, gte, inArray, isNotNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import {
+	bucketMinutesByHour,
 	buildWeeklyWpm,
 	type StreakResult,
 	summariseStreak,
@@ -45,6 +46,8 @@ export async function getPeriodTotals(
 		.where(
 			and(
 				eq(books.deleted, false),
+				// Serial chapters are books rows; forty finished chapters is one book.
+				isNull(books.seriesId),
 				isNotNull(books.lastRead),
 				gte(books.lastRead, periodStart),
 				lt(books.lastRead, periodEnd),
@@ -89,29 +92,25 @@ export interface TopBook {
 
 export async function getTopBooks(opts: { since: number; limit?: number }): Promise<TopBook[]> {
 	const limit = opts.limit ?? 5;
+	// Joined rather than filtered afterwards: applying the limit first and then
+	// dropping deleted books returns fewer cards than asked for.
 	const rows = await db
 		.select({
 			bookId: readingSessions.bookId,
+			title: books.title,
+			author: books.author,
 			durationMs: sql<number>`SUM(${readingSessions.durationMs})`,
 		})
 		.from(readingSessions)
-		.where(gte(readingSessions.startedAt, opts.since))
-		.groupBy(readingSessions.bookId)
+		.innerJoin(books, eq(books.id, readingSessions.bookId))
+		.where(and(gte(readingSessions.startedAt, opts.since), eq(books.deleted, false)))
+		.groupBy(readingSessions.bookId, books.title, books.author)
 		.orderBy(sql`SUM(${readingSessions.durationMs}) DESC`)
 		.limit(limit);
 
 	if (rows.length === 0) return [];
 
 	const ids = rows.map((r) => r.bookId);
-	const bookRows = await db
-		.select({
-			id: books.id,
-			title: books.title,
-			author: books.author,
-		})
-		.from(books)
-		.where(and(inArray(books.id, ids), eq(books.deleted, false)));
-	const bookMap = new Map(bookRows.map((b) => [b.id, b]));
 
 	const coverRows = await db
 		.select({
@@ -122,19 +121,13 @@ export async function getTopBooks(opts: { since: number; limit?: number }): Prom
 		.where(inArray(bookContent.bookId, ids));
 	const coverMap = new Map(coverRows.map((c) => [c.bookId, c.coverImage]));
 
-	return rows
-		.map((r) => {
-			const book = bookMap.get(r.bookId);
-			if (!book) return null;
-			return {
-				bookId: r.bookId,
-				title: book.title,
-				author: book.author,
-				durationMs: Number(r.durationMs),
-				coverImage: coverMap.get(r.bookId) ?? null,
-			};
-		})
-		.filter((x): x is TopBook => x !== null);
+	return rows.map((r) => ({
+		bookId: r.bookId,
+		title: r.title,
+		author: r.author,
+		durationMs: Number(r.durationMs),
+		coverImage: coverMap.get(r.bookId) ?? null,
+	}));
 }
 
 export async function getWeeklyWpm(opts: { weeks: number }): Promise<WeeklyWpmSeries> {
@@ -158,16 +151,12 @@ export async function getHourHistogram(): Promise<number[]> {
 	const rows = await db
 		.select({
 			startedAt: readingSessions.startedAt,
+			endedAt: readingSessions.endedAt,
 			durationMs: readingSessions.durationMs,
 		})
 		.from(readingSessions);
 
-	const hours = new Array<number>(24).fill(0);
-	for (const r of rows) {
-		const hour = new Date(r.startedAt).getHours();
-		hours[hour] += r.durationMs / 60_000;
-	}
-	return hours.map((m) => Math.round(m));
+	return bucketMinutesByHour(rows);
 }
 
 export interface PersonalityStats {
@@ -271,9 +260,4 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 		avgWpmRsvp: rsvpSumWords > 0 ? Math.round(rsvpSumWordsWpm / rsvpSumWords) : null,
 		speedSeries,
 	};
-}
-
-export async function getSessionCount(): Promise<number> {
-	const row = await db.select({ count: sql<number>`COUNT(*)` }).from(readingSessions);
-	return Number(row[0]?.count ?? 0);
 }

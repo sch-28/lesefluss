@@ -493,6 +493,36 @@ describe("SessionTracker", () => {
 		expect(env.persisted.at(-1)!.row.wordsRead).toBe(150);
 	});
 
+	// The app being backgrounded overnight used to stamp the session as ending
+	// when the user came back, producing a ten-hour row holding twenty minutes of
+	// reading, which the hour histogram then smeared across the night.
+	it("ends a backgrounded sitting at the last activity, not when the user returns", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(100);
+		env.tracker.tick();
+		const lastActivity = env.clock;
+
+		env.tracker.setForeground(false);
+		env.advance(10 * 60 * 60_000);
+		env.tracker.setForeground(true);
+
+		const flushed = env.persisted.filter((p) => p.kind === "flush").at(-1);
+		expect(flushed?.row.endedAt).toBe(lastActivity);
+		expect((flushed?.row.endedAt ?? 0) - (flushed?.row.startedAt ?? 0)).toBeLessThan(HARD_END_MS);
+	});
+
+	it("ends an active sitting at the moment it is written", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(100);
+		env.tracker.tick();
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.endedAt).toBe(env.clock);
+	});
+
 	it("stores wpmSetting for rsvp mode, computed wpm for scroll", () => {
 		const env = setup({ mode: "rsvp", wpm: 300 });
 		env.tracker.setReading(true);

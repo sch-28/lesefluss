@@ -335,7 +335,11 @@ export class SessionTracker {
 			bookId: this.opts.bookId,
 			mode: this.opts.mode,
 			startedAt: s.startedAt,
-			endedAt: now,
+			// While paused, reading stopped at the last activity, not at the moment
+			// the sitting happens to be written. Backgrounding overnight and
+			// returning would otherwise stamp a ten-hour session that then gets
+			// smeared across hours nobody read in.
+			endedAt: s.activeSinceMs !== null ? now : this.lastActivityAt,
 			durationMs: finalActiveMs,
 			wordsRead,
 			startWord: wordPos(s.startPos),

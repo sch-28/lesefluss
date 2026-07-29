@@ -3,16 +3,32 @@ id: TASK-159.3
 title: >-
   Stats step 2: remaining aggregation defects (C3, C5, C12, C14, C15, C16, C19,
   C20, C18, P3)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-28 19:38'
-updated_date: '2026-07-28 20:23'
+updated_date: '2026-07-29 00:38'
 labels: []
 milestone: m-7
 dependencies:
   - TASK-159.1
 documentation:
   - STATS-IMPROVEMENTS.md
+modified_files:
+  - apps/capacitor/src/pages/reader/session-tracker.ts
+  - apps/capacitor/src/pages/reader/__tests__/session-tracker.test.ts
+  - apps/capacitor/src/services/stats/aggregate.ts
+  - apps/capacitor/src/services/stats/__tests__/aggregate.test.ts
+  - apps/capacitor/src/services/db/queries/stats.ts
+  - apps/capacitor/src/services/db/queries/reading-sessions.ts
+  - apps/capacitor/src/services/db/queries/index.ts
+  - apps/capacitor/src/services/db/hooks/query-keys.ts
+  - apps/capacitor/src/services/db/hooks/use-reading-sessions.ts
+  - apps/capacitor/src/services/db/hooks/use-stats.ts
+  - apps/capacitor/src/services/db/hooks/index.ts
+  - apps/capacitor/src/services/sync/index.ts
+  - apps/capacitor/src/pages/library/session-table.tsx
+  - apps/capacitor/src/pages/library/book-stats-card.tsx
+  - apps/capacitor/src/pages/library/stats.tsx
 parent_task_id: TASK-159
 priority: medium
 ordinal: 66000
@@ -46,15 +62,15 @@ Reasoning: `STATS-IMPROVEMENTS.md` section 0 and P3.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Longest streak is correct when the device timezone is west of UTC
-- [ ] #2 The 90-day heatmap contains exactly 90 distinct local dates across a DST transition
-- [ ] #3 Books finished excludes series chapter rows
-- [ ] #4 A session row's percentage and word count agree, or the row explains why they differ
-- [ ] #5 Top Books returns the requested number of non-deleted books, and its total agrees with the period totals
-- [ ] #6 A session spanning midnight distributes its time across the hours it actually covers
-- [ ] #7 Sub-minute totals render honestly rather than rounding up to 1m
-- [ ] #8 Revisiting the stats page reuses cached queries instead of missing on a fresh key each time
-- [ ] #9 The session list fetches only the rows it renders
+- [x] #1 Longest streak is correct when the device timezone is west of UTC
+- [x] #2 The 90-day heatmap contains exactly 90 distinct local dates across a DST transition
+- [x] #3 Books finished excludes series chapter rows
+- [x] #4 A session row's percentage and word count agree, or the row explains why they differ
+- [x] #5 Top Books returns the requested number of non-deleted books, and its total agrees with the period totals
+- [x] #6 A session spanning midnight distributes its time across the hours it actually covers
+- [x] #7 Sub-minute totals render honestly rather than rounding up to 1m
+- [x] #8 Revisiting the stats page reuses cached queries instead of missing on a fresh key each time
+- [x] #9 The session list fetches only the rows it renders
 - [ ] #10 getStreak, getHourHistogram and getPersonalityStats no longer scan the full table unbounded
 <!-- AC:END -->
 
@@ -64,4 +80,48 @@ Reasoning: `STATS-IMPROVEMENTS.md` section 0 and P3.
 C3 and C5 were fixed early, in TASK-159.1. Extracting the pure date maths into `queries/stats-aggregate.ts` to make C4 and C6 testable resolved both as a side effect: longest-streak no longer reparses 'YYYY-MM-DD' (which JS reads as UTC midnight), and the 90-day window steps in local days. Both are covered by `queries/__tests__/stats-aggregate.test.ts` under a negative-UTC-offset timezone and across both DST transitions.
 
 This task only needs to verify them, not fix them. The remaining items are unchanged: C12, C14, C15, C16, C19, C20, C18, P3.
+
+Reopened: the review ran, then six fixes were applied on top of it and the task was marked Done without re-reviewing them. Verification pass on that delta before closing.
+
+Verification pass over the six post-review fixes found five more things, one of them a root cause.
+
+**The hour-smear clamp was treating a symptom.** `buildRow` always wrote `endedAt: now`. Backgrounding overnight produced a *correct* checkpoint row on the way out, then `reconcile` re-upserted the same id with `endedAt` set to the moment the user returned, clobbering a good row with a bad one. `durationMs` had been right all along. Fixed at the source: a paused sitting now ends at its last activity. Verified by mutation that the new test goes red against `endedAt: now`.
+
+The ratio clamp stays, but its justification changed: it is now only for rows already recorded and synced under the old behaviour, and the comment says so.
+
+**"Show more" could become permanently unreachable.** `hasMore` required `total != null`, and retries are disabled globally, so one failed COUNT(*) over the bridge would leave the table silently truncated at 20 rows with no button and no error. Falls back to a full-page heuristic now.
+
+Also: dropped a dead `(total ?? 0)`, removed two doc comments left pointing at deleted hooks (one had drifted onto `useReadingSessionsPage` and described it as book-scoped and unlimited, which it is not), and pinned the clamp ratio in its test — the case as written passed for any ratio up to about 8.
+
+**Rejected one finding.** The reviewer flagged that dropping `Math.max(1, ...)` makes a 40-second session render "0m" instead of "1m". That is C19 and acceptance criterion #7: sub-minute totals should read honestly rather than rounding up.
+
+**Noted, not fixed:** `sync/index.ts` sets `changed = true` for every server session on every pull, so the `if (changed)` guard is effectively always true when stats sync is on and the whole stats page recomputes on each resume. Pre-existing, bounded, local reads only. Belongs with the sync work in TASK-159.4.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+C12, C14, C15, C16, C18, C19, C20 closed. C3 and C5 were already done in TASK-159.1. P3 is only partly addressed, see below.
+
+**C16 — hour histogram.** Moved into the tested module as `bucketMinutesByHour`, spreading a sitting across the wall-clock hours it covers instead of dumping it all on its start hour. Review verified the arithmetic across Kathmandu, Lord Howe and Chatham (non-hour offsets), both DST directions, zero and negative spans, and confirmed the loop always terminates.
+
+It also found a case the first version got wrong: a sitting left in the background records `endedAt` as the moment the user came back, so 20 active minutes at 22:00 were smeared over ten hours, crediting 02:00-07:00 with reading the tracker's own idle rule says never happened. Now clamped. The first clamp attempt (`duration + 10 min`, from the hard-end rule) was itself wrong: soft pauses do not end a session, so a 60-minute sitting with 60 minutes of short pauses is legitimate and would have been mis-narrowed. Clamped by ratio instead.
+
+**C12** — `isNull(books.seriesId)` in the finished-books count. Note the consequence: a finished serial now contributes zero rather than one.
+
+**C15** — `getTopBooks` inner-joins `books` and filters deleted rows before the LIMIT, so deleting your top book no longer returns four cards. Collapsed the follow-up lookup into the join; review confirmed the join is strictly 1:1 on the primary key, so no fan-out.
+
+**C18** — the session table fetches only what it renders. Growing the page changes the query key, which flipped `isPending` and replaced the table with a spinner on every "show more", so it carries `placeholderData`.
+
+**C20** — the period-totals key quantised to the local day. This exposed a latent bug rather than only fixing one: the sync pull writes session rows but never invalidated `statsKeys`, and the old per-visit `Date.now()` key had been hiding that behind an accidental refetch. Stats after a cross-device sync would have stayed stale until local midnight. Added the missing invalidation.
+
+**C14** — the row percentage now derives from `wordsRead`, like the number beside it, rather than from the start-to-end span, which includes skipped and re-read text. That mismatch produced "0% · 900 words".
+
+**C19** — `Math.max(1, ...)` removed; `formatDuration` already floors.
+
+**Also from review:** `countReadingSessions` duplicated the existing `getSessionCount` under a key with different invalidation, so one screen issued two identical `COUNT(*)` round-trips that could disagree. Deleted the older one. Removed dead code the swap left behind: `useAllReadingSessions`, `useReadingSessionsByBook`, `getReadingSessionsByBook`, `readingSessionKeys.byBook`, `statsKeys.sessionCount`. Fixed a header/button flicker while the count is in flight.
+
+**P3 not fully closed, deliberately.** C18 fixed the UI path, which was the worst offender. `getStreak` genuinely needs every row for an all-time longest streak, `getPersonalityStats` already aggregates in SQL and returns a single row, and windowing the hour histogram is a product decision that belongs with the period wiring in TASK-159.5.
+
+335 tests, tsc clean, biome clean, build clean.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -25,6 +25,7 @@ import {
 	readingSessionKeys,
 	serialKeys,
 	settingsKeys,
+	statsKeys,
 } from "../db/hooks/query-keys";
 import { queries } from "../db/queries";
 import type {
@@ -824,6 +825,7 @@ export async function pullSync(): Promise<Set<string>> {
 			queryClient.invalidateQueries({ queryKey: glossaryKeys.all });
 			queryClient.invalidateQueries({ queryKey: serialKeys.all });
 			queryClient.invalidateQueries({ queryKey: readingSessionKeys.all });
+			queryClient.invalidateQueries({ queryKey: statsKeys.all });
 		}
 
 		log("sync", "pull complete");

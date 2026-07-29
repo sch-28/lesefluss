@@ -42,9 +42,12 @@ const MONTHS = [
 export function SessionTable(props: Props) {
 	const isGlobal = props.mode === "global";
 
-	const globalQuery = queryHooks.useAllReadingSessions();
-	const bookQuery = queryHooks.useReadingSessionsByBook(isGlobal ? "" : props.bookId);
-	const sessionsQuery = isGlobal ? globalQuery : bookQuery;
+	const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+	// Fetch only what is rendered: the whole table used to cross the SQLite
+	// bridge on every stats and book-detail page view.
+	const bookId = isGlobal ? undefined : props.bookId;
+	const sessionsQuery = queryHooks.useReadingSessionsPage(visibleCount, bookId);
+	const totalQuery = queryHooks.useReadingSessionCount(bookId);
 
 	const allBooksQuery = useQuery({
 		queryKey: bookKeys.allIncludingChapters,
@@ -63,15 +66,16 @@ export function SessionTable(props: Props) {
 		return m;
 	}, [isGlobal, allBooksQuery.data, singleBookQuery.data]);
 
-	const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 	const [expandedId, setExpandedId] = useState<string | null>(null);
 	const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
 	const deleteMutation = queryHooks.useDeleteReadingSession();
 
-	const sessions = sessionsQuery.data ?? [];
-	const visible = sessions.slice(0, visibleCount);
-	const hasMore = sessions.length > visibleCount;
+	const visible = sessionsQuery.data ?? [];
+	const total = totalQuery.data;
+	// Falling back to a full page keeps paging reachable if the count query fails:
+	// retries are disabled globally, so `total` would otherwise stay undefined.
+	const hasMore = total != null ? total > visible.length : visible.length === visibleCount;
 
 	if (sessionsQuery.isPending) {
 		return (
@@ -84,7 +88,7 @@ export function SessionTable(props: Props) {
 		);
 	}
 
-	if (sessions.length === 0) return null;
+	if (visible.length === 0) return null;
 
 	return (
 		<motion.section
@@ -95,7 +99,7 @@ export function SessionTable(props: Props) {
 			className="mt-6 rounded-lg border border-border bg-card p-4 text-card-foreground"
 		>
 			<h2 className="m-0 mb-3 font-semibold text-base">
-				Sessions <span className="text-muted-foreground">· {sessions.length}</span>
+				Sessions {total != null && <span className="text-muted-foreground">· {total}</span>}
 			</h2>
 
 			<ul className="m-0 list-none divide-y divide-border p-0">
@@ -115,7 +119,7 @@ export function SessionTable(props: Props) {
 			{hasMore && (
 				<div className="mt-3 flex justify-center">
 					<Button variant="ghost" size="sm" onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}>
-						Show more ({sessions.length - visibleCount} left)
+						Show more{total != null && ` (${total - visible.length} left)`}
 					</Button>
 				</div>
 			)}
@@ -166,7 +170,11 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 
 	const wordCount = book?.wordCount ?? 0;
 	const hasRange = wordCount > 0;
-	const deltaPct = hasRange ? ((session.endWord - session.startWord) / wordCount) * 100 : null;
+	// Share of the book actually read, derived from the same figure as the word
+	// count beside it. The span between start and end position is a different
+	// quantity: it includes anything skipped or re-read, so pairing the two read
+	// as a contradiction ("0% · 900 words").
+	const readPct = hasRange ? (session.wordsRead / wordCount) * 100 : null;
 	const startPct = hasRange ? (session.startWord / wordCount) * 100 : null;
 	const endPct = hasRange ? (session.endWord / wordCount) * 100 : null;
 
@@ -196,9 +204,9 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 							<span className="text-muted-foreground"> · {session.wpmAvg} wpm</span>
 						)}
 					</div>
-					{deltaPct !== null && (
+					{readPct !== null && (
 						<div className="text-muted-foreground">
-							{formatPercent(deltaPct)} · {session.wordsRead} words
+							{formatPercent(readPct)} · {session.wordsRead} words
 						</div>
 					)}
 				</div>

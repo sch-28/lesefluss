@@ -15,6 +15,8 @@
  *   ['settings']                   ← single settings row
  */
 
+import { startOfLocalDay } from "../../../utils/date-utils";
+
 export const bookKeys = {
 	/** All books list - invalidate this to refresh the library grid. */
 	all: ["books"] as const,
@@ -55,8 +57,12 @@ export const readingSessionKeys = {
 	/** All reading sessions across all books. */
 	all: ["reading-sessions"] as const,
 
-	/** Sessions for a single book (book detail card). */
-	byBook: (bookId: string) => ["reading-sessions", "by-book", bookId] as const,
+	/** Newest-first page, optionally scoped to one book. */
+	page: (limit: number, bookId?: string) =>
+		["reading-sessions", "page", bookId ?? "all", limit] as const,
+
+	/** Row count, optionally scoped to one book. */
+	count: (bookId?: string) => ["reading-sessions", "count", bookId ?? "all"] as const,
 };
 
 export const serialKeys = {
@@ -93,8 +99,14 @@ export const statsKeys = {
 	/** Every key under this prefix. Invalidate when sessions change. */
 	all: ["stats"] as const,
 
-	/** Period totals scoped by [start, end]. */
-	periodTotals: (start: number, end: number) => ["stats", "period", start, end] as const,
+	/**
+	 * Period totals scoped by [start, end]. The end is quantised to the local day
+	 * because callers pass `Date.now()`, which would mint a fresh key on every
+	 * visit and never hit the cache. Writes invalidate `statsKeys.all`, so a
+	 * day-stable key cannot go stale behind a new session.
+	 */
+	periodTotals: (start: number, end: number) =>
+		["stats", "period", start, startOfLocalDay(end)] as const,
 
 	/** Streak headline + 90-day series. */
 	streak: ["stats", "streak"] as const,
@@ -110,9 +122,6 @@ export const statsKeys = {
 
 	/** Single-stat callouts. */
 	personality: ["stats", "personality"] as const,
-
-	/** Whole-page empty-state gate. */
-	sessionCount: ["stats", "session-count"] as const,
 
 	/** Per-book stats card on book detail. */
 	book: (bookId: string) => ["stats", "book", bookId] as const,

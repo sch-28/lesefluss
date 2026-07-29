@@ -151,15 +151,11 @@ export const queryHooks = {
 	useStatsWeeklyWpm: statsHooks.useWeeklyWpm,
 	useStatsHourHistogram: statsHooks.useHourHistogram,
 	useStatsPersonality: statsHooks.usePersonality,
-	useStatsSessionCount: statsHooks.useSessionCount,
 	useStatsBook: statsHooks.useBookStats,
 
 	// ── Reading sessions ──────────────────────────────────────────────────
-	/** All reading sessions across all books, newest first. */
-	useAllReadingSessions: readingSessionHooks.useAllReadingSessions,
-
-	/** Sessions for a single book, newest first. */
-	useReadingSessionsByBook: readingSessionHooks.useReadingSessionsByBook,
+	useReadingSessionsPage: readingSessionHooks.useReadingSessionsPage,
+	useReadingSessionCount: readingSessionHooks.useReadingSessionCount,
 
 	/** Mutation: delete one reading session (server + local). */
 	useDeleteReadingSession: readingSessionHooks.useDeleteReadingSession,

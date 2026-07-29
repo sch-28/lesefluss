@@ -53,13 +53,6 @@ function useBookStats(bookId: string) {
 	});
 }
 
-function useSessionCount() {
-	return useQuery({
-		queryKey: statsKeys.sessionCount,
-		queryFn: () => queries.getSessionCount(),
-	});
-}
-
 export const statsHooks = {
 	usePeriodTotals,
 	useStreak,
@@ -67,6 +60,5 @@ export const statsHooks = {
 	useWeeklyWpm,
 	useHourHistogram,
 	usePersonality,
-	useSessionCount,
 	useBookStats,
 };

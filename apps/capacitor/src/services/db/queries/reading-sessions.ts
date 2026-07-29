@@ -1,4 +1,4 @@
-import { desc, eq, gte } from "drizzle-orm";
+import { desc, eq, gte, sql } from "drizzle-orm";
 import { db } from "../index";
 import { type NewReadingSession, type ReadingSession, readingSessions } from "../schema";
 
@@ -8,6 +8,23 @@ import { type NewReadingSession, type ReadingSession, readingSessions } from "..
  */
 export async function getAllReadingSessions(): Promise<ReadingSession[]> {
 	return db.select().from(readingSessions).orderBy(desc(readingSessions.startedAt));
+}
+
+/** Newest-first page of sessions, optionally for one book. */
+export async function getReadingSessionsPage(opts: {
+	limit: number;
+	bookId?: string;
+}): Promise<ReadingSession[]> {
+	const base = db.select().from(readingSessions);
+	const scoped = opts.bookId ? base.where(eq(readingSessions.bookId, opts.bookId)) : base;
+	return scoped.orderBy(desc(readingSessions.startedAt)).limit(opts.limit);
+}
+
+export async function countReadingSessions(bookId?: string): Promise<number> {
+	const base = db.select({ count: sql<number>`COUNT(*)` }).from(readingSessions);
+	const scoped = bookId ? base.where(eq(readingSessions.bookId, bookId)) : base;
+	const row = await scoped;
+	return Number(row[0]?.count ?? 0);
 }
 
 /**
@@ -24,17 +41,6 @@ export async function getReadingSessionsSince(sinceMs: number): Promise<ReadingS
 		.select()
 		.from(readingSessions)
 		.where(gte(readingSessions.updatedAt, sinceMs))
-		.orderBy(desc(readingSessions.startedAt));
-}
-
-/**
- * Fetch reading sessions for a single book (per-book stats card).
- */
-export async function getReadingSessionsByBook(bookId: string): Promise<ReadingSession[]> {
-	return db
-		.select()
-		.from(readingSessions)
-		.where(eq(readingSessions.bookId, bookId))
 		.orderBy(desc(readingSessions.startedAt));
 }
 

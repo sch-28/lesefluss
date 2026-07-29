@@ -36,12 +36,7 @@ export function BookStatsCard({ bookId }: Props) {
 
 			<div className="mt-2 grid grid-cols-3 gap-3">
 				<Stat
-					value={
-						<AnimatedNumber
-							value={Math.max(1, Math.round(data.totalDurationMs / 60_000))}
-							format={(v) => formatDuration(v * 60_000)}
-						/>
-					}
+					value={<AnimatedNumber value={data.totalDurationMs} format={formatDuration} />}
 					label="Total time"
 				/>
 				<Stat

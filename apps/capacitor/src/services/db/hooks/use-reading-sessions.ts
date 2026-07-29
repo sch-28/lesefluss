@@ -4,18 +4,20 @@ import { deleteServerSession, scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
 import { readingSessionKeys, statsKeys } from "./query-keys";
 
-function useAllReadingSessions() {
+function useReadingSessionsPage(limit: number, bookId?: string) {
 	return useQuery({
-		queryKey: readingSessionKeys.all,
-		queryFn: () => queries.getAllReadingSessions(),
+		queryKey: readingSessionKeys.page(limit, bookId),
+		queryFn: () => queries.getReadingSessionsPage({ limit, bookId }),
+		// Growing the page changes the key; without this the list would be
+		// replaced by the loading state on every "show more".
+		placeholderData: (previous) => previous,
 	});
 }
 
-function useReadingSessionsByBook(bookId: string) {
+function useReadingSessionCount(bookId?: string) {
 	return useQuery({
-		queryKey: readingSessionKeys.byBook(bookId),
-		queryFn: () => queries.getReadingSessionsByBook(bookId),
-		enabled: !!bookId,
+		queryKey: readingSessionKeys.count(bookId),
+		queryFn: () => queries.countReadingSessions(bookId),
 	});
 }
 
@@ -45,7 +47,7 @@ function useDeleteReadingSession() {
 }
 
 export const readingSessionHooks = {
-	useAllReadingSessions,
-	useReadingSessionsByBook,
+	useReadingSessionsPage,
+	useReadingSessionCount,
 	useDeleteReadingSession,
 };

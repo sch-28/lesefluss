@@ -42,10 +42,11 @@ import {
 } from "./highlights";
 import {
 	addReadingSession,
+	countReadingSessions,
 	deleteAllReadingSessions,
 	deleteReadingSession,
 	getAllReadingSessions,
-	getReadingSessionsByBook,
+	getReadingSessionsPage,
 	getReadingSessionsSince,
 	upsertReadingSession,
 } from "./reading-sessions";
@@ -76,7 +77,6 @@ import {
 	getHourHistogram,
 	getPeriodTotals,
 	getPersonalityStats,
-	getSessionCount,
 	getStreak,
 	getTopBooks,
 	getWeeklyWpm,
@@ -123,7 +123,8 @@ export const queries = {
 	// Reading sessions
 	getAllReadingSessions,
 	getReadingSessionsSince,
-	getReadingSessionsByBook,
+	getReadingSessionsPage,
+	countReadingSessions,
 	addReadingSession,
 	upsertReadingSession,
 	deleteAllReadingSessions,
@@ -136,7 +137,6 @@ export const queries = {
 	getWeeklyWpm,
 	getHourHistogram,
 	getPersonalityStats,
-	getSessionCount,
 	getBookStats,
 
 	// Glossary
