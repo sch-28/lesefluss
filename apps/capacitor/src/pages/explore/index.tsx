@@ -61,7 +61,11 @@ const Explore: React.FC = () => {
 
 	const changePage = (next: number) => {
 		setPage(next);
-		window.scrollTo({ top: 0, behavior: "smooth" });
+		// `body` is overflow:hidden, so window scrolling is a no-op here; the app
+		// scrolls one container in AppShell.
+		document
+			.querySelector('[data-scroll-restoration-id="app-scroll"]')
+			?.scrollTo({ top: 0, behavior: "smooth" });
 	};
 
 	// Popular ordering when genre-browsing without a text query, relevance otherwise.
@@ -82,11 +86,19 @@ const Explore: React.FC = () => {
 		}
 	}, [isSearchOpen]);
 
+	const showResults = debouncedQuery.length > 0 || genre !== null;
+
 	const setGenre = (id: string | null) => {
+		// A replace mints a new history key, so it never has a scroll entry to
+		// restore and always falls through to scroll-to-top. That is right when the
+		// subtree swaps between the landing page and the results list, and wrong
+		// when only the chip selection changes above an already-scrolled list.
+		const staysOnResults = showResults && id !== null;
 		router.navigate({
 			to: "/tabs/explore",
 			search: id ? { genre: id } : {},
 			replace: true,
+			resetScroll: !staysOnResults,
 		});
 	};
 
@@ -106,8 +118,6 @@ const Explore: React.FC = () => {
 			</div>
 		);
 	}
-
-	const showResults = debouncedQuery.length > 0 || genre !== null;
 
 	return (
 		<div className="bg-background">

@@ -2,7 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { localDateKey, previousLocalDayStart } from "../../../utils/date-utils";
 import {
 	bucketMinutesByHour,
+	bucketSpeedSeries,
 	buildWpmTrend,
+	isPlausibleRate,
+	MAX_PLAUSIBLE_WPM,
+	MIN_MEASURABLE_MS,
 	type RateSession,
 	rollUpWorks,
 	summariseReadingRates,
@@ -462,8 +466,8 @@ describe("rollUpWorks", () => {
 			title: "A Book",
 			author: "Someone",
 			wordCount: 50_000,
+			wordPosition: 10_000,
 			durationMs: minutes(60),
-			wordsRead: 12_000,
 			...overrides,
 		};
 	}
@@ -472,6 +476,9 @@ describe("rollUpWorks", () => {
 		const works = rollUpWorks([book({ bookId: "a" }), book({ bookId: "b" })]);
 		expect(works.map((w) => w.workId)).toEqual(["a", "b"]);
 		expect(works.every((w) => !w.isSeries)).toBe(true);
+		// A standalone book's own length and position pass straight through.
+		expect(works[0]?.wordCount).toBe(50_000);
+		expect(works[0]?.wordPosition).toBe(10_000);
 	});
 
 	// The whole point: 400 chapter rows must not crowd out every real book.
@@ -484,14 +491,16 @@ describe("rollUpWorks", () => {
 		const serial = works.find((w) => w.workId === "s1");
 		expect(serial?.isSeries).toBe(true);
 		expect(serial?.durationMs).toBe(minutes(120));
-		expect(serial?.wordsRead).toBe(40 * 12_000);
 	});
 
 	// A serial's length is the sum of every chapter, fetched separately; counting
 	// only the chapters read in this window would understate it badly.
-	it("leaves a serial's length to be filled in later", () => {
+	it("leaves a serial's length and position to be filled in later", () => {
 		const works = rollUpWorks([book({ seriesId: "s1" })]);
 		expect(works[0]?.wordCount).toBe(0);
+		// Same reason as wordCount: one chapter's position says nothing about how
+		// far through the serial the reader is.
+		expect(works[0]?.wordPosition).toBe(0);
 	});
 
 	it("orders by time read, longest first", () => {
@@ -515,5 +524,109 @@ describe("rollUpWorks", () => {
 
 	it("returns nothing for no rows", () => {
 		expect(rollUpWorks([])).toEqual([]);
+	});
+});
+
+describe("implausible sittings", () => {
+	const now = at(2026, 4, 20);
+
+	// Taken from the device DB: 22488 words in 27 seconds is a position jump,
+	// not reading. Words-weighted, one such row outvoted 90 real ones.
+	const jump: WpmSession = {
+		startedAt: now,
+		mode: "scroll",
+		wpmAvg: null,
+		words: 22_488,
+		durationMs: 27_000,
+	};
+	const real: WpmSession = {
+		startedAt: now,
+		mode: "scroll",
+		wpmAvg: null,
+		words: 3000,
+		durationMs: minutes(10),
+	};
+
+	it("keeps a position jump out of the speed trend", () => {
+		const withJump = buildWpmTrend([real, jump], trendBucketsFor("30d", now));
+		const without = buildWpmTrend([real], trendBucketsFor("30d", now));
+		expect(withJump.averages.measured).toBe(without.averages.measured);
+		expect(withJump.averages.measured).toBe(300);
+	});
+
+	it("keeps a position jump out of the per-mode rates", () => {
+		const rates = summariseReadingRates([
+			{ mode: "scroll", wpmAvg: null, wordsRead: real.words, durationMs: real.durationMs },
+			{ mode: "scroll", wpmAvg: null, wordsRead: jump.words, durationMs: jump.durationMs },
+		]);
+		expect(rates.scrollWpm).toBe(300);
+	});
+
+	it("accepts a fast but human rate", () => {
+		expect(isPlausibleRate(1000, minutes(1))).toBe(true);
+		expect(isPlausibleRate(MAX_PLAUSIBLE_WPM, minutes(1))).toBe(true);
+	});
+
+	// Literal, not expressed in terms of the constant: assertions written as
+	// `MAX_PLAUSIBLE_WPM ± 1` follow the ceiling wherever it moves, so they would
+	// still pass at 40,000, a ceiling that admits every offender in the DB.
+	it("rejects the slowest offender the device DB actually contains", () => {
+		expect(isPlausibleRate(20_000, minutes(10))).toBe(false); // 2000 wpm
+	});
+
+	it("rejects rates past the ceiling", () => {
+		expect(isPlausibleRate(MAX_PLAUSIBLE_WPM + 1, minutes(1))).toBe(false);
+		expect(isPlausibleRate(22_488, 27_000)).toBe(false);
+		expect(isPlausibleRate(0, minutes(10))).toBe(false);
+	});
+
+	// Rates here stay under the ceiling, so only the duration floor can reject
+	// them. Otherwise the ceiling satisfies the assertion and `<=` vs `<` on the
+	// floor goes untested.
+	it("rejects a sitting too short to time, and accepts one just past it", () => {
+		expect(isPlausibleRate(20, MIN_MEASURABLE_MS)).toBe(false); // 1200 wpm
+		expect(isPlausibleRate(20, MIN_MEASURABLE_MS + 1)).toBe(true);
+	});
+});
+
+describe("bucketSpeedSeries", () => {
+	function sample(startedAt: number, wpm: number, words = 1000) {
+		return { startedAt, wpm, words };
+	}
+
+	it("caps the point count no matter how many sittings there are", () => {
+		const samples = Array.from({ length: 90 }, (_, i) => sample(i * 1000, 200 + i));
+		const buckets = bucketSpeedSeries(samples, 14);
+		expect(buckets.length).toBeLessThanOrEqual(14);
+		// Every sitting is accounted for, none silently dropped.
+		expect(buckets.reduce((a, b) => a + b.sessions, 0)).toBe(90);
+	});
+
+	it("leaves a short series untouched", () => {
+		const buckets = bucketSpeedSeries([sample(1, 100), sample(2, 300)], 14);
+		expect(buckets.map((b) => b.wpm)).toEqual([100, 300]);
+		expect(buckets.every((b) => b.sessions === 1)).toBe(true);
+	});
+
+	it("weights a bucket by words, not by sitting count", () => {
+		// 100 wpm over 9000 words and 1000 wpm over 1000 words → 190, not 550.
+		const buckets = bucketSpeedSeries([sample(1, 100, 9000), sample(2, 1000, 1000)], 1);
+		expect(buckets).toHaveLength(1);
+		expect(buckets[0]?.wpm).toBe(190);
+	});
+
+	it("orders by time before bucketing so out-of-order rows can't scramble the line", () => {
+		const buckets = bucketSpeedSeries([sample(300, 3), sample(100, 1), sample(200, 2)], 3);
+		expect(buckets.map((b) => b.wpm)).toEqual([1, 2, 3]);
+	});
+
+	it("carries the span of each bucket for the tooltip", () => {
+		const buckets = bucketSpeedSeries([sample(10, 100), sample(20, 100), sample(30, 100)], 2);
+		expect(buckets[0]).toMatchObject({ startedAt: 10, endedAt: 20, sessions: 2 });
+		expect(buckets[1]).toMatchObject({ startedAt: 30, endedAt: 30, sessions: 1 });
+	});
+
+	it("returns nothing for no samples", () => {
+		expect(bucketSpeedSeries([], 14)).toEqual([]);
 	});
 });

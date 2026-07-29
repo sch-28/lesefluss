@@ -18,7 +18,8 @@ import { memo, useCallback } from "react";
 import { VList } from "virtua";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
-import { isBookFinished, readingProgress } from "./sort-filter";
+import { readingProgress } from "../../utils/reading-progress";
+import { isBookFinished } from "./sort-filter";
 
 type RowState =
 	| { kind: "unread" }

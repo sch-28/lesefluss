@@ -81,6 +81,35 @@ const JUMP_WORDS_PER_TICK: Record<ReadingSessionMode, number> = {
 	rsvp: 800, // ~600 WPM cap × 5s = engine ceiling
 };
 
+/**
+ * Words the credit bucket may hold. Position advances in bursts even when
+ * reading honestly: a page turn moves a page at once, after a minute of
+ * stillness. The bucket refills while the reader is on a page and drains at the
+ * turn, so occasional bursts pass and sustained motion does not.
+ */
+const CREDIT_BURST_WORDS = 500;
+
+/**
+ * Headroom over the configured dial for RSVP. The engine delivers well under
+ * nominal, so the dial is an upper bound on honest progress, not a target.
+ */
+const RSVP_DIAL_HEADROOM = 1.25;
+
+/**
+ * Rate above which forward movement is traversal, not reading.
+ *
+ * The jump threshold alone only catches a single large leap (a TOC tap). It is
+ * a distance over a fixed sample, so `scroll: 400` per 5s tick permits 4,800
+ * words per minute indefinitely: flinging past a preface stayed under it and
+ * was credited in full. Measured sittings on real data sit at a median of 242
+ * and a 95th percentile of 533, so anything sustained above this ceiling is
+ * ground crossed rather than read.
+ */
+function creditCeilingWpm(mode: ReadingSessionMode, dial: number | null): number {
+	if (mode !== "rsvp") return SANE_WPM_CEILING;
+	return dial !== null && dial > 0 ? dial * RSVP_DIAL_HEADROOM : SANE_WPM_CEILING;
+}
+
 type SessionState = {
 	id: string;
 	startedAt: number;
@@ -90,6 +119,9 @@ type SessionState = {
 	 *  high-water mark: the reader can leave a gap behind and come back to it,
 	 *  and that gap is new reading, not a re-read. */
 	readSpans: Span[];
+	/** Words the reader may still be credited for, refilled with elapsed time.
+	 *  Starts empty so a fling in the first seconds of a sitting earns nothing. */
+	creditBudget: number;
 	accumulatedActiveMs: number;
 	/** Wall-clock ms when current "active" interval began; null = paused. */
 	activeSinceMs: number | null;
@@ -180,6 +212,17 @@ export class SessionTracker {
 		if (!this.session) return;
 		if (!this.shouldBeActive) return;
 
+		// A gap above the guard is a suspended timer, not reading time, so it must
+		// not refill the budget: returning after ten minutes would otherwise buy
+		// enough credit to absorb a chapter-sized skip.
+		this.session.creditBudget = Math.min(
+			CREDIT_BURST_WORDS,
+			this.session.creditBudget +
+				(creditCeilingWpm(this.opts.mode, this.opts.getWpmSetting()) *
+					Math.min(pollDelta, POLL_THROTTLE_GUARD_MS)) /
+					60_000,
+		);
+
 		// Only the ground actually travelled forward at reading pace is credited.
 		// A jump crosses its span without reading it, and moving backwards reads
 		// nothing; the range gets credited if and when it is travelled forward.
@@ -187,7 +230,17 @@ export class SessionTracker {
 		if (pos !== this.session.lastPos) {
 			const delta = Math.abs(pos - this.session.lastPos);
 			if (delta < JUMP_WORDS_PER_TICK[this.opts.mode]) {
-				creditSpan(this.session.readSpans, this.session.lastPos, pos);
+				// Partial credit for a burst larger than the budget: the reader saw
+				// the start of the span before outrunning any pace they could read at.
+				// Whole words only; the budget itself stays fractional so slow reading
+				// does not lose a word per tick to rounding.
+				const credited = Math.floor(
+					Math.min(pos - this.session.lastPos, this.session.creditBudget),
+				);
+				if (credited > 0) {
+					creditSpan(this.session.readSpans, this.session.lastPos, this.session.lastPos + credited);
+					this.session.creditBudget -= credited;
+				}
 			}
 			this.session.lastPos = pos;
 			this.lastActivityAt = now;
@@ -309,6 +362,7 @@ export class SessionTracker {
 			startPos: pos,
 			lastPos: pos,
 			readSpans: [],
+			creditBudget: 0,
 			accumulatedActiveMs: 0,
 			activeSinceMs: now,
 			lastCheckpointAt: now,

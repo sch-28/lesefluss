@@ -54,11 +54,11 @@ export function buildNivoTheme(appTheme: AppTheme): PartialTheme {
 }
 
 /**
- * Accent gradient stops used across the page. We pick a single brand accent
- * (per theme) so the calendar / line / bar all stay in family even when the
- * cover-derived hero gradient changes per session.
+ * Accent gradient stops used across the page. One brand accent per theme, so
+ * the calendar, line and bar charts all stay in family.
+ *
+ * Brand orange (matches toast surface) plus a warmer gradient partner.
  */
-/** Brand orange (matches toast surface) plus a warmer gradient partner. */
 export function getAccentStops(appTheme: AppTheme): { from: string; to: string } {
 	switch (appTheme) {
 		case "dark":

@@ -5,6 +5,8 @@ import { useTheme } from "../../../contexts/theme-context";
 import { queryHooks } from "../../../services/db/hooks";
 import type { TrendGranularity, TrendPeriod } from "../../../services/stats/aggregate";
 import { AVERAGE_READER_WPM } from "../../../utils/reading-time";
+import { evenTickIndices, formatDayTick } from "./chart-axis";
+import { ChartTooltip } from "./chart-tooltip";
 import { buildNivoTheme } from "./nivo-theme";
 
 const COLORS = {
@@ -13,12 +15,6 @@ const COLORS = {
 } as const;
 
 const MAX_AXIS_TICKS = 5;
-
-function evenTickIndices(count: number): number[] {
-	if (count <= MAX_AXIS_TICKS) return Array.from({ length: count }, (_, i) => i);
-	const step = (count - 1) / (MAX_AXIS_TICKS - 1);
-	return Array.from({ length: MAX_AXIS_TICKS }, (_, i) => Math.round(i * step));
-}
 
 function formatBucketTick(starts: number[], granularity: TrendGranularity, index: number): string {
 	const start = starts[index];
@@ -30,7 +26,7 @@ function formatBucketTick(starts: number[], granularity: TrendGranularity, index
 		case "month":
 			return d.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
 		default:
-			return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+			return formatDayTick(start);
 	}
 }
 
@@ -78,7 +74,7 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 	const averages = trend.data?.averages ?? { measured: 0, rsvpTarget: 0 };
 	const granularity = trend.data?.granularity ?? "week";
 	const bucketStarts = (trend.data?.measured ?? []).map((p) => p.bucketStart);
-	const tickIndices = evenTickIndices(bucketStarts.length);
+	const tickIndices = evenTickIndices(bucketStarts.length, MAX_AXIS_TICKS);
 	const hasRsvpTarget = averages.rsvpTarget > 0;
 	const yMax = Math.max(AVERAGE_READER_WPM, averages.rsvpTarget, ...points.map((point) => point.y));
 
@@ -155,18 +151,7 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 						const y = Number(point.data.y);
 						const when = formatBucketTick(bucketStarts, granularity, x);
 						return (
-							<div
-								style={{
-									background: "var(--popover)",
-									color: "var(--foreground)",
-									border: "1px solid var(--border)",
-									borderRadius: 8,
-									padding: "8px 10px",
-									boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
-									fontSize: 12,
-									minWidth: 140,
-								}}
-							>
+							<ChartTooltip>
 								<div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
 									<span
 										style={{
@@ -184,7 +169,7 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 									<span style={{ opacity: 0.6 }}>WPM</span>
 								</div>
 								<div style={{ marginTop: 2, fontSize: 11, opacity: 0.6 }}>{when}</div>
-							</div>
+							</ChartTooltip>
 						);
 					}}
 					markers={[

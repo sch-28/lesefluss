@@ -26,11 +26,12 @@ import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { IS_WEB } from "../../utils/platform";
-import { estimatePages } from "../../utils/reading-time";
+import { readingProgress } from "../../utils/reading-progress";
+import { bookPageCount } from "../../utils/reading-time";
 import { DetailShell } from "../_shared/detail-shell";
 import { BookStatsCard } from "./book-stats-card";
 import { SessionTable } from "./session-table";
-import { readingProgress } from "./sort-filter";
+
 import TransferModal from "./transfer-modal";
 
 interface Props {
@@ -131,9 +132,8 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					: null;
 
 	// Pages, not time: time measures the reader, so two books at nine and four
-	// hours say nothing comparable about the books. Suppressed for serial
-	// chapters, where a page count per chapter is noise.
-	const pages = book.seriesId === null && book.wordCount > 0 ? estimatePages(book.wordCount) : null;
+	// hours say nothing comparable about the books.
+	const pages = bookPageCount(book);
 
 	const statsLine = (
 		<>
@@ -192,7 +192,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 						Stored on this device only. Too large to sync to the cloud.
 					</div>
 				)}
-				<BookStatsCard bookId={book.id} />
+				<BookStatsCard book={book} />
 				<SessionTable mode="book" bookId={book.id} />
 			</DetailShell>
 

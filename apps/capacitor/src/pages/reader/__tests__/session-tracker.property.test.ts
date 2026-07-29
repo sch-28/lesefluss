@@ -5,10 +5,20 @@
  * independent reference over random tick sequences instead.
  */
 import { describe, expect, it } from "vitest";
-import { POLL_MS, type SessionRow, SessionTracker } from "../session-tracker";
+import { POLL_MS, POLL_THROTTLE_GUARD_MS, type SessionRow, SessionTracker } from "../session-tracker";
 
 const SCROLL_JUMP_THRESHOLD = 400;
 const SEQUENCES = 200_000;
+
+/** Mirrors the tracker's stated policy, not its implementation: no sitting may
+ *  be credited faster than a person reads. */
+const CREDIT_CEILING_WPM = 800;
+
+/** Movement per tick that stays under the credit ceiling, so the union model
+ *  below is exact rather than an upper bound. */
+const READABLE_WORDS_PER_TICK = 60;
+
+const LEAD_IN_MS = 20_000;
 
 /** Words read = the union of every forward move made at reading pace. */
 function expectedWordsRead(positions: number[]): number {
@@ -36,6 +46,19 @@ function expectedWordsRead(positions: number[]): number {
 	return total;
 }
 
+/**
+ * The most the budget can hand out over a run of this length.
+ *
+ * No burst allowance on top: the bucket starts empty, so the burst capacity only
+ * caps what an idle stretch may bank, it never adds to the total refilled. Adding
+ * it would leave the bound slack by 500 words, which is a leak this property is
+ * meant to catch.
+ */
+function creditableWords(tickCount: number): number {
+	const elapsedMs = Math.min(LEAD_IN_MS, POLL_THROTTLE_GUARD_MS) + (tickCount - 1) * POLL_MS;
+	return (CREDIT_CEILING_WPM * elapsedMs) / 60_000;
+}
+
 function actualWordsRead(positions: number[]): number {
 	let clock = 1_000_000;
 	let index = 0;
@@ -51,7 +74,7 @@ function actualWordsRead(positions: number[]): number {
 	});
 
 	tracker.setReading(true);
-	clock += 20_000;
+	clock += LEAD_IN_MS;
 	for (index = 1; index < positions.length; index++) {
 		clock += POLL_MS;
 		tracker.tick();
@@ -60,25 +83,43 @@ function actualWordsRead(positions: number[]): number {
 	return persisted.at(-1)?.wordsRead ?? 0;
 }
 
-/** Deterministic LCG so a failure is reproducible from the seed alone. */
+/**
+ * Deterministic LCG so a failure is reproducible from the seed alone.
+ *
+ * `Math.imul` rather than `*`: the product of a 31-bit state and the multiplier
+ * exceeds 2^53, so plain multiplication drops the low bits that the mask then
+ * keeps. That collapsed the generator to a ~10k cycle and 895 distinct
+ * sequences, whatever SEQUENCES was set to.
+ */
 function seededRandom(seed: number): () => number {
-	let state = seed;
+	let state = seed >>> 0;
 	return () => {
-		state = (state * 1103515245 + 12345) & 0x7fffffff;
-		return state / 0x7fffffff;
+		state = (Math.imul(state, 1103515245) + 12345) >>> 0;
+		return state / 0x1_0000_0000;
 	};
 }
 
-function randomPositions(random: () => number): number[] {
+function randomPositions(random: () => number, maxForwardStep: number): number[] {
 	const positions = [0];
 	const length = 3 + Math.floor(random() * 14);
 	for (let i = 1; i < length; i++) {
 		const previous = positions[i - 1] as number;
 		const roll = random();
-		if (roll < 0.55) positions.push(previous + Math.floor(random() * (SCROLL_JUMP_THRESHOLD - 1)));
+		if (roll < 0.55) positions.push(previous + Math.floor(random() * maxForwardStep));
 		else if (roll < 0.7)
 			positions.push(Math.max(0, previous - Math.floor(random() * (SCROLL_JUMP_THRESHOLD - 1))));
-		else positions.push(Math.floor(random() * 50_000));
+		else {
+			// A teleport must not land in the band between "readable" and "jump":
+			// that is a forward move the budget throttles but the union model
+			// counts in full, which is the second property's business, not this one.
+			const target = Math.floor(random() * 50_000);
+			const delta = target - previous;
+			positions.push(
+				delta > maxForwardStep && delta < SCROLL_JUMP_THRESHOLD
+					? previous + SCROLL_JUMP_THRESHOLD + Math.floor(random() * 1000)
+					: target,
+			);
+		}
 	}
 	return positions;
 }
@@ -89,7 +130,7 @@ describe("SessionTracker words-read accounting", () => {
 		const mismatches: Array<{ positions: number[]; expected: number; actual: number }> = [];
 
 		for (let i = 0; i < SEQUENCES; i++) {
-			const positions = randomPositions(random);
+			const positions = randomPositions(random, READABLE_WORDS_PER_TICK);
 			const expected = expectedWordsRead(positions);
 			// Below the noise floor the tracker deliberately drops the row.
 			if (expected < 5) continue;
@@ -100,5 +141,37 @@ describe("SessionTracker words-read accounting", () => {
 		}
 
 		expect(mismatches).toEqual([]);
+	});
+
+	// The generator here moves fast enough to outrun any reader, which is the
+	// case the union model cannot describe: crediting is throttled, so the union
+	// becomes an upper bound rather than the answer.
+	it("never credits faster than a person can read, however fast the position moves", () => {
+		const random = seededRandom(9_876);
+		const violations: Array<{ positions: number[]; actual: number; limit: number }> = [];
+
+		for (let i = 0; i < SEQUENCES; i++) {
+			const positions = randomPositions(random, SCROLL_JUMP_THRESHOLD - 1);
+			const actual = actualWordsRead(positions);
+			const union = expectedWordsRead(positions);
+			const limit = creditableWords(positions.length - 1);
+			if ((actual > limit || actual > union) && violations.length < 5) {
+				violations.push({ positions, actual, limit });
+			}
+		}
+
+		expect(violations).toEqual([]);
+	});
+
+	it("throttles a sustained fling well below the ground it covers", () => {
+		// 399 words per 5s tick is 4,788 wpm: under the jump threshold, far over
+		// any reading pace. This is the preface-skip that used to count in full.
+		const positions = [0];
+		for (let i = 1; i <= 14; i++) positions.push(i * 399);
+
+		const actual = actualWordsRead(positions);
+		expect(expectedWordsRead(positions)).toBe(14 * 399);
+		expect(actual).toBeLessThan(1200);
+		expect(actual).toBeGreaterThan(0);
 	});
 });

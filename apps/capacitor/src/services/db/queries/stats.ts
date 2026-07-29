@@ -2,7 +2,7 @@ import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle
 import {
 	bucketMinutesByHour,
 	buildWpmTrend,
-	MIN_MEASURABLE_MS,
+	isPlausibleRate,
 	type ReadingRates,
 	rollUpWorks,
 	type StreakResult,
@@ -93,9 +93,10 @@ export interface TopBook {
 	title: string;
 	author: string | null;
 	durationMs: number;
-	wordsRead: number;
 	/** Total length of the work; a serial sums its chapters. 0 when unknown. */
 	wordCount: number;
+	/** Overall position in the work, independent of the selected period. */
+	wordPosition: number;
 	coverImage: string | null;
 }
 
@@ -111,13 +112,20 @@ export async function getTopBooks(opts: { since: number; limit?: number }): Prom
 			title: books.title,
 			author: books.author,
 			wordCount: books.wordCount,
+			wordPosition: books.wordPosition,
 			durationMs: sql<number>`SUM(${readingSessions.durationMs})`.as("duration_ms"),
-			wordsRead: sql<number>`SUM(${readingSessions.wordsRead})`.as("words_read"),
 		})
 		.from(readingSessions)
 		.innerJoin(books, eq(books.id, readingSessions.bookId))
 		.where(and(gte(readingSessions.startedAt, opts.since), eq(books.deleted, false)))
-		.groupBy(readingSessions.bookId, books.seriesId, books.title, books.author, books.wordCount);
+		.groupBy(
+			readingSessions.bookId,
+			books.seriesId,
+			books.title,
+			books.author,
+			books.wordCount,
+			books.wordPosition,
+		);
 
 	const works = rollUpWorks(rows).slice(0, limit);
 	if (works.length === 0) return [];
@@ -142,6 +150,7 @@ export async function getTopBooks(opts: { since: number; limit?: number }): Prom
 					.select({
 						seriesId: books.seriesId,
 						wordCount: sql<number>`SUM(${books.wordCount})`.as("word_count"),
+						wordPosition: sql<number>`SUM(${books.wordPosition})`.as("word_position"),
 					})
 					.from(books)
 					.where(and(inArray(books.seriesId, seriesIds), eq(books.deleted, false)))
@@ -157,6 +166,7 @@ export async function getTopBooks(opts: { since: number; limit?: number }): Prom
 
 	const seriesMap = new Map(seriesRows.map((entry) => [entry.id, entry]));
 	const chapterWords = new Map(chapterTotals.map((c) => [c.seriesId, Number(c.wordCount)]));
+	const chapterRead = new Map(chapterTotals.map((c) => [c.seriesId, Number(c.wordPosition)]));
 	const coverMap = new Map(coverRows.map((c) => [c.bookId, c.coverImage]));
 
 	return works.map((w) => {
@@ -169,8 +179,8 @@ export async function getTopBooks(opts: { since: number; limit?: number }): Prom
 			title: entry?.title ?? w.title,
 			author: entry?.author ?? w.author,
 			durationMs: w.durationMs,
-			wordsRead: w.wordsRead,
 			wordCount: w.isSeries ? (chapterWords.get(w.workId) ?? 0) : w.wordCount,
+			wordPosition: w.isSeries ? (chapterRead.get(w.workId) ?? 0) : w.wordPosition,
 			coverImage: w.isSeries ? (entry?.coverImage ?? null) : (coverMap.get(w.workId) ?? null),
 		};
 	});
@@ -223,6 +233,8 @@ export interface SpeedPoint {
 	startedAt: number;
 	mode: "rsvp" | "scroll" | "page";
 	wpm: number;
+	/** Weight for bucketing; see `bucketSpeedSeries`. */
+	words: number;
 }
 
 export interface BookStats {
@@ -295,7 +307,9 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 	for (const r of rows) {
 		totalDurationMs += r.durationMs;
 		if (r.startedAt > lastReadAt) lastReadAt = r.startedAt;
-		if (r.durationMs > MIN_MEASURABLE_MS && r.wordsRead > 0) {
+		// Totals above are unconditional; only the derived rate is gated, so a
+		// position jump still counts as time spent and words covered.
+		if (isPlausibleRate(r.wordsRead, r.durationMs)) {
 			sumWords += r.wordsRead;
 			sumActiveMs += r.durationMs;
 			wordsByMode.set(r.mode, (wordsByMode.get(r.mode) ?? 0) + r.wordsRead);
@@ -303,6 +317,7 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 				startedAt: r.startedAt,
 				mode: r.mode,
 				wpm: Math.round(r.wordsRead / (r.durationMs / 60_000)),
+				words: r.wordsRead,
 			});
 		}
 	}

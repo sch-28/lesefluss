@@ -216,7 +216,7 @@ export function buildWpmTrend(
 		const bucketStart = bucketStartFor(buckets.granularity, r.startedAt);
 		// Every mode contributes to one measured series. `wpmAvg` is not usable
 		// here: on rsvp rows it holds the dial, which is an input.
-		if (r.durationMs > MIN_MEASURABLE_MS && r.words > 0) {
+		if (isPlausibleRate(r.words, r.durationMs)) {
 			const wpm = Math.round(r.words / (r.durationMs / 60_000));
 			if (wpm > 0) addToBucket(measuredBuckets, bucketStart, wpm, r.words);
 		}
@@ -380,6 +380,28 @@ export const DEFAULT_RSVP_DELIVERED_RATIO = 0.65;
 /** Below this a sitting is too short for its rate to mean anything. */
 export const MIN_MEASURABLE_MS = 1000;
 
+/**
+ * Above this a sitting is not reading. Jumping the position (a table-of-contents
+ * tap, a fling-scroll, a resync) credits thousands of words against seconds of
+ * active time, and because every speed figure here is words-weighted, one such
+ * row outvotes a hundred real ones. Real sittings on the device DB top out around
+ * 600 wpm; the offenders sit between 2,000 and 49,000.
+ *
+ * Trained speed-readers reach roughly 1,000 wpm, so this leaves generous headroom
+ * above anything a person can actually do while still catching position jumps.
+ */
+export const MAX_PLAUSIBLE_WPM = 1500;
+
+/**
+ * Whether a sitting's *rate* can be trusted. Deliberately not a filter on the
+ * sitting itself: the words were read and the time was spent, so they still count
+ * toward totals. Only the derived speed is discarded.
+ */
+export function isPlausibleRate(words: number, durationMs: number): boolean {
+	if (durationMs <= MIN_MEASURABLE_MS || words <= 0) return false;
+	return words / (durationMs / 60_000) <= MAX_PLAUSIBLE_WPM;
+}
+
 export interface RateSession {
 	mode: "rsvp" | "scroll" | "page";
 	wpmAvg: number | null;
@@ -403,7 +425,7 @@ export function summariseReadingRates(rows: RateSession[]): ReadingRates {
 	const measured = new Map<"scroll" | "page", { words: number; activeMs: number }>();
 
 	for (const r of rows) {
-		if (r.durationMs <= MIN_MEASURABLE_MS || r.wordsRead <= 0) continue;
+		if (!isPlausibleRate(r.wordsRead, r.durationMs)) continue;
 		if (r.mode === "rsvp") {
 			// Both halves of the ratio come from the same rows: counting a
 			// dial-less session's words as delivered while excluding it from the
@@ -440,14 +462,65 @@ export function summariseReadingRates(rows: RateSession[]): ReadingRates {
 	};
 }
 
+export interface SpeedSample {
+	startedAt: number;
+	wpm: number;
+	/** Weight. A 30-second sitting should not move the line as much as an hour. */
+	words: number;
+}
+
+export interface SpeedBucket {
+	/** First and last sitting folded into this point, for the tooltip. */
+	startedAt: number;
+	endedAt: number;
+	wpm: number;
+	sessions: number;
+}
+
+/**
+ * Fold a book's sittings into at most `maxBuckets` points.
+ *
+ * Ninety sittings plotted individually is a scribble: the points overlap, their
+ * labels collide, and no trend is visible. Buckets hold a fixed number of
+ * *consecutive* sittings rather than a fixed time span, so a book read in two
+ * bursts months apart still produces an evenly spaced line instead of one dense
+ * clump at each end and a void between.
+ *
+ * The x axis is therefore reading order, not elapsed time, which is the
+ * question this chart answers: did I speed up as I got into the book?
+ */
+export function bucketSpeedSeries(samples: SpeedSample[], maxBuckets: number): SpeedBucket[] {
+	if (samples.length === 0) return [];
+	const ordered = [...samples].sort((a, b) => a.startedAt - b.startedAt);
+	const perBucket = Math.ceil(ordered.length / maxBuckets);
+
+	const out: SpeedBucket[] = [];
+	for (let i = 0; i < ordered.length; i += perBucket) {
+		const slice = ordered.slice(i, i + perBucket);
+		let sumWordsWpm = 0;
+		let sumWords = 0;
+		for (const s of slice) {
+			sumWordsWpm += s.wpm * s.words;
+			sumWords += s.words;
+		}
+		out.push({
+			startedAt: slice[0].startedAt,
+			endedAt: slice[slice.length - 1].startedAt,
+			wpm: Math.round(sumWordsWpm / sumWords),
+			sessions: slice.length,
+		});
+	}
+	return out;
+}
+
 export interface BookTotals {
 	bookId: string;
 	seriesId: string | null;
 	title: string;
 	author: string | null;
 	wordCount: number;
+	wordPosition: number;
 	durationMs: number;
-	wordsRead: number;
 }
 
 export interface WorkTotals {
@@ -456,8 +529,11 @@ export interface WorkTotals {
 	title: string;
 	author: string | null;
 	wordCount: number;
+	/** How far into the work the reader is overall, not what they read in the
+	 *  selected period. Lets a card say "34% read" without the figure changing
+	 *  meaning when the period changes. */
+	wordPosition: number;
 	durationMs: number;
-	wordsRead: number;
 }
 
 /**
@@ -476,7 +552,6 @@ export function rollUpWorks(rows: BookTotals[]): WorkTotals[] {
 		const existing = works.get(workId);
 		if (existing) {
 			existing.durationMs += Number(row.durationMs);
-			existing.wordsRead += Number(row.wordsRead);
 			continue;
 		}
 		works.set(workId, {
@@ -487,8 +562,8 @@ export function rollUpWorks(rows: BookTotals[]): WorkTotals[] {
 			// A serial's length is the sum of its chapters, fetched separately;
 			// counting the one chapter seen here would understate it.
 			wordCount: isSeries ? 0 : row.wordCount,
+			wordPosition: isSeries ? 0 : row.wordPosition,
 			durationMs: Number(row.durationMs),
-			wordsRead: Number(row.wordsRead),
 		});
 	}
 

@@ -1,10 +1,10 @@
 ---
 id: TASK-159.7
 title: 'Stats step 6: book detail speed chart, bucketing and axes (B3)'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-28 19:39'
-updated_date: '2026-07-28 19:40'
+updated_date: '2026-07-29 22:35'
 labels: []
 milestone: m-7
 dependencies:
@@ -39,10 +39,26 @@ Reasoning: `STATS-IMPROVEMENTS.md` B3.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The chart plots one well-defined quantity rather than mixing dial values with measured rates
-- [ ] #2 A book with several hundred sessions renders a readable chart with a bounded number of points
+- [x] #1 The chart plots one well-defined quantity rather than mixing dial values with measured rates
+- [x] #2 A book with several hundred sessions renders a readable chart with a bounded number of points
 - [ ] #3 Time gaps between sessions are visible in the x-axis rather than flattened to an index
-- [ ] #4 Bucket averages are words-weighted
-- [ ] #5 Values are recoverable by interaction rather than by printed labels on every point
-- [ ] #6 The chart has axis labels and remains legible at its current compact height
+- [x] #4 Bucket averages are words-weighted
+- [x] #5 Values are recoverable by interaction rather than by printed labels on every point
+- [x] #6 The chart has axis labels and remains legible at its current compact height
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Done, with AC#3 deliberately not met.
+
+`bucketSpeedSeries` in `services/stats/aggregate.ts` folds sittings into at most 14 points, words-weighted. `enablePointLabel` removed (that was what printed a number on all 90 overlapping points), y-axis and gridlines added, tooltip carries the bucket span, x-axis ticks are dated from each bucket's first sitting.
+
+**AC#3 ("time gaps visible in the x-axis rather than flattened to an index") is not met, on purpose.** The task specified bucketing by time. Buckets hold a fixed number of *consecutive sittings* instead, so the x-axis is reading order. Time bucketing collapses a book read in two bursts months apart into two dense clumps at the edges with a void between, which is less readable than the problem it was meant to fix. Tick labels are still dated, so the chart is honest about when each bucket happened; the spacing just is not proportional to elapsed time.
+
+Raised with the user twice and confirmed: "bucketing is fine for now". Revisit if a book with a long reading hiatus makes the even spacing misleading in practice.
+
+AC#1 resolved by plotting one quantity: measured words per active minute across every mode. The dial no longer enters the series (see TASK-163 for the plausibility ceiling that keeps position jumps out of it).
+
+Tests: 7 in `aggregate.test.ts` covering the cap, short series, words-weighting, ordering, and bucket spans. Mutations killed: dropping the weighting, dropping the sort, `ceil`->`floor` on the bucket size, `endedAt`->`startedAt`.
+<!-- SECTION:NOTES:END -->

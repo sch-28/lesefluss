@@ -1,10 +1,10 @@
 ---
 id: TASK-157
 title: 'Research: EPUB reading progress resets for no-account (sync-off) Android users'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-06-07 22:41'
-updated_date: '2026-06-08 22:13'
+updated_date: '2026-07-29 22:17'
 labels:
   - bug
   - reader
@@ -149,4 +149,33 @@ PROVISIONAL — REVERT IF ZERO ROWS (speculative, added complexity to fragile te
 - Optional: keep them as cheap defense-in-depth if preferred; they are behavior-preserving (only fire when data would otherwise be lost). The revert is about not carrying speculative branches in the delicate teardown path, not about a known bug.
 
 Note on Scenario 3: if reports keep trickling in while telemetry stays empty, treat it as a UX-clarity problem (make 'where you resumed' obvious), not more save plumbing.
+
+## Closed 2026-07-29: no field signal, instrument verified live
+
+**Correction to the earlier notes first.** They imply the `position_flush_skipped` breadcrumb shipped 2026-06-08 with v1.4.6. It did not. The breadcrumb commit (7c1750e) landed *after* the v1.4.6 release commit the same day, so `package.json` already read 1.4.6 while the release itself did not contain it:
+
+| release | date | breadcrumb present |
+|---|---|---|
+| v1.4.6 | 2026-06-08 | no |
+| v1.4.8 | 2026-06-25 | yes |
+
+So the real observation window is **34 days on v1.4.8**, not the ~7 weeks the notes suggest. Anyone filtering `app_version = '1.4.6'` would have seen nothing and misread it as a negative result.
+
+**Field data.** `telemetry_events` contains exactly one row: the manual `pipeline_test` from 2026-06-08. Zero real-client rows of any type.
+
+**The instrument was verified, not assumed.** Zero rows only means something if the client can actually report, and that had never been established (only that the server accepts a manual POST). Probed from the real device's WebView against production:
+
+- `POST https://lesefluss.app/api/telemetry` with no `type` -> `400 {"error":"type required"}`. Network, DNS, TLS, CORS and routing all work from origin `https://localhost`. Chosen deliberately because it proves reachability without inserting a row.
+- `SYNC_URL` is baked into the release bundle as `https://lesefluss.app`, so the `if (!SYNC_URL) return` guard in `reportEvent` is not swallowing events.
+- `localStorage['lesefluss:telemetry-enabled']` is null, i.e. default-on.
+
+So the beacon is live and would have fired. Zero rows means none of `db_write_error`, `position_write_timeout`, `localstorage_unavailable` or `position_flush_skipped` occurred in the field on v1.4.8. Since the breadcrumb sits in the same branch as the shipped safety net, that also rules out the skipped-flush mechanism on that build.
+
+**Known limitation, recorded rather than solved.** Every event type is failure-only, so there is no denominator: "no failures" and "nobody is on v1.4.8" are indistinguishable from telemetry alone. Closing on absence of evidence with that caveat stated. If it matters later, Play Console active-installs-by-version answers it without shipping anything, or a once-per-launch event would give a real denominator (but changes the privacy posture from failure-only to usage reporting, which affects the Play Data Safety declaration).
+
+**Decision: keep all the code, including the provisional branches.** The plan listed `seededWordRef` and the two teardown `else if` arms as revert-if-zero-rows, but also allowed keeping them as defense-in-depth. Keeping, because they are behaviour-preserving (they only fire when data would otherwise be lost) and because the breadcrumb staying armed is what makes reopening cheap: a recurrence reports itself instead of waiting for another anonymous bug report.
+
+**Acceptance criteria deliberately left unchecked.** This was a research task and the outcome is a negative result: no repro (#1), no root cause (#2), no sync-on comparison (#3). What did ship is mitigation rather than a root-cause fix. Ticking them would misrepresent that.
+
+**Reopen if:** another progress-loss report arrives, or any of the four event types appears in `telemetry_events`. Query in the DECISION PLAN section above, filtered to `app_version >= '1.4.8'`.
 <!-- SECTION:NOTES:END -->

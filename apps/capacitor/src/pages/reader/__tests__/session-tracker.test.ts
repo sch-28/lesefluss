@@ -327,7 +327,7 @@ describe("SessionTracker", () => {
 		env.tracker.setReading(true);
 		env.advance(20_000);
 		for (let i = 0; i < 3; i++) {
-			env.movePosition(300);
+			env.movePosition(50);
 			env.tracker.tick();
 			env.advance(POLL_MS);
 		}
@@ -335,54 +335,54 @@ describe("SessionTracker", () => {
 		env.tracker.tick();
 		for (let i = 0; i < 3; i++) {
 			env.advance(POLL_MS);
-			env.movePosition(300);
+			env.movePosition(50);
 			env.tracker.tick();
 		}
 		env.tracker.finalize();
-		expect(env.persisted.at(-1)!.row.wordsRead).toBe(900);
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(150);
 	});
 
 	it("keeps crediting after peeking ahead and scrubbing back", () => {
 		const env = setup({ mode: "scroll" });
 		env.tracker.setReading(true);
 		env.advance(20_000);
-		env.movePosition(300);
+		env.movePosition(50);
 		env.tracker.tick();
 		env.advance(POLL_MS);
 		env.setPosition(40_000); // peek at the end
 		env.tracker.tick();
 		env.advance(POLL_MS);
-		env.setPosition(300); // scrub back to where reading stopped
+		env.setPosition(50); // scrub back to where reading stopped
 		env.tracker.tick();
 		for (let i = 0; i < 9; i++) {
 			env.advance(POLL_MS);
-			env.movePosition(300);
+			env.movePosition(50);
 			env.tracker.tick();
 		}
 		env.tracker.finalize();
-		expect(env.persisted.at(-1)!.row.wordsRead).toBe(3000);
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(500);
 	});
 
 	it("credits a range read after having been skipped past earlier", () => {
 		const env = setup({ mode: "scroll" });
 		env.tracker.setReading(true);
 		env.advance(20_000);
-		env.movePosition(300); // read [0, 300]
+		env.movePosition(50); // read [0, 50]
 		env.tracker.tick();
 		env.advance(POLL_MS);
 		env.setPosition(5000);
 		env.tracker.tick();
 		env.advance(POLL_MS);
-		env.movePosition(300); // read [5000, 5300]
+		env.movePosition(50); // read [5000, 5050]
 		env.tracker.tick();
 		env.advance(POLL_MS);
 		env.setPosition(1000);
 		env.tracker.tick();
 		env.advance(POLL_MS);
-		env.movePosition(300); // read [1000, 1300], never seen before
+		env.movePosition(50); // read [1000, 1050], never seen before
 		env.tracker.tick();
 		env.tracker.finalize();
-		expect(env.persisted.at(-1)!.row.wordsRead).toBe(900);
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(150);
 	});
 
 	it("does not re-credit a range on a jump back into it", () => {
@@ -390,20 +390,20 @@ describe("SessionTracker", () => {
 		env.tracker.setReading(true);
 		env.advance(20_000);
 		for (let i = 0; i < 3; i++) {
-			env.movePosition(300);
+			env.movePosition(50);
 			env.tracker.tick();
 			env.advance(POLL_MS);
 		}
 		env.setPosition(0);
 		env.tracker.tick();
 		env.advance(POLL_MS);
-		env.movePosition(400); // re-reads [0, 400], already credited
+		env.movePosition(100); // re-reads [0, 100], already credited
 		env.tracker.tick();
 		env.advance(POLL_MS);
 		env.setPosition(5000);
 		env.tracker.tick();
 		env.tracker.finalize();
-		expect(env.persisted.at(-1)!.row.wordsRead).toBe(900);
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(150);
 	});
 
 	it("treats movement exactly at the threshold as a jump", () => {
@@ -597,5 +597,82 @@ describe("SessionTracker", () => {
 		const count = env.persisted.length;
 		env.tracker.finalize();
 		expect(env.persisted.length).toBe(count);
+	});
+});
+
+describe("SessionTracker credit budget", () => {
+	it("throttles rsvp to the configured dial rather than the flat ceiling", () => {
+		// Dial of 100 wpm. Moving 100 words per 5s tick is 1200 wpm, far past
+		// anything the engine can deliver at that setting.
+		const env = setup({ mode: "rsvp", wpm: 100 });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		for (let i = 0; i < 6; i++) {
+			env.movePosition(100);
+			env.tracker.tick();
+			env.advance(POLL_MS);
+		}
+		env.tracker.finalize();
+		const words = env.persisted.at(-1)!.row.wordsRead;
+		// Ignoring the dial and using the 800 ceiling would credit several times this.
+		expect(words).toBeLessThan(120);
+		expect(words).toBeGreaterThan(0);
+	});
+
+	it("caps what an idle stretch banks, so a later fling cannot spend it all", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(20);
+		env.tracker.tick();
+		// Five minutes of stillness. The budget refills the whole time and must
+		// stop at the burst capacity rather than banking 4000 words.
+		for (let i = 0; i < 60; i++) {
+			env.advance(POLL_MS);
+			env.tracker.tick();
+		}
+		for (let i = 0; i < 5; i++) {
+			env.advance(POLL_MS);
+			env.movePosition(399);
+			env.tracker.tick();
+		}
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBeLessThan(1000);
+	});
+
+	it("does not bank credit while backgrounded", () => {
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(20_000);
+		env.movePosition(20);
+		env.tracker.tick();
+
+		// The poll interval keeps firing in the background; only the active gate
+		// stops it. Refilling there would hand the return-fling a full bucket.
+		env.tracker.setForeground(false);
+		for (let i = 0; i < 60; i++) {
+			env.advance(POLL_MS);
+			env.tracker.tick();
+		}
+		env.tracker.setForeground(true);
+
+		env.advance(POLL_MS);
+		env.movePosition(399);
+		env.tracker.tick();
+		env.tracker.finalize();
+		// One tick's worth of refill plus the throttle-guard allowance, not 500.
+		expect(env.persisted.at(-1)!.row.wordsRead).toBeLessThan(320);
+	});
+
+	it("credits whole words without overdrawing the budget", () => {
+		// 10s of lead-in buys 133.33 words. Rounding up would credit 134 and drive
+		// the budget negative.
+		const env = setup({ mode: "scroll" });
+		env.tracker.setReading(true);
+		env.advance(10_000);
+		env.movePosition(399);
+		env.tracker.tick();
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(133);
 	});
 });

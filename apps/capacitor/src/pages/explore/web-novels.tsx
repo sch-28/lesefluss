@@ -40,6 +40,9 @@ const WebNovels: React.FC = () => {
 			to: "/tabs/explore/web-novels",
 			search: next ? { provider: next } : {},
 			replace: true,
+			// See setGenre in explore/index.tsx: a replace has no scroll entry, so
+			// without this the provider chips scroll the results back to the top.
+			resetScroll: false,
 		});
 	};
 

@@ -23,3 +23,12 @@ export const AVERAGE_READER_WPM = 225;
 export function estimatePages(wordCount: number): number {
 	return Math.max(1, Math.ceil(wordCount / WORDS_PER_PAGE));
 }
+
+/**
+ * Page count for a book, or null when one would mislead. Suppressed for serial
+ * chapters: a page count per chapter says nothing about the work.
+ */
+export function bookPageCount(book: { seriesId: string | null; wordCount: number }): number | null {
+	if (book.seriesId !== null || book.wordCount <= 0) return null;
+	return estimatePages(book.wordCount);
+}

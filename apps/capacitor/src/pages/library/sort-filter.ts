@@ -1,6 +1,6 @@
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
-import { isFinishedPercent } from "../../utils/reading-progress";
+import { isFinishedPercent, readingProgress } from "../../utils/reading-progress";
 
 export type SortBy = "title" | "author" | "recent" | "progress";
 export type FilterBy = "all" | "unread" | "reading" | "done";
@@ -21,11 +21,6 @@ export const FILTER_LABELS: Record<FilterBy, string> = {
 
 export const FILTER_OPTIONS: FilterBy[] = ["all", "unread", "reading", "done"];
 export const SORT_OPTIONS: SortBy[] = ["recent", "title", "author", "progress"];
-
-export function readingProgress(book: Book): number {
-	if (book.wordCount <= 0) return 0;
-	return Math.min(100, Math.round((book.wordPosition / book.wordCount) * 100));
-}
 
 const FINISHED_TAIL_WORDS = 5;
 

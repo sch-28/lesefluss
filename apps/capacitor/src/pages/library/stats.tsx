@@ -33,14 +33,10 @@ const Stats: React.FC = () => {
 	const sessionCount = queryHooks.useReadingSessionCount();
 
 	const streak = queryHooks.useStatsStreak();
-	// Same key as TopBooks, so the two share one query.
-	const topBooks = queryHooks.useStatsTopBooks(range.start, 5);
 
 	const hasSessions = (sessionCount.data ?? 0) > 0;
 	const isInitialLoading = sessionCount.isLoading;
 
-	const topCover = topBooks.data?.[0]?.coverImage ?? null;
-	const topBookId = topBooks.data?.[0]?.workId ?? null;
 	const currentStreak = streak.data?.current ?? 0;
 	const longestStreak = streak.data?.longest ?? 0;
 
@@ -58,10 +54,8 @@ const Stats: React.FC = () => {
 					<Hero
 						currentStreak={currentStreak}
 						longestStreak={longestStreak}
-						topCover={topCover}
-						topBookId={topBookId}
+						last90Days={streak.data?.last90Days ?? []}
 					/>
-					<Activity />
 
 					{/* Period control sits with the sections it drives. */}
 					<PeriodTotals now={now} period={period} range={range} onPeriodChange={setPeriod} />
@@ -69,11 +63,15 @@ const Stats: React.FC = () => {
 
 					<WpmTrend period={period} periodLabel={PERIOD_LABELS[period]} now={now} />
 
+					{/* Always all-time, so it sits below the sections the period tabs drive. */}
+					<Activity />
+
 					<div className="px-4">
 						<SessionTable mode="global" />
 					</div>
-					<p className="px-4 pb-6 text-[11px] text-muted-foreground">
-						Reading on a connected device isn't counted here; only sessions in the app are tracked.
+					<p className="mt-4 px-4 pb-6 text-[11px] text-muted-foreground">
+						Only reading in this app is tracked. Time spent on a book you uploaded to a device
+						isn't counted here.
 					</p>
 				</>
 			)}

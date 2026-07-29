@@ -4,6 +4,9 @@ import CoverImage from "../../../components/cover-image";
 import { queryHooks } from "../../../services/db/hooks";
 import type { TopBook } from "../../../services/db/queries/stats";
 import { formatDuration } from "../../../utils/date-utils";
+import { readingProgress } from "../../../utils/reading-progress";
+import { estimatePages } from "../../../utils/reading-time";
+
 
 interface Props {
 	since: number;
@@ -11,19 +14,14 @@ interface Props {
 }
 
 /**
- * One line of context under the card. The card is 140px wide, so this rations
- * what fits: how fast it was read and how much of the work it covered. Length,
- * session count and time remaining live on the detail page a tap away.
+ * One line of context under the 140px card. Both figures describe the book, not
+ * the selected period: the badge over the cover already carries the period's
+ * time, and a figure that changed meaning with a tab elsewhere on the page read
+ * as if it described the book.
  */
-function describeReading(b: TopBook): string {
-	const minutes = b.durationMs / 60_000;
-	const parts: string[] = [];
-	if (minutes > 0 && b.wordsRead > 0) parts.push(`${Math.round(b.wordsRead / minutes)} wpm`);
-	if (b.wordCount > 0) {
-		const share = (b.wordsRead / b.wordCount) * 100;
-		parts.push(share < 1 ? "<1% of it" : `${Math.round(share)}% of it`);
-	}
-	return parts.join(" · ");
+function describeWork(b: TopBook): string {
+	if (b.wordCount <= 0) return "";
+	return `${estimatePages(b.wordCount)} pages · ${readingProgress(b)}% read`;
 }
 
 export function TopBooks({ since, periodLabel }: Props) {
@@ -86,7 +84,7 @@ export function TopBooks({ since, periodLabel }: Props) {
 										<div className="mt-0.5 line-clamp-1 text-[11px] opacity-60">{b.author}</div>
 									)}
 									<div className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground tabular-nums">
-										{describeReading(b)}
+										{describeWork(b)}
 									</div>
 								</div>
 							</motion.button>
