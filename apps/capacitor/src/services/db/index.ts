@@ -9,6 +9,7 @@ import {
 import { log } from "../../utils/log";
 import { createDrizzleAdapter } from "./adapter";
 import { runMigrations } from "./migrations";
+import { backfillFinishedAt } from "./queries/books";
 
 const DB_NAME = "lesefluss.db";
 
@@ -34,6 +35,10 @@ export async function initDb(): Promise<void> {
 		_conn = await sqliteConnection.createConnection(DB_NAME, false, "no-encryption", 1, false);
 		await _conn.open();
 		await runMigrations(_conn);
+		// Idempotent, and only touches nulls, so it is cheap on every start after
+		// the first. Books finished before `finished_at` existed would otherwise
+		// never appear in a period's finished count.
+		await backfillFinishedAt();
 	})();
 
 	try {

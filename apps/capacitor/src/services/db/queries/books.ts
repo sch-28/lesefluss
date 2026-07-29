@@ -5,7 +5,9 @@ import {
 	type SerializedWordIndex,
 	WordIndex,
 } from "@lesefluss/core";
-import { and, desc, eq, isNull, ne } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
+import type { SQLiteUpdateSetSource } from "drizzle-orm/sqlite-core";
+import { FINISHED_PERCENT_THRESHOLD } from "../../../utils/reading-progress";
 import { db } from "../index";
 import { appendLongText, LONG_TEXT_CHUNK, type LongTextExecutor, readLongText } from "../long-text";
 import {
@@ -344,8 +346,61 @@ export async function addServerBookWithContent(
  *   updateBook("a1b2c3d4", { isActive: true })
  *   updateBook("a1b2c3d4", { position: 1234, lastRead: Date.now() })
  */
-export async function updateBook(id: string, data: Partial<Omit<NewBook, "id">>): Promise<void> {
-	await db.update(books).set(data).where(eq(books.id, id));
+export async function updateBook(
+	id: string,
+	data: Partial<Omit<NewBook, "id">>,
+	/** When the position change happened. Defaults to now, but the sync pull
+	 *  replays changes made on another device at another time, and stamping
+	 *  those with wall clock would date an old finish to today. */
+	occurredAt: number = Date.now(),
+): Promise<void> {
+	// Stamp the first crossing of the finished threshold as the position moves.
+	// Done in SQL rather than read-then-write because position saves are frequent
+	// and every statement is a bridge round-trip. `finished_at` is only ever set,
+	// never cleared: reopening a finished book does not unfinish it, which is the
+	// whole reason the column exists.
+	const patch: SQLiteUpdateSetSource<typeof books> =
+		data.wordPosition !== undefined && data.finishedAt === undefined
+			? {
+					...data,
+					finishedAt: sql`CASE
+						WHEN ${books.finishedAt} IS NULL
+							AND ${books.wordCount} > 0
+							AND ${data.wordPosition} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD}
+						THEN ${occurredAt}
+						ELSE ${books.finishedAt}
+					END`,
+				}
+			: data;
+	await db.update(books).set(patch).where(eq(books.id, id));
+}
+
+/**
+ * Give books finished before the column existed a date, from the last time they
+ * were read. Imprecise for a book reopened after finishing, but every device
+ * derives the same answer from inputs that already sync, so they agree without
+ * the backfill itself having to propagate.
+ *
+ * Falls back to `added_at` because a library restored from the server arrives
+ * with `last_read` null and the pushing device's timestamp in `added_at` — the
+ * devices that most need the backfill are the ones with no local read history.
+ *
+ * Idempotent: only ever fills nulls.
+ */
+export async function backfillFinishedAt(): Promise<void> {
+	await db
+		.update(books)
+		.set({ finishedAt: sql`COALESCE(${books.lastRead}, ${books.addedAt})` })
+		.where(
+			and(
+				isNull(books.finishedAt),
+				// Chapter rows are excluded from the finished count, so stamping them
+				// is write amplification on exactly the libraries with most rows.
+				isNull(books.seriesId),
+				gt(books.wordCount, 0),
+				sql`${books.wordPosition} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD}`,
+			),
+		);
 }
 
 /**

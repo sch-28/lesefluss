@@ -1,5 +1,6 @@
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
+import { isFinishedPercent } from "../../utils/reading-progress";
 
 export type SortBy = "title" | "author" | "recent" | "progress";
 export type FilterBy = "all" | "unread" | "reading" | "done";
@@ -87,7 +88,7 @@ function matchesFilter(item: LibraryItem, filterBy: FilterBy): boolean {
 		const p = item.sortKey.progress;
 		if (filterBy === "unread") return p === 0;
 		if (filterBy === "reading") return p > 0 && p < 95;
-		return p >= 95;
+		return isFinishedPercent(p);
 	}
 	const a = item.activity;
 	if (filterBy === "unread") return (a?.started ?? 0) === 0;

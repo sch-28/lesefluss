@@ -59,10 +59,11 @@ import { queries } from "../../services/db/queries";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Chapter, GlossaryEntry } from "../../services/db/schema";
 import { providerLabel } from "../../services/serial-scrapers";
+import { DEFAULT_RSVP_DELIVERED_RATIO } from "../../services/stats/aggregate";
 import { pushSync, scheduleSyncPush } from "../../services/sync";
 import { reportEvent } from "../../services/telemetry";
 import { publishLinkOpen, publishPositionSave, publishProgressWord } from "../../test-hooks/reader";
-import { formatReadingTime } from "../../utils/reading-time";
+import { AVERAGE_READER_WPM, formatReadingTime } from "../../utils/reading-time";
 import { setJustRead } from "../library/just-read-pin";
 import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
@@ -138,6 +139,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	// ── Data queries ──────────────────────────────────────────────────────
 	const { data: book, isPending: bookPending } = queryHooks.useBook(id);
+	const readingRates = queryHooks.useStatsReadingRates();
 	const { data: contentRow, isPending: contentPending } = queryHooks.useBookContent(id);
 	const { data: wordIndex } = queryHooks.useBookWordIndex(id);
 	const content = contentRow?.content ?? null;
@@ -1374,7 +1376,21 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const progressPct = totalWordCount > 0 ? Math.min(100, (progressWord / totalWordCount) * 100) : 0;
 
 	const showReadingTime = dbSettings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
-	const estimateWpm = readerMode === "rsvp" ? rsvpSettings.wpm : 250;
+	// The dial is an input, not a rate: the engine spends time on punctuation
+	// pauses and the accel ramp, so estimating from it runs short. Scale it by
+	// what this reader's RSVP sessions actually delivered. Scroll and page have
+	// no dial, so they use their own measured speed.
+	const estimateWpm =
+		readerMode === "rsvp"
+			? Math.max(
+					1,
+					Math.round(
+						rsvpSettings.wpm *
+							(readingRates.data?.rsvpDeliveredRatio ?? DEFAULT_RSVP_DELIVERED_RATIO),
+					),
+				)
+			: ((paginationStyle === "page" ? readingRates.data?.pageWpm : readingRates.data?.scrollWpm) ??
+				AVERAGE_READER_WPM);
 	const bookMinutesRemaining =
 		showReadingTime && totalWordCount > 0
 			? (totalWordCount * (1 - progressPct / 100)) / estimateWpm

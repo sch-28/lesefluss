@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
+import { FINISHED_PERCENT_THRESHOLD } from "../../../utils/reading-progress";
 import { db } from "../index";
 import {
 	type Book,
@@ -205,14 +206,6 @@ export type SeriesActivity = {
 	finished: number;
 	latestRead: number | null;
 };
-
-/**
- * Mirrors the "done" cutoff used by `readingProgress` + `applyFilter` in
- * `pages/library/sort-filter.ts`. Kept in sync by hand because this query
- * module must not import from the UI layer. If you change the JS threshold,
- * change this constant too so the filter and sort agree.
- */
-const FINISHED_PERCENT_THRESHOLD = 95;
 
 export async function getSeriesActivity(): Promise<Map<string, SeriesActivity>> {
 	const rows = await db

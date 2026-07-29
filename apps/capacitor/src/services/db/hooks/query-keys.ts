@@ -129,6 +129,9 @@ export const statsKeys = {
 	/** Hour-of-day histogram. */
 	hourHistogram: ["stats", "hour-histogram"] as const,
 
+	/** Per-mode reading rates used to estimate time remaining. */
+	readingRates: ["stats", "reading-rates"] as const,
+
 	/** Per-book stats card on book detail. */
 	book: (bookId: string) => ["stats", "book", bookId] as const,
 };

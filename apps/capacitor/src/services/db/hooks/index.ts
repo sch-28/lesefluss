@@ -151,6 +151,7 @@ export const queryHooks = {
 	useStatsTopBooks: statsHooks.useTopBooks,
 	useStatsWpmTrend: statsHooks.useWpmTrend,
 	useStatsHourHistogram: statsHooks.useHourHistogram,
+	useStatsReadingRates: statsHooks.useReadingRates,
 	useStatsBook: statsHooks.useBookStats,
 
 	// ── Reading sessions ──────────────────────────────────────────────────

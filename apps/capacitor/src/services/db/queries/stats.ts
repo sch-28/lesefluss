@@ -1,18 +1,18 @@
-import { and, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import {
 	bucketMinutesByHour,
 	buildWpmTrend,
+	MIN_MEASURABLE_MS,
+	type ReadingRates,
 	type StreakResult,
+	summariseReadingRates,
 	summariseStreak,
 	type TrendPeriod,
 	trendBucketsFor,
 	type WpmTrend,
 } from "../../stats/aggregate";
 import { db } from "../index";
-import { bookContent, books, readingSessions } from "../schema";
-
-/** Same threshold as `series.ts` / `sort-filter.ts`. Keep both in sync. */
-const FINISHED_PERCENT_THRESHOLD = 95;
+import { bookContent, books, readingSessions, series } from "../schema";
 
 export interface PeriodTotals {
 	minutes: number;
@@ -39,6 +39,9 @@ export async function getPeriodTotals(
 			and(gte(readingSessions.startedAt, periodStart), lt(readingSessions.startedAt, periodEnd)),
 		);
 
+	// Counted on when the book was first finished, not on when it was last
+	// opened: reopening a book finished in March used to count it as finished
+	// today, and March lost it for good.
 	const finishedRow = await db
 		.select({
 			count: sql<number>`COUNT(*)`,
@@ -49,10 +52,9 @@ export async function getPeriodTotals(
 				eq(books.deleted, false),
 				// Serial chapters are books rows; forty finished chapters is one book.
 				isNull(books.seriesId),
-				isNotNull(books.lastRead),
-				gte(books.lastRead, periodStart),
-				lt(books.lastRead, periodEnd),
-				sql`${books.wordCount} > 0 AND ${books.wordPosition} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD}`,
+				isNotNull(books.finishedAt),
+				gte(books.finishedAt, periodStart),
+				lt(books.finishedAt, periodEnd),
 			),
 		);
 
@@ -84,51 +86,122 @@ export async function getStreak(): Promise<StreakResult> {
 }
 
 export interface TopBook {
-	bookId: string;
+	/** Book id, or series id when the entry is a rolled-up serial. */
+	workId: string;
+	isSeries: boolean;
 	title: string;
 	author: string | null;
 	durationMs: number;
+	wordsRead: number;
+	/** Total length of the work; a serial sums its chapters. 0 when unknown. */
+	wordCount: number;
 	coverImage: string | null;
 }
 
 export async function getTopBooks(opts: { since: number; limit?: number }): Promise<TopBook[]> {
 	const limit = opts.limit ?? 5;
-	// Joined rather than filtered afterwards: applying the limit first and then
-	// dropping deleted books returns fewer cards than asked for.
+	// Grouped by work, not by book row: every chapter of a serial is its own
+	// books row, so one 400-chapter web novel would fill the whole list and no
+	// single-file book could ever rank against it.
+	//
+	// Joined rather than filtered afterwards, because applying the limit first
+	// and then dropping deleted books returns fewer cards than asked for.
+	const workId = sql<string>`COALESCE(${books.seriesId}, ${books.id})`;
 	const rows = await db
 		.select({
-			bookId: readingSessions.bookId,
-			title: books.title,
-			author: books.author,
+			workId,
+			seriesId: sql<string | null>`MAX(${books.seriesId})`,
 			durationMs: sql<number>`SUM(${readingSessions.durationMs})`,
+			wordsRead: sql<number>`SUM(${readingSessions.wordsRead})`,
 		})
 		.from(readingSessions)
 		.innerJoin(books, eq(books.id, readingSessions.bookId))
 		.where(and(gte(readingSessions.startedAt, opts.since), eq(books.deleted, false)))
-		.groupBy(readingSessions.bookId, books.title, books.author)
+		.groupBy(workId)
 		.orderBy(sql`SUM(${readingSessions.durationMs}) DESC`)
 		.limit(limit);
 
 	if (rows.length === 0) return [];
 
-	const ids = rows.map((r) => r.bookId);
+	const seriesIds = rows.map((r) => r.seriesId).filter((id): id is string => id !== null);
+	const standaloneIds = rows.filter((r) => r.seriesId === null).map((r) => r.workId);
 
-	const coverRows = await db
-		.select({
-			bookId: bookContent.bookId,
-			coverImage: bookContent.coverImage,
-		})
-		.from(bookContent)
-		.where(inArray(bookContent.bookId, ids));
+	const [standaloneRows, seriesRows, chapterTotals, coverRows] = await Promise.all([
+		standaloneIds.length > 0
+			? db
+					.select({
+						id: books.id,
+						title: books.title,
+						author: books.author,
+						wordCount: books.wordCount,
+					})
+					.from(books)
+					.where(inArray(books.id, standaloneIds))
+			: [],
+		seriesIds.length > 0
+			? db
+					.select({
+						id: series.id,
+						title: series.title,
+						author: series.author,
+						coverImage: series.coverImage,
+					})
+					.from(series)
+					.where(inArray(series.id, seriesIds))
+			: [],
+		seriesIds.length > 0
+			? db
+					.select({ seriesId: books.seriesId, wordCount: sql<number>`SUM(${books.wordCount})` })
+					.from(books)
+					.where(and(inArray(books.seriesId, seriesIds), eq(books.deleted, false)))
+					.groupBy(books.seriesId)
+			: [],
+		standaloneIds.length > 0
+			? db
+					.select({ bookId: bookContent.bookId, coverImage: bookContent.coverImage })
+					.from(bookContent)
+					.where(inArray(bookContent.bookId, standaloneIds))
+			: [],
+	]);
+
+	const bookMap = new Map(standaloneRows.map((b) => [b.id, b]));
+	const seriesMap = new Map(seriesRows.map((entry) => [entry.id, entry]));
+	const chapterWords = new Map(chapterTotals.map((c) => [c.seriesId, Number(c.wordCount)]));
 	const coverMap = new Map(coverRows.map((c) => [c.bookId, c.coverImage]));
 
-	return rows.map((r) => ({
-		bookId: r.bookId,
-		title: r.title,
-		author: r.author,
-		durationMs: Number(r.durationMs),
-		coverImage: coverMap.get(r.bookId) ?? null,
-	}));
+	return rows
+		.map((r): TopBook | null => {
+			const base = {
+				workId: r.workId,
+				durationMs: Number(r.durationMs),
+				wordsRead: Number(r.wordsRead),
+			};
+			if (r.seriesId !== null) {
+				const entry = seriesMap.get(r.seriesId);
+				return entry
+					? {
+							...base,
+							isSeries: true,
+							title: entry.title,
+							author: entry.author,
+							wordCount: chapterWords.get(r.seriesId) ?? 0,
+							coverImage: entry.coverImage,
+						}
+					: null;
+			}
+			const entry = bookMap.get(r.workId);
+			return entry
+				? {
+						...base,
+						isSeries: false,
+						title: entry.title,
+						author: entry.author,
+						wordCount: entry.wordCount,
+						coverImage: coverMap.get(r.workId) ?? null,
+					}
+				: null;
+		})
+		.filter((x): x is TopBook => x !== null);
 }
 
 export async function getWpmTrend(opts: { period: TrendPeriod; now: number }): Promise<WpmTrend> {
@@ -184,12 +257,34 @@ export interface BookStats {
 	totalDurationMs: number;
 	sessionCount: number;
 	lastReadAt: number | null;
-	avgWpmRsvp: number | null;
+	/** Words-weighted measured rate across every mode, and the mode that
+	 *  contributed most of those words. */
+	measuredWpm: number | null;
+	dominantMode: "rsvp" | "scroll" | "page" | null;
 	speedSeries: SpeedPoint[];
 }
 
+/** Recent sessions only: the RSVP ratio shifts when the delay settings change,
+ *  and a lifetime average would take months to reflect it. */
+const RATE_SAMPLE_SIZE = 50;
+
+export async function getReadingRates(): Promise<ReadingRates> {
+	const rows = await db
+		.select({
+			mode: readingSessions.mode,
+			wpmAvg: readingSessions.wpmAvg,
+			wordsRead: readingSessions.wordsRead,
+			durationMs: readingSessions.durationMs,
+		})
+		.from(readingSessions)
+		.orderBy(desc(readingSessions.startedAt))
+		.limit(RATE_SAMPLE_SIZE);
+
+	return summariseReadingRates(rows);
+}
+
 /**
- * Per-book aggregation. Single fetch ordered by startedAt; totals + avg
+ * Per-book aggregation. Single fetch ordered by startedAt; totals and averages
  * computed in JS off the same row set.
  */
 export async function getBookStats(bookId: string): Promise<BookStats> {
@@ -210,27 +305,42 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 			totalDurationMs: 0,
 			sessionCount: 0,
 			lastReadAt: null,
-			avgWpmRsvp: null,
+			measuredWpm: null,
+			dominantMode: null,
 			speedSeries: [],
 		};
 	}
 
 	let totalDurationMs = 0;
 	let lastReadAt = 0;
-	let rsvpSumWordsWpm = 0;
-	let rsvpSumWords = 0;
+	// Measured, not the dial: `wpmAvg` holds the RSVP target on rsvp rows, so it
+	// answers "how fast is the engine set", not "how fast was this book read".
+	let sumWords = 0;
+	let sumActiveMs = 0;
+	const wordsByMode = new Map<SpeedPoint["mode"], number>();
 	const speedSeries: SpeedPoint[] = [];
 
 	for (const r of rows) {
 		totalDurationMs += r.durationMs;
 		if (r.startedAt > lastReadAt) lastReadAt = r.startedAt;
-		if (r.mode === "rsvp" && r.wpmAvg != null) {
-			const w = Math.max(1, r.wordsRead);
-			rsvpSumWordsWpm += r.wpmAvg * w;
-			rsvpSumWords += w;
+		if (r.durationMs > MIN_MEASURABLE_MS && r.wordsRead > 0) {
+			sumWords += r.wordsRead;
+			sumActiveMs += r.durationMs;
+			wordsByMode.set(r.mode, (wordsByMode.get(r.mode) ?? 0) + r.wordsRead);
+			speedSeries.push({
+				startedAt: r.startedAt,
+				mode: r.mode,
+				wpm: Math.round(r.wordsRead / (r.durationMs / 60_000)),
+			});
 		}
-		if (r.wpmAvg != null) {
-			speedSeries.push({ startedAt: r.startedAt, mode: r.mode, wpm: r.wpmAvg });
+	}
+
+	let dominantMode: SpeedPoint["mode"] | null = null;
+	let dominantWords = 0;
+	for (const [mode, words] of wordsByMode) {
+		if (words > dominantWords) {
+			dominantMode = mode;
+			dominantWords = words;
 		}
 	}
 
@@ -238,7 +348,8 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 		totalDurationMs,
 		sessionCount: rows.length,
 		lastReadAt,
-		avgWpmRsvp: rsvpSumWords > 0 ? Math.round(rsvpSumWordsWpm / rsvpSumWords) : null,
+		measuredWpm: sumActiveMs > 0 ? Math.round(sumWords / (sumActiveMs / 60_000)) : null,
+		dominantMode,
 		speedSeries,
 	};
 }

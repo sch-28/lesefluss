@@ -68,6 +68,7 @@ async function getUserSyncData(
 		source: syncBooks.source,
 		catalogId: syncBooks.catalogId,
 		sourceUrl: syncBooks.sourceUrl,
+		finishedAt: syncBooks.finishedAt,
 		seriesId: syncBooks.seriesId,
 		chapterIndex: syncBooks.chapterIndex,
 		chapterSourceUrl: syncBooks.chapterSourceUrl,
@@ -126,6 +127,7 @@ async function getUserSyncData(
 				source: b.source,
 				catalogId: b.catalogId,
 				sourceUrl: b.sourceUrl,
+				finishedAt: b.finishedAt ? toMs(b.finishedAt) : null,
 				seriesId: b.seriesId,
 				chapterIndex: b.chapterIndex,
 				chapterSourceUrl: b.chapterSourceUrl,
@@ -282,6 +284,7 @@ export const Route = createFileRoute("/api/sync")({
 									source: book.source ?? null,
 									catalogId: book.catalogId ?? null,
 									sourceUrl: book.sourceUrl ?? null,
+									finishedAt: book.finishedAt != null ? toDate(book.finishedAt) : null,
 									seriesId: book.seriesId ?? null,
 									chapterIndex: book.chapterIndex ?? null,
 									chapterSourceUrl: book.chapterSourceUrl ?? null,
@@ -307,6 +310,9 @@ export const Route = createFileRoute("/api/sync")({
 									source: sql`COALESCE(excluded.source, sync_books.source)`,
 									catalogId: sql`COALESCE(excluded.catalog_id, sync_books.catalog_id)`,
 									sourceUrl: sql`COALESCE(excluded.source_url, sync_books.source_url)`,
+									// Sticky: a finish already recorded is never unset by a client that
+									// does not know the field, or by one that has not backfilled yet.
+									finishedAt: sql`COALESCE(sync_books.finished_at, excluded.finished_at)`,
 									seriesId: sql`COALESCE(excluded.series_id, sync_books.series_id)`,
 									chapterIndex: sql`COALESCE(excluded.chapter_index, sync_books.chapter_index)`,
 									chapterSourceUrl: sql`COALESCE(excluded.chapter_source_url, sync_books.chapter_source_url)`,

@@ -2,11 +2,28 @@ import { useRouter } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import CoverImage from "../../../components/cover-image";
 import { queryHooks } from "../../../services/db/hooks";
+import type { TopBook } from "../../../services/db/queries/stats";
 import { formatDuration } from "../../../utils/date-utils";
 
 interface Props {
 	since: number;
 	periodLabel: string;
+}
+
+/**
+ * One line of context under the card. The card is 140px wide, so this rations
+ * what fits: how fast it was read and how much of the work it covered. Length,
+ * session count and time remaining live on the detail page a tap away.
+ */
+function describeReading(b: TopBook): string {
+	const minutes = b.durationMs / 60_000;
+	const parts: string[] = [];
+	if (minutes > 0 && b.wordsRead > 0) parts.push(`${Math.round(b.wordsRead / minutes)} wpm`);
+	if (b.wordCount > 0) {
+		const share = (b.wordsRead / b.wordCount) * 100;
+		parts.push(share < 1 ? "<1% of it" : `${Math.round(share)}% of it`);
+	}
+	return parts.join(" · ");
 }
 
 export function TopBooks({ since, periodLabel }: Props) {
@@ -37,8 +54,14 @@ export function TopBooks({ since, periodLabel }: Props) {
 						return (
 							<motion.button
 								type="button"
-								key={b.bookId}
-								onClick={() => history.push(`/tabs/library/book/${b.bookId}`)}
+								key={b.workId}
+								onClick={() =>
+									history.push(
+										b.isSeries
+											? `/tabs/library/series/${b.workId}`
+											: `/tabs/library/book/${b.workId}`,
+									)
+								}
 								initial={{ opacity: 0, x: 16 }}
 								whileInView={{ opacity: 1, x: 0 }}
 								viewport={{ once: true }}
@@ -62,6 +85,9 @@ export function TopBooks({ since, periodLabel }: Props) {
 									{b.author && (
 										<div className="mt-0.5 line-clamp-1 text-[11px] opacity-60">{b.author}</div>
 									)}
+									<div className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground tabular-nums">
+										{describeReading(b)}
+									</div>
 								</div>
 							</motion.button>
 						);

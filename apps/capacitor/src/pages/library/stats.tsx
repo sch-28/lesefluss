@@ -40,7 +40,7 @@ const Stats: React.FC = () => {
 	const isInitialLoading = sessionCount.isLoading;
 
 	const topCover = topBooks.data?.[0]?.coverImage ?? null;
-	const topBookId = topBooks.data?.[0]?.bookId ?? null;
+	const topBookId = topBooks.data?.[0]?.workId ?? null;
 	const currentStreak = streak.data?.current ?? 0;
 	const longestStreak = streak.data?.longest ?? 0;
 

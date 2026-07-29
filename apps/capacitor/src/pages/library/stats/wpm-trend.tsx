@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useTheme } from "../../../contexts/theme-context";
 import { queryHooks } from "../../../services/db/hooks";
 import type { TrendGranularity, TrendPeriod } from "../../../services/stats/aggregate";
+import { AVERAGE_READER_WPM } from "../../../utils/reading-time";
 import { buildNivoTheme } from "./nivo-theme";
 
 const COLORS = {
@@ -11,8 +12,6 @@ const COLORS = {
 	rsvpDelivered: "#f4a261", // soft sand
 	read: { dark: "#94a3b8", light: "#475569" }, // slate
 } as const;
-
-const AVG_READER_WPM = 225;
 
 const MAX_AXIS_TICKS = 5;
 
@@ -124,7 +123,7 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 	const headlineLabel = headlineId ? LABELS[headlineId] : "";
 	const hasRsvpTarget = headlineId === "rsvpDelivered" && averages.rsvpTarget > 0;
 	const yMax = Math.max(
-		AVG_READER_WPM,
+		AVERAGE_READER_WPM,
 		hasRsvpTarget ? averages.rsvpTarget : 0,
 		...(headlineId ? seriesData[headlineId].map((point) => point.y) : [0]),
 	);
@@ -237,14 +236,14 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 					markers={[
 						{
 							axis: "y",
-							value: AVG_READER_WPM,
+							value: AVERAGE_READER_WPM,
 							lineStyle: {
 								stroke: theme === "dark" ? "#94a3b8" : "#64748b",
 								strokeWidth: 1,
 								strokeDasharray: "4 4",
 								strokeOpacity: 0.6,
 							},
-							legend: `Avg reader ${AVG_READER_WPM}`,
+							legend: `Avg reader ${AVERAGE_READER_WPM}`,
 							legendPosition: "top-left",
 							textStyle: { fontSize: 10, fill: "var(--muted-foreground)" },
 						},

@@ -3,6 +3,8 @@ import { localDateKey, previousLocalDayStart } from "../../../utils/date-utils";
 import {
 	bucketMinutesByHour,
 	buildWpmTrend,
+	type RateSession,
+	summariseReadingRates,
 	summariseStreak,
 	trendBucketsFor,
 	type WpmSession,
@@ -355,5 +357,77 @@ describe.each(["Europe/Berlin", "America/New_York"])("trendBucketsFor in %s", (t
 			const starts = trendBucketsFor(period, at(2026, 5, 10), at(2020, 1, 1)).starts;
 			expect([...starts].sort((a, b) => a - b)).toEqual(starts);
 		}
+	});
+});
+
+describe("summariseReadingRates", () => {
+	function rsvp(overrides: Partial<RateSession> = {}): RateSession {
+		return {
+			mode: "rsvp",
+			wpmAvg: 400,
+			wordsRead: 2600,
+			durationMs: minutes(10),
+			...overrides,
+		};
+	}
+
+	// The engine spends time on punctuation pauses and the accel ramp, so
+	// estimating from the dial alone runs short by roughly this much.
+	it("reports delivered as a fraction of the dial", () => {
+		const rates = summariseReadingRates([rsvp()]);
+		expect(rates.rsvpDeliveredRatio).toBeCloseTo(260 / 400, 5);
+	});
+
+	// Both halves must come from the same rows. Counting a dial-less session's
+	// words as delivered while excluding it from the target divides one
+	// population by another.
+	it("ignores rsvp sessions with no recorded dial", () => {
+		const withDial = summariseReadingRates([rsvp()]);
+		const withExtra = summariseReadingRates([
+			rsvp(),
+			rsvp({ wpmAvg: null, wordsRead: 9000, durationMs: minutes(10) }),
+		]);
+		expect(withExtra.rsvpDeliveredRatio).toBe(withDial.rsvpDeliveredRatio);
+	});
+
+	it("has no ratio without rsvp history", () => {
+		const rates = summariseReadingRates([
+			{ mode: "scroll", wpmAvg: 240, wordsRead: 2400, durationMs: minutes(10) },
+		]);
+		expect(rates.rsvpDeliveredRatio).toBeNull();
+		expect(rates.scrollWpm).toBe(240);
+	});
+
+	it("keeps scroll and page apart", () => {
+		const rates = summariseReadingRates([
+			{ mode: "scroll", wpmAvg: null, wordsRead: 3000, durationMs: minutes(10) },
+			{ mode: "page", wpmAvg: null, wordsRead: 1000, durationMs: minutes(10) },
+		]);
+		expect(rates.scrollWpm).toBe(300);
+		expect(rates.pageWpm).toBe(100);
+	});
+
+	// One glanced-at paragraph should not move an estimate built from hours.
+	it("weights by words, not by session", () => {
+		const rates = summariseReadingRates([
+			{ mode: "scroll", wpmAvg: null, wordsRead: 30_000, durationMs: minutes(100) },
+			{ mode: "scroll", wpmAvg: null, wordsRead: 20, durationMs: minutes(2) },
+		]);
+		expect(rates.scrollWpm).toBe(294);
+	});
+
+	it("ignores sittings too short to measure", () => {
+		const rates = summariseReadingRates([
+			{ mode: "scroll", wpmAvg: null, wordsRead: 5, durationMs: 500 },
+		]);
+		expect(rates.scrollWpm).toBeNull();
+	});
+
+	it("returns nulls for no history at all", () => {
+		expect(summariseReadingRates([])).toEqual({
+			rsvpDeliveredRatio: null,
+			scrollWpm: null,
+			pageWpm: null,
+		});
 	});
 });

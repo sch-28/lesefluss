@@ -36,6 +36,9 @@ export const SyncBookSchema = z.object({
 	source: z.string().max(50).nullable().optional(), // 'gutenberg' | 'standard_ebooks' | 'url' | null
 	catalogId: z.string().max(200).nullable().optional(), // e.g. 'gutenberg:1342'
 	sourceUrl: z.string().max(2000).nullable().optional(), // original URL for source='url' imports
+	// Optional so clients that pre-date the field still validate; absent means
+	// "unknown", not "never finished".
+	finishedAt: z.number().int().nonnegative().nullable().optional(),
 	// Serial chapter membership (null for standalone books)
 	seriesId: z
 		.string()

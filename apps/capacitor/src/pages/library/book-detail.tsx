@@ -26,6 +26,7 @@ import { queryHooks } from "../../services/db/hooks";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { IS_WEB } from "../../utils/platform";
+import { estimatePages } from "../../utils/reading-time";
 import { DetailShell } from "../_shared/detail-shell";
 import { BookStatsCard } from "./book-stats-card";
 import { SessionTable } from "./session-table";
@@ -129,8 +130,19 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					? displayHostname(book.sourceUrl)
 					: null;
 
+	// Pages, not time: time measures the reader, so two books at nine and four
+	// hours say nothing comparable about the books. Suppressed for serial
+	// chapters, where a page count per chapter is noise.
+	const pages = book.seriesId === null && book.wordCount > 0 ? estimatePages(book.wordCount) : null;
+
 	const statsLine = (
 		<>
+			{pages !== null && (
+				<>
+					<span>~{pages.toLocaleString()} pages</span>
+					<span>·</span>
+				</>
+			)}
 			<span>{progress}% read</span>
 			<span>·</span>
 			<span>

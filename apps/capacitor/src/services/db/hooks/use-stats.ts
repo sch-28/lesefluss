@@ -41,6 +41,13 @@ function useWpmTrend(period: TrendPeriod, now: number) {
 	});
 }
 
+function useReadingRates() {
+	return useQuery({
+		queryKey: statsKeys.readingRates,
+		queryFn: () => queries.getReadingRates(),
+	});
+}
+
 function useHourHistogram() {
 	return useQuery({
 		queryKey: statsKeys.hourHistogram,
@@ -63,5 +70,6 @@ export const statsHooks = {
 	useTopBooks,
 	useWpmTrend,
 	useHourHistogram,
+	useReadingRates,
 	useBookStats,
 };

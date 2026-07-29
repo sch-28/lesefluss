@@ -9,6 +9,12 @@ import { buildNivoTheme } from "./stats/nivo-theme";
 
 const RSVP_COLOR = "#c94b2a";
 
+const MODE_LABELS: Record<"rsvp" | "scroll" | "page", string> = {
+	rsvp: "RSVP",
+	scroll: "scrolling",
+	page: "page turns",
+};
+
 interface Props {
 	bookId: string;
 }
@@ -82,10 +88,10 @@ export function BookStatsCard({ bookId }: Props) {
 				</div>
 			)}
 
-			{data.avgWpmRsvp != null && (
+			{data.measuredWpm != null && (
 				<p className="mt-3 text-xs opacity-70">
-					Average RSVP target: <span className="font-semibold tabular-nums">{data.avgWpmRsvp}</span>{" "}
-					WPM
+					<span className="font-semibold tabular-nums">{data.measuredWpm}</span> words per minute
+					{data.dominantMode && ` · mostly ${MODE_LABELS[data.dominantMode]}`}
 				</p>
 			)}
 		</motion.section>

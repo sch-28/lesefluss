@@ -332,6 +332,7 @@ export function bookToSync(book: Book, contentData?: BookContent | null): SyncBo
 					linkRanges: contentData.linkRanges,
 				}
 			: {}),
+		finishedAt: book.finishedAt,
 		updatedAt: Math.max(book.lastRead ?? 0, book.addedAt),
 	};
 }
@@ -446,6 +447,7 @@ function buildBookRowFromServer(
 		isActive: false,
 		addedAt: serverBook.updatedAt,
 		lastRead: null,
+		finishedAt: serverBook.finishedAt ?? null,
 		source: serverBook.source ?? null,
 		catalogId: serverBook.catalogId ?? null,
 		sourceUrl: serverBook.sourceUrl ?? null,
@@ -659,6 +661,13 @@ export async function pullSync(): Promise<Set<string>> {
 				continue;
 			}
 
+			// Independent of the updatedAt gate: a finish recorded on another device
+			// is a fact this one lacks, and it does not move the reading position.
+			if (serverBook.finishedAt != null && local.finishedAt == null) {
+				await queries.updateBook(serverBook.bookId, { finishedAt: serverBook.finishedAt });
+				changed = true;
+			}
+
 			const localUpdatedAt = Math.max(local.lastRead ?? 0, local.addedAt);
 			if (serverBook.updatedAt > localUpdatedAt) {
 				const update: Parameters<typeof queries.updateBook>[1] = {
@@ -671,7 +680,10 @@ export async function pullSync(): Promise<Set<string>> {
 				if (serverBook.wordCount != null && serverBook.wordCount !== local.wordCount) {
 					update.wordCount = serverBook.wordCount;
 				}
-				await queries.updateBook(serverBook.bookId, update);
+				// Stamped with the server's timestamp, not now: this replays a change
+				// made on another device, and a finish that happened in March must
+				// not be recorded as happening today.
+				await queries.updateBook(serverBook.bookId, update, serverBook.updatedAt);
 				changed = true;
 			}
 		}

@@ -37,6 +37,7 @@ export const syncBooks = pgTable(
 		source: text("source"), // 'gutenberg' | 'standard_ebooks' | 'url' | 'serial' | null
 		catalogId: text("catalog_id"), // e.g. 'gutenberg:1342'
 		sourceUrl: text("source_url"), // original URL for source='url' imports
+		finishedAt: timestamp("finished_at"), // first crossing of the finished threshold
 		deleted: boolean("deleted").notNull().default(false), // sticky tombstone
 		// Serial/web-novel chapter membership. NULL series_id = standalone book.
 		seriesId: text("series_id"),
