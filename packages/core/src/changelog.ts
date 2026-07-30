@@ -9,6 +9,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-07-30",
+		title: "Reading Stats, Rebuilt",
+		tags: ["App"],
+		changes: [
+			"The streak heatmap is now a month calendar you can page through, with connected days so a streak reads as one run",
+			"Stats gained a Records section, and the book detail page now shows time read, your chapter list, and a jump to any chapter",
+			"Skipping ahead in a book no longer counts as reading time, so your average speed stays accurate",
+		],
+	},
+	{
 		date: "2026-07-28",
 		title: "Much Lighter Syncing",
 		tags: ["App", "Website"],
