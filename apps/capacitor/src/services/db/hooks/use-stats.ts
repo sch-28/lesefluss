@@ -77,7 +77,23 @@ function useFinishedBooks() {
 	});
 }
 
+function useReadingRecords() {
+	return useQuery({
+		queryKey: statsKeys.records,
+		queryFn: () => queries.getReadingRecords(),
+	});
+}
+
+function useDailyReadingMs() {
+	return useQuery({
+		queryKey: statsKeys.dailyMs,
+		queryFn: () => queries.getDailyReadingMs(),
+	});
+}
+
 export const statsHooks = {
+	useDailyReadingMs,
+	useReadingRecords,
 	useCurrentlyReading,
 	useFinishedBooks,
 	usePeriodTotals,

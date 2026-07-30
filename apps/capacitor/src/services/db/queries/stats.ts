@@ -1,5 +1,7 @@
 import { wordPos } from "@lesefluss/core";
 import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { formatShortDate } from "../../../utils/date-utils";
+import { readingProgress } from "../../../utils/reading-progress";
 import {
 	bucketMinutesByHour,
 	buildWpmTrend,
@@ -7,14 +9,14 @@ import {
 	type ReadingRates,
 	rollUpWorks,
 	type StreakResult,
+	sumDurationByLocalDay,
 	summariseReadingRates,
 	summariseStreak,
 	type TrendPeriod,
 	trendBucketsFor,
 	type WpmTrend,
 } from "../../stats/aggregate";
-import { formatShortDate } from "../../../utils/date-utils";
-import { readingProgress } from "../../../utils/reading-progress";
+import { type ReadingRecords, summariseRecords } from "../../stats/records";
 import { db } from "../index";
 import { bookContent, books, readingSessions, series } from "../schema";
 
@@ -77,7 +79,7 @@ export async function getPeriodTotals(
  * timezone info.
  */
 export async function getStreak(): Promise<StreakResult> {
-	// Every session, not just the heatmap window: "longest streak" is all-time.
+	// Every session: "longest streak" is all-time.
 	const rows = await db
 		.select({
 			startedAt: readingSessions.startedAt,
@@ -295,6 +297,57 @@ async function coversFor(ids: string[]): Promise<Map<string, string | null>> {
 		.from(bookContent)
 		.where(inArray(bookContent.bookId, ids));
 	return new Map(rows.map((row) => [row.bookId, row.coverImage]));
+}
+
+/**
+ * Active milliseconds per local day, all time, keyed `YYYY-MM-DD`.
+ *
+ * All time rather than a window: the streak calendar pages through history, and
+ * a window would make older months silently empty. One scan feeds every month.
+ */
+export async function getDailyReadingMs(): Promise<Map<string, number>> {
+	const rows = await db
+		.select({ startedAt: readingSessions.startedAt, durationMs: readingSessions.durationMs })
+		.from(readingSessions);
+	return sumDurationByLocalDay(rows);
+}
+
+/**
+ * Personal bests over the whole history.
+ *
+ * Unbounded like `getStreak` and `getHourHistogram`, which already read every
+ * session for the same reason: a record is by definition all-time, so a window
+ * would silently cap it.
+ */
+export async function getReadingRecords(): Promise<ReadingRecords> {
+	const [sessions, bookRows] = await Promise.all([
+		db
+			.select({
+				bookId: readingSessions.bookId,
+				startedAt: readingSessions.startedAt,
+				durationMs: readingSessions.durationMs,
+				wordsRead: readingSessions.wordsRead,
+			})
+			.from(readingSessions)
+			// Ordered so ties resolve to the earliest record-setting sitting rather
+			// than to whatever the storage engine returns first.
+			.orderBy(readingSessions.startedAt),
+		db
+			.select({
+				id: books.id,
+				title: books.title,
+				wordCount: books.wordCount,
+				finishedAt: books.finishedAt,
+				seriesId: books.seriesId,
+			})
+			.from(books)
+			.where(eq(books.deleted, false))
+			// Ordered so a tie between two equally long books resolves the same way
+			// on every render rather than however the storage engine returns them.
+			.orderBy(books.addedAt),
+	]);
+
+	return summariseRecords(sessions, bookRows);
 }
 
 export async function getWpmTrend(opts: { period: TrendPeriod; now: number }): Promise<WpmTrend> {

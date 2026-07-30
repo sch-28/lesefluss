@@ -3,7 +3,13 @@ import { AVERAGE_READER_WPM } from "../../../utils/reading-time";
 import { summariseBookReading } from "../book-summary";
 
 function book(overrides: Partial<Parameters<typeof summariseBookReading>[0]> = {}) {
-	return { seriesId: null, wordCount: 100_000, wordPosition: 50_000, finishedAt: null, ...overrides };
+	return {
+		seriesId: null,
+		wordCount: 100_000,
+		wordPosition: 50_000,
+		finishedAt: null,
+		...overrides,
+	};
 }
 
 describe("summariseBookReading", () => {

@@ -117,7 +117,7 @@ export const statsKeys = {
 	closedPeriodTotals: (start: number, end: number) =>
 		["stats", "period", "closed", start, end] as const,
 
-	/** Streak headline + 90-day series. */
+	/** Current and longest streak. */
 	streak: ["stats", "streak"] as const,
 
 	/** Top-N books since a cutoff. */
@@ -138,6 +138,12 @@ export const statsKeys = {
 	/** Cover shelves on the stats page. */
 	currentlyReading: ["stats", "currently-reading"] as const,
 	finishedBooks: ["stats", "finished-books"] as const,
+
+	/** All-time personal bests. */
+	records: ["stats", "records"] as const,
+
+	/** Per-day totals behind the streak calendar. */
+	dailyMs: ["stats", "daily-ms"] as const,
 };
 
 /**

@@ -8,7 +8,8 @@
  */
 import { formatDuration } from "../../utils/date-utils";
 import { AVERAGE_READER_WPM } from "../../utils/reading-time";
-import type { DailyMinutes, SpeedBucket, WpmTrend } from "./aggregate";
+import type { SpeedBucket, WpmTrend } from "./aggregate";
+import type { CalendarDay } from "./calendar";
 
 const MS_PER_MINUTE = 60_000;
 
@@ -20,16 +21,26 @@ function formatDayLong(epochMs: number): string {
 	return new Date(epochMs).toLocaleDateString(undefined, { month: "long", day: "numeric" });
 }
 
-export function summariseHeatmap(days: DailyMinutes[]): string {
-	const active = days.filter((d) => d.minutes > 0);
-	if (active.length === 0) return "No reading recorded in the last 90 days.";
+/**
+ * Text equivalent of the streak calendar for one month.
+ *
+ * Replaces the 90-day heatmap summary: the grid now shows a month at a time, so
+ * a fixed-window sentence would describe something the reader cannot see.
+ */
+export function summariseMonth(days: CalendarDay[], monthLabel: string): string {
+	const inMonth = days.filter((day) => day.isInMonth);
+	// `intensity` already carries the thresholded verdict, so the label counts the
+	// same days the grid lights up. Filtering on `durationMs > 0` announced
+	// reading that is not drawn.
+	const read = inMonth.filter((day) => day.intensity > 0);
+	if (read.length === 0) return `${monthLabel}: no reading recorded.`;
 
-	const totalMinutes = active.reduce((sum, d) => sum + d.minutes, 0);
-	const best = active.reduce((a, b) => (b.minutes > a.minutes ? b : a));
+	const totalMs = read.reduce((sum, day) => sum + day.durationMs, 0);
+	const best = read.reduce((a, b) => (b.durationMs > a.durationMs ? b : a));
 	return (
-		`Read on ${active.length} of the last ${days.length} days, ` +
-		`${formatDuration(totalMinutes * MS_PER_MINUTE)} in total. ` +
-		`Longest day was ${formatDayLong(best.dayStart)} at ${formatDuration(best.minutes * MS_PER_MINUTE)}.`
+		`${monthLabel}: read on ${read.length} of ${inMonth.length} days, ` +
+		`${formatDuration(totalMs)} in total. ` +
+		`Longest day was ${formatDayLong(best.dayStart)} at ${formatDuration(best.durationMs)}.`
 	);
 }
 
@@ -58,7 +69,9 @@ export function summariseWpmTrend(trend: WpmTrend, periodLabel: string): string 
 	const low = Math.min(...rates);
 	const high = Math.max(...rates);
 	const range =
-		low === high ? `steady at ${low}` : `ranging from ${low} to ${high} across ${points.length} points`;
+		low === high
+			? `steady at ${low}`
+			: `ranging from ${low} to ${high} across ${points.length} points`;
 	const target =
 		trend.averages.rsvpTarget > 0 ? ` RSVP dial set to ${trend.averages.rsvpTarget}.` : "";
 	return (
@@ -76,8 +89,7 @@ export function summariseSpeedBuckets(buckets: SpeedBucket[]): string {
 	const sittings = buckets.reduce((sum, b) => sum + b.sessions, 0);
 	const first = buckets[0]?.wpm ?? 0;
 	const last = buckets[buckets.length - 1]?.wpm ?? 0;
-	const direction =
-		last > first ? "speeding up" : last < first ? "slowing down" : "holding steady";
+	const direction = last > first ? "speeding up" : last < first ? "slowing down" : "holding steady";
 
 	return (
 		`Speed across ${sittings} ${sittings === 1 ? "sitting" : "sittings"}, ` +

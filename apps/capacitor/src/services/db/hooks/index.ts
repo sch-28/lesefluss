@@ -155,6 +155,8 @@ export const queryHooks = {
 	useStatsBook: statsHooks.useBookStats,
 	useStatsCurrentlyReading: statsHooks.useCurrentlyReading,
 	useStatsFinishedBooks: statsHooks.useFinishedBooks,
+	useStatsRecords: statsHooks.useReadingRecords,
+	useStatsDailyMs: statsHooks.useDailyReadingMs,
 
 	// ── Reading sessions ──────────────────────────────────────────────────
 	useReadingSessionsPage: readingSessionHooks.useReadingSessionsPage,

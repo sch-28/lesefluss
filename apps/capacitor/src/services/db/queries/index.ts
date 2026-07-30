@@ -75,12 +75,14 @@ import {
 import { getSettings, saveSettings } from "./settings";
 import {
 	getBookStats,
+	getCurrentlyReading,
+	getDailyReadingMs,
+	getFinishedBooks,
 	getHourHistogram,
 	getPeriodTotals,
 	getReadingRates,
+	getReadingRecords,
 	getStreak,
-	getCurrentlyReading,
-	getFinishedBooks,
 	getTopBooks,
 	getWpmTrend,
 } from "./stats";
@@ -139,6 +141,8 @@ export const queries = {
 	getStreak,
 	getCurrentlyReading,
 	getFinishedBooks,
+	getDailyReadingMs,
+	getReadingRecords,
 	getTopBooks,
 	getWpmTrend,
 	getHourHistogram,

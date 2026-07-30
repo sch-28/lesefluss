@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { localDateKey, previousLocalDayStart } from "../../../utils/date-utils";
 import {
 	bucketMinutesByHour,
 	bucketSpeedSeries,
@@ -56,6 +55,18 @@ describe.each([
 		expect(result.current).toBe(1);
 	});
 
+	// Exactly one minute, split so that summing minutes per row lands on
+	// 0.9999999999999999 and drops the day. Summing milliseconds first does not.
+	it("counts a day that reaches the threshold only when summed in milliseconds", () => {
+		const day = at(2026, 5, 10);
+		const rows = [41_756, 5_223, 13_021].map((durationMs, i) => ({
+			startedAt: day + i * 60_000,
+			durationMs,
+		}));
+		expect(rows.reduce((sum, r) => sum + r.durationMs, 0)).toBe(60_000);
+		expect(summariseStreak(rows, at(2026, 5, 10, 23)).current).toBe(1);
+	});
+
 	it("ignores a day that stays under the threshold in total", () => {
 		const day = at(2026, 5, 10);
 		const result = summariseStreak([{ startedAt: day, durationMs: 20_000 }], day + minutes(60));
@@ -94,40 +105,12 @@ describe.each([
 		expect(result.current).toBe(2);
 		expect(result.longest).toBe(10);
 	});
-
-	it("returns 90 consecutive local days ending today", () => {
-		const now = at(2026, 11, 15);
-		expectContiguousWindowEndingToday(summariseStreak([], now).last90Days, now);
-	});
 });
 
-/**
- * The window must end on today and step exactly one local day at a time. A
- * distinct-date count is not enough: a fixed-millisecond grid can skip a
- * calendar day at spring-forward and overshoot the end while still producing 90
- * distinct keys.
- */
-function expectContiguousWindowEndingToday(
-	days: { date: string; dayStart: number }[],
-	now: number,
-) {
-	expect(days).toHaveLength(90);
-	expect(days.at(-1)?.date).toBe(localDateKey(now));
-	for (let i = days.length - 1; i > 0; i--) {
-		expect(days[i - 1]?.date).toBe(localDateKey(previousLocalDayStart(days[i]?.dayStart ?? 0)));
-	}
-}
-
-describe.each([
-	["autumn fall-back", 2026, 11, 15],
-	["spring forward", 2026, 4, 20],
-])("summariseStreak across %s", (_label, year, month, day) => {
+describe("summariseStreak across a DST transition", () => {
+	// New York rather than Berlin: a negative UTC offset is where naive UTC-based
+	// day maths puts a sitting on the wrong calendar day.
 	useTimezone("America/New_York");
-
-	it("keeps the 90-day window contiguous and ending today", () => {
-		const now = at(year, month, day);
-		expectContiguousWindowEndingToday(summariseStreak([], now).last90Days, now);
-	});
 
 	it("keeps a streak intact across the transition", () => {
 		const rows = [at(2026, 10, 31), at(2026, 11, 1), at(2026, 11, 2)].map((startedAt) => ({
@@ -316,8 +299,8 @@ describe.each(["Europe/Berlin", "America/New_York"])("buildWpmTrend in %s", (tz)
 			[
 				{ startedAt: now, mode: "rsvp", wpmAvg: 400, words: 1000, durationMs: minutes(10) },
 				// wpmAvg deliberately unrelated to the measured rate: reading the dial
-			// instead of words/duration on a non-RSVP row has to change the answer.
-			{ startedAt: now, mode: "scroll", wpmAvg: 999, words: 3000, durationMs: minutes(10) },
+				// instead of words/duration on a non-RSVP row has to change the answer.
+				{ startedAt: now, mode: "scroll", wpmAvg: 999, words: 3000, durationMs: minutes(10) },
 			],
 			trendBucketsFor("30d", now),
 		);

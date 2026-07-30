@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { DailyMinutes, SpeedBucket, WpmTrend } from "../aggregate";
+import type { SpeedBucket, WpmTrend } from "../aggregate";
+import type { CalendarDay } from "../calendar";
 import {
-	summariseHeatmap,
 	summariseHours,
+	summariseMonth,
 	summariseSpeedBuckets,
 	summariseWpmTrend,
 } from "../summaries";
@@ -15,27 +16,64 @@ afterAll(() => {
 	process.env.TZ = ORIGINAL_TZ;
 });
 
-function day(date: string, minutes: number): DailyMinutes {
-	const [y, m, d] = date.split("-").map(Number);
-	return { date, dayStart: new Date(y as number, (m as number) - 1, d).getTime(), minutes };
-}
+describe("summariseMonth", () => {
+	function calDay(dateKey: string, minutes: number, isInMonth = true): CalendarDay {
+		const [y, m, d] = dateKey.split("-").map(Number);
+		const dayStart = new Date(y as number, (m as number) - 1, d).getTime();
+		return {
+			dateKey,
+			dayStart,
+			durationMs: minutes * 60_000,
+			isInMonth,
+			intensity: minutes > 0 ? 1 : 0,
+			linksBefore: false,
+			linksAfter: false,
+		};
+	}
 
-describe("summariseHeatmap", () => {
-	it("names the day count, the total and the best day", () => {
-		const summary = summariseHeatmap([
-			day("2026-05-01", 30),
-			day("2026-05-02", 0),
-			day("2026-05-03", 90),
-		]);
-		expect(summary).toContain("Read on 2 of the last 3 days");
+	it("counts days read against the days in the month", () => {
+		const summary = summariseMonth(
+			[calDay("2026-05-01", 30), calDay("2026-05-02", 0), calDay("2026-05-03", 90)],
+			"May",
+		);
+		expect(summary).toContain("read on 2 of 3 days");
 		expect(summary).toContain("2h");
 		expect(summary).toContain("May 3");
 	});
 
-	it("says so rather than inventing a best day when nothing was read", () => {
-		expect(summariseHeatmap([day("2026-05-01", 0)])).toBe(
-			"No reading recorded in the last 90 days.",
+	// The grid pads to whole weeks, so the denominator must ignore the padding or
+	// a 31-day month reports "of 35 days".
+	it("ignores the padding days from adjacent months", () => {
+		const summary = summariseMonth(
+			[
+				calDay("2026-04-27", 60, false),
+				calDay("2026-05-01", 30),
+				calDay("2026-05-02", 0),
+				calDay("2026-06-01", 60, false),
+			],
+			"May",
 		);
+		expect(summary).toContain("read on 1 of 2 days");
+		expect(summary).not.toContain("April");
+	});
+
+	// The grid drops a day under the streak threshold, so the label must too.
+	// `intensity` is the thresholded verdict; `durationMs` is not.
+	it("ignores a day the grid did not light up", () => {
+		const belowThreshold: CalendarDay = { ...calDay("2026-05-12", 0), durationMs: 30_000 };
+		const summary = summariseMonth([calDay("2026-05-11", 40), belowThreshold], "May");
+		expect(summary).toContain("read on 1 of 2 days");
+		expect(summary).not.toContain("May 12");
+	});
+
+	it("says so for a month with no reading", () => {
+		expect(summariseMonth([calDay("2026-05-01", 0)], "May")).toBe("May: no reading recorded.");
+	});
+
+	it("handles a month with a single read day", () => {
+		const summary = summariseMonth([calDay("2026-05-04", 45)], "May");
+		expect(summary).toContain("read on 1 of 1 days");
+		expect(summary).toContain("May 4");
 	});
 });
 

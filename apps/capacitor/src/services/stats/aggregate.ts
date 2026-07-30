@@ -5,25 +5,14 @@
  */
 import { localDateKey, previousLocalDayStart, startOfLocalDay } from "../../utils/date-utils";
 
-const HEATMAP_DAYS = 90;
 const MS_PER_DAY = 86_400_000;
 
 /** A local day counts toward a streak once its sessions sum to this much. */
-const MIN_STREAK_MINUTES = 1;
-
-export interface DailyMinutes {
-	/** YYYY-MM-DD local date key. */
-	date: string;
-	/** Epoch ms at start of that local day (sortable). */
-	dayStart: number;
-	minutes: number;
-}
+export const MIN_STREAK_MINUTES = 1;
 
 export interface StreakResult {
 	current: number;
 	longest: number;
-	/** Last 90 local days, oldest → newest. Days with no activity have minutes = 0. */
-	last90Days: DailyMinutes[];
 }
 
 export interface SessionTiming {
@@ -48,11 +37,26 @@ function weekStartLocal(epochMs: number): number {
 	return cursor;
 }
 
+/**
+ * Active milliseconds per local day, keyed by `localDateKey`.
+ *
+ * Local rather than UTC: a sitting at 00:30 belongs to the day the reader thinks
+ * it does. Shared by the streak scan and the best-day record, which were
+ * bucketing the same rows two different ways.
+ */
+export function sumDurationByLocalDay(rows: SessionTiming[]): Map<string, number> {
+	const msByDay = new Map<string, number>();
+	for (const row of rows) {
+		const key = localDateKey(row.startedAt);
+		msByDay.set(key, (msByDay.get(key) ?? 0) + row.durationMs);
+	}
+	return msByDay;
+}
+
 export function summariseStreak(rows: SessionTiming[], now: number): StreakResult {
 	const minutesByDay = new Map<string, number>();
-	for (const r of rows) {
-		const key = localDateKey(r.startedAt);
-		minutesByDay.set(key, (minutesByDay.get(key) ?? 0) + r.durationMs / 60_000);
+	for (const [key, ms] of sumDurationByLocalDay(rows)) {
+		minutesByDay.set(key, ms / 60_000);
 	}
 	// Threshold applies to the day's total, not to each sitting: several short
 	// sittings are still a day's reading.
@@ -60,17 +64,8 @@ export function summariseStreak(rows: SessionTiming[], now: number): StreakResul
 		if (minutes < MIN_STREAK_MINUTES) minutesByDay.delete(key);
 	}
 
-	const last90Days: DailyMinutes[] = [];
-	let cursor = startOfLocalDay(now);
-	for (let i = 0; i < HEATMAP_DAYS; i++) {
-		const date = localDateKey(cursor);
-		last90Days.push({ date, dayStart: cursor, minutes: Math.round(minutesByDay.get(date) ?? 0) });
-		cursor = previousLocalDayStart(cursor);
-	}
-	last90Days.reverse();
-
 	let current = 0;
-	cursor = startOfLocalDay(now);
+	let cursor = startOfLocalDay(now);
 	if (!minutesByDay.has(localDateKey(cursor))) cursor = previousLocalDayStart(cursor);
 	while (minutesByDay.has(localDateKey(cursor))) {
 		current++;
@@ -95,7 +90,7 @@ export function summariseStreak(rows: SessionTiming[], now: number): StreakResul
 		expected = previousLocalDayStart(dayStart);
 	}
 
-	return { current, longest: Math.max(longest, current), last90Days };
+	return { current, longest: Math.max(longest, current) };
 }
 
 export interface SessionSpan {

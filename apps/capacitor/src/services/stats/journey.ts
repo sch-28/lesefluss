@@ -47,7 +47,8 @@ export function buildJourney(input: JourneyInput): Journey {
 	// local session exists. Measuring to it would report a week of reading as one
 	// day, and would order the milestones backwards.
 	const hasUsableFinish =
-		input.finishedAt != null && (input.firstReadAt == null || input.finishedAt >= input.firstReadAt);
+		input.finishedAt != null &&
+		(input.firstReadAt == null || input.finishedAt >= input.firstReadAt);
 	const end = hasUsableFinish ? input.finishedAt : input.lastReadAt;
 	const spanDays =
 		input.firstReadAt != null && end != null

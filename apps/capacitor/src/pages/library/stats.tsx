@@ -9,6 +9,7 @@ import { EmptyState } from "./stats/empty-state";
 import { Hero } from "./stats/hero";
 import { PERIOD_LABELS, type Period, periodWindow } from "./stats/period";
 import { PeriodTotals } from "./stats/period-totals";
+import { RecordsCard } from "./stats/records-card";
 import { CurrentlyReadingShelf } from "./stats/currently-reading-shelf";
 import { FinishedShelf } from "./stats/finished-shelf";
 import { TopBooks } from "./stats/top-books";
@@ -55,11 +56,7 @@ const Stats: React.FC = () => {
 				<EmptyState />
 			) : (
 				<>
-					<Hero
-						currentStreak={currentStreak}
-						longestStreak={longestStreak}
-						last90Days={streak.data?.last90Days ?? []}
-					/>
+					<Hero currentStreak={currentStreak} longestStreak={longestStreak} />
 
 					{/* Period control sits with the sections it drives. */}
 					<PeriodTotals now={now} period={period} range={range} onPeriodChange={setPeriod} />
@@ -77,8 +74,9 @@ const Stats: React.FC = () => {
 
 					<WpmTrend period={period} periodLabel={PERIOD_LABELS[period]} now={now} />
 
-					{/* Always all-time, so it sits below the sections the period tabs drive. */}
+					{/* Always all-time, so these sit below the sections the period tabs drive. */}
 					<Activity />
+					<RecordsCard />
 
 					<div className="px-4">
 						<SessionTable mode="global" />

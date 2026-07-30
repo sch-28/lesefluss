@@ -10,7 +10,9 @@ export function FinishedShelf() {
 	return (
 		<BookShelf
 			title="Finished"
-			subtitle={total > 0 ? `${total} ${total === 1 ? "book" : "books"} · newest first` : "all time"}
+			subtitle={
+				total > 0 ? `${total} ${total === 1 ? "book" : "books"} · newest first` : "all time"
+			}
 			books={finished.data?.books ?? []}
 			isPending={finished.isPending}
 			emptyMessage="No finished books yet."

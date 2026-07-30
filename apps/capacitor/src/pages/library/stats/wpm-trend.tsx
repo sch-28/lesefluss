@@ -4,10 +4,10 @@ import { useMemo } from "react";
 import { useTheme } from "../../../contexts/theme-context";
 import { queryHooks } from "../../../services/db/hooks";
 import type { TrendGranularity, TrendPeriod } from "../../../services/stats/aggregate";
+import { summariseWpmTrend } from "../../../services/stats/summaries";
 import { AVERAGE_READER_WPM } from "../../../utils/reading-time";
 import { evenTickIndices, formatDayTick } from "./chart-axis";
 import { ChartTooltip } from "./chart-tooltip";
-import { summariseWpmTrend } from "../../../services/stats/summaries";
 import { buildNivoTheme } from "./nivo-theme";
 
 const COLORS = {

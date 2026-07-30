@@ -212,7 +212,9 @@ export async function getSeriesActivity(): Promise<Map<string, SeriesActivity>> 
 		.select({
 			seriesId: books.seriesId,
 			total: sql<number>`COUNT(*)`.as("total"),
-			started: sql<number>`SUM(CASE WHEN ${books.wordPosition} > 0 THEN 1 ELSE 0 END)`.as("started"),
+			started: sql<number>`SUM(CASE WHEN ${books.wordPosition} > 0 THEN 1 ELSE 0 END)`.as(
+				"started",
+			),
 			finished:
 				sql<number>`SUM(CASE WHEN ${books.wordCount} > 0 AND ${books.wordPosition} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD} THEN 1 ELSE 0 END)`.as(
 					"finished",
