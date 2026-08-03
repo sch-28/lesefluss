@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildMonthGrid, shiftMonth } from "../calendar";
+import { buildMonthGrid, buildWeekStrip, shiftMonth } from "../calendar";
 
 const ORIGINAL_TZ = process.env.TZ;
 const MINUTE = 60_000;
@@ -151,6 +151,66 @@ describe("buildMonthGrid across a DST transition", () => {
 		expect(inMonth).toHaveLength(31);
 		expect(new Set(inMonth.map((day) => day.dateKey)).size).toBe(31);
 		expect(inMonth.some((day) => day.dateKey === "2026-10-26")).toBe(true);
+	});
+});
+
+describe("buildWeekStrip", () => {
+	useTimezone("Europe/Berlin");
+
+	function dayOf(year: number, month: number, day: number): number {
+		return new Date(year, month - 1, day).getTime();
+	}
+
+	it("starts the strip on the Monday of the containing week", () => {
+		// 13 May 2026 is a Wednesday.
+		const week = buildWeekStrip(new Map(), dayOf(2026, 5, 13));
+		expect(week).toHaveLength(7);
+		expect(week[0]?.dateKey).toBe("2026-05-11");
+		expect(new Date(week[0]?.dayStart ?? 0).getDay()).toBe(1);
+	});
+
+	it("keeps a Sunday in the week that began the previous Monday", () => {
+		// 17 May 2026 is a Sunday; Sunday-first getDay() would start a new week here.
+		const week = buildWeekStrip(new Map(), dayOf(2026, 5, 17));
+		expect(week[0]?.dateKey).toBe("2026-05-11");
+		expect(week[6]?.dateKey).toBe("2026-05-17");
+	});
+
+	it("spans a month boundary without dropping days", () => {
+		// The week of 1 May 2026 (a Friday) starts on 27 April.
+		const week = buildWeekStrip(new Map(), dayOf(2026, 5, 1));
+		expect(week.map((day) => day.dateKey)).toEqual([
+			"2026-04-27",
+			"2026-04-28",
+			"2026-04-29",
+			"2026-04-30",
+			"2026-05-01",
+			"2026-05-02",
+			"2026-05-03",
+		]);
+	});
+
+	it("spans a year boundary", () => {
+		// 1 January 2027 is a Friday; its week starts 28 December 2026.
+		const week = buildWeekStrip(new Map(), dayOf(2027, 1, 1));
+		expect(week[0]?.dateKey).toBe("2026-12-28");
+		expect(week[6]?.dateKey).toBe("2027-01-03");
+	});
+
+	it("marks every cell as in-month, even across a boundary", () => {
+		const week = buildWeekStrip(new Map(), dayOf(2026, 5, 1));
+		expect(week.every((day) => day.isInMonth)).toBe(true);
+	});
+
+	it("links to read days outside the strip", () => {
+		// Sunday before and Monday after the strip are both read, so the edge
+		// cells must carry connectors pointing off the strip.
+		const week = buildWeekStrip(
+			readDays({ "2026-05-10": 20, "2026-05-11": 20, "2026-05-17": 20, "2026-05-18": 20 }),
+			dayOf(2026, 5, 13),
+		);
+		expect(week[0]).toMatchObject({ dateKey: "2026-05-11", linksBefore: true });
+		expect(week[6]).toMatchObject({ dateKey: "2026-05-17", linksAfter: true });
 	});
 });
 

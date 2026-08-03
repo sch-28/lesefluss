@@ -61,10 +61,37 @@ export function buildMonthGrid(msByDay: Map<string, number>, monthAnchor: number
 	const daysInMonth = new Date(year, month + 1, 0).getDate();
 	const cellCount = Math.ceil((leadingPad + daysInMonth) / WEEK_LENGTH) * WEEK_LENGTH;
 
+	return buildDays(msByDay, year, month, 1 - leadingPad, cellCount, month);
+}
+
+/** The Monday-first week containing `todayMs`. Every cell counts as in-month:
+ *  the strip has no padding days to de-emphasise. */
+export function buildWeekStrip(msByDay: Map<string, number>, todayMs: number): CalendarDay[] {
+	const today = new Date(todayMs);
+	const weekdayIndex = (today.getDay() + 6) % 7;
+	return buildDays(
+		msByDay,
+		today.getFullYear(),
+		today.getMonth(),
+		today.getDate() - weekdayIndex,
+		WEEK_LENGTH,
+		null,
+	);
+}
+
+/** `inMonth` of null marks every cell as in-month. */
+function buildDays(
+	msByDay: Map<string, number>,
+	year: number,
+	month: number,
+	startDay: number,
+	cellCount: number,
+	inMonth: number | null,
+): CalendarDay[] {
 	// Built through the Date constructor rather than by adding milliseconds so
-	// a DST transition inside the month cannot shift a cell onto the wrong day.
+	// a DST transition inside the range cannot shift a cell onto the wrong day.
 	const msOn = (offset: number): { date: Date; ms: number } => {
-		const date = new Date(year, month, 1 - leadingPad + offset);
+		const date = new Date(year, month, startDay + offset);
 		return { date, ms: msByDay.get(localDateKey(date.getTime())) ?? 0 };
 	};
 
@@ -76,7 +103,7 @@ export function buildMonthGrid(msByDay: Map<string, number>, monthAnchor: number
 			dateKey: localDateKey(date.getTime()),
 			dayStart: date.getTime(),
 			durationMs: ms,
-			isInMonth: date.getMonth() === month,
+			isInMonth: inMonth === null || date.getMonth() === inMonth,
 			intensity: intensityOf(ms),
 			linksBefore: isRead && msOn(i - 1).ms >= MIN_READ_MS,
 			linksAfter: isRead && msOn(i + 1).ms >= MIN_READ_MS,

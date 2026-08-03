@@ -163,7 +163,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 										</li>
 										<li>
 											<a
-												href="https://discord.gg/A4rDBgjJ3V"
+												href="https://discord.gg/zfhpy6rSMb"
 												target="_blank"
 												rel="noopener noreferrer"
 												className="transition-colors hover:text-foreground"

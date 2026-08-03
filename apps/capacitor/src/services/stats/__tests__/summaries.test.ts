@@ -2,8 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SpeedBucket, WpmTrend } from "../aggregate";
 import type { CalendarDay } from "../calendar";
 import {
+	summariseDays,
 	summariseHours,
-	summariseMonth,
 	summariseSpeedBuckets,
 	summariseWpmTrend,
 } from "../summaries";
@@ -16,7 +16,7 @@ afterAll(() => {
 	process.env.TZ = ORIGINAL_TZ;
 });
 
-describe("summariseMonth", () => {
+describe("summariseDays", () => {
 	function calDay(dateKey: string, minutes: number, isInMonth = true): CalendarDay {
 		const [y, m, d] = dateKey.split("-").map(Number);
 		const dayStart = new Date(y as number, (m as number) - 1, d).getTime();
@@ -32,7 +32,7 @@ describe("summariseMonth", () => {
 	}
 
 	it("counts days read against the days in the month", () => {
-		const summary = summariseMonth(
+		const summary = summariseDays(
 			[calDay("2026-05-01", 30), calDay("2026-05-02", 0), calDay("2026-05-03", 90)],
 			"May",
 		);
@@ -44,7 +44,7 @@ describe("summariseMonth", () => {
 	// The grid pads to whole weeks, so the denominator must ignore the padding or
 	// a 31-day month reports "of 35 days".
 	it("ignores the padding days from adjacent months", () => {
-		const summary = summariseMonth(
+		const summary = summariseDays(
 			[
 				calDay("2026-04-27", 60, false),
 				calDay("2026-05-01", 30),
@@ -61,17 +61,17 @@ describe("summariseMonth", () => {
 	// `intensity` is the thresholded verdict; `durationMs` is not.
 	it("ignores a day the grid did not light up", () => {
 		const belowThreshold: CalendarDay = { ...calDay("2026-05-12", 0), durationMs: 30_000 };
-		const summary = summariseMonth([calDay("2026-05-11", 40), belowThreshold], "May");
+		const summary = summariseDays([calDay("2026-05-11", 40), belowThreshold], "May");
 		expect(summary).toContain("read on 1 of 2 days");
 		expect(summary).not.toContain("May 12");
 	});
 
 	it("says so for a month with no reading", () => {
-		expect(summariseMonth([calDay("2026-05-01", 0)], "May")).toBe("May: no reading recorded.");
+		expect(summariseDays([calDay("2026-05-01", 0)], "May")).toBe("May: no reading recorded.");
 	});
 
 	it("handles a month with a single read day", () => {
-		const summary = summariseMonth([calDay("2026-05-04", 45)], "May");
+		const summary = summariseDays([calDay("2026-05-04", 45)], "May");
 		expect(summary).toContain("read on 1 of 1 days");
 		expect(summary).toContain("May 4");
 	});

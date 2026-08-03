@@ -534,6 +534,12 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
 
+  resources/store-frames:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.60.0
+        version: 1.60.0
+
 packages:
 
   '@1natsu/wait-element@4.2.0':

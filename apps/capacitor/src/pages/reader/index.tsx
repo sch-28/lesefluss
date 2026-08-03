@@ -92,6 +92,8 @@ import ScrollView, { ReaderSkeleton } from "./scroll-view";
 import SearchModal from "./search-modal";
 import SelectionOverlay from "./selection-overlay";
 import { SessionDebugBadge } from "./session-debug-badge";
+import { SessionPauseOverlay } from "./session-pause-overlay";
+import { createTwoFingerTapDetector } from "./two-finger-tap";
 import {
 	findFirstMention,
 	findNextMention,
@@ -226,6 +228,17 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const scrollViewRef = useRef<ReaderViewHandle>(null);
 	const rsvpViewRef = useRef<RsvpViewHandle>(null);
+
+	// Manual session pause (two-finger tap). Feeds !isSessionPaused into the
+	// session hook's isReading, so the clock settles instantly via the
+	// tracker's existing setReading path.
+	const [isSessionPaused, setIsSessionPaused] = useState(false);
+	const isSessionPausedRef = useRef(isSessionPaused);
+	isSessionPausedRef.current = isSessionPaused;
+	// Callback-ref state, not a ref: the pending/not-found early returns render
+	// without the container, so an empty-deps effect would read null once and
+	// the gesture would never attach on a cold (uncached) open.
+	const [viewContainerEl, setViewContainerEl] = useState<HTMLDivElement | null>(null);
 
 	// Track the last word we set so we can flush on unmount.
 	// null = not yet loaded from DB, don't overwrite on unmount.
@@ -1224,13 +1237,65 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const { markActivity: markReadingActivity, getDebugSnapshot } = useReadingSession({
 		bookId: id,
 		mode: sessionMode,
-		isReading: !!content && lastWordRef.current !== null,
+		isReading: !!content && lastWordRef.current !== null && !isSessionPaused,
 		getPosition: getReadingPosition,
 		wpmSetting: rsvpSettings.wpm,
 	});
 	useEffect(() => {
 		markActivityRef.current = markReadingActivity;
 	}, [markReadingActivity]);
+
+	// A book or mode change tears down the tracker (new sitting); a stale
+	// manual pause must not carry over into it.
+	useEffect(() => {
+		setIsSessionPaused(false);
+	}, [id, sessionMode]);
+
+	// Two-finger tap anywhere in the view container toggles the manual pause.
+	// Native listeners (passive) because the container hosts three different
+	// view components; the detector is pure and unit-tested. Progress-bar
+	// touches never arm the gesture — a clumsy two-finger scrub is a scrub.
+	// While paused the overlay's pointer capture only stops React pointer
+	// events, so the container's native touch listeners still see the resume
+	// tap.
+	const selIsSelectingRef = useRef(sel.isSelecting);
+	selIsSelectingRef.current = sel.isSelecting;
+	const readerModeRef = useRef(readerMode);
+	readerModeRef.current = readerMode;
+	useEffect(() => {
+		const el = viewContainerEl;
+		if (!el) return;
+		const detector = createTwoFingerTapDetector(() => {
+			if (selIsSelectingRef.current) return;
+			if (isSessionPausedRef.current) {
+				setIsSessionPaused(false);
+				return;
+			}
+			setIsSessionPaused(true);
+			if (readerModeRef.current === "rsvp") rsvpViewRef.current?.pause();
+		});
+		const onTouchStart = (e: TouchEvent) => {
+			const target = e.target as HTMLElement | null;
+			if (target?.closest(".reader-progress-bar, .selection-handle")) {
+				detector.reset();
+				return;
+			}
+			detector.touchstart(e);
+		};
+		const onTouchMove = (e: TouchEvent) => detector.touchmove(e);
+		const onTouchEnd = (e: TouchEvent) => detector.touchend(e);
+		const onTouchCancel = () => detector.touchcancel();
+		el.addEventListener("touchstart", onTouchStart, { passive: true });
+		el.addEventListener("touchmove", onTouchMove, { passive: true });
+		el.addEventListener("touchend", onTouchEnd, { passive: true });
+		el.addEventListener("touchcancel", onTouchCancel, { passive: true });
+		return () => {
+			el.removeEventListener("touchstart", onTouchStart);
+			el.removeEventListener("touchmove", onTouchMove);
+			el.removeEventListener("touchend", onTouchEnd);
+			el.removeEventListener("touchcancel", onTouchCancel);
+		};
+	}, [viewContainerEl]);
 
 	// ── Hide tab bar while reader is mounted ──────────────────────────────
 	// Ionic's shadow DOM toggles tab-bar-hidden on keyboard show/hide, and
@@ -1532,7 +1597,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				</div>
 			</header>
 
-			<div className="relative flex-1 overflow-hidden">
+			<div
+				ref={setViewContainerEl}
+				className="relative flex-1 overflow-hidden"
+				data-testid="reader-view"
+			>
 				{chapterFetch.kind === "locked" ? (
 					<ChapterStateOverlay status="locked" />
 				) : chapterFetch.kind === "error" ? (
@@ -1558,6 +1627,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						bookWordIndex={wordIndex}
 						linkHrefAt={findLinkAt}
 						onLinkTap={handleLinkTap}
+						isSessionPaused={isSessionPaused}
 					/>
 				) : paginationStyle === "page" ? (
 					<PageView
@@ -1657,6 +1727,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						</div>
 					</div>
 				)}
+
+				{isSessionPaused && <SessionPauseOverlay onResume={() => setIsSessionPaused(false)} />}
 			</div>
 
 			{/* Selection toolbar + handles (fixed position, sync'd by hook). */}

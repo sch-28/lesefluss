@@ -175,6 +175,13 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		pointerId: number;
 	} | null>(null);
 
+	// Multi-touch guard: with two fingers down, per-finger pointer events would
+	// otherwise route as independent taps — a two-finger tap turned two pages
+	// (the second pointerup hit the `d === null` branch where dx=dy=dt=0 reads
+	// as a tap). Any gesture that ever saw two concurrent pointers is discarded.
+	const activePointerIdsRef = useRef(new Set<number>());
+	const sawMultiTouchRef = useRef(false);
+
 	// True while a CSS transition is in flight (set by animateTo, cleared on
 	// completion). The transform-sync layout effect skips while this is true so
 	// it doesn't yank the in-progress animation to a stop with `transition: none`.
@@ -489,6 +496,14 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		if (!isLayoutReady) return;
 		// Don't start a drag on the long-press handle hit-zone (selection extension wins).
 		if ((e.target as HTMLElement | null)?.closest(".selection-handle")) return;
+		activePointerIdsRef.current.add(e.pointerId);
+		if (activePointerIdsRef.current.size >= 2) {
+			sawMultiTouchRef.current = true;
+			// A locked horizontal drag keeps its state — the extra finger must not
+			// clobber it; anything else (pending tap) is cancelled.
+			if (dragRef.current?.isHorizontal !== true) dragRef.current = null;
+			return;
+		}
 		// If an animation is in flight, complete it (snap + commit pending state)
 		// so the new gesture starts from a consistent visual + state baseline.
 		completeInFlightAnimation();
@@ -541,6 +556,19 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	};
 
 	const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+		activePointerIdsRef.current.delete(e.pointerId);
+		if (sawMultiTouchRef.current) {
+			if (activePointerIdsRef.current.size === 0) sawMultiTouchRef.current = false;
+			const locked = dragRef.current?.isHorizontal === true;
+			if (!locked) {
+				dragRef.current = null;
+				return;
+			}
+			// A stray finger lifting must not abort the locked drag it left
+			// alone on the way down; only the drag pointer's own release ends
+			// it, falling through to the normal swipe commit below.
+			if (e.pointerId !== dragRef.current?.pointerId) return;
+		}
 		const d = dragRef.current;
 		dragRef.current = null;
 		if (!isLayoutReady) return;
@@ -580,7 +608,9 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		else animateTo(computeTransform()); // snap back to current page
 	};
 
-	const handlePointerCancel = () => {
+	const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+		activePointerIdsRef.current.delete(e.pointerId);
+		if (activePointerIdsRef.current.size === 0) sawMultiTouchRef.current = false;
 		dragRef.current = null;
 		if (!isLayoutReady) return;
 		animateTo(computeTransform());

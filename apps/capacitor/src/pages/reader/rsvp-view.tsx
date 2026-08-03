@@ -40,6 +40,7 @@ const SETTINGS_SNAP_POINTS = [0.3, 0.5, 0.95];
 
 export type RsvpViewHandle = {
 	togglePlayPause(): void;
+	pause(): void;
 	backWord(): void;
 	forwardWord(): void;
 	backSentence(): void;
@@ -62,6 +63,9 @@ export interface RsvpViewProps {
 	linkHrefAt?: (wordIdx: number) => string | undefined;
 	/** Open an external link (paused context tap). */
 	onLinkTap?: (href: string) => void;
+	/** Manual session pause (two-finger tap): releases the wake lock so the
+	 *  screen can sleep during the interruption. */
+	isSessionPaused?: boolean;
 }
 
 const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
@@ -77,6 +81,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		bookWordIndex,
 		linkHrefAt,
 		onLinkTap,
+		isSessionPaused = false,
 	},
 	ref,
 ) {
@@ -111,13 +116,21 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 
 	useImperativeHandle(
 		ref,
-		() => ({ togglePlayPause, backWord, forwardWord, backSentence, forwardSentence, changeWpm }),
-		[togglePlayPause, backWord, forwardWord, backSentence, forwardSentence, changeWpm],
+		() => ({
+			togglePlayPause,
+			pause,
+			backWord,
+			forwardWord,
+			backSentence,
+			forwardSentence,
+			changeWpm,
+		}),
+		[togglePlayPause, pause, backWord, forwardWord, backSentence, forwardSentence, changeWpm],
 	);
 
 	// Keep the screen awake for the whole RSVP session: playback has no touch
 	// input so the display would otherwise time out mid-read.
-	useWakeLock(true, "rsvp");
+	useWakeLock(!isSessionPaused, "rsvp");
 
 	// Single stable click handler for all context words. Uses data-idx on the
 	// target button instead of an inline closure per word.

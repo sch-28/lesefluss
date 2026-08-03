@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
+import { CalendarDays, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { shiftMonth } from "../../../services/stats/calendar";
 import { AnimatedNumber } from "./animated-number";
-import { MonthPager, StreakCalendar } from "./streak-calendar";
+import { MonthPager, StreakCalendar, StreakWeekStrip } from "./streak-calendar";
 
 interface Props {
 	currentStreak: number;
@@ -10,9 +11,17 @@ interface Props {
 }
 
 export function Hero({ currentStreak, longestStreak }: Props) {
+	// Collapsed by default: the current week answers "is my streak alive" in one
+	// row, and the month grid is a browsing view rather than a landing view.
+	const [isExpanded, setIsExpanded] = useState(false);
 	// The month lives here rather than in the calendar because the pager sits in
 	// the headline row while the grid it drives is a sibling below it.
 	const [monthAnchor, setMonthAnchor] = useState(() => shiftMonth(Date.now(), 0));
+
+	const expand = () => {
+		setMonthAnchor(shiftMonth(Date.now(), 0));
+		setIsExpanded(true);
+	};
 
 	return (
 		<motion.section
@@ -35,13 +44,34 @@ export function Hero({ currentStreak, longestStreak }: Props) {
 						🔥 Best {longestStreak} {longestStreak === 1 ? "day" : "days"}
 					</p>
 				</div>
-				<MonthPager
-					monthAnchor={monthAnchor}
-					onStep={(delta) => setMonthAnchor((month) => shiftMonth(month, delta))}
-				/>
+				{isExpanded ? (
+					<div className="flex shrink-0 items-center gap-1">
+						<MonthPager
+							monthAnchor={monthAnchor}
+							onStep={(delta) => setMonthAnchor((month) => shiftMonth(month, delta))}
+						/>
+						<button
+							type="button"
+							onClick={() => setIsExpanded(false)}
+							aria-label="Show current week"
+							className="rounded-md p-1 opacity-60 active:bg-current/10"
+						>
+							<ChevronUp className="size-4" />
+						</button>
+					</div>
+				) : (
+					<button
+						type="button"
+						onClick={expand}
+						aria-label="Show month calendar"
+						className="flex shrink-0 items-center gap-1.5 rounded-md p-1.5 opacity-60 active:bg-current/10"
+					>
+						<CalendarDays className="size-4" />
+					</button>
+				)}
 			</div>
 
-			<StreakCalendar monthAnchor={monthAnchor} />
+			{isExpanded ? <StreakCalendar monthAnchor={monthAnchor} /> : <StreakWeekStrip />}
 		</motion.section>
 	);
 }

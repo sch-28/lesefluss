@@ -1,8 +1,13 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo } from "react";
 import { queryHooks } from "../../../services/db/hooks";
-import { buildMonthGrid, type CalendarDay, shiftMonth } from "../../../services/stats/calendar";
-import { summariseMonth } from "../../../services/stats/summaries";
+import {
+	buildMonthGrid,
+	buildWeekStrip,
+	type CalendarDay,
+	shiftMonth,
+} from "../../../services/stats/calendar";
+import { summariseDays } from "../../../services/stats/summaries";
 import { startOfLocalDay } from "../../../utils/date-utils";
 
 const WEEKDAY_INITIALS = ["M", "T", "W", "T", "F", "S", "S"] as const;
@@ -77,12 +82,24 @@ export function StreakCalendar({ monthAnchor }: { monthAnchor: number }) {
 
 	const today = startOfLocalDay(Date.now());
 
+	return <DotGrid days={grid} ariaLabel={summariseDays(grid, monthLabelOf(monthAnchor, today))} />;
+}
+
+/** Collapsed hero view: the current week as one dot row. */
+export function StreakWeekStrip() {
+	const daily = queryHooks.useStatsDailyMs();
+	const today = startOfLocalDay(Date.now());
+
+	const week = useMemo(() => buildWeekStrip(daily.data ?? new Map(), today), [daily.data, today]);
+
+	return <DotGrid days={week} ariaLabel={summariseDays(week, "This week")} />;
+}
+
+function DotGrid({ days, ariaLabel }: { days: CalendarDay[]; ariaLabel: string }) {
+	const today = startOfLocalDay(Date.now());
+
 	return (
-		<div
-			className="mt-4 grid grid-cols-7 gap-y-1"
-			role="img"
-			aria-label={summariseMonth(grid, monthLabelOf(monthAnchor, today))}
-		>
+		<div className="mt-4 grid grid-cols-7 gap-y-1" role="img" aria-label={ariaLabel}>
 			{WEEKDAY_INITIALS.map((initial, i) => (
 				<span
 					// Weekday initials repeat (T, T and S, S), so the index is the key.
@@ -93,7 +110,7 @@ export function StreakCalendar({ monthAnchor }: { monthAnchor: number }) {
 					{initial}
 				</span>
 			))}
-			{grid.map((day) => (
+			{days.map((day) => (
 				<DayCell key={day.dateKey} day={day} isToday={day.dayStart === today} />
 			))}
 		</div>

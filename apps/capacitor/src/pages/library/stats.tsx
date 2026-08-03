@@ -5,13 +5,13 @@ import { queryHooks } from "../../services/db/hooks";
 import { startOfLocalDay } from "../../utils/date-utils";
 import { SessionTable } from "./session-table";
 import { Activity } from "./stats/activity";
+import { CurrentlyReading } from "./stats/currently-reading";
 import { EmptyState } from "./stats/empty-state";
+import { FinishedShelf } from "./stats/finished-shelf";
 import { Hero } from "./stats/hero";
 import { PERIOD_LABELS, type Period, periodWindow } from "./stats/period";
 import { PeriodTotals } from "./stats/period-totals";
 import { RecordsCard } from "./stats/records-card";
-import { CurrentlyReadingShelf } from "./stats/currently-reading-shelf";
-import { FinishedShelf } from "./stats/finished-shelf";
 import { TopBooks } from "./stats/top-books";
 import { WpmTrend } from "./stats/wpm-trend";
 
@@ -61,29 +61,30 @@ const Stats: React.FC = () => {
 					{/* Period control sits with the sections it drives. */}
 					<PeriodTotals now={now} period={period} range={range} onPeriodChange={setPeriod} />
 
-					<CurrentlyReadingShelf />
+					<CurrentlyReading />
+
+					{/* All-time, but placed here rather than with Activity: records are
+					    the shareable centerpiece, and they belong in the first screen. */}
+					<RecordsCard />
+
 					<FinishedShelf />
 
 					{/* At all time this is the finished shelf re-sorted: on real data the
 					    top five by time read were the same five books. It only says
 					    something new when scoped to a window, where it also surfaces
 					    books still in progress. */}
-					{period !== "all" && (
-						<TopBooks since={range.start} periodLabel={PERIOD_LABELS[period]} />
-					)}
+					{period !== "all" && <TopBooks since={range.start} periodLabel={PERIOD_LABELS[period]} />}
 
 					<WpmTrend period={period} periodLabel={PERIOD_LABELS[period]} now={now} />
 
-					{/* Always all-time, so these sit below the sections the period tabs drive. */}
 					<Activity />
-					<RecordsCard />
 
 					<div className="px-4">
 						<SessionTable mode="global" />
 					</div>
 					<p className="mt-4 px-4 pb-6 text-[11px] text-muted-foreground">
-						Only reading in this app is tracked. Time spent on a book you uploaded to a device
-						isn't counted here.
+						Only reading in this app is tracked. Time spent on a book you uploaded to a device isn't
+						counted here.
 					</p>
 				</>
 			)}

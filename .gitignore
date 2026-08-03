@@ -66,4 +66,6 @@ temp.md
 
 # Store assets + listing copy (managed outside repo)
 resources/screenshots/
+resources/screenshots-2/
+resources/store-frames/out/
 store-description.md

@@ -22,23 +22,22 @@ function formatDayLong(epochMs: number): string {
 }
 
 /**
- * Text equivalent of the streak calendar for one month.
- *
- * Replaces the 90-day heatmap summary: the grid now shows a month at a time, so
- * a fixed-window sentence would describe something the reader cannot see.
+ * Text equivalent of a streak dot range: the month calendar or the collapsed
+ * week strip. Padding days (`isInMonth` false) are excluded from the counts so
+ * the sentence describes the same days the grid emphasises.
  */
-export function summariseMonth(days: CalendarDay[], monthLabel: string): string {
-	const inMonth = days.filter((day) => day.isInMonth);
+export function summariseDays(days: CalendarDay[], rangeLabel: string): string {
+	const inRange = days.filter((day) => day.isInMonth);
 	// `intensity` already carries the thresholded verdict, so the label counts the
 	// same days the grid lights up. Filtering on `durationMs > 0` announced
 	// reading that is not drawn.
-	const read = inMonth.filter((day) => day.intensity > 0);
-	if (read.length === 0) return `${monthLabel}: no reading recorded.`;
+	const read = inRange.filter((day) => day.intensity > 0);
+	if (read.length === 0) return `${rangeLabel}: no reading recorded.`;
 
 	const totalMs = read.reduce((sum, day) => sum + day.durationMs, 0);
 	const best = read.reduce((a, b) => (b.durationMs > a.durationMs ? b : a));
 	return (
-		`${monthLabel}: read on ${read.length} of ${inMonth.length} days, ` +
+		`${rangeLabel}: read on ${read.length} of ${inRange.length} days, ` +
 		`${formatDuration(totalMs)} in total. ` +
 		`Longest day was ${formatDayLong(best.dayStart)} at ${formatDuration(best.durationMs)}.`
 	);
