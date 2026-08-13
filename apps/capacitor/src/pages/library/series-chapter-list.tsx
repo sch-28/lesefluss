@@ -10,6 +10,7 @@
  * page.
  */
 
+import { readingProgress } from "@lesefluss/core";
 import { cn } from "@lesefluss/ui/utils";
 import { useRouter } from "@tanstack/react-router";
 import { AlertCircle, CheckCircle2, Circle, CloudDownload, Loader2, Lock } from "lucide-react";
@@ -18,7 +19,6 @@ import { memo, useCallback } from "react";
 import { VList } from "virtua";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
-import { readingProgress } from "../../utils/reading-progress";
 import { isBookFinished } from "./sort-filter";
 
 type RowState =

@@ -31,6 +31,14 @@ function makeBook(overrides: Partial<Book> = {}): Book {
 		chapterSourceUrl: null,
 		chapterStatus: "fetched",
 		chapterError: null,
+		description: null,
+		language: null,
+		status: null,
+		rating: null,
+		review: null,
+		tags: null,
+		updatedAt: 0,
+		metadataUpdatedAt: 0,
 		...overrides,
 	};
 }

@@ -60,6 +60,34 @@ describe("bookToSync", () => {
 		const out = bookToSync(makeBook({ deleted: true }), content);
 		expect(out).not.toHaveProperty("content");
 	});
+
+	it("sends the row's own updatedAt, not one derived from reading history", () => {
+		// The derived value this replaced was max(lastRead, addedAt), which could
+		// not see an edit that moved no reading position.
+		const out = bookToSync(makeBook({ addedAt: 1000, lastRead: 2000, updatedAt: 3000 }));
+		expect(out.updatedAt).toBe(3000);
+	});
+
+	it("carries reader-editable metadata", () => {
+		const out = bookToSync(
+			makeBook({
+				description: "A blurb",
+				language: "de",
+				status: "dropped",
+				rating: 4,
+				review: "Not for me",
+				tags: '["scifi"]',
+			}),
+		);
+		expect(out).toMatchObject({
+			description: "A blurb",
+			language: "de",
+			status: "dropped",
+			rating: 4,
+			review: "Not for me",
+			tags: '["scifi"]',
+		});
+	});
 });
 
 describe("shouldPushBook", () => {

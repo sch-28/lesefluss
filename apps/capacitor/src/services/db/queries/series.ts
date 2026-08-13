@@ -1,5 +1,5 @@
+import { FINISHED_PERCENT_THRESHOLD } from "@lesefluss/core";
 import { and, asc, desc, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
-import { FINISHED_PERCENT_THRESHOLD } from "../../../utils/reading-progress";
 import { db } from "../index";
 import {
 	type Book,

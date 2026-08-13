@@ -1,3 +1,4 @@
+import { isFinishedPercent, readingProgress } from "@lesefluss/core";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { and, count, desc, eq, isNotNull, max, or } from "drizzle-orm";
@@ -5,8 +6,6 @@ import { db } from "~/db";
 import { syncBooks, syncGlossaryEntries, syncHighlights, syncSettings } from "~/db/schema";
 import { deleteUserAccount } from "./account-deletion";
 import { auth } from "./auth";
-
-const FINISHED_THRESHOLD = 0.95;
 
 async function requireSession() {
 	const request = getRequest();
@@ -119,7 +118,8 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 	let booksFinished = 0;
 	let wordsRead = 0;
 	for (const b of books) {
-		if (b.wordCount && b.wordPosition / b.wordCount > FINISHED_THRESHOLD) booksFinished++;
+		const percent = readingProgress({ wordCount: b.wordCount ?? 0, wordPosition: b.wordPosition });
+		if (isFinishedPercent(percent)) booksFinished++;
 		if (b.wordCount) wordsRead += b.wordPosition;
 	}
 

@@ -157,7 +157,7 @@ const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 				progress={downloadProgressPct}
 				description={series.description ? { text: series.description } : undefined}
 				externalLink={{ href: series.sourceUrl, label: `View on ${provider}` }}
-				headerAction={deleteHeaderAction}
+				headerActions={[deleteHeaderAction]}
 			>
 				{syncError?.message === "CLOUDFLARE_CHALLENGE" && (
 					<div className="px-4 pt-3">

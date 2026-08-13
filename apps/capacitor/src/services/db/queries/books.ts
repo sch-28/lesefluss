@@ -1,13 +1,13 @@
 import type { Chapter as ImportChapter, ImportLink } from "@lesefluss/book-import";
 import {
 	byteRangeToWordRange,
+	FINISHED_PERCENT_THRESHOLD,
 	MAX_SYNCED_CONTENT_BYTES,
 	type SerializedWordIndex,
 	WordIndex,
 } from "@lesefluss/core";
 import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
 import type { SQLiteUpdateSetSource } from "drizzle-orm/sqlite-core";
-import { FINISHED_PERCENT_THRESHOLD } from "../../../utils/reading-progress";
 import { db } from "../index";
 import { appendLongText, LONG_TEXT_CHUNK, type LongTextExecutor, readLongText } from "../long-text";
 import {
@@ -21,6 +21,16 @@ import {
 	type LinkRange,
 	type NewBook,
 } from "../schema";
+
+/** Reader-editable columns, the ones `metadata_updated_at` is the revision of. */
+const METADATA_COLUMNS = [
+	"description",
+	"language",
+	"status",
+	"rating",
+	"review",
+	"tags",
+] as const satisfies readonly (keyof NewBook)[];
 
 /** The production drizzle proxy as a chunked-column executor (see long-text.ts). */
 const longText: LongTextExecutor = {
@@ -341,19 +351,40 @@ export async function addServerBookWithContent(
  * Partial update any book metadata fields by id.
  * Accepts any subset of Book columns (except id).
  *
+ * Every call stamps `updated_at` with `occurredAt`, which is what makes an edit
+ * visible to sync's last-write-wins. Pass `{ isDeviceLocal: true }` for a write
+ * that must not claim a newer revision: one touching only device-local columns
+ * (`isActive`, `filePath`), or one replaying a fact the server already holds
+ * (the `finishedAt` catch-up in the sync pull). Either would otherwise win a
+ * merge against a real edit made elsewhere.
+ *
  * Examples:
- *   updateBook("a1b2c3d4", { filePath: "books/a1b2c3d4.epub" })
- *   updateBook("a1b2c3d4", { isActive: true })
- *   updateBook("a1b2c3d4", { position: 1234, lastRead: Date.now() })
+ *   updateBook("a1b2c3d4", { filePath: "…" }, Date.now(), { isDeviceLocal: true })
+ *   updateBook("a1b2c3d4", { title: "Morning Star" })
+ *   updateBook("a1b2c3d4", { wordPosition: wordPos(1234), lastRead: Date.now() })
  */
 export async function updateBook(
 	id: string,
 	data: Partial<Omit<NewBook, "id">>,
-	/** When the position change happened. Defaults to now, but the sync pull
+	/** When the change happened. Defaults to now, but the sync pull
 	 *  replays changes made on another device at another time, and stamping
 	 *  those with wall clock would date an old finish to today. */
 	occurredAt: number = Date.now(),
+	options: { isDeviceLocal?: boolean } = {},
 ): Promise<void> {
+	const stamped: Partial<Omit<NewBook, "id">> = { ...data };
+	// `updated_at` is the reading position's revision and nothing else: released
+	// builds adopt the server's position whenever it is higher, so moving it for
+	// a metadata edit would make them discard unpushed reading. Reader-editable
+	// fields therefore carry their own stamp.
+	const movesPosition = data.wordPosition !== undefined || data.lastRead !== undefined;
+	const editsMetadata = METADATA_COLUMNS.some((column) => data[column] !== undefined);
+	if (!options.isDeviceLocal && movesPosition && data.updatedAt === undefined) {
+		stamped.updatedAt = occurredAt;
+	}
+	if (!options.isDeviceLocal && editsMetadata && data.metadataUpdatedAt === undefined) {
+		stamped.metadataUpdatedAt = occurredAt;
+	}
 	// Stamp the first crossing of the finished threshold as the position moves.
 	// Done in SQL rather than read-then-write because position saves are frequent
 	// and every statement is a bridge round-trip. `finished_at` is only ever set,
@@ -362,7 +393,7 @@ export async function updateBook(
 	const patch: SQLiteUpdateSetSource<typeof books> =
 		data.wordPosition !== undefined && data.finishedAt === undefined
 			? {
-					...data,
+					...stamped,
 					finishedAt: sql`CASE
 						WHEN ${books.finishedAt} IS NULL
 							AND ${books.wordCount} > 0
@@ -371,7 +402,7 @@ export async function updateBook(
 						ELSE ${books.finishedAt}
 					END`,
 				}
-			: data;
+			: stamped;
 	await db.update(books).set(patch).where(eq(books.id, id));
 }
 
@@ -409,6 +440,9 @@ export async function backfillFinishedAt(): Promise<void> {
  *
  * Two targeted UPDATE statements - no full table scan, no race window from
  * a fetch-then-fan-out pattern.
+ *
+ * `is_active` is device-local (which book sits on this ESP32) and never syncs,
+ * so neither statement touches `updated_at`.
  */
 export async function setActiveBook(id: string): Promise<void> {
 	// Deactivate all others in one statement
@@ -432,11 +466,9 @@ export async function deleteBook(id: string): Promise<void> {
 	await db.delete(glossaryEntries).where(eq(glossaryEntries.bookId, id));
 	await db.delete(highlights).where(eq(highlights.bookId, id));
 	await db.delete(bookContent).where(eq(bookContent.bookId, id));
-	// `lastRead` is bumped so bookToSync's Math.max(lastRead, addedAt) produces a
-	// current updatedAt for the tombstone payload on the next push.
 	await db
 		.update(books)
-		.set({ deleted: true, isActive: false, lastRead: Date.now() })
+		.set({ deleted: true, isActive: false, updatedAt: Date.now() })
 		.where(eq(books.id, id));
 }
 

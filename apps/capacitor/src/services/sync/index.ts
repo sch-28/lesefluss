@@ -33,6 +33,7 @@ import type {
 	BookContent,
 	GlossaryEntry,
 	Highlight,
+	NewBook,
 	ReadingSession,
 	Series,
 	Settings,
@@ -333,7 +334,20 @@ export function bookToSync(book: Book, contentData?: BookContent | null): SyncBo
 				}
 			: {}),
 		finishedAt: book.finishedAt,
-		updatedAt: Math.max(book.lastRead ?? 0, book.addedAt),
+		// A tombstone carries no reader-written text, same rule as content above:
+		// a deleted book's private notes have no business outliving it on a server.
+		...(book.deleted
+			? {}
+			: {
+					description: book.description,
+					language: book.language,
+					status: book.status,
+					rating: book.rating,
+					review: book.review,
+					tags: book.tags,
+				}),
+		metadataUpdatedAt: book.metadataUpdatedAt,
+		updatedAt: book.updatedAt,
 	};
 }
 
@@ -446,8 +460,18 @@ function buildBookRowFromServer(
 		wordCount: serverBook.wordCount ?? 0,
 		isActive: false,
 		addedAt: serverBook.updatedAt,
+		updatedAt: serverBook.updatedAt,
+		// A server row written by a client that pre-dates the column has no
+		// metadata stamp; fall back to the row revision.
+		metadataUpdatedAt: serverBook.metadataUpdatedAt ?? serverBook.updatedAt,
 		lastRead: null,
 		finishedAt: serverBook.finishedAt ?? null,
+		description: serverBook.description ?? null,
+		language: serverBook.language ?? null,
+		status: serverBook.status ?? null,
+		rating: serverBook.rating ?? null,
+		review: serverBook.review ?? null,
+		tags: serverBook.tags ?? null,
 		source: serverBook.source ?? null,
 		catalogId: serverBook.catalogId ?? null,
 		sourceUrl: serverBook.sourceUrl ?? null,
@@ -458,6 +482,63 @@ function buildBookRowFromServer(
 		chapterStatus,
 		chapterError: null,
 	};
+}
+
+/** Revision of the server's reader-editable fields. A row last written by a
+ *  client that pre-dates the column has none, so fall back to the row revision. */
+function serverMetadataStamp(serverBook: SyncBook): number {
+	return serverBook.metadataUpdatedAt ?? serverBook.updatedAt;
+}
+
+/**
+ * What to write locally when the server's copy of a book we already have is the
+ * newer one, or null when it isn't. Pure so the merge rules can be tested
+ * without a database.
+ *
+ * Two independent gates. `updatedAt` is the reading position's revision, which
+ * is what every released build takes it to mean, so the position merges on it
+ * exactly as before. The reader-editable fields merge on `metadataUpdatedAt`,
+ * which is the only stamp an edit moves; that separation is what keeps an older
+ * build from mistaking a rating for reading and discarding a newer position.
+ *
+ * `undefined` on a metadata field means the pushing client pre-dates that
+ * column and is not claiming anything about it; `null` means the reader cleared
+ * it. Only the second is written.
+ */
+export function buildBookMergeUpdate(
+	local: Book,
+	serverBook: SyncBook,
+): Partial<Omit<NewBook, "id">> | null {
+	const positionIsNewer = serverBook.updatedAt > local.updatedAt;
+	const metadataIsNewer = serverMetadataStamp(serverBook) > local.metadataUpdatedAt;
+	if (!positionIsNewer && !metadataIsNewer) return null;
+
+	const update: Partial<Omit<NewBook, "id">> = {};
+	if (positionIsNewer) {
+		update.wordPosition = wordPos(serverBook.wordPosition);
+		update.updatedAt = serverBook.updatedAt;
+		// Never backwards: `commitChapter` moves `lastRead` without the position,
+		// so the server's stamp can trail ours, and a regression here re-sorts the
+		// library (`getBooks` orders by `lastRead desc`).
+		update.lastRead = Math.max(local.lastRead ?? 0, serverBook.updatedAt);
+		// Refresh wordCount when the server has a definitive value so
+		// chapter/highlight bounds derived from it stay coherent. Skipping
+		// this leaves local count stale after a server-side content refresh.
+		if (serverBook.wordCount != null && serverBook.wordCount !== local.wordCount) {
+			update.wordCount = serverBook.wordCount;
+		}
+	}
+	if (!metadataIsNewer) return update;
+	update.metadataUpdatedAt = serverMetadataStamp(serverBook);
+	if (serverBook.title !== local.title) update.title = serverBook.title;
+	if (serverBook.author !== local.author) update.author = serverBook.author;
+	if (serverBook.description !== undefined) update.description = serverBook.description;
+	if (serverBook.language !== undefined) update.language = serverBook.language;
+	if (serverBook.status !== undefined) update.status = serverBook.status;
+	if (serverBook.rating !== undefined) update.rating = serverBook.rating;
+	if (serverBook.review !== undefined) update.review = serverBook.review;
+	if (serverBook.tags !== undefined) update.tags = serverBook.tags;
+	return update;
 }
 
 /** Returns the set of bookIds the server has content for. */
@@ -663,23 +744,21 @@ export async function pullSync(): Promise<Set<string>> {
 
 			// Independent of the updatedAt gate: a finish recorded on another device
 			// is a fact this one lacks, and it does not move the reading position.
+			// The server already holds it, so claiming a newer revision here would
+			// only shadow whatever else it has for us.
 			if (serverBook.finishedAt != null && local.finishedAt == null) {
-				await queries.updateBook(serverBook.bookId, { finishedAt: serverBook.finishedAt });
+				await queries.updateBook(
+					serverBook.bookId,
+					{ finishedAt: serverBook.finishedAt },
+					Date.now(),
+					{ isDeviceLocal: true },
+				);
 				changed = true;
 			}
 
-			const localUpdatedAt = Math.max(local.lastRead ?? 0, local.addedAt);
-			if (serverBook.updatedAt > localUpdatedAt) {
-				const update: Parameters<typeof queries.updateBook>[1] = {
-					wordPosition: wordPos(serverBook.wordPosition),
-					lastRead: serverBook.updatedAt,
-				};
-				// Refresh wordCount when the server has a definitive value so
-				// chapter/highlight bounds derived from it stay coherent. Skipping
-				// this leaves local count stale after a server-side content refresh.
-				if (serverBook.wordCount != null && serverBook.wordCount !== local.wordCount) {
-					update.wordCount = serverBook.wordCount;
-				}
+			// Position and reader-editable metadata move as one revision of the row.
+			const update = buildBookMergeUpdate(local, serverBook);
+			if (update) {
 				// Stamped with the server's timestamp, not now: this replays a change
 				// made on another device, and a finish that happened in March must
 				// not be recorded as happening today.

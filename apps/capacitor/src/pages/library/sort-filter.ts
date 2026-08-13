@@ -1,26 +1,28 @@
+import { type BookStatus, bookStatus, readingProgress } from "@lesefluss/core";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
-import { isFinishedPercent, readingProgress } from "../../utils/reading-progress";
 
-export type SortBy = "title" | "author" | "recent" | "progress";
-export type FilterBy = "all" | "unread" | "reading" | "done";
+export type SortBy = "title" | "author" | "recent" | "progress" | "rating";
+export type FilterBy = "all" | BookStatus;
 
 export const SORT_LABELS: Record<SortBy, string> = {
 	title: "Title",
 	author: "Author",
 	recent: "Recent",
 	progress: "Progress",
+	rating: "Rating",
 };
 
 export const FILTER_LABELS: Record<FilterBy, string> = {
 	all: "All",
-	unread: "Unread",
+	want: "Want to read",
 	reading: "Reading",
-	done: "Done",
+	finished: "Finished",
+	dropped: "Dropped",
 };
 
-export const FILTER_OPTIONS: FilterBy[] = ["all", "unread", "reading", "done"];
-export const SORT_OPTIONS: SortBy[] = ["recent", "title", "author", "progress"];
+export const FILTER_OPTIONS: FilterBy[] = ["all", "want", "reading", "finished", "dropped"];
+export const SORT_OPTIONS: SortBy[] = ["recent", "title", "author", "progress", "rating"];
 
 const FINISHED_TAIL_WORDS = 5;
 
@@ -48,7 +50,26 @@ function seriesRecency(s: Series, activity: SeriesActivity | undefined): number 
 	return activity?.latestRead ?? s.createdAt;
 }
 
-type SortKey = { title: string; author: string; recency: number; progress: number };
+/**
+ * Series onto the same shelves as books. They carry no `status` column of their
+ * own, so this is always derived: a series is what its chapters have done.
+ * `dropped` is unreachable here, which is correct - there is nowhere to record
+ * that decision about a series yet.
+ */
+function seriesStatus(activity: SeriesActivity | undefined): BookStatus {
+	if (!activity || activity.total === 0) return "want";
+	if (activity.finished >= activity.total) return "finished";
+	return activity.started > 0 ? "reading" : "want";
+}
+
+type SortKey = {
+	title: string;
+	author: string;
+	recency: number;
+	progress: number;
+	status: BookStatus;
+	rating: number | null;
+};
 
 export type LibraryItem =
 	| { kind: "book"; book: Book; sortKey: SortKey }
@@ -65,6 +86,8 @@ function bookSortKey(b: Book): SortKey {
 		author: b.author ?? "",
 		recency: b.lastRead ?? b.addedAt,
 		progress: readingProgress(b),
+		status: bookStatus(b),
+		rating: b.rating,
 	};
 }
 
@@ -74,24 +97,13 @@ function seriesSortKey(s: Series, activity: SeriesActivity | undefined): SortKey
 		author: s.author ?? "",
 		recency: seriesRecency(s, activity),
 		progress: seriesProgress(activity),
+		status: seriesStatus(activity),
+		rating: null,
 	};
 }
 
 function matchesFilter(item: LibraryItem, filterBy: FilterBy): boolean {
-	if (filterBy === "all") return true;
-	if (item.kind === "book") {
-		const p = item.sortKey.progress;
-		if (filterBy === "unread") return p === 0;
-		if (filterBy === "reading") return p > 0 && p < 95;
-		return isFinishedPercent(p);
-	}
-	const a = item.activity;
-	if (filterBy === "unread") return (a?.started ?? 0) === 0;
-	if (filterBy === "reading") {
-		if (!a || a.total === 0) return false;
-		return a.started > 0 && a.finished < a.total;
-	}
-	return !!a && a.total > 0 && a.finished >= a.total;
+	return filterBy === "all" || item.sortKey.status === filterBy;
 }
 
 function compareItems(a: LibraryItem, b: LibraryItem, sortBy: SortBy): number {
@@ -104,6 +116,9 @@ function compareItems(a: LibraryItem, b: LibraryItem, sortBy: SortBy): number {
 			return b.sortKey.recency - a.sortKey.recency;
 		case "progress":
 			return b.sortKey.progress - a.sortKey.progress;
+		// Unrated sorts below one star rather than above five.
+		case "rating":
+			return (b.sortKey.rating ?? -1) - (a.sortKey.rating ?? -1);
 	}
 }
 

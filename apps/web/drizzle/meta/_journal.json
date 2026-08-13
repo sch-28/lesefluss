@@ -113,6 +113,34 @@
       "when": 1780012800000,
       "tag": "0015_book_finished_at",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1781222400000,
+      "tag": "0016_book_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1781308800000,
+      "tag": "0017_position_updated_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1781395200000,
+      "tag": "0018_half_star_ratings",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1781481600000,
+      "tag": "0019_metadata_updated_at",
+      "breakpoints": true
     }
   ]
 }

@@ -49,6 +49,8 @@ function buildChapterRow(
 		size: 0,
 		isActive: false,
 		addedAt: now,
+		updatedAt: now,
+		metadataUpdatedAt: now,
 		lastRead: null,
 		source: "serial",
 		catalogId: null,

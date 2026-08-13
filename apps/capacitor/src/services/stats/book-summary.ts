@@ -4,7 +4,7 @@
  * finished threshold, the page clamp and the time-remaining estimate are all
  * rules rather than layout.
  */
-import { readingProgress } from "../../utils/reading-progress";
+import { readingProgress } from "@lesefluss/core";
 import { AVERAGE_READER_WPM, bookPageCount, estimatePages } from "../../utils/reading-time";
 
 export interface BookProgressInput {

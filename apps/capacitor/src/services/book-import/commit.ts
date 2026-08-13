@@ -41,6 +41,8 @@ export async function commitBook(payload: BookPayload, extras: ImportExtras): Pr
 			size,
 			isActive: false,
 			addedAt,
+			updatedAt: addedAt,
+			metadataUpdatedAt: addedAt,
 			lastRead: null,
 			source: extras.source ?? null,
 			catalogId: extras.catalogId ?? null,
@@ -57,7 +59,9 @@ export async function commitBook(payload: BookPayload, extras: ImportExtras): Pr
 		try {
 			await ensureBooksDir();
 			await writeFileInChunks(filePath, payload.original.bytes);
-			await queries.updateBook(id, { filePath });
+			// The original file lives on this device only, so recording it must not
+			// make the row look freshly edited to sync.
+			await queries.updateBook(id, { filePath }, Date.now(), { isDeviceLocal: true });
 		} catch (err) {
 			// The book row + content are already committed and fully readable; the
 			// original file is only kept for re-parse. A partial chunked write would

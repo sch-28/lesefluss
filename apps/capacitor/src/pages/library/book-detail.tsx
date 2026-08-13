@@ -1,5 +1,5 @@
 import { displayHostname } from "@lesefluss/book-import";
-import { isSyncEligible, wordPos } from "@lesefluss/core";
+import { isSyncEligible, readingProgress, wordPos } from "@lesefluss/core";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -12,7 +12,7 @@ import {
 } from "@lesefluss/ui/alert-dialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { BookOpen, Cpu, Trash2 } from "lucide-react";
+import { BookOpen, Cpu, Pencil, Trash2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DeviceBadge } from "../../components/device-sync";
@@ -27,13 +27,17 @@ import { bookKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { parseChapters } from "../../services/db/queries/books";
 import { IS_WEB } from "../../utils/platform";
-import { readingProgress } from "../../utils/reading-progress";
 import { bookPageCount } from "../../utils/reading-time";
 import { DetailShell } from "../_shared/detail-shell";
 import { BookChapters } from "./book-chapters";
+import BookEditSheet, {
+	type BookEditValues,
+	bookToEditValues,
+	editValuesToPatch,
+} from "./book-edit-sheet";
 import { BookFileCard } from "./book-file-card";
-import { BookJourney } from "./book-journey";
 import { BookHighlights } from "./book-highlights";
+import { BookJourney } from "./book-journey";
 import { BookStatsCard } from "./book-stats-card";
 import { SessionTable } from "./session-table";
 
@@ -75,22 +79,45 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		};
 	}, []);
 	const deleteMutation = queryHooks.useDeleteBook();
+	const updateMutation = queryHooks.useUpdateBook();
 	const [isTransferOpen, setIsTransferOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+	const [isEditOpen, setIsEditOpen] = useState(false);
 
 	// Everything below this line MUST stay above the `if (isPending)` /
 	// `if (!book)` early returns. Hooks called only on the loaded-book path
 	// (e.g. useBookDeviceState, useBookDeviceActions) trigger React error
 	// #310 on the first to second render transition because the hook count
 	// would differ between renders.
-	const deleteHeaderAction = useMemo(
-		() => ({
-			label: "Delete",
-			icon: Trash2,
-			destructive: true,
-			onClick: () => setIsDeleteOpen(true),
-		}),
+	const headerActions = useMemo(
+		() => [
+			{ label: "Edit", icon: Pencil, onClick: () => setIsEditOpen(true) },
+			{
+				label: "Delete",
+				icon: Trash2,
+				destructive: true,
+				onClick: () => setIsDeleteOpen(true),
+			},
+		],
 		[],
+	);
+	// Memoised because the sheet reseeds its form whenever `initial` changes; a
+	// fresh object every render would discard what the reader is typing.
+	const editValues = useMemo<BookEditValues>(
+		() =>
+			bookToEditValues(
+				book ?? {
+					title: "",
+					author: null,
+					description: null,
+					language: null,
+					status: null,
+					rating: null,
+					review: null,
+					tags: null,
+				},
+			),
+		[book],
 	);
 	const deviceState = useBookDeviceState(book?.id ?? null);
 	const deviceActions = useBookDeviceActions({
@@ -219,7 +246,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					catalogMeta ? { html: catalogMeta.description, text: catalogMeta.summary } : undefined
 				}
 				externalLink={externalUrl ? { href: externalUrl } : undefined}
-				headerAction={deleteHeaderAction}
+				headerActions={headerActions}
 			>
 				{isLoggedIn && !isSyncEligible(book) && (
 					<div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
@@ -247,6 +274,20 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					onDismiss={() => setIsTransferOpen(false)}
 				/>
 			)}
+
+			<BookEditSheet
+				isOpen={isEditOpen}
+				onClose={() => setIsEditOpen(false)}
+				initial={editValues}
+				progress={{ wordCount: book.wordCount, wordPosition: book.wordPosition }}
+				isSaving={updateMutation.isPending}
+				onSave={(values) => {
+					updateMutation.mutate(
+						{ id: book.id, values: editValuesToPatch(values) },
+						{ onSuccess: () => setIsEditOpen(false) },
+					);
+				}}
+			/>
 
 			<AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
 				<AlertDialogContent>

@@ -174,6 +174,31 @@ function useImportBookFromBlob() {
 }
 
 /**
+ * Save reader-edited metadata for a book.
+ *
+ * Usage:
+ *   const updateBook = queryHooks.useUpdateBook();
+ *   updateBook.mutate({ id, values: { title: "Morning Star" } });
+ *
+ * The write lands in SQLite whether or not an account exists; `scheduleSyncPush`
+ * is a no-op when signed out, and the row's `updated_at` carries the edit to the
+ * server whenever one appears.
+ */
+function useUpdateBook() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, values }: { id: string; values: Partial<Omit<Book, "id">> }) =>
+			queries.updateBook(id, values),
+		onSuccess: (_data, { id }) => {
+			qc.invalidateQueries({ queryKey: bookKeys.detail(id) });
+			qc.invalidateQueries({ queryKey: bookKeys.all });
+			scheduleSyncPush();
+		},
+		onError: () => toast.error("Couldn't save your changes"),
+	});
+}
+
+/**
  * Delete a book (disk file + both DB rows).
  *
  * Usage:
@@ -213,5 +238,6 @@ export const bookHooks = {
 	useImportSerialFromUrl,
 	useImportBookFromText,
 	useImportBookFromBlob,
+	useUpdateBook,
 	useDeleteBook,
 };

@@ -25,7 +25,8 @@ export function CollapsibleProse({ children }: { children: React.ReactNode }) {
 	useEffect(() => {
 		const el = contentRef.current;
 		if (!el) return;
-		const measure = () => setIsOverflowing(el.scrollHeight > COLLAPSED_MAX_HEIGHT + OVERFLOW_TOLERANCE);
+		const measure = () =>
+			setIsOverflowing(el.scrollHeight > COLLAPSED_MAX_HEIGHT + OVERFLOW_TOLERANCE);
 		measure();
 		const observer = new ResizeObserver(measure);
 		observer.observe(el);

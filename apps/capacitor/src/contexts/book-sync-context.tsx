@@ -329,7 +329,9 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					"booksync",
 					`book mismatch - device has "${deviceBookHash}", app expects "${currentBookId}". Clearing isActive.`,
 				);
-				await queries.updateBook(currentBookId, { isActive: false });
+				await queries.updateBook(currentBookId, { isActive: false }, Date.now(), {
+					isDeviceLocal: true,
+				});
 				updateActiveBookId(null);
 				return;
 			}

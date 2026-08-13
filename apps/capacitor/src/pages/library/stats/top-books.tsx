@@ -1,7 +1,7 @@
+import { readingProgress } from "@lesefluss/core";
 import { queryHooks } from "../../../services/db/hooks";
 import type { ShelfBook, TopBook } from "../../../services/db/queries/stats";
 import { formatDuration } from "../../../utils/date-utils";
-import { readingProgress } from "../../../utils/reading-progress";
 import { estimatePages } from "../../../utils/reading-time";
 import { BookShelf } from "./book-shelf";
 

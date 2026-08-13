@@ -1,7 +1,6 @@
-import { wordPos } from "@lesefluss/core";
+import { readingProgress, wordPos } from "@lesefluss/core";
 import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { formatShortDate } from "../../../utils/date-utils";
-import { readingProgress } from "../../../utils/reading-progress";
 import {
 	bucketMinutesByHour,
 	buildWpmTrend,

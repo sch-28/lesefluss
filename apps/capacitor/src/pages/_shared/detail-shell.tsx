@@ -27,6 +27,10 @@ export interface DetailAction {
 	destructive?: boolean;
 }
 
+export type HeaderAction = Pick<DetailAction, "label" | "onClick" | "destructive"> & {
+	icon: LucideIcon;
+};
+
 export interface DetailShellProps {
 	// Hero
 	cover: string | null | undefined;
@@ -56,8 +60,8 @@ export interface DetailShellProps {
 	backHref?: string;
 	/** External link rendered as an icon button in the toolbar end slot. */
 	externalLink?: { href: string; label?: string };
-	/** Icon-only header action (e.g. delete). */
-	headerAction?: Pick<DetailAction, "label" | "onClick" | "destructive"> & { icon: LucideIcon };
+	/** Icon-only header actions, rendered left to right (e.g. edit, delete). */
+	headerActions?: readonly HeaderAction[];
 	/** Determinate progress bar at the top (0-100). */
 	progress?: number;
 	/** Centered loading spinner instead of the body. */
@@ -80,12 +84,11 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 	description,
 	children,
 	externalLink,
-	headerAction,
+	headerActions = [],
 	progress,
 	isLoading,
 	errorMessage,
 }) => {
-	const HeaderActionIcon = headerAction?.icon;
 	return (
 		<>
 			<PageHeader
@@ -104,19 +107,23 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 								</a>
 							</Button>
 						)}
-						{headerAction && HeaderActionIcon && (
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={headerAction.onClick}
-								aria-label={headerAction.label}
-								className={
-									headerAction.destructive ? "text-destructive hover:text-destructive" : undefined
-								}
-							>
-								<HeaderActionIcon />
-							</Button>
-						)}
+						{headerActions.map((action) => {
+							const ActionIcon = action.icon;
+							return (
+								<Button
+									key={action.label}
+									variant="ghost"
+									size="icon"
+									onClick={action.onClick}
+									aria-label={action.label}
+									className={
+										action.destructive ? "text-destructive hover:text-destructive" : undefined
+									}
+								>
+									<ActionIcon />
+								</Button>
+							);
+						})}
 					</div>
 				}
 			/>

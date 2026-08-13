@@ -54,7 +54,10 @@ export function BookChapters({
 		// to centre after the reader saves a new position, fighting the scroll the
 		// reader just performed.
 		if (offset >= 0 && offset + item.clientHeight <= list.clientHeight) return;
-		list.scrollTop = Math.max(0, list.scrollTop + offset - (list.clientHeight - item.clientHeight) / 2);
+		list.scrollTop = Math.max(
+			0,
+			list.scrollTop + offset - (list.clientHeight - item.clientHeight) / 2,
+		);
 	}, [currentIndex, chapters.length]);
 
 	if (chapters.length === 0) return null;

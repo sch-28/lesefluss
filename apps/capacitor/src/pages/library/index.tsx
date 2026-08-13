@@ -1,3 +1,4 @@
+import { readingProgress } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
@@ -9,12 +10,13 @@ import {
 	BookText,
 	Filter as FilterIcon,
 	Loader2,
+	Pencil,
 	Plus,
 	RefreshCcw,
 	X,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActionSheet } from "../../components/action-sheet";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import BLEIndicator from "../../components/ble-indicator";
@@ -31,13 +33,13 @@ import type { Book, Series } from "../../services/db/schema";
 import { IS_WEB_BUILD } from "../../services/sync";
 import { IS_WEB } from "../../utils/platform";
 import BookCard from "./book-card";
+import BookEditSheet, { bookToEditValues, editValuesToPatch } from "./book-edit-sheet";
 import BookListItem from "./book-list-item";
 import FilterPopover from "./filter-popover";
 import ImportSheet from "./import-sheet";
 import PasteUrlModal from "./paste-url-modal";
 import SeriesCard from "./series-card";
 import SeriesListItem from "./series-list-item";
-import { readingProgress } from "../../utils/reading-progress";
 import { type FilterBy, filterAndSortLibrary, type SortBy } from "./sort-filter";
 import SortPopover from "./sort-popover";
 import TransferModal from "./transfer-modal";
@@ -48,7 +50,7 @@ const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
 const SORT_BY_KEY = "lesefluss:library-sort";
 const VIEW_MODE_KEY = "lesefluss:library-view-mode";
 
-const SORT_VALUES: readonly SortBy[] = ["title", "author", "recent", "progress"];
+const SORT_VALUES: readonly SortBy[] = ["title", "author", "recent", "progress", "rating"];
 const isSortBy = (value: string): value is SortBy =>
 	(SORT_VALUES as readonly string[]).includes(value);
 const isViewMode = (value: string): value is ViewMode => value === "grid" || value === "list";
@@ -82,6 +84,7 @@ const Library: React.FC = () => {
 	const imports = useLibraryImports();
 	const deleteMutation = queryHooks.useDeleteBook();
 	const deleteSeriesMutation = queryHooks.useDeleteSeries();
+	const updateMutation = queryHooks.useUpdateBook();
 
 	const isGlobalImporting = useIsMutating({ mutationKey: bookImportMutationKey }) > 0;
 
@@ -99,6 +102,10 @@ const Library: React.FC = () => {
 
 	const [pendingTransferBook, setPendingTransferBook] = useState<Book | null>(null);
 
+	const [editBook, setEditBook] = useState<Book | null>(null);
+	// Memoised for the same reason as in book-detail: the sheet reseeds its form
+	// whenever `initial` changes, and `isSaving` guarantees a re-render on save.
+	const editValues = useMemo(() => (editBook ? bookToEditValues(editBook) : null), [editBook]);
 	const [pendingDeleteBook, setPendingDeleteBook] = useState<Book | null>(null);
 	const [pendingDeleteSeries, setPendingDeleteSeries] = useState<Series | null>(null);
 
@@ -413,6 +420,13 @@ const Library: React.FC = () => {
 								navigate({ to: "/tabs/library/book/$id", params: { id: selectedBook.id } });
 						},
 					},
+					{
+						label: "Edit",
+						icon: Pencil,
+						onSelect: () => {
+							if (selectedBook) setEditBook(selectedBook);
+						},
+					},
 					...(!IS_WEB
 						? deviceActionsForSelectedBook.map((a) => ({
 								...a,
@@ -457,6 +471,22 @@ const Library: React.FC = () => {
 				title="Transfer Failed"
 				description={syncError ?? undefined}
 			/>
+
+			{editBook && editValues && (
+				<BookEditSheet
+					isOpen
+					onClose={() => setEditBook(null)}
+					initial={editValues}
+					progress={{ wordCount: editBook.wordCount, wordPosition: editBook.wordPosition }}
+					isSaving={updateMutation.isPending}
+					onSave={(values) => {
+						updateMutation.mutate(
+							{ id: editBook.id, values: editValuesToPatch(values) },
+							{ onSuccess: () => setEditBook(null) },
+						);
+					}}
+				/>
+			)}
 
 			<ConfirmDialog
 				open={!!pendingDeleteBook}

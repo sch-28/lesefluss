@@ -1,4 +1,10 @@
-import { type HexColor, type PaginationStyle, type WordPosition, wordPos } from "@lesefluss/core";
+import {
+	type BookStatus,
+	type HexColor,
+	type PaginationStyle,
+	type WordPosition,
+	wordPos,
+} from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import { check, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -108,6 +114,39 @@ export const books = sqliteTable("books", {
 	 * users (and the dev) can tell network failures from page-shape regressions.
 	 */
 	chapterError: text("chapter_error"),
+	description: text("description"),
+	/** BCP 47 tag ("en", "de-AT"). Null when the importer could not tell. */
+	language: text("language"),
+	/**
+	 * Explicit shelf. NULL means "derive from reading progress" (see
+	 * `bookStatus()` in @lesefluss/core); a value set by the reader is sticky and
+	 * survives further reading.
+	 *
+	 * Unlike `series.provider` this carries no SQL CHECK: the column is added to
+	 * an existing table, and SQLite can only gain a table constraint by rebuilding
+	 * the table. The union type plus the Zod enum on the sync boundary are the
+	 * enforcement.
+	 */
+	status: text("status").$type<BookStatus>(),
+	/** Half-stars: 1-10, where 7 is three and a half. NULL = unrated. */
+	rating: integer("rating"),
+	/** Reader's own notes, as opposed to `description` (the blurb). */
+	review: text("review"),
+	/** JSON array of tag labels: `["scifi","favorites"]`. NULL = untagged. */
+	tags: text("tags"),
+	/**
+	 * Revision of the reading position, epoch ms. Moves when `word_position` or
+	 * `last_read` moves and at no other time.
+	 *
+	 * This is deliberately NOT a general row revision. Every released build reads
+	 * it as the position's stamp and adopts the server's position whenever it is
+	 * higher, so a metadata edit moving it would make those builds discard
+	 * unpushed reading. Reader-editable fields use `metadata_updated_at`.
+	 */
+	updatedAt: integer("updated_at").notNull().default(0),
+	/** Revision of the reader-editable fields (description, language, status,
+	 *  rating, review, tags), epoch ms. Seeded from `updated_at` in 0032. */
+	metadataUpdatedAt: integer("metadata_updated_at").notNull().default(0),
 });
 
 /**

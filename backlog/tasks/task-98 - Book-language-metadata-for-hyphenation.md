@@ -4,7 +4,7 @@ title: Book language metadata for hyphenation
 status: To Do
 assignee: []
 created_date: '2026-04-26 19:51'
-updated_date: '2026-05-01 15:36'
+updated_date: '2026-08-13 09:06'
 labels: []
 milestone: m-5
 dependencies: []
@@ -26,3 +26,9 @@ Plumbing required:
    - Local TXT/HTML imports — leave null (default).
 5. PageView consumes `book.language ?? "en"` for the `lang` attribute on the columns container.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Superseded by TASK-164.1 (Book metadata columns + real updatedAt with full sync round-trip), which adds the `language` column to books and sync_books along with the rest of the editable metadata. Hyphenation consuming the column is not covered there and should stay a separate task if still wanted.
+<!-- SECTION:NOTES:END -->

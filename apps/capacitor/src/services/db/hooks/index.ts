@@ -77,6 +77,9 @@ export const queryHooks = {
 	/** Mutation: import a book from an in-memory Blob ("Open with" / share-sheet). */
 	useImportBookFromBlob: bookHooks.useImportBookFromBlob,
 
+	/** Mutation: save reader-edited book metadata. */
+	useUpdateBook: bookHooks.useUpdateBook,
+
 	/** Mutation: delete a book (disk + DB). */
 	useDeleteBook: bookHooks.useDeleteBook,
 

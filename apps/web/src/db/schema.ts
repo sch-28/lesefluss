@@ -44,7 +44,22 @@ export const syncBooks = pgTable(
 		chapterIndex: integer("chapter_index"),
 		chapterSourceUrl: text("chapter_source_url"),
 		chapterStatus: text("chapter_status").notNull().default("fetched"),
+		// Reader-editable metadata. `status` null means "derive from progress"
+		// (see bookStatus() in @lesefluss/core).
+		description: text("description"),
+		language: text("language"), // BCP 47 tag
+		status: text("status"),
+		rating: integer("rating"), // half-stars: 1-10, null = unrated
+		review: text("review"),
+		tags: text("tags"), // JSON: ["scifi","favorites"]
+		// Revision of the reading position. Released clients read it as exactly
+		// that and adopt the server's position whenever it is higher, so nothing
+		// but a position change may move it.
 		updatedAt: timestamp("updated_at").notNull(),
+		// Revision of the reader-editable fields. Nullable: rows last written by a
+		// client that pre-dates the column have none, and the merge falls back to
+		// updated_at for those.
+		metadataUpdatedAt: timestamp("metadata_updated_at"),
 	},
 	(t) => [
 		primaryKey({ columns: [t.userId, t.bookId] }),
@@ -52,6 +67,11 @@ export const syncBooks = pgTable(
 			"sync_books_chapter_status_check",
 			sql`${t.chapterStatus} IN ('pending', 'fetched', 'locked', 'error')`,
 		),
+		check(
+			"sync_books_status_check",
+			sql`${t.status} IS NULL OR ${t.status} IN ('want', 'reading', 'finished', 'dropped')`,
+		),
+		check("sync_books_rating_check", sql`${t.rating} IS NULL OR ${t.rating} BETWEEN 1 AND 10`),
 	],
 );
 

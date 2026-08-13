@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { HighlightColor } from "../reader/selection-toolbar";
 import type { Highlight } from "../../services/db/schema";
 import { formatRelative } from "../../utils/date-utils";
+import type { HighlightColor } from "../reader/selection-toolbar";
 
 const COLLAPSED_COUNT = 4;
 
@@ -38,7 +38,7 @@ export function BookHighlights({ highlights }: { highlights: Highlight[] }) {
 								<p className="m-0 line-clamp-4 text-sm leading-relaxed">{highlight.text}</p>
 							)}
 							{highlight.note && (
-								<p className="mt-1.5 m-0 border-current/15 border-l-2 pl-2 text-muted-foreground text-xs italic">
+								<p className="m-0 mt-1.5 border-current/15 border-l-2 pl-2 text-muted-foreground text-xs italic">
 									{highlight.note}
 								</p>
 							)}

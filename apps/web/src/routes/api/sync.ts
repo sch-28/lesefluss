@@ -1,4 +1,5 @@
 import {
+	type BookStatus,
 	pick,
 	SYNCED_SETTING_KEYS,
 	type SyncGlossaryEntry,
@@ -24,6 +25,13 @@ import {
 import { cors } from "~/lib/cors-middleware";
 import { checkLimit } from "~/lib/rate-limit";
 import { requireAuth } from "~/lib/session-middleware";
+import {
+	bookInsertValues,
+	bookUpsertSet,
+	bookUpsertSetPreservingMetadata,
+	bookUpsertTarget,
+	claimsMetadata,
+} from "~/lib/sync-book-upsert";
 
 // Body size limits are enforced at the reverse proxy (Coolify/Traefik). The
 // Content-Length header is client-controlled, so enforcing it in Node here
@@ -73,8 +81,15 @@ async function getUserSyncData(
 		chapterIndex: syncBooks.chapterIndex,
 		chapterSourceUrl: syncBooks.chapterSourceUrl,
 		chapterStatus: syncBooks.chapterStatus,
+		description: syncBooks.description,
+		language: syncBooks.language,
+		status: syncBooks.status,
+		rating: syncBooks.rating,
+		review: syncBooks.review,
+		tags: syncBooks.tags,
 		deleted: syncBooks.deleted,
 		updatedAt: syncBooks.updatedAt,
+		metadataUpdatedAt: syncBooks.metadataUpdatedAt,
 		// Presence flag only. The content itself is fetched separately below, and
 		// only for books the client says it doesn't have.
 		hasContent: sql<boolean>`${syncBooks.content} IS NOT NULL`,
@@ -132,6 +147,14 @@ async function getUserSyncData(
 				chapterIndex: b.chapterIndex,
 				chapterSourceUrl: b.chapterSourceUrl,
 				chapterStatus: b.chapterStatus as "pending" | "fetched" | "locked" | "error",
+				description: b.description,
+				language: b.language,
+				// Cast: PG `text` widens the column; the union is enforced by the Zod
+				// enum on push and a CHECK constraint on the table.
+				status: b.status as BookStatus | null,
+				rating: b.rating,
+				review: b.review,
+				tags: b.tags,
 				deleted: b.deleted,
 				...(content
 					? {
@@ -141,6 +164,7 @@ async function getUserSyncData(
 						}
 					: {}),
 				updatedAt: toMs(b.updatedAt),
+				metadataUpdatedAt: b.metadataUpdatedAt ? toMs(b.metadataUpdatedAt) : null,
 			};
 		}),
 		// Cast: PG `text` columns widen enum fields to `string`; SyncSettings narrows
@@ -263,65 +287,26 @@ export const Route = createFileRoute("/api/sync")({
 
 				await db.transaction(async (tx) => {
 					// --- Books: batched upsert ---
-					if (payload.books.length > 0) {
+					// Split by whether the payload says anything about the reader-editable
+					// columns. A client build that pre-dates them omits them entirely, and
+					// `bookInsertValues` has to turn that into NULL to build a row, and merging
+					// those NULLs would erase metadata edited on an up-to-date device the
+					// first time an older one pushed a newer reading position.
+					const claiming = payload.books.filter(claimsMetadata);
+					const preserving = payload.books.filter((book) => !claimsMetadata(book));
+					if (claiming.length > 0) {
 						await tx
 							.insert(syncBooks)
-							.values(
-								payload.books.map((book) => ({
-									userId,
-									bookId: book.bookId,
-									title: book.title,
-									author: book.author,
-									fileSize: book.fileSize,
-									wordCount: book.wordCount,
-									wordPosition: book.wordPosition,
-									// Tombstoned books shouldn't carry content; null defensively.
-									// Chapter rows (seriesId set) are re-derivable from upstream — never store body
-									// content for them server-side, even if an old client still pushes it.
-									content: book.deleted || book.seriesId ? null : (book.content ?? null),
-									coverImage: book.deleted || book.seriesId ? null : (book.coverImage ?? null),
-									chapters: book.deleted || book.seriesId ? null : (book.chapters ?? null),
-									source: book.source ?? null,
-									catalogId: book.catalogId ?? null,
-									sourceUrl: book.sourceUrl ?? null,
-									finishedAt: book.finishedAt != null ? toDate(book.finishedAt) : null,
-									seriesId: book.seriesId ?? null,
-									chapterIndex: book.chapterIndex ?? null,
-									chapterSourceUrl: book.chapterSourceUrl ?? null,
-									chapterStatus: book.chapterStatus ?? "fetched",
-									deleted: book.deleted,
-									updatedAt: toDate(book.updatedAt),
-								})),
-							)
+							.values(claiming.map((book) => bookInsertValues(userId, book)))
+							.onConflictDoUpdate({ target: bookUpsertTarget, set: bookUpsertSet });
+					}
+					if (preserving.length > 0) {
+						await tx
+							.insert(syncBooks)
+							.values(preserving.map((book) => bookInsertValues(userId, book)))
 							.onConflictDoUpdate({
-								target: [syncBooks.userId, syncBooks.bookId],
-								set: {
-									title: sql`excluded.title`,
-									author: sql`excluded.author`,
-									fileSize: sql`excluded.file_size`,
-									wordCount: sql`excluded.word_count`,
-									wordPosition: sql`CASE WHEN excluded.updated_at >= sync_books.updated_at THEN excluded.word_position ELSE sync_books.word_position END`,
-									// Once a row is deleted on the server, content stays null — no client push can refill it.
-									// Chapter rows (series_id set) are re-derivable from upstream; never store body content
-									// for them, regardless of what an old client pushes or what was there before.
-									content: sql`CASE WHEN sync_books.deleted OR excluded.deleted OR excluded.series_id IS NOT NULL THEN NULL ELSE COALESCE(excluded.content, sync_books.content) END`,
-									coverImage: sql`CASE WHEN sync_books.deleted OR excluded.deleted OR excluded.series_id IS NOT NULL THEN NULL ELSE COALESCE(excluded.cover_image, sync_books.cover_image) END`,
-									chapters: sql`CASE WHEN sync_books.deleted OR excluded.deleted OR excluded.series_id IS NOT NULL THEN NULL ELSE COALESCE(excluded.chapters, sync_books.chapters) END`,
-									source: sql`COALESCE(excluded.source, sync_books.source)`,
-									catalogId: sql`COALESCE(excluded.catalog_id, sync_books.catalog_id)`,
-									sourceUrl: sql`COALESCE(excluded.source_url, sync_books.source_url)`,
-									// Sticky: a finish already recorded is never unset by a client that
-									// does not know the field, or by one that has not backfilled yet.
-									finishedAt: sql`COALESCE(sync_books.finished_at, excluded.finished_at)`,
-									seriesId: sql`COALESCE(excluded.series_id, sync_books.series_id)`,
-									chapterIndex: sql`COALESCE(excluded.chapter_index, sync_books.chapter_index)`,
-									chapterSourceUrl: sql`COALESCE(excluded.chapter_source_url, sync_books.chapter_source_url)`,
-									// chapter_status overwrites freely — latest write wins, gated by updated_at.
-									chapterStatus: sql`CASE WHEN excluded.updated_at >= sync_books.updated_at THEN excluded.chapter_status ELSE sync_books.chapter_status END`,
-									// Sticky tombstone: deleted=true cannot be flipped back by any client push.
-									deleted: sql`sync_books.deleted OR excluded.deleted`,
-									updatedAt: sql`GREATEST(excluded.updated_at, sync_books.updated_at)`,
-								},
+								target: bookUpsertTarget,
+								set: bookUpsertSetPreservingMetadata,
 							});
 					}
 

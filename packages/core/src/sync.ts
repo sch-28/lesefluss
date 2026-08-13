@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BOOK_STATUSES } from "./books";
 import { HEX_COLOR_REGEX, SETTING_CONSTRAINTS } from "./settings";
 
 /**
@@ -39,6 +40,23 @@ export const SyncBookSchema = z.object({
 	// Optional so clients that pre-date the field still validate; absent means
 	// "unknown", not "never finished".
 	finishedAt: z.number().int().nonnegative().nullable().optional(),
+	// Reader-editable metadata. All optional for the same reason as `finishedAt`:
+	// an older client omits them entirely, and absent must not read as "cleared".
+	description: z.string().max(20_000).nullable().optional(),
+	language: z.string().max(35).nullable().optional(), // BCP 47 tag
+	// Explicit shelf. Null means "derive from progress" (see bookStatus()).
+	status: z.enum(BOOK_STATUSES).nullable().optional(),
+	// Half-stars, so 1..10 where 7 is three and a half. See RATING_MAX.
+	rating: z.number().int().min(1).max(10).nullable().optional(),
+	review: z.string().max(20_000).nullable().optional(),
+	tags: z.string().max(2000).nullable().optional(), // JSON: ["scifi","favorites"]
+	/**
+	 * Revision of the reader-editable fields, Unix ms. Separate from `updatedAt`,
+	 * which every released client reads as the reading position's revision and
+	 * must therefore keep meaning exactly that. Optional: a client that pre-dates
+	 * the field omits it, and the merge falls back to `updatedAt`.
+	 */
+	metadataUpdatedAt: z.number().int().nonnegative().nullable().optional(),
 	// Serial chapter membership (null for standalone books)
 	seriesId: z
 		.string()
