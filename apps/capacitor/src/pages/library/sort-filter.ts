@@ -1,4 +1,10 @@
-import { type BookStatus, bookStatus, readingProgress } from "@lesefluss/core";
+import {
+	BOOK_STATUS_LABELS,
+	type BookStatus,
+	bookStatus,
+	parseBookTags,
+	readingProgress,
+} from "@lesefluss/core";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
 
@@ -13,13 +19,7 @@ export const SORT_LABELS: Record<SortBy, string> = {
 	rating: "Rating",
 };
 
-export const FILTER_LABELS: Record<FilterBy, string> = {
-	all: "All",
-	want: "Want to read",
-	reading: "Reading",
-	finished: "Finished",
-	dropped: "Dropped",
-};
+export const FILTER_LABELS: Record<FilterBy, string> = { all: "All", ...BOOK_STATUS_LABELS };
 
 export const FILTER_OPTIONS: FilterBy[] = ["all", "want", "reading", "finished", "dropped"];
 export const SORT_OPTIONS: SortBy[] = ["recent", "title", "author", "progress", "rating"];
@@ -69,6 +69,7 @@ type SortKey = {
 	progress: number;
 	status: BookStatus;
 	rating: number | null;
+	tags: readonly string[];
 };
 
 export type LibraryItem =
@@ -88,6 +89,7 @@ function bookSortKey(b: Book): SortKey {
 		progress: readingProgress(b),
 		status: bookStatus(b),
 		rating: b.rating,
+		tags: parseBookTags(b.tags),
 	};
 }
 
@@ -99,11 +101,32 @@ function seriesSortKey(s: Series, activity: SeriesActivity | undefined): SortKey
 		progress: seriesProgress(activity),
 		status: seriesStatus(activity),
 		rating: null,
+		// Series carry no tags of their own; a tag filter therefore hides them,
+		// which is right: they cannot match it.
+		tags: [],
 	};
 }
 
 function matchesFilter(item: LibraryItem, filterBy: FilterBy): boolean {
 	return filterBy === "all" || item.sortKey.status === filterBy;
+}
+
+/** Case-insensitive substring over title and author. Runs against the already
+ *  loaded list, so there is no query to debounce. */
+function matchesSearch(item: LibraryItem, needle: string): boolean {
+	if (!needle) return true;
+	const { title, author } = item.sortKey;
+	return `${title} ${author}`.toLowerCase().includes(needle);
+}
+
+/** Every tag in use across the loaded library, so a tag stops being offered as
+ *  soon as the last book carrying it loses it. */
+export function tagsInUse(books: Book[]): string[] {
+	const seen = new Set<string>();
+	for (const book of books) {
+		for (const tag of parseBookTags(book.tags)) seen.add(tag);
+	}
+	return [...seen].sort((a, b) => a.localeCompare(b));
 }
 
 function compareItems(a: LibraryItem, b: LibraryItem, sortBy: SortBy): number {
@@ -122,13 +145,23 @@ function compareItems(a: LibraryItem, b: LibraryItem, sortBy: SortBy): number {
 	}
 }
 
+export type LibraryView = {
+	filterBy: FilterBy;
+	sortBy: SortBy;
+	/** Free text over title and author. Empty matches everything. */
+	search?: string;
+	/** Single tag, or null for no tag filter. */
+	tag?: string | null;
+};
+
 export function filterAndSortLibrary(
 	books: Book[],
 	series: Series[],
 	activity: Map<string, SeriesActivity>,
-	filterBy: FilterBy,
-	sortBy: SortBy,
+	view: LibraryView,
 ): LibraryItem[] {
+	const { filterBy, sortBy, search = "", tag = null } = view;
+	const needle = search.trim().toLowerCase();
 	const items: LibraryItem[] = [
 		...books.map<LibraryItem>((book) => ({ kind: "book", book, sortKey: bookSortKey(book) })),
 		...series.map<LibraryItem>((s) => {
@@ -138,5 +171,7 @@ export function filterAndSortLibrary(
 	];
 	return items
 		.filter((it) => matchesFilter(it, filterBy))
+		.filter((it) => matchesSearch(it, needle))
+		.filter((it) => tag === null || it.sortKey.tags.includes(tag))
 		.sort((a, b) => compareItems(a, b, sortBy));
 }

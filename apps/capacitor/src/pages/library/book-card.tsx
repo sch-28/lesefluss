@@ -7,6 +7,7 @@
  */
 
 import { Progress } from "@lesefluss/ui/progress";
+import { RatingStars } from "@lesefluss/ui/rating-stars";
 import type React from "react";
 import BookCover from "../../components/book-cover";
 import { DeviceBadge } from "../../components/device-sync";
@@ -53,6 +54,11 @@ const BookCard: React.FC<BookCardProps> = ({ book, cover, progress, started, onO
 				</div>
 				{book.author && (
 					<div className="mt-0.5 truncate text-[0.75rem] text-muted-foreground">{book.author}</div>
+				)}
+				{/* Sorting by rating is offered from the same screen, so the value has to
+				    be visible here or the reorder looks like nothing happened. */}
+				{book.rating !== null && (
+					<RatingStars rating={book.rating} className="mt-0.5" starClassName="size-3" />
 				)}
 				<SyncExcludedBadge book={book} className="mt-1" />
 			</div>

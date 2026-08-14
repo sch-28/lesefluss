@@ -5,6 +5,9 @@ import {
 	consumeAuthHandoffState,
 	finalizeVerifiedAuthHandoffLogin,
 	isSyncEligible,
+	MAX_SYNCED_CONTENT_BYTES,
+	MAX_SYNCED_COVER_CHARS,
+	MAX_SYNCED_JSON_CHARS,
 	pick,
 	SYNCED_SETTING_KEYS,
 	type SyncBook,
@@ -307,6 +310,23 @@ export async function deleteServerSession(sessionId: string): Promise<void> {
 // Data mappers (Capacitor SQLite → API payload)
 // ---------------------------------------------------------------------------
 
+/**
+ * Drop a blob the server would reject instead of sending it.
+ *
+ * An EPUB cover is embedded verbatim as a data URL with no downscale, so a
+ * high-resolution one can exceed the schema cap on its own. The whole push is
+ * validated in one pass, so sending it would 400 every other row in the batch.
+ * A book that syncs without its cover is recoverable; a device that cannot sync
+ * at all is not.
+ */
+function withinSyncLimit(value: string | null, max: number): string | null {
+	if (value !== null && value.length > max) {
+		log.warn("sync", `dropping oversized field (${value.length} chars, max ${max})`);
+		return null;
+	}
+	return value;
+}
+
 export function bookToSync(book: Book, contentData?: BookContent | null): SyncBook {
 	return {
 		bookId: book.id,
@@ -327,10 +347,10 @@ export function bookToSync(book: Book, contentData?: BookContent | null): SyncBo
 		// content / cover / TOC are skipped to save sync bytes.
 		...(contentData && !book.deleted && !book.seriesId
 			? {
-					content: contentData.content,
-					coverImage: contentData.coverImage,
-					chapters: contentData.chapters,
-					linkRanges: contentData.linkRanges,
+					content: withinSyncLimit(contentData.content, MAX_SYNCED_CONTENT_BYTES),
+					coverImage: withinSyncLimit(contentData.coverImage, MAX_SYNCED_COVER_CHARS),
+					chapters: withinSyncLimit(contentData.chapters, MAX_SYNCED_JSON_CHARS),
+					linkRanges: withinSyncLimit(contentData.linkRanges, MAX_SYNCED_JSON_CHARS),
 				}
 			: {}),
 		finishedAt: book.finishedAt,

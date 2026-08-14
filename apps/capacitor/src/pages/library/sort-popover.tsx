@@ -11,10 +11,7 @@ type Props = {
 const SortPopover: React.FC<Props> = ({ trigger, sortBy, onSort }) => (
 	<SelectionPopover
 		trigger={trigger}
-		options={SORT_OPTIONS}
-		labels={SORT_LABELS}
-		selected={sortBy}
-		onSelect={onSort}
+		sections={[{ options: SORT_OPTIONS, labels: SORT_LABELS, selected: sortBy, onSelect: onSort }]}
 	/>
 );
 

@@ -8,8 +8,8 @@ import {
 } from "@lesefluss/book-import";
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
-import type { Book } from "../db/schema";
-import type { ImportExtras } from "./types";
+import type { Book, NewBook } from "../db/schema";
+import type { ImportExtras, ImportOverrides } from "./types";
 
 /** Directory within app data where original book files (EPUB, …) are stored. */
 const BOOKS_DIR = "books";
@@ -23,31 +23,63 @@ const BOOKS_DIR = "books";
 const CHUNK_BYTES = 3 * 1024 * 1024;
 
 /**
+ * The `books` row an import produces. Pure, so the precedence between what the
+ * parser guessed and what the reader corrected is testable without a database.
+ *
+ * `overrides` come from the confirm sheet and win outright: the reader saw the
+ * parser's guess and changed it. An import that commits without being shown
+ * (the catalog) passes none, and the parser's values stand.
+ */
+export function buildImportedBookRow(
+	payload: BookPayload,
+	extras: ImportExtras,
+	overrides: ImportOverrides | undefined,
+	stamps: { id: string; addedAt: number; size: number },
+): NewBook {
+	const { id, addedAt, size } = stamps;
+	return {
+		id,
+		title: overrides?.title ?? payload.title,
+		author: overrides ? overrides.author : (payload.author ?? null),
+		description: overrides?.description ?? null,
+		language: overrides?.language ?? null,
+		status: overrides?.status ?? null,
+		rating: overrides?.rating ?? null,
+		review: overrides?.review ?? null,
+		tags: overrides?.tags ?? null,
+		fileFormat: payload.fileFormat,
+		filePath: null,
+		size,
+		isActive: false,
+		addedAt,
+		updatedAt: addedAt,
+		metadataUpdatedAt: addedAt,
+		lastRead: null,
+		source: extras.source ?? null,
+		catalogId: extras.catalogId ?? null,
+		// Capped to what SyncBookSchema accepts: one over-long redirect target
+		// would otherwise fail the whole push payload, not just this book.
+		sourceUrl: extras.sourceUrl?.slice(0, 2000) ?? null,
+	};
+}
+
+/**
  * Persist a parsed `BookPayload` to the database and (on native) save the
  * original file bytes to disk. Single writer for all import paths.
  */
-export async function commitBook(payload: BookPayload, extras: ImportExtras): Promise<Book> {
+export async function commitBook(
+	payload: BookPayload,
+	extras: ImportExtras,
+	/** Reader's corrections from the confirm sheet, applied over what the parser
+	 *  guessed. Absent when an import commits without being shown. */
+	overrides?: ImportOverrides,
+): Promise<Book> {
 	const id = generateBookId();
 	const addedAt = Date.now();
 	const size = utf8ByteLength(payload.content);
 
 	await queries.addBookWithContent(
-		{
-			id,
-			title: payload.title,
-			author: payload.author ?? null,
-			fileFormat: payload.fileFormat,
-			filePath: null,
-			size,
-			isActive: false,
-			addedAt,
-			updatedAt: addedAt,
-			metadataUpdatedAt: addedAt,
-			lastRead: null,
-			source: extras.source ?? null,
-			catalogId: extras.catalogId ?? null,
-			sourceUrl: extras.sourceUrl ?? null,
-		},
+		buildImportedBookRow(payload, extras, overrides, { id, addedAt, size }),
 		payload.content,
 		payload.coverImage ?? null,
 		payload.chapters ?? null,

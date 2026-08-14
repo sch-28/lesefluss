@@ -1,10 +1,12 @@
 import {
+	BOOK_STATUS_LABELS,
 	BOOK_STATUSES,
 	type BookStatus,
 	bookStatus,
 	nextRating,
-	RATING_STARS,
+	parseBookTags,
 	ratingStars,
+	serializeBookTags,
 	starFill,
 } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
@@ -17,10 +19,10 @@ import {
 } from "@lesefluss/ui/drawer";
 import { Input } from "@lesefluss/ui/input";
 import { Label } from "@lesefluss/ui/label";
-import { Star, X } from "lucide-react";
+import { STAR_POSITIONS, StarGlyph } from "@lesefluss/ui/rating-stars";
+import { X } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { FILTER_LABELS } from "./sort-filter";
 
 /**
  * The editable half of a book. Deliberately not a `Book`: the import confirm
@@ -50,23 +52,6 @@ type Props = {
 	progress?: { wordCount: number; wordPosition: number };
 };
 
-const STAR_POSITIONS = Array.from({ length: RATING_STARS }, (_, i) => i + 1);
-
-/** JSON array as stored in `books.tags`, tolerant of a malformed column. */
-export function parseTags(raw: string | null): string[] {
-	if (!raw) return [];
-	try {
-		const parsed: unknown = JSON.parse(raw);
-		return Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === "string") : [];
-	} catch {
-		return [];
-	}
-}
-
-export function serializeTags(tags: string[]): string | null {
-	return tags.length > 0 ? JSON.stringify(tags) : null;
-}
-
 /**
  * Field caps, mirroring `SyncBookSchema`. The server validates the whole push
  * payload in one `safeParse`, so a single over-long field does not fail its own
@@ -89,7 +74,7 @@ export function clampToFieldLimits(values: BookEditValues): BookEditValues {
 	const tags: string[] = [];
 	for (const tag of values.tags) {
 		tags.push(tag);
-		if ((serializeTags(tags)?.length ?? 0) > FIELD_LIMITS.tagsJson) {
+		if ((serializeBookTags(tags)?.length ?? 0) > FIELD_LIMITS.tagsJson) {
 			tags.pop();
 			break;
 		}
@@ -124,14 +109,14 @@ export function bookToEditValues(book: {
 		status: book.status,
 		rating: book.rating,
 		review: book.review,
-		tags: parseTags(book.tags),
+		tags: parseBookTags(book.tags),
 	};
 }
 
 /** The sheet's value shape as a `updateBook` patch. */
 export function editValuesToPatch(values: BookEditValues) {
 	const clamped = clampToFieldLimits(values);
-	return { ...clamped, tags: serializeTags(clamped.tags) };
+	return { ...clamped, tags: serializeBookTags(clamped.tags) };
 }
 
 const textareaClass =
@@ -177,6 +162,10 @@ const BookEditSheet: React.FC<Props> = ({
 	return (
 		<Drawer
 			open={isOpen}
+			// Swipe-to-dismiss is disabled rather than ignored while saving: vaul
+			// leaves the drag transform in place when the close is vetoed by the
+			// consumer, stranding the sheet off-screen with no spring-back.
+			dismissible={!isSaving}
 			onOpenChange={(open) => {
 				if (!open) onClose();
 			}}
@@ -221,14 +210,14 @@ const BookEditSheet: React.FC<Props> = ({
 											: "border-input text-muted-foreground hover:bg-muted"
 									}`}
 								>
-									{FILTER_LABELS[s]}
+									{BOOK_STATUS_LABELS[s]}
 								</button>
 							))}
 						</div>
 						{values.status === null ? (
 							<p className="m-0 text-muted-foreground text-xs">
 								{derivedStatus
-									? `Following your reading: ${FILTER_LABELS[derivedStatus]}.`
+									? `Following your reading: ${BOOK_STATUS_LABELS[derivedStatus]}.`
 									: "Follows your reading progress."}
 							</p>
 						) : (
@@ -245,31 +234,17 @@ const BookEditSheet: React.FC<Props> = ({
 					<div className="flex flex-col gap-1.5">
 						<Label>Rating</Label>
 						<div className="flex items-center gap-1">
-							{STAR_POSITIONS.map((star) => {
-								// Half-stars are drawn by clipping a filled star over an empty
-								// one, so the two halves always align exactly.
-								const filled = starFill(values.rating, star);
-								return (
-									<button
-										key={star}
-										type="button"
-										aria-label={`Rate ${star} star${star === 1 ? "" : "s"}`}
-										onClick={() => set("rating", nextRating(values.rating, star))}
-										className="relative p-0.5"
-									>
-										<Star className="size-6 text-muted-foreground" />
-										{filled > 0 && (
-											<span
-												className={`pointer-events-none absolute inset-0 overflow-hidden p-0.5 ${
-													filled === 1 ? "w-1/2" : "w-full"
-												}`}
-											>
-												<Star className="size-6 max-w-none fill-primary text-primary" />
-											</span>
-										)}
-									</button>
-								);
-							})}
+							{STAR_POSITIONS.map((star) => (
+								<button
+									key={star}
+									type="button"
+									aria-label={`Rate ${star} star${star === 1 ? "" : "s"}`}
+									onClick={() => set("rating", nextRating(values.rating, star))}
+									className="p-0.5"
+								>
+									<StarGlyph fill={starFill(values.rating, star)} className="size-6" />
+								</button>
+							))}
 							{values.rating !== null && (
 								<>
 									<span className="ml-2 text-muted-foreground text-xs">

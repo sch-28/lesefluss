@@ -6,6 +6,7 @@ import { HardwareBack } from "@/components/app-shell/hardware-back";
 import ShareIntentHandler from "@/components/share-intent-handler";
 import { Toaster } from "@/components/toast";
 import WhatsNewModal from "@/components/whats-new-modal";
+import { ImportStagingProvider } from "@/contexts/import-staging-context";
 import { checkForUpdate } from "@/services/update-check";
 
 export const Route = createRootRoute({
@@ -24,7 +25,10 @@ function RootLayout() {
 	}, []);
 
 	return (
-		<>
+		// Staging wraps the share handler: a share received while the app was
+		// closed parses before any page mounts, and its confirm sheet has to have
+		// somewhere to live.
+		<ImportStagingProvider>
 			<HardwareBack />
 			<ShareIntentHandler />
 			<Toaster />
@@ -36,6 +40,6 @@ function RootLayout() {
 					<Outlet />
 				</AppShell>
 			)}
-		</>
+		</ImportStagingProvider>
 	);
 }

@@ -1,5 +1,11 @@
 import { displayHostname } from "@lesefluss/book-import";
-import { isSyncEligible, readingProgress, wordPos } from "@lesefluss/core";
+import {
+	bookStatus,
+	isSyncEligible,
+	parseBookTags,
+	readingProgress,
+	wordPos,
+} from "@lesefluss/core";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -10,6 +16,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@lesefluss/ui/alert-dialog";
+import { RatingStars } from "@lesefluss/ui/rating-stars";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { BookOpen, Cpu, Pencil, Trash2 } from "lucide-react";
@@ -40,6 +47,7 @@ import { BookHighlights } from "./book-highlights";
 import { BookJourney } from "./book-journey";
 import { BookStatsCard } from "./book-stats-card";
 import { SessionTable } from "./session-table";
+import { FILTER_LABELS } from "./sort-filter";
 
 import TransferModal from "./transfer-modal";
 
@@ -205,7 +213,11 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		}
 	};
 
+	const tags = parseBookTags(book.tags);
 	const facts = [
+		// The shelf leads: it is the one fact the reader chose rather than earned.
+		FILTER_LABELS[bookStatus(book)],
+		book.rating !== null ? <RatingStars key="rating" rating={book.rating} /> : null,
 		pages !== null ? `${pages.toLocaleString()} pages` : null,
 		chapterCount > 0 ? `${chapterCount} chapters` : null,
 		`${progress}% read`,
@@ -214,7 +226,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 			? `${highlights.length} highlight${highlights.length === 1 ? "" : "s"}`
 			: null,
 		deviceState.isReachable && deviceState.isOnDevice ? (
-			<DeviceBadge bookId={book.id} style="text" />
+			<DeviceBadge key="device" bookId={book.id} style="text" />
 		) : null,
 	].filter((fact) => fact !== null);
 
@@ -242,8 +254,14 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					onClick: () => router.navigate({ to: "/tabs/reader/$id", params: { id: book.id } }),
 				}}
 				secondaryActions={secondaryActions}
+				// The reader's own description wins over the catalog blurb: they wrote
+				// it knowing the catalog one was there.
 				description={
-					catalogMeta ? { html: catalogMeta.description, text: catalogMeta.summary } : undefined
+					book.description
+						? { text: book.description }
+						: catalogMeta
+							? { html: catalogMeta.description, text: catalogMeta.summary }
+							: undefined
 				}
 				externalLink={externalUrl ? { href: externalUrl } : undefined}
 				headerActions={headerActions}
@@ -252,6 +270,26 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					<div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
 						Stored on this device only. Too large to sync to the cloud.
 					</div>
+				)}
+				{tags.length > 0 && (
+					<div className="flex flex-wrap gap-1.5">
+						{tags.map((tag) => (
+							<span
+								key={tag}
+								className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-muted-foreground text-xs"
+							>
+								{tag}
+							</span>
+						))}
+					</div>
+				)}
+				{book.review && (
+					<section className="rounded-lg border border-border bg-card p-4 text-card-foreground">
+						<h2 className="m-0 mb-2 font-semibold text-base">Your notes</h2>
+						<p className="m-0 whitespace-pre-wrap text-foreground/80 text-sm leading-relaxed">
+							{book.review}
+						</p>
+					</section>
 				)}
 				<BookStatsCard book={book} />
 				<BookJourney book={book} />

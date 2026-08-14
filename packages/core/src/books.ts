@@ -58,6 +58,30 @@ export const BOOK_STATUSES = ["want", "reading", "finished", "dropped"] as const
 
 export type BookStatus = (typeof BOOK_STATUSES)[number];
 
+/** One vocabulary for the shelves, so the app and the website cannot drift. */
+export const BOOK_STATUS_LABELS: Record<BookStatus, string> = {
+	want: "Want to read",
+	reading: "Reading",
+	finished: "Finished",
+	dropped: "Dropped",
+};
+
+/** Tags as stored in the `tags` column: a JSON array, tolerant of a malformed
+ *  value so one bad row cannot break a library screen. */
+export function parseBookTags(raw: string | null): string[] {
+	if (!raw) return [];
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		return Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === "string") : [];
+	} catch {
+		return [];
+	}
+}
+
+export function serializeBookTags(tags: string[]): string | null {
+	return tags.length > 0 ? JSON.stringify(tags) : null;
+}
+
 export function isBookStatus(value: unknown): value is BookStatus {
 	return typeof value === "string" && (BOOK_STATUSES as readonly string[]).includes(value);
 }

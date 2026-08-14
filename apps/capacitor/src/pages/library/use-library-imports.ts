@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { useToast } from "../../components/toast";
+import { useImportStaging } from "../../contexts/import-staging-context";
+import type { StagedImport } from "../../services/book-import";
 import { queryHooks } from "../../services/db/hooks";
 import { isSerialUrl } from "../../services/serial-scrapers";
 
@@ -43,7 +45,7 @@ type UseLibraryImports = {
 	errorMessage: string | null;
 	/** Clear error state on all import mutations. */
 	resetError: () => void;
-	/** Run the OS file picker → import flow. */
+	/** Run the OS file picker → parse flow, then queue the result. */
 	importFromFile: () => void;
 	/** Read the clipboard → import. */
 	importFromClipboard: () => void;
@@ -65,12 +67,24 @@ export function useLibraryImports(): UseLibraryImports {
 	const importUrl = queryHooks.useImportBookFromUrl();
 	const importSerial = queryHooks.useImportSerialFromUrl();
 	const { showToast } = useToast();
+	const { stage } = useImportStaging();
 
 	const [progress, setProgress] = useState(0);
 
-	const toastForKnownError = (err: Error): void => {
+	/**
+	 * Surface a failed import and decide whether its error may linger.
+	 *
+	 * `errorMessage` reads the first non-null error across the four mutations, so
+	 * an error that never opens the alert would mask every later one that should:
+	 * cancel the file picker once and a subsequent offline URL import fails
+	 * silently. Anything already surfaced (toast) or deliberately silent (cancel)
+	 * is therefore cleared here; only alert-worthy errors are kept for rendering.
+	 */
+	const handleImportError = (mutation: { reset: () => void }, err: unknown): void => {
+		if (!(err instanceof Error)) return;
 		const entry = ERROR_TOASTS[err.message];
 		if (entry) showToast(entry.msg, entry.color);
+		if (ALERT_SUPPRESSED.has(err.message)) mutation.reset();
 	};
 
 	const errorMessage = useMemo(() => {
@@ -80,6 +94,33 @@ export function useLibraryImports(): UseLibraryImports {
 		if (err.message === "FETCH_FAILED") return "Couldn't load this page.";
 		return err.message;
 	}, [importFile.error, importClipboard.error, importUrl.error, importSerial.error]);
+
+	/**
+	 * Park a parsed book in the confirm queue, or surface why it never got there.
+	 *
+	 * `mutateAsync` rather than a per-call `onSuccess`: starting a second import
+	 * while one is parsing detaches the first mutation's observer, so its per-call
+	 * callbacks never fire, while the promise returned here still resolves.
+	 *
+	 * `reset()` on success drops the payload react-query would otherwise keep in
+	 * `mutation.data` for the rest of the session. On failure it is left to
+	 * `handleImportError`, because resetting an alert-worthy error here would
+	 * clear it before React renders it and the "Import Failed" alert would never
+	 * open.
+	 */
+	const stageFrom = async <V>(
+		mutation: { mutateAsync: (vars: V) => Promise<StagedImport>; reset: () => void },
+		vars: V,
+	): Promise<boolean> => {
+		try {
+			stage(await mutation.mutateAsync(vars));
+			mutation.reset();
+			return true;
+		} catch (err) {
+			handleImportError(mutation, err);
+			return false;
+		}
+	};
 
 	return {
 		isImporting:
@@ -96,17 +137,13 @@ export function useLibraryImports(): UseLibraryImports {
 			importUrl.reset();
 			importSerial.reset();
 		},
-		importFromFile: () => {
+		importFromFile: async () => {
 			setProgress(0);
-			importFile.mutate(
-				{ onProgress: setProgress },
-				{ onSettled: () => setProgress(0), onError: toastForKnownError },
-			);
+			await stageFrom(importFile, { onProgress: setProgress });
+			setProgress(0);
 		},
-		importFromClipboard: () => {
-			importClipboard.mutate(undefined, { onError: toastForKnownError });
-		},
-		importFromUrl: (url, opts) => {
+		importFromClipboard: () => stageFrom(importClipboard, undefined),
+		importFromUrl: async (url, opts) => {
 			// Route serial/web-novel URLs (AO3, ScribbleHub, …) to the scraper
 			// pipeline; everything else goes through the standard URL importer.
 			if (isSerialUrl(url)) {
@@ -114,18 +151,12 @@ export function useLibraryImports(): UseLibraryImports {
 					{ url },
 					{
 						onSuccess: () => opts?.onSuccess?.(),
-						onError: toastForKnownError,
+						onError: (err) => handleImportError(importSerial, err),
 					},
 				);
 				return;
 			}
-			importUrl.mutate(
-				{ url },
-				{
-					onSuccess: () => opts?.onSuccess?.(),
-					onError: toastForKnownError,
-				},
-			);
+			if (await stageFrom(importUrl, { url })) opts?.onSuccess?.();
 		},
 	};
 }

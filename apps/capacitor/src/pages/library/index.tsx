@@ -1,5 +1,6 @@
 import { readingProgress } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
+import { Input } from "@lesefluss/ui/input";
 import { Progress } from "@lesefluss/ui/progress";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "@tanstack/react-router";
@@ -13,6 +14,7 @@ import {
 	Pencil,
 	Plus,
 	RefreshCcw,
+	Search,
 	X,
 } from "lucide-react";
 import type React from "react";
@@ -40,7 +42,7 @@ import ImportSheet from "./import-sheet";
 import PasteUrlModal from "./paste-url-modal";
 import SeriesCard from "./series-card";
 import SeriesListItem from "./series-list-item";
-import { type FilterBy, filterAndSortLibrary, type SortBy } from "./sort-filter";
+import { type FilterBy, filterAndSortLibrary, type SortBy, tagsInUse } from "./sort-filter";
 import SortPopover from "./sort-popover";
 import TransferModal from "./transfer-modal";
 import { useLibraryImports } from "./use-library-imports";
@@ -93,6 +95,9 @@ const Library: React.FC = () => {
 	);
 	const [sortBy, setSortBy] = usePersistentString(SORT_BY_KEY, isSortBy, "recent");
 	const [filterBy, setFilterBy] = useState<FilterBy>("all");
+	const [tagFilter, setTagFilter] = useState<string | null>(null);
+	const [search, setSearch] = useState("");
+	const [isSearchOpen, setIsSearchOpen] = useState(false);
 	const [viewMode, setViewMode] = usePersistentString(VIEW_MODE_KEY, isViewMode, "grid");
 
 	const [selectedBook, setSelectedBook] = useState<Book | null>(null);
@@ -189,7 +194,22 @@ const Library: React.FC = () => {
 		qc.invalidateQueries({ queryKey: bookKeys.all });
 	};
 
-	const visibleItems = filterAndSortLibrary(books, series, seriesActivity, filterBy, sortBy);
+	const availableTags = tagsInUse(books);
+	// A tag can vanish while it is the active filter (its last book edited or
+	// deleted), which would otherwise leave the library empty with no way back.
+	const activeTag = tagFilter !== null && availableTags.includes(tagFilter) ? tagFilter : null;
+	// Dropped from state too, not just from the derived value: leaving it set
+	// would re-arm the filter the moment a sync pull brought the tag back.
+	useEffect(() => {
+		if (tagFilter !== null && activeTag === null) setTagFilter(null);
+	}, [tagFilter, activeTag]);
+	const visibleItems = filterAndSortLibrary(books, series, seriesActivity, {
+		filterBy,
+		sortBy,
+		search,
+		tag: activeTag,
+	});
+	const isNarrowed = filterBy !== "all" || activeTag !== null || search.trim() !== "";
 
 	if (isPending) {
 		return (
@@ -208,6 +228,17 @@ const Library: React.FC = () => {
 				title="Lesefluss"
 				right={
 					<>
+						<Button
+							variant="ghost"
+							size="icon"
+							aria-label="Search library"
+							onClick={() => {
+								setIsSearchOpen((open) => !open);
+								setSearch("");
+							}}
+						>
+							<Search />
+						</Button>
 						<FilterPopover
 							trigger={
 								<Button variant="ghost" size="icon" aria-label="Filter">
@@ -216,6 +247,9 @@ const Library: React.FC = () => {
 							}
 							filterBy={filterBy}
 							onFilter={setFilterBy}
+							tags={availableTags}
+							tag={activeTag}
+							onTag={setTagFilter}
 						/>
 						<SortPopover
 							trigger={
@@ -253,6 +287,17 @@ const Library: React.FC = () => {
 					</>
 				}
 			/>
+
+			{isSearchOpen && (
+				<div className="border-border border-b px-4 py-2">
+					<Input
+						autoFocus
+						value={search}
+						placeholder="Search title or author"
+						onChange={(e) => setSearch(e.target.value)}
+					/>
+				</div>
+			)}
 
 			{/* Import progress. Determinate when we have a %, otherwise an animated stripe for sources without progress (URL, clipboard, share-intent). */}
 			{isGlobalImporting &&
@@ -301,7 +346,7 @@ const Library: React.FC = () => {
 				</div>
 			) : visibleItems.length === 0 ? (
 				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
-					<p className="m-0">No items match this filter.</p>
+					<p className="m-0">{isNarrowed ? "No books match." : "Nothing to show."}</p>
 				</div>
 			) : viewMode === "grid" ? (
 				<div className="grid grid-cols-3 gap-4 p-4 pb-24 content-container md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">

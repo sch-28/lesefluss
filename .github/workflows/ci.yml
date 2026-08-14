@@ -27,3 +27,52 @@ jobs:
       - name: Typecheck and test Capacitor app
         working-directory: apps/capacitor
         run: pnpm check-types
+
+  # The sync merge rules are SQL, and SQL that guards reading positions. Without
+  # a database here they are `describe.skipIf(!hasDb)` and run nowhere.
+  sync-merge:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lesefluss_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/lesefluss_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Replays the whole migration chain, so a migration that cannot apply from
+      # scratch fails here rather than on someone's server.
+      - name: Apply migrations
+        working-directory: apps/web
+        run: pnpm db:migrate
+
+      - name: Typecheck website
+        working-directory: apps/web
+        run: pnpm check-types
+
+      - name: Test website
+        working-directory: apps/web
+        run: pnpm test

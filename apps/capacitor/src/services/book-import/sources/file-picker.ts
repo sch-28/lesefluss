@@ -2,6 +2,8 @@ import { Capacitor } from "@capacitor/core";
 import { FilePicker } from "@capawesome/capacitor-file-picker";
 import type { RawInput } from "@lesefluss/book-import";
 
+type PickedFile = Awaited<ReturnType<typeof FilePicker.pickFiles>>["files"][number];
+
 /**
  * Upper bound on importable file size. `readData`-style whole-file base64
  * marshalling used to OOM the native bridge well before this; reading bytes
@@ -19,16 +21,7 @@ const READ_TIMEOUT_MS = 60_000;
  */
 export async function pickFileFromPicker(): Promise<RawInput> {
 	if (Capacitor.isNativePlatform()) {
-		const result = await FilePicker.pickFiles({
-			types: [
-				"text/plain",
-				"text/markdown",
-				"application/epub+zip",
-				"text/html",
-				"application/pdf",
-			],
-			limit: 1,
-		});
+		const result = await pickFilesOrCancel();
 		if (!result.files || result.files.length === 0) throw new Error("CANCELLED");
 		const file = result.files[0];
 		if (file.size > MAX_IMPORT_BYTES) throw new Error("FILE_TOO_LARGE");
@@ -56,6 +49,31 @@ export async function pickFileFromPicker(): Promise<RawInput> {
 		bytes: picked.bytes,
 		fileName: picked.name,
 	};
+}
+
+/**
+ * Dismissing the Android picker rejects with the plugin's own message rather
+ * than resolving with an empty selection, so the caller-facing `CANCELLED` code
+ * has to be recovered here. Without it the message reaches the UI verbatim and
+ * backing out of the picker raises an "Import Failed" alert.
+ */
+async function pickFilesOrCancel(): Promise<{ files?: PickedFile[] }> {
+	try {
+		return await FilePicker.pickFiles({
+			types: [
+				"text/plain",
+				"text/markdown",
+				"application/epub+zip",
+				"text/html",
+				"application/pdf",
+			],
+			limit: 1,
+		});
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		if (/cancel/i.test(message)) throw new Error("CANCELLED");
+		throw err;
+	}
 }
 
 async function fetchArrayBufferWithTimeout(url: string, timeoutMs: number): Promise<ArrayBuffer> {

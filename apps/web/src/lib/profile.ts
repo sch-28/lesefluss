@@ -52,6 +52,10 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 				wordPosition: syncBooks.wordPosition,
 				fileSize: syncBooks.fileSize,
 				wordCount: syncBooks.wordCount,
+				status: syncBooks.status,
+				rating: syncBooks.rating,
+				tags: syncBooks.tags,
+				description: syncBooks.description,
 			})
 			.from(syncBooks)
 			.where(and(eq(syncBooks.userId, userId), eq(syncBooks.deleted, false)))

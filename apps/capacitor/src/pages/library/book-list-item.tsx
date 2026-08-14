@@ -1,4 +1,5 @@
 import { Progress } from "@lesefluss/ui/progress";
+import { RatingStars } from "@lesefluss/ui/rating-stars";
 import type React from "react";
 import BookCover from "../../components/book-cover";
 import { DeviceBadge } from "../../components/device-sync";
@@ -40,6 +41,9 @@ const BookListItem: React.FC<BookListItemProps> = ({
 				</div>
 				{book.author && (
 					<div className="mt-0.5 truncate text-[0.8rem] text-muted-foreground">{book.author}</div>
+				)}
+				{book.rating !== null && (
+					<RatingStars rating={book.rating} className="mt-0.5" starClassName="size-3" />
 				)}
 				{started && (
 					<div className="mt-1 flex items-center gap-1.5">

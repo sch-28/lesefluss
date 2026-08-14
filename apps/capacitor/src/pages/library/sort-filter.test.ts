@@ -2,7 +2,7 @@ import { wordPos } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
-import { type FilterBy, filterAndSortLibrary, type SortBy } from "./sort-filter";
+import { type FilterBy, filterAndSortLibrary, type SortBy, tagsInUse } from "./sort-filter";
 
 function makeBook(overrides: Partial<Book> = {}): Book {
 	return {
@@ -58,7 +58,7 @@ function makeSeries(overrides: Partial<Series> = {}): Series {
 }
 
 function visibleIds(books: Book[], filterBy: FilterBy, sortBy: SortBy = "recent"): string[] {
-	return filterAndSortLibrary(books, [], new Map(), filterBy, sortBy).map((item) =>
+	return filterAndSortLibrary(books, [], new Map(), { filterBy, sortBy }).map((item) =>
 		item.kind === "book" ? item.book.id : item.series.id,
 	);
 }
@@ -115,7 +115,7 @@ describe("series shelves", () => {
 	function libraryWith(activity: SeriesActivity | undefined, filterBy: FilterBy) {
 		const map = new Map<string, SeriesActivity>();
 		if (activity) map.set("abc12345", activity);
-		return filterAndSortLibrary([], [makeSeries()], map, filterBy, "recent");
+		return filterAndSortLibrary([], [makeSeries()], map, { filterBy, sortBy: "recent" });
 	}
 
 	it("treats a series with no chapters yet as want, not finished", () => {
@@ -147,5 +147,101 @@ describe("sorting by rating", () => {
 			makeBook({ id: "cccccccc", rating: 5 }),
 		];
 		expect(visibleIds(books, "all", "rating")).toEqual(["cccccccc", "aaaaaaaa", "bbbbbbbb"]);
+	});
+});
+
+describe("search", () => {
+	const books = [
+		makeBook({ id: "aaaaaaaa", title: "The Hero of Ages", author: "Brandon Sanderson" }),
+		makeBook({ id: "bbbbbbbb", title: "Red Rising", author: "Pierce Brown" }),
+	];
+
+	function searchIds(
+		search: string,
+		extra: Partial<Parameters<typeof filterAndSortLibrary>[3]> = {},
+	) {
+		return filterAndSortLibrary(books, [], new Map(), {
+			filterBy: "all",
+			sortBy: "recent",
+			search,
+			...extra,
+		}).map((item) => (item.kind === "book" ? item.book.id : item.series.id));
+	}
+
+	it("matches on title, case-insensitively", () => {
+		expect(searchIds("hero")).toEqual(["aaaaaaaa"]);
+		expect(searchIds("HERO")).toEqual(["aaaaaaaa"]);
+	});
+
+	it("matches on author", () => {
+		expect(searchIds("pierce")).toEqual(["bbbbbbbb"]);
+	});
+
+	it("ignores surrounding whitespace and empty input", () => {
+		expect(searchIds("  ")).toHaveLength(2);
+		expect(searchIds("  rising  ")).toEqual(["bbbbbbbb"]);
+	});
+
+	it("finds series by title too", () => {
+		const items = filterAndSortLibrary([], [makeSeries({ title: "Worm" })], new Map(), {
+			filterBy: "all",
+			sortBy: "recent",
+			search: "wor",
+		});
+		expect(items).toHaveLength(1);
+	});
+
+	// Search narrows what the shelf already selected rather than replacing it.
+	it("composes with the status filter", () => {
+		const dropped = makeBook({ id: "cccccccc", title: "Red Sky", status: "dropped" });
+		const all = [...books, dropped];
+		const ids = filterAndSortLibrary(all, [], new Map(), {
+			filterBy: "dropped",
+			sortBy: "recent",
+			search: "red",
+		}).map((item) => (item.kind === "book" ? item.book.id : item.series.id));
+		expect(ids).toEqual(["cccccccc"]);
+	});
+});
+
+describe("tag filtering", () => {
+	const tagged = makeBook({ id: "aaaaaaaa", tags: '["scifi","reread"]' });
+	const other = makeBook({ id: "bbbbbbbb", tags: '["poetry"]' });
+	const untagged = makeBook({ id: "cccccccc", tags: null });
+	const all = [tagged, other, untagged];
+
+	function taggedIds(tag: string | null) {
+		return filterAndSortLibrary(all, [], new Map(), {
+			filterBy: "all",
+			sortBy: "recent",
+			tag,
+		}).map((item) => (item.kind === "book" ? item.book.id : item.series.id));
+	}
+
+	it("keeps only books carrying the tag", () => {
+		expect(taggedIds("scifi")).toEqual(["aaaaaaaa"]);
+		expect(taggedIds("poetry")).toEqual(["bbbbbbbb"]);
+	});
+
+	it("shows everything when no tag is selected", () => {
+		expect(taggedIds(null)).toHaveLength(3);
+	});
+
+	it("lists every tag in use, sorted, without duplicates", () => {
+		expect(tagsInUse(all)).toEqual(["poetry", "reread", "scifi"]);
+	});
+
+	it("offers no tags for a library that has none", () => {
+		expect(tagsInUse([untagged])).toEqual([]);
+	});
+
+	// Series have no tags, so a tag filter cannot match them.
+	it("hides series while a tag is selected", () => {
+		const items = filterAndSortLibrary(all, [makeSeries()], new Map(), {
+			filterBy: "all",
+			sortBy: "recent",
+			tag: "scifi",
+		});
+		expect(items.every((item) => item.kind === "book")).toBe(true);
 	});
 });

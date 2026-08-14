@@ -1,4 +1,6 @@
+import { BOOK_STATUS_LABELS, bookStatus, parseBookTags } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
+import { RatingStars } from "@lesefluss/ui/rating-stars";
 import { Separator } from "@lesefluss/ui/separator";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, BookOpen, Globe, MessageSquare, Settings } from "lucide-react";
@@ -98,10 +100,21 @@ type ProfileBook = {
 	wordPosition: number;
 	fileSize: number | null;
 	wordCount: number | null;
+	status: string | null;
+	rating: number | null;
+	tags: string | null;
+	description: string | null;
 };
 
 function BookCard({ book }: { book: ProfileBook }) {
 	const progress = book.wordCount ? Math.round((book.wordPosition / book.wordCount) * 100) : null;
+	// Same derivation the app uses, so a book reads the same on both.
+	const status = bookStatus({
+		wordCount: book.wordCount ?? 0,
+		wordPosition: book.wordPosition,
+		status: book.status,
+	});
+	const tags = parseBookTags(book.tags);
 
 	return (
 		<div className="flex flex-col gap-1.5">
@@ -124,9 +137,21 @@ function BookCard({ book }: { book: ProfileBook }) {
 					<div className="h-full bg-primary" style={{ width: `${progress}%` }} />
 				</div>
 			)}
-			<div>
+			<div className="space-y-1">
 				<p className="truncate font-medium text-xs leading-tight">{book.title}</p>
 				{book.author && <p className="truncate text-muted-foreground text-xs">{book.author}</p>}
+				<p className="text-[10px] text-muted-foreground leading-tight">
+					{BOOK_STATUS_LABELS[status]}
+				</p>
+				{book.rating !== null && <RatingStars rating={book.rating} />}
+				{tags.length > 0 && (
+					<p className="truncate text-[10px] text-muted-foreground/80">{tags.join(" · ")}</p>
+				)}
+				{book.description && (
+					<p className="line-clamp-2 text-[10px] text-muted-foreground/80 leading-snug">
+						{book.description}
+					</p>
+				)}
 			</div>
 		</div>
 	);

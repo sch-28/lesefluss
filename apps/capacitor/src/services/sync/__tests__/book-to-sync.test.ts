@@ -1,4 +1,9 @@
-import { wordPos } from "@lesefluss/core";
+import {
+	MAX_SYNCED_COVER_CHARS,
+	MAX_SYNCED_JSON_CHARS,
+	SyncBookSchema,
+	wordPos,
+} from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
 import type { Book, BookContent } from "../../db/schema";
 import { bookToSync, shouldPushBook } from "../index";
@@ -59,6 +64,21 @@ describe("bookToSync", () => {
 	it("omits content for tombstoned books", () => {
 		const out = bookToSync(makeBook({ deleted: true }), content);
 		expect(out).not.toHaveProperty("content");
+	});
+
+	it("drops a blob the schema would reject rather than losing the whole push", () => {
+		// The server validates a push in one pass, so an EPUB cover over the cap
+		// would 400 every other book, highlight and setting in the batch.
+		const out = bookToSync(makeBook({ updatedAt: 1 }), {
+			...content,
+			coverImage: "x".repeat(MAX_SYNCED_COVER_CHARS + 1),
+			chapters: "y".repeat(MAX_SYNCED_JSON_CHARS + 1),
+		});
+		expect(out.coverImage).toBeNull();
+		expect(out.chapters).toBeNull();
+		// Fields within their cap are untouched.
+		expect(out.content).toBe("body text");
+		expect(SyncBookSchema.safeParse(out).success).toBe(true);
 	});
 
 	it("sends the row's own updatedAt, not one derived from reading history", () => {

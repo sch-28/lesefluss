@@ -1,17 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "../../../components/toast";
+import type { StagedImport } from "../../book-import";
 import {
-	importBook,
-	importBookFromBlob,
-	importBookFromClipboard,
-	importBookFromText,
-	importBookFromUrl,
+	parseBookFromBlob,
+	parseBookFromClipboard,
+	parseBookFromFile,
+	parseBookFromText,
+	parseBookFromUrl,
 	removeBook,
 } from "../../book-import";
 import { importSerialFromUrl } from "../../serial-scrapers";
 import { scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
-import type { Book } from "../schema";
+import type { Book, Series } from "../schema";
 import { bookImportMutationKey, bookKeys, serialKeys, statsKeys } from "./query-keys";
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
@@ -76,47 +77,35 @@ function useBookWordIndex(id: string) {
 // ─── Mutations ───────────────────────────────────────────────────────────────
 
 /**
- * Shared plumbing for every "import" mutation: invalidate the library + cover
- * queries and nudge the sync scheduler on success. Every new source (file
- * picker, clipboard, URL, share, serial scrapers, future PDF, …) should go
- * through this factory instead of reinventing the onSuccess block.
+ * Shared plumbing for every import mutation: one mutation key, so the library
+ * can show a global progress bar while any import is in flight.
  *
- * `TResult` defaults to `Book` for the existing book-import paths but accepts
- * any shape — serial imports return a `Series`; both invalidate the same
- * library queries since chapter rows surface as books in the grid.
- *
- * `extraInvalidations` extends the default invalidation set for sources that
- * touch query subtrees beyond books — e.g. serial imports also need to
- * refetch `serialKeys.all` (the library list + chapter counts).
+ * Deliberately no invalidation of its own. A book import PARSES here and is
+ * written later by the staging provider, which invalidates when the write
+ * actually happens; the one import that still writes directly (serials) passes
+ * its own `onSuccess`.
  */
-function useBookImportMutation<TVars = void, TResult = Book>(
+function useBookImportMutation<TVars = void, TResult = StagedImport>(
 	mutationFn: (vars: TVars) => Promise<TResult>,
-	extraInvalidations: readonly (readonly unknown[])[] = [],
+	options?: { onSuccess: () => void },
 ) {
-	const qc = useQueryClient();
 	return useMutation({
 		mutationKey: bookImportMutationKey,
 		mutationFn,
-		onSuccess: () => {
-			qc.invalidateQueries({ queryKey: bookKeys.all });
-			qc.invalidateQueries({ queryKey: bookKeys.covers });
-			for (const key of extraInvalidations) {
-				qc.invalidateQueries({ queryKey: key });
-			}
-			scheduleSyncPush();
-		},
+		onSuccess: options?.onSuccess,
 	});
 }
 
 /**
- * Import from the file picker. `onProgress` is plumbed through so the caller
- * can drive a progress bar during EPUB spine processing.
- * `importBook` throws `Error("CANCELLED")` on picker dismissal — callers treat
- * that as a silent no-op.
+ * Parse a file from the picker. Nothing is written: the caller stages the
+ * result for confirmation. `onProgress` is plumbed through so the caller can
+ * drive a progress bar during EPUB spine processing.
+ * `parseBookFromFile` throws `Error("CANCELLED")` on picker dismissal, which
+ * callers treat as a silent no-op.
  */
 function useImportBook() {
 	return useBookImportMutation(({ onProgress }: { onProgress?: (pct: number) => void }) =>
-		importBook(onProgress),
+		parseBookFromFile(onProgress),
 	);
 }
 
@@ -125,7 +114,7 @@ function useImportBook() {
  * clipboard has no usable text — callers surface this as a toast.
  */
 function useImportBookFromClipboard() {
-	return useBookImportMutation(() => importBookFromClipboard());
+	return useBookImportMutation(() => parseBookFromClipboard());
 }
 
 /**
@@ -133,7 +122,7 @@ function useImportBookFromClipboard() {
  * Readability). See `sources/url.ts` for the error contract.
  */
 function useImportBookFromUrl() {
-	return useBookImportMutation(({ url }: { url: string }) => importBookFromUrl(url));
+	return useBookImportMutation(({ url }: { url: string }) => parseBookFromUrl(url));
 }
 
 /**
@@ -148,10 +137,16 @@ function useImportBookFromUrl() {
  * `isSerialUrl` first to avoid this).
  */
 function useImportSerialFromUrl() {
-	return useBookImportMutation(
-		({ url }: { url: string }) => importSerialFromUrl(url),
-		[serialKeys.all],
-	);
+	const qc = useQueryClient();
+	return useBookImportMutation<{ url: string }, Series>(({ url }) => importSerialFromUrl(url), {
+		// Serials write on success, so this is where their rows appear.
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: bookKeys.all });
+			qc.invalidateQueries({ queryKey: bookKeys.covers });
+			qc.invalidateQueries({ queryKey: serialKeys.all });
+			scheduleSyncPush();
+		},
+	});
 }
 
 /**
@@ -159,7 +154,7 @@ function useImportSerialFromUrl() {
  */
 function useImportBookFromText() {
 	return useBookImportMutation(({ text, hint }: { text: string; hint?: { title?: string } }) =>
-		importBookFromText(text, hint),
+		parseBookFromText(text, hint),
 	);
 }
 
@@ -169,7 +164,7 @@ function useImportBookFromText() {
  */
 function useImportBookFromBlob() {
 	return useBookImportMutation(({ blob, fileName }: { blob: Blob; fileName: string }) =>
-		importBookFromBlob(blob, fileName),
+		parseBookFromBlob(blob, fileName),
 	);
 }
 

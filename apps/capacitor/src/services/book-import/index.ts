@@ -18,38 +18,80 @@ import type { Book } from "../db/schema";
 import { commitBook } from "./commit";
 import { readClipboardToRawInput } from "./sources/clipboard";
 import { pickFileFromPicker } from "./sources/file-picker";
-import type { ImportExtras } from "./types";
+import type { ImportExtras, ImportOverrides, StagedImport } from "./types";
 
 export { removeBook } from "./commit";
-export type { ImportExtras } from "./types";
+export type { ImportExtras, ImportOverrides, StagedImport } from "./types";
 
 const pipelineOptions: ImportPipelineOptions = {
 	loadPdfjs,
 };
+
+async function parse(
+	input: RawInput,
+	extras: ImportExtras = {},
+	onProgress?: (pct: number) => void,
+): Promise<StagedImport> {
+	const payload = await runImportPipeline(input, pipelineOptions, onProgress);
+	return { payload, extras };
+}
 
 async function parseAndCommit(
 	input: RawInput,
 	extras: ImportExtras = {},
 	onProgress?: (pct: number) => void,
 ): Promise<Book> {
-	const payload = await runImportPipeline(input, pipelineOptions, onProgress);
-	return commitBook(payload, extras);
+	const staged = await parse(input, extras, onProgress);
+	return commitBook(staged.payload, staged.extras);
 }
 
 /**
- * Open the system file picker, parse the selected file (TXT / EPUB / HTML),
- * and save it. Calls `onProgress` (0–100) where the parser emits progress.
+ * Write a staged import, with the reader's corrections applied over whatever the
+ * parser guessed. The staging holder drops its reference once this resolves;
+ * until then the payload is holding the whole book in memory.
+ */
+export async function commitStagedImport(
+	staged: StagedImport,
+	overrides?: ImportOverrides,
+): Promise<Book> {
+	return commitBook(staged.payload, staged.extras, overrides);
+}
+
+/**
+ * Parse without writing. Each of these mirrors the committing entry point below
+ * it; the confirm flow stages the result and commits it separately.
  *
  * Throws `Error("CANCELLED")` if the user dismissed the picker.
  */
-export async function importBook(onProgress?: (pct: number) => void): Promise<Book> {
+export async function parseBookFromFile(onProgress?: (pct: number) => void): Promise<StagedImport> {
 	const input = await pickFileFromPicker();
-	return parseAndCommit(input, {}, onProgress);
+	return parse(input, {}, onProgress);
+}
+
+export async function parseBookFromClipboard(): Promise<StagedImport> {
+	return parse(await readClipboardToRawInput());
+}
+
+export async function parseBookFromUrl(url: string): Promise<StagedImport> {
+	const { input, finalUrl } = await fetchUrlToRawInput(url, { catalogUrl: CATALOG_URL });
+	return parse(input, { source: "url", sourceUrl: finalUrl });
+}
+
+export async function parseBookFromText(
+	text: string,
+	hint?: { title?: string },
+): Promise<StagedImport> {
+	return parse({ kind: "text", text, hint });
+}
+
+export async function parseBookFromBlob(blob: Blob, fileName: string): Promise<StagedImport> {
+	return parse(await blobToRawInput(blob, fileName));
 }
 
 /**
- * Import from an already-in-memory Blob (e.g. downloaded EPUB from the
- * catalog). Same pipeline as `importBook` minus the file picker.
+ * Parse and write in one step, without a confirm sheet. Only the catalog uses
+ * this: its metadata is curated, and onboarding imports several starter books
+ * at once, which would otherwise queue up a sheet per book during first run.
  */
 export async function importBookFromBlob(
 	blob: Blob,
@@ -59,32 +101,6 @@ export async function importBookFromBlob(
 ): Promise<Book> {
 	const input = await blobToRawInput(blob, fileName);
 	return parseAndCommit(input, extras ?? {}, onProgress);
-}
-
-/**
- * Import from the system clipboard. Throws `Error("EMPTY")` if the clipboard
- * has no usable text.
- */
-export async function importBookFromClipboard(): Promise<Book> {
-	const input = await readClipboardToRawInput();
-	return parseAndCommit(input);
-}
-
-/**
- * Fetch an article via the catalog proxy and import it. See `sources/url.ts`
- * for the error contract (`INVALID_URL`, `TOO_LARGE`, `FETCH_FAILED`).
- */
-export async function importBookFromUrl(url: string): Promise<Book> {
-	const { input, finalUrl } = await fetchUrlToRawInput(url, { catalogUrl: CATALOG_URL });
-	return parseAndCommit(input, { source: "url", sourceUrl: finalUrl });
-}
-
-/**
- * Import from a plain-text string (e.g. shared plain text from another app).
- * `hint.title` overrides the first-line title heuristic in `textParser`.
- */
-export async function importBookFromText(text: string, hint?: { title?: string }): Promise<Book> {
-	return parseAndCommit({ kind: "text", text, hint });
 }
 
 async function loadPdfjs() {

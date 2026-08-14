@@ -12,6 +12,15 @@ import { HEX_COLOR_REGEX, SETTING_CONSTRAINTS } from "./settings";
 export const MAX_SYNCED_CONTENT_BYTES = 20_000_000;
 
 /**
+ * Caps on the blobs a book carries. Exported because the client has to enforce
+ * them before it builds a payload: the server validates a push in one pass and
+ * rejects all of it, so a single oversized cover would stop books, highlights,
+ * glossary and settings from syncing at all.
+ */
+export const MAX_SYNCED_COVER_CHARS = 5_000_000;
+export const MAX_SYNCED_JSON_CHARS = 500_000;
+
+/**
  * Whether a book participates in cloud sync. Oversized books are local-only.
  * Tombstones always sync so deletions propagate regardless of size.
  */
@@ -31,9 +40,9 @@ export const SyncBookSchema = z.object({
 	wordCount: z.number().int().nonnegative().nullable(),
 	wordPosition: z.number().int().nonnegative(),
 	content: z.string().max(MAX_SYNCED_CONTENT_BYTES).nullable().optional(), // full plain text - only sent for new books
-	coverImage: z.string().max(5_000_000).nullable().optional(), // base64 cover - only sent for new books
-	chapters: z.string().max(500_000).nullable().optional(), // JSON chapters - only sent for new books
-	linkRanges: z.string().max(500_000).nullable().optional(), // JSON external hyperlinks - only sent for new books
+	coverImage: z.string().max(MAX_SYNCED_COVER_CHARS).nullable().optional(), // base64 cover - only sent for new books
+	chapters: z.string().max(MAX_SYNCED_JSON_CHARS).nullable().optional(), // JSON chapters - only sent for new books
+	linkRanges: z.string().max(MAX_SYNCED_JSON_CHARS).nullable().optional(), // JSON external hyperlinks - only sent for new books
 	source: z.string().max(50).nullable().optional(), // 'gutenberg' | 'standard_ebooks' | 'url' | null
 	catalogId: z.string().max(200).nullable().optional(), // e.g. 'gutenberg:1342'
 	sourceUrl: z.string().max(2000).nullable().optional(), // original URL for source='url' imports

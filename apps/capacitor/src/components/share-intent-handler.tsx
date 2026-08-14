@@ -9,6 +9,8 @@ import {
 import { useRouter } from "@tanstack/react-router";
 import type React from "react";
 import { useEffect, useRef } from "react";
+import { useImportStaging } from "../contexts/import-staging-context";
+import type { StagedImport } from "../services/book-import";
 import { subscribeShareIntent } from "../services/book-import/sources/share-intent";
 import { queryHooks } from "../services/db/hooks";
 import { isSerialUrl } from "../services/serial-scrapers";
@@ -36,6 +38,7 @@ const ShareIntentHandler: React.FC = () => {
 	const importText = queryHooks.useImportBookFromText();
 	const importBlob = queryHooks.useImportBookFromBlob();
 	const { showToast } = useToast();
+	const { stage } = useImportStaging();
 	const history = useRouter().history;
 
 	const handlersRef = useRef({
@@ -44,9 +47,18 @@ const ShareIntentHandler: React.FC = () => {
 		importText,
 		importBlob,
 		showToast,
+		stage,
 		history,
 	});
-	handlersRef.current = { importUrl, importSerial, importText, importBlob, showToast, history };
+	handlersRef.current = {
+		importUrl,
+		importSerial,
+		importText,
+		importBlob,
+		showToast,
+		stage,
+		history,
+	};
 
 	useEffect(() => {
 		if (IS_WEB) return;
@@ -57,7 +69,7 @@ const ShareIntentHandler: React.FC = () => {
 		(async () => {
 			try {
 				handle = await subscribeShareIntent((event) => {
-					const { importUrl, importSerial, importText, importBlob, showToast, history } =
+					const { importUrl, importSerial, importText, importBlob, showToast, stage, history } =
 						handlersRef.current;
 
 					// Any incoming intent jumps to the library tab so the user sees
@@ -68,7 +80,14 @@ const ShareIntentHandler: React.FC = () => {
 					}
 
 					if (event.kind === "file") {
-						handleSharedFile(event.path, event.fileName, event.mimeType, importBlob, showToast);
+						handleSharedFile(
+							event.path,
+							event.fileName,
+							event.mimeType,
+							importBlob,
+							showToast,
+							stage,
+						);
 						return;
 					}
 
@@ -87,19 +106,19 @@ const ShareIntentHandler: React.FC = () => {
 							);
 							return;
 						}
-						importUrl.mutate(
-							{ url: candidate },
-							{
-								onSuccess: (book) => showToast(`Imported: ${book.title}`),
-								onError: (err: Error) => {
-									if (err.message === "TOO_LARGE") {
-										showToast("Shared page too large", "warning");
-									} else {
-										showToast("Couldn't import shared link", "danger");
-									}
-								},
-							},
-						);
+						importUrl
+							.mutateAsync({ url: candidate })
+							.then((staged) => {
+								stage(staged);
+								importUrl.reset();
+							})
+							.catch((err: Error) => {
+								if (err.message === "TOO_LARGE") {
+									showToast("Shared page too large", "warning");
+								} else {
+									showToast("Couldn't import shared link", "danger");
+								}
+							});
 					} else {
 						// Mixed text like "Article title https://share.google/xyz" — extract
 						// the embedded URL and import the article rather than the raw text.
@@ -114,28 +133,31 @@ const ShareIntentHandler: React.FC = () => {
 									},
 								);
 							} else {
-								importUrl.mutate(
-									{ url: embeddedUrl },
-									{
-										onSuccess: (book) => showToast(`Imported: ${book.title}`),
-										onError: (err: Error) => {
-											if (err.message === "TOO_LARGE") {
-												showToast("Shared page too large", "warning");
-											} else {
-												showToast("Couldn't import shared link", "danger");
-											}
-										},
-									},
-								);
+								importUrl
+									.mutateAsync({ url: embeddedUrl })
+									.then((staged) => {
+										stage(staged);
+										importUrl.reset();
+									})
+									.catch((err: Error) => {
+										if (err.message === "TOO_LARGE") {
+											showToast("Shared page too large", "warning");
+										} else {
+											showToast("Couldn't import shared link", "danger");
+										}
+									});
 							}
 						} else {
-							importText.mutate(
-								{ text: trimmed, hint: event.subject ? { title: event.subject } : undefined },
-								{
-									onSuccess: (book) => showToast(`Imported: ${book.title}`),
-									onError: () => showToast("Couldn't import shared text", "danger"),
-								},
-							);
+							importText
+								.mutateAsync({
+									text: trimmed,
+									hint: event.subject ? { title: event.subject } : undefined,
+								})
+								.then((staged) => {
+									stage(staged);
+									importText.reset();
+								})
+								.catch(() => showToast("Couldn't import shared text", "danger"));
 						}
 					}
 				});
@@ -164,6 +186,7 @@ function handleSharedFile(
 	mimeType: string | undefined,
 	importBlob: ImportBlobMutation,
 	showToast: ShowToast,
+	stage: (staged: StagedImport) => void,
 ): void {
 	void (async () => {
 		let blob: Blob;
@@ -180,18 +203,28 @@ function handleSharedFile(
 			return;
 		}
 
-		importBlob.mutate(
-			{ blob, fileName },
-			{
-				onSuccess: (book) => showToast(`Imported: ${book.title}`),
-				onError: () => showToast("Couldn't import shared file", "danger"),
-				onSettled: () => {
-					Filesystem.deleteFile({ path }).catch((err) =>
-						log.warn("share-intent", "deleteFile failed:", err),
-					);
-				},
-			},
-		);
+		const deleteCacheCopy = () => {
+			Filesystem.deleteFile({ path }).catch((err) =>
+				log.warn("share-intent", "deleteFile failed:", err),
+			);
+		};
+
+		// Awaited rather than using per-call callbacks: a second share detaches
+		// this mutation's observer, and this book would then be silently dropped.
+		//
+		// The cache copy outlives the parse deliberately, and is released when the
+		// staged entry leaves the confirm queue: the app can be killed with the
+		// sheet open, and deleting it here would leave neither book nor file.
+		importBlob
+			.mutateAsync({ blob, fileName })
+			.then((staged) => {
+				stage({ ...staged, cleanup: deleteCacheCopy });
+				importBlob.reset();
+			})
+			.catch(() => {
+				showToast("Couldn't import shared file", "danger");
+				deleteCacheCopy();
+			});
 	})();
 }
 
