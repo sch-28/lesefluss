@@ -1,9 +1,9 @@
 import { Readability } from "@mozilla/readability";
-import type { BookPayload, ImportLink, Parser } from "../types";
+import type { BookPayload, DomParserFactory, ImportLink, Parser } from "../types";
 import { type ContentLink, extractParagraphsWithLinks } from "../utils/dom-paragraphs";
 import { utf8ByteLength } from "../utils/encoding";
 import { assertBytes } from "../utils/raw-input";
-import { deriveTitle } from "../utils/title-heuristic";
+import { deriveTitle, firstTitleLikeLine } from "../utils/title-heuristic";
 import { canParseHtml } from "./matchers";
 
 // linkedom's parseFromString silently produces an empty body when the input
@@ -14,6 +14,37 @@ function ensureFullDocument(html: string): string {
 	const head = html.slice(0, 256).toLowerCase();
 	if (head.includes("<!doctype") || head.includes("<html")) return html;
 	return `<!DOCTYPE html><html><head></head><body>${html}</body></html>`;
+}
+
+/**
+ * The document title, without running Readability.
+ *
+ * Follows the same chain as `parse` minus its first step: `<title>`, then the
+ * first line of body text. Readability is skipped because it is the expensive
+ * half; it would otherwise supply `article.title` (which strips site-name
+ * suffixes, so "Post | Blog" becomes "Post") and, for a document with no
+ * `<title>`, a heading-derived name. A probed title can therefore still differ
+ * from the imported one there, and for a title-less document that opens with
+ * prose, where this yields the filename and the parse yields a timestamp.
+ * Author needs Readability's byline and is left to the parse.
+ */
+export function probeHtml(
+	bytes: ArrayBuffer,
+	domParser?: DomParserFactory,
+): { title: string | null } {
+	const html = new TextDecoder("utf-8").decode(bytes);
+	const parser = domParser?.() ?? new DOMParser();
+	const doc = parser.parseFromString(ensureFullDocument(html), "text/html");
+
+	const documentTitle = doc.title?.trim();
+	if (documentTitle) return { title: documentTitle };
+
+	// Matches `parse`'s own last resort, minus its timestamp branch: `deriveTitle`
+	// stamps the current time when the text opens with prose, so probing and
+	// importing the same file minutes apart would produce titles that can never
+	// compare equal. Null there instead, and the caller falls back to the filename.
+	const { content } = extractParagraphsWithLinks(doc.body);
+	return { title: content ? firstTitleLikeLine(content) : null };
 }
 
 export const htmlParser: Parser = {

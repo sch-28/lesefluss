@@ -4,35 +4,7 @@ import { useImportStaging } from "../../contexts/import-staging-context";
 import type { StagedImport } from "../../services/book-import";
 import { queryHooks } from "../../services/db/hooks";
 import { isSerialUrl } from "../../services/serial-scrapers";
-
-/**
- * Error codes thrown by any source/parser in the book-import subsystem and
- * how the UI should react to each. Source-agnostic: a `PDF_ENCRYPTED` thrown
- * from the file picker, a catalog import, or a future URL→PDF path all
- * produce the same toast.
- *
- * - `color: "warning"` for expected user states (no input, unsupported
- *   format variant, input rejected by a guard).
- * - Codes not listed here fall through to the generic "Import Failed" alert.
- */
-const ERROR_TOASTS: Record<string, { msg: string; color: "warning" | "danger" }> = {
-	EMPTY: { msg: "Nothing to paste", color: "warning" },
-	INVALID_URL: { msg: "That doesn't look like a URL", color: "warning" },
-	TOO_LARGE: { msg: "Page too large to import", color: "warning" },
-	FILE_TOO_LARGE: { msg: "File too large to import", color: "warning" },
-	FILE_READ_FAILED: { msg: "Couldn't read this file", color: "warning" },
-	PDF_ENCRYPTED: { msg: "Password-protected PDFs aren't supported", color: "warning" },
-	PDF_NO_TEXT: { msg: "This PDF has no selectable text", color: "warning" },
-	EPUB_INVALID: { msg: "This EPUB file is corrupted or unsupported", color: "warning" },
-};
-
-/**
- * Codes that the UI handles without surfacing an alert — either because
- * they represent a user action (cancel) or because they fire a toast via
- * `ERROR_TOASTS` instead. `FETCH_FAILED` still raises the alert (with a
- * friendlier message); everything else unknown also raises it verbatim.
- */
-const ALERT_SUPPRESSED: ReadonlySet<string> = new Set(["CANCELLED", ...Object.keys(ERROR_TOASTS)]);
+import { ALERT_SUPPRESSED, ERROR_TOASTS } from "./import-errors";
 
 type UseLibraryImports = {
 	/** True while any import (file/clipboard/URL) is running. */

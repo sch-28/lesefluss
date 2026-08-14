@@ -2,6 +2,7 @@ import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import type { BookPayload, Chapter, Parser, PdfjsModuleLike } from "../types";
 import { utf8ByteLength } from "../utils/encoding";
+import { titleFromFileName } from "../utils/file-format";
 import { assertBytes } from "../utils/raw-input";
 import { canParsePdf } from "./matchers";
 
@@ -18,26 +19,10 @@ export const pdfParser: Parser = {
 
 	async parse(input, onProgress, options): Promise<BookPayload> {
 		assertBytes(input);
-		const pdfjs = await loadPdfjs(options?.loadPdfjs);
-
-		let doc: PDFDocumentProxy;
-		try {
-			// Defensive clone: pdfjs may detach or retain the ArrayBuffer
-			// internally. We pass `input.bytes` unchanged to `payload.original`
-			// so the original file can be persisted to disk — sharing it with
-			// pdfjs risks a detached buffer by the time commit reads it.
-			const copy = input.bytes.slice(0, input.bytes.byteLength);
-			doc = (await pdfjs.getDocument({ data: copy }).promise) as PDFDocumentProxy;
-		} catch (err) {
-			if (isPasswordError(err)) throw new Error("PDF_ENCRYPTED");
-			throw err;
-		}
+		const doc = await openPdfDocument(input.bytes, options?.loadPdfjs);
 
 		try {
-			const meta = await doc.getMetadata().catch(() => null);
-			const info = (meta?.info ?? {}) as { Title?: string; Author?: string };
-			const title = info.Title?.trim() || input.fileName.replace(/\.pdf$/i, "");
-			const author = info.Author?.trim() || null;
+			const { title, author } = await readPdfInfo(doc, input.fileName);
 
 			// Text extraction, per page. Reserve 5% of the progress bar for the
 			// cover render + chapter resolution that happen after the loop.
@@ -76,6 +61,57 @@ export const pdfParser: Parser = {
 		}
 	},
 };
+
+/**
+ * Load a PDF document. Shared by the full parse and the metadata probe so a
+ * password-protected file reports `PDF_ENCRYPTED` from either path.
+ */
+async function openPdfDocument(
+	bytes: ArrayBuffer,
+	loader?: () => Promise<PdfjsModuleLike>,
+): Promise<PDFDocumentProxy> {
+	const pdfjs = await loadPdfjs(loader);
+	try {
+		// Defensive clone: pdfjs may detach or retain the ArrayBuffer
+		// internally. We pass `input.bytes` unchanged to `payload.original`
+		// so the original file can be persisted to disk — sharing it with
+		// pdfjs risks a detached buffer by the time commit reads it.
+		const copy = bytes.slice(0, bytes.byteLength);
+		return (await pdfjs.getDocument({ data: copy }).promise) as PDFDocumentProxy;
+	} catch (err) {
+		if (isPasswordError(err)) throw new Error("PDF_ENCRYPTED");
+		throw err;
+	}
+}
+
+async function readPdfInfo(
+	doc: PDFDocumentProxy,
+	fileName: string,
+): Promise<{ title: string; author: string | null }> {
+	const meta = await doc.getMetadata().catch(() => null);
+	const info = (meta?.info ?? {}) as { Title?: string; Author?: string };
+	return {
+		title: info.Title?.trim() || titleFromFileName(fileName),
+		author: info.Author?.trim() || null,
+	};
+}
+
+/**
+ * Title and author without touching a page. Rendering a cover would cost more
+ * than the rest of a folder scan combined, so a probed PDF has none.
+ */
+export async function probePdf(
+	bytes: ArrayBuffer,
+	fileName: string,
+	loader?: () => Promise<PdfjsModuleLike>,
+): Promise<{ title: string; author: string | null }> {
+	const doc = await openPdfDocument(bytes, loader);
+	try {
+		return await readPdfInfo(doc, fileName);
+	} finally {
+		await doc.destroy().catch(() => undefined);
+	}
+}
 
 // ─── Lazy pdfjs loader ─────────────────────────────────────────────────────
 

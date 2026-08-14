@@ -11,39 +11,20 @@
  * `runImportPipeline`. Anything more complex belongs in the pipeline itself.
  */
 
-import type { ImportPipelineOptions, RawInput } from "@lesefluss/book-import";
-import { blobToRawInput, fetchUrlToRawInput, runImportPipeline } from "@lesefluss/book-import";
+import { blobToRawInput, fetchUrlToRawInput } from "@lesefluss/book-import";
 import { CATALOG_URL } from "../catalog/client";
 import type { Book } from "../db/schema";
 import { commitBook } from "./commit";
+import { parse, parseAndCommit } from "./pipeline";
 import { readClipboardToRawInput } from "./sources/clipboard";
 import { pickFileFromPicker } from "./sources/file-picker";
 import type { ImportExtras, ImportOverrides, StagedImport } from "./types";
 
+export { importScannedFile, probeScannedFile } from "./batch";
 export { removeBook } from "./commit";
+export type { FolderScan, ScannedFile, ScannedFileHandle } from "./sources/folder-scan";
+export { pickBookFolder, readScannedFile } from "./sources/folder-scan";
 export type { ImportExtras, ImportOverrides, StagedImport } from "./types";
-
-const pipelineOptions: ImportPipelineOptions = {
-	loadPdfjs,
-};
-
-async function parse(
-	input: RawInput,
-	extras: ImportExtras = {},
-	onProgress?: (pct: number) => void,
-): Promise<StagedImport> {
-	const payload = await runImportPipeline(input, pipelineOptions, onProgress);
-	return { payload, extras };
-}
-
-async function parseAndCommit(
-	input: RawInput,
-	extras: ImportExtras = {},
-	onProgress?: (pct: number) => void,
-): Promise<Book> {
-	const staged = await parse(input, extras, onProgress);
-	return commitBook(staged.payload, staged.extras);
-}
 
 /**
  * Write a staged import, with the reader's corrections applied over whatever the
@@ -101,11 +82,4 @@ export async function importBookFromBlob(
 ): Promise<Book> {
 	const input = await blobToRawInput(blob, fileName);
 	return parseAndCommit(input, extras ?? {}, onProgress);
-}
-
-async function loadPdfjs() {
-	const mod = await import("pdfjs-dist/legacy/build/pdf.mjs");
-	const { default: Worker } = await import("pdfjs-dist/legacy/build/pdf.worker.mjs?worker");
-	mod.GlobalWorkerOptions.workerPort = new Worker();
-	return mod;
 }

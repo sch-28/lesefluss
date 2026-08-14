@@ -4,6 +4,7 @@ import type { NavItem } from "epubjs/types/navigation";
 import type { BookPayload, Chapter, ImportLink, Parser } from "../types";
 import { type ContentLink, extractParagraphsWithLinks } from "../utils/dom-paragraphs";
 import { utf8ByteLength } from "../utils/encoding";
+import { titleFromFileName } from "../utils/file-format";
 import { assertBytes } from "../utils/raw-input";
 import { canParseEpub } from "./matchers";
 
@@ -84,18 +85,12 @@ function injectTocHeading(
 	};
 }
 
-async function parseEpub(
-	buffer: ArrayBuffer,
-	filename: string,
-	onProgress?: (pct: number) => void,
-): Promise<{
-	content: string;
-	title: string;
-	author?: string;
-	coverImage: string | null;
-	chapters: Chapter[];
-	linkRanges: ImportLink[] | null;
-}> {
+/**
+ * Open an EPUB and wait for epubjs to be ready to answer questions about it.
+ * Shared by the full parse and the metadata probe so both fail identically on a
+ * file that isn't really an EPUB.
+ */
+async function openEpubBook(buffer: ArrayBuffer): Promise<EpubBook> {
 	assertLooksLikeZip(buffer);
 	const book = ePub(buffer);
 	// Race the parser ready against a timeout. Clear the timeout when ready
@@ -113,14 +108,58 @@ async function parseEpub(
 		]);
 	} catch (err) {
 		book.ready.catch(() => undefined);
+		// The archive is already inflated in memory by this point, and a folder
+		// scan runs this path once per unreadable file. `destroy` guards every
+		// field, so it is safe before `ready` settles.
+		book.destroy();
 		throw err;
 	} finally {
 		if (timer !== undefined) clearTimeout(timer);
 	}
+	return book;
+}
 
+function readEpubMetadata(
+	book: EpubBook,
+	filename: string,
+): { title: string; author: string | null } {
 	const meta = book.packaging?.metadata;
-	const title = meta?.title || filename.replace(/\.epub$/i, "");
-	const author = meta?.creator;
+	return {
+		title: meta?.title || titleFromFileName(filename),
+		author: meta?.creator || null,
+	};
+}
+
+/**
+ * Title, author, and cover without touching the spine. A folder scan probes
+ * every candidate file, and the section walk below is where all the time goes.
+ */
+export async function probeEpub(
+	buffer: ArrayBuffer,
+	filename: string,
+): Promise<{ title: string; author: string | null; coverImage: string | null }> {
+	const book = await openEpubBook(buffer);
+	try {
+		return { ...readEpubMetadata(book, filename), coverImage: await extractCover(book) };
+	} finally {
+		book.destroy();
+	}
+}
+
+async function parseEpub(
+	buffer: ArrayBuffer,
+	filename: string,
+	onProgress?: (pct: number) => void,
+): Promise<{
+	content: string;
+	title: string;
+	author: string | null;
+	coverImage: string | null;
+	chapters: Chapter[];
+	linkRanges: ImportLink[] | null;
+}> {
+	const book = await openEpubBook(buffer);
+	const { title, author } = readEpubMetadata(book, filename);
 
 	const coverImage = await extractCover(book);
 

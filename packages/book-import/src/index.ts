@@ -1,11 +1,13 @@
 export * from "./parsers/registry";
 export * from "./pipeline";
+export * from "./probe";
 export * from "./sources/blob";
 export * from "./sources/url";
 export * from "./types";
 
 export * from "./utils/dom-paragraphs";
 export * from "./utils/encoding";
+export * from "./utils/file-format";
 export * from "./utils/id";
 export * from "./utils/raw-input";
 export * from "./utils/title-heuristic";

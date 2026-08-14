@@ -34,6 +34,8 @@ import { bookImportMutationKey, bookKeys, serialKeys } from "../../services/db/h
 import type { Book, Series } from "../../services/db/schema";
 import { IS_WEB_BUILD } from "../../services/sync";
 import { IS_WEB } from "../../utils/platform";
+import BatchImportSheet from "./batch-import";
+import { toExistingTitles } from "./batch-import/use-folder-import";
 import BookCard from "./book-card";
 import BookEditSheet, { bookToEditValues, editValuesToPatch } from "./book-edit-sheet";
 import BookListItem from "./book-list-item";
@@ -103,6 +105,7 @@ const Library: React.FC = () => {
 	const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 	const [selectedSeries, setSelectedSeries] = useState<Series | null>(null);
 	const [importSheetOpen, setImportSheetOpen] = useState(false);
+	const [batchImportOpen, setBatchImportOpen] = useState(false);
 	const [urlModalOpen, setUrlModalOpen] = useState(false);
 
 	const [pendingTransferBook, setPendingTransferBook] = useState<Book | null>(null);
@@ -195,6 +198,9 @@ const Library: React.FC = () => {
 	};
 
 	const availableTags = tagsInUse(books);
+	// Duplicate detection for a folder scan reads the library that is already
+	// loaded here rather than issuing its own query.
+	const existingTitles = useMemo(() => toExistingTitles(books), [books]);
 	// A tag can vanish while it is the active filter (its last book edited or
 	// deleted), which would otherwise leave the library empty with no way back.
 	const activeTag = tagFilter !== null && availableTags.includes(tagFilter) ? tagFilter : null;
@@ -439,9 +445,18 @@ const Library: React.FC = () => {
 				isOpen={importSheetOpen}
 				onClose={() => setImportSheetOpen(false)}
 				onPickFile={imports.importFromFile}
+				onPickFolder={() => setBatchImportOpen(true)}
 				onPickClipboard={imports.importFromClipboard}
 				onPickUrl={() => setUrlModalOpen(true)}
 			/>
+
+			{batchImportOpen && (
+				<BatchImportSheet
+					isOpen
+					existingTitles={existingTitles}
+					onClose={() => setBatchImportOpen(false)}
+				/>
+			)}
 
 			<PasteUrlModal
 				isOpen={urlModalOpen}

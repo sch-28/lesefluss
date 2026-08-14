@@ -1,17 +1,25 @@
+import { Capacitor } from "@capacitor/core";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
-import { ClipboardList, FileText, Link as LinkIcon, type LucideIcon } from "lucide-react";
+import {
+	ClipboardList,
+	FileText,
+	FolderOpen,
+	Link as LinkIcon,
+	type LucideIcon,
+} from "lucide-react";
 import type React from "react";
 
 interface ImportSheetProps {
 	isOpen: boolean;
 	onClose: () => void;
 	onPickFile: () => void;
+	onPickFolder: () => void;
 	onPickClipboard: () => void;
 	onPickUrl: () => void;
 }
 
 type Source = {
-	key: "file" | "clipboard" | "url";
+	key: "file" | "folder" | "clipboard" | "url";
 	icon: LucideIcon;
 	title: string;
 	subtitle: string;
@@ -23,6 +31,14 @@ const SOURCES: Source[] = [
 		icon: FileText,
 		title: "Import file",
 		subtitle: "TXT, EPUB, HTML, PDF, Markdown",
+	},
+	{
+		key: "folder",
+		icon: FolderOpen,
+		// Browsers outside desktop ignore `webkitdirectory` and fall back to
+		// selecting several files, so the label has to match what actually opens.
+		title: Capacitor.isNativePlatform() ? "Import folder" : "Import multiple files",
+		subtitle: "Scan for books and pick what to keep",
 	},
 	{
 		key: "clipboard",
@@ -42,11 +58,13 @@ const ImportSheet: React.FC<ImportSheetProps> = ({
 	isOpen,
 	onClose,
 	onPickFile,
+	onPickFolder,
 	onPickClipboard,
 	onPickUrl,
 }) => {
 	const handlers: Record<Source["key"], () => void> = {
 		file: onPickFile,
+		folder: onPickFolder,
 		clipboard: onPickClipboard,
 		url: onPickUrl,
 	};

@@ -49,6 +49,8 @@ export type ImportPipelineOptions = {
 	domParser?: DomParserFactory;
 };
 
+export type BookProbeOptions = Pick<ImportPipelineOptions, "loadPdfjs" | "domParser">;
+
 /**
  * Canonical in-memory shape produced by any parser before DB commit.
  * `commitBook` is the single writer that turns this into a `Book` row.
