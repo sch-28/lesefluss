@@ -9,6 +9,20 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-08-14",
+		title: "Book Management",
+		tags: ["App", "Website"],
+		changes: [
+			"Edit a book's title, author, description, language, and notes from the detail page or a long press in the library",
+			"Set a book to Want to read, Reading, Finished, or Dropped. Left alone, the status follows your progress as before",
+			"Rate books from half a star to five, and filter or sort the library by rating",
+			"Add tags to books and filter the library by them",
+			"Search the library by title or author",
+			"Imports now open a confirm sheet so you can fix the title and add metadata before the book lands",
+			"Book metadata syncs across devices and shows on your website profile",
+		],
+	},
+	{
 		date: "2026-07-30",
 		title: "Reading Stats, Rebuilt",
 		tags: ["App"],
