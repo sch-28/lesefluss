@@ -27,6 +27,7 @@
  */
 
 import { bookHooks } from "./use-books";
+import { bulkBookHooks } from "./use-bulk-books";
 import { dangerZoneHooks } from "./use-danger-zone";
 import { glossaryHooks } from "./use-glossary";
 import { highlightHooks } from "./use-highlights";
@@ -82,6 +83,9 @@ export const queryHooks = {
 
 	/** Mutation: delete a book (disk + DB). */
 	useDeleteBook: bookHooks.useDeleteBook,
+
+	/** Delete, restatus, or retag many books, invalidating once at the end. */
+	useBulkBookActions: bulkBookHooks.useBulkBookActions,
 
 	// ── Settings ───────────────────────────────────────────────────────────
 	/** The single RSVP settings row. */

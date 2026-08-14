@@ -8,6 +8,7 @@
 
 import { Progress } from "@lesefluss/ui/progress";
 import { RatingStars } from "@lesefluss/ui/rating-stars";
+import { Check } from "lucide-react";
 import type React from "react";
 import BookCover from "../../components/book-cover";
 import { DeviceBadge } from "../../components/device-sync";
@@ -22,21 +23,54 @@ type BookCardProps = {
 	started: boolean;
 	onOpen: () => void;
 	onMenu: () => void;
+	/** Selection mode is active: a tap picks this book instead of opening it. */
+	selectable?: boolean;
+	selected?: boolean;
+	onToggle?: () => void;
 };
 
-const BookCard: React.FC<BookCardProps> = ({ book, cover, progress, started, onOpen, onMenu }) => {
-	const handlers = useLongPress({ onTap: onOpen, onMenu });
+const BookCard: React.FC<BookCardProps> = ({
+	book,
+	cover,
+	progress,
+	started,
+	onOpen,
+	onMenu,
+	selectable = false,
+	selected = false,
+	onToggle,
+}) => {
+	const handlers = useLongPress({
+		onTap: selectable ? (onToggle ?? onOpen) : onOpen,
+		onMenu,
+		enabled: !selectable,
+	});
 
 	return (
 		<div
 			data-testid="library-card"
 			data-book-title={book.title}
+			data-selected={selectable && selected ? "true" : undefined}
 			className="flex cursor-pointer select-none flex-col [-webkit-touch-callout:none] active:opacity-70"
 			{...handlers}
 		>
 			<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm">
 				<BookCover book={book} cover={cover} size="full" />
 				<DeviceBadge bookId={book.id} />
+				{selectable && (
+					<>
+						{!selected && <div className="absolute inset-0 bg-background/60" />}
+						<span
+							className={`absolute top-1.5 left-1.5 flex size-5 items-center justify-center rounded-full border ${
+								selected
+									? "border-primary bg-primary text-primary-foreground"
+									: "border-border bg-background/80"
+							}`}
+						>
+							{selected && <Check className="size-3.5" />}
+						</span>
+					</>
+				)}
 			</div>
 
 			{started && (

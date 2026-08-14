@@ -113,6 +113,12 @@ export async function commitBook(
  * Remove a book: delete the file from disk (if it exists) then delete DB rows.
  */
 export async function removeBook(book: Pick<Book, "id" | "filePath">): Promise<void> {
+	// Rows first. `deleteBook` can throw, and unlinking ahead of it would leave a
+	// book that still exists with its only local copy gone, so it could neither
+	// be opened nor re-parsed. A file left behind by a failed delete is just
+	// wasted space, and the retry removes it.
+	await queries.deleteBook(book.id);
+
 	if (book.filePath) {
 		try {
 			await Filesystem.deleteFile({
@@ -123,8 +129,6 @@ export async function removeBook(book: Pick<Book, "id" | "filePath">): Promise<v
 			log.warn("book-import", "Failed to delete book file:", err);
 		}
 	}
-
-	await queries.deleteBook(book.id);
 }
 
 /**

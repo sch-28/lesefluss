@@ -20,6 +20,7 @@ export const changelog: ChangelogEntry[] = [
 			"Search the library by title or author",
 			"Imports now open a confirm sheet so you can fix the title and add metadata before the book lands",
 			"Import a whole folder at once, then pick what to keep from a list of everything found",
+			"Long press a book and pick Select to act on several at once: delete, set status, or edit tags",
 			"Book metadata syncs across devices and shows on your website profile",
 		],
 	},

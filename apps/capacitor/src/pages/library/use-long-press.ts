@@ -15,6 +15,12 @@ interface Options {
 	onTap: () => void;
 	onMenu: () => void;
 	durationMs?: number;
+	/**
+	 * Long press only. False leaves taps working but stops a hold from opening
+	 * the menu, which is what selection mode wants: a press that lands on a card
+	 * should pick it, not offer to edit it.
+	 */
+	enabled?: boolean;
 }
 
 /**
@@ -38,9 +44,11 @@ export function useLongPress({
 	onTap,
 	onMenu,
 	durationMs = DEFAULT_LONG_PRESS_MS,
+	enabled = true,
 }: Options): LongPressHandlers {
 	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const firedRef = useRef(false);
+	const latchedTapRef = useRef<(() => void) | null>(null);
 
 	const cancelTimer = useCallback(() => {
 		if (timerRef.current) {
@@ -52,30 +60,44 @@ export function useLongPress({
 	const onTouchStart = useCallback(
 		(e: React.TouchEvent) => {
 			if (e.touches.length !== 1) return;
+			// `firedRef` stays false when disabled, so the click the browser
+			// synthesises after touchend still reaches `onTap`: a long hold in
+			// selection mode toggles the card on release rather than doing nothing.
 			firedRef.current = false;
+			// Latch what a tap means for the whole gesture. A bulk action finishing
+			// mid-hold flips the card out of selection mode, and without this the
+			// release would run the new meaning and open the reader on a book the
+			// reader was only deselecting.
+			latchedTapRef.current = onTap;
+			if (!enabled) return;
 			timerRef.current = setTimeout(() => {
 				firedRef.current = true;
 				onMenu();
 			}, durationMs);
 		},
-		[onMenu, durationMs],
+		[onMenu, onTap, durationMs, enabled],
 	);
 
 	const onClick = useCallback(() => {
 		cancelTimer();
+		const latched = latchedTapRef.current;
+		latchedTapRef.current = null;
 		if (firedRef.current) {
 			firedRef.current = false;
 			return;
 		}
-		onTap();
+		// No latch means a mouse click that never went through touchstart.
+		(latched ?? onTap)();
 	}, [cancelTimer, onTap]);
 
 	const onContextMenu = useCallback(
 		(e: React.MouseEvent) => {
+			// Suppressed even when disabled, or a desktop right-click would raise the
+			// browser's own menu over the grid.
 			e.preventDefault();
-			onMenu();
+			if (enabled) onMenu();
 		},
-		[onMenu],
+		[onMenu, enabled],
 	);
 
 	return {

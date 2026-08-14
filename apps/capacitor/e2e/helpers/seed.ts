@@ -11,6 +11,11 @@ export { resetStorage };
  * Drive the library import sheet to ingest an EPUB through the real file
  * picker. Goes through the same parser + WordIndex build + SQLite write path
  * the app uses on device.
+ *
+ * A parsed import stops at a confirm sheet and is not written until it is
+ * accepted, so this accepts it. Waiting on the title alone would pass while the
+ * sheet was still open — the title is an input value there, not page text — and
+ * would then leave a modal over the library that the next action cannot reach.
  */
 export async function importEpubViaFilePicker(
 	page: Page,
@@ -26,7 +31,10 @@ export async function importEpubViaFilePicker(
 		mimeType: "application/epub+zip",
 		buffer: opts.buffer,
 	});
-	await expect(page.getByText(opts.title)).toBeVisible({ timeout: 15_000 });
+	await page.getByRole("button", { name: "Add to library" }).click({ timeout: 20_000 });
+	await expect(page.locator(`[data-book-title="${opts.title}"]`)).toHaveCount(1, {
+		timeout: 20_000,
+	});
 }
 
 /**
@@ -47,6 +55,8 @@ export async function seedStrayAnchorBook(page: Page): Promise<string> {
  * Centralises the selector + URL-wait so spec code stops re-inventing it.
  */
 export async function openBookFromLibrary(page: Page, title: string) {
-	await page.getByText(title).first().click();
+	// The card root, not the first text match: the title also appears in the
+	// import confirm sheet, so a text lookup can land on a dismissed overlay.
+	await page.locator(`[data-book-title="${title}"]`).first().click();
 	await page.waitForURL(/\/tabs\/reader\//);
 }

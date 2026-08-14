@@ -13,7 +13,7 @@ import { importSerialFromUrl } from "../../serial-scrapers";
 import { scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
 import type { Book, Series } from "../schema";
-import { bookImportMutationKey, bookKeys, serialKeys, statsKeys } from "./query-keys";
+import { bookImportMutationKey, bookKeys, glossaryKeys, serialKeys, statsKeys } from "./query-keys";
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
 
@@ -213,6 +213,9 @@ function useDeleteBook() {
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 			qc.invalidateQueries({ queryKey: bookKeys.covers });
 			qc.invalidateQueries({ queryKey: statsKeys.all });
+			// `deleteBook` also removes the book's glossary entries, and those live
+			// under a separate key root that `bookKeys.all` does not reach.
+			qc.invalidateQueries({ queryKey: glossaryKeys.all });
 			scheduleSyncPush();
 			toast.success(`Removed "${book.title}"`);
 		},

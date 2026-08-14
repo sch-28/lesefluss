@@ -462,14 +462,22 @@ export async function setActiveBook(id: string): Promise<void> {
  * use the `removeBook()` function from the bookImport service instead.
  */
 export async function deleteBook(id: string): Promise<void> {
-	// Cascade book-scoped glossary entries; global ones (bookId IS NULL) survive
-	await db.delete(glossaryEntries).where(eq(glossaryEntries.bookId, id));
-	await db.delete(highlights).where(eq(highlights.bookId, id));
-	await db.delete(bookContent).where(eq(bookContent.bookId, id));
+	// The tombstone goes first, and the order matters because these four
+	// statements are not one transaction. Cascading first and dying before the
+	// tombstone would leave a book that still looks alive locally while its
+	// highlights and glossary are gone — and the next push, being a full
+	// snapshot, would then tombstone those rows on the server and every other
+	// device. Tombstoning first makes a half-finished delete leave orphan child
+	// rows instead, which are harmless: the push suppresses a tombstoned book's
+	// content, and a later retry cleans them up.
 	await db
 		.update(books)
 		.set({ deleted: true, isActive: false, updatedAt: Date.now() })
 		.where(eq(books.id, id));
+	// Cascade book-scoped glossary entries; global ones (bookId IS NULL) survive
+	await db.delete(glossaryEntries).where(eq(glossaryEntries.bookId, id));
+	await db.delete(highlights).where(eq(highlights.bookId, id));
+	await db.delete(bookContent).where(eq(bookContent.bookId, id));
 }
 
 /**

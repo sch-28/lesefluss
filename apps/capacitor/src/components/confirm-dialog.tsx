@@ -43,7 +43,13 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 			<AlertDialogContent>
 				<AlertDialogHeader>
 					<AlertDialogTitle>{title}</AlertDialogTitle>
-					{description && <AlertDialogDescription>{description}</AlertDialogDescription>}
+					{/* `whitespace-pre-line` so a description can list items on their own
+					    lines; single-sentence callers are unaffected. */}
+					{description && (
+						<AlertDialogDescription className="whitespace-pre-line">
+							{description}
+						</AlertDialogDescription>
+					)}
 				</AlertDialogHeader>
 				<AlertDialogFooter>
 					{!isInfo && <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>}

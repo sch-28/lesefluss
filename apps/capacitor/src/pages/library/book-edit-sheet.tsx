@@ -23,6 +23,7 @@ import { STAR_POSITIONS, StarGlyph } from "@lesefluss/ui/rating-stars";
 import { X } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { clampBookTags, FIELD_LIMITS } from "./book-fields";
 
 /**
  * The editable half of a book. Deliberately not a `Book`: the import confirm
@@ -52,33 +53,10 @@ type Props = {
 	progress?: { wordCount: number; wordPosition: number };
 };
 
-/**
- * Field caps, mirroring `SyncBookSchema`. The server validates the whole push
- * payload in one `safeParse`, so a single over-long field does not fail its own
- * book: it 400s the entire snapshot, silently stopping sync for books,
- * highlights, glossary, settings and sessions alike. Enforcing the same limits
- * at the input keeps a paste from doing that.
- */
-export const FIELD_LIMITS = {
-	title: 500,
-	author: 200,
-	description: 20_000,
-	review: 20_000,
-	language: 35,
-	tagsJson: 2000,
-} as const;
-
 /** Reader-editable values clamped to what sync will accept. */
 export function clampToFieldLimits(values: BookEditValues): BookEditValues {
 	const cap = (text: string | null, max: number) => (text ? text.slice(0, max) : text);
-	const tags: string[] = [];
-	for (const tag of values.tags) {
-		tags.push(tag);
-		if ((serializeBookTags(tags)?.length ?? 0) > FIELD_LIMITS.tagsJson) {
-			tags.pop();
-			break;
-		}
-	}
+	const { tags } = clampBookTags(values.tags);
 	return {
 		...values,
 		title: values.title.slice(0, FIELD_LIMITS.title),

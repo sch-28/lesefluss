@@ -2,6 +2,10 @@ import type { BookFileFormat } from "@lesefluss/book-import";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "../../../components/toast";
+import {
+	type SequentialProgress as BatchProgress,
+	NO_PROGRESS,
+} from "../../../services/batch/run-sequential";
 import { importScannedFile, pickBookFolder, probeScannedFile } from "../../../services/book-import";
 import { bookKeys } from "../../../services/db/hooks/query-keys";
 import { scheduleSyncPush } from "../../../services/sync";
@@ -19,7 +23,7 @@ import {
 	toCandidates,
 	toggleCandidate,
 } from "./candidates";
-import { type BatchProgress, type BatchResult, runBatchImport } from "./run-import";
+import { type BatchResult, runBatchImport } from "./run-import";
 
 export type FolderImportPhase = "idle" | "scanning" | "review" | "importing" | "done";
 
@@ -42,8 +46,6 @@ type UseFolderImport = {
 	cancelImport: () => void;
 	close: () => void;
 };
-
-const NO_PROGRESS: BatchProgress = { done: 0, total: 0, current: "" };
 
 /**
  * Drives a folder import from picker to library.

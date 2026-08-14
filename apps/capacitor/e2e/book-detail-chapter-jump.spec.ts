@@ -55,7 +55,9 @@ test("jumping to a chapter from book detail opens the reader there and persists 
 	});
 
 	// Long-press opens the card menu on device; contextmenu is the same handler.
-	await page.getByText(TITLE).first().click({ button: "right" });
+	// Targeted by the card's own attribute: a text lookup can resolve to a node
+	// inside a closed-but-mounted sheet, where the press never reaches the card.
+	await page.locator(`[data-book-title="${TITLE}"]`).first().click({ button: "right" });
 	await page.getByRole("button", { name: "Details" }).click();
 	await page.waitForURL(/\/tabs\/library\/book\//);
 
@@ -80,4 +82,3 @@ test("jumping to a chapter from book detail opens the reader there and persists 
 	await page.waitForURL(/\/tabs\/reader\//);
 	await expect(page.getByText(sentinel(TARGET))).toBeInViewport({ timeout: 10_000 });
 });
-
