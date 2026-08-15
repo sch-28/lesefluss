@@ -3,8 +3,35 @@ import { Drawer as DrawerPrimitive } from "vaul";
 
 import { cn } from "../lib/utils";
 
-function Drawer({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-	return <DrawerPrimitive.Root data-slot="drawer" {...props} />;
+declare global {
+	interface Window {
+		Capacitor?: { isNativePlatform?: () => boolean };
+	}
+}
+
+/**
+ * The native shell resizes the whole WebView when the keyboard opens
+ * (`KeyboardResize.Native`), so vaul measures a layout viewport that has
+ * already shrunk, memoises that as the drawer's natural height, and writes it
+ * back as an inline height once the keyboard closes, stranding the sheet at
+ * half size. The resize already keeps the drawer above the keyboard, so vaul's
+ * repositioning has nothing to add there. Browsers still need it.
+ *
+ * `repositionInputs={false}` also switches off vaul's `usePreventScroll`, which
+ * only ever acts on iOS. Targeting iOS means restoring background-scroll
+ * prevention some other way.
+ */
+const isNativeShell = () =>
+	typeof window !== "undefined" && window.Capacitor?.isNativePlatform?.() === true;
+
+function Drawer({ repositionInputs, ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
+	return (
+		<DrawerPrimitive.Root
+			data-slot="drawer"
+			repositionInputs={repositionInputs ?? !isNativeShell()}
+			{...props}
+		/>
+	);
 }
 
 function DrawerTrigger({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Trigger>) {
