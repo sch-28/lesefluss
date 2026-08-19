@@ -23,6 +23,43 @@ async function mouseDragRange(
 }
 
 /**
+ * A stepper row in the appearance popover, scoped by its label. The rows share
+ * button glyphs ("+" appears under both Spacing and Margins), so the label is
+ * what disambiguates them.
+ */
+function stepperRow(page: Page, label: string): Locator {
+	return page.locator(".ap-row").filter({ hasText: label });
+}
+
+/**
+ * Dismiss the appearance popover and wait for it to leave the DOM. The popover
+ * restores focus to its trigger button as it unmounts, and the reader's window
+ * keydown handler ignores events whose target is interactive — so a keyboard
+ * action taken before this settles would be swallowed by the trigger.
+ */
+async function closeAppearancePopover(page: Page): Promise<void> {
+	await page.keyboard.press("Escape");
+	await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
+}
+
+/**
+ * Click a stepper's increase button and wait for the displayed value to change
+ * before dismissing the popover. `useSaveSettings` writes SQLite and only then
+ * invalidates the query, with no optimistic update, so a second click issued
+ * before the round-trip completes recomputes from the stale value and silently
+ * does nothing.
+ */
+async function stepUpAppearance(page: Page, label: string, glyph: string): Promise<void> {
+	await page.getByRole("button", { name: "Appearance settings" }).click();
+	const row = stepperRow(page, label);
+	const value = row.locator(".ap-row-value");
+	const before = await value.textContent();
+	await row.getByRole("button", { name: glyph, exact: true }).click();
+	await expect(value).not.toHaveText(before ?? "");
+	await closeAppearancePopover(page);
+}
+
+/**
  * Reader page object. Hides DOM details (aria-labels, `data-word` attributes,
  * mouse-drag selection rules, the appearance popover layout) behind a
  * domain-shaped interface.
@@ -215,7 +252,7 @@ export const reader = {
 		await page.getByRole("button", { name: "Appearance settings" }).click();
 		const label = style === "scroll" ? "Scroll" : "Page";
 		await page.getByRole("radio", { name: label, exact: true }).click();
-		await page.keyboard.press("Escape");
+		await closeAppearancePopover(page);
 		// Wait for the new view's word spans to re-mount; the prior ad-hoc 300ms
 		// sleep raced this on slow CI.
 		await expect(page.locator("span[data-word]").first()).toBeVisible({ timeout: 5000 });
@@ -322,5 +359,105 @@ export const reader = {
 			expectedHref,
 			{ timeout: 5000 },
 		);
+	},
+
+	// ── Page mode (paginated view) ───────────────────────────────────────
+	// Page mode keeps every word of the chunk mounted and shifts the visible
+	// page with a translateX on a wrapper, so DOM order reveals nothing about
+	// what the user can actually see. These helpers read geometry instead:
+	// `.page-view`'s content box (its border box inset by its own horizontal
+	// padding) is exactly the clip area one page occupies, so a word is on the
+	// visible page iff the centre of its first client rect falls inside it.
+
+	/**
+	 * Word positions currently visible on the page, ordered top-left first —
+	 * the same ordering `page-view/measurements.ts` uses to pick the saved
+	 * position on settle.
+	 */
+	pageModeVisibleWords: async (page: Page): Promise<number[]> =>
+		page.evaluate(() => {
+			const view = document.querySelector<HTMLElement>(".page-view");
+			if (!view) return [];
+			const box = view.getBoundingClientRect();
+			const style = window.getComputedStyle(view);
+			const left = box.left + Number.parseFloat(style.paddingLeft);
+			const right = box.right - Number.parseFloat(style.paddingRight);
+			const found: { word: number; top: number; left: number }[] = [];
+			for (const span of view.querySelectorAll<HTMLElement>("span[data-word]")) {
+				const rects = span.getClientRects();
+				const r = rects.length > 0 ? rects[0] : span.getBoundingClientRect();
+				const x = r.left + r.width / 2;
+				const y = r.top + r.height / 2;
+				if (x < left || x > right || y < box.top || y > box.bottom) continue;
+				const word = Number.parseInt(span.dataset.word ?? "", 10);
+				if (Number.isNaN(word) || word < 0) continue;
+				found.push({ word, top: r.top, left: r.left });
+			}
+			found.sort((a, b) => a.top - b.top || a.left - b.left);
+			return found.map((f) => f.word);
+		}),
+
+	/** The topmost-leftmost visible word position. Throws if the page is empty. */
+	pageModeFirstVisibleWord: async (page: Page): Promise<number> => {
+		const words = await reader.pageModeVisibleWords(page);
+		const first = words[0];
+		if (first === undefined) throw new Error("No visible word spans in page mode");
+		return first;
+	},
+
+	/**
+	 * Assert `word` is on the visible page, polling so an in-flight
+	 * repagination (viewport resize, appearance change) settles first. Polling
+	 * beats a fixed sleep here: nothing observable fires when the view
+	 * re-anchors, so there is no event to wait on.
+	 */
+	expectWordVisibleInPage: async (page: Page, word: number, timeoutMs = 5000) => {
+		await expect
+			.poll(() => reader.pageModeVisibleWords(page), { timeout: timeoutMs })
+			.toContain(word);
+	},
+
+	/**
+	 * Tap the centre zone of the page. `routeTap` splits the column into
+	 * thirds by `clientX - rect.left - margin`, so the element centre always
+	 * lands in the middle third (the zone that does not turn a page). A mouse
+	 * click emits pointer events but no touch events, so the two-finger pause
+	 * detector stays disarmed.
+	 */
+	tapPageCentre: async (page: Page) => {
+		await page.locator(".page-view").click();
+	},
+
+	/** Locator for the reading-progress scrubber. */
+	progressBar: (page: Page): Locator => page.locator(".reader-progress-bar"),
+
+	// ── Appearance popover steppers ──────────────────────────────────────
+
+	/** Bump the reader font size one step up, via the appearance popover. */
+	increaseFontSize: async (page: Page) => {
+		await stepUpAppearance(page, "Size", "A+");
+	},
+
+	/** Bump the reader line spacing one step up, via the appearance popover. */
+	increaseLineSpacing: async (page: Page) => {
+		await stepUpAppearance(page, "Spacing", "+");
+	},
+
+	/**
+	 * Turn `count` pages forward with the keyboard, waiting for each turn's
+	 * position save so the next keypress isn't swallowed by the in-flight page
+	 * transition.
+	 */
+	turnPages: async (page: Page, count: number) => {
+		// The window keydown handler ignores events whose target is interactive,
+		// and the appearance popover restores focus to its trigger button.
+		await page.evaluate(() => {
+			if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+		});
+		for (let i = 0; i < count; i++) {
+			const savePending = reader.waitForNextSave(page);
+			await page.keyboard.press("ArrowRight");
+			await savePending;
+		}
 	},
 };

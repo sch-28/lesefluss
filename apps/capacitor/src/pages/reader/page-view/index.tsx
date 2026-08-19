@@ -104,6 +104,12 @@ export interface PageViewProps {
 	onPositionSettle: (word: number) => void;
 	onInitialActiveOffset: (word: number) => void;
 	onTap: () => void;
+	/**
+	 * Called when the user turns a page, so reader chrome can get out of the
+	 * way. Page mode's counterpart to scroll mode hiding the progress bar as
+	 * soon as the content starts moving.
+	 */
+	onHideProgressBar: () => void;
 
 	/**
 	 * Optional element overlaid at the bottom of the page area, visible only
@@ -140,6 +146,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		onPositionSettle,
 		onInitialActiveOffset,
 		onTap,
+		onHideProgressBar,
 		footer,
 	},
 	ref,
@@ -163,6 +170,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	const transformWrapperRef = useRef<HTMLDivElement>(null);
 	const chunkRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 	const pendingTargetRef = useRef<number | null>(initialWord);
+	// The word the visible page is anchored to. `pageIndex` alone is not enough
+	// to survive a relayout: page N of a new column geometry holds different
+	// text, so re-anchoring needs a word to land on again.
+	const currentWordRef = useRef(initialWord);
 	const animationTimeoutRef = useRef<number | null>(null);
 
 	// Drag/swipe — refs not state, since pointermove updates at 60Hz.
@@ -248,6 +259,33 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		return () => ro.disconnect();
 	}, []);
 
+	// ── Re-anchor on layout change ────────────────────────────────────────
+	// Rotation and appearance changes reflow the columns, which invalidates
+	// `pageIndex`. Re-arm the same pending-target mechanism mount and `jumpTo`
+	// use so the lander below re-derives the page from the word the reader was
+	// on. Post-mount the lander only calls `setPageIndex` (its callbacks are
+	// gated on `isReadyRef`), so this cannot move the saved position.
+	const layoutKey = `${viewport?.w ?? 0}x${viewport?.h ?? 0}|${fontSize}|${fontFamily}|${lineSpacing}|${margin}`;
+	const lastLayoutKeyRef = useRef(layoutKey);
+	useLayoutEffect(() => {
+		if (lastLayoutKeyRef.current === layoutKey) return;
+		lastLayoutKeyRef.current = layoutKey;
+		if (!hasMountedRef.current) return;
+		// Drop an in-flight page animation rather than letting it complete: its
+		// settle callback closed over the pre-relayout page width, so firing it
+		// against the reflowed DOM would read an unrelated word and persist it.
+		if (animationTimeoutRef.current !== null) {
+			window.clearTimeout(animationTimeoutRef.current);
+			animationTimeoutRef.current = null;
+		}
+		isAnimatingRef.current = false;
+		pendingOnDoneRef.current = null;
+		animationTargetRef.current = null;
+		// A jump target that has not landed yet outranks the current anchor:
+		// overwriting it here would silently revert a TOC or search jump.
+		if (pendingTargetRef.current === null) pendingTargetRef.current = currentWordRef.current;
+	}, [layoutKey]);
+
 	// ── Chunk measurement callback ────────────────────────────────────────
 	const handleChunkMeasure = useCallback((idx: number, width: number) => {
 		setChunkWidths((prev) => {
@@ -267,13 +305,24 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	// Fires once the current chunk has been measured. Finds the page that
 	// contains the pending target word, lands on it, reveals the view, and
 	// emits the initial-active or position-settle callback.
+	// `layoutKey` is a deliberate re-run trigger, not a value the body reads: a
+	// reflow that keeps the column count identical leaves every other dependency
+	// unchanged, and the re-anchor above would then arm a target nothing ever
+	// consumes. Removing it silently breaks rotation and appearance re-anchoring.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: see above
 	useLayoutEffect(() => {
 		if (!isLayoutReady || !currentChunkWidth) return;
 		const target = pendingTargetRef.current;
 		if (target === null) return;
 		const el = chunkRefs.current.get(chunkIndex);
 		if (!el) return;
+		// After a relayout the DOM has already reflowed but the measured width
+		// still lags by one commit (the child's measure effect queues a state
+		// update). Landing now would clamp against a stale page count, so wait
+		// for the measurement to catch up instead of consuming the target.
+		if (hasMountedRef.current && el.scrollWidth !== currentChunkWidth) return;
 		pendingTargetRef.current = null;
+		currentWordRef.current = target;
 		const targetPage = findPageForWord(el, pageWidth, currentPageCount, target);
 		setPageIndex(targetPage);
 		if (!isReadyRef.current) {
@@ -286,7 +335,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				onPositionSettleRef.current(target);
 			}
 		}
-	}, [chunkIndex, currentChunkWidth, currentPageCount, isLayoutReady, pageWidth]);
+	}, [chunkIndex, currentChunkWidth, currentPageCount, isLayoutReady, pageWidth, layoutKey]);
 
 	// ── Transform sync ────────────────────────────────────────────────────
 	// Runs whenever state that affects the resting transform changes (chunk
@@ -300,6 +349,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	// biome-ignore lint/correctness/useExhaustiveDependencies: see above
 	useLayoutEffect(() => {
 		if (!isLayoutReady || isAnimatingRef.current) return;
+		// A re-anchor is queued: `pageIndex` still describes the old geometry,
+		// so painting it now would flash unrelated text before the lander
+		// corrects it.
+		if (pendingTargetRef.current !== null) return;
 		setTransform(computeTransform());
 	}, [chunkIndex, pageIndex, offsets, pageWidth, isLayoutReady, setTransform]);
 
@@ -370,11 +423,13 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 
 	// ── Navigation ────────────────────────────────────────────────────────
 	const settleAtPage = useCallback(
-		(p: number) => {
-			const el = chunkRefs.current.get(chunkIndex);
+		(p: number, idx = chunkIndex) => {
+			const el = chunkRefs.current.get(idx);
 			if (!el) return;
 			const w = readFirstVisibleWord(el, pageWidth, p);
-			if (w !== null) onPositionSettle(w);
+			if (w === null) return;
+			currentWordRef.current = w;
+			onPositionSettle(w);
 		},
 		[chunkIndex, pageWidth, onPositionSettle],
 	);
@@ -407,6 +462,17 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				animateTo(computeTransform(), () => {
 					setChunkIndex(neighborIdx);
 					setPageIndex(direction === 1 ? 0 : fallbackPages - 1);
+					// No measurement to read a word from, so anchor to the edge we
+					// are navigating into. Leaving the previous chunk's word here
+					// would make the next re-anchor land on a word this chunk does
+					// not contain, which clamps it to the first or last page.
+					const neighbor = chunks[neighborIdx];
+					if (neighbor) {
+						currentWordRef.current =
+							direction === 1
+								? neighbor.startWord
+								: Math.max(neighbor.startWord, neighbor.endWord - 1);
+					}
 				});
 				return;
 			}
@@ -416,27 +482,24 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			animateTo(targetTranslate, () => {
 				setChunkIndex(neighborIdx);
 				setPageIndex(targetPage);
-				const el = chunkRefs.current.get(neighborIdx);
-				if (el) {
-					const w = readFirstVisibleWord(el, pageWidth, targetPage);
-					if (w !== null) onPositionSettle(w);
-				}
+				settleAtPage(targetPage, neighborIdx);
 			});
 		},
 		[
 			isLayoutReady,
 			chunkIndex,
-			chunks.length,
+			chunks,
 			offsets,
 			chunkWidths,
 			pageWidth,
 			animateTo,
 			computeTransform,
-			onPositionSettle,
+			settleAtPage,
 		],
 	);
 
 	const goNext = useCallback(() => {
+		onHideProgressBar();
 		if (pageIndex < currentPageCount - 1) goToPage(pageIndex + 1);
 		else if (chunkIndex < chunks.length - 1) crossToNeighbor(1);
 		else animateTo(computeTransform()); // snap back from rubber-band at end
@@ -449,13 +512,23 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		crossToNeighbor,
 		animateTo,
 		computeTransform,
+		onHideProgressBar,
 	]);
 
 	const goPrev = useCallback(() => {
+		onHideProgressBar();
 		if (pageIndex > 0) goToPage(pageIndex - 1);
 		else if (chunkIndex > 0) crossToNeighbor(-1);
 		else animateTo(computeTransform()); // snap back from rubber-band at start
-	}, [pageIndex, chunkIndex, goToPage, crossToNeighbor, animateTo, computeTransform]);
+	}, [
+		pageIndex,
+		chunkIndex,
+		goToPage,
+		crossToNeighbor,
+		animateTo,
+		computeTransform,
+		onHideProgressBar,
+	]);
 
 	// ── Imperative jumpTo (chapter / search / highlight-list) ─────────────
 	useImperativeHandle(
@@ -685,6 +758,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									pageHeight={pageHeight}
 									fontSize={fontSize}
 									fontFamily={fontFamily}
+									lineSpacing={lineSpacing}
 									showActiveWordUnderline={showActiveWordUnderline}
 									// TODO: source from book metadata when available; affects
 									// hyphenation quality on non-English books.

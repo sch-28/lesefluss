@@ -758,7 +758,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		setActiveWord((prev) => (prev === NO_HIGHLIGHT ? prev : NO_HIGHLIGHT));
 	}, []);
 
-	const handleScrollHideProgressBar = useCallback(() => setProgressBarVisible(false), []);
+	const handleHideProgressBar = useCallback(() => setProgressBarVisible(false), []);
 	const handleScrollShowProgressBar = useCallback(() => {
 		setProgressBarVisible(true);
 		// Flush the latest word accumulated while the bar was hidden so it
@@ -766,6 +766,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		setProgressWord(progressWordRef.current);
 		markActivityRef.current?.();
 	}, []);
+	// Page mode has no scrolling, so the scroll-driven hide path never fires
+	// there and the centre tap zone is the user's only way to dismiss the bar.
+	const handleToggleProgressBar = useCallback(() => {
+		if (progressBarVisibleRef.current) setProgressBarVisible(false);
+		else handleScrollShowProgressBar();
+	}, [handleScrollShowProgressBar]);
 	const handleSetActiveWord = useCallback((word: number) => setActiveWord(word), []);
 	const handleSetProgressWord = useCallback((word: number) => {
 		progressWordRef.current = word;
@@ -1656,7 +1662,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						onCancelSelection={sel.cancelSelection}
 						onPositionSettle={handleScrollPositionSettle}
 						onInitialActiveOffset={handleSetActiveWord}
-						onTap={handleScrollShowProgressBar}
+						onTap={handleToggleProgressBar}
+						onHideProgressBar={handleHideProgressBar}
 						footer={advanceFooter}
 					/>
 				) : (
@@ -1686,7 +1693,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						onInitialActiveOffset={handleSetActiveWord}
 						onProgressChange={handleSetProgressWord}
 						onHighlightClear={handleScrollHighlightClear}
-						onHideProgressBar={handleScrollHideProgressBar}
+						onHideProgressBar={handleHideProgressBar}
 						onTap={handleScrollShowProgressBar}
 						isSelecting={isSelecting}
 						syncSelectionHandles={syncSelectionHandles}

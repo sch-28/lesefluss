@@ -38,6 +38,12 @@ export interface ChunkContentProps {
 	// Appearance
 	fontSize: number;
 	fontFamily: string;
+	/**
+	 * Applied as a CSS variable by the parent rather than here, but it reflows
+	 * the column flow all the same, so the measure effect below has to observe
+	 * it or the reported width goes stale.
+	 */
+	lineSpacing: number;
 	showActiveWordUnderline: boolean;
 	lang: string;
 
@@ -74,6 +80,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	pageHeight,
 	fontSize,
 	fontFamily,
+	lineSpacing,
 	showActiveWordUnderline,
 	lang,
 	activeWord,
@@ -101,6 +108,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	useLayoutEffect(() => {
 		void fontSize;
 		void fontFamily;
+		void lineSpacing;
 		if (!ref.current || pageWidth === 0 || pageHeight === 0) return;
 		let cancelled = false;
 		const apply = () => {
@@ -115,7 +123,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 		return () => {
 			cancelled = true;
 		};
-	}, [chunkIndex, pageWidth, pageHeight, fontSize, fontFamily, onMeasure]);
+	}, [chunkIndex, pageWidth, pageHeight, fontSize, fontFamily, lineSpacing, onMeasure]);
 
 	return (
 		<div
