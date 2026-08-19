@@ -9,6 +9,15 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-08-20",
+		title: "Page Mode Fixes",
+		tags: ["App"],
+		changes: [
+			"The progress bar in page mode can be hidden again: tap the middle of the page to show or hide it, and turning a page hides it",
+			"Rotating your phone or changing the font size or line spacing no longer jumps you to a different page",
+		],
+	},
+	{
 		date: "2026-08-14",
 		title: "Book Management",
 		tags: ["App", "Website"],
