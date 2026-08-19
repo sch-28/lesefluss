@@ -42,10 +42,10 @@ export function buildJourney(input: JourneyInput): Journey {
 	// should not stretch the span it took to read.
 	//
 	// A finish before the first sitting is reachable rather than hypothetical:
-	// `backfillFinishedAt` stamps `finishedAt = COALESCE(lastRead, addedAt)`, so a
-	// library restored from the server can carry a finish date from before any
-	// local session exists. Measuring to it would report a week of reading as one
-	// day, and would order the milestones backwards.
+	// `backfillFinishedAt` falls back to `addedAt` for a book with no local
+	// sessions, so a library restored from the server can carry a finish date from
+	// before any local session exists. Measuring to it would report a week of
+	// reading as one day, and would order the milestones backwards.
 	const hasUsableFinish =
 		input.finishedAt != null &&
 		(input.firstReadAt == null || input.finishedAt >= input.firstReadAt);

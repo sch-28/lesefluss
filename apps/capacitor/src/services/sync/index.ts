@@ -354,6 +354,7 @@ export function bookToSync(book: Book, contentData?: BookContent | null): SyncBo
 				}
 			: {}),
 		finishedAt: book.finishedAt,
+		addedAt: book.addedAt,
 		// A tombstone carries no reader-written text, same rule as content above:
 		// a deleted book's private notes have no business outliving it on a server.
 		...(book.deleted
@@ -479,7 +480,9 @@ function buildBookRowFromServer(
 		wordPosition: wordPos(serverBook.wordPosition),
 		wordCount: serverBook.wordCount ?? 0,
 		isActive: false,
-		addedAt: serverBook.updatedAt,
+		// A row pushed before `addedAt` travelled carries no add date, and the row
+		// revision is the closest thing the server holds to one.
+		addedAt: serverBook.addedAt ?? serverBook.updatedAt,
 		updatedAt: serverBook.updatedAt,
 		// A server row written by a client that pre-dates the column has no
 		// metadata stamp; fall back to the row revision.
@@ -515,11 +518,14 @@ function serverMetadataStamp(serverBook: SyncBook): number {
  * newer one, or null when it isn't. Pure so the merge rules can be tested
  * without a database.
  *
- * Two independent gates. `updatedAt` is the reading position's revision, which
+ * Three independent gates. `updatedAt` is the reading position's revision, which
  * is what every released build takes it to mean, so the position merges on it
  * exactly as before. The reader-editable fields merge on `metadataUpdatedAt`,
  * which is the only stamp an edit moves; that separation is what keeps an older
- * build from mistaking a rating for reading and discarding a newer position.
+ * build from mistaking a rating for reading and discarding a newer position. The
+ * add date merges on no stamp at all, being a fact rather than a revision: the
+ * earliest wins, so a device that restored the library and stamped itself into
+ * the date recovers the original from one that still holds it.
  *
  * `undefined` on a metadata field means the pushing client pre-dates that
  * column and is not claiming anything about it; `null` means the reader cleared
@@ -531,9 +537,12 @@ export function buildBookMergeUpdate(
 ): Partial<Omit<NewBook, "id">> | null {
 	const positionIsNewer = serverBook.updatedAt > local.updatedAt;
 	const metadataIsNewer = serverMetadataStamp(serverBook) > local.metadataUpdatedAt;
-	if (!positionIsNewer && !metadataIsNewer) return null;
+	const earlierAddedAt =
+		serverBook.addedAt != null && serverBook.addedAt < local.addedAt ? serverBook.addedAt : null;
+	if (!positionIsNewer && !metadataIsNewer && earlierAddedAt == null) return null;
 
 	const update: Partial<Omit<NewBook, "id">> = {};
+	if (earlierAddedAt != null) update.addedAt = earlierAddedAt;
 	if (positionIsNewer) {
 		update.wordPosition = wordPos(serverBook.wordPosition);
 		update.updatedAt = serverBook.updatedAt;

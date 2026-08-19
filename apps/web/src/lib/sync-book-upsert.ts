@@ -23,6 +23,7 @@ export function bookInsertValues(userId: string, book: SyncBook) {
 		catalogId: book.catalogId ?? null,
 		sourceUrl: book.sourceUrl ?? null,
 		finishedAt: book.finishedAt != null ? new Date(book.finishedAt) : null,
+		addedAt: book.addedAt != null ? new Date(book.addedAt) : null,
 		seriesId: book.seriesId ?? null,
 		chapterIndex: book.chapterIndex ?? null,
 		chapterSourceUrl: book.chapterSourceUrl ?? null,
@@ -142,6 +143,10 @@ export const bookUpsertSetPreservingMetadata: PgUpdateSetSource<typeof syncBooks
 	// Sticky: a finish already recorded is never unset by a client that
 	// does not know the field, or by one that has not backfilled yet.
 	finishedAt: sql`COALESCE(sync_books.finished_at, excluded.finished_at)`,
+	// Earliest wins rather than last-write-wins: an add date is a fact about the
+	// book, not a revision of it, so a device that restored the library (and
+	// stamped itself into the date) must not overwrite the original.
+	addedAt: sql`LEAST(excluded.added_at, sync_books.added_at)`,
 	seriesId: sql`COALESCE(excluded.series_id, sync_books.series_id)`,
 	chapterIndex: sql`COALESCE(excluded.chapter_index, sync_books.chapter_index)`,
 	chapterSourceUrl: sql`COALESCE(excluded.chapter_source_url, sync_books.chapter_source_url)`,

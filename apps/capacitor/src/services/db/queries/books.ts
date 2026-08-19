@@ -20,6 +20,7 @@ import {
 	highlights,
 	type LinkRange,
 	type NewBook,
+	readingSessions,
 } from "../schema";
 
 /** Reader-editable columns, the ones `metadata_updated_at` is the revision of. */
@@ -406,22 +407,58 @@ export async function updateBook(
 	await db.update(books).set(patch).where(eq(books.id, id));
 }
 
+/** Nothing was read in this app before it existed, so a session stamped earlier
+ *  than this is a device clock that had not synced yet, not history. */
+const EARLIEST_PLAUSIBLE_SESSION = Date.UTC(2025, 0, 1);
+
+/**
+ * Pull back an add date that post-dates the book's own reading history.
+ *
+ * A library restored from the server arrives with the pushing device's row
+ * revision in `added_at`, which sits at or after the last time each book was
+ * read. Reading sessions do sync and carry true timestamps, so the earliest one
+ * is a sound lower bound: a book cannot have been read before it was added.
+ *
+ * Sessions below `EARLIEST_PLAUSIBLE_SESSION` are ignored. A device that starts
+ * reading before its clock has synced stamps a sitting somewhere near the epoch,
+ * and that date would otherwise ratchet the book (and, once pushed, every other
+ * device) down to 1970 with no way back: the merge only ever moves the date
+ * earlier.
+ *
+ * Idempotent: the bound is a minimum, so re-running never moves a row twice.
+ */
+export async function backfillAddedAt(): Promise<void> {
+	const firstSession = sql`(SELECT MIN(${readingSessions.startedAt}) FROM ${readingSessions}
+		WHERE ${readingSessions.bookId} = ${books.id}
+			AND ${readingSessions.startedAt} >= ${EARLIEST_PLAUSIBLE_SESSION})`;
+	await db
+		.update(books)
+		.set({ addedAt: firstSession })
+		.where(sql`${firstSession} IS NOT NULL AND ${firstSession} < ${books.addedAt}`);
+}
+
 /**
  * Give books finished before the column existed a date, from the last time they
  * were read. Imprecise for a book reopened after finishing, but every device
  * derives the same answer from inputs that already sync, so they agree without
  * the backfill itself having to propagate.
  *
- * Falls back to `added_at` because a library restored from the server arrives
- * with `last_read` null and the pushing device's timestamp in `added_at` — the
- * devices that most need the backfill are the ones with no local read history.
+ * Prefers the last session over `added_at` because `backfillAddedAt` moves the
+ * add date back to the first sitting, and a finish dated to the day reading
+ * started is worse than no answer. `added_at` remains the last resort for a
+ * restored library whose sessions never made it across.
  *
  * Idempotent: only ever fills nulls.
  */
 export async function backfillFinishedAt(): Promise<void> {
 	await db
 		.update(books)
-		.set({ finishedAt: sql`COALESCE(${books.lastRead}, ${books.addedAt})` })
+		.set({
+			finishedAt: sql`COALESCE(${books.lastRead},
+				(SELECT MAX(${readingSessions.endedAt}) FROM ${readingSessions}
+					WHERE ${readingSessions.bookId} = ${books.id}),
+				${books.addedAt})`,
+		})
 		.where(
 			and(
 				isNull(books.finishedAt),

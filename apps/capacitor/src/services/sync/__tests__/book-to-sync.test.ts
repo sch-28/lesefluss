@@ -88,6 +88,18 @@ describe("bookToSync", () => {
 		expect(out.updatedAt).toBe(3000);
 	});
 
+	it("carries the add date, so a restore does not have to invent one", () => {
+		const out = bookToSync(makeBook({ addedAt: 1000, updatedAt: 3000 }));
+		expect(out.addedAt).toBe(1000);
+	});
+
+	it("carries the add date on a tombstone", () => {
+		// Not reader-written text, so the rule that strips a review does not apply:
+		// a re-added book should keep the date it first arrived.
+		const out = bookToSync(makeBook({ addedAt: 1000, deleted: true }));
+		expect(out.addedAt).toBe(1000);
+	});
+
 	it("carries reader-editable metadata", () => {
 		const out = bookToSync(
 			makeBook({

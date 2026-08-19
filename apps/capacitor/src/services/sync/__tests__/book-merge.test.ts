@@ -124,6 +124,50 @@ describe("buildBookMergeUpdate", () => {
 	});
 });
 
+// The add date is a fact about the book rather than a revision of it, so it
+// merges on its own value. A device that restored the library carries the
+// pushing device's clock in `added_at`, and has to be able to recover the
+// original from a device that still holds it.
+describe("buildBookMergeUpdate: the add date merges earliest-wins", () => {
+	it("adopts an earlier add date even when neither stamp is newer", () => {
+		const update = buildBookMergeUpdate(
+			makeLocal({ addedAt: 5000 }),
+			makeServer({ addedAt: 1000 }),
+		);
+		expect(update).toEqual({ addedAt: 1000 });
+	});
+
+	it("ignores a later one", () => {
+		expect(
+			buildBookMergeUpdate(makeLocal({ addedAt: 1000 }), makeServer({ addedAt: 5000 })),
+		).toBeNull();
+	});
+
+	it("ignores a payload that does not carry the field", () => {
+		expect(buildBookMergeUpdate(makeLocal({ addedAt: 5000 }), makeServer())).toBeNull();
+	});
+
+	it("converges whichever device pulls first", () => {
+		const first = buildBookMergeUpdate(makeLocal({ addedAt: 5000 }), makeServer({ addedAt: 1000 }));
+		const second = buildBookMergeUpdate(
+			makeLocal({ addedAt: first?.addedAt ?? 5000 }),
+			makeServer({ addedAt: 1000 }),
+		);
+		expect(first?.addedAt).toBe(1000);
+		expect(second).toBeNull();
+	});
+
+	it("does not move a revision stamp on its own", () => {
+		const update = buildBookMergeUpdate(
+			makeLocal({ addedAt: 5000 }),
+			makeServer({ addedAt: 1000 }),
+		);
+		expect(update).not.toHaveProperty("updatedAt");
+		expect(update).not.toHaveProperty("metadataUpdatedAt");
+		expect(update).not.toHaveProperty("wordPosition");
+	});
+});
+
 // `updated_at` is the reading position's revision and nothing else, because
 // every released build reads it that way and adopts the server's position
 // whenever it is higher. The reader-editable fields carry their own stamp.

@@ -141,6 +141,13 @@
       "when": 1781481600000,
       "tag": "0019_metadata_updated_at",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1781568000000,
+      "tag": "0020_book_added_at",
+      "breakpoints": true
     }
   ]
 }

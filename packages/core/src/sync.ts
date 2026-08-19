@@ -49,6 +49,11 @@ export const SyncBookSchema = z.object({
 	// Optional so clients that pre-date the field still validate; absent means
 	// "unknown", not "never finished".
 	finishedAt: z.number().int().nonnegative().nullable().optional(),
+	// When the book entered the reader's library. Travels so a restored library
+	// keeps its real add dates instead of inheriting the pushing device's clock.
+	// Optional for the same reason as `finishedAt`: absent means the client has
+	// no such field, not that the book has no add date.
+	addedAt: z.number().int().nonnegative().nullable().optional(),
 	// Reader-editable metadata. All optional for the same reason as `finishedAt`:
 	// an older client omits them entirely, and absent must not read as "cleared".
 	description: z.string().max(20_000).nullable().optional(),

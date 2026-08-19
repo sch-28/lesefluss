@@ -212,6 +212,36 @@ describe.skipIf(!hasDb)("sync_books upsert (integration)", () => {
 		expect(row.wordPosition).toBe(4200);
 	});
 
+	// The add date is a fact about the book, not a revision of it. A device that
+	// restored the library stamps itself into `added_at`, and a later push from it
+	// must not overwrite the original.
+	test("the earliest add date survives a later push", async () => {
+		const bookId = "add00001";
+		await push(makeBook({ bookId, addedAt: 1_000_000, updatedAt: 1_000_000 }));
+		await push(makeBook({ bookId, addedAt: 9_000_000, updatedAt: 2_000_000 }));
+
+		const row = await read(bookId);
+		expect(row.addedAt?.getTime()).toBe(1_000_000);
+	});
+
+	test("an earlier add date replaces a later stored one", async () => {
+		const bookId = "add00002";
+		await push(makeBook({ bookId, addedAt: 9_000_000, updatedAt: 1_000_000 }));
+		await push(makeBook({ bookId, addedAt: 1_000_000, updatedAt: 2_000_000 }));
+
+		const row = await read(bookId);
+		expect(row.addedAt?.getTime()).toBe(1_000_000);
+	});
+
+	test("a client without the column leaves the stored add date alone", async () => {
+		const bookId = "add00003";
+		await push(makeBook({ bookId, addedAt: 1_000_000, updatedAt: 1_000_000 }));
+		await push(makeLegacyBook({ bookId, updatedAt: 2_000_000 }));
+
+		const row = await read(bookId);
+		expect(row.addedAt?.getTime()).toBe(1_000_000);
+	});
+
 	// A deleted book keeps none of the reader's own text. Content, cover and
 	// chapters were already cleared; private notes must not outlive the delete.
 	test("a tombstone clears the reader's notes", async () => {
