@@ -46,6 +46,14 @@
 }
 
 :root {
+	/* Two independent inset sources, neither reliable alone: some WebViews report
+	 * env() as 0 under forced edge-to-edge, and Capacitor's injected variables
+	 * truncate to whole pixels. Whichever is larger is the honest inset. */
+	--safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+	--safe-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+	--safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+	--safe-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+
 	--background: #fdfcfb;
 	--foreground: #18181b;
 	--card: #ffffff;

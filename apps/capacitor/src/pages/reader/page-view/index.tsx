@@ -789,7 +789,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 						position: "absolute",
 						left: 0,
 						right: 0,
-						bottom: "env(safe-area-inset-bottom, 0px)",
+						bottom: "var(--safe-bottom)",
 						pointerEvents: "auto",
 					}}
 				>

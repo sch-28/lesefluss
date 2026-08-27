@@ -10,8 +10,8 @@ function Toaster({ ...props }: ToasterProps) {
 			theme="system"
 			className="toaster group"
 			position="top-center"
-			offset="calc(env(safe-area-inset-top) + 16px)"
-			mobileOffset="calc(env(safe-area-inset-top) + 16px)"
+			offset="calc(var(--safe-top) + 16px)"
+			mobileOffset="calc(var(--safe-top) + 16px)"
 			style={
 				{
 					"--width": "min(92vw, 380px)",

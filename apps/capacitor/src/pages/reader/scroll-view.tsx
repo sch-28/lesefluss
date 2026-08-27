@@ -555,7 +555,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 					style={{
 						height: "100%",
 						padding: `0 ${margin}px`,
-						paddingBottom: "calc(52px + env(safe-area-inset-bottom, 0px))",
+						paddingBottom: "calc(52px + var(--safe-bottom))",
 						fontSize: `${fontSize}px`,
 						fontFamily: fontFamily === "serif" ? "Georgia, 'Times New Roman', serif" : undefined,
 					}}

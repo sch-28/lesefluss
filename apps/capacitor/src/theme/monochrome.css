@@ -3,16 +3,6 @@
  * Simple black, white, and gray palette
  */
 
-/* Edge-to-edge / safe area support
- * With viewport-fit=cover the WebView extends under the status bar and
- * home indicator. We forward the real env() values into Ionic's own
- * safe-area variables so that IonHeader / IonTabBar are automatically
- * pushed into the safe zone. */
-
-/* Pages that render IonContent without an IonHeader need manual status-bar
- * offset (Ionic only auto-offsets when a header is present in the same page).
- * Apply the .no-header-content class to those IonContent elements. */
-
 :root {
 	/* Monochrome palette */
 	/* Background colors */
@@ -315,7 +305,7 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	left: 0;
 	right: 0;
 	padding: 10px 16px;
-	padding-bottom: calc(env(safe-area-inset-bottom) + 10px);
+	padding-bottom: calc(var(--safe-bottom) + 10px);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -332,7 +322,7 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	top: 100%;
 	left: 0;
 	right: 0;
-	height: env(safe-area-inset-bottom);
+	height: var(--safe-bottom);
 	background: var(--reader-bg, #ffffff);
 	pointer-events: none;
 }
@@ -455,7 +445,7 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	 * centered, and bottom-anchored controls sit just above the progress
 	 * bar without per-element magic offsets. Keep in sync with
 	 * `.reader-progress-bar` (content ~52px + safe-area-inset-bottom). */
-	height: calc(100% - env(safe-area-inset-bottom) - 52px);
+	height: calc(100% - var(--safe-bottom) - 52px);
 	width: 100%;
 	pointer-events: none; /* children opt in via `pointer-events: auto` */
 }

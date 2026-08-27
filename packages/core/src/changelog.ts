@@ -9,6 +9,14 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-08-27",
+		title: "App Shell Overflow",
+		tags: ["App"],
+		changes: [
+			"Fixed missing safety inset on some devices",
+		],
+	},
+	{
 		date: "2026-08-20",
 		title: "Page Mode Fixes",
 		tags: ["App"],

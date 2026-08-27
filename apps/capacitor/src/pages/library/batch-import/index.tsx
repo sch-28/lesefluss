@@ -71,7 +71,7 @@ const BatchImportSheet: React.FC<Props> = ({ isOpen, existingTitles, onClose }) 
 				side="bottom"
 				showHandle={false}
 				showCloseButton={false}
-				className="flex h-[100dvh] flex-col gap-0 rounded-none pt-[env(safe-area-inset-top)]"
+				className="flex h-[100dvh] flex-col gap-0 rounded-none pt-[var(--safe-top)]"
 			>
 				<SheetHeader className="border-border border-b">
 					<div className="flex items-center justify-between">

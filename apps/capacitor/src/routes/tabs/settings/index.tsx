@@ -23,6 +23,7 @@ import { SHOW_WHATS_NEW_EVENT } from "@/components/whats-new-modal";
 import { useBLE } from "@/contexts/ble-context";
 import { useSyncContext } from "@/contexts/sync-context";
 import { useTheme } from "@/contexts/theme-context";
+import { DiagnosticsRow } from "@/pages/settings/diagnostics-row";
 import { BLEConnectionState } from "@/services/ble";
 import { queryHooks } from "@/services/db/hooks";
 import { SYNC_ENABLED } from "@/services/sync";
@@ -215,6 +216,7 @@ function SettingsLanding() {
 						subtitle="Walk through the intro again"
 						onClick={replayOnboarding}
 					/>
+					<DiagnosticsRow />
 				</Section>
 
 				<Section title="Privacy">

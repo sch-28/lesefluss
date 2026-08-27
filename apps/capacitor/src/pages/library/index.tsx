@@ -76,7 +76,7 @@ const isFilterBy = (value: string): value is FilterBy =>
 const isStoredTag = (value: string): value is string => value.length > 0;
 
 const FAB_STYLE: React.CSSProperties = {
-	bottom: "calc(var(--tab-bar-h,4rem) + env(safe-area-inset-bottom) + 1rem)",
+	bottom: "calc(var(--tab-bar-h,4rem) + var(--safe-bottom) + 1rem)",
 };
 
 const Library: React.FC = () => {

@@ -69,9 +69,9 @@ function SheetContent({
 					side === "left" &&
 						"data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left inset-y-0 left-0 h-full w-3/4 border-border border-r sm:max-w-sm",
 					isTop &&
-						"data-[state=open]:slide-in-from-top data-[state=closed]:slide-out-to-top inset-x-0 top-0 rounded-b-2xl pt-[env(safe-area-inset-top)]",
+						"data-[state=open]:slide-in-from-top data-[state=closed]:slide-out-to-top inset-x-0 top-0 rounded-b-2xl pt-[var(--safe-top)]",
 					isBottom &&
-						"data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom inset-x-0 bottom-0 rounded-t-2xl pb-[env(safe-area-inset-bottom)]",
+						"data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom inset-x-0 bottom-0 rounded-t-2xl pb-[var(--safe-bottom)]",
 					className,
 				)}
 				{...props}

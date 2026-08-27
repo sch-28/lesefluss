@@ -15,7 +15,7 @@ interface TabHeaderProps {
  */
 export function TabHeader({ title, icon: Icon, logo, right, children }: TabHeaderProps) {
 	const shellClass =
-		"sticky top-0 z-20 flex flex-col border-border border-b bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur";
+		"sticky top-0 z-20 flex flex-col border-border border-b bg-background/95 pt-[var(--safe-top)] backdrop-blur";
 	const innerClass = "flex h-12 items-center gap-2 px-3";
 
 	if (children) {

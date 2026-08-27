@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 			 * path, which any change to the shell's markup invalidates. */}
 			<div
 				data-scroll-restoration-id="app-scroll"
-				className="app-scroll h-screen overflow-y-auto bg-background pb-[calc(var(--tab-bar-h)+env(safe-area-inset-bottom))] text-foreground md:pb-0 md:pl-[var(--side-nav-w)] md:transition-[padding-left] md:duration-200"
+				className="app-scroll h-screen overflow-y-auto bg-background pb-[calc(var(--tab-bar-h)+var(--safe-bottom))] text-foreground md:pb-0 md:pl-[var(--side-nav-w)] md:transition-[padding-left] md:duration-200"
 			>
 				{children}
 			</div>

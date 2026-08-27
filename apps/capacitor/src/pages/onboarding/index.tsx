@@ -57,7 +57,7 @@ const Onboarding: React.FC = () => {
 
 	return (
 		<OnboardingFooterContext.Provider value={ctxValue}>
-			<div className="flex h-[100dvh] flex-col bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-foreground">
+			<div className="flex h-[100dvh] flex-col bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)] text-foreground">
 				<div className="flex h-12 items-center justify-between px-4">
 					{step > 0 ? (
 						<Button
