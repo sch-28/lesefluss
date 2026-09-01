@@ -8,10 +8,11 @@ import { db } from "./db/index.js";
 import { migrate } from "./db/migrate.js";
 import { env } from "./env.js";
 import { captureException, flushErrorTracking } from "./lib/error-tracking.js";
-import { coversRateLimit, rateLimit } from "./middleware/rate-limit.js";
+import { coversRateLimit, dictRateLimit, rateLimit } from "./middleware/rate-limit.js";
 import { adminRoute } from "./routes/admin.js";
 import { booksRoute } from "./routes/books.js";
 import { coversRoute } from "./routes/covers.js";
+import { dictionaryRoute } from "./routes/dictionary.js";
 import { healthRoute } from "./routes/health.js";
 import { landingRoute } from "./routes/landing.js";
 import { proxyRoute } from "./routes/proxy.js";
@@ -90,6 +91,12 @@ async function main() {
 	// 10–20 cover loads on first paint), so reuse the generous covers bucket
 	// instead of the default 60/min API bucket.
 	app.use("/proxy/image", coversRateLimit);
+
+	// Word lookups get their own generous bucket for the same reason as covers:
+	// a reader tapping unfamiliar words outpaces the 60/min API bucket. Mount
+	// before the shared limiter so the two don't stack.
+	app.use("/dictionary/*", dictRateLimit);
+	app.route("/dictionary", dictionaryRoute);
 
 	app.use("*", rateLimit);
 	app.route("/search", searchRoute);

@@ -9,12 +9,20 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-08-28",
+		title: "Word Lookup Rebuilt",
+		tags: ["App"],
+		changes: [
+			"Word lookup works again - the dictionary service it used had gone offline",
+			'German books now get German definitions, and looking up a word like "Sprüche" shows you that it is the plural of "Spruch" along with what Spruch means',
+			'Words with umlauts and accents can finally be looked up - "Bäume" and "café" used to be silently mangled before the lookup happened, which also affected the glossary and in-book search',
+		],
+	},
+	{
 		date: "2026-08-27",
 		title: "App Shell Overflow",
 		tags: ["App"],
-		changes: [
-			"Fixed missing safety inset on some devices",
-		],
+		changes: ["Fixed missing safety inset on some devices"],
 	},
 	{
 		date: "2026-08-20",

@@ -52,7 +52,7 @@ export async function importFromCatalog(
 		blob,
 		filename,
 		(pct) => onProgress?.(80 + Math.round(pct * 0.2)),
-		{ source: normaliseSource(meta.source), catalogId: meta.id },
+		{ source: normaliseSource(meta.source), catalogId: meta.id, language: meta.language },
 	);
 
 	return { book, existed: false };

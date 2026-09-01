@@ -206,8 +206,8 @@ function PrivacyPage() {
 						<span className="shrink-0 text-muted-foreground/50">-</span>
 						<span>
 							<strong className="text-foreground">Dictionary lookups</strong> - in-app word lookups
-							query a public dictionary API directly from your device. No account or identifier is
-							sent.
+							query our own catalog service, not a third party. Only the word and the book's
+							language are sent; no account or identifier.
 						</span>
 					</li>
 				</ul>

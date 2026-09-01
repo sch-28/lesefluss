@@ -8,6 +8,8 @@ export type ImportExtras = {
 	source?: string | null;
 	catalogId?: string | null;
 	sourceUrl?: string | null;
+	/** BCP 47 tag from the originating service, verbatim. */
+	language?: string | null;
 };
 
 /** Reader's corrections from the confirm sheet. */

@@ -34,3 +34,41 @@ export const catalogBooks = pgTable(
 
 export type CatalogBook = typeof catalogBooks.$inferSelect;
 export type NewCatalogBook = typeof catalogBooks.$inferInsert;
+
+/**
+ * catalog_dict_entry — one row per dictionary sense, all languages in one table.
+ * Populated from Kaikki.org wiktextract dumps; `lang` is the Wiktionary edition
+ * the row came from, so glosses are written in that same language.
+ *
+ * Keep the column list in sync with drizzle/0002_dictionary.sql by hand.
+ *
+ * `word_key` is normalizeWord(word). Import and lookup both call that one
+ * function in this process, so the write key and the read key cannot drift.
+ *
+ * Intentionally has no primary key — see the migration for why.
+ */
+export const catalogDictEntry = pgTable(
+	"catalog_dict_entry",
+	{
+		lang: text("lang").notNull(),
+		wordKey: text("word_key").notNull(),
+		word: text("word").notNull(),
+		/** Orders homographs the dump lists as separate entries. Not unique. */
+		entryIndex: integer("entry_index").notNull(),
+		pos: text("pos").notNull(),
+		/** Import-time sort weight; junk parts of speech rank last. See dict/parse.ts. */
+		posRank: integer("pos_rank").notNull(),
+		senseIndex: integer("sense_index").notNull(),
+		gloss: text("gloss").notNull(),
+		example: text("example"),
+		/** Lemma pointer for inflected forms, already in word_key form. */
+		formOf: text("form_of"),
+	},
+	(t) => [
+		index("catalog_dict_entry_lookup").on(t.wordKey, t.lang),
+		index("catalog_dict_entry_lang").on(t.lang),
+	],
+);
+
+export type DictEntry = typeof catalogDictEntry.$inferSelect;
+export type NewDictEntry = typeof catalogDictEntry.$inferInsert;

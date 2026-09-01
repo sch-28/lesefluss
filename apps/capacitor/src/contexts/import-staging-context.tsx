@@ -98,7 +98,12 @@ export const ImportStagingProvider: React.FC<{ children: React.ReactNode }> = ({
 						title: current.payload.title,
 						author: current.payload.author ?? null,
 						description: null,
-						language: null,
+						// Same precedence the commit step applies when no sheet is shown,
+						// so the seed is what would be stored either way. The sheet's
+						// value wins outright there, so a null seed would discard the
+						// file's own dc:language and leave every lookup on the default
+						// chain.
+						language: current.extras.language ?? current.payload.language ?? null,
 						status: null,
 						rating: null,
 						review: null,

@@ -413,6 +413,30 @@ type CatalogStatsPayload = {
 		lastFinishedAt: string | null;
 		lastError: string | null;
 	};
+	/**
+	 * Absent when the catalog has not been redeployed yet — the two services ship
+	 * separately, so the UI must render without it rather than take the whole
+	 * Catalog section down.
+	 */
+	dict?: {
+		running: boolean;
+		currentLang: string | null;
+		phase: string | null;
+		linesRead: number;
+		rowsWritten: number;
+		rowsReplaced: number;
+		/** Parse counters from the importer — how many lines were dropped and why. */
+		stats: {
+			kept: number;
+			skippedMalformed: number;
+			skippedLang: number;
+			skippedPos: number;
+			truncatedSenses: number;
+		};
+		lastStartedAt: string | null;
+		lastFinishedAt: string | null;
+		lastError: string | null;
+	};
 	counts: {
 		gutenberg: number;
 		standardEbooks: number;
@@ -428,6 +452,9 @@ export type CatalogSyncResult = Result<null>;
 
 export type CatalogSyncSource = "gutenberg" | "standard_ebooks" | "all";
 
+/** Must match the edition config in apps/catalog/src/dict/languages.ts. */
+export type CatalogDictLang = "en" | "de" | "all";
+
 export const getCatalogStats = createServerFn({ method: "GET" }).handler(
 	async (): Promise<CatalogStatsResult> => {
 		await requireAdminSession();
@@ -438,6 +465,35 @@ export const getCatalogStats = createServerFn({ method: "GET" }).handler(
 		return { ok: true, data };
 	},
 );
+
+/**
+ * Pulls a few hundred MB from kaikki.org and rewrites a language wholesale, so
+ * it is deliberately manual — no cron, no boot seed. Lookups keep serving the
+ * previous import until the swap commits.
+ */
+export const triggerCatalogDictImport = createServerFn({ method: "POST" })
+	.inputValidator((data: { lang: CatalogDictLang }) => {
+		// The annotation is erased at runtime and this endpoint reaches a catalog
+		// function that interpolates the language into DDL. The catalog validates
+		// too, but a POST here should not be the thing relying on that.
+		const allowed: readonly CatalogDictLang[] = ["en", "de", "all"];
+		if (!allowed.includes(data?.lang)) throw new Error("Unknown dictionary language");
+		return data;
+	})
+	.handler(async ({ data }): Promise<CatalogSyncResult> => {
+		await requireAdminSession();
+		const r = await catalogFetch("/admin/dictionary/import", {
+			auth: "admin",
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ lang: data.lang }),
+		});
+		if (!r.ok) return r;
+		if (!r.data.ok && r.data.status !== 202) {
+			return { ok: false, error: `Dictionary import trigger failed: HTTP ${r.data.status}` };
+		}
+		return { ok: true, data: null };
+	});
 
 export const triggerCatalogSync = createServerFn({ method: "POST" })
 	.inputValidator((data: { source: CatalogSyncSource }) => data)

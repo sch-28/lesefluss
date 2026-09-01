@@ -235,7 +235,7 @@ Full-screen virtualized scroll reader split across three files:
 - `selection-toolbar.tsx` - fixed-position toolbar shown during text selection; color swatches, note button, cancel
 - `highlight-modal.tsx` - bottom-sheet for editing an existing highlight (color, note, delete); auto-saves on change
 - `highlights-list-modal.tsx` - bottom-sheet listing all book highlights ordered by position; tap to jump
-- `dictionary-modal.tsx` - bottom-sheet modal fetching definitions from the Free Dictionary API via react-query
+- `dictionary-modal.tsx` - bottom-sheet modal fetching definitions from the catalog service's own dictionary via react-query
 
 Uses `virtua`'s `VList` for virtualisation (~20–30 paragraphs in the DOM at any time regardless of book size).
 
@@ -304,7 +304,11 @@ Long-pressing an already-highlighted word opens **HighlightModal** to edit color
 
 ### Dictionary lookup
 
-Tap an already-highlighted word → opens a bottom-sheet with the definition from `api.dictionaryapi.dev` (free, no API key). Results cached permanently by react-query. Shows phonetic, part of speech, up to 3 definitions + examples.
+Tap an already-highlighted word → opens a bottom-sheet with the definition from the catalog's `GET /dictionary` endpoint, backed by our own Wiktionary-derived data. Results cached permanently by react-query, keyed by word *and* book language.
+
+The word is sent with its original casing and no normalisation — the server owns the lookup-key rule, so there is one definition of it rather than two that can drift, and casing disambiguates German homographs ("Bäume" the trees vs "bäume" the verb).
+
+Shows part of speech, up to 3 definitions per part of speech, and examples. Inflected forms resolve to their lemma and show the relationship ("Sprüche → Spruch"). When the answering language differs from the book's, a chip names it, so a fallback is never silently authoritative. Wiktionary CC BY-SA attribution is rendered with every entry — a licensing requirement, not decoration.
 
 ### Library interaction model (`BookCard.tsx`)
 

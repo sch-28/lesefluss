@@ -29,6 +29,8 @@ pnpm dev
 | `GET /books/:id{.+}` | Single book detail — full metadata + download URL. Named-wildcard so SE ids with `/` match. |
 | `GET /books/epub/:id{.+}` | EPUB proxy — streams upstream EPUB bytes to the client. Avoids CORS issues hitting Gutenberg/SE directly from the browser and keeps all catalog traffic same-origin. |
 | `GET /covers/:source/:rest{.+}` | Cover proxy for all sources. Strips `Referer`, caches aggressively. Wildcard segment carries the source-specific id (SE ids contain `/`). |
+| `GET /dictionary?w=&lang=` | Word lookup. `w` is the word with its original casing, unnormalised — the server owns the lookup-key rule. `lang` is the book's own language, passed through unvalidated. An unknown word is **200 with `entry: null`**, never 404, so the client's error state keeps meaning "network or server broke". Own 240/min rate-limit bucket. |
+| `GET /dictionary/languages` | Loaded editions, entry counts, and the CC BY-SA statement. Counts cached 60s — the underlying `GROUP BY` scans millions of rows. |
 | `GET /health` | Simple health check — returns 200 immediately, does not wait for sync. |
 
 All covers (Gutenberg and SE) are served via the proxy for consistency. Client never hotlinks.
@@ -59,11 +61,50 @@ catalog_books
   search_vec    tsvector      -- generated column for full-text search (title + author + subjects)
 ```
 
+```
+catalog_dict_entry
+  lang         text          -- dictionary edition: 'en', 'de'. Glosses are written in this language.
+  word_key     text          -- normalizeWord(word) — the lookup key
+  word         text          -- original orthography, for display
+  entry_index  int           -- orders homographs the dump lists separately. NOT unique.
+  pos          text
+  pos_rank     int           -- import-time sort weight; junk parts of speech rank last
+  sense_index  int
+  gloss        text
+  example      text
+  form_of      text          -- lemma pointer for inflected forms, already in word_key form
+```
+
+Index: `(word_key, lang)` for the fallback-chain lookup, `(lang)` for the import swap. Column order on the first one is load-bearing and was benchmarked — 0.151 ms versus 0.198 ms reversed, at identical size, because the chain query filters on the word across several languages at once.
+
+**No primary key, deliberately.** The source dump has no stable per-sense identity: distinct headwords fold to the same `word_key` ("Gift"/"gift") and recur non-adjacently, so any synthetic key collides within a single insert batch. The importer replaces a language wholesale rather than upserting, so uniqueness is never needed and a PK index would cost ~250 MB.
+
 Index: `GIN(search_vec)` for fast full-text search. `pg_trgm` extension for fuzzy/typo-tolerant search if needed later.
 
 **Deduplication:** Standard Ebooks versions supersede their Gutenberg counterparts. During SE sync, each SE entry is fuzzy-matched against existing Gutenberg entries. If a match exceeds the similarity threshold, the SE entry stores the matched `gutenberg_id` and that Gutenberg entry is suppressed from search results. Doesn't need to be 100% — catching most duplicates is sufficient.
 
 ## Sources
+
+### Wiktionary (via kaikki.org)
+
+Backs the reader's word lookup. Replaced `api.dictionaryapi.dev`, whose origin died (Cloudflare 522 on every request; upstream issue meetDeveloper/freeDictionaryAPI#249).
+
+- **Dumps**: `https://kaikki.org/{lang}wiktionary/{Endonym}/kaikki.org-dictionary-{Endonym}.jsonl.gz`. Paths are **not** uniform — English lives at `/dictionary/English/`, everything else at `/{code}wiktionary/{Endonym}/` — so `src/dict/languages.ts` stores full URLs rather than building them. Always use the gzipped variant: 0.50 GB rather than 3.21 GB for English.
+- **Per edition**: glosses are written in that edition's own language. German words get German definitions.
+- **Kept per entry**: `word`, `pos`, first gloss per sense (capped at 6 senses), first example, and `form_of[0].word`. Everything else — `forms`, `sounds`, `etymology_texts`, `translations`, `head_templates` — is discarded. That is where the ~20x reduction comes from.
+- **Inflections**: 34% of English and 76% of German entries are pure `form_of` pointers. The endpoint follows up to two hops (German chains them: Bäume → Bäumen → Baum), cycle-guarded, keeping the note from the form the reader actually tapped.
+- **Measured**: German is 2,645,337 rows and ~1 GB; English is larger. Budget ~2.5 GB for both.
+- **Licence**: CC BY-SA. Attribution is rendered in the reader drawer and returned in every lookup response. This is a redistribution obligation, not decoration.
+
+**Import is manual only** — no cron, no boot seed. Each run pulls hundreds of MB from a third party, and Wiktionary dumps move slowly:
+
+```
+curl -X POST -H "Authorization: Bearer $CATALOG_ADMIN_SECRET" \
+     -H "Content-Type: application/json" -d '{"lang":"en"}' \
+     https://catalog.lesefluss.app/admin/dictionary/import
+```
+
+Returns 202 immediately; poll `GET /admin/stats` for the `dict` key. Run one language at a time so a failure is isolated. The importer streams into an `UNLOGGED` staging table, then swaps with `DELETE` + `INSERT SELECT` in one transaction — that takes only a `RowExclusiveLock`, so lookups keep serving the previous import throughout and an interrupted run leaves the live data untouched. `VACUUM (ANALYZE)` follows the swap: without the `ANALYZE` the planner would sequential-scan every lookup on a table that just went from empty to millions of rows.
 
 ### Project Gutenberg (via Gutendex)
 
@@ -150,7 +191,8 @@ Separate Coolify service pointing at the same Postgres. Dockerfile at `apps/cata
 - [x] `GET /covers/:source/:rest{.+}` — cover proxy, streams upstream body, `Cache-Control: public, max-age=604800` (Node `fetch` doesn't send `Referer`)
 - [x] `GET /health` — returns 200 immediately, does not wait on sync
 - [x] `POST /admin/sync` — bearer-auth with `timingSafeEqual`, enqueues manual sync, optional `{source}` body
-- [x] `GET /admin/stats` — sync state (running / last started / last finished / last error)
+- [x] `GET /admin/stats` — sync state (running / last started / last finished / last error), plus dictionary import state under `dict`
+- [x] `POST /admin/dictionary/import` — bearer-auth, `{lang}` validated against the edition config, fire-and-forget, 202
 - [x] Rate limiting middleware (60 req/min/IP, in-memory token bucket, `/health` excluded)
 - [x] Dockerfile (multi-stage, pnpm workspace filter)
 - [x] Update `AGENTS.md` structure section to include `apps/catalog`

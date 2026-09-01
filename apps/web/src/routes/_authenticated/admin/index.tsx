@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import {
+	type CatalogDictLang,
 	type CatalogStatsResult,
 	type CatalogSyncSource,
 	deleteAdminBook,
@@ -39,6 +40,7 @@ import {
 	getCatalogStats,
 	hardDeleteAdminSeriesTombstones,
 	hardDeleteAdminTombstones,
+	triggerCatalogDictImport,
 	triggerCatalogSync,
 } from "~/lib/admin";
 import { seo } from "~/utils/seo";
@@ -1056,13 +1058,19 @@ const CATALOG_SYNC_SOURCES: readonly { key: CatalogSyncSource; label: string }[]
 	{ key: "all", label: "Sync All" },
 ];
 
+const CATALOG_DICT_LANGS: readonly { key: CatalogDictLang; label: string }[] = [
+	{ key: "en", label: "Import English" },
+	{ key: "de", label: "Import German" },
+	{ key: "all", label: "Import All" },
+];
+
 function formatDateTime(iso: string | null): string {
 	if (!iso) return "never";
 	return new Date(iso).toLocaleString();
 }
 
 function isCatalogSyncRunning(r: CatalogStatsResult | undefined): boolean {
-	return r?.ok === true && r.data.sync.running;
+	return r?.ok === true && (r.data.sync.running || r.data.dict?.running === true);
 }
 
 function CatalogSection() {
@@ -1087,6 +1095,15 @@ function CatalogSection() {
 		onSuccess: () => qc.invalidateQueries({ queryKey: catalogKeys.stats }),
 	});
 
+	const dictMutation = useMutation({
+		mutationFn: async (lang: CatalogDictLang) => {
+			const r = await triggerCatalogDictImport({ data: { lang } });
+			if (!r.ok) throw new Error(r.error);
+			return r;
+		},
+		onSuccess: () => qc.invalidateQueries({ queryKey: catalogKeys.stats }),
+	});
+
 	if (isLoading) return <p className="text-muted-foreground text-sm">Loading catalog…</p>;
 
 	const errMsg = error
@@ -1103,9 +1120,13 @@ function CatalogSection() {
 	// Narrow: isLoading handled, errMsg null ⇒ result.ok === true
 	if (!result?.ok) return null;
 
-	const { sync, counts } = result.data;
+	const { sync, dict, counts } = result.data;
 	const running = sync.running;
-	const disabled = running || syncMutation.isPending;
+	// Also blocked during a dictionary import: both rewrite the same database.
+	const disabled = running || dict?.running === true || syncMutation.isPending;
+	// One import at a time, and never alongside a sync: both hammer the same
+	// database and the importer ignores a second trigger anyway.
+	const dictDisabled = !dict || dict.running || sync.running || dictMutation.isPending;
 
 	return (
 		<div className="space-y-4">
@@ -1182,6 +1203,67 @@ function CatalogSection() {
 					</p>
 				)}
 			</div>
+
+			{dict && (
+				<div className="space-y-2 rounded-xl border bg-muted/20 p-4 text-sm">
+					<div className="flex items-center gap-2">
+						<span
+							className={`inline-block size-2 rounded-full ${
+								dict.running
+									? "animate-pulse bg-blue-500"
+									: dict.lastError
+										? "bg-destructive"
+										: "bg-emerald-500"
+							}`}
+						/>
+						<span className="font-medium">Dictionary</span>
+						<span className="text-muted-foreground text-xs">
+							{dict.running
+								? `${dict.currentLang ?? ""}${dict.phase ? ` · ${dict.phase}` : ""} · ${dict.rowsWritten.toLocaleString()} rows`
+								: dict.lastError
+									? "Error"
+									: "Idle"}
+						</span>
+					</div>
+					<dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground text-xs sm:grid-cols-3">
+						<div>
+							<dt className="inline">Last started: </dt>
+							<dd className="inline tabular-nums">{formatDateTime(dict.lastStartedAt)}</dd>
+						</div>
+						<div>
+							<dt className="inline">Last finished: </dt>
+							<dd className="inline tabular-nums">{formatDateTime(dict.lastFinishedAt)}</dd>
+						</div>
+					</dl>
+					{dict.lastError && (
+						<p className="break-words rounded border border-destructive/30 bg-destructive/10 p-2 text-destructive text-xs">
+							{dict.lastError}
+						</p>
+					)}
+					<div className="flex flex-wrap gap-2 pt-1">
+						{CATALOG_DICT_LANGS.map(({ key, label }) => (
+							<Button
+								key={key}
+								variant="outline"
+								size="sm"
+								disabled={dictDisabled}
+								onClick={() => dictMutation.mutate(key)}
+							>
+								{label}
+							</Button>
+						))}
+					</div>
+					<p className="text-muted-foreground text-xs">
+						Pulls the Wiktionary dump from kaikki.org and replaces that language. Takes a few
+						minutes; lookups keep serving the previous import until it finishes.
+					</p>
+					{dictMutation.error && (
+						<p className="text-destructive text-xs">
+							Dictionary import failed: {dictMutation.error.message}
+						</p>
+					)}
+				</div>
+			)}
 		</div>
 	);
 }

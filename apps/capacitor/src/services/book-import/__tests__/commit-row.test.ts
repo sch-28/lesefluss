@@ -93,3 +93,56 @@ describe("buildImportedBookRow", () => {
 		expect(row.metadataUpdatedAt).toBe(1000);
 	});
 });
+
+describe("buildImportedBookRow language precedence", () => {
+	// Null for nearly every existing book, so the dictionary's book-language-first
+	// lookup only works once imports actually populate it.
+	it("falls back from the reader's correction to the service to the file", () => {
+		const withLang: BookPayload = { ...payload, language: "de" };
+
+		expect(
+			buildImportedBookRow(withLang, { language: "fr" }, makeOverrides({ language: "es" }), stamps)
+				.language,
+		).toBe("es");
+
+		expect(buildImportedBookRow(withLang, { language: "fr" }, undefined, stamps).language).toBe(
+			"fr",
+		);
+
+		expect(buildImportedBookRow(withLang, {}, undefined, stamps).language).toBe("de");
+	});
+
+	it("keeps a region-qualified tag verbatim", () => {
+		// Normalisation belongs to the lookup, not the writer: the edit sheet
+		// should show what the source actually declared.
+		const row = buildImportedBookRow({ ...payload, language: "en-GB" }, {}, undefined, stamps);
+		expect(row.language).toBe("en-GB");
+	});
+
+	// The confirm sheet clears a field to null. That is a correction like any
+	// other and must not fall back to what the file happened to declare.
+	it("respects the reader deliberately clearing the language", () => {
+		const row = buildImportedBookRow(
+			{ ...payload, language: "de" },
+			{ language: "fr" },
+			makeOverrides({ language: null }),
+			stamps,
+		);
+		expect(row.language).toBeNull();
+	});
+
+	it("is null when no source supplies one", () => {
+		expect(buildImportedBookRow(payload, {}, undefined, stamps).language).toBeNull();
+		expect(buildImportedBookRow(payload, {}, makeOverrides(), stamps).language).toBeNull();
+	});
+
+	it("caps an over-long value, which would otherwise 400 the whole sync push", () => {
+		const row = buildImportedBookRow(
+			{ ...payload, language: "x".repeat(80) },
+			{},
+			undefined,
+			stamps,
+		);
+		expect(row.language).toHaveLength(35);
+	});
+});

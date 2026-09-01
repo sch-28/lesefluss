@@ -179,19 +179,17 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const draftGlossaryIdsRef = useRef<Set<string>>(new Set());
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [searchInitialQuery, setSearchInitialQuery] = useState<string | undefined>(undefined);
+	// Original casing, as the word appears in the book. The dictionary API folds
+	// it into a lookup key itself, and casing is the only thing separating some
+	// German homographs ("Bäume" the trees from "bäume" the verb).
 	const [selectedWord, setSelectedWord] = useState<string | null>(null);
-	// Original-casing form of the looked-up word, for glossary entries (the dict
-	// modal itself is fed the lowercased clean form because the API needs it).
-	const selectedWordOriginalRef = useRef<string | null>(null);
 
-	const openDictionaryModal = useCallback((clean: string, original: string) => {
-		selectedWordOriginalRef.current = original;
-		setSelectedWord(clean);
+	const openDictionaryModal = useCallback((word: string) => {
+		setSelectedWord(word);
 	}, []);
 
 	const closeDictionaryModal = useCallback(() => {
 		setSelectedWord(null);
-		selectedWordOriginalRef.current = null;
 	}, []);
 
 	// ── Reader mode ───────────────────────────────────────────────────────
@@ -831,9 +829,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					setEditingGlossaryEntry(glossary);
 					return;
 				}
-				const original = stripPunct(wordText);
-				const clean = original.toLowerCase();
-				if (clean) openDictionaryModal(clean, original);
+				const word = stripPunct(wordText);
+				if (word) openDictionaryModal(word);
 				return;
 			}
 			setActiveWord(wIdx);
@@ -872,9 +869,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		if (!range) return;
 		const span = document.querySelector<HTMLElement>(`span[data-word="${range.startWord}"]`);
 		const raw = span?.textContent ?? "";
-		const original = stripPunct(raw);
-		const clean = original.toLowerCase();
-		if (clean) openDictionaryModal(clean, original);
+		const word = stripPunct(raw);
+		if (word) openDictionaryModal(word);
 		sel.cancelSelection();
 	}, [sel, openDictionaryModal]);
 
@@ -928,21 +924,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		sel.cancelSelection();
 	}, [sel, findOrCreateGlossary]);
 
-	// Dictionary modal → "Add to glossary": prefers the original-cased form
-	// captured at lookup time so proper-noun casing survives (e.g. "Paris" not
-	// "paris", which is what the API saw).
 	const handleAddWordToGlossary = useCallback(
 		(word: string) => {
-			const snippet = selectedWordOriginalRef.current ?? word;
 			closeDictionaryModal();
-			findOrCreateGlossary(snippet);
+			findOrCreateGlossary(word);
 		},
 		[closeDictionaryModal, findOrCreateGlossary],
-	);
-
-	const handleRsvpLookup = useCallback(
-		(clean: string, original: string) => openDictionaryModal(clean, original),
-		[openDictionaryModal],
 	);
 
 	const handleDictSearch = useCallback(
@@ -1629,7 +1616,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						onPositionChange={handleRsvpPositionChange}
 						onFinished={handleRsvpFinished}
 						onWpmChange={handleRsvpWpmChange}
-						onLookup={handleRsvpLookup}
+						onLookup={openDictionaryModal}
 						bookWordIndex={wordIndex}
 						linkHrefAt={findLinkAt}
 						onLinkTap={handleLinkTap}
@@ -1805,6 +1792,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			{/* ── Dictionary modal ── */}
 			<DictionaryModal
 				word={selectedWord}
+				lang={book.language}
 				onClose={closeDictionaryModal}
 				onSearch={handleDictSearch}
 				onAddToGlossary={handleAddWordToGlossary}

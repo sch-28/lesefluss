@@ -76,3 +76,18 @@ jobs:
       - name: Test website
         working-directory: apps/web
         run: pnpm test
+
+      # The catalog shares this Postgres. Its dictionary lookup tests are
+      # `describe.skipIf(!DATABASE_URL)`, so without a database here the whole
+      # language-chain and lemma-resolution suite would silently skip.
+      - name: Apply catalog migrations
+        working-directory: apps/catalog
+        run: pnpm db:migrate
+
+      - name: Typecheck catalog
+        working-directory: apps/catalog
+        run: pnpm check-types
+
+      - name: Test catalog
+        working-directory: apps/catalog
+        run: pnpm test

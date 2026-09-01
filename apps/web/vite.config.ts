@@ -4,8 +4,6 @@ import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig, loadEnv } from "vite";
 
-const DICTIONARY_URL = "https://api.dictionaryapi.dev";
-
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), "");
 	const UMAMI_URL = env.UMAMI_URL ?? "";
@@ -22,8 +20,9 @@ export default defineConfig(({ mode }) => {
 	// BETTER_AUTH_URL is same-origin in prod (covered by 'self') but differs in dev
 	// (e.g. http://localhost:3000 while the page is loaded from another host) - listing
 	// it keeps auth calls allowed in both environments.
-	// /app/* needs wasm-unsafe-eval + unsafe-eval for sql.js and the dictionary API for
-	// word lookups in the reader; kept separate to stay strict on main site.
+	// /app/* needs wasm-unsafe-eval + unsafe-eval for sql.js; kept separate to stay
+	// strict on main site. Reader word lookups go to the catalog origin, which is
+	// already in connect-src below.
 	function buildCsp(scriptExtra = "", connectExtra = "") {
 		return [
 			"default-src 'self'",
@@ -40,7 +39,7 @@ export default defineConfig(({ mode }) => {
 	}
 
 	const csp = buildCsp();
-	const appCsp = buildCsp(" 'wasm-unsafe-eval' 'unsafe-eval'", ` ${DICTIONARY_URL}`);
+	const appCsp = buildCsp(" 'wasm-unsafe-eval' 'unsafe-eval'");
 
 	const securityHeaders = {
 		"strict-transport-security": "max-age=31536000; includeSubDomains",

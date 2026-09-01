@@ -56,7 +56,7 @@ export interface RsvpViewProps {
 	onPositionChange: (word: number) => void;
 	onFinished: () => void;
 	onWpmChange: (wpm: number) => void;
-	onLookup: (word: string, original: string) => void;
+	onLookup: (word: string) => void;
 	/** Cached WordIndex. When present, the engine skips rebuild. */
 	bookWordIndex?: WordIndex | null;
 	/** Href of an external link covering this word, if any. */

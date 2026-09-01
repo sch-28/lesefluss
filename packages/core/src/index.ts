@@ -1,6 +1,7 @@
 export * from "./auth-handoff";
 export * from "./books";
 export * from "./changelog";
+export * from "./dictionary";
 export * from "./engine";
 export * from "./settings";
 export * from "./sync";

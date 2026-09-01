@@ -6,6 +6,7 @@ import {
 	generateBookId,
 	utf8ByteLength,
 } from "@lesefluss/book-import";
+import { FIELD_LIMITS } from "../../pages/library/book-fields";
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
 import type { Book, NewBook } from "../db/schema";
@@ -42,7 +43,16 @@ export function buildImportedBookRow(
 		title: overrides?.title ?? payload.title,
 		author: overrides ? overrides.author : (payload.author ?? null),
 		description: overrides?.description ?? null,
-		language: overrides?.language ?? null,
+		// Same shape as `author` above: when the confirm sheet was shown, its value
+		// wins outright, including a deliberate clearing to null. Only an import
+		// that skipped the sheet falls back to the service, then the file itself.
+		// Capped like sourceUrl below - one over-long field 400s the entire sync
+		// snapshot, not just this book.
+		language:
+			(overrides ? overrides.language : (extras.language ?? payload.language ?? null))?.slice(
+				0,
+				FIELD_LIMITS.language,
+			) ?? null,
 		status: overrides?.status ?? null,
 		rating: overrides?.rating ?? null,
 		review: overrides?.review ?? null,

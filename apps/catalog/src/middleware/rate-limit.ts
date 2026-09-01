@@ -90,3 +90,15 @@ export const coversRateLimit = createRateLimit({
 	windowMs: 60_000,
 	keyPrefix: "covers:",
 });
+
+/**
+ * Generous bucket for word lookups. A reader tapping unfamiliar words works
+ * through them far faster than 60/min, and responses are a few hundred bytes
+ * served from one indexed query, so the default API bucket would 429 an
+ * ordinary reading session for no benefit.
+ */
+export const dictRateLimit = createRateLimit({
+	capacity: 240,
+	windowMs: 60_000,
+	keyPrefix: "dict:",
+});

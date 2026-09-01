@@ -35,6 +35,8 @@ export type FixtureCoverKind = "epub3-property" | "epub2-meta" | "named-only" | 
 export type EpubFixture = {
 	title?: string;
 	creator?: string;
+	/** `dc:language`. Pass null to omit the element entirely. */
+	language?: string | null;
 	chapters: FixtureChapter[];
 	spineIds?: string[];
 	navPoints?: FixtureNavPoint[];
@@ -152,7 +154,7 @@ function buildZip(fixture: EpubFixture): JSZip {
 <dc:identifier id="bookid">urn:test:fixture</dc:identifier>
 <dc:title>${xmlEscape(fixture.title ?? "Test")}</dc:title>
 <dc:creator>${xmlEscape(fixture.creator ?? "Tester")}</dc:creator>
-<dc:language>en</dc:language>
+${fixture.language === null ? "" : `<dc:language>${xmlEscape(fixture.language ?? "en")}</dc:language>`}
 ${cover.meta}
 </metadata>
 <manifest>${manifest}</manifest>

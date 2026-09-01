@@ -15,7 +15,7 @@ export const epubParser: Parser = {
 
 	async parse(input, onProgress): Promise<BookPayload> {
 		assertBytes(input);
-		const { content, title, author, coverImage, chapters, linkRanges } = await parseEpub(
+		const { content, title, author, coverImage, chapters, linkRanges, language } = await parseEpub(
 			input.bytes,
 			input.fileName,
 			onProgress,
@@ -28,6 +28,7 @@ export const epubParser: Parser = {
 			coverImage,
 			chapters,
 			linkRanges,
+			language,
 			fileFormat: "epub",
 			original: { bytes: input.bytes, extension: "epub" },
 		};
@@ -122,11 +123,14 @@ async function openEpubBook(buffer: ArrayBuffer): Promise<EpubBook> {
 function readEpubMetadata(
 	book: EpubBook,
 	filename: string,
-): { title: string; author: string | null } {
+): { title: string; author: string | null; language: string | null } {
 	const meta = book.packaging?.metadata;
 	return {
 		title: meta?.title || titleFromFileName(filename),
 		author: meta?.creator || null,
+		// `dc:language`, verbatim. Stored unnormalised: "en-GB" is as legitimate
+		// as "en", and the dictionary lookup reduces it to a primary subtag itself.
+		language: meta?.language?.trim() || null,
 	};
 }
 
@@ -157,9 +161,10 @@ async function parseEpub(
 	coverImage: string | null;
 	chapters: Chapter[];
 	linkRanges: ImportLink[] | null;
+	language: string | null;
 }> {
 	const book = await openEpubBook(buffer);
-	const { title, author } = readEpubMetadata(book, filename);
+	const { title, author, language } = readEpubMetadata(book, filename);
 
 	const coverImage = await extractCover(book);
 
@@ -259,6 +264,7 @@ async function parseEpub(
 		coverImage,
 		chapters,
 		linkRanges: linkRanges.length > 0 ? linkRanges : null,
+		language,
 	};
 }
 

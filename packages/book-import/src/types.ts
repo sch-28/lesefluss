@@ -61,6 +61,8 @@ export type BookPayload = {
 	author?: string | null;
 	coverImage?: string | null;
 	chapters?: Chapter[] | null;
+	/** BCP 47 tag from the source file's metadata, verbatim. Null when absent. */
+	language?: string | null;
 	/** External hyperlinks (byte ranges into `content`). Null when none found. */
 	linkRanges?: ImportLink[] | null;
 	fileFormat: "txt" | "epub" | "html" | "pdf";

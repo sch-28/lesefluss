@@ -8,14 +8,20 @@ import type { WordEntry } from "@lesefluss/core";
 /** How many surrounding words to show on each side of the focal word when paused. */
 export const CONTEXT_PEEK_WORDS = 50;
 
-/** Strip everything except letters, apostrophes, and hyphens. Preserves casing. */
+/**
+ * Strip everything except letters, apostrophes, and hyphens. Preserves casing.
+ *
+ * `\p{L}` rather than `a-zA-Z`: an ASCII-only class silently truncates any word
+ * carrying a non-ASCII letter ("Bäume" -> "Bume", "café" -> "caf"), which breaks
+ * dictionary lookup, glossary matching and in-book search for those words.
+ * Combining marks are kept so decomposed input survives to be composed later.
+ *
+ * Typographic apostrophes fold to ASCII. Books mix ' and ’ freely, and glossary
+ * entries are matched by exact label, so leaving both would file "don't" and
+ * "don’t" as two different words. The dictionary API folds them the same way.
+ */
 export function stripPunct(raw: string): string {
-	return raw.replace(/[^a-zA-Z'-]/g, "");
-}
-
-/** Strip punctuation and lowercase for dictionary lookup. */
-export function cleanWord(raw: string): string {
-	return stripPunct(raw).toLowerCase();
+	return raw.replace(/[’ʼ]/g, "'").replace(/[^\p{L}\p{M}'-]/gu, "");
 }
 
 /**

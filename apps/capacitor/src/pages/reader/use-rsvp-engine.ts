@@ -16,13 +16,7 @@ import {
 } from "@lesefluss/core";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-	cleanWord,
-	nextSentenceIndex,
-	sentenceStartIndex,
-	sliceContext,
-	stripPunct,
-} from "./rsvp-engine";
+import { nextSentenceIndex, sentenceStartIndex, sliceContext, stripPunct } from "./rsvp-engine";
 
 // ─── Tunables ───────────────────────────────────────────────────────────────
 const POSITION_SAVE_THROTTLE_MS = 2000;
@@ -35,7 +29,7 @@ interface Options {
 	settings: RsvpSettings;
 	onPositionChange: (word: number) => void;
 	onFinished: () => void;
-	onLookup: (word: string, original: string) => void;
+	onLookup: (word: string) => void;
 	onWpmChange: (wpm: number) => void;
 	/**
 	 * Optional preloaded WordIndex. When present, tokenization is reused
@@ -243,9 +237,11 @@ export function useRsvpEngine({
 	const lookupFocalWord = useCallback(() => {
 		const entry = wordsRef.current[wordIndexRef.current];
 		if (!entry) return;
-		const clean = cleanWord(entry.word);
-		if (!clean) return;
-		onLookupRef.current(clean, stripPunct(entry.word));
+		// Original casing: the dictionary API derives its own lookup key, and
+		// casing disambiguates German homographs.
+		const word = stripPunct(entry.word);
+		if (!word) return;
+		onLookupRef.current(word);
 	}, []);
 
 	// ── Long-press (dict lookup while paused) ────────────────────────────
