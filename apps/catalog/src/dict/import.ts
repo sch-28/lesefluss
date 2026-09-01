@@ -33,6 +33,57 @@ const LOG_EVERY_ROWS = 100_000;
  */
 const IMPORT_LOCK_KEY = 8_141_990_231_555_001n;
 
+/**
+ * The dump is a single multi-hundred-MB request, so one dropped connection
+ * loses the whole run. kaikki.org has also just served the previous language,
+ * which is exactly when a rate limit or a reset is most likely.
+ */
+const MAX_FETCH_ATTEMPTS = 3;
+const FETCH_BACKOFF_MS = 5_000;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Node reports every network-level failure as the bare string "fetch failed"
+ * and hides the reason on `cause`, which is useless in a log three days later.
+ */
+function describeFetchError(err: unknown): string {
+	if (!(err instanceof Error)) return String(err);
+	const cause = (err as { cause?: unknown }).cause;
+	const detail = cause instanceof Error ? `${cause.name}: ${cause.message}` : cause;
+	return detail ? `${err.message} (${detail})` : err.message;
+}
+
+/** A wrong edition URL is not worth three more requests to someone else's host. */
+class PermanentFetchError extends Error {}
+
+async function fetchDump(lang: string, url: string): Promise<Response> {
+	let lastErr: unknown;
+	for (let attempt = 0; attempt < MAX_FETCH_ATTEMPTS; attempt++) {
+		try {
+			const res = await fetch(url);
+			// 429 and 5xx are transient. Anything else that is not ok means the URL
+			// or the edition is wrong, and retrying only annoys the host.
+			if (res.status === 429 || res.status >= 500) throw new Error(`HTTP ${res.status}`);
+			if (!res.ok || !res.body) throw new PermanentFetchError(`HTTP ${res.status}`);
+			return res;
+		} catch (err) {
+			if (err instanceof PermanentFetchError) throw new Error(`kaikki ${lang}: ${err.message}`);
+			lastErr = err;
+			if (attempt < MAX_FETCH_ATTEMPTS - 1) {
+				const wait = FETCH_BACKOFF_MS * 2 ** attempt;
+				console.log(
+					`[dict] ${lang}: fetch attempt ${attempt + 1} failed (${describeFetchError(err)}), retrying in ${wait / 1000}s`,
+				);
+				await sleep(wait);
+			}
+		}
+	}
+	throw new Error(
+		`kaikki ${lang}: fetch failed after ${MAX_FETCH_ATTEMPTS} attempts — ${describeFetchError(lastErr)}`,
+	);
+}
+
 type State = {
 	running: boolean;
 	currentLang: string | null;
@@ -156,8 +207,7 @@ async function importLanguage(lang: string, url: string): Promise<void> {
 		sql.raw(`CREATE UNLOGGED TABLE ${staging} (LIKE catalog_dict_entry INCLUDING DEFAULTS)`),
 	);
 
-	const res = await fetch(url);
-	if (!res.ok || !res.body) throw new Error(`kaikki ${lang}: HTTP ${res.status}`);
+	const res = await fetchDump(lang, url);
 
 	const lines = createInterface({
 		input: Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0]).pipe(
