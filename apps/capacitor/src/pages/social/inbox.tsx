@@ -1,8 +1,8 @@
-import type { InboxItem, ShareItemBook } from "@lesefluss/core";
+import type { InboxItem, InboxSubject, ShareItemBook } from "@lesefluss/core";
 import { isNotificationType } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { SocialAvatar } from "@lesefluss/ui/social-avatar";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { CheckCheck, Flag, Inbox, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
@@ -13,6 +13,10 @@ import { toast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
 import { AuthedFetchError } from "@/services/authed-fetch";
 import { getCoverUrl } from "@/services/catalog/client";
+import {
+	buddyReadFailureMessage,
+	useRespondToBuddyReadInvite,
+} from "@/services/social/buddy-reads";
 import { useIsOnline } from "@/services/social/cache";
 import { socialErrorMessage, useRespondToRequest } from "@/services/social/friends";
 import { useInbox, useMarkAllRead, useMarkRead } from "@/services/social/inbox";
@@ -62,6 +66,21 @@ function describe(item: InboxItem): string {
 			return "accepted the book you shared.";
 		case "share_removed":
 			return item.payload?.text ?? "A book shared with you was removed.";
+		case "buddy_read_invite":
+			switch (item.subject?.kind === "buddy_read_invite" ? item.subject.state : "unavailable") {
+				case "accepted":
+					return "invited you to a buddy read. You joined.";
+				case "declined":
+					return "invited you to a buddy read. You declined.";
+				case "pending":
+					return "invited you to read a book together.";
+				default:
+					return "invited you to a buddy read. The invite is no longer available.";
+			}
+		case "buddy_read_joined":
+			return "joined your buddy read.";
+		case "buddy_read_finished":
+			return "finished the book in your buddy read.";
 	}
 }
 
@@ -88,6 +107,30 @@ function ShareBookCard({ book }: { book: ShareItemBook }) {
 	);
 }
 
+type BuddyReadInviteSubject = Extract<InboxSubject, { kind: "buddy_read_invite" }>;
+
+function BuddyReadInviteCard({ invite }: { invite: BuddyReadInviteSubject }) {
+	const others = invite.participants.filter((p) => p.userId !== invite.host?.userId);
+	return (
+		<div className="mt-2 rounded-md border border-border bg-muted/30 p-2 text-sm">
+			<div className="truncate font-medium text-foreground">{invite.book.title}</div>
+			{invite.book.author && (
+				<div className="truncate text-muted-foreground text-xs">{invite.book.author}</div>
+			)}
+			<div className="mt-1 text-muted-foreground text-xs">
+				{invite.host ? `Hosted by ${invite.host.name} (@${invite.host.handle})` : "Buddy read"}
+				{others.length > 0 && ` · with ${others.map((p) => `@${p.handle}`).join(", ")}`}
+			</div>
+			{invite.state === "pending" && (
+				<p className="mt-2 mb-0 text-muted-foreground text-xs">
+					If you join, everyone in this buddy read sees your progress on this book: how far you are
+					and when you last read. It stops when you leave.
+				</p>
+			)}
+		</div>
+	);
+}
+
 /** A request resolved elsewhere comes back as not-found; that is the outcome we wanted. */
 function isAlreadyResolved(err: unknown): boolean {
 	return err instanceof AuthedFetchError && err.status === 404;
@@ -105,7 +148,10 @@ function InboxRow({
 	const markRead = useMarkRead();
 	const respond = useRespondToRequest();
 	const respondShare = useRespondToShare();
+	const respondBuddyRead = useRespondToBuddyReadInvite();
 	const { syncNow } = useSyncContext();
+	const router = useRouter();
+	const buddyInvite = item.subject?.kind === "buddy_read_invite" ? item.subject : null;
 	const isUnread = item.readAt === null;
 	const canAct = item.subject?.kind === "friend_request" && item.subject.state === "pending";
 	const share = item.subject?.kind === "share" ? item.subject : null;
@@ -137,6 +183,28 @@ function InboxRow({
 				onError: (err) => {
 					if (isAlreadyResolved(err)) markRead.mutate(item.id);
 					else toast.error(shareFailureMessage(err));
+				},
+			},
+		);
+	};
+
+	const actBuddyRead = (action: "accept" | "decline") => {
+		if (!buddyInvite) return;
+		respondBuddyRead.mutate(
+			{ inviteId: buddyInvite.inviteId, action },
+			{
+				onSuccess: ({ buddyReadId }) => {
+					markRead.mutate(item.id);
+					if (action !== "accept") return;
+					// A joiner without the book got a server-side copy; pull it now.
+					syncNow().catch(() =>
+						toast.error("Joined, but the sync failed. The book arrives with the next sync."),
+					);
+					router.navigate({ to: "/tabs/social/buddy-read/$id", params: { id: buddyReadId } });
+				},
+				onError: (err) => {
+					if (isAlreadyResolved(err)) markRead.mutate(item.id);
+					else toast.error(buddyReadFailureMessage(err));
 				},
 			},
 		);
@@ -198,6 +266,33 @@ function InboxRow({
 					<p className="mt-0.5 text-muted-foreground text-xs">{formatWhen(item.createdAt)}</p>
 				</button>
 				{share && <ShareBookCard book={share.book} />}
+				{buddyInvite && <BuddyReadInviteCard invite={buddyInvite} />}
+				{buddyInvite?.state === "pending" && (
+					<div className="mt-2 flex gap-2">
+						<Button
+							size="sm"
+							disabled={isOffline || respondBuddyRead.isPending}
+							onClick={() => actBuddyRead("accept")}
+						>
+							Join
+						</Button>
+						<Button
+							size="sm"
+							variant="ghost"
+							disabled={isOffline || respondBuddyRead.isPending}
+							onClick={() => actBuddyRead("decline")}
+						>
+							Decline
+						</Button>
+					</div>
+				)}
+				{buddyInvite?.state === "accepted" && (
+					<Button asChild size="sm" variant="outline" className="mt-2">
+						<Link to="/tabs/social/buddy-read/$id" params={{ id: buddyInvite.buddyReadId }}>
+							Open buddy read
+						</Link>
+					</Button>
+				)}
 				{share && item.actor && (
 					<div className="mt-2 flex gap-2">
 						{canActShare && (

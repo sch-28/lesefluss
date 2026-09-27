@@ -82,7 +82,14 @@ function HandleStep() {
 }
 
 const SyncStep: React.FC = () => {
-	const { isLoggedIn } = useSyncContext();
+	const { isLoggedIn, isSessionResolved } = useSyncContext();
+	if (!isSessionResolved) {
+		return (
+			<div className="flex justify-center py-16">
+				<Loader2 className="size-6 animate-spin text-muted-foreground" />
+			</div>
+		);
+	}
 	return isLoggedIn ? <HandleStep /> : <SignInStep />;
 };
 

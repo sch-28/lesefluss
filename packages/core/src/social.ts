@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FINISHED_PERCENT_THRESHOLD } from "./books";
 
 export const HANDLE_MIN_LENGTH = 3;
 export const HANDLE_MAX_LENGTH = 20;
@@ -290,6 +291,16 @@ export const SOCIAL_API = {
 	shareRevoke: "/api/social/share-revoke",
 	shareRespond: "/api/social/share-respond",
 	sharesForBook: "/api/social/shares-for-book",
+	buddyReadCreate: "/api/social/buddy-read",
+	buddyReadInvite: "/api/social/buddy-read-invite",
+	buddyReadInviteCancel: "/api/social/buddy-read-invite-cancel",
+	buddyReadInviteRespond: "/api/social/buddy-read-invite-respond",
+	buddyReadLeave: "/api/social/buddy-read-leave",
+	buddyReadRemoveMember: "/api/social/buddy-read-remove-member",
+	buddyReadTargetDate: "/api/social/buddy-read-target-date",
+	buddyReads: "/api/social/buddy-reads",
+	buddyReadDetail: "/api/social/buddy-read-detail",
+	buddyReadProgress: "/api/social/buddy-read-progress",
 } as const;
 
 /** User-facing copy for a rejected friend, block or invite action. */
@@ -333,6 +344,9 @@ export const NOTIFICATION_TYPES = [
 	"share_received",
 	"share_accepted",
 	"share_removed",
+	"buddy_read_invite",
+	"buddy_read_joined",
+	"buddy_read_finished",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -353,9 +367,21 @@ export type ShareItemBook = {
 	cover: ProfileCover;
 };
 
+export type BuddyReadInviteItemState = "pending" | "accepted" | "declined" | "unavailable";
+
 export type InboxSubject =
 	| { kind: "friend_request"; requestId: string; state: FriendRequestItemState }
-	| { kind: "share"; shareId: string; state: ShareItemState; book: ShareItemBook };
+	| { kind: "share"; shareId: string; state: ShareItemState; book: ShareItemBook }
+	| {
+			kind: "buddy_read_invite";
+			inviteId: string;
+			buddyReadId: string;
+			state: BuddyReadInviteItemState;
+			book: { title: string; author: string | null };
+			/** Null when the host is hidden from the invitee. */
+			host: SocialIdentity | null;
+			participants: SocialIdentity[];
+	  };
 
 export type InboxItem = {
 	id: string;
@@ -531,6 +557,130 @@ export function shareErrorMessage(reason: string | undefined): string {
 			return "This share is no longer available.";
 		case "limit_reached":
 			return "You reached today's sharing limit. Try again tomorrow.";
+		default:
+			return socialActionErrorMessage(reason);
+	}
+}
+
+export const BUDDY_READ_MAX_PARTICIPANTS = 8;
+export const BUDDY_READ_INVITE_TTL_DAYS = 30;
+export const BUDDY_READ_PROGRESS_REFRESH_MS = 60_000;
+
+const bookIdField = z.string().regex(/^[0-9a-f]{8}$/);
+const inviteeIds = z.array(userIdField).max(BUDDY_READ_MAX_PARTICIPANTS - 1);
+
+export const CreateBuddyReadBodySchema = z.object({
+	bookId: bookIdField,
+	inviteeIds: inviteeIds.optional().default([]),
+});
+export type CreateBuddyReadBody = z.infer<typeof CreateBuddyReadBodySchema>;
+export const BuddyReadInviteBodySchema = z.object({ buddyReadId: uuidField, inviteeIds });
+export const BuddyReadIdBodySchema = z.object({ buddyReadId: uuidField });
+export const BuddyReadInviteIdBodySchema = z.object({ inviteId: uuidField });
+export const BuddyReadInviteRespondBodySchema = z.object({
+	inviteId: uuidField,
+	action: z.enum(["accept", "decline"]),
+});
+export const BuddyReadRemoveMemberBodySchema = z.object({
+	buddyReadId: uuidField,
+	userId: userIdField,
+});
+export const BuddyReadTargetDateBodySchema = z.object({
+	buddyReadId: uuidField,
+	targetDate: z.number().int().nonnegative().nullable(),
+});
+
+export type BuddyReadStatus = "in_progress" | "finished";
+
+export type BuddyReadSummary = {
+	id: string;
+	/** Matches the local book's `originKey`, so the app finds the book without ids it does not have. */
+	originKey: string;
+	title: string;
+	author: string | null;
+	status: BuddyReadStatus;
+	/** Null when the host is hidden from the viewer (a block or a ban). */
+	host: SocialIdentity | null;
+	memberCount: number;
+	pendingInvites: number;
+	targetDate: number | null;
+	/** The viewer's own linked book. */
+	myBookId: string;
+	createdAt: number;
+	finishedAt: number | null;
+};
+
+export type BuddyReadParticipant = {
+	identity: SocialIdentity;
+	isSelf: boolean;
+	isHost: boolean;
+	isFriend: boolean;
+	relationship: RelationshipState;
+	/** Null when the row has no word count yet. */
+	percent: number | null;
+	wordPosition: number;
+	wordCount: number | null;
+	lastActiveAt: number | null;
+	finishedAt: number | null;
+};
+
+export type BuddyReadInviteSummary = {
+	inviteId: string;
+	invitee: SocialIdentity;
+	createdAt: number;
+};
+
+export type BuddyReadDetail = BuddyReadSummary & {
+	isHost: boolean;
+	/** The origin was taken down: no progress, only the fact. */
+	originUnavailable: boolean;
+	/** Participants' word counts differ, so words ahead or behind would mislead. */
+	approximate: boolean;
+	participants: BuddyReadParticipant[];
+	/** Pending invites, for the host only. */
+	invites: BuddyReadInviteSummary[];
+};
+
+export type BuddyReadProgress = {
+	approximate: boolean;
+	participants: {
+		userId: string;
+		name: string;
+		handle: string;
+		wordPosition: number;
+		wordCount: number | null;
+		percent: number | null;
+	}[];
+};
+
+/** Whether a member is on pace for the target date: percent at least the elapsed share of the schedule. */
+export function isOnPace(input: {
+	percent: number | null;
+	createdAt: number;
+	targetDate: number | null;
+	now: number;
+}): boolean | null {
+	if (input.percent === null || input.targetDate === null) return null;
+	if (input.targetDate <= input.createdAt) return input.percent >= FINISHED_PERCENT_THRESHOLD;
+	const elapsed = (input.now - input.createdAt) / (input.targetDate - input.createdAt);
+	// Whole percents on both sides: minutes into a long schedule, 0% is on pace.
+	return input.percent >= Math.floor(Math.min(100, Math.max(0, elapsed) * 100));
+}
+
+export function buddyReadErrorMessage(reason: string | undefined): string {
+	switch (reason) {
+		case "full":
+			return "This buddy read is full (8 people including the host).";
+		case "already_member":
+			return "They are already part of this buddy read.";
+		case "not_host":
+			return "Only the host can do that.";
+		case "not_shareable":
+			return "Only synced standalone books with content can be read together.";
+		case "unavailable":
+			return "This invite is no longer available.";
+		case "suspended":
+			return "Sharing is suspended for your account. Check your inbox for details.";
 		default:
 			return socialActionErrorMessage(reason);
 	}

@@ -11,6 +11,7 @@ import {
 	syncSeries,
 	syncSettings,
 } from "~/db/schema";
+import { endBuddyReadsOf } from "./social/buddy-reads";
 import { releaseHandlesForDeletedUser } from "./social/handle";
 
 // The sync tables key on a plain userId with no FK to the user table, so they
@@ -21,6 +22,9 @@ import { releaseHandlesForDeletedUser } from "./social/handle";
 /** "Clear cloud data": the user keeps the account, its social profile and series. */
 export async function purgeCloudData(tx: Tx, userId: string): Promise<void> {
 	await tx.delete(syncBooks).where(eq(syncBooks.userId, userId));
+	// Without books the user no longer counts in any buddy read; a read nobody
+	// else is left in goes now rather than lingering until someone opens it.
+	await endBuddyReadsOf(tx, userId);
 	await tx.delete(syncHighlights).where(eq(syncHighlights.userId, userId));
 	await tx.delete(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId));
 	await tx.delete(syncSettings).where(eq(syncSettings.userId, userId));
@@ -42,10 +46,10 @@ export async function purgeUserSyncData(tx: Tx, userId: string): Promise<void> {
 	await tx.delete(socialRestriction).where(eq(socialRestriction.userId, userId));
 }
 
-// Deletes the sync tables then the user row; the user delete cascades to the
-// session and account tables. No password is required, which is what lets
-// OAuth-only users (Google, Discord) delete their account where better-auth's
-// /delete-user cannot, since it requires a credential account they never have.
+// The only way an account is deleted: the purge and the user row go in one
+// transaction, and the user delete cascades to the session and account tables.
+// No password is required, so OAuth-only users (Google, Discord) can delete
+// their account too.
 export async function deleteUserAccount(userId: string): Promise<void> {
 	await db.transaction(async (tx) => {
 		await purgeUserSyncData(tx, userId);

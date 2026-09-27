@@ -139,6 +139,21 @@ shares per sender per day; the first share records a one-time rights confirmatio
 non-friends, suspended senders, local-only, unsynced, deleted or series books and taken-down
 origins.
 
+### Buddy read
+
+A group of up to 8 people, host included, reading the same [content origin](#content-origin)
+together (`buddy_read`, `buddy_read_member`, `buddy_read_invite`). The host invites accepted
+friends; pending invites count toward the 8 and void when the read ends or finishes, the inviter no
+longer counts, the friendship ends or 30 days pass. A joiner is linked to their own live copy of
+the origin, or receives one through the same copy as a share. A current member is active with a
+live linked book: a tombstoned, deleted or wiped book counts as having left. Members see each
+other's percent, chapter, words ahead or behind (hidden as approximate when word counts differ)
+and last active time, with no friendship needed, unless a block or ban hides one from the other.
+Co-members may send each other friend requests. The host is the stored host while they count,
+else the earliest-joined member; the read is deleted with its last member. A member finishes the
+first time their pushed position reaches the finished threshold after having been below it since
+joining; the read finishes when every member has, and then stays listed read-only.
+
 ### Content origin
 
 The `(origin_user_id, origin_book_id)` on every `sync_books` row: the row itself for an upload,

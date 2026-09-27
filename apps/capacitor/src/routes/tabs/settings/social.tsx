@@ -297,11 +297,17 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 }
 
 function SocialSettings() {
-	const { isLoggedIn } = useSyncContext();
+	const { isLoggedIn, isSessionResolved } = useSyncContext();
 	const profileQuery = useOwnSocialProfile(isLoggedIn);
 
 	let body: React.ReactNode;
-	if (!isLoggedIn) {
+	if (!isSessionResolved) {
+		body = (
+			<div className="flex justify-center py-16">
+				<Loader2 className="size-6 animate-spin text-muted-foreground" />
+			</div>
+		);
+	} else if (!isLoggedIn) {
 		body = (
 			<Section title="Not signed in">
 				<p className="px-4 py-3 text-muted-foreground text-sm">

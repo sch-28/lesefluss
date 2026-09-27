@@ -46,7 +46,11 @@ export async function shareableSource(
 	return row ?? null;
 }
 
-async function liveCopyOf(tx: Tx, userId: string, origin: BookOrigin): Promise<string | null> {
+export async function liveCopyOf(
+	tx: Tx,
+	userId: string,
+	origin: BookOrigin,
+): Promise<string | null> {
 	const [row] = await tx
 		.select({ bookId: syncBooks.bookId })
 		.from(syncBooks)

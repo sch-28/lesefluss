@@ -186,4 +186,13 @@ export const socialKeys = {
 	/** Another user's profile as the viewer may see it; the preview flag is part of the key. */
 	profileView: (userId: string, asFriend: boolean) =>
 		["social", "profile-view", userId, asFriend] as const,
+
+	/** The user's buddy reads, active and finished. */
+	buddyReads: ["social", "buddy-reads"] as const,
+
+	/** One buddy read with its participants. */
+	buddyRead: (id: string) => ["social", "buddy-read", id] as const,
+
+	/** Other participants' positions, for the reader's markers. */
+	buddyReadProgress: (id: string) => ["social", "buddy-read-progress", id] as const,
 };

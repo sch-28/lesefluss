@@ -1,5 +1,6 @@
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
+import { Network } from "@capacitor/network";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { socialKeys } from "../db/hooks/query-keys";
@@ -32,7 +33,12 @@ export function invalidateUnreadCount(): void {
 export function useRefetchSocialOnForeground(): void {
 	const client = useQueryClient();
 	useEffect(() => {
-		const refetch = () => void client.invalidateQueries({ queryKey: socialKeys.all });
+		// Buddy-read progress keeps its own 60 s cadence; an app switch must not add fetches.
+		const refetch = () =>
+			void client.invalidateQueries({
+				queryKey: socialKeys.all,
+				predicate: (query) => query.queryKey[1] !== socialKeys.buddyReadProgress("")[1],
+			});
 		const onVisible = () => {
 			if (document.visibilityState === "visible") refetch();
 		};
@@ -47,11 +53,28 @@ export function useRefetchSocialOnForeground(): void {
 	}, [client]);
 }
 
+/**
+ * The device's connectivity. Native asks the OS through the Network plugin:
+ * an Android WebView keeps `navigator.onLine` true even in airplane mode.
+ */
 export function useIsOnline(): boolean {
 	const [isOnline, setIsOnline] = useState(() =>
 		typeof navigator === "undefined" ? true : navigator.onLine,
 	);
 	useEffect(() => {
+		if (Capacitor.isNativePlatform()) {
+			let isActive = true;
+			void Network.getStatus().then((status) => {
+				if (isActive) setIsOnline(status.connected);
+			});
+			const handle = Network.addListener("networkStatusChange", (status) =>
+				setIsOnline(status.connected),
+			);
+			return () => {
+				isActive = false;
+				void handle.then((h) => h.remove());
+			};
+		}
 		const update = () => setIsOnline(navigator.onLine);
 		window.addEventListener("online", update);
 		window.addEventListener("offline", update);
@@ -59,6 +82,6 @@ export function useIsOnline(): boolean {
 			window.removeEventListener("online", update);
 			window.removeEventListener("offline", update);
 		};
-	}, [setIsOnline]);
+	}, []);
 	return isOnline;
 }

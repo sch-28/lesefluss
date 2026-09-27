@@ -31,7 +31,7 @@ import {
 	syncSeries,
 	syncSettings,
 } from "~/db/schema";
-import { deleteUserAccount, purgeCloudData, purgeUserSyncData } from "./account-deletion";
+import { deleteUserAccount, purgeCloudData } from "./account-deletion";
 import { claimHandle } from "./social/handle";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
@@ -351,20 +351,6 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 		// Isolation: the other party is untouched. (Test files run in parallel and
 		// create users of their own, so a global count would be racy.)
 		expect(await db.select().from(user).where(eq(user.id, otherUserId))).toHaveLength(1);
-	});
-
-	// better-auth's beforeDelete hook runs purgeUserSyncData in a transaction and
-	// then deletes the user; this is that sequence.
-	test("the purge used by the better-auth delete-user path releases the handle", async () => {
-		const id = `test-del-ba-${randomUUID()}`;
-		const baHandle = `ba_${id.slice(-8)}`;
-		await db.insert(user).values({ id, name: "BA", email: `${id}@example.test` });
-		await claimHandle(id, baHandle, "BA");
-		await db.transaction((tx) => purgeUserSyncData(tx, id));
-		await db.delete(user).where(eq(user.id, id));
-		const [held] = await db.select().from(socialHandle).where(eq(socialHandle.handle, baHandle));
-		expect(held).toMatchObject({ userId: null, reclaimable: false });
-		await db.delete(socialHandle).where(eq(socialHandle.handle, baHandle));
 	});
 
 	test("clearing cloud data keeps the social profile", async () => {

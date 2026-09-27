@@ -173,7 +173,9 @@ export const bookUpsertSetPreservingMetadata: PgUpdateSetSource<typeof syncBooks
 	title: lastWriteWins("title"),
 	author: lastWriteWins("author"),
 	fileSize: sql`excluded.file_size`,
-	wordCount: sql`excluded.word_count`,
+	// A client that has not counted the book yet pushes null; the count comes
+	// from the text, so a known one stays until a push brings a new count.
+	wordCount: sql`COALESCE(excluded.word_count, sync_books.word_count)`,
 	// `updated_at` is the position's revision, which is what every released
 	// client takes it to mean, so the position gate is unchanged from before the
 	// metadata columns existed.

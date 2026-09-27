@@ -142,7 +142,7 @@ export async function sendFriendRequest(
 
 		// Only a genuinely new request needs the shared buddy read; an existing
 		// relationship stays reportable after the buddy read has ended.
-		if (!(await sharesActiveBuddyRead(tx, me, targetId))) throw new SocialError("not_found");
+		if (!(await sharesActiveBuddyRead(tx, me, targetId, now))) throw new SocialError("not_found");
 		const [outgoing] = await tx
 			.select({ n: count() })
 			.from(socialFriendRequest)
@@ -305,7 +305,7 @@ export async function blockUser(me: string, targetId: string, now = new Date()):
 					.where(betweenPair(me, targetId))
 					.limit(1)
 			).length > 0 ||
-			(await sharesActiveBuddyRead(tx, me, targetId));
+			(await sharesActiveBuddyRead(tx, me, targetId, now));
 		if (!encountered) throw new SocialError("not_found");
 		await blockWithin(tx, me, targetId, now);
 	});

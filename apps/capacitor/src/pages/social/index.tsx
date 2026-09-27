@@ -244,7 +244,17 @@ function SocialLists({
 					<ChevronRight className="size-4 text-muted-foreground" />
 				</Link>
 				<PlaceholderRow icon={Newspaper} title="Activity" subtitle="What your friends read" />
-				<PlaceholderRow icon={Users} title="Buddy reads" subtitle="Read a book together" />
+				<Link
+					to="/tabs/social/buddy-reads"
+					className="flex items-center gap-3 px-4 py-3 text-foreground no-underline hover:bg-muted/60"
+				>
+					<Users className="size-5 text-muted-foreground" />
+					<div className="min-w-0 flex-1">
+						<div className="font-medium text-foreground text-sm">Buddy reads</div>
+						<div className="text-muted-foreground text-xs">Read a book together</div>
+					</div>
+					<ChevronRight className="size-4 text-muted-foreground" />
+				</Link>
 			</Section>
 
 			<Section title="Privacy">

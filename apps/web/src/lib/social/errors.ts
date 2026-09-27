@@ -14,7 +14,10 @@ export type SocialErrorCode =
 	| "not_shareable"
 	| "already_shared"
 	| "suspended"
-	| "unavailable";
+	| "unavailable"
+	| "full"
+	| "already_member"
+	| "not_host";
 
 const STATUS_BY_CODE: Record<SocialErrorCode, number> = {
 	invalid: 400,
@@ -33,6 +36,9 @@ const STATUS_BY_CODE: Record<SocialErrorCode, number> = {
 	already_shared: 409,
 	suspended: 403,
 	unavailable: 410,
+	full: 409,
+	already_member: 409,
+	not_host: 403,
 };
 
 export class SocialError extends Error {

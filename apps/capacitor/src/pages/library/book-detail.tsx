@@ -19,7 +19,7 @@ import {
 import { RatingStars } from "@lesefluss/ui/rating-stars";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { BookOpen, Cpu, Pencil, Share2, Trash2 } from "lucide-react";
+import { BookOpen, Cpu, Pencil, Share2, Trash2, Users } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DeviceBadge } from "../../components/device-sync";
@@ -39,6 +39,7 @@ import { getServerContentIds } from "../../services/sync/server-content-cache";
 import { IS_WEB } from "../../utils/platform";
 import { bookPageCount } from "../../utils/reading-time";
 import { DetailShell } from "../_shared/detail-shell";
+import { BookBuddyRead, StartBuddyReadSheet, useBookBuddyRead } from "./book-buddy-read";
 import { BookChapters } from "./book-chapters";
 import BookEditSheet, {
 	type BookEditValues,
@@ -58,6 +59,13 @@ import TransferModal from "./transfer-modal";
 interface Props {
 	id?: string;
 }
+
+const BUDDY_READ_BLOCKER_TEXT: Record<ShareBlocker, string> = {
+	local_only: "This book is stored on this device only, so friends can't get a copy of it.",
+	not_synced: "This book hasn't reached the cloud yet. Sync first, then start a buddy read.",
+	series: "Web-serial chapters can't be read together.",
+	checking: "Checking whether this book is in the cloud…",
+};
 
 const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const id = propId ?? "";
@@ -96,17 +104,20 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 	const [isEditOpen, setIsEditOpen] = useState(false);
 	const [isShareOpen, setIsShareOpen] = useState(false);
+	const [isBuddyReadOpen, setIsBuddyReadOpen] = useState(false);
 	const canShare = isLoggedIn && SYNC_ENABLED;
 	// A session lost while the sheet is open would leave a friend list that can only fail.
 	useEffect(() => {
 		if (!canShare) setIsShareOpen(false);
 	}, [canShare]);
+	const buddyRead = useBookBuddyRead(book ?? { originKey: null }, canShare);
+	const hasRunningBuddyRead = buddyRead?.status === "in_progress";
 	// Whether the server holds this book's text: sharing copies server-side, so a
 	// book that never reached the cloud has nothing to copy yet.
 	const { data: serverContentIds } = useQuery({
 		queryKey: syncKeys.serverContentIds,
 		queryFn: getServerContentIds,
-		enabled: canShare && isShareOpen,
+		enabled: canShare && (isShareOpen || isBuddyReadOpen),
 		staleTime: 0,
 	});
 
@@ -119,6 +130,10 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		() => [
 			{ label: "Edit", icon: Pencil, onClick: () => setIsEditOpen(true) },
 			...(canShare ? [{ label: "Share", icon: Share2, onClick: () => setIsShareOpen(true) }] : []),
+			// Shown signed out too: the sheet explains that reading together needs an account.
+			...(SYNC_ENABLED && !hasRunningBuddyRead
+				? [{ label: "Start buddy read", icon: Users, onClick: () => setIsBuddyReadOpen(true) }]
+				: []),
 			{
 				label: "Delete",
 				icon: Trash2,
@@ -126,7 +141,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				onClick: () => setIsDeleteOpen(true),
 			},
 		],
-		[canShare],
+		[canShare, hasRunningBuddyRead],
 	);
 	// Memoised because the sheet reseeds its form whenever `initial` changes; a
 	// fresh object every render would discard what the reader is typing.
@@ -322,6 +337,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				)}
 				<BookStatsCard book={book} />
 				{canShare && <BookShares bookId={book.id} enabled={!book.seriesId} />}
+				{canShare && buddyRead && <BookBuddyRead read={buddyRead} book={book} />}
 				<BookJourney book={book} />
 				<BookFileCard book={book} chapterCount={chapterCount} />
 				<BookChapters
@@ -349,6 +365,14 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				bookId={book.id}
 				bookTitle={book.title}
 				blocker={shareBlocker}
+			/>
+			<StartBuddyReadSheet
+				isOpen={isBuddyReadOpen}
+				onClose={() => setIsBuddyReadOpen(false)}
+				isLoggedIn={isLoggedIn}
+				bookId={book.id}
+				bookTitle={book.title}
+				blocker={shareBlocker ? BUDDY_READ_BLOCKER_TEXT[shareBlocker] : null}
 			/>
 			<BookEditSheet
 				isOpen={isEditOpen}

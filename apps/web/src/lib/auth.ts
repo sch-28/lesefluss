@@ -4,7 +4,6 @@ import { admin, bearer } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { db } from "~/db";
 import * as authSchema from "~/db/auth-schema";
-import { purgeUserSyncData } from "./account-deletion";
 import { getTrustedAuthOrigins } from "./allowed-origins";
 import { passwordResetEmail, sendMail, verificationEmail } from "./mailer";
 
@@ -58,16 +57,10 @@ export const auth = betterAuth({
 		},
 	},
 	plugins: [tanstackStartCookies(), bearer(), admin()],
-	user: {
-		deleteUser: {
-			enabled: true,
-			// Before, not after: the handle release needs the user row to still
-			// exist (see purgeUserSyncData).
-			beforeDelete: async (user) => {
-				await db.transaction((tx) => purgeUserSyncData(tx, user.id));
-			},
-		},
-	},
+	// Accounts are deleted only through deleteUserAccount, which purges and
+	// deletes in one transaction. better-auth's own routes delete the user row
+	// separately from any purge (or skip it), so they are switched off.
+	disabledPaths: ["/delete-user", "/admin/remove-user"],
 });
 
 export type Session = typeof auth.$Infer.Session;

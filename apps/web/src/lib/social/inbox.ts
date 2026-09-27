@@ -12,6 +12,8 @@ import { and, count, desc, eq, isNotNull, isNull, lt, not, or, type SQL, sql } f
 import { type DbExecutor, db, type Tx } from "~/db";
 import { user } from "~/db/auth-schema";
 import {
+	buddyReadInvite,
+	buddyReadMember,
 	socialAvatar,
 	socialBlock,
 	socialFriendRequest,
@@ -20,6 +22,7 @@ import {
 	socialProfile,
 	socialShare,
 } from "~/db/schema";
+import { buddyReadInviteSubjectsFor } from "./buddy-read-items";
 import { avatarUrlFor } from "./profile";
 import { shareSubjectsFor } from "./share-items";
 
@@ -137,6 +140,29 @@ function liveShareItem(): SQL {
 	)`;
 }
 
+/**
+ * Buddy-read items live with their subject: an invite until it is cancelled or
+ * its read is deleted, a joined or finished item while the recipient is still
+ * a member. A member who left stops seeing news about the read.
+ */
+function liveBuddyReadItem(): SQL {
+	return sql`(
+		(${socialNotification.type} <> 'buddy_read_invite'
+		 OR EXISTS (
+			SELECT 1 FROM ${buddyReadInvite}
+			WHERE ${buddyReadInvite.id}::text = ${socialNotification.subjectId}
+			  AND ${buddyReadInvite.status} <> 'cancelled'
+		 ))
+		AND (${socialNotification.type} NOT IN ('buddy_read_joined', 'buddy_read_finished')
+		 OR EXISTS (
+			SELECT 1 FROM ${buddyReadMember}
+			WHERE ${buddyReadMember.buddyReadId}::text = ${socialNotification.subjectId}
+			  AND ${buddyReadMember.userId} = ${socialNotification.recipientId}
+			  AND ${buddyReadMember.state} = 'active'
+		 ))
+	)`;
+}
+
 /** No scheduler: a recipient's expired and gone rows go when they next touch their inbox. */
 async function purgeExpired(exec: DbExecutor, userId: string, now: Date): Promise<void> {
 	await exec
@@ -144,7 +170,12 @@ async function purgeExpired(exec: DbExecutor, userId: string, now: Date): Promis
 		.where(
 			and(
 				eq(socialNotification.recipientId, userId),
-				or(expiredCondition(now), not(liveRequestItem(now)), not(liveShareItem())),
+				or(
+					expiredCondition(now),
+					not(liveRequestItem(now)),
+					not(liveShareItem()),
+					not(liveBuddyReadItem()),
+				),
 			),
 		);
 }
@@ -168,6 +199,7 @@ function visibleItems(userId: string, now: Date): SQL {
 		sql`NOT (${expiredCondition(now)})`,
 		liveRequestItem(now),
 		liveShareItem(),
+		liveBuddyReadItem(),
 		or(
 			isNull(socialNotification.actorId),
 			and(
@@ -259,6 +291,12 @@ export async function listInbox(
 		page.filter((r) => r.type === "share_received").map((r) => r.subjectId),
 		now,
 	);
+	const inviteSubjects = await buddyReadInviteSubjectsFor(
+		db,
+		userId,
+		page.filter((r) => r.type === "buddy_read_invite").map((r) => r.subjectId),
+		now,
+	);
 	const items: InboxItem[] = [];
 	for (const row of page) {
 		let subject: InboxItem["subject"] = null;
@@ -270,6 +308,8 @@ export async function listInbox(
 			};
 		} else if (row.type === "share_received") {
 			subject = shareSubjects.get(row.subjectId) ?? null;
+		} else if (row.type === "buddy_read_invite") {
+			subject = inviteSubjects.get(row.subjectId) ?? null;
 		}
 		items.push({
 			id: row.id,

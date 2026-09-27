@@ -40,6 +40,8 @@ function hasEmail(v: unknown): v is { email: string } {
 
 interface SyncContextType {
 	isLoggedIn: boolean;
+	/** False until the stored session has been checked; `isLoggedIn` is not meaningful before. */
+	isSessionResolved: boolean;
 	userEmail: string | null;
 	isSyncing: boolean;
 	lastSynced: number | null;
@@ -126,6 +128,7 @@ function useRestoreSession(
 	setIsSyncing: Dispatch<SetStateAction<boolean>>,
 	setLastSynced: Dispatch<SetStateAction<number | null>>,
 	setSyncError: Dispatch<SetStateAction<string | null>>,
+	setIsSessionResolved: Dispatch<SetStateAction<boolean>>,
 ) {
 	useEffect(() => {
 		if (!SYNC_ENABLED) return;
@@ -149,10 +152,12 @@ function useRestoreSession(
 					await adoptSyncIdentity(user.email);
 					setIsLoggedIn(true);
 					setUserEmail(user.email);
+					setIsSessionResolved(true);
 				} else {
 					const token = await getToken();
 					if (!token || cancelled) return;
 					setIsLoggedIn(true);
+					setIsSessionResolved(true);
 					setUserEmail(await getUserEmail());
 					setLastSynced(await getLastSynced());
 				}
@@ -164,14 +169,24 @@ function useRestoreSession(
 				setSyncError(err instanceof Error ? err.message : "Initial sync failed");
 				log.warn("sync", "initial sync failed:", err);
 			} finally {
-				if (!cancelled) setIsSyncing(false);
+				if (!cancelled) {
+					setIsSessionResolved(true);
+					setIsSyncing(false);
+				}
 			}
 		})();
 
 		return () => {
 			cancelled = true;
 		};
-	}, [setIsLoggedIn, setIsSyncing, setLastSynced, setSyncError, setUserEmail]);
+	}, [
+		setIsLoggedIn,
+		setIsSyncing,
+		setLastSynced,
+		setSyncError,
+		setUserEmail,
+		setIsSessionResolved,
+	]);
 }
 
 function useResumeSync(setLastSynced: Dispatch<SetStateAction<number | null>>) {
@@ -284,7 +299,15 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 	const [lastSynced, setLastSynced] = useState<number | null>(null);
 	const [syncError, setSyncError] = useState<string | null>(null);
 
-	useRestoreSession(setIsLoggedIn, setUserEmail, setIsSyncing, setLastSynced, setSyncError);
+	const [isSessionResolved, setIsSessionResolved] = useState(!SYNC_ENABLED);
+	useRestoreSession(
+		setIsLoggedIn,
+		setUserEmail,
+		setIsSyncing,
+		setLastSynced,
+		setSyncError,
+		setIsSessionResolved,
+	);
 	useResumeSync(setLastSynced);
 	useMobileAuthCallback(setIsLoggedIn, setUserEmail, setIsSyncing, setLastSynced, setSyncError);
 	// A 401 anywhere drops the session; the signed-in flag must not outlive it,
@@ -326,6 +349,7 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 	const value: SyncContextType = {
 		isLoggedIn,
+		isSessionResolved,
 		userEmail,
 		isSyncing,
 		lastSynced,

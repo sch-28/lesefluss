@@ -211,6 +211,14 @@ describe.skipIf(!hasDb)("sync_books upsert (integration)", () => {
 	// The add date is a fact about the book, not a revision of it. A device that
 	// restored the library stamps itself into `added_at`, and a later push from it
 	// must not overwrite the original.
+	test("a push without a word count keeps the stored one; a new count replaces it", async () => {
+		await push(makeBook({ bookId: "c0c0c0c0", wordCount: 100 }));
+		await push(makeBook({ bookId: "c0c0c0c0", wordCount: null, updatedAt: 2_000_000 }));
+		expect((await read("c0c0c0c0"))?.wordCount).toBe(100);
+		await push(makeBook({ bookId: "c0c0c0c0", wordCount: 120, updatedAt: 3_000_000 }));
+		expect((await read("c0c0c0c0"))?.wordCount).toBe(120);
+	});
+
 	test("the earliest add date survives a later push", async () => {
 		const bookId = "add00001";
 		await push(makeBook({ bookId, addedAt: 1_000_000, updatedAt: 1_000_000 }));

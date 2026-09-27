@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { and, count, countDistinct, desc, eq, gt, gte, isNotNull, isNull, sum } from "drizzle-orm";
 import { db } from "~/db";
@@ -9,13 +9,13 @@ import { auth } from "./auth";
 import { catalogFetch } from "./catalog";
 import { tombstoneBook } from "./moderation/takedown";
 
-export async function requireAdminSession() {
+export const requireAdminSession = createServerOnlyFn(async () => {
 	const request = getRequest();
 	const s = await auth.api.getSession({ headers: request.headers });
 	if (!s) throw new Response("Unauthorized", { status: 401 });
 	if (s.user.role !== "admin") throw new Response("Forbidden", { status: 403 });
 	return s;
-}
+});
 
 // Standalone book (no series_id) predicate, shared by stats and cleanup so the
 // numbers stay consistent with the admin Books table.

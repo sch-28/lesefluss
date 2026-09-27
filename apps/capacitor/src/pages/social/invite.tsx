@@ -131,7 +131,7 @@ function BackToSocial() {
 }
 
 function InviteContent({ token }: { token: string }) {
-	const { isLoggedIn } = useSyncContext();
+	const { isLoggedIn, isSessionResolved } = useSyncContext();
 	const profile = useOwnSocialProfile(isLoggedIn);
 	const preview = useInvitePreview(token, isLoggedIn);
 
@@ -139,10 +139,12 @@ function InviteContent({ token }: { token: string }) {
 	// may kill the app on native. Signed in: this screen is the destination,
 	// so an older pending link must not replay on top of it.
 	useEffect(() => {
+		if (!isSessionResolved) return;
 		if (isLoggedIn) void clearPendingLink();
 		else void setPendingLink({ kind: "invite", token });
-	}, [isLoggedIn, token]);
+	}, [isSessionResolved, isLoggedIn, token]);
 
+	if (!isSessionResolved) return <Spinner />;
 	if (!isLoggedIn) {
 		return <SignedOutSocial returnTo={`/tabs/social/invite/${encodeURIComponent(token)}`} />;
 	}

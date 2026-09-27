@@ -69,6 +69,15 @@ export function formatRelative(epochMs: number, now: number = Date.now()): strin
 	return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
+/** Finer than `formatRelative` for the last day: "just now", "5 min ago", "3 h ago". */
+export function formatAgo(epochMs: number, now: number = Date.now()): string {
+	const diff = now - epochMs;
+	if (diff < 60_000) return "just now";
+	if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
+	if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} h ago`;
+	return formatRelative(epochMs, now);
+}
+
 /** Short calendar date, e.g. "3 May". Used for chart ticks, shelf dates and the
  *  reading journey, which were each formatting this independently. */
 export function formatShortDate(epochMs: number): string {

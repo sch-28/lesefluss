@@ -29,6 +29,7 @@ import { takenDownBookIds } from "~/lib/moderation/takedown";
 import { type BookOrigin, originKey } from "~/lib/origin";
 import { checkLimit } from "~/lib/rate-limit";
 import { requireAuth } from "~/lib/session-middleware";
+import { settleBuddyReads } from "~/lib/social/buddy-reads";
 import {
 	bookInsertValues,
 	bookUpsertSetFor,
@@ -612,6 +613,15 @@ export const Route = createFileRoute("/api/sync")({
 							});
 					}
 				});
+
+				try {
+					await settleBuddyReads(
+						userId,
+						payload.books.map((b) => b.bookId),
+					);
+				} catch (err) {
+					console.error("sync: buddy-read settle failed", err);
+				}
 
 				// No body: the client pulls with GET and discards whatever POST returns,
 				// so building a full merged snapshot here is a wasted query and a wasted

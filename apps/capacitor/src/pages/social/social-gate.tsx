@@ -16,8 +16,8 @@ export function Spinner() {
 }
 
 /**
- * The list screens sit behind the same three gates: signed in, profile
- * loaded, handle claimed. `children` only renders once all three pass. The
+ * The list screens sit behind the same gates: session checked, signed in,
+ * profile loaded, handle claimed. `children` only renders once all pass. The
  * invite screen composes the same pieces itself because it shows the inviter
  * next to the handle claim.
  */
@@ -31,12 +31,13 @@ export function SocialGate({
 	returnTo: string;
 	onClaimed?: (profile: OwnSocialProfile) => void;
 }) {
-	const { isLoggedIn } = useSyncContext();
+	const { isLoggedIn, isSessionResolved } = useSyncContext();
 	const profile = useOwnSocialProfile(isLoggedIn);
 
+	if (!isSessionResolved) return <Spinner />;
 	if (!isLoggedIn) return <SignedOutSocial returnTo={returnTo} />;
 	if (profile.isPending) return <Spinner />;
-	if (profile.isError) {
+	if (profile.isError && !profile.data) {
 		return (
 			<OfflineNotice onRetry={() => void profile.refetch()}>
 				Can't reach the server. Your social data is only stored online.

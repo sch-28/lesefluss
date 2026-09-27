@@ -17,6 +17,7 @@ import { Route as TabsLibraryIndexRouteImport } from './routes/tabs/library/inde
 import { Route as TabsExploreIndexRouteImport } from './routes/tabs/explore/index'
 import { Route as TabsSocialInviteLinkRouteImport } from './routes/tabs/social/invite-link'
 import { Route as TabsSocialInboxRouteImport } from './routes/tabs/social/inbox'
+import { Route as TabsSocialBuddyReadsRouteImport } from './routes/tabs/social/buddy-reads'
 import { Route as TabsSocialBlockedRouteImport } from './routes/tabs/social/blocked'
 import { Route as TabsSettingsSyncRouteImport } from './routes/tabs/settings/sync'
 import { Route as TabsSettingsSocialRouteImport } from './routes/tabs/settings/social'
@@ -30,6 +31,7 @@ import { Route as TabsExploreWebNovelsRouteImport } from './routes/tabs/explore/
 import { Route as TabsExploreWebNovelPreviewRouteImport } from './routes/tabs/explore/web-novel-preview'
 import { Route as TabsSocialProfileUserIdRouteImport } from './routes/tabs/social/profile.$userId'
 import { Route as TabsSocialInviteTokenRouteImport } from './routes/tabs/social/invite.$token'
+import { Route as TabsSocialBuddyReadIdRouteImport } from './routes/tabs/social/buddy-read.$id'
 import { Route as TabsLibrarySeriesIdRouteImport } from './routes/tabs/library/series.$id'
 import { Route as TabsLibraryBookIdRouteImport } from './routes/tabs/library/book.$id'
 import { Route as TabsExploreBookCatalogIdRouteImport } from './routes/tabs/explore/book.$catalogId'
@@ -72,6 +74,11 @@ const TabsSocialInviteLinkRoute = TabsSocialInviteLinkRouteImport.update({
 const TabsSocialInboxRoute = TabsSocialInboxRouteImport.update({
   id: '/tabs/social/inbox',
   path: '/tabs/social/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TabsSocialBuddyReadsRoute = TabsSocialBuddyReadsRouteImport.update({
+  id: '/tabs/social/buddy-reads',
+  path: '/tabs/social/buddy-reads',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TabsSocialBlockedRoute = TabsSocialBlockedRouteImport.update({
@@ -140,6 +147,11 @@ const TabsSocialInviteTokenRoute = TabsSocialInviteTokenRouteImport.update({
   path: '/tabs/social/invite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TabsSocialBuddyReadIdRoute = TabsSocialBuddyReadIdRouteImport.update({
+  id: '/tabs/social/buddy-read/$id',
+  path: '/tabs/social/buddy-read/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TabsLibrarySeriesIdRoute = TabsLibrarySeriesIdRouteImport.update({
   id: '/tabs/library/series/$id',
   path: '/tabs/library/series/$id',
@@ -171,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
   '/tabs/social/blocked': typeof TabsSocialBlockedRoute
+  '/tabs/social/buddy-reads': typeof TabsSocialBuddyReadsRoute
   '/tabs/social/inbox': typeof TabsSocialInboxRoute
   '/tabs/social/invite-link': typeof TabsSocialInviteLinkRoute
   '/tabs/explore/': typeof TabsExploreIndexRoute
@@ -180,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/tabs/explore/book/$catalogId': typeof TabsExploreBookCatalogIdRoute
   '/tabs/library/book/$id': typeof TabsLibraryBookIdRoute
   '/tabs/library/series/$id': typeof TabsLibrarySeriesIdRoute
+  '/tabs/social/buddy-read/$id': typeof TabsSocialBuddyReadIdRoute
   '/tabs/social/invite/$token': typeof TabsSocialInviteTokenRoute
   '/tabs/social/profile/$userId': typeof TabsSocialProfileUserIdRoute
 }
@@ -197,6 +211,7 @@ export interface FileRoutesByTo {
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
   '/tabs/social/blocked': typeof TabsSocialBlockedRoute
+  '/tabs/social/buddy-reads': typeof TabsSocialBuddyReadsRoute
   '/tabs/social/inbox': typeof TabsSocialInboxRoute
   '/tabs/social/invite-link': typeof TabsSocialInviteLinkRoute
   '/tabs/explore': typeof TabsExploreIndexRoute
@@ -206,6 +221,7 @@ export interface FileRoutesByTo {
   '/tabs/explore/book/$catalogId': typeof TabsExploreBookCatalogIdRoute
   '/tabs/library/book/$id': typeof TabsLibraryBookIdRoute
   '/tabs/library/series/$id': typeof TabsLibrarySeriesIdRoute
+  '/tabs/social/buddy-read/$id': typeof TabsSocialBuddyReadIdRoute
   '/tabs/social/invite/$token': typeof TabsSocialInviteTokenRoute
   '/tabs/social/profile/$userId': typeof TabsSocialProfileUserIdRoute
 }
@@ -224,6 +240,7 @@ export interface FileRoutesById {
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
   '/tabs/social/blocked': typeof TabsSocialBlockedRoute
+  '/tabs/social/buddy-reads': typeof TabsSocialBuddyReadsRoute
   '/tabs/social/inbox': typeof TabsSocialInboxRoute
   '/tabs/social/invite-link': typeof TabsSocialInviteLinkRoute
   '/tabs/explore/': typeof TabsExploreIndexRoute
@@ -233,6 +250,7 @@ export interface FileRoutesById {
   '/tabs/explore/book/$catalogId': typeof TabsExploreBookCatalogIdRoute
   '/tabs/library/book/$id': typeof TabsLibraryBookIdRoute
   '/tabs/library/series/$id': typeof TabsLibrarySeriesIdRoute
+  '/tabs/social/buddy-read/$id': typeof TabsSocialBuddyReadIdRoute
   '/tabs/social/invite/$token': typeof TabsSocialInviteTokenRoute
   '/tabs/social/profile/$userId': typeof TabsSocialProfileUserIdRoute
 }
@@ -252,6 +270,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/social'
     | '/tabs/settings/sync'
     | '/tabs/social/blocked'
+    | '/tabs/social/buddy-reads'
     | '/tabs/social/inbox'
     | '/tabs/social/invite-link'
     | '/tabs/explore/'
@@ -261,6 +280,7 @@ export interface FileRouteTypes {
     | '/tabs/explore/book/$catalogId'
     | '/tabs/library/book/$id'
     | '/tabs/library/series/$id'
+    | '/tabs/social/buddy-read/$id'
     | '/tabs/social/invite/$token'
     | '/tabs/social/profile/$userId'
   fileRoutesByTo: FileRoutesByTo
@@ -278,6 +298,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/social'
     | '/tabs/settings/sync'
     | '/tabs/social/blocked'
+    | '/tabs/social/buddy-reads'
     | '/tabs/social/inbox'
     | '/tabs/social/invite-link'
     | '/tabs/explore'
@@ -287,6 +308,7 @@ export interface FileRouteTypes {
     | '/tabs/explore/book/$catalogId'
     | '/tabs/library/book/$id'
     | '/tabs/library/series/$id'
+    | '/tabs/social/buddy-read/$id'
     | '/tabs/social/invite/$token'
     | '/tabs/social/profile/$userId'
   id:
@@ -304,6 +326,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/social'
     | '/tabs/settings/sync'
     | '/tabs/social/blocked'
+    | '/tabs/social/buddy-reads'
     | '/tabs/social/inbox'
     | '/tabs/social/invite-link'
     | '/tabs/explore/'
@@ -313,6 +336,7 @@ export interface FileRouteTypes {
     | '/tabs/explore/book/$catalogId'
     | '/tabs/library/book/$id'
     | '/tabs/library/series/$id'
+    | '/tabs/social/buddy-read/$id'
     | '/tabs/social/invite/$token'
     | '/tabs/social/profile/$userId'
   fileRoutesById: FileRoutesById
@@ -331,6 +355,7 @@ export interface RootRouteChildren {
   TabsSettingsSocialRoute: typeof TabsSettingsSocialRoute
   TabsSettingsSyncRoute: typeof TabsSettingsSyncRoute
   TabsSocialBlockedRoute: typeof TabsSocialBlockedRoute
+  TabsSocialBuddyReadsRoute: typeof TabsSocialBuddyReadsRoute
   TabsSocialInboxRoute: typeof TabsSocialInboxRoute
   TabsSocialInviteLinkRoute: typeof TabsSocialInviteLinkRoute
   TabsExploreIndexRoute: typeof TabsExploreIndexRoute
@@ -340,6 +365,7 @@ export interface RootRouteChildren {
   TabsExploreBookCatalogIdRoute: typeof TabsExploreBookCatalogIdRoute
   TabsLibraryBookIdRoute: typeof TabsLibraryBookIdRoute
   TabsLibrarySeriesIdRoute: typeof TabsLibrarySeriesIdRoute
+  TabsSocialBuddyReadIdRoute: typeof TabsSocialBuddyReadIdRoute
   TabsSocialInviteTokenRoute: typeof TabsSocialInviteTokenRoute
   TabsSocialProfileUserIdRoute: typeof TabsSocialProfileUserIdRoute
 }
@@ -400,6 +426,13 @@ declare module '@tanstack/react-router' {
       path: '/tabs/social/inbox'
       fullPath: '/tabs/social/inbox'
       preLoaderRoute: typeof TabsSocialInboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabs/social/buddy-reads': {
+      id: '/tabs/social/buddy-reads'
+      path: '/tabs/social/buddy-reads'
+      fullPath: '/tabs/social/buddy-reads'
+      preLoaderRoute: typeof TabsSocialBuddyReadsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tabs/social/blocked': {
@@ -493,6 +526,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabsSocialInviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tabs/social/buddy-read/$id': {
+      id: '/tabs/social/buddy-read/$id'
+      path: '/tabs/social/buddy-read/$id'
+      fullPath: '/tabs/social/buddy-read/$id'
+      preLoaderRoute: typeof TabsSocialBuddyReadIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tabs/library/series/$id': {
       id: '/tabs/library/series/$id'
       path: '/tabs/library/series/$id'
@@ -531,6 +571,7 @@ const rootRouteChildren: RootRouteChildren = {
   TabsSettingsSocialRoute: TabsSettingsSocialRoute,
   TabsSettingsSyncRoute: TabsSettingsSyncRoute,
   TabsSocialBlockedRoute: TabsSocialBlockedRoute,
+  TabsSocialBuddyReadsRoute: TabsSocialBuddyReadsRoute,
   TabsSocialInboxRoute: TabsSocialInboxRoute,
   TabsSocialInviteLinkRoute: TabsSocialInviteLinkRoute,
   TabsExploreIndexRoute: TabsExploreIndexRoute,
@@ -540,6 +581,7 @@ const rootRouteChildren: RootRouteChildren = {
   TabsExploreBookCatalogIdRoute: TabsExploreBookCatalogIdRoute,
   TabsLibraryBookIdRoute: TabsLibraryBookIdRoute,
   TabsLibrarySeriesIdRoute: TabsLibrarySeriesIdRoute,
+  TabsSocialBuddyReadIdRoute: TabsSocialBuddyReadIdRoute,
   TabsSocialInviteTokenRoute: TabsSocialInviteTokenRoute,
   TabsSocialProfileUserIdRoute: TabsSocialProfileUserIdRoute,
 }

@@ -67,6 +67,7 @@ import { AVERAGE_READER_WPM, formatReadingTime } from "../../utils/reading-time"
 import { setJustRead } from "../library/just-read-pin";
 import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
+import { BuddyReadMarkers, useBuddyReadMarkers } from "./buddy-read-markers";
 import { useChapterAutoAdvance } from "./chapter-auto-advance";
 import { useChapterFetch } from "./chapter-fetch";
 import { buildChapterHeadingMap } from "./chapter-headings";
@@ -135,7 +136,7 @@ function notifyLocalSaveFailure() {
 const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const { pushPosition, onDevicePositionUpdate } = useBookSync();
 	const { isConnected: isBleConnected } = useBLE();
-	const { isSyncing } = useSyncContext();
+	const { isSyncing, isLoggedIn } = useSyncContext();
 	const qc = useQueryClient();
 	const history = useRouter().history;
 
@@ -455,6 +456,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const contentBytes = useMemo(() => (content ? _encoder.encode(content) : null), [content]);
 
 	const totalWordCount = book?.wordCount ?? wordIndex?.wordCount ?? 0;
+	const buddyMarkers = useBuddyReadMarkers(book?.originKey ?? null, totalWordCount, isLoggedIn);
 
 	const chapterWordCounts = useMemo(() => {
 		if (!chapters.length) return [];
@@ -1691,20 +1693,25 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 				{/* ── Progress bar ── */}
 				{(progressBarVisible || readerMode === "rsvp") && (
-					// biome-ignore lint/a11y/useFocusableInteractive: scrubber
 					<div
 						ref={scrub.progressBarRef}
 						className="reader-progress-bar"
 						onPointerDown={scrub.handleProgressPointerDown}
 						onPointerMove={scrub.handleProgressPointerMove}
 						onPointerUp={scrub.handleProgressPointerUp}
-						aria-label="Reading progress"
-						role="slider"
-						aria-valuenow={Math.round(progressPct)}
-						aria-valuemin={0}
-						aria-valuemax={100}
 					>
-						<div className="reader-progress-fill-track">
+						<BuddyReadMarkers markers={buddyMarkers} />
+						{/* The slider role sits on the track, not the bar: a slider is a leaf, and
+						    assistive tech would not reach the marker buttons inside it. */}
+						{/* biome-ignore lint/a11y/useFocusableInteractive: scrubber */}
+						<div
+							className="reader-progress-fill-track"
+							aria-label="Reading progress"
+							role="slider"
+							aria-valuenow={Math.round(progressPct)}
+							aria-valuemin={0}
+							aria-valuemax={100}
+						>
 							<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
 						</div>
 						<div className="reader-progress-label">

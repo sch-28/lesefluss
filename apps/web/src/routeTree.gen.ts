@@ -65,6 +65,16 @@ import { Route as ApiSocialFriendRequestRespondRouteImport } from './routes/api/
 import { Route as ApiSocialFriendRequestCancelRouteImport } from './routes/api/social/friend-request-cancel'
 import { Route as ApiSocialFriendRequestRouteImport } from './routes/api/social/friend-request'
 import { Route as ApiSocialFriendRemoveRouteImport } from './routes/api/social/friend-remove'
+import { Route as ApiSocialBuddyReadsRouteImport } from './routes/api/social/buddy-reads'
+import { Route as ApiSocialBuddyReadTargetDateRouteImport } from './routes/api/social/buddy-read-target-date'
+import { Route as ApiSocialBuddyReadRemoveMemberRouteImport } from './routes/api/social/buddy-read-remove-member'
+import { Route as ApiSocialBuddyReadProgressRouteImport } from './routes/api/social/buddy-read-progress'
+import { Route as ApiSocialBuddyReadLeaveRouteImport } from './routes/api/social/buddy-read-leave'
+import { Route as ApiSocialBuddyReadInviteRespondRouteImport } from './routes/api/social/buddy-read-invite-respond'
+import { Route as ApiSocialBuddyReadInviteCancelRouteImport } from './routes/api/social/buddy-read-invite-cancel'
+import { Route as ApiSocialBuddyReadInviteRouteImport } from './routes/api/social/buddy-read-invite'
+import { Route as ApiSocialBuddyReadDetailRouteImport } from './routes/api/social/buddy-read-detail'
+import { Route as ApiSocialBuddyReadRouteImport } from './routes/api/social/buddy-read'
 import { Route as ApiSocialBlockRouteImport } from './routes/api/social/block'
 import { Route as ApiSocialAvatarSourceRouteImport } from './routes/api/social/avatar-source'
 import { Route as ApiSocialAvatarRouteImport } from './routes/api/social/avatar'
@@ -359,6 +369,63 @@ const ApiSocialFriendRemoveRoute = ApiSocialFriendRemoveRouteImport.update({
   path: '/api/social/friend-remove',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSocialBuddyReadsRoute = ApiSocialBuddyReadsRouteImport.update({
+  id: '/api/social/buddy-reads',
+  path: '/api/social/buddy-reads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialBuddyReadTargetDateRoute =
+  ApiSocialBuddyReadTargetDateRouteImport.update({
+    id: '/api/social/buddy-read-target-date',
+    path: '/api/social/buddy-read-target-date',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadRemoveMemberRoute =
+  ApiSocialBuddyReadRemoveMemberRouteImport.update({
+    id: '/api/social/buddy-read-remove-member',
+    path: '/api/social/buddy-read-remove-member',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadProgressRoute =
+  ApiSocialBuddyReadProgressRouteImport.update({
+    id: '/api/social/buddy-read-progress',
+    path: '/api/social/buddy-read-progress',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadLeaveRoute = ApiSocialBuddyReadLeaveRouteImport.update({
+  id: '/api/social/buddy-read-leave',
+  path: '/api/social/buddy-read-leave',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialBuddyReadInviteRespondRoute =
+  ApiSocialBuddyReadInviteRespondRouteImport.update({
+    id: '/api/social/buddy-read-invite-respond',
+    path: '/api/social/buddy-read-invite-respond',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadInviteCancelRoute =
+  ApiSocialBuddyReadInviteCancelRouteImport.update({
+    id: '/api/social/buddy-read-invite-cancel',
+    path: '/api/social/buddy-read-invite-cancel',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadInviteRoute =
+  ApiSocialBuddyReadInviteRouteImport.update({
+    id: '/api/social/buddy-read-invite',
+    path: '/api/social/buddy-read-invite',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadDetailRoute =
+  ApiSocialBuddyReadDetailRouteImport.update({
+    id: '/api/social/buddy-read-detail',
+    path: '/api/social/buddy-read-detail',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadRoute = ApiSocialBuddyReadRouteImport.update({
+  id: '/api/social/buddy-read',
+  path: '/api/social/buddy-read',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSocialBlockRoute = ApiSocialBlockRouteImport.update({
   id: '/api/social/block',
   path: '/api/social/block',
@@ -436,6 +503,16 @@ export interface FileRoutesByFullPath {
   '/api/social/avatar': typeof ApiSocialAvatarRoute
   '/api/social/avatar-source': typeof ApiSocialAvatarSourceRoute
   '/api/social/block': typeof ApiSocialBlockRoute
+  '/api/social/buddy-read': typeof ApiSocialBuddyReadRoute
+  '/api/social/buddy-read-detail': typeof ApiSocialBuddyReadDetailRoute
+  '/api/social/buddy-read-invite': typeof ApiSocialBuddyReadInviteRoute
+  '/api/social/buddy-read-invite-cancel': typeof ApiSocialBuddyReadInviteCancelRoute
+  '/api/social/buddy-read-invite-respond': typeof ApiSocialBuddyReadInviteRespondRoute
+  '/api/social/buddy-read-leave': typeof ApiSocialBuddyReadLeaveRoute
+  '/api/social/buddy-read-progress': typeof ApiSocialBuddyReadProgressRoute
+  '/api/social/buddy-read-remove-member': typeof ApiSocialBuddyReadRemoveMemberRoute
+  '/api/social/buddy-read-target-date': typeof ApiSocialBuddyReadTargetDateRoute
+  '/api/social/buddy-reads': typeof ApiSocialBuddyReadsRoute
   '/api/social/friend-remove': typeof ApiSocialFriendRemoveRoute
   '/api/social/friend-request': typeof ApiSocialFriendRequestRoute
   '/api/social/friend-request-cancel': typeof ApiSocialFriendRequestCancelRoute
@@ -501,6 +578,16 @@ export interface FileRoutesByTo {
   '/api/social/avatar': typeof ApiSocialAvatarRoute
   '/api/social/avatar-source': typeof ApiSocialAvatarSourceRoute
   '/api/social/block': typeof ApiSocialBlockRoute
+  '/api/social/buddy-read': typeof ApiSocialBuddyReadRoute
+  '/api/social/buddy-read-detail': typeof ApiSocialBuddyReadDetailRoute
+  '/api/social/buddy-read-invite': typeof ApiSocialBuddyReadInviteRoute
+  '/api/social/buddy-read-invite-cancel': typeof ApiSocialBuddyReadInviteCancelRoute
+  '/api/social/buddy-read-invite-respond': typeof ApiSocialBuddyReadInviteRespondRoute
+  '/api/social/buddy-read-leave': typeof ApiSocialBuddyReadLeaveRoute
+  '/api/social/buddy-read-progress': typeof ApiSocialBuddyReadProgressRoute
+  '/api/social/buddy-read-remove-member': typeof ApiSocialBuddyReadRemoveMemberRoute
+  '/api/social/buddy-read-target-date': typeof ApiSocialBuddyReadTargetDateRoute
+  '/api/social/buddy-reads': typeof ApiSocialBuddyReadsRoute
   '/api/social/friend-remove': typeof ApiSocialFriendRemoveRoute
   '/api/social/friend-request': typeof ApiSocialFriendRequestRoute
   '/api/social/friend-request-cancel': typeof ApiSocialFriendRequestCancelRoute
@@ -568,6 +655,16 @@ export interface FileRoutesById {
   '/api/social/avatar': typeof ApiSocialAvatarRoute
   '/api/social/avatar-source': typeof ApiSocialAvatarSourceRoute
   '/api/social/block': typeof ApiSocialBlockRoute
+  '/api/social/buddy-read': typeof ApiSocialBuddyReadRoute
+  '/api/social/buddy-read-detail': typeof ApiSocialBuddyReadDetailRoute
+  '/api/social/buddy-read-invite': typeof ApiSocialBuddyReadInviteRoute
+  '/api/social/buddy-read-invite-cancel': typeof ApiSocialBuddyReadInviteCancelRoute
+  '/api/social/buddy-read-invite-respond': typeof ApiSocialBuddyReadInviteRespondRoute
+  '/api/social/buddy-read-leave': typeof ApiSocialBuddyReadLeaveRoute
+  '/api/social/buddy-read-progress': typeof ApiSocialBuddyReadProgressRoute
+  '/api/social/buddy-read-remove-member': typeof ApiSocialBuddyReadRemoveMemberRoute
+  '/api/social/buddy-read-target-date': typeof ApiSocialBuddyReadTargetDateRoute
+  '/api/social/buddy-reads': typeof ApiSocialBuddyReadsRoute
   '/api/social/friend-remove': typeof ApiSocialFriendRemoveRoute
   '/api/social/friend-request': typeof ApiSocialFriendRequestRoute
   '/api/social/friend-request-cancel': typeof ApiSocialFriendRequestCancelRoute
@@ -635,6 +732,16 @@ export interface FileRouteTypes {
     | '/api/social/avatar'
     | '/api/social/avatar-source'
     | '/api/social/block'
+    | '/api/social/buddy-read'
+    | '/api/social/buddy-read-detail'
+    | '/api/social/buddy-read-invite'
+    | '/api/social/buddy-read-invite-cancel'
+    | '/api/social/buddy-read-invite-respond'
+    | '/api/social/buddy-read-leave'
+    | '/api/social/buddy-read-progress'
+    | '/api/social/buddy-read-remove-member'
+    | '/api/social/buddy-read-target-date'
+    | '/api/social/buddy-reads'
     | '/api/social/friend-remove'
     | '/api/social/friend-request'
     | '/api/social/friend-request-cancel'
@@ -700,6 +807,16 @@ export interface FileRouteTypes {
     | '/api/social/avatar'
     | '/api/social/avatar-source'
     | '/api/social/block'
+    | '/api/social/buddy-read'
+    | '/api/social/buddy-read-detail'
+    | '/api/social/buddy-read-invite'
+    | '/api/social/buddy-read-invite-cancel'
+    | '/api/social/buddy-read-invite-respond'
+    | '/api/social/buddy-read-leave'
+    | '/api/social/buddy-read-progress'
+    | '/api/social/buddy-read-remove-member'
+    | '/api/social/buddy-read-target-date'
+    | '/api/social/buddy-reads'
     | '/api/social/friend-remove'
     | '/api/social/friend-request'
     | '/api/social/friend-request-cancel'
@@ -766,6 +883,16 @@ export interface FileRouteTypes {
     | '/api/social/avatar'
     | '/api/social/avatar-source'
     | '/api/social/block'
+    | '/api/social/buddy-read'
+    | '/api/social/buddy-read-detail'
+    | '/api/social/buddy-read-invite'
+    | '/api/social/buddy-read-invite-cancel'
+    | '/api/social/buddy-read-invite-respond'
+    | '/api/social/buddy-read-leave'
+    | '/api/social/buddy-read-progress'
+    | '/api/social/buddy-read-remove-member'
+    | '/api/social/buddy-read-target-date'
+    | '/api/social/buddy-reads'
     | '/api/social/friend-remove'
     | '/api/social/friend-request'
     | '/api/social/friend-request-cancel'
@@ -832,6 +959,16 @@ export interface RootRouteChildren {
   ApiSocialAvatarRoute: typeof ApiSocialAvatarRoute
   ApiSocialAvatarSourceRoute: typeof ApiSocialAvatarSourceRoute
   ApiSocialBlockRoute: typeof ApiSocialBlockRoute
+  ApiSocialBuddyReadRoute: typeof ApiSocialBuddyReadRoute
+  ApiSocialBuddyReadDetailRoute: typeof ApiSocialBuddyReadDetailRoute
+  ApiSocialBuddyReadInviteRoute: typeof ApiSocialBuddyReadInviteRoute
+  ApiSocialBuddyReadInviteCancelRoute: typeof ApiSocialBuddyReadInviteCancelRoute
+  ApiSocialBuddyReadInviteRespondRoute: typeof ApiSocialBuddyReadInviteRespondRoute
+  ApiSocialBuddyReadLeaveRoute: typeof ApiSocialBuddyReadLeaveRoute
+  ApiSocialBuddyReadProgressRoute: typeof ApiSocialBuddyReadProgressRoute
+  ApiSocialBuddyReadRemoveMemberRoute: typeof ApiSocialBuddyReadRemoveMemberRoute
+  ApiSocialBuddyReadTargetDateRoute: typeof ApiSocialBuddyReadTargetDateRoute
+  ApiSocialBuddyReadsRoute: typeof ApiSocialBuddyReadsRoute
   ApiSocialFriendRemoveRoute: typeof ApiSocialFriendRemoveRoute
   ApiSocialFriendRequestRoute: typeof ApiSocialFriendRequestRoute
   ApiSocialFriendRequestCancelRoute: typeof ApiSocialFriendRequestCancelRoute
@@ -1253,6 +1390,76 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSocialFriendRemoveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/social/buddy-reads': {
+      id: '/api/social/buddy-reads'
+      path: '/api/social/buddy-reads'
+      fullPath: '/api/social/buddy-reads'
+      preLoaderRoute: typeof ApiSocialBuddyReadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-target-date': {
+      id: '/api/social/buddy-read-target-date'
+      path: '/api/social/buddy-read-target-date'
+      fullPath: '/api/social/buddy-read-target-date'
+      preLoaderRoute: typeof ApiSocialBuddyReadTargetDateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-remove-member': {
+      id: '/api/social/buddy-read-remove-member'
+      path: '/api/social/buddy-read-remove-member'
+      fullPath: '/api/social/buddy-read-remove-member'
+      preLoaderRoute: typeof ApiSocialBuddyReadRemoveMemberRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-progress': {
+      id: '/api/social/buddy-read-progress'
+      path: '/api/social/buddy-read-progress'
+      fullPath: '/api/social/buddy-read-progress'
+      preLoaderRoute: typeof ApiSocialBuddyReadProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-leave': {
+      id: '/api/social/buddy-read-leave'
+      path: '/api/social/buddy-read-leave'
+      fullPath: '/api/social/buddy-read-leave'
+      preLoaderRoute: typeof ApiSocialBuddyReadLeaveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-invite-respond': {
+      id: '/api/social/buddy-read-invite-respond'
+      path: '/api/social/buddy-read-invite-respond'
+      fullPath: '/api/social/buddy-read-invite-respond'
+      preLoaderRoute: typeof ApiSocialBuddyReadInviteRespondRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-invite-cancel': {
+      id: '/api/social/buddy-read-invite-cancel'
+      path: '/api/social/buddy-read-invite-cancel'
+      fullPath: '/api/social/buddy-read-invite-cancel'
+      preLoaderRoute: typeof ApiSocialBuddyReadInviteCancelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-invite': {
+      id: '/api/social/buddy-read-invite'
+      path: '/api/social/buddy-read-invite'
+      fullPath: '/api/social/buddy-read-invite'
+      preLoaderRoute: typeof ApiSocialBuddyReadInviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-detail': {
+      id: '/api/social/buddy-read-detail'
+      path: '/api/social/buddy-read-detail'
+      fullPath: '/api/social/buddy-read-detail'
+      preLoaderRoute: typeof ApiSocialBuddyReadDetailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read': {
+      id: '/api/social/buddy-read'
+      path: '/api/social/buddy-read'
+      fullPath: '/api/social/buddy-read'
+      preLoaderRoute: typeof ApiSocialBuddyReadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/social/block': {
       id: '/api/social/block'
       path: '/api/social/block'
@@ -1376,6 +1583,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSocialAvatarRoute: ApiSocialAvatarRoute,
   ApiSocialAvatarSourceRoute: ApiSocialAvatarSourceRoute,
   ApiSocialBlockRoute: ApiSocialBlockRoute,
+  ApiSocialBuddyReadRoute: ApiSocialBuddyReadRoute,
+  ApiSocialBuddyReadDetailRoute: ApiSocialBuddyReadDetailRoute,
+  ApiSocialBuddyReadInviteRoute: ApiSocialBuddyReadInviteRoute,
+  ApiSocialBuddyReadInviteCancelRoute: ApiSocialBuddyReadInviteCancelRoute,
+  ApiSocialBuddyReadInviteRespondRoute: ApiSocialBuddyReadInviteRespondRoute,
+  ApiSocialBuddyReadLeaveRoute: ApiSocialBuddyReadLeaveRoute,
+  ApiSocialBuddyReadProgressRoute: ApiSocialBuddyReadProgressRoute,
+  ApiSocialBuddyReadRemoveMemberRoute: ApiSocialBuddyReadRemoveMemberRoute,
+  ApiSocialBuddyReadTargetDateRoute: ApiSocialBuddyReadTargetDateRoute,
+  ApiSocialBuddyReadsRoute: ApiSocialBuddyReadsRoute,
   ApiSocialFriendRemoveRoute: ApiSocialFriendRemoveRoute,
   ApiSocialFriendRequestRoute: ApiSocialFriendRequestRoute,
   ApiSocialFriendRequestCancelRoute: ApiSocialFriendRequestCancelRoute,

@@ -269,6 +269,28 @@ function PrivacyPage() {
 			</section>
 
 			<section>
+				<h2 className="mb-3 font-semibold text-foreground text-xl">Buddy reads</h2>
+				<p>
+					A buddy read is a group of up to eight people reading the same book. For each one we
+					store the book's title and author, who hosts it, an optional target date, who is a member
+					with which of their books, when they joined, left or finished, and every invite (who
+					invited whom, when, and the outcome). Only friends can be invited, and an invite tells the
+					invitee who else is in before they join.
+				</p>
+				<p className="mt-4">
+					While you are a member, everyone else in the buddy read sees your handle, display name and
+					avatar, how far you are in the book (percentage, chapter and position), whether you
+					finished it and when you last read, even if you are not friends with them. We take this
+					from your last synced reading position; no extra data is collected. Someone you blocked
+					or who blocked you sees none of it. Members can send each other friend requests. When
+					you leave, are removed, or your copy of the book is deleted, the others stop seeing your
+					progress; the book stays in your library. A buddy read is deleted when its last member
+					leaves, and your memberships and invites are deleted with your account. A joiner who does
+					not have the book receives a copy exactly as with sharing.
+				</p>
+			</section>
+
+			<section>
 				<h2 className="mb-3 font-semibold text-foreground text-xl">Notices and moderation</h2>
 				<p>
 					Anyone can report a profile or a shared book, in the app or through the public report

@@ -617,3 +617,85 @@ export const socialShareConsent = pgTable("social_share_consent", {
 		.references(() => user.id, { onDelete: "cascade" }),
 	confirmedAt: timestamp("confirmed_at").notNull().defaultNow(),
 });
+
+export const BUDDY_READ_STATUSES = ["in_progress", "finished"] as const;
+export const BUDDY_READ_MEMBER_STATES = ["active", "left", "removed"] as const;
+export const BUDDY_READ_INVITE_STATUSES = ["pending", "accepted", "declined", "cancelled"] as const;
+
+/**
+ * A group reading one content origin. `host_id` is who created it; the
+ * effective host is derived (this user while a current member, else the
+ * earliest-joined current member), so account deletion needs no handover.
+ */
+export const buddyRead = pgTable(
+	"buddy_read",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		originUserId: text("origin_user_id").notNull(),
+		originBookId: text("origin_book_id").notNull(),
+		hostId: text("host_id").references(() => user.id, { onDelete: "set null" }),
+		title: text("title").notNull(),
+		author: text("author"),
+		status: text("status", { enum: BUDDY_READ_STATUSES }).notNull().default("in_progress"),
+		targetDate: timestamp("target_date"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		finishedAt: timestamp("finished_at"),
+	},
+	(t) => [index("buddy_read_origin_idx").on(t.originUserId, t.originBookId)],
+);
+export type BuddyRead = typeof buddyRead.$inferSelect;
+
+/** One row per person who ever joined; `book_id` is their own linked `sync_books` row. */
+export const buddyReadMember = pgTable(
+	"buddy_read_member",
+	{
+		buddyReadId: uuid("buddy_read_id")
+			.notNull()
+			.references(() => buddyRead.id, { onDelete: "cascade" }),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		bookId: text("book_id").notNull(),
+		state: text("state", { enum: BUDDY_READ_MEMBER_STATES }).notNull().default("active"),
+		joinedAt: timestamp("joined_at").notNull().defaultNow(),
+		leftAt: timestamp("left_at"),
+		/**
+		 * Set once the member's position has been seen below the finished
+		 * threshold since joining; only then does reaching it count, so a book
+		 * finished before joining does not finish the member.
+		 */
+		finishArmed: boolean("finish_armed").notNull().default(false),
+		finishedAt: timestamp("finished_at"),
+	},
+	(t) => [
+		primaryKey({ columns: [t.buddyReadId, t.userId] }),
+		index("buddy_read_member_user_idx").on(t.userId),
+	],
+);
+export type BuddyReadMember = typeof buddyReadMember.$inferSelect;
+
+export const buddyReadInvite = pgTable(
+	"buddy_read_invite",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		buddyReadId: uuid("buddy_read_id")
+			.notNull()
+			.references(() => buddyRead.id, { onDelete: "cascade" }),
+		inviterId: text("inviter_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		inviteeId: text("invitee_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		status: text("status", { enum: BUDDY_READ_INVITE_STATUSES }).notNull().default("pending"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		resolvedAt: timestamp("resolved_at"),
+	},
+	(t) => [
+		index("buddy_read_invite_invitee_idx").on(t.inviteeId, t.status),
+		uniqueIndex("buddy_read_invite_pending_idx")
+			.on(t.buddyReadId, t.inviteeId)
+			.where(sql`${t.status} = 'pending'`),
+	],
+);
+export type BuddyReadInvite = typeof buddyReadInvite.$inferSelect;
