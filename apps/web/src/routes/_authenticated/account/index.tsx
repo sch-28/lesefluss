@@ -7,6 +7,7 @@ import { useForm } from "@tanstack/react-form";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import * as React from "react";
 import { z } from "zod";
+import { SocialProfileSection } from "~/components/social-profile-section";
 import { authClient } from "~/lib/auth-client";
 import { clearCloudData, deleteAccount } from "~/lib/profile";
 import { seo } from "~/utils/seo";
@@ -357,6 +358,8 @@ function AccountPage() {
 			<h1 className="mb-10 font-bold text-3xl tracking-tight">Account</h1>
 			<div className="space-y-10">
 				<AccountSection email={user.email} />
+				<Separator />
+				<SocialProfileSection />
 				<Separator />
 				<DangerZone />
 			</div>

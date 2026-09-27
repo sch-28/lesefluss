@@ -31,6 +31,7 @@ const METADATA_COLUMNS = [
 	"rating",
 	"review",
 	"tags",
+	"hideFromProfile",
 ] as const satisfies readonly (keyof NewBook)[];
 
 /** The production drizzle proxy as a chunked-column executor (see long-text.ts). */

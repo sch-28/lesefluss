@@ -4,7 +4,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { and, count, desc, eq, isNotNull, max, or } from "drizzle-orm";
 import { db } from "~/db";
 import { syncBooks, syncGlossaryEntries, syncHighlights, syncSettings } from "~/db/schema";
-import { deleteUserAccount } from "./account-deletion";
+import { deleteUserAccount, purgeCloudData } from "./account-deletion";
 import { auth } from "./auth";
 
 async function requireSession() {
@@ -150,14 +150,7 @@ export const clearCloudData = createServerFn({ method: "POST" }).handler(async (
 	const session = await requireSession();
 	const userId = session.user.id;
 
-	await db.transaction(async (tx) => {
-		await Promise.all([
-			tx.delete(syncBooks).where(eq(syncBooks.userId, userId)),
-			tx.delete(syncHighlights).where(eq(syncHighlights.userId, userId)),
-			tx.delete(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId)),
-			tx.delete(syncSettings).where(eq(syncSettings.userId, userId)),
-		]);
-	});
+	await db.transaction((tx) => purgeCloudData(tx, userId));
 
 	return { success: true };
 });

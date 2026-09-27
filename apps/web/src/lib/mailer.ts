@@ -10,10 +10,11 @@ type MailInput = {
 	to: string;
 	subject: string;
 	html: string;
+	replyTo?: string;
 };
 
-export async function sendMail({ to, subject, html }: MailInput) {
-	const { error } = await resend.emails.send({ from: FROM, to, subject, html });
+export async function sendMail({ to, subject, html, replyTo }: MailInput) {
+	const { error } = await resend.emails.send({ from: FROM, to, subject, html, replyTo });
 	if (error) {
 		console.error("mailer: send failed", { subject, error });
 		throw new Error(`Email send failed: ${error.message}`);

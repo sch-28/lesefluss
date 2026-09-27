@@ -386,6 +386,9 @@ importers:
       shadcn:
         specifier: 4.2.0
         version: 4.2.0(@types/node@22.19.15)(typescript@6.0.2)
+      sharp:
+        specifier: 0.34.5
+        version: 0.34.5
       tailwind-merge:
         specifier: ^2.6.1
         version: 2.6.1
@@ -426,9 +429,6 @@ importers:
       nitro:
         specifier: ^3.0.260311-beta
         version: 3.0.260311-beta(@capacitor/preferences@8.0.1(@capacitor/core@8.5.0))(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.1(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(gel@2.2.0)(kysely@0.28.16)(pg@8.20.0)(sql.js@1.11.0))(giget@3.2.0)(jiti@2.7.0)(lru-cache@11.5.0)(rollup@4.60.0)(vite@8.0.8(@types/node@22.19.15)(esbuild@0.25.12)(jiti@2.7.0)(tsx@4.21.0))(xml2js@0.6.2)
-      sharp:
-        specifier: 0.34.5
-        version: 0.34.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -1008,11 +1008,11 @@ packages:
 
   '@esbuild-kit/core-utils@3.3.2':
     resolution: {integrity: sha512-sPRAnw9CdSsRmEtnsl2WXWdyquogVpB3yZ3dgwJfe8zrOzTsV7cJvmwrKVa+0ma5BoiGJ+BoqkMvawbayKUsqQ==}
-    deprecated: 'Merged into tsx: https://tsx.is'
+    deprecated: 'Merged into tsx: https://tsx.hirok.io'
 
   '@esbuild-kit/esm-loader@2.6.5':
     resolution: {integrity: sha512-FxEMIkJKnodyA1OaCUoEvbYRkoZlLZ4d/eXFu9Fh8CbBBgP5EmZxrfTRyN0qpXZ4vOvqnE5YdRdcrmUUXuU+dA==}
-    deprecated: 'Merged into tsx: https://tsx.is'
+    deprecated: 'Merged into tsx: https://tsx.hirok.io'
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -7018,6 +7018,7 @@ packages:
 
   uuid@10.0.0:
     resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uuid@7.0.3:

@@ -1,8 +1,10 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { NAV_ITEMS } from "./nav-items";
+import { NavBadge } from "./nav-badge";
+import { NAV_ITEMS, useNavBadges } from "./nav-items";
 
 export function TabBar() {
 	const { pathname } = useLocation();
+	const badges = useNavBadges();
 	return (
 		<nav className="fixed inset-x-0 bottom-0 z-40 border-border border-t bg-card md:hidden">
 			<div className="pb-[var(--safe-bottom)]">
@@ -18,6 +20,7 @@ export function TabBar() {
 								>
 									<tab.icon className="size-5" />
 									<span>{tab.label}</span>
+									<NavBadge value={badges[tab.to]} />
 								</Link>
 							</li>
 						);

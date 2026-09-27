@@ -2,6 +2,7 @@ import {
 	type BookStatus,
 	pick,
 	SYNCED_SETTING_KEYS,
+	type SyncBook,
 	type SyncGlossaryEntry,
 	type SyncHighlight,
 	type SyncPayload,
@@ -13,8 +14,9 @@ import {
 } from "@lesefluss/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
-import { db } from "~/db";
+import { type DbExecutor, db } from "~/db";
 import {
+	syncBookCopy,
 	syncBooks,
 	syncGlossaryEntries,
 	syncHighlights,
@@ -23,14 +25,15 @@ import {
 	syncSettings,
 } from "~/db/schema";
 import { cors } from "~/lib/cors-middleware";
+import { takenDownBookIds } from "~/lib/moderation/takedown";
+import { type BookOrigin, originKey } from "~/lib/origin";
 import { checkLimit } from "~/lib/rate-limit";
 import { requireAuth } from "~/lib/session-middleware";
 import {
 	bookInsertValues,
-	bookUpsertSet,
-	bookUpsertSetPreservingMetadata,
+	bookUpsertSetFor,
 	bookUpsertTarget,
-	claimsMetadata,
+	groupBooksByMergeRules,
 } from "~/lib/sync-book-upsert";
 
 // Body size limits are enforced at the reverse proxy (Coolify/Traefik). The
@@ -48,6 +51,58 @@ function enforceRateLimit(userId: string): Response | null {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+async function copyOriginsFor(
+	exec: DbExecutor,
+	userId: string,
+	bookIds: string[],
+): Promise<Map<string, BookOrigin>> {
+	if (bookIds.length === 0) return new Map();
+	const rows = await exec
+		.select({
+			bookId: syncBookCopy.bookId,
+			originUserId: syncBookCopy.originUserId,
+			originBookId: syncBookCopy.originBookId,
+		})
+		.from(syncBookCopy)
+		.where(and(eq(syncBookCopy.userId, userId), inArray(syncBookCopy.bookId, bookIds)));
+	return new Map(rows.map((r) => [r.bookId, r]));
+}
+
+/**
+ * Drops pushed copies whose recorded origin already has a live row in the
+ * account under another book id; storing them would break the one-live-copy-
+ * per-origin rule and abort the whole push.
+ */
+async function withoutDuplicateOrigins(
+	exec: DbExecutor,
+	userId: string,
+	books: SyncBook[],
+	origins: Map<string, BookOrigin>,
+): Promise<SyncBook[]> {
+	if (origins.size === 0) return books;
+	const live = await exec
+		.select({
+			bookId: syncBooks.bookId,
+			originUserId: syncBooks.originUserId,
+			originBookId: syncBooks.originBookId,
+		})
+		.from(syncBooks)
+		.where(and(eq(syncBooks.userId, userId), eq(syncBooks.deleted, false)));
+	const key = (o: BookOrigin) => `${o.originUserId}:${o.originBookId}`;
+	const liveByOrigin = new Map(live.map((r) => [key(r), r.bookId]));
+	const seen = new Set<string>();
+	return books.filter((book) => {
+		const origin = origins.get(book.bookId);
+		if (!origin || book.deleted) return true;
+		const k = key(origin);
+		const holder = liveByOrigin.get(k);
+		if (holder && holder !== book.bookId) return false;
+		if (!holder && seen.has(k)) return false;
+		seen.add(k);
+		return true;
+	});
+}
 
 /** Convert a Postgres Date to Unix ms */
 function toMs(d: Date): number {
@@ -88,6 +143,9 @@ async function getUserSyncData(
 		rating: syncBooks.rating,
 		review: syncBooks.review,
 		tags: syncBooks.tags,
+		hideFromProfile: syncBooks.hideFromProfile,
+		originUserId: syncBooks.originUserId,
+		originBookId: syncBooks.originBookId,
 		deleted: syncBooks.deleted,
 		updatedAt: syncBooks.updatedAt,
 		metadataUpdatedAt: syncBooks.metadataUpdatedAt,
@@ -112,7 +170,12 @@ async function getUserSyncData(
 
 	const contentMap = new Map<
 		string,
-		{ content: string | null; coverImage: string | null; chapters: string | null }
+		{
+			content: string | null;
+			coverImage: string | null;
+			chapters: string | null;
+			linkRanges: string | null;
+		}
 	>();
 	if (needContentIds.length > 0) {
 		const contentRows = await db
@@ -121,6 +184,7 @@ async function getUserSyncData(
 				content: syncBooks.content,
 				coverImage: syncBooks.coverImage,
 				chapters: syncBooks.chapters,
+				linkRanges: syncBooks.linkRanges,
 			})
 			.from(syncBooks)
 			.where(and(eq(syncBooks.userId, userId), inArray(syncBooks.bookId, needContentIds)));
@@ -157,12 +221,15 @@ async function getUserSyncData(
 				rating: b.rating,
 				review: b.review,
 				tags: b.tags,
+				hideFromProfile: b.hideFromProfile,
+				originKey: originKey(b),
 				deleted: b.deleted,
 				...(content
 					? {
 							content: content.content,
 							coverImage: content.coverImage,
 							chapters: content.chapters,
+							linkRanges: content.linkRanges,
 						}
 					: {}),
 				updatedAt: toMs(b.updatedAt),
@@ -288,28 +355,41 @@ export const Route = createFileRoute("/api/sync")({
 				const payload: SyncPayload = parsed.data;
 
 				await db.transaction(async (tx) => {
+					// A book removed by a takedown never comes back, not even from a
+					// device that was offline when it happened and still holds a copy.
+					const takenDown = await takenDownBookIds(
+						tx,
+						userId,
+						payload.books.map((b) => b.bookId),
+					);
+					const pushedBooks = payload.books.filter((b) => !takenDown.has(b.bookId));
+					// A copy pushed back after Clear cloud data keeps its recorded origin,
+					// unless the account meanwhile holds another live copy of that origin:
+					// then the stale row stays on the device and is not stored again.
+					const origins = await copyOriginsFor(
+						tx,
+						userId,
+						pushedBooks.map((b) => b.bookId),
+					);
+					const books = await withoutDuplicateOrigins(tx, userId, pushedBooks, origins);
+					const highlights = payload.highlights.filter((h) => !takenDown.has(h.bookId));
+					const glossaryEntries = payload.glossaryEntries.filter(
+						(e) => e.bookId === null || e.bookId === undefined || !takenDown.has(e.bookId),
+					);
+
 					// --- Books: batched upsert ---
-					// Split by whether the payload says anything about the reader-editable
-					// columns. A client build that pre-dates them omits them entirely, and
-					// `bookInsertValues` has to turn that into NULL to build a row, and merging
-					// those NULLs would erase metadata edited on an up-to-date device the
-					// first time an older one pushed a newer reading position.
-					const claiming = payload.books.filter(claimsMetadata);
-					const preserving = payload.books.filter((book) => !claimsMetadata(book));
-					if (claiming.length > 0) {
+					// Grouped by what the payload claims (reader-editable columns, the
+					// hide-from-profile flag). A client build that pre-dates a column omits
+					// it entirely, and `bookInsertValues` has to turn that into a default to
+					// build a row; merging those defaults would erase what an up-to-date
+					// device wrote the first time an older one pushed a newer position.
+					for (const group of groupBooksByMergeRules(books)) {
+						const [first] = group;
+						if (!first) continue;
 						await tx
 							.insert(syncBooks)
-							.values(claiming.map((book) => bookInsertValues(userId, book)))
-							.onConflictDoUpdate({ target: bookUpsertTarget, set: bookUpsertSet });
-					}
-					if (preserving.length > 0) {
-						await tx
-							.insert(syncBooks)
-							.values(preserving.map((book) => bookInsertValues(userId, book)))
-							.onConflictDoUpdate({
-								target: bookUpsertTarget,
-								set: bookUpsertSetPreservingMetadata,
-							});
+							.values(group.map((book) => bookInsertValues(userId, book, origins.get(book.bookId))))
+							.onConflictDoUpdate({ target: bookUpsertTarget, set: bookUpsertSetFor(first) });
 					}
 
 					// --- Series: batched upsert ---
@@ -384,11 +464,11 @@ export const Route = createFileRoute("/api/sync")({
 					}
 
 					// --- Highlights: batched upsert + tombstone missing ---
-					if (payload.highlights.length > 0) {
+					if (highlights.length > 0) {
 						await tx
 							.insert(syncHighlights)
 							.values(
-								payload.highlights.map((h) => ({
+								highlights.map((h) => ({
 									userId,
 									highlightId: h.highlightId,
 									bookId: h.bookId,
@@ -421,7 +501,7 @@ export const Route = createFileRoute("/api/sync")({
 							});
 
 						// Mark server-only highlights as deleted
-						const pushIds = payload.highlights.map((h) => h.highlightId);
+						const pushIds = highlights.map((h) => h.highlightId);
 						await tx
 							.update(syncHighlights)
 							.set({ deleted: true, updatedAt: new Date() })
@@ -441,11 +521,11 @@ export const Route = createFileRoute("/api/sync")({
 					}
 
 					// --- Glossary entries: batched upsert + tombstone missing ---
-					if (payload.glossaryEntries.length > 0) {
+					if (glossaryEntries.length > 0) {
 						await tx
 							.insert(syncGlossaryEntries)
 							.values(
-								payload.glossaryEntries.map((e) => ({
+								glossaryEntries.map((e) => ({
 									userId,
 									entryId: e.entryId,
 									bookId: e.bookId,
@@ -471,7 +551,7 @@ export const Route = createFileRoute("/api/sync")({
 								},
 							});
 
-						const pushIds = payload.glossaryEntries.map((e) => e.entryId);
+						const pushIds = glossaryEntries.map((e) => e.entryId);
 						await tx
 							.update(syncGlossaryEntries)
 							.set({ deleted: true, updatedAt: new Date() })

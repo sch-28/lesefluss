@@ -9,3 +9,6 @@ const pool = new Pool({
 
 export const db = drizzle(pool, { schema });
 export type Db = typeof db;
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+/** Either the pool or a transaction: what read helpers accept so they run inside a caller's transaction. */
+export type DbExecutor = Db | Tx;

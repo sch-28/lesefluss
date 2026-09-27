@@ -65,6 +65,12 @@ export const SyncBookSchema = z.object({
 	review: z.string().max(20_000).nullable().optional(),
 	tags: z.string().max(2000).nullable().optional(), // JSON: ["scifi","favorites"]
 	/**
+	 * Keep this book off the reader's social profile and out of its stats. Rides
+	 * the metadata revision like the fields above, but merges on its own: a
+	 * client that pre-dates it omits it, and absent must never read as false.
+	 */
+	hideFromProfile: z.boolean().optional(),
+	/**
 	 * Revision of the reader-editable fields, Unix ms. Separate from `updatedAt`,
 	 * which every released client reads as the reading position's revision and
 	 * must therefore keep meaning exactly that. Optional: a client that pre-dates
@@ -235,9 +241,16 @@ export type SyncGlossaryEntry = z.infer<typeof SyncGlossaryEntrySchema>;
 export type SyncReadingSession = z.infer<typeof SyncReadingSessionSchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 
+/**
+ * A pulled book. `originKey` is an opaque, server-computed identity of the
+ * content's origin (same key = same source book, whoever holds a copy); a
+ * client stores it and never sends it back.
+ */
+export type SyncResponseBook = SyncBook & { originKey?: string };
+
 /** Server response shape - same as SyncPayload but settings is always present or null */
 export type SyncResponse = {
-	books: SyncBook[];
+	books: SyncResponseBook[];
 	settings: SyncSettings | null;
 	highlights: SyncHighlight[];
 	glossaryEntries: SyncGlossaryEntry[];

@@ -193,6 +193,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 												Imprint
 											</Link>
 										</li>
+										<li>
+											<Link to="/report" className="transition-colors hover:text-foreground">
+												Report content
+											</Link>
+										</li>
 									</ul>
 								</div>
 							</div>

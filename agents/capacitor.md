@@ -348,7 +348,7 @@ className={isActive ? "sidebar-item active" : "sidebar-item"}
 
 ## UI
 
-- **2 tabs:** Library (default) + Settings
+- **4 tabs:** Library (default), Explore, Social, Settings. Social lives in `src/pages/social/` (friends, requests, invite link, blocked users); invite deep links are documented in `docs/deep-links.md`
 - **Desktop/web:** sidebar nav replaces tab bar (`desktop-sidebar.tsx`) - brand link (→ `/` on web, static on native), Library and Settings nav items
 - BLE status badge between tabs on mobile (no dedicated connection page)
 - **Library:** book grid (3 cols), cover art, progress bar, "On device" badge; empty state; FAB to import; sync button in header (triggers cloud sync); short tap → reader; long press → action sheet; transfer progress modal

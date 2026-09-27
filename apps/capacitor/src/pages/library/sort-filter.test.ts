@@ -26,6 +26,8 @@ function makeBook(overrides: Partial<Book> = {}): Book {
 		rating: null,
 		review: null,
 		tags: null,
+		hideFromProfile: false,
+		originKey: null,
 		source: null,
 		catalogId: null,
 		sourceUrl: null,

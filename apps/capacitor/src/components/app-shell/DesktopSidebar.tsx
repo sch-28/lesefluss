@@ -1,12 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import { NAV_ITEMS, useActiveNavTo } from "./nav-items";
+import { NavBadge } from "./nav-badge";
+import { NAV_ITEMS, useActiveNavTo, useNavBadges } from "./nav-items";
 
 const STORAGE_KEY = "sidebar-collapsed";
 
 export function DesktopSidebar() {
 	const activeTo = useActiveNavTo();
+	const badges = useNavBadges();
 	const [isCollapsed, setIsCollapsed] = useState(
 		() => typeof window !== "undefined" && localStorage.getItem(STORAGE_KEY) === "true",
 	);
@@ -51,8 +53,9 @@ export function DesktopSidebar() {
 									title={isCollapsed ? item.label : undefined}
 									className="relative flex items-center justify-start py-2.5 text-left text-sidebar-foreground/70 text-sm no-underline transition-colors hover:text-sidebar-foreground data-[active=true]:text-primary data-[active=true]:before:absolute data-[active=true]:before:top-1.5 data-[active=true]:before:bottom-1.5 data-[active=true]:before:left-0 data-[active=true]:before:w-1 data-[active=true]:before:bg-primary"
 								>
-									<span className="flex w-16 shrink-0 items-center justify-center">
+									<span className="relative flex w-16 shrink-0 items-center justify-center">
 										<item.icon className="size-5" />
+										<NavBadge value={badges[item.to]} />
 									</span>
 									{!isCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
 								</Link>

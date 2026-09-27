@@ -61,7 +61,9 @@ export const auth = betterAuth({
 	user: {
 		deleteUser: {
 			enabled: true,
-			afterDelete: async (user) => {
+			// Before, not after: the handle release needs the user row to still
+			// exist (see purgeUserSyncData).
+			beforeDelete: async (user) => {
 				await db.transaction((tx) => purgeUserSyncData(tx, user.id));
 			},
 		},

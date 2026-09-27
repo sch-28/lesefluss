@@ -1,15 +1,18 @@
-import { readingProgress, wordPos } from "@lesefluss/core";
+import {
+	isPlausibleRate,
+	type ReadingRates,
+	readingProgress,
+	rollUpWorks,
+	summariseReadingRates,
+	wordPos,
+} from "@lesefluss/core";
 import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { formatShortDate } from "../../../utils/date-utils";
 import {
 	bucketMinutesByHour,
 	buildWpmTrend,
-	isPlausibleRate,
-	type ReadingRates,
-	rollUpWorks,
 	type StreakResult,
 	sumDurationByLocalDay,
-	summariseReadingRates,
 	summariseStreak,
 	type TrendPeriod,
 	trendBucketsFor,

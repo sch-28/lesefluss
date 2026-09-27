@@ -54,6 +54,128 @@ Spans are merged, so a passage re-read in the same sitting counts once, while a 
 
 ---
 
+## Social
+
+### Handle
+
+A user's unique, human-readable social identity, shown as `@handle`. 3 to 20 characters from
+`[a-z0-9_]`, stored lowercase, unique case-insensitively (the `social_handle` primary key). A user
+without a handle is invisible to every other user and cannot use social features. Handles are not
+searchable and appear in no URL; people connect only through invite links and in-app requests.
+Changeable once every 30 days. A released handle (change, account deletion, admin reset) is held for
+90 days, during which only the previous owner may reclaim it, and not even they after an admin reset.
+
+### Identity card
+
+The always-visible part of a profile: handle, display name (`user.name`) and avatar. Shown wherever
+another user legitimately encounters you (friend requests and lists, invite pages, buddy-read
+participants, shares). Not affected by [profile visibility](#profile-visibility).
+
+### Profile visibility
+
+A user's server-side setting for everything beyond the [identity card](#identity-card): `private`
+(default: bio and profile sections visible only to the owner) or `friends` (accepted friends see the
+bio and the sections whose per-section toggle is on: currently reading, finished books, reading
+stats, shared highlights). There is no public level. A section is shown only if both the visibility
+and its toggle allow it.
+
+### Friend
+
+Two users who both consented: one sent a friend request and the other accepted it, or one opened
+the other's invite link and confirmed. Stored once per unordered pair (`social_friendship`). Every
+friend-scoped feature (profiles, sharing, buddy reads) checks this together with the block and ban
+gate; there is no follow relationship and no public friend list.
+
+### Friend request
+
+A pending ask from one user to another, sent only to a co-participant of a shared active buddy
+read. Expires 30 days after it was sent. Declining is silent: the sender keeps seeing "pending"
+until expiry and a repeat request within 90 days of the decline is accepted but never shown to the
+addressee. Mutual requests become a friendship without an accept.
+
+### Block
+
+A one-directional, private mark that ends and prevents all interaction with another user: it removes
+the friendship and open requests, and makes each side "not found" to the other in every social
+endpoint. The blocked user is not told. Unblocking restores nothing. Books already delivered by a
+share stay with their recipient.
+
+### Invite link
+
+A user's single personal URL (`/invite/<token>`) that anyone can open to become their friend.
+Multi-use, expires after 14 days, revocable, and replaced whenever a new one is created. Opening it
+shows only the owner's [identity card](#identity-card); confirming creates an accepted friendship
+at once, because the owner consented by handing the link out. It is the only way to reach a user
+outside a shared buddy read: there is no search and no directory.
+
+### Inbox
+
+The signed-in user's list of social events that concern them, stored server-side as
+notifications (`social_notification`): what happened, who did it, when, and a single `read_at`.
+Only events the other side would expect the user to learn about exist as types; declines,
+removed friendships and blocks never produce an item. Actionable items (a friend request, later a
+share or buddy-read invite) resolve their state live from the underlying row, so one resolved
+elsewhere shows as resolved. A request the user accepted or declined stays as a read item; one
+that was cancelled, expired or whose friendship ended disappears. The unread count drives the
+Social tab badge. Retention: read items 90 days after reading, all items 365 days after creation.
+
+### Hide from profile
+
+A per-book flag (`books.hide_from_profile`, `sync_books.hide_from_profile`) the owner sets in the
+book edit sheet. A hidden book appears in no profile section for any viewer and its sessions are
+left out of the profile stats. Private: it rides the metadata revision across the owner's devices
+but travels to nobody else, and a shared copy starts visible. Merged on its own rule, so a client
+that predates the flag can never clear it.
+
+### Share
+
+An offer of one synced, standalone book from its owner to one accepted friend (`social_share`).
+Pending for 30 days, then expired; the sender can revoke it, the recipient accept or decline, and
+a decline is never shown to the sender. Accepting copies the sender's row server-side into the
+recipient's library with a fresh book id ([content origin](#content-origin) inherited), or links
+to a copy the recipient already holds. The copy is then the recipient's: only a
+[takedown](#takedown) removes it. At most one open offer per sender, recipient and origin; 20
+shares per sender per day; the first share records a one-time rights confirmation. Refused for
+non-friends, suspended senders, local-only, unsynced, deleted or series books and taken-down
+origins.
+
+### Content origin
+
+The `(origin_user_id, origin_book_id)` on every `sync_books` row: the row itself for an upload,
+the first uploader's row for every copy made from it (a copy of a copy keeps the first origin).
+Server-authoritative, backfilled for existing rows, never set by a push; a `sync_book_copy`
+record lets a copy keep its origin when it is pushed back after Clear cloud data. Clients receive
+only `originKey`, an HMAC of the pair: equal keys mean the same word stream, which is what buddy
+reading needs (ADR-0002, ADR-0004), and nothing about who uploaded it.
+
+### Notice
+
+A report (DSA Art. 16) that a profile or a shared book is illegal or breaks the terms, filed in the
+app by a signed-in user or on the public `/report` form by anyone. Stored in `social_notice` with a
+text snapshot of the target at report time, the notifier (account, or typed name and email), the
+reason and explanation, and later the decision. Every notice is decided by an admin: rejected, or
+actioned with one restriction. The reported user never learns who notified; the notifier learns the
+outcome. Closed notices are deleted 24 months after the decision; notices outlive both accounts.
+
+### Takedown
+
+The removal of a synced book because of a notice: the row is tombstoned like an admin delete and a
+`social_takedown` record is written for the `(user, book)`. The sync push drops any book with a
+record, so a device that was offline cannot bring it back, even after the tombstone itself was
+cleaned up. Scope `copy` removes the reported copy; scope `origin` (book sharing) removes every
+copy of a source book and blocks sharing it again.
+
+### Sharing suspension
+
+A restriction (`social_restriction`, kind `sharing_suspended`) that stops a user from
+sharing books, starting buddy reads or sharing highlights, for 7 days, 30 days or until lifted.
+Reading, sync and existing friendships continue and friends never learn of it. Imposed by an admin
+on a notice, or automatically when three notices against the user were upheld within 180 days.
+Expiry is a timestamp comparison at read time (`isSharingSuspended`); no job lifts anything. Every
+restriction comes with a statement of reasons (DSA Art. 17) by email and inbox item.
+
+---
+
 ## Storage
 
 ### Chunked column

@@ -3,11 +3,13 @@ import { getRequest } from "@tanstack/react-start/server";
 import { and, count, countDistinct, desc, eq, gt, gte, isNotNull, isNull, sum } from "drizzle-orm";
 import { db } from "~/db";
 import { session, user } from "~/db/auth-schema";
-import { syncBooks, syncHighlights, syncSeries, syncSettings } from "~/db/schema";
+import { syncBooks, syncHighlights, syncSeries } from "~/db/schema";
+import { deleteUserAccount } from "./account-deletion";
 import { auth } from "./auth";
 import { catalogFetch } from "./catalog";
+import { tombstoneBook } from "./moderation/takedown";
 
-async function requireAdminSession() {
+export async function requireAdminSession() {
 	const request = getRequest();
 	const s = await auth.api.getSession({ headers: request.headers });
 	if (!s) throw new Response("Unauthorized", { status: 401 });
@@ -231,15 +233,7 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
 	.inputValidator((data: { userId: string }) => data)
 	.handler(async ({ data }) => {
 		await requireAdminSession();
-		await db.transaction(async (tx) => {
-			await Promise.all([
-				tx.delete(syncBooks).where(eq(syncBooks.userId, data.userId)),
-				tx.delete(syncSeries).where(eq(syncSeries.userId, data.userId)),
-				tx.delete(syncHighlights).where(eq(syncHighlights.userId, data.userId)),
-				tx.delete(syncSettings).where(eq(syncSettings.userId, data.userId)),
-			]);
-			await tx.delete(user).where(eq(user.id, data.userId));
-		});
+		await deleteUserAccount(data.userId);
 		return { success: true };
 	});
 
@@ -247,36 +241,10 @@ export const deleteAdminBook = createServerFn({ method: "POST" })
 	.inputValidator((data: { userId: string; bookId: string }) => data)
 	.handler(async ({ data }) => {
 		await requireAdminSession();
-		// Soft-delete so the tombstone propagates to the user's devices on next pull.
-		// Null out content columns to reclaim space; keeps the row as a sticky tombstone.
-		// Highlights for the book are tombstoned in the same tx so they propagate too.
-		const now = new Date();
-		const result = await db.transaction(async (tx) => {
-			const updated = await tx
-				.update(syncBooks)
-				.set({
-					deleted: true,
-					content: null,
-					coverImage: null,
-					chapters: null,
-					updatedAt: now,
-				})
-				.where(and(eq(syncBooks.userId, data.userId), eq(syncBooks.bookId, data.bookId)))
-				.returning({ bookId: syncBooks.bookId });
-			if (updated.length === 0) return updated;
-			await tx
-				.update(syncHighlights)
-				.set({ deleted: true, updatedAt: now })
-				.where(
-					and(
-						eq(syncHighlights.userId, data.userId),
-						eq(syncHighlights.bookId, data.bookId),
-						eq(syncHighlights.deleted, false),
-					),
-				);
-			return updated;
-		});
-		if (result.length === 0) throw new Response("Book not found", { status: 404 });
+		const found = await db.transaction((tx) =>
+			tombstoneBook(tx, data.userId, data.bookId, new Date()),
+		);
+		if (!found) throw new Response("Book not found", { status: 404 });
 		return { success: true };
 	});
 

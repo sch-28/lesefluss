@@ -3,9 +3,8 @@ import { Bluetooth, BookMarked, BookOpen, Globe, Highlighter, Library, Zap } fro
 import { FeatureCard } from "~/components/feature-card";
 import { GooglePlayIcon } from "~/components/icons/google-play";
 import { StatCard } from "~/components/stat-card";
+import { PLAY_STORE_URL } from "~/lib/store-links";
 import { seo } from "~/utils/seo";
-
-const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=app.lesefluss";
 
 export const Route = createFileRoute("/download/")({
 	component: DownloadPage,

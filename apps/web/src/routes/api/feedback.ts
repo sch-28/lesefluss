@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { sendMail } from "~/lib/mailer";
+import { escapeHtml, readBodyCapped } from "~/lib/public-form";
 import { checkLimit, getClientKey } from "~/lib/rate-limit";
 
 const FEEDBACK_TO = "feedback@lesefluss.app";
@@ -9,22 +10,12 @@ const PLATFORM_LABELS: Record<string, string> = {
 	extension: "Browser extension",
 	android: "Android app",
 };
-const MAX_BODY_BYTES = 12_000;
 
 type FeedbackType = (typeof FEEDBACK_TYPES)[number];
 
 function isValidEmail(email: string): boolean {
 	const normalized = email.trim().toLowerCase();
 	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized);
-}
-
-function escapeHtml(str: string): string {
-	return str
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&#39;");
 }
 
 function getString(body: Record<string, unknown>, key: string): string {
@@ -51,41 +42,6 @@ function formatDiagnostics(raw: unknown): string {
 		if (typeof value !== "string" || !value.trim()) return [];
 		return [`<p><strong>${label}:</strong> ${escapeHtml(value.trim().slice(0, 120))}</p>`];
 	}).join("\n");
-}
-
-function rejectOversizedRequest(request: Request): Response | null {
-	const rawLength = request.headers.get("content-length");
-	if (!rawLength) return null;
-	const length = Number.parseInt(rawLength, 10);
-	if (!Number.isFinite(length) || length <= MAX_BODY_BYTES) return null;
-	return Response.json({ error: "Feedback is too long." }, { status: 413 });
-}
-
-async function readRequestText(request: Request): Promise<string | Response> {
-	const oversized = rejectOversizedRequest(request);
-	if (oversized) return oversized;
-	if (!request.body) return "";
-
-	const reader = request.body.getReader();
-	const decoder = new TextDecoder();
-	let total = 0;
-	let text = "";
-	try {
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-			total += value.byteLength;
-			if (total > MAX_BODY_BYTES) {
-				await reader.cancel();
-				return Response.json({ error: "Feedback is too long." }, { status: 413 });
-			}
-			text += decoder.decode(value, { stream: true });
-		}
-		text += decoder.decode();
-	} catch {
-		return Response.json({ error: "Invalid JSON" }, { status: 400 });
-	}
-	return text;
 }
 
 function enforceRateLimit(request: Request): Response | null {
@@ -118,10 +74,12 @@ export const Route = createFileRoute("/api/feedback")({
 	server: {
 		handlers: {
 			POST: async ({ request }) => {
+				const text = await readBodyCapped(request);
+				if (text === null) {
+					return Response.json({ error: "Feedback is too long." }, { status: 413 });
+				}
 				let body: unknown;
 				try {
-					const text = await readRequestText(request);
-					if (text instanceof Response) return text;
 					body = JSON.parse(text);
 				} catch {
 					return Response.json({ error: "Invalid JSON" }, { status: 400 });

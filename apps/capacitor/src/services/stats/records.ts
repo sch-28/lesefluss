@@ -7,8 +7,10 @@
  * stats, and a book needs a meaningful amount of reading before it can hold the
  * speed record at all.
  */
+
+import { isPlausibleRate } from "@lesefluss/core";
 import { localDateKey, startOfLocalDay } from "../../utils/date-utils";
-import { isPlausibleRate, sumDurationByLocalDay } from "./aggregate";
+import { sumDurationByLocalDay } from "./aggregate";
 
 /** A book read for less than this cannot hold the speed record: a single fast
  *  minute is noise, not a pace. */

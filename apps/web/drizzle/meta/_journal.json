@@ -148,6 +148,48 @@
       "when": 1781568000000,
       "tag": "0020_book_added_at",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1781654400000,
+      "tag": "0021_social_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1781740800000,
+      "tag": "0022_friendships",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1781827200000,
+      "tag": "0023_social_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1781913600000,
+      "tag": "0024_hide_from_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1782000000000,
+      "tag": "0025_social_notices",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1782086400000,
+      "tag": "0026_shares",
+      "breakpoints": true
     }
   ]
 }

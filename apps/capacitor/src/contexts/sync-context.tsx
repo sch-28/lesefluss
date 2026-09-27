@@ -15,6 +15,7 @@ import {
 	useState,
 } from "react";
 import { toast } from "../components/toast";
+import { invalidateUnreadCount } from "../services/social/cache";
 import {
 	adoptSyncIdentity,
 	consumeAuthLoginHandoffState,
@@ -25,6 +26,7 @@ import {
 	getUserEmail,
 	IS_WEB_BUILD,
 	NATIVE_SYNC_ENABLED,
+	onSessionLost,
 	SYNC_ENABLED,
 	signOut as syncSignOut,
 } from "../services/sync";
@@ -155,6 +157,7 @@ function useRestoreSession(
 					setLastSynced(await getLastSynced());
 				}
 				await fullSync();
+				invalidateUnreadCount();
 				if (!cancelled) setLastSynced(Date.now());
 			} catch (err) {
 				if (cancelled) return;
@@ -177,6 +180,7 @@ function useResumeSync(setLastSynced: Dispatch<SetStateAction<number | null>>) {
 		if (!token) return;
 		try {
 			await fullSync();
+			invalidateUnreadCount();
 			setLastSynced(Date.now());
 		} catch (err) {
 			log.warn("sync", "resume sync failed:", err);
@@ -240,6 +244,7 @@ function useMobileAuthCallback(
 				setUserEmail(email || null);
 				await Browser.close().catch(() => {});
 				await fullSync();
+				invalidateUnreadCount();
 				setLastSynced(Date.now());
 				toast.success(email ? `Signed in as ${email}` : "Signed in");
 			} catch (err) {
@@ -282,6 +287,17 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 	useRestoreSession(setIsLoggedIn, setUserEmail, setIsSyncing, setLastSynced, setSyncError);
 	useResumeSync(setLastSynced);
 	useMobileAuthCallback(setIsLoggedIn, setUserEmail, setIsSyncing, setLastSynced, setSyncError);
+	// A 401 anywhere drops the session; the signed-in flag must not outlive it,
+	// or screens behind it keep showing an error where the sign-in prompt belongs.
+	useEffect(
+		() =>
+			onSessionLost(() => {
+				setIsLoggedIn(false);
+				setUserEmail(null);
+				toast.error("Your session expired. Sign in again to keep syncing.");
+			}),
+		[],
+	);
 
 	const logout = useCallback(async () => {
 		await syncSignOut();
@@ -296,6 +312,7 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 		setIsSyncing(true);
 		try {
 			await fullSync();
+			invalidateUnreadCount();
 			setLastSynced(Date.now());
 			toast.success("Synced");
 		} catch (err) {

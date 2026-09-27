@@ -14,6 +14,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import type { RsvpSettings } from "@lesefluss/core";
 import {
+	DEFAULT_RSVP_DELIVERED_RATIO,
 	DEFAULT_SETTINGS,
 	paragraphIndexForWord,
 	utf8ByteLength,
@@ -59,7 +60,6 @@ import { queries } from "../../services/db/queries";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Chapter, GlossaryEntry } from "../../services/db/schema";
 import { providerLabel } from "../../services/serial-scrapers";
-import { DEFAULT_RSVP_DELIVERED_RATIO } from "../../services/stats/aggregate";
 import { pushSync, scheduleSyncPush } from "../../services/sync";
 import { reportEvent } from "../../services/telemetry";
 import { publishLinkOpen, publishPositionSave, publishProgressWord } from "../../test-hooks/reader";

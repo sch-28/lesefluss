@@ -9,14 +9,10 @@ import type { SyncBook } from "@lesefluss/core";
 import { and, eq } from "drizzle-orm";
 import { afterAll, describe, expect, test } from "vitest";
 import { db } from "~/db";
-import { syncBooks } from "~/db/schema";
-import {
-	bookInsertValues,
-	bookUpsertSet,
-	bookUpsertSetPreservingMetadata,
-	bookUpsertTarget,
-	claimsMetadata,
-} from "./sync-book-upsert";
+import { user } from "~/db/auth-schema";
+import { socialTakedown, syncBookCopy, syncBooks } from "~/db/schema";
+import { takenDownBookIds } from "./moderation/takedown";
+import { bookInsertValues, bookUpsertSetFor, bookUpsertTarget } from "./sync-book-upsert";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 
@@ -25,6 +21,9 @@ describe.skipIf(!hasDb)("sync_books upsert (integration)", () => {
 
 	afterAll(async () => {
 		await db.delete(syncBooks).where(eq(syncBooks.userId, userId));
+		await db.delete(socialTakedown).where(eq(socialTakedown.userId, userId));
+		await db.delete(syncBookCopy).where(eq(syncBookCopy.userId, userId));
+		await db.delete(user).where(eq(user.id, userId));
 	});
 
 	function makeBook(overrides: Partial<SyncBook> = {}): SyncBook {
@@ -48,10 +47,7 @@ describe.skipIf(!hasDb)("sync_books upsert (integration)", () => {
 		await db
 			.insert(syncBooks)
 			.values(bookInsertValues(userId, book))
-			.onConflictDoUpdate({
-				target: bookUpsertTarget,
-				set: claimsMetadata(book) ? bookUpsertSet : bookUpsertSetPreservingMetadata,
-			});
+			.onConflictDoUpdate({ target: bookUpsertTarget, set: bookUpsertSetFor(book) });
 	}
 
 	/** A payload from a client build that pre-dates these columns: it omits them
@@ -242,6 +238,36 @@ describe.skipIf(!hasDb)("sync_books upsert (integration)", () => {
 		expect(row.addedAt?.getTime()).toBe(1_000_000);
 	});
 
+	test("the hide-from-profile flag is kept by a push that does not know it", async () => {
+		const bookId = "h1de0001";
+		await push(
+			makeBook({ bookId, hideFromProfile: true, status: "reading", updatedAt: 1_000_000 }),
+		);
+		// Same device build as today, one reading session later: newer stamp,
+		// claims metadata (status), never heard of the flag.
+		await push(makeBook({ bookId, status: "reading", rating: 6, updatedAt: 3_000_000 }));
+		expect((await read(bookId)).hideFromProfile).toBe(true);
+		// A legacy client without any metadata columns.
+		await push(makeLegacyBook({ bookId, updatedAt: 4_000_000 }));
+		expect((await read(bookId)).hideFromProfile).toBe(true);
+	});
+
+	test("the hide-from-profile flag merges on the metadata revision", async () => {
+		const bookId = "h1de0002";
+		await push(makeBook({ bookId, hideFromProfile: true, updatedAt: 2_000_000 }));
+		await push(makeBook({ bookId, hideFromProfile: false, updatedAt: 1_000_000 }));
+		expect((await read(bookId)).hideFromProfile).toBe(true);
+		await push(makeBook({ bookId, hideFromProfile: false, updatedAt: 3_000_000 }));
+		expect((await read(bookId)).hideFromProfile).toBe(false);
+	});
+
+	test("a tombstone clears the hide-from-profile flag", async () => {
+		const bookId = "h1de0003";
+		await push(makeBook({ bookId, hideFromProfile: true, updatedAt: 1_000_000 }));
+		await push(makeBook({ bookId, deleted: true, updatedAt: 2_000_000 }));
+		expect((await read(bookId)).hideFromProfile).toBe(false);
+	});
+
 	// A deleted book keeps none of the reader's own text. Content, cover and
 	// chapters were already cleared; private notes must not outlive the delete.
 	test("a tombstone clears the reader's notes", async () => {
@@ -264,5 +290,63 @@ describe.skipIf(!hasDb)("sync_books upsert (integration)", () => {
 		expect(row.description).toBeNull();
 		expect(row.tags).toBeNull();
 		expect(row.rating).toBeNull();
+	});
+
+	test("a taken-down book is dropped from a push even when its tombstone is gone", async () => {
+		await db.insert(socialTakedown).values({ scope: "copy", userId, bookId: "removed" });
+		const payload = [makeBook({ bookId: "removed" }), makeBook({ bookId: "allowed" })];
+		const refused = await takenDownBookIds(
+			db,
+			userId,
+			payload.map((b) => b.bookId),
+		);
+		for (const book of payload.filter((b) => !refused.has(b.bookId))) await push(book);
+		expect(await read("removed")).toBeUndefined();
+		expect(await read("allowed")).toBeDefined();
+	});
+
+	test("a pushed book is its own origin, and origin fields in a payload change nothing", async () => {
+		const smuggled = {
+			...makeBook({ bookId: "0r1g1n01" }),
+			originUserId: "someone-else",
+			originBookId: "x",
+		};
+		await push(smuggled as SyncBook);
+		expect(await read("0r1g1n01")).toMatchObject({
+			originUserId: userId,
+			originBookId: "0r1g1n01",
+		});
+	});
+
+	test("a row with a copy record takes the recorded origin on insert, and later pushes keep it", async () => {
+		// The copy record references the user table; the other tests never needed a user row.
+		await db.insert(user).values({ id: userId, name: "Upsert", email: `${userId}@example.test` });
+		await db.insert(syncBookCopy).values({
+			userId,
+			bookId: "c0py0001",
+			originUserId: "uploader",
+			originBookId: "src00001",
+			via: "share",
+		});
+		const [copy] = await db
+			.select()
+			.from(syncBookCopy)
+			.where(and(eq(syncBookCopy.userId, userId), eq(syncBookCopy.bookId, "c0py0001")));
+		const book = makeBook({ bookId: "c0py0001" });
+		await db
+			.insert(syncBooks)
+			.values(bookInsertValues(userId, book, copy))
+			.onConflictDoUpdate({ target: bookUpsertTarget, set: bookUpsertSetFor(book) });
+		expect(await read("c0py0001")).toMatchObject({
+			originUserId: "uploader",
+			originBookId: "src00001",
+		});
+		// The next push has no record in hand (values default to own ids) and updates the row: origin unchanged.
+		await push(makeBook({ bookId: "c0py0001", wordPosition: 50, updatedAt: 2_000_000 }));
+		expect(await read("c0py0001")).toMatchObject({
+			originUserId: "uploader",
+			originBookId: "src00001",
+			wordPosition: 50,
+		});
 	});
 });
