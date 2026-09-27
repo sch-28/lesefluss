@@ -3,8 +3,7 @@ import { cors } from "~/lib/cors-middleware";
 import { requireAuth } from "~/lib/session-middleware";
 import { getBuddyRead } from "~/lib/social/buddy-reads";
 import { invalidPayloadResponse, rateLimited, socialErrorResponse } from "~/lib/social/http";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isUuid } from "~/lib/uuid";
 
 export const Route = createFileRoute("/api/social/buddy-read-detail")({
 	server: {
@@ -15,7 +14,7 @@ export const Route = createFileRoute("/api/social/buddy-read-detail")({
 				const limited = rateLimited(`buddy-read-detail:${userId}`, { max: 60, windowMs: 60_000 });
 				if (limited) return limited;
 				const id = new URL(request.url).searchParams.get("id") ?? "";
-				if (!UUID.test(id)) return invalidPayloadResponse();
+				if (!isUuid(id)) return invalidPayloadResponse();
 				try {
 					return Response.json(await getBuddyRead(userId, id));
 				} catch (err) {

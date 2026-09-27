@@ -301,6 +301,16 @@ export const SOCIAL_API = {
 	buddyReads: "/api/social/buddy-reads",
 	buddyReadDetail: "/api/social/buddy-read-detail",
 	buddyReadProgress: "/api/social/buddy-read-progress",
+	buddyReadDiscussion: "/api/social/buddy-read-discussion",
+	buddyReadComment: "/api/social/buddy-read-comment",
+	buddyReadCommentReply: "/api/social/buddy-read-comment-reply",
+	buddyReadCommentEdit: "/api/social/buddy-read-comment-edit",
+	buddyReadCommentDelete: "/api/social/buddy-read-comment-delete",
+	buddyReadHighlightShare: "/api/social/buddy-read-highlight-share",
+	buddyReadHighlightUnshare: "/api/social/buddy-read-highlight-unshare",
+	buddyReadReaction: "/api/social/buddy-read-reaction",
+	buddyReadReactionRemove: "/api/social/buddy-read-reaction-remove",
+	buddyReadDiscussionSettings: "/api/social/buddy-read-discussion-settings",
 } as const;
 
 /** User-facing copy for a rejected friend, block or invite action. */
@@ -347,6 +357,8 @@ export const NOTIFICATION_TYPES = [
 	"buddy_read_invite",
 	"buddy_read_joined",
 	"buddy_read_finished",
+	"buddy_read_reply",
+	"buddy_read_reaction",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -381,7 +393,8 @@ export type InboxSubject =
 			/** Null when the host is hidden from the invitee. */
 			host: SocialIdentity | null;
 			participants: SocialIdentity[];
-	  };
+	  }
+	| { kind: "buddy_read_discussion"; buddyReadId: string; title: string };
 
 export type InboxItem = {
 	id: string;
@@ -445,6 +458,9 @@ export type ProfileStats = {
 	readingTimeMs: number | null;
 	/** From `measuredReadingSpeed`, never the raw RSVP dial. Null like `readingTimeMs`. */
 	readingSpeedWpm: number | null;
+	/** Consecutive reading days in the owner's time zone, as the stats page counts them. Null like `readingTimeMs`. */
+	currentStreakDays: number | null;
+	longestStreakDays: number | null;
 };
 
 /** What a viewer may see of one profile; sections the owner hides are absent, not empty. */
@@ -476,7 +492,12 @@ export const NOTICE_TEXT_MAX_LENGTH = 2000;
 export const NOTICE_TEXT_MIN_LENGTH = 10;
 
 /** What a notice can point at. Later features register their own type server-side; the schema does not change. */
-export const NOTICE_TARGET_TYPES = ["profile", "shared_book"] as const;
+export const NOTICE_TARGET_TYPES = [
+	"profile",
+	"shared_book",
+	"buddy_read_comment",
+	"buddy_read_highlight",
+] as const;
 export type NoticeTargetType = (typeof NOTICE_TARGET_TYPES)[number];
 
 const noticeText = z
@@ -490,7 +511,10 @@ const noticeText = z
 export const ReportBodySchema = z.object({
 	targetType: z.enum(NOTICE_TARGET_TYPES),
 	targetUserId: z.string().min(1).max(100),
-	/** Per target type: for `shared_book`, the id of the share the reporter received. */
+	/**
+	 * Per target type: for `shared_book`, the id of the share the reporter received;
+	 * for `buddy_read_comment` the comment id, for `buddy_read_highlight` the shared-highlight id.
+	 */
 	subjectId: z.string().min(1).max(100).optional(),
 	reason: z.enum(NOTICE_REASONS),
 	text: noticeText,
@@ -608,6 +632,17 @@ export type BuddyReadSummary = {
 	myBookId: string;
 	createdAt: number;
 	finishedAt: number | null;
+	/** The book was taken down; progress and discussion are gone. */
+	originUnavailable: boolean;
+	/** Current members the viewer may see, the viewer included; empty after a takedown. */
+	members: BuddyReadMemberPreview[];
+};
+
+export type BuddyReadMemberPreview = {
+	identity: SocialIdentity;
+	isSelf: boolean;
+	percent: number | null;
+	finished: boolean;
 };
 
 export type BuddyReadParticipant = {
@@ -632,8 +667,6 @@ export type BuddyReadInviteSummary = {
 
 export type BuddyReadDetail = BuddyReadSummary & {
 	isHost: boolean;
-	/** The origin was taken down: no progress, only the fact. */
-	originUnavailable: boolean;
 	/** Participants' word counts differ, so words ahead or behind would mislead. */
 	approximate: boolean;
 	participants: BuddyReadParticipant[];
@@ -683,5 +716,130 @@ export function buddyReadErrorMessage(reason: string | undefined): string {
 			return "Sharing is suspended for your account. Check your inbox for details.";
 		default:
 			return socialActionErrorMessage(reason);
+	}
+}
+
+export const BUDDY_COMMENT_MAX_CHARS = 2000;
+export const BUDDY_COMMENT_RATE_LIMIT = { max: 30, windowMs: 10 * 60_000 } as const;
+export const BUDDY_REACTION_RATE_LIMIT = { max: 120, windowMs: 10 * 60_000 } as const;
+export const BUDDY_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"] as const;
+export type BuddyReaction = (typeof BUDDY_REACTIONS)[number];
+
+const wordField = z.number().int().nonnegative();
+const charField = z.number().int().nonnegative().max(10_000);
+
+export const DiscussionAnchorSchema = z.discriminatedUnion("kind", [
+	z.object({
+		kind: z.literal("range"),
+		startWord: wordField,
+		startCharInWord: charField.default(0),
+		endWord: wordField,
+		endCharInWord: charField.default(0),
+	}),
+	z.object({ kind: z.literal("chapter"), startWord: wordField }),
+]);
+export type DiscussionAnchor = z.infer<typeof DiscussionAnchorSchema>;
+
+const commentBody = z
+	.string()
+	.transform((value) => value.replace(/\r\n?/g, "\n").trim())
+	.pipe(z.string().min(1).max(BUDDY_COMMENT_MAX_CHARS))
+	// Line breaks are the one kind of control character a comment may hold.
+	.refine(
+		(value) => !FORBIDDEN_TEXT_CHARS.test(value.replace(/[\n\t]/g, "")),
+		"Invalid characters",
+	);
+
+export const PostCommentBodySchema = z.object({
+	buddyReadId: uuidField,
+	anchor: DiscussionAnchorSchema,
+	body: commentBody,
+});
+export const ReplyCommentBodySchema = z.object({ parentId: uuidField, body: commentBody });
+export const EditCommentBodySchema = z.object({ commentId: uuidField, body: commentBody });
+export const CommentIdBodySchema = z.object({ commentId: uuidField });
+export const ShareHighlightBodySchema = z.object({
+	buddyReadId: uuidField,
+	highlightId: z.string().min(1).max(100),
+});
+export const SharedHighlightIdBodySchema = z.object({ sharedHighlightId: uuidField });
+export const ReactionBodySchema = z
+	.object({
+		commentId: uuidField.optional(),
+		sharedHighlightId: uuidField.optional(),
+		emoji: z.enum(BUDDY_REACTIONS),
+	})
+	.refine((b) => Boolean(b.commentId) !== Boolean(b.sharedHighlightId), "One target");
+export const DiscussionSettingsBodySchema = z.object({
+	buddyReadId: uuidField,
+	shareAllHighlights: z.boolean().optional(),
+	showEverything: z.boolean().optional(),
+});
+
+export type ReactionSummary = { emoji: BuddyReaction; count: number; mine: boolean };
+
+type DiscussionItemBase = {
+	id: string;
+	/** Null once the author's account is gone or the comment was removed. */
+	author: SocialIdentity | null;
+	isOwn: boolean;
+	startWord: number;
+	endWord: number;
+	createdAt: number;
+	reactions: ReactionSummary[];
+};
+
+export type DiscussionReply = DiscussionItemBase & {
+	body: string | null;
+	editedAt: number | null;
+	removed: boolean;
+};
+
+export type DiscussionComment = DiscussionItemBase & {
+	kind: "comment";
+	anchorKind: "range" | "chapter";
+	startCharInWord: number;
+	endCharInWord: number;
+	body: string | null;
+	editedAt: number | null;
+	/** Deleted by its author or taken down, kept because it has replies. */
+	removed: boolean;
+	replies: DiscussionReply[];
+};
+
+export type DiscussionHighlight = DiscussionItemBase & {
+	kind: "highlight";
+	text: string;
+	note: string | null;
+	color: string;
+};
+
+export type DiscussionItem = DiscussionComment | DiscussionHighlight;
+
+export type DiscussionPage = {
+	items: DiscussionItem[];
+	/** Items anchored past the viewer's furthest position, from people the viewer may see. */
+	hiddenAhead: number;
+	furthestWord: number;
+	showEverything: boolean;
+	shareAllHighlights: boolean;
+};
+
+export function discussionErrorMessage(reason: string | undefined): string {
+	switch (reason) {
+		case "invalid_anchor":
+			return "That place is not in this book.";
+		case "highlight_not_synced":
+			return "This highlight has not reached the cloud yet. Sync, then try again.";
+		case "highlight_no_text":
+			return "This highlight has no stored text yet. Sync, then try again.";
+		case "share_all_on":
+			return "Turn off Share all my highlights to unshare single highlights.";
+		case "highlight_removed":
+			return "This highlight was removed after a report and cannot be shared again.";
+		case "rate_limited":
+			return "You're doing that a lot. Try again in a few minutes.";
+		default:
+			return buddyReadErrorMessage(reason);
 	}
 }

@@ -47,6 +47,7 @@ import {
 	cancelAnyActiveLongPress,
 	type GlossaryRangeProp,
 	type HighlightRange,
+	hasLongPressFiredFor,
 	type LinkRangeProp,
 	LONG_PRESS_MS,
 } from "../paragraph";
@@ -89,6 +90,7 @@ export interface PageViewProps {
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	linksByParagraph: Map<number, LinkRangeProp[]> | undefined;
+	discussionByParagraph?: Map<number, { count: number; onTap: () => void }>;
 	/** Paragraph index → chapter title rendered as an inline header above it. */
 	chapterHeadingByParagraph?: Map<number, string>;
 	selectionRange: { startWord: number; endWord: number } | null;
@@ -97,6 +99,7 @@ export interface PageViewProps {
 	// Word interaction
 	onWordTap: (offset: number, text: string) => void;
 	onWordLongPress: (offset: number) => void;
+	onWordLongPressDrag: (offset: number) => void;
 	onWordMouseDragStart: (offset: number, ev: PointerEvent) => void;
 	onCancelSelection: () => void;
 
@@ -137,10 +140,12 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		highlightsByParagraph,
 		glossaryByParagraph,
 		linksByParagraph,
+		discussionByParagraph,
 		selectionRange,
 		isSelecting,
 		onWordTap,
 		onWordLongPress,
+		onWordLongPressDrag,
 		onWordMouseDragStart,
 		onCancelSelection,
 		onPositionSettle,
@@ -602,6 +607,9 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		const d = dragRef.current;
 		if (!d || !isLayoutReady) return;
 		if (e.pointerId !== d.pointerId) return;
+		// This pointer's long-press started a selection; its movement extends it instead
+		// of swiping. The drag state stays so pointerup still sees a long press, not a tap.
+		if (d.isHorizontal === null && hasLongPressFiredFor(e.pointerId)) return;
 		const dx = e.clientX - d.originX;
 		const dy = e.clientY - d.originY;
 
@@ -767,9 +775,11 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									highlightsByParagraph={highlightsByParagraph}
 									glossaryByParagraph={glossaryByParagraph}
 									linksByParagraph={linksByParagraph}
+									discussionByParagraph={discussionByParagraph}
 									selectionRange={selectionRange}
 									onWordTap={onWordTap}
 									onWordLongPress={onWordLongPress}
+									onWordLongPressDrag={onWordLongPressDrag}
 									onWordMouseDragStart={onWordMouseDragStart}
 									onMeasure={handleChunkMeasure}
 									registerRef={registerChunkRef}

@@ -61,3 +61,26 @@ Routes: `POST /api/social/buddy-read`, `buddy-read-invite`, `buddy-read-invite-c
   delivered copy appears at once.
 - Reader: `buddy-read-markers.tsx` renders dots above the progress track in every mode. A marker
   stops pointer events so a tap shows who is there without scrubbing.
+
+## Discussion (TASK-171.9)
+
+- Tables (`0028_buddy_read_discussion.sql`): `buddy_read_comment` (anchor kind `range` | `chapter`,
+  replies copy the parent's anchor, author set null on account deletion), `buddy_read_shared_highlight`
+  (a reference to the author's `sync_highlights` row; `shared_individually` false for rows made by
+  share-all; `removed_at` for takedowns), `buddy_read_reaction` (one target, unique per target, user
+  and emoji). Membership gains `furthest_word`, `share_all_highlights`, `show_everything`.
+- Gate (`discussion-gate.ts`): `refreshFurthestWord` raises `furthest_word` from the synced position
+  and the furthest session, never lowers it. `isUnlockedFor` opens a passage at its last word and a
+  chapter comment at the chapter start; own items and show-everything skip it. `isVisibleToViewer` is
+  the single-item form (membership, block, gate) for reports and later push previews.
+- `buddy-read-discussion.ts`: post, reply, edit, delete (placeholder when replies exist), share and
+  unshare highlights (server needs the pushed highlight with text), share-all materialised lazily on
+  read, reactions, `getDiscussion` (blocked or banned people dropped before counting `hiddenAhead`,
+  shared highlights of current members only), reply and reaction inbox items collapsed per item, and
+  `purgeDiscussionOf` for account deletion.
+- Moderation: targets `buddy_read_comment` and `buddy_read_highlight` (reporter must be a member who
+  can see the item), actions `remove_comment` and `remove_highlight_share`.
+- App: discussion screen (`/tabs/social/buddy-read-discussion/$id`), paragraph markers in scroll and
+  page mode, ticks under the progress bar in every mode, a thread sheet, "Comment" in the selection
+  toolbar and "Share to the buddy read" in the highlight modal. The discussion polls every 60 s while
+  the reader is in the foreground and online.

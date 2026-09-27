@@ -108,7 +108,9 @@ export const reader = {
 		);
 	},
 
+	/** Save the live selection, then pick `color` from the swatches that replace the actions. */
 	applyHighlight: async (page: Page, color: HighlightColor): Promise<number> => {
+		await page.getByRole("button", { name: "Highlight", exact: true }).click();
 		const swatch = page.getByRole("button", { name: `Highlight ${color}` });
 		await expect(swatch).toBeVisible({ timeout: 5000 });
 		await swatch.click();
@@ -126,18 +128,16 @@ export const reader = {
 	},
 
 	/**
-	 * Dismiss the selection toolbar that the apply-highlight flow leaves up.
-	 * Reader's selection state must be cleared before another mouse-drag can
-	 * route to `openHighlightEditor` instead of extending the live selection.
+	 * Dismiss the selection toolbar that the apply-highlight flow leaves up. The
+	 * toolbar has no close button: a tap on a word outside the selection dismisses
+	 * it. Selection state must be cleared before another mouse-drag can route to
+	 * `openHighlightEditor` instead of extending the live selection.
 	 */
-	cancelSelection: async (page: Page) => {
-		const cancelBtn = page.getByRole("button", { name: "Cancel selection" });
-		// Fast probe: if the toolbar isn't rendered, the count is 0 and there's
-		// nothing to cancel. Avoids the prior `.isVisible().catch(() => false)`
-		// pattern that swallowed real errors.
-		if ((await cancelBtn.count()) > 0) {
-			await cancelBtn.click();
-		}
+	dismissSelection: async (page: Page) => {
+		const toolbar = page.getByRole("toolbar");
+		if ((await toolbar.count()) === 0) return;
+		await page.locator("span[data-word]:not(.word-selecting)").first().click();
+		await expect(toolbar).toHaveCount(0);
 	},
 
 	expectNoHighlight: async (page: Page, wordPosition: number) => {
@@ -149,9 +149,10 @@ export const reader = {
 	},
 
 	/**
-	 * Open the editor for an existing highlight by starting a mouse-drag on the
-	 * highlighted span. Reader's `handleWordMouseDragStart` short-circuits to
-	 * `openHighlightEditor` when the underlying word is already in a highlight.
+	 * Select an existing highlight (the toolbar's swatch/Note/Delete step) by
+	 * starting a mouse-drag on the highlighted span. Reader's
+	 * `handleWordMouseDragStart` short-circuits to `openHighlightEditor` when the
+	 * underlying word is already in a highlight.
 	 */
 	openHighlightEditor: async (page: Page, wordPosition: number) => {
 		const span = page.locator(`span[data-word="${wordPosition}"]`);
@@ -168,7 +169,7 @@ export const reader = {
 	},
 
 	deleteHighlightFromEditor: async (page: Page) => {
-		await page.getByRole("button", { name: "Delete highlight" }).click();
+		await page.getByRole("button", { name: "Delete", exact: true }).click();
 	},
 
 	/**
@@ -207,21 +208,25 @@ export const reader = {
 		await btn.evaluate((el: HTMLElement) => el.click());
 	},
 
+	/** The note sheet's textarea, opened from the toolbar's Note action. */
+	openHighlightNote: async (page: Page): Promise<Locator> => {
+		await page.getByRole("button", { name: "Note", exact: true }).click();
+		const ta = page.getByPlaceholder("Add a note to this highlight…");
+		await expect(ta).toBeVisible();
+		return ta;
+	},
+
 	setHighlightNoteFromEditor: async (page: Page, note: string) => {
-		const ta = page.getByPlaceholder("Add a note…");
+		const ta = await reader.openHighlightNote(page);
 		await ta.fill(note);
-		// Highlight modal persists the note on textarea `blur` via a
-		// fire-and-forget `updateHighlightMutation.mutate(...)`. Explicit blur
-		// triggers the save, then a brief wait lets the IDB transaction flush
-		// before any subsequent page.goto kills the JS context.
-		await ta.blur();
+		// Done saves via a fire-and-forget `updateHighlightMutation.mutate(...)`;
+		// the brief wait lets the IDB transaction flush before any subsequent
+		// page.goto kills the JS context.
+		await page.getByRole("button", { name: "Done" }).click();
 		await page.waitForTimeout(150);
 	},
 
 	changeHighlightColorFromEditor: async (page: Page, color: HighlightColor) => {
-		// Modal AND selection toolbar both render `aria-label="Highlight {color}"`
-		// swatches. Caller is expected to have called `cancelSelection` first so
-		// the toolbar is gone and only the modal swatch matches.
 		await page.getByRole("button", { name: `Highlight ${color}` }).click();
 	},
 

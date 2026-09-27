@@ -195,4 +195,7 @@ export const socialKeys = {
 
 	/** Other participants' positions, for the reader's markers. */
 	buddyReadProgress: (id: string) => ["social", "buddy-read-progress", id] as const,
+
+	/** A buddy read's discussion as the server gates it for this user. */
+	buddyReadDiscussion: (id: string) => ["social", "buddy-read-discussion", id] as const,
 };

@@ -39,8 +39,8 @@ function SignInStep() {
 			</div>
 			<h2 className="font-semibold text-2xl tracking-tight">Sync across devices?</h2>
 			<p className="mt-3 max-w-sm text-muted-foreground leading-relaxed">
-				Sign in to keep your library, progress, and highlights in step across phones and web.
-				Optional — you can do this later in Settings.
+				Sign in to keep your library, progress, and highlights in step across phones and web, and to
+				read books together with friends. Optional — you can do this later in Settings.
 			</p>
 		</div>
 	);
@@ -63,7 +63,8 @@ function HandleStep() {
 				</div>
 				<h2 className="font-semibold text-2xl tracking-tight">Pick a handle</h2>
 				<p className="mt-3 max-w-sm text-muted-foreground leading-relaxed">
-					Friends will know you by it. Optional — you can set it later in Settings.
+					Friends will know you by it when you add each other and read books together. Optional —
+					you can set it later in Social.
 				</p>
 			</div>
 			{profile.isPending ? (

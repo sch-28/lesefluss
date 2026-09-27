@@ -1,5 +1,6 @@
-import type { SocialIdentity, SocialRelationships } from "@lesefluss/core";
+import type { OwnSocialProfile, SocialIdentity, SocialRelationships } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
+import { SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { Link, useRouter } from "@tanstack/react-router";
 import {
 	Ban,
@@ -8,20 +9,23 @@ import {
 	Inbox,
 	Link2,
 	MoreHorizontal,
-	Newspaper,
 	ShieldOff,
+	UserCog,
 	UserMinus,
 	Users,
 } from "lucide-react";
-import type React from "react";
 import { useEffect, useState } from "react";
 import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
-import { EmptyRow, Section } from "@/components/app-shell/section";
 import { TabHeader } from "@/components/app-shell/tab-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { BuddyReadCard } from "@/components/social/buddy-read-card";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
+import { ListCard, SocialSection } from "@/components/social/social-ui";
+import { StartBuddyReadPicker } from "@/components/social/start-buddy-read-picker";
 import { toast } from "@/components/toast";
+import { useSyncContext } from "@/contexts/sync-context";
 import { replayPendingLink } from "@/services/deep-links/use-deep-links";
+import { useBuddyReads } from "@/services/social/buddy-reads";
 import { useIsOnline } from "@/services/social/cache";
 import {
 	socialErrorMessage,
@@ -32,6 +36,7 @@ import {
 	useRespondToRequest,
 } from "@/services/social/friends";
 import { useUnreadCount } from "@/services/social/inbox";
+import { useOwnSocialProfile } from "@/services/social/profile";
 import { PersonRow } from "./person-row";
 import { OfflineNotice, SocialGate, Spinner, StaleNotice } from "./social-gate";
 
@@ -45,12 +50,90 @@ type Confirm = {
 
 const NOT_NOTIFIED = "They are not notified.";
 
+function MeCard({ me }: { me: OwnSocialProfile }) {
+	return (
+		<Link
+			to="/tabs/social/profile/$userId"
+			params={{ userId: me.userId }}
+			className="mt-4 flex items-center gap-3 rounded-2xl border border-current/10 bg-card p-4 text-card-foreground no-underline"
+		>
+			<SocialAvatar name={me.name} avatarUrl={me.avatarUrl} size="md" />
+			<div className="min-w-0 flex-1">
+				<div className="truncate font-semibold text-base">{me.name}</div>
+				<div className="truncate text-muted-foreground text-xs">@{me.handle} · Your profile</div>
+			</div>
+			<ChevronRight className="size-4 text-muted-foreground" />
+		</Link>
+	);
+}
+
+const PREVIEW_READS = 3;
+
+function BuddyReadsPreview() {
+	const reads = useBuddyReads();
+	const [isPickerOpen, setIsPickerOpen] = useState(false);
+	const active = (reads.data ?? []).filter((r) => r.status === "in_progress");
+	if (reads.isPending) return null;
+	if (reads.isError && !reads.data) {
+		return (
+			<SocialSection title="Buddy reads">
+				<p className="m-0 px-1 text-muted-foreground text-sm">
+					Couldn't load your buddy reads. They show again once you're back online.
+				</p>
+			</SocialSection>
+		);
+	}
+	return (
+		<SocialSection
+			title="Buddy reads"
+			action={
+				<div className="flex items-center gap-4">
+					{active.length > 0 && (
+						<button
+							type="button"
+							onClick={() => setIsPickerOpen(true)}
+							className="text-primary text-xs"
+						>
+							Start one
+						</button>
+					)}
+					{reads.data && reads.data.length > 0 && (
+						<Link to="/tabs/social/buddy-reads" className="no-underline">
+							<span className="text-primary text-xs">See all</span>
+						</Link>
+					)}
+				</div>
+			}
+		>
+			{active.length === 0 ? (
+				<div className="rounded-xl border border-current/10 bg-card px-4 py-5 text-center">
+					<p className="m-0 text-muted-foreground text-sm">
+						Read a book together with friends and see where everyone is.
+					</p>
+					<Button size="sm" className="mt-3" onClick={() => setIsPickerOpen(true)}>
+						Start a buddy read
+					</Button>
+				</div>
+			) : (
+				<div className="flex flex-col gap-2.5">
+					{active.slice(0, PREVIEW_READS).map((read, i) => (
+						<BuddyReadCard key={read.id} read={read} index={i} />
+					))}
+				</div>
+			)}
+			<StartBuddyReadPicker isOpen={isPickerOpen} onClose={() => setIsPickerOpen(false)} />
+		</SocialSection>
+	);
+}
+
 function SocialLists({
 	data,
+	me,
 	isOffline,
 	unreadCount,
 }: {
 	data: SocialRelationships;
+	me: OwnSocialProfile | undefined;
 	isOffline: boolean;
 	unreadCount: number;
 }) {
@@ -136,140 +219,127 @@ function SocialLists({
 
 	return (
 		<>
-			<Section title="Requests">
-				{data.incoming.length === 0 ? (
-					<EmptyRow>No requests right now.</EmptyRow>
-				) : (
-					data.incoming.map((r) => (
-						<PersonRow
-							key={r.requestId}
-							person={r}
-							trailing={
-								<div className="flex items-center gap-1">
-									<Button
-										size="sm"
-										disabled={isBusy}
-										onClick={() =>
-											respond.mutate({ requestId: r.requestId, action: "accept" }, { onError })
-										}
-									>
-										Accept
-									</Button>
+			{me?.handle && <MeCard me={me} />}
+
+			{data.incoming.length > 0 && (
+				<SocialSection title="Requests">
+					<ListCard>
+						{data.incoming.map((r) => (
+							<PersonRow
+								key={r.requestId}
+								person={r}
+								trailing={
+									<div className="flex items-center gap-1">
+										<Button
+											size="sm"
+											disabled={isBusy}
+											onClick={() =>
+												respond.mutate({ requestId: r.requestId, action: "accept" }, { onError })
+											}
+										>
+											Accept
+										</Button>
+										<Button
+											size="sm"
+											variant="ghost"
+											disabled={isBusy}
+											onClick={() =>
+												respond.mutate({ requestId: r.requestId, action: "decline" }, { onError })
+											}
+										>
+											Decline
+										</Button>
+										{menuButton(() => incomingMenu(r, r.requestId))}
+									</div>
+								}
+							/>
+						))}
+					</ListCard>
+				</SocialSection>
+			)}
+
+			<BuddyReadsPreview />
+
+			<SocialSection
+				title="Friends"
+				action={
+					<Link to="/tabs/social/invite-link" className="no-underline">
+						<span className="flex items-center gap-1 text-primary text-xs">
+							<Link2 className="size-3.5" />
+							Add friend
+						</span>
+					</Link>
+				}
+			>
+				<ListCard>
+					{data.friends.length === 0 ? (
+						<div className="px-4 py-6 text-center">
+							<Users className="mx-auto mb-2 size-6 text-muted-foreground" />
+							<p className="text-muted-foreground text-sm">
+								No friends yet. Share your invite link with someone you read with.
+							</p>
+							<Button asChild size="sm" className="mt-3">
+								<Link to="/tabs/social/invite-link">Create invite link</Link>
+							</Button>
+						</div>
+					) : (
+						data.friends.map((f) => (
+							<PersonRow
+								key={f.userId}
+								person={f}
+								linkToProfile
+								trailing={menuButton(() => friendMenu(f))}
+							/>
+						))
+					)}
+				</ListCard>
+			</SocialSection>
+
+			{data.outgoing.length > 0 && (
+				<SocialSection title="Sent requests">
+					<ListCard>
+						{data.outgoing.map((r) => (
+							<PersonRow
+								key={r.requestId}
+								person={r}
+								subtitle="Pending"
+								trailing={
 									<Button
 										size="sm"
 										variant="ghost"
 										disabled={isBusy}
-										onClick={() =>
-											respond.mutate({ requestId: r.requestId, action: "decline" }, { onError })
-										}
+										onClick={() => cancel.mutate(r.requestId, { onError })}
 									>
-										Decline
+										Cancel
 									</Button>
-									{menuButton(() => incomingMenu(r, r.requestId))}
-								</div>
-							}
-						/>
-					))
-				)}
-			</Section>
-
-			<Section
-				title="Friends"
-				action={
-					<Link
-						to="/tabs/social/invite-link"
-						className="flex items-center gap-1 text-primary text-xs no-underline"
-					>
-						<Link2 className="size-3.5" />
-						Add friend
-					</Link>
-				}
-			>
-				{data.friends.length === 0 ? (
-					<div className="px-4 py-6 text-center">
-						<Users className="mx-auto mb-2 size-6 text-muted-foreground" />
-						<p className="text-muted-foreground text-sm">
-							No friends yet. Share your invite link with someone you read with.
-						</p>
-						<Button asChild size="sm" className="mt-3">
-							<Link to="/tabs/social/invite-link">Create invite link</Link>
-						</Button>
-					</div>
-				) : (
-					data.friends.map((f) => (
-						<PersonRow
-							key={f.userId}
-							person={f}
-							linkToProfile
-							trailing={menuButton(() => friendMenu(f))}
-						/>
-					))
-				)}
-			</Section>
-
-			{data.outgoing.length > 0 && (
-				<Section title="Sent requests">
-					{data.outgoing.map((r) => (
-						<PersonRow
-							key={r.requestId}
-							person={r}
-							subtitle="Pending"
-							trailing={
-								<Button
-									size="sm"
-									variant="ghost"
-									disabled={isBusy}
-									onClick={() => cancel.mutate(r.requestId, { onError })}
-								>
-									Cancel
-								</Button>
-							}
-						/>
-					))}
-				</Section>
+								}
+							/>
+						))}
+					</ListCard>
+				</SocialSection>
 			)}
 
-			<Section title="Activity">
-				<Link
-					to="/tabs/social/inbox"
-					className="flex items-center gap-3 px-4 py-3 text-foreground no-underline hover:bg-muted/60"
-				>
-					<Inbox className="size-5 text-muted-foreground" />
-					<div className="min-w-0 flex-1">
-						<div className="font-medium text-foreground text-sm">Inbox</div>
-						<div className="text-muted-foreground text-xs">
-							{unreadCount > 0 ? `${unreadCount} unread` : "Requests and updates"}
+			<SocialSection>
+				<ListCard>
+					<Link
+						to="/tabs/social/inbox"
+						className="flex items-center gap-3 px-4 py-3 text-foreground no-underline hover:bg-muted/60"
+					>
+						<Inbox className="size-5 text-muted-foreground" />
+						<div className="min-w-0 flex-1">
+							<div className="font-medium text-foreground text-sm">Inbox</div>
+							<div className="text-muted-foreground text-xs">Updates and invites</div>
 						</div>
-					</div>
-					<ChevronRight className="size-4 text-muted-foreground" />
-				</Link>
-				<PlaceholderRow icon={Newspaper} title="Activity" subtitle="What your friends read" />
-				<Link
-					to="/tabs/social/buddy-reads"
-					className="flex items-center gap-3 px-4 py-3 text-foreground no-underline hover:bg-muted/60"
-				>
-					<Users className="size-5 text-muted-foreground" />
-					<div className="min-w-0 flex-1">
-						<div className="font-medium text-foreground text-sm">Buddy reads</div>
-						<div className="text-muted-foreground text-xs">Read a book together</div>
-					</div>
-					<ChevronRight className="size-4 text-muted-foreground" />
-				</Link>
-			</Section>
-
-			<Section title="Privacy">
-				<Link
-					to="/tabs/social/blocked"
-					className="flex items-center gap-3 px-4 py-3 text-foreground no-underline hover:bg-muted/60"
-				>
-					<ShieldOff className="size-5 text-muted-foreground" />
-					<span className="flex-1 text-sm">Blocked users</span>
-					{data.blocked.length > 0 && (
-						<span className="text-muted-foreground text-xs">{data.blocked.length}</span>
-					)}
-					<ChevronRight className="size-4 text-muted-foreground" />
-				</Link>
-			</Section>
+						{unreadCount > 0 && (
+							<span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 font-semibold text-[11px] text-primary-foreground tabular-nums">
+								{unreadCount > 99 ? "99+" : unreadCount}
+								<span className="sr-only"> unread</span>
+							</span>
+						)}
+						<ChevronRight className="size-4 text-muted-foreground" />
+					</Link>
+				</ListCard>
+			</SocialSection>
 
 			<ActionSheet
 				open={menu !== null}
@@ -291,31 +361,12 @@ function SocialLists({
 	);
 }
 
-function PlaceholderRow({
-	icon: Icon,
-	title,
-	subtitle,
-}: {
-	icon: React.ComponentType<{ className?: string }>;
-	title: string;
-	subtitle: string;
-}) {
-	return (
-		<div className="flex items-center gap-3 px-4 py-3 opacity-60">
-			<Icon className="size-5 text-muted-foreground" />
-			<div className="min-w-0 flex-1">
-				<div className="font-medium text-foreground text-sm">{title}</div>
-				<div className="text-muted-foreground text-xs">{subtitle}</div>
-			</div>
-		</div>
-	);
-}
-
 function SocialContent() {
 	const router = useRouter();
 	const isOnline = useIsOnline();
 	const relationships = useRelationships();
 	const unread = useUnreadCount();
+	const me = useOwnSocialProfile();
 
 	// A link opened before sign-in or the handle claim lands here afterwards.
 	useEffect(() => {
@@ -341,6 +392,7 @@ function SocialContent() {
 			/>
 			<SocialLists
 				data={relationships.data}
+				me={me.data}
 				isOffline={!isOnline}
 				unreadCount={unread.data?.count ?? 0}
 			/>
@@ -348,10 +400,39 @@ function SocialContent() {
 	);
 }
 
+function SocialMenu() {
+	const router = useRouter();
+	const [isOpen, setIsOpen] = useState(false);
+	return (
+		<>
+			<Button variant="ghost" size="icon" aria-label="More" onClick={() => setIsOpen(true)}>
+				<MoreHorizontal className="size-5" />
+			</Button>
+			<ActionSheet
+				open={isOpen}
+				onOpenChange={setIsOpen}
+				items={[
+					{
+						label: "Profile settings",
+						icon: UserCog,
+						onSelect: () => void router.navigate({ to: "/tabs/settings/social" }),
+					},
+					{
+						label: "Blocked users",
+						icon: ShieldOff,
+						onSelect: () => void router.navigate({ to: "/tabs/social/blocked" }),
+					},
+				]}
+			/>
+		</>
+	);
+}
+
 export default function SocialPage() {
+	const { isLoggedIn } = useSyncContext();
 	return (
 		<div className="bg-background">
-			<TabHeader title="Social" icon={Users} />
+			<TabHeader title="Social" icon={Users} right={isLoggedIn ? <SocialMenu /> : undefined} />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				<SocialGate returnTo="/tabs/social">
 					<SocialContent />

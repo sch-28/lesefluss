@@ -154,6 +154,25 @@ else the earliest-joined member; the read is deleted with its last member. A mem
 first time their pushed position reaches the finished threshold after having been below it since
 joining; the read finishes when every member has, and then stays listed read-only.
 
+### Buddy-read comment
+
+A comment in a [buddy read](#buddy-read), anchored to a passage (word range) or to a chapter's
+start (`buddy_read_comment`). Replies are one level deep and take over their parent's anchor. A
+member sees a comment only once their **furthest position** (the highest position ever synced or
+read in a session, never lowered) has passed the end of the passage or reached the chapter;
+their own items and a per-read "show everything" override skip that gate. Deleting a comment that
+has replies leaves a removed placeholder. Comments of members who left stay; a comment's author
+may still delete it.
+
+### Shared highlight
+
+A reader's own highlight made visible to others. In a buddy read it is a reference to the
+author's highlight (`buddy_read_shared_highlight`), shared one by one or all at once with the
+per-read "share all my highlights" setting, and always shown with its note. Edits and deletes of
+the highlight through sync show up there; unsharing removes it and its reactions. A takedown
+removes the share, never the highlight, and bars sharing it again. Profile sections (TASK-61)
+use the same term.
+
 ### Content origin
 
 The `(origin_user_id, origin_book_id)` on every `sync_books` row: the row itself for an upload,

@@ -2,7 +2,17 @@ import { type NoticeTargetType, normalizeHandle, validateHandle } from "@leseflu
 import { and, eq, sql } from "drizzle-orm";
 import type { DbExecutor } from "~/db";
 import { user } from "~/db/auth-schema";
-import { socialProfile, socialShare, syncBooks } from "~/db/schema";
+import {
+	buddyRead,
+	buddyReadComment,
+	buddyReadSharedHighlight,
+	socialProfile,
+	socialShare,
+	syncBooks,
+	syncHighlights,
+} from "~/db/schema";
+import { isVisibleToViewer } from "~/lib/social/discussion-gate";
+import { isUuid } from "~/lib/uuid";
 
 export type NoticeSnapshot = Record<string, string | null>;
 
@@ -21,6 +31,8 @@ export type NoticeActionKind =
 	| "remove_avatar"
 	| "reset_handle"
 	| "take_down_book"
+	| "remove_comment"
+	| "remove_highlight_share"
 	| "suspend_sharing"
 	| "ban";
 
@@ -139,7 +151,7 @@ async function bookSnapshot(
 const sharedBookTarget: NoticeTarget = {
 	// Reported through the share the reporter received: no reporting of books one was never shown.
 	resolveById: async (exec, targetUserId, shareId, reporterId) => {
-		if (!shareId || !/^[0-9a-f-]{36}$/i.test(shareId)) return null;
+		if (!shareId || !isUuid(shareId)) return null;
 		const [share] = await exec
 			.select({ bookId: socialShare.bookId })
 			.from(socialShare)
@@ -202,7 +214,156 @@ const sharedBookTarget: NoticeTarget = {
 	actions: ["reject", "take_down_book", "suspend_sharing", "ban"],
 };
 
+async function handleOf(exec: DbExecutor, userId: string | null): Promise<string | null> {
+	if (!userId) return null;
+	const [row] = await exec
+		.select({ handle: socialProfile.handle })
+		.from(socialProfile)
+		.where(eq(socialProfile.userId, userId));
+	return row?.handle ?? null;
+}
+
+async function readTitle(exec: DbExecutor, buddyReadId: string): Promise<string | null> {
+	const [row] = await exec
+		.select({ title: buddyRead.title })
+		.from(buddyRead)
+		.where(eq(buddyRead.id, buddyReadId));
+	return row?.title ?? null;
+}
+
+async function commentRow(exec: DbExecutor, commentId: string) {
+	if (!isUuid(commentId)) return null;
+	const [row] = await exec
+		.select()
+		.from(buddyReadComment)
+		.where(eq(buddyReadComment.id, commentId));
+	return row ?? null;
+}
+
+/** Only a member who can see the comment right now can report it. */
+const buddyReadCommentTarget: NoticeTarget = {
+	resolveById: async (exec, targetUserId, commentId, reporterId) => {
+		const comment = commentId ? await commentRow(exec, commentId) : null;
+		if (!comment || comment.authorId !== targetUserId || comment.body === null) return null;
+		const visible = await isVisibleToViewer(exec, comment.buddyReadId, reporterId, {
+			authorId: comment.authorId,
+			anchorKind: comment.anchorKind,
+			startWord: comment.startWord,
+			endWord: comment.endWord,
+		});
+		if (!visible) return null;
+		return {
+			targetUserId,
+			targetRef: comment.id,
+			snapshot: {
+				authorHandle: await handleOf(exec, targetUserId),
+				buddyRead: await readTitle(exec, comment.buddyReadId),
+				body: comment.body,
+			},
+		};
+	},
+	// Nobody outside a buddy read can point at one of its comments.
+	resolveByLocation: async () => null,
+	context: async (exec, notice) => {
+		const comment = await commentRow(exec, notice.targetRef);
+		return {
+			title: "Buddy-read comment",
+			fields: [
+				{
+					label: "State",
+					value: !comment ? "deleted" : comment.body === null ? "removed" : "live",
+				},
+				{ label: "Current text", value: comment?.body ?? null },
+			],
+		};
+	},
+	actions: ["reject", "remove_comment", "suspend_sharing", "ban"],
+};
+
+async function sharedHighlightRow(exec: DbExecutor, sharedHighlightId: string) {
+	if (!isUuid(sharedHighlightId)) return null;
+	const [row] = await exec
+		.select({
+			id: buddyReadSharedHighlight.id,
+			buddyReadId: buddyReadSharedHighlight.buddyReadId,
+			userId: buddyReadSharedHighlight.userId,
+			removedAt: buddyReadSharedHighlight.removedAt,
+			startWord: syncHighlights.startWord,
+			endWord: syncHighlights.endWord,
+			text: syncHighlights.text,
+			note: syncHighlights.note,
+			deleted: syncHighlights.deleted,
+		})
+		.from(buddyReadSharedHighlight)
+		.leftJoin(
+			syncHighlights,
+			and(
+				eq(syncHighlights.userId, buddyReadSharedHighlight.userId),
+				eq(syncHighlights.highlightId, buddyReadSharedHighlight.highlightId),
+			),
+		)
+		.where(eq(buddyReadSharedHighlight.id, sharedHighlightId));
+	return row ?? null;
+}
+
+const buddyReadHighlightTarget: NoticeTarget = {
+	resolveById: async (exec, targetUserId, sharedHighlightId, reporterId) => {
+		const share = sharedHighlightId ? await sharedHighlightRow(exec, sharedHighlightId) : null;
+		if (
+			!share ||
+			share.userId !== targetUserId ||
+			share.removedAt ||
+			share.deleted !== false ||
+			share.startWord === null ||
+			share.endWord === null
+		) {
+			return null;
+		}
+		const visible = await isVisibleToViewer(exec, share.buddyReadId, reporterId, {
+			authorId: share.userId,
+			anchorKind: "range",
+			startWord: share.startWord,
+			endWord: share.endWord,
+		});
+		if (!visible) return null;
+		return {
+			targetUserId,
+			targetRef: share.id,
+			snapshot: {
+				authorHandle: await handleOf(exec, targetUserId),
+				buddyRead: await readTitle(exec, share.buddyReadId),
+				text: share.text,
+				note: share.note,
+			},
+		};
+	},
+	resolveByLocation: async () => null,
+	context: async (exec, notice) => {
+		const share = await sharedHighlightRow(exec, notice.targetRef);
+		return {
+			title: "Shared highlight",
+			fields: [
+				{
+					label: "State",
+					value: !share
+						? "unshared"
+						: share.removedAt
+							? "removed"
+							: share.deleted
+								? "deleted by author"
+								: "live",
+				},
+				{ label: "Current text", value: share?.text ?? null },
+				{ label: "Current note", value: share?.note ?? null },
+			],
+		};
+	},
+	actions: ["reject", "remove_highlight_share", "suspend_sharing", "ban"],
+};
+
 export const NOTICE_TARGETS: Record<NoticeTargetType, NoticeTarget> = {
 	profile: profileTarget,
 	shared_book: sharedBookTarget,
+	buddy_read_comment: buddyReadCommentTarget,
+	buddy_read_highlight: buddyReadHighlightTarget,
 };

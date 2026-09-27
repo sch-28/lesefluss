@@ -45,6 +45,8 @@ const ACTION_LABELS: Record<NoticeActionKind, string> = {
 	take_down_book: "Take down book",
 	suspend_sharing: "Suspend sharing",
 	ban: "Ban user",
+	remove_comment: "Remove comment",
+	remove_highlight_share: "Remove shared highlight",
 };
 
 const STATUS_LABELS: Record<NoticeStatus, string> = {

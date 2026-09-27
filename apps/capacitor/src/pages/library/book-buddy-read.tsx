@@ -1,5 +1,4 @@
-import type { BuddyReadSummary } from "@lesefluss/core";
-import { isOnPace, readingProgress } from "@lesefluss/core";
+import { type BuddyReadSummary, isOnPace, isSyncEligible, readingProgress } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
 import { SocialAvatar } from "@lesefluss/ui/social-avatar";
@@ -7,11 +6,13 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { Users } from "lucide-react";
 import { useState } from "react";
 import { FriendPickerSheet } from "@/components/social/friend-picker-sheet";
+import type { ShareBlocker } from "@/components/social/share-sheet";
 import { toast } from "@/components/toast";
 import type { Book } from "@/services/db/schema";
 import {
 	buddyReadErrorReason,
 	buddyReadFailureMessage,
+	paceText,
 	useBuddyRead,
 	useBuddyReads,
 	useCreateBuddyRead,
@@ -65,8 +66,7 @@ export function BookBuddyRead({
 			</div>
 			{onPace !== null && read.targetDate !== null && (
 				<p className="m-0 mb-2 text-muted-foreground text-xs">
-					Finish by {new Date(read.targetDate).toLocaleDateString()} ·{" "}
-					{onPace ? "you're on pace" : "you're behind pace"}
+					Finish by {new Date(read.targetDate).toLocaleDateString()} · {paceText(onPace)}
 				</p>
 			)}
 			{detail.data?.originUnavailable ? (
@@ -90,6 +90,24 @@ export function BookBuddyRead({
 			)}
 		</section>
 	);
+}
+
+export const BUDDY_READ_BLOCKER_TEXT: Record<ShareBlocker, string> = {
+	local_only: "This book is stored on this device only, so friends can't get a copy of it.",
+	not_synced: "This book hasn't reached the cloud yet. Sync first, then start a buddy read.",
+	series: "Web-serial chapters can't be read together.",
+	checking: "Checking whether this book is in the cloud…",
+};
+
+/** Why this book cannot be shared or read together yet; null when it can. `serverContentIds` is undefined while loading. */
+export function shareBlockerFor(
+	book: Pick<Book, "id" | "seriesId"> & Parameters<typeof isSyncEligible>[0],
+	serverContentIds: Set<string> | undefined,
+): ShareBlocker | null {
+	if (book.seriesId) return "series";
+	if (!isSyncEligible(book)) return "local_only";
+	if (serverContentIds === undefined) return "checking";
+	return serverContentIds.has(book.id) ? null : "not_synced";
 }
 
 /** Starts a buddy read on this book. Signed out, it explains sign-in instead. */
@@ -117,7 +135,7 @@ export function StartBuddyReadSheet({
 			<Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
 				<DrawerContent>
 					<DrawerHeader>
-						<DrawerTitle>Read together</DrawerTitle>
+						<DrawerTitle>Start a buddy read</DrawerTitle>
 					</DrawerHeader>
 					<div className="px-4 pb-8">
 						<SignedOutSocial returnTo={`/tabs/library/book/${bookId}`} />

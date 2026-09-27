@@ -29,6 +29,10 @@ const FINE_SCROLL_MOUNT_FRAME_BUDGET = 10;
 const FINE_SCROLL_STABILITY_TICK_MS = 50;
 const FINE_SCROLL_STABILITY_TIMEOUT_MS = 600;
 const INIT_SETTLE_COOLDOWN_MS = 500;
+// A scroll end closer than this to the previous one is a layout clamp (content
+// height changing by a pixel under a new highlight, the soft keyboard), not the
+// reader moving. Well under one line of text.
+const MIN_SETTLE_SCROLL_PX = 4;
 
 // Locate the alignment target span within `container`. Queries by `data-word`
 // only. The paragraph-bounded fallback ensures a stale saved position
@@ -226,6 +230,7 @@ export interface ScrollViewProps {
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	linksByParagraph: Map<number, LinkRangeProp[]> | undefined;
+	discussionByParagraph?: Map<number, { count: number; onTap: () => void }>;
 	/** Paragraph index → chapter title rendered as an inline header above it. */
 	chapterHeadingByParagraph?: Map<number, string>;
 	selectionRange: { startWord: number; endWord: number } | null;
@@ -233,12 +238,15 @@ export interface ScrollViewProps {
 	// Word interaction
 	onWordTap: (offset: number, text: string) => void;
 	onWordLongPress: (offset: number) => void;
+	onWordLongPressDrag: (offset: number) => void;
 	onWordMouseDragStart: (offset: number, ev: PointerEvent) => void;
 
 	// Scroll-driven side effects routed back to parent (word units)
-	onPositionSettle: (word: number) => void; // handleScrollEnd → final saved word
+	/** `isAtEnd`: scrolled to the very bottom, where the viewport-top word is not the reading position.
+	 *  `hasMoved`: false when the view moved less than MIN_SETTLE_SCROLL_PX since the last scroll end. */
+	onPositionSettle: (word: number, isAtEnd: boolean, hasMoved: boolean) => void; // handleScrollEnd → final saved word
 	onInitialActiveOffset: (word: number) => void; // fires once on initial scroll, sets highlight without saving
-	onProgressChange: (word: number) => void; // continuous during scroll
+	onProgressChange: (word: number, isAtEnd: boolean) => void; // continuous during scroll
 	onHighlightClear: () => void; // scroll started → hide highlight (parent decides on NO_HIGHLIGHT optimization)
 	onHideProgressBar: () => void; // scroll started (and not scrubbing) → hide bar
 	onTap: () => void; // any click inside container → show progress bar
@@ -274,10 +282,12 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		highlightsByParagraph,
 		glossaryByParagraph,
 		linksByParagraph,
+		discussionByParagraph,
 		chapterHeadingByParagraph,
 		selectionRange,
 		onWordTap,
 		onWordLongPress,
+		onWordLongPressDrag,
 		onWordMouseDragStart,
 		onPositionSettle,
 		onInitialActiveOffset,
@@ -322,6 +332,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	// is single-shot). Without this the second scrollend saves a top-of-viewport
 	// word that's often off-by-one from the seed.
 	const initialScrollDoneAtRef = useRef<number | null>(null);
+	const settledOffsetRef = useRef<number | null>(null);
 	const markInitialSettled = useCallback(() => {
 		initialSettledRef.current = true;
 		initialScrollDoneAtRef.current = performance.now();
@@ -431,6 +442,11 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		[findParagraphIndexForWord, fineScrollTo, chapterHeadingByParagraph, paragraphStartWords],
 	);
 
+	const isScrolledToEnd = useCallback(() => {
+		const list = listRef.current;
+		return !!list && list.scrollOffset + list.viewportSize >= list.scrollSize - 1;
+	}, []);
+
 	// ── Scroll handler - hide highlight + update progress bar ──────────────
 	const handleScroll = useCallback(
 		(scrollOffset: number) => {
@@ -464,7 +480,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 					listRef.current.findItemIndex(scrollOffset),
 					paragraphStartWords.length - 1,
 				);
-				onProgressChange(paragraphStartWords[idx] ?? 0);
+				onProgressChange(paragraphStartWords[idx] ?? 0, isScrolledToEnd());
 			}
 			// Re-sync handle positions when scrolling during selection
 			if (isSelecting) {
@@ -479,11 +495,17 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			onHighlightClear,
 			onHideProgressBar,
 			onProgressChange,
+			isScrolledToEnd,
 		],
 	);
 
 	// ── Scroll end - find top-of-container word + save position ──────────
 	const handleScrollEnd = useCallback(() => {
+		// Recorded on every scroll end, including the ignored ones below, so the
+		// next comparison is against where the view last came to rest.
+		const offset = listRef.current?.scrollOffset ?? null;
+		const prevOffset = settledOffsetRef.current;
+		settledOffsetRef.current = offset;
 		if (suppressNextScrollEndRef.current) {
 			suppressNextScrollEndRef.current = false;
 			suppressScrollHighlightClearRef.current = false;
@@ -517,8 +539,12 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 
 		if (bestWord < 0) return;
 
-		onPositionSettle(bestWord);
-	}, [onPositionSettle]);
+		const hasMoved =
+			prevOffset === null ||
+			offset === null ||
+			Math.abs(offset - prevOffset) >= MIN_SETTLE_SCROLL_PX;
+		onPositionSettle(bestWord, isScrolledToEnd(), hasMoved);
+	}, [onPositionSettle, isScrolledToEnd]);
 
 	// ── Show progress bar on any tap in the reading area ─────────────────
 	// Native listener needed because VList's internal scroll container doesn't
@@ -570,10 +596,12 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 							activeWord={activeWord}
 							onWordTap={onWordTap}
 							onWordLongPress={onWordLongPress}
+							onWordLongPressDrag={onWordLongPressDrag}
 							onWordMouseDragStart={onWordMouseDragStart}
 							highlights={highlightsByParagraph?.get(i)}
 							glossaryRanges={glossaryByParagraph?.get(i)}
 							links={linksByParagraph?.get(i)}
+							discussion={discussionByParagraph?.get(i)}
 							chapterHeading={chapterHeadingByParagraph?.get(i)}
 							selectionRange={selectionRange}
 							showActiveWordUnderline={showActiveWordUnderline}

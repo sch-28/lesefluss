@@ -2,8 +2,11 @@ import type { BuddyReadDetail, BuddyReadParticipant } from "@lesefluss/core";
 import { isOnPace, readingProgress } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { SocialAvatar } from "@lesefluss/ui/social-avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@lesefluss/ui/tabs";
+import { cn } from "@lesefluss/ui/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
+import { motion } from "framer-motion";
 import {
 	Ban,
 	BookOpen,
@@ -19,16 +22,24 @@ import {
 import { useState } from "react";
 import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { PageHeader } from "@/components/app-shell/page-header";
-import { EmptyRow, Section } from "@/components/app-shell/section";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import CoverImage from "@/components/cover-image";
 import { FriendPickerSheet } from "@/components/social/friend-picker-sheet";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
+import {
+	FinishedLabel,
+	ListCard,
+	ProgressBar,
+	SocialSection,
+	useLocalCover,
+} from "@/components/social/social-ui";
 import { toast } from "@/components/toast";
 import { queryHooks } from "@/services/db/hooks";
 import { socialKeys } from "@/services/db/hooks/query-keys";
 import { parseChapters } from "@/services/db/queries/books";
 import {
 	buddyReadFailureMessage,
+	paceText,
 	useBuddyRead,
 	useCancelBuddyReadInvite,
 	useInviteToBuddyRead,
@@ -41,6 +52,7 @@ import { useIsOnline } from "@/services/social/cache";
 import { useBlockUser } from "@/services/social/friends";
 import { currentChapterIndex } from "@/utils/chapters";
 import { formatAgo, formatRelative } from "@/utils/date-utils";
+import { DiscussionPanel } from "./buddy-read-discussion";
 import { OfflineNotice, SocialGate, Spinner, StaleNotice } from "./social-gate";
 
 type Confirm = {
@@ -52,10 +64,9 @@ type Confirm = {
 
 const BUDDY_READ_MAX = 8;
 
-function wordsApart(delta: number): string {
+function relativeTo(delta: number): string {
 	if (delta === 0) return "same place as you";
-	const n = Math.abs(delta).toLocaleString();
-	return delta > 0 ? `${n} words ahead` : `${n} words behind`;
+	return delta > 0 ? "ahead of you" : "behind you";
 }
 
 function toDateInput(ms: number | null): string {
@@ -83,7 +94,12 @@ function paceLine(detail: BuddyReadDetail, myPercent: number | null): string | n
 		now: Date.now(),
 	});
 	if (onPace === null) return `Finish by ${due}`;
-	return `Finish by ${due} · ${onPace ? "you're on pace" : "you're behind pace"}`;
+	return `Finish by ${due} · ${paceText(onPace)}`;
+}
+
+/** Finished readers first, then by progress. */
+function progressRank(p: BuddyReadParticipant): number {
+	return p.finishedAt !== null ? 101 : (p.percent ?? -1);
 }
 
 function ParticipantRow({
@@ -103,10 +119,10 @@ function ParticipantRow({
 }) {
 	const p = participant;
 	const facts = [
-		p.finishedAt !== null ? "Finished" : p.percent !== null ? `${p.percent}%` : "Progress unknown",
+		p.finishedAt !== null ? null : p.percent !== null ? `${p.percent}%` : "Progress unknown",
 		chapterTitle,
 		!p.isSelf && !detail.approximate && myPosition !== null
-			? wordsApart(p.wordPosition - myPosition)
+			? relativeTo(p.wordPosition - myPosition)
 			: null,
 		!p.isSelf && p.lastActiveAt !== null ? `active ${formatAgo(p.lastActiveAt)}` : null,
 	].filter(Boolean);
@@ -119,13 +135,14 @@ function ParticipantRow({
 					{p.isHost && <Crown className="size-3.5 shrink-0 text-amber-500" aria-label="Host" />}
 				</div>
 				<div className="truncate text-muted-foreground text-xs">
-					@{p.identity.handle} · {facts.join(" · ")}
+					{p.finishedAt !== null && <FinishedLabel className="mr-1 align-middle" />}
+					{[`@${p.identity.handle}`, ...facts].join(" · ")}
 				</div>
 			</div>
 		</>
 	);
 	return (
-		<div className="px-4 py-3">
+		<div className={cn("px-4 py-3", p.isSelf && "bg-primary/5")}>
 			<div className="flex items-center gap-3">
 				{p.isFriend && !p.isSelf ? (
 					<Link
@@ -150,17 +167,12 @@ function ParticipantRow({
 					</Button>
 				)}
 			</div>
-			<div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-				<div
-					className="h-full rounded-full bg-primary"
-					style={{ width: `${p.finishedAt !== null ? 100 : (p.percent ?? 0)}%` }}
-				/>
-			</div>
+			<ProgressBar percent={p.percent} finished={p.finishedAt !== null} className="mt-2" />
 		</div>
 	);
 }
 
-function BuddyReadContent({ id }: { id: string }) {
+function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 	const router = useRouter();
 	const client = useQueryClient();
 	const isOnline = useIsOnline();
@@ -168,6 +180,14 @@ function BuddyReadContent({ id }: { id: string }) {
 	const query = useBuddyRead(id);
 	const detail = query.data;
 	const { data: myBook } = queryHooks.useBook(detail?.myBookId ?? "");
+	const cover = useLocalCover(detail?.myBookId ?? "");
+	const showTab = (next: BuddyReadTab) =>
+		void router.navigate({
+			to: "/tabs/social/buddy-read/$id",
+			params: { id },
+			search: next === "discussion" ? { tab: "discussion" } : {},
+			replace: true,
+		});
 	const { data: myContent } = queryHooks.useBookContent(detail?.myBookId ?? "");
 	const chapters = parseChapters(myContent?.chapters ?? null);
 
@@ -202,11 +222,13 @@ function BuddyReadContent({ id }: { id: string }) {
 		myBook && myBook.wordCount > 0
 			? readingProgress({ wordCount: myBook.wordCount, wordPosition: myBook.wordPosition })
 			: null;
-	const participants = detail.participants.map((p) =>
-		p.isSelf && myBook
-			? { ...p, wordPosition: myBook.wordPosition, percent: myPercent ?? p.percent }
-			: p,
-	);
+	const participants = detail.participants
+		.map((p) =>
+			p.isSelf && myBook
+				? { ...p, wordPosition: myBook.wordPosition, percent: myPercent ?? p.percent }
+				: p,
+		)
+		.sort((a, b) => progressRank(b) - progressRank(a));
 	const chapterOf = (p: BuddyReadParticipant) =>
 		chapters.length > 1
 			? (chapters[currentChapterIndex(chapters, p.wordPosition)]?.title ?? null)
@@ -236,7 +258,8 @@ function BuddyReadContent({ id }: { id: string }) {
 			});
 		} else {
 			items.push({
-				label: p.relationship === "pending_incoming" ? "Accept friend request" : "Add friend",
+				label:
+					p.relationship === "pending_incoming" ? "Accept friend request" : "Send friend request",
 				icon: UserPlus,
 				onSelect: () =>
 					addFriend.mutate(p.identity.userId, {
@@ -298,155 +321,200 @@ function BuddyReadContent({ id }: { id: string }) {
 				isError={query.isError}
 				onRetry={() => void query.refetch()}
 			/>
-			<section className="mt-2 rounded-lg border border-border bg-card p-4">
-				<h2 className="m-0 font-semibold text-foreground text-lg">{detail.title}</h2>
-				{detail.author && <p className="m-0 text-muted-foreground text-sm">{detail.author}</p>}
-				<p className="mt-2 mb-0 text-muted-foreground text-xs">
-					{detail.status === "finished"
-						? "Finished: everyone reached the end."
-						: detail.host
-							? `Hosted by ${detail.host.name}`
-							: "In progress"}
-					{" · "}
-					{detail.memberCount} of {BUDDY_READ_MAX} people
-				</p>
-				{pace && <p className="mt-1 mb-0 text-foreground text-sm">{pace}</p>}
+			<motion.section
+				initial={{ opacity: 0, y: 12 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ duration: 0.4 }}
+				className="mt-3 rounded-2xl border border-current/10 bg-card p-4 text-card-foreground"
+			>
+				<div className="flex gap-4">
+					<div className="relative aspect-[2/3] w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+						<CoverImage src={cover} alt={detail.title} />
+					</div>
+					<div className="flex min-w-0 flex-1 flex-col">
+						<h2 className="m-0 line-clamp-2 font-semibold text-foreground text-lg leading-snug">
+							{detail.title}
+						</h2>
+						{detail.author && (
+							<p className="m-0 mt-0.5 truncate text-muted-foreground text-sm">{detail.author}</p>
+						)}
+						<p className="mt-2 mb-0 text-muted-foreground text-xs">
+							{detail.status === "finished"
+								? "Everyone reached the end."
+								: detail.host
+									? `Hosted by ${detail.host.name}`
+									: "In progress"}
+							{" · "}
+							{detail.memberCount === 1 ? "1 reader" : `${detail.memberCount} readers`}
+						</p>
+						{pace && <p className="mt-1 mb-0 text-foreground text-xs">{pace}</p>}
+					</div>
+				</div>
 				{detail.originUnavailable && (
-					<p className="mt-2 mb-0 rounded-md bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
+					<p className="mt-3 mb-0 rounded-md bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
 						This book is no longer available. Progress is no longer shown.
 					</p>
 				)}
 				{detail.approximate && (
-					<p className="mt-2 mb-0 text-muted-foreground text-xs">
+					<p className="mt-3 mb-0 text-muted-foreground text-xs">
 						Some copies were counted differently, so positions are approximate.
 					</p>
 				)}
-				{myBook && !detail.originUnavailable && (
-					<Button asChild size="sm" className="mt-3">
-						<Link to="/tabs/reader/$id" params={{ id: myBook.id }}>
-							<BookOpen className="size-4" />
-							Open reader
-						</Link>
-					</Button>
-				)}
-			</section>
-
-			{!detail.originUnavailable && (
-				<Section title="Participants">
-					{participants.map((p) => (
-						<ParticipantRow
-							key={p.identity.userId}
-							participant={p}
-							detail={detail}
-							chapterTitle={chapterOf(p)}
-							myPosition={myPosition}
-							onMenu={() => participantMenu(p)}
-							isOffline={isOffline}
-						/>
-					))}
-				</Section>
-			)}
-
-			{detail.isHost && isActive && (
-				<Section
-					title="Invites"
-					action={
-						<button
-							type="button"
-							disabled={isOffline || seatsLeft <= 0}
-							onClick={() => {
-								setInviteError(null);
-								setIsInviteOpen(true);
-							}}
-							className="flex items-center gap-1 text-primary text-xs disabled:opacity-50"
-						>
-							<UserPlus className="size-3.5" />
-							Invite friends
-						</button>
-					}
-				>
-					{detail.invites.length === 0 ? (
-						<EmptyRow>{seatsLeft > 0 ? "No open invites." : "The buddy read is full."}</EmptyRow>
-					) : (
-						detail.invites.map((inv) => (
-							<div key={inv.inviteId} className="flex items-center gap-3 px-4 py-3">
-								<SocialAvatar name={inv.invitee.name} avatarUrl={inv.invitee.avatarUrl} size="md" />
-								<div className="min-w-0 flex-1">
-									<div className="truncate font-medium text-foreground text-sm">
-										{inv.invitee.name}
-									</div>
-									<div className="truncate text-muted-foreground text-xs">
-										@{inv.invitee.handle} · invited {formatRelative(inv.createdAt)}
-									</div>
-								</div>
-								<Button
-									size="sm"
-									variant="ghost"
-									disabled={isOffline || cancelInvite.isPending}
-									onClick={() => cancelInvite.mutate(inv.inviteId, { onError })}
-								>
-									Cancel
-								</Button>
-							</div>
-						))
-					)}
-				</Section>
-			)}
-
-			{detail.isHost && isActive && (
-				<Section title="Target date">
-					<div className="flex items-center gap-3 px-4 py-3">
-						<CalendarClock className="size-5 text-muted-foreground" />
-						<input
-							type="date"
-							aria-label="Finish by"
-							className="min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-foreground text-sm"
-							value={toDateInput(detail.targetDate)}
-							min={toDateInput(Date.now())}
-							disabled={isOffline || setTarget.isPending}
-							onChange={(e) =>
-								setTarget.mutate(
-									{ buddyReadId: id, targetDate: fromDateInput(e.target.value) },
-									{ onError },
-								)
-							}
-						/>
-						{detail.targetDate !== null && (
+				{!detail.originUnavailable && (
+					<div className="mt-4 flex flex-wrap gap-2">
+						{myBook && (
+							<Button asChild size="sm">
+								<Link to="/tabs/reader/$id" params={{ id: myBook.id }}>
+									<BookOpen className="size-4" />
+									Continue reading
+								</Link>
+							</Button>
+						)}
+						{detail.isHost && isActive && (
 							<Button
 								size="sm"
-								variant="ghost"
-								disabled={isOffline || setTarget.isPending}
-								onClick={() => setTarget.mutate({ buddyReadId: id, targetDate: null }, { onError })}
+								variant="outline"
+								disabled={isOffline || seatsLeft <= 0}
+								onClick={() => {
+									setInviteError(null);
+									setIsInviteOpen(true);
+								}}
 							>
-								Clear
+								<UserPlus className="size-4" />
+								{seatsLeft > 0 ? "Invite" : "Full"}
 							</Button>
 						)}
 					</div>
-				</Section>
-			)}
+				)}
+			</motion.section>
 
-			<Button
-				variant="outline"
-				className="mt-6 w-full"
-				disabled={isOffline || leave.isPending}
-				onClick={() =>
-					setConfirm({
-						title: "Leave this buddy read?",
-						description: detail.isHost
-							? "The book stays in your library. Someone else becomes the host, and the others stop seeing your progress."
-							: "The book stays in your library. The others stop seeing your progress.",
-						confirmLabel: "Leave",
-						run: () =>
-							leave.mutate(id, {
-								onSuccess: () => router.navigate({ to: "/tabs/social/buddy-reads" }),
-								onError,
-							}),
-					})
-				}
+			<Tabs
+				value={detail.originUnavailable ? "overview" : tab}
+				onValueChange={(next) => showTab(next as BuddyReadTab)}
+				className="mt-4"
 			>
-				<LogOut className="size-4" />
-				Leave buddy read
-			</Button>
+				<TabsList className="w-full">
+					<TabsTrigger value="overview" className="flex-1">
+						Overview
+					</TabsTrigger>
+					<TabsTrigger value="discussion" className="flex-1" disabled={detail.originUnavailable}>
+						Discussion
+					</TabsTrigger>
+				</TabsList>
+				<TabsContent value="discussion">
+					{!detail.originUnavailable && <DiscussionPanel id={id} />}
+				</TabsContent>
+				<TabsContent value="overview">
+					{!detail.originUnavailable && (
+						<SocialSection title="Readers">
+							<ListCard>
+								{participants.map((p) => (
+									<ParticipantRow
+										key={p.identity.userId}
+										participant={p}
+										detail={detail}
+										chapterTitle={chapterOf(p)}
+										myPosition={myPosition}
+										onMenu={() => participantMenu(p)}
+										isOffline={isOffline}
+									/>
+								))}
+							</ListCard>
+						</SocialSection>
+					)}
+
+					{detail.isHost && isActive && detail.invites.length > 0 && (
+						<SocialSection title="Invited">
+							<ListCard>
+								{detail.invites.map((inv) => (
+									<div key={inv.inviteId} className="flex items-center gap-3 px-4 py-3">
+										<SocialAvatar
+											name={inv.invitee.name}
+											avatarUrl={inv.invitee.avatarUrl}
+											size="md"
+										/>
+										<div className="min-w-0 flex-1">
+											<div className="truncate font-medium text-foreground text-sm">
+												{inv.invitee.name}
+											</div>
+											<div className="truncate text-muted-foreground text-xs">
+												@{inv.invitee.handle} · invited {formatRelative(inv.createdAt)}
+											</div>
+										</div>
+										<Button
+											size="sm"
+											variant="ghost"
+											disabled={isOffline || cancelInvite.isPending}
+											onClick={() => cancelInvite.mutate(inv.inviteId, { onError })}
+										>
+											Cancel
+										</Button>
+									</div>
+								))}
+							</ListCard>
+						</SocialSection>
+					)}
+
+					{detail.isHost && isActive && (
+						<SocialSection title="Target date">
+							<ListCard>
+								<div className="flex items-center gap-3 px-4 py-3">
+									<CalendarClock className="size-5 text-muted-foreground" />
+									<input
+										type="date"
+										aria-label="Finish by"
+										className="min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-foreground text-sm"
+										value={toDateInput(detail.targetDate)}
+										min={toDateInput(Date.now())}
+										disabled={isOffline || setTarget.isPending}
+										onChange={(e) =>
+											setTarget.mutate(
+												{ buddyReadId: id, targetDate: fromDateInput(e.target.value) },
+												{ onError },
+											)
+										}
+									/>
+									{detail.targetDate !== null && (
+										<Button
+											size="sm"
+											variant="ghost"
+											disabled={isOffline || setTarget.isPending}
+											onClick={() =>
+												setTarget.mutate({ buddyReadId: id, targetDate: null }, { onError })
+											}
+										>
+											Clear
+										</Button>
+									)}
+								</div>
+							</ListCard>
+						</SocialSection>
+					)}
+
+					<Button
+						variant="outline"
+						className="mt-6 w-full"
+						disabled={isOffline || leave.isPending}
+						onClick={() =>
+							setConfirm({
+								title: "Leave this buddy read?",
+								description: detail.isHost
+									? "The book stays in your library. Someone else becomes the host, and the others stop seeing your progress."
+									: "The book stays in your library. The others stop seeing your progress.",
+								confirmLabel: "Leave",
+								run: () =>
+									leave.mutate(id, {
+										onSuccess: () => router.navigate({ to: "/tabs/social/buddy-reads" }),
+										onError,
+									}),
+							})
+						}
+					>
+						<LogOut className="size-4" />
+						Leave buddy read
+					</Button>
+				</TabsContent>
+			</Tabs>
 
 			<FriendPickerSheet
 				isOpen={isInviteOpen}
@@ -495,13 +563,15 @@ function BuddyReadContent({ id }: { id: string }) {
 	);
 }
 
-export default function BuddyReadPage({ id }: { id: string }) {
+export type BuddyReadTab = "overview" | "discussion";
+
+export default function BuddyReadPage({ id, tab }: { id: string; tab: BuddyReadTab }) {
 	return (
 		<div className="bg-background">
-			<PageHeader title="Buddy read" icon={Users} />
+			<PageHeader title="Buddy read" icon={Users} backTo="/tabs/social/buddy-reads" />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				<SocialGate returnTo={`/tabs/social/buddy-read/${id}`}>
-					<BuddyReadContent id={id} />
+					<BuddyReadContent id={id} tab={tab} />
 				</SocialGate>
 			</div>
 		</div>

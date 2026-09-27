@@ -3,18 +3,17 @@
  * local-day and DST arithmetic can be tested directly under an arbitrary
  * timezone; the query functions in `stats.ts` only fetch rows and hand them here.
  */
-import { isPlausibleRate } from "@lesefluss/core";
+import {
+	isPlausibleRate,
+	MIN_STREAK_MINUTES,
+	type StreakResult,
+	streakFromDays,
+} from "@lesefluss/core";
 import { localDateKey, previousLocalDayStart, startOfLocalDay } from "../../utils/date-utils";
 
 const MS_PER_DAY = 86_400_000;
 
-/** A local day counts toward a streak once its sessions sum to this much. */
-export const MIN_STREAK_MINUTES = 1;
-
-export interface StreakResult {
-	current: number;
-	longest: number;
-}
+export { MIN_STREAK_MINUTES, type StreakResult };
 
 export interface SessionTiming {
 	startedAt: number;
@@ -56,42 +55,8 @@ export function sumDurationByLocalDay(rows: SessionTiming[]): Map<string, number
 
 export function summariseStreak(rows: SessionTiming[], now: number): StreakResult {
 	const minutesByDay = new Map<string, number>();
-	for (const [key, ms] of sumDurationByLocalDay(rows)) {
-		minutesByDay.set(key, ms / 60_000);
-	}
-	// Threshold applies to the day's total, not to each sitting: several short
-	// sittings are still a day's reading.
-	for (const [key, minutes] of minutesByDay) {
-		if (minutes < MIN_STREAK_MINUTES) minutesByDay.delete(key);
-	}
-
-	let current = 0;
-	let cursor = startOfLocalDay(now);
-	if (!minutesByDay.has(localDateKey(cursor))) cursor = previousLocalDayStart(cursor);
-	while (minutesByDay.has(localDateKey(cursor))) {
-		current++;
-		cursor = previousLocalDayStart(cursor);
-	}
-
-	// Split manually: new Date("YYYY-MM-DD") parses as UTC midnight, landing on
-	// the previous local day west of Greenwich.
-	const dayStartsDesc = [...minutesByDay.keys()]
-		.sort()
-		.reverse()
-		.map((key) => {
-			const [y, m, d] = key.split("-").map(Number);
-			return new Date(y, m - 1, d).getTime();
-		});
-	let longest = 0;
-	let run = 0;
-	let expected: number | null = null;
-	for (const dayStart of dayStartsDesc) {
-		run = expected !== null && dayStart === expected ? run + 1 : 1;
-		if (run > longest) longest = run;
-		expected = previousLocalDayStart(dayStart);
-	}
-
-	return { current, longest: Math.max(longest, current) };
+	for (const [key, ms] of sumDurationByLocalDay(rows)) minutesByDay.set(key, ms / 60_000);
+	return streakFromDays(minutesByDay, localDateKey(now));
 }
 
 export interface SessionSpan {

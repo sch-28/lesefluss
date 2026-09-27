@@ -2,12 +2,16 @@ import { eq } from "drizzle-orm";
 import { db, type Tx } from "~/db";
 import { user } from "~/db/auth-schema";
 import {
+	buddyReadComment,
+	buddyReadReaction,
+	buddyReadSharedHighlight,
 	type NoticeMailState,
 	type SocialNotice,
 	socialAvatar,
 	socialNotice,
 	socialProfile,
 } from "~/db/schema";
+import { removeComment } from "~/lib/social/buddy-read-discussion";
 import { forceResetHandleWithin } from "~/lib/social/handle";
 import { createNotification } from "~/lib/social/inbox";
 import { type BanDeps, betterAuthBan } from "./ban";
@@ -141,6 +145,34 @@ async function applyAction(
 						? `We removed the book "${title}" from your library and from the libraries of everyone you shared it with. Devices delete it on the next sync.`
 						: `We removed the book "${title}" from your library. Your devices delete it on the next sync.`,
 				duration: `${permanent}. It cannot be uploaded or shared again.`,
+				facts,
+				rule: RULE,
+			});
+		}
+		case "remove_comment": {
+			const [comment] = await tx
+				.select({ id: buddyReadComment.id })
+				.from(buddyReadComment)
+				.where(eq(buddyReadComment.id, notice.targetRef));
+			if (comment) await removeComment(tx, comment.id, now);
+			return statementText({
+				what: "We removed your comment from a buddy read.",
+				duration: permanent,
+				facts,
+				rule: RULE,
+			});
+		}
+		case "remove_highlight_share": {
+			await tx
+				.update(buddyReadSharedHighlight)
+				.set({ removedAt: now })
+				.where(eq(buddyReadSharedHighlight.id, notice.targetRef));
+			await tx
+				.delete(buddyReadReaction)
+				.where(eq(buddyReadReaction.sharedHighlightId, notice.targetRef));
+			return statementText({
+				what: "We removed a highlight you shared in a buddy read. The highlight itself stays in your library.",
+				duration: `${permanent}. It cannot be shared again.`,
 				facts,
 				rule: RULE,
 			});

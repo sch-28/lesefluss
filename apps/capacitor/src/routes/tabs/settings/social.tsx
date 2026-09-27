@@ -13,12 +13,12 @@ import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
 import { RadioGroup, RadioGroupItem } from "@lesefluss/ui/radio-group";
 import { IdentityCard, SocialAvatar } from "@lesefluss/ui/social-avatar";
-import { Switch } from "@lesefluss/ui/switch";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CloudOff, Loader2, Users } from "lucide-react";
 import { useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Section } from "@/components/app-shell/section";
+import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { HandleClaimStep } from "@/components/social/handle-claim-step";
 import { toast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
@@ -33,28 +33,6 @@ import {
 export const Route = createFileRoute("/tabs/settings/social")({
 	component: SocialSettings,
 });
-
-function ToggleRow({
-	title,
-	subtitle,
-	checked,
-	onCheckedChange,
-}: {
-	title: string;
-	subtitle: string;
-	checked: boolean;
-	onCheckedChange: (v: boolean) => void;
-}) {
-	return (
-		<div className="flex items-center justify-between gap-3 px-4 py-3">
-			<div className="min-w-0">
-				<div className="font-medium text-foreground text-sm">{title}</div>
-				<div className="text-muted-foreground text-xs">{subtitle}</div>
-			</div>
-			<Switch checked={checked} onCheckedChange={onCheckedChange} />
-		</div>
-	);
-}
 
 function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 	const update = useUpdateSocialProfile();
@@ -228,7 +206,7 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 						)}
 					</div>
 				</div>
-				<p className="px-4 pb-3 text-muted-foreground text-xs">
+				<p className="px-4 py-3 text-muted-foreground text-xs">
 					JPEG, PNG or WebP up to 5 MB. Pictures are resized and stripped of metadata.
 				</p>
 			</Section>

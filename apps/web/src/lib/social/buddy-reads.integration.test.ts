@@ -341,6 +341,9 @@ describe.skipIf(!hasDb)("buddy reads (integration)", () => {
 		expect(await listBuddyReads(sam)).toEqual([]);
 		const [summary] = await listBuddyReads(bob);
 		expect(summary).toMatchObject({ id: r1, memberCount: 4, host: { userId: alice } });
+		expect(summary?.members).toHaveLength(4);
+		expect(summary?.members.filter((m) => m.isSelf).map((m) => m.identity.userId)).toEqual([bob]);
+		expect(JSON.stringify(summary?.members)).not.toContain("@example.test");
 	});
 
 	test("the host sets and clears a target date", async () => {

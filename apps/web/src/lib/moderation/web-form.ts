@@ -29,4 +29,12 @@ export const NOTICE_TARGET_LABELS: Record<NoticeTargetType, { label: string; hin
 		label: "A shared book",
 		hint: "The sender's handle and the book title, for example @booklover, Moby-Dick",
 	},
+	buddy_read_comment: {
+		label: "A comment in a buddy read",
+		hint: "The author's handle and the book title; use the report button in the app for the exact comment",
+	},
+	buddy_read_highlight: {
+		label: "A highlight shared in a buddy read",
+		hint: "The author's handle and the book title; use the report button in the app for the exact highlight",
+	},
 };

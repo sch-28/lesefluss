@@ -14,7 +14,7 @@ import { type DbExecutor, db } from "~/db";
 import { socialFriendship, socialProfile, syncBooks, syncSeries } from "~/db/schema";
 import { type CoverRef, signCoverToken } from "./cover-token";
 import { SocialError } from "./errors";
-import { profileStatsFor } from "./profile-stats";
+import { dayOf, profileStatsFor } from "./profile-stats";
 import {
 	friendshipExists,
 	identityOf,
@@ -36,16 +36,6 @@ export function coverFor(
 	if (catalogId) return { kind: "catalog", catalogId };
 	if (hasCover) return { kind: "url", url: coverUrl(ref, viewerId) };
 	return null;
-}
-
-function dayOf(date: Date | null, timeZone: string | undefined): string | null {
-	if (!date) return null;
-	return new Intl.DateTimeFormat("en-CA", {
-		timeZone: timeZone ?? "UTC",
-		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
-	}).format(date);
 }
 
 type SeriesRollup = {

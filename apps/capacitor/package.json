@@ -46,6 +46,7 @@
 		"@capacitor/clipboard": "^8.0.1",
 		"@capacitor/core": "^8.5.0",
 		"@capacitor/filesystem": "^8.1.2",
+		"@capacitor/haptics": "^8.0.2",
 		"@capacitor/keyboard": "8.0.3",
 		"@capacitor/network": "^8.0.1",
 		"@capacitor/preferences": "8.0.1",

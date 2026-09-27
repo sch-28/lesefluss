@@ -10,12 +10,12 @@ test("annotations sheet lists highlights ordered by ascending startWord", async 
 	// insert-order ≠ word-order; the sheet must still sort by startWord.
 	await reader.selectWords(page, "sixth", "completely.");
 	await reader.applyHighlight(page, "yellow");
-	await reader.cancelSelection(page);
+	await reader.dismissSelection(page);
 
 	// Now an earlier highlight on the opening paragraph.
 	await reader.selectWords(page, "opening", "paragraph");
 	await reader.applyHighlight(page, "yellow");
-	await reader.cancelSelection(page);
+	await reader.dismissSelection(page);
 
 	await page.getByRole("button", { name: "Annotations" }).click();
 	await page.getByRole("radio", { name: "Highlights" }).click();

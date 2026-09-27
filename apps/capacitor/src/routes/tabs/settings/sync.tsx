@@ -210,7 +210,7 @@ function SyncSettings() {
 						</Section>
 
 						<Section title="What syncs">
-							<p className="px-4 pt-3 text-muted-foreground text-xs">
+							<p className="px-4 py-3 text-muted-foreground text-xs">
 								Toggle off to stop this device from syncing that data. Existing cloud data stays
 								put. To wipe data, use the Danger zone below.
 							</p>
@@ -326,8 +326,8 @@ function SyncSettings() {
 							<Cloud className="size-5 shrink-0 text-muted-foreground" />
 							<p className="text-muted-foreground text-sm">
 								{IS_WEB_BUILD
-									? "Sign in on the main website to sync your library, reading progress, and highlights."
-									: "Sign in on the website to sync your library, reading progress, and highlights across devices."}
+									? "Sign in on the main website to sync your library, reading progress, and highlights, and to read books together with friends."
+									: "Sign in on the website to sync your library, reading progress, and highlights across devices, and to read books together with friends."}
 							</p>
 						</div>
 						{syncError && <div className="px-4 py-2 text-destructive text-sm">{syncError}</div>}

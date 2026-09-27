@@ -275,6 +275,9 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 			wordsRead: 2770,
 			readingTimeMs: 627_000,
 			readingSpeedWpm: 300,
+			// Read yesterday only: the streak is still current until today ends.
+			currentStreakDays: 1,
+			longestStreakDays: 1,
 		});
 
 		const json = JSON.stringify(view);
@@ -345,7 +348,12 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 		await updateOwnProfile(owner, { visibility: "friends", showStats: true, showFinished: true });
 		await db.delete(syncReadingSessions).where(eq(syncReadingSessions.userId, owner));
 		const view = await resolveProfileView(friend, owner, { now });
-		expect(view.sections.stats).toMatchObject({ readingTimeMs: null, readingSpeedWpm: null });
+		expect(view.sections.stats).toMatchObject({
+			readingTimeMs: null,
+			readingSpeedWpm: null,
+			currentStreakDays: null,
+			longestStreakDays: null,
+		});
 	});
 
 	test("the year boundary follows the owner's time zone", async () => {

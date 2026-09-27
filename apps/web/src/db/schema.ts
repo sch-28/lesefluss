@@ -6,6 +6,7 @@ import {
 } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import {
+	type AnyPgColumn,
 	boolean,
 	check,
 	customType,
@@ -666,6 +667,10 @@ export const buddyReadMember = pgTable(
 		 */
 		finishArmed: boolean("finish_armed").notNull().default(false),
 		finishedAt: timestamp("finished_at"),
+		/** Only ever raised: what the member has unlocked in the discussion stays unlocked. */
+		furthestWord: integer("furthest_word").notNull().default(0),
+		shareAllHighlights: boolean("share_all_highlights").notNull().default(false),
+		showEverything: boolean("show_everything").notNull().default(false),
 	},
 	(t) => [
 		primaryKey({ columns: [t.buddyReadId, t.userId] }),
@@ -699,3 +704,95 @@ export const buddyReadInvite = pgTable(
 	],
 );
 export type BuddyReadInvite = typeof buddyReadInvite.$inferSelect;
+
+export const DISCUSSION_ANCHOR_KINDS = ["range", "chapter"] as const;
+
+/** A comment in a buddy read. Replies copy their parent's anchor, so gating never needs the parent. */
+export const buddyReadComment = pgTable(
+	"buddy_read_comment",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		buddyReadId: uuid("buddy_read_id")
+			.notNull()
+			.references(() => buddyRead.id, { onDelete: "cascade" }),
+		kind: text("kind").notNull().default("comment"),
+		authorId: text("author_id").references(() => user.id, { onDelete: "set null" }),
+		parentId: uuid("parent_id").references((): AnyPgColumn => buddyReadComment.id, {
+			onDelete: "cascade",
+		}),
+		anchorKind: text("anchor_kind", { enum: DISCUSSION_ANCHOR_KINDS }).notNull(),
+		startWord: integer("start_word").notNull(),
+		startCharInWord: integer("start_char_in_word").notNull().default(0),
+		endWord: integer("end_word").notNull(),
+		endCharInWord: integer("end_char_in_word").notNull().default(0),
+		/** Null once removed by its author (with replies left) or by a takedown. */
+		body: text("body"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		editedAt: timestamp("edited_at"),
+		deletedAt: timestamp("deleted_at"),
+	},
+	(t) => [
+		index("buddy_read_comment_read_idx").on(t.buddyReadId, t.startWord),
+		index("buddy_read_comment_author_idx").on(t.authorId),
+		index("buddy_read_comment_parent_idx").on(t.parentId),
+	],
+);
+export type BuddyReadComment = typeof buddyReadComment.$inferSelect;
+
+/**
+ * A highlight shared into a buddy read: a reference to the author's own
+ * `sync_highlights` row, read through at display time so highlight sync keeps
+ * it current. `removed_at` marks a takedown, which also bars re-sharing.
+ */
+export const buddyReadSharedHighlight = pgTable(
+	"buddy_read_shared_highlight",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		buddyReadId: uuid("buddy_read_id")
+			.notNull()
+			.references(() => buddyRead.id, { onDelete: "cascade" }),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		highlightId: text("highlight_id").notNull(),
+		/** False for a reference created only because share-all was on. */
+		sharedIndividually: boolean("shared_individually").notNull().default(true),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		removedAt: timestamp("removed_at"),
+	},
+	(t) => [
+		uniqueIndex("buddy_read_shared_highlight_idx").on(t.buddyReadId, t.userId, t.highlightId),
+	],
+);
+export type BuddyReadSharedHighlight = typeof buddyReadSharedHighlight.$inferSelect;
+
+export const buddyReadReaction = pgTable(
+	"buddy_read_reaction",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		buddyReadId: uuid("buddy_read_id")
+			.notNull()
+			.references(() => buddyRead.id, { onDelete: "cascade" }),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		commentId: uuid("comment_id").references(() => buddyReadComment.id, { onDelete: "cascade" }),
+		sharedHighlightId: uuid("shared_highlight_id").references(() => buddyReadSharedHighlight.id, {
+			onDelete: "cascade",
+		}),
+		emoji: text("emoji").notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(t) => [
+		uniqueIndex("buddy_read_reaction_comment_idx")
+			.on(t.commentId, t.userId, t.emoji)
+			.where(sql`${t.commentId} IS NOT NULL`),
+		uniqueIndex("buddy_read_reaction_highlight_idx")
+			.on(t.sharedHighlightId, t.userId, t.emoji)
+			.where(sql`${t.sharedHighlightId} IS NOT NULL`),
+		check(
+			"buddy_read_reaction_one_target",
+			sql`(${t.commentId} IS NULL) <> (${t.sharedHighlightId} IS NULL)`,
+		),
+	],
+);

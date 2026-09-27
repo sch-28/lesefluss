@@ -1,36 +1,18 @@
-import type { BuddyReadSummary } from "@lesefluss/core";
-import { Link } from "@tanstack/react-router";
-import { BookOpen, ChevronRight, Users } from "lucide-react";
+import { Button } from "@lesefluss/ui/button";
+import { Plus, Users } from "lucide-react";
+import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
-import { EmptyRow, Section } from "@/components/app-shell/section";
+import { BuddyReadCard } from "@/components/social/buddy-read-card";
+import { SocialSection } from "@/components/social/social-ui";
+import { StartBuddyReadPicker } from "@/components/social/start-buddy-read-picker";
 import { useBuddyReads } from "@/services/social/buddy-reads";
 import { useIsOnline } from "@/services/social/cache";
 import { OfflineNotice, SocialGate, Spinner, StaleNotice } from "./social-gate";
 
-function BuddyReadRow({ read }: { read: BuddyReadSummary }) {
-	const people = `${read.memberCount} ${read.memberCount === 1 ? "person" : "people"}`;
-	const host = read.host ? `hosted by ${read.host.name}` : null;
-	return (
-		<Link
-			to="/tabs/social/buddy-read/$id"
-			params={{ id: read.id }}
-			className="flex items-center gap-3 px-4 py-3 text-foreground no-underline hover:bg-muted/60"
-		>
-			<BookOpen className="size-5 shrink-0 text-muted-foreground" />
-			<div className="min-w-0 flex-1">
-				<div className="truncate font-medium text-foreground text-sm">{read.title}</div>
-				<div className="truncate text-muted-foreground text-xs">
-					{[read.author, people, host].filter(Boolean).join(" · ")}
-				</div>
-			</div>
-			<ChevronRight className="size-4 text-muted-foreground" />
-		</Link>
-	);
-}
-
 function BuddyReadsContent() {
 	const isOnline = useIsOnline();
 	const reads = useBuddyReads();
+	const [isPickerOpen, setIsPickerOpen] = useState(false);
 
 	if (reads.isPending) return <Spinner />;
 	if (reads.isError && !reads.data) {
@@ -51,25 +33,51 @@ function BuddyReadsContent() {
 				isError={reads.isError}
 				onRetry={() => void reads.refetch()}
 			/>
-			<Section title="Reading together">
-				{active.length === 0 && finished.length > 0 ? (
-					<EmptyRow>Nothing in progress right now.</EmptyRow>
-				) : active.length === 0 ? (
-					<EmptyRow>
-						No buddy reads yet. Open a book in your library and choose "Start buddy read" to read it
-						with friends and see where everyone is.
-					</EmptyRow>
+			<SocialSection
+				title="In progress"
+				action={
+					active.length > 0 ? (
+						<button
+							type="button"
+							onClick={() => setIsPickerOpen(true)}
+							className="flex items-center gap-1 text-primary text-xs"
+						>
+							<Plus className="size-3.5" />
+							Start one
+						</button>
+					) : undefined
+				}
+			>
+				{active.length === 0 ? (
+					<div className="rounded-xl border border-current/10 bg-card px-4 py-6 text-center">
+						<Users className="mx-auto mb-2 size-6 text-muted-foreground" />
+						<p className="m-0 text-muted-foreground text-sm">
+							{finished.length > 0
+								? "Nothing in progress right now."
+								: "No buddy reads yet. Read a book together with friends and see where everyone is."}
+						</p>
+						<Button size="sm" className="mt-3" onClick={() => setIsPickerOpen(true)}>
+							Start a buddy read
+						</Button>
+					</div>
 				) : (
-					active.map((read) => <BuddyReadRow key={read.id} read={read} />)
+					<div className="flex flex-col gap-2.5">
+						{active.map((read, i) => (
+							<BuddyReadCard key={read.id} read={read} index={i} />
+						))}
+					</div>
 				)}
-			</Section>
+			</SocialSection>
 			{finished.length > 0 && (
-				<Section title="Finished">
-					{finished.map((read) => (
-						<BuddyReadRow key={read.id} read={read} />
-					))}
-				</Section>
+				<SocialSection title="Finished">
+					<div className="flex flex-col gap-2.5">
+						{finished.map((read, i) => (
+							<BuddyReadCard key={read.id} read={read} index={i} />
+						))}
+					</div>
+				</SocialSection>
 			)}
+			<StartBuddyReadPicker isOpen={isPickerOpen} onClose={() => setIsPickerOpen(false)} />
 		</>
 	);
 }
@@ -77,7 +85,7 @@ function BuddyReadsContent() {
 export default function BuddyReadsPage() {
 	return (
 		<div className="bg-background">
-			<PageHeader title="Buddy reads" icon={Users} />
+			<PageHeader title="Buddy reads" icon={Users} backTo="/tabs/social" />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				<SocialGate returnTo="/tabs/social/buddy-reads">
 					<BuddyReadsContent />

@@ -6,6 +6,7 @@ export * from "./engine";
 export * from "./reading-rates";
 export * from "./settings";
 export * from "./social";
+export * from "./streak";
 export * from "./sync";
 export * from "./utf8";
 export * from "./word-index";

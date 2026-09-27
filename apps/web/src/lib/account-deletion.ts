@@ -11,6 +11,7 @@ import {
 	syncSeries,
 	syncSettings,
 } from "~/db/schema";
+import { purgeDiscussionOf } from "./social/buddy-read-discussion";
 import { endBuddyReadsOf } from "./social/buddy-reads";
 import { releaseHandlesForDeletedUser } from "./social/handle";
 
@@ -34,6 +35,7 @@ export async function purgeCloudData(tx: Tx, userId: string): Promise<void> {
 // user_id, which the FK nulls once the row is gone. Social tables cascade.
 export async function purgeUserSyncData(tx: Tx, userId: string): Promise<void> {
 	await releaseHandlesForDeletedUser(tx, userId);
+	await purgeDiscussionOf(tx, userId, new Date());
 	await purgeCloudData(tx, userId);
 	await tx.delete(syncSeries).where(eq(syncSeries.userId, userId));
 	await tx.delete(syncReadingSessions).where(eq(syncReadingSessions.userId, userId));

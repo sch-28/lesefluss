@@ -27,7 +27,7 @@ export type ReportTarget = {
 	userId: string;
 	/** The person's display name, for the title. */
 	name: string;
-	/** For `shared_book`: the id of the share that was received. */
+	/** Per type: the share id for `shared_book`, the comment or shared-highlight id for buddy-read items. */
 	subjectId?: string;
 	/** Hide "Also block" when it makes no sense (already blocked). */
 	canBlock?: boolean;

@@ -180,7 +180,7 @@ function InviteLinkContent() {
 export default function InviteLinkPage() {
 	return (
 		<div className="bg-background">
-			<PageHeader title="Add friend" icon={Link2} />
+			<PageHeader title="Add friend" icon={Link2} backTo="/tabs/social" />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				<SocialGate returnTo="/tabs/social/invite-link">
 					<InviteLinkContent />

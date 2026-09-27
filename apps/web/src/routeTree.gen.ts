@@ -68,12 +68,22 @@ import { Route as ApiSocialFriendRemoveRouteImport } from './routes/api/social/f
 import { Route as ApiSocialBuddyReadsRouteImport } from './routes/api/social/buddy-reads'
 import { Route as ApiSocialBuddyReadTargetDateRouteImport } from './routes/api/social/buddy-read-target-date'
 import { Route as ApiSocialBuddyReadRemoveMemberRouteImport } from './routes/api/social/buddy-read-remove-member'
+import { Route as ApiSocialBuddyReadReactionRemoveRouteImport } from './routes/api/social/buddy-read-reaction-remove'
+import { Route as ApiSocialBuddyReadReactionRouteImport } from './routes/api/social/buddy-read-reaction'
 import { Route as ApiSocialBuddyReadProgressRouteImport } from './routes/api/social/buddy-read-progress'
 import { Route as ApiSocialBuddyReadLeaveRouteImport } from './routes/api/social/buddy-read-leave'
 import { Route as ApiSocialBuddyReadInviteRespondRouteImport } from './routes/api/social/buddy-read-invite-respond'
 import { Route as ApiSocialBuddyReadInviteCancelRouteImport } from './routes/api/social/buddy-read-invite-cancel'
 import { Route as ApiSocialBuddyReadInviteRouteImport } from './routes/api/social/buddy-read-invite'
+import { Route as ApiSocialBuddyReadHighlightUnshareRouteImport } from './routes/api/social/buddy-read-highlight-unshare'
+import { Route as ApiSocialBuddyReadHighlightShareRouteImport } from './routes/api/social/buddy-read-highlight-share'
+import { Route as ApiSocialBuddyReadDiscussionSettingsRouteImport } from './routes/api/social/buddy-read-discussion-settings'
+import { Route as ApiSocialBuddyReadDiscussionRouteImport } from './routes/api/social/buddy-read-discussion'
 import { Route as ApiSocialBuddyReadDetailRouteImport } from './routes/api/social/buddy-read-detail'
+import { Route as ApiSocialBuddyReadCommentReplyRouteImport } from './routes/api/social/buddy-read-comment-reply'
+import { Route as ApiSocialBuddyReadCommentEditRouteImport } from './routes/api/social/buddy-read-comment-edit'
+import { Route as ApiSocialBuddyReadCommentDeleteRouteImport } from './routes/api/social/buddy-read-comment-delete'
+import { Route as ApiSocialBuddyReadCommentRouteImport } from './routes/api/social/buddy-read-comment'
 import { Route as ApiSocialBuddyReadRouteImport } from './routes/api/social/buddy-read'
 import { Route as ApiSocialBlockRouteImport } from './routes/api/social/block'
 import { Route as ApiSocialAvatarSourceRouteImport } from './routes/api/social/avatar-source'
@@ -386,6 +396,18 @@ const ApiSocialBuddyReadRemoveMemberRoute =
     path: '/api/social/buddy-read-remove-member',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiSocialBuddyReadReactionRemoveRoute =
+  ApiSocialBuddyReadReactionRemoveRouteImport.update({
+    id: '/api/social/buddy-read-reaction-remove',
+    path: '/api/social/buddy-read-reaction-remove',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadReactionRoute =
+  ApiSocialBuddyReadReactionRouteImport.update({
+    id: '/api/social/buddy-read-reaction',
+    path: '/api/social/buddy-read-reaction',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiSocialBuddyReadProgressRoute =
   ApiSocialBuddyReadProgressRouteImport.update({
     id: '/api/social/buddy-read-progress',
@@ -415,10 +437,58 @@ const ApiSocialBuddyReadInviteRoute =
     path: '/api/social/buddy-read-invite',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiSocialBuddyReadHighlightUnshareRoute =
+  ApiSocialBuddyReadHighlightUnshareRouteImport.update({
+    id: '/api/social/buddy-read-highlight-unshare',
+    path: '/api/social/buddy-read-highlight-unshare',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadHighlightShareRoute =
+  ApiSocialBuddyReadHighlightShareRouteImport.update({
+    id: '/api/social/buddy-read-highlight-share',
+    path: '/api/social/buddy-read-highlight-share',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadDiscussionSettingsRoute =
+  ApiSocialBuddyReadDiscussionSettingsRouteImport.update({
+    id: '/api/social/buddy-read-discussion-settings',
+    path: '/api/social/buddy-read-discussion-settings',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadDiscussionRoute =
+  ApiSocialBuddyReadDiscussionRouteImport.update({
+    id: '/api/social/buddy-read-discussion',
+    path: '/api/social/buddy-read-discussion',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiSocialBuddyReadDetailRoute =
   ApiSocialBuddyReadDetailRouteImport.update({
     id: '/api/social/buddy-read-detail',
     path: '/api/social/buddy-read-detail',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadCommentReplyRoute =
+  ApiSocialBuddyReadCommentReplyRouteImport.update({
+    id: '/api/social/buddy-read-comment-reply',
+    path: '/api/social/buddy-read-comment-reply',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadCommentEditRoute =
+  ApiSocialBuddyReadCommentEditRouteImport.update({
+    id: '/api/social/buddy-read-comment-edit',
+    path: '/api/social/buddy-read-comment-edit',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadCommentDeleteRoute =
+  ApiSocialBuddyReadCommentDeleteRouteImport.update({
+    id: '/api/social/buddy-read-comment-delete',
+    path: '/api/social/buddy-read-comment-delete',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadCommentRoute =
+  ApiSocialBuddyReadCommentRouteImport.update({
+    id: '/api/social/buddy-read-comment',
+    path: '/api/social/buddy-read-comment',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiSocialBuddyReadRoute = ApiSocialBuddyReadRouteImport.update({
@@ -504,12 +574,22 @@ export interface FileRoutesByFullPath {
   '/api/social/avatar-source': typeof ApiSocialAvatarSourceRoute
   '/api/social/block': typeof ApiSocialBlockRoute
   '/api/social/buddy-read': typeof ApiSocialBuddyReadRoute
+  '/api/social/buddy-read-comment': typeof ApiSocialBuddyReadCommentRoute
+  '/api/social/buddy-read-comment-delete': typeof ApiSocialBuddyReadCommentDeleteRoute
+  '/api/social/buddy-read-comment-edit': typeof ApiSocialBuddyReadCommentEditRoute
+  '/api/social/buddy-read-comment-reply': typeof ApiSocialBuddyReadCommentReplyRoute
   '/api/social/buddy-read-detail': typeof ApiSocialBuddyReadDetailRoute
+  '/api/social/buddy-read-discussion': typeof ApiSocialBuddyReadDiscussionRoute
+  '/api/social/buddy-read-discussion-settings': typeof ApiSocialBuddyReadDiscussionSettingsRoute
+  '/api/social/buddy-read-highlight-share': typeof ApiSocialBuddyReadHighlightShareRoute
+  '/api/social/buddy-read-highlight-unshare': typeof ApiSocialBuddyReadHighlightUnshareRoute
   '/api/social/buddy-read-invite': typeof ApiSocialBuddyReadInviteRoute
   '/api/social/buddy-read-invite-cancel': typeof ApiSocialBuddyReadInviteCancelRoute
   '/api/social/buddy-read-invite-respond': typeof ApiSocialBuddyReadInviteRespondRoute
   '/api/social/buddy-read-leave': typeof ApiSocialBuddyReadLeaveRoute
   '/api/social/buddy-read-progress': typeof ApiSocialBuddyReadProgressRoute
+  '/api/social/buddy-read-reaction': typeof ApiSocialBuddyReadReactionRoute
+  '/api/social/buddy-read-reaction-remove': typeof ApiSocialBuddyReadReactionRemoveRoute
   '/api/social/buddy-read-remove-member': typeof ApiSocialBuddyReadRemoveMemberRoute
   '/api/social/buddy-read-target-date': typeof ApiSocialBuddyReadTargetDateRoute
   '/api/social/buddy-reads': typeof ApiSocialBuddyReadsRoute
@@ -579,12 +659,22 @@ export interface FileRoutesByTo {
   '/api/social/avatar-source': typeof ApiSocialAvatarSourceRoute
   '/api/social/block': typeof ApiSocialBlockRoute
   '/api/social/buddy-read': typeof ApiSocialBuddyReadRoute
+  '/api/social/buddy-read-comment': typeof ApiSocialBuddyReadCommentRoute
+  '/api/social/buddy-read-comment-delete': typeof ApiSocialBuddyReadCommentDeleteRoute
+  '/api/social/buddy-read-comment-edit': typeof ApiSocialBuddyReadCommentEditRoute
+  '/api/social/buddy-read-comment-reply': typeof ApiSocialBuddyReadCommentReplyRoute
   '/api/social/buddy-read-detail': typeof ApiSocialBuddyReadDetailRoute
+  '/api/social/buddy-read-discussion': typeof ApiSocialBuddyReadDiscussionRoute
+  '/api/social/buddy-read-discussion-settings': typeof ApiSocialBuddyReadDiscussionSettingsRoute
+  '/api/social/buddy-read-highlight-share': typeof ApiSocialBuddyReadHighlightShareRoute
+  '/api/social/buddy-read-highlight-unshare': typeof ApiSocialBuddyReadHighlightUnshareRoute
   '/api/social/buddy-read-invite': typeof ApiSocialBuddyReadInviteRoute
   '/api/social/buddy-read-invite-cancel': typeof ApiSocialBuddyReadInviteCancelRoute
   '/api/social/buddy-read-invite-respond': typeof ApiSocialBuddyReadInviteRespondRoute
   '/api/social/buddy-read-leave': typeof ApiSocialBuddyReadLeaveRoute
   '/api/social/buddy-read-progress': typeof ApiSocialBuddyReadProgressRoute
+  '/api/social/buddy-read-reaction': typeof ApiSocialBuddyReadReactionRoute
+  '/api/social/buddy-read-reaction-remove': typeof ApiSocialBuddyReadReactionRemoveRoute
   '/api/social/buddy-read-remove-member': typeof ApiSocialBuddyReadRemoveMemberRoute
   '/api/social/buddy-read-target-date': typeof ApiSocialBuddyReadTargetDateRoute
   '/api/social/buddy-reads': typeof ApiSocialBuddyReadsRoute
@@ -656,12 +746,22 @@ export interface FileRoutesById {
   '/api/social/avatar-source': typeof ApiSocialAvatarSourceRoute
   '/api/social/block': typeof ApiSocialBlockRoute
   '/api/social/buddy-read': typeof ApiSocialBuddyReadRoute
+  '/api/social/buddy-read-comment': typeof ApiSocialBuddyReadCommentRoute
+  '/api/social/buddy-read-comment-delete': typeof ApiSocialBuddyReadCommentDeleteRoute
+  '/api/social/buddy-read-comment-edit': typeof ApiSocialBuddyReadCommentEditRoute
+  '/api/social/buddy-read-comment-reply': typeof ApiSocialBuddyReadCommentReplyRoute
   '/api/social/buddy-read-detail': typeof ApiSocialBuddyReadDetailRoute
+  '/api/social/buddy-read-discussion': typeof ApiSocialBuddyReadDiscussionRoute
+  '/api/social/buddy-read-discussion-settings': typeof ApiSocialBuddyReadDiscussionSettingsRoute
+  '/api/social/buddy-read-highlight-share': typeof ApiSocialBuddyReadHighlightShareRoute
+  '/api/social/buddy-read-highlight-unshare': typeof ApiSocialBuddyReadHighlightUnshareRoute
   '/api/social/buddy-read-invite': typeof ApiSocialBuddyReadInviteRoute
   '/api/social/buddy-read-invite-cancel': typeof ApiSocialBuddyReadInviteCancelRoute
   '/api/social/buddy-read-invite-respond': typeof ApiSocialBuddyReadInviteRespondRoute
   '/api/social/buddy-read-leave': typeof ApiSocialBuddyReadLeaveRoute
   '/api/social/buddy-read-progress': typeof ApiSocialBuddyReadProgressRoute
+  '/api/social/buddy-read-reaction': typeof ApiSocialBuddyReadReactionRoute
+  '/api/social/buddy-read-reaction-remove': typeof ApiSocialBuddyReadReactionRemoveRoute
   '/api/social/buddy-read-remove-member': typeof ApiSocialBuddyReadRemoveMemberRoute
   '/api/social/buddy-read-target-date': typeof ApiSocialBuddyReadTargetDateRoute
   '/api/social/buddy-reads': typeof ApiSocialBuddyReadsRoute
@@ -733,12 +833,22 @@ export interface FileRouteTypes {
     | '/api/social/avatar-source'
     | '/api/social/block'
     | '/api/social/buddy-read'
+    | '/api/social/buddy-read-comment'
+    | '/api/social/buddy-read-comment-delete'
+    | '/api/social/buddy-read-comment-edit'
+    | '/api/social/buddy-read-comment-reply'
     | '/api/social/buddy-read-detail'
+    | '/api/social/buddy-read-discussion'
+    | '/api/social/buddy-read-discussion-settings'
+    | '/api/social/buddy-read-highlight-share'
+    | '/api/social/buddy-read-highlight-unshare'
     | '/api/social/buddy-read-invite'
     | '/api/social/buddy-read-invite-cancel'
     | '/api/social/buddy-read-invite-respond'
     | '/api/social/buddy-read-leave'
     | '/api/social/buddy-read-progress'
+    | '/api/social/buddy-read-reaction'
+    | '/api/social/buddy-read-reaction-remove'
     | '/api/social/buddy-read-remove-member'
     | '/api/social/buddy-read-target-date'
     | '/api/social/buddy-reads'
@@ -808,12 +918,22 @@ export interface FileRouteTypes {
     | '/api/social/avatar-source'
     | '/api/social/block'
     | '/api/social/buddy-read'
+    | '/api/social/buddy-read-comment'
+    | '/api/social/buddy-read-comment-delete'
+    | '/api/social/buddy-read-comment-edit'
+    | '/api/social/buddy-read-comment-reply'
     | '/api/social/buddy-read-detail'
+    | '/api/social/buddy-read-discussion'
+    | '/api/social/buddy-read-discussion-settings'
+    | '/api/social/buddy-read-highlight-share'
+    | '/api/social/buddy-read-highlight-unshare'
     | '/api/social/buddy-read-invite'
     | '/api/social/buddy-read-invite-cancel'
     | '/api/social/buddy-read-invite-respond'
     | '/api/social/buddy-read-leave'
     | '/api/social/buddy-read-progress'
+    | '/api/social/buddy-read-reaction'
+    | '/api/social/buddy-read-reaction-remove'
     | '/api/social/buddy-read-remove-member'
     | '/api/social/buddy-read-target-date'
     | '/api/social/buddy-reads'
@@ -884,12 +1004,22 @@ export interface FileRouteTypes {
     | '/api/social/avatar-source'
     | '/api/social/block'
     | '/api/social/buddy-read'
+    | '/api/social/buddy-read-comment'
+    | '/api/social/buddy-read-comment-delete'
+    | '/api/social/buddy-read-comment-edit'
+    | '/api/social/buddy-read-comment-reply'
     | '/api/social/buddy-read-detail'
+    | '/api/social/buddy-read-discussion'
+    | '/api/social/buddy-read-discussion-settings'
+    | '/api/social/buddy-read-highlight-share'
+    | '/api/social/buddy-read-highlight-unshare'
     | '/api/social/buddy-read-invite'
     | '/api/social/buddy-read-invite-cancel'
     | '/api/social/buddy-read-invite-respond'
     | '/api/social/buddy-read-leave'
     | '/api/social/buddy-read-progress'
+    | '/api/social/buddy-read-reaction'
+    | '/api/social/buddy-read-reaction-remove'
     | '/api/social/buddy-read-remove-member'
     | '/api/social/buddy-read-target-date'
     | '/api/social/buddy-reads'
@@ -960,12 +1090,22 @@ export interface RootRouteChildren {
   ApiSocialAvatarSourceRoute: typeof ApiSocialAvatarSourceRoute
   ApiSocialBlockRoute: typeof ApiSocialBlockRoute
   ApiSocialBuddyReadRoute: typeof ApiSocialBuddyReadRoute
+  ApiSocialBuddyReadCommentRoute: typeof ApiSocialBuddyReadCommentRoute
+  ApiSocialBuddyReadCommentDeleteRoute: typeof ApiSocialBuddyReadCommentDeleteRoute
+  ApiSocialBuddyReadCommentEditRoute: typeof ApiSocialBuddyReadCommentEditRoute
+  ApiSocialBuddyReadCommentReplyRoute: typeof ApiSocialBuddyReadCommentReplyRoute
   ApiSocialBuddyReadDetailRoute: typeof ApiSocialBuddyReadDetailRoute
+  ApiSocialBuddyReadDiscussionRoute: typeof ApiSocialBuddyReadDiscussionRoute
+  ApiSocialBuddyReadDiscussionSettingsRoute: typeof ApiSocialBuddyReadDiscussionSettingsRoute
+  ApiSocialBuddyReadHighlightShareRoute: typeof ApiSocialBuddyReadHighlightShareRoute
+  ApiSocialBuddyReadHighlightUnshareRoute: typeof ApiSocialBuddyReadHighlightUnshareRoute
   ApiSocialBuddyReadInviteRoute: typeof ApiSocialBuddyReadInviteRoute
   ApiSocialBuddyReadInviteCancelRoute: typeof ApiSocialBuddyReadInviteCancelRoute
   ApiSocialBuddyReadInviteRespondRoute: typeof ApiSocialBuddyReadInviteRespondRoute
   ApiSocialBuddyReadLeaveRoute: typeof ApiSocialBuddyReadLeaveRoute
   ApiSocialBuddyReadProgressRoute: typeof ApiSocialBuddyReadProgressRoute
+  ApiSocialBuddyReadReactionRoute: typeof ApiSocialBuddyReadReactionRoute
+  ApiSocialBuddyReadReactionRemoveRoute: typeof ApiSocialBuddyReadReactionRemoveRoute
   ApiSocialBuddyReadRemoveMemberRoute: typeof ApiSocialBuddyReadRemoveMemberRoute
   ApiSocialBuddyReadTargetDateRoute: typeof ApiSocialBuddyReadTargetDateRoute
   ApiSocialBuddyReadsRoute: typeof ApiSocialBuddyReadsRoute
@@ -1411,6 +1551,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSocialBuddyReadRemoveMemberRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/social/buddy-read-reaction-remove': {
+      id: '/api/social/buddy-read-reaction-remove'
+      path: '/api/social/buddy-read-reaction-remove'
+      fullPath: '/api/social/buddy-read-reaction-remove'
+      preLoaderRoute: typeof ApiSocialBuddyReadReactionRemoveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-reaction': {
+      id: '/api/social/buddy-read-reaction'
+      path: '/api/social/buddy-read-reaction'
+      fullPath: '/api/social/buddy-read-reaction'
+      preLoaderRoute: typeof ApiSocialBuddyReadReactionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/social/buddy-read-progress': {
       id: '/api/social/buddy-read-progress'
       path: '/api/social/buddy-read-progress'
@@ -1446,11 +1600,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSocialBuddyReadInviteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/social/buddy-read-highlight-unshare': {
+      id: '/api/social/buddy-read-highlight-unshare'
+      path: '/api/social/buddy-read-highlight-unshare'
+      fullPath: '/api/social/buddy-read-highlight-unshare'
+      preLoaderRoute: typeof ApiSocialBuddyReadHighlightUnshareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-highlight-share': {
+      id: '/api/social/buddy-read-highlight-share'
+      path: '/api/social/buddy-read-highlight-share'
+      fullPath: '/api/social/buddy-read-highlight-share'
+      preLoaderRoute: typeof ApiSocialBuddyReadHighlightShareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-discussion-settings': {
+      id: '/api/social/buddy-read-discussion-settings'
+      path: '/api/social/buddy-read-discussion-settings'
+      fullPath: '/api/social/buddy-read-discussion-settings'
+      preLoaderRoute: typeof ApiSocialBuddyReadDiscussionSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-discussion': {
+      id: '/api/social/buddy-read-discussion'
+      path: '/api/social/buddy-read-discussion'
+      fullPath: '/api/social/buddy-read-discussion'
+      preLoaderRoute: typeof ApiSocialBuddyReadDiscussionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/social/buddy-read-detail': {
       id: '/api/social/buddy-read-detail'
       path: '/api/social/buddy-read-detail'
       fullPath: '/api/social/buddy-read-detail'
       preLoaderRoute: typeof ApiSocialBuddyReadDetailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-comment-reply': {
+      id: '/api/social/buddy-read-comment-reply'
+      path: '/api/social/buddy-read-comment-reply'
+      fullPath: '/api/social/buddy-read-comment-reply'
+      preLoaderRoute: typeof ApiSocialBuddyReadCommentReplyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-comment-edit': {
+      id: '/api/social/buddy-read-comment-edit'
+      path: '/api/social/buddy-read-comment-edit'
+      fullPath: '/api/social/buddy-read-comment-edit'
+      preLoaderRoute: typeof ApiSocialBuddyReadCommentEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-comment-delete': {
+      id: '/api/social/buddy-read-comment-delete'
+      path: '/api/social/buddy-read-comment-delete'
+      fullPath: '/api/social/buddy-read-comment-delete'
+      preLoaderRoute: typeof ApiSocialBuddyReadCommentDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-comment': {
+      id: '/api/social/buddy-read-comment'
+      path: '/api/social/buddy-read-comment'
+      fullPath: '/api/social/buddy-read-comment'
+      preLoaderRoute: typeof ApiSocialBuddyReadCommentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/social/buddy-read': {
@@ -1584,12 +1794,24 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSocialAvatarSourceRoute: ApiSocialAvatarSourceRoute,
   ApiSocialBlockRoute: ApiSocialBlockRoute,
   ApiSocialBuddyReadRoute: ApiSocialBuddyReadRoute,
+  ApiSocialBuddyReadCommentRoute: ApiSocialBuddyReadCommentRoute,
+  ApiSocialBuddyReadCommentDeleteRoute: ApiSocialBuddyReadCommentDeleteRoute,
+  ApiSocialBuddyReadCommentEditRoute: ApiSocialBuddyReadCommentEditRoute,
+  ApiSocialBuddyReadCommentReplyRoute: ApiSocialBuddyReadCommentReplyRoute,
   ApiSocialBuddyReadDetailRoute: ApiSocialBuddyReadDetailRoute,
+  ApiSocialBuddyReadDiscussionRoute: ApiSocialBuddyReadDiscussionRoute,
+  ApiSocialBuddyReadDiscussionSettingsRoute:
+    ApiSocialBuddyReadDiscussionSettingsRoute,
+  ApiSocialBuddyReadHighlightShareRoute: ApiSocialBuddyReadHighlightShareRoute,
+  ApiSocialBuddyReadHighlightUnshareRoute:
+    ApiSocialBuddyReadHighlightUnshareRoute,
   ApiSocialBuddyReadInviteRoute: ApiSocialBuddyReadInviteRoute,
   ApiSocialBuddyReadInviteCancelRoute: ApiSocialBuddyReadInviteCancelRoute,
   ApiSocialBuddyReadInviteRespondRoute: ApiSocialBuddyReadInviteRespondRoute,
   ApiSocialBuddyReadLeaveRoute: ApiSocialBuddyReadLeaveRoute,
   ApiSocialBuddyReadProgressRoute: ApiSocialBuddyReadProgressRoute,
+  ApiSocialBuddyReadReactionRoute: ApiSocialBuddyReadReactionRoute,
+  ApiSocialBuddyReadReactionRemoveRoute: ApiSocialBuddyReadReactionRemoveRoute,
   ApiSocialBuddyReadRemoveMemberRoute: ApiSocialBuddyReadRemoveMemberRoute,
   ApiSocialBuddyReadTargetDateRoute: ApiSocialBuddyReadTargetDateRoute,
   ApiSocialBuddyReadsRoute: ApiSocialBuddyReadsRoute,

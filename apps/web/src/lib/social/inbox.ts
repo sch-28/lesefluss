@@ -6,14 +6,31 @@ import {
 	INBOX_READ_RETENTION_DAYS,
 	type InboxItem,
 	type InboxPage,
+	type InboxSubject,
 	type NotificationType,
 } from "@lesefluss/core";
-import { and, count, desc, eq, isNotNull, isNull, lt, not, or, type SQL, sql } from "drizzle-orm";
+import {
+	and,
+	count,
+	desc,
+	eq,
+	inArray,
+	isNotNull,
+	isNull,
+	lt,
+	not,
+	or,
+	type SQL,
+	sql,
+} from "drizzle-orm";
 import { type DbExecutor, db, type Tx } from "~/db";
 import { user } from "~/db/auth-schema";
 import {
+	buddyRead,
+	buddyReadComment,
 	buddyReadInvite,
 	buddyReadMember,
+	buddyReadSharedHighlight,
 	socialAvatar,
 	socialBlock,
 	socialFriendRequest,
@@ -22,6 +39,7 @@ import {
 	socialProfile,
 	socialShare,
 } from "~/db/schema";
+import { isUuid } from "~/lib/uuid";
 import { buddyReadInviteSubjectsFor } from "./buddy-read-items";
 import { avatarUrlFor } from "./profile";
 import { shareSubjectsFor } from "./share-items";
@@ -163,6 +181,23 @@ function liveBuddyReadItem(): SQL {
 	)`;
 }
 
+/** Reply and reaction items live while their comment or shared highlight does. */
+function liveDiscussionItem(): SQL {
+	return sql`(
+		${socialNotification.type} NOT IN ('buddy_read_reply', 'buddy_read_reaction')
+		OR EXISTS (
+			SELECT 1 FROM ${buddyReadComment}
+			WHERE ${buddyReadComment.id}::text = ${socialNotification.subjectId}
+			  AND ${buddyReadComment.body} IS NOT NULL
+		)
+		OR EXISTS (
+			SELECT 1 FROM ${buddyReadSharedHighlight}
+			WHERE ${buddyReadSharedHighlight.id}::text = ${socialNotification.subjectId}
+			  AND ${buddyReadSharedHighlight.removedAt} IS NULL
+		)
+	)`;
+}
+
 /** No scheduler: a recipient's expired and gone rows go when they next touch their inbox. */
 async function purgeExpired(exec: DbExecutor, userId: string, now: Date): Promise<void> {
 	await exec
@@ -175,6 +210,7 @@ async function purgeExpired(exec: DbExecutor, userId: string, now: Date): Promis
 					not(liveRequestItem(now)),
 					not(liveShareItem()),
 					not(liveBuddyReadItem()),
+					not(liveDiscussionItem()),
 				),
 			),
 		);
@@ -200,6 +236,7 @@ function visibleItems(userId: string, now: Date): SQL {
 		liveRequestItem(now),
 		liveShareItem(),
 		liveBuddyReadItem(),
+		liveDiscussionItem(),
 		or(
 			isNull(socialNotification.actorId),
 			and(
@@ -297,6 +334,11 @@ export async function listInbox(
 		page.filter((r) => r.type === "buddy_read_invite").map((r) => r.subjectId),
 		now,
 	);
+	const discussionSubjects = await discussionSubjectsFor(
+		page
+			.filter((r) => r.type === "buddy_read_reply" || r.type === "buddy_read_reaction")
+			.map((r) => r.subjectId),
+	);
 	const items: InboxItem[] = [];
 	for (const row of page) {
 		let subject: InboxItem["subject"] = null;
@@ -310,6 +352,8 @@ export async function listInbox(
 			subject = shareSubjects.get(row.subjectId) ?? null;
 		} else if (row.type === "buddy_read_invite") {
 			subject = inviteSubjects.get(row.subjectId) ?? null;
+		} else if (row.type === "buddy_read_reply" || row.type === "buddy_read_reaction") {
+			subject = discussionSubjects.get(row.subjectId) ?? null;
 		}
 		items.push({
 			id: row.id,
@@ -337,6 +381,37 @@ export async function listInbox(
 				? encodeCursor({ createdAt: last.createdAt.getTime(), id: last.id })
 				: null,
 	};
+}
+
+/** The buddy read a reply or reaction belongs to, so the item can open its discussion. */
+async function discussionSubjectsFor(subjectIds: string[]): Promise<Map<string, InboxSubject>> {
+	const out = new Map<string, InboxSubject>();
+	const ids = subjectIds.filter(isUuid);
+	if (ids.length === 0) return out;
+	const [comments, shares] = await Promise.all([
+		db
+			.select({
+				id: buddyReadComment.id,
+				buddyReadId: buddyReadComment.buddyReadId,
+				title: buddyRead.title,
+			})
+			.from(buddyReadComment)
+			.innerJoin(buddyRead, eq(buddyRead.id, buddyReadComment.buddyReadId))
+			.where(inArray(buddyReadComment.id, ids)),
+		db
+			.select({
+				id: buddyReadSharedHighlight.id,
+				buddyReadId: buddyReadSharedHighlight.buddyReadId,
+				title: buddyRead.title,
+			})
+			.from(buddyReadSharedHighlight)
+			.innerJoin(buddyRead, eq(buddyRead.id, buddyReadSharedHighlight.buddyReadId))
+			.where(inArray(buddyReadSharedHighlight.id, ids)),
+	]);
+	for (const r of [...comments, ...shares]) {
+		out.set(r.id, { kind: "buddy_read_discussion", buddyReadId: r.buddyReadId, title: r.title });
+	}
+	return out;
 }
 
 export async function unreadCount(userId: string, now = new Date()): Promise<number> {
@@ -383,9 +458,39 @@ export async function markRead(userId: string, id: string, now = new Date()): Pr
 		);
 }
 
+/** Items that still wait for the recipient's answer; answering marks them read (`markSubjectRead`). */
+function awaitingAnswer(now: Date): SQL {
+	const pendingCutoff = new Date(now.getTime() - FRIEND_REQUEST_TTL_DAYS * DAY_MS);
+	return sql`(
+		(${socialNotification.type} = 'friend_request_received' AND EXISTS (
+			SELECT 1 FROM ${socialFriendRequest}
+			WHERE ${socialFriendRequest.id}::text = ${socialNotification.subjectId}
+			  AND ${socialFriendRequest.state} = 'pending'
+			  AND ${socialFriendRequest.createdAt} > ${pendingCutoff.toISOString()}
+		))
+		OR (${socialNotification.type} = 'share_received' AND EXISTS (
+			SELECT 1 FROM ${socialShare}
+			WHERE ${socialShare.id}::text = ${socialNotification.subjectId}
+			  AND ${socialShare.status} = 'pending'
+		))
+		OR (${socialNotification.type} = 'buddy_read_invite' AND EXISTS (
+			SELECT 1 FROM ${buddyReadInvite}
+			WHERE ${buddyReadInvite.id}::text = ${socialNotification.subjectId}
+			  AND ${buddyReadInvite.status} = 'pending'
+		))
+	)`;
+}
+
+/** Opening the inbox marks everything seen except what still needs an answer, so the badge keeps counting those. */
 export async function markAllRead(userId: string, now = new Date()): Promise<void> {
 	await db
 		.update(socialNotification)
 		.set({ readAt: now })
-		.where(and(eq(socialNotification.recipientId, userId), isNull(socialNotification.readAt)));
+		.where(
+			and(
+				eq(socialNotification.recipientId, userId),
+				isNull(socialNotification.readAt),
+				sql`NOT ${awaitingAnswer(now)}`,
+			),
+		);
 }

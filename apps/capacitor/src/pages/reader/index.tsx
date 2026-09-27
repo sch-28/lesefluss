@@ -12,7 +12,7 @@
 
 import { App as CapacitorApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
-import type { RsvpSettings } from "@lesefluss/core";
+import type { DiscussionItem, RsvpSettings } from "@lesefluss/core";
 import {
 	DEFAULT_RSVP_DELIVERED_RATIO,
 	DEFAULT_SETTINGS,
@@ -47,6 +47,12 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	CommentComposerSheet,
+	type CommentSelection,
+	DiscussionThreadSheet,
+	ShareHighlightSheet,
+} from "../../components/social/discussion-sheets";
 import { toast } from "../../components/toast";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
@@ -58,8 +64,10 @@ import { queryHooks } from "../../services/db/hooks";
 import { bookKeys, serialKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import type { SeriesActivity } from "../../services/db/queries/series";
-import type { Book, Chapter, GlossaryEntry } from "../../services/db/schema";
+import type { Book, Chapter, GlossaryEntry, Highlight } from "../../services/db/schema";
 import { providerLabel } from "../../services/serial-scrapers";
+import { useDiscussion } from "../../services/social/buddy-read-discussion";
+import { useIsOnline } from "../../services/social/cache";
 import { pushSync, scheduleSyncPush } from "../../services/sync";
 import { reportEvent } from "../../services/telemetry";
 import { publishLinkOpen, publishPositionSave, publishProgressWord } from "../../test-hooks/reader";
@@ -67,7 +75,14 @@ import { AVERAGE_READER_WPM, formatReadingTime } from "../../utils/reading-time"
 import { setJustRead } from "../library/just-read-pin";
 import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
-import { BuddyReadMarkers, useBuddyReadMarkers } from "./buddy-read-markers";
+import {
+	BuddyReadMarkers,
+	type DiscussionTick,
+	DiscussionTicks,
+	useBuddyReadMarkers,
+	useIsForeground,
+	useRunningBuddyRead,
+} from "./buddy-read-markers";
 import { useChapterAutoAdvance } from "./chapter-auto-advance";
 import { useChapterFetch } from "./chapter-fetch";
 import { buildChapterHeadingMap } from "./chapter-headings";
@@ -76,7 +91,6 @@ import DictionaryModal from "./dictionary-modal";
 import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
 import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
-import HighlightModal from "./highlight-modal";
 import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
 import type { ParagraphWordEntry } from "./paragraph";
@@ -107,6 +121,7 @@ import { useLinkDecorations } from "./use-link-decorations";
 import { type ReadingSessionMode, useReadingSession } from "./use-reading-session";
 import { useScrubProgress } from "./use-scrub-progress";
 import type { ReaderViewHandle } from "./view-types";
+import { wordIndexAt } from "./word-at-point";
 
 // ─── Module-level singletons ─────────────────────────────────────────────────
 const _encoder = new TextEncoder();
@@ -136,7 +151,7 @@ function notifyLocalSaveFailure() {
 const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const { pushPosition, onDevicePositionUpdate } = useBookSync();
 	const { isConnected: isBleConnected } = useBLE();
-	const { isSyncing, isLoggedIn } = useSyncContext();
+	const { isSyncing, isLoggedIn, syncNow } = useSyncContext();
 	const qc = useQueryClient();
 	const history = useRouter().history;
 
@@ -242,6 +257,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// Track the last word we set so we can flush on unmount.
 	// null = not yet loaded from DB, don't overwrite on unmount.
 	const lastWordRef = useRef<number | null>(null);
+	// The position the reader last came to rest on (seed, settle, save). Scroll
+	// ticks write coarse paragraph-start words into lastWordRef mid-gesture; a
+	// scroll end that didn't really move restores this instead of keeping them.
+	const settledWordRef = useRef<number | null>(null);
 	// Flips true the first time the user actually moves position (scroll
 	// settle, word tap, jump, RSVP, scrub). Gates the unmount-flush so a
 	// brief re-mount (tanstack route transition double-render) whose seed
@@ -292,6 +311,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		didSeedOffsetsRef.current = false;
 		didSeedModeRef.current = false;
 		lastWordRef.current = null;
+		settledWordRef.current = null;
 		seededWordRef.current = null;
 		userMovedRef.current = false;
 	}, [id]);
@@ -323,6 +343,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		setProgressWord(resolved);
 		setRsvpInitWord(resolved);
 		lastWordRef.current = resolved;
+		settledWordRef.current = resolved;
 		seededWordRef.current = resolved;
 	}, [seedWord, seedLastRead, id]);
 
@@ -346,6 +367,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			setProgressWord(newWordPosition);
 			setRsvpInitWord(newWordPosition);
 			lastWordRef.current = newWordPosition;
+			settledWordRef.current = newWordPosition;
 			// Stops the unmount-flush from overwriting the device's fresh
 			// position with a stale seed during a route re-mount.
 			userMovedRef.current = true;
@@ -519,6 +541,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// ── Save position to DB + BLE ─────────────────────────────────────────
 	const savePosition = useCallback(
 		async (word: number, { scheduleSync = true }: { scheduleSync?: boolean } = {}) => {
+			settledWordRef.current = word;
 			const now = Date.now();
 			const wordPosition = wordPos(word);
 			const update: { lastRead: number; wordPosition: WordPosition } = {
@@ -724,28 +747,34 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const markActivityRef = useRef<(() => void) | null>(null);
 
 	const handleScrollPositionSettle = useCallback(
-		(word: number) => {
-			// Always restore the underline. Skip the save/lastRead bump when
-			// the word didn't actually change so opening a book or scrolling
-			// back to the same position doesn't mark it as updated.
+		(word: number, isAtEnd = false, hasMoved = true) => {
+			// Stay on the settled word when the view didn't really move (a layout
+			// clamp), or at the very bottom, where a later word is still on screen
+			// but can never reach the top.
+			const settledWord = settledWordRef.current;
+			if (settledWord !== null && (!hasMoved || (isAtEnd && settledWord > word))) {
+				lastWordRef.current = settledWord;
+				setActiveWord(settledWord);
+				setProgressWord(settledWord);
+				return;
+			}
+			// Always restore the underline. An unchanged word skips the save so
+			// opening a book doesn't bump lastRead.
 			setActiveWord(word);
 			setProgressWord(word);
-			if (lastWordRef.current === word) return;
-			// Reject settle events fired by the virtual list reconciling a fresh
-			// jump's scroll target. Within JUMP_SETTLE_GUARD_MS of jumpToWord,
-			// the settle word is the viewport-top, which sits BEFORE the jumped
-			// chapter heading; writing it would silently rewind the user's
-			// just-set position.
+			if (lastWordRef.current === word) {
+				settledWordRef.current = word;
+				return;
+			}
+			// Within JUMP_SETTLE_GUARD_MS the settle is the virtual list reconciling
+			// a jump; its viewport-top word sits before the jumped heading.
 			if (Date.now() - lastJumpAtRef.current < JUMP_SETTLE_GUARD_MS) return;
 			lastWordRef.current = word;
 			userMovedRef.current = true;
 			savePosition(word);
 			markActivityRef.current?.();
-			// End-of-book chapter advance. Settle must hit the literal last
-			// word; the `wordCount > 32` guard mirrors the prior 32-byte
-			// safety floor so freshly-fetched short chapters (wordCount
-			// momentarily 0, or one-word stubs) don't auto-advance the
-			// instant they mount. No-op for non-serials inside `tryAdvance`.
+			// End-of-book chapter advance (serials only). `wordCount > 32` keeps a
+			// freshly fetched, momentarily empty chapter from advancing on mount.
 			const totalWords = book?.wordCount ?? 0;
 			if (totalWords > 32 && word >= totalWords - 1) {
 				void chapterAdvance.tryAdvance();
@@ -773,27 +802,29 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		else handleScrollShowProgressBar();
 	}, [handleScrollShowProgressBar]);
 	const handleSetActiveWord = useCallback((word: number) => setActiveWord(word), []);
-	const handleSetProgressWord = useCallback((word: number) => {
-		progressWordRef.current = word;
-		// Track per-tick so a paginationStyle toggle mid-scroll seeds the next
-		// view from the user's current visual position rather than the last
-		// settled word (which may be from before the in-flight scroll). But
-		// within the post-jump guard window the scroll is still animating toward
-		// the jump target, so its intermediate words must not overwrite the saved
-		// position (same guard as handleScrollPositionSettle). Without it, a flush
-		// mid-jump-scroll would persist a transient word instead of the jump
-		// target, and the durable fallback would even resurrect it.
-		if (Date.now() - lastJumpAtRef.current >= JUMP_SETTLE_GUARD_MS) {
-			lastWordRef.current = word;
-			userMovedRef.current = true;
-		}
-		// Skip state update when bar is hidden: nothing in the visible UI
-		// depends on progressWord, and the per-tick reconciliation was the
-		// dominant scripting cost during hold-scroll. handleScrollPositionSettle
-		// (scroll-end) writes the final value to state.
-		if (progressBarVisibleRef.current) setProgressWord(word);
-		markActivityRef.current?.();
-	}, []);
+	const handleSetProgressWord = useCallback(
+		(word: number, isAtEnd = false) => {
+			progressWordRef.current = word;
+			// Tracked per tick so a flush or pagination toggle mid-scroll uses the
+			// current position, except: during a jump's scroll animation, and when
+			// the tick (a paragraph's first word) is coarser than lastWord: the same
+			// paragraph, or at the very bottom where a later word is still on screen.
+			const lastWord = lastWordRef.current;
+			const isCoarserThanLast =
+				lastWord !== null &&
+				(findParagraphIndexForWord(lastWord) === findParagraphIndexForWord(word) ||
+					(isAtEnd && lastWord >= word));
+			if (!isCoarserThanLast && Date.now() - lastJumpAtRef.current >= JUMP_SETTLE_GUARD_MS) {
+				lastWordRef.current = word;
+				userMovedRef.current = true;
+			}
+			// Only while the bar shows: per-tick renders dominated hold-scroll cost,
+			// and the settle writes the final value anyway.
+			if (progressBarVisibleRef.current) setProgressWord(word);
+			markActivityRef.current?.();
+		},
+		[findParagraphIndexForWord],
+	);
 
 	const syncSelectionHandles = useCallback(() => {
 		syncHandlesRef.current();
@@ -803,8 +834,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// During selection mode: tapping anywhere cancels the selection (user
 	// adjusts range via handles, not word taps).
 	// Normal mode - first tap: set position (highlight it).
-	// Normal mode - second tap on highlighted word: open highlight modal (if highlighted)
-	//   or dictionary (if not highlighted).
+	// Normal mode - second tap on highlighted word: select the highlight for editing
+	//   (if highlighted) or open the dictionary (if not highlighted).
 	const { cancelSelection, findHighlightAt, openHighlightEditor } = sel;
 
 	const handleWordTap = useCallback(
@@ -862,6 +893,67 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const handlePageWordTap = useCallback(() => {
 		if (isSelecting) cancelSelection();
 	}, [isSelecting, cancelSelection]);
+
+	const discussionRead = useRunningBuddyRead(book?.originKey ?? null, isLoggedIn);
+	const isForeground = useIsForeground();
+	const isOnline = useIsOnline();
+	const discussion = useDiscussion(discussionRead?.id ?? null, {
+		poll: isForeground && isOnline,
+	});
+	const [threadIds, setThreadIds] = useState<string[] | null>(null);
+	const [commentSelection, setCommentSelection] = useState<CommentSelection | null>(null);
+	const [sharingHighlight, setSharingHighlight] = useState<Highlight | null>(null);
+	const discussionItems = discussion.data?.items;
+	// Derived from the live query so a reply or reaction made in the open sheet shows up.
+	const threadItems = useMemo(
+		() => (threadIds ? (discussionItems ?? []).filter((i) => threadIds.includes(i.id)) : null),
+		[threadIds, discussionItems],
+	);
+	const discussionByParagraph = useMemo(() => {
+		if (!discussionItems?.length) return undefined;
+		const groups = new Map<number, DiscussionItem[]>();
+		for (const item of discussionItems) {
+			const idx = findParagraphIndexForWord(item.startWord);
+			groups.set(idx, [...(groups.get(idx) ?? []), item]);
+		}
+		return new Map(
+			[...groups].map(([idx, items]) => [
+				idx,
+				{ count: items.length, onTap: () => setThreadIds(items.map((i) => i.id)) },
+			]),
+		);
+	}, [discussionItems, findParagraphIndexForWord]);
+	const discussionTicks = useMemo((): DiscussionTick[] => {
+		if (!discussionItems?.length || totalWordCount <= 0) return [];
+		const byPercent = new Map<number, DiscussionItem[]>();
+		for (const item of discussionItems) {
+			const pct = Math.min(100, Math.round((item.startWord / totalWordCount) * 100));
+			byPercent.set(pct, [...(byPercent.get(pct) ?? []), item]);
+		}
+		return [...byPercent].map(([percent, items]) => ({
+			key: String(percent),
+			percent,
+			count: items.length,
+			onTap: () => setThreadIds(items.map((i) => i.id)),
+		}));
+	}, [discussionItems, totalWordCount]);
+	const handleSelectionComment = useCallback(() => {
+		const range = sel.selectionRange;
+		if (!range) return;
+		setCommentSelection({
+			startWord: range.startWord,
+			endWord: range.endWord,
+			snippet: sel.extractRangeText(range.startWord, range.endWord),
+		});
+		sel.cancelSelection();
+	}, [sel]);
+
+	const handleSelectionShare = useCallback(() => {
+		const row = highlightRows.find((h) => h.id === sel.selectionSavedId);
+		if (!row) return;
+		setSharingHighlight(row);
+		sel.cancelSelection();
+	}, [sel, highlightRows]);
 
 	// Long-press → selection toolbar → "Look up" reads the word's rendered text
 	// straight from the DOM (selection.startWord targets a word span via
@@ -1045,7 +1137,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// mouseup to extend the selection range. The synthetic click that follows
 	// mouseup is swallowed so it doesn't cancel the fresh selection via
 	// handleWordTap.
-	const { startSelection, extendSelectionTo, startHandleRef, endHandleRef } = sel;
+	const { startSelection, extendSelectionTo } = sel;
 	const handleWordMouseDragStart = useCallback(
 		(wIdx: number, initialEvent: PointerEvent) => {
 			const existing = findHighlightAt(wIdx);
@@ -1054,31 +1146,18 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				return;
 			}
 			startSelection(wIdx);
-			// Make the selection handles transparent to elementFromPoint during the
-			// drag - once they pop up they can intercept the cursor and break the
-			// word-under-cursor lookup. Restored on cleanup.
-			const prevStartPe = startHandleRef.current?.style.pointerEvents ?? "";
-			const prevEndPe = endHandleRef.current?.style.pointerEvents ?? "";
-			if (startHandleRef.current) startHandleRef.current.style.pointerEvents = "none";
-			if (endHandleRef.current) endHandleRef.current.style.pointerEvents = "none";
 
 			// Extend the cursor's current position (the drag has already moved > 8px
 			// past the start word by the time we get here - without this the initial
 			// selection is just the start word until the next pointermove fires).
 			const extendToPoint = (clientX: number, clientY: number) => {
-				const el = document.elementFromPoint(clientX, clientY);
-				const span = el?.closest<HTMLElement>("span[data-word]");
-				if (!span) return;
-				const wIdx = Number.parseInt(span.dataset.word ?? "", 10);
-				if (Number.isNaN(wIdx)) return;
-				extendSelectionTo(wIdx);
+				const wIdx = wordIndexAt(clientX, clientY);
+				if (wIdx !== null) extendSelectionTo(wIdx);
 			};
 			extendToPoint(initialEvent.clientX, initialEvent.clientY);
 
 			const onMove = (me: PointerEvent) => extendToPoint(me.clientX, me.clientY);
 			const cleanup = () => {
-				if (startHandleRef.current) startHandleRef.current.style.pointerEvents = prevStartPe;
-				if (endHandleRef.current) endHandleRef.current.style.pointerEvents = prevEndPe;
 				window.removeEventListener("pointermove", onMove);
 				window.removeEventListener("pointerup", onEnd);
 				window.removeEventListener("pointercancel", cleanup);
@@ -1095,19 +1174,18 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					ce.preventDefault();
 				};
 				window.addEventListener("click", swallow, { once: true, capture: true });
+				// No click follows when the release lands outside the window.
+				window.addEventListener(
+					"pointerdown",
+					() => window.removeEventListener("click", swallow, true),
+					{ once: true, capture: true },
+				);
 			};
 			window.addEventListener("pointermove", onMove);
 			window.addEventListener("pointerup", onEnd);
 			window.addEventListener("pointercancel", cleanup);
 		},
-		[
-			findHighlightAt,
-			openHighlightEditor,
-			startSelection,
-			extendSelectionTo,
-			startHandleRef,
-			endHandleRef,
-		],
+		[findHighlightAt, openHighlightEditor, startSelection, extendSelectionTo],
 	);
 
 	// ── RSVP helpers ─────────────────────────────────────────────────────
@@ -1212,7 +1290,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			searchOpen ||
 			sel.isSelecting ||
 			editingGlossaryEntry !== null ||
-			sel.editingHighlight !== null ||
 			sel.noteInputOpen,
 		scrollViewRef,
 		rsvpViewRef,
@@ -1643,10 +1720,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}
 						linksByParagraph={linksByParagraph}
+						discussionByParagraph={discussionByParagraph}
 						selectionRange={sel.selectionRange}
 						isSelecting={isSelecting}
 						onWordTap={handlePageWordTap}
 						onWordLongPress={sel.handleWordLongPress}
+						onWordLongPressDrag={sel.extendSelectionTo}
 						onWordMouseDragStart={handleWordMouseDragStart}
 						onCancelSelection={sel.cancelSelection}
 						onPositionSettle={handleScrollPositionSettle}
@@ -1674,9 +1753,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}
 						linksByParagraph={linksByParagraph}
+						discussionByParagraph={discussionByParagraph}
 						selectionRange={sel.selectionRange}
 						onWordTap={handleWordTap}
 						onWordLongPress={sel.handleWordLongPress}
+						onWordLongPressDrag={sel.extendSelectionTo}
 						onWordMouseDragStart={handleWordMouseDragStart}
 						onPositionSettle={handleScrollPositionSettle}
 						onInitialActiveOffset={handleSetActiveWord}
@@ -1714,6 +1795,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						>
 							<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
 						</div>
+						<DiscussionTicks ticks={discussionTicks} />
 						<div className="reader-progress-label">
 							<span>
 								{Math.round(progressPct)}%
@@ -1735,6 +1817,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			{/* Selection toolbar + handles (fixed position, sync'd by hook). */}
 			<SelectionOverlay
 				isSelecting={sel.isSelecting}
+				isHidden={sel.noteInputOpen}
+				step={sel.selectionSavedId ? "styled" : "actions"}
 				isSingleWord={
 					!!sel.selectionRange && sel.selectionRange.startWord === sel.selectionRange.endWord
 				}
@@ -1742,11 +1826,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				toolbarRef={sel.toolbarRef}
 				startHandleRef={sel.startHandleRef}
 				endHandleRef={sel.endHandleRef}
+				onHighlight={sel.handleSelectionHighlight}
 				onColorChange={sel.handleSelectionColorChange}
-				onNote={() => sel.setNoteInputOpen(true)}
+				onNote={sel.handleSelectionNote}
 				onLookup={handleSelectionLookup}
 				onAddToGlossary={handleAddToGlossary}
-				onCancel={sel.cancelSelection}
+				onDelete={sel.handleSelectionDelete}
+				onComment={discussionRead ? handleSelectionComment : undefined}
+				onShare={discussionRead ? handleSelectionShare : undefined}
 				onStartHandlePointerDown={sel.handleStartHandlePointerDown}
 				onEndHandlePointerDown={sel.handleEndHandlePointerDown}
 			/>
@@ -1806,15 +1893,34 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				theme={theme}
 			/>
 
-			{/* ── Highlight edit modal ── */}
-			<HighlightModal
-				highlight={sel.editingHighlight}
-				highlightText={sel.editingHighlightText}
-				onClose={() => sel.setEditingHighlight(null)}
-				onSave={sel.handleHighlightSave}
-				onDelete={sel.handleHighlightDelete}
-				theme={theme}
-			/>
+			{discussionRead && (
+				<>
+					<DiscussionThreadSheet
+						buddyReadId={discussionRead.id}
+						items={threadItems}
+						onClose={() => setThreadIds(null)}
+						theme={theme}
+					/>
+					<CommentComposerSheet
+						buddyReadId={discussionRead.id}
+						selection={commentSelection}
+						onClose={() => setCommentSelection(null)}
+						theme={theme}
+					/>
+					<ShareHighlightSheet
+						buddyReadId={discussionRead.id}
+						highlight={sharingHighlight}
+						text={
+							sharingHighlight
+								? sel.extractRangeText(sharingHighlight.startWord, sharingHighlight.endWord)
+								: ""
+						}
+						syncNow={syncNow}
+						onClose={() => setSharingHighlight(null)}
+						theme={theme}
+					/>
+				</>
+			)}
 
 			{/* Note input drawer (during selection). */}
 			<Drawer
@@ -1825,7 +1931,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			>
 				<DrawerContent className={`reader-theme-${theme}`}>
 					<DrawerHeader className="flex flex-row items-center justify-between gap-2">
-						<DrawerTitle className="flex-1">Add Note</DrawerTitle>
+						<DrawerTitle className="flex-1">Note</DrawerTitle>
 						<Button variant="ghost" size="sm" onClick={sel.handleSelectionNoteDone}>
 							Done
 						</Button>

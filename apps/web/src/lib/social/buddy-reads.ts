@@ -658,7 +658,7 @@ export async function endBuddyReadsOf(tx: Tx, userId: string, now = new Date()):
 }
 
 /** Who the viewer may see: visible users with no block either way. The viewer always sees themselves. */
-async function visibleTo(
+export async function visibleTo(
 	exec: DbExecutor,
 	viewerId: string,
 	users: Map<string, SocialUser>,
@@ -765,6 +765,22 @@ async function summaryOf(
 		myBookId: me?.bookId ?? "",
 		createdAt: state.read.createdAt.getTime(),
 		finishedAt: state.read.finishedAt?.getTime() ?? null,
+		originUnavailable: state.takenDown,
+		members: state.takenDown
+			? []
+			: state.current.flatMap((m) => {
+					const u = visible.has(m.userId) ? state.users.get(m.userId) : undefined;
+					return u
+						? [
+								{
+									identity: identityOf(u),
+									isSelf: m.userId === viewerId,
+									percent: percentOf(m.book),
+									finished: m.finishedAt !== null,
+								},
+							]
+						: [];
+				}),
 	};
 }
 
@@ -813,7 +829,6 @@ export async function getBuddyRead(
 		return {
 			...summary,
 			isHost,
-			originUnavailable: true,
 			approximate: false,
 			participants: [],
 			invites: [],
@@ -864,7 +879,6 @@ export async function getBuddyRead(
 	return {
 		...summary,
 		isHost,
-		originUnavailable: false,
 		approximate: isApproximate(shown),
 		participants,
 		invites,

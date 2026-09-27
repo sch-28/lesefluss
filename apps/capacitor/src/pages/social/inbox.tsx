@@ -3,8 +3,8 @@ import { isNotificationType } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { Link, useRouter } from "@tanstack/react-router";
-import { CheckCheck, Flag, Inbox, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { Flag, Inbox, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Section } from "@/components/app-shell/section";
 import CoverImage from "@/components/cover-image";
@@ -39,7 +39,7 @@ function describe(item: InboxItem): string {
 		case "notice_decision":
 			return item.payload?.text ?? "reviewed your report.";
 		case "friend_request_received":
-			switch (item.subject?.state) {
+			switch (item.subject?.kind === "friend_request" ? item.subject.state : undefined) {
 				case "accepted":
 					return "sent you a friend request. You're friends now.";
 				case "declined":
@@ -66,21 +66,27 @@ function describe(item: InboxItem): string {
 			return "accepted the book you shared.";
 		case "share_removed":
 			return item.payload?.text ?? "A book shared with you was removed.";
-		case "buddy_read_invite":
+		case "buddy_read_invite": {
+			const title = item.subject?.kind === "buddy_read_invite" ? item.subject.book.title : "";
 			switch (item.subject?.kind === "buddy_read_invite" ? item.subject.state : "unavailable") {
 				case "accepted":
-					return "invited you to a buddy read. You joined.";
+					return `invited you to a buddy read of "${title}". You joined.`;
 				case "declined":
-					return "invited you to a buddy read. You declined.";
+					return `invited you to a buddy read of "${title}". You declined.`;
 				case "pending":
 					return "invited you to read a book together.";
 				default:
 					return "invited you to a buddy read. The invite is no longer available.";
 			}
+		}
 		case "buddy_read_joined":
 			return "joined your buddy read.";
 		case "buddy_read_finished":
 			return "finished the book in your buddy read.";
+		case "buddy_read_reply":
+			return `${item.payload?.text ? `${item.payload.text} ` : ""}replied to your comment${discussionTitle(item)}.`;
+		case "buddy_read_reaction":
+			return `${item.payload?.text ? `${item.payload.text} ` : ""}reacted to your post${discussionTitle(item)}.`;
 	}
 }
 
@@ -121,14 +127,16 @@ function BuddyReadInviteCard({ invite }: { invite: BuddyReadInviteSubject }) {
 				{invite.host ? `Hosted by ${invite.host.name} (@${invite.host.handle})` : "Buddy read"}
 				{others.length > 0 && ` · with ${others.map((p) => `@${p.handle}`).join(", ")}`}
 			</div>
-			{invite.state === "pending" && (
-				<p className="mt-2 mb-0 text-muted-foreground text-xs">
-					If you join, everyone in this buddy read sees your progress on this book: how far you are
-					and when you last read. It stops when you leave.
-				</p>
-			)}
+			<p className="mt-2 mb-0 text-muted-foreground text-xs">
+				If you join, everyone in this buddy read sees your progress on this book: how far you are
+				and when you last read. It stops when you leave.
+			</p>
 		</div>
 	);
+}
+
+function discussionTitle(item: InboxItem): string {
+	return item.subject?.kind === "buddy_read_discussion" ? ` in "${item.subject.title}"` : "";
 }
 
 /** A request resolved elsewhere comes back as not-found; that is the outcome we wanted. */
@@ -138,10 +146,13 @@ function isAlreadyResolved(err: unknown): boolean {
 
 function InboxRow({
 	item,
+	isNew,
 	isOffline,
 	onReport,
 }: {
 	item: InboxItem;
+	/** Unread when this visit began; it keeps its dot although opening marked it read. */
+	isNew: boolean;
 	isOffline: boolean;
 	onReport: (target: ReportTarget) => void;
 }) {
@@ -163,7 +174,8 @@ function InboxRow({
 			item.type === "friend_joined_via_invite" ||
 			item.type === "share_accepted" ||
 			item.type === "share_received" ||
-			item.subject?.state === "accepted");
+			(item.subject?.kind === "friend_request" && item.subject.state === "accepted") ||
+			(item.subject?.kind === "buddy_read_invite" && item.subject.state === "accepted"));
 	const actorName = item.actor?.name ?? "Lesefluss";
 
 	const actShare = (action: "accept" | "decline") => {
@@ -238,7 +250,7 @@ function InboxRow({
 				) : (
 					<SocialAvatar name={item.actor.name} avatarUrl={item.actor.avatarUrl} size="md" />
 				)}
-				{isUnread && (
+				{(isUnread || isNew) && (
 					<span className="absolute top-0 right-0 size-2.5 rounded-full bg-primary">
 						<span className="sr-only">Unread</span>
 					</span>
@@ -266,7 +278,7 @@ function InboxRow({
 					<p className="mt-0.5 text-muted-foreground text-xs">{formatWhen(item.createdAt)}</p>
 				</button>
 				{share && <ShareBookCard book={share.book} />}
-				{buddyInvite && <BuddyReadInviteCard invite={buddyInvite} />}
+				{buddyInvite?.state === "pending" && <BuddyReadInviteCard invite={buddyInvite} />}
 				{buddyInvite?.state === "pending" && (
 					<div className="mt-2 flex gap-2">
 						<Button
@@ -285,6 +297,17 @@ function InboxRow({
 							Decline
 						</Button>
 					</div>
+				)}
+				{item.subject?.kind === "buddy_read_discussion" && (
+					<Button asChild size="sm" variant="outline" className="mt-2">
+						<Link
+							to="/tabs/social/buddy-read/$id"
+							params={{ id: item.subject.buddyReadId }}
+							search={{ tab: "discussion" }}
+						>
+							Open discussion
+						</Link>
+					</Button>
 				)}
 				{buddyInvite?.state === "accepted" && (
 					<Button asChild size="sm" variant="outline" className="mt-2">
@@ -363,8 +386,18 @@ function InboxContent() {
 	const inbox = useInbox();
 	const markAll = useMarkAllRead();
 	const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+	const [newIds, setNewIds] = useState<Set<string> | null>(null);
 	const items = inbox.data?.pages.flatMap((p) => p.items) ?? [];
-	const hasUnread = items.some((i) => i.readAt === null);
+
+	// Opening the inbox counts as seeing it, once per visit and only with fresh data.
+	const isFresh = inbox.isSuccess && !inbox.isFetching;
+	const { mutate: markAllSeen } = markAll;
+	useEffect(() => {
+		if (newIds !== null || !isFresh || !isOnline) return;
+		const unread = new Set(items.filter((i) => i.readAt === null).map((i) => i.id));
+		setNewIds(unread);
+		if (unread.size > 0) markAllSeen();
+	}, [newIds, isFresh, isOnline, items, markAllSeen]);
 
 	if (inbox.isPending) return <Spinner />;
 	if (inbox.isError && !inbox.data) {
@@ -383,26 +416,7 @@ function InboxContent() {
 				isError={inbox.isError}
 				onRetry={() => void inbox.refetch()}
 			/>
-			<Section
-				title="Inbox"
-				action={
-					hasUnread ? (
-						<button
-							type="button"
-							disabled={!isOnline || markAll.isPending}
-							onClick={() =>
-								markAll.mutate(undefined, {
-									onError: (err) => toast.error(socialErrorMessage(err)),
-								})
-							}
-							className="flex items-center gap-1 text-primary text-xs disabled:opacity-50"
-						>
-							<CheckCheck className="size-3.5" />
-							Mark all read
-						</button>
-					) : undefined
-				}
-			>
+			<Section>
 				{items.length === 0 ? (
 					<div className="px-4 py-8 text-center">
 						<Inbox className="mx-auto mb-2 size-6 text-muted-foreground" />
@@ -410,7 +424,13 @@ function InboxContent() {
 					</div>
 				) : (
 					items.map((item) => (
-						<InboxRow key={item.id} item={item} isOffline={!isOnline} onReport={setReportTarget} />
+						<InboxRow
+							key={item.id}
+							item={item}
+							isNew={newIds?.has(item.id) ?? false}
+							isOffline={!isOnline}
+							onReport={setReportTarget}
+						/>
 					))
 				)}
 			</Section>
@@ -432,7 +452,7 @@ function InboxContent() {
 export default function InboxPage() {
 	return (
 		<div className="bg-background">
-			<PageHeader title="Inbox" icon={Inbox} />
+			<PageHeader title="Inbox" icon={Inbox} backTo="/tabs/social" />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				<SocialGate returnTo="/tabs/social/inbox">
 					<InboxContent />

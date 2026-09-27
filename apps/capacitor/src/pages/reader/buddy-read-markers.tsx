@@ -13,7 +13,7 @@ export type BuddyMarker = {
 };
 
 /** Foreground as either platform reports it: the web build has no app state, native WebViews may keep "visible". */
-function useIsForeground(): boolean {
+export function useIsForeground(): boolean {
 	const [isForeground, setIsForeground] = useState(() => document.visibilityState === "visible");
 	useEffect(() => {
 		const onVisibility = () => setIsForeground(document.visibilityState === "visible");
@@ -29,6 +29,13 @@ function useIsForeground(): boolean {
 	return isForeground;
 }
 
+/** The buddy read this book is in right now, if any; finished reads keep their discussion too. */
+export function useRunningBuddyRead(originKey: string | null, isLoggedIn: boolean) {
+	const reads = useBuddyReads(isLoggedIn && originKey !== null);
+	const matching = (reads.data ?? []).filter((r) => r.originKey === originKey);
+	return matching.find((r) => r.status === "in_progress") ?? matching[0] ?? null;
+}
+
 /**
  * Where the other members of this book's running buddy read are. Positions
  * are placed against the viewer's own word count: every member reads the same
@@ -41,8 +48,8 @@ export function useBuddyReadMarkers(
 ): BuddyMarker[] {
 	const isForeground = useIsForeground();
 	const isOnline = useIsOnline();
-	const reads = useBuddyReads(isLoggedIn && originKey !== null);
-	const read = reads.data?.find((r) => r.originKey === originKey && r.status === "in_progress");
+	const found = useRunningBuddyRead(originKey, isLoggedIn);
+	const read = found?.status === "in_progress" ? found : null;
 	const progress = useBuddyReadProgress(read?.id ?? null, isForeground && isOnline);
 	if (!read || ownWordCount <= 0) return [];
 	return (progress.data?.participants ?? []).map((p) => ({
@@ -102,6 +109,34 @@ export function BuddyReadMarkers({ markers }: { markers: BuddyMarker[] }) {
 					))}
 				</div>
 			)}
+		</div>
+	);
+}
+
+export type DiscussionTick = { key: string; percent: number; count: number; onTap: () => void };
+
+/** Where unlocked comments and shared highlights sit, as ticks under the progress track. */
+export function DiscussionTicks({ ticks }: { ticks: DiscussionTick[] }) {
+	if (ticks.length === 0) return null;
+	const stop = (e: React.PointerEvent) => e.stopPropagation();
+	return (
+		<div className="reader-discussion-ticks">
+			{ticks.map((t) => (
+				<button
+					key={t.key}
+					type="button"
+					className="reader-discussion-tick"
+					style={{ left: `${t.percent}%` }}
+					aria-label={t.count === 1 ? "1 comment here" : `${t.count} comments here`}
+					onPointerDown={stop}
+					onPointerMove={stop}
+					onPointerUp={stop}
+					onClick={(e) => {
+						e.stopPropagation();
+						t.onTap();
+					}}
+				/>
+			))}
 		</div>
 	);
 }

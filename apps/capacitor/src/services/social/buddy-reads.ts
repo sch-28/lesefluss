@@ -155,3 +155,7 @@ export function useSendFriendRequest(buddyReadId: string) {
 		},
 	});
 }
+
+export function paceText(onPace: boolean): string {
+	return onPace ? "on track" : "a little behind";
+}

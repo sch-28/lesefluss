@@ -23,7 +23,7 @@ import { BookOpen, Cpu, Pencil, Share2, Trash2, Users } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DeviceBadge } from "../../components/device-sync";
-import { type ShareBlocker, ShareSheet } from "../../components/social/share-sheet";
+import { ShareSheet } from "../../components/social/share-sheet";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useBookDeviceState } from "../../contexts/device-library-context";
 import { useSyncContext } from "../../contexts/sync-context";
@@ -39,7 +39,13 @@ import { getServerContentIds } from "../../services/sync/server-content-cache";
 import { IS_WEB } from "../../utils/platform";
 import { bookPageCount } from "../../utils/reading-time";
 import { DetailShell } from "../_shared/detail-shell";
-import { BookBuddyRead, StartBuddyReadSheet, useBookBuddyRead } from "./book-buddy-read";
+import {
+	BookBuddyRead,
+	BUDDY_READ_BLOCKER_TEXT,
+	StartBuddyReadSheet,
+	shareBlockerFor,
+	useBookBuddyRead,
+} from "./book-buddy-read";
 import { BookChapters } from "./book-chapters";
 import BookEditSheet, {
 	type BookEditValues,
@@ -59,13 +65,6 @@ import TransferModal from "./transfer-modal";
 interface Props {
 	id?: string;
 }
-
-const BUDDY_READ_BLOCKER_TEXT: Record<ShareBlocker, string> = {
-	local_only: "This book is stored on this device only, so friends can't get a copy of it.",
-	not_synced: "This book hasn't reached the cloud yet. Sync first, then start a buddy read.",
-	series: "Web-serial chapters can't be read together.",
-	checking: "Checking whether this book is in the cloud…",
-};
 
 const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const id = propId ?? "";
@@ -220,15 +219,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const pages = bookPageCount(book);
 	const chapters = parseChapters(content?.chapters ?? null);
 	const chapterCount = chapters.length;
-	const shareBlocker: ShareBlocker | null = book.seriesId
-		? "series"
-		: !isSyncEligible(book)
-			? "local_only"
-			: serverContentIds === undefined
-				? "checking"
-				: serverContentIds.has(book.id)
-					? null
-					: "not_synced";
+	const shareBlocker = shareBlockerFor(book, serverContentIds);
 
 	// Same two steps the reader takes for an in-book jump: persist the position,
 	// then let the seed effect resume from it.

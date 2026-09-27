@@ -193,14 +193,17 @@ function SettingsLanding() {
 								to="/tabs/settings/sync"
 							/>
 						)}
-						{SYNC_ENABLED && isLoggedIn && (
-							<Row
-								icon={Users}
-								title="Social profile"
-								subtitle="Handle, avatar and who sees what"
-								to="/tabs/settings/social"
-							/>
-						)}
+					</Section>
+				)}
+
+				{SYNC_ENABLED && isLoggedIn && (
+					<Section title="Social">
+						<Row
+							icon={Users}
+							title="Social profile"
+							subtitle="Handle, avatar and who sees what"
+							to="/tabs/settings/social"
+						/>
 					</Section>
 				)}
 

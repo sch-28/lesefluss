@@ -149,9 +149,9 @@ describe.skipIf(!hasDb)("inbox (integration)", () => {
 		const a = await rowsFor(alice);
 		expect(a.map((r) => r.type)).toEqual(["friend_request_accepted"]);
 		const c = (await listInbox(carol, null)).items;
-		expect(c.map((i) => [i.type, i.subject?.state])).toEqual([
-			["friend_request_received", "accepted"],
-		]);
+		expect(
+			c.map((i) => [i.type, i.subject && "state" in i.subject ? i.subject.state : undefined]),
+		).toEqual([["friend_request_received", "accepted"]]);
 		expect(c[0]?.readAt).not.toBeNull();
 		expect(await unreadCount(carol)).toBe(0);
 		await removeFriend(alice, carol);
@@ -194,6 +194,37 @@ describe.skipIf(!hasDb)("inbox (integration)", () => {
 		);
 		expect(await unreadCount(bob)).toBe(1);
 		await markAllRead(bob);
+		expect(await unreadCount(bob)).toBe(0);
+	});
+
+	test("mark all leaves items that still wait for an answer unread", async () => {
+		await db.delete(socialNotification).where(eq(socialNotification.recipientId, bob));
+		await sendFriendRequest(alice, bob);
+		await db.transaction((tx) =>
+			createNotification(tx, {
+				recipientId: bob,
+				actorId: alice,
+				type: "friend_joined_via_invite",
+				subjectId: alice,
+			}),
+		);
+		expect(await unreadCount(bob)).toBe(2);
+		await markAllRead(bob);
+		expect(await unreadCount(bob)).toBe(1);
+		const [pending] = (await listInbox(bob, null)).items.filter((i) => i.readAt === null);
+		expect(pending?.type).toBe("friend_request_received");
+
+		const [request] = await db
+			.select({ id: socialFriendRequest.id })
+			.from(socialFriendRequest)
+			.where(
+				and(
+					eq(socialFriendRequest.requesterId, alice),
+					eq(socialFriendRequest.addresseeId, bob),
+					eq(socialFriendRequest.state, "pending"),
+				),
+			);
+		await cancelRequest(alice, request?.id ?? "");
 		expect(await unreadCount(bob)).toBe(0);
 	});
 

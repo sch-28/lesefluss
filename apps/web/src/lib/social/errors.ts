@@ -17,7 +17,12 @@ export type SocialErrorCode =
 	| "unavailable"
 	| "full"
 	| "already_member"
-	| "not_host";
+	| "not_host"
+	| "invalid_anchor"
+	| "highlight_not_synced"
+	| "highlight_no_text"
+	| "highlight_removed"
+	| "share_all_on";
 
 const STATUS_BY_CODE: Record<SocialErrorCode, number> = {
 	invalid: 400,
@@ -39,6 +44,11 @@ const STATUS_BY_CODE: Record<SocialErrorCode, number> = {
 	full: 409,
 	already_member: 409,
 	not_host: 403,
+	invalid_anchor: 400,
+	highlight_not_synced: 409,
+	highlight_no_text: 409,
+	highlight_removed: 409,
+	share_all_on: 409,
 };
 
 export class SocialError extends Error {

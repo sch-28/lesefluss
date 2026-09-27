@@ -14,6 +14,7 @@
 import type { WordPosition } from "@lesefluss/core";
 import type React from "react";
 import { memo } from "react";
+import { wordIndexAt } from "./word-at-point";
 
 export function getHeadingLevel(text: string): number {
 	const m = text.match(/^(#{1,6}) /);
@@ -64,6 +65,8 @@ export interface ParagraphProps {
 	activeWord: number;
 	onWordTap: (wordIdx: number, wordText: string) => void;
 	onWordLongPress?: (wordIdx: number) => void;
+	/** Finger still down after a long press, now over `wordIdx`. */
+	onWordLongPressDrag?: (wordIdx: number) => void;
 	onWordMouseDragStart?: (wordIdx: number, event: PointerEvent) => void;
 	highlights?: HighlightRange[];
 	glossaryRanges?: GlossaryRangeProp[];
@@ -75,6 +78,8 @@ export interface ParagraphProps {
 	 *  whose chapter titles were images). Lets the reader show a header at a TOC
 	 *  jump without re-importing the book. */
 	chapterHeading?: string;
+	/** Unlocked buddy-read discussion items anchored in this paragraph. */
+	discussion?: { count: number; onTap: () => void };
 }
 
 function withChapterHeading(
@@ -98,6 +103,14 @@ let _cancelActiveLongPress: (() => void) | null = null;
 export function cancelAnyActiveLongPress(): void {
 	_cancelActiveLongPress?.();
 	_cancelActiveLongPress = null;
+}
+
+// Pointer whose long press fired and is still down, so gesture handlers
+// elsewhere (page-view swipes) can yield to the selection drag.
+let _longPressPointerId: number | null = null;
+
+export function hasLongPressFiredFor(pointerId: number): boolean {
+	return _longPressPointerId === pointerId;
 }
 
 function wordInRange(wIdx: number, s: number, e: number): boolean {
@@ -126,6 +139,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		activeWord,
 		onWordTap,
 		onWordLongPress,
+		onWordLongPressDrag,
 		onWordMouseDragStart,
 		highlights,
 		glossaryRanges,
@@ -133,6 +147,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		selectionRange,
 		showActiveWordUnderline,
 		chapterHeading,
+		discussion,
 	}) => {
 		const headingLevel = getHeadingLevel(text);
 
@@ -196,19 +211,32 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 							const pointerType = ev.pointerType;
 							if (pointerType === "mouse") ev.preventDefault();
 							let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+							let hasLongPressFired = false;
 							const startX = ev.clientX;
 							const startY = ev.clientY;
+							// Once the long press fires, the finger extends the selection,
+							// so the page must not scroll underneath it.
+							const blockScroll = (te: TouchEvent) => {
+								if (hasLongPressFired) te.preventDefault();
+							};
 							const cleanup = () => {
 								if (longPressTimer) {
 									clearTimeout(longPressTimer);
 									longPressTimer = null;
 								}
 								_cancelActiveLongPress = null;
+								if (_longPressPointerId === ev.pointerId) _longPressPointerId = null;
 								document.removeEventListener("pointermove", onMove);
 								document.removeEventListener("pointerup", cleanup);
 								document.removeEventListener("pointercancel", cleanup);
+								document.removeEventListener("touchmove", blockScroll);
 							};
 							const onMove = (me: PointerEvent) => {
+								if (hasLongPressFired) {
+									const idx = wordIndexAt(me.clientX, me.clientY);
+									if (idx !== null) onWordLongPressDrag?.(idx);
+									return;
+								}
 								const dx = Math.abs(me.clientX - startX);
 								const dy = Math.abs(me.clientY - startY);
 								if (dx > 8 || dy > 8) {
@@ -222,13 +250,17 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 							};
 							if (pointerType !== "mouse" && onWordLongPress) {
 								_cancelActiveLongPress = cleanup;
+								document.addEventListener("touchmove", blockScroll, { passive: false });
 								longPressTimer = setTimeout(() => {
 									_cancelActiveLongPress = null;
 									longPressTimer = null;
+									hasLongPressFired = true;
+									_longPressPointerId = ev.pointerId;
 									onWordLongPress(wIdx);
 									// Swallow the trailing click from the same pointer
 									// sequence so handleWordTap doesn't cancel the just-
-									// started selection.
+									// started selection. Android WebView sends no such click,
+									// so disarm on the next pointerdown or it eats a real tap.
 									const swallow = (ce: MouseEvent) => {
 										ce.stopPropagation();
 										ce.preventDefault();
@@ -237,6 +269,11 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 										once: true,
 										capture: true,
 									});
+									window.addEventListener(
+										"pointerdown",
+										() => window.removeEventListener("click", swallow, true),
+										{ once: true, capture: true },
+									);
 								}, LONG_PRESS_MS);
 							}
 							document.addEventListener("pointermove", onMove);
@@ -323,8 +360,31 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			}
 		}
 
+		const marker = discussion ? (
+			<button
+				type="button"
+				className="reader-discussion-marker"
+				aria-label={discussion.count === 1 ? "1 comment" : `${discussion.count} comments`}
+				// Swallowed here so the tap opens the thread instead of moving the reader.
+				onPointerDown={(e) => e.stopPropagation()}
+				onPointerUp={(e) => e.stopPropagation()}
+				onClick={(e) => {
+					e.stopPropagation();
+					discussion.onTap();
+				}}
+			>
+				💬 {discussion.count}
+			</button>
+		) : null;
+
 		if (entries.length === 0) {
-			return withChapterHeading(chapterHeading, <p className="reader-paragraph">{text}</p>);
+			return withChapterHeading(
+				chapterHeading,
+				<p className="reader-paragraph">
+					{text}
+					{marker}
+				</p>,
+			);
 		}
 
 		const lastEnd = entries[entries.length - 1].charEnd;
@@ -332,7 +392,13 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			children.push(text.slice(lastEnd));
 		}
 
-		return withChapterHeading(chapterHeading, <p className="reader-paragraph">{children}</p>);
+		return withChapterHeading(
+			chapterHeading,
+			<p className="reader-paragraph">
+				{children}
+				{marker}
+			</p>,
+		);
 	},
 );
 

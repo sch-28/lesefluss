@@ -45,11 +45,11 @@ export function useUnreadCount(enabled = true) {
 	});
 }
 
-function markPagesRead(pages: InboxPage[] | undefined, ids: Set<string> | "all", at: number) {
+function markPagesRead(pages: InboxPage[] | undefined, ids: Set<string>, at: number) {
 	return pages?.map((page) => ({
 		...page,
 		items: page.items.map((item) =>
-			item.readAt === null && (ids === "all" || ids.has(item.id)) ? { ...item, readAt: at } : item,
+			item.readAt === null && ids.has(item.id) ? { ...item, readAt: at } : item,
 		),
 	}));
 }
@@ -74,12 +74,10 @@ export function useMarkAllRead() {
 	const client = useQueryClient();
 	return useMutation({
 		mutationFn: inboxClient.markAllRead,
+		// The server keeps items that wait for an answer unread, so it decides what changed.
 		onSuccess: () => {
-			const at = Date.now();
-			client.setQueryData<InboxCache>(socialKeys.inbox, (cache) =>
-				cache ? { ...cache, pages: markPagesRead(cache.pages, "all", at) ?? [] } : cache,
-			);
-			client.setQueryData<UnreadCount>(socialKeys.unread, { count: 0 });
+			void client.invalidateQueries({ queryKey: socialKeys.inbox });
+			void client.invalidateQueries({ queryKey: socialKeys.unread });
 		},
 	});
 }

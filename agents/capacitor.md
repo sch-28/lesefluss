@@ -52,8 +52,9 @@ src/
     reader/
       index.tsx           # BookReader page - VList, scroll/tap/selection handlers, position sync, font size controls
       paragraph.tsx       # React.memo paragraph component - word spans, heading detection, highlight/selection rendering, utf8ByteLength()
-      selection-toolbar.tsx   # Fixed toolbar shown during text selection (color swatches, note, cancel)
-      highlight-modal.tsx     # Bottom-sheet modal for editing an existing highlight (color, note, delete)
+      selection-toolbar.tsx   # Floating two-step toolbar for selections and highlights (actions → colours/note/delete)
+      toolbar-position.ts     # Pure toolbar placement: above the selection, else below, else pinned; clamped to screen
+      word-at-point.ts        # Word index under a viewport point (used by long-press drag, handle drag, mouse drag)
       highlights-list-modal.tsx # Bottom-sheet listing all highlights for the book; tap to jump
     settings.tsx          # Settings hub - links to RSVP, Appearance, Device, Cloud Sync sub-pages, feedback
     settings/
@@ -232,8 +233,8 @@ save.mutate({ wpm: 400 });
 Full-screen virtualized scroll reader split across three files:
 - `index.tsx` - page shell, data loading, scroll/tap/selection handlers, position sync, progress bar, TOC/highlights modals, theme
 - `paragraph.tsx` - `React.memo` component for a single paragraph; word spans, heading detection, highlight/selection rendering
-- `selection-toolbar.tsx` - fixed-position toolbar shown during text selection; color swatches, note button, cancel
-- `highlight-modal.tsx` - bottom-sheet for editing an existing highlight (color, note, delete); auto-saves on change
+- `selection-toolbar.tsx` - floating toolbar for a selection or a highlight; two steps (see Highlights & annotations)
+- `use-highlight-selection.ts` - selection state machine, handle drags, toolbar positioning (`toolbar-position.ts`), highlight saves
 - `highlights-list-modal.tsx` - bottom-sheet listing all book highlights ordered by position; tap to jump
 - `dictionary-modal.tsx` - bottom-sheet modal fetching definitions from the catalog service's own dictionary via react-query
 
@@ -268,7 +269,8 @@ chapters: Chapter[]        // parsed from contentRow.chapters JSON; empty for TX
 
 - **`VListHandle`** via `useRef<VListHandle>` - exposes `findItemIndex`, `scrollToIndex`, `getItemOffset`, `getItemSize`, `cache`
 - **`CacheSnapshot`** stored in a module-level `Map<bookId, CacheSnapshot>` on unmount; restored via `cache` prop on mount - pixel-accurate scroll restoration
-- **`onScrollEnd`** fires position save (no debounce timer needed)
+- **`onScrollEnd`** fires position save (no debounce timer needed): the viewport-top word. It keeps the last settled word (`settledWordRef`) when the view moved less than 4px since the last scroll end (layout clamp, soft keyboard), and at the very bottom, where a later saved word is still on screen but can never reach the top
+- **Scroll ticks** only know the paragraph, so they never replace a finer saved word in the same paragraph (or a later one at the very bottom); otherwise leaving mid-scroll would flush a paragraph-start rewind
 - **Two offset states:** `activeOffset` (word highlight, set to `-1` while scrolling) and `progressOffset` (progress bar, updated every scroll frame)
 - **Word tap - two-stage:** first tap highlights the word and saves position; second tap on the already-highlighted word opens the dictionary modal
 - **Heading paragraphs** (prefixed `# `) are not tappable
@@ -292,15 +294,19 @@ Fixed bar at the bottom of `IonContent`, positioned `calc(env(safe-area-inset-bo
 
 ### Highlights & annotations
 
-Long-press any word to enter selection mode. Two fixed handles (start/end) can be dragged to extend the range. A toolbar appears with 4 color swatches and a note button. Picking a color auto-saves immediately.
+Long-press any word to enter selection mode (haptic tick via `services/haptics.ts`); keep the finger down and drag to extend, or drag the two handles afterwards. Desktop: mouse-drag across words.
 
-Long-pressing an already-highlighted word opens **HighlightModal** to edit color/note or delete. Tapping the bookmark icon opens **HighlightsListModal**.
+The floating toolbar has two steps:
+- **actions** (unsaved selection): Highlight, Note, Look up (single word only, disabled otherwise), Glossary, Comment (buddy read only). Highlight and Note save with the last-used colour (`localStorage` `lesefluss:highlight-color`); Note saves first so a note is never lost.
+- **styled** (saved highlight): colour swatches, Note, Share (buddy read only), Delete.
+
+Long-pressing a highlighted word (or tapping it a second time in scroll mode) selects the existing highlight in the styled step; dragging a handle then resizes it (committed on release). There is no close button: tapping outside dismisses, and a saved highlight stays saved. The Highlights tab of the annotations sheet lists all highlights; tap to jump.
 
 - Offsets stored as UTF-8 byte word-start offsets (same as `data-offset` on word spans)
 - Overlapping highlights allowed; most-recently-created color wins visually
 - Deleting a book cascades to its highlights (`deleteHighlightsByBook` called in `deleteBook`)
 - `highlightsByParagraph: Map<index, HighlightRange[]>` memoized in the reader
-- Scroll suppressed during selection via `touch-action: none` on the VList container
+- Handles use `touch-action: none`; during a long-press drag `paragraph.tsx` blocks `touchmove` so the page doesn't scroll, and page mode ignores the drag instead of swiping
 
 ### Dictionary lookup
 

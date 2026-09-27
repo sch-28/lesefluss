@@ -1,22 +1,16 @@
-import type {
-	ProfileBook,
-	ProfileCover,
-	ProfileFinishedBook,
-	ProfileStats,
-	ProfileView,
-} from "@lesefluss/core";
+import type { ProfileCover, ProfileStats, ProfileView } from "@lesefluss/core";
 import { ratingStars } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { IdentityCard } from "@lesefluss/ui/social-avatar";
 import { Link } from "@tanstack/react-router";
-import { Ban, Flag, MoreHorizontal, Settings, UserMinus, UserRound } from "lucide-react";
+import { motion } from "framer-motion";
+import { Ban, Flag, Lock, MoreHorizontal, Settings, UserMinus, UserRound } from "lucide-react";
 import { useState } from "react";
 import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { PageHeader } from "@/components/app-shell/page-header";
-import { EmptyRow, Section } from "@/components/app-shell/section";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import CoverImage from "@/components/cover-image";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
+import { CoverShelf, SocialSection, StatTile } from "@/components/social/social-ui";
 import { toast } from "@/components/toast";
 import { AuthedFetchError } from "@/services/authed-fetch";
 import { getCoverUrl } from "@/services/catalog/client";
@@ -31,48 +25,25 @@ function coverSrc(cover: ProfileCover): string | null {
 	return cover.kind === "catalog" ? getCoverUrl(cover.catalogId) : cover.url;
 }
 
-function BookRow({
-	book,
-	trailing,
-}: {
-	book: ProfileBook | ProfileFinishedBook;
-	trailing: string;
-}) {
-	return (
-		<div className="flex items-center gap-3 px-4 py-3">
-			<div className="h-14 w-10 shrink-0 overflow-hidden rounded-sm border border-border bg-muted">
-				<CoverImage src={coverSrc(book.cover)} alt="" className="h-full w-full" />
-			</div>
-			<div className="min-w-0 flex-1">
-				<div className="truncate font-medium text-foreground text-sm">{book.title}</div>
-				{book.author && <div className="truncate text-muted-foreground text-xs">{book.author}</div>}
-			</div>
-			<span className="shrink-0 text-muted-foreground text-xs">{trailing}</span>
-		</div>
-	);
-}
-
-function StatsGrid({ stats }: { stats: ProfileStats }) {
-	const cells: { label: string; value: string }[] = [
+function statTiles(stats: ProfileStats): { label: string; value: string }[] {
+	const tiles = [
 		{ label: "Finished this year", value: String(stats.booksFinishedThisYear) },
 		{ label: "Words read", value: stats.wordsRead.toLocaleString() },
 	];
+	if (stats.currentStreakDays !== null) {
+		tiles.push({ label: "Day streak", value: String(stats.currentStreakDays) });
+	}
+	if (stats.longestStreakDays !== null) {
+		const n = stats.longestStreakDays;
+		tiles.push({ label: "Longest streak", value: `${n} ${n === 1 ? "day" : "days"}` });
+	}
 	if (stats.readingTimeMs !== null) {
-		cells.push({ label: "Reading time", value: formatDuration(stats.readingTimeMs) });
+		tiles.push({ label: "Reading time", value: formatDuration(stats.readingTimeMs) });
 	}
 	if (stats.readingSpeedWpm !== null) {
-		cells.push({ label: "Reading speed", value: `${stats.readingSpeedWpm} wpm` });
+		tiles.push({ label: "Reading speed", value: `${stats.readingSpeedWpm} wpm` });
 	}
-	return (
-		<div className="grid grid-cols-2 gap-px bg-border">
-			{cells.map((cell) => (
-				<div key={cell.label} className="bg-card px-4 py-3">
-					<div className="font-semibold text-foreground text-lg">{cell.value}</div>
-					<div className="text-muted-foreground text-xs">{cell.label}</div>
-				</div>
-			))}
-		</div>
-	);
+	return tiles;
 }
 
 function friendsSinceLabel(ms: number | null): string {
@@ -115,7 +86,12 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 
 	return (
 		<>
-			<div className="mt-2 rounded-lg border border-border bg-card p-4">
+			<motion.div
+				initial={{ opacity: 0, y: 12 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ duration: 0.4 }}
+				className="mt-3 rounded-2xl border border-current/10 bg-card p-5 text-card-foreground"
+			>
 				<div className="flex items-start justify-between gap-3">
 					<IdentityCard
 						name={identity.name}
@@ -151,46 +127,77 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 				{isSelf && !isPreview && (
 					<Button asChild variant="outline" size="sm" className="mt-3">
 						<Link to="/tabs/settings/social">
-							<Settings /> Profile settings
+							<Settings /> Edit profile
 						</Link>
 					</Button>
 				)}
-			</div>
+			</motion.div>
+
+			{/* The server leaves out bio and sections entirely when the profile is private. */}
+			{view.bio === undefined && (
+				<div className="mt-4 rounded-xl border border-current/10 bg-card px-4 py-5 text-center">
+					<Lock className="mx-auto mb-2 size-5 text-muted-foreground" />
+					<p className="m-0 text-muted-foreground text-sm">
+						{isPreview
+							? "Your profile is private, so friends only see your name, handle and picture."
+							: `${identity.name} keeps their profile private.`}
+					</p>
+					{isPreview && (
+						<Button asChild variant="outline" size="sm" className="mt-3">
+							<Link to="/tabs/settings/social">Change profile visibility</Link>
+						</Button>
+					)}
+				</div>
+			)}
 
 			{view.sections.currentlyReading && (
-				<Section title="Currently reading">
+				<SocialSection title="Currently reading">
 					{view.sections.currentlyReading.length === 0 ? (
-						<EmptyRow>Nothing in progress right now.</EmptyRow>
+						<p className="m-0 px-1 text-muted-foreground text-sm">Nothing in progress right now.</p>
 					) : (
-						view.sections.currentlyReading.map((book) => (
-							<BookRow key={book.key} book={book} trailing={`${book.progressPercent}%`} />
-						))
+						<CoverShelf
+							items={view.sections.currentlyReading.map((book) => ({
+								key: book.key,
+								title: book.title,
+								author: book.author,
+								coverSrc: coverSrc(book.cover),
+								percent: book.progressPercent,
+								detail: `${book.progressPercent}%`,
+							}))}
+						/>
 					)}
-				</Section>
+				</SocialSection>
 			)}
 
 			{view.sections.finished && (
-				<Section title="Finished">
+				<SocialSection title="Finished">
 					{view.sections.finished.length === 0 ? (
-						<EmptyRow>No finished books yet.</EmptyRow>
+						<p className="m-0 px-1 text-muted-foreground text-sm">No finished books yet.</p>
 					) : (
-						view.sections.finished.map((book) => (
-							<BookRow
-								key={book.key}
-								book={book}
-								trailing={
-									book.rating !== null ? `★ ${ratingStars(book.rating)}` : (book.finishedOn ?? "")
-								}
-							/>
-						))
+						<CoverShelf
+							items={view.sections.finished.map((book) => ({
+								key: book.key,
+								title: book.title,
+								author: book.author,
+								coverSrc: coverSrc(book.cover),
+								detail:
+									book.rating !== null
+										? `★ ${ratingStars(book.rating)}`
+										: (book.finishedOn ?? undefined),
+							}))}
+						/>
 					)}
-				</Section>
+				</SocialSection>
 			)}
 
 			{view.sections.stats && (
-				<Section title="Reading stats">
-					<StatsGrid stats={view.sections.stats} />
-				</Section>
+				<SocialSection title="Reading stats">
+					<div className="grid grid-cols-2 gap-2.5">
+						{statTiles(view.sections.stats).map((tile) => (
+							<StatTile key={tile.label} value={tile.value} label={tile.label} />
+						))}
+					</div>
+				</SocialSection>
 			)}
 
 			<ActionSheet
@@ -251,7 +258,11 @@ function ProfileBody({ userId, isPreview }: { userId: string; isPreview: boolean
 export default function ProfilePage({ userId, isPreview }: { userId: string; isPreview: boolean }) {
 	return (
 		<div className="bg-background">
-			<PageHeader title={isPreview ? "Profile preview" : "Profile"} icon={UserRound} />
+			<PageHeader
+				title={isPreview ? "Profile preview" : "Profile"}
+				icon={UserRound}
+				backTo="/tabs/social"
+			/>
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				<SocialGate returnTo={`/tabs/social/profile/${encodeURIComponent(userId)}`}>
 					<ProfileBody userId={userId} isPreview={isPreview} />

@@ -32,6 +32,7 @@ import { Route as TabsExploreWebNovelPreviewRouteImport } from './routes/tabs/ex
 import { Route as TabsSocialProfileUserIdRouteImport } from './routes/tabs/social/profile.$userId'
 import { Route as TabsSocialInviteTokenRouteImport } from './routes/tabs/social/invite.$token'
 import { Route as TabsSocialBuddyReadIdRouteImport } from './routes/tabs/social/buddy-read.$id'
+import { Route as TabsSocialBuddyReadDiscussionIdRouteImport } from './routes/tabs/social/buddy-read-discussion.$id'
 import { Route as TabsLibrarySeriesIdRouteImport } from './routes/tabs/library/series.$id'
 import { Route as TabsLibraryBookIdRouteImport } from './routes/tabs/library/book.$id'
 import { Route as TabsExploreBookCatalogIdRouteImport } from './routes/tabs/explore/book.$catalogId'
@@ -152,6 +153,12 @@ const TabsSocialBuddyReadIdRoute = TabsSocialBuddyReadIdRouteImport.update({
   path: '/tabs/social/buddy-read/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TabsSocialBuddyReadDiscussionIdRoute =
+  TabsSocialBuddyReadDiscussionIdRouteImport.update({
+    id: '/tabs/social/buddy-read-discussion/$id',
+    path: '/tabs/social/buddy-read-discussion/$id',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const TabsLibrarySeriesIdRoute = TabsLibrarySeriesIdRouteImport.update({
   id: '/tabs/library/series/$id',
   path: '/tabs/library/series/$id',
@@ -193,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/tabs/explore/book/$catalogId': typeof TabsExploreBookCatalogIdRoute
   '/tabs/library/book/$id': typeof TabsLibraryBookIdRoute
   '/tabs/library/series/$id': typeof TabsLibrarySeriesIdRoute
+  '/tabs/social/buddy-read-discussion/$id': typeof TabsSocialBuddyReadDiscussionIdRoute
   '/tabs/social/buddy-read/$id': typeof TabsSocialBuddyReadIdRoute
   '/tabs/social/invite/$token': typeof TabsSocialInviteTokenRoute
   '/tabs/social/profile/$userId': typeof TabsSocialProfileUserIdRoute
@@ -221,6 +229,7 @@ export interface FileRoutesByTo {
   '/tabs/explore/book/$catalogId': typeof TabsExploreBookCatalogIdRoute
   '/tabs/library/book/$id': typeof TabsLibraryBookIdRoute
   '/tabs/library/series/$id': typeof TabsLibrarySeriesIdRoute
+  '/tabs/social/buddy-read-discussion/$id': typeof TabsSocialBuddyReadDiscussionIdRoute
   '/tabs/social/buddy-read/$id': typeof TabsSocialBuddyReadIdRoute
   '/tabs/social/invite/$token': typeof TabsSocialInviteTokenRoute
   '/tabs/social/profile/$userId': typeof TabsSocialProfileUserIdRoute
@@ -250,6 +259,7 @@ export interface FileRoutesById {
   '/tabs/explore/book/$catalogId': typeof TabsExploreBookCatalogIdRoute
   '/tabs/library/book/$id': typeof TabsLibraryBookIdRoute
   '/tabs/library/series/$id': typeof TabsLibrarySeriesIdRoute
+  '/tabs/social/buddy-read-discussion/$id': typeof TabsSocialBuddyReadDiscussionIdRoute
   '/tabs/social/buddy-read/$id': typeof TabsSocialBuddyReadIdRoute
   '/tabs/social/invite/$token': typeof TabsSocialInviteTokenRoute
   '/tabs/social/profile/$userId': typeof TabsSocialProfileUserIdRoute
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/tabs/explore/book/$catalogId'
     | '/tabs/library/book/$id'
     | '/tabs/library/series/$id'
+    | '/tabs/social/buddy-read-discussion/$id'
     | '/tabs/social/buddy-read/$id'
     | '/tabs/social/invite/$token'
     | '/tabs/social/profile/$userId'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/tabs/explore/book/$catalogId'
     | '/tabs/library/book/$id'
     | '/tabs/library/series/$id'
+    | '/tabs/social/buddy-read-discussion/$id'
     | '/tabs/social/buddy-read/$id'
     | '/tabs/social/invite/$token'
     | '/tabs/social/profile/$userId'
@@ -336,6 +348,7 @@ export interface FileRouteTypes {
     | '/tabs/explore/book/$catalogId'
     | '/tabs/library/book/$id'
     | '/tabs/library/series/$id'
+    | '/tabs/social/buddy-read-discussion/$id'
     | '/tabs/social/buddy-read/$id'
     | '/tabs/social/invite/$token'
     | '/tabs/social/profile/$userId'
@@ -365,6 +378,7 @@ export interface RootRouteChildren {
   TabsExploreBookCatalogIdRoute: typeof TabsExploreBookCatalogIdRoute
   TabsLibraryBookIdRoute: typeof TabsLibraryBookIdRoute
   TabsLibrarySeriesIdRoute: typeof TabsLibrarySeriesIdRoute
+  TabsSocialBuddyReadDiscussionIdRoute: typeof TabsSocialBuddyReadDiscussionIdRoute
   TabsSocialBuddyReadIdRoute: typeof TabsSocialBuddyReadIdRoute
   TabsSocialInviteTokenRoute: typeof TabsSocialInviteTokenRoute
   TabsSocialProfileUserIdRoute: typeof TabsSocialProfileUserIdRoute
@@ -533,6 +547,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabsSocialBuddyReadIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tabs/social/buddy-read-discussion/$id': {
+      id: '/tabs/social/buddy-read-discussion/$id'
+      path: '/tabs/social/buddy-read-discussion/$id'
+      fullPath: '/tabs/social/buddy-read-discussion/$id'
+      preLoaderRoute: typeof TabsSocialBuddyReadDiscussionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tabs/library/series/$id': {
       id: '/tabs/library/series/$id'
       path: '/tabs/library/series/$id'
@@ -581,6 +602,7 @@ const rootRouteChildren: RootRouteChildren = {
   TabsExploreBookCatalogIdRoute: TabsExploreBookCatalogIdRoute,
   TabsLibraryBookIdRoute: TabsLibraryBookIdRoute,
   TabsLibrarySeriesIdRoute: TabsLibrarySeriesIdRoute,
+  TabsSocialBuddyReadDiscussionIdRoute: TabsSocialBuddyReadDiscussionIdRoute,
   TabsSocialBuddyReadIdRoute: TabsSocialBuddyReadIdRoute,
   TabsSocialInviteTokenRoute: TabsSocialInviteTokenRoute,
   TabsSocialProfileUserIdRoute: TabsSocialProfileUserIdRoute,

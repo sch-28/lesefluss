@@ -1,6 +1,6 @@
 import { useLocation } from "@tanstack/react-router";
 import { Compass, LibraryBig, Settings, Users } from "lucide-react";
-import type { ComponentType, SVGProps } from "react";
+import { type ComponentType, type SVGProps, useEffect } from "react";
 import { useSyncContext } from "../../contexts/sync-context";
 import { useRefetchSocialOnForeground } from "../../services/social/cache";
 import { useUnreadCount } from "../../services/social/inbox";
@@ -21,6 +21,34 @@ export const NAV_ITEMS: readonly NavTarget[] = [
 	{ to: "/tabs/social", label: "Social", icon: Users },
 	{ to: "/tabs/settings", label: "Settings", icon: Settings },
 ];
+
+const SIGNED_IN_HINT_KEY = "nav-signed-in";
+
+function readSignedInHint(): boolean {
+	try {
+		return localStorage.getItem(SIGNED_IN_HINT_KEY) === "true";
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Social needs an account, so its tab only exists for a signed-in user. Until
+ * the stored session is restored, the last known state decides, so the tab bar
+ * does not change shape on every launch.
+ */
+export function useNavItems(): readonly NavTarget[] {
+	const { isLoggedIn, isSessionResolved } = useSyncContext();
+	useEffect(() => {
+		if (!isSessionResolved) return;
+		try {
+			localStorage.setItem(SIGNED_IN_HINT_KEY, String(isLoggedIn));
+		} catch {}
+	}, [isLoggedIn, isSessionResolved]);
+	const isSignedIn = isSessionResolved ? isLoggedIn : readSignedInHint();
+	if (isSignedIn && SYNC_ENABLED) return NAV_ITEMS;
+	return NAV_ITEMS.filter((item) => item.to !== "/tabs/social");
+}
 
 export function useActiveNavTo(): NavTarget["to"] | null {
 	const { pathname } = useLocation();

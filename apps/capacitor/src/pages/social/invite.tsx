@@ -171,7 +171,7 @@ function InviteContent({ token }: { token: string }) {
 export default function InvitePage({ token }: { token: string }) {
 	return (
 		<div className="bg-background">
-			<PageHeader title="Invitation" icon={UserPlus} />
+			<PageHeader title="Invitation" icon={UserPlus} backTo="/tabs/social" />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				<InviteContent token={token} />
 			</div>

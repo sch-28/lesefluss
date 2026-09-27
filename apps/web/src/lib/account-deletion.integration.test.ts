@@ -10,6 +10,11 @@ import { afterAll, describe, expect, test } from "vitest";
 import { db } from "~/db";
 import { account, session, user } from "~/db/auth-schema";
 import {
+	buddyRead,
+	buddyReadComment,
+	buddyReadMember,
+	buddyReadReaction,
+	buddyReadSharedHighlight,
 	socialAvatar,
 	socialBlock,
 	socialFriendRequest,
@@ -351,6 +356,75 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 		// Isolation: the other party is untouched. (Test files run in parallel and
 		// create users of their own, so a global count would be racy.)
 		expect(await db.select().from(user).where(eq(user.id, otherUserId))).toHaveLength(1);
+	});
+
+	test("removes the user's buddy-read reactions and shares and anonymises threaded comments", async () => {
+		const leaver = `test-del-br-${randomUUID()}`;
+		const stayer = `test-del-br-other-${randomUUID()}`;
+		await db.insert(user).values([
+			{ id: leaver, name: "Leaver", email: `${leaver}@example.test` },
+			{ id: stayer, name: "Stayer", email: `${stayer}@example.test` },
+		]);
+		const [read] = await db
+			.insert(buddyRead)
+			.values({ originUserId: stayer, originBookId: "book1", hostId: stayer, title: "B" })
+			.returning({ id: buddyRead.id });
+		const buddyReadId = read?.id ?? "";
+		await db.insert(buddyReadMember).values([
+			{ buddyReadId, userId: leaver, bookId: "book1", state: "left", leftAt: now },
+			{ buddyReadId, userId: stayer, bookId: "book1" },
+		]);
+		const anchor = { anchorKind: "range" as const, startWord: 5, endWord: 6 };
+		const [lone, threaded] = await db
+			.insert(buddyReadComment)
+			.values([
+				{ buddyReadId, authorId: leaver, ...anchor, body: "lone" },
+				{ buddyReadId, authorId: leaver, ...anchor, body: "threaded" },
+			])
+			.returning({ id: buddyReadComment.id });
+		const [reply] = await db
+			.insert(buddyReadComment)
+			.values({ buddyReadId, authorId: stayer, parentId: threaded?.id, ...anchor, body: "reply" })
+			.returning({ id: buddyReadComment.id });
+		await db
+			.insert(buddyReadSharedHighlight)
+			.values({ buddyReadId, userId: leaver, highlightId: "hl1" });
+		await db
+			.insert(buddyReadReaction)
+			.values({ buddyReadId, userId: leaver, commentId: reply?.id, emoji: "👍" });
+
+		await deleteUserAccount(leaver);
+
+		expect(
+			await db
+				.select()
+				.from(buddyReadComment)
+				.where(eq(buddyReadComment.id, lone?.id ?? "")),
+		).toHaveLength(0);
+		const [placeholder] = await db
+			.select()
+			.from(buddyReadComment)
+			.where(eq(buddyReadComment.id, threaded?.id ?? ""));
+		expect(placeholder).toMatchObject({ body: null, authorId: null });
+		expect(placeholder?.deletedAt).not.toBeNull();
+		expect(
+			await db
+				.select()
+				.from(buddyReadComment)
+				.where(eq(buddyReadComment.id, reply?.id ?? "")),
+		).toMatchObject([{ body: "reply", authorId: stayer }]);
+		expect(
+			await db
+				.select()
+				.from(buddyReadSharedHighlight)
+				.where(eq(buddyReadSharedHighlight.userId, leaver)),
+		).toHaveLength(0);
+		expect(
+			await db.select().from(buddyReadReaction).where(eq(buddyReadReaction.userId, leaver)),
+		).toHaveLength(0);
+
+		await db.delete(buddyRead).where(eq(buddyRead.id, buddyReadId));
+		await deleteUserAccount(stayer);
 	});
 
 	test("clearing cloud data keeps the social profile", async () => {

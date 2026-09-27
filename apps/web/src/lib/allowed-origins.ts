@@ -1,3 +1,5 @@
+import { isUuid } from "./uuid";
+
 /** Origins shared by CORS middleware and better-auth trustedOrigins. */
 const DEV_ORIGINS = ["http://localhost", "http://localhost:3001"];
 
@@ -41,13 +43,10 @@ function isProduction(): boolean {
 // the addon ID for the identity redirect URI host. Both forms can be listed in
 // LESEFLUSS_FIREFOX_EXTENSION_IDS; we route each to the allowlist that matches
 // its shape.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const SHA1_RE = /^[0-9a-f]{40}$/;
 
 function configuredExtensionOrigins(): Set<string> {
-	const firefoxUuids = configuredValues("LESEFLUSS_FIREFOX_EXTENSION_IDS").filter((v) =>
-		UUID_RE.test(v),
-	);
+	const firefoxUuids = configuredValues("LESEFLUSS_FIREFOX_EXTENSION_IDS").filter((v) => isUuid(v));
 	return new Set([
 		...configuredValues("LESEFLUSS_CHROME_EXTENSION_IDS").map((id) => `chrome-extension://${id}`),
 		...firefoxUuids.map((id) => `moz-extension://${id}`),

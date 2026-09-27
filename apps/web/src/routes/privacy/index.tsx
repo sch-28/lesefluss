@@ -288,6 +288,20 @@ function PrivacyPage() {
 					leaves, and your memberships and invites are deleted with your account. A joiner who does
 					not have the book receives a copy exactly as with sharing.
 				</p>
+				<h3 className="mt-6 mb-2 font-medium text-foreground">Comments and shared highlights</h3>
+				<p>
+					In a buddy read you can write comments, reply to them, react with an emoji and share
+					highlights. We store the text, where in the book it belongs, who wrote it and when, and
+					who reacted. A shared highlight includes its note. Nothing is shared unless you share it,
+					either one highlight at a time or with the "share all my highlights" setting, which you
+					can switch off again. Only current members of the buddy read see these items, each only
+					once they have read that far, and never someone you blocked or who blocked you. To decide
+					what to show, we keep the furthest position you have reached in the book. If you leave,
+					your comments stay and your shared highlights disappear. Everything is deleted with the
+					buddy read. When you delete your account, your reactions and shared highlights are
+					deleted and your comments are deleted too, except that a comment others replied to stays
+					as an empty "removed" entry without your name.
+				</p>
 			</section>
 
 			<section>
