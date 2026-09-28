@@ -91,6 +91,7 @@ import DictionaryModal from "./dictionary-modal";
 import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
 import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
+import { useLiveReading } from "./live-board";
 import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
 import type { ParagraphWordEntry } from "./paragraph";
@@ -235,8 +236,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// Keep ref in sync with state so other call sites (jumps, scrubs, init seed)
 	// don't need to write the ref explicitly. Skip during the per-tick hidden
 	// phase since the ref is the authoritative writer there.
+	const shownProgressRef = useRef(0);
 	useEffect(() => {
 		progressWordRef.current = progressWord;
+		shownProgressRef.current = progressWord;
 		if (import.meta.env.DEV) publishProgressWord(progressWord);
 	}, [progressWord]);
 
@@ -478,7 +481,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const contentBytes = useMemo(() => (content ? _encoder.encode(content) : null), [content]);
 
 	const totalWordCount = book?.wordCount ?? wordIndex?.wordCount ?? 0;
-	const buddyMarkers = useBuddyReadMarkers(book?.originKey ?? null, totalWordCount, isLoggedIn);
 
 	const chapterWordCounts = useMemo(() => {
 		if (!chapters.length) return [];
@@ -790,9 +792,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const handleHideProgressBar = useCallback(() => setProgressBarVisible(false), []);
 	const handleScrollShowProgressBar = useCallback(() => {
 		setProgressBarVisible(true);
-		// Flush the latest word accumulated while the bar was hidden so it
-		// reflects the current scroll position the moment it appears.
-		setProgressWord(progressWordRef.current);
+		// The reading position, not the last scroll tick: a tick is a paragraph
+		// start, and a settle to the value already shown never refreshes the
+		// tick ref, so in long paragraphs it can sit far from where you are.
+		setProgressWord(lastWordRef.current ?? progressWordRef.current);
 		markActivityRef.current?.();
 	}, []);
 	// Page mode has no scrolling, so the scroll-driven hide path never fires
@@ -818,12 +821,16 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				lastWordRef.current = word;
 				userMovedRef.current = true;
 			}
-			// Only while the bar shows: per-tick renders dominated hold-scroll cost,
-			// and the settle writes the final value anyway.
-			if (progressBarVisibleRef.current) setProgressWord(word);
+			// A coarser tick would pull the bar back to the paragraph start. Per-tick
+			// renders dominated hold-scroll cost, so the resting line only follows
+			// in half-percent steps; the settle writes the exact value anyway.
+			const step = Math.abs(word - shownProgressRef.current) >= totalWordCount * 0.005;
+			if (!isCoarserThanLast && (progressBarVisibleRef.current || step)) {
+				setProgressWord(word);
+			}
 			markActivityRef.current?.();
 		},
-		[findParagraphIndexForWord],
+		[findParagraphIndexForWord, totalWordCount],
 	);
 
 	const syncSelectionHandles = useCallback(() => {
@@ -1306,6 +1313,18 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const sessionMode: ReadingSessionMode =
 		readerMode === "rsvp" ? "rsvp" : paginationStyle === "page" ? "page" : "scroll";
 	const getReadingPosition = useCallback(() => lastWordRef.current ?? 0, []);
+	const getRestoredPosition = useCallback(() => lastWordRef.current, []);
+	const liveRead = discussionRead?.status === "in_progress" ? discussionRead : null;
+	const liveMembers = useLiveReading({
+		buddyReadId: liveRead?.id ?? null,
+		getPosition: getRestoredPosition,
+		mode: sessionMode,
+		dialWpm: rsvpSettings.wpm ?? null,
+		isForeground,
+		isOnline,
+	});
+	const buddy = useBuddyReadMarkers(liveRead?.id ?? null, totalWordCount, liveMembers);
+	const readingNowCount = buddy.markers.filter((m) => m.live).length;
 	const { markActivity: markReadingActivity, getDebugSnapshot } = useReadingSession({
 		bookId: id,
 		mode: sessionMode,
@@ -1511,6 +1530,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	}
 
 	const progressPct = totalWordCount > 0 ? Math.min(100, (progressWord / totalWordCount) * 100) : 0;
+	const isProgressCollapsed = !progressBarVisible && readerMode !== "rsvp";
 
 	const showReadingTime = dbSettings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
 	// The dial is an input, not a rate: the engine spends time on punctuation
@@ -1768,20 +1788,54 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						isSelecting={isSelecting}
 						syncSelectionHandles={syncSelectionHandles}
 						isScrubbingRef={isScrubbingRef}
+						isScrubbing={scrub.isDragging}
 						footer={advanceFooter}
 					/>
 				)}
 
 				{/* ── Progress bar ── */}
-				{(progressBarVisible || readerMode === "rsvp") && (
+				{/* Collapsed, the bar rests as a thin line so progress is always in view. */}
+				{isProgressCollapsed ? (
+					<div className="reader-progress-bar reader-progress-bar--collapsed" aria-hidden>
+						<BuddyReadMarkers
+							markers={buddy.markers}
+							myWord={progressWord}
+							approximate={buddy.approximate}
+							isCollapsed
+						/>
+						<div className="reader-progress-fill-track">
+							<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
+						</div>
+					</div>
+				) : (
 					<div
 						ref={scrub.progressBarRef}
 						className="reader-progress-bar"
 						onPointerDown={scrub.handleProgressPointerDown}
 						onPointerMove={scrub.handleProgressPointerMove}
 						onPointerUp={scrub.handleProgressPointerUp}
+						onPointerCancel={scrub.handleProgressPointerCancel}
 					>
-						<BuddyReadMarkers markers={buddyMarkers} />
+						{scrub.isDragging && (
+							<div
+								className="reader-scrub-bubble"
+								style={{ left: `clamp(70px, ${progressPct}%, calc(100% - 70px))` }}
+								role="status"
+							>
+								{currentChapterIndex >= 0 && (
+									<span className="reader-scrub-bubble-chapter">
+										{chapters[currentChapterIndex].title}
+									</span>
+								)}
+								<span>{Math.round(progressPct)}%</span>
+							</div>
+						)}
+						<BuddyReadMarkers
+							markers={buddy.markers}
+							myWord={progressWord}
+							approximate={buddy.approximate}
+							isCollapsed={false}
+						/>
 						{/* The slider role sits on the track, not the bar: a slider is a leaf, and
 						    assistive tech would not reach the marker buttons inside it. */}
 						{/* biome-ignore lint/a11y/useFocusableInteractive: scrubber */}
@@ -1800,6 +1854,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							<span>
 								{Math.round(progressPct)}%
 								{bookMinutesRemaining > 0 && <> · {formatReadingTime(bookMinutesRemaining)} left</>}
+								{readingNowCount > 0 && (
+									<>
+										{" · "}
+										<span className="reader-buddy-live-dot" /> {readingNowCount} reading
+									</>
+								)}
 							</span>
 							{chapterMinutesRemaining != null && currentChapterIndex >= 0 && (
 								<span className="reader-progress-chapter-time">

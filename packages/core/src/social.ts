@@ -72,6 +72,8 @@ export const UpdateSocialProfileBodySchema = z.object({
 	showFinished: z.boolean().optional(),
 	showStats: z.boolean().optional(),
 	showHighlights: z.boolean().optional(),
+	feedEnabled: z.boolean().optional(),
+	shareLiveReading: z.boolean().optional(),
 });
 export const AvatarSourceBodySchema = z.object({ source: z.enum(["account", "none"]) });
 
@@ -106,6 +108,10 @@ export type OwnSocialProfile = {
 	showFinished: boolean;
 	showStats: boolean;
 	showHighlights: boolean;
+	/** Whether starting and finishing books shows in friends' activity feeds. */
+	feedEnabled: boolean;
+	/** Whether buddy-read members see this user reading live; off also hides theirs. */
+	shareLiveReading: boolean;
 };
 
 export function initialsFor(name: string): string {
@@ -311,6 +317,10 @@ export const SOCIAL_API = {
 	buddyReadReaction: "/api/social/buddy-read-reaction",
 	buddyReadReactionRemove: "/api/social/buddy-read-reaction-remove",
 	buddyReadDiscussionSettings: "/api/social/buddy-read-discussion-settings",
+	feed: "/api/social/feed",
+	feedDelete: "/api/social/feed-delete",
+	live: "/api/social/live",
+	liveStream: "/api/social/live-stream",
 } as const;
 
 /** User-facing copy for a rejected friend, block or invite action. */
@@ -430,6 +440,37 @@ export type ProfileCover =
 	| { kind: "catalog"; catalogId: string }
 	| { kind: "url"; url: string }
 	| null;
+
+export const FEED_EVENT_TYPES = ["started", "finished"] as const;
+export type FeedEventType = (typeof FEED_EVENT_TYPES)[number];
+/** The profile section an event type belongs to: hiding the section hides its events, past ones included. */
+export const FEED_EVENT_SECTION = {
+	started: "currentlyReading",
+	finished: "finished",
+} as const satisfies Record<FeedEventType, ProfileSection>;
+export const FEED_RETENTION_DAYS = 90;
+/** A finish older than this when it reaches the server is history catching up, not news. */
+export const FEED_FINISH_RECENCY_HOURS = 72;
+export const FEED_PAGE_SIZE = 20;
+
+export type FeedItem = {
+	id: string;
+	type: FeedEventType;
+	isOwn: boolean;
+	actor: SocialIdentity;
+	/** `YYYY-MM-DD` in the viewer's zone; a clock time would show when someone reads. */
+	day: string;
+	book: {
+		title: string;
+		author: string | null;
+		catalogId: string | null;
+		cover: ProfileCover;
+		/** Half-stars 1 to 10, finished events only. */
+		rating: number | null;
+	};
+};
+export type FeedPage = { items: FeedItem[]; nextCursor: string | null };
+export const FeedDeleteBodySchema = z.object({ eventId: z.string().uuid() });
 
 export type ProfileBook = {
 	/** Book id, or the series id for a rolled-up serial. Never a URL and never a lookup key for other users. */
@@ -680,6 +721,7 @@ export type BuddyReadProgress = {
 		userId: string;
 		name: string;
 		handle: string;
+		avatarUrl: string | null;
 		wordPosition: number;
 		wordCount: number | null;
 		percent: number | null;

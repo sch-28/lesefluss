@@ -17,6 +17,7 @@ import {
 	buddyReadSharedHighlight,
 	socialAvatar,
 	socialBlock,
+	socialFeedEvent,
 	socialFriendRequest,
 	socialFriendship,
 	socialHandle,
@@ -229,8 +230,14 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 			updatedAt: now,
 		});
 
+		await db.insert(socialFeedEvent).values({ actorId: userId, bookId: "book1", type: "started" });
+
 		// Act.
 		await deleteUserAccount(userId);
+
+		expect(
+			await db.select().from(socialFeedEvent).where(eq(socialFeedEvent.actorId, userId)),
+		).toHaveLength(0);
 
 		// Sharing: every record naming the user is gone; the other user's copy stays.
 		expect(

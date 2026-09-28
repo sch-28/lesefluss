@@ -173,6 +173,32 @@ the highlight through sync show up there; unsharing removes it and its reactions
 removes the share, never the highlight, and bars sharing it again. Profile sections (TASK-61)
 use the same term.
 
+### Activity feed
+
+The Activity section of the Social tab: your own and your friends' [feed events](#feed-event),
+newest first, for the last 90 days. A friend's event shows only while you are friends (no block,
+no ban), their profile is visible to friends, their feed sharing is on and the section the event
+belongs to is on; the book must still be in their library and not hidden from their profile. Items
+show the day, never the time.
+
+### Feed event
+
+A row saying a reader **started** or **finished** a book (`social_feed_event`), recorded by the
+server when a sync push moves a book from want to reading or to finished. Only one of each per
+book. It stores no title or position: book details come from the reader's own library row when the
+feed is read. A book the server has never seen and a finish older than 72 hours record nothing, so
+restoring or importing a library never floods the feed. Started maps to the "currently reading"
+profile section, finished to "finished books".
+
+### Live board
+
+The other members of a [buddy read](#buddy-read) shown on the reader's progress bar at their
+position in the book, with whoever has the book open right now marked as **reading now** and
+their speed in the current sitting. Positions are the ones members already see; reading now and speed
+live only in server memory, and speed is credited on the server with the same rule as reading
+sessions, so skipping ahead does not count. A member can switch off sharing live activity, which
+also hides everyone else's.
+
 ### Content origin
 
 The `(origin_user_id, origin_book_id)` on every `sync_books` row: the row itself for an upload,

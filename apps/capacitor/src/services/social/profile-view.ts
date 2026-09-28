@@ -5,7 +5,7 @@ import { authedFetch } from "../authed-fetch";
 import { socialKeys } from "../db/hooks/query-keys";
 import { socialQueryDefaults } from "./cache";
 
-function ownerTimeZone(): string | undefined {
+export function deviceTimeZone(): string | undefined {
 	try {
 		return Intl.DateTimeFormat().resolvedOptions().timeZone;
 	} catch {
@@ -19,7 +19,7 @@ export async function fetchProfileView(
 ): Promise<ProfileView> {
 	const params = new URLSearchParams({ userId });
 	if (options.asFriend) params.set("as", "friend");
-	const tz = ownerTimeZone();
+	const tz = deviceTimeZone();
 	if (tz) params.set("tz", tz);
 	const res = await authedFetch(`${SOCIAL_API.profileView}?${params}`);
 	return res.json();

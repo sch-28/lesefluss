@@ -1,4 +1,5 @@
 import {
+	FEED_EVENT_TYPES,
 	FRIEND_REQUEST_STATES,
 	NOTICE_REASONS,
 	NOTICE_TARGET_TYPES,
@@ -310,9 +311,36 @@ export const socialProfile = pgTable(
 		showFinished: boolean("show_finished").notNull().default(true),
 		showStats: boolean("show_stats").notNull().default(true),
 		showHighlights: boolean("show_highlights").notNull().default(true),
+		feedEnabled: boolean("feed_enabled").notNull().default(true),
+		shareLiveReading: boolean("share_live_reading").notNull().default(true),
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
 	(t) => [check("social_profile_visibility_check", sql`${t.visibility} IN ('private', 'friends')`)],
+);
+
+/**
+ * One row per started or finished book, referencing the actor's own
+ * `sync_books` row: title, cover and rating are joined at read time, so a
+ * deleted, hidden or taken-down book drops out of every feed on its own.
+ */
+export const socialFeedEvent = pgTable(
+	"social_feed_event",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		actorId: text("actor_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		bookId: text("book_id").notNull(),
+		type: text("type", { enum: FEED_EVENT_TYPES }).notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		payload: jsonb("payload"),
+	},
+	(t) => [
+		uniqueIndex("social_feed_event_book_type_idx").on(t.actorId, t.bookId, t.type),
+		index("social_feed_event_actor_created_idx").on(t.actorId, t.createdAt, t.id),
+		index("social_feed_event_created_idx").on(t.createdAt),
+		check("social_feed_event_type_check", sql`${t.type} IN ('started', 'finished')`),
+	],
 );
 
 /**

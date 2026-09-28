@@ -24,9 +24,10 @@ export function clearSocialQueries(): void {
 	queryClient.removeQueries({ queryKey: socialKeys.all });
 }
 
-/** After a sync run: the server may hold new items for this account. */
-export function invalidateUnreadCount(): void {
+/** After a sync run: the server may hold new inbox items and, from this push, new feed events. */
+export function invalidateAfterSync(): void {
 	void queryClient.invalidateQueries({ queryKey: socialKeys.unread });
+	void queryClient.invalidateQueries({ queryKey: socialKeys.feed });
 }
 
 /** Refetches social queries when the app comes back to the foreground. */

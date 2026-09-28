@@ -1,10 +1,11 @@
 ---
 id: TASK-171.10
 title: Friends activity feed
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - '@claude'
 created_date: '2026-09-25 22:12'
-updated_date: '2026-09-25 22:44'
+updated_date: '2026-09-27 21:30'
 labels:
   - social
   - web
@@ -55,24 +56,138 @@ Docs: document event types, the historic-sync guard, recording rules and retenti
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Starting and finishing a book creates feed events that the user's friends see in the Social tab when the matching profile section is visible to friends
-- [ ] #2 Restoring or first-syncing an existing library, or importing books, does not create feed events
-- [ ] #3 A released app build running its finished-date backfill for books finished long ago does not create finished events
-- [ ] #4 Rereading a book, resetting its position, or two devices pushing the same transition creates no duplicate started or finished event
-- [ ] #5 Web-serial chapters, articles imported by URL and tombstoned books never create feed events
-- [ ] #6 No event is recorded while the actor's feed publishing is off or the mapped section is not visible to friends
-- [ ] #7 Events for books hidden from profile, for sections the actor turned off, or from actors whose profile is private are never shown, including past events
-- [ ] #8 Events for a book that was deleted, removed by Clear cloud data or taken down are no longer shown
-- [ ] #9 Events are shown only from current friends: after unfriending, a block in either direction or a ban, the actor's events disappear from the viewer's feed
-- [ ] #10 Feed items show the day of the event but never a clock time, and a finished event shows the rating but never review text
-- [ ] #11 A user can delete an individual own event, and it no longer appears to anyone
-- [ ] #12 The feed publishing switch defaults to on, and turning it off deletes the user's existing events after a confirmation that says so
-- [ ] #13 The feed is paginated newest first with a stable cursor, labels the user's own events as You, and links to the friend's profile and the book (Explore page for catalog books, a details sheet otherwise)
-- [ ] #14 The feed shows distinct loading, offline, error with retry, no-friends and no-activity states
-- [ ] #15 The feed API works from the native app with a bearer token and from the web build with a session cookie, is rate-limited per user, returns only allowlisted fields, and responses are sent with Cache-Control private, no-store
-- [ ] #16 Events older than 90 days are never shown and are removed
-- [ ] #17 Deleting the account through any of the three deletion paths removes that user's feed events, verified in account-deletion.integration.test.ts
-- [ ] #18 The privacy policy describes feed events, who sees them, the 90-day retention, the publishing switch and deletion with the account
-- [ ] #19 Tests cover event generation on transitions, the historic-sync and backfill guards, deduplication, excluded rows, the recording rules, and visibility, relation and hide-flag filtering at read time
-- [ ] #20 Developer docs describe the event types, the historic-sync guard, recording rules and retention, and CONTEXT.md defines activity feed and feed event
+- [x] #1 Starting and finishing a book creates feed events that the user's friends see in the Social tab when the matching profile section is visible to friends
+- [x] #2 Restoring or first-syncing an existing library, or importing books, does not create feed events
+- [x] #3 A released app build running its finished-date backfill for books finished long ago does not create finished events
+- [x] #4 Rereading a book, resetting its position, or two devices pushing the same transition creates no duplicate started or finished event
+- [x] #5 Web-serial chapters, articles imported by URL and tombstoned books never create feed events
+- [x] #6 No event is recorded while the actor's feed publishing is off or the mapped section is not visible to friends
+- [x] #7 Events for books hidden from profile, for sections the actor turned off, or from actors whose profile is private are never shown, including past events
+- [x] #8 Events for a book that was deleted, removed by Clear cloud data or taken down are no longer shown
+- [x] #9 Events are shown only from current friends: after unfriending, a block in either direction or a ban, the actor's events disappear from the viewer's feed
+- [x] #10 Feed items show the day of the event but never a clock time, and a finished event shows the rating but never review text
+- [x] #11 A user can delete an individual own event, and it no longer appears to anyone
+- [x] #12 The feed publishing switch defaults to on, and turning it off deletes the user's existing events after a confirmation that says so
+- [x] #13 The feed is paginated newest first with a stable cursor, labels the user's own events as You, and links to the friend's profile and the book (Explore page for catalog books, a details sheet otherwise)
+- [x] #14 The feed shows distinct loading, offline, error with retry, no-friends and no-activity states
+- [x] #15 The feed API works from the native app with a bearer token and from the web build with a session cookie, is rate-limited per user, returns only allowlisted fields, and responses are sent with Cache-Control private, no-store
+- [x] #16 Events older than 90 days are never shown and are removed
+- [x] #17 Deleting the account through any of the three deletion paths removes that user's feed events, verified in account-deletion.integration.test.ts
+- [x] #18 The privacy policy describes feed events, who sees them, the 90-day retention, the publishing switch and deletion with the account
+- [x] #19 Tests cover event generation on transitions, the historic-sync and backfill guards, deduplication, excluded rows, the recording rules, and visibility, relation and hide-flag filtering at read time
+- [x] #20 Developer docs describe the event types, the historic-sync guard, recording rules and retention, and CONTEXT.md defines activity feed and feed event
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+## Plan
+
+### 1. Core (`packages/core/src/social.ts`)
+- `FEED_EVENT_TYPES = ["started", "finished"]` with a type → profile-section map (`started` → currentlyReading, `finished` → finished), so TASK-61 adds `highlight` in one place.
+- `FEED_RETENTION_DAYS = 90`, `FEED_FINISH_RECENCY_HOURS = 72`.
+- Types: `FeedItem { id, type, isOwn, actor: SocialIdentity, day: "YYYY-MM-DD" (actor's zone, never a time), book: { title, author, catalogId, cover: ProfileCover, rating (finished only) } }`, `FeedPage { items, nextCursor }`.
+- `SOCIAL_API.feed` (GET), `SOCIAL_API.feedDelete` (POST); `feedEnabled` in `OwnSocialProfile` and in the profile update body.
+
+### 2. Database (migration `0029_activity_feed.sql`)
+- `social_profile.feed_enabled boolean NOT NULL DEFAULT true`.
+- `social_feed_event`: `id uuid`, `actor_id` → `user.id` ON DELETE CASCADE, `book_id text`, `type text` (check constraint), `created_at`, `payload jsonb NULL` (reserved for TASK-61). Unique `(actor_id, book_id, type)`; index `(actor_id, created_at DESC, id)`.
+
+### 3. Recording (`apps/web/src/lib/social/feed.ts`, called from `api/sync.ts`)
+- Before the book upserts, read the stored rows for the pushed ids: status, positions, word count, `finished_at`, deleted, series, source (one query). The upserts get `RETURNING` for the same columns, so the merged state comes back without another read.
+- `feedTransitions(before, after, now)`, a pure and unit-tested function:
+  - Rows that emit nothing: no prior row (an insert), tombstoned, `series_id` set, `source = 'url'`.
+  - Started: the derived status (`bookStatus`) goes from `want` to `reading`.
+  - Finished: the derived status becomes `finished`, or `finished_at` goes from NULL to a value, and only while the finish time (`finished_at`, else server `now`) is within 72 hours of `now`.
+- Recording rules: the actor has a `social_profile` with visibility `friends`, `feed_enabled` is on, and the mapped section is on. The profile is read only when there are transitions.
+- Insert in a savepoint with `ON CONFLICT DO NOTHING`; a failure is logged and swallowed, so sync never breaks. Pulls never record.
+
+### 4. Reading (`GET /api/social/feed?cursor=`)
+- Actors are the viewer plus current friends. Both sides must be socially visible (no ban, a handle), which the existing helpers cover; a block deletes the friendship.
+- Joined live with `sync_books` on `(actor, book_id)`: not tombstoned, not hidden from the profile, not an article. Joined with the actor's `social_profile`:
+  - Other people's events: visibility `friends`, `feed_enabled` on, and the mapped section on.
+  - The viewer's own events: always shown, labelled You.
+- Cutoff at 90 days, keyset cursor on `(created_at, id)` descending, page size 20.
+- An opportunistic bounded delete of expired rows on each read.
+- The day is formatted in UTC, because the actor's zone is not stored; so it is "the day", never a time.
+- Covers:
+  - A catalog book gets `{ kind: "catalog" }`.
+  - Otherwise the friends-only signed cover route (`coverFor`), when the row has a cover.
+- The rating is included for finished events only; the response is an explicit allowlist.
+- `POST /api/social/feed-delete { eventId }` deletes an own event.
+- Both routes use `cors` + `requireAuth`, the `social-feed:${userId}` rate limit, and `Cache-Control: private, no-store`.
+- Settings: when `updateOwnProfile` turns `feed_enabled` off, it deletes all of the user's events in the same transaction.
+- Account deletion is covered by the FK cascade on `actor_id`.
+
+### 5. App
+- `services/social/feed.ts`: an infinite query under the social key prefix; the delete mutation updates the cache.
+- Social home: an **Activity** section at the bottom, with infinite scroll ("Load more" button, like the inbox). Each item shows:
+  - the avatar (tap opens the profile) and "Anna finished" or "You started",
+  - the cover, title, author and rating stars,
+  - the day ("Today", "Yesterday", or a date),
+  - an overflow menu on your own items with **Remove from feed**.
+- Tapping a book opens `/tabs/explore/book/$catalogId` for catalog books, otherwise a small details sheet.
+- States:
+  - Loading (skeleton rows).
+  - Offline: cached pages with a banner, delete disabled.
+  - Error with Retry.
+  - No friends: the invite call to action. Claiming a handle is already enforced by `SocialGate`.
+  - Friends but no activity: an explanation.
+- Settings → Social profile: a **Share my reading activity in friends' feeds** switch, default on. Turning it off asks for confirmation ("Your existing activity is removed from friends' feeds").
+
+### 6. Docs and tests
+- `feed.test.ts` (unit, `feedTransitions`): insert, tombstone, series, url, want→reading, becoming finished via status, via progress and via `finished_at`, the 72-hour guard, backfilled old finishes, rereads (no re-emit, enforced by the unique index).
+- `feed.integration.test.ts`:
+  - Real sync pushes through the route handler's lib function.
+  - Recording rules (private profile, section off, feed off).
+  - Read filters: hide flag, section off after recording, private, tombstone, unfriend, block both ways, ban, 90-day cutoff and cleanup.
+  - The viewer's own events, cursor pagination, deleting an own event, the switch off deleting events, two pushes deduplicated.
+- `account-deletion.integration.test.ts`: the feed events are removed.
+- Privacy policy section; `docs/social-feed.md`; CONTEXT.md entries for "activity feed" and "feed event".
+
+To make recording testable without HTTP, the transaction body of `api/sync.ts` stays as it is; the feed step lives in `lib/social/feed.ts` as `recordFeedEvents(tx, userId, before, after, now)`, which the route calls.
+
+Correction to 1 and 4: the event day is formatted in the viewer's time zone, sent as `tz` the way the profile route already sends it (`validTimeZone`), with UTC as the fallback. The actor's zone is not stored, and the viewer's "today" and "yesterday" are what the label means.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+## Progress (2026-09-27)
+Implemented: core types and constants; migration 0029 (`social_profile.feed_enabled`, `social_feed_event`), applied to the dev and phone databases; `feed-transitions.ts` (pure transition detection) and `feed.ts` (recording in a savepoint, `listFeed` with keyset cursor, cleanup, `deleteFeedEvent`); `api/sync.ts` reads stored states before the book upserts and uses `RETURNING` for the merged rows; `GET /api/social/feed`, `POST /api/social/feed-delete`; `validTimeZone` moved into `lib/social/http.ts` for both profile and feed; turning feed sharing off deletes events in `updateOwnProfile`.
+App: `services/social/feed.ts`, `components/social/activity-feed.tsx` (Activity section on the Social home: items, day labels, own-item removal, catalog link or details sheet, loading, error, offline, no-friends and empty states), a feed switch with confirmation in Social profile settings, `profileCoverSrc` shared in `social-ui.tsx`, `deviceTimeZone` exported from the profile-view service.
+Docs: `docs/social-feed.md`, CONTEXT.md (Activity feed, Feed event), a privacy-policy paragraph.
+Tests: `feed-transitions.test.ts` (7), `feed.integration.test.ts` (7), a feed-event assertion in account-deletion; web 188, app 671; typechecks clean.
+The device check is pending, with seeded feed rows in `lesefluss_phone`: Phone Two started and finished Pride and Prejudice (catalog), started Emma; Phone One started Golden Son.
+
+## Device check (Android, Phone One)
+The Activity section shows friends' and own items with day labels (Today, Yesterday, Sep 22), cover, title, author and rating; own items are labelled You with a menu. A catalog book opens its Explore page; a book without a catalog id opens the details sheet. Remove from feed deleted the row. The settings switch shows the confirmation (cancelled; the switch stayed on). The seeded feed rows are test data; recording through sync is covered by the integration tests on the real upsert path.
+
+## Review pass (4 agents, verified)
+Accepted and fixed:
+- "Yesterday" used `now - 24h`, wrong on the day after a DST change; it now steps back one local day with `previousLocalDayStart`.
+- Unfriending or blocking did not refresh the feed; `useRelationshipMutation` now also invalidates the feed query.
+- A sync run did not refresh the feed; `invalidateUnreadCount` became `invalidateAfterSync` and also invalidates the feed.
+- Reading the stored books before the upsert ran unguarded inside the sync transaction, so a failure would have rolled back the whole push; it now runs in a savepoint and degrades to recording no events.
+- The integration test wrote rows with a plain UPDATE instead of the sync merge SQL. The route's book upsert moved into `upsertSyncBooks` (`lib/sync-book-upsert.ts`), used by both the route and the test, so the tests run the real merge rules (sticky tombstone, COALESCE finish date) and RETURNING; a first-push case (insert, already finished) was added.
+Rejected after checking:
+- A signed cover URL stays valid for up to an hour after the actor makes the profile private or turns feed sharing off: the event itself disappears at once, the cover route still re-checks friendship, blocks, bans and the book's own state, and profile covers from TASK-171.5 already work this way.
+- No request-level tests for the feed routes: no social route has them; the library functions are tested.
+Tests: web 188, app 671; typechecks clean.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Adds the friends activity feed: an Activity section on the Social home that shows when you and your friends start or finish a book.
+
+Recording: a sync push compares the stored book rows with the rows it writes (`upsertSyncBooks`, shared by the sync route and its tests) and records `started` (want → reading) and `finished` events in `social_feed_event`. A book the server has never seen, a finish more than 72 hours old, tombstones, web-serial chapters and articles record nothing, so restores and imports never flood the feed. At most one of each per book. Recording needs the profile visible to friends, the new "Share my reading activity in friends' feeds" switch (default on) and the matching section. It runs in savepoints and never fails a sync.
+
+Reading: `GET /api/social/feed` returns you and your current friends' events, newest first with a keyset cursor. Each read re-checks friendship, bans, the actor's settings and the book's live state (hidden, deleted, taken down). Items carry the day in the viewer's zone, never a time, and the rating for finished books, never the review. Events expire after 90 days and are cleaned up on read. `POST /api/social/feed-delete` removes your own event, and switching sharing off deletes all of yours.
+
+App: the Activity section with covers, day labels, profile and book links (Explore page or a details sheet), removing your own items, and loading, error, offline, no-friends and empty states. It refreshes after sync, unfriending and blocking. The settings switch has a confirmation.
+
+Docs: `docs/social-feed.md`, CONTEXT.md (Activity feed, Feed event), a privacy-policy paragraph.
+
+Tests: 7 unit tests for transitions, 8 integration tests on the real upsert path (recording rules, read filters, paging, retention, removal, the switch, account deletion), a feed assertion in the account-deletion test. Web 188, app 671. Checked on an Android device.
+<!-- SECTION:FINAL_SUMMARY:END -->

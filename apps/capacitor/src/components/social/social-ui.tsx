@@ -1,4 +1,4 @@
-import type { SocialIdentity } from "@lesefluss/core";
+import type { ProfileCover, SocialIdentity } from "@lesefluss/core";
 import { SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { cn } from "@lesefluss/ui/utils";
 import { motion } from "framer-motion";
@@ -174,4 +174,10 @@ export function useLocalCover(bookId: string): string | null {
 	if (stored) return stored;
 	const catalogId = library?.books.find((b) => b.id === bookId)?.catalogId;
 	return catalogId ? getCoverUrl(catalogId) : null;
+}
+
+/** Where a cover the server described can be loaded from. */
+export function profileCoverSrc(cover: ProfileCover): string | null {
+	if (!cover) return null;
+	return cover.kind === "catalog" ? getCoverUrl(cover.catalogId) : cover.url;
 }

@@ -176,6 +176,8 @@ export const socialKeys = {
 
 	/** The inbox pages. */
 	inbox: ["social", "inbox"] as const,
+	/** Activity feed pages of the viewer and their friends. */
+	feed: ["social", "feed"] as const,
 
 	/** Unread inbox items, behind the Social tab badge. */
 	unread: ["social", "unread"] as const,

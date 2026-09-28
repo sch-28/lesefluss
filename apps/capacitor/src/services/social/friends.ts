@@ -62,7 +62,11 @@ function useRelationshipMutation<TVariables>(run: (variables: TVariables) => Pro
 	const client = useQueryClient();
 	return useMutation({
 		mutationFn: run,
-		onSuccess: () => client.invalidateQueries({ queryKey: socialKeys.relationships }),
+		onSuccess: () => {
+			void client.invalidateQueries({ queryKey: socialKeys.relationships });
+			// Ending a friendship hides the other person's feed events.
+			void client.invalidateQueries({ queryKey: socialKeys.feed });
+		},
 	});
 }
 

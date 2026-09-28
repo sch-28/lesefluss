@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { TabHeader } from "@/components/app-shell/tab-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { ActivityFeed } from "@/components/social/activity-feed";
 import { BuddyReadCard } from "@/components/social/buddy-read-card";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
 import { ListCard, SocialSection } from "@/components/social/social-ui";
@@ -340,6 +341,8 @@ function SocialLists({
 					</Link>
 				</ListCard>
 			</SocialSection>
+
+			<ActivityFeed hasFriends={data.friends.length > 0} />
 
 			<ActionSheet
 				open={menu !== null}

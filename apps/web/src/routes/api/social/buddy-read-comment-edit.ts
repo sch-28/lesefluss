@@ -3,30 +3,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { cors } from "~/lib/cors-middleware";
 import { requireAuth } from "~/lib/session-middleware";
 import { editComment } from "~/lib/social/buddy-read-discussion";
-import {
-	invalidPayloadResponse,
-	parseJsonBody,
-	rateLimited,
-	socialErrorResponse,
-} from "~/lib/social/http";
+import { socialPost } from "~/lib/social/http";
 
 export const Route = createFileRoute("/api/social/buddy-read-comment-edit")({
 	server: {
 		middleware: [cors, requireAuth],
 		handlers: {
-			POST: async ({ request, context }) => {
-				const userId = context.user.id;
-				const limited = rateLimited(`buddy-comment:${userId}`, BUDDY_COMMENT_RATE_LIMIT);
-				if (limited) return limited;
-				const parsed = EditCommentBodySchema.safeParse(await parseJsonBody(request));
-				if (!parsed.success) return invalidPayloadResponse();
-				try {
-					await editComment(userId, parsed.data);
-					return Response.json({ ok: true });
-				} catch (err) {
-					return socialErrorResponse(err);
-				}
-			},
+			POST: socialPost({
+				limit: { key: "buddy-comment", ...BUDDY_COMMENT_RATE_LIMIT },
+				schema: EditCommentBodySchema,
+				run: async (userId, body) => {
+					await editComment(userId, body);
+				},
+			}),
 		},
 	},
 });

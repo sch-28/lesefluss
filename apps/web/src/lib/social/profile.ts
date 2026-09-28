@@ -2,8 +2,9 @@ import type { OwnSocialProfile, UpdateSocialProfileBody } from "@lesefluss/core"
 import { eq } from "drizzle-orm";
 import { db } from "~/db";
 import { user } from "~/db/auth-schema";
-import { socialAvatar, socialProfile } from "~/db/schema";
+import { socialAvatar, socialFeedEvent, socialProfile } from "~/db/schema";
 import { isAllowedAccountPictureUrl } from "./avatar";
+import { onShareLiveReadingOff } from "./live";
 
 const AVATAR_PATH = "/api/social/avatar-image";
 
@@ -27,6 +28,8 @@ export async function getOwnProfile(userId: string): Promise<OwnSocialProfile | 
 			showFinished: socialProfile.showFinished,
 			showStats: socialProfile.showStats,
 			showHighlights: socialProfile.showHighlights,
+			feedEnabled: socialProfile.feedEnabled,
+			shareLiveReading: socialProfile.shareLiveReading,
 			avatarId: socialAvatar.id,
 		})
 		.from(user)
@@ -47,6 +50,8 @@ export async function getOwnProfile(userId: string): Promise<OwnSocialProfile | 
 		showFinished: row.showFinished ?? true,
 		showStats: row.showStats ?? true,
 		showHighlights: row.showHighlights ?? true,
+		feedEnabled: row.feedEnabled ?? true,
+		shareLiveReading: row.shareLiveReading ?? true,
 	};
 }
 
@@ -73,5 +78,9 @@ export async function updateOwnProfile(
 					set: { ...profileFields, updatedAt: now },
 				});
 		}
+		if (settings.feedEnabled === false) {
+			await tx.delete(socialFeedEvent).where(eq(socialFeedEvent.actorId, userId));
+		}
 	});
+	if (settings.shareLiveReading === false) onShareLiveReadingOff(userId);
 }

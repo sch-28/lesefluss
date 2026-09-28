@@ -714,7 +714,9 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			onPointerCancel={handlePointerCancel}
 			style={{
 				position: "relative",
-				height: "100%",
+				// Clear of the always-on progress line (3px over the safe area), so no
+				// line of a page sits under it. Pages re-flow on this size like on rotation.
+				height: "calc(100% - 3px - var(--safe-bottom))",
 				width: "100%",
 				maxWidth: "700px",
 				margin: "0 auto",

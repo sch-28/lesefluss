@@ -51,6 +51,8 @@ import { Route as ApiSocialReportRouteImport } from './routes/api/social/report'
 import { Route as ApiSocialRelationshipsRouteImport } from './routes/api/social/relationships'
 import { Route as ApiSocialProfileViewRouteImport } from './routes/api/social/profile-view'
 import { Route as ApiSocialProfileRouteImport } from './routes/api/social/profile'
+import { Route as ApiSocialLiveStreamRouteImport } from './routes/api/social/live-stream'
+import { Route as ApiSocialLiveRouteImport } from './routes/api/social/live'
 import { Route as ApiSocialInviteRevokeRouteImport } from './routes/api/social/invite-revoke'
 import { Route as ApiSocialInviteRedeemRouteImport } from './routes/api/social/invite-redeem'
 import { Route as ApiSocialInvitePreviewRouteImport } from './routes/api/social/invite-preview'
@@ -65,6 +67,8 @@ import { Route as ApiSocialFriendRequestRespondRouteImport } from './routes/api/
 import { Route as ApiSocialFriendRequestCancelRouteImport } from './routes/api/social/friend-request-cancel'
 import { Route as ApiSocialFriendRequestRouteImport } from './routes/api/social/friend-request'
 import { Route as ApiSocialFriendRemoveRouteImport } from './routes/api/social/friend-remove'
+import { Route as ApiSocialFeedDeleteRouteImport } from './routes/api/social/feed-delete'
+import { Route as ApiSocialFeedRouteImport } from './routes/api/social/feed'
 import { Route as ApiSocialBuddyReadsRouteImport } from './routes/api/social/buddy-reads'
 import { Route as ApiSocialBuddyReadTargetDateRouteImport } from './routes/api/social/buddy-read-target-date'
 import { Route as ApiSocialBuddyReadRemoveMemberRouteImport } from './routes/api/social/buddy-read-remove-member'
@@ -306,6 +310,16 @@ const ApiSocialProfileRoute = ApiSocialProfileRouteImport.update({
   path: '/api/social/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSocialLiveStreamRoute = ApiSocialLiveStreamRouteImport.update({
+  id: '/api/social/live-stream',
+  path: '/api/social/live-stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialLiveRoute = ApiSocialLiveRouteImport.update({
+  id: '/api/social/live',
+  path: '/api/social/live',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSocialInviteRevokeRoute = ApiSocialInviteRevokeRouteImport.update({
   id: '/api/social/invite-revoke',
   path: '/api/social/invite-revoke',
@@ -377,6 +391,16 @@ const ApiSocialFriendRequestRoute = ApiSocialFriendRequestRouteImport.update({
 const ApiSocialFriendRemoveRoute = ApiSocialFriendRemoveRouteImport.update({
   id: '/api/social/friend-remove',
   path: '/api/social/friend-remove',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialFeedDeleteRoute = ApiSocialFeedDeleteRouteImport.update({
+  id: '/api/social/feed-delete',
+  path: '/api/social/feed-delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialFeedRoute = ApiSocialFeedRouteImport.update({
+  id: '/api/social/feed',
+  path: '/api/social/feed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSocialBuddyReadsRoute = ApiSocialBuddyReadsRouteImport.update({
@@ -593,6 +617,8 @@ export interface FileRoutesByFullPath {
   '/api/social/buddy-read-remove-member': typeof ApiSocialBuddyReadRemoveMemberRoute
   '/api/social/buddy-read-target-date': typeof ApiSocialBuddyReadTargetDateRoute
   '/api/social/buddy-reads': typeof ApiSocialBuddyReadsRoute
+  '/api/social/feed': typeof ApiSocialFeedRoute
+  '/api/social/feed-delete': typeof ApiSocialFeedDeleteRoute
   '/api/social/friend-remove': typeof ApiSocialFriendRemoveRoute
   '/api/social/friend-request': typeof ApiSocialFriendRequestRoute
   '/api/social/friend-request-cancel': typeof ApiSocialFriendRequestCancelRoute
@@ -607,6 +633,8 @@ export interface FileRoutesByFullPath {
   '/api/social/invite-preview': typeof ApiSocialInvitePreviewRoute
   '/api/social/invite-redeem': typeof ApiSocialInviteRedeemRoute
   '/api/social/invite-revoke': typeof ApiSocialInviteRevokeRoute
+  '/api/social/live': typeof ApiSocialLiveRoute
+  '/api/social/live-stream': typeof ApiSocialLiveStreamRoute
   '/api/social/profile': typeof ApiSocialProfileRoute
   '/api/social/profile-view': typeof ApiSocialProfileViewRoute
   '/api/social/relationships': typeof ApiSocialRelationshipsRoute
@@ -678,6 +706,8 @@ export interface FileRoutesByTo {
   '/api/social/buddy-read-remove-member': typeof ApiSocialBuddyReadRemoveMemberRoute
   '/api/social/buddy-read-target-date': typeof ApiSocialBuddyReadTargetDateRoute
   '/api/social/buddy-reads': typeof ApiSocialBuddyReadsRoute
+  '/api/social/feed': typeof ApiSocialFeedRoute
+  '/api/social/feed-delete': typeof ApiSocialFeedDeleteRoute
   '/api/social/friend-remove': typeof ApiSocialFriendRemoveRoute
   '/api/social/friend-request': typeof ApiSocialFriendRequestRoute
   '/api/social/friend-request-cancel': typeof ApiSocialFriendRequestCancelRoute
@@ -692,6 +722,8 @@ export interface FileRoutesByTo {
   '/api/social/invite-preview': typeof ApiSocialInvitePreviewRoute
   '/api/social/invite-redeem': typeof ApiSocialInviteRedeemRoute
   '/api/social/invite-revoke': typeof ApiSocialInviteRevokeRoute
+  '/api/social/live': typeof ApiSocialLiveRoute
+  '/api/social/live-stream': typeof ApiSocialLiveStreamRoute
   '/api/social/profile': typeof ApiSocialProfileRoute
   '/api/social/profile-view': typeof ApiSocialProfileViewRoute
   '/api/social/relationships': typeof ApiSocialRelationshipsRoute
@@ -765,6 +797,8 @@ export interface FileRoutesById {
   '/api/social/buddy-read-remove-member': typeof ApiSocialBuddyReadRemoveMemberRoute
   '/api/social/buddy-read-target-date': typeof ApiSocialBuddyReadTargetDateRoute
   '/api/social/buddy-reads': typeof ApiSocialBuddyReadsRoute
+  '/api/social/feed': typeof ApiSocialFeedRoute
+  '/api/social/feed-delete': typeof ApiSocialFeedDeleteRoute
   '/api/social/friend-remove': typeof ApiSocialFriendRemoveRoute
   '/api/social/friend-request': typeof ApiSocialFriendRequestRoute
   '/api/social/friend-request-cancel': typeof ApiSocialFriendRequestCancelRoute
@@ -779,6 +813,8 @@ export interface FileRoutesById {
   '/api/social/invite-preview': typeof ApiSocialInvitePreviewRoute
   '/api/social/invite-redeem': typeof ApiSocialInviteRedeemRoute
   '/api/social/invite-revoke': typeof ApiSocialInviteRevokeRoute
+  '/api/social/live': typeof ApiSocialLiveRoute
+  '/api/social/live-stream': typeof ApiSocialLiveStreamRoute
   '/api/social/profile': typeof ApiSocialProfileRoute
   '/api/social/profile-view': typeof ApiSocialProfileViewRoute
   '/api/social/relationships': typeof ApiSocialRelationshipsRoute
@@ -852,6 +888,8 @@ export interface FileRouteTypes {
     | '/api/social/buddy-read-remove-member'
     | '/api/social/buddy-read-target-date'
     | '/api/social/buddy-reads'
+    | '/api/social/feed'
+    | '/api/social/feed-delete'
     | '/api/social/friend-remove'
     | '/api/social/friend-request'
     | '/api/social/friend-request-cancel'
@@ -866,6 +904,8 @@ export interface FileRouteTypes {
     | '/api/social/invite-preview'
     | '/api/social/invite-redeem'
     | '/api/social/invite-revoke'
+    | '/api/social/live'
+    | '/api/social/live-stream'
     | '/api/social/profile'
     | '/api/social/profile-view'
     | '/api/social/relationships'
@@ -937,6 +977,8 @@ export interface FileRouteTypes {
     | '/api/social/buddy-read-remove-member'
     | '/api/social/buddy-read-target-date'
     | '/api/social/buddy-reads'
+    | '/api/social/feed'
+    | '/api/social/feed-delete'
     | '/api/social/friend-remove'
     | '/api/social/friend-request'
     | '/api/social/friend-request-cancel'
@@ -951,6 +993,8 @@ export interface FileRouteTypes {
     | '/api/social/invite-preview'
     | '/api/social/invite-redeem'
     | '/api/social/invite-revoke'
+    | '/api/social/live'
+    | '/api/social/live-stream'
     | '/api/social/profile'
     | '/api/social/profile-view'
     | '/api/social/relationships'
@@ -1023,6 +1067,8 @@ export interface FileRouteTypes {
     | '/api/social/buddy-read-remove-member'
     | '/api/social/buddy-read-target-date'
     | '/api/social/buddy-reads'
+    | '/api/social/feed'
+    | '/api/social/feed-delete'
     | '/api/social/friend-remove'
     | '/api/social/friend-request'
     | '/api/social/friend-request-cancel'
@@ -1037,6 +1083,8 @@ export interface FileRouteTypes {
     | '/api/social/invite-preview'
     | '/api/social/invite-redeem'
     | '/api/social/invite-revoke'
+    | '/api/social/live'
+    | '/api/social/live-stream'
     | '/api/social/profile'
     | '/api/social/profile-view'
     | '/api/social/relationships'
@@ -1109,6 +1157,8 @@ export interface RootRouteChildren {
   ApiSocialBuddyReadRemoveMemberRoute: typeof ApiSocialBuddyReadRemoveMemberRoute
   ApiSocialBuddyReadTargetDateRoute: typeof ApiSocialBuddyReadTargetDateRoute
   ApiSocialBuddyReadsRoute: typeof ApiSocialBuddyReadsRoute
+  ApiSocialFeedRoute: typeof ApiSocialFeedRoute
+  ApiSocialFeedDeleteRoute: typeof ApiSocialFeedDeleteRoute
   ApiSocialFriendRemoveRoute: typeof ApiSocialFriendRemoveRoute
   ApiSocialFriendRequestRoute: typeof ApiSocialFriendRequestRoute
   ApiSocialFriendRequestCancelRoute: typeof ApiSocialFriendRequestCancelRoute
@@ -1123,6 +1173,8 @@ export interface RootRouteChildren {
   ApiSocialInvitePreviewRoute: typeof ApiSocialInvitePreviewRoute
   ApiSocialInviteRedeemRoute: typeof ApiSocialInviteRedeemRoute
   ApiSocialInviteRevokeRoute: typeof ApiSocialInviteRevokeRoute
+  ApiSocialLiveRoute: typeof ApiSocialLiveRoute
+  ApiSocialLiveStreamRoute: typeof ApiSocialLiveStreamRoute
   ApiSocialProfileRoute: typeof ApiSocialProfileRoute
   ApiSocialProfileViewRoute: typeof ApiSocialProfileViewRoute
   ApiSocialRelationshipsRoute: typeof ApiSocialRelationshipsRoute
@@ -1432,6 +1484,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSocialProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/social/live-stream': {
+      id: '/api/social/live-stream'
+      path: '/api/social/live-stream'
+      fullPath: '/api/social/live-stream'
+      preLoaderRoute: typeof ApiSocialLiveStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/live': {
+      id: '/api/social/live'
+      path: '/api/social/live'
+      fullPath: '/api/social/live'
+      preLoaderRoute: typeof ApiSocialLiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/social/invite-revoke': {
       id: '/api/social/invite-revoke'
       path: '/api/social/invite-revoke'
@@ -1528,6 +1594,20 @@ declare module '@tanstack/react-router' {
       path: '/api/social/friend-remove'
       fullPath: '/api/social/friend-remove'
       preLoaderRoute: typeof ApiSocialFriendRemoveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/feed-delete': {
+      id: '/api/social/feed-delete'
+      path: '/api/social/feed-delete'
+      fullPath: '/api/social/feed-delete'
+      preLoaderRoute: typeof ApiSocialFeedDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/feed': {
+      id: '/api/social/feed'
+      path: '/api/social/feed'
+      fullPath: '/api/social/feed'
+      preLoaderRoute: typeof ApiSocialFeedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/social/buddy-reads': {
@@ -1815,6 +1895,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSocialBuddyReadRemoveMemberRoute: ApiSocialBuddyReadRemoveMemberRoute,
   ApiSocialBuddyReadTargetDateRoute: ApiSocialBuddyReadTargetDateRoute,
   ApiSocialBuddyReadsRoute: ApiSocialBuddyReadsRoute,
+  ApiSocialFeedRoute: ApiSocialFeedRoute,
+  ApiSocialFeedDeleteRoute: ApiSocialFeedDeleteRoute,
   ApiSocialFriendRemoveRoute: ApiSocialFriendRemoveRoute,
   ApiSocialFriendRequestRoute: ApiSocialFriendRequestRoute,
   ApiSocialFriendRequestCancelRoute: ApiSocialFriendRequestCancelRoute,
@@ -1829,6 +1911,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSocialInvitePreviewRoute: ApiSocialInvitePreviewRoute,
   ApiSocialInviteRedeemRoute: ApiSocialInviteRedeemRoute,
   ApiSocialInviteRevokeRoute: ApiSocialInviteRevokeRoute,
+  ApiSocialLiveRoute: ApiSocialLiveRoute,
+  ApiSocialLiveStreamRoute: ApiSocialLiveStreamRoute,
   ApiSocialProfileRoute: ApiSocialProfileRoute,
   ApiSocialProfileViewRoute: ApiSocialProfileViewRoute,
   ApiSocialRelationshipsRoute: ApiSocialRelationshipsRoute,

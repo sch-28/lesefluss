@@ -912,6 +912,7 @@ export async function getBuddyReadProgress(
 					userId: m.userId,
 					name: u.name,
 					handle: u.handle ?? "",
+					avatarUrl: identityOf(u).avatarUrl,
 					wordPosition: m.book.wordPosition,
 					wordCount: m.book.wordCount,
 					percent: percentOf(m.book),

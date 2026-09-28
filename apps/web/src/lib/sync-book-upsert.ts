@@ -1,8 +1,11 @@
 import type { SyncBook } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
+import type { Tx } from "~/db";
 import { syncBooks } from "~/db/schema";
 import type { BookOrigin } from "./origin";
+import { feedBookColumns, loadFeedBookStates, recordFeedEvents } from "./social/feed";
+import type { FeedBookState } from "./social/feed-transitions";
 
 /**
  * One pushed book as a `sync_books` row. The origin is never the client's to
@@ -239,3 +242,33 @@ export const bookUpsertSet: PgUpdateSetSource<typeof syncBooks> = {
 	...bookUpsertSetPreservingMetadata,
 	...clearedOnDelete((column) => lastWriteWins(column)),
 };
+
+/**
+ * Writes the pushed books under the merge rules and records the feed events
+ * they cause. Shared by the sync route and its tests so both run the same SQL.
+ */
+export async function upsertSyncBooks(
+	tx: Tx,
+	userId: string,
+	books: SyncBook[],
+	origins: ReadonlyMap<string, BookOrigin>,
+	now = new Date(),
+): Promise<void> {
+	const before = await loadFeedBookStates(
+		tx,
+		userId,
+		books.map((b) => b.bookId),
+	);
+	const after: FeedBookState[] = [];
+	for (const group of groupBooksByMergeRules(books)) {
+		const [first] = group;
+		if (!first) continue;
+		const merged = await tx
+			.insert(syncBooks)
+			.values(group.map((book) => bookInsertValues(userId, book, origins.get(book.bookId))))
+			.onConflictDoUpdate({ target: bookUpsertTarget, set: bookUpsertSetFor(first) })
+			.returning(feedBookColumns);
+		after.push(...merged);
+	}
+	await recordFeedEvents(tx, userId, before, after, now);
+}

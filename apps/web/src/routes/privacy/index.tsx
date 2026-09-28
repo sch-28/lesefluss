@@ -271,19 +271,19 @@ function PrivacyPage() {
 			<section>
 				<h2 className="mb-3 font-semibold text-foreground text-xl">Buddy reads</h2>
 				<p>
-					A buddy read is a group of up to eight people reading the same book. For each one we
-					store the book's title and author, who hosts it, an optional target date, who is a member
-					with which of their books, when they joined, left or finished, and every invite (who
-					invited whom, when, and the outcome). Only friends can be invited, and an invite tells the
-					invitee who else is in before they join.
+					A buddy read is a group of up to eight people reading the same book. For each one we store
+					the book's title and author, who hosts it, an optional target date, who is a member with
+					which of their books, when they joined, left or finished, and every invite (who invited
+					whom, when, and the outcome). Only friends can be invited, and an invite tells the invitee
+					who else is in before they join.
 				</p>
 				<p className="mt-4">
 					While you are a member, everyone else in the buddy read sees your handle, display name and
 					avatar, how far you are in the book (percentage, chapter and position), whether you
 					finished it and when you last read, even if you are not friends with them. We take this
-					from your last synced reading position; no extra data is collected. Someone you blocked
-					or who blocked you sees none of it. Members can send each other friend requests. When
-					you leave, are removed, or your copy of the book is deleted, the others stop seeing your
+					from your last synced reading position; no extra data is collected. Someone you blocked or
+					who blocked you sees none of it. Members can send each other friend requests. When you
+					leave, are removed, or your copy of the book is deleted, the others stop seeing your
 					progress; the book stays in your library. A buddy read is deleted when its last member
 					leaves, and your memberships and invites are deleted with your account. A joiner who does
 					not have the book receives a copy exactly as with sharing.
@@ -298,9 +298,28 @@ function PrivacyPage() {
 					once they have read that far, and never someone you blocked or who blocked you. To decide
 					what to show, we keep the furthest position you have reached in the book. If you leave,
 					your comments stay and your shared highlights disappear. Everything is deleted with the
-					buddy read. When you delete your account, your reactions and shared highlights are
-					deleted and your comments are deleted too, except that a comment others replied to stays
-					as an empty "removed" entry without your name.
+					buddy read. When you delete your account, your reactions and shared highlights are deleted
+					and your comments are deleted too, except that a comment others replied to stays as an
+					empty "removed" entry without your name.
+				</p>
+				<h3 className="mt-6 mb-2 font-medium text-foreground">Live reading activity</h3>
+				<p>
+					While you have a buddy-read book open, the app sends your reading position to our server
+					every two seconds. The other members of that buddy read see that you are reading now, your
+					position and your reading speed in the current sitting. The server keeps this in memory
+					only while you read and never stores it. You can switch it off in the social settings;
+					you then also see nothing live from others.
+				</p>
+				<h3 className="mt-6 mb-2 font-medium text-foreground">Activity feed</h3>
+				<p>
+					When you start or finish a book, we record that fact for the activity feed: which book,
+					which of the two, and the day. We store no reading position and no review; a finished book
+					shows the rating you gave it. Your friends see these entries only while your profile is
+					visible to friends, the matching section ("currently reading" or "finished books") is on
+					and "Share my reading activity in friends' feeds" is on, and only while the book is in
+					your library and not hidden from your profile. Nobody else sees them, and nobody sees a
+					time of day. You can remove a single entry, and switching the setting off deletes all of
+					them. Entries are deleted after 90 days and with your account.
 				</p>
 			</section>
 

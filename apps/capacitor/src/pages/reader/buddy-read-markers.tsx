@@ -1,5 +1,7 @@
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
+import type { LiveMember } from "@lesefluss/core";
+import { cn } from "@lesefluss/ui/utils";
 import { useEffect, useState } from "react";
 import { useBuddyReadProgress, useBuddyReads } from "../../services/social/buddy-reads";
 import { useIsOnline } from "../../services/social/cache";
@@ -8,8 +10,12 @@ export type BuddyMarker = {
 	userId: string;
 	name: string;
 	handle: string;
+	avatarUrl: string | null;
+	wordPosition: number;
 	/** Along the viewer's own progress bar, 0 to 100. */
 	percent: number;
+	/** Set while they have the book open right now. */
+	live: LiveMember | null;
 };
 
 /** Foreground as either platform reports it: the web build has no app state, native WebViews may keep "visible". */
@@ -42,29 +48,53 @@ export function useRunningBuddyRead(originKey: string | null, isLoggedIn: boolea
  * content, so the same word index means the same place.
  */
 export function useBuddyReadMarkers(
-	originKey: string | null,
+	buddyReadId: string | null,
 	ownWordCount: number,
-	isLoggedIn: boolean,
-): BuddyMarker[] {
+	live: Map<string, LiveMember>,
+): { markers: BuddyMarker[]; approximate: boolean } {
 	const isForeground = useIsForeground();
 	const isOnline = useIsOnline();
-	const found = useRunningBuddyRead(originKey, isLoggedIn);
-	const read = found?.status === "in_progress" ? found : null;
-	const progress = useBuddyReadProgress(read?.id ?? null, isForeground && isOnline);
-	if (!read || ownWordCount <= 0) return [];
-	return (progress.data?.participants ?? []).map((p) => ({
-		userId: p.userId,
-		name: p.name,
-		handle: p.handle,
-		percent: Math.min(100, Math.max(0, (p.wordPosition / ownWordCount) * 100)),
-	}));
+	const progress = useBuddyReadProgress(buddyReadId, isForeground && isOnline);
+	if (!buddyReadId || ownWordCount <= 0) return { markers: [], approximate: false };
+	const markers = (progress.data?.participants ?? []).map((p) => {
+		const now = live.get(p.userId) ?? null;
+		const wordPosition = now?.wordPosition ?? p.wordPosition;
+		return {
+			userId: p.userId,
+			name: p.name,
+			handle: p.handle,
+			avatarUrl: p.avatarUrl,
+			wordPosition,
+			percent: Math.min(100, Math.max(0, (wordPosition / ownWordCount) * 100)),
+			live: now,
+		};
+	});
+	return { markers, approximate: progress.data?.approximate ?? false };
+}
+
+function relativeTo(theirs: number, mine: number, approximate: boolean): string {
+	const delta = theirs - mine;
+	if (Math.abs(delta) < 10) return "level with you";
+	const words = `${approximate ? "about " : ""}${Math.abs(delta).toLocaleString()} words`;
+	return delta > 0 ? `${words} ahead` : `${words} behind`;
 }
 
 /**
  * Dots above the progress track. A marker swallows its own pointer events so
  * a tap shows who is there instead of scrubbing the reader to that spot.
  */
-export function BuddyReadMarkers({ markers }: { markers: BuddyMarker[] }) {
+export function BuddyReadMarkers({
+	markers,
+	myWord,
+	approximate,
+	isCollapsed,
+}: {
+	markers: BuddyMarker[];
+	myWord: number;
+	approximate: boolean;
+	/** The resting progress line: small dots, nothing to tap. */
+	isCollapsed: boolean;
+}) {
 	const [openId, setOpenId] = useState<string | null>(null);
 	useEffect(() => {
 		if (!openId) return;
@@ -72,6 +102,19 @@ export function BuddyReadMarkers({ markers }: { markers: BuddyMarker[] }) {
 		return () => clearTimeout(timer);
 	}, [openId]);
 	if (markers.length === 0) return null;
+	if (isCollapsed) {
+		return (
+			<div className="reader-buddy-markers" aria-hidden>
+				{markers.map((m) => (
+					<span
+						key={m.userId}
+						className={cn("reader-buddy-dot", m.live && "reader-buddy-dot--live")}
+						style={{ left: `${m.percent}%` }}
+					/>
+				))}
+			</div>
+		);
+	}
 	const open = markers.find((m) => m.userId === openId) ?? null;
 	const nearOpen = open ? markers.filter((m) => Math.abs(m.percent - open.percent) < 1.5) : [];
 	const stop = (e: React.PointerEvent) => e.stopPropagation();
@@ -81,9 +124,9 @@ export function BuddyReadMarkers({ markers }: { markers: BuddyMarker[] }) {
 				<button
 					key={m.userId}
 					type="button"
-					className="reader-buddy-marker"
+					className={cn("reader-buddy-marker", m.live && "reader-buddy-marker--live")}
 					style={{ left: `${m.percent}%` }}
-					aria-label={`${m.name} is at ${Math.round(m.percent)}%`}
+					aria-label={`${m.name} is at ${Math.round(m.percent)}%${m.live ? ", reading now" : ""}`}
 					onPointerDown={stop}
 					onPointerMove={stop}
 					onPointerUp={stop}
@@ -92,7 +135,11 @@ export function BuddyReadMarkers({ markers }: { markers: BuddyMarker[] }) {
 						setOpenId((current) => (current === m.userId ? null : m.userId));
 					}}
 				>
-					<span aria-hidden>{m.name.slice(0, 1).toUpperCase()}</span>
+					{m.avatarUrl ? (
+						<img src={m.avatarUrl} alt="" />
+					) : (
+						<span aria-hidden>{m.name.slice(0, 1).toUpperCase()}</span>
+					)}
 				</button>
 			))}
 			{open && (
@@ -103,8 +150,19 @@ export function BuddyReadMarkers({ markers }: { markers: BuddyMarker[] }) {
 				>
 					{nearOpen.map((m) => (
 						<div key={m.userId}>
-							{m.name} <span className="reader-buddy-popover-handle">@{m.handle}</span> ·{" "}
-							{Math.round(m.percent)}%
+							<div>
+								{m.name} <span className="reader-buddy-popover-handle">@{m.handle}</span> ·{" "}
+								{Math.round(m.percent)}%
+							</div>
+							<div className="reader-buddy-popover-handle">
+								{m.live && (
+									<>
+										<span className="reader-buddy-live-dot" /> reading now
+										{m.live.wpm !== null && ` · ${m.live.wpm} wpm`} ·{" "}
+									</>
+								)}
+								{relativeTo(m.wordPosition, myWord, approximate)}
+							</div>
 						</div>
 					))}
 				</div>

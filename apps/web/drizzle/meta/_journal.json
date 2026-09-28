@@ -204,6 +204,20 @@
       "when": 1782259200000,
       "tag": "0028_buddy_read_discussion",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1782345600000,
+      "tag": "0029_activity_feed",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1782518400000,
+      "tag": "0030_live_reading_setting",
+      "breakpoints": true
     }
   ]
 }

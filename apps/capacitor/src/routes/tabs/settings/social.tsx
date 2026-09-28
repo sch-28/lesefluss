@@ -13,15 +13,18 @@ import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
 import { RadioGroup, RadioGroupItem } from "@lesefluss/ui/radio-group";
 import { IdentityCard, SocialAvatar } from "@lesefluss/ui/social-avatar";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CloudOff, Loader2, Users } from "lucide-react";
 import { useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Section } from "@/components/app-shell/section";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { HandleClaimStep } from "@/components/social/handle-claim-step";
 import { toast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
+import { socialKeys } from "@/services/db/hooks/query-keys";
 import {
 	socialErrorBody,
 	useOwnSocialProfile,
@@ -44,6 +47,8 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 	const [bio, setBio] = useState(profile.bio ?? "");
 	const [bioError, setBioError] = useState<string | null>(null);
 	const [isChangingHandle, setIsChangingHandle] = useState(false);
+	const [isConfirmingFeedOff, setIsConfirmingFeedOff] = useState(false);
+	const queryClient = useQueryClient();
 
 	const save = (patch: Parameters<typeof update.mutate>[0]) =>
 		update.mutate(patch, { onError: () => toast.error("Couldn't save. Check your connection.") });
@@ -270,6 +275,41 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 					onCheckedChange={(v) => save({ showHighlights: v })}
 				/>
 			</Section>
+
+			<Section title="Activity feed">
+				<ToggleRow
+					title="Share my reading activity in friends' feeds"
+					subtitle="When you start or finish a book. Only while your profile and that section are visible to friends."
+					checked={profile.feedEnabled}
+					onCheckedChange={(v) => (v ? save({ feedEnabled: true }) : setIsConfirmingFeedOff(true))}
+				/>
+			</Section>
+
+			<Section title="Buddy reads">
+				<ToggleRow
+					title="Share live reading activity"
+					subtitle="Buddy-read members see when you are reading and how fast. Off also hides theirs from you."
+					checked={profile.shareLiveReading}
+					onCheckedChange={(v) => save({ shareLiveReading: v })}
+				/>
+			</Section>
+			<ConfirmDialog
+				open={isConfirmingFeedOff}
+				onOpenChange={setIsConfirmingFeedOff}
+				title="Stop sharing your reading activity?"
+				description="Your existing activity is removed from your friends' feeds, and nothing new is shared until you switch this on again."
+				confirmLabel="Stop sharing"
+				destructive
+				onConfirm={() =>
+					update.mutate(
+						{ feedEnabled: false },
+						{
+							onSuccess: () => void queryClient.invalidateQueries({ queryKey: socialKeys.feed }),
+							onError: () => toast.error("Couldn't save. Check your connection."),
+						},
+					)
+				}
+			/>
 		</>
 	);
 }

@@ -3,6 +3,8 @@ export * from "./books";
 export * from "./changelog";
 export * from "./dictionary";
 export * from "./engine";
+export * from "./live-board";
+export * from "./reading-credit";
 export * from "./reading-rates";
 export * from "./settings";
 export * from "./social";

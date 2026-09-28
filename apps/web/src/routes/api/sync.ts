@@ -30,12 +30,7 @@ import { type BookOrigin, originKey } from "~/lib/origin";
 import { checkLimit } from "~/lib/rate-limit";
 import { requireAuth } from "~/lib/session-middleware";
 import { settleBuddyReads } from "~/lib/social/buddy-reads";
-import {
-	bookInsertValues,
-	bookUpsertSetFor,
-	bookUpsertTarget,
-	groupBooksByMergeRules,
-} from "~/lib/sync-book-upsert";
+import { upsertSyncBooks } from "~/lib/sync-book-upsert";
 
 // Body size limits are enforced at the reverse proxy (Coolify/Traefik). The
 // Content-Length header is client-controlled, so enforcing it in Node here
@@ -384,14 +379,7 @@ export const Route = createFileRoute("/api/sync")({
 					// it entirely, and `bookInsertValues` has to turn that into a default to
 					// build a row; merging those defaults would erase what an up-to-date
 					// device wrote the first time an older one pushed a newer position.
-					for (const group of groupBooksByMergeRules(books)) {
-						const [first] = group;
-						if (!first) continue;
-						await tx
-							.insert(syncBooks)
-							.values(group.map((book) => bookInsertValues(userId, book, origins.get(book.bookId))))
-							.onConflictDoUpdate({ target: bookUpsertTarget, set: bookUpsertSetFor(first) });
-					}
+					await upsertSyncBooks(tx, userId, books, origins);
 
 					// --- Series: batched upsert ---
 					if (payload.series && payload.series.length > 0) {

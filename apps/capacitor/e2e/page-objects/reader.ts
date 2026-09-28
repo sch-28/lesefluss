@@ -433,8 +433,9 @@ export const reader = {
 		await page.locator(".page-view").click();
 	},
 
-	/** Locator for the reading-progress scrubber. */
-	progressBar: (page: Page): Locator => page.locator(".reader-progress-bar"),
+	/** Locator for the expanded progress scrubber; the collapsed resting line is always shown. */
+	progressBar: (page: Page): Locator =>
+		page.locator(".reader-progress-bar:not(.reader-progress-bar--collapsed)"),
 
 	// ── Appearance popover steppers ──────────────────────────────────────
 

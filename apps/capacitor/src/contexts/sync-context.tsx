@@ -15,7 +15,7 @@ import {
 	useState,
 } from "react";
 import { toast } from "../components/toast";
-import { invalidateUnreadCount } from "../services/social/cache";
+import { invalidateAfterSync } from "../services/social/cache";
 import {
 	adoptSyncIdentity,
 	consumeAuthLoginHandoffState,
@@ -162,7 +162,7 @@ function useRestoreSession(
 					setLastSynced(await getLastSynced());
 				}
 				await fullSync();
-				invalidateUnreadCount();
+				invalidateAfterSync();
 				if (!cancelled) setLastSynced(Date.now());
 			} catch (err) {
 				if (cancelled) return;
@@ -195,7 +195,7 @@ function useResumeSync(setLastSynced: Dispatch<SetStateAction<number | null>>) {
 		if (!token) return;
 		try {
 			await fullSync();
-			invalidateUnreadCount();
+			invalidateAfterSync();
 			setLastSynced(Date.now());
 		} catch (err) {
 			log.warn("sync", "resume sync failed:", err);
@@ -259,7 +259,7 @@ function useMobileAuthCallback(
 				setUserEmail(email || null);
 				await Browser.close().catch(() => {});
 				await fullSync();
-				invalidateUnreadCount();
+				invalidateAfterSync();
 				setLastSynced(Date.now());
 				toast.success(email ? `Signed in as ${email}` : "Signed in");
 			} catch (err) {
@@ -335,7 +335,7 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 		setIsSyncing(true);
 		try {
 			await fullSync();
-			invalidateUnreadCount();
+			invalidateAfterSync();
 			setLastSynced(Date.now());
 			toast.success("Synced");
 		} catch (err) {

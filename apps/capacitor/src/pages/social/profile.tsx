@@ -1,4 +1,4 @@
-import type { ProfileCover, ProfileStats, ProfileView } from "@lesefluss/core";
+import type { ProfileStats, ProfileView } from "@lesefluss/core";
 import { ratingStars } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { IdentityCard } from "@lesefluss/ui/social-avatar";
@@ -10,20 +10,19 @@ import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
-import { CoverShelf, SocialSection, StatTile } from "@/components/social/social-ui";
+import {
+	CoverShelf,
+	profileCoverSrc,
+	SocialSection,
+	StatTile,
+} from "@/components/social/social-ui";
 import { toast } from "@/components/toast";
 import { AuthedFetchError } from "@/services/authed-fetch";
-import { getCoverUrl } from "@/services/catalog/client";
 import { useIsOnline } from "@/services/social/cache";
 import { socialErrorMessage, useBlockUser, useRemoveFriend } from "@/services/social/friends";
 import { useProfileView } from "@/services/social/profile-view";
 import { formatDuration } from "@/utils/date-utils";
 import { OfflineNotice, SocialGate, Spinner } from "./social-gate";
-
-function coverSrc(cover: ProfileCover): string | null {
-	if (!cover) return null;
-	return cover.kind === "catalog" ? getCoverUrl(cover.catalogId) : cover.url;
-}
 
 function statTiles(stats: ProfileStats): { label: string; value: string }[] {
 	const tiles = [
@@ -160,7 +159,7 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 								key: book.key,
 								title: book.title,
 								author: book.author,
-								coverSrc: coverSrc(book.cover),
+								coverSrc: profileCoverSrc(book.cover),
 								percent: book.progressPercent,
 								detail: `${book.progressPercent}%`,
 							}))}
@@ -179,7 +178,7 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 								key: book.key,
 								title: book.title,
 								author: book.author,
-								coverSrc: coverSrc(book.cover),
+								coverSrc: profileCoverSrc(book.cover),
 								detail:
 									book.rating !== null
 										? `★ ${ratingStars(book.rating)}`
