@@ -43,7 +43,7 @@ export async function addHighlight(highlight: NewHighlight): Promise<string> {
  */
 export async function updateHighlight(
 	id: string,
-	data: Partial<Pick<Highlight, "color" | "note" | "updatedAt">>,
+	data: Partial<Pick<Highlight, "startWord" | "endWord" | "color" | "note" | "text" | "updatedAt">>,
 ): Promise<void> {
 	await db.update(highlights).set(data).where(eq(highlights.id, id));
 }

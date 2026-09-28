@@ -11,7 +11,7 @@
  */
 
 import type React from "react";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Book } from "../../services/db/schema";
 
 const MIN_SCRUB_PX = 8;
@@ -53,6 +53,8 @@ export function useScrubProgress({
 	// Origin of the current pointer-down gesture - used to detect horizontal intent
 	const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
 	const isScrubbingRef = useRef(false);
+	// State twin of isScrubbingRef for rendering the drag bubble.
+	const [isDragging, setIsDragging] = useState(false);
 
 	const scrubToX = useCallback(
 		(clientX: number) => {
@@ -103,6 +105,7 @@ export function useScrubProgress({
 			if (e.buttons === 0 || !pointerDownRef.current) return;
 			if (!isHorizontalScrub(pointerDownRef.current, e.clientX, e.clientY)) return;
 			isScrubbingRef.current = true;
+			setIsDragging(true);
 			scrubToX(e.clientX);
 		},
 		[scrubToX],
@@ -113,6 +116,7 @@ export function useScrubProgress({
 			const origin = pointerDownRef.current;
 			pointerDownRef.current = null;
 			isScrubbingRef.current = false;
+			setIsDragging(false);
 			if (!origin) return;
 			// Plain tap (no meaningful horizontal drag) - scrub to the tap position.
 			if (!isHorizontalScrub(origin, e.clientX, e.clientY)) {
@@ -123,9 +127,19 @@ export function useScrubProgress({
 		[scrubToX, setProgressBarVisible],
 	);
 
+	// The system can take the gesture over (a call, an edge swipe) without a
+	// pointerup; end the drag so the reader does not stay in scrub mode.
+	const handleProgressPointerCancel = useCallback(() => {
+		pointerDownRef.current = null;
+		isScrubbingRef.current = false;
+		setIsDragging(false);
+	}, []);
+
 	return {
 		progressBarRef,
+		handleProgressPointerCancel,
 		isScrubbingRef,
+		isDragging,
 		handleProgressPointerDown,
 		handleProgressPointerMove,
 		handleProgressPointerUp,

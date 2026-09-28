@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
+import { replayPendingLink } from "../../services/deep-links/use-deep-links";
 import { type OnboardingFooter, OnboardingFooterContext } from "./footer-context";
 import BooksStep from "./steps/books";
 import PaginationStyleStep from "./steps/pagination-style";
@@ -23,6 +24,7 @@ const Onboarding: React.FC = () => {
 	const finish = useCallback(async () => {
 		updateSetting("onboardingCompleted", true);
 		await flush();
+		if (await replayPendingLink(router)) return;
 		router.navigate({ to: "/tabs/library", replace: true });
 	}, [updateSetting, flush, router]);
 

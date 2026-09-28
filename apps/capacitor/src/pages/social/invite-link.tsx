@@ -1,0 +1,191 @@
+import { Capacitor } from "@capacitor/core";
+import { Share } from "@capacitor/share";
+import { Button } from "@lesefluss/ui/button";
+import { Input } from "@lesefluss/ui/input";
+import { useNavigate } from "@tanstack/react-router";
+import { Copy, Link2, Share2, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { PageHeader } from "@/components/app-shell/page-header";
+import { Section } from "@/components/app-shell/section";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { toast } from "@/components/toast";
+import { parsePastedInvite } from "@/services/deep-links/parse";
+import { useIsOnline } from "@/services/social/cache";
+import {
+	socialErrorMessage,
+	useCreateInvite,
+	useCurrentInvite,
+	useRevokeInvite,
+} from "@/services/social/friends";
+import { copyToClipboard } from "@/utils/clipboard";
+import { OfflineNotice, SocialGate, Spinner } from "./social-gate";
+
+function formatExpiry(ms: number): string {
+	return new Date(ms).toLocaleDateString(undefined, {
+		day: "numeric",
+		month: "long",
+		year: "numeric",
+	});
+}
+
+function InviteLinkContent() {
+	const isOnline = useIsOnline();
+	const invite = useCurrentInvite();
+	const create = useCreateInvite();
+	const revoke = useRevokeInvite();
+	const navigate = useNavigate();
+	const [confirm, setConfirm] = useState<"replace" | "revoke" | null>(null);
+	const [pasted, setPasted] = useState("");
+	const [pasteHint, setPasteHint] = useState<string | null>(null);
+	const isBusy = !isOnline || create.isPending || revoke.isPending;
+	const onError = (err: unknown) => toast.error(socialErrorMessage(err));
+
+	const copy = async (url: string) => {
+		if (await copyToClipboard(url)) toast.success("Link copied");
+		else toast.error("Couldn't copy the link");
+	};
+	const share = async (url: string) => {
+		if (!Capacitor.isNativePlatform()) return copy(url);
+		await Share.share({
+			title: "Join me on Lesefluss",
+			text: "Add me as a friend on Lesefluss:",
+			url,
+			dialogTitle: "Share invite link",
+		}).catch(() => {});
+	};
+
+	const openPasted = () => {
+		const parsed = parsePastedInvite(pasted);
+		if (!parsed) {
+			setPasteHint("That doesn't look like a Lesefluss invite link.");
+			return;
+		}
+		setPasteHint(null);
+		navigate({ to: "/tabs/social/invite/$token", params: { token: parsed.token } });
+	};
+
+	if (invite.isPending) return <Spinner />;
+	if (invite.isError && invite.data === undefined) {
+		return (
+			<OfflineNotice onRetry={() => void invite.refetch()}>
+				Couldn't load your invite link.
+			</OfflineNotice>
+		);
+	}
+	const current = invite.data ?? null;
+
+	return (
+		<>
+			<Section title="Your invite link">
+				<div className="space-y-3 px-4 py-4">
+					<p className="text-muted-foreground text-sm">
+						Anyone who opens this link can become your friend until it expires or you revoke it.
+						Share it only with people you want as friends.
+					</p>
+					{current ? (
+						<>
+							<Input
+								readOnly
+								value={current.url}
+								aria-label="Your invite link"
+								onFocus={(e) => e.currentTarget.select()}
+							/>
+							<p className="text-muted-foreground text-xs">
+								Expires on {formatExpiry(current.expiresAt)}.
+							</p>
+							<div className="flex flex-wrap gap-2">
+								<Button size="sm" onClick={() => share(current.url)}>
+									<Share2 /> Share
+								</Button>
+								<Button size="sm" variant="outline" onClick={() => copy(current.url)}>
+									<Copy /> Copy
+								</Button>
+								<Button
+									size="sm"
+									variant="outline"
+									disabled={isBusy}
+									onClick={() => setConfirm("replace")}
+								>
+									<Link2 /> New link
+								</Button>
+								<Button
+									size="sm"
+									variant="ghost"
+									disabled={isBusy}
+									onClick={() => setConfirm("revoke")}
+								>
+									<Trash2 /> Revoke
+								</Button>
+							</div>
+						</>
+					) : (
+						<Button
+							className="w-full"
+							disabled={isBusy}
+							onClick={() => create.mutate(undefined, { onError })}
+						>
+							{create.isPending ? "Creating…" : "Create invite link"}
+						</Button>
+					)}
+				</div>
+			</Section>
+
+			<Section title="Got a link?">
+				<div className="space-y-2 px-4 py-4">
+					<p className="text-muted-foreground text-sm">
+						Paste an invite link a friend sent you to add them.
+					</p>
+					<div className="flex gap-2">
+						<Input
+							value={pasted}
+							onChange={(e) => {
+								setPasted(e.target.value);
+								setPasteHint(null);
+							}}
+							placeholder="https://lesefluss.app/invite/…"
+							aria-label="Invite link you received"
+							autoCapitalize="none"
+							autoCorrect="off"
+							spellCheck={false}
+						/>
+						<Button variant="outline" disabled={pasted.trim() === ""} onClick={openPasted}>
+							Open
+						</Button>
+					</div>
+					{pasteHint && <p className="text-destructive text-xs">{pasteHint}</p>}
+				</div>
+			</Section>
+
+			<ConfirmDialog
+				open={confirm !== null}
+				onOpenChange={(open) => !open && setConfirm(null)}
+				title={confirm === "replace" ? "Create a new link?" : "Revoke your invite link?"}
+				description={
+					confirm === "replace"
+						? "Your current link stops working. Anyone who still has it can no longer use it."
+						: "Nobody can use this link any more. You can create a new one at any time."
+				}
+				confirmLabel={confirm === "replace" ? "Create new link" : "Revoke"}
+				destructive={confirm === "revoke"}
+				onConfirm={() =>
+					confirm === "replace"
+						? create.mutate(undefined, { onError })
+						: revoke.mutate(undefined, { onError })
+				}
+			/>
+		</>
+	);
+}
+
+export default function InviteLinkPage() {
+	return (
+		<div className="bg-background">
+			<PageHeader title="Add friend" icon={Link2} backTo="/tabs/social" />
+			<div className="mx-auto max-w-2xl px-4 pb-10">
+				<SocialGate returnTo="/tabs/social/invite-link">
+					<InviteLinkContent />
+				</SocialGate>
+			</div>
+		</div>
+	);
+}

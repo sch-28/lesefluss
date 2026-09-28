@@ -15,6 +15,7 @@ import { Route as CustomScriptDotjsRouteImport } from './routes/customScript[.]j
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TermsIndexRouteImport } from './routes/terms/index'
+import { Route as ReportIndexRouteImport } from './routes/report/index'
 import { Route as PrivacyIndexRouteImport } from './routes/privacy/index'
 import { Route as OrderIndexRouteImport } from './routes/order/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
@@ -26,20 +27,76 @@ import { Route as DiyIndexRouteImport } from './routes/diy/index'
 import { Route as DeviceIndexRouteImport } from './routes/device/index'
 import { Route as ChangelogIndexRouteImport } from './routes/changelog/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as InviteTokenRouteImport } from './routes/invite/$token'
 import { Route as AuthMobileCallbackRouteImport } from './routes/auth/mobile-callback'
 import { Route as AuthExtensionCallbackRouteImport } from './routes/auth/extension-callback'
 import { Route as AppSplatRouteImport } from './routes/app/$'
 import { Route as ApiTelemetryRouteImport } from './routes/api/telemetry'
 import { Route as ApiSyncRouteImport } from './routes/api/sync'
+import { Route as ApiReportRouteImport } from './routes/api/report'
 import { Route as ApiLatestVersionRouteImport } from './routes/api/latest-version'
 import { Route as ApiFeedbackRouteImport } from './routes/api/feedback'
+import { Route as DotwellKnownAssetlinksDotjsonRouteImport } from './routes/[.]well-known/assetlinks[.]json'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
 import { Route as ApiSyncWipeSessionsRouteImport } from './routes/api/sync/wipe-sessions'
 import { Route as ApiSyncDeleteSessionRouteImport } from './routes/api/sync/delete-session'
+import { Route as ApiSocialUnblockRouteImport } from './routes/api/social/unblock'
+import { Route as ApiSocialSharesForBookRouteImport } from './routes/api/social/shares-for-book'
+import { Route as ApiSocialShareRevokeRouteImport } from './routes/api/social/share-revoke'
+import { Route as ApiSocialShareRespondRouteImport } from './routes/api/social/share-respond'
+import { Route as ApiSocialShareRouteImport } from './routes/api/social/share'
+import { Route as ApiSocialReportRouteImport } from './routes/api/social/report'
+import { Route as ApiSocialRelationshipsRouteImport } from './routes/api/social/relationships'
+import { Route as ApiSocialProfileViewRouteImport } from './routes/api/social/profile-view'
+import { Route as ApiSocialProfileRouteImport } from './routes/api/social/profile'
+import { Route as ApiSocialLiveStreamRouteImport } from './routes/api/social/live-stream'
+import { Route as ApiSocialLiveRouteImport } from './routes/api/social/live'
+import { Route as ApiSocialInviteRevokeRouteImport } from './routes/api/social/invite-revoke'
+import { Route as ApiSocialInviteRedeemRouteImport } from './routes/api/social/invite-redeem'
+import { Route as ApiSocialInvitePreviewRouteImport } from './routes/api/social/invite-preview'
+import { Route as ApiSocialInviteRouteImport } from './routes/api/social/invite'
+import { Route as ApiSocialInboxUnreadCountRouteImport } from './routes/api/social/inbox-unread-count'
+import { Route as ApiSocialInboxReadAllRouteImport } from './routes/api/social/inbox-read-all'
+import { Route as ApiSocialInboxReadRouteImport } from './routes/api/social/inbox-read'
+import { Route as ApiSocialInboxRouteImport } from './routes/api/social/inbox'
+import { Route as ApiSocialHandleCheckRouteImport } from './routes/api/social/handle-check'
+import { Route as ApiSocialHandleRouteImport } from './routes/api/social/handle'
+import { Route as ApiSocialFriendRequestRespondRouteImport } from './routes/api/social/friend-request-respond'
+import { Route as ApiSocialFriendRequestCancelRouteImport } from './routes/api/social/friend-request-cancel'
+import { Route as ApiSocialFriendRequestRouteImport } from './routes/api/social/friend-request'
+import { Route as ApiSocialFriendRemoveRouteImport } from './routes/api/social/friend-remove'
+import { Route as ApiSocialFeedDeleteRouteImport } from './routes/api/social/feed-delete'
+import { Route as ApiSocialFeedRouteImport } from './routes/api/social/feed'
+import { Route as ApiSocialBuddyReadsRouteImport } from './routes/api/social/buddy-reads'
+import { Route as ApiSocialBuddyReadTargetDateRouteImport } from './routes/api/social/buddy-read-target-date'
+import { Route as ApiSocialBuddyReadRemoveMemberRouteImport } from './routes/api/social/buddy-read-remove-member'
+import { Route as ApiSocialBuddyReadReactionRemoveRouteImport } from './routes/api/social/buddy-read-reaction-remove'
+import { Route as ApiSocialBuddyReadReactionRouteImport } from './routes/api/social/buddy-read-reaction'
+import { Route as ApiSocialBuddyReadProgressRouteImport } from './routes/api/social/buddy-read-progress'
+import { Route as ApiSocialBuddyReadLeaveRouteImport } from './routes/api/social/buddy-read-leave'
+import { Route as ApiSocialBuddyReadInviteRespondRouteImport } from './routes/api/social/buddy-read-invite-respond'
+import { Route as ApiSocialBuddyReadInviteCancelRouteImport } from './routes/api/social/buddy-read-invite-cancel'
+import { Route as ApiSocialBuddyReadInviteRouteImport } from './routes/api/social/buddy-read-invite'
+import { Route as ApiSocialBuddyReadHighlightUnshareRouteImport } from './routes/api/social/buddy-read-highlight-unshare'
+import { Route as ApiSocialBuddyReadHighlightShareRouteImport } from './routes/api/social/buddy-read-highlight-share'
+import { Route as ApiSocialBuddyReadDiscussionSettingsRouteImport } from './routes/api/social/buddy-read-discussion-settings'
+import { Route as ApiSocialBuddyReadDiscussionRouteImport } from './routes/api/social/buddy-read-discussion'
+import { Route as ApiSocialBuddyReadDetailRouteImport } from './routes/api/social/buddy-read-detail'
+import { Route as ApiSocialBuddyReadCommentReplyRouteImport } from './routes/api/social/buddy-read-comment-reply'
+import { Route as ApiSocialBuddyReadCommentEditRouteImport } from './routes/api/social/buddy-read-comment-edit'
+import { Route as ApiSocialBuddyReadCommentDeleteRouteImport } from './routes/api/social/buddy-read-comment-delete'
+import { Route as ApiSocialBuddyReadCommentRouteImport } from './routes/api/social/buddy-read-comment'
+import { Route as ApiSocialBuddyReadRouteImport } from './routes/api/social/buddy-read'
+import { Route as ApiSocialBlockRouteImport } from './routes/api/social/block'
+import { Route as ApiSocialAvatarSourceRouteImport } from './routes/api/social/avatar-source'
+import { Route as ApiSocialAvatarRouteImport } from './routes/api/social/avatar'
 import { Route as ApiImportArticleRouteImport } from './routes/api/import/article'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthenticatedAdminNoticesRouteImport } from './routes/_authenticated/admin/notices'
+import { Route as ApiSocialCoverImageTokenRouteImport } from './routes/api/social/cover-image/$token'
+import { Route as ApiSocialAvatarImageIdRouteImport } from './routes/api/social/avatar-image/$id'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -68,6 +125,11 @@ const IndexRoute = IndexRouteImport.update({
 const TermsIndexRoute = TermsIndexRouteImport.update({
   id: '/terms/',
   path: '/terms/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportIndexRoute = ReportIndexRouteImport.update({
+  id: '/report/',
+  path: '/report/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyIndexRoute = PrivacyIndexRouteImport.update({
@@ -125,6 +187,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/app/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthMobileCallbackRoute = AuthMobileCallbackRouteImport.update({
   id: '/auth/mobile-callback',
   path: '/auth/mobile-callback',
@@ -150,6 +217,11 @@ const ApiSyncRoute = ApiSyncRouteImport.update({
   path: '/api/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiReportRoute = ApiReportRouteImport.update({
+  id: '/api/report',
+  path: '/api/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLatestVersionRoute = ApiLatestVersionRouteImport.update({
   id: '/api/latest-version',
   path: '/api/latest-version',
@@ -160,6 +232,12 @@ const ApiFeedbackRoute = ApiFeedbackRouteImport.update({
   path: '/api/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownAssetlinksDotjsonRoute =
+  DotwellKnownAssetlinksDotjsonRouteImport.update({
+    id: '/.well-known/assetlinks.json',
+    path: '/.well-known/assetlinks.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedProfileIndexRoute =
   AuthenticatedProfileIndexRouteImport.update({
     id: '/profile/',
@@ -187,6 +265,276 @@ const ApiSyncDeleteSessionRoute = ApiSyncDeleteSessionRouteImport.update({
   path: '/delete-session',
   getParentRoute: () => ApiSyncRoute,
 } as any)
+const ApiSocialUnblockRoute = ApiSocialUnblockRouteImport.update({
+  id: '/api/social/unblock',
+  path: '/api/social/unblock',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialSharesForBookRoute = ApiSocialSharesForBookRouteImport.update({
+  id: '/api/social/shares-for-book',
+  path: '/api/social/shares-for-book',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialShareRevokeRoute = ApiSocialShareRevokeRouteImport.update({
+  id: '/api/social/share-revoke',
+  path: '/api/social/share-revoke',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialShareRespondRoute = ApiSocialShareRespondRouteImport.update({
+  id: '/api/social/share-respond',
+  path: '/api/social/share-respond',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialShareRoute = ApiSocialShareRouteImport.update({
+  id: '/api/social/share',
+  path: '/api/social/share',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialReportRoute = ApiSocialReportRouteImport.update({
+  id: '/api/social/report',
+  path: '/api/social/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialRelationshipsRoute = ApiSocialRelationshipsRouteImport.update({
+  id: '/api/social/relationships',
+  path: '/api/social/relationships',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialProfileViewRoute = ApiSocialProfileViewRouteImport.update({
+  id: '/api/social/profile-view',
+  path: '/api/social/profile-view',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialProfileRoute = ApiSocialProfileRouteImport.update({
+  id: '/api/social/profile',
+  path: '/api/social/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialLiveStreamRoute = ApiSocialLiveStreamRouteImport.update({
+  id: '/api/social/live-stream',
+  path: '/api/social/live-stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialLiveRoute = ApiSocialLiveRouteImport.update({
+  id: '/api/social/live',
+  path: '/api/social/live',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialInviteRevokeRoute = ApiSocialInviteRevokeRouteImport.update({
+  id: '/api/social/invite-revoke',
+  path: '/api/social/invite-revoke',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialInviteRedeemRoute = ApiSocialInviteRedeemRouteImport.update({
+  id: '/api/social/invite-redeem',
+  path: '/api/social/invite-redeem',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialInvitePreviewRoute = ApiSocialInvitePreviewRouteImport.update({
+  id: '/api/social/invite-preview',
+  path: '/api/social/invite-preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialInviteRoute = ApiSocialInviteRouteImport.update({
+  id: '/api/social/invite',
+  path: '/api/social/invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialInboxUnreadCountRoute =
+  ApiSocialInboxUnreadCountRouteImport.update({
+    id: '/api/social/inbox-unread-count',
+    path: '/api/social/inbox-unread-count',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialInboxReadAllRoute = ApiSocialInboxReadAllRouteImport.update({
+  id: '/api/social/inbox-read-all',
+  path: '/api/social/inbox-read-all',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialInboxReadRoute = ApiSocialInboxReadRouteImport.update({
+  id: '/api/social/inbox-read',
+  path: '/api/social/inbox-read',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialInboxRoute = ApiSocialInboxRouteImport.update({
+  id: '/api/social/inbox',
+  path: '/api/social/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialHandleCheckRoute = ApiSocialHandleCheckRouteImport.update({
+  id: '/api/social/handle-check',
+  path: '/api/social/handle-check',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialHandleRoute = ApiSocialHandleRouteImport.update({
+  id: '/api/social/handle',
+  path: '/api/social/handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialFriendRequestRespondRoute =
+  ApiSocialFriendRequestRespondRouteImport.update({
+    id: '/api/social/friend-request-respond',
+    path: '/api/social/friend-request-respond',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialFriendRequestCancelRoute =
+  ApiSocialFriendRequestCancelRouteImport.update({
+    id: '/api/social/friend-request-cancel',
+    path: '/api/social/friend-request-cancel',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialFriendRequestRoute = ApiSocialFriendRequestRouteImport.update({
+  id: '/api/social/friend-request',
+  path: '/api/social/friend-request',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialFriendRemoveRoute = ApiSocialFriendRemoveRouteImport.update({
+  id: '/api/social/friend-remove',
+  path: '/api/social/friend-remove',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialFeedDeleteRoute = ApiSocialFeedDeleteRouteImport.update({
+  id: '/api/social/feed-delete',
+  path: '/api/social/feed-delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialFeedRoute = ApiSocialFeedRouteImport.update({
+  id: '/api/social/feed',
+  path: '/api/social/feed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialBuddyReadsRoute = ApiSocialBuddyReadsRouteImport.update({
+  id: '/api/social/buddy-reads',
+  path: '/api/social/buddy-reads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialBuddyReadTargetDateRoute =
+  ApiSocialBuddyReadTargetDateRouteImport.update({
+    id: '/api/social/buddy-read-target-date',
+    path: '/api/social/buddy-read-target-date',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadRemoveMemberRoute =
+  ApiSocialBuddyReadRemoveMemberRouteImport.update({
+    id: '/api/social/buddy-read-remove-member',
+    path: '/api/social/buddy-read-remove-member',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadReactionRemoveRoute =
+  ApiSocialBuddyReadReactionRemoveRouteImport.update({
+    id: '/api/social/buddy-read-reaction-remove',
+    path: '/api/social/buddy-read-reaction-remove',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadReactionRoute =
+  ApiSocialBuddyReadReactionRouteImport.update({
+    id: '/api/social/buddy-read-reaction',
+    path: '/api/social/buddy-read-reaction',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadProgressRoute =
+  ApiSocialBuddyReadProgressRouteImport.update({
+    id: '/api/social/buddy-read-progress',
+    path: '/api/social/buddy-read-progress',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadLeaveRoute = ApiSocialBuddyReadLeaveRouteImport.update({
+  id: '/api/social/buddy-read-leave',
+  path: '/api/social/buddy-read-leave',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialBuddyReadInviteRespondRoute =
+  ApiSocialBuddyReadInviteRespondRouteImport.update({
+    id: '/api/social/buddy-read-invite-respond',
+    path: '/api/social/buddy-read-invite-respond',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadInviteCancelRoute =
+  ApiSocialBuddyReadInviteCancelRouteImport.update({
+    id: '/api/social/buddy-read-invite-cancel',
+    path: '/api/social/buddy-read-invite-cancel',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadInviteRoute =
+  ApiSocialBuddyReadInviteRouteImport.update({
+    id: '/api/social/buddy-read-invite',
+    path: '/api/social/buddy-read-invite',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadHighlightUnshareRoute =
+  ApiSocialBuddyReadHighlightUnshareRouteImport.update({
+    id: '/api/social/buddy-read-highlight-unshare',
+    path: '/api/social/buddy-read-highlight-unshare',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadHighlightShareRoute =
+  ApiSocialBuddyReadHighlightShareRouteImport.update({
+    id: '/api/social/buddy-read-highlight-share',
+    path: '/api/social/buddy-read-highlight-share',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadDiscussionSettingsRoute =
+  ApiSocialBuddyReadDiscussionSettingsRouteImport.update({
+    id: '/api/social/buddy-read-discussion-settings',
+    path: '/api/social/buddy-read-discussion-settings',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadDiscussionRoute =
+  ApiSocialBuddyReadDiscussionRouteImport.update({
+    id: '/api/social/buddy-read-discussion',
+    path: '/api/social/buddy-read-discussion',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadDetailRoute =
+  ApiSocialBuddyReadDetailRouteImport.update({
+    id: '/api/social/buddy-read-detail',
+    path: '/api/social/buddy-read-detail',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadCommentReplyRoute =
+  ApiSocialBuddyReadCommentReplyRouteImport.update({
+    id: '/api/social/buddy-read-comment-reply',
+    path: '/api/social/buddy-read-comment-reply',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadCommentEditRoute =
+  ApiSocialBuddyReadCommentEditRouteImport.update({
+    id: '/api/social/buddy-read-comment-edit',
+    path: '/api/social/buddy-read-comment-edit',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadCommentDeleteRoute =
+  ApiSocialBuddyReadCommentDeleteRouteImport.update({
+    id: '/api/social/buddy-read-comment-delete',
+    path: '/api/social/buddy-read-comment-delete',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadCommentRoute =
+  ApiSocialBuddyReadCommentRouteImport.update({
+    id: '/api/social/buddy-read-comment',
+    path: '/api/social/buddy-read-comment',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialBuddyReadRoute = ApiSocialBuddyReadRouteImport.update({
+  id: '/api/social/buddy-read',
+  path: '/api/social/buddy-read',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialBlockRoute = ApiSocialBlockRouteImport.update({
+  id: '/api/social/block',
+  path: '/api/social/block',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialAvatarSourceRoute = ApiSocialAvatarSourceRouteImport.update({
+  id: '/api/social/avatar-source',
+  path: '/api/social/avatar-source',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialAvatarRoute = ApiSocialAvatarRouteImport.update({
+  id: '/api/social/avatar',
+  path: '/api/social/avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiImportArticleRoute = ApiImportArticleRouteImport.update({
   id: '/api/import/article',
   path: '/api/import/article',
@@ -197,19 +545,39 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminNoticesRoute =
+  AuthenticatedAdminNoticesRouteImport.update({
+    id: '/admin/notices',
+    path: '/admin/notices',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const ApiSocialCoverImageTokenRoute =
+  ApiSocialCoverImageTokenRouteImport.update({
+    id: '/api/social/cover-image/$token',
+    path: '/api/social/cover-image/$token',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSocialAvatarImageIdRoute = ApiSocialAvatarImageIdRouteImport.update({
+  id: '/api/social/avatar-image/$id',
+  path: '/api/social/avatar-image/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/latest-version': typeof ApiLatestVersionRoute
+  '/api/report': typeof ApiReportRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
   '/api/telemetry': typeof ApiTelemetryRoute
   '/app/$': typeof AppSplatRoute
   '/auth/extension-callback': typeof AuthExtensionCallbackRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/app/': typeof AppIndexRoute
   '/changelog/': typeof ChangelogIndexRoute
   '/device/': typeof DeviceIndexRoute
@@ -221,27 +589,84 @@ export interface FileRoutesByFullPath {
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
+  '/report/': typeof ReportIndexRoute
   '/terms/': typeof TermsIndexRoute
+  '/admin/notices': typeof AuthenticatedAdminNoticesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/import/article': typeof ApiImportArticleRoute
+  '/api/social/avatar': typeof ApiSocialAvatarRoute
+  '/api/social/avatar-source': typeof ApiSocialAvatarSourceRoute
+  '/api/social/block': typeof ApiSocialBlockRoute
+  '/api/social/buddy-read': typeof ApiSocialBuddyReadRoute
+  '/api/social/buddy-read-comment': typeof ApiSocialBuddyReadCommentRoute
+  '/api/social/buddy-read-comment-delete': typeof ApiSocialBuddyReadCommentDeleteRoute
+  '/api/social/buddy-read-comment-edit': typeof ApiSocialBuddyReadCommentEditRoute
+  '/api/social/buddy-read-comment-reply': typeof ApiSocialBuddyReadCommentReplyRoute
+  '/api/social/buddy-read-detail': typeof ApiSocialBuddyReadDetailRoute
+  '/api/social/buddy-read-discussion': typeof ApiSocialBuddyReadDiscussionRoute
+  '/api/social/buddy-read-discussion-settings': typeof ApiSocialBuddyReadDiscussionSettingsRoute
+  '/api/social/buddy-read-highlight-share': typeof ApiSocialBuddyReadHighlightShareRoute
+  '/api/social/buddy-read-highlight-unshare': typeof ApiSocialBuddyReadHighlightUnshareRoute
+  '/api/social/buddy-read-invite': typeof ApiSocialBuddyReadInviteRoute
+  '/api/social/buddy-read-invite-cancel': typeof ApiSocialBuddyReadInviteCancelRoute
+  '/api/social/buddy-read-invite-respond': typeof ApiSocialBuddyReadInviteRespondRoute
+  '/api/social/buddy-read-leave': typeof ApiSocialBuddyReadLeaveRoute
+  '/api/social/buddy-read-progress': typeof ApiSocialBuddyReadProgressRoute
+  '/api/social/buddy-read-reaction': typeof ApiSocialBuddyReadReactionRoute
+  '/api/social/buddy-read-reaction-remove': typeof ApiSocialBuddyReadReactionRemoveRoute
+  '/api/social/buddy-read-remove-member': typeof ApiSocialBuddyReadRemoveMemberRoute
+  '/api/social/buddy-read-target-date': typeof ApiSocialBuddyReadTargetDateRoute
+  '/api/social/buddy-reads': typeof ApiSocialBuddyReadsRoute
+  '/api/social/feed': typeof ApiSocialFeedRoute
+  '/api/social/feed-delete': typeof ApiSocialFeedDeleteRoute
+  '/api/social/friend-remove': typeof ApiSocialFriendRemoveRoute
+  '/api/social/friend-request': typeof ApiSocialFriendRequestRoute
+  '/api/social/friend-request-cancel': typeof ApiSocialFriendRequestCancelRoute
+  '/api/social/friend-request-respond': typeof ApiSocialFriendRequestRespondRoute
+  '/api/social/handle': typeof ApiSocialHandleRoute
+  '/api/social/handle-check': typeof ApiSocialHandleCheckRoute
+  '/api/social/inbox': typeof ApiSocialInboxRoute
+  '/api/social/inbox-read': typeof ApiSocialInboxReadRoute
+  '/api/social/inbox-read-all': typeof ApiSocialInboxReadAllRoute
+  '/api/social/inbox-unread-count': typeof ApiSocialInboxUnreadCountRoute
+  '/api/social/invite': typeof ApiSocialInviteRoute
+  '/api/social/invite-preview': typeof ApiSocialInvitePreviewRoute
+  '/api/social/invite-redeem': typeof ApiSocialInviteRedeemRoute
+  '/api/social/invite-revoke': typeof ApiSocialInviteRevokeRoute
+  '/api/social/live': typeof ApiSocialLiveRoute
+  '/api/social/live-stream': typeof ApiSocialLiveStreamRoute
+  '/api/social/profile': typeof ApiSocialProfileRoute
+  '/api/social/profile-view': typeof ApiSocialProfileViewRoute
+  '/api/social/relationships': typeof ApiSocialRelationshipsRoute
+  '/api/social/report': typeof ApiSocialReportRoute
+  '/api/social/share': typeof ApiSocialShareRoute
+  '/api/social/share-respond': typeof ApiSocialShareRespondRoute
+  '/api/social/share-revoke': typeof ApiSocialShareRevokeRoute
+  '/api/social/shares-for-book': typeof ApiSocialSharesForBookRoute
+  '/api/social/unblock': typeof ApiSocialUnblockRoute
   '/api/sync/delete-session': typeof ApiSyncDeleteSessionRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/profile/': typeof AuthenticatedProfileIndexRoute
+  '/api/social/avatar-image/$id': typeof ApiSocialAvatarImageIdRoute
+  '/api/social/cover-image/$token': typeof ApiSocialCoverImageTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/latest-version': typeof ApiLatestVersionRoute
+  '/api/report': typeof ApiReportRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
   '/api/telemetry': typeof ApiTelemetryRoute
   '/app/$': typeof AppSplatRoute
   '/auth/extension-callback': typeof AuthExtensionCallbackRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/app': typeof AppIndexRoute
   '/changelog': typeof ChangelogIndexRoute
   '/device': typeof DeviceIndexRoute
@@ -253,14 +678,68 @@ export interface FileRoutesByTo {
   '/login': typeof LoginIndexRoute
   '/order': typeof OrderIndexRoute
   '/privacy': typeof PrivacyIndexRoute
+  '/report': typeof ReportIndexRoute
   '/terms': typeof TermsIndexRoute
+  '/admin/notices': typeof AuthenticatedAdminNoticesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/import/article': typeof ApiImportArticleRoute
+  '/api/social/avatar': typeof ApiSocialAvatarRoute
+  '/api/social/avatar-source': typeof ApiSocialAvatarSourceRoute
+  '/api/social/block': typeof ApiSocialBlockRoute
+  '/api/social/buddy-read': typeof ApiSocialBuddyReadRoute
+  '/api/social/buddy-read-comment': typeof ApiSocialBuddyReadCommentRoute
+  '/api/social/buddy-read-comment-delete': typeof ApiSocialBuddyReadCommentDeleteRoute
+  '/api/social/buddy-read-comment-edit': typeof ApiSocialBuddyReadCommentEditRoute
+  '/api/social/buddy-read-comment-reply': typeof ApiSocialBuddyReadCommentReplyRoute
+  '/api/social/buddy-read-detail': typeof ApiSocialBuddyReadDetailRoute
+  '/api/social/buddy-read-discussion': typeof ApiSocialBuddyReadDiscussionRoute
+  '/api/social/buddy-read-discussion-settings': typeof ApiSocialBuddyReadDiscussionSettingsRoute
+  '/api/social/buddy-read-highlight-share': typeof ApiSocialBuddyReadHighlightShareRoute
+  '/api/social/buddy-read-highlight-unshare': typeof ApiSocialBuddyReadHighlightUnshareRoute
+  '/api/social/buddy-read-invite': typeof ApiSocialBuddyReadInviteRoute
+  '/api/social/buddy-read-invite-cancel': typeof ApiSocialBuddyReadInviteCancelRoute
+  '/api/social/buddy-read-invite-respond': typeof ApiSocialBuddyReadInviteRespondRoute
+  '/api/social/buddy-read-leave': typeof ApiSocialBuddyReadLeaveRoute
+  '/api/social/buddy-read-progress': typeof ApiSocialBuddyReadProgressRoute
+  '/api/social/buddy-read-reaction': typeof ApiSocialBuddyReadReactionRoute
+  '/api/social/buddy-read-reaction-remove': typeof ApiSocialBuddyReadReactionRemoveRoute
+  '/api/social/buddy-read-remove-member': typeof ApiSocialBuddyReadRemoveMemberRoute
+  '/api/social/buddy-read-target-date': typeof ApiSocialBuddyReadTargetDateRoute
+  '/api/social/buddy-reads': typeof ApiSocialBuddyReadsRoute
+  '/api/social/feed': typeof ApiSocialFeedRoute
+  '/api/social/feed-delete': typeof ApiSocialFeedDeleteRoute
+  '/api/social/friend-remove': typeof ApiSocialFriendRemoveRoute
+  '/api/social/friend-request': typeof ApiSocialFriendRequestRoute
+  '/api/social/friend-request-cancel': typeof ApiSocialFriendRequestCancelRoute
+  '/api/social/friend-request-respond': typeof ApiSocialFriendRequestRespondRoute
+  '/api/social/handle': typeof ApiSocialHandleRoute
+  '/api/social/handle-check': typeof ApiSocialHandleCheckRoute
+  '/api/social/inbox': typeof ApiSocialInboxRoute
+  '/api/social/inbox-read': typeof ApiSocialInboxReadRoute
+  '/api/social/inbox-read-all': typeof ApiSocialInboxReadAllRoute
+  '/api/social/inbox-unread-count': typeof ApiSocialInboxUnreadCountRoute
+  '/api/social/invite': typeof ApiSocialInviteRoute
+  '/api/social/invite-preview': typeof ApiSocialInvitePreviewRoute
+  '/api/social/invite-redeem': typeof ApiSocialInviteRedeemRoute
+  '/api/social/invite-revoke': typeof ApiSocialInviteRevokeRoute
+  '/api/social/live': typeof ApiSocialLiveRoute
+  '/api/social/live-stream': typeof ApiSocialLiveStreamRoute
+  '/api/social/profile': typeof ApiSocialProfileRoute
+  '/api/social/profile-view': typeof ApiSocialProfileViewRoute
+  '/api/social/relationships': typeof ApiSocialRelationshipsRoute
+  '/api/social/report': typeof ApiSocialReportRoute
+  '/api/social/share': typeof ApiSocialShareRoute
+  '/api/social/share-respond': typeof ApiSocialShareRespondRoute
+  '/api/social/share-revoke': typeof ApiSocialShareRevokeRoute
+  '/api/social/shares-for-book': typeof ApiSocialSharesForBookRoute
+  '/api/social/unblock': typeof ApiSocialUnblockRoute
   '/api/sync/delete-session': typeof ApiSyncDeleteSessionRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/account': typeof AuthenticatedAccountIndexRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/profile': typeof AuthenticatedProfileIndexRoute
+  '/api/social/avatar-image/$id': typeof ApiSocialAvatarImageIdRoute
+  '/api/social/cover-image/$token': typeof ApiSocialCoverImageTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -269,13 +748,16 @@ export interface FileRoutesById {
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/latest-version': typeof ApiLatestVersionRoute
+  '/api/report': typeof ApiReportRoute
   '/api/sync': typeof ApiSyncRouteWithChildren
   '/api/telemetry': typeof ApiTelemetryRoute
   '/app/$': typeof AppSplatRoute
   '/auth/extension-callback': typeof AuthExtensionCallbackRoute
   '/auth/mobile-callback': typeof AuthMobileCallbackRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/app/': typeof AppIndexRoute
   '/changelog/': typeof ChangelogIndexRoute
   '/device/': typeof DeviceIndexRoute
@@ -287,14 +769,68 @@ export interface FileRoutesById {
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
+  '/report/': typeof ReportIndexRoute
   '/terms/': typeof TermsIndexRoute
+  '/_authenticated/admin/notices': typeof AuthenticatedAdminNoticesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/import/article': typeof ApiImportArticleRoute
+  '/api/social/avatar': typeof ApiSocialAvatarRoute
+  '/api/social/avatar-source': typeof ApiSocialAvatarSourceRoute
+  '/api/social/block': typeof ApiSocialBlockRoute
+  '/api/social/buddy-read': typeof ApiSocialBuddyReadRoute
+  '/api/social/buddy-read-comment': typeof ApiSocialBuddyReadCommentRoute
+  '/api/social/buddy-read-comment-delete': typeof ApiSocialBuddyReadCommentDeleteRoute
+  '/api/social/buddy-read-comment-edit': typeof ApiSocialBuddyReadCommentEditRoute
+  '/api/social/buddy-read-comment-reply': typeof ApiSocialBuddyReadCommentReplyRoute
+  '/api/social/buddy-read-detail': typeof ApiSocialBuddyReadDetailRoute
+  '/api/social/buddy-read-discussion': typeof ApiSocialBuddyReadDiscussionRoute
+  '/api/social/buddy-read-discussion-settings': typeof ApiSocialBuddyReadDiscussionSettingsRoute
+  '/api/social/buddy-read-highlight-share': typeof ApiSocialBuddyReadHighlightShareRoute
+  '/api/social/buddy-read-highlight-unshare': typeof ApiSocialBuddyReadHighlightUnshareRoute
+  '/api/social/buddy-read-invite': typeof ApiSocialBuddyReadInviteRoute
+  '/api/social/buddy-read-invite-cancel': typeof ApiSocialBuddyReadInviteCancelRoute
+  '/api/social/buddy-read-invite-respond': typeof ApiSocialBuddyReadInviteRespondRoute
+  '/api/social/buddy-read-leave': typeof ApiSocialBuddyReadLeaveRoute
+  '/api/social/buddy-read-progress': typeof ApiSocialBuddyReadProgressRoute
+  '/api/social/buddy-read-reaction': typeof ApiSocialBuddyReadReactionRoute
+  '/api/social/buddy-read-reaction-remove': typeof ApiSocialBuddyReadReactionRemoveRoute
+  '/api/social/buddy-read-remove-member': typeof ApiSocialBuddyReadRemoveMemberRoute
+  '/api/social/buddy-read-target-date': typeof ApiSocialBuddyReadTargetDateRoute
+  '/api/social/buddy-reads': typeof ApiSocialBuddyReadsRoute
+  '/api/social/feed': typeof ApiSocialFeedRoute
+  '/api/social/feed-delete': typeof ApiSocialFeedDeleteRoute
+  '/api/social/friend-remove': typeof ApiSocialFriendRemoveRoute
+  '/api/social/friend-request': typeof ApiSocialFriendRequestRoute
+  '/api/social/friend-request-cancel': typeof ApiSocialFriendRequestCancelRoute
+  '/api/social/friend-request-respond': typeof ApiSocialFriendRequestRespondRoute
+  '/api/social/handle': typeof ApiSocialHandleRoute
+  '/api/social/handle-check': typeof ApiSocialHandleCheckRoute
+  '/api/social/inbox': typeof ApiSocialInboxRoute
+  '/api/social/inbox-read': typeof ApiSocialInboxReadRoute
+  '/api/social/inbox-read-all': typeof ApiSocialInboxReadAllRoute
+  '/api/social/inbox-unread-count': typeof ApiSocialInboxUnreadCountRoute
+  '/api/social/invite': typeof ApiSocialInviteRoute
+  '/api/social/invite-preview': typeof ApiSocialInvitePreviewRoute
+  '/api/social/invite-redeem': typeof ApiSocialInviteRedeemRoute
+  '/api/social/invite-revoke': typeof ApiSocialInviteRevokeRoute
+  '/api/social/live': typeof ApiSocialLiveRoute
+  '/api/social/live-stream': typeof ApiSocialLiveStreamRoute
+  '/api/social/profile': typeof ApiSocialProfileRoute
+  '/api/social/profile-view': typeof ApiSocialProfileViewRoute
+  '/api/social/relationships': typeof ApiSocialRelationshipsRoute
+  '/api/social/report': typeof ApiSocialReportRoute
+  '/api/social/share': typeof ApiSocialShareRoute
+  '/api/social/share-respond': typeof ApiSocialShareRespondRoute
+  '/api/social/share-revoke': typeof ApiSocialShareRevokeRoute
+  '/api/social/shares-for-book': typeof ApiSocialSharesForBookRoute
+  '/api/social/unblock': typeof ApiSocialUnblockRoute
   '/api/sync/delete-session': typeof ApiSyncDeleteSessionRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
+  '/api/social/avatar-image/$id': typeof ApiSocialAvatarImageIdRoute
+  '/api/social/cover-image/$token': typeof ApiSocialCoverImageTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -303,13 +839,16 @@ export interface FileRouteTypes {
     | '/customScript.js'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/.well-known/assetlinks.json'
     | '/api/feedback'
     | '/api/latest-version'
+    | '/api/report'
     | '/api/sync'
     | '/api/telemetry'
     | '/app/$'
     | '/auth/extension-callback'
     | '/auth/mobile-callback'
+    | '/invite/$token'
     | '/app/'
     | '/changelog/'
     | '/device/'
@@ -321,27 +860,84 @@ export interface FileRouteTypes {
     | '/login/'
     | '/order/'
     | '/privacy/'
+    | '/report/'
     | '/terms/'
+    | '/admin/notices'
     | '/api/auth/$'
     | '/api/import/article'
+    | '/api/social/avatar'
+    | '/api/social/avatar-source'
+    | '/api/social/block'
+    | '/api/social/buddy-read'
+    | '/api/social/buddy-read-comment'
+    | '/api/social/buddy-read-comment-delete'
+    | '/api/social/buddy-read-comment-edit'
+    | '/api/social/buddy-read-comment-reply'
+    | '/api/social/buddy-read-detail'
+    | '/api/social/buddy-read-discussion'
+    | '/api/social/buddy-read-discussion-settings'
+    | '/api/social/buddy-read-highlight-share'
+    | '/api/social/buddy-read-highlight-unshare'
+    | '/api/social/buddy-read-invite'
+    | '/api/social/buddy-read-invite-cancel'
+    | '/api/social/buddy-read-invite-respond'
+    | '/api/social/buddy-read-leave'
+    | '/api/social/buddy-read-progress'
+    | '/api/social/buddy-read-reaction'
+    | '/api/social/buddy-read-reaction-remove'
+    | '/api/social/buddy-read-remove-member'
+    | '/api/social/buddy-read-target-date'
+    | '/api/social/buddy-reads'
+    | '/api/social/feed'
+    | '/api/social/feed-delete'
+    | '/api/social/friend-remove'
+    | '/api/social/friend-request'
+    | '/api/social/friend-request-cancel'
+    | '/api/social/friend-request-respond'
+    | '/api/social/handle'
+    | '/api/social/handle-check'
+    | '/api/social/inbox'
+    | '/api/social/inbox-read'
+    | '/api/social/inbox-read-all'
+    | '/api/social/inbox-unread-count'
+    | '/api/social/invite'
+    | '/api/social/invite-preview'
+    | '/api/social/invite-redeem'
+    | '/api/social/invite-revoke'
+    | '/api/social/live'
+    | '/api/social/live-stream'
+    | '/api/social/profile'
+    | '/api/social/profile-view'
+    | '/api/social/relationships'
+    | '/api/social/report'
+    | '/api/social/share'
+    | '/api/social/share-respond'
+    | '/api/social/share-revoke'
+    | '/api/social/shares-for-book'
+    | '/api/social/unblock'
     | '/api/sync/delete-session'
     | '/api/sync/wipe-sessions'
     | '/account/'
     | '/admin/'
     | '/profile/'
+    | '/api/social/avatar-image/$id'
+    | '/api/social/cover-image/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/customScript.js'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/.well-known/assetlinks.json'
     | '/api/feedback'
     | '/api/latest-version'
+    | '/api/report'
     | '/api/sync'
     | '/api/telemetry'
     | '/app/$'
     | '/auth/extension-callback'
     | '/auth/mobile-callback'
+    | '/invite/$token'
     | '/app'
     | '/changelog'
     | '/device'
@@ -353,14 +949,68 @@ export interface FileRouteTypes {
     | '/login'
     | '/order'
     | '/privacy'
+    | '/report'
     | '/terms'
+    | '/admin/notices'
     | '/api/auth/$'
     | '/api/import/article'
+    | '/api/social/avatar'
+    | '/api/social/avatar-source'
+    | '/api/social/block'
+    | '/api/social/buddy-read'
+    | '/api/social/buddy-read-comment'
+    | '/api/social/buddy-read-comment-delete'
+    | '/api/social/buddy-read-comment-edit'
+    | '/api/social/buddy-read-comment-reply'
+    | '/api/social/buddy-read-detail'
+    | '/api/social/buddy-read-discussion'
+    | '/api/social/buddy-read-discussion-settings'
+    | '/api/social/buddy-read-highlight-share'
+    | '/api/social/buddy-read-highlight-unshare'
+    | '/api/social/buddy-read-invite'
+    | '/api/social/buddy-read-invite-cancel'
+    | '/api/social/buddy-read-invite-respond'
+    | '/api/social/buddy-read-leave'
+    | '/api/social/buddy-read-progress'
+    | '/api/social/buddy-read-reaction'
+    | '/api/social/buddy-read-reaction-remove'
+    | '/api/social/buddy-read-remove-member'
+    | '/api/social/buddy-read-target-date'
+    | '/api/social/buddy-reads'
+    | '/api/social/feed'
+    | '/api/social/feed-delete'
+    | '/api/social/friend-remove'
+    | '/api/social/friend-request'
+    | '/api/social/friend-request-cancel'
+    | '/api/social/friend-request-respond'
+    | '/api/social/handle'
+    | '/api/social/handle-check'
+    | '/api/social/inbox'
+    | '/api/social/inbox-read'
+    | '/api/social/inbox-read-all'
+    | '/api/social/inbox-unread-count'
+    | '/api/social/invite'
+    | '/api/social/invite-preview'
+    | '/api/social/invite-redeem'
+    | '/api/social/invite-revoke'
+    | '/api/social/live'
+    | '/api/social/live-stream'
+    | '/api/social/profile'
+    | '/api/social/profile-view'
+    | '/api/social/relationships'
+    | '/api/social/report'
+    | '/api/social/share'
+    | '/api/social/share-respond'
+    | '/api/social/share-revoke'
+    | '/api/social/shares-for-book'
+    | '/api/social/unblock'
     | '/api/sync/delete-session'
     | '/api/sync/wipe-sessions'
     | '/account'
     | '/admin'
     | '/profile'
+    | '/api/social/avatar-image/$id'
+    | '/api/social/cover-image/$token'
   id:
     | '__root__'
     | '/'
@@ -368,13 +1018,16 @@ export interface FileRouteTypes {
     | '/customScript.js'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/.well-known/assetlinks.json'
     | '/api/feedback'
     | '/api/latest-version'
+    | '/api/report'
     | '/api/sync'
     | '/api/telemetry'
     | '/app/$'
     | '/auth/extension-callback'
     | '/auth/mobile-callback'
+    | '/invite/$token'
     | '/app/'
     | '/changelog/'
     | '/device/'
@@ -386,14 +1039,68 @@ export interface FileRouteTypes {
     | '/login/'
     | '/order/'
     | '/privacy/'
+    | '/report/'
     | '/terms/'
+    | '/_authenticated/admin/notices'
     | '/api/auth/$'
     | '/api/import/article'
+    | '/api/social/avatar'
+    | '/api/social/avatar-source'
+    | '/api/social/block'
+    | '/api/social/buddy-read'
+    | '/api/social/buddy-read-comment'
+    | '/api/social/buddy-read-comment-delete'
+    | '/api/social/buddy-read-comment-edit'
+    | '/api/social/buddy-read-comment-reply'
+    | '/api/social/buddy-read-detail'
+    | '/api/social/buddy-read-discussion'
+    | '/api/social/buddy-read-discussion-settings'
+    | '/api/social/buddy-read-highlight-share'
+    | '/api/social/buddy-read-highlight-unshare'
+    | '/api/social/buddy-read-invite'
+    | '/api/social/buddy-read-invite-cancel'
+    | '/api/social/buddy-read-invite-respond'
+    | '/api/social/buddy-read-leave'
+    | '/api/social/buddy-read-progress'
+    | '/api/social/buddy-read-reaction'
+    | '/api/social/buddy-read-reaction-remove'
+    | '/api/social/buddy-read-remove-member'
+    | '/api/social/buddy-read-target-date'
+    | '/api/social/buddy-reads'
+    | '/api/social/feed'
+    | '/api/social/feed-delete'
+    | '/api/social/friend-remove'
+    | '/api/social/friend-request'
+    | '/api/social/friend-request-cancel'
+    | '/api/social/friend-request-respond'
+    | '/api/social/handle'
+    | '/api/social/handle-check'
+    | '/api/social/inbox'
+    | '/api/social/inbox-read'
+    | '/api/social/inbox-read-all'
+    | '/api/social/inbox-unread-count'
+    | '/api/social/invite'
+    | '/api/social/invite-preview'
+    | '/api/social/invite-redeem'
+    | '/api/social/invite-revoke'
+    | '/api/social/live'
+    | '/api/social/live-stream'
+    | '/api/social/profile'
+    | '/api/social/profile-view'
+    | '/api/social/relationships'
+    | '/api/social/report'
+    | '/api/social/share'
+    | '/api/social/share-respond'
+    | '/api/social/share-revoke'
+    | '/api/social/shares-for-book'
+    | '/api/social/unblock'
     | '/api/sync/delete-session'
     | '/api/sync/wipe-sessions'
     | '/_authenticated/account/'
     | '/_authenticated/admin/'
     | '/_authenticated/profile/'
+    | '/api/social/avatar-image/$id'
+    | '/api/social/cover-image/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -402,13 +1109,16 @@ export interface RootRouteChildren {
   CustomScriptDotjsRoute: typeof CustomScriptDotjsRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  DotwellKnownAssetlinksDotjsonRoute: typeof DotwellKnownAssetlinksDotjsonRoute
   ApiFeedbackRoute: typeof ApiFeedbackRoute
   ApiLatestVersionRoute: typeof ApiLatestVersionRoute
+  ApiReportRoute: typeof ApiReportRoute
   ApiSyncRoute: typeof ApiSyncRouteWithChildren
   ApiTelemetryRoute: typeof ApiTelemetryRoute
   AppSplatRoute: typeof AppSplatRoute
   AuthExtensionCallbackRoute: typeof AuthExtensionCallbackRoute
   AuthMobileCallbackRoute: typeof AuthMobileCallbackRoute
+  InviteTokenRoute: typeof InviteTokenRoute
   AppIndexRoute: typeof AppIndexRoute
   ChangelogIndexRoute: typeof ChangelogIndexRoute
   DeviceIndexRoute: typeof DeviceIndexRoute
@@ -420,9 +1130,62 @@ export interface RootRouteChildren {
   LoginIndexRoute: typeof LoginIndexRoute
   OrderIndexRoute: typeof OrderIndexRoute
   PrivacyIndexRoute: typeof PrivacyIndexRoute
+  ReportIndexRoute: typeof ReportIndexRoute
   TermsIndexRoute: typeof TermsIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiImportArticleRoute: typeof ApiImportArticleRoute
+  ApiSocialAvatarRoute: typeof ApiSocialAvatarRoute
+  ApiSocialAvatarSourceRoute: typeof ApiSocialAvatarSourceRoute
+  ApiSocialBlockRoute: typeof ApiSocialBlockRoute
+  ApiSocialBuddyReadRoute: typeof ApiSocialBuddyReadRoute
+  ApiSocialBuddyReadCommentRoute: typeof ApiSocialBuddyReadCommentRoute
+  ApiSocialBuddyReadCommentDeleteRoute: typeof ApiSocialBuddyReadCommentDeleteRoute
+  ApiSocialBuddyReadCommentEditRoute: typeof ApiSocialBuddyReadCommentEditRoute
+  ApiSocialBuddyReadCommentReplyRoute: typeof ApiSocialBuddyReadCommentReplyRoute
+  ApiSocialBuddyReadDetailRoute: typeof ApiSocialBuddyReadDetailRoute
+  ApiSocialBuddyReadDiscussionRoute: typeof ApiSocialBuddyReadDiscussionRoute
+  ApiSocialBuddyReadDiscussionSettingsRoute: typeof ApiSocialBuddyReadDiscussionSettingsRoute
+  ApiSocialBuddyReadHighlightShareRoute: typeof ApiSocialBuddyReadHighlightShareRoute
+  ApiSocialBuddyReadHighlightUnshareRoute: typeof ApiSocialBuddyReadHighlightUnshareRoute
+  ApiSocialBuddyReadInviteRoute: typeof ApiSocialBuddyReadInviteRoute
+  ApiSocialBuddyReadInviteCancelRoute: typeof ApiSocialBuddyReadInviteCancelRoute
+  ApiSocialBuddyReadInviteRespondRoute: typeof ApiSocialBuddyReadInviteRespondRoute
+  ApiSocialBuddyReadLeaveRoute: typeof ApiSocialBuddyReadLeaveRoute
+  ApiSocialBuddyReadProgressRoute: typeof ApiSocialBuddyReadProgressRoute
+  ApiSocialBuddyReadReactionRoute: typeof ApiSocialBuddyReadReactionRoute
+  ApiSocialBuddyReadReactionRemoveRoute: typeof ApiSocialBuddyReadReactionRemoveRoute
+  ApiSocialBuddyReadRemoveMemberRoute: typeof ApiSocialBuddyReadRemoveMemberRoute
+  ApiSocialBuddyReadTargetDateRoute: typeof ApiSocialBuddyReadTargetDateRoute
+  ApiSocialBuddyReadsRoute: typeof ApiSocialBuddyReadsRoute
+  ApiSocialFeedRoute: typeof ApiSocialFeedRoute
+  ApiSocialFeedDeleteRoute: typeof ApiSocialFeedDeleteRoute
+  ApiSocialFriendRemoveRoute: typeof ApiSocialFriendRemoveRoute
+  ApiSocialFriendRequestRoute: typeof ApiSocialFriendRequestRoute
+  ApiSocialFriendRequestCancelRoute: typeof ApiSocialFriendRequestCancelRoute
+  ApiSocialFriendRequestRespondRoute: typeof ApiSocialFriendRequestRespondRoute
+  ApiSocialHandleRoute: typeof ApiSocialHandleRoute
+  ApiSocialHandleCheckRoute: typeof ApiSocialHandleCheckRoute
+  ApiSocialInboxRoute: typeof ApiSocialInboxRoute
+  ApiSocialInboxReadRoute: typeof ApiSocialInboxReadRoute
+  ApiSocialInboxReadAllRoute: typeof ApiSocialInboxReadAllRoute
+  ApiSocialInboxUnreadCountRoute: typeof ApiSocialInboxUnreadCountRoute
+  ApiSocialInviteRoute: typeof ApiSocialInviteRoute
+  ApiSocialInvitePreviewRoute: typeof ApiSocialInvitePreviewRoute
+  ApiSocialInviteRedeemRoute: typeof ApiSocialInviteRedeemRoute
+  ApiSocialInviteRevokeRoute: typeof ApiSocialInviteRevokeRoute
+  ApiSocialLiveRoute: typeof ApiSocialLiveRoute
+  ApiSocialLiveStreamRoute: typeof ApiSocialLiveStreamRoute
+  ApiSocialProfileRoute: typeof ApiSocialProfileRoute
+  ApiSocialProfileViewRoute: typeof ApiSocialProfileViewRoute
+  ApiSocialRelationshipsRoute: typeof ApiSocialRelationshipsRoute
+  ApiSocialReportRoute: typeof ApiSocialReportRoute
+  ApiSocialShareRoute: typeof ApiSocialShareRoute
+  ApiSocialShareRespondRoute: typeof ApiSocialShareRespondRoute
+  ApiSocialShareRevokeRoute: typeof ApiSocialShareRevokeRoute
+  ApiSocialSharesForBookRoute: typeof ApiSocialSharesForBookRoute
+  ApiSocialUnblockRoute: typeof ApiSocialUnblockRoute
+  ApiSocialAvatarImageIdRoute: typeof ApiSocialAvatarImageIdRoute
+  ApiSocialCoverImageTokenRoute: typeof ApiSocialCoverImageTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -467,6 +1230,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms/'
       preLoaderRoute: typeof TermsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/report/': {
+      id: '/report/'
+      path: '/report'
+      fullPath: '/report/'
+      preLoaderRoute: typeof ReportIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy/': {
@@ -546,6 +1316,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/mobile-callback': {
       id: '/auth/mobile-callback'
       path: '/auth/mobile-callback'
@@ -581,6 +1358,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/report': {
+      id: '/api/report'
+      path: '/api/report'
+      fullPath: '/api/report'
+      preLoaderRoute: typeof ApiReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/latest-version': {
       id: '/api/latest-version'
       path: '/api/latest-version'
@@ -593,6 +1377,13 @@ declare module '@tanstack/react-router' {
       path: '/api/feedback'
       fullPath: '/api/feedback'
       preLoaderRoute: typeof ApiFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/assetlinks.json': {
+      id: '/.well-known/assetlinks.json'
+      path: '/.well-known/assetlinks.json'
+      fullPath: '/.well-known/assetlinks.json'
+      preLoaderRoute: typeof DotwellKnownAssetlinksDotjsonRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/profile/': {
@@ -630,6 +1421,356 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSyncDeleteSessionRouteImport
       parentRoute: typeof ApiSyncRoute
     }
+    '/api/social/unblock': {
+      id: '/api/social/unblock'
+      path: '/api/social/unblock'
+      fullPath: '/api/social/unblock'
+      preLoaderRoute: typeof ApiSocialUnblockRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/shares-for-book': {
+      id: '/api/social/shares-for-book'
+      path: '/api/social/shares-for-book'
+      fullPath: '/api/social/shares-for-book'
+      preLoaderRoute: typeof ApiSocialSharesForBookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/share-revoke': {
+      id: '/api/social/share-revoke'
+      path: '/api/social/share-revoke'
+      fullPath: '/api/social/share-revoke'
+      preLoaderRoute: typeof ApiSocialShareRevokeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/share-respond': {
+      id: '/api/social/share-respond'
+      path: '/api/social/share-respond'
+      fullPath: '/api/social/share-respond'
+      preLoaderRoute: typeof ApiSocialShareRespondRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/share': {
+      id: '/api/social/share'
+      path: '/api/social/share'
+      fullPath: '/api/social/share'
+      preLoaderRoute: typeof ApiSocialShareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/report': {
+      id: '/api/social/report'
+      path: '/api/social/report'
+      fullPath: '/api/social/report'
+      preLoaderRoute: typeof ApiSocialReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/relationships': {
+      id: '/api/social/relationships'
+      path: '/api/social/relationships'
+      fullPath: '/api/social/relationships'
+      preLoaderRoute: typeof ApiSocialRelationshipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/profile-view': {
+      id: '/api/social/profile-view'
+      path: '/api/social/profile-view'
+      fullPath: '/api/social/profile-view'
+      preLoaderRoute: typeof ApiSocialProfileViewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/profile': {
+      id: '/api/social/profile'
+      path: '/api/social/profile'
+      fullPath: '/api/social/profile'
+      preLoaderRoute: typeof ApiSocialProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/live-stream': {
+      id: '/api/social/live-stream'
+      path: '/api/social/live-stream'
+      fullPath: '/api/social/live-stream'
+      preLoaderRoute: typeof ApiSocialLiveStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/live': {
+      id: '/api/social/live'
+      path: '/api/social/live'
+      fullPath: '/api/social/live'
+      preLoaderRoute: typeof ApiSocialLiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/invite-revoke': {
+      id: '/api/social/invite-revoke'
+      path: '/api/social/invite-revoke'
+      fullPath: '/api/social/invite-revoke'
+      preLoaderRoute: typeof ApiSocialInviteRevokeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/invite-redeem': {
+      id: '/api/social/invite-redeem'
+      path: '/api/social/invite-redeem'
+      fullPath: '/api/social/invite-redeem'
+      preLoaderRoute: typeof ApiSocialInviteRedeemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/invite-preview': {
+      id: '/api/social/invite-preview'
+      path: '/api/social/invite-preview'
+      fullPath: '/api/social/invite-preview'
+      preLoaderRoute: typeof ApiSocialInvitePreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/invite': {
+      id: '/api/social/invite'
+      path: '/api/social/invite'
+      fullPath: '/api/social/invite'
+      preLoaderRoute: typeof ApiSocialInviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/inbox-unread-count': {
+      id: '/api/social/inbox-unread-count'
+      path: '/api/social/inbox-unread-count'
+      fullPath: '/api/social/inbox-unread-count'
+      preLoaderRoute: typeof ApiSocialInboxUnreadCountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/inbox-read-all': {
+      id: '/api/social/inbox-read-all'
+      path: '/api/social/inbox-read-all'
+      fullPath: '/api/social/inbox-read-all'
+      preLoaderRoute: typeof ApiSocialInboxReadAllRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/inbox-read': {
+      id: '/api/social/inbox-read'
+      path: '/api/social/inbox-read'
+      fullPath: '/api/social/inbox-read'
+      preLoaderRoute: typeof ApiSocialInboxReadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/inbox': {
+      id: '/api/social/inbox'
+      path: '/api/social/inbox'
+      fullPath: '/api/social/inbox'
+      preLoaderRoute: typeof ApiSocialInboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/handle-check': {
+      id: '/api/social/handle-check'
+      path: '/api/social/handle-check'
+      fullPath: '/api/social/handle-check'
+      preLoaderRoute: typeof ApiSocialHandleCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/handle': {
+      id: '/api/social/handle'
+      path: '/api/social/handle'
+      fullPath: '/api/social/handle'
+      preLoaderRoute: typeof ApiSocialHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/friend-request-respond': {
+      id: '/api/social/friend-request-respond'
+      path: '/api/social/friend-request-respond'
+      fullPath: '/api/social/friend-request-respond'
+      preLoaderRoute: typeof ApiSocialFriendRequestRespondRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/friend-request-cancel': {
+      id: '/api/social/friend-request-cancel'
+      path: '/api/social/friend-request-cancel'
+      fullPath: '/api/social/friend-request-cancel'
+      preLoaderRoute: typeof ApiSocialFriendRequestCancelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/friend-request': {
+      id: '/api/social/friend-request'
+      path: '/api/social/friend-request'
+      fullPath: '/api/social/friend-request'
+      preLoaderRoute: typeof ApiSocialFriendRequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/friend-remove': {
+      id: '/api/social/friend-remove'
+      path: '/api/social/friend-remove'
+      fullPath: '/api/social/friend-remove'
+      preLoaderRoute: typeof ApiSocialFriendRemoveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/feed-delete': {
+      id: '/api/social/feed-delete'
+      path: '/api/social/feed-delete'
+      fullPath: '/api/social/feed-delete'
+      preLoaderRoute: typeof ApiSocialFeedDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/feed': {
+      id: '/api/social/feed'
+      path: '/api/social/feed'
+      fullPath: '/api/social/feed'
+      preLoaderRoute: typeof ApiSocialFeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-reads': {
+      id: '/api/social/buddy-reads'
+      path: '/api/social/buddy-reads'
+      fullPath: '/api/social/buddy-reads'
+      preLoaderRoute: typeof ApiSocialBuddyReadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-target-date': {
+      id: '/api/social/buddy-read-target-date'
+      path: '/api/social/buddy-read-target-date'
+      fullPath: '/api/social/buddy-read-target-date'
+      preLoaderRoute: typeof ApiSocialBuddyReadTargetDateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-remove-member': {
+      id: '/api/social/buddy-read-remove-member'
+      path: '/api/social/buddy-read-remove-member'
+      fullPath: '/api/social/buddy-read-remove-member'
+      preLoaderRoute: typeof ApiSocialBuddyReadRemoveMemberRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-reaction-remove': {
+      id: '/api/social/buddy-read-reaction-remove'
+      path: '/api/social/buddy-read-reaction-remove'
+      fullPath: '/api/social/buddy-read-reaction-remove'
+      preLoaderRoute: typeof ApiSocialBuddyReadReactionRemoveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-reaction': {
+      id: '/api/social/buddy-read-reaction'
+      path: '/api/social/buddy-read-reaction'
+      fullPath: '/api/social/buddy-read-reaction'
+      preLoaderRoute: typeof ApiSocialBuddyReadReactionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-progress': {
+      id: '/api/social/buddy-read-progress'
+      path: '/api/social/buddy-read-progress'
+      fullPath: '/api/social/buddy-read-progress'
+      preLoaderRoute: typeof ApiSocialBuddyReadProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-leave': {
+      id: '/api/social/buddy-read-leave'
+      path: '/api/social/buddy-read-leave'
+      fullPath: '/api/social/buddy-read-leave'
+      preLoaderRoute: typeof ApiSocialBuddyReadLeaveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-invite-respond': {
+      id: '/api/social/buddy-read-invite-respond'
+      path: '/api/social/buddy-read-invite-respond'
+      fullPath: '/api/social/buddy-read-invite-respond'
+      preLoaderRoute: typeof ApiSocialBuddyReadInviteRespondRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-invite-cancel': {
+      id: '/api/social/buddy-read-invite-cancel'
+      path: '/api/social/buddy-read-invite-cancel'
+      fullPath: '/api/social/buddy-read-invite-cancel'
+      preLoaderRoute: typeof ApiSocialBuddyReadInviteCancelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-invite': {
+      id: '/api/social/buddy-read-invite'
+      path: '/api/social/buddy-read-invite'
+      fullPath: '/api/social/buddy-read-invite'
+      preLoaderRoute: typeof ApiSocialBuddyReadInviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-highlight-unshare': {
+      id: '/api/social/buddy-read-highlight-unshare'
+      path: '/api/social/buddy-read-highlight-unshare'
+      fullPath: '/api/social/buddy-read-highlight-unshare'
+      preLoaderRoute: typeof ApiSocialBuddyReadHighlightUnshareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-highlight-share': {
+      id: '/api/social/buddy-read-highlight-share'
+      path: '/api/social/buddy-read-highlight-share'
+      fullPath: '/api/social/buddy-read-highlight-share'
+      preLoaderRoute: typeof ApiSocialBuddyReadHighlightShareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-discussion-settings': {
+      id: '/api/social/buddy-read-discussion-settings'
+      path: '/api/social/buddy-read-discussion-settings'
+      fullPath: '/api/social/buddy-read-discussion-settings'
+      preLoaderRoute: typeof ApiSocialBuddyReadDiscussionSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-discussion': {
+      id: '/api/social/buddy-read-discussion'
+      path: '/api/social/buddy-read-discussion'
+      fullPath: '/api/social/buddy-read-discussion'
+      preLoaderRoute: typeof ApiSocialBuddyReadDiscussionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-detail': {
+      id: '/api/social/buddy-read-detail'
+      path: '/api/social/buddy-read-detail'
+      fullPath: '/api/social/buddy-read-detail'
+      preLoaderRoute: typeof ApiSocialBuddyReadDetailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-comment-reply': {
+      id: '/api/social/buddy-read-comment-reply'
+      path: '/api/social/buddy-read-comment-reply'
+      fullPath: '/api/social/buddy-read-comment-reply'
+      preLoaderRoute: typeof ApiSocialBuddyReadCommentReplyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-comment-edit': {
+      id: '/api/social/buddy-read-comment-edit'
+      path: '/api/social/buddy-read-comment-edit'
+      fullPath: '/api/social/buddy-read-comment-edit'
+      preLoaderRoute: typeof ApiSocialBuddyReadCommentEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-comment-delete': {
+      id: '/api/social/buddy-read-comment-delete'
+      path: '/api/social/buddy-read-comment-delete'
+      fullPath: '/api/social/buddy-read-comment-delete'
+      preLoaderRoute: typeof ApiSocialBuddyReadCommentDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read-comment': {
+      id: '/api/social/buddy-read-comment'
+      path: '/api/social/buddy-read-comment'
+      fullPath: '/api/social/buddy-read-comment'
+      preLoaderRoute: typeof ApiSocialBuddyReadCommentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/buddy-read': {
+      id: '/api/social/buddy-read'
+      path: '/api/social/buddy-read'
+      fullPath: '/api/social/buddy-read'
+      preLoaderRoute: typeof ApiSocialBuddyReadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/block': {
+      id: '/api/social/block'
+      path: '/api/social/block'
+      fullPath: '/api/social/block'
+      preLoaderRoute: typeof ApiSocialBlockRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/avatar-source': {
+      id: '/api/social/avatar-source'
+      path: '/api/social/avatar-source'
+      fullPath: '/api/social/avatar-source'
+      preLoaderRoute: typeof ApiSocialAvatarSourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/avatar': {
+      id: '/api/social/avatar'
+      path: '/api/social/avatar'
+      fullPath: '/api/social/avatar'
+      preLoaderRoute: typeof ApiSocialAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/import/article': {
       id: '/api/import/article'
       path: '/api/import/article'
@@ -644,16 +1785,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin/notices': {
+      id: '/_authenticated/admin/notices'
+      path: '/admin/notices'
+      fullPath: '/admin/notices'
+      preLoaderRoute: typeof AuthenticatedAdminNoticesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/social/cover-image/$token': {
+      id: '/api/social/cover-image/$token'
+      path: '/api/social/cover-image/$token'
+      fullPath: '/api/social/cover-image/$token'
+      preLoaderRoute: typeof ApiSocialCoverImageTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social/avatar-image/$id': {
+      id: '/api/social/avatar-image/$id'
+      path: '/api/social/avatar-image/$id'
+      fullPath: '/api/social/avatar-image/$id'
+      preLoaderRoute: typeof ApiSocialAvatarImageIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminNoticesRoute: typeof AuthenticatedAdminNoticesRoute
   AuthenticatedAccountIndexRoute: typeof AuthenticatedAccountIndexRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedProfileIndexRoute: typeof AuthenticatedProfileIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminNoticesRoute: AuthenticatedAdminNoticesRoute,
   AuthenticatedAccountIndexRoute: AuthenticatedAccountIndexRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedProfileIndexRoute: AuthenticatedProfileIndexRoute,
@@ -681,13 +1845,16 @@ const rootRouteChildren: RootRouteChildren = {
   CustomScriptDotjsRoute: CustomScriptDotjsRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  DotwellKnownAssetlinksDotjsonRoute: DotwellKnownAssetlinksDotjsonRoute,
   ApiFeedbackRoute: ApiFeedbackRoute,
   ApiLatestVersionRoute: ApiLatestVersionRoute,
+  ApiReportRoute: ApiReportRoute,
   ApiSyncRoute: ApiSyncRouteWithChildren,
   ApiTelemetryRoute: ApiTelemetryRoute,
   AppSplatRoute: AppSplatRoute,
   AuthExtensionCallbackRoute: AuthExtensionCallbackRoute,
   AuthMobileCallbackRoute: AuthMobileCallbackRoute,
+  InviteTokenRoute: InviteTokenRoute,
   AppIndexRoute: AppIndexRoute,
   ChangelogIndexRoute: ChangelogIndexRoute,
   DeviceIndexRoute: DeviceIndexRoute,
@@ -699,9 +1866,64 @@ const rootRouteChildren: RootRouteChildren = {
   LoginIndexRoute: LoginIndexRoute,
   OrderIndexRoute: OrderIndexRoute,
   PrivacyIndexRoute: PrivacyIndexRoute,
+  ReportIndexRoute: ReportIndexRoute,
   TermsIndexRoute: TermsIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiImportArticleRoute: ApiImportArticleRoute,
+  ApiSocialAvatarRoute: ApiSocialAvatarRoute,
+  ApiSocialAvatarSourceRoute: ApiSocialAvatarSourceRoute,
+  ApiSocialBlockRoute: ApiSocialBlockRoute,
+  ApiSocialBuddyReadRoute: ApiSocialBuddyReadRoute,
+  ApiSocialBuddyReadCommentRoute: ApiSocialBuddyReadCommentRoute,
+  ApiSocialBuddyReadCommentDeleteRoute: ApiSocialBuddyReadCommentDeleteRoute,
+  ApiSocialBuddyReadCommentEditRoute: ApiSocialBuddyReadCommentEditRoute,
+  ApiSocialBuddyReadCommentReplyRoute: ApiSocialBuddyReadCommentReplyRoute,
+  ApiSocialBuddyReadDetailRoute: ApiSocialBuddyReadDetailRoute,
+  ApiSocialBuddyReadDiscussionRoute: ApiSocialBuddyReadDiscussionRoute,
+  ApiSocialBuddyReadDiscussionSettingsRoute:
+    ApiSocialBuddyReadDiscussionSettingsRoute,
+  ApiSocialBuddyReadHighlightShareRoute: ApiSocialBuddyReadHighlightShareRoute,
+  ApiSocialBuddyReadHighlightUnshareRoute:
+    ApiSocialBuddyReadHighlightUnshareRoute,
+  ApiSocialBuddyReadInviteRoute: ApiSocialBuddyReadInviteRoute,
+  ApiSocialBuddyReadInviteCancelRoute: ApiSocialBuddyReadInviteCancelRoute,
+  ApiSocialBuddyReadInviteRespondRoute: ApiSocialBuddyReadInviteRespondRoute,
+  ApiSocialBuddyReadLeaveRoute: ApiSocialBuddyReadLeaveRoute,
+  ApiSocialBuddyReadProgressRoute: ApiSocialBuddyReadProgressRoute,
+  ApiSocialBuddyReadReactionRoute: ApiSocialBuddyReadReactionRoute,
+  ApiSocialBuddyReadReactionRemoveRoute: ApiSocialBuddyReadReactionRemoveRoute,
+  ApiSocialBuddyReadRemoveMemberRoute: ApiSocialBuddyReadRemoveMemberRoute,
+  ApiSocialBuddyReadTargetDateRoute: ApiSocialBuddyReadTargetDateRoute,
+  ApiSocialBuddyReadsRoute: ApiSocialBuddyReadsRoute,
+  ApiSocialFeedRoute: ApiSocialFeedRoute,
+  ApiSocialFeedDeleteRoute: ApiSocialFeedDeleteRoute,
+  ApiSocialFriendRemoveRoute: ApiSocialFriendRemoveRoute,
+  ApiSocialFriendRequestRoute: ApiSocialFriendRequestRoute,
+  ApiSocialFriendRequestCancelRoute: ApiSocialFriendRequestCancelRoute,
+  ApiSocialFriendRequestRespondRoute: ApiSocialFriendRequestRespondRoute,
+  ApiSocialHandleRoute: ApiSocialHandleRoute,
+  ApiSocialHandleCheckRoute: ApiSocialHandleCheckRoute,
+  ApiSocialInboxRoute: ApiSocialInboxRoute,
+  ApiSocialInboxReadRoute: ApiSocialInboxReadRoute,
+  ApiSocialInboxReadAllRoute: ApiSocialInboxReadAllRoute,
+  ApiSocialInboxUnreadCountRoute: ApiSocialInboxUnreadCountRoute,
+  ApiSocialInviteRoute: ApiSocialInviteRoute,
+  ApiSocialInvitePreviewRoute: ApiSocialInvitePreviewRoute,
+  ApiSocialInviteRedeemRoute: ApiSocialInviteRedeemRoute,
+  ApiSocialInviteRevokeRoute: ApiSocialInviteRevokeRoute,
+  ApiSocialLiveRoute: ApiSocialLiveRoute,
+  ApiSocialLiveStreamRoute: ApiSocialLiveStreamRoute,
+  ApiSocialProfileRoute: ApiSocialProfileRoute,
+  ApiSocialProfileViewRoute: ApiSocialProfileViewRoute,
+  ApiSocialRelationshipsRoute: ApiSocialRelationshipsRoute,
+  ApiSocialReportRoute: ApiSocialReportRoute,
+  ApiSocialShareRoute: ApiSocialShareRoute,
+  ApiSocialShareRespondRoute: ApiSocialShareRespondRoute,
+  ApiSocialShareRevokeRoute: ApiSocialShareRevokeRoute,
+  ApiSocialSharesForBookRoute: ApiSocialSharesForBookRoute,
+  ApiSocialUnblockRoute: ApiSocialUnblockRoute,
+  ApiSocialAvatarImageIdRoute: ApiSocialAvatarImageIdRoute,
+  ApiSocialCoverImageTokenRoute: ApiSocialCoverImageTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

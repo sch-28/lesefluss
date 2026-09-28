@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  jeep-sqlite@2.8.0:
+    hash: f57600007f8da86ed7181240496c91d6f250f6bec18416b645c416532e076d3e
+    path: patches/jeep-sqlite@2.8.0.patch
+
 importers:
 
   .:
@@ -44,9 +49,15 @@ importers:
       '@capacitor/filesystem':
         specifier: ^8.1.2
         version: 8.1.2(@capacitor/core@8.5.0)
+      '@capacitor/haptics':
+        specifier: ^8.0.2
+        version: 8.0.2(@capacitor/core@8.5.0)
       '@capacitor/keyboard':
         specifier: 8.0.3
         version: 8.0.3(@capacitor/core@8.5.0)
+      '@capacitor/network':
+        specifier: ^8.0.1
+        version: 8.0.1(@capacitor/core@8.5.0)
       '@capacitor/preferences':
         specifier: 8.0.1
         version: 8.0.1(@capacitor/core@8.5.0)
@@ -121,7 +132,7 @@ importers:
         version: 12.38.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       jeep-sqlite:
         specifier: ^2.8.0
-        version: 2.8.0
+        version: 2.8.0(patch_hash=f57600007f8da86ed7181240496c91d6f250f6bec18416b645c416532e076d3e)
       lucide-react:
         specifier: 1.8.0
         version: 1.8.0(react@19.2.4)
@@ -386,6 +397,9 @@ importers:
       shadcn:
         specifier: 4.2.0
         version: 4.2.0(@types/node@22.19.15)(typescript@6.0.2)
+      sharp:
+        specifier: 0.34.5
+        version: 0.34.5
       tailwind-merge:
         specifier: ^2.6.1
         version: 2.6.1
@@ -426,9 +440,6 @@ importers:
       nitro:
         specifier: ^3.0.260311-beta
         version: 3.0.260311-beta(@capacitor/preferences@8.0.1(@capacitor/core@8.5.0))(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.1(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(gel@2.2.0)(kysely@0.28.16)(pg@8.20.0)(sql.js@1.11.0))(giget@3.2.0)(jiti@2.7.0)(lru-cache@11.5.0)(rollup@4.60.0)(vite@8.0.8(@types/node@22.19.15)(esbuild@0.25.12)(jiti@2.7.0)(tsx@4.21.0))(xml2js@0.6.2)
-      sharp:
-        specifier: 0.34.5
-        version: 0.34.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -902,8 +913,18 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
+  '@capacitor/haptics@8.0.2':
+    resolution: {integrity: sha512-c2hZzRR5Fk1tbTvhG1jhh2XBAf3EhnIerMIb2sl7Mt41Gxx1fhBJFDa0/BI1IbY4loVepyyuqNC9820/GZuoWQ==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
   '@capacitor/keyboard@8.0.3':
     resolution: {integrity: sha512-27Bv5/2w1Ss2njguBgTS98O0Bb8DRJhAARyzXYib0JlT/n6BrJw/EZ0CokM4C8GFUjFDjJnEKF1Ie01buTMEXQ==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
+  '@capacitor/network@8.0.1':
+    resolution: {integrity: sha512-9xK/FHFmzKGanB6BdoSZOzXk8vF0OFVQSQ4PAsIrzAzLuXHryO317qy8dcHVpgxYeuZq2noI0My9z1DvVDi/9w==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
@@ -1008,11 +1029,11 @@ packages:
 
   '@esbuild-kit/core-utils@3.3.2':
     resolution: {integrity: sha512-sPRAnw9CdSsRmEtnsl2WXWdyquogVpB3yZ3dgwJfe8zrOzTsV7cJvmwrKVa+0ma5BoiGJ+BoqkMvawbayKUsqQ==}
-    deprecated: 'Merged into tsx: https://tsx.is'
+    deprecated: 'Merged into tsx: https://tsx.hirok.io'
 
   '@esbuild-kit/esm-loader@2.6.5':
     resolution: {integrity: sha512-FxEMIkJKnodyA1OaCUoEvbYRkoZlLZ4d/eXFu9Fh8CbBBgP5EmZxrfTRyN0qpXZ4vOvqnE5YdRdcrmUUXuU+dA==}
-    deprecated: 'Merged into tsx: https://tsx.is'
+    deprecated: 'Merged into tsx: https://tsx.hirok.io'
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -7018,6 +7039,7 @@ packages:
 
   uuid@10.0.0:
     resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uuid@7.0.3:
@@ -7756,7 +7778,7 @@ snapshots:
   '@capacitor-community/sqlite@8.0.1(@capacitor/core@8.5.0)':
     dependencies:
       '@capacitor/core': 8.5.0
-      jeep-sqlite: 2.8.0
+      jeep-sqlite: 2.8.0(patch_hash=f57600007f8da86ed7181240496c91d6f250f6bec18416b645c416532e076d3e)
 
   '@capacitor/android@8.5.0(@capacitor/core@8.5.0)':
     dependencies:
@@ -7810,7 +7832,15 @@ snapshots:
       '@capacitor/core': 8.5.0
       '@capacitor/synapse': 1.0.4
 
+  '@capacitor/haptics@8.0.2(@capacitor/core@8.5.0)':
+    dependencies:
+      '@capacitor/core': 8.5.0
+
   '@capacitor/keyboard@8.0.3(@capacitor/core@8.5.0)':
+    dependencies:
+      '@capacitor/core': 8.5.0
+
+  '@capacitor/network@8.0.1(@capacitor/core@8.5.0)':
     dependencies:
       '@capacitor/core': 8.5.0
 
@@ -12388,7 +12418,7 @@ snapshots:
 
   isobject@3.0.1: {}
 
-  jeep-sqlite@2.8.0:
+  jeep-sqlite@2.8.0(patch_hash=f57600007f8da86ed7181240496c91d6f250f6bec18416b645c416532e076d3e):
     dependencies:
       '@stencil/core': 4.43.3
       browser-fs-access: 0.35.0

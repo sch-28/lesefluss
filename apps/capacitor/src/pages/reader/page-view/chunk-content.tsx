@@ -52,11 +52,13 @@ export interface ChunkContentProps {
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	linksByParagraph: Map<number, LinkRangeProp[]> | undefined;
+	discussionByParagraph?: Map<number, { count: number; onTap: () => void }>;
 	selectionRange: { startWord: number; endWord: number } | null;
 
 	// Word interaction
 	onWordTap: (offset: number, text: string) => void;
 	onWordLongPress: (offset: number) => void;
+	onWordLongPressDrag: (offset: number) => void;
 	onWordMouseDragStart: (offset: number, ev: PointerEvent) => void;
 
 	// Reports (chunkIndex, scrollWidth) once layout settles. Re-fires on
@@ -87,9 +89,11 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	highlightsByParagraph,
 	glossaryByParagraph,
 	linksByParagraph,
+	discussionByParagraph,
 	selectionRange,
 	onWordTap,
 	onWordLongPress,
+	onWordLongPressDrag,
 	onWordMouseDragStart,
 	onMeasure,
 	registerRef,
@@ -161,10 +165,12 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 						activeWord={isActiveWordHere ? activeWord : -1}
 						onWordTap={onWordTap}
 						onWordLongPress={onWordLongPress}
+						onWordLongPressDrag={onWordLongPressDrag}
 						onWordMouseDragStart={onWordMouseDragStart}
 						highlights={highlightsByParagraph?.get(paraGlobalIndex)}
 						glossaryRanges={glossaryByParagraph?.get(paraGlobalIndex)}
 						links={linksByParagraph?.get(paraGlobalIndex)}
+						discussion={discussionByParagraph?.get(paraGlobalIndex)}
 						chapterHeading={chapterHeadingByParagraph?.get(paraGlobalIndex)}
 						selectionRange={selectionRange}
 						showActiveWordUnderline={showActiveWordUnderline}

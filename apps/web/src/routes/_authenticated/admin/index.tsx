@@ -3,7 +3,7 @@ import { Button } from "@lesefluss/ui/button";
 import { Separator } from "@lesefluss/ui/separator";
 import { cn } from "@lesefluss/ui/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import {
 	type ColumnDef,
 	flexRender,
@@ -1280,7 +1280,12 @@ function AdminPage() {
 
 	return (
 		<div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-8">
-			<h1 className="mb-6 font-bold text-3xl tracking-tight">Admin</h1>
+			<div className="mb-6 flex items-center justify-between">
+				<h1 className="font-bold text-3xl tracking-tight">Admin</h1>
+				<Link to="/admin/notices" className="text-muted-foreground text-sm hover:text-foreground">
+					Notices and restrictions
+				</Link>
+			</div>
 			<div className="space-y-8">
 				<dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
 					<StatCard icon={Users} label="Total Users" value={stats?.userTotal} />

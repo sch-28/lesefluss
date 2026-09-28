@@ -40,6 +40,26 @@ WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true pnpm build
 
 Platform detection: `Capacitor.getPlatform() === "web"` (used throughout for BLE guards, UI hiding). Web build detection: `import.meta.env.VITE_WEB_BUILD === "true"` (used for auth and sync differences).
 
+On the web, the SQLite database lives in IndexedDB through jeep-sqlite, which rewrites the whole entry after every write. `patches/jeep-sqlite@2.8.0.patch` makes that rewrite a single put: unpatched, it deleted the entry first, so leaving the page mid-save lost the whole local database (TASK-175.6). Keep the patch until upstream saves with one put; `e2e-app/local-store-unload.spec.ts` guards it.
+
+## E2E tests
+
+- **`pnpm e2e`** (`playwright.config.ts`, `e2e/`): the dev server at `/`, no backend.
+- **`pnpm e2e:app`** (`playwright.app.config.ts`, `e2e-app/`): the web build as users get it at `/app`, against the production `apps/web` server on port 3417.
+  - `e2e-app/support/serve.mjs` does the setup. It creates a throwaway Postgres database (`lesefluss_e2e_app_<timestamp>`), runs `drizzle-kit migrate` and seeds verified test accounts (`e2e-app/support/users.mjs`). It then builds the embed and the website the way the Dockerfile does and runs `.output/server/index.mjs`. The database is dropped once the server stops, and leftovers from killed runs are dropped at the next start.
+  - The `setup` project signs every account in through the real `/login` page, saves the cookie sessions in `e2e-app/.auth/` and seeds friendships and a buddy read over the HTTP API.
+  - **Needs:** a local Postgres, taken from `E2E_APP_PG_URL` or the server in `apps/web/.env`'s `DATABASE_URL`; only a new database on it is touched.
+  - **`E2E_APP_REUSE_BUILD=1`** skips the build (about 15 s) when `apps/web/.output` and `public/app` exist. Only use it when nothing under `apps/` changed.
+  - **Covers:**
+    - the selection toolbar (Escape, margin click, resize);
+    - signing in from onboarding and from the social tab, and returning to `/app`;
+    - an invite link redeemed through the web app;
+    - the live board dropping a closed tab;
+    - the website's activity toggles;
+    - `/app` assets loading without 404s at phone and desktop sizes;
+    - the local database surviving an unload mid-save.
+  - Not wired into CI. That would need a Postgres service container and `E2E_APP_PG_URL` pointing at it, plus `pnpm exec playwright install chromium`.
+
 ## File Structure
 
 ```
@@ -52,8 +72,9 @@ src/
     reader/
       index.tsx           # BookReader page - VList, scroll/tap/selection handlers, position sync, font size controls
       paragraph.tsx       # React.memo paragraph component - word spans, heading detection, highlight/selection rendering, utf8ByteLength()
-      selection-toolbar.tsx   # Fixed toolbar shown during text selection (color swatches, note, cancel)
-      highlight-modal.tsx     # Bottom-sheet modal for editing an existing highlight (color, note, delete)
+      selection-toolbar.tsx   # Floating two-step toolbar for selections and highlights (actions → colours/note/delete)
+      toolbar-position.ts     # Pure toolbar placement: above the selection, else below, else pinned; clamped to screen
+      word-at-point.ts        # Word index under a viewport point (used by long-press drag, handle drag, mouse drag)
       highlights-list-modal.tsx # Bottom-sheet listing all highlights for the book; tap to jump
     settings.tsx          # Settings hub - links to RSVP, Appearance, Device, Cloud Sync sub-pages, feedback
     settings/
@@ -232,8 +253,8 @@ save.mutate({ wpm: 400 });
 Full-screen virtualized scroll reader split across three files:
 - `index.tsx` - page shell, data loading, scroll/tap/selection handlers, position sync, progress bar, TOC/highlights modals, theme
 - `paragraph.tsx` - `React.memo` component for a single paragraph; word spans, heading detection, highlight/selection rendering
-- `selection-toolbar.tsx` - fixed-position toolbar shown during text selection; color swatches, note button, cancel
-- `highlight-modal.tsx` - bottom-sheet for editing an existing highlight (color, note, delete); auto-saves on change
+- `selection-toolbar.tsx` - floating toolbar for a selection or a highlight; two steps (see Highlights & annotations)
+- `use-highlight-selection.ts` - selection state machine, handle drags, toolbar positioning (`toolbar-position.ts`), highlight saves
 - `highlights-list-modal.tsx` - bottom-sheet listing all book highlights ordered by position; tap to jump
 - `dictionary-modal.tsx` - bottom-sheet modal fetching definitions from the catalog service's own dictionary via react-query
 
@@ -268,7 +289,8 @@ chapters: Chapter[]        // parsed from contentRow.chapters JSON; empty for TX
 
 - **`VListHandle`** via `useRef<VListHandle>` - exposes `findItemIndex`, `scrollToIndex`, `getItemOffset`, `getItemSize`, `cache`
 - **`CacheSnapshot`** stored in a module-level `Map<bookId, CacheSnapshot>` on unmount; restored via `cache` prop on mount - pixel-accurate scroll restoration
-- **`onScrollEnd`** fires position save (no debounce timer needed)
+- **`onScrollEnd`** fires position save (no debounce timer needed): the viewport-top word. It keeps the last settled word (`settledWordRef`) when the view moved less than 4px since the last scroll end (layout clamp, soft keyboard), and at the very bottom, where a later saved word is still on screen but can never reach the top
+- **Scroll ticks** only know the paragraph, so they never replace a finer saved word in the same paragraph (or a later one at the very bottom); otherwise leaving mid-scroll would flush a paragraph-start rewind
 - **Two offset states:** `activeOffset` (word highlight, set to `-1` while scrolling) and `progressOffset` (progress bar, updated every scroll frame)
 - **Word tap - two-stage:** first tap highlights the word and saves position; second tap on the already-highlighted word opens the dictionary modal
 - **Heading paragraphs** (prefixed `# `) are not tappable
@@ -292,15 +314,19 @@ Fixed bar at the bottom of `IonContent`, positioned `calc(env(safe-area-inset-bo
 
 ### Highlights & annotations
 
-Long-press any word to enter selection mode. Two fixed handles (start/end) can be dragged to extend the range. A toolbar appears with 4 color swatches and a note button. Picking a color auto-saves immediately.
+Long-press any word to enter selection mode (haptic tick via `services/haptics.ts`); keep the finger down and drag to extend, or drag the two handles afterwards. Desktop: mouse-drag across words.
 
-Long-pressing an already-highlighted word opens **HighlightModal** to edit color/note or delete. Tapping the bookmark icon opens **HighlightsListModal**.
+The floating toolbar has two steps:
+- **actions** (unsaved selection): Highlight, Note, Look up (single word only, disabled otherwise), Glossary, Comment (buddy read only). Highlight and Note save with the last-used colour (`localStorage` `lesefluss:highlight-color`); Note saves first so a note is never lost.
+- **styled** (saved highlight): colour swatches, Note, Share (buddy read only), Delete.
+
+Long-pressing a highlighted word (or tapping it a second time in scroll mode) selects the existing highlight in the styled step; dragging a handle then resizes it (committed on release). There is no close button: tapping outside dismisses, and a saved highlight stays saved. The Highlights tab of the annotations sheet lists all highlights; tap to jump.
 
 - Offsets stored as UTF-8 byte word-start offsets (same as `data-offset` on word spans)
 - Overlapping highlights allowed; most-recently-created color wins visually
 - Deleting a book cascades to its highlights (`deleteHighlightsByBook` called in `deleteBook`)
 - `highlightsByParagraph: Map<index, HighlightRange[]>` memoized in the reader
-- Scroll suppressed during selection via `touch-action: none` on the VList container
+- Handles use `touch-action: none`; during a long-press drag `paragraph.tsx` blocks `touchmove` so the page doesn't scroll, and page mode ignores the drag instead of swiping
 
 ### Dictionary lookup
 
@@ -348,7 +374,7 @@ className={isActive ? "sidebar-item active" : "sidebar-item"}
 
 ## UI
 
-- **2 tabs:** Library (default) + Settings
+- **4 tabs:** Library (default), Explore, Social, Settings. Social lives in `src/pages/social/` (friends, requests, invite link, blocked users); invite deep links are documented in `docs/deep-links.md`
 - **Desktop/web:** sidebar nav replaces tab bar (`desktop-sidebar.tsx`) - brand link (→ `/` on web, static on native), Library and Settings nav items
 - BLE status badge between tabs on mobile (no dedicated connection page)
 - **Library:** book grid (3 cols), cover art, progress bar, "On device" badge; empty state; FAB to import; sync button in header (triggers cloud sync); short tap → reader; long press → action sheet; transfer progress modal

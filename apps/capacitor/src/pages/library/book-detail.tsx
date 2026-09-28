@@ -19,10 +19,11 @@ import {
 import { RatingStars } from "@lesefluss/ui/rating-stars";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { BookOpen, Cpu, Pencil, Trash2 } from "lucide-react";
+import { BookOpen, Cpu, Pencil, Share2, Trash2, Users } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DeviceBadge } from "../../components/device-sync";
+import { ShareSheet } from "../../components/social/share-sheet";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useBookDeviceState } from "../../contexts/device-library-context";
 import { useSyncContext } from "../../contexts/sync-context";
@@ -30,12 +31,21 @@ import { useBookDeviceActions } from "../../hooks/use-book-device-actions";
 import { externalSourceUrl, getCatalogBook, getCoverUrl } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { queryHooks } from "../../services/db/hooks";
-import { bookKeys } from "../../services/db/hooks/query-keys";
+import { bookKeys, syncKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { parseChapters } from "../../services/db/queries/books";
+import { SYNC_ENABLED } from "../../services/sync";
+import { getServerContentIds } from "../../services/sync/server-content-cache";
 import { IS_WEB } from "../../utils/platform";
 import { bookPageCount } from "../../utils/reading-time";
 import { DetailShell } from "../_shared/detail-shell";
+import {
+	BookBuddyRead,
+	BUDDY_READ_BLOCKER_TEXT,
+	StartBuddyReadSheet,
+	shareBlockerFor,
+	useBookBuddyRead,
+} from "./book-buddy-read";
 import { BookChapters } from "./book-chapters";
 import BookEditSheet, {
 	type BookEditValues,
@@ -45,6 +55,7 @@ import BookEditSheet, {
 import { BookFileCard } from "./book-file-card";
 import { BookHighlights } from "./book-highlights";
 import { BookJourney } from "./book-journey";
+import { BookShares } from "./book-shares";
 import { BookStatsCard } from "./book-stats-card";
 import { SessionTable } from "./session-table";
 import { FILTER_LABELS } from "./sort-filter";
@@ -91,6 +102,23 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const [isTransferOpen, setIsTransferOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 	const [isEditOpen, setIsEditOpen] = useState(false);
+	const [isShareOpen, setIsShareOpen] = useState(false);
+	const [isBuddyReadOpen, setIsBuddyReadOpen] = useState(false);
+	const canShare = isLoggedIn && SYNC_ENABLED;
+	// A session lost while the sheet is open would leave a friend list that can only fail.
+	useEffect(() => {
+		if (!canShare) setIsShareOpen(false);
+	}, [canShare]);
+	const buddyRead = useBookBuddyRead(book ?? { originKey: null }, canShare);
+	const hasRunningBuddyRead = buddyRead?.status === "in_progress";
+	// Whether the server holds this book's text: sharing copies server-side, so a
+	// book that never reached the cloud has nothing to copy yet.
+	const { data: serverContentIds } = useQuery({
+		queryKey: syncKeys.serverContentIds,
+		queryFn: getServerContentIds,
+		enabled: canShare && (isShareOpen || isBuddyReadOpen),
+		staleTime: 0,
+	});
 
 	// Everything below this line MUST stay above the `if (isPending)` /
 	// `if (!book)` early returns. Hooks called only on the loaded-book path
@@ -100,6 +128,11 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const headerActions = useMemo(
 		() => [
 			{ label: "Edit", icon: Pencil, onClick: () => setIsEditOpen(true) },
+			...(canShare ? [{ label: "Share", icon: Share2, onClick: () => setIsShareOpen(true) }] : []),
+			// Shown signed out too: the sheet explains that reading together needs an account.
+			...(SYNC_ENABLED && !hasRunningBuddyRead
+				? [{ label: "Start buddy read", icon: Users, onClick: () => setIsBuddyReadOpen(true) }]
+				: []),
 			{
 				label: "Delete",
 				icon: Trash2,
@@ -107,7 +140,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				onClick: () => setIsDeleteOpen(true),
 			},
 		],
-		[],
+		[canShare, hasRunningBuddyRead],
 	);
 	// Memoised because the sheet reseeds its form whenever `initial` changes; a
 	// fresh object every render would discard what the reader is typing.
@@ -123,6 +156,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					rating: null,
 					review: null,
 					tags: null,
+					hideFromProfile: false,
 				},
 			),
 		[book],
@@ -185,6 +219,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const pages = bookPageCount(book);
 	const chapters = parseChapters(content?.chapters ?? null);
 	const chapterCount = chapters.length;
+	const shareBlocker = shareBlockerFor(book, serverContentIds);
 
 	// Same two steps the reader takes for an in-book jump: persist the position,
 	// then let the seed effect resume from it.
@@ -292,6 +327,8 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					</section>
 				)}
 				<BookStatsCard book={book} />
+				{canShare && <BookShares bookId={book.id} enabled={!book.seriesId} />}
+				{canShare && buddyRead && <BookBuddyRead read={buddyRead} book={book} />}
 				<BookJourney book={book} />
 				<BookFileCard book={book} chapterCount={chapterCount} />
 				<BookChapters
@@ -313,6 +350,21 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				/>
 			)}
 
+			<ShareSheet
+				isOpen={isShareOpen}
+				onClose={() => setIsShareOpen(false)}
+				bookId={book.id}
+				bookTitle={book.title}
+				blocker={shareBlocker}
+			/>
+			<StartBuddyReadSheet
+				isOpen={isBuddyReadOpen}
+				onClose={() => setIsBuddyReadOpen(false)}
+				isLoggedIn={isLoggedIn}
+				bookId={book.id}
+				bookTitle={book.title}
+				blocker={shareBlocker ? BUDDY_READ_BLOCKER_TEXT[shareBlocker] : null}
+			/>
 			<BookEditSheet
 				isOpen={isEditOpen}
 				onClose={() => setIsEditOpen(false)}

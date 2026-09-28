@@ -14,7 +14,7 @@ export const Route = createFileRoute("/privacy/")({
 
 function PrivacyPage() {
 	return (
-		<LegalPage title="Privacy" subtitle="Last updated: June 2026">
+		<LegalPage title="Privacy" subtitle="Last updated: September 2026">
 			<section>
 				<h2 className="mb-3 font-semibold text-foreground text-xl">TL;DR</h2>
 				<p>
@@ -122,6 +122,237 @@ function PrivacyPage() {
 				<p className="mt-4">
 					Your data is stored on a server in the EU and is never sold, shared, or used to train
 					models. Only you can read it.
+				</p>
+			</section>
+
+			<section>
+				<h2 className="mb-3 font-semibold text-foreground text-xl">Social profile</h2>
+				<p>
+					Social features are optional and only start once you pick a handle. Until then nothing
+					about you is visible to other users. We process this data to provide the feature you opted
+					into (Art. 6(1)(b) GDPR, performance of a contract).
+				</p>
+				<ul className="mt-3 space-y-2 text-sm">
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<strong className="text-foreground">Identity card</strong>: your handle, display name
+							and avatar. This is shown to any user you legitimately interact with: friend requests,
+							friend lists, invite pages and shared reading. It is shown regardless of your profile
+							visibility setting, so a private profile is not an invisible one. Handles are not
+							searchable and there is no public directory.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<strong className="text-foreground">Profile visibility</strong>: either private (the
+							default: your bio and profile sections are visible only to you) or friends (accepted
+							friends see your bio and the sections you leave on: currently reading, finished books,
+							reading stats and shared highlights). There is no public setting; profiles are shown
+							only inside the app and only to friends.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<strong className="text-foreground">Avatar</strong>: an image you upload, or your
+							Google or Discord account picture if you explicitly choose it. Either way we resize it
+							to 256 pixels, re-encode it and drop all embedded metadata (including EXIF and GPS
+							data) before storing it. Choosing the account picture copies it once; we never link to
+							the provider's image. You can replace or remove the avatar at any time.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<strong className="text-foreground">Released handles</strong>: when you change your
+							handle, the old handle string is held for 90 days so nobody else can take it over in
+							the meantime; the hold remembers that it was yours so that only you can reclaim it,
+							and it is never shown to anyone. Deleting your account keeps the hold but removes the
+							link to you. After 90 days the handle is free for anyone.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<strong className="text-foreground">Time zone</strong>: the app stores your device's
+							time zone (for example Europe/Berlin) so that the dates on your profile and your "this
+							year" reading stats follow your own calendar. It is used only for that and is never
+							shown to other users.
+						</span>
+					</li>
+				</ul>
+				<p className="mt-4">
+					Your social profile, avatar and settings are deleted with your account. Clearing your
+					cloud data keeps them.
+				</p>
+			</section>
+
+			<section>
+				<h2 className="mb-3 font-semibold text-foreground text-xl">Friends and invite links</h2>
+				<p>
+					Nobody can look you up. Other users reach you only through a personal invite link you hand
+					out yourself, or by sending a request while you read a book together. To run this we
+					store:
+				</p>
+				<ul className="mt-3 space-y-2 text-sm">
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<strong className="text-foreground">Friendships</strong>: which two accounts are
+							friends and since when. Friends see each other in their friend lists.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<strong className="text-foreground">Friend requests</strong>: who asked whom and when,
+							and whether it is still open. A declined request is kept for 90 days so that the same
+							person cannot keep asking; requests that were never answered are dropped 30 days after
+							they were sent. The sender is never told that a request was declined.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<strong className="text-foreground">Blocks</strong>: whom you have blocked. Only you
+							can see your block list; a blocked person is not told.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<strong className="text-foreground">Invite links</strong>: your current link and when
+							it expires (14 days). Anyone who opens it sees your handle, display name and avatar,
+							whatever your profile visibility, so only share it with people you want as friends.
+						</span>
+					</li>
+				</ul>
+				<p className="mt-4">
+					All of it is deleted with your account, including the rows in which you are the other
+					party. Clearing your cloud data keeps it.
+				</p>
+				<h3 className="mt-6 mb-2 font-medium text-foreground">Inbox</h3>
+				<p>
+					The app's inbox is backed by social notifications we store for you: what happened (for
+					example a friend request or an accepted request), who did it, when, and whether you have
+					read it. Nothing is stored about declines, removed friends or blocks. Items you have read
+					are deleted 90 days after you read them, and every item is deleted 365 days after it was
+					created, or earlier when either account is deleted or one of you blocks the other.
+				</p>
+				<h3 className="mt-6 mb-2 font-medium text-foreground">What friends see on your profile</h3>
+				<p>
+					With profile visibility set to <em>private</em> (the default), a friend sees only your
+					identity card and since when you are friends. With <em>friends</em>, they also see your
+					bio, how many friends you have, and each section you leave switched on: the books you are
+					currently reading (title, author, progress), the books you finished (title, author, finish
+					date, your star rating) and your reading stats (books finished this year, words read,
+					reading time and reading speed as totals). Never shown: your review text, notes, tags,
+					exact reading position, individual reading sessions, articles you imported from the web,
+					or your email. Any book can be hidden from your profile in its edit sheet; a hidden book
+					leaves every section and the stats. Nobody outside your friends can open your profile.
+				</p>
+			</section>
+
+			<section>
+				<h2 className="mb-3 font-semibold text-foreground text-xl">Sharing books</h2>
+				<p>
+					You can offer a synced book to one friend at a time. If they accept, the server copies the
+					book into their account: the text, cover, chapters, links, title, author, description,
+					language and where it came from. Not copied: your reading position, status, rating, notes,
+					tags, highlights, glossary, reading sessions or the hide-from-profile flag. The copy then
+					belongs to your friend and stays in their library even if you unfriend each other, block
+					each other or delete your account. Only a takedown following a notice removes it.
+				</p>
+				<p className="mt-4">
+					For every share we store who offered which book to whom, when, and the outcome (open,
+					accepted, declined, expired or withdrawn), plus the title, author and length as they were
+					when you shared. Open offers expire after 30 days; closed records are deleted 90 days
+					after they closed. Your one-time confirmation that you may share, with its timestamp, is
+					stored with your account. Every book carries an internal origin marker so that two copies
+					of the same book can be recognised for reading together and so that a takedown can reach
+					every copy; the app only ever receives a scrambled form of it, never who uploaded the
+					book. All of this is deleted with your account, except copies that friends accepted.
+				</p>
+			</section>
+
+			<section>
+				<h2 className="mb-3 font-semibold text-foreground text-xl">Buddy reads</h2>
+				<p>
+					A buddy read is a group of up to eight people reading the same book. For each one we store
+					the book's title and author, who hosts it, an optional target date, who is a member with
+					which of their books, when they joined, left or finished, and every invite (who invited
+					whom, when, and the outcome). Only friends can be invited, and an invite tells the invitee
+					who else is in before they join.
+				</p>
+				<p className="mt-4">
+					While you are a member, everyone else in the buddy read sees your handle, display name and
+					avatar, how far you are in the book (percentage, chapter and position), whether you
+					finished it and when you last read, even if you are not friends with them. We take this
+					from your last synced reading position; no extra data is collected. Someone you blocked or
+					who blocked you sees none of it. Members can send each other friend requests. When you
+					leave, are removed, or your copy of the book is deleted, the others stop seeing your
+					progress; the book stays in your library. A buddy read is deleted when its last member
+					leaves, and your memberships and invites are deleted with your account. A joiner who does
+					not have the book receives a copy exactly as with sharing.
+				</p>
+				<h3 className="mt-6 mb-2 font-medium text-foreground">Comments and shared highlights</h3>
+				<p>
+					In a buddy read you can write comments, reply to them, react with an emoji and share
+					highlights. We store the text, where in the book it belongs, who wrote it and when, and
+					who reacted. A shared highlight includes its note. Nothing is shared unless you share it,
+					either one highlight at a time or with the "share all my highlights" setting, which you
+					can switch off again. Only current members of the buddy read see these items, each only
+					once they have read that far, and never someone you blocked or who blocked you. To decide
+					what to show, we keep the furthest position you have reached in the book. If you leave,
+					your comments stay and your shared highlights disappear. Everything is deleted with the
+					buddy read. When you delete your account, your reactions and shared highlights are deleted
+					and your comments are deleted too, except that a comment others replied to stays as an
+					empty "removed" entry without your name.
+				</p>
+				<h3 className="mt-6 mb-2 font-medium text-foreground">Live reading activity</h3>
+				<p>
+					While you have a buddy-read book open, the app sends your reading position to our server
+					every two seconds. The other members of that buddy read see that you are reading now, your
+					position and your reading speed in the current sitting. The server keeps this in memory
+					only while you read and never stores it. You can switch it off in the social settings; you
+					then also see nothing live from others.
+				</p>
+				<h3 className="mt-6 mb-2 font-medium text-foreground">Activity feed</h3>
+				<p>
+					When you start or finish a book, we record that fact for the activity feed: which book,
+					which of the two, and the day. We store no reading position and no review; a finished book
+					shows the rating you gave it. Your friends see these entries only while your profile is
+					visible to friends, the matching section ("currently reading" or "finished books") is on
+					and "Share my reading activity in friends' feeds" is on, and only while the book is in
+					your library and not hidden from your profile. Nobody else sees them, and nobody sees a
+					time of day. You can remove a single entry, and switching the setting off deletes all of
+					them. Entries are deleted after 90 days and with your account.
+				</p>
+			</section>
+
+			<section>
+				<h2 className="mb-3 font-semibold text-foreground text-xl">Notices and moderation</h2>
+				<p>
+					Anyone can report a profile or a shared book, in the app or through the public report
+					form. For each notice we store: what was reported and where, the reason and explanation,
+					who notified us (your account, or the name and email you typed into the form), a text
+					snapshot of the reported item as it looked at that moment (for a profile the handle,
+					display name and bio; for a book the sender, title, author and origin, never the book
+					text), our decision, who made it and when, and whether the emails about it were delivered.
+					The snapshot exists because the reported item can be edited or deleted before we review
+					it.
+				</p>
+				<p className="mt-4">
+					The reported user is never told who notified us. If we restrict an account we email the
+					affected user a statement of reasons and place it in their inbox; the notifier receives
+					our decision by email or in their inbox. Notices are deleted 24 months after the decision.
+					When an account is deleted, its restrictions end and its name and email are removed from
+					the notices it submitted. The notices themselves stay until their 24 months are over,
+					because we must be able to show that we acted on them. Removal records (which book was
+					taken down from which account) are kept for good: they are what keeps a removed book from
+					being uploaded again.
 				</p>
 			</section>
 

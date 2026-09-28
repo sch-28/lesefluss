@@ -7,6 +7,7 @@ import ShareIntentHandler from "@/components/share-intent-handler";
 import { Toaster } from "@/components/toast";
 import WhatsNewModal from "@/components/whats-new-modal";
 import { ImportStagingProvider } from "@/contexts/import-staging-context";
+import { useDeepLinks } from "@/services/deep-links/use-deep-links";
 import { checkForUpdate } from "@/services/update-check";
 
 export const Route = createRootRoute({
@@ -18,6 +19,7 @@ const FULL_SCREEN_PREFIXES = ["/onboarding", "/tabs/reader"];
 function RootLayout() {
 	const { pathname } = useLocation();
 	const isFullScreen = FULL_SCREEN_PREFIXES.some((p) => pathname.startsWith(p));
+	useDeepLinks();
 
 	useEffect(() => {
 		SplashScreen.hide().catch(() => {});

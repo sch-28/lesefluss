@@ -134,6 +134,14 @@ export const books = sqliteTable("books", {
 	review: text("review"),
 	/** JSON array of tag labels: `["scifi","favorites"]`. NULL = untagged. */
 	tags: text("tags"),
+	/** Keep this book off the reader's social profile and out of its stats. */
+	hideFromProfile: integer("hide_from_profile", { mode: "boolean" }).notNull().default(false),
+	/**
+	 * Opaque identity of the content's origin, handed out by the server on pull.
+	 * Two books with the same key hold the same word stream, whoever uploaded
+	 * them. Null until the book has been pushed and pulled once; never pushed.
+	 */
+	originKey: text("origin_key"),
 	/**
 	 * Revision of the reading position, epoch ms. Moves when `word_position` or
 	 * `last_read` moves and at no other time.

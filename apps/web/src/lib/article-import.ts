@@ -176,6 +176,8 @@ export async function handleArticleImportRequest(
 		return {
 			userId,
 			bookId: id,
+			originUserId: userId,
+			originBookId: id,
 			title,
 			author: payload.author ?? null,
 			fileSize: utf8ByteLength(payload.content),

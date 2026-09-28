@@ -82,10 +82,17 @@ public class ShareIntentPlugin extends Plugin {
 
         if (Intent.ACTION_VIEW.equals(action)) {
             Uri data = intent.getData();
-            if (data != null) {
+            // https App Links arrive as ACTION_VIEW too; Capacitor's appUrlOpen
+            // handles those, so only file-shaped URIs are imports.
+            if (data != null && isFileUri(data)) {
                 handleSharedFile(data, intent.getType());
             }
         }
+    }
+
+    private static boolean isFileUri(Uri uri) {
+        String scheme = uri.getScheme();
+        return "file".equals(scheme) || "content".equals(scheme);
     }
 
     private void handleSharedText(Intent intent) {

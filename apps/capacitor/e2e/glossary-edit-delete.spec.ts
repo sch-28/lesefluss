@@ -7,7 +7,7 @@ test("glossary label edit persists across reload", async ({ page }) => {
 	await openBookFromLibrary(page, title);
 
 	await reader.selectWords(page, "opening", "paragraph");
-	await page.getByRole("button", { name: "Add to glossary" }).click();
+	await page.getByRole("button", { name: "Glossary", exact: true }).click();
 	await expect(page.getByRole("heading", { name: "Glossary entry" })).toBeVisible();
 
 	const newLabel = "spec-renamed-entry";
@@ -29,7 +29,7 @@ test("glossary delete from initial editor removes the avatar", async ({ page }) 
 	await openBookFromLibrary(page, title);
 
 	await reader.selectWords(page, "opening", "paragraph");
-	await page.getByRole("button", { name: "Add to glossary" }).click();
+	await page.getByRole("button", { name: "Glossary", exact: true }).click();
 	await expect(page.getByRole("heading", { name: "Glossary entry" })).toBeVisible();
 
 	// Delete inside the same modal instance the create flow opened, before

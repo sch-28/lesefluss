@@ -29,6 +29,10 @@ const FINE_SCROLL_MOUNT_FRAME_BUDGET = 10;
 const FINE_SCROLL_STABILITY_TICK_MS = 50;
 const FINE_SCROLL_STABILITY_TIMEOUT_MS = 600;
 const INIT_SETTLE_COOLDOWN_MS = 500;
+// A scroll end closer than this to the previous one is a layout clamp (content
+// height changing by a pixel under a new highlight, the soft keyboard), not the
+// reader moving. Well under one line of text.
+const MIN_SETTLE_SCROLL_PX = 4;
 
 // Locate the alignment target span within `container`. Queries by `data-word`
 // only. The paragraph-bounded fallback ensures a stale saved position
@@ -226,6 +230,7 @@ export interface ScrollViewProps {
 	highlightsByParagraph: Map<number, HighlightRange[]> | undefined;
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	linksByParagraph: Map<number, LinkRangeProp[]> | undefined;
+	discussionByParagraph?: Map<number, { count: number; onTap: () => void }>;
 	/** Paragraph index → chapter title rendered as an inline header above it. */
 	chapterHeadingByParagraph?: Map<number, string>;
 	selectionRange: { startWord: number; endWord: number } | null;
@@ -233,15 +238,18 @@ export interface ScrollViewProps {
 	// Word interaction
 	onWordTap: (offset: number, text: string) => void;
 	onWordLongPress: (offset: number) => void;
+	onWordLongPressDrag: (offset: number) => void;
 	onWordMouseDragStart: (offset: number, ev: PointerEvent) => void;
 
 	// Scroll-driven side effects routed back to parent (word units)
-	onPositionSettle: (word: number) => void; // handleScrollEnd → final saved word
+	/** `isAtEnd`: scrolled to the very bottom, where the viewport-top word is not the reading position.
+	 *  `hasMoved`: false when the view moved less than MIN_SETTLE_SCROLL_PX since the last scroll end. */
+	onPositionSettle: (word: number, isAtEnd: boolean, hasMoved: boolean) => void; // handleScrollEnd → final saved word
 	onInitialActiveOffset: (word: number) => void; // fires once on initial scroll, sets highlight without saving
-	onProgressChange: (word: number) => void; // continuous during scroll
+	onProgressChange: (word: number, isAtEnd: boolean) => void; // continuous during scroll
 	onHighlightClear: () => void; // scroll started → hide highlight (parent decides on NO_HIGHLIGHT optimization)
 	onHideProgressBar: () => void; // scroll started (and not scrubbing) → hide bar
-	onTap: () => void; // any click inside container → show progress bar
+	onTap: (e: MouseEvent) => void; // any click inside the container
 
 	// Selection-during-scroll: parent hands these in so handlers re-sync drag handles
 	isSelecting: boolean;
@@ -256,6 +264,8 @@ export interface ScrollViewProps {
 
 	// Lets handleScroll skip onHideProgressBar while a scrub gesture is in-flight
 	isScrubbingRef: React.RefObject<boolean>;
+	/** A drag along the progress bar is in progress: stay dimmed until it ends. */
+	isScrubbing: boolean;
 }
 
 const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function ScrollView(
@@ -274,10 +284,12 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		highlightsByParagraph,
 		glossaryByParagraph,
 		linksByParagraph,
+		discussionByParagraph,
 		chapterHeadingByParagraph,
 		selectionRange,
 		onWordTap,
 		onWordLongPress,
+		onWordLongPressDrag,
 		onWordMouseDragStart,
 		onPositionSettle,
 		onInitialActiveOffset,
@@ -288,6 +300,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		isSelecting,
 		syncSelectionHandles,
 		isScrubbingRef,
+		isScrubbing,
 		footer,
 	},
 	ref,
@@ -322,6 +335,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	// is single-shot). Without this the second scrollend saves a top-of-viewport
 	// word that's often off-by-one from the seed.
 	const initialScrollDoneAtRef = useRef<number | null>(null);
+	const settledOffsetRef = useRef<number | null>(null);
 	const markInitialSettled = useCallback(() => {
 		initialSettledRef.current = true;
 		initialScrollDoneAtRef.current = performance.now();
@@ -404,36 +418,119 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	// ── Imperative jumpTo (chapter / search / highlight-list) ─────────────
 	// Visual scroll only: parent has already updated active/progress/last/saved
 	// via its jumpToWord wrapper before calling this.
+	// A jump lands in two steps: scrollToIndex on estimated paragraph heights,
+	// then VList's correction once they are measured (plus the fine align).
+	// Hiding the text behind a skeleton until both are done shows one move
+	// instead of two; a dimmed text would still show both.
+	const jumpCleanupRef = useRef<(() => void) | null>(null);
+	useEffect(() => () => jumpCleanupRef.current?.(), []);
+	const wrapperRef = useRef<HTMLDivElement>(null);
+	const hasLandedRef = useRef(true);
+	const isScrubbingLatest = useRef(isScrubbing);
+	isScrubbingLatest.current = isScrubbing;
+	// A jump to where the view already is scrolls nothing, so no scroll end
+	// comes to clear the suppress flags; without this the next real scroll
+	// would be swallowed and its position not saved.
+	const jumpScrolledRef = useRef(false);
+	const jumpCheckFrameRef = useRef(0);
+	useEffect(() => () => cancelAnimationFrame(jumpCheckFrameRef.current), []);
+	const clearIfJumpDidNotScroll = useCallback(() => {
+		cancelAnimationFrame(jumpCheckFrameRef.current);
+		jumpCheckFrameRef.current = requestAnimationFrame(() => {
+			jumpCheckFrameRef.current = requestAnimationFrame(() => {
+				if (jumpScrolledRef.current) return;
+				suppressNextScrollEndRef.current = false;
+				suppressScrollHighlightClearRef.current = false;
+			});
+		});
+	}, []);
+	const hideUntilLanded = useCallback(() => {
+		hasLandedRef.current = false;
+		wrapperRef.current?.classList.add("reader-jump-landing");
+	}, []);
+	const revealLanded = useCallback(() => {
+		hasLandedRef.current = true;
+		if (!isScrubbingLatest.current) {
+			wrapperRef.current?.classList.remove("reader-jump-landing");
+		}
+	}, []);
+	useEffect(() => {
+		if (!isScrubbing && hasLandedRef.current) {
+			wrapperRef.current?.classList.remove("reader-jump-landing");
+		}
+	}, [isScrubbing]);
+
 	useImperativeHandle(
 		ref,
 		() => ({
 			jumpTo(wordIdx, { highlight = true, fine = false, smooth = false } = {}) {
 				if (!listRef.current) return;
+				jumpCleanupRef.current?.();
+				jumpCleanupRef.current = null;
+				cancelAnimationFrame(jumpCheckFrameRef.current);
+				jumpScrolledRef.current = false;
 				suppressNextScrollEndRef.current = true;
 				if (highlight) suppressScrollHighlightClearRef.current = true;
 				if (!fine) {
 					const idx = findParagraphIndexForWord(wordIdx);
+					if (!smooth) hideUntilLanded();
 					listRef.current.scrollToIndex(idx, { align: "start" });
 					// When the target is the start of a chapter whose title is rendered
 					// inline above its first paragraph, the paragraph-top alignment above
 					// already puts the header at the container top. A fine word-scroll
 					// would pin the first word to the top and push the header out of view.
 					if (chapterHeadingByParagraph?.has(idx) && paragraphStartWords[idx] === wordIdx) {
+						let frame = requestAnimationFrame(() => {
+							frame = requestAnimationFrame(() => {
+								revealLanded();
+								clearIfJumpDidNotScroll();
+							});
+						});
+						jumpCleanupRef.current = () => {
+							cancelAnimationFrame(frame);
+							revealLanded();
+						};
 						return;
 					}
 				}
-				fineScrollTo(wordIdx, highlight, undefined, smooth);
+				const landed = () => {
+					revealLanded();
+					clearIfJumpDidNotScroll();
+				};
+				const cancel = fineScrollTo(wordIdx, highlight, landed, smooth);
+				if (!cancel) {
+					landed();
+					return;
+				}
+				jumpCleanupRef.current = () => {
+					cancel();
+					revealLanded();
+				};
 			},
 			scrollBy(pixels) {
 				listRef.current?.scrollBy(pixels);
 			},
 		}),
-		[findParagraphIndexForWord, fineScrollTo, chapterHeadingByParagraph, paragraphStartWords],
+		[
+			findParagraphIndexForWord,
+			fineScrollTo,
+			chapterHeadingByParagraph,
+			paragraphStartWords,
+			hideUntilLanded,
+			revealLanded,
+			clearIfJumpDidNotScroll,
+		],
 	);
+
+	const isScrolledToEnd = useCallback(() => {
+		const list = listRef.current;
+		return !!list && list.scrollOffset + list.viewportSize >= list.scrollSize - 1;
+	}, []);
 
 	// ── Scroll handler - hide highlight + update progress bar ──────────────
 	const handleScroll = useCallback(
 		(scrollOffset: number) => {
+			jumpScrolledRef.current = true;
 			// Cancel any pending long-press - user is scrolling, not selecting
 			cancelAnyActiveLongPress();
 
@@ -449,7 +546,10 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 				onHighlightClear();
 			}
 			// Hide progress bar - user is scrolling normally, not scrubbing
-			if (!isScrubbingRef.current && !inInitCooldown) onHideProgressBar();
+			// Scrolls caused by a jump (a scrub, search, chapter) are not the user
+			// scrolling, so the bar they came from stays open.
+			const isJumpScroll = suppressNextScrollEndRef.current || !hasLandedRef.current;
+			if (!isScrubbingRef.current && !inInitCooldown && !isJumpScroll) onHideProgressBar();
 			// Update the progress bar live. findItemIndex maps the current scroll
 			// pixel offset to a paragraph index, which we convert to a word offset.
 			// Skip during init scroll / cooldown so VList reconciliation micro-scrolls
@@ -464,7 +564,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 					listRef.current.findItemIndex(scrollOffset),
 					paragraphStartWords.length - 1,
 				);
-				onProgressChange(paragraphStartWords[idx] ?? 0);
+				onProgressChange(paragraphStartWords[idx] ?? 0, isScrolledToEnd());
 			}
 			// Re-sync handle positions when scrolling during selection
 			if (isSelecting) {
@@ -479,11 +579,17 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			onHighlightClear,
 			onHideProgressBar,
 			onProgressChange,
+			isScrolledToEnd,
 		],
 	);
 
 	// ── Scroll end - find top-of-container word + save position ──────────
 	const handleScrollEnd = useCallback(() => {
+		// Recorded on every scroll end, including the ignored ones below, so the
+		// next comparison is against where the view last came to rest.
+		const offset = listRef.current?.scrollOffset ?? null;
+		const prevOffset = settledOffsetRef.current;
+		settledOffsetRef.current = offset;
 		if (suppressNextScrollEndRef.current) {
 			suppressNextScrollEndRef.current = false;
 			suppressScrollHighlightClearRef.current = false;
@@ -517,14 +623,19 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 
 		if (bestWord < 0) return;
 
-		onPositionSettle(bestWord);
-	}, [onPositionSettle]);
+		const hasMoved =
+			prevOffset === null ||
+			offset === null ||
+			Math.abs(offset - prevOffset) >= MIN_SETTLE_SCROLL_PX;
+		onPositionSettle(bestWord, isScrolledToEnd(), hasMoved);
+	}, [onPositionSettle, isScrolledToEnd]);
 
 	// ── Show progress bar on any tap in the reading area ─────────────────
 	// Native listener needed because VList's internal scroll container doesn't
 	// propagate clicks through React's synthetic event system.
 	useEffect(() => {
-		const el = containerRef.current;
+		// The full-width wrapper, so a click beside the text column counts too.
+		const el = wrapperRef.current;
 		if (!el) return;
 		el.addEventListener("click", onTap);
 		return () => el.removeEventListener("click", onTap);
@@ -536,15 +647,17 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		// still lays out and measures (visibility:hidden can skip that on
 		// some engines, which would break findAlignmentSpan). Skeleton is
 		// overlaid on top until the fine-scroll onReady fires.
-		<div style={{ position: "relative", height: "100%" }}>
+		<div ref={wrapperRef} style={{ position: "relative", height: "100%" }}>
 			<div
 				ref={containerRef}
+				className="reader-scroll-content"
 				style={
 					{
 						height: "100%",
 						maxWidth: "700px",
 						margin: "0 auto",
 						opacity: isInitialScrollReady ? 1 : 0,
+						transition: "opacity 0.12s ease-out",
 						pointerEvents: isInitialScrollReady ? "auto" : "none",
 						"--reader-line-height": String(lineSpacing),
 					} as React.CSSProperties
@@ -570,10 +683,12 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 							activeWord={activeWord}
 							onWordTap={onWordTap}
 							onWordLongPress={onWordLongPress}
+							onWordLongPressDrag={onWordLongPressDrag}
 							onWordMouseDragStart={onWordMouseDragStart}
 							highlights={highlightsByParagraph?.get(i)}
 							glossaryRanges={glossaryByParagraph?.get(i)}
 							links={linksByParagraph?.get(i)}
+							discussion={discussionByParagraph?.get(i)}
 							chapterHeading={chapterHeadingByParagraph?.get(i)}
 							selectionRange={selectionRange}
 							showActiveWordUnderline={showActiveWordUnderline}
@@ -581,6 +696,9 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 					))}
 					{footer}
 				</VList>
+			</div>
+			<div className="reader-jump-skeleton" aria-hidden>
+				<ReaderSkeleton style={{ height: "100%" }} />
 			</div>
 			{!isInitialScrollReady && (
 				<ReaderSkeleton

@@ -1,27 +1,52 @@
 /**
  * useHighlightSelection: selection-mode state machine (anchor/end/color/note),
- * floating toolbar + two drag handles, edit-existing-highlight modal, and
- * the list modal. Positions are word indices; text extraction converts to
- * a byte range via the active WordIndex when slicing `contentBytes`.
+ * floating toolbar + two drag handles. The same selection covers a new range
+ * and an existing highlight (loaded by `openHighlightEditor`), so creating and
+ * editing share one toolbar. Positions are word indices; text extraction
+ * converts to a byte range via the active WordIndex when slicing `contentBytes`.
  */
 
 import { type WordIndex, wordPos } from "@lesefluss/core";
 import type React from "react";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "../../components/toast";
 import { queryHooks } from "../../services/db/hooks";
 import type { Highlight } from "../../services/db/schema";
+import { dragStep, tick } from "../../services/haptics";
 import { randomHexId } from "../../utils/random-id";
 import type { HighlightRange } from "./paragraph";
-import type { HighlightColor } from "./selection-toolbar";
+import { HIGHLIGHT_COLORS, type HighlightColor } from "./selection-toolbar";
+import { computeToolbarPosition, HANDLE_V_PAD } from "./toolbar-position";
+import { wordIndexAt } from "./word-at-point";
 
 const _decoder = new TextDecoder();
 
-// Must match .selection-toolbar height in monochrome.css
-const SELECTION_TOOLBAR_H = 48;
-// Must match .selection-handle width and padding in monochrome.css
+const LAST_COLOR_KEY = "lesefluss:highlight-color";
+
+function asHighlightColor(value: string | null): HighlightColor | null {
+	return (HIGHLIGHT_COLORS as readonly string[]).includes(value ?? "")
+		? (value as HighlightColor)
+		: null;
+}
+
+function loadLastColor(): HighlightColor {
+	try {
+		return asHighlightColor(localStorage.getItem(LAST_COLOR_KEY)) ?? "yellow";
+	} catch {
+		return "yellow";
+	}
+}
+
+function saveLastColor(color: HighlightColor): void {
+	try {
+		localStorage.setItem(LAST_COLOR_KEY, color);
+	} catch {
+		// Private mode or blocked storage: the next highlight falls back to yellow.
+	}
+}
+
+// Must match .selection-handle width in monochrome.css
 const HANDLE_WIDTH = 44;
-const HANDLE_V_PAD = 10;
 const HANDLE_H_HALF = HANDLE_WIDTH / 2;
 
 interface Params {
@@ -52,15 +77,11 @@ export function useHighlightSelection({
 	const updateHighlightMutation = queryHooks.useUpdateHighlight();
 	const deleteHighlightMutation = queryHooks.useDeleteHighlight();
 
-	// ── Edit modal state ──────────────────────────────────────────────────
-	const [editingHighlight, setEditingHighlight] = useState<Highlight | null>(null);
-	const [editingHighlightText, setEditingHighlightText] = useState("");
-
 	// ── Selection state (word indices) ────────────────────────────────────
 	// selectionAnchor: word index where selection started (null = not selecting)
 	// selectionEnd:    word index of the current drag end
-	// selectionColor:  null = no color picked yet (nothing auto-saved yet)
-	// selectionSavedId: null = not yet saved (user is still positioning handles)
+	// selectionColor:  null = not saved yet
+	// selectionSavedId: null = not saved yet; set = new highlight or existing one being edited
 	const [selectionAnchor, setSelectionAnchor] = useState<number | null>(null);
 	const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
 	const [selectionColor, setSelectionColor] = useState<HighlightColor | null>(null);
@@ -74,6 +95,7 @@ export function useHighlightSelection({
 	// before React commits (see `writeAnchor`/`writeEnd` below).
 	const selectionAnchorRef = useRef<number | null>(null);
 	const selectionEndRef = useRef<number | null>(null);
+	const selectionSavedIdRef = useRef<string | null>(null);
 	const startHandleRef = useRef<HTMLDivElement>(null);
 	const endHandleRef = useRef<HTMLDivElement>(null);
 	const toolbarRef = useRef<HTMLDivElement>(null);
@@ -89,6 +111,10 @@ export function useHighlightSelection({
 	const writeEnd = useCallback((word: number | null) => {
 		selectionEndRef.current = word;
 		setSelectionEnd(word);
+	}, []);
+	const writeSavedId = useCallback((id: string | null) => {
+		selectionSavedIdRef.current = id;
+		setSelectionSavedId(id);
 	}, []);
 
 	// Derived: the active selection range (startWord <= endWord, both defined).
@@ -159,13 +185,16 @@ export function useHighlightSelection({
 		[highlightRows],
 	);
 
-	/** Open the edit modal for a known highlight. */
+	/** Select an existing highlight so the toolbar edits it and the handles resize it. */
 	const openHighlightEditor = useCallback(
 		(highlight: Highlight) => {
-			setEditingHighlight(highlight);
-			setEditingHighlightText(extractRangeText(highlight.startWord, highlight.endWord));
+			writeAnchor(highlight.startWord);
+			writeEnd(highlight.endWord);
+			writeSavedId(highlight.id);
+			setSelectionColor(asHighlightColor(highlight.color) ?? "yellow");
+			setPendingNote(highlight.note ?? "");
 		},
-		[extractRangeText],
+		[writeAnchor, writeEnd, writeSavedId],
 	);
 
 	/** Enter selection mode anchored at `word` (both anchor + end). */
@@ -173,16 +202,17 @@ export function useHighlightSelection({
 		(word: number) => {
 			writeAnchor(word);
 			writeEnd(word);
-			setSelectionSavedId(null);
+			writeSavedId(null);
 			setSelectionColor(null);
 			setPendingNote("");
 		},
-		[writeAnchor, writeEnd],
+		[writeAnchor, writeEnd, writeSavedId],
 	);
 
-	/** Long-press on a word: open editor if highlighted, else start selection. */
+	/** Long-press on a word: edit the highlight under it, else start a selection. */
 	const handleWordLongPress = useCallback(
 		(wIdx: number) => {
+			tick();
 			const existing = findHighlightAt(wIdx);
 			if (existing) {
 				openHighlightEditor(existing);
@@ -193,11 +223,13 @@ export function useHighlightSelection({
 		[findHighlightAt, openHighlightEditor, startSelection],
 	);
 
-	/** Extend the current selection's end to a new word. No-op if not selecting. */
+	/** Extend an unsaved selection's end to a new word. Saved ones resize via the handles. */
 	const extendSelectionTo = useCallback(
 		(word: number) => {
-			if (selectionAnchorRef.current === null) return;
+			if (selectionAnchorRef.current === null || selectionSavedIdRef.current !== null) return;
+			if (selectionEndRef.current === word) return;
 			writeEnd(word);
+			dragStep();
 		},
 		[writeEnd],
 	);
@@ -205,10 +237,10 @@ export function useHighlightSelection({
 	const cancelSelection = useCallback(() => {
 		writeAnchor(null);
 		writeEnd(null);
-		setSelectionSavedId(null);
+		writeSavedId(null);
 		setSelectionColor(null);
 		setPendingNote("");
-	}, [writeAnchor, writeEnd]);
+	}, [writeAnchor, writeEnd, writeSavedId]);
 
 	// ── Handle position sync ──────────────────────────────────────────────
 	// Called after any selection range change or scroll event. Reads word span
@@ -249,23 +281,21 @@ export function useHighlightSelection({
 			}
 		}
 
-		// Position toolbar: above the selection start word if there is room,
-		// otherwise below the selection end word.
-		if (toolbarRef.current) {
-			const GAP = 4;
-			if (startSpan) {
-				const startRect = startSpan.getBoundingClientRect();
-				const above = startRect.top - SELECTION_TOOLBAR_H - GAP;
-				if (above >= 0) {
-					toolbarRef.current.style.top = `${above}px`;
-					toolbarRef.current.style.bottom = "auto";
-				} else if (endSpan) {
-					const endRect = endSpan.getBoundingClientRect();
-					// Below the end handle circle (bar-height + circle diameter ≈ end word height + 24)
-					toolbarRef.current.style.top = `${endRect.bottom + endRect.height + 20 + GAP}px`;
-					toolbarRef.current.style.bottom = "auto";
-				}
-			}
+		const toolbar = toolbarRef.current;
+		// Zero size while hidden behind the note sheet; the sheet closing re-syncs.
+		if (toolbar && toolbar.offsetWidth > 0 && startSpan && endSpan) {
+			// The toolbar's scroll-margin carries the safe-area insets (see monochrome.css).
+			const style = getComputedStyle(toolbar);
+			const { top, left } = computeToolbarPosition({
+				startRect: startSpan.getBoundingClientRect(),
+				endRect: endSpan.getBoundingClientRect(),
+				toolbar: { width: toolbar.offsetWidth, height: toolbar.offsetHeight },
+				viewport: { width: window.innerWidth, height: window.innerHeight },
+				safeTop: Number.parseFloat(style.scrollMarginTop) || 0,
+				safeBottom: Number.parseFloat(style.scrollMarginBottom) || 0,
+			});
+			toolbar.style.top = `${top}px`;
+			toolbar.style.left = `${left}px`;
 		}
 	}, [selectionRange]);
 
@@ -273,7 +303,28 @@ export function useHighlightSelection({
 	const syncHandlesRef = useRef(syncHandlePositions);
 	syncHandlesRef.current = syncHandlePositions;
 
-	// Sync handle/toolbar positions after every render that changes selection or mode
+	// Resizing or rotating moves the words and changes the viewport the toolbar is clamped to.
+	useEffect(() => {
+		if (!isSelecting) return;
+		let frame = 0;
+		const onResize = () => {
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(() => syncHandlesRef.current());
+		};
+		window.addEventListener("resize", onResize);
+		window.addEventListener("orientationchange", onResize);
+		window.visualViewport?.addEventListener("resize", onResize);
+		return () => {
+			cancelAnimationFrame(frame);
+			window.removeEventListener("resize", onResize);
+			window.removeEventListener("orientationchange", onResize);
+			window.visualViewport?.removeEventListener("resize", onResize);
+		};
+	}, [isSelecting]);
+
+	// Re-measure when saving swaps the toolbar's buttons (its width moves its centred
+	// position) and when the note sheet stops hiding it.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: selectionSavedId and noteInputOpen are re-measure triggers
 	useLayoutEffect(() => {
 		if (isSelecting) {
 			syncHandlePositions();
@@ -282,42 +333,57 @@ export function useHighlightSelection({
 			if (endHandleRef.current) endHandleRef.current.style.display = "none";
 			// Toolbar is conditionally rendered (only when isSelecting) so no reset needed
 		}
-	}, [isSelecting, syncHandlePositions]);
+	}, [isSelecting, syncHandlePositions, selectionSavedId, noteInputOpen]);
 
 	// ── Handle drag - shared factory for start/end handles ────────────────
 	// `isStartHandle=true`  → we're dragging the min-word boundary
 	// `isStartHandle=false` → we're dragging the max-word boundary
 	// The role (anchor vs end) of each state var is fixed at drag-begin so a
-	// swap mid-drag doesn't cause the handles to jump.
+	// swap mid-drag doesn't cause the handles to jump. Releasing a handle on a
+	// saved highlight commits the new range.
 	const makeHandleDragHandler = useCallback(
 		(isStartHandle: boolean) => (e: React.PointerEvent<HTMLDivElement>) => {
 			e.preventDefault();
-			const target = e.currentTarget;
-			target.style.pointerEvents = "none"; // transparent to elementFromPoint during drag
 			const anchor = selectionAnchorRef.current ?? 0;
 			const end = selectionEndRef.current ?? 0;
 			// Does `anchor` currently hold the edge we're dragging?
 			const anchorHoldsDraggedEdge = isStartHandle ? anchor <= end : anchor >= end;
+			let draggedWord = anchorHoldsDraggedEdge ? anchor : end;
 			const onMove = (me: PointerEvent) => {
-				const el = document.elementFromPoint(me.clientX, me.clientY);
-				const span = el?.closest<HTMLElement>("span[data-word]");
-				if (!span) return;
-				const wIdx = Number.parseInt(span.dataset.word ?? "", 10);
-				if (Number.isNaN(wIdx)) return;
+				const wIdx = wordIndexAt(me.clientX, me.clientY);
+				if (wIdx === null || wIdx === draggedWord) return;
+				draggedWord = wIdx;
 				if (anchorHoldsDraggedEdge) writeAnchor(wIdx);
 				else writeEnd(wIdx);
+				dragStep();
 			};
-			const cleanup = () => {
-				target.style.pointerEvents = "";
+			// A cancelled drag commits too, so the saved row never lags the shown range.
+			const onUp = () => {
 				window.removeEventListener("pointermove", onMove);
-				window.removeEventListener("pointerup", cleanup);
-				window.removeEventListener("pointercancel", cleanup);
+				window.removeEventListener("pointerup", onUp);
+				window.removeEventListener("pointercancel", onUp);
+				const savedId = selectionSavedIdRef.current;
+				const a = selectionAnchorRef.current;
+				const b = selectionEndRef.current;
+				if (!savedId || a === null || b === null || (a === anchor && b === end)) return;
+				const startWord = Math.min(a, b);
+				const endWord = Math.max(a, b);
+				updateHighlightMutation.mutate({
+					id: savedId,
+					bookId,
+					data: {
+						startWord: wordPos(startWord),
+						endWord: wordPos(endWord),
+						text: extractRangeText(startWord, endWord) || null,
+						updatedAt: Date.now(),
+					},
+				});
 			};
 			window.addEventListener("pointermove", onMove);
-			window.addEventListener("pointerup", cleanup);
-			window.addEventListener("pointercancel", cleanup);
+			window.addEventListener("pointerup", onUp);
+			window.addEventListener("pointercancel", onUp);
 		},
-		[writeAnchor, writeEnd],
+		[writeAnchor, writeEnd, bookId, extractRangeText, updateHighlightMutation],
 	);
 
 	const handleStartHandlePointerDown = useMemo(
@@ -329,54 +395,70 @@ export function useHighlightSelection({
 		[makeHandleDragHandler],
 	);
 
-	// ── Selection auto-save - triggered when the user picks a color ──────
-	// First pick: creates the highlight. Subsequent picks: update color.
-	// Toolbar stays open after saving so the user can adjust or add a note.
-	// charInWord is fixed at 0: selection handles snap to whole-word boundaries
-	// so intra-word offsets are always zero at runtime. The DB column stays for
-	// a future sub-word selection feature.
-	const handleSelectionColorChange = useCallback(
-		(newColor: HighlightColor) => {
-			setSelectionColor(newColor);
+	// ── Saving ────────────────────────────────────────────────────────────
+	// The toolbar stays open after saving so the user can recolour, resize or
+	// add a note. charInWord is fixed at 0: selection handles snap to whole-word
+	// boundaries. The DB column stays for a future sub-word selection feature.
+	const createHighlight = useCallback(
+		(color: HighlightColor) => {
 			if (!selectionRange || !bookId) return;
 			const now = Date.now();
-			if (selectionSavedId) {
-				updateHighlightMutation.mutate({
-					id: selectionSavedId,
-					bookId,
-					data: { color: newColor, updatedAt: now },
-				});
-			} else {
-				const newId = randomHexId();
-				setSelectionSavedId(newId);
-				const snippet = extractRangeText(selectionRange.startWord, selectionRange.endWord) || null;
-				addHighlightMutation.mutate({
-					id: newId,
-					bookId,
-					startWord: wordPos(selectionRange.startWord),
-					startCharInWord: 0,
-					endWord: wordPos(selectionRange.endWord),
-					endCharInWord: 0,
-					color: newColor,
-					note: pendingNote || null,
-					text: snippet,
-					createdAt: now,
-					updatedAt: now,
-				});
-			}
+			const newId = randomHexId();
+			writeSavedId(newId);
+			setSelectionColor(color);
+			addHighlightMutation.mutate({
+				id: newId,
+				bookId,
+				startWord: wordPos(selectionRange.startWord),
+				startCharInWord: 0,
+				endWord: wordPos(selectionRange.endWord),
+				endCharInWord: 0,
+				color,
+				note: pendingNote || null,
+				text: extractRangeText(selectionRange.startWord, selectionRange.endWord) || null,
+				createdAt: now,
+				updatedAt: now,
+			});
 		},
-		[
-			selectionRange,
-			selectionSavedId,
-			pendingNote,
-			bookId,
-			extractRangeText,
-			addHighlightMutation,
-			updateHighlightMutation,
-		],
+		[selectionRange, pendingNote, bookId, extractRangeText, addHighlightMutation, writeSavedId],
 	);
 
-	// ── Note save - called when the note modal closes ─────────────────────
+	const handleSelectionHighlight = useCallback(() => {
+		if (!selectionSavedId) createHighlight(loadLastColor());
+	}, [selectionSavedId, createHighlight]);
+
+	const handleSelectionColorChange = useCallback(
+		(newColor: HighlightColor) => {
+			saveLastColor(newColor);
+			if (!selectionSavedId) {
+				createHighlight(newColor);
+				return;
+			}
+			setSelectionColor(newColor);
+			updateHighlightMutation.mutate({
+				id: selectionSavedId,
+				bookId,
+				data: { color: newColor, updatedAt: Date.now() },
+			});
+		},
+		[selectionSavedId, bookId, createHighlight, updateHighlightMutation],
+	);
+
+	/** Saves first, so the note always has a highlight to land on. */
+	const handleSelectionNote = useCallback(() => {
+		if (!selectionSavedId) createHighlight(loadLastColor());
+		setNoteInputOpen(true);
+	}, [selectionSavedId, createHighlight]);
+
+	const handleSelectionDelete = useCallback(() => {
+		if (!selectionSavedId) return;
+		deleteHighlightMutation.mutate(
+			{ id: selectionSavedId, bookId },
+			{ onSuccess: () => toast.info("Highlight removed") },
+		);
+		cancelSelection();
+	}, [selectionSavedId, bookId, deleteHighlightMutation, cancelSelection]);
+
 	const handleSelectionNoteDone = useCallback(() => {
 		setNoteInputOpen(false);
 		if (selectionSavedId && bookId) {
@@ -388,41 +470,15 @@ export function useHighlightSelection({
 		}
 	}, [selectionSavedId, pendingNote, bookId, updateHighlightMutation]);
 
-	// ── Highlight save (from edit modal) ──────────────────────────────────
-	const handleHighlightSave = useCallback(
-		(highlightId: string, color: string, note: string) => {
-			updateHighlightMutation.mutate({
-				id: highlightId,
-				bookId,
-				data: { color, note: note || null, updatedAt: Date.now() },
-			});
-		},
-		[bookId, updateHighlightMutation],
-	);
-
-	// ── Highlight delete ──────────────────────────────────────────────────
-	const handleHighlightDelete = useCallback(
-		(highlightId: string) => {
-			deleteHighlightMutation.mutate(
-				{ id: highlightId, bookId },
-				{ onSuccess: () => toast.info("Highlight removed") },
-			);
-		},
-		[bookId, deleteHighlightMutation],
-	);
-
 	return {
 		// Render state
 		selectionRange,
 		isSelecting,
 		selectionColor,
+		selectionSavedId,
 		pendingNote,
 		setPendingNote,
 		noteInputOpen,
-		setNoteInputOpen,
-		editingHighlight,
-		editingHighlightText,
-		setEditingHighlight,
 		highlightsByParagraph,
 
 		// Refs (consumed by SelectionOverlay)
@@ -441,9 +497,10 @@ export function useHighlightSelection({
 		cancelSelection,
 		handleStartHandlePointerDown,
 		handleEndHandlePointerDown,
+		handleSelectionHighlight,
 		handleSelectionColorChange,
+		handleSelectionNote,
 		handleSelectionNoteDone,
-		handleHighlightSave,
-		handleHighlightDelete,
+		handleSelectionDelete,
 	};
 }

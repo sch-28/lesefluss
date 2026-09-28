@@ -11,7 +11,7 @@ test("add to glossary renders an inline avatar that persists across reload", asy
 	await openBookFromLibrary(page, title);
 
 	await reader.selectWords(page, "opening", "paragraph");
-	await page.getByRole("button", { name: "Add to glossary" }).click();
+	await page.getByRole("button", { name: "Glossary", exact: true }).click();
 
 	// GlossaryEntryModal opens with the selected text as the default label.
 	// Close it (autosaves on every change; closing commits whatever's there).

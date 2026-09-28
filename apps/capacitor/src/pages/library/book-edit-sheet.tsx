@@ -20,6 +20,7 @@ import {
 import { Input } from "@lesefluss/ui/input";
 import { Label } from "@lesefluss/ui/label";
 import { STAR_POSITIONS, StarGlyph } from "@lesefluss/ui/rating-stars";
+import { Switch } from "@lesefluss/ui/switch";
 import { X } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -39,6 +40,7 @@ export type BookEditValues = {
 	rating: number | null;
 	review: string | null;
 	tags: string[];
+	hideFromProfile: boolean;
 };
 
 type Props = {
@@ -78,6 +80,7 @@ export function bookToEditValues(book: {
 	rating: number | null;
 	review: string | null;
 	tags: string | null;
+	hideFromProfile: boolean;
 }): BookEditValues {
 	return {
 		title: book.title,
@@ -88,6 +91,7 @@ export function bookToEditValues(book: {
 		rating: book.rating,
 		review: book.review,
 		tags: parseBookTags(book.tags),
+		hideFromProfile: book.hideFromProfile,
 	};
 }
 
@@ -238,6 +242,20 @@ const BookEditSheet: React.FC<Props> = ({
 								</>
 							)}
 						</div>
+					</div>
+
+					<div className="flex items-center justify-between gap-3">
+						<div className="min-w-0">
+							<Label htmlFor="book-hide-from-profile">Hide from profile</Label>
+							<p className="m-0 text-muted-foreground text-xs">
+								Friends won't see this book on your profile or in your stats.
+							</p>
+						</div>
+						<Switch
+							id="book-hide-from-profile"
+							checked={values.hideFromProfile}
+							onCheckedChange={(v) => set("hideFromProfile", v)}
+						/>
 					</div>
 
 					<div className="flex flex-col gap-1.5">

@@ -44,6 +44,33 @@ function ImprintPage() {
 			</section>
 
 			<section>
+				<h2 className="mb-3 font-semibold text-foreground text-xl">
+					Notices under the Digital Services Act
+				</h2>
+				<p>
+					Single point of contact under Articles 11 and 12 of Regulation (EU) 2022/2065 for
+					authorities of the member states, the Commission, the Board and for users. Notices about
+					illegal content or violations of our terms on a user's profile or in a shared book
+					(Article 16) can be submitted through the{" "}
+					<a
+						href="/report"
+						className="text-foreground underline decoration-border hover:decoration-foreground/50"
+					>
+						report form
+					</a>{" "}
+					or by email to{" "}
+					<a
+						href="mailto:notices@lesefluss.app"
+						className="text-foreground underline decoration-border hover:decoration-foreground/50"
+					>
+						notices@lesefluss.app
+					</a>
+					. Languages: English and German. Every notice is reviewed by a person; the affected user
+					receives a statement of reasons for any restriction.
+				</p>
+			</section>
+
+			<section>
 				<h2 className="mb-3 font-semibold text-foreground text-xl">Responsible for content</h2>
 				<p>Responsible under § 18 (2) MStV: Jan Schmidt (address as above).</p>
 			</section>

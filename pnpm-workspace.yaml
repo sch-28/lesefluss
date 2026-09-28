@@ -1,4 +1,9 @@
- packages:
-  - "apps/*"
-  - "packages/*"
-  - "resources/store-frames"
+packages:
+  - apps/*
+  - packages/*
+  - resources/store-frames
+
+# jeep-sqlite: saveDBToStore replaced the web database with removeItem + setItem, so an
+# unload in between lost it (TASK-175.6). Drop the patch once upstream saves with one put.
+patchedDependencies:
+  jeep-sqlite@2.8.0: patches/jeep-sqlite@2.8.0.patch

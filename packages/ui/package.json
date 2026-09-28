@@ -33,7 +33,8 @@
 		"./sonner": "./src/components/sonner.tsx",
 		"./toggle": "./src/components/toggle.tsx",
 		"./toggle-group": "./src/components/toggle-group.tsx",
-		"./rating-stars": "./src/components/rating-stars.tsx"
+		"./rating-stars": "./src/components/rating-stars.tsx",
+		"./social-avatar": "./src/components/social-avatar.tsx"
 	},
 	"scripts": {
 		"check-types": "tsc --noEmit"

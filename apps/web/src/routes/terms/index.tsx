@@ -14,7 +14,7 @@ export const Route = createFileRoute("/terms/")({
 
 function TermsPage() {
 	return (
-		<LegalPage title="Terms of Service" subtitle="Last updated: April 2026">
+		<LegalPage title="Terms of Service" subtitle="Last updated: September 2026">
 			<section>
 				<h2 className="mb-3 font-semibold text-foreground text-xl">About these terms</h2>
 				<p>
@@ -60,11 +60,40 @@ function TermsPage() {
 			</section>
 
 			<section>
+				<h2 className="mb-3 font-semibold text-foreground text-xl">Handles, names and avatars</h2>
+				<p>
+					Your handle, display name, bio and avatar are shown to other users you connect with. For
+					all of them:
+				</p>
+				<ul className="mt-3 space-y-2 text-sm">
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							Do not impersonate another person, an organisation, or Lesefluss and its team.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>Do not use unlawful, abusive, hateful or sexually explicit content.</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>Do not upload images you do not have the right to use.</span>
+					</li>
+				</ul>
+				<p className="mt-4">
+					We may reset a handle, remove an avatar or bio, or change a display name that breaks these
+					rules, and may suspend accounts that keep doing so. A handle can be changed once every 30
+					days; a released handle stays reserved for 90 days.
+				</p>
+			</section>
+
+			<section>
 				<h2 className="mb-3 font-semibold text-foreground text-xl">Your content</h2>
 				<p>
-					You keep all rights to the books and highlights you upload. Storing them with us is solely
-					to sync across your own devices. We do not access, share, sell, or use your content for
-					any other purpose. See the{" "}
+					You keep all rights to the books and highlights you upload. Storing them with us is to
+					sync across your own devices and, when you choose to, to hand a copy to one friend. We do
+					not access, share, sell, or use your content for any other purpose. See the{" "}
 					<a
 						href="/privacy"
 						className="text-foreground underline decoration-border hover:decoration-foreground/50"
@@ -72,6 +101,61 @@ function TermsPage() {
 						Privacy page
 					</a>{" "}
 					for details.
+				</p>
+			</section>
+
+			<section>
+				<h2 className="mb-3 font-semibold text-foreground text-xl">
+					Content rules and enforcement
+				</h2>
+				<p>
+					Some of what you store can reach other people: your profile (handle, display name, bio,
+					avatar and the reading data you show to friends), books you share with a friend, and text
+					you share in a buddy read or as a highlight. For all of it:
+				</p>
+				<ul className="mt-3 space-y-2 text-sm">
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							Share only books you have the right to share with that person. Do not use sharing to
+							distribute copyrighted works.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							No harassment, threats, hate speech, sexual content involving minors, or other illegal
+							content in anything another user can see.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>No impersonation, spam or misleading handles and names.</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							Sharing a book gives one friend their own copy. Before your first share you confirm
+							that you share only what you may pass on: your own writing, public-domain works, or
+							files you are licensed to give to that person. We may remove a shared copy, every copy
+							of a book, or your ability to share when we receive a valid notice.
+						</span>
+					</li>
+				</ul>
+				<p className="mt-4">
+					Anyone can notify us of a violation through the{" "}
+					<a
+						href="/report"
+						className="text-foreground underline decoration-border hover:decoration-foreground/50"
+					>
+						report form
+					</a>
+					. When we find a violation we may remove the content or a profile field, release a handle,
+					suspend sharing for a period or permanently, or close the account. Three upheld notices
+					within 180 days suspend sharing automatically until we have reviewed the account. Whenever
+					we restrict you, we tell you what we did, why, which rule applies and how to contest it
+					(reply to the email or take the matter to court); we never disclose who notified us.
+					Knowingly false notices are themselves a violation.
 				</p>
 			</section>
 

@@ -212,6 +212,9 @@ function AuthForm({
 						email: value.email,
 						password: value.password,
 						name: value.name,
+						// The verification link carries this along, so a sign-up started
+						// from an invite link lands back on it.
+						...(hasExternalRedirect ? { callbackURL: redirectTo } : {}),
 					});
 					if (result.error) throw new Error(result.error.message ?? "Sign up failed");
 					setVerificationSentTo(value.email);

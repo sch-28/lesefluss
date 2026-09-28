@@ -152,3 +152,52 @@ export const statsKeys = {
  * in-flight import regardless of which component fired it.
  */
 export const bookImportMutationKey = ["book-import"] as const;
+
+export const syncKeys = {
+	/** Book ids the server holds content for, from the local cache the pull maintains. */
+	serverContentIds: ["sync", "server-content-ids"] as const,
+};
+
+export const socialKeys = {
+	/** Every social query. Cleared on sign-out. */
+	all: ["social"] as const,
+
+	/** The signed-in user's own profile and visibility settings. */
+	ownProfile: ["social", "own-profile"] as const,
+
+	/** Friends, incoming and outgoing requests, blocked users. */
+	relationships: ["social", "relationships"] as const,
+
+	/** The user's current invite link, or null. */
+	invite: ["social", "invite"] as const,
+
+	/** Read-only preview of someone else's invite link. */
+	invitePreview: (token: string) => ["social", "invite-preview", token] as const,
+
+	/** The inbox pages. */
+	inbox: ["social", "inbox"] as const,
+	/** Activity feed pages of the viewer and their friends. */
+	feed: ["social", "feed"] as const,
+
+	/** Unread inbox items, behind the Social tab badge. */
+	unread: ["social", "unread"] as const,
+
+	/** Open shares of one of the user's own books. */
+	sharesForBook: (bookId: string) => ["social", "shares-for-book", bookId] as const,
+
+	/** Another user's profile as the viewer may see it; the preview flag is part of the key. */
+	profileView: (userId: string, asFriend: boolean) =>
+		["social", "profile-view", userId, asFriend] as const,
+
+	/** The user's buddy reads, active and finished. */
+	buddyReads: ["social", "buddy-reads"] as const,
+
+	/** One buddy read with its participants. */
+	buddyRead: (id: string) => ["social", "buddy-read", id] as const,
+
+	/** Other participants' positions, for the reader's markers. */
+	buddyReadProgress: (id: string) => ["social", "buddy-read-progress", id] as const,
+
+	/** A buddy read's discussion as the server gates it for this user. */
+	buddyReadDiscussion: (id: string) => ["social", "buddy-read-discussion", id] as const,
+};

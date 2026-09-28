@@ -1,11 +1,19 @@
 /**
- * SelectionToolbar: floating bar shown during text selection.
- *
- * Picking a color triggers an immediate save in the parent. No confirm button:
- * the X just closes the toolbar.
+ * SelectionToolbar: floating bar for a selection. "actions" is an unsaved
+ * selection, "styled" a saved highlight (new or existing). There is no close
+ * button: tapping outside dismisses, and a saved highlight stays saved.
  */
 
-import { Bookmark, Pencil, Search, X } from "lucide-react";
+import {
+	BookMarked,
+	Highlighter,
+	type LucideIcon,
+	MessageSquarePlus,
+	Search,
+	Share2,
+	StickyNote,
+	Trash2,
+} from "lucide-react";
 import React from "react";
 
 export const HIGHLIGHT_COLORS = ["yellow", "blue", "orange", "pink"] as const;
@@ -18,26 +26,86 @@ export const HIGHLIGHT_COLOR_STYLE: Record<HighlightColor, string> = {
 	pink: "#F06292",
 };
 
+const SWATCH_STYLE = Object.fromEntries(
+	HIGHLIGHT_COLORS.map((c) => [c, { "--swatch": HIGHLIGHT_COLOR_STYLE[c] } as React.CSSProperties]),
+) as Record<HighlightColor, React.CSSProperties>;
+
+export type SelectionToolbarStep = "actions" | "styled";
+
 interface SelectionToolbarProps {
-	/** null = no color picked yet, nothing shows as active. */
+	step: SelectionToolbarStep;
 	selectedColor: HighlightColor | null;
-	/** True when selection covers exactly one word. Only then does "Look up"
-	 * make sense (dictionary takes one word, not phrases). */
+	/** Look up takes one word, so it is disabled (not hidden, to keep the bar steady) for phrases. */
 	isSingleWord: boolean;
+	onHighlight: () => void;
 	onColorChange: (color: HighlightColor) => void;
 	onNote: () => void;
 	onLookup: () => void;
 	onAddToGlossary: () => void;
-	onCancel: () => void;
+	onDelete: () => void;
+	/** Present only while the book is in a buddy read. */
+	onComment?: () => void;
+	/** Present only while the book is in a buddy read. */
+	onShare?: () => void;
+}
+
+interface ActionProps {
+	icon: LucideIcon;
+	label: string;
+	onClick: () => void;
+	disabled?: boolean;
+	destructive?: boolean;
+}
+
+function Action({ icon: Icon, label, onClick, disabled, destructive }: ActionProps) {
+	return (
+		<button
+			type="button"
+			className={
+				destructive
+					? "selection-toolbar-action selection-toolbar-action--destructive"
+					: "selection-toolbar-action"
+			}
+			onClick={onClick}
+			disabled={disabled}
+		>
+			<Icon className="size-5" aria-hidden="true" />
+			<span>{label}</span>
+		</button>
+	);
 }
 
 const SelectionToolbar = React.forwardRef<HTMLDivElement, SelectionToolbarProps>(
 	(
-		{ selectedColor, isSingleWord, onColorChange, onNote, onLookup, onAddToGlossary, onCancel },
+		{
+			step,
+			selectedColor,
+			isSingleWord,
+			onHighlight,
+			onColorChange,
+			onNote,
+			onLookup,
+			onAddToGlossary,
+			onDelete,
+			onComment,
+			onShare,
+		},
 		ref,
 	) => {
+		if (step === "actions") {
+			return (
+				<div ref={ref} className="selection-toolbar" role="toolbar" aria-label="Selection">
+					<Action icon={Highlighter} label="Highlight" onClick={onHighlight} />
+					<Action icon={StickyNote} label="Note" onClick={onNote} />
+					<Action icon={Search} label="Look up" onClick={onLookup} disabled={!isSingleWord} />
+					<Action icon={BookMarked} label="Glossary" onClick={onAddToGlossary} />
+					{onComment && <Action icon={MessageSquarePlus} label="Comment" onClick={onComment} />}
+				</div>
+			);
+		}
+
 		return (
-			<div ref={ref} className="selection-toolbar">
+			<div ref={ref} className="selection-toolbar" role="toolbar" aria-label="Highlight">
 				<div className="selection-toolbar-colors">
 					{HIGHLIGHT_COLORS.map((color) => (
 						<button
@@ -48,46 +116,17 @@ const SelectionToolbar = React.forwardRef<HTMLDivElement, SelectionToolbarProps>
 									? "selection-color-swatch selection-color-swatch--active"
 									: "selection-color-swatch"
 							}
-							style={{ background: HIGHLIGHT_COLOR_STYLE[color] }}
+							style={SWATCH_STYLE[color]}
 							onClick={() => onColorChange(color)}
 							aria-label={`Highlight ${color}`}
+							aria-pressed={selectedColor === color}
 						/>
 					))}
 				</div>
-				{isSingleWord && (
-					<button
-						type="button"
-						className="selection-toolbar-btn"
-						onClick={onLookup}
-						aria-label="Look up word"
-					>
-						<Search className="size-4" />
-					</button>
-				)}
-				<button
-					type="button"
-					className="selection-toolbar-btn"
-					onClick={onNote}
-					aria-label="Add note"
-				>
-					<Pencil className="size-4" />
-				</button>
-				<button
-					type="button"
-					className="selection-toolbar-btn"
-					onClick={onAddToGlossary}
-					aria-label="Add to glossary"
-				>
-					<Bookmark className="size-4" />
-				</button>
-				<button
-					type="button"
-					className="selection-toolbar-btn"
-					onClick={onCancel}
-					aria-label="Cancel selection"
-				>
-					<X className="size-4" />
-				</button>
+				<div className="selection-toolbar-divider" />
+				<Action icon={StickyNote} label="Note" onClick={onNote} />
+				{onShare && <Action icon={Share2} label="Share" onClick={onShare} />}
+				<Action icon={Trash2} label="Delete" onClick={onDelete} destructive />
 			</div>
 		);
 	},

@@ -8,7 +8,7 @@ test("highlight color edit persists across reload", async ({ page }) => {
 
 	await reader.selectWords(page, "opening", "paragraph");
 	const wordPosition = await reader.applyHighlight(page, "yellow");
-	await reader.cancelSelection(page);
+	await reader.dismissSelection(page);
 
 	// Reopen editor on the same word, switch to blue.
 	await reader.openHighlightEditor(page, wordPosition);
@@ -28,7 +28,7 @@ test("highlight delete persists across reload", async ({ page }) => {
 
 	await reader.selectWords(page, "opening", "paragraph");
 	const wordPosition = await reader.applyHighlight(page, "yellow");
-	await reader.cancelSelection(page);
+	await reader.dismissSelection(page);
 
 	await reader.openHighlightEditor(page, wordPosition);
 	await reader.deleteHighlightFromEditor(page);

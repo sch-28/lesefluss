@@ -25,6 +25,8 @@ function makeLocal(overrides: Partial<Book> = {}): Book {
 		rating: 3,
 		review: "Local review",
 		tags: '["local"]',
+		hideFromProfile: false,
+		originKey: null,
 		source: null,
 		catalogId: null,
 		sourceUrl: null,
@@ -128,6 +130,21 @@ describe("buildBookMergeUpdate", () => {
 // merges on its own value. A device that restored the library carries the
 // pushing device's clock in `added_at`, and has to be able to recover the
 // original from a device that still holds it.
+describe("buildBookMergeUpdate: the hide-from-profile flag", () => {
+	it("applies a newer flag from another device", () => {
+		const update = buildBookMergeUpdate(
+			makeLocal(),
+			makeServer({ hideFromProfile: true, metadataUpdatedAt: 2000 }),
+		);
+		expect(update?.hideFromProfile).toBe(true);
+	});
+
+	it("leaves the flag alone when the payload omits it", () => {
+		const update = buildBookMergeUpdate(makeLocal(), makeServer({ metadataUpdatedAt: 2000 }));
+		expect(update?.hideFromProfile).toBeUndefined();
+	});
+});
+
 describe("buildBookMergeUpdate: the add date merges earliest-wins", () => {
 	it("adopts an earlier add date even when neither stamp is newer", () => {
 		const update = buildBookMergeUpdate(

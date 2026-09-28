@@ -8,7 +8,7 @@ test("highlight note text persists across reload", async ({ page }) => {
 
 	await reader.selectWords(page, "opening", "paragraph");
 	const wordPosition = await reader.applyHighlight(page, "yellow");
-	await reader.cancelSelection(page);
+	await reader.dismissSelection(page);
 
 	const noteText = "spec-fixture-note-marker";
 	await reader.openHighlightEditor(page, wordPosition);
@@ -19,5 +19,5 @@ test("highlight note text persists across reload", async ({ page }) => {
 	await page.goto("/tabs/library");
 	await openBookFromLibrary(page, title);
 	await reader.openHighlightEditor(page, wordPosition);
-	await expect(page.getByPlaceholder("Add a note…")).toHaveValue(noteText);
+	await expect(await reader.openHighlightNote(page)).toHaveValue(noteText);
 });

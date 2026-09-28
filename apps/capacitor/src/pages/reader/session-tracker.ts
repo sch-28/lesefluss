@@ -25,11 +25,19 @@
  * pace (see "read span" in CONTEXT.md), not the distance between the first and
  * last position.
  */
-import { type WordPosition, wordPos } from "@lesefluss/core";
+import {
+	refillCredit,
+	SANE_WPM_CEILING,
+	spendCredit,
+	type WordPosition,
+	wordPos,
+} from "@lesefluss/core";
 import { log } from "../../utils/log";
 import { randomSessionId } from "../../utils/random-id";
 
-export type ReadingSessionMode = "rsvp" | "scroll" | "page";
+export type { ReadingMode as ReadingSessionMode } from "@lesefluss/core";
+
+import type { ReadingMode as ReadingSessionMode } from "@lesefluss/core";
 
 export type SessionRow = {
 	id: string;
@@ -70,8 +78,6 @@ export const HEARTBEAT_MS = 30_000;
 export const MIN_DURATION_MS = 5_000;
 export const MIN_WORDS = 5;
 
-const SANE_WPM_CEILING = 800;
-
 /** Per-poll-tick word distance above which we treat position movement as a
  *  jump (TOC nav, scrub) rather than reading. Mode-specific because page-mode
  *  page-turns advance roughly one page of words per turn. */
@@ -80,35 +86,6 @@ const JUMP_WORDS_PER_TICK: Record<ReadingSessionMode, number> = {
 	page: 1200, // ~5 default-font pages per 5s = power flipping, not jump
 	rsvp: 800, // ~600 WPM cap × 5s = engine ceiling
 };
-
-/**
- * Words the credit bucket may hold. Position advances in bursts even when
- * reading honestly: a page turn moves a page at once, after a minute of
- * stillness. The bucket refills while the reader is on a page and drains at the
- * turn, so occasional bursts pass and sustained motion does not.
- */
-const CREDIT_BURST_WORDS = 500;
-
-/**
- * Headroom over the configured dial for RSVP. The engine delivers well under
- * nominal, so the dial is an upper bound on honest progress, not a target.
- */
-const RSVP_DIAL_HEADROOM = 1.25;
-
-/**
- * Rate above which forward movement is traversal, not reading.
- *
- * The jump threshold alone only catches a single large leap (a TOC tap). It is
- * a distance over a fixed sample, so `scroll: 400` per 5s tick permits 4,800
- * words per minute indefinitely: flinging past a preface stayed under it and
- * was credited in full. Measured sittings on real data sit at a median of 242
- * and a 95th percentile of 533, so anything sustained above this ceiling is
- * ground crossed rather than read.
- */
-function creditCeilingWpm(mode: ReadingSessionMode, dial: number | null): number {
-	if (mode !== "rsvp") return SANE_WPM_CEILING;
-	return dial !== null && dial > 0 ? dial * RSVP_DIAL_HEADROOM : SANE_WPM_CEILING;
-}
 
 type SessionState = {
 	id: string;
@@ -215,12 +192,11 @@ export class SessionTracker {
 		// A gap above the guard is a suspended timer, not reading time, so it must
 		// not refill the budget: returning after ten minutes would otherwise buy
 		// enough credit to absorb a chapter-sized skip.
-		this.session.creditBudget = Math.min(
-			CREDIT_BURST_WORDS,
-			this.session.creditBudget +
-				(creditCeilingWpm(this.opts.mode, this.opts.getWpmSetting()) *
-					Math.min(pollDelta, POLL_THROTTLE_GUARD_MS)) /
-					60_000,
+		this.session.creditBudget = refillCredit(
+			this.session.creditBudget,
+			this.opts.mode,
+			this.opts.getWpmSetting(),
+			Math.min(pollDelta, POLL_THROTTLE_GUARD_MS),
 		);
 
 		// Only the ground actually travelled forward at reading pace is credited.
@@ -232,14 +208,14 @@ export class SessionTracker {
 			if (delta < JUMP_WORDS_PER_TICK[this.opts.mode]) {
 				// Partial credit for a burst larger than the budget: the reader saw
 				// the start of the span before outrunning any pace they could read at.
-				// Whole words only; the budget itself stays fractional so slow reading
-				// does not lose a word per tick to rounding.
-				const credited = Math.floor(
-					Math.min(pos - this.session.lastPos, this.session.creditBudget),
-				);
-				if (credited > 0) {
-					creditSpan(this.session.readSpans, this.session.lastPos, this.session.lastPos + credited);
-					this.session.creditBudget -= credited;
+				const spent = spendCredit(this.session.creditBudget, this.session.lastPos, pos);
+				if (spent.credited > 0) {
+					creditSpan(
+						this.session.readSpans,
+						this.session.lastPos,
+						this.session.lastPos + spent.credited,
+					);
+					this.session.creditBudget = spent.budget;
 				}
 			}
 			this.session.lastPos = pos;

@@ -1,13 +1,23 @@
 import type { SyncBook } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
+import type { Tx } from "~/db";
 import { syncBooks } from "~/db/schema";
+import type { BookOrigin } from "./origin";
+import { feedBookColumns, loadFeedBookStates, recordFeedEvents } from "./social/feed";
+import type { FeedBookState } from "./social/feed-transitions";
 
-/** One pushed book as a `sync_books` row. */
-export function bookInsertValues(userId: string, book: SyncBook) {
+/**
+ * One pushed book as a `sync_books` row. The origin is never the client's to
+ * say: a row with a copy record keeps that origin, anything else is its own.
+ * On conflict neither upsert set touches the origin columns.
+ */
+export function bookInsertValues(userId: string, book: SyncBook, origin?: BookOrigin) {
 	return {
 		userId,
 		bookId: book.bookId,
+		originUserId: origin?.originUserId ?? userId,
+		originBookId: origin?.originBookId ?? book.bookId,
 		title: book.title,
 		author: book.author,
 		fileSize: book.fileSize,
@@ -35,6 +45,7 @@ export function bookInsertValues(userId: string, book: SyncBook) {
 		rating: book.deleted ? null : (book.rating ?? null),
 		review: book.deleted ? null : (book.review ?? null),
 		tags: book.deleted ? null : (book.tags ?? null),
+		hideFromProfile: book.deleted ? false : (book.hideFromProfile ?? false),
 		deleted: book.deleted,
 		updatedAt: new Date(book.updatedAt),
 		// A client that pre-dates the column sends nothing; falling back to the row
@@ -68,6 +79,45 @@ const METADATA_FIELDS = [
  */
 export function claimsMetadata(book: SyncBook): boolean {
 	return METADATA_FIELDS.some((field) => book[field] !== undefined);
+}
+
+/** Whether the payload says anything about the hide-from-profile flag. Deliberately
+ *  separate from `claimsMetadata`: a client that knows `status` but not this flag
+ *  claims metadata without claiming the flag, and must not clear it. */
+export function claimsHideFlag(book: SyncBook): boolean {
+	return book.hideFromProfile !== undefined;
+}
+
+const METADATA_REVISION_NEWER =
+	"COALESCE(excluded.metadata_updated_at, excluded.updated_at) > COALESCE(sync_books.metadata_updated_at, sync_books.updated_at)";
+
+/** The hide flag's merge: cleared with the tombstone, otherwise revision-gated when claimed, kept when not. */
+function hideFlagSet(claimed: boolean) {
+	return sql.raw(
+		claimed
+			? `CASE WHEN sync_books.deleted OR excluded.deleted THEN false WHEN ${METADATA_REVISION_NEWER} THEN excluded.hide_from_profile ELSE sync_books.hide_from_profile END`
+			: "CASE WHEN sync_books.deleted OR excluded.deleted THEN false ELSE sync_books.hide_from_profile END",
+	);
+}
+
+/** The merge rules a pushed book gets, from what its payload claims. */
+export function bookUpsertSetFor(book: SyncBook): PgUpdateSetSource<typeof syncBooks> {
+	return {
+		...(claimsMetadata(book) ? bookUpsertSet : bookUpsertSetPreservingMetadata),
+		hideFromProfile: hideFlagSet(claimsHideFlag(book)),
+	};
+}
+
+/** Groups a push so every book in a group shares one `bookUpsertSetFor`. */
+export function groupBooksByMergeRules(books: SyncBook[]): SyncBook[][] {
+	const groups = new Map<string, SyncBook[]>();
+	for (const book of books) {
+		const key = `${claimsMetadata(book)}:${claimsHideFlag(book)}`;
+		const group = groups.get(key) ?? [];
+		group.push(book);
+		groups.set(key, group);
+	}
+	return [...groups.values()];
 }
 
 /**
@@ -126,7 +176,9 @@ export const bookUpsertSetPreservingMetadata: PgUpdateSetSource<typeof syncBooks
 	title: lastWriteWins("title"),
 	author: lastWriteWins("author"),
 	fileSize: sql`excluded.file_size`,
-	wordCount: sql`excluded.word_count`,
+	// A client that has not counted the book yet pushes null; the count comes
+	// from the text, so a known one stays until a push brings a new count.
+	wordCount: sql`COALESCE(excluded.word_count, sync_books.word_count)`,
 	// `updated_at` is the position's revision, which is what every released
 	// client takes it to mean, so the position gate is unchanged from before the
 	// metadata columns existed.
@@ -190,3 +242,33 @@ export const bookUpsertSet: PgUpdateSetSource<typeof syncBooks> = {
 	...bookUpsertSetPreservingMetadata,
 	...clearedOnDelete((column) => lastWriteWins(column)),
 };
+
+/**
+ * Writes the pushed books under the merge rules and records the feed events
+ * they cause. Shared by the sync route and its tests so both run the same SQL.
+ */
+export async function upsertSyncBooks(
+	tx: Tx,
+	userId: string,
+	books: SyncBook[],
+	origins: ReadonlyMap<string, BookOrigin>,
+	now = new Date(),
+): Promise<void> {
+	const before = await loadFeedBookStates(
+		tx,
+		userId,
+		books.map((b) => b.bookId),
+	);
+	const after: FeedBookState[] = [];
+	for (const group of groupBooksByMergeRules(books)) {
+		const [first] = group;
+		if (!first) continue;
+		const merged = await tx
+			.insert(syncBooks)
+			.values(group.map((book) => bookInsertValues(userId, book, origins.get(book.bookId))))
+			.onConflictDoUpdate({ target: bookUpsertTarget, set: bookUpsertSetFor(first) })
+			.returning(feedBookColumns);
+		after.push(...merged);
+	}
+	await recordFeedEvents(tx, userId, before, after, now);
+}

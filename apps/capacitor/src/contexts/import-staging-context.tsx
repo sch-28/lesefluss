@@ -108,6 +108,7 @@ export const ImportStagingProvider: React.FC<{ children: React.ReactNode }> = ({
 						rating: null,
 						review: null,
 						tags: [],
+						hideFromProfile: false,
 					})
 				: null,
 		[current],

@@ -3,17 +3,17 @@
  * local-day and DST arithmetic can be tested directly under an arbitrary
  * timezone; the query functions in `stats.ts` only fetch rows and hand them here.
  */
+import {
+	isPlausibleRate,
+	MIN_STREAK_MINUTES,
+	type StreakResult,
+	streakFromDays,
+} from "@lesefluss/core";
 import { localDateKey, previousLocalDayStart, startOfLocalDay } from "../../utils/date-utils";
 
 const MS_PER_DAY = 86_400_000;
 
-/** A local day counts toward a streak once its sessions sum to this much. */
-export const MIN_STREAK_MINUTES = 1;
-
-export interface StreakResult {
-	current: number;
-	longest: number;
-}
+export { MIN_STREAK_MINUTES, type StreakResult };
 
 export interface SessionTiming {
 	startedAt: number;
@@ -55,42 +55,8 @@ export function sumDurationByLocalDay(rows: SessionTiming[]): Map<string, number
 
 export function summariseStreak(rows: SessionTiming[], now: number): StreakResult {
 	const minutesByDay = new Map<string, number>();
-	for (const [key, ms] of sumDurationByLocalDay(rows)) {
-		minutesByDay.set(key, ms / 60_000);
-	}
-	// Threshold applies to the day's total, not to each sitting: several short
-	// sittings are still a day's reading.
-	for (const [key, minutes] of minutesByDay) {
-		if (minutes < MIN_STREAK_MINUTES) minutesByDay.delete(key);
-	}
-
-	let current = 0;
-	let cursor = startOfLocalDay(now);
-	if (!minutesByDay.has(localDateKey(cursor))) cursor = previousLocalDayStart(cursor);
-	while (minutesByDay.has(localDateKey(cursor))) {
-		current++;
-		cursor = previousLocalDayStart(cursor);
-	}
-
-	// Split manually: new Date("YYYY-MM-DD") parses as UTC midnight, landing on
-	// the previous local day west of Greenwich.
-	const dayStartsDesc = [...minutesByDay.keys()]
-		.sort()
-		.reverse()
-		.map((key) => {
-			const [y, m, d] = key.split("-").map(Number);
-			return new Date(y, m - 1, d).getTime();
-		});
-	let longest = 0;
-	let run = 0;
-	let expected: number | null = null;
-	for (const dayStart of dayStartsDesc) {
-		run = expected !== null && dayStart === expected ? run + 1 : 1;
-		if (run > longest) longest = run;
-		expected = previousLocalDayStart(dayStart);
-	}
-
-	return { current, longest: Math.max(longest, current) };
+	for (const [key, ms] of sumDurationByLocalDay(rows)) minutesByDay.set(key, ms / 60_000);
+	return streakFromDays(minutesByDay, localDateKey(now));
 }
 
 export interface SessionSpan {
@@ -360,103 +326,6 @@ export function trendBucketsFor(
 	return { granularity: "month", starts: starts.reverse() };
 }
 
-export interface ReadingRates {
-	/** Delivered ÷ target for RSVP. The engine spends time on punctuation pauses
-	 *  and the acceleration ramp, so it delivers well under the dial. */
-	rsvpDeliveredRatio: number | null;
-	scrollWpm: number | null;
-	pageWpm: number | null;
-}
-
-/** Measured when there is no history yet. See task-46.3: delivered lands around
- *  63% of nominal. */
-export const DEFAULT_RSVP_DELIVERED_RATIO = 0.65;
-
-/** Below this a sitting is too short for its rate to mean anything. */
-export const MIN_MEASURABLE_MS = 1000;
-
-/**
- * Above this a sitting is not reading. Jumping the position (a table-of-contents
- * tap, a fling-scroll, a resync) credits thousands of words against seconds of
- * active time, and because every speed figure here is words-weighted, one such
- * row outvotes a hundred real ones. Real sittings on the device DB top out around
- * 600 wpm; the offenders sit between 2,000 and 49,000.
- *
- * Trained speed-readers reach roughly 1,000 wpm, so this leaves generous headroom
- * above anything a person can actually do while still catching position jumps.
- */
-export const MAX_PLAUSIBLE_WPM = 1500;
-
-/**
- * Whether a sitting's *rate* can be trusted. Deliberately not a filter on the
- * sitting itself: the words were read and the time was spent, so they still count
- * toward totals. Only the derived speed is discarded.
- */
-export function isPlausibleRate(words: number, durationMs: number): boolean {
-	if (durationMs <= MIN_MEASURABLE_MS || words <= 0) return false;
-	return words / (durationMs / 60_000) <= MAX_PLAUSIBLE_WPM;
-}
-
-export interface RateSession {
-	mode: "rsvp" | "scroll" | "page";
-	wpmAvg: number | null;
-	wordsRead: number;
-	durationMs: number;
-}
-
-/**
- * How fast this reader actually reads, per mode, for estimating time remaining.
- *
- * Words-weighted so a one-paragraph sitting cannot swing the estimate. Callers
- * pass the most recent sessions rather than all of them: the RSVP ratio moves
- * when the punctuation-delay settings change, and a lifetime average would take
- * months to catch up.
- */
-export function summariseReadingRates(rows: RateSession[]): ReadingRates {
-	let rsvpDeliveredWords = 0;
-	let rsvpTargetWordsWpm = 0;
-	let rsvpTargetWords = 0;
-	let rsvpActiveMs = 0;
-	const measured = new Map<"scroll" | "page", { words: number; activeMs: number }>();
-
-	for (const r of rows) {
-		if (!isPlausibleRate(r.wordsRead, r.durationMs)) continue;
-		if (r.mode === "rsvp") {
-			// Both halves of the ratio come from the same rows: counting a
-			// dial-less session's words as delivered while excluding it from the
-			// target divides one population by another.
-			if (r.wpmAvg == null || r.wpmAvg <= 0) continue;
-			rsvpDeliveredWords += r.wordsRead;
-			rsvpActiveMs += r.durationMs;
-			rsvpTargetWordsWpm += r.wpmAvg * r.wordsRead;
-			rsvpTargetWords += r.wordsRead;
-			continue;
-		}
-		const bucket = measured.get(r.mode) ?? { words: 0, activeMs: 0 };
-		bucket.words += r.wordsRead;
-		bucket.activeMs += r.durationMs;
-		measured.set(r.mode, bucket);
-	}
-
-	const deliveredWpm = rsvpActiveMs > 0 ? rsvpDeliveredWords / (rsvpActiveMs / 60_000) : null;
-	const targetWpm = rsvpTargetWords > 0 ? rsvpTargetWordsWpm / rsvpTargetWords : null;
-
-	function wpmOf(mode: "scroll" | "page"): number | null {
-		const bucket = measured.get(mode);
-		if (!bucket || bucket.activeMs <= 0) return null;
-		return Math.max(1, Math.round(bucket.words / (bucket.activeMs / 60_000)));
-	}
-
-	return {
-		rsvpDeliveredRatio:
-			deliveredWpm !== null && targetWpm !== null && targetWpm > 0
-				? deliveredWpm / targetWpm
-				: null,
-		scrollWpm: wpmOf("scroll"),
-		pageWpm: wpmOf("page"),
-	};
-}
-
 export interface SpeedSample {
 	startedAt: number;
 	wpm: number;
@@ -506,61 +375,4 @@ export function bucketSpeedSeries(samples: SpeedSample[], maxBuckets: number): S
 		});
 	}
 	return out;
-}
-
-export interface BookTotals {
-	bookId: string;
-	seriesId: string | null;
-	title: string;
-	author: string | null;
-	wordCount: number;
-	wordPosition: number;
-	durationMs: number;
-}
-
-export interface WorkTotals {
-	workId: string;
-	isSeries: boolean;
-	title: string;
-	author: string | null;
-	wordCount: number;
-	/** How far into the work the reader is overall, not what they read in the
-	 *  selected period. Lets a card say "34% read" without the figure changing
-	 *  meaning when the period changes. */
-	wordPosition: number;
-	durationMs: number;
-}
-
-/**
- * Fold per-book totals into per-work totals, longest first.
- *
- * Every chapter of a serial is its own book row, so without this one
- * 400-chapter web novel fills the whole list and no single-file book can rank
- * against it.
- */
-export function rollUpWorks(rows: BookTotals[]): WorkTotals[] {
-	const works = new Map<string, WorkTotals>();
-
-	for (const row of rows) {
-		const isSeries = row.seriesId != null && row.seriesId !== "";
-		const workId = isSeries ? (row.seriesId as string) : row.bookId;
-		const existing = works.get(workId);
-		if (existing) {
-			existing.durationMs += Number(row.durationMs);
-			continue;
-		}
-		works.set(workId, {
-			workId,
-			isSeries,
-			title: row.title,
-			author: row.author,
-			// A serial's length is the sum of its chapters, fetched separately;
-			// counting the one chapter seen here would understate it.
-			wordCount: isSeries ? 0 : row.wordCount,
-			wordPosition: isSeries ? 0 : row.wordPosition,
-			durationMs: Number(row.durationMs),
-		});
-	}
-
-	return [...works.values()].sort((a, b) => b.durationMs - a.durationMs);
 }

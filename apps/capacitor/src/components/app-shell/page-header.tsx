@@ -1,4 +1,4 @@
-import { useRouter } from "@tanstack/react-router";
+import { type NavigateOptions, useRouter } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
@@ -6,10 +6,13 @@ export function PageHeader({
 	title,
 	icon: Icon,
 	right,
+	backTo,
 }: {
 	title: string;
 	icon?: ComponentType<{ className?: string }>;
 	right?: ReactNode;
+	/** Where Back goes when there is no history, e.g. after opening a link from outside the app. */
+	backTo?: NavigateOptions["to"];
 }) {
 	const router = useRouter();
 	return (
@@ -17,7 +20,11 @@ export function PageHeader({
 			<div className="flex h-12 items-center gap-2 px-2">
 				<button
 					type="button"
-					onClick={() => router.history.back()}
+					onClick={() =>
+						backTo && !router.history.canGoBack()
+							? void router.navigate({ to: backTo, replace: true })
+							: router.history.back()
+					}
 					aria-label="Back"
 					className="-ml-1 inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
 				>

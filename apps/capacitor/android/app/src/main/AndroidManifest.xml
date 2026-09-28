@@ -30,6 +30,15 @@
                 <data android:scheme="lesefluss" android:host="auth-callback" />
             </intent-filter>
 
+            <!-- Android App Links. Only claimed paths go here, and only after the
+                 website page for the path is live; see docs/deep-links.md. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="lesefluss.app" android:pathPrefix="/invite/" />
+            </intent-filter>
+
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

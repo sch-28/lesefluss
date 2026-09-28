@@ -40,3 +40,4 @@ public/assets/sql-wasm.wasm
 test-results/
 playwright-report/
 playwright/.cache/
+e2e-app/.auth/

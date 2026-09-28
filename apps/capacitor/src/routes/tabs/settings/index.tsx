@@ -14,6 +14,7 @@ import {
 	Megaphone,
 	MessageCircle,
 	Sparkles,
+	Users,
 	Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -48,7 +49,8 @@ type RowProps = {
 		| "/tabs/settings/appearance"
 		| "/tabs/settings/export"
 		| "/tabs/settings/device"
-		| "/tabs/settings/sync";
+		| "/tabs/settings/sync"
+		| "/tabs/settings/social";
 	onClick?: () => void;
 	iconClassName?: string;
 };
@@ -191,6 +193,17 @@ function SettingsLanding() {
 								to="/tabs/settings/sync"
 							/>
 						)}
+					</Section>
+				)}
+
+				{SYNC_ENABLED && isLoggedIn && (
+					<Section title="Social">
+						<Row
+							icon={Users}
+							title="Social profile"
+							subtitle="Handle, avatar and who sees what"
+							to="/tabs/settings/social"
+						/>
 					</Section>
 				)}
 

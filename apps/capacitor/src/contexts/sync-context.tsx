@@ -15,6 +15,7 @@ import {
 	useState,
 } from "react";
 import { toast } from "../components/toast";
+import { invalidateAfterSync } from "../services/social/cache";
 import {
 	adoptSyncIdentity,
 	consumeAuthLoginHandoffState,
@@ -25,6 +26,7 @@ import {
 	getUserEmail,
 	IS_WEB_BUILD,
 	NATIVE_SYNC_ENABLED,
+	onSessionLost,
 	SYNC_ENABLED,
 	signOut as syncSignOut,
 } from "../services/sync";
@@ -38,6 +40,8 @@ function hasEmail(v: unknown): v is { email: string } {
 
 interface SyncContextType {
 	isLoggedIn: boolean;
+	/** False until the stored session has been checked; `isLoggedIn` is not meaningful before. */
+	isSessionResolved: boolean;
 	userEmail: string | null;
 	isSyncing: boolean;
 	lastSynced: number | null;
@@ -124,6 +128,7 @@ function useRestoreSession(
 	setIsSyncing: Dispatch<SetStateAction<boolean>>,
 	setLastSynced: Dispatch<SetStateAction<number | null>>,
 	setSyncError: Dispatch<SetStateAction<string | null>>,
+	setIsSessionResolved: Dispatch<SetStateAction<boolean>>,
 ) {
 	useEffect(() => {
 		if (!SYNC_ENABLED) return;
@@ -147,28 +152,41 @@ function useRestoreSession(
 					await adoptSyncIdentity(user.email);
 					setIsLoggedIn(true);
 					setUserEmail(user.email);
+					setIsSessionResolved(true);
 				} else {
 					const token = await getToken();
 					if (!token || cancelled) return;
 					setIsLoggedIn(true);
+					setIsSessionResolved(true);
 					setUserEmail(await getUserEmail());
 					setLastSynced(await getLastSynced());
 				}
 				await fullSync();
+				invalidateAfterSync();
 				if (!cancelled) setLastSynced(Date.now());
 			} catch (err) {
 				if (cancelled) return;
 				setSyncError(err instanceof Error ? err.message : "Initial sync failed");
 				log.warn("sync", "initial sync failed:", err);
 			} finally {
-				if (!cancelled) setIsSyncing(false);
+				if (!cancelled) {
+					setIsSessionResolved(true);
+					setIsSyncing(false);
+				}
 			}
 		})();
 
 		return () => {
 			cancelled = true;
 		};
-	}, [setIsLoggedIn, setIsSyncing, setLastSynced, setSyncError, setUserEmail]);
+	}, [
+		setIsLoggedIn,
+		setIsSyncing,
+		setLastSynced,
+		setSyncError,
+		setUserEmail,
+		setIsSessionResolved,
+	]);
 }
 
 function useResumeSync(setLastSynced: Dispatch<SetStateAction<number | null>>) {
@@ -177,6 +195,7 @@ function useResumeSync(setLastSynced: Dispatch<SetStateAction<number | null>>) {
 		if (!token) return;
 		try {
 			await fullSync();
+			invalidateAfterSync();
 			setLastSynced(Date.now());
 		} catch (err) {
 			log.warn("sync", "resume sync failed:", err);
@@ -240,6 +259,7 @@ function useMobileAuthCallback(
 				setUserEmail(email || null);
 				await Browser.close().catch(() => {});
 				await fullSync();
+				invalidateAfterSync();
 				setLastSynced(Date.now());
 				toast.success(email ? `Signed in as ${email}` : "Signed in");
 			} catch (err) {
@@ -279,9 +299,28 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 	const [lastSynced, setLastSynced] = useState<number | null>(null);
 	const [syncError, setSyncError] = useState<string | null>(null);
 
-	useRestoreSession(setIsLoggedIn, setUserEmail, setIsSyncing, setLastSynced, setSyncError);
+	const [isSessionResolved, setIsSessionResolved] = useState(!SYNC_ENABLED);
+	useRestoreSession(
+		setIsLoggedIn,
+		setUserEmail,
+		setIsSyncing,
+		setLastSynced,
+		setSyncError,
+		setIsSessionResolved,
+	);
 	useResumeSync(setLastSynced);
 	useMobileAuthCallback(setIsLoggedIn, setUserEmail, setIsSyncing, setLastSynced, setSyncError);
+	// A 401 anywhere drops the session; the signed-in flag must not outlive it,
+	// or screens behind it keep showing an error where the sign-in prompt belongs.
+	useEffect(
+		() =>
+			onSessionLost(() => {
+				setIsLoggedIn(false);
+				setUserEmail(null);
+				toast.error("Your session expired. Sign in again to keep syncing.");
+			}),
+		[],
+	);
 
 	const logout = useCallback(async () => {
 		await syncSignOut();
@@ -296,6 +335,7 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 		setIsSyncing(true);
 		try {
 			await fullSync();
+			invalidateAfterSync();
 			setLastSynced(Date.now());
 			toast.success("Synced");
 		} catch (err) {
@@ -309,6 +349,7 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 	const value: SyncContextType = {
 		isLoggedIn,
+		isSessionResolved,
 		userEmail,
 		isSyncing,
 		lastSynced,

@@ -52,6 +52,12 @@ export const Route = createRootRoute({
 							},
 						]
 					: []),
+				// Firefox paints before a pending head stylesheet has loaded whenever
+				// something flushes layout meanwhile, which shows the page unstyled for
+				// a frame. A classic inline script blocks the parser until the
+				// stylesheets above have loaded, as Chrome does.
+				// https://bugzilla.mozilla.org/show_bug.cgi?id=1459305
+				{ children: "/**/" },
 			],
 		};
 	},
@@ -191,6 +197,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 										<li>
 											<Link to="/imprint" className="transition-colors hover:text-foreground">
 												Imprint
+											</Link>
+										</li>
+										<li>
+											<Link to="/report" className="transition-colors hover:text-foreground">
+												Report content
 											</Link>
 										</li>
 									</ul>
