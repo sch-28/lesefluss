@@ -6,7 +6,7 @@
 //   DATABASE_URL=postgres://postgres:postgres@localhost:5432/rsvp pnpm test account-deletion
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, or } from "drizzle-orm";
-import { afterAll, describe, expect, test } from "vitest";
+import { afterAll, describe, expect, test, vi } from "vitest";
 import { db } from "~/db";
 import { account, session, user } from "~/db/auth-schema";
 import {
@@ -38,7 +38,32 @@ import {
 	syncSettings,
 } from "~/db/schema";
 import { deleteUserAccount, purgeCloudData } from "./account-deletion";
+import { deleteAdminUser } from "./admin";
 import { claimHandle } from "./social/handle";
+import { orderedPair } from "./social/relationship";
+
+// Server functions only run inside the Start runtime, so this shim calls the
+// handler directly with the validated input; the handler and its admin check are real.
+vi.mock("@tanstack/react-start", () => {
+	type Opts = { data?: unknown };
+	const builder = (validate: (d: unknown) => unknown = (d) => d) => ({
+		inputValidator: (v: (d: unknown) => unknown) => builder(v),
+		handler:
+			(fn: (ctx: { data: unknown }) => unknown) =>
+			(opts: Opts = {}) =>
+				fn({ data: validate(opts.data) }),
+	});
+	return { createServerFn: () => builder(), createServerOnlyFn: <T>(fn: T) => fn };
+});
+vi.mock("@tanstack/react-start/server", () => ({
+	getRequest: () => new Request("https://lesefluss.test"),
+}));
+const adminSession = vi.hoisted(() => ({ role: "admin" }));
+vi.mock("./auth", () => ({
+	auth: {
+		api: { getSession: async () => ({ user: { id: "test-admin", role: adminSession.role } }) },
+	},
+}));
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 
@@ -445,5 +470,58 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 		expect(profile?.handle).toBe(clearHandle);
 		await deleteUserAccount(id);
 		await db.delete(socialHandle).where(eq(socialHandle.handle, clearHandle));
+	});
+
+	test("an admin deletes a user through deleteAdminUser, social data included; a non-admin cannot", async () => {
+		const id = `test-admdel-${randomUUID()}`;
+		const friend = `test-admdel-f-${randomUUID()}`;
+		const idHandle = `ad_${id.slice(-8)}`;
+		await db.insert(user).values([
+			{ id, name: "Target", email: `${id}@example.test` },
+			{ id: friend, name: "Friend", email: `${friend}@example.test` },
+		]);
+		await claimHandle(id, idHandle, "Target");
+		const [userLow, userHigh] = orderedPair(id, friend);
+		await db.insert(socialFriendship).values({ userLow, userHigh, acceptedAt: now });
+		await db.insert(socialFeedEvent).values({ actorId: id, bookId: "b1", type: "started" });
+		await db.insert(syncBooks).values({
+			userId: id,
+			bookId: "b1",
+			originUserId: id,
+			originBookId: "b1",
+			title: "B",
+			updatedAt: now,
+		});
+		const rowsOf = async () => ({
+			user: await db.select().from(user).where(eq(user.id, id)),
+			profile: await db.select().from(socialProfile).where(eq(socialProfile.userId, id)),
+			friendship: await db
+				.select()
+				.from(socialFriendship)
+				.where(or(eq(socialFriendship.userLow, id), eq(socialFriendship.userHigh, id))),
+			feed: await db.select().from(socialFeedEvent).where(eq(socialFeedEvent.actorId, id)),
+			books: await db.select().from(syncBooks).where(eq(syncBooks.userId, id)),
+		});
+
+		try {
+			adminSession.role = "user";
+			await expect(deleteAdminUser({ data: { userId: id } })).rejects.toMatchObject({
+				status: 403,
+			});
+			for (const rows of Object.values(await rowsOf())) expect(rows).toHaveLength(1);
+
+			adminSession.role = "admin";
+			expect(await deleteAdminUser({ data: { userId: id } })).toEqual({ success: true });
+			for (const rows of Object.values(await rowsOf())) expect(rows).toEqual([]);
+			const [held] = await db.select().from(socialHandle).where(eq(socialHandle.handle, idHandle));
+			expect(held?.userId).toBeNull();
+			expect(held?.releasedAt).not.toBeNull();
+			expect(await db.select().from(user).where(eq(user.id, friend))).toHaveLength(1);
+		} finally {
+			adminSession.role = "admin";
+			await deleteUserAccount(id).catch(() => {});
+			await deleteUserAccount(friend).catch(() => {});
+			await db.delete(socialHandle).where(eq(socialHandle.handle, idHandle));
+		}
 	});
 });

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 import { SocialError } from "./errors";
+import { FEED_DELETE_LIMIT, FEED_READ_LIMIT } from "./feed";
 import { socialAction, socialGetById, socialPost } from "./http";
 
 const Body = z.object({ name: z.string() });
@@ -118,5 +119,15 @@ describe("social route handlers", () => {
 		expect(await limited.json()).toEqual({ error: "Too many requests", reason: "rate_limited" });
 		expect((await call(handler, post({}), "bo")).status).toBe(200);
 		expect(runs).toBe(3);
+	});
+
+	test("deleting feed events does not spend the feed-reading budget", async () => {
+		const read = socialAction({ limit: FEED_READ_LIMIT, run: async () => {} });
+		const del = socialAction({ limit: FEED_DELETE_LIMIT, run: async () => {} });
+		expect(FEED_DELETE_LIMIT.key).not.toBe(FEED_READ_LIMIT.key);
+		const userId = `feed-${randomUUID()}`;
+		for (let i = 0; i < FEED_DELETE_LIMIT.max; i++) await call(del, post({}), userId);
+		expect((await call(del, post({}), userId)).status).toBe(429);
+		expect((await call(read, post({}), userId)).status).toBe(200);
 	});
 });

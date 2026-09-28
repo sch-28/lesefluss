@@ -5,7 +5,7 @@ status: Done
 assignee:
   - claude
 created_date: '2026-09-25 22:09'
-updated_date: '2026-09-26 11:17'
+updated_date: '2026-09-28 16:17'
 labels:
   - social
   - web
@@ -178,6 +178,10 @@ Not verified in a running browser or on a device: the app settings screen, onboa
 Review pass (3 fresh-context reviewers + verifier) fixed: SSRF in the account-picture copy (user.image is user-writable via better-auth update-user; now https + googleusercontent.com/cdn.discordapp.com allowlist, redirect manual, and hasAccountPicture reflects the allowlist); chunked uploads bypassing the 5 MB cap (readBodyCapped streams with a running total); avatar Cache-Control now private; better-auth deleteUser hook moved to beforeDelete (afterDelete ran after the FK had nulled social_handle.user_id, leaving the handle blocked forever); avatar GET moved to /api/social/avatar-image/$id and the check/source routes flattened to /handle-check and /avatar-source, because TanStack Start runs a parent route's middleware for every child, which would have put requireAuth on the unauthenticated image GET; claimHandle locks the user row so two concurrent first claims cannot both create an active handle; re-confirming the current handle with a new name now syncs the settings form's name state (a later blur used to save the old name back).
 
 Conventions from the review: shared social error parsing, claim-failure mapping, messages and the availability state moved to packages/core/src/social.ts; SocialAvatar and IdentityCard moved to packages/ui (`@lesefluss/ui/social-avatar`); Tx type exported from ~/db; purgeCloudData shared by clearCloudData and tests; visibility column typed with the enum (no cast); availability check keeps only the async result in state; dead exports removed. Declined: replacing the services/sync barrel re-exports (documented public surface), boolean is/has prefixes (no team rule), moving web hooks out of the component (matches existing web-app practice).
+
+## Corrections after the branch review (2026-09-28)
+- **Deletion paths:** better-auth's `/delete-user` and `/admin/remove-user` are disabled (`apps/web/src/lib/auth.ts` `disabledPaths`, TASK-171.13), and there is no `beforeDelete`/`afterDelete` hook. Every account deletion goes through `deleteUserAccount` (the website account page and the admin `deleteAdminUser`). AC #19's "all three deletion entry points" therefore means those two, and any mention of a better-auth delete hook in this task is out of date. `deleteAdminUser` has no test yet (TASK-175.4).
+- **Route names:** the final summary and notes list `handle/check`, `avatar/source` and `avatar/$id`. The real file routes are `api/social/handle-check`, `api/social/avatar-source` and `api/social/avatar-image/$id` (TanStack Start flat file names).
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

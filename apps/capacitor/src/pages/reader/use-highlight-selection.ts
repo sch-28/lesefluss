@@ -8,7 +8,7 @@
 
 import { type WordIndex, wordPos } from "@lesefluss/core";
 import type React from "react";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "../../components/toast";
 import { queryHooks } from "../../services/db/hooks";
 import type { Highlight } from "../../services/db/schema";
@@ -302,6 +302,25 @@ export function useHighlightSelection({
 	// Keep a ref so scroll handler can call it without stale-closure issues
 	const syncHandlesRef = useRef(syncHandlePositions);
 	syncHandlesRef.current = syncHandlePositions;
+
+	// Resizing or rotating moves the words and changes the viewport the toolbar is clamped to.
+	useEffect(() => {
+		if (!isSelecting) return;
+		let frame = 0;
+		const onResize = () => {
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(() => syncHandlesRef.current());
+		};
+		window.addEventListener("resize", onResize);
+		window.addEventListener("orientationchange", onResize);
+		window.visualViewport?.addEventListener("resize", onResize);
+		return () => {
+			cancelAnimationFrame(frame);
+			window.removeEventListener("resize", onResize);
+			window.removeEventListener("orientationchange", onResize);
+			window.visualViewport?.removeEventListener("resize", onResize);
+		};
+	}, [isSelecting]);
 
 	// Re-measure when saving swaps the toolbar's buttons (its width moves its centred
 	// position) and when the note sheet stops hiding it.

@@ -173,6 +173,15 @@ function PrivacyPage() {
 							link to you. After 90 days the handle is free for anyone.
 						</span>
 					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<strong className="text-foreground">Time zone</strong>: the app stores your device's
+							time zone (for example Europe/Berlin) so that the dates on your profile and your "this
+							year" reading stats follow your own calendar. It is used only for that and is never
+							shown to other users.
+						</span>
+					</li>
 				</ul>
 				<p className="mt-4">
 					Your social profile, avatar and settings are deleted with your account. Clearing your
@@ -307,8 +316,8 @@ function PrivacyPage() {
 					While you have a buddy-read book open, the app sends your reading position to our server
 					every two seconds. The other members of that buddy read see that you are reading now, your
 					position and your reading speed in the current sitting. The server keeps this in memory
-					only while you read and never stores it. You can switch it off in the social settings;
-					you then also see nothing live from others.
+					only while you read and never stores it. You can switch it off in the social settings; you
+					then also see nothing live from others.
 				</p>
 				<h3 className="mt-6 mb-2 font-medium text-foreground">Activity feed</h3>
 				<p>

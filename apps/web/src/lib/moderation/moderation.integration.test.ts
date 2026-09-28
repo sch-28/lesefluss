@@ -9,6 +9,7 @@ import { db } from "~/db";
 import { user } from "~/db/auth-schema";
 import {
 	socialAvatar,
+	socialFriendship,
 	socialHandle,
 	socialNotice,
 	socialNotification,
@@ -22,7 +23,7 @@ import {
 import { sendMail } from "~/lib/mailer";
 import { claimHandle } from "~/lib/social/handle";
 import { listInbox } from "~/lib/social/inbox";
-import { hasBlockEitherWay } from "~/lib/social/relationship";
+import { areFriends, canInteract, hasBlockEitherWay, orderedPair } from "~/lib/social/relationship";
 import { decideNotice, resendNoticeMail } from "./decide";
 import { createNotice, createWebNotice, listNotices } from "./notices";
 import {
@@ -313,6 +314,74 @@ describe.skipIf(!hasDb)("moderation (integration)", () => {
 		expect(await liftRestriction(active.id, admin)).toBe(true);
 		expect(await isSharingSuspended(target, now)).toBe(false);
 		expect(await liftRestriction(active.id, admin)).toBe(false);
+	});
+
+	async function suspendBystander(duration: "30d" | "permanent", now: Date) {
+		const { id } = await createNotice(reporter, {
+			targetType: "profile",
+			targetUserId: bystander,
+			reason: "spam",
+			text: `Suspend for ${duration}.`,
+		});
+		await decideNotice(
+			{ noticeId: id, adminId: admin, action: "suspend_sharing", duration, now },
+			{ ban },
+		);
+		const [active] = await listRestrictions(db, { userId: bystander, activeOnly: true, now });
+		if (!active) throw new Error("expected an active restriction");
+		return active;
+	}
+
+	test("a 30-day suspension holds on day 29 and has run out on day 31", async () => {
+		const now = new Date();
+		const active = await suspendBystander("30d", now);
+		try {
+			expect(await isSharingSuspended(bystander, new Date(now.getTime() + 29 * DAY_MS))).toBe(true);
+			expect(await isSharingSuspended(bystander, new Date(now.getTime() + 31 * DAY_MS))).toBe(
+				false,
+			);
+		} finally {
+			await liftRestriction(active.id, admin);
+		}
+	});
+
+	test("a permanent suspension never runs out; only lifting it ends it", async () => {
+		const now = new Date();
+		const active = await suspendBystander("permanent", now);
+		expect(active.until).toBeNull();
+		expect(await isSharingSuspended(bystander, new Date(now.getTime() + 3650 * DAY_MS))).toBe(true);
+		expect(await liftRestriction(active.id, admin)).toBe(true);
+		expect(await isSharingSuspended(bystander, now)).toBe(false);
+	});
+
+	test("a ban hides the user until it runs out or is lifted, and the friendship survives it", async () => {
+		const now = new Date();
+		const [userLow, userHigh] = orderedPair(reporter, bystander);
+		await db.insert(socialFriendship).values({ userLow, userHigh, acceptedAt: now });
+		const setBan = (patch: Partial<typeof user.$inferInsert>) =>
+			db.update(user).set(patch).where(eq(user.id, bystander));
+		try {
+			await setBan({ banned: true, banReason: "test", banExpires: null });
+			expect(await canInteract(db, reporter, bystander, now)).toBe(false);
+			expect(await areFriends(db, reporter, bystander, now)).toBe(false);
+			expect(
+				await canInteract(db, reporter, bystander, new Date(now.getTime() + 3650 * DAY_MS)),
+			).toBe(false);
+
+			// better-auth's unbanUser clears all three fields.
+			await setBan({ banned: false, banReason: null, banExpires: null });
+			expect(await canInteract(db, reporter, bystander, now)).toBe(true);
+			expect(await areFriends(db, reporter, bystander, now)).toBe(true);
+
+			await setBan({ banned: true, banExpires: new Date(now.getTime() + DAY_MS) });
+			expect(await canInteract(db, reporter, bystander, now)).toBe(false);
+			expect(await canInteract(db, reporter, bystander, new Date(now.getTime() + 2 * DAY_MS))).toBe(
+				true,
+			);
+		} finally {
+			await setBan({ banned: false, banReason: null, banExpires: null });
+			await db.delete(socialFriendship).where(eq(socialFriendship.userLow, userLow));
+		}
 	});
 
 	test("a book takedown tombstones the row and its highlights, writes the record, and the push refuses the book", async () => {

@@ -313,6 +313,8 @@ export const socialProfile = pgTable(
 		showHighlights: boolean("show_highlights").notNull().default(true),
 		feedEnabled: boolean("feed_enabled").notNull().default(true),
 		shareLiveReading: boolean("share_live_reading").notNull().default(true),
+		/** The owner's IANA zone, for their own dates and "this year" stats; never shown to others. */
+		timeZone: text("time_zone"),
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
 	(t) => [check("social_profile_visibility_check", sql`${t.visibility} IN ('private', 'friends')`)],

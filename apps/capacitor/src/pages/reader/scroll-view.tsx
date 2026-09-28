@@ -249,7 +249,7 @@ export interface ScrollViewProps {
 	onProgressChange: (word: number, isAtEnd: boolean) => void; // continuous during scroll
 	onHighlightClear: () => void; // scroll started → hide highlight (parent decides on NO_HIGHLIGHT optimization)
 	onHideProgressBar: () => void; // scroll started (and not scrubbing) → hide bar
-	onTap: () => void; // any click inside container → show progress bar
+	onTap: (e: MouseEvent) => void; // any click inside the container
 
 	// Selection-during-scroll: parent hands these in so handlers re-sync drag handles
 	isSelecting: boolean;
@@ -634,7 +634,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	// Native listener needed because VList's internal scroll container doesn't
 	// propagate clicks through React's synthetic event system.
 	useEffect(() => {
-		const el = containerRef.current;
+		// The full-width wrapper, so a click beside the text column counts too.
+		const el = wrapperRef.current;
 		if (!el) return;
 		el.addEventListener("click", onTap);
 		return () => el.removeEventListener("click", onTap);

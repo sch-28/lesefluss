@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-25 22:12'
-updated_date: '2026-09-27 21:30'
+updated_date: '2026-09-28 16:18'
 labels:
   - social
   - web
@@ -174,6 +174,12 @@ Rejected after checking:
 - A signed cover URL stays valid for up to an hour after the actor makes the profile private or turns feed sharing off: the event itself disappears at once, the cover route still re-checks friendship, blocks, bans and the book's own state, and profile covers from TASK-171.5 already work this way.
 - No request-level tests for the feed routes: no social route has them; the library functions are tested.
 Tests: web 188, app 671; typechecks clean.
+
+## Corrections after the branch review (2026-09-28)
+- **Deletion paths:** better-auth's `/delete-user` and `/admin/remove-user` are disabled (`auth.ts` `disabledPaths`, TASK-171.13), and there is no delete hook. AC #17 is met through `deleteUserAccount` alone.
+- **Test count:** the final summary says 8 integration tests; `feed.integration.test.ts` has 7.
+- **Retention:** there is no scheduled job. Expired events (older than 90 days) are deleted lazily, `CLEANUP_BATCH` at a time, whenever a feed is read (`listFeed` in `feed.ts`). The reads filter by the cutoff anyway, so an expired event is never shown, but rows can outlive 90 days on an idle server.
+- **Missing tests:** a taken-down book, Clear cloud data, and the 90-day boundary (TASK-175.4).
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

@@ -15,7 +15,8 @@ function SignInStep() {
 	const signIn = useCallback(async () => {
 		if (IS_WEB_BUILD) {
 			await finish();
-			window.location.href = "/login";
+			// Back into the app after sign-in; without a redirect /login lands on the website profile.
+			window.location.href = `/login?redirect=${encodeURIComponent("/app/tabs/library")}`;
 			return;
 		}
 		const state = await beginAuthLoginHandoff();

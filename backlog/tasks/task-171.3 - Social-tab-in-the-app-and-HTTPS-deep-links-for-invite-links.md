@@ -5,7 +5,7 @@ status: Done
 assignee:
   - claude
 created_date: '2026-09-25 22:10'
-updated_date: '2026-09-26 15:02'
+updated_date: '2026-09-28 16:17'
 labels:
   - social
   - app
@@ -74,23 +74,21 @@ Implementation notes:
 - [x] #10 User can create, copy, share via the OS share sheet (native) and revoke their invite link, and the screen shows the expiry date and that anyone with the link can become a friend
 - [x] #11 Rate-limit, pending-request-cap and friend-cap errors from the API are shown as readable messages
 - [x] #12 Empty states exist for no friends and no requests, the no-friends state points to the invite link, and pasting text that is not a valid invite link shows an inline hint
-- [ ] #13 Tapping an https://lesefluss.app/invite/<token> link on Android with the app installed opens the invite confirmation screen, from both a cold start and a running app
-- [x] #14 The invite screen creates a friendship only after the user taps Add friend; opening or replaying the link alone creates nothing
-- [x] #15 The invite screen shows a single 'no longer valid' state for expired, revoked and blocked links, and distinct states for own link and already friends
-- [x] #16 An invite link opened while signed out, without a handle, or before onboarding is finished leads to the invite confirmation after the user signs in, picks a handle or finishes onboarding
-- [x] #17 A pending link is discarded after 24 hours and on sign-out
-- [x] #18 Without the app installed, the invite link's website page shows the get-the-app / continue-in-web-app block, and continuing opens the invite confirmation in the web build
-- [ ] #19 assetlinks.json is served from https://lesefluss.app/.well-known/assetlinks.json as application/json and Android App Links verification passes for both the Play-signed and the locally signed release build
-- [x] #20 Website paths outside the claimed /invite/ prefix, including /app/, still open in the browser and not in the app
-- [x] #21 A claimed link path the app does not recognise opens in the in-app browser without looping back into the app
-- [x] #22 An App Link intent is never handled as a file import, and lesefluss://auth-callback sign-in and file open/share intents keep working
-- [x] #23 Pressing back on a screen opened from a cold-start deep link returns to the Social tab instead of exiting the app
-- [x] #24 Signing out, or switching account on the web build, clears all cached social data, so the next account sees only its own friends
-- [x] #25 A friend request accepted on another device appears in the Social tab when the tab is reopened or the app returns to the foreground, without restarting the app
-- [x] #26 Social screens show an offline state with retry instead of errors when the network is unavailable, keep showing the last cached list, and disable actions while offline
-- [x] #27 Invite tokens and full link URLs do not appear in console logs or feedback and error reports
-- [x] #28 Unit tests cover the deep link parser for invite, pasted invite text, unknown, foreign-host and malformed URLs, and the pending-link replay after sign-in, onboarding and expiry
-- [x] #29 docs/deep-links.md documents the claimed paths, how to add a new one, and where the assetlinks fingerprints come from
+- [x] #13 The invite screen creates a friendship only after the user taps Add friend; opening or replaying the link alone creates nothing
+- [x] #14 The invite screen shows a single 'no longer valid' state for expired, revoked and blocked links, and distinct states for own link and already friends
+- [x] #15 An invite link opened while signed out, without a handle, or before onboarding is finished leads to the invite confirmation after the user signs in, picks a handle or finishes onboarding
+- [x] #16 A pending link is discarded after 24 hours and on sign-out
+- [x] #17 Without the app installed, the invite link's website page shows the get-the-app / continue-in-web-app block, and continuing opens the invite confirmation in the web build
+- [x] #18 Website paths outside the claimed /invite/ prefix, including /app/, still open in the browser and not in the app
+- [x] #19 A claimed link path the app does not recognise opens in the in-app browser without looping back into the app
+- [x] #20 An App Link intent is never handled as a file import, and lesefluss://auth-callback sign-in and file open/share intents keep working
+- [x] #21 Pressing back on a screen opened from a cold-start deep link returns to the Social tab instead of exiting the app
+- [x] #22 Signing out, or switching account on the web build, clears all cached social data, so the next account sees only its own friends
+- [x] #23 A friend request accepted on another device appears in the Social tab when the tab is reopened or the app returns to the foreground, without restarting the app
+- [x] #24 Social screens show an offline state with retry instead of errors when the network is unavailable, keep showing the last cached list, and disable actions while offline
+- [x] #25 Invite tokens and full link URLs do not appear in console logs or feedback and error reports
+- [x] #26 Unit tests cover the deep link parser for invite, pasted invite text, unknown, foreign-host and malformed URLs, and the pending-link replay after sign-in, onboarding and expiry
+- [x] #27 docs/deep-links.md documents the claimed paths, how to add a new one, and where the assetlinks fingerprints come from
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -157,6 +155,9 @@ The TanStack Router generator skips dot-directories, so the assetlinks route liv
 Not verifiable here and left unchecked: AC #13 (device App Link tap) and AC #19 (verification passes for both signing keys; the Play fingerprint env var must be set on the server first). UI states were type-checked and linted, not exercised on a device or in a browser. `PLAY_STORE_URL` moved to `lib/store-links.ts` so the download page and the invite CTA share it.
 
 Review pass (5 sonnet reviewers, claims verified by hand) fixed: the deep-link dedup guard never reset, so tapping the same invite link twice in one app session was swallowed (now a 2 s duplicate-delivery window, and the handler is `createDeepLinkHandler(deps)` so its decisions are unit-tested: ignore auth scheme and foreign hosts, unknown claimed path to browser, onboarding gate stores the pending link, cold-start double delivery collapsed but later re-open handled); the relationships, invite-link and blocked screens rendered nothing while loading (shared `Spinner`); the handle claim step was the one mutation not disabled offline; 'Back to Social' pushed history so hardware back returned to a finished invite screen (now replace); the Requests section had no empty copy; the overflow button ignored in-flight mutations; invite inputs lacked labels. DRY: `Section`/`EmptyRow` moved to `components/app-shell/section.tsx` (used by the social screens and the social settings screen; older settings screens keep their pre-existing copies), `IdentityCardBox` in `@lesefluss/ui/social-avatar` replaces the two OwnerCard copies, `SOCIAL_API` route map in core is used by both the app and the website clients, the website invite page imports `PROFILE_KEY` instead of re-typing the key, `SocialGate` takes plain children. Task reference comments removed from source; docs path for the assetlinks route corrected.
+
+## ACs moved to TASK-171.16 (2026-09-28)
+Old ACs #13 (an `https://lesefluss.app/invite/<token>` tap opens the app from a cold start and while running) and #19 (`assetlinks.json` is served from lesefluss.app and App Links verification passes for the Play-signed and local release builds) were never verified here. The device test ran against localhost through `adb reverse`, and the Play fingerprint comes only from `PLAY_APP_SIGNING_SHA256`. Both ACs moved to TASK-171.16, which verifies them on a real release, so this task's Done status now covers only what was verified. The remaining ACs are renumbered.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

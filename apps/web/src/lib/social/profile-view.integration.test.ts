@@ -16,8 +16,10 @@ import {
 	syncSeries,
 } from "~/db/schema";
 import { signCoverToken, verifyCoverToken } from "./cover-token";
+import { listFeed } from "./feed";
+import { listRelationships } from "./friends";
 import { claimHandle } from "./handle";
-import { updateOwnProfile } from "./profile";
+import { getOwnProfile, updateOwnProfile } from "./profile";
 import { mayViewCover, resolveProfileView } from "./profile-view";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
@@ -357,18 +359,46 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 	});
 
 	test("the year boundary follows the owner's time zone", async () => {
-		const newYear = new Date("2026-01-01T03:00:00Z");
+		// 11:00 UTC on New Year's Eve is already 01:00 on 1 January in Kiritimati (UTC+14).
+		const now = new Date("2026-01-02T00:00:00Z");
 		await db
 			.update(syncBooks)
-			.set({ finishedAt: new Date("2025-12-31T23:30:00Z") })
+			.set({ finishedAt: new Date("2025-12-31T11:00:00Z") })
 			.where(eq(syncBooks.bookId, "aaaa0002"));
-		const utc = await resolveProfileView(friend, owner, { now: newYear });
-		expect(utc.sections.stats?.booksFinishedThisYear).toBe(0);
-		const berlin = await resolveProfileView(friend, owner, {
-			now: newYear,
-			timeZone: "Europe/Berlin",
+		await updateOwnProfile(owner, { visibility: "friends", showStats: true, showFinished: true });
+
+		const withoutZone = await resolveProfileView(friend, owner, { now });
+		expect(withoutZone.sections.stats?.booksFinishedThisYear).toBe(0);
+		const viewerFallback = await resolveProfileView(friend, owner, {
+			now,
+			fallbackTimeZone: "Pacific/Kiritimati",
 		});
-		expect(berlin.sections.stats?.booksFinishedThisYear).toBe(1);
+		expect(viewerFallback.sections.stats?.booksFinishedThisYear).toBe(1);
+
+		await updateOwnProfile(owner, { timeZone: "Pacific/Kiritimati" });
+		const view = await resolveProfileView(friend, owner, {
+			now,
+			fallbackTimeZone: "Pacific/Pago_Pago",
+		});
+		expect(view.sections.stats?.booksFinishedThisYear).toBe(1);
+		expect(view.sections.finished?.find((b) => b.key === "aaaa0002")?.finishedOn).toBe(
+			"2026-01-01",
+		);
+	});
+
+	test("the owner's time zone is validated, readable by the owner and shown to nobody else", async () => {
+		await expect(updateOwnProfile(owner, { timeZone: "Mars/Olympus" })).rejects.toMatchObject({
+			code: "invalid",
+		});
+		await updateOwnProfile(owner, { timeZone: "Pacific/Kiritimati" });
+		expect((await getOwnProfile(owner))?.timeZone).toBe("Pacific/Kiritimati");
+
+		const seenByFriend = JSON.stringify([
+			await resolveProfileView(friend, owner),
+			await listRelationships(friend),
+			await listFeed(friend),
+		]);
+		expect(seenByFriend).not.toContain("Kiritimati");
 	});
 
 	test("cover tokens are viewer-bound and friendship-checked at serve time", async () => {

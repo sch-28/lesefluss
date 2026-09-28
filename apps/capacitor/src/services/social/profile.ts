@@ -14,10 +14,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthedFetchError, authedFetch } from "../authed-fetch";
 import { socialKeys } from "../db/hooks/query-keys";
 import { socialQueryDefaults } from "./cache";
+import { deviceTimeZone } from "./profile-view";
 
+/**
+ * The server dates the owner's reading (profile dates, "this year") in their
+ * own zone, so a device in a different zone updates it. Best effort: a failed
+ * update leaves the stored zone as it was.
+ */
 async function getOwnProfile(): Promise<OwnSocialProfile> {
 	const res = await authedFetch(SOCIAL_API.profile);
-	return res.json();
+	const profile: OwnSocialProfile = await res.json();
+	const zone = deviceTimeZone();
+	if (!zone || zone === profile.timeZone) return profile;
+	return postJson<OwnSocialProfile>(SOCIAL_API.profile, { timeZone: zone }).catch(() => profile);
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {

@@ -1,10 +1,10 @@
 import type { LiveActionBody, LiveSnapshot } from "@lesefluss/core";
 import { SOCIAL_API } from "@lesefluss/core";
 import { useEffect, useRef, useState } from "react";
-import { authedFetch } from "../authed-fetch";
+import { AuthedFetchError, authedFetch } from "../authed-fetch";
 
-async function act(body: LiveActionBody): Promise<void> {
-	await authedFetch(SOCIAL_API.live, { method: "POST", body: JSON.stringify(body) });
+async function act(body: LiveActionBody, keepalive = false): Promise<void> {
+	await authedFetch(SOCIAL_API.live, { method: "POST", body: JSON.stringify(body), keepalive });
 }
 
 export const liveClient = {
@@ -13,9 +13,20 @@ export const liveClient = {
 		position: number,
 		mode: "rsvp" | "scroll" | "page",
 		dialWpm: number | null,
-	) => act({ action: "report", buddyReadId, position, mode, dialWpm }),
-	stop: (buddyReadId: string) => act({ action: "stop", buddyReadId }),
+	) => act({ action: "report", buddyReadId, position, mode, dialWpm, sentAt: Date.now() }),
+	/** `keepalive` lets the request outlive a closing page. */
+	stop: (buddyReadId: string, keepalive = false) =>
+		act({ action: "stop", buddyReadId, sentAt: Date.now() }, keepalive),
 };
+
+/**
+ * An answer that retrying cannot change: not a member (any more), the read is
+ * over, a malformed request, or no session. Network errors, 429 and 5xx are
+ * worth another try.
+ */
+export function isPermanentLiveError(err: unknown): boolean {
+	return err instanceof AuthedFetchError && [400, 401, 403, 404].includes(err.status);
+}
 
 const RETRY_MS = [1000, 2000, 4000, 8000];
 
@@ -42,13 +53,19 @@ export function parseSse(buffer: string): {
 /**
  * Who else is reading this buddy read right now, over server-sent events read
  * with fetch so the bearer token (native) and the cookie (web build) both
- * work. Null while disabled or not connected; reconnects with backoff.
+ * work. The snapshot is null while disabled or not connected; it reconnects
+ * with backoff, and gives up for good on a permanent answer.
  */
-export function useLiveBoard(buddyReadId: string | null, enabled: boolean): LiveSnapshot | null {
+export function useLiveBoard(
+	buddyReadId: string | null,
+	enabled: boolean,
+): { snapshot: LiveSnapshot | null; isUnavailable: boolean } {
 	const [snapshot, setSnapshot] = useState<LiveSnapshot | null>(null);
+	const [isUnavailable, setIsUnavailable] = useState(false);
 	const attempt = useRef(0);
 
 	useEffect(() => {
+		setIsUnavailable(false);
 		if (!buddyReadId || !enabled) return;
 		const controller = new AbortController();
 		let retry: ReturnType<typeof setTimeout> | null = null;
@@ -74,8 +91,13 @@ export function useLiveBoard(buddyReadId: string | null, enabled: boolean): Live
 						if (e.event === "snapshot") setSnapshot(JSON.parse(e.data) as LiveSnapshot);
 					}
 				}
-			} catch {
+			} catch (err) {
 				if (controller.signal.aborted) return;
+				if (isPermanentLiveError(err)) {
+					setSnapshot(null);
+					setIsUnavailable(true);
+					return;
+				}
 			}
 			if (controller.signal.aborted) return;
 			setSnapshot(null);
@@ -91,5 +113,5 @@ export function useLiveBoard(buddyReadId: string | null, enabled: boolean): Live
 		};
 	}, [buddyReadId, enabled]);
 
-	return snapshot;
+	return { snapshot, isUnavailable };
 }

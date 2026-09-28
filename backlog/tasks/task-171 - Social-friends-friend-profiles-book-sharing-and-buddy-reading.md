@@ -4,7 +4,7 @@ title: 'Social: friends, friend profiles, book sharing and buddy reading'
 status: To Do
 assignee: []
 created_date: '2026-09-25 22:09'
-updated_date: '2026-09-26 22:07'
+updated_date: '2026-09-28 16:17'
 labels:
   - social
 milestone: m-6
@@ -67,13 +67,13 @@ Routing: the website already has `/profile` (`routes/_authenticated/profile`, th
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 All subtasks are Done, or explicitly descoped with a note on this task
-- [ ] #2 ADR-0004 is Accepted and milestone m-6 reflects the friends-only sharing rule
+- [x] #2 ADR-0004 is Accepted and milestone m-6 reflects the friends-only sharing rule
 - [ ] #3 Book sharing and highlight sharing are not enabled for users in production until the reporting and takedown subtask (TASK-171.6) is Done
 - [ ] #4 No social endpoint lets a user find another user by handle, name or email, and no profile data is reachable without an accepted friendship
-- [ ] #5 Deleting an account through deleteUserAccount, better-auth /delete-user or the admin deleteAdminUser action removes every social row the user owns and every social row that references them, except moderation records kept for their retention period with the user's name and email removed, verified by account-deletion.integration.test.ts
-- [ ] #6 A recipient's shared copy survives the sender's account deletion, unfriending and blocking, verified by an integration test
-- [ ] #7 CONTEXT.md defines friend, handle, share, content origin and buddy read
-- [ ] #8 The privacy policy describes every social data category (who can see it, retention, deletion with the account) before that category is enabled in production
+- [ ] #5 Deleting an account (every path goes through deleteUserAccount: the website account page and the admin deleteAdminUser action; better-auth's /delete-user and /admin/remove-user are disabled) removes every social row the user owns and every social row that references them, except moderation records kept for their retention period with the user's name and email removed, verified by account-deletion.integration.test.ts
+- [x] #6 A recipient's shared copy survives the sender's account deletion, unfriending and blocking, verified by an integration test
+- [x] #7 CONTEXT.md defines friend, handle, share, content origin and buddy read
+- [x] #8 The privacy policy describes every social data category (who can see it, retention, deletion with the account) before that category is enabled in production
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -112,7 +112,7 @@ Milestone after phase 5: the headline feature is complete.
 12. **TASK-61** Share highlights with friends, plus quote cards (needs TASK-171.10 and TASK-171.6).
 
 ### Phase 7: Later (low priority)
-13. **TASK-171.12** Live reading races in a buddy read.
+13. **TASK-171.15** Live board in buddy reads: live positions, reading-now and speed on the reader's progress bar. It replaced the reading races of TASK-171.12, which were built, dropped by the owner and archived without shipping.
 14. **TASK-171.11** Push notifications via Firebase Cloud Messaging. Deliberately last: every event already reaches the inbox, and push is only a second delivery channel.
 
 ### Critical path
@@ -129,4 +129,17 @@ Setup: fully migrated throwaway database `lesefluss_phone` with two seeded users
 Verified on the phone: sign-in handoff and deep link, handle claim with live availability check, Social tab, invite link creation, friend added through invite redemption (badge and inbox item), inbox mark-read, friend profile with bio, friend count, currently-reading card with catalog cover and stats, report flow from the profile menu (notice stored with snapshot), settings page with preview-as-friend, library sync, book detail Share action, first-share rights confirmation, share created and listed as "Waiting", incoming share item with book card, Add to library creating the copy on the device after sync, share-accepted item, block from the friend menu (friend list, blocked list, other side gets not_found, pair items removed), unblock. On the web: admin notices queue, decision with statement of reasons (bio removed, decision item for the reporter), actioned view with failed-mail state and Resend, public /report form inline validation.
 
 Fixed during the checkpoint: a 401 that cleared the token left `isLoggedIn` true, so the Social tab showed "Can't reach the server" instead of the sign-in state (new `onSessionLost` in session.ts, subscribed in the sync context); the contest sentence said "replying to this email" inside inbox items (now channel-neutral, naming notices@lesefluss.app); accepted share items lost their cover. Mail sending fails in dev (dummy Resend key) and is recorded as such.
+
+## Corrections after the branch review (2026-09-28)
+- **Account deletion paths.** The description's "three entry points" is out of date. `apps/web/src/lib/auth.ts` sets `disabledPaths: ["/delete-user", "/admin/remove-user"]` (TASK-171.13), and there is no `beforeDelete`/`afterDelete` hook. Every deletion goes through `deleteUserAccount`: the website account page (`lib/profile.ts`) and the admin `deleteAdminUser` (`lib/admin.ts`). AC #5 is reworded to match. There is no test for the admin path yet (TASK-175.4).
+- **Session-tracker throttle.** The cross-cutting note names TASK-171.12 for the credit throttle. It lives in `packages/core/src/reading-credit.ts`, which TASK-171.15 kept when TASK-171.12 was archived.
+- **ACs checked after verification:**
+  - #2: ADR-0004 is Accepted, and the m-6 milestone description states the friends-only 1:1 sharing rule.
+  - #6: `shares.integration.test.ts` covers "a copy survives unfriending, blocking and the sender's account deletion".
+  - #7: CONTEXT.md has Friend, Handle, Share, Content origin and Buddy read.
+  - #8: the privacy policy has sections for the social profile, friends and invite links, the inbox, what friends see, sharing books, buddy reads, comments and shared highlights, live reading activity, the activity feed, and notices.
+- **Left open:**
+  - #1: TASK-171.11, TASK-117, TASK-61 and TASK-175 are open.
+  - #3: needs production knowledge.
+  - #4: not re-audited in this pass.
 <!-- SECTION:NOTES:END -->

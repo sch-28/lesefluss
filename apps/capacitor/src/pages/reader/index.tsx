@@ -790,6 +790,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	}, []);
 
 	const handleHideProgressBar = useCallback(() => setProgressBarVisible(false), []);
+	// The scroll container's click listener is native, so it reads the selection through refs.
+	const tapSelectionRef = useRef({ isSelecting: sel.isSelecting, cancel: sel.cancelSelection });
+	tapSelectionRef.current = { isSelecting: sel.isSelecting, cancel: sel.cancelSelection };
 	const handleScrollShowProgressBar = useCallback(() => {
 		setProgressBarVisible(true);
 		// The reading position, not the last scroll tick: a tick is a paragraph
@@ -798,6 +801,22 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		setProgressWord(lastWordRef.current ?? progressWordRef.current);
 		markActivityRef.current?.();
 	}, []);
+	// A tap on empty reader space while selecting (a margin, between paragraphs)
+	// dismisses the selection instead of opening the progress bar. Word taps are
+	// left to handleWordTap, which runs after this native listener and would
+	// otherwise see the selection already gone. The click ending a drag or
+	// long-press selection is swallowed before it gets here.
+	const handleScrollTap = useCallback(
+		(e?: MouseEvent) => {
+			const onWord = e?.target instanceof Element && e.target.closest("span[data-word]");
+			if (tapSelectionRef.current.isSelecting && !onWord) {
+				tapSelectionRef.current.cancel();
+				return;
+			}
+			handleScrollShowProgressBar();
+		},
+		[handleScrollShowProgressBar],
+	);
 	// Page mode has no scrolling, so the scroll-driven hide path never fires
 	// there and the centre tap zone is the user's only way to dismiss the bar.
 	const handleToggleProgressBar = useCallback(() => {
@@ -1303,6 +1322,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		lastOffsetRef: lastWordRef,
 		handleRsvpToggle,
 		exitRsvpToStandard,
+		hasSelection: sel.isSelecting && !sel.noteInputOpen,
+		cancelSelection: sel.cancelSelection,
 	});
 
 	// ── Reading session tracking ──────────────────────────────────────────
@@ -1784,7 +1805,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						onProgressChange={handleSetProgressWord}
 						onHighlightClear={handleScrollHighlightClear}
 						onHideProgressBar={handleHideProgressBar}
-						onTap={handleScrollShowProgressBar}
+						onTap={handleScrollTap}
 						isSelecting={isSelecting}
 						syncSelectionHandles={syncSelectionHandles}
 						isScrubbingRef={isScrubbingRef}

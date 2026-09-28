@@ -4,6 +4,8 @@ import { db } from "~/db";
 import { user } from "~/db/auth-schema";
 import { socialAvatar, socialFeedEvent, socialProfile } from "~/db/schema";
 import { isAllowedAccountPictureUrl } from "./avatar";
+import { SocialError } from "./errors";
+import { validTimeZone } from "./http";
 import { onShareLiveReadingOff } from "./live";
 
 const AVATAR_PATH = "/api/social/avatar-image";
@@ -30,6 +32,7 @@ export async function getOwnProfile(userId: string): Promise<OwnSocialProfile | 
 			showHighlights: socialProfile.showHighlights,
 			feedEnabled: socialProfile.feedEnabled,
 			shareLiveReading: socialProfile.shareLiveReading,
+			timeZone: socialProfile.timeZone,
 			avatarId: socialAvatar.id,
 		})
 		.from(user)
@@ -52,6 +55,7 @@ export async function getOwnProfile(userId: string): Promise<OwnSocialProfile | 
 		showHighlights: row.showHighlights ?? true,
 		feedEnabled: row.feedEnabled ?? true,
 		shareLiveReading: row.shareLiveReading ?? true,
+		timeZone: row.timeZone ?? null,
 	};
 }
 
@@ -60,6 +64,9 @@ export async function updateOwnProfile(
 	patch: UpdateSocialProfileBody,
 ): Promise<void> {
 	const { name, bio, ...settings } = patch;
+	if (settings.timeZone !== undefined && !validTimeZone(settings.timeZone)) {
+		throw new SocialError("invalid");
+	}
 	const profileFields = {
 		...settings,
 		...(bio !== undefined ? { bio: bio === "" ? null : bio } : {}),

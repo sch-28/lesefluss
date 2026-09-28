@@ -7,7 +7,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-27 12:34'
-updated_date: '2026-09-27 23:21'
+updated_date: '2026-09-28 16:17'
 labels:
   - web
   - social
@@ -108,6 +108,9 @@ One correction to the notes above: `avatar-image/$id.ts` is not "keyed per clien
 
 ## Follow-up (2026-09-28)
 `avatar-image/$id.ts` now has a per-client rate limit, the same as cover images: `social-avatar-image:${getClientKey(request)}`, 600 per minute, checked before the id. On the dev server, 605 requests gave 600 404s and 5 429s with Retry-After. Typecheck and Biome are clean.
+
+## Correction (2026-09-28): the race routes no longer exist
+The notes above list `race.ts` and `race-stream.ts` among the routes left off the factory. TASK-171.15 removed both, and TASK-171.12 was archived. Their successors are `api/social/live.ts`, which uses the factory (`socialPost`), and `api/social/live-stream.ts`, which uses `socialAction` with a UUID check. The `avatar-image/$id` rate limit added under this task is a separate follow-up that the review noted belongs outside a pure refactor. It is recorded here only.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

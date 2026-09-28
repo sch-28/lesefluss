@@ -21,6 +21,10 @@ import { identityOf, isSociallyVisible, loadSocialUsers } from "./relationship";
 const DAY_MS = 86_400_000;
 const CLEANUP_BATCH = 500;
 
+/** Reading the feed and deleting from it are counted apart, so deletes never spend the reading budget. */
+export const FEED_READ_LIMIT = { key: "social-feed", max: 120, windowMs: 60_000 };
+export const FEED_DELETE_LIMIT = { key: "social-feed-delete", max: 60, windowMs: 60_000 };
+
 /** The `sync_books` columns the transition check reads, before and after a push. */
 export const feedBookColumns = {
 	bookId: syncBooks.bookId,

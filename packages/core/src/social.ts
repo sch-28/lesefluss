@@ -74,6 +74,7 @@ export const UpdateSocialProfileBodySchema = z.object({
 	showHighlights: z.boolean().optional(),
 	feedEnabled: z.boolean().optional(),
 	shareLiveReading: z.boolean().optional(),
+	timeZone: z.string().max(64).optional(),
 });
 export const AvatarSourceBodySchema = z.object({ source: z.enum(["account", "none"]) });
 
@@ -112,6 +113,8 @@ export type OwnSocialProfile = {
 	feedEnabled: boolean;
 	/** Whether buddy-read members see this user reading live; off also hides theirs. */
 	shareLiveReading: boolean;
+	/** The zone the server dates this user's reading in; only ever sent to the user. */
+	timeZone: string | null;
 };
 
 export function initialsFor(name: string): string {

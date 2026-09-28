@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { randomUUID } from "node:crypto";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { db } from "~/db";
 import { user } from "~/db/auth-schema";
@@ -16,7 +16,7 @@ import { createBuddyRead, respondToBuddyReadInvite } from "./buddy-reads";
 import { createFriendship } from "./friends";
 import { claimHandle } from "./handle";
 import { listInbox } from "./inbox";
-import { liveBoard, reportLive, snapshotFor, stopLive } from "./live";
+import { liveBoard, openLiveStream, reportLive, snapshotFor, stopLive, sweep } from "./live";
 import { updateOwnProfile } from "./profile";
 
 vi.mock("~/lib/mailer", () => ({ sendMail: vi.fn(async () => {}) }));
@@ -154,8 +154,52 @@ describe.skipIf(!hasDb)("live board (integration)", () => {
 			snapshotFor(readId, await viewer(ada), Date.now()).members.map((m) => m.userId),
 		).not.toContain(bo);
 
-		const optedOut = snapshotFor(readId, { ...(await viewer(bo)), isLive: false }, Date.now());
-		expect(optedOut).toEqual({ buddyReadId: readId, live: false, members: [] });
+		await reportLive(cy, readId, report(70));
+		const stream = await openLiveStream(bo, readId, new AbortController().signal);
+		expect(await firstSnapshot(stream)).toEqual({ buddyReadId: readId, live: false, members: [] });
 		await updateOwnProfile(bo, { shareLiveReading: true });
 	});
+
+	test("the sweep reads a viewer's stored opt-out and turns their open stream off", async () => {
+		await reportLive(cy, readId, report(90));
+		const stream = await openLiveStream(bo, readId, new AbortController().signal);
+		const reader = (stream.body as ReadableStream<Uint8Array>).getReader();
+		try {
+			const before = await nextSnapshot(reader);
+			expect(before).toMatchObject({
+				live: true,
+				members: [expect.objectContaining({ userId: cy })],
+			});
+			await updateOwnProfile(bo, { shareLiveReading: false });
+			await sweep(new Date());
+			expect(await nextSnapshot(reader)).toEqual({ buddyReadId: readId, live: false, members: [] });
+		} finally {
+			await reader.cancel();
+			await updateOwnProfile(bo, { shareLiveReading: true });
+		}
+	});
+
+	test("a buddy read that is no longer in progress takes no reports and opens no stream", async () => {
+		await db.update(buddyRead).set({ status: "finished" }).where(eq(buddyRead.id, readId));
+		try {
+			await expect(reportLive(bo, readId, report(80))).rejects.toMatchObject({ code: "not_found" });
+			await expect(openLiveStream(bo, readId, new AbortController().signal)).rejects.toMatchObject({
+				code: "not_found",
+			});
+		} finally {
+			await db.update(buddyRead).set({ status: "in_progress" }).where(eq(buddyRead.id, readId));
+		}
+	});
 });
+
+async function nextSnapshot(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<unknown> {
+	const { value } = await reader.read();
+	return JSON.parse(new TextDecoder().decode(value).split("data: ")[1] ?? "null");
+}
+
+async function firstSnapshot(res: Response): Promise<unknown> {
+	const reader = (res.body as ReadableStream<Uint8Array>).getReader();
+	const { value } = await reader.read();
+	await reader.cancel();
+	return JSON.parse(new TextDecoder().decode(value).split("data: ")[1] ?? "null");
+}

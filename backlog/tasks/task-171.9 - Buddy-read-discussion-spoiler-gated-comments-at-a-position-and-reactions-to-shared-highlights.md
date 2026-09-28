@@ -7,7 +7,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-25 22:12'
-updated_date: '2026-09-27 13:01'
+updated_date: '2026-09-28 16:18'
 labels:
   - social
   - web
@@ -170,6 +170,9 @@ Implementation notes (verified against the code):
 
 ## Decision (2026-09-27)
 Asked whether sharing a single highlight duplicates commenting on a selected passage. Decision: keep both as they are (private highlights, individual share, share-all, and comments).
+
+## Correction after the branch review (2026-09-28)
+Better-auth's `/delete-user` and `/admin/remove-user` are disabled (`auth.ts` `disabledPaths`, TASK-171.13), and there is no delete hook. AC #21's deletion paths all go through `deleteUserAccount` (`purgeDiscussionOf` runs inside it). The comment and reaction rate limits have no tests yet (TASK-175.4).
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

@@ -1,7 +1,8 @@
 import { LIVE_REPORT_INTERVAL_MS, type LiveMember } from "@lesefluss/core";
-import { useEffect, useRef } from "react";
-import { liveClient, useLiveBoard } from "@/services/social/live";
+import { useEffect, useRef, useState } from "react";
+import { isPermanentLiveError, liveClient, useLiveBoard } from "@/services/social/live";
 import { useOwnSocialProfile } from "@/services/social/profile";
+import { IS_WEB_BUILD } from "@/services/sync/session";
 
 type Options = {
 	buddyReadId: string | null;
@@ -28,13 +29,19 @@ export function useLiveReading({
 }: Options): Map<string, LiveMember> {
 	const isActive = buddyReadId !== null && isForeground && isOnline;
 	const profile = useOwnSocialProfile(isActive);
+	const [isRejected, setIsRejected] = useState(false);
 	const sharesLive = isActive && profile.data?.shareLiveReading === true;
-	const snapshot = useLiveBoard(buddyReadId, sharesLive);
+	const { snapshot, isUnavailable } = useLiveBoard(buddyReadId, sharesLive);
+	const reports = sharesLive && !isUnavailable && !isRejected;
+
+	useEffect(() => {
+		setIsRejected(false);
+	}, [buddyReadId]);
 	const latest = useRef({ getPosition, mode, dialWpm });
 	latest.current = { getPosition, mode, dialWpm };
 
 	useEffect(() => {
-		if (!sharesLive || !buddyReadId) return;
+		if (!reports || !buddyReadId) return;
 		// One report in flight at a time: a slow one landing after a newer one
 		// would put the reader back at the older position for everyone else.
 		let pending: Promise<void> | null = null;
@@ -44,19 +51,25 @@ export function useLiveReading({
 			if (position === null || pending) return;
 			pending = liveClient
 				.report(buddyReadId, position, m, m === "rsvp" ? dial : null)
-				.catch(() => {})
+				.catch((err) => {
+					if (isPermanentLiveError(err)) setIsRejected(true);
+				})
 				.finally(() => {
 					pending = null;
 				});
 		};
 		report();
 		const t = setInterval(report, LIVE_REPORT_INTERVAL_MS);
+		// A closing web tab never runs the cleanup below; keepalive lets this outlive the page.
+		const onPageHide = () => void liveClient.stop(buddyReadId, true).catch(() => {});
+		if (IS_WEB_BUILD) window.addEventListener("pagehide", onPageHide);
 		return () => {
 			clearInterval(t);
+			if (IS_WEB_BUILD) window.removeEventListener("pagehide", onPageHide);
 			// After any report still in flight, or that report would mark them reading again.
 			void (pending ?? Promise.resolve()).then(() => liveClient.stop(buddyReadId)).catch(() => {});
 		};
-	}, [sharesLive, buddyReadId]);
+	}, [reports, buddyReadId]);
 
 	return new Map((snapshot?.members ?? []).map((m) => [m.userId, m]));
 }

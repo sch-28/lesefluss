@@ -1,11 +1,11 @@
 ---
 id: TASK-171.12
 title: Live reading races in a buddy read
-status: Done
+status: To Do
 assignee:
   - '@claude'
 created_date: '2026-09-25 22:12'
-updated_date: '2026-09-28 11:03'
+updated_date: '2026-09-28 16:16'
 labels:
   - social
   - app
@@ -63,30 +63,30 @@ Implementation notes (verified against the code):
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [x] #1 A buddy-read participant can start a race with a word goal (100 to 20,000), a chapter goal or a time goal (1 to 60 minutes); out-of-range goals are rejected
-- [x] #2 Other participants receive an in-app invite that shows as expired once the 2-minute lobby closes, and tapping an expired invite explains that the race has started or ended
-- [x] #3 A lobby that closes with fewer than two joined racers cancels the race and tells the starter nobody joined; the starter can cancel the lobby or start early once another racer has joined
-- [x] #4 Joined racers see a shared countdown that starts at the same moment regardless of device clock offset
-- [x] #5 During a race, each racer sees the other racers' words read, rank and gap update within about 2 seconds in RSVP, scroll and page modes
-- [x] #6 The race overlay, stream and results never expose another racer's book position, chapter or chapter title, and members who did not join receive no live race data
-- [x] #7 Race streaming and position reports work on native (bearer) and on the web build (cookie)
-- [x] #8 Position reports from users who are not joined racers or not current buddy-read members, or with positions beyond their copy's word count, are rejected
-- [x] #9 Scores are computed server-side as words read during the race, using the same plausibility rule as the reading-session tracker, shared from packages/core
-- [x] #10 A forward jump beyond the plausibility rule, a backward jump, or an RSVP dial value above MAX_PLAUSIBLE_WPM does not increase a racer's score beyond the cap
-- [x] #11 The chapter goal ends at the start of the racer's next chapter, at the end of the book in the last chapter, or at the end of the book when it has no chapters
-- [x] #12 Time races rank by words read; word and chapter races rank by finish time with non-finishers below ordered by words read; ties share a rank
-- [x] #13 A racer who leaves is DNF immediately; one who disconnects is DNF after 60 seconds; one who reconnects within 60 seconds continues with their score intact
-- [x] #14 A racer who deletes the book, leaves the buddy read or is removed during a race becomes DNF
-- [x] #15 The race ends at the goal, at the 60-minute cap for word and chapter goals, or when everyone has finished or is DNF
-- [x] #16 Only one race or open lobby can exist per buddy read, and a second start is refused with a clear error
-- [x] #17 Race starts are rate-limited to one per buddy read every 5 minutes and 10 per user per hour
-- [x] #18 Start race is disabled with a reason when offline or when no other member is active, and a stream that fails or ends without a result shows race aborted while the reader keeps working
-- [x] #19 A results screen shows rank, words read, average WPM and DNF status per racer, and the result is posted to the buddy-read discussion as an unanchored item that stores user ids, not handles, and contains no chapter titles or positions
-- [x] #20 Participants with a block between them do not see each other in the lobby, overlay, results screen or result post
-- [x] #21 Race position updates are not persisted beyond the result, and normal position sync and reading-session recording are unaffected
-- [x] #22 Account deletion through all three paths removes the user's racer rows from result posts and deletes posts with no racers left, while other racers' rows remain, verified in account-deletion.integration.test.ts
-- [x] #23 Tests cover scoring, the plausibility cap, ranking per goal type including ties, lobby cancellation, DNF and reconnect handling, race end conditions and position-report validation
-- [x] #24 CONTEXT.md defines race, and the privacy policy states who receives live race progress, that it is held only in memory for the race, and how long race results are kept
+- [ ] #1 A buddy-read participant can start a race with a word goal (100 to 20,000), a chapter goal or a time goal (1 to 60 minutes); out-of-range goals are rejected
+- [ ] #2 Other participants receive an in-app invite that shows as expired once the 2-minute lobby closes, and tapping an expired invite explains that the race has started or ended
+- [ ] #3 A lobby that closes with fewer than two joined racers cancels the race and tells the starter nobody joined; the starter can cancel the lobby or start early once another racer has joined
+- [ ] #4 Joined racers see a shared countdown that starts at the same moment regardless of device clock offset
+- [ ] #5 During a race, each racer sees the other racers' words read, rank and gap update within about 2 seconds in RSVP, scroll and page modes
+- [ ] #6 The race overlay, stream and results never expose another racer's book position, chapter or chapter title, and members who did not join receive no live race data
+- [ ] #7 Race streaming and position reports work on native (bearer) and on the web build (cookie)
+- [ ] #8 Position reports from users who are not joined racers or not current buddy-read members, or with positions beyond their copy's word count, are rejected
+- [ ] #9 Scores are computed server-side as words read during the race, using the same plausibility rule as the reading-session tracker, shared from packages/core
+- [ ] #10 A forward jump beyond the plausibility rule, a backward jump, or an RSVP dial value above MAX_PLAUSIBLE_WPM does not increase a racer's score beyond the cap
+- [ ] #11 The chapter goal ends at the start of the racer's next chapter, at the end of the book in the last chapter, or at the end of the book when it has no chapters
+- [ ] #12 Time races rank by words read; word and chapter races rank by finish time with non-finishers below ordered by words read; ties share a rank
+- [ ] #13 A racer who leaves is DNF immediately; one who disconnects is DNF after 60 seconds; one who reconnects within 60 seconds continues with their score intact
+- [ ] #14 A racer who deletes the book, leaves the buddy read or is removed during a race becomes DNF
+- [ ] #15 The race ends at the goal, at the 60-minute cap for word and chapter goals, or when everyone has finished or is DNF
+- [ ] #16 Only one race or open lobby can exist per buddy read, and a second start is refused with a clear error
+- [ ] #17 Race starts are rate-limited to one per buddy read every 5 minutes and 10 per user per hour
+- [ ] #18 Start race is disabled with a reason when offline or when no other member is active, and a stream that fails or ends without a result shows race aborted while the reader keeps working
+- [ ] #19 A results screen shows rank, words read, average WPM and DNF status per racer, and the result is posted to the buddy-read discussion as an unanchored item that stores user ids, not handles, and contains no chapter titles or positions
+- [ ] #20 Participants with a block between them do not see each other in the lobby, overlay, results screen or result post
+- [ ] #21 Race position updates are not persisted beyond the result, and normal position sync and reading-session recording are unaffected
+- [ ] #22 Account deletion through all three paths removes the user's racer rows from result posts and deletes posts with no racers left, while other racers' rows remain, verified in account-deletion.integration.test.ts
+- [ ] #23 Tests cover scoring, the plausibility cap, ranking per goal type including ties, lobby cancellation, DNF and reconnect handling, race end conditions and position-report validation
+- [ ] #24 CONTEXT.md defines race, and the privacy policy states who receives live race progress, that it is held only in memory for the race, and how long race results are kept
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -206,6 +206,9 @@ Tests: web 203 (with the database), core 130, app 673. Typechecks clean. APK reb
 
 ## Superseded (2026-09-28)
 After the device demo, the owner dropped the race format. TASK-171.15 replaces it with an always-on live board and removes all race code, tables and UI. None of this was ever committed or deployed. The shared credit bucket in `packages/core` (`reading-credit.ts`) stays.
+
+## Archived (2026-09-28): superseded, not delivered
+This task is archived rather than left Done. Its race format was built and device-tested, then dropped by the owner and removed completely in TASK-171.15, which replaced it with an always-on live board. None of the race code, tables or UI shipped: it was never committed and never deployed. The acceptance criteria and final summary above describe code that no longer exists. The only surviving piece is `packages/core/src/reading-credit.ts` (the shared credit bucket), which TASK-171.15 and the session tracker use.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

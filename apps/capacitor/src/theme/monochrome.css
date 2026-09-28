@@ -224,6 +224,8 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	   what elementFromPoint returns during a drag). */
 	user-select: none;
 	-webkit-user-select: none;
+	/* Selection is our own long press; the native callout would cover it. */
+	-webkit-touch-callout: none;
 }
 
 .reader-paragraph span {

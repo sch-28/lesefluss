@@ -2,7 +2,7 @@ import { FeedDeleteBodySchema } from "@lesefluss/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { cors } from "~/lib/cors-middleware";
 import { requireAuth } from "~/lib/session-middleware";
-import { deleteFeedEvent } from "~/lib/social/feed";
+import { deleteFeedEvent, FEED_DELETE_LIMIT } from "~/lib/social/feed";
 import { socialPost } from "~/lib/social/http";
 
 export const Route = createFileRoute("/api/social/feed-delete")({
@@ -10,7 +10,7 @@ export const Route = createFileRoute("/api/social/feed-delete")({
 		middleware: [cors, requireAuth],
 		handlers: {
 			POST: socialPost({
-				limit: { key: "social-feed", max: 120, windowMs: 60_000 },
+				limit: FEED_DELETE_LIMIT,
 				schema: FeedDeleteBodySchema,
 				run: async (userId, body) => {
 					await deleteFeedEvent(userId, body.eventId);

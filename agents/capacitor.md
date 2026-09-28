@@ -40,6 +40,26 @@ WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true pnpm build
 
 Platform detection: `Capacitor.getPlatform() === "web"` (used throughout for BLE guards, UI hiding). Web build detection: `import.meta.env.VITE_WEB_BUILD === "true"` (used for auth and sync differences).
 
+On the web, the SQLite database lives in IndexedDB through jeep-sqlite, which rewrites the whole entry after every write. `patches/jeep-sqlite@2.8.0.patch` makes that rewrite a single put: unpatched, it deleted the entry first, so leaving the page mid-save lost the whole local database (TASK-175.6). Keep the patch until upstream saves with one put; `e2e-app/local-store-unload.spec.ts` guards it.
+
+## E2E tests
+
+- **`pnpm e2e`** (`playwright.config.ts`, `e2e/`): the dev server at `/`, no backend.
+- **`pnpm e2e:app`** (`playwright.app.config.ts`, `e2e-app/`): the web build as users get it at `/app`, against the production `apps/web` server on port 3417.
+  - `e2e-app/support/serve.mjs` does the setup. It creates a throwaway Postgres database (`lesefluss_e2e_app_<timestamp>`), runs `drizzle-kit migrate` and seeds verified test accounts (`e2e-app/support/users.mjs`). It then builds the embed and the website the way the Dockerfile does and runs `.output/server/index.mjs`. The database is dropped once the server stops, and leftovers from killed runs are dropped at the next start.
+  - The `setup` project signs every account in through the real `/login` page, saves the cookie sessions in `e2e-app/.auth/` and seeds friendships and a buddy read over the HTTP API.
+  - **Needs:** a local Postgres, taken from `E2E_APP_PG_URL` or the server in `apps/web/.env`'s `DATABASE_URL`; only a new database on it is touched.
+  - **`E2E_APP_REUSE_BUILD=1`** skips the build (about 15 s) when `apps/web/.output` and `public/app` exist. Only use it when nothing under `apps/` changed.
+  - **Covers:**
+    - the selection toolbar (Escape, margin click, resize);
+    - signing in from onboarding and from the social tab, and returning to `/app`;
+    - an invite link redeemed through the web app;
+    - the live board dropping a closed tab;
+    - the website's activity toggles;
+    - `/app` assets loading without 404s at phone and desktop sizes;
+    - the local database surviving an unload mid-save.
+  - Not wired into CI. That would need a Postgres service container and `E2E_APP_PG_URL` pointing at it, plus `pnpm exec playwright install chromium`.
+
 ## File Structure
 
 ```

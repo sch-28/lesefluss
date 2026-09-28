@@ -86,6 +86,25 @@ describe("live board", () => {
 		expect(b.members(READ, later + 25 * SEC)[0]?.wpm).toBe(0);
 	});
 
+	test("a stop sent before the latest report is ignored; a later one or one without a time applies", () => {
+		const { board: b } = board();
+		const at = (sentAt?: number) => ({
+			position: 10,
+			mode: "scroll" as const,
+			dialWpm: null,
+			sentAt,
+		});
+		b.report(READ, "ann", at(5_000), 10_000, T0);
+		b.stop(READ, "ann", 4_000);
+		expect(b.members(READ, T0)).toHaveLength(1);
+		b.stop(READ, "ann", 6_000);
+		expect(b.members(READ, T0)).toHaveLength(0);
+
+		b.report(READ, "ann", at(7_000), 10_000, T0);
+		b.stop(READ, "ann");
+		expect(b.members(READ, T0)).toHaveLength(0);
+	});
+
 	test("stop ends reading now at once, for one read or everywhere", () => {
 		const { board: b } = board();
 		b.report(READ, "ann", { position: 0, mode: "scroll", dialWpm: null }, 10_000, T0);

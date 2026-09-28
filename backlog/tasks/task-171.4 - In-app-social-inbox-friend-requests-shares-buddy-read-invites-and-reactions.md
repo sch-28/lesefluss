@@ -5,7 +5,7 @@ status: Done
 assignee:
   - claude
 created_date: '2026-09-25 22:10'
-updated_date: '2026-09-26 17:54'
+updated_date: '2026-09-28 16:17'
 labels:
   - social
   - web
@@ -143,6 +143,16 @@ Confirmed and fixed:
 - Privacy page: the released-handle paragraph claimed the hold keeps no link to the account; it keeps the owner so only they can reclaim it. Copy corrected. CONTEXT.md inbox entry describes the kept-versus-removed item rule.
 
 Not changed: order-dependent inbox integration tests (sequential by design, noted), inline cleanup in account-deletion tests (per-run ids, no shared-state risk). Correctness reviewer found no defects.
+
+## Corrections after the branch review (2026-09-28)
+- **Deletion paths:** the description's "three deletion paths" (line ~49), including better-auth's `afterDelete` hook, is out of date. `/delete-user` and `/admin/remove-user` are disabled (`auth.ts` `disabledPaths`, TASK-171.13), and every deletion goes through `deleteUserAccount`. AC #12 is met through that single path.
+- **Accept and decline behaviour, as the code does it** (`apps/web/src/lib/social/inbox-hooks.ts`):
+  - Accepting or declining a friend request marks the recipient's `friend_request_received` item read; it is not deleted. Its state (accepted or declined) is derived when the inbox is read.
+  - A cancel or a block deletes that item.
+  - Only an accept notifies the other side: the requester gets one `friend_request_accepted` item.
+  - A mutual accept, where both sent requests, closes the second request as accepted too, but only the first sender gets an "accepted" item.
+  - Declines, cancels and blocks stay silent.
+  - The final summary's "accept/decline delete the received item" and "one accepted item per side" do not match this, and AC #1 should be read this way.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

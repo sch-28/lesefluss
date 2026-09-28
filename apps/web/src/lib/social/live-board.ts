@@ -20,6 +20,8 @@ type Reader = {
 	sittingStartedAt: number;
 	credited: number;
 	budget: number;
+	/** The client's send time of the latest report, when the client sends one. */
+	lastSentAt: number | null;
 };
 
 /**
@@ -50,6 +52,7 @@ export class LiveBoard {
 				sittingStartedAt: now,
 				credited: 0,
 				budget: 0,
+				lastSentAt: report.sentAt ?? null,
 			});
 		} else {
 			const elapsed = Math.min(now - prev.lastSeenAt, MAX_REFILL_MS);
@@ -62,13 +65,23 @@ export class LiveBoard {
 				lastSeenAt: now,
 				credited: prev.credited + spent.credited,
 				budget: spent.budget,
+				lastSentAt: report.sentAt ?? prev.lastSentAt,
 			});
 		}
 		this.onChange(buddyReadId);
 	}
 
-	stop(buddyReadId: string, userId: string): void {
-		if (this.reads.get(buddyReadId)?.delete(userId)) this.onChange(buddyReadId);
+	/**
+	 * A stop the client sent before its latest report arrived out of order and
+	 * is ignored, so the reader does not vanish until their next report.
+	 */
+	stop(buddyReadId: string, userId: string, sentAt?: number): void {
+		const readers = this.reads.get(buddyReadId);
+		const r = readers?.get(userId);
+		if (!readers || !r) return;
+		if (sentAt !== undefined && r.lastSentAt !== null && sentAt < r.lastSentAt) return;
+		readers.delete(userId);
+		this.onChange(buddyReadId);
 	}
 
 	stopEverywhere(userId: string): void {

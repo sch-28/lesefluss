@@ -4,7 +4,7 @@ title: Push notifications for social events
 status: To Do
 assignee: []
 created_date: '2026-09-25 22:12'
-updated_date: '2026-09-25 22:55'
+updated_date: '2026-09-28 16:17'
 labels:
   - social
   - app
@@ -96,4 +96,7 @@ Cross-task contracts (from the final review of the TASK-171 set):
 - Discussion previews call TASK-171.9's exported spoiler-gating function at send time.
 - Unmapped types are not pushed. That covers TASK-171.12's race invites, the TASK-171.7 "shared book removed" item and the TASK-171.6 statement-of-reasons and notice-decision items. Adding a category for race invites is a separate follow-up.
 - Push preferences live in a server-only table or on TASK-171.1's `social_profile` row, never in `sync_settings`. A tap target that needs a new https link path follows TASK-171.3's `docs/deep-links.md` (website page first, then the intent filter); plain in-app routes do not need that.
+
+## Correction (2026-09-28): races are gone
+TASK-171.12 (live reading races) was dropped and archived without shipping. TASK-171.15 (the live board) replaced it. The `race_invite` inbox type never shipped. Ignore the race mentions in this task's out-of-scope line and in the note on unmapped types that says race invites are not pushed. The live board sends no inbox items or notifications, so it adds no push category.
 <!-- SECTION:NOTES:END -->

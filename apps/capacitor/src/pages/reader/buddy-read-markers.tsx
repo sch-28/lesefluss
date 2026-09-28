@@ -72,11 +72,28 @@ export function useBuddyReadMarkers(
 	return { markers, approximate: progress.data?.approximate ?? false };
 }
 
-function relativeTo(theirs: number, mine: number, approximate: boolean): string {
+function relativeTo(theirs: number, mine: number): string {
 	const delta = theirs - mine;
 	if (Math.abs(delta) < 10) return "level with you";
-	const words = `${approximate ? "about " : ""}${Math.abs(delta).toLocaleString()} words`;
+	const words = `${Math.abs(delta).toLocaleString()} words`;
 	return delta > 0 ? `${words} ahead` : `${words} behind`;
+}
+
+/**
+ * The popover's second line. When copies' word counts differ the word gap is
+ * unreliable, so it is left out, as on the buddy-read page.
+ */
+export function markerDetail(
+	marker: Pick<BuddyMarker, "live" | "wordPosition">,
+	myWord: number,
+	approximate: boolean,
+): string {
+	const parts: string[] = [];
+	if (marker.live) {
+		parts.push(marker.live.wpm !== null ? `reading now · ${marker.live.wpm} wpm` : "reading now");
+	}
+	if (!approximate) parts.push(relativeTo(marker.wordPosition, myWord));
+	return parts.join(" · ");
 }
 
 /**
@@ -154,15 +171,12 @@ export function BuddyReadMarkers({
 								{m.name} <span className="reader-buddy-popover-handle">@{m.handle}</span> ·{" "}
 								{Math.round(m.percent)}%
 							</div>
-							<div className="reader-buddy-popover-handle">
-								{m.live && (
-									<>
-										<span className="reader-buddy-live-dot" /> reading now
-										{m.live.wpm !== null && ` · ${m.live.wpm} wpm`} ·{" "}
-									</>
-								)}
-								{relativeTo(m.wordPosition, myWord, approximate)}
-							</div>
+							{markerDetail(m, myWord, approximate) && (
+								<div className="reader-buddy-popover-handle">
+									{m.live && <span className="reader-buddy-live-dot" />}{" "}
+									{markerDetail(m, myWord, approximate)}
+								</div>
+							)}
 						</div>
 					))}
 				</div>

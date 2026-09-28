@@ -17,6 +17,7 @@ import {
 	socialHandle,
 	socialNotice,
 	socialNotification,
+	socialRestriction,
 	syncBookCopy,
 	syncBooks,
 	syncHighlights,
@@ -25,6 +26,7 @@ import {
 import { deleteUserAccount } from "~/lib/account-deletion";
 import { decideNotice } from "~/lib/moderation/decide";
 import { createNotice } from "~/lib/moderation/notices";
+import { suspendSharing, suspensionUntil } from "~/lib/moderation/restrictions";
 import {
 	addReaction,
 	deleteComment,
@@ -383,6 +385,44 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 		expect(await bodiesFor(alice)).not.toContain("hl:a passage");
 		await updateDiscussionSettings(bob, { buddyReadId: readId, shareAllHighlights: false });
 		expect((await bodiesFor(alice)).filter((b) => b.startsWith("hl:"))).toEqual([]);
+	});
+
+	test("a 30-day sharing suspension refuses sharing highlights until it runs out", async () => {
+		const DAY_MS = 86_400_000;
+		const day29 = new Date(now.getTime() + 29 * DAY_MS);
+		const day31 = new Date(now.getTime() + 31 * DAY_MS);
+		await addHighlight(carol, "hl-carol-s", 30, 31, "while suspended");
+		await db.transaction((tx) =>
+			suspendSharing(tx, {
+				userId: carol,
+				until: suspensionUntil("30d", now),
+				reason: "test",
+				noticeId: null,
+				createdBy: "admin",
+				now,
+			}),
+		);
+		try {
+			const single = (at: Date) =>
+				shareHighlight(carol, { buddyReadId: readId, highlightId: "hl-carol-s" }, at);
+			const shareAll = (at: Date) =>
+				updateDiscussionSettings(carol, { buddyReadId: readId, shareAllHighlights: true }, at);
+			await expect(single(day29)).rejects.toMatchObject({ code: "suspended" });
+			await expect(shareAll(day29)).rejects.toMatchObject({ code: "suspended" });
+			// Only switching share-all on is gated; switching it off stays possible.
+			await updateDiscussionSettings(
+				carol,
+				{ buddyReadId: readId, shareAllHighlights: false },
+				day29,
+			);
+
+			const { sharedHighlightId } = await single(day31);
+			await shareAll(day31);
+			await updateDiscussionSettings(carol, { buddyReadId: readId, shareAllHighlights: false });
+			await unshareHighlight(carol, sharedHighlightId);
+		} finally {
+			await db.delete(socialRestriction).where(eq(socialRestriction.userId, carol));
+		}
 	});
 
 	test("a block hides both people from each other everywhere in the discussion", async () => {

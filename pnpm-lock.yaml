@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  jeep-sqlite@2.8.0:
+    hash: f57600007f8da86ed7181240496c91d6f250f6bec18416b645c416532e076d3e
+    path: patches/jeep-sqlite@2.8.0.patch
+
 importers:
 
   .:
@@ -127,7 +132,7 @@ importers:
         version: 12.38.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       jeep-sqlite:
         specifier: ^2.8.0
-        version: 2.8.0
+        version: 2.8.0(patch_hash=f57600007f8da86ed7181240496c91d6f250f6bec18416b645c416532e076d3e)
       lucide-react:
         specifier: 1.8.0
         version: 1.8.0(react@19.2.4)
@@ -7773,7 +7778,7 @@ snapshots:
   '@capacitor-community/sqlite@8.0.1(@capacitor/core@8.5.0)':
     dependencies:
       '@capacitor/core': 8.5.0
-      jeep-sqlite: 2.8.0
+      jeep-sqlite: 2.8.0(patch_hash=f57600007f8da86ed7181240496c91d6f250f6bec18416b645c416532e076d3e)
 
   '@capacitor/android@8.5.0(@capacitor/core@8.5.0)':
     dependencies:
@@ -12413,7 +12418,7 @@ snapshots:
 
   isobject@3.0.1: {}
 
-  jeep-sqlite@2.8.0:
+  jeep-sqlite@2.8.0(patch_hash=f57600007f8da86ed7181240496c91d6f250f6bec18416b645c416532e076d3e):
     dependencies:
       '@stencil/core': 4.43.3
       browser-fs-access: 0.35.0

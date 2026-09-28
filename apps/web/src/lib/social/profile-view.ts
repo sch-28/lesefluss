@@ -193,7 +193,8 @@ async function friendCountOf(exec: DbExecutor, userId: string): Promise<number> 
 export type ProfileViewOptions = {
 	/** The owner previewing themselves as a friend would see them. */
 	asFriend?: boolean;
-	timeZone?: string;
+	/** The viewer's zone, used only while the owner has none stored (owners on builds that never send it). */
+	fallbackTimeZone?: string;
 	now?: Date;
 };
 
@@ -242,6 +243,8 @@ export async function resolveProfileView(
 		sections: {},
 	};
 
+	// The owner's dates and "this year" are theirs, whoever looks.
+	const ownerZone = profile?.timeZone ?? options.fallbackTimeZone;
 	const isShowingAll = relation === "self";
 	if (!isShowingAll && (profile?.visibility ?? "private") !== "friends") return view;
 
@@ -251,15 +254,12 @@ export async function resolveProfileView(
 	const isAllowed = (section: ProfileSection): boolean =>
 		isShowingAll || (profile?.[PROFILE_SECTIONS[section]] ?? true);
 	if (isAllowed("currentlyReading") || isAllowed("finished")) {
-		const shelves = await shelvesFor(exec, targetId, viewerId, options.timeZone);
+		const shelves = await shelvesFor(exec, targetId, viewerId, ownerZone);
 		if (isAllowed("currentlyReading")) view.sections.currentlyReading = shelves.currentlyReading;
 		if (isAllowed("finished")) view.sections.finished = shelves.finished;
 	}
 	if (isAllowed("stats")) {
-		view.sections.stats = await profileStatsFor(exec, targetId, {
-			timeZone: options.timeZone,
-			now,
-		});
+		view.sections.stats = await profileStatsFor(exec, targetId, { timeZone: ownerZone, now });
 	}
 	return view;
 }

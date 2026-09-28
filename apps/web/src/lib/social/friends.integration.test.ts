@@ -4,6 +4,11 @@
 // unset so it never breaks `pnpm test`. Run locally with:
 //   DATABASE_URL=postgres://postgres:postgres@localhost:5432/rsvp pnpm test social/friends
 import { randomUUID } from "node:crypto";
+import {
+	FRIEND_REQUEST_TTL_DAYS,
+	MAX_FRIENDS,
+	MAX_PENDING_OUTGOING_REQUESTS,
+} from "@lesefluss/core";
 import { and, eq, inArray, or } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { db } from "~/db";
@@ -14,6 +19,7 @@ import { SocialError } from "./errors";
 import {
 	blockUser,
 	cancelRequest,
+	createFriendship,
 	listRelationships,
 	removeFriend,
 	respondToRequest,
@@ -21,7 +27,7 @@ import {
 	unblockUser,
 } from "./friends";
 import { claimHandle } from "./handle";
-import { areFriends, canInteract } from "./relationship";
+import { areFriends, canInteract, orderedPair } from "./relationship";
 
 vi.mock("./buddy-read-eligibility", () => ({ sharesActiveBuddyRead: vi.fn(async () => true) }));
 const eligibility = vi.mocked(sharesActiveBuddyRead);
@@ -282,4 +288,104 @@ describe.skipIf(!hasDb)("friend graph (integration)", () => {
 		expect((await listRelationships(ids.alice)).friends).toHaveLength(0);
 		expect(await areFriends(db, ids.alice, ids.banned)).toBe(false);
 	});
+});
+
+describe.skipIf(!hasDb)("friend caps (integration)", () => {
+	const run = randomUUID().slice(0, 8);
+	const me = `test-cap-me-${run}`;
+	const [a, b, c] = ["a", "b", "c"].map((k) => `test-cap-${k}-${run}`) as [string, string, string];
+	const fillers = Array.from({ length: MAX_FRIENDS }, (_, i) => `test-cap-f${i}-${run}`);
+	const named = [me, a, b, c];
+	const now = new Date();
+
+	async function befriendFillers(userId: string, n: number) {
+		await db.insert(socialFriendship).values(
+			fillers.slice(0, n).map((f) => {
+				const [userLow, userHigh] = orderedPair(userId, f);
+				return { userLow, userHigh, acceptedAt: now };
+			}),
+		);
+	}
+
+	async function clearFriendships() {
+		await db
+			.delete(socialFriendship)
+			.where(
+				or(inArray(socialFriendship.userLow, named), inArray(socialFriendship.userHigh, named)),
+			);
+	}
+
+	async function expectLimit(promise: Promise<unknown>) {
+		await expect(promise).rejects.toMatchObject({ code: "limit_reached" });
+	}
+
+	beforeAll(async () => {
+		await db
+			.insert(user)
+			.values([...named, ...fillers].map((id) => ({ id, name: id, email: `${id}@example.test` })));
+		for (const [i, id] of named.entries()) await claimHandle(id, `cap${i}_${run}`, `Cap ${i}`);
+	});
+
+	afterAll(async () => {
+		await db.delete(user).where(inArray(user.id, [...named, ...fillers]));
+		const rows = await db.select({ handle: socialHandle.handle }).from(socialHandle);
+		const mine = rows.map((r) => r.handle).filter((h) => h.endsWith(`_${run}`));
+		if (mine.length > 0) await db.delete(socialHandle).where(inArray(socialHandle.handle, mine));
+	});
+
+	test("the pending cap allows the 100th outgoing request and refuses the 101st; expired ones do not count", async () => {
+		const expired = new Date(now.getTime() - (FRIEND_REQUEST_TTL_DAYS + 1) * DAY_MS);
+		await db.insert(socialFriendRequest).values([
+			...fillers.slice(0, MAX_PENDING_OUTGOING_REQUESTS - 1).map((f) => ({
+				requesterId: me,
+				addresseeId: f,
+				state: "pending" as const,
+				createdAt: now,
+			})),
+			{
+				requesterId: me,
+				addresseeId: fillers[MAX_PENDING_OUTGOING_REQUESTS] ?? "",
+				state: "pending",
+				createdAt: expired,
+			},
+		]);
+		try {
+			expect(await sendFriendRequest(me, a, now)).toBe("pending_outgoing");
+			await expectLimit(sendFriendRequest(me, b, now));
+			expect(await requestsBetween(me, b)).toHaveLength(0);
+		} finally {
+			await db.delete(socialFriendRequest).where(eq(socialFriendRequest.requesterId, me));
+		}
+	});
+
+	test("the friend cap allows the 1000th friend and refuses the 1001st, on either side", async () => {
+		try {
+			await befriendFillers(me, MAX_FRIENDS - 1);
+			await db.transaction((tx) => createFriendship(tx, me, a, now));
+			expect(await areFriends(db, me, a)).toBe(true);
+			await expectLimit(db.transaction((tx) => createFriendship(tx, me, b, now)));
+			await expectLimit(db.transaction((tx) => createFriendship(tx, b, me, now)));
+			expect(await areFriends(db, me, b)).toBe(false);
+			await clearFriendships();
+
+			await befriendFillers(c, MAX_FRIENDS);
+			await expectLimit(db.transaction((tx) => createFriendship(tx, me, c, now)));
+			await expectLimit(db.transaction((tx) => createFriendship(tx, c, me, now)));
+			expect(await areFriends(db, me, c)).toBe(false);
+		} finally {
+			await clearFriendships();
+		}
+	});
+
+	async function requestsBetween(x: string, y: string) {
+		return db
+			.select()
+			.from(socialFriendRequest)
+			.where(
+				or(
+					and(eq(socialFriendRequest.requesterId, x), eq(socialFriendRequest.addresseeId, y)),
+					and(eq(socialFriendRequest.requesterId, y), eq(socialFriendRequest.addresseeId, x)),
+				),
+			);
+	}
 });

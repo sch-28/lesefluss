@@ -1,12 +1,13 @@
 // @vitest-environment node
 import { randomUUID } from "node:crypto";
-import type { SyncBook } from "@lesefluss/core";
+import { FEED_RETENTION_DAYS, type SyncBook } from "@lesefluss/core";
 import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { db } from "~/db";
 import { user } from "~/db/auth-schema";
-import { socialFeedEvent, socialHandle, syncBooks } from "~/db/schema";
-import { deleteUserAccount } from "~/lib/account-deletion";
+import { socialFeedEvent, socialHandle, socialTakedown, syncBooks } from "~/db/schema";
+import { deleteUserAccount, purgeCloudData } from "~/lib/account-deletion";
+import { takeDownBooks } from "~/lib/moderation/takedown";
 import { upsertSyncBooks } from "~/lib/sync-book-upsert";
 import { deleteFeedEvent, listFeed } from "./feed";
 import { blockUser, createFriendship, removeFriend } from "./friends";
@@ -123,6 +124,7 @@ describe.skipIf(!hasDb)("activity feed (integration)", () => {
 	});
 
 	afterAll(async () => {
+		await db.delete(socialTakedown).where(inArray(socialTakedown.userId, all));
 		await db.delete(syncBooks).where(inArray(syncBooks.userId, all));
 		await db.delete(user).where(inArray(user.id, all));
 		const rows = await db.select({ handle: socialHandle.handle }).from(socialHandle);
@@ -269,6 +271,46 @@ describe.skipIf(!hasDb)("activity feed (integration)", () => {
 		const after = await listFeed(ann, { now });
 		expect(after.items[0]?.book.title).toBe("Book dddd0001");
 		expect((await eventsOf(dan)).map((e) => e.bookId)).not.toContain("dddd0000");
+	});
+
+	test("an event exactly 90 days old is shown; a millisecond older is hidden and removed", async () => {
+		await addBook(dan, "dddd2050");
+		await addBook(dan, "dddd2051");
+		await push(dan, "dddd2050", { wordPosition: 100 });
+		await push(dan, "dddd2051", { wordPosition: 100 });
+		const cutoff = now.getTime() - FEED_RETENTION_DAYS * DAY_MS;
+		const age = async (bookId: string, createdAt: number) =>
+			db
+				.update(socialFeedEvent)
+				.set({ createdAt: new Date(createdAt) })
+				.where(and(eq(socialFeedEvent.actorId, dan), eq(socialFeedEvent.bookId, bookId)));
+		await age("dddd2050", cutoff);
+		await age("dddd2051", cutoff - 1);
+		expect(await feedTitles(ann)).toEqual(["dan:started:Book dddd2050"]);
+		expect((await eventsOf(dan)).map((e) => e.bookId)).toEqual(["dddd2050"]);
+	});
+
+	test("a taken-down book's events and, after Clear cloud data, all the user's events are hidden", async () => {
+		for (const bookId of ["dddd2060", "dddd2061", "dddd2062"]) {
+			await addBook(dan, bookId);
+			await push(dan, bookId, { wordPosition: 100 });
+		}
+		expect(await feedTitles(ann)).toHaveLength(3);
+
+		await db.transaction((tx) =>
+			takeDownBooks(tx, [{ userId: dan, bookId: "dddd2060" }], null, "copy", now),
+		);
+		expect((await feedTitles(ann)).sort()).toEqual([
+			"dan:started:Book dddd2061",
+			"dan:started:Book dddd2062",
+		]);
+		expect((await listFeed(dan, { now })).items.map((i) => i.book.title)).not.toContain(
+			"Book dddd2060",
+		);
+
+		await db.transaction((tx) => purgeCloudData(tx, dan));
+		expect(await feedTitles(ann)).toEqual([]);
+		expect((await listFeed(dan, { now })).items).toEqual([]);
 	});
 
 	test("deleting an own event, the switch off, and account deletion remove events", async () => {

@@ -218,6 +218,13 @@
       "when": 1782518400000,
       "tag": "0030_live_reading_setting",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1782604800000,
+      "tag": "0031_owner_time_zone",
+      "breakpoints": true
     }
   ]
 }

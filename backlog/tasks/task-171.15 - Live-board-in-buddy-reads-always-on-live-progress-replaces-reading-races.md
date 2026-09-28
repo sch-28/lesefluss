@@ -5,14 +5,13 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-28 10:49'
-updated_date: '2026-09-28 14:50'
+updated_date: '2026-09-28 16:16'
 labels:
   - social
   - app
   - web
 dependencies:
   - TASK-171.8
-  - TASK-171.12
 parent_task_id: TASK-171
 priority: medium
 ---

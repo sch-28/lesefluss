@@ -4,7 +4,6 @@ import { requireAuth } from "~/lib/session-middleware";
 import { invalidPayloadResponse, socialAction, validTimeZone } from "~/lib/social/http";
 import { resolveProfileView } from "~/lib/social/profile-view";
 
-/** An unknown zone falls back to UTC rather than failing the whole view. */
 // Looked up by user id only; a handle is never a lookup key.
 export const Route = createFileRoute("/api/social/profile-view")({
 	server: {
@@ -17,8 +16,11 @@ export const Route = createFileRoute("/api/social/profile-view")({
 					const targetId = url.searchParams.get("userId");
 					if (!targetId || targetId.length > 100) return invalidPayloadResponse();
 					const asFriend = url.searchParams.get("as") === "friend" && targetId === viewerId;
-					const timeZone = validTimeZone(url.searchParams.get("tz"));
-					const view = await resolveProfileView(viewerId, targetId, { asFriend, timeZone });
+					const fallbackTimeZone = validTimeZone(url.searchParams.get("tz"));
+					const view = await resolveProfileView(viewerId, targetId, {
+						asFriend,
+						fallbackTimeZone,
+					});
 					return Response.json(view, { headers: { "Cache-Control": "private, no-store" } });
 				},
 			}),

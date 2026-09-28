@@ -21,6 +21,26 @@ const INTERACTIVE_SELECTOR = [
 
 const ACTIVE_OVERLAY_SELECTOR =
 	"ion-modal.show-modal, ion-popover.show-popover, ion-action-sheet.show-action-sheet";
+const TEXT_FIELD_SELECTOR = "input, textarea, [contenteditable=true]";
+
+/**
+ * Escape closes an open selection before anything else it could mean (leaving
+ * RSVP), even with a toolbar button focused. Typing in a field or an open
+ * overlay keeps its own Escape.
+ */
+export function shouldDismissSelectionOnKey(input: {
+	key: string;
+	hasSelection: boolean;
+	target: Element | null;
+	hasOverlay: boolean;
+}): boolean {
+	return (
+		input.key === "Escape" &&
+		input.hasSelection &&
+		!input.hasOverlay &&
+		!input.target?.closest(TEXT_FIELD_SELECTOR)
+	);
+}
 
 type Options = {
 	readerMode: "standard" | "rsvp";
@@ -32,6 +52,8 @@ type Options = {
 	lastOffsetRef: React.RefObject<number | null>;
 	handleRsvpToggle: () => void;
 	exitRsvpToStandard: (offset: number) => void;
+	hasSelection: boolean;
+	cancelSelection: () => void;
 };
 
 export function useKeyboardShortcuts({
@@ -44,14 +66,22 @@ export function useKeyboardShortcuts({
 	lastOffsetRef,
 	handleRsvpToggle,
 	exitRsvpToStandard,
+	hasSelection,
+	cancelSelection,
 }: Options) {
 	const handlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
 
 	handlerRef.current = (e: KeyboardEvent) => {
 		if (e.defaultPrevented) return;
 		const target = e.target instanceof Element ? e.target : null;
+		const hasOverlay = document.querySelector(ACTIVE_OVERLAY_SELECTOR) !== null;
+		if (shouldDismissSelectionOnKey({ key: e.key, hasSelection, target, hasOverlay })) {
+			e.preventDefault();
+			cancelSelection();
+			return;
+		}
 		if (target?.closest(INTERACTIVE_SELECTOR)) return;
-		if (document.querySelector(ACTIVE_OVERLAY_SELECTOR)) return;
+		if (hasOverlay) return;
 
 		if (isBlocked) return;
 

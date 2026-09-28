@@ -67,4 +67,26 @@ describe("computeToolbarPosition", () => {
 		);
 		expect(left).toBe(400 - 12 - 200);
 	});
+
+	it("follows the new viewport after a resize or rotation", () => {
+		const selection = { startRect: rect(300, 300, 30), endRect: rect(300, 320, 30) };
+		const wide = computeToolbarPosition(
+			base({ ...selection, viewport: { width: 800, height: 800 } }),
+		);
+		expect(wide.left).toBe((300 + 350) / 2 - 100);
+		// Narrower: the same words now sit at the right edge and the toolbar is clamped.
+		const narrow = computeToolbarPosition(
+			base({ ...selection, viewport: { width: 400, height: 800 } }),
+		);
+		expect(narrow.left).toBe(400 - 12 - 200);
+		// Landscape: the words moved up and there is no room above, so it flips below.
+		const landscape = computeToolbarPosition(
+			base({
+				startRect: rect(60, 100),
+				endRect: rect(60, 200),
+				viewport: { width: 800, height: 400 },
+			}),
+		);
+		expect(landscape.top).toBe(80 + 30 + 4);
+	});
 });

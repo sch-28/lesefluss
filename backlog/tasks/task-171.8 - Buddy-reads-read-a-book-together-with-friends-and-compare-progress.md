@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-25 22:11'
-updated_date: '2026-09-27 10:59'
+updated_date: '2026-09-28 16:18'
 labels:
   - social
   - web
@@ -197,6 +197,11 @@ Full device pass (2026-09-27, Pixel + web build, `lesefluss_phone`): start from 
 Fixed during the pass: last-active used calendar days ("yesterday" for 3 h ago), now `formatAgo`; on-pace compared a fractional elapsed share so 0% read as behind minutes after the start, now whole percents (test added); empty-state copy with only finished reads; SocialGate hid cached pages once a refetch failed (pre-existing from 171.3), now blocks only without data; finished member with unknown word count showed an empty bar; accepted invite card lost "Hosted by" once the viewer became host.
 
 Open, not fixed: Android WebView never reports offline (navigator.onLine stays true in airplane mode), so offline notices and disabled actions never engage on native; social cache is memory-only, so a cold start without the server shows only the gate's retry; web build flashes the signed-out gate before the session is restored; the sync upsert overwrites `word_count` with a pushed null, which turns a member's percent into unknown.
+
+## Corrections and later changes (2026-09-28)
+- **Deletion paths:** better-auth's `/delete-user` and `/admin/remove-user` are disabled (`auth.ts` `disabledPaths`, TASK-171.13), and there is no delete hook. AC #25 and the notes that mention the better-auth path (around lines 152 and 191) are met through `deleteUserAccount` alone.
+- **AC #18, progress refresh:** TASK-171.15 adds live updates on top of the 60-second progress refresh. While a member has the book open and shares live activity, their position, reading-now state and speed on the reader's progress bar update about every 2 seconds. The 60-second refresh remains the base, and the fallback when someone is not reading or has opted out.
+- **AC #16, currently violated:** in the reader, the buddy-marker popover (`apps/capacitor/src/pages/reader/buddy-read-markers.tsx`, `relativeTo`) shows "about N words ahead/behind" when positions are approximate (word counts differ). AC #16 says to hide the words-ahead figure then, which the buddy-read page does (`pages/social/buddy-read.tsx` around line 124). The fix is scheduled in TASK-175.2.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

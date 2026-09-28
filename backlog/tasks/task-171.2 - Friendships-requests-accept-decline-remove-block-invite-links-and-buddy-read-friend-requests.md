@@ -7,7 +7,7 @@ status: Done
 assignee:
   - claude
 created_date: '2026-09-25 22:10'
-updated_date: '2026-09-26 13:22'
+updated_date: '2026-09-28 16:20'
 labels:
   - social
   - web
@@ -65,8 +65,8 @@ Implementation notes:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [x] #1 User A can send a friend request to user B, identified by user id, when both are current members of the same active buddy read; B sees it as incoming and A as outgoing
-- [x] #2 The request endpoint verifies the shared active buddy read server-side and returns the same not-found response for every other target: no shared active buddy read, self, unknown, handle-less, banned or block-related users
+- [x] #1 User A can send a friend request to user B, identified by user id, when both are current members of the same buddy read (in progress or finished, not deleted); B sees it as incoming and A as outgoing
+- [x] #2 The request endpoint verifies the shared buddy read (both current members, in progress or finished) server-side and returns the same not-found response for every other target: no shared buddy read, self, unknown, handle-less, banned or block-related users
 - [x] #3 No endpoint looks up, searches or lists users by handle or display name; users are reachable only through their invite link or a shared buddy read
 - [x] #4 B accepting makes A and B friends on both sides
 - [x] #5 After B declines, A still sees the request as pending until 30 days after it was sent, then sees no relationship; no API response to A distinguishes declined from pending
@@ -170,6 +170,11 @@ Blocked list keeps banned users (so the blocker can unblock) but drops handle-le
 The 1000-friend cap is enforced in createFriendship for both sides but not covered by a test (it would need a thousand rows); the 100-pending cap is counted in the DB the same way. Website invite page and email sign-up callbackURL were type-checked only, not run in a browser.
 
 Review pass (5 sonnet reviewers, claims verified by hand against the code) fixed: cancelRequest wrote without the pair lock, so an accept racing a cancel could still create the friendship (now peeks the addressee, locks both users, deletes under the lock; decline also requires the row to still be pending); the buddy-read gate ran before the idempotent friends/pending/cooldown checks, so an existing relationship became not-found once the buddy read ended (gate moved to the new-request path only, test added); blockUser checked visibility before the already-blocked no-op, so re-blocking a since-banned user threw (order swapped, test added); createInvite/revokeInvite now lock the owner row so redeemInvite cannot complete on a link revoked mid-transaction; invite-revoke route was the one mutation without a rate limit (20/h added); previewInviteForPage validated its input by type only (Zod parse plus a 120/min per-client-IP limit; unauthenticated by design); concurrent mutual-request test now asserts the serialised outcome instead of accepting both; banned-friend-hidden and buddy-read-only-block tests added; hooks.ts documents that FK cascades on account deletion fire no hooks. Removed a section banner and two task references from source; RespondAction derived from the core schema. Left as is: the friends integration file is one ordered narrative (tests are not independently runnable) and listRelationships reads four snapshots without a transaction (self-corrects on next poll).
+
+## Corrections after the branch review (2026-09-28)
+- **Deletion paths:** better-auth's `/delete-user` and `/admin/remove-user` are disabled (`auth.ts` `disabledPaths`, TASK-171.13), and there is no delete hook. AC #25's deletion paths all go through `deleteUserAccount`.
+- **"Active" buddy read:** the AC for requesting a co-participant says "active buddy read", but `sharesActiveBuddyRead` (`buddy-read-eligibility.ts`) counts any buddy read the two share, finished or not, where both are still members and neither is banned. This is intended: finishing a book together is the most natural moment to add each other. The AC should read "a buddy read both are members of (in progress or finished)". The code is not wrong.
+- **Missing tests:** the friend cap (1000) and the pending-request cap (100) have no tests yet (TASK-175.4).
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

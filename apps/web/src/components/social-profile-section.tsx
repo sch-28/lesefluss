@@ -15,6 +15,16 @@ import {
 	validateDisplayName,
 	validateHandle,
 } from "@lesefluss/core";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@lesefluss/ui/alert-dialog";
 import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
 import { RadioGroup, RadioGroupItem } from "@lesefluss/ui/radio-group";
@@ -218,6 +228,7 @@ function ProfileEditor({ profile }: { profile: OwnSocialProfile }) {
 	const [bio, setBio] = React.useState(profile.bio ?? "");
 	const [error, setError] = React.useState<string | null>(null);
 	const [isChangingHandle, setIsChangingHandle] = React.useState(false);
+	const [isConfirmingFeedOff, setIsConfirmingFeedOff] = React.useState(false);
 
 	const save = (patch: Parameters<typeof socialClient.updateProfile>[0]) => {
 		setError(null);
@@ -402,6 +413,47 @@ function ProfileEditor({ profile }: { profile: OwnSocialProfile }) {
 					/>
 				</div>
 			</div>
+
+			<div>
+				<p className="mb-1 font-medium text-sm">Activity</p>
+				<div className="divide-y divide-border">
+					<ToggleRow
+						id="social-feed-enabled"
+						title="Share my reading activity in friends' feeds"
+						checked={profile.feedEnabled}
+						onCheckedChange={(v) =>
+							v ? save({ feedEnabled: true }) : setIsConfirmingFeedOff(true)
+						}
+					/>
+					<ToggleRow
+						id="social-share-live"
+						title="Share live reading activity in buddy reads"
+						checked={profile.shareLiveReading}
+						onCheckedChange={(v) => save({ shareLiveReading: v })}
+					/>
+				</div>
+				<p className="mt-1 text-muted-foreground text-xs">
+					Buddy-read members see when you are reading and how fast. Turning it off also hides theirs
+					from you.
+				</p>
+			</div>
+			<AlertDialog open={isConfirmingFeedOff} onOpenChange={setIsConfirmingFeedOff}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Stop sharing your reading activity?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Your existing activity is removed from your friends' feeds, and nothing new is shared
+							until you switch this on again.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction onClick={() => save({ feedEnabled: false })}>
+							Stop sharing
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 
 			{error && (
 				<p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-destructive text-sm">
