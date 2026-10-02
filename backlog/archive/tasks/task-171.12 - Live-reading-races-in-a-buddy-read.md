@@ -10,7 +10,6 @@ labels:
   - social
   - app
   - web
-milestone: m-6
 dependencies:
   - TASK-171.8
   - TASK-171.9

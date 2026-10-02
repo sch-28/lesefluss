@@ -4,11 +4,12 @@ title: 'Preserve, style, and make hyperlinks clickable in reader content'
 status: In Progress
 assignee: []
 created_date: '2026-05-31 21:40'
-updated_date: '2026-06-01 23:54'
+updated_date: '2026-10-02 16:58'
 labels:
   - reader
   - import
   - ux
+milestone: m-13
 dependencies: []
 references:
   - packages/book-import/src/utils/dom-paragraphs.ts

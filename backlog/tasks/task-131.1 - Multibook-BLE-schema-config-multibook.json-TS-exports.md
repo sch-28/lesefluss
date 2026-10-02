@@ -4,9 +4,8 @@ title: 'Multibook BLE schema: config-multibook.json + TS exports'
 status: Done
 assignee: []
 created_date: '2026-05-20 22:18'
-updated_date: '2026-05-21 22:20'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-12
 dependencies: []
 parent_task_id: TASK-131
 ordinal: 27000

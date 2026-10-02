@@ -4,11 +4,13 @@ title: 'Optional: Material You theme following Android system colors'
 status: To Do
 assignee: []
 created_date: '2026-05-31 21:40'
+updated_date: '2026-10-02 16:59'
 labels:
   - theme
   - android
   - ux
   - optional
+milestone: m-14
 dependencies: []
 references:
   - packages/ui/src/styles/tokens.css

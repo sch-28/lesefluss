@@ -4,9 +4,8 @@ title: 'rsvpnano live position sync: deep-dive and re-design'
 status: Done
 assignee: []
 created_date: '2026-05-21 02:52'
-updated_date: '2026-05-22 22:53'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-12
 dependencies: []
 ordinal: 46000
 ---

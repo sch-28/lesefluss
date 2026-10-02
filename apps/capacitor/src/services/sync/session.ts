@@ -8,6 +8,7 @@ import {
 import { clearPendingLink } from "../deep-links/pending-link";
 import { clearSocialQueries } from "../social/cache";
 import { SYNC_URL } from "./auth-client";
+import { clearQuotaBlock } from "./content-quota";
 import { clearServerContentIds } from "./server-content-cache";
 
 /** True when the capacitor app is hosted inside the website (same origin, cookie auth). */
@@ -82,6 +83,7 @@ export async function clearToken(): Promise<void> {
  */
 export async function clearAccountScopedState(): Promise<void> {
 	await clearServerContentIds();
+	await clearQuotaBlock();
 	await resetSessionPushWatermark();
 	clearSocialQueries();
 	await clearPendingLink();

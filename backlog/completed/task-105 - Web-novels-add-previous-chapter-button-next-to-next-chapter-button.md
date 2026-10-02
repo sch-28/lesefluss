@@ -6,7 +6,6 @@ assignee: []
 created_date: '2026-04-26 09:41'
 updated_date: '2026-04-26 16:04'
 labels: []
-milestone: m-11
 dependencies: []
 references:
   - apps/capacitor/src/pages/reader/next-chapter-footer.tsx

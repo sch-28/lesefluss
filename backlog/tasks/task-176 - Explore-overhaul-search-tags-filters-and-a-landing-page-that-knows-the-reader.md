@@ -3,13 +3,13 @@ id: TASK-176
 title: >-
   Explore overhaul: search, tags, filters and a landing page that knows the
   reader
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-10-01 10:03'
+updated_date: '2026-10-02 17:09'
 labels:
   - explore
   - ux
-milestone: m-6
 dependencies: []
 references:
   - apps/capacitor/src/pages/explore
@@ -41,6 +41,12 @@ This parent tracks the overhaul. Subtasks are independently shippable; backend (
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 All subtasks are Done or explicitly descoped with a note
-- [ ] #2 EXPLORE-SCOPE.md items are each covered by a subtask, an existing task (TASK-67, TASK-68), or marked out of scope
+- [x] #1 All subtasks are Done or explicitly descoped with a note
+- [x] #2 EXPLORE-SCOPE.md items are each covered by a subtask, an existing task (TASK-67, TASK-68), or marked out of scope
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Closed 2026-10-02 in backlog cleanup. Subtasks 176.1-.9 and 176.13-.18 are Done. Descoped to the optional milestone: TASK-176.10 (telemetry), TASK-176.11 (RSVP sample), TASK-176.12 (want to read), TASK-68 (curated article sources). TASK-67 is Done. Audit mapped every EXPLORE-SCOPE.md item to a Done subtask or an optional task; the uncovered remainder (typeahead, field-scoped search, author era / publication year, curated shelves, web-novel filters beyond status incl. the TASK-176.9 AC #5 follow-ups, shelf list semantics, minor items) is collected in optional TASK-184.
+<!-- SECTION:NOTES:END -->

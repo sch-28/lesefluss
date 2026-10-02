@@ -15,6 +15,12 @@ import { z } from "zod";
 import { db } from "~/db";
 import { syncBooks } from "~/db/schema";
 import { catalogBase } from "~/lib/catalog";
+import {
+	ContentQuotaExceededError,
+	contentQuotaExceededResponse,
+	newRowBlobBytes,
+	reserveContentQuota,
+} from "~/lib/content-quota";
 import { checkLimit } from "~/lib/rate-limit";
 
 const MAX_DIRECT_HTML_BYTES = 5 * 1024 * 1024;
@@ -62,6 +68,7 @@ export type ArticleImportDeps = {
 	fetchUrl?: typeof fetchUrlToRawInput;
 	domParser?: DomParserFactory;
 	generateBookId?: typeof generateBookId;
+	/** False on a book id collision; throws `ContentQuotaExceededError` when the row does not fit. */
 	insertBook?: (row: typeof syncBooks.$inferInsert) => Promise<boolean>;
 	checkLimit?: typeof checkLimit;
 	catalogUrl?: string;
@@ -161,13 +168,18 @@ export async function handleArticleImportRequest(
 	// 8 hex chars = 32 bits, so collisions are rare but possible for power users.
 	// On unique-violation against (user_id, book_id), retry once with a fresh id.
 	let bookId = genId();
-	let inserted = await insert(buildRow(bookId));
-	if (!inserted) {
-		bookId = genId();
-		inserted = await insert(buildRow(bookId));
+	try {
+		let inserted = await insert(buildRow(bookId));
 		if (!inserted) {
-			return Response.json({ error: "Import failed" }, { status: 500 });
+			bookId = genId();
+			inserted = await insert(buildRow(bookId));
+			if (!inserted) {
+				return Response.json({ error: "Import failed" }, { status: 500 });
+			}
 		}
+	} catch (err) {
+		if (err instanceof ContentQuotaExceededError) return contentQuotaExceededResponse(err.quota);
+		throw err;
 	}
 
 	return Response.json({ id: bookId });
@@ -230,13 +242,16 @@ async function resolveImportInput(
 }
 
 async function insertSyncBook(row: typeof syncBooks.$inferInsert): Promise<boolean> {
-	const result = await db
-		.insert(syncBooks)
-		.values(row)
-		.onConflictDoNothing({
-			target: [syncBooks.userId, syncBooks.bookId],
-		});
-	return (result.rowCount ?? 0) > 0;
+	return db.transaction(async (tx) => {
+		await reserveContentQuota(tx, row.userId, newRowBlobBytes(row));
+		const result = await tx
+			.insert(syncBooks)
+			.values(row)
+			.onConflictDoNothing({
+				target: [syncBooks.userId, syncBooks.bookId],
+			});
+		return (result.rowCount ?? 0) > 0;
+	});
 }
 
 function enforceImportRateLimit(userId: string, limit: typeof checkLimit): Response | null {

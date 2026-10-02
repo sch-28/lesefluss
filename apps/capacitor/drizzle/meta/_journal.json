@@ -253,6 +253,13 @@
       "when": 1781740800000,
       "tag": "0035_book_images",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1781827200000,
+      "tag": "0036_launch_and_page_turn",
+      "breakpoints": true
     }
   ]
 }

@@ -49,9 +49,9 @@ type Options = {
 	isBlocked: boolean;
 	scrollViewRef: React.RefObject<ReaderViewHandle | null>;
 	rsvpViewRef: React.RefObject<RsvpViewHandle | null>;
-	lastOffsetRef: React.RefObject<number | null>;
 	handleRsvpToggle: () => void;
-	exitRsvpToStandard: (offset: number) => void;
+	/** Exits at the word RSVP is showing. */
+	exitRsvpToStandard: () => void;
 	hasSelection: boolean;
 	cancelSelection: () => void;
 };
@@ -63,7 +63,6 @@ export function useKeyboardShortcuts({
 	isBlocked,
 	scrollViewRef,
 	rsvpViewRef,
-	lastOffsetRef,
 	handleRsvpToggle,
 	exitRsvpToStandard,
 	hasSelection,
@@ -117,7 +116,7 @@ export function useKeyboardShortcuts({
 					break;
 				case "Escape":
 					e.preventDefault();
-					exitRsvpToStandard(lastOffsetRef.current ?? 0);
+					exitRsvpToStandard();
 					break;
 			}
 		} else if (paginationStyle === "page") {

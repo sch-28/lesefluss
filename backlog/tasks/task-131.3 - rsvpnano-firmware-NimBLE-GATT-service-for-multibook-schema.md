@@ -4,9 +4,8 @@ title: 'rsvpnano firmware: NimBLE GATT service for multibook schema'
 status: Done
 assignee: []
 created_date: '2026-05-20 22:19'
-updated_date: '2026-05-21 22:21'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-12
 dependencies: []
 parent_task_id: TASK-131
 ordinal: 29000

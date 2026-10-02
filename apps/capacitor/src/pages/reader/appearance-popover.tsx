@@ -21,6 +21,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 		showReadingTime,
 		showActiveWordUnderline,
 		showGlossaryUnderline,
+		pageTurnAnimation,
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
@@ -29,6 +30,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 		setShowReadingTime,
 		setShowActiveWordUnderline,
 		setShowGlossaryUnderline,
+		setPageTurnAnimation,
 	} = useAppearanceSettings();
 
 	return (
@@ -157,6 +159,20 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 							</div>
 						</div>
 
+						{paginationStyle === "page" && (
+							<div className="ap-row">
+								<span className="ap-row-label">Page animation</span>
+								<ToggleGroup
+									type="single"
+									variant="outline"
+									value={pageTurnAnimation ? "on" : "off"}
+									onValueChange={(v) => v && setPageTurnAnimation(v === "on")}
+								>
+									<ToggleGroupItem value="off">Off</ToggleGroupItem>
+									<ToggleGroupItem value="on">On</ToggleGroupItem>
+								</ToggleGroup>
+							</div>
+						)}
 						<div className="ap-row">
 							<span className="ap-row-label">Time remaining</span>
 							<ToggleGroup

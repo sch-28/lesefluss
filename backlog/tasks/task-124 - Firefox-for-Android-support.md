@@ -4,8 +4,9 @@ title: Firefox for Android support
 status: To Do
 assignee: []
 created_date: '2026-05-01 18:52'
+updated_date: '2026-10-02 16:59'
 labels: []
-milestone: m-9
+milestone: m-14
 dependencies: []
 ordinal: 2200
 ---

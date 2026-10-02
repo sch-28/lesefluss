@@ -5,6 +5,7 @@ export * from "./sources/blob";
 export * from "./sources/url";
 export * from "./types";
 
+export * from "./utils/cover-image";
 export * from "./utils/dom-paragraphs";
 export * from "./utils/encoding";
 export * from "./utils/file-format";

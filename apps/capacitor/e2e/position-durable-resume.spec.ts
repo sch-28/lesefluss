@@ -25,7 +25,7 @@ async function openAtChapterTwo(page: Page): Promise<{ title: string; bookId: st
 	);
 
 	const savePending = reader.waitForNextSave(page);
-	await reader.tocJumpToChapter(page, "2: Second");
+	await reader.moveToChapter(page, "2: Second");
 	await expect(page.locator("h2", { hasText: "TITLE 2" })).toBeInViewport({ timeout: 5000 });
 	await savePending;
 

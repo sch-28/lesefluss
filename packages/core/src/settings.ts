@@ -50,6 +50,8 @@ export const DEFAULT_SETTINGS = {
 	ONBOARDING_COMPLETED: false, // first-run onboarding completed on this device
 	APP_FONT_SIZE: 16, // px (12–22) - root font-size driving rem-scaled UI
 	LAST_SEEN_CHANGELOG_DATE: "", // ISO date of newest changelog entry user has seen ('' = never)
+	PAGE_TURN_ANIMATION: true, // slide between pages in page mode (off suits e-ink); device-local
+	AUTO_OPEN_LAST_BOOK: false, // open the most recently read book on app launch; device-local
 } as const;
 
 /**

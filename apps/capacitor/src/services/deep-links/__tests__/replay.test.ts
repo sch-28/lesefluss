@@ -52,10 +52,10 @@ describe("pending link replay", () => {
 		expect(navigate).not.toHaveBeenCalled();
 	});
 
-	it("seeds the Social tab underneath a cold-start destination", () => {
+	it("seeds the Social tab underneath a cold-start destination", async () => {
 		const { router, navigate } = fakeRouter();
 		vi.spyOn(window.history, "length", "get").mockReturnValue(1);
-		navigateToLink(router, { kind: "invite", token: "tok" });
+		await navigateToLink(router, { kind: "invite", token: "tok" });
 		expect(navigate.mock.calls.map((c) => c[0].to)).toEqual([
 			"/tabs/social",
 			"/tabs/social/invite/$token",
@@ -63,7 +63,7 @@ describe("pending link replay", () => {
 
 		navigate.mockClear();
 		vi.spyOn(window.history, "length", "get").mockReturnValue(3);
-		navigateToLink(router, { kind: "invite", token: "tok" });
+		await navigateToLink(router, { kind: "invite", token: "tok" });
 		expect(navigate.mock.calls.map((c) => c[0].to)).toEqual(["/tabs/social/invite/$token"]);
 	});
 });

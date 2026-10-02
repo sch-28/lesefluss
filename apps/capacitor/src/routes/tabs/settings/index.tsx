@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { DEFAULT_SETTINGS } from "@lesefluss/core";
 import { Switch } from "@lesefluss/ui/switch";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -98,6 +99,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function SettingsLanding() {
 	const navigate = useNavigate();
 	const { data: settings, isPending } = queryHooks.useSettings();
+	const { mutate: saveSettings } = queryHooks.useSaveSettings();
 	const { connectionState, connectedDevice } = useBLE();
 	const { theme } = useTheme();
 	const { isLoggedIn, userEmail } = useSyncContext();
@@ -175,6 +177,19 @@ function SettingsLanding() {
 						subtitle="Markdown, CSV"
 						to="/tabs/settings/export"
 					/>
+					<div className="flex items-center justify-between gap-3 px-4 py-3">
+						<label htmlFor="auto-open-last-book" className="min-w-0 flex-1">
+							<div className="font-medium text-foreground text-sm">Open last book on launch</div>
+							<div className="text-muted-foreground text-xs">
+								Skip the library and continue where you left off.
+							</div>
+						</label>
+						<Switch
+							id="auto-open-last-book"
+							checked={settings?.autoOpenLastBook ?? DEFAULT_SETTINGS.AUTO_OPEN_LAST_BOOK}
+							onCheckedChange={(v) => saveSettings({ autoOpenLastBook: v })}
+						/>
+					</div>
 				</Section>
 
 				{showDevicesAndSync && (

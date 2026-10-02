@@ -4,9 +4,8 @@ title: 'Stats step 6: book detail speed chart, bucketing and axes (B3)'
 status: Done
 assignee: []
 created_date: '2026-07-28 19:39'
-updated_date: '2026-07-29 22:35'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-7
 dependencies:
   - TASK-159.1
 documentation:

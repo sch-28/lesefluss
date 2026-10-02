@@ -4,9 +4,9 @@ title: Propagate reading-session deletions across devices (server epoch)
 status: To Do
 assignee: []
 created_date: '2026-07-29 00:45'
-updated_date: '2026-07-29 00:46'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-7
+milestone: m-13
 dependencies: []
 documentation:
   - STATS-IMPROVEMENTS.md

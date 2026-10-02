@@ -8,7 +8,6 @@ updated_date: '2026-05-01 23:26'
 labels:
   - extension
   - privacy
-milestone: m-9
 dependencies: []
 priority: medium
 ---

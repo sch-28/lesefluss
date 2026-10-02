@@ -75,6 +75,10 @@ src/
       selection-toolbar.tsx   # Floating two-step toolbar for selections and highlights (actions → colours/note/delete)
       toolbar-position.ts     # Pure toolbar placement: above the selection, else below, else pinned; clamped to screen
       word-at-point.ts        # Word index under a viewport point (used by long-press drag, handle drag, mouse drag)
+      browse-controller.ts    # Browse-mode state machine (pure class; wrapped by use-browse-mode.ts)
+      use-browse-mode.ts      # Thin hook: one BrowseController per reader mount, anchor mirrored into state
+      browse-detector.ts      # Pure detectors: too-fast scroll enters browse mode, resumed reading leaves it
+      browse-bar.tsx          # Browse-mode pill: Back to N% / Read from here
       highlights-list-modal.tsx # Bottom-sheet listing all highlights for the book; tap to jump
     settings.tsx          # Settings hub - links to RSVP, Appearance, Device, Cloud Sync sub-pages, feedback
     settings/
@@ -192,6 +196,7 @@ await ble.transferBook(content, "book.txt", onProgress);
 - Capacitor-only sources stay local: file picker via `@capawesome/capacitor-file-picker`, clipboard via `@capacitor/clipboard`, and Android share intent plugin glue.
 - `commit.ts` stays local because it writes SQLite and saves original files to `Directory.Data/books/{id}.ext` via `@capacitor/filesystem` on native.
 - URL imports pass the app's `CATALOG_URL` into the shared URL source; PDF imports pass the Vite `pdf.worker.mjs?worker` loader into the shared PDF parser.
+- **Covers.** Every cover goes through `normalizeCover` / `normalizeCoverDataUrl` (`packages/book-import/src/utils/cover-image.ts`): the EPUB parser on extraction, the PDF parser via `encodeCover` on its page-1 render, and `commitBook` / `commitSeries` as the last gate. Longest side capped at `COVER_MAX_SIDE` (600 px), WebP where the platform encodes it (Android WebView, Chrome), JPEG otherwise (Safari), PNG for a transparent source without WebP; quality steps down until the cover fits `COVER_BUDGET_BYTES` (30 KiB). A WebP/JPEG/PNG cover already within 600 px counts as final (even over budget, so probe, parse and commit never re-encode it twice); a remote URL (web-novel covers), anything the runtime cannot decode (SVG, Node) and anything whose header is unreadable or declares more than `MAX_DECODE_PIXELS` is kept as-is. Covers imported earlier are not shrunk (TASK-100 follow-up).
 - Original `.epub` / `.pdf` files are saved on native only; TXT/HTML/MD content is stored as plain text in `book_content`.
 - **Body images (EPUB only).**
   - Parse: `extractParagraphsWithLinks` also returns the `<img>` / `<picture>` / `<figure>` / SVG `<image>` elements it meets, each with a char offset but contributing no characters, so `content` is byte-identical to what it was before images were captured (figure captions are still dropped for the same reason). The EPUB parser loads each distinct image once from the archive (`key` = resolved archive path), skips images it cannot load or over the per-image and per-book caps with a warning, and emits `BookPayload.images` plus `BookPayload.imageAnchors` (byte offset of the first text after the image; the content byte length for a trailing image). An image-only page (a map) anchors at the start of the next section with text. Kindle emits every image twice; identical src at the same anchor collapses to one.
@@ -253,6 +258,7 @@ save.mutate({ wpm: 400 });
 - **Mutations handle invalidation** - every `useMutation` has an `onSuccess` that invalidates the right keys.
 - **Key hierarchy** - `bookKeys.all = ['books']` is a prefix of `bookKeys.detail(id) = ['books', id]`, so invalidating `bookKeys.all` cascades to all detail/content queries.
 - **Position saves in the Reader** use raw `queries.updateBook()` directly - fire-and-forget, high-frequency writes.
+- **Browse mode** (reader): `BrowseController` (`browse-controller.ts`, via `useBrowseMode`) owns it; `index.tsx` only wires call sites. Jumps (TOC, search, highlight, glossary, scrub), a too-fast manual scroll, or the toolbar Compass button freeze the saved position at an anchor (written once on entry if not already in the DB). While browsing `savePosition` only tracks the resting word (RSVP excepted) and the session is paused; "Read from here", or resumed reading (auto-commit with an Undo toast, the reading streak backfilled into a new sitting via `SessionTracker.backfill`, discarded on Undo; tapping Next chapter commits too), commits via `writePosition`. See CONTEXT.md "Browse mode".
 - **Non-React callers** (BLE contexts, bookImport.ts) use raw `queries.*` for writes; call `queryClient.invalidateQueries()` if UI refresh needed.
 - **`useIonViewWillEnter`** in Library calls `qc.invalidateQueries({ queryKey: bookKeys.all })` to refresh when navigating back from the reader.
 - **Settings pages** use `useAutoSaveSettings()` - optimistic cache update on every change, debounced DB write (300ms). Replaces the old draft-then-save pattern. `updateSetting(key, value)` for individual fields, `replaceAll(patch)` for bulk updates (e.g. loading from BLE). Flushes pending writes on unmount.

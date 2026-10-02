@@ -121,6 +121,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 		void fontSize;
 		void fontFamily;
 		void lineSpacing;
+		void lang;
 		void figuresByParagraph;
 		void trailingFigures;
 		if (!ref.current || pageWidth === 0 || pageHeight === 0) return;
@@ -144,6 +145,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 		fontSize,
 		fontFamily,
 		lineSpacing,
+		lang,
 		figuresByParagraph,
 		trailingFigures,
 		onMeasure,

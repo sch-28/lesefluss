@@ -35,6 +35,7 @@ export function useAppearanceSettings() {
 		settings?.readerActiveWordUnderline ?? DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE;
 	const showGlossaryUnderline =
 		settings?.readerGlossaryUnderline ?? DEFAULT_SETTINGS.READER_GLOSSARY_UNDERLINE;
+	const pageTurnAnimation = settings?.pageTurnAnimation ?? DEFAULT_SETTINGS.PAGE_TURN_ANIMATION;
 
 	const adjustFontSize = (delta: number) => {
 		mutate({
@@ -96,6 +97,10 @@ export function useAppearanceSettings() {
 		mutate({ readerGlossaryUnderline: v });
 	};
 
+	const setPageTurnAnimation = (v: boolean) => {
+		mutate({ pageTurnAnimation: v });
+	};
+
 	return {
 		fontSize,
 		appFontSize,
@@ -106,6 +111,7 @@ export function useAppearanceSettings() {
 		showReadingTime,
 		showActiveWordUnderline,
 		showGlossaryUnderline,
+		pageTurnAnimation,
 		adjustFontSize,
 		adjustAppFontSize,
 		adjustLineSpacing,
@@ -115,5 +121,6 @@ export function useAppearanceSettings() {
 		setShowReadingTime,
 		setShowActiveWordUnderline,
 		setShowGlossaryUnderline,
+		setPageTurnAnimation,
 	};
 }

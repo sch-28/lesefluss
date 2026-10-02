@@ -18,9 +18,8 @@ test("search result click jumps the reader to the matching word", async ({ page 
 	// Click first result. The search modal renders results as <ul><li><button>
 	// snippets containing the matched phrase; the button bubbles to handleResultTap.
 	const firstResult = page.locator("ul li button", { hasText: phrase }).first();
-	const savePending = reader.waitForNextSave(page);
 	await firstResult.click();
-	await savePending;
+	await expect(reader.browseBar(page)).toBeVisible();
 
 	// Reader navigated to the hit; the matching paragraph should be in viewport.
 	// Scope to the reader paragraph (the search result button also contains the

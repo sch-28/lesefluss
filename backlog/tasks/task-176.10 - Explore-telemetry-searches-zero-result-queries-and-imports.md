@@ -4,10 +4,11 @@ title: 'Explore telemetry: searches, zero-result queries and imports'
 status: To Do
 assignee: []
 created_date: '2026-10-01 10:05'
+updated_date: '2026-10-02 16:59'
 labels:
   - explore
   - telemetry
-milestone: m-6
+milestone: m-14
 dependencies: []
 documentation:
   - EXPLORE-SCOPE.md

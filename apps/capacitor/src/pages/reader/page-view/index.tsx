@@ -84,6 +84,10 @@ export interface PageViewProps {
 	lineSpacing: number;
 	margin: number;
 	showActiveWordUnderline: boolean;
+	/** HTML `lang` for the page columns; drives CSS hyphenation. */
+	lang: string;
+	/** Off for e-ink, where a slide renders as a smear of ghosted frames. */
+	animatePageTurns: boolean;
 
 	// Active highlight + per-paragraph annotation data (passed to <Paragraph>).
 	activeWord: number;
@@ -143,6 +147,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		lineSpacing,
 		margin,
 		showActiveWordUnderline,
+		lang,
+		animatePageTurns,
 		activeWord,
 		highlightsByParagraph,
 		glossaryByParagraph,
@@ -277,7 +283,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	// use so the lander below re-derives the page from the word the reader was
 	// on. Post-mount the lander only calls `setPageIndex` (its callbacks are
 	// gated on `isReadyRef`), so this cannot move the saved position.
-	const layoutKey = `${viewport?.w ?? 0}x${viewport?.h ?? 0}|${fontSize}|${fontFamily}|${lineSpacing}|${margin}`;
+	const layoutKey = `${viewport?.w ?? 0}x${viewport?.h ?? 0}|${fontSize}|${fontFamily}|${lineSpacing}|${margin}|${lang}`;
 	const lastLayoutKeyRef = useRef(layoutKey);
 	useLayoutEffect(() => {
 		if (lastLayoutKeyRef.current === layoutKey) return;
@@ -369,27 +375,6 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	}, [chunkIndex, pageIndex, offsets, pageWidth, isLayoutReady, setTransform]);
 
 	// ── Animation primitives ──────────────────────────────────────────────
-	const animateTo = useCallback(
-		(translatePx: number, onDone?: () => void) => {
-			if (animationTimeoutRef.current !== null) {
-				window.clearTimeout(animationTimeoutRef.current);
-			}
-			isAnimatingRef.current = true;
-			animationTargetRef.current = translatePx;
-			pendingOnDoneRef.current = onDone ?? null;
-			setTransform(translatePx, true);
-			animationTimeoutRef.current = window.setTimeout(() => {
-				animationTimeoutRef.current = null;
-				isAnimatingRef.current = false;
-				const done = pendingOnDoneRef.current;
-				pendingOnDoneRef.current = null;
-				animationTargetRef.current = null;
-				done?.();
-			}, PAGE_TRANSITION_MS);
-		},
-		[setTransform],
-	);
-
 	/** Force the in-flight animation to its end-state synchronously: cancel the
 	 *  timer, snap the wrapper to the animation's target, and run the pending
 	 *  onDone via flushSync so React state catches up before the next gesture
@@ -423,6 +408,33 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		pendingOnDoneRef.current = null;
 		if (done) flushSync(done);
 	}, []);
+
+	const animateTo = useCallback(
+		(translatePx: number, onDone?: () => void) => {
+			if (!animatePageTurns) {
+				completeInFlightAnimation();
+				setTransform(translatePx);
+				onDone?.();
+				return;
+			}
+			if (animationTimeoutRef.current !== null) {
+				window.clearTimeout(animationTimeoutRef.current);
+			}
+			isAnimatingRef.current = true;
+			animationTargetRef.current = translatePx;
+			pendingOnDoneRef.current = onDone ?? null;
+			setTransform(translatePx, true);
+			animationTimeoutRef.current = window.setTimeout(() => {
+				animationTimeoutRef.current = null;
+				isAnimatingRef.current = false;
+				const done = pendingOnDoneRef.current;
+				pendingOnDoneRef.current = null;
+				animationTargetRef.current = null;
+				done?.();
+			}, PAGE_TRANSITION_MS);
+		},
+		[setTransform, animatePageTurns, completeInFlightAnimation],
+	);
 
 	useEffect(
 		() => () => {
@@ -779,9 +791,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									fontFamily={fontFamily}
 									lineSpacing={lineSpacing}
 									showActiveWordUnderline={showActiveWordUnderline}
-									// TODO: source from book metadata when available; affects
-									// hyphenation quality on non-English books.
-									lang="en"
+									lang={lang}
 									activeWord={isActiveChunk ? activeWord : -1}
 									highlightsByParagraph={highlightsByParagraph}
 									glossaryByParagraph={glossaryByParagraph}

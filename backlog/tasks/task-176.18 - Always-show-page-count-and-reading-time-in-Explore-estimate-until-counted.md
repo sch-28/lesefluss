@@ -4,12 +4,11 @@ title: Always show page count and reading time in Explore (estimate until counte
 status: Done
 assignee: []
 created_date: '2026-10-02 10:35'
-updated_date: '2026-10-02 11:29'
+updated_date: '2026-10-02 16:58'
 labels:
   - explore
   - catalog
   - ux
-milestone: m-6
 dependencies: []
 references:
   - apps/capacitor/src/utils/reading-time.ts

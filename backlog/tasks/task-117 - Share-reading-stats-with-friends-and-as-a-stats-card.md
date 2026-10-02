@@ -4,11 +4,11 @@ title: Share reading stats with friends and as a stats card
 status: To Do
 assignee: []
 created_date: '2026-05-01 01:43'
-updated_date: '2026-09-25 22:55'
+updated_date: '2026-10-02 16:58'
 labels:
   - social
   - app
-milestone: m-6
+milestone: m-14
 dependencies:
   - TASK-171.1
   - TASK-171.5

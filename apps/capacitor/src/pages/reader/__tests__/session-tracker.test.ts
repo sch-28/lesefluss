@@ -675,4 +675,125 @@ describe("SessionTracker credit budget", () => {
 		env.tracker.finalize();
 		expect(env.persisted.at(-1)!.row.wordsRead).toBe(133);
 	});
+	it("rewindTo clips the sitting back to where browsing started", () => {
+		const env = setup({ initialPos: 1_000 });
+		env.tracker.setReading(true);
+		for (let i = 0; i < 6; i++) {
+			env.advance(POLL_MS);
+			env.movePosition(50);
+			env.tracker.tick();
+		}
+		env.tracker.rewindTo(1_200);
+		env.tracker.setReading(false);
+		const row = env.persisted.at(-1)!.row;
+		expect(row.endWord).toBe(1_200);
+		expect(row.wordsRead).toBe(200);
+	});
+
+	it("rewindTo ignores a position at or past the sitting's end", () => {
+		const env = setup({ initialPos: 1_000 });
+		env.tracker.setReading(true);
+		env.advance(30_000);
+		env.movePosition(100);
+		env.tracker.tick();
+		env.tracker.rewindTo(5_000);
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.endWord).toBe(1_100);
+	});
+	it("backfill opens a sitting for reading done while paused, resumed on setReading", () => {
+		const env = setup({ initialPos: 5_000 });
+		env.tracker.backfill({ from: 5_000, to: 5_400, activeMs: 150_000 });
+		env.tracker.setReading(true);
+		env.advance(30_000);
+		env.setPosition(5_500);
+		env.tracker.tick();
+		env.tracker.finalize();
+		const row = env.persisted.at(-1)!.row;
+		expect(row.startWord).toBe(5_000);
+		expect(row.durationMs).toBe(180_000);
+		expect(row.wordsRead).toBe(500);
+		expect(env.persisted.filter((p) => p.kind === "flush")).toHaveLength(1);
+	});
+
+	it("backfill is a no-op while a sitting is open", () => {
+		const env = setup({ initialPos: 1_000 });
+		env.tracker.setReading(true);
+		env.advance(30_000);
+		env.movePosition(50);
+		env.tracker.tick();
+		env.tracker.backfill({ from: 9_000, to: 9_500, activeMs: 150_000 });
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.startWord).toBe(1_000);
+	});
+	it("backfill credits no more than live tracking would have", () => {
+		const env = setup({ initialPos: 5_000 });
+		// 60 s at the 800 WPM scroll ceiling plus the 500-word burst.
+		env.tracker.backfill({ from: 5_000, to: 9_000, activeMs: 60_000 });
+		env.tracker.finalize();
+		const row = env.persisted.at(-1)!.row;
+		expect(row.wordsRead).toBe(1_300);
+		expect(row.endWord).toBe(9_000);
+	});
+
+	it("backfill stores whole milliseconds for a fractional duration", () => {
+		const env = setup({ initialPos: 5_000 });
+		env.tracker.backfill({ from: 5_000, to: 5_400, activeMs: 150_000.6 });
+		env.tracker.finalize();
+		const row = env.persisted.at(-1)!.row;
+		expect(Number.isInteger(row.durationMs)).toBe(true);
+		expect(Number.isInteger(row.startedAt)).toBe(true);
+	});
+
+	it("discard drops the sitting without writing it", () => {
+		const env = setup({ initialPos: 5_000 });
+		env.tracker.backfill({ from: 5_000, to: 5_400, activeMs: 150_000 });
+		env.tracker.discard();
+		env.tracker.finalize();
+		expect(env.persisted).toHaveLength(0);
+	});
+
+	it("rewindTo overwrites an already-written checkpoint, even below the noise floor", () => {
+		const env = setup({ initialPos: 10_000 });
+		env.tracker.setReading(true);
+		for (let i = 0; i < 8; i++) {
+			env.advance(POLL_MS);
+			env.movePosition(60);
+			env.tracker.tick();
+		}
+		const checkpoints = env.persisted.filter((p) => p.kind === "checkpoint");
+		expect(checkpoints.at(-1)!.row.endWord).toBeGreaterThan(10_000);
+		env.tracker.rewindTo(10_000);
+		const rewound = env.persisted.at(-1)!.row;
+		expect(rewound.id).toBe(checkpoints.at(-1)!.row.id);
+		expect(rewound.endWord).toBe(10_000);
+		expect(rewound.wordsRead).toBe(0);
+	});
+
+	it("rewindTo keeps spans that started before the rewind point", () => {
+		const env = setup({ initialPos: 1_000 });
+		env.tracker.setReading(true);
+		for (let i = 0; i < 4; i++) {
+			env.advance(POLL_MS);
+			env.movePosition(50);
+			env.tracker.tick();
+		}
+		// Back past the start, then forward again: two separate spans.
+		env.setPosition(500);
+		env.advance(POLL_MS);
+		env.tracker.tick();
+		for (let i = 0; i < 2; i++) {
+			env.advance(POLL_MS);
+			env.movePosition(50);
+			env.tracker.tick();
+		}
+		// A jump past both spans, then browsing is recognised.
+		env.setPosition(1_400);
+		env.advance(POLL_MS);
+		env.tracker.tick();
+		env.tracker.rewindTo(1_100);
+		env.tracker.finalize();
+		const row = env.persisted.at(-1)!.row;
+		expect(row.endWord).toBe(1_100);
+		expect(row.wordsRead).toBe(200);
+	});
 });

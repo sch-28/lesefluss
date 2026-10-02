@@ -5,11 +5,10 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-01 10:05'
-updated_date: '2026-10-01 11:45'
+updated_date: '2026-10-02 16:58'
 labels:
   - explore
   - social
-milestone: m-6
 dependencies:
   - TASK-176.1
   - TASK-176.2

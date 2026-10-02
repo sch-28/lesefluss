@@ -7,7 +7,6 @@ assignee:
 created_date: '2026-05-01 13:44'
 updated_date: '2026-05-01 15:40'
 labels: []
-milestone: m-9
 dependencies:
   - TASK-118
 ordinal: 1800

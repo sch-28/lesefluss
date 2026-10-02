@@ -2,6 +2,12 @@ import { generateBookId } from "@lesefluss/book-import";
 import { and, eq, isNotNull, isNull, type SQL, sql } from "drizzle-orm";
 import type { Tx } from "~/db";
 import { type COPY_SOURCES, syncBookCopy, syncBooks } from "~/db/schema";
+import {
+	ContentQuotaExceededError,
+	lockContentQuota,
+	reserveContentQuota,
+	rowBlobBytes,
+} from "~/lib/content-quota";
 import { isUniqueViolation } from "~/lib/db-errors";
 import type { BookOrigin } from "~/lib/origin";
 import { SocialError } from "./errors";
@@ -65,6 +71,27 @@ export async function liveCopyOf(
 	return row?.bookId ?? null;
 }
 
+async function sourceBlobBytes(tx: Tx, userId: string, bookId: string): Promise<number> {
+	const [row] = await tx
+		.select({
+			bytes: rowBlobBytes,
+		})
+		.from(syncBooks)
+		.where(and(eq(syncBooks.userId, userId), eq(syncBooks.bookId, bookId)));
+	return Number(row?.bytes ?? 0);
+}
+
+/** A copy counts against the recipient's quota; one that does not fit is refused, not trimmed. */
+async function reserveCopyQuota(tx: Tx, input: CopyInput): Promise<void> {
+	const bytes = await sourceBlobBytes(tx, input.sourceUserId, input.sourceBookId);
+	try {
+		await reserveContentQuota(tx, input.recipientId, bytes);
+	} catch (err) {
+		if (err instanceof ContentQuotaExceededError) throw new SocialError("quota_exceeded");
+		throw err;
+	}
+}
+
 /**
  * Gives `recipientId` the source book as their own row, or links them to the
  * copy they already hold of the same origin. Content never leaves Postgres:
@@ -75,8 +102,12 @@ export async function copyBookForUser(tx: Tx, input: CopyInput): Promise<CopyRes
 	const now = input.now ?? new Date();
 	const source = await shareableSource(tx, input.sourceUserId, input.sourceBookId);
 	if (!source) throw new SocialError("unavailable");
+	// Before the live-copy check: the sync push holds the same lock across its own
+	// duplicate-origin check and upsert, so either side sees the other's row.
+	await lockContentQuota(tx, input.recipientId);
 	const existing = await liveCopyOf(tx, input.recipientId, source);
 	if (existing) return { bookId: existing, created: false };
+	await reserveCopyQuota(tx, input);
 
 	const stamp = now.toISOString();
 	for (let attempt = 0; attempt < 2; attempt++) {

@@ -10,6 +10,7 @@ import type {
 	Parser,
 	PrepareImage,
 } from "../types";
+import { normalizeCover } from "../utils/cover-image";
 import {
 	type ContentImage,
 	type ContentLink,
@@ -621,7 +622,7 @@ async function loadCoverDataUrl(
 		return null;
 	}
 	if (!blob || blob.size === 0) return null;
-	return blobToDataUrl(blob);
+	return blobToDataUrl(await normalizeCover(blob));
 }
 
 async function extractCover(book: EpubBook): Promise<string | null> {

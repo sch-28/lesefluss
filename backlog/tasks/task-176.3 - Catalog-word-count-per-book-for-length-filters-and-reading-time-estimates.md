@@ -5,11 +5,10 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-01 10:04'
-updated_date: '2026-10-01 11:35'
+updated_date: '2026-10-02 16:58'
 labels:
   - explore
   - catalog
-milestone: m-6
 dependencies: []
 references:
   - apps/catalog/src/db/schema.ts

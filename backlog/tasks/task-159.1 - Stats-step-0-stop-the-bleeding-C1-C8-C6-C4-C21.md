@@ -4,9 +4,8 @@ title: 'Stats step 0: stop the bleeding (C1, C8, C6, C4, C21)'
 status: Done
 assignee: []
 created_date: '2026-07-28 19:38'
-updated_date: '2026-07-28 22:10'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-7
 dependencies: []
 documentation:
   - STATS-IMPROVEMENTS.md

@@ -36,6 +36,7 @@ import {
 	Bookmark,
 	ChevronLeft,
 	ChevronRight,
+	Compass,
 	ExternalLink,
 	Info,
 	Loader2,
@@ -77,6 +78,8 @@ import { AVERAGE_READER_WPM, formatReadingTime } from "../../utils/reading-time"
 import { setJustRead } from "../library/just-read-pin";
 import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
+import { BrowseBar } from "./browse-bar";
+import type { BrowseSession } from "./browse-controller";
 import {
 	BuddyReadMarkers,
 	type DiscussionTick,
@@ -93,6 +96,7 @@ import DictionaryModal from "./dictionary-modal";
 import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
 import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
+import { hyphenationLang } from "./hyphenation-lang";
 import { useLiveReading } from "./live-board";
 import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
@@ -113,6 +117,7 @@ import SelectionOverlay from "./selection-overlay";
 import { SessionDebugBadge } from "./session-debug-badge";
 import { SessionPauseOverlay } from "./session-pause-overlay";
 import { createTwoFingerTapDetector } from "./two-finger-tap";
+import { useBrowseMode } from "./use-browse-mode";
 import {
 	findFirstMention,
 	findNextMention,
@@ -253,6 +258,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// Within "standard", the rendered view is scroll or page depending on the
 	// paginationStyle setting (decided at render time, not stored here).
 	const [readerMode, setReaderMode] = useState<"standard" | "rsvp">("standard");
+	const readerModeRef = useRef(readerMode);
+	readerModeRef.current = readerMode;
 
 	const [activeWord, setActiveWord] = useState(0);
 	const [progressWord, setProgressWord] = useState(0);
@@ -322,6 +329,27 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// stomping a fresh jump position. 0 = no recent jump.
 	const lastJumpAtRef = useRef(0);
 	const JUMP_SETTLE_GUARD_MS = 1500;
+	// The last word written (or known to be) in the DB row.
+	const persistedWordRef = useRef<number | null>(null);
+	// Assigned once `useReadingSession` runs further down.
+	const browseSessionRef = useRef<BrowseSession | null>(null);
+	const { anchor: browseAnchor, controller: browse } = useBrowseMode({
+		getLastWord: () => lastWordRef.current,
+		getPersistedWord: () => persistedWordRef.current,
+		isRsvp: () => readerModeRef.current === "rsvp",
+		writePosition: (word) => {
+			userMovedRef.current = true;
+			void writePosition(word);
+		},
+		showUnsavedMove: (word) => showUnsavedMove(word),
+		getSession: () => browseSessionRef.current,
+		notifyAutoCommit: (word, undo) => {
+			toast.info(`Reading position moved to ${Math.round(percentOfBook(word))}%`, {
+				duration: 10_000,
+				action: { label: "Undo", onClick: undo },
+			});
+		},
+	});
 
 	// Guards the seed effect below so it only runs once on initial load.
 	// book is a new object reference on every BLE position sync (query
@@ -356,7 +384,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		settledWordRef.current = null;
 		seededWordRef.current = null;
 		userMovedRef.current = false;
-	}, [id]);
+		persistedWordRef.current = null;
+		browse.reset();
+	}, [id, browse]);
 
 	const seedWord = book?.wordPosition ?? null;
 	const seedLastRead = book?.lastRead ?? 0;
@@ -387,6 +417,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		lastWordRef.current = resolved;
 		settledWordRef.current = resolved;
 		seededWordRef.current = resolved;
+		persistedWordRef.current = seedWord;
 	}, [seedWord, seedLastRead, id]);
 
 	// Live-seek when the device pushes a new position for this book over BLE.
@@ -405,6 +436,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// huge word index via the unmount-flush.
 			if (totalWords === 0) return;
 			if (newWordPosition < 0 || newWordPosition >= totalWords) return;
+			persistedWordRef.current = newWordPosition;
+			if (browse.onDevicePosition(newWordPosition)) return;
 			setActiveWord(newWordPosition);
 			setProgressWord(newWordPosition);
 			setRsvpInitWord(newWordPosition);
@@ -420,7 +453,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			});
 		});
 		return unsubscribe;
-	}, [id, wordIndex?.wordCount, book?.wordCount, isBleConnected, onDevicePositionUpdate]);
+	}, [id, wordIndex?.wordCount, book?.wordCount, isBleConnected, onDevicePositionUpdate, browse]);
 
 	// ── Build paragraph index ──────────────────────────────────────────────
 	// Computed once per content load. Two cheap structures:
@@ -520,6 +553,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const contentBytes = useMemo(() => (content ? _encoder.encode(content) : null), [content]);
 
 	const totalWordCount = book?.wordCount ?? wordIndex?.wordCount ?? 0;
+	const percentOfBook = (word: number) =>
+		totalWordCount > 0 ? Math.min(100, (word / totalWordCount) * 100) : 0;
 
 	// Body images (EPUB imports) keyed by the paragraph they precede. Empty for
 	// every book imported before images were captured, so nothing else changes.
@@ -568,6 +603,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const readerGlossaryUnderline =
 		dbSettings?.readerGlossaryUnderline ?? DEFAULT_SETTINGS.READER_GLOSSARY_UNDERLINE;
 	const paginationStyle = dbSettings?.paginationStyle ?? DEFAULT_SETTINGS.PAGINATION_STYLE;
+	const pageTurnAnimation = dbSettings?.pageTurnAnimation ?? DEFAULT_SETTINGS.PAGE_TURN_ANIMATION;
 
 	// ── Apply default reader mode once settings + book are loaded ─────────
 	// Runs once; subsequent settings changes don't flip the user's in-session mode.
@@ -597,9 +633,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	);
 
 	// ── Save position to DB + BLE ─────────────────────────────────────────
-	const savePosition = useCallback(
+	const writePosition = useCallback(
 		async (word: number, { scheduleSync = true }: { scheduleSync?: boolean } = {}) => {
 			settledWordRef.current = word;
+			persistedWordRef.current = word;
 			const now = Date.now();
 			const wordPosition = wordPos(word);
 			const update: { lastRead: number; wordPosition: WordPosition } = {
@@ -680,6 +717,29 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		[id, pushPosition, book?.seriesId, qc],
 	);
 
+	const savePosition = useCallback(
+		async (word: number, opts?: { scheduleSync?: boolean }) => {
+			// RSVP never browses: its saves always land, whatever state the anchor is in.
+			if (browse.isBrowsing && readerModeRef.current !== "rsvp") {
+				// Still the resting word: the settle clamp compares against it.
+				settledWordRef.current = word;
+				return;
+			}
+			await writePosition(word, opts);
+		},
+		[writePosition, browse],
+	);
+
+	/** Moves the view to a word the DB already holds, without saving. */
+	const showUnsavedMove = useCallback((word: number) => {
+		setActiveWord(word);
+		setProgressWord(word);
+		lastWordRef.current = word;
+		settledWordRef.current = word;
+		lastJumpAtRef.current = Date.now();
+		scrollViewRef.current?.jumpTo(word, { highlight: true });
+	}, []);
+
 	// Persist a position recovered from the durable fallback (set by the seed
 	// effect above) to the DB, so it survives forward even if the user never
 	// moves before leaving again. `seedWord` is in the deps so this fires in the
@@ -703,6 +763,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	 *  visual scroll to whichever view is mounted. */
 	const jumpToWord = useCallback(
 		(word: number, { highlight = true }: { highlight?: boolean } = {}) => {
+			browse.enterForJump(word);
 			setActiveWord(word);
 			setProgressWord(word);
 			lastWordRef.current = word;
@@ -711,7 +772,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			savePosition(word);
 			scrollViewRef.current?.jumpTo(word, { highlight });
 		},
-		[savePosition],
+		[savePosition, browse],
 	);
 
 	// ── Highlight / selection state ──────────────────────────────────────
@@ -820,25 +881,33 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// opening a book doesn't bump lastRead.
 			setActiveWord(word);
 			setProgressWord(word);
-			if (lastWordRef.current === word) {
-				settledWordRef.current = word;
-				return;
-			}
 			// Within JUMP_SETTLE_GUARD_MS the settle is the virtual list reconciling
 			// a jump; its viewport-top word sits before the jumped heading.
-			if (Date.now() - lastJumpAtRef.current < JUMP_SETTLE_GUARD_MS) return;
+			const isJumpSettle = Date.now() - lastJumpAtRef.current < JUMP_SETTLE_GUARD_MS;
+			// Before the unchanged-word return: scroll ticks often already hold the
+			// settled word, and skipping those settles would break the detector chain.
+			const hasResumedReading =
+				!isJumpSettle && settledWord !== null && browse.recordSettle(settledWord, word);
+			if (lastWordRef.current === word) {
+				settledWordRef.current = word;
+				if (hasResumedReading) browse.autoCommit();
+				return;
+			}
+			if (isJumpSettle) return;
 			lastWordRef.current = word;
 			userMovedRef.current = true;
 			savePosition(word);
+			if (hasResumedReading) browse.autoCommit();
 			markActivityRef.current?.();
 			// End-of-book chapter advance (serials only). `wordCount > 32` keeps a
 			// freshly fetched, momentarily empty chapter from advancing on mount.
 			const totalWords = book?.wordCount ?? 0;
-			if (totalWords > 32 && word >= totalWords - 1) {
+			// Reaching the end while only looking around isn't finishing the chapter.
+			if (!browse.isBrowsing && totalWords > 32 && word >= totalWords - 1) {
 				void chapterAdvance.tryAdvance();
 			}
 		},
-		[savePosition, chapterAdvance, book?.wordCount],
+		[savePosition, browse, chapterAdvance, book?.wordCount],
 	);
 
 	const handleScrollHighlightClear = useCallback(() => {
@@ -1191,28 +1260,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		[editingGlossaryEntry, paragraphs],
 	);
 
-	const handleJumpFirstMention = useCallback(
-		(label: string) => {
-			const wordIdx = findFirstMention(label, paragraphs, paragraphOffsets, wordIndex ?? null);
-			if (wordIdx !== null) jumpToWord(wordIdx);
-		},
-		[paragraphs, paragraphOffsets, jumpToWord, wordIndex],
-	);
-
-	const handleJumpNextMention = useCallback(
-		(label: string) => {
-			const wordIdx = findNextMention(
-				label,
-				activeWord,
-				paragraphs,
-				paragraphOffsets,
-				wordIndex ?? null,
-			);
-			if (wordIdx !== null) jumpToWord(wordIdx);
-		},
-		[paragraphs, paragraphOffsets, jumpToWord, activeWord, wordIndex],
-	);
-
 	// ── Mouse drag-to-select ──────────────────────────────────────────────
 	// Desktop equivalent of long-press: pointerdown on a word + mousemove > 8px
 	// starts selection mode. We then track the mouse across word spans until
@@ -1274,6 +1321,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const handleRsvpPositionChange = useCallback(
 		(word: number) => {
+			// RsvpView's unmount flush reports its old word after a switch to the
+			// standard view has already placed the reader elsewhere.
+			if (readerModeRef.current !== "rsvp") return;
 			setProgressWord(word);
 			lastWordRef.current = word;
 			userMovedRef.current = true;
@@ -1288,18 +1338,51 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	 *  remount). The actual scroll-vs-page choice happens at render time
 	 *  based on paginationStyle. */
 	const exitRsvpToStandard = useCallback(
-		(word: number) => {
-			lastWordRef.current = word;
+		(word?: number) => {
+			// Playback saves are throttled; pausing reports the displayed word while
+			// RSVP reports are still accepted.
+			rsvpViewRef.current?.pause();
+			// Ahead of the render: from here on this is the standard view, so the save
+			// below (and RsvpView's unmount flush) follow standard-mode browse rules.
+			readerModeRef.current = "standard";
+			const target = word ?? lastWordRef.current ?? 0;
+			lastWordRef.current = target;
 			userMovedRef.current = true;
-			setProgressWord(word);
+			setProgressWord(target);
 			setReaderMode("standard");
-			savePosition(word);
+			savePosition(target);
 		},
 		[savePosition],
 	);
 
+	/** A programmatic jump from any mode. From RSVP it lands in the standard
+	 *  view, browsing like any other jump. */
+	const navigateToWord = useCallback(
+		(word: number) => {
+			if (readerModeRef.current !== "rsvp") {
+				jumpToWord(word);
+				return;
+			}
+			// Before the anchor is taken: playback saves are throttled, so the
+			// displayed word may not have reached lastWordRef yet.
+			rsvpViewRef.current?.pause();
+			browse.enterForJump(word);
+			setActiveWord(word);
+			exitRsvpToStandard(word);
+		},
+		[jumpToWord, browse, exitRsvpToStandard],
+	);
+
+	// Moving on to the next chapter means the browsed spot was read.
+	const handleNextChapter = useCallback(() => {
+		browse.readFromHere();
+		void chapterAdvance.tryAdvance();
+	}, [browse, chapterAdvance]);
+
 	const handleRsvpToggle = useCallback(() => {
 		if (readerMode !== "rsvp") {
+			// RSVP never browses: switching to it reads from the browsed spot.
+			browse.readFromHere();
 			// Use lastWordRef (word-level accurate from handleScrollEnd)
 			// instead of progressWord (paragraph-level from handleScroll).
 			const word = lastWordRef.current ?? 0;
@@ -1308,12 +1391,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			setReaderMode("rsvp");
 			setProgressBarVisible(true);
 		} else {
-			exitRsvpToStandard(lastWordRef.current ?? 0);
+			exitRsvpToStandard();
 		}
-	}, [readerMode, exitRsvpToStandard]);
+	}, [readerMode, exitRsvpToStandard, browse]);
 
 	const handleRsvpFinished = useCallback(() => {
-		exitRsvpToStandard(lastWordRef.current ?? 0);
+		exitRsvpToStandard();
 		// No-op for standalone books; navigates to next chapter for serials.
 		void chapterAdvance.tryAdvance();
 	}, [exitRsvpToStandard, chapterAdvance]);
@@ -1324,22 +1407,31 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	);
 
 	// ── Chapter jump ──────────────────────────────────────────────────────
-	const handleChapterJump = useCallback(
-		(startWord: number) => {
-			if (readerMode === "rsvp") {
-				exitRsvpToStandard(startWord);
-			} else {
-				jumpToWord(startWord);
-			}
+	const handleJumpFirstMention = useCallback(
+		(label: string) => {
+			const wordIdx = findFirstMention(label, paragraphs, paragraphOffsets, wordIndex ?? null);
+			if (wordIdx !== null) navigateToWord(wordIdx);
 		},
-		[readerMode, jumpToWord, exitRsvpToStandard],
+		[paragraphs, paragraphOffsets, navigateToWord, wordIndex],
+	);
+
+	const handleJumpNextMention = useCallback(
+		(label: string) => {
+			const wordIdx = findNextMention(
+				label,
+				activeWord,
+				paragraphs,
+				paragraphOffsets,
+				wordIndex ?? null,
+			);
+			if (wordIdx !== null) navigateToWord(wordIdx);
+		},
+		[paragraphs, paragraphOffsets, navigateToWord, activeWord, wordIndex],
 	);
 
 	const handleHighlightJump = useCallback(
-		(h: { startWord: number }) => {
-			jumpToWord(h.startWord);
-		},
-		[jumpToWord],
+		(h: { startWord: number }) => navigateToWord(h.startWord),
+		[navigateToWord],
 	);
 
 	// ── Search jump ───────────────────────────────────────────────────────────
@@ -1349,16 +1441,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		(charOffset: number) => {
 			if (!content || !wordIndex) return;
 			const byteOffset = utf8ByteLength(content.slice(0, charOffset));
-			const word = wordIndex.wordOf(byteOffset);
-
-			if (readerMode === "rsvp") {
-				setActiveWord(word);
-				exitRsvpToStandard(word);
-			} else {
-				jumpToWord(word);
-			}
+			navigateToWord(wordIndex.wordOf(byteOffset));
 		},
-		[content, readerMode, jumpToWord, exitRsvpToStandard, wordIndex],
+		[content, navigateToWord, wordIndex],
 	);
 
 	// ── Keyboard shortcuts ────────────────────────────────────────────────
@@ -1375,7 +1460,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			sel.noteInputOpen,
 		scrollViewRef,
 		rsvpViewRef,
-		lastOffsetRef: lastWordRef,
 		handleRsvpToggle,
 		exitRsvpToStandard,
 		hasSelection: sel.isSelecting && !sel.noteInputOpen,
@@ -1389,8 +1473,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// reading (no position change for minutes) doesn't trigger spurious idle.
 	const sessionMode: ReadingSessionMode =
 		readerMode === "rsvp" ? "rsvp" : paginationStyle === "page" ? "page" : "scroll";
-	const getReadingPosition = useCallback(() => lastWordRef.current ?? 0, []);
-	const getRestoredPosition = useCallback(() => lastWordRef.current, []);
+	const getReadingPosition = useCallback(() => browse.anchor ?? lastWordRef.current ?? 0, [browse]);
+	const getRestoredPosition = useCallback(() => browse.anchor ?? lastWordRef.current, [browse]);
 	const liveRead = discussionRead?.status === "in_progress" ? discussionRead : null;
 	const liveMembers = useLiveReading({
 		buddyReadId: liveRead?.id ?? null,
@@ -1402,16 +1486,30 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	});
 	const buddy = useBuddyReadMarkers(liveRead?.id ?? null, totalWordCount, liveMembers);
 	const readingNowCount = buddy.markers.filter((m) => m.live).length;
-	const { markActivity: markReadingActivity, getDebugSnapshot } = useReadingSession({
+	const {
+		markActivity: markReadingActivity,
+		getDebugSnapshot,
+		endSession,
+		rewindSession,
+		backfillSession,
+		discardSession,
+	} = useReadingSession({
 		bookId: id,
 		mode: sessionMode,
-		isReading: !!content && lastWordRef.current !== null && !isSessionPaused,
+		isReading:
+			!!content && lastWordRef.current !== null && !isSessionPaused && browseAnchor === null,
 		getPosition: getReadingPosition,
 		wpmSetting: rsvpSettings.wpm,
 	});
 	useEffect(() => {
 		markActivityRef.current = markReadingActivity;
-	}, [markReadingActivity]);
+		browseSessionRef.current = {
+			end: endSession,
+			discard: discardSession,
+			rewind: rewindSession,
+			backfill: backfillSession,
+		};
+	}, [markReadingActivity, endSession, discardSession, rewindSession, backfillSession]);
 
 	// A book or mode change tears down the tracker (new sitting); a stale
 	// manual pause must not carry over into it.
@@ -1428,8 +1526,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// tap.
 	const selIsSelectingRef = useRef(sel.isSelecting);
 	selIsSelectingRef.current = sel.isSelecting;
-	const readerModeRef = useRef(readerMode);
-	readerModeRef.current = readerMode;
 	useEffect(() => {
 		const el = viewContainerEl;
 		if (!el) return;
@@ -1507,7 +1603,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// the (possibly-stale) `book.wordPosition` query cache; flushing
 			// that would clobber the real value the prior unmount just wrote.
 			const word = lastWordRef.current;
-			if (word !== null && userMovedRef.current) {
+			if (browse.isBrowsing) {
+				// The DB already holds the anchor; the browsed spot must not leak into
+				// the durable fallback below either. Still flush earlier saves.
+				if (userMovedRef.current) pushSync().catch(() => {});
+			} else if (word !== null && userMovedRef.current) {
 				savePositionRef.current(word, { scheduleSync: false });
 				pushSync().catch(() => {});
 			} else if (
@@ -1531,7 +1631,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// when the user navigates back.
 			qcRef.current.invalidateQueries({ queryKey: bookKeys.all });
 		};
-	}, []);
+	}, [browse]);
 
 	// ── Flush position on background / teardown ───────────────────────────
 	// The unmount cleanup above only runs on a clean React unmount. A web tab
@@ -1543,6 +1643,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// flushes its own `pagehide`, which routes through `savePosition` here too.
 	useEffect(() => {
 		const flush = () => {
+			if (browse.isBrowsing) return;
 			const word = lastWordRef.current;
 			if (word !== null && userMovedRef.current) {
 				savePositionRef.current(word, { scheduleSync: false });
@@ -1574,7 +1675,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					/* listener never attached; nothing to remove */
 				});
 		};
-	}, []);
+	}, [browse]);
 
 	// ─── Render ─────────────────────────────────────────────────────────────
 
@@ -1607,6 +1708,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	}
 
 	const progressPct = totalWordCount > 0 ? Math.min(100, (progressWord / totalWordCount) * 100) : 0;
+	const browseAnchorPct = browseAnchor !== null ? percentOfBook(browseAnchor) : 0;
+	const browseAnchorTick = browseAnchor !== null && (
+		<div className="reader-browse-anchor-row" aria-hidden>
+			<div className="reader-browse-anchor" style={{ left: `${browseAnchorPct}%` }} />
+		</div>
+	);
 	const isProgressCollapsed = !progressBarVisible && readerMode !== "rsvp";
 	const isShowingSkeleton =
 		chapterFetch.kind !== "locked" &&
@@ -1652,7 +1759,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		<NextChapterFooter
 			hasPrev={hasPrev}
 			hasNext={hasNext}
-			onNext={() => void chapterAdvance.tryAdvance()}
+			onNext={handleNextChapter}
 			onPrev={() => void chapterAdvance.tryRetreat()}
 		/>
 	);
@@ -1688,7 +1795,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							<Button
 								variant="ghost"
 								size="icon"
-								onClick={() => void chapterAdvance.tryAdvance()}
+								onClick={handleNextChapter}
 								disabled={!hasNext}
 								aria-label="Next chapter"
 							>
@@ -1711,6 +1818,20 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					>
 						{readerMode === "rsvp" ? <ZapOff /> : <Zap />}
 					</Button>
+					{readerMode !== "rsvp" && (
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={browseAnchor === null ? browse.start : browse.back}
+							disabled={!content}
+							aria-label="Browse mode"
+							aria-pressed={browseAnchor !== null}
+							className={browseAnchor !== null ? "text-primary" : undefined}
+							data-testid="browse-toggle"
+						>
+							<Compass />
+						</Button>
+					)}
 					<Button
 						variant="ghost"
 						size="icon"
@@ -1819,6 +1940,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						lineSpacing={readerLineSpacing}
 						margin={readerMargin}
 						showActiveWordUnderline={readerActiveWordUnderline}
+						lang={hyphenationLang(book.language)}
+						animatePageTurns={pageTurnAnimation}
 						activeWord={activeWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}
@@ -1889,6 +2012,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								approximate={buddy.approximate}
 								isCollapsed
 							/>
+							{browseAnchorTick}
 							<div className="reader-progress-fill-track">
 								<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
 							</div>
@@ -1923,6 +2047,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							approximate={buddy.approximate}
 							isCollapsed={false}
 						/>
+						{browseAnchorTick}
 						{/* The slider role sits on the track, not the bar: a slider is a leaf, and
 						    assistive tech would not reach the marker buttons inside it. */}
 						{/* biome-ignore lint/a11y/useFocusableInteractive: scrubber */}
@@ -1956,6 +2081,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							)}
 						</div>
 					</div>
+				)}
+
+				{browseAnchor !== null && readerMode !== "rsvp" && !isShowingSkeleton && (
+					<BrowseBar
+						anchorPct={browseAnchorPct}
+						onBack={browse.back}
+						onReadFromHere={browse.readFromHere}
+					/>
 				)}
 
 				{isSessionPaused && <SessionPauseOverlay onResume={() => setIsSessionPaused(false)} />}
@@ -1992,7 +2125,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				theme={theme}
 				chapters={chapters}
 				currentChapterIndex={currentChapterIndex}
-				onJumpChapter={handleChapterJump}
+				onJumpChapter={navigateToWord}
 				seriesId={book.seriesId ?? null}
 				highlights={highlightRows}
 				onJumpHighlight={handleHighlightJump}

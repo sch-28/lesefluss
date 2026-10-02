@@ -1,6 +1,7 @@
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import type { BookPayload, Chapter, Parser, PdfjsModuleLike } from "../types";
+import { COVER_MAX_SIDE, coverDataUrl, encodeCover } from "../utils/cover-image";
 import { utf8ByteLength } from "../utils/encoding";
 import { titleFromFileName } from "../utils/file-format";
 import { assertBytes } from "../utils/raw-input";
@@ -165,10 +166,6 @@ function isPasswordError(err: unknown): boolean {
 const LINE_Y_TOLERANCE = 0.5;
 /** Multiplier on median line height above which we emit a paragraph break. */
 const PARAGRAPH_GAP_FACTOR = 1.5;
-/** Cover render target width in CSS px. Page 1 is rendered to this width. */
-const COVER_WIDTH_PX = 200;
-/** JPEG quality for the cover data URL. */
-const COVER_JPEG_QUALITY = 0.75;
 
 /**
  * Turn a single PDF page's positioned glyph runs into plain text with soft
@@ -314,17 +311,18 @@ async function renderCover(doc: PDFDocumentProxy): Promise<string | null> {
 	try {
 		const page = await doc.getPage(1);
 		const base = page.getViewport({ scale: 1 });
-		const scale = COVER_WIDTH_PX / base.width;
+		const scale = Math.min(1, COVER_MAX_SIDE / Math.max(base.width, base.height));
 		const viewport = page.getViewport({ scale });
 
 		const canvas = document.createElement("canvas");
-		canvas.width = Math.ceil(viewport.width);
-		canvas.height = Math.ceil(viewport.height);
+		canvas.width = Math.max(1, Math.floor(viewport.width));
+		canvas.height = Math.max(1, Math.floor(viewport.height));
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return null;
 
 		await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-		return canvas.toDataURL("image/jpeg", COVER_JPEG_QUALITY);
+		const encoded = await encodeCover(canvas, { width: canvas.width, height: canvas.height });
+		return encoded ? coverDataUrl(encoded) : null;
 	} catch {
 		return null;
 	}

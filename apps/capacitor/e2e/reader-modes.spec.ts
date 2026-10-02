@@ -15,7 +15,7 @@ test("word position survives a scroll → rsvp → paged → scroll tour", async
 
 	// Move to chapter 2 so the position is non-zero and observable across reloads.
 	const savePending = reader.waitForNextSave(page);
-	await reader.tocJumpToChapter(page, "2: Second");
+	await reader.moveToChapter(page, "2: Second");
 	await expect(page.locator("h2", { hasText: "TITLE 2" })).toBeInViewport({ timeout: 5000 });
 	await savePending;
 

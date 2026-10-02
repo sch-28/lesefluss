@@ -16,6 +16,7 @@ import { Switch } from "@lesefluss/ui/switch";
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	Bluetooth,
+	BluetoothOff,
 	CircleX,
 	CloudDownload,
 	CloudUpload,
@@ -33,10 +34,16 @@ import { useToast } from "@/components/toast";
 import { useBLE } from "@/contexts/ble-context";
 import { useAutoSaveSettings } from "@/hooks/use-auto-save-settings";
 import { useDeviceCapabilities } from "@/hooks/use-device-capabilities";
-import { ble } from "@/services/ble";
+import { ble, SCAN_BLOCKER_MESSAGES, type ScanBlocker } from "@/services/ble";
 import type { StorageInfo } from "@/services/ble/characteristics/storage";
 import { MULTI_BOOK_DESCRIPTOR_ID } from "@/services/devices";
 import { log } from "@/utils/log";
+
+const SCAN_BLOCKER_ACTIONS: Record<ScanBlocker, string> = {
+	"bluetooth-off": "Turn on Bluetooth",
+	"location-off": "Open location settings",
+	"permission-denied": "Open app settings",
+};
 
 export const Route = createFileRoute("/tabs/settings/device")({
 	component: DeviceSettings,
@@ -124,6 +131,9 @@ function DeviceSettings() {
 		connectedDevice,
 		isScanning,
 		scannedDevices,
+		scanBlocker,
+		canResolveScanBlocker,
+		resolveScanBlocker,
 		bleEnabled,
 		toggleBLEEnabled,
 		startScan,
@@ -364,6 +374,22 @@ function DeviceSettings() {
 									<Loader2 className="size-4 animate-spin" />
 									<span>Connecting...</span>
 								</div>
+							) : scanBlocker ? (
+								<div className="space-y-3 px-4 py-3">
+									<div className="flex items-start gap-3 text-sm">
+										<BluetoothOff className="mt-0.5 size-4 shrink-0 text-destructive" />
+										<span className="text-foreground">{SCAN_BLOCKER_MESSAGES[scanBlocker]}</span>
+									</div>
+									{canResolveScanBlocker && (
+										<Button
+											variant="outline"
+											className="w-full"
+											onClick={() => resolveScanBlocker()}
+										>
+											{SCAN_BLOCKER_ACTIONS[scanBlocker]}
+										</Button>
+									)}
+								</div>
 							) : scannedDevices.length === 0 ? (
 								<div className="flex items-center gap-3 px-4 py-3 text-muted-foreground text-sm">
 									{isScanning && <Loader2 className="size-4 animate-spin" />}
@@ -388,31 +414,33 @@ function DeviceSettings() {
 									</div>
 								</button>
 							))}
-							<div className="flex gap-2 p-3">
-								{isScanning ? (
-									<Button variant="outline" className="flex-1" onClick={stopScan}>
-										<Square />
-										Stop scan
+							{!scanBlocker && (
+								<div className="flex gap-2 p-3">
+									{isScanning ? (
+										<Button variant="outline" className="flex-1" onClick={stopScan}>
+											<Square />
+											Stop scan
+										</Button>
+									) : (
+										<Button variant="outline" className="flex-1" onClick={startScan}>
+											<Search />
+											Scan
+										</Button>
+									)}
+									<Button
+										variant="outline"
+										className="flex-1"
+										onClick={async () => {
+											await stopScan();
+											await new Promise((r) => setTimeout(r, 300));
+											await startScan();
+										}}
+									>
+										<RefreshCw />
+										Restart scan
 									</Button>
-								) : (
-									<Button variant="outline" className="flex-1" onClick={startScan}>
-										<Search />
-										Scan
-									</Button>
-								)}
-								<Button
-									variant="outline"
-									className="flex-1"
-									onClick={async () => {
-										await stopScan();
-										await new Promise((r) => setTimeout(r, 300));
-										await startScan();
-									}}
-								>
-									<RefreshCw />
-									Restart scan
-								</Button>
-							</div>
+								</div>
+							)}
 							{bleError && <div className="px-4 py-2 text-destructive text-sm">{bleError}</div>}
 						</>
 					)}

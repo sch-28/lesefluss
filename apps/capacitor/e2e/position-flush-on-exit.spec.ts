@@ -19,10 +19,10 @@ test("jump position survives a hard reload right after moving (no explicit save 
 		"Chapter 1 opening paragraph anchors the scene.",
 	);
 
-	// Jump to chapter 2, then immediately reload, racing the async position
-	// write. (jumpToWord saves eagerly, so this is expected to survive; it is a
-	// regression guard for the deliberate-exit path.)
-	await reader.tocJumpToChapter(page, "2: Second");
+	// Commit chapter 2, then immediately reload, racing the async position
+	// write. ("Read from here" saves eagerly, so this is expected to survive; it
+	// is a regression guard for the deliberate-exit path.)
+	await reader.moveToChapter(page, "2: Second");
 	await expect(page.locator("h2", { hasText: "TITLE 2" })).toBeInViewport({ timeout: 5000 });
 	await page.reload();
 	await reader.expectLoaded(page);

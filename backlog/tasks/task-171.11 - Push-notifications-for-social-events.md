@@ -4,12 +4,12 @@ title: Push notifications for social events
 status: To Do
 assignee: []
 created_date: '2026-09-25 22:12'
-updated_date: '2026-09-28 16:17'
+updated_date: '2026-10-02 16:59'
 labels:
   - social
   - app
   - web
-milestone: m-6
+milestone: m-14
 dependencies:
   - TASK-171.3
   - TASK-171.4

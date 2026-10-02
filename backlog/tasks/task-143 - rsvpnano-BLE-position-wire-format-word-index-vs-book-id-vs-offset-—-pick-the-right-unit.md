@@ -4,9 +4,8 @@ title: Port rsvpnano device tokenizer to @lesefluss/core (align app on device)
 status: Done
 assignee: []
 created_date: '2026-05-21 02:52'
-updated_date: '2026-05-22 22:41'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-12
 dependencies: []
 priority: high
 ordinal: 47000

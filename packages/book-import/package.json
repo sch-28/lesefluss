@@ -20,6 +20,7 @@
 		"./parsers/txt": "./src/parsers/txt.ts",
 		"./sources/blob": "./src/sources/blob.ts",
 		"./sources/url": "./src/sources/url.ts",
+		"./utils/cover-image": "./src/utils/cover-image.ts",
 		"./utils/dom-paragraphs": "./src/utils/dom-paragraphs.ts",
 		"./utils/encoding": "./src/utils/encoding.ts",
 		"./utils/id": "./src/utils/id.ts",

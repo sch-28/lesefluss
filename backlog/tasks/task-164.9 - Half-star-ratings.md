@@ -5,9 +5,8 @@ status: Done
 assignee:
   - sch-28
 created_date: '2026-08-13 21:13'
-updated_date: '2026-08-13 22:04'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-5
 dependencies:
   - TASK-164.3
 documentation:

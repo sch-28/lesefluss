@@ -26,6 +26,8 @@
  * last position.
  */
 import {
+	CREDIT_BURST_WORDS,
+	creditCeilingWpm,
 	refillCredit,
 	SANE_WPM_CEILING,
 	spendCredit,
@@ -103,6 +105,9 @@ type SessionState = {
 	/** Wall-clock ms when current "active" interval began; null = paused. */
 	activeSinceMs: number | null;
 	lastCheckpointAt: number;
+	/** A row for this sitting exists, so it must be rewritten (even below the
+	 *  noise floor) rather than dropped if it shrinks. */
+	hasPersisted: boolean;
 };
 
 /** An inclusive-start, exclusive-end range of word positions. */
@@ -266,10 +271,61 @@ export class SessionTracker {
 		if (now - this.session.lastCheckpointAt > HEARTBEAT_MS) {
 			const row = this.buildRow(now);
 			if (row) {
-				this.opts.persist(row, "checkpoint");
+				this.write(row, "checkpoint");
 				this.session.lastCheckpointAt = now;
 			}
 		}
+	}
+
+	/** Undoes travel past `pos` that turned out to be browsing, not reading:
+	 *  the sitting must not end, or count words, beyond where reading stopped. */
+	rewindTo(pos: number): void {
+		const s = this.session;
+		if (!s || s.lastPos <= pos) return;
+		s.lastPos = pos;
+		s.readSpans = s.readSpans
+			.filter(([start]) => start < pos)
+			.map(([start, end]): Span => [start, Math.min(end, pos)]);
+		// A heartbeat may already hold the browsed spot; overwrite it now.
+		if (s.hasPersisted) {
+			const now = this.now();
+			const row = this.buildRow(now);
+			if (row) this.write(row, "checkpoint");
+			s.lastCheckpointAt = now;
+		}
+	}
+
+	/** Drops the open sitting without writing it. */
+	discard(): void {
+		this.session = null;
+	}
+
+	/** Opens a sitting for reading that happened while the tracker was paused
+	 *  (browsing that turned into reading). Only valid with no open sitting;
+	 *  the next `setReading(true)` resumes it. */
+	backfill({ from, to, activeMs }: { from: number; to: number; activeMs: number }): void {
+		if (this.session) return;
+		const now = this.now();
+		const ms = Math.round(activeMs);
+		// The same ceiling live tracking would have allowed for that time.
+		const creditable = Math.floor(
+			(ms * creditCeilingWpm(this.opts.mode, this.opts.getWpmSetting())) / 60_000 +
+				CREDIT_BURST_WORDS,
+		);
+		const credited = Math.min(Math.max(0, to - from), creditable);
+		this.session = {
+			id: this.newId(),
+			startedAt: now - ms,
+			startPos: from,
+			lastPos: to,
+			readSpans: credited > 0 ? [[from, from + credited]] : [],
+			creditBudget: 0,
+			accumulatedActiveMs: ms,
+			activeSinceMs: null,
+			lastCheckpointAt: now,
+			hasPersisted: false,
+		};
+		this.lastActivityAt = now;
 	}
 
 	/** Terminal write at the natural end of a sitting (unmount, book/mode
@@ -283,7 +339,7 @@ export class SessionTracker {
 		}
 		const row = this.buildRow(now);
 		if (row) {
-			this.opts.persist(row, "flush");
+			this.write(row, "flush");
 		} else {
 			// Noise floor is deliberate: brief tab-switches, accidental opens,
 			// and < MIN_DURATION_MS skims would otherwise pollute stats. Promote
@@ -324,7 +380,7 @@ export class SessionTracker {
 			}
 			const row = this.buildRow(now);
 			if (row) {
-				this.opts.persist(row, "checkpoint");
+				this.write(row, "checkpoint");
 				this.session.lastCheckpointAt = now;
 			}
 		}
@@ -342,9 +398,15 @@ export class SessionTracker {
 			accumulatedActiveMs: 0,
 			activeSinceMs: now,
 			lastCheckpointAt: now,
+			hasPersisted: false,
 		};
 		this.lastActivityAt = now;
 		this.lastPollAt = now;
+	}
+
+	private write(row: SessionRow, kind: "checkpoint" | "flush"): void {
+		if (this.session) this.session.hasPersisted = true;
+		this.opts.persist(row, kind);
 	}
 
 	private buildRow(now: number): SessionRow | null {
@@ -352,9 +414,10 @@ export class SessionTracker {
 		if (!s) return null;
 		const finalActiveMs =
 			s.accumulatedActiveMs + (s.activeSinceMs !== null ? now - s.activeSinceMs : 0);
-		if (finalActiveMs < MIN_DURATION_MS) return null;
 		const wordsRead = wordsReadIn(s);
-		if (wordsRead < MIN_WORDS) return null;
+		if (!s.hasPersisted && (finalActiveMs < MIN_DURATION_MS || wordsRead < MIN_WORDS)) {
+			return null;
+		}
 		// On an in-place book switch the reader clears its position ref before this
 		// runs, so re-reading it would record the outgoing session as ending at 0.
 		const endPos = s.lastPos;

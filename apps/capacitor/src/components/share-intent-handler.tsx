@@ -13,6 +13,7 @@ import { useImportStaging } from "../contexts/import-staging-context";
 import type { StagedImport } from "../services/book-import";
 import { subscribeShareIntent } from "../services/book-import/sources/share-intent";
 import { queryHooks } from "../services/db/hooks";
+import { markShareReceived } from "../services/launch-intent";
 import { isSerialUrl } from "../services/serial-scrapers";
 import { log } from "../utils/log";
 import { IS_WEB } from "../utils/platform";
@@ -69,6 +70,7 @@ const ShareIntentHandler: React.FC = () => {
 		(async () => {
 			try {
 				handle = await subscribeShareIntent((event) => {
+					markShareReceived();
 					const { importUrl, importSerial, importText, importBlob, showToast, stage, history } =
 						handlersRef.current;
 

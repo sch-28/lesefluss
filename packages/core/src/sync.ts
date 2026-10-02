@@ -264,4 +264,27 @@ export type SyncResponse = {
 	 * server can fall back instead of treating every book as missing.
 	 */
 	contentBookIds?: string[];
+	/** Optional so a client pointed at an older server can do without it. */
+	contentQuota?: ContentQuota;
+};
+
+/**
+ * Server-side storage an account's live synced books take up, against its cap.
+ * Measured by the server from what it stores; the client-supplied `fileSize`
+ * plays no part.
+ */
+export type ContentQuota = { usedBytes: number; quotaBytes: number };
+
+export const CONTENT_QUOTA_EXCEEDED = "content_quota_exceeded";
+
+/**
+ * Body of the 413 a push gets when some of its book content would not fit the
+ * quota. Everything else in that push (positions, settings, highlights, the
+ * books themselves) IS committed; only the content of `rejectedContentBookIds`
+ * was left out, so those books stay on the device that holds their text.
+ */
+export type ContentQuotaExceeded = ContentQuota & {
+	error: string;
+	code: typeof CONTENT_QUOTA_EXCEEDED;
+	rejectedContentBookIds: string[];
 };

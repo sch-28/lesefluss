@@ -1,3 +1,4 @@
+import { App as CapacitorApp } from "@capacitor/app";
 import { Preferences } from "@capacitor/preferences";
 import type { BleDevice } from "@capacitor-community/bluetooth-le";
 import type React from "react";
@@ -10,7 +11,14 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { BLEConnectionState, ble, bleClient, type ScannedDevice } from "../services/ble";
+import {
+	BLEConnectionState,
+	ble,
+	bleClient,
+	isPermissionDeniedError,
+	type ScanBlocker,
+	type ScannedDevice,
+} from "../services/ble";
 import { createBleAdapter } from "../services/ble-transport";
 import { queries } from "../services/db/queries";
 import type { Settings as RSVPSettings } from "../services/db/schema";
@@ -20,6 +28,7 @@ import { IS_WEB } from "../utils/platform";
 
 const BLE_ENABLED_KEY = "ble_enabled";
 const PAIRING_V2_MIGRATED_KEY = "paired_v2_migrated";
+const READINESS_RETRY_MS = 5_000;
 
 async function getBLEEnabled(): Promise<boolean> {
 	const { value } = await Preferences.get({ key: BLE_ENABLED_KEY });
@@ -52,6 +61,12 @@ interface BLEContextType {
 	// Scanning state
 	isScanning: boolean;
 	scannedDevices: ScannedDevice[];
+	/** Why auto-scan is paused (radio off, location off, permission denied); null when scanning can run. */
+	scanBlocker: ScanBlocker | null;
+	/** False when the platform offers no in-app fix (Bluetooth off on iOS). */
+	canResolveScanBlocker: boolean;
+	/** Prompt to enable Bluetooth (Android) or open the relevant system settings page. */
+	resolveScanBlocker: () => Promise<void>;
 
 	// BLE opt-in
 	bleEnabled: boolean;
@@ -114,6 +129,9 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	const [error, setError] = useState<string | null>(null);
 	const [scanTrigger, setScanTrigger] = useState(0);
 	const [bleEnabled, setBleEnabled] = useState(false);
+	const [isBleReady, setIsBleReady] = useState(false);
+	const [initAttempt, setInitAttempt] = useState(0);
+	const [scanBlocker, setScanBlocker] = useState<ScanBlocker | null>(null);
 	// `lastConnected DESC` so the find() in the auto-connect effect picks the
 	// most-recently-paired visible device.
 	const [pairedIds, setPairedIds] = useState<string[]>([]);
@@ -147,18 +165,66 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		})();
 	}, [refreshPaired]);
 
-	// Initialize BLE on mount (native platforms only, when opted in)
+	// Initialize BLE on mount (native platforms only, when opted in).
+	// initAttempt re-runs it after the user returns from granting the permission.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: initAttempt is an intentional re-fire trigger, not read inside the effect
 	useEffect(() => {
 		if (IS_WEB) return;
 		if (!bleEnabled) return;
 		const init = async () => {
 			const result = await bleClient.initialize();
-			if (!result.success) {
+			if (result.success) {
+				setIsBleReady(true);
+			} else if (isPermissionDeniedError(result.error)) {
+				setScanBlocker("permission-denied");
+			} else {
 				setError(result.error || "Failed to initialize BLE");
 			}
 		};
 		init();
-	}, [bleEnabled]);
+	}, [bleEnabled, initAttempt]);
+
+	useEffect(() => {
+		if (IS_WEB) return;
+		if (!bleEnabled || !isBleReady) return;
+		let cancelled = false;
+		let stopWatching: (() => void) | undefined;
+		bleClient
+			.watchEnabled((enabled) => {
+				log("ble", "radio enabled:", enabled);
+				if (enabled) {
+					setScanBlocker((prev) => (prev === "bluetooth-off" ? null : prev));
+					return;
+				}
+				setScanBlocker("bluetooth-off");
+				setIsScanning(false);
+				setScannedDevices([]);
+				void bleClient.stopScan();
+			})
+			.then((stop) => {
+				if (cancelled) stop();
+				else stopWatching = stop;
+			})
+			.catch((err) => log.warn("ble", "watchEnabled failed:", err));
+		return () => {
+			cancelled = true;
+			stopWatching?.();
+		};
+	}, [bleEnabled, isBleReady]);
+
+	// Location services and app permissions have no change notification, so
+	// re-check whenever the user comes back from the settings app.
+	useEffect(() => {
+		if (IS_WEB) return;
+		if (!scanBlocker) return;
+		const handle = CapacitorApp.addListener("resume", () => {
+			if (scanBlocker === "permission-denied") setInitAttempt((n) => n + 1);
+			setScanBlocker(null);
+		});
+		return () => {
+			void handle.then((h) => h.remove());
+		};
+	}, [scanBlocker]);
 
 	// Poll connection state from the bleClient singleton (native only, when opted in).
 	// Each tick MUST early-out when nothing changed: bleClient.connectedDevice is a
@@ -191,21 +257,64 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		return () => clearInterval(interval);
 	}, [bleEnabled]);
 
-	const startScan = useCallback(async () => {
-		if (IS_WEB) return;
-		setError(null);
-		setScannedDevices([]);
-		setIsScanning(true);
+	const runScan = useCallback(
+		async (interactive: boolean) => {
+			if (IS_WEB) return;
+			// Before initialize succeeds every plugin call rejects; scanning here
+			// would clear a permission-denied blocker and with it the resume retry.
+			if (!isBleReady) return;
+			setError(null);
+			setScannedDevices([]);
+			setIsScanning(true);
 
-		const result = await bleClient.startScan((devices) => {
-			setScannedDevices(devices);
-		});
+			let blocker: ScanBlocker | null;
+			try {
+				blocker = await bleClient.checkScanReadiness(interactive);
+			} catch (err) {
+				log.warn("ble", "radio state check failed:", err);
+				setError("Couldn't check Bluetooth state");
+				// Clearing isScanning re-fires auto-scan; right away it would spin on a check that keeps failing.
+				if (interactive) setIsScanning(false);
+				else setTimeout(() => setIsScanning(false), READINESS_RETRY_MS);
+				return;
+			}
+			setScanBlocker(blocker);
+			if (blocker) {
+				log("ble", "scan blocked:", blocker);
+				setIsScanning(false);
+				return;
+			}
 
-		if (!result.success) {
-			setError(result.error || "Failed to start scan");
-			setIsScanning(false);
+			const result = await bleClient.startScan((devices) => {
+				setScannedDevices(devices);
+			});
+
+			if (!result.success) {
+				setError(result.error || "Failed to start scan");
+				setIsScanning(false);
+			}
+		},
+		[isBleReady],
+	);
+
+	const startScan = useCallback(() => runScan(true), [runScan]);
+
+	const canResolveScanBlocker =
+		scanBlocker !== null && (scanBlocker !== "bluetooth-off" || bleClient.canRequestEnable);
+
+	const resolveScanBlocker = useCallback(async () => {
+		if (!scanBlocker) return;
+		if (scanBlocker === "bluetooth-off") {
+			if (!bleClient.canRequestEnable) return;
+			await runScan(true);
+			return;
 		}
-	}, []);
+		try {
+			await bleClient.openSettingsFor(scanBlocker);
+		} catch (err) {
+			log.warn("ble", "open settings failed:", err);
+		}
+	}, [scanBlocker, runScan]);
 
 	const stopScan = useCallback(async () => {
 		if (IS_WEB) {
@@ -376,14 +485,16 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	// Auto-scan when not connected and not already scanning/connecting (native only, when opted in).
 	// scanTrigger is included so a disconnect or failed connect always re-fires this
 	// effect even when isScanning and isConnected haven't changed value.
+	// Auto-scan never prompts to enable Bluetooth; it pauses on a scanBlocker
+	// until the radio comes back on or the user acts.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: scanTrigger is an intentional re-fire trigger, not read inside the effect
 	useEffect(() => {
 		if (IS_WEB) return;
-		if (!bleEnabled) return;
+		if (!bleEnabled || !isBleReady || scanBlocker) return;
 		if (!isScanning && !isConnected && !isConnectingRef.current) {
-			startScan();
+			runScan(false);
 		}
-	}, [isScanning, isConnected, scanTrigger, startScan, bleEnabled]);
+	}, [isScanning, isConnected, scanTrigger, runScan, bleEnabled, isBleReady, scanBlocker]);
 
 	const handleDeviceSelect = useCallback(
 		async (deviceId: string) => {
@@ -455,6 +566,8 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 	const toggleBLEEnabled = useCallback(async () => {
 		const next = !bleEnabled;
 		if (!next) {
+			setScanBlocker(null);
+			setIsBleReady(false);
 			if (isScanning) {
 				const r = await bleClient.stopScan();
 				if (!r.success) log.warn("ble", "stopScan during disable failed:", r.error);
@@ -481,6 +594,9 @@ export const BLEProvider: React.FC<BLEProviderProps> = ({ children }) => {
 		connectedDescriptorId,
 		isScanning,
 		scannedDevices,
+		scanBlocker,
+		canResolveScanBlocker,
+		resolveScanBlocker,
 		bleEnabled,
 		toggleBLEEnabled,
 		startScan,

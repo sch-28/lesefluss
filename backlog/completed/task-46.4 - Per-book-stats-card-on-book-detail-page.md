@@ -6,7 +6,6 @@ assignee: []
 created_date: '2026-04-30 23:30'
 updated_date: '2026-05-01 01:30'
 labels: []
-milestone: m-5
 dependencies:
   - TASK-46.1
 parent_task_id: TASK-46

@@ -4,9 +4,8 @@ title: Sync push payload spikes from 21KB → 9.5MB unexpectedly
 status: Done
 assignee: []
 created_date: '2026-05-21 22:12'
-updated_date: '2026-05-23 16:17'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-10
 dependencies: []
 priority: medium
 ordinal: 55000

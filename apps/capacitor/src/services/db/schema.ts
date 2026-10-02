@@ -71,6 +71,8 @@ export const settings = sqliteTable("settings", {
 		.default(false),
 	appFontSize: integer("app_font_size").notNull().default(16),
 	lastSeenChangelogDate: text("last_seen_changelog_date").notNull().default(""),
+	pageTurnAnimation: integer("page_turn_animation", { mode: "boolean" }).notNull().default(true),
+	autoOpenLastBook: integer("auto_open_last_book", { mode: "boolean" }).notNull().default(false),
 	updatedAt: integer("updated_at").notNull(),
 });
 

@@ -9,18 +9,19 @@ import { parseDeepLink } from "./parse";
 import { type PendingLink, setPendingLink, takePendingLink } from "./pending-link";
 
 /** Navigates to a link's screen. A cold start has no history, so the Social tab is put underneath first. */
-export function navigateToLink(router: AnyRouter, link: PendingLink): void {
+export async function navigateToLink(router: AnyRouter, link: PendingLink): Promise<void> {
 	if (window.history.length <= 1) {
-		router.navigate({ to: "/tabs/social", replace: true });
+		// Awaited: two navigations in one tick are batched and the replace is lost.
+		await router.navigate({ to: "/tabs/social", replace: true });
 	}
-	router.navigate({ to: "/tabs/social/invite/$token", params: { token: link.token } });
+	await router.navigate({ to: "/tabs/social/invite/$token", params: { token: link.token } });
 }
 
 /** Replays a stored link, if any. Returns whether one was found. */
 export async function replayPendingLink(router: AnyRouter): Promise<boolean> {
 	const link = await takePendingLink();
 	if (!link) return false;
-	navigateToLink(router, link);
+	await navigateToLink(router, link);
 	return true;
 }
 
@@ -61,7 +62,7 @@ export function createDeepLinkHandler(deps: DeepLinkHandlerDeps): (url: string) 
 			deps.router.navigate({ to: "/onboarding", replace: true });
 			return;
 		}
-		navigateToLink(deps.router, link);
+		await navigateToLink(deps.router, link);
 	};
 }
 

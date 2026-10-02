@@ -7,7 +7,6 @@ created_date: '2026-04-26 09:41'
 updated_date: '2026-04-26 15:56'
 labels:
   - bug
-milestone: m-11
 dependencies: []
 references:
   - apps/capacitor/src/services/db/queries/series.ts

@@ -4,10 +4,11 @@ title: 'Want to read: save a catalog or web-novel title without downloading it'
 status: To Do
 assignee: []
 created_date: '2026-10-01 10:05'
+updated_date: '2026-10-02 16:59'
 labels:
   - explore
   - library
-milestone: m-6
+milestone: m-14
 dependencies: []
 references:
   - TASK-164.2

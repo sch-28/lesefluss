@@ -84,6 +84,7 @@ function AppearanceSettings() {
 		paginationStyle,
 		showReadingTime,
 		showActiveWordUnderline,
+		pageTurnAnimation,
 		adjustFontSize,
 		adjustAppFontSize,
 		adjustLineSpacing,
@@ -92,6 +93,7 @@ function AppearanceSettings() {
 		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,
+		setPageTurnAnimation,
 	} = useAppearanceSettings();
 
 	const decreaseAppFontSize = useCallback(
@@ -140,6 +142,19 @@ function AppearanceSettings() {
 								</ToggleGroupItem>
 							))}
 						</ToggleGroup>
+					</div>
+					<div className="flex items-center justify-between gap-3 px-4 py-3">
+						<label htmlFor="page-turn-animation" className="min-w-0 flex-1">
+							<div className="font-medium text-foreground text-sm">Animate page turns</div>
+							<div className="text-muted-foreground text-xs">
+								Turn off on e-ink screens. Applies to page mode on this device.
+							</div>
+						</label>
+						<Switch
+							id="page-turn-animation"
+							checked={pageTurnAnimation}
+							onCheckedChange={setPageTurnAnimation}
+						/>
 					</div>
 				</Section>
 

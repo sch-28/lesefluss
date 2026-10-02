@@ -9,7 +9,6 @@ labels:
   - extension
   - firefox
   - security
-milestone: m-9
 dependencies: []
 priority: medium
 ---

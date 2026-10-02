@@ -29,5 +29,7 @@ export const Route = createFileRoute("/tabs/reader/$id")({
 
 function ReaderRoute() {
 	const { id } = Route.useParams();
-	return <BookReader id={id} />;
+	// Keyed: a serial chapter switch must not reuse the previous chapter's
+	// position refs, browse state or flushes.
+	return <BookReader key={id} id={id} />;
 }

@@ -5,11 +5,10 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-01 10:04'
-updated_date: '2026-10-01 10:37'
+updated_date: '2026-10-02 16:58'
 labels:
   - explore
   - ux
-milestone: m-6
 dependencies: []
 references:
   - apps/capacitor/src/pages/explore/book-detail.tsx

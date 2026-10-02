@@ -4,9 +4,9 @@ title: 'ble-config TS surface: normalize to camelCase'
 status: To Do
 assignee: []
 created_date: '2026-05-21 02:13'
-updated_date: '2026-05-21 22:20'
+updated_date: '2026-10-02 16:59'
 labels: []
-milestone: m-12
+milestone: m-14
 dependencies: []
 ordinal: 43000
 ---

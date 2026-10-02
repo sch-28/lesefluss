@@ -22,7 +22,8 @@ export type SocialErrorCode =
 	| "highlight_not_synced"
 	| "highlight_no_text"
 	| "highlight_removed"
-	| "share_all_on";
+	| "share_all_on"
+	| "quota_exceeded";
 
 const STATUS_BY_CODE: Record<SocialErrorCode, number> = {
 	invalid: 400,
@@ -49,6 +50,7 @@ const STATUS_BY_CODE: Record<SocialErrorCode, number> = {
 	highlight_no_text: 409,
 	highlight_removed: 409,
 	share_all_on: 409,
+	quota_exceeded: 413,
 };
 
 export class SocialError extends Error {

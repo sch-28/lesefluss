@@ -4,11 +4,12 @@ title: Self-hosted multi-language dictionary for reader word lookup
 status: In Progress
 assignee: []
 created_date: '2026-08-28 20:44'
-updated_date: '2026-09-01 20:18'
+updated_date: '2026-10-02 16:58'
 labels:
   - reader
   - catalog
   - dictionary
+milestone: m-13
 dependencies: []
 references:
   - 'https://github.com/meetDeveloper/freeDictionaryAPI/issues/249'

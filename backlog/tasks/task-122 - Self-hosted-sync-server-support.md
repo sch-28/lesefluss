@@ -4,10 +4,12 @@ title: Self-hosted sync server support
 status: To Do
 assignee: []
 created_date: '2026-05-01 14:21'
+updated_date: '2026-10-02 16:59'
 labels:
   - sync
   - self-hosting
   - infrastructure
+milestone: m-14
 dependencies: []
 priority: medium
 ---

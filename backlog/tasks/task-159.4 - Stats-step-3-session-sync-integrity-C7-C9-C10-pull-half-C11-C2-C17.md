@@ -4,9 +4,8 @@ title: 'Stats step 3: session sync integrity (C7, C9, C10 pull half, C11, C2, C1
 status: Done
 assignee: []
 created_date: '2026-07-28 19:39'
-updated_date: '2026-07-29 00:58'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-7
 dependencies:
   - TASK-159.1
 documentation:

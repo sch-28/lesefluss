@@ -58,7 +58,7 @@ export const QuickAddOverlay: React.FC<Omit<QuickAddButtonProps, "className">> =
 export const CoverLengthBadge: React.FC<{ labels: LengthLabels }> = ({ labels }) => (
 	<span
 		data-testid="cover-length-badge"
-		className="absolute top-1.5 right-1.5 rounded-sm bg-foreground px-1.5 py-0.5 font-semibold text-[0.6rem] text-background tabular-nums"
+		className="absolute top-1.5 right-1.5 rounded-sm bg-black/50 px-1.5 py-0.5 font-medium text-[0.6rem] text-white/90 tabular-nums backdrop-blur-sm"
 	>
 		<LengthText labels={labels} variant="time" />
 	</span>

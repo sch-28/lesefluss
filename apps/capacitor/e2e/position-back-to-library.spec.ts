@@ -24,7 +24,7 @@ test("position survives in-app back navigation to the library", async ({ page })
 	// Move position and let the save commit so we are asserting against a real,
 	// persisted position (not a race with the throttled autosave).
 	const baseline = await reader.saveCount(page);
-	await reader.tocJumpToChapter(page, "2: Second");
+	await reader.moveToChapter(page, "2: Second");
 	await expect(page.locator("h2", { hasText: "TITLE 2" })).toBeInViewport({ timeout: 5000 });
 	await reader.waitForSaveAbove(page, baseline, 10_000);
 

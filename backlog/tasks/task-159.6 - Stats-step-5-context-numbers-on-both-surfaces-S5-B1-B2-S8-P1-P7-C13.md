@@ -4,9 +4,8 @@ title: 'Stats step 5: context numbers on both surfaces (S5, B1, B2, S8, P1, P7, 
 status: Done
 assignee: []
 created_date: '2026-07-28 19:39'
-updated_date: '2026-07-29 02:01'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-7
 dependencies:
   - TASK-159.2
 documentation:

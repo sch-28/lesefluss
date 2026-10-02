@@ -45,6 +45,7 @@ import {
 	getHighlightsByBook,
 	updateHighlight,
 } from "./highlights";
+import { getLastReadBookId } from "./last-read";
 import { getLibraryCatalogIds } from "./library-membership";
 import {
 	addReadingSession,
@@ -194,4 +195,7 @@ export const queries = {
 
 	// Library membership
 	getLibraryCatalogIds,
+
+	// App launch
+	getLastReadBookId,
 };

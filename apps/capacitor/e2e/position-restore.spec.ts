@@ -12,9 +12,9 @@ test("reader restores saved word position after closing and reopening the book",
 		"Chapter 1 opening paragraph anchors the scene.",
 	);
 
-	// Jump to chapter 2 via TOC. savePosition() writes books.wordPosition.
+	// Commit chapter 2 via TOC + "Read from here", which writes books.wordPosition.
 	const savePending = reader.waitForNextSave(page);
-	await reader.tocJumpToChapter(page, "2: Second");
+	await reader.moveToChapter(page, "2: Second");
 	await expect(page.locator("h2", { hasText: "TITLE 2" })).toBeInViewport({ timeout: 5000 });
 	await savePending;
 

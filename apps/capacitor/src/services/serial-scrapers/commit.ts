@@ -1,3 +1,4 @@
+import { normalizeCoverDataUrl } from "@lesefluss/book-import";
 import { WordIndex } from "@lesefluss/core";
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
@@ -69,7 +70,10 @@ function buildChapterRow(
  */
 export async function commitSeries(meta: SeriesMetadata, chapters: ChapterRef[]): Promise<Series> {
 	const now = Date.now();
-	const seriesRow = buildSeriesRow(meta, now);
+	const seriesRow = buildSeriesRow(
+		{ ...meta, coverImage: await normalizeCoverDataUrl(meta.coverImage ?? null) },
+		now,
+	);
 	const chapterRows = chapters.map((ch) =>
 		buildChapterRow(seriesRow.id, meta.author ?? null, meta.sourceUrl, ch, now),
 	);

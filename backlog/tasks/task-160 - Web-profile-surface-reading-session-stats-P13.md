@@ -4,8 +4,9 @@ title: 'Web profile: surface reading session stats (P13)'
 status: To Do
 assignee: []
 created_date: '2026-07-28 19:40'
+updated_date: '2026-10-02 16:59'
 labels: []
-milestone: m-7
+milestone: m-14
 dependencies:
   - TASK-159.2
 documentation:

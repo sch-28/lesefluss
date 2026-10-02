@@ -4,10 +4,10 @@ title: 'Social: friends, friend profiles, book sharing and buddy reading'
 status: To Do
 assignee: []
 created_date: '2026-09-25 22:09'
-updated_date: '2026-09-28 16:17'
+updated_date: '2026-10-02 17:09'
 labels:
   - social
-milestone: m-6
+milestone: m-13
 dependencies: []
 documentation:
   - backlog/decisions/ADR-0004-friends-only-book-sharing.md
@@ -69,7 +69,7 @@ Routing: the website already has `/profile` (`routes/_authenticated/profile`, th
 - [ ] #1 All subtasks are Done, or explicitly descoped with a note on this task
 - [x] #2 ADR-0004 is Accepted and milestone m-6 reflects the friends-only sharing rule
 - [ ] #3 Book sharing and highlight sharing are not enabled for users in production until the reporting and takedown subtask (TASK-171.6) is Done
-- [ ] #4 No social endpoint lets a user find another user by handle, name or email, and no profile data is reachable without an accepted friendship
+- [x] #4 No social endpoint lets a user find another user by handle, name or email, and no profile data is reachable without an accepted friendship
 - [ ] #5 Deleting an account (every path goes through deleteUserAccount: the website account page and the admin deleteAdminUser action; better-auth's /delete-user and /admin/remove-user are disabled) removes every social row the user owns and every social row that references them, except moderation records kept for their retention period with the user's name and email removed, verified by account-deletion.integration.test.ts
 - [x] #6 A recipient's shared copy survives the sender's account deletion, unfriending and blocking, verified by an integration test
 - [x] #7 CONTEXT.md defines friend, handle, share, content origin and buddy read
@@ -142,4 +142,11 @@ Fixed during the checkpoint: a 401 that cleared the token left `isLoggedIn` true
   - #1: TASK-171.11, TASK-117, TASK-61 and TASK-175 are open.
   - #3: needs production knowledge.
   - #4: not re-audited in this pass.
+
+## Audit 2026-10-02 (backlog cleanup)
+- Descoped to the optional milestone: TASK-171.11 (push), TASK-61 (highlight sharing), TASK-117 (stats sharing).
+- Still blocking AC #1: TASK-171.16 (App Links on a Play-signed build, owner task). TASK-175 (hardening) awaits the owner's manual pass.
+- AC #3: book sharing and the takedown code landed in the same commit (b9fa56e); buddy-read highlight sharing came later (e1c42fc). So sharing never existed in the repo without TASK-171.6. Production history needs owner confirmation.
+- AC #4 checked: every social route looks people up by opaque user id, UUID or token only; none accepts a handle, name or email. Profile view requires two socially visible users plus a friendship (apps/web/src/lib/social/profile-view.ts:208-233). handle-check reveals only whether a submitted handle is taken, rate-limited 30/min, no identity returned.
+- AC #5: mechanism verified (all deletion paths go through deleteUserAccount; every social table cascades, sets null, or is purged in purgeUserSyncData). 'Name and email removed' means the notifier's identity; a reported user's notice snapshot stays as the DSA evidence record (TASK-171.6 AC #21). Not ticked yet: account-deletion.integration.test.ts lacks assertions for buddy_read_invite removal, the deleted user's buddy_read_member row, and buddy_read.host_id becoming null (all covered by FK cascade / set null).
 <!-- SECTION:NOTES:END -->

@@ -4,9 +4,8 @@ title: RSVPnano device integration (parent)
 status: Done
 assignee: []
 created_date: '2026-05-20 22:18'
-updated_date: '2026-05-21 22:19'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-12
 dependencies: []
 references:
   - 'https://github.com/ionutdecebal/rsvpnano'

@@ -4,6 +4,7 @@ import {
 	arrayBufferToBase64,
 	type BookPayload,
 	generateBookId,
+	normalizeCoverDataUrl,
 	utf8ByteLength,
 } from "@lesefluss/book-import";
 import { FIELD_LIMITS } from "../../pages/library/book-fields";
@@ -96,11 +97,12 @@ export async function commitBook(
 	const addedAt = Date.now();
 	const size = utf8ByteLength(payload.content);
 
+	const coverImage = await normalizeCoverDataUrl(payload.coverImage ?? null);
 	const startedAt = performance.now();
 	await queries.addBookWithContent(
 		buildImportedBookRow(payload, extras, overrides, { id, addedAt, size }),
 		payload.content,
-		payload.coverImage ?? null,
+		coverImage,
 		payload.chapters ?? null,
 		payload.linkRanges ?? null,
 		payload.fileFormat === "epub" ? (payload.imageAnchors ?? []) : null,

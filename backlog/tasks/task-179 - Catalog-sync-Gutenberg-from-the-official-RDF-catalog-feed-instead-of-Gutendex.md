@@ -4,11 +4,10 @@ title: 'Catalog: sync Gutenberg from the official RDF catalog feed instead of Gu
 status: Done
 assignee: []
 created_date: '2026-10-01 23:51'
-updated_date: '2026-10-02 00:29'
+updated_date: '2026-10-02 16:58'
 labels:
   - catalog
   - bug
-milestone: m-10
 dependencies: []
 references:
   - apps/catalog/src/sync/gutenberg.ts

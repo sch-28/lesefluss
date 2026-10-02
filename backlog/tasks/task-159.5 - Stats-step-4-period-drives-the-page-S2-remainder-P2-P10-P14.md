@@ -4,9 +4,8 @@ title: 'Stats step 4: period drives the page (S2 remainder, P2, P10, P14)'
 status: Done
 assignee: []
 created_date: '2026-07-28 19:39'
-updated_date: '2026-07-29 01:18'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-7
 dependencies:
   - TASK-159.2
 documentation:

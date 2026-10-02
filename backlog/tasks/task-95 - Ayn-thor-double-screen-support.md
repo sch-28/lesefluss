@@ -4,8 +4,9 @@ title: Ayn thor double screen support
 status: To Do
 assignee: []
 created_date: '2026-04-26 19:36'
+updated_date: '2026-10-02 16:59'
 labels: []
-milestone: m-9
+milestone: m-14
 dependencies: []
 ---
 

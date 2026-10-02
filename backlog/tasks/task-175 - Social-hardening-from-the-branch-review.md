@@ -4,13 +4,13 @@ title: Social hardening from the branch review
 status: In Progress
 assignee: []
 created_date: '2026-09-28 16:18'
-updated_date: '2026-09-28 18:00'
+updated_date: '2026-10-02 16:58'
 labels:
   - social
   - web
   - app
   - tests
-milestone: m-6
+milestone: m-13
 dependencies: []
 priority: high
 ---

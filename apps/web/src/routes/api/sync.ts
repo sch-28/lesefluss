@@ -24,6 +24,13 @@ import {
 	syncSeries,
 	syncSettings,
 } from "~/db/schema";
+import {
+	contentQuotaBytes,
+	contentQuotaExceededResponse,
+	contentUsage,
+	fitPushToContentQuota,
+	lockContentQuota,
+} from "~/lib/content-quota";
 import { cors } from "~/lib/cors-middleware";
 import { takenDownBookIds } from "~/lib/moderation/takedown";
 import { type BookOrigin, originKey } from "~/lib/origin";
@@ -149,7 +156,7 @@ async function getUserSyncData(
 		// only for books the client says it doesn't have.
 		hasContent: sql<boolean>`${syncBooks.content} IS NOT NULL`,
 	};
-	const [books, settingsRows, highlights, glossaryRows, seriesRows, readingSessionRows] =
+	const [books, settingsRows, highlights, glossaryRows, seriesRows, readingSessionRows, usedBytes] =
 		await Promise.all([
 			db.select(metadataCols).from(syncBooks).where(eq(syncBooks.userId, userId)),
 			db.select().from(syncSettings).where(eq(syncSettings.userId, userId)),
@@ -157,6 +164,7 @@ async function getUserSyncData(
 			db.select().from(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId)),
 			db.select().from(syncSeries).where(eq(syncSeries.userId, userId)),
 			db.select().from(syncReadingSessions).where(eq(syncReadingSessions.userId, userId)),
+			contentUsage(db, userId),
 		]);
 
 	// Fetch content only for books the client doesn't have locally and which aren't tombstoned
@@ -191,6 +199,7 @@ async function getUserSyncData(
 
 	return {
 		contentBookIds: books.filter((b) => !b.deleted && b.hasContent).map((b) => b.bookId),
+		contentQuota: { usedBytes, quotaBytes: contentQuotaBytes() },
 		books: books.map((b) => {
 			const content = contentMap.get(b.bookId);
 			return {
@@ -350,7 +359,10 @@ export const Route = createFileRoute("/api/sync")({
 
 				const payload: SyncPayload = parsed.data;
 
-				await db.transaction(async (tx) => {
+				const quotaFit = await db.transaction(async (tx) => {
+					// First, so a share accepted meanwhile cannot land a live copy of an
+					// origin between the duplicate check below and the upsert.
+					await lockContentQuota(tx, userId);
 					// A book removed by a takedown never comes back, not even from a
 					// device that was offline when it happened and still holds a copy.
 					const takenDown = await takenDownBookIds(
@@ -367,7 +379,12 @@ export const Route = createFileRoute("/api/sync")({
 						userId,
 						pushedBooks.map((b) => b.bookId),
 					);
-					const books = await withoutDuplicateOrigins(tx, userId, pushedBooks, origins);
+					const fitted = await fitPushToContentQuota(
+						tx,
+						userId,
+						await withoutDuplicateOrigins(tx, userId, pushedBooks, origins),
+					);
+					const books = fitted.books;
 					const highlights = payload.highlights.filter((h) => !takenDown.has(h.bookId));
 					const glossaryEntries = payload.glossaryEntries.filter(
 						(e) => e.bookId === null || e.bookId === undefined || !takenDown.has(e.bookId),
@@ -600,6 +617,7 @@ export const Route = createFileRoute("/api/sync")({
 								},
 							});
 					}
+					return fitted;
 				});
 
 				try {
@@ -609,6 +627,12 @@ export const Route = createFileRoute("/api/sync")({
 					);
 				} catch (err) {
 					console.error("sync: buddy-read settle failed", err);
+				}
+
+				// Everything else in the push is committed; the 413 only reports the
+				// content that did not fit, so the client stops re-uploading it.
+				if (quotaFit.rejected.length > 0) {
+					return contentQuotaExceededResponse(quotaFit.quota, quotaFit.rejected);
 				}
 
 				// No body: the client pulls with GET and discards whatever POST returns,

@@ -6,7 +6,6 @@ assignee: []
 created_date: '2026-04-26 16:34'
 updated_date: '2026-04-26 22:06'
 labels: []
-milestone: m-4
 dependencies:
   - TASK-37.1
   - TASK-37.2

@@ -4,10 +4,12 @@ title: Verify App Links on a Play-signed build against lesefluss.app
 status: To Do
 assignee: []
 created_date: '2026-09-28 16:17'
+updated_date: '2026-10-02 16:58'
 labels:
   - social
   - app
   - release
+milestone: m-13
 dependencies:
   - TASK-171.3
 parent_task_id: TASK-171

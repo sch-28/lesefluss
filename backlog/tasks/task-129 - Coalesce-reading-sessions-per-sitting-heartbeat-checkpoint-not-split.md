@@ -1,11 +1,11 @@
 ---
 id: TASK-129
 title: 'Coalesce reading sessions per sitting (heartbeat = checkpoint, not split)'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-04 10:57'
+updated_date: '2026-10-02 16:59'
 labels: []
-milestone: m-7
 dependencies: []
 ---
 
@@ -61,3 +61,9 @@ In `use-reading-session.ts`:
 - [ ] #6 Sessions list on the book detail page shows one row per sitting instead of N adjacent 5-min rows
 - [ ] #7 File header comment in `use-reading-session.ts` updated to describe checkpoint (not split) heartbeat semantics
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Closed in backlog cleanup 2026-10-02: implemented by the session-tracker rewrite (commits 9aeb2c5, fea4e85). apps/capacitor/src/pages/reader/session-tracker.ts keeps a stable session id and upserts it in place every 30s; use-reading-session.ts uses upsertReadingSession.
+<!-- SECTION:NOTES:END -->

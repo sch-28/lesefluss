@@ -42,6 +42,8 @@ export async function getSettings(): Promise<Settings> {
 		paginationStyle: DEFAULT_SETTINGS.PAGINATION_STYLE,
 		onboardingCompleted: DEFAULT_SETTINGS.ONBOARDING_COMPLETED,
 		appFontSize: DEFAULT_SETTINGS.APP_FONT_SIZE,
+		pageTurnAnimation: DEFAULT_SETTINGS.PAGE_TURN_ANIMATION,
+		autoOpenLastBook: DEFAULT_SETTINGS.AUTO_OPEN_LAST_BOOK,
 		// Per-resource sync opt-outs default on; local-only, never synced.
 		syncHighlights: true,
 		syncGlossary: true,

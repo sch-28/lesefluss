@@ -1,12 +1,11 @@
 ---
 id: TASK-67
 title: 'Explore/discovery: short reads filter'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-26 15:59'
-updated_date: '2026-10-01 10:05'
+updated_date: '2026-10-02 16:59'
 labels: []
-milestone: m-4
 dependencies:
   - TASK-176.3
 ordinal: 9000
@@ -22,4 +21,6 @@ Quick reads genre on catalog.
 
 <!-- SECTION:NOTES:BEGIN -->
 Needs per-book word counts in the catalog, which TASK-176.3 adds. Once those exist, the filter UI can sit in the Explore filter chip row (TASK-176.15). Overall plan: TASK-176 / EXPLORE-SCOPE.md.
+
+Closed in backlog cleanup 2026-10-02: shipped via TASK-176.3 (length filter, 'Under 1 hour' bucket in apps/capacitor/src/pages/explore/length.ts, catalog min_words/max_words, 'Shortest first' sort).
 <!-- SECTION:NOTES:END -->

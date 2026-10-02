@@ -79,7 +79,7 @@ test("a TOC jump lands inside the chapter with its art visible", async ({ page }
 	);
 
 	const savePending = reader.waitForNextSave(page);
-	await reader.tocJumpToChapter(page, "2: Second");
+	await reader.moveToChapter(page, "2: Second");
 	await expect(page.locator("h2", { hasText: "TITLE 2" })).toBeInViewport({ timeout: 5000 });
 	await expect(page.locator('.reader-figure img[alt="Chapter art 2"]')).toBeInViewport();
 	await savePending;
@@ -145,14 +145,16 @@ test("a highlight spanning a figure persists across reload", async ({ page }) =>
 	await expect(page.locator('.reader-figure:has(img[alt="Plate 1"])')).toBeAttached();
 });
 
-/** Search for `phrase` and open its first result; resolves once the jump saved. */
+/** Search for `phrase`, open its first result and commit it with "Read from
+ *  here"; resolves once that save landed. */
 async function searchAndJump(page: Page, phrase: string): Promise<void> {
 	await page.getByRole("button", { name: "Search content" }).click();
 	const input = page.getByPlaceholder("Search in book\u2026");
 	await expect(input).toBeVisible();
 	await input.fill(phrase);
-	const savePending = reader.waitForNextSave(page);
 	await page.locator("ul li button", { hasText: phrase }).first().click();
+	const savePending = reader.waitForNextSave(page);
+	await reader.readFromHere(page);
 	await savePending;
 }
 

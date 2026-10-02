@@ -51,6 +51,15 @@ type Return = {
 	/** Snapshot reader for the on-screen debug badge. Returns null when no
 	 *  tracker is mounted (book hasn't loaded yet). */
 	getDebugSnapshot: () => DebugSnapshot | null;
+	/** Ends the current sitting; the next reading activity opens a new one at
+	 *  the then-current position. */
+	endSession: () => void;
+	/** See `SessionTracker.rewindTo`. */
+	rewindSession: (pos: number) => void;
+	/** See `SessionTracker.discard`. */
+	discardSession: () => void;
+	/** See `SessionTracker.backfill`. */
+	backfillSession: (span: { from: number; to: number; activeMs: number }) => void;
 };
 
 function persistRow(row: SessionRow, kind: "checkpoint" | "flush"): void {
@@ -150,5 +159,28 @@ export function useReadingSession({
 		return trackerRef.current?.getDebugSnapshot() ?? null;
 	}, []);
 
-	return { markActivity, getDebugSnapshot };
+	const endSession = useCallback(() => {
+		trackerRef.current?.finalize();
+	}, []);
+
+	const rewindSession = useCallback((pos: number) => {
+		trackerRef.current?.rewindTo(pos);
+	}, []);
+
+	const backfillSession = useCallback((span: { from: number; to: number; activeMs: number }) => {
+		trackerRef.current?.backfill(span);
+	}, []);
+
+	const discardSession = useCallback(() => {
+		trackerRef.current?.discard();
+	}, []);
+
+	return {
+		markActivity,
+		getDebugSnapshot,
+		endSession,
+		rewindSession,
+		backfillSession,
+		discardSession,
+	};
 }

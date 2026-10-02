@@ -4,9 +4,9 @@ title: Curated article sources on Explore
 status: To Do
 assignee: []
 created_date: '2026-04-26 15:59'
-updated_date: '2026-04-30 23:16'
+updated_date: '2026-10-02 16:59'
 labels: []
-milestone: m-4
+milestone: m-14
 dependencies: []
 ordinal: 10000
 ---

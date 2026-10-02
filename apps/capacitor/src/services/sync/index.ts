@@ -1,5 +1,6 @@
 import { Preferences } from "@capacitor/preferences";
 import {
+	type ContentQuotaExceeded,
 	isSyncEligible,
 	MAX_SYNCED_CONTENT_BYTES,
 	MAX_SYNCED_COVER_CHARS,
@@ -41,6 +42,12 @@ import type {
 } from "../db/schema";
 import { queryClient } from "../query-client";
 import { SYNC_URL } from "./auth-client";
+import {
+	getQuotaBlock,
+	isContentQuotaExceeded,
+	reconcileQuotaBlock,
+	recordQuotaRejection,
+} from "./content-quota";
 import {
 	addServerContentIds,
 	getServerContentIds,
@@ -92,14 +99,34 @@ export async function signOut(): Promise<void> {
 // Fetch helper
 // ---------------------------------------------------------------------------
 
+/**
+ * POST the push. A quota 413 is not a failure: the server committed everything
+ * but the listed books' content, so its body is returned for the caller to act on.
+ */
+async function postPush(body: string): Promise<ContentQuotaExceeded | null> {
+	try {
+		await authedFetch("/api/sync", { method: "POST", body });
+		return null;
+	} catch (err) {
+		if (err instanceof AuthedFetchError && err.status === 413 && isContentQuotaExceeded(err.body)) {
+			return err.body;
+		}
+		throw toSyncError(err);
+	}
+}
+
 async function syncFetch(path: string, options?: AuthedFetchOptions): Promise<Response> {
 	try {
 		return await authedFetch(path, options);
 	} catch (err) {
-		if (err instanceof AuthedFetchError)
-			throw new Error(`Sync failed (${err.status}): ${err.text}`);
-		throw err;
+		throw toSyncError(err);
 	}
+}
+
+function toSyncError(err: unknown): unknown {
+	return err instanceof AuthedFetchError
+		? new Error(`Sync failed (${err.status}): ${err.text}`)
+		: err;
 }
 
 /**
@@ -135,7 +162,7 @@ export async function deleteServerSession(sessionId: string): Promise<void> {
 /**
  * Drop a blob the server would reject instead of sending it.
  *
- * An EPUB cover is embedded verbatim as a data URL with no downscale, so a
+ * Covers imported before import-time downscaling were embedded verbatim, so a
  * high-resolution one can exceed the schema cap on its own. The whole push is
  * validated in one pass, so sending it would 400 every other row in the batch.
  * A book that syncs without its cover is recoverable; a device that cannot sync
@@ -788,6 +815,7 @@ export async function pullSync(): Promise<Set<string>> {
 		// Persist so a debounced push that runs before the next pull still knows what
 		// the server holds. Without this every push re-uploads the whole library.
 		await setServerContentIds(serverHasContent);
+		await reconcileQuotaBlock(data.contentQuota);
 
 		// Invalidate React Query cache so UI reflects pulled changes
 		if (changed) {
@@ -826,10 +854,15 @@ export function shouldPushBook(b: Book): boolean {
  * rows never carry content (see bookToSync), and anything the server already
  * stores is skipped. The server keeps its stored value when the field is absent.
  */
-export function booksNeedingContent(books: Book[], serverContentIds: Set<string>): Set<string> {
+export function booksNeedingContent(
+	books: Book[],
+	serverContentIds: Set<string>,
+	quotaBlockedIds: ReadonlySet<string> = new Set(),
+): Set<string> {
 	const ids = new Set<string>();
 	for (const book of books) {
 		if (book.deleted || book.seriesId || serverContentIds.has(book.id)) continue;
+		if (quotaBlockedIds.has(book.id)) continue;
 		ids.add(book.id);
 	}
 	return ids;
@@ -942,7 +975,8 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 
 		// Reading content back out of SQLite costs a bridge round-trip per 512 KB
 		// chunk, so only books the server is actually missing are touched.
-		const needContent = booksNeedingContent(booksForPush, knownContentIds);
+		const quotaBlockedIds = new Set((await getQuotaBlock())?.bookIds);
+		const needContent = booksNeedingContent(booksForPush, knownContentIds, quotaBlockedIds);
 		// Ids whose content actually made it into the payload. A missing content row
 		// yields no content, and recording it as uploaded would tell every later push
 		// the server has a body it never received.
@@ -1007,10 +1041,11 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} contentUploads=${uploadedContentIds.size} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
 		);
 
-		await syncFetch("/api/sync", {
-			method: "POST",
-			body,
-		});
+		const quotaRejection = await postPush(body);
+		if (quotaRejection) {
+			for (const id of quotaRejection.rejectedContentBookIds) uploadedContentIds.delete(id);
+			await recordQuotaRejection(quotaRejection);
+		}
 
 		// Only after the server has accepted them: a failed push must not convince the
 		// next one that content is already stored, or that sessions were delivered.

@@ -1,11 +1,11 @@
 ---
 id: TASK-159
 title: 'Reading stats v2: correctness pass, period scope, per-book detail'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-28 19:37'
+updated_date: '2026-10-02 16:59'
 labels: []
-milestone: m-7
 dependencies: []
 documentation:
   - STATS-IMPROVEMENTS.md
@@ -36,3 +36,9 @@ Open design question in section 6 of that document blocks subtasks 5 and 7 only.
 - [ ] #3 The aggregation and date maths have table tests covering a negative-UTC-offset timezone and a DST boundary
 - [ ] #4 STATS-IMPROVEMENTS.md section 6 has a recorded decision before subtasks 5 and 7 begin
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Closed in backlog cleanup 2026-10-02: all subtasks 159.1-159.8 are Done. The four unchecked ACs left inside them moved to a separate optional follow-up task (reading stats v2 leftovers).
+<!-- SECTION:NOTES:END -->

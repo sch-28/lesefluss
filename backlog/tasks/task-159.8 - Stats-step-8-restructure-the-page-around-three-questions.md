@@ -4,9 +4,8 @@ title: 'Stats step 8: restructure the page around three questions'
 status: Done
 assignee: []
 created_date: '2026-07-29 01:26'
-updated_date: '2026-07-29 01:38'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-7
 dependencies:
   - TASK-159.5
 documentation:

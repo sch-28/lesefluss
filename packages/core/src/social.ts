@@ -337,6 +337,8 @@ export function socialActionErrorMessage(reason: string | undefined): string {
 			return "This user is not available.";
 		case "handle_required":
 			return "Pick a handle first.";
+		case "quota_exceeded":
+			return "Your cloud library is full. Delete some synced books to make room.";
 		default:
 			return "Something went wrong. Please try again.";
 	}

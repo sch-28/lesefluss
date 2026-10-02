@@ -136,6 +136,37 @@ export const reader = {
 		await page.getByRole("button", { name: label }).click();
 	},
 
+	wheel: async (page: Page, deltaY: number) => {
+		const centre = await page.evaluate(() => {
+			let el =
+				document.querySelector("span[data-word], .reader-figure, .reader-heading")?.parentElement ??
+				null;
+			while (el && el.scrollHeight <= el.clientHeight) el = el.parentElement;
+			if (!el) throw new Error("No scrollable reader container");
+			const r = el.getBoundingClientRect();
+			return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+		});
+		await page.mouse.move(centre.x, centre.y);
+		await page.mouse.wheel(0, deltaY);
+	},
+
+	browseBar: (page: Page): Locator => page.getByTestId("browse-bar"),
+
+	browseBack: async (page: Page) => {
+		await page.getByTestId("browse-back").click();
+	},
+
+	readFromHere: async (page: Page) => {
+		await page.getByTestId("browse-read-from-here").click();
+	},
+
+	/** A TOC jump only browses; committing it makes the chapter the saved position. */
+	moveToChapter: async (page: Page, label: string) => {
+		await reader.tocJumpToChapter(page, label);
+		await expect(reader.browseBar(page)).toBeVisible();
+		await reader.readFromHere(page);
+	},
+
 	/** Mouse-drag select from startText to endText. Mouse path bypasses the
 	 *  touch long-press timer (paragraph.tsx: long-press is touch-only). */
 	selectWords: async (page: Page, startText: string, endText: string) => {

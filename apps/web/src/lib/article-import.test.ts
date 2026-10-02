@@ -5,6 +5,7 @@ import {
 	handleArticleImportRequest,
 	handleArticleLookupRequest,
 } from "./article-import";
+import { ContentQuotaExceededError } from "./content-quota";
 
 function jsonRequest(body: unknown): Request {
 	return new Request("https://lesefluss.test/api/import/article", {
@@ -167,6 +168,29 @@ describe("handleArticleImportRequest", () => {
 		expect(res.status).toBe(200);
 		await expect(res.json()).resolves.toEqual({ id: "bbbbbbbb" });
 		expect(insertBook).toHaveBeenCalledTimes(2);
+	});
+
+	it("answers 413 with the quota when the account's storage is full", async () => {
+		const insertBook = vi.fn<NonNullable<ArticleImportDeps["insertBook"]>>(async () => {
+			throw new ContentQuotaExceededError({ usedBytes: 100, quotaBytes: 100 });
+		});
+
+		const res = await handleArticleImportRequest(
+			jsonRequest({
+				html: "<html><body><article><p>Body.</p></article></body></html>",
+				url: "https://example.com/read",
+			}),
+			"user-1",
+			{ ...testDeps(), insertBook },
+		);
+
+		expect(res.status).toBe(413);
+		await expect(res.json()).resolves.toMatchObject({
+			code: "content_quota_exceeded",
+			usedBytes: 100,
+			quotaBytes: 100,
+		});
+		expect(insertBook).toHaveBeenCalledTimes(1);
 	});
 
 	it("rejects http/https-only URLs in HTML payloads", async () => {

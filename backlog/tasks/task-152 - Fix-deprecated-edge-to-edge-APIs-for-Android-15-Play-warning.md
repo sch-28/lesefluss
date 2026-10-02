@@ -4,10 +4,12 @@ title: Fix deprecated edge-to-edge APIs for Android 15 (Play warning)
 status: To Do
 assignee: []
 created_date: '2026-05-31 23:26'
+updated_date: '2026-10-02 16:59'
 labels:
   - android
   - dependencies
   - play-store
+milestone: m-14
 dependencies: []
 priority: low
 ordinal: 56000

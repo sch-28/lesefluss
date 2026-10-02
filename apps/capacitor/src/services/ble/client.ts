@@ -3,9 +3,11 @@
  * All characteristic I/O lives in src/ble/characteristics/.
  */
 
+import { Capacitor } from "@capacitor/core";
 import { BleClient, type BleDevice, type ScanResult } from "@capacitor-community/bluetooth-le";
 import { log } from "../../utils/log";
 import { DEVICE_DESCRIPTORS } from "../devices";
+import { checkScanReadiness, type ScanBlocker } from "./readiness";
 import { BLE_CONNECTION_TIMEOUT_MS, BLEConnectionState, type BLEResult } from "./types";
 
 export interface ScannedDevice {
@@ -35,6 +37,30 @@ class BLEClient {
 				success: false,
 				error: error instanceof Error ? error.message : "Failed to initialize BLE",
 			};
+		}
+	}
+
+	/** Only Android can show the system enable-Bluetooth dialog. */
+	readonly canRequestEnable = Capacitor.getPlatform() === "android";
+
+	checkScanReadiness(interactive: boolean): Promise<ScanBlocker | null> {
+		return checkScanReadiness(BleClient, { isAndroid: this.canRequestEnable, interactive });
+	}
+
+	async watchEnabled(onChange: (enabled: boolean) => void): Promise<() => void> {
+		await BleClient.startEnabledNotifications(onChange);
+		return () => {
+			BleClient.stopEnabledNotifications().catch((err) =>
+				log.warn("ble", "stopEnabledNotifications failed:", err),
+			);
+		};
+	}
+
+	async openSettingsFor(blocker: Exclude<ScanBlocker, "bluetooth-off">): Promise<void> {
+		if (blocker === "location-off") {
+			await BleClient.openLocationSettings();
+		} else {
+			await BleClient.openAppSettings();
 		}
 	}
 

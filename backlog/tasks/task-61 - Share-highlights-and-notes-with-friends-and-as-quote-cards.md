@@ -4,12 +4,12 @@ title: Share highlights and notes with friends and as quote cards
 status: To Do
 assignee: []
 created_date: '2026-04-26 15:59'
-updated_date: '2026-09-25 22:55'
+updated_date: '2026-10-02 16:58'
 labels:
   - social
   - app
   - web
-milestone: m-6
+milestone: m-14
 dependencies:
   - TASK-171.5
   - TASK-171.6

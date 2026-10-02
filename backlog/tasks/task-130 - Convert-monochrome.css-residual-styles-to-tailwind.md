@@ -4,10 +4,12 @@ title: Convert monochrome.css residual styles to tailwind
 status: To Do
 assignee: []
 created_date: '2026-05-20 01:30'
+updated_date: '2026-10-02 16:59'
 labels:
   - frontend
   - tech-debt
   - capacitor
+milestone: m-14
 dependencies: []
 modified_files:
   - apps/capacitor/src/theme/monochrome.css

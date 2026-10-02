@@ -4,11 +4,13 @@ title: Intra-book anchor navigation in reader (footnotes / cross-references)
 status: To Do
 assignee: []
 created_date: '2026-06-01 22:32'
+updated_date: '2026-10-02 16:58'
 labels:
   - reader
   - import
   - epub
   - deferred
+milestone: m-14
 dependencies: []
 references:
   - >-

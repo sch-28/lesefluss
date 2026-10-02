@@ -7,11 +7,10 @@ status: Done
 assignee:
   - claude
 created_date: '2026-09-25 22:10'
-updated_date: '2026-09-28 16:20'
+updated_date: '2026-10-02 16:58'
 labels:
   - social
   - web
-milestone: m-6
 dependencies:
   - TASK-171.1
 references:

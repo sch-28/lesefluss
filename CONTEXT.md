@@ -46,6 +46,10 @@ A continuous reading session: start, end, words read, target book. Lives in the 
 
 *Words read* (`reading_sessions.wordsRead`) is the total length of the [read spans](#read-span), not the distance between start and end position.
 
+### Browse mode
+
+A reader state for looking around without moving the [position](#position). It starts on any jump (TOC, search, highlight, glossary, progress-bar scrub), on a manual scroll too fast to be reading, or from the toolbar. The *anchor* is the position at entry; it is written once on entry if the DB doesn't already hold it. While browsing, nothing else is persisted (no DB, sync or device write) and the [session](#session) is paused. "Back to N%" returns to the anchor; "Read from here" makes the current spot the position and, if it moved, starts a new session. Moving on to the next chapter counts as "Read from here". A device position update moves the anchor, not the view. If the user settles into reading at the browsed spot (forward reading-pace movement for about two minutes), that counts as "Read from here", with a toast offering Undo; that reading counts toward the new session, and Undo discards it. Leaving the book while browsing resumes at the anchor. RSVP never browses: its saves always land, and switching to it reads from the browsed spot.
+
 ### Read span
 
 A range of the book travelled forward at reading pace within one [session](#session). Movement above the mode's per-tick threshold is a jump (TOC navigation, a progress-bar scrub) and crosses its range without reading it; moving backwards reads nothing, though the range is credited if it is later travelled forward again.

@@ -5,11 +5,10 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-01 10:04'
-updated_date: '2026-10-01 11:52'
+updated_date: '2026-10-02 16:58'
 labels:
   - explore
   - web-novels
-milestone: m-11
 dependencies: []
 references:
   - apps/capacitor/src/pages/explore/web-novels.tsx

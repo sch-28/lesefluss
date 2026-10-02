@@ -5,12 +5,11 @@ status: Done
 assignee:
   - claude
 created_date: '2026-09-25 22:09'
-updated_date: '2026-09-28 16:17'
+updated_date: '2026-10-02 16:58'
 labels:
   - social
   - web
   - app
-milestone: m-6
 dependencies: []
 documentation:
   - backlog/decisions/ADR-0004-friends-only-book-sharing.md

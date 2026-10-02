@@ -76,24 +76,10 @@ async function readerScrollerAtEnd(page: Page): Promise<boolean> {
 	});
 }
 
-async function wheel(page: Page, deltaY: number): Promise<void> {
-	const centre = await page.evaluate(() => {
-		let el =
-			document.querySelector("span[data-word], .reader-figure, .reader-heading")?.parentElement ??
-			null;
-		while (el && el.scrollHeight <= el.clientHeight) el = el.parentElement;
-		if (!el) throw new Error("No scrollable reader container");
-		const r = el.getBoundingClientRect();
-		return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-	});
-	await page.mouse.move(centre.x, centre.y);
-	await page.mouse.wheel(0, deltaY);
-}
-
 /** Scroll and wait for the settle save it produces. */
 async function wheelAndSettle(page: Page, deltaY: number): Promise<number> {
 	const savePending = reader.waitForNextSave(page);
-	await wheel(page, deltaY);
+	await reader.wheel(page, deltaY);
 	await savePending;
 	return reader.lastSavedWord(page);
 }
@@ -104,7 +90,7 @@ async function wheelToEnd(page: Page): Promise<void> {
 	await expect
 		.poll(
 			async () => {
-				await wheel(page, 100_000);
+				await reader.wheel(page, 100_000);
 				return readerScrollerAtEnd(page);
 			},
 			{ timeout: 10_000 },
@@ -149,7 +135,7 @@ test("a page-sized figure after the last paragraph does not move the saved posit
 	await wheelToEnd(page);
 	await expect(page.locator('.reader-figure img[alt="Endpiece"]')).toBeInViewport();
 	// Back up just enough to tap the last paragraph without an auto-scroll.
-	await wheel(page, -400);
+	await reader.wheel(page, -400);
 	await page.waitForTimeout(SETTLE_MS);
 	const word = await reader.wordPositionOf(page, LAST_PARAGRAPH_MARKER);
 	const tapSave = reader.waitForNextSave(page);
@@ -227,7 +213,7 @@ test("scrolling up and straight back to the end keeps the saved position", async
 
 	// Both wheels land within one scroll-end debounce, so there is a single
 	// settle at the same offset, after ticks passed through earlier paragraphs.
-	await wheel(page, -600);
+	await reader.wheel(page, -600);
 	await page.mouse.wheel(0, 100_000);
 	await page.waitForTimeout(QUIET_MS);
 
@@ -241,7 +227,7 @@ test("leaving mid-scroll in a long paragraph never saves the paragraph start", a
 
 	// A small forward scroll, then leave before it settles. Two frames let the
 	// scroll event reach the reader; the scroll-end save comes later.
-	await wheel(page, 80);
+	await reader.wheel(page, 80);
 	await page.evaluate(
 		() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
 	);
@@ -256,20 +242,20 @@ test("scrolling back saves the earlier position, also when leaving mid-scroll", 
 
 	// Each step leaves the reader, whose flush always writes the current word:
 	// a settle may skip its own save when a tick already recorded the same word.
-	await wheel(page, 2500);
+	await reader.wheel(page, 2500);
 	await page.waitForTimeout(QUIET_MS);
 	await leaveReader(page);
 	const ahead = await reader.lastSavedWord(page);
 
 	await openSettled(page, title);
-	await wheel(page, -800);
+	await reader.wheel(page, -800);
 	await page.waitForTimeout(QUIET_MS);
 	await leaveReader(page);
 	const back = await reader.lastSavedWord(page);
 	expect(back).toBeLessThan(ahead);
 
 	await openSettled(page, title);
-	await wheel(page, -800);
+	await reader.wheel(page, -800);
 	await page.evaluate(
 		() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
 	);

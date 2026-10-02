@@ -8,7 +8,6 @@ assignee: []
 created_date: '2026-04-30 21:24'
 updated_date: '2026-05-07 22:17'
 labels: []
-milestone: m-5
 dependencies: []
 modified_files:
   - apps/capacitor/src/pages/reader/use-glossary-decorations.ts

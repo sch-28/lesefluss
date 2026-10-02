@@ -9,7 +9,6 @@ labels:
   - android
   - capacitor
   - import
-milestone: m-4
 dependencies: []
 ordinal: 11000
 ---

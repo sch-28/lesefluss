@@ -5,9 +5,8 @@ status: Done
 assignee:
   - sch-28
 created_date: '2026-05-21 22:48'
-updated_date: '2026-05-23 19:21'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-12
 dependencies: []
 references:
   - 'https://github.com/ionutdecebal/rsvpnano'

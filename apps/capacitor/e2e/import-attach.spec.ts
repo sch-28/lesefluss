@@ -38,7 +38,7 @@ test("re-importing the file of a text-only book attaches it: one copy, position 
 	await page.waitForTimeout(reader.OPEN_SETTLE_MS);
 	await expect(page.locator(".reader-figure")).toHaveCount(0);
 	const saved = reader.waitForNextSave(page);
-	await reader.tocJumpToChapter(page, "2: Second");
+	await reader.moveToChapter(page, "2: Second");
 	await saved;
 	const word = await reader.firstWordPositionIn(page.getByText(CHAPTER_2_OPENING));
 

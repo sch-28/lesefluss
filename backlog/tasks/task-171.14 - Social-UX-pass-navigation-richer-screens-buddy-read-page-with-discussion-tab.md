@@ -7,12 +7,11 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-27 13:21'
-updated_date: '2026-09-27 14:43'
+updated_date: '2026-10-02 16:58'
 labels:
   - social
   - app
   - ux
-milestone: m-6
 dependencies: []
 parent_task_id: TASK-171
 priority: high

@@ -1,9 +1,10 @@
 ---
 id: TASK-137
 title: 'Release N+1: drop byte-position columns and legacy sync fields (app + web)'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-05-20 19:40'
+updated_date: '2026-10-02 16:59'
 labels:
   - refactor
   - word-index
@@ -56,3 +57,9 @@ Reference: ADR-0002 "Release N+1 (cleanup)" section.
 - [ ] #6 Pre-merge telemetry checklist documented: position_unit='word' coverage threshold, byte-shape upload volume threshold
 - [ ] #7 Backfill code path retained (idempotent safety net) so a fresh install that somehow lands on a legacy backup still converts on first run
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Closed in backlog cleanup 2026-10-02: done in commit 119add5 (apps/capacitor/drizzle/0027_drop_byte_positions.sql, apps/web/drizzle/0012_drop_byte_positions.sql). AC #7 (keep the backfill) was overtaken: word-index-backfill.ts was deleted in the same commit. The telemetry checklist (#6) was never written down.
+<!-- SECTION:NOTES:END -->

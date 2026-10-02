@@ -4,9 +4,8 @@ title: 'rsvpnano firmware: live position updates between app and reader'
 status: Done
 assignee: []
 created_date: '2026-05-21 02:41'
-updated_date: '2026-05-21 22:21'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-12
 dependencies: []
 ordinal: 45000
 ---

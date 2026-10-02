@@ -4,9 +4,8 @@ title: 'Book management: editable metadata, status, rating, tags'
 status: Done
 assignee: []
 created_date: '2026-08-13 09:04'
-updated_date: '2026-08-13 23:21'
+updated_date: '2026-10-02 16:58'
 labels: []
-milestone: m-5
 dependencies: []
 documentation:
   - BOOK-MANAGEMENT.md
