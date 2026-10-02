@@ -6,14 +6,12 @@ import {
 } from "@lesefluss/book-import";
 import type { WordIndex } from "@lesefluss/core";
 import { log } from "../../utils/log";
-import { bookKeys } from "../db/hooks/query-keys";
 import { queries } from "../db/queries";
-import type { Book, BookContent } from "../db/schema";
-import { queryClient } from "../query-client";
+import type { Book } from "../db/schema";
 import { errorMessage, reportEvent } from "../telemetry";
 import { pipelineOptions } from "./pipeline";
 import { readOriginalFile } from "./sources/read-file";
-import { storeBookImages } from "./store-images";
+import { patchCachedAnchors, storeBookImages } from "./store-images";
 
 const attempted = new Set<string>();
 
@@ -54,12 +52,6 @@ async function reparseImages(filePath: string, bookId: string): Promise<Reparsed
 		images: payload.images ?? [],
 		imageAnchors: payload.imageAnchors ?? [],
 	};
-}
-
-function patchCachedAnchors(bookId: string, imageAnchors: string): void {
-	queryClient.setQueryData<BookContent | undefined>(bookKeys.content(bookId), (old) =>
-		old ? { ...old, imageAnchors } : old,
-	);
 }
 
 /**

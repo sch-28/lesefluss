@@ -53,6 +53,10 @@ type Props = {
 	isSaving?: boolean;
 	/** Progress through the book, used to show what an unset status derives to. */
 	progress?: { wordCount: number; wordPosition: number };
+	/** Offered below the fields with `hint` as its reason. */
+	alternativeAction?: { hint: string; label: string; onSelect: () => void; isPending?: boolean };
+	/** Saving waits while the host decides whether to offer an alternative. */
+	isCheckingAlternative?: boolean;
 };
 
 /** Reader-editable values clamped to what sync will accept. */
@@ -113,6 +117,8 @@ const BookEditSheet: React.FC<Props> = ({
 	saveLabel = "Save",
 	isSaving = false,
 	progress,
+	alternativeAction,
+	isCheckingAlternative = false,
 }) => {
 	const [values, setValues] = useState(initial);
 	const [tagDraft, setTagDraft] = useState("");
@@ -140,6 +146,7 @@ const BookEditSheet: React.FC<Props> = ({
 	};
 
 	const derivedStatus = progress ? bookStatus({ ...progress, status: null }) : null;
+	const isBusy = isSaving || !!alternativeAction?.isPending;
 
 	return (
 		<Drawer
@@ -147,7 +154,7 @@ const BookEditSheet: React.FC<Props> = ({
 			// Swipe-to-dismiss is disabled rather than ignored while saving: vaul
 			// leaves the drag transform in place when the close is vetoed by the
 			// consumer, stranding the sheet off-screen with no spring-back.
-			dismissible={!isSaving}
+			dismissible={!isBusy}
 			onOpenChange={(open) => {
 				if (!open) onClose();
 			}}
@@ -158,6 +165,19 @@ const BookEditSheet: React.FC<Props> = ({
 				</DrawerHeader>
 
 				<div className="flex max-h-[65vh] flex-col gap-4 overflow-y-auto px-4 pb-2">
+					{isCheckingAlternative && (
+						<p className="m-0 text-muted-foreground text-sm">Checking your library...</p>
+					)}
+					{alternativeAction && (
+						<div className="flex flex-col gap-2 rounded-lg border border-input p-3">
+							<p className="m-0 text-sm">{alternativeAction.hint}</p>
+							<Button variant="secondary" disabled={isBusy} onClick={alternativeAction.onSelect}>
+								{alternativeAction.isPending && <Loader2 className="size-4 animate-spin" />}
+								{alternativeAction.label}
+							</Button>
+						</div>
+					)}
+
 					<div className="flex flex-col gap-1.5">
 						<Label htmlFor="book-title">Title</Label>
 						<Input
@@ -335,13 +355,18 @@ const BookEditSheet: React.FC<Props> = ({
 					</div>
 				</div>
 
-				<DrawerFooter className="flex-row gap-2">
-					<Button variant="outline" className="flex-1" onClick={onClose} disabled={isSaving}>
+				<DrawerFooter
+					className="flex-row gap-2"
+					data-alternative-state={
+						isCheckingAlternative ? "checking" : alternativeAction ? "offered" : "none"
+					}
+				>
+					<Button variant="outline" className="flex-1" onClick={onClose} disabled={isBusy}>
 						Cancel
 					</Button>
 					<Button
 						className="flex-1"
-						disabled={isSaving || values.title.trim().length === 0}
+						disabled={isBusy || isCheckingAlternative || values.title.trim().length === 0}
 						onClick={() => {
 							// A pending tag the reader typed but never committed would
 							// otherwise be lost on save.

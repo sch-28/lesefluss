@@ -2,6 +2,7 @@ import type { ImportImage } from "@lesefluss/book-import";
 import { log } from "../../utils/log";
 import { bookKeys } from "../db/hooks/query-keys";
 import { queries } from "../db/queries";
+import type { BookContent } from "../db/schema";
 import { queryClient } from "../query-client";
 import { errorMessage, reportEvent } from "../telemetry";
 
@@ -9,6 +10,13 @@ import { errorMessage, reportEvent } from "../telemetry";
 const REFRESH_EVERY = 8;
 
 const inFlight = new Set<string>();
+
+/** Keep an open reader's content row in step without refetching the whole text. */
+export function patchCachedAnchors(bookId: string, imageAnchors: string): void {
+	queryClient.setQueryData<BookContent | undefined>(bookKeys.content(bookId), (old) =>
+		old ? { ...old, imageAnchors } : old,
+	);
+}
 
 /** Whether a background image write for this book is still running. */
 export function isStoringImages(bookId: string): boolean {

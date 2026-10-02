@@ -24,6 +24,12 @@ const BOOKS_DIR = "books";
  */
 const CHUNK_BYTES = 3 * 1024 * 1024;
 
+const savingOriginal = new Set<string>();
+
+export function isSavingOriginal(id: string): boolean {
+	return savingOriginal.has(id);
+}
+
 /**
  * The `books` row an import produces. Pure, so the precedence between what the
  * parser guessed and what the reader corrected is testable without a database.
@@ -133,11 +139,17 @@ async function finishImportInBackground(id: string, payload: BookPayload): Promi
 	);
 }
 
-async function saveOriginalFile(
+/**
+ * Copy the original file into app storage and record it on the row. Returns
+ * the stored path, or null when the book is gone or the copy failed.
+ */
+export async function saveOriginalFile(
 	id: string,
 	original: NonNullable<BookPayload["original"]>,
-): Promise<void> {
+	fileFormat?: NewBook["fileFormat"],
+): Promise<string | null> {
 	const filePath = `${BOOKS_DIR}/${id}.${original.extension}`;
+	savingOriginal.add(id);
 	try {
 		await ensureBooksDir();
 		await writeFileInChunks(filePath, original.bytes);
@@ -146,11 +158,12 @@ async function saveOriginalFile(
 		const book = await queries.getBook(id);
 		if (!book || book.deleted) {
 			await Filesystem.deleteFile({ path: filePath, directory: Directory.Data }).catch(() => {});
-			return;
+			return null;
 		}
 		// The original file lives on this device only, so recording it must not
 		// make the row look freshly edited to sync.
-		await queries.updateBook(id, { filePath }, Date.now(), { isDeviceLocal: true });
+		await queries.updateBook(id, { fileFormat, filePath }, Date.now(), { isDeviceLocal: true });
+		return filePath;
 	} catch (err) {
 		// The book row + content are already committed and fully readable; the
 		// original file is only kept for re-parse. A partial chunked write would
@@ -158,6 +171,9 @@ async function saveOriginalFile(
 		// (same state as txt imports, which never store an original).
 		log.warn("book-import", "Failed to save original file; keeping book without it:", err);
 		await Filesystem.deleteFile({ path: filePath, directory: Directory.Data }).catch(() => {});
+		return null;
+	} finally {
+		savingOriginal.delete(id);
 	}
 }
 
@@ -165,16 +181,19 @@ async function saveOriginalFile(
  * Remove a book: delete the file from disk (if it exists) then delete DB rows.
  */
 export async function removeBook(book: Pick<Book, "id" | "filePath">): Promise<void> {
+	// The caller's row may predate a file that landed later (deferred copy,
+	// attach), and a file recorded on a tombstone would never be unlinked.
+	const filePath = (await queries.getBook(book.id))?.filePath ?? book.filePath;
 	// Rows first. `deleteBook` can throw, and unlinking ahead of it would leave a
 	// book that still exists with its only local copy gone, so it could neither
 	// be opened nor re-parsed. A file left behind by a failed delete is just
 	// wasted space, and the retry removes it.
 	await queries.deleteBook(book.id);
 
-	if (book.filePath) {
+	if (filePath) {
 		try {
 			await Filesystem.deleteFile({
-				path: book.filePath,
+				path: filePath,
 				directory: Directory.Data,
 			});
 		} catch (err) {

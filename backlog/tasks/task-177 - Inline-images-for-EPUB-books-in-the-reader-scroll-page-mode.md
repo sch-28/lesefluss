@@ -4,7 +4,7 @@ title: Inline images for EPUB books in the reader (scroll + page mode)
 status: Done
 assignee: []
 created_date: '2026-10-01 10:06'
-updated_date: '2026-10-01 23:39'
+updated_date: '2026-10-02 16:49'
 labels:
   - reader
   - book-import
@@ -87,6 +87,8 @@ Transition and robustness subtasks added after the device tests and all Done: 17
 TASK-177.7 Done: shared e2e fixtures carry images at every placement, four image-specific progress cases added, full Playwright suite 96/96 green.
 
 TASK-177.8 Done: first touch-input path in the e2e suite (CDP), long-press across a figure and page-mode re-anchoring on a figure page covered. Remaining low-priority gaps (theme styling of figures, missing rows on the web build) documented in 177.7.
+
+TASK-177.9 Done: a re-imported EPUB attaches to the synced copy of the same book (same text, no original on the device), restoring images and the original file without touching progress or sync. Closes the gap that synced libraries stayed image-free on every device except the importing one.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

@@ -25,7 +25,10 @@ vi.mock("@lesefluss/book-import", async (importOriginal) => ({
 vi.mock("../sources/read-file", () => ({
 	readOriginalFile: vi.fn(async () => new ArrayBuffer(4)),
 }));
-vi.mock("../store-images", () => ({ storeBookImages: vi.fn(async () => 1) }));
+vi.mock("../store-images", () => ({
+	storeBookImages: vi.fn(async () => 1),
+	patchCachedAnchors: vi.fn(),
+}));
 vi.mock("../../telemetry", () => ({
 	reportEvent: vi.fn(),
 	errorMessage: (e: unknown) => String(e),

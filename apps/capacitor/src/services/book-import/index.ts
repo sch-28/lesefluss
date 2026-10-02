@@ -20,6 +20,7 @@ import { readClipboardToRawInput } from "./sources/clipboard";
 import { pickFileFromPicker } from "./sources/file-picker";
 import type { ImportExtras, ImportOverrides, StagedImport } from "./types";
 
+export { attachOriginalToBook, findAttachCandidate } from "./attach-original";
 export { importScannedFile, probeScannedFile } from "./batch";
 export { removeBook } from "./commit";
 export type { FolderScan, ScannedFile, ScannedFileHandle } from "./sources/folder-scan";

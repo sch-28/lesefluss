@@ -22,6 +22,18 @@ export async function importEpubViaFilePicker(
 	page: Page,
 	opts: { buffer: Buffer; fileName: string; title: string },
 ) {
+	await stageEpubViaFilePicker(page, opts);
+	await page.getByRole("button", { name: "Add to library" }).click({ timeout: 20_000 });
+	await expect(page.locator(`[data-book-title="${opts.title}"]`)).toHaveCount(1, {
+		timeout: 20_000,
+	});
+}
+
+/** Pick an EPUB through the real file picker and stop at the confirm sheet. */
+export async function stageEpubViaFilePicker(
+	page: Page,
+	opts: { buffer: Buffer; fileName: string },
+) {
 	await page.goto("/tabs/library");
 	await page.getByRole("button", { name: "Add book" }).click();
 	const chooserPromise = page.waitForEvent("filechooser");
@@ -32,8 +44,7 @@ export async function importEpubViaFilePicker(
 		mimeType: "application/epub+zip",
 		buffer: opts.buffer,
 	});
-	await page.getByRole("button", { name: "Add to library" }).click({ timeout: 20_000 });
-	await expect(page.locator(`[data-book-title="${opts.title}"]`)).toHaveCount(1, {
+	await expect(page.getByRole("button", { name: "Add to library" })).toBeVisible({
 		timeout: 20_000,
 	});
 }

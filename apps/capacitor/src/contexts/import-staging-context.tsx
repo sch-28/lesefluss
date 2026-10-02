@@ -7,8 +7,14 @@ import BookEditSheet, {
 	clampToFieldLimits,
 	editValuesToPatch,
 } from "../pages/library/book-edit-sheet";
-import { commitStagedImport, type StagedImport } from "../services/book-import";
+import {
+	attachOriginalToBook,
+	commitStagedImport,
+	findAttachCandidate,
+	type StagedImport,
+} from "../services/book-import";
 import { bookKeys } from "../services/db/hooks/query-keys";
+import type { Book } from "../services/db/schema";
 import { pushBackHandler } from "../services/overlay-back";
 import { scheduleSyncPush } from "../services/sync";
 import { log } from "../utils/log";
@@ -57,12 +63,64 @@ export const ImportStagingProvider: React.FC<{ children: React.ReactNode }> = ({
 		},
 	});
 
-	// The mutation keeps its variables, and those hold the whole book text plus
-	// the original file bytes. Resetting once the queue drains releases them.
-	const { reset: resetCommit } = commit;
+	// Keyed to the import it was found for: when the queue advances, the render
+	// before the lookup effect reruns must not pair the next file with this
+	// book. Until the lookup settles the sheet shows "checking" and saving is
+	// off, since a save meanwhile would create the duplicate the offer prevents.
+	const [lookup, setLookup] = useState<{ staged: StagedImport; book: Book | null } | null>(null);
 	useEffect(() => {
-		if (queue.length === 0) resetCommit();
-	}, [queue.length, resetCommit]);
+		if (!current) return;
+		let stale = false;
+		findAttachCandidate(current.payload).then(
+			(book) => {
+				if (!stale) setLookup({ staged: current, book });
+			},
+			(error) => {
+				log.warn("book-import", "attach lookup failed:", error);
+				if (!stale) setLookup({ staged: current, book: null });
+			},
+		);
+		return () => {
+			stale = true;
+		};
+	}, [current]);
+	const isCheckingAttach = !!current && lookup?.staged !== current;
+	const attachCandidate = isCheckingAttach ? null : (lookup?.book ?? null);
+
+	const attach = useMutation({
+		mutationFn: ({ staged, book }: { staged: StagedImport; book: Book }) =>
+			attachOriginalToBook(book, staged.payload),
+		onSuccess: ({ fileCopyFailed }, { staged, book }) => {
+			// Exact keys: the book's content is unchanged and its anchors are already
+			// patched, so the open reader must not re-read the whole text.
+			qc.invalidateQueries({ queryKey: bookKeys.all, exact: true });
+			qc.invalidateQueries({ queryKey: bookKeys.detail(book.id), exact: true });
+			setQueue((q) => q.filter((entry) => entry !== staged));
+			staged.cleanup?.();
+			if (fileCopyFailed) {
+				toast.error(`Attached to "${book.title}", but the file couldn't be kept`);
+			} else {
+				toast.success(`Attached to "${book.title}"`);
+			}
+		},
+		onError: (error) => {
+			log.warn("book-import", "attach failed:", error);
+			toast.error("Couldn't attach this file");
+		},
+	});
+
+	const isBusy = commit.isPending || attach.isPending;
+
+	// The mutations keep their variables, and those hold the whole book text
+	// plus the original file bytes. Resetting once the queue drains releases them.
+	const { reset: resetCommit } = commit;
+	const { reset: resetAttach } = attach;
+	useEffect(() => {
+		if (queue.length === 0) {
+			resetCommit();
+			resetAttach();
+		}
+	}, [queue.length, resetCommit, resetAttach]);
 
 	const discardCurrent = useCallback(() => {
 		setQueue((q) => {
@@ -76,11 +134,11 @@ export const ImportStagingProvider: React.FC<{ children: React.ReactNode }> = ({
 	useEffect(() => {
 		if (!current) return;
 		return pushBackHandler(() => {
-			if (commit.isPending) return true;
+			if (isBusy) return true;
 			discardCurrent();
 			return true;
 		});
-	}, [current, commit.isPending, discardCurrent]);
+	}, [current, isBusy, discardCurrent]);
 
 	const value = useMemo<ImportStaging>(
 		() => ({ stage: (staged) => setQueue((q) => [...q, staged]) }),
@@ -123,7 +181,7 @@ export const ImportStagingProvider: React.FC<{ children: React.ReactNode }> = ({
 					onClose={() => {
 						// A dismiss mid-write would leave the book saved with no sign of
 						// it, so the drawer only closes once the write is done.
-						if (commit.isPending) return;
+						if (isBusy) return;
 						discardCurrent();
 					}}
 					initial={initial}
@@ -131,11 +189,29 @@ export const ImportStagingProvider: React.FC<{ children: React.ReactNode }> = ({
 					saveLabel="Add to library"
 					isSaving={commit.isPending}
 					onSave={(values) => commit.mutate({ staged: current, values })}
+					isCheckingAlternative={isCheckingAttach}
+					alternativeAction={
+						attachCandidate
+							? {
+									hint: attachHint(attachCandidate.title, current.payload),
+									label: "Attach",
+									isPending: attach.isPending,
+									onSelect: () => attach.mutate({ staged: current, book: attachCandidate }),
+								}
+							: undefined
+					}
 				/>
 			)}
 		</ImportStagingContext.Provider>
 	);
 };
+
+function attachHint(title: string, payload: StagedImport["payload"]): string {
+	const gain = payload.images?.length
+		? "add its images and keep your progress"
+		: "keep your progress instead of adding a copy";
+	return `Already in your library as "${title}". Attach this file to ${gain}.`;
+}
 
 export function useImportStaging(): ImportStaging {
 	const context = useContext(ImportStagingContext);
