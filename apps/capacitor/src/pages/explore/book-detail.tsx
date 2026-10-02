@@ -14,10 +14,11 @@ import { queries } from "../../services/db/queries";
 import { type DetailAction, DetailShell } from "../_shared/detail-shell";
 import BookDetailShelves from "./book-detail-shelves";
 import { catalogFacts } from "./catalog-facts";
+import LengthFact from "./length-fact";
 import { shareCatalogBook } from "./share-link";
 import { rememberTagLabels } from "./tag-labels";
 import { useCatalogImport } from "./use-catalog-import";
-import { useReaderWpm } from "./use-reader-wpm";
+import { useReadingSpeed } from "./use-reading-speed";
 
 interface Props {
 	catalogId?: string;
@@ -29,7 +30,7 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 	const catalogId = decodeURIComponent(propCatalogId ?? "");
 	const router = useRouter();
 	const importer = useCatalogImport(catalogId, { withProgress: true });
-	const wpm = useReaderWpm();
+	const speed = useReadingSpeed();
 
 	const {
 		data: book,
@@ -47,7 +48,8 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 		enabled: !!catalogId,
 		// An uncounted book may have been counted since (another reader's
 		// download, the crawler); check again whenever the page opens.
-		refetchOnMount: (query) => (query.state.data?.wordCount == null ? "always" : true),
+		refetchOnMount: (query) =>
+			query.state.data?.wordCount == null || query.state.data.wordCountEstimated ? "always" : true,
 	});
 
 	const { data: existing } = useQuery({
@@ -141,7 +143,7 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 			title={book.title}
 			author={book.author}
 			onAuthorTap={book.author ? () => openAuthor(book.author ?? "") : undefined}
-			facts={catalogFacts(book, wpm)}
+			facts={[<LengthFact key="length" length={book} speed={speed} />, ...catalogFacts(book)]}
 			subjects={book.subjects ?? undefined}
 			tagLinks={
 				book.tags && {

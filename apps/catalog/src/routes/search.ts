@@ -9,6 +9,9 @@ import { parseSearchParams, type SearchParams } from "../lib/search-params.js";
 import { textArray } from "../lib/sql-array.js";
 import { type TagCount, tagCounts } from "../lib/tag-counts.js";
 
+/** Exact word count, else the estimate; backed by the catalog_books_effective_words index. */
+const EFFECTIVE_WORDS = sql`COALESCE(word_count, word_count_estimate)`;
+
 const FACET_LIMIT = 12;
 
 /**
@@ -49,9 +52,9 @@ function buildPredicate(p: SearchParams, tsQuery: string): SQL {
 	if (p.tags.length > 0) conditions.push(sql`tags @> ${textArray(p.tags)}`);
 	if (p.authorKeys.length > 0) conditions.push(sql`author_keys && ${textArray(p.authorKeys)}`);
 	if (p.source !== "any") conditions.push(sql`source = ${p.source}`);
-	// Uncounted books have no length, so a length filter leaves them out rather than reading null as 0.
-	if (p.minWords !== null) conditions.push(sql`word_count >= ${p.minWords}`);
-	if (p.maxWords !== null) conditions.push(sql`word_count <= ${p.maxWords}`);
+	// A book with neither count nor estimate has no length, so a length filter leaves it out rather than reading null as 0.
+	if (p.minWords !== null) conditions.push(sql`${EFFECTIVE_WORDS} >= ${p.minWords}`);
+	if (p.maxWords !== null) conditions.push(sql`${EFFECTIVE_WORDS} <= ${p.maxWords}`);
 
 	return sql.join(conditions, sql` AND `);
 }
@@ -72,7 +75,7 @@ function orderBy(p: SearchParams): SQL {
 		case "recent":
 			return sql`added_at DESC, id ASC`;
 		case "length":
-			return sql`word_count ASC NULLS LAST, id ASC`;
+			return sql`${EFFECTIVE_WORDS} ASC NULLS LAST, id ASC`;
 	}
 }
 
@@ -210,7 +213,7 @@ export const searchRoute = new Hono().get("/", async (c) => {
 
 	const [result, countResult, facets] = await Promise.all([
 		db.execute<BookRow>(sql`
-			SELECT id, source, title, author, language, subjects, summary, cover_url, epub_url IS NOT NULL AS has_epub, word_count
+			SELECT id, source, title, author, language, subjects, summary, cover_url, epub_url IS NOT NULL AS has_epub, word_count, word_count_estimate
 				${rankColumn}
 			FROM catalog_books
 			WHERE ${predicate}

@@ -28,7 +28,7 @@ vi.mock("../../../services/serial-scrapers", async (importActual) => ({
 }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useSettings: () => ({ data: { wpm: 300 } }),
+		useStatsMeasuredSpeed: () => ({ data: { wpm: 300, sessionCount: 12 } }),
 		useSearchSerials: () => serials.current,
 		useLibraryCatalogIds: () => ({ data: new Map() }),
 		useSeriesList: () => ({ data: [] }),

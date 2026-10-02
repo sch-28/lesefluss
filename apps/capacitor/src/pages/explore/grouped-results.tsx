@@ -100,7 +100,7 @@ const GroupedResults: React.FC<Props> = ({
 				>
 					{results.slice(0, PROVIDER_PREVIEW_SIZE).map((r) => (
 						<div key={r.sourceUrl} className="shrink-0" style={SHELF_ITEM_STYLE}>
-							<WebNovelCard result={r} onPick={onOpenWebNovel} />
+							<WebNovelCard result={r} onPick={onOpenWebNovel} showProvider={false} />
 						</div>
 					))}
 				</ShelfFrame>

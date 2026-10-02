@@ -16,7 +16,7 @@ vi.mock("../../../services/catalog/client", async (importActual) => ({
 vi.mock("../../../services/catalog/import", () => ({ importFromCatalog: vi.fn() }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useSettings: () => ({ data: { wpm: 300 } }),
+		useStatsMeasuredSpeed: () => ({ data: { wpm: 300, sessionCount: 12 } }),
 		useLibraryCatalogIds: () => ({ data: new Map() }),
 		useSeriesList: () => ({ data: [] }),
 		useImportSerialFromUrl: () => ({ mutateAsync: vi.fn() }),

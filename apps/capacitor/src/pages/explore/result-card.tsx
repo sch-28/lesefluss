@@ -2,7 +2,8 @@ import type React from "react";
 import CoverImage from "../../components/cover-image";
 import type { CatalogSearchResult } from "../../services/catalog/client";
 import { getCoverUrl } from "../../services/catalog/client";
-import { InLibraryBadge, QuickAddOverlay } from "./card-badges";
+import { CoverLengthBadge, InLibraryBadge, QuickAddOverlay } from "./card-badges";
+import type { LengthLabels } from "./length";
 
 type Props = {
 	result: CatalogSearchResult;
@@ -11,8 +12,8 @@ type Props = {
 	/** Omit to hide quick add (in library, no EPUB, or not offered here). */
 	onQuickAdd?: () => void;
 	isAdding?: boolean;
-	/** e.g. "2h 10m" at the reader's speed; omitted until the catalog has counted the book. */
-	readingTime?: string | null;
+	/** From `describeLength`; its reading time sits in the cover's top-right corner. */
+	lengthLabels?: LengthLabels | null;
 };
 
 /**
@@ -25,10 +26,9 @@ const ResultCard: React.FC<Props> = ({
 	isInLibrary,
 	onQuickAdd,
 	isAdding,
-	readingTime,
+	lengthLabels,
 }) => {
 	const cover = getCoverUrl(result.id, result.coverUrl);
-	const isSE = result.source === "standard_ebooks";
 
 	return (
 		<div className="relative w-full" data-testid="catalog-card" data-in-library={!!isInLibrary}>
@@ -39,11 +39,7 @@ const ResultCard: React.FC<Props> = ({
 			>
 				<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-border bg-muted">
 					<CoverImage src={cover} alt={result.title} />
-					{isSE && (
-						<span className="absolute top-1.5 right-1.5 rounded-sm bg-foreground px-1.5 py-0.5 font-semibold text-[0.6rem] text-background">
-							SE
-						</span>
-					)}
+					{lengthLabels && <CoverLengthBadge labels={lengthLabels} />}
 					{isInLibrary && <InLibraryBadge className="absolute bottom-1.5 left-1.5" />}
 				</div>
 				<div className="px-0.5 pt-1">
@@ -54,9 +50,6 @@ const ResultCard: React.FC<Props> = ({
 						<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
 							{result.author}
 						</div>
-					)}
-					{readingTime && (
-						<div className="mt-0.5 text-[0.7rem] text-muted-foreground">{readingTime}</div>
 					)}
 				</div>
 			</button>

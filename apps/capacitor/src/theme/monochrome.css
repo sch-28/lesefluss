@@ -442,6 +442,12 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	border-radius: 0;
 }
 
+/* Dimmed on the track, not the bar: the bar's opaque background masks text
+ * scrolling under the safe area and must stay solid. */
+.reader-progress-bar--collapsed .reader-progress-fill-track {
+	opacity: 0.4;
+}
+
 .reader-progress-fill-track {
 	width: 100%;
 	height: 4px;

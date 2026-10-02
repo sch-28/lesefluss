@@ -81,6 +81,15 @@ describe.skipIf(!hasDb)("Gutenberg RDF sync (integration)", () => {
 		expect((await row(FRANKENSTEIN))?.download_count).toBe(144100);
 	});
 
+	it("ignores a text-size change that moves the estimate by 1% or less", async () => {
+		const resized = (bytes: string) =>
+			fixture("pg84.rdf", FRANKENSTEIN, (x) =>
+				x.replace(">144008<", ">144100<").replace(">448885<", `>${bytes}<`),
+			);
+		expect(await syncGutenbergFromRdf(stream([resized("450000")]))).toMatchObject({ unchanged: 1 });
+		expect(await syncGutenbergFromRdf(stream([resized("470000")]))).toMatchObject({ changed: 1 });
+	});
+
 	it("keeps the stored summary when the catalog entry has none", async () => {
 		const withoutSummary = fixture("pg84.rdf", FRANKENSTEIN, (x) =>
 			x.replace(/<pgterms:marc520>[\s\S]*?<\/pgterms:marc520>/, ""),

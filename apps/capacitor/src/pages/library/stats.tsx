@@ -44,6 +44,7 @@ const Stats: React.FC = () => {
 
 	const currentStreak = streak.data?.current ?? 0;
 	const longestStreak = streak.data?.longest ?? 0;
+	const freezesBanked = streak.data?.freezesBanked ?? 0;
 
 	return (
 		<div className="bg-background text-foreground">
@@ -56,7 +57,11 @@ const Stats: React.FC = () => {
 				<EmptyState />
 			) : (
 				<>
-					<Hero currentStreak={currentStreak} longestStreak={longestStreak} />
+					<Hero
+						currentStreak={currentStreak}
+						longestStreak={longestStreak}
+						freezesBanked={freezesBanked}
+					/>
 
 					{/* Period control sits with the sections it drives. */}
 					<PeriodTotals now={now} period={period} range={range} onPeriodChange={setPeriod} />

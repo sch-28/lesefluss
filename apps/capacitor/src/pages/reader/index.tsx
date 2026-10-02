@@ -1608,6 +1608,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const progressPct = totalWordCount > 0 ? Math.min(100, (progressWord / totalWordCount) * 100) : 0;
 	const isProgressCollapsed = !progressBarVisible && readerMode !== "rsvp";
+	const isShowingSkeleton =
+		chapterFetch.kind !== "locked" &&
+		chapterFetch.kind !== "error" &&
+		(contentPending || imagesPending || !content || !wordIndex || chapterFetch.kind === "loading");
 
 	const showReadingTime = dbSettings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
 	// The dial is an input, not a rate: the engine spends time on punctuation
@@ -1780,11 +1784,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						provider={series?.provider}
 						onRetry={chapterFetch.retry}
 					/>
-				) : contentPending ||
-					imagesPending ||
-					!content ||
-					!wordIndex ||
-					chapterFetch.kind === "loading" ? (
+				) : isShowingSkeleton ? (
 					<ReaderSkeleton />
 				) : readerMode === "rsvp" ? (
 					<RsvpView
@@ -1881,17 +1881,19 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				{/* ── Progress bar ── */}
 				{/* Collapsed, the bar rests as a thin line so progress is always in view. */}
 				{isProgressCollapsed ? (
-					<div className="reader-progress-bar reader-progress-bar--collapsed" aria-hidden>
-						<BuddyReadMarkers
-							markers={buddy.markers}
-							myWord={progressWord}
-							approximate={buddy.approximate}
-							isCollapsed
-						/>
-						<div className="reader-progress-fill-track">
-							<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
+					!isShowingSkeleton && (
+						<div className="reader-progress-bar reader-progress-bar--collapsed" aria-hidden>
+							<BuddyReadMarkers
+								markers={buddy.markers}
+								myWord={progressWord}
+								approximate={buddy.approximate}
+								isCollapsed
+							/>
+							<div className="reader-progress-fill-track">
+								<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
+							</div>
 						</div>
-					</div>
+					)
 				) : (
 					<div
 						ref={scrub.progressBarRef}
@@ -1989,6 +1991,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				onClose={() => setAnnotationsOpen(false)}
 				theme={theme}
 				chapters={chapters}
+				currentChapterIndex={currentChapterIndex}
 				onJumpChapter={handleChapterJump}
 				seriesId={book.seriesId ?? null}
 				highlights={highlightRows}

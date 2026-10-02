@@ -275,6 +275,7 @@ describe("ao3.search", () => {
 				provider: "ao3",
 				details: {
 					ao3: { rating: [], warnings: [], fandoms: ["Sherlock (TV)"], relationships: [] },
+					wordCount: 12_345,
 				},
 			},
 			{

@@ -1,15 +1,38 @@
+import { type SQL, sql } from "drizzle-orm";
 import { splitAuthors } from "./authors.js";
 
 /**
  * Gutenberg's catalog passes some titles through with raw MARC subfield markers
- * ("Ancient law : $b its connection…"); render them as a plain subtitle.
+ * ("Ancient law : $b its connection…", "Dress design $b: an account…"); render
+ * them as a plain subtitle. Rules apply in order and are written once for both
+ * `cleanTitle` and the SQL that cleans stored rows: a marker with its own
+ * colon or semicolon keeps that punctuation, a bare one becomes ": ", a
+ * trailing one goes.
  */
-export function cleanTitle(title: string): string {
-	return title.replace(/\s*:?\s*\$[a-z]\s+/g, ": ").trim();
+export const MARC_SUBFIELD_RULES = [
+	{ pattern: "\\s*[:;]?\\s*\\$[a-z]\\s*([:;])\\s*", js: "$1 ", sql: "\\1 " },
+	{ pattern: "\\s*:?\\s*\\$[a-z]\\s+(?=\\S)", js: ": ", sql: ": " },
+	{ pattern: "\\s*[:;]?\\s*\\$[a-z]\\s*$", js: "", sql: "" },
+] as const;
+
+/** Matches a title any rule would change. */
+export const MARC_SUBFIELD_SQL_PATTERN = MARC_SUBFIELD_RULES.map((r) => `(${r.pattern})`).join("|");
+
+/** `cleanTitle` in SQL, for rows stored before a rule existed. */
+export function cleanTitleSql(column: SQL): SQL {
+	const replaced = MARC_SUBFIELD_RULES.reduce(
+		(expr, rule) => sql`regexp_replace(${expr}, ${rule.pattern}, ${rule.sql}, 'g')`,
+		column,
+	);
+	return sql`btrim(${replaced})`;
 }
 
-/** SQL twin of `cleanTitle`, for rows synced before it existed. */
-export const MARC_SUBFIELD_SQL_PATTERN = "\\s*:?\\s*\\$[a-z]\\s+";
+export function cleanTitle(title: string): string {
+	return MARC_SUBFIELD_RULES.reduce(
+		(t, rule) => t.replace(new RegExp(rule.pattern, "g"), rule.js),
+		title,
+	).trim();
+}
 
 /**
  * "Last, First" per author, as Gutenberg stores it, to "First Last" for display.

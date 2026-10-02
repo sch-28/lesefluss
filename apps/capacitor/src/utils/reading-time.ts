@@ -14,11 +14,23 @@ export function formatReadingTime(minutes: number): string {
  * font size and screen, is chunk-local, and is never shown as a total. This is a
  * property of the book, so it has to be independent of the device.
  */
-const WORDS_PER_PAGE = 250;
+export const WORDS_PER_PAGE = 250;
 
 /** Fallback when a reader has no measured history yet. Rough, and labelled as
  *  such wherever it is shown. */
 export const AVERAGE_READER_WPM = 225;
+
+/**
+ * The pace length estimates use: the reader's measured speed, else the
+ * typical one. One rule for library stats and Explore so they can't disagree.
+ */
+export type ReadingPace = { wpm: number; isMeasured: boolean };
+
+export function readingPace(measuredWpm: number | null | undefined): ReadingPace {
+	return measuredWpm && measuredWpm > 0
+		? { wpm: measuredWpm, isMeasured: true }
+		: { wpm: AVERAGE_READER_WPM, isMeasured: false };
+}
 
 export function estimatePages(wordCount: number): number {
 	return Math.max(1, Math.ceil(wordCount / WORDS_PER_PAGE));

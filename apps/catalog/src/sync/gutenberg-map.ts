@@ -1,6 +1,7 @@
 import type { NewCatalogBook } from "../db/schema.js";
 import { authorKeys } from "../lib/authors.js";
 import { cleanTitle } from "../lib/display.js";
+import { estimateWords } from "../lib/length-estimate.js";
 import { tagsFor } from "../lib/tags.js";
 import type { MappedBook } from "./enrich.js";
 import type { GutenbergRecord } from "./gutenberg-rdf.js";
@@ -20,6 +21,7 @@ export const SYNCED_COLUMNS = [
 	"authorBirthYear",
 	"authorDeathYear",
 	"authorKeys",
+	"wordCountEstimate",
 ] as const satisfies readonly (keyof NewCatalogBook)[];
 
 export function syncedFields(r: Partial<NewCatalogBook>): string {
@@ -50,6 +52,7 @@ export function mapBook(b: GutenbergRecord): MappedBook | null {
 		authorBirthYear: firstAuthor?.birthYear ?? null,
 		authorDeathYear: firstAuthor?.deathYear ?? null,
 		authorKeys: keys.length > 0 ? keys : null,
+		wordCountEstimate: estimateWords(b.textBytes, b.language),
 	};
 	return { row, tags };
 }

@@ -2,6 +2,7 @@ import {
 	bookStatus,
 	measuredReadingSpeed,
 	type ProfileStats,
+	readingDayKeys,
 	streakFromDays,
 } from "@lesefluss/core";
 import { and, eq } from "drizzle-orm";
@@ -44,6 +45,22 @@ export function dayOf(date: Date | null, timeZone: string | undefined): string |
 		month: "2-digit",
 		day: "2-digit",
 	}).format(date);
+}
+
+/** The `YYYY-MM-DD` days an instant counts toward in the owner's zone, UTC when none is known.
+ *  The last is its own calendar day. */
+export function readingDaysOf(date: Date, timeZone: string | undefined): string[] {
+	const parts = new Intl.DateTimeFormat("en-CA", {
+		timeZone: timeZone ?? "UTC",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+		hour: "2-digit",
+		hourCycle: "h23",
+	}).formatToParts(date);
+	const part = (type: Intl.DateTimeFormatPartTypes) =>
+		parts.find((p) => p.type === type)?.value ?? "";
+	return readingDayKeys(`${part("year")}-${part("month")}-${part("day")}`, Number(part("hour")));
 }
 
 /**
@@ -99,13 +116,16 @@ export async function profileStatsFor(
 		)
 		.where(and(eq(syncReadingSessions.userId, userId), visible));
 
-	const minutesByDay = new Map<string, number>();
-	for (const s of sessions) {
-		const key = dayOf(s.startedAt, options.timeZone) ?? "";
-		minutesByDay.set(key, (minutesByDay.get(key) ?? 0) + s.durationMs / 60_000);
-	}
+	const readDays = new Set(
+		sessions
+			.filter((s) => s.durationMs > 0)
+			.flatMap((s) => readingDaysOf(s.startedAt, options.timeZone)),
+	);
+	const openDays = readingDaysOf(now, options.timeZone);
 	const streak =
-		sessions.length > 0 ? streakFromDays(minutesByDay, dayOf(now, options.timeZone) ?? "") : null;
+		sessions.length > 0
+			? streakFromDays(readDays, openDays[openDays.length - 1] ?? "", openDays[0])
+			: null;
 
 	return {
 		booksFinishedThisYear,

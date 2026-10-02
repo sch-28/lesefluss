@@ -24,6 +24,20 @@ declare global {
 const isNativeShell = () =>
 	typeof window !== "undefined" && window.Capacitor?.isNativePlatform?.() === true;
 
+/** The `max-h-[85vh]` cap on bottom and top DrawerContent. */
+const DRAWER_MAX_HEIGHT = 0.85;
+
+/**
+ * vaul offsets a snap point `s` by `(1 - s) * innerHeight`, as if the drawer
+ * filled the screen, but DrawerContent is capped at 85vh, so raw values show
+ * less than intended and anything below 1 cuts off the sheet's bottom. Takes
+ * the share of the screen each snap point should show (1 = the whole sheet)
+ * and returns vaul's values.
+ */
+function drawerSnapPoints(visible: number[]): number[] {
+	return visible.map((v) => Math.min(1, v + 1 - DRAWER_MAX_HEIGHT));
+}
+
 function Drawer({ repositionInputs, ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
 	return (
 		<DrawerPrimitive.Root
@@ -151,4 +165,5 @@ export {
 	DrawerPortal,
 	DrawerTitle,
 	DrawerTrigger,
+	drawerSnapPoints,
 };

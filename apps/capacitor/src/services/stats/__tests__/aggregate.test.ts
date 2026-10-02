@@ -45,32 +45,27 @@ describe.each([
 ])("summariseStreak in %s", (tz) => {
 	useTimezone(tz);
 
-	it("counts a day whose sittings only sum past the threshold", () => {
+	it("counts a day with a single short sitting", () => {
 		const day = at(2026, 5, 10);
-		const rows = Array.from({ length: 5 }, (_, i) => ({
-			startedAt: day + i * 60_000,
-			durationMs: 50_000,
-		}));
-		const result = summariseStreak(rows, at(2026, 5, 10, 23));
+		const result = summariseStreak([{ startedAt: day, durationMs: 20_000 }], day + minutes(60));
 		expect(result.current).toBe(1);
 	});
 
-	// Exactly one minute, split so that summing minutes per row lands on
-	// 0.9999999999999999 and drops the day. Summing milliseconds first does not.
-	it("counts a day that reaches the threshold only when summed in milliseconds", () => {
-		const day = at(2026, 5, 10);
-		const rows = [41_756, 5_223, 13_021].map((durationMs, i) => ({
-			startedAt: day + i * 60_000,
-			durationMs,
+	it("counts a sitting before 04:00 toward the previous day too", () => {
+		const rows = [at(2026, 5, 8, 22), at(2026, 5, 10, 2), at(2026, 5, 10, 21)].map((startedAt) => ({
+			startedAt,
+			durationMs: minutes(20),
 		}));
-		expect(rows.reduce((sum, r) => sum + r.durationMs, 0)).toBe(60_000);
-		expect(summariseStreak(rows, at(2026, 5, 10, 23)).current).toBe(1);
+		const result = summariseStreak(rows, at(2026, 5, 10, 23));
+		expect(result.current).toBe(3);
+		expect(result.frozenDays).toEqual([]);
 	});
 
-	it("ignores a day that stays under the threshold in total", () => {
-		const day = at(2026, 5, 10);
-		const result = summariseStreak([{ startedAt: day, durationMs: 20_000 }], day + minutes(60));
-		expect(result.current).toBe(0);
+	it("does not miss yesterday while it can still be read late at night", () => {
+		const rows = [at(2026, 5, 9, 20)].map((startedAt) => ({ startedAt, durationMs: minutes(20) }));
+		// At 03:00 on the 11th a sitting would still count for the 10th.
+		expect(summariseStreak(rows, at(2026, 5, 11, 3)).current).toBe(1);
+		expect(summariseStreak(rows, at(2026, 5, 11, 5)).current).toBe(0);
 	});
 
 	it("counts consecutive local days as one streak", () => {

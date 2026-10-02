@@ -319,7 +319,7 @@ Fixed bar at the bottom of `IonContent`, positioned `calc(env(safe-area-inset-bo
 
 ### TOC / Chapter navigation
 
-`listOutline` toolbar button - only rendered when `chapters.length > 0` (EPUB imports only). Opens a sheet modal listing all chapters; tapping binary-searches `paragraphOffsets` for its `startByte` and scrolls there.
+`listOutline` toolbar button - only rendered when `chapters.length > 0` (EPUB imports only). Opens a sheet modal listing all chapters; tapping binary-searches `paragraphOffsets` for its `startByte` and scrolls there. On open, `ContentsList` marks the current chapter (`aria-current`) and scrolls it near the top of the half-height sheet, expanding the sheet to full height when the scroll clamps near the end of the list; serials pass `currentBookId` to `SeriesChapterList`, which does the same once per mount via `VList.scrollToIndex`.
 
 ### Highlights & annotations
 

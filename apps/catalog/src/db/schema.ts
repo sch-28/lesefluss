@@ -33,6 +33,8 @@ export const catalogBooks = pgTable(
 		authorKeys: text("author_keys").array(),
 		/** Words per lib/word-count.ts. Null until counted; never treated as zero. */
 		wordCount: integer("word_count"),
+		/** Gutenberg only, from the plain-text size (lib/length-estimate.ts); stands in until `wordCount` exists. */
+		wordCountEstimate: integer("word_count_estimate"),
 		/** The epub_url `wordCount` was taken from; a changed URL is counted again. */
 		wordCountEpubUrl: text("word_count_epub_url"),
 		wordCountFailedAt: timestamp("word_count_failed_at", { withTimezone: true }),

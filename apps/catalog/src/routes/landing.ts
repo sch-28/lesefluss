@@ -12,7 +12,7 @@ const ROTATING_GENRES = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const COLUMNS = sql`id, source, title, author, language, subjects, summary, cover_url,
-	epub_url IS NOT NULL AS has_epub, word_count`;
+	epub_url IS NOT NULL AS has_epub, word_count, word_count_estimate`;
 
 /** A few genres per day instead of all of them; the set rotates daily. */
 export function genresForDay(day: number): Genre[] {
@@ -40,7 +40,7 @@ export const landingRoute = new Hono().get("/", async (c) => {
 			ORDER BY synced_at DESC LIMIT ${SHELF_SIZE}`,
 		// unnest WITH ORDINALITY keeps the hand-picked order.
 		classics: sql`SELECT b.id, b.source, b.title, b.author, b.language, b.subjects, b.summary,
-				b.cover_url, b.epub_url IS NOT NULL AS has_epub, b.word_count
+				b.cover_url, b.epub_url IS NOT NULL AS has_epub, b.word_count, b.word_count_estimate
 			FROM unnest(ARRAY[${sql.join(
 				CLASSIC_IDS.map((id) => sql`${id}`),
 				sql`, `,

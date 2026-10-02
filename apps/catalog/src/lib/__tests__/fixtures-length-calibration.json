@@ -1,0 +1,284 @@
+[
+	{
+		"id": 29997,
+		"language": "pt",
+		"textBytes": 27654,
+		"words": 4192
+	},
+	{
+		"id": 29620,
+		"language": "en",
+		"textBytes": 37709,
+		"words": 6125
+	},
+	{
+		"id": 60654,
+		"language": "en",
+		"textBytes": 45596,
+		"words": 7371
+	},
+	{
+		"id": 32819,
+		"language": "en",
+		"textBytes": 52656,
+		"words": 8477
+	},
+	{
+		"id": 25201,
+		"language": "en",
+		"textBytes": 60248,
+		"words": 10159
+	},
+	{
+		"id": 11307,
+		"language": "eo",
+		"textBytes": 68527,
+		"words": 11393
+	},
+	{
+		"id": 1890,
+		"language": "en",
+		"textBytes": 76867,
+		"words": 13466
+	},
+	{
+		"id": 49319,
+		"language": "en",
+		"textBytes": 85116,
+		"words": 13210
+	},
+	{
+		"id": 37999,
+		"language": "en",
+		"textBytes": 94508,
+		"words": 14725
+	},
+	{
+		"id": 52721,
+		"language": "fi",
+		"textBytes": 103149,
+		"words": 13192
+	},
+	{
+		"id": 33814,
+		"language": "en",
+		"textBytes": 113263,
+		"words": 19695
+	},
+	{
+		"id": 41398,
+		"language": "en",
+		"textBytes": 122740,
+		"words": 20011
+	},
+	{
+		"id": 6830,
+		"language": "de",
+		"textBytes": 132759,
+		"words": 20030
+	},
+	{
+		"id": 5970,
+		"language": "en",
+		"textBytes": 143438,
+		"words": 24991
+	},
+	{
+		"id": 34746,
+		"language": "fi",
+		"textBytes": 154344,
+		"words": 19505
+	},
+	{
+		"id": 16919,
+		"language": "en",
+		"textBytes": 165730,
+		"words": 28503
+	},
+	{
+		"id": 2663,
+		"language": "en",
+		"textBytes": 177287,
+		"words": 30297
+	},
+	{
+		"id": 21597,
+		"language": "en",
+		"textBytes": 190111,
+		"words": 32859
+	},
+	{
+		"id": 52260,
+		"language": "en",
+		"textBytes": 204482,
+		"words": 32533
+	},
+	{
+		"id": 64151,
+		"language": "de",
+		"textBytes": 219062,
+		"words": 30334
+	},
+	{
+		"id": 35569,
+		"language": "de",
+		"textBytes": 233530,
+		"words": 33460
+	},
+	{
+		"id": 55577,
+		"language": "en",
+		"textBytes": 247981,
+		"words": 43436
+	},
+	{
+		"id": 12401,
+		"language": "fr",
+		"textBytes": 262018,
+		"words": 42776
+	},
+	{
+		"id": 78568,
+		"language": "fi",
+		"textBytes": 275894,
+		"words": 34883
+	},
+	{
+		"id": 71964,
+		"language": "en",
+		"textBytes": 289970,
+		"words": 49197
+	},
+	{
+		"id": 28216,
+		"language": "en",
+		"textBytes": 303389,
+		"words": 48353
+	},
+	{
+		"id": 22431,
+		"language": "en",
+		"textBytes": 317705,
+		"words": 53549
+	},
+	{
+		"id": 17284,
+		"language": "en",
+		"textBytes": 331890,
+		"words": 56017
+	},
+	{
+		"id": 30586,
+		"language": "en",
+		"textBytes": 346162,
+		"words": 58481
+	},
+	{
+		"id": 23810,
+		"language": "en",
+		"textBytes": 361244,
+		"words": 61427
+	},
+	{
+		"id": 7062,
+		"language": "en",
+		"textBytes": 377169,
+		"words": 68191
+	},
+	{
+		"id": 62262,
+		"language": "hu",
+		"textBytes": 393248,
+		"words": 53758
+	},
+	{
+		"id": 14311,
+		"language": "es",
+		"textBytes": 409908,
+		"words": 67914
+	},
+	{
+		"id": 55953,
+		"language": "en",
+		"textBytes": 428024,
+		"words": 72367
+	},
+	{
+		"id": 32893,
+		"language": "en",
+		"textBytes": 447618,
+		"words": 80578
+	},
+	{
+		"id": 1666,
+		"language": "en",
+		"textBytes": 467332,
+		"words": 83837
+	},
+	{
+		"id": 33716,
+		"language": "en",
+		"textBytes": 488088,
+		"words": 77698
+	},
+	{
+		"id": 48372,
+		"language": "en",
+		"textBytes": 531216,
+		"words": 97252
+	},
+	{
+		"id": 41180,
+		"language": "en",
+		"textBytes": 585795,
+		"words": 104324
+	},
+	{
+		"id": 565,
+		"language": "en",
+		"textBytes": 617926,
+		"words": 102888
+	},
+	{
+		"id": 50296,
+		"language": "de",
+		"textBytes": 657257,
+		"words": 89859
+	},
+	{
+		"id": 48681,
+		"language": "la",
+		"textBytes": 702704,
+		"words": 94617
+	},
+	{
+		"id": 74768,
+		"language": "en",
+		"textBytes": 758152,
+		"words": 135212
+	},
+	{
+		"id": 10151,
+		"language": "en",
+		"textBytes": 921852,
+		"words": 155215
+	},
+	{
+		"id": 38328,
+		"language": "en",
+		"textBytes": 1046395,
+		"words": 171899
+	},
+	{
+		"id": 27883,
+		"language": "nl",
+		"textBytes": 1234270,
+		"words": 196608
+	},
+	{
+		"id": 19774,
+		"language": "nl",
+		"textBytes": 1777624,
+		"words": 268347
+	}
+]

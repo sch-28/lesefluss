@@ -1,4 +1,5 @@
 import { displayAuthor } from "./display.js";
+import { effectiveLength } from "./length-estimate.js";
 
 /**
  * Shared row shape + mapper for catalog-book result rows.
@@ -16,6 +17,7 @@ export type BookRow = {
 	cover_url: string | null;
 	has_epub: boolean;
 	word_count: number | null;
+	word_count_estimate: number | null;
 };
 
 export type Book = {
@@ -28,8 +30,9 @@ export type Book = {
 	summary: string | null;
 	coverUrl: string | null;
 	hasEpub: boolean;
-	/** Null until counted; never zero for "unknown". */
+	/** The exact count, else the estimate; null when neither exists, never zero for "unknown". */
 	wordCount: number | null;
+	wordCountEstimated: boolean;
 };
 
 export function mapBookRow(r: BookRow): Book {
@@ -43,7 +46,7 @@ export function mapBookRow(r: BookRow): Book {
 		summary: r.summary,
 		coverUrl: r.cover_url,
 		hasEpub: r.has_epub,
-		wordCount: r.word_count,
+		...effectiveLength(r.word_count, r.word_count_estimate),
 	};
 }
 

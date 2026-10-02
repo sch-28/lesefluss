@@ -30,6 +30,8 @@ describe("parseGutenbergRdf", () => {
 		expect(r.epubUrl).toBe("https://www.gutenberg.org/ebooks/84.epub3.images");
 		expect(r.coverUrl).toBe("https://www.gutenberg.org/cache/epub/84/pg84.cover.medium.jpg");
 		expect(r.type).toBe("Text");
+		// The generated .txt.utf-8, not the legacy files/84/84-0.txt (421,633 bytes).
+		expect(r.textBytes).toBe(448885);
 	});
 
 	it("handles several authors, a non-English book, a subtitle line and no cover", () => {
@@ -72,6 +74,7 @@ describe("parseGutenbergRdf", () => {
 			epubUrl: undefined,
 			coverUrl: undefined,
 			downloadCount: undefined,
+			textBytes: undefined,
 			type: "Text",
 		});
 	});
@@ -97,6 +100,8 @@ describe("mapBook from RDF", () => {
 			epubUrl: "https://www.gutenberg.org/ebooks/84.epub3.images",
 			coverUrl: "https://www.gutenberg.org/cache/epub/84/pg84.cover.medium.jpg",
 			downloadCount: 144008,
+			// 448,885 bytes of English plain text.
+			wordCountEstimate: 76_082,
 		});
 		expect(mapped?.row.tags).toEqual(
 			expect.arrayContaining(["science-fiction", "horror", "gothic-fiction", "fiction"]),
@@ -111,6 +116,7 @@ describe("mapBook from RDF", () => {
 		expect(mapped?.row.author).toBe("Dumas, Alexandre, Maquet, Auguste");
 		expect(mapped?.row.authorKeys).toEqual(["alexandre dumas", "auguste maquet"]);
 		expect(mapped?.row.coverUrl).toBeNull();
+		expect(mapped?.row.wordCountEstimate).toBeNull();
 	});
 
 	it("leaves a missing summary null so the upsert can keep the stored one", () => {

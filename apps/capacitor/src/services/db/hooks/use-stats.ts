@@ -48,6 +48,13 @@ function useReadingRates() {
 	});
 }
 
+function useMeasuredReadingSpeed() {
+	return useQuery({
+		queryKey: statsKeys.measuredSpeed,
+		queryFn: () => queries.getMeasuredReadingSpeed(),
+	});
+}
+
 function useHourHistogram() {
 	return useQuery({
 		queryKey: statsKeys.hourHistogram,
@@ -84,15 +91,15 @@ function useReadingRecords() {
 	});
 }
 
-function useDailyReadingMs() {
+function useDailyReading() {
 	return useQuery({
-		queryKey: statsKeys.dailyMs,
-		queryFn: () => queries.getDailyReadingMs(),
+		queryKey: statsKeys.daily,
+		queryFn: () => queries.getDailyReading(),
 	});
 }
 
 export const statsHooks = {
-	useDailyReadingMs,
+	useDailyReading,
 	useReadingRecords,
 	useCurrentlyReading,
 	useFinishedBooks,
@@ -103,5 +110,6 @@ export const statsHooks = {
 	useWpmTrend,
 	useHourHistogram,
 	useReadingRates,
+	useMeasuredReadingSpeed,
 	useBookStats,
 };

@@ -233,6 +233,8 @@ describe("royalroad.search", () => {
 			chapterCount: 42,
 			sourceUrl: "https://www.royalroad.com/fiction/99999/first-fiction",
 			provider: "royalroad",
+			// "120 Pages" at Royal Road's 275 words a page.
+			details: { wordCount: 33_000, wordCountEstimated: true },
 		});
 
 		// Second result: no cover img → null, abbreviated "1.6k Chapters" → null count.

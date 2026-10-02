@@ -3,6 +3,7 @@ import { inArray, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { catalogBooks } from "../db/schema.js";
 import { captureException } from "../lib/error-tracking.js";
+import { settledEstimate } from "../lib/length-estimate.js";
 import { type MappedBook, upsertTagLabels } from "./enrich.js";
 import { downloadArchive, readRdfEntries } from "./gutenberg-archive.js";
 import { mapBook, SYNCED_COLUMNS, syncedFields } from "./gutenberg-map.js";
@@ -60,7 +61,14 @@ async function upsertChanged(mapped: MappedBook[]): Promise<BatchCounts> {
 			toWrite.push({ ...m, row: { ...m.row, suppressed: m.row.epubUrl === null } });
 			continue;
 		}
-		const next = { ...m.row, summary: m.row.summary ?? current.summary };
+		const next = {
+			...m.row,
+			summary: m.row.summary ?? current.summary,
+			wordCountEstimate: settledEstimate(
+				current.wordCountEstimate,
+				m.row.wordCountEstimate ?? null,
+			),
+		};
 		if (syncedFields(next) === syncedFields(current)) continue;
 		changed++;
 		toWrite.push({ ...m, row: next });

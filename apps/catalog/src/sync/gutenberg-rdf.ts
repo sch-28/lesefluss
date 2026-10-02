@@ -12,6 +12,8 @@ export type GutenbergRecord = {
 	epubUrl?: string;
 	coverUrl?: string;
 	downloadCount?: number;
+	/** Size of the plain-text edition, the basis of the word-count estimate. */
+	textBytes?: number;
 	/** DCMI type; audio books are "Sound". */
 	type?: string;
 };
@@ -66,6 +68,28 @@ function described(node: Node): { value?: string; vocab?: string } {
 const EPUB_SUFFIXES = [".epub3.images", ".epub.images", ".epub.noimages"];
 
 /**
+ * Byte size of the plain-text edition. PG's generated `ebooks/<id>.txt.utf-8`
+ * comes first: every book has one with the same header and licence framing,
+ * which is what the bytes-per-word factor was calibrated on.
+ */
+function plainTextBytes(fileNodes: Node[]): number | undefined {
+	const texts = fileNodes
+		.map((file) => ({
+			url: String(file["@_rdf:about"] ?? ""),
+			bytes: int(file["dcterms:extent"]),
+			format: asArray(file["dcterms:format"])
+				.map((f) => described(f).value ?? "")
+				.find((f) => f.startsWith("text/plain")),
+		}))
+		.filter((t) => t.format && t.bytes);
+	const best =
+		texts.find((t) => t.url.endsWith(".txt.utf-8")) ??
+		texts.find((t) => t.format?.includes("utf-8")) ??
+		texts[0];
+	return best?.bytes ?? undefined;
+}
+
+/**
  * Parse one `pg<id>.rdf` from Project Gutenberg's offline catalog. Null for
  * a file without an ebook node (the archive also holds a few non-book RDFs).
  */
@@ -100,9 +124,8 @@ export function parseGutenbergRdf(xml: string): GutenbergRecord | null {
 		.flatMap((b) => described(b).value ?? [])
 		.sort();
 
-	const files = asArray(ebook["dcterms:hasFormat"]).flatMap((f) =>
-		asArray(f["pgterms:file"]).map((file) => String(file["@_rdf:about"] ?? "")),
-	);
+	const fileNodes = asArray(ebook["dcterms:hasFormat"]).flatMap((f) => asArray(f["pgterms:file"]));
+	const files = fileNodes.map((file) => String(file["@_rdf:about"] ?? ""));
 	const epubUrl = EPUB_SUFFIXES.map((suffix) => files.find((u) => u.endsWith(suffix))).find(
 		Boolean,
 	);
@@ -123,6 +146,7 @@ export function parseGutenbergRdf(xml: string): GutenbergRecord | null {
 		epubUrl,
 		coverUrl,
 		downloadCount: int(ebook["pgterms:downloads"]) ?? undefined,
+		textBytes: plainTextBytes(fileNodes),
 		type,
 	};
 }

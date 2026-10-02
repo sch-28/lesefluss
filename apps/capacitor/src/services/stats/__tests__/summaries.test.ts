@@ -26,6 +26,7 @@ describe("summariseDays", () => {
 			durationMs: minutes * 60_000,
 			isInMonth,
 			intensity: minutes > 0 ? 1 : 0,
+			isFrozen: false,
 			linksBefore: false,
 			linksAfter: false,
 		};
@@ -57,13 +58,25 @@ describe("summariseDays", () => {
 		expect(summary).not.toContain("April");
 	});
 
-	// The grid drops a day under the streak threshold, so the label must too.
-	// `intensity` is the thresholded verdict; `durationMs` is not.
-	it("ignores a day the grid did not light up", () => {
-		const belowThreshold: CalendarDay = { ...calDay("2026-05-12", 0), durationMs: 30_000 };
-		const summary = summariseDays([calDay("2026-05-11", 40), belowThreshold], "May");
+	it("mentions missed days a streak freeze covered", () => {
+		const frozen: CalendarDay = { ...calDay("2026-05-12", 0), isFrozen: true };
+		const summary = summariseDays([calDay("2026-05-11", 40), frozen], "May");
 		expect(summary).toContain("read on 1 of 2 days");
-		expect(summary).not.toContain("May 12");
+		expect(summary).toContain("1 missed day covered by a streak freeze");
+	});
+
+	// A sitting at 01:00 on 1 June credits 31 May, which has no time of its own.
+	it("names no longest day when the only read day has no time", () => {
+		const credited: CalendarDay = { ...calDay("2026-05-31", 0), intensity: 1 };
+		const summary = summariseDays([credited], "May");
+		expect(summary).toContain("read on 1 of 1 days");
+		expect(summary).not.toContain("Longest day");
+	});
+
+	it("mentions a freeze even when nothing was read in the range", () => {
+		const frozen: CalendarDay = { ...calDay("2026-05-12", 0), isFrozen: true };
+		const summary = summariseDays([frozen, calDay("2026-05-13", 0)], "This week");
+		expect(summary).toContain("1 missed day covered by a streak freeze");
 	});
 
 	it("says so for a month with no reading", () => {

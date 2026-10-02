@@ -9,11 +9,14 @@ const owned: SearchResult = {
 	title: "Owned Series",
 	sourceUrl: "https://www.royalroad.com/fiction/1/owned",
 	provider: "royalroad",
+	chapterCount: 42,
 };
 const fresh: SearchResult = {
 	title: "Fresh Series",
 	sourceUrl: "https://www.royalroad.com/fiction/2/fresh",
 	provider: "royalroad",
+	chapterCount: 7,
+	details: { wordCount: 33_000, wordCountEstimated: true },
 };
 
 vi.mock("../../../services/serial-scrapers", async (importActual) => ({
@@ -21,10 +24,12 @@ vi.mock("../../../services/serial-scrapers", async (importActual) => ({
 		await importActual<typeof import("../../../services/serial-scrapers/utils/series-url")>()
 	).normalizeSeriesUrl,
 	chapterCountLabel: (n: number) => `${n} chapters`,
+	providerLabel: (id: string) => `Provider ${id}`,
 	providerCapabilities: () => ({}),
 }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
+		useStatsMeasuredSpeed: () => ({ data: { wpm: 250, sessionCount: 3 } }),
 		usePopularSerials: () => ({
 			data: { results: [owned, fresh], failedProviders: [], challengeProviders: [] },
 			isLoading: false,
@@ -57,6 +62,23 @@ afterEach(() => {
 const cards = () => [...(view?.container.querySelectorAll('[data-testid="web-novel-card"]') ?? [])];
 
 describe.each(["grid", "list"] as const)("web-novel cards (%s)", (viewMode) => {
+	it("shows the length from the provider's words, else chapters", async () => {
+		view = await render(<WebNovelSearchPanel query="" viewMode={viewMode} onPick={vi.fn()} />);
+		const [ownedCard, freshCard] = cards();
+		if (viewMode === "grid") {
+			const badge = freshCard?.querySelector('[data-testid="cover-length-badge"]');
+			expect(badge?.textContent).toContain("~2h 12m");
+			expect(badge?.querySelector(".sr-only")?.textContent).toBe(
+				"About 2 hours 12 minutes to read",
+			);
+			expect(ownedCard?.querySelector('[data-testid="cover-length-badge"]')).toBeNull();
+		} else {
+			expect(freshCard?.textContent).toContain("~132 pages · 2h 12m");
+		}
+		expect(freshCard?.textContent).not.toContain("chapters");
+		expect(ownedCard?.textContent).toContain("42 chapters");
+	});
+
 	it("marks owned series and offers quick add only for the rest", async () => {
 		view = await render(<WebNovelSearchPanel query="" viewMode={viewMode} onPick={vi.fn()} />);
 		const [ownedCard, freshCard] = cards();
@@ -85,5 +107,16 @@ describe.each(["grid", "list"] as const)("web-novel cards (%s)", (viewMode) => {
 			expect.stringContaining("Fresh Series"),
 			expect.objectContaining({ action: expect.objectContaining({ label: "Open" }) }),
 		);
+	});
+});
+
+describe("web-novel grid card provider name", () => {
+	it("is muted text under the title in a mixed list, and absent where a heading names the provider", async () => {
+		const { WebNovelCard } = await import("../web-novel-card");
+		view = await render(<WebNovelCard result={fresh} onPick={vi.fn()} showProvider />);
+		expect(view.text()).toContain("Provider royalroad");
+		view.unmount();
+		view = await render(<WebNovelCard result={fresh} onPick={vi.fn()} showProvider={false} />);
+		expect(view.text()).not.toContain("Provider royalroad");
 	});
 });

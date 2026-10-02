@@ -42,8 +42,10 @@ export type CatalogSearchResult = {
 	coverUrl: string | null;
 	/** Absent on catalog builds that predate it; treat absent as "probably yes". */
 	hasEpub?: boolean;
-	/** Null or absent until the catalog has counted the book. */
+	/** The exact count, else the catalog's estimate; null or absent when it has neither. */
 	wordCount?: number | null;
+	/** True while `wordCount` is the estimate. Absent on catalog builds that predate it. */
+	wordCountEstimated?: boolean;
 };
 
 export type CatalogSort = "relevance" | "popular" | "title" | "author" | "recent" | "length";
@@ -116,6 +118,7 @@ export type CatalogBook = {
 	/** Absent on catalog builds that predate tags. */
 	tags?: { id: string; label: string }[];
 	wordCount?: number | null;
+	wordCountEstimated?: boolean;
 	authorBirthYear?: number | null;
 	authorDeathYear?: number | null;
 };

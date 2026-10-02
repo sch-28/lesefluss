@@ -35,6 +35,7 @@ type Fixture = {
 	downloadCount: number;
 	addedDaysAgo: number;
 	wordCount?: number;
+	wordCountEstimate?: number;
 	suppressed?: boolean;
 };
 
@@ -58,6 +59,8 @@ const FIXTURES: Fixture[] = [
 		downloadCount: 50,
 		addedDaysAgo: 1,
 		wordCount: 50_000,
+		// The exact count must win over this.
+		wordCountEstimate: 99_999,
 	},
 	{
 		id: `gutenberg:test-${NONCE}-gamma`,
@@ -67,6 +70,7 @@ const FIXTURES: Fixture[] = [
 		subjects: ["Love stories", "Ghost stories"],
 		downloadCount: 30,
 		addedDaysAgo: 2,
+		wordCountEstimate: 20_000,
 	},
 	{
 		id: `gutenberg:test-${NONCE}-suppressed`,
@@ -89,7 +93,13 @@ type SearchBody = {
 	order: string;
 	source: string;
 	tags: string[];
-	results: { id: string; title: string; hasEpub: boolean; wordCount: number | null }[];
+	results: {
+		id: string;
+		title: string;
+		hasEpub: boolean;
+		wordCount: number | null;
+		wordCountEstimated: boolean;
+	}[];
 	facets?: { tags: { id: string; label: string; count: number }[] };
 	suggestion?: string | null;
 	error?: string;
@@ -161,6 +171,7 @@ describe.skipIf(!hasDb)("catalog browse routes (integration)", () => {
 					authorKeys: authors.authorKeys([f.author]),
 					addedAt: new Date(Date.now() - f.addedDaysAgo * 86_400_000),
 					wordCount: f.wordCount ?? null,
+					wordCountEstimate: f.wordCountEstimate ?? null,
 				},
 			};
 		});
@@ -360,23 +371,29 @@ describe.skipIf(!hasDb)("catalog browse routes (integration)", () => {
 	});
 
 	describe("/search word count", () => {
-		it("returns the word count, null when uncounted", async () => {
+		it("returns the exact count, else the estimate, and flags the estimate", async () => {
 			const { body } = await search(`q=${NONCE}&sort=title`);
-			expect(body.results.map((r) => r.wordCount)).toEqual([1_000, 50_000, null]);
+			expect(body.results.map((r) => [r.wordCount, r.wordCountEstimated])).toEqual([
+				[1_000, false],
+				[50_000, false],
+				[20_000, true],
+			]);
 		});
 
-		it("filters by min and max words and leaves uncounted books out", async () => {
+		it("filters on the exact count, else the estimate", async () => {
 			const short = await search(`q=${NONCE}&max_words=5000`);
 			expect(titles(short.body)).toEqual([titleOf("Alpha")]);
-			const long = await search(`q=${NONCE}&min_words=5000`);
-			expect(titles(long.body)).toEqual([titleOf("Beta")]);
+			const long = await search(`q=${NONCE}&min_words=5000&sort=title`);
+			expect(titles(long.body)).toEqual([titleOf("Beta"), titleOf("Gamma")]);
 			const both = await search(`q=${NONCE}&min_words=500&max_words=60000&sort=title`);
-			expect(titles(both.body)).toEqual([titleOf("Alpha"), titleOf("Beta")]);
+			expect(titles(both.body)).toEqual([titleOf("Alpha"), titleOf("Beta"), titleOf("Gamma")]);
+			// Beta's estimate is 99,999 but its exact 50,000 is what counts.
+			expect((await search(`q=${NONCE}&min_words=60000`)).body.total).toBe(0);
 		});
 
-		it("sorts by length with uncounted books last", async () => {
+		it("sorts by the effective length", async () => {
 			const { body } = await search(`q=${NONCE}&sort=length`);
-			expect(titles(body)).toEqual([titleOf("Alpha"), titleOf("Beta"), titleOf("Gamma")]);
+			expect(titles(body)).toEqual([titleOf("Alpha"), titleOf("Gamma"), titleOf("Beta")]);
 		});
 
 		it("rejects malformed or inverted bounds", async () => {
@@ -428,6 +445,18 @@ describe.skipIf(!hasDb)("catalog browse routes (integration)", () => {
 				{ id: "ghost-stories", label: "Ghost stories" },
 				{ id: UNIQUE_TAG, label: UNIQUE_SUBJECT },
 			]);
+		});
+
+		it("returns the effective length and whether it is estimated", async () => {
+			const length = async (letter: string) => {
+				const fixture = FIXTURES.find((f) => f.title === titleOf(letter)) as Fixture;
+				const { body } = await get<{ wordCount: number | null; wordCountEstimated: boolean }>(
+					`/books/${encodeURIComponent(fixture.id)}`,
+				);
+				return [body.wordCount, body.wordCountEstimated];
+			};
+			expect(await length("Beta")).toEqual([50_000, false]);
+			expect(await length("Gamma")).toEqual([20_000, true]);
 		});
 	});
 

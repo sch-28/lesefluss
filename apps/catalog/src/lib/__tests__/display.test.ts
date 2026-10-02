@@ -10,6 +10,16 @@ describe("cleanTitle", () => {
 		expect(cleanTitle("A title : $b sub : $c by someone")).toBe("A title: sub: by someone");
 	});
 
+	it("keeps punctuation that follows the marker and drops a trailing marker", () => {
+		expect(cleanTitle("Dress design $b: an account of costume")).toBe(
+			"Dress design: an account of costume",
+		);
+		expect(cleanTitle("Poems $b; with notes")).toBe("Poems; with notes");
+		expect(cleanTitle("A title : $b: sub")).toBe("A title: sub");
+		expect(cleanTitle("Unfinished $b")).toBe("Unfinished");
+		expect(cleanTitle("Unfinished : $b")).toBe("Unfinished");
+	});
+
 	it("leaves ordinary titles alone, dollar signs included", () => {
 		expect(cleanTitle("Pride and Prejudice")).toBe("Pride and Prejudice");
 		expect(cleanTitle("The $30,000 Bequest")).toBe("The $30,000 Bequest");
@@ -18,6 +28,8 @@ describe("cleanTitle", () => {
 	it("matches the SQL pattern used for stored rows", () => {
 		expect(new RegExp(MARC_SUBFIELD_SQL_PATTERN).test("x : $b y")).toBe(true);
 		expect(new RegExp(MARC_SUBFIELD_SQL_PATTERN).test("The $30,000 Bequest")).toBe(false);
+		expect(new RegExp(MARC_SUBFIELD_SQL_PATTERN).test("Dress design $b: an account")).toBe(true);
+		expect(new RegExp(MARC_SUBFIELD_SQL_PATTERN).test("Unfinished $b")).toBe(true);
 	});
 });
 

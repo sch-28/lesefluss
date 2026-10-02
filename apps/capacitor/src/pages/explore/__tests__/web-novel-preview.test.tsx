@@ -20,6 +20,7 @@ vi.mock("../../../services/serial-scrapers", async (importActual) => ({
 }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
+		useStatsMeasuredSpeed: () => ({ data: { wpm: 250, sessionCount: 3 } }),
 		useSeriesList: () => ({ data: seriesList.current }),
 		useImportSerialFromUrl: () => ({ mutateAsync: importMutate }),
 	},
@@ -141,7 +142,8 @@ describe("WebNovelPreview", () => {
 		expect(meta?.textContent).toContain("No Archive Warnings Apply");
 		expect(meta?.textContent).toContain("Sherlock (TV)");
 		expect(meta?.textContent).toContain("Sherlock Holmes/John Watson");
-		expect(view.text()).toContain("21,911 words");
+		// 21,911 words at 250 words a page and the mocked 250 wpm.
+		expect(view.text()).toContain("88 pages · 1h 28m");
 	});
 
 	it("fetches title, author, cover and description on a cold link", async () => {

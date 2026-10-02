@@ -36,7 +36,7 @@ import { tagLabel } from "./tag-labels";
 import { useCatalogSearch } from "./use-catalog-search";
 import { storeLang, useCatalogLanguages, useExploreLang } from "./use-explore-lang";
 import { useQueryText } from "./use-query-text";
-import { useReaderWpm } from "./use-reader-wpm";
+import { useReadingSpeed } from "./use-reading-speed";
 
 const GENRES_STALE_TIME_MS = 60 * 60 * 1000;
 
@@ -45,7 +45,7 @@ type Props = { search: ExploreSearch };
 const Explore: React.FC<Props> = ({ search }) => {
 	const router = useRouter();
 	const lang = useExploreLang(search.lang);
-	const wpm = useReaderWpm();
+	const speed = useReadingSpeed();
 	const mode = exploreMode(search);
 	const view = search.view ?? "grid";
 
@@ -76,8 +76,12 @@ const Explore: React.FC<Props> = ({ search }) => {
 	});
 	const languagesQuery = useCatalogLanguages(mode === "catalog");
 
-	const filters = toCatalogFilters(search, lang ?? "en", wpm);
-	const catalogSearch = useCatalogSearch(filters, mode === "catalog" && lang !== undefined);
+	const filters = toCatalogFilters(search, lang ?? "en", speed.wpm);
+	// A length filter's word bounds depend on the speed; searching before it loads
+	// would run once at the fallback and again at the measured value.
+	const isSearchReady =
+		mode === "catalog" && lang !== undefined && (!search.length || speed.isSettled);
+	const catalogSearch = useCatalogSearch(filters, isSearchReady);
 	const firstPage = mode === "catalog" ? catalogSearch.data?.pages[0] : undefined;
 
 	// The catalog drops tags and genres it doesn't know (a stale shared link)
@@ -208,6 +212,7 @@ const Explore: React.FC<Props> = ({ search }) => {
 				<div className="mx-auto max-w-5xl">
 					<CatalogResults
 						filters={filters}
+						enabled={!search.length || speed.isSettled}
 						view={view}
 						onOpen={openBook}
 						onSearchSuggestion={queryText.submit}

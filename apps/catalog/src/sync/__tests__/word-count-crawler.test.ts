@@ -41,7 +41,8 @@ describe("crawlUrl", () => {
 			},
 			mirror,
 		);
-		expect(url).toBe("https://gutenberg.pglaf.org/cache/epub/84/pg84-images.epub");
+		// The no-images build: same words, a fraction of the download.
+		expect(url).toBe("https://gutenberg.pglaf.org/cache/epub/84/pg84.epub");
 	});
 
 	it("skips Gutenberg ids it cannot map", () => {
@@ -117,5 +118,31 @@ describe("downloadEpub", () => {
 		expect(await mod.downloadEpub("u", {}, status(429))).toEqual({ kind: "retry" });
 		expect(await mod.downloadEpub("u", {}, status(503))).toEqual({ kind: "retry" });
 		expect(await mod.downloadEpub("u", {}, status(404))).toEqual({ kind: "failed" });
+	});
+});
+
+describe("afterRetry", () => {
+	it("backs off on the first retries of a row, then gives it up and resets", () => {
+		const first = mod.afterRetry(mod.NO_RETRIES, "gutenberg:37106", 3000);
+		expect(first).toEqual({
+			state: { rowId: "gutenberg:37106", attempts: 1, backoff: 60_000 },
+			giveUp: false,
+		});
+		const second = mod.afterRetry(first.state, "gutenberg:37106", 3000);
+		expect(second).toEqual({
+			state: { rowId: "gutenberg:37106", attempts: 2, backoff: 120_000 },
+			giveUp: false,
+		});
+		expect(mod.afterRetry(second.state, "gutenberg:37106", 3000)).toEqual({
+			state: mod.NO_RETRIES,
+			giveUp: true,
+		});
+	});
+
+	it("counts attempts per row but keeps the global backoff across rows", () => {
+		const busy = mod.afterRetry(mod.NO_RETRIES, "a", 3000);
+		const other = mod.afterRetry(busy.state, "b", 3000);
+		expect(other.state.attempts).toBe(1);
+		expect(other.state.backoff).toBe(120_000);
 	});
 });

@@ -1,5 +1,6 @@
 import {
 	isPlausibleRate,
+	measuredReadingSpeed,
 	type ReadingRates,
 	readingProgress,
 	rollUpWorks,
@@ -11,6 +12,7 @@ import { formatShortDate } from "../../../utils/date-utils";
 import {
 	bucketMinutesByHour,
 	buildWpmTrend,
+	readDaysOf,
 	type StreakResult,
 	sumDurationByLocalDay,
 	summariseStreak,
@@ -18,6 +20,7 @@ import {
 	trendBucketsFor,
 	type WpmTrend,
 } from "../../stats/aggregate";
+import type { DailyReading } from "../../stats/calendar";
 import { type ReadingRecords, summariseRecords } from "../../stats/records";
 import { db } from "../index";
 import { bookContent, books, readingSessions, series } from "../schema";
@@ -302,16 +305,17 @@ async function coversFor(ids: string[]): Promise<Map<string, string | null>> {
 }
 
 /**
- * Active milliseconds per local day, all time, keyed `YYYY-MM-DD`.
+ * Active milliseconds per local day and the days that count toward the streak,
+ * all time, keyed `YYYY-MM-DD`.
  *
  * All time rather than a window: the streak calendar pages through history, and
  * a window would make older months silently empty. One scan feeds every month.
  */
-export async function getDailyReadingMs(): Promise<Map<string, number>> {
+export async function getDailyReading(): Promise<DailyReading> {
 	const rows = await db
 		.select({ startedAt: readingSessions.startedAt, durationMs: readingSessions.durationMs })
 		.from(readingSessions);
-	return sumDurationByLocalDay(rows);
+	return { msByDay: sumDurationByLocalDay(rows), readDays: readDaysOf(rows) };
 }
 
 /**
@@ -436,6 +440,22 @@ export async function getReadingRates(): Promise<ReadingRates> {
 		.limit(RATE_SAMPLE_SIZE);
 
 	return summariseReadingRates(rows);
+}
+
+export interface MeasuredReadingSpeed {
+	/** `measuredReadingSpeed` from @lesefluss/core over every session; null before the first plausible one. */
+	wpm: number | null;
+	sessionCount: number;
+}
+
+export async function getMeasuredReadingSpeed(): Promise<MeasuredReadingSpeed> {
+	const rows = await db
+		.select({ wordsRead: readingSessions.wordsRead, durationMs: readingSessions.durationMs })
+		.from(readingSessions);
+	return {
+		wpm: measuredReadingSpeed(rows),
+		sessionCount: rows.filter((r) => isPlausibleRate(r.wordsRead, r.durationMs)).length,
+	};
 }
 
 /**

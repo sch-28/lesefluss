@@ -7,14 +7,15 @@
  * Snap points keep the iOS-like half-then-full sheet behavior.
  */
 
-import { Drawer, DrawerContent, DrawerHeader } from "@lesefluss/ui/drawer";
+import { Drawer, DrawerContent, DrawerHeader, drawerSnapPoints } from "@lesefluss/ui/drawer";
 import { ToggleGroup, ToggleGroupItem } from "@lesefluss/ui/toggle-group";
 import { cn } from "@lesefluss/ui/utils";
 import { Plus } from "lucide-react";
 import type React from "react";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import type { Chapter, GlossaryEntry, Highlight } from "../../services/db/schema";
 import { SeriesChapterList } from "../library/series-chapter-list";
+import ContentsList from "./contents-list";
 import GlossaryAvatar, { colorFromLabel } from "./glossary-avatar";
 import { HIGHLIGHT_COLOR_STYLE } from "./selection-toolbar";
 
@@ -31,6 +32,7 @@ interface AnnotationsSheetProps {
 	onClose: () => void;
 	theme?: string;
 	chapters: Chapter[];
+	currentChapterIndex: number;
 	onJumpChapter: (startWord: number) => void;
 	seriesId?: string | null;
 	highlights: Highlight[];
@@ -41,13 +43,14 @@ interface AnnotationsSheetProps {
 	onAddEntry: () => void;
 }
 
-const SNAP_POINTS = [0.5, 0.9];
+const SNAP_POINTS = drawerSnapPoints([0.5, 1]);
 
 const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	isOpen,
 	onClose,
 	theme,
 	chapters,
+	currentChapterIndex,
 	onJumpChapter,
 	seriesId,
 	highlights,
@@ -73,16 +76,21 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	const [tab, setTab] = useState<Tab>(initialTab);
 	const [snap, setSnap] = useState<number | string | null>(SNAP_POINTS[0]);
 
-	// Reset tab when sheet opens. Intentionally not reactive to data changes
-	// mid-open: a user adding a highlight from another path shouldn't yank
-	// them off the Glossary tab.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: only react to isOpen
-	useEffect(() => {
+	// Reset tab and snap when the sheet opens. Adjusted during render rather
+	// than in an effect so a child's mount-time request (ContentsList expanding
+	// the sheet) isn't overridden by a later passive effect. Intentionally not
+	// reactive to data changes mid-open: a user adding a highlight from another
+	// path shouldn't yank them off the Glossary tab.
+	const [wasOpen, setWasOpen] = useState(isOpen);
+	if (isOpen !== wasOpen) {
+		setWasOpen(isOpen);
 		if (isOpen) {
 			setTab(initialTab);
 			setSnap(SNAP_POINTS[0]);
 		}
-	}, [isOpen]);
+	}
+
+	const expandSheet = useCallback(() => setSnap(SNAP_POINTS[1]), []);
 
 	const { bookEntries, globalEntries } = useMemo(() => {
 		const book: GlossaryEntry[] = [];
@@ -122,27 +130,24 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 					</ToggleGroup>
 				</DrawerHeader>
 
-				<div className="relative flex-1 overflow-y-auto">
+				{/* Keyed so each tab starts at its own scroll position, not the last tab's. */}
+				<div key={tab} className="relative flex-1 overflow-y-auto">
 					{tab === "contents" && (
-						<ul className="flex flex-col">
-							{chapters.map((ch, i) => (
-								<li key={i.toString()}>
-									<button
-										type="button"
-										onClick={() => {
-											onJumpChapter(ch.startWord);
-											onClose();
-										}}
-										className="w-full border-border border-b px-5 py-3 text-left text-foreground text-sm transition-colors hover:bg-muted"
-									>
-										{ch.title}
-									</button>
-								</li>
-							))}
-						</ul>
+						<ContentsList
+							chapters={chapters}
+							currentIndex={currentChapterIndex}
+							onJump={(startWord) => {
+								onJumpChapter(startWord);
+								onClose();
+							}}
+							obscuredHeight={window.innerHeight * (1 - SNAP_POINTS[0])}
+							onNeedsFullHeight={expandSheet}
+						/>
 					)}
 
-					{tab === "chapters" && seriesId && <SeriesChapterList seriesId={seriesId} />}
+					{tab === "chapters" && seriesId && (
+						<SeriesChapterList seriesId={seriesId} currentBookId={currentBookId} />
+					)}
 
 					{tab === "highlights" &&
 						(highlights.length === 0 ? (

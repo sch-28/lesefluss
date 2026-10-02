@@ -1,14 +1,28 @@
 import type React from "react";
-import type { SeriesDetails } from "../../services/serial-scrapers";
+import {
+	chapterCountLabel,
+	type SearchResult,
+	type SeriesDetails,
+} from "../../services/serial-scrapers";
+import type { BookLength } from "./length";
 
 const fmt = (n: number) => n.toLocaleString("en");
 
-/** Badge facts for a web-novel preview; whatever the provider didn't say is left out. */
+export function webNovelLength(details: SeriesDetails | undefined): BookLength {
+	return { wordCount: details?.wordCount, wordCountEstimated: details?.wordCountEstimated };
+}
+
+/** The chapter count, shown only when the provider gave no words to measure length by. */
+export function chapterFallback(result: SearchResult): string | null {
+	if (result.details?.wordCount || result.chapterCount == null) return null;
+	return chapterCountLabel(result.chapterCount);
+}
+
+/** Badge facts for a web-novel preview besides its length; whatever the provider didn't say is left out. */
 export function webNovelFacts(details: SeriesDetails | undefined): string[] {
 	if (!details) return [];
 	return [
 		details.status === "completed" ? "Completed" : details.status === "ongoing" ? "Ongoing" : null,
-		details.wordCount ? `${fmt(details.wordCount)} words` : null,
 		details.rating
 			? `★ ${details.rating.toFixed(2)}${details.ratingCount ? ` (${fmt(details.ratingCount)})` : ""}`
 			: null,

@@ -24,7 +24,7 @@ beforeEach(() => {
 });
 
 describe("Royal Road details", () => {
-	it("parses tags, status, rating, followers and last update", () => {
+	it("parses tags, status, rating, followers, last update and the exact word count", () => {
 		expect(parseFictionDetails(parseHtml(fixture("royalroad/fiction-details.html")))).toEqual({
 			tags: ["Time Loop", "Adventure", "Fantasy"],
 			status: "completed",
@@ -32,6 +32,7 @@ describe("Royal Road details", () => {
 			ratingCount: 17569,
 			lastUpdated: "2023-07-06",
 			followers: 33886,
+			wordCount: 806_306,
 		});
 	});
 

@@ -1,9 +1,34 @@
 import { useQuery } from "@tanstack/react-query";
 import { serialPreviewKeys } from "../../services/db/hooks/query-keys";
-import { previewSerial } from "../../services/serial-scrapers";
+import { previewSerial, type SearchResult } from "../../services/serial-scrapers";
 import { previewCache } from "./preview-cache";
 
 const PREVIEW_STALE_TIME_MS = 10 * 60 * 1000;
+
+/**
+ * The fetched series page wins, except where it says less than the listing did:
+ * the series page has no chapter count, and its word count may be missing (a
+ * markup change), in which case the listing's estimate is still better than nothing.
+ */
+export function mergePreview(
+	cached: SearchResult | undefined,
+	fetched: SearchResult,
+): SearchResult {
+	const hasWords = !!fetched.details?.wordCount;
+	return {
+		...cached,
+		...fetched,
+		chapterCount: fetched.chapterCount ?? cached?.chapterCount ?? null,
+		details:
+			hasWords || !cached?.details?.wordCount
+				? fetched.details
+				: {
+						...fetched.details,
+						wordCount: cached.details.wordCount,
+						wordCountEstimated: cached.details.wordCountEstimated,
+					},
+	};
+}
 
 /**
  * The preview's series metadata. A tap from search hands the listing entry
@@ -22,10 +47,7 @@ export function useSerialPreview(url: string | undefined) {
 		// Providers are rate-limited; let the user decide when to retry.
 		retry: false,
 	});
-	// The series page has no chapter count, so keep the one the listing had.
 	const fetched = query.isPlaceholderData ? undefined : query.data;
-	const result = fetched
-		? { ...cached, ...fetched, chapterCount: fetched.chapterCount ?? cached?.chapterCount ?? null }
-		: cached;
+	const result = fetched ? mergePreview(cached, fetched) : cached;
 	return { ...query, result };
 }

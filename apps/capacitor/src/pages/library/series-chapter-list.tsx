@@ -15,8 +15,8 @@ import { cn } from "@lesefluss/ui/utils";
 import { useRouter } from "@tanstack/react-router";
 import { AlertCircle, CheckCircle2, Circle, CloudDownload, Loader2, Lock } from "lucide-react";
 import type React from "react";
-import { memo, useCallback } from "react";
-import { VList } from "virtua";
+import { memo, useCallback, useLayoutEffect, useRef } from "react";
+import { VList, type VListHandle } from "virtua";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
 import { isBookFinished } from "./sort-filter";
@@ -43,6 +43,7 @@ function chapterRowState(book: Book): RowState {
 
 type ChapterRowProps = {
 	book: Book;
+	isOpen: boolean;
 	onTap: (bookId: string) => void;
 };
 
@@ -52,20 +53,22 @@ type ChapterRowProps = {
  * rows have the same `book` reference, so memo skips them. Requires `onTap` to
  * be a stable reference (provided by parent `useCallback`).
  */
-const ChapterRow = memo<ChapterRowProps>(({ book, onTap }) => {
+const ChapterRow = memo<ChapterRowProps>(({ book, isOpen, onTap }) => {
 	const state = chapterRowState(book);
 
 	// Index is 0-based in DB; display 1-based to match reader.
 	const displayIndex = (book.chapterIndex ?? 0) + 1;
-	const isCurrent = state.kind === "in-progress";
+	const isInProgress = state.kind === "in-progress";
 
 	return (
 		<button
 			type="button"
+			aria-current={isOpen ? "location" : undefined}
 			onClick={() => onTap(book.id)}
 			className={cn(
 				"flex w-full items-center gap-3 border-0 bg-transparent px-4 py-2.5 text-left text-foreground transition-opacity active:opacity-60",
-				isCurrent && "bg-primary/5",
+				isInProgress && "bg-primary/5",
+				isOpen && "bg-primary/10 font-medium",
 			)}
 		>
 			{/* Chapter number, fixed width so titles align regardless of digit count */}
@@ -116,17 +119,29 @@ const ChapterListLoading: React.FC = () => (
 	</div>
 );
 
-type Props = { seriesId: string; isSyncing?: boolean };
+type Props = { seriesId: string; isSyncing?: boolean; currentBookId?: string };
 
 /**
  * Queries enabled only when `seriesId` is present (guaranteed by caller).
  * `isSyncing` toggles an inline spinner next to "Chapters" while a background
  * chapter-list refresh runs. Inline rather than separate so row layout doesn't
- * shift when sync starts/stops.
+ * shift when sync starts/stops. `currentBookId` marks the chapter open in the
+ * reader and scrolls to it once per mount.
  */
-export const SeriesChapterList: React.FC<Props> = ({ seriesId, isSyncing }) => {
+export const SeriesChapterList: React.FC<Props> = ({ seriesId, isSyncing, currentBookId }) => {
 	const router = useRouter();
 	const { data: chapters, isPending } = queryHooks.useSeriesChapters(seriesId);
+	const listRef = useRef<VListHandle>(null);
+	const didScrollRef = useRef(false);
+
+	// Once only: a background chapter refresh must not yank the list back.
+	useLayoutEffect(() => {
+		if (didScrollRef.current || !chapters || !currentBookId) return;
+		const index = chapters.findIndex((c) => c.id === currentBookId);
+		if (index < 0) return;
+		didScrollRef.current = true;
+		listRef.current?.scrollToIndex(Math.max(0, index - 1), { align: "start" });
+	}, [chapters, currentBookId]);
 
 	// Stable reference. New function every render would invalidate every
 	// visible ChapterRow's memo when RQ cache updates any single chapter.
@@ -154,9 +169,14 @@ export const SeriesChapterList: React.FC<Props> = ({ seriesId, isSyncing }) => {
 
 			{/* VList fills its explicit height (overflow: auto). Height calculated
 			 * so short series collapse to fit rather than leaving 30vh of blank. */}
-			<VList style={{ height: listHeight }}>
+			<VList ref={listRef} style={{ height: listHeight }}>
 				{chapters.map((chapter) => (
-					<ChapterRow key={chapter.id} book={chapter} onTap={handleTap} />
+					<ChapterRow
+						key={chapter.id}
+						book={chapter}
+						isOpen={chapter.id === currentBookId}
+						onTap={handleTap}
+					/>
 				))}
 			</VList>
 		</div>

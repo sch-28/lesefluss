@@ -2,11 +2,11 @@ import type React from "react";
 import CoverImage from "../../components/cover-image";
 import { type CatalogSearchResult, getCoverUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
-import { InLibraryBadge, QuickAddButton } from "./card-badges";
+import { InLibraryBadge, LengthText, QuickAddButton } from "./card-badges";
 import { languageLabel } from "./language-label";
-import { readingTimeLabel } from "./length";
+import { describeLength } from "./length";
 import { useCatalogImport } from "./use-catalog-import";
-import { useReaderWpm } from "./use-reader-wpm";
+import { useReadingSpeed } from "./use-reading-speed";
 
 const MAX_SUBJECTS = 3;
 
@@ -19,10 +19,11 @@ type Props = {
 const CatalogListItem: React.FC<Props> = ({ result, onOpen }) => {
 	const { data: libraryIds } = queryHooks.useLibraryCatalogIds();
 	const importer = useCatalogImport(result.id);
-	const wpm = useReaderWpm();
+	const { wpm } = useReadingSpeed();
 	const isInLibrary = libraryIds?.has(result.id) ?? false;
 	const canQuickAdd = libraryIds !== undefined && !isInLibrary && result.hasEpub !== false;
 	const subjects = (result.subjects ?? []).slice(0, MAX_SUBJECTS);
+	const lengthLabels = describeLength(result, wpm);
 
 	return (
 		<div className="flex items-center gap-2" data-testid="catalog-list-item">
@@ -39,14 +40,16 @@ const CatalogListItem: React.FC<Props> = ({ result, onOpen }) => {
 						{result.title}
 					</div>
 					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[0.8rem] text-muted-foreground">
-						{[
-							result.author,
-							result.language ? languageLabel(result.language) : null,
-							readingTimeLabel(result.wordCount, wpm),
-						]
+						{[result.author, result.language ? languageLabel(result.language) : null]
 							.filter(Boolean)
 							.join(" · ")}
 					</div>
+					{/* Own line: after author and language it truncated away on a phone. */}
+					{lengthLabels && (
+						<div className="mt-0.5 text-[0.75rem] text-muted-foreground">
+							<LengthText labels={lengthLabels} />
+						</div>
+					)}
 					{(subjects.length > 0 || isInLibrary) && (
 						<div className="mt-1 flex flex-wrap items-center gap-1">
 							{isInLibrary && <InLibraryBadge />}

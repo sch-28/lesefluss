@@ -8,7 +8,13 @@
 
 import { calcOrpIndex, type RsvpSettings, type WordIndex } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
+import {
+	Drawer,
+	DrawerContent,
+	DrawerHeader,
+	DrawerTitle,
+	drawerSnapPoints,
+} from "@lesefluss/ui/drawer";
 import { useRouter } from "@tanstack/react-router";
 import { BookOpen, Loader2, Settings } from "lucide-react";
 import React, {
@@ -36,7 +42,7 @@ const WHEEL_PX_PER_WORD = 50;
 const FOCAL_FONT_MULTIPLIER = 2;
 const X_OFFSET_CENTER = 50;
 
-const SETTINGS_SNAP_POINTS = [0.3, 0.5, 0.95];
+const SETTINGS_SNAP_POINTS = drawerSnapPoints([0.3, 0.5, 1]);
 
 export type RsvpViewHandle = {
 	togglePlayPause(): void;

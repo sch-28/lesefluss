@@ -8,6 +8,7 @@ import { type BookRow, mapBookRow } from "../lib/book-row.js";
 import { getCounts } from "../lib/counts.js";
 import { displayAuthor } from "../lib/display.js";
 import { MAX_EPUB_BYTES } from "../lib/epub-limits.js";
+import { effectiveLength } from "../lib/length-estimate.js";
 import { similarityWeights } from "../lib/similarity.js";
 import { textArray } from "../lib/sql-array.js";
 import { cachedTagCounts } from "../lib/tag-counts.js";
@@ -110,7 +111,7 @@ export const booksRoute = new Hono()
 				FROM catalog_books WHERE id = ${id}
 			), w(tag, weight) AS (VALUES ${weightRows})
 			SELECT b.id, b.source, b.title, b.author, b.language, b.subjects, b.summary, b.cover_url,
-				b.epub_url IS NOT NULL AS has_epub, b.word_count
+				b.epub_url IS NOT NULL AS has_epub, b.word_count, b.word_count_estimate
 			FROM catalog_books b
 			CROSS JOIN target t
 			CROSS JOIN LATERAL unnest(b.tags) AS bt(tag)
@@ -169,7 +170,7 @@ export const booksRoute = new Hono()
 			description: book.description,
 			epubUrl: book.epubUrl,
 			coverUrl: book.coverUrl,
-			wordCount: book.wordCount,
+			...effectiveLength(book.wordCount, book.wordCountEstimate),
 			authorBirthYear: book.authorBirthYear,
 			authorDeathYear: book.authorDeathYear,
 			tags: tagIds.flatMap((id) => {

@@ -273,8 +273,8 @@ test("the length chip filters by reading time at the reader's speed", async ({ p
 	await page.getByRole("button", { name: "Length" }).click();
 	await page.getByRole("menuitemradio", { name: "Under 1 hour" }).click();
 	await page.waitForURL((url) => url.searchParams.get("length") === "short");
-	// Default reading speed is 350 wpm, so one hour is 21,000 words.
-	expect(searches.at(-1)?.get("max_words")).toBe("21000");
+	// No sessions yet, so the typical reader's 225 wpm applies: one hour is 13,500 words.
+	expect(searches.at(-1)?.get("max_words")).toBe("13500");
 	expect(searches.at(-1)?.get("min_words")).toBeNull();
 });
 

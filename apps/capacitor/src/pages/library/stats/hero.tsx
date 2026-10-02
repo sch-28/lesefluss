@@ -8,9 +8,10 @@ import { MonthPager, StreakCalendar, StreakWeekStrip } from "./streak-calendar";
 interface Props {
 	currentStreak: number;
 	longestStreak: number;
+	freezesBanked: number;
 }
 
-export function Hero({ currentStreak, longestStreak }: Props) {
+export function Hero({ currentStreak, longestStreak, freezesBanked }: Props) {
 	// Collapsed by default: the current week answers "is my streak alive" in one
 	// row, and the month grid is a browsing view rather than a landing view.
 	const [isExpanded, setIsExpanded] = useState(false);
@@ -42,6 +43,11 @@ export function Hero({ currentStreak, longestStreak }: Props) {
 					</div>
 					<p className="mt-1.5 text-xs opacity-50">
 						🔥 Best {longestStreak} {longestStreak === 1 ? "day" : "days"}
+						{freezesBanked > 0 && (
+							<>
+								{" · "}❄️ {freezesBanked} {freezesBanked === 1 ? "freeze" : "freezes"}
+							</>
+						)}
 					</p>
 				</div>
 				{isExpanded ? (

@@ -28,19 +28,29 @@ function formatDayLong(epochMs: number): string {
  */
 export function summariseDays(days: CalendarDay[], rangeLabel: string): string {
 	const inRange = days.filter((day) => day.isInMonth);
-	// `intensity` already carries the thresholded verdict, so the label counts the
-	// same days the grid lights up. Filtering on `durationMs > 0` announced
-	// reading that is not drawn.
+	// `intensity` carries the read verdict, which includes a day credited only by
+	// a late-night sitting, so the label counts the same days the grid lights up.
 	const read = inRange.filter((day) => day.intensity > 0);
-	if (read.length === 0) return `${rangeLabel}: no reading recorded.`;
+	const frozenCount = inRange.filter((day) => day.isFrozen).length;
+	if (read.length === 0 && frozenCount === 0) return `${rangeLabel}: no reading recorded.`;
 
 	const totalMs = read.reduce((sum, day) => sum + day.durationMs, 0);
-	const best = read.reduce((a, b) => (b.durationMs > a.durationMs ? b : a));
-	return (
-		`${rangeLabel}: read on ${read.length} of ${inRange.length} days, ` +
-		`${formatDuration(totalMs)} in total. ` +
-		`Longest day was ${formatDayLong(best.dayStart)} at ${formatDuration(best.durationMs)}.`
-	);
+	const sentences = [
+		`${rangeLabel}: read on ${read.length} of ${inRange.length} days, ${formatDuration(totalMs)} in total.`,
+	];
+	if (frozenCount > 0) {
+		sentences.push(
+			`${frozenCount} missed ${frozenCount === 1 ? "day" : "days"} covered by a streak freeze.`,
+		);
+	}
+	const timed = read.filter((day) => day.durationMs > 0);
+	if (timed.length > 0) {
+		const best = timed.reduce((a, b) => (b.durationMs > a.durationMs ? b : a));
+		sentences.push(
+			`Longest day was ${formatDayLong(best.dayStart)} at ${formatDuration(best.durationMs)}.`,
+		);
+	}
+	return sentences.join(" ");
 }
 
 export function summariseHours(hours: number[]): string {

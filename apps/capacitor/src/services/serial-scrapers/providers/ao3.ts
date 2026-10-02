@@ -253,6 +253,10 @@ function parseWorksList(doc: Document): SearchResult[] {
 		const fandoms = [...li.querySelectorAll(SELECTORS.searchResultFandoms)]
 			.map((a) => a.textContent?.trim() ?? "")
 			.filter(Boolean);
+		const details: SeriesDetails = {};
+		if (fandoms.length > 0) details.ao3 = { rating: [], warnings: [], fandoms, relationships: [] };
+		const words = statNumber(li, "words");
+		if (words) details.wordCount = words;
 		results.push({
 			title,
 			author: textOrNull(li.querySelector(SELECTORS.searchResultAuthor)),
@@ -261,9 +265,7 @@ function parseWorksList(doc: Document): SearchResult[] {
 			chapterCount: parseChapterCount(li.querySelector(SELECTORS.searchResultChapters)),
 			sourceUrl: abs(href),
 			provider: PROVIDER_ID,
-			...(fandoms.length > 0
-				? { details: { ao3: { rating: [], warnings: [], fandoms, relationships: [] } } }
-				: {}),
+			...(Object.keys(details).length > 0 ? { details } : {}),
 		});
 	}
 	return results;
@@ -275,8 +277,8 @@ function tagTexts(doc: Document, kind: string): string[] {
 		.filter(Boolean);
 }
 
-function statNumber(doc: Document, kind: string): number | undefined {
-	const text = doc.querySelector(`dl.stats dd.${kind}`)?.textContent ?? "";
+function statNumber(root: ParentNode, kind: string): number | undefined {
+	const text = root.querySelector(`dl.stats dd.${kind}`)?.textContent ?? "";
 	const n = Number(text.replace(/[^\d]/g, ""));
 	return text && Number.isFinite(n) && n > 0 ? n : undefined;
 }

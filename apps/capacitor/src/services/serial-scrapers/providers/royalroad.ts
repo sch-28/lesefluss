@@ -145,6 +145,18 @@ function parseChapterCount(item: Element): number | null {
 	return null;
 }
 
+/** Royal Road's own page size: its "Pages" figure is words / 275. */
+const RR_WORDS_PER_PAGE = 275;
+
+/** Approximate words from a listing's "N Pages"; null for an abbreviated count like "1.2k". */
+function parseListingWords(item: Element): number | null {
+	for (const span of item.querySelectorAll(SELECTORS.searchResultStats)) {
+		const pages = parseCount(span.textContent?.trim().match(/^([\d,]+)\s+Pages?\b/i)?.[1]);
+		if (pages) return pages * RR_WORDS_PER_PAGE;
+	}
+	return null;
+}
+
 /**
  * Collect CSS class names declared with `display: none` or
  * `visibility: hidden` inside `<head><style>` blocks.
@@ -322,6 +334,7 @@ function parseFictionList(doc: Document): SearchResult[] {
 			item.querySelector(SELECTORS.searchResultCover)?.getAttribute("src"),
 		);
 
+		const words = parseListingWords(item);
 		results.push({
 			title,
 			// Royal Road listing pages omit author names by design.
@@ -332,6 +345,7 @@ function parseFictionList(doc: Document): SearchResult[] {
 			chapterCount: parseChapterCount(item),
 			sourceUrl: abs(href),
 			provider: PROVIDER_ID,
+			...(words ? { details: { wordCount: words, wordCountEstimated: true } } : {}),
 		});
 	}
 	return results;
@@ -381,6 +395,16 @@ export function parseFictionDetails(doc: Document): SeriesDetails {
 			if (typeof ld.dateModified === "string") details.lastUpdated = ld.dateModified.slice(0, 10);
 		} catch {
 			// Other JSON-LD blocks (breadcrumbs, malformed) carry nothing we use.
+		}
+	}
+
+	// The "Pages" tooltip carries the exact count: "... calculated from 806,306 words."
+	for (const tip of doc.querySelectorAll("div.stats-content [data-content]")) {
+		const m = tip.getAttribute("data-content")?.match(/calculated from ([\d,]+) words/i);
+		const words = m ? parseCount(m[1]) : undefined;
+		if (words) {
+			details.wordCount = words;
+			break;
 		}
 	}
 

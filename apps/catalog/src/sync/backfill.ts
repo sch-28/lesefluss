@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { authorKeys, splitAuthors } from "../lib/authors.js";
-import { MARC_SUBFIELD_SQL_PATTERN } from "../lib/display.js";
+import { cleanTitleSql, MARC_SUBFIELD_SQL_PATTERN } from "../lib/display.js";
 import { textArray } from "../lib/sql-array.js";
 import type { Tag } from "../lib/tags.js";
 import { tagsFor } from "../lib/tags.js";
@@ -15,7 +15,7 @@ type Row = { id: string; subjects: string[] | null; author: string | null };
 export async function cleanStoredTitles(): Promise<number> {
 	const { rowCount } = await db.execute(sql`
 		UPDATE catalog_books
-		SET title = btrim(regexp_replace(title, ${MARC_SUBFIELD_SQL_PATTERN}, ': ', 'g'))
+		SET title = ${cleanTitleSql(sql`title`)}
 		WHERE source = 'gutenberg' AND title ~ ${MARC_SUBFIELD_SQL_PATTERN}
 	`);
 	return rowCount ?? 0;

@@ -23,7 +23,7 @@ vi.mock("../../../services/db/hooks", async () => {
 	const { bookKeys } = await import("../../../services/db/hooks/query-keys");
 	return {
 		queryHooks: {
-			useSettings: () => ({ data: { wpm: 300 } }),
+			useStatsMeasuredSpeed: () => ({ data: { wpm: 300, sessionCount: 12 } }),
 			useSeriesList: () => ({ data: [] }),
 			useLibraryCatalogIds: () =>
 				useQuery({ queryKey: bookKeys.catalogIds, queryFn: getLibraryCatalogIds }),
@@ -39,6 +39,7 @@ vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate }) }));
 
 const { default: CatalogResults } = await import("../catalog-results");
 const { default: CatalogResultCard } = await import("../catalog-result-card");
+const { default: CatalogListItem } = await import("../catalog-list-item");
 
 function book(over: Partial<CatalogSearchResult> = {}): CatalogSearchResult {
 	return {
@@ -225,5 +226,34 @@ describe("catalog card membership and quick add", () => {
 		action.onClick();
 		await flush();
 		expect(importFromCatalog).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe("catalog length", () => {
+	it("puts the reading time in the grid card's corner badge instead of the source", async () => {
+		const estimated = book({
+			source: "standard_ebooks",
+			wordCount: 78_000,
+			wordCountEstimated: true,
+		});
+		view = await render(<CatalogResultCard result={estimated} onOpen={vi.fn()} />);
+		const badge = view.container.querySelector('[data-testid="cover-length-badge"]');
+		expect(badge?.querySelector('[aria-hidden="true"]')?.textContent).toBe("~4h 20m");
+		expect(badge?.querySelector(".sr-only")?.textContent).toBe("About 4 hours 20 minutes to read");
+		expect(view.text()).not.toContain("SE");
+		expect(view.text()).not.toContain("pages");
+	});
+
+	it("shows pages and reading time on its own line in list rows", async () => {
+		view = await render(<CatalogListItem result={book({ wordCount: 75_000 })} onOpen={vi.fn()} />);
+		expect(view.text()).toContain("300 pages · 4h 10m");
+		expect(view.container.querySelector(".sr-only")?.textContent).toBe(
+			"300 pages, 4 hours 10 minutes",
+		);
+	});
+
+	it("shows no badge when the length is unknown", async () => {
+		view = await render(<CatalogResultCard result={book({ wordCount: null })} onOpen={vi.fn()} />);
+		expect(view.container.querySelector('[data-testid="cover-length-badge"]')).toBeNull();
 	});
 });

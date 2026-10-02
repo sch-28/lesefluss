@@ -5,7 +5,7 @@
  * rules rather than layout.
  */
 import { readingProgress } from "@lesefluss/core";
-import { AVERAGE_READER_WPM, bookPageCount, estimatePages } from "../../utils/reading-time";
+import { bookPageCount, estimatePages, readingPace } from "../../utils/reading-time";
 
 export interface BookProgressInput {
 	seriesId: string | null;
@@ -37,8 +37,7 @@ export function summariseBookReading(
 	// past the last word, and "Page 5 of 4" is worse than a rounded-down page.
 	const pagesIn = totalPages === null ? 0 : Math.min(totalPages, estimatePages(book.wordPosition));
 
-	const isPaceEstimated = measuredWpm === null || measuredWpm <= 0;
-	const paceWpm = isPaceEstimated ? AVERAGE_READER_WPM : measuredWpm;
+	const pace = readingPace(measuredWpm);
 
 	// Read from the stamp rather than recomputed from position. `finished_at` is
 	// only ever set, never cleared, so reopening a finished book and scrolling
@@ -52,8 +51,8 @@ export function summariseBookReading(
 		pagesIn,
 		percent: readingProgress(book),
 		isFinished,
-		paceWpm,
-		isPaceEstimated,
-		minutesLeft: !isFinished && book.wordCount > 0 ? wordsLeft / paceWpm : null,
+		paceWpm: pace.wpm,
+		isPaceEstimated: !pace.isMeasured,
+		minutesLeft: !isFinished && book.wordCount > 0 ? wordsLeft / pace.wpm : null,
 	};
 }

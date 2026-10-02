@@ -14,6 +14,8 @@ const USER_AGENT = userAgent("word-count crawler");
 const FETCH_TIMEOUT_MS = 60_000;
 const MAX_BACKOFF_MS = 60 * 60 * 1000;
 const RETRY_FAILED_AFTER = "7 days";
+/** Consecutive throttled or timed-out attempts on one row before it is marked failed and skipped. */
+const MAX_ROW_RETRIES = 3;
 /** Arbitrary, fixed key for pg_try_advisory_lock; one crawler per database. */
 const CRAWLER_LOCK_KEY = 7_160_003;
 
@@ -44,14 +46,16 @@ export function crawlConfig(source: {
 type PendingRow = { id: string; source: string; epub_url: string };
 
 /**
- * Where to download a row's EPUB. Gutenberg goes to the mirror's generated
- * EPUB path, never to www.gutenberg.org, whose robot policy asks bulk access
- * to use mirrors. Null when no permitted URL exists.
+ * Where to download a row's EPUB. Gutenberg goes to the mirror, never to
+ * www.gutenberg.org, whose robot policy asks bulk access to use mirrors, and
+ * to the no-images build: same text and word count, a fraction of the bytes
+ * (Little Women: 0.6 MB against 17 MB, which the mirror could not deliver in
+ * time). Null when no permitted URL exists.
  */
 export function crawlUrl(row: PendingRow, mirror: string): string | null {
 	if (row.source === "gutenberg") {
 		const id = /^gutenberg:(\d+)$/.exec(row.id)?.[1];
-		return id ? `${mirror}/cache/epub/${id}/pg${id}-images.epub` : null;
+		return id ? `${mirror}/cache/epub/${id}/pg${id}.epub` : null;
 	}
 	if (row.source === "standard_ebooks") return row.epub_url;
 	return null;
@@ -62,14 +66,43 @@ export function nextBackoff(current: number, intervalMs: number): number {
 	return Math.min(MAX_BACKOFF_MS, current === 0 ? intervalMs * 20 : current * 2);
 }
 
+export type RetryState = { rowId: string | null; attempts: number; backoff: number };
+export const NO_RETRIES: RetryState = { rowId: null, attempts: 0, backoff: 0 };
+
+/**
+ * After a retry outcome: back off, or give the row up once it has been retried
+ * MAX_ROW_RETRIES times in a row, so one slow book can't stall the queue. A
+ * give-up resets the backoff, since the next row is a different download.
+ */
+export function afterRetry(
+	state: RetryState,
+	rowId: string,
+	intervalMs: number,
+): { state: RetryState; giveUp: boolean } {
+	const attempts = state.rowId === rowId ? state.attempts + 1 : 1;
+	if (attempts >= MAX_ROW_RETRIES) return { state: NO_RETRIES, giveUp: true };
+	return {
+		state: { rowId, attempts, backoff: nextBackoff(state.backoff, intervalMs) },
+		giveUp: false,
+	};
+}
+
+/**
+ * Rows the crawler should count. Gutenberg is not bulk-crawled: the sync's
+ * estimate covers its length, and exact counts arrive through the EPUB proxy
+ * when readers download. Only a Gutenberg count gone stale (its EPUB changed)
+ * is redone here. Standard Ebooks is counted in full.
+ */
+export const PENDING_WHERE = sql`epub_url IS NOT NULL AND suppressed = false
+	AND (word_count IS NULL OR word_count_epub_url IS DISTINCT FROM epub_url)
+	AND (source <> 'gutenberg' OR word_count IS NOT NULL)
+	AND (word_count_failed_at IS NULL
+		OR word_count_failed_at < now() - ${RETRY_FAILED_AFTER}::interval)`;
+
 async function nextPending(): Promise<PendingRow | null> {
-	// SE first (small, patron-authorized), then the most-read Gutenberg books.
 	const { rows } = await db.execute<PendingRow>(sql`
 		SELECT id, source, epub_url FROM catalog_books
-		WHERE epub_url IS NOT NULL AND suppressed = false
-			AND (word_count IS NULL OR word_count_epub_url IS DISTINCT FROM epub_url)
-			AND (word_count_failed_at IS NULL
-				OR word_count_failed_at < now() - ${RETRY_FAILED_AFTER}::interval)
+		WHERE ${PENDING_WHERE}
 		ORDER BY (source = 'standard_ebooks') DESC, download_count DESC NULLS LAST, id
 		LIMIT 1
 	`);
@@ -146,7 +179,7 @@ export async function runWordCountCrawler(config: CrawlConfig, signal: AbortSign
 	signal.addEventListener("abort", () => lockClient.release(), { once: true });
 
 	console.log(`[word-count] crawler on, every ${config.intervalMs} ms via ${config.mirror}`);
-	let backoff = 0;
+	let retries = NO_RETRIES;
 	while (!signal.aborted) {
 		const row = await nextPending().catch((err: unknown) => {
 			captureException(err, { tags: { kind: "word-count" } });
@@ -163,12 +196,19 @@ export async function runWordCountCrawler(config: CrawlConfig, signal: AbortSign
 			? await downloadEpub(url, requestHeaders(row.source))
 			: { kind: "failed" };
 		if (outcome.kind === "retry") {
-			backoff = nextBackoff(backoff, config.intervalMs);
-			console.warn(`[word-count] ${row.id}: upstream busy, backing off ${backoff} ms`);
-			await sleep(backoff, signal);
+			const next = afterRetry(retries, row.id, config.intervalMs);
+			retries = next.state;
+			if (next.giveUp) {
+				console.warn(`[word-count] ${row.id}: still busy after ${MAX_ROW_RETRIES} tries, skipping`);
+				await markWordCountFailed(row.id).catch(() => undefined);
+				await sleep(config.intervalMs, signal);
+			} else {
+				console.warn(`[word-count] ${row.id}: upstream busy, backing off ${retries.backoff} ms`);
+				await sleep(retries.backoff, signal);
+			}
 			continue;
 		}
-		backoff = 0;
+		retries = NO_RETRIES;
 
 		try {
 			const count = outcome.kind === "ok" ? await countEpubWords(outcome.bytes) : null;

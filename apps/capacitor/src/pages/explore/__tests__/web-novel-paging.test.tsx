@@ -13,6 +13,7 @@ vi.mock("../../../services/serial-scrapers", () => ({
 }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
+		useStatsMeasuredSpeed: () => ({ data: { wpm: 250, sessionCount: 3 } }),
 		useSearchSerials: () => ({ data: undefined, isLoading: false, isFetching: false }),
 		useSearchSerialPages,
 		usePopularSerials,

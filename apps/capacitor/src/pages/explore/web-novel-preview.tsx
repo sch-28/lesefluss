@@ -2,12 +2,14 @@ import { useRouter } from "@tanstack/react-router";
 import { Library, Plus, Share2 } from "lucide-react";
 import type React from "react";
 import { toast } from "../../components/toast";
-import { chapterCountLabel, isSerialUrl, providerLabel } from "../../services/serial-scrapers";
+import { isSerialUrl, providerLabel } from "../../services/serial-scrapers";
 import { DetailShell } from "../_shared/detail-shell";
+import LengthFact from "./length-fact";
 import { shareLink } from "./share-link";
+import { useReadingSpeed } from "./use-reading-speed";
 import { useSerialPreview } from "./use-serial-preview";
 import { useWebNovelImport } from "./use-web-novel-import";
-import { Ao3Meta, webNovelFacts } from "./web-novel-facts";
+import { Ao3Meta, chapterFallback, webNovelFacts, webNovelLength } from "./web-novel-facts";
 
 /**
  * Preview page for a web-novel series, at `?url=<series url>`. Reached from a
@@ -22,6 +24,7 @@ const WebNovelPreview: React.FC<Props> = ({ search }) => {
 	const url = search.url && isSerialUrl(search.url) ? search.url : undefined;
 	const preview = useSerialPreview(url);
 	const importer = useWebNovelImport(url ?? "");
+	const speed = useReadingSpeed();
 
 	const result = preview.result;
 	const existingSeriesId = importer.existingSeriesId;
@@ -81,9 +84,9 @@ const WebNovelPreview: React.FC<Props> = ({ search }) => {
 				onClick: handleImport,
 			};
 
-	const statsLine = result.chapterCount != null && (
-		<span>{chapterCountLabel(result.chapterCount)}</span>
-	);
+	const length = webNovelLength(result.details);
+	const chapters = chapterFallback(result);
+	const statsLine = chapters && <span>{chapters}</span>;
 
 	return (
 		<DetailShell
@@ -92,7 +95,17 @@ const WebNovelPreview: React.FC<Props> = ({ search }) => {
 			title={result.title}
 			author={result.author}
 			statsLine={statsLine}
-			facts={webNovelFacts(result.details)}
+			facts={[
+				length.wordCount ? (
+					<LengthFact
+						key="length"
+						length={length}
+						speed={speed}
+						estimateNote={`Worked out from ${provider}'s page count.`}
+					/>
+				) : null,
+				...webNovelFacts(result.details),
+			].filter(Boolean)}
 			subjects={result.details?.tags}
 			primaryAction={primaryAction}
 			description={result.description ? { text: result.description } : undefined}

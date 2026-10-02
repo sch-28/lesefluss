@@ -64,6 +64,8 @@ export type SeriesDetails = {
 	/** `YYYY-MM-DD`. */
 	lastUpdated?: string;
 	wordCount?: number;
+	/** `wordCount` is derived (Royal Road listings give pages, not words); a details fetch replaces it. */
+	wordCountEstimated?: boolean;
 	/** 0-5 stars. */
 	rating?: number;
 	ratingCount?: number;

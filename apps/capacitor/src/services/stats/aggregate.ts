@@ -5,7 +5,7 @@
  */
 import {
 	isPlausibleRate,
-	MIN_STREAK_MINUTES,
+	readingDayKeys,
 	type StreakResult,
 	streakFromDays,
 } from "@lesefluss/core";
@@ -13,7 +13,7 @@ import { localDateKey, previousLocalDayStart, startOfLocalDay } from "../../util
 
 const MS_PER_DAY = 86_400_000;
 
-export { MIN_STREAK_MINUTES, type StreakResult };
+export type { StreakResult };
 
 export interface SessionTiming {
 	startedAt: number;
@@ -41,7 +41,7 @@ function weekStartLocal(epochMs: number): number {
  * Active milliseconds per local day, keyed by `localDateKey`.
  *
  * Local rather than UTC: a sitting at 00:30 belongs to the day the reader thinks
- * it does. Shared by the streak scan and the best-day record, which were
+ * it does. Shared by the streak calendar and the best-day record, which were
  * bucketing the same rows two different ways.
  */
 export function sumDurationByLocalDay(rows: SessionTiming[]): Map<string, number> {
@@ -53,10 +53,22 @@ export function sumDurationByLocalDay(rows: SessionTiming[]): Map<string, number
 	return msByDay;
 }
 
+/** Local days the rows count toward for the streak, keyed by `localDateKey`.
+ *  A late-night sitting counts for the evening before as well as its own day. */
+export function readDaysOf(rows: SessionTiming[]): Set<string> {
+	const days = new Set<string>();
+	for (const row of rows) {
+		if (row.durationMs <= 0) continue;
+		const hour = new Date(row.startedAt).getHours();
+		for (const key of readingDayKeys(localDateKey(row.startedAt), hour)) days.add(key);
+	}
+	return days;
+}
+
 export function summariseStreak(rows: SessionTiming[], now: number): StreakResult {
-	const minutesByDay = new Map<string, number>();
-	for (const [key, ms] of sumDurationByLocalDay(rows)) minutesByDay.set(key, ms / 60_000);
-	return streakFromDays(minutesByDay, localDateKey(now));
+	const todayKey = localDateKey(now);
+	const [openSinceKey] = readingDayKeys(todayKey, new Date(now).getHours());
+	return streakFromDays(readDaysOf(rows), todayKey, openSinceKey);
 }
 
 export interface SessionSpan {

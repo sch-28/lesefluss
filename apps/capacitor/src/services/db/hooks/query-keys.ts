@@ -146,6 +146,7 @@ export const statsKeys = {
 
 	/** Per-mode reading rates used to estimate time remaining. */
 	readingRates: ["stats", "reading-rates"] as const,
+	measuredSpeed: ["stats", "measured-speed"] as const,
 
 	/** Per-book stats card on book detail. */
 	book: (bookId: string) => ["stats", "book", bookId] as const,
@@ -157,8 +158,8 @@ export const statsKeys = {
 	/** All-time personal bests. */
 	records: ["stats", "records"] as const,
 
-	/** Per-day totals behind the streak calendar. */
-	dailyMs: ["stats", "daily-ms"] as const,
+	/** Per-day totals and streak days behind the streak calendar. */
+	daily: ["stats", "daily"] as const,
 };
 
 /**

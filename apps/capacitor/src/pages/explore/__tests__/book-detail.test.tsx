@@ -21,7 +21,7 @@ vi.mock("../../../services/db/queries", () => ({
 }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useSettings: () => ({ data: { wpm: 300 } }),
+		useStatsMeasuredSpeed: () => ({ data: { wpm: 300, sessionCount: 12 } }),
 		useLibraryCatalogIds: () => ({ data: new Map() }),
 	},
 }));
@@ -85,10 +85,39 @@ const renderDetail = async () => {
 };
 
 describe("catalog book detail", () => {
-	it("shows facts at the reader's speed", async () => {
+	it("shows pages and reading time at the reader's measured speed", async () => {
 		await renderDetail();
-		expect(view?.text()).toContain("75,000 words");
-		expect(view?.text()).toContain("4h 10m at 300 wpm");
+		expect(view?.text()).toContain("300 pages · 4h 10m");
+	});
+
+	it("explains the length when tapped", async () => {
+		await renderDetail();
+		await click(view?.getButton(/300 pages/) as HTMLButtonElement);
+		const explainer = document.querySelector("[data-testid='length-explainer']")?.textContent;
+		expect(explainer).toContain("75,000 words");
+		expect(explainer).toContain("250 words per page");
+		expect(explainer).toContain("300 wpm, your average over 12 sessions");
+		expect(explainer).not.toContain("approximate");
+	});
+
+	it("marks an estimated length and says so in the explainer", async () => {
+		getCatalogBook.mockResolvedValue({ ...BOOK, wordCount: 78_000, wordCountEstimated: true });
+		await renderDetail();
+		const fact = view?.getButton(
+			/^About 312 pages, 4 hours 20 minutes\. How is this worked out\?$/,
+		);
+		expect(fact?.textContent).toBe("~312 pages · 4h 20m");
+		await click(fact as HTMLButtonElement);
+		const explainer = document.querySelector("[data-testid='length-explainer']")?.textContent;
+		expect(explainer).toContain("About 78,000 words");
+		expect(explainer).toContain("exact once the book has been downloaded");
+	});
+
+	it("says the length is unknown only when there is no count or estimate", async () => {
+		getCatalogBook.mockResolvedValue({ ...BOOK, wordCount: null });
+		await renderDetail();
+		expect(view?.text()).toContain("Length unknown");
+		expect(view?.queryButton(/pages/)).toBeNull();
 	});
 
 	it("opens results for the author when the author is tapped", async () => {

@@ -167,11 +167,12 @@ export const queryHooks = {
 	useStatsWpmTrend: statsHooks.useWpmTrend,
 	useStatsHourHistogram: statsHooks.useHourHistogram,
 	useStatsReadingRates: statsHooks.useReadingRates,
+	useStatsMeasuredSpeed: statsHooks.useMeasuredReadingSpeed,
 	useStatsBook: statsHooks.useBookStats,
 	useStatsCurrentlyReading: statsHooks.useCurrentlyReading,
 	useStatsFinishedBooks: statsHooks.useFinishedBooks,
 	useStatsRecords: statsHooks.useReadingRecords,
-	useStatsDailyMs: statsHooks.useDailyReadingMs,
+	useStatsDailyReading: statsHooks.useDailyReading,
 
 	// ── Reading sessions ──────────────────────────────────────────────────
 	useReadingSessionsPage: readingSessionHooks.useReadingSessionsPage,

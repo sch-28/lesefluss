@@ -5,7 +5,6 @@ import CoverImage from "../../components/cover-image";
 import type { ViewMode } from "../../components/view-mode-toggle";
 import { queryHooks } from "../../services/db/hooks";
 import {
-	chapterCountLabel,
 	normalizeSeriesUrl,
 	type PopularWindow,
 	type ProviderId,
@@ -15,11 +14,14 @@ import {
 	type SeriesStatus,
 } from "../../services/serial-scrapers";
 import { EmptyState, ErrorState } from "../_shared/load-states";
-import { InLibraryBadge, QuickAddButton } from "./card-badges";
+import { InLibraryBadge, LengthText, QuickAddButton } from "./card-badges";
+import { describeLength } from "./length";
 import { CardGridSkeleton, EXPLORE_GRID_CLASS } from "./skeletons";
 import TextCover from "./text-cover";
+import { useReadingSpeed } from "./use-reading-speed";
 import { useWebNovelImport } from "./use-web-novel-import";
 import { WebNovelCard } from "./web-novel-card";
+import { chapterFallback, webNovelLength } from "./web-novel-facts";
 
 interface Props {
 	query: string;
@@ -243,7 +245,7 @@ const ResultsLayout: React.FC<{
 	return (
 		<div className={EXPLORE_GRID_CLASS}>
 			{results.map((r) => (
-				<WebNovelCard key={r.sourceUrl} result={r} onPick={onPick} />
+				<WebNovelCard key={r.sourceUrl} result={r} onPick={onPick} showProvider={!provider} />
 			))}
 		</div>
 	);
@@ -256,6 +258,9 @@ const ResultListItem: React.FC<{
 }> = ({ result, isAo3Only, onPick }) => {
 	const quickAdd = useWebNovelImport(result.sourceUrl);
 	const canQuickAdd = quickAdd.isMembershipKnown && !quickAdd.isInLibrary;
+	const { wpm } = useReadingSpeed();
+	const lengthLabels = describeLength(webNovelLength(result.details), wpm);
+	const chapters = chapterFallback(result);
 	return (
 		<div
 			className="flex items-center gap-2"
@@ -289,9 +294,9 @@ const ResultListItem: React.FC<{
 						<span className="rounded-sm bg-foreground px-1.5 py-0.5 font-semibold text-[0.6rem] text-background uppercase tracking-wide">
 							{result.provider}
 						</span>
-						{result.chapterCount != null && (
+						{(lengthLabels || chapters) && (
 							<span className="text-[0.75rem] text-muted-foreground">
-								{chapterCountLabel(result.chapterCount)}
+								{lengthLabels ? <LengthText labels={lengthLabels} /> : chapters}
 							</span>
 						)}
 						{quickAdd.isInLibrary && <InLibraryBadge />}

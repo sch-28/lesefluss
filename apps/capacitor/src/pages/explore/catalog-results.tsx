@@ -23,6 +23,8 @@ type ZeroResultActions = {
 
 type Props = {
 	filters: CatalogSearchFilters;
+	/** False holds the request (and shows the skeleton) until the filters are final. */
+	enabled?: boolean;
 	view: ViewMode;
 	onOpen: (result: CatalogSearchResult) => void;
 } & ZeroResultActions;
@@ -93,6 +95,7 @@ const ZeroResults: React.FC<ZeroResultActions & { suggestion?: string | null }> 
 
 const CatalogResults: React.FC<Props> = ({
 	filters,
+	enabled = true,
 	view,
 	onOpen,
 	onSearchSuggestion,
@@ -100,7 +103,7 @@ const CatalogResults: React.FC<Props> = ({
 	onSearchAllLanguages,
 	hasQuery,
 }) => {
-	const query = useCatalogSearch(filters);
+	const query = useCatalogSearch(filters, enabled);
 
 	const canLoadMore = query.hasNextPage && !query.isFetchingNextPage && !query.isError;
 	const sentinelRef = useSentinel(() => {

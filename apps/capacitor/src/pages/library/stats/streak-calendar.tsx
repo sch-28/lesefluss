@@ -1,10 +1,11 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Snowflake } from "lucide-react";
 import { useMemo } from "react";
 import { queryHooks } from "../../../services/db/hooks";
 import {
 	buildMonthGrid,
 	buildWeekStrip,
 	type CalendarDay,
+	NO_READING,
 	shiftMonth,
 } from "../../../services/stats/calendar";
 import { summariseDays } from "../../../services/stats/summaries";
@@ -72,12 +73,18 @@ export function MonthPager({ monthAnchor, onStep }: PagerProps) {
 	);
 }
 
+function useFrozenDays(): ReadonlySet<string> {
+	const streak = queryHooks.useStatsStreak();
+	return useMemo(() => new Set(streak.data?.frozenDays), [streak.data]);
+}
+
 export function StreakCalendar({ monthAnchor }: { monthAnchor: number }) {
-	const daily = queryHooks.useStatsDailyMs();
+	const daily = queryHooks.useStatsDailyReading();
+	const frozenDays = useFrozenDays();
 
 	const grid = useMemo(
-		() => buildMonthGrid(daily.data ?? new Map(), monthAnchor),
-		[daily.data, monthAnchor],
+		() => buildMonthGrid(daily.data ?? NO_READING, monthAnchor, frozenDays),
+		[daily.data, monthAnchor, frozenDays],
 	);
 
 	const today = startOfLocalDay(Date.now());
@@ -87,10 +94,14 @@ export function StreakCalendar({ monthAnchor }: { monthAnchor: number }) {
 
 /** Collapsed hero view: the current week as one dot row. */
 export function StreakWeekStrip() {
-	const daily = queryHooks.useStatsDailyMs();
+	const daily = queryHooks.useStatsDailyReading();
+	const frozenDays = useFrozenDays();
 	const today = startOfLocalDay(Date.now());
 
-	const week = useMemo(() => buildWeekStrip(daily.data ?? new Map(), today), [daily.data, today]);
+	const week = useMemo(
+		() => buildWeekStrip(daily.data ?? NO_READING, today, frozenDays),
+		[daily.data, today, frozenDays],
+	);
 
 	return <DotGrid days={week} ariaLabel={summariseDays(week, "This week")} />;
 }
@@ -135,11 +146,18 @@ function DayCell({ day, isToday }: { day: CalendarDay; isToday: boolean }) {
 					} ${day.linksAfter ? "right-0" : "right-1 rounded-r-full"}`}
 				/>
 			)}
-			<span
-				className={`relative size-2.5 rounded-full ${INTENSITY_CLASS[day.intensity]} ${
-					day.isInMonth ? "" : "opacity-30"
-				} ${isToday ? "ring-2 ring-current/40 ring-offset-1 ring-offset-card" : ""}`}
-			/>
+			{day.isFrozen ? (
+				<Snowflake
+					aria-hidden="true"
+					className={`relative size-3 text-sky-500 ${day.isInMonth ? "" : "opacity-30"}`}
+				/>
+			) : (
+				<span
+					className={`relative size-2.5 rounded-full ${INTENSITY_CLASS[day.intensity]} ${
+						day.isInMonth ? "" : "opacity-30"
+					} ${isToday ? "ring-2 ring-current/40 ring-offset-1 ring-offset-card" : ""}`}
+				/>
+			)}
 		</div>
 	);
 }

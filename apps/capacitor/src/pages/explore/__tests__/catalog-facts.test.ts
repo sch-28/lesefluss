@@ -16,29 +16,20 @@ const base: CatalogBook = {
 };
 
 describe("catalogFacts", () => {
-	it("shows length, reading time, language, source and author years when known", () => {
+	it("shows language, source and author years when known, leaving length to the length fact", () => {
 		expect(
-			catalogFacts(
-				{ ...base, wordCount: 75_000, authorBirthYear: 1797, authorDeathYear: 1851 },
-				300,
-			),
-		).toEqual([
-			"75,000 words",
-			"4h 10m at 300 wpm",
-			"English",
-			"Project Gutenberg",
-			"Author 1797–1851",
-		]);
+			catalogFacts({ ...base, wordCount: 75_000, authorBirthYear: 1797, authorDeathYear: 1851 }),
+		).toEqual(["English", "Project Gutenberg", "Author 1797–1851"]);
 	});
 
 	it("leaves out what the catalog doesn't know", () => {
-		expect(catalogFacts({ ...base, language: null, wordCount: null }, 300)).toEqual([
+		expect(catalogFacts({ ...base, language: null, wordCount: null })).toEqual([
 			"Project Gutenberg",
 		]);
 	});
 
 	it("handles half-known author years and a missing EPUB", () => {
-		expect(catalogFacts({ ...base, authorBirthYear: 1850, epubUrl: null }, 300)).toEqual([
+		expect(catalogFacts({ ...base, authorBirthYear: 1850, epubUrl: null })).toEqual([
 			"English",
 			"Project Gutenberg",
 			"Author b. 1850",
