@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF xml:base="http://www.gutenberg.org/"
+  xmlns:dcterms="http://purl.org/dc/terms/"
+  xmlns:pgterms="http://www.gutenberg.org/2009/pgterms/"
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:dcam="http://purl.org/dc/dcam/">
+  <pgterms:ebook rdf:about="ebooks/1257">
+    <pgterms:downloads rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">5120</pgterms:downloads>
+    <dcterms:creator>
+      <pgterms:agent rdf:about="2009/agents/492">
+        <pgterms:name>Dumas, Alexandre</pgterms:name>
+        <pgterms:birthdate rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1802</pgterms:birthdate>
+        <pgterms:deathdate rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1870</pgterms:deathdate>
+      </pgterms:agent>
+    </dcterms:creator>
+    <dcterms:creator>
+      <pgterms:agent rdf:about="2009/agents/2944">
+        <pgterms:name>Maquet, Auguste</pgterms:name>
+        <pgterms:birthdate rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1813</pgterms:birthdate>
+      </pgterms:agent>
+    </dcterms:creator>
+    <dcterms:title>Les trois mousquetaires
+$b roman</dcterms:title>
+    <dcterms:language>
+      <rdf:Description rdf:nodeID="N1"><rdf:value rdf:datatype="http://purl.org/dc/terms/RFC4646">fr</rdf:value></rdf:Description>
+    </dcterms:language>
+    <dcterms:subject>
+      <rdf:Description rdf:nodeID="N2"><dcam:memberOf rdf:resource="http://purl.org/dc/terms/LCSH"/><rdf:value>Historical fiction</rdf:value></rdf:Description>
+    </dcterms:subject>
+    <dcterms:subject>
+      <rdf:Description rdf:nodeID="N3"><dcam:memberOf rdf:resource="http://purl.org/dc/terms/LCSH"/><rdf:value>France -- History -- Louis XIII, 1610-1643 -- Fiction</rdf:value></rdf:Description>
+    </dcterms:subject>
+    <dcterms:type>
+      <rdf:Description rdf:nodeID="N4"><dcam:memberOf rdf:resource="http://purl.org/dc/terms/DCMIType"/><rdf:value>Text</rdf:value></rdf:Description>
+    </dcterms:type>
+    <dcterms:hasFormat>
+      <pgterms:file rdf:about="https://www.gutenberg.org/ebooks/1257.epub.noimages"><dcterms:isFormatOf rdf:resource="ebooks/1257"/></pgterms:file>
+    </dcterms:hasFormat>
+    <dcterms:hasFormat>
+      <pgterms:file rdf:about="https://www.gutenberg.org/ebooks/1257.txt.utf-8"><dcterms:isFormatOf rdf:resource="ebooks/1257"/></pgterms:file>
+    </dcterms:hasFormat>
+  </pgterms:ebook>
+</rdf:RDF>

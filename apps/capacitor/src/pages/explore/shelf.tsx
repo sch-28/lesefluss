@@ -1,8 +1,11 @@
 import { Button } from "@lesefluss/ui/button";
-import { ChevronRight, Shuffle } from "lucide-react";
+import { Shuffle } from "lucide-react";
 import type React from "react";
 import type { CatalogSearchResult } from "../../services/catalog/client";
-import ResultCard from "./result-card";
+import { ErrorState } from "../_shared/load-states";
+import CatalogResultCard from "./catalog-result-card";
+import ShelfFrame, { SHELF_ITEM_STYLE } from "./shelf-frame";
+import { ShelfStripSkeleton } from "./skeletons";
 
 type Props = {
 	title: string;
@@ -11,14 +14,12 @@ type Props = {
 	onSeeAll?: () => void;
 	onShuffle?: () => void;
 	isShuffling?: boolean;
+	isLoading?: boolean;
+	error?: unknown;
+	onRetry?: () => void;
 	emptyLabel?: string;
 };
 
-/**
- * Horizontal-scroll strip of catalog cards. CSS overflow-x:auto +
- * scroll-snap-type: x mandatory gives each card a crisp snap target on touch
- * devices without any JS.
- */
 const Shelf: React.FC<Props> = ({
 	title,
 	books,
@@ -26,50 +27,44 @@ const Shelf: React.FC<Props> = ({
 	onSeeAll,
 	onShuffle,
 	isShuffling,
+	isLoading,
+	error,
+	onRetry,
 	emptyLabel,
 }) => {
+	const body = isLoading ? (
+		<ShelfStripSkeleton />
+	) : error ? (
+		<ErrorState error={error} onRetry={onRetry} className="p-4" />
+	) : books.length === 0 ? (
+		<p className="m-0 text-[0.8rem] text-muted-foreground">{emptyLabel ?? "Nothing here yet."}</p>
+	) : undefined;
+
 	return (
-		<section className="mb-6">
-			<header className="mb-2 flex items-center justify-between">
-				<h2 className="m-0 font-semibold text-[0.95rem]">{title}</h2>
-				<div className="flex items-center gap-1">
-					{onShuffle && (
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							onClick={onShuffle}
-							disabled={isShuffling}
-							aria-label="Shuffle"
-						>
-							<Shuffle />
-						</Button>
-					)}
-					{onSeeAll && (
-						<Button variant="ghost" size="sm" onClick={onSeeAll}>
-							See all
-							<ChevronRight />
-						</Button>
-					)}
+		<ShelfFrame
+			title={title}
+			onSeeAll={onSeeAll}
+			body={body}
+			actions={
+				onShuffle && (
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						onClick={onShuffle}
+						disabled={isShuffling}
+						aria-label="Shuffle"
+					>
+						<Shuffle />
+					</Button>
+				)
+			}
+		>
+			{books.map((b) => (
+				<div key={b.id} className="shrink-0" style={SHELF_ITEM_STYLE}>
+					<CatalogResultCard result={b} onOpen={() => onOpen(b)} />
 				</div>
-			</header>
-			{books.length === 0 ? (
-				<p className="m-0 text-[0.8rem] text-muted-foreground">
-					{emptyLabel ?? "Nothing here yet."}
-				</p>
-			) : (
-				<div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollSnapType: "x mandatory" }}>
-					{books.map((b) => (
-						<div
-							key={b.id}
-							className="shrink-0"
-							style={{ width: "7.5rem", scrollSnapAlign: "start" }}
-						>
-							<ResultCard result={b} onOpen={() => onOpen(b)} />
-						</div>
-					))}
-				</div>
-			)}
-		</section>
+			))}
+		</ShelfFrame>
 	);
 };
 

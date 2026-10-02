@@ -8,6 +8,7 @@
 		"check-types": "tsc --noEmit",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "tsx --env-file-if-exists=.env src/db/migrate-cli.ts",
+		"db:backfill": "tsx --env-file-if-exists=.env src/db/backfill-cli.ts",
 		"db:studio": "drizzle-kit studio",
 		"dev": "tsx watch --env-file-if-exists=.env src/index.ts",
 		"format": "biome format --write .",
@@ -21,13 +22,18 @@
 		"drizzle-orm": "^0.45.1",
 		"fast-xml-parser": "^5.7.1",
 		"hono": "^4.12.14",
+		"jszip": "^3.10.1",
 		"node-cron": "^4.2.1",
-		"pg": "^8.20.0"
+		"pg": "^8.20.0",
+		"tar-stream": "^3.2.1",
+		"unbzip2-stream": "^1.4.3"
 	},
 	"devDependencies": {
 		"@types/node": "^22.5.4",
 		"@types/node-cron": "^3.0.11",
 		"@types/pg": "^8.20.0",
+		"@types/tar-stream": "^3.1.5",
+		"@types/unbzip2-stream": "^1.4.3",
 		"drizzle-kit": "^0.31.10",
 		"tsx": "^4.21.0",
 		"typescript": "^6.0.2",

@@ -1,4 +1,5 @@
-import { type SQL, sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import { textArray } from "./sql-array.js";
 
 /**
  * Hand-curated genre buckets. Each `subjectPatterns` entry is a lowercase
@@ -54,19 +55,52 @@ export const GENRES: readonly Genre[] = [
 		label: "Drama",
 		subjectPatterns: ["drama"],
 	},
+	{
+		id: "romance",
+		label: "Romance",
+		subjectPatterns: ["love stories", "romance"],
+	},
+	{
+		id: "adventure",
+		label: "Adventure",
+		subjectPatterns: ["adventure"],
+	},
+	{
+		id: "horror",
+		label: "Horror & Gothic",
+		subjectPatterns: ["horror", "gothic", "ghost stories"],
+	},
+	{
+		id: "fantasy",
+		label: "Fantasy",
+		subjectPatterns: ["fantasy", "fairy tales"],
+	},
+	{
+		id: "short-stories",
+		label: "Short Stories",
+		subjectPatterns: ["short stories", "short fiction", "shorts"],
+	},
+	{
+		id: "essays",
+		label: "Essays",
+		subjectPatterns: ["essays"],
+	},
+	{
+		id: "biography",
+		label: "Biography & Memoir",
+		subjectPatterns: ["biography", "autobiograph", "memoir"],
+	},
+	{
+		id: "humor",
+		label: "Humor",
+		subjectPatterns: ["humor", "humorous", "satire"],
+	},
 ];
 
 export function findGenre(id: string): Genre | undefined {
 	return GENRES.find((g) => g.id === id);
 }
 
-/**
- * Build a SQL fragment expanding to `ARRAY[$a, $b, ...]` of ILIKE patterns
- * for a genre. Each pattern becomes its own bind parameter — passing the
- * whole array as a single parameter trips node-pg's text→text[] coercion
- * (`malformed array literal`).
- */
 export function genrePatternsSql(genre: Genre): SQL {
-	const fragments = genre.subjectPatterns.map((p) => sql`${`%${p}%`}`);
-	return sql`ARRAY[${sql.join(fragments, sql`, `)}]::text[]`;
+	return textArray(genre.subjectPatterns.map((p) => `%${p}%`));
 }

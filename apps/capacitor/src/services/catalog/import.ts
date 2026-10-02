@@ -29,11 +29,28 @@ export type CatalogImportResult = {
 	existed: boolean;
 };
 
+const inFlight = new Map<string, Promise<CatalogImportResult>>();
+
 /**
  * Import a catalog book into the local library. If a book with matching
  * `catalogId` already exists locally, return it without re-downloading.
+ *
+ * The existence check and the insert are not atomic, and the same book can sit
+ * on several shelves at once, so concurrent calls for one id share a single
+ * import. Only the first caller's `onProgress` is driven.
  */
-export async function importFromCatalog(
+export function importFromCatalog(
+	catalogId: string,
+	onProgress?: (pct: number) => void,
+): Promise<CatalogImportResult> {
+	const pending = inFlight.get(catalogId);
+	if (pending) return pending;
+	const run = runImport(catalogId, onProgress).finally(() => inFlight.delete(catalogId));
+	inFlight.set(catalogId, run);
+	return run;
+}
+
+async function runImport(
 	catalogId: string,
 	onProgress?: (pct: number) => void,
 ): Promise<CatalogImportResult> {

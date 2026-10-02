@@ -17,6 +17,7 @@ vi.mock("../native-http", () => ({
 	},
 }));
 
+import { NetworkError } from "../../../utils/network-error";
 import { fetchHtml } from "../fetch";
 
 const CF_BODY =
@@ -82,5 +83,14 @@ describe("fetchHtml native CF fallback", () => {
 		mockRequest.mockResolvedValue({ status: 404, data: "" });
 		await expect(fetchHtml("https://x.test/a")).rejects.toThrow("FETCH_FAILED:404");
 		expect(mockFetchViaWebView).not.toHaveBeenCalled();
+	});
+});
+
+describe("fetchHtml transport failures", () => {
+	it("tags a rejected native request as a NetworkError", async () => {
+		mockRequest.mockRejectedValue(new Error("Unable to resolve host"));
+		const err = await fetchHtml("https://x.test/a").catch((e: unknown) => e);
+		expect(err).toBeInstanceOf(NetworkError);
+		expect((err as Error).message).toBe("FETCH_FAILED");
 	});
 });

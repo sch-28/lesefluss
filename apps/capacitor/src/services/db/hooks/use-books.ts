@@ -9,11 +9,18 @@ import {
 	parseBookFromUrl,
 	removeBook,
 } from "../../book-import";
-import { importSerialFromUrl } from "../../serial-scrapers";
+import { importSerialFromUrl, normalizeSeriesUrl } from "../../serial-scrapers";
 import { scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
 import type { Book, Series } from "../schema";
-import { bookImportMutationKey, bookKeys, glossaryKeys, serialKeys, statsKeys } from "./query-keys";
+import {
+	bookImportMutationKey,
+	bookKeys,
+	glossaryKeys,
+	serialImportMutationKey,
+	serialKeys,
+	statsKeys,
+} from "./query-keys";
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
 
@@ -57,6 +64,14 @@ function useBookContent(id: string) {
 		queryKey: bookKeys.content(id),
 		queryFn: () => queries.getBookContent(id),
 		enabled: !!id,
+	});
+}
+
+/** catalogId → local book id for the whole library, in one query. */
+function useLibraryCatalogIds() {
+	return useQuery({
+		queryKey: bookKeys.catalogIds,
+		queryFn: () => queries.getLibraryCatalogIds(),
 	});
 }
 
@@ -112,10 +127,10 @@ function useBookImageData(bookId: string, key: string) {
  */
 function useBookImportMutation<TVars = void, TResult = StagedImport>(
 	mutationFn: (vars: TVars) => Promise<TResult>,
-	options?: { onSuccess: () => void },
+	options?: { onSuccess: () => void; mutationKey?: readonly unknown[] },
 ) {
 	return useMutation({
-		mutationKey: bookImportMutationKey,
+		mutationKey: options?.mutationKey ?? bookImportMutationKey,
 		mutationFn,
 		onSuccess: options?.onSuccess,
 	});
@@ -161,9 +176,11 @@ function useImportBookFromUrl() {
  * Throws `Error("NO_SCRAPER")` for non-serial URLs (caller should branch on
  * `isSerialUrl` first to avoid this).
  */
-function useImportSerialFromUrl() {
+function useImportSerialFromUrl(scopeUrl?: string) {
 	const qc = useQueryClient();
 	return useBookImportMutation<{ url: string }, Series>(({ url }) => importSerialFromUrl(url), {
+		// Scoped per series so every entry point for it can see the import in flight.
+		mutationKey: scopeUrl ? serialImportMutationKey(normalizeSeriesUrl(scopeUrl)) : undefined,
 		// Serials write on success, so this is where their rows appear.
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: bookKeys.all });
@@ -257,6 +274,7 @@ export const bookHooks = {
 	useBookImages,
 	useBookImageData,
 	useBookWordIndex,
+	useLibraryCatalogIds,
 	useImportBook,
 	useImportBookFromClipboard,
 	useImportBookFromUrl,

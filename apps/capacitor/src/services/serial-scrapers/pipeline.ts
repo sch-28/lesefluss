@@ -3,7 +3,10 @@ import { queries } from "../db/queries";
 import type { Series } from "../db/schema";
 import { commitChapter, commitSeries, syncChapterList } from "./commit";
 import { detectScraper, scrapersById } from "./registry";
-import type { ChapterFetchResult } from "./types";
+import type { ChapterFetchResult, SearchResult } from "./types";
+import { normalizeSeriesUrl } from "./utils/series-url";
+
+const inFlightImports = new Map<string, Promise<Series>>();
 
 /**
  * Import a brand-new series. Sole caller of `commitSeries`.
@@ -11,7 +14,18 @@ import type { ChapterFetchResult } from "./types";
  * Throws:
  *   - `Error("NO_SCRAPER")` — the URL doesn't match any registered provider.
  */
-export async function runSerialImport(url: string): Promise<Series> {
+export function runSerialImport(url: string): Promise<Series> {
+	// Two entry points (a card's quick add and the preview) can fire for the same
+	// series before either commits; share one import instead of writing two.
+	const key = normalizeSeriesUrl(url);
+	const pending = inFlightImports.get(key);
+	if (pending) return pending;
+	const run = importSeries(url).finally(() => inFlightImports.delete(key));
+	inFlightImports.set(key, run);
+	return run;
+}
+
+async function importSeries(url: string): Promise<Series> {
 	const scraper = detectScraper(url);
 	if (!scraper) throw new Error("NO_SCRAPER");
 
@@ -20,6 +34,30 @@ export async function runSerialImport(url: string): Promise<Series> {
 	const chapters = await scraper.fetchChapterList(meta.tocUrl);
 	if (chapters.length === 0) throw new Error("NO_CHAPTERS");
 	return commitSeries(meta, chapters);
+}
+
+/**
+ * Metadata for a series that is not in the library, from its URL alone. Backs
+ * the preview page when it is opened from a link rather than a search result.
+ * Skips the chapter list: the preview does not show it and it can be a slow,
+ * multi-page fetch.
+ *
+ * Throws `Error("NO_SCRAPER")` for URLs no provider handles.
+ */
+export async function previewSerial(url: string): Promise<SearchResult> {
+	const scraper = detectScraper(url);
+	if (!scraper) throw new Error("NO_SCRAPER");
+	const meta = await scraper.fetchSeriesMetadata(url);
+	return {
+		title: meta.title,
+		author: meta.author,
+		description: meta.description,
+		coverImage: meta.coverImage,
+		chapterCount: null,
+		sourceUrl: meta.sourceUrl,
+		provider: meta.provider,
+		details: meta.details,
+	};
 }
 
 /**

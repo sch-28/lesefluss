@@ -75,6 +75,7 @@ describe("royalroad.fetchSeriesMetadata", () => {
 			sourceUrl: "https://www.royalroad.com/fiction/99999/a-test-fiction",
 			tocUrl: "https://www.royalroad.com/fiction/99999/a-test-fiction",
 			provider: "royalroad",
+			details: {},
 		});
 	});
 

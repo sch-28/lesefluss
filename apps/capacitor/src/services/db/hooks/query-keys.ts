@@ -33,6 +33,9 @@ export const bookKeys = {
 	/** Every non-tombstoned book row including series chapters. */
 	allIncludingChapters: ["books", "all-including-chapters"] as const,
 
+	/** catalogId → book id for the library. Under `all` so imports and deletes refresh it. */
+	catalogIds: ["books", "catalog-ids"] as const,
+
 	/** All highlights for a book, ordered by position. */
 	highlights: (id: string) => ["books", id, "highlights"] as const,
 
@@ -96,7 +99,12 @@ export const serialKeys = {
 		["serials", "search", query, provider ?? null] as const,
 
 	/** Popular/trending shelf — empty-state surface on the web-novels page. */
-	popular: (provider?: string) => ["serials", "popular", provider ?? null] as const,
+	popular: (provider?: string, window?: string) =>
+		["serials", "popular", provider ?? null, window ?? null] as const,
+
+	/** One provider's search, page by page. */
+	searchPages: (query: string, provider: string, status?: string) =>
+		["serials", "search-pages", query, provider, status ?? null] as const,
 
 	/** Ordered chapter rows (books) for a series. Subset of serialKeys.all. */
 	chapters: (seriesId: string) => ["serials", "chapters", seriesId] as const,
@@ -159,6 +167,19 @@ export const statsKeys = {
  * in-flight import regardless of which component fired it.
  */
 export const bookImportMutationKey = ["book-import"] as const;
+
+/** One serial import, keyed by normalized series URL; a prefix match on `bookImportMutationKey` still sees it. */
+export const serialImportMutationKey = (normalizedUrl: string) =>
+	[...bookImportMutationKey, "serial", normalizedUrl] as const;
+
+export const serialPreviewKeys = {
+	/**
+	 * Preview metadata for a series not in the library. Kept outside
+	 * `serialKeys.all` on purpose: imports invalidate that subtree, and a
+	 * refetch here would be a wasted provider round trip.
+	 */
+	byUrl: (url: string) => ["serial-preview", url] as const,
+};
 
 export const syncKeys = {
 	/** Book ids the server holds content for, from the local cache the pull maintains. */

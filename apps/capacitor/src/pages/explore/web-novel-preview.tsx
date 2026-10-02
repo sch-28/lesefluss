@@ -1,27 +1,32 @@
-import { useRouter, useSearch } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { useRouter } from "@tanstack/react-router";
+import { Library, Plus, Share2 } from "lucide-react";
 import type React from "react";
 import { toast } from "../../components/toast";
-import { queryHooks } from "../../services/db/hooks";
-import { chapterCountLabel, providerLabel } from "../../services/serial-scrapers";
+import { chapterCountLabel, isSerialUrl, providerLabel } from "../../services/serial-scrapers";
 import { DetailShell } from "../_shared/detail-shell";
-import { previewCache } from "./preview-cache";
+import { shareLink } from "./share-link";
+import { useSerialPreview } from "./use-serial-preview";
+import { useWebNovelImport } from "./use-web-novel-import";
+import { Ao3Meta, webNovelFacts } from "./web-novel-facts";
 
 /**
- * Preview page for a serial-search result that hasn't been imported yet.
- *
- * Reached from `/tabs/explore/web-novels`: tapping a result stashes the full
- * `SearchResult` in `previewCache` (keyed by sourceUrl) and navigates here
- * with `?url=...`. The preview reads the cached result back. Direct deep links
- * (no cache entry) render an error state with a "Back to web novels" button.
+ * Preview page for a web-novel series, at `?url=<series url>`. Reached from a
+ * search result (metadata handed over in `previewCache`) or from a cold link,
+ * in which case the metadata is fetched from the provider.
  */
-const WebNovelPreview: React.FC = () => {
-	const router = useRouter();
-	const search = useSearch({ strict: false }) as { url?: string };
-	const result = previewCache.get(search.url);
-	const importMutation = queryHooks.useImportSerialFromUrl();
+type Props = { search: { url?: string } };
 
-	if (!result) {
+const WebNovelPreview: React.FC<Props> = ({ search }) => {
+	const router = useRouter();
+	// Anything else would turn this page into an app-branded link to any site.
+	const url = search.url && isSerialUrl(search.url) ? search.url : undefined;
+	const preview = useSerialPreview(url);
+	const importer = useWebNovelImport(url ?? "");
+
+	const result = preview.result;
+	const existingSeriesId = importer.existingSeriesId;
+
+	if (!url) {
 		return (
 			<DetailShell
 				cover={null}
@@ -30,26 +35,51 @@ const WebNovelPreview: React.FC = () => {
 					label: "Back to web novels",
 					onClick: () => router.navigate({ to: "/tabs/explore/web-novels" }),
 				}}
-				errorMessage="No preview data. Tap a result on the search page first."
+				errorMessage="This link doesn't point to a web novel."
 			/>
 		);
 	}
 
-	const isImporting = importMutation.isPending;
+	if (!result) {
+		return (
+			<DetailShell
+				cover={null}
+				title={preview.isError ? "Couldn't load preview" : "Loading..."}
+				primaryAction={{ label: "Loading", onClick: () => undefined, disabled: true }}
+				isLoading={preview.isPending}
+				error={preview.isError ? preview.error : undefined}
+				onRetry={() => preview.refetch()}
+				errorSourceLink={{ href: url, label: "Open the original page" }}
+				externalLink={{ href: url }}
+			/>
+		);
+	}
+
+	const isImporting = importer.isImporting;
 	const provider = providerLabel(result.provider);
 
 	const handleImport = () => {
 		toast.info(`Importing "${result.title}"...`);
-		importMutation.mutate(
-			{ url: result.sourceUrl },
-			{
-				onSuccess: () => router.navigate({ to: "/tabs/library" }),
-				onError: (err) => {
-					toast.error(err instanceof Error ? `Import failed: ${err.message}` : "Import failed");
-				},
-			},
-		);
+		importer.start(result.title, () => router.navigate({ to: "/tabs/library" }));
 	};
+
+	const primaryAction = existingSeriesId
+		? {
+				label: "Open in Library",
+				icon: Library,
+				onClick: () =>
+					router.navigate({
+						to: "/tabs/library/series/$id",
+						params: { id: existingSeriesId },
+					}),
+			}
+		: {
+				label: isImporting ? "Importing..." : "Add to library",
+				icon: Plus,
+				disabled: isImporting || !importer.isMembershipKnown,
+				loading: isImporting,
+				onClick: handleImport,
+			};
 
 	const statsLine = result.chapterCount != null && (
 		<span>{chapterCountLabel(result.chapterCount)}</span>
@@ -62,19 +92,24 @@ const WebNovelPreview: React.FC = () => {
 			title={result.title}
 			author={result.author}
 			statsLine={statsLine}
-			primaryAction={{
-				label: isImporting ? "Importing..." : "Add to library",
-				icon: Plus,
-				disabled: isImporting,
-				loading: isImporting,
-				onClick: handleImport,
-			}}
+			facts={webNovelFacts(result.details)}
+			subjects={result.details?.tags}
+			primaryAction={primaryAction}
 			description={result.description ? { text: result.description } : undefined}
 			externalLink={{
 				href: result.sourceUrl,
 				label: `View on ${provider}`,
 			}}
-		/>
+			headerActions={[
+				{
+					label: "Share",
+					icon: Share2,
+					onClick: () => void shareLink(result.title, result.sourceUrl, "Share web novel"),
+				},
+			]}
+		>
+			{result.details?.ao3 && <Ao3Meta meta={result.details.ao3} />}
+		</DetailShell>
 	);
 };
 

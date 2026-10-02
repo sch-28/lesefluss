@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { NetworkError } from "../../utils/network-error";
 import { CATALOG_URL } from "../catalog/client";
 import { NativeHttp } from "./native-http";
 
@@ -58,13 +59,18 @@ export async function fetchHtml(url: string, opts: FetchOpts = {}): Promise<stri
 			headers["Sec-Fetch-Dest"] = "empty";
 			headers.Accept = "*/*";
 		}
-		const res = await NativeHttp.request({
-			url,
-			method,
-			body: opts.body,
-			contentType: opts.contentType,
-			headers,
-		});
+		let res: { status: number; data: string };
+		try {
+			res = await NativeHttp.request({
+				url,
+				method,
+				body: opts.body,
+				contentType: opts.contentType,
+				headers,
+			});
+		} catch (err) {
+			throw new NetworkError("FETCH_FAILED", { cause: err });
+		}
 		if (res.status === 403 || isCfChallengePage(res.data)) {
 			// WebView fallback only handles GET, so POST through admin-ajax can't
 			// replay here. Surface the CF block so the caller can recover (or fail loudly).
@@ -105,8 +111,8 @@ export async function fetchHtml(url: string, opts: FetchOpts = {}): Promise<stri
 				contentType: opts.contentType,
 			}),
 		});
-	} catch {
-		throw new Error("FETCH_FAILED");
+	} catch (err) {
+		throw new NetworkError("FETCH_FAILED", { cause: err });
 	}
 	if (res.status === 413) throw new Error("TOO_LARGE");
 	if (!res.ok) throw new Error("Chapter not available in the web app — open it in the mobile app.");

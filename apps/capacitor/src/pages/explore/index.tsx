@@ -1,113 +1,120 @@
-import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@lesefluss/ui/select";
-import { useRouter, useSearch } from "@tanstack/react-router";
-import { Compass, Search, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
+import { Compass } from "lucide-react";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { TabHeader } from "../../components/app-shell/tab-header";
+import { ViewModeToggle } from "../../components/view-mode-toggle";
 import {
 	CATALOG_ENABLED,
-	type CatalogSearchOrder,
 	type CatalogSearchResult,
+	getGenres,
 } from "../../services/catalog/client";
-import { useDebounced } from "../../utils/use-debounced";
-import GenreChips from "./genre-chips";
+import { catalogKeys } from "../../services/catalog/query-keys";
+import type { ProviderId, SearchResult } from "../../services/serial-scrapers";
+import CatalogResults from "./catalog-results";
+import {
+	addTag,
+	type ExploreSearch,
+	exploreMode,
+	hasCatalogFilters,
+	parseExploreSearch,
+	parseTags,
+	removeTag,
+	toCatalogFilters,
+	withSearch,
+} from "./explore-search";
+import FilterRow from "./filter-row";
+import GroupedResults from "./grouped-results";
 import ExploreLanding from "./landing";
-import ExploreSearchResults from "./search-results";
+import PersonalShelves from "./personal-shelves";
+import { previewCache } from "./preview-cache";
+import { recordRecentSearch } from "./recent-searches";
+import SearchField from "./search-field";
+import { CardGridSkeleton } from "./skeletons";
+import { tagLabel } from "./tag-labels";
+import { useCatalogSearch } from "./use-catalog-search";
+import { storeLang, useCatalogLanguages, useExploreLang } from "./use-explore-lang";
+import { useQueryText } from "./use-query-text";
+import { useReaderWpm } from "./use-reader-wpm";
 
-const LANG_OPTIONS = [
-	{ value: "en", label: "English", short: "EN" },
-	{ value: "de", label: "German", short: "DE" },
-	{ value: "fr", label: "French", short: "FR" },
-	{ value: "es", label: "Spanish", short: "ES" },
-	{ value: "it", label: "Italian", short: "IT" },
-	{ value: "all", label: "All languages", short: "ALL" },
-] as const;
+const GENRES_STALE_TIME_MS = 60 * 60 * 1000;
 
-const LANG_STORAGE_KEY = "explore-lang";
-const DEBOUNCE_MS = 300;
+type Props = { search: ExploreSearch };
 
-// Genre labels for the active-chip display. Kept in sync with
-// apps/catalog/src/lib/genres.ts. Unknown ids fall back to the raw id.
-const GENRE_LABELS: Record<string, string> = {
-	fiction: "Fiction",
-	"science-fiction": "Science Fiction",
-	mystery: "Mystery",
-	poetry: "Poetry",
-	philosophy: "Philosophy",
-	children: "Children",
-	history: "History",
-	drama: "Drama",
-};
-
-const Explore: React.FC = () => {
+const Explore: React.FC<Props> = ({ search }) => {
 	const router = useRouter();
-	const search = useSearch({ strict: false }) as { genre?: string };
-	const genre = search.genre ?? null;
+	const lang = useExploreLang(search.lang);
+	const wpm = useReaderWpm();
+	const mode = exploreMode(search);
+	const view = search.view ?? "grid";
 
-	const [query, setQuery] = useState("");
-	const [isSearchOpen, setSearchOpen] = useState(false);
-	const [lang, setLang] = useState<string>(() => localStorage.getItem(LANG_STORAGE_KEY) ?? "en");
-	const [page, setPage] = useState(1);
-	const debouncedQuery = useDebounced(query.trim(), DEBOUNCE_MS);
-	const searchInputRef = useRef<HTMLInputElement>(null);
-
-	const changePage = (next: number) => {
-		setPage(next);
-		// `body` is overflow:hidden, so window scrolling is a no-op here; the app
-		// scrolls one container in AppShell.
-		document
-			.querySelector('[data-scroll-restoration-id="app-scroll"]')
-			?.scrollTo({ top: 0, behavior: "smooth" });
+	/**
+	 * Builds from the router's current location, not the `search` captured at
+	 * render, so two quick changes (a debounce landing right after a chip tap)
+	 * don't overwrite each other. Switching between landing, grouped and
+	 * catalog views pushes, so Android back returns to the previous view;
+	 * tweaks within a view replace.
+	 */
+	const update = (change: (current: ExploreSearch) => ExploreSearch) => {
+		const current = parseExploreSearch(router.state.location.search);
+		const next = change(current);
+		const isModeChange = exploreMode(current) !== exploreMode(next);
+		return router.navigate({ to: "/tabs/explore", search: next, replace: !isModeChange });
 	};
+	const patch = (p: Partial<ExploreSearch>) => update((s) => withSearch(s, p));
 
-	// Popular ordering when genre-browsing without a text query, relevance otherwise.
-	const order: CatalogSearchOrder = !debouncedQuery && genre ? "popular" : "relevance";
+	const queryText = useQueryText(search.q, (q) =>
+		update((s) => withSearch(s, { q: q || undefined, scope: undefined })),
+	);
 
+	const genresQuery = useQuery({
+		queryKey: catalogKeys.genres(lang ?? "en"),
+		queryFn: ({ signal }) => getGenres(lang ?? "en", signal),
+		enabled: mode === "catalog" && lang !== undefined,
+		staleTime: GENRES_STALE_TIME_MS,
+	});
+	const languagesQuery = useCatalogLanguages(mode === "catalog");
+
+	const filters = toCatalogFilters(search, lang ?? "en", wpm);
+	const catalogSearch = useCatalogSearch(filters, mode === "catalog" && lang !== undefined);
+	const firstPage = mode === "catalog" ? catalogSearch.data?.pages[0] : undefined;
+
+	// The catalog drops tags and genres it doesn't know (a stale shared link)
+	// and echoes what it applied; take the dead chips out of the URL to match.
+	const appliedTags = firstPage?.tags;
+	const appliedGenre = firstPage?.genre;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reacts to what the server applied, nothing else.
 	useEffect(() => {
-		localStorage.setItem(LANG_STORAGE_KEY, lang);
-	}, [lang]);
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: deps drive the reset, not the body.
-	useEffect(() => {
-		setPage(1);
-	}, [debouncedQuery, lang, genre, order]);
-
-	useEffect(() => {
-		if (isSearchOpen) {
-			searchInputRef.current?.focus();
-		}
-	}, [isSearchOpen]);
-
-	const showResults = debouncedQuery.length > 0 || genre !== null;
-
-	const setGenre = (id: string | null) => {
-		// A replace mints a new history key, so it never has a scroll entry to
-		// restore and always falls through to scroll-to-top. That is right when the
-		// subtree swaps between the landing page and the results list, and wrong
-		// when only the chip selection changes above an already-scrolled list.
-		const staysOnResults = showResults && id !== null;
-		router.navigate({
-			to: "/tabs/explore",
-			search: id ? { genre: id } : {},
-			replace: true,
-			resetScroll: !staysOnResults,
+		if (!appliedTags) return;
+		const requested = parseTags(search.tags);
+		const deadTags = requested.filter((t) => !appliedTags.includes(t));
+		const isGenreDead = search.genre !== undefined && appliedGenre === null;
+		if (deadTags.length === 0 && !isGenreDead) return;
+		update((s) => {
+			let next = deadTags.reduce(removeTag, s);
+			if (isGenreDead) next = withSearch(next, { genre: undefined });
+			return next;
 		});
-	};
+	}, [appliedTags, appliedGenre]);
 
-	const openResult = (r: CatalogSearchResult) => {
-		router.navigate({
-			to: "/tabs/explore/book/$catalogId",
-			params: { catalogId: r.id },
-		});
+	const recordQuery = () => {
+		if (search.q) recordRecentSearch(search.q);
 	};
+	const openBook = (r: CatalogSearchResult) => {
+		recordQuery();
+		router.navigate({ to: "/tabs/explore/book/$catalogId", params: { catalogId: r.id } });
+	};
+	const openWebNovel = (r: SearchResult) => {
+		recordQuery();
+		previewCache.set(r);
+		router.navigate({ to: "/tabs/explore/web-novel-preview", search: { url: r.sourceUrl } });
+	};
+	const changeLang = (next: string) => {
+		storeLang(next);
+		patch({ lang: next });
+	};
+	const browseTags = () => router.navigate({ to: "/tabs/explore/tags", search });
 
 	if (!CATALOG_ENABLED) {
 		return (
@@ -119,82 +126,96 @@ const Explore: React.FC = () => {
 		);
 	}
 
+	const searchAllLanguages = lang !== "all" ? () => changeLang("all") : undefined;
+	const clearFilters = hasCatalogFilters(search)
+		? () => patch({ genre: undefined, tags: undefined, source: undefined, length: undefined })
+		: undefined;
+	const tagLabels = new Map(parseTags(search.tags).map((id) => [id, tagLabel(id)]));
+
 	return (
 		<div className="bg-background">
 			<TabHeader>
-				{isSearchOpen ? (
-					<>
-						<Input
-							ref={searchInputRef}
-							type="search"
-							value={query}
-							onChange={(e) => setQuery(e.target.value)}
-							onBlur={() => {
-								// Collapse searchbar back to brand on empty dismiss. If there's
-								// still a query the user is likely scrolling results, keep open.
-								if (!query) setSearchOpen(false);
-							}}
-							placeholder="Search..."
-							className="flex-1"
-						/>
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={() => {
-								setQuery("");
-								setSearchOpen(false);
-							}}
-							aria-label="Close search"
-						>
-							<X />
-						</Button>
-					</>
-				) : (
-					<>
-						<Compass className="size-5 shrink-0 text-muted-foreground" />
-						<h1 className="m-0 flex-1 font-semibold text-base leading-none">Explore</h1>
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={() => setSearchOpen(true)}
-							aria-label="Search"
-						>
-							<Search />
-						</Button>
-					</>
+				<Compass className="size-5 shrink-0 text-muted-foreground" />
+				<h1 className="m-0 flex-1 font-semibold text-base leading-none">Explore</h1>
+				{mode === "catalog" && (
+					<ViewModeToggle
+						viewMode={view}
+						onToggle={() => patch({ view: view === "grid" ? "list" : undefined })}
+					/>
 				)}
-				<Select value={lang} onValueChange={setLang}>
-					<SelectTrigger className="w-auto gap-1 border-0 bg-transparent shadow-none">
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent align="end">
-						{LANG_OPTIONS.map((o) => (
-							<SelectItem key={o.value} value={o.value}>
-								{o.label}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
 			</TabHeader>
-			{showResults ? (
-				<>
-					<GenreChips
-						activeGenre={genre}
-						activeLabel={genre ? GENRE_LABELS[genre] : undefined}
-						onClear={() => setGenre(null)}
+			{/* Sticks under the header (safe area + 48px row + 1px border) so search
+			    and filters stay in reach on a long list. */}
+			<div className="sticky top-[calc(var(--safe-top)+3rem+1px)] z-10 bg-background/95 pb-2 backdrop-blur">
+				<div className="mx-auto max-w-5xl px-4 pt-3">
+					<SearchField
+						value={queryText.text}
+						onChange={queryText.setText}
+						onSubmit={queryText.submit}
 					/>
-					<ExploreSearchResults
-						q={debouncedQuery}
-						lang={lang}
-						genre={genre}
-						order={order}
-						page={page}
-						onPageChange={changePage}
-						onOpen={openResult}
-					/>
-				</>
+				</div>
+				{mode === "catalog" && lang !== undefined && (
+					<div className="mx-auto max-w-5xl">
+						<FilterRow
+							search={search}
+							lang={lang}
+							genres={genresQuery.data?.genres}
+							languages={languagesQuery.data?.languages}
+							tagLabels={tagLabels}
+							facets={firstPage?.facets?.tags}
+							onChange={(p) => (p.lang ? changeLang(p.lang) : patch(p))}
+							onAddTag={(id) => update((s) => addTag(s, id))}
+							onRemoveTag={(id) => update((s) => removeTag(s, id))}
+							onBrowseTags={browseTags}
+						/>
+					</div>
+				)}
+			</div>
+
+			{lang === undefined ? (
+				<CardGridSkeleton count={12} className="p-4" />
+			) : mode === "landing" ? (
+				<ExploreLanding
+					lang={lang}
+					onOpen={openBook}
+					onOpenWebNovel={openWebNovel}
+					onBrowse={(next) => update(() => withSearch({ lang: search.lang }, next))}
+					onBrowseTags={browseTags}
+					personalShelves={
+						<PersonalShelves
+							onOpen={openBook}
+							onBrowse={(next) => update(() => withSearch({ lang: search.lang }, next))}
+						/>
+					}
+				/>
+			) : mode === "grouped" ? (
+				<GroupedResults
+					q={search.q ?? ""}
+					lang={lang}
+					onOpenBook={openBook}
+					onOpenWebNovel={openWebNovel}
+					onSeeAllCatalog={() => patch({ scope: "catalog" })}
+					onSeeAllProvider={(provider: ProviderId) =>
+						router.navigate({
+							to: "/tabs/explore/web-novels",
+							search: { provider, q: search.q },
+						})
+					}
+					onSearchSuggestion={queryText.submit}
+					onSearchAllLanguages={searchAllLanguages}
+				/>
 			) : (
-				<ExploreLanding lang={lang} onOpen={openResult} onGenreTap={setGenre} />
+				<div className="mx-auto max-w-5xl">
+					<CatalogResults
+						filters={filters}
+						view={view}
+						onOpen={openBook}
+						onSearchSuggestion={queryText.submit}
+						onClearFilters={clearFilters}
+						hasQuery={!!search.q}
+						onSearchAllLanguages={searchAllLanguages}
+					/>
+				</div>
 			)}
 		</div>
 	);

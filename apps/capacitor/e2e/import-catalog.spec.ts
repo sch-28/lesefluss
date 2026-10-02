@@ -27,10 +27,13 @@ test("imports a book via the catalog flow with mocked endpoints", async ({ page 
 		await page.goto(`/tabs/explore/book/${encodeURIComponent(CATALOG_ID)}`);
 
 		const epubResponse = page.waitForResponse(epubUrl);
-		await page.getByRole("button", { name: /^Download$/ }).click();
+		await page.getByRole("button", { name: "Add to library" }).click();
 		await epubResponse;
-		await page.waitForURL(/\/tabs\/library/, { timeout: 20_000 });
+		await expect(page.getByRole("button", { name: "Open in Library" })).toBeVisible({
+			timeout: 20_000,
+		});
 
+		await page.goto("/tabs/library");
 		const card = page.locator(
 			`[data-testid="library-card"][data-book-title="${fixture.title ?? ""}"]`,
 		);

@@ -1,3 +1,5 @@
+import { displayAuthor } from "./display.js";
+
 /**
  * Shared row shape + mapper for catalog-book result rows.
  * All list endpoints (search, landing shelves, random shelf) project the same
@@ -12,6 +14,8 @@ export type BookRow = {
 	subjects: string[] | null;
 	summary: string | null;
 	cover_url: string | null;
+	has_epub: boolean;
+	word_count: number | null;
 };
 
 export type Book = {
@@ -23,6 +27,9 @@ export type Book = {
 	subjects: string[] | null;
 	summary: string | null;
 	coverUrl: string | null;
+	hasEpub: boolean;
+	/** Null until counted; never zero for "unknown". */
+	wordCount: number | null;
 };
 
 export function mapBookRow(r: BookRow): Book {
@@ -30,11 +37,13 @@ export function mapBookRow(r: BookRow): Book {
 		id: r.id,
 		source: r.source,
 		title: r.title,
-		author: r.author,
+		author: displayAuthor(r.author, r.source),
 		language: r.language,
 		subjects: r.subjects,
 		summary: r.summary,
 		coverUrl: r.cover_url,
+		hasEpub: r.has_epub,
+		wordCount: r.word_count,
 	};
 }
 

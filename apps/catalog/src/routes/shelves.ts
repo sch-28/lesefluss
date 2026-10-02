@@ -33,7 +33,7 @@ export const shelvesRoute = new Hono().get("/random", async (c) => {
 	// Each call reshuffles — no server cache. ORDER BY random() with a small
 	// LIMIT is fine on this table (<100k rows).
 	const result = await db.execute<BookRow>(sql`
-		SELECT id, source, title, author, language, subjects, summary, cover_url
+		SELECT id, source, title, author, language, subjects, summary, cover_url, epub_url IS NOT NULL AS has_epub, word_count
 		FROM catalog_books
 		WHERE suppressed = false AND ${lf} AND ${sourceFilter}
 		ORDER BY random()

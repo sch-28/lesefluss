@@ -2,9 +2,13 @@ import { fetchHtml } from "../fetch";
 import type {
 	ChapterFetchResult,
 	ChapterRef,
+	PopularWindow,
+	SearchOptions,
 	SearchResult,
 	SerialScraper,
+	SeriesDetails,
 	SeriesMetadata,
+	SeriesStatus,
 } from "../types";
 import { absolutize, extractParagraphs, parseHtml, stripHidden, textOrNull } from "../utils/html";
 import { platformThrottleMs, throttle } from "../utils/throttle";
@@ -25,6 +29,13 @@ const ORIGIN = `https://${HOST}`;
  */
 const FICTION_PATH_RE = /^\/fiction\/\d+/;
 
+/** RR's listing pages, matched to the shared popular windows. */
+const POPULAR_LISTINGS: Record<PopularWindow, string> = {
+	week: "/fictions/weekly-popular",
+	trending: "/fictions/trending",
+	"all-time": "/fictions/best-rated",
+};
+
 const PATHS = {
 	/**
 	 * Royal Road search by title.
@@ -33,12 +44,15 @@ const PATHS = {
 	 * back in their default order (rating + recency blend). A sort picker
 	 * should surface this when the search UI matures.
 	 */
-	search: (query: string) => `${ORIGIN}/fictions/search?title=${encodeURIComponent(query)}`,
+	search: (query: string, opts: SearchOptions = {}) =>
+		`${ORIGIN}/fictions/search?title=${encodeURIComponent(query)}` +
+		(opts.page && opts.page > 1 ? `&page=${opts.page}` : "") +
+		(opts.status ? `&status=${opts.status === "completed" ? "COMPLETED" : "ONGOING"}` : ""),
 	/**
-	 * Royal Road's "Weekly Popular" listing — same fiction-list-item markup as
-	 * the search results page, so the same DOM parser handles both.
+	 * Royal Road's popular listings (one per window, see POPULAR_LISTINGS) use
+	 * the same fiction-list-item markup as search, so one parser handles all.
 	 */
-	popular: () => `${ORIGIN}/fictions/weekly-popular`,
+	popular: (window: PopularWindow = "week") => `${ORIGIN}${POPULAR_LISTINGS[window]}`,
 } as const;
 
 const SELECTORS = {
@@ -190,7 +204,7 @@ export const royalroadScraper: SerialScraper = {
 		await throttle(PROVIDER_ID, THROTTLE_MS);
 		const doc = parseHtml(await fetchHtml(sourceUrl));
 
-		const coverSrc = doc.querySelector(SELECTORS.cover)?.getAttribute("src") ?? null;
+		const coverSrc = realCover(doc.querySelector(SELECTORS.cover)?.getAttribute("src"));
 		return {
 			title: textOrNull(doc.querySelector(SELECTORS.title)) ?? "Untitled",
 			author: textOrNull(doc.querySelector(SELECTORS.author)),
@@ -199,6 +213,7 @@ export const royalroadScraper: SerialScraper = {
 			sourceUrl,
 			tocUrl,
 			provider: PROVIDER_ID,
+			details: parseFictionDetails(doc),
 		};
 	},
 
@@ -262,18 +277,33 @@ export const royalroadScraper: SerialScraper = {
 		}
 	},
 
-	async search(query: string): Promise<SearchResult[]> {
+	capabilities: {
+		searchPaging: true,
+		statusFilter: true,
+		popularWindows: ["week", "trending", "all-time"],
+	},
+
+	async search(query: string, opts?: SearchOptions): Promise<SearchResult[]> {
 		// Empty-query guarding belongs to the public surface (registry.searchAll
 		// + useSearchSerials' `enabled` flag); keep this a pure extractor.
 		await throttle(PROVIDER_ID, THROTTLE_MS);
-		return parseFictionList(parseHtml(await fetchHtml(PATHS.search(query))));
+		return parseFictionList(parseHtml(await fetchHtml(PATHS.search(query, opts))));
 	},
 
-	async getPopular(): Promise<SearchResult[]> {
+	async getPopular(opts?: { window?: PopularWindow }): Promise<SearchResult[]> {
 		await throttle(PROVIDER_ID, THROTTLE_MS);
-		return parseFictionList(parseHtml(await fetchHtml(PATHS.popular())));
+		return parseFictionList(parseHtml(await fetchHtml(PATHS.popular(opts?.window))));
 	},
 };
+
+/**
+ * RR serves a stock "400 x 600" placeholder (`/dist/img/nocover-new-min.png`)
+ * for fictions without art; treat it as no cover so the app's own fallback shows.
+ */
+function realCover(src: string | null | undefined): string | null {
+	if (!src || /\/nocover[^/]*$/i.test(src.split("?")[0] ?? "")) return null;
+	return src;
+}
 
 /**
  * Parse a Royal Road fiction-listing page (search results, weekly-popular,
@@ -288,7 +318,9 @@ function parseFictionList(doc: Document): SearchResult[] {
 		const title = textOrNull(titleAnchor);
 		if (!href || !title) continue;
 
-		const coverSrc = item.querySelector(SELECTORS.searchResultCover)?.getAttribute("src") ?? null;
+		const coverSrc = realCover(
+			item.querySelector(SELECTORS.searchResultCover)?.getAttribute("src"),
+		);
 
 		results.push({
 			title,
@@ -303,4 +335,62 @@ function parseFictionList(doc: Document): SearchResult[] {
 		});
 	}
 	return results;
+}
+
+const STATUS_LABELS: Record<string, SeriesStatus> = { COMPLETED: "completed", ONGOING: "ongoing" };
+
+function parseCount(text: string | null | undefined): number | undefined {
+	const n = Number((text ?? "").replace(/[^\d]/g, ""));
+	return text && Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+/** Shape as published; values arrive as numbers or strings depending on the page. */
+type FictionJsonLd = {
+	aggregateRating?: { ratingValue?: unknown; ratingCount?: unknown };
+	dateModified?: unknown;
+};
+
+/**
+ * Tags, status and stats from a fiction page. Rating and last update come from
+ * the page's JSON-LD block, which is steadier than the star widgets; followers
+ * only appear in the statistics list.
+ */
+export function parseFictionDetails(doc: Document): SeriesDetails {
+	const details: SeriesDetails = {};
+
+	const tags = [...doc.querySelectorAll("span.tags a.fiction-tag")]
+		.map((a) => a.textContent?.trim() ?? "")
+		.filter(Boolean);
+	if (tags.length > 0) details.tags = tags;
+
+	for (const label of doc.querySelectorAll("span.label")) {
+		const status = STATUS_LABELS[label.textContent?.trim().toUpperCase() ?? ""];
+		if (status) {
+			details.status = status;
+			break;
+		}
+	}
+
+	for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
+		try {
+			const ld = JSON.parse(script.textContent ?? "") as FictionJsonLd;
+			const rating = Number(ld.aggregateRating?.ratingValue);
+			const ratingCount = Number(ld.aggregateRating?.ratingCount);
+			if (Number.isFinite(rating) && rating > 0) details.rating = rating;
+			if (Number.isFinite(ratingCount) && ratingCount > 0) details.ratingCount = ratingCount;
+			if (typeof ld.dateModified === "string") details.lastUpdated = ld.dateModified.slice(0, 10);
+		} catch {
+			// Other JSON-LD blocks (breadcrumbs, malformed) carry nothing we use.
+		}
+	}
+
+	const statItems = [...doc.querySelectorAll("div.stats-content li")];
+	statItems.forEach((li, i) => {
+		if (li.textContent?.trim().toUpperCase().startsWith("FOLLOWERS")) {
+			const followers = parseCount(statItems[i + 1]?.textContent);
+			if (followers) details.followers = followers;
+		}
+	});
+
+	return details;
 }

@@ -1,9 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useDebounced } from "../../../utils/use-debounced";
 import {
+	normalizeSeriesUrl,
+	type PopularWindow,
 	type ProviderId,
 	popularSerials,
 	type SearchAllResult,
+	type SeriesStatus,
 	searchSerials,
 } from "../../serial-scrapers";
 import { serialKeys } from "./query-keys";
@@ -52,11 +55,52 @@ function useSearchSerials(
  * Cached 30 minutes — popular content moves slowly, no need to re-hit upstream
  * every navigation.
  */
-function usePopularSerials(provider?: ProviderId) {
+function usePopularSerials(provider?: ProviderId, window?: PopularWindow) {
 	return useQuery<SearchAllResult>({
-		queryKey: serialKeys.popular(provider),
-		queryFn: () => popularSerials({ provider }),
+		queryKey: serialKeys.popular(provider, window),
+		queryFn: () => popularSerials({ provider, window }),
 		staleTime: POPULAR_STALE_TIME_MS,
+		retry: false,
+	});
+}
+
+/** Providers list this many results per search page; fewer means the last page. */
+const PROVIDER_PAGE_SIZE = 20;
+
+/**
+ * Next page to ask for, or undefined at the end: a short page, a page that adds
+ * no series not already listed, or a failed page (the caller offers a retry).
+ */
+export function nextSerialPage(
+	last: SearchAllResult,
+	pages: SearchAllResult[],
+): number | undefined {
+	if (last.failedProviders.length > 0) return undefined;
+	if (last.results.length < PROVIDER_PAGE_SIZE) return undefined;
+	const earlier = new Set(
+		pages.slice(0, -1).flatMap((p) => p.results.map((r) => normalizeSeriesUrl(r.sourceUrl))),
+	);
+	const addsNew = last.results.some((r) => !earlier.has(normalizeSeriesUrl(r.sourceUrl)));
+	return addsNew ? pages.length + 1 : undefined;
+}
+
+/**
+ * Search one provider page by page, for providers that page their results.
+ * Same debounce and caching as `useSearchSerials`; see `nextSerialPage`.
+ */
+function useSearchSerialPages(
+	query: string,
+	opts: { provider: ProviderId; status?: SeriesStatus; enabled: boolean; debounceMs?: number },
+) {
+	const debounced = useDebounced(query.trim(), opts.debounceMs ?? DEFAULT_DEBOUNCE_MS);
+	const { provider, status } = opts;
+	return useInfiniteQuery({
+		queryKey: serialKeys.searchPages(debounced, provider, status),
+		queryFn: ({ pageParam }) => searchSerials(debounced, { provider, status, page: pageParam }),
+		initialPageParam: 1,
+		getNextPageParam: nextSerialPage,
+		enabled: opts.enabled && debounced.length > 0,
+		staleTime: SEARCH_STALE_TIME_MS,
 		retry: false,
 	});
 }
@@ -64,4 +108,5 @@ function usePopularSerials(provider?: ProviderId) {
 export const serialHooks = {
 	useSearchSerials,
 	usePopularSerials,
+	useSearchSerialPages,
 };

@@ -10,24 +10,31 @@ export type ToastKind = "success" | "danger" | "warning" | "info";
 
 export interface ToastOptions {
 	duration?: number;
+	action?: { label: string; onClick: () => void };
 }
 
 const DEFAULT_DURATION = 2500;
 
+// Long enough to reach the action button; the default dismisses before most people react.
+const ACTION_DURATION = 6000;
+
 function emit(message: string, kind: ToastKind, opts: ToastOptions = {}) {
-	const duration = opts.duration ?? DEFAULT_DURATION;
+	const options = {
+		duration: opts.duration ?? (opts.action ? ACTION_DURATION : DEFAULT_DURATION),
+		action: opts.action,
+	};
 	switch (kind) {
 		case "success":
-			sonnerToast.success(message, { duration });
+			sonnerToast.success(message, options);
 			break;
 		case "danger":
-			sonnerToast.error(message, { duration });
+			sonnerToast.error(message, options);
 			break;
 		case "warning":
-			sonnerToast.warning(message, { duration });
+			sonnerToast.warning(message, options);
 			break;
 		default:
-			sonnerToast.info(message, { duration });
+			sonnerToast.info(message, options);
 	}
 }
 

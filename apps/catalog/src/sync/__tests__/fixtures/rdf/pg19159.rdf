@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF xml:base="http://www.gutenberg.org/"
+  xmlns:dcterms="http://purl.org/dc/terms/"
+  xmlns:pgterms="http://www.gutenberg.org/2009/pgterms/"
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:dcam="http://purl.org/dc/dcam/">
+  <pgterms:ebook rdf:about="ebooks/19159">
+    <dcterms:title>Alice's Adventures in Wonderland (audio)</dcterms:title>
+    <dcterms:type>
+      <rdf:Description rdf:nodeID="N1"><dcam:memberOf rdf:resource="http://purl.org/dc/terms/DCMIType"/><rdf:value>Sound</rdf:value></rdf:Description>
+    </dcterms:type>
+  </pgterms:ebook>
+</rdf:RDF>

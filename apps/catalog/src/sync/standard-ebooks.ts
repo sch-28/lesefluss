@@ -3,6 +3,9 @@ import { XMLParser } from "fast-xml-parser";
 import { db } from "../db/index.js";
 import { catalogBooks, type NewCatalogBook } from "../db/schema.js";
 import { env } from "../env.js";
+import { authorKeys } from "../lib/authors.js";
+import { tagsFor } from "../lib/tags.js";
+import { type MappedBook, upsertTagLabels } from "./enrich.js";
 import { addBooksUpserted, setSyncPhase } from "./orchestrator.js";
 
 const FEED_URL = "https://standardebooks.org/feeds/opds/all";
@@ -51,7 +54,7 @@ function extractSlug(entryId: string | undefined): string | null {
 	return m3?.[1] ?? m[1];
 }
 
-function mapEntry(entry: OpdsEntry): NewCatalogBook | null {
+function mapEntry(entry: OpdsEntry): MappedBook | null {
 	const slug = extractSlug(text(entry.id));
 	const title = text(entry.title)?.trim();
 	if (!slug || !title) return null;
@@ -76,8 +79,9 @@ function mapEntry(entry: OpdsEntry): NewCatalogBook | null {
 	const subjects = asArray(entry.category)
 		.map((c) => c["@_label"] ?? c["@_term"])
 		.filter((s): s is string => Boolean(s));
+	const { ids, tags } = tagsFor(subjects);
 
-	return {
+	const row: NewCatalogBook = {
 		id: `se:${slug}`,
 		source: "standard_ebooks",
 		title,
@@ -88,7 +92,10 @@ function mapEntry(entry: OpdsEntry): NewCatalogBook | null {
 		description: text(entry.content) ?? null,
 		epubUrl: epub?.["@_href"] ? new URL(epub["@_href"], FEED_URL).toString() : null,
 		coverUrl: cover?.["@_href"] ? new URL(cover["@_href"], FEED_URL).toString() : null,
+		tags: ids,
+		authorKeys: authors.length > 0 ? authorKeys(authors) : null,
 	};
+	return { row, tags };
 }
 
 export async function syncStandardEbooks(): Promise<{ upserted: number; skipped: boolean }> {
@@ -124,11 +131,13 @@ export async function syncStandardEbooks(): Promise<{ upserted: number; skipped:
 	const entries = asArray(parsed.feed?.entry);
 	console.log(`[se] parsed ${entries.length} entries, mapping…`);
 
-	const rows = entries.map(mapEntry).filter((r): r is NewCatalogBook => r !== null);
+	const mapped = entries.map(mapEntry).filter((m): m is MappedBook => m !== null);
+	const rows = mapped.map((m) => m.row);
 	setSyncPhase("standard_ebooks", `upserting_${rows.length}`);
 	console.log(`[se] upserting ${rows.length} rows…`);
 
 	if (rows.length > 0) {
+		await upsertTagLabels(mapped.flatMap((m) => m.tags));
 		await db
 			.insert(catalogBooks)
 			.values(rows)
@@ -143,6 +152,8 @@ export async function syncStandardEbooks(): Promise<{ upserted: number; skipped:
 					description: sql`excluded.description`,
 					epubUrl: sql`excluded.epub_url`,
 					coverUrl: sql`excluded.cover_url`,
+					tags: sql`excluded.tags`,
+					authorKeys: sql`excluded.author_keys`,
 					syncedAt: sql`now()`,
 				},
 			});

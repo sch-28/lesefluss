@@ -29,6 +29,7 @@ import { Route as TabsReaderIdRouteImport } from './routes/tabs/reader.$id'
 import { Route as TabsLibraryStatsRouteImport } from './routes/tabs/library/stats'
 import { Route as TabsExploreWebNovelsRouteImport } from './routes/tabs/explore/web-novels'
 import { Route as TabsExploreWebNovelPreviewRouteImport } from './routes/tabs/explore/web-novel-preview'
+import { Route as TabsExploreTagsRouteImport } from './routes/tabs/explore/tags'
 import { Route as TabsSocialProfileUserIdRouteImport } from './routes/tabs/social/profile.$userId'
 import { Route as TabsSocialInviteTokenRouteImport } from './routes/tabs/social/invite.$token'
 import { Route as TabsSocialBuddyReadIdRouteImport } from './routes/tabs/social/buddy-read.$id'
@@ -138,6 +139,11 @@ const TabsExploreWebNovelPreviewRoute =
     path: '/tabs/explore/web-novel-preview',
     getParentRoute: () => rootRouteImport,
   } as any)
+const TabsExploreTagsRoute = TabsExploreTagsRouteImport.update({
+  id: '/tabs/explore/tags',
+  path: '/tabs/explore/tags',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TabsSocialProfileUserIdRoute = TabsSocialProfileUserIdRouteImport.update({
   id: '/tabs/social/profile/$userId',
   path: '/tabs/social/profile/$userId',
@@ -179,6 +185,7 @@ const TabsExploreBookCatalogIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
+  '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
@@ -208,6 +215,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
+  '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
@@ -238,6 +246,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
+  '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
@@ -269,6 +278,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/onboarding'
+    | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
     | '/tabs/library/stats'
@@ -298,6 +308,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/onboarding'
+    | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
     | '/tabs/library/stats'
@@ -327,6 +338,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/onboarding'
+    | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
     | '/tabs/library/stats'
@@ -357,6 +369,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   OnboardingRoute: typeof OnboardingRoute
+  TabsExploreTagsRoute: typeof TabsExploreTagsRoute
   TabsExploreWebNovelPreviewRoute: typeof TabsExploreWebNovelPreviewRoute
   TabsExploreWebNovelsRoute: typeof TabsExploreWebNovelsRoute
   TabsLibraryStatsRoute: typeof TabsLibraryStatsRoute
@@ -526,6 +539,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabsExploreWebNovelPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tabs/explore/tags': {
+      id: '/tabs/explore/tags'
+      path: '/tabs/explore/tags'
+      fullPath: '/tabs/explore/tags'
+      preLoaderRoute: typeof TabsExploreTagsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tabs/social/profile/$userId': {
       id: '/tabs/social/profile/$userId'
       path: '/tabs/social/profile/$userId'
@@ -581,6 +601,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   OnboardingRoute: OnboardingRoute,
+  TabsExploreTagsRoute: TabsExploreTagsRoute,
   TabsExploreWebNovelPreviewRoute: TabsExploreWebNovelPreviewRoute,
   TabsExploreWebNovelsRoute: TabsExploreWebNovelsRoute,
   TabsLibraryStatsRoute: TabsLibraryStatsRoute,

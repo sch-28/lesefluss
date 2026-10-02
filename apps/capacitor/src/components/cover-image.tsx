@@ -1,6 +1,7 @@
 import type React from "react";
 import { useState } from "react";
 import { proxyImageUrl } from "../services/catalog/client";
+import { useReconnectEpoch } from "../utils/reconnect";
 
 const preventDragStart = (e: React.DragEvent<HTMLImageElement>) => e.preventDefault();
 
@@ -27,6 +28,14 @@ type Props = {
  */
 const CoverImage: React.FC<Props> = ({ src, alt, fallback, className, priority, imgClassName }) => {
 	const [state, setState] = useState<"loading" | "loaded" | "error">("loading");
+	// A cover that failed while offline gets another try once the device is back
+	// online; the epoch also keys the <img> so the browser really refetches.
+	const reconnectEpoch = useReconnectEpoch();
+	const [failedAtEpoch, setFailedAtEpoch] = useState<number | null>(null);
+	if (state === "error" && failedAtEpoch !== null && failedAtEpoch !== reconnectEpoch) {
+		setFailedAtEpoch(null);
+		setState("loading");
+	}
 
 	// On web, the strict CSP allows `img-src` only for self / data: / blob: / catalog
 	// origin, so cross-origin upstream covers (e.g. royalroadcdn.com) need to be
@@ -47,6 +56,7 @@ const CoverImage: React.FC<Props> = ({ src, alt, fallback, className, priority, 
 			{/* Image itself — rendered at full opacity; shimmer fades out on top. */}
 			{showImage && (
 				<img
+					key={reconnectEpoch}
 					src={resolvedSrc ?? undefined}
 					alt={alt}
 					decoding="async"
@@ -57,7 +67,10 @@ const CoverImage: React.FC<Props> = ({ src, alt, fallback, className, priority, 
 						fetchpriority: "high" | "auto";
 					})}
 					onLoad={() => setState("loaded")}
-					onError={() => setState("error")}
+					onError={() => {
+						setFailedAtEpoch(reconnectEpoch);
+						setState("error");
+					}}
 					className={imgClassName ?? "block h-full w-full object-cover"}
 				/>
 			)}

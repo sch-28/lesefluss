@@ -13,13 +13,18 @@ import { adminRoute } from "./routes/admin.js";
 import { booksRoute } from "./routes/books.js";
 import { coversRoute } from "./routes/covers.js";
 import { dictionaryRoute } from "./routes/dictionary.js";
+import { genresRoute } from "./routes/genres.js";
 import { healthRoute } from "./routes/health.js";
 import { landingRoute } from "./routes/landing.js";
+import { languagesRoute } from "./routes/languages.js";
 import { proxyRoute } from "./routes/proxy.js";
 import { searchRoute } from "./routes/search.js";
 import { shelvesRoute } from "./routes/shelves.js";
 import { statsRoute } from "./routes/stats.js";
+import { tagsRoute } from "./routes/tags.js";
+import { backfillDerivedColumns, cleanStoredTitles } from "./sync/backfill.js";
 import { runSync } from "./sync/orchestrator.js";
+import { crawlConfig, runWordCountCrawler } from "./sync/word-count-crawler.js";
 
 async function main() {
 	await migrate();
@@ -100,6 +105,9 @@ async function main() {
 
 	app.use("*", rateLimit);
 	app.route("/search", searchRoute);
+	app.route("/tags", tagsRoute);
+	app.route("/genres", genresRoute);
+	app.route("/languages", languagesRoute);
 	app.route("/landing", landingRoute);
 	app.route("/shelves", shelvesRoute);
 	app.route("/stats", statsRoute);
@@ -120,6 +128,25 @@ async function main() {
 		void runSync("all");
 	} else {
 		console.log(`[catalog] DB has ${rows[0]?.count} books, skipping initial seed`);
+		cleanStoredTitles()
+			.then(() => backfillDerivedColumns())
+			.then(({ updated }) => {
+				if (updated > 0) console.log(`[catalog] backfilled tags for ${updated} book(s)`);
+			})
+			.catch((err) => {
+				console.error("[catalog] tag backfill failed:", err);
+				captureException(err, { tags: { kind: "backfill" } });
+			});
+	}
+
+	const crawl = crawlConfig(process.env);
+	if (crawl.enabled) {
+		const stopCrawler = new AbortController();
+		process.once("SIGTERM", () => stopCrawler.abort());
+		void runWordCountCrawler(crawl, stopCrawler.signal).catch((err) => {
+			console.error("[word-count] crawler stopped:", err);
+			captureException(err, { tags: { kind: "word-count" } });
+		});
 	}
 
 	// Weekly cron: Sunday 03:00

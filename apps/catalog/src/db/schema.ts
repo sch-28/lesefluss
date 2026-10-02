@@ -24,7 +24,21 @@ export const catalogBooks = pgTable(
 		gutenbergId: text("gutenberg_id"),
 		suppressed: boolean("suppressed").notNull().default(false),
 		downloadCount: integer("download_count"),
+		/** Normalized tag ids derived from `subjects` by lib/tags.ts. Raw subjects stay for display. */
+		tags: text("tags").array(),
+		bookshelves: text("bookshelves").array(),
+		authorBirthYear: integer("author_birth_year"),
+		authorDeathYear: integer("author_death_year"),
+		/** One lib/authors.ts key per author; backs the `author=` search filter. */
+		authorKeys: text("author_keys").array(),
+		/** Words per lib/word-count.ts. Null until counted; never treated as zero. */
+		wordCount: integer("word_count"),
+		/** The epub_url `wordCount` was taken from; a changed URL is counted again. */
+		wordCountEpubUrl: text("word_count_epub_url"),
+		wordCountFailedAt: timestamp("word_count_failed_at", { withTimezone: true }),
 		syncedAt: timestamp("synced_at", { withTimezone: true }).notNull().defaultNow(),
+		/** Set on first insert only; upserts never touch it. */
+		addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
 	},
 	(t) => [
 		index("catalog_books_suppressed").on(t.suppressed),
@@ -34,6 +48,12 @@ export const catalogBooks = pgTable(
 
 export type CatalogBook = typeof catalogBooks.$inferSelect;
 export type NewCatalogBook = typeof catalogBooks.$inferInsert;
+
+/** Display label per tag id. Labels are the normalizer's canonical form, written at sync. */
+export const catalogTags = pgTable("catalog_tags", {
+	id: text("id").primaryKey(),
+	label: text("label").notNull(),
+});
 
 /**
  * catalog_dict_entry — one row per dictionary sense, all languages in one table.

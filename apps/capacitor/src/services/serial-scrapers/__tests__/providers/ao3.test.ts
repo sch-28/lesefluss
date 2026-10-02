@@ -69,6 +69,7 @@ describe("ao3.fetchSeriesMetadata", () => {
 			sourceUrl: "https://archiveofourown.org/works/12345",
 			tocUrl: "https://archiveofourown.org/works/12345/navigate",
 			provider: "ao3",
+			details: {},
 		});
 	});
 
@@ -272,6 +273,9 @@ describe("ao3.search", () => {
 				chapterCount: 5,
 				sourceUrl: "https://archiveofourown.org/works/100",
 				provider: "ao3",
+				details: {
+					ao3: { rating: [], warnings: [], fandoms: ["Sherlock (TV)"], relationships: [] },
+				},
 			},
 			{
 				title: "Second Hit",

@@ -26,6 +26,11 @@ export function proxyImageUrl(url: string | null | undefined): string | null {
 
 export type CatalogSource = "gutenberg" | "standard_ebooks";
 
+export const CATALOG_SOURCE_LABELS: Record<CatalogSource, string> = {
+	standard_ebooks: "Standard Ebooks",
+	gutenberg: "Project Gutenberg",
+};
+
 export type CatalogSearchResult = {
 	id: string;
 	source: CatalogSource;
@@ -35,20 +40,42 @@ export type CatalogSearchResult = {
 	subjects: string[] | null;
 	summary: string | null;
 	coverUrl: string | null;
+	/** Absent on catalog builds that predate it; treat absent as "probably yes". */
+	hasEpub?: boolean;
+	/** Null or absent until the catalog has counted the book. */
+	wordCount?: number | null;
 };
 
-export type CatalogSearchOrder = "relevance" | "popular";
+export type CatalogSort = "relevance" | "popular" | "title" | "author" | "recent" | "length";
+
+export type CatalogTagCount = { id: string; label: string; count: number };
 
 export type CatalogSearchResponse = {
 	q: string;
 	lang: string;
+	/** The genre and tags the server applied; unknown ones are dropped. */
 	genre: string | null;
-	order: CatalogSearchOrder;
+	tags?: string[];
+	sort: CatalogSort;
 	page: number;
 	limit: number;
 	total: number;
 	results: CatalogSearchResult[];
+	facets?: { tags: CatalogTagCount[] };
+	/** Closest title or author, only when nothing matched. */
+	suggestion?: string | null;
 };
+
+export type CatalogGenre = { id: string; label: string; count: number };
+
+export type CatalogGenresResponse = { lang: string; genres: CatalogGenre[] };
+
+export type CatalogLanguagesResponse = {
+	total: number;
+	languages: { code: string; count: number }[];
+};
+
+export type CatalogTagsResponse = { lang: string; total: number; tags: CatalogTagCount[] };
 
 export type CatalogLandingGenre = {
 	id: string;
@@ -61,7 +88,11 @@ export type CatalogLandingResponse = {
 	featured_se: CatalogSearchResult[];
 	classics: CatalogSearchResult[];
 	most_read: CatalogSearchResult[];
+	/** Absent on catalog builds that predate it. */
+	recently_added?: CatalogSearchResult[];
 	genres: CatalogLandingGenre[];
+	/** Shelves the server could not load; each one renders its own error. */
+	failed?: string[];
 };
 
 export type CatalogRandomShelfResponse = {
@@ -82,11 +113,21 @@ export type CatalogBook = {
 	description: string | null;
 	epubUrl: string | null;
 	coverUrl: string | null;
+	/** Absent on catalog builds that predate tags. */
+	tags?: { id: string; label: string }[];
+	wordCount?: number | null;
+	authorBirthYear?: number | null;
+	authorDeathYear?: number | null;
 };
 
 function ensureEnabled(): string {
 	if (!CATALOG_URL) throw new Error("Catalog not configured (VITE_CATALOG_URL)");
 	return CATALOG_URL;
+}
+
+/** The catalog source a `{source}:{rest}` id belongs to. */
+export function catalogSource(catalogId: string): CatalogSource {
+	return catalogId.startsWith("se:") ? "standard_ebooks" : "gutenberg";
 }
 
 /**
@@ -105,7 +146,13 @@ export async function searchCatalog(params: {
 	q: string;
 	lang?: string;
 	genre?: string;
-	order?: CatalogSearchOrder;
+	tags?: readonly string[];
+	source?: CatalogSource;
+	author?: string;
+	sort?: CatalogSort;
+	minWords?: number;
+	maxWords?: number;
+	withTagFacets?: boolean;
 	page?: number;
 	limit?: number;
 	signal?: AbortSignal;
@@ -115,7 +162,13 @@ export async function searchCatalog(params: {
 	if (params.q) url.searchParams.set("q", params.q);
 	if (params.lang) url.searchParams.set("lang", params.lang);
 	if (params.genre) url.searchParams.set("genre", params.genre);
-	if (params.order) url.searchParams.set("order", params.order);
+	if (params.tags && params.tags.length > 0) url.searchParams.set("tag", params.tags.join(","));
+	if (params.source) url.searchParams.set("source", params.source);
+	if (params.author) url.searchParams.set("author", params.author);
+	if (params.sort) url.searchParams.set("sort", params.sort);
+	if (params.minWords !== undefined) url.searchParams.set("min_words", String(params.minWords));
+	if (params.maxWords !== undefined) url.searchParams.set("max_words", String(params.maxWords));
+	if (params.withTagFacets) url.searchParams.set("facets", "tags");
 	if (params.page) url.searchParams.set("page", String(params.page));
 	if (params.limit) url.searchParams.set("limit", String(params.limit));
 
@@ -133,6 +186,49 @@ export async function getLanding(
 	url.searchParams.set("lang", lang);
 	const res = await fetch(url.toString(), { signal });
 	if (!res.ok) throw new Error(`Landing fetch failed (${res.status})`);
+	return res.json();
+}
+
+export async function getGenres(
+	lang: string,
+	signal?: AbortSignal,
+): Promise<CatalogGenresResponse> {
+	const base = ensureEnabled();
+	const url = new URL("/genres", base);
+	url.searchParams.set("lang", lang);
+	const res = await fetch(url.toString(), { signal });
+	if (!res.ok) throw new Error(`Genres fetch failed (${res.status})`);
+	return res.json();
+}
+
+export async function getSimilarBooks(
+	catalogId: string,
+	signal?: AbortSignal,
+): Promise<{ results: CatalogSearchResult[] }> {
+	const base = ensureEnabled();
+	const res = await fetch(`${base}/books/similar/${encodeURIComponent(catalogId)}`, { signal });
+	if (!res.ok) throw new Error(`Similar books fetch failed (${res.status})`);
+	return res.json();
+}
+
+export async function getLanguages(signal?: AbortSignal): Promise<CatalogLanguagesResponse> {
+	const base = ensureEnabled();
+	const res = await fetch(new URL("/languages", base).toString(), { signal });
+	if (!res.ok) throw new Error(`Languages fetch failed (${res.status})`);
+	return res.json();
+}
+
+export async function getTags(
+	params: { lang: string; q?: string; limit?: number },
+	signal?: AbortSignal,
+): Promise<CatalogTagsResponse> {
+	const base = ensureEnabled();
+	const url = new URL("/tags", base);
+	url.searchParams.set("lang", params.lang);
+	if (params.q) url.searchParams.set("q", params.q);
+	if (params.limit) url.searchParams.set("limit", String(params.limit));
+	const res = await fetch(url.toString(), { signal });
+	if (!res.ok) throw new Error(`Tags fetch failed (${res.status})`);
 	return res.json();
 }
 

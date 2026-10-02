@@ -12,10 +12,12 @@ import { Progress } from "@lesefluss/ui/progress";
 import { cn } from "@lesefluss/ui/utils";
 import { BookOpen, ExternalLink, Loader2, type LucideIcon } from "lucide-react";
 import type React from "react";
+import { useState } from "react";
 import { PageHeader } from "../../components/app-shell/page-header";
 import CoverImage from "../../components/cover-image";
 import SanitizedDescription from "../../components/sanitized-description";
 import { CollapsibleProse } from "./collapsible-prose";
+import { ErrorState } from "./load-states";
 
 export interface DetailAction {
 	label: string;
@@ -38,6 +40,8 @@ export interface DetailShellProps {
 	eyebrow?: string | null;
 	title: string;
 	author?: string | null;
+	/** Makes the author a link, e.g. to more books by them. */
+	onAuthorTap?: () => void;
 
 	// Stats / subjects
 	statsLine?: React.ReactNode;
@@ -46,6 +50,11 @@ export interface DetailShellProps {
 	 *  hole on every book that carries no catalog metadata. */
 	facts?: readonly React.ReactNode[];
 	subjects?: readonly string[];
+	/** Tappable tags; shown instead of `subjects` when given. */
+	tagLinks?: {
+		tags: readonly { id: string; label: string }[];
+		onTap: (tagId: string) => void;
+	};
 
 	// Actions
 	primaryAction: DetailAction;
@@ -68,7 +77,13 @@ export interface DetailShellProps {
 	isLoading?: boolean;
 	/** Replace body with an error message. */
 	errorMessage?: string;
+	/** Replace body with a load-failure state (offline-aware). Wins over `errorMessage`. */
+	error?: unknown;
+	onRetry?: () => void;
+	errorSourceLink?: { href: string; label: string };
 }
+
+const COLLAPSED_TAG_COUNT = 8;
 
 export const DetailShell: React.FC<DetailShellProps> = ({
 	cover,
@@ -76,9 +91,11 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 	eyebrow,
 	title,
 	author,
+	onAuthorTap,
 	statsLine,
 	facts,
 	subjects,
+	tagLinks,
 	primaryAction,
 	secondaryActions,
 	description,
@@ -88,6 +105,9 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 	progress,
 	isLoading,
 	errorMessage,
+	error,
+	onRetry,
+	errorSourceLink,
 }) => {
 	return (
 		<>
@@ -136,6 +156,14 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 				<div className="flex min-h-[60vh] items-center justify-center">
 					<Loader2 className="size-6 animate-spin text-muted-foreground" />
 				</div>
+			) : error !== undefined ? (
+				<ErrorState
+					className="min-h-[60vh]"
+					error={error}
+					message={errorMessage}
+					onRetry={onRetry}
+					sourceLink={errorSourceLink}
+				/>
 			) : errorMessage ? (
 				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center">
 					<p className="m-0 text-muted-foreground">{errorMessage}</p>
@@ -164,7 +192,18 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 								</span>
 							)}
 							<h1 className="mt-1 font-semibold text-xl leading-tight">{title}</h1>
-							{author && <p className="mt-1 text-muted-foreground text-sm">{author}</p>}
+							{author &&
+								(onAuthorTap ? (
+									<button
+										type="button"
+										onClick={onAuthorTap}
+										className="mt-1 self-start border-0 bg-transparent p-0 text-left text-muted-foreground text-sm underline-offset-4 hover:text-foreground hover:underline"
+									>
+										{author}
+									</button>
+								) : (
+									<p className="mt-1 text-muted-foreground text-sm">{author}</p>
+								))}
 							{facts && facts.length > 0 && (
 								<div className="mt-2.5 flex flex-wrap items-center gap-1.5">
 									{facts.map((fact, i) => (
@@ -202,17 +241,22 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 						</div>
 					)}
 
-					{subjects && subjects.length > 0 && (
-						<div className="mt-4 flex flex-wrap gap-1.5">
-							{subjects.slice(0, 8).map((s) => (
-								<span
-									key={s}
-									className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-muted-foreground text-xs"
-								>
-									{s}
-								</span>
-							))}
-						</div>
+					{tagLinks && tagLinks.tags.length > 0 ? (
+						<TagList tags={tagLinks.tags} onTagTap={tagLinks.onTap} />
+					) : (
+						subjects &&
+						subjects.length > 0 && (
+							<div className="mt-4 flex flex-wrap gap-1.5">
+								{subjects.slice(0, COLLAPSED_TAG_COUNT).map((s) => (
+									<span
+										key={s}
+										className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-muted-foreground text-xs"
+									>
+										{s}
+									</span>
+								))}
+							</div>
+						)
 					)}
 
 					{(description?.html || description?.text) && (
@@ -237,6 +281,38 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 				</div>
 			)}
 		</>
+	);
+};
+
+const TagList: React.FC<{
+	tags: readonly { id: string; label: string }[];
+	onTagTap: (tagId: string) => void;
+}> = ({ tags, onTagTap }) => {
+	const [isExpanded, setExpanded] = useState(false);
+	const visible = isExpanded ? tags : tags.slice(0, COLLAPSED_TAG_COUNT);
+	const hiddenCount = tags.length - visible.length;
+	return (
+		<div className="mt-4 flex flex-wrap gap-1.5" data-testid="detail-tags">
+			{visible.map((t) => (
+				<button
+					type="button"
+					key={t.id}
+					onClick={() => onTagTap(t.id)}
+					className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-muted-foreground text-xs transition-colors hover:bg-accent hover:text-foreground"
+				>
+					{t.label}
+				</button>
+			))}
+			{hiddenCount > 0 && (
+				<button
+					type="button"
+					onClick={() => setExpanded(true)}
+					className="rounded-full border border-border border-dashed bg-transparent px-2.5 py-0.5 text-muted-foreground text-xs"
+				>
+					{hiddenCount} more
+				</button>
+			)}
+		</div>
 	);
 };
 

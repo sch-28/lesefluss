@@ -3,7 +3,14 @@ import { ao3Scraper } from "./providers/ao3";
 import { royalroadScraper } from "./providers/royalroad";
 import { scribblehubScraper } from "./providers/scribblehub";
 import { wuxiaworldScraper } from "./providers/wuxiaworld";
-import type { ProviderId, SearchResult, SerialScraper } from "./types";
+import type {
+	PopularWindow,
+	ProviderCapabilities,
+	ProviderId,
+	SearchOptions,
+	SearchResult,
+	SerialScraper,
+} from "./types";
 
 /**
  * First `canHandle()` match wins. Pasting a chapter URL imports the whole
@@ -22,6 +29,10 @@ export const scrapersById: Record<ProviderId, SerialScraper | undefined> = Objec
 
 export function detectScraper(url: string): SerialScraper | null {
 	return SCRAPERS.find((s) => s.canHandle(url)) ?? null;
+}
+
+export function providerCapabilities(id: ProviderId | undefined): ProviderCapabilities {
+	return (id && scrapersById[id]?.capabilities) || {};
 }
 
 export function isSerialUrl(url: string): boolean {
@@ -72,12 +83,13 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
  */
 export async function searchAll(
 	query: string,
-	opts: { provider?: ProviderId } = {},
+	opts: { provider?: ProviderId } & SearchOptions = {},
 ): Promise<SearchAllResult> {
 	const trimmed = query.trim();
 	if (!trimmed) return { results: [], failedProviders: [], challengeProviders: [] };
-	return fanOut((s) => (s.search ? s.search(trimmed) : null), {
-		provider: opts.provider,
+	const { provider, ...searchOpts } = opts;
+	return fanOut((s) => (s.search ? s.search(trimmed, searchOpts) : null), {
+		provider,
 		label: "search",
 	});
 }
@@ -88,8 +100,10 @@ export async function searchAll(
  * a single provider leaves that scraper's own ordering intact. Used by the
  * empty-state shelf on the web-novels page.
  */
-export async function popularAll(opts: { provider?: ProviderId } = {}): Promise<SearchAllResult> {
-	return fanOut((s) => (s.getPopular ? s.getPopular() : null), {
+export async function popularAll(
+	opts: { provider?: ProviderId; window?: PopularWindow } = {},
+): Promise<SearchAllResult> {
+	return fanOut((s) => (s.getPopular ? s.getPopular({ window: opts.window }) : null), {
 		provider: opts.provider,
 		label: "popular",
 		applyAllViewExclusion: !opts.provider,

@@ -2,8 +2,10 @@ import { fetchHtml } from "../fetch";
 import type {
 	ChapterFetchResult,
 	ChapterRef,
+	SearchOptions,
 	SearchResult,
 	SerialScraper,
+	SeriesDetails,
 	SeriesMetadata,
 } from "../types";
 import { absolutize, extractParagraphs, parseHtml, stripHidden, textOrNull } from "../utils/html";
@@ -39,13 +41,15 @@ const PATHS = {
 	 *
 	 * AO3's other useful sort columns: `revised_at` (date updated),
 	 * `created_at` (date posted), `hits`, `comments_count`, `bookmarks_count`,
-	 * `word_count`. The interface in `types.ts` doesn't carry sort opts yet —
-	 * extend `search?(query, opts?)` when the sort UI lands.
+	 * `word_count`. `SearchOptions` has no sort field; add one there when a
+	 * sort picker lands.
 	 */
-	search: (query: string) =>
+	search: (query: string, opts: SearchOptions = {}) =>
 		`${ORIGIN}/works/search?work_search%5Bquery%5D=${encodeURIComponent(query)}` +
 		"&work_search%5Bsort_column%5D=kudos_count" +
-		"&work_search%5Bsort_direction%5D=desc",
+		"&work_search%5Bsort_direction%5D=desc" +
+		(opts.status ? `&work_search%5Bcomplete%5D=${opts.status === "completed" ? "T" : "F"}` : "") +
+		(opts.page && opts.page > 1 ? `&page=${opts.page}` : ""),
 	/**
 	 * AO3 doesn't expose a dedicated "popular" listing, but its work-search
 	 * with an empty query and `sort_column=kudos_count` returns the highest-kudos
@@ -88,6 +92,7 @@ const SELECTORS = {
 	 * `1/1`). We parse the published count (numerator).
 	 */
 	searchResultChapters: "dl.stats dd.chapters",
+	searchResultFandoms: "h5.fandoms a.tag",
 } as const;
 
 /** Resolve a possibly-relative AO3 URL to an absolute one. */
@@ -169,6 +174,7 @@ export const ao3Scraper: SerialScraper = {
 			sourceUrl,
 			tocUrl,
 			provider: PROVIDER_ID,
+			details: parseWorkDetails(doc),
 		};
 	},
 
@@ -197,11 +203,13 @@ export const ao3Scraper: SerialScraper = {
 		return refs;
 	},
 
-	async search(query: string): Promise<SearchResult[]> {
+	capabilities: { searchPaging: true, statusFilter: true },
+
+	async search(query: string, opts?: SearchOptions): Promise<SearchResult[]> {
 		// Empty-query guarding is the public surface's job (registry.searchAll +
 		// useSearchSerials' `enabled` flag). Keep this method a pure extractor.
 		await throttle(PROVIDER_ID, THROTTLE_MS);
-		return parseWorksList(parseHtml(await fetchHtml(PATHS.search(query))));
+		return parseWorksList(parseHtml(await fetchHtml(PATHS.search(query, opts))));
 	},
 
 	async getPopular(): Promise<SearchResult[]> {
@@ -241,6 +249,10 @@ function parseWorksList(doc: Document): SearchResult[] {
 		const href = titleAnchor?.getAttribute("href");
 		const title = textOrNull(titleAnchor);
 		if (!href || !title) continue;
+		// Works have no covers; the fandom is what lets a card stand in for one.
+		const fandoms = [...li.querySelectorAll(SELECTORS.searchResultFandoms)]
+			.map((a) => a.textContent?.trim() ?? "")
+			.filter(Boolean);
 		results.push({
 			title,
 			author: textOrNull(li.querySelector(SELECTORS.searchResultAuthor)),
@@ -249,7 +261,56 @@ function parseWorksList(doc: Document): SearchResult[] {
 			chapterCount: parseChapterCount(li.querySelector(SELECTORS.searchResultChapters)),
 			sourceUrl: abs(href),
 			provider: PROVIDER_ID,
+			...(fandoms.length > 0
+				? { details: { ao3: { rating: [], warnings: [], fandoms, relationships: [] } } }
+				: {}),
 		});
 	}
 	return results;
+}
+
+function tagTexts(doc: Document, kind: string): string[] {
+	return [...doc.querySelectorAll(`dl.work.meta dd.${kind}.tags a.tag`)]
+		.map((a) => a.textContent?.trim() ?? "")
+		.filter(Boolean);
+}
+
+function statNumber(doc: Document, kind: string): number | undefined {
+	const text = doc.querySelector(`dl.stats dd.${kind}`)?.textContent ?? "";
+	const n = Number(text.replace(/[^\d]/g, ""));
+	return text && Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+/**
+ * Work metadata from the `dl.work.meta` block. A work is complete when its
+ * chapter count reads "n/n"; "n/?" or "n/m" with m > n is still in progress.
+ */
+export function parseWorkDetails(doc: Document): SeriesDetails {
+	if (!doc.querySelector("dl.work.meta")) return {};
+	const details: SeriesDetails = {
+		ao3: {
+			rating: tagTexts(doc, "rating"),
+			warnings: tagTexts(doc, "warning"),
+			fandoms: tagTexts(doc, "fandom"),
+			relationships: tagTexts(doc, "relationship"),
+		},
+	};
+	const tags = tagTexts(doc, "freeform");
+	if (tags.length > 0) details.tags = tags;
+
+	const chapters = doc.querySelector("dl.stats dd.chapters")?.textContent?.trim().split("/");
+	if (chapters?.length === 2) {
+		const [written, planned] = chapters;
+		details.status = written === planned ? "completed" : "ongoing";
+	}
+	const updated =
+		doc.querySelector("dl.stats dd.status")?.textContent?.trim() ??
+		doc.querySelector("dl.stats dd.published")?.textContent?.trim();
+	if (updated && /^\d{4}-\d{2}-\d{2}$/.test(updated)) details.lastUpdated = updated;
+
+	const words = statNumber(doc, "words");
+	if (words) details.wordCount = words;
+	const kudos = statNumber(doc, "kudos");
+	if (kudos) details.kudos = kudos;
+	return details;
 }

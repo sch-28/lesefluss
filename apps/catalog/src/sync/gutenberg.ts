@@ -1,149 +1,171 @@
-import { sql } from "drizzle-orm";
+import { createReadStream } from "node:fs";
+import { inArray, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { catalogBooks, type NewCatalogBook } from "../db/schema.js";
+import { catalogBooks } from "../db/schema.js";
+import { captureException } from "../lib/error-tracking.js";
+import { type MappedBook, upsertTagLabels } from "./enrich.js";
+import { downloadArchive, readRdfEntries } from "./gutenberg-archive.js";
+import { mapBook, SYNCED_COLUMNS, syncedFields } from "./gutenberg-map.js";
+import { parseGutenbergRdf } from "./gutenberg-rdf.js";
 import { addBooksUpserted, setSyncPhase } from "./orchestrator.js";
 
-const GUTENDEX_URL = "https://gutendex.com/books/";
-const PAGE_CONCURRENCY = 1;
-const PAGE_DELAY_MS = 1000;
-const MAX_RETRIES = 3;
-const BASE_BACKOFF_MS = 1000;
+const BATCH_SIZE = 500;
+/** The real archive holds ~78k ebooks; far fewer means a truncated or wrong file. */
+const MIN_ENTRIES = 50_000;
+/** A few broken RDFs are expected; more than this suggests the archive itself is bad. */
+const MAX_FAILURE_RATE = 0.01;
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+type BatchCounts = { added: number; changed: number; unchanged: number };
+export type SyncCounts = BatchCounts & { entries: number; skipped: number; failed: number };
 
-type GutendexAuthor = { name?: string; birth_year?: number | null; death_year?: number | null };
-type GutendexBook = {
-	id: number;
-	title?: string;
-	authors?: GutendexAuthor[];
-	subjects?: string[];
-	languages?: string[];
-	summaries?: string[];
-	formats?: Record<string, string>;
-	download_count?: number;
-};
-type GutendexPage = {
-	count: number;
-	next: string | null;
-	previous: string | null;
-	results: GutendexBook[];
-};
+const updateSet = Object.fromEntries(
+	SYNCED_COLUMNS.map((column) => {
+		const name = catalogBooks[column].name;
+		return [
+			column,
+			column === "summary"
+				? sql`COALESCE(excluded.summary, catalog_books.summary)`
+				: sql.raw(`excluded.${name}`),
+		];
+	}),
+);
 
-function mapBook(b: GutendexBook): NewCatalogBook | null {
-	const title = b.title?.trim();
-	if (!title) return null;
-	const formats = b.formats ?? {};
-	const epubKey = Object.keys(formats).find((k) => k.startsWith("application/epub+zip"));
-	const coverKey = Object.keys(formats).find((k) => k.startsWith("image/jpeg"));
-	const author =
-		b.authors && b.authors.length > 0
-			? b.authors
-					.map((a) => a.name?.trim())
-					.filter((n): n is string => Boolean(n))
-					.join(", ")
-			: null;
-	return {
-		id: `gutenberg:${b.id}`,
-		source: "gutenberg",
-		title,
-		author,
-		language: b.languages?.[0] ?? null,
-		subjects: b.subjects ?? null,
-		summary: b.summaries?.[0] ?? null,
-		description: null,
-		epubUrl: epubKey ? (formats[epubKey] ?? null) : null,
-		coverUrl: coverKey ? (formats[coverKey] ?? null) : null,
-		downloadCount: typeof b.download_count === "number" ? b.download_count : null,
-	};
+/**
+ * Upsert only the rows that differ from what is stored. A record without a
+ * summary keeps the stored one rather than clearing it. `suppressed` is set
+ * only on insert: a book without an EPUB can't be opened in the app, so it
+ * arrives hidden. It is never updated, since SE dedup and manual takedowns own
+ * it from then on.
+ */
+async function upsertChanged(mapped: MappedBook[]): Promise<BatchCounts> {
+	if (mapped.length === 0) return { added: 0, changed: 0, unchanged: 0 };
+	const existing = await db
+		.select()
+		.from(catalogBooks)
+		.where(
+			inArray(
+				catalogBooks.id,
+				mapped.map((m) => m.row.id),
+			),
+		);
+	const stored = new Map(existing.map((r) => [r.id, r]));
+
+	const toWrite: MappedBook[] = [];
+	let added = 0;
+	let changed = 0;
+	for (const m of mapped) {
+		const current = stored.get(m.row.id);
+		if (!current) {
+			added++;
+			toWrite.push({ ...m, row: { ...m.row, suppressed: m.row.epubUrl === null } });
+			continue;
+		}
+		const next = { ...m.row, summary: m.row.summary ?? current.summary };
+		if (syncedFields(next) === syncedFields(current)) continue;
+		changed++;
+		toWrite.push({ ...m, row: next });
+	}
+
+	if (toWrite.length > 0) {
+		await upsertTagLabels(toWrite.flatMap((m) => m.tags));
+		await db
+			.insert(catalogBooks)
+			.values(toWrite.map((m) => m.row))
+			.onConflictDoUpdate({
+				target: catalogBooks.id,
+				set: { ...updateSet, syncedAt: sql`now()` },
+			});
+	}
+	return { added, changed, unchanged: mapped.length - toWrite.length };
 }
 
 /**
- * Batch upsert a page's worth of books in one INSERT...VALUES...ON CONFLICT.
- * Preserves `suppressed` (owned by SE dedup) by omitting it from the update set.
+ * Sync from a stream of `pg<id>.rdf` documents. Only text ebooks are kept:
+ * audio books have no EPUB to read. An unreadable entry is counted and
+ * skipped so one bad file can't cost the week's sync; the run fails only
+ * when too many are bad or too few arrived to be the whole catalog.
  */
-async function upsertBatch(rows: NewCatalogBook[]) {
-	if (rows.length === 0) return;
-	await db
-		.insert(catalogBooks)
-		.values(rows)
-		.onConflictDoUpdate({
-			target: catalogBooks.id,
-			set: {
-				title: sql`excluded.title`,
-				author: sql`excluded.author`,
-				language: sql`excluded.language`,
-				subjects: sql`excluded.subjects`,
-				summary: sql`excluded.summary`,
-				epubUrl: sql`excluded.epub_url`,
-				coverUrl: sql`excluded.cover_url`,
-				downloadCount: sql`excluded.download_count`,
-				syncedAt: sql`now()`,
-			},
-		});
-}
+export async function syncGutenbergFromRdf(
+	rdfs: AsyncIterable<string>,
+	limits: { minEntries?: number; maxFailureRate?: number } = {},
+): Promise<SyncCounts> {
+	const { minEntries = 0, maxFailureRate = MAX_FAILURE_RATE } = limits;
+	const totals: SyncCounts = {
+		added: 0,
+		changed: 0,
+		unchanged: 0,
+		entries: 0,
+		skipped: 0,
+		failed: 0,
+	};
+	const failures: string[] = [];
+	let batch: MappedBook[] = [];
 
-async function fetchPage(page: number): Promise<GutendexPage> {
-	let lastErr: unknown;
-	for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+	const flush = async () => {
+		const counts = await upsertChanged(batch);
+		totals.added += counts.added;
+		totals.changed += counts.changed;
+		totals.unchanged += counts.unchanged;
+		addBooksUpserted(counts.added + counts.changed);
+		batch = [];
+		setSyncPhase("gutenberg", `parsed_${totals.entries}`);
+	};
+
+	for await (const xml of rdfs) {
+		totals.entries++;
+		let mapped: MappedBook | null;
 		try {
-			const res = await fetch(`${GUTENDEX_URL}?page=${page}`);
-			const retriable = res.status === 429 || res.status >= 500;
-			if (retriable) throw new Error(`HTTP ${res.status}`);
-			if (!res.ok) throw new Error(`Gutendex page ${page} → HTTP ${res.status}`);
-			return (await res.json()) as GutendexPage;
+			const record = parseGutenbergRdf(xml);
+			mapped = record && (!record.type || record.type === "Text") ? mapBook(record) : null;
 		} catch (err) {
-			lastErr = err;
-			if (attempt < MAX_RETRIES - 1) {
-				await sleep(BASE_BACKOFF_MS * 2 ** attempt);
-			}
+			totals.failed++;
+			if (failures.length < 5) failures.push(String(err));
+			continue;
 		}
+		if (!mapped) {
+			totals.skipped++;
+			continue;
+		}
+		batch.push(mapped);
+		if (batch.length >= BATCH_SIZE) await flush();
 	}
-	throw new Error(`Gutendex page ${page} failed after ${MAX_RETRIES} retries: ${lastErr}`);
+	await flush();
+
+	if (totals.failed > 0) {
+		console.warn(`[gutenberg] ${totals.failed} unreadable entries, e.g. ${failures.join(" | ")}`);
+	}
+	if (totals.failed > totals.entries * maxFailureRate) {
+		throw new Error(
+			`${totals.failed} of ${totals.entries} Gutenberg catalog entries were unreadable`,
+		);
+	}
+	if (totals.entries < minEntries) {
+		throw new Error(
+			`Gutenberg catalog had only ${totals.entries} entries, expected ${minEntries}+`,
+		);
+	}
+	if (totals.failed > 0) {
+		captureException(new Error("Gutenberg catalog entries unreadable"), {
+			tags: { kind: "sync", source: "gutenberg" },
+			extra: { failed: totals.failed, entries: totals.entries, examples: failures },
+		});
+	}
+	return totals;
 }
 
-async function processPage(page: number): Promise<number> {
-	const data = await fetchPage(page);
-	const rows = data.results.map(mapBook).filter((r): r is NewCatalogBook => r !== null);
-	await upsertBatch(rows);
-	return rows.length;
-}
-
-export async function syncGutenberg(): Promise<{ upserted: number }> {
-	console.log("[gutenberg] starting sync");
-	setSyncPhase("gutenberg", "fetching_page_1");
-	const first = await fetchPage(1);
-	const perPage = first.results.length || 32;
-	const totalPages = Math.ceil(first.count / perPage);
-	console.log(`[gutenberg] ${first.count} books across ${totalPages} pages`);
-
-	const firstPageRows = first.results.map(mapBook).filter((r): r is NewCatalogBook => r !== null);
-	await upsertBatch(firstPageRows);
-	addBooksUpserted(firstPageRows.length);
-	let upserted = firstPageRows.length;
-	setSyncPhase("gutenberg", `fetching_page_1_of_${totalPages}`);
-
-	const queue: number[] = [];
-	for (let p = 2; p <= totalPages; p++) queue.push(p);
-
-	let cursor = 0;
-	async function worker() {
-		while (cursor < queue.length) {
-			const page = queue[cursor++];
-			if (page === undefined) break;
-			try {
-				const n = await processPage(page);
-				upserted += n;
-				addBooksUpserted(n);
-				setSyncPhase("gutenberg", `fetching_page_${page}_of_${totalPages}`);
-				console.log(`[gutenberg] page ${page}/${totalPages} (+${n}, total ${upserted})`);
-			} catch (err) {
-				console.error(`[gutenberg] page ${page}/${totalPages} failed:`, err);
-			}
-			await sleep(PAGE_DELAY_MS);
-		}
+export async function syncGutenberg(): Promise<SyncCounts> {
+	console.log("[gutenberg] downloading offline catalog");
+	setSyncPhase("gutenberg", "downloading");
+	const { file, cleanup } = await downloadArchive();
+	try {
+		const counts = await syncGutenbergFromRdf(readRdfEntries(createReadStream(file)), {
+			minEntries: MIN_ENTRIES,
+		});
+		console.log(
+			`[gutenberg] done: ${counts.added} new, ${counts.changed} changed, ${counts.unchanged} unchanged, ${counts.skipped} skipped, ${counts.failed} unreadable`,
+		);
+		return counts;
+	} finally {
+		await cleanup();
 	}
-	await Promise.all(Array.from({ length: PAGE_CONCURRENCY }, worker));
-
-	console.log(`[gutenberg] done, upserted ${upserted}`);
-	return { upserted };
 }

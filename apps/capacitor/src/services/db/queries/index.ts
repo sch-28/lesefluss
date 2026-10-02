@@ -45,6 +45,7 @@ import {
 	getHighlightsByBook,
 	updateHighlight,
 } from "./highlights";
+import { getLibraryCatalogIds } from "./library-membership";
 import {
 	addReadingSession,
 	countReadingSessions,
@@ -188,4 +189,7 @@ export const queries = {
 	getSeriesEntryChapter,
 	getNextChapter,
 	getPreviousChapter,
+
+	// Library membership
+	getLibraryCatalogIds,
 };

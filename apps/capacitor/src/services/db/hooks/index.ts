@@ -62,6 +62,9 @@ export const queryHooks = {
 	useBookImages: bookHooks.useBookImages,
 	useBookImageData: bookHooks.useBookImageData,
 
+	/** catalogId → local book id for every catalog book in the library. */
+	useLibraryCatalogIds: bookHooks.useLibraryCatalogIds,
+
 	/** Mutation: import a book from the file picker. */
 	useImportBook: bookHooks.useImportBook,
 
@@ -128,6 +131,9 @@ export const queryHooks = {
 
 	/** Popular/trending shelf across providers — drives the empty-search state. */
 	usePopularSerials: serialHooks.usePopularSerials,
+
+	/** One provider's search page by page (providers that support paging). */
+	useSearchSerialPages: serialHooks.useSearchSerialPages,
 
 	/** All series visible in the library (excludes tombstones). */
 	useSeriesList: seriesHooks.useSeriesList,
