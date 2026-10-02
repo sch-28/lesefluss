@@ -24,7 +24,7 @@ export function buildChapterHeadingMap(
 	const map = new Map<number, string>();
 	if (chapters.length === 0 || paragraphs.length === 0) return map;
 	for (const ch of chapters) {
-		const idx = paragraphIndexForWord(paragraphStartWords as number[], ch.startWord);
+		const idx = paragraphIndexForWord(paragraphStartWords, ch.startWord);
 		if (paragraphStartWords[idx] === ch.startWord && getHeadingLevel(paragraphs[idx]) === 0) {
 			map.set(idx, ch.title);
 		}

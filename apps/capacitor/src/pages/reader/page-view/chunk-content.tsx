@@ -17,6 +17,8 @@ import Paragraph, {
 	type LinkRangeProp,
 	type ParagraphWordEntry,
 } from "../paragraph";
+import { renderFigures } from "../reader-figure";
+import type { ReaderFigureData } from "../reader-figures";
 import type { Chunk } from "./chunks";
 
 export interface ChunkContentProps {
@@ -27,6 +29,10 @@ export interface ChunkContentProps {
 	entriesByParagraph: ParagraphWordEntry[][];
 	/** Paragraph index → chapter title rendered as an inline header above it. */
 	chapterHeadingByParagraph?: Map<number, string>;
+	/** Paragraph index → body images rendered above it. */
+	figuresByParagraph?: Map<number, ReaderFigureData[]>;
+	/** Body images after the last word; rendered by the chunk holding the last paragraph. */
+	trailingFigures?: ReaderFigureData[];
 
 	// Position in the transform wrapper (relative to current chunk; 0 for current).
 	leftOffset: number;
@@ -77,6 +83,8 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	paragraphStartWords,
 	entriesByParagraph,
 	chapterHeadingByParagraph,
+	figuresByParagraph,
+	trailingFigures,
 	leftOffset,
 	pageWidth,
 	pageHeight,
@@ -113,6 +121,8 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 		void fontSize;
 		void fontFamily;
 		void lineSpacing;
+		void figuresByParagraph;
+		void trailingFigures;
 		if (!ref.current || pageWidth === 0 || pageHeight === 0) return;
 		let cancelled = false;
 		const apply = () => {
@@ -127,30 +137,43 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 		return () => {
 			cancelled = true;
 		};
-	}, [chunkIndex, pageWidth, pageHeight, fontSize, fontFamily, lineSpacing, onMeasure]);
+	}, [
+		chunkIndex,
+		pageWidth,
+		pageHeight,
+		fontSize,
+		fontFamily,
+		lineSpacing,
+		figuresByParagraph,
+		trailingFigures,
+		onMeasure,
+	]);
 
 	return (
 		<div
 			ref={ref}
 			lang={lang}
 			data-chunk-index={chunkIndex}
-			style={{
-				position: "absolute",
-				left: `${leftOffset}px`,
-				top: 0,
-				// EXPLICIT pixel dimensions — multicol's `column-fill: auto` only
-				// overflows into horizontally-stacked columns when the multicol
-				// container has a definite block size. Otherwise it falls back to
-				// "balance" and crams everything into a single tall column.
-				width: `${pageWidth}px`,
-				height: `${pageHeight}px`,
-				columnWidth: `${pageWidth}px`,
-				columnGap: 0,
-				columnFill: "auto",
-				hyphens: "auto",
-				fontSize: `${fontSize}px`,
-				fontFamily: fontFamily === "serif" ? "Georgia, 'Times New Roman', serif" : undefined,
-			}}
+			style={
+				{
+					position: "absolute",
+					left: `${leftOffset}px`,
+					top: 0,
+					"--reader-page-height": `${pageHeight}px`,
+					// EXPLICIT pixel dimensions — multicol's `column-fill: auto` only
+					// overflows into horizontally-stacked columns when the multicol
+					// container has a definite block size. Otherwise it falls back to
+					// "balance" and crams everything into a single tall column.
+					width: `${pageWidth}px`,
+					height: `${pageHeight}px`,
+					columnWidth: `${pageWidth}px`,
+					columnGap: 0,
+					columnFill: "auto",
+					hyphens: "auto",
+					fontSize: `${fontSize}px`,
+					fontFamily: fontFamily === "serif" ? "Georgia, 'Times New Roman', serif" : undefined,
+				} as React.CSSProperties
+			}
 		>
 			{paragraphs.slice(chunk.paragraphFrom, chunk.paragraphTo).map((text, i) => {
 				const paraGlobalIndex = chunk.paragraphFrom + i;
@@ -172,11 +195,13 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 						links={linksByParagraph?.get(paraGlobalIndex)}
 						discussion={discussionByParagraph?.get(paraGlobalIndex)}
 						chapterHeading={chapterHeadingByParagraph?.get(paraGlobalIndex)}
+						figures={figuresByParagraph?.get(paraGlobalIndex)}
 						selectionRange={selectionRange}
 						showActiveWordUnderline={showActiveWordUnderline}
 					/>
 				);
 			})}
+			{chunk.paragraphTo === paragraphs.length && renderFigures(trailingFigures)}
 		</div>
 	);
 };

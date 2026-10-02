@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { Directory, Filesystem } from "@capacitor/filesystem";
 
 /**
  * Upper bound on importable file size. `readData`-style whole-file base64
@@ -43,4 +44,14 @@ export function readWebFile(file: File): Promise<ArrayBuffer> {
 		reader.onerror = () => reject(new Error("FILE_READ_FAILED"));
 		reader.readAsArrayBuffer(file);
 	});
+}
+
+/**
+ * Read a book's original file (`books.filePath`, under `Directory.Data`).
+ * Not `Filesystem.readFile`: base64-marshalling a whole EPUB over the bridge
+ * allocates hundreds of MB natively and OOMs on a 5 MB file.
+ */
+export async function readOriginalFile(filePath: string): Promise<ArrayBuffer> {
+	const { uri } = await Filesystem.getUri({ path: filePath, directory: Directory.Data });
+	return readNativeFile(uri);
 }

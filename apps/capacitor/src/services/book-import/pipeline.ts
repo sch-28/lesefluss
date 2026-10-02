@@ -10,10 +10,12 @@ import type { ImportPipelineOptions, RawInput } from "@lesefluss/book-import";
 import { runImportPipeline } from "@lesefluss/book-import";
 import type { Book } from "../db/schema";
 import { commitBook } from "./commit";
+import { prepareImageOffThread } from "./image-prepare";
 import type { ImportExtras, StagedImport } from "./types";
 
 export const pipelineOptions: ImportPipelineOptions = {
 	loadPdfjs,
+	prepareImage: prepareImageOffThread,
 };
 
 export async function parse(
@@ -31,7 +33,7 @@ export async function parseAndCommit(
 	onProgress?: (pct: number) => void,
 ): Promise<Book> {
 	const staged = await parse(input, extras, onProgress);
-	return commitBook(staged.payload, staged.extras);
+	return commitBook(staged.payload, staged.extras, undefined, { awaitBackgroundWork: true });
 }
 
 /**

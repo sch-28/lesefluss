@@ -18,14 +18,17 @@ function useHighlights(bookId: string) {
 }
 
 // ─── Mutations ───────────────────────────────────────────────────────────────
+// Each onSuccess returns the invalidation promise: react-query then awaits the
+// refetch before a caller's own onSuccess runs, so a "saved" or "removed" toast
+// never shows while the paragraph still renders the old highlight.
 
 function useAddHighlight() {
 	const qc = useQueryClient();
 	return useMutation({
 		mutationFn: queries.addHighlight,
 		onSuccess: (_data, highlight) => {
-			qc.invalidateQueries({ queryKey: bookKeys.highlights(highlight.bookId) });
 			scheduleSyncPush();
+			return qc.invalidateQueries({ queryKey: bookKeys.highlights(highlight.bookId) });
 		},
 	});
 }
@@ -39,8 +42,8 @@ function useUpdateHighlight() {
 			data: Parameters<typeof queries.updateHighlight>[1];
 		}) => queries.updateHighlight(vars.id, vars.data),
 		onSuccess: (_data, { bookId }) => {
-			qc.invalidateQueries({ queryKey: bookKeys.highlights(bookId) });
 			scheduleSyncPush();
+			return qc.invalidateQueries({ queryKey: bookKeys.highlights(bookId) });
 		},
 	});
 }
@@ -50,8 +53,8 @@ function useDeleteHighlight() {
 	return useMutation({
 		mutationFn: ({ id }: { id: string; bookId: string }) => queries.deleteHighlight(id),
 		onSuccess: (_data, { bookId }) => {
-			qc.invalidateQueries({ queryKey: bookKeys.highlights(bookId) });
 			scheduleSyncPush();
+			return qc.invalidateQueries({ queryKey: bookKeys.highlights(bookId) });
 		},
 	});
 }

@@ -249,7 +249,10 @@ export function byteRangeToWordRange(
  * Index of the last paragraph whose start word is `<= word` (binary search over
  * ascending paragraph start-word offsets).
  */
-export function paragraphIndexForWord(paragraphStartWords: number[], word: number): number {
+export function paragraphIndexForWord(
+	paragraphStartWords: readonly number[],
+	word: number,
+): number {
 	let lo = 0;
 	let hi = paragraphStartWords.length - 1;
 	while (lo < hi) {

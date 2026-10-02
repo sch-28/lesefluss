@@ -6,7 +6,7 @@ import {
 	wordPos,
 } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
-import { check, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { check, integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // NOTE: id is a random 8-char hex string generated at import time.
 // It doubles as the book identity on the ESP32 (stored in book.hash after transfer).
@@ -214,7 +214,37 @@ export const bookContent = sqliteTable("book_content", {
 	 * supported; the reader still linkifies bare URLs at render time.
 	 */
 	linkRanges: text("link_ranges"),
+	/**
+	 * Body images captured at import, as JSON `[{word, key, alt}]`: `word` is
+	 * the position the image precedes (the word count for a trailing image),
+	 * `key` joins `book_images`. `[]` for an EPUB without images; NULL only
+	 * for books imported before images were captured (or non-EPUB formats),
+	 * which the reader upgrades once on open. Device-local, never synced.
+	 */
+	imageAnchors: text("image_anchors"),
 });
+
+/**
+ * Body image bytes, one row per distinct image file in a book. Separate from
+ * `book_content` so opening a book never drags megabytes of base64 along with
+ * the text. Device-local, never synced.
+ */
+export const bookImages = sqliteTable(
+	"book_images",
+	{
+		bookId: text("book_id").notNull(),
+		/** Resolved archive path of the image inside the EPUB. */
+		key: text("key").notNull(),
+		mime: text("mime").notNull(),
+		width: integer("width").notNull().default(0),
+		height: integer("height").notNull().default(0),
+		/** Near-monochrome drawing on a bright page; the reader may invert it on dark themes. */
+		isLineArt: integer("is_line_art", { mode: "boolean" }).notNull().default(false),
+		/** Base64 payload without the `data:` prefix. */
+		data: text("data").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.bookId, t.key] })],
+);
 
 /**
  * Highlights - per-book text annotations with optional notes.
@@ -257,6 +287,15 @@ export type Chapter = { title: string; startWord: number };
  * Word positions are inclusive of startWord through endWord.
  */
 export type LinkRange = { href: string; startWord: number; endWord: number };
+
+/**
+ * Body image position as stored in bookContent.imageAnchors JSON column.
+ * The image renders before `word`; `key` joins `bookImages`.
+ */
+export type ImageAnchor = { word: number; key: string; alt: string };
+
+export type BookImage = typeof bookImages.$inferSelect;
+export type NewBookImage = typeof bookImages.$inferInsert;
 
 export type Highlight = typeof highlights.$inferSelect;
 export type NewHighlight = typeof highlights.$inferInsert;

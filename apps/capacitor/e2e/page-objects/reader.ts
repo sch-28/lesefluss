@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { LONG_PRESS_MS } from "../../src/pages/reader/long-press";
 import { pendingPositionKey } from "../../src/pages/reader/pending-position";
 
 export type HighlightColor = "yellow" | "blue" | "orange" | "pink";
@@ -85,9 +86,49 @@ export const reader = {
 		page.locator("span[data-word]", { hasText: text }).first(),
 
 	wordPositionOf: async (page: Page, text: string): Promise<number> => {
-		const attr = await reader.wordSpan(page, text).getAttribute("data-word");
-		if (!attr) throw new Error(`No data-word attr on span with text "${text}"`);
+		return reader.wordPositionIn(reader.wordSpan(page, text));
+	},
+
+	/** Position of the word span `span` resolves to. */
+	wordPositionIn: async (span: Locator): Promise<number> => {
+		const attr = await span.getAttribute("data-word");
+		if (!attr) throw new Error("No data-word attr on the given span");
 		return Number.parseInt(attr, 10);
+	},
+
+	/** Position of the first word span inside `scope` (a paragraph, a figure's sibling). */
+	firstWordPositionIn: async (scope: Locator): Promise<number> =>
+		reader.wordPositionIn(scope.locator("span[data-word]").first()),
+
+	/**
+	 * The word the scroll reader treats as its position: the first span at or
+	 * below the scroll container's top edge, the same rule `handleScrollEnd`
+	 * applies on settle. Opening a book aligns the saved word here.
+	 */
+	scrollModeTopWord: async (page: Page): Promise<number> =>
+		page.evaluate(() => {
+			let container =
+				document.querySelector("span[data-word], .reader-figure, .reader-heading")?.parentElement ??
+				null;
+			while (container && container.scrollHeight <= container.clientHeight) {
+				container = container.parentElement;
+			}
+			const cutoff = container?.getBoundingClientRect().top ?? 0;
+			const below = [...document.querySelectorAll<HTMLElement>("span[data-word]")]
+				.map((s) => ({ top: s.getBoundingClientRect().top, word: Number(s.dataset.word) }))
+				.filter((s) => s.top >= cutoff)
+				.sort((a, b) => a.top - b.top);
+			return below[0]?.word ?? -1;
+		}),
+
+	/** Past the reader's post-open cooldown, during which scroll ends are ignored. */
+	OPEN_SETTLE_MS: 1500,
+
+	/** Wait out `JUMP_SETTLE_GUARD_MS` (reader/index.tsx) plus a render-flush margin,
+	 *  so any settle racing a jump has definitely tried to fire. */
+	waitPastJumpGuard: async (page: Page) => {
+		const JUMP_SETTLE_GUARD_MS = 1500;
+		await page.waitForTimeout(JUMP_SETTLE_GUARD_MS + 300);
 	},
 
 	tocJumpToChapter: async (page: Page, label: string) => {
@@ -107,6 +148,26 @@ export const reader = {
 			{ x: endBox.x + endBox.width, y: endBox.y + endBox.height / 2 },
 		);
 	},
+
+	/**
+	 * Touch long-press on `startText`, then drag the finger to `endText` and
+	 * lift. Real touch events through DevTools, so the reader's long-press
+	 * timer, touchmove scroll block and drag-over-figure handling all run.
+	 */
+	touchLongPressSelect: async (page: Page, startText: string, endText: string) => {
+		const start = await centreOf(reader.wordSpan(page, startText));
+		const end = await centreOf(reader.wordSpan(page, endText));
+		await touchLongPress(page, start, end);
+	},
+
+	/** Touch long-press at the centre of `target` without moving, then lift. */
+	touchLongPressOn: async (page: Page, target: Locator) => {
+		const point = await centreOf(target);
+		await touchLongPress(page, point, point);
+	},
+
+	/** The floating selection toolbar; absent when nothing is selected. */
+	selectionToolbar: (page: Page): Locator => page.getByRole("toolbar"),
 
 	/** Save the live selection, then pick `color` from the swatches that replace the actions. */
 	applyHighlight: async (page: Page, color: HighlightColor): Promise<number> => {
@@ -141,11 +202,10 @@ export const reader = {
 	},
 
 	expectNoHighlight: async (page: Page, wordPosition: number) => {
-		const cls =
-			(await page.locator(`span[data-word="${wordPosition}"]`).getAttribute("class")) ?? "";
-		if (cls.includes("word-highlight-")) {
-			throw new Error(`word ${wordPosition} still highlighted (class: ${cls})`);
-		}
+		const span = page.locator(`span[data-word="${wordPosition}"]`);
+		// A negated matcher passes on a missing element; require the span first.
+		await expect(span).toHaveCount(1, { timeout: 10_000 });
+		await expect(span).not.toHaveClass(/word-highlight-/, { timeout: 10_000 });
 	},
 
 	/**
@@ -454,12 +514,23 @@ export const reader = {
 	 * position save so the next keypress isn't swallowed by the in-flight page
 	 * transition.
 	 */
-	turnPages: async (page: Page, count: number) => {
-		// The window keydown handler ignores events whose target is interactive,
-		// and the appearance popover restores focus to its trigger button.
+	/** The window keydown handler ignores events whose target is interactive,
+	 *  and the appearance popover restores focus to its trigger button. */
+	blurFocusedControl: async (page: Page) => {
 		await page.evaluate(() => {
 			if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 		});
+	},
+
+	/** Pages the current chunk paginates into, from the multicol container's width. */
+	pageModePageCount: async (page: Page): Promise<number> =>
+		page.evaluate(() => {
+			const chunk = document.querySelector<HTMLElement>("[data-chunk-index]");
+			return chunk ? Math.ceil(chunk.scrollWidth / chunk.clientWidth) : 0;
+		}),
+
+	turnPages: async (page: Page, count: number) => {
+		await reader.blurFocusedControl(page);
 		for (let i = 0; i < count; i++) {
 			const savePending = reader.waitForNextSave(page);
 			await page.keyboard.press("ArrowRight");
@@ -467,3 +538,39 @@ export const reader = {
 		}
 	},
 };
+
+type Point = { x: number; y: number };
+
+async function centreOf(target: Locator): Promise<Point> {
+	const box = await target.boundingBox();
+	if (!box) throw new Error("Target has no bounding box");
+	return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+/** Margin past the reader's long-press timer before the finger starts moving. */
+const LONG_PRESS_MARGIN_MS = 150;
+const TOUCH_DRAG_STEPS = 6;
+const TOUCH_DRAG_STEP_MS = 40;
+
+async function touchLongPress(page: Page, from: Point, to: Point): Promise<void> {
+	const cdp = await page.context().newCDPSession(page);
+	try {
+		await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+		await cdp.send("Input.dispatchTouchEvent", {
+			type: "touchStart",
+			touchPoints: [{ x: from.x, y: from.y }],
+		});
+		await page.waitForTimeout(LONG_PRESS_MS + LONG_PRESS_MARGIN_MS);
+		for (let i = 1; i <= TOUCH_DRAG_STEPS; i++) {
+			const t = i / TOUCH_DRAG_STEPS;
+			await cdp.send("Input.dispatchTouchEvent", {
+				type: "touchMove",
+				touchPoints: [{ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t }],
+			});
+			await page.waitForTimeout(TOUCH_DRAG_STEP_MS);
+		}
+		await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+	} finally {
+		await cdp.detach().catch(() => {});
+	}
+}

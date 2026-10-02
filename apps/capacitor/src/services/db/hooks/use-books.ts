@@ -74,6 +74,31 @@ function useBookWordIndex(id: string) {
 	});
 }
 
+/** Body image metadata (key, size, line-art flag) for a book; bytes load per figure. */
+function useBookImages(id: string) {
+	return useQuery({
+		queryKey: bookKeys.images(id),
+		queryFn: () => queries.getBookImages(id),
+		enabled: !!id,
+		staleTime: Number.POSITIVE_INFINITY,
+	});
+}
+
+/** How long an unmounted figure's base64 stays cached: long enough to scroll
+ *  back, short enough that an illustrated book does not pin its whole image
+ *  budget in memory. */
+const IMAGE_DATA_GC_MS = 60_000;
+
+/** One body image as a data URL; null when the bytes are not stored on this device. */
+function useBookImageData(bookId: string, key: string) {
+	return useQuery({
+		queryKey: bookKeys.image(bookId, key),
+		queryFn: () => queries.getBookImageData(bookId, key),
+		staleTime: Number.POSITIVE_INFINITY,
+		gcTime: IMAGE_DATA_GC_MS,
+	});
+}
+
 // ─── Mutations ───────────────────────────────────────────────────────────────
 
 /**
@@ -229,6 +254,8 @@ export const bookHooks = {
 	useBooks,
 	useBook,
 	useBookContent,
+	useBookImages,
+	useBookImageData,
 	useBookWordIndex,
 	useImportBook,
 	useImportBookFromClipboard,

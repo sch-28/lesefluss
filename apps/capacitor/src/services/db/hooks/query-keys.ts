@@ -41,6 +41,13 @@ export const bookKeys = {
 
 	/** Deserialized WordIndex for a book (ADR-0002). Keyed separately from content. */
 	wordIndex: (id: string) => ["books", id, "word-index"] as const,
+
+	/** Body image metadata for a book (no bytes). */
+	images: (id: string) => ["books", id, "images"] as const,
+
+	/** One body image's data URL. A sibling of `images`, not a child: refreshing
+	 *  the metadata list must not refetch every mounted figure's payload. */
+	image: (id: string, key: string) => ["books", id, "image", key] as const,
 };
 
 export const glossaryKeys = {

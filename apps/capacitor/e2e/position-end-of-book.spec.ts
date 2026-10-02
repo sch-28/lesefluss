@@ -32,9 +32,8 @@ function oneParagraphFixture(): EpubFixture {
 	};
 }
 
-// Past the reader's post-open cooldown (scroll ends inside it are ignored by
-// design) and past the virtual list re-measuring rows after a long scroll.
-const SETTLE_MS = 1500;
+// Also past the virtual list re-measuring rows after a long scroll.
+const SETTLE_MS = reader.OPEN_SETTLE_MS;
 // Well past virtua's 150ms scroll-end debounce: long enough for any settle a
 // scroll would trigger to have run.
 const QUIET_MS = 1000;
@@ -56,7 +55,9 @@ async function seedAndOpen(page: Page, fixture: EpubFixture, fileName: string): 
 /** Move the reader's scroller by `dy` px without a user gesture, as a layout clamp does. */
 async function shiftScroller(page: Page, dy: number): Promise<void> {
 	await page.evaluate((delta) => {
-		let el = document.querySelector("span[data-word]")?.parentElement ?? null;
+		let el =
+			document.querySelector("span[data-word], .reader-figure, .reader-heading")?.parentElement ??
+			null;
 		while (el && el.scrollHeight <= el.clientHeight) el = el.parentElement;
 		if (!el) throw new Error("No scrollable reader container");
 		const before = el.scrollTop;
@@ -67,7 +68,9 @@ async function shiftScroller(page: Page, dy: number): Promise<void> {
 
 async function readerScrollerAtEnd(page: Page): Promise<boolean> {
 	return page.evaluate(() => {
-		let el = document.querySelector("span[data-word]")?.parentElement ?? null;
+		let el =
+			document.querySelector("span[data-word], .reader-figure, .reader-heading")?.parentElement ??
+			null;
 		while (el && el.scrollHeight <= el.clientHeight) el = el.parentElement;
 		return !!el && el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
 	});
@@ -75,7 +78,9 @@ async function readerScrollerAtEnd(page: Page): Promise<boolean> {
 
 async function wheel(page: Page, deltaY: number): Promise<void> {
 	const centre = await page.evaluate(() => {
-		let el = document.querySelector("span[data-word]")?.parentElement ?? null;
+		let el =
+			document.querySelector("span[data-word], .reader-figure, .reader-heading")?.parentElement ??
+			null;
 		while (el && el.scrollHeight <= el.clientHeight) el = el.parentElement;
 		if (!el) throw new Error("No scrollable reader container");
 		const r = el.getBoundingClientRect();
@@ -93,10 +98,23 @@ async function wheelAndSettle(page: Page, deltaY: number): Promise<number> {
 	return reader.lastSavedWord(page);
 }
 
+/** Scroll to the very end. The virtual list measures tall items (a trailing
+ *  figure) only once they mount, so the end can move after the first wheel. */
+async function wheelToEnd(page: Page): Promise<void> {
+	await expect
+		.poll(
+			async () => {
+				await wheel(page, 100_000);
+				return readerScrollerAtEnd(page);
+			},
+			{ timeout: 10_000 },
+		)
+		.toBe(true);
+}
+
 /** Scroll to the end and tap the last paragraph, saving a word that can't reach the viewport top. */
 async function saveAtLastParagraph(page: Page): Promise<number> {
-	await wheel(page, 100_000);
-	await expect.poll(() => readerScrollerAtEnd(page)).toBe(true);
+	await wheelToEnd(page);
 	await page.waitForTimeout(SETTLE_MS);
 	const word = await reader.wordPositionOf(page, LAST_PARAGRAPH_MARKER);
 	const tapSave = reader.waitForNextSave(page);
@@ -123,6 +141,28 @@ async function expectSavedAfterLeaving(page: Page, title: string, word: number):
 	await openSettled(page, title);
 	await expect(page.locator(`span[data-word="${word}"]`)).toBeInViewport();
 }
+
+test("a page-sized figure after the last paragraph does not move the saved position", async ({
+	page,
+}) => {
+	const title = await seedAndOpen(page, bigBookFixture({ trailingFigure: true }), "trail.epub");
+	await wheelToEnd(page);
+	await expect(page.locator('.reader-figure img[alt="Endpiece"]')).toBeInViewport();
+	// Back up just enough to tap the last paragraph without an auto-scroll.
+	await wheel(page, -400);
+	await page.waitForTimeout(SETTLE_MS);
+	const word = await reader.wordPositionOf(page, LAST_PARAGRAPH_MARKER);
+	const tapSave = reader.waitForNextSave(page);
+	await reader.wordSpan(page, LAST_PARAGRAPH_MARKER).click();
+	await tapSave;
+	expect(await reader.lastSavedWord(page)).toBe(word);
+
+	// With the figure filling the bottom of the view the saved word can sit
+	// above the cutoff: neither the settle nor the tick may replace it.
+	await wheelToEnd(page);
+	await page.waitForTimeout(QUIET_MS);
+	await expectSavedAfterLeaving(page, title, word);
+});
 
 test("a scroll that doesn't move the view near the end of the book keeps the saved position", async ({
 	page,

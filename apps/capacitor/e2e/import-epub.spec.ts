@@ -1,6 +1,7 @@
 import {
 	buildEpubBuffer,
 	strayAnchorFixture,
+	withoutImages,
 } from "@lesefluss/book-import/test-fixtures/build-epub";
 import { expect, test } from "@playwright/test";
 import { importEpubViaFilePicker, openBookFromLibrary, resetStorage } from "./helpers/seed";
@@ -12,7 +13,9 @@ test.beforeEach(async ({ page }) => {
 test("imports an EPUB with stray page anchors and renders full chapter content", async ({
 	page,
 }) => {
-	const fixture = strayAnchorFixture();
+	// The regression is about text; the images the shared fixture carries would
+	// only push chapter 2 out of the virtual list's mounted window.
+	const fixture = withoutImages(strayAnchorFixture());
 	const buffer = await buildEpubBuffer(fixture);
 	await importEpubViaFilePicker(page, {
 		buffer,

@@ -39,6 +39,7 @@ const content: BookContent = {
 	chapters: '[{"title":"a","startByte":0}]',
 	wordIndex: null,
 	linkRanges: '[{"href":"https://e.example","startWord":1,"endWord":2}]',
+	imageAnchors: '[{"word":0,"key":"/img/map.png","alt":""}]',
 };
 
 describe("bookToSync", () => {

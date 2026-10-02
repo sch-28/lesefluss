@@ -1,10 +1,23 @@
 import type { Book as EpubBook } from "epubjs";
 import ePub from "epubjs";
 import type { NavItem } from "epubjs/types/navigation";
-import type { BookPayload, Chapter, ImportLink, Parser } from "../types";
-import { type ContentLink, extractParagraphsWithLinks } from "../utils/dom-paragraphs";
+import type {
+	BookPayload,
+	Chapter,
+	ImportImage,
+	ImportImageAnchor,
+	ImportLink,
+	Parser,
+	PrepareImage,
+} from "../types";
+import {
+	type ContentImage,
+	type ContentLink,
+	extractParagraphsWithLinks,
+} from "../utils/dom-paragraphs";
 import { utf8ByteLength } from "../utils/encoding";
 import { titleFromFileName } from "../utils/file-format";
+import { MAX_DECODE_PIXELS, prepareImage, sniffImageDimensions } from "../utils/image-analysis";
 import { assertBytes } from "../utils/raw-input";
 import { canParseEpub } from "./matchers";
 
@@ -13,12 +26,23 @@ export const epubParser: Parser = {
 
 	canParse: canParseEpub,
 
-	async parse(input, onProgress): Promise<BookPayload> {
+	async parse(input, onProgress, options): Promise<BookPayload> {
 		assertBytes(input);
-		const { content, title, author, coverImage, chapters, linkRanges, language } = await parseEpub(
+		const {
+			content,
+			title,
+			author,
+			coverImage,
+			chapters,
+			linkRanges,
+			language,
+			images,
+			imageAnchors,
+		} = await parseEpub(
 			input.bytes,
 			input.fileName,
 			onProgress,
+			options?.prepareImage ?? prepareImage,
 		);
 
 		return {
@@ -29,6 +53,8 @@ export const epubParser: Parser = {
 			chapters,
 			linkRanges,
 			language,
+			images,
+			imageAnchors,
 			fileFormat: "epub",
 			original: { bytes: input.bytes, extension: "epub" },
 		};
@@ -58,6 +84,25 @@ function assertLooksLikeZip(buffer: ArrayBuffer): void {
 	}
 }
 
+/** A body image whose bytes were loaded, positioned within its section's text. */
+type SectionImage = { key: string; alt: string; charOffset: number };
+
+/** Images larger than this are left out: one such row would dominate the
+ *  book's storage and the SQLite bridge round-trip. */
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+/**
+ * Per-book ceilings. Every loaded image is held as a data URL until commit and
+ * then becomes a SQLite row, so a zip full of highly compressible 4 MB images
+ * must stop somewhere short of the WebView's heap. An illustrated novel has
+ * tens of images; a comic or art book hits these limits and keeps its first N.
+ */
+const MAX_IMAGES_PER_BOOK = 500;
+const MAX_IMAGE_BYTES_PER_BOOK = 64 * 1024 * 1024;
+/** Anchor rows become one JSON column and one `<figure>` each. */
+const MAX_IMAGE_ANCHORS_PER_BOOK = 2000;
+/** Sources the archive cannot serve: remote URLs and inline data. */
+const EXTERNAL_SRC_RE = /^(https?:|data:)/i;
+
 /** A `# `…`###### ` markdown-style heading prefix at the start of a block. */
 const HEADING_LINE_RE = /^#{1,6} /;
 
@@ -72,9 +117,10 @@ const HEADING_LINE_RE = /^#{1,6} /;
 function injectTocHeading(
 	text: string,
 	links: ContentLink[],
+	images: SectionImage[],
 	tocTitle: string | undefined,
-): { text: string; links: ContentLink[] } {
-	if (!tocTitle || HEADING_LINE_RE.test(text)) return { text, links };
+): { text: string; links: ContentLink[]; images: SectionImage[] } {
+	if (!tocTitle || HEADING_LINE_RE.test(text)) return { text, links, images };
 	const prefix = `# ${tocTitle}\n\n`;
 	return {
 		text: prefix + text,
@@ -83,6 +129,7 @@ function injectTocHeading(
 			startChar: l.startChar + prefix.length,
 			endChar: l.endChar + prefix.length,
 		})),
+		images: images.map((img) => ({ ...img, charOffset: img.charOffset + prefix.length })),
 	};
 }
 
@@ -153,7 +200,8 @@ export async function probeEpub(
 async function parseEpub(
 	buffer: ArrayBuffer,
 	filename: string,
-	onProgress?: (pct: number) => void,
+	onProgress: ((pct: number) => void) | undefined,
+	prepare: PrepareImage,
 ): Promise<{
 	content: string;
 	title: string;
@@ -162,6 +210,8 @@ async function parseEpub(
 	chapters: Chapter[];
 	linkRanges: ImportLink[] | null;
 	language: string | null;
+	images: ImportImage[] | null;
+	imageAnchors: ImportImageAnchor[] | null;
 }> {
 	const book = await openEpubBook(buffer);
 	const { title, author, language } = readEpubMetadata(book, filename);
@@ -204,7 +254,15 @@ async function parseEpub(
 	// that HTML5's adoption-agency algorithm reshuffles out of `<body>`'s direct
 	// children in strict parsers (Chromium WebView), silently dropping most
 	// paragraphs. Forcing xhtml mime sidesteps it.
-	const sections: { text: string; href: string; links: ContentLink[] }[] = [];
+	// Images are keyed by resolved archive path so a file reused across
+	// sections (chapter ornaments) is loaded and stored once. A section with
+	// images but no text (a map page) contributes no section; its images wait in
+	// `pendingImages` and anchor at the start of the next section with text, or
+	// at the very end of the book.
+	const sections: { text: string; href: string; links: ContentLink[]; images: SectionImage[] }[] =
+		[];
+	const imageStore = new ImageStore(book, prepare);
+	let pendingImages: SectionImage[] = [];
 	for (let i = 0; i < spineLength; i++) {
 		const section = book.spine.get(i);
 		try {
@@ -212,10 +270,19 @@ async function parseEpub(
 
 			const body = await loadSectionBody(book, section.url);
 			if (body) {
-				const { content: text, links } = extractParagraphsWithLinks(body);
+				const { content: text, links, images } = extractParagraphsWithLinks(body);
+				const sectionImages = await imageStore.resolveAll(section.url, images);
 				if (text.length > 0) {
-					const headed = injectTocHeading(text, links, tocMap.get(section.href));
-					sections.push({ text: headed.text, href: section.href, links: headed.links });
+					const headed = injectTocHeading(text, links, sectionImages, tocMap.get(section.href));
+					sections.push({
+						text: headed.text,
+						href: section.href,
+						links: headed.links,
+						images: [...pendingImages.map((img) => ({ ...img, charOffset: 0 })), ...headed.images],
+					});
+					pendingImages = [];
+				} else {
+					pendingImages.push(...sectionImages);
 				}
 			}
 			section.unload();
@@ -229,9 +296,10 @@ async function parseEpub(
 		onProgress?.(Math.round(((i + 1) / spineLength) * 100));
 	}
 
-	// Build chapters + link ranges with correct UTF-8 byte offsets in one pass
+	// Build chapters + link ranges + image anchors with correct UTF-8 byte offsets in one pass
 	const chapters: Chapter[] = [];
 	const linkRanges: ImportLink[] = [];
+	const imageAnchors: ImportImageAnchor[] = [];
 	let byteOffset = 0;
 	for (let i = 0; i < sections.length; i++) {
 		if (i > 0) byteOffset += 2; // \n\n separator (always 2 UTF-8 bytes)
@@ -249,11 +317,28 @@ async function parseEpub(
 				endByte: sectionStart + utf8ByteLength(sections[i].text.slice(0, link.endChar)),
 			});
 		}
+		for (const img of sections[i].images) {
+			imageAnchors.push({
+				key: img.key,
+				alt: img.alt,
+				startByte: sectionStart + utf8ByteLength(sections[i].text.slice(0, img.charOffset)),
+			});
+		}
 
 		byteOffset += utf8ByteLength(sections[i].text);
 	}
+	for (const img of pendingImages) {
+		imageAnchors.push({ key: img.key, alt: img.alt, startByte: byteOffset });
+	}
+	if (imageAnchors.length > MAX_IMAGE_ANCHORS_PER_BOOK) {
+		console.warn(
+			`[book-import/epub] ${imageAnchors.length} image anchors; keeping the first ${MAX_IMAGE_ANCHORS_PER_BOOK}`,
+		);
+		imageAnchors.length = MAX_IMAGE_ANCHORS_PER_BOOK;
+	}
 
 	const content = sections.map((s) => s.text).join("\n\n");
+	const images = imageStore.list();
 
 	book.destroy();
 
@@ -265,7 +350,153 @@ async function parseEpub(
 		chapters,
 		linkRanges: linkRanges.length > 0 ? linkRanges : null,
 		language,
+		images: images.length > 0 ? images : null,
+		imageAnchors: imageAnchors.length > 0 ? imageAnchors : null,
 	};
+}
+
+/**
+ * Load specific body images from an EPUB by archive path, as stored in
+ * `ImportImageAnchor.key`. For repairing a book whose image rows were lost
+ * after import (the app was killed mid-write): the text is not re-parsed, only
+ * the named zip entries are read, prepared and returned. Keys that cannot be
+ * loaded are left out, like at import.
+ */
+export async function loadEpubImages(
+	buffer: ArrayBuffer,
+	keys: readonly string[],
+	prepare: PrepareImage = prepareImage,
+): Promise<ImportImage[]> {
+	const book = await openEpubBook(buffer);
+	try {
+		const store = new ImageStore(book, prepare);
+		for (const key of keys) await store.load(key);
+		return store.list();
+	} finally {
+		book.destroy();
+	}
+}
+
+/**
+ * Loads each distinct body image from the archive once. Failures are
+ * remembered too, so a broken reference met in forty chapters is tried once.
+ * Past the per-book budget every further image resolves to null, like a
+ * missing file, so the import still completes.
+ */
+class ImageStore {
+	private readonly loaded = new Map<string, ImportImage | null>();
+	private count = 0;
+	private bytes = 0;
+	private hasWarnedBudget = false;
+
+	constructor(
+		private readonly book: EpubBook,
+		private readonly prepare: PrepareImage,
+	) {}
+
+	async resolveAll(sectionUrl: string, images: ContentImage[]): Promise<SectionImage[]> {
+		const out: SectionImage[] = [];
+		for (const img of images) {
+			if (EXTERNAL_SRC_RE.test(img.src)) continue;
+			const key = resolveArchivePath(sectionUrl, img.src);
+			const stored = await this.load(key);
+			if (stored) out.push({ key, alt: img.alt, charOffset: img.charOffset });
+		}
+		return out;
+	}
+
+	list(): ImportImage[] {
+		return [...this.loaded.values()].filter((img): img is ImportImage => img !== null);
+	}
+
+	async load(key: string): Promise<ImportImage | null> {
+		const cached = this.loaded.get(key);
+		if (cached !== undefined) return cached;
+		const image = await this.loadUncached(key);
+		this.loaded.set(key, image);
+		return image;
+	}
+
+	private isOverBudget(nextBytes: number): boolean {
+		const over =
+			this.count >= MAX_IMAGES_PER_BOOK || this.bytes + nextBytes > MAX_IMAGE_BYTES_PER_BOOK;
+		if (over && !this.hasWarnedBudget) {
+			this.hasWarnedBudget = true;
+			console.warn("[book-import/epub] image budget reached; further images are skipped");
+		}
+		return over;
+	}
+
+	private async loadUncached(key: string): Promise<ImportImage | null> {
+		if (this.isOverBudget(0)) return null;
+		const declaredSize = zipEntryUncompressedSize(this.book, key);
+		if (declaredSize !== null && declaredSize > MAX_IMAGE_BYTES) {
+			console.warn(`[book-import/epub] image ${key} inflates to ${declaredSize} bytes; skipping`);
+			return null;
+		}
+		let blob: Blob | null = null;
+		try {
+			blob = await this.book.archive.getBlob(key);
+		} catch {
+			blob = null;
+		}
+		if (!blob || blob.size === 0) {
+			console.warn(`[book-import/epub] image ${key} not found in archive; skipping`);
+			return null;
+		}
+		if (blob.size > MAX_IMAGE_BYTES) {
+			console.warn(`[book-import/epub] image ${key} is ${blob.size} bytes; skipping`);
+			return null;
+		}
+		const bytes = new Uint8Array(await blob.arrayBuffer());
+		const size = sniffImageDimensions(bytes);
+		// Over the decode cap nothing downscales it, and the reader's <img> would
+		// then decode the full bitmap on every open.
+		if (size && size.width * size.height > MAX_DECODE_PIXELS) {
+			console.warn(`[book-import/epub] image ${key} is ${size.width}x${size.height}; skipping`);
+			return null;
+		}
+		const prepared = await this.prepare(blob, size);
+		if (this.isOverBudget(prepared.blob.size)) return null;
+		const dataUrl = await blobToDataUrl(prepared.blob);
+		if (!dataUrl) {
+			console.warn(`[book-import/epub] image ${key} is not an image; skipping`);
+			return null;
+		}
+		this.count++;
+		this.bytes += prepared.blob.size;
+		return {
+			key,
+			mime: dataUrl.slice("data:".length, dataUrl.indexOf(";")),
+			dataUrl,
+			width: prepared.width,
+			height: prepared.height,
+			isLineArt: prepared.isLineArt,
+		};
+	}
+}
+
+/**
+ * Uncompressed size a zip entry declares, before inflating it. The byte cap
+ * is checked on the inflated blob, so without this a 4 MB entry that inflates
+ * to gigabytes would be inflated first. Reads JSZip's entry record through
+ * epubjs; null when the shape is not there.
+ */
+function zipEntryUncompressedSize(book: EpubBook, key: string): number | null {
+	const zip = (book.archive as { zip?: { file?: (name: string) => unknown } }).zip;
+	const entry = zip?.file?.(key.replace(/^\//, "")) as
+		| { _data?: { uncompressedSize?: unknown } }
+		| null
+		| undefined;
+	const size = entry?._data?.uncompressedSize;
+	return typeof size === "number" ? size : null;
+}
+
+/** Archive path of an image `src` written in `sectionUrl`. A root-absolute
+ *  src (`/OEBPS/img/x.png`) names the zip root, not the section's folder. */
+function resolveArchivePath(sectionUrl: string, src: string): string {
+	const clean = src.split(/[#?]/)[0];
+	return clean.startsWith("/") ? clean : resolveRelative(sectionUrl, clean);
 }
 
 async function loadSectionBody(book: EpubBook, url: string): Promise<Element | null> {

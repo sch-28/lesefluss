@@ -300,6 +300,53 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	break-inside: avoid;
 }
 
+/* Body images from the EPUB, rendered above the paragraph they precede. The
+ * img's width/height attributes give the browser the aspect ratio before the
+ * bytes load, so the box below has its final size from the first layout and
+ * neither virtua nor the page-mode column flow shifts afterwards. In page mode
+ * the chunk sets --reader-page-height; a figure is capped under it and never
+ * split across columns. */
+.reader-figure {
+	--reader-figure-max-height: calc(var(--reader-page-height, 100vh) - 3em);
+	margin: 1.2em auto;
+	max-width: 100%;
+	max-height: var(--reader-figure-max-height);
+	break-inside: avoid;
+	text-align: center;
+	/* The blend modes below need the page colour directly under the image.
+	 * Virtualised list items are isolated stacking contexts, so the real page
+	 * background is not part of the img's backdrop; the figure's own is. */
+	background: var(--reader-bg);
+}
+
+.reader-figure img {
+	display: block;
+	margin: 0 auto;
+	max-width: 100%;
+	max-height: var(--reader-figure-max-height);
+	object-fit: contain;
+}
+
+/* The figure carries its aspect-ratio inline and is the box; the img fills it. */
+.reader-figure img {
+	width: 100%;
+	height: 100%;
+}
+
+/* A white image background is invisible on the light page. On sepia, multiply
+ * lets the page colour show through white pixels; drawings and photos both
+ * survive it. On dark, only line art is inverted: white becomes black, which
+ * screen then dissolves into the page, leaving light strokes. A photo would
+ * come out as a negative, so it keeps its white box instead. */
+.reader-theme-sepia .reader-figure img {
+	mix-blend-mode: multiply;
+}
+
+.reader-theme-dark .reader-figure--line-art img {
+	filter: invert(1);
+	mix-blend-mode: screen;
+}
+
 /* While a jump lands (see ScrollView.jumpTo) the text is hidden behind a
  * skeleton: any visible text would show VList's height correction as a second
  * shift. The content's own transition fades it back in. Important: the content

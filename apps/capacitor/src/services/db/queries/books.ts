@@ -1,4 +1,9 @@
-import type { Chapter as ImportChapter, ImportLink } from "@lesefluss/book-import";
+import type {
+	Chapter as ImportChapter,
+	ImportImage,
+	ImportImageAnchor,
+	ImportLink,
+} from "@lesefluss/book-import";
 import {
 	byteRangeToWordRange,
 	FINISHED_PERCENT_THRESHOLD,
@@ -13,13 +18,17 @@ import { appendLongText, LONG_TEXT_CHUNK, type LongTextExecutor, readLongText } 
 import {
 	type Book,
 	type BookContent,
+	type BookImage,
 	bookContent,
+	bookImages,
 	books,
 	type Chapter,
 	glossaryEntries,
 	highlights,
+	type ImageAnchor,
 	type LinkRange,
 	type NewBook,
+	type NewBookImage,
 	readingSessions,
 } from "../schema";
 
@@ -127,6 +136,7 @@ export async function getBookContent(id: string): Promise<BookContent | undefine
 			coverImage: bookContent.coverImage,
 			chapters: bookContent.chapters,
 			linkRanges: bookContent.linkRanges,
+			imageAnchors: bookContent.imageAnchors,
 		})
 		.from(bookContent)
 		.where(eq(bookContent.bookId, id));
@@ -182,36 +192,59 @@ export async function loadBookWordIndex(id: string): Promise<WordIndex | null> {
 	return WordIndex.build(content);
 }
 
-/**
- * Parse the chapters JSON column into typed Chapter[].
- * Returns empty array if null or invalid.
- */
-export function parseChapters(raw: string | null): Chapter[] {
+/** A JSON-array column, or an empty array when null or unparseable. */
+function parseJsonColumn<T>(raw: string | null): T[] {
 	if (!raw) return [];
 	try {
-		return JSON.parse(raw) as Chapter[];
+		return JSON.parse(raw) as T[];
 	} catch {
 		return [];
 	}
 }
 
-/**
- * Parse the linkRanges JSON column into typed LinkRange[].
- * Returns empty array if null or invalid.
- */
+export function parseChapters(raw: string | null): Chapter[] {
+	return parseJsonColumn(raw);
+}
+
 export function parseLinkRanges(raw: string | null): LinkRange[] {
-	if (!raw) return [];
-	try {
-		return JSON.parse(raw) as LinkRange[];
-	} catch {
-		return [];
-	}
+	return parseJsonColumn(raw);
+}
+
+export function parseImageAnchors(raw: string | null): ImageAnchor[] {
+	return parseJsonColumn(raw);
+}
+
+/** Every body image of a book, metadata only: the base64 column is left out so
+ *  the reader can size and place figures without loading megabytes up front. */
+export async function getBookImages(bookId: string): Promise<Omit<BookImage, "data">[]> {
+	return db
+		.select({
+			bookId: bookImages.bookId,
+			key: bookImages.key,
+			mime: bookImages.mime,
+			width: bookImages.width,
+			height: bookImages.height,
+			isLineArt: bookImages.isLineArt,
+		})
+		.from(bookImages)
+		.where(eq(bookImages.bookId, bookId));
+}
+
+/** One image's payload as a data URL, or null when it isn't stored on this device. */
+export async function getBookImageData(bookId: string, key: string): Promise<string | null> {
+	const rows = await db
+		.select({ mime: bookImages.mime, data: bookImages.data })
+		.from(bookImages)
+		.where(and(eq(bookImages.bookId, bookId), eq(bookImages.key, key)));
+	const row = rows[0];
+	return row ? `data:${row.mime};base64,${row.data}` : null;
 }
 
 type BookContentColumns = {
 	coverImage: string | null;
 	chapters: string | null;
 	linkRanges: string | null;
+	imageAnchors: string | null;
 	/** Serialized WordIndex, or null for oversized books (rebuilt on open). */
 	wordIndexJson: string | null;
 };
@@ -231,7 +264,7 @@ async function commitBookContent(
 	content: string,
 	cols: BookContentColumns,
 ): Promise<void> {
-	const { coverImage, chapters, linkRanges, wordIndexJson } = cols;
+	const { coverImage, chapters, linkRanges, imageAnchors, wordIndexJson } = cols;
 	const fitsOneChunk =
 		content.length <= LONG_TEXT_CHUNK && (wordIndexJson?.length ?? 0) <= LONG_TEXT_CHUNK;
 
@@ -245,34 +278,36 @@ async function commitBookContent(
 				chapters,
 				wordIndex: wordIndexJson,
 				linkRanges,
+				imageAnchors,
 			});
-			return;
-		}
-		await db.insert(bookContent).values({
-			bookId: book.id,
-			content: "",
-			coverImage,
-			chapters,
-			wordIndex: wordIndexJson === null ? null : "",
-			linkRanges,
-		});
-		await appendLongText(
-			longText,
-			bookContent,
-			bookContent.content,
-			bookContent.bookId,
-			book.id,
-			content,
-		);
-		if (wordIndexJson !== null) {
+		} else {
+			await db.insert(bookContent).values({
+				bookId: book.id,
+				content: "",
+				coverImage,
+				chapters,
+				wordIndex: wordIndexJson === null ? null : "",
+				linkRanges,
+				imageAnchors,
+			});
 			await appendLongText(
 				longText,
 				bookContent,
-				bookContent.wordIndex,
+				bookContent.content,
 				bookContent.bookId,
 				book.id,
-				wordIndexJson,
+				content,
 			);
+			if (wordIndexJson !== null) {
+				await appendLongText(
+					longText,
+					bookContent,
+					bookContent.wordIndex,
+					bookContent.bookId,
+					book.id,
+					wordIndexJson,
+				);
+			}
 		}
 	} catch (err) {
 		await db
@@ -285,6 +320,86 @@ async function commitBookContent(
 			.catch(() => {});
 		throw err;
 	}
+}
+
+/**
+ * Write a book's image anchors after the fact (an EPUB imported before images
+ * were captured). Only `book_content` changes: the text, word index and every
+ * position stay as they are, and `books.updated_at` does not move, so sync
+ * sees nothing. An empty list is written as `[]`, which marks the book as
+ * checked so it is not re-parsed on every open.
+ */
+export async function setBookImageAnchors(
+	bookId: string,
+	anchors: readonly ImportImageAnchor[],
+	wi: WordIndex,
+): Promise<string> {
+	const json = JSON.stringify(toDbAnchors(wi, anchors));
+	await db.update(bookContent).set({ imageAnchors: json }).where(eq(bookContent.bookId, bookId));
+	return json;
+}
+
+function toDbAnchors(wi: WordIndex, anchors: readonly ImportImageAnchor[]): ImageAnchor[] {
+	return anchors.map((a) => ({
+		word: firstWordAtOrAfter(wi, a.startByte),
+		key: a.key,
+		alt: a.alt,
+	}));
+}
+
+function yieldToEventLoop(): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * Write a book's image rows after the book itself is committed. One statement
+ * per image: a row can be a megabyte of base64, and the bridge serialises each
+ * call's params as a whole (see long-text.ts). The yield keeps the UI painting
+ * between statements. The book is re-checked before every row so a delete
+ * that races the write stops it, leaving at most one orphan row. Returns how
+ * many rows were written; `onWritten` fires after each so the reader can
+ * refresh while a long book is still landing.
+ */
+export async function addBookImages(
+	bookId: string,
+	images: readonly ImportImage[],
+	onWritten?: (count: number) => void | Promise<void>,
+): Promise<number> {
+	let written = 0;
+	for (const row of toImageRows(bookId, images)) {
+		await yieldToEventLoop();
+		const book = await getBook(bookId);
+		if (!book || book.deleted) break;
+		// The import's background write and a repair can race on the same key.
+		await db.insert(bookImages).values(row).onConflictDoNothing();
+		written++;
+		await onWritten?.(written);
+	}
+	return written;
+}
+
+/**
+ * The word an image precedes. `wordOf` floors to the word containing the byte;
+ * an anchor on a `# ` heading marker or in the `\n\n` gap after a section would
+ * then land on the previous word, so step forward unless the byte is a word
+ * start. Past the last word, the anchor is the word count (a trailing image).
+ */
+function firstWordAtOrAfter(wi: WordIndex, byte: number): number {
+	if (wi.wordCount === 0) return 0;
+	const w = wi.wordOf(byte);
+	return wi.byteOf(w) >= byte ? w : Math.min(w + 1, wi.wordCount);
+}
+
+function toImageRows(bookId: string, images: readonly ImportImage[]): NewBookImage[] {
+	return images.map((img) => ({
+		bookId,
+		key: img.key,
+		mime: img.mime,
+		width: img.width,
+		height: img.height,
+		isLineArt: img.isLineArt,
+		data: img.dataUrl.slice(img.dataUrl.indexOf(",") + 1),
+	}));
 }
 
 /** Serialize the WordIndex unless the book is too large to sync. Oversized books
@@ -302,6 +417,9 @@ export async function addBookWithContent(
 	coverImage?: string | null,
 	importChapters?: ImportChapter[] | null,
 	importLinks?: ImportLink[] | null,
+	/** Positions of body images; the rows themselves follow via `addBookImages`.
+	 *  Null only when the format carries no images at all. */
+	importImageAnchors?: ImportImageAnchor[] | null,
 ): Promise<string> {
 	// Build WordIndex once at import so chapter + link byte offsets convert to
 	// word offsets in the same pass + the serialized blob lands in book_content
@@ -315,11 +433,17 @@ export async function addBookWithContent(
 		href: l.href,
 		...byteRangeToWordRange(wi, l.startByte, l.endByte),
 	}));
+	// Null means "imported before images were captured" and triggers a one-time
+	// upgrade on open; an EPUB without images must therefore store `[]`.
+	const imageAnchorsJson = importImageAnchors
+		? JSON.stringify(toDbAnchors(wi, importImageAnchors))
+		: null;
 
 	await commitBookContent({ ...book, wordCount: wi.wordCount }, content, {
 		coverImage: coverImage ?? null,
 		chapters: dbChapters.length ? JSON.stringify(dbChapters) : null,
 		linkRanges: dbLinks.length ? JSON.stringify(dbLinks) : null,
+		imageAnchors: imageAnchorsJson,
 		wordIndexJson: wordIndexJsonFor(book, wi),
 	});
 
@@ -344,6 +468,7 @@ export async function addServerBookWithContent(
 		coverImage: coverImage ?? null,
 		chapters: chaptersJson ?? null,
 		linkRanges: linkRangesJson ?? null,
+		imageAnchors: null,
 		wordIndexJson: wordIndexJsonFor(book, wi),
 	});
 	return book.id;
@@ -516,6 +641,7 @@ export async function deleteBook(id: string): Promise<void> {
 	await db.delete(glossaryEntries).where(eq(glossaryEntries.bookId, id));
 	await db.delete(highlights).where(eq(highlights.bookId, id));
 	await db.delete(bookContent).where(eq(bookContent.bookId, id));
+	await db.delete(bookImages).where(eq(bookImages.bookId, id));
 }
 
 /**
@@ -527,5 +653,6 @@ export async function hardDeleteBook(id: string): Promise<void> {
 	await db.delete(glossaryEntries).where(eq(glossaryEntries.bookId, id));
 	await db.delete(highlights).where(eq(highlights.bookId, id));
 	await db.delete(bookContent).where(eq(bookContent.bookId, id));
+	await db.delete(bookImages).where(eq(bookImages.bookId, id));
 	await db.delete(books).where(eq(books.id, id));
 }

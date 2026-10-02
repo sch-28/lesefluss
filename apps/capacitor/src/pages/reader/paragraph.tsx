@@ -14,6 +14,9 @@
 import type { WordPosition } from "@lesefluss/core";
 import type React from "react";
 import { memo } from "react";
+import { LONG_PRESS_MS } from "./long-press";
+import { renderFigures } from "./reader-figure";
+import type { ReaderFigureData } from "./reader-figures";
 import { wordIndexAt } from "./word-at-point";
 
 export function getHeadingLevel(text: string): number {
@@ -78,24 +81,28 @@ export interface ParagraphProps {
 	 *  whose chapter titles were images). Lets the reader show a header at a TOC
 	 *  jump without re-importing the book. */
 	chapterHeading?: string;
+	/** Body images anchored to this paragraph, rendered above it. */
+	figures?: ReaderFigureData[];
 	/** Unlocked buddy-read discussion items anchored in this paragraph. */
 	discussion?: { count: number; onTap: () => void };
 }
 
-function withChapterHeading(
+function withLeading(
+	figures: ReaderFigureData[] | undefined,
 	title: string | undefined,
 	body: React.ReactElement,
 ): React.ReactElement {
-	if (!title) return body;
+	if (!title && !figures?.length) return body;
 	return (
 		<>
-			<h2 className="reader-heading reader-heading-1 reader-chapter-heading">{title}</h2>
+			{renderFigures(figures)}
+			{title && <h2 className="reader-heading reader-heading-1 reader-chapter-heading">{title}</h2>}
 			{body}
 		</>
 	);
 }
 
-export const LONG_PRESS_MS = 400;
+export { LONG_PRESS_MS } from "./long-press";
 
 // Module-level: at most one long-press timer is active at a time.
 let _cancelActiveLongPress: (() => void) | null = null;
@@ -147,6 +154,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		selectionRange,
 		showActiveWordUnderline,
 		chapterHeading,
+		figures,
 		discussion,
 	}) => {
 		const headingLevel = getHeadingLevel(text);
@@ -154,7 +162,11 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		if (headingLevel > 0) {
 			const headingText = stripHeadingPrefix(text);
 			const Tag: React.ElementType = headingLevel === 1 ? "h2" : "h3";
-			return <Tag className={`reader-heading reader-heading-${headingLevel}`}>{headingText}</Tag>;
+			return withLeading(
+				figures,
+				undefined,
+				<Tag className={`reader-heading reader-heading-${headingLevel}`}>{headingText}</Tag>,
+			);
 		}
 
 		const children: React.ReactNode[] = [];
@@ -378,7 +390,8 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		) : null;
 
 		if (entries.length === 0) {
-			return withChapterHeading(
+			return withLeading(
+				figures,
 				chapterHeading,
 				<p className="reader-paragraph">
 					{text}
@@ -392,7 +405,8 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			children.push(text.slice(lastEnd));
 		}
 
-		return withChapterHeading(
+		return withLeading(
+			figures,
 			chapterHeading,
 			<p className="reader-paragraph">
 				{children}

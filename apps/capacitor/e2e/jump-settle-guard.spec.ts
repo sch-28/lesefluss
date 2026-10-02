@@ -21,11 +21,7 @@ test("scroll-settle after a TOC jump must not rewind the saved word position", a
 	const wordAtJump = await reader.lastSavedWord(page);
 	expect(wordAtJump).toBeGreaterThan(0);
 
-	// Reader caps the guard at JUMP_SETTLE_GUARD_MS=1500ms (reader/index.tsx).
-	// Wait that long + a 300ms render-flush margin so any racing scroll-settle
-	// definitely tried to fire before we re-read the saved word.
-	const JUMP_SETTLE_GUARD_MS = 1500;
-	await page.waitForTimeout(JUMP_SETTLE_GUARD_MS + 300);
+	await reader.waitPastJumpGuard(page);
 	const wordAfterGuard = await reader.lastSavedWord(page);
 	expect(wordAfterGuard).toBe(wordAtJump);
 });

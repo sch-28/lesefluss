@@ -145,14 +145,15 @@ The `[Lesefluss]` prefix makes it trivial to grep logcat output. The `pnpm andro
 
 ## Database (`src/db/schema.ts`)
 
-Five tables, Drizzle ORM with typed queries:
+Drizzle ORM with typed queries. Core tables:
 
 | Table | Purpose |
 |-------|---------|
 | `devices` | BLE device history (name, id, last connected) |
 | `settings` | ESP32 settings with defaults |
 | `books` | Metadata only (text id = 8-char hex PK, title, author, format, path, size, position, isActive, timestamps) |
-| `book_content` | Large data separate (content text, cover image base64, chapters JSON) |
+| `book_content` | Large data separate (content text, cover image base64, chapters JSON, link ranges JSON, image anchors JSON, serialized word index) |
+| `book_images` | Body images of a book (EPUB only): one row per distinct image file, keyed `(book_id, key)` with mime, pixel width/height, `is_line_art`, base64 `data`. Device-local, never synced. |
 | `highlights` | Per-book text highlights - startOffset, endOffset (UTF-8 byte, word-start), color, note, timestamps |
 
 - `DatabaseProvider` context wraps the app (`src/contexts/DatabaseContext.tsx`)
@@ -192,6 +193,13 @@ await ble.transferBook(content, "book.txt", onProgress);
 - `commit.ts` stays local because it writes SQLite and saves original files to `Directory.Data/books/{id}.ext` via `@capacitor/filesystem` on native.
 - URL imports pass the app's `CATALOG_URL` into the shared URL source; PDF imports pass the Vite `pdf.worker.mjs?worker` loader into the shared PDF parser.
 - Original `.epub` / `.pdf` files are saved on native only; TXT/HTML/MD content is stored as plain text in `book_content`.
+- **Body images (EPUB only).**
+  - Parse: `extractParagraphsWithLinks` also returns the `<img>` / `<picture>` / `<figure>` / SVG `<image>` elements it meets, each with a char offset but contributing no characters, so `content` is byte-identical to what it was before images were captured (figure captions are still dropped for the same reason). The EPUB parser loads each distinct image once from the archive (`key` = resolved archive path), skips images it cannot load or over the per-image and per-book caps with a warning, and emits `BookPayload.images` plus `BookPayload.imageAnchors` (byte offset of the first text after the image; the content byte length for a trailing image). An image-only page (a map) anchors at the start of the next section with text. Kindle emits every image twice; identical src at the same anchor collapses to one.
+  - Prepare: `prepareImage` downscales to a 1600 px longest side and re-encodes (JPEG for photos, PNG kept for transparent or line-art sources), flags line art from a 64x64 sample. The app runs it in a Web Worker (`image-prepare.ts`, injected via `pipelineOptions.prepareImage`, in-thread fallback when `Worker` is missing or the worker fails).
+  - Store: `addBookWithContent` converts anchors with "first word at or after the byte" (not `wordOf`, which floors: an anchor on a `# ` heading marker must land on the heading's first word) into `book_content.image_anchors` (`[{word, key, alt}]`). `commitBook` writes row, text, word index and anchors, returns, and only then copies the original file and writes the image rows in the background (`storeBookImages` → `addBookImages`: one insert per row with a yield and a liveness check so a delete stops it; `bookKeys.images` is invalidated periodically so an open reader picks figures up).
+  - Repair: if the app was killed mid-write, the reader repairs the book on its next open. `repair-images.ts` diffs anchor keys against stored rows and, on native with the original file on disk, reads it with `readNativeFile` (never `Filesystem.readFile`, which OOMs the bridge on a 5 MB file), loads just those zip entries (`loadEpubImages`), prepares and stores them, once per book per session.
+  - Read: `queries.getBookImages(bookId)` (metadata) and `queries.getBookImageData(bookId, key)` (one data URL).
+  - Upgrade (transition aid, removable once libraries have been through it): an EPUB with `image_anchors` NULL and its original on disk is re-parsed 3 s after its first open (`upgrade-images.ts`). If the re-parsed text is byte-identical to the stored content, `setBookImageAnchors` writes the anchors on the existing word index and the images are stored like an import; otherwise the book is marked checked (`[]`) and keeps no images. `books.updated_at` never moves.
 - `removeBook()` cleans up both DB rows and disk files.
 - Import shows parser progress where supported (EPUB/PDF).
 
@@ -294,6 +302,7 @@ chapters: Chapter[]        // parsed from contentRow.chapters JSON; empty for TX
 - **Two offset states:** `activeOffset` (word highlight, set to `-1` while scrolling) and `progressOffset` (progress bar, updated every scroll frame)
 - **Word tap - two-stage:** first tap highlights the word and saves position; second tap on the already-highlighted word opens the dictionary modal
 - **Heading paragraphs** (prefixed `# `) are not tappable
+- **Body images** (EPUB imports, see `book_images` above): `index.tsx` parses `contentRow.imageAnchors` and loads image metadata with `queryHooks.useBookImages`, then `buildFigureMap` (`reader-figures.ts`) keys each figure by the paragraph containing its anchor word's byte (`wordIndex.byteOfClamped` against `paragraphOffsets`; paragraph start words are floored, so comparing words would misplace an image before a `# ` heading); anchors at or past the word count become `trailingFigures`. Both views pass `figuresByParagraph` into `Paragraph`, which renders the figures above the inline chapter heading and the text (also for `# ` heading paragraphs); trailing figures render after the last paragraph (scroll) or in the last chunk (page). `ReaderFigure` loads one data URL via `bookKeys.image(bookId, key)` and renders nothing when the bytes are not stored. Figures carry no `data-word` spans, so position save, alignment and pagination ignore them. The figure carries `aspect-ratio` inline (4:3 when the size could not be sniffed at import) so the box is sized before load and the img only mounts once its data URL is known, `draggable={false}` (WebView long-press freeze), and CSS caps it under `--reader-page-height` in page mode with `break-inside: avoid`. Themes: sepia `mix-blend-mode: multiply`; dark inverts only `.reader-figure--line-art` (import-time flag) and screens it into the page.
 - **Routing** - `/reader/:id` is placed outside `IonTabs` in `App.tsx` so the tab bar is not rendered
 
 ### Reading themes

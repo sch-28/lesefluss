@@ -4,6 +4,7 @@
  * under one namespace so callers have a single import.
  */
 import {
+	addBookImages,
 	addBookWithContent,
 	addServerBookWithContent,
 	deleteBook,
@@ -12,13 +13,17 @@ import {
 	getBookByCatalogId,
 	getBookContent,
 	getBookCovers,
+	getBookImageData,
+	getBookImages,
 	getBooks,
 	getBooksForSync,
 	hardDeleteBook,
 	loadBookWordIndex,
 	parseChapters,
+	parseImageAnchors,
 	parseLinkRanges,
 	setActiveBook,
+	setBookImageAnchors,
 	updateBook,
 } from "./books";
 import { clearAllDevices, forgetDevice, getPairedDevices, saveDevice } from "./devices";
@@ -106,11 +111,16 @@ export const queries = {
 	getBookByCatalogId,
 	getBookContent,
 	getBookCovers,
+	getBookImages,
+	getBookImageData,
 	addBookWithContent,
+	addBookImages,
 	addServerBookWithContent,
 	loadBookWordIndex,
 	parseChapters,
 	parseLinkRanges,
+	parseImageAnchors,
+	setBookImageAnchors,
 	updateBook,
 	setActiveBook,
 	deleteBook,

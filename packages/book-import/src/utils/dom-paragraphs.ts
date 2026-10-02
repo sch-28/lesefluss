@@ -22,8 +22,19 @@ const LEAF_BLOCK_TAGS = new Set(["P", "LI"]);
 /** A hyperlink captured within extracted text, offset into that text. */
 export type ContentLink = { href: string; startChar: number; endChar: number };
 
-/** A block of extracted text plus any links it contains (block-local offsets). */
-type Block = { text: string; links: ContentLink[] };
+/** An image reference found in the body. `src` is as written in the markup. */
+type ImageRef = { src: string; alt: string };
+
+/**
+ * An image anchored to a position in the extracted text. `charOffset` is the
+ * start of the first text that follows the image (`content.length` when none
+ * does); the image itself contributes no characters.
+ */
+export type ContentImage = ImageRef & { charOffset: number };
+
+/** A block of extracted text plus any links and images it contains. Image
+ *  blocks have empty `text`. */
+type Block = { text: string; links: ContentLink[]; images: ImageRef[] };
 
 /** Only external http/https links are captured; anchors / relative / dangerous
  *  schemes (`#`, `chapter.xhtml`, `javascript:`, `data:`) are dropped. */
@@ -58,17 +69,47 @@ function collapseWithMap(raw: string): { collapsed: string; map: number[] } {
 	return { collapsed: out, map };
 }
 
+/** An `<img>` or SVG `<image>` with a usable source, or null for anything else. */
+function imageRefOf(el: Element): ImageRef | null {
+	const tag = el.tagName.toUpperCase();
+	const src =
+		tag === "IMG"
+			? el.getAttribute("src")
+			: tag === "IMAGE"
+				? (el.getAttribute("href") ?? el.getAttribute("xlink:href"))
+				: null;
+	const trimmed = src?.trim();
+	if (!trimmed) return null;
+	return { src: trimmed, alt: (el.getAttribute("alt") ?? "").replace(/\s+/g, " ").trim() };
+}
+
+/** Every `<img>` / SVG `<image>` inside `el` (including `el` itself), in document order. */
+function collectImages(el: Element): ImageRef[] {
+	const out: ImageRef[] = [];
+	function walk(node: Node) {
+		if (node.nodeType !== ELEMENT_NODE) return;
+		const ref = imageRefOf(node as Element);
+		if (ref) out.push(ref);
+		for (const child of Array.from(node.childNodes)) walk(child);
+	}
+	walk(el);
+	return out;
+}
+
 /**
  * Concatenate a node's descendant text (equivalent to `textContent`) while
- * recording the raw character ranges of external `<a href>` links. Nested links
- * are ignored (outermost wins), matching HTML's flat link model.
+ * recording the raw character ranges of external `<a href>` links and any
+ * images met on the way. Nested links are ignored (outermost wins), matching
+ * HTML's flat link model.
  */
 function collectRawTextAndLinks(el: Element): {
 	raw: string;
 	links: { href: string; rawStart: number; rawEnd: number }[];
+	images: ImageRef[];
 } {
 	let raw = "";
 	const links: { href: string; rawStart: number; rawEnd: number }[] = [];
+	const images: ImageRef[] = [];
 
 	function walk(node: Node, insideLink: boolean) {
 		if (node.nodeType === TEXT_NODE) {
@@ -77,6 +118,8 @@ function collectRawTextAndLinks(el: Element): {
 		}
 		if (node.nodeType !== ELEMENT_NODE) return;
 		const element = node as Element;
+		const ref = imageRefOf(element);
+		if (ref) images.push(ref);
 		if (!insideLink && element.tagName.toUpperCase() === "A") {
 			const href = element.getAttribute("href") ?? "";
 			if (isExternalHref(href)) {
@@ -92,13 +135,13 @@ function collectRawTextAndLinks(el: Element): {
 	}
 
 	for (const child of Array.from(el.childNodes)) walk(child, false);
-	return { raw, links };
+	return { raw, links, images };
 }
 
 /** Normalize a leaf block's text and translate its link ranges into the
  *  normalized coordinate space. */
 function extractLeafBlock(el: Element): Block {
-	const { raw, links } = collectRawTextAndLinks(el);
+	const { raw, links, images } = collectRawTextAndLinks(el);
 	const { collapsed, map } = collapseWithMap(raw);
 	const text = collapsed.replace(/ $/, "");
 	const blockLinks: ContentLink[] = [];
@@ -111,7 +154,7 @@ function extractLeafBlock(el: Element): Block {
 		while (endChar > startChar && text[endChar - 1] === " ") endChar--;
 		if (endChar > startChar) blockLinks.push({ href: link.href, startChar, endChar });
 	}
-	return { text, links: blockLinks };
+	return { text, links: blockLinks, images };
 }
 
 /**
@@ -163,6 +206,7 @@ function extractHeadingText(el: Element): string {
 function collectBlocks(el: Element): Block[] {
 	const blocks: Block[] = [];
 	let foundBlock = false;
+	let firstImageBlock = -1;
 
 	for (const child of Array.from(el.children)) {
 		const tag = child.tagName.toUpperCase();
@@ -170,23 +214,62 @@ function collectBlocks(el: Element): Block[] {
 		if (HEADING_TAGS.has(tag)) {
 			foundBlock = true;
 			const text = extractHeadingText(child);
-			if (text) blocks.push({ text: HEADING_PREFIX[tag] + text, links: [] });
+			const images = collectImages(child);
+			if (text) blocks.push({ text: HEADING_PREFIX[tag] + text, links: [], images });
+			else if (images.length) blocks.push({ text: "", links: [], images });
 		} else if (LEAF_BLOCK_TAGS.has(tag)) {
 			foundBlock = true;
 			const block = extractLeafBlock(child);
-			if (block.text) blocks.push(block);
+			if (block.text || block.images.length) blocks.push(block);
 		} else if (CONTAINER_TAGS.has(tag)) {
 			foundBlock = true;
 			blocks.push(...collectBlocks(child));
+		} else {
+			// Anything else (a bare image, or an inline wrapper such as Gutenberg's
+			// `<a><img/></a>`) contributes only its images. Not counted as
+			// `foundBlock`: a wrapper holding an image and loose text must still
+			// fall through to the textContent path below, exactly as it did before
+			// images were captured, or `content` would change for existing books.
+			const images = collectImages(child);
+			if (images.length) {
+				if (firstImageBlock < 0) firstImageBlock = blocks.length;
+				blocks.push({ text: "", links: [], images });
+			}
 		}
 	}
 
 	if (!foundBlock) {
 		const text = (el.textContent || "").replace(/\s+/g, " ").trim();
-		if (text) blocks.push({ text, links: [] });
+		if (text) {
+			const block: Block = { text, links: [], images: [] };
+			// The wrapper's loose text is one block wherever it sits, so place it
+			// by where it starts: text before the first image keeps the image
+			// anchored to what follows the wrapper.
+			if (firstImageBlock >= 0 && hasTextBeforeFirstImage(el)) {
+				blocks.splice(firstImageBlock, 0, block);
+			} else {
+				blocks.push(block);
+			}
+		}
 	}
 
 	return blocks;
+}
+
+/** Whether non-blank text comes before the first image in document order. */
+function hasTextBeforeFirstImage(el: Element): boolean {
+	return firstTextOrImage(el) === "text";
+}
+
+function firstTextOrImage(node: Node): "text" | "image" | null {
+	if (node.nodeType === TEXT_NODE) return (node.textContent || "").trim() ? "text" : null;
+	if (node.nodeType !== ELEMENT_NODE) return null;
+	if (imageRefOf(node as Element)) return "image";
+	for (const child of Array.from(node.childNodes)) {
+		const found = firstTextOrImage(child);
+		if (found) return found;
+	}
+	return null;
 }
 
 /**
@@ -201,17 +284,25 @@ function collectBlocks(el: Element): Block[] {
 export function extractParagraphsWithLinks(body: Element): {
 	content: string;
 	links: ContentLink[];
+	images: ContentImage[];
 } {
-	const blocks = collectBlocks(body);
+	const allBlocks = collectBlocks(body);
+	const blocks = allBlocks.filter((b) => b.text.length > 0);
 	if (blocks.length === 0) {
-		return { content: (body.textContent || "").replace(/\s+/g, " ").trim(), links: [] };
+		return {
+			content: (body.textContent || "").replace(/\s+/g, " ").trim(),
+			links: [],
+			images: anchorImages(allBlocks, () => 0),
+		};
 	}
 
 	const links: ContentLink[] = [];
+	const blockStart = new Map<Block, number>();
 	let offset = 0;
 	for (let i = 0; i < blocks.length; i++) {
 		if (i > 0) offset += 2; // the "\n\n" separator
 		const block = blocks[i];
+		blockStart.set(block, offset);
 		for (const link of block.links) {
 			links.push({
 				href: link.href,
@@ -221,8 +312,39 @@ export function extractParagraphsWithLinks(body: Element): {
 		}
 		offset += block.text.length;
 	}
+	const contentLength = offset;
 
-	return { content: blocks.map((b) => b.text).join("\n\n"), links };
+	// An image anchors to the start of the next block that has text; a text
+	// block's own images anchor to its start; trailing images to the end.
+	let nextTextStart = contentLength;
+	const startAfter = new Map<Block, number>();
+	for (let i = allBlocks.length - 1; i >= 0; i--) {
+		const block = allBlocks[i];
+		const own = blockStart.get(block);
+		if (own !== undefined) nextTextStart = own;
+		startAfter.set(block, nextTextStart);
+	}
+
+	return {
+		content: blocks.map((b) => b.text).join("\n\n"),
+		links,
+		images: anchorImages(allBlocks, (b) => startAfter.get(b) ?? contentLength),
+	};
+}
+
+/** Flatten block images into anchored images, collapsing an image repeated at
+ *  the same anchor (Kindle emits every image twice, once per render target). */
+function anchorImages(blocks: Block[], anchorOf: (b: Block) => number): ContentImage[] {
+	const out: ContentImage[] = [];
+	for (const block of blocks) {
+		const charOffset = anchorOf(block);
+		for (const img of block.images) {
+			const last = out[out.length - 1];
+			if (last && last.src === img.src && last.charOffset === charOffset) continue;
+			out.push({ ...img, charOffset });
+		}
+	}
+	return out;
 }
 
 /** Plain-text-only view of {@link extractParagraphsWithLinks}. */

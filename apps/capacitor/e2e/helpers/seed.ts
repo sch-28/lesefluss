@@ -1,5 +1,6 @@
 import {
 	buildEpubBuffer,
+	type EpubFixture,
 	strayAnchorFixture,
 } from "@lesefluss/book-import/test-fixtures/build-epub";
 import { expect, type Page } from "@playwright/test";
@@ -42,11 +43,19 @@ export async function importEpubViaFilePicker(
  * stray-anchor Book fixture, return its title for locator scoping.
  */
 export async function seedStrayAnchorBook(page: Page): Promise<string> {
-	const fixture = strayAnchorFixture();
-	const title = fixture.title ?? "Stray Anchor Test";
+	return seedFixture(page, strayAnchorFixture(), "stray-anchors.epub");
+}
+
+/** Wipe storage and import `fixture` through the file picker; returns its title. */
+export async function seedFixture(
+	page: Page,
+	fixture: EpubFixture,
+	fileName: string,
+): Promise<string> {
+	const title = fixture.title ?? fileName;
 	await resetStorage(page);
 	const buffer = await buildEpubBuffer(fixture);
-	await importEpubViaFilePicker(page, { buffer, fileName: "stray-anchors.epub", title });
+	await importEpubViaFilePicker(page, { buffer, fileName, title });
 	return title;
 }
 

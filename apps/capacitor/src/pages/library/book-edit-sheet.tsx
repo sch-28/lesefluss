@@ -21,7 +21,7 @@ import { Input } from "@lesefluss/ui/input";
 import { Label } from "@lesefluss/ui/label";
 import { STAR_POSITIONS, StarGlyph } from "@lesefluss/ui/rating-stars";
 import { Switch } from "@lesefluss/ui/switch";
-import { X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { clampBookTags, FIELD_LIMITS } from "./book-fields";
@@ -351,6 +351,7 @@ const BookEditSheet: React.FC<Props> = ({
 							onSave({ ...values, title: values.title.trim(), tags });
 						}}
 					>
+						{isSaving && <Loader2 className="size-4 animate-spin" />}
 						{saveLabel}
 					</Button>
 				</DrawerFooter>

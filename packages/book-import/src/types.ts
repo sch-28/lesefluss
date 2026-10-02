@@ -1,3 +1,5 @@
+import type { ImageDimensions, PreparedImage } from "./utils/image-analysis";
+
 /**
  * Normalised input to the parser pipeline. Produced by `sources/*`.
  *
@@ -26,6 +28,34 @@ export type ImportLink = {
 	endByte: number;
 };
 
+/**
+ * An image from the book body, stored once per distinct source file. `key` is
+ * the resolved archive path, unique within the book. `dataUrl` is a base64
+ * data URL. `width`/`height` are intrinsic pixels (0 when unknown).
+ * `isLineArt` marks a near-monochrome drawing on a bright background, which
+ * the reader may invert on a dark page; photos and colour art are false.
+ */
+export type ImportImage = {
+	key: string;
+	mime: string;
+	dataUrl: string;
+	width: number;
+	height: number;
+	isLineArt: boolean;
+};
+
+/**
+ * Where an image sits in the book: the UTF-8 byte offset into `content` of the
+ * first text that follows it (`content` byte length for a trailing image). The
+ * image itself contributes nothing to `content`, so every existing offset is
+ * unaffected. The commit step converts this to a word position.
+ */
+export type ImportImageAnchor = {
+	key: string;
+	startByte: number;
+	alt: string;
+};
+
 export type ProgressCallback = (pct: number) => void;
 
 export type PdfDocumentLoadingTaskLike = {
@@ -44,9 +74,14 @@ export type DomParserLike = {
 
 export type DomParserFactory = () => DomParserLike;
 
+/** Decode, downscale and re-encode one body image for storage. The default
+ *  runs on the calling thread; an app can supply a worker-backed one. */
+export type PrepareImage = (blob: Blob, size: ImageDimensions | null) => Promise<PreparedImage>;
+
 export type ImportPipelineOptions = {
 	loadPdfjs?: LoadPdfjs;
 	domParser?: DomParserFactory;
+	prepareImage?: PrepareImage;
 };
 
 export type BookProbeOptions = Pick<ImportPipelineOptions, "loadPdfjs" | "domParser">;
@@ -65,6 +100,10 @@ export type BookPayload = {
 	language?: string | null;
 	/** External hyperlinks (byte ranges into `content`). Null when none found. */
 	linkRanges?: ImportLink[] | null;
+	/** Body images, one per distinct source file. Null when none found. */
+	images?: ImportImage[] | null;
+	/** Positions of body images, in reading order. Null when none found. */
+	imageAnchors?: ImportImageAnchor[] | null;
 	fileFormat: "txt" | "epub" | "html" | "pdf";
 	/**
 	 * Original file bytes to persist to disk (native only). Parsers set this

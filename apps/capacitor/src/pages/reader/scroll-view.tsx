@@ -16,6 +16,8 @@ import Paragraph, {
 	type LinkRangeProp,
 	type ParagraphWordEntry,
 } from "./paragraph";
+import { renderFigures } from "./reader-figure";
+import type { ReaderFigureData } from "./reader-figures";
 import type { ReaderViewHandle } from "./view-types";
 
 // ─── Module-level singletons ─────────────────────────────────────────────────
@@ -233,6 +235,10 @@ export interface ScrollViewProps {
 	discussionByParagraph?: Map<number, { count: number; onTap: () => void }>;
 	/** Paragraph index → chapter title rendered as an inline header above it. */
 	chapterHeadingByParagraph?: Map<number, string>;
+	/** Paragraph index → body images rendered above it. */
+	figuresByParagraph?: Map<number, ReaderFigureData[]>;
+	/** Body images anchored past the last word, rendered after the last paragraph. */
+	trailingFigures?: ReaderFigureData[];
 	selectionRange: { startWord: number; endWord: number } | null;
 
 	// Word interaction
@@ -286,6 +292,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		linksByParagraph,
 		discussionByParagraph,
 		chapterHeadingByParagraph,
+		figuresByParagraph,
+		trailingFigures,
 		selectionRange,
 		onWordTap,
 		onWordLongPress,
@@ -690,10 +698,12 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 							links={linksByParagraph?.get(i)}
 							discussion={discussionByParagraph?.get(i)}
 							chapterHeading={chapterHeadingByParagraph?.get(i)}
+							figures={figuresByParagraph?.get(i)}
 							selectionRange={selectionRange}
 							showActiveWordUnderline={showActiveWordUnderline}
 						/>
 					))}
+					{renderFigures(trailingFigures)}
 					{footer}
 				</VList>
 			</div>

@@ -10,6 +10,7 @@ import { FIELD_LIMITS } from "../../pages/library/book-fields";
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
 import type { Book, NewBook } from "../db/schema";
+import { storeBookImages } from "./store-images";
 import type { ImportExtras, ImportOverrides } from "./types";
 
 /** Directory within app data where original book files (EPUB, …) are stored. */
@@ -83,40 +84,81 @@ export async function commitBook(
 	/** Reader's corrections from the confirm sheet, applied over what the parser
 	 *  guessed. Absent when an import commits without being shown. */
 	overrides?: ImportOverrides,
+	options: { awaitBackgroundWork?: boolean } = {},
 ): Promise<Book> {
 	const id = generateBookId();
 	const addedAt = Date.now();
 	const size = utf8ByteLength(payload.content);
 
+	const startedAt = performance.now();
 	await queries.addBookWithContent(
 		buildImportedBookRow(payload, extras, overrides, { id, addedAt, size }),
 		payload.content,
 		payload.coverImage ?? null,
 		payload.chapters ?? null,
 		payload.linkRanges ?? null,
+		payload.fileFormat === "epub" ? (payload.imageAnchors ?? []) : null,
+	);
+	log(
+		"book-import",
+		`committed ${id}: ${size} bytes in ${Math.round(performance.now() - startedAt)} ms`,
 	);
 
-	if (payload.original && Capacitor.isNativePlatform()) {
-		const filePath = `${BOOKS_DIR}/${id}.${payload.original.extension}`;
-		try {
-			await ensureBooksDir();
-			await writeFileInChunks(filePath, payload.original.bytes);
-			// The original file lives on this device only, so recording it must not
-			// make the row look freshly edited to sync.
-			await queries.updateBook(id, { filePath }, Date.now(), { isDeviceLocal: true });
-		} catch (err) {
-			// The book row + content are already committed and fully readable; the
-			// original file is only kept for re-parse. A partial chunked write would
-			// leave a corrupt file, so drop it and keep the book without a filePath
-			// (same state as txt imports, which never store an original).
-			log.warn("book-import", "Failed to save original file; keeping book without it:", err);
-			await Filesystem.deleteFile({ path: filePath, directory: Directory.Data }).catch(() => {});
-		}
-	}
+	// The book is readable now. The original file copy and the image rows are
+	// megabytes over the native bridge, so they land after the confirm sheet
+	// has closed rather than keeping the reader waiting on them. A caller with
+	// no sheet (folder scan, catalog) waits instead, which also keeps one
+	// payload's bytes alive at a time.
+	const backgroundWork = finishImportInBackground(id, payload);
+	if (options.awaitBackgroundWork) await backgroundWork;
 
 	const stored = await queries.getBook(id);
 	if (!stored) throw new Error(`commitBook: ${id} disappeared after insert`);
 	return stored;
+}
+
+async function finishImportInBackground(id: string, payload: BookPayload): Promise<void> {
+	if (payload.original && Capacitor.isNativePlatform()) {
+		await saveOriginalFile(id, payload.original);
+	}
+	const images = payload.images ?? [];
+	if (images.length === 0) return;
+	const startedAt = performance.now();
+	const written = await storeBookImages(id, images, "book_images_write_error");
+	log(
+		"book-import",
+		`stored ${written}/${images.length} images for ${id} (${Math.round(
+			images.reduce((sum, img) => sum + img.dataUrl.length, 0) / 1024,
+		)} KB base64) in ${Math.round(performance.now() - startedAt)} ms`,
+	);
+}
+
+async function saveOriginalFile(
+	id: string,
+	original: NonNullable<BookPayload["original"]>,
+): Promise<void> {
+	const filePath = `${BOOKS_DIR}/${id}.${original.extension}`;
+	try {
+		await ensureBooksDir();
+		await writeFileInChunks(filePath, original.bytes);
+		// The copy runs after the commit returned, so the reader may have deleted
+		// the book meanwhile; a file recorded on a tombstone would never be unlinked.
+		const book = await queries.getBook(id);
+		if (!book || book.deleted) {
+			await Filesystem.deleteFile({ path: filePath, directory: Directory.Data }).catch(() => {});
+			return;
+		}
+		// The original file lives on this device only, so recording it must not
+		// make the row look freshly edited to sync.
+		await queries.updateBook(id, { filePath }, Date.now(), { isDeviceLocal: true });
+	} catch (err) {
+		// The book row + content are already committed and fully readable; the
+		// original file is only kept for re-parse. A partial chunked write would
+		// leave a corrupt file, so drop it and keep the book without a filePath
+		// (same state as txt imports, which never store an original).
+		log.warn("book-import", "Failed to save original file; keeping book without it:", err);
+		await Filesystem.deleteFile({ path: filePath, directory: Directory.Data }).catch(() => {});
+	}
 }
 
 /**

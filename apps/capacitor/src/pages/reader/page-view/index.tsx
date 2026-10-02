@@ -51,6 +51,7 @@ import {
 	type LinkRangeProp,
 	LONG_PRESS_MS,
 } from "../paragraph";
+import type { ReaderFigureData } from "../reader-figures";
 import type { ReaderViewHandle } from "../view-types";
 import ChunkContent from "./chunk-content";
 import {
@@ -93,6 +94,10 @@ export interface PageViewProps {
 	discussionByParagraph?: Map<number, { count: number; onTap: () => void }>;
 	/** Paragraph index → chapter title rendered as an inline header above it. */
 	chapterHeadingByParagraph?: Map<number, string>;
+	/** Paragraph index → body images rendered above it. */
+	figuresByParagraph?: Map<number, ReaderFigureData[]>;
+	/** Body images anchored past the last word. */
+	trailingFigures?: ReaderFigureData[];
 	selectionRange: { startWord: number; endWord: number } | null;
 	isSelecting: boolean;
 
@@ -129,6 +134,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		paragraphStartWords,
 		entriesByParagraph,
 		chapterHeadingByParagraph,
+		figuresByParagraph,
+		trailingFigures,
 		totalWords,
 		initialWord,
 		fontSize,
@@ -763,6 +770,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									paragraphStartWords={paragraphStartWords}
 									entriesByParagraph={entriesByParagraph}
 									chapterHeadingByParagraph={chapterHeadingByParagraph}
+									figuresByParagraph={figuresByParagraph}
+									trailingFigures={trailingFigures}
 									leftOffset={offsets.get(idx) ?? 0}
 									pageWidth={pageWidth}
 									pageHeight={pageHeight}

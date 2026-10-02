@@ -59,6 +59,8 @@ import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { useTheme } from "../../contexts/theme-context";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
+import { repairMissingImages } from "../../services/book-import/repair-images";
+import { needsImageUpgrade, upgradeBookImages } from "../../services/book-import/upgrade-images";
 import { externalSourceUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys, serialKeys } from "../../services/db/hooks/query-keys";
@@ -102,6 +104,7 @@ import {
 	recoverPendingWord,
 	writePendingPosition,
 } from "./pending-position";
+import { buildFigureMap } from "./reader-figures";
 import { stripPunct } from "./rsvp-engine";
 import RsvpView, { type RsvpViewHandle } from "./rsvp-view";
 import ScrollView, { ReaderSkeleton } from "./scroll-view";
@@ -125,6 +128,9 @@ import type { ReaderViewHandle } from "./view-types";
 import { wordIndexAt } from "./word-at-point";
 
 // ─── Module-level singletons ─────────────────────────────────────────────────
+/** Lets the first paint and scroll of a fresh open settle before a re-parse starts. */
+const IMAGE_UPGRADE_DELAY_MS = 3000;
+
 const _encoder = new TextEncoder();
 
 // Sentinel value: no word highlighted (while scrolling)
@@ -161,7 +167,40 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const readingRates = queryHooks.useStatsReadingRates();
 	const { data: contentRow, isPending: contentPending } = queryHooks.useBookContent(id);
 	const { data: wordIndex } = queryHooks.useBookWordIndex(id);
+	const { data: bookImages, isPending: imagesPending } = queryHooks.useBookImages(id);
+	const imageAnchors = useMemo(
+		() => queries.parseImageAnchors(contentRow?.imageAnchors ?? null),
+		[contentRow?.imageAnchors],
+	);
+	// Rows are written after the import commit; an app killed mid-write leaves
+	// anchors without rows, which the original file on disk can fill in.
+	const bookFilePath = book?.filePath ?? null;
+	useEffect(() => {
+		if (!bookImages) return;
+		void repairMissingImages(
+			{ id, filePath: bookFilePath },
+			imageAnchors,
+			bookImages.map((img) => img.key),
+		);
+	}, [id, bookFilePath, bookImages, imageAnchors]);
+
 	const content = contentRow?.content ?? null;
+
+	// A book imported before images were captured gets them on its first open.
+	const bookFileFormat = book?.fileFormat ?? null;
+	const imageAnchorsColumn = contentRow?.imageAnchors ?? null;
+	useEffect(() => {
+		if (!content || !wordIndex || !bookFileFormat) return;
+		if (
+			!needsImageUpgrade({ fileFormat: bookFileFormat, filePath: bookFilePath }, imageAnchorsColumn)
+		) {
+			return;
+		}
+		const timer = setTimeout(() => {
+			void upgradeBookImages({ id, filePath: bookFilePath }, content, wordIndex);
+		}, IMAGE_UPGRADE_DELAY_MS);
+		return () => clearTimeout(timer);
+	}, [id, content, wordIndex, bookFileFormat, bookFilePath, imageAnchorsColumn]);
 	const { data: highlightRows = [] } = queryHooks.useHighlights(id);
 	const { data: glossaryEntries = [] } = queryHooks.useGlossary(id);
 	const addGlossaryEntry = queryHooks.useAddGlossaryEntry();
@@ -481,6 +520,23 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const contentBytes = useMemo(() => (content ? _encoder.encode(content) : null), [content]);
 
 	const totalWordCount = book?.wordCount ?? wordIndex?.wordCount ?? 0;
+
+	// Body images (EPUB imports) keyed by the paragraph they precede. Empty for
+	// every book imported before images were captured, so nothing else changes.
+	const figureMap = useMemo(
+		() =>
+			wordIndex
+				? buildFigureMap(
+						id,
+						imageAnchors,
+						bookImages ?? [],
+						paragraphOffsets,
+						totalWordCount,
+						(word) => wordIndex.byteOfClamped(word),
+					)
+				: buildFigureMap(id, [], [], paragraphOffsets, 0, () => 0),
+		[id, imageAnchors, bookImages, paragraphOffsets, totalWordCount, wordIndex],
+	);
 
 	const chapterWordCounts = useMemo(() => {
 		if (!chapters.length) return [];
@@ -1724,7 +1780,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						provider={series?.provider}
 						onRetry={chapterFetch.retry}
 					/>
-				) : contentPending || !content || !wordIndex || chapterFetch.kind === "loading" ? (
+				) : contentPending ||
+					imagesPending ||
+					!content ||
+					!wordIndex ||
+					chapterFetch.kind === "loading" ? (
 					<ReaderSkeleton />
 				) : readerMode === "rsvp" ? (
 					<RsvpView
@@ -1750,6 +1810,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						paragraphStartWords={paragraphStartWords}
 						entriesByParagraph={entriesByParagraph}
 						chapterHeadingByParagraph={chapterHeadingByParagraph}
+						figuresByParagraph={figureMap.byParagraph}
+						trailingFigures={figureMap.trailing}
 						totalWords={totalWordCount}
 						initialWord={lastWordRef.current ?? seedWord ?? 0}
 						fontSize={readerFontSize}
@@ -1783,6 +1845,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						paragraphStartWords={paragraphStartWords}
 						entriesByParagraph={entriesByParagraph}
 						chapterHeadingByParagraph={chapterHeadingByParagraph}
+						figuresByParagraph={figureMap.byParagraph}
+						trailingFigures={figureMap.trailing}
 						findParagraphIndexForWord={findParagraphIndexForWord}
 						initialWord={lastWordRef.current ?? seedWord ?? 0}
 						fontSize={readerFontSize}
