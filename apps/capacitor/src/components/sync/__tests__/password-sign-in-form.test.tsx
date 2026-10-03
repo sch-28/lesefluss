@@ -7,9 +7,12 @@ const signInWithPassword = vi.hoisted(() =>
 );
 const openBrowserSignIn = vi.hoisted(() => vi.fn(async () => {}));
 
+const theme = vi.hoisted(() => ({ isEinkMode: false }));
+
 vi.mock("@/contexts/sync-context", () => ({
 	useSyncContext: () => ({ signInWithPassword }),
 }));
+vi.mock("@/contexts/theme-context", () => ({ useTheme: () => theme }));
 
 vi.mock("@/services/sync", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@/services/sync")>();
@@ -28,6 +31,7 @@ afterEach(() => {
 	view?.unmount();
 	view = undefined;
 	signInWithPassword.mockReset();
+	theme.isEinkMode = false;
 	openBrowserSignIn.mockClear();
 });
 
@@ -114,6 +118,21 @@ describe("PasswordSignInForm", () => {
 
 		expect(view.text()).toContain("Couldn't open a browser on this device.");
 		expect(view.getButton("Sign in in your browser").disabled).toBe(false);
+	});
+
+	it("leads with the phone sign-in in e-ink mode and with the email form otherwise", async () => {
+		const isPhoneFirst = () => {
+			const controls = [...(view?.container.querySelectorAll("button, input") ?? [])];
+			const phone = controls.findIndex((el) => el.textContent === "Sign in with your phone");
+			return phone !== -1 && phone < controls.indexOf(input("Email"));
+		};
+		view = await render(<PasswordSignInForm />);
+		expect(isPhoneFirst()).toBe(false);
+		view.unmount();
+
+		theme.isEinkMode = true;
+		view = await render(<PasswordSignInForm />);
+		expect(isPhoneFirst()).toBe(true);
 	});
 
 	it("runs the pre-hook before opening the browser sign-in", async () => {

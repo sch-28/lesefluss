@@ -9,7 +9,10 @@ import { proxyImageUrl } from "@/services/catalog/client";
 export function CoverBackdrop({ src, className }: { src: string | null; className?: string }) {
 	const resolved = proxyImageUrl(src);
 	return (
-		<div aria-hidden="true" className={cn("pointer-events-none absolute inset-0", className)}>
+		<div
+			aria-hidden="true"
+			className={cn("cover-backdrop pointer-events-none absolute inset-0", className)}
+		>
 			{resolved && (
 				<img
 					src={resolved}

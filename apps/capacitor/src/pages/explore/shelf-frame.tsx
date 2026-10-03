@@ -1,4 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
+import { usePrefersReducedMotion } from "@lesefluss/ui/use-prefers-reduced-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type React from "react";
 import { useRef, useSyncExternalStore } from "react";
@@ -35,9 +36,13 @@ type Props = {
 const ShelfFrame: React.FC<Props> = ({ title, onSeeAll, actions, body, children, testId }) => {
 	const stripRef = useRef<HTMLDivElement>(null);
 	const hasFinePointer = useHasFinePointer();
+	const isReducedMotion = usePrefersReducedMotion();
 	const scroll = (direction: 1 | -1) => {
 		const el = stripRef.current;
-		el?.scrollBy({ left: direction * el.clientWidth * 0.8, behavior: "smooth" });
+		el?.scrollBy({
+			left: direction * el.clientWidth * 0.8,
+			behavior: isReducedMotion ? "auto" : "smooth",
+		});
 	};
 
 	return (

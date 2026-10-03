@@ -26,7 +26,7 @@ import { SHOW_WHATS_NEW_EVENT } from "@/components/whats-new-modal";
 import { useBLE } from "@/contexts/ble-context";
 import { useSyncContext } from "@/contexts/sync-context";
 import { useTheme } from "@/contexts/theme-context";
-import { FONT_FAMILIES, THEMES } from "@/hooks/use-appearance-settings";
+import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "@/hooks/use-appearance-settings";
 import { DiagnosticsRow } from "@/pages/settings/diagnostics-row";
 import { BLEConnectionState } from "@/services/ble";
 import { queryHooks } from "@/services/db/hooks";
@@ -58,6 +58,8 @@ function SettingsLanding() {
 			.catch(() => {});
 	}, []);
 
+	const { paginationStyle } = useAppearanceSettings();
+
 	const toggleTelemetry = (value: boolean) => {
 		setTelemetryEnabled(value);
 		setTelemetry(value);
@@ -73,7 +75,7 @@ function SettingsLanding() {
 		: "Loading...";
 	const themeLabel = THEMES.find((t) => t.value === theme)?.label ?? theme;
 	const readerSubtitle = settings
-		? `${FONT_FAMILIES.find((f) => f.value === settings.readerFontFamily)?.label ?? "Sans"} · ${settings.readerFontSize}px · ${settings.paginationStyle === "page" ? "Page" : "Scroll"}`
+		? `${FONT_FAMILIES.find((f) => f.value === settings.readerFontFamily)?.label ?? "Sans"} · ${settings.readerFontSize}px · ${paginationStyle === "page" ? "Page" : "Scroll"}`
 		: "Loading...";
 	const deviceSubtitle = isConnected
 		? connectedDevice?.name || "Connected"

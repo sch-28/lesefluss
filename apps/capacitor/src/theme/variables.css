@@ -10,6 +10,7 @@
  * inside @layer, so this import stays unlayered. */
 @import "@lesefluss/ui/styles/tokens.css";
 @import "tailwindcss/utilities" layer(utilities);
+@import "./eink.css";
 
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 

@@ -1,7 +1,8 @@
 import { DEFAULT_SETTINGS, type PaginationStyle, SETTING_CONSTRAINTS } from "@lesefluss/core";
 import type React from "react";
-import type { AppTheme } from "../contexts/theme-context";
+import { type AppTheme, useTheme } from "../contexts/theme-context";
 import { queryHooks } from "../services/db/hooks";
+import type { Settings } from "../services/db/schema";
 
 export const THEMES: { value: AppTheme; label: string }[] = [
 	{ value: "dark", label: "Dark" },
@@ -24,6 +25,22 @@ const clamp = (val: number, min: number, max: number) => Math.min(max, Math.max(
 /** Round to one decimal place to avoid floating-point drift in step arithmetic. */
 export const round1 = (n: number) => Math.round(n * 10) / 10;
 
+/**
+ * The reader layout in effect. E-ink mode forces page mode with instant turns;
+ * the stored values are left alone (pagination syncs to other devices) and
+ * come back when it is turned off.
+ */
+export function readerLayoutFor(
+	settings: Pick<Settings, "paginationStyle" | "pageTurnAnimation"> | undefined,
+	isEinkMode: boolean,
+): { paginationStyle: PaginationStyle; pageTurnAnimation: boolean } {
+	if (isEinkMode) return { paginationStyle: "page", pageTurnAnimation: false };
+	return {
+		paginationStyle: settings?.paginationStyle ?? DEFAULT_SETTINGS.PAGINATION_STYLE,
+		pageTurnAnimation: settings?.pageTurnAnimation ?? DEFAULT_SETTINGS.PAGE_TURN_ANIMATION,
+	};
+}
+
 export function useAppearanceSettings() {
 	const { data: settings } = queryHooks.useSettings();
 	const { mutate } = queryHooks.useSaveSettings();
@@ -35,12 +52,12 @@ export function useAppearanceSettings() {
 	// round1 applied on read so disabled comparisons are reliable despite floating-point drift
 	const lineSpacing = round1(settings?.readerLineSpacing ?? DEFAULT_SETTINGS.READER_LINE_SPACING);
 	const margin = settings?.readerMargin ?? DEFAULT_SETTINGS.READER_MARGIN;
-	const paginationStyle = settings?.paginationStyle ?? DEFAULT_SETTINGS.PAGINATION_STYLE;
 	const showActiveWordUnderline =
 		settings?.readerActiveWordUnderline ?? DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE;
 	const showGlossaryUnderline =
 		settings?.readerGlossaryUnderline ?? DEFAULT_SETTINGS.READER_GLOSSARY_UNDERLINE;
-	const pageTurnAnimation = settings?.pageTurnAnimation ?? DEFAULT_SETTINGS.PAGE_TURN_ANIMATION;
+	const { isEinkMode } = useTheme();
+	const { paginationStyle, pageTurnAnimation } = readerLayoutFor(settings, isEinkMode);
 
 	const adjustFontSize = (delta: number) => {
 		mutate({
@@ -106,6 +123,10 @@ export function useAppearanceSettings() {
 		mutate({ pageTurnAnimation: v });
 	};
 
+	const setEinkMode = (v: boolean) => {
+		mutate({ einkMode: v });
+	};
+
 	return {
 		fontSize,
 		appFontSize,
@@ -117,6 +138,7 @@ export function useAppearanceSettings() {
 		showActiveWordUnderline,
 		showGlossaryUnderline,
 		pageTurnAnimation,
+		isEinkMode,
 		adjustFontSize,
 		adjustAppFontSize,
 		adjustLineSpacing,
@@ -127,5 +149,6 @@ export function useAppearanceSettings() {
 		setShowActiveWordUnderline,
 		setShowGlossaryUnderline,
 		setPageTurnAnimation,
+		setEinkMode,
 	};
 }

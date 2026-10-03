@@ -7,11 +7,13 @@ import { summariseHours } from "../../../services/stats/summaries";
 import { buildNivoTheme, getAccentStops } from "./nivo-theme";
 
 export function Activity() {
-	const { theme } = useTheme();
+	const { theme, isEinkMode } = useTheme();
 	const hours = queryHooks.useStatsHourHistogram();
 
-	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme]);
-	const accent = useMemo(() => getAccentStops(theme), [theme]);
+	// The palette is read from CSS variables, which e-ink mode changes without changing `theme`.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: isEinkMode re-reads the variables
+	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme, isEinkMode]);
+	const accent = useMemo(() => getAccentStops(theme, isEinkMode), [theme, isEinkMode]);
 
 	const hourData = (hours.data ?? new Array<number>(24).fill(0)).map((minutes, hour) => ({
 		hour: hour.toString().padStart(2, "0"),
@@ -63,7 +65,7 @@ export function Activity() {
 					enableLabel={false}
 					enableGridY={false}
 					theme={nivoTheme}
-					animate={true}
+					animate={!isEinkMode}
 					motionConfig="gentle"
 				/>
 			</div>

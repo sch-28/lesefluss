@@ -19,9 +19,11 @@ const cardClass = (isActive: boolean) =>
 export function ThemeCards({
 	value,
 	onChange,
+	disabled = false,
 }: {
 	value: AppTheme;
 	onChange: (theme: AppTheme) => void;
+	disabled?: boolean;
 }) {
 	return (
 		<div className="grid w-full grid-cols-3 gap-3">
@@ -31,7 +33,8 @@ export function ThemeCards({
 					type="button"
 					onClick={() => onChange(t.value)}
 					aria-pressed={value === t.value}
-					className={cn(cardClass(value === t.value), "gap-2")}
+					disabled={disabled}
+					className={cn(cardClass(value === t.value), "gap-2", disabled && "opacity-50")}
 				>
 					<span
 						className={cn(

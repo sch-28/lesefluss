@@ -40,7 +40,9 @@ const Onboarding: React.FC = () => {
 
 	const ctxValue = useMemo(() => ({ next, finish, setFooter }), [next, finish]);
 
-	const showPaginationStep = !!settings && settings.defaultReaderMode !== "rsvp";
+	// E-ink mode forces page mode, so the choice would do nothing there.
+	const showPaginationStep =
+		!!settings && settings.defaultReaderMode !== "rsvp" && !settings.einkMode;
 	const stepNodes: React.ReactNode[] = [
 		<WelcomeStep key="welcome" />,
 		<ThemeStep key="theme" />,

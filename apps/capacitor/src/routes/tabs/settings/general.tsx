@@ -19,8 +19,8 @@ export const Route = createFileRoute("/tabs/settings/general")({
 const { APP_FONT_SIZE } = SETTING_CONSTRAINTS;
 
 function GeneralSettings() {
-	const { theme, setTheme } = useTheme();
-	const { appFontSize, adjustAppFontSize } = useAppearanceSettings();
+	const { storedTheme, isEinkMode, setTheme } = useTheme();
+	const { appFontSize, adjustAppFontSize, setEinkMode } = useAppearanceSettings();
 	const { data: settings } = queryHooks.useSettings();
 	const { mutate: saveSettings } = queryHooks.useSaveSettings();
 
@@ -30,7 +30,13 @@ function GeneralSettings() {
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				<SettingsSection title="Theme">
 					<SettingsRow stacked>
-						<ThemeCards value={theme} onChange={setTheme} />
+						<ThemeCards value={storedTheme} onChange={setTheme} disabled={isEinkMode} />
+						{isEinkMode && (
+							<p className="m-0 mt-3 text-muted-foreground text-xs">
+								E-ink display is on and uses its own black-on-white look. Your theme comes back when
+								you turn it off.
+							</p>
+						)}
 					</SettingsRow>
 				</SettingsSection>
 
@@ -46,6 +52,13 @@ function GeneralSettings() {
 						onChange={(v) => adjustAppFontSize(v - appFontSize)}
 						decLabel="A−"
 						incLabel="A+"
+					/>
+					<ToggleRow
+						id="eink-mode"
+						title="E-ink display"
+						subtitle="For e-readers: no animations, black on white, pages turn instantly. On this device only."
+						checked={isEinkMode}
+						onCheckedChange={setEinkMode}
 					/>
 				</SettingsSection>
 

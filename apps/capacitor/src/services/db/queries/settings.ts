@@ -44,6 +44,7 @@ export async function getSettings(): Promise<Settings> {
 		appFontSize: DEFAULT_SETTINGS.APP_FONT_SIZE,
 		pageTurnAnimation: DEFAULT_SETTINGS.PAGE_TURN_ANIMATION,
 		autoOpenLastBook: DEFAULT_SETTINGS.AUTO_OPEN_LAST_BOOK,
+		einkMode: DEFAULT_SETTINGS.EINK_MODE,
 		// Per-resource sync opt-outs default on; local-only, never synced.
 		syncHighlights: true,
 		syncGlossary: true,

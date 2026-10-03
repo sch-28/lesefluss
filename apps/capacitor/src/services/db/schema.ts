@@ -73,6 +73,7 @@ export const settings = sqliteTable("settings", {
 	lastSeenChangelogDate: text("last_seen_changelog_date").notNull().default(""),
 	pageTurnAnimation: integer("page_turn_animation", { mode: "boolean" }).notNull().default(true),
 	autoOpenLastBook: integer("auto_open_last_book", { mode: "boolean" }).notNull().default(false),
+	einkMode: integer("eink_mode", { mode: "boolean" }).notNull().default(false),
 	updatedAt: integer("updated_at").notNull(),
 });
 

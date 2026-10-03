@@ -1,0 +1,167 @@
+/* E-ink mode (html.eink, set by theme-context). Kept unlayered: unlayered
+ * declarations beat every cascade layer, and unlayered !important also beats
+ * the inline `transition` styles vaul and the reader set from JS.
+ * `animation: none` rather than a zero duration, so Radix Presence unmounts
+ * closed overlays at once instead of waiting for an animationend. */
+html.eink *,
+html.eink *::before,
+html.eink *::after {
+	animation: none !important;
+	transition: none !important;
+	scroll-behavior: auto !important;
+	backdrop-filter: none !important;
+	box-shadow: none !important;
+}
+
+/* The effective theme is `light` while e-ink mode is on, so only the light
+ * palette needs overriding. Greys are kept to levels a 16-grey panel renders
+ * without dithering text. */
+html.eink {
+	--background: #ffffff;
+	--foreground: #000000;
+	--card: #ffffff;
+	--card-foreground: #000000;
+	--popover: #ffffff;
+	--popover-foreground: #000000;
+	--primary: #000000;
+	--primary-foreground: #ffffff;
+	--secondary: #ffffff;
+	--secondary-foreground: #000000;
+	--muted: #ececec;
+	--muted-foreground: #000000;
+	--accent: #e0e0e0;
+	--accent-foreground: #000000;
+	--destructive: #000000;
+	--border: #000000;
+	--input: #000000;
+	--ring: #000000;
+	--chart-1: #000000;
+	--chart-2: #555555;
+	--chart-3: #888888;
+	--chart-4: #b0b0b0;
+	--chart-5: #d5d5d5;
+	--sidebar: #ffffff;
+	--sidebar-foreground: #000000;
+	--sidebar-primary: #000000;
+	--sidebar-primary-foreground: #ffffff;
+	--sidebar-accent: #e0e0e0;
+	--sidebar-accent-foreground: #000000;
+	--sidebar-border: #000000;
+	--sidebar-ring: #000000;
+}
+
+.eink .reader-theme-light {
+	--reader-text: #000000;
+	--reader-heading: #000000;
+	--reader-progress-bg: #d9d9d9;
+	--reader-progress-fill: #000000;
+	--reader-progress-label: #000000;
+}
+
+/* Rings are box-shadows, which are off; keep keyboard focus visible. */
+html.eink :focus-visible {
+	outline: 2px solid #000000 !important;
+	outline-offset: 2px !important;
+}
+
+/* The same goes for rings that mark a state rather than focus. */
+html.eink .ring-1 {
+	outline: 1px solid #000000;
+}
+
+html.eink .ring-2 {
+	outline: 2px solid #000000;
+	outline-offset: 1px;
+}
+
+.eink .reader-buddy-marker--live {
+	outline: 2px solid #000000;
+	outline-offset: 1px;
+}
+
+.eink .selection-color-swatch::after {
+	outline: 1px solid #000000;
+}
+
+.eink .selection-color-swatch--active::after {
+	outline: 3px solid #000000;
+	outline-offset: 2px;
+}
+
+/* Muted text is black here, so a placeholder would read as a typed value. */
+html.eink ::placeholder,
+html.eink [data-placeholder] {
+	color: #6e6e6e !important;
+}
+
+/* The switch thumb is white on a grey track once its shadow is gone. */
+html.eink [data-slot="switch"] {
+	border-color: #000000 !important;
+}
+
+/* Floating reader controls were separated from the text by their shadow. */
+html.eink
+:is(
+	.reader-browse-bar,
+	.reader-buddy-popover,
+	.reader-scrub-bubble,
+	.rsvp-controls,
+	.rsvp-playpause,
+	.rsvp-settings-button
+) {
+	border-color: #000000 !important;
+}
+
+/* Frozen at a third of the track, the indeterminate bar would read as 33 % done. */
+html.eink [class*="indeterminate-progress"] {
+	width: 100% !important;
+	background: repeating-linear-gradient(90deg, #000000 0 6px, #ffffff 6px 12px) !important;
+}
+
+/* Translucent chrome relied on the blur behind it to stay legible. */
+html.eink .bg-background\/95,
+html.eink .bg-background\/80 {
+	background-color: var(--background) !important;
+}
+
+/* A dark scrim is a full-screen grey flash on e-ink; the border marks the layer instead. */
+html.eink [data-slot="dialog-overlay"],
+html.eink [data-slot="alert-dialog-overlay"],
+html.eink [data-slot="sheet-overlay"],
+html.eink [data-slot="drawer-overlay"] {
+	background-color: transparent !important;
+}
+
+html.eink [data-slot="dialog-content"],
+html.eink [data-slot="alert-dialog-content"],
+html.eink [data-slot="sheet-content"],
+html.eink [data-slot="drawer-content"],
+html.eink [data-slot="popover-content"],
+html.eink [data-slot="dropdown-menu-content"],
+html.eink [data-slot="dropdown-menu-sub-content"],
+html.eink [data-slot="select-content"] {
+	border: 2px solid #000000 !important;
+}
+
+/* With one ink colour, "selected" cannot be a tint. */
+html.eink button[aria-pressed="true"] {
+	outline: 3px solid #000000;
+	outline-offset: -3px;
+}
+
+html.eink [data-slot="toggle-group-item"][data-state="on"],
+html.eink [data-slot="tabs-trigger"][data-state="active"] {
+	background-color: #000000 !important;
+	color: #ffffff !important;
+}
+
+html.eink nav a[data-active="true"] {
+	font-weight: 700;
+	text-decoration: underline;
+	text-decoration-thickness: 2px;
+	text-underline-offset: 4px;
+}
+
+.eink .cover-backdrop {
+	display: none;
+}

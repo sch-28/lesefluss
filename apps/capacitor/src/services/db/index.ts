@@ -96,6 +96,14 @@ export async function resetAppData(): Promise<void> {
 		log.warn("db", "Preferences.clear failed:", err);
 	}
 
+	// Device-local flags and caches describe the install that is being wiped;
+	// left behind, "already suggested e-ink mode" would outlive the reset.
+	try {
+		localStorage.clear();
+	} catch (err) {
+		log.warn("db", "localStorage.clear failed:", err);
+	}
+
 	if (Capacitor.isNativePlatform()) {
 		try {
 			await Filesystem.rmdir({

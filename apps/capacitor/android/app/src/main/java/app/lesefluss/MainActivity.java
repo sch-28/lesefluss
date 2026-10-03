@@ -13,6 +13,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ShareIntentPlugin.class);
         registerPlugin(NativeHttpPlugin.class);
         registerPlugin(BookScannerPlugin.class);
+        registerPlugin(DeviceInfoPlugin.class);
         super.onCreate(savedInstanceState);
         getBridge().getWebView().setWebViewClient(new ImageProxyWebViewClient(getBridge()));
     }

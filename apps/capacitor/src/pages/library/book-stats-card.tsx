@@ -62,9 +62,11 @@ interface Props {
 }
 
 export function BookStatsCard({ book }: Props) {
-	const { theme } = useTheme();
+	const { theme, isEinkMode } = useTheme();
 	const stats = queryHooks.useStatsBook(book.id);
-	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme]);
+	// The palette is read from CSS variables, which e-ink mode changes without changing `theme`.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: isEinkMode re-reads the variables
+	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme, isEinkMode]);
 
 	const data = stats.data;
 	// Both memos sit above the early return: hooks cannot be skipped, and the
@@ -222,7 +224,7 @@ export function BookStatsCard({ book }: Props) {
 							axisBottom={axisBottom}
 							axisLeft={AXIS_LEFT}
 							theme={nivoTheme}
-							animate={true}
+							animate={!isEinkMode}
 							motionConfig="gentle"
 							useMesh={true}
 							tooltip={renderTooltip}

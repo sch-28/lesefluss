@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-02 22:44'
+updated_date: '2026-10-03 16:01'
 labels:
   - web
   - auth
@@ -34,3 +35,9 @@ Why: e-reader browsers (Boox NeoBrowser) and TV/kiosk browsers land here from th
 - [ ] #3 The notice is rendered server-side and uses no Tailwind classes or module scripts
 - [ ] #4 Unit test for the detection snippet in both branches
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Premise check (2026-10-03): the device that prompted this task (Boox Nova Air 2) runs NeoBrowser on Chromium 111, which the site supports, so a 'browser too old' notice would not have fired there. The notice is still valid for genuinely old browsers, but its priority drops: with phone/QR and in-app sign-in (TASK-191.1, TASK-191.2) the app no longer sends e-reader users to a browser by default. Reconsider whether this is worth building, or fold the idea into TASK-191.6, which needs the same kind of framework-free notice inside the app.
+<!-- SECTION:NOTES:END -->

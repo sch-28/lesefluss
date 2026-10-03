@@ -17,6 +17,7 @@ export function TabBar() {
 								<Link
 									to={tab.to}
 									style={isActive ? { color: "var(--primary)" } : undefined}
+									data-active={isActive ? "true" : undefined}
 									className="relative flex h-full flex-col items-center justify-center gap-0.5 text-muted-foreground text-xs no-underline transition-colors hover:text-foreground"
 								>
 									<span className="relative">

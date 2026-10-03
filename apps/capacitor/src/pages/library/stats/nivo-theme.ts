@@ -59,7 +59,11 @@ export function buildNivoTheme(appTheme: AppTheme): PartialTheme {
  *
  * Brand orange (matches toast surface) plus a warmer gradient partner.
  */
-export function getAccentStops(appTheme: AppTheme): { from: string; to: string } {
+export function getAccentStops(
+	appTheme: AppTheme,
+	isEinkMode: boolean,
+): { from: string; to: string } {
+	if (isEinkMode) return { from: "#000000", to: "#555555" };
 	switch (appTheme) {
 		case "dark":
 			return { from: "#c94b2a", to: "#f97316" };

@@ -20,11 +20,17 @@ describe("saveSettings updatedAt", () => {
 	it("leaves updatedAt alone for local-only fields", async () => {
 		await saveSettings({ readerFontSize: 20 }, 1000);
 
-		await saveSettings({ onboardingCompleted: true, appFontSize: 18, syncStats: false });
+		await saveSettings({
+			onboardingCompleted: true,
+			appFontSize: 18,
+			syncStats: false,
+			einkMode: true,
+		});
 
 		const s = await getSettings();
 		expect(s.updatedAt).toBe(1000);
 		expect(s.onboardingCompleted).toBe(true);
+		expect(s.einkMode).toBe(true);
 	});
 
 	it("bumps updatedAt when a synced field changes", async () => {

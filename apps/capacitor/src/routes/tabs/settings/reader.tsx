@@ -28,6 +28,7 @@ function ReaderSettings() {
 		showActiveWordUnderline,
 		showGlossaryUnderline,
 		pageTurnAnimation,
+		isEinkMode,
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
@@ -80,19 +81,21 @@ function ReaderSettings() {
 					/>
 				</SettingsSection>
 
-				<SettingsSection title="Layout">
+				<SettingsSection title="Layout" hint={isEinkMode ? "(set by E-ink display)" : undefined}>
 					<SettingsRow stacked>
 						<ModeCards
 							options={PAGINATION_STYLE_OPTIONS}
 							value={paginationStyle}
 							onChange={setPaginationStyle}
+							disabled={isEinkMode}
 						/>
 					</SettingsRow>
 					<ToggleRow
 						id="page-turn-animation"
 						title="Animate page turns"
-						subtitle="Turn off on e-ink screens. Applies to page mode on this device."
+						subtitle="Slide between pages in page mode. On this device only."
 						checked={pageTurnAnimation}
+						disabled={isEinkMode}
 						onCheckedChange={setPageTurnAnimation}
 					/>
 				</SettingsSection>

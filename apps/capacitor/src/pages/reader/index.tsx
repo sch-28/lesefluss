@@ -59,6 +59,7 @@ import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { useTheme } from "../../contexts/theme-context";
+import { readerLayoutFor } from "../../hooks/use-appearance-settings";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import { useIsForeground } from "../../hooks/use-is-foreground";
 import { repairMissingImages } from "../../services/book-import/repair-images";
@@ -229,7 +230,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const hasNext =
 		book?.chapterIndex != null && seriesTotal != null && book.chapterIndex < seriesTotal - 1;
 
-	const { theme } = useTheme();
+	const { theme, isEinkMode } = useTheme();
 	const [annotationsOpen, setAnnotationsOpen] = useState(false);
 	const { data: series } = queryHooks.useSeries(book?.seriesId);
 	const [editingGlossaryEntry, setEditingGlossaryEntry] = useState<GlossaryEntry | null>(null);
@@ -602,8 +603,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		dbSettings?.readerActiveWordUnderline ?? DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE;
 	const readerGlossaryUnderline =
 		dbSettings?.readerGlossaryUnderline ?? DEFAULT_SETTINGS.READER_GLOSSARY_UNDERLINE;
-	const paginationStyle = dbSettings?.paginationStyle ?? DEFAULT_SETTINGS.PAGINATION_STYLE;
-	const pageTurnAnimation = dbSettings?.pageTurnAnimation ?? DEFAULT_SETTINGS.PAGE_TURN_ANIMATION;
+	const { paginationStyle, pageTurnAnimation } = readerLayoutFor(dbSettings, isEinkMode);
 
 	// ── Apply default reader mode once settings + book are loaded ─────────
 	// Runs once; subsequent settings changes don't flip the user's in-session mode.
@@ -1942,6 +1942,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						showActiveWordUnderline={readerActiveWordUnderline}
 						lang={hyphenationLang(book.language)}
 						animatePageTurns={pageTurnAnimation}
+						followFinger={!isEinkMode}
 						activeWord={activeWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}

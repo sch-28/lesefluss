@@ -69,6 +69,8 @@ const SWIPE_COMMIT_FRACTION = 0.22; // swipe must cross this fraction of pageWid
 const RUBBER_BAND_FACTOR = 0.4; // resistance at the absolute first/last page
 const PAGE_TRANSITION_MS = 220;
 const TAP_ZONE_FRACTION = 0.33; // left/right third of viewport
+// Without finger-follow there is no page to drag against, so a short flick must do.
+const NO_FOLLOW_SWIPE_COMMIT_PX = 40;
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -88,6 +90,8 @@ export interface PageViewProps {
 	lang: string;
 	/** Off for e-ink, where a slide renders as a smear of ghosted frames. */
 	animatePageTurns: boolean;
+	/** Off for e-ink: the page stays put during a drag and a swipe turns it on release. */
+	followFinger: boolean;
 
 	// Active highlight + per-paragraph annotation data (passed to <Paragraph>).
 	activeWord: number;
@@ -149,6 +153,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		showActiveWordUnderline,
 		lang,
 		animatePageTurns,
+		followFinger,
 		activeWord,
 		highlightsByParagraph,
 		glossaryByParagraph,
@@ -644,6 +649,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		}
 
+		if (!followFinger) return;
+
 		// Rubber-band only at the absolute book ends — within the chunk window
 		// the user is free to drag into adjacent chunks at full 1:1 ratio.
 		let effectiveDx = dx;
@@ -702,7 +709,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 
 		if (!wasHorizontalDrag) return;
 
-		const threshold = pageWidth * SWIPE_COMMIT_FRACTION;
+		const threshold = followFinger ? pageWidth * SWIPE_COMMIT_FRACTION : NO_FOLLOW_SWIPE_COMMIT_PX;
 		if (dx <= -threshold) goNext();
 		else if (dx >= threshold) goPrev();
 		else animateTo(computeTransform()); // snap back to current page

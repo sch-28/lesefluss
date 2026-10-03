@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-02 22:43'
+updated_date: '2026-10-03 16:00'
 labels:
   - android
   - ereader
@@ -41,3 +42,9 @@ Existing related work: TASK-116 (page-turn animation toggle, device-local settin
 - [ ] #3 Reader open, page turn and library scroll are measured on an e-ink device and the worst offenders are fixed
 - [ ] #4 All subtasks done
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Correction (2026-10-03, read-only adb probe of a Boox Nova Air 2): NeoBrowser there is `org.chromium.chrome` 111.0.5563, not ~Chromium 85 as stated in the description. Chrome 111 is the floor the website officially supports, and a scan of the built site found no JS API and no CSS feature beyond it (only `text-wrap`, which degrades harmlessly). So the login failure reported on that device in July is not explained by an old engine; its cause is open and was not reproduced. The user also reports DuckDuckGo (now the default browser there) was too heavy to use. Either way the fix stands: nobody should have to use a browser or type credentials on an e-reader, which is what TASK-191.1 (phone/QR) and TASK-191.2 (in-app form) deliver. Scope note from the user: the target is every kind of e-reader including cheap ones, not this (comparatively strong) device; see TASK-191.6 for the WebView floor that currently excludes low-end devices.
+<!-- SECTION:NOTES:END -->

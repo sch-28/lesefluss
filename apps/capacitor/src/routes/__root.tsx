@@ -8,6 +8,7 @@ import { Toaster } from "@/components/toast";
 import WhatsNewModal from "@/components/whats-new-modal";
 import { ImportStagingProvider } from "@/contexts/import-staging-context";
 import { useDeepLinks } from "@/services/deep-links/use-deep-links";
+import { useEinkSuggestion } from "@/services/eink-suggestion/use-eink-suggestion";
 import { checkForUpdate } from "@/services/update-check";
 
 export const Route = createRootRoute({
@@ -20,6 +21,7 @@ function RootLayout() {
 	const { pathname } = useLocation();
 	const isFullScreen = FULL_SCREEN_PREFIXES.some((p) => pathname.startsWith(p));
 	useDeepLinks();
+	useEinkSuggestion();
 
 	useEffect(() => {
 		SplashScreen.hide().catch(() => {});

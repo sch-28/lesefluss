@@ -38,9 +38,11 @@ interface Props {
 }
 
 export function WpmTrend({ period, periodLabel, now }: Props) {
-	const { theme } = useTheme();
+	const { theme, isEinkMode } = useTheme();
 	const trend = queryHooks.useStatsWpmTrend(period, now);
-	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme]);
+	// The palette is read from CSS variables, which e-ink mode changes without changing `theme`.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: isEinkMode re-reads the variables
+	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme, isEinkMode]);
 
 	const points = useMemo(
 		() => (trend.data?.measured ?? []).map((p, i) => ({ x: i, y: p.avgWpm })),
@@ -150,7 +152,7 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 						legendOffset: -44,
 					}}
 					theme={nivoTheme}
-					animate={true}
+					animate={!isEinkMode}
 					motionConfig="gentle"
 					useMesh={true}
 					tooltip={({ point }) => {

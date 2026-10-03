@@ -80,9 +80,15 @@ interface ModeCardsProps<T extends string> {
 	options: ReadonlyArray<ModeOption<T>>;
 	value: T;
 	onChange: (v: T) => void;
+	disabled?: boolean;
 }
 
-export function ModeCards<T extends string>({ options, value, onChange }: ModeCardsProps<T>) {
+export function ModeCards<T extends string>({
+	options,
+	value,
+	onChange,
+	disabled = false,
+}: ModeCardsProps<T>) {
 	return (
 		<div className="grid w-full grid-cols-2 gap-3">
 			{options.map((m) => {
@@ -94,8 +100,10 @@ export function ModeCards<T extends string>({ options, value, onChange }: ModeCa
 						type="button"
 						onClick={() => onChange(m.value)}
 						aria-pressed={isActive}
+						disabled={disabled}
 						className={cn(
 							"flex flex-col items-center gap-1.5 rounded-lg border-2 p-3.5 text-center transition-colors",
+							disabled && "opacity-50",
 							isActive
 								? "border-primary bg-primary/5"
 								: "border-border bg-card hover:border-muted-foreground/30",

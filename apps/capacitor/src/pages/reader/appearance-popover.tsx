@@ -11,7 +11,7 @@ interface Props {
 }
 
 const AppearancePopover: React.FC<Props> = ({ trigger }) => {
-	const { theme, setTheme } = useTheme();
+	const { storedTheme, setTheme } = useTheme();
 	const {
 		fontSize,
 		fontFamily,
@@ -22,6 +22,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 		showActiveWordUnderline,
 		showGlossaryUnderline,
 		pageTurnAnimation,
+		isEinkMode,
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
@@ -31,6 +32,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 		setShowActiveWordUnderline,
 		setShowGlossaryUnderline,
 		setPageTurnAnimation,
+		setEinkMode,
 	} = useAppearanceSettings();
 
 	return (
@@ -39,12 +41,15 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 			<PopoverContent align="end" className="w-80 p-0">
 				<div className="appearance-popover-content">
 					<div className="ap-section">
-						<span className="ap-label">Theme</span>
+						<span className="ap-label">
+							{isEinkMode ? "Theme (set by E-ink display)" : "Theme"}
+						</span>
 						<ToggleGroup
 							type="single"
 							variant="outline"
-							value={theme}
-							onValueChange={(v) => v && setTheme(v as typeof theme)}
+							value={storedTheme}
+							disabled={isEinkMode}
+							onValueChange={(v) => v && setTheme(v as typeof storedTheme)}
 							className="w-full"
 						>
 							{THEMES.map((t) => (
@@ -56,11 +61,14 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 					</div>
 
 					<div className="ap-section">
-						<span className="ap-label">Pagination</span>
+						<span className="ap-label">
+							{isEinkMode ? "Pagination (set by E-ink display)" : "Pagination"}
+						</span>
 						<ToggleGroup
 							type="single"
 							variant="outline"
 							value={paginationStyle}
+							disabled={isEinkMode}
 							onValueChange={(v) => v && setPaginationStyle(v as typeof paginationStyle)}
 							className="w-full"
 						>
@@ -159,7 +167,7 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 							</div>
 						</div>
 
-						{paginationStyle === "page" && (
+						{paginationStyle === "page" && !isEinkMode && (
 							<div className="ap-row">
 								<span className="ap-row-label">Page animation</span>
 								<ToggleGroup
@@ -173,6 +181,18 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 								</ToggleGroup>
 							</div>
 						)}
+						<div className="ap-row">
+							<span className="ap-row-label">E-ink display</span>
+							<ToggleGroup
+								type="single"
+								variant="outline"
+								value={isEinkMode ? "on" : "off"}
+								onValueChange={(v) => v && setEinkMode(v === "on")}
+							>
+								<ToggleGroupItem value="off">Off</ToggleGroupItem>
+								<ToggleGroupItem value="on">On</ToggleGroupItem>
+							</ToggleGroup>
+						</div>
 						<div className="ap-row">
 							<span className="ap-row-label">Time remaining</span>
 							<ToggleGroup

@@ -5,14 +5,15 @@ import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
 import { useId, useState } from "react";
 import { useSyncContext } from "@/contexts/sync-context";
+import { useTheme } from "@/contexts/theme-context";
 import { NATIVE_SYNC_ENABLED, openBrowserSignIn, SIGN_IN_FAILED_MESSAGE } from "@/services/sync";
 import { PhoneSignInDialog } from "./phone-sign-in-dialog";
 
 /**
- * Email + password sign-in that never leaves the app, for devices whose
- * browser cannot render the website. Social accounts still go through the
- * browser, offered underneath. Native builds only: the web build is signed in
- * by the site's own cookie session.
+ * Native sign-in that never needs the device's browser: email + password in
+ * the app, or a code confirmed on a phone. The browser stays as a fallback
+ * for social accounts. Native builds only: the web build is signed in by the
+ * site's own cookie session.
  */
 export function PasswordSignInForm({
 	beforeBrowserSignIn,
@@ -23,6 +24,7 @@ export function PasswordSignInForm({
 	className?: string;
 }) {
 	const { signInWithPassword } = useSyncContext();
+	const { isEinkMode } = useTheme();
 	const id = useId();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
@@ -63,71 +65,104 @@ export function PasswordSignInForm({
 		}
 	};
 
+	const phoneButton = (
+		<Button
+			type="button"
+			variant={isEinkMode ? "default" : "outline"}
+			className="w-full"
+			onClick={() => setIsPhoneDialogOpen(true)}
+		>
+			Sign in with your phone
+		</Button>
+	);
+
+	const emailForm = (
+		<form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
+			<Field>
+				<FieldLabel htmlFor={`${id}-email`}>Email</FieldLabel>
+				<Input
+					id={`${id}-email`}
+					type="email"
+					inputMode="email"
+					autoComplete="email"
+					autoCapitalize="none"
+					autoCorrect="off"
+					spellCheck={false}
+					placeholder="you@example.com"
+					value={email}
+					onChange={(e) => {
+						setEmail(e.target.value);
+						setError(null);
+					}}
+					disabled={isPending}
+				/>
+			</Field>
+			<Field>
+				<FieldLabel htmlFor={`${id}-password`}>Password</FieldLabel>
+				<Input
+					id={`${id}-password`}
+					type="password"
+					autoComplete="current-password"
+					placeholder="••••••••"
+					value={password}
+					onChange={(e) => {
+						setPassword(e.target.value);
+						setError(null);
+					}}
+					disabled={isPending}
+				/>
+			</Field>
+			{error && <FieldError>{error}</FieldError>}
+			<Button
+				type="submit"
+				variant={isEinkMode ? "outline" : "default"}
+				className="w-full"
+				disabled={!canSubmit}
+			>
+				{isPending ? "Signing in…" : "Sign in"}
+			</Button>
+		</form>
+	);
+
+	const browserButton = (
+		<Button
+			type="button"
+			variant="outline"
+			className="w-full"
+			onClick={handleBrowserSignIn}
+			disabled={isOpeningBrowser}
+		>
+			{isOpeningBrowser ? "Opening browser…" : "Sign in in your browser"}
+		</Button>
+	);
+
 	return (
 		<div className={cn("flex flex-col gap-4", className)}>
-			<form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
-				<Field>
-					<FieldLabel htmlFor={`${id}-email`}>Email</FieldLabel>
-					<Input
-						id={`${id}-email`}
-						type="email"
-						inputMode="email"
-						autoComplete="email"
-						autoCapitalize="none"
-						autoCorrect="off"
-						spellCheck={false}
-						placeholder="you@example.com"
-						value={email}
-						onChange={(e) => {
-							setEmail(e.target.value);
-							setError(null);
-						}}
-						disabled={isPending}
-					/>
-				</Field>
-				<Field>
-					<FieldLabel htmlFor={`${id}-password`}>Password</FieldLabel>
-					<Input
-						id={`${id}-password`}
-						type="password"
-						autoComplete="current-password"
-						placeholder="••••••••"
-						value={password}
-						onChange={(e) => {
-							setPassword(e.target.value);
-							setError(null);
-						}}
-						disabled={isPending}
-					/>
-				</Field>
-				{error && <FieldError>{error}</FieldError>}
-				<Button type="submit" className="w-full" disabled={!canSubmit}>
-					{isPending ? "Signing in…" : "Sign in"}
-				</Button>
-			</form>
-			<div className="flex flex-col gap-2">
-				<p className="m-0 text-muted-foreground text-xs">
-					Google or Discord account, or no account yet? Confirm a code with your phone, or continue
-					in your browser.
-				</p>
-				<Button
-					type="button"
-					variant="outline"
-					className="w-full"
-					onClick={() => setIsPhoneDialogOpen(true)}
-				>
-					Sign in with your phone
-				</Button>
-				<Button
-					type="button"
-					variant="outline"
-					className="w-full"
-					onClick={handleBrowserSignIn}
-					disabled={isOpeningBrowser}
-				>
-					{isOpeningBrowser ? "Opening browser…" : "Sign in in your browser"}
-				</Button>
-			</div>
+			{isEinkMode ? (
+				// Typing on e-ink is slow; the phone does the typing instead.
+				<>
+					<div className="flex flex-col gap-2">
+						{phoneButton}
+						<p className="m-0 text-muted-foreground text-xs">
+							Scan a code with your phone and confirm there. Nothing to type on this screen.
+						</p>
+					</div>
+					{emailForm}
+					{browserButton}
+				</>
+			) : (
+				<>
+					{emailForm}
+					<div className="flex flex-col gap-2">
+						<p className="m-0 text-muted-foreground text-xs">
+							Google or Discord account, or no account yet? Confirm a code with your phone, or
+							continue in your browser.
+						</p>
+						{phoneButton}
+						{browserButton}
+					</div>
+				</>
+			)}
 			<PhoneSignInDialog open={isPhoneDialogOpen} onOpenChange={setIsPhoneDialogOpen} />
 		</div>
 	);
