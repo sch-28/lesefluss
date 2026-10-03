@@ -1,3 +1,4 @@
+import { BUDDY_TRAILER_MIN_GAP } from "@lesefluss/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type Rendered, render } from "../../../test/render";
 
@@ -12,7 +13,7 @@ vi.mock("../../../services/db/hooks", () => ({
 	},
 }));
 
-const { BuddyReadTrailer, MIN_GAP, trailerPositions } = await import("../buddy-read-trailer");
+const { BuddyReadTrailer } = await import("../buddy-read-trailer");
 
 function mockReducedMotion(reduce: boolean) {
 	vi.stubGlobal(
@@ -64,38 +65,8 @@ describe("BuddyReadTrailer", () => {
 
 		expect(view.text()).toContain("Morning Star");
 		expect(view.text()).toContain("You · 47%");
-		for (const percent of labels()) expect(Math.abs(percent - 47)).toBeGreaterThanOrEqual(MIN_GAP);
-	});
-
-	it("keeps everyone clear of each other on every tick, wherever You are", () => {
-		for (let self = 0; self <= 100; self++) {
-			for (let tick = 0; tick <= 15; tick++) {
-				const positions = trailerPositions(self, tick);
-				expect(positions.readers).toHaveLength(3);
-				const riders = [positions.self, ...positions.readers]
-					.map((r) => r.percent)
-					.sort((a, b) => a - b);
-				expect(riders[0]).toBeGreaterThanOrEqual(0);
-				expect(riders.at(-1)).toBeLessThanOrEqual(100);
-				for (let i = 1; i < riders.length; i++) {
-					expect(riders[i] - riders[i - 1]).toBeGreaterThanOrEqual(MIN_GAP);
-				}
-			}
-			expect(trailerPositions(self, 15).self.percent).toBe(self);
-		}
-	});
-
-	it("moves each reader on its own ticks", () => {
-		const moversPerTick = Array.from({ length: 15 }, (_, i) => {
-			const before = trailerPositions(50, i).readers;
-			const after = trailerPositions(50, i + 1).readers;
-			return after.filter((r, j) => r.percent !== before[j]?.percent).length;
-		});
-		expect(moversPerTick.some((n) => n > 0 && n < 3)).toBe(true);
-		const start = trailerPositions(50, 0).readers;
-		const end = trailerPositions(50, 15).readers;
-		for (const [i, r] of end.entries())
-			expect(r.percent - (start[i]?.percent ?? 0)).toBeGreaterThanOrEqual(12);
+		for (const percent of labels())
+			expect(Math.abs(percent - 47)).toBeGreaterThanOrEqual(BUDDY_TRAILER_MIN_GAP);
 	});
 
 	it("tells screen readers what the illustration shows in one sentence", async () => {

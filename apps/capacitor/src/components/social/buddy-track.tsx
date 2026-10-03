@@ -12,8 +12,8 @@ export type TrackRider = {
 	/** Avatar colours for a rider shown by initials only. */
 	toneClassName?: string;
 	label?: string;
-	/** Changes each time the rider steps forward; each change plays a small hop. */
-	hop?: number;
+	/** How many steps forward the rider has taken; each new step plays a small hop. */
+	steps?: number;
 };
 
 const SPRING = { type: "spring", stiffness: 120, damping: 20 } as const;
@@ -28,7 +28,9 @@ function clampPercent(percent: number): number {
  * Everyone in a buddy read on one shared line. Each rider is a layer as wide as
  * the track, shifted by its percent, so movement stays a transform. The wrapper
  * clips sideways only, so overlays above the avatars stay visible; its padding
- * leaves room for half the widest label ("You · 100%") at either end.
+ * leaves room for half the widest label ("You · 100%") at either end. On a
+ * narrow track the avatars shrink and only "You" keeps a label, so riders kept
+ * 18% apart never collide.
  */
 export function BuddyTrack({
 	riders,
@@ -44,7 +46,7 @@ export function BuddyTrack({
 	const leader = Math.max(0, ...riders.map((r) => clampPercent(r.percent)));
 	const transition = isInstant ? INSTANT : SPRING;
 	return (
-		<div className={cn("overflow-x-clip px-6", className)}>
+		<div className={cn("@container overflow-x-clip px-6", className)}>
 			<div className="relative h-14">
 				<div className="absolute inset-x-0 top-[18px] h-1.5 rounded-full bg-current/10" />
 				<motion.div
@@ -64,12 +66,12 @@ export function BuddyTrack({
 						<div className="absolute left-0 flex -translate-x-1/2 flex-col items-center">
 							{renderOverlay?.(rider)}
 							<motion.span
-								key={rider.hop}
+								key={rider.steps}
 								className={cn(
 									"rounded-full bg-card ring-2 ring-card",
 									rider.isSelf && "outline-2 outline-primary outline-offset-2",
 								)}
-								initial={rider.hop && !isInstant ? { y: -4.5 } : false}
+								initial={rider.steps && !isInstant ? { y: -4.5 } : false}
 								animate={{ y: 0 }}
 								transition={HOP}
 							>
@@ -77,14 +79,17 @@ export function BuddyTrack({
 									name={rider.name}
 									avatarUrl={rider.avatarUrl}
 									size="sm"
-									className={cn("size-[30px] text-[11px]", rider.toneClassName)}
+									className={cn(
+										"size-[min(30px,calc(18cqw-4px))] text-[11px]",
+										rider.toneClassName,
+									)}
 								/>
 							</motion.span>
 							{rider.label && (
 								<span
 									className={cn(
 										"mt-1.5 whitespace-nowrap font-semibold text-[10px] tabular-nums",
-										rider.isSelf ? "text-foreground" : "text-muted-foreground",
+										rider.isSelf ? "text-foreground" : "@max-[180px]:hidden text-muted-foreground",
 									)}
 								>
 									{rider.label}

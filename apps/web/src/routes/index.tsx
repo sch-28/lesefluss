@@ -1,23 +1,33 @@
+import { BUDDY_TRAILER_NOTE_READER } from "@lesefluss/core";
+import { BUDDY_TRAILER_READER_TONES } from "@lesefluss/ui/buddy-trailer";
 import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
 import {
+	Activity,
 	Battery,
 	Bluetooth,
 	BookOpen,
 	ChevronsRight,
 	Cloud,
+	EyeOff,
+	Flame,
 	Globe,
 	Highlighter,
+	Lock,
 	Monitor,
 	NotebookPen,
 	Palette,
 	Power,
 	Puzzle,
 	SlidersHorizontal,
+	Smile,
 	Type,
+	Users,
 } from "lucide-react";
 import { useEffect, useMemo } from "react";
+import { BuddyReadPreview } from "~/components/buddy-read-preview";
 import { ExploreWall } from "~/components/explore-wall";
 import { HeroRsvp } from "~/components/hero-rsvp";
 import { GooglePlayIcon } from "~/components/icons/google-play";
@@ -166,7 +176,88 @@ function Home() {
 				</div>
 			</section>
 
-			{/* ── 5. Android app ──────────────────────────────────────── */}
+			{/* ── 5. Read together ─────────────────────────────────────── */}
+			<section className="py-20">
+				<div className="mx-auto max-w-5xl px-6">
+					<div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+						<div data-aos="fade-right" className="text-center lg:text-left">
+							<p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
+								Buddy reads
+							</p>
+							<h2 className="mb-5 font-bold text-3xl leading-tight sm:text-4xl">Read together</h2>
+							<p className="mb-8 text-muted-foreground leading-relaxed">
+								Pick a book with friends and watch each other move through it on one shared line.
+								Leave notes on a chapter, react to the twist, and keep each other going. Everyone
+								reads their own copy, in the mode they like.
+							</p>
+							<div className="mb-8 flex flex-wrap justify-center gap-2 lg:justify-start">
+								{socialFeatures.map(({ icon: Icon, label }) => (
+									<span
+										key={label}
+										className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-foreground/80 text-sm"
+									>
+										<Icon className="h-3.5 w-3.5 text-muted-foreground" />
+										{label}
+									</span>
+								))}
+							</div>
+							<div className="flex justify-center lg:justify-start">
+								<Button asChild className="h-auto px-6 py-2.5 font-semibold text-sm">
+									<a href="/app/tabs/social">
+										<Users className="mr-2 h-4 w-4" />
+										Start a buddy read
+									</a>
+								</Button>
+							</div>
+						</div>
+
+						<div className="relative mx-auto w-full max-w-[440px] py-6" data-aos="fade-left">
+							<div className="absolute inset-0 rounded-full bg-primary/10" style={glowStyle} />
+							<div className="relative -rotate-1 overflow-hidden rounded-3xl border border-border bg-card shadow-[0_30px_60px_-30px_rgba(24,24,27,0.35)]">
+								<div aria-hidden="true" className="pointer-events-none absolute inset-0">
+									<img
+										src={PREVIEW_COVER.url}
+										alt=""
+										draggable={false}
+										loading="lazy"
+										decoding="async"
+										className="absolute inset-0 size-full scale-150 object-cover opacity-25 blur-2xl"
+									/>
+									<div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,color-mix(in_oklch,var(--primary)_22%,transparent),transparent_60%)]" />
+									<div className="absolute inset-0 bg-gradient-to-b from-card/30 via-35% via-card/80 to-80% to-card" />
+								</div>
+								<div className="relative p-4 sm:p-5">
+									<div className="rounded-2xl border border-border bg-card/85 p-3.5 sm:p-4">
+										<BuddyReadPreview coverUrl={PREVIEW_COVER.url} title={PREVIEW_COVER.title} />
+									</div>
+								</div>
+							</div>
+							<div className="relative -mt-4 ml-auto w-56 rotate-2 rounded-2xl border border-border bg-card p-3.5 text-left shadow-[0_18px_36px_-18px_rgba(24,24,27,0.35)] lg:absolute lg:-bottom-16 lg:-left-10 lg:mt-0">
+								<div className="flex items-center gap-2">
+									<span
+										className={cn(
+											"flex size-6 items-center justify-center rounded-full font-bold text-[10px]",
+											BUDDY_TRAILER_READER_TONES[BUDDY_TRAILER_NOTE_READER],
+										)}
+									>
+										{BUDDY_TRAILER_NOTE_READER[0]}
+									</span>
+									<span className="text-xs">
+										<span className="font-semibold">{BUDDY_TRAILER_NOTE_READER}</span>
+										<span className="text-muted-foreground"> · note in chapter 11</span>
+									</span>
+								</div>
+								<p className="mt-2 text-[13px] leading-snug">"Did not see that coming. At all."</p>
+								<span className="mt-2 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-semibold text-[11px]">
+									<Flame className="h-3 w-3 text-primary" />2
+								</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			{/* ── 6. Android app ──────────────────────────────────────── */}
 			<section className="py-20">
 				<div className="mx-auto max-w-5xl px-6">
 					<div className="grid gap-12 lg:grid-cols-2 lg:items-center">
@@ -214,7 +305,7 @@ function Home() {
 				</div>
 			</section>
 
-			{/* ── 6. Device ────────────────────────────────────────────── */}
+			{/* ── 7. Device ────────────────────────────────────────────── */}
 			<section className="py-20">
 				<div className="mx-auto max-w-5xl px-6">
 					<div className="grid gap-12 lg:grid-cols-2 lg:items-center">
@@ -264,7 +355,7 @@ function Home() {
 				</div>
 			</section>
 
-			{/* ── 7. Web app + Extension ───────────────────────────────── */}
+			{/* ── 8. Web app + Extension ───────────────────────────────── */}
 			<section className="bg-muted/40 py-20">
 				<div className="mx-auto max-w-5xl px-6">
 					<div className="grid gap-4 lg:grid-cols-2">
@@ -307,7 +398,7 @@ function Home() {
 				</div>
 			</section>
 
-			{/* ── 8. Open Source CTA ───────────────────────────────────── */}
+			{/* ── 9. Open Source CTA ───────────────────────────────────── */}
 			<section className="bg-foreground py-28 text-background">
 				<div className="mx-auto max-w-3xl px-6 text-center" data-aos="fade-up">
 					<p className="mb-3 font-semibold text-background/50 text-xs uppercase tracking-widest">
@@ -451,6 +542,19 @@ const bentoCards: { icon: LucideIcon; title: string; description: string }[] = [
 		description:
 			"Sign in with Google, Discord, or email. Library, position and highlights follow you.",
 	},
+];
+
+/** A public-domain classic bundled with the site, so the preview needs no network. */
+const PREVIEW_COVER = {
+	url: "/covers/jane-austen__pride-and-prejudice.webp",
+	title: "Pride and Prejudice",
+};
+
+const socialFeatures: { icon: LucideIcon; label: string }[] = [
+	{ icon: Activity, label: "Live progress" },
+	{ icon: EyeOff, label: "Spoiler-safe notes" },
+	{ icon: Smile, label: "Reactions" },
+	{ icon: Lock, label: "Invite-only" },
 ];
 
 const deviceFeatures: { icon: LucideIcon; label: string }[] = [

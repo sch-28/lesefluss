@@ -73,3 +73,12 @@
 		background-position: -100% 0;
 	}
 }
+
+@keyframes trailer-hop {
+	from {
+		transform: translateY(-4.5px);
+	}
+	to {
+		transform: translateY(0);
+	}
+}
