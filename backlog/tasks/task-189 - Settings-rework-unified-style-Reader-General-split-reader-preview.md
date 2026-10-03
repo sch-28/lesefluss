@@ -1,10 +1,10 @@
 ---
 id: TASK-189
 title: 'Settings rework: unified style, Reader/General split, reader preview'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-02 21:06'
-updated_date: '2026-10-02 21:16'
+updated_date: '2026-10-03 00:43'
 labels:
   - ui
   - settings
@@ -58,9 +58,9 @@ Decisions: flat RSVP style everywhere incl. landing; Appearance replaced by Read
 - [x] #5 General page holds theme, app text size, open last book on launch and default reader mode
 - [x] #6 Old /tabs/settings/appearance route removed; landing links to Reader and General
 - [x] #7 RSVP reset no longer resets default reader mode
-- [ ] #8 In-reader RSVP sheet (minimal form) and onboarding theme step still work
+- [x] #8 In-reader RSVP sheet (minimal form) and onboarding theme step still work
 - [x] #9 e2e specs for auto-open-last-book and default-reader-mode updated and passing; new e2e covers reader preview reacting to font size
-- [ ] #10 Lint and typecheck pass
+- [x] #10 Lint and typecheck pass
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -69,4 +69,12 @@ Decisions: flat RSVP style everywhere incl. landing; Appearance replaced by Read
 Shared primitives in components/settings/ (SettingsSection, SettingsRow/RowLabel/NavRow, StepperRow, SliderRow); app-shell ToggleRow got optional id/subtitle. ThemeCards/FontCards in components/appearance-pickers.tsx (onboarding theme step reuses). readerFontStack helper in use-appearance-settings replaces duplicated serif stack in scroll-view and chunk-content. Removed .ap-settings-row/.ap-settings-val CSS. Social tab screens still on app-shell/section (out of scope). tsc: only error is pre-existing pages/reader/index.tsx:1913 (not touched). vitest 967 pass; 9 affected e2e pass (2 flaked once on cold-server import, green on rerun).
 
 AC8: onboarding verified via e2e; in-reader RSVP sheet (minimal form) not yet manually checked. AC10: biome clean, tsc blocked only by pre-existing reader/index.tsx error.
+
+AC10: fixed the tsc error at pages/reader/index.tsx:1913 (RsvpView content={content ?? ""}, same as line 2161; the skeleton guard already rules out null at runtime). tsc and biome are clean, with 3 pre-existing infos. AC8: the onboarding theme step is verified via e2e. The in-reader RSVP sheet was checked by code only: rsvp-view still renders <RsvpSettingsForm minimal onOpenFullSettings>, and the minimal branches are unchanged. It was not tested by hand on a device. Follow-up: cards were shrunk slightly per picker (font p-3/text-2xl, theme size-12, mode p-3.5/icon size-5).
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+All settings pages now share one flat style. New shared primitives live in components/settings/: SettingsSection, SettingsRow, NavRow, StepperRow and SliderRow. Appearance is split into Reader (typography, layout and in-reader toggles, plus a live preview) and General (theme, app text size, open last book on launch, default reader mode). The Reading Mode cards now fill the row. The RSVP reset no longer touches defaultReaderMode. The Device, Sync, Social and Export pages use the shared primitives. readerFontStack replaces the duplicated serif stack. The e2e specs are updated, and a new reader-preview spec was added. Also fixed the tsc error that already existed in reader/index.tsx:1913.
+<!-- SECTION:FINAL_SUMMARY:END -->

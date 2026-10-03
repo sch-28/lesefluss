@@ -46,6 +46,46 @@ to something that already belongs to them, or to a confirmation screen where the
    `/` or `/app/`.
 5. Update the table above.
 
+## Device link sign-in (`/link`)
+
+Not an App Link; a website page that signs in *another* device. For e-readers whose browser
+cannot render the site (Boox NeoBrowser), and for any device without a usable browser.
+
+Flow, using better-auth's `deviceAuthorization` plugin (RFC 8628) configured in
+`apps/web/src/lib/auth.ts`:
+
+1. The app (`services/sync/device-sign-in.ts`) posts to `/api/auth/device/code` as client
+   `lesefluss-app` and gets a `device_code` (40 random characters, kept in memory, never shown)
+   and a `user_code` (8 characters from an alphabet without 0/O/1/I, shown as `ABCD-2345` and
+   as a QR of `https://lesefluss.app/link?user_code=ABCD2345`).
+2. The user opens that link on a phone or types the code at `/link` on any browser. Signed out,
+   the page sends them through `/login?redirect=/link?user_code=…`. Signed in, it names the
+   account and offers Approve or Deny (`routes/link/index.tsx` → `lib/device-link.ts` →
+   `auth.api.deviceApprove` / `deviceDeny`, which require a session).
+3. The app polls `/api/auth/device/token` every 3 s (`components/sync/use-device-sign-in.ts`),
+   pausing in the background or offline. On approval the server mints a session, deletes the
+   code row and returns the session token; the app finishes through the same
+   `completeLogin` as the deep-link sign-in.
+
+Security properties:
+
+- A code lives 10 minutes and is deleted on redemption, denial or expiry: it works at most once.
+- Only the app instance that requested the code holds the `device_code`, so approving a code
+  can never sign in anyone else's device, even if the `user_code` was guessed or shoulder-read.
+- Approve and deny need a signed-in session; the page shows which account is about to be used.
+- Direct hits on `/device/code`, `/device/token`, `/device/approve`, `/device/deny` and `/device`
+  are rate-limited per IP (`rateLimit.customRules`), and polling faster than the interval is
+  refused (`slow_down`). The website page calls `auth.api` server-side, which bypasses that
+  limiter, so `lib/device-link.ts` limits decisions per IP itself.
+- Device-code phishing (a stranger requests a code and sends the victim the link) is the
+  flow's inherent risk: the page names the account, warns against codes received from others,
+  and only enables Approve after the user confirms the device is in front of them.
+
+`/link/` could later be claimed as an App Link so a phone with Lesefluss installed confirms
+inside the app with its bearer session (parser destination, `PendingLink` variant, manifest
+`pathPrefix`, and an in-app confirm screen calling `/api/auth/device/approve` through
+`authedFetch`). Not done yet; the website handles every phone today.
+
 ## Signing key fingerprints
 
 `assetlinks.json` must list the SHA-256 of every certificate the app is signed with:

@@ -18,6 +18,7 @@ export default defineConfig({
 		"session",
 		"account",
 		"verification",
+		"device_code",
 	],
 	dbCredentials: {
 		// biome-ignore lint/style/noNonNullAssertion: required env var, fails at startup if missing

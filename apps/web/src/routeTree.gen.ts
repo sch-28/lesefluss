@@ -19,6 +19,7 @@ import { Route as ReportIndexRouteImport } from './routes/report/index'
 import { Route as PrivacyIndexRouteImport } from './routes/privacy/index'
 import { Route as OrderIndexRouteImport } from './routes/order/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
+import { Route as LinkIndexRouteImport } from './routes/link/index'
 import { Route as ImprintIndexRouteImport } from './routes/imprint/index'
 import { Route as FeedbackIndexRouteImport } from './routes/feedback/index'
 import { Route as DownloadIndexRouteImport } from './routes/download/index'
@@ -145,6 +146,11 @@ const OrderIndexRoute = OrderIndexRouteImport.update({
 const LoginIndexRoute = LoginIndexRouteImport.update({
   id: '/login/',
   path: '/login/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LinkIndexRoute = LinkIndexRouteImport.update({
+  id: '/link/',
+  path: '/link/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImprintIndexRoute = ImprintIndexRouteImport.update({
@@ -586,6 +592,7 @@ export interface FileRoutesByFullPath {
   '/download/': typeof DownloadIndexRoute
   '/feedback/': typeof FeedbackIndexRoute
   '/imprint/': typeof ImprintIndexRoute
+  '/link/': typeof LinkIndexRoute
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
@@ -675,6 +682,7 @@ export interface FileRoutesByTo {
   '/download': typeof DownloadIndexRoute
   '/feedback': typeof FeedbackIndexRoute
   '/imprint': typeof ImprintIndexRoute
+  '/link': typeof LinkIndexRoute
   '/login': typeof LoginIndexRoute
   '/order': typeof OrderIndexRoute
   '/privacy': typeof PrivacyIndexRoute
@@ -766,6 +774,7 @@ export interface FileRoutesById {
   '/download/': typeof DownloadIndexRoute
   '/feedback/': typeof FeedbackIndexRoute
   '/imprint/': typeof ImprintIndexRoute
+  '/link/': typeof LinkIndexRoute
   '/login/': typeof LoginIndexRoute
   '/order/': typeof OrderIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
@@ -857,6 +866,7 @@ export interface FileRouteTypes {
     | '/download/'
     | '/feedback/'
     | '/imprint/'
+    | '/link/'
     | '/login/'
     | '/order/'
     | '/privacy/'
@@ -946,6 +956,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/feedback'
     | '/imprint'
+    | '/link'
     | '/login'
     | '/order'
     | '/privacy'
@@ -1036,6 +1047,7 @@ export interface FileRouteTypes {
     | '/download/'
     | '/feedback/'
     | '/imprint/'
+    | '/link/'
     | '/login/'
     | '/order/'
     | '/privacy/'
@@ -1127,6 +1139,7 @@ export interface RootRouteChildren {
   DownloadIndexRoute: typeof DownloadIndexRoute
   FeedbackIndexRoute: typeof FeedbackIndexRoute
   ImprintIndexRoute: typeof ImprintIndexRoute
+  LinkIndexRoute: typeof LinkIndexRoute
   LoginIndexRoute: typeof LoginIndexRoute
   OrderIndexRoute: typeof OrderIndexRoute
   PrivacyIndexRoute: typeof PrivacyIndexRoute
@@ -1258,6 +1271,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login/'
       preLoaderRoute: typeof LoginIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/link/': {
+      id: '/link/'
+      path: '/link'
+      fullPath: '/link/'
+      preLoaderRoute: typeof LinkIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/imprint/': {
@@ -1863,6 +1883,7 @@ const rootRouteChildren: RootRouteChildren = {
   DownloadIndexRoute: DownloadIndexRoute,
   FeedbackIndexRoute: FeedbackIndexRoute,
   ImprintIndexRoute: ImprintIndexRoute,
+  LinkIndexRoute: LinkIndexRoute,
   LoginIndexRoute: LoginIndexRoute,
   OrderIndexRoute: OrderIndexRoute,
   PrivacyIndexRoute: PrivacyIndexRoute,

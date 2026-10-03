@@ -1910,7 +1910,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				) : readerMode === "rsvp" ? (
 					<RsvpView
 						ref={rsvpViewRef}
-						content={content}
+						content={content ?? ""}
 						initialWord={rsvpInitWord}
 						settings={rsvpSettings}
 						fontSize={readerFontSize}

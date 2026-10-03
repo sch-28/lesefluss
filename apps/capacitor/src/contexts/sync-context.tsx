@@ -27,6 +27,7 @@ import {
 	IS_WEB_BUILD,
 	NATIVE_SYNC_ENABLED,
 	onSessionLost,
+	signInWithPassword as requestPasswordSignIn,
 	SYNC_ENABLED,
 	signOut as syncSignOut,
 } from "../services/sync";
@@ -48,6 +49,10 @@ interface SyncContextType {
 	syncError: string | null;
 	logout: () => Promise<void>;
 	syncNow: () => Promise<void>;
+	/** Native only. Rejects with a `PasswordSignInError`; the caller shows its message. */
+	signInWithPassword: (email: string, password: string) => Promise<void>;
+	/** Native only. Finishes a sign-in whose session token arrived some other way (device link). */
+	signInWithSessionToken: (token: string) => Promise<void>;
 }
 
 const SyncContext = createContext<SyncContextType | null>(null);
@@ -204,10 +209,7 @@ function useResumeSync(setLastSynced: Dispatch<SetStateAction<number | null>>) {
 }
 
 function useMobileAuthCallback(
-	setIsLoggedIn: Dispatch<SetStateAction<boolean>>,
-	setUserEmail: Dispatch<SetStateAction<string | null>>,
-	setIsSyncing: Dispatch<SetStateAction<boolean>>,
-	setLastSynced: Dispatch<SetStateAction<number | null>>,
+	completeLogin: (token: string) => Promise<void>,
 	setSyncError: Dispatch<SetStateAction<string | null>>,
 ) {
 	// Dedupe: cold-start `getLaunchUrl()` and the `appUrlOpen` listener can both
@@ -252,26 +254,17 @@ function useMobileAuthCallback(
 			}
 
 			setSyncError(null);
-			setIsSyncing(true);
+			await Browser.close().catch(() => {});
 			try {
-				const { email } = await finalizeVerifiedAuthLoginHandoff(token);
-				setIsLoggedIn(true);
-				setUserEmail(email || null);
-				await Browser.close().catch(() => {});
-				await fullSync();
-				invalidateAfterSync();
-				setLastSynced(Date.now());
-				toast.success(email ? `Signed in as ${email}` : "Signed in");
+				await completeLogin(token);
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : "Sign-in failed";
 				setSyncError(msg);
 				toast.error(msg);
 				log.error("auth", "mobile login failed:", err);
-			} finally {
-				setIsSyncing(false);
 			}
 		},
-		[setIsLoggedIn, setUserEmail, setIsSyncing, setLastSynced, setSyncError],
+		[completeLogin, setSyncError],
 	);
 
 	useAppUrlOpenListener(({ url }) => void handleUrl(url), NATIVE_SYNC_ENABLED);
@@ -309,7 +302,51 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 		setIsSessionResolved,
 	);
 	useResumeSync(setLastSynced);
-	useMobileAuthCallback(setIsLoggedIn, setUserEmail, setIsSyncing, setLastSynced, setSyncError);
+
+	// Shared tail of every native sign-in: the deep-link callback and the in-app
+	// password form both end up with a raw session token and finish identically.
+	// A failed token check rejects so the caller surfaces it where the user is;
+	// a failed first sync is reported here, since by then the user is signed in
+	// and the caller's UI is gone.
+	const completeLogin = useCallback(async (token: string) => {
+		setIsSyncing(true);
+		try {
+			const { email } = await finalizeVerifiedAuthLoginHandoff(token);
+			setIsLoggedIn(true);
+			setUserEmail(email || null);
+			toast.success(email ? `Signed in as ${email}` : "Signed in");
+			try {
+				await fullSync();
+				invalidateAfterSync();
+				setLastSynced(Date.now());
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : "Sync failed";
+				setSyncError(msg);
+				toast.error(msg);
+				log.warn("sync", "first sync after sign-in failed:", err);
+			}
+		} finally {
+			setIsSyncing(false);
+		}
+	}, []);
+	useMobileAuthCallback(completeLogin, setSyncError);
+
+	const signInWithPassword = useCallback(
+		async (email: string, password: string) => {
+			setSyncError(null);
+			const token = await requestPasswordSignIn(email, password);
+			await completeLogin(token);
+		},
+		[completeLogin],
+	);
+
+	const signInWithSessionToken = useCallback(
+		async (token: string) => {
+			setSyncError(null);
+			await completeLogin(token);
+		},
+		[completeLogin],
+	);
 	// A 401 anywhere drops the session; the signed-in flag must not outlive it,
 	// or screens behind it keep showing an error where the sign-in prompt belongs.
 	useEffect(
@@ -356,6 +393,8 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 		syncError,
 		logout,
 		syncNow,
+		signInWithPassword,
+		signInWithSessionToken,
 	};
 
 	return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;

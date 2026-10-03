@@ -65,6 +65,15 @@ import {
 	SYNC_ENABLED,
 } from "./session";
 
+export { openBrowserSignIn } from "./browser-sign-in";
+export {
+	type DeviceCodeGrant,
+	type DevicePollResult,
+	DeviceSignInError,
+	pollDeviceToken,
+	requestDeviceCode,
+} from "./device-sign-in";
+export { PasswordSignInError, signInWithPassword } from "./password-sign-in";
 export {
 	adoptSyncIdentity,
 	beginAuthLoginHandoff,
@@ -79,6 +88,7 @@ export {
 	resetSessionPushWatermark,
 	SYNC_ENABLED,
 } from "./session";
+export { SIGN_IN_FAILED_MESSAGE } from "./sign-in-copy";
 
 export async function signOut(): Promise<void> {
 	const token = await getToken();

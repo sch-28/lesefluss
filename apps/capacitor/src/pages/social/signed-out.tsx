@@ -1,9 +1,8 @@
-import { Browser } from "@capacitor/browser";
 import { Button } from "@lesefluss/ui/button";
+import { Link } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
 import { useState } from "react";
-import { beginAuthLoginHandoff, IS_WEB_BUILD, SYNC_ENABLED } from "@/services/sync";
-import { SYNC_URL } from "@/services/sync/auth-client";
+import { IS_WEB_BUILD, openBrowserSignIn, SYNC_ENABLED } from "@/services/sync";
 import { TrailerCard } from "./first-run-hero";
 
 /** Shows what social reading looks like and starts the existing sign-in flow for the platform. */
@@ -16,11 +15,11 @@ export function SignedOutSocial({ returnTo }: { returnTo: string }) {
 			window.location.assign(`/login?redirect=${encodeURIComponent(`/app${returnTo}`)}`);
 			return;
 		}
-		const state = await beginAuthLoginHandoff();
-		await Browser.open({
-			url: `${SYNC_URL}/auth/mobile-callback?state=${encodeURIComponent(state)}`,
-		});
-		setIsStarting(false);
+		try {
+			await openBrowserSignIn();
+		} finally {
+			setIsStarting(false);
+		}
 	};
 
 	return (
@@ -33,14 +32,24 @@ export function SignedOutSocial({ returnTo }: { returnTo: string }) {
 				go.
 			</p>
 			{SYNC_ENABLED ? (
-				<Button
-					size="lg"
-					className="mt-6 h-12 w-full rounded-xl"
-					onClick={signIn}
-					disabled={isStarting}
-				>
-					{isStarting ? "Opening sign-in…" : "Sign in to get started"}
-				</Button>
+				<>
+					<Button
+						size="lg"
+						className="mt-6 h-12 w-full rounded-xl"
+						onClick={signIn}
+						disabled={isStarting}
+					>
+						{isStarting ? "Opening sign-in…" : "Sign in to get started"}
+					</Button>
+					{!IS_WEB_BUILD && (
+						<p className="m-0 mt-3 text-center text-muted-foreground text-xs">
+							Browser not working on this device?{" "}
+							<Link to="/tabs/settings/sync" className="text-primary underline">
+								Sign in with email or your phone in Settings
+							</Link>
+						</p>
+					)}
+				</>
 			) : (
 				<p className="m-0 mt-6 text-muted-foreground text-sm">
 					Social features need a Lesefluss account, which this build does not support.

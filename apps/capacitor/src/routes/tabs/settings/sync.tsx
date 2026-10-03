@@ -1,4 +1,3 @@
-import { Browser } from "@capacitor/browser";
 import {
 	Accordion,
 	AccordionContent,
@@ -33,11 +32,11 @@ import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { PasswordSignInForm } from "@/components/sync/password-sign-in-form";
 import { useToast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
 import { queryHooks } from "@/services/db/hooks";
-import { beginAuthLoginHandoff, IS_WEB_BUILD } from "@/services/sync";
-import { SYNC_URL } from "@/services/sync/auth-client";
+import { IS_WEB_BUILD } from "@/services/sync";
 
 export const Route = createFileRoute("/tabs/settings/sync")({
 	component: SyncSettings,
@@ -305,17 +304,7 @@ function SyncSettings() {
 									</a>
 								</Button>
 							) : (
-								<Button
-									className="w-full"
-									onClick={async () => {
-										const state = await beginAuthLoginHandoff();
-										await Browser.open({
-											url: `${SYNC_URL}/auth/mobile-callback?state=${encodeURIComponent(state)}`,
-										});
-									}}
-								>
-									Sign in
-								</Button>
+								<PasswordSignInForm />
 							)}
 						</div>
 					</SettingsSection>

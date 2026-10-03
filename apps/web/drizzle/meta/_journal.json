@@ -225,6 +225,13 @@
       "when": 1782604800000,
       "tag": "0031_owner_time_zone",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1782691200000,
+      "tag": "0032_device_code",
+      "breakpoints": true
     }
   ]
 }

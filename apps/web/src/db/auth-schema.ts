@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
 	id: text("id").primaryKey(),
@@ -76,6 +76,29 @@ export const verification = pgTable(
 			.notNull(),
 	},
 	(table) => [index("verification_identifier_idx").on(table.identifier)],
+);
+
+// better-auth's device-authorization plugin model; keys must match its field names.
+export const deviceCode = pgTable(
+	"device_code",
+	{
+		id: text("id").primaryKey(),
+		deviceCode: text("device_code").notNull().unique(),
+		userCode: text("user_code").notNull().unique(),
+		userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+		expiresAt: timestamp("expires_at").notNull(),
+		status: text("status").notNull(),
+		lastPolledAt: timestamp("last_polled_at"),
+		pollingInterval: integer("polling_interval"),
+		clientId: text("client_id"),
+		scope: text("scope"),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at")
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull(),
+	},
+	(table) => [index("device_code_expires_at_idx").on(table.expiresAt)],
 );
 
 export const userRelations = relations(user, ({ many }) => ({

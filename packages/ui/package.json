@@ -10,6 +10,8 @@
 	"exports": {
 		"./styles/tokens.css": "./src/styles/tokens.css",
 		"./utils": "./src/lib/utils.ts",
+		"./use-prefers-reduced-motion": "./src/lib/use-prefers-reduced-motion.ts",
+		"./buddy-trailer": "./src/lib/buddy-trailer.ts",
 		"./button": "./src/components/button.tsx",
 		"./badge": "./src/components/badge.tsx",
 		"./card": "./src/components/card.tsx",

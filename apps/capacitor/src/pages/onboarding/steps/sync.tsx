@@ -1,48 +1,47 @@
-import { Browser } from "@capacitor/browser";
 import { Cloud, Loader2, Users } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect } from "react";
 import { HandleClaimStep } from "../../../components/social/handle-claim-step";
+import { PasswordSignInForm } from "../../../components/sync/password-sign-in-form";
 import { useSyncContext } from "../../../contexts/sync-context";
 import { useOwnSocialProfile } from "../../../services/social/profile";
-import { beginAuthLoginHandoff, IS_WEB_BUILD } from "../../../services/sync";
-import { SYNC_URL } from "../../../services/sync/auth-client";
+import { IS_WEB_BUILD } from "../../../services/sync";
 import { useOnboardingFooter } from "../footer-context";
 
 function SignInStep() {
 	const { finish, setFooter } = useOnboardingFooter();
 
-	const signIn = useCallback(async () => {
-		if (IS_WEB_BUILD) {
-			await finish();
-			// Back into the app after sign-in; without a redirect /login lands on the website profile.
-			window.location.href = `/login?redirect=${encodeURIComponent("/app/tabs/library")}`;
-			return;
-		}
-		const state = await beginAuthLoginHandoff();
+	const signInOnWebsite = useCallback(async () => {
 		await finish();
-		await Browser.open({
-			url: `${SYNC_URL}/auth/mobile-callback?state=${encodeURIComponent(state)}`,
-		});
+		// Back into the app after sign-in; without a redirect /login lands on the website profile.
+		window.location.href = `/login?redirect=${encodeURIComponent("/app/tabs/library")}`;
 	}, [finish]);
 
 	useEffect(() => {
-		setFooter({
-			primary: { label: "Sign in", onClick: signIn },
-			secondary: { label: "Not now", onClick: finish },
-		});
-	}, [signIn, finish, setFooter]);
+		setFooter(
+			IS_WEB_BUILD
+				? {
+						primary: { label: "Sign in", onClick: signInOnWebsite },
+						secondary: { label: "Not now", onClick: finish },
+					}
+				: { primary: { label: "Not now", onClick: finish } },
+		);
+	}, [signInOnWebsite, finish, setFooter]);
 
 	return (
-		<div className="flex flex-col items-center text-center">
-			<div className="mb-6 flex size-16 items-center justify-center rounded-full bg-primary/10">
-				<Cloud className="size-8 text-primary" />
+		<div className="flex flex-col">
+			<div className="flex flex-col items-center text-center">
+				<div className="mb-6 flex size-16 items-center justify-center rounded-full bg-primary/10">
+					<Cloud className="size-8 text-primary" />
+				</div>
+				<h2 className="font-semibold text-2xl tracking-tight">Sync across devices?</h2>
+				<p className="mt-3 max-w-sm text-muted-foreground leading-relaxed">
+					Sign in to keep your library, progress, and highlights in step across phones and web, and
+					to read books together with friends. Optional — you can do this later in Settings.
+				</p>
 			</div>
-			<h2 className="font-semibold text-2xl tracking-tight">Sync across devices?</h2>
-			<p className="mt-3 max-w-sm text-muted-foreground leading-relaxed">
-				Sign in to keep your library, progress, and highlights in step across phones and web, and to
-				read books together with friends. Optional — you can do this later in Settings.
-			</p>
+			{/* Leaving for the browser must not strand the user mid-onboarding. */}
+			<PasswordSignInForm className="mt-8" beforeBrowserSignIn={finish} />
 		</div>
 	);
 }

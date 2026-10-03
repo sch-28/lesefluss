@@ -1,10 +1,10 @@
 import { Button } from "@lesefluss/ui/button";
+import { usePrefersReducedMotion } from "@lesefluss/ui/use-prefers-reduced-motion";
 import { cn } from "@lesefluss/ui/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import CoverImage from "../../components/cover-image";
-import { usePrefersReducedMotion } from "../../hooks/use-prefers-reduced-motion";
 import { type CatalogSearchResult, getCoverUrl } from "../../services/catalog/client";
 
 type Props = {
