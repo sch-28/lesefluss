@@ -279,6 +279,7 @@ export const telemetryEvents = pgTable("telemetry_events", {
 	appVersion: text("app_version"),
 	platform: text("platform"),
 	osVersion: text("os_version"),
+	webviewVersion: text("webview_version"),
 	sessionId: text("session_id"),
 	extra: jsonb("extra"),
 	createdAt: timestamp("created_at").notNull().defaultNow(),

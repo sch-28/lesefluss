@@ -18,6 +18,8 @@ type BigBookOptions = {
 	leadingFigure?: boolean;
 	/** A page-sized figure after the last paragraph. */
 	trailingFigure?: boolean;
+	/** Paragraphs of 32 words; the default 60 fits in one 2000-word page-mode chunk. */
+	paragraphCount?: number;
 };
 
 const TALL_FIGURE = (alt: string) =>
@@ -28,7 +30,7 @@ const TALL_FIGURE = (alt: string) =>
 export function bigBookFixture(options: BigBookOptions = {}): EpubFixture {
 	const paragraphs: string[] = [];
 	if (options.leadingFigure) paragraphs.push(TALL_FIGURE("Frontispiece"));
-	for (let i = 1; i <= 60; i++) {
+	for (let i = 1; i <= (options.paragraphCount ?? 60); i++) {
 		if (i === FULL_PAGE_FIGURE_BEFORE) paragraphs.push(TALL_FIGURE(`Figure ${i}`));
 		else if (FIGURE_BEFORE_PARAGRAPHS.includes(i)) {
 			paragraphs.push(`<div class="figure"><img alt="Figure ${i}" src="images/wide.png"/></div>`);

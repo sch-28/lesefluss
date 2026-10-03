@@ -121,6 +121,7 @@ async function send(type: string, opts: TelemetryOptions): Promise<void> {
 		version: await getAppVersion(),
 		platform: Capacitor.getPlatform(),
 		os: coarseOsVersion(),
+		webview: webViewVersion(),
 		message: opts.message,
 		extra: opts.extra,
 		at: Date.now(),

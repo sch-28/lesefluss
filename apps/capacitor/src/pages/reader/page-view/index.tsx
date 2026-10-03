@@ -185,6 +185,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	const [chunkWidths, setChunkWidths] = useState<ReadonlyMap<number, number>>(() => new Map());
 	const [viewport, setViewport] = useState<{ w: number; h: number } | null>(null);
 	const [isReady, setIsReady] = useState(false);
+	// Neighbour chunks mount only after the current page has painted: column
+	// layout is the reader's costliest step, and slow devices felt it on open
+	// and on every chunk crossing.
+	const [mountedChunks, setMountedChunks] = useState<ReadonlySet<number>>(() => new Set());
 	const isReadyRef = useRef(false);
 	const hasMountedRef = useRef(false);
 
@@ -197,6 +201,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	// to survive a relayout: page N of a new column geometry holds different
 	// text, so re-anchoring needs a word to land on again.
 	const currentWordRef = useRef(initialWord);
+	// The next landing is a page turn, so it reports the settled position.
+	const settleOnLandRef = useRef(false);
 	const animationTimeoutRef = useRef<number | null>(null);
 
 	// Drag/swipe — refs not state, since pointermove updates at 60Hz.
@@ -232,10 +238,29 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	const pageHeight = viewport ? viewport.h : 0;
 	const isLayoutReady = pageWidth > 0 && pageHeight > 0;
 
-	const visibleIndices = useMemo(
+	const fullWindow = useMemo(
 		() => visibleWindow(chunkIndex, chunks.length),
 		[chunkIndex, chunks.length],
 	);
+	const visibleIndices = useMemo(
+		() => fullWindow.filter((idx) => idx === chunkIndex || mountedChunks.has(idx)),
+		[fullWindow, chunkIndex, mountedChunks],
+	);
+	const isWindowComplete = visibleIndices.length === fullWindow.length;
+
+	useEffect(() => {
+		if (!isReady || isWindowComplete) return;
+		// One frame for the current page to paint, then the rest in a later task.
+		let timer: number | undefined;
+		const frame = requestAnimationFrame(() => {
+			timer = window.setTimeout(() => setMountedChunks(new Set(fullWindow)), 0);
+		});
+		return () => {
+			cancelAnimationFrame(frame);
+			if (timer !== undefined) window.clearTimeout(timer);
+		};
+	}, [isReady, isWindowComplete, fullWindow]);
+
 	const offsets = useMemo(
 		() => relativeOffsets(visibleIndices, chunkIndex, chunkWidths, pageWidth),
 		[visibleIndices, chunkIndex, chunkWidths, pageWidth],
@@ -348,6 +373,14 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		currentWordRef.current = target;
 		const targetPage = findPageForWord(el, pageWidth, currentPageCount, target);
 		setPageIndex(targetPage);
+		if (settleOnLandRef.current) {
+			settleOnLandRef.current = false;
+			const settled = readFirstVisibleWord(el, pageWidth, targetPage);
+			if (settled !== null) {
+				currentWordRef.current = settled;
+				onPositionSettleRef.current(settled);
+			}
+		}
 		if (!isReadyRef.current) {
 			isReadyRef.current = true;
 			setIsReady(true);
@@ -484,24 +517,17 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			if (neighborIdx < 0 || neighborIdx >= chunks.length) return;
 			const neighborOffset = offsets.get(neighborIdx);
 			const neighborWidth = chunkWidths.get(neighborIdx);
-			// If the neighbor hasn't reported a width yet (shouldn't normally
-			// happen mid-read, but possible right after mount), defer to a snap.
+			// A neighbour that is not mounted or measured yet (the turn came before
+			// the deferred mount): make it current and let the lander find the page
+			// holding its edge word once it has laid out.
 			if (neighborOffset === undefined || neighborWidth === undefined) {
-				const fallbackPages = pageCountOf(neighborWidth ?? pageWidth, pageWidth);
+				const neighbor = chunks[neighborIdx];
+				const edgeWord =
+					direction === 1 ? neighbor.startWord : Math.max(neighbor.startWord, neighbor.endWord - 1);
 				animateTo(computeTransform(), () => {
+					pendingTargetRef.current = edgeWord;
+					settleOnLandRef.current = true;
 					setChunkIndex(neighborIdx);
-					setPageIndex(direction === 1 ? 0 : fallbackPages - 1);
-					// No measurement to read a word from, so anchor to the edge we
-					// are navigating into. Leaving the previous chunk's word here
-					// would make the next re-anchor land on a word this chunk does
-					// not contain, which clamps it to the first or last page.
-					const neighbor = chunks[neighborIdx];
-					if (neighbor) {
-						currentWordRef.current =
-							direction === 1
-								? neighbor.startWord
-								: Math.max(neighbor.startWord, neighbor.endWord - 1);
-					}
 				});
 				return;
 			}
@@ -543,6 +569,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		computeTransform,
 		onHideProgressBar,
 	]);
+	const goNextRef = useRef(goNext);
+	useLayoutEffect(() => {
+		goNextRef.current = goNext;
+	}, [goNext]);
 
 	const goPrev = useCallback(() => {
 		onHideProgressBar();
@@ -558,6 +588,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		computeTransform,
 		onHideProgressBar,
 	]);
+	const goPrevRef = useRef(goPrev);
+	useLayoutEffect(() => {
+		goPrevRef.current = goPrev;
+	}, [goPrev]);
 
 	// ── Imperative jumpTo (chapter / search / highlight-list) ─────────────
 	useImperativeHandle(
@@ -578,10 +612,27 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				const targetPage = findPageForWord(el, pageWidth, currentPageCount, wordIdx);
 				goToPage(targetPage);
 			},
-			goNext,
-			goPrev,
+			// A key turn can arrive mid-animation. Finishing it first commits a
+			// pending chunk crossing; the turn then runs against that new state,
+			// which only the refreshed callbacks see.
+			goNext: () => {
+				completeInFlightAnimation();
+				goNextRef.current();
+			},
+			goPrev: () => {
+				completeInFlightAnimation();
+				goPrevRef.current();
+			},
 		}),
-		[chunks, chunkIndex, pageWidth, currentPageCount, isLayoutReady, goToPage, goNext, goPrev],
+		[
+			chunks,
+			chunkIndex,
+			pageWidth,
+			currentPageCount,
+			isLayoutReady,
+			goToPage,
+			completeInFlightAnimation,
+		],
 	);
 
 	// ── Pointer gestures ──────────────────────────────────────────────────
@@ -609,6 +660,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		// If an animation is in flight, complete it (snap + commit pending state)
 		// so the new gesture starts from a consistent visual + state baseline.
 		completeInFlightAnimation();
+		// A drag must reveal the neighbour, not empty space.
+		if (!isWindowComplete) setMountedChunks(new Set(fullWindow));
 		// Read the actual DOM transform so the drag follows the visible wrapper
 		// position, not a stale closure-derived `computeTransform()`. After
 		// completeInFlightAnimation + flushSync, this reflects the new state.

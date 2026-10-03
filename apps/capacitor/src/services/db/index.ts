@@ -32,6 +32,9 @@ export async function initDb(): Promise<void> {
 	if (_initPromise) return _initPromise;
 
 	_initPromise = (async () => {
+		// A page reload keeps the native connection while this side starts empty;
+		// createConnection would then fail with "already exists".
+		await sqliteConnection.checkConnectionsConsistency().catch(() => {});
 		_conn = await sqliteConnection.createConnection(DB_NAME, false, "no-encryption", 1, false);
 		await _conn.open();
 		await runMigrations(_conn);

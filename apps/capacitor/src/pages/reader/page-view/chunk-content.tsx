@@ -10,7 +10,7 @@
  * value; others get -1) so taps don't re-render the entire window.
  */
 import type React from "react";
-import { memo, useEffect, useLayoutEffect, useRef } from "react";
+import { memo, useLayoutEffect, useRef } from "react";
 import { readerFontStack } from "../../../hooks/use-appearance-settings";
 import Paragraph, {
 	type GlossaryRangeProp,
@@ -109,8 +109,9 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 }) => {
 	const ref = useRef<HTMLDivElement>(null);
 
-	// Register element with parent on mount, deregister on unmount.
-	useEffect(() => {
+	// A layout effect, so the parent's lander (also a layout effect, run after
+	// the children's) can already read this element on the commit it mounts in.
+	useLayoutEffect(() => {
 		const el = ref.current;
 		registerRef(chunkIndex, el);
 		return () => registerRef(chunkIndex, null);

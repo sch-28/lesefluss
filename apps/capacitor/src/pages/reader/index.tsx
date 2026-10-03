@@ -488,7 +488,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// ones from the WordIndex.
 	const entriesByParagraph = useMemo<ParagraphWordEntry[][]>(() => {
 		if (!wordIndex || paragraphs.length === 0) return paragraphs.map(() => []);
-		const all = wordIndex.listEntries();
+		// Byte offsets only: listEntries() would build a word string per word of the
+		// whole book, hundreds of thousands of objects for a long novel, on every open.
+		const wordCount = wordIndex.wordCount;
+		const byteAt = (k: number) => wordIndex.byteOf(wordPos(k));
 		const result: ParagraphWordEntry[][] = new Array(paragraphs.length);
 		let cursor = 0;
 		for (let p = 0; p < paragraphs.length; p++) {
@@ -500,22 +503,22 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			const paraByteEnd =
 				p + 1 < paragraphOffsets.length ? paragraphOffsets[p + 1] - 2 : contentByteLength;
 
-			while (cursor < all.length && all[cursor].byteOffset < paraByteStart) cursor++;
+			while (cursor < wordCount && byteAt(cursor) < paraByteStart) cursor++;
 			let end = cursor;
-			while (end < all.length && all[end].byteOffset < paraByteEnd) end++;
+			while (end < wordCount && byteAt(end) < paraByteEnd) end++;
 
 			const items: ParagraphWordEntry[] = [];
 			let i = 0;
 			let b = paraByteStart;
 			for (let k = cursor; k < end; k++) {
-				const entry = all[k];
-				while (b < entry.byteOffset && i < paraText.length) {
+				const wordByte = byteAt(k);
+				while (b < wordByte && i < paraText.length) {
 					const cp = paraText.codePointAt(i) ?? 0;
 					b += utf8ByteLengthOfCodePoint(cp);
 					i += cp >= 0x10000 ? 2 : 1;
 				}
 				const charStart = i;
-				const nextByte = k + 1 < end ? all[k + 1].byteOffset : paraByteEnd;
+				const nextByte = k + 1 < end ? byteAt(k + 1) : paraByteEnd;
 				while (b < nextByte && i < paraText.length) {
 					const cp = paraText.codePointAt(i) ?? 0;
 					b += utf8ByteLengthOfCodePoint(cp);

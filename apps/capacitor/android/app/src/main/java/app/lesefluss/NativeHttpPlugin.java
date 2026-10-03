@@ -21,6 +21,7 @@ import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.LinearLayout;
@@ -280,6 +281,19 @@ public class NativeHttpPlugin extends Plugin {
                         });
                     });
                 }
+
+                // Every WebView in the app shares one renderer; returning false from any
+                // of them on its death crashes the app.
+                @Override
+                public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                    if (finished.compareAndSet(false, true)) {
+                        new Handler(Looper.getMainLooper()).post(() -> {
+                            teardown(webView, dialog);
+                            rejectKeptAlive(call, "renderer gone");
+                        });
+                    }
+                    return true;
+                }
             });
 
             webView.loadUrl(url);
@@ -398,6 +412,17 @@ public class NativeHttpPlugin extends Plugin {
                         cleanup.run();
                         rejectKeptAlive(call, "FETCH_FAILED:" + error.getErrorCode());
                     });
+                }
+
+                @Override
+                public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                    mainHandler.removeCallbacks(timeoutTask);
+                    mainHandler.post(() -> {
+                        if (!finished.compareAndSet(false, true)) return;
+                        cleanup.run();
+                        rejectKeptAlive(call, "FETCH_FAILED: renderer gone");
+                    });
+                    return true;
                 }
             });
 

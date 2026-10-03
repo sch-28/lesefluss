@@ -232,6 +232,13 @@
       "when": 1782691200000,
       "tag": "0032_device_code",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1782777600000,
+      "tag": "0033_telemetry_webview",
+      "breakpoints": true
     }
   ]
 }

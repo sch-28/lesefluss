@@ -59,6 +59,7 @@ export const Route = createFileRoute("/api/telemetry")({
 					appVersion: cap(body?.version, 32),
 					platform: cap(body?.platform, 32),
 					osVersion: cap(body?.os, 64),
+					webviewVersion: cap(body?.webview, 32),
 					sessionId: cap(body?.sessionId, 64),
 					extra,
 				});
