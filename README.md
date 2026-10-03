@@ -16,7 +16,7 @@ reading and a calmer long-form reading mode.
 
 ## Install
 
-- **Android app**: [Google Play](https://play.google.com/store/apps/details?id=app.lesefluss), or sideload the APK from [GitHub releases](https://github.com/sch-28/lesefluss/releases/latest).
+- **Android app**: [Google Play](https://play.google.com/store/apps/details?id=app.lesefluss), or sideload the APK from [GitHub releases](https://github.com/sch-28/lesefluss/releases/latest). Needs Android 7+ with Android System WebView 111 or newer (`MIN_CHROMIUM` in `packages/core/src/engine-support.ts`); older WebViews get a notice explaining how to update.
 - **Browser extension**: [Chrome Web Store](https://chromewebstore.google.com/detail/lesefluss/pkiibeadmochdpmbbpmjaoogmcgocnho) or [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/lesefluss/). Sends the current article into your library with one click.
 - **Web app**: open [lesefluss.app](https://lesefluss.app) and sign in.
 

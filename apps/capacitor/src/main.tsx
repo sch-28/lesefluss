@@ -1,3 +1,4 @@
+import { ENGINE_UNSUPPORTED_CLASS } from "@lesefluss/core/engine-support";
 import { RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 import { bootstrapCapacitor } from "./lib/bootstrap-capacitor";
@@ -26,4 +27,6 @@ async function bootstrap() {
 	);
 }
 
-bootstrap();
+// The inline engine check in index.html found an engine too old to render the
+// app and is showing its notice instead.
+if (!document.documentElement.classList.contains(ENGINE_UNSUPPORTED_CLASS)) bootstrap();

@@ -9,6 +9,21 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-10-04",
+		title: "E-Reader Support",
+		tags: ["App", "Website"],
+		changes: [
+			"Sign in without a browser: the app shows a code and a QR code, and you confirm it from your phone or any signed-in browser at lesefluss.app/link",
+			"You can also sign in with email and password right in the app",
+			"New E-ink display setting under Settings > General: no animations, no blur, black on white, and instant page turns. On e-readers the app turns it on for you or offers it",
+			"Books open noticeably faster in page mode, and page turns are quicker on slower devices",
+			"Page turns pressed in quick succession, for example with an e-reader's page buttons, no longer get lost",
+			"If Android runs low on memory and closes the reading view, the app restarts instead of crashing",
+			"Devices with an outdated Android System WebView now get a short explanation and an update link instead of a blank screen",
+			"PDF import works on older Android WebView versions",
+		],
+	},
+	{
 		date: "2026-10-03",
 		title: "Social Tab and Settings Redesign",
 		tags: ["App"],

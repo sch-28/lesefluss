@@ -5,6 +5,7 @@ import { COVER_MAX_SIDE, coverDataUrl, encodeCover } from "../utils/cover-image"
 import { utf8ByteLength } from "../utils/encoding";
 import { titleFromFileName } from "../utils/file-format";
 import { assertBytes } from "../utils/raw-input";
+import { ensureReadableStreamAsyncIterator } from "../utils/stream-async-iterator";
 import { canParsePdf } from "./matchers";
 
 /**
@@ -132,6 +133,7 @@ const injectedPdfjsPromises = new WeakMap<
  * on the first import) would stick for the entire session.
  */
 function loadPdfjs(loader?: () => Promise<PdfjsModuleLike>): Promise<PdfjsModuleLike> {
+	ensureReadableStreamAsyncIterator();
 	if (loader) {
 		const cached = injectedPdfjsPromises.get(loader);
 		if (cached) return cached;

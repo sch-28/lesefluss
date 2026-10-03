@@ -9,6 +9,7 @@ import * as React from "react";
 import { z } from "zod";
 import { DiscordIcon } from "~/components/icons/discord";
 import { GoogleIcon } from "~/components/icons/google";
+import { OldBrowserNotice, oldBrowserCheckScript } from "~/components/old-browser-notice";
 import { sendVerificationEmail, signIn, signUp } from "~/lib/auth-client";
 import { useAuthSession } from "~/lib/session-context";
 import { seo } from "~/utils/seo";
@@ -27,13 +28,15 @@ export const Route = createFileRoute("/login/")({
 	validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
 		isSafeRedirect(search.redirect) ? { redirect: search.redirect } : {},
 	component: LoginPage,
-	head: () =>
-		seo({
+	head: () => ({
+		...seo({
 			title: "Sign in - Lesefluss",
 			description: "Sign in to Lesefluss to sync your library across devices.",
 			path: "/login",
 			isNoindex: true,
 		}),
+		scripts: [oldBrowserCheckScript],
+	}),
 });
 
 const signInSchema = z.object({
@@ -324,6 +327,7 @@ function LoginPage() {
 	return (
 		<div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-6 py-16">
 			<div className="w-full max-w-sm">
+				<OldBrowserNotice />
 				<div className="mb-8 text-center">
 					<h1 className="font-bold text-2xl tracking-tight">
 						{mode === "signin" ? "Welcome back" : "Create account"}

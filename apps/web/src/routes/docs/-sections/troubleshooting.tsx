@@ -1,3 +1,4 @@
+import { MIN_CHROMIUM } from "@lesefluss/core/engine-support";
 import { HelpCircle } from "lucide-react";
 import type { DocsSection } from "./shared";
 
@@ -13,6 +14,10 @@ export const troubleshootingItems = [
 	{
 		q: "EPUB import shows no chapters",
 		a: "Some EPUB files use non-standard chapter structures. Try opening the file in Calibre and re-exporting as EPUB 3 with a proper table of contents.",
+	},
+	{
+		q: "The app says this device's WebView is too old",
+		a: `The Android app draws its screens with Android System WebView and needs version ${MIN_CHROMIUM} or newer; the notice shows the version this device has. Update "Android System WebView" in the Play Store and reopen the app. Many e-readers without the Play Store get WebView updates only with the device maker's system updates. If yours has none, use lesefluss.app in an up-to-date browser on another device.`,
 	},
 	{
 		q: "Firmware upload fails with mpremote",

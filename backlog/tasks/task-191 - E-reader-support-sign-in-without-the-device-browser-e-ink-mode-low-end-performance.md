@@ -3,10 +3,10 @@ id: TASK-191
 title: >-
   E-reader support: sign in without the device browser, e-ink mode, low-end
   performance
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-10-02 22:43'
-updated_date: '2026-10-03 16:00'
+updated_date: '2026-10-03 22:07'
 labels:
   - android
   - ereader
@@ -37,10 +37,10 @@ Existing related work: TASK-116 (page-turn animation toggle, device-local settin
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A user on a Boox device with no Chrome installed can sign in with any supported method (email/password, Google, Discord)
-- [ ] #2 An e-ink mode exists that removes motion, blur and low-contrast styling across the whole app and defaults the reader to instant page turns
-- [ ] #3 Reader open, page turn and library scroll are measured on an e-ink device and the worst offenders are fixed
-- [ ] #4 All subtasks done
+- [x] #1 A user on a Boox device with no Chrome installed can sign in with any supported method (email/password, Google, Discord)
+- [x] #2 An e-ink mode exists that removes motion, blur and low-contrast styling across the whole app and defaults the reader to instant page turns
+- [x] #3 Reader open, page turn and library scroll are measured on an e-ink device and the worst offenders are fixed
+- [x] #4 All subtasks done
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -48,3 +48,13 @@ Existing related work: TASK-116 (page-turn animation toggle, device-local settin
 <!-- SECTION:NOTES:BEGIN -->
 Correction (2026-10-03, read-only adb probe of a Boox Nova Air 2): NeoBrowser there is `org.chromium.chrome` 111.0.5563, not ~Chromium 85 as stated in the description. Chrome 111 is the floor the website officially supports, and a scan of the built site found no JS API and no CSS feature beyond it (only `text-wrap`, which degrades harmlessly). So the login failure reported on that device in July is not explained by an old engine; its cause is open and was not reproduced. The user also reports DuckDuckGo (now the default browser there) was too heavy to use. Either way the fix stands: nobody should have to use a browser or type credentials on an e-reader, which is what TASK-191.1 (phone/QR) and TASK-191.2 (in-app form) deliver. Scope note from the user: the target is every kind of e-reader including cheap ones, not this (comparatively strong) device; see TASK-191.6 for the WebView floor that currently excludes low-end devices.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+E-reader support delivered across five subtasks (TASK-191.5 folded into .6 and archived):
+- Sign-in without the device browser: phone/QR device link (191.1) and in-app email/password (191.2), verified on the Boox.
+- E-ink mode (191.3): device-local setting removing motion, blur and low contrast, instant page turns.
+- Performance (191.4): measured on the Boox at 1x and 3x CPU; page-mode open about 2.8x faster, worst page turn 668 -> 205 ms; renderer-crash recovery and WebView-reload DB fix.
+- Old WebViews (191.6): self-contained notice below Chromium 111 instead of a blank app, website login notice, PDF import fixed for 111-123, floor decision recorded; telemetry now reports WebView versions to guide a lower floor later.
+<!-- SECTION:FINAL_SUMMARY:END -->
