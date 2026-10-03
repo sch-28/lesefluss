@@ -87,6 +87,15 @@ const FIXTURES: Fixture[] = [
 
 const titleOf = (letter: string) => `${letter} ${NONCE}`;
 
+// /books/similar ignores the catalog's five most common tags as too generic. On
+// an empty test database the fixtures' own tags would be those five, so these
+// books, in a language of their own, carry five tags that outnumber them.
+const COMMON_LANG = "qad";
+const COMMON_SUBJECTS = ["Anchors", "Bells", "Canals", "Dunes", "Echoes"].map(
+	(word) => `${word} ${NONCE}`,
+);
+const COMMON_BOOKS = 3;
+
 type SearchBody = {
 	total: number;
 	sort: string;
@@ -177,12 +186,34 @@ describe.skipIf(!hasDb)("catalog browse routes (integration)", () => {
 		});
 		await enrich.upsertTagLabels(rows.flatMap((r) => r.tags));
 		await db.insert(schema.catalogBooks).values(rows.map((r) => r.row));
+
+		const common = tagsFor(COMMON_SUBJECTS);
+		await enrich.upsertTagLabels(common.tags);
+		await db.insert(schema.catalogBooks).values(
+			Array.from({ length: COMMON_BOOKS }, (_, i) => ({
+				id: `gutenberg:test-${NONCE}-common-${i}`,
+				source: "gutenberg" as const,
+				title: `Common ${i} ${NONCE}`,
+				author: `Common${NONCE}, Author`,
+				language: COMMON_LANG,
+				subjects: COMMON_SUBJECTS,
+				downloadCount: 1,
+				tags: common.ids,
+				authorKeys: authors.authorKeys([`Common${NONCE}, Author`]),
+			})),
+		);
 	});
 
 	afterAll(async () => {
 		if (!db) return;
-		await db.execute(sql`DELETE FROM catalog_books WHERE language = ${LANG}`);
-		await db.execute(sql`DELETE FROM catalog_tags WHERE id = ${UNIQUE_TAG}`);
+		await db.execute(sql`DELETE FROM catalog_books WHERE language IN (${LANG}, ${COMMON_LANG})`);
+		const tagIds = [UNIQUE_TAG, ...tagsFor(COMMON_SUBJECTS).ids];
+		await db.execute(
+			sql`DELETE FROM catalog_tags WHERE id IN (${sql.join(
+				tagIds.map((id) => sql`${id}`),
+				sql`, `,
+			)})`,
+		);
 	});
 
 	describe("/search validation", () => {
