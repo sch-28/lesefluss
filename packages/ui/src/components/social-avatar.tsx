@@ -26,7 +26,7 @@ export function SocialAvatar({
 	if (avatarUrl) {
 		return (
 			<span className={base}>
-				<img src={avatarUrl} alt="" className="size-full object-cover" />
+				<img src={avatarUrl} alt="" draggable={false} className="size-full object-cover" />
 			</span>
 		);
 	}

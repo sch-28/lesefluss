@@ -1,11 +1,12 @@
 import { Browser } from "@capacitor/browser";
 import { Button } from "@lesefluss/ui/button";
-import { Users } from "lucide-react";
+import { Lock } from "lucide-react";
 import { useState } from "react";
 import { beginAuthLoginHandoff, IS_WEB_BUILD, SYNC_ENABLED } from "@/services/sync";
 import { SYNC_URL } from "@/services/sync/auth-client";
+import { TrailerCard } from "./first-run-hero";
 
-/** Explains social features and starts the existing sign-in flow for the platform. */
+/** Shows what social reading looks like and starts the existing sign-in flow for the platform. */
 export function SignedOutSocial({ returnTo }: { returnTo: string }) {
 	const [isStarting, setIsStarting] = useState(false);
 
@@ -23,24 +24,32 @@ export function SignedOutSocial({ returnTo }: { returnTo: string }) {
 	};
 
 	return (
-		<div className="mx-auto mt-6 flex max-w-sm flex-col items-center text-center">
-			<div className="mb-6 flex size-16 items-center justify-center rounded-full bg-primary/10">
-				<Users className="size-8 text-primary" />
-			</div>
-			<h2 className="font-semibold text-2xl tracking-tight">Read with friends</h2>
-			<p className="mt-3 text-muted-foreground leading-relaxed">
-				Add friends with a personal invite link, see what they read, share books and read together.
-				There is no search: people connect only through invites.
+		<TrailerCard>
+			<h2 className="m-0 mt-6 font-bold text-[30px] text-foreground leading-[1.08] tracking-tight">
+				Reading is better with company.
+			</h2>
+			<p className="m-0 mt-3 text-[15px] text-muted-foreground leading-relaxed">
+				Read the same book with friends, see where everyone is and talk about each chapter as you
+				go.
 			</p>
 			{SYNC_ENABLED ? (
-				<Button className="mt-6 w-full" onClick={signIn} disabled={isStarting}>
+				<Button
+					size="lg"
+					className="mt-6 h-12 w-full rounded-xl"
+					onClick={signIn}
+					disabled={isStarting}
+				>
 					{isStarting ? "Opening sign-in…" : "Sign in to get started"}
 				</Button>
 			) : (
-				<p className="mt-6 text-muted-foreground text-sm">
+				<p className="m-0 mt-6 text-muted-foreground text-sm">
 					Social features need a Lesefluss account, which this build does not support.
 				</p>
 			)}
-		</div>
+			<p className="m-0 mt-4 flex items-start gap-2 text-muted-foreground text-xs leading-snug">
+				<Lock className="mt-px size-3.5 shrink-0" />
+				Private by design: no public search, people find you only through your invite link.
+			</p>
+		</TrailerCard>
 	);
 }

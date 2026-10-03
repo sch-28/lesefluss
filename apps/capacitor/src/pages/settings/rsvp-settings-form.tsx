@@ -1,9 +1,9 @@
 /**
- * RsvpSettingsForm: the RSVP settings controls (speed, punctuation, reading
- * mode, focal position, advanced ramp, reset). Shared between the dedicated
- * settings page (`/tabs/settings/rsvp`) and the in-reader sheet opened from
- * RsvpView. The `minimal` prop trims reader-mode + word-offset + reset for the
- * in-reader sheet and enables an "Open full settings" link.
+ * RsvpSettingsForm: the RSVP settings controls (speed, punctuation, focal
+ * point, advanced ramp, reset). Shared between the dedicated settings page
+ * (`/tabs/settings/rsvp`) and the in-reader sheet opened from RsvpView. The
+ * `minimal` prop trims word-offset + reset for the in-reader sheet and enables
+ * an "Open full settings" link.
  *
  * Does not render any page chrome (header, preview); callers wrap as appropriate.
  */
@@ -14,13 +14,16 @@ import {
 	type HexColor,
 	SETTING_CONSTRAINTS,
 } from "@lesefluss/core";
-import { Slider } from "@lesefluss/ui/slider";
 import { cn } from "@lesefluss/ui/utils";
 import { ChevronDown, Loader2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import { ModeCards, READER_MODE_OPTIONS, WpmPresetChips } from "../../components/rsvp-pickers";
+import { WpmPresetChips } from "../../components/rsvp-pickers";
+import { RowLabel, SettingsRow } from "../../components/settings/settings-row";
+import { SettingsSection } from "../../components/settings/settings-section";
+import { SliderRow } from "../../components/settings/slider-row";
+import { StepperRow } from "../../components/settings/stepper-row";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 
 const RSVP_DEFAULTS_PATCH = {
@@ -32,93 +35,10 @@ const RSVP_DEFAULTS_PATCH = {
 	xOffset: DEFAULT_SETTINGS.X_OFFSET,
 	focalLetterColor: DEFAULT_SETTINGS.FOCAL_LETTER_COLOR,
 	wordOffset: DEFAULT_SETTINGS.WORD_OFFSET,
-	defaultReaderMode: DEFAULT_SETTINGS.DEFAULT_READER_MODE,
-};
-
-const SectionHeader: React.FC<{ children: React.ReactNode; hint?: string }> = ({
-	children,
-	hint,
-}) => (
-	<div className="flex items-baseline gap-2 px-4 pt-5 pb-2">
-		<h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">{children}</h3>
-		{hint && <span className="text-muted-foreground text-xs">{hint}</span>}
-	</div>
-);
-
-const Row: React.FC<{ children: React.ReactNode; className?: string }> = ({
-	children,
-	className,
-}) => (
-	<div
-		className={cn(
-			"flex min-h-12 items-center justify-between gap-3 border-border border-b px-4 py-2 last:border-b-0",
-			className,
-		)}
-	>
-		{children}
-	</div>
-);
-
-interface StepperRowProps {
-	label: string;
-	hint?: string;
-	value: number;
-	display: string;
-	min: number;
-	max: number;
-	step: number;
-	onChange: (next: number) => void;
-}
-
-const StepperRow: React.FC<StepperRowProps> = ({
-	label,
-	hint,
-	value,
-	display,
-	min,
-	max,
-	step,
-	onChange,
-}) => {
-	const clamp = (n: number) => {
-		const snapped = Math.round(n / step) * step;
-		return Math.min(max, Math.max(min, Number(snapped.toFixed(4))));
-	};
-	return (
-		<Row>
-			<div className="flex min-w-0 flex-col">
-				<span className="text-foreground text-sm">{label}</span>
-				{hint && <span className="text-muted-foreground text-xs">{hint}</span>}
-			</div>
-			<div className="ap-settings-row">
-				<span className="ap-settings-val">{display}</span>
-				<div className="ap-row-buttons">
-					<button
-						type="button"
-						className="ap-step-btn"
-						disabled={value <= min}
-						onClick={() => onChange(clamp(value - step))}
-						aria-label={`Decrease ${label}`}
-					>
-						−
-					</button>
-					<button
-						type="button"
-						className="ap-step-btn"
-						disabled={value >= max}
-						onClick={() => onChange(clamp(value + step))}
-						aria-label={`Increase ${label}`}
-					>
-						+
-					</button>
-				</div>
-			</div>
-		</Row>
-	);
 };
 
 interface RsvpSettingsFormProps {
-	/** When true, hides Reading Mode + Word offset (used in-reader where those aren't actionable). */
+	/** When true, hides Word offset and reset (used in-reader where those aren't actionable). */
 	minimal?: boolean;
 	/** Optional handler rendered as a link at the bottom when `minimal` is set. */
 	onOpenFullSettings?: () => void;
@@ -142,29 +62,22 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 
 	return (
 		<>
-			<div className="flex flex-col">
-				<SectionHeader>Speed</SectionHeader>
-
-				<Row className="flex-col items-stretch gap-3 py-3">
+			<SettingsSection title="Speed">
+				<SettingsRow stacked>
 					<WpmPresetChips value={settings.wpm} onChange={(wpm) => updateSetting("wpm", wpm)} />
-				</Row>
+				</SettingsRow>
+				<SliderRow
+					label="Words per minute"
+					value={settings.wpm}
+					display={`${settings.wpm}`}
+					min={SETTING_CONSTRAINTS.WPM.min}
+					max={SETTING_CONSTRAINTS.WPM.max}
+					step={SETTING_CONSTRAINTS.WPM.step}
+					onChange={(wpm) => updateSetting("wpm", wpm)}
+				/>
+			</SettingsSection>
 
-				<Row className="flex-col items-stretch gap-2 py-3">
-					<div className="flex items-baseline justify-between">
-						<span className="text-foreground text-sm">Words per minute</span>
-						<span className="font-medium text-foreground text-sm tabular-nums">{settings.wpm}</span>
-					</div>
-					<Slider
-						min={SETTING_CONSTRAINTS.WPM.min}
-						max={SETTING_CONSTRAINTS.WPM.max}
-						step={SETTING_CONSTRAINTS.WPM.step}
-						value={[settings.wpm]}
-						onValueChange={(values) => updateSetting("wpm", values[0])}
-					/>
-				</Row>
-
-				<SectionHeader>Punctuation</SectionHeader>
-
+			<SettingsSection title="Punctuation">
 				<StepperRow
 					label="Comma delay"
 					hint="(, ; :)"
@@ -175,7 +88,6 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 					step={SETTING_CONSTRAINTS.DELAY_COMMA.step}
 					onChange={(v) => updateSetting("delayComma", v)}
 				/>
-
 				<StepperRow
 					label="Period delay"
 					hint="(. ! ?)"
@@ -186,20 +98,9 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 					step={SETTING_CONSTRAINTS.DELAY_PERIOD.step}
 					onChange={(v) => updateSetting("delayPeriod", v)}
 				/>
+			</SettingsSection>
 
-				{!minimal && (
-					<>
-						<SectionHeader hint="(when opening a book)">Reading Mode</SectionHeader>
-						<Row className="py-3">
-							<ModeCards
-								options={READER_MODE_OPTIONS}
-								value={settings.defaultReaderMode as "scroll" | "rsvp"}
-								onChange={(mode) => updateSetting("defaultReaderMode", mode)}
-							/>
-						</Row>
-					</>
-				)}
-
+			<SettingsSection title="Focal point">
 				<StepperRow
 					label="Focal position"
 					value={settings.xOffset}
@@ -209,14 +110,11 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 					step={SETTING_CONSTRAINTS.X_OFFSET.step}
 					onChange={(v) => updateSetting("xOffset", v)}
 				/>
-
-				<Row>
-					<div className="flex min-w-0 flex-col">
-						<span className="text-foreground text-sm">Focal letter color</span>
-						<span className="text-muted-foreground text-xs tabular-nums">
-							{settings.focalLetterColor}
-						</span>
-					</div>
+				<SettingsRow>
+					<RowLabel
+						title="Focal letter color"
+						hint={<span className="tabular-nums">{settings.focalLetterColor}</span>}
+					/>
 					<div className="flex gap-1.5">
 						{FOCAL_LETTER_COLOR_PRESETS.map((color) => {
 							const isActive = settings.focalLetterColor.toLowerCase() === color;
@@ -235,15 +133,19 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 							);
 						})}
 					</div>
-				</Row>
+				</SettingsRow>
+			</SettingsSection>
 
+			<SettingsSection>
 				<button
 					type="button"
-					className="mt-2 flex items-center justify-between border-border border-b px-4 py-3 text-left transition-colors hover:bg-muted"
+					className="mt-2 flex min-h-12 items-center justify-between px-4 py-3 text-left transition-colors hover:bg-muted"
 					onClick={() => setAdvancedOpen((o) => !o)}
 					aria-expanded={advancedOpen}
 				>
-					<span className="font-medium text-foreground text-sm">Advanced</span>
+					<span className="font-semibold text-foreground text-sm uppercase tracking-wide">
+						Advanced
+					</span>
 					<ChevronDown
 						className={cn(
 							"size-4 text-muted-foreground transition-transform",
@@ -288,7 +190,7 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 						)}
 					</>
 				)}
-			</div>
+			</SettingsSection>
 
 			<div className="flex justify-center px-4 pt-6 pb-2">
 				{!minimal && (

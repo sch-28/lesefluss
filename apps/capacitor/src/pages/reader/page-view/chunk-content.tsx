@@ -11,6 +11,7 @@
  */
 import type React from "react";
 import { memo, useEffect, useLayoutEffect, useRef } from "react";
+import { readerFontStack } from "../../../hooks/use-appearance-settings";
 import Paragraph, {
 	type GlossaryRangeProp,
 	type HighlightRange,
@@ -173,7 +174,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 					columnFill: "auto",
 					hyphens: "auto",
 					fontSize: `${fontSize}px`,
-					fontFamily: fontFamily === "serif" ? "Georgia, 'Times New Roman', serif" : undefined,
+					fontFamily: readerFontStack(fontFamily),
 				} as React.CSSProperties
 			}
 		>

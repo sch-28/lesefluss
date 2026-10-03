@@ -9,6 +9,7 @@ import { db } from "~/db";
 import { user } from "~/db/auth-schema";
 import {
 	socialBlock,
+	socialFriendRequest,
 	socialFriendship,
 	socialHandle,
 	syncBooks,
@@ -422,5 +423,98 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 			false,
 		);
 		await db.update(user).set({ banned: false }).where(eq(user.id, friend));
+	});
+});
+
+describe.skipIf(!hasDb)("friends' now reading (integration)", () => {
+	const run = randomUUID().slice(0, 8);
+	const viewer = `test-nr-v-${run}`;
+	const reader = `test-nr-r-${run}`;
+	const hidesReading = `test-nr-h-${run}`;
+	const privateProfile = `test-nr-p-${run}`;
+	const noBooks = `test-nr-n-${run}`;
+	const onlyFinished = `test-nr-f-${run}`;
+	const requester = `test-nr-q-${run}`;
+	const friends = [reader, hidesReading, privateProfile, noBooks, onlyFinished];
+	const all = [viewer, ...friends, requester];
+	const now = new Date("2026-06-15T12:00:00Z");
+
+	const book = (userId: string, bookId: string, wordPosition: number, updatedAt: Date) => ({
+		userId,
+		bookId,
+		originUserId: userId,
+		originBookId: bookId,
+		title: `Book ${bookId}`,
+		author: null,
+		wordCount: 1000,
+		wordPosition,
+		updatedAt,
+	});
+
+	beforeAll(async () => {
+		process.env.BETTER_AUTH_SECRET ??= "test-secret";
+		process.env.BETTER_AUTH_URL ??= "https://lesefluss.test";
+		await db
+			.insert(user)
+			.values(all.map((id) => ({ id, name: `Name ${id}`, email: `${id}@example.test` })));
+		for (const [i, id] of all.entries()) await claimHandle(id, `nr${i}_${run}`, `Person ${i}`);
+		for (const id of [reader, hidesReading, noBooks, onlyFinished, requester]) {
+			await updateOwnProfile(id, { visibility: "friends" });
+		}
+		await updateOwnProfile(hidesReading, { showCurrentlyReading: false });
+		await db.insert(socialFriendship).values(
+			friends.map((id) => {
+				const [userLow, userHigh] = viewer < id ? [viewer, id] : [id, viewer];
+				return { userLow, userHigh, acceptedAt: now };
+			}),
+		);
+		await db.insert(socialFriendRequest).values({ requesterId: requester, addresseeId: viewer });
+
+		const earlier = new Date(now.getTime() - DAY_MS);
+		await db
+			.insert(syncBooks)
+			.values([
+				book(reader, "bbbb0001", 200, earlier),
+				book(reader, "bbbb0002", 700, now),
+				{ ...book(reader, "bbbb0003", 1000, now), finishedAt: now },
+				book(hidesReading, "bbbb0004", 300, now),
+				book(privateProfile, "bbbb0005", 300, now),
+				{ ...book(onlyFinished, "bbbb0006", 1000, now), finishedAt: now },
+				book(requester, "bbbb0007", 300, now),
+			]);
+	});
+
+	afterAll(async () => {
+		await db.delete(syncBooks).where(inArray(syncBooks.userId, all));
+		await db.delete(user).where(inArray(user.id, all));
+		const rows = await db.select({ handle: socialHandle.handle }).from(socialHandle);
+		const mine = rows.map((r) => r.handle).filter((h) => h.endsWith(`_${run}`));
+		if (mine.length > 0) await db.delete(socialHandle).where(inArray(socialHandle.handle, mine));
+	});
+
+	test("each friend carries their latest in-progress book only where their profile shows it", async () => {
+		const { friends: listed } = await listRelationships(viewer);
+		const nowReadingOf = (id: string) => listed.find((f) => f.userId === id)?.nowReading;
+
+		expect(nowReadingOf(reader)).toMatchObject({
+			key: "bbbb0002",
+			title: "Book bbbb0002",
+			progressPercent: 70,
+		});
+		expect(nowReadingOf(hidesReading)).toBeNull();
+		expect(nowReadingOf(privateProfile)).toBeNull();
+		expect(nowReadingOf(noBooks)).toBeNull();
+		expect(nowReadingOf(onlyFinished)).toBeNull();
+	});
+
+	test("requests never carry reading data", async () => {
+		const { incoming } = await listRelationships(viewer);
+		expect(incoming.map((r) => r.userId)).toEqual([requester]);
+		expect(JSON.stringify(incoming)).not.toContain("bbbb0007");
+	});
+
+	test("the profile's currently reading shelf lists the most recently read book first", async () => {
+		const view = await resolveProfileView(viewer, reader, { now });
+		expect(view.sections.currentlyReading?.map((b) => b.key)).toEqual(["bbbb0002", "bbbb0001"]);
 	});
 });

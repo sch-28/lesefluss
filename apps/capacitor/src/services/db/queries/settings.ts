@@ -1,4 +1,4 @@
-import { changelog, DEFAULT_SETTINGS } from "@lesefluss/core";
+import { changelog, DEFAULT_SETTINGS, SYNCED_SETTING_KEYS } from "@lesefluss/core";
 import { eq } from "drizzle-orm";
 import { db } from "../index";
 import { type Settings, settings } from "../schema";
@@ -58,15 +58,22 @@ export async function getSettings(): Promise<Settings> {
 	return defaults;
 }
 
+const syncedKeys: ReadonlySet<string> = new Set(SYNCED_SETTING_KEYS);
+
 /**
- * Persist updated settings. Only call with fields you want to change -
- * updatedAt is always set automatically.
+ * Persist updated settings. Only call with fields you want to change.
+ * `updatedAt` drives sync last-write-wins, so it moves only when the patch
+ * carries a synced field: a local-only write (onboarding, sync toggles) must not make this
+ * device's row beat the server's. Pass `updatedAt` to replay a remote revision.
  */
 export async function saveSettings(
 	patch: Partial<Omit<Settings, "id" | "updatedAt">>,
+	updatedAt?: number,
 ): Promise<void> {
+	const hasSyncedField = Object.keys(patch).some((k) => syncedKeys.has(k));
+	const stamp = updatedAt ?? (hasSyncedField ? Date.now() : undefined);
 	await db
 		.update(settings)
-		.set({ ...patch, updatedAt: Date.now() })
+		.set(stamp === undefined ? patch : { ...patch, updatedAt: stamp })
 		.where(eq(settings.id, SETTINGS_ID));
 }

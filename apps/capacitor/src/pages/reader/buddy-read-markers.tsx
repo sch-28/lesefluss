@@ -1,8 +1,7 @@
-import { App as CapacitorApp } from "@capacitor/app";
-import { Capacitor } from "@capacitor/core";
 import type { LiveMember } from "@lesefluss/core";
 import { cn } from "@lesefluss/ui/utils";
 import { useEffect, useState } from "react";
+import { useIsForeground } from "../../hooks/use-is-foreground";
 import { useBuddyReadProgress, useBuddyReads } from "../../services/social/buddy-reads";
 import { useIsOnline } from "../../services/social/cache";
 
@@ -17,23 +16,6 @@ export type BuddyMarker = {
 	/** Set while they have the book open right now. */
 	live: LiveMember | null;
 };
-
-/** Foreground as either platform reports it: the web build has no app state, native WebViews may keep "visible". */
-export function useIsForeground(): boolean {
-	const [isForeground, setIsForeground] = useState(() => document.visibilityState === "visible");
-	useEffect(() => {
-		const onVisibility = () => setIsForeground(document.visibilityState === "visible");
-		document.addEventListener("visibilitychange", onVisibility);
-		const handle = Capacitor.isNativePlatform()
-			? CapacitorApp.addListener("appStateChange", ({ isActive }) => setIsForeground(isActive))
-			: null;
-		return () => {
-			document.removeEventListener("visibilitychange", onVisibility);
-			handle?.then((h) => h.remove());
-		};
-	}, []);
-	return isForeground;
-}
 
 /** The buddy read this book is in right now, if any; finished reads keep their discussion too. */
 export function useRunningBuddyRead(originKey: string | null, isLoggedIn: boolean) {

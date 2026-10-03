@@ -22,6 +22,7 @@ import { runHooks, socialHooks } from "./hooks";
 // The inbox listens to the events emitted below; importing it here makes sure
 // it is registered before the first event fires.
 import "./inbox-hooks";
+import { nowReadingFor } from "./profile-view";
 import {
 	canInteract,
 	friendshipExists,
@@ -364,10 +365,23 @@ export async function listRelationships(
 		const u = users.get(id);
 		return u && isSociallyVisible(u, now) ? u : null;
 	};
+	const nowReading = await nowReadingFor(
+		db,
+		me,
+		friendIds.filter((id) => visible(id)),
+	);
 	return {
 		friends: friendships.flatMap((f) => {
 			const u = visible(f.userLow === me ? f.userHigh : f.userLow);
-			return u ? [{ ...identityOf(u), since: f.acceptedAt.getTime() }] : [];
+			return u
+				? [
+						{
+							...identityOf(u),
+							since: f.acceptedAt.getTime(),
+							nowReading: nowReading.get(u.id) ?? null,
+						},
+					]
+				: [];
 		}),
 		incoming: incoming.flatMap((r) => {
 			const u = visible(r.requesterId);

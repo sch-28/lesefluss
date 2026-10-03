@@ -458,7 +458,9 @@ export const Route = createFileRoute("/api/sync")({
 					if (payload.settings) {
 						const settingsFields = {
 							...pick(payload.settings, SYNCED_SETTING_KEYS),
-							updatedAt: toDate(payload.settings.updatedAt),
+							// Clamped: a client clock running ahead would otherwise outrank
+							// every later write under the last-write-wins guard below.
+							updatedAt: toDate(Math.min(payload.settings.updatedAt, Date.now())),
 						};
 						await tx
 							.insert(syncSettings)
@@ -466,6 +468,9 @@ export const Route = createFileRoute("/api/sync")({
 							.onConflictDoUpdate({
 								target: [syncSettings.userId],
 								set: settingsFields,
+								// Last-write-wins: a device that missed newer settings must not
+								// overwrite them with its stale row on push.
+								setWhere: sql`excluded.updated_at > sync_settings.updated_at`,
 							});
 					}
 

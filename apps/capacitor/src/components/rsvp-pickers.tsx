@@ -1,7 +1,7 @@
 /**
- * Shared RSVP pickers: WPM presets and mode-card lists (default-reader-mode,
- * pagination-style). Used by the RSVP settings page and the first-run
- * onboarding flow.
+ * Shared pickers: WPM presets and mode-card lists (default-reader-mode,
+ * pagination-style). Used by the settings pages and the first-run onboarding
+ * flow.
  */
 
 import type { PaginationStyle } from "@lesefluss/core";
@@ -84,7 +84,7 @@ interface ModeCardsProps<T extends string> {
 
 export function ModeCards<T extends string>({ options, value, onChange }: ModeCardsProps<T>) {
 	return (
-		<div className="grid grid-cols-2 gap-3">
+		<div className="grid w-full grid-cols-2 gap-3">
 			{options.map((m) => {
 				const isActive = value === m.value;
 				const Icon = m.icon;
@@ -95,13 +95,13 @@ export function ModeCards<T extends string>({ options, value, onChange }: ModeCa
 						onClick={() => onChange(m.value)}
 						aria-pressed={isActive}
 						className={cn(
-							"flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-center transition-colors",
+							"flex flex-col items-center gap-1.5 rounded-lg border-2 p-3.5 text-center transition-colors",
 							isActive
 								? "border-primary bg-primary/5"
 								: "border-border bg-card hover:border-muted-foreground/30",
 						)}
 					>
-						<Icon className={cn("size-6", isActive ? "text-primary" : "text-muted-foreground")} />
+						<Icon className={cn("size-5", isActive ? "text-primary" : "text-muted-foreground")} />
 						<span className="font-semibold text-foreground text-sm">{m.label}</span>
 						<span className="text-muted-foreground text-xs leading-tight">{m.description}</span>
 					</button>

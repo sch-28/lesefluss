@@ -9,9 +9,14 @@ export const THEMES: { value: AppTheme; label: string }[] = [
 	{ value: "light", label: "Light" },
 ];
 
+const SERIF_STACK = "Georgia, 'Times New Roman', serif";
+
+/** CSS font-family for the reader's `readerFontFamily` setting; undefined = inherit app sans. */
+export const readerFontStack = (family: string) => (family === "serif" ? SERIF_STACK : undefined);
+
 export const FONT_FAMILIES: { value: string; label: string; style?: React.CSSProperties }[] = [
 	{ value: "sans", label: "Sans" },
-	{ value: "serif", label: "Serif", style: { fontFamily: "Georgia, serif" } },
+	{ value: "serif", label: "Serif", style: { fontFamily: SERIF_STACK } },
 ];
 
 const clamp = (val: number, min: number, max: number) => Math.min(max, Math.max(min, val));

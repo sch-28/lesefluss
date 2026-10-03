@@ -31,14 +31,6 @@ function dayPhrase(day: string): string {
 	return label === "Today" || label === "Yesterday" ? label.toLowerCase() : `on ${label}`;
 }
 
-function BookCover({ item }: { item: FeedItem }) {
-	return (
-		<div className="relative aspect-[2/3] w-10 shrink-0 overflow-hidden rounded bg-muted">
-			<CoverImage src={profileCoverSrc(item.book.cover)} alt="" />
-		</div>
-	);
-}
-
 function FeedRow({
 	item,
 	isOffline,
@@ -52,12 +44,17 @@ function FeedRow({
 }) {
 	const who = item.isOwn ? "You" : item.actor.name;
 	const verb = item.type === "finished" ? "finished" : "started";
-	const avatar = <SocialAvatar name={item.actor.name} avatarUrl={item.actor.avatarUrl} size="sm" />;
+	const avatar = (
+		<span className="block rounded-full bg-background ring-4 ring-background">
+			<SocialAvatar name={item.actor.name} avatarUrl={item.actor.avatarUrl} size="sm" />
+		</span>
+	);
 	const book = (
 		<span className="flex min-w-0 items-center gap-3 text-left">
-			<BookCover item={item} />
-			<span className="min-w-0">
-				<span className="line-clamp-1 font-medium text-foreground text-sm">{item.book.title}</span>
+			<span className="min-w-0 flex-1">
+				<span className="line-clamp-1 font-semibold text-foreground text-sm">
+					{item.book.title}
+				</span>
 				{item.book.author && (
 					<span className="line-clamp-1 text-muted-foreground text-xs">{item.book.author}</span>
 				)}
@@ -65,11 +62,14 @@ function FeedRow({
 					<span className="text-muted-foreground text-xs">★ {ratingStars(item.book.rating)}</span>
 				)}
 			</span>
+			<span className="relative aspect-[2/3] w-9 shrink-0 overflow-hidden rounded bg-muted">
+				<CoverImage src={profileCoverSrc(item.book.cover)} alt="" />
+			</span>
 		</span>
 	);
 	return (
-		<div className="px-4 py-3">
-			<div className="flex items-center gap-2">
+		<li className="relative flex gap-3 pb-5">
+			<div className="relative z-10 shrink-0">
 				{item.isOwn ? (
 					avatar
 				) : (
@@ -81,49 +81,55 @@ function FeedRow({
 						{avatar}
 					</Link>
 				)}
-				<p className="m-0 min-w-0 flex-1 text-foreground text-sm">
-					<span className="font-medium">{who}</span> {verb} a book
-					<span className="text-muted-foreground"> · {dayLabel(item.day)}</span>
-				</p>
-				{item.isOwn && (
-					<Button
-						variant="ghost"
-						size="icon"
-						aria-label="More"
-						disabled={isOffline}
-						onClick={onMenu}
-					>
-						<MoreHorizontal className="size-4" />
-					</Button>
-				)}
 			</div>
-			<div className="mt-2 pl-10">
-				{item.book.catalogId ? (
-					<Link
-						to="/tabs/explore/book/$catalogId"
-						params={{ catalogId: item.book.catalogId }}
-						className="no-underline"
-					>
-						{book}
-					</Link>
-				) : (
-					<button type="button" className="w-full" onClick={onBook}>
-						{book}
-					</button>
-				)}
+			<div className="min-w-0 flex-1">
+				<div className="flex items-center gap-2">
+					<p className="m-0 min-w-0 flex-1 text-foreground text-sm">
+						<span className="font-semibold">{who}</span> {verb} a book
+						<span className="text-muted-foreground"> · {dayLabel(item.day)}</span>
+					</p>
+					{item.isOwn && (
+						<Button
+							variant="ghost"
+							size="icon"
+							className="-my-2"
+							aria-label="More"
+							disabled={isOffline}
+							onClick={onMenu}
+						>
+							<MoreHorizontal className="size-4" />
+						</Button>
+					)}
+				</div>
+				<div className="mt-1.5 rounded-xl bg-muted/60 px-3 py-2">
+					{item.book.catalogId ? (
+						<Link
+							to="/tabs/explore/book/$catalogId"
+							params={{ catalogId: item.book.catalogId }}
+							className="no-underline"
+						>
+							{book}
+						</Link>
+					) : (
+						<button type="button" className="w-full" onClick={onBook}>
+							{book}
+						</button>
+					)}
+				</div>
 			</div>
-		</div>
+		</li>
 	);
 }
 
 /** Your and your friends' reading activity, newest first. */
-export function ActivityFeed({ hasFriends }: { hasFriends: boolean }) {
+export function ActivityFeed({ isHiddenWhenEmpty = false }: { isHiddenWhenEmpty?: boolean }) {
 	const isOnline = useIsOnline();
 	const feed = useFeed();
 	const remove = useDeleteFeedEvent();
 	const [menuFor, setMenuFor] = useState<FeedItem | null>(null);
 	const [details, setDetails] = useState<FeedItem | null>(null);
 	const items = feed.data?.pages.flatMap((p) => p.items) ?? [];
+	if (isHiddenWhenEmpty && items.length === 0) return null;
 
 	let body: React.ReactNode;
 	if (feed.isPending) {
@@ -147,18 +153,11 @@ export function ActivityFeed({ hasFriends }: { hasFriends: boolean }) {
 		);
 	} else if (items.length === 0) {
 		body = (
-			<div className="rounded-xl border border-current/10 bg-card px-4 py-6 text-center">
-				<Newspaper className="mx-auto mb-2 size-6 text-muted-foreground" />
+			<div className="rounded-2xl border border-border border-dashed px-4 py-5 text-center">
+				<Newspaper className="mx-auto mb-2 size-5 text-muted-foreground" />
 				<p className="m-0 text-muted-foreground text-sm">
-					{hasFriends
-						? "Nothing yet. When your friends start or finish a book and share their reading, it shows here."
-						: "Add friends to see what they start and finish reading."}
+					When your friends start or finish a book and share their reading, it shows here.
 				</p>
-				{!hasFriends && (
-					<Button asChild size="sm" className="mt-3">
-						<Link to="/tabs/social/invite-link">Create invite link</Link>
-					</Button>
-				)}
 			</div>
 		);
 	} else {
@@ -169,17 +168,20 @@ export function ActivityFeed({ hasFriends }: { hasFriends: boolean }) {
 					isError={feed.isError}
 					onRetry={() => void feed.refetch()}
 				/>
-				<ListCard>
-					{items.map((item) => (
-						<FeedRow
-							key={item.id}
-							item={item}
-							isOffline={!isOnline}
-							onBook={() => setDetails(item)}
-							onMenu={() => setMenuFor(item)}
-						/>
-					))}
-				</ListCard>
+				<div className="relative mt-1">
+					<div aria-hidden="true" className="absolute top-2 bottom-6 left-[15px] w-px bg-border" />
+					<ol className="relative m-0 list-none p-0">
+						{items.map((item) => (
+							<FeedRow
+								key={item.id}
+								item={item}
+								isOffline={!isOnline}
+								onBook={() => setDetails(item)}
+								onMenu={() => setMenuFor(item)}
+							/>
+						))}
+					</ol>
+				</div>
 				{feed.hasNextPage && (
 					<Button
 						variant="outline"

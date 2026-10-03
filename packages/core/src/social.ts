@@ -249,7 +249,11 @@ export type SocialIdentity = {
 export type RelationshipState = "none" | "pending_outgoing" | "pending_incoming" | "friends";
 
 export type SocialRelationships = {
-	friends: (SocialIdentity & { since: number })[];
+	friends: (SocialIdentity & {
+		since: number;
+		/** Their most recently read book, only when their profile would show it to the viewer. */
+		nowReading: ProfileBook | null;
+	})[];
 	incoming: (SocialIdentity & { requestId: string; sentAt: number })[];
 	outgoing: (SocialIdentity & { requestId: string; sentAt: number })[];
 	blocked: SocialIdentity[];

@@ -60,6 +60,7 @@ import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { useTheme } from "../../contexts/theme-context";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
+import { useIsForeground } from "../../hooks/use-is-foreground";
 import { repairMissingImages } from "../../services/book-import/repair-images";
 import { needsImageUpgrade, upgradeBookImages } from "../../services/book-import/upgrade-images";
 import { externalSourceUrl } from "../../services/catalog/client";
@@ -85,7 +86,6 @@ import {
 	type DiscussionTick,
 	DiscussionTicks,
 	useBuddyReadMarkers,
-	useIsForeground,
 	useRunningBuddyRead,
 } from "./buddy-read-markers";
 import { useChapterAutoAdvance } from "./chapter-auto-advance";

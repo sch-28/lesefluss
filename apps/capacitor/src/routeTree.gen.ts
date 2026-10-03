@@ -22,9 +22,10 @@ import { Route as TabsSocialBlockedRouteImport } from './routes/tabs/social/bloc
 import { Route as TabsSettingsSyncRouteImport } from './routes/tabs/settings/sync'
 import { Route as TabsSettingsSocialRouteImport } from './routes/tabs/settings/social'
 import { Route as TabsSettingsRsvpRouteImport } from './routes/tabs/settings/rsvp'
+import { Route as TabsSettingsReaderRouteImport } from './routes/tabs/settings/reader'
+import { Route as TabsSettingsGeneralRouteImport } from './routes/tabs/settings/general'
 import { Route as TabsSettingsExportRouteImport } from './routes/tabs/settings/export'
 import { Route as TabsSettingsDeviceRouteImport } from './routes/tabs/settings/device'
-import { Route as TabsSettingsAppearanceRouteImport } from './routes/tabs/settings/appearance'
 import { Route as TabsReaderIdRouteImport } from './routes/tabs/reader.$id'
 import { Route as TabsLibraryStatsRouteImport } from './routes/tabs/library/stats'
 import { Route as TabsExploreWebNovelsRouteImport } from './routes/tabs/explore/web-novels'
@@ -103,6 +104,16 @@ const TabsSettingsRsvpRoute = TabsSettingsRsvpRouteImport.update({
   path: '/tabs/settings/rsvp',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TabsSettingsReaderRoute = TabsSettingsReaderRouteImport.update({
+  id: '/tabs/settings/reader',
+  path: '/tabs/settings/reader',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TabsSettingsGeneralRoute = TabsSettingsGeneralRouteImport.update({
+  id: '/tabs/settings/general',
+  path: '/tabs/settings/general',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TabsSettingsExportRoute = TabsSettingsExportRouteImport.update({
   id: '/tabs/settings/export',
   path: '/tabs/settings/export',
@@ -111,11 +122,6 @@ const TabsSettingsExportRoute = TabsSettingsExportRouteImport.update({
 const TabsSettingsDeviceRoute = TabsSettingsDeviceRouteImport.update({
   id: '/tabs/settings/device',
   path: '/tabs/settings/device',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TabsSettingsAppearanceRoute = TabsSettingsAppearanceRouteImport.update({
-  id: '/tabs/settings/appearance',
-  path: '/tabs/settings/appearance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TabsReaderIdRoute = TabsReaderIdRouteImport.update({
@@ -190,9 +196,10 @@ export interface FileRoutesByFullPath {
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
   '/tabs/reader/$id': typeof TabsReaderIdRoute
-  '/tabs/settings/appearance': typeof TabsSettingsAppearanceRoute
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
+  '/tabs/settings/general': typeof TabsSettingsGeneralRoute
+  '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
@@ -220,9 +227,10 @@ export interface FileRoutesByTo {
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
   '/tabs/reader/$id': typeof TabsReaderIdRoute
-  '/tabs/settings/appearance': typeof TabsSettingsAppearanceRoute
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
+  '/tabs/settings/general': typeof TabsSettingsGeneralRoute
+  '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
@@ -251,9 +259,10 @@ export interface FileRoutesById {
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
   '/tabs/reader/$id': typeof TabsReaderIdRoute
-  '/tabs/settings/appearance': typeof TabsSettingsAppearanceRoute
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
+  '/tabs/settings/general': typeof TabsSettingsGeneralRoute
+  '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
@@ -283,9 +292,10 @@ export interface FileRouteTypes {
     | '/tabs/explore/web-novels'
     | '/tabs/library/stats'
     | '/tabs/reader/$id'
-    | '/tabs/settings/appearance'
     | '/tabs/settings/device'
     | '/tabs/settings/export'
+    | '/tabs/settings/general'
+    | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
     | '/tabs/settings/sync'
@@ -313,9 +323,10 @@ export interface FileRouteTypes {
     | '/tabs/explore/web-novels'
     | '/tabs/library/stats'
     | '/tabs/reader/$id'
-    | '/tabs/settings/appearance'
     | '/tabs/settings/device'
     | '/tabs/settings/export'
+    | '/tabs/settings/general'
+    | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
     | '/tabs/settings/sync'
@@ -343,9 +354,10 @@ export interface FileRouteTypes {
     | '/tabs/explore/web-novels'
     | '/tabs/library/stats'
     | '/tabs/reader/$id'
-    | '/tabs/settings/appearance'
     | '/tabs/settings/device'
     | '/tabs/settings/export'
+    | '/tabs/settings/general'
+    | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
     | '/tabs/settings/sync'
@@ -374,9 +386,10 @@ export interface RootRouteChildren {
   TabsExploreWebNovelsRoute: typeof TabsExploreWebNovelsRoute
   TabsLibraryStatsRoute: typeof TabsLibraryStatsRoute
   TabsReaderIdRoute: typeof TabsReaderIdRoute
-  TabsSettingsAppearanceRoute: typeof TabsSettingsAppearanceRoute
   TabsSettingsDeviceRoute: typeof TabsSettingsDeviceRoute
   TabsSettingsExportRoute: typeof TabsSettingsExportRoute
+  TabsSettingsGeneralRoute: typeof TabsSettingsGeneralRoute
+  TabsSettingsReaderRoute: typeof TabsSettingsReaderRoute
   TabsSettingsRsvpRoute: typeof TabsSettingsRsvpRoute
   TabsSettingsSocialRoute: typeof TabsSettingsSocialRoute
   TabsSettingsSyncRoute: typeof TabsSettingsSyncRoute
@@ -490,6 +503,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabsSettingsRsvpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tabs/settings/reader': {
+      id: '/tabs/settings/reader'
+      path: '/tabs/settings/reader'
+      fullPath: '/tabs/settings/reader'
+      preLoaderRoute: typeof TabsSettingsReaderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabs/settings/general': {
+      id: '/tabs/settings/general'
+      path: '/tabs/settings/general'
+      fullPath: '/tabs/settings/general'
+      preLoaderRoute: typeof TabsSettingsGeneralRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tabs/settings/export': {
       id: '/tabs/settings/export'
       path: '/tabs/settings/export'
@@ -502,13 +529,6 @@ declare module '@tanstack/react-router' {
       path: '/tabs/settings/device'
       fullPath: '/tabs/settings/device'
       preLoaderRoute: typeof TabsSettingsDeviceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tabs/settings/appearance': {
-      id: '/tabs/settings/appearance'
-      path: '/tabs/settings/appearance'
-      fullPath: '/tabs/settings/appearance'
-      preLoaderRoute: typeof TabsSettingsAppearanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tabs/reader/$id': {
@@ -606,9 +626,10 @@ const rootRouteChildren: RootRouteChildren = {
   TabsExploreWebNovelsRoute: TabsExploreWebNovelsRoute,
   TabsLibraryStatsRoute: TabsLibraryStatsRoute,
   TabsReaderIdRoute: TabsReaderIdRoute,
-  TabsSettingsAppearanceRoute: TabsSettingsAppearanceRoute,
   TabsSettingsDeviceRoute: TabsSettingsDeviceRoute,
   TabsSettingsExportRoute: TabsSettingsExportRoute,
+  TabsSettingsGeneralRoute: TabsSettingsGeneralRoute,
+  TabsSettingsReaderRoute: TabsSettingsReaderRoute,
   TabsSettingsRsvpRoute: TabsSettingsRsvpRoute,
   TabsSettingsSocialRoute: TabsSettingsSocialRoute,
   TabsSettingsSyncRoute: TabsSettingsSyncRoute,

@@ -1,5 +1,4 @@
-import type { ProfileCover, SocialIdentity } from "@lesefluss/core";
-import { SocialAvatar } from "@lesefluss/ui/social-avatar";
+import type { ProfileCover } from "@lesefluss/core";
 import { cn } from "@lesefluss/ui/utils";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
@@ -60,8 +59,8 @@ export function ProgressBar({
 	return (
 		<div className={cn("h-1.5 overflow-hidden rounded-full bg-current/10", className)}>
 			<div
-				className={cn("h-full rounded-full", finished ? "bg-emerald-500" : "bg-primary")}
-				style={{ width: `${finished ? 100 : (percent ?? 0)}%` }}
+				className="h-full origin-left rounded-full bg-primary"
+				style={{ transform: `scaleX(${(finished ? 100 : (percent ?? 0)) / 100})` }}
 			/>
 		</div>
 	);
@@ -69,34 +68,10 @@ export function ProgressBar({
 
 export function FinishedLabel({ className }: { className?: string }) {
 	return (
-		<span className={cn("inline-flex items-center gap-1 text-emerald-500", className)}>
+		<span className={cn("inline-flex items-center gap-1 font-medium text-primary", className)}>
 			<CheckCircle2 className="size-3.5" />
 			Finished
 		</span>
-	);
-}
-
-/** Overlapping avatars; everyone past `max` becomes a "+N" chip. */
-export function AvatarStack({ people, max = 4 }: { people: SocialIdentity[]; max?: number }) {
-	const shown = people.slice(0, max);
-	const rest = people.length - shown.length;
-	return (
-		<div className="flex items-center">
-			{shown.map((p, i) => (
-				<SocialAvatar
-					key={p.userId}
-					name={p.name}
-					avatarUrl={p.avatarUrl}
-					size="sm"
-					className={cn("size-7 ring-2 ring-card", i > 0 && "-ml-2")}
-				/>
-			))}
-			{rest > 0 && (
-				<span className="-ml-2 flex size-7 items-center justify-center rounded-full bg-muted font-medium text-[10px] text-muted-foreground ring-2 ring-card">
-					+{rest}
-				</span>
-			)}
-		</div>
 	);
 }
 
@@ -134,7 +109,7 @@ export function CoverShelf({ items }: { items: ShelfItem[] }) {
 				>
 					<div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-muted">
 						<CoverImage src={item.coverSrc} alt={item.title} />
-						<div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent" />
+						<div className="absolute inset-0 bg-gradient-to-t from-foreground/50 via-transparent" />
 						{item.percent !== undefined && item.percent > 0 && item.percent < 100 && (
 							<div className="absolute inset-x-0 bottom-0 h-1 bg-black/40">
 								<div className="h-full bg-primary" style={{ width: `${item.percent}%` }} />
@@ -165,6 +140,22 @@ export function ListCard({ children }: { children: React.ReactNode }) {
 			{children}
 		</div>
 	);
+}
+
+/** A ring around the avatar, filled as far as the reader is in their current book. */
+export function progressRing(percent: number): string {
+	return `conic-gradient(var(--primary) ${percent}%, color-mix(in oklch, currentColor 12%, transparent) 0)`;
+}
+
+type CurrentBook = { id: string; title: string; coverSrc: string | null; percent: number };
+
+/** The book the reader moved in most recently, if any is in progress. */
+export function useCurrentBook(): CurrentBook | null {
+	const reading = queryHooks.useStatsCurrentlyReading();
+	const first = reading.data?.[0];
+	const cover = useLocalCover(first?.id ?? "");
+	if (!first) return null;
+	return { id: first.id, title: first.title, coverSrc: cover, percent: first.percent ?? 0 };
 }
 
 /** A local book's cover: the stored image, else the catalog cover the book came from. */

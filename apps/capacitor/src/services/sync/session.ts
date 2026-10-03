@@ -29,6 +29,7 @@ export const LAST_SYNCED_KEY = "sync_last_synced";
 const USER_EMAIL_KEY = "sync_user_email";
 const AUTH_STATE_KEY = "sync_auth_state";
 export const SESSIONS_PUSHED_KEY = "sync_sessions_pushed_at";
+const SETTINGS_ADOPTED_KEY = "sync_settings_adopted";
 
 const preferencesAuthStorage: AuthHandoffStorage = {
 	async get(key) {
@@ -85,6 +86,8 @@ export async function clearAccountScopedState(): Promise<void> {
 	await clearServerContentIds();
 	await clearQuotaBlock();
 	await resetSessionPushWatermark();
+	await Preferences.remove({ key: SETTINGS_ADOPTED_KEY });
+	await Preferences.remove({ key: LAST_SYNCED_KEY });
 	clearSocialQueries();
 	await clearPendingLink();
 }
@@ -134,6 +137,25 @@ export async function isSyncReady(): Promise<boolean> {
 export async function getLastSynced(): Promise<number | null> {
 	const { value } = await Preferences.get({ key: LAST_SYNCED_KEY });
 	return value ? Number(value) : null;
+}
+
+/**
+ * Whether this device has taken the account's settings at least once. Until it
+ * has, the server's settings win regardless of timestamps: a fresh install's
+ * defaults are never a choice the user made over what the account holds.
+ */
+export async function hasAdoptedServerSettings(): Promise<boolean> {
+	const { value } = await Preferences.get({ key: SETTINGS_ADOPTED_KEY });
+	if (value === "1") return true;
+	// Installs that synced before the marker existed already hold the account's
+	// settings, plus possibly unpushed edits a forced adopt would throw away.
+	if ((await getLastSynced()) === null) return false;
+	await markServerSettingsAdopted();
+	return true;
+}
+
+export async function markServerSettingsAdopted(): Promise<void> {
+	await Preferences.set({ key: SETTINGS_ADOPTED_KEY, value: "1" });
 }
 
 export async function getUserEmail(): Promise<string | null> {

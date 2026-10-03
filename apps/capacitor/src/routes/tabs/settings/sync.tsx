@@ -16,7 +16,6 @@ import {
 	AlertDialogTitle,
 } from "@lesefluss/ui/alert-dialog";
 import { Button } from "@lesefluss/ui/button";
-import { Switch } from "@lesefluss/ui/switch";
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	AlertCircle,
@@ -32,6 +31,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { ToggleRow } from "@/components/app-shell/toggle-row";
+import { SettingsSection } from "@/components/settings/settings-section";
 import { useToast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
 import { queryHooks } from "@/services/db/hooks";
@@ -109,41 +110,6 @@ const DANGER_ACTIONS: Record<DangerAction, DangerActionConfig> = {
 	},
 };
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-	return (
-		<section className="mt-6 first:mt-2">
-			<h2 className="px-4 pb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
-				{title}
-			</h2>
-			<div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-				{children}
-			</div>
-		</section>
-	);
-}
-
-function ToggleRow({
-	title,
-	subtitle,
-	checked,
-	onCheckedChange,
-}: {
-	title: string;
-	subtitle: string;
-	checked: boolean;
-	onCheckedChange: (v: boolean) => void;
-}) {
-	return (
-		<div className="flex items-center justify-between gap-3 px-4 py-3">
-			<div className="min-w-0">
-				<div className="font-medium text-foreground text-sm">{title}</div>
-				<div className="text-muted-foreground text-xs">{subtitle}</div>
-			</div>
-			<Switch checked={checked} onCheckedChange={onCheckedChange} />
-		</div>
-	);
-}
-
 function SyncSettings() {
 	const { isLoggedIn, userEmail, isSyncing, lastSynced, syncError, logout, syncNow } =
 		useSyncContext();
@@ -190,7 +156,7 @@ function SyncSettings() {
 			<div className="mx-auto max-w-2xl px-4 pb-10">
 				{isLoggedIn ? (
 					<>
-						<Section title="Account">
+						<SettingsSection title="Account">
 							<div className="flex items-center gap-3 px-4 py-3">
 								<CloudCheck className="size-5 text-emerald-500" />
 								<div className="flex-1">
@@ -207,9 +173,9 @@ function SyncSettings() {
 									{isSyncing ? "Syncing..." : "Sync now"}
 								</Button>
 							</div>
-						</Section>
+						</SettingsSection>
 
-						<Section title="What syncs">
+						<SettingsSection title="What syncs">
 							<p className="px-4 py-3 text-muted-foreground text-xs">
 								Toggle off to stop this device from syncing that data. Existing cloud data stays
 								put. To wipe data, use the Danger zone below.
@@ -232,9 +198,9 @@ function SyncSettings() {
 								checked={settings?.syncStats ?? true}
 								onCheckedChange={(v) => saveSettings.mutate({ syncStats: v })}
 							/>
-						</Section>
+						</SettingsSection>
 
-						<section className="mt-6">
+						<section className="mt-5">
 							<div className="overflow-hidden rounded-lg border border-border bg-card">
 								<Accordion type="single" collapsible>
 									<AccordionItem value="danger-zone" className="border-b-0">
@@ -285,7 +251,7 @@ function SyncSettings() {
 						</section>
 
 						{!IS_WEB_BUILD && (
-							<Section title="">
+							<SettingsSection>
 								<button
 									type="button"
 									onClick={logout}
@@ -294,7 +260,7 @@ function SyncSettings() {
 									<LogOut className="size-5 text-muted-foreground" />
 									<span className="font-medium text-foreground text-sm">Sign out</span>
 								</button>
-							</Section>
+							</SettingsSection>
 						)}
 
 						<AlertDialog
@@ -321,7 +287,7 @@ function SyncSettings() {
 						</AlertDialog>
 					</>
 				) : (
-					<Section title="Not signed in">
+					<SettingsSection title="Not signed in">
 						<div className="flex items-center gap-3 px-4 py-3">
 							<Cloud className="size-5 shrink-0 text-muted-foreground" />
 							<p className="text-muted-foreground text-sm">
@@ -352,7 +318,7 @@ function SyncSettings() {
 								</Button>
 							)}
 						</div>
-					</Section>
+					</SettingsSection>
 				)}
 			</div>
 		</div>

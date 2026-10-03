@@ -57,8 +57,10 @@ import {
 	clearToken,
 	getSessionPushWatermark,
 	getToken,
+	hasAdoptedServerSettings,
 	isSyncReady,
 	LAST_SYNCED_KEY,
+	markServerSettingsAdopted,
 	SESSIONS_PUSHED_KEY,
 	SYNC_ENABLED,
 } from "./session";
@@ -237,6 +239,14 @@ function seriesToSync(s: Series): SyncSeries {
 		deleted: s.deleted,
 		updatedAt: s.updatedAt,
 	};
+}
+
+export function shouldAdoptServerSettings(
+	server: Pick<SyncSettings, "updatedAt">,
+	local: Pick<Settings, "updatedAt">,
+	isFirstPull: boolean,
+): boolean {
+	return isFirstPull || server.updatedAt > local.updatedAt;
 }
 
 function settingsToSync(s: Settings): SyncSettings {
@@ -674,13 +684,18 @@ export async function pullSync(): Promise<Set<string>> {
 		}
 
 		// --- Merge settings ---
-		const localSettings = await queries.getSettings();
-		if (data.settings) {
-			if (data.settings.updatedAt > localSettings.updatedAt) {
-				await queries.saveSettings(pick(data.settings, SYNCED_SETTING_KEYS));
-				changed = true;
-			}
+		const [localSettings, hasAdoptedSettings] = await Promise.all([
+			queries.getSettings(),
+			hasAdoptedServerSettings(),
+		]);
+		if (
+			data.settings &&
+			shouldAdoptServerSettings(data.settings, localSettings, !hasAdoptedSettings)
+		) {
+			await queries.saveSettings(pick(data.settings, SYNCED_SETTING_KEYS), data.settings.updatedAt);
+			changed = true;
 		}
+		if (!hasAdoptedSettings) await markServerSettingsAdopted();
 
 		// --- Merge highlights ---
 		if (localSettings.syncHighlights) {
@@ -947,6 +962,9 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 		// committed, or it re-uploads the same content and resends the same sessions.
 		const knownContentIds = serverHasContent ?? (await getServerContentIds());
 		const sessionWatermark = await getSessionPushWatermark();
+		// Until the account's settings have been pulled, the local row is install
+		// defaults; pushing it would overwrite what the account holds.
+		const hasAdoptedSettings = await hasAdoptedServerSettings();
 
 		const [books, settings, highlights, glossaryEntries, seriesRows, readingSessionsRows] =
 			await Promise.all([
@@ -1008,7 +1026,7 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 
 		const payload: SyncPayload = {
 			books: booksWithContent,
-			settings: settingsToSync(settings),
+			settings: hasAdoptedSettings ? settingsToSync(settings) : null,
 			highlights: settings.syncHighlights
 				? highlights.filter((highlight) => pushedBookIds.has(highlight.bookId)).map(highlightToSync)
 				: [],

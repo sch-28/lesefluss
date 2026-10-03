@@ -1197,21 +1197,6 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	cursor: not-allowed;
 }
 
-/* Settings page stepper rows */
-.ap-settings-row {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	flex: 1;
-}
-
-.ap-settings-val {
-	font-size: 0.82rem;
-	color: var(--muted-foreground);
-	min-width: 40px;
-	text-align: right;
-}
-
 /* ── RSVP settings preview + collapsible advanced ── */
 .rsvp-preview-card {
 	display: block;

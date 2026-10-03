@@ -9,7 +9,7 @@ import {
 	readingProgress,
 	SOCIAL_API,
 } from "@lesefluss/core";
-import { and, count, eq, isNotNull, isNull, ne, or } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, isNull, ne, or } from "drizzle-orm";
 import { type DbExecutor, db } from "~/db";
 import { socialFriendship, socialProfile, syncBooks, syncSeries } from "~/db/schema";
 import { type CoverRef, signCoverToken } from "./cover-token";
@@ -48,22 +48,15 @@ type SeriesRollup = {
 	isAllFinished: boolean;
 	finishedAt: Date | null;
 	rating: number | null;
+	movedAt: Date;
 };
 
 type Shelves = { currentlyReading: ProfileBook[]; finished: ProfileFinishedBook[] };
 
-/**
- * Books as one entry per work: standalone books as themselves, serial chapters
- * rolled up per series. Articles, hidden and deleted books are out.
- */
-async function shelvesFor(
-	exec: DbExecutor,
-	ownerId: string,
-	viewerId: string,
-	timeZone: string | undefined,
-): Promise<Shelves> {
-	const rows = await exec
+function loadShelfRows(exec: DbExecutor, ownerIds: string[]) {
+	return exec
 		.select({
+			userId: syncBooks.userId,
 			bookId: syncBooks.bookId,
 			title: syncBooks.title,
 			author: syncBooks.author,
@@ -73,6 +66,7 @@ async function shelvesFor(
 			rating: syncBooks.rating,
 			finishedAt: syncBooks.finishedAt,
 			catalogId: syncBooks.catalogId,
+			updatedAt: syncBooks.updatedAt,
 			hasCover: isNotNull(syncBooks.coverImage),
 			seriesId: syncBooks.seriesId,
 			seriesTitle: syncSeries.title,
@@ -86,14 +80,28 @@ async function shelvesFor(
 		)
 		.where(
 			and(
-				eq(syncBooks.userId, ownerId),
+				inArray(syncBooks.userId, ownerIds),
 				eq(syncBooks.deleted, false),
 				eq(syncBooks.hideFromProfile, false),
 				or(isNull(syncBooks.source), ne(syncBooks.source, "url")),
 			),
 		);
+}
 
-	const currentlyReading: ProfileBook[] = [];
+type ShelfRow = Awaited<ReturnType<typeof loadShelfRows>>[number];
+
+/**
+ * Books as one entry per work: standalone books as themselves, serial chapters
+ * rolled up per series. Articles, hidden and deleted books are out. Currently
+ * reading comes most recently moved first.
+ */
+function shelvesFromRows(
+	rows: ShelfRow[],
+	ownerId: string,
+	viewerId: string,
+	timeZone: string | undefined,
+): Shelves {
+	const reading: { book: ProfileBook; movedAt: Date }[] = [];
 	const finished: ProfileFinishedBook[] = [];
 	const series = new Map<string, SeriesRollup>();
 
@@ -112,8 +120,10 @@ async function shelvesFor(
 				isAllFinished: true,
 				finishedAt: null,
 				rating: null,
+				movedAt: row.updatedAt,
 			};
 			entry.wordCount += wordCount;
+			if (row.updatedAt > entry.movedAt) entry.movedAt = row.updatedAt;
 			entry.wordPosition += Math.min(
 				row.wordPosition,
 				wordCount > 0 ? wordCount : row.wordPosition,
@@ -133,12 +143,15 @@ async function shelvesFor(
 			id: row.bookId,
 		});
 		if (status === "reading") {
-			currentlyReading.push({
-				key: row.bookId,
-				title: row.title,
-				author: row.author,
-				progressPercent: readingProgress({ wordCount, wordPosition: row.wordPosition }),
-				cover,
+			reading.push({
+				book: {
+					key: row.bookId,
+					title: row.title,
+					author: row.author,
+					progressPercent: readingProgress({ wordCount, wordPosition: row.wordPosition }),
+					cover,
+				},
+				movedAt: row.updatedAt,
 			});
 		} else if (status === "finished") {
 			finished.push({
@@ -168,18 +181,69 @@ async function shelvesFor(
 				cover,
 			});
 		} else if (entry.isAnyReading || entry.wordPosition > 0) {
-			currentlyReading.push({
-				key: seriesId,
-				title: entry.title,
-				author: entry.author,
-				progressPercent: readingProgress(entry),
-				cover,
+			reading.push({
+				book: {
+					key: seriesId,
+					title: entry.title,
+					author: entry.author,
+					progressPercent: readingProgress(entry),
+					cover,
+				},
+				movedAt: entry.movedAt,
 			});
 		}
 	}
 
+	reading.sort((a, b) => b.movedAt.getTime() - a.movedAt.getTime());
 	finished.sort((a, b) => (b.finishedOn ?? "").localeCompare(a.finishedOn ?? ""));
-	return { currentlyReading, finished };
+	return { currentlyReading: reading.map((r) => r.book), finished };
+}
+
+async function shelvesFor(
+	exec: DbExecutor,
+	ownerId: string,
+	viewerId: string,
+	timeZone: string | undefined,
+): Promise<Shelves> {
+	return shelvesFromRows(await loadShelfRows(exec, [ownerId]), ownerId, viewerId, timeZone);
+}
+
+/**
+ * The most recently read book of each of `friendIds` whose profile would show
+ * it to `viewerId`. Callers pass only live friendships between visible users.
+ */
+export async function nowReadingFor(
+	exec: DbExecutor,
+	viewerId: string,
+	friendIds: string[],
+): Promise<Map<string, ProfileBook>> {
+	const nowReading = new Map<string, ProfileBook>();
+	if (friendIds.length === 0) return nowReading;
+	const shown = await exec
+		.select({ userId: socialProfile.userId })
+		.from(socialProfile)
+		.where(
+			and(
+				inArray(socialProfile.userId, friendIds),
+				eq(socialProfile.visibility, "friends"),
+				eq(socialProfile.showCurrentlyReading, true),
+			),
+		);
+	if (shown.length === 0) return nowReading;
+	const rowsByOwner = new Map<string, ShelfRow[]>();
+	for (const row of await loadShelfRows(
+		exec,
+		shown.map((p) => p.userId),
+	)) {
+		const rows = rowsByOwner.get(row.userId);
+		if (rows) rows.push(row);
+		else rowsByOwner.set(row.userId, [row]);
+	}
+	for (const [ownerId, rows] of rowsByOwner) {
+		const [latest] = shelvesFromRows(rows, ownerId, viewerId, undefined).currentlyReading;
+		if (latest) nowReading.set(ownerId, latest);
+	}
+	return nowReading;
 }
 
 async function friendCountOf(exec: DbExecutor, userId: string): Promise<number> {

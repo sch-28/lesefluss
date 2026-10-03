@@ -9,7 +9,7 @@ import { SignedOutSocial } from "./signed-out";
 
 export function Spinner() {
 	return (
-		<div className="flex justify-center py-16">
+		<div className="flex min-h-[60vh] items-center justify-center">
 			<Loader2 className="size-6 animate-spin text-muted-foreground" />
 		</div>
 	);

@@ -1,30 +1,32 @@
 import { Capacitor } from "@capacitor/core";
-import { DEFAULT_SETTINGS } from "@lesefluss/core";
-import { Switch } from "@lesefluss/ui/switch";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
-	ChevronRight,
+	BookOpen,
 	Cloud,
 	CloudCheck,
 	Cog,
 	Cpu,
 	Download,
-	Eye,
 	Globe,
 	Loader2,
 	Megaphone,
 	MessageCircle,
+	SlidersHorizontal,
 	Sparkles,
 	Users,
 	Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { TabHeader } from "@/components/app-shell/tab-header";
+import { ToggleRow } from "@/components/app-shell/toggle-row";
 import BLEIndicator from "@/components/ble-indicator";
+import { NavRow } from "@/components/settings/settings-row";
+import { SettingsSection } from "@/components/settings/settings-section";
 import { SHOW_WHATS_NEW_EVENT } from "@/components/whats-new-modal";
 import { useBLE } from "@/contexts/ble-context";
 import { useSyncContext } from "@/contexts/sync-context";
 import { useTheme } from "@/contexts/theme-context";
+import { FONT_FAMILIES, THEMES } from "@/hooks/use-appearance-settings";
 import { DiagnosticsRow } from "@/pages/settings/diagnostics-row";
 import { BLEConnectionState } from "@/services/ble";
 import { queryHooks } from "@/services/db/hooks";
@@ -41,65 +43,9 @@ export const Route = createFileRoute("/tabs/settings/")({
 	component: SettingsLanding,
 });
 
-type RowProps = {
-	icon: React.ComponentType<{ className?: string }>;
-	title: string;
-	subtitle: string;
-	to?:
-		| "/tabs/settings/rsvp"
-		| "/tabs/settings/appearance"
-		| "/tabs/settings/export"
-		| "/tabs/settings/device"
-		| "/tabs/settings/sync"
-		| "/tabs/settings/social";
-	onClick?: () => void;
-	iconClassName?: string;
-};
-
-function Row({ icon: Icon, title, subtitle, to, onClick, iconClassName }: RowProps) {
-	const content = (
-		<>
-			<Icon className={iconClassName ?? "size-5 text-muted-foreground"} />
-			<div className="min-w-0 flex-1">
-				<div className="font-medium text-foreground text-sm">{title}</div>
-				<div className="text-muted-foreground text-xs">{subtitle}</div>
-			</div>
-			<ChevronRight className="size-4 text-muted-foreground" />
-		</>
-	);
-	const cls =
-		"flex w-full cursor-pointer items-center gap-3 bg-card px-4 py-3 text-left no-underline transition-colors hover:bg-muted/60";
-	if (to) {
-		return (
-			<Link to={to} className={cls}>
-				{content}
-			</Link>
-		);
-	}
-	return (
-		<button type="button" onClick={() => onClick?.()} className={cls}>
-			{content}
-		</button>
-	);
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-	return (
-		<section className="mt-6 first:mt-2">
-			<h2 className="px-4 pb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
-				{title}
-			</h2>
-			<div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-				{children}
-			</div>
-		</section>
-	);
-}
-
 function SettingsLanding() {
 	const navigate = useNavigate();
 	const { data: settings, isPending } = queryHooks.useSettings();
-	const { mutate: saveSettings } = queryHooks.useSaveSettings();
 	const { connectionState, connectedDevice } = useBLE();
 	const { theme } = useTheme();
 	const { isLoggedIn, userEmail } = useSyncContext();
@@ -125,7 +71,10 @@ function SettingsLanding() {
 	const rsvpSubtitle = settings
 		? `${settings.wpm} WPM · Comma ${settings.delayComma.toFixed(1)}x · Period ${settings.delayPeriod.toFixed(1)}x`
 		: "Loading...";
-	const appearanceSubtitle = theme === "dark" ? "Dark" : theme === "sepia" ? "Sepia" : "Light";
+	const themeLabel = THEMES.find((t) => t.value === theme)?.label ?? theme;
+	const readerSubtitle = settings
+		? `${FONT_FAMILIES.find((f) => f.value === settings.readerFontFamily)?.label ?? "Sans"} · ${settings.readerFontSize}px · ${settings.paginationStyle === "page" ? "Page" : "Scroll"}`
+		: "Loading...";
 	const deviceSubtitle = isConnected
 		? connectedDevice?.name || "Connected"
 		: isTransitioning
@@ -163,42 +112,43 @@ function SettingsLanding() {
 		<div className="bg-background">
 			<TabHeader title="Settings" icon={Cog} right={!IS_WEB && <BLEIndicator />} />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
-				<Section title="Reading">
-					<Row icon={Zap} title="RSVP" subtitle={rsvpSubtitle} to="/tabs/settings/rsvp" />
-					<Row
-						icon={Eye}
-						title="Appearance"
-						subtitle={appearanceSubtitle}
-						to="/tabs/settings/appearance"
+				<SettingsSection title="Reading">
+					<NavRow
+						icon={BookOpen}
+						title="Reader"
+						subtitle={readerSubtitle}
+						to="/tabs/settings/reader"
 					/>
-					<Row
+					<NavRow icon={Zap} title="RSVP" subtitle={rsvpSubtitle} to="/tabs/settings/rsvp" />
+					<NavRow
 						icon={Download}
 						title="Export highlights"
 						subtitle="Markdown, CSV"
 						to="/tabs/settings/export"
 					/>
-					<div className="flex items-center justify-between gap-3 px-4 py-3">
-						<label htmlFor="auto-open-last-book" className="min-w-0 flex-1">
-							<div className="font-medium text-foreground text-sm">Open last book on launch</div>
-							<div className="text-muted-foreground text-xs">
-								Skip the library and continue where you left off.
-							</div>
-						</label>
-						<Switch
-							id="auto-open-last-book"
-							checked={settings?.autoOpenLastBook ?? DEFAULT_SETTINGS.AUTO_OPEN_LAST_BOOK}
-							onCheckedChange={(v) => saveSettings({ autoOpenLastBook: v })}
-						/>
-					</div>
-				</Section>
+				</SettingsSection>
+
+				<SettingsSection title="App">
+					<NavRow
+						icon={SlidersHorizontal}
+						title="General"
+						subtitle={`${themeLabel} theme · Startup · Reading mode`}
+						to="/tabs/settings/general"
+					/>
+				</SettingsSection>
 
 				{showDevicesAndSync && (
-					<Section title="Devices & sync">
+					<SettingsSection title="Devices & sync">
 						{!IS_WEB && (
-							<Row icon={Cpu} title="Device" subtitle={deviceSubtitle} to="/tabs/settings/device" />
+							<NavRow
+								icon={Cpu}
+								title="Device"
+								subtitle={deviceSubtitle}
+								to="/tabs/settings/device"
+							/>
 						)}
 						{SYNC_ENABLED && (
-							<Row
+							<NavRow
 								icon={isLoggedIn ? CloudCheck : Cloud}
 								iconClassName={
 									isLoggedIn ? "size-5 text-emerald-500" : "size-5 text-muted-foreground"
@@ -208,56 +158,54 @@ function SettingsLanding() {
 								to="/tabs/settings/sync"
 							/>
 						)}
-					</Section>
+					</SettingsSection>
 				)}
 
 				{SYNC_ENABLED && isLoggedIn && (
-					<Section title="Social">
-						<Row
+					<SettingsSection title="Social">
+						<NavRow
 							icon={Users}
 							title="Social profile"
 							subtitle="Handle, avatar and who sees what"
 							to="/tabs/settings/social"
 						/>
-					</Section>
+					</SettingsSection>
 				)}
 
-				<Section title="About">
+				<SettingsSection title="About">
 					{!IS_WEB && (
-						<Row icon={Globe} title="Website" subtitle="lesefluss.app" onClick={openWebsite} />
+						<NavRow icon={Globe} title="Website" subtitle="lesefluss.app" onClick={openWebsite} />
 					)}
-					<Row
+					<NavRow
 						icon={Megaphone}
 						title="What's new"
 						subtitle="See recent updates"
 						onClick={showWhatsNew}
 					/>
-					<Row
+					<NavRow
 						icon={MessageCircle}
 						title="Send feedback"
 						subtitle="Ideas, bugs, or rough edges"
 						onClick={openFeedback}
 					/>
-					<Row
+					<NavRow
 						icon={Sparkles}
 						title="Show onboarding"
 						subtitle="Walk through the intro again"
 						onClick={replayOnboarding}
 					/>
 					<DiagnosticsRow />
-				</Section>
+				</SettingsSection>
 
-				<Section title="Privacy">
-					<div className="flex items-center justify-between gap-3 px-4 py-3">
-						<label htmlFor="telemetry" className="min-w-0 flex-1">
-							<div className="font-medium text-foreground text-sm">Anonymous diagnostics</div>
-							<div className="text-muted-foreground text-xs">
-								Send anonymized error reports to help fix bugs. No account or personal data.
-							</div>
-						</label>
-						<Switch id="telemetry" checked={telemetry} onCheckedChange={toggleTelemetry} />
-					</div>
-				</Section>
+				<SettingsSection title="Privacy">
+					<ToggleRow
+						id="telemetry"
+						title="Anonymous diagnostics"
+						subtitle="Send anonymized error reports to help fix bugs. No account or personal data."
+						checked={telemetry}
+						onCheckedChange={toggleTelemetry}
+					/>
+				</SettingsSection>
 			</div>
 		</div>
 	);

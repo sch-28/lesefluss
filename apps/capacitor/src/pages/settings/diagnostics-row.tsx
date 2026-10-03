@@ -56,15 +56,15 @@ export function DiagnosticsRow() {
 	};
 
 	return (
-		<div className="bg-card">
+		<div>
 			<button
 				type="button"
 				onClick={toggle}
-				className="flex w-full cursor-pointer items-center gap-3 bg-card px-4 py-3 text-left no-underline transition-colors hover:bg-muted/60"
+				className="flex min-h-12 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left no-underline transition-colors hover:bg-muted/60"
 			>
 				<Bug className="size-5 text-muted-foreground" />
 				<div className="min-w-0 flex-1">
-					<div className="font-medium text-foreground text-sm">Diagnostics</div>
+					<div className="text-foreground text-sm">Diagnostics</div>
 					<div className="text-muted-foreground text-xs">{subtitle}</div>
 				</div>
 				<ChevronDown

@@ -11,8 +11,6 @@ import {
 } from "@lesefluss/ui/alert-dialog";
 import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
-import { Slider } from "@lesefluss/ui/slider";
-import { Switch } from "@lesefluss/ui/switch";
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	Bluetooth,
@@ -29,7 +27,10 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { DeviceSync } from "@/components/device-sync";
+import { SettingsSection } from "@/components/settings/settings-section";
+import { SliderRow } from "@/components/settings/slider-row";
 import { useToast } from "@/components/toast";
 import { useBLE } from "@/contexts/ble-context";
 import { useAutoSaveSettings } from "@/hooks/use-auto-save-settings";
@@ -53,75 +54,6 @@ function formatBytes(bytes: number): string {
 	if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
 	if (bytes >= 1_024) return `${(bytes / 1_024).toFixed(1)} KB`;
 	return `${bytes} B`;
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-	return (
-		<section className="mt-6 first:mt-2">
-			<h2 className="px-4 pb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
-				{title}
-			</h2>
-			<div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-				{children}
-			</div>
-		</section>
-	);
-}
-
-function ToggleRow({
-	title,
-	subtitle,
-	checked,
-	onCheckedChange,
-}: {
-	title: string;
-	subtitle?: string;
-	checked: boolean;
-	onCheckedChange: (v: boolean) => void;
-}) {
-	return (
-		<div className="flex items-center justify-between gap-3 px-4 py-3">
-			<div className="min-w-0">
-				<div className="font-medium text-foreground text-sm">{title}</div>
-				{subtitle && <div className="text-muted-foreground text-xs">{subtitle}</div>}
-			</div>
-			<Switch checked={checked} onCheckedChange={onCheckedChange} />
-		</div>
-	);
-}
-
-function SliderRow({
-	title,
-	value,
-	displayValue,
-	min,
-	max,
-	step,
-	onChange,
-}: {
-	title: string;
-	value: number;
-	displayValue: string;
-	min: number;
-	max: number;
-	step: number;
-	onChange: (v: number) => void;
-}) {
-	return (
-		<div className="space-y-2 px-4 py-3">
-			<div className="flex items-center justify-between">
-				<div className="font-medium text-foreground text-sm">{title}</div>
-				<div className="font-mono text-muted-foreground text-sm tabular-nums">{displayValue}</div>
-			</div>
-			<Slider
-				min={min}
-				max={max}
-				step={step}
-				value={[value]}
-				onValueChange={(v) => onChange(v[0] ?? value)}
-			/>
-		</div>
-	);
 }
 
 function DeviceSettings() {
@@ -263,11 +195,11 @@ function DeviceSettings() {
 				)}
 
 				{caps?.hasDisplaySettings && (
-					<Section title="Display">
+					<SettingsSection title="Display">
 						<SliderRow
-							title="Brightness"
+							label="Brightness"
 							value={settings.brightness}
-							displayValue={`${settings.brightness}%`}
+							display={`${settings.brightness}%`}
 							min={SETTING_CONSTRAINTS.BRIGHTNESS.min}
 							max={SETTING_CONSTRAINTS.BRIGHTNESS.max}
 							step={SETTING_CONSTRAINTS.BRIGHTNESS.step}
@@ -278,43 +210,43 @@ function DeviceSettings() {
 							checked={settings.inverse}
 							onCheckedChange={(v) => updateSetting("inverse", v)}
 						/>
-					</Section>
+					</SettingsSection>
 				)}
 
 				{caps?.hasPowerSettings && (
-					<Section title="Power">
+					<SettingsSection title="Power">
 						<SliderRow
-							title="Screen off"
+							label="Screen off"
 							value={settings.displayOffTimeout}
-							displayValue={`${settings.displayOffTimeout}s`}
+							display={`${settings.displayOffTimeout}s`}
 							min={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.min}
 							max={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.max}
 							step={SETTING_CONSTRAINTS.DISPLAY_OFF_TIMEOUT.step}
 							onChange={(v) => updateSetting("displayOffTimeout", v)}
 						/>
 						<SliderRow
-							title="Shutdown"
+							label="Shutdown"
 							value={settings.deepSleepTimeout}
-							displayValue={`${settings.deepSleepTimeout}s`}
+							display={`${settings.deepSleepTimeout}s`}
 							min={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.min}
 							max={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.max}
 							step={SETTING_CONSTRAINTS.DEEP_SLEEP_TIMEOUT.step}
 							onChange={(v) => updateSetting("deepSleepTimeout", v)}
 						/>
-					</Section>
+					</SettingsSection>
 				)}
 
 				{caps?.hasDevMode && (
-					<Section title="Developer">
+					<SettingsSection title="Developer">
 						<ToggleRow
 							title="Dev mode"
 							checked={settings.devMode}
 							onCheckedChange={(v) => updateSetting("devMode", v)}
 						/>
-					</Section>
+					</SettingsSection>
 				)}
 
-				<Section title="Connection">
+				<SettingsSection title="Connection">
 					<ToggleRow
 						title="Enable Bluetooth"
 						subtitle="Required to connect to Lesefluss"
@@ -444,7 +376,7 @@ function DeviceSettings() {
 							{bleError && <div className="px-4 py-2 text-destructive text-sm">{bleError}</div>}
 						</>
 					)}
-				</Section>
+				</SettingsSection>
 
 				{isConnected && caps && !caps.isMultiBook && (
 					<div className="mt-6 flex gap-2">

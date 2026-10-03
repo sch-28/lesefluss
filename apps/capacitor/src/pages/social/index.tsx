@@ -2,18 +2,8 @@ import type { OwnSocialProfile, SocialIdentity, SocialRelationships } from "@les
 import { Button } from "@lesefluss/ui/button";
 import { SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { Link, useRouter } from "@tanstack/react-router";
-import {
-	Ban,
-	ChevronRight,
-	Flag,
-	Inbox,
-	Link2,
-	MoreHorizontal,
-	ShieldOff,
-	UserCog,
-	UserMinus,
-	Users,
-} from "lucide-react";
+import { Ban, Flag, Inbox, MoreHorizontal, ShieldOff, UserCog, Users } from "lucide-react";
+import type React from "react";
 import { useEffect, useState } from "react";
 import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { TabHeader } from "@/components/app-shell/tab-header";
@@ -30,14 +20,15 @@ import { useBuddyReads } from "@/services/social/buddy-reads";
 import { useIsOnline } from "@/services/social/cache";
 import {
 	socialErrorMessage,
-	useBlockUser,
 	useCancelRequest,
 	useRelationships,
-	useRemoveFriend,
 	useRespondToRequest,
 } from "@/services/social/friends";
 import { useUnreadCount } from "@/services/social/inbox";
 import { useOwnSocialProfile } from "@/services/social/profile";
+import { FirstRunHero } from "./first-run-hero";
+import { FriendsRow } from "./friends-row";
+import { MeHero } from "./me-hero";
 import { PersonRow } from "./person-row";
 import { OfflineNotice, SocialGate, Spinner, StaleNotice } from "./social-gate";
 
@@ -50,23 +41,6 @@ type Confirm = {
 };
 
 const NOT_NOTIFIED = "They are not notified.";
-
-function MeCard({ me }: { me: OwnSocialProfile }) {
-	return (
-		<Link
-			to="/tabs/social/profile/$userId"
-			params={{ userId: me.userId }}
-			className="mt-4 flex items-center gap-3 rounded-2xl border border-current/10 bg-card p-4 text-card-foreground no-underline"
-		>
-			<SocialAvatar name={me.name} avatarUrl={me.avatarUrl} size="md" />
-			<div className="min-w-0 flex-1">
-				<div className="truncate font-semibold text-base">{me.name}</div>
-				<div className="truncate text-muted-foreground text-xs">@{me.handle} · Your profile</div>
-			</div>
-			<ChevronRight className="size-4 text-muted-foreground" />
-		</Link>
-	);
-}
 
 const PREVIEW_READS = 3;
 
@@ -107,7 +81,7 @@ function BuddyReadsPreview() {
 			}
 		>
 			{active.length === 0 ? (
-				<div className="rounded-xl border border-current/10 bg-card px-4 py-5 text-center">
+				<div className="rounded-2xl border border-border border-dashed px-4 py-5 text-center">
 					<p className="m-0 text-muted-foreground text-sm">
 						Read a book together with friends and see where everyone is.
 					</p>
@@ -118,7 +92,7 @@ function BuddyReadsPreview() {
 			) : (
 				<div className="flex flex-col gap-2.5">
 					{active.slice(0, PREVIEW_READS).map((read, i) => (
-						<BuddyReadCard key={read.id} read={read} index={i} />
+						<BuddyReadCard key={read.id} read={read} index={i} isFeatured={i === 0} />
 					))}
 				</div>
 			)}
@@ -127,73 +101,74 @@ function BuddyReadsPreview() {
 	);
 }
 
+function RequestCard({
+	person,
+	isBusy,
+	onAccept,
+	onDecline,
+	menuButton,
+}: {
+	person: SocialIdentity;
+	isBusy: boolean;
+	onAccept: () => void;
+	onDecline: () => void;
+	menuButton: React.ReactNode;
+}) {
+	return (
+		<div className="rounded-2xl border border-primary/35 bg-primary/5 p-3.5">
+			<div className="flex items-center gap-3">
+				<SocialAvatar name={person.name} avatarUrl={person.avatarUrl} size="md" />
+				<div className="min-w-0 flex-1">
+					<div className="text-foreground text-sm">
+						<span className="font-semibold">{person.name}</span> wants to be friends
+					</div>
+					<div className="mt-0.5 truncate text-muted-foreground text-xs">@{person.handle}</div>
+				</div>
+				{menuButton}
+			</div>
+			<div className="mt-3 grid grid-cols-2 gap-2">
+				<Button disabled={isBusy} onClick={onAccept}>
+					Accept
+				</Button>
+				<Button variant="outline" disabled={isBusy} onClick={onDecline}>
+					Decline
+				</Button>
+			</div>
+		</div>
+	);
+}
+
 function SocialLists({
 	data,
 	me,
 	isOffline,
-	unreadCount,
 }: {
 	data: SocialRelationships;
 	me: OwnSocialProfile | undefined;
 	isOffline: boolean;
-	unreadCount: number;
 }) {
 	const respond = useRespondToRequest();
 	const cancel = useCancelRequest();
-	const remove = useRemoveFriend();
-	const block = useBlockUser();
+	const buddyReads = useBuddyReads();
 	const [menu, setMenu] = useState<{ title: string; items: ActionSheetItem[] } | null>(null);
 	const [confirm, setConfirm] = useState<Confirm | null>(null);
 	const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
-	const reportItem = (person: SocialIdentity): ActionSheetItem => ({
-		label: "Report",
-		icon: Flag,
-		onSelect: () => setReportTarget({ type: "profile", userId: person.userId, name: person.name }),
-	});
-	const isPending = respond.isPending || cancel.isPending || remove.isPending || block.isPending;
+	const isPending = respond.isPending || cancel.isPending;
 	const isBusy = isOffline || isPending;
 	const onError = (err: unknown) => toast.error(socialErrorMessage(err));
-
-	const friendMenu = (person: SocialIdentity) =>
-		setMenu({
-			title: person.name,
-			items: [
-				{
-					label: "Remove friend",
-					icon: UserMinus,
-					disabled: isOffline,
-					onSelect: () =>
-						setConfirm({
-							title: `Remove ${person.name}?`,
-							description: `You disappear from each other's friend lists. ${NOT_NOTIFIED}`,
-							confirmLabel: "Remove",
-							destructive: true,
-							run: () => remove.mutate(person.userId, { onError }),
-						}),
-				},
-				reportItem(person),
-				{
-					label: "Block",
-					icon: Ban,
-					destructive: true,
-					disabled: isOffline,
-					onSelect: () =>
-						setConfirm({
-							title: `Block ${person.name}?`,
-							description: `Ends the friendship and stops any further contact in both directions. ${NOT_NOTIFIED} You can unblock later from Blocked users.`,
-							confirmLabel: "Block",
-							destructive: true,
-							run: () => block.mutate(person.userId, { onError }),
-						}),
-				},
-			],
-		});
+	const hasFriends = data.friends.length > 0;
+	const hasBuddyReads = (buddyReads.data?.length ?? 0) > 0;
 
 	const incomingMenu = (person: SocialIdentity, requestId: string) =>
 		setMenu({
 			title: person.name,
 			items: [
-				reportItem(person),
+				{
+					label: "Report",
+					icon: Flag,
+					onSelect: () =>
+						setReportTarget({ type: "profile", userId: person.userId, name: person.name }),
+				},
 				{
 					label: "Decline and block",
 					icon: Ban,
@@ -211,138 +186,81 @@ function SocialLists({
 			],
 		});
 
-	const menuButton = (onClick: () => void) => (
-		// Stays usable offline: Report must be reachable so the failed send can say so.
-		<Button variant="ghost" size="icon" onClick={onClick} disabled={isPending} aria-label="More">
-			<MoreHorizontal className="size-4" />
-		</Button>
-	);
-
 	return (
 		<>
-			{me?.handle && <MeCard me={me} />}
-
 			{data.incoming.length > 0 && (
-				<SocialSection title="Requests">
-					<ListCard>
-						{data.incoming.map((r) => (
-							<PersonRow
-								key={r.requestId}
-								person={r}
-								trailing={
-									<div className="flex items-center gap-1">
-										<Button
-											size="sm"
-											disabled={isBusy}
-											onClick={() =>
-												respond.mutate({ requestId: r.requestId, action: "accept" }, { onError })
-											}
-										>
-											Accept
-										</Button>
-										<Button
-											size="sm"
-											variant="ghost"
-											disabled={isBusy}
-											onClick={() =>
-												respond.mutate({ requestId: r.requestId, action: "decline" }, { onError })
-											}
-										>
-											Decline
-										</Button>
-										{menuButton(() => incomingMenu(r, r.requestId))}
-									</div>
-								}
-							/>
-						))}
-					</ListCard>
-				</SocialSection>
+				<div className="mt-4 flex flex-col gap-2.5">
+					{data.incoming.map((r) => (
+						<RequestCard
+							key={r.requestId}
+							person={r}
+							isBusy={isBusy}
+							onAccept={() =>
+								respond.mutate({ requestId: r.requestId, action: "accept" }, { onError })
+							}
+							onDecline={() =>
+								respond.mutate({ requestId: r.requestId, action: "decline" }, { onError })
+							}
+							menuButton={
+								// Stays usable offline: Report must be reachable so the failed send can say so.
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => incomingMenu(r, r.requestId)}
+									disabled={isPending}
+									aria-label="More"
+								>
+									<MoreHorizontal className="size-4" />
+								</Button>
+							}
+						/>
+					))}
+				</div>
 			)}
 
-			<BuddyReadsPreview />
-
-			<SocialSection
-				title="Friends"
-				action={
-					<Link to="/tabs/social/invite-link" className="no-underline">
-						<span className="flex items-center gap-1 text-primary text-xs">
-							<Link2 className="size-3.5" />
-							Add friend
-						</span>
-					</Link>
-				}
-			>
-				<ListCard>
-					{data.friends.length === 0 ? (
-						<div className="px-4 py-6 text-center">
-							<Users className="mx-auto mb-2 size-6 text-muted-foreground" />
-							<p className="text-muted-foreground text-sm">
-								No friends yet. Share your invite link with someone you read with.
-							</p>
-							<Button asChild size="sm" className="mt-3">
-								<Link to="/tabs/social/invite-link">Create invite link</Link>
-							</Button>
-						</div>
-					) : (
-						data.friends.map((f) => (
-							<PersonRow
-								key={f.userId}
-								person={f}
-								linkToProfile
-								trailing={menuButton(() => friendMenu(f))}
-							/>
-						))
+			{hasFriends ? (
+				<>
+					{me?.handle && <MeHero me={me} friendCount={data.friends.length} />}
+					<BuddyReadsPreview />
+					<FriendsRow friends={data.friends} />
+					{data.outgoing.length > 0 && (
+						<SocialSection title="Sent requests">
+							<ListCard>
+								{data.outgoing.map((r) => (
+									<PersonRow
+										key={r.requestId}
+										person={r}
+										subtitle="Pending"
+										trailing={
+											<Button
+												size="sm"
+												variant="ghost"
+												disabled={isBusy}
+												onClick={() => cancel.mutate(r.requestId, { onError })}
+											>
+												Cancel
+											</Button>
+										}
+									/>
+								))}
+							</ListCard>
+						</SocialSection>
 					)}
-				</ListCard>
-			</SocialSection>
-
-			{data.outgoing.length > 0 && (
-				<SocialSection title="Sent requests">
-					<ListCard>
-						{data.outgoing.map((r) => (
-							<PersonRow
-								key={r.requestId}
-								person={r}
-								subtitle="Pending"
-								trailing={
-									<Button
-										size="sm"
-										variant="ghost"
-										disabled={isBusy}
-										onClick={() => cancel.mutate(r.requestId, { onError })}
-									>
-										Cancel
-									</Button>
-								}
-							/>
-						))}
-					</ListCard>
-				</SocialSection>
+					<ActivityFeed />
+				</>
+			) : (
+				<>
+					<FirstRunHero
+						me={me}
+						outgoing={data.outgoing}
+						isBusy={isBusy}
+						onCancel={(requestId) => cancel.mutate(requestId, { onError })}
+					/>
+					{/* Buddy reads and own feed events outlive the friendships they started from. */}
+					{hasBuddyReads && <BuddyReadsPreview />}
+					<ActivityFeed isHiddenWhenEmpty />
+				</>
 			)}
-
-			<SocialSection>
-				<ListCard>
-					<Link
-						to="/tabs/social/inbox"
-						className="flex items-center gap-3 px-4 py-3 text-foreground no-underline hover:bg-muted/60"
-					>
-						<Inbox className="size-5 text-muted-foreground" />
-						<div className="min-w-0 flex-1">
-							<div className="font-medium text-foreground text-sm">Inbox</div>
-							<div className="text-muted-foreground text-xs">Updates and invites</div>
-						</div>
-						{unreadCount > 0 && (
-							<span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 font-semibold text-[11px] text-primary-foreground tabular-nums">
-								{unreadCount > 99 ? "99+" : unreadCount}
-								<span className="sr-only"> unread</span>
-							</span>
-						)}
-						<ChevronRight className="size-4 text-muted-foreground" />
-					</Link>
-				</ListCard>
-			</SocialSection>
-
-			<ActivityFeed hasFriends={data.friends.length > 0} />
 
 			<ActionSheet
 				open={menu !== null}
@@ -368,7 +286,6 @@ function SocialContent() {
 	const router = useRouter();
 	const isOnline = useIsOnline();
 	const relationships = useRelationships();
-	const unread = useUnreadCount();
 	const me = useOwnSocialProfile();
 
 	// A link opened before sign-in or the handle claim lands here afterwards.
@@ -393,13 +310,25 @@ function SocialContent() {
 				isError={relationships.isError}
 				onRetry={() => void relationships.refetch()}
 			/>
-			<SocialLists
-				data={relationships.data}
-				me={me.data}
-				isOffline={!isOnline}
-				unreadCount={unread.data?.count ?? 0}
-			/>
+			<SocialLists data={relationships.data} me={me.data} isOffline={!isOnline} />
 		</>
+	);
+}
+
+function InboxButton() {
+	const unread = useUnreadCount();
+	const count = unread.data?.count ?? 0;
+	return (
+		<Button asChild variant="ghost" size="icon" className="relative">
+			<Link to="/tabs/social/inbox" aria-label={count > 0 ? `Inbox, ${count} unread` : "Inbox"}>
+				<Inbox className="size-5" />
+				{count > 0 && (
+					<span className="absolute top-1 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-bold text-[10px] text-primary-foreground tabular-nums ring-2 ring-background">
+						{count > 99 ? "99+" : count}
+					</span>
+				)}
+			</Link>
+		</Button>
 	);
 }
 
@@ -408,6 +337,7 @@ function SocialMenu() {
 	const [isOpen, setIsOpen] = useState(false);
 	return (
 		<>
+			<InboxButton />
 			<Button variant="ghost" size="icon" aria-label="More" onClick={() => setIsOpen(true)}>
 				<MoreHorizontal className="size-5" />
 			</Button>

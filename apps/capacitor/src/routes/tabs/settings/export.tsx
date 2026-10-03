@@ -13,6 +13,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Download, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { SettingsRow } from "@/components/settings/settings-row";
+import { SettingsSection } from "@/components/settings/settings-section";
 import { useToast } from "@/components/toast";
 import { queryHooks } from "@/services/db/hooks";
 import { type ExportFormat, type ExportScope, exportHighlights } from "@/services/export";
@@ -45,53 +47,53 @@ function ExportSettings() {
 	return (
 		<div className="bg-background">
 			<PageHeader title="Export highlights" icon={Download} />
-			<div className="mx-auto max-w-2xl space-y-6 px-4 pt-4 pb-10">
-				<div>
-					<Label htmlFor="export-scope" className="mb-2 block">
-						Source
-					</Label>
-					<Select value={selectValue} onValueChange={setSelectValue}>
-						<SelectTrigger id="export-scope">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="all">All books</SelectItem>
-							{books?.map((book) => (
-								<SelectItem key={book.id} value={`book:${book.id}`}>
-									{book.title}
-								</SelectItem>
-							))}
-							{seriesList?.map((s) => (
-								<SelectItem key={s.id} value={`series:${s.id}`}>
-									{s.title}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
+			<div className="mx-auto max-w-2xl px-4 pb-10">
+				<SettingsSection title="Source">
+					<SettingsRow stacked>
+						<Select value={selectValue} onValueChange={setSelectValue}>
+							<SelectTrigger id="export-scope" aria-label="Source">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">All books</SelectItem>
+								{books?.map((book) => (
+									<SelectItem key={book.id} value={`book:${book.id}`}>
+										{book.title}
+									</SelectItem>
+								))}
+								{seriesList?.map((s) => (
+									<SelectItem key={s.id} value={`series:${s.id}`}>
+										{s.title}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</SettingsRow>
+				</SettingsSection>
 
-				<div>
-					<div className="mb-2 font-medium text-foreground text-sm">Format</div>
-					<RadioGroup
-						value={format}
-						onValueChange={(v) => setFormat(v as ExportFormat)}
-						className="space-y-2"
-					>
-						<div className="flex items-center gap-3">
-							<RadioGroupItem id="fmt-md" value="markdown" />
-							<Label htmlFor="fmt-md">Markdown</Label>
-						</div>
-						<div className="flex items-center gap-3">
-							<RadioGroupItem id="fmt-csv" value="csv" />
-							<Label htmlFor="fmt-csv">CSV</Label>
-						</div>
-					</RadioGroup>
-				</div>
+				<SettingsSection title="Format">
+					<SettingsRow stacked>
+						<RadioGroup
+							value={format}
+							onValueChange={(v) => setFormat(v as ExportFormat)}
+							className="space-y-2"
+						>
+							<div className="flex items-center gap-3">
+								<RadioGroupItem id="fmt-md" value="markdown" />
+								<Label htmlFor="fmt-md">Markdown</Label>
+							</div>
+							<div className="flex items-center gap-3">
+								<RadioGroupItem id="fmt-csv" value="csv" />
+								<Label htmlFor="fmt-csv">CSV</Label>
+							</div>
+						</RadioGroup>
+					</SettingsRow>
+				</SettingsSection>
 
 				<Button
 					onClick={() => exportMutation.mutate()}
 					disabled={exportMutation.isPending}
-					className="w-full"
+					className="mt-6 w-full"
 				>
 					{exportMutation.isPending ? <Loader2 className="animate-spin" /> : null}
 					{exportMutation.isPending ? "Exporting..." : "Export"}

@@ -9,7 +9,7 @@ import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
 test("setting defaultReaderMode = rsvp opens new books in RSVP", async ({ page }) => {
 	const title = await seedStrayAnchorBook(page);
 
-	await page.goto("/tabs/settings/rsvp");
+	await page.goto("/tabs/settings/general");
 	// Reading Mode toggle: two cards labelled "Reader" (scroll) and "RSVP".
 	// Scope to button role to avoid matching the section header text.
 	const rsvpCard = page.getByRole("button", { name: /^RSVP Flash one word at a time$/ });

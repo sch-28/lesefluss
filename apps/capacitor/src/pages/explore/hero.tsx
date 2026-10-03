@@ -2,8 +2,9 @@ import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type React from "react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import CoverImage from "../../components/cover-image";
+import { usePrefersReducedMotion } from "../../hooks/use-prefers-reduced-motion";
 import { type CatalogSearchResult, getCoverUrl } from "../../services/catalog/client";
 
 type Props = {
@@ -15,22 +16,6 @@ type Props = {
 const SWIPE_MIN_PX = 40;
 // After a touch, wait this long before auto-advancing again.
 const TOUCH_PAUSE_MS = 10_000;
-const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
-
-function subscribeReducedMotion(onChange: () => void) {
-	const mq = window.matchMedia?.(REDUCED_MOTION);
-	mq?.addEventListener("change", onChange);
-	return () => mq?.removeEventListener("change", onChange);
-}
-
-export function usePrefersReducedMotion(): boolean {
-	return useSyncExternalStore(
-		subscribeReducedMotion,
-		() => window.matchMedia?.(REDUCED_MOTION).matches ?? false,
-		() => false,
-	);
-}
-
 /**
  * Featured hero, one book at a time. Auto-advances unless the reader prefers
  * reduced motion, and holds still while hovered, focused or recently touched.

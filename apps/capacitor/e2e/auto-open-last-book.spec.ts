@@ -17,7 +17,7 @@ test("auto-opened last book: back leaves the reader for the library", async ({ p
 	await page.goBack();
 	await page.waitForURL(/\/tabs\/library/);
 
-	await page.goto("/tabs/settings");
+	await page.goto("/tabs/settings/general");
 	await page.locator("#auto-open-last-book").click();
 	await expect(page.locator("#auto-open-last-book")).toHaveAttribute("data-state", "checked");
 

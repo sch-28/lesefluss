@@ -18,9 +18,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { CloudOff, Loader2, Users } from "lucide-react";
 import { useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
-import { Section } from "@/components/app-shell/section";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { SettingsSection } from "@/components/settings/settings-section";
 import { HandleClaimStep } from "@/components/social/handle-claim-step";
 import { toast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
@@ -82,7 +82,7 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 
 	return (
 		<>
-			<Section title="Identity">
+			<SettingsSection title="Identity">
 				<div className="px-4 py-4">
 					<IdentityCard name={profile.name} handle={profile.handle} avatarUrl={profile.avatarUrl} />
 					<p className="mt-3 text-muted-foreground text-xs">
@@ -131,9 +131,9 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 						</div>
 					</button>
 				)}
-			</Section>
+			</SettingsSection>
 
-			<Section title="Profile">
+			<SettingsSection title="Profile">
 				<div className="flex flex-col gap-1.5 px-4 py-3">
 					<label htmlFor="social-display-name" className="font-medium text-foreground text-sm">
 						Display name
@@ -167,9 +167,9 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 						</span>
 					</div>
 				</div>
-			</Section>
+			</SettingsSection>
 
-			<Section title="Avatar">
+			<SettingsSection title="Avatar">
 				<div className="flex items-center gap-4 px-4 py-4">
 					<SocialAvatar name={profile.name} avatarUrl={profile.avatarUrl} size="lg" />
 					<div className="flex flex-1 flex-col gap-2">
@@ -214,9 +214,9 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 				<p className="px-4 py-3 text-muted-foreground text-xs">
 					JPEG, PNG or WebP up to 5 MB. Pictures are resized and stripped of metadata.
 				</p>
-			</Section>
+			</SettingsSection>
 
-			<Section title="Profile visibility">
+			<SettingsSection title="Profile visibility">
 				<RadioGroup
 					value={profile.visibility}
 					onValueChange={(v) => isProfileVisibility(v) && save({ visibility: v })}
@@ -247,9 +247,9 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 						</span>
 					</label>
 				</RadioGroup>
-			</Section>
+			</SettingsSection>
 
-			<Section title="Sections shown to friends">
+			<SettingsSection title="Sections shown to friends">
 				<ToggleRow
 					title="Currently reading"
 					subtitle="The books you have in progress"
@@ -274,25 +274,25 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 					checked={profile.showHighlights}
 					onCheckedChange={(v) => save({ showHighlights: v })}
 				/>
-			</Section>
+			</SettingsSection>
 
-			<Section title="Activity feed">
+			<SettingsSection title="Activity feed">
 				<ToggleRow
 					title="Share my reading activity in friends' feeds"
 					subtitle="When you start or finish a book. Only while your profile and that section are visible to friends."
 					checked={profile.feedEnabled}
 					onCheckedChange={(v) => (v ? save({ feedEnabled: true }) : setIsConfirmingFeedOff(true))}
 				/>
-			</Section>
+			</SettingsSection>
 
-			<Section title="Buddy reads">
+			<SettingsSection title="Buddy reads">
 				<ToggleRow
 					title="Share live reading activity"
 					subtitle="Buddy-read members see when you are reading and how fast. Off also hides theirs from you."
 					checked={profile.shareLiveReading}
 					onCheckedChange={(v) => save({ shareLiveReading: v })}
 				/>
-			</Section>
+			</SettingsSection>
 			<ConfirmDialog
 				open={isConfirmingFeedOff}
 				onOpenChange={setIsConfirmingFeedOff}
@@ -327,11 +327,11 @@ function SocialSettings() {
 		);
 	} else if (!isLoggedIn) {
 		body = (
-			<Section title="Not signed in">
+			<SettingsSection title="Not signed in">
 				<p className="px-4 py-3 text-muted-foreground text-sm">
 					Sign in under Cloud sync to set up your social profile.
 				</p>
-			</Section>
+			</SettingsSection>
 		);
 	} else if (profileQuery.isPending) {
 		body = (

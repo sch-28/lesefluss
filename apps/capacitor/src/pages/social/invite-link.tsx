@@ -2,14 +2,13 @@ import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
 import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
-import { useNavigate } from "@tanstack/react-router";
 import { Copy, Link2, Share2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Section } from "@/components/app-shell/section";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { PasteInviteField } from "@/components/social/paste-invite-field";
 import { toast } from "@/components/toast";
-import { parsePastedInvite } from "@/services/deep-links/parse";
 import { useIsOnline } from "@/services/social/cache";
 import {
 	socialErrorMessage,
@@ -33,10 +32,7 @@ function InviteLinkContent() {
 	const invite = useCurrentInvite();
 	const create = useCreateInvite();
 	const revoke = useRevokeInvite();
-	const navigate = useNavigate();
 	const [confirm, setConfirm] = useState<"replace" | "revoke" | null>(null);
-	const [pasted, setPasted] = useState("");
-	const [pasteHint, setPasteHint] = useState<string | null>(null);
 	const isBusy = !isOnline || create.isPending || revoke.isPending;
 	const onError = (err: unknown) => toast.error(socialErrorMessage(err));
 
@@ -52,16 +48,6 @@ function InviteLinkContent() {
 			url,
 			dialogTitle: "Share invite link",
 		}).catch(() => {});
-	};
-
-	const openPasted = () => {
-		const parsed = parsePastedInvite(pasted);
-		if (!parsed) {
-			setPasteHint("That doesn't look like a Lesefluss invite link.");
-			return;
-		}
-		setPasteHint(null);
-		navigate({ to: "/tabs/social/invite/$token", params: { token: parsed.token } });
 	};
 
 	if (invite.isPending) return <Spinner />;
@@ -135,24 +121,7 @@ function InviteLinkContent() {
 					<p className="text-muted-foreground text-sm">
 						Paste an invite link a friend sent you to add them.
 					</p>
-					<div className="flex gap-2">
-						<Input
-							value={pasted}
-							onChange={(e) => {
-								setPasted(e.target.value);
-								setPasteHint(null);
-							}}
-							placeholder="https://lesefluss.app/invite/…"
-							aria-label="Invite link you received"
-							autoCapitalize="none"
-							autoCorrect="off"
-							spellCheck={false}
-						/>
-						<Button variant="outline" disabled={pasted.trim() === ""} onClick={openPasted}>
-							Open
-						</Button>
-					</div>
-					{pasteHint && <p className="text-destructive text-xs">{pasteHint}</p>}
+					<PasteInviteField />
 				</div>
 			</Section>
 

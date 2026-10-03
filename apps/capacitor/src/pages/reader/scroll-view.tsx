@@ -9,6 +9,7 @@ import type React from "react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { VListHandle } from "virtua";
 import { VList } from "virtua";
+import { readerFontStack } from "../../hooks/use-appearance-settings";
 import Paragraph, {
 	cancelAnyActiveLongPress,
 	type GlossaryRangeProp,
@@ -678,7 +679,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 						padding: `0 ${margin}px`,
 						paddingBottom: "calc(52px + var(--safe-bottom))",
 						fontSize: `${fontSize}px`,
-						fontFamily: fontFamily === "serif" ? "Georgia, 'Times New Roman', serif" : undefined,
+						fontFamily: readerFontStack(fontFamily),
 					}}
 					onScroll={handleScroll}
 					onScrollEnd={handleScrollEnd}
