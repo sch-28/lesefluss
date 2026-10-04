@@ -8,11 +8,14 @@ import { socialAction, socialGetById, socialPost } from "./http";
 const Body = z.object({ name: z.string() });
 
 function call(
-	handler: (ctx: { request: Request; context: { user: { id: string } } }) => Promise<Response>,
+	handler: (ctx: {
+		request: Request;
+		context: { user: { id: string }; session: { id: string } };
+	}) => Promise<Response>,
 	request: Request,
 	userId: string = randomUUID(),
 ) {
-	return handler({ request, context: { user: { id: userId } } });
+	return handler({ request, context: { user: { id: userId }, session: { id: `sess-${userId}` } } });
 }
 
 function post(body: unknown) {

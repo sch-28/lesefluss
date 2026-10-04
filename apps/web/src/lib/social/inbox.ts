@@ -39,6 +39,7 @@ import {
 	socialProfile,
 	socialShare,
 } from "~/db/schema";
+import { enqueuePush } from "~/lib/push/outbox";
 import { isUuid } from "~/lib/uuid";
 import { buddyReadInviteSubjectsFor } from "./buddy-read-items";
 import { avatarUrlFor } from "./profile";
@@ -64,13 +65,14 @@ export async function createNotification(
 	input: NotificationInput,
 	now = new Date(),
 ): Promise<void> {
+	const subjectId = input.subjectId ?? "";
 	await tx
 		.insert(socialNotification)
 		.values({
 			recipientId: input.recipientId,
 			actorId: input.actorId,
 			type: input.type,
-			subjectId: input.subjectId ?? "",
+			subjectId,
 			payload: input.payload ?? null,
 			createdAt: now,
 			readAt: null,
@@ -84,6 +86,7 @@ export async function createNotification(
 			],
 			set: { createdAt: now, readAt: null, payload: input.payload ?? null },
 		});
+	await enqueuePush(tx, { ...input, subjectId }, now);
 }
 
 export async function deleteNotificationsForSubject(
@@ -246,6 +249,47 @@ function visibleItems(userId: string, now: Date): SQL {
 			),
 		),
 	) as SQL;
+}
+
+type PushableItem = {
+	id: string;
+	actorId: string;
+	actorName: string;
+	payload: { text: string } | null;
+};
+
+/**
+ * The unread item behind a queued push, if the recipient could still see it
+ * in their inbox. `actorId` null matches whichever actor the item has now,
+ * for items that collapse several actors into one.
+ */
+export async function findPushableItem(
+	exec: DbExecutor,
+	event: { recipientId: string; type: string; subjectId: string; actorId: string | null },
+	now: Date,
+): Promise<PushableItem | null> {
+	const [row] = await exec
+		.select({
+			id: socialNotification.id,
+			actorId: socialNotification.actorId,
+			actorName: user.name,
+			payload: socialNotification.payload,
+		})
+		.from(socialNotification)
+		.leftJoin(user, eq(user.id, socialNotification.actorId))
+		.leftJoin(socialProfile, eq(socialProfile.userId, user.id))
+		.where(
+			and(
+				visibleItems(event.recipientId, now),
+				eq(socialNotification.type, event.type),
+				eq(socialNotification.subjectId, event.subjectId),
+				event.actorId ? eq(socialNotification.actorId, event.actorId) : undefined,
+				isNull(socialNotification.readAt),
+			),
+		)
+		.limit(1);
+	if (!row?.actorId || row.actorName === null) return null;
+	return { id: row.id, actorId: row.actorId, actorName: row.actorName, payload: row.payload };
 }
 
 type Cursor = { createdAt: number; id: string };

@@ -50,7 +50,10 @@ export function validTimeZone(raw: string | null): string | undefined {
 /** Counted per user: the bucket is `${key}:${userId}`. */
 export type RouteLimit = { key: string } & RateLimitOptions;
 
-type HandlerContext = { request: Request; context: { user: { id: string } } };
+type HandlerContext = {
+	request: Request;
+	context: { user: { id: string }; session: { id: string } };
+};
 
 type RunResult = Promise<unknown>;
 
@@ -71,13 +74,13 @@ async function respond(run: () => RunResult): Promise<Response> {
  */
 export function socialAction(options: {
 	limit: RouteLimit;
-	run: (userId: string, request: Request) => RunResult;
+	run: (userId: string, request: Request, sessionId: string) => RunResult;
 }) {
 	return async ({ request, context }: HandlerContext): Promise<Response> => {
 		const userId = context.user.id;
 		const limited = rateLimited(`${options.limit.key}:${userId}`, options.limit);
 		if (limited) return limited;
-		return respond(() => options.run(userId, request));
+		return respond(() => options.run(userId, request, context.session.id));
 	};
 }
 
@@ -85,14 +88,14 @@ export function socialAction(options: {
 export function socialPost<S extends z.ZodType>(options: {
 	limit: RouteLimit;
 	schema: S;
-	run: (userId: string, body: z.output<S>) => RunResult;
+	run: (userId: string, body: z.output<S>, sessionId: string) => RunResult;
 }) {
 	return socialAction({
 		limit: options.limit,
-		run: async (userId, request) => {
+		run: async (userId, request, sessionId) => {
 			const parsed = options.schema.safeParse(await parseJsonBody(request));
 			if (!parsed.success) return invalidPayloadResponse();
-			return options.run(userId, parsed.data);
+			return options.run(userId, parsed.data, sessionId);
 		},
 	});
 }

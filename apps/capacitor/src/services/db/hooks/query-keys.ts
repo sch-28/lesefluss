@@ -229,4 +229,10 @@ export const socialKeys = {
 
 	/** A buddy read's discussion as the server gates it for this user. */
 	buddyReadDiscussion: (id: string) => ["social", "buddy-read-discussion", id] as const,
+
+	/** Which push categories the account wants, shared by all its devices. */
+	pushPreferences: ["social", "push-preferences"] as const,
 };
+
+/** This device's OS notification permission; not account data, so it survives sign-out. */
+export const pushPermissionKey = ["push-permission"] as const;

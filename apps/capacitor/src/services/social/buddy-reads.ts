@@ -9,6 +9,7 @@ import { BUDDY_READ_PROGRESS_REFRESH_MS, buddyReadErrorMessage, SOCIAL_API } fro
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthedFetchError, authedFetch } from "../authed-fetch";
 import { socialKeys } from "../db/hooks/query-keys";
+import { offerPushAfterFriendship } from "../push/offer";
 import { socialQueryDefaults } from "./cache";
 import { socialErrorBody } from "./profile";
 
@@ -48,6 +49,16 @@ export const buddyReadsClient = {
 	sendFriendRequest: (userId: string) =>
 		postJson<{ state: RelationshipState }>(SOCIAL_API.friendRequest, { userId }),
 };
+
+/** A failed lookup other than not-found (offline, say) counts as existing; the screen shows its own state. */
+export async function buddyReadExists(buddyReadId: string): Promise<boolean> {
+	try {
+		await buddyReadsClient.get(buddyReadId);
+		return true;
+	} catch (err) {
+		return !(err instanceof AuthedFetchError && err.status === 404);
+	}
+}
 
 export function buddyReadFailureMessage(err: unknown): string {
 	if (err instanceof TypeError) return "You're offline. Check your connection and try again.";
@@ -152,6 +163,7 @@ export function useSendFriendRequest(buddyReadId: string) {
 		onSuccess: () => {
 			void client.invalidateQueries({ queryKey: socialKeys.buddyRead(buddyReadId) });
 			void client.invalidateQueries({ queryKey: socialKeys.relationships });
+			void offerPushAfterFriendship();
 		},
 	});
 }

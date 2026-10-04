@@ -27,7 +27,7 @@ import {
 	Users,
 } from "lucide-react";
 import { useEffect, useMemo } from "react";
-import { BuddyReadPreview } from "~/components/buddy-read-preview";
+import { CoverLitBuddyCard } from "~/components/cover-lit-buddy-card";
 import { ExploreWall } from "~/components/explore-wall";
 import { HeroRsvp } from "~/components/hero-rsvp";
 import { GooglePlayIcon } from "~/components/icons/google-play";
@@ -213,25 +213,7 @@ function Home() {
 
 						<div className="relative mx-auto w-full max-w-[440px] py-6" data-aos="fade-left">
 							<div className="absolute inset-0 rounded-full bg-primary/10" style={glowStyle} />
-							<div className="relative -rotate-1 overflow-hidden rounded-3xl border border-border bg-card shadow-[0_30px_60px_-30px_rgba(24,24,27,0.35)]">
-								<div aria-hidden="true" className="pointer-events-none absolute inset-0">
-									<img
-										src={PREVIEW_COVER.url}
-										alt=""
-										draggable={false}
-										loading="lazy"
-										decoding="async"
-										className="absolute inset-0 size-full scale-150 object-cover opacity-25 blur-2xl"
-									/>
-									<div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,color-mix(in_oklch,var(--primary)_22%,transparent),transparent_60%)]" />
-									<div className="absolute inset-0 bg-gradient-to-b from-card/30 via-35% via-card/80 to-80% to-card" />
-								</div>
-								<div className="relative p-4 sm:p-5">
-									<div className="rounded-2xl border border-border bg-card/85 p-3.5 sm:p-4">
-										<BuddyReadPreview coverUrl={PREVIEW_COVER.url} title={PREVIEW_COVER.title} />
-									</div>
-								</div>
-							</div>
+							<CoverLitBuddyCard className="-rotate-1" />
 							<div className="relative -mt-4 ml-auto w-56 rotate-2 rounded-2xl border border-border bg-card p-3.5 text-left shadow-[0_18px_36px_-18px_rgba(24,24,27,0.35)] lg:absolute lg:-bottom-16 lg:-left-10 lg:mt-0">
 								<div className="flex items-center gap-2">
 									<span
@@ -545,10 +527,6 @@ const bentoCards: { icon: LucideIcon; title: string; description: string }[] = [
 ];
 
 /** A public-domain classic bundled with the site, so the preview needs no network. */
-const PREVIEW_COVER = {
-	url: "/covers/jane-austen__pride-and-prejudice.webp",
-	title: "Pride and Prejudice",
-};
 
 const socialFeatures: { icon: LucideIcon; label: string }[] = [
 	{ icon: Activity, label: "Live progress" },

@@ -23,7 +23,7 @@ vi.mock("@/services/sync", async (importOriginal) => {
 	};
 });
 
-const { PasswordSignInForm } = await import("../password-sign-in-form");
+const { SignInOptions } = await import("../sign-in-options");
 const { PasswordSignInError } = await import("@/services/sync");
 
 let view: Rendered | undefined;
@@ -53,6 +53,12 @@ async function type(field: HTMLInputElement, value: string) {
 	});
 }
 
+async function openEmailForm() {
+	await act(async () => {
+		view?.getButton(/^Sign in with email and password/).click();
+	});
+}
+
 async function submit() {
 	await act(async () => {
 		view?.container.querySelector("form")?.requestSubmit();
@@ -60,9 +66,10 @@ async function submit() {
 	await flush();
 }
 
-describe("PasswordSignInForm", () => {
+describe("SignInOptions", () => {
 	it("keeps submit disabled until both fields are filled", async () => {
-		view = await render(<PasswordSignInForm />);
+		view = await render(<SignInOptions />);
+		await openEmailForm();
 		expect(view.getButton("Sign in").disabled).toBe(true);
 
 		await type(input("Email"), "reader@example.com");
@@ -79,7 +86,8 @@ describe("PasswordSignInForm", () => {
 				resolve = r;
 			}),
 		);
-		view = await render(<PasswordSignInForm />);
+		view = await render(<SignInOptions />);
+		await openEmailForm();
 		await type(input("Email"), "  reader@example.com ");
 		await type(input("Password"), "hunter22");
 		await submit();
@@ -95,7 +103,8 @@ describe("PasswordSignInForm", () => {
 
 	it("shows the failure message inline and lets the user retry", async () => {
 		signInWithPassword.mockRejectedValueOnce(new PasswordSignInError("email-not-verified"));
-		view = await render(<PasswordSignInForm />);
+		view = await render(<SignInOptions />);
+		await openEmailForm();
 		await type(input("Email"), "reader@example.com");
 		await type(input("Password"), "hunter22");
 		await submit();
@@ -109,30 +118,38 @@ describe("PasswordSignInForm", () => {
 
 	it("tells the user when no browser could be opened", async () => {
 		openBrowserSignIn.mockRejectedValueOnce(new Error("No Activity found"));
-		view = await render(<PasswordSignInForm />);
+		view = await render(<SignInOptions />);
 
 		await act(async () => {
-			view?.getButton("Sign in in your browser").click();
+			view?.getButton("Continue in your browser").click();
 		});
 		await flush();
 
 		expect(view.text()).toContain("Couldn't open a browser on this device.");
-		expect(view.getButton("Sign in in your browser").disabled).toBe(false);
+		expect(view.getButton("Continue in your browser").disabled).toBe(false);
 	});
 
-	it("leads with the phone sign-in in e-ink mode and with the email form otherwise", async () => {
-		const isPhoneFirst = () => {
-			const controls = [...(view?.container.querySelectorAll("button, input") ?? [])];
-			const phone = controls.findIndex((el) => el.textContent === "Sign in with your phone");
-			return phone !== -1 && phone < controls.indexOf(input("Email"));
-		};
-		view = await render(<PasswordSignInForm />);
-		expect(isPhoneFirst()).toBe(false);
+	it("keeps the email form collapsed until asked for", async () => {
+		view = await render(<SignInOptions />);
+		const toggle = view.getButton(/^Sign in with email and password/);
+		expect(view.container.querySelector("input[type='email']")).toBeNull();
+		expect(toggle.getAttribute("aria-expanded")).toBe("false");
+
+		await openEmailForm();
+		expect(input("Email")).toBeTruthy();
+		expect(toggle.getAttribute("aria-expanded")).toBe("true");
+	});
+
+	it("leads with the browser normally and with the phone in e-ink mode", async () => {
+		const filledButton = () =>
+			view?.container.querySelector("button[data-variant='default']")?.textContent;
+		view = await render(<SignInOptions />);
+		expect(filledButton()).toBe("Continue in your browser");
 		view.unmount();
 
 		theme.isEinkMode = true;
-		view = await render(<PasswordSignInForm />);
-		expect(isPhoneFirst()).toBe(true);
+		view = await render(<SignInOptions />);
+		expect(filledButton()).toBe("Sign in with your phone");
 	});
 
 	it("runs the pre-hook before opening the browser sign-in", async () => {
@@ -143,10 +160,10 @@ describe("PasswordSignInForm", () => {
 		openBrowserSignIn.mockImplementation(async () => {
 			calls.push("open");
 		});
-		view = await render(<PasswordSignInForm beforeBrowserSignIn={beforeBrowserSignIn} />);
+		view = await render(<SignInOptions beforeBrowserSignIn={beforeBrowserSignIn} />);
 
 		await act(async () => {
-			view?.getButton("Sign in in your browser").click();
+			view?.getButton("Continue in your browser").click();
 		});
 		await flush();
 

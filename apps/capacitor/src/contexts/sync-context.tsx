@@ -1,6 +1,7 @@
 import { App as CapacitorApp, type URLOpenListenerEvent } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import type { PluginListenerHandle } from "@capacitor/core";
+import { Network } from "@capacitor/network";
 import type React from "react";
 import {
 	createContext,
@@ -15,6 +16,7 @@ import {
 	useState,
 } from "react";
 import { toast } from "../components/toast";
+import { syncPushRegistration } from "../services/push";
 import { invalidateAfterSync } from "../services/social/cache";
 import {
 	adoptSyncIdentity,
@@ -28,6 +30,7 @@ import {
 	NATIVE_SYNC_ENABLED,
 	onSessionLost,
 	signInWithPassword as requestPasswordSignIn,
+	retryPendingSignOut,
 	SYNC_ENABLED,
 	signOut as syncSignOut,
 } from "../services/sync";
@@ -103,6 +106,17 @@ function useCapacitorListener<H>(
 			void handle?.remove();
 		};
 	}, [enabled, register, label]);
+}
+
+function useNetworkOnlineListener(handler: () => void, enabled: boolean) {
+	const register = useCallback(
+		(invoke: () => void) =>
+			Network.addListener("networkStatusChange", (status) => {
+				if (status.connected) invoke();
+			}),
+		[],
+	);
+	useCapacitorListener(register, handler, enabled, "networkStatusChange");
 }
 
 function useAppUrlOpenListener(
@@ -302,6 +316,24 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 		setIsSessionResolved,
 	);
 	useResumeSync(setLastSynced);
+
+	const handleRetrySignOut = useCallback(() => {
+		retryPendingSignOut().catch((err) => log.warn("sync", "pending sign-out retry failed:", err));
+	}, []);
+	useEffect(() => {
+		if (NATIVE_SYNC_ENABLED) handleRetrySignOut();
+	}, [handleRetrySignOut]);
+	useAppResumeListener(handleRetrySignOut, NATIVE_SYNC_ENABLED);
+	useNetworkOnlineListener(handleRetrySignOut, NATIVE_SYNC_ENABLED);
+
+	const isPushSyncEnabled = isLoggedIn && !IS_WEB_BUILD;
+	const handleSyncPush = useCallback(() => {
+		syncPushRegistration().catch((err) => log.warn("push", "registration failed:", err));
+	}, []);
+	useEffect(() => {
+		if (isPushSyncEnabled) handleSyncPush();
+	}, [isPushSyncEnabled, handleSyncPush]);
+	useAppResumeListener(handleSyncPush, isPushSyncEnabled);
 
 	// Shared tail of every native sign-in: the deep-link callback and the in-app
 	// password form both end up with a raw session token and finish identically.

@@ -16,7 +16,7 @@ import { StartBuddyReadPicker } from "@/components/social/start-buddy-read-picke
 import { toast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
 import { replayPendingLink } from "@/services/deep-links/use-deep-links";
-import { useBuddyReads } from "@/services/social/buddy-reads";
+import { buddyReadExists, useBuddyReads } from "@/services/social/buddy-reads";
 import { useIsOnline } from "@/services/social/cache";
 import {
 	socialErrorMessage,
@@ -290,7 +290,7 @@ function SocialContent() {
 
 	// A link opened before sign-in or the handle claim lands here afterwards.
 	useEffect(() => {
-		void replayPendingLink(router);
+		void replayPendingLink(router, buddyReadExists);
 	}, [router]);
 
 	if (relationships.isPending) return <Spinner />;

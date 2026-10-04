@@ -1,6 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
+	Bell,
 	BookOpen,
 	Cloud,
 	CloudCheck,
@@ -30,6 +31,7 @@ import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "@/hooks/use-appear
 import { DiagnosticsRow } from "@/pages/settings/diagnostics-row";
 import { BLEConnectionState } from "@/services/ble";
 import { queryHooks } from "@/services/db/hooks";
+import { isPushSupported } from "@/services/push";
 import { SYNC_ENABLED } from "@/services/sync";
 import {
 	type DeviceDiagnostics,
@@ -171,6 +173,14 @@ function SettingsLanding() {
 							subtitle="Handle, avatar and who sees what"
 							to="/tabs/settings/social"
 						/>
+						{isPushSupported() && (
+							<NavRow
+								icon={Bell}
+								title="Notifications"
+								subtitle="What friends can notify you about"
+								to="/tabs/settings/notifications"
+							/>
+						)}
 					</SettingsSection>
 				)}
 

@@ -68,19 +68,14 @@ async function isPageStill(page: Page): Promise<boolean> {
 	return running === 0 && first === (await motionSample(page));
 }
 
-/** Whether the phone sign-in comes before the email field, top to bottom. */
+/** Whether the phone sign-in comes before the browser sign-in, top to bottom. */
 async function isPhoneSignInFirst(page: Page): Promise<boolean> {
-	await expect(page.getByRole("button", { name: "Sign in with your phone" })).toBeVisible();
-	await expect(page.getByLabel("Email")).toBeVisible();
-	return page.evaluate(() => {
-		const phone = [...document.querySelectorAll("button")].find(
-			(b) => b.textContent?.trim() === "Sign in with your phone",
-		);
-		const email = document.querySelector("input[type='email']");
-		return Boolean(
-			phone && email && phone.compareDocumentPosition(email) & Node.DOCUMENT_POSITION_FOLLOWING,
-		);
-	});
+	const phone = page.getByRole("button", { name: "Sign in with your phone" });
+	const browser = page.getByRole("button", { name: "Continue in your browser" });
+	await expect(phone).toBeVisible();
+	await expect(browser).toBeVisible();
+	const [phoneBox, browserBox] = await Promise.all([phone.boundingBox(), browser.boundingBox()]);
+	return Boolean(phoneBox && browserBox && phoneBox.y < browserBox.y);
 }
 
 test.describe("e-ink mode on a small reader", () => {
@@ -263,7 +258,7 @@ test.describe("e-ink mode on a small reader", () => {
 		await expect(page.locator("html")).toHaveClass(/\beink\b/);
 	});
 
-	test("without the mode, sign-in keeps the email form first", async ({ page }) => {
+	test("without the mode, sign-in leads with the browser", async ({ page }) => {
 		await freshInstallAtLibrary(page);
 		await page.goto("/tabs/settings/sync");
 		await expect(page.locator("html")).not.toHaveClass(/\beink\b/);

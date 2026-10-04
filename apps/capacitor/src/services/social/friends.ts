@@ -9,6 +9,7 @@ import { SOCIAL_API, socialActionErrorMessage } from "@lesefluss/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthedFetchError, authedFetch } from "../authed-fetch";
 import { socialKeys } from "../db/hooks/query-keys";
+import { offerPushAfterFriendship } from "../push/offer";
 import { socialQueryDefaults } from "./cache";
 import { socialErrorBody } from "./profile";
 
@@ -71,7 +72,11 @@ function useRelationshipMutation<TVariables>(run: (variables: TVariables) => Pro
 }
 
 export function useRespondToRequest() {
-	return useRelationshipMutation(friendsClient.respond);
+	return useRelationshipMutation(async (body: RespondToRequestBody) => {
+		const result = await friendsClient.respond(body);
+		if (body.action === "accept") void offerPushAfterFriendship();
+		return result;
+	});
 }
 export function useCancelRequest() {
 	return useRelationshipMutation(friendsClient.cancel);
@@ -129,6 +134,7 @@ export function useRedeemInvite() {
 		onSuccess: (preview, token) => {
 			client.setQueryData(socialKeys.invitePreview(token), preview);
 			void client.invalidateQueries({ queryKey: socialKeys.relationships });
+			void offerPushAfterFriendship();
 		},
 	});
 }

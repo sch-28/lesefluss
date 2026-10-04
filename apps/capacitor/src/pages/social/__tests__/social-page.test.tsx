@@ -1,12 +1,13 @@
 import type { OwnSocialProfile, SocialRelationships } from "@lesefluss/core";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { type Rendered, render } from "../../../test/render";
+import { click, type Rendered, render } from "../../../test/render";
 
 const state = vi.hoisted(() => ({
 	relationships: undefined as SocialRelationships | undefined,
 	unread: 0,
 	buddyReads: [] as unknown[],
+	handle: "ada" as string | null,
 }));
 
 const me: OwnSocialProfile = {
@@ -48,7 +49,15 @@ vi.mock("../../../contexts/sync-context", () => ({
 }));
 vi.mock("../../../services/deep-links/use-deep-links", () => ({ replayPendingLink: vi.fn() }));
 vi.mock("../../../services/social/profile", () => ({
-	useOwnSocialProfile: () => ({ data: me, isPending: false, isError: false }),
+	useOwnSocialProfile: () => ({
+		data: { ...me, handle: state.handle },
+		isPending: false,
+		isError: false,
+	}),
+	useClaimHandle: () => ({ ...idle, isError: false, error: null }),
+	checkHandle: vi.fn(),
+	claimFailure: vi.fn(),
+	socialErrorBody: () => ({}),
 }));
 vi.mock("../../../services/social/cache", () => ({ useIsOnline: () => true }));
 vi.mock("../../../services/social/inbox", () => ({
@@ -63,6 +72,7 @@ vi.mock("../../../services/social/friends", () => ({
 vi.mock("../../../services/social/buddy-reads", () => ({
 	useBuddyReads: () => ({ data: state.buddyReads, isPending: false, isError: false }),
 	paceText: () => "",
+	buddyReadExists: async () => true,
 }));
 vi.mock("../../../services/social/feed", () => ({
 	useFeed: () => ({ data: { pages: [{ items: [] }] }, isPending: false, isError: false }),
@@ -98,6 +108,7 @@ afterEach(() => {
 	view?.unmount();
 	view = undefined;
 	state.buddyReads = [];
+	state.handle = "ada";
 });
 
 const headings = () =>
@@ -172,5 +183,24 @@ describe("SocialPage", () => {
 		).not.toBeNull();
 		expect(view.text()).toContain("@dee");
 		expect(view.container.querySelector('a[aria-label="Inbox, 3 unread"]')).not.toBeNull();
+	});
+
+	it("shows the trailer before the handle form to someone without a handle", async () => {
+		state.handle = null;
+		state.relationships = relationships({});
+		view = await render(<SocialPage />);
+
+		expect(view.text()).toContain("Read together, wherever you are.");
+		expect(view.text()).toContain("How it works");
+		expect(view.container.querySelector("#social-handle")).toBeNull();
+
+		await click(view.getButton("Pick your handle"));
+		const input = view.container.querySelector("#social-handle");
+		expect(input).not.toBeNull();
+		expect(document.activeElement).toBe(input);
+
+		await click(view.getButton("Back"));
+		expect(view.container.querySelector("#social-handle")).toBeNull();
+		expect(view.queryButton("Pick your handle")).not.toBeNull();
 	});
 });

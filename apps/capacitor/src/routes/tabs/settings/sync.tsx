@@ -32,7 +32,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { SettingsSection } from "@/components/settings/settings-section";
-import { PasswordSignInForm } from "@/components/sync/password-sign-in-form";
+import { SignInOptions } from "@/components/sync/sign-in-options";
 import { useToast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
 import { queryHooks } from "@/services/db/hooks";
@@ -292,7 +292,7 @@ function SyncSettings() {
 							<p className="text-muted-foreground text-sm">
 								{IS_WEB_BUILD
 									? "Sign in on the main website to sync your library, reading progress, and highlights, and to read books together with friends."
-									: "Sign in on the website to sync your library, reading progress, and highlights across devices, and to read books together with friends."}
+									: "Sign in to sync your library, reading progress, and highlights across devices, and to read books together with friends."}
 							</p>
 						</div>
 						{syncError && <div className="px-4 py-2 text-destructive text-sm">{syncError}</div>}
@@ -304,7 +304,7 @@ function SyncSettings() {
 									</a>
 								</Button>
 							) : (
-								<PasswordSignInForm />
+								<SignInOptions />
 							)}
 						</div>
 					</SettingsSection>

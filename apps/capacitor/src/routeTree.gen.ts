@@ -23,6 +23,7 @@ import { Route as TabsSettingsSyncRouteImport } from './routes/tabs/settings/syn
 import { Route as TabsSettingsSocialRouteImport } from './routes/tabs/settings/social'
 import { Route as TabsSettingsRsvpRouteImport } from './routes/tabs/settings/rsvp'
 import { Route as TabsSettingsReaderRouteImport } from './routes/tabs/settings/reader'
+import { Route as TabsSettingsNotificationsRouteImport } from './routes/tabs/settings/notifications'
 import { Route as TabsSettingsGeneralRouteImport } from './routes/tabs/settings/general'
 import { Route as TabsSettingsExportRouteImport } from './routes/tabs/settings/export'
 import { Route as TabsSettingsDeviceRouteImport } from './routes/tabs/settings/device'
@@ -109,6 +110,12 @@ const TabsSettingsReaderRoute = TabsSettingsReaderRouteImport.update({
   path: '/tabs/settings/reader',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TabsSettingsNotificationsRoute =
+  TabsSettingsNotificationsRouteImport.update({
+    id: '/tabs/settings/notifications',
+    path: '/tabs/settings/notifications',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const TabsSettingsGeneralRoute = TabsSettingsGeneralRouteImport.update({
   id: '/tabs/settings/general',
   path: '/tabs/settings/general',
@@ -199,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
+  '/tabs/settings/notifications': typeof TabsSettingsNotificationsRoute
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
@@ -230,6 +238,7 @@ export interface FileRoutesByTo {
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
+  '/tabs/settings/notifications': typeof TabsSettingsNotificationsRoute
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
@@ -262,6 +271,7 @@ export interface FileRoutesById {
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
+  '/tabs/settings/notifications': typeof TabsSettingsNotificationsRoute
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/device'
     | '/tabs/settings/export'
     | '/tabs/settings/general'
+    | '/tabs/settings/notifications'
     | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
@@ -326,6 +337,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/device'
     | '/tabs/settings/export'
     | '/tabs/settings/general'
+    | '/tabs/settings/notifications'
     | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
@@ -357,6 +369,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/device'
     | '/tabs/settings/export'
     | '/tabs/settings/general'
+    | '/tabs/settings/notifications'
     | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
@@ -389,6 +402,7 @@ export interface RootRouteChildren {
   TabsSettingsDeviceRoute: typeof TabsSettingsDeviceRoute
   TabsSettingsExportRoute: typeof TabsSettingsExportRoute
   TabsSettingsGeneralRoute: typeof TabsSettingsGeneralRoute
+  TabsSettingsNotificationsRoute: typeof TabsSettingsNotificationsRoute
   TabsSettingsReaderRoute: typeof TabsSettingsReaderRoute
   TabsSettingsRsvpRoute: typeof TabsSettingsRsvpRoute
   TabsSettingsSocialRoute: typeof TabsSettingsSocialRoute
@@ -510,6 +524,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabsSettingsReaderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tabs/settings/notifications': {
+      id: '/tabs/settings/notifications'
+      path: '/tabs/settings/notifications'
+      fullPath: '/tabs/settings/notifications'
+      preLoaderRoute: typeof TabsSettingsNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tabs/settings/general': {
       id: '/tabs/settings/general'
       path: '/tabs/settings/general'
@@ -629,6 +650,7 @@ const rootRouteChildren: RootRouteChildren = {
   TabsSettingsDeviceRoute: TabsSettingsDeviceRoute,
   TabsSettingsExportRoute: TabsSettingsExportRoute,
   TabsSettingsGeneralRoute: TabsSettingsGeneralRoute,
+  TabsSettingsNotificationsRoute: TabsSettingsNotificationsRoute,
   TabsSettingsReaderRoute: TabsSettingsReaderRoute,
   TabsSettingsRsvpRoute: TabsSettingsRsvpRoute,
   TabsSettingsSocialRoute: TabsSettingsSocialRoute,

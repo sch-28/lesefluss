@@ -1,10 +1,10 @@
 import type { OwnSocialProfile } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { CloudOff, Loader2, Users } from "lucide-react";
+import { CloudOff, Loader2 } from "lucide-react";
 import type React from "react";
-import { HandleClaimStep } from "@/components/social/handle-claim-step";
 import { useSyncContext } from "@/contexts/sync-context";
 import { useOwnSocialProfile } from "@/services/social/profile";
+import { HandleClaimHero } from "./handle-claim-hero";
 import { SignedOutSocial } from "./signed-out";
 
 export function Spinner() {
@@ -45,20 +45,7 @@ export function SocialGate({
 		);
 	}
 	if (!profile.data.handle) {
-		return (
-			<div className="mx-auto mt-2 max-w-2xl rounded-lg border border-border bg-card p-4">
-				<div className="mb-4 flex items-center gap-3">
-					<Users className="size-6 text-primary" />
-					<div>
-						<h2 className="font-semibold text-base text-foreground">Pick a handle</h2>
-						<p className="text-muted-foreground text-sm">
-							Friends will know you by it. Nobody can see you until you confirm.
-						</p>
-					</div>
-				</div>
-				<HandleClaimStep profile={profile.data} onClaimed={onClaimed} />
-			</div>
-		);
+		return <HandleClaimHero profile={profile.data} onClaimed={onClaimed} />;
 	}
 	return <>{children}</>;
 }

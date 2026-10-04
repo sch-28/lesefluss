@@ -36,6 +36,11 @@ to something that already belongs to them, or to a confirmation screen where the
   Links statement. Every claimed path also has a website page (`/invite/<token>` is
   `routes/invite/$token.tsx`), because older app builds and other platforms open the link in
   the browser.
+- **Hand-off from the website**: on Android the invite page offers "Open in Lesefluss", an
+  `intent://` URL built by `appInviteIntentUrl` (`apps/web/src/lib/store-links.ts`). It names the
+  package, so it opens the app even when App Link verification failed, and falls back to the Play
+  Store when the app is missing. It is a button only, never an automatic redirect: without the app
+  that would yank web-only users to the Play Store.
 
 ## Adding a claimed path
 
@@ -44,7 +49,9 @@ to something that already belongs to them, or to a confirmation screen where the
 3. Extend `PendingLink` if the destination must survive onboarding or sign-in.
 4. Add a `<data android:pathPrefix="..."/>` line to the `autoVerify` intent filter. Never claim
    `/` or `/app/`.
-5. Update the table above.
+5. If the website page should hand off to the app, add an intent builder next to
+   `appInviteIntentUrl`.
+6. Update the table above.
 
 ## Device link sign-in (`/link`)
 

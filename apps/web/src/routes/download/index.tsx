@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Bluetooth, BookMarked, BookOpen, Globe, Highlighter, Library, Zap } from "lucide-react";
 import { FeatureCard } from "~/components/feature-card";
-import { GooglePlayIcon } from "~/components/icons/google-play";
+import { GooglePlayBadge } from "~/components/google-play-badge";
 import { StatCard } from "~/components/stat-card";
-import { PLAY_STORE_URL } from "~/lib/store-links";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/download/")({
@@ -82,18 +81,7 @@ function DownloadPage() {
 						account required, fully offline.
 					</p>
 					<div className="flex flex-col items-start gap-3">
-						<a
-							href={PLAY_STORE_URL}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="relative inline-flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-foreground/30"
-						>
-							<GooglePlayIcon className="h-6 w-6 fill-foreground" />
-							<div className="text-left">
-								<p className="text-[10px] text-muted-foreground">Get it on</p>
-								<p className="font-semibold text-sm">Google Play</p>
-							</div>
-						</a>
+						<GooglePlayBadge className="relative" />
 						<a
 							href="https://github.com/sch-28/lesefluss/releases/latest"
 							target="_blank"

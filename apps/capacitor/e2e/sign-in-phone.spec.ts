@@ -38,5 +38,5 @@ test("an expired code says so and offers a new one", async ({ page }) => {
 	await expect(dialog.getByRole("button", { name: "New code" })).toBeVisible();
 	await dialog.getByRole("button", { name: "Cancel" }).click();
 	await expect(dialog).toHaveCount(0);
-	await expect(page.getByLabel("Email")).toBeVisible();
+	await expect(page.getByRole("button", { name: "Sign in with your phone" })).toBeVisible();
 });

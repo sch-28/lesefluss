@@ -1,10 +1,10 @@
 ---
 id: TASK-171.11
 title: Push notifications for social events
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-25 22:12'
-updated_date: '2026-10-02 16:59'
+updated_date: '2026-10-04 17:38'
 labels:
   - social
   - app
@@ -17,6 +17,30 @@ dependencies:
   - TASK-171.7
   - TASK-171.8
   - TASK-171.9
+modified_files:
+  - packages/core/src/push.ts
+  - packages/core/src/index.ts
+  - apps/web/src/db/schema.ts
+  - apps/web/drizzle/0034_push_token.sql
+  - apps/web/drizzle/0035_push_outbox.sql
+  - apps/web/drizzle/meta/_journal.json
+  - apps/web/src/server.ts
+  - apps/web/src/lib/social/inbox.ts
+  - apps/web/src/lib/push/tokens.ts
+  - apps/web/src/lib/push/tokens.integration.test.ts
+  - apps/web/src/lib/push/fcm.ts
+  - apps/web/src/lib/push/outbox.ts
+  - apps/web/src/lib/push/preferences.ts
+  - apps/web/src/lib/push/compose.ts
+  - apps/web/src/lib/push/drain.ts
+  - apps/web/src/lib/push/drain.integration.test.ts
+  - apps/web/src/routes/api/push/register.ts
+  - apps/capacitor/src/services/push/index.ts
+  - apps/capacitor/src/services/sync/index.ts
+  - apps/capacitor/src/contexts/sync-context.tsx
+  - apps/capacitor/android/app/src/main/AndroidManifest.xml
+  - apps/capacitor/android/.gitignore
+  - apps/capacitor/package.json
 parent_task_id: TASK-171
 priority: low
 ordinal: 13000
@@ -65,27 +89,27 @@ Docs: a short push-setup section (Firebase project, `google-services.json` CI se
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Android users who grant permission receive push notifications for each mapped event: friend request received and accepted, share received and accepted, buddy-read invite, joined and finished, and discussion replies and reactions on their items
-- [ ] #2 Notification permission is requested in context after the first sent or accepted friend request, never on first launch
-- [ ] #3 A user who declines the permission is not prompted again automatically, and push settings shows that notifications are disabled in system settings with how to enable them
-- [ ] #4 Per-category toggles and the preview toggle default to on, are stored server-side, and are respected on every device of the account
-- [ ] #5 Tapping a notification opens the relevant screen in the app, including from a cold start, and marks the inbox item read
-- [ ] #6 Tapping a notification whose item no longer exists lands on the inbox without an error screen
-- [ ] #7 Device tokens are removed on sign-out, invalidation and account deletion (through all three deletion entry points)
-- [ ] #8 A device that signs out while offline, or whose session expired or was revoked, receives no further pushes for that account
-- [ ] #9 The same device signing into a second account receives pushes only for the account currently signed in
-- [ ] #10 Payloads contain no book content, positions, user ids or emails, and omit titles of books hidden from the sender's profile
-- [ ] #11 Discussion previews are at most 100 characters, absent when previews are disabled, and absent for text anchored beyond the recipient's furthest position
-- [ ] #12 Bursts of reactions or replies on the same subject within the batching window collapse into a single notification
-- [ ] #13 A push is not sent if, by send time, the recipient blocked or unfriended the actor, disabled the category, already read the inbox item, or the item no longer exists
-- [ ] #14 Pushes beyond the per-recipient and per-actor hourly caps, or older than 24 hours, are not sent and remain visible in the inbox
-- [ ] #15 A server restart or a second server instance neither loses nor duplicates pending pushes
-- [ ] #16 The server runs without push credentials configured, skipping push delivery without errors
-- [ ] #17 The release workflow fails if google-services.json is not provided
-- [ ] #18 The web build shows no notification permission prompt and does not load the push plugin, and the inbox-only decision is recorded
-- [ ] #19 Privacy policy names the push provider, the data sent, the legal basis, the US transfer and token retention
-- [ ] #20 Developer docs describe push setup, and the event-to-category mapping is documented next to the inbox type set
-- [ ] #21 Tests cover token lifecycle, preference filtering, payload rules (hidden titles, previews, spoiler gating), send-time re-checks, rate caps, staleness and batching
+- [x] #1 Android users who grant permission receive push notifications for each mapped event: friend request received and accepted, share received and accepted, buddy-read invite, joined and finished, and discussion replies and reactions on their items
+- [x] #2 Notification permission is requested in context after the first sent or accepted friend request, never on first launch
+- [x] #3 A user who declines the permission is not prompted again automatically, and push settings shows that notifications are disabled in system settings with how to enable them
+- [x] #4 Per-category toggles and the preview toggle default to on, are stored server-side, and are respected on every device of the account
+- [x] #5 Tapping a notification opens the relevant screen in the app, including from a cold start, and marks the inbox item read
+- [x] #6 Tapping a notification whose item no longer exists lands on the inbox without an error screen
+- [x] #7 Device tokens are removed on sign-out, invalidation and account deletion (through all three deletion entry points)
+- [x] #8 A device that signs out while offline, or whose session expired or was revoked, receives no further pushes for that account
+- [x] #9 The same device signing into a second account receives pushes only for the account currently signed in
+- [x] #10 Payloads contain no book content, positions, user ids or emails, and omit titles of books hidden from the sender's profile
+- [x] #11 Discussion previews are at most 100 characters, absent when previews are disabled, and absent for text anchored beyond the recipient's furthest position
+- [x] #12 Bursts of reactions or replies on the same subject within the batching window collapse into a single notification
+- [x] #13 A push is not sent if, by send time, the recipient blocked or unfriended the actor, disabled the category, already read the inbox item, or the item no longer exists
+- [x] #14 Pushes beyond the per-recipient and per-actor hourly caps, or older than 24 hours, are not sent and remain visible in the inbox
+- [x] #15 A server restart or a second server instance neither loses nor duplicates pending pushes
+- [x] #16 The server runs without push credentials configured, skipping push delivery without errors
+- [x] #17 The release workflow fails if google-services.json is not provided
+- [x] #18 The web build shows no notification permission prompt and does not load the push plugin, and the inbox-only decision is recorded
+- [x] #19 Privacy policy names the push provider, the data sent, the legal basis, the US transfer and token retention
+- [x] #20 Developer docs describe push setup, and the event-to-category mapping is documented next to the inbox type set
+- [x] #21 Tests cover token lifecycle, preference filtering, payload rules (hidden titles, previews, spoiler gating), send-time re-checks, rate caps, staleness and batching
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -99,4 +123,38 @@ Cross-task contracts (from the final review of the TASK-171 set):
 
 ## Correction (2026-09-28): races are gone
 TASK-171.12 (live reading races) was dropped and archived without shipping. TASK-171.15 (the live board) replaced it. The `race_invite` inbox type never shipped. Ignore the race mentions in this task's out-of-scope line and in the note on unmapped types that says race invites are not pushed. The live board sends no inbox items or notifications, so it adds no push category.
+
+Phase 1 (2026-10-04): device tokens. `social_push_token` (migration 0034) keys on the FCM token and references `session.id` with cascade, so better-auth sign-out, session revocation, bans and account deletion drop the token with no extra code; no unregister endpoint was needed. `POST /api/push/register` upserts (second account on the same device takes the row over). Client `services/push` lazy-imports the plugin, registers only when permission is already granted (never prompts), runs on every signed-in start, and `signOut()` calls the plugin's `unregister()` locally for the offline case. Expired sessions still need the send-time `expires_at` check in phase 2. Added POST_NOTIFICATIONS to the manifest and gitignored google-services.json.
+
+Phase 2 (2026-10-04): outbox and sender. Migration 0035 adds `social_push_preferences`, `social_push_outbox` and `social_push_sent` (the last hour of sends, for the caps), all cascading on every user column. `createNotification` calls `enqueuePush` in the same transaction; nothing is queued without `FIREBASE_SERVICE_ACCOUNT_BASE64`. Outbox rows reference the event by `(recipient, type, actor, subject)` through a `dedupe_key`, not by inbox item id, because collapsed reply/reaction items are deleted and re-inserted (new id), which the original note assumed would not happen. Replies and reactions use a key without the actor and keep the first row's `send_after` (now + 2 min), so a burst becomes one push titled from the inbox payload ("carol and 1 other"). `drainPushOutbox` (10 s interval started from `src/server.ts`, one per process) claims due rows with `FOR UPDATE SKIP LOCKED`, and at send time re-checks age (24 h), the hourly caps, preferences, inbox visibility through the inbox's own `visibleItems` (block, takedown, banned actor, gone subject), read state, friendship for friend/share types, and session expiry (expired-session tokens are deleted). The FCM v1 sender signs its own JWT with node:crypto (no new dependency); 404/UNREGISTERED/INVALID_ARGUMENT delete the token, other failures retry a minute later. Titles are left out when the sender (share) or actor (buddy read) hid the book from their profile; reply previews go through `isVisibleToViewer` and are clipped to 100 chars. Push data carries only the route and the inbox item id; Android notifications are posted on channel `social` with visibility PRIVATE and a per-subject tag.
+
+Review pass (2026-10-04, 3 reviewers + verifier, all 20 findings confirmed and fixed): the drainer no longer sends inside a transaction (lease via send_after, compare-and-delete per row, no locks held during HTTP); FCM sender never throws, has a 10 s timeout, and only deletes a token when FCM blames the token (404, UNREGISTERED, or INVALID_ARGUMENT naming message.token), since a payload INVALID_ARGUMENT would otherwise let a long display name wipe a victim's devices; titles are clipped to DISPLAY_NAME_MAX_LENGTH and all clipping is by code point; push counts as configured only when the credential parses; offline sign-out is persisted (`sync_pending_sign_out`) and retried on start, which ends the session server-side and so drops the token row, then unregisters FCM unless someone signed in since.
+
+Phase 3 (2026-10-04): app side. `GET/POST /api/push/preferences` (partial patch, server-only table). Settings > Notifications page (native + signed in only): device permission state with how to enable it in system settings, per-category toggles and previews, optimistic with revert on failure. Explainer dialog before the OS prompt, offered once after the first sent or accepted friend request (`push_permission_asked` flag, never again on its own) and from an Enable notifications row in the inbox. Taps: `pushNotificationActionPerformed` in the root, payload route checked against an allowlist (inbox, buddy-read/<uuid>, buddy-read-discussion/<uuid>), marks the inbox item read, falls back to the Social tab when signed out and to the inbox when the buddy read is gone, and is kept as a pending link (new kinds) across onboarding. Foreground pushes refresh the inbox and badge. Channel `social` created before register; status-bar icon is the launcher's monochrome glyph via FCM default_notification_icon. Verified on a Pixel 8 Pro against a local server: share push delivered through the drainer, cold-start tap opened the inbox and marked the item read.
+
+Web build (decision): stays inbox-only. No Web Push, no service worker, no permission prompt; the plugin is only imported dynamically behind a native platform check, and the settings row and inbox row are hidden.
+
+Phase 4 (2026-10-04): release.yml writes google-services.json from GOOGLE_SERVICES_JSON_BASE64 and fails without it; privacy policy has a Push notifications section and an FCM third-party entry (processor, data sent, consent, US transfer under DPF/SCCs, retention, one-hour send log); docs/push-notifications.md covers setup, the category mapping and delivery; NOTIFICATION_TYPES points at PUSH_CATEGORY_TYPES; FIREBASE_SERVICE_ACCOUNT_BASE64 in apps/web/.env.example.
+
+Review pass 2 (4 reviewers + verifier, 30 of 31 findings confirmed and fixed, one uncertain race dropped): a reply landing while its batched push is mid-send now pulls the leased row back (least(send_after, now+window)) so it is sent again; per-row try/catch in the drainer; tokens checked before compose; expired-session tokens swept each tick; one token per session; push routes and the preview limit live in core (pushRoute/parsePushRoute) and both sides use them; account-deletion integration test covers push rows. App: registration re-synced on start and every resume (registers after a grant in system settings, unregisters after a revoke so the server stops sending), pending sign-out retried on resume and when back online, delivered notifications cleared on sign-out, explainer also offered after redeeming an invite, optimistic toggles revert per key and refetch once the last change settles, a cold-start tap now counts as a launch intent (no auto-open of the last book underneath), a tap replayed after onboarding gets the same gone-buddy-read fallback.
+
+Review pass 3 (2026-10-04, fixes of pass 2 only; 2 reviewers + verifier; 7 of 9 findings confirmed and fixed, one refuted, one wording item dropped as uncertain): the app posts a token only when the (token, account) pair changes, since the plugin reports the token on every register() and that runs on every resume (would hit the 20/h register limit); pending sign-outs are a list, retried with one shared in-flight attempt, and 408/429 keep the entry; a per-session advisory lock in registerPushToken; privacy text now says a revoked phone's token goes when Google first reports it invalid. New tests for the sign-out retry.
+
+Device test after review pass 3 (2026-10-04): token dedupe holds (register() on start + 4 resumes, one POST). The offline sign-out test found an older bug: the app's POST /api/auth/sign-out had no JSON Content-Type, so better-auth answered 415 and never ended the session, which also means native sign-out never ended server sessions before. Fixed (Content-Type + `{}` body); the retry now keeps an entry unless the answer is 2xx or 401. Re-tested on the Pixel: offline sign-out, then network back, ends the session and removes its push token within seconds.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Push notifications for social events via Firebase Cloud Messaging, Android first, iOS-ready (platform column, one sender).
+
+Server (apps/web/src/lib/push): device tokens bound to better-auth sessions (cascade on sign-out, revocation, ban, account deletion; one token per session; expired sessions swept). `createNotification` queues an outbox row in the same transaction; replies and reactions batch for 2 minutes. An in-process drainer leases due rows and sends through the FCM HTTP v1 API with a self-signed service-account JWT (no new dependency), re-checking age, caps, preferences, inbox visibility, read state and friendship at send time. A failed send deletes a token only when FCM blames the token itself. Preferences API, privacy-minimal payloads (name, fixed text, optional title unless hidden, gated 100-char previews). Runs unchanged without `FIREBASE_SERVICE_ACCOUNT_BASE64`. Migrations 0034, 0035.
+
+App (apps/capacitor/src/services/push): registration matched to the OS permission on start and resume (a token is posted only when it or the account changes), explainer before the OS prompt (after the first friendship, from the inbox, from settings), Settings > Notifications, allowlisted tap routes with cold-start and onboarding handling, foreground inbox refresh, offline sign-out retry, tray cleared on sign-out. Web build stays inbox-only.
+
+Release, privacy, docs: release.yml requires GOOGLE_SERVICES_JSON_BASE64; privacy policy covers FCM; docs/push-notifications.md.
+
+Verified: three review passes (9 reviewers, 3 verifiers, 57 findings fixed), web 293/293 and capacitor 1059/1059 tests, and on a Pixel 8 Pro against a local server: delivery, cold-start tap, permission explainer, revoke and re-grant.
+
+Before release: set FIREBASE_SERVICE_ACCOUNT_BASE64 on the production server.
+<!-- SECTION:FINAL_SUMMARY:END -->

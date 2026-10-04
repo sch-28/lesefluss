@@ -239,6 +239,20 @@
       "when": 1782777600000,
       "tag": "0033_telemetry_webview",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1782864000000,
+      "tag": "0034_push_token",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1782950400000,
+      "tag": "0035_push_outbox",
+      "breakpoints": true
     }
   ]
 }

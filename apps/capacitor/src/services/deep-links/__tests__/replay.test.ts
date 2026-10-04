@@ -26,6 +26,8 @@ import type { AnyRouter } from "@tanstack/react-router";
 import { setPendingLink } from "../pending-link";
 import { navigateToLink, replayPendingLink } from "../use-deep-links";
 
+const exists = async () => true;
+
 function fakeRouter() {
 	const navigate = vi.fn();
 	const canGoBack = vi.fn(() => true);
@@ -42,18 +44,25 @@ describe("pending link replay", () => {
 	it("navigates to the stored invite once and forgets it", async () => {
 		await setPendingLink({ kind: "invite", token: "tok" });
 		const { router, navigate } = fakeRouter();
-		expect(await replayPendingLink(router)).toBe(true);
+		expect(await replayPendingLink(router, exists)).toBe(true);
 		expect(navigate).toHaveBeenLastCalledWith({
 			to: "/tabs/social/invite/$token",
 			params: { token: "tok" },
 		});
-		expect(await replayPendingLink(router)).toBe(false);
+		expect(await replayPendingLink(router, exists)).toBe(false);
+	});
+
+	it("opens the inbox instead of a buddy read that is gone", async () => {
+		await setPendingLink({ kind: "buddy-read", buddyReadId: "r1" });
+		const { router, navigate } = fakeRouter();
+		expect(await replayPendingLink(router, async () => false)).toBe(true);
+		expect(navigate).toHaveBeenLastCalledWith({ to: "/tabs/social/inbox" });
 	});
 
 	it("does nothing for an expired link", async () => {
 		await setPendingLink({ kind: "invite", token: "tok" }, Date.now() - 25 * 60 * 60_000);
 		const { router, navigate } = fakeRouter();
-		expect(await replayPendingLink(router)).toBe(false);
+		expect(await replayPendingLink(router, exists)).toBe(false);
 		expect(navigate).not.toHaveBeenCalled();
 	});
 

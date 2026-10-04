@@ -93,6 +93,8 @@ import { Route as ApiSocialBuddyReadRouteImport } from './routes/api/social/budd
 import { Route as ApiSocialBlockRouteImport } from './routes/api/social/block'
 import { Route as ApiSocialAvatarSourceRouteImport } from './routes/api/social/avatar-source'
 import { Route as ApiSocialAvatarRouteImport } from './routes/api/social/avatar'
+import { Route as ApiPushRegisterRouteImport } from './routes/api/push/register'
+import { Route as ApiPushPreferencesRouteImport } from './routes/api/push/preferences'
 import { Route as ApiImportArticleRouteImport } from './routes/api/import/article'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedAdminNoticesRouteImport } from './routes/_authenticated/admin/notices'
@@ -541,6 +543,16 @@ const ApiSocialAvatarRoute = ApiSocialAvatarRouteImport.update({
   path: '/api/social/avatar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPushRegisterRoute = ApiPushRegisterRouteImport.update({
+  id: '/api/push/register',
+  path: '/api/push/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPushPreferencesRoute = ApiPushPreferencesRouteImport.update({
+  id: '/api/push/preferences',
+  path: '/api/push/preferences',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiImportArticleRoute = ApiImportArticleRouteImport.update({
   id: '/api/import/article',
   path: '/api/import/article',
@@ -601,6 +613,8 @@ export interface FileRoutesByFullPath {
   '/admin/notices': typeof AuthenticatedAdminNoticesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/import/article': typeof ApiImportArticleRoute
+  '/api/push/preferences': typeof ApiPushPreferencesRoute
+  '/api/push/register': typeof ApiPushRegisterRoute
   '/api/social/avatar': typeof ApiSocialAvatarRoute
   '/api/social/avatar-source': typeof ApiSocialAvatarSourceRoute
   '/api/social/block': typeof ApiSocialBlockRoute
@@ -691,6 +705,8 @@ export interface FileRoutesByTo {
   '/admin/notices': typeof AuthenticatedAdminNoticesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/import/article': typeof ApiImportArticleRoute
+  '/api/push/preferences': typeof ApiPushPreferencesRoute
+  '/api/push/register': typeof ApiPushRegisterRoute
   '/api/social/avatar': typeof ApiSocialAvatarRoute
   '/api/social/avatar-source': typeof ApiSocialAvatarSourceRoute
   '/api/social/block': typeof ApiSocialBlockRoute
@@ -783,6 +799,8 @@ export interface FileRoutesById {
   '/_authenticated/admin/notices': typeof AuthenticatedAdminNoticesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/import/article': typeof ApiImportArticleRoute
+  '/api/push/preferences': typeof ApiPushPreferencesRoute
+  '/api/push/register': typeof ApiPushRegisterRoute
   '/api/social/avatar': typeof ApiSocialAvatarRoute
   '/api/social/avatar-source': typeof ApiSocialAvatarSourceRoute
   '/api/social/block': typeof ApiSocialBlockRoute
@@ -875,6 +893,8 @@ export interface FileRouteTypes {
     | '/admin/notices'
     | '/api/auth/$'
     | '/api/import/article'
+    | '/api/push/preferences'
+    | '/api/push/register'
     | '/api/social/avatar'
     | '/api/social/avatar-source'
     | '/api/social/block'
@@ -965,6 +985,8 @@ export interface FileRouteTypes {
     | '/admin/notices'
     | '/api/auth/$'
     | '/api/import/article'
+    | '/api/push/preferences'
+    | '/api/push/register'
     | '/api/social/avatar'
     | '/api/social/avatar-source'
     | '/api/social/block'
@@ -1056,6 +1078,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/notices'
     | '/api/auth/$'
     | '/api/import/article'
+    | '/api/push/preferences'
+    | '/api/push/register'
     | '/api/social/avatar'
     | '/api/social/avatar-source'
     | '/api/social/block'
@@ -1147,6 +1171,8 @@ export interface RootRouteChildren {
   TermsIndexRoute: typeof TermsIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiImportArticleRoute: typeof ApiImportArticleRoute
+  ApiPushPreferencesRoute: typeof ApiPushPreferencesRoute
+  ApiPushRegisterRoute: typeof ApiPushRegisterRoute
   ApiSocialAvatarRoute: typeof ApiSocialAvatarRoute
   ApiSocialAvatarSourceRoute: typeof ApiSocialAvatarSourceRoute
   ApiSocialBlockRoute: typeof ApiSocialBlockRoute
@@ -1791,6 +1817,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSocialAvatarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/push/register': {
+      id: '/api/push/register'
+      path: '/api/push/register'
+      fullPath: '/api/push/register'
+      preLoaderRoute: typeof ApiPushRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/push/preferences': {
+      id: '/api/push/preferences'
+      path: '/api/push/preferences'
+      fullPath: '/api/push/preferences'
+      preLoaderRoute: typeof ApiPushPreferencesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/import/article': {
       id: '/api/import/article'
       path: '/api/import/article'
@@ -1891,6 +1931,8 @@ const rootRouteChildren: RootRouteChildren = {
   TermsIndexRoute: TermsIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiImportArticleRoute: ApiImportArticleRoute,
+  ApiPushPreferencesRoute: ApiPushPreferencesRoute,
+  ApiPushRegisterRoute: ApiPushRegisterRoute,
   ApiSocialAvatarRoute: ApiSocialAvatarRoute,
   ApiSocialAvatarSourceRoute: ApiSocialAvatarSourceRoute,
   ApiSocialBlockRoute: ApiSocialBlockRoute,

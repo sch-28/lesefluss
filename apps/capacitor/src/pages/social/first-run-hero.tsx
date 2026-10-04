@@ -113,26 +113,32 @@ export function FirstRunHero({
 				)}
 			</TrailerCard>
 
-			<section className="mt-9 px-1">
-				<h3 className="m-0 font-bold text-[11px] text-muted-foreground uppercase tracking-widest">
-					How it works
-				</h3>
-				<ol className="m-0 mt-3.5 flex list-none flex-col gap-4 p-0">
-					{STEPS.map((step, i) => (
-						<li key={step.title} className="flex gap-3.5">
-							<span className="w-5 font-extrabold text-[26px] text-primary tabular-nums leading-none">
-								{i + 1}
-							</span>
-							<div>
-								<div className="font-semibold text-[15px] text-foreground">{step.title}</div>
-								<div className="mt-0.5 text-[13px] text-muted-foreground leading-snug">
-									{step.body}
-								</div>
-							</div>
-						</li>
-					))}
-				</ol>
-			</section>
+			<HowItWorks />
 		</>
+	);
+}
+
+export function HowItWorks() {
+	return (
+		<section className="mt-9 px-1">
+			<h3 className="m-0 font-bold text-[11px] text-muted-foreground uppercase tracking-widest">
+				How it works
+			</h3>
+			<ol className="m-0 mt-3.5 flex list-none flex-col gap-4 p-0">
+				{STEPS.map((step, i) => (
+					<li key={step.title} className="flex gap-3.5">
+						<span className="w-5 font-extrabold text-[26px] text-primary tabular-nums leading-none">
+							{i + 1}
+						</span>
+						<div>
+							<div className="font-semibold text-[15px] text-foreground">{step.title}</div>
+							<div className="mt-0.5 text-[13px] text-muted-foreground leading-snug">
+								{step.body}
+							</div>
+						</div>
+					</li>
+				))}
+			</ol>
+		</section>
 	);
 }

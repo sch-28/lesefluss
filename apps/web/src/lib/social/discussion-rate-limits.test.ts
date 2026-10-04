@@ -17,7 +17,10 @@ vi.mock("~/lib/social/buddy-read-discussion", () => ({
 	addReaction: vi.fn(async () => {}),
 }));
 
-type Handler = (ctx: { request: Request; context: { user: { id: string } } }) => Promise<Response>;
+type Handler = (ctx: {
+	request: Request;
+	context: { user: { id: string }; session: { id: string } };
+}) => Promise<Response>;
 
 function postHandler(route: { options: unknown }): Handler {
 	return (route.options as { server: { handlers: { POST: Handler } } }).server.handlers.POST;
@@ -40,7 +43,7 @@ function call(handler: Handler, body: unknown, userId: string) {
 		method: "POST",
 		body: JSON.stringify(body),
 	});
-	return handler({ request, context: { user: { id: userId } } });
+	return handler({ request, context: { user: { id: userId }, session: { id: `sess-${userId}` } } });
 }
 
 async function spend(handler: Handler, body: unknown, userId: string, times: number) {

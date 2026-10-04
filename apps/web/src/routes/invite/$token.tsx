@@ -1,13 +1,17 @@
 import type { InvitePreview, OwnSocialProfile } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { IdentityCardBox } from "@lesefluss/ui/social-avatar";
+import { SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import * as React from "react";
+import { CoverLitBuddyCard } from "~/components/cover-lit-buddy-card";
+import { GooglePlayBadge } from "~/components/google-play-badge";
 import { InviteAppCallToAction } from "~/components/invite-app-cta";
 import { HandleClaimForm, PROFILE_KEY } from "~/components/social-profile-section";
 import { previewInviteForPage } from "~/lib/invite-page";
 import { friendsClient, socialClient } from "~/lib/social-client";
+import { appInviteIntentUrl } from "~/lib/store-links";
+import { useIsAndroid } from "~/lib/use-is-android";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/invite/$token")({
@@ -16,25 +20,45 @@ export const Route = createFileRoute("/invite/$token")({
 	component: InvitePage,
 });
 
-function Shell({ title, children }: { title: string; children?: React.ReactNode }) {
+function Shell({
+	title,
+	owner,
+	children,
+	after,
+}: {
+	title: string;
+	owner?: InvitePreview["owner"];
+	children?: React.ReactNode;
+	after?: React.ReactNode;
+}) {
 	return (
-		<div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-6 py-16">
-			<div className="w-full max-w-sm space-y-6 text-center">
-				<h1 className="font-bold text-2xl tracking-tight">{title}</h1>
-				{children}
+		<div className="mx-auto w-full max-w-md px-4 py-10 sm:py-16">
+			<div className="relative">
+				<div
+					aria-hidden="true"
+					className="absolute inset-0 rounded-full bg-primary/10"
+					style={{ filter: "blur(60px)", transform: "scale(1.2)" }}
+				/>
+				<CoverLitBuddyCard isAboveFold>
+					<div className="mt-6 space-y-4 px-1">
+						{owner && (
+							<div className="flex items-center gap-3">
+								<SocialAvatar name={owner.name} avatarUrl={owner.avatarUrl} />
+								<div className="min-w-0 text-sm">
+									<div className="truncate font-semibold text-foreground">{owner.name}</div>
+									<div className="truncate text-muted-foreground">@{owner.handle}</div>
+								</div>
+							</div>
+						)}
+						<h1 className="font-bold text-[26px] text-foreground leading-tight tracking-tight">
+							{title}
+						</h1>
+						{children}
+					</div>
+				</CoverLitBuddyCard>
 			</div>
+			{after}
 		</div>
-	);
-}
-
-function OwnerCard({ preview }: { preview: InvitePreview }) {
-	if (!preview.owner) return null;
-	return (
-		<IdentityCardBox
-			name={preview.owner.name}
-			handle={preview.owner.handle}
-			avatarUrl={preview.owner.avatarUrl}
-		/>
 	);
 }
 
@@ -83,7 +107,7 @@ function Confirm({ token, onDone }: { token: string; onDone: (p: InvitePreview) 
 	};
 	return (
 		<div className="space-y-3">
-			<Button onClick={redeem} disabled={isPending} className="w-full">
+			<Button onClick={redeem} disabled={isPending} className="h-12 w-full rounded-xl text-[15px]">
 				{isPending ? "Adding…" : "Add friend"}
 			</Button>
 			{error && <p className="text-destructive text-sm">{error}</p>}
@@ -94,12 +118,14 @@ function Confirm({ token, onDone }: { token: string; onDone: (p: InvitePreview) 
 function InvitePage() {
 	const initial = Route.useLoaderData();
 	const { token } = Route.useParams();
+	const isAndroid = useIsAndroid();
 	const [preview, setPreview] = React.useState<InvitePreview>(initial);
 	const [justAdded, setJustAdded] = React.useState(false);
 	const onDone = (p: InvitePreview) => {
 		setJustAdded(p.state === "already_friends");
 		setPreview(p);
 	};
+	const getTheApp = <InviteAppCallToAction token={token} />;
 
 	switch (preview.state) {
 		case "invalid":
@@ -118,18 +144,43 @@ function InvitePage() {
 			);
 		case "already_friends":
 			return (
-				<Shell title={justAdded ? "You're now friends" : "You're already friends"}>
-					<OwnerCard preview={preview} />
-					<InviteAppCallToAction token={token} />
+				<Shell
+					title={justAdded ? "You're now friends" : "You're already friends"}
+					owner={preview.owner}
+					after={
+						<div className="mt-6 space-y-3 px-1 text-center">
+							<p className="text-muted-foreground text-sm">
+								No app yet? Your friends are waiting in it once you sign in.
+							</p>
+							<GooglePlayBadge className="w-full justify-center" />
+						</div>
+					}
+				>
+					<p className="text-muted-foreground text-sm">
+						Pick a book together and follow each other's progress in Lesefluss.
+					</p>
+					<Button asChild className="h-12 w-full rounded-xl text-[15px]">
+						{isAndroid ? (
+							<a href={appInviteIntentUrl(token)}>Open Lesefluss</a>
+						) : (
+							<a href="/app/tabs/social">Open the web app</a>
+						)}
+					</Button>
+					{isAndroid && (
+						<Button asChild variant="ghost" size="sm" className="w-full">
+							<a href="/app/tabs/social">Open the web app</a>
+						</Button>
+					)}
 				</Shell>
 			);
 		case "signed_out":
 			return (
-				<Shell title="You've been invited">
-					<OwnerCard preview={preview} />
-					<p className="text-muted-foreground text-sm">Sign in or create an account to add them.</p>
-					<InviteAppCallToAction token={token} />
-					<Button asChild className="w-full">
+				<Shell title="You've been invited" owner={preview.owner} after={getTheApp}>
+					<p className="text-muted-foreground text-sm">
+						Read the same book together and see where everyone is. Sign in or create an account to
+						add them.
+					</p>
+					<Button asChild className="h-12 w-full rounded-xl text-[15px]">
 						<Link to="/login" search={{ redirect: `/invite/${token}` }}>
 							Sign in
 						</Link>
@@ -138,21 +189,17 @@ function InvitePage() {
 			);
 		case "handle_required":
 			return (
-				<Shell title="You've been invited">
-					<OwnerCard preview={preview} />
+				<Shell title="You've been invited" owner={preview.owner} after={getTheApp}>
 					<ClaimThenConfirm token={token} onDone={onDone} />
-					<InviteAppCallToAction token={token} />
 				</Shell>
 			);
 		case "valid":
 			return (
-				<Shell title="You've been invited">
-					<OwnerCard preview={preview} />
+				<Shell title="You've been invited" owner={preview.owner} after={getTheApp}>
 					<p className="text-muted-foreground text-sm">
 						Adding them shares your handle, display name and avatar with them.
 					</p>
 					<Confirm token={token} onDone={onDone} />
-					<InviteAppCallToAction token={token} />
 				</Shell>
 			);
 	}

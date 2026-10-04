@@ -49,4 +49,14 @@ describe("pending link", () => {
 		await clearPendingLink();
 		expect(await takePendingLink()).toBeNull();
 	});
+
+	it("keeps a notification target and rejects one without its id", async () => {
+		await setPendingLink({ kind: "buddy-read-discussion", buddyReadId: "r1" }, 1000);
+		expect(await takePendingLink(2000)).toEqual({
+			kind: "buddy-read-discussion",
+			buddyReadId: "r1",
+		});
+		store.set("social_pending_link", JSON.stringify({ kind: "buddy-read", storedAt: 1 }));
+		expect(await takePendingLink(2)).toBeNull();
+	});
 });

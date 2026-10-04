@@ -362,7 +362,8 @@ export const INBOX_PAGE_SIZE = 30;
  *   into the row.
  * - Actionable types derive their state from the subject row when listed, so a
  *   request resolved elsewhere shows as resolved and offers no action.
- * Push delivery (a later feature) maps these types to notification categories.
+ * Push delivery maps these types to categories in `PUSH_CATEGORY_TYPES` (push.ts); a
+ * new type stays inbox-only until it is listed there. See docs/push-notifications.md.
  */
 export const NOTIFICATION_TYPES = [
 	"friend_request_received",

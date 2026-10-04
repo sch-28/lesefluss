@@ -7,7 +7,6 @@ test("an invite link opened signed out leads through the web app to a friendship
 	const ada = await browser.newContext({ storageState: authFile("ada") });
 	const adaPage = await ada.newPage();
 	await adaPage.goto("/app/tabs/social/invite-link");
-	await adaPage.getByRole("button", { name: "Create invite link" }).click();
 	const link = await adaPage.getByLabel("Your invite link").inputValue();
 	const path = new URL(link).pathname;
 	expect(path).toMatch(/^\/invite\/[\w-]+$/);

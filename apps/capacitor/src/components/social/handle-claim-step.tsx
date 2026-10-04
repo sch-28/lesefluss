@@ -14,7 +14,7 @@ import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
 import { IdentityCard } from "@lesefluss/ui/social-avatar";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useIsOnline } from "@/services/social/cache";
 import {
 	checkHandle,
@@ -32,18 +32,25 @@ export function HandleClaimStep({
 	onClaimed,
 	onSkip,
 	skipLabel = "Not now",
+	focusOnMount = false,
 }: {
 	profile: OwnSocialProfile;
 	onClaimed?: (profile: OwnSocialProfile) => void;
 	onSkip?: () => void;
 	skipLabel?: string;
+	focusOnMount?: boolean;
 }) {
+	const handleInputRef = useRef<HTMLInputElement>(null);
 	const [handle, setHandle] = useState(profile.handle ?? "");
 	const [name, setName] = useState(profile.name);
 	const [isNameTouched, setIsNameTouched] = useState(false);
 	const [check, setCheck] = useState<HandleCheckState | null>(null);
 	const claim = useClaimHandle();
 	const isOnline = useIsOnline();
+
+	useEffect(() => {
+		if (focusOnMount) handleInputRef.current?.focus();
+	}, [focusOnMount]);
 
 	const handleValidation = validateHandle(handle);
 	const isCurrentHandle = profile.handle !== null && normalizeHandle(handle) === profile.handle;
@@ -125,6 +132,7 @@ export function HandleClaimStep({
 						@
 					</span>
 					<Input
+						ref={handleInputRef}
 						id="social-handle"
 						value={handle}
 						onChange={(e) => setHandle(e.target.value.replace(/\s/g, ""))}

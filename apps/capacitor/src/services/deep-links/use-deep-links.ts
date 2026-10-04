@@ -14,14 +14,45 @@ export async function navigateToLink(router: AnyRouter, link: PendingLink): Prom
 		// Awaited: two navigations in one tick are batched and the replace is lost.
 		await router.navigate({ to: "/tabs/social", replace: true });
 	}
-	await router.navigate({ to: "/tabs/social/invite/$token", params: { token: link.token } });
+	switch (link.kind) {
+		case "invite":
+			await router.navigate({ to: "/tabs/social/invite/$token", params: { token: link.token } });
+			return;
+		case "inbox":
+			await router.navigate({ to: "/tabs/social/inbox" });
+			return;
+		case "buddy-read":
+			await router.navigate({
+				to: "/tabs/social/buddy-read/$id",
+				params: { id: link.buddyReadId },
+			});
+			return;
+		case "buddy-read-discussion":
+			await router.navigate({
+				to: "/tabs/social/buddy-read-discussion/$id",
+				params: { id: link.buddyReadId },
+			});
+			return;
+	}
+}
+
+/** A buddy read that is gone by the time its link opens falls back to the inbox. */
+export async function withGoneBuddyReadFallback(
+	link: PendingLink,
+	buddyReadExists: (buddyReadId: string) => Promise<boolean>,
+): Promise<PendingLink> {
+	if (link.kind !== "buddy-read" && link.kind !== "buddy-read-discussion") return link;
+	return (await buddyReadExists(link.buddyReadId)) ? link : { kind: "inbox" };
 }
 
 /** Replays a stored link, if any. Returns whether one was found. */
-export async function replayPendingLink(router: AnyRouter): Promise<boolean> {
+export async function replayPendingLink(
+	router: AnyRouter,
+	buddyReadExists: (buddyReadId: string) => Promise<boolean>,
+): Promise<boolean> {
 	const link = await takePendingLink();
 	if (!link) return false;
-	await navigateToLink(router, link);
+	await navigateToLink(router, await withGoneBuddyReadFallback(link, buddyReadExists));
 	return true;
 }
 

@@ -3,7 +3,7 @@ import { Share } from "@capacitor/share";
 import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
 import { Copy, Link2, Share2, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Section } from "@/components/app-shell/section";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -27,6 +27,8 @@ function formatExpiry(ms: number): string {
 	});
 }
 
+let hasAutoCreatedInvite = false;
+
 function InviteLinkContent() {
 	const isOnline = useIsOnline();
 	const invite = useCurrentInvite();
@@ -35,6 +37,16 @@ function InviteLinkContent() {
 	const [confirm, setConfirm] = useState<"replace" | "revoke" | null>(null);
 	const isBusy = !isOnline || create.isPending || revoke.isPending;
 	const onError = (err: unknown) => toast.error(socialErrorMessage(err));
+
+	// Creating replaces any existing link, so only on a successful fresh fetch, and once
+	// per app session so a revoked link stays revoked and remounts don't burn the rate limit.
+	const hasNoLink =
+		invite.isFetchedAfterMount && !invite.isFetching && !invite.isError && invite.data === null;
+	useEffect(() => {
+		if (!hasNoLink || !isOnline || hasAutoCreatedInvite) return;
+		hasAutoCreatedInvite = true;
+		create.mutate(undefined, { onError });
+	});
 
 	const copy = async (url: string) => {
 		if (await copyToClipboard(url)) toast.success("Link copied");

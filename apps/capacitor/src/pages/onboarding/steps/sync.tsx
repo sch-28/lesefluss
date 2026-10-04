@@ -2,7 +2,7 @@ import { Cloud, Loader2, Users } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect } from "react";
 import { HandleClaimStep } from "../../../components/social/handle-claim-step";
-import { PasswordSignInForm } from "../../../components/sync/password-sign-in-form";
+import { SignInOptions } from "../../../components/sync/sign-in-options";
 import { useSyncContext } from "../../../contexts/sync-context";
 import { useOwnSocialProfile } from "../../../services/social/profile";
 import { IS_WEB_BUILD } from "../../../services/sync";
@@ -41,7 +41,7 @@ function SignInStep() {
 				</p>
 			</div>
 			{/* Leaving for the browser must not strand the user mid-onboarding. */}
-			<PasswordSignInForm className="mt-8" beforeBrowserSignIn={finish} />
+			<SignInOptions className="mt-8" beforeBrowserSignIn={finish} />
 		</div>
 	);
 }

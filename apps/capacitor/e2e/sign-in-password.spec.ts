@@ -14,6 +14,7 @@ test("signs in with email and password from Settings > Sync", async ({ page }) =
 	await mockSessionAndSync(page);
 	await mockPasswordSignIn(page);
 	await page.goto("/tabs/settings/sync");
+	await page.getByRole("button", { name: "Sign in with email and password" }).click();
 
 	await page.getByLabel("Email").fill(MOCK_EMAIL);
 	await page.getByLabel("Password").fill("hunter22");
@@ -28,6 +29,7 @@ test("shows the server's rejection inline and keeps the form", async ({ page }) 
 	await mockSessionAndSync(page);
 	await mockPasswordSignIn(page, 401);
 	await page.goto("/tabs/settings/sync");
+	await page.getByRole("button", { name: "Sign in with email and password" }).click();
 
 	await page.getByLabel("Email").fill(MOCK_EMAIL);
 	await page.getByLabel("Password").fill("wrong");

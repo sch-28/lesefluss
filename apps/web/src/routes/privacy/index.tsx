@@ -14,7 +14,7 @@ export const Route = createFileRoute("/privacy/")({
 
 function PrivacyPage() {
 	return (
-		<LegalPage title="Privacy" subtitle="Last updated: September 2026">
+		<LegalPage title="Privacy" subtitle="Last updated: October 2026">
 			<section>
 				<h2 className="mb-3 font-semibold text-foreground text-xl">TL;DR</h2>
 				<p>
@@ -241,6 +241,28 @@ function PrivacyPage() {
 					are deleted 90 days after you read them, and every item is deleted 365 days after it was
 					created, or earlier when either account is deleted or one of you blocks the other.
 				</p>
+				<h3 className="mt-6 mb-2 font-medium text-foreground">Push notifications</h3>
+				<p>
+					The Android app can show inbox items as notifications. Nothing is sent until you allow
+					notifications in the app and in Android, and you can switch each kind (friend requests,
+					shared books, buddy reads, discussion) and message previews off under Settings &rarr;
+					Notifications; that choice is stored with your account. The legal basis is your consent,
+					which you can withdraw at any time there or in Android's settings.
+				</p>
+				<p className="mt-4">
+					For this we store a device token for each phone you are signed in on, together with its
+					platform and the sign-in session it belongs to. A notification contains only the other
+					person's display name, a short fixed text, the title of the book involved unless they hid
+					it from their profile, and, if you have previews on, up to 100 characters of a reply to a
+					passage you have already read, plus internal ids the app uses to open the right screen. It
+					never contains book text, reading positions, email addresses or account ids. Notifications
+					are delivered through Google Firebase Cloud Messaging (see Third parties). A device token
+					is deleted when you sign out, when the session ends or expires, when Google reports it
+					invalid (which happens the first time we try to reach a phone on which you turned
+					notifications off for the app, on Android 13 and later), and with your account. Pending
+					notifications are deleted once sent or after 24 hours. To limit how many notifications you
+					get, we keep a record of who notified whom for one hour.
+				</p>
 				<h3 className="mt-6 mb-2 font-medium text-foreground">What friends see on your profile</h3>
 				<p>
 					With profile visibility set to <em>private</em> (the default), a friend sees only your
@@ -424,6 +446,17 @@ function PrivacyPage() {
 							</a>
 							, acting as a data processor on our behalf. Only your email address is shared, and
 							only when we send you one of these messages.
+						</span>
+					</li>
+					<li className="flex gap-2">
+						<span className="shrink-0 text-muted-foreground/50">-</span>
+						<span>
+							<strong className="text-foreground">Google Firebase Cloud Messaging</strong> -
+							delivers push notifications to the Android app, acting as a data processor on our
+							behalf. It receives the device token and the notification text described under{" "}
+							<em>Push notifications</em>, and only when notifications are on. Google LLC may
+							process this data in the United States, under the EU-US Data Privacy Framework and the
+							standard contractual clauses in Google's data processing terms.
 						</span>
 					</li>
 					<li className="flex gap-2">

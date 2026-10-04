@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Section } from "@/components/app-shell/section";
 import CoverImage from "@/components/cover-image";
+import { EnableNotificationsRow } from "@/components/push/enable-notifications-row";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
 import { toast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
@@ -416,6 +417,7 @@ function InboxContent() {
 				isError={inbox.isError}
 				onRetry={() => void inbox.refetch()}
 			/>
+			<EnableNotificationsRow />
 			<Section>
 				{items.length === 0 ? (
 					<div className="px-4 py-8 text-center">

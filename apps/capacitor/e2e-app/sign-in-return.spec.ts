@@ -26,7 +26,7 @@ test("signing in from onboarding returns to the /app library, not the website pr
 
 	// Signed in inside the app, and onboarding is not offered again.
 	await page.goto("/app/tabs/social");
-	await expect(page.getByRole("heading", { name: "Pick a handle" })).toBeVisible();
+	await expect(page.getByRole("button", { name: "Pick your handle" })).toBeVisible();
 	await page.goto("/app/");
 	await page.waitForURL(/\/app\/tabs\/library/);
 });
@@ -38,5 +38,5 @@ test("the signed-out social tab signs in and comes back to the social tab", asyn
 	await page.waitForURL(/\/login\?redirect=/);
 	await submitLogin(page, "fay");
 	await page.waitForURL(/\/app\/tabs\/social$/);
-	await expect(page.getByRole("heading", { name: "Pick a handle" })).toBeVisible();
+	await expect(page.getByRole("button", { name: "Pick your handle" })).toBeVisible();
 });

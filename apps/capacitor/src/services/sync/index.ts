@@ -40,6 +40,7 @@ import type {
 	Series,
 	Settings,
 } from "../db/schema";
+import { clearDeliveredPushes, unregisterPush } from "../push";
 import { queryClient } from "../query-client";
 import { SYNC_URL } from "./auth-client";
 import {
@@ -90,20 +91,85 @@ export {
 } from "./session";
 export { SIGN_IN_FAILED_MESSAGE } from "./sign-in-copy";
 
+const PENDING_SIGN_OUT_KEY = "sync_pending_sign_out";
+
 export async function signOut(): Promise<void> {
 	const token = await getToken();
+	unregisterPush().catch((err) => log.warn("push", "unregister failed:", err));
+	clearDeliveredPushes().catch((err) => log.warn("push", "clearing notifications failed:", err));
 	// Behind the sync lock: a push in flight persists what the server now holds once
 	// it resolves, which would write this account's caches straight back after the
 	// clear and hand them to whoever signs in next.
 	await withSyncLock(clearToken);
-	// Server-side invalidation is best-effort: if we're offline or the request
-	// fails, the token is gone from this device but stays valid on the server
-	// until its TTL expires. Accepted trade-off for immediate UI response.
 	if (token && SYNC_URL) {
-		void fetch(`${SYNC_URL}/api/auth/sign-out`, {
-			method: "POST",
-			headers: { Authorization: `Bearer ${token}` },
-		}).catch(() => {});
+		await Preferences.set({
+			key: PENDING_SIGN_OUT_KEY,
+			value: JSON.stringify([...(await pendingSignOuts()), token]),
+		});
+		retryPendingSignOut().catch((err) => log.warn("sync", "pending sign-out retry failed:", err));
+	}
+}
+
+async function pendingSignOuts(): Promise<string[]> {
+	const { value } = await Preferences.get({ key: PENDING_SIGN_OUT_KEY });
+	try {
+		const parsed: unknown = value ? JSON.parse(value) : [];
+		return Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === "string") : [];
+	} catch {
+		return [];
+	}
+}
+
+/** A 401 means the session is already gone; any other failure may leave it alive, so it is tried again. */
+function isSessionEnded(res: Response): boolean {
+	return res.ok || res.status === 401;
+}
+
+let pendingRetry: Promise<void> | null = null;
+
+/**
+ * Ends on the server the sessions this device signed out of while offline.
+ * Until then each session stays valid, and so does the push token bound to it,
+ * so a signed-out phone would keep showing that account's notifications.
+ * Concurrent calls share one attempt.
+ */
+export function retryPendingSignOut(): Promise<void> {
+	pendingRetry ??= signOutPendingSessions().finally(() => {
+		pendingRetry = null;
+	});
+	return pendingRetry;
+}
+
+async function signOutPendingSessions(): Promise<void> {
+	if (!SYNC_URL) return;
+	const tokens = await pendingSignOuts();
+	if (tokens.length === 0) return;
+	const remaining: string[] = [];
+	for (const token of tokens) {
+		try {
+			const res = await fetch(`${SYNC_URL}/api/auth/sign-out`, {
+				method: "POST",
+				// better-auth answers 415 without a JSON content type and keeps the session.
+				headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+				body: "{}",
+			});
+			if (!isSessionEnded(res)) remaining.push(token);
+		} catch {
+			remaining.push(token);
+		}
+	}
+	// Re-read: a sign-out during the requests may have added a token.
+	const added = (await pendingSignOuts()).filter((t) => !tokens.includes(t));
+	const next = [...remaining, ...added];
+	if (next.length > 0) {
+		await Preferences.set({ key: PENDING_SIGN_OUT_KEY, value: JSON.stringify(next) });
+	} else {
+		await Preferences.remove({ key: PENDING_SIGN_OUT_KEY });
+	}
+	// Back online, so the FCM token delete that failed at sign-out can land, unless
+	// someone has signed in since and the token is theirs now.
+	if (remaining.length < tokens.length && !(await getToken())) {
+		await unregisterPush().catch((err) => log.warn("push", "unregister failed:", err));
 	}
 }
 

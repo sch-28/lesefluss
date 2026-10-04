@@ -25,6 +25,10 @@ import {
 	socialNotice,
 	socialNotification,
 	socialProfile,
+	socialPushOutbox,
+	socialPushPreferences,
+	socialPushSent,
+	socialPushToken,
 	socialRestriction,
 	socialShare,
 	socialShareConsent,
@@ -257,8 +261,58 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 
 		await db.insert(socialFeedEvent).values({ actorId: userId, bookId: "book1", type: "started" });
 
+		// Push: the device token, preferences, a queued push and the send log, as recipient and as actor.
+		await db.insert(socialPushToken).values({
+			token: `fcm-${userId}`,
+			platform: "android",
+			userId,
+			sessionId: `sess-${userId}`,
+		});
+		await db.insert(socialPushPreferences).values({ userId, shares: false });
+		await db.insert(socialPushOutbox).values([
+			{
+				dedupeKey: `in-${userId}`,
+				recipientId: userId,
+				actorId: otherUserId,
+				type: "friend_request_accepted",
+				subjectId: "s1",
+				sendAfter: now,
+			},
+			{
+				dedupeKey: `out-${userId}`,
+				recipientId: otherUserId,
+				actorId: userId,
+				type: "friend_request_accepted",
+				subjectId: "s2",
+				sendAfter: now,
+			},
+		]);
+		await db.insert(socialPushSent).values([
+			{ recipientId: userId, actorId: otherUserId },
+			{ recipientId: otherUserId, actorId: userId },
+		]);
+
 		// Act.
 		await deleteUserAccount(userId);
+
+		expect(
+			await db.select().from(socialPushToken).where(eq(socialPushToken.userId, userId)),
+		).toHaveLength(0);
+		expect(
+			await db.select().from(socialPushPreferences).where(eq(socialPushPreferences.userId, userId)),
+		).toHaveLength(0);
+		expect(
+			await db
+				.select()
+				.from(socialPushOutbox)
+				.where(or(eq(socialPushOutbox.recipientId, userId), eq(socialPushOutbox.actorId, userId))),
+		).toHaveLength(0);
+		expect(
+			await db
+				.select()
+				.from(socialPushSent)
+				.where(or(eq(socialPushSent.recipientId, userId), eq(socialPushSent.actorId, userId))),
+		).toHaveLength(0);
 
 		expect(
 			await db.select().from(socialFeedEvent).where(eq(socialFeedEvent.actorId, userId)),

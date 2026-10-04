@@ -30,6 +30,12 @@ export function invalidateAfterSync(): void {
 	void queryClient.invalidateQueries({ queryKey: socialKeys.feed });
 }
 
+/** Inbox items arrived or were read: the list and the Social tab badge. */
+export function invalidateInbox(): void {
+	void queryClient.invalidateQueries({ queryKey: socialKeys.unread });
+	void queryClient.invalidateQueries({ queryKey: socialKeys.inbox });
+}
+
 /** Refetches social queries when the app comes back to the foreground. */
 export function useRefetchSocialOnForeground(): void {
 	const client = useQueryClient();
