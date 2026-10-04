@@ -1,10 +1,10 @@
 ---
 id: TASK-81
 title: Check BLE radio state before scanning
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-04-26 15:59'
-updated_date: '2026-10-02 17:24'
+updated_date: '2026-10-04 01:07'
 labels: []
 milestone: m-13
 dependencies: []
@@ -39,4 +39,14 @@ Implementation: new pure `checkScanReadiness` + `isPermissionDeniedError` + `SCA
 Review fix: runScan returns early while !bleReady (previously its catch treated a rejected isEnabled as 'ready' and cleared the permission-denied blocker, removing the resume retry). A readiness-check error now keeps the previous blocker. Turning BLE off in the app resets bleReady. New context field canResolveScanBlocker (false for bluetooth-off when !bleClient.canRequestEnable). device.tsx hides Scan/Restart while a blocker is set. Added BLEProvider tests with a mocked bleClient (permission-denied + manual scan + resume, BT off -> on, check failure, iOS no-fix).
 
 Lead verification 2026-10-02: independent review confirmed plugin usage and that location-off really blocks scan results (no neverForLocation in the merged manifest). Its one bug (a failed readiness check cleared the permission-denied blocker, leaving BLE stuck until restart) is fixed and covered by a new BLEProvider state test; 13/13 BLE tests pass. Remaining before Done: the Android device checks listed above, especially deny permission → tap Scan (no change) → grant in app settings → return → scan starts. Optional later: initialize with androidNeverForLocation + manifest neverForLocation so Android 12+ no longer needs location on.
+
+2026-10-04: briefly closed, reopened. Code and unit tests are green, but the Android device checks listed above were never run (Bluetooth off then on, location off, permission denied then Scan then grant in app settings then return). The Boox was not connected when attempted.
+
+Device check 2026-10-04, Boox Nova Air 2 (Android 11), debug build driven over CDP, system dialogs via uiautomator. Start state BT off, location off, location permission never granted, in-app BLE off; all restored afterwards. Turning in-app BLE on shows the location permission prompt; Deny -> 'Bluetooth permission was denied' + Open app settings, Scan/Restart hidden. Open app settings opens InstalledAppDetails; after granting and returning, initialize re-runs and the next blocker 'Bluetooth is turned off' + Turn on Bluetooth appears without any system dialog of its own. Turn on Bluetooth opens 'Lesefluss wants to turn on Bluetooth'; Allow -> 'Location is turned off' + Open location settings, which opens LocationSettingsActivity; location on and back -> 'Scanning for device...'. Bluetooth off in system settings while scanning -> 'Bluetooth is turned off' on return; on again -> scanning resumes on return. Not exercised: a system toggle flipped while the app stays in front (the Boox shade has no Bluetooth tile); that path is covered by the BLEProvider unit tests.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+BLE scans check readiness first: Bluetooth off, location off or permission denied each show a message with a fix-it action, auto-scan never opens a system dialog, and scanning resumes by itself once the cause is fixed. Unit-tested and verified on an Android 11 e-reader.
+<!-- SECTION:FINAL_SUMMARY:END -->

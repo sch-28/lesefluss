@@ -28,7 +28,12 @@ import { navigateToLink, replayPendingLink } from "../use-deep-links";
 
 function fakeRouter() {
 	const navigate = vi.fn();
-	return { router: { navigate } as unknown as AnyRouter, navigate };
+	const canGoBack = vi.fn(() => true);
+	return {
+		router: { navigate, history: { canGoBack } } as unknown as AnyRouter,
+		navigate,
+		canGoBack,
+	};
 }
 
 describe("pending link replay", () => {
@@ -53,8 +58,8 @@ describe("pending link replay", () => {
 	});
 
 	it("seeds the Social tab underneath a cold-start destination", async () => {
-		const { router, navigate } = fakeRouter();
-		vi.spyOn(window.history, "length", "get").mockReturnValue(1);
+		const { router, navigate, canGoBack } = fakeRouter();
+		canGoBack.mockReturnValue(false);
 		await navigateToLink(router, { kind: "invite", token: "tok" });
 		expect(navigate.mock.calls.map((c) => c[0].to)).toEqual([
 			"/tabs/social",
@@ -62,7 +67,7 @@ describe("pending link replay", () => {
 		]);
 
 		navigate.mockClear();
-		vi.spyOn(window.history, "length", "get").mockReturnValue(3);
+		canGoBack.mockReturnValue(true);
 		await navigateToLink(router, { kind: "invite", token: "tok" });
 		expect(navigate.mock.calls.map((c) => c[0].to)).toEqual(["/tabs/social/invite/$token"]);
 	});

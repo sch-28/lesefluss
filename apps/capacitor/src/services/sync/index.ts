@@ -336,6 +336,27 @@ async function withSyncLock(fn: () => Promise<void>): Promise<void> {
 // Pull (GET /api/sync → merge into local DB)
 // ---------------------------------------------------------------------------
 
+/**
+ * The local `lastRead` a server row implies: when its position last moved, if
+ * it was ever read. `lastRead` itself never syncs, so without this a device
+ * that pulls a library has no recent order and nothing to auto-open.
+ */
+export function seededLastRead(
+	serverBook: Pick<SyncBook, "wordPosition" | "updatedAt">,
+): number | null {
+	return serverBook.wordPosition > 0 ? serverBook.updatedAt : null;
+}
+
+/** Backfills rows pulled before `seededLastRead` existed. */
+export function lastReadBackfill(
+	local: Pick<Book, "lastRead">,
+	serverBook: Pick<SyncBook, "wordPosition" | "updatedAt">,
+	merge: ReturnType<typeof buildBookMergeUpdate>,
+): number | null {
+	if (local.lastRead != null || merge?.lastRead != null) return null;
+	return seededLastRead(serverBook);
+}
+
 function buildBookRowFromServer(
 	serverBook: SyncResponseBook,
 	chapterStatus: NonNullable<Book["chapterStatus"]>,
@@ -357,7 +378,7 @@ function buildBookRowFromServer(
 		// A server row written by a client that pre-dates the column has no
 		// metadata stamp; fall back to the row revision.
 		metadataUpdatedAt: serverBook.metadataUpdatedAt ?? serverBook.updatedAt,
-		lastRead: null,
+		lastRead: seededLastRead(serverBook),
 		finishedAt: serverBook.finishedAt ?? null,
 		description: serverBook.description ?? null,
 		language: serverBook.language ?? null,
@@ -678,6 +699,15 @@ export async function pullSync(): Promise<Set<string>> {
 				// made on another device, and a finish that happened in March must
 				// not be recorded as happening today.
 				await queries.updateBook(serverBook.bookId, update, serverBook.updatedAt);
+				changed = true;
+			}
+
+			// Device-local, so the position revision stays where it is.
+			const seeded = lastReadBackfill(local, serverBook, update);
+			if (seeded != null) {
+				await queries.updateBook(serverBook.bookId, { lastRead: seeded }, Date.now(), {
+					isDeviceLocal: true,
+				});
 				changed = true;
 			}
 		}

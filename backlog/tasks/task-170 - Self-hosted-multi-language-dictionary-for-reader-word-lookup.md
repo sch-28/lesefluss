@@ -1,10 +1,10 @@
 ---
 id: TASK-170
 title: Self-hosted multi-language dictionary for reader word lookup
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-28 20:44'
-updated_date: '2026-10-02 16:58'
+updated_date: '2026-10-03 23:20'
 labels:
   - reader
   - catalog
@@ -39,10 +39,10 @@ Subtasks cover the schema, the importer, the lookup endpoint, Unicode word norma
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Tapping a word in an English book returns a definition from our own backend, with no request to any third-party dictionary service
+- [x] #1 Tapping a word in an English book returns a definition from our own backend, with no request to any third-party dictionary service
 - [x] #2 Tapping a word in a German book returns a German-language definition
 - [x] #3 Looking up an inflected form such as "Sprüche" shows the lemma it points to and that lemma's actual definition
-- [ ] #4 The dictionary drawer displays Wiktionary CC BY-SA attribution, as required for redistributing the data
+- [x] #4 The dictionary drawer displays Wiktionary CC BY-SA attribution, as required for redistributing the data
 - [x] #5 Adding a further language requires only a configuration entry and an import run, no new code
 - [x] #6 apps/web CSP no longer allowlists any third-party dictionary origin
 <!-- AC:END -->
@@ -72,4 +72,12 @@ Disk: roughly 0.9 GB fresh for both languages, ~1.2 GB after a re-import cycle. 
 - **EPUB `dc:language` extraction has no test.** `book.packaging.metadata` is not populated under vitest, which affects title and author equally — a pre-existing repo limitation, not a regression. See TASK-170.6.
 - **The language chip is invisible in the sepia reader theme**, where `bg-muted` resolves to the drawer surface colour. Text stays legible; it is a theme-token collision. See TASK-170.5.
 - `DICTIONARY_HANDOFF.md` in the repo root is a temporary working file and should be deleted before committing.
+
+Closing check 2026-10-04: the reader's lookup (`services/dictionary/client.ts`) only calls `${CATALOG_URL}/dictionary`; no third-party dictionary host remains in the app or core. The drawer renders the response's Wiktionary attribution link (dictionary-modal.tsx, commented as required by CC BY-SA). All 7 subtasks Done.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Self-hosted dictionary: Kaikki/Wiktionary data imported into the catalog by an admin-triggered background job, `GET /dictionary` with a language fallback chain, Unicode-aware word normalization in the reader, books.language populated on import, and the reader's drawer pointed at our backend with CC BY-SA attribution. No request goes to a third-party dictionary service.
+<!-- SECTION:FINAL_SUMMARY:END -->

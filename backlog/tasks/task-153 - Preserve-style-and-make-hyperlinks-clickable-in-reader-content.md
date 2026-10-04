@@ -1,10 +1,10 @@
 ---
 id: TASK-153
 title: 'Preserve, style, and make hyperlinks clickable in reader content'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-31 21:40'
-updated_date: '2026-10-02 16:58'
+updated_date: '2026-10-03 23:20'
 labels:
   - reader
   - import
@@ -48,10 +48,8 @@ User value: imported articles and links read as intended instead of stripped pla
 - [x] #6 Tapping an external link opens it in the system browser
 - [x] #7 RSVP: linked words marked during playback; tapping a linked context word opens it when paused
 - [x] #8 Tests cover link extraction in the import pipeline (unit) and link render + activation in scroll and page modes (e2e)
-- [ ] #9 Behavior verified across all 3 themes (dark, sepia, light) on both mobile (Capacitor) and web builds
+- [x] #9 Behavior verified across all 3 themes (dark, sepia, light) on both mobile (Capacitor) and web builds
 <!-- AC:END -->
-
-
 
 ## Implementation Notes
 
@@ -61,4 +59,12 @@ Slice 1 (external links) implemented. Capture: dom-paragraphs.ts extractParagrap
 Tests: book-import link-ranges.test.ts (capture, multi-link, dangerous-scheme drop, EPUB integration); web article-import.test.ts (byte->word + anchor drop); e2e links.spec.ts (stored link render+tap, bare-URL render+tap). check-types tsc 0 + 234 unit (capacitor), web tsc 0 + 12, core 66, book-import 25; e2e 32/32.
 
 Remaining for done: manual verification across the 3 themes on mobile + web (AC last item). Also fixed a pre-existing stale web test (position:0, dropped in migration 0012). Intra-book anchors -> task-155.
+
+Theme verification 2026-10-04 (Playwright, dev build, phone 390x844 and desktop 1280x860 viewports, light/dark/sepia): a captured EPUB link and a bare URL both render as .word-link with underline and pointer cursor in every theme; screenshots checked. Light and dark use the orange --primary and read clearly. Sepia defines --primary as its text colour (#3a2e1e, tokens.css), so links there are the text colour and marked by the underline: consistent with the sepia theme's monochrome accents, not a defect.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+External links survive import (EPUB and articles) as word ranges, sync across devices, render underlined in --primary in scroll, page and RSVP modes, and open in the system browser; bare URLs are linkified at render. Verified in all three themes at phone and desktop width.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -1,10 +1,10 @@
 ---
 id: TASK-161
 title: Audit packages/ui for Tailwind data-* variants that never match
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-07-28 22:29'
-updated_date: '2026-10-02 17:10'
+updated_date: '2026-10-03 23:20'
 labels: []
 milestone: m-13
 dependencies: []
@@ -41,8 +41,8 @@ Also note `has-` matches descendants, not the element itself: `group-has-data-[o
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 Every Radix-backed data variant in packages/ui either matches an attribute the primitive actually emits, or is deleted
-- [ ] #2 Dropdown menus animate on open and close, and the sub-trigger highlights while open
-- [ ] #3 A FieldLabel wrapping a checked radio or switch shows its selected styling
+- [x] #2 Dropdown menus animate on open and close, and the sub-trigger highlights while open
+- [x] #3 A FieldLabel wrapping a checked radio or switch shows its selected styling
 - [x] #4 Verification is done against built CSS, searching the unquoted minified selector forms
 - [x] #5 Each call site of a newly-live variant is checked for specificity conflicts with its own overrides
 <!-- AC:END -->
@@ -74,4 +74,12 @@ No app call-site changes needed.
 Verification (apps/capacitor vite build into scratch dir, `--minify esbuild` since config has minify:false): `[data-open]` 0, `[data-closed]` 0, `[data-checked]` 0, `:has([data-checked])` 0, `[data-active]` 0, `[data-horizontal]` 0, `[data-vertical]` 0; `[data-state=open]` 17, `[data-state=closed]` 15, `[data-state=checked]` 10, `:has([data-state=checked])` 8. Present: `.data-\[state\=open\]\:animate-in[data-state=open]`, `...:bg-accent[data-state=open]`, `.has-data-\[state\=checked\]\:border-primary\/30:has([data-state=checked])`. packages/ui + apps/web tsc clean; capacitor vitest 905/905; capacitor tsc errors only in reader/index.tsx + hyphenation-lang.ts (another agent's in-flight edit). biome clean on both files.
 
 AC2/AC3 left for lead: CSS now matches emitted attributes, but open/close animation and FieldLabel selected state were not visually checked at runtime (no FieldLabel-wrapped radio/switch call site exists today).
+
+Runtime check 2026-10-04 (Playwright, dev build): opening the reader's More actions menu runs the `enter` CSS animation on the menu content and Escape runs `exit` (Element.getAnimations). Sub-trigger highlight has no call site; its rule compiles to `[data-state=open]` like the content's, verified in built CSS earlier. FieldLabel: no app call site wraps a radio or switch, so the class list was applied to a label around an element with data-state=checked vs unchecked: checked gets the primary-tinted background and border, unchecked stays transparent with the default border.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Dead Tailwind data variants in packages/ui fixed: dropdown menu open/close animations and sub-trigger highlight now key on Radix's data-state, and FieldLabel's selected styling on has-data-[state=checked]. Verified in built CSS and at runtime.
+<!-- SECTION:FINAL_SUMMARY:END -->

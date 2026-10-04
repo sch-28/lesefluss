@@ -1,10 +1,10 @@
 ---
 id: TASK-175
 title: Social hardening from the branch review
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-28 16:18'
-updated_date: '2026-10-02 16:58'
+updated_date: '2026-10-03 23:33'
 labels:
   - social
   - web
@@ -40,8 +40,8 @@ Out of scope: web-serial exclusion from social features (accepted as is), TASK-1
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Subtasks A to E are Done, or explicitly descoped with a note on this task
-- [ ] #2 Web, core and app unit/integration suites, typechecks and both Playwright projects pass at the end
+- [x] #1 Subtasks A to E are Done, or explicitly descoped with a note on this task
+- [x] #2 Web, core and app unit/integration suites, typechecks and both Playwright projects pass at the end
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -61,4 +61,12 @@ Everything automated is green. Subtasks 175.1 to 175.6 are Done: the live board,
 **Remaining:**
 - the user's manual pass, which includes the optional touch-callout check from TASK-175.2 #6 in a mobile browser;
 - TASK-171.16 (Play App Links).
+
+Closing run 2026-10-04 against a throwaway Postgres 16: web vitest 262/262 including all DB integration tests (3 consecutive full runs), core 169, book-import 111, capacitor 1030; tsc clean in web, core, book-import, capacitor; Playwright dev project 137 passed, web-build project (playwright.app.config.ts) 13 passed. One flake found and fixed on the way: feed.integration.test.ts's 90-day boundary test could lose its boundary event to listFeed's global cleanup run by profile-view.integration.test.ts in parallel with the real clock; the test now measures its boundary from an hour ahead.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Social hardening from the branch review, subtasks A-F done: live board robustness, web build and reader fixes, small server/website fixes, missing tests, a Playwright project against the /app web build, and the web build keeping its local store across the /login round trip. All suites, typechecks and both Playwright projects pass.
+<!-- SECTION:FINAL_SUMMARY:END -->

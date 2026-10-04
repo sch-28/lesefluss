@@ -77,7 +77,10 @@ const ShareIntentHandler: React.FC = () => {
 					// Any incoming intent jumps to the library tab so the user sees
 					// the import land. The library route handles the redirect from
 					// onboarding / reader / settings tabs.
-					if (!history.location.pathname.startsWith("/tabs/library")) {
+					// "/" only redirects onward, so a cold start replaces it: pushed on top,
+					// the first back would land on "/" and be sent to the library again.
+					if (history.location.pathname === "/") history.replace("/tabs/library");
+					else if (!history.location.pathname.startsWith("/tabs/library")) {
 						history.push("/tabs/library");
 					}
 

@@ -1,7 +1,7 @@
 import { type SyncBook, SyncBookSchema, wordPos } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
 import type { Book } from "../../db/schema";
-import { buildBookMergeUpdate } from "../index";
+import { buildBookMergeUpdate, lastReadBackfill, seededLastRead } from "../index";
 
 function makeLocal(overrides: Partial<Book> = {}): Book {
 	return {
@@ -257,5 +257,37 @@ describe("buildBookMergeUpdate: the two gates are independent", () => {
 			makeServer({ wordPosition: 50, wordCount: 250, updatedAt: 3000 }),
 		);
 		expect(update?.wordCount).toBe(250);
+	});
+});
+
+describe("seededLastRead", () => {
+	it("dates a book read elsewhere to when its position last moved", () => {
+		expect(seededLastRead({ wordPosition: 120, updatedAt: 5000 })).toBe(5000);
+	});
+});
+
+describe("lastReadBackfill", () => {
+	const readElsewhere = { wordPosition: 120, updatedAt: 5000 };
+
+	it("fills a row pulled before seeding existed", () => {
+		expect(lastReadBackfill({ lastRead: null }, readElsewhere, null)).toBe(5000);
+	});
+
+	it("leaves a row that already has a last read", () => {
+		expect(lastReadBackfill({ lastRead: 9000 }, readElsewhere, null)).toBeNull();
+	});
+
+	it("still fills a row whose merge only touches metadata", () => {
+		expect(lastReadBackfill({ lastRead: null }, readElsewhere, { title: "Edited" })).toBe(5000);
+	});
+
+	it("leaves it to the merge when this pull moves the position", () => {
+		expect(lastReadBackfill({ lastRead: null }, readElsewhere, { lastRead: 5000 })).toBeNull();
+	});
+
+	it("does nothing for a book never read anywhere", () => {
+		expect(
+			lastReadBackfill({ lastRead: null }, { wordPosition: 0, updatedAt: 5000 }, null),
+		).toBeNull();
 	});
 });

@@ -8,9 +8,9 @@ import { queries } from "../db/queries";
 import { parseDeepLink } from "./parse";
 import { type PendingLink, setPendingLink, takePendingLink } from "./pending-link";
 
-/** Navigates to a link's screen. A cold start has no history, so the Social tab is put underneath first. */
+/** Navigates to a link's screen. At the first history entry the Social tab is put underneath first. */
 export async function navigateToLink(router: AnyRouter, link: PendingLink): Promise<void> {
-	if (window.history.length <= 1) {
+	if (!router.history.canGoBack()) {
 		// Awaited: two navigations in one tick are batched and the replace is lost.
 		await router.navigate({ to: "/tabs/social", replace: true });
 	}

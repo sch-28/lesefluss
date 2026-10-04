@@ -1,10 +1,10 @@
 ---
 id: TASK-100
 title: Cover image storage optimization (resize + compress)
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-04-26 11:29'
-updated_date: '2026-10-02 17:19'
+updated_date: '2026-10-03 23:20'
 labels:
   - performance
   - storage
@@ -49,7 +49,7 @@ Out of scope: glossary avatars (Task-99 covers those separately).
 - [x] #2 Covers are resized to a documented max dimension and re-encoded with compression
 - [x] #3 New imports produce covers under target size budget
 - [x] #4 Existing oversized covers are migrated or a follow-up task is filed for the migration
-- [ ] #5 No visible quality regression on book/series cards or detail screens
+- [x] #5 No visible quality regression on book/series cards or detail screens
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -66,4 +66,12 @@ AC#4: follow-up TASK-186 filed instead of a migration. A local shrink cannot rea
 AC#5 not checked: dimensions were chosen for the largest on-screen use, but not visually verified on device. Check library grid (phone + desktop 6-col), detail shell, stats shelf with a fresh EPUB + PDF import.
 
 Review fixes: normalizeCover skips decoding when the header cannot be sniffed or declares > MAX_DECODE_PIXELS (decoding a huge image in a WebView is an OOM kill, and it is reachable from the folder-scan probe). A cover in a stored format (webp/jpeg/png) that is already within COVER_MAX_SIDE now counts as final even above the byte budget, so probe -> parse -> commit never re-encodes it a second time. Trade-off: a heavy JPEG cover that is already <= 600 px is kept as-is. PNG output skips the quality rungs because PNG ignores quality. The WebP probe is only cached when the encoder returned a blob. The PDF cover scale is min(1, 600 / longest side), so pages no longer come out 601-602 px. commitBook normalizes the cover before its commit timer starts. Real-cover measurement unchanged (WebP 26 332 B at 391x600).
+
+Visual check 2026-10-04 (Playwright, dev build): real Morning Star EPUB cover stored as WebP 391x600, 26 334 B. Shown at 107 CSS px wide in the phone library grid and 129 px on desktop; at 3x DPR the phone tile needs about 321 device px, under the stored 391. Screenshots of library grid and book detail at phone and desktop width show no softness or artefacts. Series covers are provider URLs and pass through unchanged.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Covers are normalized once (packages/book-import cover-image.ts): max 600 px long side, WebP (JPEG/PNG fallback) under a 30 KiB budget, applied in EPUB/PDF parsing and both commit paths. A real cover went from 97 KB to 26 KB with no visible loss in the grid or on the detail page. Migration of existing covers is TASK-186.
+<!-- SECTION:FINAL_SUMMARY:END -->

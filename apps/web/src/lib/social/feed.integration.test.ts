@@ -100,8 +100,8 @@ describe.skipIf(!hasDb)("activity feed (integration)", () => {
 			.where(eq(socialFeedEvent.actorId, userId));
 	}
 
-	async function feedTitles(viewer: string) {
-		return (await listFeed(viewer, { now })).items.map(
+	async function feedTitles(viewer: string, at = now) {
+		return (await listFeed(viewer, { now: at })).items.map(
 			(i) =>
 				`${i.actor.userId === viewer ? "me" : i.actor.handle.split("_")[0]}:${i.type}:${i.book.title}`,
 		);
@@ -278,7 +278,10 @@ describe.skipIf(!hasDb)("activity feed (integration)", () => {
 		await addBook(dan, "dddd2051");
 		await push(dan, "dddd2050", { wordPosition: 100 });
 		await push(dan, "dddd2051", { wordPosition: 100 });
-		const cutoff = now.getTime() - FEED_RETENTION_DAYS * DAY_MS;
+		// Parallel files call listFeed on the real clock, and its cleanup could delete
+		// an event aged to the exact boundary; measure from an hour ahead.
+		const later = new Date(now.getTime() + 3_600_000);
+		const cutoff = later.getTime() - FEED_RETENTION_DAYS * DAY_MS;
 		const age = async (bookId: string, createdAt: number) =>
 			db
 				.update(socialFeedEvent)
@@ -286,7 +289,7 @@ describe.skipIf(!hasDb)("activity feed (integration)", () => {
 				.where(and(eq(socialFeedEvent.actorId, dan), eq(socialFeedEvent.bookId, bookId)));
 		await age("dddd2050", cutoff);
 		await age("dddd2051", cutoff - 1);
-		expect(await feedTitles(ann)).toEqual(["dan:started:Book dddd2050"]);
+		expect(await feedTitles(ann, later)).toEqual(["dan:started:Book dddd2050"]);
 		expect((await eventsOf(dan)).map((e) => e.bookId)).toEqual(["dddd2050"]);
 	});
 

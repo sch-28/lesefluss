@@ -10,7 +10,9 @@ export function HardwareBack() {
 			// A drawer mounted outside the router survives navigation, so it has to
 			// take the press first: otherwise back moves the page behind it.
 			if (consumeBackPress()) return;
-			if (window.history.length > 1) {
+			// Not window.history.length: it never shrinks, so after any replace (an
+			// auto-opened book replaces "/" with the library) back never reached exit.
+			if (router.history.canGoBack()) {
 				router.history.back();
 			} else {
 				CapacitorApp.exitApp();

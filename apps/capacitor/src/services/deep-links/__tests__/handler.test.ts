@@ -34,7 +34,7 @@ function setup(options: { onboardingCompleted?: boolean } = {}) {
 	const openInBrowser = vi.fn(async () => {});
 	let clock = 10_000;
 	const handle = createDeepLinkHandler({
-		router: { navigate } as unknown as AnyRouter,
+		router: { navigate, history: { canGoBack: () => true } } as unknown as AnyRouter,
 		isOnboardingCompleted: async () => options.onboardingCompleted ?? true,
 		openInBrowser,
 		now: () => clock,
