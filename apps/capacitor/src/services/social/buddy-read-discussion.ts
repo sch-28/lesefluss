@@ -1,6 +1,7 @@
 import type { BuddyReaction, DiscussionAnchor, DiscussionPage } from "@lesefluss/core";
 import { discussionErrorMessage, SOCIAL_API } from "@lesefluss/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef } from "react";
 import { AuthedFetchError, authedFetch } from "../authed-fetch";
 import { bookKeys, socialKeys } from "../db/hooks/query-keys";
 import { queries } from "../db/queries";
@@ -67,6 +68,72 @@ export function useDiscussion(buddyReadId: string | null, options: { poll?: bool
 		refetchInterval: options.poll ? 60_000 : false,
 		refetchIntervalInBackground: false,
 	});
+}
+
+const RETRY_STEP_WORDS = 100;
+
+/**
+ * Worth pushing the position and refetching once the reader has reached where
+ * the nearest hidden item unlocks. A push that did not move the server
+ * (offline, sync off) waits another step before trying again.
+ */
+export function shouldRefetchDiscussion(
+	page: Pick<DiscussionPage, "nextUnlockWord">,
+	word: number,
+	lastTried: number | null,
+): boolean {
+	// Loose: a server from before this field leaves it undefined.
+	if (page.nextUnlockWord == null || word < page.nextUnlockWord) return false;
+	return lastTried === null || word >= lastTried + RETRY_STEP_WORDS;
+}
+
+/**
+ * Called with each position once it is in the local DB, so the push carries
+ * it: pushes and fetches again instead of waiting for the poll.
+ */
+export function useRefetchDiscussionAsYouRead(
+	buddyReadId: string | null,
+	discussion: ReturnType<typeof useDiscussion>,
+	enabled: boolean,
+	syncNow: () => Promise<void>,
+): (savedWord: number) => void {
+	const lastTriedRef = useRef<number | null>(null);
+	// A save landing mid-push would be lost, and with it the unlock, once the reader stops.
+	const queuedWordRef = useRef<number | null>(null);
+	const inFlightRef = useRef(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: resets per buddy read
+	useEffect(() => {
+		lastTriedRef.current = null;
+		queuedWordRef.current = null;
+	}, [buddyReadId]);
+	const latestRef = useRef({ discussion, enabled, syncNow });
+	latestRef.current = { discussion, enabled, syncNow };
+	const onPositionSaved = useCallback(async (savedWord: number) => {
+		if (inFlightRef.current) {
+			queuedWordRef.current = savedWord;
+			return;
+		}
+		inFlightRef.current = true;
+		let word: number | null = savedWord;
+		// The refetch result, not the hook's data: the re-render that updates it may not have run yet.
+		let page = latestRef.current.discussion.data;
+		try {
+			while (word !== null) {
+				const { discussion, enabled, syncNow } = latestRef.current;
+				if (enabled && page && shouldRefetchDiscussion(page, word, lastTriedRef.current)) {
+					lastTriedRef.current = word;
+					await syncNow().catch(() => {});
+					page = (await discussion.refetch()).data ?? page;
+					if (page.furthestWord >= word) lastTriedRef.current = null;
+				}
+				word = queuedWordRef.current;
+				queuedWordRef.current = null;
+			}
+		} finally {
+			inFlightRef.current = false;
+		}
+	}, []);
+	return useCallback((savedWord: number) => void onPositionSaved(savedWord), [onPositionSaved]);
 }
 
 function useDiscussionMutation<TVariables, TResult>(

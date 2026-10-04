@@ -33,6 +33,7 @@ import {
 	type GatedAnchor,
 	isUnlockedFor,
 	refreshFurthestWord,
+	unlockWordOf,
 } from "./discussion-gate";
 import { SocialError } from "./errors";
 import { createNotification } from "./inbox";
@@ -87,12 +88,7 @@ async function validateAnchor(
 }
 
 function gatedAnchorOf(c: BuddyReadComment): GatedAnchor {
-	return {
-		authorId: c.authorId,
-		anchorKind: c.anchorKind,
-		startWord: c.startWord,
-		endWord: c.endWord,
-	};
+	return { authorId: c.authorId, startWord: c.startWord };
 }
 
 /**
@@ -455,12 +451,7 @@ async function resolveTarget(
 	return {
 		buddyReadId: share.buddyReadId,
 		authorId: share.userId,
-		anchor: {
-			authorId: share.userId,
-			anchorKind: "range",
-			startWord: highlight.startWord,
-			endWord: highlight.endWord,
-		},
+		anchor: { authorId: share.userId, startWord: highlight.startWord },
 	};
 }
 
@@ -692,23 +683,26 @@ export async function getDiscussion(
 		}
 
 		let hiddenAhead = 0;
+		let nextUnlockWord: number | null = null;
+		const hide = (anchor: GatedAnchor) => {
+			hiddenAhead += 1;
+			const at = unlockWordOf(anchor);
+			if (nextUnlockWord === null || at < nextUnlockWord) nextUnlockWord = at;
+		};
 		const visibleComments: BuddyReadComment[] = [];
 		for (const c of topLevel) {
 			if (c.authorId && hiddenPeople.has(c.authorId)) continue;
 			const replies = repliesByParent.get(c.id) ?? [];
 			if (c.body === null && replies.length === 0) continue;
-			if (isUnlockedFor(viewer, gatedAnchorOf(c))) visibleComments.push(c);
-			else hiddenAhead += 1;
+			const anchor = gatedAnchorOf(c);
+			if (isUnlockedFor(viewer, anchor)) visibleComments.push(c);
+			else hide(anchor);
 		}
 		const visibleShares = liveShares.filter((s) => {
 			if (hiddenPeople.has(s.userId)) return false;
-			const unlocked = isUnlockedFor(viewer, {
-				authorId: s.userId,
-				anchorKind: "range",
-				startWord: s.startWord,
-				endWord: s.endWord,
-			});
-			if (!unlocked) hiddenAhead += 1;
+			const anchor = { authorId: s.userId, startWord: s.startWord };
+			const unlocked = isUnlockedFor(viewer, anchor);
+			if (!unlocked) hide(anchor);
 			return unlocked;
 		});
 
@@ -798,6 +792,7 @@ export async function getDiscussion(
 		return {
 			items,
 			hiddenAhead,
+			nextUnlockWord,
 			furthestWord: viewer.furthestWord,
 			showEverything: viewer.showEverything,
 			shareAllHighlights: myFlags?.shareAll ?? false,

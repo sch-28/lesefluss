@@ -58,8 +58,8 @@ export class BrowseController {
 	private enter(anchor: number): void {
 		if (this.isBrowsing) return;
 		// Leaving while browsing resumes at the anchor, so it must be durable. It
-		// can be ahead of the last save (scroll ticks, unchanged-word settles) or
-		// behind saves made before a fast scroll was recognised.
+		// can be ahead of the last save (scroll ticks) or behind saves made before
+		// a fast scroll was recognised.
 		if (anchor !== this.opts.getPersistedWord()) this.opts.writePosition(anchor);
 		this.opts.getSession()?.rewind(anchor);
 		this.resume.reset();

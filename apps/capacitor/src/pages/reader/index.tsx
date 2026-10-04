@@ -71,7 +71,10 @@ import { queries } from "../../services/db/queries";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Chapter, GlossaryEntry, Highlight } from "../../services/db/schema";
 import { providerLabel } from "../../services/serial-scrapers";
-import { useDiscussion } from "../../services/social/buddy-read-discussion";
+import {
+	useDiscussion,
+	useRefetchDiscussionAsYouRead,
+} from "../../services/social/buddy-read-discussion";
 import { useIsOnline } from "../../services/social/cache";
 import { pushSync, scheduleSyncPush } from "../../services/sync";
 import { reportEvent } from "../../services/telemetry";
@@ -311,6 +314,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// ticks write coarse paragraph-start words into lastWordRef mid-gesture; a
 	// scroll end that didn't really move restores this instead of keeping them.
 	const settledWordRef = useRef<number | null>(null);
+	const onPositionSavedRef = useRef<((word: number) => void) | null>(null);
 	// Flips true the first time the user actually moves position (scroll
 	// settle, word tap, jump, RSVP, scrub). Gates the unmount-flush so a
 	// brief re-mount (tanstack route transition double-render) whose seed
@@ -713,6 +717,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// The row is now durable; drop the synchronous fallback so it can't
 			// later be mistaken for an uncommitted write on the next mount.
 			clearPendingPosition(id);
+			onPositionSavedRef.current?.(word);
 			await pushPosition(id, word);
 			if (scheduleSync) scheduleSyncPush(5000);
 			if (import.meta.env.DEV) publishPositionSave(id, word);
@@ -880,23 +885,29 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				setProgressWord(settledWord);
 				return;
 			}
-			// Always restore the underline. An unchanged word skips the save so
-			// opening a book doesn't bump lastRead.
+			// Always restore the underline. A word already saved skips the save so
+			// opening a book doesn't bump lastRead. Not lastWordRef: scroll ticks set
+			// it to paragraph starts, so a settle on one would never be saved.
 			setActiveWord(word);
 			setProgressWord(word);
 			// Within JUMP_SETTLE_GUARD_MS the settle is the virtual list reconciling
 			// a jump; its viewport-top word sits before the jumped heading.
 			const isJumpSettle = Date.now() - lastJumpAtRef.current < JUMP_SETTLE_GUARD_MS;
-			// Before the unchanged-word return: scroll ticks often already hold the
-			// settled word, and skipping those settles would break the detector chain.
+			// Before the already-saved return: skipping those settles would break the
+			// detector chain.
 			const hasResumedReading =
 				!isJumpSettle && settledWord !== null && browse.recordSettle(settledWord, word);
-			if (lastWordRef.current === word) {
+			if (isJumpSettle) {
+				// The jump target may exist only in lastWordRef (a browse jump saves nothing).
+				if (lastWordRef.current === word) settledWordRef.current = word;
+				return;
+			}
+			if (persistedWordRef.current === word) {
+				lastWordRef.current = word;
 				settledWordRef.current = word;
 				if (hasResumedReading) browse.autoCommit();
 				return;
 			}
-			if (isJumpSettle) return;
 			lastWordRef.current = word;
 			userMovedRef.current = true;
 			savePosition(word);
@@ -1054,6 +1065,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const discussion = useDiscussion(discussionRead?.id ?? null, {
 		poll: isForeground && isOnline,
 	});
+	onPositionSavedRef.current = useRefetchDiscussionAsYouRead(
+		discussionRead?.id ?? null,
+		discussion,
+		isOnline,
+		pushSync,
+	);
 	const [threadIds, setThreadIds] = useState<string[] | null>(null);
 	const [commentSelection, setCommentSelection] = useState<CommentSelection | null>(null);
 	const [sharingHighlight, setSharingHighlight] = useState<Highlight | null>(null);

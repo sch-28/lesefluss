@@ -247,9 +247,7 @@ const buddyReadCommentTarget: NoticeTarget = {
 		if (!comment || comment.authorId !== targetUserId || comment.body === null) return null;
 		const visible = await isVisibleToViewer(exec, comment.buddyReadId, reporterId, {
 			authorId: comment.authorId,
-			anchorKind: comment.anchorKind,
 			startWord: comment.startWord,
-			endWord: comment.endWord,
 		});
 		if (!visible) return null;
 		return {
@@ -289,7 +287,6 @@ async function sharedHighlightRow(exec: DbExecutor, sharedHighlightId: string) {
 			userId: buddyReadSharedHighlight.userId,
 			removedAt: buddyReadSharedHighlight.removedAt,
 			startWord: syncHighlights.startWord,
-			endWord: syncHighlights.endWord,
 			text: syncHighlights.text,
 			note: syncHighlights.note,
 			deleted: syncHighlights.deleted,
@@ -314,16 +311,13 @@ const buddyReadHighlightTarget: NoticeTarget = {
 			share.userId !== targetUserId ||
 			share.removedAt ||
 			share.deleted !== false ||
-			share.startWord === null ||
-			share.endWord === null
+			share.startWord === null
 		) {
 			return null;
 		}
 		const visible = await isVisibleToViewer(exec, share.buddyReadId, reporterId, {
 			authorId: share.userId,
-			anchorKind: "range",
 			startWord: share.startWord,
-			endWord: share.endWord,
 		});
 		if (!visible) return null;
 		return {

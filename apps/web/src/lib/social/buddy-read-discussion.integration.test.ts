@@ -40,7 +40,7 @@ import {
 	updateDiscussionSettings,
 } from "./buddy-read-discussion";
 import { createBuddyRead, leaveBuddyRead, respondToBuddyReadInvite } from "./buddy-reads";
-import { isVisibleToViewer } from "./discussion-gate";
+import { isVisibleToViewer, UNLOCK_LOOKAHEAD_WORDS } from "./discussion-gate";
 import { blockUser, createFriendship } from "./friends";
 import { claimHandle } from "./handle";
 import { listInbox } from "./inbox";
@@ -130,11 +130,11 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 			originBookId: "dddd0001",
 			title: "Discussed",
 			content: "text",
-			wordCount: 100,
+			wordCount: 1000,
 			wordPosition: 0,
 			chapters: JSON.stringify([
 				{ title: "One", startWord: 0 },
-				{ title: "Two", startWord: 50 },
+				{ title: "Two", startWord: 500 },
 			]),
 			updatedAt: now,
 		});
@@ -173,7 +173,7 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 	test("anchors must lie in the book, and chapter anchors on a chapter start", async () => {
 		const post = (anchor: Parameters<typeof postComment>[1]["anchor"]) =>
 			postComment(alice, { buddyReadId: readId, anchor, body: "x" });
-		await expect(post(range(10, 100))).rejects.toMatchObject({ code: "invalid_anchor" });
+		await expect(post(range(10, 1000))).rejects.toMatchObject({ code: "invalid_anchor" });
 		await expect(post(range(20, 10))).rejects.toMatchObject({ code: "invalid_anchor" });
 		await expect(post({ kind: "chapter", startWord: 10 })).rejects.toMatchObject({
 			code: "invalid_anchor",
@@ -183,22 +183,31 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 		).rejects.toMatchObject({
 			code: "not_found",
 		});
-		expect((await post({ kind: "chapter", startWord: 50 })).commentId).toBeTruthy();
-		expect((await post(range(30, 40))).commentId).toBeTruthy();
+		expect((await post({ kind: "chapter", startWord: 500 })).commentId).toBeTruthy();
+		expect((await post(range(300, 400))).commentId).toBeTruthy();
 	});
 
-	test("a passage unlocks once its last word is read, a chapter comment once the chapter begins", async () => {
+	test("an item unlocks once its start is within the lookahead of the reader's position", async () => {
 		expect(await bodiesFor(bob)).toEqual([]);
-		expect((await getDiscussion(bob, readId)).hiddenAhead).toBe(2);
-		await setPosition(bob, 39);
+		expect(await getDiscussion(bob, readId)).toMatchObject({
+			hiddenAhead: 2,
+			nextUnlockWord: 300 - UNLOCK_LOOKAHEAD_WORDS,
+		});
+		await setPosition(bob, 300 - UNLOCK_LOOKAHEAD_WORDS - 1);
 		expect(await bodiesFor(bob)).toEqual([]);
-		await setPosition(bob, 40);
+		await setPosition(bob, 300 - UNLOCK_LOOKAHEAD_WORDS);
 		expect(await bodiesFor(bob)).toEqual(["x"]);
-		await setPosition(bob, 49);
-		expect((await getDiscussion(bob, readId)).hiddenAhead).toBe(1);
-		await setPosition(bob, 50);
+		await setPosition(bob, 500 - UNLOCK_LOOKAHEAD_WORDS - 1);
+		expect(await getDiscussion(bob, readId)).toMatchObject({
+			hiddenAhead: 1,
+			nextUnlockWord: 500 - UNLOCK_LOOKAHEAD_WORDS,
+		});
+		await setPosition(bob, 500 - UNLOCK_LOOKAHEAD_WORDS);
 		expect(await bodiesFor(bob)).toEqual(["x", "x"]);
-		expect((await getDiscussion(bob, readId)).hiddenAhead).toBe(0);
+		expect(await getDiscussion(bob, readId)).toMatchObject({
+			hiddenAhead: 0,
+			nextUnlockWord: null,
+		});
 	});
 
 	test("unlocked items stay unlocked after a jump back or a session wipe", async () => {
@@ -212,18 +221,18 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 			startedAt: now,
 			endedAt: now,
 			durationMs: 1000,
-			wordsRead: 45,
+			wordsRead: 60,
 			startWord: 0,
-			endWord: 45,
+			endWord: 60,
 			updatedAt: now,
 		});
-		expect((await getDiscussion(carol, readId)).furthestWord).toBe(45);
+		expect((await getDiscussion(carol, readId)).furthestWord).toBe(60);
 		await db.delete(syncReadingSessions).where(eq(syncReadingSessions.userId, carol));
 		expect(await bodiesFor(carol)).toEqual(["x"]);
 	});
 
 	test("own items are always visible; show-everything lifts the gate and can be switched off", async () => {
-		await postComment(carol, { buddyReadId: readId, anchor: range(90, 95), body: "late" });
+		await postComment(carol, { buddyReadId: readId, anchor: range(900, 950), body: "late" });
 		expect(await bodiesFor(carol)).toContain("late");
 		expect(await bodiesFor(bob)).not.toContain("late");
 		await updateDiscussionSettings(bob, { buddyReadId: readId, showEverything: true });
@@ -233,24 +242,20 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 		expect(
 			await isVisibleToViewer(db, readId, bob, {
 				authorId: carol,
-				anchorKind: "range",
-				startWord: 90,
-				endWord: 95,
+				startWord: 900,
 			}),
 		).toBe(false);
 		expect(
 			await isVisibleToViewer(db, readId, carol, {
 				authorId: carol,
-				anchorKind: "range",
-				startWord: 90,
-				endWord: 95,
+				startWord: 900,
 			}),
 		).toBe(true);
 	});
 
 	test("replies, edits and deletes; reply notices collapse per comment and skip the author's own", async () => {
 		const page = await getDiscussion(alice, readId);
-		const passage = page.items.find((i) => i.kind === "comment" && i.startWord === 30);
+		const passage = page.items.find((i) => i.kind === "comment" && i.startWord === 300);
 		const parentId = passage?.id ?? "";
 		await replyToComment(alice, { parentId, body: "self" });
 		expect(await inboxTypes(alice)).not.toContain("buddy_read_reply");
@@ -268,7 +273,7 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 		});
 
 		const late = (await getDiscussion(carol, readId)).items.find(
-			(i) => i.kind === "comment" && i.startWord === 90,
+			(i) => i.kind === "comment" && i.startWord === 900,
 		);
 		await expect(
 			replyToComment(bob, { parentId: late?.id ?? "", body: "peek" }),
@@ -300,7 +305,7 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 		const commentId = chapter?.id ?? "";
 		await addReaction(bob, { commentId, emoji: "👍" });
 		await addReaction(bob, { commentId, emoji: "👍" });
-		await setPosition(carol, 50);
+		await setPosition(carol, 500);
 		await addReaction(carol, { commentId, emoji: "👍" });
 		const view = (await getDiscussion(alice, readId)).items.find((i) => i.id === commentId);
 		expect(view?.reactions).toEqual([{ emoji: "👍", count: 2, mine: false }]);
@@ -313,7 +318,7 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 			(await getDiscussion(alice, readId)).items.find((i) => i.id === commentId)?.reactions,
 		).toEqual([{ emoji: "👍", count: 1, mine: false }]);
 		const late = (await getDiscussion(carol, readId)).items.find(
-			(i) => i.kind === "comment" && i.startWord === 90,
+			(i) => i.kind === "comment" && i.startWord === 900,
 		);
 		await expect(
 			addReaction(bob, { commentId: late?.id ?? "", emoji: "🔥" }),
@@ -337,7 +342,7 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 			buddyReadId: readId,
 			highlightId: "hl-bob-1",
 		});
-		await setPosition(alice, 60);
+		await setPosition(alice, 600);
 		const shared = (await getDiscussion(alice, readId)).items.find(
 			(i) => i.id === sharedHighlightId,
 		);
@@ -430,7 +435,7 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 			buddyReadId: readId,
 			highlightId: "hl-bob-3",
 		});
-		await setPosition(carol, 60);
+		await setPosition(carol, 600);
 		expect(await bodiesFor(carol)).toContain("hl:shared by default");
 		const bobComment = await postComment(bob, {
 			buddyReadId: readId,
@@ -454,7 +459,7 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 		// Hidden people do not count as hidden items either.
 		await setPosition(carol, 0);
 		expect((await getDiscussion(carol, readId)).hiddenAhead).toBe(0);
-		await setPosition(carol, 60);
+		await setPosition(carol, 600);
 		await db.delete(socialBlock).where(eq(socialBlock.blockerId, carol));
 	});
 
@@ -501,7 +506,7 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 		await expect(replyToComment(alice, { parentId: commentId, body: "hi" })).rejects.toMatchObject({
 			code: "not_found",
 		});
-		const anchor = { authorId: erin, anchorKind: "range" as const, startWord: 0, endWord: 0 };
+		const anchor = { authorId: erin, startWord: 0 };
 		expect(await isVisibleToViewer(db, readId, alice, anchor)).toBe(false);
 		await db.update(user).set({ banned: false }).where(eq(user.id, erin));
 		expect(await isVisibleToViewer(db, readId, alice, anchor)).toBe(true);
@@ -509,7 +514,7 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 
 	test("members need not be friends; a leaver's comments stay and their highlights go", async () => {
 		// bob and erin were never friends.
-		await setPosition(erin, 60);
+		await setPosition(erin, 600);
 		await addHighlight(erin, "hl-erin", 30, 31, "erin's passage");
 		await shareHighlight(erin, { buddyReadId: readId, highlightId: "hl-erin" });
 		await postComment(erin, { buddyReadId: readId, anchor: range(5, 6), body: "erin was here" });

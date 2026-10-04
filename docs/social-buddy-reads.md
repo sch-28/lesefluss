@@ -70,8 +70,11 @@ Routes: `POST /api/social/buddy-read`, `buddy-read-invite`, `buddy-read-invite-c
   share-all; `removed_at` for takedowns), `buddy_read_reaction` (one target, unique per target, user
   and emoji). Membership gains `furthest_word`, `share_all_highlights`, `show_everything`.
 - Gate (`discussion-gate.ts`): `refreshFurthestWord` raises `furthest_word` from the synced position
-  and the furthest session, never lowers it. `isUnlockedFor` opens a passage at its last word and a
-  chapter comment at the chapter start; own items and show-everything skip it. `isVisibleToViewer` is
+  and the furthest session, never lowers it. `isUnlockedFor` opens any item once its start is within
+  `UNLOCK_LOOKAHEAD_WORDS` (about a screen) of that position, since a saved position is the top of the
+  screen; own items and show-everything skip it. `getDiscussion` also returns `nextUnlockWord`, where the
+  nearest hidden item unlocks; the reader pushes and refetches once a save reaches it
+  (`useRefetchDiscussionAsYouRead`) instead of waiting for the 60s poll. `isVisibleToViewer` is
   the single-item form (membership, block, gate) for reports and later push previews.
 - `buddy-read-discussion.ts`: post, reply, edit, delete (placeholder when replies exist), share and
   unshare highlights (server needs the pushed highlight with text), share-all materialised lazily on

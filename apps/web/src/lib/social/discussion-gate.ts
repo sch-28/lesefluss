@@ -3,24 +3,29 @@ import type { DbExecutor } from "~/db";
 import { buddyReadMember, syncBooks, syncReadingSessions } from "~/db/schema";
 import { hasBlockEitherWay, isSociallyVisible, loadSocialUsers } from "./relationship";
 
-export type GatedAnchor = {
-	authorId: string | null;
-	anchorKind: "range" | "chapter";
-	startWord: number;
-	endWord: number;
-};
+export type GatedAnchor = { authorId: string | null; startWord: number };
 
 export type GateViewer = { userId: string; furthestWord: number; showEverything: boolean };
 
 /**
- * Whether the viewer has read far enough for an item. A passage unlocks once
- * its last word is behind the reader, a chapter comment once the chapter has
- * begun. The viewer's own items and the "show everything" override skip it.
+ * A saved position is roughly the first word on screen, so an item that starts
+ * within about a screen of it is already in view and counts as reached.
+ */
+export const UNLOCK_LOOKAHEAD_WORDS = 250;
+
+/**
+ * Whether the viewer has read far enough for an item: its start is within the
+ * lookahead of their furthest position. The viewer's own items and the "show
+ * everything" override skip it.
  */
 export function isUnlockedFor(viewer: GateViewer, item: GatedAnchor): boolean {
 	if (item.authorId === viewer.userId || viewer.showEverything) return true;
-	const unlockAt = item.anchorKind === "chapter" ? item.startWord : item.endWord;
-	return unlockAt <= viewer.furthestWord;
+	return unlockWordOf(item) <= viewer.furthestWord;
+}
+
+/** The furthest position at which the item unlocks. */
+export function unlockWordOf(item: GatedAnchor): number {
+	return item.startWord - UNLOCK_LOOKAHEAD_WORDS;
 }
 
 /**

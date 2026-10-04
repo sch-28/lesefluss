@@ -240,8 +240,7 @@ test("scrolling back saves the earlier position, also when leaving mid-scroll", 
 }) => {
 	const title = await seedAndOpen(page, bigBookFixture(), "big.epub");
 
-	// Each step leaves the reader, whose flush always writes the current word:
-	// a settle may skip its own save when a tick already recorded the same word.
+	// Each step leaves the reader, whose flush always writes the current word.
 	await reader.wheel(page, 2500);
 	await page.waitForTimeout(QUIET_MS);
 	await leaveReader(page);

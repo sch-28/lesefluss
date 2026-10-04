@@ -872,6 +872,8 @@ export type DiscussionPage = {
 	items: DiscussionItem[];
 	/** Items anchored past the viewer's furthest position, from people the viewer may see. */
 	hiddenAhead: number;
+	/** The furthest position at which the nearest hidden item unlocks; null when nothing is hidden. */
+	nextUnlockWord: number | null;
 	furthestWord: number;
 	showEverything: boolean;
 	shareAllHighlights: boolean;

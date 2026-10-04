@@ -97,8 +97,8 @@ export function DiscussionPanel({ id }: { id: string }) {
 			/>
 			<div className="mt-3 flex items-start gap-2 px-1">
 				<p className="m-0 flex-1 text-muted-foreground text-xs">
-					Comments and shared highlights unlock once you have read past them, so nobody sees ahead
-					of where they are.
+					Comments and shared highlights unlock as you reach them, so nobody sees ahead of where
+					they are.
 				</p>
 				<Button
 					variant="ghost"

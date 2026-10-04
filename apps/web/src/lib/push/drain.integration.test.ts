@@ -124,7 +124,7 @@ describe.skipIf(!hasDb)("push outbox (integration)", () => {
 			originBookId: "pppp0001",
 			title: "Pushed Book",
 			content: "text",
-			wordCount: 100,
+			wordCount: 1000,
 			wordPosition: 0,
 			updatedAt: now,
 		});
@@ -134,8 +134,8 @@ describe.skipIf(!hasDb)("push outbox (integration)", () => {
 		}));
 		await joinByInvite(bob);
 		await joinByInvite(carol);
-		await setPosition(bob, 100);
-		await setPosition(carol, 100);
+		await setPosition(bob, 1000);
+		await setPosition(carol, 1000);
 		await db.insert(session).values({
 			id: aliceSession,
 			token: `tok-${alice}`,
@@ -415,9 +415,9 @@ describe.skipIf(!hasDb)("push outbox (integration)", () => {
 	describe("discussion", () => {
 		const range = {
 			kind: "range" as const,
-			startWord: 10,
+			startWord: 300,
 			startCharInWord: 0,
-			endWord: 20,
+			endWord: 320,
 			endCharInWord: 0,
 		};
 		const longReply = `Spoiler ${"x".repeat(200)}`;
@@ -443,7 +443,7 @@ describe.skipIf(!hasDb)("push outbox (integration)", () => {
 				data: { route: `/tabs/social/buddy-read-discussion/${readId}` },
 			});
 
-			await setPosition(alice, 30);
+			await setPosition(alice, 320);
 			await replyToComment(bob, { parentId: commentId, body: longReply });
 			await drain(afterWindow());
 			const preview = sent[1]?.message.body ?? "";

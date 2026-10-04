@@ -210,9 +210,7 @@ async function renderReply(
 	const [reply] = await exec
 		.select({
 			body: buddyReadComment.body,
-			anchorKind: buddyReadComment.anchorKind,
 			startWord: buddyReadComment.startWord,
-			endWord: buddyReadComment.endWord,
 		})
 		.from(buddyReadComment)
 		.where(
@@ -229,7 +227,7 @@ async function renderReply(
 		exec,
 		parent.buddyReadId,
 		row.recipientId,
-		{ authorId: actorId, ...reply },
+		{ authorId: actorId, startWord: reply.startWord },
 		now,
 	);
 	return isUnlocked ? { ...fallback, body: clip(reply.body, PUSH_PREVIEW_MAX_CHARS) } : fallback;

@@ -49,9 +49,7 @@ test("a figure at the viewport top makes the paragraph after it the position, an
 	expect(expected).toBeGreaterThan(0);
 
 	// Park the figure at the bottom first so the move to the top is a real
-	// scroll. The scroll tick records the paragraph after the figure as the
-	// position and the settle finds the same word, so no extra write happens
-	// here; leaving the reader flushes it.
+	// scroll. The settle saves the paragraph after the figure as the position.
 	await figure.evaluate((el) => el.scrollIntoView({ block: "end" }));
 	await page.waitForTimeout(reader.OPEN_SETTLE_MS);
 	await figure.evaluate((el) => el.scrollIntoView({ block: "start" }));
