@@ -1,9 +1,10 @@
-import type { LiveMember } from "@lesefluss/core";
+import type { BuddyReadMemberGoal, LiveMember } from "@lesefluss/core";
 import { cn } from "@lesefluss/ui/utils";
 import { useEffect, useState } from "react";
 import { useIsForeground } from "../../hooks/use-is-foreground";
 import { useBuddyReadProgress, useBuddyReads } from "../../services/social/buddy-reads";
 import { useIsOnline } from "../../services/social/cache";
+import { signed } from "../library/reading-goal/goal-model";
 
 export type BuddyMarker = {
 	userId: string;
@@ -15,6 +16,8 @@ export type BuddyMarker = {
 	percent: number;
 	/** Set while they have the book open right now. */
 	live: LiveMember | null;
+	/** Their standing against their own goal on the book, when they share it. */
+	goal: BuddyReadMemberGoal | null;
 };
 
 /** The buddy read this book is in right now, if any; finished reads keep their discussion too. */
@@ -49,6 +52,7 @@ export function useBuddyReadMarkers(
 			wordPosition,
 			percent: Math.min(100, Math.max(0, (wordPosition / ownWordCount) * 100)),
 			live: now,
+			goal: p.goal,
 		};
 	});
 	return { markers, approximate: progress.data?.approximate ?? false };
@@ -66,7 +70,7 @@ function relativeTo(theirs: number, mine: number): string {
  * unreliable, so it is left out, as on the buddy-read page.
  */
 export function markerDetail(
-	marker: Pick<BuddyMarker, "live" | "wordPosition">,
+	marker: Pick<BuddyMarker, "live" | "wordPosition" | "goal">,
 	myWord: number,
 	approximate: boolean,
 ): string {
@@ -75,6 +79,7 @@ export function markerDetail(
 		parts.push(marker.live.wpm !== null ? `reading now · ${marker.live.wpm} wpm` : "reading now");
 	}
 	if (!approximate) parts.push(relativeTo(marker.wordPosition, myWord));
+	if (marker.goal) parts.push(`goal ${signed(marker.goal.aheadDays, " d")}`);
 	return parts.join(" · ");
 }
 

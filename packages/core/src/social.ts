@@ -660,9 +660,22 @@ export const BuddyReadRemoveMemberBodySchema = z.object({
 	buddyReadId: uuidField,
 	userId: userIdField,
 });
+const TARGET_DATE_DAY_MS = 86_400_000;
+const TARGET_DATE_MAX_YEARS = 5;
+
+/** A deadline from yesterday (a day behind in some zone) to five years out; null clears it. */
 export const BuddyReadTargetDateBodySchema = z.object({
 	buddyReadId: uuidField,
-	targetDate: z.number().int().nonnegative().nullable(),
+	targetDate: z
+		.number()
+		.int()
+		.refine(
+			(ms) =>
+				ms >= Date.now() - TARGET_DATE_DAY_MS &&
+				ms <= Date.now() + TARGET_DATE_MAX_YEARS * 366 * TARGET_DATE_DAY_MS,
+			{ message: "target date out of range" },
+		)
+		.nullable(),
 });
 
 export type BuddyReadStatus = "in_progress" | "finished";
@@ -725,6 +738,13 @@ export type BuddyReadDetail = BuddyReadSummary & {
 	invites: BuddyReadInviteSummary[];
 };
 
+/**
+ * A member's standing against their own reading goal on the buddy-read book:
+ * days ahead (positive) or behind the plan line. Days only, never percent:
+ * the two together would reveal the plan's daily amount and so its date.
+ */
+export type BuddyReadMemberGoal = { aheadDays: number };
+
 export type BuddyReadProgress = {
 	approximate: boolean;
 	participants: {
@@ -735,6 +755,8 @@ export type BuddyReadProgress = {
 		wordPosition: number;
 		wordCount: number | null;
 		percent: number | null;
+		/** Null unless both the viewer and this member share live activity and the member has a goal. */
+		goal: BuddyReadMemberGoal | null;
 	}[];
 };
 

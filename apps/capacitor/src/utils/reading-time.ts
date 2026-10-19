@@ -44,3 +44,13 @@ export function bookPageCount(book: { seriesId: string | null; wordCount: number
 	if (book.seriesId !== null || book.wordCount <= 0) return null;
 	return estimatePages(book.wordCount);
 }
+
+/** A percent with one decimal, as goal stats show it: "1.3". */
+export function percentLabel(value: number): string {
+	return (Math.round(value * 10) / 10).toFixed(1);
+}
+
+/** "~10 min", "~1h 5m", or "< 1 min". */
+export function minutesLabel(minutes: number): string {
+	return minutes < 1 ? "< 1 min" : `~${formatReadingTime(minutes)}`;
+}

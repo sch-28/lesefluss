@@ -17,6 +17,7 @@ declare global {
 			lastKind: "checkpoint" | "flush";
 			bookId: string;
 		};
+		__lesefluss_e2e_session_ticks?: number;
 		__lesefluss_e2e_link_open?: {
 			href: string;
 			at: number;

@@ -7,6 +7,7 @@ import {
 	type SyncHighlight,
 	type SyncPayload,
 	SyncPayloadSchema,
+	type SyncReadingGoal,
 	type SyncReadingSession,
 	type SyncResponse,
 	type SyncSeries,
@@ -20,6 +21,7 @@ import {
 	syncBooks,
 	syncGlossaryEntries,
 	syncHighlights,
+	syncReadingGoals,
 	syncReadingSessions,
 	syncSeries,
 	syncSettings,
@@ -38,6 +40,7 @@ import { checkLimit } from "~/lib/rate-limit";
 import { requireAuth } from "~/lib/session-middleware";
 import { settleBuddyReads } from "~/lib/social/buddy-reads";
 import { upsertSyncBooks } from "~/lib/sync-book-upsert";
+import { upsertSyncGoals } from "~/lib/sync-goal-upsert";
 
 // Body size limits are enforced at the reverse proxy (Coolify/Traefik). The
 // Content-Length header is client-controlled, so enforcing it in Node here
@@ -156,16 +159,25 @@ async function getUserSyncData(
 		// only for books the client says it doesn't have.
 		hasContent: sql<boolean>`${syncBooks.content} IS NOT NULL`,
 	};
-	const [books, settingsRows, highlights, glossaryRows, seriesRows, readingSessionRows, usedBytes] =
-		await Promise.all([
-			db.select(metadataCols).from(syncBooks).where(eq(syncBooks.userId, userId)),
-			db.select().from(syncSettings).where(eq(syncSettings.userId, userId)),
-			db.select().from(syncHighlights).where(eq(syncHighlights.userId, userId)),
-			db.select().from(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId)),
-			db.select().from(syncSeries).where(eq(syncSeries.userId, userId)),
-			db.select().from(syncReadingSessions).where(eq(syncReadingSessions.userId, userId)),
-			contentUsage(db, userId),
-		]);
+	const [
+		books,
+		settingsRows,
+		highlights,
+		glossaryRows,
+		seriesRows,
+		readingSessionRows,
+		goalRows,
+		usedBytes,
+	] = await Promise.all([
+		db.select(metadataCols).from(syncBooks).where(eq(syncBooks.userId, userId)),
+		db.select().from(syncSettings).where(eq(syncSettings.userId, userId)),
+		db.select().from(syncHighlights).where(eq(syncHighlights.userId, userId)),
+		db.select().from(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId)),
+		db.select().from(syncSeries).where(eq(syncSeries.userId, userId)),
+		db.select().from(syncReadingSessions).where(eq(syncReadingSessions.userId, userId)),
+		db.select().from(syncReadingGoals).where(eq(syncReadingGoals.userId, userId)),
+		contentUsage(db, userId),
+	]);
 
 	// Fetch content only for books the client doesn't have locally and which aren't tombstoned
 	const needContentIds = books
@@ -309,9 +321,30 @@ async function getUserSyncData(
 					wordsRead: r.wordsRead,
 					startWord: r.startWord,
 					endWord: r.endWord,
+					furthestWord: r.furthestWord,
 					wpmAvg: r.wpmAvg,
 					updatedAt: toMs(r.updatedAt),
 				}) as SyncReadingSession,
+		),
+		readingGoals: goalRows.map(
+			(g): SyncReadingGoal => ({
+				goalId: g.goalId,
+				bookId: g.bookId,
+				mode: g.mode,
+				status: g.status,
+				startedAt: toMs(g.startedAt),
+				startWord: g.startWord,
+				planStartDate: g.planStartDate,
+				planStartWord: g.planStartWord,
+				targetDate: g.targetDate,
+				dailyPercent: g.dailyPercent,
+				carriedDaysMet: g.carriedDaysMet,
+				completedAt: g.completedAt ? toMs(g.completedAt) : null,
+				reminderTime: g.reminderTime,
+				deleted: g.deleted,
+				createdAt: toMs(g.createdAt),
+				updatedAt: toMs(g.updatedAt),
+			}),
 		),
 	};
 }
@@ -602,6 +635,7 @@ export const Route = createFileRoute("/api/sync")({
 									wordsRead: r.wordsRead,
 									startWord: r.startWord,
 									endWord: r.endWord,
+									furthestWord: r.furthestWord ?? null,
 									wpmAvg: r.wpmAvg,
 									updatedAt: toDate(r.updatedAt),
 								})),
@@ -618,9 +652,19 @@ export const Route = createFileRoute("/api/sync")({
 									startWord: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.start_word ELSE sync_reading_sessions.start_word END`,
 									endWord: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.end_word ELSE sync_reading_sessions.end_word END`,
 									wpmAvg: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.wpm_avg ELSE sync_reading_sessions.wpm_avg END`,
+									// An older client sends no furthest word; keep one a newer client stored.
+									furthestWord: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN COALESCE(excluded.furthest_word, sync_reading_sessions.furthest_word) ELSE sync_reading_sessions.furthest_word END`,
 									updatedAt: sql`GREATEST(excluded.updated_at, sync_reading_sessions.updated_at)`,
 								},
 							});
+					}
+					// Absent from clients that pre-date goals: nothing to merge.
+					if (payload.readingGoals) {
+						await upsertSyncGoals(
+							tx,
+							userId,
+							payload.readingGoals.filter((g) => !takenDown.has(g.bookId)),
+						);
 					}
 					return fitted;
 				});

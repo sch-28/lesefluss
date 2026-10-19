@@ -1,5 +1,6 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: test fixture array access */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { log } from "../../../utils/log";
 import {
 	HARD_END_MS,
 	HEARTBEAT_MS,
@@ -20,6 +21,8 @@ function setup(opts?: {
 	let wpm: number | null = opts?.wpm === undefined ? 250 : opts.wpm;
 	let idCounter = 0;
 	const persisted: Array<{ row: SessionRow; kind: "checkpoint" | "flush" }> = [];
+	const furthest: Array<[id: string, word: number | null]> = [];
+	const removed: string[] = [];
 
 	const tracker = new SessionTracker({
 		bookId: "book1",
@@ -27,6 +30,8 @@ function setup(opts?: {
 		getPosition: () => position,
 		getWpmSetting: () => wpm,
 		persist: (row, kind) => persisted.push({ row, kind }),
+		onFurthestRead: (id, word) => furthest.push([id, word]),
+		remove: (id) => removed.push(id),
 		now: () => clock,
 		newId: () => `id${++idCounter}`,
 	});
@@ -34,6 +39,8 @@ function setup(opts?: {
 	return {
 		tracker,
 		persisted,
+		furthest,
+		removed,
 		advance(ms: number) {
 			clock += ms;
 		},
@@ -795,5 +802,227 @@ describe("SessionTracker credit budget", () => {
 		const row = env.persisted.at(-1)!.row;
 		expect(row.endWord).toBe(1_100);
 		expect(row.wordsRead).toBe(200);
+	});
+});
+
+describe("SessionTracker furthest word", () => {
+	/** Reads `words` per poll for `ticks` polls, slow enough to be credited in full. */
+	function read(env: ReturnType<typeof setup>, ticks: number, words = 10) {
+		for (let i = 0; i < ticks; i++) {
+			env.advance(POLL_MS);
+			env.movePosition(words);
+			env.tracker.tick();
+		}
+	}
+
+	it("records how far reading got, not where a jump or moving back left the sitting", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		read(env, 4);
+		env.setPosition(5_000);
+		env.advance(POLL_MS);
+		env.tracker.tick();
+		env.setPosition(10);
+		env.advance(POLL_MS);
+		env.tracker.tick();
+		env.tracker.finalize();
+		const row = env.persisted.at(-1)!.row;
+		expect(row.endWord).toBe(10);
+		expect(row.furthestWord).toBe(40);
+		expect(env.furthest.at(-1)).toEqual(["id1", 40]);
+	});
+
+	it("reports nothing for a sitting that has read nothing, such as one opened at a jump's target", () => {
+		const env = setup({ initialPos: 300 });
+		env.tracker.setReading(true);
+		env.advance(POLL_MS);
+		env.tracker.tick();
+		expect(env.furthest).toEqual([]);
+		read(env, 2);
+		expect(env.furthest.at(-1)).toEqual(["id1", 320]);
+	});
+
+	it("follows a rewind back, and a discard takes the sitting's reading back", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		read(env, 4);
+		env.tracker.rewindTo(15);
+		expect(env.furthest.at(-1)).toEqual(["id1", 15]);
+		env.tracker.discard();
+		expect(env.furthest.at(-1)).toEqual(["id1", null]);
+	});
+
+	it("never retracts a finalized sitting", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		read(env, 4);
+		env.tracker.finalize();
+		const calls = env.furthest.length;
+		env.tracker.discard();
+		expect(env.furthest).toHaveLength(calls);
+	});
+});
+
+describe("SessionTracker at midnight", () => {
+	it("closes the sitting before midnight and goes on in a new one from the same spot", () => {
+		const env = setup();
+		const midnight = new Date(2026, 2, 2).getTime();
+		env.setClock(midnight - 60_000);
+		env.tracker.setReading(true);
+		for (let i = 0; i < 16; i++) {
+			env.advance(POLL_MS);
+			env.movePosition(10);
+			env.tracker.tick();
+		}
+		env.tracker.finalize();
+
+		const flushes = env.persisted.filter((p) => p.kind === "flush").map((p) => p.row);
+		expect(flushes).toHaveLength(2);
+		const [before, after] = flushes;
+		expect(before!.endedAt).toBeLessThan(midnight);
+		expect(before!.durationMs).toBe(60_000);
+		expect(after!.id).not.toBe(before!.id);
+		expect(after!.startedAt).toBe(midnight);
+		expect(after!.startWord).toBe(before!.endWord);
+		expect(after!.furthestWord).toBe(160);
+		expect(before!.wordsRead + after!.wordsRead).toBe(160);
+	});
+
+	it("keeps a sitting paused over midnight out of the new day", () => {
+		const env = setup();
+		const midnight = new Date(2026, 2, 2).getTime();
+		env.setClock(midnight - 120_000);
+		env.tracker.setReading(true);
+		for (let i = 0; i < 6; i++) {
+			env.advance(POLL_MS);
+			env.movePosition(10);
+			env.tracker.tick();
+		}
+		env.tracker.setForeground(false);
+		env.setClock(midnight + 60_000);
+		env.tracker.setForeground(true);
+		env.tracker.finalize();
+		const rows = env.persisted.map((p) => p.row);
+		const first = rows.filter((r) => r.id === "id1");
+		expect(first.every((r) => r.endedAt < midnight)).toBe(true);
+		expect(first.at(-1)!.furthestWord).toBe(60);
+	});
+});
+
+describe("SessionTracker round 2", () => {
+	const midnight = new Date(2026, 2, 2).getTime();
+
+	function readAt(env: ReturnType<typeof setup>, ticks: number) {
+		for (let i = 0; i < ticks; i++) {
+			env.advance(POLL_MS);
+			env.movePosition(10);
+			env.tracker.tick();
+		}
+	}
+
+	it("gives a sitting no time after its last activity when the timer slept through midnight", () => {
+		const env = setup();
+		env.setClock(midnight - 30 * 60_000);
+		env.tracker.setReading(true);
+		readAt(env, 12);
+		env.setClock(midnight + 30 * 60_000);
+		env.tracker.tick();
+		const [row] = env.persisted.filter((p) => p.kind === "flush").map((p) => p.row);
+		expect(row!.durationMs).toBe(60_000);
+		expect(row!.endedAt).toBeLessThan(midnight);
+		// No sitting runs on: the next activity opens one, starting then.
+		expect(env.tracker._inspect().hasSession).toBe(false);
+		env.advance(60_000);
+		env.tracker.markActivity();
+		readAt(env, 2);
+		env.tracker.finalize();
+		const next = env.persisted.at(-1)!.row;
+		expect(next.startedAt).toBe(midnight + 31 * 60_000);
+	});
+
+	it("keeps a sitting over several midnights in its own day", () => {
+		const env = setup();
+		env.setClock(midnight - 120_000);
+		env.tracker.setReading(true);
+		readAt(env, 6);
+		env.setClock(midnight + 2 * 86_400_000 + 60_000);
+		env.tracker.tick();
+		const rows = env.persisted.map((p) => p.row);
+		expect(rows.every((r) => r.endedAt < midnight)).toBe(true);
+		expect(env.tracker._inspect().hasSession).toBe(false);
+	});
+
+	it("does not retract a sitting closed at midnight", () => {
+		const env = setup();
+		env.setClock(midnight - 60_000);
+		env.tracker.setReading(true);
+		readAt(env, 16);
+		env.tracker.discard();
+		const retracted = env.furthest.filter(([, word]) => word === null).map(([id]) => id);
+		expect(retracted).not.toContain("id1");
+	});
+
+	it("closes a sitting paused over midnight without warning about the noise floor", () => {
+		const warn = vi.spyOn(log, "warn");
+		const env = setup();
+		env.setClock(midnight - 120_000);
+		env.tracker.setReading(true);
+		readAt(env, 6);
+		env.tracker.setForeground(false);
+		env.setClock(midnight + 60_000);
+		env.tracker.finalize();
+		expect(warn).not.toHaveBeenCalled();
+		expect(env.persisted.filter((p) => p.row.id === "id1").at(-1)!.row.endedAt).toBeLessThan(
+			midnight,
+		);
+	});
+
+	it("deletes the written row of a discarded sitting, and only that", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		readAt(env, 2);
+		env.tracker.discard();
+		expect(env.removed).toEqual([]);
+
+		env.tracker.setReading(false);
+		env.tracker.setReading(true);
+		readAt(env, 4);
+		env.tracker.setForeground(false);
+		env.tracker.discard();
+		expect(env.removed).toEqual(["id2"]);
+	});
+
+	it("handles the clock or zone moving back a day without a day-long sitting", () => {
+		const env = setup();
+		env.setClock(midnight + 30 * 60_000);
+		env.tracker.setReading(true);
+		readAt(env, 12);
+		// Flying west: 00:31 becomes 23:31 the evening before.
+		env.setClock(midnight - 29 * 60_000);
+		readAt(env, 4);
+		env.tracker.finalize();
+		const [first, second] = env.persisted.filter((p) => p.kind === "flush").map((p) => p.row);
+		expect(first!.durationMs).toBe(60_000);
+		expect(second!.startedAt).toBe(midnight - 29 * 60_000 + POLL_MS);
+		expect(second!.durationMs).toBeLessThan(60_000);
+	});
+
+	it("ends a sitting read straight through midnight at midnight, matching its duration", () => {
+		const env = setup();
+		env.setClock(midnight - 60_000);
+		env.tracker.setReading(true);
+		readAt(env, 16);
+		const [before] = env.persisted.filter((p) => p.kind === "flush").map((p) => p.row);
+		expect(before!.endedAt).toBe(midnight - 1);
+		expect(before!.durationMs).toBeLessThanOrEqual(before!.endedAt - before!.startedAt + 1);
+	});
+
+	it("records no furthest word once everything read was rewound as browsing", () => {
+		const env = setup({ initialPos: 100 });
+		env.tracker.setReading(true);
+		readAt(env, 4);
+		env.tracker.setForeground(false);
+		env.tracker.rewindTo(100);
+		expect(env.persisted.at(-1)!.row.furthestWord).toBeNull();
 	});
 });

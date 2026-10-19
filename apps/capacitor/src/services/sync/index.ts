@@ -11,6 +11,8 @@ import {
 	type SyncGlossaryEntry,
 	type SyncHighlight,
 	type SyncPayload,
+	type SyncReadingGoal,
+	SyncReadingGoalSchema,
 	type SyncReadingSession,
 	SyncReadingSessionSchema,
 	type SyncResponse,
@@ -36,10 +38,12 @@ import type {
 	GlossaryEntry,
 	Highlight,
 	NewBook,
+	ReadingGoal,
 	ReadingSession,
 	Series,
 	Settings,
 } from "../db/schema";
+import { requestReminderSync } from "../goal-reminders";
 import { clearDeliveredPushes, unregisterPush } from "../push";
 import { queryClient } from "../query-client";
 import { SYNC_URL } from "./auth-client";
@@ -207,6 +211,27 @@ function toSyncError(err: unknown): unknown {
 		: err;
 }
 
+let serverGoalsCleared = false;
+
+/**
+ * Goals stop being pushed while stats sync is off, so their server copy must
+ * go: buddies see a standing worked out from it. Retried on each push until
+ * one gets through; switching stats back on pushes the goals again in full.
+ */
+async function clearServerGoalsWhileStatsOff(syncStats: boolean): Promise<void> {
+	if (syncStats) {
+		serverGoalsCleared = false;
+		return;
+	}
+	if (serverGoalsCleared) return;
+	try {
+		await syncFetch("/api/sync/wipe-goals", { method: "POST" });
+		serverGoalsCleared = true;
+	} catch (err) {
+		log("sync", `wipe-goals failed: ${err instanceof Error ? err.message : String(err)}`);
+	}
+}
+
 /**
  * Hard-delete every reading session for the current user on the server.
  * Sessions are append-only with no tombstone column, so the danger-zone
@@ -359,6 +384,7 @@ function sessionToSync(s: ReadingSession): SyncReadingSession {
 		wordsRead: s.wordsRead,
 		startWord: s.startWord,
 		endWord: s.endWord,
+		furthestWord: s.furthestWord,
 		wpmAvg: s.wpmAvg,
 		updatedAt: s.updatedAt,
 	};
@@ -376,6 +402,89 @@ function entryToSync(e: GlossaryEntry): SyncGlossaryEntry {
 		createdAt: e.createdAt,
 		updatedAt: e.updatedAt,
 	};
+}
+
+export function goalToSync(g: ReadingGoal): SyncReadingGoal {
+	return {
+		goalId: g.id,
+		bookId: g.bookId,
+		mode: g.mode,
+		status: g.status,
+		startedAt: g.startedAt,
+		startWord: g.startWord,
+		planStartDate: g.planStartDate,
+		planStartWord: g.planStartWord,
+		targetDate: g.targetDate,
+		dailyPercent: g.dailyPercent,
+		carriedDaysMet: g.carriedDaysMet,
+		completedAt: g.completedAt,
+		reminderTime: g.reminderTime,
+		deleted: g.deleted,
+		createdAt: g.createdAt,
+		updatedAt: g.updatedAt,
+	};
+}
+
+function goalFromSync(g: SyncReadingGoal): ReadingGoal {
+	return {
+		id: g.goalId,
+		bookId: g.bookId,
+		mode: g.mode,
+		status: g.status,
+		startedAt: g.startedAt,
+		startWord: wordPos(g.startWord),
+		planStartDate: g.planStartDate,
+		planStartWord: wordPos(g.planStartWord),
+		targetDate: g.targetDate,
+		dailyPercent: g.dailyPercent,
+		carriedDaysMet: g.carriedDaysMet,
+		completedAt: g.completedAt,
+		reminderTime: g.reminderTime,
+		deleted: g.deleted,
+		createdAt: g.createdAt,
+		updatedAt: g.updatedAt,
+	};
+}
+
+/**
+ * Last-write-wins per goal, a delete included: a server tombstone at least as
+ * new as the local row removes it, and a local edit made after a delete
+ * elsewhere survives to be pushed. Live goals for books this device does not
+ * hold are skipped. Pure so the rules can be tested without a database.
+ */
+export function buildGoalMerge(
+	local: ReadingGoal[],
+	server: unknown[],
+	liveBookIds: ReadonlySet<string>,
+): { upserts: ReadingGoal[]; deletes: string[]; rejected: number } {
+	const localById = new Map(local.map((g) => [g.id, g]));
+	const upserts: ReadingGoal[] = [];
+	const deletes: string[] = [];
+	let rejected = 0;
+	for (const raw of server) {
+		const parsed = SyncReadingGoalSchema.safeParse(raw);
+		if (!parsed.success) {
+			rejected++;
+			continue;
+		}
+		const goal = parsed.data;
+		const mine = localById.get(goal.goalId);
+		if (goal.deleted) {
+			if (mine && goal.updatedAt >= mine.updatedAt) deletes.push(goal.goalId);
+			continue;
+		}
+		if (mine && goal.updatedAt <= mine.updatedAt) continue;
+		if (!liveBookIds.has(goal.bookId)) continue;
+		upserts.push(goalFromSync(goal));
+	}
+	return { upserts, deletes, rejected };
+}
+
+/** Same reasoning as `partitionPushableSessions`: one bad row would 400 the whole push. */
+export function pushableGoals(goals: ReadingGoal[], pushedBookIds: ReadonlySet<string>) {
+	const rows = goals.filter((g) => pushedBookIds.has(g.bookId)).map(goalToSync);
+	const pushable = rows.filter((row) => SyncReadingGoalSchema.safeParse(row).success);
+	return { pushable, rejected: rows.length - pushable.length };
 }
 
 // ---------------------------------------------------------------------------
@@ -919,6 +1028,7 @@ export async function pullSync(): Promise<Set<string>> {
 					wordsRead: row.wordsRead,
 					startWord: wordPos(row.startWord),
 					endWord: wordPos(row.endWord),
+					furthestWord: row.furthestWord == null ? null : wordPos(row.furthestWord),
 					wpmAvg: row.wpmAvg,
 					updatedAt: row.updatedAt,
 				});
@@ -929,6 +1039,28 @@ export async function pullSync(): Promise<Set<string>> {
 				changed = true;
 			}
 		}
+
+		// Gated with sessions: the plan is derived from them, so goals without them
+		// would show a wrong day. Absent from an older server: leave local goals alone.
+		if (localSettings.syncStats && data.readingGoals) {
+			const liveBookIds = new Set(
+				[...localBookMap.values()].filter((b) => !b.deleted).map((b) => b.id),
+			);
+			const merge = buildGoalMerge(
+				await queries.getAllGoalsForSync(),
+				data.readingGoals,
+				liveBookIds,
+			);
+			if (merge.rejected > 0) log("sync", `pull: skipped ${merge.rejected} malformed goal(s)`);
+			if (merge.upserts.length > 0) await queries.upsertGoals(merge.upserts);
+			if (merge.deletes.length > 0) await queries.hardDeleteGoals(merge.deletes);
+			if (merge.upserts.length > 0 || merge.deletes.length > 0) {
+				await queries.resolveActiveGoalConflicts();
+				changed = true;
+			}
+		}
+		// Positions may have moved past the finish on another device or a reader.
+		await queries.completeFinishedGoals();
 
 		if (authoritativeContentIds) {
 			for (const id of authoritativeContentIds) serverHasContent.add(id);
@@ -946,6 +1078,8 @@ export async function pullSync(): Promise<Set<string>> {
 			queryClient.invalidateQueries({ queryKey: serialKeys.all });
 			queryClient.invalidateQueries({ queryKey: readingSessionKeys.all });
 			queryClient.invalidateQueries({ queryKey: statsKeys.all });
+			// Not left to the invalidation alone: a query nobody is watching emits nothing more.
+			requestReminderSync();
 		}
 
 		log("sync", "pull complete");
@@ -1072,7 +1206,7 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 		// defaults; pushing it would overwrite what the account holds.
 		const hasAdoptedSettings = await hasAdoptedServerSettings();
 
-		const [books, settings, highlights, glossaryEntries, seriesRows, readingSessionsRows] =
+		const [books, settings, highlights, glossaryEntries, seriesRows, readingSessionsRows, goals] =
 			await Promise.all([
 				queries.getBooksForSync(),
 				queries.getSettings(),
@@ -1080,6 +1214,7 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 				queries.getAllEntries(),
 				queries.getSeriesForSync(),
 				queries.getReadingSessionsSince(sessionWatermark),
+				queries.getAllGoalsForSync(),
 			]);
 
 		// Pristine pending chapter rows carry zero user data and are excluded from the
@@ -1130,6 +1265,13 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 			);
 		}
 
+		const goalsForPush = settings.syncStats
+			? pushableGoals(goals, pushedBookIds)
+			: { pushable: [], rejected: 0 };
+		if (goalsForPush.rejected > 0) {
+			log("sync", `push: dropped ${goalsForPush.rejected} malformed goal(s)`);
+		}
+
 		const payload: SyncPayload = {
 			books: booksWithContent,
 			settings: hasAdoptedSettings ? settingsToSync(settings) : null,
@@ -1143,6 +1285,7 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 				: [],
 			series: seriesRows.map(seriesToSync),
 			readingSessions: settings.syncStats ? sessionsForPush : [],
+			readingGoals: settings.syncStats ? goalsForPush.pushable : undefined,
 		};
 
 		// Diagnostics for the >5000 books cap — log composition so we can see what's
@@ -1162,7 +1305,7 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 		const body = JSON.stringify(payload);
 		log(
 			"sync",
-			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} contentUploads=${uploadedContentIds.size} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
+			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} contentUploads=${uploadedContentIds.size} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} readingGoals=${goalsForPush.pushable.length} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
 		);
 
 		const quotaRejection = await postPush(body);
@@ -1170,6 +1313,7 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 			for (const id of quotaRejection.rejectedContentBookIds) uploadedContentIds.delete(id);
 			await recordQuotaRejection(quotaRejection);
 		}
+		await clearServerGoalsWhileStatsOff(settings.syncStats);
 
 		// Only after the server has accepted them: a failed push must not convince the
 		// next one that content is already stored, or that sessions were delivered.

@@ -92,11 +92,11 @@ async function reopen(page: Page): Promise<void> {
 	await reader.expectLoaded(page);
 }
 
-test("the toolbar button freezes the position while scrolling around", async ({ page }) => {
+test("the browse button freezes the position while scrolling around", async ({ page }) => {
 	await openSeeded(page);
 	const baseline = await reader.saveCount(page);
 
-	await page.getByTestId("browse-toggle").click();
+	await reader.startBrowse(page);
 	await expect(reader.browseBar(page)).toBeVisible();
 	await reader.wheel(page, 600);
 	await expect(opening(page, 1)).not.toBeInViewport();

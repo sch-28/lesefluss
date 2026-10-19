@@ -48,7 +48,7 @@ async function turnPastTwoChunks(page: Page) {
 }
 
 async function searchFor(page: Page, phrase: string) {
-	await page.getByRole("button", { name: "Search content" }).click();
+	await reader.openSearch(page);
 	await page.getByPlaceholder("Search in book…").fill(phrase);
 	await page.locator("ul li button", { hasText: phrase }).first().waitFor();
 }

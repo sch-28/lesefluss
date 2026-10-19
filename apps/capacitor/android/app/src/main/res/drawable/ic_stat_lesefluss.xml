@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon for local notifications: the launcher's monochrome glyph,
+     white on transparent. The LocalNotifications plugin only resolves drawables. -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@mipmap/ic_launcher_monochrome" />

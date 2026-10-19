@@ -57,6 +57,7 @@ import { BookHighlights } from "./book-highlights";
 import { BookJourney } from "./book-journey";
 import { BookShares } from "./book-shares";
 import { BookStatsCard } from "./book-stats-card";
+import { GoalCard } from "./reading-goal/goal-card";
 import { SessionTable } from "./session-table";
 import { FILTER_LABELS } from "./sort-filter";
 
@@ -326,6 +327,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 						</p>
 					</section>
 				)}
+				<GoalCard book={book} />
 				<BookStatsCard book={book} />
 				{canShare && <BookShares bookId={book.id} enabled={!book.seriesId} />}
 				{canShare && buddyRead && <BookBuddyRead read={buddyRead} book={book} />}

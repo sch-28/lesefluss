@@ -12,6 +12,11 @@ export function readingProgress(work: { wordCount: number; wordPosition: number 
 	return Math.min(100, Math.round((work.wordPosition / work.wordCount) * 100));
 }
 
+/** The finished rule on raw word counts, unrounded. Mirrors `isFinishedSql` in the app's queries. */
+export function isFinishedPosition(wordPosition: number, wordCount: number): boolean {
+	return wordCount > 0 && wordPosition * 100 >= wordCount * FINISHED_PERCENT_THRESHOLD;
+}
+
 export function isFinishedPercent(percent: number): boolean {
 	return percent >= FINISHED_PERCENT_THRESHOLD;
 }

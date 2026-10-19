@@ -10,6 +10,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 import type { VListHandle } from "virtua";
 import { VList } from "virtua";
 import { readerFontStack } from "../../hooks/use-appearance-settings";
+import type { ReaderGoalDivider } from "./goal-divider";
 import Paragraph, {
 	cancelAnyActiveLongPress,
 	type GlossaryRangeProp,
@@ -234,6 +235,8 @@ export interface ScrollViewProps {
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	linksByParagraph: Map<number, LinkRangeProp[]> | undefined;
 	discussionByParagraph?: Map<number, { count: number; onTap: () => void }>;
+	/** Today's reading-goal divider and the paragraph it closes. */
+	goalDivider?: ReaderGoalDivider;
 	/** Paragraph index → chapter title rendered as an inline header above it. */
 	chapterHeadingByParagraph?: Map<number, string>;
 	/** Paragraph index → body images rendered above it. */
@@ -292,6 +295,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		glossaryByParagraph,
 		linksByParagraph,
 		discussionByParagraph,
+		goalDivider,
 		chapterHeadingByParagraph,
 		figuresByParagraph,
 		trailingFigures,
@@ -698,6 +702,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 							glossaryRanges={glossaryByParagraph?.get(i)}
 							links={linksByParagraph?.get(i)}
 							discussion={discussionByParagraph?.get(i)}
+							goalDivider={goalDivider?.paragraphIndex === i ? goalDivider.divider : undefined}
 							chapterHeading={chapterHeadingByParagraph?.get(i)}
 							figures={figuresByParagraph?.get(i)}
 							selectionRange={selectionRange}

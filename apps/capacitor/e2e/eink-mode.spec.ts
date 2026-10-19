@@ -165,7 +165,7 @@ test.describe("e-ink mode on a small reader", () => {
 		await expect(page.locator(".page-view")).toBeVisible();
 		expect(await elementsWithEffects(page)).toEqual([]);
 
-		await page.getByRole("button", { name: "Appearance settings" }).click();
+		await reader.openAppearance(page);
 		const pagination = page.locator(".ap-section").filter({ hasText: "Pagination" });
 		await expect(pagination.getByRole("radio", { name: "Page" })).toHaveAttribute(
 			"data-state",

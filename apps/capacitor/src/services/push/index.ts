@@ -9,6 +9,11 @@ import {
 } from "@lesefluss/core";
 import { log } from "../../utils/log";
 import { authedFetch } from "../authed-fetch";
+import {
+	CHANNEL_IMPORTANCE_DEFAULT,
+	type NotificationPermission,
+	toNotificationPermission,
+} from "../notification-permission";
 import { getToken } from "../sync/session";
 
 function pushPlatform(): PushPlatform | null {
@@ -26,28 +31,22 @@ export function isPushSupported(): boolean {
 // native call, so resolving a promise with it throws.
 export const loadPluginModule = () => import("@capacitor/push-notifications");
 
-/** `denied` means the OS will not show its prompt again; only system settings can turn it on. */
-export type PushPermission = "granted" | "prompt" | "denied" | "unsupported";
-
 const PERMISSION_ASKED_KEY = "push_permission_asked";
 
-export async function getPushPermission(): Promise<PushPermission> {
+export async function getPushPermission(): Promise<NotificationPermission> {
 	if (!pushPlatform()) return "unsupported";
 	const { PushNotifications: push } = await loadPluginModule();
-	const { receive } = await push.checkPermissions();
-	if (receive === "granted") return "granted";
-	return receive === "denied" ? "denied" : "prompt";
+	return toNotificationPermission((await push.checkPermissions()).receive);
 }
 
 /** Shows the OS prompt; on a grant the device registers right away. */
-export async function requestPushPermission(): Promise<PushPermission> {
+export async function requestPushPermission(): Promise<NotificationPermission> {
 	if (!pushPlatform()) return "unsupported";
 	await markPushPermissionAsked();
 	const { PushNotifications: push } = await loadPluginModule();
-	const { receive } = await push.requestPermissions();
-	if (receive !== "granted") return receive === "denied" ? "denied" : "prompt";
-	await registerPushIfGranted();
-	return "granted";
+	const permission = toNotificationPermission((await push.requestPermissions()).receive);
+	if (permission === "granted") await registerPushIfGranted();
+	return permission;
 }
 
 /** Once asked, whatever the answer, the app never offers again on its own. */
@@ -59,7 +58,6 @@ export async function markPushPermissionAsked(): Promise<void> {
 	await Preferences.set({ key: PERMISSION_ASKED_KEY, value: "1" });
 }
 
-const IMPORTANCE_DEFAULT = 3;
 // The lock screen shows the content only if the user lets it show sensitive content.
 const VISIBILITY_PRIVATE = 0;
 
@@ -113,7 +111,7 @@ export async function registerPushIfGranted(): Promise<void> {
 		await push.createChannel({
 			id: PUSH_CHANNEL_ID,
 			name: "Friends and buddy reads",
-			importance: IMPORTANCE_DEFAULT,
+			importance: CHANNEL_IMPORTANCE_DEFAULT,
 			visibility: VISIBILITY_PRIVATE,
 		});
 	}

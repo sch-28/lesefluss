@@ -1,10 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { eq } from "drizzle-orm";
-import { db } from "~/db";
-import { syncReadingSessions } from "~/db/schema";
 import { cors } from "~/lib/cors-middleware";
 import { checkLimit } from "~/lib/rate-limit";
 import { requireAuth } from "~/lib/session-middleware";
+import { wipeReadingStats } from "~/lib/sync-wipe";
 
 export const Route = createFileRoute("/api/sync/wipe-sessions")({
 	server: {
@@ -26,7 +24,7 @@ export const Route = createFileRoute("/api/sync/wipe-sessions")({
 					);
 				}
 
-				await db.delete(syncReadingSessions).where(eq(syncReadingSessions.userId, userId));
+				await wipeReadingStats(userId);
 				return Response.json({ ok: true });
 			},
 		},

@@ -42,7 +42,7 @@ import {
 	useState,
 } from "react";
 import { flushSync } from "react-dom";
-import type { ParagraphWordEntry } from "../paragraph";
+import type { ReaderGoalDivider } from "../goal-divider";
 import {
 	cancelAnyActiveLongPress,
 	type GlossaryRangeProp,
@@ -50,6 +50,7 @@ import {
 	hasLongPressFiredFor,
 	type LinkRangeProp,
 	LONG_PRESS_MS,
+	type ParagraphWordEntry,
 } from "../paragraph";
 import type { ReaderFigureData } from "../reader-figures";
 import type { ReaderViewHandle } from "../view-types";
@@ -100,6 +101,8 @@ export interface PageViewProps {
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	linksByParagraph: Map<number, LinkRangeProp[]> | undefined;
 	discussionByParagraph?: Map<number, { count: number; onTap: () => void }>;
+	/** Today's reading-goal divider and the paragraph it closes. */
+	goalDivider?: ReaderGoalDivider;
 	/** Paragraph index → chapter title rendered as an inline header above it. */
 	chapterHeadingByParagraph?: Map<number, string>;
 	/** Paragraph index → body images rendered above it. */
@@ -159,6 +162,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		glossaryByParagraph,
 		linksByParagraph,
 		discussionByParagraph,
+		goalDivider,
 		selectionRange,
 		isSelecting,
 		onWordTap,
@@ -857,6 +861,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									glossaryByParagraph={glossaryByParagraph}
 									linksByParagraph={linksByParagraph}
 									discussionByParagraph={discussionByParagraph}
+									goalDivider={goalDivider}
 									selectionRange={selectionRange}
 									onWordTap={onWordTap}
 									onWordLongPress={onWordLongPress}

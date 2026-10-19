@@ -46,6 +46,8 @@ A continuous reading session: start, end, words read, target book. Lives in the 
 
 *Words read* (`reading_sessions.wordsRead`) is the total length of the [read spans](#read-span), not the distance between start and end position.
 
+*Furthest word* (`reading_sessions.furthestWord`) is the end of the highest read span: how far reading got in the sitting, where the end position is wherever a jump or moving back left it. Null on rows recorded before it existed. A sitting never spans local midnight: reading straight through midnight closes it and goes on in a new one from the same spot; a sitting paused, idle or suspended over midnight closes at its last activity and the next activity opens a new one. Each day keeps its own reading, at the cost of one more session for a sitting that crosses midnight. Discarding a sitting whose row was already written (undoing an auto-committed browse) deletes that row locally and on the server.
+
 ### Browse mode
 
 A reader state for looking around without moving the [position](#position). It starts on any jump (TOC, search, highlight, glossary, progress-bar scrub), on a manual scroll too fast to be reading, or from the toolbar. The *anchor* is the position at entry; it is written once on entry if the DB doesn't already hold it. While browsing, nothing else is persisted (no DB, sync or device write) and the [session](#session) is paused. "Back to N%" returns to the anchor; "Read from here" makes the current spot the position and, if it moved, starts a new session. Moving on to the next chapter counts as "Read from here". A device position update moves the anchor, not the view. If the user settles into reading at the browsed spot (forward reading-pace movement for about two minutes), that counts as "Read from here", with a toast offering Undo; that reading counts toward the new session, and Undo discards it. Leaving the book while browsing resumes at the anchor. RSVP never browses: its saves always land, and switching to it reads from the browsed spot.
@@ -55,6 +57,24 @@ A reader state for looking around without moving the [position](#position). It s
 A range of the book travelled forward at reading pace within one [session](#session). Movement above the mode's per-tick threshold is a jump (TOC navigation, a progress-bar scrub) and crosses its range without reading it; moving backwards reads nothing, though the range is credited if it is later travelled forward again.
 
 Spans are merged, so a passage re-read in the same sitting counts once, while a gap skipped earlier and read later does count. They are a tracker-internal accounting device: never persisted, never synced. Only their total length is stored.
+
+### Reading goal
+
+A reader's plan to finish one book, stored in `reading_goals` and synced last-write-wins together with [sessions](#session): turning off stats sync stops both, since the plan is derived from sessions. At most one goal per book is *active*; the others are *completed* (the book crossed the finished threshold, or the reader said so; a goal cannot start on a book already past it) or *abandoned* (replaced by a new goal, or given up). Removing a goal tombstones it. Not available for serial chapters. Progress is measured by [position](#position), not by time read, so skipping ahead counts. All dates are local calendar days. The arithmetic lives in `services/stats/reading-goal.ts`.
+
+Every goal is in one of two **modes**:
+
+- **Deadline**: the target date is fixed. Each day's target is the remaining part of the book divided by the days left, so a missed day raises the days after it.
+- **Pace**: the daily percent is fixed. A missed day moves the projected finish date instead.
+
+The mode can be switched at any time. A switch, or a new target date or daily percent, is a *replan*: the plan line restarts from today's start-of-day position, days already met carry over, and today's reading still counts for today. Deadline to pace keeps today's daily target as the pace; pace to deadline keeps the projected finish as the target date.
+
+- **Start-of-day position**: the position at local midnight, taken from the last [session](#session) that ended before it (a session running across midnight gives its start position), else the goal's start. Reading on a [reader device](#reader-device) creates no sessions, only moves the position on BLE sync, so it counts toward the day it is first followed by an in-app session, or toward today while none has followed.
+- **Daily target**: what today asks for, in percent of the book (shown to one decimal) and in minutes at the reader's pace for this book, else their overall measured pace, else 225 wpm. Fixed for the whole local day because it depends only on the start-of-day position. Reading past it is credited. Today's progress counts from the furthest point of the day: the furthest word today's [sessions](#session) read to (the open sitting's included in the reader) or the saved position, whichever is further. Once met the target stays met for the day even if the position moves back (a jump back, or e-ink snapping to a page start). A jump ahead and back does not count; a jump the reader stays at does, as does reading on a paired device today. Past days count the same way, with where the day ended as its position; that end comes from sessions, so a past day read only on a paired device, which records none, does not count. Ahead/behind still uses the current position.
+- **Plan line**: the straight line from the plan's start to 100% on the target date (deadline) or at the daily percent per day (pace).
+- **On track**: not behind the plan line. *Ahead/behind* is how far the position is past the line at the end of today, or short of it at the end of yesterday, in percent and in days of the line's slope. A reader who has not read yet today but met every earlier day is exactly on track.
+- **Reminder**: an optional daily notification at a time stored on the goal (so it syncs), scheduled on the device as a local notification a few days ahead and rebuilt whenever the plan or the day changes. No reminder fires on a day whose target is met. Not available in the web build.
+- **Days target met** / **days read**: two counters per goal, separate from the global streak. A day is read when it has a session for the book.
 
 ---
 
@@ -158,6 +178,8 @@ else the earliest-joined member; the read is deleted with its last member. A mem
 first time their pushed position reaches the finished threshold after having been below it since
 joining; the read finishes when every member has, and then stays listed read-only.
 
+The host may set a **deadline** (`buddy_read.target_date`), which every member sees. A member can adopt it as their own [reading goal](#reading-goal) (deadline mode) on their copy; adopting is a one-tap copy, never automatic, and a later change of the deadline leaves adopted goals as they are. The goal belongs to the member's book, so leaving the read keeps it. A deadline that has passed can no longer be adopted. The deadline shows in one place, the read's Deadline section, with the group pace beside it until the member adopts it; from then on their own goal says how they are doing.
+
 ### Buddy-read comment
 
 A comment in a [buddy read](#buddy-read), anchored to a passage (word range) or to a chapter's
@@ -200,8 +222,14 @@ The other members of a [buddy read](#buddy-read) shown on the reader's progress 
 position in the book, with whoever has the book open right now marked as **reading now** and
 their speed in the current sitting. Positions are the ones members already see; reading now and speed
 live only in server memory, and speed is credited on the server with the same rule as reading
-sessions, so skipping ahead does not count. A member can switch off sharing live activity, which
-also hides everyone else's.
+sessions, so skipping ahead does not count. A member's standing against their own reading goal on
+the book shows in their marker's detail, computed on the server from their synced goal and position
+in their own time zone. Only one number leaves the server: days ahead or behind, to one decimal.
+Never the goal's mode, target date, daily amount or percent behind, since percent and days together
+would give away the daily amount and so the date. No standing shows for a member who has finished
+the book, has no known time zone, or has stats sync off (their goals are then removed from the
+server). A member can switch off sharing live activity, which also hides everyone else's, goal
+standings included.
 
 ### Content origin
 

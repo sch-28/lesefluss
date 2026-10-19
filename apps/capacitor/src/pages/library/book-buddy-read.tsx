@@ -12,6 +12,7 @@ import type { Book } from "@/services/db/schema";
 import {
 	buddyReadErrorReason,
 	buddyReadFailureMessage,
+	formatDeadline,
 	paceText,
 	useBuddyRead,
 	useBuddyReads,
@@ -66,7 +67,7 @@ export function BookBuddyRead({
 			</div>
 			{onPace !== null && read.targetDate !== null && (
 				<p className="m-0 mb-2 text-muted-foreground text-xs">
-					Finish by {new Date(read.targetDate).toLocaleDateString()} · {paceText(onPace)}
+					Finish by {formatDeadline(read.targetDate)} · {paceText(onPace)}
 				</p>
 			)}
 			{detail.data?.originUnavailable ? (

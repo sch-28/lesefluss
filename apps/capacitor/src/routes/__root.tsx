@@ -10,6 +10,7 @@ import WhatsNewModal from "@/components/whats-new-modal";
 import { ImportStagingProvider } from "@/contexts/import-staging-context";
 import { useDeepLinks } from "@/services/deep-links/use-deep-links";
 import { useEinkSuggestion } from "@/services/eink-suggestion/use-eink-suggestion";
+import { useGoalReminders } from "@/services/goal-reminders/use-goal-reminders";
 import { usePushNotifications } from "@/services/push/use-push-notifications";
 import { checkForUpdate } from "@/services/update-check";
 
@@ -24,6 +25,7 @@ function RootLayout() {
 	const isFullScreen = FULL_SCREEN_PREFIXES.some((p) => pathname.startsWith(p));
 	useDeepLinks();
 	usePushNotifications();
+	useGoalReminders();
 	useEinkSuggestion();
 
 	useEffect(() => {

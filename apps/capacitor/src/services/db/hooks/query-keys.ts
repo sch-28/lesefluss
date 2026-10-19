@@ -151,6 +151,11 @@ export const statsKeys = {
 	/** Per-book stats card on book detail. */
 	book: (bookId: string) => ["stats", "book", bookId] as const,
 
+	/** A book's active reading goal and its plan. Under stats so new sessions refresh it. */
+	goalPlan: (bookId: string, dayKey: string) => ["stats", "goal-plan", bookId, dayKey] as const,
+	/** Every plan of one book. Its position counts too, so a move without a session must refresh it. */
+	goalPlansOf: (bookId: string) => ["stats", "goal-plan", bookId] as const,
+
 	/** Cover shelves on the stats page. */
 	currentlyReading: ["stats", "currently-reading"] as const,
 	finishedBooks: ["stats", "finished-books"] as const,

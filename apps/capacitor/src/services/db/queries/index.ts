@@ -48,6 +48,19 @@ import {
 import { getLastReadBookId } from "./last-read";
 import { getLibraryCatalogIds } from "./library-membership";
 import {
+	completeFinishedGoals,
+	createGoal,
+	deleteGoal,
+	getAllGoalsForSync,
+	getGoalsWithReminders,
+	getReadingGoalPlan,
+	hardDeleteGoals,
+	replanGoalById,
+	resolveActiveGoalConflicts,
+	setGoalReminder,
+	upsertGoals,
+} from "./reading-goals";
+import {
 	addReadingSession,
 	countReadingSessions,
 	deleteAllReadingSessions,
@@ -148,6 +161,19 @@ export const queries = {
 	upsertReadingSessions,
 	deleteAllReadingSessions,
 	deleteReadingSession,
+
+	// Reading goals
+	getAllGoalsForSync,
+	createGoal,
+	deleteGoal,
+	completeFinishedGoals,
+	resolveActiveGoalConflicts,
+	upsertGoals,
+	hardDeleteGoals,
+	getReadingGoalPlan,
+	replanGoalById,
+	setGoalReminder,
+	getGoalsWithReminders,
 
 	// Stats
 	getPeriodTotals,

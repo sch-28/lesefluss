@@ -7,6 +7,7 @@ import type {
 } from "@lesefluss/core";
 import { BUDDY_READ_PROGRESS_REFRESH_MS, buddyReadErrorMessage, SOCIAL_API } from "@lesefluss/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatDayKey, localDateKey } from "../../utils/date-utils";
 import { AuthedFetchError, authedFetch } from "../authed-fetch";
 import { socialKeys } from "../db/hooks/query-keys";
 import { offerPushAfterFriendship } from "../push/offer";
@@ -166,6 +167,15 @@ export function useSendFriendRequest(buddyReadId: string) {
 			void offerPushAfterFriendship();
 		},
 	});
+}
+
+/** The deadline's day here: the host stored the end of their chosen day, which may fall on another day locally. */
+export function deadlineDayKey(targetDate: number): string {
+	return localDateKey(targetDate);
+}
+
+export function formatDeadline(targetDate: number): string {
+	return formatDayKey(deadlineDayKey(targetDate));
 }
 
 export function paceText(onPace: boolean): string {

@@ -7,10 +7,11 @@
  * Snap points keep the iOS-like half-then-full sheet behavior.
  */
 
+import { Button } from "@lesefluss/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, drawerSnapPoints } from "@lesefluss/ui/drawer";
 import { ToggleGroup, ToggleGroupItem } from "@lesefluss/ui/toggle-group";
 import { cn } from "@lesefluss/ui/utils";
-import { Plus } from "lucide-react";
+import { Compass, Plus } from "lucide-react";
 import type React from "react";
 import { memo, useCallback, useMemo, useState } from "react";
 import type { Chapter, GlossaryEntry, Highlight } from "../../services/db/schema";
@@ -41,6 +42,8 @@ interface AnnotationsSheetProps {
 	currentBookId: string;
 	onOpenEntry: (entry: GlossaryEntry) => void;
 	onAddEntry: () => void;
+	/** Absent in RSVP, which never browses. */
+	browse?: { isBrowsing: boolean; onToggle: () => void };
 }
 
 const SNAP_POINTS = drawerSnapPoints([0.5, 1]);
@@ -59,6 +62,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	currentBookId,
 	onOpenEntry,
 	onAddEntry,
+	browse,
 }) => {
 	const hasContents = chapters.length > 0;
 	const hasChapters = seriesId != null;
@@ -113,7 +117,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 			setActiveSnapPoint={setSnap}
 		>
 			<DrawerContent className={cn("h-full", theme ? `reader-theme-${theme}` : undefined)}>
-				<DrawerHeader className="px-3">
+				<DrawerHeader className="flex-row items-center gap-2 px-3">
 					<ToggleGroup
 						type="single"
 						variant="outline"
@@ -121,13 +125,29 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 						onValueChange={(v) => {
 							if (v) setTab(v as Tab);
 						}}
-						className="w-full"
+						className="min-w-0 flex-1"
 					>
 						{hasContents && <ToggleGroupItem value="contents">Contents</ToggleGroupItem>}
 						{hasChapters && <ToggleGroupItem value="chapters">Chapters</ToggleGroupItem>}
 						<ToggleGroupItem value="highlights">Highlights</ToggleGroupItem>
 						<ToggleGroupItem value="glossary">Glossary</ToggleGroupItem>
 					</ToggleGroup>
+					{browse && (
+						<Button
+							variant="outline"
+							size="icon-lg"
+							onClick={() => {
+								browse.onToggle();
+								onClose();
+							}}
+							aria-label="Browse mode"
+							aria-pressed={browse.isBrowsing}
+							data-testid="browse-toggle"
+							className={cn("shrink-0", browse.isBrowsing && "text-primary")}
+						>
+							<Compass />
+						</Button>
+					)}
 				</DrawerHeader>
 
 				{/* Keyed so each tab starts at its own scroll position, not the last tab's. */}

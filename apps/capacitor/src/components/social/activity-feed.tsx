@@ -12,18 +12,19 @@ import { toast } from "@/components/toast";
 import { OfflineNotice, StaleNotice } from "@/pages/social/social-gate";
 import { useIsOnline } from "@/services/social/cache";
 import { useDeleteFeedEvent, useFeed } from "@/services/social/feed";
-import { localDateKey, previousLocalDayStart, startOfLocalDay } from "@/utils/date-utils";
+import {
+	formatDayKey,
+	localDateKey,
+	previousLocalDayStart,
+	startOfLocalDay,
+} from "@/utils/date-utils";
 import { ListCard, profileCoverSrc, SocialSection } from "./social-ui";
 
 /** "Today", "Yesterday" or a date. Never a time: the feed must not tell when someone reads. */
 function dayLabel(day: string, now = Date.now()): string {
 	if (day === localDateKey(now)) return "Today";
 	if (day === localDateKey(previousLocalDayStart(startOfLocalDay(now)))) return "Yesterday";
-	const [y, m, d] = day.split("-").map(Number);
-	return new Date(y ?? 0, (m ?? 1) - 1, d ?? 1).toLocaleDateString(undefined, {
-		day: "numeric",
-		month: "short",
-	});
+	return formatDayKey(day, now);
 }
 
 function dayPhrase(day: string): string {

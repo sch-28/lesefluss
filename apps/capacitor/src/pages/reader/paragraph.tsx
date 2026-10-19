@@ -14,6 +14,7 @@
 import type { WordPosition } from "@lesefluss/core";
 import type React from "react";
 import { memo } from "react";
+import { GoalDivider, type GoalDividerProp } from "./goal-divider";
 import { LONG_PRESS_MS } from "./long-press";
 import { renderFigures } from "./reader-figure";
 import type { ReaderFigureData } from "./reader-figures";
@@ -85,6 +86,8 @@ export interface ParagraphProps {
 	figures?: ReaderFigureData[];
 	/** Unlocked buddy-read discussion items anchored in this paragraph. */
 	discussion?: { count: number; onTap: () => void };
+	/** Today's reading-goal target ends in this paragraph. */
+	goalDivider?: GoalDividerProp;
 }
 
 function withLeading(
@@ -156,6 +159,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		chapterHeading,
 		figures,
 		discussion,
+		goalDivider,
 	}) => {
 		const headingLevel = getHeadingLevel(text);
 
@@ -389,13 +393,19 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			</button>
 		) : null;
 
+		const divider = goalDivider ? <GoalDivider {...goalDivider} /> : null;
+		const paragraphClass = goalDivider
+			? "reader-paragraph reader-paragraph--goal"
+			: "reader-paragraph";
+
 		if (entries.length === 0) {
 			return withLeading(
 				figures,
 				chapterHeading,
-				<p className="reader-paragraph">
+				<p className={paragraphClass}>
 					{text}
 					{marker}
+					{divider}
 				</p>,
 			);
 		}
@@ -408,9 +418,10 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		return withLeading(
 			figures,
 			chapterHeading,
-			<p className="reader-paragraph">
+			<p className={paragraphClass}>
 				{children}
 				{marker}
+				{divider}
 			</p>,
 		);
 	},

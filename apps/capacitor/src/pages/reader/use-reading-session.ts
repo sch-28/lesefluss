@@ -14,8 +14,8 @@ import { useCallback, useEffect, useRef } from "react";
 import { readingSessionKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { queryClient } from "../../services/query-client";
-import { scheduleSyncPush } from "../../services/sync";
-import { publishSessionPersist } from "../../test-hooks/reader";
+import { deleteServerSession, scheduleSyncPush } from "../../services/sync";
+import { publishSessionPersist, publishSessionTick } from "../../test-hooks/reader";
 import { log } from "../../utils/log";
 import {
 	type DebugSnapshot,
@@ -41,6 +41,8 @@ type Args = {
 	getPosition: () => number;
 	/** RSVP dial setting (persisted as wpmAvg for RSVP sessions). */
 	wpmSetting?: number;
+	/** See `TrackerOpts.onFurthestRead`. */
+	onFurthestRead?: (sessionId: string, word: number | null) => void;
 };
 
 type Return = {
@@ -80,6 +82,22 @@ function persistRow(row: SessionRow, kind: "checkpoint" | "flush"): void {
 		.catch((err) => log.error("reading-session", `${kind} failed:`, err));
 }
 
+/**
+ * A discarded sitting's row was reading the user disowned (undone browsing), so
+ * it goes everywhere. Server first, as for a manual delete: sessions have no
+ * tombstone, so a local-only delete would come back on the next pull. If the
+ * server call fails the row stays in both places rather than drifting apart.
+ */
+function removeRow(sessionId: string): void {
+	deleteServerSession(sessionId)
+		.then(() => queries.deleteReadingSession(sessionId))
+		.then(() => {
+			queryClient.invalidateQueries({ queryKey: statsKeys.all });
+			queryClient.invalidateQueries({ queryKey: readingSessionKeys.all });
+		})
+		.catch((err) => log.warn("reading-session", "discarded row kept, delete failed:", err));
+}
+
 export function useReadingSession({
 	bookId,
 	mode,
@@ -87,12 +105,15 @@ export function useReadingSession({
 	rsvpIsPlaying,
 	getPosition,
 	wpmSetting,
+	onFurthestRead,
 }: Args): Return {
 	const trackerRef = useRef<SessionTracker | null>(null);
 	const getPositionRef = useRef(getPosition);
 	getPositionRef.current = getPosition;
 	const wpmRef = useRef(wpmSetting);
 	wpmRef.current = wpmSetting;
+	const onFurthestReadRef = useRef(onFurthestRead);
+	onFurthestReadRef.current = onFurthestRead;
 
 	// Construct a tracker per (bookId, mode). Prior tracker is finalized so
 	// the row for the previous sitting is written before we open a new one.
@@ -106,6 +127,8 @@ export function useReadingSession({
 			getPosition: () => getPositionRef.current(),
 			getWpmSetting: () => wpmRef.current ?? null,
 			persist: persistRow,
+			remove: removeRow,
+			onFurthestRead: (sessionId, word) => onFurthestReadRef.current?.(sessionId, word),
 		});
 		return () => {
 			trackerRef.current?.finalize();
@@ -147,7 +170,10 @@ export function useReadingSession({
 
 	// Periodic tick. Wall-clock-guarded against suspension inside the tracker.
 	useEffect(() => {
-		const interval = setInterval(() => trackerRef.current?.tick(), POLL_MS);
+		const interval = setInterval(() => {
+			trackerRef.current?.tick();
+			if (import.meta.env.DEV) publishSessionTick();
+		}, POLL_MS);
 		return () => clearInterval(interval);
 	}, []);
 

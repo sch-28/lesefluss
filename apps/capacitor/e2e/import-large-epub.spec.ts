@@ -1,6 +1,7 @@
 import { buildEpubBuffer, type EpubFixture } from "@lesefluss/book-import/test-fixtures/build-epub";
 import { expect, test } from "@playwright/test";
 import { importEpubViaFilePicker, openBookFromLibrary, resetStorage } from "./helpers/seed";
+import { reader } from "./page-objects/reader";
 
 const HEAD_SENTINEL = "Headsentinel alpha marker zero zero zero one.";
 const TAIL_SENTINEL = "Tailsentinel zebra marker nine one seven three.";
@@ -48,7 +49,7 @@ test("imports a book larger than one chunk and reads head + tail content", async
 	// Search scans the full reassembled content. Finding the tail sentinel (in the
 	// last chapter, well past the first chunk) proves the chunked read returned the
 	// whole book, not a truncated prefix, and that word offsets stayed coherent.
-	await page.getByRole("button", { name: "Search content" }).click();
+	await reader.openSearch(page);
 	const input = page.getByPlaceholder("Search in book…");
 	await expect(input).toBeVisible();
 	await input.fill("Tailsentinel");

@@ -7,6 +7,7 @@ import {
 	syncBooks,
 	syncGlossaryEntries,
 	syncHighlights,
+	syncReadingGoals,
 	syncReadingSessions,
 	syncSeries,
 	syncSettings,
@@ -28,6 +29,7 @@ export async function purgeCloudData(tx: Tx, userId: string): Promise<void> {
 	await endBuddyReadsOf(tx, userId);
 	await tx.delete(syncHighlights).where(eq(syncHighlights.userId, userId));
 	await tx.delete(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId));
+	await tx.delete(syncReadingGoals).where(eq(syncReadingGoals.userId, userId));
 	await tx.delete(syncSettings).where(eq(syncSettings.userId, userId));
 }
 

@@ -5,6 +5,8 @@ import {
 	NOTICE_TARGET_TYPES,
 	PROFILE_VISIBILITIES,
 	PUSH_PLATFORMS,
+	READING_GOAL_MODES,
+	READING_GOAL_STATUSES,
 } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import {
@@ -12,6 +14,7 @@ import {
 	boolean,
 	check,
 	customType,
+	doublePrecision,
 	index,
 	integer,
 	jsonb,
@@ -245,12 +248,49 @@ export const syncReadingSessions = pgTable(
 		wordsRead: integer("words_read").notNull(),
 		startWord: integer("start_word").notNull(),
 		endWord: integer("end_word").notNull(),
+		furthestWord: integer("furthest_word"),
 		wpmAvg: integer("wpm_avg"),
 		updatedAt: timestamp("updated_at").notNull(),
 	},
 	(t) => [
 		primaryKey({ columns: [t.userId, t.sessionId] }),
 		check("sync_reading_sessions_mode_check", sql`${t.mode} IN ('rsvp', 'scroll', 'page')`),
+	],
+);
+
+/**
+ * sync_reading_goals: per-book reading goals keyed by (user_id, goal_id).
+ * Last-write-wins on `updated_at`, deletes included (`deleted` tombstone).
+ * `plan_start_date` and `target_date` are the reader's local calendar dates.
+ */
+export const syncReadingGoals = pgTable(
+	"sync_reading_goals",
+	{
+		userId: text("user_id").notNull(),
+		goalId: text("goal_id").notNull(),
+		bookId: text("book_id").notNull(),
+		mode: text("mode", { enum: READING_GOAL_MODES }).notNull(),
+		status: text("status", { enum: READING_GOAL_STATUSES }).notNull(),
+		startedAt: timestamp("started_at").notNull(),
+		startWord: integer("start_word").notNull(),
+		planStartDate: text("plan_start_date").notNull(),
+		planStartWord: integer("plan_start_word").notNull(),
+		targetDate: text("target_date").notNull(),
+		dailyPercent: doublePrecision("daily_percent").notNull(),
+		carriedDaysMet: integer("carried_days_met").notNull().default(0),
+		completedAt: timestamp("completed_at"),
+		reminderTime: text("reminder_time"),
+		deleted: boolean("deleted").notNull().default(false),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.userId, t.goalId] }),
+		check("sync_reading_goals_mode_check", sql`${t.mode} IN ('deadline', 'pace')`),
+		check(
+			"sync_reading_goals_status_check",
+			sql`${t.status} IN ('active', 'completed', 'abandoned')`,
+		),
 	],
 );
 
@@ -266,6 +306,8 @@ export type SyncGlossaryEntry = typeof syncGlossaryEntries.$inferSelect;
 export type NewSyncGlossaryEntry = typeof syncGlossaryEntries.$inferInsert;
 export type SyncReadingSession = typeof syncReadingSessions.$inferSelect;
 export type NewSyncReadingSession = typeof syncReadingSessions.$inferInsert;
+export type SyncReadingGoal = typeof syncReadingGoals.$inferSelect;
+export type NewSyncReadingGoal = typeof syncReadingGoals.$inferInsert;
 
 /**
  * telemetry_events: anonymized diagnostics from clients (no account required).

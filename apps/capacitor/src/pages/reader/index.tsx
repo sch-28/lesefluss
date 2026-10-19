@@ -36,7 +36,6 @@ import {
 	Bookmark,
 	ChevronLeft,
 	ChevronRight,
-	Compass,
 	ExternalLink,
 	Info,
 	Loader2,
@@ -66,10 +65,11 @@ import { repairMissingImages } from "../../services/book-import/repair-images";
 import { needsImageUpgrade, upgradeBookImages } from "../../services/book-import/upgrade-images";
 import { externalSourceUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
-import { bookKeys, serialKeys } from "../../services/db/hooks/query-keys";
+import { bookKeys, serialKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Chapter, GlossaryEntry, Highlight } from "../../services/db/schema";
+import { requestReminderSync } from "../../services/goal-reminders";
 import { providerLabel } from "../../services/serial-scrapers";
 import {
 	useDiscussion,
@@ -81,6 +81,7 @@ import { reportEvent } from "../../services/telemetry";
 import { publishLinkOpen, publishPositionSave, publishProgressWord } from "../../test-hooks/reader";
 import { AVERAGE_READER_WPM, formatReadingTime } from "../../utils/reading-time";
 import { setJustRead } from "../library/just-read-pin";
+import { liveToday } from "../library/reading-goal/goal-model";
 import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
 import { BrowseBar } from "./browse-bar";
@@ -100,6 +101,7 @@ import DictionaryModal from "./dictionary-modal";
 import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
 import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
+import { GoalChip } from "./goal-chip";
 import { hyphenationLang } from "./hyphenation-lang";
 import { useLiveReading } from "./live-board";
 import { NextChapterFooter } from "./next-chapter-footer";
@@ -131,6 +133,7 @@ import {
 import { useHighlightSelection } from "./use-highlight-selection";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import { useLinkDecorations } from "./use-link-decorations";
+import { useReaderGoal } from "./use-reader-goal";
 import { type ReadingSessionMode, useReadingSession } from "./use-reading-session";
 import { useScrubProgress } from "./use-scrub-progress";
 import type { ReaderViewHandle } from "./view-types";
@@ -1065,7 +1068,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const discussion = useDiscussion(discussionRead?.id ?? null, {
 		poll: isForeground && isOnline,
 	});
-	onPositionSavedRef.current = useRefetchDiscussionAsYouRead(
+	const refetchDiscussionAsYouRead = useRefetchDiscussionAsYouRead(
 		discussionRead?.id ?? null,
 		discussion,
 		isOnline,
@@ -1094,6 +1097,23 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			]),
 		);
 	}, [discussionItems, findParagraphIndexForWord]);
+
+	// Browsing moves the view, not the reading.
+	const { goalPlan, goalToday, goalDivider, furthestReadToday, reportFurthestRead } = useReaderGoal(
+		book,
+		browseAnchor ?? progressWord,
+		findParagraphIndexForWord,
+	);
+	// After the write commits: the rebuild's plan counts the saved position, so it sees today met too.
+	onPositionSavedRef.current = (word: number) => {
+		refetchDiscussionAsYouRead(word);
+		if (goalPlan && liveToday(goalPlan, word, totalWordCount, furthestReadToday).isMet) {
+			requestReminderSync();
+		}
+	};
+	const [appearanceOpen, setAppearanceOpen] = useState(false);
+	const openAppearanceOnMenuCloseRef = useRef(false);
+
 	const discussionTicks = useMemo((): DiscussionTick[] => {
 		if (!discussionItems?.length || totalWordCount <= 0) return [];
 		const byPercent = new Map<number, DiscussionItem[]>();
@@ -1520,6 +1540,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			!!content && lastWordRef.current !== null && !isSessionPaused && browseAnchor === null,
 		getPosition: getReadingPosition,
 		wpmSetting: rsvpSettings.wpm,
+		onFurthestRead: reportFurthestRead,
 	});
 	useEffect(() => {
 		markActivityRef.current = markReadingActivity;
@@ -1623,12 +1644,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// the (possibly-stale) `book.wordPosition` query cache; flushing
 			// that would clobber the real value the prior unmount just wrote.
 			const word = lastWordRef.current;
+			let flushed: Promise<unknown> = Promise.resolve();
 			if (browse.isBrowsing) {
 				// The DB already holds the anchor; the browsed spot must not leak into
 				// the durable fallback below either. Still flush earlier saves.
 				if (userMovedRef.current) pushSync().catch(() => {});
 			} else if (word !== null && userMovedRef.current) {
-				savePositionRef.current(word, { scheduleSync: false });
+				flushed = savePositionRef.current(word, { scheduleSync: false });
 				pushSync().catch(() => {});
 			} else if (
 				word !== null &&
@@ -1650,6 +1672,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// Invalidate the books list so the library grid picks up the new position
 			// when the user navigates back.
 			qcRef.current.invalidateQueries({ queryKey: bookKeys.all });
+			// The goal plan also counts the position, and a jump writes no session that would
+			// refresh it. After the flush commits, or the refetch reads the old position.
+			const goalPlans = statsKeys.goalPlansOf(id);
+			flushed.catch(() => {}).then(() => qcRef.current.invalidateQueries({ queryKey: goalPlans }));
 		};
 	}, [browse]);
 
@@ -1826,6 +1852,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					<h1 className="m-0 flex-1 truncate px-1 font-semibold text-base leading-none">
 						{book.title}
 					</h1>
+					{goalPlan && goalToday && (
+						<GoalChip
+							plan={goalPlan}
+							today={goalToday}
+							onOpenDetails={() => history.push(`/tabs/library/book/${book.id}`)}
+						/>
+					)}
 					<Button
 						variant="ghost"
 						size="icon"
@@ -1838,29 +1871,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					>
 						{readerMode === "rsvp" ? <ZapOff /> : <Zap />}
 					</Button>
-					{readerMode !== "rsvp" && (
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={browseAnchor === null ? browse.start : browse.back}
-							disabled={!content}
-							aria-label="Browse mode"
-							aria-pressed={browseAnchor !== null}
-							className={browseAnchor !== null ? "text-primary" : undefined}
-							data-testid="browse-toggle"
-						>
-							<Compass />
-						</Button>
-					)}
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={() => setSearchOpen(true)}
-						disabled={!content}
-						aria-label="Search content"
-					>
-						<Search />
-					</Button>
 					<Button
 						variant="ghost"
 						size="icon"
@@ -1870,20 +1880,44 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					>
 						<Bookmark />
 					</Button>
-					<AppearancePopover
-						trigger={
-							<Button variant="ghost" size="icon" aria-label="Appearance settings">
-								<Type />
-							</Button>
-						}
-					/>
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="icon" aria-label="More actions">
-								<MoreVertical />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-56">
+						<AppearancePopover
+							open={appearanceOpen}
+							onOpenChange={setAppearanceOpen}
+							anchor={
+								<span className="inline-flex">
+									<DropdownMenuTrigger asChild>
+										<Button variant="ghost" size="icon" aria-label="More actions">
+											<MoreVertical />
+										</Button>
+									</DropdownMenuTrigger>
+								</span>
+							}
+						/>
+						<DropdownMenuContent
+							align="end"
+							className="w-56"
+							// Opened once the menu has fully closed: earlier, the menu's own
+							// focus moves while closing read as the popover losing focus.
+							onCloseAutoFocus={(e) => {
+								if (!openAppearanceOnMenuCloseRef.current) return;
+								openAppearanceOnMenuCloseRef.current = false;
+								e.preventDefault();
+								setAppearanceOpen(true);
+							}}
+						>
+							<DropdownMenuItem onSelect={() => setSearchOpen(true)} disabled={!content}>
+								<Search />
+								<span>Search</span>
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onSelect={() => {
+									openAppearanceOnMenuCloseRef.current = true;
+								}}
+							>
+								<Type />
+								<span>Appearance</span>
+							</DropdownMenuItem>
 							{overflowSourceUrl && (
 								<DropdownMenuItem
 									onSelect={() => {
@@ -1968,6 +2002,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						glossaryByParagraph={glossaryByParagraph}
 						linksByParagraph={linksByParagraph}
 						discussionByParagraph={discussionByParagraph}
+						goalDivider={goalDivider}
 						selectionRange={sel.selectionRange}
 						isSelecting={isSelecting}
 						onWordTap={handlePageWordTap}
@@ -2003,6 +2038,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						glossaryByParagraph={glossaryByParagraph}
 						linksByParagraph={linksByParagraph}
 						discussionByParagraph={discussionByParagraph}
+						goalDivider={goalDivider}
 						selectionRange={sel.selectionRange}
 						onWordTap={handleWordTap}
 						onWordLongPress={sel.handleWordLongPress}
@@ -2157,6 +2193,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					setEditingGlossaryEntry(entry);
 				}}
 				onAddEntry={handleAddEntryFromSheet}
+				browse={
+					readerMode === "rsvp"
+						? undefined
+						: {
+								isBrowsing: browseAnchor !== null,
+								onToggle: browseAnchor === null ? browse.start : browse.back,
+							}
+				}
 			/>
 
 			{/* ── Glossary entry modal ── */}

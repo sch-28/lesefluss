@@ -34,6 +34,7 @@ import {
 	type WordPosition,
 	wordPos,
 } from "@lesefluss/core";
+import { localDateKey, localDateOfKey, startOfLocalDay } from "../../utils/date-utils";
 import { log } from "../../utils/log";
 import { randomSessionId } from "../../utils/random-id";
 
@@ -51,6 +52,8 @@ export type SessionRow = {
 	wordsRead: number;
 	startWord: WordPosition;
 	endWord: WordPosition;
+	/** Null when nothing in the sitting counts as read, e.g. all of it rewound as browsing. */
+	furthestWord: WordPosition | null;
 	wpmAvg: number | null;
 	updatedAt: number;
 };
@@ -66,6 +69,11 @@ export type TrackerOpts = {
 	 *  resolve would otherwise record null for the whole sitting. */
 	getWpmSetting: () => number | null;
 	persist: (row: SessionRow, kind: PersistKind) => void;
+	/** Deletes a written row whose sitting was discarded. */
+	remove?: (sessionId: string) => void;
+	/** A sitting's furthest credited word as it changes; null while it has read nothing (it
+	 *  may have opened at a jump's target) or once it is discarded. */
+	onFurthestRead?: (sessionId: string, word: number | null) => void;
 	now?: () => number;
 	newId?: () => string;
 };
@@ -105,6 +113,8 @@ type SessionState = {
 	/** Wall-clock ms when current "active" interval began; null = paused. */
 	activeSinceMs: number | null;
 	lastCheckpointAt: number;
+	/** Local day the sitting belongs to: it never spans midnight, so each day keeps its own row. */
+	dayKey: string;
 	/** A row for this sitting exists, so it must be rewritten (even below the
 	 *  noise floor) rather than dropped if it shrinks. */
 	hasPersisted: boolean;
@@ -129,6 +139,21 @@ function creditSpan(spans: Span[], start: number, end: number): void {
 	spans.splice(first, last - first, [mergedStart, mergedEnd]);
 }
 
+/**
+ * Highest word reached by reading this sitting, or null before any reading.
+ * Jumps and moving back are not reading, so unlike `lastPos` neither can raise
+ * or lower it.
+ */
+function furthestReadIn(s: SessionState): number | null {
+	return s.readSpans[s.readSpans.length - 1]?.[1] ?? null;
+}
+
+/** Local midnight ending the day `dayKey`, in the zone the device is in now. */
+function endOfDay(dayKey: string): number {
+	const start = localDateOfKey(dayKey) ?? new Date();
+	return new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1).getTime();
+}
+
 function wordsReadIn(s: SessionState): number {
 	let total = 0;
 	for (const [start, end] of s.readSpans) total += end - start;
@@ -140,6 +165,7 @@ export class SessionTracker {
 	private foreground = true;
 	private reading = false;
 	private session: SessionState | null = null;
+	private lastFurthestRead: { id: string; word: number } | null = null;
 	private lastActivityAt: number;
 	private lastPollAt: number;
 
@@ -177,6 +203,7 @@ export class SessionTracker {
 	markActivity(): void {
 		if (!this.shouldBeActive) return;
 		const now = this.now();
+		this.splitAtMidnight(now);
 		this.lastActivityAt = now;
 		if (!this.session) {
 			this.openSession(now);
@@ -191,6 +218,7 @@ export class SessionTracker {
 		const pollDelta = now - this.lastPollAt;
 		this.lastPollAt = now;
 
+		this.splitAtMidnight(now, pollDelta > POLL_THROTTLE_GUARD_MS);
 		if (!this.session) return;
 		if (!this.shouldBeActive) return;
 
@@ -228,21 +256,15 @@ export class SessionTracker {
 			if (this.session.activeSinceMs === null) {
 				this.session.activeSinceMs = now;
 			}
+			this.notifyFurthestRead();
 		}
 
 		// Timer was suspended (screen lock, background throttle). The gap is
 		// "no info" — don't count it as active. Settle the active interval up
 		// to last known activity and restart fresh from now.
 		if (pollDelta > POLL_THROTTLE_GUARD_MS) {
-			if (this.session.activeSinceMs !== null) {
-				this.session.accumulatedActiveMs += Math.max(
-					0,
-					this.lastActivityAt - this.session.activeSinceMs,
-				);
-				this.session.activeSinceMs = now;
-			} else {
-				this.session.activeSinceMs = now;
-			}
+			this.settleActive(this.lastActivityAt);
+			this.session.activeSinceMs = now;
 			this.lastActivityAt = now;
 			return;
 		}
@@ -253,13 +275,7 @@ export class SessionTracker {
 		// known activity rather than now — the grace period between
 		// `lastActivityAt` and `SOFT_IDLE_MS` is undecided, and if we hit this
 		// branch the user wasn't actually reading during it.
-		if (this.session.activeSinceMs !== null && idleMs > SOFT_IDLE_MS) {
-			this.session.accumulatedActiveMs += Math.max(
-				0,
-				this.lastActivityAt - this.session.activeSinceMs,
-			);
-			this.session.activeSinceMs = null;
-		}
+		if (idleMs > SOFT_IDLE_MS) this.settleActive(this.lastActivityAt);
 
 		// Hard end: finalize this sitting. A new sitting opens on next activity.
 		if (idleMs > HARD_END_MS) {
@@ -280,12 +296,14 @@ export class SessionTracker {
 	/** Undoes travel past `pos` that turned out to be browsing, not reading:
 	 *  the sitting must not end, or count words, beyond where reading stopped. */
 	rewindTo(pos: number): void {
+		this.splitAtMidnight(this.now());
 		const s = this.session;
 		if (!s || s.lastPos <= pos) return;
 		s.lastPos = pos;
 		s.readSpans = s.readSpans
 			.filter(([start]) => start < pos)
 			.map(([start, end]): Span => [start, Math.min(end, pos)]);
+		this.notifyFurthestRead();
 		// A heartbeat may already hold the browsed spot; overwrite it now.
 		if (s.hasPersisted) {
 			const now = this.now();
@@ -295,9 +313,12 @@ export class SessionTracker {
 		}
 	}
 
-	/** Drops the open sitting without writing it. */
+	/** Drops the open sitting, deleting its row if one was already written. */
 	discard(): void {
+		const s = this.session;
 		this.session = null;
+		if (s?.hasPersisted) this.opts.remove?.(s.id);
+		this.notifyFurthestRead();
 	}
 
 	/** Opens a sitting for reading that happened while the tracker was paused
@@ -323,9 +344,11 @@ export class SessionTracker {
 			accumulatedActiveMs: ms,
 			activeSinceMs: null,
 			lastCheckpointAt: now,
+			dayKey: localDateKey(now),
 			hasPersisted: false,
 		};
 		this.lastActivityAt = now;
+		this.notifyFurthestRead();
 	}
 
 	/** Terminal write at the natural end of a sitting (unmount, book/mode
@@ -333,10 +356,9 @@ export class SessionTracker {
 	finalize(): void {
 		if (!this.session) return;
 		const now = this.now();
-		if (this.session.activeSinceMs !== null) {
-			this.session.accumulatedActiveMs += now - this.session.activeSinceMs;
-			this.session.activeSinceMs = null;
-		}
+		this.splitAtMidnight(now);
+		if (!this.session) return;
+		this.settleActive(now);
 		const row = this.buildRow(now);
 		if (row) {
 			this.write(row, "flush");
@@ -351,10 +373,13 @@ export class SessionTracker {
 			);
 		}
 		this.session = null;
+		// Its row is written; the reader keeps what it read, so a later discard must not retract it.
+		this.lastFurthestRead = null;
 	}
 
 	private reconcile(): void {
 		const now = this.now();
+		this.splitAtMidnight(now);
 		if (this.shouldBeActive) {
 			if (this.session) {
 				// Returning to active. If away longer than the hard cap, the prior
@@ -374,10 +399,7 @@ export class SessionTracker {
 		} else if (this.session) {
 			// Going inactive: settle the open active interval and checkpoint so
 			// an app kill while backgrounded preserves the latest state.
-			if (this.session.activeSinceMs !== null) {
-				this.session.accumulatedActiveMs += now - this.session.activeSinceMs;
-				this.session.activeSinceMs = null;
-			}
+			this.settleActive(now);
 			const row = this.buildRow(now);
 			if (row) {
 				this.write(row, "checkpoint");
@@ -398,10 +420,88 @@ export class SessionTracker {
 			accumulatedActiveMs: 0,
 			activeSinceMs: now,
 			lastCheckpointAt: now,
+			dayKey: localDateKey(now),
 			hasPersisted: false,
 		};
 		this.lastActivityAt = now;
 		this.lastPollAt = now;
+		this.notifyFurthestRead();
+	}
+
+	/** Adds the open active interval, up to `until`, to the sitting's time and pauses it. */
+	private settleActive(until: number): void {
+		const s = this.session;
+		if (!s || s.activeSinceMs === null) return;
+		s.accumulatedActiveMs += Math.max(0, until - s.activeSinceMs);
+		s.activeSinceMs = null;
+	}
+
+	/**
+	 * Closes a sitting whose local day is over, so each day keeps its own row: a
+	 * row spanning midnight would move its reading, and the day's end position,
+	 * into the next day, and yesterday's met target would come undone.
+	 *
+	 * Reading straight through midnight goes on in a new sitting from the same
+	 * spot. Otherwise (paused, idle or the timer suspended) the old sitting gets
+	 * no time after its last activity, and the next activity opens a new one.
+	 * Comparing day keys also covers several midnights and a time zone change.
+	 */
+	private splitAtMidnight(now: number, suspended = false): void {
+		const s = this.session;
+		if (!s) return;
+		const today = localDateKey(now);
+		if (today === s.dayKey) return;
+		const dayEnd = endOfDay(s.dayKey);
+		// The clock or zone moved back a day (flying west, a clock correction): no
+		// midnight passed, and `now` is earlier than the sitting's own times.
+		const wentBack = today < s.dayKey;
+		const readingThrough =
+			!suspended && s.activeSinceMs !== null && now - this.lastActivityAt <= SOFT_IDLE_MS;
+		let endedAt: number | undefined;
+		if (wentBack) {
+			this.settleActive(this.lastActivityAt);
+		} else if (readingThrough) {
+			this.settleActive(dayEnd);
+			endedAt = dayEnd - 1;
+		} else {
+			this.settleActive(Math.min(dayEnd, this.lastActivityAt));
+		}
+		// Built at `now` so updatedAt is real for sync; endedAt stays within the sitting's day.
+		const row = this.buildRow(now, endedAt);
+		if (row) this.write(row, "flush");
+		this.session = null;
+		// Written: the reader keeps what it read, as after finalize.
+		this.lastFurthestRead = null;
+		if (!readingThrough) return;
+		const start = Math.max(startOfLocalDay(now), Math.min(dayEnd, now));
+		this.session = {
+			id: this.newId(),
+			startedAt: start,
+			startPos: s.lastPos,
+			lastPos: s.lastPos,
+			readSpans: [],
+			creditBudget: s.creditBudget,
+			accumulatedActiveMs: 0,
+			activeSinceMs: start,
+			lastCheckpointAt: now,
+			dayKey: today,
+			hasPersisted: false,
+		};
+		this.lastActivityAt = Math.min(this.lastActivityAt, now);
+	}
+
+	private notifyFurthestRead(): void {
+		const s = this.session;
+		const last = this.lastFurthestRead;
+		const word = s ? furthestReadIn(s) : null;
+		if (word === null) {
+			if (last) this.opts.onFurthestRead?.(last.id, null);
+			this.lastFurthestRead = null;
+			return;
+		}
+		if (s === null || (last?.id === s.id && last.word === word)) return;
+		this.lastFurthestRead = { id: s.id, word };
+		this.opts.onFurthestRead?.(s.id, word);
 	}
 
 	private write(row: SessionRow, kind: "checkpoint" | "flush"): void {
@@ -409,7 +509,7 @@ export class SessionTracker {
 		this.opts.persist(row, kind);
 	}
 
-	private buildRow(now: number): SessionRow | null {
+	private buildRow(now: number, endedAt?: number): SessionRow | null {
 		const s = this.session;
 		if (!s) return null;
 		const finalActiveMs =
@@ -421,6 +521,7 @@ export class SessionTracker {
 		// On an in-place book switch the reader clears its position ref before this
 		// runs, so re-reading it would record the outgoing session as ending at 0.
 		const endPos = s.lastPos;
+		const furthestRead = furthestReadIn(s);
 		const computedWpm =
 			finalActiveMs > 1000 ? Math.round(wordsRead / (finalActiveMs / 60_000)) : null;
 		const wasCapped =
@@ -436,11 +537,14 @@ export class SessionTracker {
 			// the sitting happens to be written. Backgrounding overnight and
 			// returning would otherwise stamp a ten-hour session that then gets
 			// smeared across hours nobody read in.
-			endedAt: s.activeSinceMs !== null ? now : this.lastActivityAt,
+			endedAt:
+				endedAt ??
+				Math.min(s.activeSinceMs !== null ? now : this.lastActivityAt, endOfDay(s.dayKey) - 1),
 			durationMs: finalActiveMs,
 			wordsRead,
 			startWord: wordPos(s.startPos),
 			endWord: wordPos(endPos),
+			furthestWord: furthestRead === null ? null : wordPos(furthestRead),
 			wpmAvg,
 			updatedAt: now,
 		};

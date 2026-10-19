@@ -31,6 +31,7 @@ import { bulkBookHooks } from "./use-bulk-books";
 import { dangerZoneHooks } from "./use-danger-zone";
 import { glossaryHooks } from "./use-glossary";
 import { highlightHooks } from "./use-highlights";
+import { readingGoalHooks } from "./use-reading-goals";
 import { readingSessionHooks } from "./use-reading-sessions";
 import { serialHooks } from "./use-serials";
 import { seriesHooks } from "./use-series";
@@ -158,6 +159,14 @@ export const queryHooks = {
 	 * chapters as `pending` rows. Returns `{ isSyncing }` for a subtle UI indicator.
 	 */
 	useChapterListSync: seriesHooks.useChapterListSync,
+
+	/** A book's active goal and its plan (see services/stats/reading-goal.ts). */
+	useReadingGoalPlan: readingGoalHooks.useReadingGoalPlan,
+	useCreateReadingGoal: readingGoalHooks.useCreateReadingGoal,
+	/** Mode switch or new target date / daily percent. */
+	useReplanReadingGoal: readingGoalHooks.useReplanReadingGoal,
+	useSetGoalReminder: readingGoalHooks.useSetGoalReminder,
+	useDeleteReadingGoal: readingGoalHooks.useDeleteReadingGoal,
 
 	// ── Stats ─────────────────────────────────────────────────────────────
 	useStatsPeriodTotals: statsHooks.usePeriodTotals,

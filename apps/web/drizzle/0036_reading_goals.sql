@@ -1,0 +1,21 @@
+CREATE TABLE "sync_reading_goals" (
+	"user_id" text NOT NULL,
+	"goal_id" text NOT NULL,
+	"book_id" text NOT NULL,
+	"mode" text NOT NULL,
+	"status" text NOT NULL,
+	"started_at" timestamp NOT NULL,
+	"start_word" integer NOT NULL,
+	"plan_start_date" text NOT NULL,
+	"plan_start_word" integer NOT NULL,
+	"target_date" text NOT NULL,
+	"daily_percent" double precision NOT NULL,
+	"carried_days_met" integer DEFAULT 0 NOT NULL,
+	"completed_at" timestamp,
+	"deleted" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	CONSTRAINT "sync_reading_goals_user_id_goal_id_pk" PRIMARY KEY("user_id","goal_id"),
+	CONSTRAINT "sync_reading_goals_mode_check" CHECK ("sync_reading_goals"."mode" IN ('deadline', 'pace')),
+	CONSTRAINT "sync_reading_goals_status_check" CHECK ("sync_reading_goals"."status" IN ('active', 'completed', 'abandoned'))
+);

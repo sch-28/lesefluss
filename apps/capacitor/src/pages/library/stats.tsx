@@ -1,8 +1,8 @@
 import { BarChart3, Loader2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { PageHeader } from "../../components/app-shell/page-header";
+import { useLocalDayNow } from "../../hooks/use-local-day";
 import { queryHooks } from "../../services/db/hooks";
-import { startOfLocalDay } from "../../utils/date-utils";
 import { SessionTable } from "./session-table";
 import { Activity } from "./stats/activity";
 import { CurrentlyReading } from "./stats/currently-reading";
@@ -19,17 +19,7 @@ const Stats: React.FC = () => {
 	// Locked rather than live: query keys derive from it, and a ticking value
 	// would refetch forever. Rolled forward on the next visibility change if the
 	// local day moved on, so a backgrounded page stops reporting yesterday.
-	const [now, setNow] = useState(() => Date.now());
-	useEffect(() => {
-		const onVisible = () => {
-			if (document.visibilityState === "hidden") return;
-			setNow((current) =>
-				startOfLocalDay(current) === startOfLocalDay(Date.now()) ? current : Date.now(),
-			);
-		};
-		document.addEventListener("visibilitychange", onVisible);
-		return () => document.removeEventListener("visibilitychange", onVisible);
-	}, []);
+	const now = useLocalDayNow();
 	// All time is the honest landing state for a habit: a reader three days in
 	// sees an empty page under any shorter default.
 	const [period, setPeriod] = useState<Period>("all");

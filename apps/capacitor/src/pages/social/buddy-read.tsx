@@ -10,7 +10,6 @@ import { motion } from "framer-motion";
 import {
 	Ban,
 	BookOpen,
-	CalendarClock,
 	Crown,
 	Flag,
 	LogOut,
@@ -39,7 +38,6 @@ import { socialKeys } from "@/services/db/hooks/query-keys";
 import { parseChapters } from "@/services/db/queries/books";
 import {
 	buddyReadFailureMessage,
-	paceText,
 	useBuddyRead,
 	useCancelBuddyReadInvite,
 	useInviteToBuddyRead,
@@ -52,6 +50,7 @@ import { useIsOnline } from "@/services/social/cache";
 import { useBlockUser } from "@/services/social/friends";
 import { currentChapterIndex } from "@/utils/chapters";
 import { formatAgo, formatRelative } from "@/utils/date-utils";
+import { BuddyReadDeadline } from "./buddy-read-deadline";
 import { DiscussionPanel } from "./buddy-read-discussion";
 import { OfflineNotice, SocialGate, Spinner, StaleNotice } from "./social-gate";
 
@@ -67,34 +66,6 @@ const BUDDY_READ_MAX = 8;
 function relativeTo(delta: number): string {
 	if (delta === 0) return "same place as you";
 	return delta > 0 ? "ahead of you" : "behind you";
-}
-
-function toDateInput(ms: number | null): string {
-	if (ms === null) return "";
-	const d = new Date(ms);
-	const pad = (n: number) => String(n).padStart(2, "0");
-	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-/** End of the picked local day, so "finish by Friday" includes Friday. */
-function fromDateInput(value: string): number | null {
-	if (!value) return null;
-	const [y, m, d] = value.split("-").map(Number);
-	if (!y || !m || !d) return null;
-	return new Date(y, m - 1, d, 23, 59, 59).getTime();
-}
-
-function paceLine(detail: BuddyReadDetail, myPercent: number | null): string | null {
-	if (detail.targetDate === null) return null;
-	const due = new Date(detail.targetDate).toLocaleDateString();
-	const onPace = isOnPace({
-		percent: myPercent,
-		createdAt: detail.createdAt,
-		targetDate: detail.targetDate,
-		now: Date.now(),
-	});
-	if (onPace === null) return `Finish by ${due}`;
-	return `Finish by ${due} · ${paceText(onPace)}`;
 }
 
 /** Finished readers first, then by progress. */
@@ -235,7 +206,15 @@ function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 			: null;
 	const isActive = detail.status === "in_progress" && !detail.originUnavailable;
 	const seatsLeft = BUDDY_READ_MAX - detail.memberCount - detail.invites.length;
-	const pace = isActive ? paceLine(detail, myPercent) : null;
+	const onPace =
+		detail.targetDate === null
+			? null
+			: isOnPace({
+					percent: myPercent,
+					createdAt: detail.createdAt,
+					targetDate: detail.targetDate,
+					now: Date.now(),
+				});
 
 	const participantMenu = (p: BuddyReadParticipant) => {
 		const items: ActionSheetItem[] = [];
@@ -347,7 +326,6 @@ function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 							{" · "}
 							{detail.memberCount === 1 ? "1 reader" : `${detail.memberCount} readers`}
 						</p>
-						{pace && <p className="mt-1 mb-0 text-foreground text-xs">{pace}</p>}
 					</div>
 				</div>
 				{detail.originUnavailable && (
@@ -455,40 +433,28 @@ function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 						</SocialSection>
 					)}
 
-					{detail.isHost && isActive && (
-						<SocialSection title="Target date">
-							<ListCard>
-								<div className="flex items-center gap-3 px-4 py-3">
-									<CalendarClock className="size-5 text-muted-foreground" />
-									<input
-										type="date"
-										aria-label="Finish by"
-										className="min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-foreground text-sm"
-										value={toDateInput(detail.targetDate)}
-										min={toDateInput(Date.now())}
-										disabled={isOffline || setTarget.isPending}
-										onChange={(e) =>
-											setTarget.mutate(
-												{ buddyReadId: id, targetDate: fromDateInput(e.target.value) },
-												{ onError },
-											)
-										}
-									/>
-									{detail.targetDate !== null && (
-										<Button
-											size="sm"
-											variant="ghost"
-											disabled={isOffline || setTarget.isPending}
-											onClick={() =>
-												setTarget.mutate({ buddyReadId: id, targetDate: null }, { onError })
-											}
-										>
-											Clear
-										</Button>
-									)}
-								</div>
-							</ListCard>
-						</SocialSection>
+					{isActive && (
+						<BuddyReadDeadline
+							targetDate={detail.targetDate}
+							onPace={onPace}
+							isHost={detail.isHost}
+							isOffline={isOffline}
+							myBook={myBook}
+							isSettingTarget={setTarget.isPending}
+							onSetTarget={(targetDate) =>
+								setTarget.mutate({ buddyReadId: id, targetDate }, { onError })
+							}
+							onConfirmReplace={(run) =>
+								setConfirm({
+									title: "Replace your goal?",
+									description:
+										"Your current goal for this book ends and the deadline becomes your goal.",
+									confirmLabel: "Replace",
+									run,
+								})
+							}
+							onError={onError}
+						/>
 					)}
 
 					<Button

@@ -37,14 +37,27 @@ describe("markerDetail", () => {
 	const live = { userId: "u", wordPosition: 500, wordCount: 1000, wpm: 280 };
 
 	it("shows the word gap when positions compare exactly", () => {
-		expect(markerDetail({ live, wordPosition: 500 }, 200, false)).toBe(
+		expect(markerDetail({ live, wordPosition: 500, goal: null }, 200, false)).toBe(
 			"reading now · 280 wpm · 300 words ahead",
 		);
-		expect(markerDetail({ live: null, wordPosition: 100 }, 200, false)).toBe("100 words behind");
+		expect(markerDetail({ live: null, wordPosition: 100, goal: null }, 200, false)).toBe(
+			"100 words behind",
+		);
 	});
 
 	it("leaves the word gap out when positions are approximate", () => {
-		expect(markerDetail({ live, wordPosition: 500 }, 200, true)).toBe("reading now · 280 wpm");
-		expect(markerDetail({ live: null, wordPosition: 500 }, 200, true)).toBe("");
+		expect(markerDetail({ live, wordPosition: 500, goal: null }, 200, true)).toBe(
+			"reading now · 280 wpm",
+		);
+		expect(markerDetail({ live: null, wordPosition: 500, goal: null }, 200, true)).toBe("");
+	});
+
+	it("adds their standing against their own goal when it is shared", () => {
+		expect(
+			markerDetail({ live: null, wordPosition: 500, goal: { aheadDays: -1.26 } }, 500, false),
+		).toBe("level with you · goal \u22121.3 d");
+		expect(markerDetail({ live: null, wordPosition: 500, goal: { aheadDays: 2 } }, 500, true)).toBe(
+			"goal +2.0 d",
+		);
 	});
 });

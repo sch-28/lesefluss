@@ -72,6 +72,7 @@ vi.mock("../../../services/social/friends", () => ({
 vi.mock("../../../services/social/buddy-reads", () => ({
 	useBuddyReads: () => ({ data: state.buddyReads, isPending: false, isError: false }),
 	paceText: () => "",
+	formatDeadline: () => "",
 	buddyReadExists: async () => true,
 }));
 vi.mock("../../../services/social/feed", () => ({

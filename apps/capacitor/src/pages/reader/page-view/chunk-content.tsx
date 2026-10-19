@@ -12,6 +12,7 @@
 import type React from "react";
 import { memo, useLayoutEffect, useRef } from "react";
 import { readerFontStack } from "../../../hooks/use-appearance-settings";
+import type { ReaderGoalDivider } from "../goal-divider";
 import Paragraph, {
 	type GlossaryRangeProp,
 	type HighlightRange,
@@ -60,6 +61,8 @@ export interface ChunkContentProps {
 	glossaryByParagraph: Map<number, GlossaryRangeProp[]> | undefined;
 	linksByParagraph: Map<number, LinkRangeProp[]> | undefined;
 	discussionByParagraph?: Map<number, { count: number; onTap: () => void }>;
+	/** Today's reading-goal divider and the paragraph it closes. */
+	goalDivider?: ReaderGoalDivider;
 	selectionRange: { startWord: number; endWord: number } | null;
 
 	// Word interaction
@@ -99,6 +102,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	glossaryByParagraph,
 	linksByParagraph,
 	discussionByParagraph,
+	goalDivider,
 	selectionRange,
 	onWordTap,
 	onWordLongPress,
@@ -198,6 +202,9 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 						glossaryRanges={glossaryByParagraph?.get(paraGlobalIndex)}
 						links={linksByParagraph?.get(paraGlobalIndex)}
 						discussion={discussionByParagraph?.get(paraGlobalIndex)}
+						goalDivider={
+							goalDivider?.paragraphIndex === paraGlobalIndex ? goalDivider.divider : undefined
+						}
 						chapterHeading={chapterHeadingByParagraph?.get(paraGlobalIndex)}
 						figures={figuresByParagraph?.get(paraGlobalIndex)}
 						selectionRange={selectionRange}

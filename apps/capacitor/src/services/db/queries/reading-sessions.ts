@@ -106,6 +106,8 @@ const EXCLUDED_SESSION_COLUMNS = {
 	wordsRead: sql`excluded.words_read`,
 	startWord: sql`excluded.start_word`,
 	endWord: sql`excluded.end_word`,
+	// A row from a client that predates the column must not wipe a known value.
+	furthestWord: sql`COALESCE(excluded.furthest_word, reading_sessions.furthest_word)`,
 	wpmAvg: sql`excluded.wpm_avg`,
 	updatedAt: sql`excluded.updated_at`,
 };

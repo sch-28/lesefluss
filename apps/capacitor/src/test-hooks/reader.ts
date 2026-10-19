@@ -30,6 +30,7 @@ type E2EWindow = {
 	__lesefluss_e2e_progress_word?: number;
 	__lesefluss_e2e_save?: E2ESaveHook;
 	__lesefluss_e2e_session?: E2ESessionHook;
+	__lesefluss_e2e_session_ticks?: number;
 	__lesefluss_e2e_link_open?: E2ELinkOpenHook;
 };
 
@@ -58,6 +59,12 @@ export function publishSessionPersist(bookId: string, kind: "checkpoint" | "flus
 		lastKind: kind,
 		count: (e.__lesefluss_e2e_session?.count ?? 0) + 1,
 	};
+}
+
+/** Counts session tracker polls, so a test can wait for one to have seen a move. */
+export function publishSessionTick(): void {
+	const e = w();
+	e.__lesefluss_e2e_session_ticks = (e.__lesefluss_e2e_session_ticks ?? 0) + 1;
 }
 
 export function publishLinkOpen(href: string): void {

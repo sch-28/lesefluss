@@ -1,5 +1,5 @@
 import { SETTING_CONSTRAINTS } from "@lesefluss/core";
-import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent } from "@lesefluss/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@lesefluss/ui/toggle-group";
 import type React from "react";
 import { PAGINATION_STYLE_OPTIONS } from "../../components/rsvp-pickers";
@@ -7,10 +7,13 @@ import { useTheme } from "../../contexts/theme-context";
 import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "../../hooks/use-appearance-settings";
 
 interface Props {
-	trigger: React.ReactNode;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	/** What the popover points at: it opens from the More menu, which has no trigger of its own. */
+	anchor: React.ReactNode;
 }
 
-const AppearancePopover: React.FC<Props> = ({ trigger }) => {
+const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 	const { storedTheme, setTheme } = useTheme();
 	const {
 		fontSize,
@@ -36,9 +39,16 @@ const AppearancePopover: React.FC<Props> = ({ trigger }) => {
 	} = useAppearanceSettings();
 
 	return (
-		<Popover>
-			<PopoverTrigger asChild>{trigger}</PopoverTrigger>
-			<PopoverContent align="end" className="w-80 p-0">
+		<Popover open={open} onOpenChange={onOpenChange}>
+			<PopoverAnchor asChild>{anchor}</PopoverAnchor>
+			<PopoverContent
+				// Remounted when e-ink flips: a close racing the switch leaves Radix
+				// waiting for an exit animation that e-ink then strips, so the
+				// popover would stay on screen for good.
+				key={String(isEinkMode)}
+				align="end"
+				className="w-80 p-0"
+			>
 				<div className="appearance-popover-content">
 					<div className="ap-section">
 						<span className="ap-label">

@@ -16,6 +16,10 @@
 			"overlaysWebView": true,
 			"style": "DARK",
 			"backgroundColor": "#00000000"
+		},
+		"LocalNotifications": {
+			"smallIcon": "ic_stat_lesefluss",
+			"iconColor": "#d9543a"
 		}
 	}
 }

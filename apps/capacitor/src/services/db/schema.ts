@@ -2,6 +2,8 @@ import {
 	type BookStatus,
 	type HexColor,
 	type PaginationStyle,
+	type ReadingGoalMode,
+	type ReadingGoalStatus,
 	type WordPosition,
 	wordPos,
 } from "@lesefluss/core";
@@ -345,9 +347,52 @@ export const readingSessions = sqliteTable("reading_sessions", {
 	wordsRead: integer("words_read").notNull(),
 	startWord: integer("start_word").$type<WordPosition>().notNull(),
 	endWord: integer("end_word").$type<WordPosition>().notNull(),
+	// Highest word actually read this sitting, unlike endWord which a jump or moving back sets.
+	// Null on rows from before it existed.
+	furthestWord: integer("furthest_word").$type<WordPosition>(),
 	wpmAvg: integer("wpm_avg"), // rsvp only; null otherwise
 	updatedAt: integer("updated_at").notNull(), // for last-write-wins sync
 });
 
 export type ReadingSession = typeof readingSessions.$inferSelect;
 export type NewReadingSession = typeof readingSessions.$inferInsert;
+
+/**
+ * Per-book reading goals. Own table rather than columns on `books` so a goal
+ * edit never moves the book's revisions. At most one active, non-deleted goal
+ * per book; the query layer keeps that invariant (see queries/reading-goals.ts).
+ *
+ * `targetDate` and `planStartDate` are local calendar dates (`YYYY-MM-DD`).
+ * `planStartDate`/`planStartWord` are the baseline of the plan line and move on
+ * a replan; `startedAt`/`startWord` are where the goal began and never move.
+ * `carriedDaysMet` holds the days met under the parameters before the last replan.
+ */
+export const readingGoals = sqliteTable(
+	"reading_goals",
+	{
+		id: text("id").primaryKey(),
+		bookId: text("book_id").notNull(),
+		mode: text("mode").$type<ReadingGoalMode>().notNull(),
+		status: text("status").$type<ReadingGoalStatus>().notNull().default("active"),
+		startedAt: integer("started_at").notNull(),
+		startWord: integer("start_word").$type<WordPosition>().notNull(),
+		planStartDate: text("plan_start_date").notNull(),
+		planStartWord: integer("plan_start_word").$type<WordPosition>().notNull(),
+		targetDate: text("target_date").notNull(),
+		dailyPercent: real("daily_percent").notNull(),
+		carriedDaysMet: integer("carried_days_met").notNull().default(0),
+		completedAt: integer("completed_at"),
+		/** Local time of day for a daily reminder, "HH:MM"; null = no reminder. */
+		reminderTime: text("reminder_time"),
+		deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+		createdAt: integer("created_at").notNull(),
+		updatedAt: integer("updated_at").notNull(),
+	},
+	(t) => [
+		check("reading_goals_mode_check", sql`${t.mode} IN ('deadline', 'pace')`),
+		check("reading_goals_status_check", sql`${t.status} IN ('active', 'completed', 'abandoned')`),
+	],
+);
+
+export type ReadingGoal = typeof readingGoals.$inferSelect;
+export type NewReadingGoal = typeof readingGoals.$inferInsert;

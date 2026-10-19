@@ -51,7 +51,7 @@ async function closeAppearancePopover(page: Page): Promise<void> {
  * does nothing.
  */
 async function stepUpAppearance(page: Page, label: string, glyph: string): Promise<void> {
-	await page.getByRole("button", { name: "Appearance settings" }).click();
+	await reader.openAppearance(page);
 	const row = stepperRow(page, label);
 	const value = row.locator(".ap-row-value");
 	const before = await value.textContent();
@@ -131,6 +131,25 @@ export const reader = {
 		await page.waitForTimeout(JUMP_SETTLE_GUARD_MS + 300);
 	},
 
+	/** Appearance lives in the More menu; the popover opens anchored to it. */
+	openAppearance: async (page: Page) => {
+		await page.getByRole("button", { name: "More actions" }).click();
+		await page.getByRole("menuitem", { name: "Appearance" }).click();
+		await expect(page.locator(".appearance-popover-content")).toBeVisible();
+	},
+
+	openSearch: async (page: Page) => {
+		await page.getByRole("button", { name: "More actions" }).click();
+		await page.getByRole("menuitem", { name: "Search" }).click();
+	},
+
+	/** Browse mode starts from the annotations sheet, which closes on the way. */
+	startBrowse: async (page: Page) => {
+		await page.getByRole("button", { name: "Annotations" }).click();
+		await page.getByTestId("browse-toggle").click();
+		await expect(page.getByRole("dialog")).toHaveCount(0);
+	},
+
 	tocJumpToChapter: async (page: Page, label: string) => {
 		await page.getByRole("button", { name: "Annotations" }).click();
 		await page.getByRole("button", { name: label }).click();
@@ -141,7 +160,11 @@ export const reader = {
 			let el =
 				document.querySelector("span[data-word], .reader-figure, .reader-heading")?.parentElement ??
 				null;
-			while (el && el.scrollHeight <= el.clientHeight) el = el.parentElement;
+			// A paragraph holding the goal divider overflows too, but does not scroll.
+			const scrolls = (e: HTMLElement) =>
+				e.scrollHeight > e.clientHeight &&
+				["auto", "scroll"].includes(getComputedStyle(e).overflowY);
+			while (el && !scrolls(el)) el = el.parentElement;
 			if (!el) throw new Error("No scrollable reader container");
 			const r = el.getBoundingClientRect();
 			return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
@@ -345,7 +368,7 @@ export const reader = {
 	},
 
 	setPaginationStyle: async (page: Page, style: "scroll" | "page") => {
-		await page.getByRole("button", { name: "Appearance settings" }).click();
+		await reader.openAppearance(page);
 		const label = style === "scroll" ? "Scroll" : "Page";
 		await page.getByRole("radio", { name: label, exact: true }).click();
 		await closeAppearancePopover(page);
@@ -372,6 +395,16 @@ export const reader = {
 	 * after `queries.updateBook(...)` has resolved. Polling this beats wall-
 	 * clock sleeps because it observes the actual write rather than guessing.
 	 */
+	/** Waits for the session tracker's next poll, which credits (or not) the moves before it. */
+	waitForTrackerTick: async (page: Page) => {
+		const baseline = await page.evaluate(() => window.__lesefluss_e2e_session_ticks ?? 0);
+		await page.waitForFunction(
+			(prev) => (window.__lesefluss_e2e_session_ticks ?? 0) > prev,
+			baseline,
+			{ timeout: 10_000 },
+		);
+	},
+
 	waitForNextSave: async (page: Page) => {
 		const baseline = await page.evaluate(() => window.__lesefluss_e2e_save?.count ?? 0);
 		await page.waitForFunction(

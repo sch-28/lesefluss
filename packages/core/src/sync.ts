@@ -1,5 +1,13 @@
 import { z } from "zod";
 import { BOOK_STATUSES } from "./books";
+import { isDayKey } from "./day-key";
+import {
+	MAX_GOAL_DAILY_PERCENT,
+	MIN_GOAL_DAILY_PERCENT,
+	READING_GOAL_MODES,
+	READING_GOAL_STATUSES,
+	REMINDER_TIME_REGEX,
+} from "./reading-goal";
 import { HEX_COLOR_REGEX, SETTING_CONSTRAINTS } from "./settings";
 
 /**
@@ -196,6 +204,9 @@ export const SyncGlossaryEntrySchema = z.object({
 	updatedAt: z.number().int().nonnegative(),
 });
 
+/** A Postgres `integer` column: larger values would fail the insert instead of the parse. */
+const pgInt = () => z.number().int().nonnegative().max(2_147_483_647);
+
 export const SyncReadingSessionSchema = z
 	.object({
 		sessionId: z.string().min(1).max(64),
@@ -205,8 +216,10 @@ export const SyncReadingSessionSchema = z
 		endedAt: z.number().int().nonnegative(),
 		durationMs: z.number().int().nonnegative(),
 		wordsRead: z.number().int().nonnegative(),
-		startWord: z.number().int().nonnegative(),
-		endWord: z.number().int().nonnegative(),
+		startWord: pgInt(),
+		endWord: pgInt(),
+		// Highest word read in the sitting. Optional: clients from before it existed omit it.
+		furthestWord: pgInt().nullable().optional(),
 		// A slow scroll session legitimately rounds to 0 wpm.
 		wpmAvg: z.number().int().nonnegative().nullable(),
 		updatedAt: z.number().int().nonnegative(),
@@ -214,6 +227,30 @@ export const SyncReadingSessionSchema = z
 	.refine((d) => d.endedAt >= d.startedAt, {
 		message: "endedAt must be >= startedAt",
 	});
+
+// Bounded to what Postgres `integer` and a JS Date hold: an out-of-range value
+// passes validation but fails the insert, which aborts the whole push.
+const epochMs = () => z.number().int().nonnegative().max(8.64e15);
+const dayKey = () => z.string().refine(isDayKey, { message: "not a calendar date" });
+
+export const SyncReadingGoalSchema = z.object({
+	goalId: z.string().min(1).max(64),
+	bookId: z.string().regex(/^[0-9a-f]{8}$/),
+	mode: z.enum(READING_GOAL_MODES),
+	status: z.enum(READING_GOAL_STATUSES),
+	startedAt: epochMs(),
+	startWord: pgInt(),
+	planStartDate: dayKey(),
+	planStartWord: pgInt(),
+	targetDate: dayKey(),
+	dailyPercent: z.number().min(MIN_GOAL_DAILY_PERCENT).max(MAX_GOAL_DAILY_PERCENT),
+	carriedDaysMet: pgInt(),
+	completedAt: epochMs().nullable(),
+	reminderTime: z.string().regex(REMINDER_TIME_REGEX).nullable(),
+	deleted: z.boolean(),
+	createdAt: epochMs(),
+	updatedAt: epochMs(),
+});
 
 export const SyncPayloadSchema = z.object({
 	// Cap is generous because serial chapter rows (seriesId set) carry no body
@@ -227,6 +264,9 @@ export const SyncPayloadSchema = z.object({
 	// Reading sessions are append-only; cap matches server-side row cap per user.
 	// Clients with more local rows clip newest-first before pushing.
 	readingSessions: z.array(SyncReadingSessionSchema).max(50_000).optional().default([]),
+	// No default: a client that pre-dates goals omits the field, and that must
+	// not read as "this account has no goals".
+	readingGoals: z.array(SyncReadingGoalSchema).max(5000).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -239,6 +279,7 @@ export type SyncSettings = z.infer<typeof SyncSettingsSchema>;
 export type SyncHighlight = z.infer<typeof SyncHighlightSchema>;
 export type SyncGlossaryEntry = z.infer<typeof SyncGlossaryEntrySchema>;
 export type SyncReadingSession = z.infer<typeof SyncReadingSessionSchema>;
+export type SyncReadingGoal = z.infer<typeof SyncReadingGoalSchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 
 /**
@@ -256,6 +297,8 @@ export type SyncResponse = {
 	glossaryEntries: SyncGlossaryEntry[];
 	series: SyncSeries[];
 	readingSessions: SyncReadingSession[];
+	/** Optional so a client pointed at an older server can do without it. */
+	readingGoals?: SyncReadingGoal[];
 	/**
 	 * Book ids the server currently holds body content for. Lets the client skip
 	 * re-uploading content it has already stored, which it cannot otherwise know:

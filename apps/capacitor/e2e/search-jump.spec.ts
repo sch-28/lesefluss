@@ -7,7 +7,7 @@ test("search result click jumps the reader to the matching word", async ({ page 
 	await openBookFromLibrary(page, title);
 
 	// Open search modal via header button.
-	await page.getByRole("button", { name: "Search content" }).click();
+	await reader.openSearch(page);
 	const input = page.getByPlaceholder("Search in book…");
 	await expect(input).toBeVisible();
 

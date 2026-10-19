@@ -9,17 +9,14 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import CoverImage from "@/components/cover-image";
 import { queryHooks } from "@/services/db/hooks";
-import { paceText } from "@/services/social/buddy-reads";
+import { formatDeadline, paceText } from "@/services/social/buddy-reads";
 import { BuddyTrack, type TrackRider } from "./buddy-track";
 import { CoverBackdrop } from "./cover-backdrop";
 import { FinishedLabel, useLocalCover } from "./social-ui";
 
 function statusLine(read: BuddyReadSummary, myPercent: number | null): string | null {
 	if (read.targetDate === null) return null;
-	const due = new Date(read.targetDate).toLocaleDateString(undefined, {
-		day: "numeric",
-		month: "short",
-	});
+	const due = formatDeadline(read.targetDate);
 	const onPace = isOnPace({
 		percent: myPercent,
 		createdAt: read.createdAt,

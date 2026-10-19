@@ -31,6 +31,7 @@ import { originKey } from "~/lib/origin";
 import { copyBookForUser, liveCopyOf, shareableSource } from "./copy-book";
 import { SocialError } from "./errors";
 import { lockUsers } from "./friends";
+import { memberGoalStatuses } from "./goal-status";
 import { createNotification, deleteNotificationsForSubject, markSubjectRead } from "./inbox";
 import {
 	areFriends,
@@ -902,6 +903,18 @@ export async function getBuddyReadProgress(
 	if (state.takenDown) return { approximate: false, participants: [] };
 	const visible = await visibleTo(db, userId, state.users, now);
 	const shown = state.current.filter((m) => visible.has(m.userId));
+	// Goal standings are extra; failing to work them out must not take the markers down.
+	const goals = await memberGoalStatuses(
+		db,
+		userId,
+		shown
+			.filter((m) => m.userId !== userId && m.book)
+			.map((m) => ({ userId: m.userId, bookId: m.bookId })),
+		now,
+	).catch((err) => {
+		console.warn("buddy-read: goal standings failed", err);
+		return new Map();
+	});
 	return {
 		approximate: isApproximate(shown),
 		participants: shown.flatMap((m) => {
@@ -916,6 +929,7 @@ export async function getBuddyReadProgress(
 					wordPosition: m.book.wordPosition,
 					wordCount: m.book.wordCount,
 					percent: percentOf(m.book),
+					goal: goals.get(m.userId) ?? null,
 				},
 			];
 		}),

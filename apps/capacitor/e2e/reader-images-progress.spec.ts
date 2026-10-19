@@ -146,7 +146,7 @@ test("a highlight spanning a figure persists across reload", async ({ page }) =>
 /** Search for `phrase`, open its first result and commit it with "Read from
  *  here"; resolves once that save landed. */
 async function searchAndJump(page: Page, phrase: string): Promise<void> {
-	await page.getByRole("button", { name: "Search content" }).click();
+	await reader.openSearch(page);
 	const input = page.getByPlaceholder("Search in book\u2026");
 	await expect(input).toBeVisible();
 	await input.fill(phrase);

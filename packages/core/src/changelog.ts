@@ -9,6 +9,19 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-10-19",
+		title: "Reading Goals",
+		tags: ["App"],
+		changes: [
+			"Set a goal for a book: finish by a date or read a fixed amount each day",
+			"See your daily target, whether you're ahead or behind, and a chart of your progress",
+			"A ring in the reader shows today's progress, and a line in the text turns green when you reach your target",
+			"Optional daily reminder, skipped on days you've already hit your target",
+			"Buddy reads can have a shared deadline you can adopt as your own goal",
+			"Search and Appearance moved into the reader's More menu, Browse mode into the bookmarks sheet",
+		],
+	},
+	{
 		date: "2026-10-04",
 		title: "E-Reader Support",
 		tags: ["App", "Website"],

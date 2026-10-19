@@ -1,3 +1,5 @@
+import { addDays, dayKeyOf, dayNumberOf } from "./day-key";
+
 /** A sitting before this local hour also counts for the previous day, so a
  *  day's reading window runs from midnight to this hour the next morning. */
 const LATE_NIGHT_CUTOFF_HOUR = 4;
@@ -7,9 +9,6 @@ const READ_DAYS_PER_FREEZE = 7;
 
 const MAX_BANKED_FREEZES = 2;
 
-const MS_PER_DAY = 86_400_000;
-const DAY_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
-
 export interface StreakResult {
 	current: number;
 	longest: number;
@@ -18,22 +17,9 @@ export interface StreakResult {
 	freezesBanked: number;
 }
 
-/** Days since the epoch, or null for anything but a four-digit-year `YYYY-MM-DD`. */
-function dayNumberOf(key: string): number | null {
-	const match = DAY_KEY.exec(key);
-	if (!match) return null;
-	return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])) / MS_PER_DAY;
-}
-
-function dayKeyOf(dayNumber: number): string {
-	return new Date(dayNumber * MS_PER_DAY).toISOString().slice(0, 10);
-}
-
-/** The day before a `YYYY-MM-DD` key. Calendar arithmetic, so no time zone or DST is involved. */
+/** The day before a `YYYY-MM-DD` key. */
 export function previousDayKey(key: string): string {
-	const [y, m, d] = key.split("-").map(Number);
-	const prev = new Date(Date.UTC(y ?? 0, (m ?? 1) - 1, (d ?? 1) - 1));
-	return prev.toISOString().slice(0, 10);
+	return addDays(key, -1);
 }
 
 /** The days a sitting at this local date and hour counts toward. */

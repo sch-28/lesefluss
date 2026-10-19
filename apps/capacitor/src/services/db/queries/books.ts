@@ -11,7 +11,7 @@ import {
 	type SerializedWordIndex,
 	WordIndex,
 } from "@lesefluss/core";
-import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, type SQL, type SQLWrapper, sql } from "drizzle-orm";
 import type { SQLiteUpdateSetSource } from "drizzle-orm/sqlite-core";
 import { db } from "../index";
 import { appendLongText, LONG_TEXT_CHUNK, type LongTextExecutor, readLongText } from "../long-text";
@@ -29,6 +29,7 @@ import {
 	type LinkRange,
 	type NewBook,
 	type NewBookImage,
+	readingGoals,
 	readingSessions,
 } from "../schema";
 
@@ -474,6 +475,11 @@ export async function addServerBookWithContent(
 	return book.id;
 }
 
+/** The finished rule in SQL, for a book row at `position`. Same rule as `isFinishedPosition`. */
+export function isFinishedSql(position: SQLWrapper | number = books.wordPosition): SQL {
+	return sql`(${books.wordCount} > 0 AND ${position} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD})`;
+}
+
 /**
  * Partial update any book metadata fields by id.
  * Accepts any subset of Book columns (except id).
@@ -522,9 +528,7 @@ export async function updateBook(
 			? {
 					...stamped,
 					finishedAt: sql`CASE
-						WHEN ${books.finishedAt} IS NULL
-							AND ${books.wordCount} > 0
-							AND ${data.wordPosition} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD}
+						WHEN ${books.finishedAt} IS NULL AND ${isFinishedSql(data.wordPosition)}
 						THEN ${occurredAt}
 						ELSE ${books.finishedAt}
 					END`,
@@ -591,8 +595,7 @@ export async function backfillFinishedAt(): Promise<void> {
 				// Chapter rows are excluded from the finished count, so stamping them
 				// is write amplification on exactly the libraries with most rows.
 				isNull(books.seriesId),
-				gt(books.wordCount, 0),
-				sql`${books.wordPosition} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD}`,
+				isFinishedSql(),
 			),
 		);
 }
@@ -642,6 +645,11 @@ export async function deleteBook(id: string): Promise<void> {
 	await db.delete(highlights).where(eq(highlights.bookId, id));
 	await db.delete(bookContent).where(eq(bookContent.bookId, id));
 	await db.delete(bookImages).where(eq(bookImages.bookId, id));
+	// Tombstoned rather than deleted so the removal reaches the server.
+	await db
+		.update(readingGoals)
+		.set({ deleted: true, updatedAt: Date.now() })
+		.where(and(eq(readingGoals.bookId, id), eq(readingGoals.deleted, false)));
 }
 
 /**
@@ -654,5 +662,6 @@ export async function hardDeleteBook(id: string): Promise<void> {
 	await db.delete(highlights).where(eq(highlights.bookId, id));
 	await db.delete(bookContent).where(eq(bookContent.bookId, id));
 	await db.delete(bookImages).where(eq(bookImages.bookId, id));
+	await db.delete(readingGoals).where(eq(readingGoals.bookId, id));
 	await db.delete(books).where(eq(books.id, id));
 }

@@ -1,4 +1,3 @@
-import { FINISHED_PERCENT_THRESHOLD } from "@lesefluss/core";
 import { and, asc, desc, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
 import { db } from "../index";
 import {
@@ -12,6 +11,7 @@ import {
 	type Series,
 	series,
 } from "../schema";
+import { isFinishedSql } from "./books";
 
 // Chunk bulk inserts to stay under SQLite's SQLITE_MAX_VARIABLE_NUMBER (32766) and avoid
 // blowing the JS call stack. 200 rows × ~16 cols ≈ 3200 params keeps both limits comfortable.
@@ -215,10 +215,7 @@ export async function getSeriesActivity(): Promise<Map<string, SeriesActivity>> 
 			started: sql<number>`SUM(CASE WHEN ${books.wordPosition} > 0 THEN 1 ELSE 0 END)`.as(
 				"started",
 			),
-			finished:
-				sql<number>`SUM(CASE WHEN ${books.wordCount} > 0 AND ${books.wordPosition} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD} THEN 1 ELSE 0 END)`.as(
-					"finished",
-				),
+			finished: sql<number>`SUM(CASE WHEN ${isFinishedSql()} THEN 1 ELSE 0 END)`.as("finished"),
 			latestRead: sql<number | null>`MAX(${books.lastRead})`.as("latest_read"),
 		})
 		.from(books)

@@ -3,6 +3,8 @@
  * All inputs are epoch ms; "local" means the device's current timezone.
  */
 
+import { dayNumberOf } from "@lesefluss/core";
+
 const MS_PER_DAY = 86_400_000;
 const TWELVE_HOURS_MS = 12 * 3_600_000;
 
@@ -76,6 +78,24 @@ export function formatAgo(epochMs: number, now: number = Date.now()): string {
 	if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
 	if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} h ago`;
 	return formatRelative(epochMs, now);
+}
+
+/** The local `Date` at the given time on a `YYYY-MM-DD` day, or null for anything but a real date. */
+export function localDateOfKey(key: string, hours = 0, minutes = 0, seconds = 0): Date | null {
+	if (dayNumberOf(key) === null) return null;
+	const [y, m, d] = key.split("-").map(Number);
+	return new Date(y ?? 0, (m ?? 1) - 1, d ?? 1, hours, minutes, seconds);
+}
+
+/** "18 Dec" for a `YYYY-MM-DD` key, with the year when it is not the current one. */
+export function formatDayKey(key: string, now: number = Date.now()): string {
+	const date = localDateOfKey(key);
+	if (!date) return key;
+	return date.toLocaleDateString(undefined, {
+		day: "numeric",
+		month: "short",
+		...(date.getFullYear() === new Date(now).getFullYear() ? {} : { year: "numeric" }),
+	});
 }
 
 /** Short calendar date, e.g. "3 May". Used for chart ticks, shelf dates and the

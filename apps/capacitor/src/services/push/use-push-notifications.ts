@@ -3,7 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
-import { markPushListenersAttached, markPushTapReceived } from "../launch-intent";
+import { markNotificationTapReceived, markPushListenersAttached } from "../launch-intent";
 import { buddyReadExists } from "../social/buddy-reads";
 import { invalidateInbox } from "../social/cache";
 import { inboxClient } from "../social/inbox";
@@ -47,7 +47,7 @@ export function usePushNotifications(): void {
 			const { PushNotifications: push } = await loadPluginModule();
 			keep(
 				await push.addListener("pushNotificationActionPerformed", ({ notification }) => {
-					markPushTapReceived();
+					markNotificationTapReceived();
 					openPushTarget(deps, notification.data).catch((err) =>
 						log.warn("push", "opening a notification failed:", err),
 					);

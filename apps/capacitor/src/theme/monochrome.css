@@ -1885,3 +1885,93 @@ body.dark .chapter-row:hover {
 	vertical-align: middle;
 	cursor: pointer;
 }
+
+/* Reading goal: today's target divider. It sits in the paragraph's bottom margin
+ * (1.1em) without taking space, so scroll heights and page-mode pagination
+ * never change when it appears or turns green. */
+.reader-paragraph--goal {
+	position: relative;
+}
+
+.reader-goal-divider {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	height: 1.1em;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+	font-size: 11px;
+	line-height: 1;
+	font-variant-numeric: tabular-nums;
+	color: var(--goal-pending);
+	pointer-events: none;
+	transition: color 700ms ease-out;
+}
+
+.reader-goal-divider-line {
+	flex: 1;
+	border-top: 1.5px dashed currentColor;
+	opacity: 0.8;
+}
+
+.reader-goal-divider-label {
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.reader-goal-divider--passed {
+	color: var(--goal-met);
+}
+
+.reader-goal-divider--celebrate {
+	transform-origin: center;
+	animation: reader-goal-pass 700ms ease-out;
+}
+
+.reader-goal-divider--passed .reader-goal-divider-line {
+	border-top-style: solid;
+	opacity: 1;
+}
+
+@keyframes reader-goal-pass {
+	0% {
+		transform: scaleX(0.6);
+		opacity: 0.4;
+	}
+	60% {
+		transform: scaleX(1.04);
+		opacity: 1;
+	}
+	100% {
+		transform: scaleX(1);
+	}
+}
+
+.reader-goal-ring-track {
+	stroke: var(--reader-progress-bg, #e0e0e0);
+}
+
+.reader-goal-ring {
+	stroke: var(--goal-progress);
+	transition:
+		stroke-dasharray 700ms ease-out,
+		stroke 700ms ease-out;
+}
+
+.reader-goal-chip--met .reader-goal-ring {
+	stroke: var(--goal-met);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.reader-goal-divider,
+	.reader-goal-divider--celebrate,
+	.reader-goal-ring {
+		animation: none;
+		transition: none;
+	}
+}

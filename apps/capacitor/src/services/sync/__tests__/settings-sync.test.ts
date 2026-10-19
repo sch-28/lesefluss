@@ -35,6 +35,8 @@ vi.mock("../../db/queries", () => ({
 		getAllHighlights: vi.fn(async () => []),
 		getAllEntries: vi.fn(async () => []),
 		getSeriesForSync: vi.fn(async () => []),
+		getAllGoalsForSync: vi.fn(async () => []),
+		completeFinishedGoals: vi.fn(async () => {}),
 		getReadingSessionsSince: vi.fn(async () => []),
 	},
 }));

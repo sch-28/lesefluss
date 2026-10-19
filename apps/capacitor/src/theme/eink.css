@@ -48,6 +48,8 @@ html.eink {
 	--sidebar-accent-foreground: #000000;
 	--sidebar-border: #000000;
 	--sidebar-ring: #000000;
+	--goal-pending: #000000;
+	--goal-met: #000000;
 }
 
 .eink .reader-theme-light {

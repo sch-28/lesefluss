@@ -1,0 +1,13 @@
+{
+	"name": "@lesefluss/store-frames",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"description": "Wraps phone screenshots in a device frame with a tagline for the app stores.",
+	"scripts": {
+		"render": "node render.mjs"
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.60.0"
+	}
+}
