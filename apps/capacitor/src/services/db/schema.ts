@@ -76,6 +76,9 @@ export const settings = sqliteTable("settings", {
 	pageTurnAnimation: integer("page_turn_animation", { mode: "boolean" }).notNull().default(true),
 	autoOpenLastBook: integer("auto_open_last_book", { mode: "boolean" }).notNull().default(false),
 	einkMode: integer("eink_mode", { mode: "boolean" }).notNull().default(false),
+	// Null = never set; see volumeKeysFor.
+	volumeKeyPageTurn: integer("volume_key_page_turn", { mode: "boolean" }),
+	volumeKeyInvert: integer("volume_key_invert", { mode: "boolean" }).notNull().default(false),
 	updatedAt: integer("updated_at").notNull(),
 });
 

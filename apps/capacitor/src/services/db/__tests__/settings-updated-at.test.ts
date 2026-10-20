@@ -25,12 +25,16 @@ describe("saveSettings updatedAt", () => {
 			appFontSize: 18,
 			syncStats: false,
 			einkMode: true,
+			volumeKeyPageTurn: false,
+			volumeKeyInvert: true,
 		});
 
 		const s = await getSettings();
 		expect(s.updatedAt).toBe(1000);
 		expect(s.onboardingCompleted).toBe(true);
 		expect(s.einkMode).toBe(true);
+		expect(s.volumeKeyPageTurn).toBe(false);
+		expect(s.volumeKeyInvert).toBe(true);
 	});
 
 	it("bumps updatedAt when a synced field changes", async () => {

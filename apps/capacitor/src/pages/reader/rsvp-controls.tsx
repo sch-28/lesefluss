@@ -6,10 +6,10 @@
  * tap-to-toggle doesn't fire after a button press.
  */
 
-import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { ChevronsLeft, ChevronsRight, Play, Redo2, Undo2 } from "lucide-react";
 import type React from "react";
+import { clampWpm, WPM_STEP } from "./wpm";
 
 // Controls only render while paused, so the play/pause button always shows
 // the play glyph. No isPlaying prop needed.
@@ -21,12 +21,6 @@ interface Props {
 	onForwardWord: () => void;
 	onForwardSentence: () => void;
 	onWpmChange: (wpm: number) => void;
-}
-
-const WPM_STEP = 25;
-
-function clampWpm(n: number): number {
-	return Math.min(SETTING_CONSTRAINTS.WPM.max, Math.max(SETTING_CONSTRAINTS.WPM.min, n));
 }
 
 const stop = (e: React.MouseEvent | React.PointerEvent) => e.stopPropagation();

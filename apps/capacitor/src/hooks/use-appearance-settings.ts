@@ -41,6 +41,19 @@ export function readerLayoutFor(
 	};
 }
 
+export type VolumeKeys = { enabled: boolean; invert: boolean };
+
+/** Unset follows E-ink mode: e-readers have page buttons, phones use volume as volume. */
+export function volumeKeysFor(
+	settings: Pick<Settings, "volumeKeyPageTurn" | "volumeKeyInvert"> | undefined,
+	isEinkMode: boolean,
+): VolumeKeys {
+	return {
+		enabled: settings?.volumeKeyPageTurn ?? isEinkMode,
+		invert: settings?.volumeKeyInvert ?? DEFAULT_SETTINGS.VOLUME_KEY_INVERT,
+	};
+}
+
 export function useAppearanceSettings() {
 	const { data: settings } = queryHooks.useSettings();
 	const { mutate } = queryHooks.useSaveSettings();
@@ -58,6 +71,7 @@ export function useAppearanceSettings() {
 		settings?.readerGlossaryUnderline ?? DEFAULT_SETTINGS.READER_GLOSSARY_UNDERLINE;
 	const { isEinkMode } = useTheme();
 	const { paginationStyle, pageTurnAnimation } = readerLayoutFor(settings, isEinkMode);
+	const volumeKeys = volumeKeysFor(settings, isEinkMode);
 
 	const adjustFontSize = (delta: number) => {
 		mutate({
@@ -127,6 +141,14 @@ export function useAppearanceSettings() {
 		mutate({ einkMode: v });
 	};
 
+	const setVolumeKeyPageTurn = (v: boolean) => {
+		mutate({ volumeKeyPageTurn: v });
+	};
+
+	const setVolumeKeyInvert = (v: boolean) => {
+		mutate({ volumeKeyInvert: v });
+	};
+
 	return {
 		fontSize,
 		appFontSize,
@@ -139,6 +161,7 @@ export function useAppearanceSettings() {
 		showGlossaryUnderline,
 		pageTurnAnimation,
 		isEinkMode,
+		volumeKeys,
 		adjustFontSize,
 		adjustAppFontSize,
 		adjustLineSpacing,
@@ -150,5 +173,7 @@ export function useAppearanceSettings() {
 		setShowGlossaryUnderline,
 		setPageTurnAnimation,
 		setEinkMode,
+		setVolumeKeyPageTurn,
+		setVolumeKeyInvert,
 	};
 }

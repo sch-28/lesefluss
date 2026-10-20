@@ -9,6 +9,15 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-10-20",
+		title: "Turn Pages with Volume Buttons",
+		tags: ["App"],
+		changes: [
+			"New setting to turn pages with your phone's volume buttons in page mode, and change speed with them in RSVP",
+			"Find it in the reader's Appearance menu or under Settings > Reader. It's on by default in E-ink mode",
+		],
+	},
+	{
 		date: "2026-10-19",
 		title: "Reading Goals",
 		tags: ["App"],

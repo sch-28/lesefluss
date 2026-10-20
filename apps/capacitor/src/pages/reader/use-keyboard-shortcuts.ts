@@ -1,9 +1,16 @@
+import type { PaginationStyle } from "@lesefluss/core";
 import type React from "react";
 import { useEffect, useRef } from "react";
+import type { VolumeKeys } from "../../hooks/use-appearance-settings";
+import {
+	setVolumeKeysEnabled,
+	subscribeVolumeKeys,
+	type VolumeKey,
+} from "../../services/volume-keys";
 import type { RsvpViewHandle } from "./rsvp-view";
 import type { ReaderViewHandle } from "./view-types";
+import { clampWpm, WPM_STEP } from "./wpm";
 
-const WPM_STEP = 25;
 const SCROLL_FRACTION = 0.25;
 const INTERACTIVE_SELECTOR = [
 	"a",
@@ -42,9 +49,24 @@ export function shouldDismissSelectionOnKey(input: {
 	);
 }
 
+type VolumeKeyAction = "next" | "prev" | "faster" | "slower";
+
+/** Swapping only flips page direction; in RSVP volume up always means faster. */
+export function volumeKeyAction(input: {
+	key: VolumeKey;
+	readerMode: "standard" | "rsvp";
+	paginationStyle: PaginationStyle;
+	invert: boolean;
+}): VolumeKeyAction | null {
+	if (input.readerMode === "rsvp") return input.key === "up" ? "faster" : "slower";
+	if (input.paginationStyle !== "page") return null;
+	const forward = input.key === "down" ? !input.invert : input.invert;
+	return forward ? "next" : "prev";
+}
+
 type Options = {
 	readerMode: "standard" | "rsvp";
-	paginationStyle: string;
+	paginationStyle: PaginationStyle;
 	currentWpm: number;
 	isBlocked: boolean;
 	scrollViewRef: React.RefObject<ReaderViewHandle | null>;
@@ -54,6 +76,8 @@ type Options = {
 	exitRsvpToStandard: () => void;
 	hasSelection: boolean;
 	cancelSelection: () => void;
+	volumeKeys: VolumeKeys;
+	isReadingAloud: boolean;
 };
 
 export function useKeyboardShortcuts({
@@ -67,8 +91,13 @@ export function useKeyboardShortcuts({
 	exitRsvpToStandard,
 	hasSelection,
 	cancelSelection,
+	volumeKeys,
+	isReadingAloud,
 }: Options) {
 	const handlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
+	const volumeHandlerRef = useRef<(key: VolumeKey) => void>(() => {});
+
+	const stepWpm = (delta: number) => rsvpViewRef.current?.changeWpm(clampWpm(currentWpm + delta));
 
 	handlerRef.current = (e: KeyboardEvent) => {
 		if (e.defaultPrevented) return;
@@ -108,11 +137,11 @@ export function useKeyboardShortcuts({
 					break;
 				case "ArrowUp":
 					e.preventDefault();
-					rsvpViewRef.current?.changeWpm(currentWpm + WPM_STEP);
+					stepWpm(WPM_STEP);
 					break;
 				case "ArrowDown":
 					e.preventDefault();
-					rsvpViewRef.current?.changeWpm(currentWpm - WPM_STEP);
+					stepWpm(-WPM_STEP);
 					break;
 				case "Escape":
 					e.preventDefault();
@@ -123,10 +152,12 @@ export function useKeyboardShortcuts({
 			switch (e.key) {
 				case "ArrowRight":
 				case " ":
+				case "PageDown":
 					e.preventDefault();
 					scrollViewRef.current?.goNext?.();
 					break;
 				case "ArrowLeft":
+				case "PageUp":
 					e.preventDefault();
 					scrollViewRef.current?.goPrev?.();
 					break;
@@ -152,5 +183,45 @@ export function useKeyboardShortcuts({
 		const handler = (e: KeyboardEvent) => handlerRef.current(e);
 		window.addEventListener("keydown", handler);
 		return () => window.removeEventListener("keydown", handler);
+	}, []);
+
+	// Sheets that block reading hand the keys back, so volume works in them;
+	// read-aloud needs them to set the speech volume.
+	const shouldInterceptVolume =
+		volumeKeys.enabled &&
+		!isBlocked &&
+		!isReadingAloud &&
+		(readerMode === "rsvp" || paginationStyle === "page");
+
+	volumeHandlerRef.current = (key: VolumeKey) => {
+		// Native disables asynchronously, so a press can still land after a sheet opens.
+		if (!shouldInterceptVolume || document.querySelector(ACTIVE_OVERLAY_SELECTOR)) return;
+		switch (volumeKeyAction({ key, readerMode, paginationStyle, invert: volumeKeys.invert })) {
+			case "next":
+				scrollViewRef.current?.goNext?.();
+				break;
+			case "prev":
+				scrollViewRef.current?.goPrev?.();
+				break;
+			case "faster":
+				stepWpm(WPM_STEP);
+				break;
+			case "slower":
+				stepWpm(-WPM_STEP);
+				break;
+		}
+	};
+
+	useEffect(() => {
+		if (!shouldInterceptVolume) return;
+		setVolumeKeysEnabled(true);
+		return () => setVolumeKeysEnabled(false);
+	}, [shouldInterceptVolume]);
+
+	useEffect(() => {
+		const subscription = subscribeVolumeKeys((key) => volumeHandlerRef.current(key));
+		return () => {
+			void subscription?.then((h) => h?.remove());
+		};
 	}, []);
 }

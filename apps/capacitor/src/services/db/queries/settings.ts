@@ -45,6 +45,8 @@ export async function getSettings(): Promise<Settings> {
 		pageTurnAnimation: DEFAULT_SETTINGS.PAGE_TURN_ANIMATION,
 		autoOpenLastBook: DEFAULT_SETTINGS.AUTO_OPEN_LAST_BOOK,
 		einkMode: DEFAULT_SETTINGS.EINK_MODE,
+		volumeKeyPageTurn: null,
+		volumeKeyInvert: DEFAULT_SETTINGS.VOLUME_KEY_INVERT,
 		// Per-resource sync opt-outs default on; local-only, never synced.
 		syncHighlights: true,
 		syncGlossary: true,

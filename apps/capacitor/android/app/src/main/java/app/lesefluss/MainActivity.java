@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.os.Process;
 import android.os.SystemClock;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
 
@@ -26,6 +27,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NativeHttpPlugin.class);
         registerPlugin(BookScannerPlugin.class);
         registerPlugin(DeviceInfoPlugin.class);
+        registerPlugin(VolumeKeysPlugin.class);
         super.onCreate(savedInstanceState);
         getBridge().getWebView().setWebViewClient(new ImageProxyWebViewClient(getBridge()));
         // Low-RAM devices lose the WebView renderer under memory pressure, and
@@ -68,6 +70,15 @@ public class MainActivity extends BridgeActivity {
         }
         finishAffinity();
         Process.killProcess(Process.myPid());
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        PluginHandle handle = getBridge() == null ? null : getBridge().getPlugin("VolumeKeys");
+        if (handle != null && handle.getInstance() instanceof VolumeKeysPlugin) {
+            if (((VolumeKeysPlugin) handle.getInstance()).handleKey(event)) return true;
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     @Override

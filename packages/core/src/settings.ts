@@ -53,6 +53,7 @@ export const DEFAULT_SETTINGS = {
 	PAGE_TURN_ANIMATION: true, // slide between pages in page mode (off suits e-ink); device-local
 	AUTO_OPEN_LAST_BOOK: false, // open the most recently read book on app launch; device-local
 	EINK_MODE: false, // static, high-contrast UI with instant page turns for e-ink screens; device-local
+	VOLUME_KEY_INVERT: false, // volume up turns forward instead of down; device-local
 } as const;
 
 /**

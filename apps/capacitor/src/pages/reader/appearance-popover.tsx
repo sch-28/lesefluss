@@ -5,6 +5,7 @@ import type React from "react";
 import { PAGINATION_STYLE_OPTIONS } from "../../components/rsvp-pickers";
 import { useTheme } from "../../contexts/theme-context";
 import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "../../hooks/use-appearance-settings";
+import { IS_VOLUME_KEYS_SUPPORTED } from "../../services/volume-keys";
 
 interface Props {
 	open: boolean;
@@ -26,6 +27,7 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 		showGlossaryUnderline,
 		pageTurnAnimation,
 		isEinkMode,
+		volumeKeys,
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
@@ -36,6 +38,8 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 		setShowGlossaryUnderline,
 		setPageTurnAnimation,
 		setEinkMode,
+		setVolumeKeyPageTurn,
+		setVolumeKeyInvert,
 	} = useAppearanceSettings();
 
 	return (
@@ -203,6 +207,34 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 								<ToggleGroupItem value="on">On</ToggleGroupItem>
 							</ToggleGroup>
 						</div>
+						{IS_VOLUME_KEYS_SUPPORTED && (
+							<div className="ap-row">
+								<span className="ap-row-label">Turn pages with volume</span>
+								<ToggleGroup
+									type="single"
+									variant="outline"
+									value={volumeKeys.enabled ? "on" : "off"}
+									onValueChange={(v) => v && setVolumeKeyPageTurn(v === "on")}
+								>
+									<ToggleGroupItem value="off">Off</ToggleGroupItem>
+									<ToggleGroupItem value="on">On</ToggleGroupItem>
+								</ToggleGroup>
+							</div>
+						)}
+						{IS_VOLUME_KEYS_SUPPORTED && volumeKeys.enabled && (
+							<div className="ap-row">
+								<span className="ap-row-label">Swap page direction</span>
+								<ToggleGroup
+									type="single"
+									variant="outline"
+									value={volumeKeys.invert ? "on" : "off"}
+									onValueChange={(v) => v && setVolumeKeyInvert(v === "on")}
+								>
+									<ToggleGroupItem value="off">Off</ToggleGroupItem>
+									<ToggleGroupItem value="on">On</ToggleGroupItem>
+								</ToggleGroup>
+							</div>
+						)}
 						<div className="ap-row">
 							<span className="ap-row-label">Time remaining</span>
 							<ToggleGroup

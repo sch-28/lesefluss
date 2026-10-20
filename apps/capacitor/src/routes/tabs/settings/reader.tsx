@@ -10,6 +10,7 @@ import { SettingsSection } from "@/components/settings/settings-section";
 import { StepperRow } from "@/components/settings/stepper-row";
 import { useAppearanceSettings } from "@/hooks/use-appearance-settings";
 import ReaderPreview from "@/pages/settings/reader-preview";
+import { IS_VOLUME_KEYS_SUPPORTED } from "@/services/volume-keys";
 
 export const Route = createFileRoute("/tabs/settings/reader")({
 	component: ReaderSettings,
@@ -29,6 +30,7 @@ function ReaderSettings() {
 		showGlossaryUnderline,
 		pageTurnAnimation,
 		isEinkMode,
+		volumeKeys,
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
@@ -38,6 +40,8 @@ function ReaderSettings() {
 		setShowActiveWordUnderline,
 		setShowGlossaryUnderline,
 		setPageTurnAnimation,
+		setVolumeKeyPageTurn,
+		setVolumeKeyInvert,
 	} = useAppearanceSettings();
 
 	return (
@@ -120,6 +124,26 @@ function ReaderSettings() {
 						onCheckedChange={setShowGlossaryUnderline}
 					/>
 				</SettingsSection>
+
+				{IS_VOLUME_KEYS_SUPPORTED && (
+					<SettingsSection title="Hardware buttons">
+						<ToggleRow
+							id="volume-key-page-turn"
+							title="Turn pages with volume buttons"
+							subtitle="Volume down goes forward. In RSVP they change speed. On this device only."
+							checked={volumeKeys.enabled}
+							onCheckedChange={setVolumeKeyPageTurn}
+						/>
+						<ToggleRow
+							id="volume-key-invert"
+							title="Swap page direction"
+							subtitle="Volume up goes forward instead."
+							checked={volumeKeys.invert}
+							disabled={!volumeKeys.enabled}
+							onCheckedChange={setVolumeKeyInvert}
+						/>
+					</SettingsSection>
+				)}
 			</div>
 		</div>
 	);

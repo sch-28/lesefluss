@@ -58,7 +58,7 @@ import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { useTheme } from "../../contexts/theme-context";
-import { readerLayoutFor } from "../../hooks/use-appearance-settings";
+import { readerLayoutFor, volumeKeysFor } from "../../hooks/use-appearance-settings";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import { useIsForeground } from "../../hooks/use-is-foreground";
 import { repairMissingImages } from "../../services/book-import/repair-images";
@@ -1497,13 +1497,16 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			searchOpen ||
 			sel.isSelecting ||
 			editingGlossaryEntry !== null ||
-			sel.noteInputOpen,
+			sel.noteInputOpen ||
+			appearanceOpen,
 		scrollViewRef,
 		rsvpViewRef,
 		handleRsvpToggle,
 		exitRsvpToStandard,
 		hasSelection: sel.isSelecting && !sel.noteInputOpen,
 		cancelSelection: sel.cancelSelection,
+		volumeKeys: volumeKeysFor(dbSettings, isEinkMode),
+		isReadingAloud: false,
 	});
 
 	// ── Reading session tracking ──────────────────────────────────────────
