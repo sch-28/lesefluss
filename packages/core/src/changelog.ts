@@ -9,6 +9,17 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-10-21",
+		title: "Read Aloud",
+		tags: ["App"],
+		changes: [
+			"Tap the headphones in the reader to have your book read aloud on Android, also with the screen off. Works offline with your phone's voices",
+			"The spoken word is highlighted and the page follows along. Tap a word to continue from there",
+			"Control it from the lock screen, headphones or your car. Set speed in wpm, pick a voice and use the sleep timer, also in RSVP",
+			"Listening counts toward your goals and streaks, but not your reading speed",
+		],
+	},
+	{
 		date: "2026-10-20",
 		title: "Turn Pages with Volume Buttons",
 		tags: ["App"],

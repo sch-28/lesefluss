@@ -6,10 +6,12 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-04 18:30'
+updated_date: '2026-10-20 22:02'
 labels:
   - sync
   - privacy
   - bug
+milestone: m-14
 dependencies: []
 references:
   - apps/capacitor/src/services/sync/session.ts

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ReadingMode } from "./reading-credit";
+import { READING_MODES, type ReadingMode } from "./reading-credit";
 
 /** How often an open reader reports its position. */
 export const LIVE_REPORT_INTERVAL_MS = 2_000;
@@ -16,7 +16,7 @@ export const LiveActionBodySchema = z.discriminatedUnion("action", [
 		action: z.literal("report"),
 		buddyReadId: z.string().uuid(),
 		position: z.number().int().nonnegative(),
-		mode: z.enum(["rsvp", "scroll", "page"]),
+		mode: z.enum(READING_MODES),
 		dialWpm: z.number().int().positive().max(10_000).nullable(),
 		sentAt: sentAtField,
 	}),
@@ -34,8 +34,10 @@ export type LiveMember = {
 	userId: string;
 	wordPosition: number;
 	wordCount: number;
-	/** Words per minute in the current sitting; null until it has run long enough. */
+	/** Words per minute in the current sitting; null until it has run long enough, and while listening. */
 	wpm: number | null;
+	/** Following a read-aloud voice rather than reading. */
+	isListening: boolean;
 };
 
 /**

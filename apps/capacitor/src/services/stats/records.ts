@@ -8,7 +8,7 @@
  * speed record at all.
  */
 
-import { isPlausibleRate } from "@lesefluss/core";
+import { isMeasurableSitting, type ReadingMode } from "@lesefluss/core";
 import { localDateKey, startOfLocalDay } from "../../utils/date-utils";
 import { sumDurationByLocalDay } from "./aggregate";
 
@@ -18,6 +18,7 @@ const MIN_TIME_FOR_SPEED_RECORD_MS = 10 * 60_000;
 
 export interface RecordSession {
 	bookId: string;
+	mode: ReadingMode;
 	startedAt: number;
 	durationMs: number;
 	wordsRead: number;
@@ -68,7 +69,7 @@ export function summariseRecords(sessions: RecordSession[], books: RecordBook[])
 
 		// Only plausible sittings can set a speed record; a position jump would
 		// otherwise crown a book the reader barely opened.
-		if (title !== undefined && isPlausibleRate(session.wordsRead, session.durationMs)) {
+		if (title !== undefined && isMeasurableSitting(session)) {
 			const book = speedByBook.get(session.bookId) ?? { title, words: 0, ms: 0 };
 			book.words += session.wordsRead;
 			book.ms += session.durationMs;

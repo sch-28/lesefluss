@@ -48,6 +48,12 @@ A continuous reading session: start, end, words read, target book. Lives in the 
 
 *Furthest word* (`reading_sessions.furthestWord`) is the end of the highest read span: how far reading got in the sitting, where the end position is wherever a jump or moving back left it. Null on rows recorded before it existed. A sitting never spans local midnight: reading straight through midnight closes it and goes on in a new one from the same spot; a sitting paused, idle or suspended over midnight closes at its last activity and the next activity opens a new one. Each day keeps its own reading, at the cost of one more session for a sitting that crosses midnight. Discarding a sitting whose row was already written (undoing an auto-committed browse) deletes that row locally and on the server.
 
+*Mode* is `rsvp`, `scroll`, `page` or `listen`. A `listen` sitting is [read aloud](#read-aloud) time, recorded from the voice's own playback log rather than by the reading tracker, so screen-off listening counts. It counts toward time, streaks, goals and totals, never toward a speed: average WPM, the WPM trend, records, time left and goal pace all skip it (`isMeasurableSitting` in `@lesefluss/core`). Its `wpmAvg` is null.
+
+### Read aloud
+
+The phone's own speech engine reading the book out loud, from the current [position](#position) on (Android only, free and offline once a voice is downloaded). The original text is spoken, sentence by sentence, not the word index's folded tokens. While it is on, the voice owns the position: the reader saves the spoken word, follows it on screen, and a [listen session](#session) records the time. Scrolling or turning a page stops following without stopping the voice ("Back to voice" / "Read aloud from here"); tapping a word or jumping moves the voice there. After an interruption (a call, a navigation prompt, a Bluetooth disconnect) it resumes a few words back. In RSVP the voice paces the words. Leaving the reader stops it. Speed is set in words per minute, like everything else; the app learns each voice's pace to hit it. Voice, speed, pitch and rewind are device-local settings.
+
 ### Browse mode
 
 A reader state for looking around without moving the [position](#position). It starts on any jump (TOC, search, highlight, glossary, progress-bar scrub), on a manual scroll too fast to be reading, or from the toolbar. The *anchor* is the position at entry; it is written once on entry if the DB doesn't already hold it. While browsing, nothing else is persisted (no DB, sync or device write) and the [session](#session) is paused. "Back to N%" returns to the anchor; "Read from here" makes the current spot the position and, if it moved, starts a new session. Moving on to the next chapter counts as "Read from here". A device position update moves the anchor, not the view. If the user settles into reading at the browsed spot (forward reading-pace movement for about two minutes), that counts as "Read from here", with a toast offering Undo; that reading counts toward the new session, and Undo discards it. Leaving the book while browsing resumes at the anchor. RSVP never browses: its saves always land, and switching to it reads from the browsed spot.
@@ -219,8 +225,8 @@ profile section, finished to "finished books".
 ### Live board
 
 The other members of a [buddy read](#buddy-read) shown on the reader's progress bar at their
-position in the book, with whoever has the book open right now marked as **reading now** and
-their speed in the current sitting. Positions are the ones members already see; reading now and speed
+position in the book, with whoever has the book open right now marked as **reading now** (or
+**listening now** while [reading aloud](#read-aloud), without a speed) and their speed in the current sitting. Positions are the ones members already see; reading now and speed
 live only in server memory, and speed is credited on the server with the same rule as reading
 sessions, so skipping ahead does not count. A member's standing against their own reading goal on
 the book shows in their marker's detail, computed on the server from their synced goal and position

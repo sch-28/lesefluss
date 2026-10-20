@@ -108,6 +108,7 @@ html.eink
 	.reader-buddy-popover,
 	.reader-scrub-bubble,
 	.rsvp-controls,
+	.read-aloud-controls,
 	.rsvp-playpause,
 	.rsvp-settings-button
 ) {
@@ -166,4 +167,10 @@ html.eink nav a[data-active="true"] {
 
 .eink .cover-backdrop {
 	display: none;
+}
+
+/* A tinted background ghosts on e-ink; a solid underline refreshes cleanly. */
+html.eink ::highlight(tts-word) {
+	background-color: transparent;
+	text-decoration: underline 3px #000000;
 }

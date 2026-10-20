@@ -217,6 +217,27 @@ export function useRsvpEngine({
 		[resetChunks],
 	);
 
+	/** Shows a word the voice is speaking: no playback, no position report (the voice saves it). */
+	const showWord = useCallback(
+		(idx: number) => {
+			const w = wordsRef.current;
+			const clamped = Math.max(0, Math.min(w.length - 1, idx));
+			const entry = w[clamped];
+			if (!entry) return;
+			if (timerRef.current !== null) {
+				clearTimeout(timerRef.current);
+				timerRef.current = null;
+			}
+			setIsPlaying(false);
+			resetChunks();
+			wordIndexRef.current = clamped;
+			setWordIndex(clamped);
+			displayedWordRef.current = clamped;
+			setCurrentWord(entry);
+		},
+		[resetChunks],
+	);
+
 	const backWord = useCallback(() => jumpToWord(wordIndexRef.current - 1), [jumpToWord]);
 	const forwardWord = useCallback(() => jumpToWord(wordIndexRef.current + 1), [jumpToWord]);
 	const backSentence = useCallback(
@@ -348,6 +369,7 @@ export function useRsvpEngine({
 		togglePlayPause,
 		pause,
 		jumpToWord,
+		showWord,
 		backWord,
 		forwardWord,
 		backSentence,

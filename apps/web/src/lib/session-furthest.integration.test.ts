@@ -106,4 +106,15 @@ describe.skipIf(!hasDb)("reading session furthest word (integration)", () => {
 		await push([session(5_000, { furthestWord: null })]);
 		expect(await stored()).toBe(90);
 	});
+
+	test("accepts a listening session", async () => {
+		await push([session(6_000, { mode: "listen", wpmAvg: null, furthestWord: 95 })]);
+		const [row] = await db
+			.select({ mode: syncReadingSessions.mode })
+			.from(syncReadingSessions)
+			.where(
+				and(eq(syncReadingSessions.userId, userId), eq(syncReadingSessions.sessionId, sessionId)),
+			);
+		expect(row?.mode).toBe("listen");
+	});
 });

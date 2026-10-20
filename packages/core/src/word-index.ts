@@ -90,6 +90,11 @@ export class WordIndex {
 		return off;
 	}
 
+	/** UTF-16 index of the word's first character in the content; the content length past the last word. */
+	charOf(pos: number): number {
+		return this.ensureCharOffsets()[pos] ?? this.content.length;
+	}
+
 	/**
 	 * Like {@link byteOf} but clamps the input into `[0, wordCount-1]` and
 	 * returns 0 on an empty index. Use when the word position originates from

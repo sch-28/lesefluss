@@ -25,40 +25,29 @@
  * pace (see "read span" in CONTEXT.md), not the distance between the first and
  * last position.
  */
+
 import {
 	CREDIT_BURST_WORDS,
 	creditCeilingWpm,
+	type MeasuredReadingMode,
 	refillCredit,
 	SANE_WPM_CEILING,
 	spendCredit,
-	type WordPosition,
 	wordPos,
 } from "@lesefluss/core";
+import {
+	HARD_END_MS,
+	MIN_DURATION_MS,
+	MIN_WORDS,
+	type PersistKind,
+	type SessionRow,
+} from "../../services/reading-sessions/rules";
 import { localDateKey, localDateOfKey, startOfLocalDay } from "../../utils/date-utils";
 import { log } from "../../utils/log";
 import { randomSessionId } from "../../utils/random-id";
 
-export type { ReadingMode as ReadingSessionMode } from "@lesefluss/core";
-
-import type { ReadingMode as ReadingSessionMode } from "@lesefluss/core";
-
-export type SessionRow = {
-	id: string;
-	bookId: string;
-	mode: ReadingSessionMode;
-	startedAt: number;
-	endedAt: number;
-	durationMs: number;
-	wordsRead: number;
-	startWord: WordPosition;
-	endWord: WordPosition;
-	/** Null when nothing in the sitting counts as read, e.g. all of it rewound as browsing. */
-	furthestWord: WordPosition | null;
-	wpmAvg: number | null;
-	updatedAt: number;
-};
-
-export type PersistKind = "checkpoint" | "flush";
+/** The modes the reading tracker records; listening is recorded from the voice's own log. */
+export type ReadingSessionMode = MeasuredReadingMode;
 
 export type TrackerOpts = {
 	bookId: string;
@@ -83,10 +72,7 @@ export const POLL_MS = 5_000;
  *  info (don't count as idle, refresh position baseline). */
 export const POLL_THROTTLE_GUARD_MS = 15_000;
 export const SOFT_IDLE_MS = 3 * 60_000;
-export const HARD_END_MS = 10 * 60_000;
 export const HEARTBEAT_MS = 30_000;
-export const MIN_DURATION_MS = 5_000;
-export const MIN_WORDS = 5;
 
 /** Per-poll-tick word distance above which we treat position movement as a
  *  jump (TOC nav, scrub) rather than reading. Mode-specific because page-mode

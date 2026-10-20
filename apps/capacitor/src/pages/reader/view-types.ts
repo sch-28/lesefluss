@@ -15,6 +15,10 @@ export interface ReaderViewHandle {
 	// rather than snapping.
 	jumpTo(word: number, opts?: { highlight?: boolean; fine?: boolean; smooth?: boolean }): void;
 	scrollBy?(pixels: number): void;
+	/** Keeps a word being read aloud in view, moving only when it is about to leave it.
+	 *  Returns true when it had to jump there, whose settle the caller must ignore;
+	 *  otherwise it never reports a settle, so any settle while following is the user's. */
+	followWord?(word: number): boolean;
 	goNext?(): void;
 	goPrev?(): void;
 }

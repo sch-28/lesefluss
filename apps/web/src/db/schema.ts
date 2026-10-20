@@ -7,6 +7,7 @@ import {
 	PUSH_PLATFORMS,
 	READING_GOAL_MODES,
 	READING_GOAL_STATUSES,
+	READING_MODES,
 } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import {
@@ -241,7 +242,7 @@ export const syncReadingSessions = pgTable(
 		userId: text("user_id").notNull(),
 		sessionId: text("session_id").notNull(),
 		bookId: text("book_id").notNull(),
-		mode: text("mode").notNull(), // 'rsvp' | 'scroll' | 'page'
+		mode: text("mode", { enum: READING_MODES }).notNull(),
 		startedAt: timestamp("started_at").notNull(),
 		endedAt: timestamp("ended_at").notNull(),
 		durationMs: integer("duration_ms").notNull(),
@@ -254,7 +255,10 @@ export const syncReadingSessions = pgTable(
 	},
 	(t) => [
 		primaryKey({ columns: [t.userId, t.sessionId] }),
-		check("sync_reading_sessions_mode_check", sql`${t.mode} IN ('rsvp', 'scroll', 'page')`),
+		check(
+			"sync_reading_sessions_mode_check",
+			sql`${t.mode} IN ('rsvp', 'scroll', 'page', 'listen')`,
+		),
 	],
 );
 

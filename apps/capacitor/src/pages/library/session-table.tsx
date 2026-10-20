@@ -281,8 +281,15 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 	);
 }
 
+const MODE_BADGE_LABELS: Record<ReadingSession["mode"], string> = {
+	rsvp: "RSVP",
+	scroll: "Scroll",
+	page: "Page",
+	listen: "Listen",
+};
+
 function ModeBadge({ mode }: { mode: ReadingSession["mode"] }) {
-	const label = mode === "rsvp" ? "RSVP" : mode === "scroll" ? "Scroll" : "Page";
+	const label = MODE_BADGE_LABELS[mode];
 	return (
 		<span className="inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 font-semibold text-[0.65rem] text-muted-foreground uppercase tracking-wide">
 			{label}

@@ -4,6 +4,7 @@ import {
 	type PaginationStyle,
 	type ReadingGoalMode,
 	type ReadingGoalStatus,
+	type ReadingMode,
 	type WordPosition,
 	wordPos,
 } from "@lesefluss/core";
@@ -79,6 +80,12 @@ export const settings = sqliteTable("settings", {
 	// Null = never set; see volumeKeysFor.
 	volumeKeyPageTurn: integer("volume_key_page_turn", { mode: "boolean" }),
 	volumeKeyInvert: integer("volume_key_invert", { mode: "boolean" }).notNull().default(false),
+	ttsWpm: integer("tts_wpm").notNull().default(180),
+	ttsPitch: real("tts_pitch").notNull().default(1.0),
+	ttsRewindWords: integer("tts_rewind_words").notNull().default(8),
+	// JSON object of primary language ("de", or "default") → voice name; see parseVoiceChoices.
+	ttsVoices: text("tts_voices").notNull().default("{}"),
+	ttsFollow: integer("tts_follow", { mode: "boolean" }).notNull().default(true),
 	updatedAt: integer("updated_at").notNull(),
 });
 
@@ -333,17 +340,17 @@ export type Series = typeof series.$inferSelect;
 export type NewSeries = typeof series.$inferInsert;
 
 /**
- * Reading sessions: one row per in-app reading sitting (RSVP, scroll, or page).
+ * Reading sessions: one row per in-app sitting (RSVP, scroll, page, or listening to read aloud).
  * Append-only; no edit or delete UI. ESP32 reading is NOT tracked here (no clock,
  * would double-count via position sync).
  *
  * `bookId` is intentionally not a FK: rows must outlive the book for all-time totals.
- * `wpmAvg` is RSVP-only (null for scroll/page).
+ * `wpmAvg` is RSVP-only (null otherwise).
  */
 export const readingSessions = sqliteTable("reading_sessions", {
 	id: text("id").primaryKey(), // random hex, generated client-side
 	bookId: text("book_id").notNull(),
-	mode: text("mode").$type<"rsvp" | "scroll" | "page">().notNull(),
+	mode: text("mode").$type<ReadingMode>().notNull(),
 	startedAt: integer("started_at").notNull(), // epoch ms
 	endedAt: integer("ended_at").notNull(), // epoch ms
 	durationMs: integer("duration_ms").notNull(), // ended - started - paused

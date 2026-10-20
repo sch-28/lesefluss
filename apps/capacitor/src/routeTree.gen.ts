@@ -23,6 +23,7 @@ import { Route as TabsSettingsSyncRouteImport } from './routes/tabs/settings/syn
 import { Route as TabsSettingsSocialRouteImport } from './routes/tabs/settings/social'
 import { Route as TabsSettingsRsvpRouteImport } from './routes/tabs/settings/rsvp'
 import { Route as TabsSettingsReaderRouteImport } from './routes/tabs/settings/reader'
+import { Route as TabsSettingsReadAloudRouteImport } from './routes/tabs/settings/read-aloud'
 import { Route as TabsSettingsNotificationsRouteImport } from './routes/tabs/settings/notifications'
 import { Route as TabsSettingsGeneralRouteImport } from './routes/tabs/settings/general'
 import { Route as TabsSettingsExportRouteImport } from './routes/tabs/settings/export'
@@ -108,6 +109,11 @@ const TabsSettingsRsvpRoute = TabsSettingsRsvpRouteImport.update({
 const TabsSettingsReaderRoute = TabsSettingsReaderRouteImport.update({
   id: '/tabs/settings/reader',
   path: '/tabs/settings/reader',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TabsSettingsReadAloudRoute = TabsSettingsReadAloudRouteImport.update({
+  id: '/tabs/settings/read-aloud',
+  path: '/tabs/settings/read-aloud',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TabsSettingsNotificationsRoute =
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
   '/tabs/settings/notifications': typeof TabsSettingsNotificationsRoute
+  '/tabs/settings/read-aloud': typeof TabsSettingsReadAloudRoute
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
   '/tabs/settings/notifications': typeof TabsSettingsNotificationsRoute
+  '/tabs/settings/read-aloud': typeof TabsSettingsReadAloudRoute
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
@@ -272,6 +280,7 @@ export interface FileRoutesById {
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
   '/tabs/settings/notifications': typeof TabsSettingsNotificationsRoute
+  '/tabs/settings/read-aloud': typeof TabsSettingsReadAloudRoute
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/export'
     | '/tabs/settings/general'
     | '/tabs/settings/notifications'
+    | '/tabs/settings/read-aloud'
     | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
@@ -338,6 +348,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/export'
     | '/tabs/settings/general'
     | '/tabs/settings/notifications'
+    | '/tabs/settings/read-aloud'
     | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
@@ -370,6 +381,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/export'
     | '/tabs/settings/general'
     | '/tabs/settings/notifications'
+    | '/tabs/settings/read-aloud'
     | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
@@ -403,6 +415,7 @@ export interface RootRouteChildren {
   TabsSettingsExportRoute: typeof TabsSettingsExportRoute
   TabsSettingsGeneralRoute: typeof TabsSettingsGeneralRoute
   TabsSettingsNotificationsRoute: typeof TabsSettingsNotificationsRoute
+  TabsSettingsReadAloudRoute: typeof TabsSettingsReadAloudRoute
   TabsSettingsReaderRoute: typeof TabsSettingsReaderRoute
   TabsSettingsRsvpRoute: typeof TabsSettingsRsvpRoute
   TabsSettingsSocialRoute: typeof TabsSettingsSocialRoute
@@ -522,6 +535,13 @@ declare module '@tanstack/react-router' {
       path: '/tabs/settings/reader'
       fullPath: '/tabs/settings/reader'
       preLoaderRoute: typeof TabsSettingsReaderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabs/settings/read-aloud': {
+      id: '/tabs/settings/read-aloud'
+      path: '/tabs/settings/read-aloud'
+      fullPath: '/tabs/settings/read-aloud'
+      preLoaderRoute: typeof TabsSettingsReadAloudRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tabs/settings/notifications': {
@@ -651,6 +671,7 @@ const rootRouteChildren: RootRouteChildren = {
   TabsSettingsExportRoute: TabsSettingsExportRoute,
   TabsSettingsGeneralRoute: TabsSettingsGeneralRoute,
   TabsSettingsNotificationsRoute: TabsSettingsNotificationsRoute,
+  TabsSettingsReadAloudRoute: TabsSettingsReadAloudRoute,
   TabsSettingsReaderRoute: TabsSettingsReaderRoute,
   TabsSettingsRsvpRoute: TabsSettingsRsvpRoute,
   TabsSettingsSocialRoute: TabsSettingsSocialRoute,

@@ -1,6 +1,9 @@
 import { MAX_PLAUSIBLE_WPM } from "./reading-rates";
 
-export type ReadingMode = "rsvp" | "scroll" | "page";
+export const READING_MODES = ["rsvp", "scroll", "page", "listen"] as const;
+export type ReadingMode = (typeof READING_MODES)[number];
+/** Modes that measure the reader's own speed; listening goes at the voice's pace. */
+export type MeasuredReadingMode = Exclude<ReadingMode, "listen">;
 
 /**
  * Rate above which forward movement is traversal, not reading. Measured

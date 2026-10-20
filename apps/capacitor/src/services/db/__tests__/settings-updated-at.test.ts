@@ -27,6 +27,8 @@ describe("saveSettings updatedAt", () => {
 			einkMode: true,
 			volumeKeyPageTurn: false,
 			volumeKeyInvert: true,
+			ttsWpm: 220,
+			ttsVoices: '{"de":"de-de-x-deb-local"}',
 		});
 
 		const s = await getSettings();
@@ -35,6 +37,8 @@ describe("saveSettings updatedAt", () => {
 		expect(s.einkMode).toBe(true);
 		expect(s.volumeKeyPageTurn).toBe(false);
 		expect(s.volumeKeyInvert).toBe(true);
+		expect(s.ttsWpm).toBe(220);
+		expect(s.ttsVoices).toBe('{"de":"de-de-x-deb-local"}');
 	});
 
 	it("bumps updatedAt when a synced field changes", async () => {

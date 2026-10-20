@@ -249,6 +249,16 @@ describe.each(["Europe/Berlin", "America/New_York"])("buildWpmTrend in %s", (tz)
 		expect(series.measured.at(-1)?.avgWpm).toBe(190);
 	});
 
+	it("leaves listening out of the measured speed", () => {
+		const now = at(2026, 4, 20);
+		const rows: WpmSession[] = [
+			{ startedAt: now, mode: "scroll", wpmAvg: null, words: 3000, durationMs: minutes(10) },
+			{ startedAt: now, mode: "listen", wpmAvg: null, words: 1700, durationMs: minutes(10) },
+		];
+		const series = buildWpmTrend(rows, trendBucketsFor("30d", now));
+		expect(series.measured.at(-1)?.avgWpm).toBe(300);
+	});
+
 	it("weights the window average by words, not by bucket", () => {
 		const now = at(2026, 4, 20);
 		const rows: WpmSession[] = [

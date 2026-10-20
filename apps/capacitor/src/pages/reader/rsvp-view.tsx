@@ -52,6 +52,8 @@ export type RsvpViewHandle = {
 	backSentence(): void;
 	forwardSentence(): void;
 	changeWpm(wpm: number): void;
+	/** Shows the word the read-aloud voice is speaking. */
+	showWord(word: number): void;
 };
 
 export interface RsvpViewProps {
@@ -72,6 +74,8 @@ export interface RsvpViewProps {
 	/** Manual session pause (two-finger tap): releases the wake lock so the
 	 *  screen can sleep during the interruption. */
 	isSessionPaused?: boolean;
+	/** Set while reading aloud: the voice paces the words and the read-aloud bar holds the controls. */
+	voice?: { isPlaying: boolean; onToggle: () => void } | null;
 }
 
 const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
@@ -88,6 +92,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		linkHrefAt,
 		onLinkTap,
 		isSessionPaused = false,
+		voice = null,
 	},
 	ref,
 ) {
@@ -101,6 +106,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		togglePlayPause,
 		pause,
 		jumpToWord,
+		showWord,
 		backWord,
 		forwardWord,
 		backSentence,
@@ -123,6 +129,17 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 	useImperativeHandle(
 		ref,
 		() => ({
+			togglePlayPause: voice ? voice.onToggle : togglePlayPause,
+			pause,
+			backWord,
+			forwardWord,
+			backSentence,
+			forwardSentence,
+			changeWpm,
+			showWord,
+		}),
+		[
+			voice,
 			togglePlayPause,
 			pause,
 			backWord,
@@ -130,8 +147,8 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 			backSentence,
 			forwardSentence,
 			changeWpm,
-		}),
-		[togglePlayPause, pause, backWord, forwardWord, backSentence, forwardSentence, changeWpm],
+			showWord,
+		],
 	);
 
 	// Keep the screen awake for the whole RSVP session: playback has no touch
@@ -182,6 +199,11 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 	wordIndexRef.current = wordIndex;
 	const isPlayingRef = useRef(isPlaying);
 	isPlayingRef.current = isPlaying;
+	// With the voice pacing the words the engine never plays, so scroll handling
+	// follows what is on screen: the playing layout has no spacer to scroll.
+	const isShowingPlayback = voice ? voice.isPlaying : isPlaying;
+	const isShowingPlaybackRef = useRef(isShowingPlayback);
+	isShowingPlaybackRef.current = isShowingPlayback;
 
 	// Settings sheet pauses playback directly (bypassing togglePlayPause's
 	// 120ms debounce) so the sheet never opens with the tick chain still running.
@@ -232,19 +254,19 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 	// jump: context-peek click, progress-bar scrub, play→pause). useLayoutEffect
 	// so measurement happens before paint, preventing a scrollTop:0 flash.
 	useLayoutEffect(() => {
-		if (isPlaying) return;
+		if (isShowingPlayback) return;
 		if (scrollEndTimerRef.current !== null) return;
 		const expectedIdx = anchorIdxRef.current + lastAppliedDeltaRef.current;
 		if (wordIndex !== expectedIdx) {
 			reAnchor();
 		}
-	}, [wordIndex, isPlaying, reAnchor]);
+	}, [wordIndex, isShowingPlayback, reAnchor]);
 
 	const handleScroll = useCallback(() => {
 		if (suppressScrollRef.current) return;
 		// Ignore scroll events during paused→playing transition (overflow flips
 		// to hidden → browser resets scrollTop → spurious event).
-		if (isPlayingRef.current) return;
+		if (isShowingPlaybackRef.current) return;
 		const container = containerRef.current;
 		if (!container) return;
 
@@ -276,7 +298,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		const container = containerRef.current;
 		if (!container) return;
 		const onWheel = (e: WheelEvent) => {
-			if (isPlayingRef.current) return;
+			if (isShowingPlaybackRef.current) return;
 			e.preventDefault();
 			wheelAccumRef.current += e.deltaY;
 			const words = Math.trunc(wheelAccumRef.current / WHEEL_PX_PER_WORD);
@@ -313,9 +335,9 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		<>
 			<div
 				ref={containerRef}
-				className={isPlaying ? "rsvp-display" : "rsvp-display rsvp-display--paused"}
+				className={isShowingPlayback ? "rsvp-display" : "rsvp-display rsvp-display--paused"}
 				style={{ "--rsvp-focal-color": settings.focalLetterColor } as React.CSSProperties}
-				onClick={togglePlayPause}
+				onClick={voice ? voice.onToggle : togglePlayPause}
 				onScroll={handleScroll}
 				onPointerDown={handleDisplayPointerDown}
 				onPointerUp={cancelLongPress}
@@ -347,7 +369,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 								style={{
 									// Paused: container centered so context peek sits on horizontal
 									// center-line. Playing: whole word stack moves to xOffset%.
-									left: isPlaying ? `${settings.xOffset}%` : `${X_OFFSET_CENTER}%`,
+									left: isShowingPlayback ? `${settings.xOffset}%` : `${X_OFFSET_CENTER}%`,
 									transform: "translate(-50%, -50%)",
 									fontSize: `${fontSize * FOCAL_FONT_MULTIPLIER}px`,
 								}}
@@ -385,7 +407,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 										// stays centered). Playing: focal-shift only. `cqw` is
 										// container-query width relative to `.rsvp-display-inner`
 										// (which sets `container-type: inline-size` and caps at 700px).
-										transform: isPlaying
+										transform: isShowingPlayback
 											? `translateX(${wordShiftCh}ch)`
 											: `translateX(calc(${settings.xOffset - X_OFFSET_CENTER}cqw + ${wordShiftCh}ch))`,
 									}}
@@ -433,7 +455,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 							<div className="rsvp-paused-indicator">Tap to start</div>
 						)}
 
-						{!isPlaying && (
+						{!isPlaying && !voice && (
 							<>
 								<RsvpControls
 									wpm={settings.wpm}
@@ -468,7 +490,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 				{/* Spacer provides scroll distance while paused. Rendered after
 				    the sticky overlay so the overlay's natural position is at
 				    top:0 (sticky then pins it across the full scroll). */}
-				{!isPlaying && <div className="rsvp-scroll-spacer" aria-hidden />}
+				{!isShowingPlayback && <div className="rsvp-scroll-spacer" aria-hidden />}
 			</div>
 
 			{/* Drawer is a sibling of the display (not a child) so clicks inside

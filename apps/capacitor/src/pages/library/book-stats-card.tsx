@@ -1,3 +1,4 @@
+import type { MeasuredReadingMode } from "@lesefluss/core";
 import { ResponsiveLine } from "@nivo/line";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
@@ -51,7 +52,7 @@ function SpeedTooltip({ bucket }: { bucket: SpeedBucket }) {
 	);
 }
 
-const MODE_LABELS: Record<"rsvp" | "scroll" | "page", string> = {
+const MODE_LABELS: Record<MeasuredReadingMode, string> = {
 	rsvp: "RSVP",
 	scroll: "scrolling",
 	page: "page turns",

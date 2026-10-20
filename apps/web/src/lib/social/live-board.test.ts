@@ -15,7 +15,13 @@ function board() {
 function readAt(
 	b: LiveBoard,
 	user: string,
-	opts: { from?: number; seconds: number; wpm: number; mode?: "rsvp" | "scroll"; dial?: number },
+	opts: {
+		from?: number;
+		seconds: number;
+		wpm: number;
+		mode?: "rsvp" | "scroll" | "listen";
+		dial?: number;
+	},
 ) {
 	let pos = opts.from ?? 0;
 	for (let t = 0; t <= opts.seconds; t += 2) {
@@ -41,6 +47,32 @@ describe("live board", () => {
 		expect(ann?.wpm).toBeGreaterThan(200);
 		expect(ann?.wpm).toBeLessThanOrEqual(250);
 		expect(ann?.wordPosition).toBeGreaterThan(200);
+	});
+
+	test("a listener shows as listening, never with a speed", () => {
+		const { board: b } = board();
+		const end = readAt(b, "ann", { seconds: 60, wpm: 170, mode: "listen" });
+		const [ann] = b.members(READ, end);
+		expect(ann?.isListening).toBe(true);
+		expect(ann?.wpm).toBeNull();
+		expect(ann?.wordPosition).toBeGreaterThan(100);
+	});
+
+	test("reading after listening shows only the reading speed", () => {
+		const { board: b } = board();
+		let pos = 0;
+		let t = T0;
+		const report = (mode: "listen" | "scroll", wpm: number, seconds: number) => {
+			for (let s = 0; s < seconds; s += 2, t += 2 * SEC) {
+				b.report(READ, "ann", { position: Math.round(pos), mode, dialWpm: null }, 10_000, t);
+				pos += (wpm * 2) / 60;
+			}
+		};
+		report("listen", 170, 120);
+		report("scroll", 100, 60);
+		const [ann] = b.members(READ, t);
+		expect(ann?.isListening).toBe(false);
+		expect(ann?.wpm).toBeLessThanOrEqual(110);
 	});
 
 	test("a jump, a backward move or a forged dial cannot show more than the cap", () => {

@@ -5,12 +5,8 @@
  * independent reference over random tick sequences instead.
  */
 import { describe, expect, it } from "vitest";
-import {
-	POLL_MS,
-	POLL_THROTTLE_GUARD_MS,
-	type SessionRow,
-	SessionTracker,
-} from "../session-tracker";
+import type { SessionRow } from "../../../services/reading-sessions/rules";
+import { POLL_MS, POLL_THROTTLE_GUARD_MS, SessionTracker } from "../session-tracker";
 
 const SCROLL_JUMP_THRESHOLD = 400;
 const SEQUENCES = 200_000;

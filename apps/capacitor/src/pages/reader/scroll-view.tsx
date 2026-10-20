@@ -99,8 +99,7 @@ function scheduleFineScroll(
 	let rafId = 0;
 	let timeoutId = 0;
 	let cancelled = false;
-
-	const SMOOTH_DURATION_MS = 250;
+	let cancelSmooth: (() => void) | null = null;
 
 	const alignSpan = (span: HTMLElement) => {
 		if (cancelled) return;
@@ -108,29 +107,8 @@ function scheduleFineScroll(
 		if (Math.abs(delta) > 2) {
 			suppress.suppressScrollEnd.current = true;
 			if (shouldHighlight) suppress.suppressHighlight.current = true;
-			if (!smooth) {
-				listHandle.scrollBy(delta);
-			} else {
-				// VList only exposes scrollBy(offset), no smooth/behavior arg, so
-				// drive the animation by hand: ease-out-cubic over a fixed window,
-				// applying the per-frame delta. Cancelled if a newer scheduleFineScroll
-				// starts (cancelled flag) or component unmounts.
-				const startTime = performance.now();
-				let appliedSoFar = 0;
-				const tick = (now: number) => {
-					if (cancelled) return;
-					const t = Math.min(1, (now - startTime) / SMOOTH_DURATION_MS);
-					const eased = 1 - (1 - t) ** 3;
-					const target = delta * eased;
-					const step = target - appliedSoFar;
-					if (step !== 0) listHandle.scrollBy(step);
-					appliedSoFar = target;
-					if (t < 1) {
-						rafId = requestAnimationFrame(tick);
-					}
-				};
-				rafId = requestAnimationFrame(tick);
-			}
+			if (!smooth) listHandle.scrollBy(delta);
+			else cancelSmooth = smoothScrollBy(listHandle, delta);
 		}
 		onReady?.();
 	};
@@ -189,9 +167,46 @@ function scheduleFineScroll(
 
 	return () => {
 		cancelled = true;
+		cancelSmooth?.();
 		if (rafId) cancelAnimationFrame(rafId);
 		if (timeoutId) clearTimeout(timeoutId);
 	};
+}
+
+const SMOOTH_SCROLL_MS = 250;
+
+/** VList only exposes scrollBy(offset), no behavior arg, so ease out by hand. Returns a cancel. */
+function smoothScrollBy(listHandle: VListHandle, delta: number): () => void {
+	const startTime = performance.now();
+	let applied = 0;
+	let rafId = 0;
+	const tick = (now: number) => {
+		const t = Math.min(1, (now - startTime) / SMOOTH_SCROLL_MS);
+		const target = delta * (1 - (1 - t) ** 3);
+		if (target !== applied) listHandle.scrollBy(target - applied);
+		applied = target;
+		if (t < 1) rafId = requestAnimationFrame(tick);
+	};
+	rafId = requestAnimationFrame(tick);
+	return () => cancelAnimationFrame(rafId);
+}
+
+// While following speech, the spoken line may wander this far down the
+// screen before the view moves, and lands this far down when it does.
+const FOLLOW_BAND_TOP = 0.1;
+// Below this the line would slide under the read-aloud bar.
+const FOLLOW_BAND_BOTTOM = 0.65;
+const FOLLOW_LANDING = 0.3;
+// Headings render without word spans, so a spoken heading word is followed by
+// the first body word after it.
+const FOLLOW_LOOKAHEAD_WORDS = 20;
+
+function findFollowSpan(container: HTMLElement, wordIdx: number): HTMLElement | null {
+	for (let w = wordIdx; w <= wordIdx + FOLLOW_LOOKAHEAD_WORDS; w++) {
+		const span = container.querySelector<HTMLElement>(`span[data-word="${w}"]`);
+		if (span) return span;
+	}
+	return null;
 }
 
 // ─── Skeleton loading lines ──────────────────────────────────────────────────
@@ -473,67 +488,99 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		}
 	}, [isScrubbing]);
 
-	useImperativeHandle(
-		ref,
-		() => ({
-			jumpTo(wordIdx, { highlight = true, fine = false, smooth = false } = {}) {
-				if (!listRef.current) return;
-				jumpCleanupRef.current?.();
-				jumpCleanupRef.current = null;
-				cancelAnimationFrame(jumpCheckFrameRef.current);
-				jumpScrolledRef.current = false;
-				suppressNextScrollEndRef.current = true;
-				if (highlight) suppressScrollHighlightClearRef.current = true;
-				if (!fine) {
-					const idx = findParagraphIndexForWord(wordIdx);
-					if (!smooth) hideUntilLanded();
-					listRef.current.scrollToIndex(idx, { align: "start" });
-					// When the target is the start of a chapter whose title is rendered
-					// inline above its first paragraph, the paragraph-top alignment above
-					// already puts the header at the container top. A fine word-scroll
-					// would pin the first word to the top and push the header out of view.
-					if (chapterHeadingByParagraph?.has(idx) && paragraphStartWords[idx] === wordIdx) {
-						let frame = requestAnimationFrame(() => {
-							frame = requestAnimationFrame(() => {
-								revealLanded();
-								clearIfJumpDidNotScroll();
-							});
-						});
-						jumpCleanupRef.current = () => {
-							cancelAnimationFrame(frame);
+	useImperativeHandle(ref, () => {
+		const jumpTo: ReaderViewHandle["jumpTo"] = (
+			wordIdx,
+			{ highlight = true, fine = false, smooth = false } = {},
+		) => {
+			if (!listRef.current) return;
+			jumpCleanupRef.current?.();
+			jumpCleanupRef.current = null;
+			cancelAnimationFrame(jumpCheckFrameRef.current);
+			jumpScrolledRef.current = false;
+			suppressNextScrollEndRef.current = true;
+			if (highlight) suppressScrollHighlightClearRef.current = true;
+			if (!fine) {
+				const idx = findParagraphIndexForWord(wordIdx);
+				if (!smooth) hideUntilLanded();
+				listRef.current.scrollToIndex(idx, { align: "start" });
+				// When the target is the start of a chapter whose title is rendered
+				// inline above its first paragraph, the paragraph-top alignment above
+				// already puts the header at the container top. A fine word-scroll
+				// would pin the first word to the top and push the header out of view.
+				if (chapterHeadingByParagraph?.has(idx) && paragraphStartWords[idx] === wordIdx) {
+					let frame = requestAnimationFrame(() => {
+						frame = requestAnimationFrame(() => {
 							revealLanded();
-						};
-						return;
-					}
-				}
-				const landed = () => {
-					revealLanded();
-					clearIfJumpDidNotScroll();
-				};
-				const cancel = fineScrollTo(wordIdx, highlight, landed, smooth);
-				if (!cancel) {
-					landed();
+							clearIfJumpDidNotScroll();
+						});
+					});
+					jumpCleanupRef.current = () => {
+						cancelAnimationFrame(frame);
+						revealLanded();
+					};
 					return;
 				}
-				jumpCleanupRef.current = () => {
-					cancel();
-					revealLanded();
-				};
-			},
+			}
+			const landed = () => {
+				revealLanded();
+				clearIfJumpDidNotScroll();
+			};
+			const cancel = fineScrollTo(wordIdx, highlight, landed, smooth);
+			if (!cancel) {
+				landed();
+				return;
+			}
+			jumpCleanupRef.current = () => {
+				cancel();
+				revealLanded();
+			};
+		};
+		return {
+			jumpTo,
 			scrollBy(pixels) {
 				listRef.current?.scrollBy(pixels);
 			},
-		}),
-		[
-			findParagraphIndexForWord,
-			fineScrollTo,
-			chapterHeadingByParagraph,
-			paragraphStartWords,
-			hideUntilLanded,
-			revealLanded,
-			clearIfJumpDidNotScroll,
-		],
-	);
+			followWord(wordIdx) {
+				const list = listRef.current;
+				const container = containerRef.current;
+				if (!list || !container) return false;
+				const span = findFollowSpan(container, wordIdx);
+				if (!span) {
+					jumpTo(wordIdx, { highlight: false, smooth: true });
+					return true;
+				}
+				const box = container.getBoundingClientRect();
+				const top = span.getBoundingClientRect().top - box.top;
+				if (top >= box.height * FOLLOW_BAND_TOP && top <= box.height * FOLLOW_BAND_BOTTOM) {
+					return false;
+				}
+				jumpCleanupRef.current?.();
+				suppressNextScrollEndRef.current = true;
+				suppressScrollHighlightClearRef.current = true;
+				// At the end of the book the list cannot move, no scroll end fires, and the
+				// flags would swallow the reader's next real scroll.
+				jumpScrolledRef.current = false;
+				const delta = top - box.height * FOLLOW_LANDING;
+				if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+					list.scrollBy(delta);
+					jumpCleanupRef.current = null;
+				} else {
+					jumpCleanupRef.current = smoothScrollBy(list, delta);
+				}
+				clearIfJumpDidNotScroll();
+				return false;
+			},
+		};
+	}, [
+		findParagraphIndexForWord,
+		fineScrollTo,
+		chapterHeadingByParagraph,
+		paragraphStartWords,
+		hideUntilLanded,
+		revealLanded,
+		clearIfJumpDidNotScroll,
+	]);
 
 	const isScrolledToEnd = useCallback(() => {
 		const list = listRef.current;

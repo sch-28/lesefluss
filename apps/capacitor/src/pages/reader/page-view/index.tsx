@@ -501,11 +501,11 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	);
 
 	const goToPage = useCallback(
-		(p: number) => {
+		(p: number, { shouldSettle = true }: { shouldSettle?: boolean } = {}) => {
 			if (!isLayoutReady) return;
 			const clamped = Math.max(0, Math.min(currentPageCount - 1, p));
 			setPageIndex(clamped);
-			animateTo(computeTransform(clamped), () => settleAtPage(clamped));
+			animateTo(computeTransform(clamped), shouldSettle ? () => settleAtPage(clamped) : undefined);
 		},
 		[isLayoutReady, currentPageCount, animateTo, computeTransform, settleAtPage],
 	);
@@ -616,6 +616,23 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				const targetPage = findPageForWord(el, pageWidth, currentPageCount, wordIdx);
 				goToPage(targetPage);
 			},
+			followWord(wordIdx) {
+				const targetChunk = findChunkForWord(chunks, wordIdx);
+				if (targetChunk !== chunkIndex) {
+					pendingTargetRef.current = wordIdx;
+					setChunkIndex(targetChunk);
+					return false;
+				}
+				if (!isLayoutReady) return false;
+				const el = chunkRefs.current.get(chunkIndex);
+				if (!el) return false;
+				const targetPage = findPageForWord(el, pageWidth, currentPageCount, wordIdx);
+				if (targetPage === pageIndex) return false;
+				// What a relayout re-anchors to, since this turn reports no settle.
+				currentWordRef.current = wordIdx;
+				goToPage(targetPage, { shouldSettle: false });
+				return false;
+			},
 			// A key turn can arrive mid-animation. Finishing it first commits a
 			// pending chunk crossing; the turn then runs against that new state,
 			// which only the refreshed callbacks see.
@@ -631,6 +648,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		[
 			chunks,
 			chunkIndex,
+			pageIndex,
 			pageWidth,
 			currentPageCount,
 			isLayoutReady,

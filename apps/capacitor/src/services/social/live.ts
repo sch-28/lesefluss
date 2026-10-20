@@ -1,4 +1,4 @@
-import type { LiveActionBody, LiveSnapshot } from "@lesefluss/core";
+import type { LiveActionBody, LiveSnapshot, ReadingMode } from "@lesefluss/core";
 import { SOCIAL_API } from "@lesefluss/core";
 import { useEffect, useRef, useState } from "react";
 import { AuthedFetchError, authedFetch } from "../authed-fetch";
@@ -8,12 +8,8 @@ async function act(body: LiveActionBody, keepalive = false): Promise<void> {
 }
 
 export const liveClient = {
-	report: (
-		buddyReadId: string,
-		position: number,
-		mode: "rsvp" | "scroll" | "page",
-		dialWpm: number | null,
-	) => act({ action: "report", buddyReadId, position, mode, dialWpm, sentAt: Date.now() }),
+	report: (buddyReadId: string, position: number, mode: ReadingMode, dialWpm: number | null) =>
+		act({ action: "report", buddyReadId, position, mode, dialWpm, sentAt: Date.now() }),
 	/** `keepalive` lets the request outlive a closing page. */
 	stop: (buddyReadId: string, keepalive = false) =>
 		act({ action: "stop", buddyReadId, sentAt: Date.now() }, keepalive),

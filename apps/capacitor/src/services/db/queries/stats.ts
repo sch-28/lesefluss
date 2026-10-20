@@ -1,5 +1,6 @@
 import {
-	isPlausibleRate,
+	isMeasurableSitting,
+	type MeasuredReadingMode,
 	measuredReadingSpeed,
 	type ReadingRates,
 	readingProgress,
@@ -330,6 +331,7 @@ export async function getReadingRecords(): Promise<ReadingRecords> {
 		db
 			.select({
 				bookId: readingSessions.bookId,
+				mode: readingSessions.mode,
 				startedAt: readingSessions.startedAt,
 				durationMs: readingSessions.durationMs,
 				wordsRead: readingSessions.wordsRead,
@@ -401,7 +403,7 @@ export async function getHourHistogram(): Promise<number[]> {
 
 export interface SpeedPoint {
 	startedAt: number;
-	mode: "rsvp" | "scroll" | "page";
+	mode: MeasuredReadingMode;
 	wpm: number;
 	/** Weight for bucketing; see `bucketSpeedSeries`. */
 	words: number;
@@ -419,7 +421,7 @@ export interface BookStats {
 	/** Words-weighted measured rate across every mode, and the mode that
 	 *  contributed most of those words. */
 	measuredWpm: number | null;
-	dominantMode: "rsvp" | "scroll" | "page" | null;
+	dominantMode: MeasuredReadingMode | null;
 	speedSeries: SpeedPoint[];
 }
 
@@ -450,11 +452,15 @@ export interface MeasuredReadingSpeed {
 
 export async function getMeasuredReadingSpeed(): Promise<MeasuredReadingSpeed> {
 	const rows = await db
-		.select({ wordsRead: readingSessions.wordsRead, durationMs: readingSessions.durationMs })
+		.select({
+			mode: readingSessions.mode,
+			wordsRead: readingSessions.wordsRead,
+			durationMs: readingSessions.durationMs,
+		})
 		.from(readingSessions);
 	return {
 		wpm: measuredReadingSpeed(rows),
-		sessionCount: rows.filter((r) => isPlausibleRate(r.wordsRead, r.durationMs)).length,
+		sessionCount: rows.filter(isMeasurableSitting).length,
 	};
 }
 
@@ -509,7 +515,7 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 		}
 		// Totals above are unconditional; only the derived rate is gated, so a
 		// position jump still counts as time spent and words covered.
-		if (isPlausibleRate(r.wordsRead, r.durationMs)) {
+		if (isMeasurableSitting(r)) {
 			sumWords += r.wordsRead;
 			sumActiveMs += r.durationMs;
 			wordsByMode.set(r.mode, (wordsByMode.get(r.mode) ?? 0) + r.wordsRead);

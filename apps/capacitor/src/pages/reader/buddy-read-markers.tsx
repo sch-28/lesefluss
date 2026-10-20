@@ -76,7 +76,9 @@ export function markerDetail(
 ): string {
 	const parts: string[] = [];
 	if (marker.live) {
-		parts.push(marker.live.wpm !== null ? `reading now · ${marker.live.wpm} wpm` : "reading now");
+		if (marker.live.isListening) parts.push("listening now");
+		else
+			parts.push(marker.live.wpm !== null ? `reading now · ${marker.live.wpm} wpm` : "reading now");
 	}
 	if (!approximate) parts.push(relativeTo(marker.wordPosition, myWord));
 	if (marker.goal) parts.push(`goal ${signed(marker.goal.aheadDays, " d")}`);

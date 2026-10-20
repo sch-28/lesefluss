@@ -211,6 +211,7 @@ export async function hardDeleteGoals(ids: string[]): Promise<void> {
 async function getGoalSessions(bookId: string) {
 	return db
 		.select({
+			mode: readingSessions.mode,
 			startedAt: readingSessions.startedAt,
 			endedAt: readingSessions.endedAt,
 			startWord: readingSessions.startWord,

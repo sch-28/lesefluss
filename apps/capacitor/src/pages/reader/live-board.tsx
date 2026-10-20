@@ -1,4 +1,4 @@
-import { LIVE_REPORT_INTERVAL_MS, type LiveMember } from "@lesefluss/core";
+import { LIVE_REPORT_INTERVAL_MS, type LiveMember, type ReadingMode } from "@lesefluss/core";
 import { useEffect, useRef, useState } from "react";
 import { isPermanentLiveError, liveClient, useLiveBoard } from "@/services/social/live";
 import { useOwnSocialProfile } from "@/services/social/profile";
@@ -8,7 +8,7 @@ type Options = {
 	buddyReadId: string | null;
 	/** Null until the reader has restored where the user left off. */
 	getPosition: () => number | null;
-	mode: "rsvp" | "scroll" | "page";
+	mode: ReadingMode;
 	dialWpm: number | null;
 	isForeground: boolean;
 	isOnline: boolean;

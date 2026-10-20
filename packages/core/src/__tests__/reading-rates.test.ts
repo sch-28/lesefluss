@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	isMeasurableSitting,
 	measuredReadingSpeed,
 	type RateSession,
 	rollUpWorks,
@@ -150,27 +151,46 @@ describe("rollUpWorks", () => {
 });
 
 describe("measuredReadingSpeed", () => {
-	it("is words over active time across plausible sittings, any mode", () => {
+	const scroll = (wordsRead: number, durationMs: number) =>
+		({ mode: "scroll", wordsRead, durationMs }) as const;
+
+	it("is words over active time across plausible sittings, any reading mode", () => {
 		expect(
 			measuredReadingSpeed([
-				{ wordsRead: 3000, durationMs: minutes(10) },
-				{ wordsRead: 1000, durationMs: minutes(10) },
+				scroll(3000, minutes(10)),
+				{ ...scroll(1000, minutes(10)), mode: "rsvp" },
 			]),
 		).toBe(200);
 	});
 
 	it("drops position jumps and unmeasurable sittings", () => {
 		expect(
+			measuredReadingSpeed([scroll(3000, minutes(10)), scroll(22_488, 27_000), scroll(5, 500)]),
+		).toBe(300);
+	});
+
+	it("ignores listening, which moves at the voice's pace", () => {
+		expect(
 			measuredReadingSpeed([
-				{ wordsRead: 3000, durationMs: minutes(10) },
-				{ wordsRead: 22_488, durationMs: 27_000 },
-				{ wordsRead: 5, durationMs: 500 },
+				scroll(3000, minutes(10)),
+				{ ...scroll(1700, minutes(10)), mode: "listen" },
 			]),
 		).toBe(300);
+		expect(measuredReadingSpeed([{ ...scroll(1700, minutes(10)), mode: "listen" }])).toBeNull();
 	});
 
 	it("is null with nothing to measure", () => {
 		expect(measuredReadingSpeed([])).toBeNull();
-		expect(measuredReadingSpeed([{ wordsRead: 22_488, durationMs: 27_000 }])).toBeNull();
+		expect(measuredReadingSpeed([scroll(22_488, 27_000)])).toBeNull();
+	});
+});
+
+describe("isMeasurableSitting", () => {
+	const sitting = { wordsRead: 1700, durationMs: minutes(10) };
+
+	it("measures every reading mode but never listening", () => {
+		expect(isMeasurableSitting({ ...sitting, mode: "scroll" })).toBe(true);
+		expect(isMeasurableSitting({ ...sitting, mode: "rsvp" })).toBe(true);
+		expect(isMeasurableSitting({ ...sitting, mode: "listen" })).toBe(false);
 	});
 });

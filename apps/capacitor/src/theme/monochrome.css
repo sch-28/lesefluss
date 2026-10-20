@@ -758,6 +758,57 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	text-transform: lowercase;
 }
 
+/* ── Read aloud ── */
+
+/* Shares the RSVP controls' rows; sits above the expanded progress bar like the browse bar. */
+.read-aloud-controls {
+	position: absolute;
+	left: 50%;
+	bottom: calc(var(--safe-bottom) + 64px);
+	transform: translateX(-50%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	padding: 8px 12px;
+	max-width: calc(100% - 32px);
+	background: var(--reader-bg);
+	border: 1px solid var(--reader-progress-track, rgba(128, 128, 128, 0.25));
+	border-radius: 20px;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+	color: var(--reader-text);
+	z-index: 10;
+}
+
+.read-aloud-detached {
+	display: flex;
+	align-items: center;
+	margin: 0 0 4px;
+	padding: 0 0 4px;
+	min-width: 0;
+	border: 0;
+	border-bottom: 1px solid var(--reader-progress-track, rgba(128, 128, 128, 0.25));
+	font-size: 0.85rem;
+	white-space: nowrap;
+}
+
+.read-aloud-controls .read-aloud-detached button {
+	padding: 8px 10px;
+}
+
+.read-aloud-wpm {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	line-height: 1.1;
+	min-width: 6ch;
+}
+
+::highlight(tts-word) {
+	background-color: color-mix(in srgb, var(--reader-text) 32%, transparent);
+	color: var(--reader-text);
+}
+
 /* ── RSVP speed chip (visible while playing) ── */
 
 .rsvp-speed-chip {
@@ -1822,7 +1873,8 @@ body.dark .chapter-row:hover {
 	min-width: 0;
 }
 
-.reader-browse-bar button {
+.reader-browse-bar button,
+.read-aloud-detached button {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
@@ -1833,7 +1885,8 @@ body.dark .chapter-row:hover {
 	cursor: pointer;
 }
 
-.reader-browse-bar svg {
+.reader-browse-bar svg,
+.read-aloud-detached svg {
 	width: 16px;
 	height: 16px;
 }

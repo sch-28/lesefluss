@@ -47,6 +47,11 @@ export async function getSettings(): Promise<Settings> {
 		einkMode: DEFAULT_SETTINGS.EINK_MODE,
 		volumeKeyPageTurn: null,
 		volumeKeyInvert: DEFAULT_SETTINGS.VOLUME_KEY_INVERT,
+		ttsWpm: DEFAULT_SETTINGS.TTS_WPM,
+		ttsPitch: DEFAULT_SETTINGS.TTS_PITCH,
+		ttsRewindWords: DEFAULT_SETTINGS.TTS_REWIND_WORDS,
+		ttsVoices: DEFAULT_SETTINGS.TTS_VOICES,
+		ttsFollow: DEFAULT_SETTINGS.TTS_FOLLOW,
 		// Per-resource sync opt-outs default on; local-only, never synced.
 		syncHighlights: true,
 		syncGlossary: true,

@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { DEFAULT_SETTINGS } from "@lesefluss/core";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
 	Bell,
@@ -9,6 +10,7 @@ import {
 	Cpu,
 	Download,
 	Globe,
+	Headphones,
 	Loader2,
 	Megaphone,
 	MessageCircle,
@@ -39,6 +41,7 @@ import {
 	isTelemetryEnabled,
 	setTelemetryEnabled,
 } from "@/services/telemetry";
+import { IS_READ_ALOUD_SUPPORTED } from "@/services/tts";
 import { IS_WEB } from "@/utils/platform";
 
 export const Route = createFileRoute("/tabs/settings/")({
@@ -124,6 +127,14 @@ function SettingsLanding() {
 						to="/tabs/settings/reader"
 					/>
 					<NavRow icon={Zap} title="RSVP" subtitle={rsvpSubtitle} to="/tabs/settings/rsvp" />
+					{IS_READ_ALOUD_SUPPORTED && (
+						<NavRow
+							icon={Headphones}
+							title="Read aloud"
+							subtitle={`${settings?.ttsWpm ?? DEFAULT_SETTINGS.TTS_WPM} wpm · Voices`}
+							to="/tabs/settings/read-aloud"
+						/>
+					)}
 					<NavRow
 						icon={Download}
 						title="Export highlights"

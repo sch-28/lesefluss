@@ -4,7 +4,8 @@
  * timezone; the query functions in `stats.ts` only fetch rows and hand them here.
  */
 import {
-	isPlausibleRate,
+	isMeasurableSitting,
+	type ReadingMode,
 	readingDayKeys,
 	type StreakResult,
 	streakFromDays,
@@ -157,7 +158,7 @@ export interface WpmTrend {
 
 export interface WpmSession {
 	startedAt: number;
-	mode: "rsvp" | "scroll" | "page";
+	mode: ReadingMode;
 	wpmAvg: number | null;
 	words: number;
 	durationMs: number;
@@ -174,8 +175,8 @@ function addToBucket(map: Map<number, Bucket>, bucketStart: number, wpm: number,
 
 /**
  * WPM trend, words-weighted so one short session can't dominate a bucket. Every
- * session feeds `measured` regardless of mode — that is the one figure the user
- * asked for. `rsvpTarget` is a reference line built from the dial on RSVP rows
+ * reading mode feeds `measured`, the one figure the user asked for; listening
+ * feeds nothing. `rsvpTarget` is a reference line built from the dial on RSVP rows
  * only. Bucket width follows the selected period.
  */
 export function buildWpmTrend(
@@ -187,9 +188,9 @@ export function buildWpmTrend(
 
 	for (const r of rows) {
 		const bucketStart = bucketStartFor(buckets.granularity, r.startedAt);
-		// Every mode contributes to one measured series. `wpmAvg` is not usable
-		// here: on rsvp rows it holds the dial, which is an input.
-		if (isPlausibleRate(r.words, r.durationMs)) {
+		// Every reading mode contributes to one measured series. `wpmAvg` is not
+		// usable here: on rsvp rows it holds the dial, which is an input.
+		if (isMeasurableSitting({ mode: r.mode, wordsRead: r.words, durationMs: r.durationMs })) {
 			const wpm = Math.round(r.words / (r.durationMs / 60_000));
 			if (wpm > 0) addToBucket(measuredBuckets, bucketStart, wpm, r.words);
 		}

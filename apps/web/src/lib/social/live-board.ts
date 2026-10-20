@@ -3,6 +3,7 @@ import {
 	LIVE_MIN_SITTING_MS,
 	type LiveMember,
 	type LiveReport,
+	type ReadingMode,
 	refillCredit,
 	spendCredit,
 } from "@lesefluss/core";
@@ -18,6 +19,7 @@ type Reader = {
 	wordCount: number;
 	lastSeenAt: number;
 	sittingStartedAt: number;
+	mode: ReadingMode;
 	credited: number;
 	budget: number;
 	/** The client's send time of the latest report, when the client sends one. */
@@ -44,12 +46,19 @@ export class LiveBoard {
 		const readers = this.reads.get(buddyReadId) ?? new Map<string, Reader>();
 		this.reads.set(buddyReadId, readers);
 		const prev = readers.get(userId);
-		if (!prev || now - prev.lastSeenAt > LIVE_IDLE_MS) {
+		// Listening moves at the voice's pace: switching to or from it starts a new
+		// sitting, so the voice's words never count toward a reading speed.
+		const isListeningSwitch =
+			prev !== undefined &&
+			prev.mode !== report.mode &&
+			(prev.mode === "listen" || report.mode === "listen");
+		if (!prev || now - prev.lastSeenAt > LIVE_IDLE_MS || isListeningSwitch) {
 			readers.set(userId, {
 				position: report.position,
 				wordCount,
 				lastSeenAt: now,
 				sittingStartedAt: now,
+				mode: report.mode,
 				credited: 0,
 				budget: 0,
 				lastSentAt: report.sentAt ?? null,
@@ -61,6 +70,7 @@ export class LiveBoard {
 			readers.set(userId, {
 				...prev,
 				position: report.position,
+				mode: report.mode,
 				wordCount,
 				lastSeenAt: now,
 				credited: prev.credited + spent.credited,
@@ -110,8 +120,11 @@ export class LiveBoard {
 				userId,
 				wordPosition: r.position,
 				wordCount: r.wordCount,
+				isListening: r.mode === "listen",
 				wpm:
-					sittingMs >= LIVE_MIN_SITTING_MS ? Math.round(r.credited / (sittingMs / 60_000)) : null,
+					r.mode !== "listen" && sittingMs >= LIVE_MIN_SITTING_MS
+						? Math.round(r.credited / (sittingMs / 60_000))
+						: null,
 			};
 		});
 	}

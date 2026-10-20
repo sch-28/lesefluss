@@ -37,9 +37,11 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	ExternalLink,
+	Headphones,
 	Info,
 	Loader2,
 	MoreVertical,
+	Pause,
 	Search,
 	Type,
 	Zap,
@@ -47,6 +49,8 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActionSheet } from "../../components/action-sheet";
+import { VoiceSheet } from "../../components/read-aloud/voice-sheet";
 import {
 	CommentComposerSheet,
 	type CommentSelection,
@@ -78,6 +82,8 @@ import {
 import { useIsOnline } from "../../services/social/cache";
 import { pushSync, scheduleSyncPush } from "../../services/sync";
 import { reportEvent } from "../../services/telemetry";
+import { IS_READ_ALOUD_SUPPORTED } from "../../services/tts";
+import { languageName, parseVoiceChoices, speechFor, withVoice } from "../../services/tts/voices";
 import { publishLinkOpen, publishPositionSave, publishProgressWord } from "../../test-hooks/reader";
 import { AVERAGE_READER_WPM, formatReadingTime } from "../../utils/reading-time";
 import { setJustRead } from "../library/just-read-pin";
@@ -114,6 +120,7 @@ import {
 	recoverPendingWord,
 	writePendingPosition,
 } from "./pending-position";
+import { ReadAloudControls } from "./read-aloud-controls";
 import { buildFigureMap } from "./reader-figures";
 import { stripPunct } from "./rsvp-engine";
 import RsvpView, { type RsvpViewHandle } from "./rsvp-view";
@@ -122,6 +129,7 @@ import SearchModal from "./search-modal";
 import SelectionOverlay from "./selection-overlay";
 import { SessionDebugBadge } from "./session-debug-badge";
 import { SessionPauseOverlay } from "./session-pause-overlay";
+import { firstVisibleWord, markSpokenWord } from "./spoken-word";
 import { createTwoFingerTapDetector } from "./two-finger-tap";
 import { useBrowseMode } from "./use-browse-mode";
 import {
@@ -133,6 +141,7 @@ import {
 import { useHighlightSelection } from "./use-highlight-selection";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import { useLinkDecorations } from "./use-link-decorations";
+import { useReadAloud } from "./use-read-aloud";
 import { useReaderGoal } from "./use-reader-goal";
 import { type ReadingSessionMode, useReadingSession } from "./use-reading-session";
 import { useScrubProgress } from "./use-scrub-progress";
@@ -147,6 +156,13 @@ const _encoder = new TextEncoder();
 
 // Sentinel value: no word highlighted (while scrolling)
 const NO_HIGHLIGHT = -1;
+
+const SLEEP_TIMER_MINUTES = [15, 30, 45, 60];
+const DETACH_DRAG_PX = 8;
+
+type ReadAloudHandle = Pick<ReturnType<typeof useReadAloud>, "detach" | "moveTo" | "pause"> & {
+	isActive: boolean;
+};
 
 // A position write that hasn't settled in this long is treated as wedged/stalled
 // and reported as diagnostics (see savePosition).
@@ -339,6 +355,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const JUMP_SETTLE_GUARD_MS = 1500;
 	// The last word written (or known to be) in the DB row.
 	const persistedWordRef = useRef<number | null>(null);
+	// Assigned once `useReadAloud` runs further down. While active, the voice owns the position.
+	const readAloudRef = useRef<ReadAloudHandle | null>(null);
+	const isReadAloudActiveNow = useCallback(() => readAloudRef.current?.isActive ?? false, []);
 	// Assigned once `useReadingSession` runs further down.
 	const browseSessionRef = useRef<BrowseSession | null>(null);
 	const { anchor: browseAnchor, controller: browse } = useBrowseMode({
@@ -774,6 +793,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	 *  visual scroll to whichever view is mounted. */
 	const jumpToWord = useCallback(
 		(word: number, { highlight = true }: { highlight?: boolean } = {}) => {
+			if (readAloudRef.current?.isActive) {
+				readAloudRef.current.moveTo(word);
+				setActiveWord(word);
+				setProgressWord(word);
+				lastJumpAtRef.current = Date.now();
+				scrollViewRef.current?.jumpTo(word, { highlight });
+				return;
+			}
 			browse.enterForJump(word);
 			setActiveWord(word);
 			setProgressWord(word);
@@ -864,6 +891,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		setProgressWord,
 		setRsvpInitWord,
 		setProgressBarVisible,
+		isReadingAloud: isReadAloudActiveNow,
 	});
 
 	// ── ScrollView callbacks ──────────────────────────────────────────────
@@ -878,6 +906,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const handleScrollPositionSettle = useCallback(
 		(word: number, isAtEnd = false, hasMoved = true) => {
+			if (readAloudRef.current?.isActive) {
+				// Following the voice never settles, so this is the reader looking
+				// elsewhere, unless it is the list reconciling a jump.
+				if (Date.now() - lastJumpAtRef.current >= JUMP_SETTLE_GUARD_MS) {
+					readAloudRef.current.detach(word);
+				}
+				return;
+			}
 			// Stay on the settled word when the view didn't really move (a layout
 			// clamp), or at the very bottom, where a later word is still on screen
 			// but can never reach the top.
@@ -968,6 +1004,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const handleSetActiveWord = useCallback((word: number) => setActiveWord(word), []);
 	const handleSetProgressWord = useCallback(
 		(word: number, isAtEnd = false) => {
+			if (readAloudRef.current?.isActive) return;
 			progressWordRef.current = word;
 			// Tracked per tick so a flush or pagination toggle mid-scroll uses the
 			// current position, except: during a jump's scroll animation, and when
@@ -1032,6 +1069,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				}
 				const word = stripPunct(wordText);
 				if (word) openDictionaryModal(word);
+				return;
+			}
+			if (readAloudRef.current?.isActive) {
+				readAloudRef.current.moveTo(wIdx);
 				return;
 			}
 			setActiveWord(wIdx);
@@ -1364,6 +1405,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// RsvpView's unmount flush reports its old word after a switch to the
 			// standard view has already placed the reader elsewhere.
 			if (readerModeRef.current !== "rsvp") return;
+			// Scrolling RSVP words while listening picks where play continues.
+			if (readAloudRef.current?.isActive) {
+				readAloudRef.current.detach(word);
+				return;
+			}
 			setProgressWord(word);
 			lastWordRef.current = word;
 			userMovedRef.current = true;
@@ -1380,8 +1426,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const exitRsvpToStandard = useCallback(
 		(word?: number) => {
 			// Playback saves are throttled; pausing reports the displayed word while
-			// RSVP reports are still accepted.
-			rsvpViewRef.current?.pause();
+			// RSVP reports are still accepted. With the voice speaking the engine never
+			// plays, and that report would read as the reader moving away.
+			if (!readAloudRef.current?.isActive) rsvpViewRef.current?.pause();
 			// Ahead of the render: from here on this is the standard view, so the save
 			// below (and RsvpView's unmount flush) follow standard-mode browse rules.
 			readerModeRef.current = "standard";
@@ -1403,6 +1450,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				jumpToWord(word);
 				return;
 			}
+			if (readAloudRef.current?.isActive) {
+				readAloudRef.current.moveTo(word);
+				return;
+			}
 			// Before the anchor is taken: playback saves are throttled, so the
 			// displayed word may not have reached lastWordRef yet.
 			rsvpViewRef.current?.pause();
@@ -1418,6 +1469,163 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		browse.readFromHere();
 		void chapterAdvance.tryAdvance();
 	}, [browse, chapterAdvance]);
+
+	const ttsVoices = dbSettings?.ttsVoices ?? DEFAULT_SETTINGS.TTS_VOICES;
+	const ttsSpeech = useMemo(
+		() => speechFor(dbSettings, book?.language ?? null),
+		[dbSettings, book?.language],
+	);
+	const isFollowingVoiceRef = useRef(true);
+
+	const handleSpokenWord = useCallback((word: number) => {
+		lastWordRef.current = word;
+		settledWordRef.current = word;
+		userMovedRef.current = true;
+		if (readerModeRef.current === "rsvp") {
+			rsvpViewRef.current?.showWord(word);
+			return;
+		}
+		markSpokenWord(word);
+		if (!isFollowingVoiceRef.current) return;
+		// A far-off word is reached by a jump, whose settle must not read as the reader looking away.
+		if (scrollViewRef.current?.followWord?.(word)) lastJumpAtRef.current = Date.now();
+	}, []);
+
+	const getReadAloudViewWord = useCallback(
+		() => (viewContainerEl ? firstVisibleWord(viewContainerEl) : null),
+		[viewContainerEl],
+	);
+
+	const handleSaveSpokenWord = useCallback(
+		(word: number) => {
+			setProgressWord(word);
+			savePosition(word, { scheduleSync: false });
+		},
+		[savePosition],
+	);
+
+	// Finished books start over rather than reading the last word and stopping again.
+	const getReadAloudStartWord = useCallback(() => {
+		const word = lastWordRef.current ?? 0;
+		return word >= totalWordCount - 1 ? 0 : word;
+	}, [totalWordCount]);
+
+	const readAloud = useReadAloud({
+		bookId: id,
+		content,
+		wordIndex,
+		chapters,
+		title: book?.title ?? "",
+		author: book?.author ?? null,
+		cover: contentRow?.coverImage ?? null,
+		language: book?.language ?? null,
+		speech: ttsSpeech,
+		getStartWord: getReadAloudStartWord,
+		getViewWord: getReadAloudViewWord,
+		onWord: handleSpokenWord,
+		onSavePosition: handleSaveSpokenWord,
+		onFurthestRead: reportFurthestRead,
+	});
+	const isReadAloudActive = readAloud.status !== "off";
+	readAloudRef.current = {
+		isActive: isReadAloudActive,
+		detach: readAloud.detach,
+		moveTo: readAloud.moveTo,
+		pause: readAloud.pause,
+	};
+	isFollowingVoiceRef.current =
+		readAloud.isFollowing && (dbSettings?.ttsFollow ?? DEFAULT_SETTINGS.TTS_FOLLOW);
+
+	useEffect(() => {
+		if (!isReadAloudActive) return;
+		return () => markSpokenWord(null);
+	}, [isReadAloudActive]);
+
+	const handleReadAloudToggle = useCallback(() => {
+		// Speech reads on from the browsed spot, like RSVP.
+		browse.readFromHere();
+		readAloud.toggle();
+	}, [browse, readAloud.toggle]);
+
+	const rsvpVoice = useMemo(
+		() =>
+			isReadAloudActive
+				? { isPlaying: readAloud.status === "playing", onToggle: readAloud.toggle }
+				: null,
+		[isReadAloudActive, readAloud.status, readAloud.toggle],
+	);
+
+	// A finger on the text means the reader is looking elsewhere: stop following at once,
+	// without waiting for the scroll to settle.
+	useEffect(() => {
+		const el = viewContainerEl;
+		if (!el || !isReadAloudActive || readerMode === "rsvp") return;
+		const isOnControls = (e: Event) =>
+			e.target instanceof Element && e.target.closest(".read-aloud-controls") !== null;
+		let touchOrigin: { x: number; y: number } | null = null;
+		const onTouchStart = (e: TouchEvent) => {
+			const touch = e.touches[0];
+			touchOrigin = touch && !isOnControls(e) ? { x: touch.clientX, y: touch.clientY } : null;
+		};
+		// A tap jitters a few pixels; only a real drag is the reader looking elsewhere.
+		const onTouchMove = (e: TouchEvent) => {
+			const touch = e.touches[0];
+			if (!touchOrigin || !touch) return;
+			const distance = Math.hypot(touch.clientX - touchOrigin.x, touch.clientY - touchOrigin.y);
+			if (distance < DETACH_DRAG_PX) return;
+			touchOrigin = null;
+			readAloudRef.current?.detach();
+		};
+		const onWheel = (e: WheelEvent) => {
+			if (!isOnControls(e)) readAloudRef.current?.detach();
+		};
+		el.addEventListener("touchstart", onTouchStart, { passive: true });
+		el.addEventListener("touchmove", onTouchMove, { passive: true });
+		el.addEventListener("wheel", onWheel, { passive: true });
+		return () => {
+			el.removeEventListener("touchstart", onTouchStart);
+			el.removeEventListener("touchmove", onTouchMove);
+			el.removeEventListener("wheel", onWheel);
+		};
+	}, [viewContainerEl, isReadAloudActive, readerMode]);
+
+	const handleBackToVoice = useCallback(() => {
+		readAloud.resumeFollowing();
+		const word = readAloud.spokenWordRef.current;
+		if (word === null) return;
+		if (readerModeRef.current === "rsvp") {
+			rsvpViewRef.current?.showWord(word);
+			return;
+		}
+		lastJumpAtRef.current = Date.now();
+		scrollViewRef.current?.jumpTo(word, { highlight: false, smooth: true });
+	}, [readAloud.resumeFollowing, readAloud.spokenWordRef]);
+
+	const [isSleepTimerOpen, setIsSleepTimerOpen] = useState(false);
+	const [isVoiceSheetOpen, setIsVoiceSheetOpen] = useState(false);
+	const sleepTimerItems = useMemo(
+		() => [
+			{ label: "Off", onSelect: () => readAloud.setSleepTimer(null) },
+			...SLEEP_TIMER_MINUTES.map((minutes) => ({
+				label: `${minutes} minutes`,
+				onSelect: () => readAloud.setSleepTimer({ minutes }),
+			})),
+			...(chapters.length > 0
+				? [{ label: "End of chapter", onSelect: () => readAloud.setSleepTimer("chapterEnd") }]
+				: []),
+		],
+		[readAloud.setSleepTimer, chapters.length],
+	);
+	const handleVoiceSelect = useCallback(
+		(voice: string | null) => {
+			updateSetting(
+				"ttsVoices",
+				JSON.stringify(withVoice(parseVoiceChoices(ttsVoices), book?.language ?? null, voice)),
+			);
+			setIsVoiceSheetOpen(false);
+		},
+		[updateSetting, ttsVoices, book?.language],
+	);
 
 	const handleRsvpToggle = useCallback(() => {
 		if (readerMode !== "rsvp") {
@@ -1506,7 +1714,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		hasSelection: sel.isSelecting && !sel.noteInputOpen,
 		cancelSelection: sel.cancelSelection,
 		volumeKeys: volumeKeysFor(dbSettings, isEinkMode),
-		isReadingAloud: false,
+		isReadingAloud: isReadAloudActive,
 	});
 
 	// ── Reading session tracking ──────────────────────────────────────────
@@ -1522,7 +1730,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const liveMembers = useLiveReading({
 		buddyReadId: liveRead?.id ?? null,
 		getPosition: getRestoredPosition,
-		mode: sessionMode,
+		mode: isReadAloudActive ? "listen" : sessionMode,
 		dialWpm: rsvpSettings.wpm ?? null,
 		isForeground,
 		isOnline,
@@ -1540,7 +1748,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		bookId: id,
 		mode: sessionMode,
 		isReading:
-			!!content && lastWordRef.current !== null && !isSessionPaused && browseAnchor === null,
+			!!content &&
+			lastWordRef.current !== null &&
+			!isSessionPaused &&
+			browseAnchor === null &&
+			// The voice owns the position while read aloud is on; listening is recorded from its own log.
+			!isReadAloudActive,
 		getPosition: getReadingPosition,
 		wpmSetting: rsvpSettings.wpm,
 		onFurthestRead: reportFurthestRead,
@@ -1554,6 +1767,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			backfill: backfillSession,
 		};
 	}, [markReadingActivity, endSession, discardSession, rewindSession, backfillSession]);
+
+	// The reading sitting ends when read aloud starts: the words the voice speaks move
+	// the position, and an open sitting would later credit them as read.
+	useEffect(() => {
+		if (isReadAloudActive) endSession();
+	}, [isReadAloudActive, endSession]);
 
 	// A book or mode change tears down the tracker (new sitting); a stale
 	// manual pause must not carry over into it.
@@ -1580,7 +1799,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				return;
 			}
 			setIsSessionPaused(true);
-			if (readerModeRef.current === "rsvp") rsvpViewRef.current?.pause();
+			if (readAloudRef.current?.isActive) readAloudRef.current.pause();
+			else if (readerModeRef.current === "rsvp") rsvpViewRef.current?.pause();
 		});
 		const onTouchStart = (e: TouchEvent) => {
 			const target = e.target as HTMLElement | null;
@@ -1862,6 +2082,18 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							onOpenDetails={() => history.push(`/tabs/library/book/${book.id}`)}
 						/>
 					)}
+					{IS_READ_ALOUD_SUPPORTED && (
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={handleReadAloudToggle}
+							disabled={!wordIndex}
+							aria-label={readAloud.status === "playing" ? "Pause reading aloud" : "Read aloud"}
+							className={isReadAloudActive ? "text-primary" : undefined}
+						>
+							{readAloud.status === "playing" ? <Pause /> : <Headphones />}
+						</Button>
+					)}
 					<Button
 						variant="ghost"
 						size="icon"
@@ -1921,6 +2153,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								<Type />
 								<span>Appearance</span>
 							</DropdownMenuItem>
+							{IS_READ_ALOUD_SUPPORTED && (
+								<DropdownMenuItem onSelect={() => history.push("/tabs/settings/read-aloud")}>
+									<Headphones />
+									<span>Read aloud settings</span>
+								</DropdownMenuItem>
+							)}
 							{overflowSourceUrl && (
 								<DropdownMenuItem
 									onSelect={() => {
@@ -1979,6 +2217,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						linkHrefAt={findLinkAt}
 						onLinkTap={handleLinkTap}
 						isSessionPaused={isSessionPaused}
+						voice={rsvpVoice}
 					/>
 				) : paginationStyle === "page" ? (
 					<PageView
@@ -2151,6 +2390,24 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					/>
 				)}
 
+				{isReadAloudActive && !isShowingSkeleton && (
+					<ReadAloudControls
+						status={readAloud.status}
+						wpm={ttsSpeech.wpm}
+						measuredWpm={readAloud.measuredWpm}
+						sleepTimer={readAloud.sleepTimer}
+						isFollowing={readAloud.isFollowing}
+						onTogglePlay={readAloud.toggle}
+						onSkip={readAloud.skip}
+						onWpmChange={(wpm) => updateSetting("ttsWpm", wpm)}
+						onOpenSleepTimer={() => setIsSleepTimerOpen(true)}
+						onOpenVoice={() => setIsVoiceSheetOpen(true)}
+						onStop={readAloud.stop}
+						onBackToVoice={handleBackToVoice}
+						onReadFromView={readAloud.readFromView}
+					/>
+				)}
+
 				{isSessionPaused && <SessionPauseOverlay onResume={() => setIsSessionPaused(false)} />}
 			</div>
 
@@ -2270,6 +2527,23 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					/>
 				</>
 			)}
+
+			<ActionSheet
+				open={isSleepTimerOpen}
+				onOpenChange={setIsSleepTimerOpen}
+				title="Stop reading aloud after"
+				items={sleepTimerItems}
+			/>
+			<VoiceSheet
+				open={isVoiceSheetOpen}
+				onOpenChange={setIsVoiceSheetOpen}
+				language={book.language ?? null}
+				languageLabel={languageName(book.language ?? null)}
+				selected={ttsSpeech.voice}
+				speech={ttsSpeech}
+				onSelect={handleVoiceSelect}
+				className={`reader-theme-${theme}`}
+			/>
 
 			{/* Note input drawer (during selection). */}
 			<Drawer

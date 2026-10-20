@@ -166,10 +166,11 @@ Then touch:
    *synced only*. Mirror the column with the Postgres equivalent type.
 8. **UI** — pick the right page:
    - RSVP speed/algorithm: `apps/capacitor/src/pages/settings/rsvp-settings-form.tsx`
-   - Reader appearance: `apps/capacitor/src/pages/settings/appearance.tsx`
+   - Reader appearance: `apps/capacitor/src/routes/tabs/settings/reader.tsx`
      (and `apps/capacitor/src/pages/reader/appearance-popover.tsx` if it
      should be tunable from inside the reader)
-   - ESP32 device controls: `apps/capacitor/src/pages/settings/device.tsx`
+   - Read aloud: `apps/capacitor/src/routes/tabs/settings/read-aloud.tsx`
+   - ESP32 device controls: `apps/capacitor/src/routes/tabs/settings/device.tsx`
 9. **ESP32 firmware** *(device-only or device+synced)*:
    - `apps/esp32/src/config.py` — add the constant + default.
    - `apps/esp32/main.py` — add the key name to `_OVERRIDE_KEYS`.

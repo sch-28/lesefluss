@@ -1,3 +1,5 @@
+import type { MeasuredReadingMode, ReadingMode } from "./reading-credit";
+
 /**
  * Reading-rate arithmetic shared by the app's stats, the website and the
  * social profile: which sittings can be trusted for a speed, how fast a reader
@@ -41,8 +43,19 @@ export function isPlausibleRate(words: number, durationMs: number): boolean {
 	return words / (durationMs / 60_000) <= MAX_PLAUSIBLE_WPM;
 }
 
+/**
+ * Whether a sitting measures this reader's speed. Listening moves at the voice's
+ * pace, so its words and time count toward totals, streaks and goals but never
+ * toward a speed.
+ */
+export function isMeasurableSitting<
+	T extends { mode: ReadingMode; wordsRead: number; durationMs: number },
+>(row: T): row is T & { mode: MeasuredReadingMode } {
+	return row.mode !== "listen" && isPlausibleRate(row.wordsRead, row.durationMs);
+}
+
 export interface RateSession {
-	mode: "rsvp" | "scroll" | "page";
+	mode: ReadingMode;
 	wpmAvg: number | null;
 	wordsRead: number;
 	durationMs: number;
@@ -64,7 +77,7 @@ export function summariseReadingRates(rows: RateSession[]): ReadingRates {
 	const measured = new Map<"scroll" | "page", { words: number; activeMs: number }>();
 
 	for (const r of rows) {
-		if (!isPlausibleRate(r.wordsRead, r.durationMs)) continue;
+		if (!isMeasurableSitting(r)) continue;
 		if (r.mode === "rsvp") {
 			// Both halves of the ratio come from the same rows: counting a
 			// dial-less session's words as delivered while excluding it from the
@@ -164,12 +177,12 @@ export function rollUpWorks(rows: BookTotals[]): WorkTotals[] {
  * a profile hides the figure instead of showing zero.
  */
 export function measuredReadingSpeed(
-	rows: readonly { wordsRead: number; durationMs: number }[],
+	rows: readonly { mode: ReadingMode; wordsRead: number; durationMs: number }[],
 ): number | null {
 	let words = 0;
 	let activeMs = 0;
 	for (const r of rows) {
-		if (!isPlausibleRate(r.wordsRead, r.durationMs)) continue;
+		if (!isMeasurableSitting(r)) continue;
 		words += r.wordsRead;
 		activeMs += r.durationMs;
 	}

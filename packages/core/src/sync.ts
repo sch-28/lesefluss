@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BOOK_STATUSES } from "./books";
 import { isDayKey } from "./day-key";
+import { READING_MODES } from "./reading-credit";
 import {
 	MAX_GOAL_DAILY_PERCENT,
 	MIN_GOAL_DAILY_PERCENT,
@@ -211,7 +212,7 @@ export const SyncReadingSessionSchema = z
 	.object({
 		sessionId: z.string().min(1).max(64),
 		bookId: z.string().regex(/^[0-9a-f]{8}$/),
-		mode: z.enum(["rsvp", "scroll", "page"]),
+		mode: z.enum(READING_MODES),
 		startedAt: z.number().int().nonnegative(),
 		endedAt: z.number().int().nonnegative(),
 		durationMs: z.number().int().nonnegative(),

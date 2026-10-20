@@ -1,15 +1,12 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: test fixture array access */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { log } from "../../../utils/log";
 import {
 	HARD_END_MS,
-	HEARTBEAT_MS,
 	MIN_DURATION_MS,
-	POLL_MS,
 	type SessionRow,
-	SessionTracker,
-	SOFT_IDLE_MS,
-} from "../session-tracker";
+} from "../../../services/reading-sessions/rules";
+import { log } from "../../../utils/log";
+import { HEARTBEAT_MS, POLL_MS, SessionTracker, SOFT_IDLE_MS } from "../session-tracker";
 
 function setup(opts?: {
 	mode?: "scroll" | "page" | "rsvp";

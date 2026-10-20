@@ -34,6 +34,8 @@ interface Params {
 	setProgressWord: (word: number) => void;
 	setRsvpInitWord: (word: number) => void;
 	setProgressBarVisible: (v: boolean) => void;
+	/** While reading aloud a scrub moves the voice, which then owns the position. */
+	isReadingAloud: () => boolean;
 }
 
 export function useScrubProgress({
@@ -48,6 +50,7 @@ export function useScrubProgress({
 	setProgressWord,
 	setRsvpInitWord,
 	setProgressBarVisible,
+	isReadingAloud,
 }: Params) {
 	const progressBarRef = useRef<HTMLDivElement>(null);
 	// Origin of the current pointer-down gesture - used to detect horizontal intent
@@ -63,7 +66,10 @@ export function useScrubProgress({
 			const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
 			const targetWord = Math.min(totalWords - 1, Math.round(ratio * totalWords));
 
-			if (readerMode === "rsvp") {
+			if (readerMode === "rsvp" && isReadingAloud()) {
+				setProgressWord(targetWord);
+				jumpToWord(targetWord, { highlight: false });
+			} else if (readerMode === "rsvp") {
 				// In RSVP mode: scrub to position - updates both the progress bar and
 				// rsvpInitWord so RsvpView jumps without triggering a position-save echo.
 				setProgressWord(targetWord);
@@ -87,6 +93,7 @@ export function useScrubProgress({
 			jumpToWord,
 			savePosition,
 			lastWordRef,
+			isReadingAloud,
 			setProgressWord,
 			setRsvpInitWord,
 		],

@@ -102,6 +102,7 @@ export async function profileStatsFor(
 
 	const sessions = await exec
 		.select({
+			mode: syncReadingSessions.mode,
 			wordsRead: syncReadingSessions.wordsRead,
 			durationMs: syncReadingSessions.durationMs,
 			startedAt: syncReadingSessions.startedAt,

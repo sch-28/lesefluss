@@ -19,6 +19,7 @@ function at(y: number, m: number, d: number, h = 12): number {
 function session(overrides: Partial<RecordSession> = {}): RecordSession {
 	return {
 		bookId: "a",
+		mode: "scroll",
 		startedAt: at(2026, 5, 10),
 		durationMs: 30 * MINUTE,
 		wordsRead: 9000,
@@ -180,6 +181,17 @@ describe("summariseRecords", () => {
 	});
 
 	// One fast minute is noise. The record should describe a pace, not a moment.
+	it("never crowns a book by its listening pace", () => {
+		const records = summariseRecords(
+			[
+				session({ bookId: "read", durationMs: 60 * MINUTE, wordsRead: 12_000 }),
+				session({ bookId: "heard", mode: "listen", durationMs: 60 * MINUTE, wordsRead: 18_000 }),
+			],
+			[book({ id: "read", title: "Read" }), book({ id: "heard", title: "Heard" })],
+		);
+		expect(records.fastestBook?.title).toBe("Read");
+	});
+
 	it("requires meaningful reading time before a book can hold the speed record", () => {
 		const records = summariseRecords(
 			[

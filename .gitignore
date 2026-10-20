@@ -70,3 +70,5 @@ resources/screenshots/
 resources/screenshots-2/
 resources/store-frames/out/
 store-description.md
+
+*.epub

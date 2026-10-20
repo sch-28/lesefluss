@@ -54,6 +54,12 @@ export const DEFAULT_SETTINGS = {
 	AUTO_OPEN_LAST_BOOK: false, // open the most recently read book on app launch; device-local
 	EINK_MODE: false, // static, high-contrast UI with instant page turns for e-ink screens; device-local
 	VOLUME_KEY_INVERT: false, // volume up turns forward instead of down; device-local
+	// Read aloud (device-local: voices belong to the phone's speech engine)
+	TTS_WPM: 180, // read-aloud speed in words per minute
+	TTS_PITCH: 1.0, // voice pitch multiplier
+	TTS_REWIND_WORDS: 8, // words repeated after an interruption
+	TTS_VOICES: "{}", // JSON: primary language → chosen voice name
+	TTS_FOLLOW: true, // keep the spoken word in view
 } as const;
 
 /**
@@ -74,6 +80,9 @@ export const SETTING_CONSTRAINTS = {
 	READER_LINE_SPACING: { min: 1.2, max: 2.4, step: 0.1 },
 	READER_MARGIN: { min: 8, max: 48, step: 4 },
 	APP_FONT_SIZE: { min: 12, max: 22, step: 1 },
+	TTS_WPM: { min: 80, max: 500, step: 10 },
+	TTS_PITCH: { min: 0.5, max: 2.0, step: 0.1 },
+	TTS_REWIND_WORDS: { min: 0, max: 30, step: 1 },
 } as const;
 
 /**
