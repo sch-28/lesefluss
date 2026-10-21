@@ -159,6 +159,7 @@ const NO_HIGHLIGHT = -1;
 
 const SLEEP_TIMER_MINUTES = [15, 30, 45, 60];
 const DETACH_DRAG_PX = 8;
+const JUMP_MARK_DELAY_MS = 300;
 
 type ReadAloudHandle = Pick<ReturnType<typeof useReadAloud>, "detach" | "moveTo" | "pause"> & {
 	isActive: boolean;
@@ -281,6 +282,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// Within "standard", the rendered view is scroll or page depending on the
 	// paginationStyle setting (decided at render time, not stored here).
 	const [readerMode, setReaderMode] = useState<"standard" | "rsvp">("standard");
+	const [isRsvpPlaying, setIsRsvpPlaying] = useState(false);
 	const readerModeRef = useRef(readerMode);
 	readerModeRef.current = readerMode;
 
@@ -799,6 +801,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				setProgressWord(word);
 				lastJumpAtRef.current = Date.now();
 				scrollViewRef.current?.jumpTo(word, { highlight });
+				rsvpViewRef.current?.showWord(word);
+				// A far target is not in the DOM until the jump lands.
+				window.setTimeout(() => markSpokenWord(word), JUMP_MARK_DELAY_MS);
 				return;
 			}
 			browse.enterForJump(word);
@@ -1073,6 +1078,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			}
 			if (readAloudRef.current?.isActive) {
 				readAloudRef.current.moveTo(wIdx);
+				// The voice takes a moment to get there; the mark moves now. A second tap on the
+				// same word opens the dictionary, as when not listening.
+				markSpokenWord(wIdx);
+				setActiveWord(wIdx);
 				return;
 			}
 			setActiveWord(wIdx);
@@ -1452,6 +1461,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			}
 			if (readAloudRef.current?.isActive) {
 				readAloudRef.current.moveTo(word);
+				rsvpViewRef.current?.showWord(word);
 				return;
 			}
 			// Before the anchor is taken: playback saves are throttled, so the
@@ -1498,6 +1508,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const handleSaveSpokenWord = useCallback(
 		(word: number) => {
+			setActiveWord(word);
 			setProgressWord(word);
 			savePosition(word, { scheduleSync: false });
 		},
@@ -1527,6 +1538,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		onFurthestRead: reportFurthestRead,
 	});
 	const isReadAloudActive = readAloud.status !== "off";
+
+	// While the voice plays its highlight is the one marker; the underline shows again once
+	// it pauses or stops, on the spoken word that handleSaveSpokenWord keeps in activeWord.
+	const shownActiveWord = readAloud.status === "playing" ? NO_HIGHLIGHT : activeWord;
 	readAloudRef.current = {
 		isActive: isReadAloudActive,
 		detach: readAloud.detach,
@@ -1754,6 +1769,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			browseAnchor === null &&
 			// The voice owns the position while read aloud is on; listening is recorded from its own log.
 			!isReadAloudActive,
+		rsvpIsPlaying: isRsvpPlaying,
 		getPosition: getReadingPosition,
 		wpmSetting: rsvpSettings.wpm,
 		onFurthestRead: reportFurthestRead,
@@ -2088,7 +2104,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							size="icon"
 							onClick={handleReadAloudToggle}
 							disabled={!wordIndex}
-							aria-label={readAloud.status === "playing" ? "Pause reading aloud" : "Read aloud"}
+							aria-label={readAloud.status === "playing" ? "Pause listening" : "Listen"}
 							className={isReadAloudActive ? "text-primary" : undefined}
 						>
 							{readAloud.status === "playing" ? <Pause /> : <Headphones />}
@@ -2156,7 +2172,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							{IS_READ_ALOUD_SUPPORTED && (
 								<DropdownMenuItem onSelect={() => history.push("/tabs/settings/read-aloud")}>
 									<Headphones />
-									<span>Read aloud settings</span>
+									<span>Listen settings</span>
 								</DropdownMenuItem>
 							)}
 							{overflowSourceUrl && (
@@ -2218,6 +2234,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						onLinkTap={handleLinkTap}
 						isSessionPaused={isSessionPaused}
 						voice={rsvpVoice}
+						onPlayingChange={setIsRsvpPlaying}
 					/>
 				) : paginationStyle === "page" ? (
 					<PageView
@@ -2239,7 +2256,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						lang={hyphenationLang(book.language)}
 						animatePageTurns={pageTurnAnimation}
 						followFinger={!isEinkMode}
-						activeWord={activeWord}
+						activeWord={shownActiveWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}
 						linksByParagraph={linksByParagraph}
@@ -2275,7 +2292,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						lineSpacing={readerLineSpacing}
 						margin={readerMargin}
 						showActiveWordUnderline={readerActiveWordUnderline}
-						activeWord={activeWord}
+						activeWord={shownActiveWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}
 						linksByParagraph={linksByParagraph}
@@ -2531,7 +2548,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			<ActionSheet
 				open={isSleepTimerOpen}
 				onOpenChange={setIsSleepTimerOpen}
-				title="Stop reading aloud after"
+				title="Stop listening after"
 				items={sleepTimerItems}
 			/>
 			<VoiceSheet

@@ -130,7 +130,7 @@ function SettingsLanding() {
 					{IS_READ_ALOUD_SUPPORTED && (
 						<NavRow
 							icon={Headphones}
-							title="Read aloud"
+							title="Listen"
 							subtitle={`${settings?.ttsWpm ?? DEFAULT_SETTINGS.TTS_WPM} wpm · Voices`}
 							to="/tabs/settings/read-aloud"
 						/>

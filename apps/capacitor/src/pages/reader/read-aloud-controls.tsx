@@ -66,7 +66,7 @@ export function ReadAloudControls({
 					<span className="reader-browse-bar-divider" aria-hidden />
 					<button type="button" onClick={onReadFromView}>
 						<BookOpen aria-hidden />
-						<span>Read aloud from here</span>
+						<span>Listen from here</span>
 					</button>
 				</fieldset>
 			)}
@@ -83,7 +83,7 @@ export function ReadAloudControls({
 					type="button"
 					className="rsvp-playpause"
 					onClick={onTogglePlay}
-					aria-label={isPlaying ? "Pause reading aloud" : "Resume reading aloud"}
+					aria-label={isPlaying ? "Pause listening" : "Resume listening"}
 				>
 					{isPlaying ? <Pause className="size-6" /> : <Play className="size-6" />}
 				</button>
@@ -129,7 +129,7 @@ export function ReadAloudControls({
 				<Button variant="ghost" size="icon" onClick={onOpenVoice} aria-label="Voice">
 					<AudioLines />
 				</Button>
-				<Button variant="ghost" size="icon" onClick={onStop} aria-label="Stop reading aloud">
+				<Button variant="ghost" size="icon" onClick={onStop} aria-label="Stop listening">
 					<X />
 				</Button>
 			</div>

@@ -49,7 +49,7 @@ type Options = {
 	speech: ReadAloudSpeech;
 	/** The reader's current word, where reading aloud starts. */
 	getStartWord: () => number;
-	/** The first word on screen, for "read aloud from here" after scrolling away. */
+	/** The first word on screen, for "listen from here" after scrolling away. */
 	getViewWord: () => number | null;
 	/** Every word as it is spoken. */
 	onWord: (word: number) => void;
@@ -182,7 +182,7 @@ export function useReadAloud(options: Options) {
 					if (isPlaying) return;
 					saveSpokenWord();
 					void recordListening("flush");
-					if (reason === "sleep") toast.info("Sleep timer: reading aloud paused");
+					if (reason === "sleep") toast.info("Sleep timer: listening paused");
 				},
 				onFinished: () => {
 					if (sessionRef.current === session) void endSession(session);
@@ -207,7 +207,7 @@ export function useReadAloud(options: Options) {
 			});
 			startChainRef.current = begin.catch((err: unknown) => {
 				log.error("tts", "start failed:", err);
-				toast.error("Read aloud could not start");
+				toast.error("Listening could not start");
 				void endSession(session);
 			});
 			if (!previous && language) void warnIfVoiceMissing(language);

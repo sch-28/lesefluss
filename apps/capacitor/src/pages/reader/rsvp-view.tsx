@@ -74,6 +74,8 @@ export interface RsvpViewProps {
 	/** Manual session pause (two-finger tap): releases the wake lock so the
 	 *  screen can sleep during the interruption. */
 	isSessionPaused?: boolean;
+	/** Whether the engine is showing words; a paused RSVP is not reading. */
+	onPlayingChange?: (isPlaying: boolean) => void;
 	/** Set while reading aloud: the voice paces the words and the read-aloud bar holds the controls. */
 	voice?: { isPlaying: boolean; onToggle: () => void } | null;
 }
@@ -93,6 +95,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		onLinkTap,
 		isSessionPaused = false,
 		voice = null,
+		onPlayingChange,
 	},
 	ref,
 ) {
@@ -154,6 +157,12 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 	// Keep the screen awake for the whole RSVP session: playback has no touch
 	// input so the display would otherwise time out mid-read.
 	useWakeLock(!isSessionPaused, "rsvp");
+
+	const onPlayingChangeRef = useRef(onPlayingChange);
+	onPlayingChangeRef.current = onPlayingChange;
+	useEffect(() => {
+		onPlayingChangeRef.current?.(isPlaying);
+	}, [isPlaying]);
 
 	// Single stable click handler for all context words. Uses data-idx on the
 	// target button instead of an inline closure per word.
@@ -319,6 +328,8 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		);
 	}
 
+	// The engine computes context whenever it is not playing, which with the voice is always.
+	const visibleContext = isShowingPlayback ? null : context;
 	const word = currentWord?.word ?? "";
 	const orpIndex = calcOrpIndex(word.length);
 	const before = word.slice(0, orpIndex);
@@ -374,13 +385,13 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 									fontSize: `${fontSize * FOCAL_FONT_MULTIPLIER}px`,
 								}}
 							>
-								{context && context.prev.length > 0 && (
+								{visibleContext && visibleContext.prev.length > 0 && (
 									<div
 										className="rsvp-context-inline rsvp-context-prev"
 										onClick={handleContextClick}
 									>
 										...
-										{context.prev.map(({ word: cw, idx: ci, breakBefore }, i) => (
+										{visibleContext.prev.map(({ word: cw, idx: ci, breakBefore }, i) => (
 											<React.Fragment key={ci}>
 												{breakBefore && i > 0 && (
 													<span className="rsvp-context-break" aria-hidden />
@@ -422,12 +433,12 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 									</span>
 									<span className="rsvp-after">{after}</span>
 								</span>
-								{context && context.next.length > 0 && (
+								{visibleContext && visibleContext.next.length > 0 && (
 									<div
 										className="rsvp-context-inline rsvp-context-next"
 										onClick={handleContextClick}
 									>
-										{context.next.map(({ word: cw, idx: ci, breakBefore }, i) => (
+										{visibleContext.next.map(({ word: cw, idx: ci, breakBefore }, i) => (
 											<React.Fragment key={ci}>
 												{breakBefore && i > 0 && (
 													<span className="rsvp-context-break" aria-hidden />

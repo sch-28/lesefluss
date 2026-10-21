@@ -89,8 +89,8 @@ public class TtsService extends Service {
     private static void ensureChannel(Context context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationManager manager = context.getSystemService(NotificationManager.class);
-        if (manager.getNotificationChannel(CHANNEL_ID) != null) return;
-        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Read aloud", NotificationManager.IMPORTANCE_LOW);
+        // Creating it again is a no-op apart from applying a renamed channel to existing installs.
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Listen", NotificationManager.IMPORTANCE_LOW);
         channel.setShowBadge(false);
         manager.createNotificationChannel(channel);
     }
@@ -110,7 +110,7 @@ public class TtsService extends Service {
                 : new Notification.Builder(context);
         builder.setSmallIcon(R.drawable.ic_stat_lesefluss)
                 .setContentTitle(player != null ? player.getTitle() : "")
-                .setContentText(chapter != null ? chapter : isPlaying ? "Reading aloud" : "Paused")
+                .setContentText(chapter != null ? chapter : isPlaying ? "Listening" : "Paused")
                 .setContentIntent(contentIntent)
                 .setOngoing(isPlaying)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)

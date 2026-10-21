@@ -52,7 +52,9 @@ A continuous reading session: start, end, words read, target book. Lives in the 
 
 ### Read aloud
 
-The phone's own speech engine reading the book out loud, from the current [position](#position) on (Android only, free and offline once a voice is downloaded). The original text is spoken, sentence by sentence, not the word index's folded tokens. While it is on, the voice owns the position: the reader saves the spoken word, follows it on screen, and a [listen session](#session) records the time. Scrolling or turning a page stops following without stopping the voice ("Back to voice" / "Read aloud from here"); tapping a word or jumping moves the voice there. After an interruption (a call, a navigation prompt, a Bluetooth disconnect) it resumes a few words back. In RSVP the voice paces the words. Leaving the reader stops it. Speed is set in words per minute, like everything else; the app learns each voice's pace to hit it. Voice, speed, pitch and rewind are device-local settings.
+Shown to users as **Listen**.
+
+The phone's own speech engine reading the book out loud, from the current [position](#position) on (Android only, free and offline once a voice is downloaded). The original text is spoken, sentence by sentence, not the word index's folded tokens. While it is on, the voice owns the position: the reader saves the spoken word, follows it on screen, and a [listen session](#session) records the time. Scrolling or turning a page stops following without stopping the voice ("Back to voice" / "Listen from here"); tapping a word or jumping moves the voice there. After an interruption (a call, a navigation prompt, a Bluetooth disconnect) it resumes a few words back. In RSVP the voice paces the words. Leaving the reader stops it. Speed is set in words per minute, like everything else; the app learns each voice's pace to hit it. Voice, speed, pitch and rewind are device-local settings.
 
 ### Browse mode
 

@@ -58,7 +58,7 @@ function ReadAloudSettings() {
 
 	return (
 		<div className="bg-background">
-			<PageHeader title="Read aloud" icon={Headphones} />
+			<PageHeader title="Listen" icon={Headphones} />
 			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
 				<SettingsSection title="Voice">
 					<SliderRow
