@@ -347,6 +347,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 			<div
 				ref={containerRef}
 				className={isShowingPlayback ? "rsvp-display" : "rsvp-display rsvp-display--paused"}
+				data-word-index={wordIndex}
 				style={{ "--rsvp-focal-color": settings.focalLetterColor } as React.CSSProperties}
 				onClick={voice ? voice.onToggle : togglePlayPause}
 				onScroll={handleScroll}

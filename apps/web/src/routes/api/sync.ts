@@ -5,8 +5,8 @@ import {
 	type SyncBook,
 	type SyncGlossaryEntry,
 	type SyncHighlight,
-	type SyncPayload,
-	SyncPayloadSchema,
+	type SyncPush,
+	SyncPushSchema,
 	type SyncReadingGoal,
 	type SyncReadingSession,
 	type SyncResponse,
@@ -41,6 +41,7 @@ import { requireAuth } from "~/lib/session-middleware";
 import { settleBuddyReads } from "~/lib/social/buddy-reads";
 import { upsertSyncBooks } from "~/lib/sync-book-upsert";
 import { upsertSyncGoals } from "~/lib/sync-goal-upsert";
+import { upsertSyncSettings } from "~/lib/sync-settings-upsert";
 
 // Body size limits are enforced at the reverse proxy (Coolify/Traefik). The
 // Content-Length header is client-controlled, so enforcing it in Node here
@@ -382,7 +383,7 @@ export const Route = createFileRoute("/api/sync")({
 				const body = await request.json();
 
 				// Validate input
-				const parsed = SyncPayloadSchema.safeParse(body);
+				const parsed = SyncPushSchema.safeParse(body);
 				if (!parsed.success) {
 					return Response.json(
 						{ error: "Invalid payload", issues: parsed.error.issues },
@@ -390,7 +391,7 @@ export const Route = createFileRoute("/api/sync")({
 					);
 				}
 
-				const payload: SyncPayload = parsed.data;
+				const payload: SyncPush = parsed.data;
 
 				const quotaFit = await db.transaction(async (tx) => {
 					// First, so a share accepted meanwhile cannot land a live copy of an
@@ -489,22 +490,7 @@ export const Route = createFileRoute("/api/sync")({
 
 					// --- Settings: upsert ---
 					if (payload.settings) {
-						const settingsFields = {
-							...pick(payload.settings, SYNCED_SETTING_KEYS),
-							// Clamped: a client clock running ahead would otherwise outrank
-							// every later write under the last-write-wins guard below.
-							updatedAt: toDate(Math.min(payload.settings.updatedAt, Date.now())),
-						};
-						await tx
-							.insert(syncSettings)
-							.values({ userId, ...settingsFields })
-							.onConflictDoUpdate({
-								target: [syncSettings.userId],
-								set: settingsFields,
-								// Last-write-wins: a device that missed newer settings must not
-								// overwrite them with its stale row on push.
-								setWhere: sql`excluded.updated_at > sync_settings.updated_at`,
-							});
+						await upsertSyncSettings(tx, userId, payload.settings);
 					}
 
 					// --- Highlights: batched upsert + tombstone missing ---

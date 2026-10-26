@@ -33,9 +33,9 @@ import {
 	useLocalCover,
 } from "@/components/social/social-ui";
 import { toast } from "@/components/toast";
+import { useBookChapters } from "@/hooks/use-book-chapters";
 import { queryHooks } from "@/services/db/hooks";
 import { socialKeys } from "@/services/db/hooks/query-keys";
-import { parseChapters } from "@/services/db/queries/books";
 import {
 	buddyReadFailureMessage,
 	useBuddyRead,
@@ -159,8 +159,7 @@ function BuddyReadContent({ id, tab }: { id: string; tab: BuddyReadTab }) {
 			search: next === "discussion" ? { tab: "discussion" } : {},
 			replace: true,
 		});
-	const { data: myContent } = queryHooks.useBookContent(detail?.myBookId ?? "");
-	const chapters = parseChapters(myContent?.chapters ?? null);
+	const { chapters } = useBookChapters(detail?.myBookId ?? "");
 
 	const leave = useLeaveBuddyRead();
 	const remove = useRemoveBuddyReadMember();

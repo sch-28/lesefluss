@@ -1,18 +1,31 @@
 import type React from "react";
 import { useTheme } from "../../contexts/theme-context";
-import { readerFontStack, useAppearanceSettings } from "../../hooks/use-appearance-settings";
+import {
+	readerFontStack,
+	textSpacingVars,
+	useAppearanceSettings,
+} from "../../hooks/use-appearance-settings";
 
-const BEFORE =
-	"The morning light crept slowly across the old wooden floor, settling on the stack of books by the window. She";
+// Short enough that the gaps between paragraphs show inside the card.
+const BEFORE = "The morning light crept across the old wooden floor. She";
 const ACTIVE = "opened";
-const AFTER =
-	"the first one and began to read, the quiet hours folding into pages as the street outside woke up.";
+const AFTER = "the first book and began to read.";
+const MORE = ["By noon the tea had gone cold beside her.", "She turned the page."];
 
-/** Static sample paragraph rendered with the reader's own `.reader-paragraph` styles. */
+/** Static sample paragraphs rendered with the reader's own `.reader-paragraph` styles. */
 export default function ReaderPreview() {
 	const { theme } = useTheme();
-	const { fontSize, fontFamily, lineSpacing, margin, showActiveWordUnderline } =
-		useAppearanceSettings();
+	const {
+		fontSize,
+		fontFamily,
+		isBold,
+		lineSpacing,
+		margin,
+		letterSpacing,
+		wordSpacing,
+		paragraphSpacing,
+		showActiveWordUnderline,
+	} = useAppearanceSettings();
 
 	return (
 		<div
@@ -29,6 +42,12 @@ export default function ReaderPreview() {
 						fontSize: `${fontSize}px`,
 						fontFamily: readerFontStack(fontFamily),
 						"--reader-line-height": String(lineSpacing),
+						...(isBold && { "--reader-font-weight": "700" }),
+						...textSpacingVars({
+							letter: letterSpacing,
+							word: wordSpacing,
+							paragraph: paragraphSpacing,
+						}),
 					} as React.CSSProperties
 				}
 			>
@@ -37,6 +56,11 @@ export default function ReaderPreview() {
 					<span className={showActiveWordUnderline ? "word-active" : undefined}>{ACTIVE}</span>{" "}
 					{AFTER}
 				</p>
+				{MORE.map((text) => (
+					<p key={text} className="reader-paragraph">
+						{text}
+					</p>
+				))}
 			</div>
 		</div>
 	);

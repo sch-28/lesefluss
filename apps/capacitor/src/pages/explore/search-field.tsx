@@ -49,6 +49,8 @@ const SearchField: React.FC<Props> = ({ value, onChange, onSubmit }) => {
 				value={value}
 				onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
 				onFocus={() => {
+					// A blur just before (pressing Clear) must not hide the list after this focus.
+					clearTimeout(blurTimerRef.current);
 					setRecent(readRecentSearches());
 					setFocused(true);
 				}}

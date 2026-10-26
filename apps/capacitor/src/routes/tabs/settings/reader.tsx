@@ -8,7 +8,12 @@ import { ModeCards, PAGINATION_STYLE_OPTIONS } from "@/components/rsvp-pickers";
 import { SettingsRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { StepperRow } from "@/components/settings/stepper-row";
-import { useAppearanceSettings } from "@/hooks/use-appearance-settings";
+import {
+	DEFAULT_TEXT_SPACING,
+	percentOfFont,
+	spacingLabel,
+	useAppearanceSettings,
+} from "@/hooks/use-appearance-settings";
 import ReaderPreview from "@/pages/settings/reader-preview";
 import { IS_VOLUME_KEYS_SUPPORTED } from "@/services/volume-keys";
 
@@ -16,14 +21,25 @@ export const Route = createFileRoute("/tabs/settings/reader")({
 	component: ReaderSettings,
 });
 
-const { READER_FONT_SIZE, READER_LINE_SPACING, READER_MARGIN } = SETTING_CONSTRAINTS;
+const {
+	READER_FONT_SIZE,
+	READER_LINE_SPACING,
+	READER_MARGIN,
+	READER_LETTER_SPACING,
+	READER_WORD_SPACING,
+	READER_PARAGRAPH_SPACING,
+} = SETTING_CONSTRAINTS;
 
 function ReaderSettings() {
 	const {
 		fontSize,
 		fontFamily,
+		isBold,
 		lineSpacing,
 		margin,
+		letterSpacing,
+		wordSpacing,
+		paragraphSpacing,
 		paginationStyle,
 		showReadingTime,
 		showActiveWordUnderline,
@@ -34,7 +50,12 @@ function ReaderSettings() {
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
+		adjustLetterSpacing,
+		adjustWordSpacing,
+		adjustParagraphSpacing,
+		resetTextSpacing,
 		setFontFamily,
+		setBold,
 		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,
@@ -54,6 +75,12 @@ function ReaderSettings() {
 					<SettingsRow stacked>
 						<FontCards value={fontFamily} onChange={setFontFamily} />
 					</SettingsRow>
+					<ToggleRow
+						id="reader-bold"
+						title="Bold text"
+						checked={isBold}
+						onCheckedChange={setBold}
+					/>
 					<StepperRow
 						label="Text size"
 						value={fontSize}
@@ -74,6 +101,44 @@ function ReaderSettings() {
 						step={READER_LINE_SPACING.step}
 						onChange={(v) => adjustLineSpacing(v - lineSpacing)}
 					/>
+					<StepperRow
+						label="Letter spacing"
+						value={letterSpacing}
+						display={spacingLabel(letterSpacing, DEFAULT_TEXT_SPACING.letter, percentOfFont)}
+						min={READER_LETTER_SPACING.min}
+						max={READER_LETTER_SPACING.max}
+						step={READER_LETTER_SPACING.step}
+						onChange={(v) => adjustLetterSpacing(v - letterSpacing)}
+					/>
+					<StepperRow
+						label="Word spacing"
+						value={wordSpacing}
+						display={spacingLabel(wordSpacing, DEFAULT_TEXT_SPACING.word, percentOfFont)}
+						min={READER_WORD_SPACING.min}
+						max={READER_WORD_SPACING.max}
+						step={READER_WORD_SPACING.step}
+						onChange={(v) => adjustWordSpacing(v - wordSpacing)}
+					/>
+					<StepperRow
+						label="Paragraph spacing"
+						value={paragraphSpacing}
+						display={spacingLabel(paragraphSpacing, DEFAULT_TEXT_SPACING.paragraph, (v) =>
+							v.toFixed(1),
+						)}
+						min={READER_PARAGRAPH_SPACING.min}
+						max={READER_PARAGRAPH_SPACING.max}
+						step={READER_PARAGRAPH_SPACING.step}
+						onChange={(v) => adjustParagraphSpacing(v - paragraphSpacing)}
+					/>
+					<div className="mt-2 flex">
+						<button
+							type="button"
+							className="min-h-11 px-1 text-muted-foreground text-sm underline"
+							onClick={resetTextSpacing}
+						>
+							Reset spacing
+						</button>
+					</div>
 					<StepperRow
 						label="Margins"
 						value={margin}

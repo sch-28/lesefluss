@@ -69,3 +69,18 @@ export function sliceContext(
 	}));
 	return { prev, next };
 }
+
+/**
+ * Whether a rebuilt word list is the one already playing. A refetch hands over
+ * a new index object for the same text, which must not move the reader.
+ */
+export function isSameWordStream(
+	previous: readonly WordEntry[],
+	next: readonly WordEntry[],
+	anchor: number,
+): boolean {
+	if (previous.length !== next.length) return false;
+	if (next.length === 0) return true;
+	const at = Math.max(0, Math.min(next.length - 1, anchor));
+	return previous[at].word === next[at].word && previous[at].byteOffset === next[at].byteOffset;
+}

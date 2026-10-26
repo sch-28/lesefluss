@@ -16,7 +16,20 @@ import {
 } from "@lesefluss/core";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { nextSentenceIndex, sentenceStartIndex, sliceContext, stripPunct } from "./rsvp-engine";
+import {
+	isSameWordStream,
+	nextSentenceIndex,
+	sentenceStartIndex,
+	sliceContext,
+	stripPunct,
+} from "./rsvp-engine";
+
+let hasWarnedWordsChanged = false;
+function warnWordsChangedOnce() {
+	if (hasWarnedWordsChanged) return;
+	hasWarnedWordsChanged = true;
+	console.warn("RSVP: the words changed under a playing reader; kept the word on screen");
+}
 
 // ─── Tunables ───────────────────────────────────────────────────────────────
 const POSITION_SAVE_THROTTLE_MS = 2000;
@@ -96,8 +109,33 @@ export function useRsvpEngine({
 	// fresh imports whose inline backfill hasn't committed yet.
 	useEffect(() => {
 		const w = bookWordIndex ? bookWordIndex.listEntries().slice() : buildWordIndex(content);
-		const idx = Math.max(0, Math.min(w.length - 1, initialWordRef.current));
+		const previous = wordsRef.current;
 		setWords(w);
+		wordsRef.current = w;
+		if (previous.length > 0) {
+			const anchor = displayedWordRef.current ?? wordIndexRef.current;
+			// The view, the timer and the chunks carry on untouched.
+			if (isSameWordStream(previous, w, anchor)) return;
+			// The text can't change under a mounted reader (the route remounts it per
+			// book, and a chapter still loading shows the skeleton). If it ever does,
+			// stay near the word on screen rather than going back to the entry word.
+			if (import.meta.env.DEV) warnWordsChangedOnce();
+			if (timerRef.current !== null) {
+				clearTimeout(timerRef.current);
+				timerRef.current = null;
+			}
+			setIsPlaying(false);
+			chunksRef.current = [];
+			chunkCursorRef.current = 0;
+			currentEntryRef.current = null;
+			const idx = Math.max(0, Math.min(w.length - 1, anchor));
+			setWordIndex(idx);
+			wordIndexRef.current = idx;
+			displayedWordRef.current = w.length > 0 ? idx : null;
+			setCurrentWord(w[idx] ?? null);
+			return;
+		}
+		const idx = Math.max(0, Math.min(w.length - 1, initialWordRef.current));
 		setWordIndex(idx);
 		wordIndexRef.current = idx;
 		displayedWordRef.current = w.length > 0 ? idx : null;
@@ -300,19 +338,21 @@ export function useRsvpEngine({
 	useEffect(() => {
 		if (initialWord === prevWordRef.current) return;
 		prevWordRef.current = initialWord;
-		if (words.length === 0) return;
+		// The ref, not `words`: a rebuild in this same commit has already replaced it.
+		const w = wordsRef.current;
+		if (w.length === 0) return;
 		if (timerRef.current !== null) {
 			clearTimeout(timerRef.current);
 			timerRef.current = null;
 		}
 		setIsPlaying(false);
 		resetChunks();
-		const idx = Math.max(0, Math.min(words.length - 1, initialWord));
+		const idx = Math.max(0, Math.min(w.length - 1, initialWord));
 		wordIndexRef.current = idx;
 		setWordIndex(idx);
 		displayedWordRef.current = idx;
-		setCurrentWord(words[idx] ?? null);
-	}, [initialWord, words, resetChunks]);
+		setCurrentWord(w[idx] ?? null);
+	}, [initialWord, resetChunks]);
 
 	// ── Auto-pause in background ─────────────────────────────────────────
 	useEffect(() => {

@@ -13,6 +13,7 @@
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import type { Book } from "../../services/db/schema";
+import type { SaveSource } from "../../test-hooks/reader";
 
 const MIN_SCRUB_PX = 8;
 
@@ -29,7 +30,7 @@ interface Params {
 	paragraphStartWords: number[];
 	findParagraphIndexForWord: (targetWord: number) => number;
 	jumpToWord: (word: number, opts?: { highlight?: boolean }) => void;
-	savePosition: (word: number) => Promise<void> | void;
+	savePosition: (word: number, source: SaveSource) => Promise<void> | void;
 	lastWordRef: React.RefObject<number | null>;
 	setProgressWord: (word: number) => void;
 	setRsvpInitWord: (word: number) => void;
@@ -75,7 +76,7 @@ export function useScrubProgress({
 				setProgressWord(targetWord);
 				setRsvpInitWord(targetWord);
 				lastWordRef.current = targetWord;
-				savePosition(targetWord);
+				savePosition(targetWord, "scrub");
 			} else {
 				// Standard mode: snap to the nearest paragraph start so the scroll
 				// lands at a clean edge (mirrors the byte-era paragraph snap).

@@ -66,9 +66,13 @@ export function FontCards({
 					type="button"
 					onClick={() => onChange(f.value)}
 					aria-pressed={value === f.value}
-					className={cn(cardClass(value === f.value), "gap-1")}
+					aria-label={f.name}
+					className={cn(
+						cardClass(value === f.value),
+						"gap-1 [&:last-child:nth-child(odd)]:col-span-2",
+					)}
 				>
-					<span className="font-semibold text-2xl text-foreground" style={f.style}>
+					<span className="font-semibold text-2xl text-foreground" style={{ fontFamily: f.stack }}>
 						Aa
 					</span>
 					<span className="font-medium text-foreground text-sm">{f.label}</span>

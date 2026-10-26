@@ -281,6 +281,20 @@
       "when": 1783296000000,
       "tag": "0039_listen_session_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1783382400000,
+      "tag": "0040_reader_spacing",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1783468800000,
+      "tag": "0041_reader_bold",
+      "breakpoints": true
     }
   ]
 }

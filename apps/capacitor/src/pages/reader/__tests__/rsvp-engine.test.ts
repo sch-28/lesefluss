@@ -1,5 +1,6 @@
+import { WordIndex } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
-import { stripPunct } from "../rsvp-engine";
+import { isSameWordStream, stripPunct } from "../rsvp-engine";
 
 describe("stripPunct", () => {
 	it("preserves non-ASCII letters", () => {
@@ -43,5 +44,20 @@ describe("stripPunct", () => {
 		expect(stripPunct("1984")).toBe("");
 		expect(stripPunct("—")).toBe("");
 		expect(stripPunct("")).toBe("");
+	});
+});
+
+describe("isSameWordStream", () => {
+	const words = (content: string) => WordIndex.build(content).listEntries();
+	const text = "one two three four five six";
+
+	it("takes a rebuild of the same text for the same stream", () => {
+		expect(isSameWordStream(words(text), words(text), 3)).toBe(true);
+		expect(isSameWordStream(words(text), words(text), 99)).toBe(true);
+	});
+
+	it("tells changed text apart, by length or by the word at the anchor", () => {
+		expect(isSameWordStream(words(text), words(`zero ${text}`), 3)).toBe(false);
+		expect(isSameWordStream(words(text), words("one two three FOUR five six"), 3)).toBe(false);
 	});
 });

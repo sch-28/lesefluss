@@ -3,9 +3,62 @@ import { Popover, PopoverAnchor, PopoverContent } from "@lesefluss/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@lesefluss/ui/toggle-group";
 import type React from "react";
 import { PAGINATION_STYLE_OPTIONS } from "../../components/rsvp-pickers";
-import { useTheme } from "../../contexts/theme-context";
-import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "../../hooks/use-appearance-settings";
+import { isAppTheme, useTheme } from "../../contexts/theme-context";
+import {
+	DEFAULT_TEXT_SPACING,
+	FONT_FAMILIES,
+	percentOfFont,
+	spacingLabel,
+	THEMES,
+	useAppearanceSettings,
+} from "../../hooks/use-appearance-settings";
 import { IS_VOLUME_KEYS_SUPPORTED } from "../../services/volume-keys";
+
+const StepRow: React.FC<{
+	label: string;
+	display: string;
+	value: number;
+	constraint: { min: number; max: number; step: number };
+	onStep: (delta: number) => void;
+	glyphs?: [string, string];
+}> = ({ label, display, value, constraint, onStep, glyphs = ["−", "+"] }) => {
+	const atMin = value <= constraint.min;
+	const atMax = value >= constraint.max;
+	// aria-disabled, not disabled: a disabled button drops the focus it holds,
+	// and stepping to the end of the range would then lose the keyboard user.
+	return (
+		<div className="ap-row">
+			<span className="ap-row-label">{label}</span>
+			<span className="ap-row-value" aria-live="polite">
+				{display}
+			</span>
+			<div className="ap-row-buttons">
+				<button
+					type="button"
+					className="ap-step-btn"
+					aria-label={`Decrease ${label}`}
+					aria-disabled={atMin}
+					onClick={() => {
+						if (!atMin) onStep(-constraint.step);
+					}}
+				>
+					{glyphs[0]}
+				</button>
+				<button
+					type="button"
+					className="ap-step-btn"
+					aria-label={`Increase ${label}`}
+					aria-disabled={atMax}
+					onClick={() => {
+						if (!atMax) onStep(constraint.step);
+					}}
+				>
+					{glyphs[1]}
+				</button>
+			</div>
+		</div>
+	);
+};
 
 interface Props {
 	open: boolean;
@@ -19,8 +72,12 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 	const {
 		fontSize,
 		fontFamily,
+		isBold,
 		lineSpacing,
 		margin,
+		letterSpacing,
+		wordSpacing,
+		paragraphSpacing,
 		paginationStyle,
 		showReadingTime,
 		showActiveWordUnderline,
@@ -31,7 +88,12 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 		adjustFontSize,
 		adjustLineSpacing,
 		adjustMargin,
+		adjustLetterSpacing,
+		adjustWordSpacing,
+		adjustParagraphSpacing,
+		resetTextSpacing,
 		setFontFamily,
+		setBold,
 		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,
@@ -51,19 +113,24 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 				// popover would stay on screen for good.
 				key={String(isEinkMode)}
 				align="end"
-				className="w-80 p-0"
+				collisionPadding={8}
+				// The rows outgrow a small phone, landscape or a large app font.
+				className="max-h-(--radix-popover-content-available-height) w-80 overflow-y-auto overscroll-contain p-0"
 			>
 				<div className="appearance-popover-content">
 					<div className="ap-section">
-						<span className="ap-label">
+						<span className="ap-label" id="ap-theme">
 							{isEinkMode ? "Theme (set by E-ink display)" : "Theme"}
 						</span>
 						<ToggleGroup
+							aria-labelledby="ap-theme"
 							type="single"
 							variant="outline"
 							value={storedTheme}
 							disabled={isEinkMode}
-							onValueChange={(v) => v && setTheme(v as typeof storedTheme)}
+							// Re-tapping the pressed item yields "": rewrite the shown value so an
+							// unknown synced one can still be replaced; the setter skips no-ops.
+							onValueChange={(v) => setTheme(isAppTheme(v) ? v : storedTheme)}
 							className="w-full"
 						>
 							{THEMES.map((t) => (
@@ -75,10 +142,11 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 					</div>
 
 					<div className="ap-section">
-						<span className="ap-label">
+						<span className="ap-label" id="ap-pagination">
 							{isEinkMode ? "Pagination (set by E-ink display)" : "Pagination"}
 						</span>
 						<ToggleGroup
+							aria-labelledby="ap-pagination"
 							type="single"
 							variant="outline"
 							value={paginationStyle}
@@ -95,16 +163,25 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 					</div>
 
 					<div className="ap-section">
-						<span className="ap-label">Font</span>
+						<span className="ap-label" id="ap-font">
+							Font
+						</span>
 						<ToggleGroup
+							aria-labelledby="ap-font"
 							type="single"
 							variant="outline"
 							value={fontFamily}
-							onValueChange={(v) => v && setFontFamily(v as typeof fontFamily)}
-							className="w-full"
+							onValueChange={(v) => setFontFamily(v || fontFamily)}
+							className="grid w-full grid-cols-2 gap-1"
 						>
 							{FONT_FAMILIES.map((f) => (
-								<ToggleGroupItem key={f.value} value={f.value} style={f.style}>
+								<ToggleGroupItem
+									key={f.value}
+									value={f.value}
+									className="rounded-md text-xs data-[variant=outline]:border-l [&:last-child:nth-child(odd)]:col-span-2"
+									style={{ fontFamily: f.stack }}
+									aria-label={f.name}
+								>
 									{f.label}
 								</ToggleGroupItem>
 							))}
@@ -112,79 +189,77 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 					</div>
 
 					<div className="ap-section ap-section--rows">
+						<StepRow
+							label="Size"
+							display={`${fontSize}px`}
+							value={fontSize}
+							constraint={SETTING_CONSTRAINTS.READER_FONT_SIZE}
+							onStep={adjustFontSize}
+							glyphs={["A−", "A+"]}
+						/>
 						<div className="ap-row">
-							<span className="ap-row-label">Size</span>
-							<span className="ap-row-value">{fontSize}px</span>
-							<div className="ap-row-buttons">
-								<button
-									type="button"
-									className="ap-step-btn"
-									disabled={fontSize <= SETTING_CONSTRAINTS.READER_FONT_SIZE.min}
-									onClick={() => adjustFontSize(-SETTING_CONSTRAINTS.READER_FONT_SIZE.step)}
-								>
-									A−
-								</button>
-								<button
-									type="button"
-									className="ap-step-btn"
-									disabled={fontSize >= SETTING_CONSTRAINTS.READER_FONT_SIZE.max}
-									onClick={() => adjustFontSize(SETTING_CONSTRAINTS.READER_FONT_SIZE.step)}
-								>
-									A+
-								</button>
-							</div>
+							<span className="ap-row-label" id="ap-bold-text">
+								Bold text
+							</span>
+							<ToggleGroup
+								aria-labelledby="ap-bold-text"
+								type="single"
+								variant="outline"
+								value={isBold ? "on" : "off"}
+								onValueChange={(v) => v && setBold(v === "on")}
+							>
+								<ToggleGroupItem value="off">Off</ToggleGroupItem>
+								<ToggleGroupItem value="on">On</ToggleGroupItem>
+							</ToggleGroup>
 						</div>
-
-						<div className="ap-row">
-							<span className="ap-row-label">Spacing</span>
-							<span className="ap-row-value">{lineSpacing.toFixed(1)}</span>
-							<div className="ap-row-buttons">
-								<button
-									type="button"
-									className="ap-step-btn"
-									disabled={lineSpacing <= SETTING_CONSTRAINTS.READER_LINE_SPACING.min}
-									onClick={() => adjustLineSpacing(-SETTING_CONSTRAINTS.READER_LINE_SPACING.step)}
-								>
-									−
-								</button>
-								<button
-									type="button"
-									className="ap-step-btn"
-									disabled={lineSpacing >= SETTING_CONSTRAINTS.READER_LINE_SPACING.max}
-									onClick={() => adjustLineSpacing(SETTING_CONSTRAINTS.READER_LINE_SPACING.step)}
-								>
-									+
-								</button>
-							</div>
-						</div>
-
-						<div className="ap-row">
-							<span className="ap-row-label">Margins</span>
-							<span className="ap-row-value">{margin}px</span>
-							<div className="ap-row-buttons">
-								<button
-									type="button"
-									className="ap-step-btn"
-									disabled={margin <= SETTING_CONSTRAINTS.READER_MARGIN.min}
-									onClick={() => adjustMargin(-SETTING_CONSTRAINTS.READER_MARGIN.step)}
-								>
-									−
-								</button>
-								<button
-									type="button"
-									className="ap-step-btn"
-									disabled={margin >= SETTING_CONSTRAINTS.READER_MARGIN.max}
-									onClick={() => adjustMargin(SETTING_CONSTRAINTS.READER_MARGIN.step)}
-								>
-									+
-								</button>
-							</div>
-						</div>
+						<StepRow
+							label="Line spacing"
+							display={lineSpacing.toFixed(1)}
+							value={lineSpacing}
+							constraint={SETTING_CONSTRAINTS.READER_LINE_SPACING}
+							onStep={adjustLineSpacing}
+						/>
+						<StepRow
+							label="Letter spacing"
+							display={spacingLabel(letterSpacing, DEFAULT_TEXT_SPACING.letter, percentOfFont)}
+							value={letterSpacing}
+							constraint={SETTING_CONSTRAINTS.READER_LETTER_SPACING}
+							onStep={adjustLetterSpacing}
+						/>
+						<StepRow
+							label="Word spacing"
+							display={spacingLabel(wordSpacing, DEFAULT_TEXT_SPACING.word, percentOfFont)}
+							value={wordSpacing}
+							constraint={SETTING_CONSTRAINTS.READER_WORD_SPACING}
+							onStep={adjustWordSpacing}
+						/>
+						<StepRow
+							label="Paragraph spacing"
+							display={spacingLabel(paragraphSpacing, DEFAULT_TEXT_SPACING.paragraph, (v) =>
+								v.toFixed(1),
+							)}
+							value={paragraphSpacing}
+							constraint={SETTING_CONSTRAINTS.READER_PARAGRAPH_SPACING}
+							onStep={adjustParagraphSpacing}
+						/>
+						<button type="button" className="ap-reset-btn" onClick={resetTextSpacing}>
+							Reset spacing
+						</button>
+						<StepRow
+							label="Margins"
+							display={`${margin}px`}
+							value={margin}
+							constraint={SETTING_CONSTRAINTS.READER_MARGIN}
+							onStep={adjustMargin}
+						/>
 
 						{paginationStyle === "page" && !isEinkMode && (
 							<div className="ap-row">
-								<span className="ap-row-label">Page animation</span>
+								<span className="ap-row-label" id="ap-page-animation">
+									Page animation
+								</span>
 								<ToggleGroup
+									aria-labelledby="ap-page-animation"
 									type="single"
 									variant="outline"
 									value={pageTurnAnimation ? "on" : "off"}
@@ -196,8 +271,11 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 							</div>
 						)}
 						<div className="ap-row">
-							<span className="ap-row-label">E-ink display</span>
+							<span className="ap-row-label" id="ap-e-ink-display">
+								E-ink display
+							</span>
 							<ToggleGroup
+								aria-labelledby="ap-e-ink-display"
 								type="single"
 								variant="outline"
 								value={isEinkMode ? "on" : "off"}
@@ -209,8 +287,11 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 						</div>
 						{IS_VOLUME_KEYS_SUPPORTED && (
 							<div className="ap-row">
-								<span className="ap-row-label">Turn pages with volume</span>
+								<span className="ap-row-label" id="ap-turn-pages-with-volume">
+									Turn pages with volume
+								</span>
 								<ToggleGroup
+									aria-labelledby="ap-turn-pages-with-volume"
 									type="single"
 									variant="outline"
 									value={volumeKeys.enabled ? "on" : "off"}
@@ -223,8 +304,11 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 						)}
 						{IS_VOLUME_KEYS_SUPPORTED && volumeKeys.enabled && (
 							<div className="ap-row">
-								<span className="ap-row-label">Swap page direction</span>
+								<span className="ap-row-label" id="ap-swap-page-direction">
+									Swap page direction
+								</span>
 								<ToggleGroup
+									aria-labelledby="ap-swap-page-direction"
 									type="single"
 									variant="outline"
 									value={volumeKeys.invert ? "on" : "off"}
@@ -236,8 +320,11 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 							</div>
 						)}
 						<div className="ap-row">
-							<span className="ap-row-label">Time remaining</span>
+							<span className="ap-row-label" id="ap-time-remaining">
+								Time remaining
+							</span>
 							<ToggleGroup
+								aria-labelledby="ap-time-remaining"
 								type="single"
 								variant="outline"
 								value={showReadingTime ? "on" : "off"}
@@ -248,8 +335,11 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 							</ToggleGroup>
 						</div>
 						<div className="ap-row">
-							<span className="ap-row-label">Underline word</span>
+							<span className="ap-row-label" id="ap-underline-word">
+								Underline word
+							</span>
 							<ToggleGroup
+								aria-labelledby="ap-underline-word"
 								type="single"
 								variant="outline"
 								value={showActiveWordUnderline ? "on" : "off"}
@@ -260,8 +350,11 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 							</ToggleGroup>
 						</div>
 						<div className="ap-row">
-							<span className="ap-row-label">Glossary highlights</span>
+							<span className="ap-row-label" id="ap-glossary-highlights">
+								Glossary highlights
+							</span>
 							<ToggleGroup
+								aria-labelledby="ap-glossary-highlights"
 								type="single"
 								variant="outline"
 								value={showGlossaryUnderline ? "on" : "off"}

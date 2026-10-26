@@ -123,7 +123,7 @@ function buildV2(input: BuildRsvpDocumentInput & { wordIndex: WordIndex }): Uint
 	const paragraphWordIndices: number[] = [];
 	let byte = 0;
 	for (let i = 0; i < paragraphs.length; i++) {
-		paragraphWordIndices.push(idx.wordOf(byte) as number);
+		paragraphWordIndices.push(idx.firstShownWord(byte) as number);
 		byte += utf8ByteLength(paragraphs[i]) + 2; // +2 = "\n\n" separator (always 2 bytes)
 	}
 
@@ -132,7 +132,7 @@ function buildV2(input: BuildRsvpDocumentInput & { wordIndex: WordIndex }): Uint
 		.slice()
 		.sort((a, b) => a.startByte - b.startByte);
 	const chapterEntries = sortedChapters.map((c) => ({
-		wordIndex: idx.wordOf(c.startByte) as number,
+		wordIndex: idx.firstShownWord(c.startByte) as number,
 		title: directiveText(c.title || ""),
 	}));
 

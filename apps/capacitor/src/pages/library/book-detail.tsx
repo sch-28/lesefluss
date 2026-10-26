@@ -27,13 +27,13 @@ import { ShareSheet } from "../../components/social/share-sheet";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useBookDeviceState } from "../../contexts/device-library-context";
 import { useSyncContext } from "../../contexts/sync-context";
+import { useBookChapters } from "../../hooks/use-book-chapters";
 import { useBookDeviceActions } from "../../hooks/use-book-device-actions";
 import { externalSourceUrl, getCatalogBook, getCoverUrl } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys, syncKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
-import { parseChapters } from "../../services/db/queries/books";
 import { SYNC_ENABLED } from "../../services/sync";
 import { getServerContentIds } from "../../services/sync/server-content-cache";
 import { IS_WEB } from "../../utils/platform";
@@ -75,6 +75,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 
 	const { data: book, isPending } = queryHooks.useBook(id);
 	const { data: content } = queryHooks.useBookContent(id);
+	const { chapters, isResolved: areChaptersResolved } = useBookChapters(id);
 	const { data: allBooks } = queryHooks.useBooks();
 	const { data: highlights = [] } = useQuery({
 		queryKey: bookKeys.highlights(id),
@@ -218,7 +219,6 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	// Pages, not time: time measures the reader, so two books at nine and four
 	// hours say nothing comparable about the books.
 	const pages = bookPageCount(book);
-	const chapters = parseChapters(content?.chapters ?? null);
 	const chapterCount = chapters.length;
 	const shareBlocker = shareBlockerFor(book, serverContentIds);
 
@@ -338,6 +338,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					wordCount={book.wordCount}
 					wordPosition={book.wordPosition}
 					onJump={handleChapterJump}
+					isResolved={areChaptersResolved}
 				/>
 				<BookHighlights highlights={highlights} />
 				<SessionTable mode="book" bookId={book.id} />

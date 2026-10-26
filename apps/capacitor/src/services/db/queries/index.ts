@@ -7,6 +7,7 @@ import {
 	addBookImages,
 	addBookWithContent,
 	addServerBookWithContent,
+	applyBookMerge,
 	deleteBook,
 	getAllBooks,
 	getBook,
@@ -25,6 +26,7 @@ import {
 	setActiveBook,
 	setBookImageAnchors,
 	updateBook,
+	writeReaderPosition,
 } from "./books";
 import { clearAllDevices, forgetDevice, getPairedDevices, saveDevice } from "./devices";
 import {
@@ -132,6 +134,8 @@ export const queries = {
 	addBookWithContent,
 	addBookImages,
 	addServerBookWithContent,
+	applyBookMerge,
+	writeReaderPosition,
 	loadBookWordIndex,
 	parseChapters,
 	parseLinkRanges,

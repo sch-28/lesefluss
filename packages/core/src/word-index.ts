@@ -129,6 +129,30 @@ export class WordIndex {
 		return wordPos(lo);
 	}
 
+	/** The first word starting at or after `byteOffset`; `wordCount` when none does. */
+	wordAtOrAfter(byteOffset: number): WordPosition {
+		const offsets = this.byteOffsets;
+		let lo = 0;
+		let hi = offsets.length;
+		while (lo < hi) {
+			const mid = (lo + hi) >>> 1;
+			if (offsets[mid] < byteOffset) lo = mid + 1;
+			else hi = mid;
+		}
+		return wordPos(lo);
+	}
+
+	/**
+	 * The first word a paragraph or chapter starting at `byteOffset` shows: a
+	 * heading's `# ` marker is not a word, and flooring it would land on the
+	 * previous paragraph's last word. Clamped to the last word; 0 when empty.
+	 */
+	firstShownWord(byteOffset: number): WordPosition {
+		return wordPos(
+			Math.max(0, Math.min(this.wordAtOrAfter(byteOffset), this.byteOffsets.length - 1)),
+		);
+	}
+
 	wordsBetween(a: WordPosition, b: WordPosition): number {
 		return Math.abs(a - b);
 	}

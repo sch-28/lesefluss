@@ -55,12 +55,27 @@ type Options = {
 	onWord: (word: number) => void;
 	/** The spoken word to persist: throttled while speaking, then on every pause and stop. */
 	onSavePosition: (word: number) => void;
+	/** Paused or stopped while the reader looked elsewhere: the spoken word is saved, the view stays at `viewWord`. */
+	onStopWhileDetached: (viewWord: number) => void;
+	/** Before playback starts anywhere: a reader browsing elsewhere commits that spot first. */
+	onBeforeStart: () => void;
+	/** Resumed by the system after a pause while the reader only glanced away: follow the voice again. */
+	onBackToVoice: () => void;
 	onFurthestRead?: (sessionId: string, word: number | null) => void;
 };
 
 export function useReadAloud(options: Options) {
 	const [status, setStatus] = useState<ReadAloudStatus>("off");
 	const [isFollowing, setIsFollowing] = useState(true);
+	const statusRef = useRef(status);
+	statusRef.current = status;
+	const isFollowingRef = useRef(isFollowing);
+	isFollowingRef.current = isFollowing;
+	// The reader moved while the voice was paused: from then on the reader's word is
+	// the position. The voice still reports where it is (a resume after an app switch,
+	// a skip, a sleep or focus pause), but none of it is saved or shown until it plays again.
+	const hasYieldedRef = useRef(false);
+	const readFromViewRef = useRef<() => void>(() => {});
 	const [sleepTimer, setSleepTimerState] = useState<SleepTimer>(NO_SLEEP_TIMER);
 	const [measuredWpm, setMeasuredWpm] = useState<number | null>(null);
 	const sessionRef = useRef<ReadAloud | null>(null);
@@ -100,6 +115,7 @@ export function useReadAloud(options: Options) {
 	}, []);
 
 	const saveSpokenWord = useCallback(() => {
+		if (hasYieldedRef.current) return;
 		const word = spokenWordRef.current;
 		if (word === null) return;
 		lastSaveAtRef.current = Date.now();
@@ -120,6 +136,13 @@ export function useReadAloud(options: Options) {
 		}
 	}, []);
 
+	/** Where the reader looks while not following the voice; null while following. */
+	const detachedViewWord = useCallback(
+		() =>
+			isFollowingRef.current ? null : (viewWordRef.current ?? optionsRef.current.getViewWord()),
+		[],
+	);
+
 	const endSession = useCallback(
 		async (session: ReadAloud) => {
 			// A session being replaced by "read from here" leaves state to its successor.
@@ -129,7 +152,11 @@ export function useReadAloud(options: Options) {
 				setStatus("off");
 				setSleepTimerState(NO_SLEEP_TIMER);
 				setMeasuredWpm(null);
-				saveSpokenWord();
+				if (!hasYieldedRef.current) {
+					saveSpokenWord();
+					const viewWord = detachedViewWord();
+					if (viewWord !== null) optionsRef.current.onStopWhileDetached(viewWord);
+				}
 			}
 			try {
 				await session.stop();
@@ -140,13 +167,14 @@ export function useReadAloud(options: Options) {
 				session.release();
 			}
 		},
-		[cancelPendingMove, saveSpokenWord, recordListening],
+		[cancelPendingMove, saveSpokenWord, recordListening, detachedViewWord],
 	);
 
 	const start = useCallback(
 		(startWord: number) => {
 			const { content, wordIndex, bookId, language } = optionsRef.current;
 			if (!content || !wordIndex) return;
+			optionsRef.current.onBeforeStart();
 			if (recorderRef.current === null) recorderRef.current = new ListenRecorder(bookId);
 			const previous = sessionRef.current;
 			// Stopping the old voice replaces the engine's queue and clears its sleep timer.
@@ -165,6 +193,7 @@ export function useReadAloud(options: Options) {
 					// A replaced voice, or one about to be moved, must not pull the view back.
 					if (sessionRef.current !== session || moveTimerRef.current !== null) return;
 					spokenWordRef.current = word;
+					if (hasYieldedRef.current) return;
 					meterRef.current.record(word, Date.now());
 					optionsRef.current.onWord(word);
 					if (Date.now() - lastSaveAtRef.current >= POSITION_SAVE_THROTTLE_MS) saveSpokenWord();
@@ -179,8 +208,20 @@ export function useReadAloud(options: Options) {
 						return;
 					}
 					setStatus(isPlaying ? "playing" : "paused");
-					if (isPlaying) return;
-					saveSpokenWord();
+					if (isPlaying) {
+						// Resumed by the system (earbuds, the notification, focus regained).
+						// After the reader moved while paused, read from where the reader is.
+						// After only a glance away (the pause saved the spoken word and
+						// browsed), carry on and follow the voice again. Both leave browse.
+						if (hasYieldedRef.current) readFromViewRef.current();
+						else if (!isFollowingRef.current) optionsRef.current.onBackToVoice();
+						return;
+					}
+					if (!hasYieldedRef.current) {
+						saveSpokenWord();
+						const viewWord = detachedViewWord();
+						if (viewWord !== null) optionsRef.current.onStopWhileDetached(viewWord);
+					}
 					void recordListening("flush");
 					if (reason === "sleep") toast.info("Sleep timer: listening paused");
 				},
@@ -194,6 +235,9 @@ export function useReadAloud(options: Options) {
 			sessionRef.current = session;
 			spokenWordRef.current = startWord;
 			viewWordRef.current = null;
+			hasYieldedRef.current = false;
+			// Ahead of the render: this session's own "playing" must not read as a resume while detached.
+			isFollowingRef.current = true;
 			meterRef.current.reset();
 			setMeasuredWpm(null);
 			setIsFollowing(true);
@@ -212,7 +256,7 @@ export function useReadAloud(options: Options) {
 			});
 			if (!previous && language) void warnIfVoiceMissing(language);
 		},
-		[saveSpokenWord, recordListening, endSession, engineSpeech],
+		[saveSpokenWord, recordListening, endSession, engineSpeech, detachedViewWord],
 	);
 
 	const stop = useCallback(() => {
@@ -224,6 +268,7 @@ export function useReadAloud(options: Options) {
 		const word = viewWordRef.current ?? optionsRef.current.getViewWord();
 		if (word !== null) start(word);
 	}, [start]);
+	readFromViewRef.current = readFromView;
 
 	const toggle = useCallback(() => {
 		const session = sessionRef.current;
@@ -237,17 +282,45 @@ export function useReadAloud(options: Options) {
 		else void session.resume();
 	}, [start, status, isFollowing, readFromView]);
 
-	/** A tapped word or a jump (contents, search, scrub): the voice goes there and plays. */
+	/** The reader looked elsewhere (scrolled, turned a page): stop following, keep speaking. */
+	const detach = useCallback((viewWord: number | null = null) => {
+		viewWordRef.current = viewWord;
+		setIsFollowing(false);
+	}, []);
+
+	/**
+	 * The reader moved the view, or started to (a scroll, a page turn, a drag; the
+	 * view word is null until it settles). Playing, the voice keeps the position
+	 * and only stops being followed: returns true. Paused, the reader takes the
+	 * position over (play then reads from the view): returns false.
+	 */
+	const keepsPositionOnMove = useCallback(
+		(viewWord: number | null) => {
+			detach(viewWord);
+			if (statusRef.current === "playing") return true;
+			hasYieldedRef.current = true;
+			return false;
+		},
+		[detach],
+	);
+
+	/**
+	 * A tapped word or a jump (contents, search, scrub). Playing, the voice goes
+	 * there and plays on: returns true. Paused, only the view moves and the reader
+	 * takes the position over, as for any move while paused: returns false.
+	 */
 	const moveTo = useCallback(
 		(word: number) => {
-			if (!sessionRef.current) return;
+			if (!sessionRef.current) return false;
+			if (statusRef.current !== "playing") return keepsPositionOnMove(word);
 			cancelPendingMove();
 			moveTimerRef.current = window.setTimeout(() => {
 				moveTimerRef.current = null;
 				if (sessionRef.current) start(word);
 			}, MOVE_DEBOUNCE_MS);
+			return true;
 		},
-		[start, cancelPendingMove],
+		[start, cancelPendingMove, keepsPositionOnMove],
 	);
 
 	const pause = useCallback(() => {
@@ -258,16 +331,16 @@ export function useReadAloud(options: Options) {
 		void sessionRef.current?.skip(direction);
 	}, []);
 
-	/** The reader looked elsewhere (scrolled, turned a page): stop following, keep speaking. */
-	const detach = useCallback((viewWord: number | null = null) => {
-		viewWordRef.current = viewWord;
-		setIsFollowing(false);
-	}, []);
-
+	/** Back to the voice: its word is the position again. */
 	const resumeFollowing = useCallback(() => {
 		viewWordRef.current = null;
+		hasYieldedRef.current = false;
 		setIsFollowing(true);
-	}, []);
+		saveSpokenWord();
+	}, [saveSpokenWord]);
+
+	/** Whether the voice's word is the position: read-aloud is on and the reader hasn't taken over. */
+	const ownsPosition = useCallback(() => statusRef.current !== "off" && !hasYieldedRef.current, []);
 
 	const setSleepTimer = useCallback((choice: SleepTimerChoice) => {
 		const session = sessionRef.current;
@@ -319,7 +392,10 @@ export function useReadAloud(options: Options) {
 			void session.currentWord().then((word) => {
 				if (word === null || sessionRef.current !== session) return;
 				spokenWordRef.current = word;
-				optionsRef.current.onWord(word);
+				if (hasYieldedRef.current) return;
+				// Paused or detached, the view stays where the reader put it (it may be browsing).
+				if (statusRef.current === "playing" && isFollowingRef.current)
+					optionsRef.current.onWord(word);
 				saveSpokenWord();
 			});
 			void recordListening("checkpoint");
@@ -350,10 +426,14 @@ export function useReadAloud(options: Options) {
 		stop,
 		skip,
 		detach,
+		keepsPositionOnMove,
+		ownsPosition,
 		resumeFollowing,
 		readFromView,
 		setSleepTimer,
 		spokenWordRef,
+		/** Where the reader was looking when following stopped; null while following. */
+		viewWordRef,
 	};
 }
 

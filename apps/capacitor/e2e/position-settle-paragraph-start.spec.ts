@@ -18,7 +18,7 @@ async function openBigBook(page: Page) {
 	await seedBigBook(page);
 	await openBookFromLibrary(page, BIG_BOOK_TITLE);
 	await reader.expectLoaded(page);
-	await page.waitForTimeout(reader.OPEN_SETTLE_MS);
+	await reader.waitOpenSettled(page);
 }
 
 /** The first word of "Paragraph <n>", read from the rendered spans. */
@@ -34,34 +34,16 @@ async function paragraphStartWord(page: Page, n: number): Promise<number> {
 	}, n);
 }
 
-/** Scrolls so the top of `selector`'s element sits `offsetPx` below the reader's top edge (negative: above it). */
-async function scrollElementToTop(page: Page, selector: string, offsetPx = 0) {
-	await page.evaluate(
-		({ selector, offsetPx }) => {
-			const target = document.querySelector<HTMLElement>(selector);
-			if (!target) throw new Error(`Not rendered: ${selector}`);
-			let container = target.parentElement;
-			while (container && container.scrollHeight <= container.clientHeight) {
-				container = container.parentElement;
-			}
-			if (!container) throw new Error("No scrollable reader container");
-			// Floored: scrollTop snaps to whole pixels, and rounding up would leave the
-			// target a fraction above the top edge, making the next line the top word.
-			const delta = Math.floor(
-				target.getBoundingClientRect().top - container.getBoundingClientRect().top - offsetPx,
-			);
-			container.scrollBy({ top: delta, behavior: "instant" });
-		},
-		{ selector, offsetPx },
-	);
-}
+/** Wheels so the top of `selector`'s element sits `offsetPx` below the reader's top edge (negative: above it). */
+const scrollElementToTop = (page: Page, selector: string, offsetPx = 0) =>
+	reader.wheelTargetTo(page, page.locator(selector), "top", offsetPx);
 
 const wordSpan = (word: number) => `span[data-word="${word}"]`;
 
 async function expectNoSaveFor(page: Page, ms: number) {
-	const count = await reader.saveCount(page);
+	const requests = await reader.saveRequestCount(page);
 	await page.waitForTimeout(ms);
-	expect(await reader.saveCount(page)).toBe(count);
+	expect(await reader.saveRequestCount(page)).toBe(requests);
 }
 
 async function expectSettleSaves(page: Page, before: number, word: number) {
@@ -106,10 +88,12 @@ test("a settle with the top edge inside a figure saves the paragraph after it", 
 	const figure = '.reader-figure:has(img[alt="Figure 15"])';
 	for (let i = 0; i < 40 && (await page.locator(figure).count()) === 0; i++) {
 		await reader.wheel(page, 600);
+		// The wheel landing and the list mounting what it reveals.
 		await page.waitForTimeout(200);
 	}
 	await scrollElementToTop(page, figure, 200);
-	await page.waitForTimeout(reader.OPEN_SETTLE_MS);
+	// Every settle so far, and its save if any, is done before saves are counted.
+	await reader.waitPositionQuiet(page);
 	const expected = await paragraphStartWord(page, 15);
 	const before = await reader.saveCount(page);
 
@@ -121,11 +105,20 @@ test("a settle with the top edge inside a figure saves the paragraph after it", 
 test("a settle mid-paragraph saves the top word", async ({ page }) => {
 	await openBigBook(page);
 	const start = await paragraphStartWord(page, 3);
+	const next = await paragraphStartWord(page, 4);
 	const before = await reader.saveCount(page);
 
 	await scrollElementToTop(page, wordSpan(start), -40);
+	// The wheel lands asynchronously: read the top word once the paragraph sits
+	// where the wheel was meant to put it.
+	await expect
+		.poll(async () => Math.abs((await reader.wordLineOffsetFromTop(page, start)) + 40))
+		.toBeLessThanOrEqual(1);
+	const expected = await reader.scrollModeTopWord(page);
+	expect(expected).toBeGreaterThan(start);
+	expect(expected).toBeLessThan(next);
 
-	await expectSettleSaves(page, before, await reader.scrollModeTopWord(page));
+	await expectSettleSaves(page, before, expected);
 });
 
 test("scrolling away and settling back on the saved word saves nothing", async ({ page }) => {
@@ -135,10 +128,22 @@ test("scrolling away and settling back on the saved word saves nothing", async (
 	await scrollElementToTop(page, wordSpan(start));
 	await expectSettleSaves(page, before, start);
 
-	await scrollElementToTop(page, wordSpan(start), -40);
-	await page.waitForTimeout(50);
-	await scrollElementToTop(page, wordSpan(start));
-
-	await expectNoSaveFor(page, NO_SAVE_WAIT_MS);
+	// Two separate scrolls, 40px away and back, within one scroll-end debounce: in
+	// the page in one go (a wheel event marks them as the reader's), as two real
+	// wheels with round trips between can take longer than the debounce.
+	await reader.expectSettledWithoutSave(
+		page,
+		() =>
+			page.evaluate(async () => {
+				const list = document.querySelector(".reader-scroll-content")?.firstElementChild;
+				if (!list) throw new Error("No reader scroller");
+				const resting = list.scrollTop;
+				list.dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: 40 }));
+				list.scrollTop = resting + 40;
+				await new Promise(requestAnimationFrame);
+				list.scrollTop = resting;
+			}),
+		NO_SAVE_WAIT_MS,
+	);
 	expect(await reader.scrollModeTopWord(page)).toBe(start);
 });

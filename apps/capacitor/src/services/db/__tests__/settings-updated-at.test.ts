@@ -48,6 +48,31 @@ describe("saveSettings updatedAt", () => {
 		expect((await getSettings()).updatedAt).toBeGreaterThanOrEqual(before);
 	});
 
+	it("adopting a server row from before text spacing and bold keeps them as set here", async () => {
+		await saveSettings(
+			{ readerLetterSpacing: 0.04, readerParagraphSpacing: 1.6, readerBold: true },
+			1000,
+		);
+
+		// What `pick(serverRow, SYNCED_SETTING_KEYS)` yields for columns the server lacks.
+		await saveSettings(
+			{
+				readerFontSize: 20,
+				readerLetterSpacing: undefined,
+				readerParagraphSpacing: undefined,
+				readerBold: undefined,
+			},
+			2000,
+		);
+
+		expect(await getSettings()).toMatchObject({
+			readerFontSize: 20,
+			readerLetterSpacing: 0.04,
+			readerParagraphSpacing: 1.6,
+			readerBold: true,
+		});
+	});
+
 	it("stores an explicit updatedAt as given", async () => {
 		await saveSettings({ readerFontSize: 24 }, 42);
 		expect((await getSettings()).updatedAt).toBe(42);

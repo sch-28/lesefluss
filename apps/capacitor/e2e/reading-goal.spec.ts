@@ -55,7 +55,7 @@ test("a goal set on the book page shows in the reader and is met by reading", as
 	await expect(chip).toHaveAttribute("data-met", "false");
 	await expect(page.getByTestId("goal-divider")).toHaveAttribute("data-passed", "false");
 
-	await page.waitForTimeout(reader.OPEN_SETTLE_MS);
+	await reader.waitOpenSettled(page);
 	// At reading pace: the session tracker only credits what it sees travelled slowly
 	// enough between its polls, and only credited reading meets the target for good.
 	for (let i = 0; i < 2; i++) {
@@ -114,7 +114,7 @@ test("jumping far ahead and back does not meet today's target", async ({ page })
 	await startMonthGoal(page);
 	const chip = page.getByTestId("goal-chip");
 	await expect(chip).toHaveAttribute("data-met", "false");
-	await page.waitForTimeout(reader.OPEN_SETTLE_MS);
+	await reader.waitOpenSettled(page);
 
 	await searchAndReadFrom(page, "Goal paragraph 40 holds");
 	// Standing there shows the target as reached, without reading it.
@@ -232,7 +232,7 @@ test("a jump the reader stays at shows against the plan on the book page right a
 	await openBookFromLibrary(page, TITLE);
 	await reader.expectLoaded(page);
 	await startMonthGoal(page);
-	await page.waitForTimeout(reader.OPEN_SETTLE_MS);
+	await reader.waitOpenSettled(page);
 
 	await searchAndReadFrom(page, "Goal paragraph 40 holds");
 	// No reading was credited, so no session flush refreshes the plan; leaving the reader must.

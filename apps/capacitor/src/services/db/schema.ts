@@ -50,8 +50,12 @@ export const settings = sqliteTable("settings", {
 	readerTheme: text("reader_theme").notNull().default("dark"),
 	readerFontSize: integer("reader_font_size").notNull().default(16),
 	readerFontFamily: text("reader_font_family").notNull().default("sans"),
+	readerBold: integer("reader_bold", { mode: "boolean" }).notNull().default(false),
 	readerLineSpacing: real("reader_line_spacing").notNull().default(1.8),
 	readerMargin: integer("reader_margin").notNull().default(20),
+	readerLetterSpacing: real("reader_letter_spacing").notNull().default(0),
+	readerWordSpacing: real("reader_word_spacing").notNull().default(0),
+	readerParagraphSpacing: real("reader_paragraph_spacing").notNull().default(1.1),
 	readerActiveWordUnderline: integer("reader_active_word_underline", { mode: "boolean" })
 		.notNull()
 		.default(true),

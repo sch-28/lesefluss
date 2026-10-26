@@ -38,6 +38,7 @@ test("a touch long-press on a figure opens no selection", async ({ page }) => {
 	await reader.expectLoaded(page);
 
 	await reader.touchLongPressOn(page, page.locator('.reader-figure img[alt="Plate 1"]'));
+	// A selection, had the press started one, would be showing by now.
 	await page.waitForTimeout(500);
 	await expect(reader.selectionToolbar(page)).toHaveCount(0);
 	await expect(page.locator(".word-selecting")).toHaveCount(0);
@@ -50,6 +51,7 @@ test("a touch long-press on a figure in page mode turns no page", async ({ page 
 	const before = await reader.pageModeFirstVisibleWord(page);
 
 	await reader.touchLongPressOn(page, page.locator('.reader-figure img[alt="Plate 1"]'));
+	// A selection, had the press started one, would be showing by now.
 	await page.waitForTimeout(500);
 	await expect(reader.selectionToolbar(page)).toHaveCount(0);
 	expect(await reader.pageModeFirstVisibleWord(page)).toBe(before);

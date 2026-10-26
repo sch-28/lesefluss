@@ -14,6 +14,7 @@ import {
 	Loader2,
 	Megaphone,
 	MessageCircle,
+	Scale,
 	SlidersHorizontal,
 	Sparkles,
 	Users,
@@ -216,6 +217,12 @@ function SettingsLanding() {
 						title="Show onboarding"
 						subtitle="Walk through the intro again"
 						onClick={replayOnboarding}
+					/>
+					<NavRow
+						icon={Scale}
+						title="Open source licenses"
+						subtitle="Fonts bundled with the reader"
+						to="/tabs/settings/licenses"
 					/>
 					<DiagnosticsRow />
 				</SettingsSection>

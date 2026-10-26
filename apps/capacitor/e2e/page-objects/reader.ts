@@ -1,6 +1,7 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { type ElementHandle, expect, type Locator, type Page } from "@playwright/test";
 import { LONG_PRESS_MS } from "../../src/pages/reader/long-press";
 import { pendingPositionKey } from "../../src/pages/reader/pending-position";
+import { TOP_EDGE_SLACK_PX } from "../../src/pages/reader/top-edge";
 
 export type HighlightColor = "yellow" | "blue" | "orange" | "pink";
 
@@ -24,12 +25,47 @@ async function mouseDragRange(
 }
 
 /**
+ * The scroll reader's scrolling element. Walks up from the text rather than
+ * matching a class: a paragraph holding the goal divider overflows too, but
+ * does not scroll, hence the overflow-y check.
+ */
+async function scrollContainer(page: Page): Promise<ElementHandle<HTMLElement>> {
+	const handle = await page.evaluateHandle(() => {
+		let el =
+			document.querySelector("span[data-word], .reader-figure, .reader-heading")?.parentElement ??
+			null;
+		const scrolls = (e: HTMLElement) =>
+			e.scrollHeight > e.clientHeight && ["auto", "scroll"].includes(getComputedStyle(e).overflowY);
+		while (el && !scrolls(el)) el = el.parentElement;
+		if (!el) throw new Error("No scrollable reader container");
+		return el;
+	});
+	return handle as ElementHandle<HTMLElement>;
+}
+
+/** Runs `fn` against the scroll reader's scrolling element and releases the handle after. */
+async function inScrollContainer<R, A>(
+	page: Page,
+	fn: (container: HTMLElement, arg: A) => R,
+	arg: A,
+): Promise<R> {
+	const handle = await scrollContainer(page);
+	try {
+		return (await handle.evaluate(fn as never, arg as never)) as R;
+	} finally {
+		await handle.dispose();
+	}
+}
+
+/**
  * A stepper row in the appearance popover, scoped by its label. The rows share
  * button glyphs ("+" appears under both Spacing and Margins), so the label is
  * what disambiguates them.
  */
 function stepperRow(page: Page, label: string): Locator {
-	return page.locator(".ap-row").filter({ hasText: label });
+	return page
+		.locator(".ap-row")
+		.filter({ has: page.locator(".ap-row-label").getByText(label, { exact: true }) });
 }
 
 /**
@@ -50,12 +86,12 @@ async function closeAppearancePopover(page: Page): Promise<void> {
  * before the round-trip completes recomputes from the stale value and silently
  * does nothing.
  */
-async function stepUpAppearance(page: Page, label: string, glyph: string): Promise<void> {
+async function stepUpAppearance(page: Page, label: string): Promise<void> {
 	await reader.openAppearance(page);
 	const row = stepperRow(page, label);
 	const value = row.locator(".ap-row-value");
 	const before = await value.textContent();
-	await row.getByRole("button", { name: glyph, exact: true }).click();
+	await row.getByRole("button", { name: `Increase ${label}`, exact: true }).click();
 	await expect(value).not.toHaveText(before ?? "");
 	await closeAppearancePopover(page);
 }
@@ -102,27 +138,83 @@ export const reader = {
 
 	/**
 	 * The word the scroll reader treats as its position: the first span at or
-	 * below the scroll container's top edge, the same rule `handleScrollEnd`
-	 * applies on settle. Opening a book aligns the saved word here.
+	 * below the scroll container's top edge (with the reader's sub-pixel slack),
+	 * the same rule `handleScrollEnd` applies on settle. Opening a book aligns
+	 * the saved word here.
 	 */
 	scrollModeTopWord: async (page: Page): Promise<number> =>
-		page.evaluate(() => {
-			let container =
-				document.querySelector("span[data-word], .reader-figure, .reader-heading")?.parentElement ??
-				null;
-			while (container && container.scrollHeight <= container.clientHeight) {
-				container = container.parentElement;
-			}
-			const cutoff = container?.getBoundingClientRect().top ?? 0;
-			const below = [...document.querySelectorAll<HTMLElement>("span[data-word]")]
-				.map((s) => ({ top: s.getBoundingClientRect().top, word: Number(s.dataset.word) }))
-				.filter((s) => s.top >= cutoff)
-				.sort((a, b) => a.top - b.top);
-			return below[0]?.word ?? -1;
-		}),
+		inScrollContainer(
+			page,
+			(container, slack) => {
+				const cutoff = container.getBoundingClientRect().top - slack;
+				const below = [...container.querySelectorAll<HTMLElement>("span[data-word]")]
+					.map((s) => {
+						const r = s.getBoundingClientRect();
+						return { top: r.top, left: r.left, word: Number(s.dataset.word) };
+					})
+					.filter((s) => s.top >= cutoff)
+					.sort((a, b) => a.top - b.top || a.left - b.left);
+				return below[0]?.word ?? -1;
+			},
+			TOP_EDGE_SLACK_PX,
+		),
 
-	/** Past the reader's post-open cooldown, during which scroll ends are ignored. */
-	OPEN_SETTLE_MS: 1500,
+	/**
+	 * Waits out `ms` and then `frames` painted frames, so whatever the list does in
+	 * its next frames (a scroll end, a correction) has happened, at any frame rate.
+	 */
+	waitFramesIdle: async (page: Page, frames = 3, ms = 500) => {
+		await page.evaluate(
+			async ({ frames, ms }) => {
+				await new Promise((resolve) => setTimeout(resolve, ms));
+				for (let i = 0; i < frames; i++) await new Promise(requestAnimationFrame);
+			},
+			{ frames, ms },
+		);
+	},
+
+	/** Waits for the scroll reader to reveal its text, which it does once the open has landed. */
+	waitRevealed: async (page: Page) => {
+		await page.waitForFunction(
+			() => document.querySelector<HTMLElement>(".reader-scroll-content")?.style.opacity === "1",
+		);
+	},
+
+	/**
+	 * Wheels until `target`'s top sits `offsetPx` below the reader's top edge
+	 * (negative: above it), or with "bottom" its bottom on the bottom edge. Real
+	 * input, so it also ends the anchor hold an open or a jump leaves.
+	 */
+	wheelTargetTo: async (page: Page, target: Locator, edge: "top" | "bottom", offsetPx = 0) => {
+		const box = await target.boundingBox();
+		if (!box) throw new Error("Wheel target is not rendered");
+		const edges = await inScrollContainer(
+			page,
+			(container) => {
+				const r = container.getBoundingClientRect();
+				return { top: r.top, bottom: r.bottom };
+			},
+			null,
+		);
+		// Floored: scrollTop snaps to whole pixels, and rounding up would leave the
+		// target a fraction above the top edge, making the next line the top word.
+		const delta = edge === "top" ? box.y - edges.top - offsetPx : box.y + box.height - edges.bottom;
+		await reader.wheel(page, Math.floor(delta));
+	},
+
+	/** A fixed wait for the list to finish re-measuring after a long move; prefer an event. */
+	LIST_SETTLE_MS: 1500,
+
+	/**
+	 * The text is revealed and, for an open at the book's start, its 500ms cooldown
+	 * (INIT_SETTLE_COOLDOWN_MS), which swallows scroll ends, is over. It does not
+	 * wait out the anchor hold of an open that aligned a saved word; see waitHoldIdle.
+	 */
+	waitOpenSettled: async (page: Page) => {
+		await reader.waitRevealed(page);
+		// No event marks the cooldown's end; it is a fixed 500ms in scroll-view.tsx.
+		await page.waitForTimeout(600);
+	},
 
 	/** Wait out `JUMP_SETTLE_GUARD_MS` (reader/index.tsx) plus a render-flush margin,
 	 *  so any settle racing a jump has definitely tried to fire. */
@@ -156,24 +248,50 @@ export const reader = {
 	},
 
 	wheel: async (page: Page, deltaY: number) => {
-		const centre = await page.evaluate(() => {
-			let el =
-				document.querySelector("span[data-word], .reader-figure, .reader-heading")?.parentElement ??
-				null;
-			// A paragraph holding the goal divider overflows too, but does not scroll.
-			const scrolls = (e: HTMLElement) =>
-				e.scrollHeight > e.clientHeight &&
-				["auto", "scroll"].includes(getComputedStyle(e).overflowY);
-			while (el && !scrolls(el)) el = el.parentElement;
-			if (!el) throw new Error("No scrollable reader container");
-			const r = el.getBoundingClientRect();
-			return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-		});
-		await page.mouse.move(centre.x, centre.y);
+		const box = await inScrollContainer(
+			page,
+			(container) => {
+				const r = container.getBoundingClientRect();
+				return { x: r.left, y: r.top, width: r.width, height: r.height };
+			},
+			null,
+		);
+		await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 		await page.mouse.wheel(0, deltaY);
 	},
 
+	/**
+	 * Pixels from the scroll reader's top edge down to the line holding `word`
+	 * (negative: above the edge), or to the heading it starts. Infinity when the
+	 * word is not rendered.
+	 */
+	wordLineOffsetFromTop: async (page: Page, word: number): Promise<number> =>
+		inScrollContainer(
+			page,
+			(container, word) => {
+				const span = container.querySelector<HTMLElement>(
+					`span[data-word="${word}"], [data-heading-word="${word}"]`,
+				);
+				if (!span) return Number.POSITIVE_INFINITY;
+				return span.getBoundingClientRect().top - container.getBoundingClientRect().top;
+			},
+			word,
+		),
+
 	browseBar: (page: Page): Locator => page.getByTestId("browse-bar"),
+
+	/**
+	 * Leaves through in-app back and waits until the unmount flush, if any, has
+	 * committed. The URL changes before React unmounts the reader, so the wait is on
+	 * the reader being gone, then on its pending position clearing. Returns the book id.
+	 */
+	leaveFlushed: async (page: Page): Promise<string> => {
+		const bookId = reader.bookIdFromUrl(page);
+		await page.goBack();
+		await expect(page.locator(".reader-scroll-content")).toHaveCount(0);
+		await expect.poll(() => reader.getPendingPosition(page, bookId)).toBeNull();
+		return bookId;
+	},
 
 	browseBack: async (page: Page) => {
 		await page.getByTestId("browse-back").click();
@@ -181,6 +299,22 @@ export const reader = {
 
 	readFromHere: async (page: Page) => {
 		await page.getByTestId("browse-read-from-here").click();
+	},
+
+	/**
+	 * Read from here, and wait for the save it commits. The save wait starts after
+	 * the click: at a low frame rate under load, the click itself can take seconds.
+	 */
+	commitReadFromHere: async (page: Page): Promise<number> => {
+		const from = await page.evaluate(() => window.__lesefluss_e2e_saveLog?.length ?? 0);
+		await reader.readFromHere(page);
+		const committed = await page.waitForFunction(
+			(from) =>
+				window.__lesefluss_e2e_saveLog?.slice(from).find((s) => s.source === "browse")?.word,
+			from,
+			{ timeout: 10_000 },
+		);
+		return (await committed.jsonValue()) as number;
 	},
 
 	/** A TOC jump only browses; committing it makes the chapter the saved position. */
@@ -414,6 +548,81 @@ export const reader = {
 		);
 	},
 
+	/** What the book's row holds: its position and its revision (updatedAt), read from the database. */
+	savedRow: async (page: Page, bookId: string) => {
+		const row = await page.evaluate((id) => window.__lesefluss_e2e_readBookRow?.(id), bookId);
+		if (row === undefined) throw new Error("No __lesefluss_e2e_readBookRow hook");
+		return row;
+	},
+
+	/**
+	 * Position writes decided so far, counted before their async DB write: a check
+	 * that nothing is saved counts these, so a slow commit can't land after it.
+	 */
+	saveRequestCount: async (page: Page): Promise<number> =>
+		page.evaluate(() => window.__lesefluss_e2e_saveRequests ?? 0),
+
+	/** Settles the view has reported (scrolls come to rest), saved or not. */
+	settleCount: async (page: Page): Promise<number> =>
+		page.evaluate(() => window.__lesefluss_e2e_settles ?? 0),
+
+	/** Waits for a settle past `count`: a move has come to rest and its save, if any, is decided. */
+	waitForSettleAbove: async (page: Page, count: number) => {
+		await page.waitForFunction((count) => (window.__lesefluss_e2e_settles ?? 0) > count, count, {
+			timeout: 10_000,
+		});
+	},
+
+	/**
+	 * Runs `move`, waits for the settle it causes, and checks that the settle asked
+	 * for no save. A save is requested in the settle's own task; `quietMs` covers a late one.
+	 */
+	expectSettledWithoutSave: async (page: Page, move: () => Promise<void>, quietMs = 1000) => {
+		const settles = await reader.settleCount(page);
+		const requests = await reader.saveRequestCount(page);
+		await move();
+		await expect.poll(() => reader.settleCount(page)).toBeGreaterThan(settles);
+		await page.waitForTimeout(quietMs);
+		expect(await reader.saveRequestCount(page)).toBe(requests);
+	},
+
+	/**
+	 * Waits until no settle has come for `quietMs` (past the 150ms scroll-end
+	 * debounce) and every requested save has finished (landed, or dropped for a
+	 * newer one), so a save count read next is a stable baseline.
+	 */
+	waitPositionQuiet: async (page: Page, quietMs = 400) => {
+		let last = -1;
+		await expect
+			.poll(
+				async () => {
+					const settles = await reader.settleCount(page);
+					const unchanged = settles === last;
+					last = settles;
+					return unchanged;
+				},
+				{ intervals: [quietMs] },
+			)
+			.toBe(true);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						(window.__lesefluss_e2e_saveRequests ?? 0) - (window.__lesefluss_e2e_saveFinished ?? 0),
+				),
+			)
+			.toBe(0);
+	},
+
+	/**
+	 * Waits until the scroll reader's anchor hold is over, so scroll ends reach the
+	 * settle path. Unset (no reader mounted yet) counts as idle; an unmount releases
+	 * the hold, so a phase never carries over to the next book.
+	 */
+	waitHoldIdle: async (page: Page) => {
+		await page.waitForFunction(() => (window.__lesefluss_e2e_hold ?? "idle") === "idle");
+	},
+
 	/** Monotonic count of position saves observed so far (0 before any save). */
 	saveCount: async (page: Page): Promise<number> =>
 		page.evaluate(() => window.__lesefluss_e2e_save?.count ?? 0),
@@ -563,14 +772,17 @@ export const reader = {
 
 	// ── Appearance popover steppers ──────────────────────────────────────
 
+	/** Click one stepper button (e.g. "Margins", "+") in the appearance popover. */
+	stepUpAppearance,
+
 	/** Bump the reader font size one step up, via the appearance popover. */
 	increaseFontSize: async (page: Page) => {
-		await stepUpAppearance(page, "Size", "A+");
+		await stepUpAppearance(page, "Size");
 	},
 
 	/** Bump the reader line spacing one step up, via the appearance popover. */
 	increaseLineSpacing: async (page: Page) => {
-		await stepUpAppearance(page, "Spacing", "+");
+		await stepUpAppearance(page, "Line spacing");
 	},
 
 	/**

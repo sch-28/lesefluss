@@ -36,7 +36,7 @@ async function openSeeded(page: Page): Promise<void> {
 	await seedFixture(page, browseFixture(), "browse.epub");
 	await openBookFromLibrary(page, TITLE);
 	await reader.expectLoaded(page);
-	await page.waitForTimeout(reader.OPEN_SETTLE_MS);
+	await reader.waitOpenSettled(page);
 }
 
 test("a TOC jump browses without saving, and reopening resumes where reading stopped", async ({
@@ -94,14 +94,15 @@ async function reopen(page: Page): Promise<void> {
 
 test("the browse button freezes the position while scrolling around", async ({ page }) => {
 	await openSeeded(page);
-	const baseline = await reader.saveCount(page);
+	const baseline = await reader.saveRequestCount(page);
 
 	await reader.startBrowse(page);
 	await expect(reader.browseBar(page)).toBeVisible();
 	await reader.wheel(page, 600);
 	await expect(opening(page, 1)).not.toBeInViewport();
+	// Past the scroll's settle, which would have decided a save by now.
 	await page.waitForTimeout(1_000);
-	expect(await reader.saveCount(page)).toBe(baseline);
+	expect(await reader.saveRequestCount(page)).toBe(baseline);
 
 	await reopen(page);
 	await expect(opening(page, 1)).toBeInViewport({ timeout: 10_000 });
@@ -134,9 +135,10 @@ test("normal scrolling saves again after going back", async ({ page }) => {
 	await expect(opening(page, 1)).toBeInViewport({ timeout: 5000 });
 	await reader.waitPastJumpGuard(page);
 
+	const savePending = reader.waitForNextSave(page);
 	await reader.wheel(page, 400);
 	await expect(opening(page, 1)).not.toBeInViewport();
-	await page.waitForTimeout(1_000);
+	await savePending;
 	await expect(reader.browseBar(page)).toBeHidden();
 	const scrolledTo = await reader.scrollModeTopWord(page);
 
@@ -191,6 +193,7 @@ test("a fast long scroll browses and leaving resumes where reading stopped", asy
 
 	await expect(async () => {
 		await reader.wheel(page, 3000);
+		// The wheel's settle, which shows the browse bar, before checking for it.
 		await page.waitForTimeout(400);
 		await expect(reader.browseBar(page)).toBeVisible({ timeout: 100 });
 	}).toPass({ timeout: 20_000 });
@@ -219,6 +222,7 @@ test("reading on at the browsed spot commits it, and Undo restores the anchor", 
 	for (let i = 0; i < 8 && !(await toast.isVisible()); i++) {
 		await page.clock.fastForward(45_000);
 		await reader.wheel(page, 150);
+		// Each wheel's settle before the next fast-forward.
 		await page.waitForTimeout(500);
 	}
 	await expect(toast).toBeVisible();

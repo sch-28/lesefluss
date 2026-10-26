@@ -9,7 +9,13 @@ import type React from "react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { VListHandle } from "virtua";
 import { VList } from "virtua";
-import { readerFontStack } from "../../hooks/use-appearance-settings";
+import {
+	readerFontFace,
+	readerFontStack,
+	type TextSpacing,
+	textSpacingKey,
+	textSpacingVars,
+} from "../../hooks/use-appearance-settings";
 import type { ReaderGoalDivider } from "./goal-divider";
 import Paragraph, {
 	cancelAnyActiveLongPress,
@@ -20,7 +26,18 @@ import Paragraph, {
 } from "./paragraph";
 import { renderFigures } from "./reader-figure";
 import type { ReaderFigureData } from "./reader-figures";
-import type { ReaderViewHandle } from "./view-types";
+import {
+	isOnTopEdge,
+	listItemOf,
+	offsetFromTop,
+	scrollOntoTopEdge,
+	TOP_EDGE_SLACK_PX,
+	whenStill,
+} from "./top-edge";
+import { useAnchorHold } from "./use-anchor-hold";
+import { useFontLoadCount } from "./use-font-load-count";
+import { useValueWhenIdle } from "./use-value-when-idle";
+import type { JumpOptions, ReaderViewHandle } from "./view-types";
 
 // ─── Module-level singletons ─────────────────────────────────────────────────
 
@@ -30,17 +47,16 @@ const EMPTY_ENTRIES: readonly ParagraphWordEntry[] = [];
 
 // Fine-scroll tuning (see scheduleFineScroll).
 const FINE_SCROLL_MOUNT_FRAME_BUDGET = 10;
-const FINE_SCROLL_STABILITY_TICK_MS = 50;
-const FINE_SCROLL_STABILITY_TIMEOUT_MS = 600;
+const FINE_SCROLL_STABILITY_TIMEOUT_MS = 4000;
 const INIT_SETTLE_COOLDOWN_MS = 500;
 // A scroll end closer than this to the previous one is a layout clamp (content
 // height changing by a pixel under a new highlight, the soft keyboard), not the
 // reader moving. Well under one line of text.
 const MIN_SETTLE_SCROLL_PX = 4;
 
-// Locate the alignment target span within `container`. Queries by `data-word`
-// only. The paragraph-bounded fallback ensures a stale saved position
-// doesn't leak into the wrong paragraph.
+// Locate the alignment target within `container`: the word's span, or the
+// heading it starts. The paragraph-bounded fallback ensures a stale saved
+// position doesn't leak into the wrong paragraph.
 function findAlignmentSpan(
 	container: HTMLElement,
 	wordIdx: number,
@@ -63,7 +79,40 @@ function findAlignmentSpan(
 		}
 		if (!best || w > Number(best.dataset.word)) best = span;
 	}
-	return best;
+	return (
+		best ?? container.querySelector<HTMLElement>(`[data-heading-word="${paragraphStartWord}"]`)
+	);
+}
+
+/**
+ * The first word at or below the container's top edge, a heading's included: the
+ * word a settle saves, with its offset from the edge. Null if none.
+ */
+function topVisibleWord(container: HTMLElement): { word: number; offset: number } | null {
+	const cutoffTop = container.getBoundingClientRect().top;
+	let best = -1;
+	let bestTop = Number.POSITIVE_INFINITY;
+	let bestLeft = Number.POSITIVE_INFINITY;
+	for (const span of container.querySelectorAll<HTMLElement>(
+		"span[data-word], [data-heading-word]",
+	)) {
+		const rect = span.getBoundingClientRect();
+		if (rect.top < cutoffTop - TOP_EDGE_SLACK_PX) continue;
+		if (rect.top > bestTop || (rect.top === bestTop && rect.left >= bestLeft)) continue;
+		const w = Number.parseInt(span.dataset.word ?? span.dataset.headingWord ?? "", 10);
+		if (Number.isNaN(w) || w < 0) continue;
+		best = w;
+		bestTop = rect.top;
+		bestLeft = rect.left;
+	}
+	return best < 0 ? null : { word: best, offset: bestTop - cutoffTop };
+}
+
+function wordOffsetFromTop(container: HTMLElement, word: number): number | null {
+	const target = container.querySelector<HTMLElement>(
+		`span[data-word="${word}"], [data-heading-word="${word}"]`,
+	);
+	return target && offsetFromTop(target, container);
 }
 
 interface ScrollSuppressRefs {
@@ -71,20 +120,12 @@ interface ScrollSuppressRefs {
 	suppressHighlight: React.RefObject<boolean>;
 }
 
-// Scrolls so the span at `wordIdx` lands flush at the top of the container,
-// symmetric with handleScrollEnd's save rule (`rect.top >= cutoffTop`).
-//
-// Phases:
-//   1. document.fonts.ready (cold-start fallback-font guard)
-//   2. rAF retry until the target span is mounted
-//   3. Stability poll: wait until container.scrollHeight is unchanged for two
-//      consecutive 50ms samples → VList has finished reconciling estimated
-//      paragraph heights with real measurements (max 600ms timeout).
-//   4. One scrollBy(delta). Done, no watcher, no retry loop.
-//
-// `onReady` (optional) fires after the final scroll so the caller can reveal
-// hidden content.
-function scheduleFineScroll(
+// Scrolls so the span at `wordIdx` (its paragraph's top, for a `headed` chapter
+// start, which keeps the inline title on screen) lands flush at the top of the
+// container, once VList has measured the paragraphs around it: fonts, then the
+// span mounting, then its layout still for some frames (see whenStill), then
+// one scrollBy. `onReady` fires after that scroll so the caller can reveal the text.
+export function scheduleFineScroll(
 	listHandle: VListHandle,
 	container: HTMLElement,
 	wordIdx: number,
@@ -94,48 +135,42 @@ function scheduleFineScroll(
 	shouldHighlight: boolean,
 	onReady?: () => void,
 	smooth = false,
+	headed = false,
 ): () => void {
 	let mountAttempts = 0;
 	let rafId = 0;
 	let timeoutId = 0;
 	let cancelled = false;
 	let cancelSmooth: (() => void) | null = null;
+	let cancelStill: (() => void) | null = null;
 
 	const alignSpan = (span: HTMLElement) => {
 		if (cancelled) return;
-		const delta = span.getBoundingClientRect().top - container.getBoundingClientRect().top;
-		if (Math.abs(delta) > 2) {
+		const target = (headed && listItemOf(span, container)) || span;
+		const delta = offsetFromTop(target, container);
+		if (!isOnTopEdge(delta)) {
 			suppress.suppressScrollEnd.current = true;
 			if (shouldHighlight) suppress.suppressHighlight.current = true;
-			if (!smooth) listHandle.scrollBy(delta);
-			else cancelSmooth = smoothScrollBy(listHandle, delta);
+			if (!smooth) listHandle.scrollBy(scrollOntoTopEdge(delta));
+			else cancelSmooth = smoothScrollBy(listHandle, scrollOntoTopEdge(delta));
 		}
 		onReady?.();
 	};
 
 	const waitForStability = (span: HTMLElement) => {
-		const startedAt = performance.now();
-		let lastHeight = container.scrollHeight;
-		let stableSamples = 0;
-		const tick = () => {
-			if (cancelled) return;
-			const h = container.scrollHeight;
-			if (h === lastHeight) {
-				stableSamples++;
-				if (
-					stableSamples >= 2 ||
-					performance.now() - startedAt >= FINE_SCROLL_STABILITY_TIMEOUT_MS
-				) {
-					alignSpan(span);
-					return;
-				}
-			} else {
-				lastHeight = h;
-				stableSamples = 0;
-			}
-			timeoutId = window.setTimeout(tick, FINE_SCROLL_STABILITY_TICK_MS);
+		const align = () => {
+			cancelStill?.();
+			clearTimeout(timeoutId);
+			if (!cancelled) alignSpan(span);
 		};
-		timeoutId = window.setTimeout(tick, FINE_SCROLL_STABILITY_TICK_MS);
+		// Only for a page that gets no frames at all (a hidden tab): cleared on the
+		// first one, so at a frame a second it can't align before the layout is still.
+		timeoutId = window.setTimeout(align, FINE_SCROLL_STABILITY_TIMEOUT_MS);
+		rafId = requestAnimationFrame(() => clearTimeout(timeoutId));
+		cancelStill = whenStill(
+			() => `${container.scrollHeight}:${span.getBoundingClientRect().top}`,
+			align,
+		);
 	};
 
 	const awaitMount = () => {
@@ -168,6 +203,7 @@ function scheduleFineScroll(
 	return () => {
 		cancelled = true;
 		cancelSmooth?.();
+		cancelStill?.();
 		if (rafId) cancelAnimationFrame(rafId);
 		if (timeoutId) clearTimeout(timeoutId);
 	};
@@ -235,12 +271,16 @@ export interface ScrollViewProps {
 	/** Binary-search helper: paragraph index whose start word is ≤ targetWord. */
 	findParagraphIndexForWord: (targetWord: number) => number;
 	initialWord: number;
+	/** The reader's current word: what a reflow lands back on, so it always matches what is saved. */
+	getAnchorWord: () => number | null;
 
 	// Appearance
 	fontSize: number;
-	fontFamily: string; // "sans" | "serif" (db column is plain text)
+	fontFamily: string; // a FONT_FAMILIES value (db column is plain text)
+	isBold: boolean;
 	lineSpacing: number;
 	margin: number;
+	textSpacing: TextSpacing;
 	showActiveWordUnderline: boolean;
 
 	// Active highlight + per-paragraph annotation data (passed straight to <Paragraph>).
@@ -300,10 +340,13 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		entriesByParagraph,
 		findParagraphIndexForWord,
 		initialWord,
+		getAnchorWord,
 		fontSize,
 		fontFamily,
+		isBold,
 		lineSpacing,
 		margin,
+		textSpacing,
 		showActiveWordUnderline,
 		activeWord,
 		highlightsByParagraph,
@@ -360,15 +403,80 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	const initialSettledRef = useRef(false);
 	// Cooldown window for straggler scrollends from the init scroll sequence
 	// (scrollToIndex + alignSpan's scrollBy each fire one; suppressNextScrollEndRef
-	// is single-shot). Without this the second scrollend saves a top-of-viewport
-	// word that's often off-by-one from the seed.
+	// is single-shot), for an open the anchor hold does not cover. Without this the
+	// second scrollend saves a top-of-viewport word that's often off-by-one from the seed.
 	const initialScrollDoneAtRef = useRef<number | null>(null);
 	const settledOffsetRef = useRef<number | null>(null);
-	const markInitialSettled = useCallback(() => {
-		initialSettledRef.current = true;
-		initialScrollDoneAtRef.current = performance.now();
-		setIsInitialScrollReady(true);
+	const settledTopRef = useRef<{ word: number; offset: number } | null>(null);
+	// Wrap-affecting settings also belong in page mode's layoutKey and its chunk
+	// measure deps (page-view/index.tsx, chunk-content.tsx).
+	// Set from the first scroll event to the scroll end.
+	const isScrollingRef = useRef(false);
+	const fontLoads = useValueWhenIdle(
+		useFontLoadCount(readerFontFace(fontFamily)),
+		() => isScrollingRef.current,
+	);
+	const anchorHold = useAnchorHold({
+		listRef,
+		containerRef,
+		layoutKey: `${fontSize}|${fontFamily}|${isBold}|${fontLoads}|${lineSpacing}|${margin}|${textSpacingKey(textSpacing)}`,
+		getAnchorWord,
+		findParagraphIndexForWord,
+		findWordSpan: (word, idx) => {
+			const container = containerRef.current;
+			if (!container) return null;
+			const start = paragraphStartWords[idx] ?? 0;
+			const end = paragraphStartWords[idx + 1] ?? Number.POSITIVE_INFINITY;
+			return findAlignmentSpan(container, word, start, end);
+		},
+		isHeadedParagraphStart: (word, idx) =>
+			!!chapterHeadingByParagraph?.has(idx) && paragraphStartWords[idx] === word,
+		isInitialScrollSettled: () => initialSettledRef.current,
+		cancelViewScrolls: () => {
+			jumpCleanupRef.current?.();
+			jumpCleanupRef.current = null;
+		},
+		// The open's or a jump's suppressed scroll end may still be due; the reader's
+		// scroll would take its place and go unsaved.
+		onReaderInput: () => {
+			suppressNextScrollEndRef.current = false;
+			suppressScrollHighlightClearRef.current = false;
+		},
+	});
+	// A jump or an open's align that scrolls nothing (the view is already there,
+	// or clamped at the end of the book) gets no scroll end to clear the suppress
+	// flags; without this the next real scroll would be swallowed and not saved.
+	const jumpScrolledRef = useRef(false);
+	const jumpCheckFrameRef = useRef(0);
+	useEffect(() => () => cancelAnimationFrame(jumpCheckFrameRef.current), []);
+	const clearIfJumpDidNotScroll = useCallback(() => {
+		cancelAnimationFrame(jumpCheckFrameRef.current);
+		jumpCheckFrameRef.current = requestAnimationFrame(() => {
+			jumpCheckFrameRef.current = requestAnimationFrame(() => {
+				if (jumpScrolledRef.current) return;
+				suppressNextScrollEndRef.current = false;
+				suppressScrollHighlightClearRef.current = false;
+			});
+		});
 	}, []);
+	const { onInitialScrollSettled, holdAnchor } = anchorHold;
+	const markInitialSettled = useCallback(
+		(alignedWord: number | null) => {
+			initialSettledRef.current = true;
+			setIsInitialScrollReady(true);
+			onInitialScrollSettled();
+			// VList keeps measuring paragraphs it mounts after the open; none of that
+			// is the reader moving, so the saved word holds until their own input,
+			// which a cooldown would swallow. Not at the start of the book: there a
+			// cover or title loading in late is meant to push the text down.
+			if (alignedWord !== null) {
+				holdAnchor(alignedWord);
+				jumpScrolledRef.current = false;
+				clearIfJumpDidNotScroll();
+			} else initialScrollDoneAtRef.current = performance.now();
+		},
+		[onInitialScrollSettled, holdAnchor, clearIfJumpDidNotScroll],
+	);
 
 	// Cleanup for the in-flight initial scroll. Hoisted out of the init effect
 	// so that effect re-runs don't cancel the scroll mid-flight and leave the
@@ -376,9 +484,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	const initialScrollCleanupRef = useRef<(() => void) | null>(null);
 	useEffect(() => () => initialScrollCleanupRef.current?.(), []);
 
-	/** Align the word at `wordIdx` flush with the container top via scrollIntoView.
-	 *  Paragraph-bounded so the fallback can't leak into a neighboring paragraph.
-	 *  DOM is keyed by `data-word` only. */
+	/** Align the word at `wordIdx` flush with the container top (see scheduleFineScroll).
+	 *  Paragraph-bounded so the fallback can't leak into a neighboring paragraph. */
 	const fineScrollTo = useCallback(
 		(wordIdx: number, shouldHighlight: boolean, onReady?: () => void, smooth = false) => {
 			if (!listRef.current || !containerRef.current) return undefined;
@@ -398,9 +505,11 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 				shouldHighlight,
 				onReady,
 				smooth,
+				// The same target the anchor hold keeps, so an open lands once.
+				!!chapterHeadingByParagraph?.has(idx) && startWord === wordIdx,
 			);
 		},
-		[findParagraphIndexForWord, paragraphStartWords],
+		[findParagraphIndexForWord, paragraphStartWords, chapterHeadingByParagraph],
 	);
 
 	// ── Initial scroll to saved position ──────────────────────────────────
@@ -413,14 +522,14 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			// Terminal: mark initial scroll done so a later paragraphs update
 			// doesn't re-enter this effect and jerk an already-revealed reader.
 			didInitialScrollRef.current = true;
-			markInitialSettled();
+			markInitialSettled(null);
 			return;
 		}
 
 		const target = initialWord;
 		if (target === 0) {
 			didInitialScrollRef.current = true;
-			markInitialSettled();
+			markInitialSettled(null);
 			return;
 		}
 
@@ -433,7 +542,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		onInitialActiveOffset(target);
 
 		initialScrollCleanupRef.current =
-			fineScrollTo(target, true, () => markInitialSettled()) ?? null;
+			fineScrollTo(target, true, () => markInitialSettled(target)) ?? null;
 	}, [
 		paragraphs,
 		initialWord,
@@ -456,22 +565,6 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	const hasLandedRef = useRef(true);
 	const isScrubbingLatest = useRef(isScrubbing);
 	isScrubbingLatest.current = isScrubbing;
-	// A jump to where the view already is scrolls nothing, so no scroll end
-	// comes to clear the suppress flags; without this the next real scroll
-	// would be swallowed and its position not saved.
-	const jumpScrolledRef = useRef(false);
-	const jumpCheckFrameRef = useRef(0);
-	useEffect(() => () => cancelAnimationFrame(jumpCheckFrameRef.current), []);
-	const clearIfJumpDidNotScroll = useCallback(() => {
-		cancelAnimationFrame(jumpCheckFrameRef.current);
-		jumpCheckFrameRef.current = requestAnimationFrame(() => {
-			jumpCheckFrameRef.current = requestAnimationFrame(() => {
-				if (jumpScrolledRef.current) return;
-				suppressNextScrollEndRef.current = false;
-				suppressScrollHighlightClearRef.current = false;
-			});
-		});
-	}, []);
 	const hideUntilLanded = useCallback(() => {
 		hasLandedRef.current = false;
 		wrapperRef.current?.classList.add("reader-jump-landing");
@@ -491,28 +584,39 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	useImperativeHandle(ref, () => {
 		const jumpTo: ReaderViewHandle["jumpTo"] = (
 			wordIdx,
-			{ highlight = true, fine = false, smooth = false } = {},
+			{ highlight = true, fine = false, smooth = false }: JumpOptions = {},
 		) => {
 			if (!listRef.current) return;
+			anchorHold.release("programmatic");
 			jumpCleanupRef.current?.();
 			jumpCleanupRef.current = null;
 			cancelAnimationFrame(jumpCheckFrameRef.current);
 			jumpScrolledRef.current = false;
 			suppressNextScrollEndRef.current = true;
 			if (highlight) suppressScrollHighlightClearRef.current = true;
+			const idx = findParagraphIndexForWord(wordIdx);
+			const isParagraphStart = paragraphStartWords[idx] === wordIdx;
+			// Held like an open: VList measures the paragraphs around the target for
+			// frames after it lands, and none of that is the reader moving. Not at the
+			// start of the book or before a paragraph's leading figures, which a late
+			// image is meant to push down.
+			const holdLanding = () => {
+				const hasLeadingFigures = isParagraphStart && !!figuresByParagraph?.get(idx)?.length;
+				if (wordIdx !== 0 && !hasLeadingFigures) anchorHold.holdAnchor(wordIdx);
+			};
 			if (!fine) {
-				const idx = findParagraphIndexForWord(wordIdx);
 				if (!smooth) hideUntilLanded();
 				listRef.current.scrollToIndex(idx, { align: "start" });
 				// When the target is the start of a chapter whose title is rendered
 				// inline above its first paragraph, the paragraph-top alignment above
 				// already puts the header at the container top. A fine word-scroll
 				// would pin the first word to the top and push the header out of view.
-				if (chapterHeadingByParagraph?.has(idx) && paragraphStartWords[idx] === wordIdx) {
+				if (chapterHeadingByParagraph?.has(idx) && isParagraphStart) {
 					let frame = requestAnimationFrame(() => {
 						frame = requestAnimationFrame(() => {
 							revealLanded();
 							clearIfJumpDidNotScroll();
+							holdLanding();
 						});
 					});
 					jumpCleanupRef.current = () => {
@@ -525,6 +629,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			const landed = () => {
 				revealLanded();
 				clearIfJumpDidNotScroll();
+				holdLanding();
 			};
 			const cancel = fineScrollTo(wordIdx, highlight, landed, smooth);
 			if (!cancel) {
@@ -538,13 +643,16 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		};
 		return {
 			jumpTo,
+			// The reader's keys and page buttons scroll through here.
 			scrollBy(pixels) {
+				anchorHold.release("reader");
 				listRef.current?.scrollBy(pixels);
 			},
 			followWord(wordIdx) {
 				const list = listRef.current;
 				const container = containerRef.current;
-				if (!list || !container) return false;
+				// Let a re-anchor land on the spoken word first; the next word follows from there.
+				if (!list || !container || anchorHold.isSettling()) return false;
 				const span = findFollowSpan(container, wordIdx);
 				if (!span) {
 					jumpTo(wordIdx, { highlight: false, smooth: true });
@@ -555,6 +663,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 				if (top >= box.height * FOLLOW_BAND_TOP && top <= box.height * FOLLOW_BAND_BOTTOM) {
 					return false;
 				}
+				anchorHold.release("programmatic");
 				jumpCleanupRef.current?.();
 				suppressNextScrollEndRef.current = true;
 				suppressScrollHighlightClearRef.current = true;
@@ -576,10 +685,12 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		findParagraphIndexForWord,
 		fineScrollTo,
 		chapterHeadingByParagraph,
+		figuresByParagraph,
 		paragraphStartWords,
 		hideUntilLanded,
 		revealLanded,
 		clearIfJumpDidNotScroll,
+		anchorHold,
 	]);
 
 	const isScrolledToEnd = useCallback(() => {
@@ -591,32 +702,31 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	const handleScroll = useCallback(
 		(scrollOffset: number) => {
 			jumpScrolledRef.current = true;
+			isScrollingRef.current = true;
+			anchorHold.noteScroll();
 			// Cancel any pending long-press - user is scrolling, not selecting
 			cancelAnyActiveLongPress();
 
-			// Hide highlight while scrolling. Programmatic jumps keep the
-			// highlight via suppressScrollHighlightClearRef. The init-cooldown
-			// branch covers VList height-reconciliation micro-scrolls that
-			// fire after markInitialSettled clears the suppress flag, which
-			// would otherwise wipe the underline ~500ms after open.
+			// Hide highlight while scrolling, except for jumps and VList re-measuring (after open, re-anchor).
 			const doneAt = initialScrollDoneAtRef.current;
-			const inInitCooldown =
-				doneAt !== null && performance.now() - doneAt < INIT_SETTLE_COOLDOWN_MS;
-			if (!suppressScrollHighlightClearRef.current && !inInitCooldown) {
+			const isReconciling =
+				anchorHold.isPending() ||
+				(doneAt !== null && performance.now() - doneAt < INIT_SETTLE_COOLDOWN_MS);
+			if (!suppressScrollHighlightClearRef.current && !isReconciling) {
 				onHighlightClear();
 			}
 			// Hide progress bar - user is scrolling normally, not scrubbing
 			// Scrolls caused by a jump (a scrub, search, chapter) are not the user
 			// scrolling, so the bar they came from stays open.
 			const isJumpScroll = suppressNextScrollEndRef.current || !hasLandedRef.current;
-			if (!isScrubbingRef.current && !inInitCooldown && !isJumpScroll) onHideProgressBar();
+			if (!isScrubbingRef.current && !isReconciling && !isJumpScroll) onHideProgressBar();
 			// Update the progress bar live. findItemIndex maps the current scroll
 			// pixel offset to a paragraph index, which we convert to a word offset.
 			// Skip during init scroll / cooldown so VList reconciliation micro-scrolls
 			// don't flip userMovedRef in the parent and trigger an unmount-flush save.
 			if (
 				initialSettledRef.current &&
-				!inInitCooldown &&
+				!isReconciling &&
 				listRef.current &&
 				paragraphStartWords.length > 0
 			) {
@@ -640,55 +750,44 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			onHideProgressBar,
 			onProgressChange,
 			isScrolledToEnd,
+			anchorHold,
 		],
 	);
 
 	// ── Scroll end - find top-of-container word + save position ──────────
 	const handleScrollEnd = useCallback(() => {
+		isScrollingRef.current = false;
 		// Recorded on every scroll end, including the ignored ones below, so the
 		// next comparison is against where the view last came to rest.
 		const offset = listRef.current?.scrollOffset ?? null;
 		const prevOffset = settledOffsetRef.current;
 		settledOffsetRef.current = offset;
+		const container = containerRef.current;
+		const top = container ? topVisibleWord(container) : null;
+		const prevTop = settledTopRef.current;
+		settledTopRef.current = top;
 		if (suppressNextScrollEndRef.current) {
 			suppressNextScrollEndRef.current = false;
 			suppressScrollHighlightClearRef.current = false;
 			return;
 		}
+		if (anchorHold.isPending()) return;
 		if (!initialSettledRef.current) return;
 		const doneAt = initialScrollDoneAtRef.current;
 		if (doneAt !== null && performance.now() - doneAt < INIT_SETTLE_COOLDOWN_MS) return;
-		if (!listRef.current || !containerRef.current) return;
+		if (!listRef.current || !container || !top) return;
 
-		const cutoffTop = containerRef.current.getBoundingClientRect().top;
-
-		const spans = Array.from(document.querySelectorAll<HTMLElement>("span[data-word]"));
-		if (spans.length === 0) return;
-
-		spans.sort((a, b) => {
-			const ra = a.getBoundingClientRect();
-			const rb = b.getBoundingClientRect();
-			return ra.top !== rb.top ? ra.top - rb.top : ra.left - rb.left;
-		});
-
-		let bestWord = -1;
-		for (const span of spans) {
-			if (span.getBoundingClientRect().top >= cutoffTop) {
-				const w = Number.parseInt(span.dataset.word ?? "", 10);
-				if (Number.isNaN(w) || w < 0) continue;
-				bestWord = w;
-				break;
-			}
-		}
-
-		if (bestWord < 0) return;
-
+		// By content first: VList's compensation for paragraphs measured above
+		// moves scrollTop while the text stays where it was.
+		const prevTopNow = prevTop && wordOffsetFromTop(container, prevTop.word);
 		const hasMoved =
-			prevOffset === null ||
-			offset === null ||
-			Math.abs(offset - prevOffset) >= MIN_SETTLE_SCROLL_PX;
-		onPositionSettle(bestWord, isScrolledToEnd(), hasMoved);
-	}, [onPositionSettle, isScrolledToEnd]);
+			prevTop && prevTopNow != null
+				? Math.abs(prevTopNow - prevTop.offset) >= MIN_SETTLE_SCROLL_PX
+				: prevOffset === null ||
+					offset === null ||
+					Math.abs(offset - prevOffset) >= MIN_SETTLE_SCROLL_PX;
+		onPositionSettle(top.word, isScrolledToEnd(), hasMoved);
+	}, [onPositionSettle, isScrolledToEnd, anchorHold]);
 
 	// ── Show progress bar on any tap in the reading area ─────────────────
 	// Native listener needed because VList's internal scroll container doesn't
@@ -720,6 +819,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 						transition: "opacity 0.12s ease-out",
 						pointerEvents: isInitialScrollReady ? "auto" : "none",
 						"--reader-line-height": String(lineSpacing),
+						...(isBold && { "--reader-font-weight": "700" }),
+						...textSpacingVars(textSpacing),
 					} as React.CSSProperties
 				}
 			>

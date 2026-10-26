@@ -302,6 +302,20 @@
       "when": 1782345600000,
       "tag": "0042_read_aloud",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "6",
+      "when": 1782432000000,
+      "tag": "0043_reader_spacing",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "6",
+      "when": 1782518400000,
+      "tag": "0044_reader_bold",
+      "breakpoints": true
     }
   ]
 }

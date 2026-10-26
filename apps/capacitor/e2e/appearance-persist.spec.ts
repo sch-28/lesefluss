@@ -18,7 +18,7 @@ test("font-size adjustment persists across a reload", async ({ page }) => {
 	const startSize = Number.parseInt((startText ?? "0").replace("px", ""), 10);
 	expect(startSize).toBeGreaterThan(0);
 
-	const plus = page.getByRole("button", { name: "A+" });
+	const plus = page.getByRole("button", { name: "Increase Size" });
 	await plus.click();
 	await expect(sizeLabel).toHaveText(`${startSize + 2}px`);
 	await plus.click();

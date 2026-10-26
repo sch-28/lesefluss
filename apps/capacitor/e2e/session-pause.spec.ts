@@ -142,6 +142,7 @@ test("in RSVP mode the gesture also pauses playback, resume does not auto-play",
 	await expect(overlay(page)).toBeVisible();
 	await expect.poll(() => reader.rsvpIsPlaying(page)).toBe(false);
 
+	// Playback that a dismissal wrongly resumed would have advanced by now.
 	await page.waitForTimeout(500);
 	await overlay(page).click();
 	await expect(overlay(page)).toBeHidden();

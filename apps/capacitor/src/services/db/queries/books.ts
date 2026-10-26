@@ -10,9 +10,23 @@ import {
 	MAX_SYNCED_CONTENT_BYTES,
 	type SerializedWordIndex,
 	WordIndex,
+	type WordPosition,
 } from "@lesefluss/core";
-import { and, desc, eq, isNull, ne, type SQL, type SQLWrapper, sql } from "drizzle-orm";
+import {
+	and,
+	desc,
+	eq,
+	gt,
+	isNull,
+	lt,
+	lte,
+	ne,
+	type SQL,
+	type SQLWrapper,
+	sql,
+} from "drizzle-orm";
 import type { SQLiteUpdateSetSource } from "drizzle-orm/sqlite-core";
+import type { BookMergeUpdate } from "../../sync/book-merge";
 import { db } from "../index";
 import { appendLongText, LONG_TEXT_CHUNK, type LongTextExecutor, readLongText } from "../long-text";
 import {
@@ -342,7 +356,7 @@ export async function setBookImageAnchors(
 
 function toDbAnchors(wi: WordIndex, anchors: readonly ImportImageAnchor[]): ImageAnchor[] {
 	return anchors.map((a) => ({
-		word: firstWordAtOrAfter(wi, a.startByte),
+		word: wi.wordAtOrAfter(a.startByte),
 		key: a.key,
 		alt: a.alt,
 	}));
@@ -377,18 +391,6 @@ export async function addBookImages(
 		await onWritten?.(written);
 	}
 	return written;
-}
-
-/**
- * The word an image precedes. `wordOf` floors to the word containing the byte;
- * an anchor on a `# ` heading marker or in the `\n\n` gap after a section would
- * then land on the previous word, so step forward unless the byte is a word
- * start. Past the last word, the anchor is the word count (a trailing image).
- */
-function firstWordAtOrAfter(wi: WordIndex, byte: number): number {
-	if (wi.wordCount === 0) return 0;
-	const w = wi.wordOf(byte);
-	return wi.byteOf(w) >= byte ? w : Math.min(w + 1, wi.wordCount);
 }
 
 function toImageRows(bookId: string, images: readonly ImportImage[]): NewBookImage[] {
@@ -428,7 +430,7 @@ export async function addBookWithContent(
 	const wi = WordIndex.build(content);
 	const dbChapters: Chapter[] = (importChapters ?? []).map((ch) => ({
 		title: ch.title,
-		startWord: wi.wordOf(ch.startByte),
+		startWord: wi.firstShownWord(ch.startByte),
 	}));
 	const dbLinks: LinkRange[] = (importLinks ?? []).map((l) => ({
 		href: l.href,
@@ -503,7 +505,7 @@ export async function updateBook(
 	 *  replays changes made on another device at another time, and stamping
 	 *  those with wall clock would date an old finish to today. */
 	occurredAt: number = Date.now(),
-	options: { isDeviceLocal?: boolean } = {},
+	options: { isDeviceLocal?: boolean; onlyIf?: SQL } = {},
 ): Promise<void> {
 	const stamped: Partial<Omit<NewBook, "id">> = { ...data };
 	// `updated_at` is the reading position's revision and nothing else: released
@@ -534,7 +536,137 @@ export async function updateBook(
 					END`,
 				}
 			: stamped;
-	await db.update(books).set(patch).where(eq(books.id, id));
+	await db
+		.update(books)
+		.set(patch)
+		.where(options.onlyIf ? and(eq(books.id, id), options.onlyIf) : eq(books.id, id));
+}
+
+export type PositionRow = { wordPosition: number; updatedAt: number };
+
+/**
+ * The reader's position write, as a register: it lands only while the row's
+ * revision is still one the reader has seen (`baseRev`), so it can never replace
+ * a newer position written meanwhile (a sync pull, a BLE device). Returns the revision it stamped, whether it landed, and the row as it is now.
+ */
+/** A reader write's revision: above every one it has seen, even when this clock is behind. */
+export function nextPositionRevision(lastRead: number, baseRev: number): number {
+	return Math.max(lastRead, baseRev + 1);
+}
+
+/**
+ * A position a device reports, as a row update. `updatedAt` is the revision and
+ * stays above the row's; `lastRead` is wall clock like every other writer's,
+ * which the pending-position recovery compares against.
+ */
+export function devicePositionWrite(wordPosition: WordPosition, now: number, rowRevision: number) {
+	return { wordPosition, lastRead: now, updatedAt: nextPositionRevision(now, rowRevision) };
+}
+
+export async function writeReaderPosition(
+	id: string,
+	write: { wordPosition: WordPosition; lastRead: number; baseRev: number },
+): Promise<{ isWritten: boolean; row: PositionRow | null; stamp: number }> {
+	const stamp = nextPositionRevision(write.lastRead, write.baseRev);
+	await updateBook(
+		id,
+		{ wordPosition: write.wordPosition, lastRead: write.lastRead, updatedAt: stamp },
+		write.lastRead,
+		{ onlyIf: lte(books.updatedAt, write.baseRev) },
+	);
+	const [row] = await db
+		.select({ wordPosition: books.wordPosition, updatedAt: books.updatedAt })
+		.from(books)
+		.where(eq(books.id, id));
+	if (!row) return { isWritten: false, row: null, stamp };
+	return {
+		isWritten: row.updatedAt === stamp && row.wordPosition === write.wordPosition,
+		row,
+		stamp,
+	};
+}
+
+/**
+ * Writes a sync merge that was decided on rows read before the network fetch.
+ * The reader may have saved since, so each part applies only while the row's
+ * own stamp is still older than the server's: a position saved during the fetch
+ * must not be replaced by the older one the server sent.
+ *
+ * Returns the columns no stamp guards (a bug), and the server's position when
+ * the reader's own newer save made its guard skip it: the open reader still has
+ * to decide whose position wins.
+ */
+export async function applyBookMerge(
+	id: string,
+	update: BookMergeUpdate,
+	/** The server row's revision, the time the merged change was made. */
+	occurredAt: number,
+): Promise<{ unrouted: string[]; skippedPosition: PositionRow | null }> {
+	const {
+		addedAt,
+		metadataUpdatedAt,
+		wordPosition,
+		updatedAt,
+		lastRead,
+		wordCount,
+		title,
+		author,
+		description,
+		language,
+		status,
+		rating,
+		review,
+		tags,
+		hideFromProfile,
+		...unrouted
+	} = update;
+	// A column added to BookMergeUpdate must be routed above, under its stamp.
+	const exhaustive: Record<string, never> = unrouted;
+	const skipped = Object.keys(exhaustive);
+	if (skipped.length > 0 && import.meta.env.DEV) {
+		throw new Error(`applyBookMerge: no stamp guards ${skipped.join(", ")}`);
+	}
+	let skippedPosition: PositionRow | null = null;
+	if (wordPosition !== undefined && updatedAt !== undefined) {
+		await updateBook(
+			id,
+			{
+				wordPosition,
+				updatedAt,
+				...(lastRead !== undefined && { lastRead }),
+				...(wordCount !== undefined && { wordCount }),
+			},
+			occurredAt,
+			{ onlyIf: lt(books.updatedAt, updatedAt) },
+		);
+		const [now] = await db
+			.select({ updatedAt: books.updatedAt })
+			.from(books)
+			.where(eq(books.id, id));
+		if (now && now.updatedAt !== updatedAt) skippedPosition = { wordPosition, updatedAt };
+	}
+	if (metadataUpdatedAt !== undefined) {
+		const metadata = Object.fromEntries(
+			Object.entries({
+				title,
+				author,
+				description,
+				language,
+				status,
+				rating,
+				review,
+				tags,
+				hideFromProfile,
+			}).filter(([, value]) => value !== undefined),
+		);
+		await updateBook(id, { ...metadata, metadataUpdatedAt }, occurredAt, {
+			onlyIf: lt(books.metadataUpdatedAt, metadataUpdatedAt),
+		});
+	}
+	if (addedAt !== undefined) {
+		await updateBook(id, { addedAt }, occurredAt, { onlyIf: gt(books.addedAt, addedAt) });
+	}
+	return { unrouted: skipped, skippedPosition };
 }
 
 /** Nothing was read in this app before it existed, so a session stamped earlier

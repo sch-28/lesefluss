@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { type Page, test } from "@playwright/test";
 
 /**
  * Wipe IndexedDB + storage so each test starts from a clean library and no
@@ -7,6 +7,10 @@ import type { Page } from "@playwright/test";
  * otherwise jeep-sqlite holds an open handle to the about-to-be-deleted DB.
  */
 export async function resetStorage(page: Page) {
+	await test.step("setup: reset storage", () => wipe(page), { box: true });
+}
+
+async function wipe(page: Page) {
 	await page.goto("/");
 	await page.evaluate(async () => {
 		const dbs = await indexedDB.databases();

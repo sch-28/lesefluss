@@ -11,6 +11,15 @@ const VALID_THEMES: AppTheme[] = ["dark", "sepia", "light"];
 const THEME_CACHE_KEY = "app-theme";
 const EINK_CACHE_KEY = "app-eink";
 
+export function isAppTheme(raw: string | undefined): raw is AppTheme {
+	return VALID_THEMES.some((t) => t === raw);
+}
+
+/** A theme synced from a newer app version that this build doesn't know falls back to dark. */
+export function storedThemeFor(raw: string | undefined): AppTheme {
+	return isAppTheme(raw) ? raw : "dark";
+}
+
 function readCachedEinkMode(): boolean {
 	try {
 		return localStorage.getItem(EINK_CACHE_KEY) === "1";
@@ -52,20 +61,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 	const { data: settings } = queryHooks.useSettings();
 	const saveMutation = queryHooks.useSaveSettings();
 
-	const rawTheme = settings?.readerTheme;
-	const storedTheme: AppTheme =
-		rawTheme && (VALID_THEMES as string[]).includes(rawTheme) ? (rawTheme as AppTheme) : "dark";
+	const storedTheme = storedThemeFor(settings?.readerTheme);
 	// Until settings load, trust what index.html already painted from the cache.
 	const isEinkMode = settings ? settings.einkMode : readCachedEinkMode();
 	const isLoaded = settings !== undefined;
 	const theme: AppTheme = isEinkMode ? "light" : storedTheme;
 	const appFontSize = settings?.appFontSize ?? DEFAULT_SETTINGS.APP_FONT_SIZE;
 
+	const rawTheme = settings?.readerTheme;
 	const setTheme = useCallback(
 		(t: AppTheme) => {
-			saveMutation.mutate({ readerTheme: t });
+			if (t !== rawTheme) saveMutation.mutate({ readerTheme: t });
 		},
-		[saveMutation],
+		[saveMutation, rawTheme],
 	);
 
 	// Only once settings have loaded: applying the defaults first would strip

@@ -28,8 +28,10 @@ test("an engine without oklch() gets the WebView notice instead of a broken app"
 	// What a pre-111 Chromium answers; the rest of the engine stays modern.
 	await page.addInitScript(() => {
 		const supports = CSS.supports.bind(CSS);
-		CSS.supports = ((...args: [string, string?]) =>
-			args[1]?.startsWith("oklch") ? false : supports(...args)) as typeof CSS.supports;
+		CSS.supports = ((condition: string, value?: string) => {
+			if (value === undefined) return supports(condition);
+			return value.startsWith("oklch") ? false : supports(condition, value);
+		}) as typeof CSS.supports;
 	});
 	await page.route("**/api/telemetry", (route) => route.fulfill({ status: 200, body: "{}" }));
 	const posts = recordTelemetry(page);

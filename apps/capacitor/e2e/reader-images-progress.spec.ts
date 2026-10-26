@@ -16,8 +16,10 @@ import { reader } from "./page-objects/reader";
  */
 
 const MAX_PAGE_DOWNS = 40;
+// A PageDown's scroll landing and the list mounting what it reveals.
 const PAGE_DOWN_SETTLE_MS = 150;
 const MAX_PAGE_TURNS = 60;
+// A page turn's slide; page mode has no event for a turn that has landed.
 const PAGE_TURN_SETTLE_MS = 500;
 
 /** The paragraph rendered right after `figure`. */
@@ -41,7 +43,7 @@ test("a figure at the viewport top makes the paragraph after it the position, an
 	const title = await seedBigBook(page);
 	await openBookFromLibrary(page, title);
 	await reader.expectLoaded(page);
-	await page.waitForTimeout(reader.OPEN_SETTLE_MS);
+	await reader.waitOpenSettled(page);
 
 	const figure = page.locator('.reader-figure:has(img[alt="Figure 15"])');
 	await scrollUntilAttached(page, figure);
@@ -50,10 +52,12 @@ test("a figure at the viewport top makes the paragraph after it the position, an
 
 	// Park the figure at the bottom first so the move to the top is a real
 	// scroll. The settle saves the paragraph after the figure as the position.
-	await figure.evaluate((el) => el.scrollIntoView({ block: "end" }));
-	await page.waitForTimeout(reader.OPEN_SETTLE_MS);
-	await figure.evaluate((el) => el.scrollIntoView({ block: "start" }));
-	await page.waitForTimeout(reader.OPEN_SETTLE_MS);
+	await reader.wheelTargetTo(page, figure, "bottom");
+	// This move's settle, and its save if any, must be done before the next one.
+	await reader.waitPositionQuiet(page);
+	const savePending = reader.waitForNextSave(page);
+	await reader.wheelTargetTo(page, figure, "top");
+	await savePending;
 
 	// Client-side navigation keeps the save hook alive across the unmount flush.
 	await page.goBack();
@@ -94,7 +98,8 @@ test("a TOC jump lands inside the chapter with its art visible", async ({ page }
 
 test("page mode turns across a page-sized figure and never rewinds", async ({ page }) => {
 	await openBigBookInPageMode(page);
-	await page.waitForTimeout(reader.OPEN_SETTLE_MS);
+	// Page mode paginates after the open; no event marks it done.
+	await page.waitForTimeout(reader.LIST_SETTLE_MS);
 
 	expect(await reader.pageModePageCount(page)).toBeGreaterThan(1);
 
@@ -196,7 +201,8 @@ test("a book that opens on a page-sized figure saves nothing until the reader mo
 	await page.waitForURL(/\/tabs\/reader\//);
 	const frontispiece = page.locator('.reader-figure img[alt="Frontispiece"]');
 	await expect(frontispiece).toBeInViewport({ timeout: 10_000 });
-	await page.waitForTimeout(reader.OPEN_SETTLE_MS);
+	// Nothing may be saved in the time an open's own scroll ends would come.
+	await page.waitForTimeout(reader.LIST_SETTLE_MS);
 	expect(await reader.saveCount(page)).toBe(0);
 
 	await page.goBack();

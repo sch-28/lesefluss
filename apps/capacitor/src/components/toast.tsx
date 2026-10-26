@@ -10,6 +10,8 @@ export type ToastKind = "success" | "danger" | "warning" | "info";
 
 export interface ToastOptions {
 	duration?: number;
+	/** A toast with the same id replaces the one showing. */
+	id?: string;
 	action?: { label: string; onClick: () => void };
 }
 
@@ -22,6 +24,7 @@ function emit(message: string, kind: ToastKind, opts: ToastOptions = {}) {
 	const options = {
 		duration: opts.duration ?? (opts.action ? ACTION_DURATION : DEFAULT_DURATION),
 		action: opts.action,
+		id: opts.id,
 	};
 	switch (kind) {
 		case "success":
@@ -44,6 +47,7 @@ export const toast = {
 	warning: (msg: string, opts?: ToastOptions) => emit(msg, "warning", opts),
 	info: (msg: string, opts?: ToastOptions) => emit(msg, "info", opts),
 	show: (msg: string, kind: ToastKind = "info", opts?: ToastOptions) => emit(msg, kind, opts),
+	dismiss: (id: string) => sonnerToast.dismiss(id),
 };
 
 export function useToast() {

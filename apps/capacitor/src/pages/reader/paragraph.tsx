@@ -169,7 +169,13 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			return withLeading(
 				figures,
 				undefined,
-				<Tag className={`reader-heading reader-heading-${headingLevel}`}>{headingText}</Tag>,
+				// Headings render without word spans; this lets a reflow re-anchor onto one.
+				<Tag
+					className={`reader-heading reader-heading-${headingLevel}`}
+					data-heading-word={entries[0]?.wordIndex}
+				>
+					{headingText}
+				</Tag>,
 			);
 		}
 

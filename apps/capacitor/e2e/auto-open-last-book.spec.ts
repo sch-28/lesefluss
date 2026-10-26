@@ -26,6 +26,7 @@ test("auto-opened last book: back leaves the reader for the library", async ({ p
 
 	await page.getByRole("button", { name: "Back" }).first().click();
 	await page.waitForURL(/\/tabs\/library/, { timeout: 10_000 });
+	// An auto-open that wrongly fires again would have navigated away by now.
 	await page.waitForTimeout(1000);
 	await expect(page).toHaveURL(/\/tabs\/library/);
 });

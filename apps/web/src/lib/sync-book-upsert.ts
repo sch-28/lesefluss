@@ -13,6 +13,7 @@ import type { FeedBookState } from "./social/feed-transitions";
  * On conflict neither upsert set touches the origin columns.
  */
 export function bookInsertValues(userId: string, book: SyncBook, origin?: BookOrigin) {
+	const now = Date.now();
 	return {
 		userId,
 		bookId: book.bookId,
@@ -47,10 +48,11 @@ export function bookInsertValues(userId: string, book: SyncBook, origin?: BookOr
 		tags: book.deleted ? null : (book.tags ?? null),
 		hideFromProfile: book.deleted ? false : (book.hideFromProfile ?? false),
 		deleted: book.deleted,
-		updatedAt: new Date(book.updatedAt),
+		// A client clock running ahead would otherwise win every later merge.
+		updatedAt: new Date(Math.min(book.updatedAt, now)),
 		// A client that pre-dates the column sends nothing; falling back to the row
 		// revision keeps the merge below a plain comparison.
-		metadataUpdatedAt: new Date(book.metadataUpdatedAt ?? book.updatedAt),
+		metadataUpdatedAt: new Date(Math.min(book.metadataUpdatedAt ?? book.updatedAt, now)),
 	};
 }
 

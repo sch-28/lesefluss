@@ -53,6 +53,15 @@ export function readPendingPosition(bookId: string): PendingPosition | null {
 	}
 }
 
+/**
+ * Clears the entry a write left, once that write has settled. A later write
+ * still in flight has replaced it with its own, which must outlive this one.
+ */
+export function clearOwnPendingPosition(bookId: string, entry: PendingPosition): void {
+	const current = readPendingPosition(bookId);
+	if (current?.word === entry.word && current.at === entry.at) clearPendingPosition(bookId);
+}
+
 export function clearPendingPosition(bookId: string): void {
 	try {
 		localStorage.removeItem(pendingPositionKey(bookId));

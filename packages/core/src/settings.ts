@@ -39,9 +39,13 @@ export const DEFAULT_SETTINGS = {
 	// Reader appearance (stored in DB, applied in-app only)
 	READER_THEME: "dark", // 'dark' | 'sepia' | 'light'
 	READER_FONT_SIZE: 16, // px (12–28)
-	READER_FONT_FAMILY: "sans", // 'sans' | 'serif'
+	READER_FONT_FAMILY: "sans", // 'sans' | 'serif' | 'atkinson' | 'opendyslexic' | 'literata'
+	READER_BOLD: false, // bold body text in the scroll and page reader
 	READER_LINE_SPACING: 1.8, // line-height multiplier (1.2–2.4)
 	READER_MARGIN: 20, // horizontal padding px (8–48)
+	READER_LETTER_SPACING: 0, // em added between letters (0–0.2)
+	READER_WORD_SPACING: 0, // em added between words (0–0.48)
+	READER_PARAGRAPH_SPACING: 1.1, // em between paragraphs (0.5–2.9)
 	READER_ACTIVE_WORD_UNDERLINE: true, // underline the currently active word in the scroll reader
 	READER_GLOSSARY_UNDERLINE: true, // underline words that match a glossary entry label
 	SHOW_READING_TIME: true, // show time remaining in progress bar
@@ -79,6 +83,10 @@ export const SETTING_CONSTRAINTS = {
 	READER_FONT_SIZE: { min: 12, max: 28, step: 2 },
 	READER_LINE_SPACING: { min: 1.2, max: 2.4, step: 0.1 },
 	READER_MARGIN: { min: 8, max: 48, step: 4 },
+	// Grids put WCAG 1.4.12's text spacing (0.12 / 0.16 / 2 em) exactly on a step.
+	READER_LETTER_SPACING: { min: 0, max: 0.2, step: 0.04 },
+	READER_WORD_SPACING: { min: 0, max: 0.48, step: 0.04 },
+	READER_PARAGRAPH_SPACING: { min: 0.5, max: 2.9, step: 0.3 },
 	APP_FONT_SIZE: { min: 12, max: 22, step: 1 },
 	TTS_WPM: { min: 80, max: 500, step: 10 },
 	TTS_PITCH: { min: 0.5, max: 2.0, step: 0.1 },
@@ -102,8 +110,12 @@ export const SYNCED_SETTING_KEYS = [
 	"readerTheme",
 	"readerFontSize",
 	"readerFontFamily",
+	"readerBold",
 	"readerLineSpacing",
 	"readerMargin",
+	"readerLetterSpacing",
+	"readerWordSpacing",
+	"readerParagraphSpacing",
 	"showReadingTime",
 	"readerActiveWordUnderline",
 	"readerGlossaryUnderline",

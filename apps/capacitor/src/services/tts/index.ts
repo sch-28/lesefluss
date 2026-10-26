@@ -1,5 +1,6 @@
 import { Capacitor, type PluginListenerHandle, registerPlugin } from "@capacitor/core";
 import type { WordIndex, WordPosition } from "@lesefluss/core";
+import { createFakeTts, isFakeTtsRequested } from "../../test-hooks/tts";
 import { log } from "../../utils/log";
 import type { ListenInterval } from "./listen-sessions";
 import { loadBaseline, rateFor } from "./pace";
@@ -53,7 +54,7 @@ type TtsEvents = {
 	sleepTimer: { endsAt: number; isAtChapterEnd: boolean };
 };
 
-interface TtsPlugin {
+export interface TtsPlugin {
 	start(
 		options: {
 			segments: WireSegment[];
@@ -86,9 +87,10 @@ interface TtsPlugin {
 
 type NativeSpeechOptions = { rate: number; pitch: number; voice?: string; rewindWords: number };
 
-const TtsNative = registerPlugin<TtsPlugin>("Tts");
+const isFakeTts = import.meta.env.DEV && isFakeTtsRequested();
+const TtsNative = isFakeTts ? createFakeTts() : registerPlugin<TtsPlugin>("Tts");
 
-export const IS_READ_ALOUD_SUPPORTED = Capacitor.getPlatform() === "android";
+export const IS_READ_ALOUD_SUPPORTED = Capacitor.getPlatform() === "android" || isFakeTts;
 
 // Enough text to keep talking for about half an hour if the WebView stops
 // running JS in the background and cannot answer `needMore`.

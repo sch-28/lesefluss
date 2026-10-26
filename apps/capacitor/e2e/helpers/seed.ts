@@ -3,7 +3,7 @@ import {
 	type EpubFixture,
 	strayAnchorFixture,
 } from "@lesefluss/book-import/test-fixtures/build-epub";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { resetStorage } from "./storage";
 
 export { resetStorage };
@@ -22,11 +22,18 @@ export async function importEpubViaFilePicker(
 	page: Page,
 	opts: { buffer: Buffer; fileName: string; title: string },
 ) {
-	await stageEpubViaFilePicker(page, opts);
-	await page.getByRole("button", { name: "Add to library" }).click({ timeout: 20_000 });
-	await expect(page.locator(`[data-book-title="${opts.title}"]`)).toHaveCount(1, {
-		timeout: 20_000,
-	});
+	// A named step so the timing report can tell setup from the test's own work.
+	await test.step(
+		"setup: import epub",
+		async () => {
+			await stageEpubViaFilePicker(page, opts);
+			await page.getByRole("button", { name: "Add to library" }).click({ timeout: 20_000 });
+			await expect(page.locator(`[data-book-title="${opts.title}"]`)).toHaveCount(1, {
+				timeout: 20_000,
+			});
+		},
+		{ box: true },
+	);
 }
 
 /** Pick an EPUB through the real file picker and stop at the confirm sheet. */
@@ -75,8 +82,14 @@ export async function seedFixture(
  * Centralises the selector + URL-wait so spec code stops re-inventing it.
  */
 export async function openBookFromLibrary(page: Page, title: string) {
-	// The card root, not the first text match: the title also appears in the
-	// import confirm sheet, so a text lookup can land on a dismissed overlay.
-	await page.locator(`[data-book-title="${title}"]`).first().click();
-	await page.waitForURL(/\/tabs\/reader\//);
+	await test.step(
+		"setup: open book",
+		async () => {
+			// The card root, not the first text match: the title also appears in the
+			// import confirm sheet, so a text lookup can land on a dismissed overlay.
+			await page.locator(`[data-book-title="${title}"]`).first().click();
+			await page.waitForURL(/\/tabs\/reader\//);
+		},
+		{ box: true },
+	);
 }

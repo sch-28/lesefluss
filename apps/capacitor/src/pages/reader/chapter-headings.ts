@@ -25,9 +25,13 @@ export function buildChapterHeadingMap(
 	if (chapters.length === 0 || paragraphs.length === 0) return map;
 	for (const ch of chapters) {
 		const idx = paragraphIndexForWord(paragraphStartWords, ch.startWord);
-		if (paragraphStartWords[idx] === ch.startWord && getHeadingLevel(paragraphs[idx]) === 0) {
-			map.set(idx, ch.title);
-		}
+		if (paragraphStartWords[idx] !== ch.startWord || getHeadingLevel(paragraphs[idx]) > 0) continue;
+		// A start one word before a heading is that heading's, stored early by an
+		// older import: the chapter has its title already.
+		const isJustBeforeHeading =
+			paragraphStartWords[idx + 1] === ch.startWord + 1 &&
+			getHeadingLevel(paragraphs[idx + 1] ?? "") > 0;
+		if (!isJustBeforeHeading) map.set(idx, ch.title);
 	}
 	return map;
 }

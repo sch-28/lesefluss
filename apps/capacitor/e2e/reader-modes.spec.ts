@@ -18,16 +18,17 @@ test("word position survives a scroll → rsvp → paged → scroll tour", async
 	await reader.moveToChapter(page, "2: Second");
 	await expect(page.locator("h2", { hasText: "TITLE 2" })).toBeInViewport({ timeout: 5000 });
 	await savePending;
+	const chapter2Word = await reader.lastSavedWord(page);
+	const id = reader.bookIdFromUrl(page);
 
 	// Scroll → RSVP. RsvpView mounts at `initialWord` from lastWordRef.
 	await reader.toggleRsvp(page);
 	await expect(page.locator(".rsvp-display")).toBeVisible({ timeout: 5000 });
 
-	// RSVP → standard. exitRsvpToStandard() calls savePosition again.
-	const exitSave = reader.waitForNextSave(page);
+	// RSVP → standard, on the word already saved.
 	await reader.toggleRsvp(page);
 	await expect(page.locator(".rsvp-display")).toBeHidden();
-	await exitSave;
+	expect((await reader.savedRow(page, id))?.wordPosition).toBe(chapter2Word);
 
 	// Standard → paged.
 	await reader.setPaginationStyle(page, "page");

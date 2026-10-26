@@ -11,6 +11,7 @@ import { reader } from "./page-objects/reader";
 const PORTRAIT = { width: 420, height: 900 };
 const LANDSCAPE = { width: 900, height: 420 };
 const MAX_PAGE_TURNS = 60;
+// A page turn's slide; page mode has no event for a turn that has landed.
 const PAGE_TURN_SETTLE_MS = 500;
 
 async function turnUntilFigureVisible(page: Page, figureAlt: string): Promise<void> {

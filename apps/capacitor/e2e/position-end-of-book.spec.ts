@@ -32,8 +32,8 @@ function oneParagraphFixture(): EpubFixture {
 	};
 }
 
-// Also past the virtual list re-measuring rows after a long scroll.
-const SETTLE_MS = reader.OPEN_SETTLE_MS;
+// Past the virtual list re-measuring rows after a long scroll.
+const SETTLE_MS = reader.LIST_SETTLE_MS;
 // Well past virtua's 150ms scroll-end debounce: long enough for any settle a
 // scroll would trigger to have run.
 const QUIET_MS = 1000;
@@ -41,7 +41,7 @@ const QUIET_MS = 1000;
 async function openSettled(page: Page, title: string): Promise<void> {
 	await openBookFromLibrary(page, title);
 	await reader.expectLoaded(page);
-	await page.waitForTimeout(SETTLE_MS);
+	await reader.waitOpenSettled(page);
 }
 
 async function seedAndOpen(page: Page, fixture: EpubFixture, fileName: string): Promise<string> {
@@ -110,23 +110,31 @@ async function saveAtLastParagraph(page: Page): Promise<number> {
 	return word;
 }
 
-/** Leave the reader and wait until its unmount flush, if any, has committed. */
-async function leaveReader(page: Page): Promise<void> {
-	const bookId = reader.bookIdFromUrl(page);
-	await page.goBack();
-	await page.waitForURL(/\/tabs\/library/);
-	await expect.poll(() => reader.getPendingPosition(page, bookId)).toBeNull();
-	// The e2e save hook is published after the position push that follows the commit.
-	await page.waitForTimeout(300);
+/** Leave the reader, wait until its unmount flush, if any, has committed, and return the saved word. */
+async function leaveReader(page: Page): Promise<number | undefined> {
+	const bookId = await reader.leaveFlushed(page);
+	return (await reader.savedRow(page, bookId))?.wordPosition;
 }
 
 /** Leave, then reopen and check the DB position is still `word` (it restores into view). */
 async function expectSavedAfterLeaving(page: Page, title: string, word: number): Promise<void> {
-	await leaveReader(page);
-	expect(await reader.lastSavedWord(page)).toBe(word);
+	expect(await leaveReader(page)).toBe(word);
 	await openSettled(page, title);
 	await expect(page.locator(`span[data-word="${word}"]`)).toBeInViewport();
 }
+
+/**
+ * Ends the anchor hold a reopen at the saved word leaves, with real input that
+ * cannot move the view (a wheel down at the bottom), so the clamps below reach
+ * the settle rule this spec is about instead of being corrected by the hold.
+ */
+async function endHoldAtBottom(page: Page) {
+	expect(await readerScrollerAtEnd(page)).toBe(true);
+	await reader.wheel(page, 1);
+	await reader.waitHoldIdle(page);
+}
+
+/** Runs `clamp`, then checks the settle rule ran for it and decided not to save. */
 
 test("a page-sized figure after the last paragraph does not move the saved position", async ({
 	page,
@@ -157,10 +165,12 @@ test("a scroll that doesn't move the view near the end of the book keeps the sav
 	const saved = await saveAtLastParagraph(page);
 	await leaveReader(page);
 	await openSettled(page, title);
+	await endHoldAtBottom(page);
 
-	await shiftScroller(page, -1);
-	await shiftScroller(page, 1);
-	await page.waitForTimeout(QUIET_MS);
+	await reader.expectSettledWithoutSave(page, async () => {
+		await shiftScroller(page, -1);
+		await shiftScroller(page, 1);
+	});
 
 	await expectSavedAfterLeaving(page, title, saved);
 });
@@ -178,9 +188,11 @@ test("a 1px clamp followed by the keyboard opening near the end keeps the saved 
 	// viewport before that scroll's settle fires.
 	const viewport = page.viewportSize();
 	if (!viewport) throw new Error("No viewport size");
-	await shiftScroller(page, -1);
-	await page.setViewportSize({ width: viewport.width, height: viewport.height - 370 });
-	await page.waitForTimeout(QUIET_MS);
+	await endHoldAtBottom(page);
+	await reader.expectSettledWithoutSave(page, async () => {
+		await shiftScroller(page, -1);
+		await page.setViewportSize({ width: viewport.width, height: viewport.height - 370 });
+	});
 	await page.setViewportSize(viewport);
 	await page.waitForTimeout(QUIET_MS);
 
@@ -199,8 +211,8 @@ test("the keyboard closing near the end keeps the saved position", async ({ page
 	if (!viewport) throw new Error("No viewport size");
 	await page.setViewportSize({ width: viewport.width, height: viewport.height - 300 });
 	await openSettled(page, title);
-	await page.setViewportSize(viewport);
-	await page.waitForTimeout(QUIET_MS);
+	await endHoldAtBottom(page);
+	await reader.expectSettledWithoutSave(page, () => page.setViewportSize(viewport));
 
 	await expectSavedAfterLeaving(page, title, saved);
 });
@@ -211,11 +223,20 @@ test("scrolling up and straight back to the end keeps the saved position", async
 	await leaveReader(page);
 	await openSettled(page, title);
 
-	// Both wheels land within one scroll-end debounce, so there is a single
-	// settle at the same offset, after ticks passed through earlier paragraphs.
-	await reader.wheel(page, -600);
-	await page.mouse.wheel(0, 100_000);
-	await page.waitForTimeout(QUIET_MS);
+	// Both moves land within one scroll-end debounce, so there is a single settle
+	// at the same offset, after ticks passed through earlier paragraphs. Done in
+	// the page in one go (a wheel event marks it as the reader's), as two real
+	// wheels with round trips between can take longer than the debounce.
+	await reader.expectSettledWithoutSave(page, () =>
+		page.evaluate(async () => {
+			const list = document.querySelector(".reader-scroll-content")?.firstElementChild;
+			if (!list) throw new Error("No reader scroller");
+			list.dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: -600 }));
+			list.scrollTop -= 600;
+			await new Promise(requestAnimationFrame);
+			list.scrollTop = list.scrollHeight;
+		}),
+	);
 
 	await expectSavedAfterLeaving(page, title, saved);
 });
@@ -240,17 +261,15 @@ test("scrolling back saves the earlier position, also when leaving mid-scroll", 
 }) => {
 	const title = await seedAndOpen(page, bigBookFixture(), "big.epub");
 
-	// Each step leaves the reader, whose flush always writes the current word.
+	// Each step leaves the reader, whose flush writes the current word if it moved.
 	await reader.wheel(page, 2500);
 	await page.waitForTimeout(QUIET_MS);
-	await leaveReader(page);
-	const ahead = await reader.lastSavedWord(page);
+	const ahead = (await leaveReader(page)) ?? 0;
 
 	await openSettled(page, title);
 	await reader.wheel(page, -800);
 	await page.waitForTimeout(QUIET_MS);
-	await leaveReader(page);
-	const back = await reader.lastSavedWord(page);
+	const back = (await leaveReader(page)) ?? Number.POSITIVE_INFINITY;
 	expect(back).toBeLessThan(ahead);
 
 	await openSettled(page, title);
@@ -258,6 +277,5 @@ test("scrolling back saves the earlier position, also when leaving mid-scroll", 
 	await page.evaluate(
 		() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
 	);
-	await leaveReader(page);
-	expect(await reader.lastSavedWord(page)).toBeLessThan(back);
+	expect(await leaveReader(page)).toBeLessThan(back);
 });

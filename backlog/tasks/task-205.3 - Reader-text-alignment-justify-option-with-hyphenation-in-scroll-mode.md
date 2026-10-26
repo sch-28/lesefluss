@@ -3,8 +3,8 @@ id: TASK-205.3
 title: 'Reader text alignment: justify option with hyphenation in scroll mode'
 status: To Do
 assignee: []
-created_date: '2026-10-20 22:23'
-updated_date: '2026-10-20 22:35'
+created_date: '2026-10-26 03:15'
+updated_date: '2026-10-26 03:15'
 labels:
   - reader
 milestone: m-13
@@ -27,7 +27,7 @@ Depends on:
 - TASK-205.8 (scroll-mode re-anchor on layout change)
 - TASK-205.9 (sync forward-compat)
 
-Findings from the 2026-10-21 review:
+Findings from the 2026-10-26 review:
 - Hyphenation in scroll mode is cheap: VList lays out only the mounted paragraphs.
 - Words hyphenated across lines return two client rects. Page-mode measurements already use the first rect (measurements.ts ~257,264). But the selection handles use getBoundingClientRect (use-highlight-selection.ts ~261,274,290), which spans both lines, so they get misplaced. This bug already exists in page mode. spoken-word.ts (~25) has the same issue.
 - The scroll save uses the bbox top (scroll-view.tsx ~676), so a split word at the top is skipped. That's stable on restore.
@@ -47,3 +47,11 @@ Findings from the 2026-10-21 review:
 - [ ] #7 Tests cover the setting and sync
 - [ ] #8 pnpm build and Android build succeed; new Playwright e2e covers alignment toggle mid-chapter (position unchanged, reopen restores) in scroll and page mode and selection across a hyphen-split word; existing position-*, page-mode-*, highlights-* and selection-dismiss e2e specs pass
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-10-26 lese-planner (from the TASK-205.2 review): scroll-mode hyphens:auto must use the same lang path as page mode (chunk-content.tsx sets hyphens + lang); at extreme spacing (max letter/word + large font + wide margins) long words in scroll mode currently break mid-word without a hyphen. Chromium justify stretches spaces on top of word-spacing, so max word spacing + justify on narrow columns makes rivers: consider capping the effective word spacing when justify is on, or rely on hyphenation.
+
+2026-10-26 from the TASK-205.2 review (lese-planner via lese-worker): scroll-mode `hyphens: auto` must use the same lang path as page mode (chunk-content's `lang`). With justify, the effective word spacing adds on top of the reader's word spacing (TASK-205.2's --reader-word-spacing, up to 0.48em), so consider capping it or relying on hyphenation.
+<!-- SECTION:NOTES:END -->

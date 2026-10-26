@@ -21,11 +21,14 @@ export function BookChapters({
 	wordCount,
 	wordPosition,
 	onJump,
+	isResolved,
 }: {
 	chapters: Chapter[];
 	wordCount: number;
 	wordPosition: WordPosition;
 	onJump: (startWord: number) => void;
+	/** False while the chapter starts may still be one word early (see useBookChapters). */
+	isResolved: boolean;
 }) {
 	const listRef = useRef<HTMLOListElement>(null);
 	const currentRef = useRef<HTMLLIElement>(null);
@@ -33,8 +36,9 @@ export function BookChapters({
 	// Titles are still worth showing when the offsets are legacy byte positions,
 	// but jumping on them would write a nonsense reading position, and the
 	// "here" marker would point at the wrong chapter.
-	const canJump = hasWordAlignedChapters(chapters, wordCount);
-	const currentIndex = canJump ? currentChapterIndex(chapters, wordPosition) : -1;
+	const isWordAligned = hasWordAlignedChapters(chapters, wordCount);
+	const canJump = isWordAligned && isResolved;
+	const currentIndex = isWordAligned ? currentChapterIndex(chapters, wordPosition) : -1;
 
 	// Centre the current chapter by setting scrollTop directly. `scrollIntoView`
 	// walks up and scrolls ancestors too, which would drag the whole detail page

@@ -18,6 +18,7 @@ async function openWithSelection(page: Page) {
 
 test("a mouse-drag selection keeps its toolbar after the mouse is released", async ({ page }) => {
 	const toolbar = await openWithSelection(page);
+	// A dismissal triggered by the mouse release would have hidden it by now.
 	await page.waitForTimeout(300);
 	await expect(toolbar).toBeVisible();
 });

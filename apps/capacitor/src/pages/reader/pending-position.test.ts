@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+	clearOwnPendingPosition,
 	type PendingPosition,
 	readPendingPosition,
 	recoverPendingWord,
@@ -49,5 +50,26 @@ describe("teardown safety net round-trip", () => {
 		const pending = readPendingPosition(BOOK);
 		// DB committed 500 at a later time -> seed already at 500, fallback ignored.
 		expect(recoverPendingWord(500, 3000, pending)).toBeNull();
+	});
+});
+
+describe("clearOwnPendingPosition", () => {
+	beforeEach(() => localStorage.clear());
+
+	it("leaves a later write's entry when an earlier write settles", () => {
+		writePendingPosition(BOOK, 100, 1000);
+		writePendingPosition(BOOK, 200, 2000);
+
+		clearOwnPendingPosition(BOOK, { word: 100, at: 1000 });
+
+		expect(readPendingPosition(BOOK)).toEqual({ word: 200, at: 2000 });
+	});
+
+	it("clears its own entry", () => {
+		writePendingPosition(BOOK, 200, 2000);
+
+		clearOwnPendingPosition(BOOK, { word: 200, at: 2000 });
+
+		expect(readPendingPosition(BOOK)).toBeNull();
 	});
 });

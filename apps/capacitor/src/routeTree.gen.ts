@@ -25,6 +25,7 @@ import { Route as TabsSettingsRsvpRouteImport } from './routes/tabs/settings/rsv
 import { Route as TabsSettingsReaderRouteImport } from './routes/tabs/settings/reader'
 import { Route as TabsSettingsReadAloudRouteImport } from './routes/tabs/settings/read-aloud'
 import { Route as TabsSettingsNotificationsRouteImport } from './routes/tabs/settings/notifications'
+import { Route as TabsSettingsLicensesRouteImport } from './routes/tabs/settings/licenses'
 import { Route as TabsSettingsGeneralRouteImport } from './routes/tabs/settings/general'
 import { Route as TabsSettingsExportRouteImport } from './routes/tabs/settings/export'
 import { Route as TabsSettingsDeviceRouteImport } from './routes/tabs/settings/device'
@@ -122,6 +123,11 @@ const TabsSettingsNotificationsRoute =
     path: '/tabs/settings/notifications',
     getParentRoute: () => rootRouteImport,
   } as any)
+const TabsSettingsLicensesRoute = TabsSettingsLicensesRouteImport.update({
+  id: '/tabs/settings/licenses',
+  path: '/tabs/settings/licenses',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TabsSettingsGeneralRoute = TabsSettingsGeneralRouteImport.update({
   id: '/tabs/settings/general',
   path: '/tabs/settings/general',
@@ -212,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
+  '/tabs/settings/licenses': typeof TabsSettingsLicensesRoute
   '/tabs/settings/notifications': typeof TabsSettingsNotificationsRoute
   '/tabs/settings/read-aloud': typeof TabsSettingsReadAloudRoute
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
@@ -245,6 +252,7 @@ export interface FileRoutesByTo {
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
+  '/tabs/settings/licenses': typeof TabsSettingsLicensesRoute
   '/tabs/settings/notifications': typeof TabsSettingsNotificationsRoute
   '/tabs/settings/read-aloud': typeof TabsSettingsReadAloudRoute
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
@@ -279,6 +287,7 @@ export interface FileRoutesById {
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
+  '/tabs/settings/licenses': typeof TabsSettingsLicensesRoute
   '/tabs/settings/notifications': typeof TabsSettingsNotificationsRoute
   '/tabs/settings/read-aloud': typeof TabsSettingsReadAloudRoute
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
@@ -314,6 +323,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/device'
     | '/tabs/settings/export'
     | '/tabs/settings/general'
+    | '/tabs/settings/licenses'
     | '/tabs/settings/notifications'
     | '/tabs/settings/read-aloud'
     | '/tabs/settings/reader'
@@ -347,6 +357,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/device'
     | '/tabs/settings/export'
     | '/tabs/settings/general'
+    | '/tabs/settings/licenses'
     | '/tabs/settings/notifications'
     | '/tabs/settings/read-aloud'
     | '/tabs/settings/reader'
@@ -380,6 +391,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/device'
     | '/tabs/settings/export'
     | '/tabs/settings/general'
+    | '/tabs/settings/licenses'
     | '/tabs/settings/notifications'
     | '/tabs/settings/read-aloud'
     | '/tabs/settings/reader'
@@ -414,6 +426,7 @@ export interface RootRouteChildren {
   TabsSettingsDeviceRoute: typeof TabsSettingsDeviceRoute
   TabsSettingsExportRoute: typeof TabsSettingsExportRoute
   TabsSettingsGeneralRoute: typeof TabsSettingsGeneralRoute
+  TabsSettingsLicensesRoute: typeof TabsSettingsLicensesRoute
   TabsSettingsNotificationsRoute: typeof TabsSettingsNotificationsRoute
   TabsSettingsReadAloudRoute: typeof TabsSettingsReadAloudRoute
   TabsSettingsReaderRoute: typeof TabsSettingsReaderRoute
@@ -551,6 +564,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabsSettingsNotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tabs/settings/licenses': {
+      id: '/tabs/settings/licenses'
+      path: '/tabs/settings/licenses'
+      fullPath: '/tabs/settings/licenses'
+      preLoaderRoute: typeof TabsSettingsLicensesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tabs/settings/general': {
       id: '/tabs/settings/general'
       path: '/tabs/settings/general'
@@ -670,6 +690,7 @@ const rootRouteChildren: RootRouteChildren = {
   TabsSettingsDeviceRoute: TabsSettingsDeviceRoute,
   TabsSettingsExportRoute: TabsSettingsExportRoute,
   TabsSettingsGeneralRoute: TabsSettingsGeneralRoute,
+  TabsSettingsLicensesRoute: TabsSettingsLicensesRoute,
   TabsSettingsNotificationsRoute: TabsSettingsNotificationsRoute,
   TabsSettingsReadAloudRoute: TabsSettingsReadAloudRoute,
   TabsSettingsReaderRoute: TabsSettingsReaderRoute,

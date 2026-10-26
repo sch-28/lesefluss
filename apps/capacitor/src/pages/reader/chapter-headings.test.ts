@@ -34,4 +34,11 @@ describe("buildChapterHeadingMap", () => {
 	it("returns an empty map when there are no chapters", () => {
 		expect(buildChapterHeadingMap([], ["Body."], [0]).size).toBe(0);
 	});
+
+	it("skips a start on a one-word paragraph right before the chapter's heading (stored early)", () => {
+		const chapters = [{ title: "Chapter 2", startWord: 2 }];
+		const paragraphs = ["Body text.", "Fin.", "# Chapter 2", "Next body."];
+		const starts = [0, 2, 3, 5];
+		expect(buildChapterHeadingMap(chapters, paragraphs, starts).size).toBe(0);
+	});
 });

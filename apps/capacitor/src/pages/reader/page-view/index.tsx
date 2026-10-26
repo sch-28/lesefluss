@@ -42,6 +42,12 @@ import {
 	useState,
 } from "react";
 import { flushSync } from "react-dom";
+import {
+	readerFontFace,
+	type TextSpacing,
+	textSpacingKey,
+	textSpacingVars,
+} from "../../../hooks/use-appearance-settings";
 import type { ReaderGoalDivider } from "../goal-divider";
 import {
 	cancelAnyActiveLongPress,
@@ -53,6 +59,8 @@ import {
 	type ParagraphWordEntry,
 } from "../paragraph";
 import type { ReaderFigureData } from "../reader-figures";
+import { useFontLoadCount } from "../use-font-load-count";
+import { useValueWhenIdle } from "../use-value-when-idle";
 import type { ReaderViewHandle } from "../view-types";
 import ChunkContent from "./chunk-content";
 import {
@@ -70,6 +78,7 @@ const SWIPE_COMMIT_FRACTION = 0.22; // swipe must cross this fraction of pageWid
 const RUBBER_BAND_FACTOR = 0.4; // resistance at the absolute first/last page
 const PAGE_TRANSITION_MS = 220;
 const TAP_ZONE_FRACTION = 0.33; // left/right third of viewport
+const DRAG_HOLD_MAX_MS = 2000; // a font-load re-anchor waits at most this long for a drag
 // Without finger-follow there is no page to drag against, so a short flick must do.
 const NO_FOLLOW_SWIPE_COMMIT_PX = 40;
 
@@ -84,8 +93,10 @@ export interface PageViewProps {
 	// Appearance
 	fontSize: number;
 	fontFamily: string;
+	isBold: boolean;
 	lineSpacing: number;
 	margin: number;
+	textSpacing: TextSpacing;
 	showActiveWordUnderline: boolean;
 	/** HTML `lang` for the page columns; drives CSS hyphenation. */
 	lang: string;
@@ -151,8 +162,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		initialWord,
 		fontSize,
 		fontFamily,
+		isBold,
 		lineSpacing,
 		margin,
+		textSpacing,
 		showActiveWordUnderline,
 		lang,
 		animatePageTurns,
@@ -224,6 +237,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	// (the second pointerup hit the `d === null` branch where dx=dy=dt=0 reads
 	// as a tap). Any gesture that ever saw two concurrent pointers is discarded.
 	const activePointerIdsRef = useRef(new Set<number>());
+	// Pointers that went down while a landing was pending: their release is no tap.
+	const ignoredPointerIdsRef = useRef(new Set<number>());
 	const sawMultiTouchRef = useRef(false);
 
 	// True while a CSS transition is in flight (set by animateTo, cleared on
@@ -236,6 +251,11 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	// mid-drag and yank state out from under the user.
 	const animationTargetRef = useRef<number | null>(null);
 	const pendingOnDoneRef = useRef<(() => void) | null>(null);
+	// Kept apart from the state commit above so a jump can drop it (see jumpAfterTurn).
+	const pendingSettleRef = useRef<(() => void) | null>(null);
+	// Set while a superseded turn's state commits: an unmeasured crossing then
+	// lands without settling (the lander can run inside that very commit).
+	const isDroppingSettleRef = useRef(false);
 
 	// ── Derived ────────────────────────────────────────────────────────────
 	const pageWidth = viewport ? Math.max(0, viewport.w - 2 * margin) : 0;
@@ -317,7 +337,16 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	// use so the lander below re-derives the page from the word the reader was
 	// on. Post-mount the lander only calls `setPageIndex` (its callbacks are
 	// gated on `isReadyRef`), so this cannot move the saved position.
-	const layoutKey = `${viewport?.w ?? 0}x${viewport?.h ?? 0}|${fontSize}|${fontFamily}|${lineSpacing}|${margin}|${lang}`;
+	// A setting that changes how text wraps goes here, in the chunk measure deps
+	// (chunk-content.tsx) and in scroll mode's layoutKey (scroll-view.tsx).
+	const fontLoads = useValueWhenIdle(
+		useFontLoadCount(readerFontFace(fontFamily)),
+		() =>
+			isAnimatingRef.current ||
+			// Capped: a mouse released outside the window never clears the drag.
+			(dragRef.current !== null && performance.now() - dragRef.current.originT < DRAG_HOLD_MAX_MS),
+	);
+	const layoutKey = `${viewport?.w ?? 0}x${viewport?.h ?? 0}|${fontSize}|${fontFamily}|${isBold}|${fontLoads}|${lineSpacing}|${margin}|${textSpacingKey(textSpacing)}|${lang}`;
 	const lastLayoutKeyRef = useRef(layoutKey);
 	useLayoutEffect(() => {
 		if (lastLayoutKeyRef.current === layoutKey) return;
@@ -332,6 +361,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		}
 		isAnimatingRef.current = false;
 		pendingOnDoneRef.current = null;
+		pendingSettleRef.current = null;
 		animationTargetRef.current = null;
 		// A jump target that has not landed yet outranks the current anchor:
 		// overwriting it here would silently revert a TOC or search jump.
@@ -372,7 +402,12 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		// still lags by one commit (the child's measure effect queues a state
 		// update). Landing now would clamp against a stale page count, so wait
 		// for the measurement to catch up instead of consuming the target.
-		if (hasMountedRef.current && el.scrollWidth !== currentChunkWidth) return;
+		// The measure is normally on its way; asking for it here keeps a missed one
+		// from leaving the target pending, which blocks all input.
+		if (hasMountedRef.current && el.scrollWidth !== currentChunkWidth) {
+			handleChunkMeasure(chunkIndex, el.scrollWidth);
+			return;
+		}
 		pendingTargetRef.current = null;
 		currentWordRef.current = target;
 		const targetPage = findPageForWord(el, pageWidth, currentPageCount, target);
@@ -433,7 +468,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	 *      change state, transform-sync re-fires, and overwrites the snap with
 	 *      the post-re-anchor value. The two values are visually equivalent
 	 *      because the chunks reposition to compensate, so no visible jump. */
-	const completeInFlightAnimation = useCallback(() => {
+	const completeInFlightAnimation = useCallback(({ settle = true }: { settle?: boolean } = {}) => {
 		if (!isAnimatingRef.current) return;
 		if (animationTimeoutRef.current !== null) {
 			window.clearTimeout(animationTimeoutRef.current);
@@ -447,16 +482,26 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			transformWrapperRef.current.style.transform = `translateX(${target}px)`;
 		}
 		const done = pendingOnDoneRef.current;
+		const settleTurn = pendingSettleRef.current;
 		pendingOnDoneRef.current = null;
-		if (done) flushSync(done);
+		pendingSettleRef.current = null;
+		isDroppingSettleRef.current = !settle;
+		try {
+			if (done) flushSync(done);
+		} finally {
+			isDroppingSettleRef.current = false;
+		}
+		if (settle) settleTurn?.();
 	}, []);
 
+	/** Slides to `translatePx`, then commits `onDone` (state) and runs `onSettle`. */
 	const animateTo = useCallback(
-		(translatePx: number, onDone?: () => void) => {
+		(translatePx: number, onDone?: () => void, onSettle?: () => void) => {
 			if (!animatePageTurns) {
 				completeInFlightAnimation();
 				setTransform(translatePx);
 				onDone?.();
+				onSettle?.();
 				return;
 			}
 			if (animationTimeoutRef.current !== null) {
@@ -465,14 +510,18 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			isAnimatingRef.current = true;
 			animationTargetRef.current = translatePx;
 			pendingOnDoneRef.current = onDone ?? null;
+			pendingSettleRef.current = onSettle ?? null;
 			setTransform(translatePx, true);
 			animationTimeoutRef.current = window.setTimeout(() => {
 				animationTimeoutRef.current = null;
 				isAnimatingRef.current = false;
 				const done = pendingOnDoneRef.current;
+				const settleTurn = pendingSettleRef.current;
 				pendingOnDoneRef.current = null;
+				pendingSettleRef.current = null;
 				animationTargetRef.current = null;
 				done?.();
+				settleTurn?.();
 			}, PAGE_TRANSITION_MS);
 		},
 		[setTransform, animatePageTurns, completeInFlightAnimation],
@@ -505,7 +554,11 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			if (!isLayoutReady) return;
 			const clamped = Math.max(0, Math.min(currentPageCount - 1, p));
 			setPageIndex(clamped);
-			animateTo(computeTransform(clamped), shouldSettle ? () => settleAtPage(clamped) : undefined);
+			animateTo(
+				computeTransform(clamped),
+				undefined,
+				shouldSettle ? () => settleAtPage(clamped) : undefined,
+			);
 		},
 		[isLayoutReady, currentPageCount, animateTo, computeTransform, settleAtPage],
 	);
@@ -530,7 +583,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 					direction === 1 ? neighbor.startWord : Math.max(neighbor.startWord, neighbor.endWord - 1);
 				animateTo(computeTransform(), () => {
 					pendingTargetRef.current = edgeWord;
-					settleOnLandRef.current = true;
+					settleOnLandRef.current = !isDroppingSettleRef.current;
 					setChunkIndex(neighborIdx);
 				});
 				return;
@@ -538,11 +591,14 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			const neighborPages = pageCountOf(neighborWidth, pageWidth);
 			const targetPage = direction === 1 ? 0 : neighborPages - 1;
 			const targetTranslate = -(neighborOffset + targetPage * pageWidth);
-			animateTo(targetTranslate, () => {
-				setChunkIndex(neighborIdx);
-				setPageIndex(targetPage);
-				settleAtPage(targetPage, neighborIdx);
-			});
+			animateTo(
+				targetTranslate,
+				() => {
+					setChunkIndex(neighborIdx);
+					setPageIndex(targetPage);
+				},
+				() => settleAtPage(targetPage, neighborIdx),
+			);
 		},
 		[
 			isLayoutReady,
@@ -557,7 +613,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		],
 	);
 
+	// While a landing is pending, pageIndex describes the old geometry: a turn
+	// from it would settle an unrelated word.
 	const goNext = useCallback(() => {
+		if (pendingTargetRef.current !== null) return;
 		onHideProgressBar();
 		if (pageIndex < currentPageCount - 1) goToPage(pageIndex + 1);
 		else if (chunkIndex < chunks.length - 1) crossToNeighbor(1);
@@ -579,6 +638,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	}, [goNext]);
 
 	const goPrev = useCallback(() => {
+		if (pendingTargetRef.current !== null) return;
 		onHideProgressBar();
 		if (pageIndex > 0) goToPage(pageIndex - 1);
 		else if (chunkIndex > 0) crossToNeighbor(-1);
@@ -598,39 +658,54 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	}, [goPrev]);
 
 	// ── Imperative jumpTo (chapter / search / highlight-list) ─────────────
+	/** Moves to `wordIdx` without a settle; returns false (no turn is reported). */
+	const moveTo = useCallback(
+		(wordIdx: number, { onlyIfOffPage }: { onlyIfOffPage: boolean }) => {
+			const targetChunk = findChunkForWord(chunks, wordIdx);
+			// A landing still pending (a chunk swap, a relayout) takes the new target.
+			if (pendingTargetRef.current !== null || targetChunk !== chunkIndex) {
+				pendingTargetRef.current = wordIdx;
+				if (targetChunk !== chunkIndex) setChunkIndex(targetChunk);
+				return;
+			}
+			if (!isLayoutReady) return;
+			const el = chunkRefs.current.get(chunkIndex);
+			if (!el) return;
+			const targetPage = findPageForWord(el, pageWidth, currentPageCount, wordIdx);
+			if (onlyIfOffPage && targetPage === pageIndex) return;
+			// The parent already holds the target. A settle would report the page's
+			// first word instead, and a real turn right after must not look like it.
+			currentWordRef.current = wordIdx;
+			goToPage(targetPage, { shouldSettle: false });
+		},
+		[chunks, chunkIndex, pageIndex, pageWidth, currentPageCount, isLayoutReady, goToPage],
+	);
+	const moveToRef = useRef(moveTo);
+	useLayoutEffect(() => {
+		moveToRef.current = moveTo;
+	}, [moveTo]);
+	/** A jump supersedes a turn still sliding: the turn's page and chunk state is
+	 *  committed, so the jump starts from where the view is, but its settle is
+	 *  dropped. The parent already holds the jump's word, and a settle run now
+	 *  would hand the position back to the turned page. The committed state is
+	 *  seen only by the refreshed moveTo. */
+	const jumpAfterTurn = useCallback(
+		(wordIdx: number, onlyIfOffPage: boolean) => {
+			completeInFlightAnimation({ settle: false });
+			settleOnLandRef.current = false;
+			moveToRef.current(wordIdx, { onlyIfOffPage });
+		},
+		[completeInFlightAnimation],
+	);
+
 	useImperativeHandle(
 		ref,
 		() => ({
 			jumpTo(wordIdx) {
-				const targetChunk = findChunkForWord(chunks, wordIdx);
-				if (targetChunk !== chunkIndex) {
-					// Cross-chunk jump: reset the chunk window to the target and let
-					// the lander effect place us on the right page once it measures.
-					pendingTargetRef.current = wordIdx;
-					setChunkIndex(targetChunk);
-					return;
-				}
-				if (!isLayoutReady) return;
-				const el = chunkRefs.current.get(chunkIndex);
-				if (!el) return;
-				const targetPage = findPageForWord(el, pageWidth, currentPageCount, wordIdx);
-				goToPage(targetPage);
+				jumpAfterTurn(wordIdx, false);
 			},
 			followWord(wordIdx) {
-				const targetChunk = findChunkForWord(chunks, wordIdx);
-				if (targetChunk !== chunkIndex) {
-					pendingTargetRef.current = wordIdx;
-					setChunkIndex(targetChunk);
-					return false;
-				}
-				if (!isLayoutReady) return false;
-				const el = chunkRefs.current.get(chunkIndex);
-				if (!el) return false;
-				const targetPage = findPageForWord(el, pageWidth, currentPageCount, wordIdx);
-				if (targetPage === pageIndex) return false;
-				// What a relayout re-anchors to, since this turn reports no settle.
-				currentWordRef.current = wordIdx;
-				goToPage(targetPage, { shouldSettle: false });
+				jumpAfterTurn(wordIdx, true);
 				return false;
 			},
 			// A key turn can arrive mid-animation. Finishing it first commits a
@@ -645,16 +720,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				goPrevRef.current();
 			},
 		}),
-		[
-			chunks,
-			chunkIndex,
-			pageIndex,
-			pageWidth,
-			currentPageCount,
-			isLayoutReady,
-			goToPage,
-			completeInFlightAnimation,
-		],
+		[jumpAfterTurn, completeInFlightAnimation],
 	);
 
 	// ── Pointer gestures ──────────────────────────────────────────────────
@@ -669,6 +735,12 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 
 	const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
 		if (!isLayoutReady) return;
+		if (pendingTargetRef.current !== null) {
+			ignoredPointerIdsRef.current.add(e.pointerId);
+			return;
+		}
+		// An ignored mouse pointer released outside never reached pointer-up.
+		ignoredPointerIdsRef.current.delete(e.pointerId);
 		// Don't start a drag on the long-press handle hit-zone (selection extension wins).
 		if ((e.target as HTMLElement | null)?.closest(".selection-handle")) return;
 		activePointerIdsRef.current.add(e.pointerId);
@@ -739,6 +811,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 
 	const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
 		activePointerIdsRef.current.delete(e.pointerId);
+		if (ignoredPointerIdsRef.current.delete(e.pointerId)) return;
 		if (sawMultiTouchRef.current) {
 			if (activePointerIdsRef.current.size === 0) sawMultiTouchRef.current = false;
 			const locked = dragRef.current?.isHorizontal === true;
@@ -792,6 +865,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 
 	const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
 		activePointerIdsRef.current.delete(e.pointerId);
+		ignoredPointerIdsRef.current.delete(e.pointerId);
 		if (activePointerIdsRef.current.size === 0) sawMultiTouchRef.current = false;
 		dragRef.current = null;
 		if (!isLayoutReady) return;
@@ -827,6 +901,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				userSelect: "none",
 				opacity: isReady ? 1 : 0,
 				...({ "--reader-line-height": String(lineSpacing) } as React.CSSProperties),
+				...(isBold && ({ "--reader-font-weight": "700" } as React.CSSProperties)),
+				...textSpacingVars(textSpacing),
 			}}
 		>
 			{/* page-clip: bounds the visible page area exactly to the column box.
@@ -871,7 +947,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									pageHeight={pageHeight}
 									fontSize={fontSize}
 									fontFamily={fontFamily}
+									isBold={isBold}
+									fontLoads={fontLoads}
 									lineSpacing={lineSpacing}
+									textSpacing={textSpacing}
 									showActiveWordUnderline={showActiveWordUnderline}
 									lang={lang}
 									activeWord={isActiveChunk ? activeWord : -1}

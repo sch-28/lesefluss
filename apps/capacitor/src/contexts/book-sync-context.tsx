@@ -24,6 +24,7 @@ import {
 import { ble } from "../services/ble";
 import { createBleAdapter } from "../services/ble-transport";
 import { queries } from "../services/db/queries";
+import { devicePositionWrite } from "../services/db/queries/books";
 import { MULTI_BOOK_DESCRIPTOR_ID, multiBookDescriptor } from "../services/devices";
 import { computeOnDeviceHash, type DeviceCategory } from "../services/devices/hash";
 import { buildRsvpDocument, type RsvpChapter } from "../services/rsvp-format/builder";
@@ -93,7 +94,10 @@ interface BookSyncContextType {
 	 * notifies a position that's ahead of the app, so consumers (like the
 	 * reader page) can move their UI in real time. Returns an unsubscribe.
 	 */
-	onDevicePositionUpdate: (cb: (bookId: string, wordPosition: number) => void) => () => void;
+	/** `updatedAt` is the revision the device's position was written with. */
+	onDevicePositionUpdate: (
+		cb: (bookId: string, wordPosition: number, updatedAt: number) => void,
+	) => () => void;
 }
 
 const BookSyncContext = createContext<BookSyncContextType | undefined>(undefined);
@@ -189,18 +193,23 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 
 	// Listeners for device-driven position updates. Reader page subscribes so
 	// it can move the currently displayed word in real time.
-	const devicePositionListenersRef = useRef<Set<(bookId: string, wordPosition: number) => void>>(
-		new Set(),
-	);
-	const onDevicePositionUpdate = useCallback(
-		(cb: (bookId: string, wordPosition: number) => void) => {
-			devicePositionListenersRef.current.add(cb);
-			return () => {
-				devicePositionListenersRef.current.delete(cb);
-			};
-		},
-		[],
-	);
+	type DevicePositionListener = (bookId: string, wordPosition: number, updatedAt: number) => void;
+	const devicePositionListenersRef = useRef<Set<DevicePositionListener>>(new Set());
+	const onDevicePositionUpdate = useCallback((cb: DevicePositionListener) => {
+		devicePositionListenersRef.current.add(cb);
+		return () => {
+			devicePositionListenersRef.current.delete(cb);
+		};
+	}, []);
+	const notifyDevicePosition = useCallback((bookId: string, word: number, updatedAt: number) => {
+		for (const cb of devicePositionListenersRef.current) {
+			try {
+				cb(bookId, word, updatedAt);
+			} catch (err) {
+				log.warn("booksync", "device position listener threw:", err);
+			}
+		}
+	}, []);
 
 	// Echo guard. After the app pushes a position to the device, the device
 	// echoes it back via its save→notify path. Without this, the echo trips
@@ -262,21 +271,13 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 			);
 			const appPos = matchedBook.wordPosition;
 			if (devicePosAsApp > appPos) {
-				await queries.updateBook(matchedBook.id, {
-					wordPosition: devicePosAsApp,
-					lastRead: Date.now(),
-				});
+				const write = devicePositionWrite(devicePosAsApp, Date.now(), matchedBook.updatedAt);
+				await queries.updateBook(matchedBook.id, write);
 				log(
 					"booksync",
 					`multibook: device ahead (deviceWord=${devicePosRaw} appWord=${devicePosAsApp} > ${appPos}), saved`,
 				);
-				devicePositionListenersRef.current.forEach((cb) => {
-					try {
-						cb(matchedBook.id, devicePosAsApp);
-					} catch (err) {
-						log.warn("booksync", "device position listener threw:", err);
-					}
-				});
+				notifyDevicePosition(matchedBook.id, devicePosAsApp, write.updatedAt);
 			} else if (appPos > devicePosAsApp + ECHO_TOLERANCE) {
 				const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
 				const scaledOut = scale(matchedBook.wordCount, deviceHash, appPos, "toDevice");
@@ -292,7 +293,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				);
 			}
 		},
-		[connectedDescriptorId, connectedDevice?.deviceId, scaleWord],
+		[connectedDescriptorId, connectedDevice?.deviceId, scaleWord, notifyDevicePosition],
 	);
 
 	const syncPosition = useCallback(async () => {
@@ -392,11 +393,11 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 				if (!idx) {
 					log.warn("booksync", "device ahead but no WordIndex; cannot persist");
 				} else {
-					await queries.updateBook(confirmedBookId, {
-						wordPosition: idx.wordOf(devicePos),
-						lastRead: Date.now(),
-					});
+					const word = idx.wordOf(devicePos);
+					const write = devicePositionWrite(word, Date.now(), book?.updatedAt ?? 0);
+					await queries.updateBook(confirmedBookId, write);
 					log("booksync", `device ahead (${devicePos} > ${appPos}), saved to DB`);
+					notifyDevicePosition(confirmedBookId, word, write.updatedAt);
 				}
 			}
 		}
@@ -408,6 +409,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 		connectedDescriptorId,
 		connectedDevice?.deviceId,
 		applyDevicePosition,
+		notifyDevicePosition,
 	]); // activeBookId intentionally omitted - read via ref
 
 	const pushPosition = useCallback(

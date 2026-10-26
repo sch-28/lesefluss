@@ -30,6 +30,13 @@ const ACTIVE_OVERLAY_SELECTOR =
 	"ion-modal.show-modal, ion-popover.show-popover, ion-action-sheet.show-action-sheet";
 const TEXT_FIELD_SELECTOR = "input, textarea, [contenteditable=true]";
 
+/** Whether a key press is meant for the reader, not a control, a field or an open overlay. */
+export function isReaderKey(e: KeyboardEvent): boolean {
+	const target = e.target instanceof Element ? e.target : null;
+	if (target?.closest(INTERACTIVE_SELECTOR)) return false;
+	return document.querySelector(ACTIVE_OVERLAY_SELECTOR) === null;
+}
+
 /**
  * Escape closes an open selection before anything else it could mean (leaving
  * RSVP), even with a toolbar button focused. Typing in a field or an open

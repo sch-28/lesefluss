@@ -1,7 +1,8 @@
 import { type SyncBook, SyncBookSchema, wordPos } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
 import type { Book } from "../../db/schema";
-import { buildBookMergeUpdate, lastReadBackfill, seededLastRead } from "../index";
+import { buildBookMergeUpdate } from "../book-merge";
+import { lastReadBackfill, seededLastRead } from "../index";
 
 function makeLocal(overrides: Partial<Book> = {}): Book {
 	return {

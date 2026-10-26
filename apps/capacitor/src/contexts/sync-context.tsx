@@ -222,6 +222,34 @@ function useResumeSync(setLastSynced: Dispatch<SetStateAction<number | null>>) {
 	}, NATIVE_SYNC_ENABLED);
 }
 
+// A web tab left open in the background would otherwise push its stale
+// position over newer reading from another device on its next save.
+const WEB_RESUME_SYNC_MIN_MS = 30_000;
+
+function useWebResumeSync(
+	isLoggedIn: boolean,
+	setLastSynced: Dispatch<SetStateAction<number | null>>,
+) {
+	const lastRunRef = useRef(0);
+	useEffect(() => {
+		if (!IS_WEB_BUILD || !isLoggedIn) return;
+		const onVisible = async () => {
+			if (document.visibilityState !== "visible") return;
+			if (Date.now() - lastRunRef.current < WEB_RESUME_SYNC_MIN_MS) return;
+			lastRunRef.current = Date.now();
+			try {
+				await fullSync();
+				invalidateAfterSync();
+				setLastSynced(Date.now());
+			} catch (err) {
+				log.warn("sync", "web resume sync failed:", err);
+			}
+		};
+		document.addEventListener("visibilitychange", onVisible);
+		return () => document.removeEventListener("visibilitychange", onVisible);
+	}, [isLoggedIn, setLastSynced]);
+}
+
 function useMobileAuthCallback(
 	completeLogin: (token: string) => Promise<void>,
 	setSyncError: Dispatch<SetStateAction<string | null>>,
@@ -316,6 +344,7 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 		setIsSessionResolved,
 	);
 	useResumeSync(setLastSynced);
+	useWebResumeSync(isLoggedIn, setLastSynced);
 
 	const handleRetrySignOut = useCallback(() => {
 		retryPendingSignOut().catch((err) => log.warn("sync", "pending sign-out retry failed:", err));

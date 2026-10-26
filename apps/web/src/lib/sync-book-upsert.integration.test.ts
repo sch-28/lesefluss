@@ -188,6 +188,18 @@ describe.skipIf(!hasDb)("sync_books upsert (integration)", () => {
 		expect(row.rating).toBe(5);
 	});
 
+	test("a push stamped ahead of the server's clock can't outrank a later one", async () => {
+		const bookId = "fa57c10c";
+		const now = Date.now();
+		await push(makeBook({ bookId, wordPosition: 9000, updatedAt: now + 3_600_000 }));
+		expect((await read(bookId)).updatedAt.getTime()).toBeLessThanOrEqual(Date.now());
+
+		await new Promise((resolve) => setTimeout(resolve, 5));
+		await push(makeBook({ bookId, wordPosition: 5000, updatedAt: Date.now() }));
+
+		expect((await read(bookId)).wordPosition).toBe(5000);
+	});
+
 	test("a genuine position advance still wins", async () => {
 		const bookId = "0ca55e77";
 		await push(makeBook({ bookId, wordPosition: 1000, updatedAt: 1_000_000 }));

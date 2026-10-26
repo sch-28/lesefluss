@@ -80,11 +80,11 @@ function useLibraryCatalogIds() {
  * Returns null while loading or when the book has no content yet (pending
  * chapter, fresh import before backfill commit). Cached per bookId.
  */
-function useBookWordIndex(id: string) {
+function useBookWordIndex(id: string, { enabled = true }: { enabled?: boolean } = {}) {
 	return useQuery({
 		queryKey: bookKeys.wordIndex(id),
 		queryFn: () => queries.loadBookWordIndex(id),
-		enabled: !!id,
+		enabled: !!id && enabled,
 		staleTime: Number.POSITIVE_INFINITY,
 	});
 }

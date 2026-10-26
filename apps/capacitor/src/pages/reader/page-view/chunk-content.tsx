@@ -11,7 +11,11 @@
  */
 import type React from "react";
 import { memo, useLayoutEffect, useRef } from "react";
-import { readerFontStack } from "../../../hooks/use-appearance-settings";
+import {
+	readerFontStack,
+	type TextSpacing,
+	textSpacingKey,
+} from "../../../hooks/use-appearance-settings";
 import type { ReaderGoalDivider } from "../goal-divider";
 import Paragraph, {
 	type GlossaryRangeProp,
@@ -46,12 +50,16 @@ export interface ChunkContentProps {
 	// Appearance
 	fontSize: number;
 	fontFamily: string;
-	/**
-	 * Applied as a CSS variable by the parent rather than here, but it reflows
-	 * the column flow all the same, so the measure effect below has to observe
-	 * it or the reported width goes stale.
+	/*
+	 * lineSpacing, isBold, fontLoads, textSpacing: applied by the parent (CSS
+	 * variables, a face loading late) rather than here, but they reflow the column
+	 * flow all the same, so the measure effect below observes them or the
+	 * reported width goes stale.
 	 */
 	lineSpacing: number;
+	isBold: boolean;
+	fontLoads: number;
+	textSpacing: TextSpacing;
 	showActiveWordUnderline: boolean;
 	lang: string;
 
@@ -95,6 +103,9 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	fontSize,
 	fontFamily,
 	lineSpacing,
+	isBold,
+	fontLoads,
+	textSpacing,
 	showActiveWordUnderline,
 	lang,
 	activeWord,
@@ -121,12 +132,16 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 		return () => registerRef(chunkIndex, null);
 	}, [chunkIndex, registerRef]);
 
+	const spacingKey = textSpacingKey(textSpacing);
 	// Measure scrollWidth after each layout-affecting change. Wait for fonts on
 	// cold start so column flow doesn't shift mid-measure.
 	useLayoutEffect(() => {
 		void fontSize;
 		void fontFamily;
 		void lineSpacing;
+		void isBold;
+		void fontLoads;
+		void spacingKey;
 		void lang;
 		void figuresByParagraph;
 		void trailingFigures;
@@ -151,6 +166,9 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 		fontSize,
 		fontFamily,
 		lineSpacing,
+		isBold,
+		fontLoads,
+		spacingKey,
 		lang,
 		figuresByParagraph,
 		trailingFigures,

@@ -3,7 +3,8 @@ id: TASK-187
 title: Tell the user when cloud storage is full
 status: To Do
 assignee: []
-created_date: '2026-10-02 17:23'
+created_date: '2026-10-26 03:15'
+updated_date: '2026-10-26 03:15'
 labels:
   - sync
   - ux
@@ -34,3 +35,9 @@ Before deploying TASK-123: check production usage per user (`SUM(octet_length(co
 - [ ] #4 A blocked book is retried only when the free space reported by the server covers that book's size
 - [ ] #5 Production per-user usage is checked before TASK-123 ships and the quota env is set if needed
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-10-26 re-check: getQuotaBlock() is exported from apps/capacitor/src/services/sync/content-quota.ts:32 (index.ts only imports it). 413 handled silently at sync/index.ts:185-193. AC #5 is an owner prod check; left for the owner.
+<!-- SECTION:NOTES:END -->

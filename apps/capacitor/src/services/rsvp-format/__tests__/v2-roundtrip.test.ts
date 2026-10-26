@@ -103,6 +103,18 @@ describe("v2 round-trip: builder → parser", () => {
 		});
 	});
 
+	describe("headings", () => {
+		it("starts a heading's paragraph and chapter on the heading's first word, not the previous paragraph's last", () => {
+			const content = "Body text ends.\n\n# Chapter Two\n\nMore body.";
+			const startByte = new TextEncoder().encode("Body text ends.\n\n").length;
+			const { idx, bytes } = build({ content, chapters: [{ title: "Chapter Two", startByte }] });
+			const parsed = parseRsvpV2(bytes);
+			const heading = idx.listEntries().findIndex((e) => e.word === "Chapter");
+			expect(parsed.paragraphStarts).toContain(heading);
+			expect(parsed.chapters[0].wordIndex).toBe(heading);
+		});
+	});
+
 	describe("Vector 5a: multiple paragraphs + chapter markers", () => {
 		it("emits chapter markers at the right word indices", () => {
 			const content =

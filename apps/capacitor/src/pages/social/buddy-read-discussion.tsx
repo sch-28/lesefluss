@@ -10,8 +10,8 @@ import { CommentDraft, DiscussionItemCard } from "@/components/social/discussion
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
 import { ListCard, SocialSection } from "@/components/social/social-ui";
 import { toast } from "@/components/toast";
+import { useBookChapters } from "@/hooks/use-book-chapters";
 import { queryHooks } from "@/services/db/hooks";
-import { parseChapters } from "@/services/db/queries/books";
 import {
 	discussionFailureMessage,
 	useDiscussion,
@@ -20,7 +20,7 @@ import {
 } from "@/services/social/buddy-read-discussion";
 import { useBuddyRead } from "@/services/social/buddy-reads";
 import { useIsOnline } from "@/services/social/cache";
-import { currentChapterIndex } from "@/utils/chapters";
+import { chapterAnchorOptions, discussionChapterIndex } from "./discussion-chapters";
 import { OfflineNotice, Spinner, StaleNotice } from "./social-gate";
 
 type Confirm = { title: string; description: string; confirmLabel: string; run: () => void };
@@ -32,8 +32,7 @@ export function DiscussionPanel({ id }: { id: string }) {
 	const read = useBuddyRead(id);
 	const discussion = useDiscussion(id);
 	const { data: myBook } = queryHooks.useBook(read.data?.myBookId ?? "");
-	const { data: myContent } = queryHooks.useBookContent(read.data?.myBookId ?? "");
-	const chapters = useMemo(() => parseChapters(myContent?.chapters ?? null), [myContent?.chapters]);
+	const { chapters } = useBookChapters(read.data?.myBookId ?? "");
 	const post = usePostComment(id);
 	const settings = useDiscussionSettings(id);
 	const [target, setTarget] = useState<string>("position");
@@ -52,7 +51,7 @@ export function DiscussionPanel({ id }: { id: string }) {
 		for (const item of discussion.data?.items ?? []) {
 			const title =
 				chapters.length > 0
-					? (chapters[currentChapterIndex(chapters, item.startWord)]?.title ?? null)
+					? (chapters[discussionChapterIndex(item, chapters)]?.title ?? null)
 					: null;
 			const last = out[out.length - 1];
 			if (last && last.title === title) last.items.push(item);
@@ -119,8 +118,8 @@ export function DiscussionPanel({ id }: { id: string }) {
 						className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-foreground text-sm"
 					>
 						<option value="position">At my current position</option>
-						{chapters.map((c) => (
-							<option key={c.startWord} value={String(c.startWord)}>
+						{chapterAnchorOptions(chapters).map((c) => (
+							<option key={c.value} value={c.value}>
 								About the chapter "{c.title}"
 							</option>
 						))}

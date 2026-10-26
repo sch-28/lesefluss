@@ -207,3 +207,37 @@ describe("WordPosition brand", () => {
 		expect(idx.wordAt(pos).word).toBe("b");
 	});
 });
+
+describe("WordIndex.wordAtOrAfter", () => {
+	const content = "Last line.\n\n# Chapter Two\n\nBody text";
+	const wi = WordIndex.build(content);
+	const byteOfText = (text: string) =>
+		new TextEncoder().encode(content.slice(0, content.indexOf(text))).length;
+
+	it("maps a heading marker to the heading's first word, where wordOf floors to the previous paragraph", () => {
+		const marker = byteOfText("# Chapter");
+		const chapter = wi.wordAtOrAfter(marker);
+		expect(wi.wordAt(chapter).word).toBe("Chapter");
+		expect(wi.wordAt(wi.wordOf(marker)).word).toBe("line.");
+	});
+
+	it("maps the gap between paragraphs forward, and a word start to itself", () => {
+		expect(wi.wordAt(wi.wordAtOrAfter(byteOfText("\n\nBody"))).word).toBe("Body");
+		const body = byteOfText("Body");
+		expect(wi.byteOf(wi.wordAtOrAfter(body))).toBe(body);
+	});
+
+	it("returns wordCount past the last word, and 0 before the first", () => {
+		expect(wi.wordAtOrAfter(new TextEncoder().encode(content).length)).toBe(wi.wordCount);
+		expect(wi.wordAtOrAfter(0)).toBe(0);
+	});
+});
+
+describe("WordIndex.firstShownWord", () => {
+	it("clamps past the last word to the last word, and is 0 when empty", () => {
+		const content = "One two.\n\n# Three";
+		const wi = WordIndex.build(content);
+		expect(wi.firstShownWord(new TextEncoder().encode(content).length)).toBe(wi.wordCount - 1);
+		expect(WordIndex.build("").firstShownWord(5)).toBe(0);
+	});
+});

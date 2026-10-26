@@ -3,6 +3,7 @@ import { WordIndex } from "@lesefluss/core";
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
 import type { NewBook, NewSeries, Series } from "../db/schema";
+import { recordOwnRevision } from "../position-revisions";
 import { scheduleSyncPush } from "../sync";
 import type { ChapterFetchResult, ChapterRef, SeriesMetadata } from "./types";
 
@@ -95,18 +96,25 @@ export async function commitSeries(meta: SeriesMetadata, chapters: ChapterRef[])
  */
 export async function commitChapter(chapterId: string, result: ChapterFetchResult): Promise<void> {
 	const now = Date.now();
+	// lastRead moves the position's revision; this device made it, so the open
+	// chapter must not take it for a position from another device.
+	recordOwnRevision(chapterId, now);
 
 	switch (result.status) {
 		case "fetched": {
 			const size = new TextEncoder().encode(result.content).byteLength;
 			const wi = WordIndex.build(result.content);
-			await queries.updateBook(chapterId, {
-				chapterStatus: "fetched",
-				chapterError: null,
-				size,
-				wordCount: wi.wordCount,
-				lastRead: now,
-			});
+			await queries.updateBook(
+				chapterId,
+				{
+					chapterStatus: "fetched",
+					chapterError: null,
+					size,
+					wordCount: wi.wordCount,
+					lastRead: now,
+				},
+				now,
+			);
 			await queries.setChapterContent(chapterId, result.content, {
 				wordIndexSerialized: JSON.stringify(wi.serialize()),
 			});
@@ -114,21 +122,29 @@ export async function commitChapter(chapterId: string, result: ChapterFetchResul
 			return;
 		}
 		case "locked": {
-			await queries.updateBook(chapterId, {
-				chapterStatus: "locked",
-				chapterError: null,
-				lastRead: now,
-			});
+			await queries.updateBook(
+				chapterId,
+				{
+					chapterStatus: "locked",
+					chapterError: null,
+					lastRead: now,
+				},
+				now,
+			);
 			scheduleSyncPush();
 			return;
 		}
 		case "error": {
 			log.warn("serial-scrapers", `chapter ${chapterId} fetch failed: ${result.reason}`);
-			await queries.updateBook(chapterId, {
-				chapterStatus: "error",
-				chapterError: result.reason,
-				lastRead: now,
-			});
+			await queries.updateBook(
+				chapterId,
+				{
+					chapterStatus: "error",
+					chapterError: result.reason,
+					lastRead: now,
+				},
+				now,
+			);
 			return;
 		}
 	}

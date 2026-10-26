@@ -24,12 +24,10 @@ test("scroll-settle after a TOC jump must not rewind the committed word position
 	await reader.readFromHere(page);
 	await savePending;
 
-	// The chapter starts at its heading words, just before the opening
-	// paragraph; a stomping settle lands further back, inside chapter 1.
-	const openingWord = await reader.firstWordPositionIn(
-		page.getByText("Chapter 2 opening paragraph anchors the scene."),
+	// Chapter 2 opens with its number, a heading of its own above "TITLE 2"; a
+	// stomping settle lands further back, inside chapter 1.
+	const number = page.locator(".reader-heading", { hasText: /^2$/ });
+	expect(await reader.lastSavedWord(page)).toBe(
+		Number(await number.getAttribute("data-heading-word")),
 	);
-	const saved = await reader.lastSavedWord(page);
-	expect(saved).toBeGreaterThanOrEqual(openingWord - 5);
-	expect(saved).toBeLessThanOrEqual(openingWord);
 });

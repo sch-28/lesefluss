@@ -3,8 +3,8 @@ id: TASK-162
 title: Propagate reading-session deletions across devices (server epoch)
 status: To Do
 assignee: []
-created_date: '2026-07-29 00:45'
-updated_date: '2026-10-02 16:58'
+created_date: '2026-10-26 03:15'
+updated_date: '2026-10-26 03:15'
 labels: []
 milestone: m-13
 dependencies: []
@@ -38,3 +38,9 @@ Out of scope for the stats work, which is why it is split out rather than folded
 - [ ] #3 The confirmation copy matches the delivered behaviour
 - [ ] #4 The push watermark cannot strand rows after the server discards them
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-10-26 owner decision: tombstone column (deleted flag on sync_reading_sessions, like books/highlights). Single-row delete tombstones the row; the danger-zone wipe tombstones every row. Premise re-checked at f8d79ba: still valid. Note the incremental push watermark means another device does not re-push old rows; the gap is that deletions never reach other devices' local DBs.
+<!-- SECTION:NOTES:END -->

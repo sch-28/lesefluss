@@ -215,8 +215,11 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 .reader-paragraph {
 	font-size: 1em; /* em = inherits px from VList inline style */
 	line-height: var(--reader-line-height, 1.8);
+	font-weight: var(--reader-font-weight, normal);
+	letter-spacing: var(--reader-letter-spacing, normal);
+	word-spacing: var(--reader-word-spacing, normal);
 	color: var(--reader-text, #111111);
-	margin: 0 0 1.1em 0;
+	margin: 0 0 var(--reader-paragraph-spacing, 1.1em) 0;
 	white-space: normal;
 	word-break: break-word;
 	/* Disable native text selection so it doesn't overlap our custom highlight
@@ -289,6 +292,8 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	color: var(--reader-heading, #111111);
 	margin: 1.6em 0 0.4em 0;
 	line-height: 1.3;
+	letter-spacing: var(--reader-letter-spacing, normal);
+	word-spacing: var(--reader-word-spacing, normal);
 	word-break: break-word;
 }
 
@@ -958,6 +963,7 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	font-size: 0.65em;
 	line-height: 1;
 	font-weight: 700;
+	letter-spacing: normal;
 	color: #fff;
 	/* Outline via 4-direction text-shadow only — `-webkit-text-stroke` paints
 	 * half the stroke INSIDE the glyph, which made thin letters like "T" look
@@ -1222,9 +1228,23 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	text-align: right;
 }
 
+/* 44px targets; a selected item reads at a glance (bg-accent alone is under
+ * 3:1 against its neighbours in the light and dark themes). */
+.appearance-popover-content [data-slot="toggle-group-item"] {
+	min-height: 44px;
+}
+
+/* !important: this file is in the legacy layer, under the item's own
+ * shadow-none utility, and an important declaration reverses that order. */
+.appearance-popover-content [data-slot="toggle-group-item"][data-state="on"] {
+	box-shadow: inset 0 0 0 2px var(--primary) !important;
+	font-weight: 600 !important;
+}
+
 .ap-row-buttons {
 	display: flex;
-	gap: 4px;
+	/* With each button's 5px hit margin below, the targets meet but don't overlap. */
+	gap: 10px;
 }
 
 .ap-step-btn {
@@ -1243,9 +1263,35 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	line-height: 1;
 }
 
-.ap-step-btn:disabled {
+/* Stretches the touch target to 44px; the button looks unchanged. */
+.ap-step-btn {
+	position: relative;
+}
+
+.ap-step-btn::before {
+	content: "";
+	position: absolute;
+	inset: -5px;
+}
+
+.ap-step-btn[aria-disabled="true"] {
 	opacity: 0.3;
 	cursor: not-allowed;
+}
+
+/* Left and spaced off the rows: right under the last "+" a low tap would reset
+ * all three with no undo. */
+.ap-reset-btn {
+	align-self: flex-start;
+	margin-top: 8px;
+	min-height: 44px;
+	padding: 0 4px;
+	background: transparent;
+	border: none;
+	color: var(--muted-foreground);
+	font-size: 0.82rem;
+	text-decoration: underline;
+	cursor: pointer;
 }
 
 /* ── RSVP settings preview + collapsible advanced ── */
@@ -1935,13 +1981,17 @@ body.dark .chapter-row:hover {
 	color: var(--reader-progress-label, #555555);
 	font-size: 0.7em;
 	line-height: 1.4;
+	/* UI inside the text: the reader's spacing settings are for the prose. */
+	letter-spacing: normal;
+	word-spacing: normal;
 	vertical-align: middle;
 	cursor: pointer;
 }
 
-/* Reading goal: today's target divider. It sits in the paragraph's bottom margin
- * (1.1em) without taking space, so scroll heights and page-mode pagination
- * never change when it appears or turns green. */
+/* Reading goal: today's target divider. It fills the paragraph's bottom margin
+ * without taking space, so scroll heights and page-mode pagination never change
+ * when it appears or turns green. Its height resolves at the paragraph's font
+ * size, as the margin does; the label's own size sits on the inner elements. */
 .reader-paragraph--goal {
 	position: relative;
 }
@@ -1951,14 +2001,10 @@ body.dark .chapter-row:hover {
 	top: 100%;
 	left: 0;
 	right: 0;
-	height: 1.1em;
+	height: var(--reader-paragraph-spacing, 1.1em);
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-	font-size: 11px;
-	line-height: 1;
-	font-variant-numeric: tabular-nums;
 	color: var(--goal-pending);
 	pointer-events: none;
 	transition: color 700ms ease-out;
@@ -1971,6 +2017,11 @@ body.dark .chapter-row:hover {
 }
 
 .reader-goal-divider-label {
+	font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+	font-size: 11px;
+	line-height: 1;
+	font-variant-numeric: tabular-nums;
+	word-spacing: normal;
 	font-weight: 600;
 	letter-spacing: 0.06em;
 	text-transform: uppercase;

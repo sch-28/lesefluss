@@ -19,7 +19,6 @@ import {
 	paragraphIndexForWord,
 	utf8ByteLength,
 	utf8ByteLengthOfCodePoint,
-	type WordPosition,
 	wordPos,
 } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
@@ -62,8 +61,14 @@ import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { useTheme } from "../../contexts/theme-context";
-import { readerLayoutFor, volumeKeysFor } from "../../hooks/use-appearance-settings";
+import {
+	readerFontFamilyFor,
+	readerLayoutFor,
+	textSpacingFor,
+	volumeKeysFor,
+} from "../../hooks/use-appearance-settings";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
+import { useBookChapters } from "../../hooks/use-book-chapters";
 import { useIsForeground } from "../../hooks/use-is-foreground";
 import { repairMissingImages } from "../../services/book-import/repair-images";
 import { needsImageUpgrade, upgradeBookImages } from "../../services/book-import/upgrade-images";
@@ -71,9 +76,19 @@ import { externalSourceUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys, serialKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
+import {
+	devicePositionWrite,
+	nextPositionRevision,
+	type PositionRow,
+} from "../../services/db/queries/books";
 import type { SeriesActivity } from "../../services/db/queries/series";
-import type { Book, Chapter, GlossaryEntry, Highlight } from "../../services/db/schema";
+import type { Book, GlossaryEntry, Highlight } from "../../services/db/schema";
 import { requestReminderSync } from "../../services/goal-reminders";
+import {
+	isOwnRevision,
+	onMissedPosition,
+	recordOwnRevision,
+} from "../../services/position-revisions";
 import { providerLabel } from "../../services/serial-scrapers";
 import {
 	useDiscussion,
@@ -84,7 +99,18 @@ import { pushSync, scheduleSyncPush } from "../../services/sync";
 import { reportEvent } from "../../services/telemetry";
 import { IS_READ_ALOUD_SUPPORTED } from "../../services/tts";
 import { languageName, parseVoiceChoices, speechFor, withVoice } from "../../services/tts/voices";
-import { publishLinkOpen, publishPositionSave, publishProgressWord } from "../../test-hooks/reader";
+import {
+	exposeDevicePosition,
+	publishJump,
+	publishLinkOpen,
+	publishPositionSave,
+	publishProgressWord,
+	publishSaveFinished,
+	publishSaveRequest,
+	publishSettle,
+	publishSyncPushRequest,
+	type SaveSource,
+} from "../../test-hooks/reader";
 import { AVERAGE_READER_WPM, formatReadingTime } from "../../utils/reading-time";
 import { setJustRead } from "../library/just-read-pin";
 import { liveToday } from "../library/reading-goal/goal-model";
@@ -104,6 +130,7 @@ import { useChapterFetch } from "./chapter-fetch";
 import { buildChapterHeadingMap } from "./chapter-headings";
 import { ChapterStateOverlay } from "./chapter-state-overlay";
 import DictionaryModal from "./dictionary-modal";
+import { clampWord, decideExternalPosition } from "./external-position";
 import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
 import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
@@ -114,12 +141,14 @@ import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
 import type { ParagraphWordEntry } from "./paragraph";
 import {
+	clearOwnPendingPosition,
 	clearPendingPosition,
 	type PendingPosition,
 	readPendingPosition,
 	recoverPendingWord,
 	writePendingPosition,
 } from "./pending-position";
+import { createPersistedWord } from "./persisted-word";
 import { ReadAloudControls } from "./read-aloud-controls";
 import { buildFigureMap } from "./reader-figures";
 import { stripPunct } from "./rsvp-engine";
@@ -139,8 +168,9 @@ import {
 	useGlossaryDecorations,
 } from "./use-glossary-decorations";
 import { useHighlightSelection } from "./use-highlight-selection";
-import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
+import { isReaderKey, useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import { useLinkDecorations } from "./use-link-decorations";
+import { useLoadedReaderFont } from "./use-loaded-reader-font";
 import { useReadAloud } from "./use-read-aloud";
 import { useReaderGoal } from "./use-reader-goal";
 import { type ReadingSessionMode, useReadingSession } from "./use-reading-session";
@@ -154,15 +184,36 @@ const IMAGE_UPGRADE_DELAY_MS = 3000;
 
 const _encoder = new TextEncoder();
 
+function requestSyncPush() {
+	scheduleSyncPush(5000);
+	if (import.meta.env.DEV) publishSyncPushRequest();
+}
+
 // Sentinel value: no word highlighted (while scrolling)
+const SCROLL_KEYS = new Set(["PageDown", "PageUp", "ArrowDown", "ArrowUp", "Home", "End"]);
+
+const EXTERNAL_POSITION_TOAST = "external-position";
+const EXTERNAL_POSITION_TOAST_MS = 10_000;
+
+// Resolved at build time, so a production bundle drops the DEV save log; behind
+// an `if (DEV)` inside writePosition its body was kept.
+const logPositionSave = import.meta.env.DEV ? publishPositionSave : null;
+
+/** `isInDb`: the row holds `row`; false when a pull's merge skipped it for the reader's newer write. */
+type ExternalPositionHandler = (row: PositionRow | null, seenRev: number, isInDb: boolean) => void;
+
 const NO_HIGHLIGHT = -1;
 
 const SLEEP_TIMER_MINUTES = [15, 30, 45, 60];
 const DETACH_DRAG_PX = 8;
 const JUMP_MARK_DELAY_MS = 300;
 
-type ReadAloudHandle = Pick<ReturnType<typeof useReadAloud>, "detach" | "moveTo" | "pause"> & {
+type ReadAloudHandle = Pick<
+	ReturnType<typeof useReadAloud>,
+	"detach" | "moveTo" | "pause" | "viewWordRef" | "keepsPositionOnMove" | "ownsPosition"
+> & {
 	isActive: boolean;
+	isPlaying: boolean;
 };
 
 // A position write that hasn't settled in this long is treated as wedged/stalled
@@ -354,9 +405,56 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// word. Gating settle saves within this window prevents the settle from
 	// stomping a fresh jump position. 0 = no recent jump.
 	const lastJumpAtRef = useRef(0);
+	const stampJump = useCallback(() => {
+		lastJumpAtRef.current = Date.now();
+		if (import.meta.env.DEV) publishJump(lastJumpAtRef.current);
+	}, []);
 	const JUMP_SETTLE_GUARD_MS = 1500;
-	// The last word written (or known to be) in the DB row.
-	const persistedWordRef = useRef<number | null>(null);
+	const persistedWordRef = useRef(createPersistedWord());
+	// The revision this reader's writes build on: the newest of the row it has seen.
+	// A write lands only on it, so a position written meanwhile is never replaced.
+	const baseRevRef = useRef(0);
+	const lastLandedRevRef = useRef(0);
+	// Counts the reader's moves, so a landed write knows whether one came after it.
+	const localMoveCountRef = useRef(0);
+	// The newest landed write was RSVP or the voice, and nothing moved since.
+	const isPlaybackSaveNewestRef = useRef(false);
+	// The newest row from elsewhere this reader has already decided on.
+	const decidedRevRef = useRef(0);
+	// Moved since the reader's last landed write or adopt: against a newer row from
+	// another device, the reader's own position is then the newer one.
+	const hasLocalMoveRef = useRef(false);
+	// Where Undo goes back to: the position before the first of adopts in a row.
+	const undoAdoptRef = useRef<{ word: number; timer: number } | null>(null);
+	const clearAdoptUndo = useCallback(() => {
+		const undo = undoAdoptRef.current;
+		if (!undo) return;
+		clearTimeout(undo.timer);
+		undoAdoptRef.current = null;
+		toast.dismiss(EXTERNAL_POSITION_TOAST);
+	}, []);
+	const markPositionMove = useCallback(() => {
+		userMovedRef.current = true;
+		hasLocalMoveRef.current = true;
+		localMoveCountRef.current++;
+		isPlaybackSaveNewestRef.current = false;
+		clearAdoptUndo();
+	}, [clearAdoptUndo]);
+	// Assigned once browse mode is set up (further down).
+	const isBrowsingViewRef = useRef<() => boolean>(() => false);
+	/** The reader moved. While browsing only the view moves: the position stays the anchor. */
+	const markLocalMove = useCallback(() => {
+		if (isBrowsingViewRef.current()) userMovedRef.current = true;
+		else markPositionMove();
+	}, [markPositionMove]);
+	/** RSVP or the voice played on: the reader's spot, but not a move against another device. */
+	const markPlaybackMove = useCallback(() => {
+		userMovedRef.current = true;
+	}, []);
+	// Assigned once the reader can move its view (further down).
+	const onExternalPositionRef = useRef<ExternalPositionHandler>(() => {});
+	// Assigned once read-aloud is set up (further down); its hook calls back into it.
+	const backToVoiceRef = useRef<() => void>(() => {});
 	// Assigned once `useReadAloud` runs further down. While active, the voice owns the position.
 	const readAloudRef = useRef<ReadAloudHandle | null>(null);
 	const isReadAloudActiveNow = useCallback(() => readAloudRef.current?.isActive ?? false, []);
@@ -364,11 +462,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const browseSessionRef = useRef<BrowseSession | null>(null);
 	const { anchor: browseAnchor, controller: browse } = useBrowseMode({
 		getLastWord: () => lastWordRef.current,
-		getPersistedWord: () => persistedWordRef.current,
+		getPersistedWord: () => persistedWordRef.current.get(),
 		isRsvp: () => readerModeRef.current === "rsvp",
 		writePosition: (word) => {
-			userMovedRef.current = true;
-			void writePosition(word);
+			markPositionMove();
+			void writePosition(word, "browse");
 		},
 		showUnsavedMove: (word) => showUnsavedMove(word),
 		getSession: () => browseSessionRef.current,
@@ -379,6 +477,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			});
 		},
 	});
+	isBrowsingViewRef.current = () => browse.isBrowsing && readerModeRef.current !== "rsvp";
 
 	// Guards the seed effect below so it only runs once on initial load.
 	// book is a new object reference on every BLE position sync (query
@@ -413,12 +512,19 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		settledWordRef.current = null;
 		seededWordRef.current = null;
 		userMovedRef.current = false;
-		persistedWordRef.current = null;
+		hasLocalMoveRef.current = false;
+		isPlaybackSaveNewestRef.current = false;
+		baseRevRef.current = 0;
+		lastLandedRevRef.current = 0;
+		decidedRevRef.current = 0;
+		clearAdoptUndo();
+		persistedWordRef.current.set(null);
 		browse.reset();
-	}, [id, browse]);
+	}, [id, browse, clearAdoptUndo]);
 
 	const seedWord = book?.wordPosition ?? null;
 	const seedLastRead = book?.lastRead ?? 0;
+	const seedRev = book?.updatedAt ?? 0;
 
 	useEffect(() => {
 		if (didSeedOffsetsRef.current || seedWord === null) return;
@@ -437,8 +543,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		if (recovered !== null) {
 			resolved = wordPos(recovered);
 			pendingRecoveredRef.current = resolved;
+			hasLocalMoveRef.current = true;
 		}
 		clearPendingPosition(id);
+		baseRevRef.current = seedRev;
+		decidedRevRef.current = seedRev;
 
 		setActiveWord(resolved);
 		setProgressWord(resolved);
@@ -446,8 +555,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		lastWordRef.current = resolved;
 		settledWordRef.current = resolved;
 		seededWordRef.current = resolved;
-		persistedWordRef.current = seedWord;
-	}, [seedWord, seedLastRead, id]);
+		persistedWordRef.current.set(seedWord);
+	}, [seedWord, seedLastRead, id, seedRev]);
 
 	// Live-seek when the device pushes a new position for this book over BLE.
 	// book-sync-context applies the conflict-resolution tolerance gate first,
@@ -456,16 +565,17 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// jumpToWord does (state + scroll) but skip savePosition/pushPosition:
 	// the DB row was already updated by applyDevicePosition, and pushing back
 	// to the device would echo the value it just sent us.
-	useEffect(() => {
-		if (!isBleConnected) return;
-		const unsubscribe = onDevicePositionUpdate((bookId, newWordPosition) => {
-			if (bookId !== id) return;
+	const followDevicePosition = useCallback(
+		(newWordPosition: number, updatedAt: number) => {
 			const totalWords = wordIndex?.wordCount ?? book?.wordCount ?? 0;
 			// Without a known upper bound a malformed notify would persist a
 			// huge word index via the unmount-flush.
 			if (totalWords === 0) return;
 			if (newWordPosition < 0 || newWordPosition >= totalWords) return;
-			persistedWordRef.current = newWordPosition;
+			// The device wrote the row; the reader's next write builds on that.
+			baseRevRef.current = Math.max(baseRevRef.current, updatedAt);
+			decidedRevRef.current = Math.max(decidedRevRef.current, updatedAt);
+			persistedWordRef.current.set(newWordPosition);
 			if (browse.onDevicePosition(newWordPosition)) return;
 			setActiveWord(newWordPosition);
 			setProgressWord(newWordPosition);
@@ -480,9 +590,24 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				fine: true,
 				smooth: true,
 			});
+		},
+		[wordIndex?.wordCount, book?.wordCount, browse],
+	);
+	useEffect(() => {
+		if (!isBleConnected) return;
+		return onDevicePositionUpdate((bookId, word, updatedAt) => {
+			if (bookId === id) followDevicePosition(word, updatedAt);
 		});
-		return unsubscribe;
-	}, [id, wordIndex?.wordCount, book?.wordCount, isBleConnected, onDevicePositionUpdate, browse]);
+	}, [id, isBleConnected, onDevicePositionUpdate, followDevicePosition]);
+	useEffect(() => {
+		if (!import.meta.env.DEV) return;
+		// What book-sync-context does for a device ahead: write the row, then notify.
+		return exposeDevicePosition(async (word) => {
+			const write = devicePositionWrite(wordPos(word), Date.now(), baseRevRef.current);
+			await queries.updateBook(id, write);
+			followDevicePosition(word, write.updatedAt);
+		});
+	}, [id, followDevicePosition]);
 
 	// ── Build paragraph index ──────────────────────────────────────────────
 	// Computed once per content load. Two cheap structures:
@@ -507,7 +632,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const paragraphStartWords = useMemo(() => {
 		if (!wordIndex) return paragraphOffsets.map(() => 0);
-		return paragraphOffsets.map((b) => wordIndex.wordOf(b));
+		return paragraphOffsets.map((b) => wordIndex.firstShownWord(b));
 	}, [paragraphOffsets, wordIndex]);
 
 	// Per-paragraph slice of canonical WordIndex entries with paragraph-local
@@ -561,14 +686,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	}, [paragraphs, paragraphOffsets, contentByteLength, wordIndex]);
 
 	// ── Parse chapters ────────────────────────────────────────────────────
-	const chapters = useMemo<Chapter[]>(() => {
-		if (!contentRow?.chapters) return [];
-		try {
-			return JSON.parse(contentRow.chapters) as Chapter[];
-		} catch {
-			return [];
-		}
-	}, [contentRow?.chapters]);
+	const { chapters } = useBookChapters(id);
 
 	// Chapter titles to render inline as headers. Older imports (and EPUBs whose
 	// chapter titles were images) have no heading in `content` at the chapter
@@ -627,9 +745,19 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const { updateSetting } = useAutoSaveSettings();
 
 	const readerFontSize = dbSettings?.readerFontSize ?? DEFAULT_SETTINGS.READER_FONT_SIZE;
-	const readerFontFamily = dbSettings?.readerFontFamily ?? DEFAULT_SETTINGS.READER_FONT_FAMILY;
+	const readerFont = useLoadedReaderFont(
+		dbSettings ? readerFontFamilyFor(dbSettings.readerFontFamily) : null,
+		dbSettings?.readerBold ?? DEFAULT_SETTINGS.READER_BOLD,
+	);
 	const readerLineSpacing = dbSettings?.readerLineSpacing ?? DEFAULT_SETTINGS.READER_LINE_SPACING;
 	const readerMargin = dbSettings?.readerMargin ?? DEFAULT_SETTINGS.READER_MARGIN;
+	const readerLetterSpacing = dbSettings?.readerLetterSpacing;
+	const readerWordSpacing = dbSettings?.readerWordSpacing;
+	const readerParagraphSpacing = dbSettings?.readerParagraphSpacing;
+	const textSpacing = useMemo(
+		() => textSpacingFor({ readerLetterSpacing, readerWordSpacing, readerParagraphSpacing }),
+		[readerLetterSpacing, readerWordSpacing, readerParagraphSpacing],
+	);
 	const readerActiveWordUnderline =
 		dbSettings?.readerActiveWordUnderline ?? DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE;
 	const readerGlossaryUnderline =
@@ -665,15 +793,24 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	// ── Save position to DB + BLE ─────────────────────────────────────────
 	const writePosition = useCallback(
-		async (word: number, { scheduleSync = true }: { scheduleSync?: boolean } = {}) => {
+		async (
+			word: number,
+			source: SaveSource,
+			{ scheduleSync = true }: { scheduleSync?: boolean } = {},
+		) => {
 			settledWordRef.current = word;
-			persistedWordRef.current = word;
+			// The row already holds this word. Rewriting it would stamp a new updatedAt,
+			// the position's last-write-wins revision, making a stale word "newest" on
+			// every app switch; a lastRead-only write would reorder the library for a
+			// book nobody moved in. The push still goes out: an earlier save of this word
+			// may have skipped it (RSVP's pause before its exit), and a push stamps nothing.
+			if (!persistedWordRef.current.needsWrite(word)) {
+				if (scheduleSync) requestSyncPush();
+				return;
+			}
+			const writeToken = persistedWordRef.current.begin(word);
 			const now = Date.now();
 			const wordPosition = wordPos(word);
-			const update: { lastRead: number; wordPosition: WordPosition } = {
-				lastRead: now,
-				wordPosition,
-			};
 
 			// Durable fallback: mirror the position to localStorage synchronously
 			// BEFORE the async DB write, stamped with the same `now` that becomes
@@ -681,6 +818,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// survives and the next mount recovers it; if the write commits, we
 			// clear it just after so a stale entry never outlives a real save.
 			writePendingPosition(id, word, now);
+			if (import.meta.env.DEV) publishSaveRequest();
 
 			// Optimistic cache update so the library lands already-sorted when
 			// the user navigates back, instead of shifting under their finger
@@ -725,52 +863,90 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					notifyLocalSaveFailure();
 				}
 			}, POSITION_WRITE_TIMEOUT_MS);
+			const baseRev = baseRevRef.current;
+			const stamp = nextPositionRevision(now, baseRev);
+			// A write issued after this one builds on it.
+			baseRevRef.current = stamp;
+			recordOwnRevision(id, stamp);
+			const movesAtWrite = localMoveCountRef.current;
 			try {
-				await queries.updateBook(id, update);
-			} catch {
-				// The adapter already reports the underlying db_write_error. Tell the
-				// user it didn't save so they know it's not intended, keep the
-				// synchronous fallback (do NOT clear it) so the next mount can recover,
-				// and skip the post-commit steps below.
-				notifyLocalSaveFailure();
-				return;
+				let result: Awaited<ReturnType<typeof queries.writeReaderPosition>>;
+				try {
+					result = await queries.writeReaderPosition(id, { wordPosition, lastRead: now, baseRev });
+				} catch {
+					// The adapter already reports the underlying db_write_error. Tell the
+					// user it didn't save so they know it's not intended, keep the
+					// synchronous fallback (do NOT clear it) so the next mount can recover,
+					// and skip the post-commit steps below.
+					notifyLocalSaveFailure();
+					persistedWordRef.current.fail(writeToken);
+					return;
+				} finally {
+					settled = true;
+					clearTimeout(watchdog);
+				}
+				// The row is no longer this write's to recover over, either way.
+				clearOwnPendingPosition(id, { word, at: now });
+				if (!result.isWritten) {
+					// A newer position was written meanwhile (a sync pull, a device).
+					persistedWordRef.current.fail(writeToken);
+					baseRevRef.current = Math.max(result.row?.updatedAt ?? 0, lastLandedRevRef.current);
+					void qc.invalidateQueries({ queryKey: bookKeys.all });
+					onExternalPositionRef.current(result.row, baseRev, true);
+					return;
+				}
+				lastLandedRevRef.current = Math.max(lastLandedRevRef.current, stamp);
+				if (localMoveCountRef.current === movesAtWrite) {
+					hasLocalMoveRef.current = false;
+					isPlaybackSaveNewestRef.current = source === "rsvp" || source === "read-aloud";
+				}
+				onPositionSavedRef.current?.(word);
+				logPositionSave?.(id, word, source);
+				await pushPosition(id, word);
+				if (scheduleSync) requestSyncPush();
 			} finally {
-				settled = true;
-				clearTimeout(watchdog);
+				if (import.meta.env.DEV) publishSaveFinished();
 			}
-			// The row is now durable; drop the synchronous fallback so it can't
-			// later be mistaken for an uncommitted write on the next mount.
-			clearPendingPosition(id);
-			onPositionSavedRef.current?.(word);
-			await pushPosition(id, word);
-			if (scheduleSync) scheduleSyncPush(5000);
-			if (import.meta.env.DEV) publishPositionSave(id, word);
 		},
 		[id, pushPosition, book?.seriesId, qc],
 	);
 
 	const savePosition = useCallback(
-		async (word: number, opts?: { scheduleSync?: boolean }) => {
+		async (word: number, source: SaveSource, opts?: { scheduleSync?: boolean }) => {
 			// RSVP never browses: its saves always land, whatever state the anchor is in.
 			if (browse.isBrowsing && readerModeRef.current !== "rsvp") {
 				// Still the resting word: the settle clamp compares against it.
 				settledWordRef.current = word;
 				return;
 			}
-			await writePosition(word, opts);
+			await writePosition(word, source, opts);
 		},
 		[writePosition, browse],
 	);
 
+	const isMountedRef = useRef(true);
+	useEffect(
+		() => () => {
+			isMountedRef.current = false;
+			clearAdoptUndo();
+			toast.dismiss(EXTERNAL_POSITION_TOAST);
+		},
+		[clearAdoptUndo],
+	);
+	const isRsvpPlayingRef = useRef(isRsvpPlaying);
+	isRsvpPlayingRef.current = isRsvpPlaying;
 	/** Moves the view to a word the DB already holds, without saving. */
-	const showUnsavedMove = useCallback((word: number) => {
-		setActiveWord(word);
-		setProgressWord(word);
-		lastWordRef.current = word;
-		settledWordRef.current = word;
-		lastJumpAtRef.current = Date.now();
-		scrollViewRef.current?.jumpTo(word, { highlight: true });
-	}, []);
+	const showUnsavedMove = useCallback(
+		(word: number) => {
+			setActiveWord(word);
+			setProgressWord(word);
+			lastWordRef.current = word;
+			settledWordRef.current = word;
+			stampJump();
+			scrollViewRef.current?.jumpTo(word, { highlight: true });
+		},
+		[stampJump],
+	);
 
 	// Persist a position recovered from the durable fallback (set by the seed
 	// effect above) to the DB, so it survives forward even if the user never
@@ -782,7 +958,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		const recovered = pendingRecoveredRef.current;
 		if (recovered === null) return;
 		pendingRecoveredRef.current = null;
-		void savePosition(recovered);
+		void savePosition(recovered, "recovered");
 	}, [seedWord, savePosition]);
 
 	// ── Shared helpers ────────────────────────────────────────────────────
@@ -795,27 +971,154 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	 *  visual scroll to whichever view is mounted. */
 	const jumpToWord = useCallback(
 		(word: number, { highlight = true }: { highlight?: boolean } = {}) => {
-			if (readAloudRef.current?.isActive) {
-				readAloudRef.current.moveTo(word);
+			const readAloud = readAloudRef.current;
+			// Playing, the voice goes there; paused, the view moves and the reader keeps the spot.
+			if (readAloud?.isActive && readAloud.moveTo(word)) {
 				setActiveWord(word);
 				setProgressWord(word);
-				lastJumpAtRef.current = Date.now();
+				stampJump();
 				scrollViewRef.current?.jumpTo(word, { highlight });
 				rsvpViewRef.current?.showWord(word);
 				// A far target is not in the DOM until the jump lands.
 				window.setTimeout(() => markSpokenWord(word), JUMP_MARK_DELAY_MS);
 				return;
 			}
-			browse.enterForJump(word);
+			// A jump while the voice is paused is saved as the reader's spot rather than browsed.
+			if (!readAloud?.isActive) browse.enterForJump(word);
 			setActiveWord(word);
 			setProgressWord(word);
 			lastWordRef.current = word;
-			userMovedRef.current = true;
-			lastJumpAtRef.current = Date.now();
-			savePosition(word);
+			markLocalMove();
+			stampJump();
+			savePosition(word, "jump");
 			scrollViewRef.current?.jumpTo(word, { highlight });
 		},
-		[savePosition, browse],
+		[savePosition, browse, stampJump, markLocalMove],
+	);
+
+	/** Goes to `word` on the reader's own behalf (Undo, Go there): a move like any other. */
+	const goToWordAsReader = useCallback(
+		(word: number) => {
+			if (!isMountedRef.current) return;
+			// Playing, the voice goes there; paused, the reader takes the spot from it.
+			if (readAloudRef.current?.isActive) {
+				jumpToWord(word);
+				return;
+			}
+			markPositionMove();
+			if (!browse.onDevicePosition(word)) {
+				if (readerModeRef.current === "rsvp") {
+					lastWordRef.current = word;
+					rsvpViewRef.current?.showWord(word);
+				} else showUnsavedMove(word);
+			}
+			void writePosition(word, "jump");
+		},
+		[jumpToWord, markPositionMove, browse, showUnsavedMove, writePosition],
+	);
+
+	const handleExternalPosition = useCallback<ExternalPositionHandler>(
+		(row, seenRev, isInDb) => {
+			const wordCount = wordIndex?.wordCount ?? book?.wordCount ?? 0;
+			const theirs = row && { ...row, wordPosition: clampWord(row.wordPosition, wordCount) };
+			const ours = browse.anchor ?? lastWordRef.current;
+			const decision = decideExternalPosition(theirs, {
+				seenRev: Math.max(seenRev, decidedRevRef.current),
+				isOwnRevision: (rev) => isOwnRevision(id, rev),
+				ourWord: ours,
+				hasLocalMove: hasLocalMoveRef.current,
+				isRsvpPlaying: isRsvpPlayingRef.current,
+				isReadAloudPlaying: readAloudRef.current?.isPlaying ?? false,
+				isSkippedForPlaybackSave: !isInDb && isPlaybackSaveNewestRef.current,
+			});
+			if (!theirs || decision === "ignore") return;
+			decidedRevRef.current = Math.max(decidedRevRef.current, theirs.updatedAt);
+			baseRevRef.current = Math.max(baseRevRef.current, theirs.updatedAt);
+			const word = theirs.wordPosition;
+			if (isInDb && decision !== "advance") persistedWordRef.current.set(word);
+			if (decision === "advance") {
+				if (word === ours) {
+					persistedWordRef.current.set(word);
+					seededWordRef.current = word;
+				}
+				return;
+			}
+			if (decision === "keep") {
+				if (ours !== null && persistedWordRef.current.needsWrite(ours)) {
+					void writePosition(ours, "kept-local");
+				}
+				if (!isMountedRef.current) return;
+				toast.info("Newer position from another device", {
+					id: EXTERNAL_POSITION_TOAST,
+					duration: EXTERNAL_POSITION_TOAST_MS,
+					action: { label: "Go there", onClick: () => goToWordAsReader(word) },
+				});
+				return;
+			}
+			hasLocalMoveRef.current = false;
+			isPlaybackSaveNewestRef.current = false;
+			seededWordRef.current = word;
+			if (!isInDb) void writePosition(word, "adopted");
+			if (!isMountedRef.current) return;
+			const undoWord = undoAdoptRef.current?.word ?? ours;
+			if (undoAdoptRef.current) clearTimeout(undoAdoptRef.current.timer);
+			undoAdoptRef.current =
+				undoWord === null
+					? null
+					: {
+							word: undoWord,
+							timer: window.setTimeout(() => {
+								undoAdoptRef.current = null;
+							}, EXTERNAL_POSITION_TOAST_MS),
+						};
+			// Paused, the voice reads on from here when played again.
+			if (readAloudRef.current?.isActive) readAloudRef.current.keepsPositionOnMove(word);
+			if (!browse.onDevicePosition(word)) {
+				if (readerModeRef.current === "rsvp") {
+					lastWordRef.current = word;
+					settledWordRef.current = word;
+					rsvpViewRef.current?.showWord(word);
+				} else showUnsavedMove(word);
+			}
+			toast.info("Moved to where you left off on another device", {
+				id: EXTERNAL_POSITION_TOAST,
+				duration: EXTERNAL_POSITION_TOAST_MS,
+				action:
+					undoWord === null
+						? undefined
+						: { label: "Undo", onClick: () => goToWordAsReader(undoWord) },
+			});
+		},
+		[
+			id,
+			wordIndex?.wordCount,
+			book?.wordCount,
+			browse,
+			writePosition,
+			showUnsavedMove,
+			goToWordAsReader,
+		],
+	);
+	onExternalPositionRef.current = handleExternalPosition;
+
+	// A sync pull (or a device) writes the row behind the open reader; the book
+	// query refetches it.
+	useEffect(() => {
+		if (!book || !didSeedOffsetsRef.current) return;
+		handleExternalPosition(
+			{ wordPosition: book.wordPosition, updatedAt: book.updatedAt },
+			baseRevRef.current,
+			true,
+		);
+	}, [book, handleExternalPosition]);
+
+	// A pull found the reader's own write newer than its position and skipped it.
+	useEffect(
+		() =>
+			onMissedPosition((bookId, row) => {
+				if (bookId === id) handleExternalPosition(row, 0, false);
+			}),
+		[id, handleExternalPosition],
 	);
 
 	// ── Highlight / selection state ──────────────────────────────────────
@@ -909,15 +1212,25 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// noop during the first render.
 	const markActivityRef = useRef<(() => void) | null>(null);
 
+	// Within JUMP_SETTLE_GUARD_MS of a jump, a scroll-mode settle is the virtual
+	// list reconciling it; its viewport-top word sits before the jumped heading.
+	// Page mode has no such reconcile and a jump reports no settle there, so every
+	// settle is a real page turn.
+	const isReconcilingJump = useCallback(
+		() => paginationStyle === "scroll" && Date.now() - lastJumpAtRef.current < JUMP_SETTLE_GUARD_MS,
+		[paginationStyle],
+	);
+
 	const handleScrollPositionSettle = useCallback(
 		(word: number, isAtEnd = false, hasMoved = true) => {
-			if (readAloudRef.current?.isActive) {
+			if (import.meta.env.DEV) publishSettle(word);
+			const readAloud = readAloudRef.current;
+			if (readAloud?.isActive) {
 				// Following the voice never settles, so this is the reader looking
-				// elsewhere, unless it is the list reconciling a jump.
-				if (Date.now() - lastJumpAtRef.current >= JUMP_SETTLE_GUARD_MS) {
-					readAloudRef.current.detach(word);
-				}
-				return;
+				// elsewhere, unless it is the list reconciling a jump or compensating
+				// a re-measure (the text did not move).
+				const isReaderMove = hasMoved && !isReconcilingJump();
+				if (isReaderMove ? readAloud.keepsPositionOnMove(word) : readAloud.ownsPosition()) return;
 			}
 			// Stay on the settled word when the view didn't really move (a layout
 			// clamp), or at the very bottom, where a later word is still on screen
@@ -934,27 +1247,32 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// it to paragraph starts, so a settle on one would never be saved.
 			setActiveWord(word);
 			setProgressWord(word);
-			// Within JUMP_SETTLE_GUARD_MS the settle is the virtual list reconciling
-			// a jump; its viewport-top word sits before the jumped heading.
-			const isJumpSettle = Date.now() - lastJumpAtRef.current < JUMP_SETTLE_GUARD_MS;
+			const isJumpSettle = isReconcilingJump();
 			// Before the already-saved return: skipping those settles would break the
 			// detector chain.
+			// With read-aloud on, a paused session's moves never enter browse; but in a
+			// browse the pause opened (looking away while it played), reading on by eye
+			// commits the spot as it would without read-aloud. Playing feeds nothing.
+			const feedsBrowse = !readAloud?.isActive || (!readAloud.isPlaying && browse.isBrowsing);
 			const hasResumedReading =
-				!isJumpSettle && settledWord !== null && browse.recordSettle(settledWord, word);
+				!isJumpSettle &&
+				feedsBrowse &&
+				settledWord !== null &&
+				browse.recordSettle(settledWord, word);
 			if (isJumpSettle) {
 				// The jump target may exist only in lastWordRef (a browse jump saves nothing).
 				if (lastWordRef.current === word) settledWordRef.current = word;
 				return;
 			}
-			if (persistedWordRef.current === word) {
+			if (persistedWordRef.current.get() === word) {
 				lastWordRef.current = word;
 				settledWordRef.current = word;
 				if (hasResumedReading) browse.autoCommit();
 				return;
 			}
 			lastWordRef.current = word;
-			userMovedRef.current = true;
-			savePosition(word);
+			markLocalMove();
+			savePosition(word, "settle");
 			if (hasResumedReading) browse.autoCommit();
 			markActivityRef.current?.();
 			// End-of-book chapter advance (serials only). `wordCount > 32` keeps a
@@ -965,8 +1283,15 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				void chapterAdvance.tryAdvance();
 			}
 		},
-		[savePosition, browse, chapterAdvance, book?.wordCount],
+		[savePosition, browse, chapterAdvance, book?.wordCount, isReconcilingJump, markLocalMove],
 	);
+
+	// While read-aloud runs detached, lastWordRef is the spoken word, not the one in view.
+	const getScrollAnchorWord = useCallback(() => {
+		const readAloud = readAloudRef.current;
+		if (readAloud?.isActive && !isFollowingVoiceRef.current) return readAloud.viewWordRef.current;
+		return lastWordRef.current;
+	}, []);
 
 	const handleScrollHighlightClear = useCallback(() => {
 		setActiveWord((prev) => (prev === NO_HIGHLIGHT ? prev : NO_HIGHLIGHT));
@@ -1009,7 +1334,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const handleSetActiveWord = useCallback((word: number) => setActiveWord(word), []);
 	const handleSetProgressWord = useCallback(
 		(word: number, isAtEnd = false) => {
-			if (readAloudRef.current?.isActive) return;
+			if (readAloudRef.current?.ownsPosition()) return;
 			progressWordRef.current = word;
 			// Tracked per tick so a flush or pagination toggle mid-scroll uses the
 			// current position, except: during a jump's scroll animation, and when
@@ -1022,7 +1347,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					(isAtEnd && lastWord >= word));
 			if (!isCoarserThanLast && Date.now() - lastJumpAtRef.current >= JUMP_SETTLE_GUARD_MS) {
 				lastWordRef.current = word;
-				userMovedRef.current = true;
+				markLocalMove();
 			}
 			// A coarser tick would pull the bar back to the paragraph start. Per-tick
 			// renders dominated hold-scroll cost, so the resting line only follows
@@ -1033,7 +1358,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			}
 			markActivityRef.current?.();
 		},
-		[findParagraphIndexForWord, totalWordCount],
+		[findParagraphIndexForWord, totalWordCount, markLocalMove],
 	);
 
 	const syncSelectionHandles = useCallback(() => {
@@ -1076,8 +1401,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				if (word) openDictionaryModal(word);
 				return;
 			}
-			if (readAloudRef.current?.isActive) {
-				readAloudRef.current.moveTo(wIdx);
+			if (readAloudRef.current?.isActive && readAloudRef.current.moveTo(wIdx)) {
 				// The voice takes a moment to get there; the mark moves now. A second tap on the
 				// same word opens the dictionary, as when not listening.
 				markSpokenWord(wIdx);
@@ -1088,8 +1412,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			setProgressWord(wIdx);
 			setProgressBarVisible(true);
 			lastWordRef.current = wIdx;
-			userMovedRef.current = true;
-			savePosition(wIdx);
+			markLocalMove();
+			savePosition(wIdx, "word-tap");
 		},
 		[
 			savePosition,
@@ -1102,6 +1426,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			findLinkAt,
 			handleLinkTap,
 			openDictionaryModal,
+			markLocalMove,
 		],
 	);
 
@@ -1414,18 +1739,18 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// RsvpView's unmount flush reports its old word after a switch to the
 			// standard view has already placed the reader elsewhere.
 			if (readerModeRef.current !== "rsvp") return;
-			// Scrolling RSVP words while listening picks where play continues.
-			if (readAloudRef.current?.isActive) {
-				readAloudRef.current.detach(word);
-				return;
-			}
+			// Stepping RSVP words while listening picks where play continues; while
+			// paused it is also reading, and saved like any other move.
+			const readAloud = readAloudRef.current;
+			if (readAloud?.isActive && readAloud.keepsPositionOnMove(word)) return;
 			setProgressWord(word);
 			lastWordRef.current = word;
-			userMovedRef.current = true;
-			savePosition(word, { scheduleSync: false });
+			if (isRsvpPlayingRef.current) markPlaybackMove();
+			else markLocalMove();
+			savePosition(word, "rsvp", { scheduleSync: false });
 			markActivityRef.current?.();
 		},
-		[savePosition],
+		[savePosition, markLocalMove, markPlaybackMove],
 	);
 
 	/** Switch from RSVP back to the standard reader, positioning the
@@ -1443,12 +1768,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			readerModeRef.current = "standard";
 			const target = word ?? lastWordRef.current ?? 0;
 			lastWordRef.current = target;
-			userMovedRef.current = true;
+			markLocalMove();
 			setProgressWord(target);
 			setReaderMode("standard");
-			savePosition(target);
+			savePosition(target, "rsvp-exit");
 		},
-		[savePosition],
+		[savePosition, markLocalMove],
 	);
 
 	/** A programmatic jump from any mode. From RSVP it lands in the standard
@@ -1459,9 +1784,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				jumpToWord(word);
 				return;
 			}
-			if (readAloudRef.current?.isActive) {
-				readAloudRef.current.moveTo(word);
+			const readAloud = readAloudRef.current;
+			if (readAloud?.isActive) {
 				rsvpViewRef.current?.showWord(word);
+				if (readAloud.moveTo(word)) return;
+				lastWordRef.current = word;
+				markLocalMove();
+				savePosition(word, "jump");
 				return;
 			}
 			// Before the anchor is taken: playback saves are throttled, so the
@@ -1471,7 +1800,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			setActiveWord(word);
 			exitRsvpToStandard(word);
 		},
-		[jumpToWord, browse, exitRsvpToStandard],
+		[jumpToWord, browse, exitRsvpToStandard, savePosition, markLocalMove],
 	);
 
 	// Moving on to the next chapter means the browsed spot was read.
@@ -1487,19 +1816,22 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	);
 	const isFollowingVoiceRef = useRef(true);
 
-	const handleSpokenWord = useCallback((word: number) => {
-		lastWordRef.current = word;
-		settledWordRef.current = word;
-		userMovedRef.current = true;
-		if (readerModeRef.current === "rsvp") {
-			rsvpViewRef.current?.showWord(word);
-			return;
-		}
-		markSpokenWord(word);
-		if (!isFollowingVoiceRef.current) return;
-		// A far-off word is reached by a jump, whose settle must not read as the reader looking away.
-		if (scrollViewRef.current?.followWord?.(word)) lastJumpAtRef.current = Date.now();
-	}, []);
+	const handleSpokenWord = useCallback(
+		(word: number) => {
+			lastWordRef.current = word;
+			settledWordRef.current = word;
+			markPlaybackMove();
+			if (readerModeRef.current === "rsvp") {
+				rsvpViewRef.current?.showWord(word);
+				return;
+			}
+			markSpokenWord(word);
+			if (!isFollowingVoiceRef.current) return;
+			// A far-off word is reached by a jump, whose settle must not read as the reader looking away.
+			if (scrollViewRef.current?.followWord?.(word)) stampJump();
+		},
+		[stampJump, markPlaybackMove],
+	);
 
 	const getReadAloudViewWord = useCallback(
 		() => (viewContainerEl ? firstVisibleWord(viewContainerEl) : null),
@@ -1510,9 +1842,20 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		(word: number) => {
 			setActiveWord(word);
 			setProgressWord(word);
-			savePosition(word, { scheduleSync: false });
+			savePosition(word, "read-aloud", { scheduleSync: false });
 		},
 		[savePosition],
+	);
+
+	// The spoken word is saved; the reader is left browsing what it was looking at.
+	const handleReadAloudStopDetached = useCallback(
+		(viewWord: number) => {
+			if (readerModeRef.current === "rsvp") return;
+			browse.enterForJump(viewWord);
+			lastWordRef.current = viewWord;
+			settledWordRef.current = viewWord;
+		},
+		[browse],
 	);
 
 	// Finished books start over rather than reading the last word and stopping again.
@@ -1535,6 +1878,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		getViewWord: getReadAloudViewWord,
 		onWord: handleSpokenWord,
 		onSavePosition: handleSaveSpokenWord,
+		onStopWhileDetached: handleReadAloudStopDetached,
+		onBeforeStart: browse.readFromHere,
+		onBackToVoice: () => backToVoiceRef.current(),
 		onFurthestRead: reportFurthestRead,
 	});
 	const isReadAloudActive = readAloud.status !== "off";
@@ -1544,9 +1890,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const shownActiveWord = readAloud.status === "playing" ? NO_HIGHLIGHT : activeWord;
 	readAloudRef.current = {
 		isActive: isReadAloudActive,
+		isPlaying: readAloud.status === "playing",
+		ownsPosition: readAloud.ownsPosition,
+		keepsPositionOnMove: readAloud.keepsPositionOnMove,
 		detach: readAloud.detach,
 		moveTo: readAloud.moveTo,
 		pause: readAloud.pause,
+		viewWordRef: readAloud.viewWordRef,
 	};
 	isFollowingVoiceRef.current =
 		readAloud.isFollowing && (dbSettings?.ttsFollow ?? DEFAULT_SETTINGS.TTS_FOLLOW);
@@ -1556,12 +1906,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		return () => markSpokenWord(null);
 	}, [isReadAloudActive]);
 
-	const handleReadAloudToggle = useCallback(() => {
-		// Speech reads on from the browsed spot, like RSVP.
-		browse.readFromHere();
-		readAloud.toggle();
-	}, [browse, readAloud.toggle]);
-
 	const rsvpVoice = useMemo(
 		() =>
 			isReadAloudActive
@@ -1570,8 +1914,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		[isReadAloudActive, readAloud.status, readAloud.toggle],
 	);
 
-	// A finger on the text means the reader is looking elsewhere: stop following at once,
-	// without waiting for the scroll to settle.
+	// A finger on the text, a wheel or a scroll key means the reader is looking elsewhere:
+	// stop following at once, without waiting for the scroll to settle. Paused, it also
+	// hands the reader the position, so a leave before the settle saves the scrolled spot.
+	// Only real input: the voice's own follow scrolls must never count.
 	useEffect(() => {
 		const el = viewContainerEl;
 		if (!el || !isReadAloudActive || readerMode === "rsvp") return;
@@ -1589,32 +1935,53 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			const distance = Math.hypot(touch.clientX - touchOrigin.x, touch.clientY - touchOrigin.y);
 			if (distance < DETACH_DRAG_PX) return;
 			touchOrigin = null;
-			readAloudRef.current?.detach();
+			readAloudRef.current?.keepsPositionOnMove(null);
 		};
 		const onWheel = (e: WheelEvent) => {
-			if (!isOnControls(e)) readAloudRef.current?.detach();
+			if (!isOnControls(e)) readAloudRef.current?.keepsPositionOnMove(null);
+		};
+		// The scrollbar: a press on the scroller itself, not on the text inside it.
+		const onPointerDown = (e: PointerEvent) => {
+			const scroller = el.querySelector(".reader-scroll-content")?.firstElementChild;
+			if (scroller && e.target === scroller) {
+				readAloudRef.current?.keepsPositionOnMove(null);
+			}
+		};
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (!SCROLL_KEYS.has(e.key) || !isReaderKey(e)) return;
+			readAloudRef.current?.keepsPositionOnMove(null);
 		};
 		el.addEventListener("touchstart", onTouchStart, { passive: true });
 		el.addEventListener("touchmove", onTouchMove, { passive: true });
 		el.addEventListener("wheel", onWheel, { passive: true });
+		el.addEventListener("pointerdown", onPointerDown);
+		window.addEventListener("keydown", onKeyDown);
 		return () => {
 			el.removeEventListener("touchstart", onTouchStart);
 			el.removeEventListener("touchmove", onTouchMove);
 			el.removeEventListener("wheel", onWheel);
+			el.removeEventListener("pointerdown", onPointerDown);
+			window.removeEventListener("keydown", onKeyDown);
 		};
 	}, [viewContainerEl, isReadAloudActive, readerMode]);
 
 	const handleBackToVoice = useCallback(() => {
-		readAloud.resumeFollowing();
 		const word = readAloud.spokenWordRef.current;
+		if (word !== null) {
+			// The view goes back to the voice, so its word is the position again.
+			lastWordRef.current = word;
+			settledWordRef.current = word;
+			browse.readFromHere();
+		}
+		readAloud.resumeFollowing();
 		if (word === null) return;
 		if (readerModeRef.current === "rsvp") {
 			rsvpViewRef.current?.showWord(word);
 			return;
 		}
-		lastJumpAtRef.current = Date.now();
+		stampJump();
 		scrollViewRef.current?.jumpTo(word, { highlight: false, smooth: true });
-	}, [readAloud.resumeFollowing, readAloud.spokenWordRef]);
+	}, [readAloud.resumeFollowing, readAloud.spokenWordRef, stampJump, browse]);
 
 	const [isSleepTimerOpen, setIsSleepTimerOpen] = useState(false);
 	const [isVoiceSheetOpen, setIsVoiceSheetOpen] = useState(false);
@@ -1631,6 +1998,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		],
 		[readAloud.setSleepTimer, chapters.length],
 	);
+	backToVoiceRef.current = handleBackToVoice;
 	const handleVoiceSelect = useCallback(
 		(voice: string | null) => {
 			updateSetting(
@@ -1889,7 +2257,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				// the durable fallback below either. Still flush earlier saves.
 				if (userMovedRef.current) pushSync().catch(() => {});
 			} else if (word !== null && userMovedRef.current) {
-				flushed = savePositionRef.current(word, { scheduleSync: false });
+				flushed = savePositionRef.current(word, "unmount", { scheduleSync: false });
 				pushSync().catch(() => {});
 			} else if (
 				word !== null &&
@@ -1931,7 +2299,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			if (browse.isBrowsing) return;
 			const word = lastWordRef.current;
 			if (word !== null && userMovedRef.current) {
-				savePositionRef.current(word, { scheduleSync: false });
+				savePositionRef.current(word, "pagehide", { scheduleSync: false });
 			} else if (
 				word !== null &&
 				seededWordRef.current !== null &&
@@ -2003,7 +2371,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const isShowingSkeleton =
 		chapterFetch.kind !== "locked" &&
 		chapterFetch.kind !== "error" &&
-		(contentPending || imagesPending || !content || !wordIndex || chapterFetch.kind === "loading");
+		(contentPending ||
+			imagesPending ||
+			!content ||
+			!wordIndex ||
+			// RSVP sets its word in its own monospace face.
+			(readerMode !== "rsvp" && !readerFont) ||
+			chapterFetch.kind === "loading");
 
 	const showReadingTime = dbSettings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
 	// The dial is an input, not a rate: the engine spends time on punctuation
@@ -2102,7 +2476,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						<Button
 							variant="ghost"
 							size="icon"
-							onClick={handleReadAloudToggle}
+							onClick={readAloud.toggle}
 							disabled={!wordIndex}
 							aria-label={readAloud.status === "playing" ? "Pause listening" : "Listen"}
 							className={isReadAloudActive ? "text-primary" : undefined}
@@ -2249,9 +2623,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						totalWords={totalWordCount}
 						initialWord={lastWordRef.current ?? seedWord ?? 0}
 						fontSize={readerFontSize}
-						fontFamily={readerFontFamily}
+						fontFamily={readerFont?.family ?? DEFAULT_SETTINGS.READER_FONT_FAMILY}
+						isBold={readerFont?.isBold ?? false}
 						lineSpacing={readerLineSpacing}
 						margin={readerMargin}
+						textSpacing={textSpacing}
 						showActiveWordUnderline={readerActiveWordUnderline}
 						lang={hyphenationLang(book.language)}
 						animatePageTurns={pageTurnAnimation}
@@ -2287,10 +2663,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						trailingFigures={figureMap.trailing}
 						findParagraphIndexForWord={findParagraphIndexForWord}
 						initialWord={lastWordRef.current ?? seedWord ?? 0}
+						getAnchorWord={getScrollAnchorWord}
 						fontSize={readerFontSize}
-						fontFamily={readerFontFamily}
+						fontFamily={readerFont?.family ?? DEFAULT_SETTINGS.READER_FONT_FAMILY}
+						isBold={readerFont?.isBold ?? false}
 						lineSpacing={readerLineSpacing}
 						margin={readerMargin}
+						textSpacing={textSpacing}
 						showActiveWordUnderline={readerActiveWordUnderline}
 						activeWord={shownActiveWord}
 						highlightsByParagraph={sel.highlightsByParagraph}

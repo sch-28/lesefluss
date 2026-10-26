@@ -9,7 +9,7 @@ import {
 	READING_GOAL_STATUSES,
 	REMINDER_TIME_REGEX,
 } from "./reading-goal";
-import { HEX_COLOR_REGEX, SETTING_CONSTRAINTS } from "./settings";
+import { HEX_COLOR_REGEX, SETTING_CONSTRAINTS, SYNCED_SETTING_KEYS } from "./settings";
 
 /**
  * Max plain-text content size (UTF-8 bytes) a book may have to be eligible for
@@ -151,7 +151,8 @@ export const SyncSettingsSchema = z.object({
 		.int()
 		.min(SETTING_CONSTRAINTS.READER_FONT_SIZE.min)
 		.max(SETTING_CONSTRAINTS.READER_FONT_SIZE.max),
-	readerFontFamily: z.enum(["sans", "serif"]),
+	readerFontFamily: z.enum(["sans", "serif", "atkinson", "opendyslexic", "literata"]),
+	readerBold: z.boolean(),
 	readerLineSpacing: z
 		.number()
 		.min(SETTING_CONSTRAINTS.READER_LINE_SPACING.min)
@@ -161,6 +162,18 @@ export const SyncSettingsSchema = z.object({
 		.int()
 		.min(SETTING_CONSTRAINTS.READER_MARGIN.min)
 		.max(SETTING_CONSTRAINTS.READER_MARGIN.max),
+	readerLetterSpacing: z
+		.number()
+		.min(SETTING_CONSTRAINTS.READER_LETTER_SPACING.min)
+		.max(SETTING_CONSTRAINTS.READER_LETTER_SPACING.max),
+	readerWordSpacing: z
+		.number()
+		.min(SETTING_CONSTRAINTS.READER_WORD_SPACING.min)
+		.max(SETTING_CONSTRAINTS.READER_WORD_SPACING.max),
+	readerParagraphSpacing: z
+		.number()
+		.min(SETTING_CONSTRAINTS.READER_PARAGRAPH_SPACING.min)
+		.max(SETTING_CONSTRAINTS.READER_PARAGRAPH_SPACING.max),
 	showReadingTime: z.boolean(),
 	readerActiveWordUnderline: z.boolean().optional().default(true),
 	readerGlossaryUnderline: z.boolean().optional().default(true),
@@ -168,6 +181,33 @@ export const SyncSettingsSchema = z.object({
 	paginationStyle: z.enum(["scroll", "page"]),
 	updatedAt: z.number().int().nonnegative(),
 });
+
+type SyncedSettingKey = (typeof SYNCED_SETTING_KEYS)[number];
+
+/** A pushed settings row as the server stores it: only the fields it could validate. */
+export type SyncSettingsPush = Partial<Pick<SyncSettings, SyncedSettingKey>> &
+	Pick<SyncSettings, "updatedAt">;
+
+/**
+ * How the server reads pushed settings. A client newer than the server may send
+ * a value this schema does not know yet, and a client older than a field omits
+ * it. Both drop just that field, so the stored value survives and the rest of
+ * the push still applies. `SyncSettingsSchema`'s defaults must not run here:
+ * they would overwrite a value set by a newer device.
+ */
+const SyncSettingsPushSchema = z
+	.looseObject({ updatedAt: SyncSettingsSchema.shape.updatedAt })
+	.transform((raw): SyncSettingsPush => {
+		const fields: Partial<Record<SyncedSettingKey, unknown>> & { updatedAt: number } = {
+			updatedAt: raw.updatedAt,
+		};
+		for (const key of SYNCED_SETTING_KEYS) {
+			if (raw[key] === undefined) continue;
+			const parsed = SyncSettingsSchema.shape[key].safeParse(raw[key]);
+			if (parsed.success) fields[key] = parsed.data;
+		}
+		return fields as SyncSettingsPush;
+	});
 
 export const SyncHighlightSchema = z
 	.object({
@@ -270,6 +310,11 @@ export const SyncPayloadSchema = z.object({
 	readingGoals: z.array(SyncReadingGoalSchema).max(5000).optional(),
 });
 
+/** The server's reading of a push. Clients build pushes against `SyncPayloadSchema`. */
+export const SyncPushSchema = SyncPayloadSchema.extend({
+	settings: SyncSettingsPushSchema.nullable(),
+});
+
 // ---------------------------------------------------------------------------
 // Inferred TypeScript types
 // ---------------------------------------------------------------------------
@@ -282,6 +327,7 @@ export type SyncGlossaryEntry = z.infer<typeof SyncGlossaryEntrySchema>;
 export type SyncReadingSession = z.infer<typeof SyncReadingSessionSchema>;
 export type SyncReadingGoal = z.infer<typeof SyncReadingGoalSchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
+export type SyncPush = z.infer<typeof SyncPushSchema>;
 
 /**
  * A pulled book. `originKey` is an opaque, server-computed identity of the
