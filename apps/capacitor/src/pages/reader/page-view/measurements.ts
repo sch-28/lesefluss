@@ -5,6 +5,8 @@
  * the same synchronous frame triggers a single browser layout flush.
  */
 
+import { firstLineRect } from "../line-rects";
+
 /** A word span, or a heading, which renders no spans and carries its first word. */
 const WORD_TARGETS = "span[data-word], [data-heading-word]";
 
@@ -37,21 +39,12 @@ export function findPageForWord(
 	}
 	if (!span) return 0;
 	const colsRect = columns.getBoundingClientRect();
-	// Use the first line-rect: a wrapped span's bounding box can span
-	// multiple lines, but the first client rect is the actual starting
-	// position of the word within its column. Center-x within that rect
-	// stays safely inside the column even when getBoundingClientRect
-	// reports a sub-pixel underflow at the column boundary.
-	const rects = span.getClientRects();
-	const r0 = rects.length > 0 ? rects[0] : span.getBoundingClientRect();
+	// Center-x of the first line rect stays safely inside the column even when
+	// getBoundingClientRect reports a sub-pixel underflow at the column boundary.
+	const r0 = firstLineRect(span);
 	const xCenter = r0.left + r0.width / 2 - colsRect.left;
 	const page = Math.floor(xCenter / pageWidth);
 	return Math.max(0, Math.min(pageCount - 1, page));
-}
-
-function firstLineRect(span: HTMLElement): DOMRect {
-	const rects = span.getClientRects();
-	return rects.length > 0 ? rects[0] : span.getBoundingClientRect();
 }
 
 /** Word index of the topmost-leftmost word span or heading on the page, or null

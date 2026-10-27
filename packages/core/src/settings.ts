@@ -41,6 +41,7 @@ export const DEFAULT_SETTINGS = {
 	READER_FONT_SIZE: 16, // px (12–28)
 	READER_FONT_FAMILY: "sans", // 'sans' | 'serif' | 'atkinson' | 'opendyslexic' | 'literata'
 	READER_BOLD: false, // bold body text in the scroll and page reader
+	READER_TEXT_ALIGN: "left", // 'left' | 'justify'
 	READER_LINE_SPACING: 1.8, // line-height multiplier (1.2–2.4)
 	READER_MARGIN: 20, // horizontal padding px (8–48)
 	READER_LETTER_SPACING: 0, // em added between letters (0–0.2)
@@ -111,6 +112,7 @@ export const SYNCED_SETTING_KEYS = [
 	"readerFontSize",
 	"readerFontFamily",
 	"readerBold",
+	"readerTextAlign",
 	"readerLineSpacing",
 	"readerMargin",
 	"readerLetterSpacing",

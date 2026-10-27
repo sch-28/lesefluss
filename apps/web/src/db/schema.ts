@@ -162,6 +162,7 @@ export const syncSettings = pgTable(
 		readerFontSize: integer("reader_font_size").notNull().default(16),
 		readerFontFamily: text("reader_font_family").notNull().default("sans"),
 		readerBold: boolean("reader_bold").notNull().default(false),
+		readerTextAlign: text("reader_text_align").notNull().default("left"),
 		readerLineSpacing: real("reader_line_spacing").notNull().default(1.8),
 		readerMargin: integer("reader_margin").notNull().default(20),
 		readerLetterSpacing: real("reader_letter_spacing").notNull().default(0),

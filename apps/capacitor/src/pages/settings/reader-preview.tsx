@@ -1,10 +1,13 @@
-import type React from "react";
+import { type CSSProperties, useRef } from "react";
 import { useTheme } from "../../contexts/theme-context";
 import {
+	effectiveTextAlign,
 	readerFontStack,
+	textAlignVars,
 	textSpacingVars,
 	useAppearanceSettings,
 } from "../../hooks/use-appearance-settings";
+import { useElementWidth } from "../../hooks/use-element-width";
 
 // Short enough that the gaps between paragraphs show inside the card.
 const BEFORE = "The morning light crept across the old wooden floor. She";
@@ -19,6 +22,7 @@ export default function ReaderPreview() {
 		fontSize,
 		fontFamily,
 		isBold,
+		textAlign,
 		lineSpacing,
 		margin,
 		letterSpacing,
@@ -26,6 +30,13 @@ export default function ReaderPreview() {
 		paragraphSpacing,
 		showActiveWordUnderline,
 	} = useAppearanceSettings();
+	const textRef = useRef<HTMLDivElement>(null);
+	const align = effectiveTextAlign(
+		textAlign,
+		useElementWidth(textRef) - 2 * margin,
+		fontSize,
+		letterSpacing,
+	);
 
 	return (
 		<div
@@ -36,6 +47,8 @@ export default function ReaderPreview() {
 				Preview
 			</span>
 			<div
+				ref={textRef}
+				lang="en"
 				style={
 					{
 						padding: `8px ${margin}px 0`,
@@ -48,7 +61,8 @@ export default function ReaderPreview() {
 							word: wordSpacing,
 							paragraph: paragraphSpacing,
 						}),
-					} as React.CSSProperties
+						...textAlignVars(align),
+					} as CSSProperties
 				}
 			>
 				<p className="reader-paragraph">

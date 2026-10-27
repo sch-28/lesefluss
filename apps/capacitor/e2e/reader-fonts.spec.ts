@@ -2,6 +2,7 @@ import type { EpubFixture } from "@lesefluss/book-import/test-fixtures/build-epu
 import type { SyncSettings } from "@lesefluss/core";
 import { expect, type Page, test } from "@playwright/test";
 import { PLAIN_BOOK_TITLE, plainBookFixture } from "./helpers/plain-book";
+import { applyRemoteSettings } from "./helpers/remote-settings";
 import { openBookFromLibrary, seedFixture } from "./helpers/seed";
 import { reader } from "./page-objects/reader";
 
@@ -11,14 +12,6 @@ import { reader } from "./page-objects/reader";
  * then reflows when the face arrives. Page mode would paginate the fallback
  * and land a turn on a page that no longer holds the reader's word.
  */
-
-async function applyRemoteSettings(page: Page, patch: Partial<SyncSettings>) {
-	await page.evaluate((patch) => {
-		const apply = window.__lesefluss_e2e_applyRemoteSettings;
-		if (!apply) throw new Error("No __lesefluss_e2e_applyRemoteSettings hook");
-		return apply(patch);
-	}, patch);
-}
 
 /**
  * Holds a face's files back, as a slow storage read or a first web visit does.

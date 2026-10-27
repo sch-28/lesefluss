@@ -31,3 +31,15 @@ test("reader settings preview follows spacing changes", async ({ page }) => {
 	}
 	expect(await spacingOf()).not.toBe(before);
 });
+
+test("reader settings preview follows justify", async ({ page }) => {
+	await page.goto("/tabs/settings/reader");
+	const paragraph = page.getByTestId("reader-preview").locator(".reader-paragraph").first();
+	await expect(paragraph).toBeVisible();
+	const alignOf = () => paragraph.evaluate((el) => getComputedStyle(el).textAlign);
+	expect(await alignOf()).toBe("start");
+
+	await page.getByRole("switch", { name: "Justify text" }).click();
+
+	await expect.poll(alignOf).toBe("justify");
+});

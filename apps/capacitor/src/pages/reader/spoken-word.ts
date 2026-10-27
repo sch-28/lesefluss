@@ -1,3 +1,5 @@
+import { firstLineRect } from "./line-rects";
+
 const HIGHLIGHT_NAME = "tts-word";
 
 /**
@@ -22,7 +24,7 @@ export function markSpokenWord(word: number | null): void {
 export function firstVisibleWord(root: Element): number | null {
 	const box = root.getBoundingClientRect();
 	for (const span of root.querySelectorAll<HTMLElement>("span[data-word]")) {
-		const r = span.getBoundingClientRect();
+		const r = firstLineRect(span);
 		if (r.bottom > box.top && r.top < box.bottom && r.right > box.left && r.left < box.right) {
 			const word = Number.parseInt(span.dataset.word ?? "", 10);
 			if (!Number.isNaN(word)) return word;

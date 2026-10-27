@@ -54,6 +54,7 @@ describe("SyncPushSchema settings", () => {
 		readerFontSize: 16,
 		readerFontFamily: "serif",
 		readerBold: true,
+		readerTextAlign: "justify",
 		readerLineSpacing: 1.8,
 		readerMargin: 20,
 		readerLetterSpacing: 0.04,
@@ -101,7 +102,7 @@ describe("SyncPushSchema settings", () => {
 	});
 
 	it("ignores a field it doesn't know", () => {
-		expect(push({ ...settings, readerTextAlign: "justify" }).data?.settings).toEqual(settings);
+		expect(push({ ...settings, readerHyphenation: "manual" }).data?.settings).toEqual(settings);
 	});
 
 	it("leaves the spacing fields out of a push from a client that predates them", () => {
@@ -132,6 +133,17 @@ describe("SyncPushSchema settings", () => {
 	it("leaves bold text out of a push from a client that predates it", () => {
 		const { readerBold: _, ...older } = settings;
 		expect(push(older).data?.settings).not.toHaveProperty("readerBold");
+	});
+
+	it("drops an alignment it doesn't know, as a newer client might send", () => {
+		expect(push({ ...settings, readerTextAlign: "center" }).data?.settings).not.toHaveProperty(
+			"readerTextAlign",
+		);
+	});
+
+	it("leaves the alignment out of a push from a client that predates it", () => {
+		const { readerTextAlign: _, ...older } = settings;
+		expect(push(older).data?.settings).not.toHaveProperty("readerTextAlign");
 	});
 
 	it("drops a spacing value outside its range and keeps the rest", () => {

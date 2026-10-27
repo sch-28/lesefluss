@@ -48,9 +48,14 @@ describe("saveSettings updatedAt", () => {
 		expect((await getSettings()).updatedAt).toBeGreaterThanOrEqual(before);
 	});
 
-	it("adopting a server row from before text spacing and bold keeps them as set here", async () => {
+	it("adopting a server row from before text spacing, bold and alignment keeps them as set here", async () => {
 		await saveSettings(
-			{ readerLetterSpacing: 0.04, readerParagraphSpacing: 1.6, readerBold: true },
+			{
+				readerLetterSpacing: 0.04,
+				readerParagraphSpacing: 1.6,
+				readerBold: true,
+				readerTextAlign: "justify",
+			},
 			1000,
 		);
 
@@ -61,6 +66,7 @@ describe("saveSettings updatedAt", () => {
 				readerLetterSpacing: undefined,
 				readerParagraphSpacing: undefined,
 				readerBold: undefined,
+				readerTextAlign: undefined,
 			},
 			2000,
 		);
@@ -70,6 +76,7 @@ describe("saveSettings updatedAt", () => {
 			readerLetterSpacing: 0.04,
 			readerParagraphSpacing: 1.6,
 			readerBold: true,
+			readerTextAlign: "justify",
 		});
 	});
 

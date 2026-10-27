@@ -43,8 +43,11 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import {
+	effectiveTextAlign,
 	readerFontFace,
+	type TextAlign,
 	type TextSpacing,
+	textAlignVars,
 	textSpacingKey,
 	textSpacingVars,
 } from "../../../hooks/use-appearance-settings";
@@ -97,8 +100,9 @@ export interface PageViewProps {
 	lineSpacing: number;
 	margin: number;
 	textSpacing: TextSpacing;
+	textAlign: TextAlign;
 	showActiveWordUnderline: boolean;
-	/** HTML `lang` for the page columns; drives CSS hyphenation. */
+	/** HTML `lang` for the page columns; picks the hyphenation dictionary under justify. */
 	lang: string;
 	/** Off for e-ink, where a slide renders as a smear of ghosted frames. */
 	animatePageTurns: boolean;
@@ -166,6 +170,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		lineSpacing,
 		margin,
 		textSpacing,
+		textAlign,
 		showActiveWordUnderline,
 		lang,
 		animatePageTurns,
@@ -260,6 +265,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	// ── Derived ────────────────────────────────────────────────────────────
 	const pageWidth = viewport ? Math.max(0, viewport.w - 2 * margin) : 0;
 	const pageHeight = viewport ? viewport.h : 0;
+	const align = effectiveTextAlign(textAlign, pageWidth, fontSize, textSpacing.letter);
 	const isLayoutReady = pageWidth > 0 && pageHeight > 0;
 
 	const fullWindow = useMemo(
@@ -346,7 +352,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			// Capped: a mouse released outside the window never clears the drag.
 			(dragRef.current !== null && performance.now() - dragRef.current.originT < DRAG_HOLD_MAX_MS),
 	);
-	const layoutKey = `${viewport?.w ?? 0}x${viewport?.h ?? 0}|${fontSize}|${fontFamily}|${isBold}|${fontLoads}|${lineSpacing}|${margin}|${textSpacingKey(textSpacing)}|${lang}`;
+	const layoutKey = `${viewport?.w ?? 0}x${viewport?.h ?? 0}|${fontSize}|${fontFamily}|${isBold}|${fontLoads}|${lineSpacing}|${margin}|${textSpacingKey(textSpacing)}|${align}|${lang}`;
 	const lastLayoutKeyRef = useRef(layoutKey);
 	useLayoutEffect(() => {
 		if (lastLayoutKeyRef.current === layoutKey) return;
@@ -903,6 +909,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				...({ "--reader-line-height": String(lineSpacing) } as React.CSSProperties),
 				...(isBold && ({ "--reader-font-weight": "700" } as React.CSSProperties)),
 				...textSpacingVars(textSpacing),
+				...textAlignVars(align),
 			}}
 		>
 			{/* page-clip: bounds the visible page area exactly to the column box.
@@ -951,6 +958,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									fontLoads={fontLoads}
 									lineSpacing={lineSpacing}
 									textSpacing={textSpacing}
+									textAlign={align}
 									showActiveWordUnderline={showActiveWordUnderline}
 									lang={lang}
 									activeWord={isActiveChunk ? activeWord : -1}

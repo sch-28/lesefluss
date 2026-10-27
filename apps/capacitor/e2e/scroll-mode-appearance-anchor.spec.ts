@@ -1,7 +1,7 @@
 import type { EpubFixture } from "@lesefluss/book-import/test-fixtures/build-epub";
-import type { SyncSettings } from "@lesefluss/core";
 import { expect, type Page, test } from "@playwright/test";
 import { BIG_BOOK_TITLE, seedBigBook } from "./helpers/big-book";
+import { applyRemoteSettings } from "./helpers/remote-settings";
 import { openBookFromLibrary, seedFixture, seedStrayAnchorBook } from "./helpers/seed";
 import { reader } from "./page-objects/reader";
 
@@ -60,6 +60,15 @@ const CHANGES: Change[] = [
 		apply: (page) => applyRemoteSettings(page, { readerBold: true }),
 	},
 	{
+		name: "justify",
+		apply: (page) =>
+			clickInAppearance(page, (p) => p.getByRole("radio", { name: "Justify" }).click()),
+	},
+	{
+		name: "justify via sync",
+		apply: (page) => applyRemoteSettings(page, { readerTextAlign: "justify" }),
+	},
+	{
 		name: "margins",
 		apply: async (page) => {
 			for (let i = 0; i < 3; i++) await reader.stepUpAppearance(page, "Margins");
@@ -84,14 +93,6 @@ const CHANGES: Change[] = [
 		},
 	},
 ];
-
-async function applyRemoteSettings(page: Page, patch: Partial<SyncSettings>) {
-	await page.evaluate((patch) => {
-		const apply = window.__lesefluss_e2e_applyRemoteSettings;
-		if (!apply) throw new Error("No __lesefluss_e2e_applyRemoteSettings hook");
-		return apply(patch);
-	}, patch);
-}
 
 /** The computed style of a rendered word, to prove a change really reached the text. */
 async function wordStyle(page: Page): Promise<string> {
@@ -118,14 +119,16 @@ async function openMidChapter(page: Page, viewport: { width: number; height: num
 	return word;
 }
 
-/** How `word` and its paragraph are laid out; changes whenever the text rewraps. */
+/** How `word` and its paragraph are laid out; changes whenever the text rewraps or its alignment changes. */
 async function layoutOf(page: Page, word: number): Promise<string> {
 	return page.evaluate((word) => {
 		const span = document.querySelector<HTMLElement>(`span[data-word="${word}"]`);
 		if (!span) return "unmounted";
 		const r = span.getBoundingClientRect();
 		const block = span.closest("p, div") as HTMLElement | null;
-		const gap = block ? getComputedStyle(block).marginBottom : "";
+		// Alignment too: justify leaves a paragraph's last line as it was.
+		const style = block && getComputedStyle(block);
+		const gap = style ? `${style.marginBottom}|${style.textAlign}` : "";
 		// Word spacing can leave every line break in place; the next word still moves.
 		const next = document.querySelector(`span[data-word="${word + 1}"]`)?.getBoundingClientRect();
 		return `${Math.round(r.left)}|${Math.round(r.height)}|${block?.offsetHeight ?? 0}|${gap}|${Math.round(next?.left ?? 0)}`;

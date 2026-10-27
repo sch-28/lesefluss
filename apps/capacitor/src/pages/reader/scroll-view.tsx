@@ -10,12 +10,16 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 import type { VListHandle } from "virtua";
 import { VList } from "virtua";
 import {
+	effectiveTextAlign,
 	readerFontFace,
 	readerFontStack,
+	type TextAlign,
 	type TextSpacing,
+	textAlignVars,
 	textSpacingKey,
 	textSpacingVars,
 } from "../../hooks/use-appearance-settings";
+import { useElementWidth } from "../../hooks/use-element-width";
 import type { ReaderGoalDivider } from "./goal-divider";
 import Paragraph, {
 	cancelAnyActiveLongPress,
@@ -210,6 +214,8 @@ export function scheduleFineScroll(
 }
 
 const SMOOTH_SCROLL_MS = 250;
+// Covers a key or button scroll up to its settle: the scroll end comes 150 ms after it.
+const READER_SCROLL_WINDOW_MS = 1000;
 
 /** VList only exposes scrollBy(offset), no behavior arg, so ease out by hand. Returns a cancel. */
 function smoothScrollBy(listHandle: VListHandle, delta: number): () => void {
@@ -281,7 +287,10 @@ export interface ScrollViewProps {
 	lineSpacing: number;
 	margin: number;
 	textSpacing: TextSpacing;
+	textAlign: TextAlign;
 	showActiveWordUnderline: boolean;
+	/** HTML `lang` for the list; picks the hyphenation dictionary under justify. */
+	lang: string;
 
 	// Active highlight + per-paragraph annotation data (passed straight to <Paragraph>).
 	/** Active word index (-1 to hide). */
@@ -347,7 +356,9 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 		lineSpacing,
 		margin,
 		textSpacing,
+		textAlign,
 		showActiveWordUnderline,
+		lang,
 		activeWord,
 		highlightsByParagraph,
 		glossaryByParagraph,
@@ -412,6 +423,13 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	// measure deps (page-view/index.tsx, chunk-content.tsx).
 	// Set from the first scroll event to the scroll end.
 	const isScrollingRef = useRef(false);
+	const readerScrollUntilRef = useRef(0);
+	const align = effectiveTextAlign(
+		textAlign,
+		useElementWidth(containerRef) - 2 * margin,
+		fontSize,
+		textSpacing.letter,
+	);
 	const fontLoads = useValueWhenIdle(
 		useFontLoadCount(readerFontFace(fontFamily)),
 		() => isScrollingRef.current,
@@ -419,7 +437,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 	const anchorHold = useAnchorHold({
 		listRef,
 		containerRef,
-		layoutKey: `${fontSize}|${fontFamily}|${isBold}|${fontLoads}|${lineSpacing}|${margin}|${textSpacingKey(textSpacing)}`,
+		layoutKey: `${fontSize}|${fontFamily}|${isBold}|${fontLoads}|${lineSpacing}|${margin}|${textSpacingKey(textSpacing)}|${align}|${lang}`,
 		getAnchorWord,
 		findParagraphIndexForWord,
 		findWordSpan: (word, idx) => {
@@ -646,7 +664,11 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			// The reader's keys and page buttons scroll through here.
 			scrollBy(pixels) {
 				anchorHold.release("reader");
+				readerScrollUntilRef.current = performance.now() + READER_SCROLL_WINDOW_MS;
 				listRef.current?.scrollBy(pixels);
+			},
+			isReaderScrolling() {
+				return performance.now() < readerScrollUntilRef.current || anchorHold.isReaderInput();
 			},
 			followWord(wordIdx) {
 				const list = listRef.current;
@@ -810,6 +832,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			<div
 				ref={containerRef}
 				className="reader-scroll-content"
+				lang={lang}
 				style={
 					{
 						height: "100%",
@@ -821,6 +844,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 						"--reader-line-height": String(lineSpacing),
 						...(isBold && { "--reader-font-weight": "700" }),
 						...textSpacingVars(textSpacing),
+						...textAlignVars(align),
 					} as React.CSSProperties
 				}
 			>

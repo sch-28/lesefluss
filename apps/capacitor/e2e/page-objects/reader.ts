@@ -260,6 +260,16 @@ export const reader = {
 		await page.mouse.wheel(0, deltaY);
 	},
 
+	/** Scrolls the list from script, with no reader input: how the view's own scrolls move it. */
+	scrollWithoutInput: async (page: Page, deltaY: number) =>
+		inScrollContainer(
+			page,
+			(container, deltaY) => {
+				container.scrollTop += deltaY;
+			},
+			deltaY,
+		),
+
 	/**
 	 * Pixels from the scroll reader's top edge down to the line holding `word`
 	 * (negative: above the edge), or to the heading it starts. Infinity when the
@@ -346,6 +356,11 @@ export const reader = {
 		const start = await centreOf(reader.wordSpan(page, startText));
 		const end = await centreOf(reader.wordSpan(page, endText));
 		await touchLongPress(page, start, end);
+	},
+
+	/** Touch long-press at `from`, drag the finger to `to`, and lift. */
+	touchLongPressBetween: async (page: Page, from: Point, to: Point) => {
+		await touchLongPress(page, from, to);
 	},
 
 	/** Touch long-press at the centre of `target` without moving, then lift. */

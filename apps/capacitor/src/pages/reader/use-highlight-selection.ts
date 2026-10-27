@@ -14,6 +14,7 @@ import { queryHooks } from "../../services/db/hooks";
 import type { Highlight } from "../../services/db/schema";
 import { dragStep, tick } from "../../services/haptics";
 import { randomHexId } from "../../utils/random-id";
+import { firstLineRect, lastLineRect } from "./line-rects";
 import type { HighlightRange } from "./paragraph";
 import { HIGHLIGHT_COLORS, type HighlightColor } from "./selection-toolbar";
 import { computeToolbarPosition, HANDLE_V_PAD } from "./toolbar-position";
@@ -258,7 +259,7 @@ export function useHighlightSelection({
 		// Position start handle: bar runs along the left edge of the start word.
 		if (startHandleRef.current) {
 			if (startSpan) {
-				const rect = startSpan.getBoundingClientRect();
+				const rect = firstLineRect(startSpan);
 				startHandleRef.current.style.left = `${rect.left - HANDLE_H_HALF}px`;
 				startHandleRef.current.style.top = `${rect.top - HANDLE_V_PAD}px`;
 				startHandleRef.current.style.setProperty("--bar-height", `${rect.height}px`);
@@ -271,7 +272,7 @@ export function useHighlightSelection({
 		// Position end handle: bar runs along the right edge of the end word.
 		if (endHandleRef.current) {
 			if (endSpan) {
-				const rect = endSpan.getBoundingClientRect();
+				const rect = lastLineRect(endSpan);
 				endHandleRef.current.style.left = `${rect.right - HANDLE_H_HALF}px`;
 				endHandleRef.current.style.top = `${rect.top - HANDLE_V_PAD}px`;
 				endHandleRef.current.style.setProperty("--bar-height", `${rect.height}px`);
@@ -287,8 +288,8 @@ export function useHighlightSelection({
 			// The toolbar's scroll-margin carries the safe-area insets (see monochrome.css).
 			const style = getComputedStyle(toolbar);
 			const { top, left } = computeToolbarPosition({
-				startRect: startSpan.getBoundingClientRect(),
-				endRect: endSpan.getBoundingClientRect(),
+				startRect: firstLineRect(startSpan),
+				endRect: lastLineRect(endSpan),
 				toolbar: { width: toolbar.offsetWidth, height: toolbar.offsetHeight },
 				viewport: { width: window.innerWidth, height: window.innerHeight },
 				safeTop: Number.parseFloat(style.scrollMarginTop) || 0,

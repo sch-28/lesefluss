@@ -15,7 +15,7 @@ const TOUCH_SLOP_PX = 10;
 const MOUSE_SLOP_PX = 8;
 // Keys the browser scrolls with natively when the reader's shortcuts leave them
 // alone (focus on a control in the text).
-const NATIVE_SCROLL_KEYS = new Set([
+export const NATIVE_SCROLL_KEYS = new Set([
 	" ",
 	"PageUp",
 	"PageDown",
@@ -274,6 +274,8 @@ export function useAnchorHold(options: Options) {
 			/** While true, scrolls are the list re-measuring: nothing may be saved from them. */
 			isPending: () => phaseRef.current !== "idle",
 			isSettling: () => phaseRef.current === "settling",
+			/** A press, an autoscroll or a scroll key is moving the list. */
+			isReaderInput: () => performance.now() < readerInputUntilRef.current,
 			noteScroll: () => {
 				const word = wordRef.current;
 				if (phaseRef.current === "idle" || word === null) return;

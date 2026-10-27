@@ -218,6 +218,8 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	font-weight: var(--reader-font-weight, normal);
 	letter-spacing: var(--reader-letter-spacing, normal);
 	word-spacing: var(--reader-word-spacing, normal);
+	text-align: var(--reader-text-align, start);
+	hyphens: var(--reader-hyphens, manual);
 	color: var(--reader-text, #111111);
 	margin: 0 0 var(--reader-paragraph-spacing, 1.1em) 0;
 	white-space: normal;

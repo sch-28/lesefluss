@@ -35,6 +35,7 @@ function ReaderSettings() {
 		fontSize,
 		fontFamily,
 		isBold,
+		textAlign,
 		lineSpacing,
 		margin,
 		letterSpacing,
@@ -56,6 +57,7 @@ function ReaderSettings() {
 		resetTextSpacing,
 		setFontFamily,
 		setBold,
+		setTextAlign,
 		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,
@@ -80,6 +82,13 @@ function ReaderSettings() {
 						title="Bold text"
 						checked={isBold}
 						onCheckedChange={setBold}
+					/>
+					<ToggleRow
+						id="reader-justify"
+						title="Justify text"
+						subtitle="Straight edges on both sides. Hyphenates long words."
+						checked={textAlign === "justify"}
+						onCheckedChange={(on) => setTextAlign(on ? "justify" : "left")}
 					/>
 					<StepperRow
 						label="Text size"

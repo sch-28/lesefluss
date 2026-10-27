@@ -1,0 +1,1 @@
+ALTER TABLE "sync_settings" ADD COLUMN "reader_text_align" text DEFAULT 'left' NOT NULL;

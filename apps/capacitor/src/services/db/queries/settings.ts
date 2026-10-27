@@ -34,6 +34,7 @@ export async function getSettings(): Promise<Settings> {
 		readerFontSize: DEFAULT_SETTINGS.READER_FONT_SIZE,
 		readerFontFamily: DEFAULT_SETTINGS.READER_FONT_FAMILY,
 		readerBold: DEFAULT_SETTINGS.READER_BOLD,
+		readerTextAlign: DEFAULT_SETTINGS.READER_TEXT_ALIGN,
 		readerLineSpacing: DEFAULT_SETTINGS.READER_LINE_SPACING,
 		readerMargin: DEFAULT_SETTINGS.READER_MARGIN,
 		readerLetterSpacing: DEFAULT_SETTINGS.READER_LETTER_SPACING,

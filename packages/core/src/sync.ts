@@ -153,6 +153,7 @@ export const SyncSettingsSchema = z.object({
 		.max(SETTING_CONSTRAINTS.READER_FONT_SIZE.max),
 	readerFontFamily: z.enum(["sans", "serif", "atkinson", "opendyslexic", "literata"]),
 	readerBold: z.boolean(),
+	readerTextAlign: z.enum(["left", "justify"]),
 	readerLineSpacing: z
 		.number()
 		.min(SETTING_CONSTRAINTS.READER_LINE_SPACING.min)

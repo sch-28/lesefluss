@@ -316,6 +316,13 @@
       "when": 1782518400000,
       "tag": "0044_reader_bold",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "6",
+      "when": 1782604800000,
+      "tag": "0045_reader_text_align",
+      "breakpoints": true
     }
   ]
 }

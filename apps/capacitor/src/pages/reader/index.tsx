@@ -64,6 +64,7 @@ import { useTheme } from "../../contexts/theme-context";
 import {
 	readerFontFamilyFor,
 	readerLayoutFor,
+	textAlignFor,
 	textSpacingFor,
 	volumeKeysFor,
 } from "../../hooks/use-appearance-settings";
@@ -160,6 +161,7 @@ import { SessionDebugBadge } from "./session-debug-badge";
 import { SessionPauseOverlay } from "./session-pause-overlay";
 import { firstVisibleWord, markSpokenWord } from "./spoken-word";
 import { createTwoFingerTapDetector } from "./two-finger-tap";
+import { NATIVE_SCROLL_KEYS } from "./use-anchor-hold";
 import { useBrowseMode } from "./use-browse-mode";
 import {
 	findFirstMention,
@@ -190,7 +192,6 @@ function requestSyncPush() {
 }
 
 // Sentinel value: no word highlighted (while scrolling)
-const SCROLL_KEYS = new Set(["PageDown", "PageUp", "ArrowDown", "ArrowUp", "Home", "End"]);
 
 const EXTERNAL_POSITION_TOAST = "external-position";
 const EXTERNAL_POSITION_TOAST_MS = 10_000;
@@ -758,6 +759,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		() => textSpacingFor({ readerLetterSpacing, readerWordSpacing, readerParagraphSpacing }),
 		[readerLetterSpacing, readerWordSpacing, readerParagraphSpacing],
 	);
+	const textAlign = textAlignFor(dbSettings?.readerTextAlign);
 	const readerActiveWordUnderline =
 		dbSettings?.readerActiveWordUnderline ?? DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE;
 	const readerGlossaryUnderline =
@@ -942,6 +944,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			setProgressWord(word);
 			lastWordRef.current = word;
 			settledWordRef.current = word;
+			// The jump's settle doesn't reach read-aloud: playing, the voice would save the
+			// spot left behind; paused, play would read from it.
+			const readAloud = readAloudRef.current;
+			if (readAloud?.isPlaying) readAloud.moveTo(word);
+			else if (readAloud?.isActive) readAloud.detach(word);
 			stampJump();
 			scrollViewRef.current?.jumpTo(word, { highlight: true });
 		},
@@ -1226,11 +1233,25 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			if (import.meta.env.DEV) publishSettle(word);
 			const readAloud = readAloudRef.current;
 			if (readAloud?.isActive) {
-				// Following the voice never settles, so this is the reader looking
-				// elsewhere, unless it is the list reconciling a jump or compensating
-				// a re-measure (the text did not move).
-				const isReaderMove = hasMoved && !isReconcilingJump();
-				if (isReaderMove ? readAloud.keepsPositionOnMove(word) : readAloud.ownsPosition()) return;
+				// In scroll mode, a settle while following that no reader input caused is the
+				// view's own scroll (the voice's follow, a jump reconciling, a re-measure). A
+				// page turn detaches only through its settle.
+				const isViewScroll =
+					isReconcilingJump() ||
+					(paginationStyle === "scroll" &&
+						isFollowingVoiceRef.current &&
+						!scrollViewRef.current?.isReaderScrolling?.());
+				const isReaderMove = hasMoved && !isViewScroll;
+				if (isReaderMove && readAloud.keepsPositionOnMove(word)) return;
+				if (!isReaderMove && readAloud.ownsPosition()) {
+					// The scroll hid the spoken word's mark; it is still the position.
+					const spoken = lastWordRef.current;
+					if (spoken !== null) {
+						setActiveWord(spoken);
+						setProgressWord(spoken);
+					}
+					return;
+				}
 			}
 			// Stay on the settled word when the view didn't really move (a layout
 			// clamp), or at the very bottom, where a later word is still on screen
@@ -1283,7 +1304,15 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				void chapterAdvance.tryAdvance();
 			}
 		},
-		[savePosition, browse, chapterAdvance, book?.wordCount, isReconcilingJump, markLocalMove],
+		[
+			savePosition,
+			browse,
+			chapterAdvance,
+			book?.wordCount,
+			isReconcilingJump,
+			markLocalMove,
+			paginationStyle,
+		],
 	);
 
 	// While read-aloud runs detached, lastWordRef is the spoken word, not the one in view.
@@ -1948,7 +1977,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			}
 		};
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (!SCROLL_KEYS.has(e.key) || !isReaderKey(e)) return;
+			if (!NATIVE_SCROLL_KEYS.has(e.key) || !isReaderKey(e)) return;
 			readAloudRef.current?.keepsPositionOnMove(null);
 		};
 		el.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -2628,6 +2657,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						lineSpacing={readerLineSpacing}
 						margin={readerMargin}
 						textSpacing={textSpacing}
+						textAlign={textAlign}
 						showActiveWordUnderline={readerActiveWordUnderline}
 						lang={hyphenationLang(book.language)}
 						animatePageTurns={pageTurnAnimation}
@@ -2670,7 +2700,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						lineSpacing={readerLineSpacing}
 						margin={readerMargin}
 						textSpacing={textSpacing}
+						textAlign={textAlign}
 						showActiveWordUnderline={readerActiveWordUnderline}
+						lang={hyphenationLang(book.language)}
 						activeWord={shownActiveWord}
 						highlightsByParagraph={sel.highlightsByParagraph}
 						glossaryByParagraph={glossaryByParagraph}

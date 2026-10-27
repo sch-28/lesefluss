@@ -159,6 +159,29 @@ export function textSpacingVars(spacing: TextSpacing): React.CSSProperties {
 	} as React.CSSProperties;
 }
 
+// About 30 characters: below that, justify stretches the few gaps of a line into holes.
+const JUSTIFY_MIN_LINE_EM = 16;
+
+/** Justify only where a line holds enough words to spread the space; left otherwise. */
+export function effectiveTextAlign(
+	align: TextAlign,
+	lineWidthPx: number,
+	fontSizePx: number,
+	letterSpacingEm: number,
+): TextAlign {
+	if (align !== "justify") return "left";
+	return lineWidthPx / (fontSizePx * (1 + 2 * letterSpacingEm)) >= JUSTIFY_MIN_LINE_EM
+		? "justify"
+		: "left";
+}
+
+/** Justified text hyphenates; left-aligned text breaks only between words. */
+export function textAlignVars(align: TextAlign): React.CSSProperties {
+	return (
+		align === "justify" ? { "--reader-text-align": "justify", "--reader-hyphens": "auto" } : {}
+	) as React.CSSProperties;
+}
+
 /** Added spacing in em, shown as a share of the font size. */
 export const percentOfFont = (em: number) => `${Math.round(em * 100)}%`;
 
@@ -195,6 +218,13 @@ export function volumeKeysFor(
 	};
 }
 
+export type TextAlign = "left" | "justify";
+
+/** Narrows a stored value; anything unknown (a newer client's option) reads as left. */
+export function textAlignFor(value: string | null | undefined): TextAlign {
+	return value === "justify" ? "justify" : "left";
+}
+
 export function useAppearanceSettings() {
 	const { data: settings } = queryHooks.useSettings();
 	const { mutate } = queryHooks.useSaveSettings();
@@ -203,6 +233,7 @@ export function useAppearanceSettings() {
 	const appFontSize = settings?.appFontSize ?? DEFAULT_SETTINGS.APP_FONT_SIZE;
 	const fontFamily = readerFontFamilyFor(settings?.readerFontFamily);
 	const isBold = settings?.readerBold ?? DEFAULT_SETTINGS.READER_BOLD;
+	const textAlign = textAlignFor(settings?.readerTextAlign);
 	const showReadingTime = settings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
 	// round1 applied on read so disabled comparisons are reliable despite floating-point drift
 	const lineSpacing = round1(settings?.readerLineSpacing ?? DEFAULT_SETTINGS.READER_LINE_SPACING);
@@ -311,6 +342,10 @@ export function useAppearanceSettings() {
 		mutate({ readerBold: v });
 	};
 
+	const setTextAlign = (v: TextAlign) => {
+		mutate({ readerTextAlign: v });
+	};
+
 	const setPaginationStyle = (v: PaginationStyle) => {
 		mutate({ paginationStyle: v });
 	};
@@ -348,6 +383,7 @@ export function useAppearanceSettings() {
 		appFontSize,
 		fontFamily,
 		isBold,
+		textAlign,
 		lineSpacing,
 		margin,
 		letterSpacing,
@@ -370,6 +406,7 @@ export function useAppearanceSettings() {
 		resetTextSpacing,
 		setFontFamily,
 		setBold,
+		setTextAlign,
 		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,

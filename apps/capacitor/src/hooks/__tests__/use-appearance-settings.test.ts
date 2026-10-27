@@ -2,12 +2,15 @@ import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
 import {
 	DEFAULT_TEXT_SPACING,
+	effectiveTextAlign,
 	percentOfFont,
 	readerFontFamilyFor,
 	readerFontStack,
 	round2,
 	spacingLabel,
 	stepSetting,
+	textAlignFor,
+	textAlignVars,
 	textSpacingFor,
 	textSpacingKey,
 	textSpacingVars,
@@ -109,5 +112,39 @@ describe("readerFontFamilyFor", () => {
 		expect(readerFontStack("opendyslexic")).toBe("OpenDyslexic, sans-serif");
 		expect(readerFontStack("literata")).toMatch(/^Literata, Georgia/);
 		expect(readerFontStack("sans")).toBeUndefined();
+	});
+});
+
+describe("textAlignFor", () => {
+	it("reads unset or unknown alignment as left", () => {
+		expect(textAlignFor(undefined)).toBe("left");
+		expect(textAlignFor("center")).toBe("left");
+		expect(textAlignFor("justify")).toBe("justify");
+	});
+});
+
+describe("textAlignVars", () => {
+	it("sets alignment and hyphenation only for justify, so left renders unhyphenated", () => {
+		expect(textAlignVars("left")).toEqual({});
+		expect(textAlignVars("justify")).toEqual({
+			"--reader-text-align": "justify",
+			"--reader-hyphens": "auto",
+		});
+	});
+});
+
+describe("effectiveTextAlign", () => {
+	it("justifies a line of 16em or more", () => {
+		expect(effectiveTextAlign("justify", 320, 20, 0)).toBe("justify");
+		expect(effectiveTextAlign("justify", 319, 20, 0)).toBe("left");
+	});
+
+	it("counts letter spacing as wider type", () => {
+		expect(effectiveTextAlign("justify", 320, 20, 0.1)).toBe("left");
+		expect(effectiveTextAlign("justify", 384, 20, 0.1)).toBe("justify");
+	});
+
+	it("never justifies a left-aligned setting", () => {
+		expect(effectiveTextAlign("left", 2000, 16, 0)).toBe("left");
 	});
 });

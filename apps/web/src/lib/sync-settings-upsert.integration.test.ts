@@ -32,6 +32,7 @@ describe.skipIf(!hasDb)("sync_settings upsert (integration)", () => {
 		readerFontSize: 18,
 		readerFontFamily: "serif",
 		readerBold: true,
+		readerTextAlign: "justify",
 		readerLineSpacing: 1.8,
 		readerMargin: 20,
 		readerLetterSpacing: 0.04,
@@ -121,6 +122,13 @@ describe.skipIf(!hasDb)("sync_settings upsert (integration)", () => {
 		const { readerBold: _, ...older } = full;
 		await upsertSyncSettings(db, userId, parsed({ ...older, wpm: 420, updatedAt: 2_000_000 }));
 		expect(await read()).toMatchObject({ readerBold: true, wpm: 420 });
+	});
+
+	test("a push from a client that predates alignment keeps the justify another device set", async () => {
+		await upsertSyncSettings(db, userId, parsed(full));
+		const { readerTextAlign: _, ...older } = full;
+		await upsertSyncSettings(db, userId, parsed({ ...older, wpm: 420, updatedAt: 2_000_000 }));
+		expect(await read()).toMatchObject({ readerTextAlign: "justify", wpm: 420 });
 	});
 
 	test("an older push is still ignored", async () => {

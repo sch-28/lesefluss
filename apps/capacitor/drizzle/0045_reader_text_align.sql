@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `reader_text_align` text DEFAULT 'left' NOT NULL;

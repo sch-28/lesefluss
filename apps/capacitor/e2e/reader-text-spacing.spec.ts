@@ -1,6 +1,7 @@
 import { SETTING_CONSTRAINTS, type SyncSettings } from "@lesefluss/core";
 import { expect, type Page, test } from "@playwright/test";
 import { PLAIN_BOOK_TITLE, plainBookFixture } from "./helpers/plain-book";
+import { applyRemoteSettings } from "./helpers/remote-settings";
 import { openBookFromLibrary, seedFixture, seedStrayAnchorBook } from "./helpers/seed";
 import { reader } from "./page-objects/reader";
 
@@ -15,15 +16,6 @@ const MAX_SPACING: Partial<SyncSettings> = {
 	readerWordSpacing: SETTING_CONSTRAINTS.READER_WORD_SPACING.max,
 	readerParagraphSpacing: SETTING_CONSTRAINTS.READER_PARAGRAPH_SPACING.max,
 };
-
-/** Settings as a pull from another device lands them. */
-async function applyRemoteSettings(page: Page, patch: Partial<SyncSettings>) {
-	await page.evaluate((patch) => {
-		const apply = window.__lesefluss_e2e_applyRemoteSettings;
-		if (!apply) throw new Error("No __lesefluss_e2e_applyRemoteSettings hook");
-		return apply(patch);
-	}, patch);
-}
 
 async function openAtMaxSpacing(page: Page) {
 	const title = await seedStrayAnchorBook(page);

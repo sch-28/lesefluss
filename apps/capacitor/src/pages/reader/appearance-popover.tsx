@@ -10,6 +10,7 @@ import {
 	percentOfFont,
 	spacingLabel,
 	THEMES,
+	textAlignFor,
 	useAppearanceSettings,
 } from "../../hooks/use-appearance-settings";
 import { IS_VOLUME_KEYS_SUPPORTED } from "../../services/volume-keys";
@@ -73,6 +74,7 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 		fontSize,
 		fontFamily,
 		isBold,
+		textAlign,
 		lineSpacing,
 		margin,
 		letterSpacing,
@@ -94,6 +96,7 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 		resetTextSpacing,
 		setFontFamily,
 		setBold,
+		setTextAlign,
 		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,
@@ -210,6 +213,21 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 							>
 								<ToggleGroupItem value="off">Off</ToggleGroupItem>
 								<ToggleGroupItem value="on">On</ToggleGroupItem>
+							</ToggleGroup>
+						</div>
+						<div className="ap-row">
+							<span className="ap-row-label" id="ap-text-align">
+								Alignment
+							</span>
+							<ToggleGroup
+								aria-labelledby="ap-text-align"
+								type="single"
+								variant="outline"
+								value={textAlign}
+								onValueChange={(v) => v && setTextAlign(textAlignFor(v))}
+							>
+								<ToggleGroupItem value="left">Left</ToggleGroupItem>
+								<ToggleGroupItem value="justify">Justify</ToggleGroupItem>
 							</ToggleGroup>
 						</div>
 						<StepRow

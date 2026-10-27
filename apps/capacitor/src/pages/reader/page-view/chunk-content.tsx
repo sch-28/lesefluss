@@ -13,6 +13,7 @@ import type React from "react";
 import { memo, useLayoutEffect, useRef } from "react";
 import {
 	readerFontStack,
+	type TextAlign,
 	type TextSpacing,
 	textSpacingKey,
 } from "../../../hooks/use-appearance-settings";
@@ -51,7 +52,7 @@ export interface ChunkContentProps {
 	fontSize: number;
 	fontFamily: string;
 	/*
-	 * lineSpacing, isBold, fontLoads, textSpacing: applied by the parent (CSS
+	 * lineSpacing, isBold, fontLoads, textSpacing, textAlign: applied by the parent (CSS
 	 * variables, a face loading late) rather than here, but they reflow the column
 	 * flow all the same, so the measure effect below observes them or the
 	 * reported width goes stale.
@@ -60,6 +61,7 @@ export interface ChunkContentProps {
 	isBold: boolean;
 	fontLoads: number;
 	textSpacing: TextSpacing;
+	textAlign: TextAlign;
 	showActiveWordUnderline: boolean;
 	lang: string;
 
@@ -106,6 +108,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	isBold,
 	fontLoads,
 	textSpacing,
+	textAlign,
 	showActiveWordUnderline,
 	lang,
 	activeWord,
@@ -142,6 +145,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 		void isBold;
 		void fontLoads;
 		void spacingKey;
+		void textAlign;
 		void lang;
 		void figuresByParagraph;
 		void trailingFigures;
@@ -169,6 +173,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 		isBold,
 		fontLoads,
 		spacingKey,
+		textAlign,
 		lang,
 		figuresByParagraph,
 		trailingFigures,
@@ -195,7 +200,6 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 					columnWidth: `${pageWidth}px`,
 					columnGap: 0,
 					columnFill: "auto",
-					hyphens: "auto",
 					fontSize: `${fontSize}px`,
 					fontFamily: readerFontStack(fontFamily),
 				} as React.CSSProperties

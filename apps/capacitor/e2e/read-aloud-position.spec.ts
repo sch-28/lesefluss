@@ -47,7 +47,11 @@ async function pause(page: Page): Promise<number> {
 	await page.getByRole("button", { name: "Pause listening" }).first().click();
 	await expect.poll(() => readAloudSaves(page)).toBeGreaterThan(saves);
 	await reader.waitPositionQuiet(page);
-	return reader.lastSavedWord(page);
+	return page.evaluate(
+		() =>
+			window.__lesefluss_e2e_saveLog?.findLast((s) => s.source === "read-aloud")?.word ??
+			Number.NaN,
+	);
 }
 
 /** The reader's own move: a wheel in scroll mode, a key turn in page mode. Waits for its settle. */
@@ -60,6 +64,20 @@ async function move(page: Page, mode: Mode) {
 	}
 	await reader.waitForSettleAbove(page, settles);
 	await reader.waitPositionQuiet(page);
+}
+
+/**
+ * Reads on by eye at the browsed spot until browse commits it. The clock must be
+ * installed: it skips the two-minute resume rule in 45 s steps.
+ */
+async function waitForAutoCommitToast(page: Page) {
+	const toast = page.getByText(/Reading position moved to \d+%/);
+	for (let i = 0; i < 8 && !(await toast.isVisible()); i++) {
+		await page.clock.fastForward(45_000);
+		await reader.wheel(page, 150);
+		await page.waitForTimeout(500);
+	}
+	await expect(toast).toBeVisible();
 }
 
 const savedWord = async (page: Page) =>
@@ -300,17 +318,10 @@ test("paused while looking away, reading on by eye at the browsed spot commits i
 	const spoken = await pause(page);
 	await expect(reader.browseBar(page)).toBeVisible();
 
-	const toast = page.getByText(/Reading position moved to \d+%/);
-	for (let i = 0; i < 8 && !(await toast.isVisible()); i++) {
-		await page.clock.fastForward(45_000);
-		await reader.wheel(page, 150);
-		await page.waitForTimeout(500);
-	}
+	await waitForAutoCommitToast(page);
 
-	await expect(toast).toBeVisible();
 	await expect(reader.browseBar(page)).toBeHidden();
-	await reader.waitPositionQuiet(page);
-	expect(await savedWord(page)).toBeGreaterThan(spoken);
+	await expect.poll(() => savedWord(page)).toBeGreaterThan(spoken);
 });
 
 test("paused while looking away, a glance at the browsed spot saves nothing", async ({ page }) => {
@@ -328,3 +339,135 @@ test("paused while looking away, a glance at the browsed spot saves nothing", as
 	await expect(reader.browseBar(page)).toBeVisible();
 	expect(await savedWord(page)).toBe(spoken);
 });
+
+test("paused while looking away, Undo of the auto-commit makes play read from the undone spot", async ({
+	page,
+}) => {
+	await page.clock.install();
+	await openListening(page, "scroll");
+	await speak(page, 30);
+	await move(page, "scroll");
+	await speak(page, 3);
+	const spoken = await pause(page);
+
+	await waitForAutoCommitToast(page);
+	await page.getByRole("button", { name: "Undo" }).click();
+	await expect.poll(() => savedWord(page)).toBe(spoken);
+
+	const starts = await sessionStarts(page);
+	await page.getByRole("button", { name: "Resume listening" }).click();
+	await expect.poll(() => sessionStarts(page)).toBe(starts + 1);
+	await speak(page, 3);
+	expect(await pause(page), "the voice started at the undone spot").toBe(spoken + 2);
+});
+
+test("paused while looking away, browse's Back makes play read from where it went back to", async ({
+	page,
+}) => {
+	await openListening(page, "scroll");
+	await speak(page, 30);
+	await move(page, "scroll");
+	await speak(page, 3);
+	const spoken = await pause(page);
+	await reader.wheel(page, 150);
+	await reader.waitPositionQuiet(page);
+
+	// The player covers the browse bar; the sheet's toggle is the way back.
+	await page.getByRole("button", { name: "Annotations" }).click();
+	await page.getByTestId("browse-toggle").click();
+	await expect(page.getByRole("dialog")).toHaveCount(0);
+	await expect(reader.browseBar(page)).toBeHidden();
+	await reader.waitPositionQuiet(page);
+
+	const starts = await sessionStarts(page);
+	await page.getByRole("button", { name: "Resume listening" }).click();
+	await expect.poll(() => sessionStarts(page)).toBe(starts + 1);
+	await speak(page, 3);
+	expect(await pause(page), "the voice started where Back went").toBe(spoken + 2);
+	expect(await savedWord(page)).toBe(spoken + 2);
+});
+
+test("Undo of a paused auto-commit tapped after play resumed moves the voice to the undone spot", async ({
+	page,
+}) => {
+	await page.clock.install();
+	await openListening(page, "scroll");
+	await speak(page, 30);
+	await move(page, "scroll");
+	await speak(page, 3);
+	const spoken = await pause(page);
+
+	await waitForAutoCommitToast(page);
+	const starts = await sessionStarts(page);
+	await page.getByRole("button", { name: "Resume listening" }).click();
+	await expect.poll(() => sessionStarts(page)).toBe(starts + 1);
+	await speak(page, 3);
+
+	await page.getByRole("button", { name: "Undo" }).click();
+	// The voice's move to the tapped spot is debounced.
+	await page.clock.runFor(2000);
+	await expect.poll(() => sessionStarts(page)).toBe(starts + 2);
+	await speak(page, 3);
+	expect(await pause(page), "the voice restarted at the undone spot").toBe(spoken + 2);
+	expect(await savedWord(page)).toBe(spoken + 2);
+});
+
+test("paused while following the voice, a scroll the reader didn't make saves nothing", async ({
+	page,
+}) => {
+	await openListening(page, "scroll");
+	await speak(page, 30);
+	const spoken = await pause(page);
+
+	const settles = await reader.settleCount(page);
+	await reader.scrollWithoutInput(page, 400);
+	await reader.waitForSettleAbove(page, settles);
+	await reader.waitPositionQuiet(page);
+
+	expect(await savedWord(page)).toBe(spoken);
+	const starts = await sessionStarts(page);
+	await page.getByRole("button", { name: "Resume listening" }).click();
+	await speak(page, 3);
+	expect(await pause(page), "the voice carried on where it paused").toBe(spoken + 3);
+	expect(await sessionStarts(page), "the same session carried on").toBe(starts);
+});
+
+test("playing, a scroll the reader didn't make keeps the view following the voice", async ({
+	page,
+}) => {
+	await openListening(page, "scroll");
+	await speak(page, 30);
+
+	const settles = await reader.settleCount(page);
+	await reader.scrollWithoutInput(page, 400);
+	await reader.waitForSettleAbove(page, settles);
+	await reader.waitPositionQuiet(page);
+
+	// Still following: the next words bring the view back to the voice.
+	await speak(page, 3);
+	const spoken = await pause(page);
+	const viewHeight = page.viewportSize()?.height ?? 0;
+	await expect.poll(() => reader.wordLineOffsetFromTop(page, spoken)).toBeGreaterThanOrEqual(0);
+	expect(await reader.wordLineOffsetFromTop(page, spoken)).toBeLessThan(viewHeight * 0.7);
+	await expect(page.getByRole("group", { name: "Not following the voice" })).toHaveCount(0);
+});
+
+for (const key of [" ", "ArrowDown"]) {
+	test(`paused while following the voice, scrolling on with ${key === " " ? "Space" : key} saves where the reader went`, async ({
+		page,
+	}) => {
+		await openListening(page, "scroll");
+		await speak(page, 30);
+		const spoken = await pause(page);
+
+		const settles = await reader.settleCount(page);
+		await reader.blurFocusedControl(page);
+		await page.keyboard.press(key);
+		await reader.waitForSettleAbove(page, settles);
+		await reader.waitPositionQuiet(page);
+
+		const top = await reader.scrollModeTopWord(page);
+		expect(top).toBeGreaterThan(spoken);
+		expect(await savedWord(page)).toBe(top);
+	});
+}
