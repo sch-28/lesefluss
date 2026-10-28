@@ -1,10 +1,10 @@
 ---
 id: TASK-190
 title: Fresh install overwrites synced reader settings with defaults
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-02 21:12'
-updated_date: '2026-10-02 21:18'
+updated_date: '2026-10-28 22:28'
 labels:
   - sync
   - bug
@@ -46,4 +46,6 @@ saveSettings stamps updatedAt only when the patch carries a SYNCED_SETTING_KEYS 
 Accepted: slow-clock device edits lose LWW (inherent, same as series).
 Reviewed by 3 agents (conventions / correctness / security), all findings fixed.
 Pending: on-device verify (reinstall + sign in keeps font size); web deploy for server guard.
+
+Owner set Done (2026-10-28); on-device reinstall/sign-in check waived.
 <!-- SECTION:NOTES:END -->

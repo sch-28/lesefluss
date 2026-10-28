@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-04 18:30'
-updated_date: '2026-10-20 22:02'
+updated_date: '2026-10-28 17:04'
 labels:
   - sync
   - privacy
@@ -18,7 +18,7 @@ references:
   - apps/capacitor/src/services/sync/index.ts
   - apps/capacitor/src/contexts/sync-context.tsx
   - apps/web/src/lib/sync-book-upsert.ts
-priority: high
+priority: low
 ordinal: 153000
 ---
 
@@ -61,3 +61,9 @@ Settle the approach with the user before writing code.
 - [ ] #6 Automated tests cover: first sign-in with an existing local library, switching from A to B, signing back into the same account, and web identity change detection
 - [ ] #7 agents/capacitor.md documents how account switches are handled
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-10-28 owner: deprioritized. No user is known to use two Lesefluss accounts on one device; stays in optional.
+<!-- SECTION:NOTES:END -->
