@@ -7,6 +7,9 @@ export type HexColor = `#${string}`;
 
 export const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
 
+export const READER_THEMES = ["dark", "sepia", "light", "high-contrast"] as const;
+export type ReaderTheme = (typeof READER_THEMES)[number];
+
 export const FOCAL_LETTER_COLOR_PRESETS = [
 	"#ff0000",
 	"#ff8a00",
@@ -37,11 +40,13 @@ export const DEFAULT_SETTINGS = {
 	DEEP_SLEEP_TIMEOUT: 120, // Seconds until deep sleep from last activity (10-300)
 	BRIGHTNESS: 100, // Backlight brightness % (10-100)
 	// Reader appearance (stored in DB, applied in-app only)
-	READER_THEME: "dark", // 'dark' | 'sepia' | 'light'
+	READER_THEME: "dark", // 'dark' | 'sepia' | 'light' | 'high-contrast'
 	READER_FONT_SIZE: 16, // px (12–28)
 	READER_FONT_FAMILY: "sans", // 'sans' | 'serif' | 'atkinson' | 'opendyslexic' | 'literata'
 	READER_BOLD: false, // bold body text in the scroll and page reader
 	READER_TEXT_ALIGN: "left", // 'left' | 'justify'
+	READER_RULER: false, // reading ruler: band on the active (or spoken) word's line, rest dimmed
+	READER_RULER_LINES: 1, // lines the ruler band covers (1–3); kept while the ruler is off
 	READER_LINE_SPACING: 1.8, // line-height multiplier (1.2–2.4)
 	READER_MARGIN: 20, // horizontal padding px (8–48)
 	READER_LETTER_SPACING: 0, // em added between letters (0–0.2)
@@ -88,6 +93,7 @@ export const SETTING_CONSTRAINTS = {
 	READER_LETTER_SPACING: { min: 0, max: 0.2, step: 0.04 },
 	READER_WORD_SPACING: { min: 0, max: 0.48, step: 0.04 },
 	READER_PARAGRAPH_SPACING: { min: 0.5, max: 2.9, step: 0.3 },
+	READER_RULER_LINES: { min: 1, max: 3, step: 1 },
 	APP_FONT_SIZE: { min: 12, max: 22, step: 1 },
 	TTS_WPM: { min: 80, max: 500, step: 10 },
 	TTS_PITCH: { min: 0.5, max: 2.0, step: 0.1 },
@@ -113,6 +119,8 @@ export const SYNCED_SETTING_KEYS = [
 	"readerFontFamily",
 	"readerBold",
 	"readerTextAlign",
+	"readerRuler",
+	"readerRulerLines",
 	"readerLineSpacing",
 	"readerMargin",
 	"readerLetterSpacing",

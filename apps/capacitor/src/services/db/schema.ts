@@ -52,6 +52,8 @@ export const settings = sqliteTable("settings", {
 	readerFontFamily: text("reader_font_family").notNull().default("sans"),
 	readerBold: integer("reader_bold", { mode: "boolean" }).notNull().default(false),
 	readerTextAlign: text("reader_text_align").notNull().default("left"),
+	readerRuler: integer("reader_ruler", { mode: "boolean" }).notNull().default(false),
+	readerRulerLines: integer("reader_ruler_lines").notNull().default(1),
 	readerLineSpacing: real("reader_line_spacing").notNull().default(1.8),
 	readerMargin: integer("reader_margin").notNull().default(20),
 	readerLetterSpacing: real("reader_letter_spacing").notNull().default(0),
@@ -346,8 +348,8 @@ export type NewSeries = typeof series.$inferInsert;
 
 /**
  * Reading sessions: one row per in-app sitting (RSVP, scroll, page, or listening to read aloud).
- * Append-only; no edit or delete UI. ESP32 reading is NOT tracked here (no clock,
- * would double-count via position sync).
+ * Deleted rows are hard-deleted here; their tombstones live on the server only.
+ * ESP32 reading is NOT tracked here (no clock, would double-count via position sync).
  *
  * `bookId` is intentionally not a FK: rows must outlive the book for all-time totals.
  * `wpmAvg` is RSVP-only (null otherwise).

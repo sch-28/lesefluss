@@ -302,6 +302,20 @@
       "when": 1783555200000,
       "tag": "0042_reader_text_align",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1783641600000,
+      "tag": "0043_reading_session_tombstone",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1783728000000,
+      "tag": "0044_reader_ruler",
+      "breakpoints": true
     }
   ]
 }

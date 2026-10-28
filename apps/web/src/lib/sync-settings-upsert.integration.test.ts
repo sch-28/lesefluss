@@ -33,6 +33,8 @@ describe.skipIf(!hasDb)("sync_settings upsert (integration)", () => {
 		readerFontFamily: "serif",
 		readerBold: true,
 		readerTextAlign: "justify",
+		readerRuler: true,
+		readerRulerLines: 2,
 		readerLineSpacing: 1.8,
 		readerMargin: 20,
 		readerLetterSpacing: 0.04,
@@ -135,5 +137,12 @@ describe.skipIf(!hasDb)("sync_settings upsert (integration)", () => {
 		await upsertSyncSettings(db, userId, parsed({ ...full, updatedAt: 2_000_000 }));
 		await upsertSyncSettings(db, userId, parsed({ ...full, wpm: 200, updatedAt: 1_500_000 }));
 		expect((await read())?.wpm).toBe(400);
+	});
+
+	test("a pushed high-contrast theme survives the push parse and is stored", async () => {
+		const settings = parsed({ ...full, readerTheme: "high-contrast" });
+		expect(settings.readerTheme).toBe("high-contrast");
+		await upsertSyncSettings(db, userId, settings);
+		expect((await read())?.readerTheme).toBe("high-contrast");
 	});
 });

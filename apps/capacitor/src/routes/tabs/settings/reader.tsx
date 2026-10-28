@@ -10,6 +10,7 @@ import { SettingsSection } from "@/components/settings/settings-section";
 import { StepperRow } from "@/components/settings/stepper-row";
 import {
 	DEFAULT_TEXT_SPACING,
+	PAGE_TURN_REDUCE_MOTION_HINT,
 	percentOfFont,
 	spacingLabel,
 	useAppearanceSettings,
@@ -28,6 +29,7 @@ const {
 	READER_LETTER_SPACING,
 	READER_WORD_SPACING,
 	READER_PARAGRAPH_SPACING,
+	READER_RULER_LINES,
 } = SETTING_CONSTRAINTS;
 
 function ReaderSettings() {
@@ -36,6 +38,7 @@ function ReaderSettings() {
 		fontFamily,
 		isBold,
 		textAlign,
+		readingRuler,
 		lineSpacing,
 		margin,
 		letterSpacing,
@@ -46,6 +49,7 @@ function ReaderSettings() {
 		showActiveWordUnderline,
 		showGlossaryUnderline,
 		pageTurnAnimation,
+		pageTurnAnimationOffBy,
 		isEinkMode,
 		volumeKeys,
 		adjustFontSize,
@@ -58,6 +62,8 @@ function ReaderSettings() {
 		setFontFamily,
 		setBold,
 		setTextAlign,
+		setReadingRuler,
+		setReadingRulerLines,
 		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,
@@ -157,6 +163,24 @@ function ReaderSettings() {
 						step={READER_MARGIN.step}
 						onChange={(v) => adjustMargin(v - margin)}
 					/>
+					<ToggleRow
+						id="reading-ruler"
+						title="Reading ruler"
+						subtitle="Marks the line you are on and dims the rest. Follows read aloud."
+						checked={readingRuler.isOn}
+						onCheckedChange={setReadingRuler}
+					/>
+					{readingRuler.isOn && (
+						<StepperRow
+							label="Ruler lines"
+							value={readingRuler.lines}
+							display={String(readingRuler.lines)}
+							min={READER_RULER_LINES.min}
+							max={READER_RULER_LINES.max}
+							step={READER_RULER_LINES.step}
+							onChange={setReadingRulerLines}
+						/>
+					)}
 				</SettingsSection>
 
 				<SettingsSection title="Layout" hint={isEinkMode ? "(set by E-ink display)" : undefined}>
@@ -171,9 +195,13 @@ function ReaderSettings() {
 					<ToggleRow
 						id="page-turn-animation"
 						title="Animate page turns"
-						subtitle="Slide between pages in page mode. On this device only."
+						subtitle={
+							pageTurnAnimationOffBy === "reduce-motion"
+								? PAGE_TURN_REDUCE_MOTION_HINT
+								: "Slide between pages in page mode. On this device only."
+						}
 						checked={pageTurnAnimation}
-						disabled={isEinkMode}
+						disabled={pageTurnAnimationOffBy !== null}
 						onCheckedChange={setPageTurnAnimation}
 					/>
 				</SettingsSection>

@@ -7,6 +7,7 @@ import { isAppTheme, useTheme } from "../../contexts/theme-context";
 import {
 	DEFAULT_TEXT_SPACING,
 	FONT_FAMILIES,
+	PAGE_TURN_REDUCE_MOTION_HINT,
 	percentOfFont,
 	spacingLabel,
 	THEMES,
@@ -30,32 +31,34 @@ const StepRow: React.FC<{
 	return (
 		<div className="ap-row">
 			<span className="ap-row-label">{label}</span>
-			<span className="ap-row-value" aria-live="polite">
-				{display}
-			</span>
-			<div className="ap-row-buttons">
-				<button
-					type="button"
-					className="ap-step-btn"
-					aria-label={`Decrease ${label}`}
-					aria-disabled={atMin}
-					onClick={() => {
-						if (!atMin) onStep(-constraint.step);
-					}}
-				>
-					{glyphs[0]}
-				</button>
-				<button
-					type="button"
-					className="ap-step-btn"
-					aria-label={`Increase ${label}`}
-					aria-disabled={atMax}
-					onClick={() => {
-						if (!atMax) onStep(constraint.step);
-					}}
-				>
-					{glyphs[1]}
-				</button>
+			<div className="ap-row-control">
+				<span className="ap-row-value" aria-live="polite">
+					{display}
+				</span>
+				<div className="ap-row-buttons">
+					<button
+						type="button"
+						className="ap-step-btn"
+						aria-label={`Decrease ${label}`}
+						aria-disabled={atMin}
+						onClick={() => {
+							if (!atMin) onStep(-constraint.step);
+						}}
+					>
+						{glyphs[0]}
+					</button>
+					<button
+						type="button"
+						className="ap-step-btn"
+						aria-label={`Increase ${label}`}
+						aria-disabled={atMax}
+						onClick={() => {
+							if (!atMax) onStep(constraint.step);
+						}}
+					>
+						{glyphs[1]}
+					</button>
+				</div>
 			</div>
 		</div>
 	);
@@ -75,6 +78,7 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 		fontFamily,
 		isBold,
 		textAlign,
+		readingRuler,
 		lineSpacing,
 		margin,
 		letterSpacing,
@@ -85,6 +89,8 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 		showActiveWordUnderline,
 		showGlossaryUnderline,
 		pageTurnAnimation,
+		pageTurnAnimationOffBy,
+		isMotionReduced,
 		isEinkMode,
 		volumeKeys,
 		adjustFontSize,
@@ -97,6 +103,8 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 		setFontFamily,
 		setBold,
 		setTextAlign,
+		setReadingRuler,
+		setReadingRulerLines,
 		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,
@@ -111,37 +119,47 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 		<Popover open={open} onOpenChange={onOpenChange}>
 			<PopoverAnchor asChild>{anchor}</PopoverAnchor>
 			<PopoverContent
-				// Remounted when e-ink flips: a close racing the switch leaves Radix
-				// waiting for an exit animation that e-ink then strips, so the
-				// popover would stay on screen for good.
-				key={String(isEinkMode)}
+				// Remounted when e-ink or OS reduce motion flips: a close racing the
+				// switch leaves Radix waiting for an exit animation that is then
+				// stripped, so the popover would stay on screen for good.
+				key={`${isEinkMode}|${isMotionReduced}`}
+				aria-label="Appearance"
 				align="end"
 				collisionPadding={8}
 				// The rows outgrow a small phone, landscape or a large app font.
-				className="max-h-(--radix-popover-content-available-height) w-80 overflow-y-auto overscroll-contain p-0"
+				className="max-h-(--radix-popover-content-available-height) w-80 max-w-(--radix-popover-content-available-width) overflow-y-auto overscroll-contain p-0"
 			>
 				<div className="appearance-popover-content">
 					<div className="ap-section">
 						<span className="ap-label" id="ap-theme">
 							{isEinkMode ? "Theme (set by E-ink display)" : "Theme"}
 						</span>
-						<ToggleGroup
-							aria-labelledby="ap-theme"
-							type="single"
-							variant="outline"
-							value={storedTheme}
-							disabled={isEinkMode}
-							// Re-tapping the pressed item yields "": rewrite the shown value so an
-							// unknown synced one can still be replaced; the setter skips no-ops.
-							onValueChange={(v) => setTheme(isAppTheme(v) ? v : storedTheme)}
-							className="w-full"
-						>
-							{THEMES.map((t) => (
-								<ToggleGroupItem key={t.value} value={t.value}>
-									{t.label}
-								</ToggleGroupItem>
-							))}
-						</ToggleGroup>
+						<div className="@container">
+							<ToggleGroup
+								aria-labelledby="ap-theme"
+								type="single"
+								variant="outline"
+								value={storedTheme}
+								disabled={isEinkMode}
+								// Re-tapping the pressed item yields "": rewrite the shown value so an
+								// unknown synced one can still be replaced; the setter skips no-ops.
+								onValueChange={(v) => setTheme(isAppTheme(v) ? v : storedTheme)}
+								// Four across while their labels fit on one line, else two by two: a word never
+								// breaks at normal size (wrap-anywhere is the large-scale fallback).
+								className="grid w-full @max-[16.5rem]:grid-cols-2 grid-cols-4 gap-1"
+							>
+								{THEMES.map((t) => (
+									<ToggleGroupItem
+										key={t.value}
+										value={t.value}
+										aria-label={t.label}
+										className="wrap-anywhere rounded-md px-1 text-xs data-[variant=outline]:border-l"
+									>
+										{t.short ?? t.label}
+									</ToggleGroupItem>
+								))}
+							</ToggleGroup>
+						</div>
 					</div>
 
 					<div className="ap-section">
@@ -181,7 +199,8 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 								<ToggleGroupItem
 									key={f.value}
 									value={f.value}
-									className="rounded-md text-xs data-[variant=outline]:border-l [&:last-child:nth-child(odd)]:col-span-2"
+									// A long font name breaks inside its half of the grid at a large font scale.
+									className="wrap-anywhere rounded-md text-xs data-[variant=outline]:border-l [&:last-child:nth-child(odd)]:col-span-2"
 									style={{ fontFamily: f.stack }}
 									aria-label={f.name}
 								>
@@ -270,14 +289,49 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor }) => {
 							constraint={SETTING_CONSTRAINTS.READER_MARGIN}
 							onStep={adjustMargin}
 						/>
+						<div className="ap-row">
+							<span className="ap-row-label" id="ap-reading-ruler">
+								Reading ruler
+							</span>
+							<ToggleGroup
+								aria-labelledby="ap-reading-ruler"
+								type="single"
+								variant="outline"
+								value={readingRuler.isOn ? "on" : "off"}
+								onValueChange={(v) => v && setReadingRuler(v === "on")}
+							>
+								<ToggleGroupItem value="off">Off</ToggleGroupItem>
+								<ToggleGroupItem value="on">On</ToggleGroupItem>
+							</ToggleGroup>
+						</div>
+						{readingRuler.isOn && (
+							<StepRow
+								label="Ruler lines"
+								display={String(readingRuler.lines)}
+								value={readingRuler.lines}
+								constraint={SETTING_CONSTRAINTS.READER_RULER_LINES}
+								onStep={(delta) => setReadingRulerLines(readingRuler.lines + delta)}
+							/>
+						)}
 
 						{paginationStyle === "page" && !isEinkMode && (
 							<div className="ap-row">
-								<span className="ap-row-label" id="ap-page-animation">
-									Page animation
+								<span className="ap-row-label">
+									<span id="ap-page-animation">Page animation</span>
+									{pageTurnAnimationOffBy === "reduce-motion" && (
+										<span className="ap-row-hint" id="ap-page-animation-hint">
+											{PAGE_TURN_REDUCE_MOTION_HINT}
+										</span>
+									)}
 								</span>
 								<ToggleGroup
 									aria-labelledby="ap-page-animation"
+									aria-describedby={
+										pageTurnAnimationOffBy === "reduce-motion"
+											? "ap-page-animation-hint"
+											: undefined
+									}
+									disabled={pageTurnAnimationOffBy === "reduce-motion"}
 									type="single"
 									variant="outline"
 									value={pageTurnAnimation ? "on" : "off"}

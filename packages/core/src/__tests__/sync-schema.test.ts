@@ -55,6 +55,8 @@ describe("SyncPushSchema settings", () => {
 		readerFontFamily: "serif",
 		readerBold: true,
 		readerTextAlign: "justify",
+		readerRuler: true,
+		readerRulerLines: 2,
 		readerLineSpacing: 1.8,
 		readerMargin: 20,
 		readerLetterSpacing: 0.04,

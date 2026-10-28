@@ -1,13 +1,16 @@
 import { DEFAULT_SETTINGS, type PaginationStyle, SETTING_CONSTRAINTS } from "@lesefluss/core";
+import { usePrefersReducedMotion } from "@lesefluss/ui/use-prefers-reduced-motion";
 import type React from "react";
 import { type AppTheme, useTheme } from "../contexts/theme-context";
 import { queryHooks } from "../services/db/hooks";
 import type { Settings } from "../services/db/schema";
 
-export const THEMES: { value: AppTheme; label: string }[] = [
+export const THEMES: { value: AppTheme; label: string; short?: string }[] = [
 	{ value: "dark", label: "Dark" },
 	{ value: "sepia", label: "Sepia" },
 	{ value: "light", label: "Light" },
+	// `short`: the appearance popover's four-across row has no room for the full name.
+	{ value: "high-contrast", label: "High contrast", short: "Contrast" },
 ];
 
 const SERIF_STACK = "Georgia, 'Times New Roman', serif";
@@ -189,19 +192,36 @@ export const percentOfFont = (em: number) => `${Math.round(em * 100)}%`;
 export const textSpacingKey = (spacing: TextSpacing) =>
 	`${spacing.letter}|${spacing.word}|${spacing.paragraph}`;
 
+/** Why the page animation control is off and disabled under OS reduce motion. */
+export const PAGE_TURN_REDUCE_MOTION_HINT = "Off while system reduce motion is on";
+
 /**
- * The reader layout in effect. E-ink mode forces page mode with instant turns;
- * the stored values are left alone (pagination syncs to other devices) and
- * come back when it is turned off.
+ * The reader layout in effect. E-ink mode forces page mode with instant turns,
+ * and the OS reduce-motion setting forces instant turns; the stored values are
+ * left alone (pagination syncs to other devices) and come back when the mode
+ * or setting is turned off. `pageTurnAnimationOffBy` names what forces turns
+ * instant, for the controls to say so.
  */
 export function readerLayoutFor(
 	settings: Pick<Settings, "paginationStyle" | "pageTurnAnimation"> | undefined,
 	isEinkMode: boolean,
-): { paginationStyle: PaginationStyle; pageTurnAnimation: boolean } {
-	if (isEinkMode) return { paginationStyle: "page", pageTurnAnimation: false };
+	isOsMotionReduced = false,
+): {
+	paginationStyle: PaginationStyle;
+	pageTurnAnimation: boolean;
+	pageTurnAnimationOffBy: "eink" | "reduce-motion" | null;
+} {
+	if (isEinkMode) {
+		return { paginationStyle: "page", pageTurnAnimation: false, pageTurnAnimationOffBy: "eink" };
+	}
+	const paginationStyle = settings?.paginationStyle ?? DEFAULT_SETTINGS.PAGINATION_STYLE;
+	if (isOsMotionReduced) {
+		return { paginationStyle, pageTurnAnimation: false, pageTurnAnimationOffBy: "reduce-motion" };
+	}
 	return {
-		paginationStyle: settings?.paginationStyle ?? DEFAULT_SETTINGS.PAGINATION_STYLE,
+		paginationStyle,
 		pageTurnAnimation: settings?.pageTurnAnimation ?? DEFAULT_SETTINGS.PAGE_TURN_ANIMATION,
+		pageTurnAnimationOffBy: null,
 	};
 }
 
@@ -225,6 +245,20 @@ export function textAlignFor(value: string | null | undefined): TextAlign {
 	return value === "justify" ? "justify" : "left";
 }
 
+export type ReadingRulerSetting = { isOn: boolean; lines: number };
+
+/** Narrows the stored ruler settings; a line count out of range (a newer client's) is clamped. */
+export function readingRulerFor(
+	settings: { readerRuler?: boolean | null; readerRulerLines?: number | null } | undefined,
+): ReadingRulerSetting {
+	const { min, max } = SETTING_CONSTRAINTS.READER_RULER_LINES;
+	const lines = Math.round(settings?.readerRulerLines ?? DEFAULT_SETTINGS.READER_RULER_LINES);
+	return {
+		isOn: settings?.readerRuler ?? DEFAULT_SETTINGS.READER_RULER,
+		lines: Number.isFinite(lines) ? Math.min(max, Math.max(min, lines)) : min,
+	};
+}
+
 export function useAppearanceSettings() {
 	const { data: settings } = queryHooks.useSettings();
 	const { mutate } = queryHooks.useSaveSettings();
@@ -234,6 +268,7 @@ export function useAppearanceSettings() {
 	const fontFamily = readerFontFamilyFor(settings?.readerFontFamily);
 	const isBold = settings?.readerBold ?? DEFAULT_SETTINGS.READER_BOLD;
 	const textAlign = textAlignFor(settings?.readerTextAlign);
+	const readingRuler = readingRulerFor(settings);
 	const showReadingTime = settings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
 	// round1 applied on read so disabled comparisons are reliable despite floating-point drift
 	const lineSpacing = round1(settings?.readerLineSpacing ?? DEFAULT_SETTINGS.READER_LINE_SPACING);
@@ -248,7 +283,13 @@ export function useAppearanceSettings() {
 	const showGlossaryUnderline =
 		settings?.readerGlossaryUnderline ?? DEFAULT_SETTINGS.READER_GLOSSARY_UNDERLINE;
 	const { isEinkMode } = useTheme();
-	const { paginationStyle, pageTurnAnimation } = readerLayoutFor(settings, isEinkMode);
+	// Covers e-ink too, which readerLayoutFor checks first.
+	const isMotionReduced = usePrefersReducedMotion();
+	const { paginationStyle, pageTurnAnimation, pageTurnAnimationOffBy } = readerLayoutFor(
+		settings,
+		isEinkMode,
+		isMotionReduced,
+	);
 	const volumeKeys = volumeKeysFor(settings, isEinkMode);
 
 	const adjustFontSize = (delta: number) => {
@@ -346,6 +387,14 @@ export function useAppearanceSettings() {
 		mutate({ readerTextAlign: v });
 	};
 
+	const setReadingRuler = (v: boolean) => {
+		mutate({ readerRuler: v });
+	};
+
+	const setReadingRulerLines = (v: number) => {
+		mutate({ readerRulerLines: v });
+	};
+
 	const setPaginationStyle = (v: PaginationStyle) => {
 		mutate({ paginationStyle: v });
 	};
@@ -384,6 +433,7 @@ export function useAppearanceSettings() {
 		fontFamily,
 		isBold,
 		textAlign,
+		readingRuler,
 		lineSpacing,
 		margin,
 		letterSpacing,
@@ -394,6 +444,8 @@ export function useAppearanceSettings() {
 		showActiveWordUnderline,
 		showGlossaryUnderline,
 		pageTurnAnimation,
+		pageTurnAnimationOffBy,
+		isMotionReduced,
 		isEinkMode,
 		volumeKeys,
 		adjustFontSize,
@@ -407,6 +459,8 @@ export function useAppearanceSettings() {
 		setFontFamily,
 		setBold,
 		setTextAlign,
+		setReadingRuler,
+		setReadingRulerLines,
 		setPaginationStyle,
 		setShowReadingTime,
 		setShowActiveWordUnderline,

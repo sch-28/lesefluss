@@ -29,6 +29,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@lesefluss/ui/dropdown-menu";
+import { usePrefersReducedMotion } from "@lesefluss/ui/use-prefers-reduced-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import {
@@ -47,7 +48,7 @@ import {
 	ZapOff,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ActionSheet } from "../../components/action-sheet";
 import { VoiceSheet } from "../../components/read-aloud/voice-sheet";
 import {
@@ -64,6 +65,7 @@ import { useTheme } from "../../contexts/theme-context";
 import {
 	readerFontFamilyFor,
 	readerLayoutFor,
+	readingRulerFor,
 	textAlignFor,
 	textSpacingFor,
 	volumeKeysFor,
@@ -151,7 +153,9 @@ import {
 } from "./pending-position";
 import { createPersistedWord } from "./persisted-word";
 import { ReadAloudControls } from "./read-aloud-controls";
+import { ReaderAnnouncer } from "./reader-announcer";
 import { buildFigureMap } from "./reader-figures";
+import { ReadingRulerOverlay } from "./reading-ruler-overlay";
 import { stripPunct } from "./rsvp-engine";
 import RsvpView, { type RsvpViewHandle } from "./rsvp-view";
 import ScrollView, { ReaderSkeleton } from "./scroll-view";
@@ -159,7 +163,7 @@ import SearchModal from "./search-modal";
 import SelectionOverlay from "./selection-overlay";
 import { SessionDebugBadge } from "./session-debug-badge";
 import { SessionPauseOverlay } from "./session-pause-overlay";
-import { firstVisibleWord, markSpokenWord } from "./spoken-word";
+import { firstVisibleWordInView, markSpokenWord } from "./spoken-word";
 import { createTwoFingerTapDetector } from "./two-finger-tap";
 import { NATIVE_SCROLL_KEYS } from "./use-anchor-hold";
 import { useBrowseMode } from "./use-browse-mode";
@@ -175,6 +179,7 @@ import { useLinkDecorations } from "./use-link-decorations";
 import { useLoadedReaderFont } from "./use-loaded-reader-font";
 import { useReadAloud } from "./use-read-aloud";
 import { useReaderGoal } from "./use-reader-goal";
+import { useReadingRuler } from "./use-reading-ruler";
 import { type ReadingSessionMode, useReadingSession } from "./use-reading-session";
 import { useScrubProgress } from "./use-scrub-progress";
 import type { ReaderViewHandle } from "./view-types";
@@ -764,7 +769,27 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		dbSettings?.readerActiveWordUnderline ?? DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE;
 	const readerGlossaryUnderline =
 		dbSettings?.readerGlossaryUnderline ?? DEFAULT_SETTINGS.READER_GLOSSARY_UNDERLINE;
-	const { paginationStyle, pageTurnAnimation } = readerLayoutFor(dbSettings, isEinkMode);
+	// Under OS reduce-motion turns are instant, not just unanimated: CSS alone would
+	// stop the slide but keep its wait before the settle.
+	const { paginationStyle, pageTurnAnimation } = readerLayoutFor(
+		dbSettings,
+		isEinkMode,
+		usePrefersReducedMotion(),
+	);
+	const readingRuler = readingRulerFor(dbSettings);
+	const isRulerShown = readingRuler.isOn && readerMode !== "rsvp";
+	// A visual aid only: it never scrolls, turns a page or touches the position refs.
+	const {
+		ruler,
+		onMotion: onRulerMotion,
+		onColumns: onRulerColumns,
+	} = useReadingRuler({
+		view: viewContainerEl,
+		isOn: isRulerShown,
+		lines: readingRuler.lines,
+		isPaged: paginationStyle === "page" && readerMode !== "rsvp",
+		layoutKey: dbSettings,
+	});
 
 	// ── Apply default reader mode once settings + book are loaded ─────────
 	// Runs once; subsequent settings changes don't flip the user's in-session mode.
@@ -1339,10 +1364,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		markActivityRef.current?.();
 	}, []);
 	// A tap on empty reader space while selecting (a margin, between paragraphs)
-	// dismisses the selection instead of opening the progress bar. Word taps are
-	// left to handleWordTap, which runs after this native listener and would
-	// otherwise see the selection already gone. The click ending a drag or
-	// long-press selection is swallowed before it gets here.
+	// dismisses the selection instead of opening the progress bar. Word taps go to
+	// handleWordTap (word-gestures' document listener, which runs before this one)
+	// and deal with a selection there. The click ending a drag or long-press
+	// selection is swallowed before it gets here.
 	const handleScrollTap = useCallback(
 		(e?: MouseEvent) => {
 			const onWord = e?.target instanceof Element && e.target.closest("span[data-word]");
@@ -1850,6 +1875,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			lastWordRef.current = word;
 			settledWordRef.current = word;
 			markPlaybackMove();
+			// Also under RSVP, so switching back mid-playback doesn't show a stale word.
+			ruler.show(word);
 			if (readerModeRef.current === "rsvp") {
 				rsvpViewRef.current?.showWord(word);
 				return;
@@ -1859,11 +1886,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// A far-off word is reached by a jump, whose settle must not read as the reader looking away.
 			if (scrollViewRef.current?.followWord?.(word)) stampJump();
 		},
-		[stampJump, markPlaybackMove],
+		[stampJump, markPlaybackMove, ruler],
 	);
 
 	const getReadAloudViewWord = useCallback(
-		() => (viewContainerEl ? firstVisibleWord(viewContainerEl) : null),
+		() => (viewContainerEl ? firstVisibleWordInView(viewContainerEl) : null),
 		[viewContainerEl],
 	);
 
@@ -1917,6 +1944,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// While the voice plays its highlight is the one marker; the underline shows again once
 	// it pauses or stops, on the spoken word that handleSaveSpokenWord keeps in activeWord.
 	const shownActiveWord = readAloud.status === "playing" ? NO_HIGHLIGHT : activeWord;
+	// While the voice plays the ruler follows the spoken word instead (handleSpokenWord).
+	useLayoutEffect(() => {
+		if (readAloud.status !== "playing") ruler.show(activeWord);
+	}, [ruler, activeWord, readAloud.status]);
 	readAloudRef.current = {
 		isActive: isReadAloudActive,
 		isPlaying: readAloud.status === "playing",
@@ -2541,8 +2572,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							anchor={
 								<span className="inline-flex">
 									<DropdownMenuTrigger asChild>
-										<Button variant="ghost" size="icon" aria-label="More actions">
+										<Button variant="ghost" size="icon">
 											<MoreVertical />
+											{/* Text, not aria-label: Android reads a menu button's text and drops its
+											    aria-label, so TalkBack found it unnamed (TASK-205.13). */}
+											<span className="sr-only">More actions</span>
 										</Button>
 									</DropdownMenuTrigger>
 								</span>
@@ -2607,9 +2641,23 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 			<div
 				ref={setViewContainerEl}
-				className="relative flex-1 overflow-hidden"
+				// clip, not hidden: nothing may scroll this box, not even screen-reader focus.
+				// min-h-0: a clip box is no scroll container, so as a flex item it would
+				// otherwise grow to its content (RSVP's tall spacer) past the screen.
+				className="relative min-h-0 flex-1 overflow-clip"
 				data-testid="reader-view"
 			>
+				<ReaderAnnouncer />
+				{isRulerShown && <ReadingRulerOverlay ruler={ruler} />}
+				{/* Screen readers can't drive RSVP or page turns; read-aloud is the way to listen. */}
+				{IS_READ_ALOUD_SUPPORTED && (readerMode === "rsvp" || paginationStyle === "page") && (
+					<p className="sr-only">
+						{readerMode === "rsvp"
+							? "This view flashes the book one word at a time."
+							: "This view shows the book a page at a time."}{" "}
+						To listen to the book, use the Listen button at the top.
+					</p>
+				)}
 				{chapterFetch.kind === "locked" ? (
 					<ChapterStateOverlay status="locked" />
 				) : chapterFetch.kind === "error" ? (
@@ -2676,6 +2724,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						onWordMouseDragStart={handleWordMouseDragStart}
 						onCancelSelection={sel.cancelSelection}
 						onPositionSettle={handleScrollPositionSettle}
+						onMotion={onRulerMotion}
+						onColumns={onRulerColumns}
 						onInitialActiveOffset={handleSetActiveWord}
 						onTap={handleToggleProgressBar}
 						onHideProgressBar={handleHideProgressBar}
