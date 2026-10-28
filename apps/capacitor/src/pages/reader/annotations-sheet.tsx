@@ -116,7 +116,10 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 			activeSnapPoint={snap}
 			setActiveSnapPoint={setSnap}
 		>
-			<DrawerContent className={cn("h-full", theme ? `reader-theme-${theme}` : undefined)}>
+			<DrawerContent
+				aria-label="Annotations"
+				className={cn("h-full", theme ? `reader-theme-${theme}` : undefined)}
+			>
 				<DrawerHeader className="flex-row items-center gap-2 px-3">
 					<ToggleGroup
 						type="single"
@@ -125,7 +128,8 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 						onValueChange={(v) => {
 							if (v) setTab(v as Tab);
 						}}
-						className="min-w-0 flex-1"
+						// Labels wrap rather than run into each other at a large font scale.
+						className="[&>*]:wrap-anywhere min-w-0 flex-1 [&>*]:h-auto [&>*]:min-h-9 [&>*]:whitespace-normal"
 					>
 						{hasContents && <ToggleGroupItem value="contents">Contents</ToggleGroupItem>}
 						{hasChapters && <ToggleGroupItem value="chapters">Chapters</ToggleGroupItem>}

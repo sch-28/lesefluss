@@ -72,7 +72,7 @@ function GoalLines({ series, lineGenerator, innerHeight }: LineCustomSvgLayerPro
 						x={last.x + 4}
 						y={innerHeight - 4}
 						textAnchor="start"
-						fontSize={10}
+						fontSize="0.625rem"
 						fill="currentColor"
 						fillOpacity={0.6}
 					>

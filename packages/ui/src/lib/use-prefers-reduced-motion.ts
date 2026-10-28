@@ -15,7 +15,7 @@ function subscribeReducedMotion(onChange: () => void) {
 	};
 }
 
-function isMotionReduced(): boolean {
+export function isMotionReduced(): boolean {
 	return (
 		document.documentElement.classList.contains(EINK_CLASS) ||
 		(window.matchMedia?.(REDUCED_MOTION).matches ?? false)

@@ -26,6 +26,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
+import { focalLetterColorFor, useTheme } from "../../contexts/theme-context";
 import RsvpSettingsForm from "../settings/rsvp-settings-form";
 import RsvpControls from "./rsvp-controls";
 import { useRsvpEngine } from "./use-rsvp-engine";
@@ -41,6 +42,7 @@ const SCROLL_END_MS = 150;
 const WHEEL_PX_PER_WORD = 50;
 const FOCAL_FONT_MULTIPLIER = 2;
 const X_OFFSET_CENTER = 50;
+const PAUSE_CONTROL = { role: "button", "aria-label": "Pause" } as const;
 
 const SETTINGS_SNAP_POINTS = drawerSnapPoints([0.3, 0.5, 1]);
 
@@ -99,6 +101,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 	},
 	ref,
 ) {
+	const { theme } = useTheme();
 	const {
 		words,
 		currentWord,
@@ -348,8 +351,18 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 				ref={containerRef}
 				className={isShowingPlayback ? "rsvp-display" : "rsvp-display rsvp-display--paused"}
 				data-word-index={wordIndex}
-				style={{ "--rsvp-focal-color": settings.focalLetterColor } as React.CSSProperties}
-				onClick={voice ? voice.onToggle : togglePlayPause}
+				style={
+					{
+						"--rsvp-focal-color": focalLetterColorFor(settings.focalLetterColor, theme),
+					} as React.CSSProperties
+				}
+				onClick={(e) => {
+					if (e.target instanceof Element && e.target.closest(".rsvp-controls")) return;
+					(voice ? voice.onToggle : togglePlayPause)();
+				}}
+				// Playing, the whole display is the pause control. Paused, it holds its own
+				// Play button, and a button may not contain buttons.
+				{...(isShowingPlayback && PAUSE_CONTROL)}
 				onScroll={handleScroll}
 				onPointerDown={handleDisplayPointerDown}
 				onPointerUp={cancelLongPress}
@@ -378,38 +391,45 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 						{word && (
 							<div
 								className="rsvp-word-container"
-								style={{
-									// Paused: container centered so context peek sits on horizontal
-									// center-line. Playing: whole word stack moves to xOffset%.
-									left: isShowingPlayback ? `${settings.xOffset}%` : `${X_OFFSET_CENTER}%`,
-									transform: "translate(-50%, -50%)",
-									fontSize: `${fontSize * FOCAL_FONT_MULTIPLIER}px`,
-								}}
+								style={
+									{
+										// Paused: container centered so context peek sits on horizontal
+										// center-line. Playing: whole word stack moves to xOffset%.
+										left: isShowingPlayback ? `${settings.xOffset}%` : `${X_OFFSET_CENTER}%`,
+										transform: "translate(-50%, -50%)",
+										fontSize: `${fontSize * FOCAL_FONT_MULTIPLIER}px`,
+										// The context peeks above and below are bounded by it (monochrome.css).
+										"--rsvp-word-height": `${fontSize * FOCAL_FONT_MULTIPLIER * 1.2}px`,
+									} as React.CSSProperties
+								}
 							>
 								{visibleContext && visibleContext.prev.length > 0 && (
 									<div
 										className="rsvp-context-inline rsvp-context-prev"
+										data-clips-text
 										onClick={handleContextClick}
 									>
-										...
-										{visibleContext.prev.map(({ word: cw, idx: ci, breakBefore }, i) => (
-											<React.Fragment key={ci}>
-												{breakBefore && i > 0 && (
-													<span className="rsvp-context-break" aria-hidden />
-												)}
-												<button
-													type="button"
-													data-idx={ci}
-													className={
-														linkHrefAt?.(ci)
-															? "rsvp-context-word rsvp-context-link"
-															: "rsvp-context-word"
-													}
-												>
-													{cw}
-												</button>
-											</React.Fragment>
-										))}
+										<div>
+											...
+											{visibleContext.prev.map(({ word: cw, idx: ci, breakBefore }, i) => (
+												<React.Fragment key={ci}>
+													{breakBefore && i > 0 && (
+														<span className="rsvp-context-break" aria-hidden />
+													)}
+													<button
+														type="button"
+														data-idx={ci}
+														className={
+															linkHrefAt?.(ci)
+																? "rsvp-context-word rsvp-context-link"
+																: "rsvp-context-word"
+														}
+													>
+														{cw}
+													</button>
+												</React.Fragment>
+											))}
+										</div>
 									</div>
 								)}
 								<span
@@ -437,6 +457,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 								{visibleContext && visibleContext.next.length > 0 && (
 									<div
 										className="rsvp-context-inline rsvp-context-next"
+										data-clips-text
 										onClick={handleContextClick}
 									>
 										{visibleContext.next.map(({ word: cw, idx: ci, breakBefore }, i) => (

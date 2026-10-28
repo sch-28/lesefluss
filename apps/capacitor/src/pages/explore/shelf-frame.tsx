@@ -47,9 +47,12 @@ const ShelfFrame: React.FC<Props> = ({ title, onSeeAll, actions, body, children,
 
 	return (
 		<section className="mb-6" data-testid={testId}>
-			<header className="mb-2 flex items-center justify-between gap-2">
-				<h2 className="m-0 min-w-0 truncate font-semibold text-[0.95rem]">{title}</h2>
-				<div className="flex shrink-0 items-center gap-1">
+			{/* Wraps: at a large font scale the title takes its own line rather than truncate. */}
+			<header className="mb-2 flex flex-wrap items-center justify-between gap-2">
+				<h2 className="m-0 min-w-0 flex-[1_1_8rem] break-words font-semibold text-[0.95rem]">
+					{title}
+				</h2>
+				<div className="ml-auto flex shrink-0 items-center gap-1">
 					{actions}
 					{hasFinePointer && !body && (
 						<>

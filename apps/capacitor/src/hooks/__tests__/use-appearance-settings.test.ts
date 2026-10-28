@@ -6,6 +6,8 @@ import {
 	percentOfFont,
 	readerFontFamilyFor,
 	readerFontStack,
+	readerLayoutFor,
+	readingRulerFor,
 	round2,
 	spacingLabel,
 	stepSetting,
@@ -146,5 +148,51 @@ describe("effectiveTextAlign", () => {
 
 	it("never justifies a left-aligned setting", () => {
 		expect(effectiveTextAlign("left", 2000, 16, 0)).toBe("left");
+	});
+});
+
+describe("readerLayoutFor", () => {
+	const stored = { paginationStyle: "page", pageTurnAnimation: true } as const;
+
+	it("keeps the stored animation when nothing forces turns instant", () => {
+		expect(readerLayoutFor(stored, false, false)).toEqual({
+			paginationStyle: "page",
+			pageTurnAnimation: true,
+			pageTurnAnimationOffBy: null,
+		});
+	});
+
+	it("turns the animation off under OS reduce motion and says why", () => {
+		expect(readerLayoutFor(stored, false, true)).toEqual({
+			paginationStyle: "page",
+			pageTurnAnimation: false,
+			pageTurnAnimationOffBy: "reduce-motion",
+		});
+	});
+
+	it("lets e-ink mode win, forcing page mode as well", () => {
+		expect(readerLayoutFor({ ...stored, paginationStyle: "scroll" }, true, true)).toEqual({
+			paginationStyle: "page",
+			pageTurnAnimation: false,
+			pageTurnAnimationOffBy: "eink",
+		});
+	});
+});
+
+describe("readingRulerFor", () => {
+	it("is off with one line by default", () => {
+		expect(readingRulerFor(undefined)).toEqual({ isOn: false, lines: 1 });
+	});
+
+	it("keeps the line count while the ruler is off", () => {
+		expect(readingRulerFor({ readerRuler: false, readerRulerLines: 3 })).toEqual({
+			isOn: false,
+			lines: 3,
+		});
+	});
+
+	it("clamps a line count outside 1-3", () => {
+		expect(readingRulerFor({ readerRuler: true, readerRulerLines: 7 }).lines).toBe(3);
+		expect(readingRulerFor({ readerRuler: true, readerRulerLines: 0 }).lines).toBe(1);
 	});
 });

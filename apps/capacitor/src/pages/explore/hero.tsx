@@ -64,7 +64,8 @@ const Hero: React.FC<Props> = ({ books, onOpen, intervalMs = 6000 }) => {
 		<section
 			aria-roledescription="carousel"
 			aria-label="Featured books"
-			className="mb-6 flex touch-pan-y gap-4 rounded-xl border border-border bg-card p-4 text-card-foreground"
+			// Wraps: at a large font scale the text drops below the cover rather than squeeze.
+			className="mb-6 flex touch-pan-y flex-wrap gap-4 rounded-xl border border-border bg-card p-4 text-card-foreground"
 			onMouseEnter={() => {
 				isHoveredRef.current = true;
 			}}
@@ -114,11 +115,11 @@ const Hero: React.FC<Props> = ({ books, onOpen, intervalMs = 6000 }) => {
 					}
 				/>
 			</button>
-			<div className="flex min-w-0 flex-1 flex-col" aria-live="off">
+			<div className="flex min-w-0 flex-[1_1_10rem] flex-col" aria-live="off">
 				<div className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">
 					Featured
 				</div>
-				<h2 className="m-0 mt-1 font-semibold text-base leading-tight">{book.title}</h2>
+				<h2 className="m-0 mt-1 break-words font-semibold text-base leading-tight">{book.title}</h2>
 				{book.author && <p className="m-0 mt-1 text-muted-foreground text-sm">{book.author}</p>}
 				{book.summary && (
 					<p className="m-0 mt-1.5 line-clamp-1 text-foreground/80 text-sm">{book.summary}</p>

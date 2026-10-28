@@ -161,6 +161,17 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	--reader-progress-label: #555555;
 }
 
+/* Colours only: anything that changed metrics would leave page mode's cached
+ * layout stale. */
+.reader-theme-high-contrast {
+	--reader-bg: var(--background);
+	--reader-text: #ffffff;
+	--reader-heading: #ffffff;
+	--reader-progress-bg: #4d4d4d;
+	--reader-progress-fill: #ffffff;
+	--reader-progress-label: #c8c8c8;
+}
+
 .reader-theme-sepia {
 	--reader-bg: var(--background);
 	--reader-text: #3a2e1e;
@@ -349,7 +360,8 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	mix-blend-mode: multiply;
 }
 
-.reader-theme-dark .reader-figure--line-art img {
+.reader-theme-dark .reader-figure--line-art img,
+.reader-theme-high-contrast .reader-figure--line-art img {
 	filter: invert(1);
 	mix-blend-mode: screen;
 }
@@ -583,7 +595,8 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	margin: 0 auto;
 	height: 100%;
 	position: relative;
-	container-type: inline-size;
+	/* size, not just inline-size: the context peeks bound their height in cqh. */
+	container-type: size;
 }
 
 .rsvp-scroll-spacer {
@@ -816,6 +829,11 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	color: var(--reader-text);
 }
 
+/* The fill is faint against black; the underline marks the word on its own. */
+.reader-theme-high-contrast ::highlight(tts-word) {
+	text-decoration: underline 2px #ffd60a;
+}
+
 /* ── RSVP speed chip (visible while playing) ── */
 
 .rsvp-speed-chip {
@@ -862,12 +880,26 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	overflow-wrap: break-word;
 }
 
+/* The peeks fill only the room between the word and the screen's edge above,
+ * or the paused controls below (bottom 24px + about 111px tall + a gap), and fade
+ * out where they are cut. 50 words run far past that on a small phone. */
 .rsvp-context-prev {
 	bottom: calc(100% + 0.6em);
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	max-height: max(0px, calc(50cqh - var(--rsvp-word-height, 3rem) / 2 - 0.66rem - 8px));
+	overflow: hidden;
+	-webkit-mask-image: linear-gradient(to top, #000 calc(100% - 2.5em), transparent);
+	mask-image: linear-gradient(to top, #000 calc(100% - 2.5em), transparent);
 }
 
 .rsvp-context-next {
 	top: calc(100% + 0.6em);
+	max-height: max(0px, calc(50cqh - var(--rsvp-word-height, 3rem) / 2 - 0.66rem - 147px));
+	overflow: hidden;
+	-webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5em), transparent);
+	mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5em), transparent);
 }
 
 .rsvp-context-break {
@@ -928,6 +960,52 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 .rsvp-dict-button:active,
 .rsvp-settings-button:active {
 	background: var(--reader-progress-track, rgba(128, 128, 128, 0.2));
+}
+
+/* ─── Reading ruler ──────────────────────────────────────────────────────── */
+
+/* Positions come from ReadingRuler as transforms only, so moving it never
+ * relayouts. Each dimmer is a full view tall: the upper one ends at the band's
+ * top, the lower one starts at its bottom. */
+.reading-ruler {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+	z-index: 5;
+}
+.reading-ruler[data-visible="false"] {
+	visibility: hidden;
+}
+.reading-ruler-band,
+.reading-ruler-dim {
+	position: absolute;
+	top: 0;
+	left: 0;
+	will-change: transform;
+	/* motion.css removes it under e-ink and reduce motion: the ruler then jumps. */
+	transition: transform 120ms ease-out;
+}
+.reading-ruler-dim {
+	height: 100%;
+	background: color-mix(in srgb, var(--reader-bg) 55%, transparent);
+}
+.reading-ruler-band {
+	border-radius: 4px;
+	background: color-mix(in srgb, var(--reader-text) 6%, transparent);
+	outline: 1px solid color-mix(in srgb, var(--reader-text) 25%, transparent);
+}
+.reader-theme-high-contrast .reading-ruler-band {
+	background: none;
+	outline: 2px solid #ffd60a;
+}
+/* A grey wash ghosts on e-ink, and moving it repaints the panel: outline only. */
+html.eink .reading-ruler-dim {
+	display: none;
+}
+html.eink .reading-ruler-band {
+	background: none;
+	outline: 2px solid #000000;
 }
 
 /* ─── Highlights ─────────────────────────────────────────────────────────── */
@@ -1012,8 +1090,40 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 .reader-theme-light .glossary-modal-context mark {
 	--glossary-mark-bg: rgba(255, 220, 60, 0.5);
 }
-.reader-theme-dark .glossary-modal-context mark {
+.reader-theme-dark .glossary-modal-context mark,
+.reader-theme-high-contrast .glossary-modal-context mark {
 	--glossary-mark-bg: rgba(255, 230, 80, 0.32);
+}
+
+/* High contrast cues: drawn as shadows and decorations, which never move text.
+ * The highlight fills are faint against black, so each also gets an underline
+ * in its own colour. */
+.reader-theme-high-contrast .word-highlight-yellow {
+	box-shadow: inset 0 -2px 0 #ffeb3b;
+}
+.reader-theme-high-contrast .word-highlight-blue {
+	box-shadow: inset 0 -2px 0 #64b5f6;
+}
+.reader-theme-high-contrast .word-highlight-orange {
+	box-shadow: inset 0 -2px 0 #ffb74d;
+}
+.reader-theme-high-contrast .word-highlight-pink {
+	box-shadow: inset 0 -2px 0 #f06292;
+}
+.reader-theme-high-contrast .reader-paragraph span.word-link {
+	color: #b3e5ff;
+}
+/* Dotted, so it never reads as the spoken word's solid yellow underline. */
+.reader-theme-high-contrast .reader-paragraph span.word-active {
+	text-decoration-style: dotted;
+	text-decoration-color: #ffffff;
+}
+.reader-theme-high-contrast .glossary-modal-context mark {
+	box-shadow: inset 0 -2px 0 #ffe650;
+}
+/* A dark entry colour would vanish on black. */
+.reader-theme-high-contrast .glossary-inline-avatar {
+	box-shadow: 0 0 0 1px #ffffff;
 }
 
 /* Ionic's textarea host doesn't always forward --padding-start/end to the native
@@ -1042,6 +1152,9 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	/* Above ion-app (its own stacking context at 0), below the z-50 popovers and sheets. */
 	z-index: 40;
 	display: flex;
+	/* A large font scale outgrows one row; at 1x everything fits in one. */
+	flex-wrap: wrap;
+	justify-content: center;
 	align-items: center;
 	gap: 2px;
 	padding: 4px;
@@ -1065,7 +1178,7 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	border-radius: 10px;
 	background: none;
 	color: var(--foreground);
-	font-size: 11px;
+	font-size: 0.6875rem;
 	line-height: 1.1;
 	cursor: pointer;
 	-webkit-tap-highlight-color: transparent;
@@ -1211,16 +1324,35 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 
 .ap-row {
 	display: flex;
+	/* Under a large OS font scale the controls drop below the label. */
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 8px;
 	padding: 8px 0;
 	border-top: 1px solid var(--border);
 }
 
+/* The control (value and steppers, or a toggle) stays one group and right-aligned when it wraps. */
+.ap-row > :not(.ap-row-label) {
+	margin-left: auto;
+}
+
+.ap-row-control {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
 .ap-row-label {
-	flex: 1;
+	flex: 1 1 6rem;
 	font-size: 0.88rem;
 	color: var(--foreground);
+}
+
+.ap-row-hint {
+	display: block;
+	font-size: 0.72rem;
+	color: var(--muted-foreground);
 }
 
 .ap-row-value {
@@ -1234,6 +1366,10 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
  * 3:1 against its neighbours in the light and dark themes). */
 .appearance-popover-content [data-slot="toggle-group-item"] {
 	min-height: 44px;
+	/* Labels wrap rather than spill out of their button at a large font scale.
+	 * !important: the item's own utilities sit in a higher layer. */
+	height: auto !important;
+	white-space: normal !important;
 }
 
 /* !important: this file is in the legacy layer, under the item's own
@@ -1250,8 +1386,10 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 }
 
 .ap-step-btn {
-	width: 34px;
-	height: 34px;
+	flex-shrink: 0;
+	min-width: 34px;
+	min-height: 34px;
+	padding: 0 0.2em;
 	border-radius: 6px;
 	border: 1.5px solid var(--border);
 	background: transparent;
@@ -1663,6 +1801,18 @@ body.dark .book-detail-card {
 	border-color: #2a2a2a;
 }
 
+/* The dark greys above fall under AAA on high contrast's black. */
+body.high-contrast .book-detail-card {
+	background: var(--card);
+	border-color: var(--border);
+}
+body.high-contrast .book-detail-eyebrow,
+body.high-contrast .book-detail-section-title,
+body.high-contrast .book-detail-author,
+body.high-contrast .book-detail-stats {
+	color: var(--muted-foreground);
+}
+
 body.dark .book-detail-subject {
 	background: #242424;
 	border-color: #333;
@@ -1994,6 +2144,23 @@ body.dark .chapter-row:hover {
  * without taking space, so scroll heights and page-mode pagination never change
  * when it appears or turns green. Its height resolves at the paragraph's font
  * size, as the margin does; the label's own size sits on the inner elements. */
+/* Keyboard focus shows it where it is, still absolutely positioned: no reflow.
+ * !important: sr-only is a utility, a layer above this file. */
+.reader-discussion-sr:focus-visible {
+	clip: auto !important;
+	width: auto !important;
+	height: auto !important;
+	margin: 0 !important;
+	overflow: visible !important;
+	white-space: nowrap;
+	padding: 0.1em 0.5em !important;
+	border: 1px solid var(--border);
+	border-radius: 9999px;
+	background: var(--background);
+	color: var(--foreground);
+	z-index: 1;
+}
+
 .reader-paragraph--goal {
 	position: relative;
 }
@@ -2020,7 +2187,7 @@ body.dark .chapter-row:hover {
 
 .reader-goal-divider-label {
 	font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-	font-size: 11px;
+	font-size: 0.6875rem;
 	line-height: 1;
 	font-variant-numeric: tabular-nums;
 	word-spacing: normal;
@@ -2071,13 +2238,4 @@ body.dark .chapter-row:hover {
 
 .reader-goal-chip--met .reader-goal-ring {
 	stroke: var(--goal-met);
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.reader-goal-divider,
-	.reader-goal-divider--celebrate,
-	.reader-goal-ring {
-		animation: none;
-		transition: none;
-	}
 }

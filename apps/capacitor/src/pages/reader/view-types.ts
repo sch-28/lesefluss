@@ -12,7 +12,8 @@ export interface ReaderViewHandle {
 	// (e.g. live device→app position notify) where the coarse step would
 	// produce a visible double-jump.
 	// `smooth: true` animates the fine scroll over ~250ms instead of jumping
-	// instantly. Only meaningful in combination with `fine` (the coarse step
+	// instantly (it jumps anyway while motion is reduced: the OS setting or
+	// e-ink mode). Only meaningful in combination with `fine` (the coarse step
 	// is always instant). Use for live BLE updates so the highlight glides
 	// rather than snapping.
 	jumpTo(word: number, opts?: JumpOptions): void;

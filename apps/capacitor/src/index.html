@@ -12,6 +12,7 @@
       html, body { margin: 0; background: #fdfcfb; }
       html.dark, body.dark { background: #0c0d0e; }
       html.sepia, body.sepia { background: #c4b081; }
+      html.high-contrast, body.high-contrast { background: #000000; }
       html.eink, body.eink { background: #ffffff; }
       /* Unlayered, so they apply on every engine. The notice is styled inline
          because engines 99-110 still apply the app's layered reset. */
@@ -36,9 +37,18 @@
           const t = eink ? "light" : cached || sys;
           // Only <html>: <body> does not exist yet while <head> is parsed.
           // theme-context puts the same classes on both once it mounts.
+          // High contrast is also a dark theme, as themeClasses() in theme-context says.
+          if (t === "high-contrast") document.documentElement.classList.add("dark");
           document.documentElement.classList.add(t);
           if (eink) document.documentElement.classList.add("eink");
         } catch (_e) {}
+        // Mirrors the OS reduce-motion setting (Android "Remove animations") into
+        // a class, so theme/motion.css can switch motion off with e-ink's rule.
+        const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+        const applyReduceMotion = () =>
+          document.documentElement.classList.toggle("reduce-motion", reduceMotion.matches);
+        applyReduceMotion();
+        reduceMotion.addEventListener("change", applyReduceMotion);
       })();
     </script>
   </head>

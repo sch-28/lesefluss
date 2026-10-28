@@ -1,0 +1,27 @@
+/* No motion in e-ink mode (html.eink), where it ghosts, or when the OS asks for
+ * reduced motion (html.reduce-motion, mirrored from the media query by
+ * index.html). !important outranks every normal declaration, including the
+ * inline `transition` styles vaul and the reader set from JS.
+ * `animation: none` rather than a zero duration, so Radix Presence unmounts
+ * closed overlays at once instead of waiting for an animationend.
+ * Under reduce-motion a spinner keeps turning: rotation in place is not the
+ * motion the setting is for, and a frozen one reads as broken. */
+html.eink *,
+html.eink *::before,
+html.eink *::after,
+html.reduce-motion *:not(.animate-spin),
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+	animation: none !important;
+	transition: none !important;
+	scroll-behavior: auto !important;
+}
+
+/* Frozen at a third of the track, the indeterminate bar would read as 33 % done. */
+html:is(.eink, .reduce-motion) [class*="indeterminate-progress"] {
+	width: 100% !important;
+}
+
+html.reduce-motion:not(.eink) [class*="indeterminate-progress"] {
+	opacity: 0.4;
+}

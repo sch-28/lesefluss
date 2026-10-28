@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { mockDeviceSignIn, mockSessionAndSync } from "./helpers/auth-mock";
 import { BIG_BOOK_TITLE, seedBigBook } from "./helpers/big-book";
+import { elementsInMotion } from "./helpers/motion";
 import { openBookFromLibrary, resetStorage } from "./helpers/seed";
 import { reader } from "./page-objects/reader";
 
@@ -25,24 +26,19 @@ async function turnOnEinkMode(page: Page) {
 }
 
 /** Every element on the page that still moves, blurs or casts a shadow. */
-function elementsWithEffects(page: Page): Promise<string[]> {
-	return page.evaluate(() => {
+async function elementsWithEffects(page: Page): Promise<string[]> {
+	const effects = await page.evaluate(() => {
 		const offenders: string[] = [];
 		const describe = (el: Element, what: string) =>
 			`${el.tagName.toLowerCase()}.${el.className.toString().slice(0, 40)}: ${what}`;
 		for (const el of document.querySelectorAll("*")) {
 			const style = getComputedStyle(el);
-			if (style.transitionDuration.split(",").some((d) => Number.parseFloat(d) > 0)) {
-				offenders.push(describe(el, `transition ${style.transitionDuration}`));
-			}
-			if (style.animationName !== "none") offenders.push(describe(el, "animation"));
 			if (style.backdropFilter !== "none") offenders.push(describe(el, "backdrop-filter"));
 			if (style.boxShadow !== "none") offenders.push(describe(el, "box-shadow"));
 		}
-		const running = document.getAnimations().length;
-		if (running > 0) offenders.push(`${running} running animation(s)`);
 		return offenders;
 	});
+	return [...(await elementsInMotion(page)), ...effects];
 }
 
 /** Transform and opacity of every element. Two equal samples mean nothing on the page is moving. */

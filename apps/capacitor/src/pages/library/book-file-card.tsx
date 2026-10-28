@@ -24,11 +24,12 @@ export function BookFileCard({ book, chapterCount }: { book: Book; chapterCount:
 	return (
 		<section className="book-detail-card mt-4">
 			<h2 className="book-detail-section-title">About this file</h2>
-			<dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
+			{/* Two columns, or one once a large font scale leaves a pair too narrow; values wrap. */}
+			<dl className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))] gap-x-4 gap-y-2.5 text-sm">
 				{rows.map(([label, value]) => (
-					<div key={label} className="flex items-baseline justify-between gap-2">
+					<div key={label} className="flex flex-wrap items-baseline justify-between gap-x-2">
 						<dt className="text-muted-foreground text-xs">{label}</dt>
-						<dd className="truncate text-right font-medium">{value}</dd>
+						<dd className="ml-auto min-w-0 break-words text-right font-medium">{value}</dd>
 					</div>
 				))}
 			</dl>

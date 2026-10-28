@@ -1,14 +1,8 @@
 /* E-ink mode (html.eink, set by theme-context). Kept unlayered: unlayered
- * declarations beat every cascade layer, and unlayered !important also beats
- * the inline `transition` styles vaul and the reader set from JS.
- * `animation: none` rather than a zero duration, so Radix Presence unmounts
- * closed overlays at once instead of waiting for an animationend. */
+ * declarations beat every cascade layer. Motion is off through motion.css. */
 html.eink *,
 html.eink *::before,
 html.eink *::after {
-	animation: none !important;
-	transition: none !important;
-	scroll-behavior: auto !important;
 	backdrop-filter: none !important;
 	box-shadow: none !important;
 }
@@ -115,9 +109,8 @@ html.eink
 	border-color: #000000 !important;
 }
 
-/* Frozen at a third of the track, the indeterminate bar would read as 33 % done. */
+/* The frozen indeterminate bar spans the track (motion.css); stripes mark it as no amount. */
 html.eink [class*="indeterminate-progress"] {
-	width: 100% !important;
 	background: repeating-linear-gradient(90deg, #000000 0 6px, #ffffff 6px 12px) !important;
 }
 

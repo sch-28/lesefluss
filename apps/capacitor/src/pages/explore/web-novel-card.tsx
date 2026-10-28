@@ -44,7 +44,11 @@ export const WebNovelCard: React.FC<{
 					{quickAdd.isInLibrary && <InLibraryBadge className="absolute bottom-1.5 left-1.5" />}
 				</div>
 				<div className="px-0.5 pt-1">
-					<div className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
+					{/* A teaser under the cover: the full title is on the book page and in the name. */}
+					<div
+						data-clips-text
+						className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
+					>
 						{result.title}
 					</div>
 					{result.author && (

@@ -33,7 +33,13 @@ export function TabHeader({ title, icon: Icon, logo, right, children }: TabHeade
 				{/* `min-w-0` so the title gives way first: without it the flex item cannot
 				    shrink below the width of its longest word, and Library's row of six
 				    actions is pushed off the right edge on a narrow phone. */}
-				<h1 className="m-0 min-w-0 flex-1 truncate font-semibold text-base leading-5">{title}</h1>
+				{/* data-clips-text: the truncation is meant (e2e layout check). */}
+				<h1
+					data-clips-text
+					className="m-0 min-w-0 flex-1 truncate font-semibold text-base leading-5"
+				>
+					{title}
+				</h1>
 				{right}
 			</div>
 		</header>

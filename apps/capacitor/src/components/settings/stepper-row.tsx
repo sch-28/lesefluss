@@ -38,7 +38,7 @@ export function StepperRow({
 	return (
 		<SettingsRow>
 			<RowLabel title={label} hint={hint} />
-			<div className="flex items-center gap-3">
+			<div className="ml-auto flex items-center gap-3">
 				<span
 					className="min-w-10 text-right text-muted-foreground text-sm tabular-nums"
 					aria-live="polite"

@@ -25,7 +25,7 @@ function PrimaryOption({ icon: Icon, title, description, onClick, disabled, erro
 		<div className="flex flex-col gap-2">
 			<Button
 				type="button"
-				className="h-12 w-full text-base"
+				className="h-auto min-h-12 w-full whitespace-normal py-2 text-base"
 				aria-describedby={descriptionId}
 				onClick={onClick}
 				disabled={disabled}
@@ -165,7 +165,7 @@ export function SignInOptions({
 				<Button
 					type="button"
 					variant="ghost"
-					className="min-h-11"
+					className="h-auto min-h-11 max-w-full whitespace-normal text-center"
 					aria-expanded={isEmailFormOpen}
 					aria-controls={isEmailFormOpen ? `${id}-email-form` : undefined}
 					disabled={isPending}

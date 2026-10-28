@@ -17,7 +17,8 @@ export function SettingsRow({
 		<div
 			className={cn(
 				"flex min-h-12 gap-3 px-4",
-				stacked ? "flex-col items-stretch py-3" : "items-center justify-between py-2",
+				// Wrapping lets a large OS font scale drop the control below its label.
+				stacked ? "flex-col items-stretch py-3" : "flex-wrap items-center py-2",
 				className,
 			)}
 		>
@@ -28,7 +29,8 @@ export function SettingsRow({
 
 export function RowLabel({ title, hint }: { title: string; hint?: React.ReactNode }) {
 	return (
-		<div className="flex min-w-0 flex-col">
+		// Takes the row's slack, so the control (ml-auto) sits right, wrapped or not.
+		<div className="flex min-w-0 flex-[1_1_6rem] flex-col">
 			<span className="text-foreground text-sm">{title}</span>
 			{hint && <span className="text-muted-foreground text-xs">{hint}</span>}
 		</div>
@@ -48,7 +50,8 @@ export function NavRow({ icon: Icon, title, subtitle, iconClassName, to, onClick
 			<Icon className={iconClassName ?? "size-5 text-muted-foreground"} />
 			<div className="min-w-0 flex-1">
 				<div className="text-foreground text-sm">{title}</div>
-				<div className="truncate text-muted-foreground text-xs">{subtitle}</div>
+				{/* Two lines, not one: a large font scale would leave a single line a few words. */}
+				<div className="line-clamp-2 text-muted-foreground text-xs">{subtitle}</div>
 			</div>
 			<ChevronRight className="size-4 text-muted-foreground" />
 		</>
