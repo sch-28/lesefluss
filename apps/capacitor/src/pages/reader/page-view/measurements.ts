@@ -3,6 +3,8 @@
  * container after layout to convert between word positions and page
  * indices. Both functions only do reads; calling them in succession from
  * the same synchronous frame triggers a single browser layout flush.
+ *
+ * `pageStride` and `columnStride` are PageGeometry's (chunks.ts).
  */
 
 import { firstLineRect } from "../line-rects";
@@ -18,7 +20,7 @@ const wordOf = (el: HTMLElement) =>
  *  saved position past the chunk's last word). */
 export function findPageForWord(
 	columns: HTMLElement,
-	pageWidth: number,
+	pageStride: number,
 	pageCount: number,
 	wordIdx: number,
 ): number {
@@ -43,37 +45,48 @@ export function findPageForWord(
 	// getBoundingClientRect reports a sub-pixel underflow at the column boundary.
 	const r0 = firstLineRect(span);
 	const xCenter = r0.left + r0.width / 2 - colsRect.left;
-	const page = Math.floor(xCenter / pageWidth);
+	const page = Math.floor(xCenter / pageStride);
 	return Math.max(0, Math.min(pageCount - 1, page));
 }
 
-/** Word index of the topmost-leftmost word span or heading on the page, or null
- *  when the page holds no words (a figure page, or past the end).
+/** Word index of the first word on the page, or null when the page holds no
+ *  words (a figure page, or past the end). The first word is the
+ *  topmost-leftmost one of the page's first column that holds words: on a
+ *  two-page spread the right page can start higher than the left (a heading
+ *  margin, a figure) and still comes second.
  *
- *  Invariant: a span's page never decreases in DOM order, because columns fill
- *  in order and spans and headings flow in it (no floats or positioning).
+ *  Invariant: a span's column never decreases in DOM order, because columns
+ *  fill in order and spans and headings flow in it (no floats or positioning).
  *  That lets a binary search find the page's first span. */
 export function readFirstVisibleWord(
 	columns: HTMLElement,
-	pageWidth: number,
+	pageStride: number,
 	pageIndex: number,
+	columnStride = pageStride,
 ): number | null {
 	const colsRect = columns.getBoundingClientRect();
 	const spans = columns.querySelectorAll<HTMLElement>(WORD_TARGETS);
-	const pageOfRect = (r: DOMRect) => Math.floor((r.left + r.width / 2 - colsRect.left) / pageWidth);
+	const columnsPerPage = Math.round(pageStride / columnStride);
+	const columnOfRect = (r: DOMRect) =>
+		Math.floor((r.left + r.width / 2 - colsRect.left) / columnStride);
+	const firstColumn = pageIndex * columnsPerPage;
 	let lo = 0;
 	let hi = spans.length;
 	while (lo < hi) {
 		const mid = (lo + hi) >> 1;
-		if (pageOfRect(firstLineRect(spans[mid])) < pageIndex) lo = mid + 1;
+		if (columnOfRect(firstLineRect(spans[mid])) < firstColumn) lo = mid + 1;
 		else hi = mid;
 	}
 	let best: { word: number; top: number; left: number } | null = null;
+	let bestColumn: number | null = null;
 	for (let i = lo; i < spans.length; i++) {
 		const r = firstLineRect(spans[i]);
-		if (pageOfRect(r) !== pageIndex) break;
+		const column = columnOfRect(r);
+		if (column >= firstColumn + columnsPerPage) break;
+		if (bestColumn !== null && column !== bestColumn) break;
 		const w = wordOf(spans[i]);
 		if (Number.isNaN(w) || w < 0) continue;
+		bestColumn = column;
 		if (!best || r.top < best.top || (r.top === best.top && r.left < best.left)) {
 			best = { word: w, top: r.top, left: r.left };
 		}

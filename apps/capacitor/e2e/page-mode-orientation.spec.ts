@@ -3,7 +3,10 @@ import { openBigBookInPageMode } from "./helpers/big-book";
 import { reader } from "./page-objects/reader";
 
 const PORTRAIT = { width: 420, height: 900 };
-const LANDSCAPE = { width: 900, height: 420 };
+// A phone in landscape stays below the 900px spread breakpoint: one page.
+const LANDSCAPE = { width: 860, height: 420 };
+// A tablet in landscape crosses it: a two-page spread.
+const TABLET_LANDSCAPE = { width: 1100, height: 700 };
 
 /**
  * Android keeps the Activity alive across a rotation (`android:configChanges`
@@ -64,4 +67,23 @@ test("a height-only resize keeps the current word on screen in page mode", async
 
 	await page.setViewportSize({ width: PORTRAIT.width, height: 640 });
 	await reader.expectWordVisibleInPage(page, word);
+});
+
+test("rotating a tablet into a two-page spread keeps the word and does not save", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 700, height: 1100 });
+	await openBigBookInPageMode(page);
+
+	await reader.turnPages(page, 3);
+	const savedBefore = await reader.lastSavedWord(page);
+	await reader.waitPositionQuiet(page);
+
+	await reader.expectNoSaveDuring(page, async () => {
+		await page.setViewportSize(TABLET_LANDSCAPE);
+		await reader.expectWordVisibleInPage(page, savedBefore);
+		await page.setViewportSize({ width: 700, height: 1100 });
+		await expect.poll(() => reader.pageModeFirstVisibleWord(page)).toBe(savedBefore);
+	});
+	expect(await reader.lastSavedWord(page)).toBe(savedBefore);
 });

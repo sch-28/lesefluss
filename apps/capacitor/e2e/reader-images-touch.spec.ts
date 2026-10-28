@@ -2,6 +2,9 @@ import { expect, test } from "@playwright/test";
 import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
 import { reader } from "./page-objects/reader";
 
+// A phone-width reader: these cover single-page mechanics, and the spread starts at 900px.
+test.use({ viewport: { width: 420, height: 800 } });
+
 /**
  * The touch path: a long press arms selection, the finger then crosses a
  * figure (no word under it) on its way to the next paragraph. A press that

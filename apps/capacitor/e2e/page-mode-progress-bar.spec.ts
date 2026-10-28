@@ -2,6 +2,9 @@ import { expect, test } from "@playwright/test";
 import { openBigBookInPageMode } from "./helpers/big-book";
 import { reader } from "./page-objects/reader";
 
+// A phone-width reader: these cover single-page mechanics, and the spread starts at 900px.
+test.use({ viewport: { width: 420, height: 800 } });
+
 /**
  * Page mode has no scrolling, so the scroll-driven hide path that scroll mode
  * relies on never fires here. The centre tap zone is the only affordance the

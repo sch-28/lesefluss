@@ -14,11 +14,50 @@
  *  ~2000 words is roughly 6 to 8 phone pages at default font. */
 export const CHUNK_TARGET_WORDS = 2_000;
 
-/** Pages a chunk's measured scrollWidth maps to. Use ceil so a partial
- *  last column still counts (Math.round would under-count pageCount, then
- *  findPageForWord clamps the target down by one page). */
-export const pageCountOf = (chunkWidth: number, pageWidth: number) =>
-	Math.max(1, Math.ceil(chunkWidth / pageWidth));
+/** From this reader width a page is a two-page spread. */
+export const SPREAD_MIN_WIDTH = 900;
+const SINGLE_PAGE_MAX_WIDTH = 700;
+const SPREAD_MAX_WIDTH = 1400;
+
+export interface PageGeometry {
+	/** The page view's own width, its margins included. */
+	width: number;
+	columnsPerPage: 1 | 2;
+	columnWidth: number;
+	/** Each page of a spread keeps the reader margin on both sides. */
+	columnGap: number;
+	/** Distance between two column starts. */
+	columnStride: number;
+	/** Distance between two page starts: one page, or a two-page spread plus
+	 *  the gap after its right column. Page indices and translateX step by it. */
+	pageStride: number;
+}
+
+/** Page layout for a reader `available` px wide (before the view's max-width). */
+export function pageGeometry(available: number, margin: number): PageGeometry {
+	const isSpread = available >= SPREAD_MIN_WIDTH;
+	const columnsPerPage = isSpread ? 2 : 1;
+	const width = Math.min(available, isSpread ? SPREAD_MAX_WIDTH : SINGLE_PAGE_MAX_WIDTH);
+	const columnGap = isSpread ? 2 * margin : 0;
+	const columnWidth = Math.max(0, (width - 2 * margin - columnGap) / columnsPerPage);
+	const columnStride = columnWidth + columnGap;
+	return {
+		width,
+		columnsPerPage,
+		columnWidth,
+		columnGap,
+		columnStride,
+		pageStride: columnsPerPage * columnStride,
+	};
+}
+
+/** Pages a chunk's measured scrollWidth maps to. Use ceil so a partial last
+ *  column still counts (Math.round would under-count pageCount, then
+ *  findPageForWord clamps the target down by one page). The 1px slack absorbs
+ *  scrollWidth's integer rounding at a fractional stride, which would otherwise
+ *  count a phantom page and leave a blank one before the next chunk. */
+export const pageCountOf = (chunkWidth: number, pageStride: number) =>
+	Math.max(1, Math.ceil((chunkWidth - 1) / pageStride));
 
 export interface Chunk {
 	startWord: number;
@@ -93,7 +132,8 @@ export function visibleWindow(currentIdx: number, totalChunks: number): number[]
 /** Returns each visible chunk's left offset relative to the CURRENT chunk
  *  (current sits at 0; prev is negative; next is positive). Used as the inline
  *  `left` style on each chunk container so they line up side-by-side regardless
- *  of which one is current. Falls back to `pageWidth` for chunks whose layout
+ *  of which one is current. `widths` is the span each chunk takes (its pages
+ *  times the page stride). Falls back to `fallbackWidth` for chunks whose layout
  *  hasn't measured yet — those chunks are off-screen during normal viewing, so
  *  the placeholder only matters for cross-chunk gestures. */
 export function relativeOffsets(

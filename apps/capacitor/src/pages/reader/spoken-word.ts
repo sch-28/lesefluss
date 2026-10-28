@@ -32,3 +32,9 @@ export function firstVisibleWord(root: Element): number | null {
 	}
 	return null;
 }
+
+/** The first word on screen in the reader view. Page mode's neighbouring pages
+ *  extend past its clip into the side gutters, so only the clip counts there. */
+export function firstVisibleWordInView(viewContainer: Element): number | null {
+	return firstVisibleWord(viewContainer.querySelector(".page-clip") ?? viewContainer);
+}

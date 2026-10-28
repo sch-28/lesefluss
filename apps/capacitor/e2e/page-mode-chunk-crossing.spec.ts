@@ -84,3 +84,27 @@ for (const via of ["key", "tap"] as const) {
 		await expectSavedAndReopensOn(page, id, chunkStart);
 	});
 }
+
+/**
+ * At a fractional page width (a 411.43px phone) Chromium rounds a chunk's
+ * scrollWidth up, past its last whole page. Counted as another page, that
+ * leaves a blank one before the next chunk.
+ */
+test("at a fractional page width a turn across a chunk boundary lands on the next chunk", async ({
+	page,
+}) => {
+	const { chunkStart } = await openAt(page, (start) => start - 1);
+	// 0.1px less room makes chunk 0 here 12.0008 pages wide by scrollWidth.
+	await page.evaluate(() => {
+		const view = document.querySelector<HTMLElement>('[data-testid="reader-view"]');
+		if (view) view.style.paddingRight = "0.1px";
+	});
+	await reader.expectWordVisibleInPage(page, chunkStart - 1);
+	await reader.waitPositionQuiet(page);
+
+	await turn(page, "forward", "key");
+	expect(await reader.pageModeFirstVisibleWord(page)).toBe(chunkStart);
+
+	await turn(page, "back", "key");
+	expect(await reader.pageModeVisibleWords(page)).toContain(chunkStart - 1);
+});

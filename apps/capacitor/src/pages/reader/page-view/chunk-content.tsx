@@ -2,8 +2,9 @@
  * ChunkContent — one mounted chunk in the sliding window.
  *
  * Self-contained multicol container that reports its measured scrollWidth
- * (= pageCount × pageWidth) to the parent and exposes its DOM element via a
- * registration callback so the parent can run measurement helpers against it.
+ * (the right edge of its last column) to the parent and exposes its DOM
+ * element via a registration callback so the parent can run measurement
+ * helpers against it.
  *
  * Memoized — re-renders only on prop changes. The activeOffset prop is scoped
  * by the parent (only the chunk containing the active byte gets the real
@@ -43,9 +44,14 @@ export interface ChunkContentProps {
 
 	// Position in the transform wrapper (relative to current chunk; 0 for current).
 	leftOffset: number;
+	/** A neighbour pre-mounted beside the current chunk: off screen, so out of the a11y tree. */
+	isOffscreen: boolean;
 
 	// Layout dimensions (explicit pixels — see PageView for the rationale).
-	pageWidth: number;
+	columnWidth: number;
+	columnGap: number;
+	/** Columns per page: 1, or 2 for a spread. */
+	columnCount: number;
 	pageHeight: number;
 
 	// Appearance
@@ -75,12 +81,6 @@ export interface ChunkContentProps {
 	goalDivider?: ReaderGoalDivider;
 	selectionRange: { startWord: number; endWord: number } | null;
 
-	// Word interaction
-	onWordTap: (offset: number, text: string) => void;
-	onWordLongPress: (offset: number) => void;
-	onWordLongPressDrag: (offset: number) => void;
-	onWordMouseDragStart: (offset: number, ev: PointerEvent) => void;
-
 	// Reports (chunkIndex, scrollWidth) once layout settles. Re-fires on
 	// appearance changes that affect column flow.
 	onMeasure: (chunkIndex: number, width: number) => void;
@@ -100,7 +100,10 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	figuresByParagraph,
 	trailingFigures,
 	leftOffset,
-	pageWidth,
+	isOffscreen,
+	columnWidth,
+	columnGap,
+	columnCount,
 	pageHeight,
 	fontSize,
 	fontFamily,
@@ -118,10 +121,6 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	discussionByParagraph,
 	goalDivider,
 	selectionRange,
-	onWordTap,
-	onWordLongPress,
-	onWordLongPressDrag,
-	onWordMouseDragStart,
 	onMeasure,
 	registerRef,
 }) => {
@@ -139,6 +138,8 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 	// Measure scrollWidth after each layout-affecting change. Wait for fonts on
 	// cold start so column flow doesn't shift mid-measure.
 	useLayoutEffect(() => {
+		void columnGap;
+		void columnCount;
 		void fontSize;
 		void fontFamily;
 		void lineSpacing;
@@ -149,7 +150,7 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 		void lang;
 		void figuresByParagraph;
 		void trailingFigures;
-		if (!ref.current || pageWidth === 0 || pageHeight === 0) return;
+		if (!ref.current || columnWidth === 0 || pageHeight === 0) return;
 		let cancelled = false;
 		const apply = () => {
 			if (cancelled || !ref.current) return;
@@ -165,7 +166,9 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 		};
 	}, [
 		chunkIndex,
-		pageWidth,
+		columnWidth,
+		columnGap,
+		columnCount,
 		pageHeight,
 		fontSize,
 		fontFamily,
@@ -180,11 +183,19 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 		onMeasure,
 	]);
 
+	const width = columnCount * columnWidth + (columnCount - 1) * columnGap;
+	// A spread fixes the count: from a width alone, rounding could fit one column.
+	const columnStyle: React.CSSProperties =
+		columnCount > 1
+			? { columnCount, columnGap: `${columnGap}px` }
+			: { columnWidth: `${columnWidth}px`, columnGap: 0 };
+
 	return (
 		<div
 			ref={ref}
 			lang={lang}
 			data-chunk-index={chunkIndex}
+			aria-hidden={isOffscreen || undefined}
 			style={
 				{
 					position: "absolute",
@@ -195,10 +206,9 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 					// overflows into horizontally-stacked columns when the multicol
 					// container has a definite block size. Otherwise it falls back to
 					// "balance" and crams everything into a single tall column.
-					width: `${pageWidth}px`,
+					width: `${width}px`,
 					height: `${pageHeight}px`,
-					columnWidth: `${pageWidth}px`,
-					columnGap: 0,
+					...columnStyle,
 					columnFill: "auto",
 					fontSize: `${fontSize}px`,
 					fontFamily: readerFontStack(fontFamily),
@@ -216,14 +226,11 @@ const ChunkContent: React.FC<ChunkContentProps> = ({
 						text={text}
 						entries={entriesByParagraph[paraGlobalIndex] ?? []}
 						activeWord={isActiveWordHere ? activeWord : -1}
-						onWordTap={onWordTap}
-						onWordLongPress={onWordLongPress}
-						onWordLongPressDrag={onWordLongPressDrag}
-						onWordMouseDragStart={onWordMouseDragStart}
 						highlights={highlightsByParagraph?.get(paraGlobalIndex)}
 						glossaryRanges={glossaryByParagraph?.get(paraGlobalIndex)}
 						links={linksByParagraph?.get(paraGlobalIndex)}
 						discussion={discussionByParagraph?.get(paraGlobalIndex)}
+						isOffscreen={isOffscreen}
 						goalDivider={
 							goalDivider?.paragraphIndex === paraGlobalIndex ? goalDivider.divider : undefined
 						}

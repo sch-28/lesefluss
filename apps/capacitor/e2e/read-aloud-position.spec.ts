@@ -3,6 +3,9 @@ import { bigBookFixture } from "./helpers/big-book";
 import { openBookFromLibrary, seedFixture } from "./helpers/seed";
 import { reader } from "./page-objects/reader";
 
+// A phone-width reader: these cover single-page mechanics, and the spread starts at 900px.
+test.use({ viewport: { width: 420, height: 800 } });
+
 /**
  * Read-aloud owns the position only while it plays. Paused, the reader's own
  * moves are reading and are saved; stopped after looking away while it played,

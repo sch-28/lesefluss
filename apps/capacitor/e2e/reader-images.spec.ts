@@ -3,6 +3,9 @@ import { expect, type Page, test } from "@playwright/test";
 import { openBookFromLibrary, seedFixture } from "./helpers/seed";
 import { reader } from "./page-objects/reader";
 
+// A phone-width reader: these cover single-page mechanics, and the spread starts at 900px.
+test.use({ viewport: { width: 420, height: 800 } });
+
 /**
  * The image fixture has five anchors over three paragraphs plus one trailing
  * image: a map carried from an image-only page, chapter art from a heading,

@@ -8,14 +8,14 @@ const WORDS_PER_LINE = 6;
 const LINES_PER_PAGE = 10;
 const PER_PAGE = WORDS_PER_LINE * LINES_PER_PAGE;
 
-type Box = { page: number; line: number; slot: number };
+type Box = { column: number; line: number; slot: number };
 type Word = { word: number; boxes: Box[] };
 
-const rectOf = ({ page, line, slot }: Box) =>
-	new DOMRect(page * PAGE_WIDTH + slot * WORD_WIDTH, line * LINE_HEIGHT, WORD_WIDTH - 4, 20);
+const rectOf = ({ column, line, slot }: Box, columnStride: number) =>
+	new DOMRect(column * columnStride + slot * WORD_WIDTH, line * LINE_HEIGHT, WORD_WIDTH - 4, 20);
 
 /** Word spans in DOM order, each with the line boxes it occupies in the columns. */
-function layOut(words: Word[]) {
+function layOut(words: Word[], columnStride = PAGE_WIDTH) {
 	const columns = document.createElement("div");
 	columns.getBoundingClientRect = () => new DOMRect(0, 0, PAGE_WIDTH * 100, 800);
 	let reads = 0;
@@ -24,7 +24,7 @@ function layOut(words: Word[]) {
 		span.dataset.word = String(word);
 		span.getClientRects = () => {
 			reads++;
-			return boxes.map(rectOf) as unknown as DOMRectList;
+			return boxes.map((b) => rectOf(b, columnStride)) as unknown as DOMRectList;
 		};
 		columns.appendChild(span);
 	}
@@ -32,13 +32,13 @@ function layOut(words: Word[]) {
 	return { columns, reads: () => reads };
 }
 
-/** `count` words flowing line by line from `page`, numbered from `first`. */
-function flow(first: number, count: number, page = 0): Word[] {
+/** `count` words flowing line by line from `column`, numbered from `first`. */
+function flow(first: number, count: number, column = 0): Word[] {
 	return Array.from({ length: count }, (_, i) => ({
 		word: first + i,
 		boxes: [
 			{
-				page: page + Math.floor(i / PER_PAGE),
+				column: column + Math.floor(i / PER_PAGE),
 				line: Math.floor((i % PER_PAGE) / WORDS_PER_LINE),
 				slot: i % WORDS_PER_LINE,
 			},
@@ -64,8 +64,8 @@ describe("readFirstVisibleWord", () => {
 		words.push({
 			word: PER_PAGE - 1,
 			boxes: [
-				{ page: 0, line: LINES_PER_PAGE - 1, slot: WORDS_PER_LINE - 1 },
-				{ page: 1, line: 0, slot: 0 },
+				{ column: 0, line: LINES_PER_PAGE - 1, slot: WORDS_PER_LINE - 1 },
+				{ column: 1, line: 0, slot: 0 },
 			],
 		});
 		words.push(
@@ -93,7 +93,7 @@ describe("readFirstVisibleWord", () => {
 		// Right-to-left first line on page 1: the DOM-first word sits rightmost.
 		const rtl = Array.from({ length: WORDS_PER_LINE }, (_, i) => ({
 			word: PER_PAGE + i,
-			boxes: [{ page: 1, line: 0, slot: WORDS_PER_LINE - 1 - i }],
+			boxes: [{ column: 1, line: 0, slot: WORDS_PER_LINE - 1 - i }],
 		}));
 		const { columns } = layOut([...words, ...rtl]);
 		expect(readFirstVisibleWord(columns, PAGE_WIDTH, 1)).toBe(PER_PAGE + WORDS_PER_LINE - 1);
@@ -110,5 +110,45 @@ describe("readFirstVisibleWord", () => {
 		readFirstVisibleWord(columns, PAGE_WIDTH, 30);
 		// log2(2000) for the search plus one page and the first word of the next.
 		expect(reads()).toBeLessThanOrEqual(11 + PER_PAGE + 1);
+	});
+});
+
+describe("two-page spread", () => {
+	const GAP = 40;
+	const COLUMN_STRIDE = PAGE_WIDTH + GAP;
+	// The next spread starts one gap after the right column.
+	const SPREAD_STRIDE = 2 * COLUMN_STRIDE;
+
+	it("returns the left page's first word of each spread", () => {
+		const { columns } = layOut(flow(0, 20 * PER_PAGE), COLUMN_STRIDE);
+		for (const spread of [0, 1, 4, 9]) {
+			expect(readFirstVisibleWord(columns, SPREAD_STRIDE, spread, COLUMN_STRIDE)).toBe(
+				2 * spread * PER_PAGE,
+			);
+		}
+	});
+
+	it("prefers the left page even when the right page starts higher", () => {
+		const left = flow(0, PER_PAGE - 2 * WORDS_PER_LINE).map((w) => ({
+			...w,
+			boxes: [{ ...w.boxes[0], line: w.boxes[0].line + 2 }],
+		}));
+		const { columns } = layOut([...left, ...flow(1000, PER_PAGE, 1)], COLUMN_STRIDE);
+		expect(readFirstVisibleWord(columns, SPREAD_STRIDE, 0, COLUMN_STRIDE)).toBe(0);
+	});
+
+	it("falls back to the right page when the left one holds only a figure", () => {
+		const { columns } = layOut(
+			[...flow(0, 2 * PER_PAGE), ...flow(500, PER_PAGE, 3)],
+			COLUMN_STRIDE,
+		);
+		expect(readFirstVisibleWord(columns, SPREAD_STRIDE, 1, COLUMN_STRIDE)).toBe(500);
+	});
+
+	it("finds the spread holding a word on either page", () => {
+		const { columns } = layOut(flow(0, 8 * PER_PAGE), COLUMN_STRIDE);
+		expect(findPageForWord(columns, SPREAD_STRIDE, 4, 2 * PER_PAGE)).toBe(1);
+		expect(findPageForWord(columns, SPREAD_STRIDE, 4, 3 * PER_PAGE + 5)).toBe(1);
+		expect(findPageForWord(columns, SPREAD_STRIDE, 4, 7 * PER_PAGE)).toBe(3);
 	});
 });

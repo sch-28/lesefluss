@@ -260,6 +260,22 @@ export const reader = {
 		await page.mouse.wheel(0, deltaY);
 	},
 
+	/** Starts recording every scrollTop the scroll reader passes through. */
+	recordScrolls: async (page: Page) =>
+		inScrollContainer(
+			page,
+			(container) => {
+				const log: number[] = [];
+				(window as unknown as { __e2e_scrolls: number[] }).__e2e_scrolls = log;
+				container.addEventListener("scroll", () => log.push(container.scrollTop));
+			},
+			null,
+		),
+
+	/** The scrollTops recorded since recordScrolls. */
+	recordedScrolls: async (page: Page): Promise<number[]> =>
+		page.evaluate(() => (window as unknown as { __e2e_scrolls?: number[] }).__e2e_scrolls ?? []),
+
 	/** Scrolls the list from script, with no reader input: how the view's own scrolls move it. */
 	scrollWithoutInput: async (page: Page, deltaY: number) =>
 		inScrollContainer(
@@ -442,10 +458,10 @@ export const reader = {
 	 */
 	openGlossaryEditor: async (page: Page, wordPosition: number) => {
 		const span = page.locator(`span[data-word="${wordPosition}"]`).first();
-		// dispatchEvent('click') bypasses Playwright's actionability + the
-		// paragraph long-press preventDefault dance. React's delegated onClick
-		// listener picks it up off the bubbled native event.
-		await span.dispatchEvent("click");
+		// A real press: a click with no pointerdown before it is an accessibility
+		// activation, which the reader ignores (word-gestures.ts). force skips
+		// Playwright's actionability wait, not the pointer events.
+		await span.click({ force: true });
 		// Wait for the drawer to mount.
 		await page
 			.getByRole("heading", { name: "Glossary entry" })
@@ -602,6 +618,17 @@ export const reader = {
 	},
 
 	/**
+	 * Runs `change` (a resize, a relayout: nothing that settles) and checks no
+	 * position write is requested within `quietMs` after it.
+	 */
+	expectNoSaveDuring: async (page: Page, change: () => Promise<void>, quietMs = 1000) => {
+		const requests = await reader.saveRequestCount(page);
+		await change();
+		await page.waitForTimeout(quietMs);
+		expect(await reader.saveRequestCount(page)).toBe(requests);
+	},
+
+	/**
 	 * Waits until no settle has come for `quietMs` (past the 150ms scroll-end
 	 * debounce) and every requested save has finished (landed, or dropped for a
 	 * newer one), so a save count read next is a stable baseline.
@@ -719,13 +746,14 @@ export const reader = {
 	// page with a translateX on a wrapper, so DOM order reveals nothing about
 	// what the user can actually see. These helpers read geometry instead:
 	// `.page-view`'s content box (its border box inset by its own horizontal
-	// padding) is exactly the clip area one page occupies, so a word is on the
-	// visible page iff the centre of its first client rect falls inside it.
+	// padding) is exactly the clip area one page (or two-page spread) occupies,
+	// so a word is on the visible page iff the centre of its first client rect
+	// falls inside it.
 
 	/**
-	 * Word positions currently visible on the page, ordered top-left first —
-	 * the same ordering `page-view/measurements.ts` uses to pick the saved
-	 * position on settle.
+	 * Word positions currently visible on the page, ordered by column (left
+	 * page of a spread first), then top-left first — the same ordering
+	 * `page-view/measurements.ts` uses to pick the saved position on settle.
 	 */
 	pageModeVisibleWords: async (page: Page): Promise<number[]> =>
 		page.evaluate(() => {
@@ -735,7 +763,12 @@ export const reader = {
 			const style = window.getComputedStyle(view);
 			const left = box.left + Number.parseFloat(style.paddingLeft);
 			const right = box.right - Number.parseFloat(style.paddingRight);
-			const found: { word: number; top: number; left: number }[] = [];
+			const chunk = view.querySelector<HTMLElement>("[data-chunk-index]");
+			const chunkStyle = chunk ? window.getComputedStyle(chunk) : null;
+			const columns = Number.parseInt(chunkStyle?.columnCount ?? "", 10) || 1;
+			const gap = Number.parseFloat(chunkStyle?.columnGap ?? "") || 0;
+			const columnStride = (right - left + gap) / columns;
+			const found: { word: number; column: number; top: number; left: number }[] = [];
 			for (const span of view.querySelectorAll<HTMLElement>("span[data-word]")) {
 				const rects = span.getClientRects();
 				const r = rects.length > 0 ? rects[0] : span.getBoundingClientRect();
@@ -744,9 +777,14 @@ export const reader = {
 				if (x < left || x > right || y < box.top || y > box.bottom) continue;
 				const word = Number.parseInt(span.dataset.word ?? "", 10);
 				if (Number.isNaN(word) || word < 0) continue;
-				found.push({ word, top: r.top, left: r.left });
+				found.push({
+					word,
+					column: Math.floor((x - left) / columnStride),
+					top: r.top,
+					left: r.left,
+				});
 			}
-			found.sort((a, b) => a.top - b.top || a.left - b.left);
+			found.sort((a, b) => a.column - b.column || a.top - b.top || a.left - b.left);
 			return found.map((f) => f.word);
 		}),
 
@@ -813,11 +851,14 @@ export const reader = {
 		});
 	},
 
-	/** Pages the current chunk paginates into, from the multicol container's width. */
+	/** Pages (or spreads) the current chunk paginates into, from the multicol container's width. */
 	pageModePageCount: async (page: Page): Promise<number> =>
 		page.evaluate(() => {
 			const chunk = document.querySelector<HTMLElement>("[data-chunk-index]");
-			return chunk ? Math.ceil(chunk.scrollWidth / chunk.clientWidth) : 0;
+			if (!chunk) return 0;
+			// The next page starts one column gap after this one's last column.
+			const gap = Number.parseFloat(window.getComputedStyle(chunk).columnGap) || 0;
+			return Math.ceil((chunk.scrollWidth + gap) / (chunk.clientWidth + gap));
 		}),
 
 	turnPages: async (page: Page, count: number) => {

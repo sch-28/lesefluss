@@ -20,14 +20,22 @@
  *
  * DOM layers:
  *   .page-view (outer) — horizontal padding for the reader margin
- *     .page-clip      — overflow:hidden at exactly the column area, so CSS
+ *     .page-clip      — overflow:clip at exactly the column area, so CSS
  *                       columns overflowing past their host don't paint
- *                       into the padding region
+ *                       into the padding region. clip, not hidden: a hidden
+ *                       box is still a scroll container, and screen-reader
+ *                       focus on off-page text would scroll it out of step
+ *                       with the translateX
  *       .transform-wrapper — the element that gets translateX
  *         <ChunkContent>×N — absolutely-positioned chunks in the wrapper
  *
  * Positions are word indices. On page settle the first fully-visible word
  * span on the current page is the saved position.
+ *
+ * On a wide reader (SPREAD_MIN_WIDTH) a "page" is a two-page spread: each
+ * chunk lays out two columns per page, and every page index, page count and
+ * translateX steps by the page stride (see pageGeometry). Tap zones and the
+ * saved position work on the whole spread, exactly as on a single page.
  */
 
 import type React from "react";
@@ -52,24 +60,24 @@ import {
 	textSpacingVars,
 } from "../../../hooks/use-appearance-settings";
 import type { ReaderGoalDivider } from "../goal-divider";
-import {
-	cancelAnyActiveLongPress,
-	type GlossaryRangeProp,
-	type HighlightRange,
-	hasLongPressFiredFor,
-	type LinkRangeProp,
-	LONG_PRESS_MS,
-	type ParagraphWordEntry,
+import { LONG_PRESS_MS } from "../long-press";
+import type {
+	GlossaryRangeProp,
+	HighlightRange,
+	LinkRangeProp,
+	ParagraphWordEntry,
 } from "../paragraph";
 import type { ReaderFigureData } from "../reader-figures";
 import { useFontLoadCount } from "../use-font-load-count";
 import { useValueWhenIdle } from "../use-value-when-idle";
 import type { ReaderViewHandle } from "../view-types";
+import { cancelAnyActiveLongPress, hasLongPressFiredFor, useWordGestures } from "../word-gestures";
 import ChunkContent from "./chunk-content";
 import {
 	buildChunks,
 	findChunkForWord,
 	pageCountOf,
+	pageGeometry,
 	relativeOffsets,
 	visibleWindow,
 } from "./chunks";
@@ -77,7 +85,7 @@ import { findPageForWord, readFirstVisibleWord } from "./measurements";
 
 // ─── Tuning ──────────────────────────────────────────────────────────────────
 const TAP_THRESHOLD_PX = 8; // movement under this is a tap, not a swipe
-const SWIPE_COMMIT_FRACTION = 0.22; // swipe must cross this fraction of pageWidth to commit
+const SWIPE_COMMIT_FRACTION = 0.22; // swipe must cross this fraction of a page's width to commit
 const RUBBER_BAND_FACTOR = 0.4; // resistance at the absolute first/last page
 const PAGE_TRANSITION_MS = 220;
 const TAP_ZONE_FRACTION = 0.33; // left/right third of viewport
@@ -137,6 +145,14 @@ export interface PageViewProps {
 	// Position reporting (word units)
 	onPositionSettle: (word: number) => void;
 	onInitialActiveOffset: (word: number) => void;
+	/**
+	 * True while the page slides, follows a finger or waits to land (a chunk
+	 * crossing, a relayout, a jump): word rects are stale then. False once it has
+	 * landed, also after an instant turn that never reported true.
+	 */
+	onMotion?: (moving: boolean) => void;
+	/** The column grid, for overlays that mark one page of a spread. */
+	onColumns?: (columns: { stride: number; width: number }) => void;
 	onTap: () => void;
 	/**
 	 * Called when the user turns a page, so reader chrome can get out of the
@@ -190,6 +206,8 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		onCancelSelection,
 		onPositionSettle,
 		onInitialActiveOffset,
+		onMotion,
+		onColumns,
 		onTap,
 		onHideProgressBar,
 		footer,
@@ -205,7 +223,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	const [chunkIndex, setChunkIndex] = useState(() => findChunkForWord(chunks, initialWord));
 	const [pageIndex, setPageIndex] = useState(0);
 	const [chunkWidths, setChunkWidths] = useState<ReadonlyMap<number, number>>(() => new Map());
-	const [viewport, setViewport] = useState<{ w: number; h: number } | null>(null);
+	// `available` is the width the reader could take. The view's own width derives
+	// from it, so a breakpoint flip lays the columns out once, not again after the
+	// view resizes to its new cap.
+	const [viewport, setViewport] = useState<{ available: number; h: number } | null>(null);
 	const [isReady, setIsReady] = useState(false);
 	// Neighbour chunks mount only after the current page has painted: column
 	// layout is the reader's costliest step, and slow devices felt it on open
@@ -217,6 +238,12 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	// ── Refs ───────────────────────────────────────────────────────────────
 	const containerRef = useRef<HTMLDivElement>(null);
 	const transformWrapperRef = useRef<HTMLDivElement>(null);
+	useWordGestures(containerRef, {
+		onWordTap,
+		onWordLongPress,
+		onWordLongPressDrag,
+		onWordMouseDragStart,
+	});
 	const chunkRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 	const pendingTargetRef = useRef<number | null>(initialWord);
 	// The word the visible page is anchored to. `pageIndex` alone is not enough
@@ -263,10 +290,21 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	const isDroppingSettleRef = useRef(false);
 
 	// ── Derived ────────────────────────────────────────────────────────────
-	const pageWidth = viewport ? Math.max(0, viewport.w - 2 * margin) : 0;
+	const {
+		width: viewWidth,
+		columnsPerPage,
+		columnWidth,
+		columnGap,
+		columnStride,
+		pageStride,
+	} = pageGeometry(viewport?.available ?? 0, margin);
+	const spreadWidth = Math.max(0, viewWidth - 2 * margin);
+	useEffect(() => {
+		onColumns?.({ stride: columnStride, width: columnWidth });
+	}, [onColumns, columnStride, columnWidth]);
 	const pageHeight = viewport ? viewport.h : 0;
-	const align = effectiveTextAlign(textAlign, pageWidth, fontSize, textSpacing.letter);
-	const isLayoutReady = pageWidth > 0 && pageHeight > 0;
+	const align = effectiveTextAlign(textAlign, columnWidth, fontSize, textSpacing.letter);
+	const isLayoutReady = columnWidth > 0 && pageHeight > 0;
 
 	const fullWindow = useMemo(
 		() => visibleWindow(chunkIndex, chunks.length),
@@ -291,13 +329,18 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		};
 	}, [isReady, isWindowComplete, fullWindow]);
 
-	const offsets = useMemo(
-		() => relativeOffsets(visibleIndices, chunkIndex, chunkWidths, pageWidth),
-		[visibleIndices, chunkIndex, chunkWidths, pageWidth],
-	);
+	// A chunk occupies whole pages, so the next one starts on a page boundary even
+	// when its last spread fills only the left column.
+	const offsets = useMemo(() => {
+		const pageSpans = new Map<number, number>();
+		for (const [idx, width] of chunkWidths) {
+			pageSpans.set(idx, pageCountOf(width, pageStride) * pageStride);
+		}
+		return relativeOffsets(visibleIndices, chunkIndex, pageSpans, pageStride);
+	}, [visibleIndices, chunkIndex, chunkWidths, pageStride]);
 
 	const currentChunkWidth = chunkWidths.get(chunkIndex);
-	const currentPageCount = currentChunkWidth ? pageCountOf(currentChunkWidth, pageWidth) : 1;
+	const currentPageCount = currentChunkWidth ? pageCountOf(currentChunkWidth, pageStride) : 1;
 
 	// ── Transform writer (direct DOM, bypasses React for hot paths) ───────
 	// Set transition FIRST so the upcoming transform change actually animates.
@@ -309,12 +352,27 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	}, []);
 
 	const computeTransform = useCallback(
-		(p = pageIndex) => -((offsets.get(chunkIndex) ?? 0) + p * pageWidth),
-		[offsets, chunkIndex, pageIndex, pageWidth],
+		(p = pageIndex) => -((offsets.get(chunkIndex) ?? 0) + p * pageStride),
+		[offsets, chunkIndex, pageIndex, pageStride],
 	);
 
 	// ── Stable refs for parent callbacks (so layout effects don't churn) ──
 	const onInitialActiveOffsetRef = useRef(onInitialActiveOffset);
+	const onMotionRef = useRef(onMotion);
+	onMotionRef.current = onMotion;
+	const isMovingRef = useRef(false);
+	const syncMotion = useCallback(() => {
+		const moving =
+			isAnimatingRef.current ||
+			pendingTargetRef.current !== null ||
+			dragRef.current?.isHorizontal === true;
+		if (moving === isMovingRef.current) return;
+		isMovingRef.current = moving;
+		onMotionRef.current?.(moving);
+	}, []);
+	// Every commit: a landing or a state-driven turn ends motion inside one.
+	useLayoutEffect(syncMotion);
+
 	const onPositionSettleRef = useRef(onPositionSettle);
 	useEffect(() => {
 		onInitialActiveOffsetRef.current = onInitialActiveOffset;
@@ -325,15 +383,18 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	useLayoutEffect(() => {
 		const el = containerRef.current;
 		if (!el) return;
+		const parent = el.parentElement ?? el;
 		const measure = () => {
-			const r = el.getBoundingClientRect();
+			const h = el.getBoundingClientRect().height;
+			const available = contentWidth(parent);
 			setViewport((prev) =>
-				prev && prev.w === r.width && prev.h === r.height ? prev : { w: r.width, h: r.height },
+				prev && prev.available === available && prev.h === h ? prev : { available, h },
 			);
 		};
 		measure();
 		const ro = new ResizeObserver(measure);
 		ro.observe(el);
+		ro.observe(parent);
 		return () => ro.disconnect();
 	}, []);
 
@@ -352,7 +413,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			// Capped: a mouse released outside the window never clears the drag.
 			(dragRef.current !== null && performance.now() - dragRef.current.originT < DRAG_HOLD_MAX_MS),
 	);
-	const layoutKey = `${viewport?.w ?? 0}x${viewport?.h ?? 0}|${fontSize}|${fontFamily}|${isBold}|${fontLoads}|${lineSpacing}|${margin}|${textSpacingKey(textSpacing)}|${align}|${lang}`;
+	const layoutKey = `${viewWidth}x${pageHeight}|${columnsPerPage}|${fontSize}|${fontFamily}|${isBold}|${fontLoads}|${lineSpacing}|${margin}|${textSpacingKey(textSpacing)}|${align}|${lang}`;
 	const lastLayoutKeyRef = useRef(layoutKey);
 	useLayoutEffect(() => {
 		if (lastLayoutKeyRef.current === layoutKey) return;
@@ -416,11 +477,11 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		}
 		pendingTargetRef.current = null;
 		currentWordRef.current = target;
-		const targetPage = findPageForWord(el, pageWidth, currentPageCount, target);
+		const targetPage = findPageForWord(el, pageStride, currentPageCount, target);
 		setPageIndex(targetPage);
 		if (settleOnLandRef.current) {
 			settleOnLandRef.current = false;
-			const settled = readFirstVisibleWord(el, pageWidth, targetPage);
+			const settled = readFirstVisibleWord(el, pageStride, targetPage, columnStride);
 			if (settled !== null) {
 				currentWordRef.current = settled;
 				onPositionSettleRef.current(settled);
@@ -436,7 +497,19 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				onPositionSettleRef.current(target);
 			}
 		}
-	}, [chunkIndex, currentChunkWidth, currentPageCount, isLayoutReady, pageWidth, layoutKey]);
+		// A landing on the page already shown commits nothing more, so the
+		// every-commit sync above (which saw the target pending) never runs again.
+		syncMotion();
+	}, [
+		chunkIndex,
+		currentChunkWidth,
+		currentPageCount,
+		isLayoutReady,
+		pageStride,
+		columnStride,
+		layoutKey,
+		syncMotion,
+	]);
 
 	// ── Transform sync ────────────────────────────────────────────────────
 	// Runs whenever state that affects the resting transform changes (chunk
@@ -455,7 +528,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		// corrects it.
 		if (pendingTargetRef.current !== null) return;
 		setTransform(computeTransform());
-	}, [chunkIndex, pageIndex, offsets, pageWidth, isLayoutReady, setTransform]);
+	}, [chunkIndex, pageIndex, offsets, pageStride, isLayoutReady, setTransform]);
 
 	// ── Animation primitives ──────────────────────────────────────────────
 	/** Force the in-flight animation to its end-state synchronously: cancel the
@@ -474,31 +547,37 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	 *      change state, transform-sync re-fires, and overwrites the snap with
 	 *      the post-re-anchor value. The two values are visually equivalent
 	 *      because the chunks reposition to compensate, so no visible jump. */
-	const completeInFlightAnimation = useCallback(({ settle = true }: { settle?: boolean } = {}) => {
-		if (!isAnimatingRef.current) return;
-		if (animationTimeoutRef.current !== null) {
-			window.clearTimeout(animationTimeoutRef.current);
-			animationTimeoutRef.current = null;
-		}
-		isAnimatingRef.current = false;
-		const target = animationTargetRef.current;
-		animationTargetRef.current = null;
-		if (target !== null && transformWrapperRef.current) {
-			transformWrapperRef.current.style.transition = "none";
-			transformWrapperRef.current.style.transform = `translateX(${target}px)`;
-		}
-		const done = pendingOnDoneRef.current;
-		const settleTurn = pendingSettleRef.current;
-		pendingOnDoneRef.current = null;
-		pendingSettleRef.current = null;
-		isDroppingSettleRef.current = !settle;
-		try {
-			if (done) flushSync(done);
-		} finally {
-			isDroppingSettleRef.current = false;
-		}
-		if (settle) settleTurn?.();
-	}, []);
+	const completeInFlightAnimation = useCallback(
+		({ settle = true }: { settle?: boolean } = {}) => {
+			if (!isAnimatingRef.current) return;
+			if (animationTimeoutRef.current !== null) {
+				window.clearTimeout(animationTimeoutRef.current);
+				animationTimeoutRef.current = null;
+			}
+			isAnimatingRef.current = false;
+			const target = animationTargetRef.current;
+			animationTargetRef.current = null;
+			if (target !== null && transformWrapperRef.current) {
+				transformWrapperRef.current.style.transition = "none";
+				transformWrapperRef.current.style.transform = `translateX(${target}px)`;
+			}
+			const done = pendingOnDoneRef.current;
+			const settleTurn = pendingSettleRef.current;
+			pendingOnDoneRef.current = null;
+			pendingSettleRef.current = null;
+			isDroppingSettleRef.current = !settle;
+			try {
+				if (done) flushSync(done);
+			} finally {
+				isDroppingSettleRef.current = false;
+			}
+			if (settle) settleTurn?.();
+			// Its timer, which would have reported the stop, is cancelled, and a follow-up
+			// move to the same page commits nothing.
+			syncMotion();
+		},
+		[syncMotion],
+	);
 
 	/** Slides to `translatePx`, then commits `onDone` (state) and runs `onSettle`. */
 	const animateTo = useCallback(
@@ -508,12 +587,16 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				setTransform(translatePx);
 				onDone?.();
 				onSettle?.();
+				// The page changed although nothing moved: report it even when already still.
+				syncMotion();
+				if (!isMovingRef.current) onMotionRef.current?.(false);
 				return;
 			}
 			if (animationTimeoutRef.current !== null) {
 				window.clearTimeout(animationTimeoutRef.current);
 			}
 			isAnimatingRef.current = true;
+			syncMotion();
 			animationTargetRef.current = translatePx;
 			pendingOnDoneRef.current = onDone ?? null;
 			pendingSettleRef.current = onSettle ?? null;
@@ -528,9 +611,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				animationTargetRef.current = null;
 				done?.();
 				settleTurn?.();
+				syncMotion();
 			}, PAGE_TRANSITION_MS);
 		},
-		[setTransform, animatePageTurns, completeInFlightAnimation],
+		[setTransform, animatePageTurns, completeInFlightAnimation, syncMotion],
 	);
 
 	useEffect(
@@ -547,12 +631,12 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		(p: number, idx = chunkIndex) => {
 			const el = chunkRefs.current.get(idx);
 			if (!el) return;
-			const w = readFirstVisibleWord(el, pageWidth, p);
+			const w = readFirstVisibleWord(el, pageStride, p, columnStride);
 			if (w === null) return;
 			currentWordRef.current = w;
 			onPositionSettle(w);
 		},
-		[chunkIndex, pageWidth, onPositionSettle],
+		[chunkIndex, pageStride, columnStride, onPositionSettle],
 	);
 
 	const goToPage = useCallback(
@@ -594,9 +678,9 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				});
 				return;
 			}
-			const neighborPages = pageCountOf(neighborWidth, pageWidth);
+			const neighborPages = pageCountOf(neighborWidth, pageStride);
 			const targetPage = direction === 1 ? 0 : neighborPages - 1;
-			const targetTranslate = -(neighborOffset + targetPage * pageWidth);
+			const targetTranslate = -(neighborOffset + targetPage * pageStride);
 			animateTo(
 				targetTranslate,
 				() => {
@@ -612,7 +696,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			chunks,
 			offsets,
 			chunkWidths,
-			pageWidth,
+			pageStride,
 			animateTo,
 			computeTransform,
 			settleAtPage,
@@ -677,14 +761,14 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			if (!isLayoutReady) return;
 			const el = chunkRefs.current.get(chunkIndex);
 			if (!el) return;
-			const targetPage = findPageForWord(el, pageWidth, currentPageCount, wordIdx);
+			const targetPage = findPageForWord(el, pageStride, currentPageCount, wordIdx);
 			if (onlyIfOffPage && targetPage === pageIndex) return;
 			// The parent already holds the target. A settle would report the page's
 			// first word instead, and a real turn right after must not look like it.
 			currentWordRef.current = wordIdx;
 			goToPage(targetPage, { shouldSettle: false });
 		},
-		[chunks, chunkIndex, pageIndex, pageWidth, currentPageCount, isLayoutReady, goToPage],
+		[chunks, chunkIndex, pageIndex, pageStride, currentPageCount, isLayoutReady, goToPage],
 	);
 	const moveToRef = useRef(moveTo);
 	useLayoutEffect(() => {
@@ -733,9 +817,9 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 	const routeTap = (clientX: number): "prev" | "next" | "center" => {
 		const r = containerRef.current?.getBoundingClientRect();
 		if (!r || !isLayoutReady) return "center";
-		const xWithinColumn = clientX - r.left - margin;
-		if (xWithinColumn < pageWidth * TAP_ZONE_FRACTION) return "prev";
-		if (xWithinColumn > pageWidth * (1 - TAP_ZONE_FRACTION)) return "next";
+		const xWithinSpread = clientX - r.left - margin;
+		if (xWithinSpread < spreadWidth * TAP_ZONE_FRACTION) return "prev";
+		if (xWithinSpread > spreadWidth * (1 - TAP_ZONE_FRACTION)) return "next";
 		return "center";
 	};
 
@@ -798,6 +882,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				return;
 			}
 			cancelAnyActiveLongPress();
+			syncMotion();
 			if (isSelecting) onCancelSelection();
 			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		}
@@ -863,7 +948,9 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 
 		if (!wasHorizontalDrag) return;
 
-		const threshold = followFinger ? pageWidth * SWIPE_COMMIT_FRACTION : NO_FOLLOW_SWIPE_COMMIT_PX;
+		const threshold = followFinger
+			? columnWidth * SWIPE_COMMIT_FRACTION
+			: NO_FOLLOW_SWIPE_COMMIT_PX;
 		if (dx <= -threshold) goNext();
 		else if (dx >= threshold) goPrev();
 		else animateTo(computeTransform()); // snap back to current page
@@ -898,8 +985,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				// Clear of the always-on progress line (3px over the safe area), so no
 				// line of a page sits under it. Pages re-flow on this size like on rotation.
 				height: "calc(100% - 3px - var(--safe-bottom))",
-				width: "100%",
-				maxWidth: "700px",
+				width: viewport ? `${viewWidth}px` : "100%",
 				margin: "0 auto",
 				padding: `0 ${margin}px`,
 				boxSizing: "border-box",
@@ -916,7 +1002,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			 *  Without this intermediary, .page-view's own clipping would be at
 			 *  the padding edge — leaving a margin-px gap on each side where the
 			 *  next/previous chunk would visibly bleed into the reader margin. */}
-			<div style={{ width: "100%", height: "100%", overflow: "hidden", position: "relative" }}>
+			<div
+				className="page-clip"
+				style={{ width: "100%", height: "100%", overflow: "clip", position: "relative" }}
+			>
 				{/* The transform wrapper. Pre-mounting the inner DOM is gated on
 				 *  isLayoutReady — without real pixel dimensions, multicol does
 				 *  expensive layout work for nothing and blocks the JS thread. */}
@@ -950,7 +1039,10 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									figuresByParagraph={figuresByParagraph}
 									trailingFigures={trailingFigures}
 									leftOffset={offsets.get(idx) ?? 0}
-									pageWidth={pageWidth}
+									isOffscreen={idx !== chunkIndex}
+									columnWidth={columnWidth}
+									columnGap={columnGap}
+									columnCount={columnsPerPage}
 									pageHeight={pageHeight}
 									fontSize={fontSize}
 									fontFamily={fontFamily}
@@ -968,10 +1060,6 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 									discussionByParagraph={discussionByParagraph}
 									goalDivider={goalDivider}
 									selectionRange={selectionRange}
-									onWordTap={onWordTap}
-									onWordLongPress={onWordLongPress}
-									onWordLongPressDrag={onWordLongPressDrag}
-									onWordMouseDragStart={onWordMouseDragStart}
 									onMeasure={handleChunkMeasure}
 									registerRef={registerChunkRef}
 								/>
@@ -1002,6 +1090,16 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 });
 
 export default PageView;
+
+/** Width inside `el`'s padding and border, unrounded (clientWidth rounds to whole pixels). */
+function contentWidth(el: HTMLElement): number {
+	const style = window.getComputedStyle(el);
+	const insets = ["paddingLeft", "paddingRight", "borderLeftWidth", "borderRightWidth"] as const;
+	return insets.reduce(
+		(w, side) => w - (Number.parseFloat(style[side]) || 0),
+		el.getBoundingClientRect().width,
+	);
+}
 
 /** Reads the current X-translate from a transformed element by parsing its
  *  computed matrix. Used to find the visual position when starting a gesture
