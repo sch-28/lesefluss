@@ -163,6 +163,8 @@ export const syncSettings = pgTable(
 		readerFontFamily: text("reader_font_family").notNull().default("sans"),
 		readerBold: boolean("reader_bold").notNull().default(false),
 		readerTextAlign: text("reader_text_align").notNull().default("left"),
+		readerRuler: boolean("reader_ruler").notNull().default(false),
+		readerRulerLines: integer("reader_ruler_lines").notNull().default(1),
 		readerLineSpacing: real("reader_line_spacing").notNull().default(1.8),
 		readerMargin: integer("reader_margin").notNull().default(20),
 		readerLetterSpacing: real("reader_letter_spacing").notNull().default(0),
@@ -238,8 +240,8 @@ export const syncGlossaryEntries = pgTable(
 
 /**
  * sync_reading_sessions: one row per in-app reading sitting keyed by (user_id, session_id).
- * Append-only; no soft-delete (sessions are never edited or deleted from the UI).
- * Last-write-wins on `updated_at`.
+ * Last-write-wins on `updated_at`. `deleted` is a final tombstone: a push never
+ * revives one, and pulls hand it out as an id so every device drops its copy.
  */
 export const syncReadingSessions = pgTable(
 	"sync_reading_sessions",
@@ -256,6 +258,7 @@ export const syncReadingSessions = pgTable(
 		endWord: integer("end_word").notNull(),
 		furthestWord: integer("furthest_word"),
 		wpmAvg: integer("wpm_avg"),
+		deleted: boolean("deleted").notNull().default(false),
 		updatedAt: timestamp("updated_at").notNull(),
 	},
 	(t) => [

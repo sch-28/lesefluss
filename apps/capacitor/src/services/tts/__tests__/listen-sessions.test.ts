@@ -123,3 +123,34 @@ describe("ListenRecorder", () => {
 		).toEqual([]);
 	});
 });
+
+describe("ListenRecorder when its row is deleted elsewhere", () => {
+	it("goes on under a new id holding only the playback after the deletion", () => {
+		const r = recorder();
+		r.ingest([{ startedAt: at(8), endedAt: at(8, 5), startWord: 0, endWord: 850 }], at(8, 5));
+		expect(r.forgetDeleted(new Set(["s1"]), at(8, 5))).toEqual(["s1"]);
+		// The log repeats the running interval from its start.
+		const [row] = r.ingest(
+			[{ startedAt: at(8), endedAt: at(8, 10), startWord: 0, endWord: 1700 }],
+			at(8, 10),
+		);
+		expect(row).toMatchObject({
+			id: "s2",
+			startedAt: at(8, 5),
+			durationMs: 5 * MINUTE,
+			startWord: 850,
+			wordsRead: 850,
+		});
+	});
+
+	it("ignores deletions of other sessions", () => {
+		const r = recorder();
+		r.ingest([{ startedAt: at(8), endedAt: at(8, 5), startWord: 0, endWord: 850 }], at(8, 5));
+		expect(r.forgetDeleted(new Set(["other"]), at(8, 5))).toEqual([]);
+		const [row] = r.ingest(
+			[{ startedAt: at(8), endedAt: at(8, 10), startWord: 0, endWord: 1700 }],
+			at(8, 10),
+		);
+		expect(row).toMatchObject({ id: "s1", durationMs: 10 * MINUTE });
+	});
+});

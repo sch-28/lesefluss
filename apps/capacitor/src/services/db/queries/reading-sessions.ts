@@ -1,4 +1,4 @@
-import { desc, eq, gte, lt, sql } from "drizzle-orm";
+import { desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 
 import { db } from "../index";
 import { type NewReadingSession, type ReadingSession, readingSessions } from "../schema";
@@ -7,10 +7,7 @@ import { type NewReadingSession, type ReadingSession, readingSessions } from "..
 // 200 rows x 11 cols is comfortably inside it.
 const UPSERT_CHUNK_SIZE = 200;
 
-/**
- * Fetch all reading sessions across all books. Used by sync push and stats UI.
- * Append-only: sessions are never edited or deleted from the UI.
- */
+/** Fetch all reading sessions across all books. Used by sync push and stats UI. */
 export async function getAllReadingSessions(): Promise<ReadingSession[]> {
 	return db.select().from(readingSessions).orderBy(desc(readingSessions.startedAt));
 }
@@ -113,19 +110,26 @@ const EXCLUDED_SESSION_COLUMNS = {
 };
 
 /**
- * Hard-delete every reading session row locally. Sessions are append-only and
- * have no tombstone column, so the danger-zone flow pairs this with a server
- * wipe call to keep cloud + local in sync.
+ * Hard-delete every reading session row locally. Tombstones live on the server
+ * only, so the danger-zone flow pairs this with the server wipe call.
  */
 export async function deleteAllReadingSessions(): Promise<void> {
 	await db.delete(readingSessions);
 }
 
 /**
- * Hard-delete a single reading session by id. Pairs with a server-side delete
- * call so the next sync pull does not re-create the row (sessions have no
- * tombstone column).
+ * Hard-delete a single reading session by id. Pairs with the server-side
+ * delete call, which tombstones the row for every other device.
  */
 export async function deleteReadingSession(id: string): Promise<void> {
 	await db.delete(readingSessions).where(eq(readingSessions.id, id));
+}
+
+/** Hard-delete the sessions a sync pull reports as deleted on another device. */
+export async function deleteReadingSessions(ids: string[]): Promise<void> {
+	for (let i = 0; i < ids.length; i += UPSERT_CHUNK_SIZE) {
+		await db
+			.delete(readingSessions)
+			.where(inArray(readingSessions.id, ids.slice(i, i + UPSERT_CHUNK_SIZE)));
+	}
 }

@@ -3,6 +3,7 @@ import type { WordIndex } from "@lesefluss/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "../../components/toast";
 import type { Chapter } from "../../services/db/schema";
+import { onSessionsDeleted } from "../../services/reading-sessions/deleted";
 import { persistRow } from "../../services/reading-sessions/persist";
 import type { PersistKind } from "../../services/reading-sessions/rules";
 import {
@@ -121,6 +122,16 @@ export function useReadAloud(options: Options) {
 		lastSaveAtRef.current = Date.now();
 		optionsRef.current.onSavePosition(word);
 	}, []);
+
+	useEffect(
+		() =>
+			onSessionsDeleted((ids) => {
+				for (const id of recorderRef.current?.forgetDeleted(ids, Date.now()) ?? []) {
+					optionsRef.current.onFurthestRead?.(id, null);
+				}
+			}),
+		[],
+	);
 
 	const recordListening = useCallback(async (kind: PersistKind) => {
 		const recorder = recorderRef.current;

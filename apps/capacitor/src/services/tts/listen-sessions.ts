@@ -38,16 +38,35 @@ export class ListenRecorder {
 	private readonly newId: () => string;
 	// The recent sittings: a running interval split at midnight keeps feeding both days' rows.
 	private readonly sittings: Sitting[] = [];
+	/** Playback before this was in a sitting deleted on another device; see `forgetDeleted`. */
+	private ignoreBefore = Number.NEGATIVE_INFINITY;
 
 	constructor(bookId: string, newId: () => string = randomSessionId) {
 		this.bookId = bookId;
 		this.newId = newId;
 	}
 
+	/**
+	 * Sittings deleted on another device are dropped, along with all playback up to
+	 * `now`: the log keeps repeating the running interval from its start, which would
+	 * otherwise rebuild the deleted time under a new id. Listening from here on is a
+	 * new sitting. Returns the ids dropped.
+	 */
+	forgetDeleted(ids: ReadonlySet<string>, now: number): string[] {
+		const dropped = this.sittings.filter((s) => ids.has(s.id));
+		if (dropped.length === 0) return [];
+		for (const sitting of dropped) this.sittings.splice(this.sittings.indexOf(sitting), 1);
+		this.ignoreBefore = Math.max(this.ignoreBefore, now);
+		return dropped.map((s) => s.id);
+	}
+
 	/** Rows for every sitting the intervals touched, to upsert as they come. */
 	ingest(intervals: readonly ListenInterval[], now: number): SessionRow[] {
 		const touched: Sitting[] = [];
-		const pieces = intervals.flatMap(splitAtMidnight).sort((a, b) => a.startedAt - b.startedAt);
+		const pieces = intervals
+			.flatMap((i) => clipBefore(i, this.ignoreBefore))
+			.flatMap(splitAtMidnight)
+			.sort((a, b) => a.startedAt - b.startedAt);
 		for (const piece of pieces) {
 			const sitting = this.sittingFor(piece);
 			sitting.intervals.set(piece.startedAt, piece);
@@ -125,6 +144,17 @@ function coveredWords(intervals: readonly ListenInterval[]): number {
 		reached = end;
 	}
 	return words;
+}
+
+/** The part of an interval from `cut` on, its words shared out by time. */
+function clipBefore(interval: ListenInterval, cut: number): ListenInterval[] {
+	if (interval.startedAt >= cut) return [interval];
+	if (interval.endedAt <= cut) return [];
+	const share = (cut - interval.startedAt) / (interval.endedAt - interval.startedAt);
+	const startWord = Math.round(
+		interval.startWord + share * (interval.endWord - interval.startWord),
+	);
+	return [{ ...interval, startedAt: cut, startWord }];
 }
 
 /** Cuts an interval at each local midnight, sharing its words out by time. */

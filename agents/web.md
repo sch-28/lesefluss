@@ -77,7 +77,7 @@ Rate limiting: Better Auth's built-in limiter is enabled (10 req/min, memory sto
 
 - **Response headers** - set globally via Nitro `routeRules` in `vite.config.ts`: HSTS, X-Frame-Options DENY, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and a pragmatic CSP (`'unsafe-inline'` for script/style, external origins derived from `GOATCOUNTER_URL` / `BETTER_AUTH_URL` env vars).
 - **Rate limiting** - `/api/sync` uses `src/lib/rate-limit.ts` (in-memory token bucket, 30/min per user; single-instance VPS, resets on restart). Body size cap is enforced at the reverse proxy, not in Node.
-- **Content quota** - `src/lib/content-quota.ts`: per-account cap (default 500 MB, env `SYNC_CONTENT_QUOTA_BYTES`) on the server-measured `octet_length` of content + cover + chapters + link ranges across live `sync_books` rows (`file_size` is client-supplied and ignored). Enforced on sync push (over-quota books are stored without content, rest of the push commits, response is 413 listing `rejectedContentBookIds`), article import (413) and share/buddy-read copies (counts against the recipient; refused with `quota_exceeded` 413). A per-user advisory lock serialises the check. `GET /api/sync` returns `contentQuota`.
+- **Content quota** - `src/lib/content-quota.ts`: per-account cap (default 500 MB, env `SYNC_CONTENT_QUOTA_BYTES`) on the server-measured `octet_length` of content + cover + chapters + link ranges across live `sync_books` rows (`file_size` is client-supplied and ignored). Enforced on sync push (over-quota books are stored without content, rest of the push commits, response is 413 listing `rejectedContentBookIds` plus `rejectedContentBytes`, each book's growth in bytes, so the client re-offers a book only once that much is free), article import (413) and share/buddy-read copies (counts against the recipient; refused with `quota_exceeded` 413). A per-user advisory lock serialises the check. `GET /api/sync` returns `contentQuota`.
 - **Meta + canonical** - `src/utils/seo.ts` exports `seo({ title, description, path })` returning `{ meta, links }`. Each public route spreads this. The root intentionally calls `seo()` without `path` so no canonical is emitted; each child route emits its own.
 - **Structured data** - `src/utils/structured-data.ts` provides `WebSite`, `Organization`, `SoftwareApplication`, and `faqPageSchema()` helpers. Root injects WebSite+Organization site-wide; `/` adds SoftwareApplication; `/docs` adds FAQPage from troubleshooting items.
 - **Verification scaffolding** - `buildVerificationMeta()` in `seo.ts` emits Google/Bing site-verification meta when `GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION` env vars are set.
@@ -94,7 +94,7 @@ Simple full-snapshot sync first. Delta sync can come later.
 2. On app open: `GET /api/sync` → merge into local DB (server wins if `updated_at` newer)
 3. On any local write: debounced `POST /api/sync` with updated rows
 
-**Conflict resolution:** last-write-wins by `updated_at` for all entities. Highlights need a tombstone/soft-delete flag for deletions.
+**Conflict resolution:** last-write-wins by `updated_at` for all entities. Deletions are `deleted` tombstones (books, series, highlights, glossary entries, goals, reading sessions).
 
 ## Web App Embed
 
@@ -141,7 +141,7 @@ When shipping a notable feature, add an entry to `src/data/changelog.ts`. Each e
 
 ## Deployment
 
-Deployed on Coolify at `lesefluss.app` using the repo's `apps/web/Dockerfile`. The Dockerfile builds both the capacitor web embed and the TanStack Start app in a multi-stage build. The entrypoint script (`scripts/entrypoint.sh`) runs `drizzle-kit push` on startup to apply schema changes to Postgres.
+Deployed on Coolify at `lesefluss.app` using the repo's `apps/web/Dockerfile`. The Dockerfile builds both the capacitor web embed and the TanStack Start app in a multi-stage build. The entrypoint script (`scripts/entrypoint.sh`) runs `drizzle-kit migrate` on startup to apply the migrations in `drizzle/` to Postgres.
 
 Environment variables (set in Coolify): `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ADMIN_EMAIL` (unlocks `/admin` for that account).
 

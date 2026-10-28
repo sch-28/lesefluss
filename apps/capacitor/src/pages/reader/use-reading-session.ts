@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { readingSessionKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { queryClient } from "../../services/query-client";
+import { onSessionsDeleted } from "../../services/reading-sessions/deleted";
 import { persistRow } from "../../services/reading-sessions/persist";
 import { deleteServerSession } from "../../services/sync";
 import { publishSessionTick } from "../../test-hooks/reader";
@@ -66,9 +67,9 @@ type Return = {
 
 /**
  * A discarded sitting's row was reading the user disowned (undone browsing), so
- * it goes everywhere. Server first, as for a manual delete: sessions have no
- * tombstone, so a local-only delete would come back on the next pull. If the
- * server call fails the row stays in both places rather than drifting apart.
+ * it goes everywhere. Server first, as for a manual delete: a local-only delete
+ * would come back on the next pull. If the server call fails the row stays in
+ * both places rather than drifting apart.
  */
 function removeRow(sessionId: string): void {
 	deleteServerSession(sessionId)
@@ -149,6 +150,8 @@ export function useReadingSession({
 				.catch((err) => log.error("reading-session", "appStateChange cleanup failed:", err));
 		};
 	}, []);
+
+	useEffect(() => onSessionsDeleted((ids) => trackerRef.current?.forgetDeleted(ids)), []);
 
 	// Periodic tick. Wall-clock-guarded against suspension inside the tracker.
 	useEffect(() => {

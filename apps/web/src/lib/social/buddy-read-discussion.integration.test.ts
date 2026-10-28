@@ -231,6 +231,26 @@ describe.skipIf(!hasDb)("buddy-read discussion (integration)", () => {
 		expect(await bodiesFor(carol)).toEqual(["x"]);
 	});
 
+	test("a deleted session does not raise the furthest word", async () => {
+		const before = (await getDiscussion(carol, readId)).furthestWord;
+		await db.insert(syncReadingSessions).values({
+			userId: carol,
+			sessionId: `s-deleted-${run}`,
+			bookId: bookOf[carol] ?? "",
+			mode: "scroll",
+			startedAt: now,
+			endedAt: now,
+			durationMs: 1000,
+			wordsRead: 900,
+			startWord: 0,
+			endWord: 900,
+			deleted: true,
+			updatedAt: now,
+		});
+		expect((await getDiscussion(carol, readId)).furthestWord).toBe(before);
+		await db.delete(syncReadingSessions).where(eq(syncReadingSessions.userId, carol));
+	});
+
 	test("own items are always visible; show-everything lifts the gate and can be switched off", async () => {
 		await postComment(carol, { buddyReadId: readId, anchor: range(900, 950), body: "late" });
 		expect(await bodiesFor(carol)).toContain("late");

@@ -232,6 +232,21 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 				endWord: 22_488,
 				updatedAt: now,
 			},
+			// deleted on a device: counts for nothing
+			{
+				userId: owner,
+				sessionId: "s4",
+				bookId: "aaaa0001",
+				mode: "scroll",
+				startedAt: t(3 * DAY_MS),
+				endedAt: t(3 * DAY_MS - 3_600_000),
+				durationMs: 3_600_000,
+				wordsRead: 50_000,
+				startWord: 0,
+				endWord: 50_000,
+				deleted: true,
+				updatedAt: now,
+			},
 		]);
 	});
 

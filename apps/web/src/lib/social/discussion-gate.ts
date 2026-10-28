@@ -70,7 +70,11 @@ export async function refreshFurthestWord(
 		.select({ endWord: max(syncReadingSessions.endWord) })
 		.from(syncReadingSessions)
 		.where(
-			and(eq(syncReadingSessions.userId, userId), eq(syncReadingSessions.bookId, member.bookId)),
+			and(
+				eq(syncReadingSessions.userId, userId),
+				eq(syncReadingSessions.bookId, member.bookId),
+				eq(syncReadingSessions.deleted, false),
+			),
 		);
 	const furthestWord = Math.max(member.furthestWord, position.wordPosition, sessions?.endWord ?? 0);
 	if (furthestWord > member.furthestWord) {

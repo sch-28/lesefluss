@@ -14,7 +14,7 @@ import {
 	type SyncSettings,
 } from "@lesefluss/core";
 import { createFileRoute } from "@tanstack/react-router";
-import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
 import { type DbExecutor, db } from "~/db";
 import {
 	syncBookCopy,
@@ -121,12 +121,22 @@ function toDate(ms: number): Date {
 	return new Date(ms);
 }
 
+/**
+ * Margin under the client's tombstone watermark: a deletion stamped just before a
+ * pull's clock reading can commit after that pull ran its query.
+ */
+const TOMBSTONE_SKEW_MS = 5 * 60_000;
+
 /** Query all sync data for a user and return as SyncResponse (Unix ms timestamps).
- *  Books in `excludeContentFor` will have content/coverImage/chapters omitted. */
+ *  Books in `excludeContentFor` will have content/coverImage/chapters omitted.
+ *  Session tombstones are listed only when `sessionTombstonesSince` is given,
+ *  and then only those stamped after it. */
 async function getUserSyncData(
 	userId: string,
 	excludeContentFor: Set<string> = new Set(),
+	sessionTombstonesSince: number | null = null,
 ): Promise<SyncResponse> {
+	const asOf = Date.now();
 	// Fetch metadata for all books (lightweight - no content columns)
 	const metadataCols = {
 		bookId: syncBooks.bookId,
@@ -167,6 +177,7 @@ async function getUserSyncData(
 		glossaryRows,
 		seriesRows,
 		readingSessionRows,
+		deletedSessionRows,
 		goalRows,
 		usedBytes,
 	] = await Promise.all([
@@ -175,7 +186,25 @@ async function getUserSyncData(
 		db.select().from(syncHighlights).where(eq(syncHighlights.userId, userId)),
 		db.select().from(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId)),
 		db.select().from(syncSeries).where(eq(syncSeries.userId, userId)),
-		db.select().from(syncReadingSessions).where(eq(syncReadingSessions.userId, userId)),
+		db
+			.select()
+			.from(syncReadingSessions)
+			.where(and(eq(syncReadingSessions.userId, userId), eq(syncReadingSessions.deleted, false))),
+		sessionTombstonesSince === null
+			? []
+			: db
+					.select({ sessionId: syncReadingSessions.sessionId })
+					.from(syncReadingSessions)
+					.where(
+						and(
+							eq(syncReadingSessions.userId, userId),
+							eq(syncReadingSessions.deleted, true),
+							gt(
+								syncReadingSessions.updatedAt,
+								toDate(Math.max(0, sessionTombstonesSince - TOMBSTONE_SKEW_MS)),
+							),
+						),
+					),
 		db.select().from(syncReadingGoals).where(eq(syncReadingGoals.userId, userId)),
 		contentUsage(db, userId),
 	]);
@@ -327,6 +356,12 @@ async function getUserSyncData(
 					updatedAt: toMs(r.updatedAt),
 				}) as SyncReadingSession,
 		),
+		...(sessionTombstonesSince === null
+			? {}
+			: {
+					deletedSessionIds: deletedSessionRows.map((r) => r.sessionId),
+					deletedSessionIdsAsOf: asOf,
+				}),
 		readingGoals: goalRows.map(
 			(g): SyncReadingGoal => ({
 				goalId: g.goalId,
@@ -368,7 +403,14 @@ export const Route = createFileRoute("/api/sync")({
 				// Client sends bookIds it already has via header (avoids URL length limits with many books)
 				const haveHeader = request.headers.get("x-sync-have") ?? "";
 				const haveIds = new Set(haveHeader.split(",").filter(Boolean));
-				const data = await getUserSyncData(userId, haveIds);
+				// Absent from older clients, which get no tombstones at all.
+				const sinceParam = new URL(request.url).searchParams.get("sessionTombstonesSince");
+				const since = sinceParam === null ? Number.NaN : Number(sinceParam);
+				const data = await getUserSyncData(
+					userId,
+					haveIds,
+					Number.isSafeInteger(since) && since >= 0 ? since : null,
+				);
 				return Response.json(data);
 			},
 
@@ -601,11 +643,13 @@ export const Route = createFileRoute("/api/sync")({
 							);
 					}
 
-					// --- Reading sessions: append-only upsert (no tombstone-on-omission) ---
-					// Sessions are never edited or deleted from the client; the row with the
-					// higher updatedAt wins. We do NOT mark missing rows as deleted: clients
-					// with >50k local sessions clip newest-first when pushing, and we would
-					// lose older rows that other devices have not seen yet.
+					// --- Reading sessions: upsert (no tombstone-on-omission) ---
+					// The row with the higher updatedAt wins. We do NOT mark missing rows as
+					// deleted: pushes are incremental against a watermark, so an omitted row
+					// is usually one already sent. Deletions arrive through the
+					// delete-session and wipe-sessions endpoints instead, and a tombstoned
+					// row is left untouched here, so a device still holding a copy (any
+					// client version) cannot bring it back.
 					if (payload.readingSessions.length > 0) {
 						await tx
 							.insert(syncReadingSessions)
@@ -642,6 +686,7 @@ export const Route = createFileRoute("/api/sync")({
 									furthestWord: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN COALESCE(excluded.furthest_word, sync_reading_sessions.furthest_word) ELSE sync_reading_sessions.furthest_word END`,
 									updatedAt: sql`GREATEST(excluded.updated_at, sync_reading_sessions.updated_at)`,
 								},
+								setWhere: sql`sync_reading_sessions.deleted = false`,
 							});
 					}
 					// Absent from clients that pre-date goals: nothing to merge.
@@ -666,7 +711,7 @@ export const Route = createFileRoute("/api/sync")({
 
 				// Everything else in the push is committed; the 413 only reports the
 				// content that did not fit, so the client stops re-uploading it.
-				if (quotaFit.rejected.length > 0) {
+				if (quotaFit.rejected.size > 0) {
 					return contentQuotaExceededResponse(quotaFit.quota, quotaFit.rejected);
 				}
 

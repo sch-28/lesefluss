@@ -1,0 +1,1 @@
+ALTER TABLE "sync_reading_sessions" ADD COLUMN "deleted" boolean DEFAULT false NOT NULL;

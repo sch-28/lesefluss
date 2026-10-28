@@ -22,11 +22,11 @@ function useReadingSessionCount(bookId?: string) {
 }
 
 /**
- * Delete a single reading session locally + on the server. Sessions have no
- * tombstone column so a plain `scheduleSyncPush` would not propagate the
- * deletion; the dedicated server endpoint removes the row before the local
- * delete runs. If the server call fails (offline, etc.) the local row stays
- * and the user is shown a toast.
+ * Delete a single reading session locally + on the server. Session pushes are
+ * incremental, so a plain `scheduleSyncPush` would not propagate the deletion;
+ * the dedicated server endpoint tombstones the row before the local delete
+ * runs, and other devices drop it on their next pull. If the server call fails
+ * (offline, etc.) the local row stays and the user is shown a toast.
  */
 function useDeleteReadingSession() {
 	const qc = useQueryClient();

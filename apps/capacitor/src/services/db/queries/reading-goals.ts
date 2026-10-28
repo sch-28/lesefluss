@@ -199,6 +199,11 @@ const EXCLUDED_GOAL_COLUMNS = {
 	updatedAt: sql`excluded.updated_at`,
 };
 
+/** The stats wipe: the server tombstones every goal, which other devices then drop. */
+export async function hardDeleteAllGoals(): Promise<void> {
+	await db.delete(readingGoals);
+}
+
 export async function hardDeleteGoals(ids: string[]): Promise<void> {
 	for (let i = 0; i < ids.length; i += UPSERT_CHUNK_SIZE) {
 		await db

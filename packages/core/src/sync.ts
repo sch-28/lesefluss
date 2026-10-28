@@ -9,7 +9,12 @@ import {
 	READING_GOAL_STATUSES,
 	REMINDER_TIME_REGEX,
 } from "./reading-goal";
-import { HEX_COLOR_REGEX, SETTING_CONSTRAINTS, SYNCED_SETTING_KEYS } from "./settings";
+import {
+	HEX_COLOR_REGEX,
+	READER_THEMES,
+	SETTING_CONSTRAINTS,
+	SYNCED_SETTING_KEYS,
+} from "./settings";
 
 /**
  * Max plain-text content size (UTF-8 bytes) a book may have to be eligible for
@@ -145,7 +150,7 @@ export const SyncSettingsSchema = z.object({
 		.int()
 		.min(SETTING_CONSTRAINTS.WORD_OFFSET.min)
 		.max(SETTING_CONSTRAINTS.WORD_OFFSET.max),
-	readerTheme: z.enum(["dark", "sepia", "light"]),
+	readerTheme: z.enum(READER_THEMES),
 	readerFontSize: z
 		.number()
 		.int()
@@ -154,6 +159,12 @@ export const SyncSettingsSchema = z.object({
 	readerFontFamily: z.enum(["sans", "serif", "atkinson", "opendyslexic", "literata"]),
 	readerBold: z.boolean(),
 	readerTextAlign: z.enum(["left", "justify"]),
+	readerRuler: z.boolean(),
+	readerRulerLines: z
+		.number()
+		.int()
+		.min(SETTING_CONSTRAINTS.READER_RULER_LINES.min)
+		.max(SETTING_CONSTRAINTS.READER_RULER_LINES.max),
 	readerLineSpacing: z
 		.number()
 		.min(SETTING_CONSTRAINTS.READER_LINE_SPACING.min)
@@ -303,8 +314,8 @@ export const SyncPayloadSchema = z.object({
 	highlights: z.array(SyncHighlightSchema).max(5000),
 	glossaryEntries: z.array(SyncGlossaryEntrySchema).max(5000).optional().default([]),
 	series: z.array(SyncSeriesSchema).max(500).optional().default([]),
-	// Reading sessions are append-only; cap matches server-side row cap per user.
-	// Clients with more local rows clip newest-first before pushing.
+	// Pushed incrementally against a watermark; deletions travel through their own
+	// endpoints, never as omissions. Clients with more local rows clip before pushing.
 	readingSessions: z.array(SyncReadingSessionSchema).max(50_000).optional().default([]),
 	// No default: a client that pre-dates goals omits the field, and that must
 	// not read as "this account has no goals".
@@ -326,6 +337,8 @@ export type SyncSettings = z.infer<typeof SyncSettingsSchema>;
 export type SyncHighlight = z.infer<typeof SyncHighlightSchema>;
 export type SyncGlossaryEntry = z.infer<typeof SyncGlossaryEntrySchema>;
 export type SyncReadingSession = z.infer<typeof SyncReadingSessionSchema>;
+/** A malformed tombstone list deletes nothing rather than failing the pull. */
+export const DeletedSessionIdsSchema = z.array(z.string()).catch([]);
 export type SyncReadingGoal = z.infer<typeof SyncReadingGoalSchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 export type SyncPush = z.infer<typeof SyncPushSchema>;
@@ -344,7 +357,17 @@ export type SyncResponse = {
 	highlights: SyncHighlight[];
 	glossaryEntries: SyncGlossaryEntry[];
 	series: SyncSeries[];
+	/** Live sessions only; deleted ones are listed in `deletedSessionIds`. */
 	readingSessions: SyncReadingSession[];
+	/**
+	 * Sessions deleted on any device since the pull's `sessionTombstonesSince`
+	 * param, which every device drops locally. Ids rather than tombstoned rows so a
+	 * client that pre-dates them cannot read one as live. Absent when the param is
+	 * (older clients) or the server pre-dates tombstones.
+	 */
+	deletedSessionIds?: string[];
+	/** Server time the tombstone list is complete up to: the next pull's param. */
+	deletedSessionIdsAsOf?: number;
 	/** Optional so a client pointed at an older server can do without it. */
 	readingGoals?: SyncReadingGoal[];
 	/**
@@ -378,4 +401,9 @@ export type ContentQuotaExceeded = ContentQuota & {
 	error: string;
 	code: typeof CONTENT_QUOTA_EXCEEDED;
 	rejectedContentBookIds: string[];
+	/**
+	 * Bytes each refused book would have added, so a client offers it again only
+	 * once that much is free. Optional: older servers send only the ids.
+	 */
+	rejectedContentBytes?: Record<string, number>;
 };

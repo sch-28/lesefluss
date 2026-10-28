@@ -56,6 +56,7 @@ import {
 	getAllGoalsForSync,
 	getGoalsWithReminders,
 	getReadingGoalPlan,
+	hardDeleteAllGoals,
 	hardDeleteGoals,
 	replanGoalById,
 	resolveActiveGoalConflicts,
@@ -67,6 +68,7 @@ import {
 	countReadingSessions,
 	deleteAllReadingSessions,
 	deleteReadingSession,
+	deleteReadingSessions,
 	getAllReadingSessions,
 	getReadingSessionsPage,
 	getReadingSessionsSince,
@@ -165,6 +167,7 @@ export const queries = {
 	upsertReadingSessions,
 	deleteAllReadingSessions,
 	deleteReadingSession,
+	deleteReadingSessions,
 
 	// Reading goals
 	getAllGoalsForSync,
@@ -173,6 +176,7 @@ export const queries = {
 	completeFinishedGoals,
 	resolveActiveGoalConflicts,
 	upsertGoals,
+	hardDeleteAllGoals,
 	hardDeleteGoals,
 	getReadingGoalPlan,
 	replanGoalById,

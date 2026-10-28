@@ -299,6 +299,33 @@ export class SessionTracker {
 		}
 	}
 
+	/**
+	 * The open sitting's row was deleted on another device. What it held was
+	 * deleted on purpose, and the server would refuse the id from now on, so
+	 * reading from here goes on in a new sitting rather than the old row.
+	 */
+	forgetDeleted(ids: ReadonlySet<string>): void {
+		const s = this.session;
+		if (!s || !ids.has(s.id)) return;
+		const now = this.now();
+		this.session = {
+			id: this.newId(),
+			startedAt: now,
+			startPos: s.lastPos,
+			lastPos: s.lastPos,
+			readSpans: [],
+			creditBudget: s.creditBudget,
+			accumulatedActiveMs: 0,
+			activeSinceMs: s.activeSinceMs === null ? null : now,
+			lastCheckpointAt: now,
+			dayKey: localDateKey(now),
+			hasPersisted: false,
+		};
+		// As for discard: the deleted sitting's reading no longer counts anywhere.
+		if (this.lastFurthestRead) this.opts.onFurthestRead?.(this.lastFurthestRead.id, null);
+		this.lastFurthestRead = null;
+	}
+
 	/** Drops the open sitting, deleting its row if one was already written. */
 	discard(): void {
 		const s = this.session;

@@ -1023,3 +1023,70 @@ describe("SessionTracker round 2", () => {
 		expect(env.persisted.at(-1)!.row.furthestWord).toBeNull();
 	});
 });
+
+describe("SessionTracker when its row is deleted elsewhere", () => {
+	/** Reads 20 words per poll for `ms`, so heartbeats fire along the way. */
+	function read(env: ReturnType<typeof setup>, ms: number) {
+		for (let elapsed = 0; elapsed < ms; elapsed += POLL_MS) {
+			env.advance(POLL_MS);
+			env.movePosition(20);
+			env.tracker.tick();
+		}
+	}
+
+	it("goes on under a new id holding only the reading after the deletion", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		read(env, HEARTBEAT_MS * 2);
+		const deletedId = env.persisted.at(-1)!.row.id;
+		const deletedAt = env.clock;
+		const position = env.persisted.at(-1)!.row.endWord;
+
+		env.tracker.forgetDeleted(new Set([deletedId]));
+		read(env, HEARTBEAT_MS * 2);
+		env.tracker.finalize();
+
+		const after = env.persisted.filter((p) => p.row.id !== deletedId);
+		expect(after.length).toBeGreaterThan(0);
+		const last = after.at(-1)!.row;
+		expect(last.id).not.toBe(deletedId);
+		expect(last.startedAt).toBe(deletedAt);
+		expect(last.durationMs).toBe(HEARTBEAT_MS * 2);
+		expect(last.startWord).toBeGreaterThanOrEqual(position);
+		expect(last.wordsRead).toBeLessThanOrEqual(20 * ((HEARTBEAT_MS * 2) / POLL_MS));
+		// Nothing written under the deleted id once it was reported.
+		const written = env.persisted.map((p) => p.row.id);
+		expect(written.lastIndexOf(deletedId)).toBeLessThan(written.indexOf(last.id));
+	});
+
+	it("retracts the deleted sitting's furthest word, as a discard does", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		read(env, HEARTBEAT_MS);
+		const id = env.tracker._inspect().sessionId!;
+		env.tracker.forgetDeleted(new Set([id]));
+		expect(env.furthest.at(-1)).toEqual([id, null]);
+	});
+
+	it("ignores deletions of other sessions", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		read(env, HEARTBEAT_MS);
+		const before = env.tracker._inspect().sessionId;
+		env.tracker.forgetDeleted(new Set(["someone-else"]));
+		expect(env.tracker._inspect().sessionId).toBe(before);
+	});
+
+	it("keeps a paused sitting paused under its new id", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		read(env, HEARTBEAT_MS);
+		env.tracker.setForeground(false);
+		const id = env.tracker._inspect().sessionId!;
+		env.tracker.forgetDeleted(new Set([id]));
+		const state = env.tracker._inspect();
+		expect(state.sessionId).not.toBe(id);
+		expect(state.activeSinceMs).toBeNull();
+		expect(state.accumulatedActiveMs).toBe(0);
+	});
+});

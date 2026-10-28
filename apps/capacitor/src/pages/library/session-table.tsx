@@ -133,8 +133,8 @@ export function SessionTable(props: Props) {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete session?</AlertDialogTitle>
 						<AlertDialogDescription>
-							Removed from this device and from your synced history. If you've read this book on
-							another device, the session can come back when that device next syncs.
+							Removed from this device, from your synced history, and from other devices syncing
+							reading stats when they next sync.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

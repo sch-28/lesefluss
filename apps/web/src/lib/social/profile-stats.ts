@@ -115,7 +115,9 @@ export async function profileStatsFor(
 				eq(syncBooks.bookId, syncReadingSessions.bookId),
 			),
 		)
-		.where(and(eq(syncReadingSessions.userId, userId), visible));
+		.where(
+			and(eq(syncReadingSessions.userId, userId), eq(syncReadingSessions.deleted, false), visible),
+		);
 
 	const readDays = new Set(
 		sessions

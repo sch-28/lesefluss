@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { removeBook } from "../../book-import";
-import { resetSessionPushWatermark, scheduleSyncPush, wipeServerSessions } from "../../sync";
+import { scheduleSyncPush, wipeAllReadingStats } from "../../sync";
 import { queries } from "../queries";
 import { bookKeys, glossaryKeys, readingSessionKeys, serialKeys, statsKeys } from "./query-keys";
 
@@ -35,26 +35,10 @@ function useDeleteAllGlossary() {
 	});
 }
 
-/**
- * Wipe reading sessions both locally and on the server. Sessions are
- * append-only with no tombstone column, so a dedicated server endpoint deletes
- * the user's rows; otherwise the next pull would re-create them locally.
- *
- * The watermark reset only applies to this device. Another device that already
- * pushed its sessions will not re-upload them, so its history stays local to it.
- * Propagating a wipe across devices needs a server-side epoch the pull can compare
- * against, which does not exist yet.
- */
-async function wipeAllReadingSessions(): Promise<void> {
-	await wipeServerSessions();
-	await queries.deleteAllReadingSessions();
-	await resetSessionPushWatermark();
-}
-
 function useDeleteAllReadingSessions() {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: wipeAllReadingSessions,
+		mutationFn: wipeAllReadingStats,
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: readingSessionKeys.all });
 			qc.invalidateQueries({ queryKey: statsKeys.all });
@@ -99,7 +83,7 @@ function useDeleteLibrary() {
  * partial failure leaves a consistent local state.
  */
 async function deleteEverything(): Promise<void> {
-	await wipeAllReadingSessions();
+	await wipeAllReadingStats();
 	await queries.deleteAllHighlights();
 	await queries.deleteAllEntries();
 	await deleteLibrary();
