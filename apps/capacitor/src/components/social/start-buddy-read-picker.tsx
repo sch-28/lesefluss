@@ -9,6 +9,7 @@ import {
 } from "@/pages/library/book-buddy-read";
 import { queryHooks } from "@/services/db/hooks";
 import { syncKeys } from "@/services/db/hooks/query-keys";
+import { useCloudStorage } from "@/services/db/hooks/use-cloud-storage";
 import type { Book } from "@/services/db/schema";
 import { useBuddyReads } from "@/services/social/buddy-reads";
 import { getServerContentIds } from "@/services/sync/server-content-cache";
@@ -40,7 +41,10 @@ export function StartBuddyReadPicker({
 		(reads.data ?? []).filter((r) => r.status === "in_progress").map((r) => r.originKey),
 	);
 	const books = (library?.books ?? []).filter((b) => !b.originKey || !running.has(b.originKey));
-	const blocker = picked ? shareBlockerFor(picked, serverContentIds) : null;
+	const { data: cloudStorage } = useCloudStorage(picked !== null);
+	const blocker = picked
+		? shareBlockerFor(picked, serverContentIds, new Set(cloudStorage?.notBackedUp.map((b) => b.id)))
+		: null;
 
 	return (
 		<>

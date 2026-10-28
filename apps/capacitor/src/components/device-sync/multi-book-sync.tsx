@@ -16,18 +16,12 @@ import { useDeviceLibrary } from "../../contexts/device-library-context";
 import { useMultiBookAdapter } from "../../hooks/use-multi-book-adapter";
 import type { MultiBookStorage } from "../../services/devices";
 import type { DeviceCapabilities } from "../../services/devices/capabilities";
+import { formatBytes } from "../../utils/format-bytes";
 import { log } from "../../utils/log";
 
 export type MultiBookSyncProps = {
 	caps: DeviceCapabilities;
 };
-
-function formatBytes(bytes: number): string {
-	if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
-	if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
-	if (bytes >= 1_024) return `${(bytes / 1_024).toFixed(1)} KB`;
-	return `${bytes} B`;
-}
 
 function progressLabel(words: number, total: number): string {
 	if (total === 0) {
@@ -195,6 +189,7 @@ export function MultiBookSync(_props: MultiBookSyncProps) {
 										)
 							}
 							className="mt-2"
+							aria-label="Device storage used"
 						/>
 					</div>
 				</section>

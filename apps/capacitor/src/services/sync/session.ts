@@ -5,10 +5,12 @@ import {
 	consumeAuthHandoffState,
 	finalizeVerifiedAuthHandoffLogin,
 } from "@lesefluss/core";
+import { syncKeys } from "../db/hooks/query-keys";
 import { clearPendingLink } from "../deep-links/pending-link";
+import { queryClient } from "../query-client";
 import { clearSocialQueries } from "../social/cache";
 import { SYNC_URL } from "./auth-client";
-import { clearQuotaBlock } from "./content-quota";
+import { clearContentQuota, clearQuotaBlock } from "./content-quota";
 import { clearServerContentIds } from "./server-content-cache";
 
 /** True when the capacitor app is hosted inside the website (same origin, cookie auth). */
@@ -29,6 +31,7 @@ export const LAST_SYNCED_KEY = "sync_last_synced";
 const USER_EMAIL_KEY = "sync_user_email";
 const AUTH_STATE_KEY = "sync_auth_state";
 export const SESSIONS_PUSHED_KEY = "sync_sessions_pushed_at";
+const SESSION_TOMBSTONES_KEY = "sync_session_tombstones_at";
 const SETTINGS_ADOPTED_KEY = "sync_settings_adopted";
 
 const preferencesAuthStorage: AuthHandoffStorage = {
@@ -85,10 +88,14 @@ export async function clearToken(): Promise<void> {
 export async function clearAccountScopedState(): Promise<void> {
 	await clearServerContentIds();
 	await clearQuotaBlock();
+	await clearContentQuota();
 	await resetSessionPushWatermark();
+	await Preferences.remove({ key: SESSION_TOMBSTONES_KEY });
 	await Preferences.remove({ key: SETTINGS_ADOPTED_KEY });
 	await Preferences.remove({ key: LAST_SYNCED_KEY });
 	clearSocialQueries();
+	// Usage and not-backed-up books describe the previous account until a pull lands.
+	queryClient.removeQueries({ queryKey: syncKeys.all });
 	await clearPendingLink();
 }
 
@@ -108,11 +115,21 @@ export async function adoptSyncIdentity(email: string | null): Promise<void> {
 
 /**
  * Reading sessions are pushed incrementally against this watermark. Reset it to
- * force the next push to resend every local session, needed after any flow that
- * wipes sessions server-side, otherwise local rows stay permanently unpushable.
+ * force the next push to resend every local session, as another account needs.
  */
 export async function resetSessionPushWatermark(): Promise<void> {
 	await Preferences.remove({ key: SESSIONS_PUSHED_KEY });
+}
+
+/** Server time up to which this device has applied session tombstones; 0 asks for all. */
+export async function getSessionTombstoneWatermark(): Promise<number> {
+	const { value } = await Preferences.get({ key: SESSION_TOMBSTONES_KEY });
+	const parsed = value ? Number(value) : 0;
+	return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0;
+}
+
+export async function setSessionTombstoneWatermark(asOf: number): Promise<void> {
+	await Preferences.set({ key: SESSION_TOMBSTONES_KEY, value: String(asOf) });
 }
 
 export async function getSessionPushWatermark(): Promise<number> {

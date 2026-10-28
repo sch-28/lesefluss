@@ -31,14 +31,16 @@ export class ContentQuotaExceededError extends Error {
 	}
 }
 
+/** @param rejected each refused book's id and the bytes it would have added. */
 export function contentQuotaExceededResponse(
 	quota: ContentQuota,
-	rejectedContentBookIds: string[] = [],
+	rejected: ReadonlyMap<string, number> = new Map(),
 ): Response {
 	const body: ContentQuotaExceeded = {
 		error: "Storage quota exceeded",
 		code: CONTENT_QUOTA_EXCEEDED,
-		rejectedContentBookIds,
+		rejectedContentBookIds: [...rejected.keys()],
+		rejectedContentBytes: Object.fromEntries(rejected),
 		...quota,
 	};
 	return Response.json(body, { status: 413 });
@@ -146,7 +148,7 @@ function bytesAfterMerge(entries: SyncBook[], stored: StoredBlobBytes | undefine
 
 /**
  * Which pushed books must have their content left out to stay within the
- * quota, and the usage after the push. Books that free or keep space are
+ * quota, with the bytes each would have added, and the usage after the push. Books that free or keep space are
  * applied first, so a push that deletes one book and adds another nets out;
  * growing books are then admitted in payload order while they fit. Updating a
  * book's stored content counts only the difference.
@@ -156,7 +158,7 @@ export function planContentQuota(
 	stored: ReadonlyMap<string, StoredBlobBytes>,
 	usedBytes: number,
 	quotaBytes: number,
-): { rejected: Set<string>; usedBytes: number } {
+): { rejected: Map<string, number>; usedBytes: number } {
 	const entriesById = Map.groupBy(books, (book) => book.bookId);
 	let projected = usedBytes;
 	const growing: { bookId: string; delta: number }[] = [];
@@ -167,10 +169,10 @@ export function planContentQuota(
 		if (delta <= 0) projected += delta;
 		else growing.push({ bookId, delta });
 	}
-	const rejected = new Set<string>();
+	const rejected = new Map<string, number>();
 	for (const { bookId, delta } of growing) {
 		if (projected + delta <= quotaBytes) projected += delta;
-		else rejected.add(bookId);
+		else rejected.set(bookId, delta);
 	}
 	return { rejected, usedBytes: projected };
 }
@@ -188,11 +190,11 @@ export async function fitPushToContentQuota(
 	userId: string,
 	books: SyncBook[],
 	quotaBytes = contentQuotaBytes(),
-): Promise<{ books: SyncBook[]; rejected: string[]; quota: ContentQuota }> {
+): Promise<{ books: SyncBook[]; rejected: Map<string, number>; quota: ContentQuota }> {
 	const usedBytes = await contentUsage(tx, userId);
 	const relevantIds = books.filter((b) => b.deleted || carriesBlobs(b)).map((b) => b.bookId);
 	if (relevantIds.length === 0) {
-		return { books, rejected: [], quota: { usedBytes, quotaBytes } };
+		return { books, rejected: new Map(), quota: { usedBytes, quotaBytes } };
 	}
 
 	const rows = await tx
@@ -231,7 +233,7 @@ export async function fitPushToContentQuota(
 				? { ...book, content: undefined, coverImage: undefined, chapters: undefined }
 				: book,
 		),
-		rejected: [...plan.rejected],
+		rejected: plan.rejected,
 		quota: { usedBytes: plan.usedBytes, quotaBytes },
 	};
 }

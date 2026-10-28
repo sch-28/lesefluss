@@ -1,6 +1,7 @@
 import { Preferences } from "@capacitor/preferences";
 import {
 	type ContentQuotaExceeded,
+	DeletedSessionIdsSchema,
 	isSyncEligible,
 	MAX_SYNCED_CONTENT_BYTES,
 	MAX_SYNCED_COVER_CHARS,
@@ -31,6 +32,7 @@ import {
 	serialKeys,
 	settingsKeys,
 	statsKeys,
+	syncKeys,
 } from "../db/hooks/query-keys";
 import { queries } from "../db/queries";
 import type {
@@ -47,10 +49,13 @@ import { requestReminderSync } from "../goal-reminders";
 import { reportMissedPosition } from "../position-revisions";
 import { clearDeliveredPushes, unregisterPush } from "../push";
 import { queryClient } from "../query-client";
+import { notifySessionsDeleted } from "../reading-sessions/deleted";
 import { reportEvent } from "../telemetry";
 import { SYNC_URL } from "./auth-client";
 import { buildBookMergeUpdate } from "./book-merge";
+import { type NotBackedUpBook, reportBooksNotBackedUp } from "./cloud-storage";
 import {
+	forgetReported,
 	getQuotaBlock,
 	isContentQuotaExceeded,
 	reconcileQuotaBlock,
@@ -64,6 +69,7 @@ import {
 import {
 	clearToken,
 	getSessionPushWatermark,
+	getSessionTombstoneWatermark,
 	getToken,
 	hasAdoptedServerSettings,
 	isSyncReady,
@@ -71,9 +77,18 @@ import {
 	markServerSettingsAdopted,
 	SESSIONS_PUSHED_KEY,
 	SYNC_ENABLED,
+	setSessionTombstoneWatermark,
 } from "./session";
 
 export { openBrowserSignIn } from "./browser-sign-in";
+export {
+	type CloudStorage,
+	getCloudStorage,
+	type NotBackedUpBook,
+	notBackedUpMessage,
+	onBooksNotBackedUp,
+	syncedWithBlockedMessage,
+} from "./cloud-storage";
 export {
 	type DeviceCodeGrant,
 	type DevicePollResult,
@@ -236,10 +251,10 @@ async function clearServerGoalsWhileStatsOff(syncStats: boolean): Promise<void> 
 }
 
 /**
- * Hard-delete every reading session for the current user on the server.
- * Sessions are append-only with no tombstone column, so the danger-zone
- * "Delete reading stats" flow uses this dedicated endpoint instead of
- * relying on the diff-on-push behaviour used for highlights/glossary.
+ * Tombstone every reading session for the current user on the server, which
+ * every other device then drops on its next pull. A dedicated endpoint rather
+ * than diff-on-push as for highlights/glossary: session pushes are incremental,
+ * so an omitted row does not mean a deleted one.
  */
 export async function wipeServerSessions(): Promise<void> {
 	if (!(await isSyncReady())) return;
@@ -247,11 +262,21 @@ export async function wipeServerSessions(): Promise<void> {
 }
 
 /**
- * Hard-delete a single reading session for the current user on the server.
- * Sessions have no tombstone column, so a plain push would not propagate a
- * deletion: the row would be re-upserted on the next pull. Mirrors
- * `wipeServerSessions` for the per-row case.
+ * "Delete reading stats": tombstones every session and goal on the server, then
+ * drops the local rows. Under the sync lock, so a pull already holding a response
+ * from before the wipe cannot write the rows back. The push watermark stays:
+ * nothing local is left to resend, and later sessions sort above it anyway.
  */
+export async function wipeAllReadingStats(): Promise<void> {
+	await withSyncLock(async () => {
+		await wipeServerSessions();
+		await queries.deleteAllReadingSessions();
+		await queries.hardDeleteAllGoals();
+	});
+	requestReminderSync();
+}
+
+/** Tombstone a single reading session on the server. `wipeServerSessions` for one row. */
 export async function deleteServerSession(sessionId: string): Promise<void> {
 	if (!(await isSyncReady())) return;
 	await syncFetch("/api/sync/delete-session", {
@@ -613,7 +638,8 @@ export async function pullSync(): Promise<Set<string>> {
 			.join(",");
 		log("sync", `pull request haveCount=${localBooks.length} haveHeaderBytes=${haveHeader.length}`);
 
-		const res = await syncFetch("/api/sync", {
+		const tombstonesSince = await getSessionTombstoneWatermark();
+		const res = await syncFetch(`/api/sync?sessionTombstonesSince=${tombstonesSince}`, {
 			headers: { "X-Sync-Have": haveHeader },
 		});
 		const data: SyncResponse = await res.json();
@@ -963,8 +989,6 @@ export async function pullSync(): Promise<Set<string>> {
 		}
 
 		// --- Merge reading sessions ---
-		// Append-only: no `deleted` branch, no orphan guard. Sessions intentionally
-		// outlive their book row for all-time totals. LWW on updatedAt.
 		if (localSettings.syncStats) {
 			const incoming: ReadingSession[] = [];
 			let rejected = 0;
@@ -994,6 +1018,15 @@ export async function pullSync(): Promise<Set<string>> {
 			if (incoming.length > 0) {
 				await queries.upsertReadingSessions(incoming);
 				changed = true;
+			}
+			if (data.deletedSessionIdsAsOf !== undefined) {
+				const deletedIds = DeletedSessionIdsSchema.parse(data.deletedSessionIds);
+				// Before the delete: an open sitting must move to a new id first, or its
+				// next checkpoint re-creates the row the server will never accept again.
+				notifySessionsDeleted(deletedIds);
+				await queries.deleteReadingSessions(deletedIds);
+				if (deletedIds.length > 0) changed = true;
+				await setSessionTombstoneWatermark(data.deletedSessionIdsAsOf);
 			}
 		}
 
@@ -1025,7 +1058,12 @@ export async function pullSync(): Promise<Set<string>> {
 		// Persist so a debounced push that runs before the next pull still knows what
 		// the server holds. Without this every push re-uploads the whole library.
 		await setServerContentIds(serverHasContent);
-		await reconcileQuotaBlock(data.contentQuota);
+		await reconcileQuotaBlock(
+			data.contentQuota,
+			serverHasContent,
+			new Set([...localBookMap.values()].filter((b) => !b.deleted).map((b) => b.id)),
+		);
+		queryClient.invalidateQueries({ queryKey: syncKeys.all });
 
 		// Invalidate React Query cache so UI reflects pulled changes
 		if (changed) {
@@ -1150,8 +1188,14 @@ export function nextSessionWatermark(
  * an empty set means "the server has nothing", which re-uploads the entire library.
  */
 export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
-	if (!(await isSyncReady())) return;
+	reportBooksNotBackedUp(await push(serverHasContent));
+}
 
+/** @returns books refused for lack of room that the user has not been told about yet. */
+async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> {
+	if (!(await isSyncReady())) return [];
+
+	let notBackedUp: NotBackedUpBook[] = [];
 	await withSyncLock(async () => {
 		log("sync", "pushing...");
 
@@ -1191,7 +1235,7 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 
 		// Reading content back out of SQLite costs a bridge round-trip per 512 KB
 		// chunk, so only books the server is actually missing are touched.
-		const quotaBlockedIds = new Set((await getQuotaBlock())?.bookIds);
+		const quotaBlockedIds = new Set(Object.keys((await getQuotaBlock())?.books ?? {}));
 		const needContent = booksNeedingContent(booksForPush, knownContentIds, quotaBlockedIds);
 		// Ids whose content actually made it into the payload. A missing content row
 		// yields no content, and recording it as uploaded would tell every later push
@@ -1268,13 +1312,19 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 		const quotaRejection = await postPush(body);
 		if (quotaRejection) {
 			for (const id of quotaRejection.rejectedContentBookIds) uploadedContentIds.delete(id);
-			await recordQuotaRejection(quotaRejection);
+			const unreported = new Set(await recordQuotaRejection(quotaRejection));
+			notBackedUp = booksForPush
+				.filter((book) => unreported.has(book.id))
+				.map((book) => ({ id: book.id, title: book.title }));
 		}
 		await clearServerGoalsWhileStatsOff(settings.syncStats);
 
 		// Only after the server has accepted them: a failed push must not convince the
 		// next one that content is already stored, or that sessions were delivered.
-		if (uploadedContentIds.size > 0) await addServerContentIds(uploadedContentIds);
+		if (uploadedContentIds.size > 0) {
+			await addServerContentIds(uploadedContentIds);
+			await forgetReported(uploadedContentIds);
+		}
 		if (settings.syncStats && clippedSessions.length > 0) {
 			await Preferences.set({
 				key: SESSIONS_PUSHED_KEY,
@@ -1287,17 +1337,24 @@ export async function pushSync(serverHasContent?: Set<string>): Promise<void> {
 			value: String(Date.now()),
 		});
 
+		queryClient.invalidateQueries({ queryKey: syncKeys.cloudStorage });
 		log("sync", "push complete");
 	});
+	return notBackedUp;
 }
 
 // ---------------------------------------------------------------------------
 // Full sync (pull then push)
 // ---------------------------------------------------------------------------
 
-export async function fullSync(): Promise<void> {
+/**
+ * @param reportNotBackedUp false when the caller tells the user about every
+ * blocked book itself, as a manual sync does.
+ */
+export async function fullSync({ reportNotBackedUp = true } = {}): Promise<void> {
 	const serverHasContent = await pullSync();
-	await pushSync(serverHasContent);
+	const notBackedUp = await push(serverHasContent);
+	if (reportNotBackedUp) reportBooksNotBackedUp(notBackedUp);
 }
 
 // ---------------------------------------------------------------------------

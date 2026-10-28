@@ -37,7 +37,7 @@ describe("planContentQuota", () => {
 
 	it("rejects a new book one byte over the cap and keeps usage unchanged", () => {
 		const plan = planContentQuota([book("aaaaaaaa", { content: "x".repeat(11) })], none, 90, 100);
-		expect([...plan.rejected]).toEqual(["aaaaaaaa"]);
+		expect([...plan.rejected]).toEqual([["aaaaaaaa", 11]]);
 		expect(plan.usedBytes).toBe(90);
 	});
 
@@ -100,7 +100,7 @@ describe("planContentQuota", () => {
 			50,
 			100,
 		);
-		expect([...plan.rejected]).toEqual(["bbbbbbbb"]);
+		expect([...plan.rejected]).toEqual([["bbbbbbbb", 30]]);
 		expect(plan.usedBytes).toBe(90);
 	});
 
@@ -116,7 +116,7 @@ describe("planContentQuota", () => {
 			100,
 			100,
 		);
-		expect([...plan.rejected]).toEqual(["bbbbbbbb"]);
+		expect([...plan.rejected]).toEqual([["bbbbbbbb", 50]]);
 		expect(plan.usedBytes).toBe(100);
 	});
 

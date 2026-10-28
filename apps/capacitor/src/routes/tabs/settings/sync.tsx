@@ -32,6 +32,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { CloudStorageSection } from "@/components/sync/cloud-storage";
 import { SignInOptions } from "@/components/sync/sign-in-options";
 import { useToast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
@@ -82,11 +83,11 @@ const DANGER_ACTIONS: Record<DangerAction, DangerActionConfig> = {
 	},
 	stats: {
 		label: "Delete reading stats",
-		subtitle: "Wipes every reading session, keeps your library",
+		subtitle: "Wipes every reading session and goal, keeps your library",
 		icon: BarChart3,
 		header: "Delete reading stats?",
 		message:
-			"Every reading session on this device and on your cloud account will be wiped. Your library and highlights are kept. Other signed-in devices may push their own session history back on their next sync.",
+			"Every reading session and reading goal will be wiped from this device and your cloud account. Other devices syncing reading stats drop them on their next sync, but sessions a device recorded offline and hasn't synced yet still arrive afterwards. Your library and highlights are kept.",
 		successMessage: "Reading stats deleted",
 	},
 	library: {
@@ -173,6 +174,8 @@ function SyncSettings() {
 								</Button>
 							</div>
 						</SettingsSection>
+
+						<CloudStorageSection />
 
 						<SettingsSection title="What syncs">
 							<p className="px-4 py-3 text-muted-foreground text-xs">

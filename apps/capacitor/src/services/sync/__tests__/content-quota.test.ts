@@ -65,15 +65,21 @@ vi.mock("../../authed-fetch", async (importOriginal) => {
 	};
 });
 
-import { getQuotaBlock, quotaHasMoreRoom, reconcileQuotaBlock } from "../content-quota";
-import { pushSync } from "../index";
+import {
+	blockAfterPull,
+	clearQuotaBlock,
+	getContentQuota,
+	getQuotaBlock,
+	reconcileQuotaBlock,
+} from "../content-quota";
+import { type NotBackedUpBook, onBooksNotBackedUp, pushSync } from "../index";
 import { getServerContentIds } from "../server-content-cache";
 import { LAST_SYNCED_KEY } from "../session";
 
 function makeBook(id: string): Book {
 	return {
 		id,
-		title: "T",
+		title: `Title ${id}`,
 		author: null,
 		fileFormat: "txt",
 		filePath: null,
@@ -106,13 +112,17 @@ function makeBook(id: string): Book {
 	};
 }
 
-const rejection = (ids: string[]): ContentQuotaExceeded => ({
+const rejection = (bytes: Record<string, number>): ContentQuotaExceeded => ({
 	error: "Storage quota exceeded",
 	code: "content_quota_exceeded",
-	rejectedContentBookIds: ids,
+	rejectedContentBookIds: Object.keys(bytes),
+	rejectedContentBytes: bytes,
 	usedBytes: 990,
 	quotaBytes: 1_000,
 });
+
+const live = (...ids: string[]) => new Set(ids);
+const none = new Set<string>();
 
 describe("push against a full account", () => {
 	beforeEach(async () => {
@@ -120,18 +130,19 @@ describe("push against a full account", () => {
 		pushed.length = 0;
 		books.length = 0;
 		fetchResult.rejection = null;
-		await reconcileQuotaBlock({ usedBytes: 0, quotaBytes: Number.MAX_SAFE_INTEGER });
+		await clearQuotaBlock();
 	});
 
 	it("completes the push and stops offering the refused content", async () => {
 		books.push(makeBook("aaaaaaaa"), makeBook("bbbbbbbb"));
-		fetchResult.rejection = rejection(["bbbbbbbb"]);
+		fetchResult.rejection = rejection({ bbbbbbbb: 40 });
 
 		await expect(pushSync(new Set())).resolves.toBeUndefined();
 
 		expect(preferenceStore.get(LAST_SYNCED_KEY)).toBeDefined();
 		expect([...(await getServerContentIds())]).toEqual(["aaaaaaaa"]);
-		expect((await getQuotaBlock())?.bookIds).toEqual(["bbbbbbbb"]);
+		expect((await getQuotaBlock())?.books).toEqual({ bbbbbbbb: 40 });
+		expect(await getContentQuota()).toEqual({ usedBytes: 990, quotaBytes: 1_000 });
 
 		fetchResult.rejection = null;
 		await pushSync(new Set(["aaaaaaaa"]));
@@ -140,15 +151,51 @@ describe("push against a full account", () => {
 		expect(second?.wordPosition).toBe(5);
 	});
 
-	it("offers the content again once a pull shows more room", async () => {
+	it("reports each book once, when it is first refused", async () => {
+		const reported: NotBackedUpBook[][] = [];
+		const stop = onBooksNotBackedUp((list) => reported.push(list));
+		books.push(makeBook("aaaaaaaa"), makeBook("bbbbbbbb"));
+		fetchResult.rejection = rejection({ bbbbbbbb: 40 });
+		await pushSync(new Set());
+		fetchResult.rejection = rejection({ aaaaaaaa: 30, bbbbbbbb: 40 });
+		await pushSync(new Set());
+		stop();
+		expect(reported).toEqual([
+			[{ id: "bbbbbbbb", title: "Title bbbbbbbb" }],
+			[{ id: "aaaaaaaa", title: "Title aaaaaaaa" }],
+		]);
+	});
+
+	it("stays quiet when an unblocked book is refused again, until it uploads", async () => {
+		const reported: NotBackedUpBook[][] = [];
+		const stop = onBooksNotBackedUp((list) => reported.push(list));
 		books.push(makeBook("bbbbbbbb"));
-		fetchResult.rejection = rejection(["bbbbbbbb"]);
+		fetchResult.rejection = rejection({ bbbbbbbb: 40 });
+		await pushSync(new Set());
+		// Room appears, the book is offered again and refused again.
+		await reconcileQuotaBlock({ usedBytes: 900, quotaBytes: 1_000 }, none, live("bbbbbbbb"));
+		await pushSync(new Set());
+		expect(reported).toHaveLength(1);
+
+		// Once it uploads, a later refusal is news again.
+		await reconcileQuotaBlock({ usedBytes: 900, quotaBytes: 1_000 }, none, live("bbbbbbbb"));
+		fetchResult.rejection = null;
+		await pushSync(new Set());
+		fetchResult.rejection = rejection({ bbbbbbbb: 40 });
+		await pushSync(new Set());
+		stop();
+		expect(reported).toHaveLength(2);
+	});
+
+	it("offers the content again once a pull shows room for that book", async () => {
+		books.push(makeBook("bbbbbbbb"));
+		fetchResult.rejection = rejection({ bbbbbbbb: 40 });
 		await pushSync(new Set());
 
-		await reconcileQuotaBlock({ usedBytes: 990, quotaBytes: 1_000 });
+		await reconcileQuotaBlock({ usedBytes: 970, quotaBytes: 1_000 }, none, live("bbbbbbbb"));
 		expect(await getQuotaBlock()).not.toBeNull();
 
-		await reconcileQuotaBlock({ usedBytes: 500, quotaBytes: 1_000 });
+		await reconcileQuotaBlock({ usedBytes: 960, quotaBytes: 1_000 }, none, live("bbbbbbbb"));
 		expect(await getQuotaBlock()).toBeNull();
 
 		fetchResult.rejection = null;
@@ -156,19 +203,56 @@ describe("push against a full account", () => {
 		expect(pushed.at(-1)?.books[0]?.content).toBe("text");
 	});
 
+	it("reads a block stored before sizes existed as books of unknown size", async () => {
+		preferenceStore.set(
+			"sync_content_quota_block",
+			JSON.stringify({ bookIds: ["bbbbbbbb"], freeBytes: 10 }),
+		);
+		expect((await getQuotaBlock())?.books).toEqual({ bbbbbbbb: null });
+	});
+
 	it("still fails a push on any other error", async () => {
 		books.push(makeBook("aaaaaaaa"));
-		fetchResult.rejection = { ...rejection(["aaaaaaaa"]), code: "other" } as never;
+		fetchResult.rejection = { ...rejection({ aaaaaaaa: 1 }), code: "other" } as never;
 		await expect(pushSync(new Set())).rejects.toThrow("Sync failed (413)");
 		expect(preferenceStore.get(LAST_SYNCED_KEY)).toBeUndefined();
 	});
 });
 
-describe("quotaHasMoreRoom", () => {
-	it("is true only when free space grew since the refusal", () => {
-		const block = { bookIds: ["a"], freeBytes: 10 };
-		expect(quotaHasMoreRoom(block, { usedBytes: 990, quotaBytes: 1_000 })).toBe(false);
-		expect(quotaHasMoreRoom(block, { usedBytes: 989, quotaBytes: 1_000 })).toBe(true);
-		expect(quotaHasMoreRoom(block, { usedBytes: 990, quotaBytes: 2_000 })).toBe(true);
+describe("blockAfterPull", () => {
+	const quota = (free: number) => ({ usedBytes: 1_000 - free, quotaBytes: 1_000 });
+	const all = live("a", "b", "c");
+
+	it("lets books through smallest first while the free space covers them", () => {
+		const block = { books: { a: 30, b: 10, c: 25 }, freeBytes: 0 };
+		expect(blockAfterPull(block, quota(36), none, all)).toEqual({
+			books: { a: 30 },
+			freeBytes: 36,
+		});
+	});
+
+	it("keeps every book while none fits", () => {
+		const block = { books: { a: 30, b: 20 }, freeBytes: 0 };
+		expect(blockAfterPull(block, quota(19), none, all)?.books).toEqual({ a: 30, b: 20 });
+	});
+
+	it("lets a book of unknown size through on any growth in free space", () => {
+		const block = { books: { a: null }, freeBytes: 10 };
+		expect(blockAfterPull(block, quota(10), none, all)?.books).toEqual({ a: null });
+		expect(blockAfterPull(block, quota(11), none, all)).toBeNull();
+	});
+
+	it("keeps the growth mark for unknown sizes when free space dips", () => {
+		const block = { books: { a: null }, freeBytes: 10 };
+		const dipped = blockAfterPull(block, quota(4), none, all);
+		expect(dipped).toEqual({ books: { a: null }, freeBytes: 10 });
+		expect(dipped && blockAfterPull(dipped, quota(8), none, all)).not.toBeNull();
+	});
+
+	it("drops books the server now holds or the library no longer has", () => {
+		const block = { books: { a: 500, b: 500, c: 500 }, freeBytes: 0 };
+		expect(blockAfterPull(block, quota(0), live("a"), live("a", "c"))?.books).toEqual({
+			c: 500,
+		});
 	});
 });

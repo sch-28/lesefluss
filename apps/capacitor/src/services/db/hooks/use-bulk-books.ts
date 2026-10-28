@@ -24,7 +24,7 @@ import { removeBook } from "../../book-import";
 import { scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
 import type { Book } from "../schema";
-import { bookKeys, glossaryKeys, statsKeys } from "./query-keys";
+import { bookKeys, glossaryKeys, statsKeys, syncKeys } from "./query-keys";
 
 /**
  * What one book's tags should become. Declared here, beside the action that
@@ -137,6 +137,8 @@ function useBulkBookActions(): UseBulkBookActions {
 						// Deleting a book also deletes its glossary entries, which live
 						// under a key root `bookKeys.all` does not reach.
 						qc.invalidateQueries({ queryKey: glossaryKeys.all });
+						// A deleted book leaves the not-backed-up list.
+						qc.invalidateQueries({ queryKey: syncKeys.cloudStorage });
 					} else {
 						// Metadata only: covers are untouched, and the stats shelves read
 						// finishedAt and wordPosition rather than status.

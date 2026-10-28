@@ -33,6 +33,7 @@ import { externalSourceUrl, getCatalogBook, getCoverUrl } from "../../services/c
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { queryHooks } from "../../services/db/hooks";
 import { bookKeys, syncKeys } from "../../services/db/hooks/query-keys";
+import { useCloudStorage } from "../../services/db/hooks/use-cloud-storage";
 import { queries } from "../../services/db/queries";
 import { SYNC_ENABLED } from "../../services/sync";
 import { getServerContentIds } from "../../services/sync/server-content-cache";
@@ -113,6 +114,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	}, [canShare]);
 	const buddyRead = useBookBuddyRead(book ?? { originKey: null }, canShare);
 	const hasRunningBuddyRead = buddyRead?.status === "in_progress";
+	const { data: cloudStorage } = useCloudStorage(isLoggedIn && SYNC_ENABLED);
 	// Whether the server holds this book's text: sharing copies server-side, so a
 	// book that never reached the cloud has nothing to copy yet.
 	const { data: serverContentIds } = useQuery({
@@ -220,7 +222,9 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	// hours say nothing comparable about the books.
 	const pages = bookPageCount(book);
 	const chapterCount = chapters.length;
-	const shareBlocker = shareBlockerFor(book, serverContentIds);
+	const notBackedUpIds = new Set(cloudStorage?.notBackedUp.map((b) => b.id));
+	const isNotBackedUp = notBackedUpIds.has(book.id);
+	const shareBlocker = shareBlockerFor(book, serverContentIds, notBackedUpIds);
 
 	// Same two steps the reader takes for an in-book jump: persist the position,
 	// then let the seed effect resume from it.
@@ -305,6 +309,11 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				{isLoggedIn && !isSyncEligible(book) && (
 					<div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
 						Stored on this device only. Too large to sync to the cloud.
+					</div>
+				)}
+				{isLoggedIn && isNotBackedUp && (
+					<div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
+						Not backed up: not enough cloud storage, so this book stays on this device only.
 					</div>
 				)}
 				{tags.length > 0 && (

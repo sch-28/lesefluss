@@ -95,18 +95,26 @@ export function BookBuddyRead({
 
 export const BUDDY_READ_BLOCKER_TEXT: Record<ShareBlocker, string> = {
 	local_only: "This book is stored on this device only, so friends can't get a copy of it.",
+	quota_full:
+		"Not enough cloud storage, so this book isn't backed up and friends can't get a copy. Delete books that are backed up to make room (Settings > Cloud sync).",
 	not_synced: "This book hasn't reached the cloud yet. Sync first, then start a buddy read.",
 	series: "Web-serial chapters can't be read together.",
 	checking: "Checking whether this book is in the cloud…",
 };
 
-/** Why this book cannot be shared or read together yet; null when it can. `serverContentIds` is undefined while loading. */
+/**
+ * Why this book cannot be shared or read together yet; null when it can.
+ * `serverContentIds` is undefined while loading. `notBackedUpIds` are books the
+ * server refused for lack of storage: unlike `not_synced`, the next sync will not fix them.
+ */
 export function shareBlockerFor(
 	book: Pick<Book, "id" | "seriesId"> & Parameters<typeof isSyncEligible>[0],
 	serverContentIds: Set<string> | undefined,
+	notBackedUpIds: ReadonlySet<string> = new Set(),
 ): ShareBlocker | null {
 	if (book.seriesId) return "series";
 	if (!isSyncEligible(book)) return "local_only";
+	if (notBackedUpIds.has(book.id)) return "quota_full";
 	if (serverContentIds === undefined) return "checking";
 	return serverContentIds.has(book.id) ? null : "not_synced";
 }

@@ -150,6 +150,7 @@ describe.skipIf(!hasDb)("content quota (integration)", () => {
 			error: "Storage quota exceeded",
 			code: "content_quota_exceeded",
 			rejectedContentBookIds: [id],
+			rejectedContentBytes: { [id]: 101 },
 			usedBytes: 900,
 			quotaBytes: QUOTA,
 		});
@@ -180,7 +181,11 @@ describe.skipIf(!hasDb)("content quota (integration)", () => {
 		]);
 
 		expect(res.status).toBe(413);
-		await expect(res.json()).resolves.toMatchObject({ rejectedContentBookIds: [stored] });
+		// Only the growth counts: 50 more content, 40 more cover, 5 more chapters.
+		await expect(res.json()).resolves.toMatchObject({
+			rejectedContentBookIds: [stored],
+			rejectedContentBytes: { [stored]: 95 },
+		});
 		const after = await row(owner, stored);
 		expect(after?.content).toBe("x".repeat(900));
 		expect(after?.coverImage).toBe("c".repeat(10));

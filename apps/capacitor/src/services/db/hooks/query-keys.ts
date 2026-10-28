@@ -188,8 +188,11 @@ export const serialPreviewKeys = {
 };
 
 export const syncKeys = {
+	all: ["sync"] as const,
 	/** Book ids the server holds content for, from the local cache the pull maintains. */
 	serverContentIds: ["sync", "server-content-ids"] as const,
+	/** Cloud storage use and the books refused for lack of it. */
+	cloudStorage: ["sync", "cloud-storage"] as const,
 };
 
 export const socialKeys = {

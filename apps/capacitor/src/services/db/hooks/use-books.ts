@@ -20,6 +20,7 @@ import {
 	serialImportMutationKey,
 	serialKeys,
 	statsKeys,
+	syncKeys,
 } from "./query-keys";
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
@@ -258,6 +259,8 @@ function useDeleteBook() {
 			// `deleteBook` also removes the book's glossary entries, and those live
 			// under a separate key root that `bookKeys.all` does not reach.
 			qc.invalidateQueries({ queryKey: glossaryKeys.all });
+			// A deleted book leaves the not-backed-up list.
+			qc.invalidateQueries({ queryKey: syncKeys.cloudStorage });
 			scheduleSyncPush();
 			toast.success(`Removed "${book.title}"`);
 		},

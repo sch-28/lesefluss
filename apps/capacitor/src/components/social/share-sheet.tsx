@@ -16,10 +16,12 @@ import { useRelationships } from "@/services/social/friends";
 import { shareErrorReason, shareFailureMessage, useCreateShare } from "@/services/social/shares";
 
 /** Why a book cannot be shared right now, decided by the caller from local state; `checking` while that is still being read. */
-export type ShareBlocker = "local_only" | "not_synced" | "series" | "checking";
+export type ShareBlocker = "local_only" | "quota_full" | "not_synced" | "series" | "checking";
 
 const BLOCKER_TEXT: Record<ShareBlocker, string> = {
 	local_only: "This book is stored on this device only, so it can't be shared.",
+	quota_full:
+		"Not enough cloud storage, so this book isn't backed up and can't be shared. Delete books that are backed up to make room (Settings > Cloud sync).",
 	not_synced: "This book hasn't reached the cloud yet. Sync first, then share.",
 	series: "Web-serial chapters can't be shared.",
 	checking: "Checking whether this book is in the cloud…",

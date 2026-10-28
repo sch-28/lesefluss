@@ -23,15 +23,19 @@ import {
 	consumeAuthLoginHandoffState,
 	finalizeVerifiedAuthLoginHandoff,
 	fullSync,
+	getCloudStorage,
 	getLastSynced,
 	getToken,
 	getUserEmail,
 	IS_WEB_BUILD,
 	NATIVE_SYNC_ENABLED,
+	notBackedUpMessage,
+	onBooksNotBackedUp,
 	onSessionLost,
 	signInWithPassword as requestPasswordSignIn,
 	retryPendingSignOut,
 	SYNC_ENABLED,
+	syncedWithBlockedMessage,
 	signOut as syncSignOut,
 } from "../services/sync";
 import { log } from "../utils/log";
@@ -59,6 +63,17 @@ interface SyncContextType {
 }
 
 const SyncContext = createContext<SyncContextType | null>(null);
+
+// Imported on demand: the router's route tree imports this provider's consumers.
+function openCloudSyncSettings(): void {
+	void import("../router").then(({ router }) => router.navigate({ to: "/tabs/settings/sync" }));
+}
+
+const CLOUD_STORAGE_TOAST = {
+	action: { label: "View storage", onClick: openCloudSyncSettings },
+	// Names books the user may need to act on; the default dismisses too soon to read.
+	duration: 10_000,
+};
 
 export function useSyncContext(): SyncContextType {
 	const ctx = useContext(SyncContext);
@@ -428,14 +443,26 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 		setSyncError(null);
 	}, []);
 
+	useEffect(
+		() =>
+			onBooksNotBackedUp((books) => toast.warning(notBackedUpMessage(books), CLOUD_STORAGE_TOAST)),
+		[],
+	);
+
 	const syncNow = useCallback(async () => {
 		setSyncError(null);
 		setIsSyncing(true);
 		try {
-			await fullSync();
+			await fullSync({ reportNotBackedUp: false });
 			invalidateAfterSync();
 			setLastSynced(Date.now());
-			toast.success("Synced");
+			// Asked for by the user, so every blocked book counts, not only new ones.
+			const { notBackedUp } = await getCloudStorage();
+			if (notBackedUp.length > 0) {
+				toast.warning(syncedWithBlockedMessage(notBackedUp.length), CLOUD_STORAGE_TOAST);
+			} else {
+				toast.success("Synced");
+			}
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : "Sync failed";
 			setSyncError(msg);
