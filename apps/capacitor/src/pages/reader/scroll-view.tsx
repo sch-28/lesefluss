@@ -5,6 +5,7 @@
  * state (activeWord, progressWord, lastWordRef, savePosition) lives in
  * the parent and is plumbed in via callbacks. Word units throughout.
  */
+import { isMotionReduced } from "@lesefluss/ui/use-prefers-reduced-motion";
 import type React from "react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { VListHandle } from "virtua";
@@ -22,7 +23,6 @@ import {
 import { useElementWidth } from "../../hooks/use-element-width";
 import type { ReaderGoalDivider } from "./goal-divider";
 import Paragraph, {
-	cancelAnyActiveLongPress,
 	type GlossaryRangeProp,
 	type HighlightRange,
 	type LinkRangeProp,
@@ -42,6 +42,7 @@ import { useAnchorHold } from "./use-anchor-hold";
 import { useFontLoadCount } from "./use-font-load-count";
 import { useValueWhenIdle } from "./use-value-when-idle";
 import type { JumpOptions, ReaderViewHandle } from "./view-types";
+import { cancelAnyActiveLongPress, useWordGestures } from "./word-gestures";
 
 // ─── Module-level singletons ─────────────────────────────────────────────────
 
@@ -217,8 +218,13 @@ const SMOOTH_SCROLL_MS = 250;
 // Covers a key or button scroll up to its settle: the scroll end comes 150 ms after it.
 const READER_SCROLL_WINDOW_MS = 1000;
 
-/** VList only exposes scrollBy(offset), no behavior arg, so ease out by hand. Returns a cancel. */
+/** VList only exposes scrollBy(offset), no behavior arg, so ease out by hand. Returns a cancel.
+ *  Jumps at once when motion is reduced (OS setting or e-ink mode). */
 function smoothScrollBy(listHandle: VListHandle, delta: number): () => void {
+	if (isMotionReduced()) {
+		listHandle.scrollBy(delta);
+		return () => {};
+	}
 	const startTime = performance.now();
 	let applied = 0;
 	let rafId = 0;
@@ -389,6 +395,12 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 ) {
 	const listRef = useRef<VListHandle>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
+	useWordGestures(containerRef, {
+		onWordTap,
+		onWordLongPress,
+		onWordLongPressDrag,
+		onWordMouseDragStart,
+	});
 
 	// Whether the initial scroll-to-position has happened
 	const didInitialScrollRef = useRef(false);
@@ -693,12 +705,7 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 				// flags would swallow the reader's next real scroll.
 				jumpScrolledRef.current = false;
 				const delta = top - box.height * FOLLOW_LANDING;
-				if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-					list.scrollBy(delta);
-					jumpCleanupRef.current = null;
-				} else {
-					jumpCleanupRef.current = smoothScrollBy(list, delta);
-				}
+				jumpCleanupRef.current = smoothScrollBy(list, delta);
 				clearIfJumpDidNotScroll();
 				return false;
 			},
@@ -813,13 +820,35 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 
 	// ── Show progress bar on any tap in the reading area ─────────────────
 	// Native listener needed because VList's internal scroll container doesn't
-	// propagate clicks through React's synthetic event system.
+	// propagate clicks through React's synthetic event system. On document, not
+	// the wrapper: a click listener would make TalkBack read the whole text under
+	// it as one node (see word-gestures.ts).
+	// Like a word tap, it needs a press of its own before the click: an
+	// accessibility activation (no pointerdown) leaves the chrome alone.
 	useEffect(() => {
 		// The full-width wrapper, so a click beside the text column counts too.
-		const el = wrapperRef.current;
-		if (!el) return;
-		el.addEventListener("click", onTap);
-		return () => el.removeEventListener("click", onTap);
+		const isInside = (target: EventTarget | null) =>
+			target instanceof Node && !!wrapperRef.current?.contains(target);
+		let isPressed = false;
+		const onPointerDown = (e: PointerEvent) => {
+			isPressed = isInside(e.target);
+		};
+		const onPointerCancel = () => {
+			isPressed = false;
+		};
+		const onDocumentClick = (e: MouseEvent) => {
+			if (!isPressed || !isInside(e.target)) return;
+			isPressed = false;
+			onTap(e);
+		};
+		document.addEventListener("pointerdown", onPointerDown);
+		document.addEventListener("pointercancel", onPointerCancel);
+		document.addEventListener("click", onDocumentClick);
+		return () => {
+			document.removeEventListener("pointerdown", onPointerDown);
+			document.removeEventListener("pointercancel", onPointerCancel);
+			document.removeEventListener("click", onDocumentClick);
+		};
 	}, [onTap]);
 
 	return (
@@ -866,10 +895,6 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 							text={text}
 							entries={entriesByParagraph[i] ?? EMPTY_ENTRIES}
 							activeWord={activeWord}
-							onWordTap={onWordTap}
-							onWordLongPress={onWordLongPress}
-							onWordLongPressDrag={onWordLongPressDrag}
-							onWordMouseDragStart={onWordMouseDragStart}
 							highlights={highlightsByParagraph?.get(i)}
 							glossaryRanges={glossaryByParagraph?.get(i)}
 							links={linksByParagraph?.get(i)}

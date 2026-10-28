@@ -23,7 +23,7 @@ interface Props {
 	onWpmChange: (wpm: number) => void;
 }
 
-const stop = (e: React.MouseEvent | React.PointerEvent) => e.stopPropagation();
+const stop = (e: React.PointerEvent) => e.stopPropagation();
 
 const RsvpControls: React.FC<Props> = ({
 	wpm,
@@ -35,7 +35,9 @@ const RsvpControls: React.FC<Props> = ({
 	onWpmChange,
 }) => {
 	return (
-		<div className="rsvp-controls" onClick={stop} onPointerDown={stop}>
+		// No onClick here: React would give the div a native onclick, making it a
+		// clickable node for screen readers. The display ignores clicks from inside.
+		<div className="rsvp-controls" onPointerDown={stop}>
 			<div className="rsvp-controls-row">
 				<Button
 					variant="ghost"

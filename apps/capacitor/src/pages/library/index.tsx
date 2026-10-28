@@ -340,7 +340,11 @@ const Library: React.FC = () => {
 			{/* Import progress. Determinate when we have a %, otherwise an animated stripe for sources without progress (URL, clipboard, share-intent). */}
 			{isGlobalImporting &&
 				(imports.progress > 0 ? (
-					<Progress value={imports.progress} className="h-0.5 rounded-none" />
+					<Progress
+						value={imports.progress}
+						className="h-0.5 rounded-none"
+						aria-label="Importing"
+					/>
 				) : (
 					<div className="h-0.5 overflow-hidden bg-muted">
 						<div className="h-full w-1/3 animate-[indeterminate-progress_1.2s_ease-in-out_infinite] bg-primary" />
@@ -353,6 +357,7 @@ const Library: React.FC = () => {
 				<Progress
 					value={(selection.progress.done / selection.progress.total) * 100}
 					className="h-0.5 rounded-none"
+					aria-label="Applying to selected books"
 				/>
 			)}
 

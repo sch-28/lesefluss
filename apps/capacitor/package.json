@@ -24,6 +24,7 @@
 		"e2e:ui": "playwright test --ui",
 		"e2e:lowfps": "E2E_LOWFPS=1 E2E_WORKERS=2 playwright test --grep @lowfps",
 		"e2e:app": "playwright test -c playwright.app.config.ts",
+		"e2e:perf": "playwright test -c playwright.perf.config.ts",
 		"test:live": "vitest run --config vitest.live.config.ts",
 		"ionic:serve": "vite --host 0.0.0.0 --port 3000",
 		"ionic:build": "vite build",

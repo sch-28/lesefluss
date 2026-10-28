@@ -11,7 +11,7 @@ test("readerActiveWordUnderline toggle adds/removes .word-active on the active s
 	// Tap a word to make it the active word. handleWordTap → setActiveWord +
 	// savePosition. Pick "opening" in ch1 — definitely visible.
 	const word = page.locator("span[data-word]", { hasText: "opening" }).first();
-	await word.dispatchEvent("click");
+	await word.click({ force: true });
 	await expect(word).toHaveClass(/word-active/);
 
 	// Open the appearance popover and toggle the underline off. Scope the

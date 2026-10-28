@@ -75,7 +75,7 @@ const BookCard: React.FC<BookCardProps> = ({
 
 			{started && (
 				<div className="mt-1 flex items-center gap-1.5">
-					<Progress value={progress} className="h-1 flex-1" />
+					<Progress value={progress} className="h-1 flex-1" aria-label="Reading progress" />
 					<span className="font-medium text-[0.7rem] text-muted-foreground tabular-nums">
 						{progress}%
 					</span>

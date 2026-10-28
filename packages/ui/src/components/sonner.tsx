@@ -1,3 +1,4 @@
+import { CircleCheck, CircleX, Info, Loader2, TriangleAlert } from "lucide-react";
 import type * as React from "react";
 import { Toaster as SonnerToaster, toast } from "sonner";
 
@@ -18,6 +19,14 @@ function Toaster({ ...props }: ToasterProps) {
 					"--mobile-width": "min(92vw, 380px)",
 				} as React.CSSProperties
 			}
+			// Sonner's own icons are unlabelled SVG images to screen readers; lucide's are aria-hidden.
+			icons={{
+				success: <CircleCheck className="size-4" />,
+				error: <CircleX className="size-4" />,
+				info: <Info className="size-4" />,
+				warning: <TriangleAlert className="size-4" />,
+				loading: <Loader2 className="size-4 animate-spin" />,
+			}}
 			toastOptions={{
 				classNames: {
 					toast:

@@ -46,6 +46,7 @@ On the web, the SQLite database lives in IndexedDB through jeep-sqlite, which re
 
 - **`pnpm e2e`** (`playwright.config.ts`, `e2e/`): the dev server at `/`, no backend.
 - **`pnpm e2e:app`** (`playwright.app.config.ts`, `e2e-app/`): the web build as users get it at `/app`, against the production `apps/web` server on port 3417.
+- **`pnpm e2e:perf`** (`playwright.perf.config.ts`, `e2e/perf/`): reader render cost, a baseline production build against `dist/`, both served by `vite preview` (ports 3511/3512) and alternated. `scripts/perf-baseline.sh [ref]` builds the baseline into `.perf/` (the working tree with the reader's render-path files taken from `ref`); `node e2e/perf/compare.mjs` prints the medians.
   - `e2e-app/support/serve.mjs` does the setup. It creates a throwaway Postgres database (`lesefluss_e2e_app_<timestamp>`), runs `drizzle-kit migrate` and seeds verified test accounts (`e2e-app/support/users.mjs`). It then builds the embed and the website the way the Dockerfile does and runs `.output/server/index.mjs`. The database is dropped once the server stops, and leftovers from killed runs are dropped at the next start.
   - The `setup` project signs every account in through the real `/login` page, saves the cookie sessions in `e2e-app/.auth/` and seeds friendships and a buddy read over the HTTP API.
   - **Needs:** a local Postgres, taken from `E2E_APP_PG_URL` or the server in `apps/web/.env`'s `DATABASE_URL`; only a new database on it is touched.
@@ -71,7 +72,9 @@ src/
       transfer-modal/
     reader/
       index.tsx           # BookReader page - VList, scroll/tap/selection handlers, position sync, font size controls
-      paragraph.tsx       # React.memo paragraph component - word spans, heading detection, highlight/selection rendering, utf8ByteLength()
+      paragraph.tsx       # React.memo paragraph component - word spans (no handlers), heading detection, highlight/selection rendering
+      word-gestures.ts    # Word taps and long presses from document-level listeners, routed by data-word (keeps paragraphs plain text to TalkBack)
+      reader-announcer.tsx    # The reader's one polite live region (announce())
       selection-toolbar.tsx   # Floating two-step toolbar for selections and highlights (actions → colours/note/delete)
       toolbar-position.ts     # Pure toolbar placement: above the selection, else below, else pinned; clamped to screen
       word-at-point.ts        # Word index under a viewport point (used by long-press drag, handle drag, mouse drag)
@@ -267,7 +270,7 @@ save.mutate({ wpm: 400 });
 
 Full-screen virtualized scroll reader split across three files:
 - `index.tsx` - page shell, data loading, scroll/tap/selection handlers, position sync, progress bar, TOC/highlights modals, theme
-- `paragraph.tsx` - `React.memo` component for a single paragraph; word spans, heading detection, highlight/selection rendering
+- `paragraph.tsx` - `React.memo` component for a single paragraph; word spans, heading detection, highlight/selection rendering. The spans carry no handlers: `word-gestures.ts` routes taps and long presses from document by `data-word`, and only a click after its own pointerdown is a tap (a TalkBack activation is not)
 - `selection-toolbar.tsx` - floating toolbar for a selection or a highlight; two steps (see Highlights & annotations)
 - `use-highlight-selection.ts` - selection state machine, handle drags, toolbar positioning (`toolbar-position.ts`), highlight saves
 - `highlights-list-modal.tsx` - bottom-sheet listing all book highlights ordered by position; tap to jump
@@ -314,11 +317,9 @@ chapters: Chapter[]        // parsed from contentRow.chapters JSON; empty for TX
 
 ### Reading themes
 
-Two themes stored in `localStorage` under `reader_theme`:
-- **`dark`** (default) - `#1a1a1a` background, `#e4e4e4` text
-- **`light`** - `#ffffff` background, `#111111` text
+Four themes, stored in settings as `readerTheme` (synced): `dark` (default), `sepia`, `light` and `high-contrast` (white on black, yellow accents). `ThemeProvider` (`contexts/theme-context.tsx`) puts the theme's classes on `<html>` and `<body>`, and `index.html` repeats that from a localStorage cache for the first paint. High contrast counts as dark: `themeClasses()` gives it the class pair `dark high-contrast`, so every Tailwind `dark:` variant and `body.dark` rule applies, and `isDarkTheme()` covers chart branches. E-ink mode renders `light` without changing the stored theme. A theme unknown to this build falls back to `dark` (`storedThemeFor`).
 
-Applied as a `reader-theme-{name}` class on `IonPage`. Only affects the reader - Library and Settings stay monochrome.
+The reader and its sheets carry `reader-theme-{name}`, which sets the `--reader-*` variables in `theme/monochrome.css`; app tokens for high contrast are `.dark.high-contrast` in `theme/variables.css`. Themes change colours only, never font weight, size or spacing: page mode's layout cache does not key on the theme, so a metric change would leave pagination stale. High contrast's extra cues (highlight underlines, the spoken word's underline, glossary rings) are box-shadows and text decorations for that reason. In high contrast, `focalLetterColorFor()` lightens the red and blue RSVP focal presets; the stored colour is unchanged.
 
 ### Progress bar
 
@@ -342,7 +343,7 @@ Long-pressing a highlighted word (or tapping it a second time in scroll mode) se
 - Overlapping highlights allowed; most-recently-created color wins visually
 - Deleting a book cascades to its highlights (`deleteHighlightsByBook` called in `deleteBook`)
 - `highlightsByParagraph: Map<index, HighlightRange[]>` memoized in the reader
-- Handles use `touch-action: none`; during a long-press drag `paragraph.tsx` blocks `touchmove` so the page doesn't scroll, and page mode ignores the drag instead of swiping
+- Handles use `touch-action: none`; during a long-press drag `word-gestures.ts` blocks `touchmove` so the page doesn't scroll, and page mode ignores the drag instead of swiping
 
 ### Dictionary lookup
 
@@ -380,9 +381,9 @@ Full-snapshot sync with the web server. Shared Zod schemas and types in `@lesefl
 
 **Concurrency:** `withSyncLock()` uses a promise-chain queue to prevent concurrent pull/push from racing.
 
-**What syncs:** books (metadata, position, and full content/cover/chapters for cross-device restore - content only pushed once per book), settings (syncable fields only, not device-specific like BLE/brightness), highlights (server tombstones deletions).
+**What syncs:** books (metadata, position, and full content/cover/chapters for cross-device restore - content only pushed once per book), settings (syncable fields only, not device-specific like BLE/brightness), highlights and glossary entries (server tombstones deletions), reading sessions and reading goals (only while `syncStats` is on). Sessions push incrementally against a watermark, so a deletion never travels as an omission: `/api/sync/delete-session` and `/api/sync/wipe-sessions` tombstone server rows, and each pull sends `sessionTombstonesSince` and gets back the ids deleted since (`deletedSessionIds` + `deletedSessionIdsAsOf`), which it hard-deletes locally. A push never revives a tombstoned session. When the cloud storage quota refuses book content (413), the book is kept on a local block (`services/sync/content-quota.ts`) with its size and not re-uploaded until a pull reports enough free space for it; a background push that refuses books the user has not been told about raises one warning toast naming them, while a manual "Sync now" reports every still-blocked book. Settings → Cloud Sync shows usage and the not-backed-up books, and book detail marks them.
 
-**UI:** Settings → Cloud Sync sub-page (`settings/sync.tsx`). Sign in/up form when logged out; email, last synced, sync now, sign out when logged in.
+**UI:** Settings → Cloud Sync sub-page (`settings/sync.tsx`). Sign in/up form when logged out; email, last synced, sync now, cloud storage usage with the not-backed-up books, sign out when logged in.
 
 ## Conditional CSS Classes
 

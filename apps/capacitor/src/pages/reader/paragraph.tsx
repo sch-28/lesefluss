@@ -9,16 +9,17 @@
  *
  * Headings (lines prefixed with #) are rendered as styled block elements
  * without per-word spans - they are not tappable reading positions.
+ *
+ * The spans carry no handlers: word-gestures.ts routes taps and long presses
+ * by `data-word` from document, which keeps paragraphs plain text to TalkBack.
  */
 
 import type { WordPosition } from "@lesefluss/core";
 import type React from "react";
 import { memo } from "react";
 import { GoalDivider, type GoalDividerProp } from "./goal-divider";
-import { LONG_PRESS_MS } from "./long-press";
 import { renderFigures } from "./reader-figure";
 import type { ReaderFigureData } from "./reader-figures";
-import { wordIndexAt } from "./word-at-point";
 
 export function getHeadingLevel(text: string): number {
 	const m = text.match(/^(#{1,6}) /);
@@ -67,11 +68,6 @@ export interface ParagraphProps {
 	text: string;
 	entries: readonly ParagraphWordEntry[];
 	activeWord: number;
-	onWordTap: (wordIdx: number, wordText: string) => void;
-	onWordLongPress?: (wordIdx: number) => void;
-	/** Finger still down after a long press, now over `wordIdx`. */
-	onWordLongPressDrag?: (wordIdx: number) => void;
-	onWordMouseDragStart?: (wordIdx: number, event: PointerEvent) => void;
 	highlights?: HighlightRange[];
 	glossaryRanges?: GlossaryRangeProp[];
 	links?: LinkRangeProp[];
@@ -88,6 +84,8 @@ export interface ParagraphProps {
 	discussion?: { count: number; onTap: () => void };
 	/** Today's reading-goal target ends in this paragraph. */
 	goalDivider?: GoalDividerProp;
+	/** In a page-mode chunk pre-mounted off screen: its controls leave the focus order. */
+	isOffscreen?: boolean;
 }
 
 function withLeading(
@@ -103,24 +101,6 @@ function withLeading(
 			{body}
 		</>
 	);
-}
-
-export { LONG_PRESS_MS } from "./long-press";
-
-// Module-level: at most one long-press timer is active at a time.
-let _cancelActiveLongPress: (() => void) | null = null;
-
-export function cancelAnyActiveLongPress(): void {
-	_cancelActiveLongPress?.();
-	_cancelActiveLongPress = null;
-}
-
-// Pointer whose long press fired and is still down, so gesture handlers
-// elsewhere (page-view swipes) can yield to the selection drag.
-let _longPressPointerId: number | null = null;
-
-export function hasLongPressFiredFor(pointerId: number): boolean {
-	return _longPressPointerId === pointerId;
 }
 
 function wordInRange(wIdx: number, s: number, e: number): boolean {
@@ -147,10 +127,6 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		text,
 		entries,
 		activeWord,
-		onWordTap,
-		onWordLongPress,
-		onWordLongPressDrag,
-		onWordMouseDragStart,
 		highlights,
 		glossaryRanges,
 		links,
@@ -160,6 +136,7 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		figures,
 		discussion,
 		goalDivider,
+		isOffscreen,
 	}) => {
 		const headingLevel = getHeadingLevel(text);
 
@@ -227,83 +204,6 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 				}
 			}
 
-			const handlePointerDown =
-				onWordLongPress || onWordMouseDragStart
-					? (ev: React.PointerEvent) => {
-							const pointerType = ev.pointerType;
-							if (pointerType === "mouse") ev.preventDefault();
-							let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-							let hasLongPressFired = false;
-							const startX = ev.clientX;
-							const startY = ev.clientY;
-							// Once the long press fires, the finger extends the selection,
-							// so the page must not scroll underneath it.
-							const blockScroll = (te: TouchEvent) => {
-								if (hasLongPressFired) te.preventDefault();
-							};
-							const cleanup = () => {
-								if (longPressTimer) {
-									clearTimeout(longPressTimer);
-									longPressTimer = null;
-								}
-								_cancelActiveLongPress = null;
-								if (_longPressPointerId === ev.pointerId) _longPressPointerId = null;
-								document.removeEventListener("pointermove", onMove);
-								document.removeEventListener("pointerup", cleanup);
-								document.removeEventListener("pointercancel", cleanup);
-								document.removeEventListener("touchmove", blockScroll);
-							};
-							const onMove = (me: PointerEvent) => {
-								if (hasLongPressFired) {
-									const idx = wordIndexAt(me.clientX, me.clientY);
-									if (idx !== null) onWordLongPressDrag?.(idx);
-									return;
-								}
-								const dx = Math.abs(me.clientX - startX);
-								const dy = Math.abs(me.clientY - startY);
-								if (dx > 8 || dy > 8) {
-									if (pointerType === "mouse" && onWordMouseDragStart) {
-										cleanup();
-										onWordMouseDragStart(wIdx, me);
-									} else {
-										cleanup();
-									}
-								}
-							};
-							if (pointerType !== "mouse" && onWordLongPress) {
-								_cancelActiveLongPress = cleanup;
-								document.addEventListener("touchmove", blockScroll, { passive: false });
-								longPressTimer = setTimeout(() => {
-									_cancelActiveLongPress = null;
-									longPressTimer = null;
-									hasLongPressFired = true;
-									_longPressPointerId = ev.pointerId;
-									onWordLongPress(wIdx);
-									// Swallow the trailing click from the same pointer
-									// sequence so handleWordTap doesn't cancel the just-
-									// started selection. Android WebView sends no such click,
-									// so disarm on the next pointerdown or it eats a real tap.
-									const swallow = (ce: MouseEvent) => {
-										ce.stopPropagation();
-										ce.preventDefault();
-									};
-									window.addEventListener("click", swallow, {
-										once: true,
-										capture: true,
-									});
-									window.addEventListener(
-										"pointerdown",
-										() => window.removeEventListener("click", swallow, true),
-										{ once: true, capture: true },
-									);
-								}, LONG_PRESS_MS);
-							}
-							document.addEventListener("pointermove", onMove);
-							document.addEventListener("pointerup", cleanup);
-							document.addEventListener("pointercancel", cleanup);
-						}
-					: undefined;
-
 			let wordChildren: React.ReactNode = wordText;
 			if (glossaryAvatar) {
 				const matchIdx = wordText.toLowerCase().indexOf(glossaryAvatar.label.toLowerCase());
@@ -329,8 +229,6 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 					key={`w${k}`}
 					data-word={wIdx}
 					className={wordClasses.length > 0 ? wordClasses.join(" ") : undefined}
-					onClick={() => onWordTap(wIdx, wordText)}
-					onPointerDown={handlePointerDown}
 				>
 					{wordChildren}
 				</span>
@@ -382,11 +280,16 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			}
 		}
 
+		const commentsLabel = discussion?.count === 1 ? "1 comment" : `${discussion?.count} comments`;
+		// The visible marker sits inline in the text but stays out of the a11y tree:
+		// Android reads a paragraph as one node only when all its children are text.
+		// Screen readers and keyboards get the sibling button after the paragraph.
 		const marker = discussion ? (
 			<button
 				type="button"
 				className="reader-discussion-marker"
-				aria-label={discussion.count === 1 ? "1 comment" : `${discussion.count} comments`}
+				aria-hidden="true"
+				tabIndex={-1}
 				// Swallowed here so the tap opens the thread instead of moving the reader.
 				onPointerDown={(e) => e.stopPropagation()}
 				onPointerUp={(e) => e.stopPropagation()}
@@ -396,6 +299,16 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 				}}
 			>
 				💬 {discussion.count}
+			</button>
+		) : null;
+		const accessibleMarker = discussion ? (
+			<button
+				type="button"
+				className="reader-discussion-sr sr-only"
+				tabIndex={isOffscreen ? -1 : undefined}
+				onClick={discussion.onTap}
+			>
+				{commentsLabel}
 			</button>
 		) : null;
 
@@ -408,11 +321,14 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 			return withLeading(
 				figures,
 				chapterHeading,
-				<p className={paragraphClass}>
-					{text}
-					{marker}
-					{divider}
-				</p>,
+				<>
+					<p className={paragraphClass}>
+						{text}
+						{marker}
+						{divider}
+					</p>
+					{accessibleMarker}
+				</>,
 			);
 		}
 
@@ -424,11 +340,14 @@ const Paragraph: React.FC<ParagraphProps> = memo(
 		return withLeading(
 			figures,
 			chapterHeading,
-			<p className={paragraphClass}>
-				{children}
-				{marker}
-				{divider}
-			</p>,
+			<>
+				<p className={paragraphClass}>
+					{children}
+					{marker}
+					{divider}
+				</p>
+				{accessibleMarker}
+			</>,
 		);
 	},
 );

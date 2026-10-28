@@ -60,15 +60,14 @@ async function mockDictionary(
 
 /**
  * Word tap is two-stage: the first tap makes the word active and saves the
- * position, the second opens the dictionary. `dispatchEvent` mirrors the
- * reader page object's glossary helper — it bypasses the long-press
- * preventDefault dance and still reaches React's delegated onClick.
+ * position, the second opens the dictionary. Real presses: a click with no
+ * pointerdown is an accessibility activation, which the reader ignores.
  */
 async function lookUpWord(page: Page, text: string) {
 	const span = reader.wordSpan(page, text);
-	await span.dispatchEvent("click");
+	await span.click({ force: true });
 	await expect(span).toHaveClass(/word-active/);
-	await span.dispatchEvent("click");
+	await span.click({ force: true });
 }
 
 const drawer = (page: Page) => page.getByRole("dialog");

@@ -36,7 +36,7 @@ interface Props {
 	onReadFromView: () => void;
 }
 
-const stopPropagation = (e: React.MouseEvent | React.PointerEvent) => e.stopPropagation();
+const stopPropagation = (e: React.PointerEvent) => e.stopPropagation();
 
 export function ReadAloudControls({
 	status,
@@ -56,7 +56,8 @@ export function ReadAloudControls({
 	const isPlaying = status === "playing";
 	const sleepLabel = useSleepLabel(sleepTimer);
 	return (
-		<div className="read-aloud-controls" onClick={stopPropagation} onPointerDown={stopPropagation}>
+		// No onClick: React would give the div a native onclick, a fake clickable node.
+		<div className="read-aloud-controls" onPointerDown={stopPropagation}>
 			{!isFollowing && (
 				<fieldset className="read-aloud-detached" aria-label="Not following the voice">
 					<button type="button" onClick={onBackToVoice}>
@@ -110,7 +111,7 @@ export function ReadAloudControls({
 				>
 					−
 				</button>
-				<span className="read-aloud-wpm">
+				<span className="read-aloud-wpm" aria-live="polite">
 					<span className="rsvp-wpm-value">{wpm}</span>
 					<span className="rsvp-wpm-label">
 						{measuredWpm !== null && Math.abs(measuredWpm - wpm) >= WPM_STEP

@@ -1,5 +1,6 @@
 import { cn } from "@lesefluss/ui/utils";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { announce } from "./reader-announcer";
 
 export type GoalDividerProp = { label: string; passed: boolean };
 export type ReaderGoalDivider = { paragraphIndex: number; divider: GoalDividerProp };
@@ -44,29 +45,27 @@ export function GoalDivider({ label, passed }: GoalDividerProp) {
 		return () => observer.disconnect();
 	}, []);
 	const celebrating = passed && celebrate;
+	useEffect(() => {
+		if (celebrating) announce("Today's target met");
+	}, [celebrating]);
 	return (
-		<>
-			<span
-				ref={ref}
-				aria-hidden="true"
-				data-testid="goal-divider"
-				data-passed={passed}
-				data-celebrate={celebrating}
-				className={cn(
-					"reader-goal-divider",
-					passed && "reader-goal-divider--passed",
-					celebrating && "reader-goal-divider--celebrate",
-				)}
-			>
-				<span className="reader-goal-divider-line" />
-				<span className="reader-goal-divider-label">
-					{passed && "✓ "}today {label}
-				</span>
-				<span className="reader-goal-divider-line" />
+		<span
+			ref={ref}
+			aria-hidden="true"
+			data-testid="goal-divider"
+			data-passed={passed}
+			data-celebrate={celebrating}
+			className={cn(
+				"reader-goal-divider",
+				passed && "reader-goal-divider--passed",
+				celebrating && "reader-goal-divider--celebrate",
+			)}
+		>
+			<span className="reader-goal-divider-line" />
+			<span className="reader-goal-divider-label">
+				{passed && "✓ "}today {label}
 			</span>
-			<span role="status" aria-live="polite" className="sr-only">
-				{celebrating ? "Today's target met" : ""}
-			</span>
-		</>
+			<span className="reader-goal-divider-line" />
+		</span>
 	);
 }

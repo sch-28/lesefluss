@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { type Rendered, render } from "../../../test/render";
 import { GoalDivider } from "../goal-divider";
+import { ReaderAnnouncer } from "../reader-announcer";
 
 let view: Rendered | undefined;
 afterEach(() => {
@@ -11,12 +12,20 @@ afterEach(() => {
 const divider = (v: Rendered) => v.container.querySelector('[data-testid="goal-divider"]');
 const status = (v: Rendered) => v.container.querySelector('[role="status"]')?.textContent;
 const at = (passed: boolean, label = "4%") => (
-	<p>
-		<GoalDivider label={label} passed={passed} />
-	</p>
+	<>
+		<ReaderAnnouncer />
+		<p>
+			<GoalDivider label={label} passed={passed} />
+		</p>
+	</>
 );
 
 describe("GoalDivider", () => {
+	it("keeps its paragraph plain text: the announcement goes to the reader's live region", async () => {
+		view = await render(at(true));
+		expect(view.container.querySelector('p [role="status"]')).toBeNull();
+	});
+
 	it("celebrates and announces a pass it sees happen, once", async () => {
 		view = await render(at(false));
 		expect(divider(view)?.getAttribute("data-celebrate")).toBe("false");
