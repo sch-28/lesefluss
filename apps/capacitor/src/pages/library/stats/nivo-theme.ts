@@ -1,4 +1,4 @@
-import type { AppTheme } from "../../../contexts/theme-context";
+import { type AppTheme, isDarkTheme } from "../../../contexts/theme-context";
 
 // Loosely typed because @nivo/theming is a transitive dep we don't own. Every
 // chart accepts `theme?: PartialTheme`, which is structurally compatible.
@@ -28,7 +28,7 @@ export function buildNivoTheme(appTheme: AppTheme): PartialTheme {
 			},
 		},
 		grid: {
-			line: { stroke: border, strokeOpacity: appTheme === "dark" ? 0.3 : 0.5, strokeWidth: 1 },
+			line: { stroke: border, strokeOpacity: isDarkTheme(appTheme) ? 0.3 : 0.5, strokeWidth: 1 },
 		},
 		legends: { text: { fontSize: 12, fill: text } },
 		tooltip: {
@@ -67,6 +67,8 @@ export function getAccentStops(
 	switch (appTheme) {
 		case "dark":
 			return { from: "#c94b2a", to: "#f97316" };
+		case "high-contrast":
+			return { from: "#ffd60a", to: "#fff3a3" };
 		case "sepia":
 			return { from: "#b45309", to: "#d97706" };
 		default:

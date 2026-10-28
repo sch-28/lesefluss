@@ -123,9 +123,9 @@ Both the ESP32 firmware and the companion app (when implemented) must use the sa
 | `inverse` | bool | false | Black on white when true |
 | `ble_on` | bool | true | Enable BLE server |
 | `brightness` | 10–100 | 100 | Backlight brightness (%) |
-| `reader_theme` | dark/sepia/light | dark | Reading theme |
+| `reader_theme` | dark/sepia/light/high-contrast | dark | Reading theme |
 | `reader_font_size` | 12–28 | 17 | Reader font size (px) |
-| `reader_font_family` | sans/serif | sans | Reader font family |
+| `reader_font_family` | sans/serif/atkinson/opendyslexic/literata | sans | Reader font family |
 | `reader_line_spacing` | 1.2–2.4 | 1.8 | Reader line height multiplier |
 | `reader_margin` | 8–48 | 20 | Reader horizontal padding (px) |
 
@@ -171,7 +171,11 @@ Then touch:
      should be tunable from inside the reader)
    - Read aloud: `apps/capacitor/src/routes/tabs/settings/read-aloud.tsx`
    - ESP32 device controls: `apps/capacitor/src/routes/tabs/settings/device.tsx`
-9. **ESP32 firmware** *(device-only or device+synced)*:
+9. **A new value for an existing synced enum** (a theme, a font): the server
+   must be deployed before any client ships the value. An older server drops
+   the unknown value from the push, and the devices then stay apart until the
+   next settings edit (see TASK-205.9). Old clients must render a fallback.
+10. **ESP32 firmware** *(device-only or device+synced)*:
    - `apps/esp32/src/config.py` — add the constant + default.
    - `apps/esp32/main.py` — add the key name to `_OVERRIDE_KEYS`.
    - `apps/esp32/src/ble/handler_settings.py` — extend `_build_json()`,

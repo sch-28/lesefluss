@@ -1,7 +1,7 @@
 import { ResponsiveLine } from "@nivo/line";
 import { motion } from "framer-motion";
 import { useMemo } from "react";
-import { useTheme } from "../../../contexts/theme-context";
+import { isDarkTheme, useTheme } from "../../../contexts/theme-context";
 import { queryHooks } from "../../../services/db/hooks";
 import type { TrendGranularity, TrendPeriod } from "../../../services/stats/aggregate";
 import { summariseWpmTrend } from "../../../services/stats/summaries";
@@ -49,7 +49,7 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 		[trend.data],
 	);
 	const hasReading = points.some((p) => p.y > 0);
-	const lineColor = theme === "dark" ? COLORS.measured.dark : COLORS.measured.light;
+	const lineColor = isDarkTheme(theme) ? COLORS.measured.dark : COLORS.measured.light;
 	const chartData = useMemo(
 		() => [{ id: "Reading speed", color: lineColor, data: points }],
 		[lineColor, points],
@@ -186,7 +186,7 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 							axis: "y",
 							value: AVERAGE_READER_WPM,
 							lineStyle: {
-								stroke: theme === "dark" ? "#94a3b8" : "#64748b",
+								stroke: isDarkTheme(theme) ? "#94a3b8" : "#64748b",
 								strokeWidth: 1,
 								strokeDasharray: "4 4",
 								strokeOpacity: 0.6,

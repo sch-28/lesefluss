@@ -8,6 +8,7 @@ import ShareIntentHandler from "@/components/share-intent-handler";
 import { Toaster } from "@/components/toast";
 import WhatsNewModal from "@/components/whats-new-modal";
 import { ImportStagingProvider } from "@/contexts/import-staging-context";
+import { isDarkTheme, useTheme } from "@/contexts/theme-context";
 import { useDeepLinks } from "@/services/deep-links/use-deep-links";
 import { useEinkSuggestion } from "@/services/eink-suggestion/use-eink-suggestion";
 import { useGoalReminders } from "@/services/goal-reminders/use-goal-reminders";
@@ -23,6 +24,7 @@ const FULL_SCREEN_PREFIXES = ["/onboarding", "/tabs/reader"];
 function RootLayout() {
 	const { pathname } = useLocation();
 	const isFullScreen = FULL_SCREEN_PREFIXES.some((p) => pathname.startsWith(p));
+	const { theme } = useTheme();
 	useDeepLinks();
 	usePushNotifications();
 	useGoalReminders();
@@ -40,7 +42,7 @@ function RootLayout() {
 		<ImportStagingProvider>
 			<HardwareBack />
 			<ShareIntentHandler />
-			<Toaster />
+			<Toaster dark={isDarkTheme(theme)} />
 			<WhatsNewModal />
 			<PushOfferDialog />
 			{isFullScreen ? (

@@ -24,6 +24,7 @@ import { RowLabel, SettingsRow } from "../../components/settings/settings-row";
 import { SettingsSection } from "../../components/settings/settings-section";
 import { SliderRow } from "../../components/settings/slider-row";
 import { StepperRow } from "../../components/settings/stepper-row";
+import { focalLetterColorFor, useTheme } from "../../contexts/theme-context";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 
 const RSVP_DEFAULTS_PATCH = {
@@ -49,6 +50,7 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 	onOpenFullSettings,
 }) => {
 	const { settings, updateSetting, replaceAll, isPending } = useAutoSaveSettings();
+	const { theme } = useTheme();
 	const [advancedOpen, setAdvancedOpen] = useState(false);
 	const [resetOpen, setResetOpen] = useState(false);
 
@@ -115,7 +117,7 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 						title="Focal letter color"
 						hint={<span className="tabular-nums">{settings.focalLetterColor}</span>}
 					/>
-					<div className="flex gap-1.5">
+					<div className="ml-auto flex gap-1.5">
 						{FOCAL_LETTER_COLOR_PRESETS.map((color) => {
 							const isActive = settings.focalLetterColor.toLowerCase() === color;
 							return (
@@ -126,7 +128,8 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 										"size-6 rounded-full border-2 transition-transform",
 										isActive ? "scale-110 border-foreground" : "border-border",
 									)}
-									style={{ background: color }}
+									// What the reader shows: high contrast lightens some presets.
+									style={{ background: focalLetterColorFor(color, theme) }}
 									onClick={() => updateSetting("focalLetterColor", color as HexColor)}
 									aria-label={`Set focal letter color to ${color}`}
 								/>

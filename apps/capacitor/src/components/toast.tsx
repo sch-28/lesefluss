@@ -56,6 +56,7 @@ export function useToast() {
 	};
 }
 
-export const Toaster: React.FC = () => {
-	return <SonnerToaster richColors />;
+/** `dark` follows the app's theme, not the OS one (passed in: this module must not import the theme context, which imports it). */
+export const Toaster: React.FC<{ dark: boolean }> = ({ dark }) => {
+	return <SonnerToaster richColors theme={dark ? "dark" : "light"} />;
 };

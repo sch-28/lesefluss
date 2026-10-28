@@ -9,6 +9,7 @@
 import { calcDelay, calcOrpIndex, type RsvpSettings } from "@lesefluss/core";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { focalLetterColorFor, useTheme } from "../../contexts/theme-context";
 
 const SAMPLE =
 	"The quick brown fox jumps over the lazy dog, and then it pauses. Reading faster is a skill you practice.";
@@ -20,6 +21,7 @@ interface Props {
 }
 
 const RsvpPreview: React.FC<Props> = ({ settings }) => {
+	const { theme } = useTheme();
 	const [index, setIndex] = useState(0);
 	const [playing, setPlaying] = useState(true);
 	const accelRef = useRef(0);
@@ -64,7 +66,11 @@ const RsvpPreview: React.FC<Props> = ({ settings }) => {
 		<button
 			type="button"
 			className="rsvp-preview-card"
-			style={{ "--rsvp-focal-color": settings.focalLetterColor } as React.CSSProperties}
+			style={
+				{
+					"--rsvp-focal-color": focalLetterColorFor(settings.focalLetterColor, theme),
+				} as React.CSSProperties
+			}
 			onClick={() => setPlaying((p) => !p)}
 			aria-label={playing ? "Pause preview" : "Play preview"}
 		>

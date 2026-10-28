@@ -1,18 +1,46 @@
-import { DEFAULT_SETTINGS } from "@lesefluss/core";
+import { Capacitor } from "@capacitor/core";
+import { StatusBar, Style } from "@capacitor/status-bar";
+import { DEFAULT_SETTINGS, READER_THEMES, type ReaderTheme } from "@lesefluss/core";
 import { EINK_CLASS } from "@lesefluss/ui/use-prefers-reduced-motion";
 import { MotionConfig } from "framer-motion";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect } from "react";
 import { queryHooks } from "../services/db/hooks";
+import { log } from "../utils/log";
 
-export type AppTheme = "dark" | "sepia" | "light";
+export type AppTheme = ReaderTheme;
 
-const VALID_THEMES: AppTheme[] = ["dark", "sepia", "light"];
 const THEME_CACHE_KEY = "app-theme";
 const EINK_CACHE_KEY = "app-eink";
 
 export function isAppTheme(raw: string | undefined): raw is AppTheme {
-	return VALID_THEMES.some((t) => t === raw);
+	return READER_THEMES.some((t) => t === raw);
+}
+
+export function isDarkTheme(theme: AppTheme): boolean {
+	return theme === "dark" || theme === "high-contrast";
+}
+
+/**
+ * Focal-letter presets under 7:1 on high contrast's black (red 5.3, blue 6.3),
+ * lightened there only; the synced setting keeps the user's pick.
+ */
+const HIGH_CONTRAST_FOCAL: Record<string, string> = {
+	"#ff0000": "#ff6b6b",
+	"#448aff": "#82b1ff",
+};
+
+export function focalLetterColorFor(color: string, theme: AppTheme): string {
+	return theme === "high-contrast" ? (HIGH_CONTRAST_FOCAL[color.toLowerCase()] ?? color) : color;
+}
+
+/**
+ * The classes a theme puts on <html> and <body>; index.html mirrors this for
+ * first paint. High contrast counts as dark, so it carries `dark` too and every
+ * dark: variant, body.dark rule and chart branch applies to it.
+ */
+export function themeClasses(theme: AppTheme): string[] {
+	return theme === "high-contrast" ? ["dark", "high-contrast"] : [theme];
 }
 
 /** A theme synced from a newer app version that this build doesn't know falls back to dark. */
@@ -33,8 +61,8 @@ function applyAppearance(theme: AppTheme, appFontSize: number, isEinkMode: boole
 	// CSS (monochrome.css uses `body.dark` selectors) still fires during the
 	// migration. Drop the body class once Ionic is fully removed.
 	for (const el of [document.documentElement, document.body]) {
-		el.classList.remove(...VALID_THEMES);
-		el.classList.add(theme);
+		el.classList.remove(...READER_THEMES);
+		el.classList.add(...themeClasses(theme));
 		el.classList.toggle(EINK_CLASS, isEinkMode);
 	}
 	document.documentElement.style.fontSize = `${appFontSize}px`;
@@ -82,6 +110,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 		if (!isLoaded) return;
 		applyAppearance(theme, appFontSize, isEinkMode);
 	}, [isLoaded, theme, appFontSize, isEinkMode]);
+
+	useEffect(() => {
+		if (!isLoaded || !Capacitor.isNativePlatform()) return;
+		// Style.Dark is light icons, for a dark page under the overlaid status bar.
+		StatusBar.setStyle({ style: isDarkTheme(theme) ? Style.Dark : Style.Light }).catch((err) =>
+			log.warn("theme", "status bar style failed:", err),
+		);
+	}, [isLoaded, theme]);
 
 	return (
 		<ThemeContext.Provider value={{ theme, storedTheme, isEinkMode, setTheme }}>
