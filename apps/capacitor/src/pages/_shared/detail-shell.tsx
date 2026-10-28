@@ -170,7 +170,8 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 				</div>
 			) : (
 				<div className="mx-auto max-w-3xl px-4 pt-4 pb-12">
-					<section className="flex gap-4">
+					{/* Wraps: at a large font scale the text drops below the cover rather than squeeze. */}
+					<section className="flex flex-wrap gap-4">
 						<div className="aspect-2/3 w-28 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
 							<CoverImage
 								src={cover}
@@ -185,13 +186,13 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 								}
 							/>
 						</div>
-						<div className="flex min-w-0 flex-1 flex-col">
+						<div className="flex min-w-0 flex-[1_1_10rem] flex-col">
 							{eyebrow && (
 								<span className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">
 									{eyebrow}
 								</span>
 							)}
-							<h1 className="mt-1 font-semibold text-xl leading-tight">{title}</h1>
+							<h1 className="mt-1 break-words font-semibold text-xl leading-tight">{title}</h1>
 							{author &&
 								(onAuthorTap ? (
 									<button
