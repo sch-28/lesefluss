@@ -229,27 +229,6 @@ function toSyncError(err: unknown): unknown {
 		: err;
 }
 
-let serverGoalsCleared = false;
-
-/**
- * Goals stop being pushed while stats sync is off, so their server copy must
- * go: buddies see a standing worked out from it. Retried on each push until
- * one gets through; switching stats back on pushes the goals again in full.
- */
-async function clearServerGoalsWhileStatsOff(syncStats: boolean): Promise<void> {
-	if (syncStats) {
-		serverGoalsCleared = false;
-		return;
-	}
-	if (serverGoalsCleared) return;
-	try {
-		await syncFetch("/api/sync/wipe-goals", { method: "POST" });
-		serverGoalsCleared = true;
-	} catch (err) {
-		log("sync", `wipe-goals failed: ${err instanceof Error ? err.message : String(err)}`);
-	}
-}
-
 /**
  * Tombstone every reading session for the current user on the server, which
  * every other device then drops on its next pull. A dedicated endpoint rather
@@ -1030,9 +1009,9 @@ export async function pullSync(): Promise<Set<string>> {
 			}
 		}
 
-		// Gated with sessions: the plan is derived from them, so goals without them
-		// would show a wrong day. Absent from an older server: leave local goals alone.
-		if (localSettings.syncStats && data.readingGoals) {
+		// Goals are plans, not stats: they sync with stats sync off too.
+		// Absent from an older server: leave local goals alone.
+		if (data.readingGoals) {
 			const liveBookIds = new Set(
 				[...localBookMap.values()].filter((b) => !b.deleted).map((b) => b.id),
 			);
@@ -1266,9 +1245,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			);
 		}
 
-		const goalsForPush = settings.syncStats
-			? pushableGoals(goals, pushedBookIds)
-			: { pushable: [], rejected: 0 };
+		const goalsForPush = pushableGoals(goals, pushedBookIds);
 		if (goalsForPush.rejected > 0) {
 			log("sync", `push: dropped ${goalsForPush.rejected} malformed goal(s)`);
 		}
@@ -1286,7 +1263,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 				: [],
 			series: seriesRows.map(seriesToSync),
 			readingSessions: settings.syncStats ? sessionsForPush : [],
-			readingGoals: settings.syncStats ? goalsForPush.pushable : undefined,
+			readingGoals: goalsForPush.pushable,
 		};
 
 		// Diagnostics for the >5000 books cap — log composition so we can see what's
@@ -1317,7 +1294,6 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 				.filter((book) => unreported.has(book.id))
 				.map((book) => ({ id: book.id, title: book.title }));
 		}
-		await clearServerGoalsWhileStatsOff(settings.syncStats);
 
 		// Only after the server has accepted them: a failed push must not convince the
 		// next one that content is already stored, or that sessions were delivered.

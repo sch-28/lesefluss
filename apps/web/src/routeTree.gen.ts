@@ -42,7 +42,6 @@ import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
 import { Route as ApiSyncWipeSessionsRouteImport } from './routes/api/sync/wipe-sessions'
-import { Route as ApiSyncWipeGoalsRouteImport } from './routes/api/sync/wipe-goals'
 import { Route as ApiSyncDeleteSessionRouteImport } from './routes/api/sync/delete-session'
 import { Route as ApiSocialUnblockRouteImport } from './routes/api/social/unblock'
 import { Route as ApiSocialSharesForBookRouteImport } from './routes/api/social/shares-for-book'
@@ -267,11 +266,6 @@ const AuthenticatedAccountIndexRoute =
 const ApiSyncWipeSessionsRoute = ApiSyncWipeSessionsRouteImport.update({
   id: '/wipe-sessions',
   path: '/wipe-sessions',
-  getParentRoute: () => ApiSyncRoute,
-} as any)
-const ApiSyncWipeGoalsRoute = ApiSyncWipeGoalsRouteImport.update({
-  id: '/wipe-goals',
-  path: '/wipe-goals',
   getParentRoute: () => ApiSyncRoute,
 } as any)
 const ApiSyncDeleteSessionRoute = ApiSyncDeleteSessionRouteImport.update({
@@ -672,7 +666,6 @@ export interface FileRoutesByFullPath {
   '/api/social/shares-for-book': typeof ApiSocialSharesForBookRoute
   '/api/social/unblock': typeof ApiSocialUnblockRoute
   '/api/sync/delete-session': typeof ApiSyncDeleteSessionRoute
-  '/api/sync/wipe-goals': typeof ApiSyncWipeGoalsRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -765,7 +758,6 @@ export interface FileRoutesByTo {
   '/api/social/shares-for-book': typeof ApiSocialSharesForBookRoute
   '/api/social/unblock': typeof ApiSocialUnblockRoute
   '/api/sync/delete-session': typeof ApiSyncDeleteSessionRoute
-  '/api/sync/wipe-goals': typeof ApiSyncWipeGoalsRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/account': typeof AuthenticatedAccountIndexRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -860,7 +852,6 @@ export interface FileRoutesById {
   '/api/social/shares-for-book': typeof ApiSocialSharesForBookRoute
   '/api/social/unblock': typeof ApiSocialUnblockRoute
   '/api/sync/delete-session': typeof ApiSyncDeleteSessionRoute
-  '/api/sync/wipe-goals': typeof ApiSyncWipeGoalsRoute
   '/api/sync/wipe-sessions': typeof ApiSyncWipeSessionsRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -955,7 +946,6 @@ export interface FileRouteTypes {
     | '/api/social/shares-for-book'
     | '/api/social/unblock'
     | '/api/sync/delete-session'
-    | '/api/sync/wipe-goals'
     | '/api/sync/wipe-sessions'
     | '/account/'
     | '/admin/'
@@ -1048,7 +1038,6 @@ export interface FileRouteTypes {
     | '/api/social/shares-for-book'
     | '/api/social/unblock'
     | '/api/sync/delete-session'
-    | '/api/sync/wipe-goals'
     | '/api/sync/wipe-sessions'
     | '/account'
     | '/admin'
@@ -1142,7 +1131,6 @@ export interface FileRouteTypes {
     | '/api/social/shares-for-book'
     | '/api/social/unblock'
     | '/api/sync/delete-session'
-    | '/api/sync/wipe-goals'
     | '/api/sync/wipe-sessions'
     | '/_authenticated/account/'
     | '/_authenticated/admin/'
@@ -1470,13 +1458,6 @@ declare module '@tanstack/react-router' {
       path: '/wipe-sessions'
       fullPath: '/api/sync/wipe-sessions'
       preLoaderRoute: typeof ApiSyncWipeSessionsRouteImport
-      parentRoute: typeof ApiSyncRoute
-    }
-    '/api/sync/wipe-goals': {
-      id: '/api/sync/wipe-goals'
-      path: '/wipe-goals'
-      fullPath: '/api/sync/wipe-goals'
-      preLoaderRoute: typeof ApiSyncWipeGoalsRouteImport
       parentRoute: typeof ApiSyncRoute
     }
     '/api/sync/delete-session': {
@@ -1907,13 +1888,11 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface ApiSyncRouteChildren {
   ApiSyncDeleteSessionRoute: typeof ApiSyncDeleteSessionRoute
-  ApiSyncWipeGoalsRoute: typeof ApiSyncWipeGoalsRoute
   ApiSyncWipeSessionsRoute: typeof ApiSyncWipeSessionsRoute
 }
 
 const ApiSyncRouteChildren: ApiSyncRouteChildren = {
   ApiSyncDeleteSessionRoute: ApiSyncDeleteSessionRoute,
-  ApiSyncWipeGoalsRoute: ApiSyncWipeGoalsRoute,
   ApiSyncWipeSessionsRoute: ApiSyncWipeSessionsRoute,
 }
 

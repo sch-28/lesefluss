@@ -19,7 +19,7 @@ import {
 	syncBooks,
 	syncReadingGoals,
 } from "~/db/schema";
-import { wipeReadingGoals, wipeReadingStats } from "../sync-wipe";
+import { wipeReadingStats } from "../sync-wipe";
 import {
 	createBuddyRead,
 	getBuddyRead,
@@ -201,17 +201,12 @@ describe.skipIf(!hasDb)("buddy-read goal status (integration)", () => {
 		expect(await bobStatus()).not.toBeNull();
 	});
 
-	test("goals leave the server with the stats opt-out and with Delete reading stats", async () => {
-		await wipeReadingGoals(bob);
-		expect(await bobStatus()).toBeNull();
-		expect(
-			await db.select().from(syncReadingGoals).where(eq(syncReadingGoals.userId, bob)),
-		).toEqual([]);
-
-		await addGoal(bob, bobBook);
-		expect(await bobStatus()).not.toBeNull();
+	test("Delete reading stats tombstones the goals, so no standing shows", async () => {
 		await wipeReadingStats(bob);
 		expect(await bobStatus()).toBeNull();
+		const rows = await db.select().from(syncReadingGoals).where(eq(syncReadingGoals.userId, bob));
+		expect(rows.length).toBeGreaterThan(0);
+		expect(rows.every((r) => r.deleted)).toBe(true);
 		await addGoal(bob, bobBook);
 	});
 

@@ -34,7 +34,7 @@ export async function tombstoneSession(userId: string, sessionId: string): Promi
 }
 
 /**
- * "Delete reading stats": sessions, and the goals that ride the same opt-out.
+ * "Delete reading stats": sessions and reading goals.
  * Buddies see a standing worked out from a goal, so one must not outlive it here.
  * Both are tombstoned rather than deleted so other devices drop their copies.
  */
@@ -49,12 +49,4 @@ export async function wipeReadingStats(userId: string): Promise<void> {
 			.set({ deleted: true, updatedAt: new Date() })
 			.where(and(eq(syncReadingGoals.userId, userId), eq(syncReadingGoals.deleted, false)));
 	});
-}
-
-/**
- * A device stopped syncing stats, so it no longer pushes goals; a copy left
- * here would keep showing buddies a standing that no longer exists.
- */
-export async function wipeReadingGoals(userId: string): Promise<void> {
-	await db.delete(syncReadingGoals).where(eq(syncReadingGoals.userId, userId));
 }

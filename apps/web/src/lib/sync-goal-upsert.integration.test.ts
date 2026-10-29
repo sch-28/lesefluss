@@ -81,6 +81,26 @@ describe.skipIf(!hasDb)("sync_reading_goals upsert (integration)", () => {
 		expect((await read("g5"))?.reminderTime).toBeNull();
 	});
 
+	test("a device resending its unchanged goal doesn't overwrite another device's newer edit", async () => {
+		await upsertSyncGoals(db, userId, [makeGoal({ goalId: "g6", updatedAt: 5_000_000 })]);
+		await upsertSyncGoals(db, userId, [
+			makeGoal({ goalId: "g6", targetDate: "2026-07-01", updatedAt: 6_000_000 }),
+		]);
+		await upsertSyncGoals(db, userId, [makeGoal({ goalId: "g6", updatedAt: 5_000_000 })]);
+		expect((await read("g6"))?.targetDate).toBe("2026-07-01");
+	});
+
+	test("a stamp from a fast clock is stored as sent, so resending it can't win again", async () => {
+		const ahead = Date.now() + 24 * 60 * 60 * 1000;
+		await upsertSyncGoals(db, userId, [makeGoal({ goalId: "g7", updatedAt: ahead })]);
+		expect((await read("g7"))?.updatedAt.getTime()).toBe(ahead);
+		await upsertSyncGoals(db, userId, [
+			makeGoal({ goalId: "g7", targetDate: "2026-08-01", updatedAt: ahead + 1 }),
+		]);
+		await upsertSyncGoals(db, userId, [makeGoal({ goalId: "g7", updatedAt: ahead })]);
+		expect((await read("g7"))?.targetDate).toBe("2026-08-01");
+	});
+
 	test("a goal missing from a push is left alone", async () => {
 		await upsertSyncGoals(db, userId, [makeGoal({ goalId: "g2" })]);
 		await upsertSyncGoals(db, userId, [makeGoal({ goalId: "g3" })]);

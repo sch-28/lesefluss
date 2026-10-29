@@ -115,36 +115,15 @@ beforeEach(() => {
 	pullResponse.readingGoals = [goalToSync({ ...goal, targetDate: "2026-04-01", updatedAt: 2_000 })];
 });
 
-describe("goal sync follows the stats opt-out", () => {
-	it("pushes and pulls goals while stats sync is on", async () => {
-		settings.syncStats = true;
-		await pushSync(new Set(["deadbeef"]));
-		expect(pushed[0]?.readingGoals?.map((g) => g.goalId)).toEqual(["g1"]);
-		await pullSync();
-		expect(upsertGoals).toHaveBeenCalledOnce();
-	});
-
-	it("neither pushes nor pulls goals while stats sync is off", async () => {
-		settings.syncStats = false;
-		await pushSync(new Set(["deadbeef"]));
-		expect(pushed[0]?.readingGoals).toBeUndefined();
-		await pullSync();
-		expect(upsertGoals).not.toHaveBeenCalled();
-	});
-
-	it("removes the server's goals once after stats sync goes off, and again after each re-enable", async () => {
-		settings.syncStats = true;
-		await pushSync(new Set(["deadbeef"]));
-		expect(posted).toEqual([]);
-		settings.syncStats = false;
-		await pushSync(new Set(["deadbeef"]));
-		await pushSync(new Set(["deadbeef"]));
-		expect(posted.filter((p) => p.endsWith("/api/sync/wipe-goals"))).toHaveLength(1);
-
-		settings.syncStats = true;
-		await pushSync(new Set(["deadbeef"]));
-		settings.syncStats = false;
-		await pushSync(new Set(["deadbeef"]));
-		expect(posted.filter((p) => p.endsWith("/api/sync/wipe-goals"))).toHaveLength(2);
-	});
+describe("goals sync whatever the stats setting", () => {
+	for (const syncStats of [true, false]) {
+		it(`pushes and pulls goals with stats sync ${syncStats ? "on" : "off"}`, async () => {
+			settings.syncStats = syncStats;
+			await pushSync(new Set(["deadbeef"]));
+			expect(pushed[0]?.readingGoals?.map((g) => g.goalId)).toEqual(["g1"]);
+			await pullSync();
+			expect(upsertGoals).toHaveBeenCalledOnce();
+			expect(posted, "nothing is wiped on the server").toEqual([]);
+		});
+	}
 });

@@ -68,7 +68,7 @@ Spans are merged, so a passage re-read in the same sitting counts once, while a 
 
 ### Reading goal
 
-A reader's plan to finish one book, stored in `reading_goals` and synced last-write-wins together with [sessions](#session): turning off stats sync stops both, since the plan is derived from sessions. At most one goal per book is *active*; the others are *completed* (the book crossed the finished threshold, or the reader said so; a goal cannot start on a book already past it) or *abandoned* (replaced by a new goal, or given up). Removing a goal tombstones it. Not available for serial chapters. Progress is measured by [position](#position), not by time read, so skipping ahead counts. All dates are local calendar days. The arithmetic lives in `services/stats/reading-goal.ts`.
+A reader's plan to finish one book, stored in `reading_goals` and synced last-write-wins on the raw client stamp: goals are plans, not stats, so they sync with stats sync off too, while [sessions](#session) stay on the device. At most one goal per book is *active*; the others are *completed* (the book crossed the finished threshold, or the reader said so; a goal cannot start on a book already past it) or *abandoned* (replaced by a new goal, or given up). Removing a goal tombstones it. Not available for serial chapters. Progress is measured by [position](#position), not by time read, so skipping ahead counts. All dates are local calendar days. The arithmetic lives in `services/stats/reading-goal.ts`.
 
 Every goal is in one of two **modes**:
 
@@ -235,9 +235,9 @@ the book shows in their marker's detail, computed on the server from their synce
 in their own time zone. Only one number leaves the server: days ahead or behind, to one decimal.
 Never the goal's mode, target date, daily amount or percent behind, since percent and days together
 would give away the daily amount and so the date. No standing shows for a member who has finished
-the book, has no known time zone, or has stats sync off (their goals are then removed from the
-server). A member can switch off sharing live activity, which also hides everyone else's, goal
-standings included.
+the book or has no known time zone. Goals sync whatever the stats setting, so stats sync off does
+not hide a standing; "Delete reading stats" removes the goals. A member can switch off sharing
+live activity, which also hides everyone else's, goal standings included.
 
 ### Content origin
 

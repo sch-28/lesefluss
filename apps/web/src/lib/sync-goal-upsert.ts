@@ -58,6 +58,10 @@ function goalInsertValues(userId: string, g: SyncReadingGoal): NewSyncReadingGoa
 		reminderTime: g.reminderTime,
 		deleted: g.deleted,
 		createdAt: new Date(g.createdAt),
+		// Not clamped to server time, unlike books: every push resends every goal
+		// with the device's own stamp, so a clamped fast clock would land a fresh
+		// "now" on each push and beat newer edits indefinitely. Unclamped, it wins
+		// only until real time passes its stamp.
 		updatedAt: new Date(g.updatedAt),
 	};
 }
