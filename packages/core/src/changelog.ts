@@ -9,6 +9,24 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-10-29",
+		title: "Accessibility and Reader Options",
+		tags: ["App"],
+		changes: [
+			"New reader fonts: Atkinson Hyperlegible, OpenDyslexic and Literata, plus bold text and adjustable letter, word and paragraph spacing",
+			"Justified text with hyphenation, in scroll and page mode",
+			"New high contrast reader theme",
+			"Reading ruler: highlights the lines you're reading and dims the rest",
+			"The reader works with TalkBack and other screen readers",
+			"The app follows your system font size and reduce motion setting",
+			"Page mode shows two pages side by side on wide screens like tablets",
+			"The reader's More menu is bigger and easier to tap",
+			"See how much cloud storage you use under Settings > Cloud Sync, and which books aren't backed up when it's full",
+			"Deleted reading sessions now disappear on all your devices, and reading goals sync even with stats sync off",
+			"Read-aloud fixes: page turns no longer jump back while listening, and swiping the app away stops the voice",
+		],
+	},
+	{
 		date: "2026-10-21",
 		title: "Listen to Your Books",
 		tags: ["App"],
