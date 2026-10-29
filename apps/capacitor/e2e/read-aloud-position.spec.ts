@@ -474,3 +474,111 @@ for (const key of [" ", "ArrowDown"]) {
 		expect(await savedWord(page)).toBe(top);
 	});
 }
+
+// TASK-221: a tap or key turn has no drag that detaches; a word spoken while the
+// page still slides used to follow the voice back to the page just left.
+type Turn = "next tap" | "ArrowRight" | "prev tap" | "ArrowLeft";
+
+async function tapPageEdge(page: Page, edge: "prev" | "next") {
+	const box = await page.locator(".page-view").boundingBox();
+	if (!box) throw new Error("No page view");
+	const x = edge === "prev" ? box.x + 4 : box.x + box.width - 4;
+	await page.mouse.click(x, box.y + box.height / 2);
+}
+
+async function turnPage(page: Page, turn: Turn) {
+	if (turn === "next tap" || turn === "prev tap") {
+		await tapPageEdge(page, turn === "next tap" ? "next" : "prev");
+		return;
+	}
+	await reader.blurFocusedControl(page);
+	await page.keyboard.press(turn);
+}
+
+for (const turn of ["next tap", "ArrowRight", "prev tap", "ArrowLeft"] as const) {
+	const isBack = turn === "prev tap" || turn === "ArrowLeft";
+	test(`page: playing, a ${turn} turn with a word spoken mid-slide stays on the new page and leaves the position with the voice`, async ({
+		page,
+	}) => {
+		await openListening(page, "page");
+		await speak(page, 30);
+		// A turn back needs a page behind: the voice carries the view onto a later one.
+		const firstPage = await reader.pageModeFirstVisibleWord(page);
+		for (let i = 0; isBack && i < 20; i++) {
+			if ((await reader.pageModeFirstVisibleWord(page)) !== firstPage) break;
+			await speak(page, 40);
+		}
+		await reader.waitPositionQuiet(page);
+		const before = await reader.pageModeFirstVisibleWord(page);
+		if (isBack) expect(before, "the voice turned the page").toBeGreaterThan(firstPage);
+		const saves = await page.evaluate(() => window.__lesefluss_e2e_saveLog?.length ?? 0);
+
+		const settles = await reader.settleCount(page);
+		await turnPage(page, turn);
+		const wasSliding = await page.evaluate(() => {
+			const wrapper = document.querySelector<HTMLElement>('.page-view [style*="translateX"]');
+			const sliding = (wrapper?.getAnimations().length ?? 0) > 0;
+			window.__lesefluss_e2e_tts?.speak(1);
+			return sliding;
+		});
+		expect(wasSliding, "the word was spoken while the page slid").toBe(true);
+		await reader.waitForSettleAbove(page, settles);
+		await reader.waitPositionQuiet(page);
+
+		const turned = await reader.pageModeFirstVisibleWord(page);
+		if (isBack) expect(turned, "the turn went back").toBeLessThan(before);
+		else expect(turned, "the turn went forward").toBeGreaterThan(before);
+		await expect(page.getByRole("group", { name: "Not following the voice" })).toBeVisible();
+
+		await speak(page, 3);
+		await reader.waitPositionQuiet(page);
+		expect(
+			await reader.pageModeFirstVisibleWord(page),
+			"the voice doesn't pull the view back",
+		).toBe(turned);
+
+		const spoken = await pause(page);
+		const sources = await page.evaluate(
+			(from) => (window.__lesefluss_e2e_saveLog ?? []).slice(from).map((s) => s.source),
+			saves,
+		);
+		expect(sources, "only the voice saved").toEqual(sources.map(() => "read-aloud"));
+		expect(await savedWord(page)).toBe(spoken);
+	});
+}
+
+test("page: paused on the last page, a tap past the end turns nothing, saves nothing, and play carries on with the voice", async ({
+	page,
+}) => {
+	await openListening(page, "page", { paragraphs: 3 });
+	const lastWord = await page.evaluate(() =>
+		Math.max(
+			...[...document.querySelectorAll<HTMLElement>(".page-view span[data-word]")].map((s) =>
+				Number(s.dataset.word),
+			),
+		),
+	);
+	await speak(page, 30);
+	await expect
+		.poll(() => reader.pageModeVisibleWords(page), "the voice is on the last page")
+		.toContain(lastWord);
+	const spoken = await pause(page);
+	expect(
+		await reader.pageModeFirstVisibleWord(page),
+		"the voice is not at the page top",
+	).toBeLessThan(spoken);
+	const saves = await page.evaluate(() => window.__lesefluss_e2e_saveLog?.length ?? 0);
+	const starts = await sessionStarts(page);
+
+	await tapPageEdge(page, "next");
+	await reader.waitPositionQuiet(page);
+	expect(
+		await page.evaluate(() => window.__lesefluss_e2e_saveLog?.length ?? 0),
+		"the edge tap saved nothing",
+	).toBe(saves);
+
+	await page.getByRole("button", { name: "Resume listening" }).click();
+	await speak(page, 1);
+	expect(await pause(page), "play carried on from the spoken word").toBe(spoken + 1);
+	expect(await sessionStarts(page), "the same session carried on").toBe(starts);
+});

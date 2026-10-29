@@ -229,6 +229,8 @@ const POSITION_WRITE_TIMEOUT_MS = 8000;
 // Throttle the user-facing "couldn't save" toast so a write that fails on every
 // attempt can't spam a toast on every scroll settle.
 const SAVE_ERROR_TOAST_THROTTLE_MS = 120_000;
+// Touch-sized rows: the shared menu item is ~28px tall, too small to hit reliably on a phone.
+const MENU_ITEM_CLASS = "min-h-12 gap-3 px-3 text-base [&_svg:not([class*='size-'])]:size-5";
 let lastSaveErrorToastAt = 0;
 function notifyLocalSaveFailure() {
 	const now = Date.now();
@@ -2025,6 +2027,15 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		};
 	}, [viewContainerEl, isReadAloudActive, readerMode]);
 
+	// A tap or key turn has no drag to detach on, and its settle comes only after
+	// the slide: a word spoken meanwhile would follow the voice back (TASK-221).
+	const handlePageTurnStart = useCallback(() => {
+		const readAloud = readAloudRef.current;
+		if (!readAloud?.isActive) return;
+		readAloud.keepsPositionOnMove(null);
+		isFollowingVoiceRef.current = false;
+	}, []);
+
 	const handleBackToVoice = useCallback(() => {
 		const word = readAloud.spokenWordRef.current;
 		if (word !== null) {
@@ -2584,7 +2595,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						/>
 						<DropdownMenuContent
 							align="end"
-							className="w-56"
+							className="w-64 p-1.5"
 							// Opened once the menu has fully closed: earlier, the menu's own
 							// focus moves while closing read as the popover losing focus.
 							onCloseAutoFocus={(e) => {
@@ -2594,11 +2605,16 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								setAppearanceOpen(true);
 							}}
 						>
-							<DropdownMenuItem onSelect={() => setSearchOpen(true)} disabled={!content}>
+							<DropdownMenuItem
+								className={MENU_ITEM_CLASS}
+								onSelect={() => setSearchOpen(true)}
+								disabled={!content}
+							>
 								<Search />
 								<span>Search</span>
 							</DropdownMenuItem>
 							<DropdownMenuItem
+								className={MENU_ITEM_CLASS}
 								onSelect={() => {
 									openAppearanceOnMenuCloseRef.current = true;
 								}}
@@ -2607,13 +2623,17 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								<span>Appearance</span>
 							</DropdownMenuItem>
 							{IS_READ_ALOUD_SUPPORTED && (
-								<DropdownMenuItem onSelect={() => history.push("/tabs/settings/read-aloud")}>
+								<DropdownMenuItem
+									className={MENU_ITEM_CLASS}
+									onSelect={() => history.push("/tabs/settings/read-aloud")}
+								>
 									<Headphones />
 									<span>Listen settings</span>
 								</DropdownMenuItem>
 							)}
 							{overflowSourceUrl && (
 								<DropdownMenuItem
+									className={MENU_ITEM_CLASS}
 									onSelect={() => {
 										void Browser.open({ url: overflowSourceUrl });
 									}}
@@ -2623,6 +2643,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								</DropdownMenuItem>
 							)}
 							<DropdownMenuItem
+								className={MENU_ITEM_CLASS}
 								onSelect={() => {
 									history.push(
 										book.seriesId != null
@@ -2729,6 +2750,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						onInitialActiveOffset={handleSetActiveWord}
 						onTap={handleToggleProgressBar}
 						onHideProgressBar={handleHideProgressBar}
+						onTurnStart={handlePageTurnStart}
 						footer={advanceFooter}
 					/>
 				) : (

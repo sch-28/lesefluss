@@ -160,6 +160,12 @@ export interface PageViewProps {
 	 * soon as the content starts moving.
 	 */
 	onHideProgressBar: () => void;
+	/**
+	 * A reader turn (tap, key, swipe release) is about to slide to another page,
+	 * so read-aloud stops following before a spoken word can pull the view back.
+	 * Not called for jumps or for the rubber-band at either end of the book.
+	 */
+	onTurnStart: () => void;
 
 	/**
 	 * Optional element overlaid at the bottom of the page area, visible only
@@ -210,6 +216,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		onColumns,
 		onTap,
 		onHideProgressBar,
+		onTurnStart,
 		footer,
 	},
 	ref,
@@ -643,6 +650,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 		(p: number, { shouldSettle = true }: { shouldSettle?: boolean } = {}) => {
 			if (!isLayoutReady) return;
 			const clamped = Math.max(0, Math.min(currentPageCount - 1, p));
+			if (shouldSettle) onTurnStart();
 			setPageIndex(clamped);
 			animateTo(
 				computeTransform(clamped),
@@ -650,7 +658,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 				shouldSettle ? () => settleAtPage(clamped) : undefined,
 			);
 		},
-		[isLayoutReady, currentPageCount, animateTo, computeTransform, settleAtPage],
+		[isLayoutReady, currentPageCount, animateTo, computeTransform, settleAtPage, onTurnStart],
 	);
 
 	/** Cross-chunk advance. The next chunk is already mounted next to the
@@ -662,6 +670,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			if (!isLayoutReady) return;
 			const neighborIdx = chunkIndex + direction;
 			if (neighborIdx < 0 || neighborIdx >= chunks.length) return;
+			onTurnStart();
 			const neighborOffset = offsets.get(neighborIdx);
 			const neighborWidth = chunkWidths.get(neighborIdx);
 			// A neighbour that is not mounted or measured yet (the turn came before
@@ -700,6 +709,7 @@ const PageView = forwardRef<ReaderViewHandle, PageViewProps>(function PageView(
 			animateTo,
 			computeTransform,
 			settleAtPage,
+			onTurnStart,
 		],
 	);
 
