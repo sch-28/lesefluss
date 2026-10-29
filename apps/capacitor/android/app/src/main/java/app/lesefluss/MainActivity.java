@@ -42,13 +42,30 @@ public class MainActivity extends BridgeActivity {
                 // app is in the background): relaunching would tear that down or pop the
                 // app forward. Dying quietly lets Android start us fresh on return.
                 if (!getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
+                    stopReadAloud();
                     Process.killProcess(Process.myPid());
                     return true;
                 }
+                stopReadAloud();
                 restartProcess();
                 return true;
             }
         });
+    }
+
+    /**
+     * The voice cannot outlive the WebView: a new one would not know about it, so
+     * nothing would save its position or feed it text. Ending it here releases the
+     * engine, media session and notification instead of leaving them to process death.
+     */
+    private void stopReadAloud() {
+        TtsPlayer player = TtsPlayer.peek();
+        if (player == null) return;
+        try {
+            player.shutdown();
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Read-aloud did not shut down", e);
+        }
     }
 
     private void restartProcess() {

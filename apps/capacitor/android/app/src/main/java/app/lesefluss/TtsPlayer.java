@@ -119,9 +119,14 @@ public class TtsPlayer {
     private final AudioManager.OnAudioFocusChangeListener focusListener = this::onFocusChange;
     private final MediaSession mediaSession;
     private final SilentTrack silentTrack;
-    private final TextToSpeech tts;
+    private TextToSpeech tts;
+    // Tells a replaced engine's late init apart from the current one's.
+    private int engineBinding = 0;
     private boolean isEngineReady = false;
     private boolean isEngineFailed = false;
+    private boolean isShutDown = false;
+    // A crashed, updated or uninstalled engine keeps refusing speech until it is bound again.
+    private boolean shouldRebindEngine = false;
     private boolean isStartPending = false;
     private final List<ReadyCallback> whenReady = new ArrayList<>();
 
@@ -198,7 +203,7 @@ public class TtsPlayer {
         focusRequest = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 ? new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                         .setAudioAttributes(audioAttributes)
-                        .setOnAudioFocusChangeListener(focusListener)
+                        .setOnAudioFocusChangeListener(focusListener, mainHandler)
                         .build()
                 : null;
 
@@ -231,55 +236,85 @@ public class TtsPlayer {
             public void onSkipToNext() {
                 skip(1);
             }
-        });
+        }, mainHandler);
+    }
 
-        tts = new TextToSpeech(context, this::onEngineInit);
-        tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-            @Override
-            public void onStart(String utteranceId) {
-                int[] ids = parseUtterance(utteranceId);
-                if (ids != null) onUtteranceStart(ids[0], ids[1], ids[2]);
-            }
+    private final UtteranceProgressListener progressListener = new UtteranceProgressListener() {
+        @Override
+        public void onStart(String utteranceId) {
+            int[] ids = parseUtterance(utteranceId);
+            if (ids != null) onUtteranceStart(ids[0], ids[1], ids[2]);
+        }
 
-            @Override
-            public void onRangeStart(String utteranceId, int start, int end, int frame) {
-                int[] ids = parseUtterance(utteranceId);
-                if (ids != null) onUtteranceRange(ids[0], ids[1], ids[2] + start);
-            }
+        @Override
+        public void onRangeStart(String utteranceId, int start, int end, int frame) {
+            int[] ids = parseUtterance(utteranceId);
+            if (ids != null) onUtteranceRange(ids[0], ids[1], ids[2] + start);
+        }
 
-            @Override
-            public void onDone(String utteranceId) {
-                int[] ids = parseUtterance(utteranceId);
-                if (ids != null) onSegmentDone(ids[0], ids[1], false);
-            }
+        @Override
+        public void onDone(String utteranceId) {
+            int[] ids = parseUtterance(utteranceId);
+            if (ids != null) onSegmentDone(ids[0], ids[1], false);
+        }
 
-            @Override
-            public void onStop(String utteranceId, boolean interrupted) {
-            }
+        @Override
+        public void onStop(String utteranceId, boolean interrupted) {
+        }
 
-            @Override
-            @SuppressWarnings("deprecation")
-            public void onError(String utteranceId) {
-                Log.w(TAG, "TTS utterance failed: " + utteranceId);
-                int[] ids = parseUtterance(utteranceId);
-                if (ids != null) onSegmentDone(ids[0], ids[1], true);
+        @Override
+        @SuppressWarnings("deprecation")
+        public void onError(String utteranceId) {
+            Log.w(TAG, "TTS utterance failed: " + utteranceId);
+            int[] ids = parseUtterance(utteranceId);
+            if (ids != null) onSegmentDone(ids[0], ids[1], true);
+        }
+    };
+
+    /** Binds the default engine afresh: one installed or replaced since the last bind is picked up. */
+    private synchronized void bindEngine() {
+        if (isShutDown) return;
+        if (tts != null) {
+            try {
+                tts.shutdown();
+            } catch (RuntimeException e) {
+                Log.w(TAG, "TTS engine threw on shutdown", e);
             }
-        });
+        }
+        generation++;
+        isEngineReady = false;
+        isEngineFailed = false;
+        shouldRebindEngine = false;
+        int binding = ++engineBinding;
+        // With no engine installed, init fails inside the constructor, before tts is assigned.
+        TextToSpeech engine = new TextToSpeech(context, status -> onEngineInit(binding, status));
+        engine.setOnUtteranceProgressListener(progressListener);
+        tts = engine;
     }
 
     public synchronized void setListener(Listener listener) {
         this.listener = listener;
     }
 
-    /** Clears the listener if it is still `current`, so a destroyed plugin is not kept alive. */
-    public synchronized void clearListener(Listener current) {
-        if (listener == current) listener = null;
+    /** Clears the listener if it is still `current`, so a destroyed plugin is not kept alive; false if another took over. */
+    public synchronized boolean clearListener(Listener current) {
+        if (listener != current) return false;
+        listener = null;
+        return true;
     }
 
     /** Runs once the engine has bound or failed to; immediately when that is already known. */
     public synchronized void whenReady(ReadyCallback callback) {
-        if (isEngineReady || isEngineFailed) callback.onReady(isEngineReady);
-        else whenReady.add(callback);
+        if (isShutDown) {
+            callback.onReady(false);
+        } else if (tts == null || isEngineFailed || shouldRebindEngine) {
+            whenReady.add(callback);
+            bindEngine();
+        } else if (isEngineReady) {
+            callback.onReady(true);
+        } else {
+            whenReady.add(callback);
+        }
     }
 
     public synchronized void load(List<Segment> next, boolean isLast, String title, String author, String coverDataUrl, String language) {
@@ -326,7 +361,7 @@ public class TtsPlayer {
     }
 
     public synchronized void play() {
-        if (isPlaying) return;
+        if (isPlaying || isShutDown) return;
         if (segments.isEmpty() || cursor >= segments.size()) {
             if (isEndOfText) {
                 publishState(REASON_END);
@@ -335,8 +370,9 @@ public class TtsPlayer {
             }
             return;
         }
-        if (isEngineFailed) {
-            publishState(REASON_ERROR);
+        if (tts == null || isEngineFailed || shouldRebindEngine) {
+            isStartPending = true;
+            bindEngine();
             return;
         }
         if (!isEngineReady) {
@@ -384,6 +420,7 @@ public class TtsPlayer {
     }
 
     public synchronized void stop(String reason) {
+        if (isShutDown) return;
         isPlaying = false;
         isStartPending = false;
         isPausedByFocusLoss = false;
@@ -403,6 +440,26 @@ public class TtsPlayer {
         if (isServiceRequested) {
             isServiceRequested = false;
             TtsService.requestStop(context);
+        }
+    }
+
+    /** Stops for good just before the process exits, without waiting on the service to handle an intent. */
+    public synchronized void shutdown() {
+        isServiceRequested = false;
+        stop(REASON_STOPPED);
+        // Plugin calls already queued before the process exits must find a dead player, not a released session.
+        isShutDown = true;
+        isEngineReady = false;
+        synchronized (TtsPlayer.class) {
+            if (instance == this) instance = null;
+        }
+        TtsService.stopIfRunning(context);
+        mediaSession.release();
+        if (tts == null) return;
+        try {
+            tts.shutdown();
+        } catch (RuntimeException e) {
+            Log.w(TAG, "TTS engine threw on shutdown", e);
         }
     }
 
@@ -531,7 +588,8 @@ public class TtsPlayer {
         }
     }
 
-    private synchronized void onEngineInit(int status) {
+    private synchronized void onEngineInit(int binding, int status) {
+        if (binding != engineBinding) return;
         isEngineReady = status == TextToSpeech.SUCCESS;
         isEngineFailed = !isEngineReady;
         if (isEngineReady) {
@@ -543,7 +601,9 @@ public class TtsPlayer {
         whenReady.clear();
         if (isStartPending) {
             isStartPending = false;
-            play();
+            // Not play(): a failed engine would be bound again, and fail again, forever.
+            if (isEngineReady) play();
+            else publishState(REASON_ERROR);
         }
     }
 
@@ -574,6 +634,7 @@ public class TtsPlayer {
     private synchronized void onSegmentDone(int gen, int id, boolean isError) {
         if (!isCurrent(gen, id)) return;
         if (isError && ++consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+            shouldRebindEngine = true;
             pause(REASON_ERROR);
             return;
         }
@@ -787,6 +848,7 @@ public class TtsPlayer {
     }
 
     private void publishMetadata() {
+        if (isShutDown) return;
         MediaMetadata.Builder metadata = new MediaMetadata.Builder()
                 .putString(MediaMetadata.METADATA_KEY_TITLE, title)
                 .putString(MediaMetadata.METADATA_KEY_ARTIST, author != null ? author : "Lesefluss");
@@ -796,6 +858,7 @@ public class TtsPlayer {
     }
 
     private void publishState(String reason) {
+        if (isShutDown) return;
         long actions = PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE
                 | PlaybackState.ACTION_PLAY_PAUSE | PlaybackState.ACTION_STOP
                 | PlaybackState.ACTION_SKIP_TO_PREVIOUS | PlaybackState.ACTION_SKIP_TO_NEXT;
@@ -811,7 +874,7 @@ public class TtsPlayer {
 
     /** Starting a foreground service can be refused from the background (Android 12+); playback goes on without it. */
     private void requestService() {
-        if (isServiceRequested) return;
+        if (isServiceRequested || isShutDown) return;
         try {
             ContextCompat.startForegroundService(context, new Intent(context, TtsService.class));
             isServiceRequested = true;

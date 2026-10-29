@@ -33,15 +33,20 @@ public class TtsPlugin extends Plugin implements TtsPlayer.Listener {
 
     private TtsPlayer player;
 
+    /** On the main thread: the plugin thread's looper ends with the bridge, the player lives on. */
     @Override
     public void load() {
         player = TtsPlayer.get(getContext());
         player.setListener(this);
     }
 
+    /**
+     * The reader's session dies with the WebView, recreate or not: nothing would save the
+     * position or feed the voice. A newer activity's plugin may already own the player.
+     */
     @Override
     protected void handleOnDestroy() {
-        player.clearListener(this);
+        if (player.clearListener(this)) player.stop(TtsPlayer.REASON_STOPPED);
     }
 
     @PluginMethod
@@ -149,7 +154,7 @@ public class TtsPlugin extends Plugin implements TtsPlayer.Listener {
 
     @PluginMethod
     public void getVoices(PluginCall call) {
-        player.whenReady(isAvailable -> guard(call, c -> {
+        guard(call, outer -> player.whenReady(isAvailable -> guard(outer, c -> {
             if (!isAvailable) {
                 c.reject("No speech engine");
                 return;
@@ -173,13 +178,13 @@ public class TtsPlugin extends Plugin implements TtsPlayer.Listener {
             JSObject result = new JSObject();
             result.put("voices", list);
             c.resolve(result);
-        }));
+        })));
     }
 
     @PluginMethod
     public void checkLanguage(PluginCall call) {
         String language = call.getString("language", "");
-        player.whenReady(isAvailable -> guard(call, c -> {
+        guard(call, outer -> player.whenReady(isAvailable -> guard(outer, c -> {
             if (!isAvailable) {
                 c.reject("No speech engine");
                 return;
@@ -189,7 +194,7 @@ public class TtsPlugin extends Plugin implements TtsPlayer.Listener {
             result.put("status", status >= TextToSpeech.LANG_AVAILABLE ? "available"
                     : status == TextToSpeech.LANG_MISSING_DATA ? "missingData" : "unsupported");
             c.resolve(result);
-        }));
+        })));
     }
 
     @PluginMethod

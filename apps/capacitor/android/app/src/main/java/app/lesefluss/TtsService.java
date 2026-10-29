@@ -44,6 +44,11 @@ public class TtsService extends Service {
         }
     }
 
+    /** Only once the service is in the foreground: stopping it before then crashes the app. */
+    static void stopIfRunning(Context context) {
+        if (isRunning) context.stopService(new Intent(context, TtsService.class));
+    }
+
     static void refresh(Context context) {
         if (!isRunning) return;
         NotificationManager manager = context.getSystemService(NotificationManager.class);
@@ -73,6 +78,18 @@ public class TtsService extends Service {
         else if (ACTION_PREVIOUS.equals(action)) player.skip(-1);
         else if (ACTION_NEXT.equals(action)) player.skip(1);
         return START_NOT_STICKY;
+    }
+
+    /**
+     * Swiped out of recents: the reader is gone with its WebView, so nothing would
+     * save the position, answer needMore or reattach on return. Stop rather than
+     * leave a voice no screen controls.
+     */
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        TtsPlayer player = TtsPlayer.peek();
+        if (player != null) player.stop(TtsPlayer.REASON_STOPPED);
+        super.onTaskRemoved(rootIntent);
     }
 
     @Override
