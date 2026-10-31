@@ -354,5 +354,5 @@ Source-side parsers that turn external book formats (EPUB, web pages, etc.) into
 ## What this file is not
 
 - Not API docs. Per-module docs live with the module.
-- Not a changelog. Decisions go in `backlog/decisions/`.
+- Not a changelog. Decisions go in `docs/adr/`.
 - Not exhaustive. Add terms as they earn their place.

@@ -61,7 +61,14 @@ __pycache__
 resources/.logo-dark.png
 
 # Local / per-user
-.claude/
+.claude/*
+!.claude/settings.json
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/afk-review/
+!.claude/skills/fluss-review/
+!.claude/skills/fluss-task/
+!.claude/skills/ticket-loop/
 .npmrc
 temp.md
 

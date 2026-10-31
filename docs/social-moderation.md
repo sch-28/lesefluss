@@ -1,8 +1,8 @@
 # Notices and moderation
 
 How reports come in, how an admin decides them, and what a decision does. Legal background:
-`backlog/decisions/ADR-0004-friends-only-book-sharing.md` (DSA hosting-provider position). The
-operating procedure is the Backlog document "Moderation runbook".
+`docs/adr/ADR-0004-friends-only-book-sharing.md` (DSA hosting-provider position). The
+operating procedure is `docs/moderation-runbook.md`.
 
 ## Code layout (`apps/web/src/lib/moderation/`)
 

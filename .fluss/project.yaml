@@ -1,0 +1,15 @@
+key: LESE
+name: lesefluss
+links:
+  - type: repo
+    label: GitHub
+    url: https://github.com/sch-28/lesefluss
+    path: ~/dev/lesefluss
+remotes:
+  - https://github.com/sch-28/lesefluss
+gate:
+  # check-types = biome check + every package's tsc + the capacitor vitest suite + python compile.
+  fast: pnpm check-types
+  # The capacitor package ("lesefluss") already runs its tests inside check-types.
+  full: pnpm check-types && pnpm -r --filter '!lesefluss' --if-present test
+  e2e: pnpm --filter lesefluss e2e
