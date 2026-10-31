@@ -35,6 +35,21 @@ function warnWordsChangedOnce() {
 const POSITION_SAVE_THROTTLE_MS = 2000;
 const TOGGLE_DEBOUNCE_MS = 120;
 const LONG_PRESS_MS = 450;
+// Read-aloud word onsets bunch together; this floor keeps each word readable.
+const VOICE_MIN_DWELL_MS = 120;
+const VOICE_MAX_LAG_WORDS = 3;
+
+/** Runs `fn` once the next frame has painted; returns a cancel. */
+function afterNextPaint(fn: () => void): () => void {
+	let timer: number | null = null;
+	const frame = requestAnimationFrame(() => {
+		timer = window.setTimeout(fn, 0);
+	});
+	return () => {
+		cancelAnimationFrame(frame);
+		if (timer !== null) clearTimeout(timer);
+	};
+}
 
 interface Options {
 	content: string;
@@ -77,8 +92,14 @@ export function useRsvpEngine({
 	const accelRef = useRef(0);
 	const timerRef = useRef<number | null>(null);
 	const lastSaveRef = useRef(0);
+	// A throttled save waiting for its word to paint. Every stop cancels it: a
+	// later-landing save of an older word would rewind the position the stop saved.
+	const cancelPendingSaveRef = useRef<(() => void) | null>(null);
 	const longPressTimerRef = useRef<number | null>(null);
 	const lastToggleRef = useRef(0);
+	const voiceWordRef = useRef<number | null>(null);
+	const catchUpTimerRef = useRef<number | null>(null);
+	const shownAtRef = useRef(Number.NEGATIVE_INFINITY);
 	// Chunks of the currently-displayed word (length 1 for normal words). When
 	// the cursor reaches the end, the next tick advances to the next word.
 	const chunksRef = useRef<string[]>([]);
@@ -105,6 +126,18 @@ export function useRsvpEngine({
 	const isPlayingRef = useRef(isPlaying);
 	isPlayingRef.current = isPlaying;
 
+	const cancelPendingSave = useCallback(() => {
+		cancelPendingSaveRef.current?.();
+		cancelPendingSaveRef.current = null;
+	}, []);
+
+	const stopCatchUp = useCallback(() => {
+		if (catchUpTimerRef.current !== null) {
+			clearTimeout(catchUpTimerRef.current);
+			catchUpTimerRef.current = null;
+		}
+	}, []);
+
 	// Synchronous rebuild on a cache miss keeps the reader functional for
 	// fresh imports whose inline backfill hasn't committed yet.
 	useEffect(() => {
@@ -124,6 +157,8 @@ export function useRsvpEngine({
 				clearTimeout(timerRef.current);
 				timerRef.current = null;
 			}
+			cancelPendingSave();
+			stopCatchUp();
 			setIsPlaying(false);
 			chunksRef.current = [];
 			chunkCursorRef.current = 0;
@@ -140,7 +175,7 @@ export function useRsvpEngine({
 		wordIndexRef.current = idx;
 		displayedWordRef.current = w.length > 0 ? idx : null;
 		setCurrentWord(w[idx] ?? null);
-	}, [content, bookWordIndex]);
+	}, [content, bookWordIndex, cancelPendingSave, stopCatchUp]);
 
 	// ── Tick ─────────────────────────────────────────────────────────────
 	const tick = useCallback(() => {
@@ -149,6 +184,7 @@ export function useRsvpEngine({
 		const idx = wordIndexRef.current;
 
 		if (idx >= w.length) {
+			cancelPendingSave();
 			setIsPlaying(false);
 			onFinishedRef.current();
 			return;
@@ -163,11 +199,18 @@ export function useRsvpEngine({
 			chunkCursorRef.current = 0;
 			currentEntryRef.current = entry;
 			displayedWordRef.current = idx;
+			shownAtRef.current = Date.now();
 
+			// After paint: the reader page re-render a save causes would delay this
+			// word's paint while the next tick stays on schedule.
 			const now = Date.now();
 			if (now - lastSaveRef.current >= POSITION_SAVE_THROTTLE_MS) {
 				lastSaveRef.current = now;
-				onPositionChangeRef.current(idx);
+				cancelPendingSave();
+				cancelPendingSaveRef.current = afterNextPaint(() => {
+					cancelPendingSaveRef.current = null;
+					onPositionChangeRef.current(idx);
+				});
 			}
 		}
 
@@ -190,7 +233,7 @@ export function useRsvpEngine({
 		accelRef.current = nextAcceleration;
 		if (isLastChunk) wordIndexRef.current = idx + 1;
 		timerRef.current = window.setTimeout(tick, delayMs);
-	}, []);
+	}, [cancelPendingSave]);
 
 	// ── Play / pause ─────────────────────────────────────────────────────
 	const resetChunks = useCallback(() => {
@@ -200,18 +243,62 @@ export function useRsvpEngine({
 	}, []);
 
 	const play = useCallback(() => {
+		stopCatchUp();
 		accelRef.current = 0;
 		lastSaveRef.current = Date.now();
 		resetChunks();
 		setIsPlaying(true);
 		tick();
-	}, [tick, resetChunks]);
+	}, [tick, resetChunks, stopCatchUp]);
+
+	/** Puts `idx` on screen, stopping playback; returns false while there are no words. */
+	const displayWord = useCallback(
+		(idx: number) => {
+			const w = wordsRef.current;
+			const clamped = Math.max(0, Math.min(w.length - 1, idx));
+			const entry = w[clamped];
+			if (!entry) return false;
+			if (timerRef.current !== null) {
+				clearTimeout(timerRef.current);
+				timerRef.current = null;
+			}
+			cancelPendingSave();
+			setIsPlaying(false);
+			resetChunks();
+			wordIndexRef.current = clamped;
+			setWordIndex(clamped);
+			displayedWordRef.current = clamped;
+			shownAtRef.current = Date.now();
+			setCurrentWord(entry);
+			return true;
+		},
+		[resetChunks, cancelPendingSave],
+	);
+
+	/** Shows `idx` without playback or a position report. */
+	const showWord = useCallback(
+		(idx: number) => {
+			stopCatchUp();
+			return displayWord(idx);
+		},
+		[displayWord, stopCatchUp],
+	);
+
+	// A stop saves the word on screen, so a display still catching up first
+	// jumps to the voice's word, which the voice has already saved.
+	const settleCatchUp = useCallback(() => {
+		if (catchUpTimerRef.current !== null && voiceWordRef.current !== null) {
+			showWord(voiceWordRef.current);
+		}
+	}, [showWord]);
 
 	const pause = useCallback(() => {
+		settleCatchUp();
 		if (timerRef.current !== null) {
 			clearTimeout(timerRef.current);
 			timerRef.current = null;
 		}
+		cancelPendingSave();
 		setIsPlaying(false);
 		if (displayedWordRef.current !== null) {
 			onPositionChangeRef.current(displayedWordRef.current);
@@ -222,7 +309,7 @@ export function useRsvpEngine({
 		// the displayed word after the last-chunk tick.
 		if (currentEntryRef.current) setCurrentWord(currentEntryRef.current);
 		resetChunks();
-	}, [resetChunks]);
+	}, [resetChunks, cancelPendingSave, settleCatchUp]);
 
 	const togglePlayPause = useCallback(() => {
 		// Mobile can emit synthetic + real click in quick succession.
@@ -236,44 +323,41 @@ export function useRsvpEngine({
 	// ── Jump helpers ─────────────────────────────────────────────────────
 	const jumpToWord = useCallback(
 		(idx: number) => {
-			const w = wordsRef.current;
-			if (w.length === 0) return;
-			const clamped = Math.max(0, Math.min(w.length - 1, idx));
-			if (timerRef.current !== null) {
-				clearTimeout(timerRef.current);
-				timerRef.current = null;
+			if (showWord(idx) && displayedWordRef.current !== null) {
+				onPositionChangeRef.current(displayedWordRef.current);
 			}
-			setIsPlaying(false);
-			resetChunks();
-			wordIndexRef.current = clamped;
-			setWordIndex(clamped);
-			const entry = w[clamped];
-			displayedWordRef.current = clamped;
-			setCurrentWord(entry);
-			onPositionChangeRef.current(clamped);
 		},
-		[resetChunks],
+		[showWord],
 	);
 
-	/** Shows a word the voice is speaking: no playback, no position report (the voice saves it). */
-	const showWord = useCallback(
+	const stepTowardVoice = useCallback(() => {
+		catchUpTimerRef.current = null;
+		const shown = displayedWordRef.current;
+		const target = voiceWordRef.current;
+		if (shown === null || target === null || shown >= target) return;
+		const wait = shownAtRef.current + VOICE_MIN_DWELL_MS - Date.now();
+		if (wait > 0) {
+			catchUpTimerRef.current = window.setTimeout(stepTowardVoice, wait);
+			return;
+		}
+		displayWord(shown + 1);
+		if (shown + 1 < target) {
+			catchUpTimerRef.current = window.setTimeout(stepTowardVoice, VOICE_MIN_DWELL_MS);
+		}
+	}, [displayWord]);
+
+	const followVoice = useCallback(
 		(idx: number) => {
-			const w = wordsRef.current;
-			const clamped = Math.max(0, Math.min(w.length - 1, idx));
-			const entry = w[clamped];
-			if (!entry) return;
-			if (timerRef.current !== null) {
-				clearTimeout(timerRef.current);
-				timerRef.current = null;
+			const target = Math.max(0, Math.min(wordsRef.current.length - 1, idx));
+			voiceWordRef.current = target;
+			const shown = displayedWordRef.current;
+			if (shown === null || target < shown || target - shown > VOICE_MAX_LAG_WORDS) {
+				showWord(target);
+				return;
 			}
-			setIsPlaying(false);
-			resetChunks();
-			wordIndexRef.current = clamped;
-			setWordIndex(clamped);
-			displayedWordRef.current = clamped;
-			setCurrentWord(entry);
+			if (catchUpTimerRef.current === null) stepTowardVoice();
 		},
-		[resetChunks],
+		[showWord, stepTowardVoice],
 	);
 
 	const backWord = useCallback(() => jumpToWord(wordIndexRef.current - 1), [jumpToWord]);
@@ -338,21 +422,9 @@ export function useRsvpEngine({
 	useEffect(() => {
 		if (initialWord === prevWordRef.current) return;
 		prevWordRef.current = initialWord;
-		// The ref, not `words`: a rebuild in this same commit has already replaced it.
-		const w = wordsRef.current;
-		if (w.length === 0) return;
-		if (timerRef.current !== null) {
-			clearTimeout(timerRef.current);
-			timerRef.current = null;
-		}
-		setIsPlaying(false);
-		resetChunks();
-		const idx = Math.max(0, Math.min(w.length - 1, initialWord));
-		wordIndexRef.current = idx;
-		setWordIndex(idx);
-		displayedWordRef.current = idx;
-		setCurrentWord(w[idx] ?? null);
-	}, [initialWord, resetChunks]);
+		// showWord reads the words ref, not `words`: a rebuild in this same commit has already replaced it.
+		showWord(initialWord);
+	}, [initialWord, showWord]);
 
 	// ── Auto-pause in background ─────────────────────────────────────────
 	useEffect(() => {
@@ -372,24 +444,29 @@ export function useRsvpEngine({
 	// doesn't rewind resume to the last throttled save.
 	useEffect(() => {
 		const flush = () => {
+			settleCatchUp();
+			cancelPendingSave();
 			if (displayedWordRef.current !== null) {
 				onPositionChangeRef.current(displayedWordRef.current);
 			}
 		};
 		window.addEventListener("pagehide", flush);
 		return () => window.removeEventListener("pagehide", flush);
-	}, []);
+	}, [cancelPendingSave, settleCatchUp]);
 
 	// ── Cleanup on unmount ───────────────────────────────────────────────
 	useEffect(() => {
 		return () => {
 			if (timerRef.current !== null) clearTimeout(timerRef.current);
 			if (longPressTimerRef.current !== null) clearTimeout(longPressTimerRef.current);
+			settleCatchUp();
+			stopCatchUp();
+			cancelPendingSave();
 			if (displayedWordRef.current !== null) {
 				onPositionChangeRef.current(displayedWordRef.current);
 			}
 		};
-	}, []);
+	}, [cancelPendingSave, settleCatchUp, stopCatchUp]);
 
 	// ── Context (only computed when paused) ──────────────────────────────
 	const context = useMemo(
@@ -410,6 +487,7 @@ export function useRsvpEngine({
 		pause,
 		jumpToWord,
 		showWord,
+		followVoice,
 		backWord,
 		forwardWord,
 		backSentence,

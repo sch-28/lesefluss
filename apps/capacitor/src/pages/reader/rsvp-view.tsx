@@ -54,8 +54,10 @@ export type RsvpViewHandle = {
 	backSentence(): void;
 	forwardSentence(): void;
 	changeWpm(wpm: number): void;
-	/** Shows the word the read-aloud voice is speaking. */
+	/** Shows a word without playback or a position report. */
 	showWord(word: number): void;
+	/** Follows the read-aloud voice to a word, paced so quick words stay readable. */
+	followVoice(word: number): void;
 };
 
 export interface RsvpViewProps {
@@ -113,6 +115,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		pause,
 		jumpToWord,
 		showWord,
+		followVoice,
 		backWord,
 		forwardWord,
 		backSentence,
@@ -143,6 +146,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 			forwardSentence,
 			changeWpm,
 			showWord,
+			followVoice,
 		}),
 		[
 			voice,
@@ -154,6 +158,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 			forwardSentence,
 			changeWpm,
 			showWord,
+			followVoice,
 		],
 	);
 

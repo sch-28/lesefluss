@@ -1880,7 +1880,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// Also under RSVP, so switching back mid-playback doesn't show a stale word.
 			ruler.show(word);
 			if (readerModeRef.current === "rsvp") {
-				rsvpViewRef.current?.showWord(word);
+				rsvpViewRef.current?.followVoice(word);
 				return;
 			}
 			markSpokenWord(word);
