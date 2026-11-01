@@ -11,7 +11,7 @@ links:
     coolify: x36zd03i4hcu2ymt8wgg0abh
   - type: deploy
     label: catalog
-    url: https://catalog.lesefluss.app
+    url: https://catalog.lesefluss.app/health
     coolify: rqk1fdk1yaakml96w8lp86i9
 remotes:
   - https://github.com/sch-28/lesefluss
