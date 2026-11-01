@@ -5,8 +5,19 @@ links:
     label: GitHub
     url: https://github.com/sch-28/lesefluss
     path: ~/dev/lesefluss
+  - type: deploy
+    label: lesefluss.app
+    url: https://lesefluss.app
+    coolify: x36zd03i4hcu2ymt8wgg0abh
+  - type: deploy
+    label: catalog
+    url: https://catalog.lesefluss.app
+    coolify: rqk1fdk1yaakml96w8lp86i9
 remotes:
   - https://github.com/sch-28/lesefluss
+stores:
+  - type: play
+    id: app.lesefluss
 gate:
   # check-types = biome check + every package's tsc + the capacitor vitest suite + python compile.
   fast: pnpm check-types
