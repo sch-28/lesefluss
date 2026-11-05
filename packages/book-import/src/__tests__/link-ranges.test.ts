@@ -79,8 +79,7 @@ describe("epubParser link ranges", () => {
 		const slice = (l: { startByte: number; endByte: number }) =>
 			r.content.slice(l.startByte, l.endByte);
 		expect(r.linkRanges?.[0]).toMatchObject({ href: "https://example.com/docs" });
-		expect(slice(r.linkRanges![0])).toBe("documentation");
 		expect(r.linkRanges?.[1]).toMatchObject({ href: "https://other.org/x" });
-		expect(slice(r.linkRanges![1])).toBe("another link");
+		expect(r.linkRanges?.map(slice)).toEqual(["documentation", "another link"]);
 	});
 });

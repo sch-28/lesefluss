@@ -60,7 +60,7 @@ describe("deep link handler", () => {
 	it("ignores the auth callback scheme and foreign URLs", async () => {
 		const { handle, navigate, openInBrowser } = setup();
 		await handle("lesefluss://auth-callback?state=x&token=y");
-		await handle("https://evil.example/invite/" + TOKEN);
+		await handle(`https://evil.example/invite/${TOKEN}`);
 		await handle("https://lesefluss.app/app/tabs/library");
 		expect(navigate).not.toHaveBeenCalled();
 		expect(openInBrowser).not.toHaveBeenCalled();

@@ -1710,9 +1710,6 @@ body.sepia .pagination-ellipsis {
 
 /* ── Explore: genre tiles ── */
 
-@media (min-width: 640px) {
-}
-
 body.dark .explore-genre-tile {
 	background: #242424;
 	border-color: #333;
@@ -1874,11 +1871,6 @@ body.dark .chapter-row:hover {
 /* ── Sync step ── */
 
 /* ── Footer: progress dots + nav buttons ── */
-
-/* ── Desktop: hide in-toolbar brand (sidebar already shows it) ── */
-/* Separate block so it comes after .app-brand's display:flex definition. */
-@media (min-width: 1081px) {
-}
 
 /* ─── What's New dialog ───────────────────────────────────────────────────── */
 

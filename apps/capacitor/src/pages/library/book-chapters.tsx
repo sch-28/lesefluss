@@ -49,6 +49,7 @@ export function BookChapters({
 	// content query resolves: on first mount there are no chapters and no row to
 	// scroll to yet. Layout effect so the list is centred before paint, otherwise
 	// a long book flashes at chapter 1 first.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: re-centre triggers, the rows are read through refs
 	useLayoutEffect(() => {
 		const list = listRef.current;
 		const item = currentRef.current;

@@ -2231,6 +2231,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	// A book or mode change tears down the tracker (new sitting); a stale
 	// manual pause must not carry over into it.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset trigger
 	useEffect(() => {
 		setIsSessionPaused(false);
 	}, [id, sessionMode]);
@@ -2314,6 +2315,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	savePositionRef.current = savePosition;
 	const qcRef = useRef(qc);
 	qcRef.current = qc;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: an id dep would flush on a book switch, not only on unmount
 	useEffect(() => {
 		return () => {
 			// Flush position to DB so the library shows updated progress.
@@ -2365,6 +2367,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// flush on those signals so the latest position isn't stranded in memory.
 	// In RSVP mode the freshest word lives in the engine; `use-rsvp-engine`
 	// flushes its own `pagehide`, which routes through `savePosition` here too.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: an id dep would re-register the teardown listeners; adding it is a behaviour change to position saving
 	useEffect(() => {
 		const flush = () => {
 			if (browse.isBrowsing) return;

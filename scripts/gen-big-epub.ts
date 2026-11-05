@@ -38,7 +38,7 @@ function paragraph(seed: number): string {
 	const words: string[] = [];
 	for (let i = 0; i < len; i++) words.push(WORDS[(seed * 31 + i * 17) % WORDS.length]);
 	let s = words.join(" ");
-	s = s.charAt(0).toUpperCase() + s.slice(1) + ".";
+	s = `${s.charAt(0).toUpperCase()}${s.slice(1)}.`;
 	return `<p>${s}</p>`;
 }
 

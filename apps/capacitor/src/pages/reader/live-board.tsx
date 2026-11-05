@@ -34,6 +34,7 @@ export function useLiveReading({
 	const { snapshot, isUnavailable } = useLiveBoard(buddyReadId, sharesLive);
 	const reports = sharesLive && !isUnavailable && !isRejected;
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset trigger
 	useEffect(() => {
 		setIsRejected(false);
 	}, [buddyReadId]);
