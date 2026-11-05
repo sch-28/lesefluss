@@ -187,14 +187,16 @@ invalidation code.
 ### Catalog proxy (for URL import CORS)
 
 `apps/catalog/src/routes/proxy.ts` — `POST /proxy/article { url }`.
-Guards: http/https only, DNS-resolve + reject RFC1918/loopback/link-local/ULA,
-10s timeout, 5MB cap, `text/html` content-type gate. Returns
-`{ html, contentType, finalUrl }`. Mounted under the global rate-limit
+Guards: http/https only, 10s timeout, 5MB cap, `text/html` content-type gate.
+Returns `{ html, contentType, finalUrl }`. Mounted under the global rate-limit
 middleware.
 
-SSRF note: the resolve-then-fetch-by-hostname pattern leaves a small DNS
-rebinding window. Documented in-file as a TODO (fetch resolved IP directly
-with `Host` header override to close it).
+SSRF: upstream requests go through `apps/catalog/src/lib/safe-fetch.ts`, which
+follows redirects by hand (at most 5), resolves and checks every hop against
+the blocked ranges (private, loopback, link-local incl. 169.254.169.254,
+CGNAT, ULA, NAT64/6to4, IPv4-mapped), and connects to the checked IP while
+Host and TLS SNI keep the hostname, so DNS rebinding cannot reach an internal
+host.
 
 ## Roadmap — follow-up PRs
 
@@ -260,12 +262,6 @@ Not a book — a flat text file of highlights/notes. Doesn't fit `BookPayload`.
 Route through a separate `services/kindle-clippings.ts` that writes directly
 into the `highlights` table, matching books by title (fuzzy) and creating
 stub books when no match. Lives outside book-import entirely.
-
-### 5. Web proxy SSRF hardening — nice to have
-
-Fetch the resolved IP directly with `Host:` header override to close the
-DNS-rebinding window documented in `proxy.ts`. Low priority — current guards
-are defense-in-depth and the proxy has no privileged upstream to exploit.
 
 ## Web Novel / Serial Scraping — shipped
 
