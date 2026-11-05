@@ -2,7 +2,7 @@ import { Button } from "@lesefluss/ui/button";
 import { usePrefersReducedMotion } from "@lesefluss/ui/use-prefers-reduced-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type React from "react";
-import { useRef, useSyncExternalStore } from "react";
+import { useId, useRef, useSyncExternalStore } from "react";
 
 const FINE_POINTER = "(pointer: fine)";
 
@@ -28,13 +28,15 @@ type Props = {
 	actions?: React.ReactNode;
 	/** Replaces the strip, e.g. a skeleton or an error. */
 	body?: React.ReactNode;
+	/** `<li>` items: the strip is a list. */
 	children?: React.ReactNode;
 	testId?: string;
 };
 
 /** Titled horizontal strip with See all; arrows appear for pointer devices. */
 const ShelfFrame: React.FC<Props> = ({ title, onSeeAll, actions, body, children, testId }) => {
-	const stripRef = useRef<HTMLDivElement>(null);
+	const stripRef = useRef<HTMLUListElement>(null);
+	const titleId = useId();
 	const hasFinePointer = useHasFinePointer();
 	const isReducedMotion = usePrefersReducedMotion();
 	const scroll = (direction: 1 | -1) => {
@@ -49,7 +51,10 @@ const ShelfFrame: React.FC<Props> = ({ title, onSeeAll, actions, body, children,
 		<section className="mb-6" data-testid={testId}>
 			{/* Wraps: at a large font scale the title takes its own line rather than truncate. */}
 			<header className="mb-2 flex flex-wrap items-center justify-between gap-2">
-				<h2 className="m-0 min-w-0 flex-[1_1_8rem] break-words font-semibold text-[0.95rem]">
+				<h2
+					id={titleId}
+					className="m-0 min-w-0 flex-[1_1_8rem] break-words font-semibold text-[0.95rem]"
+				>
 					{title}
 				</h2>
 				<div className="ml-auto flex shrink-0 items-center gap-1">
@@ -83,13 +88,14 @@ const ShelfFrame: React.FC<Props> = ({ title, onSeeAll, actions, body, children,
 				</div>
 			</header>
 			{body ?? (
-				<div
+				<ul
 					ref={stripRef}
-					className="flex gap-3 overflow-x-auto pb-2"
+					aria-labelledby={titleId}
+					className="m-0 flex list-none gap-3 overflow-x-auto p-0 pb-2"
 					style={{ scrollSnapType: "x mandatory" }}
 				>
 					{children}
-				</div>
+				</ul>
 			)}
 		</section>
 	);

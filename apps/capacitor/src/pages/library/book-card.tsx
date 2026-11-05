@@ -10,6 +10,7 @@ import { Progress } from "@lesefluss/ui/progress";
 import { RatingStars } from "@lesefluss/ui/rating-stars";
 import { Check } from "lucide-react";
 import type React from "react";
+import { useId } from "react";
 import BookCover from "../../components/book-cover";
 import { DeviceBadge } from "../../components/device-sync";
 import type { Book } from "../../services/db/schema";
@@ -45,18 +46,28 @@ const BookCard: React.FC<BookCardProps> = ({
 		onMenu,
 		enabled: !selectable,
 	});
+	const id = useId();
+	const progressId = `${id}-progress`;
+	const detailsId = `${id}-details`;
+	const deviceId = `${id}-device`;
 
 	return (
-		<div
+		<button
+			type="button"
 			data-testid="library-card"
 			data-book-title={book.title}
 			data-selected={selectable && selected ? "true" : undefined}
-			className="flex cursor-pointer select-none flex-col [-webkit-touch-callout:none] active:opacity-70"
+			aria-label={book.title}
+			aria-describedby={[deviceId, started && progressId, detailsId].filter(Boolean).join(" ")}
+			aria-pressed={selectable ? selected : undefined}
+			className="flex w-full cursor-pointer select-none flex-col rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none [-webkit-touch-callout:none] focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
 			{...handlers}
 		>
 			<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm">
 				<BookCover book={book} cover={cover} size="full" />
-				<DeviceBadge bookId={book.id} />
+				<span id={deviceId}>
+					<DeviceBadge bookId={book.id} />
+				</span>
 				{selectable && (
 					<>
 						{!selected && <div className="absolute inset-0 bg-background/60" />}
@@ -74,7 +85,7 @@ const BookCard: React.FC<BookCardProps> = ({
 			</div>
 
 			{started && (
-				<div className="mt-1 flex items-center gap-1.5">
+				<div id={progressId} className="mt-1 flex items-center gap-1.5">
 					<Progress value={progress} className="h-1 flex-1" aria-label="Reading progress" />
 					<span className="font-medium text-[0.7rem] text-muted-foreground tabular-nums">
 						{progress}%
@@ -86,17 +97,21 @@ const BookCard: React.FC<BookCardProps> = ({
 				<div className="line-clamp-2 overflow-hidden font-semibold text-[0.85rem] leading-[1.2]">
 					{book.title}
 				</div>
-				{book.author && (
-					<div className="mt-0.5 truncate text-[0.75rem] text-muted-foreground">{book.author}</div>
-				)}
-				{/* Sorting by rating is offered from the same screen, so the value has to
-				    be visible here or the reorder looks like nothing happened. */}
-				{book.rating !== null && (
-					<RatingStars rating={book.rating} className="mt-0.5" starClassName="size-3" />
-				)}
-				<SyncExcludedBadge book={book} className="mt-1" />
+				<div id={detailsId}>
+					{book.author && (
+						<div className="mt-0.5 truncate text-[0.75rem] text-muted-foreground">
+							{book.author}
+						</div>
+					)}
+					{/* Sorting by rating is offered from the same screen, so the value has to
+					    be visible here or the reorder looks like nothing happened. */}
+					{book.rating !== null && (
+						<RatingStars rating={book.rating} className="mt-0.5" starClassName="size-3" />
+					)}
+					<SyncExcludedBadge book={book} className="mt-1" />
+				</div>
 			</div>
-		</div>
+		</button>
 	);
 };
 

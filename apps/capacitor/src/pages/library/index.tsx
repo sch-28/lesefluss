@@ -410,6 +410,7 @@ const Library: React.FC = () => {
 								// would throw away a half-built selection.
 								<div
 									key={s.id}
+									inert={selection.isSelecting}
 									className={selection.isSelecting ? "pointer-events-none opacity-40" : undefined}
 								>
 									<SeriesCard
@@ -456,6 +457,7 @@ const Library: React.FC = () => {
 							return (
 								<div
 									key={s.id}
+									inert={selection.isSelecting}
 									className={selection.isSelecting ? "pointer-events-none opacity-40" : undefined}
 								>
 									<SeriesListItem

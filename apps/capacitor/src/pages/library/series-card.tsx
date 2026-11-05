@@ -10,6 +10,7 @@
  */
 
 import type React from "react";
+import { useId } from "react";
 import CoverImage from "../../components/cover-image";
 import type { Series } from "../../services/db/schema";
 import { chapterCountLabel } from "../../services/serial-scrapers";
@@ -24,10 +25,16 @@ interface SeriesCardProps {
 
 const SeriesCard: React.FC<SeriesCardProps> = ({ series, chapterCount, onOpen, onMenu }) => {
 	const handlers = useLongPress({ onTap: onOpen, onMenu });
+	const id = useId();
+	const chaptersId = `${id}-chapters`;
+	const authorId = `${id}-author`;
 
 	return (
-		<div
-			className="flex select-none flex-col active:opacity-70"
+		<button
+			type="button"
+			aria-label={series.title}
+			aria-describedby={`${chaptersId} ${authorId}`}
+			className="flex w-full select-none flex-col rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
 			style={{ WebkitTouchCallout: "none", cursor: "pointer" }}
 			{...handlers}
 		>
@@ -44,7 +51,10 @@ const SeriesCard: React.FC<SeriesCardProps> = ({ series, chapterCount, onOpen, o
 				/>
 				{/* Chapter-count badge */}
 				{chapterCount !== undefined && (
-					<span className="absolute right-1.5 bottom-1.5 rounded-sm bg-black px-1.5 py-0.5 font-semibold text-[0.6rem] text-white">
+					<span
+						id={chaptersId}
+						className="absolute right-1.5 bottom-1.5 rounded-sm bg-black px-1.5 py-0.5 font-semibold text-[0.6rem] text-white"
+					>
 						{chapterCountLabel(chapterCount, { short: true })}
 					</span>
 				)}
@@ -56,12 +66,15 @@ const SeriesCard: React.FC<SeriesCardProps> = ({ series, chapterCount, onOpen, o
 					{series.title}
 				</div>
 				{series.author && (
-					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[#888] text-[0.75rem]">
+					<div
+						id={authorId}
+						className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[#888] text-[0.75rem]"
+					>
 						{series.author}
 					</div>
 				)}
 			</div>
-		</div>
+		</button>
 	);
 };
 

@@ -60,9 +60,9 @@ const Shelf: React.FC<Props> = ({
 			}
 		>
 			{books.map((b) => (
-				<div key={b.id} className="shrink-0" style={SHELF_ITEM_STYLE}>
+				<li key={b.id} className="shrink-0" style={SHELF_ITEM_STYLE}>
 					<CatalogResultCard result={b} onOpen={() => onOpen(b)} />
-				</div>
+				</li>
 			))}
 		</ShelfFrame>
 	);

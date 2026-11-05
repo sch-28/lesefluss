@@ -2,6 +2,7 @@ import { Progress } from "@lesefluss/ui/progress";
 import { RatingStars } from "@lesefluss/ui/rating-stars";
 import { Check } from "lucide-react";
 import type React from "react";
+import { useId } from "react";
 import BookCover from "../../components/book-cover";
 import { DeviceBadge } from "../../components/device-sync";
 import type { Book } from "../../services/db/schema";
@@ -37,12 +38,17 @@ const BookListItem: React.FC<BookListItemProps> = ({
 		onMenu,
 		enabled: !selectable,
 	});
+	const detailsId = useId();
 
 	return (
-		<div
+		<button
+			type="button"
 			data-book-title={book.title}
 			data-selected={selectable && selected ? "true" : undefined}
-			className="flex cursor-pointer select-none items-center gap-3 [-webkit-touch-callout:none] active:opacity-70"
+			aria-label={book.title}
+			aria-describedby={detailsId}
+			aria-pressed={selectable ? selected : undefined}
+			className="flex w-full cursor-pointer select-none items-center gap-3 rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none [-webkit-touch-callout:none] focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
 			{...handlers}
 		>
 			{/* Leading pip rather than the grid's scrim: a wash over a thumbnail this
@@ -66,26 +72,28 @@ const BookListItem: React.FC<BookListItemProps> = ({
 				<div className="line-clamp-2 overflow-hidden font-semibold text-[0.9rem] leading-[1.2]">
 					{book.title}
 				</div>
-				{book.author && (
-					<div className="mt-0.5 truncate text-[0.8rem] text-muted-foreground">{book.author}</div>
-				)}
-				{book.rating !== null && (
-					<RatingStars rating={book.rating} className="mt-0.5" starClassName="size-3" />
-				)}
-				{started && (
-					<div className="mt-1 flex items-center gap-1.5">
-						<Progress value={progress} className="h-1 flex-1" aria-label="Reading progress" />
-						<span className="font-medium text-[0.7rem] text-muted-foreground tabular-nums">
-							{progress}%
-						</span>
+				<div id={detailsId}>
+					{book.author && (
+						<div className="mt-0.5 truncate text-[0.8rem] text-muted-foreground">{book.author}</div>
+					)}
+					{book.rating !== null && (
+						<RatingStars rating={book.rating} className="mt-0.5" starClassName="size-3" />
+					)}
+					{started && (
+						<div className="mt-1 flex items-center gap-1.5">
+							<Progress value={progress} className="h-1 flex-1" aria-label="Reading progress" />
+							<span className="font-medium text-[0.7rem] text-muted-foreground tabular-nums">
+								{progress}%
+							</span>
+						</div>
+					)}
+					<div className="mt-1 flex flex-wrap items-center gap-1.5">
+						<DeviceBadge bookId={book.id} style="block" />
+						<SyncExcludedBadge book={book} />
 					</div>
-				)}
-				<div className="mt-1 flex flex-wrap items-center gap-1.5">
-					<DeviceBadge bookId={book.id} style="block" />
-					<SyncExcludedBadge book={book} />
 				</div>
 			</div>
-		</div>
+		</button>
 	);
 };
 

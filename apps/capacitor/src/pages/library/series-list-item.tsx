@@ -1,4 +1,5 @@
 import type React from "react";
+import { useId } from "react";
 import CoverImage from "../../components/cover-image";
 import type { Series } from "../../services/db/schema";
 import { chapterCountLabel } from "../../services/serial-scrapers";
@@ -18,10 +19,14 @@ const SeriesListItem: React.FC<SeriesListItemProps> = ({
 	onMenu,
 }) => {
 	const handlers = useLongPress({ onTap: onOpen, onMenu });
+	const detailsId = useId();
 
 	return (
-		<div
-			className="flex cursor-pointer select-none items-center gap-3 active:opacity-70"
+		<button
+			type="button"
+			aria-label={series.title}
+			aria-describedby={detailsId}
+			className="flex w-full cursor-pointer select-none items-center gap-3 rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
 			style={{ WebkitTouchCallout: "none" }}
 			{...handlers}
 		>
@@ -41,16 +46,20 @@ const SeriesListItem: React.FC<SeriesListItemProps> = ({
 				<div className="overflow-hidden text-ellipsis font-semibold text-[0.9rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
 					{series.title}
 				</div>
-				{series.author && (
-					<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[#888] text-[0.8rem]">
-						{series.author}
-					</div>
-				)}
-				{chapterCount !== undefined && (
-					<div className="mt-0.5 text-[#888] text-[0.75rem]">{chapterCountLabel(chapterCount)}</div>
-				)}
+				<div id={detailsId}>
+					{series.author && (
+						<div className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[#888] text-[0.8rem]">
+							{series.author}
+						</div>
+					)}
+					{chapterCount !== undefined && (
+						<div className="mt-0.5 text-[#888] text-[0.75rem]">
+							{chapterCountLabel(chapterCount)}
+						</div>
+					)}
+				</div>
 			</div>
-		</div>
+		</button>
 	);
 };
 

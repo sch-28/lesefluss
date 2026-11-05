@@ -32,9 +32,9 @@ const TrendingWebNovels: React.FC<Props> = ({ onOpen }) => {
 			testId="trending-web-novels"
 		>
 			{results.map((r) => (
-				<div key={r.sourceUrl} className="shrink-0" style={SHELF_ITEM_STYLE}>
+				<li key={r.sourceUrl} className="shrink-0" style={SHELF_ITEM_STYLE}>
 					<WebNovelCard result={r} onPick={onOpen} showProvider />
-				</div>
+				</li>
 			))}
 		</ShelfFrame>
 	);

@@ -14,9 +14,6 @@ test.use({ viewport: { width: 420, height: 800 }, contextOptions: { reducedMotio
 
 /** Known generic clickables, each with a task to fix it. */
 const KNOWN_CLICKABLES = [
-	// TASK-205.11: library cards become real buttons.
-	'[data-testid="library-card"]',
-	"[data-book-title]",
 	// The paused RSVP view holds its own Play button; a button may not contain buttons.
 	".rsvp-display--paused",
 ];
@@ -76,6 +73,15 @@ test("library to read-aloud: every control is named, nothing clickable is anonym
 	await page.getByRole("menuitem", { name: "View book" }).click();
 	await page.waitForURL(/\/tabs\/library\/book\//);
 	await expectAccessible(page, "book page");
+});
+
+test("a library card is a button a keyboard reaches and opens", async ({ page }) => {
+	const title = await openWithFakeTts(page);
+	const card = page.getByRole("button", { name: title, exact: true });
+	await card.focus();
+	await expect(card).toBeFocused();
+	await page.keyboard.press("Enter");
+	await page.waitForURL(/\/tabs\/reader\//);
 });
 
 test("page mode tells screen-reader users to listen with read-aloud", async ({ page }) => {

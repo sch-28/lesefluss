@@ -99,9 +99,9 @@ const GroupedResults: React.FC<Props> = ({
 					testId={`provider-group-${provider}`}
 				>
 					{results.slice(0, PROVIDER_PREVIEW_SIZE).map((r) => (
-						<div key={r.sourceUrl} className="shrink-0" style={SHELF_ITEM_STYLE}>
+						<li key={r.sourceUrl} className="shrink-0" style={SHELF_ITEM_STYLE}>
 							<WebNovelCard result={r} onPick={onOpenWebNovel} showProvider={false} />
-						</div>
+						</li>
 					))}
 				</ShelfFrame>
 			))}

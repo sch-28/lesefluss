@@ -30,4 +30,18 @@ describe("ShelfFrame", () => {
 		view = await render(<ShelfFrame title="Most read">items</ShelfFrame>);
 		expect(view.queryButton("Scroll Most read left")).toBeNull();
 	});
+
+	it("exposes the strip as a list named by the shelf title", async () => {
+		mockPointer(false);
+		view = await render(
+			<ShelfFrame title="Most read">
+				<li>One</li>
+				<li>Two</li>
+			</ShelfFrame>,
+		);
+		const list = view.container.querySelector("ul");
+		const labelId = list?.getAttribute("aria-labelledby") ?? "";
+		expect(document.getElementById(labelId)?.textContent).toBe("Most read");
+		expect(list?.querySelectorAll(":scope > li")).toHaveLength(2);
+	});
 });
