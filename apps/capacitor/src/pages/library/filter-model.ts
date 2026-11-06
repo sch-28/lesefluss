@@ -187,6 +187,8 @@ function withState(
 	return next.in.length + next.out.length > 0 ? { ...rest, [facet]: next } : rest;
 }
 
+export const setValueState = withState;
+
 const NEXT_STATE: Record<ValueState, ValueState> = { off: "in", in: "out", out: "off" };
 
 /** Off, then include, then exclude, then off again. */

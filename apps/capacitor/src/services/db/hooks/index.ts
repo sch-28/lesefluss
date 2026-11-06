@@ -37,6 +37,7 @@ import { readingSessionHooks } from "./use-reading-sessions";
 import { serialHooks } from "./use-serials";
 import { seriesHooks } from "./use-series";
 import { settingsHooks } from "./use-settings";
+import { smartShelfHooks } from "./use-smart-shelves";
 import { statsHooks } from "./use-stats";
 
 export {
@@ -181,6 +182,12 @@ export const queryHooks = {
 	useDeleteCollection: collectionHooks.useDeleteCollection,
 	useAddBooksToCollection: collectionHooks.useAddBooksToCollection,
 	useRemoveBooksFromCollection: collectionHooks.useRemoveBooksFromCollection,
+
+	// ── Smart shelves ─────────────────────────────────────────────────────
+	useSmartShelfRows: smartShelfHooks.useSmartShelfRows,
+	useCreateSmartShelf: smartShelfHooks.useCreateSmartShelf,
+	useUpdateSmartShelf: smartShelfHooks.useUpdateSmartShelf,
+	useDeleteSmartShelf: smartShelfHooks.useDeleteSmartShelf,
 
 	// ── Stats ─────────────────────────────────────────────────────────────
 	useStatsPeriodTotals: statsHooks.usePeriodTotals,

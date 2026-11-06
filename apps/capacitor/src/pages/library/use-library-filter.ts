@@ -31,26 +31,27 @@ function storeFilter(filter: LibraryFilter): void {
  * when the library opens without one.
  */
 export function useLibraryFilter(): [LibraryFilter, (filter: LibraryFilter) => void] {
-	const { f } = useSearch({ from: "/tabs/library/" });
+	const { f, shelf } = useSearch({ from: "/tabs/library/" });
 	const navigate = useNavigate({ from: "/tabs/library/" });
 	const fromUrl = useMemo(() => decodeFilterParam(f), [f]);
-	const filter = useMemo(() => fromUrl ?? readStoredFilter(), [fromUrl]);
+	// An open shelf's chips are its own, never the device's last filter.
+	const filter = useMemo(() => fromUrl ?? (shelf ? {} : readStoredFilter()), [fromUrl, shelf]);
 
 	const setFilter = useCallback(
 		(next: LibraryFilter) => {
-			storeFilter(next);
+			if (!shelf) storeFilter(next);
 			navigate({ search: (prev) => ({ ...prev, f: encodeFilterParam(next) }), replace: true });
 		},
-		[navigate],
+		[navigate, shelf],
 	);
 
 	useEffect(() => {
-		if (fromUrl) storeFilter(fromUrl);
+		if (fromUrl && !shelf) storeFilter(fromUrl);
 		const canonical = encodeFilterParam(filter);
 		if (canonical !== f) {
 			navigate({ search: (prev) => ({ ...prev, f: canonical }), replace: true });
 		}
-	}, [f, fromUrl, filter, navigate]);
+	}, [f, fromUrl, filter, navigate, shelf]);
 
 	return [filter, setFilter];
 }

@@ -1,0 +1,121 @@
+import { useLocation, useNavigate } from "@tanstack/react-router";
+import { Pencil, Pin, PinOff, SlidersHorizontal, Trash2 } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import { encodeFilterParam } from "../../pages/library/filter-model";
+import { editShelfConditionsRequest, type ShelfEntry } from "../../pages/library/use-smart-shelves";
+import { queryHooks } from "../../services/db/hooks";
+import { ActionSheet, type ActionSheetItem } from "../action-sheet";
+import { CollectionNameDialog } from "../collections/collection-name-dialog";
+import { ConfirmDialog } from "../confirm-dialog";
+
+type Props = {
+	/** The shelf whose menu is open; null closes it. */
+	shelf: ShelfEntry | null;
+	onClose: () => void;
+	setBuiltInPinned: (id: string, pinned: boolean) => void;
+};
+
+export function openShelf(navigate: ReturnType<typeof useNavigate>, shelf: ShelfEntry) {
+	return navigate({
+		to: "/tabs/library",
+		search: { shelf: shelf.id, f: shelf.filter ? encodeFilterParam(shelf.filter) : undefined },
+	});
+}
+
+/** Built-ins only pin; a user shelf also renames, edits and deletes, and those changes sync. */
+export const ShelfActions: React.FC<Props> = ({ shelf, onClose, setBuiltInPinned }) => {
+	const [renaming, setRenaming] = useState<ShelfEntry | null>(null);
+	const [deleting, setDeleting] = useState<ShelfEntry | null>(null);
+	const update = queryHooks.useUpdateSmartShelf();
+	const remove = queryHooks.useDeleteSmartShelf();
+	const navigate = useNavigate();
+	const location = useLocation();
+
+	const togglePin = () => {
+		if (!shelf) return;
+		if (shelf.isBuiltIn) setBuiltInPinned(shelf.id, !shelf.pinned);
+		else update.mutate({ id: shelf.id, pinned: !shelf.pinned });
+	};
+
+	const pinItem: ActionSheetItem = {
+		label: shelf?.pinned ? "Unpin" : "Pin",
+		icon: shelf?.pinned ? PinOff : Pin,
+		onSelect: togglePin,
+	};
+	const items: ActionSheetItem[] = shelf?.isBuiltIn
+		? [pinItem]
+		: [
+				{ label: "Rename", icon: Pencil, onSelect: () => setRenaming(shelf) },
+				{
+					label: "Edit conditions…",
+					icon: SlidersHorizontal,
+					// A shelf the chips cannot show has nothing to edit there.
+					disabled: !shelf?.filter,
+					onSelect: () => {
+						if (!shelf) return;
+						editShelfConditionsRequest.raise();
+						openShelf(navigate, shelf);
+					},
+				},
+				pinItem,
+				{
+					label: "Delete shelf…",
+					icon: Trash2,
+					destructive: true,
+					onSelect: () => setDeleting(shelf),
+				},
+			];
+
+	const confirmDelete = () => {
+		if (!deleting) return;
+		const id = deleting.id;
+		setDeleting(null);
+		remove.mutate(id);
+		const open = (location.search as { shelf?: string }).shelf;
+		if (location.pathname === "/tabs/library" && open === id) {
+			navigate({ to: "/tabs/library", search: {} });
+		}
+	};
+
+	return (
+		<>
+			<ActionSheet
+				open={!!shelf}
+				onOpenChange={(open) => {
+					if (!open) onClose();
+				}}
+				title={shelf?.name}
+				items={items}
+			/>
+			<CollectionNameDialog
+				open={!!renaming}
+				onOpenChange={(open) => {
+					if (!open) setRenaming(null);
+				}}
+				title="Rename shelf"
+				confirmLabel="Rename"
+				placeholder="Shelf name"
+				initialName={renaming?.name}
+				onSubmit={(name) => {
+					if (renaming) update.mutate({ id: renaming.id, name });
+				}}
+			/>
+			<ConfirmDialog
+				open={!!deleting}
+				onOpenChange={(open) => {
+					if (!open) setDeleting(null);
+				}}
+				title="Delete shelf?"
+				description={
+					deleting
+						? `"${deleting.name}" will be deleted. Its books stay in your library.`
+						: undefined
+				}
+				confirmLabel="Delete"
+				destructive
+				onConfirm={confirmDelete}
+			/>
+		</>
+	);
+};

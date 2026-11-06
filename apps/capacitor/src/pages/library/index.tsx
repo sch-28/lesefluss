@@ -1,6 +1,5 @@
 import { readingProgress } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
 import { Progress } from "@lesefluss/ui/progress";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useSearch } from "@tanstack/react-router";
@@ -14,6 +13,7 @@ import {
 	FolderMinus,
 	FolderPlus,
 	Loader2,
+	MoreHorizontal,
 	Pencil,
 	Plus,
 	RefreshCcw,
@@ -29,6 +29,8 @@ import { TabHeader } from "../../components/app-shell/tab-header";
 import BLEIndicator from "../../components/ble-indicator";
 import { setBooksDragData } from "../../components/collections/drag-data";
 import { ConfirmDialog } from "../../components/confirm-dialog";
+import { canSaveAsShelf, SaveShelfDialog } from "../../components/smart-shelves/save-shelf-dialog";
+import { ShelfActions } from "../../components/smart-shelves/shelf-actions";
 import { type ViewMode, ViewModeToggle } from "../../components/view-mode-toggle";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
@@ -51,11 +53,14 @@ import BulkSheets from "./bulk-sheets";
 import CollectionPicker from "./collection-picker";
 import CollectionShelfRow from "./collection-shelf-row";
 import { libraryCommands } from "./commands";
+import { filterToTree, matchesTree, serializeTree } from "./condition-tree";
 import FilterBar, { AddFilterButton } from "./filter-bar";
 import { activeFilterCount, type Facet, type LibraryFilter, pruneFilter } from "./filter-model";
 import { FilterPopover, FilterSheet, facetOptions } from "./filter-picker";
 import ImportSheet from "./import-sheet";
 import PasteUrlModal from "./paste-url-modal";
+import { searchTextOf } from "./query-syntax";
+import { SearchAutocomplete } from "./search-autocomplete";
 import SeriesCard from "./series-card";
 import SeriesListItem from "./series-list-item";
 import {
@@ -72,6 +77,7 @@ import { useLibraryFilter } from "./use-library-filter";
 import { useLibraryImports } from "./use-library-imports";
 import { useLibraryItems } from "./use-library-items";
 import { useLibrarySelection } from "./use-library-selection";
+import { editShelfConditionsRequest, type ShelfEntry, useSmartShelves } from "./use-smart-shelves";
 import VirtualBookGrid from "./virtual-book-grid";
 
 const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
@@ -101,12 +107,17 @@ const Library: React.FC = () => {
 	const { isLoggedIn, syncNow, isSyncing } = useSyncContext();
 	const navigate = useNavigate();
 	const qc = useQueryClient();
-	const { collection: collectionId } = useSearch({ from: "/tabs/library/" });
+	const { collection: collectionId, shelf: shelfId } = useSearch({ from: "/tabs/library/" });
 	const collectionsQuery = queryHooks.useCollections();
 	const membersQuery = queryHooks.useCollectionBookIds(collectionId ?? null);
 	const membershipsQuery = queryHooks.useCollectionMemberships();
 	const activeCollection = collectionsQuery.data?.find((c) => c.id === collectionId);
 	const removeFromCollection = queryHooks.useRemoveBooksFromCollection();
+	const smart = useSmartShelves();
+	const activeShelf = shelfId ? smart.shelves.find((s) => s.id === shelfId) : undefined;
+	const updateShelf = queryHooks.useUpdateSmartShelf();
+	const [shelfMenuFor, setShelfMenuFor] = useState<ShelfEntry | null>(null);
+	const [isSavingShelf, setIsSavingShelf] = useState(false);
 
 	const {
 		books,
@@ -117,7 +128,11 @@ const Library: React.FC = () => {
 		isLoading: isLibraryPending,
 	} = useLibraryItems();
 	// The Collection facet and its pruning need both; mid-load every collection looks deleted.
-	const isPending = isLibraryPending || collectionsQuery.isPending || membershipsQuery.isPending;
+	const isPending =
+		isLibraryPending ||
+		collectionsQuery.isPending ||
+		membershipsQuery.isPending ||
+		(!!shelfId && smart.isLoading);
 
 	const imports = useLibraryImports();
 	const deleteMutation = queryHooks.useDeleteBook();
@@ -191,6 +206,14 @@ const Library: React.FC = () => {
 		activeCollection,
 		navigate,
 	]);
+
+	useEffect(() => {
+		if (shelfId && smart.isSettled && !activeShelf) {
+			navigate({ to: "/tabs/library", search: {}, replace: true });
+		}
+	}, [shelfId, smart.isSettled, activeShelf, navigate]);
+
+	editShelfConditionsRequest.useHandler(() => setIsFilterOpen(true));
 
 	const dismissNotice = useCallback(() => {
 		localStorage.setItem(LOCAL_NOTICE_KEY, "1");
@@ -285,13 +308,16 @@ const Library: React.FC = () => {
 	);
 	// A value can vanish while it is filtered on (a tag's last book edited or
 	// deleted), which would leave an empty library with no visible cause.
+	// Not inside a shelf: a pruned condition would widen the shelf instead of emptying it.
 	const activeFilter = useMemo(
 		() =>
-			LIBRARY_VALUE_FACETS.reduce<LibraryFilter>(
-				(f, facet) => pruneFilter(f, facet, new Set(options[facet].map((o) => o.value))),
-				filter,
-			),
-		[filter, options],
+			shelfId
+				? filter
+				: LIBRARY_VALUE_FACETS.reduce<LibraryFilter>(
+						(f, facet) => pruneFilter(f, facet, new Set(options[facet].map((o) => o.value))),
+						filter,
+					),
+		[filter, options, shelfId],
 	);
 	// Dropped from state too, so a sync pull that brings the value back does not
 	// re-arm it. Held off until the books are in: mid-load every value looks missing.
@@ -301,16 +327,26 @@ const Library: React.FC = () => {
 	// Narrowed after the filter options and pruning above, which read the whole
 	// library: opening a collection must not prune the user's saved filter values.
 	const scopedItems = useMemo(() => {
+		// A shelf the chips cannot show narrows by its own tree.
+		if (activeShelf && !activeShelf.filter) {
+			const { tree } = activeShelf;
+			return tree ? allItems.filter((item) => matchesTree(item.facets, tree.root)) : [];
+		}
 		if (!collectionId) return allItems;
 		const members = new Set(membersQuery.data ?? []);
 		return allItems.filter((item) => item.kind === "book" && members.has(item.book.id));
-	}, [allItems, collectionId, membersQuery.data]);
+	}, [allItems, collectionId, membersQuery.data, activeShelf]);
 	const visibleItems = useMemo(
-		() => applyLibraryView(scopedItems, { filter: activeFilter, sortBy, search }),
+		() =>
+			applyLibraryView(scopedItems, { filter: activeFilter, sortBy, search: searchTextOf(search) }),
 		[scopedItems, activeFilter, sortBy, search],
 	);
 	const filterCount = activeFilterCount(activeFilter);
-	const isNarrowed = filterCount > 0 || search.trim() !== "";
+	const canSaveFilter = canSaveAsShelf(activeFilter);
+	const shelfIsEdited =
+		!!activeShelf?.filter &&
+		serializeTree(filterToTree(activeFilter)) !== serializeTree(filterToTree(activeShelf.filter));
+	const isNarrowed = filterCount > 0 || searchTextOf(search).trim() !== "";
 	const isCollectionEmpty = !!collectionId && membersQuery.isSuccess && scopedItems.length === 0;
 	const selection = useLibrarySelection(books, visibleItems);
 	const gridRef = useRef<HTMLDivElement>(null);
@@ -465,17 +501,18 @@ const Library: React.FC = () => {
 
 			{isSearchOpen && (
 				<div className="border-border border-b px-4 py-2">
-					<Input
-						autoFocus
+					<SearchAutocomplete
 						value={search}
-						placeholder="Search title or author"
-						onChange={(e) => setSearch(e.target.value)}
+						onValueChange={setSearch}
+						filter={activeFilter}
+						onFilterChange={setFilter}
+						options={options}
 					/>
 				</div>
 			)}
 
 			{(books.length > 0 || (collectionsQuery.data?.length ?? 0) > 0) && (
-				<CollectionShelfRow activeId={collectionId} />
+				<CollectionShelfRow activeId={collectionId} activeShelfId={shelfId} />
 			)}
 
 			{activeCollection && (
@@ -497,11 +534,72 @@ const Library: React.FC = () => {
 				</div>
 			)}
 
+			{activeShelf && (
+				<div
+					className="flex items-center gap-2 border-border border-b px-4 py-2"
+					data-testid="smart-shelf-header"
+				>
+					<h2 className="m-0 min-w-0 flex-1 truncate font-semibold text-base">
+						{activeShelf.name}
+						<span className="ml-2 font-normal text-muted-foreground text-sm tabular-nums">
+							{smart.counts.get(activeShelf.id) ?? 0}
+						</span>
+						{!activeShelf.filter && (
+							<span className="ml-2 font-normal text-muted-foreground text-xs">
+								Custom conditions
+							</span>
+						)}
+					</h2>
+					{!activeShelf.isBuiltIn && shelfIsEdited && (
+						<Button
+							size="sm"
+							variant="outline"
+							disabled={!canSaveFilter || updateShelf.isPending}
+							onClick={() =>
+								updateShelf.mutate({
+									id: activeShelf.id,
+									conditions: serializeTree(filterToTree(activeFilter)),
+								})
+							}
+						>
+							Update shelf
+						</Button>
+					)}
+					<Button
+						variant="ghost"
+						size="icon"
+						aria-label={`${activeShelf.name} options`}
+						onClick={() => setShelfMenuFor(activeShelf)}
+					>
+						<MoreHorizontal />
+					</Button>
+					<Button
+						variant="ghost"
+						size="icon"
+						aria-label="Show all books"
+						onClick={() => navigate({ to: "/tabs/library", search: {} })}
+					>
+						<X />
+					</Button>
+				</div>
+			)}
+			<ShelfActions
+				shelf={shelfMenuFor}
+				onClose={() => setShelfMenuFor(null)}
+				setBuiltInPinned={smart.setBuiltInPinned}
+			/>
+			<SaveShelfDialog open={isSavingShelf} onOpenChange={setIsSavingShelf} filter={activeFilter} />
+
 			{(books.length > 0 || series.length > 0) && (
 				<FilterBar
 					filter={activeFilter}
 					onChange={setFilter}
 					options={options}
+					onSaveShelf={
+						canSaveFilter && (!activeShelf || shelfIsEdited)
+							? () => setIsSavingShelf(true)
+							: undefined
+					}
 					addFilter={
 						isDesktop ? (
 							<FilterPopover
@@ -525,6 +623,14 @@ const Library: React.FC = () => {
 					onChange={setFilter}
 					options={options}
 					resultCount={visibleItems.length}
+					onSaveShelf={
+						canSaveFilter && (!activeShelf || shelfIsEdited)
+							? () => {
+									setIsFilterOpen(false);
+									setIsSavingShelf(true);
+								}
+							: undefined
+					}
 				/>
 			)}
 

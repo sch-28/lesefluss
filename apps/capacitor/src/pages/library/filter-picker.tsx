@@ -361,6 +361,7 @@ type PickerProps = PanelProps & {
 	onOpenChange: (open: boolean) => void;
 	/** Rows the current filter leaves, for the phone sheet's Show button. */
 	resultCount: number;
+	onSaveShelf?: () => void;
 };
 
 /** Desktop: a popover under the Add filter button. */
@@ -369,6 +370,7 @@ export const FilterPopover: React.FC<PickerProps & { trigger: React.ReactNode }>
 	onOpenChange,
 	trigger,
 	resultCount: _,
+	onSaveShelf: __,
 	...panel
 }) => (
 	<Popover open={open} onOpenChange={onOpenChange}>
@@ -388,6 +390,7 @@ export const FilterSheet: React.FC<PickerProps> = ({
 	open,
 	onOpenChange,
 	resultCount,
+	onSaveShelf,
 	...panel
 }) => {
 	const activeCount = useMemo(() => activeFilterCount(panel.filter), [panel.filter]);
@@ -412,6 +415,11 @@ export const FilterSheet: React.FC<PickerProps> = ({
 					>
 						Clear
 					</Button>
+					{onSaveShelf && (
+						<Button variant="outline" className="flex-1" onClick={onSaveShelf}>
+							Save shelf
+						</Button>
+					)}
 					<Button className="flex-[1.8]" onClick={() => onOpenChange(false)}>
 						Show {resultCount} {resultCount === 1 ? "book" : "books"}
 					</Button>

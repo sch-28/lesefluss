@@ -83,6 +83,7 @@ import {
 	SYNC_ENABLED,
 	setSessionTombstoneWatermark,
 } from "./session";
+import { buildSmartShelfMerge, pushableSmartShelves } from "./smart-shelf-sync";
 
 export { openBrowserSignIn } from "./browser-sign-in";
 export {
@@ -1147,6 +1148,20 @@ export async function pullSync(): Promise<Set<string>> {
 			}
 			if (merge.collections.length > 0 || merge.collectionBooks.length > 0) changed = true;
 		}
+		// Absent from an older server: leave local shelves alone.
+		if (data.smartShelves) {
+			const merge = buildSmartShelfMerge(
+				await queries.getAllSmartShelvesForSync(),
+				data.smartShelves,
+			);
+			if (merge.rejected > 0) {
+				log("sync", `pull: skipped ${merge.rejected} malformed smart shelf row(s)`);
+			}
+			if (merge.shelves.length > 0) {
+				await queries.upsertSmartShelves(merge.shelves);
+				changed = true;
+			}
+		}
 		// Positions may have moved past the finish on another device or a reader.
 		await queries.completeFinishedGoals();
 
@@ -1315,6 +1330,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			goals,
 			collectionRows,
 			collectionBookRows,
+			smartShelfRows,
 		] = await Promise.all([
 			queries.getBooksForSync(),
 			queries.getSettings(),
@@ -1325,6 +1341,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			queries.getAllGoalsForSync(),
 			queries.getAllCollectionsForSync(),
 			queries.getAllCollectionBooksForSync(),
+			queries.getAllSmartShelvesForSync(),
 		]);
 
 		// Pristine pending chapter rows carry zero user data and are excluded from the
@@ -1388,6 +1405,11 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			log("sync", `push: dropped ${collectionsForPush.rejected} malformed collection row(s)`);
 		}
 
+		const shelvesForPush = pushableSmartShelves(smartShelfRows);
+		if (shelvesForPush.rejected > 0) {
+			log("sync", `push: dropped ${shelvesForPush.rejected} malformed smart shelf row(s)`);
+		}
+
 		const payload: SyncPayload = {
 			books: booksWithContent,
 			settings: hasAdoptedSettings ? settingsToSync(settings) : null,
@@ -1404,6 +1426,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			readingGoals: goalsForPush.pushable,
 			collections: collectionsForPush.collections,
 			collectionBooks: collectionsForPush.collectionBooks,
+			smartShelves: shelvesForPush.shelves,
 		};
 
 		// Diagnostics for the >5000 books cap — log composition so we can see what's

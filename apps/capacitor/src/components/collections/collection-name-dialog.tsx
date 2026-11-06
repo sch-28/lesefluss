@@ -11,6 +11,7 @@ type Props = {
 	title: string;
 	confirmLabel: string;
 	initialName?: string;
+	placeholder?: string;
 	onSubmit: (name: string) => void;
 };
 
@@ -20,6 +21,7 @@ export const CollectionNameDialog: React.FC<Props> = ({
 	title,
 	confirmLabel,
 	initialName = "",
+	placeholder = "Collection name",
 	onSubmit,
 }) => {
 	const [name, setName] = useState(initialName);
@@ -41,8 +43,8 @@ export const CollectionNameDialog: React.FC<Props> = ({
 				autoFocus
 				value={name}
 				maxLength={COLLECTION_NAME_MAX}
-				placeholder="Collection name"
-				aria-label="Collection name"
+				placeholder={placeholder}
+				aria-label={placeholder}
 				onChange={(e) => setName(e.target.value)}
 				onKeyDown={(e) => {
 					if (e.key === "Enter") submit();

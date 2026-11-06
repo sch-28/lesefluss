@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { NavBadge } from "./nav-badge";
 import { useActiveNavTo, useNavBadges, useNavItems } from "./nav-items";
 import { SidebarCollections } from "./sidebar-collections";
+import { SidebarSmartShelves } from "./sidebar-smart-shelves";
 
 const STORAGE_KEY = "sidebar-collapsed";
 
@@ -67,6 +68,7 @@ export function DesktopSidebar() {
 						);
 					})}
 				</ul>
+				<SidebarSmartShelves isCollapsed={isCollapsed} onExpand={() => setIsCollapsed(false)} />
 				<SidebarCollections isCollapsed={isCollapsed} onExpand={() => setIsCollapsed(false)} />
 			</nav>
 			<button

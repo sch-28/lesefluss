@@ -357,6 +357,23 @@ export type SyncReadingSession = typeof syncReadingSessions.$inferSelect;
 export type NewSyncReadingSession = typeof syncReadingSessions.$inferInsert;
 export type SyncReadingGoal = typeof syncReadingGoals.$inferSelect;
 export type NewSyncReadingGoal = typeof syncReadingGoals.$inferInsert;
+/** sync_smart_shelves: saved filters, last-write-wins per row on `updated_at`. */
+export const syncSmartShelves = pgTable(
+	"sync_smart_shelves",
+	{
+		userId: text("user_id").notNull(),
+		shelfId: text("shelf_id").notNull(),
+		name: text("name").notNull(),
+		conditions: text("conditions").notNull(),
+		pinned: boolean("pinned").notNull().default(false),
+		sortOrder: doublePrecision("sort_order").notNull(),
+		deleted: boolean("deleted").notNull().default(false),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.shelfId] })],
+);
+
 export type NewSyncCollection = typeof syncCollections.$inferInsert;
 export type NewSyncCollectionBook = typeof syncCollectionBooks.$inferInsert;
 

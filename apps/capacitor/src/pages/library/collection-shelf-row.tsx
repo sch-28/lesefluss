@@ -5,9 +5,11 @@ import type React from "react";
 import { useState } from "react";
 import { CollectionActions } from "../../components/collections/collection-actions";
 import { CollectionNameDialog } from "../../components/collections/collection-name-dialog";
+import { openShelf, ShelfActions } from "../../components/smart-shelves/shelf-actions";
 import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
 import { useLongPress } from "./use-long-press";
+import { type ShelfEntry, useSmartShelves } from "./use-smart-shelves";
 
 const CHIP =
 	"inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-sm whitespace-nowrap transition-colors";
@@ -42,9 +44,43 @@ const CollectionChip: React.FC<ChipProps> = ({ collection, active, onOpen, onMen
 	);
 };
 
-/** The phone's collection switcher; the desktop sidebar lists the same collections. */
-const CollectionShelfRow: React.FC<{ activeId: string | undefined }> = ({ activeId }) => {
+const SmartShelfChip: React.FC<{
+	shelf: ShelfEntry;
+	count: number;
+	active: boolean;
+	onOpen: () => void;
+	onMenu: () => void;
+}> = ({ shelf, count, active, onOpen, onMenu }) => {
+	const handlers = useLongPress({ onTap: onOpen, onMenu });
+	return (
+		<button
+			type="button"
+			{...handlers}
+			aria-pressed={active}
+			data-testid="shelf-smart"
+			className={cn(
+				CHIP,
+				active
+					? "border-primary bg-primary text-primary-foreground"
+					: "border-border border-dashed bg-card text-foreground",
+			)}
+		>
+			<span className="max-w-[12rem] truncate">{shelf.name}</span>
+			<span className={cn("text-xs tabular-nums", active ? "opacity-80" : "text-muted-foreground")}>
+				{count}
+			</span>
+		</button>
+	);
+};
+
+/** The phone's collection and smart shelf switcher; the desktop sidebar lists the same. */
+const CollectionShelfRow: React.FC<{
+	activeId: string | undefined;
+	activeShelfId: string | undefined;
+}> = ({ activeId, activeShelfId }) => {
 	const { data: collections = [] } = queryHooks.useCollections();
+	const smart = useSmartShelves();
+	const [shelfMenuFor, setShelfMenuFor] = useState<ShelfEntry | null>(null);
 	const create = queryHooks.useCreateCollection();
 	const navigate = useNavigate();
 	const [menuFor, setMenuFor] = useState<CollectionWithCount | null>(null);
@@ -57,22 +93,32 @@ const CollectionShelfRow: React.FC<{ activeId: string | undefined }> = ({ active
 		<div className="md:hidden">
 			<div
 				role="toolbar"
-				aria-label="Collections"
+				aria-label="Collections and shelves"
 				className="flex gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none]"
 			>
 				<button
 					type="button"
-					aria-pressed={!activeId}
+					aria-pressed={!activeId && !activeShelfId}
 					onClick={() => open(undefined)}
 					className={cn(
 						CHIP,
-						!activeId
+						!activeId && !activeShelfId
 							? "border-primary bg-primary text-primary-foreground"
 							: "border-border bg-card text-foreground",
 					)}
 				>
 					All
 				</button>
+				{smart.shelves.map((s) => (
+					<SmartShelfChip
+						key={s.id}
+						shelf={s}
+						count={smart.counts.get(s.id) ?? 0}
+						active={activeShelfId === s.id}
+						onOpen={() => openShelf(navigate, s)}
+						onMenu={() => setShelfMenuFor(s)}
+					/>
+				))}
 				{collections.map((c) => (
 					<CollectionChip
 						key={c.id}
@@ -96,6 +142,11 @@ const CollectionShelfRow: React.FC<{ activeId: string | undefined }> = ({ active
 				collection={menuFor}
 				collections={collections}
 				onClose={() => setMenuFor(null)}
+			/>
+			<ShelfActions
+				shelf={shelfMenuFor}
+				onClose={() => setShelfMenuFor(null)}
+				setBuiltInPinned={smart.setBuiltInPinned}
 			/>
 			<CollectionNameDialog
 				open={creating}

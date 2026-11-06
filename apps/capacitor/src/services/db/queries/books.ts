@@ -4,6 +4,7 @@ import type {
 	ImportImageAnchor,
 	ImportLink,
 } from "@lesefluss/book-import";
+import type { OpfSeries } from "@lesefluss/book-import/parsers/opf-series";
 import {
 	byteRangeToWordRange,
 	FINISHED_PERCENT_THRESHOLD,
@@ -14,9 +15,11 @@ import {
 } from "@lesefluss/core";
 import {
 	and,
+	asc,
 	desc,
 	eq,
 	gt,
+	isNotNull,
 	isNull,
 	lt,
 	lte,
@@ -837,6 +840,41 @@ export async function backfillWordCounts(): Promise<number> {
 		}
 	}
 	return healed;
+}
+
+/** Stored EPUB originals whose series was never set or cleared, in id order after `afterId`. */
+export async function getSeriesBackfillCandidates(
+	afterId: string | null,
+	limit: number,
+): Promise<{ id: string; filePath: string }[]> {
+	const rows = await db
+		.select({ id: books.id, filePath: books.filePath })
+		.from(books)
+		.where(
+			and(
+				eq(books.fileFormat, "epub"),
+				isNotNull(books.filePath),
+				isNull(books.seriesName),
+				isNull(books.seriesIndex),
+				eq(books.seriesUpdatedAt, 0),
+				eq(books.deleted, false),
+				afterId === null ? undefined : gt(books.id, afterId),
+			),
+		)
+		.orderBy(asc(books.id))
+		.limit(limit);
+	return rows.flatMap((r) => (r.filePath ? [{ id: r.id, filePath: r.filePath }] : []));
+}
+
+/** Revision 1 beats a series no device ever set and loses to any a user set or
+ *  cleared, on this device or another one this device has not pulled yet. */
+const SERIES_FROM_FILE_REVISION = 1;
+
+/** Sets the series only while the book still has none and no revision. */
+export async function fillEmptyBookSeries(id: string, series: OpfSeries): Promise<void> {
+	await updateBook(id, { ...series, seriesUpdatedAt: SERIES_FROM_FILE_REVISION }, undefined, {
+		onlyIf: and(isNull(books.seriesName), isNull(books.seriesIndex), eq(books.seriesUpdatedAt, 0)),
+	});
 }
 
 /**

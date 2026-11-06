@@ -15,6 +15,7 @@ import {
 	type SyncResponse,
 	type SyncSeries,
 	type SyncSettings,
+	type SyncSmartShelf,
 } from "@lesefluss/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { and, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
@@ -30,6 +31,7 @@ import {
 	syncReadingSessions,
 	syncSeries,
 	syncSettings,
+	syncSmartShelves,
 } from "~/db/schema";
 import {
 	contentQuotaBytes,
@@ -48,6 +50,7 @@ import { upsertSyncBooks } from "~/lib/sync-book-upsert";
 import { upsertSyncCollectionBooks, upsertSyncCollections } from "~/lib/sync-collection-upsert";
 import { upsertSyncGoals } from "~/lib/sync-goal-upsert";
 import { upsertSyncSettings } from "~/lib/sync-settings-upsert";
+import { upsertSyncSmartShelves } from "~/lib/sync-smart-shelf-upsert";
 
 // Body size limits are enforced at the reverse proxy (Coolify/Traefik). The
 // Content-Length header is client-controlled, so enforcing it in Node here
@@ -190,6 +193,7 @@ async function getUserSyncData(
 		goalRows,
 		collectionRows,
 		collectionBookRows,
+		smartShelfRows,
 		usedBytes,
 	] = await Promise.all([
 		db.select(metadataCols).from(syncBooks).where(eq(syncBooks.userId, userId)),
@@ -219,6 +223,7 @@ async function getUserSyncData(
 		db.select().from(syncReadingGoals).where(eq(syncReadingGoals.userId, userId)),
 		db.select().from(syncCollections).where(eq(syncCollections.userId, userId)),
 		db.select().from(syncCollectionBooks).where(eq(syncCollectionBooks.userId, userId)),
+		db.select().from(syncSmartShelves).where(eq(syncSmartShelves.userId, userId)),
 		contentUsage(db, userId),
 	]);
 
@@ -414,6 +419,18 @@ async function getUserSyncData(
 				bookId: m.bookId,
 				deleted: m.deleted,
 				updatedAt: toMs(m.updatedAt),
+			}),
+		),
+		smartShelves: smartShelfRows.map(
+			(s): SyncSmartShelf => ({
+				shelfId: s.shelfId,
+				name: s.name,
+				conditions: s.conditions,
+				pinned: s.pinned,
+				sortOrder: s.sortOrder,
+				deleted: s.deleted,
+				createdAt: toMs(s.createdAt),
+				updatedAt: toMs(s.updatedAt),
 			}),
 		),
 	};
@@ -737,6 +754,9 @@ export const Route = createFileRoute("/api/sync")({
 					}
 					if (payload.collectionBooks) {
 						await upsertSyncCollectionBooks(tx, userId, payload.collectionBooks);
+					}
+					if (payload.smartShelves) {
+						await upsertSyncSmartShelves(tx, userId, payload.smartShelves);
 					}
 					const stamps: SyncPushStamps = {
 						books: clampedBooks,

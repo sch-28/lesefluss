@@ -16,6 +16,7 @@ import {
 	useState,
 } from "react";
 import { toast } from "../components/toast";
+import { startSeriesBackfill } from "../services/book-series-backfill";
 import { syncPushRegistration } from "../services/push";
 import { invalidateAfterSync } from "../services/social/cache";
 import {
@@ -359,6 +360,9 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 		setSyncError,
 		setIsSessionResolved,
 	);
+	useEffect(() => {
+		if (isSessionResolved && !isSyncing) startSeriesBackfill();
+	}, [isSessionResolved, isSyncing]);
 	useResumeSync(setLastSynced);
 	useWebResumeSync(isLoggedIn, setLastSynced);
 

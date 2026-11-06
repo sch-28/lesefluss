@@ -11,6 +11,7 @@ import {
 	applyBookMerge,
 	backfillWordCounts,
 	deleteBook,
+	fillEmptyBookSeries,
 	getAllBooks,
 	getBook,
 	getBookByCatalogId,
@@ -20,6 +21,7 @@ import {
 	getBookImages,
 	getBooks,
 	getBooksForSync,
+	getSeriesBackfillCandidates,
 	hardDeleteBook,
 	loadBookWordIndex,
 	parseChapters,
@@ -117,6 +119,14 @@ import {
 } from "./series";
 import { adoptSettingsStamp, getSettings, saveSettings } from "./settings";
 import {
+	createSmartShelf,
+	deleteSmartShelf,
+	getAllSmartShelvesForSync,
+	getSmartShelves,
+	updateSmartShelf,
+	upsertSmartShelves,
+} from "./smart-shelves";
+import {
 	getBookStats,
 	getCurrentlyReading,
 	getDailyReading,
@@ -161,6 +171,8 @@ export const queries = {
 	loadBookWordIndex,
 	backfillWordCounts,
 	setMissingWordCount,
+	getSeriesBackfillCandidates,
+	fillEmptyBookSeries,
 	parseChapters,
 	parseLinkRanges,
 	parseImageAnchors,
@@ -220,6 +232,13 @@ export const queries = {
 	getAllCollectionBooksForSync,
 	upsertCollections,
 	upsertCollectionBooks,
+	// Smart shelves
+	getSmartShelves,
+	createSmartShelf,
+	updateSmartShelf,
+	deleteSmartShelf,
+	getAllSmartShelvesForSync,
+	upsertSmartShelves,
 
 	// Stats
 	getPeriodTotals,

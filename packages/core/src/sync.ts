@@ -340,6 +340,23 @@ export const SyncCollectionBookSchema = z.object({
 	updatedAt: epochMs(),
 });
 
+export const SMART_SHELF_NAME_MAX = 100;
+export const SMART_SHELVES_PUSH_MAX = 500;
+export const SMART_SHELF_CONDITIONS_MAX = 16_384;
+
+/** `conditions` is the condition tree as JSON, carried opaquely so a tree a newer
+ *  client writes survives a round trip through an older one. */
+export const SyncSmartShelfSchema = z.object({
+	shelfId: z.string().min(1).max(64),
+	name: z.string().trim().min(1).max(SMART_SHELF_NAME_MAX),
+	conditions: z.string().min(2).max(SMART_SHELF_CONDITIONS_MAX),
+	pinned: z.boolean(),
+	sortOrder: z.number(),
+	deleted: z.boolean(),
+	createdAt: epochMs(),
+	updatedAt: epochMs(),
+});
+
 export const SyncPayloadSchema = z.object({
 	// Cap is generous because serial chapter rows (seriesId set) carry no body
 	// content/cover/TOC, so a 50k-row payload is still small in bytes. The real
@@ -358,6 +375,7 @@ export const SyncPayloadSchema = z.object({
 	// No default, as with goals: an omitted array never means "no collections".
 	collections: z.array(SyncCollectionSchema).max(COLLECTIONS_PUSH_MAX).optional(),
 	collectionBooks: z.array(SyncCollectionBookSchema).max(COLLECTION_BOOKS_PUSH_MAX).optional(),
+	smartShelves: z.array(SyncSmartShelfSchema).max(SMART_SHELVES_PUSH_MAX).optional(),
 });
 
 /** The server's reading of a push. Clients build pushes against `SyncPayloadSchema`. */
@@ -401,6 +419,7 @@ export const DeletedSessionIdsSchema = z.array(z.string()).catch([]);
 export type SyncReadingGoal = z.infer<typeof SyncReadingGoalSchema>;
 export type SyncCollection = z.infer<typeof SyncCollectionSchema>;
 export type SyncCollectionBook = z.infer<typeof SyncCollectionBookSchema>;
+export type SyncSmartShelf = z.infer<typeof SyncSmartShelfSchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 export type SyncPush = z.infer<typeof SyncPushSchema>;
 export type SyncPushStamps = z.infer<typeof SyncPushStampsSchema>;
@@ -435,6 +454,8 @@ export type SyncResponse = {
 	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
 	collections?: SyncCollection[];
 	collectionBooks?: SyncCollectionBook[];
+	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
+	smartShelves?: SyncSmartShelf[];
 	/**
 	 * Book ids the server currently holds body content for. Lets the client skip
 	 * re-uploading content it has already stored, which it cannot otherwise know:

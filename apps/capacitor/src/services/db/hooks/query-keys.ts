@@ -25,6 +25,11 @@ export const collectionKeys = {
 	memberships: ["books", "collections", "memberships"] as const,
 };
 
+/** Under `["books"]` like collections, so a sync pull's book invalidation also refreshes shelves. */
+export const smartShelfKeys = {
+	all: ["books", "smart-shelves"] as const,
+};
+
 export const bookKeys = {
 	/** All books list - invalidate this to refresh the library grid. */
 	all: ["books"] as const,

@@ -454,5 +454,22 @@ export const collectionBooks = sqliteTable(
 	(t) => [primaryKey({ columns: [t.collectionId, t.bookId] })],
 );
 
+/**
+ * Saved filters. `conditions` is a condition tree as JSON (pages/library/condition-tree.ts),
+ * kept as text so a tree from a newer client is stored and pushed back unchanged.
+ * Tombstoned on delete like collections.
+ */
+export const smartShelves = sqliteTable("smart_shelves", {
+	id: text("id").primaryKey(),
+	name: text("name").notNull(),
+	conditions: text("conditions").notNull(),
+	pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+	sortOrder: real("sort_order").notNull(),
+	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+	createdAt: integer("created_at").notNull(),
+	updatedAt: integer("updated_at").notNull(),
+});
+
+export type SmartShelf = typeof smartShelves.$inferSelect;
 export type Collection = typeof collections.$inferSelect;
 export type CollectionBook = typeof collectionBooks.$inferSelect;

@@ -18,6 +18,8 @@ type Props = {
 	options: FacetOptions;
 	/** The desktop Add filter trigger; the phone opens its sheet from the header. */
 	addFilter?: React.ReactNode;
+	/** Shown when the current filter can be saved as a smart shelf. */
+	onSaveShelf?: () => void;
 };
 
 const Chip: React.FC<{
@@ -47,7 +49,7 @@ const Chip: React.FC<{
 );
 
 /** The active filter as removable chips, an excluded value marked with − and a red edge. */
-const FilterBar: React.FC<Props> = ({ filter, onChange, options, addFilter }) => {
+const FilterBar: React.FC<Props> = ({ filter, onChange, options, addFilter, onSaveShelf }) => {
 	const chips = chipsOf(filter);
 	const count = activeFilterCount(filter);
 	if (count === 0 && !addFilter) return null;
@@ -85,6 +87,15 @@ const FilterBar: React.FC<Props> = ({ filter, onChange, options, addFilter }) =>
 					className="shrink-0 px-1 text-primary text-xs hover:underline"
 				>
 					Clear
+				</button>
+			)}
+			{onSaveShelf && (
+				<button
+					type="button"
+					onClick={onSaveShelf}
+					className="ml-auto shrink-0 px-1 text-primary text-xs hover:underline"
+				>
+					Save as smart shelf
 				</button>
 			)}
 		</div>

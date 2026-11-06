@@ -13,6 +13,7 @@ import {
 	syncReadingSessions,
 	syncSeries,
 	syncSettings,
+	syncSmartShelves,
 } from "~/db/schema";
 import { purgeDiscussionOf } from "./social/buddy-read-discussion";
 import { endBuddyReadsOf } from "./social/buddy-reads";
@@ -34,6 +35,7 @@ export async function purgeCloudData(tx: Tx, userId: string): Promise<void> {
 	await tx.delete(syncReadingGoals).where(eq(syncReadingGoals.userId, userId));
 	await tx.delete(syncCollections).where(eq(syncCollections.userId, userId));
 	await tx.delete(syncCollectionBooks).where(eq(syncCollectionBooks.userId, userId));
+	await tx.delete(syncSmartShelves).where(eq(syncSmartShelves.userId, userId));
 	await tx.delete(syncSettings).where(eq(syncSettings.userId, userId));
 }
 

@@ -351,6 +351,13 @@
       "when": 1782950400000,
       "tag": "0049_book_series",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "6",
+      "when": 1783036800000,
+      "tag": "0050_smart_shelves",
+      "breakpoints": true
     }
   ]
 }
