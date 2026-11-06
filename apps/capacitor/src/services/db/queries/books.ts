@@ -28,6 +28,7 @@ import {
 import type { SQLiteUpdateSetSource } from "drizzle-orm/sqlite-core";
 import { log } from "../../../utils/log";
 import type { BookMergeUpdate } from "../../sync/book-merge";
+import { serverClockOffset, serverNow } from "../../sync/server-clock";
 import { db } from "../index";
 import { appendLongText, LONG_TEXT_CHUNK, type LongTextExecutor, readLongText } from "../long-text";
 import {
@@ -505,7 +506,7 @@ export async function updateBook(
 	/** When the change happened. Defaults to now, but the sync pull
 	 *  replays changes made on another device at another time, and stamping
 	 *  those with wall clock would date an old finish to today. */
-	occurredAt: number = Date.now(),
+	occurredAt: number = serverNow(),
 	options: { isDeviceLocal?: boolean; onlyIf?: SQL } = {},
 ): Promise<void> {
 	const stamped: Partial<Omit<NewBook, "id">> = { ...data };
@@ -550,9 +551,12 @@ export type PositionRow = { wordPosition: number; updatedAt: number };
  * revision is still one the reader has seen (`baseRev`), so it can never replace
  * a newer position written meanwhile (a sync pull, a BLE device). Returns the revision it stamped, whether it landed, and the row as it is now.
  */
-/** A reader write's revision: above every one it has seen, even when this clock is behind. */
+/**
+ * A reader write's revision: `lastRead` on the server's clock, and above every
+ * revision it has seen, even when this clock is behind.
+ */
 export function nextPositionRevision(lastRead: number, baseRev: number): number {
-	return Math.max(lastRead, baseRev + 1);
+	return Math.max(lastRead + serverClockOffset(), baseRev + 1);
 }
 
 /**
@@ -841,7 +845,7 @@ export async function deleteBook(id: string): Promise<void> {
 	// content, and a later retry cleans them up.
 	await db
 		.update(books)
-		.set({ deleted: true, isActive: false, updatedAt: Date.now() })
+		.set({ deleted: true, isActive: false, updatedAt: serverNow() })
 		.where(eq(books.id, id));
 	// Cascade book-scoped glossary entries; global ones (bookId IS NULL) survive
 	await db.delete(glossaryEntries).where(eq(glossaryEntries.bookId, id));

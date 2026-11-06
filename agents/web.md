@@ -91,7 +91,7 @@ Simple full-snapshot sync first. Delta sync can come later.
 
 **Flow:**
 1. User logs in → session token stored in Capacitor `@capacitor/preferences`
-2. On app open: `GET /api/sync` → merge into local DB (server wins if `updated_at` newer)
+2. On app open: `GET /api/sync` → merge into local DB (server wins if `updated_at` newer). The answer carries `serverTime`, from which the client keeps its clock offset for the stamps it writes (a body field: `Date` is not CORS-readable for the native app)
 3. On any local write: debounced `POST /api/sync` with updated rows. The server clamps book and settings stamps to its own clock; when it clamped any, it answers 200 with them (`SyncPushStamps`, else 204) and the client lowers its own stamps to them
 
 **Conflict resolution:** last-write-wins by `updated_at` for all entities. Deletions are `deleted` tombstones (books, series, highlights, glossary entries, goals, reading sessions).

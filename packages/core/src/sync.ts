@@ -394,6 +394,11 @@ export type SyncResponse = {
 	contentBookIds?: string[];
 	/** Optional so a client pointed at an older server can do without it. */
 	contentQuota?: ContentQuota;
+	/**
+	 * The server's clock (ms) as it answered, from which a client keeps its clock
+	 * offset. Optional: older servers do not send it.
+	 */
+	serverTime?: number;
 };
 
 /**

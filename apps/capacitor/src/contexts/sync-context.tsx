@@ -28,6 +28,7 @@ import {
 	getToken,
 	getUserEmail,
 	IS_WEB_BUILD,
+	loadServerClockOffset,
 	NATIVE_SYNC_ENABLED,
 	notBackedUpMessage,
 	onBooksNotBackedUp,
@@ -367,6 +368,11 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 	useEffect(() => {
 		if (NATIVE_SYNC_ENABLED) handleRetrySignOut();
 	}, [handleRetrySignOut]);
+	useEffect(() => {
+		loadServerClockOffset().catch((err) =>
+			log.warn("sync", "could not restore the server clock offset:", err),
+		);
+	}, []);
 	useAppResumeListener(handleRetrySignOut, NATIVE_SYNC_ENABLED);
 	useNetworkOnlineListener(handleRetrySignOut, NATIVE_SYNC_ENABLED);
 

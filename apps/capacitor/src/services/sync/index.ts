@@ -63,6 +63,7 @@ import {
 	reconcileQuotaBlock,
 	recordQuotaRejection,
 } from "./content-quota";
+import { recordServerTime } from "./server-clock";
 import {
 	addServerContentIds,
 	getServerContentIds,
@@ -99,6 +100,7 @@ export {
 	requestDeviceCode,
 } from "./device-sign-in";
 export { PasswordSignInError, signInWithPassword } from "./password-sign-in";
+export { loadServerClockOffset } from "./server-clock";
 export {
 	adoptSyncIdentity,
 	beginAuthLoginHandoff,
@@ -691,10 +693,16 @@ export async function pullSync(): Promise<Set<string>> {
 		log("sync", `pull request haveCount=${localBooks.length} haveHeaderBytes=${haveHeader.length}`);
 
 		const tombstonesSince = await getSessionTombstoneWatermark();
+		const sentAt = Date.now();
 		const res = await syncFetch(`/api/sync?sessionTombstonesSince=${tombstonesSince}`, {
 			headers: { "X-Sync-Have": haveHeader },
 		});
+		const receivedAt = Date.now();
 		const data: SyncResponse = await res.json();
+		// Older servers send no serverTime; the offset then stays as it was.
+		if (typeof data.serverTime === "number") {
+			recordServerTime({ serverTime: data.serverTime, sentAt, receivedAt });
+		}
 
 		// The server tells us outright which books it stores content for. Older
 		// servers omit the field; fall back to inferring it per book below.

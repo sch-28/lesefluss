@@ -9,6 +9,7 @@ import type {
 	SyncBook,
 	SyncPayload,
 	SyncPushStamps,
+	SyncResponse,
 	SyncSettings,
 } from "@lesefluss/core";
 import { and, eq } from "drizzle-orm";
@@ -170,6 +171,33 @@ describe.skipIf(!hasDb)("sync push stamps (integration)", () => {
 		const stale = await push([book(100, SERVER_NOW - 2000)], settings(400, SERVER_NOW - 2000));
 		expect(stale.status).toBe(204);
 		expect(await stored()).toEqual({ wordPosition: 500, wpm: 500 });
+	});
+
+	test("the pull carries the server's time", async () => {
+		const res = await syncHandlers.GET({
+			request: new Request("https://lesefluss.test/api/sync"),
+			context: { user: { id: userId } },
+		});
+		expect(((await res.json()) as SyncResponse).serverTime).toBe(SERVER_NOW);
+	});
+
+	test("an offline edit a fast clock stamped with server time loses to a newer edit from another device", async () => {
+		const offlineEdit = SERVER_NOW;
+		vi.setSystemTime(SERVER_NOW + 20 * 60_000);
+		await push([book(500, SERVER_NOW + 20 * 60_000)], settings(500, SERVER_NOW + 20 * 60_000));
+		vi.setSystemTime(SERVER_NOW + 40 * 60_000);
+		const late = await push([book(100, offlineEdit)], settings(400, offlineEdit));
+		expect(late.status).toBe(204);
+		expect(await stored()).toEqual({ wordPosition: 500, wpm: 500 });
+	});
+
+	test("the same offline edit stamped with the fast clock overrides it: why the offset exists", async () => {
+		const offlineEdit = SERVER_NOW + AHEAD;
+		vi.setSystemTime(SERVER_NOW + 20 * 60_000);
+		await push([book(500, SERVER_NOW + 20 * 60_000)], settings(500, SERVER_NOW + 20 * 60_000));
+		vi.setSystemTime(SERVER_NOW + 40 * 60_000);
+		await push([book(100, offlineEdit)], settings(400, offlineEdit));
+		expect(await stored()).toEqual({ wordPosition: 100, wpm: 400 });
 	});
 
 	test("only the clamped books are listed", async () => {

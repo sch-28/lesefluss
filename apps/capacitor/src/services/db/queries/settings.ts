@@ -1,5 +1,6 @@
 import { changelog, DEFAULT_SETTINGS, SYNCED_SETTING_KEYS } from "@lesefluss/core";
 import { and, eq } from "drizzle-orm";
+import { serverNow } from "../../sync/server-clock";
 import { db } from "../index";
 import { type Settings, settings } from "../schema";
 
@@ -87,7 +88,7 @@ export async function saveSettings(
 	updatedAt?: number,
 ): Promise<void> {
 	const hasSyncedField = Object.keys(patch).some((k) => syncedKeys.has(k));
-	const stamp = updatedAt ?? (hasSyncedField ? Date.now() : undefined);
+	const stamp = updatedAt ?? (hasSyncedField ? serverNow() : undefined);
 	await db
 		.update(settings)
 		.set(stamp === undefined ? patch : { ...patch, updatedAt: stamp })

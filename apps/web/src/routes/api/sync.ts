@@ -412,7 +412,7 @@ export const Route = createFileRoute("/api/sync")({
 					haveIds,
 					Number.isSafeInteger(since) && since >= 0 ? since : null,
 				);
-				return Response.json(data);
+				return Response.json({ ...data, serverTime: Date.now() } satisfies SyncResponse);
 			},
 
 			// -----------------------------------------------------------------
