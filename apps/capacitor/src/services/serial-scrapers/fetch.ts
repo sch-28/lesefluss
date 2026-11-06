@@ -115,8 +115,35 @@ export async function fetchHtml(url: string, opts: FetchOpts = {}): Promise<stri
 		throw new NetworkError("FETCH_FAILED", { cause: err });
 	}
 	if (res.status === 413) throw new Error("TOO_LARGE");
-	if (!res.ok) throw new Error("Chapter not available in the web app — open it in the mobile app.");
+	if (!res.ok) throw new Error(proxyFailureMessage(res.status, await readProxyError(res)));
 	const data = (await res.json()) as { html?: string };
 	if (!data.html) throw new Error("FETCH_FAILED");
 	return data.html;
+}
+
+async function readProxyError(res: Response): Promise<string> {
+	try {
+		const body = (await res.json()) as { error?: unknown };
+		return typeof body.error === "string" ? body.error : "";
+	} catch {
+		return "";
+	}
+}
+
+/** Maps the catalog proxy's error bodies (`apps/catalog/src/routes/proxy.ts`) to reader-facing text. */
+function proxyFailureMessage(status: number, error: string): string {
+	const upstreamStatus = /^upstream failed \((\d+)\)$/.exec(error)?.[1];
+	// Only a Cloudflare block is something the native app's WebView fallback can get past.
+	if (upstreamStatus === "403" || upstreamStatus === "503") {
+		return "Chapter not available in the web app — open it in the mobile app.";
+	}
+	if (upstreamStatus) return `The site answered with an error (${upstreamStatus}).`;
+	if (status === 502) return "Couldn't reach the site. Try again later.";
+	if (status === 415) return "This page isn't a web page that can be read here.";
+	if (status === 429) return "Too many requests. Try again in a minute.";
+	if (status === 400) {
+		if (error === "dns lookup failed") return "Couldn't find this site. Try again later.";
+		return "This link isn't valid or can't be loaded.";
+	}
+	return `Couldn't load this page (${status}).`;
 }

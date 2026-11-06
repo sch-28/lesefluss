@@ -90,6 +90,19 @@ describe("POST /proxy/article", () => {
 		expect(await res.json()).toEqual({ error: "upstream failed" });
 	});
 
+	// The web client reads the upstream status out of this body to tell a Cloudflare block apart.
+	it("names the upstream status when the upstream answers an error", async () => {
+		handler = (_req, res) => {
+			res.writeHead(403);
+			res.end();
+		};
+
+		const res = await postArticle(`http://public.test:${port}/story`);
+
+		expect(res.status).toBe(502);
+		expect(await res.json()).toEqual({ error: "upstream failed (403)" });
+	});
+
 	it("returns the article and the URL after redirects", async () => {
 		const ok = handler;
 		handler = (req, res) => (req.url === "/old" ? redirectTo("/new")(req, res) : ok(req, res));
