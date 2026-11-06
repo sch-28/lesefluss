@@ -11,7 +11,7 @@ import { SliderRow } from "@/components/settings/slider-row";
 import { StepperRow } from "@/components/settings/stepper-row";
 import { useAutoSaveSettings } from "@/hooks/use-auto-save-settings";
 import { queryHooks } from "@/services/db/hooks";
-import { ttsEngine } from "@/services/tts";
+import { HAS_SYSTEM_VOICE_SETTINGS, ttsEngine } from "@/services/tts";
 import { useTtsVoices } from "@/services/tts/use-voices";
 import {
 	languageName,
@@ -110,7 +110,11 @@ function ReadAloudSettings() {
 
 				<SettingsSection
 					title="Voices"
-					hint="From your phone's speech engine, offline once downloaded"
+					hint={
+						HAS_SYSTEM_VOICE_SETTINGS
+							? "From your phone's speech engine, offline once downloaded"
+							: "From your browser and system"
+					}
 				>
 					{[null, ...languages].map((language) => (
 						<NavRow
@@ -121,18 +125,22 @@ function ReadAloudSettings() {
 							onClick={() => setVoiceSheet({ language })}
 						/>
 					))}
-					<NavRow
-						icon={Download}
-						title="Download voices"
-						subtitle="More languages and better voices"
-						onClick={() => void ttsEngine.installVoiceData()}
-					/>
-					<NavRow
-						icon={Settings2}
-						title="System speech settings"
-						subtitle="Speech engine, default language"
-						onClick={() => void ttsEngine.openSystemSettings()}
-					/>
+					{HAS_SYSTEM_VOICE_SETTINGS && (
+						<>
+							<NavRow
+								icon={Download}
+								title="Download voices"
+								subtitle="More languages and better voices"
+								onClick={() => void ttsEngine.installVoiceData()}
+							/>
+							<NavRow
+								icon={Settings2}
+								title="System speech settings"
+								subtitle="Speech engine, default language"
+								onClick={() => void ttsEngine.openSystemSettings()}
+							/>
+						</>
+					)}
 				</SettingsSection>
 			</div>
 

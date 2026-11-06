@@ -8,6 +8,7 @@ import { HardwareBack } from "@/components/app-shell/hardware-back";
 import CommandPalette from "@/components/command-palette";
 import { PushOfferDialog } from "@/components/push/push-offer-dialog";
 import ShareIntentHandler from "@/components/share-intent-handler";
+import ShortcutSheet from "@/components/shortcut-sheet";
 import { Toaster } from "@/components/toast";
 import WhatsNewModal from "@/components/whats-new-modal";
 import { ImportStagingProvider } from "@/contexts/import-staging-context";
@@ -52,6 +53,7 @@ function RootLayout() {
 			<WhatsNewModal />
 			<PushOfferDialog />
 			<CommandPalette />
+			<ShortcutSheet />
 			{isFullScreen ? (
 				<Outlet />
 			) : (

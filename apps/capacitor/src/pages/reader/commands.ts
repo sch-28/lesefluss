@@ -3,6 +3,7 @@ import type React from "react";
 import type { Command } from "../../commands/registry";
 import type { Chapter } from "../../services/db/schema";
 import type { RsvpViewHandle } from "./rsvp-view";
+import { isFullscreenEscape } from "./use-fullscreen";
 import type { ReaderViewHandle } from "./view-types";
 
 const SCROLL_FRACTION = 0.25;
@@ -115,7 +116,8 @@ export function readerKeyCommands(input: ReaderKeyInput): Command[] {
 			title: "Leave RSVP here",
 			scope: "rsvp",
 			keys: ["Escape"],
-			when: inRsvp,
+			// The Esc that leaves fullscreen pauses RSVP but stays in it (LESE-65.4 decision 4b8ee366).
+			when: () => inRsvp() && !isFullscreenEscape(),
 			isHiddenInPalette: true,
 			run: input.exitRsvpToStandard,
 		},
@@ -165,13 +167,21 @@ export type ReaderActionInput = {
 	openAppearance: () => void;
 	openAnnotations: () => void;
 	/** Null where the platform can't read aloud. */
-	readAloud: { title: string; isReady: boolean; toggle: () => void } | null;
+	readAloud: {
+		title: string;
+		isReady: boolean;
+		toggle: () => void;
+		/** Set while the view has left the word being spoken. */
+		backToVoice: (() => void) | null;
+	} | null;
 	chapters: readonly Chapter[];
 	goToWord: (word: number) => void;
 	openBookDetails: () => void;
+	/** Null where the platform has no fullscreen (the Android app). */
+	fullscreen: { isOn: boolean; toggle: () => void; exit: () => void } | null;
 };
 
-/** Reader actions without a key of their own, for the palette. */
+/** Reader actions for the palette; most have no key of their own. */
 export function readerActionCommands(input: ReaderActionInput): Command[] {
 	const hasContent = () => input.hasContent;
 	const isStandard = () => input.hasContent && input.readerMode !== "rsvp";
@@ -215,16 +225,53 @@ export function readerActionCommands(input: ReaderActionInput): Command[] {
 			run: input.openBookDetails,
 		},
 	];
+	const fullscreen = input.fullscreen;
+	if (fullscreen) {
+		commands.push(
+			{
+				id: "reader.fullscreen",
+				title: fullscreen.isOn ? "Leave fullscreen" : "Fullscreen",
+				keywords: ["full screen", "distraction", "focus"],
+				scope: "reader",
+				keys: ["f"],
+				run: fullscreen.toggle,
+			},
+			{
+				// Where the browser hands the page its Escape instead of leaving fullscreen itself.
+				id: "reader.fullscreen-exit",
+				title: "Leave fullscreen",
+				scope: "reader",
+				keys: ["Escape"],
+				when: () => fullscreen.isOn,
+				inControls: true,
+				isHiddenInPalette: true,
+				run: fullscreen.exit,
+			},
+		);
+	}
 	const readAloud = input.readAloud;
 	if (readAloud) {
-		commands.push({
-			id: "reader.read-aloud",
-			title: readAloud.title,
-			keywords: ["read aloud", "speech", "tts", "audio"],
-			scope: "reader",
-			when: () => readAloud.isReady,
-			run: readAloud.toggle,
-		});
+		const { backToVoice } = readAloud;
+		commands.push(
+			{
+				id: "listen.toggle",
+				title: readAloud.title,
+				keywords: ["read aloud", "speech", "tts", "audio"],
+				scope: "listen",
+				keys: ["l"],
+				when: () => readAloud.isReady,
+				run: readAloud.toggle,
+			},
+			{
+				id: "listen.back-to-voice",
+				title: "Back to voice",
+				keywords: ["read aloud", "follow"],
+				scope: "listen",
+				keys: ["v"],
+				when: () => backToVoice !== null,
+				run: () => backToVoice?.(),
+			},
+		);
 	}
 	input.chapters.forEach((chapter, index) => {
 		commands.push({

@@ -98,6 +98,9 @@ export function useAnchorHold(options: Options) {
 	// scrollbar or a selection dragged past the edge, middle-click autoscroll, a
 	// native scroll key) is the reader's until this time; Infinity while pressed.
 	const readerInputUntilRef = useRef(0);
+	// A press or an autoscroll just ended: its scroll may still be running, so its
+	// settle is the reader's too. Only the read-aloud follow asks; the hold does not.
+	const trailingInputUntilRef = useRef(0);
 
 	const api = useMemo(() => {
 		const setPhase = (phase: "idle" | "settling" | "holding") => {
@@ -275,7 +278,14 @@ export function useAnchorHold(options: Options) {
 			isPending: () => phaseRef.current !== "idle",
 			isSettling: () => phaseRef.current === "settling",
 			/** A press, an autoscroll or a scroll key is moving the list. */
-			isReaderInput: () => performance.now() < readerInputUntilRef.current,
+			isReaderInput: () => {
+				const now = performance.now();
+				return now < readerInputUntilRef.current || now < trailingInputUntilRef.current;
+			},
+			/** The list came to rest: a press's trailing scroll has settled. */
+			noteScrollEnd: () => {
+				trailingInputUntilRef.current = 0;
+			},
 			noteScroll: () => {
 				const word = wordRef.current;
 				if (phaseRef.current === "idle" || word === null) return;
@@ -352,11 +362,15 @@ export function useAnchorHold(options: Options) {
 		const press = () => {
 			readerInputUntilRef.current = Number.POSITIVE_INFINITY;
 		};
+		const trailOff = () => {
+			readerInputUntilRef.current = 0;
+			trailingInputUntilRef.current = performance.now() + KEY_SCROLL_WINDOW_MS;
+		};
 		let autoscrolling = false;
 		const endAutoscroll = () => {
 			if (!autoscrolling) return;
 			autoscrolling = false;
-			readerInputUntilRef.current = 0;
+			trailOff();
 		};
 		const onWheel = () => {
 			endAutoscroll();
@@ -390,9 +404,7 @@ export function useAnchorHold(options: Options) {
 		};
 		const letGo = () => {
 			mousePress = null;
-			if (!autoscrolling && readerInputUntilRef.current === Number.POSITIVE_INFINITY) {
-				readerInputUntilRef.current = 0;
-			}
+			if (!autoscrolling && readerInputUntilRef.current === Number.POSITIVE_INFINITY) trailOff();
 		};
 		const onWindowBlur = () => {
 			endAutoscroll();
@@ -448,6 +460,7 @@ export function useAnchorHold(options: Options) {
 			window.removeEventListener("keydown", onKeyDown);
 			window.removeEventListener("blur", onWindowBlur);
 			readerInputUntilRef.current = 0;
+			trailingInputUntilRef.current = 0;
 		};
 	}, [containerRef, api]);
 

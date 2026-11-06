@@ -30,6 +30,7 @@ import {
 	DropdownMenuTrigger,
 } from "@lesefluss/ui/dropdown-menu";
 import { usePrefersReducedMotion } from "@lesefluss/ui/use-prefers-reduced-motion";
+import { cn } from "@lesefluss/ui/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import {
@@ -40,6 +41,8 @@ import {
 	Headphones,
 	Info,
 	Loader2,
+	Maximize,
+	Minimize,
 	MoreVertical,
 	Pause,
 	Search,
@@ -49,9 +52,10 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { isShortcutAllowed } from "../../commands/guard";
+import { hasOpenOverlay, isShortcutAllowed } from "../../commands/guard";
 import { useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
+import { KeyChips } from "../../components/command-palette";
 import { VoiceSheet } from "../../components/read-aloud/voice-sheet";
 import {
 	CommentComposerSheet,
@@ -174,6 +178,7 @@ import { firstVisibleWordInView, markSpokenWord } from "./spoken-word";
 import { createTwoFingerTapDetector } from "./two-finger-tap";
 import { NATIVE_SCROLL_KEYS } from "./use-anchor-hold";
 import { useBrowseMode } from "./use-browse-mode";
+import { isFullscreenSupported, useFullscreen, useRevealOnHover } from "./use-fullscreen";
 import {
 	findFirstMention,
 	findNextMention,
@@ -2236,6 +2241,15 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		[content, navigateToWord, wordIndex],
 	);
 
+	const fullscreen = useFullscreen({
+		onExit: () => {
+			if (readerModeRef.current !== "rsvp") return;
+			if (readAloudRef.current?.isActive) readAloudRef.current.pause();
+			else rsvpViewRef.current?.pause();
+		},
+	});
+	const headerReveal = useRevealOnHover(fullscreen.isFullscreen, hasOpenOverlay);
+
 	// ── Keyboard shortcuts ────────────────────────────────────────────────
 	useKeyboardShortcuts({
 		readerMode,
@@ -2274,11 +2288,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							title: isRsvpAudioOn ? "Turn RSVP audio off" : "Turn RSVP audio on",
 							isReady: !!wordIndex,
 							toggle: toggleRsvpAudio,
+							backToVoice: null,
 						}
 					: {
 							title: readAloud.status === "playing" ? "Pause listening" : "Listen",
 							isReady: !!wordIndex,
 							toggle: readAloud.toggle,
+							backToVoice: isReadAloudActive && !readAloud.isFollowing ? handleBackToVoice : null,
 						}
 				: null,
 			chapters,
@@ -2291,6 +2307,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						: `/tabs/library/book/${book.id}`,
 				);
 			},
+			fullscreen: isFullscreenSupported()
+				? { isOn: fullscreen.isFullscreen, toggle: fullscreen.toggle, exit: fullscreen.exit }
+				: null,
 		}),
 	);
 
@@ -2618,7 +2637,27 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	return (
 		<ReaderApiContext.Provider value={readerApi}>
 			<div className={`reader-theme-${theme} flex h-screen flex-col bg-background text-foreground`}>
-				<header className="flex shrink-0 flex-col border-border border-b bg-background/95 pt-[var(--safe-top)] backdrop-blur">
+				{fullscreen.isFullscreen && (
+					<div
+						className="fixed inset-x-0 top-0 z-40 h-2"
+						onPointerEnter={headerReveal.reveal}
+						onPointerLeave={headerReveal.hideSoon}
+						aria-hidden
+						data-testid="fullscreen-reveal-zone"
+					/>
+				)}
+				<header
+					className={cn(
+						"flex shrink-0 flex-col border-border border-b bg-background/95 pt-[var(--safe-top)] backdrop-blur",
+						// An overlay in fullscreen, so revealing it never moves the text (mockup B).
+						fullscreen.isFullscreen &&
+							"fixed inset-x-0 top-0 z-40 shadow-lg transition-transform duration-200 focus-within:translate-y-0 motion-reduce:transition-none",
+						fullscreen.isFullscreen && !headerReveal.isRevealed && "-translate-y-full",
+					)}
+					onPointerEnter={fullscreen.isFullscreen ? headerReveal.reveal : undefined}
+					onPointerLeave={fullscreen.isFullscreen ? headerReveal.hideSoon : undefined}
+					data-testid="reader-bar"
+				>
 					<div className="flex h-12 items-center gap-0.5 px-1">
 						<button
 							type="button"
@@ -2706,6 +2745,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						>
 							<Bookmark />
 						</Button>
+						{fullscreen.isFullscreen && (
+							<Button variant="outline" size="sm" onClick={fullscreen.exit} className="mx-1 gap-2">
+								Exit fullscreen
+								<KeyChips spec="f" />
+							</Button>
+						)}
 						<DropdownMenu>
 							<AppearancePopover
 								open={appearanceOpen}
@@ -2752,6 +2797,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 									<Type />
 									<span>Appearance</span>
 								</DropdownMenuItem>
+								{isFullscreenSupported() && (
+									<DropdownMenuItem className={MENU_ITEM_CLASS} onSelect={fullscreen.toggle}>
+										{fullscreen.isFullscreen ? <Minimize /> : <Maximize />}
+										<span>{fullscreen.isFullscreen ? "Leave fullscreen" : "Fullscreen"}</span>
+									</DropdownMenuItem>
+								)}
 								{IS_READ_ALOUD_SUPPORTED && (
 									<DropdownMenuItem
 										className={MENU_ITEM_CLASS}

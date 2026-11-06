@@ -3,6 +3,7 @@ import { type Command, useRegisterCommands } from "./registry";
 import { createFlag, createRequest } from "./signal";
 
 export const paletteOpen = createFlag();
+export const shortcutSheetOpen = createFlag();
 
 /** Answered by the library page, which owns the import sheet. */
 export const importRequest = createRequest();
@@ -20,6 +21,14 @@ export function useGlobalCommands(): void {
 			claimsKeys: true,
 			isHiddenInPalette: true,
 			run: () => paletteOpen.set(true),
+		},
+		{
+			id: "global.shortcuts",
+			title: "Keyboard shortcuts",
+			keywords: ["keys", "help", "hotkeys"],
+			scope: "global",
+			keys: ["?"],
+			run: () => shortcutSheetOpen.set(true),
 		},
 		{
 			id: "global.import",

@@ -3,7 +3,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { Check, Download, Settings2, Volume2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { type ReadAloudSpeech, ttsEngine } from "../../services/tts";
+import { HAS_SYSTEM_VOICE_SETTINGS, type ReadAloudSpeech, ttsEngine } from "../../services/tts";
 import { useTtsVoices } from "../../services/tts/use-voices";
 import { voiceLabels, voiceLanguageKey, voicesForLanguage } from "../../services/tts/voices";
 
@@ -111,28 +111,32 @@ export const VoiceSheet: React.FC<Props> = ({
 					)}
 					{!isPending && listed.length === 0 && (
 						<p className="px-5 py-4 text-muted-foreground text-sm">
-							No voice for this language yet. Download one below.
+							{HAS_SYSTEM_VOICE_SETTINGS
+								? "No voice for this language yet. Download one below."
+								: "Your browser has no voice for this language."}
 						</p>
 					)}
 				</div>
-				<div className="flex flex-col p-2">
-					<button
-						type="button"
-						onClick={() => void ttsEngine.installVoiceData()}
-						className="flex h-12 items-center gap-3 rounded-md px-3 text-left text-sm hover:bg-muted"
-					>
-						<Download className="size-5 shrink-0" />
-						Download voices
-					</button>
-					<button
-						type="button"
-						onClick={() => void ttsEngine.openSystemSettings()}
-						className="flex h-12 items-center gap-3 rounded-md px-3 text-left text-sm hover:bg-muted"
-					>
-						<Settings2 className="size-5 shrink-0" />
-						System speech settings
-					</button>
-				</div>
+				{HAS_SYSTEM_VOICE_SETTINGS && (
+					<div className="flex flex-col p-2">
+						<button
+							type="button"
+							onClick={() => void ttsEngine.installVoiceData()}
+							className="flex h-12 items-center gap-3 rounded-md px-3 text-left text-sm hover:bg-muted"
+						>
+							<Download className="size-5 shrink-0" />
+							Download voices
+						</button>
+						<button
+							type="button"
+							onClick={() => void ttsEngine.openSystemSettings()}
+							className="flex h-12 items-center gap-3 rounded-md px-3 text-left text-sm hover:bg-muted"
+						>
+							<Settings2 className="size-5 shrink-0" />
+							System speech settings
+						</button>
+					</div>
+				)}
 			</DrawerContent>
 		</Drawer>
 	);
