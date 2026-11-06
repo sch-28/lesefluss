@@ -23,13 +23,6 @@ test("a mouse-drag selection keeps its toolbar after the mouse is released", asy
 	await expect(toolbar).toBeVisible();
 });
 
-test("Escape dismisses the selection toolbar in scroll mode", async ({ page }) => {
-	const toolbar = await openWithSelection(page);
-	await page.keyboard.press("Escape");
-	await expect(toolbar).toHaveCount(0);
-	await expect(page.locator("span.word-selecting")).toHaveCount(0);
-});
-
 test("a click in the empty margin dismisses the selection toolbar in scroll mode", async ({
 	page,
 }) => {

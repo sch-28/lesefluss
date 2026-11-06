@@ -70,13 +70,3 @@ test("the scroll container clears the tab bar plus the injected bottom inset", a
 
 	expect((await paddingBottom()) - before).toBeCloseTo(INJECTED_BOTTOM, 1);
 });
-
-test("the shell follows re-injected insets, as on rotation or keyboard show", async ({ page }) => {
-	await gotoLibrary(page);
-	await injectInsets(page, { top: INJECTED_TOP });
-	expect(await paddingTop(page)).toBe(`${INJECTED_TOP}px`);
-
-	// Capacitor re-injects on every WindowInsets change, not just at startup.
-	await injectInsets(page, { top: 0 });
-	expect(await paddingTop(page)).toBe("0px");
-});

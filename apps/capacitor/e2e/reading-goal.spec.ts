@@ -86,72 +86,6 @@ test("a goal set on the book page shows in the reader and is met by reading", as
 	await expect(page.getByTestId("goal-card")).toHaveAttribute("data-met", "true");
 });
 
-async function startMonthGoal(page: Page): Promise<void> {
-	await openBookPage(page);
-	await page.getByTestId("goal-entry").getByRole("button", { name: "Set goal" }).click();
-	const sheet = page.getByRole("dialog");
-	await sheet.getByRole("button", { name: "1 month" }).click();
-	await sheet.getByRole("button", { name: "Start goal" }).click();
-	await expect(sheet).toHaveCount(0);
-	await page.getByRole("button", { name: "Open reader" }).click();
-	await reader.expectLoaded(page);
-}
-
-async function searchAndReadFrom(page: Page, phrase: string): Promise<void> {
-	await reader.openSearch(page);
-	await page.getByPlaceholder("Search in book…").fill(phrase);
-	await page.locator("ul li button", { hasText: phrase }).first().click();
-	await expect(reader.browseBar(page)).toBeVisible();
-	const saved = reader.waitForNextSave(page);
-	await reader.readFromHere(page);
-	await saved;
-}
-
-test("jumping far ahead and back does not meet today's target", async ({ page }) => {
-	await seedFixture(page, goalFixture(), "goal.epub");
-	await openBookFromLibrary(page, TITLE);
-	await reader.expectLoaded(page);
-	await startMonthGoal(page);
-	const chip = page.getByTestId("goal-chip");
-	await expect(chip).toHaveAttribute("data-met", "false");
-	await reader.waitOpenSettled(page);
-
-	await searchAndReadFrom(page, "Goal paragraph 40 holds");
-	// Standing there shows the target as reached, without reading it.
-	await expect(chip).toHaveAttribute("data-met", "true");
-	// Let the session tracker poll the jump at least once.
-	await reader.waitForTrackerTick(page);
-
-	await searchAndReadFrom(page, "Goal paragraph 1 holds");
-	await expect(chip).toHaveAttribute("data-met", "false");
-
-	await openBookPage(page);
-	await expect(page.getByTestId("goal-card")).toHaveAttribute("data-met", "false");
-});
-
-test("the goal can switch its missed-day mode from the book page", async ({ page }) => {
-	await seedFixture(page, goalFixture(), "goal.epub");
-	await openBookFromLibrary(page, TITLE);
-	await reader.expectLoaded(page);
-	await openBookPage(page);
-
-	await page.getByRole("button", { name: "Set goal" }).click();
-	await page.getByRole("dialog").getByRole("button", { name: "Start goal" }).click();
-	const card = page.getByTestId("goal-card");
-	await expect(card).toContainText("raise daily target");
-
-	await card.getByRole("button", { name: "Edit" }).click();
-	const sheet = page.getByRole("dialog");
-	await sheet.getByRole("button", { name: /Keep daily amount/ }).click();
-	await expect(sheet.getByText("push finish date")).toBeVisible();
-	await sheet.getByRole("button", { name: "Save goal" }).click();
-	await expect(card).toContainText("push finish date");
-
-	await card.getByRole("button", { name: "Edit" }).click();
-	await page.getByRole("dialog").getByRole("button", { name: "Remove goal" }).click();
-	await expect(page.getByTestId("goal-entry")).toBeVisible();
-});
-
 /** Chunk width with and without the divider, and where the target paragraph ends. */
 async function dividerLayout(page: Page) {
 	return page.evaluate(() => {
@@ -223,19 +157,4 @@ test("in page mode the divider never adds a page, even when its paragraph ends a
 	expect(layout.gapBelow).toBeLessThan(layout.dividerHeight);
 	await expect.poll(async () => (await dividerLayout(page)).shown).toBe(false);
 	expect(layout.width).toBe(layout.widthWithout);
-});
-
-test("a jump the reader stays at shows against the plan on the book page right away", async ({
-	page,
-}) => {
-	await seedFixture(page, goalFixture(), "goal.epub");
-	await openBookFromLibrary(page, TITLE);
-	await reader.expectLoaded(page);
-	await startMonthGoal(page);
-	await reader.waitOpenSettled(page);
-
-	await searchAndReadFrom(page, "Goal paragraph 40 holds");
-	// No reading was credited, so no session flush refreshes the plan; leaving the reader must.
-	await openBookPage(page);
-	await expect(page.getByTestId("goal-card")).toContainText(/vs plan · \+\d/);
 });

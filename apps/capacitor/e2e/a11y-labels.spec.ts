@@ -68,30 +68,15 @@ test("library to read-aloud: every control is named, nothing clickable is anonym
 	await expect(page.locator(".sr-only", { hasText: "Listen button" })).toHaveCount(1);
 	await reader.toggleRsvp(page);
 
+	await reader.setPaginationStyle(page, "page");
+	await expect(page.locator(".sr-only", { hasText: "Listen button" })).toHaveCount(1);
+	await expectAccessible(page, "page mode");
+
 	await page.getByRole("button", { name: "More actions" }).click();
 	await expectAccessible(page, "reader menu");
 	await page.getByRole("menuitem", { name: "View book" }).click();
 	await page.waitForURL(/\/tabs\/library\/book\//);
 	await expectAccessible(page, "book page");
-});
-
-test("a library card is a button a keyboard reaches and opens", async ({ page }) => {
-	const title = await openWithFakeTts(page);
-	const card = page.getByRole("button", { name: title, exact: true });
-	await card.focus();
-	await expect(card).toBeFocused();
-	await page.keyboard.press("Enter");
-	await page.waitForURL(/\/tabs\/reader\//);
-});
-
-test("page mode tells screen-reader users to listen with read-aloud", async ({ page }) => {
-	const title = await openWithFakeTts(page);
-	await openBookFromLibrary(page, title);
-	await reader.expectLoaded(page);
-	await reader.waitOpenSettled(page);
-	await reader.setPaginationStyle(page, "page");
-	await expect(page.locator(".sr-only", { hasText: "Listen button" })).toHaveCount(1);
-	await expectAccessible(page, "page mode");
 });
 
 // The control: an icon-only menu button with an aria-label passes desktop

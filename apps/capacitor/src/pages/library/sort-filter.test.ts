@@ -105,6 +105,29 @@ describe("series shelves", () => {
 	});
 });
 
+describe("sorting by recent and title", () => {
+	const apple = makeBook({ id: "aaaaaaaa", title: "Apple Book", addedAt: 100 });
+	const zebra = makeBook({ id: "bbbbbbbb", title: "Zebra Book", addedAt: 200 });
+	const mango = makeBook({ id: "cccccccc", title: "Mango Book", addedAt: 50, lastRead: 300 });
+
+	it("puts the newest import first under recent, a recent read ahead of both", () => {
+		expect(visibleIds([apple, zebra], "all", "recent")).toEqual(["bbbbbbbb", "aaaaaaaa"]);
+		expect(visibleIds([apple, zebra, mango], "all", "recent")).toEqual([
+			"cccccccc",
+			"bbbbbbbb",
+			"aaaaaaaa",
+		]);
+	});
+
+	it("orders A to Z under title", () => {
+		expect(visibleIds([zebra, mango, apple], "all", "title")).toEqual([
+			"aaaaaaaa",
+			"cccccccc",
+			"bbbbbbbb",
+		]);
+	});
+});
+
 describe("sorting by rating", () => {
 	it("ranks higher ratings first and puts unrated last", () => {
 		const books = [

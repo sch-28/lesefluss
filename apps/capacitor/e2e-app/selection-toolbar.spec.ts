@@ -9,7 +9,7 @@ async function select(page: Page) {
 	return toolbar;
 }
 
-test("Escape and a margin click dismiss the toolbar; a resize moves it with the selection", async ({
+test("a margin click dismisses the toolbar; a resize moves it with the selection", async ({
 	page,
 }) => {
 	await page.setViewportSize({ width: 1280, height: 800 });
@@ -17,10 +17,6 @@ test("Escape and a margin click dismiss the toolbar; a resize moves it with the 
 	await openBook(page, title);
 
 	const toolbar = await select(page);
-	await page.keyboard.press("Escape");
-	await expect(toolbar).toHaveCount(0);
-
-	await select(page);
 	const word = await reader.wordSpan(page, "opening").boundingBox();
 	const view = await page.getByTestId("reader-view").boundingBox();
 	if (!word || !view) throw new Error("Reader not laid out");

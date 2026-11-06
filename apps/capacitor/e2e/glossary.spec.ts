@@ -1,29 +1,48 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
 import { reader } from "./page-objects/reader";
 
-/**
- * Glossary entry created via selection toolbar must render an inline avatar
- * on the first word of the entry's range AND survive a library round-trip.
- */
-test("add to glossary renders an inline avatar that persists across reload", async ({ page }) => {
+const avatars = (page: Page) => page.locator(".glossary-inline-avatar");
+
+async function addGlossaryEntry(page: Page, startText: string, endText: string) {
+	// A drag while the previous drawer still animates out never reaches the reader.
+	await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 5000 });
+	await reader.selectWords(page, startText, endText);
+	await page.getByRole("button", { name: "Glossary", exact: true }).click();
+	await expect(page.getByRole("heading", { name: "Glossary entry" })).toBeVisible();
+}
+
+async function reopen(page: Page, title: string) {
+	await page.goto("/tabs/library");
+	await openBookFromLibrary(page, title);
+}
+
+test("a glossary entry's avatar, rename and delete persist across reloads", async ({ page }) => {
 	const title = await seedStrayAnchorBook(page);
 	await openBookFromLibrary(page, title);
 
-	await reader.selectWords(page, "opening", "paragraph");
-	await page.getByRole("button", { name: "Glossary", exact: true }).click();
+	// Deleted in the editor the create flow opened: reopening via an avatar tap is
+	// coupled to vaul's animation timing under Playwright.
+	await addGlossaryEntry(page, "develops", "moment");
+	await reader.deleteGlossaryFromEditor(page);
+	await expect(avatars(page)).toHaveCount(0, { timeout: 10_000 });
+	await reader.dismissSelection(page);
 
-	// GlossaryEntryModal opens with the selected text as the default label.
-	// Close it (autosaves on every change; closing commits whatever's there).
-	await expect(page.getByRole("heading", { name: "Glossary entry" })).toBeVisible();
+	// The editor autosaves; closing it commits the selected text as the label.
+	await addGlossaryEntry(page, "opening", "paragraph");
+	await page.keyboard.press("Escape");
+	await expect(avatars(page).first()).toBeVisible({ timeout: 5000 });
+	await reader.dismissSelection(page);
+
+	// A label with no match in the book renders no avatar: the sheet lists the stored row.
+	const newLabel = "spec-renamed-entry";
+	await addGlossaryEntry(page, "develops", "moment");
+	await reader.setGlossaryLabelFromEditor(page, newLabel);
 	await page.keyboard.press("Escape");
 
-	const avatar = page.locator(".glossary-inline-avatar").first();
-	await expect(avatar).toBeVisible({ timeout: 5000 });
-
-	// Library round-trip: glossary row must survive in the DB and re-decorate
-	// the same word on reader mount.
-	await page.goto("/tabs/library");
-	await openBookFromLibrary(page, title);
-	await expect(page.locator(".glossary-inline-avatar").first()).toBeVisible({ timeout: 5000 });
+	await reopen(page, title);
+	await expect(avatars(page).first()).toBeVisible({ timeout: 5000 });
+	await page.getByRole("button", { name: "Annotations" }).click();
+	await page.getByRole("radio", { name: "Glossary" }).click();
+	await expect(page.getByText(newLabel)).toBeVisible({ timeout: 5000 });
 });

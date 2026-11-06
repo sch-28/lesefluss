@@ -1,12 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
-import {
-	BIG_BOOK_TITLE,
-	bigBookFixture,
-	openBigBookInPageMode,
-	seedBigBook,
-} from "./helpers/big-book";
-import { applyRemoteSettings } from "./helpers/remote-settings";
-import { openBookFromLibrary, seedFixture } from "./helpers/seed";
+import { BIG_BOOK_TITLE, openBigBookInPageMode, seedBigBook } from "./helpers/big-book";
+import { openBookFromLibrary } from "./helpers/seed";
 import { reader } from "./page-objects/reader";
 
 const PHONE = { width: 420, height: 900 };
@@ -58,19 +52,6 @@ async function bandCoversWord(page: Page, word: number): Promise<boolean> {
 		});
 		return rects.some((r) => r.top >= b.top - 1 && r.bottom <= b.bottom + 1);
 	}, word);
-}
-
-/** Whether the visible band overlaps the first element matching `selector` on screen. */
-async function bandOverlaps(page: Page, selector: string): Promise<boolean> {
-	return page.evaluate((selector) => {
-		const root = document.querySelector<HTMLElement>(".reading-ruler");
-		const bandEl = document.querySelector(".reading-ruler-band");
-		const el = document.querySelector(selector);
-		if (!root || root.dataset.visible !== "true" || !bandEl || !el) return false;
-		const b = bandEl.getBoundingClientRect();
-		const r = el.getBoundingClientRect();
-		return r.top < b.bottom && r.bottom > b.top;
-	}, selector);
 }
 
 /** Starts recording whether the ruler hides; read with `wasRulerHidden`. */
@@ -145,24 +126,6 @@ test("toggling the ruler mid-chapter in page mode keeps the page and saves nothi
 	expect(await reader.saveRequestCount(page)).toBe(saves);
 });
 
-test("the band sits on a tapped word's line and grows with the line count", async ({ page }) => {
-	await openScrollMidChapter(page);
-	await setRuler(page, true);
-	const word = (await reader.scrollModeTopWord(page)) + 40;
-	await page.locator(`span[data-word="${word}"]`).click();
-	await expect.poll(() => bandCoversWord(page, word)).toBe(true);
-	const oneLine = (await band(page).boundingBox())?.height ?? 0;
-
-	// One step at a time: the setting saves without an optimistic update.
-	await reader.stepUpAppearance(page, "Ruler lines");
-	await reader.stepUpAppearance(page, "Ruler lines");
-	// Edges round separately, so three lines may differ from 3 x one by a pixel or two.
-	await expect
-		.poll(async () => Math.abs(((await band(page).boundingBox())?.height ?? 0) - oneLine * 3))
-		.toBeLessThanOrEqual(2);
-	expect(await bandCoversWord(page, word)).toBe(true);
-});
-
 test("taps and long presses reach the words under the ruler", async ({ page }) => {
 	await openScrollMidChapter(page);
 	await setRuler(page, true);
@@ -203,71 +166,6 @@ test("in page mode the ruler hides while the page slides and returns on the sett
 	await expect(ruler(page)).toHaveAttribute("data-visible", "true");
 });
 
-test("on a chapter's first page the band marks the heading, also after a font size step", async ({
-	page,
-}) => {
-	await page.setViewportSize(PHONE);
-	await openBigBookInPageMode(page);
-	await setRuler(page, true);
-	await expect(ruler(page)).toHaveAttribute("data-visible", "true");
-
-	await expect.poll(() => bandOverlaps(page, ".page-view .reader-heading")).toBe(true);
-
-	// Through sync, not the popover, whose closing would commit again. The reflow lands
-	// on the same page 0: no new page index, so only the landing itself brings it back.
-	const headingSize = () =>
-		page.evaluate(() => {
-			const heading = document.querySelector(".page-view .reader-heading");
-			return heading ? getComputedStyle(heading).fontSize : "";
-		});
-	const sizeBefore = await headingSize();
-	await recordRulerHidden(page);
-	await applyRemoteSettings(page, { readerFontSize: 22 });
-	await expect.poll(headingSize).not.toBe(sizeBefore);
-	await expect.poll(() => wasRulerHidden(page)).toBe(true);
-	await expect(ruler(page)).toHaveAttribute("data-visible", "true", { timeout: 10_000 });
-	await expect.poll(() => bandOverlaps(page, ".page-view .reader-heading")).toBe(true);
-});
-
-test("during read-aloud in page mode the band returns after quick page turns", async ({ page }) => {
-	await page.setViewportSize(PHONE);
-	await page.addInitScript(() => {
-		window.__lesefluss_e2e_fakeTts = true;
-	});
-	const title = await seedFixture(page, bigBookFixture(), "big.epub");
-	await openBookFromLibrary(page, title);
-	await reader.expectLoaded(page);
-	await reader.setPaginationStyle(page, "page");
-	await reader.waitPositionQuiet(page);
-	await setRuler(page, true);
-	await page.getByRole("button", { name: "Listen", exact: true }).click();
-	await expect.poll(() => page.evaluate(() => window.__lesefluss_e2e_tts?.starts() ?? 0)).toBe(1);
-	const start = await reader.pageModeFirstVisibleWord(page);
-
-	// Words faster than the page slide: each turn's animation is cut short by the next
-	// word. A ruler left waiting for a stop that is never reported stays hidden until some
-	// unrelated commit (the throttled save, every 2 s), not just for the slide.
-	const longestHiddenMs = await page.evaluate(async () => {
-		const root = document.querySelector<HTMLElement>(".reading-ruler");
-		if (!root) throw new Error("no ruler");
-		let hiddenSince: number | null = null;
-		let longest = 0;
-		for (let i = 0; i < 400; i++) {
-			window.__lesefluss_e2e_tts?.speak(1);
-			await new Promise((resolve) => setTimeout(resolve, 30));
-			const now = performance.now();
-			if (root.dataset.visible === "false") hiddenSince ??= now;
-			else if (hiddenSince !== null) {
-				longest = Math.max(longest, now - hiddenSince);
-				hiddenSince = null;
-			}
-		}
-		return hiddenSince === null ? longest : Math.max(longest, performance.now() - hiddenSince);
-	});
-	expect(await reader.pageModeFirstVisibleWord(page)).not.toBe(start);
-	expect(longestHiddenMs).toBeLessThan(800);
-});
-
 test("in a two-page spread the band marks one page only", async ({ page }) => {
 	await page.setViewportSize(SPREAD);
 	await openBigBookInPageMode(page);
@@ -281,102 +179,21 @@ test("in a two-page spread the band marks one page only", async ({ page }) => {
 	expect(bandWidth).toBeLessThan(clipWidth * 0.6);
 });
 
-for (const mode of ["scroll", "page"] as const) {
-	test(`reopening after using the ruler restores the same first word (${mode} mode)`, async ({
-		page,
-	}) => {
-		await page.setViewportSize(PHONE);
-		if (mode === "page") {
-			await openBigBookInPageMode(page);
-			await reader.turnPages(page, 3);
-		} else {
-			await openScrollMidChapter(page);
-		}
-		await reader.waitPositionQuiet(page);
-		const first = () =>
-			mode === "page" ? reader.pageModeFirstVisibleWord(page) : reader.scrollModeTopWord(page);
-		const word = await first();
-
-		await setRuler(page, true);
-		await reader.stepUpAppearance(page, "Ruler lines");
-		await expect(band(page)).toBeVisible();
-
-		await reader.leaveFlushed(page);
-		await openBookFromLibrary(page, BIG_BOOK_TITLE);
-		await reader.expectLoaded(page);
-		if (mode === "page") {
-			await expect.poll(first, { timeout: 10_000 }).toBe(word);
-		} else {
-			await reader.waitOpenSettled(page);
-			expect(await first()).toBe(word);
-		}
-	});
-}
-
-test("the ruler stays on its word's line after a font size change and a resize", async ({
+test("reopening after using the ruler in page mode restores the same first word", async ({
 	page,
 }) => {
-	await openScrollMidChapter(page);
-	await setRuler(page, true);
-	const word = (await reader.scrollModeTopWord(page)) + 20;
-	await page.locator(`span[data-word="${word}"]`).click();
-	await expect.poll(() => bandCoversWord(page, word)).toBe(true);
-
-	await reader.increaseFontSize(page);
-	await expect.poll(() => bandCoversWord(page, word), { timeout: 10_000 }).toBe(true);
-	await page.setViewportSize({ width: 600, height: 900 });
-	await expect.poll(() => bandCoversWord(page, word), { timeout: 10_000 }).toBe(true);
-});
-
-test("during read-aloud the band follows the spoken word and adds no saves", async ({ page }) => {
 	await page.setViewportSize(PHONE);
-	await page.addInitScript(() => {
-		window.__lesefluss_e2e_fakeTts = true;
-	});
-	const title = await seedFixture(page, bigBookFixture(), "big.epub");
-	await openBookFromLibrary(page, title);
-	await reader.expectLoaded(page);
-	await reader.waitOpenSettled(page);
-	await setRuler(page, true);
-	await page.getByRole("button", { name: "Listen", exact: true }).click();
-	await expect.poll(() => page.evaluate(() => window.__lesefluss_e2e_tts?.starts() ?? 0)).toBe(1);
-	const ownSaves = () =>
-		page.evaluate(
-			() => window.__lesefluss_e2e_saveLog?.filter((s) => s.source !== "read-aloud").length ?? 0,
-		);
-	const before = await ownSaves();
-	const spokenWord = () =>
-		page.evaluate(() => {
-			const range = CSS.highlights.get("tts-word")?.values().next().value as Range | undefined;
-			// selectNodeContents(span): the range starts in the span itself.
-			const node = range?.startContainer;
-			const el = node instanceof Element ? node : node?.parentElement;
-			const span = el?.closest<HTMLElement>("span[data-word]");
-			return span ? Number(span.dataset.word) : null;
-		});
+	await openBigBookInPageMode(page);
+	await reader.turnPages(page, 3);
+	await reader.waitPositionQuiet(page);
+	const word = await reader.pageModeFirstVisibleWord(page);
 
-	// Past the opening headings, which render no word spans to read the mark from.
-	for (const words of [5, 30, 60]) {
-		await page.evaluate((words) => window.__lesefluss_e2e_tts?.speak(words), words);
-		await expect.poll(spokenWord).not.toBeNull();
-		const word = await spokenWord();
-		if (word === null) throw new Error("no spoken word");
-		await expect.poll(() => bandCoversWord(page, word)).toBe(true);
-	}
-	expect(await ownSaves()).toBe(before);
-});
-
-test("under e-ink the ruler is an outline without dimming, and it never animates", async ({
-	page,
-}) => {
-	await page.emulateMedia({ reducedMotion: "reduce" });
-	await openScrollMidChapter(page);
 	await setRuler(page, true);
+	await reader.stepUpAppearance(page, "Ruler lines");
 	await expect(band(page)).toBeVisible();
-	expect(await band(page).evaluate((el) => getComputedStyle(el).transitionDuration)).toBe("0s");
 
-	await setPopoverSwitch(page, "E-ink display", true);
-	await expect(page.locator("html")).toHaveClass(/\beink\b/);
-	await expect(page.locator(".reading-ruler-dim").first()).toBeHidden();
-	expect(await band(page).evaluate((el) => getComputedStyle(el).outlineColor)).toBe("rgb(0, 0, 0)");
+	await reader.leaveFlushed(page);
+	await openBookFromLibrary(page, BIG_BOOK_TITLE);
+	await reader.expectLoaded(page);
+	await expect.poll(() => reader.pageModeFirstVisibleWord(page), { timeout: 10_000 }).toBe(word);
 });

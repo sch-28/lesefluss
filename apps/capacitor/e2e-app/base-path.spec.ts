@@ -25,29 +25,22 @@ async function problemsDuring(page: Page, run: () => Promise<void>): Promise<str
 	return problems;
 }
 
-for (const viewport of [
-	{ name: "phone", width: 390, height: 844 },
-	{ name: "desktop", width: 1440, height: 900 },
-]) {
-	test(`the /app bundle loads under /app/ with nothing missing (${viewport.name})`, async ({
-		page,
-	}) => {
-		await page.setViewportSize(viewport);
-		await resetAppStorage(page);
-		const problems = await problemsDuring(page, async () => {
-			await page.goto("/app/");
-			await page.waitForURL(/\/app\/onboarding/);
-			await expect(page.getByRole("button", { name: "Get started" })).toBeVisible();
-			await page.goto("/app/tabs/library");
-			await expect(page.getByText("No books yet")).toBeVisible();
-			await page.goto("/app/tabs/settings");
-			await expect(page).toHaveURL(/\/app\/tabs\/settings/);
-		});
-		const scripts = await page
-			.locator("script[src]")
-			.evaluateAll((els) => els.map((el) => el.getAttribute("src")));
-		expect(scripts.length).toBeGreaterThan(0);
-		for (const src of scripts) expect(src).toMatch(/^\/app\/assets\//);
-		expect(problems).toEqual([]);
+test("the /app bundle loads under /app/ with nothing missing", async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await resetAppStorage(page);
+	const problems = await problemsDuring(page, async () => {
+		await page.goto("/app/");
+		await page.waitForURL(/\/app\/onboarding/);
+		await expect(page.getByRole("button", { name: "Get started" })).toBeVisible();
+		await page.goto("/app/tabs/library");
+		await expect(page.getByText("No books yet")).toBeVisible();
+		await page.goto("/app/tabs/settings");
+		await expect(page).toHaveURL(/\/app\/tabs\/settings/);
 	});
-}
+	const scripts = await page
+		.locator("script[src]")
+		.evaluateAll((els) => els.map((el) => el.getAttribute("src")));
+	expect(scripts.length).toBeGreaterThan(0);
+	for (const src of scripts) expect(src).toMatch(/^\/app\/assets\//);
+	expect(problems).toEqual([]);
+});

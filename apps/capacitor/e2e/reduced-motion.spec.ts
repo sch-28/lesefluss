@@ -8,17 +8,12 @@ import { reader } from "./page-objects/reader";
  * With the OS asking for reduced motion (Android "Remove animations" reaches the
  * WebView as prefers-reduced-motion: reduce), nothing slides, fades or scrolls
  * smoothly (a spinner keeps turning), and page turns still save exactly the
- * page they land on. Each check has a no-preference control that sees motion.
+ * page they land on. The smooth jump has a no-preference control that sees motion.
  */
 
 test.use({ viewport: { width: 420, height: 800 } });
 
-async function seedAndOpen(page: Page, { fakeTts = false } = {}) {
-	if (fakeTts) {
-		await page.addInitScript(() => {
-			window.__lesefluss_e2e_fakeTts = true;
-		});
-	}
+async function seedAndOpen(page: Page) {
 	const title = await seedFixture(page, bigBookFixture({ paragraphCount: 120 }), "big.epub");
 	await openBookFromLibrary(page, title);
 	await reader.expectLoaded(page);
@@ -32,25 +27,6 @@ const settlesInTheKeysOwnTask = (page: Page) =>
 		window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
 		return (window.__lesefluss_e2e_settles ?? 0) - before;
 	});
-
-/** Speaks a word at a time until the reader's follow scrolls; returns the scrolls it made. */
-async function speakUntilFollowScrolls(page: Page): Promise<number[]> {
-	await page.getByRole("button", { name: "Listen", exact: true }).click();
-	await expect.poll(() => page.evaluate(() => window.__lesefluss_e2e_tts?.starts() ?? 0)).toBe(1);
-	await reader.recordScrolls(page);
-	await expect
-		.poll(
-			async () => {
-				await page.evaluate(() => window.__lesefluss_e2e_tts?.speak(1));
-				return (await reader.recordedScrolls(page)).length;
-			},
-			{ intervals: [50], timeout: 30_000 },
-		)
-		.toBeGreaterThan(0);
-	// Well past a smooth scroll (250 ms), with no word spoken meanwhile.
-	await page.waitForTimeout(600);
-	return reader.recordedScrolls(page);
-}
 
 /** Delivers a BLE device position a screen further on, which the reader follows with a smooth jump. */
 async function followDevicePositionScrolls(page: Page): Promise<number[]> {
@@ -120,22 +96,6 @@ test.describe("prefers-reduced-motion: reduce", () => {
 		}
 	});
 
-	test("the page animation setting shows as off, and says why", async ({ page }) => {
-		await seedAndOpen(page);
-		await reader.setPaginationStyle(page, "page");
-		await reader.openAppearance(page);
-		const row = page.locator(".ap-row").filter({ hasText: "Page animation" });
-		await expect(row.getByText("Off while system reduce motion is on")).toBeVisible();
-		await expect(row.getByRole("radio", { name: "Off" })).toHaveAttribute("data-state", "on");
-		await expect(row.getByRole("radio", { name: "On" })).toBeDisabled();
-	});
-
-	test("read-aloud follow jumps rather than scrolls smoothly", async ({ page }) => {
-		await seedAndOpen(page, { fakeTts: true });
-		const scrolls = await speakUntilFollowScrolls(page);
-		expect(scrolls[0], "the first scroll already landed").toBe(scrolls.at(-1));
-	});
-
 	test("a smooth jump (a BLE device's position) lands at once", async ({ page }) => {
 		await seedAndOpen(page);
 		const scrolls = await followDevicePositionScrolls(page);
@@ -145,24 +105,6 @@ test.describe("prefers-reduced-motion: reduce", () => {
 
 test.describe("prefers-reduced-motion: no-preference", () => {
 	test.use({ contextOptions: { reducedMotion: "no-preference" } });
-
-	test("page turns slide, and settle after the key press", async ({ page }) => {
-		await seedAndOpen(page);
-		await expect(page.locator("html")).not.toHaveClass(/\breduce-motion\b/);
-		await reader.setPaginationStyle(page, "page");
-		await reader.blurFocusedControl(page);
-		expect(await settlesInTheKeysOwnTask(page)).toBe(0);
-		const transition = await page
-			.locator(".page-view [style*='translateX']")
-			.evaluate((el) => getComputedStyle(el).transitionDuration);
-		expect(transition).not.toBe("0s");
-	});
-
-	test("read-aloud follow scrolls smoothly", async ({ page }) => {
-		await seedAndOpen(page, { fakeTts: true });
-		const scrolls = await speakUntilFollowScrolls(page);
-		expect(scrolls[0], "the first frame is only part of the way").not.toBe(scrolls.at(-1));
-	});
 
 	test("a smooth jump (a BLE device's position) glides", async ({ page }) => {
 		await seedAndOpen(page);

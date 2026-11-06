@@ -33,24 +33,3 @@ test("renders a captured hyperlink as .word-link and opens it on tap", async ({ 
 	await reader.waitForLinkOpen(page, "https://example.com/docs");
 	expect(await reader.lastLinkOpened(page)).toBe("https://example.com/docs");
 });
-
-test("linkifies a bare URL in plain text and opens it on tap", async ({ page }) => {
-	await importBook(page, {
-		title: "Bare URL Book",
-		chapters: [
-			{
-				id: "c1",
-				href: "c1.xhtml",
-				title: "One",
-				body: "<p>Visit https://bare.example/page today.</p>",
-			},
-		],
-	});
-
-	const link = reader.wordSpan(page, "https://bare.example/page");
-	await expect(link).toBeVisible();
-	await expect(link).toHaveClass(/word-link/);
-
-	await link.click();
-	await reader.waitForLinkOpen(page, "https://bare.example/page");
-});

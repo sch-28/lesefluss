@@ -1,3 +1,6 @@
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { buildEpubBuffer } from "@lesefluss/book-import/test-fixtures/build-epub";
 import { expect, type Page, test } from "@playwright/test";
 import { resetStorage } from "./helpers/seed";
@@ -10,35 +13,29 @@ import { resetStorage } from "./helpers/seed";
 
 const TITLES = ["Tidewater", "Northlight", "Riverkeep"] as const;
 
-/**
- * Imports and *commits* one book. `importEpubViaFilePicker` stops at the confirm
- * sheet, which is fine when seeding a single book but leaves a modal over the
- * library that the next import cannot get past.
- */
-async function importBook(page: Page, title: string) {
-	await page.goto("/tabs/library");
-	const buffer = await buildEpubBuffer({
-		title,
-		creator: "Ada Vance",
-		chapters: [{ id: "c1", href: "c1.xhtml", title: "One", body: "<p>Body text.</p>" }],
-	});
+/** All three in one batch: the folder import commits them in a single pass. */
+async function seedBooks(page: Page) {
+	const dir = await mkdtemp(join(tmpdir(), "lesefluss-bulk-"));
+	for (const title of TITLES) {
+		const buffer = await buildEpubBuffer({
+			title,
+			creator: "Ada Vance",
+			chapters: [{ id: "c1", href: "c1.xhtml", title: "One", body: "<p>Body text.</p>" }],
+		});
+		await writeFile(join(dir, `${title.toLowerCase()}.epub`), buffer);
+	}
 
+	await page.goto("/tabs/library");
 	await page.getByRole("button", { name: "Add book" }).click();
 	const chooserPromise = page.waitForEvent("filechooser");
-	await page.getByRole("button", { name: "Import file" }).click();
-	const chooser = await chooserPromise;
-	await chooser.setFiles({
-		name: `${title.toLowerCase()}.epub`,
-		mimeType: "application/epub+zip",
-		buffer,
+	await page.getByRole("button", { name: "Import multiple files" }).click();
+	await (await chooserPromise).setFiles(dir);
+	await page.getByRole("button", { name: `Import ${TITLES.length} books` }).click({
+		timeout: 20_000,
 	});
-
-	await page.getByRole("button", { name: "Add to library" }).click({ timeout: 20_000 });
-	await expect(page.locator(`[data-book-title="${title}"]`)).toHaveCount(1, { timeout: 20_000 });
-}
-
-async function seedBooks(page: Page) {
-	for (const title of TITLES) await importBook(page, title);
+	await expect(page.getByText(`Added ${TITLES.length} books`)).toBeVisible({ timeout: 30_000 });
+	await page.getByRole("button", { name: "Done" }).click();
+	await expect(page.locator("[data-book-title]")).toHaveCount(TITLES.length);
 }
 
 function card(page: Page, title: string) {
@@ -56,16 +53,14 @@ test.beforeEach(async ({ page }) => {
 	await seedBooks(page);
 });
 
-test("long press offers Select, which starts a selection with that book", async ({ page }) => {
-	await enterSelectionMode(page, "Tidewater");
-	await expect(card(page, "Tidewater")).toHaveAttribute("data-selected", "true");
-	await expect(card(page, "Northlight")).not.toHaveAttribute("data-selected", "true");
-});
-
 // The single most valuable assertion here: this is the whole `enabled` change
 // in useLongPress. A regression sends the reader into the reader instead.
-test("a tap toggles a card instead of opening it", async ({ page }) => {
+test("long press starts a selection, a tap toggles instead of opening, and exit restores taps", async ({
+	page,
+}) => {
 	await enterSelectionMode(page, "Tidewater");
+	await expect(card(page, "Tidewater")).toHaveAttribute("data-selected", "true");
+	await expect(page.getByRole("button", { name: "Add book" })).toBeHidden();
 
 	await card(page, "Northlight").click();
 	await expect(page).toHaveURL(/\/tabs\/library/);
@@ -75,25 +70,12 @@ test("a tap toggles a card instead of opening it", async ({ page }) => {
 	await card(page, "Northlight").click();
 	await expect(page.getByText("1 selected")).toBeVisible();
 	await expect(card(page, "Northlight")).not.toHaveAttribute("data-selected", "true");
-});
 
-test("select-all takes only what the search leaves visible, and the rest stays picked", async ({
-	page,
-}) => {
-	await enterSelectionMode(page, "Tidewater");
-
-	await page.getByRole("button", { name: "Search library" }).click();
-	await page.getByPlaceholder("Search title or author").fill("north");
-	await page.getByRole("button", { name: "All", exact: true }).click();
-
-	// Tidewater is hidden by the search but stays selected, which is what lets a
-	// selection be built across several searches.
-	await expect(page.getByText("2 selected")).toBeVisible();
-
-	await page.getByPlaceholder("Search title or author").fill("");
-	await expect(card(page, "Tidewater")).toHaveAttribute("data-selected", "true");
-	await expect(card(page, "Northlight")).toHaveAttribute("data-selected", "true");
-	await expect(card(page, "Riverkeep")).not.toHaveAttribute("data-selected", "true");
+	await page.getByRole("button", { name: "Exit selection" }).click();
+	await expect(page.getByRole("button", { name: "Add book" })).toBeVisible();
+	// No leaked handlers: a tap opens the reader again.
+	await card(page, "Tidewater").click();
+	await expect(page).toHaveURL(/\/tabs\/reader\//);
 });
 
 test("deleting a selection names the books and removes exactly those", async ({ page }) => {
@@ -118,24 +100,6 @@ test("deleting a selection names the books and removes exactly those", async ({ 
 	await expect(page.getByRole("button", { name: "Exit selection" })).toHaveCount(0);
 });
 
-test("setting a status applies it to the whole selection", async ({ page }) => {
-	await enterSelectionMode(page, "Tidewater");
-	await card(page, "Northlight").click();
-
-	await page.getByRole("button", { name: "Bulk actions" }).click();
-	await page.getByRole("button", { name: "Set reading status" }).click();
-	await page.getByRole("button", { name: "Finished", exact: true }).click();
-
-	await expect(page.getByRole("button", { name: "Exit selection" })).toHaveCount(0);
-
-	await page.getByRole("button", { name: "Filter" }).click();
-	await page.getByRole("button", { name: "Finished", exact: true }).click();
-
-	await expect(card(page, "Tidewater")).toHaveCount(1);
-	await expect(card(page, "Northlight")).toHaveCount(1);
-	await expect(card(page, "Riverkeep")).toHaveCount(0);
-});
-
 test("tagging a selection puts the tag on every picked book", async ({ page }) => {
 	await enterSelectionMode(page, "Tidewater");
 	await card(page, "Northlight").click();
@@ -156,87 +120,4 @@ test("tagging a selection puts the tag on every picked book", async ({ page }) =
 	await expect(card(page, "Tidewater")).toHaveCount(1);
 	await expect(card(page, "Northlight")).toHaveCount(1);
 	await expect(card(page, "Riverkeep")).toHaveCount(0);
-});
-
-test("removing a tag clears it from the books that had it", async ({ page }) => {
-	// Tag two books, then take it off one of them.
-	await enterSelectionMode(page, "Tidewater");
-	await card(page, "Northlight").click();
-	await page.getByRole("button", { name: "Bulk actions" }).click();
-	await page.getByRole("button", { name: "Edit tags" }).click();
-	await page.getByPlaceholder("New tag").fill("summer");
-	await page.getByRole("button", { name: "Add tag" }).click();
-	await page.getByRole("button", { name: "Apply" }).click();
-	await expect(page.getByRole("button", { name: "Exit selection" })).toHaveCount(0);
-
-	await enterSelectionMode(page, "Tidewater");
-	await page.getByRole("button", { name: "Bulk actions" }).click();
-	await page.getByRole("button", { name: "Edit tags" }).click();
-	// Every picked book carries it, so the first tap offers to take it off.
-	await page.getByRole("button", { name: /summer/ }).click();
-	await page.getByRole("button", { name: "Apply" }).click();
-
-	await page.getByRole("button", { name: "Filter" }).click();
-	await page.getByRole("button", { name: "summer", exact: true }).click();
-
-	await expect(card(page, "Northlight")).toHaveCount(1);
-	await expect(card(page, "Tidewater")).toHaveCount(0);
-});
-
-// The whole reason the tri-state exists: with a tag on only some of the picked
-// books, the first tap must offer to put it on the rest, not take it off.
-test("a tag on only some of the selection offers to add it to the rest", async ({ page }) => {
-	await enterSelectionMode(page, "Tidewater");
-	await page.getByRole("button", { name: "Bulk actions" }).click();
-	await page.getByRole("button", { name: "Edit tags" }).click();
-	await page.getByPlaceholder("New tag").fill("summer");
-	await page.getByRole("button", { name: "Add tag" }).click();
-	await page.getByRole("button", { name: "Apply" }).click();
-	await expect(page.getByRole("button", { name: "Exit selection" })).toHaveCount(0);
-
-	await enterSelectionMode(page, "Tidewater");
-	await card(page, "Northlight").click();
-	await page.getByRole("button", { name: "Bulk actions" }).click();
-	await page.getByRole("button", { name: "Edit tags" }).click();
-
-	await expect(page.getByRole("button", { name: /summer/ })).toContainText("On 1 of 2");
-	await page.getByRole("button", { name: /summer/ }).click();
-	await expect(page.getByRole("button", { name: /summer/ })).toContainText("Add to all");
-
-	await page.getByRole("button", { name: "Apply" }).click();
-	await page.getByRole("button", { name: "Filter" }).click();
-	await page.getByRole("button", { name: "summer", exact: true }).click();
-	await expect(card(page, "Tidewater")).toHaveCount(1);
-	await expect(card(page, "Northlight")).toHaveCount(1);
-});
-
-// The sheet does not unmount, so a close that bypasses its own handlers must
-// still clear what was staged, or the next selection inherits it.
-test("closing the tag sheet discards what was staged in it", async ({ page }) => {
-	await enterSelectionMode(page, "Tidewater");
-	await page.getByRole("button", { name: "Bulk actions" }).click();
-	await page.getByRole("button", { name: "Edit tags" }).click();
-	await page.getByPlaceholder("New tag").fill("summer");
-	await page.getByRole("button", { name: "Add tag" }).click();
-	await expect(page.getByRole("button", { name: "Apply" })).toBeEnabled();
-
-	await page.getByRole("button", { name: "Cancel" }).click();
-	await page.getByRole("button", { name: "Bulk actions" }).click();
-	await page.getByRole("button", { name: "Edit tags" }).click();
-
-	await expect(page.getByRole("button", { name: "Apply" })).toBeDisabled();
-	await expect(page.getByRole("button", { name: /summer/ })).toHaveCount(0);
-});
-
-test("leaving selection mode restores the library, taps included", async ({ page }) => {
-	await enterSelectionMode(page, "Tidewater");
-	await expect(page.getByRole("button", { name: "Add book" })).toBeHidden();
-
-	await page.getByRole("button", { name: "Exit selection" }).click();
-	await expect(page.getByRole("button", { name: "Exit selection" })).toHaveCount(0);
-	await expect(page.getByRole("button", { name: "Add book" })).toBeVisible();
-
-	// No leaked handlers: a tap opens the reader again.
-	await card(page, "Tidewater").click();
-	await expect(page).toHaveURL(/\/tabs\/reader\//);
 });

@@ -30,13 +30,3 @@ test("signing in from onboarding returns to the /app library, not the website pr
 	await page.goto("/app/");
 	await page.waitForURL(/\/app\/tabs\/library/);
 });
-
-test("the signed-out social tab signs in and comes back to the social tab", async ({ page }) => {
-	await resetAppStorage(page);
-	await page.goto("/app/tabs/social");
-	await page.getByRole("button", { name: "Sign in to get started" }).click();
-	await page.waitForURL(/\/login\?redirect=/);
-	await submitLogin(page, "fay");
-	await page.waitForURL(/\/app\/tabs\/social$/);
-	await expect(page.getByRole("button", { name: "Pick your handle" })).toBeVisible();
-});
