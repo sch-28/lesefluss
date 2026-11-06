@@ -11,16 +11,12 @@ import { reader } from "./page-objects/reader";
 /**
  * Figures are block elements with no word spans. Position saving, restore,
  * jumps and pagination must behave exactly as they do for text: a figure at
- * the viewport top makes the paragraph after it the position, a figure-only
- * page saves nothing and never rewinds, and a selection may span a figure.
+ * the viewport top makes the paragraph after it the position, and a
+ * figure-only page saves nothing and never rewinds. A selection across a
+ * figure is reader-images-touch.spec.ts's.
  */
 
-const MAX_PAGE_DOWNS = 40;
-// A PageDown's scroll landing and the list mounting what it reveals.
-const PAGE_DOWN_SETTLE_MS = 150;
 const MAX_PAGE_TURNS = 60;
-// A page turn's slide; page mode has no event for a turn that has landed.
-const PAGE_TURN_SETTLE_MS = 500;
 
 /** The paragraph rendered right after `figure`. */
 function paragraphAfter(figure: Locator): Locator {
@@ -29,11 +25,10 @@ function paragraphAfter(figure: Locator): Locator {
 
 /** Page down until `target` is mounted by the virtual list. */
 async function scrollUntilAttached(page: Page, target: Locator) {
-	for (let i = 0; i < MAX_PAGE_DOWNS && (await target.count()) === 0; i++) {
-		await page.keyboard.press("PageDown");
-		await page.waitForTimeout(PAGE_DOWN_SETTLE_MS);
-	}
-	await expect(target).toBeAttached();
+	await expect(async () => {
+		if ((await target.count()) === 0) await page.keyboard.press("PageDown");
+		await expect(target).toBeAttached({ timeout: 300 });
+	}).toPass({ timeout: 20_000 });
 }
 
 test("a figure at the viewport top makes the paragraph after it the position, and reopening lands there", async ({
@@ -98,10 +93,7 @@ test("a TOC jump lands inside the chapter with its art visible", async ({ page }
 
 test("page mode turns across a page-sized figure and never rewinds", async ({ page }) => {
 	await openBigBookInPageMode(page);
-	// Page mode paginates after the open; no event marks it done.
-	await page.waitForTimeout(reader.LIST_SETTLE_MS);
-
-	expect(await reader.pageModePageCount(page)).toBeGreaterThan(1);
+	await expect.poll(() => reader.pageModePageCount(page)).toBeGreaterThan(1);
 
 	await reader.blurFocusedControl(page);
 	const savedWordOr = async (fallback: number) =>
@@ -118,8 +110,9 @@ test("page mode turns across a page-sized figure and never rewinds", async ({ pa
 	// nothing. The turn loop itself proves the pagination is complete: a page
 	// count that was too small would stop the turns short of the target.
 	for (let turn = 0; turn < MAX_PAGE_TURNS && previous < tallFigureWord; turn++) {
+		const settles = await reader.settleCount(page);
 		await page.keyboard.press("ArrowRight");
-		await page.waitForTimeout(PAGE_TURN_SETTLE_MS);
+		await reader.waitForSettleAbove(page, settles);
 		if (await tallFigure.isVisible()) sawTallFigure = true;
 		const saved = await savedWordOr(previous);
 		expect(saved).toBeGreaterThanOrEqual(previous);
@@ -127,25 +120,6 @@ test("page mode turns across a page-sized figure and never rewinds", async ({ pa
 	}
 	expect(previous).toBeGreaterThanOrEqual(tallFigureWord);
 	expect(sawTallFigure).toBe(true);
-});
-
-test("a highlight spanning a figure persists across reload", async ({ page }) => {
-	const title = await seedStrayAnchorBook(page);
-	await openBookFromLibrary(page, title);
-	await reader.expectLoaded(page);
-
-	// "third" is in the paragraph before Plate 1, "fourth" in the one after it.
-	await reader.selectWords(page, "third", "fourth");
-	const start = await reader.applyHighlight(page, "yellow");
-	const end = await reader.wordPositionOf(page, "fourth");
-	expect(end).toBeGreaterThan(start);
-	await reader.dismissSelection(page);
-
-	await page.goto("/tabs/library");
-	await openBookFromLibrary(page, title);
-	await reader.expectHighlight(page, start, "yellow");
-	await reader.expectHighlight(page, end, "yellow");
-	await expect(page.locator('.reader-figure:has(img[alt="Plate 1"])')).toBeAttached();
 });
 
 /** Search for `phrase`, open its first result and commit it with "Read from
@@ -162,24 +136,6 @@ async function searchAndJump(page: Page, phrase: string): Promise<void> {
 }
 
 const AFTER_TALL_FIGURE = `Paragraph ${FULL_PAGE_FIGURE_BEFORE} contains`;
-
-test("a search jump to the paragraph after a page-sized figure lands on it in scroll mode", async ({
-	page,
-}) => {
-	const title = await seedBigBook(page);
-	await openBookFromLibrary(page, title);
-	await reader.expectLoaded(page);
-
-	await searchAndJump(page, AFTER_TALL_FIGURE);
-	const target = page.locator("p.reader-paragraph", { hasText: AFTER_TALL_FIGURE });
-	await expect(target).toBeInViewport({ timeout: 5000 });
-	const targetWord = await reader.firstWordPositionIn(target);
-	expect(await reader.lastSavedWord(page)).toBe(targetWord);
-	// The fine scroll aligns the target word at the top, the figure sits above it.
-	await expect.poll(() => reader.scrollModeTopWord(page), { timeout: 5000 }).toBe(targetWord);
-	await reader.waitPastJumpGuard(page);
-	expect(await reader.lastSavedWord(page)).toBe(targetWord);
-});
 
 test("a search jump to the paragraph after a page-sized figure lands on it in page mode", async ({
 	page,

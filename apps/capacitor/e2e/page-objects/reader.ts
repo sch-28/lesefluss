@@ -260,6 +260,23 @@ export const reader = {
 		await page.mouse.wheel(0, deltaY);
 	},
 
+	/**
+	 * Wheels and returns once the scroll reader has seen the scroll, well inside
+	 * the 150ms scroll-end debounce: a move that has not settled yet.
+	 */
+	wheelUnsettled: async (page: Page, deltaY: number) => {
+		await page.evaluate(() => {
+			(window as unknown as { __e2e_scrolled: Promise<void> }).__e2e_scrolled = new Promise(
+				(resolve) =>
+					document.addEventListener("scroll", () => resolve(), { capture: true, once: true }),
+			);
+		});
+		await reader.wheel(page, deltaY);
+		await page.evaluate(
+			() => (window as unknown as { __e2e_scrolled: Promise<void> }).__e2e_scrolled,
+		);
+	},
+
 	/** Starts recording every scrollTop the scroll reader passes through. */
 	recordScrolls: async (page: Page) =>
 		inScrollContainer(
@@ -533,9 +550,23 @@ export const reader = {
 	},
 
 	setPaginationStyle: async (page: Page, style: "scroll" | "page") => {
-		await reader.openAppearance(page);
-		const label = style === "scroll" ? "Scroll" : "Page";
-		await page.getByRole("radio", { name: label, exact: true }).click();
+		const radio = page.getByRole("radio", {
+			name: style === "scroll" ? "Scroll" : "Page",
+			exact: true,
+		});
+		// Under full-suite load the menu or popover can miss the first click (LESE-147): retry the
+		// whole open-and-pick instead of waiting out the test timeout on one click.
+		let attempt = 0;
+		await expect(async () => {
+			if (!(await page.locator(".appearance-popover-content").isVisible())) {
+				if (attempt++ > 0) await page.keyboard.press("Escape");
+				await page.getByRole("button", { name: "More actions" }).click({ timeout: 5000 });
+				await page.getByRole("menuitem", { name: "Appearance" }).click({ timeout: 3000 });
+				await expect(page.locator(".appearance-popover-content")).toBeVisible({ timeout: 3000 });
+			}
+			await radio.click({ timeout: 3000 });
+			await expect(radio).toBeChecked({ timeout: 2000 });
+		}).toPass({ timeout: 30_000 });
 		await closeAppearancePopover(page);
 		// Wait for the new view's word spans to re-mount; the prior ad-hoc 300ms
 		// sleep raced this on slow CI.
@@ -606,14 +637,15 @@ export const reader = {
 
 	/**
 	 * Runs `move`, waits for the settle it causes, and checks that the settle asked
-	 * for no save. A save is requested in the settle's own task; `quietMs` covers a late one.
+	 * for no save. A save is requested in the settle's own task; waiting for quiet
+	 * also covers a second settle the move causes.
 	 */
-	expectSettledWithoutSave: async (page: Page, move: () => Promise<void>, quietMs = 1000) => {
+	expectSettledWithoutSave: async (page: Page, move: () => Promise<void>) => {
 		const settles = await reader.settleCount(page);
 		const requests = await reader.saveRequestCount(page);
 		await move();
 		await expect.poll(() => reader.settleCount(page)).toBeGreaterThan(settles);
-		await page.waitForTimeout(quietMs);
+		await reader.waitPositionQuiet(page);
 		expect(await reader.saveRequestCount(page)).toBe(requests);
 	},
 

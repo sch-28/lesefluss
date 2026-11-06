@@ -145,7 +145,9 @@ test("a wide reader shows a two-page spread and a turn moves by the whole spread
 	await expect.poll(() => reader.lastSavedWord(page)).toBe(after[0]);
 });
 
-test("the three tap zones and a swipe work across the whole spread", async ({ page }) => {
+test("the three tap zones and a swipe work across the whole spread, the centre toggling the bar", async ({
+	page,
+}) => {
 	await openLongBookInPageMode(page);
 	await pressKey(page, "ArrowRight");
 	const start = await reader.pageModeFirstVisibleWord(page);
@@ -163,14 +165,23 @@ test("the three tap zones and a swipe work across the whole spread", async ({ pa
 	expect(await reader.pageModeFirstVisibleWord(page)).toBe(start);
 	await expect.poll(() => reader.lastSavedWord(page)).toBe(start);
 
-	// Centre: the gutter between the pages toggles the chrome, no turn.
+	// Centre: the gutter between the pages toggles the chrome, no turn. Page mode
+	// never scrolls, so this tap is the only way to show and hide the bar.
+	const bar = reader.progressBar(page);
+	await expect(bar).toBeHidden();
 	await page.mouse.click(box.x + box.width / 2, y);
-	await expect(reader.progressBar(page)).toBeVisible();
+	await expect(bar).toBeVisible();
+	await page.mouse.click(box.x + box.width / 2, y);
+	await expect(bar).toBeHidden();
+	await page.mouse.click(box.x + box.width / 2, y);
+	await expect(bar).toBeVisible();
 	expect(await reader.pageModeFirstVisibleWord(page)).toBe(start);
 
-	// A swipe of a fifth of the spread (past 22% of one page) turns it.
+	// A swipe of a fifth of the spread (past 22% of one page) turns it, and a turn
+	// gets the bar out of the way as scrolling does.
 	await settled(page, () => touchSwipe(page, box.x + box.width * 0.6, box.x + box.width * 0.4, y));
 	expect(await reader.pageModeFirstVisibleWord(page)).toBe(next);
+	await expect(bar).toBeHidden();
 	await expect.poll(() => reader.lastSavedWord(page)).toBe(next);
 });
 

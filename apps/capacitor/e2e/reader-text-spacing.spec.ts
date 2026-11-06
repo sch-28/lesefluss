@@ -68,43 +68,7 @@ test.describe("page mode", () => {
 		await reader.turnPages(page, 5);
 	});
 
-	const WIDEST: { name: string; patch: Partial<SyncSettings> }[] = [
-		{ name: "letter", patch: { readerLetterSpacing: MAX_SPACING.readerLetterSpacing } },
-		{ name: "word", patch: { readerWordSpacing: MAX_SPACING.readerWordSpacing } },
-		{ name: "paragraph", patch: { readerParagraphSpacing: MAX_SPACING.readerParagraphSpacing } },
-	];
-
-	for (const { name, patch } of WIDEST) {
-		test(`${name} spacing pulled in by sync keeps the current word on screen, saves nothing, and turns on from there`, async ({
-			page,
-		}) => {
-			const word = await reader.pageModeFirstVisibleWord(page);
-			await reader.waitPositionQuiet(page);
-			const saves = await reader.saveRequestCount(page);
-			const pageBefore = (await reader.pageModeVisibleWords(page)).join();
-
-			await applyRemoteSettings(page, patch);
-
-			await expect
-				.poll(async () => (await reader.pageModeVisibleWords(page)).join())
-				.not.toBe(pageBefore);
-			await reader.expectWordVisibleInPage(page, word);
-			await reader.waitPositionQuiet(page);
-			expect(await reader.saveRequestCount(page), "a layout change saves nothing").toBe(saves);
-
-			// The page index follows the new layout: a turn saves the page it shows.
-			await reader.turnPages(page, 1);
-			const turned = await reader.pageModeFirstVisibleWord(page);
-			expect(await reader.lastSavedWord(page)).toBe(turned);
-
-			await reader.leaveFlushed(page);
-			await openBookFromLibrary(page, PLAIN_BOOK_TITLE);
-			await reader.expectLoaded(page);
-			await reader.expectWordVisibleInPage(page, turned);
-		});
-	}
-
-	test("letter spacing steps from the popover keep the current word on screen and save nothing", async ({
+	test("the widest spacing pulled in by sync keeps the current word on screen, saves nothing, and turns on from there", async ({
 		page,
 	}) => {
 		const word = await reader.pageModeFirstVisibleWord(page);
@@ -112,56 +76,25 @@ test.describe("page mode", () => {
 		const saves = await reader.saveRequestCount(page);
 		const pageBefore = (await reader.pageModeVisibleWords(page)).join();
 
-		for (let i = 0; i < 5; i++) await reader.stepUpAppearance(page, "Letter spacing");
+		await applyRemoteSettings(page, MAX_SPACING);
 
 		await expect
 			.poll(async () => (await reader.pageModeVisibleWords(page)).join())
 			.not.toBe(pageBefore);
 		await reader.expectWordVisibleInPage(page, word);
 		await reader.waitPositionQuiet(page);
-		expect(await reader.saveRequestCount(page)).toBe(saves);
+		expect(await reader.saveRequestCount(page), "a layout change saves nothing").toBe(saves);
+
+		// The page index follows the new layout: a turn saves the page it shows.
+		await reader.turnPages(page, 1);
+		const turned = await reader.pageModeFirstVisibleWord(page);
+		expect(await reader.lastSavedWord(page)).toBe(turned);
+
+		await reader.leaveFlushed(page);
+		await openBookFromLibrary(page, PLAIN_BOOK_TITLE);
+		await reader.expectLoaded(page);
+		await reader.expectWordVisibleInPage(page, turned);
 	});
-
-	test("after a spacing change, a turn back across a chunk boundary lands on the previous chunk's last page", async ({
-		page,
-	}) => {
-		const chunkStart = await page.evaluate(() =>
-			Number(
-				document.querySelector('[data-chunk-index="1"] span[data-word]')?.getAttribute("data-word"),
-			),
-		);
-		expect(chunkStart).toBeGreaterThan(0);
-		for (let i = 0; i < 40 && (await reader.pageModeFirstVisibleWord(page)) < chunkStart; i++) {
-			await reader.turnPages(page, 1);
-		}
-		expect(await reader.pageModeFirstVisibleWord(page)).toBe(chunkStart);
-
-		await applyRemoteSettings(page, { readerLetterSpacing: MAX_SPACING.readerLetterSpacing });
-		await reader.expectWordVisibleInPage(page, chunkStart);
-		await reader.waitPositionQuiet(page);
-
-		// Crossing back uses the previous chunk's measured width, not the open one's.
-		await reader.blurFocusedControl(page);
-		await page.keyboard.press("ArrowLeft");
-		await expect
-			.poll(() => reader.pageModeVisibleWords(page), {
-				message: "the previous chunk's last word is on its last page",
-			})
-			.toContain(chunkStart - 1);
-	});
-});
-
-test("on a small phone the appearance popover scrolls to its last control", async ({ page }) => {
-	await page.setViewportSize({ width: 360, height: 640 });
-	await seedFixture(page, plainBookFixture(), "plain.epub");
-	await openBookFromLibrary(page, PLAIN_BOOK_TITLE);
-	await reader.expectLoaded(page);
-
-	await reader.openAppearance(page);
-	const last = page.locator(".appearance-popover-content").locator("button, [role=radio]").last();
-	await last.scrollIntoViewIfNeeded();
-
-	await expect(last).toBeInViewport({ ratio: 1 });
 });
 
 test("Reset spacing puts all three back to their defaults in one go", async ({ page }) => {

@@ -138,7 +138,8 @@ test("RSVP paused after playing, the reader goes to the newer position", async (
 	await expect(page.locator(".rsvp-display")).toBeVisible({ timeout: 5000 });
 	await reader.rsvpTogglePlay(page);
 	await expect.poll(() => reader.rsvpIsPlaying(page)).toBe(true);
-	await page.waitForTimeout(500);
+	const playedFrom = await reader.rsvpCurrentWord(page);
+	await expect.poll(() => reader.rsvpCurrentWord(page)).not.toBe(playedFrom);
 	await reader.rsvpTogglePlay(page);
 	await reader.waitPositionQuiet(page);
 	const theirs = start + 800;
@@ -183,8 +184,7 @@ test("a reader that moved again since its save keeps its position, and Go there 
 	const { id, saved } = await openAndRead(page);
 	const theirs = saved + 800;
 	// Ticks of a scroll that hasn't come to rest, so isn't saved yet.
-	await reader.wheel(page, 400);
-	await page.waitForTimeout(60);
+	await reader.wheelUnsettled(page, 400);
 
 	const rev = await pullFromAnotherDevice(page, id, theirs);
 
@@ -269,8 +269,7 @@ test("a flush that finds a newer row it hadn't seen keeps the reader's word over
 	// The row changes without the reader hearing: only its own next write finds out.
 	const rev = await pullFromAnotherDevice(page, id, theirs, { invalidate: false });
 	const ticks = await reader.saveRequestCount(page);
-	await reader.wheel(page, 400);
-	await page.waitForTimeout(60);
+	await reader.wheelUnsettled(page, 400);
 
 	await setVisibility(page, "hidden");
 	await reader.waitPositionQuiet(page);
@@ -306,7 +305,7 @@ test("reopening a book read on this device shows no toast", async ({ page }) => 
 	await openBookFromLibrary(page, BIG_BOOK_TITLE);
 	await reader.expectLoaded(page);
 	await reader.waitOpenSettled(page);
-	await page.waitForTimeout(500);
+	await reader.waitPositionQuiet(page);
 
 	await expect(page.getByText(ADOPTED)).toHaveCount(0);
 	await expect(page.getByText(KEPT)).toHaveCount(0);

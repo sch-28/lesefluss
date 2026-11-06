@@ -67,11 +67,12 @@ async function expectHeld(page: Page, word: number, at: number, savesBefore: num
 	expect((await reader.savedRow(page, id))?.wordPosition).toBe(word);
 }
 
-for (const frameMs of [16, 1000]) {
+// The 60 fps pair is proven at the hook level (use-anchor-hold.test.tsx); only a frame a
+// second needs the real list.
+for (const frameMs of [1000]) {
 	const fps = Math.round(1000 / frameMs);
-	const tag = frameMs > 16 ? ["@lowfps"] : [];
 
-	test.describe(`at ${fps} fps`, { tag }, () => {
+	test.describe(`at ${fps} fps`, { tag: ["@lowfps"] }, () => {
 		test.setTimeout(300_000);
 
 		async function openDeep(framedPage: (o: { viewport: typeof VIEWPORT }) => Promise<FramedPage>) {

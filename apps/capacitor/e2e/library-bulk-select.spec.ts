@@ -4,7 +4,7 @@ import { resetStorage } from "./helpers/seed";
 
 /**
  * Selection mode in the library. Right-click stands in for a long press, the
- * same substitution `book-detail-chapter-jump.spec.ts` makes: Playwright cannot
+ * same substitution `chapter-jump-first-word.spec.ts` makes: Playwright cannot
  * hold a synthetic touch for the 400ms the real gesture needs.
  */
 

@@ -8,7 +8,7 @@ import { reader } from "./page-objects/reader";
  * Android leaves fontScale out of the activity's configChanges, so changing
  * the system font size recreates the activity: the WebView reloads with the
  * text reflowed larger. A reload under a doubled text zoom stands in for it.
- * - After a move that has settled and saved, the reopened reader shows that word.
+ * The settled cases (a saved move survives the reflow) are in position-smoke.spec.ts.
  * - After a scroll that has not settled yet, only the background flush (pagehide,
  *   or visibilitychange hidden as the app goes to the background) can carry it
  *   over; the save counts inside pagehide show which path saved.
@@ -31,16 +31,6 @@ async function openInMode(page: Page, mode: "scroll" | "page") {
 const savedWord = async (page: Page) =>
 	(await reader.savedRow(page, reader.bookIdFromUrl(page)))?.wordPosition;
 
-/** Lines the first visible paragraph wraps to: more of them once the text is larger. */
-const firstParagraphLines = (page: Page) =>
-	page.evaluate(() => {
-		const p = document.querySelector(".reader-paragraph");
-		if (!p) return 0;
-		const range = document.createRange();
-		range.selectNodeContents(p);
-		return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
-	});
-
 /** What going to the background fires before Android tears the activity down. Returns
  *  the save requests that made. */
 const goToBackground = (page: Page) =>
@@ -61,44 +51,6 @@ async function recreateAtDoubleFontScale(page: Page) {
 		readingText: "32px",
 	});
 }
-
-test("page mode: a settled turn survives a font scale change, and the pages reflow", async ({
-	page,
-}) => {
-	await openInMode(page, "page");
-	await reader.turnPages(page, 3);
-	const word = await reader.pageModeFirstVisibleWord(page);
-	expect(await reader.lastSavedWord(page)).toBe(word);
-	const pagesBefore = await reader.pageModePageCount(page);
-
-	await recreateAtDoubleFontScale(page);
-	await reader.expectWordVisibleInPage(page, word);
-	expect(await reader.pageModePageCount(page), "the chunk paginates anew").toBeGreaterThan(
-		pagesBefore,
-	);
-	await reader.waitPositionQuiet(page);
-	expect(await savedWord(page)).toBe(word);
-});
-
-test("scroll mode: a settled scroll survives a font scale change, and the text reflows", async ({
-	page,
-}) => {
-	await openInMode(page, "scroll");
-	const linesBefore = await firstParagraphLines(page);
-	const settles = await reader.settleCount(page);
-	await reader.wheel(page, 1500);
-	await reader.waitForSettleAbove(page, settles);
-	await reader.waitPositionQuiet(page);
-	const word = await reader.lastSavedWord(page);
-
-	await recreateAtDoubleFontScale(page);
-	await expect(page.locator(`span[data-word="${word}"]`)).toBeInViewport({ timeout: 10_000 });
-	expect(await firstParagraphLines(page), "paragraphs wrap to more lines").toBeGreaterThan(
-		linesBefore,
-	);
-	await reader.waitPositionQuiet(page);
-	expect(await savedWord(page)).toBe(word);
-});
 
 /**
  * Reloads from inside the page in the first frame the scroll reader has moved

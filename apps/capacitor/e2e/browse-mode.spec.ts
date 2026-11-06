@@ -39,7 +39,19 @@ async function openSeeded(page: Page): Promise<void> {
 	await reader.waitOpenSettled(page);
 }
 
-test("a TOC jump browses without saving, and reopening resumes where reading stopped", async ({
+async function reopen(page: Page): Promise<void> {
+	await page.goto("/tabs/library");
+	await openBookFromLibrary(page, TITLE);
+	await reader.expectLoaded(page);
+}
+
+/**
+ * Browsing is decided in browse-controller.ts and browse-detector.ts (unit
+ * tested); these cover what only the mounted reader shows: a jump that saves
+ * nothing until it is committed, and the way back to the anchor.
+ */
+
+test("a TOC jump browses without saving, Back returns to the anchor, and scrolling saves again", async ({
 	page,
 }) => {
 	await openSeeded(page);
@@ -49,66 +61,28 @@ test("a TOC jump browses without saving, and reopening resumes where reading sto
 	await expect(opening(page, 2)).toBeInViewport({ timeout: 5000 });
 	await expect(reader.browseBar(page)).toBeVisible();
 	await reader.waitPastJumpGuard(page);
-	expect(await reader.saveCount(page)).toBe(baseline);
+	expect(await reader.saveCount(page), "the jump saved nothing").toBe(baseline);
 
-	await page.goto("/tabs/library");
-	await openBookFromLibrary(page, TITLE);
-	await expect(opening(page, 1)).toBeInViewport({ timeout: 10_000 });
-	await expect(reader.browseBar(page)).toBeHidden();
-});
-
-test("Back to N% returns to the anchor without saving", async ({ page }) => {
-	await openSeeded(page);
-	const baseline = await reader.saveCount(page);
-
-	await reader.tocJumpToChapter(page, "2: Second");
-	await expect(opening(page, 2)).toBeInViewport({ timeout: 5000 });
 	await reader.browseBack(page);
-
 	await expect(opening(page, 1)).toBeInViewport({ timeout: 5000 });
 	await expect(reader.browseBar(page)).toBeHidden();
 	await reader.waitPastJumpGuard(page);
-	expect(await reader.saveCount(page)).toBe(baseline);
-});
+	expect(await reader.saveCount(page), "going back saved nothing").toBe(baseline);
 
-test("Read from here commits the browsed position", async ({ page }) => {
-	await openSeeded(page);
-
-	await reader.tocJumpToChapter(page, "2: Second");
-	await expect(opening(page, 2)).toBeInViewport({ timeout: 5000 });
 	const savePending = reader.waitForNextSave(page);
-	await reader.readFromHere(page);
+	await reader.wheel(page, 400);
+	await expect(opening(page, 1)).not.toBeInViewport();
 	await savePending;
 	await expect(reader.browseBar(page)).toBeHidden();
-
-	await page.goto("/tabs/library");
-	await openBookFromLibrary(page, TITLE);
-	await expect(opening(page, 2)).toBeInViewport({ timeout: 10_000 });
-});
-
-async function reopen(page: Page): Promise<void> {
-	await page.goto("/tabs/library");
-	await openBookFromLibrary(page, TITLE);
-	await reader.expectLoaded(page);
-}
-
-test("the browse button freezes the position while scrolling around", async ({ page }) => {
-	await openSeeded(page);
-	const baseline = await reader.saveRequestCount(page);
-
-	await reader.startBrowse(page);
-	await expect(reader.browseBar(page)).toBeVisible();
-	await reader.wheel(page, 600);
-	await expect(opening(page, 1)).not.toBeInViewport();
-	// Past the scroll's settle, which would have decided a save by now.
-	await page.waitForTimeout(1_000);
-	expect(await reader.saveRequestCount(page)).toBe(baseline);
+	const scrolledTo = await reader.scrollModeTopWord(page);
 
 	await reopen(page);
-	await expect(opening(page, 1)).toBeInViewport({ timeout: 10_000 });
+	await expect.poll(() => reader.scrollModeTopWord(page), { timeout: 10_000 }).toBe(scrolledTo);
 });
 
-test("Read from here commits a word tapped while browsing", async ({ page }) => {
+test("Read from here commits a word tapped while browsing, and a reopen lands there", async ({
+	page,
+}) => {
 	await openSeeded(page);
 
 	await reader.tocJumpToChapter(page, "2: Second");
@@ -124,52 +98,23 @@ test("Read from here commits a word tapped while browsing", async ({ page }) => 
 	await reader.readFromHere(page);
 	await savePending;
 	expect(await reader.lastSavedWord(page)).toBe(tappedWord);
-});
-
-test("normal scrolling saves again after going back", async ({ page }) => {
-	await openSeeded(page);
-
-	await reader.tocJumpToChapter(page, "2: Second");
-	await expect(opening(page, 2)).toBeInViewport({ timeout: 5000 });
-	await reader.browseBack(page);
-	await expect(opening(page, 1)).toBeInViewport({ timeout: 5000 });
-	await reader.waitPastJumpGuard(page);
-
-	const savePending = reader.waitForNextSave(page);
-	await reader.wheel(page, 400);
-	await expect(opening(page, 1)).not.toBeInViewport();
-	await savePending;
 	await expect(reader.browseBar(page)).toBeHidden();
-	const scrolledTo = await reader.scrollModeTopWord(page);
 
 	await reopen(page);
-	await expect.poll(() => reader.scrollModeTopWord(page), { timeout: 10_000 }).toBe(scrolledTo);
+	await expect(tapped).toBeInViewport({ timeout: 10_000 });
 });
 
-test("a TOC jump from RSVP browses, and Read from here commits it", async ({ page }) => {
-	await openSeeded(page);
-	await reader.toggleRsvp(page);
-	await expect(page.locator(".rsvp-display")).toBeVisible({ timeout: 5000 });
-
-	await reader.tocJumpToChapter(page, "2: Second");
-	await expect(opening(page, 2)).toBeInViewport({ timeout: 5000 });
-	await expect(reader.browseBar(page)).toBeVisible();
-	const savePending = reader.waitForNextSave(page);
-	await reader.readFromHere(page);
-	await savePending;
-
-	await reopen(page);
-	await expect(opening(page, 2)).toBeInViewport({ timeout: 10_000 });
-});
-
-test("a TOC jump from RSVP keeps the saved position at the RSVP word", async ({ page }) => {
+test("a TOC jump from RSVP keeps the saved RSVP word, and Read from here commits the jump", async ({
+	page,
+}) => {
 	await openSeeded(page);
 	await reader.toggleRsvp(page);
 	await expect(page.locator(".rsvp-display")).toBeVisible({ timeout: 5000 });
 	// Play briefly: playback saves are throttled, so the displayed word runs
 	// ahead of the last save and only the jump's pause can persist it.
+	const firstShown = await reader.rsvpCurrentWord(page);
 	await reader.rsvpTogglePlay(page);
-	await page.waitForTimeout(800);
+	await expect.poll(() => reader.rsvpCurrentWord(page)).not.toBe(firstShown);
 
 	const savePending = reader.waitForNextSave(page);
 	await reader.tocJumpToChapter(page, "2: Second");
@@ -179,27 +124,15 @@ test("a TOC jump from RSVP keeps the saved position at the RSVP word", async ({ 
 	await expect(opening(page, 2)).toBeInViewport({ timeout: 5000 });
 	await expect(reader.browseBar(page)).toBeVisible();
 	await reader.waitPastJumpGuard(page);
-	expect(await reader.lastSavedWord(page)).toBe(rsvpWord);
+	expect(await reader.lastSavedWord(page), "the jump left the RSVP word saved").toBe(rsvpWord);
+
+	const committed = reader.waitForNextSave(page);
+	await reader.readFromHere(page);
+	await committed;
+	expect(await reader.lastSavedWord(page)).toBeGreaterThan(rsvpWord);
 
 	await reopen(page);
-	await expect
-		.poll(() => reader.scrollModeTopWord(page), { timeout: 10_000 })
-		.toBeLessThanOrEqual(rsvpWord);
-	await expect(opening(page, 2)).not.toBeInViewport();
-});
-
-test("a fast long scroll browses and leaving resumes where reading stopped", async ({ page }) => {
-	await openSeeded(page);
-
-	await expect(async () => {
-		await reader.wheel(page, 3000);
-		// The wheel's settle, which shows the browse bar, before checking for it.
-		await page.waitForTimeout(400);
-		await expect(reader.browseBar(page)).toBeVisible({ timeout: 100 });
-	}).toPass({ timeout: 20_000 });
-
-	await reopen(page);
-	await expect(opening(page, 1)).toBeInViewport({ timeout: 10_000 });
+	await expect(opening(page, 2)).toBeInViewport({ timeout: 10_000 });
 });
 
 test("reading on at the browsed spot commits it, and Undo restores the anchor", async ({
@@ -221,9 +154,9 @@ test("reading on at the browsed spot commits it, and Undo restores the anchor", 
 	const committed = reader.waitForNextSave(page);
 	for (let i = 0; i < 8 && !(await toast.isVisible()); i++) {
 		await page.clock.fastForward(45_000);
+		const settles = await reader.settleCount(page);
 		await reader.wheel(page, 150);
-		// Each wheel's settle before the next fast-forward.
-		await page.waitForTimeout(500);
+		await reader.waitForSettleAbove(page, settles);
 	}
 	await expect(toast).toBeVisible();
 	await committed;

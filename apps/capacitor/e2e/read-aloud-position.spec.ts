@@ -77,8 +77,9 @@ async function waitForAutoCommitToast(page: Page) {
 	const toast = page.getByText(/Reading position moved to \d+%/);
 	for (let i = 0; i < 8 && !(await toast.isVisible()); i++) {
 		await page.clock.fastForward(45_000);
+		const settles = await reader.settleCount(page);
 		await reader.wheel(page, 150);
-		await page.waitForTimeout(500);
+		await reader.waitForSettleAbove(page, settles);
 	}
 	await expect(toast).toBeVisible();
 }
@@ -167,14 +168,9 @@ test("paused, a wheel and a leave before the scroll comes to rest reopen on the 
 	const spoken = await pause(page);
 	const settles = await reader.settleCount(page);
 	await reader.blurFocusedControl(page);
-	const box = await page.locator(".reader-scroll-content").boundingBox();
-	if (!box) throw new Error("No reader scroller");
-	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 
 	// Real input, then gone before the settle: the flush carries the position.
-	await page.mouse.wheel(0, 1500);
-	// The scroll's ticks, well inside the 150ms scroll-end debounce.
-	await page.waitForTimeout(60);
+	await reader.wheelUnsettled(page, 1500);
 	const id = await reader.leaveFlushed(page);
 
 	expect(await reader.settleCount(page), "left before a settle").toBe(settles);
@@ -334,8 +330,9 @@ test("paused while looking away, a glance at the browsed spot saves nothing", as
 	await speak(page, 3);
 	const spoken = await pause(page);
 
+	const settles = await reader.settleCount(page);
 	await reader.wheel(page, 150);
-	await page.waitForTimeout(500);
+	await reader.waitForSettleAbove(page, settles);
 	await reader.wheel(page, 150);
 	await reader.waitPositionQuiet(page);
 

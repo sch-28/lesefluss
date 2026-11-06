@@ -76,10 +76,11 @@ const books = [
 ];
 
 for (const book of books) {
-	for (const frameMs of [16, 1000]) {
+	// At 60 fps position-smoke.spec.ts covers the reopen; the drift only shows at a frame a second.
+	for (const frameMs of [1000]) {
 		const fps = Math.round(1000 / frameMs);
 		test(`reopening ${book.name} at ${fps} fps, read deep into it, saves nothing new`, {
-			tag: frameMs > 16 ? ["@lowfps"] : [],
+			tag: ["@lowfps"],
 		}, async ({ framedPage }) => {
 			test.setTimeout(600_000);
 			const { page, setFrameMs } = await framedPage({ viewport: VIEWPORT });

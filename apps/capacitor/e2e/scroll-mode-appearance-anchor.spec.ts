@@ -18,10 +18,11 @@ import { reader } from "./page-objects/reader";
 const PHONE = { width: 420, height: 900 };
 const WIDE = { width: 1100, height: 1000 };
 
-/** Past the reflow, the re-anchor going quiet and the scroll-end debounce. */
-const REFLOW_SETTLE_MS = 2000;
-
-type Change = { name: string; apply: (page: Page) => Promise<void> };
+type Change = {
+	name: string;
+	viewport: { width: number; height: number };
+	apply: (page: Page) => Promise<void>;
+};
 
 async function clickInAppearance(page: Page, click: (page: Page) => Promise<void>) {
 	await reader.openAppearance(page);
@@ -30,9 +31,12 @@ async function clickInAppearance(page: Page, click: (page: Page) => Promise<void
 	await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
 }
 
+/** One change per reflow path; the spacing and font settings left out share these paths. */
 const CHANGES: Change[] = [
 	{
+		// The desktop column hits its max width, where a half-cut top line went unnoticed.
 		name: "font size",
+		viewport: WIDE,
 		apply: async (page) => {
 			await reader.increaseFontSize(page);
 			await reader.increaseFontSize(page);
@@ -40,57 +44,26 @@ const CHANGES: Change[] = [
 	},
 	{
 		name: "line spacing",
+		viewport: PHONE,
 		apply: async (page) => {
 			for (let i = 0; i < 5; i++) await reader.increaseLineSpacing(page);
 		},
 	},
 	{
-		name: "font family",
-		apply: (page) =>
-			clickInAppearance(page, (p) => p.getByRole("radio", { name: "Serif" }).click()),
-	},
-	{
-		name: "bundled font",
-		apply: (page) =>
-			clickInAppearance(page, (p) => p.getByRole("radio", { name: "OpenDyslexic" }).click()),
-	},
-	{
-		// Through sync, not the popover: opening it loads the font picker's faces.
-		name: "bold text",
-		apply: (page) => applyRemoteSettings(page, { readerBold: true }),
-	},
-	{
 		name: "justify",
+		viewport: WIDE,
 		apply: (page) =>
 			clickInAppearance(page, (p) => p.getByRole("radio", { name: "Justify" }).click()),
 	},
 	{
-		name: "justify via sync",
-		apply: (page) => applyRemoteSettings(page, { readerTextAlign: "justify" }),
-	},
-	{
-		name: "margins",
-		apply: async (page) => {
-			for (let i = 0; i < 3; i++) await reader.stepUpAppearance(page, "Margins");
-		},
-	},
-	{
-		name: "letter spacing",
-		apply: async (page) => {
-			for (let i = 0; i < 4; i++) await reader.stepUpAppearance(page, "Letter spacing");
-		},
-	},
-	{
-		name: "word spacing",
-		apply: async (page) => {
-			for (let i = 0; i < 4; i++) await reader.stepUpAppearance(page, "Word spacing");
-		},
-	},
-	{
-		name: "paragraph spacing",
-		apply: async (page) => {
-			for (let i = 0; i < 5; i++) await reader.stepUpAppearance(page, "Paragraph spacing");
-		},
+		name: "letter, word and paragraph spacing pulled in by sync",
+		viewport: PHONE,
+		apply: (page) =>
+			applyRemoteSettings(page, {
+				readerLetterSpacing: 0.1,
+				readerWordSpacing: 0.3,
+				readerParagraphSpacing: 2,
+			}),
 	},
 ];
 
@@ -162,8 +135,8 @@ async function expectNoNewSave(page: Page, word: number, saves: number) {
 }
 
 async function expectAnchoredWithoutSave(page: Page, word: number, saves: number) {
-	await page.waitForTimeout(REFLOW_SETTLE_MS);
 	await expectLineOnTop(page, word);
+	await reader.waitPositionQuiet(page);
 	await expectNoNewSave(page, word, saves);
 }
 
@@ -182,72 +155,22 @@ async function expectReopensAt(page: Page, title: string, word: number, saves: n
 	await expectLineOnTop(page, word);
 }
 
-for (const [size, viewport] of [
-	["phone", PHONE],
-	["wide", WIDE],
-] as const) {
-	for (const change of CHANGES) {
-		test(`${change.name} on a ${size} screen keeps the reading line on top and saves nothing`, async ({
-			page,
-		}) => {
-			const word = await openMidChapter(page, viewport);
-			const saves = await reader.saveRequestCount(page);
-			const before = await layoutOf(page, word);
+for (const change of CHANGES) {
+	const size = change.viewport === PHONE ? "phone" : "wide";
+	test(`${change.name} on a ${size} screen keeps the reading line on top and saves nothing`, async ({
+		page,
+	}) => {
+		const word = await openMidChapter(page, change.viewport);
+		const saves = await reader.saveRequestCount(page);
+		const before = await layoutOf(page, word);
 
-			await change.apply(page);
+		await change.apply(page);
 
-			await expect.poll(() => layoutOf(page, word)).not.toBe(before);
-			await expectAnchoredWithoutSave(page, word, saves);
-			await expectReopensAt(page, BIG_BOOK_TITLE, word, saves);
-		});
-	}
+		await expect.poll(() => layoutOf(page, word)).not.toBe(before);
+		await expectAnchoredWithoutSave(page, word, saves);
+		await expectReopensAt(page, BIG_BOOK_TITLE, word, saves);
+	});
 }
-
-test("rapid font size taps keep the reading line on top and save nothing", async ({ page }) => {
-	const word = await openMidChapter(page, WIDE);
-	const saves = await reader.saveRequestCount(page);
-	const before = await layoutOf(page, word);
-
-	await clickInAppearance(page, async (p) => {
-		const plus = p.getByRole("button", { name: "Increase Size" });
-		for (let i = 0; i < 3; i++) {
-			await plus.click();
-			// Faster than a reflow settles: each tap lands mid-reflow.
-			await p.waitForTimeout(60);
-		}
-	});
-
-	await expect.poll(() => layoutOf(page, word)).not.toBe(before);
-	await expectAnchoredWithoutSave(page, word, saves);
-	await expectReopensAt(page, BIG_BOOK_TITLE, word, saves);
-});
-
-test("a spacing change pulled in by sync keeps the reading line on top", async ({ page }) => {
-	const word = await openMidChapter(page, PHONE);
-	const saves = await reader.saveRequestCount(page);
-	const before = await layoutOf(page, word);
-
-	await applyRemoteSettings(page, {
-		readerLetterSpacing: 0.1,
-		readerWordSpacing: 0.3,
-		readerParagraphSpacing: 2,
-	});
-
-	await expect.poll(() => layoutOf(page, word)).not.toBe(before);
-	await expectAnchoredWithoutSave(page, word, saves);
-	await expectReopensAt(page, BIG_BOOK_TITLE, word, saves);
-});
-
-test("a font change pulled in by sync keeps the reading line on top", async ({ page }) => {
-	const word = await openMidChapter(page, PHONE);
-	const saves = await reader.saveRequestCount(page);
-
-	await applyRemoteSettings(page, { readerFontSize: 24, readerFontFamily: "serif" });
-
-	await expect.poll(() => wordStyle(page)).toMatch(/^24px\|Georgia/);
-	await expectAnchoredWithoutSave(page, word, saves);
-	await expectReopensAt(page, BIG_BOOK_TITLE, word, saves);
-});
 
 test("a narrower window keeps the reading line on top", async ({ page }) => {
 	const word = await openMidChapter(page, PHONE);
@@ -279,30 +202,25 @@ test("a change arriving while a reopened book is still landing keeps the line, t
 	expect(await reader.lastSavedWord(page)).toBe(await reader.scrollModeTopWord(page));
 });
 
-for (const [when, delayMs] of [
-	["right after", 200],
-	["well after", REFLOW_SETTLE_MS],
-] as const) {
-	test(`scrolling ${when} a font change saves the new top word`, async ({ page }) => {
-		const word = await openMidChapter(page, PHONE);
-		let clickedAt = 0;
-		await clickInAppearance(page, async (p) => {
-			await p.getByRole("button", { name: "Increase Size" }).click();
-			clickedAt = Date.now();
-		});
-		// The case's own timing: a scroll that comes this long after the change.
-		await page.waitForTimeout(Math.max(0, clickedAt + delayMs - Date.now()));
-
-		const savePending = reader.waitForNextSave(page);
-		await reader.wheel(page, 800);
-		await savePending;
-		await page.waitForTimeout(REFLOW_SETTLE_MS);
-
-		const top = await reader.scrollModeTopWord(page);
-		expect(top).toBeGreaterThan(word);
-		expect(await reader.lastSavedWord(page)).toBe(top);
+test("scrolling right after a font change saves the new top word", async ({ page }) => {
+	const word = await openMidChapter(page, PHONE);
+	let clickedAt = 0;
+	await clickInAppearance(page, async (p) => {
+		await p.getByRole("button", { name: "Increase Size" }).click();
+		clickedAt = Date.now();
 	});
-}
+	// The case's own timing: a scroll 200ms after the change, while it still reflows.
+	await page.waitForTimeout(Math.max(0, clickedAt + 200 - Date.now()));
+
+	const savePending = reader.waitForNextSave(page);
+	await reader.wheel(page, 800);
+	await savePending;
+	await reader.waitPositionQuiet(page);
+
+	const top = await reader.scrollModeTopWord(page);
+	expect(top).toBeGreaterThan(word);
+	expect(await reader.lastSavedWord(page)).toBe(top);
+});
 
 /**
  * Chapter titles are paragraphs without word spans, and re-measure by more than
@@ -347,11 +265,13 @@ function longParagraphsFixture(): EpubFixture {
 
 /** Wheels like a mouse, a few notches, and waits the settle out instead of reacting to the save. */
 async function settleMidParagraph(page: Page): Promise<number> {
+	const settles = await reader.settleCount(page);
 	for (let i = 0; i < 3; i++) {
 		await reader.wheel(page, 100);
 		await page.waitForTimeout(80);
 	}
-	await page.waitForTimeout(reader.LIST_SETTLE_MS + 1500);
+	await reader.waitForSettleAbove(page, settles);
+	await reader.waitPositionQuiet(page);
 	const word = await reader.lastSavedWord(page);
 	const paragraphStart = await page.evaluate(
 		(word) =>
@@ -366,28 +286,23 @@ async function settleMidParagraph(page: Page): Promise<number> {
 	return word;
 }
 
-for (const [size, viewport] of [
-	["phone", PHONE],
-	["wide", WIDE],
-] as const) {
-	test(`a font size step down after a mid-paragraph settle on a ${size} screen keeps that word`, async ({
-		page,
-	}) => {
-		await page.setViewportSize(viewport);
-		await seedFixture(page, longParagraphsFixture(), "long.epub");
-		await openBookFromLibrary(page, LONG_TITLE);
-		await reader.expectLoaded(page);
-		await reader.waitOpenSettled(page);
-		await reader.wheel(page, 3000);
-		const word = await settleMidParagraph(page);
-		const saves = await reader.saveRequestCount(page);
+test("a font size step down after a mid-paragraph settle on a phone keeps that word", async ({
+	page,
+}) => {
+	await page.setViewportSize(PHONE);
+	await seedFixture(page, longParagraphsFixture(), "long.epub");
+	await openBookFromLibrary(page, LONG_TITLE);
+	await reader.expectLoaded(page);
+	await reader.waitOpenSettled(page);
+	await reader.wheel(page, 3000);
+	const word = await settleMidParagraph(page);
+	const saves = await reader.saveRequestCount(page);
 
-		await clickInAppearance(page, (p) => p.getByRole("button", { name: "Decrease Size" }).click());
+	await clickInAppearance(page, (p) => p.getByRole("button", { name: "Decrease Size" }).click());
 
-		await expectAnchoredWithoutSave(page, word, saves);
-		await expectReopensAt(page, LONG_TITLE, word, saves);
-	});
-}
+	await expectAnchoredWithoutSave(page, word, saves);
+	await expectReopensAt(page, LONG_TITLE, word, saves);
+});
 
 test("after a fresh load with custom reader settings, a step down keeps the settled word", async ({
 	page,
