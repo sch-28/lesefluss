@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `rsvp_audio` integer DEFAULT false NOT NULL;

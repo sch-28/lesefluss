@@ -99,6 +99,8 @@ export function useReadAloud(options: Options) {
 	// Starts run one after another: a session must be stopped before the next takes the engine.
 	const startChainRef = useRef<Promise<void>>(Promise.resolve());
 	const moveTimerRef = useRef<number | null>(null);
+	// Chosen before any session ran (RSVP offers the timer while audio is on but idle).
+	const pendingSleepRef = useRef<SleepTimerChoice>(null);
 
 	const engineSpeech = useCallback(() => {
 		const { wpm, pitch, voice, rewindWords } = optionsRef.current.speech;
@@ -190,6 +192,8 @@ export function useReadAloud(options: Options) {
 			const previous = sessionRef.current;
 			// Stopping the old voice replaces the engine's queue and clears its sleep timer.
 			const carriedTimer = previous ? sleepTimerRef.current : NO_SLEEP_TIMER;
+			const pendingSleep = previous ? null : pendingSleepRef.current;
+			pendingSleepRef.current = null;
 			const session = new ReadAloud({
 				content,
 				wordIndex,
@@ -259,6 +263,7 @@ export function useReadAloud(options: Options) {
 				const remainingMs = carriedTimer.endsAt === null ? 0 : carriedTimer.endsAt - Date.now();
 				if (carriedTimer.isAtChapterEnd) await session.setSleepTimer({ isAtChapterEnd: true });
 				else if (remainingMs > 0) await session.setSleepTimer({ durationMs: remainingMs });
+				else if (pendingSleep !== null) await session.setSleepTimer(sleepTimerOf(pendingSleep));
 			});
 			startChainRef.current = begin.catch((err: unknown) => {
 				log.error("tts", "start failed:", err);
@@ -271,6 +276,7 @@ export function useReadAloud(options: Options) {
 	);
 
 	const stop = useCallback(() => {
+		pendingSleepRef.current = null;
 		const session = sessionRef.current;
 		if (session) void endSession(session);
 	}, [endSession]);
@@ -355,14 +361,11 @@ export function useReadAloud(options: Options) {
 
 	const setSleepTimer = useCallback((choice: SleepTimerChoice) => {
 		const session = sessionRef.current;
-		if (!session) return;
-		void session.setSleepTimer(
-			choice === null
-				? null
-				: choice === "chapterEnd"
-					? { isAtChapterEnd: true }
-					: { durationMs: choice.minutes * 60_000 },
-		);
+		if (!session) {
+			pendingSleepRef.current = choice;
+			return;
+		}
+		void session.setSleepTimer(choice === null ? null : sleepTimerOf(choice));
 	}, []);
 
 	const { wpm, pitch, voice, rewindWords } = options.speech;
@@ -446,6 +449,14 @@ export function useReadAloud(options: Options) {
 		/** Where the reader was looking when following stopped; null while following. */
 		viewWordRef,
 	};
+}
+
+function sleepTimerOf(
+	choice: NonNullable<SleepTimerChoice>,
+): { durationMs: number } | { isAtChapterEnd: true } {
+	return choice === "chapterEnd"
+		? { isAtChapterEnd: true }
+		: { durationMs: choice.minutes * 60_000 };
 }
 
 async function warnIfVoiceMissing(language: string): Promise<void> {

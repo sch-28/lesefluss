@@ -70,6 +70,7 @@ export const DEFAULT_SETTINGS = {
 	TTS_REWIND_WORDS: 8, // words repeated after an interruption
 	TTS_VOICES: "{}", // JSON: primary language → chosen voice name
 	TTS_FOLLOW: true, // keep the spoken word in view
+	RSVP_AUDIO: false, // RSVP plays with the voice instead of the timer
 } as const;
 
 /**

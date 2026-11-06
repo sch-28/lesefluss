@@ -1,20 +1,22 @@
 /**
- * RsvpControls: control bar shown when RSVP is paused.
- *
- * Sentence-back, word-back, play/pause, word-forward, sentence-forward, WPM
- * stepper. All button clicks stopPropagation so the underlying display's
- * tap-to-toggle doesn't fire after a button press.
+ * RsvpControls: control bar shown when RSVP is paused. All button clicks
+ * stopPropagation so the underlying display's tap-to-toggle doesn't fire after
+ * a button press.
  */
 
 import { Button } from "@lesefluss/ui/button";
-import { ChevronsLeft, ChevronsRight, Play, Redo2, Undo2 } from "lucide-react";
+import { cn } from "@lesefluss/ui/utils";
+import { ChevronsLeft, ChevronsRight, Headphones, Play, Redo2, Undo2 } from "lucide-react";
 import type React from "react";
-import { clampWpm, WPM_STEP } from "./wpm";
+import { clampToRange, RSVP_WPM_RANGE, type WpmRange } from "./wpm";
 
 // Controls only render while paused, so the play/pause button always shows
 // the play glyph. No isPlaying prop needed.
 interface Props {
 	wpm: number;
+	wpmRange?: WpmRange;
+	/** Absent where the device can't read aloud. */
+	audio?: { isOn: boolean; onToggle: () => void } | null;
 	onBackSentence: () => void;
 	onBackWord: () => void;
 	onPlayPause: () => void;
@@ -27,6 +29,8 @@ const stop = (e: React.PointerEvent) => e.stopPropagation();
 
 const RsvpControls: React.FC<Props> = ({
 	wpm,
+	wpmRange = RSVP_WPM_RANGE,
+	audio = null,
 	onBackSentence,
 	onBackWord,
 	onPlayPause,
@@ -67,10 +71,22 @@ const RsvpControls: React.FC<Props> = ({
 			</div>
 
 			<div className="rsvp-wpm-stepper">
+				{audio && (
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={audio.onToggle}
+						aria-label="Listen"
+						aria-pressed={audio.isOn}
+						className={cn(audio.isOn && "text-primary")}
+					>
+						<Headphones />
+					</Button>
+				)}
 				<button
 					type="button"
 					className="rsvp-wpm-btn"
-					onClick={() => onWpmChange(clampWpm(wpm - WPM_STEP))}
+					onClick={() => onWpmChange(clampToRange(wpm - wpmRange.step, wpmRange))}
 					aria-label="Decrease WPM"
 				>
 					−
@@ -79,7 +95,7 @@ const RsvpControls: React.FC<Props> = ({
 				<button
 					type="button"
 					className="rsvp-wpm-btn"
-					onClick={() => onWpmChange(clampWpm(wpm + WPM_STEP))}
+					onClick={() => onWpmChange(clampToRange(wpm + wpmRange.step, wpmRange))}
 					aria-label="Increase WPM"
 				>
 					+

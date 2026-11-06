@@ -104,7 +104,9 @@ html.eink
 	.rsvp-controls,
 	.read-aloud-controls,
 	.rsvp-playpause,
-	.rsvp-settings-button
+	.rsvp-settings-button,
+	.rsvp-voice-button,
+	.rsvp-sleep-button
 ) {
 	border-color: #000000 !important;
 }

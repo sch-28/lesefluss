@@ -330,6 +330,13 @@
       "when": 1782691200000,
       "tag": "0046_reader_ruler",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "6",
+      "when": 1782777600000,
+      "tag": "0047_rsvp_audio",
+      "breakpoints": true
     }
   ]
 }

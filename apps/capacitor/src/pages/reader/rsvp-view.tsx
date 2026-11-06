@@ -16,7 +16,7 @@ import {
 	drawerSnapPoints,
 } from "@lesefluss/ui/drawer";
 import { useRouter } from "@tanstack/react-router";
-import { BookOpen, Loader2, Settings } from "lucide-react";
+import { AudioLines, BookOpen, Loader2, Moon, Settings } from "lucide-react";
 import React, {
 	forwardRef,
 	useCallback,
@@ -31,6 +31,7 @@ import RsvpSettingsForm from "../settings/rsvp-settings-form";
 import RsvpControls from "./rsvp-controls";
 import { useRsvpEngine } from "./use-rsvp-engine";
 import { useWakeLock } from "./use-wake-lock";
+import { TTS_WPM_RANGE } from "./wpm";
 
 // PX_PER_WORD sets the scroll distance for one word step on touch. Spacer is
 // sized so the middle is one viewport away from each edge, giving roughly
@@ -60,6 +61,20 @@ export type RsvpViewHandle = {
 	followVoice(word: number): void;
 };
 
+/** Read-aloud in RSVP. While on, the voice paces the words and play and pause drive it. */
+export type RsvpAudio = {
+	isOn: boolean;
+	isPlaying: boolean;
+	onToggleAudio: () => void;
+	onTogglePlay: () => void;
+	/** The read-aloud speed, separate from the RSVP wpm. */
+	wpm: number;
+	onWpmChange: (wpm: number) => void;
+	isSleepTimerOn: boolean;
+	onOpenVoice: () => void;
+	onOpenSleepTimer: () => void;
+};
+
 export interface RsvpViewProps {
 	content: string;
 	initialWord: number;
@@ -80,8 +95,8 @@ export interface RsvpViewProps {
 	isSessionPaused?: boolean;
 	/** Whether the engine is showing words; a paused RSVP is not reading. */
 	onPlayingChange?: (isPlaying: boolean) => void;
-	/** Set while reading aloud: the voice paces the words and the read-aloud bar holds the controls. */
-	voice?: { isPlaying: boolean; onToggle: () => void } | null;
+	/** Absent where the device can't read aloud. */
+	audio?: RsvpAudio | null;
 }
 
 const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
@@ -98,12 +113,13 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		linkHrefAt,
 		onLinkTap,
 		isSessionPaused = false,
-		voice = null,
+		audio = null,
 		onPlayingChange,
 	},
 	ref,
 ) {
 	const { theme } = useTheme();
+	const voice = audio?.isOn ? audio : null;
 	const {
 		words,
 		currentWord,
@@ -138,7 +154,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 	useImperativeHandle(
 		ref,
 		() => ({
-			togglePlayPause: voice ? voice.onToggle : togglePlayPause,
+			togglePlayPause: voice ? voice.onTogglePlay : togglePlayPause,
 			pause,
 			backWord,
 			forwardWord,
@@ -363,7 +379,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 				}
 				onClick={(e) => {
 					if (e.target instanceof Element && e.target.closest(".rsvp-controls")) return;
-					(voice ? voice.onToggle : togglePlayPause)();
+					(voice ? voice.onTogglePlay : togglePlayPause)();
 				}}
 				// Playing, the whole display is the pause control. Paused, it holds its own
 				// Play button, and a button may not contain buttons.
@@ -493,16 +509,18 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 							<div className="rsvp-paused-indicator">Tap to start</div>
 						)}
 
-						{!isPlaying && !voice && (
+						{!isShowingPlayback && (
 							<>
 								<RsvpControls
-									wpm={settings.wpm}
+									wpm={voice ? voice.wpm : settings.wpm}
+									wpmRange={voice ? TTS_WPM_RANGE : undefined}
+									audio={audio && { isOn: audio.isOn, onToggle: audio.onToggleAudio }}
 									onBackSentence={backSentence}
 									onBackWord={backWord}
-									onPlayPause={togglePlayPause}
+									onPlayPause={voice ? voice.onTogglePlay : togglePlayPause}
 									onForwardWord={forwardWord}
 									onForwardSentence={forwardSentence}
-									onWpmChange={changeWpm}
+									onWpmChange={voice ? voice.onWpmChange : changeWpm}
 								/>
 								<button
 									type="button"
@@ -520,6 +538,37 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 								>
 									<Settings className="size-5" />
 								</button>
+								{voice && (
+									<>
+										<button
+											type="button"
+											className="rsvp-voice-button"
+											onClick={(e) => {
+												e.stopPropagation();
+												voice.onOpenVoice();
+											}}
+											aria-label="Voice"
+										>
+											<AudioLines className="size-5" />
+										</button>
+										<button
+											type="button"
+											className={
+												voice.isSleepTimerOn
+													? "rsvp-sleep-button rsvp-sleep-button--on"
+													: "rsvp-sleep-button"
+											}
+											onClick={(e) => {
+												e.stopPropagation();
+												voice.onOpenSleepTimer();
+											}}
+											aria-label="Sleep timer"
+											aria-pressed={voice.isSleepTimerOn}
+										>
+											<Moon className="size-5" />
+										</button>
+									</>
+								)}
 							</>
 						)}
 					</div>

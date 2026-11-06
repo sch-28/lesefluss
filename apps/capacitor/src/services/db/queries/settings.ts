@@ -59,6 +59,7 @@ export async function getSettings(): Promise<Settings> {
 		ttsRewindWords: DEFAULT_SETTINGS.TTS_REWIND_WORDS,
 		ttsVoices: DEFAULT_SETTINGS.TTS_VOICES,
 		ttsFollow: DEFAULT_SETTINGS.TTS_FOLLOW,
+		rsvpAudio: DEFAULT_SETTINGS.RSVP_AUDIO,
 		// Per-resource sync opt-outs default on; local-only, never synced.
 		syncHighlights: true,
 		syncGlossary: true,

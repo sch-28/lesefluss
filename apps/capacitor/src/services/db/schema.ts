@@ -93,6 +93,7 @@ export const settings = sqliteTable("settings", {
 	// JSON object of primary language ("de", or "default") → voice name; see parseVoiceChoices.
 	ttsVoices: text("tts_voices").notNull().default("{}"),
 	ttsFollow: integer("tts_follow", { mode: "boolean" }).notNull().default(true),
+	rsvpAudio: integer("rsvp_audio", { mode: "boolean" }).notNull().default(false),
 	updatedAt: integer("updated_at").notNull(),
 });
 

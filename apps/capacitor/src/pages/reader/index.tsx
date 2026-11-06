@@ -157,7 +157,7 @@ import { ReaderAnnouncer } from "./reader-announcer";
 import { buildFigureMap } from "./reader-figures";
 import { ReadingRulerOverlay } from "./reading-ruler-overlay";
 import { stripPunct } from "./rsvp-engine";
-import RsvpView, { type RsvpViewHandle } from "./rsvp-view";
+import RsvpView, { type RsvpAudio, type RsvpViewHandle } from "./rsvp-view";
 import ScrollView, { ReaderSkeleton } from "./scroll-view";
 import SearchModal from "./search-modal";
 import SelectionOverlay from "./selection-overlay";
@@ -1028,6 +1028,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			stampJump();
 			savePosition(word, "jump");
 			scrollViewRef.current?.jumpTo(word, { highlight });
+			rsvpViewRef.current?.showWord(word);
 		},
 		[savePosition, browse, stampJump, markLocalMove],
 	);
@@ -1817,10 +1818,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	 *  based on paginationStyle. */
 	const exitRsvpToStandard = useCallback(
 		(word?: number) => {
-			// Playback saves are throttled; pausing reports the displayed word while
-			// RSVP reports are still accepted. With the voice speaking the engine never
-			// plays, and that report would read as the reader moving away.
-			if (!readAloudRef.current?.isActive) rsvpViewRef.current?.pause();
+			// Playback saves are throttled; pausing reports the displayed word while RSVP
+			// reports are still accepted. With a voice session the engine never plays, so
+			// its pause would read as a move away; the voice's pause saves the spoken word.
+			if (readAloudRef.current?.isActive) readAloudRef.current.pause();
+			else rsvpViewRef.current?.pause();
 			// Ahead of the render: from here on this is the standard view, so the save
 			// below (and RsvpView's unmount flush) follow standard-mode browse rules.
 			readerModeRef.current = "standard";
@@ -1970,14 +1972,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		return () => markSpokenWord(null);
 	}, [isReadAloudActive]);
 
-	const rsvpVoice = useMemo(
-		() =>
-			isReadAloudActive
-				? { isPlaying: readAloud.status === "playing", onToggle: readAloud.toggle }
-				: null,
-		[isReadAloudActive, readAloud.status, readAloud.toggle],
-	);
-
 	// A finger on the text, a wheel or a scroll key means the reader is looking elsewhere:
 	// stop following at once, without waiting for the scroll to settle. Paused, it also
 	// hands the reader the position, so a leave before the settle saves the scrolled spot.
@@ -2083,8 +2077,49 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		[updateSetting, ttsVoices, book?.language],
 	);
 
+	const isRsvpAudioOn =
+		IS_READ_ALOUD_SUPPORTED && (dbSettings?.rsvpAudio ?? DEFAULT_SETTINGS.RSVP_AUDIO);
+	const toggleRsvpAudio = useCallback(() => {
+		if (isRsvpAudioOn) readAloud.stop();
+		else rsvpViewRef.current?.pause();
+		updateSetting("rsvpAudio", !isRsvpAudioOn);
+	}, [isRsvpAudioOn, readAloud.stop, updateSetting]);
+	const handleTtsWpmChange = useCallback(
+		(wpm: number) => updateSetting("ttsWpm", wpm),
+		[updateSetting],
+	);
+	const isSleepTimerOn =
+		readAloud.sleepTimer.endsAt !== null || readAloud.sleepTimer.isAtChapterEnd;
+	const rsvpAudio = useMemo<RsvpAudio | null>(
+		() =>
+			IS_READ_ALOUD_SUPPORTED
+				? {
+						isOn: isRsvpAudioOn,
+						isPlaying: readAloud.status === "playing",
+						onToggleAudio: toggleRsvpAudio,
+						onTogglePlay: readAloud.toggle,
+						wpm: ttsSpeech.wpm,
+						onWpmChange: handleTtsWpmChange,
+						isSleepTimerOn,
+						onOpenVoice: () => setIsVoiceSheetOpen(true),
+						onOpenSleepTimer: () => setIsSleepTimerOpen(true),
+					}
+				: null,
+		[
+			isRsvpAudioOn,
+			readAloud.status,
+			readAloud.toggle,
+			toggleRsvpAudio,
+			ttsSpeech.wpm,
+			handleTtsWpmChange,
+			isSleepTimerOn,
+		],
+	);
+
 	const handleRsvpToggle = useCallback(() => {
 		if (readerMode !== "rsvp") {
+			// RSVP without audio has no voice to follow, and no bar to stop one from.
+			if (!isRsvpAudioOn) readAloud.stop();
 			// RSVP never browses: switching to it reads from the browsed spot.
 			browse.readFromHere();
 			// Use lastWordRef (word-level accurate from handleScrollEnd)
@@ -2097,7 +2132,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		} else {
 			exitRsvpToStandard();
 		}
-	}, [readerMode, exitRsvpToStandard, browse]);
+	}, [readerMode, exitRsvpToStandard, browse, isRsvpAudioOn, readAloud.stop]);
 
 	const handleRsvpFinished = useCallback(() => {
 		exitRsvpToStandard();
@@ -2170,7 +2205,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		hasSelection: sel.isSelecting && !sel.noteInputOpen,
 		cancelSelection: sel.cancelSelection,
 		volumeKeys: volumeKeysFor(dbSettings, isEinkMode),
-		isReadingAloud: isReadAloudActive,
+		isReadingAloud: isReadAloudActive || (readerMode === "rsvp" && isRsvpAudioOn),
 	});
 
 	// ── Reading session tracking ──────────────────────────────────────────
@@ -2548,18 +2583,31 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							onOpenDetails={() => history.push(`/tabs/library/book/${book.id}`)}
 						/>
 					)}
-					{IS_READ_ALOUD_SUPPORTED && (
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={readAloud.toggle}
-							disabled={!wordIndex}
-							aria-label={readAloud.status === "playing" ? "Pause listening" : "Listen"}
-							className={isReadAloudActive ? "text-primary" : undefined}
-						>
-							{readAloud.status === "playing" ? <Pause /> : <Headphones />}
-						</Button>
-					)}
+					{IS_READ_ALOUD_SUPPORTED &&
+						(readerMode === "rsvp" ? (
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={toggleRsvpAudio}
+								disabled={!wordIndex}
+								aria-label="Listen"
+								aria-pressed={isRsvpAudioOn}
+								className={isRsvpAudioOn ? "text-primary" : undefined}
+							>
+								<Headphones />
+							</Button>
+						) : (
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={readAloud.toggle}
+								disabled={!wordIndex}
+								aria-label={readAloud.status === "playing" ? "Pause listening" : "Listen"}
+								className={isReadAloudActive ? "text-primary" : undefined}
+							>
+								{readAloud.status === "playing" ? <Pause /> : <Headphones />}
+							</Button>
+						))}
 					<Button
 						variant="ghost"
 						size="icon"
@@ -2679,9 +2727,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				{IS_READ_ALOUD_SUPPORTED && (readerMode === "rsvp" || paginationStyle === "page") && (
 					<p className="sr-only">
 						{readerMode === "rsvp"
-							? "This view flashes the book one word at a time."
-							: "This view shows the book a page at a time."}{" "}
-						To listen to the book, use the Listen button at the top.
+							? "This view flashes the book one word at a time. To listen to the book, turn on the Listen button at the top, then play."
+							: "This view shows the book a page at a time. To listen to the book, use the Listen button at the top."}
 					</p>
 				)}
 				{chapterFetch.kind === "locked" ? (
@@ -2710,7 +2757,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						linkHrefAt={findLinkAt}
 						onLinkTap={handleLinkTap}
 						isSessionPaused={isSessionPaused}
-						voice={rsvpVoice}
+						audio={rsvpAudio}
 						onPlayingChange={setIsRsvpPlaying}
 					/>
 				) : paginationStyle === "page" ? (
@@ -2895,7 +2942,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					/>
 				)}
 
-				{isReadAloudActive && !isShowingSkeleton && (
+				{isReadAloudActive && readerMode !== "rsvp" && !isShowingSkeleton && (
 					<ReadAloudControls
 						status={readAloud.status}
 						wpm={ttsSpeech.wpm}

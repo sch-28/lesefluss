@@ -612,7 +612,9 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 .rsvp-controls,
 .rsvp-playpause,
 .rsvp-dict-button,
-.rsvp-settings-button {
+.rsvp-settings-button,
+.rsvp-voice-button,
+.rsvp-sleep-button {
 	pointer-events: auto;
 }
 
@@ -931,7 +933,9 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 /* ── RSVP dictionary button (paused, bottom-right) ── */
 
 .rsvp-dict-button,
-.rsvp-settings-button {
+.rsvp-settings-button,
+.rsvp-voice-button,
+.rsvp-sleep-button {
 	position: absolute;
 	bottom: 24px;
 	width: 44px;
@@ -957,8 +961,25 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	left: 16px;
 }
 
+/* Read-aloud extras stack above the settings and dictionary buttons. */
+.rsvp-voice-button {
+	left: 16px;
+	bottom: 80px;
+}
+
+.rsvp-sleep-button {
+	right: 16px;
+	bottom: 80px;
+}
+
+.rsvp-sleep-button--on {
+	color: var(--primary);
+}
+
 .rsvp-dict-button:active,
-.rsvp-settings-button:active {
+.rsvp-settings-button:active,
+.rsvp-voice-button:active,
+.rsvp-sleep-button:active {
 	background: var(--reader-progress-track, rgba(128, 128, 128, 0.2));
 }
 

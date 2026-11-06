@@ -397,7 +397,7 @@ export function useRsvpEngine({
 			const target = e.target as HTMLElement;
 			if (
 				target.closest?.(
-					".rsvp-controls, .rsvp-dict-button, .rsvp-settings-button, .rsvp-context-word",
+					".rsvp-controls, .rsvp-dict-button, .rsvp-settings-button, .rsvp-voice-button, .rsvp-sleep-button, .rsvp-context-word",
 				)
 			)
 				return;
