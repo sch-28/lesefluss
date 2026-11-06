@@ -1,18 +1,22 @@
+import { bookPace, isMeasuredPace, type Pace } from "@lesefluss/core";
 import { queryHooks } from "../../services/db/hooks";
-import { type ReadingPace, readingPace } from "../../utils/reading-time";
 
-export type ReadingSpeed = ReadingPace & {
+export type ReadingSpeed = Pace & {
+	isMeasured: boolean;
+	/** Measurable sittings behind a measured pace. */
 	sessionCount: number;
-	/** False until the measured speed has loaded; `wpm` is the fallback meanwhile. */
+	/** False until the speed model has loaded; `wpm` is the fallback meanwhile. */
 	isSettled: boolean;
 };
 
-/** The pace Explore's reading times and length filters use, by the same rule as library stats. */
+/** The pace Explore's reading times and length filters use: the speed model's, like every other estimate. */
 export function useReadingSpeed(): ReadingSpeed {
-	const { data, isPending } = queryHooks.useStatsMeasuredSpeed();
+	const { data, isPending } = queryHooks.useStatsSpeedModel();
+	const pace = bookPace(data, null);
 	return {
-		...readingPace(data?.wpm),
-		sessionCount: data?.sessionCount ?? 0,
+		...pace,
+		isMeasured: isMeasuredPace(pace),
+		sessionCount: data?.sittings ?? 0,
 		isSettled: !isPending,
 	};
 }

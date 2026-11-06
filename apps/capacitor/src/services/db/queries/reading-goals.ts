@@ -1,4 +1,4 @@
-import { isFinishedPosition, measuredReadingSpeed } from "@lesefluss/core";
+import { bookPace, isFinishedPosition } from "@lesefluss/core";
 import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { randomHexId } from "../../../utils/random-id";
 import {
@@ -14,7 +14,7 @@ import {
 import { db } from "../index";
 import { type Book, books, type ReadingGoal, readingGoals, readingSessions } from "../schema";
 import { getBook, isFinishedSql } from "./books";
-import { getMeasuredReadingSpeed } from "./stats";
+import { getSpeedModel } from "./stats";
 
 const UPSERT_CHUNK_SIZE = 200;
 
@@ -212,7 +212,7 @@ export async function hardDeleteGoals(ids: string[]): Promise<void> {
 	}
 }
 
-/** What the plan needs from this book's sessions, plus what measures its speed. */
+/** What the plan needs from this book's sessions. */
 async function getGoalSessions(bookId: string) {
 	return db
 		.select({
@@ -230,18 +230,11 @@ async function getGoalSessions(bookId: string) {
 }
 
 async function loadPlanInput(goal: ReadingGoal, book: Book, now: number): Promise<GoalPlanInput> {
-	const [sessions, global] = await Promise.all([
+	const [sessions, model] = await Promise.all([
 		getGoalSessions(goal.bookId),
-		getMeasuredReadingSpeed(),
+		getSpeedModel({ window: "recent", now }),
 	]);
-	return {
-		goal,
-		book,
-		sessions,
-		bookWpm: measuredReadingSpeed(sessions),
-		globalWpm: global.wpm,
-		now,
-	};
+	return { goal, book, sessions, pace: bookPace(model, goal.bookId), now };
 }
 
 /**

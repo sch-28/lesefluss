@@ -1,8 +1,8 @@
 import {
+	computeSpeedModel,
 	isPlausibleRate,
 	MAX_PLAUSIBLE_WPM,
 	MIN_MEASURABLE_MS,
-	summariseReadingRates,
 } from "@lesefluss/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -238,15 +238,15 @@ describe.each(["Europe/Berlin", "America/New_York"])("buildWpmTrend in %s", (tz)
 		expect([...starts].sort((a, b) => a - b)).toEqual(starts);
 	});
 
-	it("weights each session by words read", () => {
+	it("divides all words by all active time", () => {
 		const now = at(2026, 4, 20);
 		const rows: WpmSession[] = [
-			// 9000 words over 90 minutes is 100 wpm; 1000 words in 1 minute is 1000.
+			// 10,000 words over 91 minutes: the one-minute burst barely moves it.
 			{ startedAt: now, mode: "scroll", wpmAvg: null, words: 9000, durationMs: minutes(90) },
 			{ startedAt: now, mode: "scroll", wpmAvg: null, words: 1000, durationMs: minutes(1) },
 		];
 		const series = buildWpmTrend(rows, trendBucketsFor("30d", now));
-		expect(series.measured.at(-1)?.avgWpm).toBe(190);
+		expect(series.measured.at(-1)?.avgWpm).toBe(110);
 	});
 
 	it("leaves listening out of the measured speed", () => {
@@ -309,8 +309,8 @@ describe.each(["Europe/Berlin", "America/New_York"])("buildWpmTrend in %s", (tz)
 			],
 			trendBucketsFor("30d", now),
 		);
-		// 100 wpm over 1000 words and 300 wpm over 3000 words, words-weighted.
-		expect(series.averages.measured).toBe(250);
+		// 4000 words over 20 minutes.
+		expect(series.averages.measured).toBe(200);
 	});
 });
 
@@ -401,12 +401,16 @@ describe("implausible sittings", () => {
 		expect(withJump.averages.measured).toBe(300);
 	});
 
-	it("keeps a position jump out of the per-mode rates", () => {
-		const rates = summariseReadingRates([
-			{ mode: "scroll", wpmAvg: null, wordsRead: real.words, durationMs: real.durationMs },
-			{ mode: "scroll", wpmAvg: null, wordsRead: jump.words, durationMs: jump.durationMs },
-		]);
-		expect(rates.scrollWpm).toBe(300);
+	it("keeps a position jump out of the speed model", () => {
+		const model = computeSpeedModel(
+			[real, jump].map((r) => ({ ...r, wordsRead: r.words })),
+			{ now },
+		);
+		expect(model.reading.scroll?.wpm).toBe(300);
+		// The trend's average and the model agree on the same rows.
+		expect(buildWpmTrend([real, jump], trendBucketsFor("30d", now)).averages.measured).toBe(
+			model.reading.wpm,
+		);
 	});
 
 	it("accepts a fast but human rate", () => {

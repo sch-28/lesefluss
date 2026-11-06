@@ -325,8 +325,9 @@ describe("getReadingGoalPlan", () => {
 				"scroll",
 				NOW + 60_000,
 				NOW + 120_000,
-				60_000,
-				200,
+				// 30 minutes: a book's own speed counts from there.
+				1_800_000,
+				6000,
 				0,
 				200,
 				null,
@@ -338,7 +339,7 @@ describe("getReadingGoalPlan", () => {
 		expect(result?.goal.id).toBe(goal.id);
 		if (result?.plan.kind !== "plan") throw new Error("expected a plan");
 		expect(result.plan.progressToday.words).toBe(200);
-		expect(result.plan.pace).toEqual({ wpm: 200, isMeasured: true });
+		expect(result.plan.pace).toEqual({ wpm: 200, source: "book" });
 		expect(result.plan.dailyTarget.minutes).toBeCloseTo(0.5);
 	});
 

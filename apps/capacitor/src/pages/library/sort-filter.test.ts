@@ -1,9 +1,16 @@
-import { wordPos } from "@lesefluss/core";
+import { type BookStatus, wordPos } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
 import { makeBook } from "../../test/book-fixture";
-import { type FilterBy, filterAndSortLibrary, type SortBy, tagsInUse } from "./sort-filter";
+import type { LibraryFilter } from "./filter-model";
+import { filterAndSortLibrary, type SortBy, tagsInUse } from "./sort-filter";
+
+type FilterBy = "all" | BookStatus;
+
+function statusFilter(filterBy: FilterBy): LibraryFilter {
+	return filterBy === "all" ? {} : { status: { in: [filterBy], out: [] } };
+}
 
 function makeSeries(overrides: Partial<Series> = {}): Series {
 	return {
@@ -24,8 +31,8 @@ function makeSeries(overrides: Partial<Series> = {}): Series {
 }
 
 function visibleIds(books: Book[], filterBy: FilterBy, sortBy: SortBy = "recent"): string[] {
-	return filterAndSortLibrary(books, [], new Map(), { filterBy, sortBy }).map((item) =>
-		item.kind === "book" ? item.book.id : item.series.id,
+	return filterAndSortLibrary(books, [], new Map(), { filter: statusFilter(filterBy), sortBy }).map(
+		(item) => (item.kind === "book" ? item.book.id : item.series.id),
 	);
 }
 
@@ -81,7 +88,10 @@ describe("series shelves", () => {
 	function libraryWith(activity: SeriesActivity | undefined, filterBy: FilterBy) {
 		const map = new Map<string, SeriesActivity>();
 		if (activity) map.set("abc12345", activity);
-		return filterAndSortLibrary([], [makeSeries()], map, { filterBy, sortBy: "recent" });
+		return filterAndSortLibrary([], [makeSeries()], map, {
+			filter: statusFilter(filterBy),
+			sortBy: "recent",
+		});
 	}
 
 	it("treats a series with no chapters yet as want, not finished", () => {
@@ -150,7 +160,7 @@ describe("search", () => {
 		extra: Partial<Parameters<typeof filterAndSortLibrary>[3]> = {},
 	) {
 		return filterAndSortLibrary(books, [], new Map(), {
-			filterBy: "all",
+			filter: {},
 			sortBy: "recent",
 			search,
 			...extra,
@@ -173,7 +183,7 @@ describe("search", () => {
 
 	it("finds series by title too", () => {
 		const items = filterAndSortLibrary([], [makeSeries({ title: "Worm" })], new Map(), {
-			filterBy: "all",
+			filter: {},
 			sortBy: "recent",
 			search: "wor",
 		});
@@ -185,7 +195,7 @@ describe("search", () => {
 		const dropped = makeBook({ id: "cccccccc", title: "Red Sky", status: "dropped" });
 		const all = [...books, dropped];
 		const ids = filterAndSortLibrary(all, [], new Map(), {
-			filterBy: "dropped",
+			filter: statusFilter("dropped"),
 			sortBy: "recent",
 			search: "red",
 		}).map((item) => (item.kind === "book" ? item.book.id : item.series.id));
@@ -201,9 +211,8 @@ describe("tag filtering", () => {
 
 	function taggedIds(tag: string | null) {
 		return filterAndSortLibrary(all, [], new Map(), {
-			filterBy: "all",
+			filter: tag ? { tags: { in: [tag], out: [] } } : {},
 			sortBy: "recent",
-			tag,
 		}).map((item) => (item.kind === "book" ? item.book.id : item.series.id));
 	}
 
@@ -227,9 +236,8 @@ describe("tag filtering", () => {
 	// Series have no tags, so a tag filter cannot match them.
 	it("hides series while a tag is selected", () => {
 		const items = filterAndSortLibrary(all, [makeSeries()], new Map(), {
-			filterBy: "all",
+			filter: { tags: { in: ["scifi"], out: [] } },
 			sortBy: "recent",
-			tag: "scifi",
 		});
 		expect(items.every((item) => item.kind === "book")).toBe(true);
 	});

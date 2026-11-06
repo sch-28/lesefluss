@@ -36,10 +36,15 @@ afterEach(() => {
 	view = undefined;
 });
 
+/** The card's own button; a book card also has its … button beside it. */
 function card(): HTMLButtonElement {
-	const buttons = view?.container.querySelectorAll("button") ?? [];
-	expect(buttons).toHaveLength(1);
-	return buttons[0] as HTMLButtonElement;
+	const button = view?.container.querySelector("button");
+	if (!button) throw new Error("no card button");
+	return button;
+}
+
+function moreButton(): HTMLButtonElement | null {
+	return view?.container.querySelector<HTMLButtonElement>('button[aria-label^="More for"]') ?? null;
 }
 
 function description(el: HTMLElement): string {
@@ -55,6 +60,28 @@ function rightClick(el: HTMLElement): MouseEvent {
 		el.dispatchEvent(event);
 	});
 	return event;
+}
+
+function touch(el: HTMLElement, type: "touchstart" | "touchend", fingers: number) {
+	const event = new TouchEvent(type, { bubbles: true, cancelable: true });
+	Object.defineProperty(event, "touches", { value: Array.from({ length: fingers }, () => ({})) });
+	act(() => {
+		el.dispatchEvent(event);
+	});
+}
+
+/** A finger held on the card past the long-press time, with Android's
+ *  contextmenu for the held finger, then lifted with its synthetic click. */
+function longPress(el: HTMLElement) {
+	touch(el, "touchstart", 1);
+	act(() => {
+		vi.advanceTimersByTime(500);
+	});
+	rightClick(el);
+	touch(el, "touchend", 0);
+	act(() => {
+		el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+	});
 }
 
 const bookProps = (over: Partial<React.ComponentProps<typeof BookCard>> = {}) => ({
@@ -91,6 +118,21 @@ describe.each([
 		const event = rightClick(card());
 		expect(event.defaultPrevented).toBe(true);
 		expect(props.onMenu).toHaveBeenCalledOnce();
+		await click(moreButton() as HTMLButtonElement);
+		expect(props.onMenu).toHaveBeenCalledTimes(2);
+		expect(props.onOpen).toHaveBeenCalledOnce();
+	});
+
+	it("hands a Shift, Ctrl or Cmd click to selection instead of opening", async () => {
+		const props = bookProps({ onModifiedClick: vi.fn() });
+		view = await render(<Card {...props} />);
+		for (const modifier of ["shiftKey", "ctrlKey", "metaKey"] as const) {
+			act(() => {
+				card().dispatchEvent(new MouseEvent("click", { bubbles: true, [modifier]: true }));
+			});
+		}
+		expect(props.onModifiedClick).toHaveBeenCalledTimes(3);
+		expect(props.onOpen).not.toHaveBeenCalled();
 	});
 
 	it("in selection mode exposes the pressed state and toggles instead of opening", async () => {
@@ -102,9 +144,63 @@ describe.each([
 		expect(props.onOpen).not.toHaveBeenCalled();
 		rightClick(card());
 		expect(props.onMenu).not.toHaveBeenCalled();
+		expect(moreButton()).toBeNull();
 
 		await view.rerender(<Card {...props} selected />);
 		expect(card().getAttribute("aria-pressed")).toBe("true");
+	});
+
+	describe("long press", () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it("starts selection, never the menu, and opens nothing on release", async () => {
+			const props = bookProps({ onLongPress: vi.fn() });
+			view = await render(<Card {...props} />);
+			vi.useFakeTimers();
+			longPress(card());
+			expect(props.onLongPress).toHaveBeenCalledOnce();
+			expect(props.onMenu).not.toHaveBeenCalled();
+			expect(props.onOpen).not.toHaveBeenCalled();
+		});
+
+		it("extends a selection already running instead of toggling on release", async () => {
+			const props = bookProps({ selectable: true, onToggle: vi.fn(), onLongPress: vi.fn() });
+			view = await render(<Card {...props} />);
+			vi.useFakeTimers();
+			longPress(card());
+			expect(props.onLongPress).toHaveBeenCalledOnce();
+			expect(props.onToggle).not.toHaveBeenCalled();
+			expect(props.onMenu).not.toHaveBeenCalled();
+			expect(props.onOpen).not.toHaveBeenCalled();
+		});
+
+		it("opens the menu when the card has no selection to start", async () => {
+			const props = bookProps();
+			view = await render(<Card {...props} />);
+			vi.useFakeTimers();
+			longPress(card());
+			expect(props.onMenu).toHaveBeenCalledOnce();
+			expect(props.onOpen).not.toHaveBeenCalled();
+		});
+
+		it("is a tap when lifted early", async () => {
+			const props = bookProps({ onLongPress: vi.fn() });
+			view = await render(<Card {...props} />);
+			vi.useFakeTimers();
+			touch(card(), "touchstart", 1);
+			act(() => {
+				vi.advanceTimersByTime(200);
+			});
+			touch(card(), "touchend", 0);
+			act(() => {
+				card().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+				vi.advanceTimersByTime(1000);
+			});
+			expect(props.onOpen).toHaveBeenCalledOnce();
+			expect(props.onLongPress).not.toHaveBeenCalled();
+		});
 	});
 });
 

@@ -144,9 +144,8 @@ export const statsKeys = {
 	/** Hour-of-day histogram. */
 	hourHistogram: ["stats", "hour-histogram"] as const,
 
-	/** Per-mode reading rates used to estimate time remaining. */
-	readingRates: ["stats", "reading-rates"] as const,
-	measuredSpeed: ["stats", "measured-speed"] as const,
+	/** The speed model behind every speed and time estimate. */
+	speedModel: (window: string) => ["stats", "speed-model", window] as const,
 
 	/** Per-book stats card on book detail. */
 	book: (bookId: string) => ["stats", "book", bookId] as const,

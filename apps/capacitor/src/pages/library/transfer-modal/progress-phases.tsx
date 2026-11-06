@@ -50,7 +50,7 @@ export const TransferringPhase: React.FC<TransferringProps> = ({ book, progress,
 
 			<div className="flex justify-between text-muted-foreground text-sm">
 				<span>Elapsed: {formatSeconds(elapsed)}</span>
-				{timeRemainingStr && <span>~{timeRemainingStr} remaining</span>}
+				{timeRemainingStr && <span>{timeRemainingStr} remaining</span>}
 			</div>
 		</div>
 	);

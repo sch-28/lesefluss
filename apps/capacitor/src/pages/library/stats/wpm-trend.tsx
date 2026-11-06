@@ -1,3 +1,4 @@
+import { AVERAGE_READER_WPM } from "@lesefluss/core";
 import { ResponsiveLine } from "@nivo/line";
 import { motion } from "framer-motion";
 import { useMemo } from "react";
@@ -5,7 +6,6 @@ import { isDarkTheme, useTheme } from "../../../contexts/theme-context";
 import { queryHooks } from "../../../services/db/hooks";
 import type { TrendGranularity, TrendPeriod } from "../../../services/stats/aggregate";
 import { summariseWpmTrend } from "../../../services/stats/summaries";
-import { AVERAGE_READER_WPM } from "../../../utils/reading-time";
 import { evenTickIndices, formatDayTick } from "./chart-axis";
 import { ChartTooltip } from "./chart-tooltip";
 import { buildNivoTheme } from "./nivo-theme";

@@ -13,6 +13,7 @@ export * from "./reading-goal";
 export * from "./reading-rates";
 export * from "./settings";
 export * from "./social";
+export * from "./speed-model";
 export * from "./streak";
 export * from "./sync";
 export * from "./utf8";

@@ -29,9 +29,7 @@ export function toggleSelected(selection: Selection, id: string): Selection {
  * replaces.
  */
 export function selectAllVisible(selection: Selection, items: readonly LibraryItem[]): Selection {
-	const next = new Set(selection);
-	for (const id of selectableIds(items)) next.add(id);
-	return next;
+	return withAll(selection, selectableIds(items));
 }
 
 /** Drop every visible book, keeping any hidden ones still picked. */
@@ -56,4 +54,41 @@ export function isAllVisibleSelected(selection: Selection, items: readonly Libra
  */
 export function selectedBooks(selection: Selection, books: readonly Book[]): Book[] {
 	return books.filter((book) => selection.has(book.id));
+}
+
+/**
+ * The books from `fromId` to `toId` in the visible order, both ends included,
+ * whichever comes first. The visible order, not the DOM's, so rows the
+ * virtualized grid has not rendered still count. Null when either end is not
+ * in the view, e.g. an anchor the current filter hides.
+ */
+export function rangeIds(
+	items: readonly LibraryItem[],
+	fromId: string,
+	toId: string,
+): string[] | null {
+	const ids = selectableIds(items);
+	const from = ids.indexOf(fromId);
+	const to = ids.indexOf(toId);
+	if (from < 0 || to < 0) return null;
+	return ids.slice(Math.min(from, to), Math.max(from, to) + 1);
+}
+
+export function withAll(selection: Selection, ids: readonly string[]): Selection {
+	const next = new Set(selection);
+	for (const id of ids) next.add(id);
+	return next;
+}
+
+/**
+ * A drag-select from `startId` to the book now under the finger, on top of what
+ * was picked before the drag: dragging back shrinks the run, earlier picks stay.
+ */
+export function dragSelection(
+	base: Selection,
+	items: readonly LibraryItem[],
+	startId: string,
+	currentId: string,
+): Selection {
+	return withAll(base, rangeIds(items, startId, currentId) ?? [startId]);
 }

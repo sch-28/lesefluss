@@ -37,15 +37,15 @@ export function wordBounds(
 
 export type BookLength = {
 	wordCount?: number | null;
-	/** The count is an estimate; shown with a "~". */
+	/** The count is an estimate; the length popover says so. */
 	wordCountEstimated?: boolean;
 };
 
 export type LengthLabels = {
 	words: number;
-	/** "~312 pages · 4h 10m", for list rows and the book page. */
+	/** "312 pages · 4h 10m", for list rows and the book page. */
 	text: string;
-	/** "~4h 10m" for a cover badge; whole hours from 10h on, to fit a phone grid. */
+	/** "4h 10m" for a cover badge; whole hours from 10h on, to fit a phone grid. */
 	time: string;
 	/** What a screen reader says for `text`: "About 312 pages, 4 hours 10 minutes". */
 	spoken: string;
@@ -70,15 +70,14 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const BADGE_WHOLE_HOURS_FROM_MIN = 600;
 
 /**
- * Length the way every Explore surface shows it, with a leading "~" (spoken
- * "About") while estimated. Null when the length is unknown.
+ * Length the way every Explore surface shows it. An estimated length reads as
+ * a plain value; only the spoken text says "About". Null when the length is unknown.
  */
 export function describeLength(length: BookLength, wpm: number): LengthLabels | null {
 	const words = length.wordCount;
 	if (!words) return null;
 	const pages = estimatePages(words);
 	const minutes = words / wpm;
-	const approx = length.wordCountEstimated ? "~" : "";
 	const about = length.wordCountEstimated ? "About " : "";
 	const time =
 		minutes >= BADGE_WHOLE_HOURS_FROM_MIN
@@ -87,8 +86,8 @@ export function describeLength(length: BookLength, wpm: number): LengthLabels | 
 	const duration = spokenDuration(minutes);
 	return {
 		words,
-		text: `${approx}${plural(pages, "page")} · ${formatReadingTime(minutes)}`,
-		time: `${approx}${time}`,
+		text: `${plural(pages, "page")} · ${formatReadingTime(minutes)}`,
+		time,
 		spoken: `${about}${plural(pages, "page")}, ${duration}`,
 		spokenTime: capitalize(`${about}${duration} to read`),
 	};

@@ -353,7 +353,9 @@ export type NewSeries = typeof series.$inferInsert;
  * ESP32 reading is NOT tracked here (no clock, would double-count via position sync).
  *
  * `bookId` is intentionally not a FK: rows must outlive the book for all-time totals.
- * `wpmAvg` is RSVP-only (null otherwise).
+ * `wpmAvg` is the dial on RSVP rows, not a measured rate; on scroll and page it
+ * is the sitting's own rate (null past the credit ceiling), and null on listen rows.
+ * Measured speeds come from wordsRead / durationMs (the core speed model).
  */
 export const readingSessions = sqliteTable("reading_sessions", {
 	id: text("id").primaryKey(), // random hex, generated client-side
@@ -368,7 +370,7 @@ export const readingSessions = sqliteTable("reading_sessions", {
 	// Highest word actually read this sitting, unlike endWord which a jump or moving back sets.
 	// Null on rows from before it existed.
 	furthestWord: integer("furthest_word").$type<WordPosition>(),
-	wpmAvg: integer("wpm_avg"), // rsvp only; null otherwise
+	wpmAvg: integer("wpm_avg"),
 	updatedAt: integer("updated_at").notNull(), // for last-write-wins sync
 });
 

@@ -13,8 +13,7 @@ const goalData: { current: { goal: ReadingGoal; plan: ReadingGoalPlan } | null }
 vi.mock("../../../../services/db/hooks", () => ({
 	queryHooks: {
 		useReadingGoalPlan: () => ({ data: goalData.current, isPending: false }),
-		useStatsBook: () => ({ data: undefined }),
-		useStatsMeasuredSpeed: () => ({ data: undefined }),
+		useStatsSpeedModel: () => ({ data: undefined }),
 	},
 }));
 vi.mock("../goal-chart", () => ({ GoalChart: () => <div data-testid="goal-chart" /> }));

@@ -12,7 +12,7 @@ vi.mock("../../../services/catalog/client", async (importActual) => ({
 vi.mock("../../../services/catalog/import", () => ({ importFromCatalog: vi.fn() }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useStatsMeasuredSpeed: () => ({ data: { wpm: 300, sessionCount: 12 } }),
+		useStatsSpeedModel: () => ({ data: { pace: { wpm: 300, source: "measured" }, sittings: 12 } }),
 		useLibraryCatalogIds: () => ({ data: new Map() }),
 	},
 }));

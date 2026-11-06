@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "../../components/toast";
 import { useBackHandler } from "../../hooks/use-back-handler";
 import { queryHooks } from "../../services/db/hooks";
@@ -7,11 +7,15 @@ import type { Book } from "../../services/db/schema";
 import { type BulkSummary, bulkSummary } from "./bulk-summary";
 import {
 	deselectAllVisible,
+	dragSelection,
 	isAllVisibleSelected,
+	rangeIds,
 	type Selection,
 	selectAllVisible,
+	selectableIds,
 	selectedBooks,
 	toggleSelected,
+	withAll,
 } from "./selection";
 import type { LibraryItem } from "./sort-filter";
 
@@ -24,10 +28,22 @@ export type UseLibrarySelection = {
 	picked: Book[];
 	isSelected: (bookId: string) => boolean;
 	allVisibleSelected: boolean;
+	/** Books in the current view, rendered or not: the N of "Select all N". */
+	visibleCount: number;
 	begin: (bookId: string) => void;
 	exit: () => void;
+	/** Toggles one book, entering selection mode if needed, and makes it the range anchor. */
 	toggle: (bookId: string) => void;
+	/** Adds the run from the anchor to this book in the visible order. */
+	selectRange: (bookId: string) => void;
 	toggleAllVisible: () => void;
+	/** A drag across covers: adds the run from `start` to the book under the finger. */
+	drag: {
+		isActive: boolean;
+		start: (bookId: string) => void;
+		over: (bookId: string) => void;
+		end: () => void;
+	};
 	sheet: BulkSheet;
 	openSheet: (sheet: Exclude<BulkSheet, null>) => void;
 	closeSheet: () => void;
@@ -60,6 +76,11 @@ export function useLibrarySelection(
 	const bulk = queryHooks.useBulkBookActions();
 
 	const isSelecting = selection !== null;
+	const anchorRef = useRef<string | null>(null);
+	const [dragStart, setDragStart] = useState<string | null>(null);
+	// What was picked before the drag began, so dragging back shrinks the run
+	// without dropping books picked earlier.
+	const dragBaseRef = useRef<Selection>(new Set());
 
 	// Counted through the books that still exist, so an id left behind by a book
 	// a sync pull deleted needs no cleanup of its own.
@@ -69,6 +90,8 @@ export function useLibrarySelection(
 	);
 
 	const exit = useCallback(() => {
+		anchorRef.current = null;
+		setDragStart(null);
 		setSelection(null);
 		setSheet(null);
 		setDeleteOpen(false);
@@ -112,12 +135,51 @@ export function useLibrarySelection(
 		picked,
 		isSelected: useCallback((bookId) => selection?.has(bookId) ?? false, [selection]),
 		allVisibleSelected: isAllVisibleSelected(selection ?? new Set(), visibleItems),
-		begin: useCallback((bookId) => setSelection(new Set([bookId])), []),
+		visibleCount: useMemo(() => selectableIds(visibleItems).length, [visibleItems]),
+		begin: useCallback((bookId) => {
+			anchorRef.current = bookId;
+			setSelection(new Set([bookId]));
+		}, []),
 		exit,
-		toggle: useCallback(
-			(bookId) => setSelection((current) => toggleSelected(current ?? new Set(), bookId)),
-			[],
+		toggle: useCallback((bookId) => {
+			anchorRef.current = bookId;
+			setSelection((current) => toggleSelected(current ?? new Set(), bookId));
+		}, []),
+		selectRange: useCallback(
+			(bookId) => {
+				const anchor = anchorRef.current;
+				const run = anchor ? rangeIds(visibleItems, anchor, bookId) : null;
+				// No anchor in view (none yet, or the filter hides it): a single toggle.
+				if (!run) {
+					anchorRef.current = bookId;
+					setSelection((current) => toggleSelected(current ?? new Set(), bookId));
+					return;
+				}
+				setSelection((current) => withAll(current ?? new Set(), run));
+			},
+			[visibleItems],
 		),
+		drag: {
+			isActive: dragStart !== null,
+			start: useCallback(
+				(bookId) => {
+					const base = selection ?? new Set<string>();
+					dragBaseRef.current = base;
+					anchorRef.current = bookId;
+					setDragStart(bookId);
+					setSelection(withAll(base, [bookId]));
+				},
+				[selection],
+			),
+			over: useCallback(
+				(bookId) => {
+					if (!dragStart) return;
+					setSelection(dragSelection(dragBaseRef.current, visibleItems, dragStart, bookId));
+				},
+				[dragStart, visibleItems],
+			),
+			end: useCallback(() => setDragStart(null), []),
+		},
 		toggleAllVisible: useCallback(
 			() =>
 				setSelection((current) =>

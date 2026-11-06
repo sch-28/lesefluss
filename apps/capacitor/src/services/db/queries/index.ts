@@ -106,10 +106,9 @@ import {
 	getDailyReading,
 	getFinishedBooks,
 	getHourHistogram,
-	getMeasuredReadingSpeed,
 	getPeriodTotals,
-	getReadingRates,
 	getReadingRecords,
+	getSpeedModel,
 	getStreak,
 	getTopBooks,
 	getWpmTrend,
@@ -200,8 +199,7 @@ export const queries = {
 	getTopBooks,
 	getWpmTrend,
 	getHourHistogram,
-	getMeasuredReadingSpeed,
-	getReadingRates,
+	getSpeedModel,
 	getBookStats,
 
 	// Glossary

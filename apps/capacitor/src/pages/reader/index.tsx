@@ -14,8 +14,8 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import type { DiscussionItem, RsvpSettings } from "@lesefluss/core";
 import {
-	DEFAULT_RSVP_DELIVERED_RATIO,
 	DEFAULT_SETTINGS,
+	modeSpeed,
 	paragraphIndexForWord,
 	utf8ByteLength,
 	utf8ByteLengthOfCodePoint,
@@ -49,6 +49,8 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { isShortcutAllowed } from "../../commands/guard";
+import { useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
 import { VoiceSheet } from "../../components/read-aloud/voice-sheet";
 import {
@@ -115,7 +117,7 @@ import {
 	publishSyncPushRequest,
 	type SaveSource,
 } from "../../test-hooks/reader";
-import { AVERAGE_READER_WPM, formatReadingTime } from "../../utils/reading-time";
+import { formatReadingTime } from "../../utils/reading-time";
 import { setJustRead } from "../library/just-read-pin";
 import { liveToday } from "../library/reading-goal/goal-model";
 import AnnotationsSheet from "./annotations-sheet";
@@ -133,6 +135,7 @@ import { useChapterAutoAdvance } from "./chapter-auto-advance";
 import { useChapterFetch } from "./chapter-fetch";
 import { buildChapterHeadingMap } from "./chapter-headings";
 import { ChapterStateOverlay } from "./chapter-state-overlay";
+import { readerActionCommands } from "./commands";
 import DictionaryModal from "./dictionary-modal";
 import { clampWord, decideExternalPosition, followLoweredRevision } from "./external-position";
 import { colorFromLabel } from "./glossary-avatar";
@@ -179,7 +182,7 @@ import {
 } from "./use-glossary-decorations";
 import { bookWordTotal, useHealWordCount } from "./use-heal-word-count";
 import { useHighlightSelection } from "./use-highlight-selection";
-import { isReaderKey, useKeyboardShortcuts } from "./use-keyboard-shortcuts";
+import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import { useLinkDecorations } from "./use-link-decorations";
 import { useLoadedReaderFont } from "./use-loaded-reader-font";
 import { useReadAloud } from "./use-read-aloud";
@@ -257,7 +260,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	// ── Data queries ──────────────────────────────────────────────────────
 	const { data: book, isPending: bookPending } = queryHooks.useBook(id);
-	const readingRates = queryHooks.useStatsReadingRates();
+	const speedModel = queryHooks.useStatsSpeedModel();
 	const { data: contentRow, isPending: contentPending } = queryHooks.useBookContent(id);
 	const { data: wordIndex } = queryHooks.useBookWordIndex(id);
 	const { data: bookImages, isPending: imagesPending } = queryHooks.useBookImages(id);
@@ -2054,7 +2057,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			}
 		};
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (!NATIVE_SCROLL_KEYS.has(e.key) || !isReaderKey(e)) return;
+			if (!NATIVE_SCROLL_KEYS.has(e.key) || !isShortcutAllowed(e)) return;
 			readAloudRef.current?.keepsPositionOnMove(null);
 		};
 		el.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -2254,6 +2257,42 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		volumeKeys: volumeKeysFor(dbSettings, isEinkMode),
 		isReadingAloud: isReadAloudActive || (readerMode === "rsvp" && isRsvpAudioOn),
 	});
+
+	useRegisterCommands(
+		readerActionCommands({
+			hasContent: !!content,
+			readerMode,
+			paginationStyle,
+			canChangeLayout: !isEinkMode,
+			setPaginationStyle: (style) => updateSetting("paginationStyle", style),
+			openSearch: () => setSearchOpen(true),
+			openAppearance: () => setAppearanceOpen(true),
+			openAnnotations: () => setAnnotationsOpen(true),
+			readAloud: IS_READ_ALOUD_SUPPORTED
+				? readerMode === "rsvp"
+					? {
+							title: isRsvpAudioOn ? "Turn RSVP audio off" : "Turn RSVP audio on",
+							isReady: !!wordIndex,
+							toggle: toggleRsvpAudio,
+						}
+					: {
+							title: readAloud.status === "playing" ? "Pause listening" : "Listen",
+							isReady: !!wordIndex,
+							toggle: readAloud.toggle,
+						}
+				: null,
+			chapters,
+			goToWord: navigateToWord,
+			openBookDetails: () => {
+				if (!book) return;
+				history.push(
+					book.seriesId != null
+						? `/tabs/library/series/${book.seriesId}`
+						: `/tabs/library/book/${book.id}`,
+				);
+			},
+		}),
+	);
 
 	// ── Reading session tracking ──────────────────────────────────────────
 	// `isReading` is the coarse "reader page is mounted with content". The
@@ -2538,21 +2577,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			chapterFetch.kind === "loading");
 
 	const showReadingTime = dbSettings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
-	// The dial is an input, not a rate: the engine spends time on punctuation
-	// pauses and the accel ramp, so estimating from it runs short. Scale it by
-	// what this reader's RSVP sessions actually delivered. Scroll and page have
-	// no dial, so they use their own measured speed.
-	const estimateWpm =
-		readerMode === "rsvp"
-			? Math.max(
-					1,
-					Math.round(
-						rsvpSettings.wpm *
-							(readingRates.data?.rsvpDeliveredRatio ?? DEFAULT_RSVP_DELIVERED_RATIO),
-					),
-				)
-			: ((paginationStyle === "page" ? readingRates.data?.pageWpm : readingRates.data?.scrollWpm) ??
-				AVERAGE_READER_WPM);
+	const estimateWpm = modeSpeed(
+		speedModel.data,
+		readerMode === "rsvp" ? "rsvp" : paginationStyle,
+		rsvpSettings.wpm,
+	);
 	const bookMinutesRemaining =
 		showReadingTime && totalWordCount > 0
 			? (totalWordCount * (1 - progressPct / 100)) / estimateWpm

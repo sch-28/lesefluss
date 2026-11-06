@@ -1,6 +1,7 @@
 import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 import { act, useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useCommandDispatcher } from "../../../commands/dispatcher";
 import { type Rendered, render } from "../../../test/render";
 import RsvpView, { type RsvpAudio, type RsvpViewHandle } from "../rsvp-view";
 import { useKeyboardShortcuts } from "../use-keyboard-shortcuts";
@@ -46,6 +47,7 @@ function Reader({ isAudioOn, ttsWpm }: { isAudioOn: boolean; ttsWpm: number }) {
 		onOpenVoice: noop,
 		onOpenSleepTimer: noop,
 	};
+	useCommandDispatcher();
 	useKeyboardShortcuts({
 		readerMode: "rsvp",
 		paginationStyle: "scroll",

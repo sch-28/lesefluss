@@ -21,7 +21,7 @@ vi.mock("../../../services/db/queries", () => ({
 }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useStatsMeasuredSpeed: () => ({ data: { wpm: 300, sessionCount: 12 } }),
+		useStatsSpeedModel: () => ({ data: { pace: { wpm: 300, source: "measured" }, sittings: 12 } }),
 		useLibraryCatalogIds: () => ({ data: new Map() }),
 	},
 }));
@@ -106,7 +106,7 @@ describe("catalog book detail", () => {
 		const fact = view?.getButton(
 			/^About 312 pages, 4 hours 20 minutes\. How is this worked out\?$/,
 		);
-		expect(fact?.textContent).toBe("~312 pages · 4h 20m");
+		expect(fact?.textContent).toBe("312 pages · 4h 20m");
 		await click(fact as HTMLButtonElement);
 		const explainer = document.querySelector("[data-testid='length-explainer']")?.textContent;
 		expect(explainer).toContain("About 78,000 words");

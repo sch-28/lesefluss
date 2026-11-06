@@ -9,6 +9,7 @@ import {
 	readingDayKeys,
 	type StreakResult,
 	streakFromDays,
+	wpmFrom,
 } from "@lesefluss/core";
 import { localDateKey, previousLocalDayStart, startOfLocalDay } from "../../utils/date-utils";
 
@@ -164,20 +165,21 @@ export interface WpmSession {
 	durationMs: number;
 }
 
-type Bucket = { sumWordsWpm: number; sumWords: number };
+/** A ratio summed per bucket: words over active ms, or dial × words over words. */
+type Bucket = { num: number; den: number };
 
-function addToBucket(map: Map<number, Bucket>, bucketStart: number, wpm: number, words: number) {
-	const bucket = map.get(bucketStart) ?? { sumWordsWpm: 0, sumWords: 0 };
-	bucket.sumWordsWpm += wpm * words;
-	bucket.sumWords += words;
+function addToBucket(map: Map<number, Bucket>, bucketStart: number, num: number, den: number) {
+	const bucket = map.get(bucketStart) ?? { num: 0, den: 0 };
+	bucket.num += num;
+	bucket.den += den;
 	map.set(bucketStart, bucket);
 }
 
 /**
- * WPM trend, words-weighted so one short session can't dominate a bucket. Every
- * reading mode feeds `measured`, the one figure the user asked for; listening
- * feeds nothing. `rsvpTarget` is a reference line built from the dial on RSVP rows
- * only. Bucket width follows the selected period.
+ * WPM trend. `measured` is words over active time per bucket across every
+ * reading mode, the speed model's definition, so the trend and the speed shown
+ * elsewhere agree; listening feeds nothing. `rsvpTarget` is a reference line from
+ * the dial on RSVP rows, words-weighted. Bucket width follows the selected period.
  */
 export function buildWpmTrend(
 	rows: WpmSession[],
@@ -188,46 +190,44 @@ export function buildWpmTrend(
 
 	for (const r of rows) {
 		const bucketStart = bucketStartFor(buckets.granularity, r.startedAt);
-		// Every reading mode contributes to one measured series. `wpmAvg` is not
-		// usable here: on rsvp rows it holds the dial, which is an input.
+		// `wpmAvg` is not usable for the measured line: on rsvp rows it holds the dial.
 		if (isMeasurableSitting({ mode: r.mode, wordsRead: r.words, durationMs: r.durationMs })) {
-			const wpm = Math.round(r.words / (r.durationMs / 60_000));
-			if (wpm > 0) addToBucket(measuredBuckets, bucketStart, wpm, r.words);
+			addToBucket(measuredBuckets, bucketStart, r.words, r.durationMs);
 		}
 		if (r.mode === "rsvp" && r.wpmAvg != null) {
-			addToBucket(targetBuckets, bucketStart, r.wpmAvg, Math.max(1, r.words));
+			const weight = Math.max(1, r.words);
+			addToBucket(targetBuckets, bucketStart, r.wpmAvg * weight, weight);
 		}
 	}
 
-	function buildSeries(source: Map<number, Bucket>): WpmPoint[] {
+	const measuredWpm = (b: Bucket) => wpmFrom(b.num, b.den) ?? 0;
+	const dialWpm = (b: Bucket) => (b.den > 0 ? Math.round(b.num / b.den) : 0);
+
+	function buildSeries(source: Map<number, Bucket>, rate: (b: Bucket) => number): WpmPoint[] {
 		return buckets.starts.map((bucketStart) => {
 			const b = source.get(bucketStart);
-			return {
-				bucketStart,
-				avgWpm: b && b.sumWords > 0 ? Math.round(b.sumWordsWpm / b.sumWords) : 0,
-			};
+			return { bucketStart, avgWpm: b ? rate(b) : 0 };
 		});
 	}
 
-	function averageOver(source: Map<number, Bucket>): number {
-		let sumWordsWpm = 0;
-		let sumWords = 0;
+	function averageOver(source: Map<number, Bucket>, rate: (b: Bucket) => number): number {
+		const total: Bucket = { num: 0, den: 0 };
 		for (const bucketStart of buckets.starts) {
 			const b = source.get(bucketStart);
 			if (!b) continue;
-			sumWordsWpm += b.sumWordsWpm;
-			sumWords += b.sumWords;
+			total.num += b.num;
+			total.den += b.den;
 		}
-		return sumWords > 0 ? Math.round(sumWordsWpm / sumWords) : 0;
+		return rate(total);
 	}
 
 	return {
 		granularity: buckets.granularity,
-		measured: buildSeries(measuredBuckets),
-		rsvpTarget: buildSeries(targetBuckets),
+		measured: buildSeries(measuredBuckets, measuredWpm),
+		rsvpTarget: buildSeries(targetBuckets, dialWpm),
 		averages: {
-			measured: averageOver(measuredBuckets),
-			rsvpTarget: averageOver(targetBuckets),
+			measured: averageOver(measuredBuckets, measuredWpm),
+			rsvpTarget: averageOver(targetBuckets, dialWpm),
 		},
 	};
 }

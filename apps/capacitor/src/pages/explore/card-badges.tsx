@@ -54,7 +54,7 @@ export const QuickAddOverlay: React.FC<Omit<QuickAddButtonProps, "className">> =
 	</div>
 );
 
-/** Reading time in a cover's top-right corner; the visible "~4h" is hidden from screen readers in favour of a sentence. */
+/** Reading time in a cover's top-right corner; the visible "4h" is hidden from screen readers in favour of a sentence. */
 export const CoverLengthBadge: React.FC<{ labels: LengthLabels }> = ({ labels }) => (
 	<span
 		data-testid="cover-length-badge"

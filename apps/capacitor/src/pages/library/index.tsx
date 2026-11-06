@@ -19,7 +19,9 @@ import {
 	X,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { importRequest } from "../../commands/global";
+import { useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import BLEIndicator from "../../components/ble-indicator";
@@ -29,6 +31,7 @@ import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { useBookDeviceActions } from "../../hooks/use-book-device-actions";
+import { useMediaQuery } from "../../hooks/use-media-query";
 import { usePersistentString } from "../../hooks/use-persistent-string";
 import { queryHooks } from "../../services/db/hooks";
 import { bookImportMutationKey, bookKeys, serialKeys } from "../../services/db/hooks/query-keys";
@@ -42,38 +45,40 @@ import BookEditSheet, { bookToEditValues, editValuesToPatch } from "./book-edit-
 import BookListItem from "./book-list-item";
 import BulkActionBar from "./bulk-action-bar";
 import BulkSheets from "./bulk-sheets";
-import FilterPopover from "./filter-popover";
+import { libraryCommands } from "./commands";
+import FilterBar, { AddFilterButton } from "./filter-bar";
+import { chipsOf, type Facet, type LibraryFilter, pruneFilter } from "./filter-model";
+import { FilterPopover, FilterSheet, facetOptions } from "./filter-picker";
 import ImportSheet from "./import-sheet";
 import PasteUrlModal from "./paste-url-modal";
 import SeriesCard from "./series-card";
 import SeriesListItem from "./series-list-item";
 import {
-	FILTER_OPTIONS,
-	type FilterBy,
-	filterAndSortLibrary,
+	applyLibraryView,
+	buildLibraryItems,
+	type LibraryItem,
 	type SortBy,
 	tagsInUse,
 } from "./sort-filter";
 import SortPopover from "./sort-popover";
 import TransferModal from "./transfer-modal";
+import { useDragSelect } from "./use-drag-select";
+import { useLibraryFilter } from "./use-library-filter";
 import { useLibraryImports } from "./use-library-imports";
 import { useLibraryItems } from "./use-library-items";
 import { useLibrarySelection } from "./use-library-selection";
+import VirtualBookGrid from "./virtual-book-grid";
 
 const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
 const SORT_BY_KEY = "lesefluss:library-sort";
 const VIEW_MODE_KEY = "lesefluss:library-view-mode";
-const FILTER_BY_KEY = "lesefluss:library-filter";
-const TAG_FILTER_KEY = "lesefluss:library-tag";
+/** Facets whose values come from the books; a value can vanish with its last book. */
+const LIBRARY_VALUE_FACETS: readonly Facet[] = ["tags", "author", "series"];
 
 const SORT_VALUES: readonly SortBy[] = ["title", "author", "recent", "progress", "rating"];
 const isSortBy = (value: string): value is SortBy =>
 	(SORT_VALUES as readonly string[]).includes(value);
 const isViewMode = (value: string): value is ViewMode => value === "grid" || value === "list";
-const isFilterBy = (value: string): value is FilterBy =>
-	(FILTER_OPTIONS as readonly string[]).includes(value);
-/** Any non-empty string is a usable tag; the empty string stands for "no tag". */
-const isStoredTag = (value: string): value is string => value.length > 0;
 
 const FAB_STYLE: React.CSSProperties = {
 	bottom: "calc(var(--tab-bar-h,4rem) + var(--safe-bottom) + 1rem)",
@@ -112,11 +117,9 @@ const Library: React.FC = () => {
 		() => localStorage.getItem(LOCAL_NOTICE_KEY) === "1",
 	);
 	const [sortBy, setSortBy] = usePersistentString(SORT_BY_KEY, isSortBy, "recent");
-	const [filterBy, setFilterBy] = usePersistentString(FILTER_BY_KEY, isFilterBy, "all");
-	// Stored as a plain string because a tag is free text, with "" for none.
-	const [storedTag, setStoredTag] = usePersistentString(TAG_FILTER_KEY, isStoredTag, "");
-	const tagFilter = storedTag === "" ? null : storedTag;
-	const setTagFilter = useCallback((tag: string | null) => setStoredTag(tag ?? ""), [setStoredTag]);
+	const [filter, setFilter] = useLibraryFilter();
+	const [isFilterOpen, setIsFilterOpen] = useState(false);
+	const isDesktop = useMediaQuery("(min-width: 768px)");
 	// Search is deliberately not persisted: a query restored into a collapsed
 	// search bar would look like an empty library with no visible cause.
 	const [search, setSearch] = useState("");
@@ -201,6 +204,22 @@ const Library: React.FC = () => {
 		navigate({ to: "/tabs/library/series/$id", params: { id: s.id } });
 	};
 
+	importRequest.useHandler(() => setImportSheetOpen(true));
+	useRegisterCommands(
+		libraryCommands({
+			books,
+			series,
+			openBook: (book) => {
+				qc.setQueryData(bookKeys.detail(book.id), book);
+				navigate({ to: "/tabs/reader/$id", params: { id: book.id } });
+			},
+			openSeries: handleOpenSeries,
+			openUrlImport: () => setUrlModalOpen(true),
+			pasteFromClipboard: imports.importFromClipboard,
+			isImporting: imports.isImporting || isTransferring,
+		}),
+	);
+
 	const handleDeleteSeries = (s: Series) => {
 		setSelectedSeries(null);
 		setPendingDeleteSeries(s);
@@ -222,30 +241,39 @@ const Library: React.FC = () => {
 	// Duplicate detection for a folder scan reads the library that is already
 	// loaded here rather than issuing its own query.
 	const existingTitles = useMemo(() => toExistingTitles(books), [books]);
-	// A tag can vanish while it is the active filter (its last book edited or
-	// deleted), which would otherwise leave the library empty with no way back.
-	const activeTag = tagFilter !== null && availableTags.includes(tagFilter) ? tagFilter : null;
-	// Dropped from state too, not just from the derived value: leaving it set
-	// would re-arm the filter the moment a sync pull brought the tag back.
-	// Held off until the books are in: mid-load every tag looks missing, which
-	// would wipe a restored filter before its tag had a chance to exist.
-	useEffect(() => {
-		if (!isPending && tagFilter !== null && activeTag === null) setTagFilter(null);
-	}, [isPending, tagFilter, activeTag, setTagFilter]);
-	// Memoised because selection mode re-renders this page on every tap, and the
-	// filter parses each book's tags JSON and sorts the whole library.
-	const visibleItems = useMemo(
-		() =>
-			filterAndSortLibrary(books, series, seriesActivity, {
-				filterBy,
-				sortBy,
-				search,
-				tag: activeTag,
-			}),
-		[books, series, seriesActivity, filterBy, sortBy, search, activeTag],
+	const allItems = useMemo(
+		() => buildLibraryItems(books, series, seriesActivity),
+		[books, series, seriesActivity],
 	);
-	const isNarrowed = filterBy !== "all" || activeTag !== null || search.trim() !== "";
+	const options = useMemo(() => facetOptions(allItems), [allItems]);
+	// A value can vanish while it is filtered on (a tag's last book edited or
+	// deleted), which would leave an empty library with no visible cause.
+	const activeFilter = useMemo(
+		() =>
+			LIBRARY_VALUE_FACETS.reduce<LibraryFilter>(
+				(f, facet) => pruneFilter(f, facet, new Set(options[facet].map((o) => o.value))),
+				filter,
+			),
+		[filter, options],
+	);
+	// Dropped from state too, so a sync pull that brings the value back does not
+	// re-arm it. Held off until the books are in: mid-load every value looks missing.
+	useEffect(() => {
+		if (!isPending && activeFilter !== filter) setFilter(activeFilter);
+	}, [isPending, activeFilter, filter, setFilter]);
+	const visibleItems = useMemo(
+		() => applyLibraryView(allItems, { filter: activeFilter, sortBy, search }),
+		[allItems, activeFilter, sortBy, search],
+	);
+	const filterCount = chipsOf(activeFilter).length;
+	const isNarrowed = filterCount > 0 || search.trim() !== "";
 	const selection = useLibrarySelection(books, visibleItems);
+	const gridRef = useRef<HTMLDivElement>(null);
+	useDragSelect(gridRef, {
+		isActive: selection.drag.isActive,
+		onOver: selection.drag.over,
+		onEnd: selection.drag.end,
+	});
 
 	if (isPending) {
 		return (
@@ -256,6 +284,53 @@ const Library: React.FC = () => {
 	}
 
 	const showSync = isConnected || isLoggedIn;
+
+	const openBook = (book: Book) => {
+		qc.setQueryData(bookKeys.detail(book.id), book);
+		navigate({ to: "/tabs/reader/$id", params: { id: book.id } });
+	};
+
+	const renderItem = (item: LibraryItem) => {
+		if (item.kind === "series") {
+			const s = item.series;
+			const Item = viewMode === "grid" ? SeriesCard : SeriesListItem;
+			return (
+				// Not selectable in v1, and a stray tap that navigated away
+				// would throw away a half-built selection.
+				<div
+					inert={selection.isSelecting}
+					className={selection.isSelecting ? "pointer-events-none opacity-40" : undefined}
+				>
+					<Item
+						series={s}
+						chapterCount={chapterCounts.get(s.id)}
+						onOpen={() => handleOpenSeries(s)}
+						onMenu={() => setSelectedSeries(s)}
+					/>
+				</div>
+			);
+		}
+		const { book } = item;
+		const progress = readingProgress(book);
+		const Item = viewMode === "grid" ? BookCard : BookListItem;
+		return (
+			<Item
+				book={book}
+				cover={covers.get(book.id)}
+				progress={progress}
+				started={progress > 0}
+				selectable={selection.isSelecting}
+				selected={selection.isSelected(book.id)}
+				onToggle={() => selection.toggle(book.id)}
+				onModifiedClick={(e) =>
+					e.shiftKey ? selection.selectRange(book.id) : selection.toggle(book.id)
+				}
+				onLongPress={() => selection.drag.start(book.id)}
+				onOpen={() => openBook(book)}
+				onMenu={() => setSelectedBook(book)}
+			/>
+		);
+	};
 
 	return (
 		<div className="bg-background">
@@ -275,18 +350,25 @@ const Library: React.FC = () => {
 						>
 							<Search />
 						</Button>
-						<FilterPopover
-							trigger={
-								<Button variant="ghost" size="icon" aria-label="Filter">
-									<FilterIcon />
-								</Button>
-							}
-							filterBy={filterBy}
-							onFilter={setFilterBy}
-							tags={availableTags}
-							tag={activeTag}
-							onTag={setTagFilter}
-						/>
+						{!isDesktop && (
+							<Button
+								variant="ghost"
+								size="icon"
+								aria-label={filterCount > 0 ? `Filter, ${filterCount} active` : "Filter"}
+								className="relative"
+								onClick={() => setIsFilterOpen(true)}
+							>
+								<FilterIcon />
+								{filterCount > 0 && (
+									<span
+										aria-hidden
+										className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground leading-4"
+									>
+										{filterCount}
+									</span>
+								)}
+							</Button>
+						)}
 						<SortPopover
 							trigger={
 								<Button variant="ghost" size="icon" aria-label="Sort">
@@ -335,6 +417,37 @@ const Library: React.FC = () => {
 						onChange={(e) => setSearch(e.target.value)}
 					/>
 				</div>
+			)}
+
+			{(books.length > 0 || series.length > 0) && (
+				<FilterBar
+					filter={activeFilter}
+					onChange={setFilter}
+					options={options}
+					addFilter={
+						isDesktop ? (
+							<FilterPopover
+								open={isFilterOpen}
+								onOpenChange={setIsFilterOpen}
+								filter={activeFilter}
+								onChange={setFilter}
+								options={options}
+								resultCount={visibleItems.length}
+								trigger={<AddFilterButton />}
+							/>
+						) : undefined
+					}
+				/>
+			)}
+			{!isDesktop && (
+				<FilterSheet
+					open={isFilterOpen}
+					onOpenChange={setIsFilterOpen}
+					filter={activeFilter}
+					onChange={setFilter}
+					options={options}
+					resultCount={visibleItems.length}
+				/>
 			)}
 
 			{/* Import progress. Determinate when we have a %, otherwise an animated stripe for sources without progress (URL, clipboard, share-intent). */}
@@ -400,101 +513,14 @@ const Library: React.FC = () => {
 				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
 					<p className="m-0">{isNarrowed ? "No books match." : "Nothing to show."}</p>
 				</div>
-			) : viewMode === "grid" ? (
-				<div className="grid grid-cols-3 gap-4 p-4 pb-24 content-container md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-					{visibleItems.map((item) => {
-						if (item.kind === "series") {
-							const s = item.series;
-							return (
-								// Not selectable in v1, and a stray tap that navigated away
-								// would throw away a half-built selection.
-								<div
-									key={s.id}
-									inert={selection.isSelecting}
-									className={selection.isSelecting ? "pointer-events-none opacity-40" : undefined}
-								>
-									<SeriesCard
-										series={s}
-										chapterCount={chapterCounts.get(s.id)}
-										onOpen={() => handleOpenSeries(s)}
-										onMenu={() => setSelectedSeries(s)}
-									/>
-								</div>
-							);
-						}
-						const { book } = item;
-						const progress = readingProgress(book);
-						const started = progress > 0;
-						const cover = covers.get(book.id);
-						return (
-							<BookCard
-								key={book.id}
-								book={book}
-								cover={cover}
-								progress={progress}
-								started={started}
-								selectable={selection.isSelecting}
-								selected={selection.isSelected(book.id)}
-								onToggle={() => selection.toggle(book.id)}
-								onOpen={() => {
-									qc.setQueryData(bookKeys.detail(book.id), book);
-									navigate({ to: "/tabs/reader/$id", params: { id: book.id } });
-								}}
-								// Guards a press that armed its timer just before the mode flipped.
-								onMenu={() => {
-									if (selection.isSelecting) return;
-									setSelectedBook(book);
-								}}
-							/>
-						);
-					})}
-				</div>
 			) : (
-				<div className="flex flex-col gap-2 p-4 pb-24 content-container">
-					{visibleItems.map((item) => {
-						if (item.kind === "series") {
-							const s = item.series;
-							return (
-								<div
-									key={s.id}
-									inert={selection.isSelecting}
-									className={selection.isSelecting ? "pointer-events-none opacity-40" : undefined}
-								>
-									<SeriesListItem
-										series={s}
-										chapterCount={chapterCounts.get(s.id)}
-										onOpen={() => handleOpenSeries(s)}
-										onMenu={() => setSelectedSeries(s)}
-									/>
-								</div>
-							);
-						}
-						const { book } = item;
-						const progress = readingProgress(book);
-						const started = progress > 0;
-						const cover = covers.get(book.id);
-						return (
-							<BookListItem
-								key={book.id}
-								book={book}
-								cover={cover}
-								progress={progress}
-								started={started}
-								selectable={selection.isSelecting}
-								selected={selection.isSelected(book.id)}
-								onToggle={() => selection.toggle(book.id)}
-								onOpen={() => {
-									qc.setQueryData(bookKeys.detail(book.id), book);
-									navigate({ to: "/tabs/reader/$id", params: { id: book.id } });
-								}}
-								onMenu={() => {
-									if (selection.isSelecting) return;
-									setSelectedBook(book);
-								}}
-							/>
-						);
-					})}
-				</div>
+				<VirtualBookGrid
+					items={visibleItems}
+					viewMode={viewMode}
+					renderItem={renderItem}
+					containerRef={gridRef}
+					onBackgroundTap={selection.isSelecting ? selection.exit : undefined}
+				/>
 			)}
 
 			{/* Hidden while selecting: it would sit under the selection UI, and

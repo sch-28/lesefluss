@@ -1,8 +1,11 @@
 import { SplashScreen } from "@capacitor/splash-screen";
 import { createRootRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { useCommandDispatcher } from "@/commands/dispatcher";
+import { useGlobalCommands } from "@/commands/global";
 import { AppShell } from "@/components/app-shell/AppShell";
 import { HardwareBack } from "@/components/app-shell/hardware-back";
+import CommandPalette from "@/components/command-palette";
 import { PushOfferDialog } from "@/components/push/push-offer-dialog";
 import ShareIntentHandler from "@/components/share-intent-handler";
 import { Toaster } from "@/components/toast";
@@ -29,6 +32,9 @@ function RootLayout() {
 	usePushNotifications();
 	useGoalReminders();
 	useEinkSuggestion();
+	// Here, not in AppShell: the reader renders without it and must not get a second listener.
+	useCommandDispatcher();
+	useGlobalCommands();
 
 	useEffect(() => {
 		SplashScreen.hide().catch(() => {});
@@ -45,6 +51,7 @@ function RootLayout() {
 			<Toaster dark={isDarkTheme(theme)} />
 			<WhatsNewModal />
 			<PushOfferDialog />
+			<CommandPalette />
 			{isFullScreen ? (
 				<Outlet />
 			) : (

@@ -507,7 +507,7 @@ export type ProfileStats = {
 	wordsRead: number;
 	/** Null when the owner has no synced sessions: missing data is not zero. */
 	readingTimeMs: number | null;
-	/** From `measuredReadingSpeed`, never the raw RSVP dial. Null like `readingTimeMs`. */
+	/** The speed model's all-time pace, never the raw RSVP dial. Null until measured. */
 	readingSpeedWpm: number | null;
 	/** Consecutive reading days in the owner's time zone, as the stats page counts them. Null like `readingTimeMs`. */
 	currentStreakDays: number | null;

@@ -1,5 +1,6 @@
 import { displayHostname } from "@lesefluss/book-import";
 import {
+	BOOK_STATUS_LABELS,
 	bookStatus,
 	isSyncEligible,
 	parseBookTags,
@@ -60,7 +61,6 @@ import { BookShares } from "./book-shares";
 import { BookStatsCard } from "./book-stats-card";
 import { GoalCard } from "./reading-goal/goal-card";
 import { SessionTable } from "./session-table";
-import { FILTER_LABELS } from "./sort-filter";
 
 import TransferModal from "./transfer-modal";
 
@@ -256,7 +256,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const tags = parseBookTags(book.tags);
 	const facts = [
 		// The shelf leads: it is the one fact the reader chose rather than earned.
-		FILTER_LABELS[bookStatus(book)],
+		BOOK_STATUS_LABELS[bookStatus(book)],
 		book.rating !== null ? <RatingStars key="rating" rating={book.rating} /> : null,
 		pages !== null ? `${pages.toLocaleString()} pages` : null,
 		chapterCount > 0 ? `${chapterCount} chapters` : null,

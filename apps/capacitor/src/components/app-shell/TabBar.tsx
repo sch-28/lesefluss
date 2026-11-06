@@ -1,11 +1,13 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { NavBadge } from "./nav-badge";
 import { useNavBadges, useNavItems } from "./nav-items";
+import { tabBarHidden } from "./tab-bar-visibility";
 
 export function TabBar() {
 	const { pathname } = useLocation();
 	const badges = useNavBadges();
 	const items = useNavItems();
+	if (tabBarHidden.useValue()) return null;
 	return (
 		<nav className="fixed inset-x-0 bottom-0 z-40 border-border border-t bg-card md:hidden">
 			<div className="pb-[var(--safe-bottom)]">

@@ -65,8 +65,7 @@ function input(goal: GoalParams, overrides: Partial<GoalPlanInput> = {}): GoalPl
 		goal,
 		book: { wordCount: WORDS, wordPosition: goal.startWord },
 		sessions: [],
-		bookWpm: null,
-		globalWpm: null,
+		pace: { wpm: 225, source: "default" },
 		now: at("2026-03-01", "12:00"),
 		...overrides,
 	};
@@ -107,15 +106,17 @@ describe("today's target", () => {
 		expect(p.dailyTarget.words).toBe(100);
 		expect(p.dailyTarget.percent).toBeCloseTo(10);
 		expect(p.dailyTarget.minutes).toBeCloseTo(100 / 225);
-		expect(p.pace).toEqual({ wpm: 225, isMeasured: false });
+		expect(p.pace).toEqual({ wpm: 225, source: "default" });
 	});
 
-	it("prefers this book's speed, then the global measured speed", () => {
+	it("converts words to minutes at the pace it is given", () => {
 		const goal = deadlineGoal("2026-03-10");
-		expect(plan(input(goal, { bookWpm: 200, globalWpm: 300 })).dailyTarget.minutes).toBeCloseTo(
-			0.5,
-		);
-		expect(plan(input(goal, { globalWpm: 250 })).dailyTarget.minutes).toBeCloseTo(0.4);
+		expect(
+			plan(input(goal, { pace: { wpm: 200, source: "book" } })).dailyTarget.minutes,
+		).toBeCloseTo(0.5);
+		expect(
+			plan(input(goal, { pace: { wpm: 250, source: "measured" } })).dailyTarget.minutes,
+		).toBeCloseTo(0.4);
 	});
 
 	it("does not change while reading during the same day", () => {

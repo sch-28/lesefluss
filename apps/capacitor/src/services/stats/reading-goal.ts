@@ -16,13 +16,13 @@ import {
 	isFinishedPosition,
 	MAX_GOAL_DAILY_PERCENT,
 	MIN_GOAL_DAILY_PERCENT,
+	type Pace,
 	paceFinishDay,
 	type ReadingGoalMode,
 	requireDayNumber,
 	wordPos,
 } from "@lesefluss/core";
 import { localDateKey } from "../../utils/date-utils";
-import { type ReadingPace, readingPace } from "../../utils/reading-time";
 import type { ReadingGoal } from "../db/schema";
 
 export type GoalParams = Pick<
@@ -54,8 +54,8 @@ export type GoalPlanInput = {
 	book: { wordCount: number; wordPosition: number };
 	/** This book's sessions, any order. */
 	sessions: GoalSession[];
-	bookWpm: number | null;
-	globalWpm: number | null;
+	/** The speed model's pace for this book (`bookPace`). */
+	pace: Pace;
 	now: number;
 };
 
@@ -94,7 +94,7 @@ export type ReadingGoalPlan = {
 	aheadBehind: { words: number; percent: number; days: number };
 	daysTargetMet: number;
 	daysRead: number;
-	pace: ReadingPace;
+	pace: Pace;
 	/** End-of-day plan positions; the first point is the baseline, dated the day before the plan starts. */
 	planSeries: GoalSeriesPoint[];
 	/** End-of-day actual positions over the same span, through today. */
@@ -234,7 +234,7 @@ export function planReadingGoal(input: GoalPlanInput): ReadingGoalPlanResult {
 	const relevant = planSessions(input.sessions, goal, planStartDay);
 	const startOfDay = makeStartOfDay(relevant, goal, planStartDay);
 	const furthestOn = makeFurthestOn(relevant);
-	const pace = readingPace(input.bookWpm ?? input.globalWpm);
+	const pace = input.pace;
 	const dailyWords = goalDailyWords(goal.dailyPercent, wordCount);
 
 	const line = goalPlanLine(goal, wordCount);

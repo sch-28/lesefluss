@@ -2,21 +2,9 @@ import type { MeasuredReadingMode, ReadingMode } from "./reading-credit";
 
 /**
  * Reading-rate arithmetic shared by the app's stats, the website and the
- * social profile: which sittings can be trusted for a speed, how fast a reader
- * actually reads, and how serial chapters fold into one work.
+ * social profile: which sittings can be trusted for a speed, and how serial
+ * chapters fold into one work.
  */
-
-export interface ReadingRates {
-	/** Delivered ÷ target for RSVP. The engine spends time on punctuation pauses
-	 *  and the acceleration ramp, so it delivers well under the dial. */
-	rsvpDeliveredRatio: number | null;
-	scrollWpm: number | null;
-	pageWpm: number | null;
-}
-
-/** Measured when there is no history yet. See task-46.3: delivered lands around
- *  63% of nominal. */
-export const DEFAULT_RSVP_DELIVERED_RATIO = 0.65;
 
 /** Below this a sitting is too short for its rate to mean anything. */
 export const MIN_MEASURABLE_MS = 1000;
@@ -52,66 +40,6 @@ export function isMeasurableSitting<
 	T extends { mode: ReadingMode; wordsRead: number; durationMs: number },
 >(row: T): row is T & { mode: MeasuredReadingMode } {
 	return row.mode !== "listen" && isPlausibleRate(row.wordsRead, row.durationMs);
-}
-
-export interface RateSession {
-	mode: ReadingMode;
-	wpmAvg: number | null;
-	wordsRead: number;
-	durationMs: number;
-}
-
-/**
- * How fast this reader actually reads, per mode, for estimating time remaining.
- *
- * Words-weighted so a one-paragraph sitting cannot swing the estimate. Callers
- * pass the most recent sessions rather than all of them: the RSVP ratio moves
- * when the punctuation-delay settings change, and a lifetime average would take
- * months to catch up.
- */
-export function summariseReadingRates(rows: RateSession[]): ReadingRates {
-	let rsvpDeliveredWords = 0;
-	let rsvpTargetWordsWpm = 0;
-	let rsvpTargetWords = 0;
-	let rsvpActiveMs = 0;
-	const measured = new Map<"scroll" | "page", { words: number; activeMs: number }>();
-
-	for (const r of rows) {
-		if (!isMeasurableSitting(r)) continue;
-		if (r.mode === "rsvp") {
-			// Both halves of the ratio come from the same rows: counting a
-			// dial-less session's words as delivered while excluding it from the
-			// target divides one population by another.
-			if (r.wpmAvg == null || r.wpmAvg <= 0) continue;
-			rsvpDeliveredWords += r.wordsRead;
-			rsvpActiveMs += r.durationMs;
-			rsvpTargetWordsWpm += r.wpmAvg * r.wordsRead;
-			rsvpTargetWords += r.wordsRead;
-			continue;
-		}
-		const bucket = measured.get(r.mode) ?? { words: 0, activeMs: 0 };
-		bucket.words += r.wordsRead;
-		bucket.activeMs += r.durationMs;
-		measured.set(r.mode, bucket);
-	}
-
-	const deliveredWpm = rsvpActiveMs > 0 ? rsvpDeliveredWords / (rsvpActiveMs / 60_000) : null;
-	const targetWpm = rsvpTargetWords > 0 ? rsvpTargetWordsWpm / rsvpTargetWords : null;
-
-	function wpmOf(mode: "scroll" | "page"): number | null {
-		const bucket = measured.get(mode);
-		if (!bucket || bucket.activeMs <= 0) return null;
-		return Math.max(1, Math.round(bucket.words / (bucket.activeMs / 60_000)));
-	}
-
-	return {
-		rsvpDeliveredRatio:
-			deliveredWpm !== null && targetWpm !== null && targetWpm > 0
-				? deliveredWpm / targetWpm
-				: null,
-		scrollWpm: wpmOf("scroll"),
-		pageWpm: wpmOf("page"),
-	};
 }
 
 export interface BookTotals {
@@ -169,23 +97,4 @@ export function rollUpWorks(rows: BookTotals[]): WorkTotals[] {
 	}
 
 	return [...works.values()].sort((a, b) => b.durationMs - a.durationMs);
-}
-
-/**
- * One measured reading speed across every mode: words actually read per active
- * minute over the plausible sittings. Null when nothing measurable happened, so
- * a profile hides the figure instead of showing zero.
- */
-export function measuredReadingSpeed(
-	rows: readonly { mode: ReadingMode; wordsRead: number; durationMs: number }[],
-): number | null {
-	let words = 0;
-	let activeMs = 0;
-	for (const r of rows) {
-		if (!isMeasurableSitting(r)) continue;
-		words += r.wordsRead;
-		activeMs += r.durationMs;
-	}
-	if (activeMs <= 0) return null;
-	return Math.max(1, Math.round(words / (activeMs / 60_000)));
 }

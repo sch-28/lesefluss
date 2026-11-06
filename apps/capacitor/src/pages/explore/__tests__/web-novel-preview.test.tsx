@@ -20,7 +20,7 @@ vi.mock("../../../services/serial-scrapers", async (importActual) => ({
 }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useStatsMeasuredSpeed: () => ({ data: { wpm: 250, sessionCount: 3 } }),
+		useStatsSpeedModel: () => ({ data: { pace: { wpm: 250, source: "measured" }, sittings: 3 } }),
 		useSeriesList: () => ({ data: seriesList.current }),
 		useImportSerialFromUrl: () => ({ mutateAsync: importMutate }),
 	},

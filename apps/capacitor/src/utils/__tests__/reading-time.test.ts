@@ -1,14 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { AVERAGE_READER_WPM, readingPace } from "../reading-time";
+import { estimateMinutesLeft, minutesLabel } from "../reading-time";
 
-describe("readingPace", () => {
-	it("uses the reader's measured speed", () => {
-		expect(readingPace(312)).toEqual({ wpm: 312, isMeasured: true });
+describe("minutesLabel", () => {
+	it("shows an estimate as a plain value", () => {
+		expect(minutesLabel(10)).toBe("10 min");
+		expect(minutesLabel(65)).toBe("1h 5m");
+		expect(minutesLabel(0.5)).toBe("< 1 min");
+	});
+});
+
+describe("estimateMinutesLeft", () => {
+	const book = { wordCount: 10_000, wordPosition: 4000, finishedAt: null };
+
+	it("is the words left at the pace", () => {
+		expect(estimateMinutesLeft(book, 300)).toBe(20);
 	});
 
-	it("falls back to a typical reader before anything is measured", () => {
-		for (const measured of [null, undefined, 0]) {
-			expect(readingPace(measured)).toEqual({ wpm: AVERAGE_READER_WPM, isMeasured: false });
-		}
+	it("is null for a finished book or an unknown length", () => {
+		expect(estimateMinutesLeft({ ...book, finishedAt: 1 }, 300)).toBeNull();
+		expect(estimateMinutesLeft({ ...book, wordCount: 0 }, 300)).toBeNull();
+	});
+
+	it("never goes below zero past the last word", () => {
+		expect(estimateMinutesLeft({ ...book, wordPosition: 12_000 }, 300)).toBe(0);
 	});
 });

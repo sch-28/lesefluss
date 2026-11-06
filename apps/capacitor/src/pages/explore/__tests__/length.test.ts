@@ -27,10 +27,10 @@ describe("describeLength", () => {
 		});
 	});
 
-	it("marks an estimate, visibly with ~ and spoken with About", () => {
+	it("shows an estimate as a plain value and says About only aloud", () => {
 		expect(describeLength({ wordCount: 78_000, wordCountEstimated: true }, 312)).toMatchObject({
-			text: "~312 pages · 4h 10m",
-			time: "~4h 10m",
+			text: "312 pages · 4h 10m",
+			time: "4h 10m",
 			spoken: "About 312 pages, 4 hours 10 minutes",
 			spokenTime: "About 4 hours 10 minutes to read",
 		});
@@ -38,8 +38,8 @@ describe("describeLength", () => {
 
 	it("rounds the badge to whole hours from 10 hours on, keeping minutes in the full text", () => {
 		const long = describeLength({ wordCount: 225_000, wordCountEstimated: true }, 300);
-		expect(long?.time).toBe("~13h");
-		expect(long?.text).toBe("~900 pages · 12h 30m");
+		expect(long?.time).toBe("13h");
+		expect(long?.text).toBe("900 pages · 12h 30m");
 	});
 
 	it("is null when the length is unknown", () => {

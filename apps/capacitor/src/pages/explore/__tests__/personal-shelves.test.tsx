@@ -20,7 +20,7 @@ vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
 		useBooks: () => ({ data: { books: state.books, covers: new Map() } }),
 		useLibraryCatalogIds: () => ({ data: state.owned }),
-		useStatsMeasuredSpeed: () => ({ data: { wpm: 300, sessionCount: 12 } }),
+		useStatsSpeedModel: () => ({ data: { pace: { wpm: 300, source: "measured" }, sittings: 12 } }),
 	},
 }));
 vi.mock("../../../services/social/feed", () => ({ useFeed }));

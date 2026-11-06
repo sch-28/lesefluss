@@ -1,85 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-	isMeasurableSitting,
-	measuredReadingSpeed,
-	type RateSession,
-	rollUpWorks,
-	summariseReadingRates,
-} from "../reading-rates";
+import { isMeasurableSitting, rollUpWorks } from "../reading-rates";
 
 const minutes = (n: number) => n * 60_000;
-
-describe("summariseReadingRates", () => {
-	function rsvp(overrides: Partial<RateSession> = {}): RateSession {
-		return {
-			mode: "rsvp",
-			wpmAvg: 400,
-			wordsRead: 2600,
-			durationMs: minutes(10),
-			...overrides,
-		};
-	}
-
-	// The engine spends time on punctuation pauses and the accel ramp, so
-	// estimating from the dial alone runs short by roughly this much.
-	it("reports delivered as a fraction of the dial", () => {
-		const rates = summariseReadingRates([rsvp()]);
-		expect(rates.rsvpDeliveredRatio).toBeCloseTo(260 / 400, 5);
-	});
-
-	// Both halves must come from the same rows. Counting a dial-less session's
-	// words as delivered while excluding it from the target divides one
-	// population by another.
-	it("ignores rsvp sessions with no recorded dial", () => {
-		const withDial = summariseReadingRates([rsvp()]);
-		const withExtra = summariseReadingRates([
-			rsvp(),
-			rsvp({ wpmAvg: null, wordsRead: 9000, durationMs: minutes(10) }),
-		]);
-		expect(withExtra.rsvpDeliveredRatio).toBe(withDial.rsvpDeliveredRatio);
-	});
-
-	it("has no ratio without rsvp history", () => {
-		const rates = summariseReadingRates([
-			{ mode: "scroll", wpmAvg: 240, wordsRead: 2400, durationMs: minutes(10) },
-		]);
-		expect(rates.rsvpDeliveredRatio).toBeNull();
-		expect(rates.scrollWpm).toBe(240);
-	});
-
-	it("keeps scroll and page apart", () => {
-		const rates = summariseReadingRates([
-			{ mode: "scroll", wpmAvg: null, wordsRead: 3000, durationMs: minutes(10) },
-			{ mode: "page", wpmAvg: null, wordsRead: 1000, durationMs: minutes(10) },
-		]);
-		expect(rates.scrollWpm).toBe(300);
-		expect(rates.pageWpm).toBe(100);
-	});
-
-	// One glanced-at paragraph should not move an estimate built from hours.
-	it("weights by words, not by session", () => {
-		const rates = summariseReadingRates([
-			{ mode: "scroll", wpmAvg: null, wordsRead: 30_000, durationMs: minutes(100) },
-			{ mode: "scroll", wpmAvg: null, wordsRead: 20, durationMs: minutes(2) },
-		]);
-		expect(rates.scrollWpm).toBe(294);
-	});
-
-	it("ignores sittings too short to measure", () => {
-		const rates = summariseReadingRates([
-			{ mode: "scroll", wpmAvg: null, wordsRead: 5, durationMs: 500 },
-		]);
-		expect(rates.scrollWpm).toBeNull();
-	});
-
-	it("returns nulls for no history at all", () => {
-		expect(summariseReadingRates([])).toEqual({
-			rsvpDeliveredRatio: null,
-			scrollWpm: null,
-			pageWpm: null,
-		});
-	});
-});
 
 describe("rollUpWorks", () => {
 	function book(overrides: Partial<Parameters<typeof rollUpWorks>[0][number]> = {}) {
@@ -147,41 +69,6 @@ describe("rollUpWorks", () => {
 
 	it("returns nothing for no rows", () => {
 		expect(rollUpWorks([])).toEqual([]);
-	});
-});
-
-describe("measuredReadingSpeed", () => {
-	const scroll = (wordsRead: number, durationMs: number) =>
-		({ mode: "scroll", wordsRead, durationMs }) as const;
-
-	it("is words over active time across plausible sittings, any reading mode", () => {
-		expect(
-			measuredReadingSpeed([
-				scroll(3000, minutes(10)),
-				{ ...scroll(1000, minutes(10)), mode: "rsvp" },
-			]),
-		).toBe(200);
-	});
-
-	it("drops position jumps and unmeasurable sittings", () => {
-		expect(
-			measuredReadingSpeed([scroll(3000, minutes(10)), scroll(22_488, 27_000), scroll(5, 500)]),
-		).toBe(300);
-	});
-
-	it("ignores listening, which moves at the voice's pace", () => {
-		expect(
-			measuredReadingSpeed([
-				scroll(3000, minutes(10)),
-				{ ...scroll(1700, minutes(10)), mode: "listen" },
-			]),
-		).toBe(300);
-		expect(measuredReadingSpeed([{ ...scroll(1700, minutes(10)), mode: "listen" }])).toBeNull();
-	});
-
-	it("is null with nothing to measure", () => {
-		expect(measuredReadingSpeed([])).toBeNull();
-		expect(measuredReadingSpeed([scroll(22_488, 27_000)])).toBeNull();
 	});
 });
 

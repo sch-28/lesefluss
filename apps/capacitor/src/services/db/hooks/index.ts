@@ -175,8 +175,8 @@ export const queryHooks = {
 	useStatsTopBooks: statsHooks.useTopBooks,
 	useStatsWpmTrend: statsHooks.useWpmTrend,
 	useStatsHourHistogram: statsHooks.useHourHistogram,
-	useStatsReadingRates: statsHooks.useReadingRates,
-	useStatsMeasuredSpeed: statsHooks.useMeasuredReadingSpeed,
+	/** One speed model for every speed and time estimate (see @lesefluss/core speed-model). */
+	useStatsSpeedModel: statsHooks.useSpeedModel,
 	useStatsBook: statsHooks.useBookStats,
 	useStatsCurrentlyReading: statsHooks.useCurrentlyReading,
 	useStatsFinishedBooks: statsHooks.useFinishedBooks,

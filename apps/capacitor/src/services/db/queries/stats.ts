@@ -1,11 +1,12 @@
 import {
+	bookSpeeds,
+	computeSpeedModel,
 	isMeasurableSitting,
 	type MeasuredReadingMode,
-	measuredReadingSpeed,
-	type ReadingRates,
 	readingProgress,
 	rollUpWorks,
-	summariseReadingRates,
+	type SpeedModel,
+	type SpeedWindow,
 	wordPos,
 } from "@lesefluss/core";
 import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
@@ -418,50 +419,29 @@ export interface BookStats {
 	/** The single longest sitting, for the journey summary. */
 	longestSessionMs: number;
 	longestSessionAt: number | null;
-	/** Words-weighted measured rate across every mode, and the mode that
-	 *  contributed most of those words. */
+	/** The book's own speed from the speed model, and the mode with most of its words. */
 	measuredWpm: number | null;
 	dominantMode: MeasuredReadingMode | null;
 	speedSeries: SpeedPoint[];
 }
 
-/** Recent sessions only: the RSVP ratio shifts when the delay settings change,
- *  and a lifetime average would take months to reflect it. */
-const RATE_SAMPLE_SIZE = 50;
-
-export async function getReadingRates(): Promise<ReadingRates> {
+/** Every session row: the window is chosen inside the model, and a book's own
+ *  speed spans all of its history. No speed test exists yet (LESE-124.11). */
+export async function getSpeedModel(opts: {
+	window: SpeedWindow;
+	now: number;
+}): Promise<SpeedModel> {
 	const rows = await db
 		.select({
+			bookId: readingSessions.bookId,
 			mode: readingSessions.mode,
+			startedAt: readingSessions.startedAt,
+			durationMs: readingSessions.durationMs,
+			wordsRead: readingSessions.wordsRead,
 			wpmAvg: readingSessions.wpmAvg,
-			wordsRead: readingSessions.wordsRead,
-			durationMs: readingSessions.durationMs,
-		})
-		.from(readingSessions)
-		.orderBy(desc(readingSessions.startedAt))
-		.limit(RATE_SAMPLE_SIZE);
-
-	return summariseReadingRates(rows);
-}
-
-export interface MeasuredReadingSpeed {
-	/** `measuredReadingSpeed` from @lesefluss/core over every session; null before the first plausible one. */
-	wpm: number | null;
-	sessionCount: number;
-}
-
-export async function getMeasuredReadingSpeed(): Promise<MeasuredReadingSpeed> {
-	const rows = await db
-		.select({
-			mode: readingSessions.mode,
-			wordsRead: readingSessions.wordsRead,
-			durationMs: readingSessions.durationMs,
 		})
 		.from(readingSessions);
-	return {
-		wpm: measuredReadingSpeed(rows),
-		sessionCount: rows.filter(isMeasurableSitting).length,
-	};
+	return computeSpeedModel(rows, { window: opts.window, now: opts.now, speedTest: null });
 }
 
 /**
@@ -471,11 +451,11 @@ export async function getMeasuredReadingSpeed(): Promise<MeasuredReadingSpeed> {
 export async function getBookStats(bookId: string): Promise<BookStats> {
 	const rows = await db
 		.select({
+			bookId: readingSessions.bookId,
 			startedAt: readingSessions.startedAt,
 			mode: readingSessions.mode,
 			durationMs: readingSessions.durationMs,
 			wordsRead: readingSessions.wordsRead,
-			wpmAvg: readingSessions.wpmAvg,
 		})
 		.from(readingSessions)
 		.where(eq(readingSessions.bookId, bookId))
@@ -499,11 +479,6 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 	let lastReadAt = 0;
 	let longestSessionMs = 0;
 	let longestSessionAt: number | null = null;
-	// Measured, not the dial: `wpmAvg` holds the RSVP target on rsvp rows, so it
-	// answers "how fast is the engine set", not "how fast was this book read".
-	let sumWords = 0;
-	let sumActiveMs = 0;
-	const wordsByMode = new Map<SpeedPoint["mode"], number>();
 	const speedSeries: SpeedPoint[] = [];
 
 	for (const r of rows) {
@@ -516,9 +491,6 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 		// Totals above are unconditional; only the derived rate is gated, so a
 		// position jump still counts as time spent and words covered.
 		if (isMeasurableSitting(r)) {
-			sumWords += r.wordsRead;
-			sumActiveMs += r.durationMs;
-			wordsByMode.set(r.mode, (wordsByMode.get(r.mode) ?? 0) + r.wordsRead);
 			speedSeries.push({
 				startedAt: r.startedAt,
 				mode: r.mode,
@@ -528,14 +500,7 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 		}
 	}
 
-	let dominantMode: SpeedPoint["mode"] | null = null;
-	let dominantWords = 0;
-	for (const [mode, words] of wordsByMode) {
-		if (words > dominantWords) {
-			dominantMode = mode;
-			dominantWords = words;
-		}
-	}
+	const speed = bookSpeeds(rows)[bookId];
 
 	return {
 		totalDurationMs,
@@ -545,8 +510,8 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 		firstReadAt: rows[0]?.startedAt ?? null,
 		longestSessionMs,
 		longestSessionAt,
-		measuredWpm: sumActiveMs > 0 ? Math.round(sumWords / (sumActiveMs / 60_000)) : null,
-		dominantMode,
+		measuredWpm: speed?.wpm ?? null,
+		dominantMode: speed?.mode ?? null,
 		speedSeries,
 	};
 }

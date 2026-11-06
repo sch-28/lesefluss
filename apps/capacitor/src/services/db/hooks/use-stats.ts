@@ -1,3 +1,4 @@
+import type { SpeedWindow } from "@lesefluss/core";
 import { useQuery } from "@tanstack/react-query";
 import { startOfLocalDay } from "../../../utils/date-utils";
 import type { TrendPeriod } from "../../stats/aggregate";
@@ -41,17 +42,12 @@ function useWpmTrend(period: TrendPeriod, now: number) {
 	});
 }
 
-function useReadingRates() {
+/** The window stays `recent` until the Speed tab lets the reader pick one (LESE-124.4). */
+function useSpeedModel(window: SpeedWindow = "recent") {
 	return useQuery({
-		queryKey: statsKeys.readingRates,
-		queryFn: () => queries.getReadingRates(),
-	});
-}
-
-function useMeasuredReadingSpeed() {
-	return useQuery({
-		queryKey: statsKeys.measuredSpeed,
-		queryFn: () => queries.getMeasuredReadingSpeed(),
+		queryKey: statsKeys.speedModel(window),
+		// `now` only matters for the 30-day window, and a stats invalidation refetches it.
+		queryFn: () => queries.getSpeedModel({ window, now: Date.now() }),
 	});
 }
 
@@ -109,7 +105,6 @@ export const statsHooks = {
 	useTopBooks,
 	useWpmTrend,
 	useHourHistogram,
-	useReadingRates,
-	useMeasuredReadingSpeed,
+	useSpeedModel,
 	useBookStats,
 };

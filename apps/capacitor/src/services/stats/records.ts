@@ -8,7 +8,7 @@
  * speed record at all.
  */
 
-import { isMeasurableSitting, type ReadingMode } from "@lesefluss/core";
+import { bookSpeeds, type ReadingMode } from "@lesefluss/core";
 import { localDateKey, startOfLocalDay } from "../../utils/date-utils";
 import { sumDurationByLocalDay } from "./aggregate";
 
@@ -45,7 +45,6 @@ export function summariseRecords(sessions: RecordSession[], books: RecordBook[])
 	const titleByBook = new Map(books.map((book) => [book.id, book.title]));
 
 	let longestSitting: ReadingRecords["longestSitting"] = null;
-	const speedByBook = new Map<string, { title: string; words: number; ms: number }>();
 	const msByDay = sumDurationByLocalDay(sessions);
 	// `sumDurationByLocalDay` keys by date string; the record needs the epoch of
 	// that local midnight to render it.
@@ -66,15 +65,6 @@ export function summariseRecords(sessions: RecordSession[], books: RecordBook[])
 		}
 
 		dayStartOf.set(localDateKey(session.startedAt), startOfLocalDay(session.startedAt));
-
-		// Only plausible sittings can set a speed record; a position jump would
-		// otherwise crown a book the reader barely opened.
-		if (title !== undefined && isMeasurableSitting(session)) {
-			const book = speedByBook.get(session.bookId) ?? { title, words: 0, ms: 0 };
-			book.words += session.wordsRead;
-			book.ms += session.durationMs;
-			speedByBook.set(session.bookId, book);
-		}
 	}
 
 	// Kept in milliseconds so the caller formats once; rounding to minutes here
@@ -86,12 +76,15 @@ export function summariseRecords(sessions: RecordSession[], books: RecordBook[])
 		}
 	}
 
+	// The speed model's per-book speed, so the record matches the book's own
+	// page. Only plausible sittings count, or a position jump would crown a book
+	// the reader barely opened.
 	let fastestBook: ReadingRecords["fastestBook"] = null;
-	for (const totals of speedByBook.values()) {
-		if (totals.ms < MIN_TIME_FOR_SPEED_RECORD_MS) continue;
-		const wpm = Math.round(totals.words / (totals.ms / 60_000));
-		if (fastestBook === null || wpm > fastestBook.wpm) {
-			fastestBook = { wpm, title: totals.title };
+	for (const [bookId, speed] of Object.entries(bookSpeeds(sessions))) {
+		const title = titleByBook.get(bookId);
+		if (title === undefined || speed.activeMs < MIN_TIME_FOR_SPEED_RECORD_MS) continue;
+		if (fastestBook === null || speed.wpm > fastestBook.wpm) {
+			fastestBook = { wpm: speed.wpm, title };
 		}
 	}
 

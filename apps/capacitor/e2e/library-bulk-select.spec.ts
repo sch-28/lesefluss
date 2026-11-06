@@ -19,7 +19,7 @@ async function seedBooks(page: Page) {
 	for (const title of TITLES) {
 		const buffer = await buildEpubBuffer({
 			title,
-			creator: "Ada Vance",
+			creator: title === "Riverkeep" ? "Bo Lind" : "Ada Vance",
 			chapters: [{ id: "c1", href: "c1.xhtml", title: "One", body: "<p>Body text.</p>" }],
 		});
 		await writeFile(join(dir, `${title.toLowerCase()}.epub`), buffer);
@@ -71,7 +71,7 @@ test("long press starts a selection, a tap toggles instead of opening, and exit 
 	await expect(page.getByText("1 selected")).toBeVisible();
 	await expect(card(page, "Northlight")).not.toHaveAttribute("data-selected", "true");
 
-	await page.getByRole("button", { name: "Exit selection" }).click();
+	await page.getByRole("button", { name: "Done", exact: true }).click();
 	await expect(page.getByRole("button", { name: "Add book" })).toBeVisible();
 	// No leaked handlers: a tap opens the reader again.
 	await card(page, "Tidewater").click();
@@ -97,7 +97,7 @@ test("deleting a selection names the books and removes exactly those", async ({ 
 	await expect(card(page, "Northlight")).toHaveCount(0);
 	await expect(card(page, "Riverkeep")).toHaveCount(1);
 	// The run ends by leaving selection mode.
-	await expect(page.getByRole("button", { name: "Exit selection" })).toHaveCount(0);
+	await expect(page.getByRole("button", { name: "Done", exact: true })).toHaveCount(0);
 });
 
 test("tagging a selection puts the tag on every picked book", async ({ page }) => {
@@ -111,13 +111,70 @@ test("tagging a selection puts the tag on every picked book", async ({ page }) =
 	await page.getByRole("button", { name: "Add tag" }).click();
 	await page.getByRole("button", { name: "Apply" }).click();
 
-	await expect(page.getByRole("button", { name: "Exit selection" })).toHaveCount(0);
+	await expect(page.getByRole("button", { name: "Done", exact: true })).toHaveCount(0);
 
 	// The tag filter is the proof: it reads the committed rows, not the sheet.
-	await page.getByRole("button", { name: "Filter" }).click();
-	await page.getByRole("button", { name: "summer", exact: true }).click();
+	await page.getByRole("button", { name: "Add filter" }).click();
+	await page.getByTestId("filter-picker").getByRole("button", { name: /^Tag/ }).first().click();
+	await page.getByRole("button", { name: "Tag summer, off" }).click();
 
 	await expect(card(page, "Tidewater")).toHaveCount(1);
 	await expect(card(page, "Northlight")).toHaveCount(1);
 	await expect(card(page, "Riverkeep")).toHaveCount(0);
+});
+
+test("Shift-click selects the run, Ctrl-click toggles one, Select all N takes the whole view", async ({
+	page,
+}) => {
+	// Library order is newest first, so read it rather than assume it.
+	const order = await page
+		.locator("[data-book-title]")
+		.evaluateAll((els) => els.map((el) => el.getAttribute("data-book-title") ?? ""));
+	const [first, middle, last] = order as [string, string, string];
+
+	await card(page, first).click({ modifiers: ["ControlOrMeta"] });
+	await expect(page.getByText("1 selected")).toBeVisible();
+	await card(page, last).click({ modifiers: ["Shift"] });
+	await expect(page.getByText("3 selected")).toBeVisible();
+	await expect(card(page, middle)).toHaveAttribute("data-selected", "true");
+
+	await card(page, middle).click({ modifiers: ["ControlOrMeta"] });
+	await expect(page.getByText("2 selected")).toBeVisible();
+	await expect(page).toHaveURL(/\/tabs\/library/);
+
+	await page.getByRole("button", { name: `Select all ${TITLES.length}` }).click();
+	await expect(page.getByText(`${TITLES.length} selected`)).toBeVisible();
+
+	const grid = page.getByTestId("library-items");
+	const box = await grid.boundingBox();
+	if (!box) throw new Error("no grid");
+	const gap = { x: box.x + box.width - 8, y: box.y + box.height - 8 };
+	expect(
+		await page.evaluate(
+			({ x, y }) => document.elementFromPoint(x, y)?.closest("button, a, [data-book-id]") != null,
+			gap,
+		),
+	).toBe(false);
+	await page.mouse.click(gap.x, gap.y);
+	await expect(page.getByRole("button", { name: "Done", exact: true })).toHaveCount(0);
+});
+
+test("Select all takes only the books the filter shows", async ({ page }) => {
+	await page.getByTestId("filter-bar").getByRole("button", { name: "Add filter" }).click();
+	const picker = page.getByTestId("filter-picker");
+	await picker.getByRole("button", { name: "Author", exact: false }).first().click();
+	await picker.getByRole("button", { name: "Author Ada Vance, off" }).click();
+	await page.keyboard.press("Escape");
+	await expect(page.locator("[data-book-title]")).toHaveCount(2);
+
+	await enterSelectionMode(page, "Tidewater");
+	await page.getByRole("button", { name: "Select all 2" }).click();
+	await expect(page.getByText("2 selected")).toBeVisible();
+	await expect(card(page, "Northlight")).toHaveAttribute("data-selected", "true");
+});
+
+test("the … button and right-click open the per-book menu", async ({ page }) => {
+	await card(page, "Tidewater").hover();
+	await page.getByRole("button", { name: "More for Tidewater" }).click();
+	await expect(page.getByRole("button", { name: "Select", exact: true })).toBeVisible();
 });

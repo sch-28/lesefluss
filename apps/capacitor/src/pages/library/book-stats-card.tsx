@@ -1,4 +1,4 @@
-import type { MeasuredReadingMode } from "@lesefluss/core";
+import { bookPace, type MeasuredReadingMode } from "@lesefluss/core";
 import { ResponsiveLine } from "@nivo/line";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
@@ -65,6 +65,7 @@ interface Props {
 export function BookStatsCard({ book }: Props) {
 	const { theme, isEinkMode } = useTheme();
 	const stats = queryHooks.useStatsBook(book.id);
+	const speedModel = queryHooks.useStatsSpeedModel();
 	// The palette is read from CSS variables, which e-ink mode changes without changing `theme`.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: isEinkMode re-reads the variables
 	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme, isEinkMode]);
@@ -107,7 +108,7 @@ export function BookStatsCard({ book }: Props) {
 	if (!data || data.sessionCount === 0) return null;
 
 	const { totalPages, pagesIn, percent, isFinished, isPaceEstimated, minutesLeft } =
-		summariseBookReading(book, data.measuredWpm);
+		summariseBookReading(book, bookPace(speedModel.data, book.id));
 
 	const showSparkline = buckets.length >= 2;
 

@@ -1,37 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { markerDetail } from "./buddy-read-markers";
-import { shouldDismissSelectionOnKey } from "./use-keyboard-shortcuts";
-
-function el(html: string): Element {
-	const host = document.createElement("div");
-	host.innerHTML = html;
-	return host.firstElementChild as Element;
-}
-
-describe("shouldDismissSelectionOnKey", () => {
-	const base = { key: "Escape", hasSelection: true, target: null, hasOverlay: false };
-
-	it("dismisses an open selection on Escape, also with a toolbar button focused", () => {
-		expect(shouldDismissSelectionOnKey(base)).toBe(true);
-		expect(shouldDismissSelectionOnKey({ ...base, target: el("<button>Highlight</button>") })).toBe(
-			true,
-		);
-	});
-
-	it("leaves Escape alone without a selection, while typing, or with an overlay open", () => {
-		expect(shouldDismissSelectionOnKey({ ...base, hasSelection: false })).toBe(false);
-		expect(shouldDismissSelectionOnKey({ ...base, target: el("<textarea></textarea>") })).toBe(
-			false,
-		);
-		expect(shouldDismissSelectionOnKey({ ...base, target: el("<input />") })).toBe(false);
-		expect(shouldDismissSelectionOnKey({ ...base, hasOverlay: true })).toBe(false);
-	});
-
-	it("ignores other keys", () => {
-		expect(shouldDismissSelectionOnKey({ ...base, key: "r" })).toBe(false);
-		expect(shouldDismissSelectionOnKey({ ...base, key: " " })).toBe(false);
-	});
-});
 
 describe("markerDetail", () => {
 	const live = { userId: "u", wordPosition: 500, wordCount: 1000, wpm: 280, isListening: false };

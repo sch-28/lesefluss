@@ -16,6 +16,9 @@ A self-contained text the user reads. Has metadata (title, author), a body, and 
 
 The set of books on a given surface. The app has a library (in IndexedDB). The rsvpnano device has its own library (on SD card). Each library has its own identity scheme. They are correlated by deterministic filenames (see *book identity mapping*).
 
+- **Library filter**: what narrows the app's library view, together with the search text. Per **facet** (status, tag, author, series, rating, progress, added, last read) it holds the values a book must carry one of (*included*) and the values it must carry none of (*excluded*). Ratings file under whole stars (3.5 counts as 4); dates and progress are buckets. Shown as removable chips; persisted on the device, not synced. The model lives in `pages/library/filter-model.ts`.
+- **Selection**: a set of books picked for one bulk action. It survives filter and search changes, so it can be built across several views; *Select all N* adds every book in the current view, rendered or not.
+
 ### Position
 
 The reader's location in a book. The canonical app-side unit is **word position** — a zero-based index into the book's tokenized word stream. The lesefluss esp32 firmware still speaks byte offsets; conversion happens at that BLE seam, not in the middle. The rsvpnano speaks word index natively. See ADR-0002.
@@ -66,6 +69,19 @@ A range of the book travelled forward at reading pace within one [session](#sess
 
 Spans are merged, so a passage re-read in the same sitting counts once, while a gap skipped earlier and read later does count. They are a tracker-internal accounting device: never persisted, never synced. Only their total length is stored.
 
+### Speed model
+
+How fast this reader reads, from one function (`computeSpeedModel` in `@lesefluss/core`) that the app and the server both run on [session](#session) rows, so every surface shows the same number. Only measurable sittings count (`isMeasurableSitting`: no listening, no position jumps).
+
+- **Reading speed**: words over active time in scroll and page together; the split per mode is kept for the reader.
+- **RSVP speed**: words over active time in RSVP, which is what the engine delivered, shown next to the *dial* (the RSVP wpm setting, stored as `wpmAvg` on RSVP rows). Delivered runs under the dial because of punctuation pauses and the ramp.
+- **Reading pace**: words over active time across both, so it follows the reader's mix of modes. It feeds every time estimate (book, goal, Explore) and is never shown as "your speed". Not the [reading goal](#reading-goal)'s **Pace** mode. In the reader, estimates use the current mode's speed instead.
+- **Window**: which sittings count. *Recent* (the default) is the newest sittings up to 10 hours of reading; *30 days* and *all time* are the others.
+- **Book speed**: a book's own words over active time, across all of its history. Its estimates use it once the book has 30 minutes of reading, the reading pace before that.
+- **Fallback**: under 10 minutes of reading in the window, the speed comes from all measured sittings; under 10 minutes in those too, it is not measured yet: the latest speed test, else 225 wpm.
+
+Estimates render as plain values ("4h 10m", no "~"); that a value is estimated is said only in a popover or details.
+
 ### Reading goal
 
 A reader's plan to finish one book, stored in `reading_goals` and synced last-write-wins on the raw client stamp: goals are plans, not stats, so they sync with stats sync off too, while [sessions](#session) stay on the device. At most one goal per book is *active*; the others are *completed* (the book crossed the finished threshold, or the reader said so; a goal cannot start on a book already past it) or *abandoned* (replaced by a new goal, or given up). Removing a goal tombstones it. Not available for serial chapters. Progress is measured by [position](#position), not by time read, so skipping ahead counts. All dates are local calendar days. The arithmetic lives in `services/stats/reading-goal.ts`.
@@ -78,7 +94,7 @@ Every goal is in one of two **modes**:
 The mode can be switched at any time. A switch, or a new target date or daily percent, is a *replan*: the plan line restarts from today's start-of-day position, days already met carry over, and today's reading still counts for today. Deadline to pace keeps today's daily target as the pace; pace to deadline keeps the projected finish as the target date.
 
 - **Start-of-day position**: the position at local midnight, taken from the last [session](#session) that ended before it (a session running across midnight gives its start position), else the goal's start. Reading on a [reader device](#reader-device) creates no sessions, only moves the position on BLE sync, so it counts toward the day it is first followed by an in-app session, or toward today while none has followed.
-- **Daily target**: what today asks for, in percent of the book (shown to one decimal) and in minutes at the reader's pace for this book, else their overall measured pace, else 225 wpm. Fixed for the whole local day because it depends only on the start-of-day position. Reading past it is credited. Today's progress counts from the furthest point of the day: the furthest word today's [sessions](#session) read to (the open sitting's included in the reader) or the saved position, whichever is further. Once met the target stays met for the day even if the position moves back (a jump back, or e-ink snapping to a page start). A jump ahead and back does not count; a jump the reader stays at does, as does reading on a paired device today. Past days count the same way, with where the day ended as its position; that end comes from sessions, so a past day read only on a paired device, which records none, does not count. Ahead/behind still uses the current position.
+- **Daily target**: what today asks for, in percent of the book (shown to one decimal) and in minutes at the [book's reading pace](#speed-model). Fixed for the whole local day because it depends only on the start-of-day position. Reading past it is credited. Today's progress counts from the furthest point of the day: the furthest word today's [sessions](#session) read to (the open sitting's included in the reader) or the saved position, whichever is further. Once met the target stays met for the day even if the position moves back (a jump back, or e-ink snapping to a page start). A jump ahead and back does not count; a jump the reader stays at does, as does reading on a paired device today. Past days count the same way, with where the day ended as its position; that end comes from sessions, so a past day read only on a paired device, which records none, does not count. Ahead/behind still uses the current position.
 - **Plan line**: the straight line from the plan's start to 100% on the target date (deadline) or at the daily percent per day (pace).
 - **On track**: not behind the plan line. *Ahead/behind* is how far the position is past the line at the end of today, or short of it at the end of yesterday, in percent and in days of the line's slope. A reader who has not read yet today but met every earlier day is exactly on track.
 - **Reminder**: an optional daily notification at a time stored on the goal (so it syncs), scheduled on the device as a local notification a few days ahead and rebuilt whenever the plan or the day changes. No reminder fires on a day whose target is met. Not available in the web build.

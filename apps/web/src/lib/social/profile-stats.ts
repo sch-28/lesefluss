@@ -1,6 +1,6 @@
 import {
 	bookStatus,
-	measuredReadingSpeed,
+	computeSpeedModel,
 	type ProfileStats,
 	readingDayKeys,
 	streakFromDays,
@@ -125,6 +125,11 @@ export async function profileStatsFor(
 			.flatMap((s) => readingDaysOf(s.startedAt, options.timeZone)),
 	);
 	const openDays = readingDaysOf(now, options.timeZone);
+	// All time, like the other profile figures; a stand-in pace is hidden, not shown as theirs.
+	const pace = computeSpeedModel(
+		sessions.map((s) => ({ ...s, startedAt: s.startedAt.getTime() })),
+		{ window: "all", now: now.getTime() },
+	).pace;
 	const streak =
 		sessions.length > 0
 			? streakFromDays(readDays, openDays[openDays.length - 1] ?? "", openDays[0])
@@ -134,7 +139,7 @@ export async function profileStatsFor(
 		booksFinishedThisYear,
 		wordsRead,
 		readingTimeMs: sessions.length > 0 ? sessions.reduce((sum, s) => sum + s.durationMs, 0) : null,
-		readingSpeedWpm: sessions.length > 0 ? measuredReadingSpeed(sessions) : null,
+		readingSpeedWpm: pace.source === "measured" ? pace.wpm : null,
 		currentStreakDays: streak?.current ?? null,
 		longestStreakDays: streak?.longest ?? null,
 	};

@@ -23,7 +23,9 @@ vi.mock("../../../services/db/hooks", async () => {
 	const { bookKeys } = await import("../../../services/db/hooks/query-keys");
 	return {
 		queryHooks: {
-			useStatsMeasuredSpeed: () => ({ data: { wpm: 300, sessionCount: 12 } }),
+			useStatsSpeedModel: () => ({
+				data: { pace: { wpm: 300, source: "measured" }, sittings: 12 },
+			}),
 			useSeriesList: () => ({ data: [] }),
 			useLibraryCatalogIds: () =>
 				useQuery({ queryKey: bookKeys.catalogIds, queryFn: getLibraryCatalogIds }),
@@ -238,7 +240,7 @@ describe("catalog length", () => {
 		});
 		view = await render(<CatalogResultCard result={estimated} onOpen={vi.fn()} />);
 		const badge = view.container.querySelector('[data-testid="cover-length-badge"]');
-		expect(badge?.querySelector('[aria-hidden="true"]')?.textContent).toBe("~4h 20m");
+		expect(badge?.querySelector('[aria-hidden="true"]')?.textContent).toBe("4h 20m");
 		expect(badge?.querySelector(".sr-only")?.textContent).toBe("About 4 hours 20 minutes to read");
 		expect(view.text()).not.toContain("SE");
 		expect(view.text()).not.toContain("pages");

@@ -1,3 +1,4 @@
+import { bookPace } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { CheckCircle2, Target } from "lucide-react";
@@ -5,7 +6,7 @@ import { useState } from "react";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book } from "../../../services/db/schema";
 import { formatDayKey, localDateKey } from "../../../utils/date-utils";
-import { minutesLabel, percentLabel, readingPace } from "../../../utils/reading-time";
+import { minutesLabel, percentLabel } from "../../../utils/reading-time";
 import { GoalChart } from "./goal-chart";
 import {
 	canHaveGoal,
@@ -24,15 +25,13 @@ import { DayCount, GoalStat } from "./goal-stat";
 export function GoalCard({ book }: { book: Book }) {
 	const [isSheetOpen, setSheetOpen] = useState(false);
 	const result = queryHooks.useReadingGoalPlan(canHaveGoal(book) ? book.id : null);
-	const bookStats = queryHooks.useStatsBook(book.id);
-	const globalSpeed = queryHooks.useStatsMeasuredSpeed();
+	const speedModel = queryHooks.useStatsSpeedModel();
 
 	if (!canHaveGoal(book) || result.isPending) return null;
 
 	const goal = result.data?.goal ?? null;
 	const plan = result.data?.plan.kind === "plan" ? result.data.plan : null;
-	const wpm =
-		plan?.pace.wpm ?? readingPace(bookStats.data?.measuredWpm ?? globalSpeed.data?.wpm).wpm;
+	const wpm = plan?.pace.wpm ?? bookPace(speedModel.data, book.id).wpm;
 
 	if (!goal) {
 		if (!canStartGoal(book)) return null;

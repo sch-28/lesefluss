@@ -1,15 +1,9 @@
-import {
-	BOOK_STATUS_LABELS,
-	type BookStatus,
-	bookStatus,
-	parseBookTags,
-	readingProgress,
-} from "@lesefluss/core";
+import { type BookStatus, bookStatus, parseBookTags, readingProgress } from "@lesefluss/core";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
+import { type FacetValues, facetValuesOf, type LibraryFilter, matchesFilter } from "./filter-model";
 
 export type SortBy = "title" | "author" | "recent" | "progress" | "rating";
-export type FilterBy = "all" | BookStatus;
 
 export const SORT_LABELS: Record<SortBy, string> = {
 	title: "Title",
@@ -19,9 +13,6 @@ export const SORT_LABELS: Record<SortBy, string> = {
 	rating: "Rating",
 };
 
-export const FILTER_LABELS: Record<FilterBy, string> = { all: "All", ...BOOK_STATUS_LABELS };
-
-export const FILTER_OPTIONS: FilterBy[] = ["all", "want", "reading", "finished", "dropped"];
 export const SORT_OPTIONS: SortBy[] = ["recent", "title", "author", "progress", "rating"];
 
 const FINISHED_TAIL_WORDS = 5;
@@ -73,12 +64,13 @@ type SortKey = {
 };
 
 export type LibraryItem =
-	| { kind: "book"; book: Book; sortKey: SortKey }
+	| { kind: "book"; book: Book; sortKey: SortKey; facets: FacetValues }
 	| {
 			kind: "series";
 			series: Series;
 			activity: SeriesActivity | undefined;
 			sortKey: SortKey;
+			facets: FacetValues;
 	  };
 
 function bookSortKey(b: Book): SortKey {
@@ -105,10 +97,6 @@ function seriesSortKey(s: Series, activity: SeriesActivity | undefined): SortKey
 		// which is right: they cannot match it.
 		tags: [],
 	};
-}
-
-function matchesFilter(item: LibraryItem, filterBy: FilterBy): boolean {
-	return filterBy === "all" || item.sortKey.status === filterBy;
 }
 
 /** Case-insensitive substring over title and author. Runs against the already
@@ -146,32 +134,64 @@ function compareItems(a: LibraryItem, b: LibraryItem, sortBy: SortBy): number {
 }
 
 export type LibraryView = {
-	filterBy: FilterBy;
+	filter: LibraryFilter;
 	sortBy: SortBy;
 	/** Free text over title and author. Empty matches everything. */
 	search?: string;
-	/** Single tag, or null for no tag filter. */
-	tag?: string | null;
 };
+
+/** Every row of the library with its sort and filter fields, built once per library change. */
+export function buildLibraryItems(
+	books: Book[],
+	series: Series[],
+	activity: Map<string, SeriesActivity>,
+	now = Date.now(),
+): LibraryItem[] {
+	return [
+		...books.map<LibraryItem>((book) => {
+			const sortKey = bookSortKey(book);
+			const facets = facetValuesOf(
+				{
+					...sortKey,
+					seriesId: null,
+					addedAt: book.addedAt,
+					lastRead: book.lastRead,
+				},
+				now,
+			);
+			return { kind: "book", book, sortKey, facets };
+		}),
+		...series.map<LibraryItem>((s) => {
+			const a = activity.get(s.id);
+			const sortKey = seriesSortKey(s, a);
+			const facets = facetValuesOf(
+				{
+					...sortKey,
+					seriesId: s.id,
+					addedAt: s.createdAt,
+					lastRead: a?.latestRead ?? null,
+				},
+				now,
+			);
+			return { kind: "series", series: s, activity: a, sortKey, facets };
+		}),
+	];
+}
+
+export function applyLibraryView(items: readonly LibraryItem[], view: LibraryView): LibraryItem[] {
+	const { filter, sortBy, search = "" } = view;
+	const needle = search.trim().toLowerCase();
+	return items
+		.filter((it) => matchesFilter(it.facets, filter) && matchesSearch(it, needle))
+		.sort((a, b) => compareItems(a, b, sortBy));
+}
 
 export function filterAndSortLibrary(
 	books: Book[],
 	series: Series[],
 	activity: Map<string, SeriesActivity>,
 	view: LibraryView,
+	now = Date.now(),
 ): LibraryItem[] {
-	const { filterBy, sortBy, search = "", tag = null } = view;
-	const needle = search.trim().toLowerCase();
-	const items: LibraryItem[] = [
-		...books.map<LibraryItem>((book) => ({ kind: "book", book, sortKey: bookSortKey(book) })),
-		...series.map<LibraryItem>((s) => {
-			const a = activity.get(s.id);
-			return { kind: "series", series: s, activity: a, sortKey: seriesSortKey(s, a) };
-		}),
-	];
-	return items
-		.filter((it) => matchesFilter(it, filterBy))
-		.filter((it) => matchesSearch(it, needle))
-		.filter((it) => tag === null || it.sortKey.tags.includes(tag))
-		.sort((a, b) => compareItems(a, b, sortBy));
+	return applyLibraryView(buildLibraryItems(books, series, activity, now), view);
 }
