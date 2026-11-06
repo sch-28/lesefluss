@@ -155,6 +155,9 @@ import {
 import { createPersistedWord } from "./persisted-word";
 import { ReadAloudControls } from "./read-aloud-controls";
 import { ReaderAnnouncer } from "./reader-announcer";
+import { ReaderApiContext } from "./reader-api/context";
+import { createLegacyReaderApi, createNavigateEmitter } from "./reader-api/legacy-adapter";
+import type { ReaderMode } from "./reader-api/types";
 import { buildFigureMap } from "./reader-figures";
 import { ReadingRulerOverlay } from "./reading-ruler-overlay";
 import { stripPunct } from "./rsvp-engine";
@@ -204,7 +207,7 @@ const EXTERNAL_POSITION_TOAST = "external-position";
 const EXTERNAL_POSITION_TOAST_MS = 10_000;
 
 // Resolved at build time, so a production bundle drops the DEV save log; behind
-// an `if (DEV)` inside writePosition its body was kept.
+// an `if (DEV)` inside writePositionRow its body was kept.
 const logPositionSave = import.meta.env.DEV ? publishPositionSave : null;
 
 /** `isInDb`: the row holds `row`; false when a pull's merge skipped it for the reader's newer write. */
@@ -824,7 +827,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	);
 
 	// ── Save position to DB + BLE ─────────────────────────────────────────
-	const writePosition = useCallback(
+	const writePositionRow = useCallback(
 		async (
 			word: number,
 			source: SaveSource,
@@ -941,6 +944,16 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			}
 		},
 		[id, pushPosition, book?.seriesId, qc],
+	);
+
+	const [navigateEmitter] = useState(createNavigateEmitter);
+	const writePosition = useCallback(
+		(word: number, source: SaveSource, opts?: { scheduleSync?: boolean }) => {
+			const write = writePositionRow(word, source, opts);
+			navigateEmitter.emit(word, source);
+			return write;
+		},
+		[writePositionRow, navigateEmitter],
 	);
 
 	const savePosition = useCallback(
@@ -1883,6 +1896,20 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		},
 		[jumpToWord, browse, exitRsvpToStandard, savePosition, markLocalMove],
 	);
+	const navigateToWordRef = useRef(navigateToWord);
+	navigateToWordRef.current = navigateToWord;
+	const readerApiMode: ReaderMode = readerMode === "rsvp" ? "rsvp" : paginationStyle;
+	const readerApi = useMemo(
+		() =>
+			createLegacyReaderApi({
+				mode: readerApiMode,
+				emitter: navigateEmitter,
+				getView: () => viewContainerEl,
+				getCurrentWord: () => lastWordRef.current,
+				navigateToWord: (word) => navigateToWordRef.current(word),
+			}),
+		[readerApiMode, navigateEmitter, viewContainerEl],
+	);
 
 	// Moving on to the next chapter means the browsed spot was read.
 	const handleNextChapter = useCallback(() => {
@@ -2560,592 +2587,596 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		(book.catalogId ? externalSourceUrl(book.catalogId) : null);
 
 	return (
-		<div className={`reader-theme-${theme} flex h-screen flex-col bg-background text-foreground`}>
-			<header className="flex shrink-0 flex-col border-border border-b bg-background/95 pt-[var(--safe-top)] backdrop-blur">
-				<div className="flex h-12 items-center gap-0.5 px-1">
-					<button
-						type="button"
-						onClick={() => history.back()}
-						aria-label="Back"
-						className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-					>
-						<ChevronLeft className="size-5" />
-					</button>
-					{book.seriesId != null && (
-						<>
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={() => void chapterAdvance.tryRetreat()}
-								disabled={!hasPrev}
-								aria-label="Previous chapter"
-							>
-								<ChevronLeft />
-							</Button>
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={handleNextChapter}
-								disabled={!hasNext}
-								aria-label="Next chapter"
-							>
-								<ChevronRight />
-							</Button>
-						</>
-					)}
-					<h1 className="m-0 flex-1 truncate px-1 font-semibold text-base leading-none">
-						{book.title}
-					</h1>
-					{goalPlan && goalToday && (
-						<GoalChip
-							plan={goalPlan}
-							today={goalToday}
-							onOpenDetails={() => history.push(`/tabs/library/book/${book.id}`)}
-						/>
-					)}
-					{IS_READ_ALOUD_SUPPORTED &&
-						(readerMode === "rsvp" ? (
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={toggleRsvpAudio}
-								disabled={!wordIndex}
-								aria-label="Listen"
-								aria-pressed={isRsvpAudioOn}
-								className={isRsvpAudioOn ? "text-primary" : undefined}
-							>
-								<Headphones />
-							</Button>
-						) : (
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={readAloud.toggle}
-								disabled={!wordIndex}
-								aria-label={readAloud.status === "playing" ? "Pause listening" : "Listen"}
-								className={isReadAloudActive ? "text-primary" : undefined}
-							>
-								{readAloud.status === "playing" ? <Pause /> : <Headphones />}
-							</Button>
-						))}
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={handleRsvpToggle}
-						disabled={!content}
-						aria-label={
-							readerMode === "rsvp" ? "Switch to standard reader" : "Switch to RSVP reader"
-						}
-						className={readerMode === "rsvp" ? "text-primary" : undefined}
-					>
-						{readerMode === "rsvp" ? <ZapOff /> : <Zap />}
-					</Button>
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={() => setAnnotationsOpen(true)}
-						disabled={!content}
-						aria-label="Annotations"
-					>
-						<Bookmark />
-					</Button>
-					<DropdownMenu>
-						<AppearancePopover
-							open={appearanceOpen}
-							onOpenChange={setAppearanceOpen}
-							anchor={
-								<span className="inline-flex">
-									<DropdownMenuTrigger asChild>
-										<Button variant="ghost" size="icon">
-											<MoreVertical />
-											{/* Text, not aria-label: Android reads a menu button's text and drops its
-											    aria-label, so TalkBack found it unnamed (TASK-205.13). */}
-											<span className="sr-only">More actions</span>
-										</Button>
-									</DropdownMenuTrigger>
-								</span>
-							}
-						/>
-						<DropdownMenuContent
-							align="end"
-							className="w-64 p-1.5"
-							// Opened once the menu has fully closed: earlier, the menu's own
-							// focus moves while closing read as the popover losing focus.
-							onCloseAutoFocus={(e) => {
-								if (!openAppearanceOnMenuCloseRef.current) return;
-								openAppearanceOnMenuCloseRef.current = false;
-								e.preventDefault();
-								setAppearanceOpen(true);
-							}}
+		<ReaderApiContext.Provider value={readerApi}>
+			<div className={`reader-theme-${theme} flex h-screen flex-col bg-background text-foreground`}>
+				<header className="flex shrink-0 flex-col border-border border-b bg-background/95 pt-[var(--safe-top)] backdrop-blur">
+					<div className="flex h-12 items-center gap-0.5 px-1">
+						<button
+							type="button"
+							onClick={() => history.back()}
+							aria-label="Back"
+							className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
 						>
-							<DropdownMenuItem
-								className={MENU_ITEM_CLASS}
-								onSelect={() => setSearchOpen(true)}
-								disabled={!content}
-							>
-								<Search />
-								<span>Search</span>
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								className={MENU_ITEM_CLASS}
-								onSelect={() => {
-									openAppearanceOnMenuCloseRef.current = true;
-								}}
-							>
-								<Type />
-								<span>Appearance</span>
-							</DropdownMenuItem>
-							{IS_READ_ALOUD_SUPPORTED && (
-								<DropdownMenuItem
-									className={MENU_ITEM_CLASS}
-									onSelect={() => history.push("/tabs/settings/read-aloud")}
+							<ChevronLeft className="size-5" />
+						</button>
+						{book.seriesId != null && (
+							<>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => void chapterAdvance.tryRetreat()}
+									disabled={!hasPrev}
+									aria-label="Previous chapter"
+								>
+									<ChevronLeft />
+								</Button>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={handleNextChapter}
+									disabled={!hasNext}
+									aria-label="Next chapter"
+								>
+									<ChevronRight />
+								</Button>
+							</>
+						)}
+						<h1 className="m-0 flex-1 truncate px-1 font-semibold text-base leading-none">
+							{book.title}
+						</h1>
+						{goalPlan && goalToday && (
+							<GoalChip
+								plan={goalPlan}
+								today={goalToday}
+								onOpenDetails={() => history.push(`/tabs/library/book/${book.id}`)}
+							/>
+						)}
+						{IS_READ_ALOUD_SUPPORTED &&
+							(readerMode === "rsvp" ? (
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={toggleRsvpAudio}
+									disabled={!wordIndex}
+									aria-label="Listen"
+									aria-pressed={isRsvpAudioOn}
+									className={isRsvpAudioOn ? "text-primary" : undefined}
 								>
 									<Headphones />
-									<span>Listen settings</span>
+								</Button>
+							) : (
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={readAloud.toggle}
+									disabled={!wordIndex}
+									aria-label={readAloud.status === "playing" ? "Pause listening" : "Listen"}
+									className={isReadAloudActive ? "text-primary" : undefined}
+								>
+									{readAloud.status === "playing" ? <Pause /> : <Headphones />}
+								</Button>
+							))}
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={handleRsvpToggle}
+							disabled={!content}
+							aria-label={
+								readerMode === "rsvp" ? "Switch to standard reader" : "Switch to RSVP reader"
+							}
+							className={readerMode === "rsvp" ? "text-primary" : undefined}
+						>
+							{readerMode === "rsvp" ? <ZapOff /> : <Zap />}
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={() => setAnnotationsOpen(true)}
+							disabled={!content}
+							aria-label="Annotations"
+						>
+							<Bookmark />
+						</Button>
+						<DropdownMenu>
+							<AppearancePopover
+								open={appearanceOpen}
+								onOpenChange={setAppearanceOpen}
+								anchor={
+									<span className="inline-flex">
+										<DropdownMenuTrigger asChild>
+											<Button variant="ghost" size="icon">
+												<MoreVertical />
+												{/* Text, not aria-label: Android reads a menu button's text and drops its
+											    aria-label, so TalkBack found it unnamed (TASK-205.13). */}
+												<span className="sr-only">More actions</span>
+											</Button>
+										</DropdownMenuTrigger>
+									</span>
+								}
+							/>
+							<DropdownMenuContent
+								align="end"
+								className="w-64 p-1.5"
+								// Opened once the menu has fully closed: earlier, the menu's own
+								// focus moves while closing read as the popover losing focus.
+								onCloseAutoFocus={(e) => {
+									if (!openAppearanceOnMenuCloseRef.current) return;
+									openAppearanceOnMenuCloseRef.current = false;
+									e.preventDefault();
+									setAppearanceOpen(true);
+								}}
+							>
+								<DropdownMenuItem
+									className={MENU_ITEM_CLASS}
+									onSelect={() => setSearchOpen(true)}
+									disabled={!content}
+								>
+									<Search />
+									<span>Search</span>
 								</DropdownMenuItem>
-							)}
-							{overflowSourceUrl && (
 								<DropdownMenuItem
 									className={MENU_ITEM_CLASS}
 									onSelect={() => {
-										void Browser.open({ url: overflowSourceUrl });
+										openAppearanceOnMenuCloseRef.current = true;
 									}}
 								>
-									<ExternalLink />
-									<span>Open on {series ? providerLabel(series.provider) : "website"}</span>
+									<Type />
+									<span>Appearance</span>
 								</DropdownMenuItem>
+								{IS_READ_ALOUD_SUPPORTED && (
+									<DropdownMenuItem
+										className={MENU_ITEM_CLASS}
+										onSelect={() => history.push("/tabs/settings/read-aloud")}
+									>
+										<Headphones />
+										<span>Listen settings</span>
+									</DropdownMenuItem>
+								)}
+								{overflowSourceUrl && (
+									<DropdownMenuItem
+										className={MENU_ITEM_CLASS}
+										onSelect={() => {
+											void Browser.open({ url: overflowSourceUrl });
+										}}
+									>
+										<ExternalLink />
+										<span>Open on {series ? providerLabel(series.provider) : "website"}</span>
+									</DropdownMenuItem>
+								)}
+								<DropdownMenuItem
+									className={MENU_ITEM_CLASS}
+									onSelect={() => {
+										history.push(
+											book.seriesId != null
+												? `/tabs/library/series/${book.seriesId}`
+												: `/tabs/library/book/${book.id}`,
+										);
+									}}
+								>
+									<Info />
+									<span>{book.seriesId != null ? "View series" : "View book"}</span>
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</div>
+				</header>
+
+				<div
+					ref={setViewContainerEl}
+					// clip, not hidden: nothing may scroll this box, not even screen-reader focus.
+					// min-h-0: a clip box is no scroll container, so as a flex item it would
+					// otherwise grow to its content (RSVP's tall spacer) past the screen.
+					className="relative min-h-0 flex-1 overflow-clip"
+					data-testid="reader-view"
+				>
+					<ReaderAnnouncer />
+					{isRulerShown && <ReadingRulerOverlay ruler={ruler} />}
+					{/* Screen readers can't drive RSVP or page turns; read-aloud is the way to listen. */}
+					{IS_READ_ALOUD_SUPPORTED && (readerMode === "rsvp" || paginationStyle === "page") && (
+						<p className="sr-only">
+							{readerMode === "rsvp"
+								? "This view flashes the book one word at a time. To listen to the book, turn on the Listen button at the top, then play."
+								: "This view shows the book a page at a time. To listen to the book, use the Listen button at the top."}
+						</p>
+					)}
+					{chapterFetch.kind === "locked" ? (
+						<ChapterStateOverlay status="locked" />
+					) : chapterFetch.kind === "error" ? (
+						<ChapterStateOverlay
+							status="error"
+							reason={chapterFetch.reason}
+							provider={series?.provider}
+							onRetry={chapterFetch.retry}
+						/>
+					) : isShowingSkeleton ? (
+						<ReaderSkeleton />
+					) : readerMode === "rsvp" ? (
+						<RsvpView
+							ref={rsvpViewRef}
+							content={content ?? ""}
+							initialWord={rsvpInitWord}
+							settings={rsvpSettings}
+							fontSize={readerFontSize}
+							onPositionChange={handleRsvpPositionChange}
+							onFinished={handleRsvpFinished}
+							onWpmChange={handleRsvpWpmChange}
+							onLookup={openDictionaryModal}
+							bookWordIndex={wordIndex}
+							linkHrefAt={findLinkAt}
+							onLinkTap={handleLinkTap}
+							isSessionPaused={isSessionPaused}
+							audio={rsvpAudio}
+							onPlayingChange={setIsRsvpPlaying}
+						/>
+					) : paginationStyle === "page" ? (
+						<PageView
+							ref={scrollViewRef}
+							key={`page-${id}`}
+							paragraphs={paragraphs}
+							paragraphStartWords={paragraphStartWords}
+							entriesByParagraph={entriesByParagraph}
+							chapterHeadingByParagraph={chapterHeadingByParagraph}
+							figuresByParagraph={figureMap.byParagraph}
+							trailingFigures={figureMap.trailing}
+							totalWords={totalWordCount}
+							initialWord={lastWordRef.current ?? seedWord ?? 0}
+							fontSize={readerFontSize}
+							fontFamily={readerFont?.family ?? DEFAULT_SETTINGS.READER_FONT_FAMILY}
+							isBold={readerFont?.isBold ?? false}
+							lineSpacing={readerLineSpacing}
+							margin={readerMargin}
+							textSpacing={textSpacing}
+							textAlign={textAlign}
+							showActiveWordUnderline={readerActiveWordUnderline}
+							lang={hyphenationLang(book.language)}
+							animatePageTurns={pageTurnAnimation}
+							followFinger={!isEinkMode}
+							activeWord={shownActiveWord}
+							highlightsByParagraph={sel.highlightsByParagraph}
+							glossaryByParagraph={glossaryByParagraph}
+							linksByParagraph={linksByParagraph}
+							discussionByParagraph={discussionByParagraph}
+							goalDivider={goalDivider}
+							selectionRange={sel.selectionRange}
+							isSelecting={isSelecting}
+							onWordTap={handlePageWordTap}
+							onWordLongPress={sel.handleWordLongPress}
+							onWordLongPressDrag={sel.extendSelectionTo}
+							onWordMouseDragStart={handleWordMouseDragStart}
+							onCancelSelection={sel.cancelSelection}
+							onPositionSettle={handleScrollPositionSettle}
+							onMotion={onRulerMotion}
+							onColumns={onRulerColumns}
+							onInitialActiveOffset={handleSetActiveWord}
+							onTap={handleToggleProgressBar}
+							onHideProgressBar={handleHideProgressBar}
+							onTurnStart={handlePageTurnStart}
+							footer={advanceFooter}
+						/>
+					) : (
+						<ScrollView
+							ref={scrollViewRef}
+							key={`scroll-${id}`}
+							paragraphs={paragraphs}
+							paragraphStartWords={paragraphStartWords}
+							entriesByParagraph={entriesByParagraph}
+							chapterHeadingByParagraph={chapterHeadingByParagraph}
+							figuresByParagraph={figureMap.byParagraph}
+							trailingFigures={figureMap.trailing}
+							findParagraphIndexForWord={findParagraphIndexForWord}
+							initialWord={lastWordRef.current ?? seedWord ?? 0}
+							getAnchorWord={getScrollAnchorWord}
+							fontSize={readerFontSize}
+							fontFamily={readerFont?.family ?? DEFAULT_SETTINGS.READER_FONT_FAMILY}
+							isBold={readerFont?.isBold ?? false}
+							lineSpacing={readerLineSpacing}
+							margin={readerMargin}
+							textSpacing={textSpacing}
+							textAlign={textAlign}
+							showActiveWordUnderline={readerActiveWordUnderline}
+							lang={hyphenationLang(book.language)}
+							activeWord={shownActiveWord}
+							highlightsByParagraph={sel.highlightsByParagraph}
+							glossaryByParagraph={glossaryByParagraph}
+							linksByParagraph={linksByParagraph}
+							discussionByParagraph={discussionByParagraph}
+							goalDivider={goalDivider}
+							selectionRange={sel.selectionRange}
+							onWordTap={handleWordTap}
+							onWordLongPress={sel.handleWordLongPress}
+							onWordLongPressDrag={sel.extendSelectionTo}
+							onWordMouseDragStart={handleWordMouseDragStart}
+							onPositionSettle={handleScrollPositionSettle}
+							onInitialActiveOffset={handleSetActiveWord}
+							onProgressChange={handleSetProgressWord}
+							onHighlightClear={handleScrollHighlightClear}
+							onHideProgressBar={handleHideProgressBar}
+							onTap={handleScrollTap}
+							isSelecting={isSelecting}
+							syncSelectionHandles={syncSelectionHandles}
+							isScrubbingRef={isScrubbingRef}
+							isScrubbing={scrub.isDragging}
+							footer={advanceFooter}
+						/>
+					)}
+
+					{/* ── Progress bar ── */}
+					{/* Collapsed, the bar rests as a thin line so progress is always in view. */}
+					{isProgressCollapsed ? (
+						!isShowingSkeleton && (
+							<div className="reader-progress-bar reader-progress-bar--collapsed" aria-hidden>
+								<BuddyReadMarkers
+									markers={buddy.markers}
+									myWord={progressWord}
+									approximate={buddy.approximate}
+									isCollapsed
+								/>
+								{browseAnchorTick}
+								<div className="reader-progress-fill-track">
+									<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
+								</div>
+							</div>
+						)
+					) : (
+						<div
+							ref={scrub.progressBarRef}
+							className="reader-progress-bar"
+							onPointerDown={scrub.handleProgressPointerDown}
+							onPointerMove={scrub.handleProgressPointerMove}
+							onPointerUp={scrub.handleProgressPointerUp}
+							onPointerCancel={scrub.handleProgressPointerCancel}
+						>
+							{scrub.isDragging && (
+								<div
+									className="reader-scrub-bubble"
+									style={{ left: `clamp(70px, ${progressPct}%, calc(100% - 70px))` }}
+									role="status"
+								>
+									{currentChapterIndex >= 0 && (
+										<span className="reader-scrub-bubble-chapter">
+											{chapters[currentChapterIndex].title}
+										</span>
+									)}
+									<span>{Math.round(progressPct)}%</span>
+								</div>
 							)}
-							<DropdownMenuItem
-								className={MENU_ITEM_CLASS}
-								onSelect={() => {
-									history.push(
-										book.seriesId != null
-											? `/tabs/library/series/${book.seriesId}`
-											: `/tabs/library/book/${book.id}`,
-									);
-								}}
-							>
-								<Info />
-								<span>{book.seriesId != null ? "View series" : "View book"}</span>
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-				</div>
-			</header>
-
-			<div
-				ref={setViewContainerEl}
-				// clip, not hidden: nothing may scroll this box, not even screen-reader focus.
-				// min-h-0: a clip box is no scroll container, so as a flex item it would
-				// otherwise grow to its content (RSVP's tall spacer) past the screen.
-				className="relative min-h-0 flex-1 overflow-clip"
-				data-testid="reader-view"
-			>
-				<ReaderAnnouncer />
-				{isRulerShown && <ReadingRulerOverlay ruler={ruler} />}
-				{/* Screen readers can't drive RSVP or page turns; read-aloud is the way to listen. */}
-				{IS_READ_ALOUD_SUPPORTED && (readerMode === "rsvp" || paginationStyle === "page") && (
-					<p className="sr-only">
-						{readerMode === "rsvp"
-							? "This view flashes the book one word at a time. To listen to the book, turn on the Listen button at the top, then play."
-							: "This view shows the book a page at a time. To listen to the book, use the Listen button at the top."}
-					</p>
-				)}
-				{chapterFetch.kind === "locked" ? (
-					<ChapterStateOverlay status="locked" />
-				) : chapterFetch.kind === "error" ? (
-					<ChapterStateOverlay
-						status="error"
-						reason={chapterFetch.reason}
-						provider={series?.provider}
-						onRetry={chapterFetch.retry}
-					/>
-				) : isShowingSkeleton ? (
-					<ReaderSkeleton />
-				) : readerMode === "rsvp" ? (
-					<RsvpView
-						ref={rsvpViewRef}
-						content={content ?? ""}
-						initialWord={rsvpInitWord}
-						settings={rsvpSettings}
-						fontSize={readerFontSize}
-						onPositionChange={handleRsvpPositionChange}
-						onFinished={handleRsvpFinished}
-						onWpmChange={handleRsvpWpmChange}
-						onLookup={openDictionaryModal}
-						bookWordIndex={wordIndex}
-						linkHrefAt={findLinkAt}
-						onLinkTap={handleLinkTap}
-						isSessionPaused={isSessionPaused}
-						audio={rsvpAudio}
-						onPlayingChange={setIsRsvpPlaying}
-					/>
-				) : paginationStyle === "page" ? (
-					<PageView
-						ref={scrollViewRef}
-						key={`page-${id}`}
-						paragraphs={paragraphs}
-						paragraphStartWords={paragraphStartWords}
-						entriesByParagraph={entriesByParagraph}
-						chapterHeadingByParagraph={chapterHeadingByParagraph}
-						figuresByParagraph={figureMap.byParagraph}
-						trailingFigures={figureMap.trailing}
-						totalWords={totalWordCount}
-						initialWord={lastWordRef.current ?? seedWord ?? 0}
-						fontSize={readerFontSize}
-						fontFamily={readerFont?.family ?? DEFAULT_SETTINGS.READER_FONT_FAMILY}
-						isBold={readerFont?.isBold ?? false}
-						lineSpacing={readerLineSpacing}
-						margin={readerMargin}
-						textSpacing={textSpacing}
-						textAlign={textAlign}
-						showActiveWordUnderline={readerActiveWordUnderline}
-						lang={hyphenationLang(book.language)}
-						animatePageTurns={pageTurnAnimation}
-						followFinger={!isEinkMode}
-						activeWord={shownActiveWord}
-						highlightsByParagraph={sel.highlightsByParagraph}
-						glossaryByParagraph={glossaryByParagraph}
-						linksByParagraph={linksByParagraph}
-						discussionByParagraph={discussionByParagraph}
-						goalDivider={goalDivider}
-						selectionRange={sel.selectionRange}
-						isSelecting={isSelecting}
-						onWordTap={handlePageWordTap}
-						onWordLongPress={sel.handleWordLongPress}
-						onWordLongPressDrag={sel.extendSelectionTo}
-						onWordMouseDragStart={handleWordMouseDragStart}
-						onCancelSelection={sel.cancelSelection}
-						onPositionSettle={handleScrollPositionSettle}
-						onMotion={onRulerMotion}
-						onColumns={onRulerColumns}
-						onInitialActiveOffset={handleSetActiveWord}
-						onTap={handleToggleProgressBar}
-						onHideProgressBar={handleHideProgressBar}
-						onTurnStart={handlePageTurnStart}
-						footer={advanceFooter}
-					/>
-				) : (
-					<ScrollView
-						ref={scrollViewRef}
-						key={`scroll-${id}`}
-						paragraphs={paragraphs}
-						paragraphStartWords={paragraphStartWords}
-						entriesByParagraph={entriesByParagraph}
-						chapterHeadingByParagraph={chapterHeadingByParagraph}
-						figuresByParagraph={figureMap.byParagraph}
-						trailingFigures={figureMap.trailing}
-						findParagraphIndexForWord={findParagraphIndexForWord}
-						initialWord={lastWordRef.current ?? seedWord ?? 0}
-						getAnchorWord={getScrollAnchorWord}
-						fontSize={readerFontSize}
-						fontFamily={readerFont?.family ?? DEFAULT_SETTINGS.READER_FONT_FAMILY}
-						isBold={readerFont?.isBold ?? false}
-						lineSpacing={readerLineSpacing}
-						margin={readerMargin}
-						textSpacing={textSpacing}
-						textAlign={textAlign}
-						showActiveWordUnderline={readerActiveWordUnderline}
-						lang={hyphenationLang(book.language)}
-						activeWord={shownActiveWord}
-						highlightsByParagraph={sel.highlightsByParagraph}
-						glossaryByParagraph={glossaryByParagraph}
-						linksByParagraph={linksByParagraph}
-						discussionByParagraph={discussionByParagraph}
-						goalDivider={goalDivider}
-						selectionRange={sel.selectionRange}
-						onWordTap={handleWordTap}
-						onWordLongPress={sel.handleWordLongPress}
-						onWordLongPressDrag={sel.extendSelectionTo}
-						onWordMouseDragStart={handleWordMouseDragStart}
-						onPositionSettle={handleScrollPositionSettle}
-						onInitialActiveOffset={handleSetActiveWord}
-						onProgressChange={handleSetProgressWord}
-						onHighlightClear={handleScrollHighlightClear}
-						onHideProgressBar={handleHideProgressBar}
-						onTap={handleScrollTap}
-						isSelecting={isSelecting}
-						syncSelectionHandles={syncSelectionHandles}
-						isScrubbingRef={isScrubbingRef}
-						isScrubbing={scrub.isDragging}
-						footer={advanceFooter}
-					/>
-				)}
-
-				{/* ── Progress bar ── */}
-				{/* Collapsed, the bar rests as a thin line so progress is always in view. */}
-				{isProgressCollapsed ? (
-					!isShowingSkeleton && (
-						<div className="reader-progress-bar reader-progress-bar--collapsed" aria-hidden>
 							<BuddyReadMarkers
 								markers={buddy.markers}
 								myWord={progressWord}
 								approximate={buddy.approximate}
-								isCollapsed
+								isCollapsed={false}
 							/>
 							{browseAnchorTick}
-							<div className="reader-progress-fill-track">
+							{/* The slider role sits on the track, not the bar: a slider is a leaf, and
+						    assistive tech would not reach the marker buttons inside it. */}
+							{/* biome-ignore lint/a11y/useFocusableInteractive: scrubber */}
+							<div
+								className="reader-progress-fill-track"
+								aria-label="Reading progress"
+								role="slider"
+								aria-valuenow={Math.round(progressPct)}
+								aria-valuemin={0}
+								aria-valuemax={100}
+							>
 								<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
 							</div>
-						</div>
-					)
-				) : (
-					<div
-						ref={scrub.progressBarRef}
-						className="reader-progress-bar"
-						onPointerDown={scrub.handleProgressPointerDown}
-						onPointerMove={scrub.handleProgressPointerMove}
-						onPointerUp={scrub.handleProgressPointerUp}
-						onPointerCancel={scrub.handleProgressPointerCancel}
-					>
-						{scrub.isDragging && (
-							<div
-								className="reader-scrub-bubble"
-								style={{ left: `clamp(70px, ${progressPct}%, calc(100% - 70px))` }}
-								role="status"
-							>
-								{currentChapterIndex >= 0 && (
-									<span className="reader-scrub-bubble-chapter">
-										{chapters[currentChapterIndex].title}
+							<DiscussionTicks ticks={discussionTicks} />
+							<div className="reader-progress-label">
+								<span>
+									{Math.round(progressPct)}%
+									{bookMinutesRemaining > 0 && (
+										<> · {formatReadingTime(bookMinutesRemaining)} left</>
+									)}
+									{readingNowCount > 0 && (
+										<>
+											{" · "}
+											<span className="reader-buddy-live-dot" /> {readingNowCount} reading
+										</>
+									)}
+								</span>
+								{chapterMinutesRemaining != null && currentChapterIndex >= 0 && (
+									<span className="reader-progress-chapter-time">
+										{chapters[currentChapterIndex].title} ·{" "}
+										{formatReadingTime(chapterMinutesRemaining)} left
 									</span>
 								)}
-								<span>{Math.round(progressPct)}%</span>
 							</div>
-						)}
-						<BuddyReadMarkers
-							markers={buddy.markers}
-							myWord={progressWord}
-							approximate={buddy.approximate}
-							isCollapsed={false}
+						</div>
+					)}
+
+					{browseAnchor !== null && readerMode !== "rsvp" && !isShowingSkeleton && (
+						<BrowseBar
+							anchorPct={browseAnchorPct}
+							onBack={browse.back}
+							onReadFromHere={browse.readFromHere}
 						/>
-						{browseAnchorTick}
-						{/* The slider role sits on the track, not the bar: a slider is a leaf, and
-						    assistive tech would not reach the marker buttons inside it. */}
-						{/* biome-ignore lint/a11y/useFocusableInteractive: scrubber */}
-						<div
-							className="reader-progress-fill-track"
-							aria-label="Reading progress"
-							role="slider"
-							aria-valuenow={Math.round(progressPct)}
-							aria-valuemin={0}
-							aria-valuemax={100}
-						>
-							<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
-						</div>
-						<DiscussionTicks ticks={discussionTicks} />
-						<div className="reader-progress-label">
-							<span>
-								{Math.round(progressPct)}%
-								{bookMinutesRemaining > 0 && <> · {formatReadingTime(bookMinutesRemaining)} left</>}
-								{readingNowCount > 0 && (
-									<>
-										{" · "}
-										<span className="reader-buddy-live-dot" /> {readingNowCount} reading
-									</>
-								)}
-							</span>
-							{chapterMinutesRemaining != null && currentChapterIndex >= 0 && (
-								<span className="reader-progress-chapter-time">
-									{chapters[currentChapterIndex].title} ·{" "}
-									{formatReadingTime(chapterMinutesRemaining)} left
-								</span>
-							)}
-						</div>
-					</div>
-				)}
+					)}
 
-				{browseAnchor !== null && readerMode !== "rsvp" && !isShowingSkeleton && (
-					<BrowseBar
-						anchorPct={browseAnchorPct}
-						onBack={browse.back}
-						onReadFromHere={browse.readFromHere}
-					/>
-				)}
+					{isReadAloudActive && readerMode !== "rsvp" && !isShowingSkeleton && (
+						<ReadAloudControls
+							status={readAloud.status}
+							wpm={ttsSpeech.wpm}
+							measuredWpm={readAloud.measuredWpm}
+							sleepTimer={readAloud.sleepTimer}
+							isFollowing={readAloud.isFollowing}
+							onTogglePlay={readAloud.toggle}
+							onSkip={readAloud.skip}
+							onWpmChange={(wpm) => updateSetting("ttsWpm", wpm)}
+							onOpenSleepTimer={() => setIsSleepTimerOpen(true)}
+							onOpenVoice={() => setIsVoiceSheetOpen(true)}
+							onStop={readAloud.stop}
+							onBackToVoice={handleBackToVoice}
+							onReadFromView={readAloud.readFromView}
+						/>
+					)}
 
-				{isReadAloudActive && readerMode !== "rsvp" && !isShowingSkeleton && (
-					<ReadAloudControls
-						status={readAloud.status}
-						wpm={ttsSpeech.wpm}
-						measuredWpm={readAloud.measuredWpm}
-						sleepTimer={readAloud.sleepTimer}
-						isFollowing={readAloud.isFollowing}
-						onTogglePlay={readAloud.toggle}
-						onSkip={readAloud.skip}
-						onWpmChange={(wpm) => updateSetting("ttsWpm", wpm)}
-						onOpenSleepTimer={() => setIsSleepTimerOpen(true)}
-						onOpenVoice={() => setIsVoiceSheetOpen(true)}
-						onStop={readAloud.stop}
-						onBackToVoice={handleBackToVoice}
-						onReadFromView={readAloud.readFromView}
-					/>
-				)}
+					{isSessionPaused && <SessionPauseOverlay onResume={() => setIsSessionPaused(false)} />}
+				</div>
 
-				{isSessionPaused && <SessionPauseOverlay onResume={() => setIsSessionPaused(false)} />}
-			</div>
+				{/* Selection toolbar + handles (fixed position, sync'd by hook). */}
+				<SelectionOverlay
+					isSelecting={sel.isSelecting}
+					isHidden={sel.noteInputOpen}
+					step={sel.selectionSavedId ? "styled" : "actions"}
+					isSingleWord={
+						!!sel.selectionRange && sel.selectionRange.startWord === sel.selectionRange.endWord
+					}
+					selectionColor={sel.selectionColor}
+					toolbarRef={sel.toolbarRef}
+					startHandleRef={sel.startHandleRef}
+					endHandleRef={sel.endHandleRef}
+					onHighlight={sel.handleSelectionHighlight}
+					onColorChange={sel.handleSelectionColorChange}
+					onNote={sel.handleSelectionNote}
+					onLookup={handleSelectionLookup}
+					onAddToGlossary={handleAddToGlossary}
+					onDelete={sel.handleSelectionDelete}
+					onComment={discussionRead ? handleSelectionComment : undefined}
+					onShare={discussionRead ? handleSelectionShare : undefined}
+					onStartHandlePointerDown={sel.handleStartHandlePointerDown}
+					onEndHandlePointerDown={sel.handleEndHandlePointerDown}
+				/>
 
-			{/* Selection toolbar + handles (fixed position, sync'd by hook). */}
-			<SelectionOverlay
-				isSelecting={sel.isSelecting}
-				isHidden={sel.noteInputOpen}
-				step={sel.selectionSavedId ? "styled" : "actions"}
-				isSingleWord={
-					!!sel.selectionRange && sel.selectionRange.startWord === sel.selectionRange.endWord
-				}
-				selectionColor={sel.selectionColor}
-				toolbarRef={sel.toolbarRef}
-				startHandleRef={sel.startHandleRef}
-				endHandleRef={sel.endHandleRef}
-				onHighlight={sel.handleSelectionHighlight}
-				onColorChange={sel.handleSelectionColorChange}
-				onNote={sel.handleSelectionNote}
-				onLookup={handleSelectionLookup}
-				onAddToGlossary={handleAddToGlossary}
-				onDelete={sel.handleSelectionDelete}
-				onComment={discussionRead ? handleSelectionComment : undefined}
-				onShare={discussionRead ? handleSelectionShare : undefined}
-				onStartHandlePointerDown={sel.handleStartHandlePointerDown}
-				onEndHandlePointerDown={sel.handleEndHandlePointerDown}
-			/>
+				{/* ── Merged annotations sheet (Contents / Highlights / Glossary) ── */}
+				<AnnotationsSheet
+					isOpen={annotationsOpen}
+					onClose={() => setAnnotationsOpen(false)}
+					theme={theme}
+					chapters={chapters}
+					currentChapterIndex={currentChapterIndex}
+					onJumpChapter={navigateToWord}
+					seriesId={book.seriesId ?? null}
+					highlights={highlightRows}
+					onJumpHighlight={handleHighlightJump}
+					glossary={glossaryEntries}
+					currentBookId={id}
+					onOpenEntry={(entry) => {
+						setAnnotationsOpen(false);
+						setEditingGlossaryEntry(entry);
+					}}
+					onAddEntry={handleAddEntryFromSheet}
+					browse={
+						readerMode === "rsvp"
+							? undefined
+							: {
+									isBrowsing: browseAnchor !== null,
+									onToggle: browseAnchor === null ? browse.start : browse.back,
+								}
+					}
+				/>
 
-			{/* ── Merged annotations sheet (Contents / Highlights / Glossary) ── */}
-			<AnnotationsSheet
-				isOpen={annotationsOpen}
-				onClose={() => setAnnotationsOpen(false)}
-				theme={theme}
-				chapters={chapters}
-				currentChapterIndex={currentChapterIndex}
-				onJumpChapter={navigateToWord}
-				seriesId={book.seriesId ?? null}
-				highlights={highlightRows}
-				onJumpHighlight={handleHighlightJump}
-				glossary={glossaryEntries}
-				currentBookId={id}
-				onOpenEntry={(entry) => {
-					setAnnotationsOpen(false);
-					setEditingGlossaryEntry(entry);
-				}}
-				onAddEntry={handleAddEntryFromSheet}
-				browse={
-					readerMode === "rsvp"
-						? undefined
-						: {
-								isBrowsing: browseAnchor !== null,
-								onToggle: browseAnchor === null ? browse.start : browse.back,
+				{/* ── Glossary entry modal ── */}
+				<GlossaryEntryModal
+					entry={editingGlossaryEntry}
+					currentBookId={id}
+					firstMentionContext={editingMentionContext}
+					onClose={handleGlossaryModalClose}
+					onSave={handleGlossarySave}
+					onDelete={handleGlossaryDelete}
+					onJumpFirst={handleJumpFirstMention}
+					onJumpNext={handleJumpNextMention}
+					theme={theme}
+				/>
+
+				{/* ── Search modal ── */}
+				<SearchModal
+					isOpen={searchOpen}
+					onClose={() => {
+						setSearchOpen(false);
+						setSearchInitialQuery(undefined);
+					}}
+					content={content ?? ""}
+					onJump={handleSearchJump}
+					theme={theme}
+					initialQuery={searchInitialQuery}
+				/>
+
+				{/* ── Dictionary modal ── */}
+				<DictionaryModal
+					word={selectedWord}
+					lang={book.language}
+					onClose={closeDictionaryModal}
+					onSearch={handleDictSearch}
+					onAddToGlossary={handleAddWordToGlossary}
+					theme={theme}
+				/>
+
+				{discussionRead && (
+					<>
+						<DiscussionThreadSheet
+							buddyReadId={discussionRead.id}
+							items={threadItems}
+							onClose={() => setThreadIds(null)}
+							theme={theme}
+						/>
+						<CommentComposerSheet
+							buddyReadId={discussionRead.id}
+							selection={commentSelection}
+							onClose={() => setCommentSelection(null)}
+							theme={theme}
+						/>
+						<ShareHighlightSheet
+							buddyReadId={discussionRead.id}
+							highlight={sharingHighlight}
+							text={
+								sharingHighlight
+									? sel.extractRangeText(sharingHighlight.startWord, sharingHighlight.endWord)
+									: ""
 							}
-				}
-			/>
-
-			{/* ── Glossary entry modal ── */}
-			<GlossaryEntryModal
-				entry={editingGlossaryEntry}
-				currentBookId={id}
-				firstMentionContext={editingMentionContext}
-				onClose={handleGlossaryModalClose}
-				onSave={handleGlossarySave}
-				onDelete={handleGlossaryDelete}
-				onJumpFirst={handleJumpFirstMention}
-				onJumpNext={handleJumpNextMention}
-				theme={theme}
-			/>
-
-			{/* ── Search modal ── */}
-			<SearchModal
-				isOpen={searchOpen}
-				onClose={() => {
-					setSearchOpen(false);
-					setSearchInitialQuery(undefined);
-				}}
-				content={content ?? ""}
-				onJump={handleSearchJump}
-				theme={theme}
-				initialQuery={searchInitialQuery}
-			/>
-
-			{/* ── Dictionary modal ── */}
-			<DictionaryModal
-				word={selectedWord}
-				lang={book.language}
-				onClose={closeDictionaryModal}
-				onSearch={handleDictSearch}
-				onAddToGlossary={handleAddWordToGlossary}
-				theme={theme}
-			/>
-
-			{discussionRead && (
-				<>
-					<DiscussionThreadSheet
-						buddyReadId={discussionRead.id}
-						items={threadItems}
-						onClose={() => setThreadIds(null)}
-						theme={theme}
-					/>
-					<CommentComposerSheet
-						buddyReadId={discussionRead.id}
-						selection={commentSelection}
-						onClose={() => setCommentSelection(null)}
-						theme={theme}
-					/>
-					<ShareHighlightSheet
-						buddyReadId={discussionRead.id}
-						highlight={sharingHighlight}
-						text={
-							sharingHighlight
-								? sel.extractRangeText(sharingHighlight.startWord, sharingHighlight.endWord)
-								: ""
-						}
-						syncNow={syncNow}
-						onClose={() => setSharingHighlight(null)}
-						theme={theme}
-					/>
-				</>
-			)}
-
-			<ActionSheet
-				open={isSleepTimerOpen}
-				onOpenChange={setIsSleepTimerOpen}
-				title="Stop listening after"
-				items={sleepTimerItems}
-			/>
-			<VoiceSheet
-				open={isVoiceSheetOpen}
-				onOpenChange={setIsVoiceSheetOpen}
-				language={book.language ?? null}
-				languageLabel={languageName(book.language ?? null)}
-				selected={ttsSpeech.voice}
-				speech={ttsSpeech}
-				onSelect={handleVoiceSelect}
-				className={`reader-theme-${theme}`}
-			/>
-
-			{/* Note input drawer (during selection). */}
-			<Drawer
-				open={sel.noteInputOpen}
-				onOpenChange={(open) => {
-					if (!open) sel.handleSelectionNoteDone();
-				}}
-			>
-				<DrawerContent className={`reader-theme-${theme}`}>
-					<DrawerHeader className="flex flex-row items-center justify-between gap-2">
-						<DrawerTitle className="flex-1">Note</DrawerTitle>
-						<Button variant="ghost" size="sm" onClick={sel.handleSelectionNoteDone}>
-							Done
-						</Button>
-					</DrawerHeader>
-					<div className="px-5 pb-6">
-						<textarea
-							value={sel.pendingNote}
-							onChange={(e) => sel.setPendingNote(e.target.value)}
-							placeholder="Add a note to this highlight…"
-							rows={4}
-							className="min-h-24 w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
-							// biome-ignore lint/a11y/noAutofocus: intentional focus for note input
-							autoFocus
+							syncNow={syncNow}
+							onClose={() => setSharingHighlight(null)}
+							theme={theme}
 						/>
-					</div>
-				</DrawerContent>
-			</Drawer>
-			<SessionDebugBadge getSnapshot={getDebugSnapshot} />
-		</div>
+					</>
+				)}
+
+				<ActionSheet
+					open={isSleepTimerOpen}
+					onOpenChange={setIsSleepTimerOpen}
+					title="Stop listening after"
+					items={sleepTimerItems}
+				/>
+				<VoiceSheet
+					open={isVoiceSheetOpen}
+					onOpenChange={setIsVoiceSheetOpen}
+					language={book.language ?? null}
+					languageLabel={languageName(book.language ?? null)}
+					selected={ttsSpeech.voice}
+					speech={ttsSpeech}
+					onSelect={handleVoiceSelect}
+					className={`reader-theme-${theme}`}
+				/>
+
+				{/* Note input drawer (during selection). */}
+				<Drawer
+					open={sel.noteInputOpen}
+					onOpenChange={(open) => {
+						if (!open) sel.handleSelectionNoteDone();
+					}}
+				>
+					<DrawerContent className={`reader-theme-${theme}`}>
+						<DrawerHeader className="flex flex-row items-center justify-between gap-2">
+							<DrawerTitle className="flex-1">Note</DrawerTitle>
+							<Button variant="ghost" size="sm" onClick={sel.handleSelectionNoteDone}>
+								Done
+							</Button>
+						</DrawerHeader>
+						<div className="px-5 pb-6">
+							<textarea
+								value={sel.pendingNote}
+								onChange={(e) => sel.setPendingNote(e.target.value)}
+								placeholder="Add a note to this highlight…"
+								rows={4}
+								className="min-h-24 w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
+								// biome-ignore lint/a11y/noAutofocus: intentional focus for note input
+								autoFocus
+							/>
+						</div>
+					</DrawerContent>
+				</Drawer>
+				<SessionDebugBadge getSnapshot={getDebugSnapshot} />
+			</div>
+		</ReaderApiContext.Provider>
 	);
 };
 
