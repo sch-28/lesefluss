@@ -12,6 +12,8 @@ import {
 	type SyncGlossaryEntry,
 	type SyncHighlight,
 	type SyncPayload,
+	type SyncPushStamps,
+	SyncPushStampsSchema,
 	type SyncReadingGoal,
 	SyncReadingGoalSchema,
 	type SyncReadingSession,
@@ -46,7 +48,7 @@ import type {
 	Settings,
 } from "../db/schema";
 import { requestReminderSync } from "../goal-reminders";
-import { reportMissedPosition } from "../position-revisions";
+import { reportLoweredRevision, reportMissedPosition } from "../position-revisions";
 import { clearDeliveredPushes, unregisterPush } from "../push";
 import { queryClient } from "../query-client";
 import { notifySessionsDeleted } from "../reading-sessions/deleted";
@@ -203,15 +205,51 @@ async function signOutPendingSessions(): Promise<void> {
  * POST the push. A quota 413 is not a failure: the server committed everything
  * but the listed books' content, so its body is returned for the caller to act on.
  */
-async function postPush(body: string): Promise<ContentQuotaExceeded | null> {
+async function postPush(body: string): Promise<{
+	quotaRejection: ContentQuotaExceeded | null;
+	stamps: SyncPushStamps | null;
+}> {
 	try {
-		await authedFetch("/api/sync", { method: "POST", body });
-		return null;
+		const res = await authedFetch("/api/sync", { method: "POST", body });
+		// 204 when no stamp was clamped, and from servers that pre-date stamps.
+		return {
+			quotaRejection: null,
+			stamps: res.status === 200 ? readPushStamps(await res.json()) : null,
+		};
 	} catch (err) {
 		if (err instanceof AuthedFetchError && err.status === 413 && isContentQuotaExceeded(err.body)) {
-			return err.body;
+			return { quotaRejection: err.body, stamps: readPushStamps(err.body.stamps) };
 		}
 		throw toSyncError(err);
+	}
+}
+
+function readPushStamps(body: unknown): SyncPushStamps | null {
+	if (body === undefined) return null;
+	const parsed = SyncPushStampsSchema.safeParse(body);
+	if (parsed.success) return parsed.data;
+	log.error("sync", "push: unreadable stamps in the server's answer", parsed.error.issues);
+	return null;
+}
+
+/**
+ * Takes the stamps the server clamped a push to, so a clock running ahead stops
+ * hiding newer rows from other devices behind its own future stamps. Each stamp
+ * moves only while it is still the one pushed: a save made during the push keeps
+ * its own, and the next push clamps that one.
+ */
+async function adoptPushStamps(payload: SyncPayload, stamps: SyncPushStamps): Promise<void> {
+	const pushedBooks = new Map(payload.books.map((book) => [book.bookId, book]));
+	for (const stored of stamps.books) {
+		const pushed = pushedBooks.get(stored.bookId);
+		if (!pushed) continue;
+		await queries.adoptBookStamps(stored.bookId, pushed, stored);
+		if (stored.updatedAt < pushed.updatedAt) {
+			reportLoweredRevision(stored.bookId, pushed.updatedAt, stored.updatedAt);
+		}
+	}
+	if (payload.settings && stamps.settingsUpdatedAt !== null) {
+		await queries.adoptSettingsStamp(payload.settings.updatedAt, stamps.settingsUpdatedAt);
 	}
 }
 
@@ -1286,7 +1324,13 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} contentUploads=${uploadedContentIds.size} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} readingGoals=${goalsForPush.pushable.length} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
 		);
 
-		const quotaRejection = await postPush(body);
+		const { quotaRejection, stamps } = await postPush(body);
+		// The server has committed: a failed adopt must not skip the bookkeeping below.
+		if (stamps) {
+			await adoptPushStamps(payload, stamps).catch((err) =>
+				log.error("sync", "push: could not adopt the server's stamps", err),
+			);
+		}
 		if (quotaRejection) {
 			for (const id of quotaRejection.rejectedContentBookIds) uploadedContentIds.delete(id);
 			const unreported = new Set(await recordQuotaRejection(quotaRejection));

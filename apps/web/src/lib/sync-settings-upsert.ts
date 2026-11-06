@@ -6,19 +6,18 @@ import { syncSettings } from "~/db/schema";
 /**
  * Last-write-wins upsert of a pushed settings row. Writes only the fields the
  * push carried, so a field it left out keeps its stored value (or the column
- * default on a first push).
+ * default on a first push). Returns the stamp when it clamped it, for the
+ * pushing device to adopt, else null.
  */
 export async function upsertSyncSettings(
 	exec: DbExecutor,
 	userId: string,
 	settings: SyncSettingsPush,
-): Promise<void> {
-	const fields = {
-		...settings,
-		// Clamped: a client clock running ahead would otherwise outrank every
-		// later write under the last-write-wins guard below.
-		updatedAt: new Date(Math.min(settings.updatedAt, Date.now())),
-	};
+): Promise<number | null> {
+	// Clamped: a client clock running ahead would otherwise outrank every
+	// later write under the last-write-wins guard below.
+	const updatedAt = Math.min(settings.updatedAt, Date.now());
+	const fields = { ...settings, updatedAt: new Date(updatedAt) };
 	await exec
 		.insert(syncSettings)
 		.values({ userId, ...fields })
@@ -29,4 +28,5 @@ export async function upsertSyncSettings(
 			// stale row on push.
 			setWhere: sql`excluded.updated_at > sync_settings.updated_at`,
 		});
+	return updatedAt < settings.updatedAt ? updatedAt : null;
 }

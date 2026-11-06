@@ -327,6 +327,19 @@ export const SyncPushSchema = SyncPayloadSchema.extend({
 	settings: SyncSettingsPushSchema.nullable(),
 });
 
+/**
+ * The stamps a push carried from a clock running ahead of the server's, after
+ * the server clamped them to its own time. The pushing device adopts them, or
+ * its future stamps would hide every newer row another device writes until real
+ * time catches up. Lists only the clamped rows; a push with none gets no body.
+ */
+export const SyncPushStampsSchema = z.object({
+	books: z
+		.array(z.object({ bookId: z.string(), updatedAt: epochMs(), metadataUpdatedAt: epochMs() }))
+		.max(50_000),
+	settingsUpdatedAt: epochMs().nullable(),
+});
+
 // ---------------------------------------------------------------------------
 // Inferred TypeScript types
 // ---------------------------------------------------------------------------
@@ -342,6 +355,7 @@ export const DeletedSessionIdsSchema = z.array(z.string()).catch([]);
 export type SyncReadingGoal = z.infer<typeof SyncReadingGoalSchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 export type SyncPush = z.infer<typeof SyncPushSchema>;
+export type SyncPushStamps = z.infer<typeof SyncPushStampsSchema>;
 
 /**
  * A pulled book. `originKey` is an opaque, server-computed identity of the
@@ -406,4 +420,6 @@ export type ContentQuotaExceeded = ContentQuota & {
 	 * once that much is free. Optional: older servers send only the ids.
 	 */
 	rejectedContentBytes?: Record<string, number>;
+	/** As a 2xx push answer carries them: absent when nothing was clamped, or from a server that pre-dates stamps. */
+	stamps?: SyncPushStamps;
 };

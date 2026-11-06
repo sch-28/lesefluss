@@ -7,6 +7,7 @@ import {
 	addBookImages,
 	addBookWithContent,
 	addServerBookWithContent,
+	adoptBookStamps,
 	applyBookMerge,
 	backfillWordCounts,
 	deleteBook,
@@ -98,7 +99,7 @@ import {
 	updateChapterIndex,
 	updateSeries,
 } from "./series";
-import { getSettings, saveSettings } from "./settings";
+import { adoptSettingsStamp, getSettings, saveSettings } from "./settings";
 import {
 	getBookStats,
 	getCurrentlyReading,
@@ -118,6 +119,7 @@ export const queries = {
 	// Settings
 	getSettings,
 	saveSettings,
+	adoptSettingsStamp,
 
 	// Devices
 	saveDevice,
@@ -139,6 +141,7 @@ export const queries = {
 	addBookImages,
 	addServerBookWithContent,
 	applyBookMerge,
+	adoptBookStamps,
 	writeReaderPosition,
 	loadBookWordIndex,
 	backfillWordCounts,

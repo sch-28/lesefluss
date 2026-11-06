@@ -89,6 +89,7 @@ import type { Book, GlossaryEntry, Highlight } from "../../services/db/schema";
 import { requestReminderSync } from "../../services/goal-reminders";
 import {
 	isOwnRevision,
+	onLoweredRevision,
 	onMissedPosition,
 	recordOwnRevision,
 } from "../../services/position-revisions";
@@ -133,7 +134,7 @@ import { useChapterFetch } from "./chapter-fetch";
 import { buildChapterHeadingMap } from "./chapter-headings";
 import { ChapterStateOverlay } from "./chapter-state-overlay";
 import DictionaryModal from "./dictionary-modal";
-import { clampWord, decideExternalPosition } from "./external-position";
+import { clampWord, decideExternalPosition, followLoweredRevision } from "./external-position";
 import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
 import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
@@ -1156,6 +1157,26 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				if (bookId === id) handleExternalPosition(row, 0, false);
 			}),
 		[id, handleExternalPosition],
+	);
+
+	useEffect(
+		() =>
+			onLoweredRevision((bookId, from, to) => {
+				if (bookId !== id) return;
+				const revs = followLoweredRevision(
+					{
+						base: baseRevRef.current,
+						decided: decidedRevRef.current,
+						lastLanded: lastLandedRevRef.current,
+					},
+					from,
+					to,
+				);
+				baseRevRef.current = revs.base;
+				decidedRevRef.current = revs.decided;
+				lastLandedRevRef.current = revs.lastLanded;
+			}),
+		[id],
 	);
 
 	// ── Highlight / selection state ──────────────────────────────────────

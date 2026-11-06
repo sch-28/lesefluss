@@ -3,6 +3,7 @@ import {
 	type ContentQuota,
 	type ContentQuotaExceeded,
 	type SyncBook,
+	type SyncPushStamps,
 } from "@lesefluss/core";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { DbExecutor, Tx } from "~/db";
@@ -35,6 +36,7 @@ export class ContentQuotaExceededError extends Error {
 export function contentQuotaExceededResponse(
 	quota: ContentQuota,
 	rejected: ReadonlyMap<string, number> = new Map(),
+	stamps?: SyncPushStamps,
 ): Response {
 	const body: ContentQuotaExceeded = {
 		error: "Storage quota exceeded",
@@ -42,6 +44,7 @@ export function contentQuotaExceededResponse(
 		rejectedContentBookIds: [...rejected.keys()],
 		rejectedContentBytes: Object.fromEntries(rejected),
 		...quota,
+		...(stamps && { stamps }),
 	};
 	return Response.json(body, { status: 413 });
 }

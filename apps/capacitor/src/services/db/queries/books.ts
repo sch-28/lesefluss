@@ -672,6 +672,32 @@ export async function applyBookMerge(
 	return { unrouted: skipped, skippedPosition };
 }
 
+type BookStamps = { updatedAt: number; metadataUpdatedAt?: number | null };
+
+/**
+ * Lowers a book's stamps to what the server stored for them (see
+ * `adoptPushStamps`). Only ever lowers, so adopting is never a new revision, and
+ * only while the row still holds the pushed stamp.
+ */
+export async function adoptBookStamps(
+	id: string,
+	pushed: BookStamps,
+	stored: { updatedAt: number; metadataUpdatedAt: number },
+): Promise<void> {
+	if (stored.updatedAt < pushed.updatedAt) {
+		await db
+			.update(books)
+			.set({ updatedAt: stored.updatedAt })
+			.where(and(eq(books.id, id), eq(books.updatedAt, pushed.updatedAt)));
+	}
+	if (pushed.metadataUpdatedAt != null && stored.metadataUpdatedAt < pushed.metadataUpdatedAt) {
+		await db
+			.update(books)
+			.set({ metadataUpdatedAt: stored.metadataUpdatedAt })
+			.where(and(eq(books.id, id), eq(books.metadataUpdatedAt, pushed.metadataUpdatedAt)));
+	}
+}
+
 /** Nothing was read in this app before it existed, so a session stamped earlier
  *  than this is a device clock that had not synced yet, not history. */
 const EARLIEST_PLAUSIBLE_SESSION = Date.UTC(2025, 0, 1);

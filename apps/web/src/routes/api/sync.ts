@@ -7,6 +7,7 @@ import {
 	type SyncHighlight,
 	type SyncPush,
 	SyncPushSchema,
+	type SyncPushStamps,
 	type SyncReadingGoal,
 	type SyncReadingSession,
 	type SyncResponse,
@@ -435,7 +436,7 @@ export const Route = createFileRoute("/api/sync")({
 
 				const payload: SyncPush = parsed.data;
 
-				const quotaFit = await db.transaction(async (tx) => {
+				const { fitted: quotaFit, stamps } = await db.transaction(async (tx) => {
 					// First, so a share accepted meanwhile cannot land a live copy of an
 					// origin between the duplicate check below and the upsert.
 					await lockContentQuota(tx, userId);
@@ -472,7 +473,7 @@ export const Route = createFileRoute("/api/sync")({
 					// it entirely, and `bookInsertValues` has to turn that into a default to
 					// build a row; merging those defaults would erase what an up-to-date
 					// device wrote the first time an older one pushed a newer position.
-					await upsertSyncBooks(tx, userId, books, origins);
+					const clampedBooks = await upsertSyncBooks(tx, userId, books, origins);
 
 					// --- Series: batched upsert ---
 					if (payload.series && payload.series.length > 0) {
@@ -531,9 +532,9 @@ export const Route = createFileRoute("/api/sync")({
 					}
 
 					// --- Settings: upsert ---
-					if (payload.settings) {
-						await upsertSyncSettings(tx, userId, payload.settings);
-					}
+					const clampedSettings = payload.settings
+						? await upsertSyncSettings(tx, userId, payload.settings)
+						: null;
 
 					// --- Highlights: batched upsert + tombstone missing ---
 					if (highlights.length > 0) {
@@ -697,8 +698,13 @@ export const Route = createFileRoute("/api/sync")({
 							payload.readingGoals.filter((g) => !takenDown.has(g.bookId)),
 						);
 					}
-					return fitted;
+					const stamps: SyncPushStamps = {
+						books: clampedBooks,
+						settingsUpdatedAt: clampedSettings,
+					};
+					return { fitted, stamps };
 				});
+				const hasClamped = stamps.books.length > 0 || stamps.settingsUpdatedAt !== null;
 
 				try {
 					await settleBuddyReads(
@@ -712,13 +718,16 @@ export const Route = createFileRoute("/api/sync")({
 				// Everything else in the push is committed; the 413 only reports the
 				// content that did not fit, so the client stops re-uploading it.
 				if (quotaFit.rejected.size > 0) {
-					return contentQuotaExceededResponse(quotaFit.quota, quotaFit.rejected);
+					return contentQuotaExceededResponse(
+						quotaFit.quota,
+						quotaFit.rejected,
+						hasClamped ? stamps : undefined,
+					);
 				}
 
-				// No body: the client pulls with GET and discards whatever POST returns,
-				// so building a full merged snapshot here is a wasted query and a wasted
-				// download on every push.
-				return new Response(null, { status: 204 });
+				// No merged snapshot: the client pulls with GET, so building one here is
+				// a wasted query and a wasted download on every push.
+				return hasClamped ? Response.json(stamps) : new Response(null, { status: 204 });
 			},
 		},
 	},

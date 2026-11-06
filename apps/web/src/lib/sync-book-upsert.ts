@@ -1,4 +1,4 @@
-import type { SyncBook } from "@lesefluss/core";
+import type { SyncBook, SyncPushStamps } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 import type { Tx } from "~/db";
@@ -248,6 +248,7 @@ export const bookUpsertSet: PgUpdateSetSource<typeof syncBooks> = {
 /**
  * Writes the pushed books under the merge rules and records the feed events
  * they cause. Shared by the sync route and its tests so both run the same SQL.
+ * Returns the stamps it clamped, for the pushing device to adopt.
  */
 export async function upsertSyncBooks(
 	tx: Tx,
@@ -255,22 +256,40 @@ export async function upsertSyncBooks(
 	books: SyncBook[],
 	origins: ReadonlyMap<string, BookOrigin>,
 	now = new Date(),
-): Promise<void> {
+): Promise<SyncPushStamps["books"]> {
 	const before = await loadFeedBookStates(
 		tx,
 		userId,
 		books.map((b) => b.bookId),
 	);
 	const after: FeedBookState[] = [];
+	const clamped: SyncPushStamps["books"] = [];
 	for (const group of groupBooksByMergeRules(books)) {
 		const [first] = group;
 		if (!first) continue;
+		const rows = group.map((book) => bookInsertValues(userId, book, origins.get(book.bookId)));
+		group.forEach((book, i) => {
+			const stamps = rows[i] && clampedStamps(book, rows[i]);
+			if (stamps) clamped.push(stamps);
+		});
 		const merged = await tx
 			.insert(syncBooks)
-			.values(group.map((book) => bookInsertValues(userId, book, origins.get(book.bookId))))
+			.values(rows)
 			.onConflictDoUpdate({ target: bookUpsertTarget, set: bookUpsertSetFor(first) })
 			.returning(feedBookColumns);
 		after.push(...merged);
 	}
 	await recordFeedEvents(tx, userId, before, after, now);
+	return clamped;
+}
+
+function clampedStamps(
+	book: SyncBook,
+	row: { updatedAt: Date; metadataUpdatedAt: Date },
+): SyncPushStamps["books"][number] | null {
+	const updatedAt = row.updatedAt.getTime();
+	const metadataUpdatedAt = row.metadataUpdatedAt.getTime();
+	const isClamped =
+		updatedAt < book.updatedAt || metadataUpdatedAt < (book.metadataUpdatedAt ?? book.updatedAt);
+	return isClamped ? { bookId: book.bookId, updatedAt, metadataUpdatedAt } : null;
 }

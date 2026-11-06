@@ -1,5 +1,5 @@
 import { changelog, DEFAULT_SETTINGS, SYNCED_SETTING_KEYS } from "@lesefluss/core";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../index";
 import { type Settings, settings } from "../schema";
 
@@ -92,4 +92,13 @@ export async function saveSettings(
 		.update(settings)
 		.set(stamp === undefined ? patch : { ...patch, updatedAt: stamp })
 		.where(eq(settings.id, SETTINGS_ID));
+}
+
+/** The settings counterpart of `adoptBookStamps`. */
+export async function adoptSettingsStamp(pushed: number, stored: number): Promise<void> {
+	if (stored >= pushed) return;
+	await db
+		.update(settings)
+		.set({ updatedAt: stored })
+		.where(and(eq(settings.id, SETTINGS_ID), eq(settings.updatedAt, pushed)));
 }
