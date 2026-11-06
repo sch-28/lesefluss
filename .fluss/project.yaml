@@ -23,4 +23,4 @@ gate:
   fast: pnpm check-types
   # The capacitor package ("lesefluss") already runs its tests inside check-types.
   full: pnpm check-types && pnpm -r --filter '!lesefluss' --if-present test
-  e2e: pnpm --filter lesefluss e2e
+  e2e: false

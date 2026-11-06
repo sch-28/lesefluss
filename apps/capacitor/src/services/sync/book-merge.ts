@@ -52,10 +52,18 @@ export function buildBookMergeUpdate(local: Book, serverBook: SyncBook): BookMer
 	const metadataIsNewer = serverMetadataStamp(serverBook) > local.metadataUpdatedAt;
 	const earlierAddedAt =
 		serverBook.addedAt != null && serverBook.addedAt < local.addedAt ? serverBook.addedAt : null;
-	if (!positionIsNewer && !metadataIsNewer && earlierAddedAt == null) return null;
+	// A row still at 0 never counted its words (books imported before v1.4.0), so
+	// another device's count is welcome whatever the stamps say.
+	const missingWordCount =
+		local.wordCount === 0 && serverBook.wordCount != null && serverBook.wordCount > 0
+			? serverBook.wordCount
+			: null;
+	if (!positionIsNewer && !metadataIsNewer && earlierAddedAt == null && missingWordCount == null)
+		return null;
 
 	const update: BookMergeUpdate = {};
 	if (earlierAddedAt != null) update.addedAt = earlierAddedAt;
+	if (missingWordCount != null) update.wordCount = missingWordCount;
 	if (positionIsNewer) {
 		update.wordPosition = wordPos(serverBook.wordPosition);
 		update.updatedAt = serverBook.updatedAt;

@@ -26,6 +26,7 @@ import {
 	sql,
 } from "drizzle-orm";
 import type { SQLiteUpdateSetSource } from "drizzle-orm/sqlite-core";
+import { log } from "../../../utils/log";
 import type { BookMergeUpdate } from "../../sync/book-merge";
 import { db } from "../index";
 import { appendLongText, LONG_TEXT_CHUNK, type LongTextExecutor, readLongText } from "../long-text";
@@ -645,6 +646,8 @@ export async function applyBookMerge(
 			.where(eq(books.id, id));
 		if (now && now.updatedAt !== updatedAt) skippedPosition = { wordPosition, updatedAt };
 	}
+	// A missing count is filled whatever the position stamps decided.
+	if (wordCount !== undefined) await setMissingWordCount(id, wordCount);
 	if (metadataUpdatedAt !== undefined) {
 		const metadata = Object.fromEntries(
 			Object.entries({
@@ -730,6 +733,48 @@ export async function backfillFinishedAt(): Promise<void> {
 				isFinishedSql(),
 			),
 		);
+}
+
+/**
+ * Only fills a 0, so a count that arrived meanwhile (import, sync) is never
+ * overwritten. Leaves `updated_at` alone: that stamp is the position's revision,
+ * and every push already carries the count.
+ */
+export async function setMissingWordCount(id: string, wordCount: number): Promise<void> {
+	if (wordCount <= 0) return;
+	await db
+		.update(books)
+		.set({ wordCount })
+		.where(and(eq(books.id, id), eq(books.wordCount, 0)));
+}
+
+/**
+ * Count the words of books imported before v1.4.0, whose migration added
+ * `word_count` as 0 and whose fill was removed before release. Rows without a
+ * content row (serial chapters not fetched yet) are skipped.
+ *
+ * @returns how many books got a count.
+ */
+export async function backfillWordCounts(): Promise<number> {
+	const rows = await db
+		.select({ id: books.id })
+		.from(books)
+		.innerJoin(bookContent, eq(bookContent.bookId, books.id))
+		.where(and(eq(books.wordCount, 0), eq(books.deleted, false)));
+	let healed = 0;
+	// One book at a time: each rebuild holds a whole book in memory.
+	for (const { id } of rows) {
+		try {
+			const wordIndex = await loadBookWordIndex(id);
+			if (!wordIndex || wordIndex.wordCount <= 0) continue;
+			await setMissingWordCount(id, wordIndex.wordCount);
+			healed++;
+		} catch (err) {
+			// One unreadable book must not keep every later one at 0 on each start.
+			log.warn("db", `word count backfill skipped ${id}:`, err);
+		}
+	}
+	return healed;
 }
 
 /**

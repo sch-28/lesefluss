@@ -173,6 +173,7 @@ import {
 	getMentionContext,
 	useGlossaryDecorations,
 } from "./use-glossary-decorations";
+import { bookWordTotal, useHealWordCount } from "./use-heal-word-count";
 import { useHighlightSelection } from "./use-highlight-selection";
 import { isReaderKey, useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import { useLinkDecorations } from "./use-link-decorations";
@@ -273,6 +274,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	}, [id, bookFilePath, bookImages, imageAnchors]);
 
 	const content = contentRow?.content ?? null;
+	useHealWordCount(id, book?.wordCount, wordIndex?.wordCount);
 
 	// A book imported before images were captured gets them on its first open.
 	const bookFileFormat = book?.fileFormat ?? null;
@@ -710,7 +712,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	// ── Reading time estimation ───────────────────────────────────────────
 	const contentBytes = useMemo(() => (content ? _encoder.encode(content) : null), [content]);
 
-	const totalWordCount = book?.wordCount ?? wordIndex?.wordCount ?? 0;
+	const totalWordCount = bookWordTotal(book?.wordCount, wordIndex?.wordCount);
 	const percentOfBook = (word: number) =>
 		totalWordCount > 0 ? Math.min(100, (word / totalWordCount) * 100) : 0;
 
@@ -733,7 +735,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const chapterWordCounts = useMemo(() => {
 		if (!chapters.length) return [];
-		const totalWords = book?.wordCount ?? wordIndex?.wordCount ?? 0;
+		const totalWords = bookWordTotal(book?.wordCount, wordIndex?.wordCount);
 		return chapters.map((ch, i) => {
 			const nextStart = chapters[i + 1]?.startWord ?? totalWords;
 			return Math.max(0, nextStart - ch.startWord);

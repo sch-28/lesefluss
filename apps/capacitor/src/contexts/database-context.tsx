@@ -2,7 +2,9 @@ import { Button } from "@lesefluss/ui/button";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { initDb, resetAppData } from "../services/db";
+import { bookKeys, statsKeys } from "../services/db/hooks/query-keys";
 import { queries } from "../services/db/queries";
+import { queryClient } from "../services/query-client";
 import { log } from "../utils/log";
 
 interface DatabaseContextType {
@@ -37,6 +39,21 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 	});
 }
 
+/** Runs after the app is ready: rebuilding a word index costs a moment per book. */
+async function healWordCounts(): Promise<void> {
+	try {
+		const healed = await queries.backfillWordCounts();
+		if (healed === 0) return;
+		log("db", `word count backfill healed ${healed} books`);
+		await Promise.all([
+			queryClient.invalidateQueries({ queryKey: bookKeys.all }),
+			queryClient.invalidateQueries({ queryKey: statsKeys.all }),
+		]);
+	} catch (err) {
+		log.warn("db", "word count backfill failed:", err);
+	}
+}
+
 export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const [isReady, setIsReady] = useState(false);
 	const [error, setError] = useState<Error | null>(null);
@@ -56,6 +73,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 				}
 
 				if (!cancelled) setIsReady(true);
+				void healWordCounts();
 			})
 			.catch((err) => {
 				if (cancelled) return;
