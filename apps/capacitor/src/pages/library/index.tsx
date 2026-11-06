@@ -3,7 +3,7 @@ import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
 import { Progress } from "@lesefluss/ui/progress";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import {
 	ArrowUpDown,
 	BarChart3,
@@ -11,6 +11,8 @@ import {
 	BookText,
 	CheckSquare,
 	Filter as FilterIcon,
+	FolderMinus,
+	FolderPlus,
 	Loader2,
 	Pencil,
 	Plus,
@@ -25,6 +27,7 @@ import { useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import BLEIndicator from "../../components/ble-indicator";
+import { setBooksDragData } from "../../components/collections/drag-data";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { type ViewMode, ViewModeToggle } from "../../components/view-mode-toggle";
 import { useBLE } from "../../contexts/ble-context";
@@ -45,6 +48,8 @@ import BookEditSheet, { bookToEditValues, editValuesToPatch } from "./book-edit-
 import BookListItem from "./book-list-item";
 import BulkActionBar from "./bulk-action-bar";
 import BulkSheets from "./bulk-sheets";
+import CollectionPicker from "./collection-picker";
+import CollectionShelfRow from "./collection-shelf-row";
 import { libraryCommands } from "./commands";
 import FilterBar, { AddFilterButton } from "./filter-bar";
 import { chipsOf, type Facet, type LibraryFilter, pruneFilter } from "./filter-model";
@@ -96,6 +101,11 @@ const Library: React.FC = () => {
 	const { isLoggedIn, syncNow, isSyncing } = useSyncContext();
 	const navigate = useNavigate();
 	const qc = useQueryClient();
+	const { collection: collectionId } = useSearch({ from: "/tabs/library/" });
+	const collectionsQuery = queryHooks.useCollections();
+	const membersQuery = queryHooks.useCollectionBookIds(collectionId ?? null);
+	const activeCollection = collectionsQuery.data?.find((c) => c.id === collectionId);
+	const removeFromCollection = queryHooks.useRemoveBooksFromCollection();
 
 	const {
 		books,
@@ -120,6 +130,8 @@ const Library: React.FC = () => {
 	const [filter, setFilter] = useLibraryFilter();
 	const [isFilterOpen, setIsFilterOpen] = useState(false);
 	const isDesktop = useMediaQuery("(min-width: 768px)");
+	// Native drag needs a mouse; on touch a held card starts drag-select instead.
+	const canDragBooks = useMediaQuery("(hover: hover) and (pointer: fine)");
 	// Search is deliberately not persisted: a query restored into a collapsed
 	// search bar would look like an empty library with no visible cause.
 	const [search, setSearch] = useState("");
@@ -135,6 +147,7 @@ const Library: React.FC = () => {
 	const [pendingTransferBook, setPendingTransferBook] = useState<Book | null>(null);
 
 	const [editBook, setEditBook] = useState<Book | null>(null);
+	const [pickerBook, setPickerBook] = useState<Book | null>(null);
 	// Memoised for the same reason as in book-detail: the sheet reseeds its form
 	// whenever `initial` changes, and `isSaving` guarantees a re-render on save.
 	const editValues = useMemo(() => (editBook ? bookToEditValues(editBook) : null), [editBook]);
@@ -157,6 +170,24 @@ const Library: React.FC = () => {
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 		}
 	}, [isTransferring, qc]);
+
+	// A collection deleted here or on another device leaves a stale id in the URL.
+	useEffect(() => {
+		if (
+			collectionId &&
+			collectionsQuery.isSuccess &&
+			!collectionsQuery.isFetching &&
+			!activeCollection
+		) {
+			navigate({ to: "/tabs/library", search: {}, replace: true });
+		}
+	}, [
+		collectionId,
+		collectionsQuery.isSuccess,
+		collectionsQuery.isFetching,
+		activeCollection,
+		navigate,
+	]);
 
 	const dismissNotice = useCallback(() => {
 		localStorage.setItem(LOCAL_NOTICE_KEY, "1");
@@ -261,12 +292,20 @@ const Library: React.FC = () => {
 	useEffect(() => {
 		if (!isPending && activeFilter !== filter) setFilter(activeFilter);
 	}, [isPending, activeFilter, filter, setFilter]);
+	// Narrowed after the filter options and pruning above, which read the whole
+	// library: opening a collection must not prune the user's saved filter values.
+	const scopedItems = useMemo(() => {
+		if (!collectionId) return allItems;
+		const members = new Set(membersQuery.data ?? []);
+		return allItems.filter((item) => item.kind === "book" && members.has(item.book.id));
+	}, [allItems, collectionId, membersQuery.data]);
 	const visibleItems = useMemo(
-		() => applyLibraryView(allItems, { filter: activeFilter, sortBy, search }),
-		[allItems, activeFilter, sortBy, search],
+		() => applyLibraryView(scopedItems, { filter: activeFilter, sortBy, search }),
+		[scopedItems, activeFilter, sortBy, search],
 	);
 	const filterCount = chipsOf(activeFilter).length;
 	const isNarrowed = filterCount > 0 || search.trim() !== "";
+	const isCollectionEmpty = !!collectionId && membersQuery.isSuccess && scopedItems.length === 0;
 	const selection = useLibrarySelection(books, visibleItems);
 	const gridRef = useRef<HTMLDivElement>(null);
 	useDragSelect(gridRef, {
@@ -328,12 +367,22 @@ const Library: React.FC = () => {
 				onLongPress={() => selection.drag.start(book.id)}
 				onOpen={() => openBook(book)}
 				onMenu={() => setSelectedBook(book)}
+				draggable={canDragBooks}
 			/>
 		);
 	};
 
+	const handleBookDragStart = (e: React.DragEvent) => {
+		const bookId = (e.target as Element).closest<HTMLElement>("[data-book-id]")?.dataset.bookId;
+		if (!bookId) return;
+		const ids = selection.isSelected(bookId) ? selection.picked.map((b) => b.id) : [bookId];
+		setBooksDragData(e.dataTransfer, ids);
+	};
+
 	return (
-		<div className="bg-background">
+		// The grid's virtualizer observes this root for header changes, so the
+		// drag handler lives here rather than on a wrapper around the grid.
+		<div className="bg-background" onDragStart={canDragBooks ? handleBookDragStart : undefined}>
 			<TabHeader
 				logo="/logo.png"
 				title="Lesefluss"
@@ -416,6 +465,29 @@ const Library: React.FC = () => {
 						placeholder="Search title or author"
 						onChange={(e) => setSearch(e.target.value)}
 					/>
+				</div>
+			)}
+
+			{(books.length > 0 || (collectionsQuery.data?.length ?? 0) > 0) && (
+				<CollectionShelfRow activeId={collectionId} />
+			)}
+
+			{activeCollection && (
+				<div className="flex items-center gap-2 border-border border-b px-4 py-2">
+					<h2 className="m-0 min-w-0 flex-1 truncate font-semibold text-base">
+						{activeCollection.name}
+						<span className="ml-2 font-normal text-muted-foreground text-sm tabular-nums">
+							{activeCollection.bookCount}
+						</span>
+					</h2>
+					<Button
+						variant="ghost"
+						size="icon"
+						aria-label="Show all books"
+						onClick={() => navigate({ to: "/tabs/library", search: {} })}
+					>
+						<X />
+					</Button>
 				</div>
 			)}
 
@@ -509,10 +581,21 @@ const Library: React.FC = () => {
 					<p className="m-0">Tap the + button to import a file or paste text.</p>
 					{isGlobalImporting && <p className="m-0 mt-4">Importing...</p>}
 				</div>
-			) : visibleItems.length === 0 ? (
+			) : isCollectionEmpty ? (
 				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
-					<p className="m-0">{isNarrowed ? "No books match." : "Nothing to show."}</p>
+					<h2 className="m-0 mb-2 font-semibold text-foreground text-lg">
+						No books in this collection yet
+					</h2>
+					<p className="m-0">
+						Add one from a book's menu{canDragBooks ? ", or drag books onto the collection" : ""}.
+					</p>
 				</div>
+			) : visibleItems.length === 0 ? (
+				collectionId && !membersQuery.isSuccess ? null : (
+					<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
+						<p className="m-0">{isNarrowed ? "No books match." : "Nothing to show."}</p>
+					</div>
+				)
 			) : (
 				<VirtualBookGrid
 					items={visibleItems}
@@ -594,6 +677,28 @@ const Library: React.FC = () => {
 							if (selectedBook) selection.begin(selectedBook.id);
 						},
 					},
+					{
+						label: "Add to collection…",
+						icon: FolderPlus,
+						onSelect: () => {
+							if (selectedBook) setPickerBook(selectedBook);
+						},
+					},
+					...(activeCollection
+						? [
+								{
+									label: `Remove from ${activeCollection.name}`,
+									icon: FolderMinus,
+									onSelect: () => {
+										if (selectedBook)
+											removeFromCollection.mutate({
+												collectionId: activeCollection.id,
+												bookIds: [selectedBook.id],
+											});
+									},
+								},
+							]
+						: []),
 					...(!IS_WEB
 						? deviceActionsForSelectedBook.map((a) => ({
 								...a,
@@ -611,6 +716,8 @@ const Library: React.FC = () => {
 			/>
 
 			<BulkSheets selection={selection} libraryTags={availableTags} />
+
+			<CollectionPicker book={pickerBook} onClose={() => setPickerBook(null)} />
 
 			{!IS_WEB && (
 				<TransferModal

@@ -28,6 +28,7 @@
 
 import { bookHooks } from "./use-books";
 import { bulkBookHooks } from "./use-bulk-books";
+import { collectionHooks } from "./use-collections";
 import { dangerZoneHooks } from "./use-danger-zone";
 import { glossaryHooks } from "./use-glossary";
 import { highlightHooks } from "./use-highlights";
@@ -40,6 +41,7 @@ import { statsHooks } from "./use-stats";
 
 export {
 	bookKeys,
+	collectionKeys,
 	glossaryKeys,
 	readingSessionKeys,
 	serialKeys,
@@ -167,6 +169,17 @@ export const queryHooks = {
 	useReplanReadingGoal: readingGoalHooks.useReplanReadingGoal,
 	useSetGoalReminder: readingGoalHooks.useSetGoalReminder,
 	useDeleteReadingGoal: readingGoalHooks.useDeleteReadingGoal,
+
+	// ── Collections ───────────────────────────────────────────────────────
+	useCollections: collectionHooks.useCollections,
+	useCollectionBookIds: collectionHooks.useCollectionBookIds,
+	useCollectionIdsForBook: collectionHooks.useCollectionIdsForBook,
+	useCreateCollection: collectionHooks.useCreateCollection,
+	useRenameCollection: collectionHooks.useRenameCollection,
+	useMoveCollection: collectionHooks.useMoveCollection,
+	useDeleteCollection: collectionHooks.useDeleteCollection,
+	useAddBooksToCollection: collectionHooks.useAddBooksToCollection,
+	useRemoveBooksFromCollection: collectionHooks.useRemoveBooksFromCollection,
 
 	// ── Stats ─────────────────────────────────────────────────────────────
 	useStatsPeriodTotals: statsHooks.usePeriodTotals,

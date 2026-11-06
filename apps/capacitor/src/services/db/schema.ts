@@ -416,3 +416,36 @@ export const readingGoals = sqliteTable(
 
 export type ReadingGoal = typeof readingGoals.$inferSelect;
 export type NewReadingGoal = typeof readingGoals.$inferInsert;
+
+/**
+ * Manual collections. Tombstoned on delete (`deleted`) so the delete syncs;
+ * tombstones stay and are pushed with every sync. `sortOrder` is fractional so a
+ * move writes one row.
+ */
+export const collections = sqliteTable("collections", {
+	id: text("id").primaryKey(),
+	name: text("name").notNull(),
+	sortOrder: real("sort_order").notNull(),
+	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+	createdAt: integer("created_at").notNull(),
+	updatedAt: integer("updated_at").notNull(),
+});
+
+/**
+ * One row per (collection, book), merged newest-wins per row, so two devices
+ * adding different books both keep theirs. Nothing is written when a book is
+ * deleted: every read joins live books instead (queries/collections.ts).
+ */
+export const collectionBooks = sqliteTable(
+	"collection_books",
+	{
+		collectionId: text("collection_id").notNull(),
+		bookId: text("book_id").notNull(),
+		deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+		updatedAt: integer("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.collectionId, t.bookId] })],
+);
+
+export type Collection = typeof collections.$inferSelect;
+export type CollectionBook = typeof collectionBooks.$inferSelect;

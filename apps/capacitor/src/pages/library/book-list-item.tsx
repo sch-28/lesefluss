@@ -25,6 +25,8 @@ type BookListItemProps = {
 	onModifiedClick?: (e: React.MouseEvent) => void;
 	/** Starts selection; without it a long press opens the menu. */
 	onLongPress?: () => void;
+	/** Mouse drag onto a sidebar collection; the library's grid sets the drag data. */
+	draggable?: boolean;
 };
 
 const BookListItem: React.FC<BookListItemProps> = ({
@@ -39,6 +41,7 @@ const BookListItem: React.FC<BookListItemProps> = ({
 	onToggle,
 	onModifiedClick,
 	onLongPress,
+	draggable = false,
 }) => {
 	const handlers = useLongPress({
 		onTap: (e) => {
@@ -58,6 +61,7 @@ const BookListItem: React.FC<BookListItemProps> = ({
 			<button
 				type="button"
 				data-book-id={book.id}
+				draggable={draggable}
 				data-book-title={book.title}
 				data-selected={selectable && selected ? "true" : undefined}
 				aria-label={book.title}

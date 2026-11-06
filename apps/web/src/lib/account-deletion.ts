@@ -5,6 +5,8 @@ import {
 	socialNotice,
 	socialRestriction,
 	syncBooks,
+	syncCollectionBooks,
+	syncCollections,
 	syncGlossaryEntries,
 	syncHighlights,
 	syncReadingGoals,
@@ -30,6 +32,8 @@ export async function purgeCloudData(tx: Tx, userId: string): Promise<void> {
 	await tx.delete(syncHighlights).where(eq(syncHighlights.userId, userId));
 	await tx.delete(syncGlossaryEntries).where(eq(syncGlossaryEntries.userId, userId));
 	await tx.delete(syncReadingGoals).where(eq(syncReadingGoals.userId, userId));
+	await tx.delete(syncCollections).where(eq(syncCollections.userId, userId));
+	await tx.delete(syncCollectionBooks).where(eq(syncCollectionBooks.userId, userId));
 	await tx.delete(syncSettings).where(eq(syncSettings.userId, userId));
 }
 

@@ -17,6 +17,13 @@
 
 import { startOfLocalDay } from "../../../utils/date-utils";
 
+/** Under `["books"]`, so adding, deleting or syncing books also refreshes counts and members. */
+export const collectionKeys = {
+	all: ["books", "collections"] as const,
+	members: (collectionId: string) => ["books", "collections", "members", collectionId] as const,
+	ofBook: (bookId: string) => ["books", "collections", "of-book", bookId] as const,
+};
+
 export const bookKeys = {
 	/** All books list - invalidate this to refresh the library grid. */
 	all: ["books"] as const,

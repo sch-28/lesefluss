@@ -60,6 +60,8 @@ vi.mock("../../db/queries", () => ({
 		getAllEntries: vi.fn(async () => []),
 		getSeriesForSync: vi.fn(async () => []),
 		getAllGoalsForSync: vi.fn(async () => []),
+		getAllCollectionsForSync: vi.fn(async () => []),
+		getAllCollectionBooksForSync: vi.fn(async () => []),
 		getReadingSessionsSince: vi.fn(async () => []),
 		adoptBookStamps,
 		adoptSettingsStamp,

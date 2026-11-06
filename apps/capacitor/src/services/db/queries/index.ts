@@ -31,6 +31,21 @@ import {
 	updateBook,
 	writeReaderPosition,
 } from "./books";
+import {
+	addBooksToCollection,
+	createCollection,
+	deleteCollection,
+	getAllCollectionBooksForSync,
+	getAllCollectionsForSync,
+	getCollectionBookIds,
+	getCollectionIdsForBook,
+	getCollections,
+	moveCollection,
+	removeBooksFromCollection,
+	renameCollection,
+	upsertCollectionBooks,
+	upsertCollections,
+} from "./collections";
 import { clearAllDevices, forgetDevice, getPairedDevices, saveDevice } from "./devices";
 import {
 	addEntry,
@@ -188,6 +203,21 @@ export const queries = {
 	replanGoalById,
 	setGoalReminder,
 	getGoalsWithReminders,
+
+	// Collections
+	getCollections,
+	createCollection,
+	renameCollection,
+	moveCollection,
+	deleteCollection,
+	addBooksToCollection,
+	removeBooksFromCollection,
+	getCollectionBookIds,
+	getCollectionIdsForBook,
+	getAllCollectionsForSync,
+	getAllCollectionBooksForSync,
+	upsertCollections,
+	upsertCollectionBooks,
 
 	// Stats
 	getPeriodTotals,

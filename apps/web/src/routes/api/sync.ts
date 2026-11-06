@@ -3,6 +3,8 @@ import {
 	pick,
 	SYNCED_SETTING_KEYS,
 	type SyncBook,
+	type SyncCollection,
+	type SyncCollectionBook,
 	type SyncGlossaryEntry,
 	type SyncHighlight,
 	type SyncPush,
@@ -20,6 +22,8 @@ import { type DbExecutor, db } from "~/db";
 import {
 	syncBookCopy,
 	syncBooks,
+	syncCollectionBooks,
+	syncCollections,
 	syncGlossaryEntries,
 	syncHighlights,
 	syncReadingGoals,
@@ -41,6 +45,7 @@ import { checkLimit } from "~/lib/rate-limit";
 import { requireAuth } from "~/lib/session-middleware";
 import { settleBuddyReads } from "~/lib/social/buddy-reads";
 import { upsertSyncBooks } from "~/lib/sync-book-upsert";
+import { upsertSyncCollectionBooks, upsertSyncCollections } from "~/lib/sync-collection-upsert";
 import { upsertSyncGoals } from "~/lib/sync-goal-upsert";
 import { upsertSyncSettings } from "~/lib/sync-settings-upsert";
 
@@ -180,6 +185,8 @@ async function getUserSyncData(
 		readingSessionRows,
 		deletedSessionRows,
 		goalRows,
+		collectionRows,
+		collectionBookRows,
 		usedBytes,
 	] = await Promise.all([
 		db.select(metadataCols).from(syncBooks).where(eq(syncBooks.userId, userId)),
@@ -207,6 +214,8 @@ async function getUserSyncData(
 						),
 					),
 		db.select().from(syncReadingGoals).where(eq(syncReadingGoals.userId, userId)),
+		db.select().from(syncCollections).where(eq(syncCollections.userId, userId)),
+		db.select().from(syncCollectionBooks).where(eq(syncCollectionBooks.userId, userId)),
 		contentUsage(db, userId),
 	]);
 
@@ -381,6 +390,24 @@ async function getUserSyncData(
 				deleted: g.deleted,
 				createdAt: toMs(g.createdAt),
 				updatedAt: toMs(g.updatedAt),
+			}),
+		),
+		collections: collectionRows.map(
+			(c): SyncCollection => ({
+				collectionId: c.collectionId,
+				name: c.name,
+				sortOrder: c.sortOrder,
+				deleted: c.deleted,
+				createdAt: toMs(c.createdAt),
+				updatedAt: toMs(c.updatedAt),
+			}),
+		),
+		collectionBooks: collectionBookRows.map(
+			(m): SyncCollectionBook => ({
+				collectionId: m.collectionId,
+				bookId: m.bookId,
+				deleted: m.deleted,
+				updatedAt: toMs(m.updatedAt),
 			}),
 		),
 	};
@@ -697,6 +724,13 @@ export const Route = createFileRoute("/api/sync")({
 							userId,
 							payload.readingGoals.filter((g) => !takenDown.has(g.bookId)),
 						);
+					}
+					// Absent from clients that pre-date collections: nothing to merge.
+					if (payload.collections) {
+						await upsertSyncCollections(tx, userId, payload.collections);
+					}
+					if (payload.collectionBooks) {
+						await upsertSyncCollectionBooks(tx, userId, payload.collectionBooks);
 					}
 					const stamps: SyncPushStamps = {
 						books: clampedBooks,

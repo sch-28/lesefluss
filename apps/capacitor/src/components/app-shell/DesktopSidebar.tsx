@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavBadge } from "./nav-badge";
 import { useActiveNavTo, useNavBadges, useNavItems } from "./nav-items";
+import { SidebarCollections } from "./sidebar-collections";
 
 const STORAGE_KEY = "sidebar-collapsed";
 
@@ -66,6 +67,7 @@ export function DesktopSidebar() {
 						);
 					})}
 				</ul>
+				<SidebarCollections isCollapsed={isCollapsed} onExpand={() => setIsCollapsed(false)} />
 			</nav>
 			<button
 				type="button"

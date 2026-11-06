@@ -32,6 +32,8 @@ type BookCardProps = {
 	onModifiedClick?: (e: React.MouseEvent) => void;
 	/** Starts selection; without it a long press opens the menu. */
 	onLongPress?: () => void;
+	/** Mouse drag onto a sidebar collection; the library's grid sets the drag data. */
+	draggable?: boolean;
 };
 
 const BookCard: React.FC<BookCardProps> = ({
@@ -46,6 +48,7 @@ const BookCard: React.FC<BookCardProps> = ({
 	onToggle,
 	onModifiedClick,
 	onLongPress,
+	draggable = false,
 }) => {
 	const handlers = useLongPress({
 		onTap: (e) => {
@@ -68,6 +71,7 @@ const BookCard: React.FC<BookCardProps> = ({
 			<button
 				type="button"
 				data-book-id={book.id}
+				draggable={draggable}
 				data-testid="library-card"
 				data-book-title={book.title}
 				data-selected={selectable && selected ? "true" : undefined}

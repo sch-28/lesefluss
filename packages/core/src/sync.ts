@@ -305,6 +305,27 @@ export const SyncReadingGoalSchema = z.object({
 	updatedAt: epochMs(),
 });
 
+export const COLLECTION_NAME_MAX = 100;
+export const COLLECTIONS_PUSH_MAX = 1000;
+export const COLLECTION_BOOKS_PUSH_MAX = 50_000;
+
+export const SyncCollectionSchema = z.object({
+	collectionId: z.string().min(1).max(64),
+	name: z.string().trim().min(1).max(COLLECTION_NAME_MAX),
+	sortOrder: z.number(),
+	deleted: z.boolean(),
+	createdAt: epochMs(),
+	updatedAt: epochMs(),
+});
+
+/** One membership. `deleted` is a row value so a book removed and added again wins by `updatedAt`. */
+export const SyncCollectionBookSchema = z.object({
+	collectionId: z.string().min(1).max(64),
+	bookId: z.string().regex(/^[0-9a-f]{8}$/),
+	deleted: z.boolean(),
+	updatedAt: epochMs(),
+});
+
 export const SyncPayloadSchema = z.object({
 	// Cap is generous because serial chapter rows (seriesId set) carry no body
 	// content/cover/TOC, so a 50k-row payload is still small in bytes. The real
@@ -320,6 +341,9 @@ export const SyncPayloadSchema = z.object({
 	// No default: a client that pre-dates goals omits the field, and that must
 	// not read as "this account has no goals".
 	readingGoals: z.array(SyncReadingGoalSchema).max(5000).optional(),
+	// No default, as with goals: an omitted array never means "no collections".
+	collections: z.array(SyncCollectionSchema).max(COLLECTIONS_PUSH_MAX).optional(),
+	collectionBooks: z.array(SyncCollectionBookSchema).max(COLLECTION_BOOKS_PUSH_MAX).optional(),
 });
 
 /** The server's reading of a push. Clients build pushes against `SyncPayloadSchema`. */
@@ -353,6 +377,8 @@ export type SyncReadingSession = z.infer<typeof SyncReadingSessionSchema>;
 /** A malformed tombstone list deletes nothing rather than failing the pull. */
 export const DeletedSessionIdsSchema = z.array(z.string()).catch([]);
 export type SyncReadingGoal = z.infer<typeof SyncReadingGoalSchema>;
+export type SyncCollection = z.infer<typeof SyncCollectionSchema>;
+export type SyncCollectionBook = z.infer<typeof SyncCollectionBookSchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 export type SyncPush = z.infer<typeof SyncPushSchema>;
 export type SyncPushStamps = z.infer<typeof SyncPushStampsSchema>;
@@ -384,6 +410,9 @@ export type SyncResponse = {
 	deletedSessionIdsAsOf?: number;
 	/** Optional so a client pointed at an older server can do without it. */
 	readingGoals?: SyncReadingGoal[];
+	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
+	collections?: SyncCollection[];
+	collectionBooks?: SyncCollectionBook[];
 	/**
 	 * Book ids the server currently holds body content for. Lets the client skip
 	 * re-uploading content it has already stored, which it cannot otherwise know:

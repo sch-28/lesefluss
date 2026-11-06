@@ -56,6 +56,7 @@ import { reportEvent } from "../telemetry";
 import { SYNC_URL } from "./auth-client";
 import { buildBookMergeUpdate } from "./book-merge";
 import { type NotBackedUpBook, reportBooksNotBackedUp } from "./cloud-storage";
+import { buildCollectionMerge, pushableCollections } from "./collection-sync";
 import {
 	forgetReported,
 	getQuotaBlock,
@@ -1109,6 +1110,25 @@ export async function pullSync(): Promise<Set<string>> {
 				changed = true;
 			}
 		}
+		// Absent from an older server: leave local collections alone.
+		if (data.collections || data.collectionBooks) {
+			const [localCollections, localCollectionBooks] = await Promise.all([
+				queries.getAllCollectionsForSync(),
+				queries.getAllCollectionBooksForSync(),
+			]);
+			const merge = buildCollectionMerge(
+				{ collections: localCollections, collectionBooks: localCollectionBooks },
+				{ collections: data.collections ?? [], collectionBooks: data.collectionBooks ?? [] },
+			);
+			if (merge.rejected > 0) {
+				log("sync", `pull: skipped ${merge.rejected} malformed collection row(s)`);
+			}
+			if (merge.collections.length > 0) await queries.upsertCollections(merge.collections);
+			if (merge.collectionBooks.length > 0) {
+				await queries.upsertCollectionBooks(merge.collectionBooks);
+			}
+			if (merge.collections.length > 0 || merge.collectionBooks.length > 0) changed = true;
+		}
 		// Positions may have moved past the finish on another device or a reader.
 		await queries.completeFinishedGoals();
 
@@ -1267,16 +1287,27 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 		// defaults; pushing it would overwrite what the account holds.
 		const hasAdoptedSettings = await hasAdoptedServerSettings();
 
-		const [books, settings, highlights, glossaryEntries, seriesRows, readingSessionsRows, goals] =
-			await Promise.all([
-				queries.getBooksForSync(),
-				queries.getSettings(),
-				queries.getAllHighlights(),
-				queries.getAllEntries(),
-				queries.getSeriesForSync(),
-				queries.getReadingSessionsSince(sessionWatermark),
-				queries.getAllGoalsForSync(),
-			]);
+		const [
+			books,
+			settings,
+			highlights,
+			glossaryEntries,
+			seriesRows,
+			readingSessionsRows,
+			goals,
+			collectionRows,
+			collectionBookRows,
+		] = await Promise.all([
+			queries.getBooksForSync(),
+			queries.getSettings(),
+			queries.getAllHighlights(),
+			queries.getAllEntries(),
+			queries.getSeriesForSync(),
+			queries.getReadingSessionsSince(sessionWatermark),
+			queries.getAllGoalsForSync(),
+			queries.getAllCollectionsForSync(),
+			queries.getAllCollectionBooksForSync(),
+		]);
 
 		// Pristine pending chapter rows carry zero user data and are excluded from the
 		// push payload — they will be recreated on any device via useChapterListSync.
@@ -1331,6 +1362,14 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			log("sync", `push: dropped ${goalsForPush.rejected} malformed goal(s)`);
 		}
 
+		const collectionsForPush = pushableCollections({
+			collections: collectionRows,
+			collectionBooks: collectionBookRows,
+		});
+		if (collectionsForPush.rejected > 0) {
+			log("sync", `push: dropped ${collectionsForPush.rejected} malformed collection row(s)`);
+		}
+
 		const payload: SyncPayload = {
 			books: booksWithContent,
 			settings: hasAdoptedSettings ? settingsToSync(settings) : null,
@@ -1345,6 +1384,8 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			series: seriesRows.map(seriesToSync),
 			readingSessions: settings.syncStats ? sessionsForPush : [],
 			readingGoals: goalsForPush.pushable,
+			collections: collectionsForPush.collections,
+			collectionBooks: collectionsForPush.collectionBooks,
 		};
 
 		// Diagnostics for the >5000 books cap — log composition so we can see what's
@@ -1364,7 +1405,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 		const body = JSON.stringify(payload);
 		log(
 			"sync",
-			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} contentUploads=${uploadedContentIds.size} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} readingGoals=${goalsForPush.pushable.length} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
+			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} contentUploads=${uploadedContentIds.size} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} readingGoals=${goalsForPush.pushable.length} collections=${collectionsForPush.collections.length} collectionBooks=${collectionsForPush.collectionBooks.length} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
 		);
 
 		const { quotaRejection, stamps } = await postPush(body);

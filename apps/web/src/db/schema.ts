@@ -306,6 +306,37 @@ export const syncReadingGoals = pgTable(
 	],
 );
 
+/**
+ * sync_collections / sync_collection_books: manual collections and their
+ * memberships, each last-write-wins per row on `updated_at`. `deleted` is a row
+ * value on both, so a book removed and added again comes back by `updated_at`.
+ */
+export const syncCollections = pgTable(
+	"sync_collections",
+	{
+		userId: text("user_id").notNull(),
+		collectionId: text("collection_id").notNull(),
+		name: text("name").notNull(),
+		sortOrder: doublePrecision("sort_order").notNull(),
+		deleted: boolean("deleted").notNull().default(false),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.collectionId] })],
+);
+
+export const syncCollectionBooks = pgTable(
+	"sync_collection_books",
+	{
+		userId: text("user_id").notNull(),
+		collectionId: text("collection_id").notNull(),
+		bookId: text("book_id").notNull(),
+		deleted: boolean("deleted").notNull().default(false),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.collectionId, t.bookId] })],
+);
+
 export type SyncBook = typeof syncBooks.$inferSelect;
 export type NewSyncBook = typeof syncBooks.$inferInsert;
 export type SyncSeries = typeof syncSeries.$inferSelect;
@@ -320,6 +351,8 @@ export type SyncReadingSession = typeof syncReadingSessions.$inferSelect;
 export type NewSyncReadingSession = typeof syncReadingSessions.$inferInsert;
 export type SyncReadingGoal = typeof syncReadingGoals.$inferSelect;
 export type NewSyncReadingGoal = typeof syncReadingGoals.$inferInsert;
+export type NewSyncCollection = typeof syncCollections.$inferInsert;
+export type NewSyncCollectionBook = typeof syncCollectionBooks.$inferInsert;
 
 /**
  * telemetry_events: anonymized diagnostics from clients (no account required).
