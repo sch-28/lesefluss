@@ -15,7 +15,7 @@ export const USERS = {
 	dee: { id: "e2e-dee", name: "Dee", email: "dee@e2e.lesefluss.test", handle: "dee_e2e" },
 	/** Flips the website's social toggles. */
 	eve: { id: "e2e-eve", name: "Eve", email: "eve@e2e.lesefluss.test", handle: "eve_e2e" },
-	/** Signs in from onboarding and from the signed-out social tab. */
+	/** Signs in from onboarding and on the website's link-device page. */
 	fay: { id: "e2e-fay", name: "Fay", email: "fay@e2e.lesefluss.test", handle: null },
 };
 

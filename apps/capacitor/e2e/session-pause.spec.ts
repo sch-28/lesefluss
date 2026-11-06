@@ -3,8 +3,7 @@ import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
 
 /**
  * Two-finger tap toggles the reading-session pause: overlay appears, the
- * tracker checkpoints and stops accruing, a single tap (after the resume grace
- * period) or another two-finger tap resumes. Desktop chromium has no touch
+ * tracker checkpoints and stops accruing. Desktop chromium has no touch
  * input, but Blink exposes the
  * Touch/TouchEvent constructors unconditionally, so the gesture is driven by
  * dispatching constructed touch events on the view container — the same

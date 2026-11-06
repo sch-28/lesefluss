@@ -6,9 +6,8 @@ import { reader } from "./page-objects/reader";
 
 /**
  * Word taps and long presses after they moved to document-level handling
- * (word-gestures.ts): sighted taps and presses behave as before, by mouse and
- * by touch (whose click comes in a later task), a click with no press before it
- * (what a TalkBack double-tap sends) changes nothing, and book text reaches
+ * (word-gestures.ts): sighted taps and presses behave as before by touch
+ * (whose click comes in a later task), and book text reaches
  * screen readers as paragraphs, not one node per word.
  */
 

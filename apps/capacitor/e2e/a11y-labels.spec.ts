@@ -19,7 +19,8 @@ const KNOWN_CLICKABLES = [
 ];
 
 async function expectAccessible(page: Page, where: string) {
-	expect(await a11yProblems(page, KNOWN_CLICKABLES), where).toEqual([]);
+	// Polled: right after a route change the AX tree can lag the laid-out DOM.
+	await expect.poll(() => a11yProblems(page, KNOWN_CLICKABLES), { message: where }).toEqual([]);
 }
 
 async function openWithFakeTts(page: Page) {

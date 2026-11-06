@@ -8,7 +8,8 @@ test.use({ viewport: { width: 420, height: 800 } });
 /**
  * The touch path: a long press arms selection, the finger then crosses a
  * figure (no word under it) on its way to the next paragraph. A press that
- * starts on the figure itself is word-gestures.test.ts's.
+ * starts on the figure itself starts no selection (word-gestures.test.ts)
+ * and, in page mode, turns no page.
  */
 
 test("a touch long-press dragged across a figure selects both ends and the highlight persists", async ({
@@ -33,4 +34,17 @@ test("a touch long-press dragged across a figure selects both ends and the highl
 	await openBookFromLibrary(page, title);
 	await reader.expectHighlight(page, start, "yellow");
 	await reader.expectHighlight(page, end, "yellow");
+});
+
+test("a touch long-press on a figure in page mode turns no page", async ({ page }) => {
+	const title = await seedStrayAnchorBook(page);
+	await openBookFromLibrary(page, title);
+	await reader.setPaginationStyle(page, "page");
+	const before = await reader.pageModeFirstVisibleWord(page);
+
+	await reader.touchLongPressOn(page, page.locator('.reader-figure img[alt="Plate 1"]'));
+	// A turn or a selection, had the press started one, would be showing by now.
+	await page.waitForTimeout(500);
+	await expect(reader.selectionToolbar(page)).toHaveCount(0);
+	expect(await reader.pageModeFirstVisibleWord(page)).toBe(before);
 });

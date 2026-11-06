@@ -104,3 +104,27 @@ test("in page mode, a TOC jump to a heading on a later page than the previous ch
 	await expect(heading).toBeInViewport({ timeout: 10_000 });
 	await expect(previousLastWord).not.toBeInViewport();
 });
+
+test("a scroll that comes to rest with a heading on the top edge saves the heading's first word", async ({
+	page,
+}) => {
+	await seedChapterNovel(page);
+	await openBookFromLibrary(page, CHAPTER_NOVEL_TITLE);
+	await reader.waitOpenSettled(page);
+	await reader.tocJumpToChapter(page, `Chapter ${CHAPTER}`);
+	await expect(reader.browseBar(page)).toBeVisible();
+	await reader.waitPastJumpGuard(page);
+	await reader.commitReadFromHere(page);
+	const heading = page.locator(".reader-heading", { hasText: chapterHeading(CHAPTER) });
+	let saves = await reader.saveCount(page);
+	await reader.wheel(page, -400);
+	await reader.waitForSaveAbove(page, saves, 5000);
+	saves = await reader.saveCount(page);
+
+	await reader.wheelTargetTo(page, heading, "top");
+
+	await reader.waitForSaveAbove(page, saves, 5000);
+	expect(await reader.lastSavedWord(page)).toBe(
+		Number(await heading.getAttribute("data-heading-word")),
+	);
+});

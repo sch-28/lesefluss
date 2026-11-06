@@ -137,6 +137,24 @@ async function searchAndJump(page: Page, phrase: string): Promise<void> {
 
 const AFTER_TALL_FIGURE = `Paragraph ${FULL_PAGE_FIGURE_BEFORE} contains`;
 
+test("a search jump to the paragraph after a page-sized figure lands on it in scroll mode", async ({
+	page,
+}) => {
+	const title = await seedBigBook(page);
+	await openBookFromLibrary(page, title);
+	await reader.expectLoaded(page);
+
+	await searchAndJump(page, AFTER_TALL_FIGURE);
+	const target = page.locator("p.reader-paragraph", { hasText: AFTER_TALL_FIGURE });
+	await expect(target).toBeInViewport({ timeout: 5000 });
+	const targetWord = await reader.firstWordPositionIn(target);
+	expect(await reader.lastSavedWord(page)).toBe(targetWord);
+	// The fine scroll aligns the target word at the top, the figure sits above it.
+	await expect.poll(() => reader.scrollModeTopWord(page), { timeout: 5000 }).toBe(targetWord);
+	await reader.waitPastJumpGuard(page);
+	expect(await reader.lastSavedWord(page)).toBe(targetWord);
+});
+
 test("a search jump to the paragraph after a page-sized figure lands on it in page mode", async ({
 	page,
 }) => {

@@ -241,6 +241,22 @@ describe("long press", () => {
 		expect(h.onWordLongPress).toHaveBeenCalledTimes(1);
 	});
 
+	it("starts nothing for a press on a figure, even with a word beside it", () => {
+		const h = setUp();
+		byId("root").insertAdjacentHTML(
+			"beforeend",
+			`<figure class="reader-figure"><img id="plate" alt="Plate 1"></figure>`,
+		);
+		underPoint = (x) => (x > 100 ? [word(11), byId("para")] : [byId("plate")]);
+		pointer(byId("plate"), "pointerdown", { x: 96 });
+		vi.advanceTimersByTime(LONG_PRESS_MS);
+		pointer(byId("plate"), "pointerup", { x: 96 });
+		click(byId("plate"));
+		expect(h.onWordLongPress).not.toHaveBeenCalled();
+		expect(h.onWordTap).not.toHaveBeenCalled();
+		expect(hasLongPressFiredFor(1)).toBe(false);
+	});
+
 	it("hands a mouse drag to onWordMouseDragStart, untouched by cancelAnyActiveLongPress", () => {
 		const h = setUp();
 		pointer(word(10), "pointerdown", { pointerType: "mouse" });

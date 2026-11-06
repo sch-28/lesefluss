@@ -190,3 +190,22 @@ test("reopen: back to the library and a full reload both land on the saved word 
 		expect(await savedWord(page), `${how}: the row`).toBe(word);
 	}
 });
+
+test("reload race: a chapter commit survives a hard reload with no wait for its save", async ({
+	page,
+}) => {
+	const title = await seedStrayAnchorBook(page);
+	await openBookFromLibrary(page, title);
+	await expect(page.locator("body")).toContainText(
+		"Chapter 1 opening paragraph anchors the scene.",
+	);
+
+	await reader.moveToChapter(page, "2: Second");
+	await expect(page.locator("h2", { hasText: "TITLE 2" })).toBeInViewport({ timeout: 5000 });
+	await page.reload();
+	await reader.expectLoaded(page);
+
+	const ch2 = page.locator("body").getByText("Chapter 2 opening paragraph anchors the scene.");
+	await expect(ch2).toBeVisible({ timeout: 10_000 });
+	await expect(ch2).toBeInViewport();
+});

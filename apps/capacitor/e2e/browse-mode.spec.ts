@@ -80,6 +80,23 @@ test("a TOC jump browses without saving, Back returns to the anchor, and scrolli
 	await expect.poll(() => reader.scrollModeTopWord(page), { timeout: 10_000 }).toBe(scrolledTo);
 });
 
+test("leaving the reader while browsing saves nothing, and a reopen lands on the anchor", async ({
+	page,
+}) => {
+	await openSeeded(page);
+	const baseline = await reader.saveCount(page);
+
+	await reader.tocJumpToChapter(page, "2: Second");
+	await expect(opening(page, 2)).toBeInViewport({ timeout: 5000 });
+	await expect(reader.browseBar(page)).toBeVisible();
+	await reader.waitPastJumpGuard(page);
+	expect(await reader.saveCount(page)).toBe(baseline);
+
+	await reopen(page);
+	await expect(opening(page, 1)).toBeInViewport({ timeout: 10_000 });
+	await expect(reader.browseBar(page)).toBeHidden();
+});
+
 test("Read from here commits a word tapped while browsing, and a reopen lands there", async ({
 	page,
 }) => {

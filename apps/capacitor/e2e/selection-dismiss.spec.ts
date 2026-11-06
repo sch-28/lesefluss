@@ -4,7 +4,7 @@ import { reader } from "./page-objects/reader";
 
 /**
  * The selection toolbar has no close button, so in scroll mode it must go away
- * on Escape and on a click in empty reader space, while the click that ends a
+ * on a click in empty reader space (Escape is selection-dismiss.test.ts's), while the click that ends a
  * mouse-drag selection must leave it open.
  */
 async function openWithSelection(page: Page) {

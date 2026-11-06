@@ -52,12 +52,12 @@ On the web, the SQLite database lives in IndexedDB through jeep-sqlite, which re
   - **Needs:** a local Postgres, taken from `E2E_APP_PG_URL` or the server in `apps/web/.env`'s `DATABASE_URL`; only a new database on it is touched.
   - **`E2E_APP_REUSE_BUILD=1`** skips the build (about 15 s) when `apps/web/.output` and `public/app` exist. Only use it when nothing under `apps/` changed.
   - **Covers:**
-    - the selection toolbar (Escape, margin click, resize);
-    - signing in from onboarding and from the social tab, and returning to `/app`;
+    - the selection toolbar (margin click, resize);
+    - signing in from onboarding and returning to `/app`;
     - an invite link redeemed through the web app;
     - the live board dropping a closed tab;
     - the website's activity toggles;
-    - `/app` assets loading without 404s at phone and desktop sizes;
+    - `/app` assets loading without 404s;
     - the local database surviving an unload mid-save.
   - Not wired into CI. That would need a Postgres service container and `E2E_APP_PG_URL` pointing at it, plus `pnpm exec playwright install chromium`.
 
