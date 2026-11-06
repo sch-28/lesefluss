@@ -100,21 +100,17 @@ describe.skipIf(!hasDb)("live board (integration)", () => {
 	test("members see each other reading, never themselves, and stop ends it", async () => {
 		await reportLive(bo, readId, report(10));
 		await reportLive(cy, readId, report(20));
-		const seenByAda = snapshotFor(readId, await viewer(ada), Date.now());
+		const seenByAda = snapshotFor(readId, await viewer(ada));
 		expect(seenByAda.live).toBe(true);
 		expect(seenByAda.members.map((m) => m.userId).sort()).toEqual([bo, cy].sort());
 		expect(seenByAda.members.find((m) => m.userId === bo)).toMatchObject({
 			wordPosition: 10,
 			wordCount: 5000,
 		});
-		expect(snapshotFor(readId, await viewer(bo), Date.now()).members.map((m) => m.userId)).toEqual([
-			cy,
-		]);
+		expect(snapshotFor(readId, await viewer(bo)).members.map((m) => m.userId)).toEqual([cy]);
 
 		stopLive(cy, readId);
-		expect(snapshotFor(readId, await viewer(ada), Date.now()).members.map((m) => m.userId)).toEqual(
-			[bo],
-		);
+		expect(snapshotFor(readId, await viewer(ada)).members.map((m) => m.userId)).toEqual([bo]);
 	});
 
 	test("reports from non-members or past the copy's end are rejected", async () => {
@@ -127,14 +123,10 @@ describe.skipIf(!hasDb)("live board (integration)", () => {
 		await reportLive(cy, readId, report(40));
 		await db.insert(socialBlock).values({ blockerId: cy, blockedId: bo });
 		try {
+			expect(snapshotFor(readId, await viewer(cy)).members.map((m) => m.userId)).toEqual([]);
+			expect(snapshotFor(readId, await viewer(bo)).members.map((m) => m.userId)).toEqual([]);
 			expect(
-				snapshotFor(readId, await viewer(cy), Date.now()).members.map((m) => m.userId),
-			).toEqual([]);
-			expect(
-				snapshotFor(readId, await viewer(bo), Date.now()).members.map((m) => m.userId),
-			).toEqual([]);
-			expect(
-				snapshotFor(readId, await viewer(ada), Date.now())
+				snapshotFor(readId, await viewer(ada))
 					.members.map((m) => m.userId)
 					.sort(),
 			).toEqual([bo, cy].sort());
@@ -146,13 +138,9 @@ describe.skipIf(!hasDb)("live board (integration)", () => {
 	test("opting out takes the user off the board and drops their later reports", async () => {
 		await reportLive(bo, readId, report(50));
 		await updateOwnProfile(bo, { shareLiveReading: false });
-		expect(
-			snapshotFor(readId, await viewer(ada), Date.now()).members.map((m) => m.userId),
-		).not.toContain(bo);
+		expect(snapshotFor(readId, await viewer(ada)).members.map((m) => m.userId)).not.toContain(bo);
 		await reportLive(bo, readId, report(60));
-		expect(
-			snapshotFor(readId, await viewer(ada), Date.now()).members.map((m) => m.userId),
-		).not.toContain(bo);
+		expect(snapshotFor(readId, await viewer(ada)).members.map((m) => m.userId)).not.toContain(bo);
 
 		await reportLive(cy, readId, report(70));
 		const stream = await openLiveStream(bo, readId, new AbortController().signal);

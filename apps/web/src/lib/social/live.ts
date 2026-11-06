@@ -58,14 +58,13 @@ function isNotMember(err: unknown): boolean {
 export function snapshotFor(
 	buddyReadId: string,
 	viewer: Pick<Listener, "userId" | "isLive" | "visible">,
-	now: number,
 ): LiveSnapshot {
 	return {
 		buddyReadId,
 		live: viewer.isLive,
 		members: viewer.isLive
 			? liveBoard
-					.members(buddyReadId, now)
+					.members(buddyReadId)
 					.filter((m) => m.userId !== viewer.userId && viewer.visible.has(m.userId))
 			: [],
 	};
@@ -76,9 +75,8 @@ function sse(event: string, data: unknown): string {
 }
 
 function broadcast(buddyReadId: string): void {
-	const now = Date.now();
 	for (const l of listeners.get(buddyReadId) ?? []) {
-		l.send(sse("snapshot", snapshotFor(buddyReadId, l, now)));
+		l.send(sse("snapshot", snapshotFor(buddyReadId, l)));
 	}
 }
 
@@ -95,7 +93,7 @@ export async function sweep(now: Date): Promise<void> {
 	isSweeping = true;
 	try {
 		for (const buddyReadId of liveBoard.readIds()) {
-			for (const m of liveBoard.members(buddyReadId, now.getTime())) {
+			for (const m of liveBoard.members(buddyReadId)) {
 				try {
 					await liveChecks.memberView(m.userId, buddyReadId, now);
 					if (!(await liveChecks.sharesLive(m.userId))) liveBoard.stop(buddyReadId, m.userId);
@@ -198,7 +196,7 @@ export async function openLiveStream(
 			const set = listeners.get(buddyReadId) ?? new Set<Listener>();
 			set.add(listener);
 			listeners.set(buddyReadId, set);
-			listener.send(sse("snapshot", snapshotFor(buddyReadId, listener, Date.now())));
+			listener.send(sse("snapshot", snapshotFor(buddyReadId, listener)));
 			const heartbeat = setInterval(() => listener.send(": ping\n\n"), HEARTBEAT_MS);
 			cleanup = () => {
 				if (!isOpen) return;

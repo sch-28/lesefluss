@@ -25,6 +25,7 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DeviceBadge } from "../../components/device-sync";
 import { ShareSheet } from "../../components/social/share-sheet";
+import { SpeedChip } from "../../components/speed-chip/speed-chip";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useBookDeviceState } from "../../contexts/device-library-context";
 import { useSyncContext } from "../../contexts/sync-context";
@@ -78,6 +79,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const { data: content } = queryHooks.useBookContent(id);
 	const { chapters, isResolved: areChaptersResolved } = useBookChapters(id);
 	const { data: allBooks } = queryHooks.useBooks();
+	const { data: speedModel } = queryHooks.useStatsSpeedModel();
 	const { data: highlights = [] } = useQuery({
 		queryKey: bookKeys.highlights(id),
 		queryFn: () => queries.getHighlightsByBook(id),
@@ -261,6 +263,19 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		pages !== null ? `${pages.toLocaleString()} pages` : null,
 		chapterCount > 0 ? `${chapterCount} chapters` : null,
 		`${progress}% read`,
+		speedModel ? (
+			<SpeedChip
+				key="speed"
+				bare
+				book={{
+					id: book.id,
+					wordsLeft:
+						book.finishedAt === null && book.wordCount > 0
+							? book.wordCount - book.wordPosition
+							: null,
+				}}
+			/>
+		) : null,
 		book.fileFormat.toUpperCase(),
 		highlights.length > 0
 			? `${highlights.length} highlight${highlights.length === 1 ? "" : "s"}`

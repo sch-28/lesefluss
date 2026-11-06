@@ -77,10 +77,10 @@ const Explore: React.FC<Props> = ({ search }) => {
 	const languagesQuery = useCatalogLanguages(mode === "catalog");
 
 	const filters = toCatalogFilters(search, lang ?? "en", speed.wpm);
-	// A length filter's word bounds depend on the speed; searching before it loads
-	// would run once at the fallback and again at the measured value.
-	const isSearchReady =
-		mode === "catalog" && lang !== undefined && (!search.length || speed.isSettled);
+	// A length or fits filter's word bounds depend on the speed; searching before
+	// it loads would run once at the fallback and again at the measured value.
+	const isSpeedReady = (!search.length && !search.fits) || speed.isSettled;
+	const isSearchReady = mode === "catalog" && lang !== undefined && isSpeedReady;
 	const catalogSearch = useCatalogSearch(filters, isSearchReady);
 	const firstPage = mode === "catalog" ? catalogSearch.data?.pages[0] : undefined;
 
@@ -132,7 +132,14 @@ const Explore: React.FC<Props> = ({ search }) => {
 
 	const searchAllLanguages = lang !== "all" ? () => changeLang("all") : undefined;
 	const clearFilters = hasCatalogFilters(search)
-		? () => patch({ genre: undefined, tags: undefined, source: undefined, length: undefined })
+		? () =>
+				patch({
+					genre: undefined,
+					tags: undefined,
+					source: undefined,
+					length: undefined,
+					fits: undefined,
+				})
 		: undefined;
 	const tagLabels = new Map(parseTags(search.tags).map((id) => [id, tagLabel(id)]));
 
@@ -212,7 +219,7 @@ const Explore: React.FC<Props> = ({ search }) => {
 				<div className="mx-auto max-w-5xl">
 					<CatalogResults
 						filters={filters}
-						enabled={!search.length || speed.isSettled}
+						enabled={isSpeedReady}
 						view={view}
 						onOpen={openBook}
 						onSearchSuggestion={queryText.submit}

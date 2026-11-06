@@ -16,6 +16,7 @@ import {
 	SocialSection,
 	StatTile,
 } from "@/components/social/social-ui";
+import { SpeedChip, SpeedChipStatic } from "@/components/speed-chip/speed-chip";
 import { toast } from "@/components/toast";
 import { AuthedFetchError } from "@/services/authed-fetch";
 import { useIsOnline } from "@/services/social/cache";
@@ -38,9 +39,6 @@ function statTiles(stats: ProfileStats): { label: string; value: string }[] {
 	}
 	if (stats.readingTimeMs !== null) {
 		tiles.push({ label: "Reading time", value: formatDuration(stats.readingTimeMs) });
-	}
-	if (stats.readingSpeedWpm !== null) {
-		tiles.push({ label: "Reading speed", value: `${stats.readingSpeedWpm} wpm` });
 	}
 	return tiles;
 }
@@ -108,6 +106,19 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 						</Button>
 					)}
 				</div>
+				{isSelf && !isPreview ? (
+					<SpeedChip className="mt-3" />
+				) : (
+					view.sections.stats && (
+						<SpeedChipStatic
+							className="mt-3"
+							// Older servers send only the mixed speed.
+							speeds={
+								view.sections.stats.speeds ?? { reading: view.sections.stats.readingSpeedWpm }
+							}
+						/>
+					)
+				)}
 				<p className="mt-3 text-muted-foreground text-xs">
 					{isPreview
 						? "Preview: what a friend sees"

@@ -851,7 +851,9 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	letter-spacing: 0.02em;
 	opacity: 0.7;
 	pointer-events: none;
-	transition: opacity 300ms ease;
+	transition:
+		opacity 300ms ease,
+		transform 300ms ease;
 }
 
 .rsvp-speed-chip--ramping {
@@ -2251,4 +2253,13 @@ body.dark .chapter-row:hover {
 
 .reader-goal-chip--met .reader-goal-ring {
 	stroke: var(--goal-met);
+}
+
+.rsvp-speed-chip--flash {
+	color: var(--reader-text);
+	opacity: 1;
+	transform: scale(1.15);
+	transition:
+		transform 120ms ease-out,
+		opacity 120ms ease-out;
 }

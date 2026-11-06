@@ -77,7 +77,7 @@ export const DEFAULT_SETTINGS = {
  * Setting constraints matching ESP32 config
  */
 export const SETTING_CONSTRAINTS = {
-	WPM: { min: 100, max: 1000, step: 50 },
+	WPM: { min: 100, max: 1000, step: 25 },
 	DELAY_COMMA: { min: 1.0, max: 5.0, step: 0.1 },
 	DELAY_PERIOD: { min: 1.0, max: 5.0, step: 0.1 },
 	ACCEL_START: { min: 1.0, max: 5.0, step: 0.1 },

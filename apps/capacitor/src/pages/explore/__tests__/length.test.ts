@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { toCatalogFilters } from "../explore-search";
-import { describeLength, wordBounds } from "../length";
+import { exploreMode, parseExploreSearch, toCatalogFilters } from "../explore-search";
+import { describeLength, fitsTonightBounds, wordBounds } from "../length";
 
 describe("wordBounds", () => {
 	it("turns reading-time buckets into word bounds at the reader's speed", () => {
@@ -77,5 +77,23 @@ describe("toCatalogFilters", () => {
 			minWords: undefined,
 			maxWords: 15_000,
 		});
+	});
+});
+
+describe("fits tonight", () => {
+	it("bounds the catalog to 90 minutes at the rounded pace", () => {
+		expect(fitsTonightBounds(300)).toEqual({ maxWords: 27_000 });
+		expect(fitsTonightBounds(312)).toEqual(fitsTonightBounds(300));
+		expect(toCatalogFilters({ fits: "tonight" }, "en", 250).maxWords).toBe(22_500);
+	});
+
+	it("is a catalog filter that a length bucket replaces", () => {
+		expect(parseExploreSearch({ fits: "tonight" }).fits).toBe("tonight");
+		expect(parseExploreSearch({ fits: "weekend" }).fits).toBeUndefined();
+		expect(parseExploreSearch({ fits: "tonight", length: "long" })).toMatchObject({
+			length: "long",
+			fits: undefined,
+		});
+		expect(exploreMode({ fits: "tonight" })).toBe("catalog");
 	});
 });

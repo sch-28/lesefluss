@@ -22,13 +22,24 @@ export function lengthLabel(bucket: LengthBucket): string {
  */
 const BOUNDS_WPM_STEP = 25;
 
+const boundsPace = (wpm: number) =>
+	Math.max(BOUNDS_WPM_STEP, Math.round(wpm / BOUNDS_WPM_STEP) * BOUNDS_WPM_STEP);
+
+/** What "fits tonight" means: a book read in one evening at the reader's pace. */
+export const FITS_TONIGHT_MINUTES = 90;
+
+/** The catalog's max_words for "fits tonight" at `wpm`. */
+export function fitsTonightBounds(wpm: number): { maxWords: number } {
+	return { maxWords: Math.round(FITS_TONIGHT_MINUTES * boundsPace(wpm)) };
+}
+
 /** Word bounds for a bucket at `wpm`, as the catalog's min_words / max_words. */
 export function wordBounds(
 	bucket: LengthBucket,
 	wpm: number,
 ): { minWords?: number; maxWords?: number } {
 	const { min, max } = RANGES[bucket];
-	const pace = Math.max(BOUNDS_WPM_STEP, Math.round(wpm / BOUNDS_WPM_STEP) * BOUNDS_WPM_STEP);
+	const pace = boundsPace(wpm);
 	return {
 		minWords: min === undefined ? undefined : Math.round(min * pace),
 		maxWords: max === undefined ? undefined : Math.round(max * pace),

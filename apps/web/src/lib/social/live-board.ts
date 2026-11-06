@@ -1,6 +1,7 @@
 import {
 	LIVE_IDLE_MS,
 	LIVE_MIN_SITTING_MS,
+	LIVE_STILL_READING_MS,
 	type LiveMember,
 	type LiveReport,
 	type ReadingMode,
@@ -14,11 +15,25 @@ import {
  */
 const MAX_REFILL_MS = 10_000;
 
+/**
+ * Time a move adds to the sitting: the whole stretch since the last move while
+ * that is still reading, else only the latest report's gap, since the reader
+ * was paused before it.
+ */
+function activeGain(prev: Reader, mode: ReadingMode, now: number): number {
+	const still = now - prev.lastMovedAt;
+	if (still <= LIVE_STILL_READING_MS[mode]) return still;
+	return Math.min(now - prev.lastSeenAt, MAX_REFILL_MS);
+}
+
 type Reader = {
 	position: number;
 	wordCount: number;
 	lastSeenAt: number;
-	sittingStartedAt: number;
+	/** Reading time in the sitting: pauses past the mode's still allowance stay out. */
+	activeMs: number;
+	/** When the position last changed. */
+	lastMovedAt: number;
 	mode: ReadingMode;
 	credited: number;
 	budget: number;
@@ -28,7 +43,7 @@ type Reader = {
 
 /**
  * Who is reading which buddy read right now, in memory only. Speed is the
- * words credited in the current sitting over its duration, credited with the
+ * words credited in the current sitting over its active time, credited with the
  * reading tracker's plausibility rule.
  */
 export class LiveBoard {
@@ -57,7 +72,8 @@ export class LiveBoard {
 				position: report.position,
 				wordCount,
 				lastSeenAt: now,
-				sittingStartedAt: now,
+				activeMs: 0,
+				lastMovedAt: now,
 				mode: report.mode,
 				credited: 0,
 				budget: 0,
@@ -67,8 +83,11 @@ export class LiveBoard {
 			const elapsed = Math.min(now - prev.lastSeenAt, MAX_REFILL_MS);
 			const refilled = refillCredit(prev.budget, report.mode, report.dialWpm, elapsed);
 			const spent = spendCredit(refilled, prev.position, report.position);
+			const hasMoved = report.position !== prev.position;
 			readers.set(userId, {
 				...prev,
+				activeMs: hasMoved ? prev.activeMs + activeGain(prev, report.mode, now) : prev.activeMs,
+				lastMovedAt: hasMoved ? now : prev.lastMovedAt,
 				position: report.position,
 				mode: report.mode,
 				wordCount,
@@ -113,17 +132,16 @@ export class LiveBoard {
 		}
 	}
 
-	members(buddyReadId: string, now: number): LiveMember[] {
+	members(buddyReadId: string): LiveMember[] {
 		return [...(this.reads.get(buddyReadId) ?? [])].map(([userId, r]) => {
-			const sittingMs = now - r.sittingStartedAt;
 			return {
 				userId,
 				wordPosition: r.position,
 				wordCount: r.wordCount,
 				isListening: r.mode === "listen",
 				wpm:
-					r.mode !== "listen" && sittingMs >= LIVE_MIN_SITTING_MS
-						? Math.round(r.credited / (sittingMs / 60_000))
+					r.mode !== "listen" && r.activeMs >= LIVE_MIN_SITTING_MS
+						? Math.round(r.credited / (r.activeMs / 60_000))
 						: null,
 			};
 		});

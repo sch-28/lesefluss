@@ -38,7 +38,7 @@ describe("live sweep", () => {
 		});
 		await expect(sweep(new Date())).resolves.toBeUndefined();
 
-		const left = liveBoard.members(READ, Date.now()).map((m) => m.userId);
+		const left = liveBoard.members(READ).map((m) => m.userId);
 		// Ann's check failed, so she stays; Bo's check ran and he opted out.
 		expect(left).toEqual(["ann"]);
 	});
@@ -50,11 +50,11 @@ describe("live sweep", () => {
 
 		vi.spyOn(liveChecks, "memberView").mockRejectedValue(new Error("timeout"));
 		await sweep(new Date());
-		expect(liveBoard.members(READ, Date.now()).map((m) => m.userId)).toEqual(["ann"]);
+		expect(liveBoard.members(READ).map((m) => m.userId)).toEqual(["ann"]);
 
 		vi.spyOn(liveChecks, "memberView").mockRejectedValue(new SocialError("not_found"));
 		await sweep(new Date());
-		expect(liveBoard.members(READ, Date.now())).toEqual([]);
+		expect(liveBoard.members(READ)).toEqual([]);
 	});
 
 	test("a viewer who is no longer a member has their stream closed; a transient error keeps it", async () => {

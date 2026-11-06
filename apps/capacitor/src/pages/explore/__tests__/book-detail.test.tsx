@@ -19,9 +19,18 @@ vi.mock("../../../services/catalog/import", () => ({ importFromCatalog: vi.fn() 
 vi.mock("../../../services/db/queries", () => ({
 	queries: { getBookByCatalogId: async () => null },
 }));
+const reader = vi.hoisted(() => ({ rsvp: false }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useStatsSpeedModel: () => ({ data: { pace: { wpm: 300, source: "measured" }, sittings: 12 } }),
+		useStatsSpeedModel: () => ({
+			data: {
+				pace: { wpm: 300, source: "measured" },
+				sittings: 12,
+				modesUsed: { reading: true, rsvp: reader.rsvp },
+				rsvp: null,
+			},
+		}),
+		useSettings: () => ({ data: { wpm: 400, defaultReaderMode: reader.rsvp ? "rsvp" : "scroll" } }),
 		useLibraryCatalogIds: () => ({ data: new Map() }),
 	},
 }));
@@ -96,8 +105,24 @@ describe("catalog book detail", () => {
 		const explainer = document.querySelector("[data-testid='length-explainer']")?.textContent;
 		expect(explainer).toContain("75,000 words");
 		expect(explainer).toContain("250 words per page");
-		expect(explainer).toContain("300 wpm, your average over 12 sessions");
+		expect(explainer).toContain("At your pace4h 10m");
+		expect(explainer).toContain("your pace of 300 wpm, from 12 sessions");
+		expect(explainer).not.toContain("RSVP");
 		expect(explainer).not.toContain("approximate");
+	});
+
+	it("adds the time at the RSVP dial for an RSVP reader", async () => {
+		reader.rsvp = true;
+		try {
+			await renderDetail();
+			await click(view?.getButton(/300 pages/) as HTMLButtonElement);
+			const explainer = document.querySelector("[data-testid='length-explainer']")?.textContent;
+			// 75,000 words at the 400 dial × the 0.65 default delivered ratio = 260 wpm.
+			expect(explainer).toContain("RSVP4h 48m");
+			expect(explainer).toContain("RSVP at 260 wpm");
+		} finally {
+			reader.rsvp = false;
+		}
 	});
 
 	it("marks an estimated length and says so in the explainer", async () => {

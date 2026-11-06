@@ -7,7 +7,7 @@ import {
 	DropdownMenuTrigger,
 } from "@lesefluss/ui/dropdown-menu";
 import { cn } from "@lesefluss/ui/utils";
-import { ChevronDown, Plus, Tag, X } from "lucide-react";
+import { ChevronDown, Moon, Plus, Tag, X } from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
 import {
@@ -200,9 +200,21 @@ const FilterRow: React.FC<Props> = ({
 					isActive={!!search.length}
 					value={search.length ?? ANY}
 					options={lengthOptions}
-					onSelect={(v) => onChange({ length: v === ANY ? undefined : v })}
+					onSelect={(v) => onChange({ length: v === ANY ? undefined : v, fits: undefined })}
 					onClear={() => onChange({ length: undefined })}
 				/>
+				<Button
+					variant={search.fits ? "default" : "outline"}
+					size="sm"
+					className="shrink-0 gap-1"
+					aria-pressed={!!search.fits}
+					onClick={() =>
+						onChange(search.fits ? { fits: undefined } : { fits: "tonight", length: undefined })
+					}
+				>
+					<Moon className="size-3.5" />
+					Fits tonight
+				</Button>
 				<FilterChip
 					label={languageLabel(lang)}
 					isActive={false}

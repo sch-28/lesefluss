@@ -502,13 +502,18 @@ export type ProfileFinishedBook = {
 	cover: ProfileCover;
 };
 
+export type ProfileSpeeds = { reading?: number; rsvp?: number };
+
 export type ProfileStats = {
 	booksFinishedThisYear: number;
 	wordsRead: number;
 	/** Null when the owner has no synced sessions: missing data is not zero. */
 	readingTimeMs: number | null;
-	/** The speed model's all-time pace, never the raw RSVP dial. Null until measured. */
+	/** The speed model's pace, never the raw RSVP dial. Null until measured. Kept for
+	 *  clients older than `speeds`. */
 	readingSpeedWpm: number | null;
+	/** Per-mode speeds, only the modes the owner reads; absent from older servers. */
+	speeds?: ProfileSpeeds;
 	/** Consecutive reading days in the owner's time zone, as the stats page counts them. Null like `readingTimeMs`. */
 	currentStreakDays: number | null;
 	longestStreakDays: number | null;

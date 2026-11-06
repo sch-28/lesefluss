@@ -1,4 +1,4 @@
-import { bookPace, isMeasuredPace, type Pace } from "@lesefluss/core";
+import { bookPace, isMeasuredPace, modeSpeed, type Pace } from "@lesefluss/core";
 import { queryHooks } from "../../services/db/hooks";
 
 export type ReadingSpeed = Pace & {
@@ -19,4 +19,13 @@ export function useReadingSpeed(): ReadingSpeed {
 		sessionCount: data?.sittings ?? 0,
 		isSettled: !isPending,
 	};
+}
+
+/** The RSVP speed at the reader's dial; null for someone who doesn't read in RSVP. */
+export function useRsvpWpm(): number | null {
+	const { data } = queryHooks.useStatsSpeedModel();
+	const { data: settings } = queryHooks.useSettings();
+	if (!settings) return null;
+	const readsRsvp = !!data?.modesUsed.rsvp || settings.defaultReaderMode === "rsvp";
+	return readsRsvp ? modeSpeed(data, "rsvp", settings.wpm) : null;
 }

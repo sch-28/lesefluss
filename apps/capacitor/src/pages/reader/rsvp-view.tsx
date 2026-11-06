@@ -15,6 +15,7 @@ import {
 	DrawerTitle,
 	drawerSnapPoints,
 } from "@lesefluss/ui/drawer";
+import { cn } from "@lesefluss/ui/utils";
 import { useRouter } from "@tanstack/react-router";
 import { AudioLines, BookOpen, Loader2, Moon, Settings } from "lucide-react";
 import React, {
@@ -29,6 +30,7 @@ import React, {
 import { focalLetterColorFor, useTheme } from "../../contexts/theme-context";
 import RsvpSettingsForm from "../settings/rsvp-settings-form";
 import RsvpControls from "./rsvp-controls";
+import { useRsvpSwipe } from "./rsvp-swipe";
 import { useRsvpEngine } from "./use-rsvp-engine";
 import { useWakeLock } from "./use-wake-lock";
 import { RSVP_WPM_RANGE, steppedWpm, TTS_WPM_RANGE } from "./wpm";
@@ -242,6 +244,13 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 	// With the voice pacing the words the engine never plays, so scroll handling
 	// follows what is on screen: the playing layout has no spacer to scroll.
 	const isShowingPlayback = voice ? voice.isPlaying : isPlaying;
+	const swipe = useRsvpSwipe({
+		isEnabled: isShowingPlayback,
+		wpm: speed.wpm,
+		range: speed.range,
+		onChange: speed.onChange,
+		onSwipeStart: cancelLongPress,
+	});
 	const isShowingPlaybackRef = useRef(isShowingPlayback);
 	isShowingPlaybackRef.current = isShowingPlayback;
 
@@ -382,9 +391,12 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 				style={
 					{
 						"--rsvp-focal-color": focalLetterColorFor(settings.focalLetterColor, theme),
+						// Playing, a vertical drag is the speed swipe; paused, it scrolls to scrub.
+						touchAction: isShowingPlayback ? "none" : undefined,
 					} as React.CSSProperties
 				}
 				onClick={(e) => {
+					if (swipe.consumeSwipeClick()) return;
 					if (e.target instanceof Element && e.target.closest(".rsvp-controls")) return;
 					(voice ? voice.onTogglePlay : togglePlayPause)();
 				}}
@@ -392,10 +404,23 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 				// Play button, and a button may not contain buttons.
 				{...(isShowingPlayback && PAUSE_CONTROL)}
 				onScroll={handleScroll}
-				onPointerDown={handleDisplayPointerDown}
-				onPointerUp={cancelLongPress}
-				onPointerLeave={cancelLongPress}
-				onPointerCancel={cancelLongPress}
+				onPointerDown={(e) => {
+					swipe.onPointerDown(e);
+					handleDisplayPointerDown(e);
+				}}
+				onPointerMove={swipe.onPointerMove}
+				onPointerUp={() => {
+					swipe.onPointerEnd();
+					cancelLongPress();
+				}}
+				onPointerLeave={() => {
+					swipe.onPointerEnd();
+					cancelLongPress();
+				}}
+				onPointerCancel={() => {
+					swipe.onPointerEnd();
+					cancelLongPress();
+				}}
 			>
 				{/* Sticky overlay root stays pinned to viewport while container scrolls.
 				    All visual + interactive elements live here; spacer below provides
@@ -404,15 +429,15 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 					<div className="rsvp-display-inner">
 						<div className="rsvp-focal-line" style={{ left: `${settings.xOffset}%` }} />
 
-						{isPlaying && effectiveWpm > 0 && (
+						{((isPlaying && effectiveWpm > 0) || swipe.isFlashing) && (
 							<div
-								className={
-									effectiveWpm < settings.wpm
-										? "rsvp-speed-chip rsvp-speed-chip--ramping"
-										: "rsvp-speed-chip"
-								}
+								className={cn(
+									"rsvp-speed-chip",
+									effectiveWpm < settings.wpm && "rsvp-speed-chip--ramping",
+									swipe.isFlashing && "rsvp-speed-chip--flash",
+								)}
 							>
-								{effectiveWpm} wpm
+								{swipe.isFlashing ? speed.wpm : effectiveWpm} wpm
 							</div>
 						)}
 

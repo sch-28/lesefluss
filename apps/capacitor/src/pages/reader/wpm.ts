@@ -1,6 +1,6 @@
 import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 
-export const WPM_STEP = 25;
+export const WPM_STEP = SETTING_CONSTRAINTS.WPM.step;
 
 export type WpmRange = { min: number; max: number; step: number };
 

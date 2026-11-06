@@ -1,6 +1,7 @@
 import { BarChart3, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PageHeader } from "../../components/app-shell/page-header";
+import { SpeedChip } from "../../components/speed-chip/speed-chip";
 import { useLocalDayNow } from "../../hooks/use-local-day";
 import { queryHooks } from "../../services/db/hooks";
 import { SessionTable } from "./session-table";
@@ -38,7 +39,11 @@ const Stats: React.FC = () => {
 
 	return (
 		<div className="bg-background text-foreground">
-			<PageHeader title="Reading stats" icon={BarChart3} />
+			<PageHeader
+				title="Reading stats"
+				icon={BarChart3}
+				right={hasSessions ? <SpeedChip /> : undefined}
+			/>
 			{isInitialLoading ? (
 				<div className="flex min-h-[60vh] items-center justify-center">
 					<Loader2 className="size-6 animate-spin text-muted-foreground" />

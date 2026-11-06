@@ -293,6 +293,7 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 			wordsRead: 2770,
 			readingTimeMs: 627_000,
 			readingSpeedWpm: 300,
+			speeds: { reading: 300 },
 			// Read yesterday only: the streak is still current until today ends.
 			currentStreakDays: 1,
 			longestStreakDays: 1,
@@ -369,6 +370,7 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 		expect(view.sections.stats).toMatchObject({
 			readingTimeMs: null,
 			readingSpeedWpm: null,
+			speeds: {},
 			currentStreakDays: null,
 			longestStreakDays: null,
 		});

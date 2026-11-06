@@ -1,7 +1,7 @@
 import type { ViewMode } from "../../components/view-mode-toggle";
 import type { CatalogSort, CatalogSource } from "../../services/catalog/client";
 import type { CatalogSearchFilters } from "../../services/catalog/query-keys";
-import { LENGTH_BUCKETS, type LengthBucket, wordBounds } from "./length";
+import { fitsTonightBounds, LENGTH_BUCKETS, type LengthBucket, wordBounds } from "./length";
 
 /**
  * Everything that defines what Explore shows, as it lives in the URL. The URL
@@ -20,6 +20,8 @@ export type ExploreSearch = {
 	source?: CatalogSource;
 	/** Reading-time bucket, turned into word bounds at the reader's WPM. */
 	length?: LengthBucket;
+	/** Books read in one evening at the reader's pace; excludes `length`. */
+	fits?: "tonight";
 	view?: ViewMode;
 	/** "catalog" asks for the full public-domain results instead of the grouped search. */
 	scope?: "catalog";
@@ -54,6 +56,7 @@ function oneOf<T extends string>(v: unknown, options: readonly T[]): T | undefin
 export function parseExploreSearch(raw: Record<string, unknown>): ExploreSearch {
 	const tags = parseTags(str(raw.tags));
 	const lang = str(raw.lang)?.toLowerCase();
+	const length = oneOf(raw.length, LENGTH_BUCKETS);
 	return {
 		q: str(raw.q),
 		genre: str(raw.genre),
@@ -62,7 +65,8 @@ export function parseExploreSearch(raw: Record<string, unknown>): ExploreSearch 
 		lang: lang && LANG.test(lang) ? lang : undefined,
 		sort: oneOf(raw.sort, SORTS),
 		source: oneOf(raw.source, SOURCES),
-		length: oneOf(raw.length, LENGTH_BUCKETS),
+		length,
+		fits: length ? undefined : oneOf(raw.fits, ["tonight"] as const),
 		view: oneOf(raw.view, ["grid", "list"] as const),
 		scope: oneOf(raw.scope, ["catalog"] as const),
 	};
@@ -112,7 +116,7 @@ export function tagLabelFromId(id: string): string {
 
 /** Filters only the catalog understands; web-novel providers cannot apply them. */
 export function hasCatalogFilters(s: ExploreSearch): boolean {
-	return Boolean(s.genre || s.author || s.tags || s.source || s.length);
+	return Boolean(s.genre || s.author || s.tags || s.source || s.length || s.fits);
 }
 
 export type ExploreMode = "landing" | "grouped" | "catalog";
@@ -123,7 +127,7 @@ export function exploreMode(s: ExploreSearch): ExploreMode {
 	return "catalog";
 }
 
-/** The catalog request for the current search, with length turned into word bounds at `wpm`. */
+/** The catalog request for the current search, with length or fits turned into word bounds at `wpm`. */
 export function toCatalogFilters(
 	s: ExploreSearch,
 	lang: string,
@@ -138,6 +142,7 @@ export function toCatalogFilters(
 		source: s.source,
 		sort: effectiveSort(s),
 		...(s.length ? wordBounds(s.length, wpm) : {}),
+		...(s.fits ? fitsTonightBounds(wpm) : {}),
 	};
 }
 

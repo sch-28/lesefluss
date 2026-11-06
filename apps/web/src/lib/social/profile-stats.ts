@@ -1,8 +1,11 @@
 import {
 	bookStatus,
 	computeSpeedModel,
+	MIN_MODEL_ACTIVE_MS,
+	type ProfileSpeeds,
 	type ProfileStats,
 	readingDayKeys,
+	type SpeedModel,
 	streakFromDays,
 } from "@lesefluss/core";
 import { and, eq } from "drizzle-orm";
@@ -61,6 +64,16 @@ export function readingDaysOf(date: Date, timeZone: string | undefined): string[
 	const part = (type: Intl.DateTimeFormatPartTypes) =>
 		parts.find((p) => p.type === type)?.value ?? "";
 	return readingDayKeys(`${part("year")}-${part("month")}-${part("day")}`, Number(part("hour")));
+}
+
+/** Each mode's speed once it is the owner's own; a mode they don't read, or a stand-in, stays out. */
+export function profileSpeeds(model: SpeedModel): ProfileSpeeds {
+	const speeds: ProfileSpeeds = {};
+	if (model.modesUsed.reading && model.reading.source === "measured") {
+		speeds.reading = model.reading.wpm;
+	}
+	if (model.rsvp && model.rsvp.activeMs >= MIN_MODEL_ACTIVE_MS) speeds.rsvp = model.rsvp.wpm;
+	return speeds;
 }
 
 /**
@@ -125,11 +138,11 @@ export async function profileStatsFor(
 			.flatMap((s) => readingDaysOf(s.startedAt, options.timeZone)),
 	);
 	const openDays = readingDaysOf(now, options.timeZone);
-	// All time, like the other profile figures; a stand-in pace is hidden, not shown as theirs.
-	const pace = computeSpeedModel(
+	// The app's default window, so a friend sees the number the owner's own chip shows.
+	const model = computeSpeedModel(
 		sessions.map((s) => ({ ...s, startedAt: s.startedAt.getTime() })),
-		{ window: "all", now: now.getTime() },
-	).pace;
+		{ window: "recent", now: now.getTime() },
+	);
 	const streak =
 		sessions.length > 0
 			? streakFromDays(readDays, openDays[openDays.length - 1] ?? "", openDays[0])
@@ -139,7 +152,8 @@ export async function profileStatsFor(
 		booksFinishedThisYear,
 		wordsRead,
 		readingTimeMs: sessions.length > 0 ? sessions.reduce((sum, s) => sum + s.durationMs, 0) : null,
-		readingSpeedWpm: pace.source === "measured" ? pace.wpm : null,
+		readingSpeedWpm: model.pace.source === "measured" ? model.pace.wpm : null,
+		speeds: profileSpeeds(model),
 		currentStreakDays: streak?.current ?? null,
 		longestStreakDays: streak?.longest ?? null,
 	};
