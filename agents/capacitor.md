@@ -374,7 +374,7 @@ Full-snapshot sync with the web server. Shared Zod schemas and types in `@lesefl
 
 **Auth:** Native uses Better Auth client (`auth-client.ts`) with `VITE_SYNC_URL` env var (points to `https://lesefluss.app`) and Bearer token from `@capacitor/preferences`. Web embed uses same-domain cookie auth (no token needed).
 
-**Sync protocol:** `pullSync()` → GET `/api/sync`, merge (last-write-wins by `updatedAt`). `pushSync()` → POST `/api/sync` with full local snapshot; a 200 answer carries the stamps the server clamped, which the client adopts (`adoptBookStamps`, `adoptSettingsStamp`, and an open reader follows via `onLoweredRevision`). `fullSync()` = pull then push. `SYNC_ENABLED` flag controls whether sync runs (`!!SYNC_URL || IS_WEB_BUILD`).
+**Sync protocol:** `pullSync()` → GET `/api/sync`, merge (last-write-wins by `updatedAt`). `pushSync()` → POST `/api/sync` with full local snapshot; a 200 answer carries the stamps the server clamped, which the client adopts (`adoptBookStamps`, `adoptSettingsStamp`, the cached React Query book rows via `adoptCachedBookStamps`, and an open reader follows via `onLoweredRevision`). `fullSync()` = pull then push. `SYNC_ENABLED` flag controls whether sync runs (`!!SYNC_URL || IS_WEB_BUILD`).
 
 **Auto-push:** All DB mutation hooks (`useImportBook`, `useDeleteBook`, `useSaveSettings`, `useAddHighlight`, `useUpdateHighlight`, `useDeleteHighlight`) call `scheduleSyncPush()` on success - debounced 2s POST (5s for settings to absorb rapid slider changes).
 

@@ -72,8 +72,12 @@ vi.mock("../../authed-fetch", async (importOriginal) => ({
 	authedFetch: vi.fn(async () => answer.current()),
 }));
 
+import { decideExternalPosition } from "../../../pages/reader/external-position";
 import { AuthedFetchError } from "../../authed-fetch";
-import { onLoweredRevision } from "../../position-revisions";
+import { bookKeys } from "../../db/hooks/query-keys";
+import type { Book } from "../../db/schema";
+import { isOwnRevision, onLoweredRevision } from "../../position-revisions";
+import { queryClient } from "../../query-client";
 import { pushSync } from "../index";
 
 const stamps: SyncPushStamps = {
@@ -84,7 +88,23 @@ const stamps: SyncPushStamps = {
 beforeEach(() => {
 	adoptBookStamps.mockClear();
 	adoptSettingsStamp.mockClear();
+	queryClient.clear();
 });
+
+function cacheBook(cached: Book): void {
+	queryClient.setQueryData(bookKeys.detail(cached.id), cached);
+	queryClient.setQueryData(bookKeys.all, { books: [cached], covers: new Map() });
+	queryClient.setQueryData(bookKeys.allIncludingChapters, [cached]);
+}
+
+function cachedStamps(): unknown[] {
+	const detail = queryClient.getQueryData<Book>(bookKeys.detail("b1"));
+	const list = queryClient.getQueryData<{ books: Book[] }>(bookKeys.all);
+	const all = queryClient.getQueryData<Book[]>(bookKeys.allIncludingChapters);
+	return [detail, list?.books[0], all?.[0]].map((row) =>
+		row ? [row.updatedAt, row.metadataUpdatedAt] : null,
+	);
+}
 
 describe("push from a clock running ahead", () => {
 	it("adopts the stamps the server clamped the push to", async () => {
@@ -105,6 +125,44 @@ describe("push from a clock running ahead", () => {
 		await pushSync(new Set(["b1"]));
 		off();
 		expect(lowered).toEqual([["b1", FAST, CLAMPED]]);
+	});
+
+	it("lowers the cached library rows too, so a reader opened from them seeds the adopted stamp", async () => {
+		cacheBook(book as unknown as Book);
+		answer.current = () => Response.json(stamps);
+		await pushSync(new Set(["b1"]));
+		expect(cachedStamps()).toEqual(Array(3).fill([CLAMPED, CLAMPED]));
+	});
+
+	it("keeps a cached stamp that is no longer the pushed one", async () => {
+		const SAVED_DURING_PUSH = FAST + 1;
+		cacheBook({ ...book, updatedAt: SAVED_DURING_PUSH } as unknown as Book);
+		answer.current = () => Response.json(stamps);
+		await pushSync(new Set(["b1"]));
+		expect(cachedStamps()).toEqual(Array(3).fill([SAVED_DURING_PUSH, CLAMPED]));
+	});
+
+	it("lets a reopened book take another device's newer position", async () => {
+		cacheBook(book as unknown as Book);
+		answer.current = () => Response.json(stamps);
+		await pushSync(new Set(["b1"]));
+
+		// The library's onOpen seeds the reader's detail entry from this list row.
+		const seed = queryClient.getQueryData<{ books: Book[] }>(bookKeys.all)?.books[0];
+		const OTHER_DEVICE = CLAMPED + 1_000;
+		const decision = decideExternalPosition(
+			{ wordPosition: 500, updatedAt: OTHER_DEVICE },
+			{
+				seenRev: seed?.updatedAt ?? 0,
+				isOwnRevision: (rev) => isOwnRevision("b1", rev),
+				ourWord: seed?.wordPosition ?? null,
+				hasLocalMove: false,
+				isRsvpPlaying: false,
+				isReadAloudPlaying: false,
+				isSkippedForPlaybackSave: false,
+			},
+		);
+		expect(decision).toBe("adopt");
 	});
 
 	it("adopts them from a quota 413 too, where the rest of the push was committed", async () => {

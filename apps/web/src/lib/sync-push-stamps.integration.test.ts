@@ -4,12 +4,18 @@
 // against a real Postgres database. Skipped when DATABASE_URL is unset; point it
 // at a throwaway database.
 import { randomUUID } from "node:crypto";
-import type { SyncBook, SyncPayload, SyncPushStamps, SyncSettings } from "@lesefluss/core";
+import type {
+	ContentQuotaExceeded,
+	SyncBook,
+	SyncPayload,
+	SyncPushStamps,
+	SyncSettings,
+} from "@lesefluss/core";
 import { and, eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { db } from "~/db";
 import { user } from "~/db/auth-schema";
-import { syncBooks, syncSettings } from "~/db/schema";
+import { syncBookCopy, syncBooks, syncSettings } from "~/db/schema";
 import { Route as SyncRoute } from "~/routes/api/sync";
 
 vi.mock("~/lib/mailer", () => ({ sendMail: vi.fn(async () => {}) }));
@@ -42,6 +48,7 @@ describe.skipIf(!hasDb)("sync push stamps (integration)", () => {
 	afterEach(async () => {
 		vi.useRealTimers();
 		vi.unstubAllEnvs();
+		await db.delete(syncBookCopy).where(eq(syncBookCopy.userId, userId));
 		await db.delete(syncBooks).where(eq(syncBooks.userId, userId));
 		await db.delete(syncSettings).where(eq(syncSettings.userId, userId));
 	});
@@ -171,5 +178,19 @@ describe.skipIf(!hasDb)("sync push stamps (integration)", () => {
 		const stamps = (await res.json()) as SyncPushStamps;
 		expect(stamps.books.map((b) => b.bookId)).toEqual([bookId]);
 		expect(stamps.settingsUpdatedAt).toBeNull();
+	});
+
+	test("a push over the content quota still carries the clamped stamps in its 413", async () => {
+		vi.stubEnv("SYNC_CONTENT_QUOTA_BYTES", "100");
+		const fast = SERVER_NOW + AHEAD;
+		const tooBig = { ...book(0, SERVER_NOW - 1000), bookId: "5eed0003", content: "x".repeat(200) };
+		const res = await push([book(100, fast), tooBig], settings(400, fast));
+		expect(res.status).toBe(413);
+		const body = (await res.json()) as ContentQuotaExceeded;
+		expect(body.rejectedContentBookIds).toEqual(["5eed0003"]);
+		expect(body.stamps).toEqual({
+			books: [{ bookId, updatedAt: SERVER_NOW, metadataUpdatedAt: SERVER_NOW }],
+			settingsUpdatedAt: SERVER_NOW,
+		});
 	});
 });

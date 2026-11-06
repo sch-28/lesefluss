@@ -244,6 +244,7 @@ async function adoptPushStamps(payload: SyncPayload, stamps: SyncPushStamps): Pr
 		const pushed = pushedBooks.get(stored.bookId);
 		if (!pushed) continue;
 		await queries.adoptBookStamps(stored.bookId, pushed, stored);
+		adoptCachedBookStamps(stored.bookId, pushed, stored);
 		if (stored.updatedAt < pushed.updatedAt) {
 			reportLoweredRevision(stored.bookId, pushed.updatedAt, stored.updatedAt);
 		}
@@ -251,6 +252,40 @@ async function adoptPushStamps(payload: SyncPayload, stamps: SyncPushStamps): Pr
 	if (payload.settings && stamps.settingsUpdatedAt !== null) {
 		await queries.adoptSettingsStamp(payload.settings.updatedAt, stamps.settingsUpdatedAt);
 	}
+}
+
+/**
+ * The cached rows get the same compare-and-set as the DB: patched, not
+ * invalidated, because a reader opened from the library seeds from the cached
+ * row on its first render, before any refetch lands.
+ */
+function adoptCachedBookStamps(
+	bookId: string,
+	pushed: Pick<SyncBook, "updatedAt" | "metadataUpdatedAt">,
+	stored: SyncPushStamps["books"][number],
+): void {
+	const lower = (book: Book): Book => {
+		if (book.id !== bookId) return book;
+		const updatedAt =
+			book.updatedAt === pushed.updatedAt && stored.updatedAt < pushed.updatedAt
+				? stored.updatedAt
+				: book.updatedAt;
+		const metadataUpdatedAt =
+			pushed.metadataUpdatedAt != null &&
+			book.metadataUpdatedAt === pushed.metadataUpdatedAt &&
+			stored.metadataUpdatedAt < pushed.metadataUpdatedAt
+				? stored.metadataUpdatedAt
+				: book.metadataUpdatedAt;
+		if (updatedAt === book.updatedAt && metadataUpdatedAt === book.metadataUpdatedAt) return book;
+		return { ...book, updatedAt, metadataUpdatedAt };
+	};
+	queryClient.setQueryData<Book | undefined>(bookKeys.detail(bookId), (book) =>
+		book ? lower(book) : book,
+	);
+	queryClient.setQueryData<{ books: Book[]; covers: Map<string, string> }>(bookKeys.all, (list) =>
+		list ? { ...list, books: list.books.map(lower) } : list,
+	);
+	queryClient.setQueryData<Book[]>(bookKeys.allIncludingChapters, (books) => books?.map(lower));
 }
 
 async function syncFetch(path: string, options?: AuthedFetchOptions): Promise<Response> {
