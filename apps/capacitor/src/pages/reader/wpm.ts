@@ -16,6 +16,6 @@ export function clampToRange(n: number, { min, max }: WpmRange): number {
 	return Math.min(max, Math.max(min, n));
 }
 
-export function clampWpm(n: number): number {
-	return clampToRange(n, RSVP_WPM_RANGE);
+export function steppedWpm(wpm: number, range: WpmRange, direction: 1 | -1): number {
+	return clampToRange(wpm + direction * range.step, range);
 }

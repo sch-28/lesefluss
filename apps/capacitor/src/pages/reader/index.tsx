@@ -2210,7 +2210,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	useKeyboardShortcuts({
 		readerMode,
 		paginationStyle,
-		currentWpm: rsvpSettings.wpm,
 		isBlocked:
 			selectedWord !== null ||
 			annotationsOpen ||

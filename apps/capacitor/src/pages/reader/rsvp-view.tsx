@@ -31,7 +31,7 @@ import RsvpSettingsForm from "../settings/rsvp-settings-form";
 import RsvpControls from "./rsvp-controls";
 import { useRsvpEngine } from "./use-rsvp-engine";
 import { useWakeLock } from "./use-wake-lock";
-import { TTS_WPM_RANGE } from "./wpm";
+import { RSVP_WPM_RANGE, steppedWpm, TTS_WPM_RANGE } from "./wpm";
 
 // PX_PER_WORD sets the scroll distance for one word step on touch. Spacer is
 // sized so the middle is one viewport away from each edge, giving roughly
@@ -54,7 +54,8 @@ export type RsvpViewHandle = {
 	forwardWord(): void;
 	backSentence(): void;
 	forwardSentence(): void;
-	changeWpm(wpm: number): void;
+	/** Steps the speed the stepper shows: the read-aloud speed while audio is on. */
+	stepWpm(direction: 1 | -1): void;
 	/** Shows a word without playback or a position report. */
 	showWord(word: number): void;
 	/** Follows the read-aloud voice to a word, paced so quick words stay readable. */
@@ -151,6 +152,10 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		bookWordIndex,
 	});
 
+	const speed = voice
+		? { wpm: voice.wpm, range: TTS_WPM_RANGE, onChange: voice.onWpmChange }
+		: { wpm: settings.wpm, range: RSVP_WPM_RANGE, onChange: changeWpm };
+
 	useImperativeHandle(
 		ref,
 		() => ({
@@ -160,7 +165,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 			forwardWord,
 			backSentence,
 			forwardSentence,
-			changeWpm,
+			stepWpm: (direction) => speed.onChange(steppedWpm(speed.wpm, speed.range, direction)),
 			showWord,
 			followVoice,
 		}),
@@ -172,7 +177,9 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 			forwardWord,
 			backSentence,
 			forwardSentence,
-			changeWpm,
+			speed.wpm,
+			speed.range,
+			speed.onChange,
 			showWord,
 			followVoice,
 		],
@@ -512,15 +519,15 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 						{!isShowingPlayback && (
 							<>
 								<RsvpControls
-									wpm={voice ? voice.wpm : settings.wpm}
-									wpmRange={voice ? TTS_WPM_RANGE : undefined}
+									wpm={speed.wpm}
+									wpmRange={speed.range}
 									audio={audio && { isOn: audio.isOn, onToggle: audio.onToggleAudio }}
 									onBackSentence={backSentence}
 									onBackWord={backWord}
 									onPlayPause={voice ? voice.onTogglePlay : togglePlayPause}
 									onForwardWord={forwardWord}
 									onForwardSentence={forwardSentence}
-									onWpmChange={voice ? voice.onWpmChange : changeWpm}
+									onWpmChange={speed.onChange}
 								/>
 								<button
 									type="button"

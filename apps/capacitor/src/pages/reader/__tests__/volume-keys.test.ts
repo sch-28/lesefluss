@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { volumeKeysFor } from "../../../hooks/use-appearance-settings";
 import { volumeKeyAction } from "../use-keyboard-shortcuts";
-import { clampWpm } from "../wpm";
+import { RSVP_WPM_RANGE, steppedWpm } from "../wpm";
 
 describe("volumeKeyAction", () => {
 	const page = { readerMode: "standard" as const, paginationStyle: "page" as const, invert: false };
@@ -48,10 +48,10 @@ describe("volumeKeysFor", () => {
 	});
 });
 
-describe("clampWpm", () => {
+describe("steppedWpm", () => {
 	it("keeps WPM inside the setting range", () => {
-		expect(clampWpm(75)).toBe(100);
-		expect(clampWpm(1025)).toBe(1000);
-		expect(clampWpm(300)).toBe(300);
+		expect(steppedWpm(110, RSVP_WPM_RANGE, -1)).toBe(100);
+		expect(steppedWpm(990, RSVP_WPM_RANGE, 1)).toBe(1000);
+		expect(steppedWpm(300, RSVP_WPM_RANGE, 1)).toBe(325);
 	});
 });

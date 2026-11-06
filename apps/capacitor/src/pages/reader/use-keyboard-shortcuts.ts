@@ -9,7 +9,6 @@ import {
 } from "../../services/volume-keys";
 import type { RsvpViewHandle } from "./rsvp-view";
 import type { ReaderViewHandle } from "./view-types";
-import { clampWpm, WPM_STEP } from "./wpm";
 
 const SCROLL_FRACTION = 0.25;
 const INTERACTIVE_SELECTOR = [
@@ -74,7 +73,6 @@ export function volumeKeyAction(input: {
 type Options = {
 	readerMode: "standard" | "rsvp";
 	paginationStyle: PaginationStyle;
-	currentWpm: number;
 	isBlocked: boolean;
 	scrollViewRef: React.RefObject<ReaderViewHandle | null>;
 	rsvpViewRef: React.RefObject<RsvpViewHandle | null>;
@@ -90,7 +88,6 @@ type Options = {
 export function useKeyboardShortcuts({
 	readerMode,
 	paginationStyle,
-	currentWpm,
 	isBlocked,
 	scrollViewRef,
 	rsvpViewRef,
@@ -104,7 +101,7 @@ export function useKeyboardShortcuts({
 	const handlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
 	const volumeHandlerRef = useRef<(key: VolumeKey) => void>(() => {});
 
-	const stepWpm = (delta: number) => rsvpViewRef.current?.changeWpm(clampWpm(currentWpm + delta));
+	const stepWpm = (direction: 1 | -1) => rsvpViewRef.current?.stepWpm(direction);
 
 	handlerRef.current = (e: KeyboardEvent) => {
 		if (e.defaultPrevented) return;
@@ -144,11 +141,11 @@ export function useKeyboardShortcuts({
 					break;
 				case "ArrowUp":
 					e.preventDefault();
-					stepWpm(WPM_STEP);
+					stepWpm(1);
 					break;
 				case "ArrowDown":
 					e.preventDefault();
-					stepWpm(-WPM_STEP);
+					stepWpm(-1);
 					break;
 				case "Escape":
 					e.preventDefault();
@@ -211,10 +208,10 @@ export function useKeyboardShortcuts({
 				scrollViewRef.current?.goPrev?.();
 				break;
 			case "faster":
-				stepWpm(WPM_STEP);
+				stepWpm(1);
 				break;
 			case "slower":
-				stepWpm(-WPM_STEP);
+				stepWpm(-1);
 				break;
 		}
 	};
