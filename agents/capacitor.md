@@ -58,7 +58,8 @@ On the web, the SQLite database lives in IndexedDB through jeep-sqlite, which re
     - the live board dropping a closed tab;
     - the website's activity toggles;
     - `/app` assets loading without 404s;
-    - the local database surviving an unload mid-save.
+    - the local database surviving an unload mid-save;
+    - a tab on the previous build recovering from a deleted chunk with one reload (`stale-chunk.spec.ts`).
   - Not wired into CI. That would need a Postgres service container and `E2E_APP_PG_URL` pointing at it, plus `pnpm exec playwright install chromium`.
 
 ## File Structure

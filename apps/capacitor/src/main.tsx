@@ -3,6 +3,7 @@ import { ENGINE_UNSUPPORTED_CLASS } from "@lesefluss/core/engine-support";
 import { RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 import { bootstrapCapacitor } from "./lib/bootstrap-capacitor";
+import { installStaleChunkReload } from "./lib/stale-chunk-reload";
 import { Providers } from "./providers";
 import { router } from "./router";
 import { bookKeys } from "./services/db/hooks/query-keys";
@@ -20,6 +21,7 @@ import "./theme/legacy.css";
 import "./theme/variables.css";
 
 async function bootstrap() {
+	installStaleChunkReload(router);
 	registerReaderFonts();
 	await Promise.all([initWebSqlite(), bootstrapCapacitor()]);
 	if (import.meta.env.DEV) {

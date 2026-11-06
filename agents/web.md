@@ -102,7 +102,7 @@ The capacitor app is built as a static SPA and served under `/app/*`. This gives
 
 **Build:** `pnpm build:app` (runs `scripts/build-capacitor-embed.sh`) - builds capacitor with `WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true`, copies output to `public/app/`.
 
-**SPA fallback:** `src/routes/app/$.ts` and `src/routes/app/index.ts` serve the capacitor `index.html` for all `/app/*` paths. Static assets (JS, CSS, WASM) in `public/app/assets/` are served directly by Nitro.
+**SPA fallback:** `src/routes/app/$.ts` and `src/routes/app/index.ts` serve the capacitor `index.html` for all `/app/*` paths. Static assets (JS, CSS, WASM) in `public/app/assets/` are served directly by Nitro. A missing `/app/assets/*` file is a 404, never the shell: a tab still on the previous build must see the import fail, so `src/lib/stale-chunk-reload.ts` in the capacitor app can reload it.
 
 **Auth:** Same-domain cookie auth - user logs in on `/login`, the capacitor app detects the session via `/api/auth/get-session` and syncs automatically. No second login needed.
 
