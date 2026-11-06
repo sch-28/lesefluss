@@ -98,6 +98,10 @@ export type BookPayload = {
 	chapters?: Chapter[] | null;
 	/** BCP 47 tag from the source file's metadata, verbatim. Null when absent. */
 	language?: string | null;
+	/** Book-level series from the source file's metadata. Null when absent. */
+	seriesName?: string | null;
+	/** Number within `seriesName`, decimals allowed. Null when absent. */
+	seriesIndex?: number | null;
 	/** External hyperlinks (byte ranges into `content`). Null when none found. */
 	linkRanges?: ImportLink[] | null;
 	/** Body images, one per distinct source file. Null when none found. */

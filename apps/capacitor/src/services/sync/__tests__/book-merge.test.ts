@@ -18,6 +18,9 @@ function makeLocal(overrides: Partial<Book> = {}): Book {
 		addedAt: 1000,
 		updatedAt: 1000,
 		metadataUpdatedAt: 1000,
+		seriesName: null,
+		seriesIndex: null,
+		seriesUpdatedAt: 0,
 		lastRead: null,
 		finishedAt: null,
 		description: "Local description",
@@ -258,6 +261,57 @@ describe("buildBookMergeUpdate: the two gates are independent", () => {
 			makeServer({ wordPosition: 50, wordCount: 250, updatedAt: 3000 }),
 		);
 		expect(update?.wordCount).toBe(250);
+	});
+});
+
+describe("buildBookMergeUpdate: the book series merges on its own revision", () => {
+	it("applies a newer series, even when the metadata stamp is older", () => {
+		const update = buildBookMergeUpdate(
+			makeLocal({ seriesName: "Old", seriesIndex: 1, seriesUpdatedAt: 1000 }),
+			makeServer({
+				metadataUpdatedAt: 500,
+				seriesName: "Dune",
+				seriesIndex: 2.5,
+				seriesUpdatedAt: 2000,
+			}),
+		);
+		expect(update).toEqual({ seriesName: "Dune", seriesIndex: 2.5, seriesUpdatedAt: 2000 });
+	});
+
+	it("applies a newer clear", () => {
+		const update = buildBookMergeUpdate(
+			makeLocal({ seriesName: "Dune", seriesIndex: 1, seriesUpdatedAt: 1000 }),
+			makeServer({ seriesName: null, seriesIndex: null, seriesUpdatedAt: 2000 }),
+		);
+		expect(update).toEqual({ seriesName: null, seriesIndex: null, seriesUpdatedAt: 2000 });
+	});
+
+	it("keeps the local series against an older or equal revision", () => {
+		const local = makeLocal({ seriesName: "Dune", seriesIndex: 1, seriesUpdatedAt: 2000 });
+		expect(
+			buildBookMergeUpdate(local, makeServer({ seriesName: "X", seriesUpdatedAt: 1500 })),
+		).toBeNull();
+		expect(
+			buildBookMergeUpdate(local, makeServer({ seriesName: "X", seriesUpdatedAt: 2000 })),
+		).toBeNull();
+	});
+
+	it("keeps the local series when the server row has no series fields", () => {
+		const update = buildBookMergeUpdate(
+			makeLocal({ seriesName: "Dune", seriesIndex: 1, seriesUpdatedAt: 1000 }),
+			makeServer({ metadataUpdatedAt: 3000, status: "finished" }),
+		);
+		expect(update).not.toHaveProperty("seriesName");
+		expect(update).not.toHaveProperty("seriesIndex");
+		expect(update).not.toHaveProperty("seriesUpdatedAt");
+	});
+
+	it("does not touch the series when only the metadata is newer", () => {
+		const update = buildBookMergeUpdate(
+			makeLocal({ seriesName: "Dune", seriesUpdatedAt: 2000 }),
+			makeServer({ metadataUpdatedAt: 3000, seriesName: "Stale", seriesUpdatedAt: 1000 }),
+		);
+		expect(update).not.toHaveProperty("seriesName");
 	});
 });
 

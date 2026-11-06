@@ -31,10 +31,12 @@ const FACETS: LibraryItem["facets"] = {
 	tags: [],
 	author: [],
 	series: [],
+	collection: [],
 	rating: [],
 	progress: [],
 	added: [],
 	lastRead: [],
+	wordCount: null,
 };
 
 function bookItem(id: string): LibraryItem {

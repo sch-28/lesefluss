@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
 import { makeBook } from "../../test/book-fixture";
-import type { LibraryFilter } from "./filter-model";
-import { filterAndSortLibrary, type SortBy, tagsInUse } from "./sort-filter";
+import { bookSeriesFacetValue, type LibraryFilter } from "./filter-model";
+import { facetOptions } from "./filter-picker";
+import { buildLibraryItems, filterAndSortLibrary, type SortBy, tagsInUse } from "./sort-filter";
 
 type FilterBy = "all" | BookStatus;
 
@@ -112,6 +113,29 @@ describe("series shelves", () => {
 	it("never lands on the dropped shelf", () => {
 		const activity = { total: 10, started: 3, finished: 2, latestRead: 5 } as SeriesActivity;
 		expect(libraryWith(activity, "dropped")).toHaveLength(0);
+	});
+});
+
+describe("the series facet with book-level series", () => {
+	const dune1 = makeBook({ id: "aaaaaaaa", seriesName: "Dune", seriesIndex: 1 });
+	const dune2 = makeBook({ id: "bbbbbbbb", seriesName: "dune ", seriesIndex: 2 });
+	const loose = makeBook({ id: "cccccccc" });
+	const serial = makeSeries({ id: "abc12345", title: "A Serial" });
+
+	it("lists book series next to serials, one entry per name whatever its case", () => {
+		const options = facetOptions(buildLibraryItems([dune1, dune2, loose], [serial], new Map()));
+		expect(options.series).toEqual([
+			{ value: "abc12345", label: "A Serial", count: 1 },
+			{ value: bookSeriesFacetValue("Dune"), label: "Dune", count: 2 },
+		]);
+	});
+
+	it("shows only that series' books when filtered by it", () => {
+		const shown = filterAndSortLibrary([dune1, dune2, loose], [serial], new Map(), {
+			filter: { series: { in: [bookSeriesFacetValue("DUNE")], out: [] } },
+			sortBy: "title",
+		}).map((item) => (item.kind === "book" ? item.book.id : item.series.id));
+		expect(shown.sort()).toEqual(["aaaaaaaa", "bbbbbbbb"]);
 	});
 });
 

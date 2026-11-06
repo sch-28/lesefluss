@@ -111,6 +111,9 @@ function makeBook(id: string): Book {
 		originKey: null,
 		updatedAt: 0,
 		metadataUpdatedAt: 0,
+		seriesName: null,
+		seriesIndex: null,
+		seriesUpdatedAt: 0,
 	};
 }
 

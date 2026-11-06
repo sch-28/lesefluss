@@ -110,6 +110,19 @@ describe("adoptBookStamps", () => {
 		expect(row().metadata_updated_at).toBe(CLAMPED);
 	});
 
+	it("lowers a clamped series revision so a newer series from elsewhere lands", async () => {
+		raw.exec(`UPDATE books SET series_name = 'Mine', series_updated_at = ${FAST} WHERE id = 'b1'`);
+		await adoptBookStamps(
+			"b1",
+			{ ...pushed, seriesUpdatedAt: FAST },
+			{ ...stored, seriesUpdatedAt: CLAMPED },
+		);
+		await pull(otherDevice({ seriesName: "Theirs", seriesUpdatedAt: 3000 }));
+		expect(
+			raw.prepare("SELECT series_name, series_updated_at FROM books WHERE id = 'b1'").get(),
+		).toEqual({ series_name: "Theirs", series_updated_at: 3000 });
+	});
+
 	it("never raises a stamp", async () => {
 		await adoptBookStamps("b1", pushed, { updatedAt: FAST + 5, metadataUpdatedAt: FAST + 5 });
 		expect(row()).toMatchObject({ updated_at: FAST, metadata_updated_at: FAST });

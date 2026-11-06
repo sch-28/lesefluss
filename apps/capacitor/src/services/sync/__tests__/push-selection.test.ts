@@ -41,6 +41,9 @@ function makeBook(overrides: Partial<Book> = {}): Book {
 		originKey: null,
 		updatedAt: 0,
 		metadataUpdatedAt: 0,
+		seriesName: null,
+		seriesIndex: null,
+		seriesUpdatedAt: 0,
 		...overrides,
 	};
 }

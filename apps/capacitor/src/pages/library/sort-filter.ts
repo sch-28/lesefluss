@@ -140,12 +140,16 @@ export type LibraryView = {
 	search?: string;
 };
 
-/** Every row of the library with its sort and filter fields, built once per library change. */
+const NO_COLLECTIONS: readonly string[] = [];
+
+/** Every row of the library with its sort and filter fields, built once per library change.
+ *  `collectionsOf` maps a book id to the live collections it is in. */
 export function buildLibraryItems(
 	books: Book[],
 	series: Series[],
 	activity: Map<string, SeriesActivity>,
 	now = Date.now(),
+	collectionsOf: ReadonlyMap<string, readonly string[]> = new Map(),
 ): LibraryItem[] {
 	return [
 		...books.map<LibraryItem>((book) => {
@@ -154,6 +158,9 @@ export function buildLibraryItems(
 				{
 					...sortKey,
 					seriesId: null,
+					bookSeriesName: book.seriesName,
+					collectionIds: collectionsOf.get(book.id) ?? NO_COLLECTIONS,
+					wordCount: book.wordCount,
 					addedAt: book.addedAt,
 					lastRead: book.lastRead,
 				},
@@ -168,6 +175,9 @@ export function buildLibraryItems(
 				{
 					...sortKey,
 					seriesId: s.id,
+					bookSeriesName: null,
+					collectionIds: NO_COLLECTIONS,
+					wordCount: 0,
 					addedAt: s.createdAt,
 					lastRead: a?.latestRead ?? null,
 				},
@@ -192,6 +202,7 @@ export function filterAndSortLibrary(
 	activity: Map<string, SeriesActivity>,
 	view: LibraryView,
 	now = Date.now(),
+	collectionsOf?: ReadonlyMap<string, readonly string[]>,
 ): LibraryItem[] {
-	return applyLibraryView(buildLibraryItems(books, series, activity, now), view);
+	return applyLibraryView(buildLibraryItems(books, series, activity, now, collectionsOf), view);
 }

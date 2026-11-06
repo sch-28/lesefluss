@@ -55,6 +55,7 @@ import BookEditSheet, {
 	bookToEditValues,
 	editValuesToPatch,
 } from "./book-edit-sheet";
+import { bookSeriesLabel } from "./book-fields";
 import { BookFileCard } from "./book-file-card";
 import { BookHighlights } from "./book-highlights";
 import { BookJourney } from "./book-journey";
@@ -163,6 +164,8 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					review: null,
 					tags: null,
 					hideFromProfile: false,
+					seriesName: null,
+					seriesIndex: null,
 				},
 			),
 		[book],
@@ -259,6 +262,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const facts = [
 		// The shelf leads: it is the one fact the reader chose rather than earned.
 		BOOK_STATUS_LABELS[bookStatus(book)],
+		bookSeriesLabel(book),
 		book.rating !== null ? <RatingStars key="rating" rating={book.rating} /> : null,
 		pages !== null ? `${pages.toLocaleString()} pages` : null,
 		chapterCount > 0 ? `${chapterCount} chapters` : null,
@@ -400,7 +404,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				isSaving={updateMutation.isPending}
 				onSave={(values) => {
 					updateMutation.mutate(
-						{ id: book.id, values: editValuesToPatch(values) },
+						{ id: book.id, values: editValuesToPatch(values, editValues) },
 						{ onSuccess: () => setIsEditOpen(false) },
 					);
 				}}

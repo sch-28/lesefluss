@@ -169,6 +169,22 @@ export async function getCollectionBookIds(collectionId: string): Promise<string
 	return rows.map((r) => r.bookId);
 }
 
+/** Every live membership of a live collection, as book id → collection ids. */
+export async function getCollectionMemberships(): Promise<Map<string, string[]>> {
+	const rows = await db
+		.select({ bookId: collectionBooks.bookId, collectionId: collectionBooks.collectionId })
+		.from(collectionBooks)
+		.innerJoin(collections, eq(collections.id, collectionBooks.collectionId))
+		.where(and(liveMember, eq(collections.deleted, false)));
+	const byBook = new Map<string, string[]>();
+	for (const { bookId, collectionId } of rows) {
+		const ids = byBook.get(bookId);
+		if (ids) ids.push(collectionId);
+		else byBook.set(bookId, [collectionId]);
+	}
+	return byBook;
+}
+
 /** The live collections a book is in. */
 export async function getCollectionIdsForBook(bookId: string): Promise<string[]> {
 	const rows = await db

@@ -174,6 +174,7 @@ export const queryHooks = {
 	useCollections: collectionHooks.useCollections,
 	useCollectionBookIds: collectionHooks.useCollectionBookIds,
 	useCollectionIdsForBook: collectionHooks.useCollectionIdsForBook,
+	useCollectionMemberships: collectionHooks.useCollectionMemberships,
 	useCreateCollection: collectionHooks.useCreateCollection,
 	useRenameCollection: collectionHooks.useRenameCollection,
 	useMoveCollection: collectionHooks.useMoveCollection,

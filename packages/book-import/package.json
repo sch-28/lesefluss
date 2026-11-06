@@ -14,6 +14,7 @@
 		"./parsers/html": "./src/parsers/html.ts",
 		"./parsers/matchers": "./src/parsers/matchers.ts",
 		"./parsers/md": "./src/parsers/md.ts",
+		"./parsers/opf-series": "./src/parsers/opf-series.ts",
 		"./parsers/pdf": "./src/parsers/pdf.ts",
 		"./parsers/registry": "./src/parsers/registry.ts",
 		"./parsers/text": "./src/parsers/text.ts",

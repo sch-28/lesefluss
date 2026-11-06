@@ -15,6 +15,13 @@ function useCollectionBookIds(collectionId: string | null) {
 	});
 }
 
+function useCollectionMemberships() {
+	return useQuery({
+		queryKey: collectionKeys.memberships,
+		queryFn: () => queries.getCollectionMemberships(),
+	});
+}
+
 function useCollectionIdsForBook(bookId: string | null) {
 	return useQuery({
 		queryKey: collectionKeys.ofBook(bookId ?? ""),
@@ -72,6 +79,7 @@ export const collectionHooks = {
 	useCollections,
 	useCollectionBookIds,
 	useCollectionIdsForBook,
+	useCollectionMemberships,
 	useCreateCollection,
 	useRenameCollection,
 	useMoveCollection,

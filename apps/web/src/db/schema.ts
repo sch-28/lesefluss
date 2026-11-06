@@ -77,6 +77,12 @@ export const syncBooks = pgTable(
 		// Merged on the metadata revision but outside METADATA_FIELDS; see
 		// sync-book-upsert.ts.
 		hideFromProfile: boolean("hide_from_profile").notNull().default(false),
+		// Book-level series, unrelated to the serial `series_id`. Merged on its own
+		// revision, `series_updated_at`; see sync-book-upsert.ts. The revision is
+		// null on rows no client has sent a series for.
+		seriesName: text("series_name"),
+		seriesIndex: doublePrecision("series_index"),
+		seriesUpdatedAt: timestamp("series_updated_at"),
 		// Which source book this content came from: the row itself for an upload,
 		// the first uploader's row for a shared copy. Server-authoritative; a push
 		// never sets or changes it (see sync-book-upsert.ts). No FK to user: the

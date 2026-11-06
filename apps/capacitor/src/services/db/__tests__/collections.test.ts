@@ -105,6 +105,21 @@ describe("collections", () => {
 		expect(await collections.getCollectionBookIds(c.id)).toEqual(["bbbbbbbb"]);
 	});
 
+	it("maps each live book to its live collections", async () => {
+		const a = await collections.createCollection("A", 1);
+		const b = await collections.createCollection("B", 2);
+		const gone = await collections.createCollection("Gone", 3);
+		await collections.addBooksToCollection(a.id, ["aaaaaaaa", "bbbbbbbb"], 4);
+		await collections.addBooksToCollection(b.id, ["aaaaaaaa", "cccccccc"], 5);
+		await collections.addBooksToCollection(gone.id, ["bbbbbbbb"], 6);
+		await collections.deleteCollection(gone.id, 7);
+		await deleteBook("cccccccc");
+		const byBook = await collections.getCollectionMemberships();
+		expect(byBook.get("aaaaaaaa")?.sort()).toEqual([a.id, b.id].sort());
+		expect(byBook.get("bbbbbbbb")).toEqual([a.id]);
+		expect(byBook.has("cccccccc")).toBe(false);
+	});
+
 	it("deleting a collection tombstones it and its memberships but keeps the books", async () => {
 		const c = await collections.createCollection("Shelf", 1);
 		await collections.addBooksToCollection(c.id, ["aaaaaaaa"], 2);

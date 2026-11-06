@@ -46,6 +46,10 @@ export function buildImportedBookRow(
 	stamps: { id: string; addedAt: number; size: number },
 ): NewBook {
 	const { id, addedAt, size } = stamps;
+	const series =
+		overrides?.seriesName !== undefined
+			? { name: overrides.seriesName, index: overrides.seriesIndex ?? null }
+			: { name: payload.seriesName ?? null, index: payload.seriesIndex ?? null };
 	return {
 		id,
 		title: overrides?.title ?? payload.title,
@@ -72,6 +76,9 @@ export function buildImportedBookRow(
 		addedAt,
 		updatedAt: addedAt,
 		metadataUpdatedAt: addedAt,
+		seriesName: series.name,
+		seriesIndex: series.name ? series.index : null,
+		seriesUpdatedAt: series.name ? addedAt : 0,
 		lastRead: null,
 		source: extras.source ?? null,
 		catalogId: extras.catalogId ?? null,

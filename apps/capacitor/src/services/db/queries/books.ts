@@ -60,6 +60,9 @@ const METADATA_COLUMNS = [
 	"hideFromProfile",
 ] as const satisfies readonly (keyof NewBook)[];
 
+/** The book-level series, the columns `series_updated_at` is the revision of. */
+const SERIES_COLUMNS = ["seriesName", "seriesIndex"] as const satisfies readonly (keyof NewBook)[];
+
 /** The production drizzle proxy as a chunked-column executor (see long-text.ts). */
 const longText: LongTextExecutor = {
 	run: (q) => db.run(q),
@@ -516,11 +519,15 @@ export async function updateBook(
 	// fields therefore carry their own stamp.
 	const movesPosition = data.wordPosition !== undefined || data.lastRead !== undefined;
 	const editsMetadata = METADATA_COLUMNS.some((column) => data[column] !== undefined);
+	const editsSeries = SERIES_COLUMNS.some((column) => data[column] !== undefined);
 	if (!options.isDeviceLocal && movesPosition && data.updatedAt === undefined) {
 		stamped.updatedAt = occurredAt;
 	}
 	if (!options.isDeviceLocal && editsMetadata && data.metadataUpdatedAt === undefined) {
 		stamped.metadataUpdatedAt = occurredAt;
+	}
+	if (!options.isDeviceLocal && editsSeries && data.seriesUpdatedAt === undefined) {
+		stamped.seriesUpdatedAt = occurredAt;
 	}
 	// Stamp the first crossing of the finished threshold as the position moves.
 	// Done in SQL rather than read-then-write because position saves are frequent
@@ -623,6 +630,9 @@ export async function applyBookMerge(
 		review,
 		tags,
 		hideFromProfile,
+		seriesUpdatedAt,
+		seriesName,
+		seriesIndex,
 		...unrouted
 	} = update;
 	// A column added to BookMergeUpdate must be routed above, under its stamp.
@@ -670,13 +680,25 @@ export async function applyBookMerge(
 			onlyIf: lt(books.metadataUpdatedAt, metadataUpdatedAt),
 		});
 	}
+	if (seriesUpdatedAt !== undefined) {
+		await updateBook(
+			id,
+			{ seriesName: seriesName ?? null, seriesIndex: seriesIndex ?? null, seriesUpdatedAt },
+			occurredAt,
+			{ onlyIf: lt(books.seriesUpdatedAt, seriesUpdatedAt) },
+		);
+	}
 	if (addedAt !== undefined) {
 		await updateBook(id, { addedAt }, occurredAt, { onlyIf: gt(books.addedAt, addedAt) });
 	}
 	return { unrouted: skipped, skippedPosition };
 }
 
-type BookStamps = { updatedAt: number; metadataUpdatedAt?: number | null };
+type BookStamps = {
+	updatedAt: number;
+	metadataUpdatedAt?: number | null;
+	seriesUpdatedAt?: number | null;
+};
 
 /**
  * Lowers a book's stamps to what the server stored for them (see
@@ -686,7 +708,7 @@ type BookStamps = { updatedAt: number; metadataUpdatedAt?: number | null };
 export async function adoptBookStamps(
 	id: string,
 	pushed: BookStamps,
-	stored: { updatedAt: number; metadataUpdatedAt: number },
+	stored: { updatedAt: number; metadataUpdatedAt: number; seriesUpdatedAt?: number },
 ): Promise<void> {
 	if (stored.updatedAt < pushed.updatedAt) {
 		await db
@@ -699,6 +721,16 @@ export async function adoptBookStamps(
 			.update(books)
 			.set({ metadataUpdatedAt: stored.metadataUpdatedAt })
 			.where(and(eq(books.id, id), eq(books.metadataUpdatedAt, pushed.metadataUpdatedAt)));
+	}
+	if (
+		pushed.seriesUpdatedAt != null &&
+		stored.seriesUpdatedAt !== undefined &&
+		stored.seriesUpdatedAt < pushed.seriesUpdatedAt
+	) {
+		await db
+			.update(books)
+			.set({ seriesUpdatedAt: stored.seriesUpdatedAt })
+			.where(and(eq(books.id, id), eq(books.seriesUpdatedAt, pushed.seriesUpdatedAt)));
 	}
 }
 

@@ -26,6 +26,9 @@ export type BookMergeUpdate = Partial<
 		| "review"
 		| "tags"
 		| "hideFromProfile"
+		| "seriesUpdatedAt"
+		| "seriesName"
+		| "seriesIndex"
 	>
 >;
 
@@ -50,6 +53,9 @@ export type BookMergeUpdate = Partial<
 export function buildBookMergeUpdate(local: Book, serverBook: SyncBook): BookMergeUpdate | null {
 	const positionIsNewer = serverBook.updatedAt > local.updatedAt;
 	const metadataIsNewer = serverMetadataStamp(serverBook) > local.metadataUpdatedAt;
+	// A server row no series-aware client wrote has no series revision: keep ours.
+	const seriesIsNewer =
+		serverBook.seriesUpdatedAt != null && serverBook.seriesUpdatedAt > local.seriesUpdatedAt;
 	const earlierAddedAt =
 		serverBook.addedAt != null && serverBook.addedAt < local.addedAt ? serverBook.addedAt : null;
 	// A row still at 0 never counted its words (books imported before v1.4.0), so
@@ -58,7 +64,13 @@ export function buildBookMergeUpdate(local: Book, serverBook: SyncBook): BookMer
 		local.wordCount === 0 && serverBook.wordCount != null && serverBook.wordCount > 0
 			? serverBook.wordCount
 			: null;
-	if (!positionIsNewer && !metadataIsNewer && earlierAddedAt == null && missingWordCount == null)
+	if (
+		!positionIsNewer &&
+		!metadataIsNewer &&
+		!seriesIsNewer &&
+		earlierAddedAt == null &&
+		missingWordCount == null
+	)
 		return null;
 
 	const update: BookMergeUpdate = {};
@@ -77,6 +89,11 @@ export function buildBookMergeUpdate(local: Book, serverBook: SyncBook): BookMer
 		if (serverBook.wordCount != null && serverBook.wordCount !== local.wordCount) {
 			update.wordCount = serverBook.wordCount;
 		}
+	}
+	if (seriesIsNewer) {
+		update.seriesUpdatedAt = serverBook.seriesUpdatedAt ?? undefined;
+		update.seriesName = serverBook.seriesName ?? null;
+		update.seriesIndex = serverBook.seriesIndex ?? null;
 	}
 	if (!metadataIsNewer) return update;
 	update.metadataUpdatedAt = serverMetadataStamp(serverBook);

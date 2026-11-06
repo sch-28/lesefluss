@@ -167,6 +167,8 @@ export const ImportStagingProvider: React.FC<{ children: React.ReactNode }> = ({
 						review: null,
 						tags: [],
 						hideFromProfile: false,
+						seriesName: current.payload.seriesName ?? null,
+						seriesIndex: current.payload.seriesIndex ?? null,
 					})
 				: null,
 		[current],

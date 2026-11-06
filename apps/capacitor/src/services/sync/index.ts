@@ -264,7 +264,7 @@ async function adoptPushStamps(payload: SyncPayload, stamps: SyncPushStamps): Pr
  */
 function adoptCachedBookStamps(
 	bookId: string,
-	pushed: Pick<SyncBook, "updatedAt" | "metadataUpdatedAt">,
+	pushed: Pick<SyncBook, "updatedAt" | "metadataUpdatedAt" | "seriesUpdatedAt">,
 	stored: SyncPushStamps["books"][number],
 ): void {
 	const lower = (book: Book): Book => {
@@ -279,8 +279,20 @@ function adoptCachedBookStamps(
 			stored.metadataUpdatedAt < pushed.metadataUpdatedAt
 				? stored.metadataUpdatedAt
 				: book.metadataUpdatedAt;
-		if (updatedAt === book.updatedAt && metadataUpdatedAt === book.metadataUpdatedAt) return book;
-		return { ...book, updatedAt, metadataUpdatedAt };
+		const seriesUpdatedAt =
+			pushed.seriesUpdatedAt != null &&
+			stored.seriesUpdatedAt !== undefined &&
+			book.seriesUpdatedAt === pushed.seriesUpdatedAt &&
+			stored.seriesUpdatedAt < pushed.seriesUpdatedAt
+				? stored.seriesUpdatedAt
+				: book.seriesUpdatedAt;
+		if (
+			updatedAt === book.updatedAt &&
+			metadataUpdatedAt === book.metadataUpdatedAt &&
+			seriesUpdatedAt === book.seriesUpdatedAt
+		)
+			return book;
+		return { ...book, updatedAt, metadataUpdatedAt, seriesUpdatedAt };
 	};
 	queryClient.setQueryData<Book | undefined>(bookKeys.detail(bookId), (book) =>
 		book ? lower(book) : book,
@@ -402,8 +414,11 @@ export function bookToSync(book: Book, contentData?: BookContent | null): SyncBo
 					review: book.review,
 					tags: book.tags,
 					hideFromProfile: book.hideFromProfile,
+					seriesName: book.seriesName,
+					seriesIndex: book.seriesIndex,
 				}),
 		metadataUpdatedAt: book.metadataUpdatedAt,
+		seriesUpdatedAt: book.seriesUpdatedAt,
 		updatedAt: book.updatedAt,
 	};
 }
@@ -657,6 +672,9 @@ function buildBookRowFromServer(
 		review: serverBook.review ?? null,
 		tags: serverBook.tags ?? null,
 		hideFromProfile: serverBook.hideFromProfile ?? false,
+		seriesName: serverBook.seriesName ?? null,
+		seriesIndex: serverBook.seriesIndex ?? null,
+		seriesUpdatedAt: serverBook.seriesUpdatedAt ?? 0,
 		originKey: serverBook.originKey ?? null,
 		source: serverBook.source ?? null,
 		catalogId: serverBook.catalogId ?? null,

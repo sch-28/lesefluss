@@ -52,7 +52,7 @@ import CollectionPicker from "./collection-picker";
 import CollectionShelfRow from "./collection-shelf-row";
 import { libraryCommands } from "./commands";
 import FilterBar, { AddFilterButton } from "./filter-bar";
-import { chipsOf, type Facet, type LibraryFilter, pruneFilter } from "./filter-model";
+import { activeFilterCount, type Facet, type LibraryFilter, pruneFilter } from "./filter-model";
 import { FilterPopover, FilterSheet, facetOptions } from "./filter-picker";
 import ImportSheet from "./import-sheet";
 import PasteUrlModal from "./paste-url-modal";
@@ -78,7 +78,7 @@ const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
 const SORT_BY_KEY = "lesefluss:library-sort";
 const VIEW_MODE_KEY = "lesefluss:library-view-mode";
 /** Facets whose values come from the books; a value can vanish with its last book. */
-const LIBRARY_VALUE_FACETS: readonly Facet[] = ["tags", "author", "series"];
+const LIBRARY_VALUE_FACETS: readonly Facet[] = ["tags", "author", "series", "collection"];
 
 const SORT_VALUES: readonly SortBy[] = ["title", "author", "recent", "progress", "rating"];
 const isSortBy = (value: string): value is SortBy =>
@@ -104,6 +104,7 @@ const Library: React.FC = () => {
 	const { collection: collectionId } = useSearch({ from: "/tabs/library/" });
 	const collectionsQuery = queryHooks.useCollections();
 	const membersQuery = queryHooks.useCollectionBookIds(collectionId ?? null);
+	const membershipsQuery = queryHooks.useCollectionMemberships();
 	const activeCollection = collectionsQuery.data?.find((c) => c.id === collectionId);
 	const removeFromCollection = queryHooks.useRemoveBooksFromCollection();
 
@@ -113,8 +114,10 @@ const Library: React.FC = () => {
 		covers,
 		chapterCounts,
 		seriesActivity,
-		isLoading: isPending,
+		isLoading: isLibraryPending,
 	} = useLibraryItems();
+	// The Collection facet and its pruning need both; mid-load every collection looks deleted.
+	const isPending = isLibraryPending || collectionsQuery.isPending || membershipsQuery.isPending;
 
 	const imports = useLibraryImports();
 	const deleteMutation = queryHooks.useDeleteBook();
@@ -273,10 +276,13 @@ const Library: React.FC = () => {
 	// loaded here rather than issuing its own query.
 	const existingTitles = useMemo(() => toExistingTitles(books), [books]);
 	const allItems = useMemo(
-		() => buildLibraryItems(books, series, seriesActivity),
-		[books, series, seriesActivity],
+		() => buildLibraryItems(books, series, seriesActivity, Date.now(), membershipsQuery.data),
+		[books, series, seriesActivity, membershipsQuery.data],
 	);
-	const options = useMemo(() => facetOptions(allItems), [allItems]);
+	const options = useMemo(
+		() => facetOptions(allItems, collectionsQuery.data),
+		[allItems, collectionsQuery.data],
+	);
 	// A value can vanish while it is filtered on (a tag's last book edited or
 	// deleted), which would leave an empty library with no visible cause.
 	const activeFilter = useMemo(
@@ -303,7 +309,7 @@ const Library: React.FC = () => {
 		() => applyLibraryView(scopedItems, { filter: activeFilter, sortBy, search }),
 		[scopedItems, activeFilter, sortBy, search],
 	);
-	const filterCount = chipsOf(activeFilter).length;
+	const filterCount = activeFilterCount(activeFilter);
 	const isNarrowed = filterCount > 0 || search.trim() !== "";
 	const isCollectionEmpty = !!collectionId && membersQuery.isSuccess && scopedItems.length === 0;
 	const selection = useLibrarySelection(books, visibleItems);
@@ -757,7 +763,7 @@ const Library: React.FC = () => {
 					isSaving={updateMutation.isPending}
 					onSave={(values) => {
 						updateMutation.mutate(
-							{ id: editBook.id, values: editValuesToPatch(values) },
+							{ id: editBook.id, values: editValuesToPatch(values, editValues ?? undefined) },
 							{ onSuccess: () => setEditBook(null) },
 						);
 					}}

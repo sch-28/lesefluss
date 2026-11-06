@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { makeBook } from "../../../test/book-fixture";
 import {
+	activeFilterCount,
 	chipsOf,
 	cycleValue,
+	decodeFilterParam,
+	encodeFilterParam,
 	type FacetValues,
+	FILTER_PARAM_MAX,
 	FILTER_STORAGE_KEY,
 	facetValuesOf,
 	type LibraryFilter,
@@ -13,7 +17,10 @@ import {
 	pruneFilter,
 	removeValue,
 	serializeFilter,
+	setTagsMode,
+	setWordRange,
 	valueState,
+	wordRangeLabel,
 } from "../filter-model";
 import { filterAndSortLibrary } from "../sort-filter";
 
@@ -26,10 +33,12 @@ function values(overrides: Partial<FacetValues> = {}): FacetValues {
 		tags: [],
 		author: [],
 		series: [],
+		collection: [],
 		rating: ["none"],
 		progress: ["1-49"],
 		added: [],
 		lastRead: ["never"],
+		wordCount: null,
 		...overrides,
 	};
 }
@@ -60,6 +69,144 @@ describe("matchesFilter", () => {
 	});
 });
 
+describe("tags match all", () => {
+	const all: LibraryFilter = { tags: { in: ["scifi", "space"], out: ["dnf"], mode: "all" } };
+
+	it("keeps only books carrying every included tag", () => {
+		expect(matchesFilter(values({ tags: ["scifi", "space", "x"] }), all)).toBe(true);
+		expect(matchesFilter(values({ tags: ["scifi"] }), all)).toBe(false);
+	});
+
+	it("still removes a book carrying an excluded tag", () => {
+		expect(matchesFilter(values({ tags: ["scifi", "space", "dnf"] }), all)).toBe(false);
+	});
+
+	it("switches back to any, and a filter rebuilt after clearing starts on any", () => {
+		const any = setTagsMode(all, "any");
+		expect(any.tags?.mode).toBeUndefined();
+		expect(matchesFilter(values({ tags: ["scifi"] }), any)).toBe(true);
+		let cleared = removeValue(all, "tags", "scifi");
+		cleared = removeValue(cleared, "tags", "space");
+		cleared = removeValue(cleared, "tags", "dnf");
+		expect(cleared).toEqual({});
+		expect(cycleValue(cleared, "tags", "scifi").tags?.mode).toBeUndefined();
+	});
+
+	it("keeps the mode while other tags are cycled", () => {
+		expect(cycleValue(all, "tags", "poetry").tags?.mode).toBe("all");
+	});
+});
+
+describe("collection facet", () => {
+	it("ORs included collections and removes excluded ones", () => {
+		const filter: LibraryFilter = { collection: sel(["c1", "c2"], ["c3"]) };
+		expect(matchesFilter(values({ collection: ["c2"] }), filter)).toBe(true);
+		expect(matchesFilter(values({ collection: [] }), filter)).toBe(false);
+		expect(matchesFilter(values({ collection: ["c1", "c3"] }), filter)).toBe(false);
+	});
+
+	it("reads a book's collections from the membership map", () => {
+		const a = makeBook({ id: "aaaaaaaa" });
+		const b = makeBook({ id: "bbbbbbbb" });
+		const ids = filterAndSortLibrary(
+			[a, b],
+			[],
+			new Map(),
+			{ filter: { collection: sel(["c1"]) }, sortBy: "title" },
+			NOW,
+			new Map([["bbbbbbbb", ["c1"]]]),
+		).map((it) => (it.kind === "book" ? it.book.id : it.series.id));
+		expect(ids).toEqual(["bbbbbbbb"]);
+	});
+
+	it("drops a deleted collection from the filter", () => {
+		const filter: LibraryFilter = { collection: sel(["live"], ["gone"]) };
+		expect(pruneFilter(filter, "collection", new Set(["live"]))).toEqual({
+			collection: sel(["live"]),
+		});
+	});
+});
+
+describe("length facet", () => {
+	it("keeps books inside the range and drops books without a word count", () => {
+		const filter: LibraryFilter = { words: { min: 100_000, max: 200_000 } };
+		expect(matchesFilter(values({ wordCount: 150_000 }), filter)).toBe(true);
+		expect(matchesFilter(values({ wordCount: 200_000 }), filter)).toBe(true);
+		expect(matchesFilter(values({ wordCount: 99_999 }), filter)).toBe(false);
+		expect(matchesFilter(values({ wordCount: null }), filter)).toBe(false);
+		expect(matchesFilter(values({ wordCount: null }), { words: { max: 50_000 } })).toBe(false);
+	});
+
+	it("treats a book with a zero word count as unknown", () => {
+		const book = makeBook({ id: "aaaaaaaa", wordCount: 0 });
+		const count = (filter: LibraryFilter) =>
+			filterAndSortLibrary([book], [], new Map(), { filter, sortBy: "recent" }, NOW).length;
+		expect(count({ words: { max: 50_000 } })).toBe(0);
+		expect(count({})).toBe(1);
+	});
+
+	it("labels the range compactly and counts as one active filter", () => {
+		expect(wordRangeLabel({ min: 150_000 })).toBe("> 150k");
+		expect(wordRangeLabel({ max: 50_000 })).toBe("< 50k");
+		expect(wordRangeLabel({ min: 50_000, max: 1_200_000 })).toBe("50k–1.2M");
+		expect(activeFilterCount({ words: { min: 1 }, tags: sel(["a"]) })).toBe(2);
+	});
+
+	it("orders swapped bounds and clears an empty range", () => {
+		expect(setWordRange({}, { min: 200, max: 100 }).words).toEqual({ min: 100, max: 200 });
+		expect(setWordRange({ words: { min: 1 } }, { min: undefined })).toEqual({});
+	});
+});
+
+describe("filter in the URL", () => {
+	it("round-trips every facet, the tags mode and the range, unicode included", () => {
+		const filter: LibraryFilter = {
+			tags: { in: ["Märchen", "📚"], out: ["dnf"], mode: "all" },
+			collection: sel(["c1"]),
+			words: { min: 150_000 },
+		};
+		const param = encodeFilterParam(filter);
+		expect(param).toMatch(/^[A-Za-z0-9_-]+$/);
+		expect(decodeFilterParam(param)).toEqual(filter);
+	});
+
+	it("leaves an empty filter out of the URL", () => {
+		expect(encodeFilterParam({})).toBeUndefined();
+		expect(decodeFilterParam(undefined)).toBeNull();
+	});
+
+	it("drops broken parts and keeps the rest", () => {
+		const raw = JSON.stringify({
+			v: 1,
+			facets: {
+				tags: { in: ["a"], out: [], mode: "most" },
+				collection: { in: ["c1"], out: 7 },
+				words: { min: "lots" },
+				mood: { in: ["x"], out: [] },
+			},
+		});
+		const param = btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+		expect(decodeFilterParam(param)).toEqual({ tags: sel(["a"]), collection: sel(["c1"]) });
+		expect(
+			decodeFilterParam(
+				btoa(JSON.stringify({ v: 1, facets: { words: { min: 9, max: 3 } } })).replace(/=+$/, ""),
+			),
+		).toEqual({});
+	});
+
+	it("returns null for a param that is not a filter at all", () => {
+		expect(decodeFilterParam("%%%")).toBeNull();
+		expect(decodeFilterParam("bm90IGpzb24")).toBeNull();
+	});
+
+	it("ignores a param too long to be a real filter, and still encodes a large stored one", () => {
+		const tags = Array.from({ length: 20_000 }, (_, i) => `tag-${i}`);
+		const param = encodeFilterParam({ tags: sel(tags) });
+		expect(param?.length).toBeGreaterThan(FILTER_PARAM_MAX);
+		expect(decodeFilterParam(param)).toBeNull();
+	});
+});
+
 describe("facetValuesOf", () => {
 	it("puts dates into every window that contains them", () => {
 		const v = facetValuesOf(
@@ -68,6 +215,9 @@ describe("facetValuesOf", () => {
 				tags: [],
 				author: "",
 				seriesId: null,
+				bookSeriesName: null,
+				collectionIds: [],
+				wordCount: 0,
 				rating: null,
 				progress: 0,
 				addedAt: NOW - 20 * DAY,
@@ -89,6 +239,9 @@ describe("facetValuesOf", () => {
 					tags: [],
 					author: "",
 					seriesId: null,
+					bookSeriesName: null,
+					collectionIds: [],
+					wordCount: 0,
 					rating: r,
 					progress: 100,
 					addedAt: NOW,

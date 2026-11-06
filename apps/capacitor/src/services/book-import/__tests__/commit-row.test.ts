@@ -145,4 +145,36 @@ describe("buildImportedBookRow language precedence", () => {
 		);
 		expect(row.language).toHaveLength(35);
 	});
+
+	it("takes the file's series and stamps it with the import", () => {
+		const row = buildImportedBookRow(
+			{ ...payload, seriesName: "Foundation", seriesIndex: 2.5 },
+			{},
+			makeOverrides(),
+			stamps,
+		);
+		expect(row).toMatchObject({
+			seriesName: "Foundation",
+			seriesIndex: 2.5,
+			seriesUpdatedAt: 1000,
+		});
+	});
+
+	it("leaves the series empty and unrevised for a file without one", () => {
+		const row = buildImportedBookRow(payload, {}, undefined, stamps);
+		expect(row).toMatchObject({ seriesName: null, seriesIndex: null, seriesUpdatedAt: 0 });
+	});
+
+	it("takes the series the reader corrected while confirming, a clear included", () => {
+		const fromFile = { ...payload, seriesName: "Foundation", seriesIndex: 2 };
+		const renamed = buildImportedBookRow(
+			fromFile,
+			{},
+			makeOverrides({ seriesName: "Robots", seriesIndex: 4 }),
+			stamps,
+		);
+		expect(renamed).toMatchObject({ seriesName: "Robots", seriesIndex: 4 });
+		const cleared = buildImportedBookRow(fromFile, {}, makeOverrides({ seriesName: null }), stamps);
+		expect(cleared).toMatchObject({ seriesName: null, seriesIndex: null, seriesUpdatedAt: 0 });
+	});
 });

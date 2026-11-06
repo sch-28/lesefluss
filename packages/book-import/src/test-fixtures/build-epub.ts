@@ -40,6 +40,8 @@ export type EpubFixture = {
 	creator?: string;
 	/** `dc:language`. Pass null to omit the element entirely. */
 	language?: string | null;
+	/** Raw OPF `<metadata>` children, e.g. series meta. */
+	extraMetadata?: string;
 	chapters: FixtureChapter[];
 	spineIds?: string[];
 	navPoints?: FixtureNavPoint[];
@@ -175,6 +177,7 @@ function buildZip(fixture: EpubFixture): JSZip {
 <dc:creator>${xmlEscape(fixture.creator ?? "Tester")}</dc:creator>
 ${fixture.language === null ? "" : `<dc:language>${xmlEscape(fixture.language ?? "en")}</dc:language>`}
 ${cover.meta}
+${fixture.extraMetadata ?? ""}
 </metadata>
 <manifest>${manifest}</manifest>
 <spine${spineAttr}>${spine}</spine>

@@ -21,6 +21,7 @@ import { titleFromFileName } from "../utils/file-format";
 import { MAX_DECODE_PIXELS, prepareImage, sniffImageDimensions } from "../utils/image-analysis";
 import { assertBytes } from "../utils/raw-input";
 import { canParseEpub } from "./matchers";
+import { type OpfSeries, readOpfSeries } from "./opf-series";
 
 export const epubParser: Parser = {
 	id: "epub",
@@ -39,6 +40,8 @@ export const epubParser: Parser = {
 			language,
 			images,
 			imageAnchors,
+			seriesName,
+			seriesIndex,
 		} = await parseEpub(
 			input.bytes,
 			input.fileName,
@@ -56,6 +59,8 @@ export const epubParser: Parser = {
 			language,
 			images,
 			imageAnchors,
+			seriesName,
+			seriesIndex,
 			fileFormat: "epub",
 			original: { bytes: input.bytes, extension: "epub" },
 		};
@@ -182,6 +187,19 @@ function readEpubMetadata(
 	};
 }
 
+/** The package document's series. A broken or missing OPF text is no series,
+ *  never a failed import. */
+async function readEpubSeries(book: EpubBook): Promise<OpfSeries> {
+	try {
+		// epubjs sets `packagePath` at runtime but leaves it out of its typings.
+		const { packagePath } = book.container as { packagePath?: string };
+		if (!packagePath) return { seriesName: null, seriesIndex: null };
+		const opf = await book.archive.getText(book.resolve(packagePath));
+		if (opf) return readOpfSeries(opf);
+	} catch {}
+	return { seriesName: null, seriesIndex: null };
+}
+
 /**
  * Title, author, and cover without touching the spine. A folder scan probes
  * every candidate file, and the section walk below is where all the time goes.
@@ -203,19 +221,22 @@ async function parseEpub(
 	filename: string,
 	onProgress: ((pct: number) => void) | undefined,
 	prepare: PrepareImage,
-): Promise<{
-	content: string;
-	title: string;
-	author: string | null;
-	coverImage: string | null;
-	chapters: Chapter[];
-	linkRanges: ImportLink[] | null;
-	language: string | null;
-	images: ImportImage[] | null;
-	imageAnchors: ImportImageAnchor[] | null;
-}> {
+): Promise<
+	{
+		content: string;
+		title: string;
+		author: string | null;
+		coverImage: string | null;
+		chapters: Chapter[];
+		linkRanges: ImportLink[] | null;
+		language: string | null;
+		images: ImportImage[] | null;
+		imageAnchors: ImportImageAnchor[] | null;
+	} & OpfSeries
+> {
 	const book = await openEpubBook(buffer);
 	const { title, author, language } = readEpubMetadata(book, filename);
+	const { seriesName, seriesIndex } = await readEpubSeries(book);
 
 	const coverImage = await extractCover(book);
 
@@ -353,6 +374,8 @@ async function parseEpub(
 		language,
 		images: images.length > 0 ? images : null,
 		imageAnchors: imageAnchors.length > 0 ? imageAnchors : null,
+		seriesName,
+		seriesIndex,
 	};
 }
 

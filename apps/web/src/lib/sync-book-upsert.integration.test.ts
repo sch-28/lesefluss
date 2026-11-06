@@ -12,7 +12,12 @@ import { db } from "~/db";
 import { user } from "~/db/auth-schema";
 import { socialTakedown, syncBookCopy, syncBooks } from "~/db/schema";
 import { takenDownBookIds } from "./moderation/takedown";
-import { bookInsertValues, bookUpsertSetFor, bookUpsertTarget } from "./sync-book-upsert";
+import {
+	bookInsertValues,
+	bookUpsertSetFor,
+	bookUpsertTarget,
+	upsertSyncBooks,
+} from "./sync-book-upsert";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 
@@ -286,6 +291,94 @@ describe.skipIf(!hasDb)("sync_books upsert (integration)", () => {
 		await push(makeBook({ bookId, hideFromProfile: true, updatedAt: 1_000_000 }));
 		await push(makeBook({ bookId, deleted: true, updatedAt: 2_000_000 }));
 		expect((await read(bookId)).hideFromProfile).toBe(false);
+	});
+
+	const series = (name: string | null, index: number | null, at: number) => ({
+		seriesName: name,
+		seriesIndex: index,
+		seriesUpdatedAt: at,
+	});
+
+	test("a push without the series fields leaves a stored series unchanged", async () => {
+		const bookId = "5e1e0001";
+		await push(makeBook({ bookId, status: "reading", ...series("Foundation", 2, 1_000_000) }));
+		// A current build that never heard of the series, with newer metadata.
+		await push(makeBook({ bookId, status: "finished", rating: 8, updatedAt: 5_000_000 }));
+		// A legacy build without any metadata columns.
+		await push(makeLegacyBook({ bookId, updatedAt: 6_000_000 }));
+		const row = await read(bookId);
+		expect(row.seriesName).toBe("Foundation");
+		expect(row.seriesIndex).toBe(2);
+		expect(row.seriesUpdatedAt?.getTime()).toBe(1_000_000);
+		expect(row.status).toBe("finished");
+	});
+
+	test("a series edit and a newer tag edit from another device both survive", async () => {
+		const bookId = "5e1e0002";
+		await push(makeBook({ bookId, tags: '["a"]', ...series("Foundation", 1, 1_000_000) }));
+		// Device A renames the series at t=3.
+		await push(
+			makeBook({
+				bookId,
+				tags: '["a"]',
+				metadataUpdatedAt: 1_000_000,
+				...series("Foundation Trilogy", 2.5, 3_000_000),
+			}),
+		);
+		// Device B, which has not pulled the rename, edits tags at t=4.
+		await push(
+			makeBook({
+				bookId,
+				tags: '["a","b"]',
+				metadataUpdatedAt: 4_000_000,
+				...series("Foundation", 1, 1_000_000),
+			}),
+		);
+		const row = await read(bookId);
+		expect(row.tags).toBe('["a","b"]');
+		expect(row.seriesName).toBe("Foundation Trilogy");
+		expect(row.seriesIndex).toBe(2.5);
+		expect(row.seriesUpdatedAt?.getTime()).toBe(3_000_000);
+	});
+
+	test("an older series revision never overwrites a newer one; a newer clear does", async () => {
+		const bookId = "5e1e0003";
+		await push(makeBook({ bookId, ...series("Dune", 1, 2_000_000) }));
+		await push(makeBook({ bookId, ...series("Other", 9, 1_000_000) }));
+		expect((await read(bookId)).seriesName).toBe("Dune");
+		// Same revision: strict `>`, nothing changes.
+		await push(makeBook({ bookId, ...series("Other", 9, 2_000_000) }));
+		expect((await read(bookId)).seriesName).toBe("Dune");
+		await push(makeBook({ bookId, ...series(null, null, 3_000_000) }));
+		const row = await read(bookId);
+		expect(row.seriesName).toBeNull();
+		expect(row.seriesIndex).toBeNull();
+	});
+
+	test("a tombstone clears the series", async () => {
+		const bookId = "5e1e0004";
+		await push(makeBook({ bookId, ...series("Dune", 1, 1_000_000) }));
+		await push(
+			makeBook({ bookId, deleted: true, updatedAt: 2_000_000, seriesUpdatedAt: 1_000_000 }),
+		);
+		expect((await read(bookId)).seriesName).toBeNull();
+	});
+
+	test("a series revision ahead of the server's clock is clamped and reported", async () => {
+		const bookId = "5e1e0005";
+		const now = Date.now();
+		const ahead = now + 60 * 60 * 1000;
+		const clamped = await db.transaction((tx) =>
+			upsertSyncBooks(
+				tx,
+				userId,
+				[makeBook({ bookId, updatedAt: now - 1000, ...series("Dune", 1, ahead) })],
+				new Map(),
+			),
+		);
+		const stamp = clamped.find((c) => c.bookId === bookId);
+		expect(stamp?.seriesUpdatedAt).toBeLessThan(ahead);
+		expect((await read(bookId)).seriesUpdatedAt?.getTime()).toBe(stamp?.seriesUpdatedAt);
 	});
 
 	// A deleted book keeps none of the reader's own text. Content, cover and

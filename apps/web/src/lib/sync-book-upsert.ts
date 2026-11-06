@@ -47,12 +47,16 @@ export function bookInsertValues(userId: string, book: SyncBook, origin?: BookOr
 		review: book.deleted ? null : (book.review ?? null),
 		tags: book.deleted ? null : (book.tags ?? null),
 		hideFromProfile: book.deleted ? false : (book.hideFromProfile ?? false),
+		seriesName: book.deleted ? null : (book.seriesName ?? null),
+		seriesIndex: book.deleted ? null : (book.seriesIndex ?? null),
 		deleted: book.deleted,
 		// A client clock running ahead would otherwise win every later merge.
 		updatedAt: new Date(Math.min(book.updatedAt, now)),
 		// A client that pre-dates the column sends nothing; falling back to the row
 		// revision keeps the merge below a plain comparison.
 		metadataUpdatedAt: new Date(Math.min(book.metadataUpdatedAt ?? book.updatedAt, now)),
+		seriesUpdatedAt:
+			book.seriesUpdatedAt != null ? new Date(Math.min(book.seriesUpdatedAt, now)) : null,
 	};
 }
 
@@ -90,6 +94,41 @@ export function claimsHideFlag(book: SyncBook): boolean {
 	return book.hideFromProfile !== undefined;
 }
 
+/** Whether the payload says anything about the book-level series. Separate from
+ *  `claimsMetadata` because the series merges on its own revision: a client that
+ *  pre-dates the fields must leave a stored series untouched. */
+export function claimsSeries(book: SyncBook): boolean {
+	return (
+		book.seriesName !== undefined ||
+		book.seriesIndex !== undefined ||
+		book.seriesUpdatedAt !== undefined
+	);
+}
+
+const SERIES_REVISION_NEWER =
+	"COALESCE(excluded.series_updated_at, 'epoch'::timestamp) > COALESCE(sync_books.series_updated_at, 'epoch'::timestamp)";
+
+/** The series columns' merge: cleared with the tombstone, otherwise revision-gated
+ *  (strict `>`, like metadata) when claimed, kept when not. */
+function seriesSet(claimed: boolean): PgUpdateSetSource<typeof syncBooks> {
+	const column = (name: "series_name" | "series_index") =>
+		sql.raw(
+			claimed
+				? `CASE WHEN sync_books.deleted OR excluded.deleted THEN NULL WHEN ${SERIES_REVISION_NEWER} THEN excluded.${name} ELSE sync_books.${name} END`
+				: `CASE WHEN sync_books.deleted OR excluded.deleted THEN NULL ELSE sync_books.${name} END`,
+		);
+	return {
+		seriesName: column("series_name"),
+		seriesIndex: column("series_index"),
+		// GREATEST skips NULLs, so a row without a revision takes the pushed one.
+		seriesUpdatedAt: sql.raw(
+			claimed
+				? "GREATEST(excluded.series_updated_at, sync_books.series_updated_at)"
+				: "sync_books.series_updated_at",
+		),
+	};
+}
+
 const METADATA_REVISION_NEWER =
 	"COALESCE(excluded.metadata_updated_at, excluded.updated_at) > COALESCE(sync_books.metadata_updated_at, sync_books.updated_at)";
 
@@ -107,6 +146,7 @@ export function bookUpsertSetFor(book: SyncBook): PgUpdateSetSource<typeof syncB
 	return {
 		...(claimsMetadata(book) ? bookUpsertSet : bookUpsertSetPreservingMetadata),
 		hideFromProfile: hideFlagSet(claimsHideFlag(book)),
+		...seriesSet(claimsSeries(book)),
 	};
 }
 
@@ -114,7 +154,7 @@ export function bookUpsertSetFor(book: SyncBook): PgUpdateSetSource<typeof syncB
 export function groupBooksByMergeRules(books: SyncBook[]): SyncBook[][] {
 	const groups = new Map<string, SyncBook[]>();
 	for (const book of books) {
-		const key = `${claimsMetadata(book)}:${claimsHideFlag(book)}`;
+		const key = `${claimsMetadata(book)}:${claimsHideFlag(book)}:${claimsSeries(book)}`;
 		const group = groups.get(key) ?? [];
 		group.push(book);
 		groups.set(key, group);
@@ -285,11 +325,23 @@ export async function upsertSyncBooks(
 
 function clampedStamps(
 	book: SyncBook,
-	row: { updatedAt: Date; metadataUpdatedAt: Date },
+	row: { updatedAt: Date; metadataUpdatedAt: Date; seriesUpdatedAt: Date | null },
 ): SyncPushStamps["books"][number] | null {
 	const updatedAt = row.updatedAt.getTime();
 	const metadataUpdatedAt = row.metadataUpdatedAt.getTime();
+	const seriesUpdatedAt = row.seriesUpdatedAt?.getTime();
 	const isClamped =
-		updatedAt < book.updatedAt || metadataUpdatedAt < (book.metadataUpdatedAt ?? book.updatedAt);
-	return isClamped ? { bookId: book.bookId, updatedAt, metadataUpdatedAt } : null;
+		updatedAt < book.updatedAt ||
+		metadataUpdatedAt < (book.metadataUpdatedAt ?? book.updatedAt) ||
+		(seriesUpdatedAt !== undefined &&
+			book.seriesUpdatedAt != null &&
+			seriesUpdatedAt < book.seriesUpdatedAt);
+	return isClamped
+		? {
+				bookId: book.bookId,
+				updatedAt,
+				metadataUpdatedAt,
+				...(seriesUpdatedAt !== undefined && { seriesUpdatedAt }),
+			}
+		: null;
 }

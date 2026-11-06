@@ -46,6 +46,11 @@ export function isSyncEligible(book: { size: number; deleted?: boolean | null })
 // Zod schemas - runtime validation on server, type source-of-truth for both apps
 // ---------------------------------------------------------------------------
 
+/** Longest book-level series name. The EPUB importer caps at the same length. */
+export const BOOK_SERIES_NAME_MAX = 200;
+/** Highest book-level series number. */
+export const BOOK_SERIES_INDEX_MAX = 100_000;
+
 export const SyncBookSchema = z.object({
 	bookId: z.string().regex(/^[0-9a-f]{8}$/),
 	title: z.string().max(500),
@@ -91,6 +96,15 @@ export const SyncBookSchema = z.object({
 	 * the field omits it, and the merge falls back to `updatedAt`.
 	 */
 	metadataUpdatedAt: z.number().int().nonnegative().nullable().optional(),
+	/**
+	 * Book-level series ("Foundation" #2.5), unrelated to the serial `seriesId`
+	 * below. Merges on its own revision, `seriesUpdatedAt`, so an edit in the
+	 * metadata group never undoes it. Optional with no default: a client that
+	 * pre-dates the fields omits them, and the server then keeps its own.
+	 */
+	seriesName: z.string().max(BOOK_SERIES_NAME_MAX).nullable().optional(),
+	seriesIndex: z.number().nonnegative().max(BOOK_SERIES_INDEX_MAX).nullable().optional(),
+	seriesUpdatedAt: z.number().int().nonnegative().nullable().optional(),
 	// Serial chapter membership (null for standalone books)
 	seriesId: z
 		.string()
@@ -359,7 +373,15 @@ export const SyncPushSchema = SyncPayloadSchema.extend({
  */
 export const SyncPushStampsSchema = z.object({
 	books: z
-		.array(z.object({ bookId: z.string(), updatedAt: epochMs(), metadataUpdatedAt: epochMs() }))
+		.array(
+			z.object({
+				bookId: z.string(),
+				updatedAt: epochMs(),
+				metadataUpdatedAt: epochMs(),
+				// Absent from a server that pre-dates the series revision.
+				seriesUpdatedAt: epochMs().optional(),
+			}),
+		)
 		.max(50_000),
 	settingsUpdatedAt: epochMs().nullable(),
 });

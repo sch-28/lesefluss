@@ -178,6 +178,13 @@ export const books = sqliteTable("books", {
 	/** Revision of the reader-editable fields (description, language, status,
 	 *  rating, review, tags), epoch ms. Seeded from `updated_at` in 0032. */
 	metadataUpdatedAt: integer("metadata_updated_at").notNull().default(0),
+	/** Book-level series ("Foundation"), unrelated to the serial `seriesId`. */
+	seriesName: text("series_name"),
+	/** Number within `seriesName`; decimals allowed (2.5). */
+	seriesIndex: real("series_index"),
+	/** Revision of `seriesName` and `seriesIndex` only, epoch ms. Outside the
+	 *  metadata group so a tag or rating edit elsewhere never undoes a series edit. */
+	seriesUpdatedAt: integer("series_updated_at").notNull().default(0),
 });
 
 /**

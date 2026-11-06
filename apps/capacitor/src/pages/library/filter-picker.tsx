@@ -14,14 +14,20 @@ import { Check, ChevronDown, ChevronRight, Minus } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
 import {
-	chipsOf,
+	activeFilterCount,
+	bookSeriesFacetValue,
 	cycleValue,
 	FACET_LABELS,
 	FACETS,
 	type Facet,
 	FIXED_FACET_VALUES,
 	type LibraryFilter,
+	setTagsMode,
+	setWordRange,
 	valueState,
+	WORD_RANGE_PRESETS,
+	type WordRange,
+	wordRangeLabel,
 } from "./filter-model";
 import type { LibraryItem } from "./sort-filter";
 
@@ -30,8 +36,12 @@ export type FacetOptions = Record<Facet, FacetOption[]>;
 
 const SEARCHABLE_FROM = 8;
 
-/** Every value each facet can offer, with how many rows carry it. */
-export function facetOptions(items: readonly LibraryItem[]): FacetOptions {
+/** Every value each facet can offer, with how many rows carry it. Collections
+ *  are offered in their own order, empty ones included. */
+export function facetOptions(
+	items: readonly LibraryItem[],
+	collections: readonly { id: string; name: string }[] = [],
+): FacetOptions {
 	const counts = Object.fromEntries(FACETS.map((f) => [f, new Map<string, number>()])) as Record<
 		Facet,
 		Map<string, number>
@@ -39,6 +49,10 @@ export function facetOptions(items: readonly LibraryItem[]): FacetOptions {
 	const seriesTitles = new Map<string, string>();
 	for (const item of items) {
 		if (item.kind === "series") seriesTitles.set(item.series.id, item.series.title);
+		else if (item.book.seriesName) {
+			const value = bookSeriesFacetValue(item.book.seriesName);
+			if (!seriesTitles.has(value)) seriesTitles.set(value, item.book.seriesName.trim());
+		}
 		for (const facet of FACETS) {
 			for (const value of item.facets[facet]) {
 				counts[facet].set(value, (counts[facet].get(value) ?? 0) + 1);
@@ -50,6 +64,14 @@ export function facetOptions(items: readonly LibraryItem[]): FacetOptions {
 		const fixed = FIXED_FACET_VALUES[facet];
 		if (fixed) {
 			options[facet] = fixed.map((v) => ({ ...v, count: counts[facet].get(v.value) ?? 0 }));
+			continue;
+		}
+		if (facet === "collection") {
+			options[facet] = collections.map((c) => ({
+				value: c.id,
+				label: c.name,
+				count: counts[facet].get(c.id) ?? 0,
+			}));
 			continue;
 		}
 		options[facet] = [...counts[facet]]
@@ -178,6 +200,144 @@ const FacetSection: React.FC<PanelProps & { facet: Facet }> = ({
 							);
 						})}
 					</ul>
+					{facet === "tags" && (selection?.in.length ?? 0) > 0 && (
+						<TagsModeToggle filter={filter} onChange={onChange} />
+					)}
+				</div>
+			)}
+		</section>
+	);
+};
+
+const TagsModeToggle: React.FC<Pick<PanelProps, "filter" | "onChange">> = ({
+	filter,
+	onChange,
+}) => {
+	const mode = filter.tags?.mode === "all" ? "all" : "any";
+	return (
+		<div className="flex items-center gap-2 px-1 pt-2 text-muted-foreground text-xs">
+			<span id="tags-match-label">Tags match</span>
+			<fieldset
+				aria-labelledby="tags-match-label"
+				className="m-0 inline-flex min-w-0 rounded-md border border-border p-0.5"
+			>
+				{(["any", "all"] as const).map((m) => (
+					<button
+						key={m}
+						type="button"
+						aria-pressed={mode === m}
+						onClick={() => onChange(setTagsMode(filter, m))}
+						className={cn(
+							"rounded px-2 py-0.5",
+							mode === m ? "bg-primary text-primary-foreground" : "hover:text-foreground",
+						)}
+					>
+						{m}
+					</button>
+				))}
+			</fieldset>
+		</div>
+	);
+};
+
+const parseBound = (raw: string): number | undefined => {
+	const n = Number(raw);
+	return raw.trim() !== "" && Number.isFinite(n) && n >= 0 ? Math.round(n * 1000) : undefined;
+};
+
+const sameRange = (a: WordRange | undefined, b: WordRange) => a?.min === b.min && a?.max === b.max;
+
+/** Bounds are typed in thousands of words, the unit the chips and presets use. */
+const LengthSection: React.FC<Pick<PanelProps, "filter" | "onChange">> = ({ filter, onChange }) => {
+	const range = filter.words;
+	const [isOpen, setIsOpen] = useState(() => !!range);
+	const sectionId = "filter-facet-words";
+	const setBound = (key: "min" | "max", raw: string) => {
+		const next = { ...range, [key]: parseBound(raw) };
+		onChange(setWordRange(filter, next));
+	};
+	return (
+		<section className="border-border border-b last:border-b-0">
+			<h3 className="m-0">
+				<button
+					type="button"
+					aria-expanded={isOpen}
+					aria-controls={sectionId}
+					onClick={() => setIsOpen((o) => !o)}
+					className="flex w-full items-center gap-2 py-2.5 text-left font-medium text-sm"
+				>
+					{isOpen ? (
+						<ChevronDown className="size-3.5 text-muted-foreground" />
+					) : (
+						<ChevronRight className="size-3.5 text-muted-foreground" />
+					)}
+					Length
+					<span
+						className={cn(
+							"ml-auto font-normal text-xs",
+							range ? "text-primary" : "text-muted-foreground",
+						)}
+					>
+						{range ? wordRangeLabel(range) : "Any"}
+					</span>
+				</button>
+			</h3>
+			{isOpen && (
+				<div id={sectionId} className="flex flex-col gap-2 pb-3">
+					<div className="flex flex-wrap gap-1.5">
+						{WORD_RANGE_PRESETS.map((preset) => {
+							const isActive = sameRange(range, preset);
+							const label = wordRangeLabel(preset);
+							return (
+								<button
+									key={label}
+									type="button"
+									aria-pressed={isActive}
+									onClick={() => onChange(setWordRange(filter, isActive ? null : preset))}
+									className={cn(
+										"h-7 rounded-full border px-2.5 text-xs",
+										isActive
+											? "border-primary bg-primary text-primary-foreground"
+											: "border-border hover:bg-muted",
+									)}
+								>
+									{label}
+								</button>
+							);
+						})}
+					</div>
+					<div className="flex items-center gap-2 text-muted-foreground text-xs">
+						<Input
+							key={`min-${range?.min ?? ""}`}
+							type="number"
+							inputMode="numeric"
+							min={0}
+							defaultValue={range?.min != null ? range.min / 1000 : ""}
+							onBlur={(e) => setBound("min", e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") setBound("min", e.currentTarget.value);
+							}}
+							placeholder="Min"
+							aria-label="Minimum length in thousands of words"
+							className="h-8 w-20"
+						/>
+						<span>–</span>
+						<Input
+							key={`max-${range?.max ?? ""}`}
+							type="number"
+							inputMode="numeric"
+							min={0}
+							defaultValue={range?.max != null ? range.max / 1000 : ""}
+							onBlur={(e) => setBound("max", e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") setBound("max", e.currentTarget.value);
+							}}
+							placeholder="Max"
+							aria-label="Maximum length in thousands of words"
+							className="h-8 w-20"
+						/>
+						<span>thousand words</span>
+					</div>
 				</div>
 			)}
 		</section>
@@ -192,6 +352,7 @@ const FilterPanel: React.FC<PanelProps> = (props) => (
 		{FACETS.map((facet) => (
 			<FacetSection key={facet} facet={facet} {...props} />
 		))}
+		<LengthSection filter={props.filter} onChange={props.onChange} />
 	</div>
 );
 
@@ -229,7 +390,7 @@ export const FilterSheet: React.FC<PickerProps> = ({
 	resultCount,
 	...panel
 }) => {
-	const activeCount = useMemo(() => chipsOf(panel.filter).length, [panel.filter]);
+	const activeCount = useMemo(() => activeFilterCount(panel.filter), [panel.filter]);
 	return (
 		<Drawer open={open} onOpenChange={onOpenChange}>
 			<DrawerContent data-testid="filter-picker">
