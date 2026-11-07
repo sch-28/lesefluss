@@ -3,6 +3,7 @@ import { createRequest } from "../../commands/signal";
 import { queryHooks } from "../../services/db/hooks";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
+import { isFirstLoad } from "../../services/query-client";
 import { facetOptions } from "./filter-picker";
 import {
 	BUILT_IN_PINS_KEY,
@@ -88,7 +89,7 @@ export function useShelfLibrary(enabled = true) {
 				: EMPTY_LIBRARY,
 		[enabled, books, series, seriesActivity, memberships.data, collections.data],
 	);
-	return { ...library, isLoading: isLoading || memberships.isPending };
+	return { ...library, isLoading: isLoading || isFirstLoad(memberships) };
 }
 
 export function useSmartShelves() {
@@ -110,7 +111,7 @@ export function useSmartShelves() {
 	return {
 		shelves,
 		counts,
-		isLoading: rows.isPending || isLoading,
+		isLoading: isFirstLoad(rows) || isLoading,
 		isSettled: rows.isSuccess && !rows.isFetching,
 		setBuiltInPinned,
 	};

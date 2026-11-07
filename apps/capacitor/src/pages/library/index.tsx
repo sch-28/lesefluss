@@ -41,6 +41,7 @@ import { usePersistentString } from "../../hooks/use-persistent-string";
 import { queryHooks } from "../../services/db/hooks";
 import { bookImportMutationKey, bookKeys, serialKeys } from "../../services/db/hooks/query-keys";
 import type { Book, Series } from "../../services/db/schema";
+import { isFirstLoad } from "../../services/query-client";
 import { IS_WEB_BUILD } from "../../services/sync";
 import { IS_WEB } from "../../utils/platform";
 import BatchImportSheet from "./batch-import";
@@ -130,8 +131,8 @@ const Library: React.FC = () => {
 	// The Collection facet and its pruning need both; mid-load every collection looks deleted.
 	const isPending =
 		isLibraryPending ||
-		collectionsQuery.isPending ||
-		membershipsQuery.isPending ||
+		isFirstLoad(collectionsQuery) ||
+		isFirstLoad(membershipsQuery) ||
 		(!!shelfId && smart.isLoading);
 
 	const imports = useLibraryImports();

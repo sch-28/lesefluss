@@ -57,7 +57,7 @@ export async function getPeriodTotals(
 	// today, and March lost it for good.
 	const finishedRow = await db
 		.select({
-			count: sql<number>`COUNT(*)`,
+			count: sql<number>`COUNT(*)`.as("count"),
 		})
 		.from(books)
 		.where(

@@ -14,7 +14,7 @@ import {
 } from "../../pages/library/filter-model";
 import { useShelfLibrary } from "../../pages/library/use-smart-shelves";
 import { queryHooks } from "../../services/db/hooks";
-import { Modal } from "../modal";
+import { EntryDialog } from "../entry-dialog";
 import { ConditionChips } from "./condition-chips";
 
 type Props = {
@@ -66,49 +66,55 @@ export const SaveShelfDialog: React.FC<Props> = ({ open, onOpenChange, filter })
 		);
 	};
 
+	// A form, so the keyboard's action key submits through the browser's own implicit submission.
 	return (
-		<Modal
-			open={open}
-			onOpenChange={onOpenChange}
-			title="Save as smart shelf"
-			footer={
-				<>
-					<Button variant="outline" onClick={() => onOpenChange(false)}>
+		<EntryDialog open={open} onOpenChange={onOpenChange} title="Save as smart shelf">
+			<form
+				className="flex flex-col gap-3"
+				onSubmit={(e) => {
+					e.preventDefault();
+					save();
+				}}
+			>
+				<Input
+					autoFocus
+					value={name}
+					maxLength={SMART_SHELF_NAME_MAX}
+					placeholder="Shelf name"
+					aria-label="Shelf name"
+					enterKeyHint="done"
+					onChange={(e) => setName(e.target.value)}
+				/>
+				<div className="flex flex-col gap-1.5">
+					<span className="text-muted-foreground text-xs">Books that match</span>
+					<ConditionChips filter={filter} options={options} />
+				</div>
+				<p className="m-0 text-muted-foreground text-sm" data-testid="shelf-live-count">
+					{count} {count === 1 ? "book matches" : "books match"} right now
+				</p>
+				<label className="flex items-center gap-2 text-sm">
+					<input
+						type="checkbox"
+						checked={pinned}
+						onChange={(e) => setPinned(e.target.checked)}
+						className="size-4 accent-primary"
+					/>
+					Pin to sidebar
+				</label>
+				<div className="flex gap-2 pt-1 md:justify-end">
+					<Button
+						type="button"
+						variant="outline"
+						className="flex-1 md:flex-none"
+						onClick={() => onOpenChange(false)}
+					>
 						Cancel
 					</Button>
-					<Button onClick={save} disabled={!canSave}>
+					<Button type="submit" disabled={!canSave} className="flex-1 md:flex-none">
 						Save
 					</Button>
-				</>
-			}
-		>
-			<Input
-				autoFocus
-				value={name}
-				maxLength={SMART_SHELF_NAME_MAX}
-				placeholder="Shelf name"
-				aria-label="Shelf name"
-				onChange={(e) => setName(e.target.value)}
-				onKeyDown={(e) => {
-					if (e.key === "Enter") save();
-				}}
-			/>
-			<div className="flex flex-col gap-1.5">
-				<span className="text-muted-foreground text-xs">Books that match</span>
-				<ConditionChips filter={filter} options={options} />
-			</div>
-			<p className="m-0 text-muted-foreground text-sm" data-testid="shelf-live-count">
-				{count} {count === 1 ? "book matches" : "books match"} right now
-			</p>
-			<label className="flex items-center gap-2 text-sm">
-				<input
-					type="checkbox"
-					checked={pinned}
-					onChange={(e) => setPinned(e.target.checked)}
-					className="size-4 accent-primary"
-				/>
-				Pin to sidebar
-			</label>
-		</Modal>
+				</div>
+			</form>
+		</EntryDialog>
 	);
 };

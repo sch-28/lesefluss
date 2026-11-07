@@ -92,7 +92,9 @@ export async function readLongText(
 ): Promise<string | null> {
 	const col = sql.identifier(column.name);
 	const id = sql.identifier(idColumn.name);
-	const lenRow = await exec.get(sql`SELECT length(${col}) FROM ${table} WHERE ${id} = ${bookId}`);
+	const lenRow = await exec.get(
+		sql`SELECT length(${col}) AS len FROM ${table} WHERE ${id} = ${bookId}`,
+	);
 	const rawLen = lenRow?.[0];
 	if (rawLen === undefined || rawLen === null) return null;
 	const total = Number(rawLen);
@@ -102,7 +104,7 @@ export async function readLongText(
 	let off = 1; // SQLite substr is 1-indexed
 	while (off <= total) {
 		const row = await exec.get(
-			sql`SELECT substr(${col}, ${off}, ${chunkSize}) FROM ${table} WHERE ${id} = ${bookId}`,
+			sql`SELECT substr(${col}, ${off}, ${chunkSize}) AS chunk FROM ${table} WHERE ${id} = ${bookId}`,
 		);
 		const chunk = row?.[0];
 		if (typeof chunk !== "string" || chunk.length === 0) break;

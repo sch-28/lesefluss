@@ -30,6 +30,23 @@ function toSqliteParams(params: unknown[]): SQLInputValue[] {
 	return params.map((p) => (typeof p === "boolean" ? (p ? 1 : 0) : p)) as SQLInputValue[];
 }
 
+const PLAIN_COLUMN_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/**
+ * Android's CapacitorSQLite reads each result column by name, and a computed
+ * column without `.as()` is named after its SQL text: the cursor then fails
+ * with "Couldn't read row 0 column -1". node:sqlite reads it fine, so the
+ * device failure is reproduced here (LESE-125.26).
+ */
+export function assertNamedColumns(row: Record<string, unknown> | undefined, sql: string) {
+	if (!row) return;
+	for (const name of Object.keys(row)) {
+		if (!PLAIN_COLUMN_NAME.test(name)) {
+			throw new Error(`Result column without a plain alias: ${name}\nin: ${sql}`);
+		}
+	}
+}
+
 export function createTestDb() {
 	const raw = new DatabaseSync(":memory:");
 
@@ -54,6 +71,7 @@ export function createTestDb() {
 				return { rows: [] };
 			}
 			const rows = statement.all(...values) as Array<Record<string, unknown>>;
+			assertNamedColumns(rows[0], sql);
 			if (method === "get") {
 				const first = rows[0];
 				return { rows: first ? Object.values(first) : [] };

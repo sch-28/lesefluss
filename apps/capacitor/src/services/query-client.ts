@@ -1,4 +1,4 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, type QueryObserverResult } from "@tanstack/react-query";
 
 /**
  * Singleton QueryClient.
@@ -24,3 +24,13 @@ export const queryClient = new QueryClient({
 		},
 	},
 });
+
+/**
+ * Pending with no failure yet. Gate a spinner on this, not on `isPending`: a
+ * reader mounting under a failed query refetches it, which puts it back to
+ * pending, and a spinner that then unmounts the readers loops (LESE-125.26).
+ * `errorUpdateCount` survives that refetch.
+ */
+export function isFirstLoad(query: Pick<QueryObserverResult, "isPending" | "errorUpdateCount">) {
+	return query.isPending && query.errorUpdateCount === 0;
+}

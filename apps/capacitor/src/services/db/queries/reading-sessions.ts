@@ -23,7 +23,7 @@ export async function getReadingSessionsPage(opts: {
 }
 
 export async function countReadingSessions(bookId?: string): Promise<number> {
-	const base = db.select({ count: sql<number>`COUNT(*)` }).from(readingSessions);
+	const base = db.select({ count: sql<number>`COUNT(*)`.as("count") }).from(readingSessions);
 	const scoped = bookId ? base.where(eq(readingSessions.bookId, bookId)) : base;
 	const row = await scoped;
 	return Number(row[0]?.count ?? 0);

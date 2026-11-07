@@ -12,14 +12,9 @@ vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: { useCreateSmartShelf: () => ({ mutate: create, isPending: false }) },
 }));
-vi.mock("../../modal", () => ({
-	Modal: (p: { open: boolean; children?: React.ReactNode; footer?: React.ReactNode }) =>
-		p.open ? (
-			<div>
-				{p.children}
-				{p.footer}
-			</div>
-		) : null,
+vi.mock("../../entry-dialog", () => ({
+	EntryDialog: (p: { open: boolean; children?: React.ReactNode }) =>
+		p.open ? <div>{p.children}</div> : null,
 }));
 vi.mock("../condition-chips", () => ({ ConditionChips: () => null }));
 
@@ -95,6 +90,19 @@ describe("SaveShelfDialog", () => {
 				search: expect.objectContaining({ shelf: "new" }),
 			}),
 		);
+	});
+
+	it("saves on the keyboard's action key, which submits the form without an Enter keydown", async () => {
+		view = await render(<SaveShelfDialog open onOpenChange={() => {}} filter={reading} />);
+		typeName("Now reading");
+		const input = view.container.querySelector("input[aria-label='Shelf name']");
+		expect(input?.getAttribute("enterkeyhint")).toBe("done");
+		act(() => {
+			input
+				?.closest("form")
+				?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+		});
+		expect(create.mock.calls[0][0]).toMatchObject({ name: "Now reading" });
 	});
 
 	it("closes on the Android back press instead of navigating the page beneath", async () => {

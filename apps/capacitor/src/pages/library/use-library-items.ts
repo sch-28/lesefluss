@@ -1,6 +1,7 @@
 import { queryHooks } from "../../services/db/hooks";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
+import { isFirstLoad } from "../../services/query-client";
 
 type UseLibraryItems = {
 	books: Book[];
@@ -36,6 +37,6 @@ export function useLibraryItems(): UseLibraryItems {
 		covers: books.data?.covers ?? new Map(),
 		chapterCounts: counts.data ?? new Map(),
 		seriesActivity: activity.data ?? new Map(),
-		isLoading: books.isPending || series.isPending,
+		isLoading: isFirstLoad(books) || isFirstLoad(series),
 	};
 }

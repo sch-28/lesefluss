@@ -5,6 +5,7 @@ import { Input } from "@lesefluss/ui/input";
 import { Check, Plus } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { useBackHandler } from "../../hooks/use-back-handler";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
 
@@ -22,6 +23,7 @@ const CollectionPicker: React.FC<Props> = ({ book, onClose }) => {
 	const remove = queryHooks.useRemoveBooksFromCollection();
 	const create = queryHooks.useCreateCollection();
 	const [draft, setDraft] = useState("");
+	useBackHandler(!!book, onClose);
 
 	useEffect(() => {
 		if (!book) setDraft("");
