@@ -40,6 +40,7 @@ import {
 	MIN_DURATION_MS,
 	MIN_WORDS,
 	type PersistKind,
+	SEGMENT_MS,
 	type SessionRow,
 } from "../../services/reading-sessions/rules";
 import { localDateKey, localDateOfKey, startOfLocalDay } from "../../utils/date-utils";
@@ -61,6 +62,8 @@ export type TrackerOpts = {
 	/** Read at write time, not at construction: a tracker built before settings
 	 *  resolve would otherwise record null for the whole sitting. */
 	getWpmSetting: () => number | null;
+	/** Read at write time like the dial, so the row keeps the size the sitting ended at. */
+	getFontSize?: () => number | null;
 	persist: (row: SessionRow, kind: PersistKind) => void;
 	/** Deletes a written row whose sitting was discarded. */
 	remove?: (sessionId: string) => void;
@@ -110,6 +113,8 @@ type SessionState = {
 	/** A row for this sitting exists, so it must be rewritten (even below the
 	 *  noise floor) rather than dropped if it shrinks. */
 	hasPersisted: boolean;
+	/** Words read when each full SEGMENT_MS of active time closed, ascending. */
+	segmentMarks: number[];
 };
 
 /** An inclusive-start, exclusive-end range of word positions. */
@@ -150,6 +155,31 @@ function wordsReadIn(s: SessionState): number {
 	let total = 0;
 	for (const [start, end] of s.readSpans) total += end - start;
 	return total;
+}
+
+function activeMsOf(s: SessionState, now: number): number {
+	return s.accumulatedActiveMs + (s.activeSinceMs !== null ? now - s.activeSinceMs : 0);
+}
+
+/**
+ * Closes every segment the sitting's active time has passed, counting the open
+ * interval only up to `lastActivityAt`: time after it may still turn out to be
+ * idle. Ticks run every POLL_MS, so a mark lands within one poll of its boundary.
+ */
+function markSegments(s: SessionState, lastActivityAt: number): void {
+	const activeMs =
+		s.accumulatedActiveMs +
+		(s.activeSinceMs !== null ? Math.max(0, lastActivityAt - s.activeSinceMs) : 0);
+	const words = wordsReadIn(s);
+	while ((s.segmentMarks.length + 1) * SEGMENT_MS <= activeMs) s.segmentMarks.push(words);
+}
+
+/** The wpm of each closed segment, in order; null before the first one closes. */
+export function segmentRates(marks: readonly number[]): number[] | null {
+	if (marks.length === 0) return null;
+	return marks.map((mark, i) =>
+		Math.max(0, Math.round((mark - (marks[i - 1] ?? 0)) / (SEGMENT_MS / 60_000))),
+	);
 }
 
 export class SessionTracker {
@@ -250,6 +280,7 @@ export class SessionTracker {
 			}
 			this.notifyFurthestRead();
 		}
+		markSegments(this.session, this.lastActivityAt);
 
 		// Timer was suspended (screen lock, background throttle). The gap is
 		// "no info" — don't count it as active. Settle the active interval up
@@ -295,6 +326,8 @@ export class SessionTracker {
 		s.readSpans = s.readSpans
 			.filter(([start]) => start < pos)
 			.map(([start, end]): Span => [start, Math.min(end, pos)]);
+		const words = wordsReadIn(s);
+		s.segmentMarks = s.segmentMarks.map((mark) => Math.min(mark, words));
 		this.notifyFurthestRead();
 		// A heartbeat may already hold the browsed spot; overwrite it now.
 		if (s.hasPersisted) {
@@ -326,6 +359,7 @@ export class SessionTracker {
 			lastCheckpointAt: now,
 			dayKey: localDateKey(now),
 			hasPersisted: false,
+			segmentMarks: [],
 		};
 		// As for discard: the deleted sitting's reading no longer counts anywhere.
 		if (this.lastFurthestRead) this.opts.onFurthestRead?.(this.lastFurthestRead.id, null);
@@ -353,6 +387,11 @@ export class SessionTracker {
 				CREDIT_BURST_WORDS,
 		);
 		const credited = Math.min(Math.max(0, to - from), creditable);
+		const fullSegments = Math.floor(ms / SEGMENT_MS);
+		// The span was read at one even pace as far as anything can tell.
+		const segmentMarks = Array.from({ length: fullSegments }, (_, i) =>
+			Math.floor((credited * (i + 1) * SEGMENT_MS) / ms),
+		);
 		this.session = {
 			id: this.newId(),
 			startedAt: now - ms,
@@ -365,6 +404,7 @@ export class SessionTracker {
 			lastCheckpointAt: now,
 			dayKey: localDateKey(now),
 			hasPersisted: false,
+			segmentMarks,
 		};
 		this.lastActivityAt = now;
 		this.notifyFurthestRead();
@@ -441,6 +481,7 @@ export class SessionTracker {
 			lastCheckpointAt: now,
 			dayKey: localDateKey(now),
 			hasPersisted: false,
+			segmentMarks: [],
 		};
 		this.lastActivityAt = now;
 		this.lastPollAt = now;
@@ -505,6 +546,7 @@ export class SessionTracker {
 			lastCheckpointAt: now,
 			dayKey: today,
 			hasPersisted: false,
+			segmentMarks: [],
 		};
 		this.lastActivityAt = Math.min(this.lastActivityAt, now);
 	}
@@ -532,8 +574,8 @@ export class SessionTracker {
 	private buildRow(now: number, endedAt?: number): SessionRow | null {
 		const s = this.session;
 		if (!s) return null;
-		const finalActiveMs =
-			s.accumulatedActiveMs + (s.activeSinceMs !== null ? now - s.activeSinceMs : 0);
+		const finalActiveMs = activeMsOf(s, now);
+		markSegments(s, this.lastActivityAt);
 		const wordsRead = wordsReadIn(s);
 		if (!s.hasPersisted && (finalActiveMs < MIN_DURATION_MS || wordsRead < MIN_WORDS)) {
 			return null;
@@ -566,6 +608,8 @@ export class SessionTracker {
 			endWord: wordPos(endPos),
 			furthestWord: furthestRead === null ? null : wordPos(furthestRead),
 			wpmAvg,
+			fontSize: this.opts.getFontSize?.() ?? null,
+			segmentWpm: segmentRates(s.segmentMarks),
 			updatedAt: now,
 		};
 	}
@@ -589,7 +633,7 @@ export class SessionTracker {
 		const s = this.session;
 		if (!s) return null;
 		const now = this.now();
-		const activeMs = s.accumulatedActiveMs + (s.activeSinceMs !== null ? now - s.activeSinceMs : 0);
+		const activeMs = activeMsOf(s, now);
 		const words = wordsReadIn(s);
 		if (activeMs < LIVE_RATE_MIN_ACTIVE_MS || words < LIVE_RATE_MIN_WORDS) return null;
 		const wpm = Math.round(words / (activeMs / 60_000));

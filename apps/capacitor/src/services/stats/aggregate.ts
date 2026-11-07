@@ -56,14 +56,18 @@ export function sumDurationByLocalDay(rows: SessionTiming[]): Map<string, number
 	return msByDay;
 }
 
+/** The local reading days a sitting starting at `startedAt` counts toward. */
+export function readingDaysOfSitting(startedAt: number): string[] {
+	return readingDayKeys(localDateKey(startedAt), new Date(startedAt).getHours());
+}
+
 /** Local days the rows count toward for the streak, keyed by `localDateKey`.
  *  A late-night sitting counts for the evening before as well as its own day. */
 export function readDaysOf(rows: SessionTiming[]): Set<string> {
 	const days = new Set<string>();
 	for (const row of rows) {
 		if (row.durationMs <= 0) continue;
-		const hour = new Date(row.startedAt).getHours();
-		for (const key of readingDayKeys(localDateKey(row.startedAt), hour)) days.add(key);
+		for (const key of readingDaysOfSitting(row.startedAt)) days.add(key);
 	}
 	return days;
 }

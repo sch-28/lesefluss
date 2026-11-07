@@ -66,6 +66,7 @@ describe.skipIf(!hasDb)("handle claims (integration)", () => {
 			showFinished: true,
 			showStats: true,
 			showHighlights: true,
+			showMilestones: true,
 		});
 	});
 

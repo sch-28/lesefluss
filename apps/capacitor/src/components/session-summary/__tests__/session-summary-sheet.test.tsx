@@ -1,4 +1,4 @@
-import { computeSpeedModel, type SpeedModel, wordPos } from "@lesefluss/core";
+import { computeSpeedModel, type Milestones, type SpeedModel, wordPos } from "@lesefluss/core";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionRow } from "../../../services/reading-sessions/rules";
@@ -9,11 +9,14 @@ import {
 	recordSitting,
 	resetSummaryStore,
 } from "../../../services/reading-sessions/summary-store";
+import type { ShareCardData } from "../../../services/share-card/render";
 import { click, type Rendered, render } from "../../../test/render";
 
 const saveSettings = vi.fn();
 const modelWithout = vi.fn();
 let model: SpeedModel | undefined;
+let milestones: Milestones = { reached: [], next: [] };
+const sharedCards: ShareCardData[] = [];
 const MIN = 60_000;
 const settings = { showSessionSummary: true, speedWindow: "recent" };
 
@@ -29,6 +32,16 @@ vi.mock("../../../services/db/hooks", () => ({
 		useStatsPeriodTotals: () => ({ data: { minutes: 52, words: 0, booksFinished: 0 } }),
 		useReadingGoalPlan: () => ({ data: null }),
 		useStatsWpmTrend: () => ({ data: undefined }),
+		useStatsMilestones: () => ({ data: milestones }),
+		useBooks: () => ({
+			data: { books: [], covers: new Map([["b1", "data:image/png;base64,AA"]]) },
+		}),
+	},
+}));
+vi.mock("../../share-card/share-card-sheet", () => ({
+	ShareCardSheet: ({ card }: { card: ShareCardData }) => {
+		sharedCards.push(card);
+		return <div data-testid="share-card-sheet" />;
 	},
 }));
 vi.mock("@lesefluss/ui/drawer", async () => {
@@ -58,6 +71,8 @@ function sitting(durationMs: number, mode: SessionRow["mode"] = "scroll", wpm = 
 		startWord: wordPos(41_000),
 		endWord: wordPos(41_000 + Math.round((durationMs / MIN) * wpm)),
 		furthestWord: null,
+		fontSize: null,
+		segmentWpm: null,
 		wpmAvg: wpm,
 		updatedAt: Date.now(),
 	};
@@ -80,6 +95,8 @@ beforeEach(() => {
 	saveSettings.mockClear();
 	modelWithout.mockClear();
 	model = undefined;
+	milestones = { reached: [], next: [] };
+	sharedCards.length = 0;
 	settings.showSessionSummary = true;
 });
 afterEach(() => {
@@ -162,5 +179,47 @@ describe("SessionSummarySheet", () => {
 		await readAndClose(10 * MIN);
 		await click(view.getButton("Done"));
 		expect(sheet()).toBeNull();
+	});
+
+	it("shows a milestone the visit reached, and none from before it", async () => {
+		milestones = {
+			reached: [
+				{ kind: "words", threshold: 1_000_000, reachedAt: Date.now() - 5 * MIN },
+				{ kind: "streak", threshold: 7, reachedAt: Date.now() - 3 * 86_400_000 },
+			],
+			next: [],
+		};
+		view = await render(<SessionSummarySheet />);
+		await readAndClose(10 * MIN);
+		const medals = document.querySelectorAll(
+			"[data-testid=summary-milestones] [data-testid=milestone-medal]",
+		);
+		expect(medals).toHaveLength(1);
+		expect(medals[0]?.textContent).toContain("1M");
+	});
+
+	it("shares a card with the cover, the title and the sitting's stats", async () => {
+		milestones = {
+			reached: [{ kind: "words", threshold: 1_000_000, reachedAt: Date.now() - 5 * MIN }],
+			next: [],
+		};
+		view = await render(<SessionSummarySheet />);
+		await readAndClose(34 * MIN);
+		await click(view.getButton("Share card"));
+		expect(document.querySelector("[data-testid=share-card-sheet]")).not.toBeNull();
+		const card = sharedCards.at(-1);
+		expect(card).toMatchObject({
+			kind: "book",
+			title: "Morning Star",
+			cover: "data:image/png;base64,AA",
+			hero: "34m",
+		});
+		if (card?.kind !== "book") throw new Error("book card expected");
+		expect(card.tiles.map((t) => [t.label, t.value])).toEqual([
+			["wpm", "250"],
+			["Words", "8.5k"],
+			["Book", "+8.5%"],
+			["words", "1M"],
+		]);
 	});
 });

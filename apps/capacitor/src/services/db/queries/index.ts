@@ -159,8 +159,10 @@ import {
 	getDailyReading,
 	getFinishedBooks,
 	getHourHistogram,
+	getMilestones,
 	getPeriodTotals,
 	getReadingRecords,
+	getSpeedInsights,
 	getSpeedModel,
 	getSpeedTab,
 	getStreak,
@@ -314,6 +316,8 @@ export const queries = {
 	getSpeedTab,
 	getHourHistogram,
 	getSpeedModel,
+	getSpeedInsights,
+	getMilestones,
 	getBookStats,
 
 	// Glossary

@@ -19,8 +19,10 @@ import {
 import { formatShortDate } from "../../../../utils/date-utils";
 import { WpmTrend } from "../wpm-trend";
 import { BookSpeedList } from "./book-speed-list";
+import { MilestonesSection } from "./milestones-section";
 import { RsvpDial } from "./rsvp-dial";
-import { ReadingRecords, RsvpInsights, RsvpRecords } from "./speed-insights";
+import { ShareSpeedButton } from "./share-speed-button";
+import { ReadingInsights, ReadingRecords, RsvpInsights, RsvpRecords } from "./speed-insights";
 
 const VIEW_LABELS: Record<SpeedView, string> = { reading: "Reading", rsvp: "RSVP" };
 const VIEW_DOT: Record<SpeedView, string> = { reading: "bg-slate-500", rsvp: "bg-primary" };
@@ -152,7 +154,10 @@ export function SpeedTab({ now }: { now: number }) {
 		<div className="pt-2 pb-6" data-testid="speed-tab">
 			<div className="mb-4 flex items-center justify-between px-4">
 				<h2 className="font-semibold text-lg">Speed</h2>
-				<WindowControl window={model.window} />
+				<div className="flex items-center gap-1">
+					<ShareSpeedButton model={model} view={view} now={now} />
+					<WindowControl window={model.window} />
+				</div>
 			</div>
 			{views.length > 1 && (
 				<ModeSwitch model={model} views={views} value={view} onChange={setPicked} />
@@ -171,8 +176,12 @@ export function SpeedTab({ now }: { now: number }) {
 					<RsvpRecords />
 				</>
 			) : (
-				<ReadingRecords />
+				<>
+					<ReadingInsights />
+					<ReadingRecords />
+				</>
 			)}
+			<MilestonesSection />
 			<BookSpeedList model={model} />
 		</div>
 	);

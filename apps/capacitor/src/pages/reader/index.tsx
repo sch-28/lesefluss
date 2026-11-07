@@ -2387,6 +2387,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		rsvpIsPlaying: isRsvpPlaying,
 		getPosition: getReadingPosition,
 		wpmSetting: rsvpSettings.wpm,
+		fontSize: readerFontSize,
 		onFurthestRead: reportFurthestRead,
 	});
 	useEffect(() => {

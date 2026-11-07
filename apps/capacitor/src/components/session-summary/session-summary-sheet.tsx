@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from "@lesefluss/core";
+import { DEFAULT_SETTINGS, milestonesReachedBetween } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import {
 	Drawer,
@@ -9,7 +9,7 @@ import {
 	drawerSnapPoints,
 } from "@lesefluss/ui/drawer";
 import { Link } from "@tanstack/react-router";
-import { EyeOff } from "lucide-react";
+import { EyeOff, Share2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { queryHooks } from "../../services/db/hooks";
 import {
@@ -17,9 +17,13 @@ import {
 	type SessionSummary,
 	useSessionSummary,
 } from "../../services/reading-sessions/summary-store";
+import { sessionCardData } from "../../services/share-card/card-data";
+import type { ShareCardData } from "../../services/share-card/render";
 import { summarize, todayMinutes } from "../../services/stats/session-summary";
 import { startOfLocalDay } from "../../utils/date-utils";
 import BookCover from "../book-cover";
+import { MedalGrid } from "../milestones/milestone-medals";
+import { ShareCardSheet } from "../share-card/share-card-sheet";
 import { BookTile, SpeedTile, TimeSavedTile, TimeTile, WordsTile } from "./summary-tiles";
 
 const SNAP_POINTS = drawerSnapPoints([0.62, 1]);
@@ -35,6 +39,9 @@ function SummaryBody({ summary, onClose }: { summary: SessionSummary; onClose: (
 	const dayStart = startOfLocalDay(now);
 	const { data: today } = queryHooks.useStatsPeriodTotals(dayStart, dayStart + DAY_MS);
 	const { data: goal } = queryHooks.useReadingGoalPlan(summary.bookId);
+	const { data: milestones } = queryHooks.useStatsMilestones();
+	const { data: library } = queryHooks.useBooks();
+	const [card, setCard] = useState<ShareCardData | null>(null);
 	const stats = summarize(summary.sittings, book?.wordCount ?? 0, model);
 	const { data: trend } = queryHooks.useStatsWpmTrend(
 		settings?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW,
@@ -51,6 +58,22 @@ function SummaryBody({ summary, onClose }: { summary: SessionSummary; onClose: (
 			: (today?.minutes ?? 0) * 60_000;
 	const minutes = todayMinutes(todayMs, stats.activeMs);
 	const startedAt = summary.sittings[0]?.startedAt ?? now;
+	const earned = milestones ? milestonesReachedBetween(milestones, startedAt, now + 1) : [];
+	const openCard = () => {
+		if (!book) return;
+		setCard(
+			sessionCardData({
+				book: {
+					title: book.title,
+					author: book.author,
+					coverImage: library?.covers.get(book.id) ?? null,
+				},
+				stats,
+				startedAt,
+				milestones: earned,
+			}),
+		);
+	};
 	const startTime = new Date(startedAt).toLocaleTimeString(undefined, {
 		hour: "numeric",
 		minute: "2-digit",
@@ -99,16 +122,38 @@ function SummaryBody({ summary, onClose }: { summary: SessionSummary; onClose: (
 				{stats.rsvp && <TimeSavedTile rsvp={stats.rsvp} />}
 			</div>
 
+			{earned.length > 0 && (
+				<div className="mt-3 px-4" data-testid="summary-milestones">
+					<div className="mb-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+						Milestones
+					</div>
+					<MedalGrid reached={earned} />
+				</div>
+			)}
+
 			<DrawerFooter className="flex-row">
 				<Button variant="outline" className="h-11 flex-1" asChild>
 					<Link to="/tabs/library/stats" search={{ tab: "speed" }} onClick={onClose}>
 						Speed tab
 					</Link>
 				</Button>
+				<Button
+					variant="outline"
+					className="h-11 flex-1"
+					disabled={!book}
+					onClick={openCard}
+					data-testid="summary-share"
+				>
+					<Share2 />
+					Share card
+				</Button>
 				<Button className="h-11 flex-1" onClick={onClose}>
 					Done
 				</Button>
 			</DrawerFooter>
+			{card && (
+				<ShareCardSheet card={card} filename="lesefluss-session" onClose={() => setCard(null)} />
+			)}
 		</>
 	);
 }

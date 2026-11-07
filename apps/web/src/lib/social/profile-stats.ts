@@ -1,7 +1,9 @@
 import {
 	bookStatus,
 	computeSpeedModel,
+	deriveMilestones,
 	MIN_MODEL_ACTIVE_MS,
+	type Milestones,
 	type ProfileSpeeds,
 	type ProfileStats,
 	readingDayKeys,
@@ -10,7 +12,7 @@ import {
 	type SpeedWindow,
 	streakFromDays,
 } from "@lesefluss/core";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { DbExecutor } from "~/db";
 import { syncBooks, syncReadingSessions, syncSettings } from "~/db/schema";
 
@@ -169,4 +171,70 @@ export async function profileStatsFor(
 		currentStreakDays: streak?.current ?? null,
 		longestStreakDays: streak?.longest ?? null,
 	};
+}
+
+/**
+ * The owner's milestones as their profile shows them, from the same visible
+ * books and their sessions the stats use, so a hidden book earns nothing here.
+ */
+export async function profileMilestonesFor(
+	exec: DbExecutor,
+	userId: string,
+	options: { timeZone?: string } = {},
+): Promise<Milestones> {
+	const visible = and(
+		eq(syncBooks.userId, userId),
+		eq(syncBooks.deleted, false),
+		eq(syncBooks.hideFromProfile, false),
+	);
+	const [books, sessions] = await Promise.all([
+		exec
+			.select({
+				wordCount: syncBooks.wordCount,
+				wordPosition: syncBooks.wordPosition,
+				status: syncBooks.status,
+				finishedAt: syncBooks.finishedAt,
+			})
+			.from(syncBooks)
+			// A serial chapter is a books row: counting each one would turn a web novel into dozens of books.
+			.where(and(visible, isNull(syncBooks.seriesId))),
+		exec
+			.select({
+				mode: syncReadingSessions.mode,
+				wordsRead: syncReadingSessions.wordsRead,
+				durationMs: syncReadingSessions.durationMs,
+				startedAt: syncReadingSessions.startedAt,
+			})
+			.from(syncReadingSessions)
+			.innerJoin(
+				syncBooks,
+				and(
+					eq(syncBooks.userId, syncReadingSessions.userId),
+					eq(syncBooks.bookId, syncReadingSessions.bookId),
+				),
+			)
+			.where(
+				and(
+					eq(syncReadingSessions.userId, userId),
+					eq(syncReadingSessions.deleted, false),
+					visible,
+				),
+			),
+	]);
+	const finishedAt = books
+		.filter(
+			(b) =>
+				b.finishedAt &&
+				bookStatus({
+					wordCount: b.wordCount ?? 0,
+					wordPosition: b.wordPosition,
+					status: b.status,
+				}) === "finished",
+		)
+		.map((b) => b.finishedAt?.getTime() ?? 0);
+	return deriveMilestones({
+		sessions: sessions.map((s) => ({ ...s, startedAt: s.startedAt.getTime() })),
+		finishedAt,
+		dayKeysOf: (at) => readingDaysOf(new Date(at), options.timeZone),
+	});
 }

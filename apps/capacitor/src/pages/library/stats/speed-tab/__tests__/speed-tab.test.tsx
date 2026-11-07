@@ -1,6 +1,8 @@
-import type { SpeedModel } from "@lesefluss/core";
+import type { Milestones, SpeedModel } from "@lesefluss/core";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { SpeedInsights } from "../../../../../services/db/queries/stats";
+import type { ShareCardData } from "../../../../../services/share-card/render";
 import type { SpeedTabData } from "../../../../../services/stats/speed-tab";
 import { click, type Rendered, render } from "../../../../../test/render";
 
@@ -11,12 +13,17 @@ const DAY = 24 * HOUR;
 const state: {
 	model: SpeedModel | undefined;
 	tab: SpeedTabData;
+	insights: SpeedInsights;
 	settings: { wpm: number; defaultReaderMode: string };
+	milestones: Milestones;
 } = {
 	model: undefined,
 	tab: { books: [], records: emptyRecords() },
+	insights: { reading: [], rsvp: [] },
 	settings: { wpm: 450, defaultReaderMode: "scroll" },
+	milestones: { reached: [], next: [] },
 };
+const sharedCards: ShareCardData[] = [];
 
 function emptyRecords(): SpeedTabData["records"] {
 	return { fastestSitting: null, fastestBook: null, bestRsvpSitting: null, longestRsvpRun: null };
@@ -26,8 +33,11 @@ vi.mock("../../../../../services/db/hooks", () => ({
 	queryHooks: {
 		useStatsSpeedModel: () => ({ data: state.model }),
 		useStatsSpeedTab: () => ({ data: state.tab }),
+		useStatsSpeedInsights: () => ({ data: state.insights }),
 		useSettings: () => ({ data: state.settings }),
 		useSaveSettings: () => ({ mutate }),
+		useStatsMilestones: () => ({ data: state.milestones }),
+		useStatsPeriodTotals: () => ({ data: { minutes: 1260, words: 312_000, booksFinished: 7 } }),
 		useStatsWpmTrend: () => ({
 			data: {
 				granularity: "day",
@@ -42,6 +52,12 @@ vi.mock("../../../../../services/db/hooks", () => ({
 	},
 }));
 vi.mock("../../wpm-trend", () => ({ WpmTrend: () => null }));
+vi.mock("../../../../../components/share-card/share-card-sheet", () => ({
+	ShareCardSheet: ({ card }: { card: ShareCardData }) => {
+		sharedCards.push(card);
+		return <div data-testid="share-card-sheet" />;
+	},
+}));
 
 const { SpeedTab } = await import("../speed-tab");
 
@@ -83,7 +99,10 @@ let view: Rendered | undefined;
 beforeEach(() => {
 	mutate.mockClear();
 	state.tab = { books: [], records: emptyRecords() };
+	state.insights = { reading: [], rsvp: [] };
 	state.settings = { wpm: 450, defaultReaderMode: "scroll" };
+	state.milestones = { reached: [], next: [] };
+	sharedCards.length = 0;
 });
 afterEach(() => {
 	view?.unmount();
@@ -112,6 +131,31 @@ describe("SpeedTab", () => {
 		expect(q("rsvp-dial")).toBeNull();
 		expect(q("time-saved")).toBeNull();
 		expect(view.container.querySelector("[data-testid=speed-mode]")).toBeNull();
+	});
+
+	it("renders no insight grid while no insight has its data", async () => {
+		state.model = model();
+		view = await render(<SpeedTab now={2 * DAY} />);
+		expect(q("speed-insights")).toBeNull();
+	});
+
+	it("shows each view's own insight tiles", async () => {
+		state.model = model({ rsvp: true });
+		state.insights = {
+			reading: [
+				{ id: "time-of-day", label: "Fastest time", value: "Evening", sub: "+8% · 262 wpm" },
+			],
+			rsvp: [{ id: "fatigue", label: "Slows after", value: "40m", sub: "−9%" }],
+		};
+		view = await render(<SpeedTab now={2 * DAY} />);
+		expect(q("insight-time-of-day")?.textContent).toContain("Evening");
+		expect(q("insight-fatigue")).toBeNull();
+		const rsvpButton = [...view.container.querySelectorAll("[data-testid=speed-mode] button")].find(
+			(b) => b.textContent?.includes("RSVP"),
+		) as HTMLElement;
+		await click(rsvpButton);
+		expect(q("insight-fatigue")?.textContent).toContain("40m");
+		expect(q("insight-time-of-day")).toBeNull();
 	});
 
 	it("switches between the modes when both were used", async () => {
@@ -180,5 +224,53 @@ describe("SpeedTab", () => {
 		) as HTMLElement;
 		await click(more);
 		expect(view.container.querySelectorAll("[data-testid=book-speed-row]")).toHaveLength(9);
+	});
+
+	it("lists reached milestones and the next ones with their progress", async () => {
+		state.model = model();
+		state.milestones = {
+			reached: [
+				{ kind: "words", threshold: 1_000_000, reachedAt: DAY },
+				{ kind: "rsvpWpm", threshold: 500, reachedAt: DAY / 2 },
+			],
+			next: [{ kind: "words", threshold: 2_000_000, current: 1_200_000 }],
+		};
+		view = await render(<SpeedTab now={2 * DAY} />);
+		const section = q("speed-milestones");
+		// 1M is the third words tier and 500 the third RSVP tier: six of the 32 tiers.
+		expect(section?.textContent).toContain("6 of 32");
+		const medals = section?.querySelectorAll("[data-testid=milestone-medal]") ?? [];
+		expect(
+			[...medals].map((m) => (m.querySelector("[aria-label=RSVP]") ? "rsvp" : "plain")),
+		).toEqual(["plain", "rsvp"]);
+		expect(section?.querySelector("[data-testid=milestone-next]")?.textContent).toContain(
+			"1.2M / 2M",
+		);
+	});
+
+	it("hides the milestones while there are none", async () => {
+		state.model = model();
+		view = await render(<SpeedTab now={2 * DAY} />);
+		expect(q("speed-milestones")).toBeNull();
+	});
+
+	it("shares a speed card with this year's numbers over the covers read", async () => {
+		state.model = model({ rsvp: true });
+		state.tab = {
+			books: [{ ...bookRow(1), coverImage: "data:image/png;base64,AA" }, bookRow(2)],
+			records: emptyRecords(),
+		};
+		view = await render(<SpeedTab now={2 * DAY} />);
+		await click(q("share-speed-card") as HTMLElement);
+		expect(q("share-card-sheet")).not.toBeNull();
+		const card = sharedCards.at(-1);
+		if (card?.kind !== "speed") throw new Error("speed card expected");
+		expect(card.covers).toEqual(["data:image/png;base64,AA"]);
+		expect(card.heroes.map((h) => [h.label, h.value])).toEqual([
+			["Reading wpm", "260"],
+			["RSVP wpm", "420"],
+		]);
+		expect(card.tiles.map((t) => t.label)).toEqual(["Read", "Books", "Saved"]);
+		expect(card.tiles[0]?.value).toBe("21h");
 	});
 });

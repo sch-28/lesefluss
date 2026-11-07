@@ -61,6 +61,8 @@ function makeSession(overrides: Partial<ReadingSession> = {}): ReadingSession {
 		endWord: wordPos(0),
 		furthestWord: null,
 		wpmAvg: null,
+		fontSize: null,
+		segmentWpm: null,
 		updatedAt: 0,
 		...overrides,
 	};

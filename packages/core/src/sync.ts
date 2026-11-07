@@ -294,6 +294,9 @@ export const SyncReadingSessionSchema = z
 		furthestWord: pgInt().nullable().optional(),
 		// A slow scroll session legitimately rounds to 0 wpm.
 		wpmAvg: z.number().int().nonnegative().nullable(),
+		// Optional: clients from before these existed omit them, and the server keeps what it has.
+		fontSize: z.number().int().min(1).max(500).nullable().optional(),
+		segmentWpm: z.array(z.number().int().nonnegative().max(100_000)).max(200).nullable().optional(),
 		updatedAt: z.number().int().nonnegative(),
 	})
 	.refine((d) => d.endedAt >= d.startedAt, {

@@ -269,6 +269,12 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 					onCheckedChange={(v) => save({ showStats: v })}
 				/>
 				<ToggleRow
+					title="Milestones"
+					subtitle="Words, hours, books, streaks and RSVP speed reached"
+					checked={profile.showMilestones}
+					onCheckedChange={(v) => save({ showMilestones: v })}
+				/>
+				<ToggleRow
 					title="Shared highlights"
 					subtitle="Highlights you choose to share"
 					checked={profile.showHighlights}

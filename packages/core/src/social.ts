@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { FINISHED_PERCENT_THRESHOLD } from "./books";
+import type { Milestones } from "./milestones";
 
 export const HANDLE_MIN_LENGTH = 3;
 export const HANDLE_MAX_LENGTH = 20;
@@ -72,6 +73,7 @@ export const UpdateSocialProfileBodySchema = z.object({
 	showFinished: z.boolean().optional(),
 	showStats: z.boolean().optional(),
 	showHighlights: z.boolean().optional(),
+	showMilestones: z.boolean().optional(),
 	feedEnabled: z.boolean().optional(),
 	shareLiveReading: z.boolean().optional(),
 	timeZone: z.string().max(64).optional(),
@@ -109,6 +111,7 @@ export type OwnSocialProfile = {
 	showFinished: boolean;
 	showStats: boolean;
 	showHighlights: boolean;
+	showMilestones: boolean;
 	/** Whether starting and finishing books shows in friends' activity feeds. */
 	feedEnabled: boolean;
 	/** Whether buddy-read members see this user reading live; off also hides theirs. */
@@ -443,6 +446,7 @@ export const PROFILE_SECTIONS = {
 	currentlyReading: "showCurrentlyReading",
 	finished: "showFinished",
 	stats: "showStats",
+	milestones: "showMilestones",
 } as const satisfies Record<string, keyof OwnSocialProfile>;
 export type ProfileSection = keyof typeof PROFILE_SECTIONS;
 
@@ -532,6 +536,8 @@ export type ProfileView = {
 		currentlyReading?: ProfileBook[];
 		finished?: ProfileFinishedBook[];
 		stats?: ProfileStats;
+		/** Absent from older servers as well as when hidden. */
+		milestones?: Milestones;
 	};
 };
 

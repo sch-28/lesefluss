@@ -407,6 +407,13 @@
       "when": 1783641600000,
       "tag": "0057_wishlist",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "6",
+      "when": 1783728000000,
+      "tag": "0058_session_font_segments",
+      "breakpoints": true
     }
   ]
 }

@@ -553,6 +553,8 @@ function sessionToSync(s: ReadingSession): SyncReadingSession {
 		endWord: s.endWord,
 		furthestWord: s.furthestWord,
 		wpmAvg: s.wpmAvg,
+		fontSize: s.fontSize,
+		segmentWpm: s.segmentWpm,
 		updatedAt: s.updatedAt,
 	};
 }
@@ -1150,6 +1152,8 @@ export async function pullSync(): Promise<Set<string>> {
 					endWord: wordPos(row.endWord),
 					furthestWord: row.furthestWord == null ? null : wordPos(row.furthestWord),
 					wpmAvg: row.wpmAvg,
+					fontSize: row.fontSize ?? null,
+					segmentWpm: row.segmentWpm ?? null,
 					updatedAt: row.updatedAt,
 				});
 			}

@@ -6,6 +6,9 @@ export const HARD_END_MS = 10 * 60_000;
 export const MIN_DURATION_MS = 5_000;
 export const MIN_WORDS = 5;
 
+/** Active reading time behind each entry of a row's `segmentWpm`. */
+export const SEGMENT_MS = 10 * 60_000;
+
 export type SessionRow = {
 	id: string;
 	bookId: string;
@@ -19,6 +22,10 @@ export type SessionRow = {
 	/** Null when nothing in the sitting counts as read, e.g. all of it rewound as browsing. */
 	furthestWord: WordPosition | null;
 	wpmAvg: number | null;
+	/** Reader font size, or the RSVP word size; null where no text is shown (listening). */
+	fontSize: number | null;
+	/** wpm over each full SEGMENT_MS of active reading, in order; null before the first. */
+	segmentWpm: number[] | null;
 	updatedAt: number;
 };
 

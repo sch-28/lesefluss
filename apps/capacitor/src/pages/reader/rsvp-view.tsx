@@ -29,6 +29,7 @@ import React, {
 } from "react";
 import { focalLetterColorFor, useTheme } from "../../contexts/theme-context";
 import RsvpSettingsForm from "../settings/rsvp-settings-form";
+import { FOCAL_FONT_MULTIPLIER } from "./focal-font";
 import RsvpControls from "./rsvp-controls";
 import { useRsvpSwipe } from "./rsvp-swipe";
 import { useRsvpEngine } from "./use-rsvp-engine";
@@ -43,7 +44,6 @@ const SCROLL_END_MS = 150;
 // Wheel handled separately from touch: a typical mouse notch is ~100px, so we
 // want roughly one word per notch (trackpad sends smaller deltas that accumulate).
 const WHEEL_PX_PER_WORD = 50;
-const FOCAL_FONT_MULTIPLIER = 2;
 const X_OFFSET_CENTER = 50;
 const PAUSE_CONTROL = { role: "button", "aria-label": "Pause" } as const;
 

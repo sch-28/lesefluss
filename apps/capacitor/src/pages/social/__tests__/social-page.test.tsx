@@ -23,6 +23,7 @@ const me: OwnSocialProfile = {
 	showFinished: true,
 	showStats: true,
 	showHighlights: true,
+	showMilestones: true,
 	feedEnabled: true,
 	shareLiveReading: true,
 	timeZone: null,

@@ -379,6 +379,20 @@
       "when": 1784505600000,
       "tag": "0053_wishlist",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1784592000000,
+      "tag": "0054_session_font_segments",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1784678400000,
+      "tag": "0055_show_milestones",
+      "breakpoints": true
     }
   ]
 }

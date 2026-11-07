@@ -2,6 +2,7 @@ import type { SpeedModel } from "@lesefluss/core";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { Info } from "lucide-react";
 import { queryHooks } from "../../../../services/db/hooks";
+import type { Insight, InsightId } from "../../../../services/stats/insights";
 import { type SittingRecord, timeSavedMs } from "../../../../services/stats/speed-tab";
 import { formatDuration, formatShortDate } from "../../../../utils/date-utils";
 import { deliveredPercent } from "./rsvp-dial";
@@ -57,12 +58,58 @@ function InsightTile({
 	);
 }
 
+type View = "reading" | "rsvp";
+
+function insightInfo(id: InsightId, view: View): string {
+	switch (id) {
+		case "scroll-vs-page":
+			return "Scroll and page speed in this window. Each needs 30 minutes of reading.";
+		case "time-of-day":
+			return "Speed by when a sitting started (morning 5-12, afternoon 12-17, evening 17-22, night 22-5), against your speed across them. Each needs 30 minutes.";
+		case "font-size":
+			return view === "rsvp"
+				? "Delivered speed at each RSVP word size, against your speed across them. Each size needs 30 minutes."
+				: "Speed at each reader font size, against your speed across them. Each size needs 30 minutes.";
+		case "fatigue":
+			return "The first 10 minutes where your pace drops 8% or more below the opening 20 minutes of a sitting, over sittings of 30 minutes or more. Counts sittings read since this tile arrived.";
+	}
+}
+
+function useViewInsights(view: View): Insight[] {
+	const { data } = queryHooks.useStatsSpeedInsights();
+	return data?.[view] ?? [];
+}
+
+function InsightTiles({ insights, view }: { insights: Insight[]; view: View }) {
+	return insights.map((insight) => (
+		<InsightTile
+			key={insight.id}
+			testId={`insight-${insight.id}`}
+			label={insight.label}
+			value={insight.value}
+			sub={insight.sub}
+			info={insightInfo(insight.id, view)}
+		/>
+	));
+}
+
+export function ReadingInsights() {
+	const insights = useViewInsights("reading");
+	if (insights.length === 0) return null;
+	return (
+		<section className="mb-8 grid grid-cols-2 gap-2 px-4" data-testid="speed-insights">
+			<InsightTiles insights={insights} view="reading" />
+		</section>
+	);
+}
+
 export function RsvpInsights({ model }: { model: SpeedModel }) {
 	const saved = timeSavedMs(model);
 	const ratio = model.rsvp?.deliveredRatio ?? null;
-	if (saved <= 0 && ratio === null) return null;
+	const insights = useViewInsights("rsvp");
+	if (saved <= 0 && ratio === null && insights.length === 0) return null;
 	return (
-		<section className="mb-8 grid grid-cols-2 gap-2 px-4">
+		<section className="mb-8 grid grid-cols-2 gap-2 px-4" data-testid="speed-insights">
 			{saved > 0 && model.rsvp && (
 				<InsightTile
 					testId="time-saved"
@@ -81,6 +128,7 @@ export function RsvpInsights({ model }: { model: SpeedModel }) {
 					info="Words your RSVP sittings delivered per minute, as a share of the dial they ran at. Punctuation and long words hold some words longer."
 				/>
 			)}
+			<InsightTiles insights={insights} view="rsvp" />
 		</section>
 	);
 }

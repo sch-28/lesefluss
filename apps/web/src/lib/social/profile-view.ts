@@ -1,5 +1,6 @@
 import {
 	bookStatus,
+	type Milestones,
 	PROFILE_SECTIONS,
 	type ProfileBook,
 	type ProfileCover,
@@ -14,7 +15,7 @@ import { type DbExecutor, db } from "~/db";
 import { socialFriendship, socialProfile, syncBooks, syncSeries } from "~/db/schema";
 import { type CoverRef, signCoverToken } from "./cover-token";
 import { SocialError } from "./errors";
-import { dayOf, profileStatsFor } from "./profile-stats";
+import { dayOf, profileMilestonesFor, profileStatsFor } from "./profile-stats";
 import {
 	friendshipExists,
 	identityOf,
@@ -262,6 +263,15 @@ export type ProfileViewOptions = {
 	now?: Date;
 };
 
+/** Whether a section reaches this viewer: the owner always sees all, others what the owner's toggle allows. */
+export function isSectionShown(
+	profile: Partial<Record<(typeof PROFILE_SECTIONS)[ProfileSection], boolean>> | undefined,
+	section: ProfileSection,
+	isShowingAll: boolean,
+): boolean {
+	return isShowingAll || (profile?.[PROFILE_SECTIONS[section]] ?? true);
+}
+
 /**
  * What `viewerId` may see of `targetId`. Everything that must not leak (a
  * stranger, a block either way, a banned or handle-less owner, no such user)
@@ -315,8 +325,7 @@ export async function resolveProfileView(
 	view.bio = profile?.bio ?? null;
 	view.friendCount = await friendCountOf(exec, targetId);
 
-	const isAllowed = (section: ProfileSection): boolean =>
-		isShowingAll || (profile?.[PROFILE_SECTIONS[section]] ?? true);
+	const isAllowed = (section: ProfileSection) => isSectionShown(profile, section, isShowingAll);
 	if (isAllowed("currentlyReading") || isAllowed("finished")) {
 		const shelves = await shelvesFor(exec, targetId, viewerId, ownerZone);
 		if (isAllowed("currentlyReading")) view.sections.currentlyReading = shelves.currentlyReading;
@@ -325,7 +334,30 @@ export async function resolveProfileView(
 	if (isAllowed("stats")) {
 		view.sections.stats = await profileStatsFor(exec, targetId, { timeZone: ownerZone, now });
 	}
+	if (isAllowed("milestones")) {
+		const milestones = await profileMilestonesFor(exec, targetId, { timeZone: ownerZone });
+		view.sections.milestones = isShowingAll
+			? milestones
+			: milestonesForFriends(milestones, ownerZone);
+	}
 	return view;
+}
+
+/**
+ * What friends see of the owner's milestones: the reached tiers by day. `next` carries the
+ * owner's exact totals and a reach time the hour they read, which the stats toggle may hide.
+ */
+export function milestonesForFriends(
+	milestones: Milestones,
+	timeZone: string | undefined,
+): Milestones {
+	return {
+		reached: milestones.reached.map((m) => {
+			const day = dayOf(new Date(m.reachedAt), timeZone);
+			return { ...m, reachedAt: day ? Date.parse(`${day}T12:00:00Z`) : m.reachedAt };
+		}),
+		next: [],
+	};
 }
 
 /** Whether `viewerId` may load `ref`'s cover right now: own book, or a live friendship between two visible users. */

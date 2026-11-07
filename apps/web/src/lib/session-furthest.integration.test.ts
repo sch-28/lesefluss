@@ -117,4 +117,31 @@ describe.skipIf(!hasDb)("reading session furthest word (integration)", () => {
 			);
 		expect(row?.mode).toBe("listen");
 	});
+
+	test("stores font size and segments; a client without them keeps them", async () => {
+		await push([session(7_000, { fontSize: 18, segmentWpm: [250, 240] })]);
+		const read = async () => {
+			const [row] = await db
+				.select({
+					fontSize: syncReadingSessions.fontSize,
+					segmentWpm: syncReadingSessions.segmentWpm,
+				})
+				.from(syncReadingSessions)
+				.where(
+					and(eq(syncReadingSessions.userId, userId), eq(syncReadingSessions.sessionId, sessionId)),
+				);
+			return row;
+		};
+		expect(await read()).toEqual({ fontSize: 18, segmentWpm: [250, 240] });
+		await push([session(8_000)]);
+		await push([session(9_000, { fontSize: null, segmentWpm: null })]);
+		expect(await read()).toEqual({ fontSize: 18, segmentWpm: [250, 240] });
+		const res = await syncHandlers.GET({
+			request: new Request("https://lesefluss.test/api/sync"),
+			context: { user: { id: userId } },
+		});
+		const data = (await res.json()) as { readingSessions: SyncReadingSession[] };
+		const pulledRow = data.readingSessions.find((s) => s.sessionId === sessionId);
+		expect(pulledRow).toMatchObject({ fontSize: 18, segmentWpm: [250, 240] });
+	});
 });

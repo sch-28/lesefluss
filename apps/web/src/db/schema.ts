@@ -271,6 +271,8 @@ export const syncReadingSessions = pgTable(
 		endWord: integer("end_word").notNull(),
 		furthestWord: integer("furthest_word"),
 		wpmAvg: integer("wpm_avg"),
+		fontSize: integer("font_size"),
+		segmentWpm: jsonb("segment_wpm").$type<number[]>(),
 		deleted: boolean("deleted").notNull().default(false),
 		updatedAt: timestamp("updated_at").notNull(),
 	},
@@ -471,6 +473,7 @@ export const socialProfile = pgTable(
 		showFinished: boolean("show_finished").notNull().default(true),
 		showStats: boolean("show_stats").notNull().default(true),
 		showHighlights: boolean("show_highlights").notNull().default(true),
+		showMilestones: boolean("show_milestones").notNull().default(true),
 		feedEnabled: boolean("feed_enabled").notNull().default(true),
 		shareLiveReading: boolean("share_live_reading").notNull().default(true),
 		/** The owner's IANA zone, for their own dates and "this year" stats; never shown to others. */

@@ -383,6 +383,10 @@ export const readingSessions = sqliteTable("reading_sessions", {
 	// Null on rows from before it existed.
 	furthestWord: integer("furthest_word").$type<WordPosition>(),
 	wpmAvg: integer("wpm_avg"),
+	// Reader font size, or the RSVP word size; null on listen rows and rows from before it existed.
+	fontSize: integer("font_size"),
+	// wpm per full SEGMENT_MS of active reading, in order; null when the sitting has no full segment.
+	segmentWpm: text("segment_wpm", { mode: "json" }).$type<number[]>(),
 	updatedAt: integer("updated_at").notNull(), // for last-write-wins sync
 });
 

@@ -24,6 +24,7 @@ import {
 import { deleteServerSession } from "../../services/sync";
 import { publishSessionTick } from "../../test-hooks/reader";
 import { log } from "../../utils/log";
+import { FOCAL_FONT_MULTIPLIER } from "./focal-font";
 import {
 	type DebugSnapshot,
 	POLL_MS,
@@ -47,6 +48,8 @@ type Args = {
 	getPosition: () => number;
 	/** RSVP dial setting (persisted as wpmAvg for RSVP sessions). */
 	wpmSetting?: number;
+	/** The reader's font size; an RSVP sitting stores its word size instead (see `TrackerOpts.getFontSize`). */
+	fontSize?: number;
 	/** See `TrackerOpts.onFurthestRead`. */
 	onFurthestRead?: (sessionId: string, word: number | null) => void;
 };
@@ -95,6 +98,7 @@ export function useReadingSession({
 	rsvpIsPlaying,
 	getPosition,
 	wpmSetting,
+	fontSize,
 	onFurthestRead,
 }: Args): Return {
 	const trackerRef = useRef<SessionTracker | null>(null);
@@ -102,6 +106,8 @@ export function useReadingSession({
 	getPositionRef.current = getPosition;
 	const wpmRef = useRef(wpmSetting);
 	wpmRef.current = wpmSetting;
+	const fontSizeRef = useRef(fontSize);
+	fontSizeRef.current = fontSize;
 	const onFurthestReadRef = useRef(onFurthestRead);
 	onFurthestReadRef.current = onFurthestRead;
 
@@ -116,6 +122,13 @@ export function useReadingSession({
 			mode,
 			getPosition: () => getPositionRef.current(),
 			getWpmSetting: () => wpmRef.current ?? null,
+			// Bound to this tracker's mode: a mode switch re-renders with the new mode before the
+			// cleanup finalizes the old sitting.
+			getFontSize: () => {
+				const size = fontSizeRef.current;
+				if (size === undefined) return null;
+				return mode === "rsvp" ? size * FOCAL_FONT_MULTIPLIER : size;
+			},
 			persist: persistRow,
 			remove: removeRow,
 			onFurthestRead: (sessionId, word) => onFurthestReadRef.current?.(sessionId, word),

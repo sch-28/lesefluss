@@ -315,6 +315,20 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 		expect(json).not.toContain("base64");
 	});
 
+	test("milestones count visible books only and reach friends without the owner's totals", async () => {
+		const self = await resolveProfileView(owner, owner, { now });
+		const words = self.sections.milestones?.next.find((m) => m.kind === "words");
+		// s1 and s3 only: the hidden book's s2 and the deleted s4 earn nothing.
+		expect(words?.current).toBe(3000 + 22_488);
+		const books = self.sections.milestones?.reached.find((m) => m.kind === "books");
+		expect(books?.threshold).toBe(1);
+		const asFriend = await resolveProfileView(friend, owner, { now });
+		expect(asFriend.sections.milestones?.next).toEqual([]);
+		const reached = asFriend.sections.milestones?.reached ?? [];
+		expect(reached.length).toBeGreaterThan(0);
+		for (const m of reached) expect(new Date(m.reachedAt).getUTCHours()).toBe(12);
+	});
+
 	test("a private profile shows a friend the header only", async () => {
 		await updateOwnProfile(owner, { visibility: "private" });
 		const view = await resolveProfileView(friend, owner, { now });
@@ -326,15 +340,19 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 	});
 
 	test("section toggles hide sections for friends but not for the owner", async () => {
-		await updateOwnProfile(owner, { showStats: false, showFinished: false });
+		const shown = await resolveProfileView(friend, owner, { now });
+		expect(shown.sections.milestones).toBeDefined();
+		await updateOwnProfile(owner, { showStats: false, showFinished: false, showMilestones: false });
 		const asFriend = await resolveProfileView(friend, owner, { now });
 		expect(asFriend.sections.stats).toBeUndefined();
+		expect(asFriend.sections.milestones).toBeUndefined();
 		expect(asFriend.sections.finished).toBeUndefined();
 		expect(asFriend.sections.currentlyReading).toBeDefined();
 		const self = await resolveProfileView(owner, owner, { now });
 		expect(self.header.relation).toBe("self");
 		expect(self.sections.stats).toBeDefined();
 		expect(self.sections.finished).toBeDefined();
+		expect(self.sections.milestones).toBeDefined();
 		// The preview honours the toggles exactly like a friend does. Cover URLs
 		// are signed per viewer, so they are compared by kind only.
 		const preview = await resolveProfileView(owner, owner, { now, asFriend: true });
@@ -342,7 +360,7 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 		const withoutCoverUrls = (sections: unknown) =>
 			JSON.parse(JSON.stringify(sections, (key, value) => (key === "url" ? "signed" : value)));
 		expect(withoutCoverUrls(preview.sections)).toEqual(withoutCoverUrls(asFriend.sections));
-		await updateOwnProfile(owner, { showStats: true, showFinished: true });
+		await updateOwnProfile(owner, { showStats: true, showFinished: true, showMilestones: true });
 	});
 
 	test("strangers, blocks, banned or handle-less owners and unknown users are all not found", async () => {

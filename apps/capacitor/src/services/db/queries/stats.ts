@@ -1,8 +1,11 @@
 import {
 	bookSpeeds,
+	bookStatus,
 	computeSpeedModel,
+	deriveMilestones,
 	isMeasurableSitting,
 	type MeasuredReadingMode,
+	type Milestones,
 	readingProgress,
 	rollUpWorks,
 	type SpeedModel,
@@ -16,6 +19,7 @@ import {
 	bucketMinutesByHour,
 	buildWpmTrend,
 	readDaysOf,
+	readingDaysOfSitting,
 	type StreakResult,
 	sumDurationByLocalDay,
 	summariseStreak,
@@ -23,6 +27,7 @@ import {
 	windowTrendBuckets,
 } from "../../stats/aggregate";
 import type { DailyReading } from "../../stats/calendar";
+import { type Insight, speedInsights } from "../../stats/insights";
 import { type ReadingRecords, summariseRecords } from "../../stats/records";
 import { buildSpeedTabData, type SpeedTabData } from "../../stats/speed-tab";
 import { db } from "../index";
@@ -475,6 +480,28 @@ export async function getSpeedModel(opts: {
 	return computeSpeedModel(rows, { window: opts.window, now: opts.now, speedTest: null });
 }
 
+export type SpeedInsights = { reading: Insight[]; rsvp: Insight[] };
+
+/** The Speed tab's insight tiles for both views, over the sittings in the window. */
+export async function getSpeedInsights(opts: {
+	window: SpeedWindow;
+	now: number;
+}): Promise<SpeedInsights> {
+	const all = await db
+		.select({
+			mode: readingSessions.mode,
+			startedAt: readingSessions.startedAt,
+			durationMs: readingSessions.durationMs,
+			wordsRead: readingSessions.wordsRead,
+			wpmAvg: readingSessions.wpmAvg,
+			fontSize: readingSessions.fontSize,
+			segmentWpm: readingSessions.segmentWpm,
+		})
+		.from(readingSessions);
+	const rows = speedWindowRows(all, opts.window, opts.now);
+	return { reading: speedInsights(rows, "reading"), rsvp: speedInsights(rows, "rsvp") };
+}
+
 /**
  * Per-book aggregation. Single fetch ordered by startedAt; totals and averages
  * computed in JS off the same row set.
@@ -545,4 +572,32 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 		dominantMode: speed?.mode ?? null,
 		speedSeries,
 	};
+}
+
+/** Milestones over every sitting and every finished book; serial chapters don't count as books. */
+export async function getMilestones(): Promise<Milestones> {
+	const [sessions, finished] = await Promise.all([
+		db
+			.select({
+				mode: readingSessions.mode,
+				startedAt: readingSessions.startedAt,
+				durationMs: readingSessions.durationMs,
+				wordsRead: readingSessions.wordsRead,
+			})
+			.from(readingSessions),
+		db
+			.select({
+				wordCount: books.wordCount,
+				wordPosition: books.wordPosition,
+				status: books.status,
+				finishedAt: books.finishedAt,
+			})
+			.from(books)
+			.where(and(eq(books.deleted, false), isNull(books.seriesId), isNotNull(books.finishedAt))),
+	]);
+	return deriveMilestones({
+		sessions,
+		finishedAt: finished.filter((b) => bookStatus(b) === "finished").map((b) => b.finishedAt ?? 0),
+		dayKeysOf: readingDaysOfSitting,
+	});
 }

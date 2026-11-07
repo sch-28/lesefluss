@@ -384,6 +384,8 @@ async function getUserSyncData(
 					endWord: r.endWord,
 					furthestWord: r.furthestWord,
 					wpmAvg: r.wpmAvg,
+					fontSize: r.fontSize,
+					segmentWpm: r.segmentWpm,
 					updatedAt: toMs(r.updatedAt),
 				}) as SyncReadingSession,
 		),
@@ -757,6 +759,8 @@ export const Route = createFileRoute("/api/sync")({
 									endWord: r.endWord,
 									furthestWord: r.furthestWord ?? null,
 									wpmAvg: r.wpmAvg,
+									fontSize: r.fontSize ?? null,
+									segmentWpm: r.segmentWpm ?? null,
 									updatedAt: toDate(r.updatedAt),
 								})),
 							)
@@ -774,6 +778,8 @@ export const Route = createFileRoute("/api/sync")({
 									wpmAvg: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN excluded.wpm_avg ELSE sync_reading_sessions.wpm_avg END`,
 									// An older client sends no furthest word; keep one a newer client stored.
 									furthestWord: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN COALESCE(excluded.furthest_word, sync_reading_sessions.furthest_word) ELSE sync_reading_sessions.furthest_word END`,
+									fontSize: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN COALESCE(excluded.font_size, sync_reading_sessions.font_size) ELSE sync_reading_sessions.font_size END`,
+									segmentWpm: sql`CASE WHEN excluded.updated_at >= sync_reading_sessions.updated_at THEN COALESCE(excluded.segment_wpm, sync_reading_sessions.segment_wpm) ELSE sync_reading_sessions.segment_wpm END`,
 									updatedAt: sql`GREATEST(excluded.updated_at, sync_reading_sessions.updated_at)`,
 								},
 								setWhere: sql`sync_reading_sessions.deleted = false`,

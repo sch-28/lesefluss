@@ -406,6 +406,12 @@ function ProfileEditor({ profile }: { profile: OwnSocialProfile }) {
 						onCheckedChange={(v) => save({ showStats: v })}
 					/>
 					<ToggleRow
+						id="social-show-milestones"
+						title="Milestones"
+						checked={profile.showMilestones}
+						onCheckedChange={(v) => save({ showMilestones: v })}
+					/>
+					<ToggleRow
 						id="social-show-highlights"
 						title="Shared highlights"
 						checked={profile.showHighlights}

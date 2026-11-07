@@ -68,6 +68,21 @@ function useSpeedModelWithout(sessionIds: readonly string[]) {
 	});
 }
 
+function useSpeedInsights() {
+	const settings = settingsHooks.useSettings();
+	const window: SpeedWindow = settings.data?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW;
+	return useQuery({
+		queryKey: statsKeys.speedInsights(window),
+		queryFn: () => queries.getSpeedInsights({ window, now: Date.now() }),
+		enabled: settings.data !== undefined,
+		placeholderData: keepPreviousData,
+	});
+}
+
+function useMilestones() {
+	return useQuery({ queryKey: statsKeys.milestones, queryFn: () => queries.getMilestones() });
+}
+
 function useSpeedTab() {
 	return useQuery({ queryKey: statsKeys.speedTab, queryFn: () => queries.getSpeedTab() });
 }
@@ -128,6 +143,8 @@ export const statsHooks = {
 	useHourHistogram,
 	useSpeedModel,
 	useSpeedModelWithout,
+	useSpeedInsights,
+	useMilestones,
 	useSpeedTab,
 	useBookStats,
 };

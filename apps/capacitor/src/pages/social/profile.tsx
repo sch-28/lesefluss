@@ -9,6 +9,7 @@ import { useState } from "react";
 import { ActionSheet, type ActionSheetItem } from "@/components/action-sheet";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { MedalGrid } from "@/components/milestones/milestone-medals";
 import { ReportSheet, type ReportTarget } from "@/components/social/report-sheet";
 import {
 	CoverShelf,
@@ -22,6 +23,7 @@ import { AuthedFetchError } from "@/services/authed-fetch";
 import { useIsOnline } from "@/services/social/cache";
 import { socialErrorMessage, useBlockUser, useRemoveFriend } from "@/services/social/friends";
 import { useProfileView } from "@/services/social/profile-view";
+import { knownMilestones } from "@/services/stats/milestones";
 import { formatDuration } from "@/utils/date-utils";
 import { OfflineNotice, SocialGate, Spinner } from "./social-gate";
 
@@ -57,6 +59,7 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 	const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
 	const { identity, relation, friendsSince } = view.header;
 	const isSelf = relation === "self" || isPreview;
+	const medals = knownMilestones(view.sections.milestones?.reached);
 	const onError = (err: unknown) => toast.error(socialErrorMessage(err));
 
 	const menuItems: ActionSheetItem[] = [
@@ -207,6 +210,12 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 							<StatTile key={tile.label} value={tile.value} label={tile.label} />
 						))}
 					</div>
+				</SocialSection>
+			)}
+
+			{medals.length > 0 && (
+				<SocialSection title="Milestones">
+					<MedalGrid reached={medals} />
 				</SocialSection>
 			)}
 

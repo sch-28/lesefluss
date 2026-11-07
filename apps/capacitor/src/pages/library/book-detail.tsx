@@ -20,10 +20,11 @@ import {
 import { RatingStars } from "@lesefluss/ui/rating-stars";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { BookOpen, Cpu, Pencil, Share2, Trash2, Users } from "lucide-react";
+import { BookOpen, Cpu, Image as ImageIcon, Pencil, Share2, Trash2, Users } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DeviceBadge } from "../../components/device-sync";
+import { ShareCardSheet } from "../../components/share-card/share-card-sheet";
 import { ShareSheet } from "../../components/social/share-sheet";
 import { SpeedChip } from "../../components/speed-chip/speed-chip";
 import { useBookSync } from "../../contexts/book-sync-context";
@@ -37,6 +38,7 @@ import { queryHooks } from "../../services/db/hooks";
 import { bookKeys, syncKeys } from "../../services/db/hooks/query-keys";
 import { useCloudStorage } from "../../services/db/hooks/use-cloud-storage";
 import { queries } from "../../services/db/queries";
+import { finishedCardData } from "../../services/share-card/card-data";
 import { SYNC_ENABLED } from "../../services/sync";
 import { getServerContentIds } from "../../services/sync/server-content-cache";
 import { IS_WEB } from "../../utils/platform";
@@ -104,6 +106,23 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 	const [isShareOpen, setIsShareOpen] = useState(false);
 	const [isBuddyReadOpen, setIsBuddyReadOpen] = useState(false);
+	const [isCardOpen, setIsCardOpen] = useState(false);
+	const isFinished = book ? bookStatus(book) === "finished" && book.finishedAt !== null : false;
+	const { data: bookSessions } = queryHooks.useBookReadingSessions(isCardOpen ? id : "");
+	const finishedCard = useMemo(() => {
+		if (!isCardOpen || !book || book.finishedAt === null || !bookSessions) return null;
+		return finishedCardData({
+			book: {
+				title: book.title,
+				author: book.author,
+				coverImage: allBooks?.covers.get(book.id) ?? null,
+				wordCount: book.wordCount,
+				finishedAt: book.finishedAt,
+			},
+			sessions: bookSessions,
+			model: speedModel,
+		});
+	}, [isCardOpen, book, bookSessions, allBooks, speedModel]);
 	const canShare = isLoggedIn && SYNC_ENABLED;
 	// A session lost while the sheet is open would leave a friend list that can only fail.
 	useEffect(() => {
@@ -138,6 +157,9 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 						search: { from: "detail" },
 					}),
 			},
+			...(isFinished
+				? [{ label: "Share card", icon: ImageIcon, onClick: () => setIsCardOpen(true) }]
+				: []),
 			...(canShare ? [{ label: "Share", icon: Share2, onClick: () => setIsShareOpen(true) }] : []),
 			// Shown signed out too: the sheet explains that reading together needs an account.
 			...(SYNC_ENABLED && !hasRunningBuddyRead
@@ -150,7 +172,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				onClick: () => setIsDeleteOpen(true),
 			},
 		],
-		[canShare, hasRunningBuddyRead, router, id],
+		[canShare, hasRunningBuddyRead, router, id, isFinished],
 	);
 	const deviceState = useBookDeviceState(book?.id ?? null);
 	const deviceActions = useBookDeviceActions({
@@ -364,6 +386,13 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				/>
 			)}
 
+			{finishedCard && (
+				<ShareCardSheet
+					card={finishedCard}
+					filename="lesefluss-finished"
+					onClose={() => setIsCardOpen(false)}
+				/>
+			)}
 			<ShareSheet
 				isOpen={isShareOpen}
 				onClose={() => setIsShareOpen(false)}

@@ -133,7 +133,7 @@ participants, shares). Not affected by [profile visibility](#profile-visibility)
 A user's server-side setting for everything beyond the [identity card](#identity-card): `private`
 (default: bio and profile sections visible only to the owner) or `friends` (accepted friends see the
 bio and the sections whose per-section toggle is on: currently reading, finished books, reading
-stats, shared highlights). There is no public level. A section is shown only if both the visibility
+stats, shared highlights, [milestones](#milestone)). There is no public level. A section is shown only if both the visibility
 and its toggle allow it.
 
 ### Friend
@@ -195,6 +195,19 @@ to a copy the recipient already holds. The copy is then the recipient's: only a
 shares per sender per day; the first share records a one-time rights confirmation. Refused for
 non-friends, suspended senders, local-only, unsynced, deleted or series books and taken-down
 origins.
+
+### Share card
+
+An image of a sitting, a finished book or the Speed tab's year (cover, title, terse stats, the
+owner's @handle unless toggled off), in Story or Square format, handed to the device's share sheet
+or downloaded on the web. Not a [Share](#share): nothing is offered to a friend.
+
+### Milestone
+
+A tier a reader has reached in words read, hours read, books finished, day streak or best RSVP
+sitting wpm. Derived from sessions and finished books (`deriveMilestones` in core), never stored,
+so the app and the server agree. Shown on the Speed tab, in the session summary and, unless
+`show_milestones` is off, on the profile, where friends see only the reached tiers by day.
 
 ### Buddy read
 

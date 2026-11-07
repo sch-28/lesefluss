@@ -117,4 +117,28 @@ describe("pulling sessions into the local database", () => {
 		await pullSync();
 		expect(localRows()).toEqual([]);
 	});
+
+	it("stores font size and segments, and an update without them keeps them", async () => {
+		const response = (session: SyncReadingSession): SyncResponse => ({
+			books: [],
+			settings: null,
+			highlights: [],
+			glossaryEntries: [],
+			series: [],
+			readingSessions: [session],
+		});
+		pullResponse = response({
+			...serverSession("sized", 5_000),
+			fontSize: 18,
+			segmentWpm: [250, 240],
+		});
+		await pullSync();
+		const stored = () =>
+			raw.prepare("SELECT font_size, segment_wpm FROM reading_sessions WHERE id = 'sized'").get();
+		expect(stored()).toEqual({ font_size: 18, segment_wpm: "[250,240]" });
+
+		pullResponse = response({ ...serverSession("sized", 6_000), fontSize: null });
+		await pullSync();
+		expect(stored()).toEqual({ font_size: 18, segment_wpm: "[250,240]" });
+	});
 });

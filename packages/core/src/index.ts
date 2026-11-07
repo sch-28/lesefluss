@@ -7,6 +7,7 @@ export * from "./device-link";
 export * from "./dictionary";
 export * from "./engine";
 export * from "./live-board";
+export * from "./milestones";
 export * from "./push";
 export * from "./reading-credit";
 export * from "./reading-goal";

@@ -235,6 +235,8 @@ export const queryHooks = {
 	/** One speed model for every speed and time estimate (see @lesefluss/core speed-model). */
 	useStatsSpeedModel: statsHooks.useSpeedModel,
 	useStatsSpeedModelWithout: statsHooks.useSpeedModelWithout,
+	useStatsSpeedInsights: statsHooks.useSpeedInsights,
+	useStatsMilestones: statsHooks.useMilestones,
 	useStatsSpeedTab: statsHooks.useSpeedTab,
 	useStatsBook: statsHooks.useBookStats,
 	useStatsCurrentlyReading: statsHooks.useCurrentlyReading,

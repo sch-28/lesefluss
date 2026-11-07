@@ -34,6 +34,8 @@ function row(overrides: Partial<SessionRow> = {}): SessionRow {
 		furthestWord: wordPos(750),
 		wpmAvg: 250,
 		updatedAt: 1000,
+		fontSize: null,
+		segmentWpm: null,
 		...overrides,
 	};
 }
