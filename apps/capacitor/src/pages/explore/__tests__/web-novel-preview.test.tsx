@@ -18,6 +18,7 @@ vi.mock("../../../services/serial-scrapers", async (importActual) => ({
 	providerLabel: (id: string) => (id === "royalroad" ? "Royal Road" : id),
 	chapterCountLabel: (n: number) => `${n} chapters`,
 }));
+const wishlist = vi.hoisted(() => ({ entry: null as unknown, toggle: vi.fn() }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
 		useStatsSpeedModel: () => ({
@@ -30,6 +31,8 @@ vi.mock("../../../services/db/hooks", () => ({
 		useSettings: () => ({ data: { wpm: 400, defaultReaderMode: "scroll" } }),
 		useSeriesList: () => ({ data: seriesList.current }),
 		useImportSerialFromUrl: () => ({ mutateAsync: importMutate }),
+		useWishlistEntry: () => wishlist.entry,
+		useToggleWishlist: () => ({ mutate: wishlist.toggle, isPending: false }),
 	},
 }));
 vi.mock("../../../components/toast", () => ({
@@ -72,6 +75,7 @@ afterEach(() => {
 	view?.unmount();
 	view = undefined;
 	previewCache.clear();
+	wishlist.entry = null;
 	vi.clearAllMocks();
 });
 
@@ -223,5 +227,42 @@ describe("WebNovelPreview", () => {
 			params: { id: "s1" },
 		});
 		expect(importMutate).not.toHaveBeenCalled();
+	});
+
+	it("saves the series to the wishlist under its source URL", async () => {
+		previewCache.set(RESULT);
+		view = await render(<WebNovelPreview search={search.current} />);
+		await click(view.getButton("Add to wishlist"));
+		expect(wishlist.toggle).toHaveBeenCalledWith(
+			{
+				saved: true,
+				item: {
+					kind: "serial",
+					ref: URL_,
+					title: "Mother of Learning",
+					author: "nobody103",
+					coverUrl: "https://covers.test/mol.jpg",
+				},
+			},
+			expect.anything(),
+		);
+	});
+
+	it("offers no wishlist for a series already in the library", async () => {
+		seriesList.current = [{ id: "s1", sourceUrl: URL_ }];
+		previewCache.set(RESULT);
+		view = await render(<WebNovelPreview search={search.current} />);
+		expect(view.queryButton(/wishlist/)).toBeNull();
+	});
+	it("still takes a saved series off the wishlist once it is in the library", async () => {
+		seriesList.current = [{ id: "s1", sourceUrl: URL_ }];
+		wishlist.entry = { id: "w1" };
+		previewCache.set(RESULT);
+		view = await render(<WebNovelPreview search={search.current} />);
+		await click(view.getButton("Remove from wishlist"));
+		expect(wishlist.toggle).toHaveBeenCalledWith(
+			expect.objectContaining({ saved: false }),
+			expect.anything(),
+		);
 	});
 });

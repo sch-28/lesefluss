@@ -36,6 +36,11 @@ export const smartShelfKeys = {
 	all: ["books", "smart-shelves"] as const,
 };
 
+/** Under `["books"]`, so a sync pull and every import refresh it. */
+export const wishlistKeys = {
+	all: ["books", "wishlist"] as const,
+};
+
 export const bookKeys = {
 	/** All books list - invalidate this to refresh the library grid. */
 	all: ["books"] as const,

@@ -19,6 +19,10 @@ The set of books on a given surface. The app has a library (in IndexedDB). The r
 - **Library filter**: what narrows the app's library view, together with the search text. Per **facet** (status, tag, author, series, rating, progress, added, last read) it holds the values a book must carry one of (*included*) and the values it must carry none of (*excluded*). Ratings file under whole stars (3.5 counts as 4); dates and progress are buckets. Shown as removable chips; persisted on the device, not synced. The model lives in `pages/library/filter-model.ts`.
 - **Selection**: a set of books picked for one bulk action. It survives filter and search changes, so it can be built across several views; *Select all N* adds every book in the current view, rendered or not.
 
+### Wishlist
+
+Titles saved from Explore without importing them (`wishlist`): a catalog book by its catalog id, or a web-novel series by its URL, each with the title, author and cover to show on a card. Saved with *Add to wishlist* on the catalog book page or the web-novel preview, and shown as a shelf on the Explore landing with a See all page. Not a book status: *Want to read* marks a book already in the [library](#library), while a wishlist title is not in it yet. Importing a title on this device, from its card or any other way, takes it off the wishlist; a saved title that reached the library otherwise (by sync from another device) keeps *Remove from wishlist* on its page. It syncs with sync on, with the [bookmark](#bookmark) rules for deletes: a removal is a sticky tombstone and an older client's push without a wishlist leaves it alone.
+
 ### Position
 
 The reader's location in a book. The canonical app-side unit is **word position** — a zero-based index into the book's tokenized word stream. The lesefluss esp32 firmware still speaks byte offsets; conversion happens at that BLE seam, not in the middle. The rsvpnano speaks word index natively. See ADR-0002.

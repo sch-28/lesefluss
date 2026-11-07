@@ -87,6 +87,7 @@ import {
 	setSessionTombstoneWatermark,
 } from "./session";
 import { buildSmartShelfMerge, pushableSmartShelves } from "./smart-shelf-sync";
+import { buildWishlistMerge, pushableWishlist } from "./wishlist-sync";
 
 export { openBrowserSignIn } from "./browser-sign-in";
 export {
@@ -1200,6 +1201,16 @@ export async function pullSync(): Promise<Set<string>> {
 			if (merge.deletes.length > 0) await queries.hardDeleteBookmarks(merge.deletes);
 			if (merge.upserts.length > 0 || merge.deletes.length > 0) changed = true;
 		}
+		// Absent from an older server: leave the local wishlist alone.
+		if (data.wishlist) {
+			const merge = buildWishlistMerge(await queries.getAllWishlistForSync(), data.wishlist);
+			if (merge.rejected > 0) {
+				log("sync", `pull: skipped ${merge.rejected} malformed wishlist item(s)`);
+			}
+			if (merge.upserts.length > 0) await queries.upsertWishlist(merge.upserts);
+			if (merge.deletes.length > 0) await queries.hardDeleteWishlist(merge.deletes);
+			if (merge.upserts.length > 0 || merge.deletes.length > 0) changed = true;
+		}
 		// Absent from an older server: leave local collections alone.
 		if (data.collections || data.collectionBooks) {
 			const [localCollections, localCollectionBooks] = await Promise.all([
@@ -1401,6 +1412,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			collectionBookRows,
 			smartShelfRows,
 			bookmarkRows,
+			wishlistRows,
 		] = await Promise.all([
 			queries.getBooksForSync(),
 			queries.getSettings(),
@@ -1413,6 +1425,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			queries.getAllCollectionBooksForSync(),
 			queries.getAllSmartShelvesForSync(),
 			queries.getAllBookmarksForSync(),
+			queries.getAllWishlistForSync(),
 		]);
 
 		// Pristine pending chapter rows carry zero user data and are excluded from the
@@ -1486,6 +1499,11 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			log("sync", `push: dropped ${bookmarksForPush.rejected} malformed bookmark(s)`);
 		}
 
+		const wishlistForPush = pushableWishlist(wishlistRows);
+		if (wishlistForPush.rejected > 0) {
+			log("sync", `push: dropped ${wishlistForPush.rejected} malformed wishlist item(s)`);
+		}
+
 		const payload: SyncPayload = {
 			books: booksWithContent,
 			settings: hasAdoptedSettings ? settingsToSync(settings) : null,
@@ -1504,6 +1522,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			collectionBooks: collectionsForPush.collectionBooks,
 			smartShelves: shelvesForPush.shelves,
 			bookmarks: bookmarksForPush.bookmarks,
+			wishlist: wishlistForPush.wishlist,
 		};
 
 		// Diagnostics for the >5000 books cap — log composition so we can see what's
@@ -1523,7 +1542,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 		const body = JSON.stringify(payload);
 		log(
 			"sync",
-			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} contentUploads=${uploadedContentIds.size} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} readingGoals=${goalsForPush.pushable.length} collections=${collectionsForPush.collections.length} collectionBooks=${collectionsForPush.collectionBooks.length} bookmarks=${bookmarksForPush.bookmarks.length} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
+			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} contentUploads=${uploadedContentIds.size} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} readingGoals=${goalsForPush.pushable.length} collections=${collectionsForPush.collections.length} collectionBooks=${collectionsForPush.collectionBooks.length} bookmarks=${bookmarksForPush.bookmarks.length} wishlist=${wishlistForPush.wishlist.length} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
 		);
 
 		const { quotaRejection, stamps } = await postPush(body);

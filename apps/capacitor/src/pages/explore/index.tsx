@@ -37,6 +37,7 @@ import { useCatalogSearch } from "./use-catalog-search";
 import { storeLang, useCatalogLanguages, useExploreLang } from "./use-explore-lang";
 import { useQueryText } from "./use-query-text";
 import { useReadingSpeed } from "./use-reading-speed";
+import WishlistShelf from "./wishlist-shelf";
 
 const GENRES_STALE_TIME_MS = 60 * 60 * 1000;
 
@@ -193,10 +194,13 @@ const Explore: React.FC<Props> = ({ search }) => {
 					onBrowse={(next) => update(() => withSearch({ lang: search.lang }, next))}
 					onBrowseTags={browseTags}
 					personalShelves={
-						<PersonalShelves
-							onOpen={openBook}
-							onBrowse={(next) => update(() => withSearch({ lang: search.lang }, next))}
-						/>
+						<>
+							<WishlistShelf />
+							<PersonalShelves
+								onOpen={openBook}
+								onBrowse={(next) => update(() => withSearch({ lang: search.lang }, next))}
+							/>
+						</>
 					}
 				/>
 			) : mode === "grouped" ? (

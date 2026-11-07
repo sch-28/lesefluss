@@ -105,7 +105,7 @@ const DANGER_ACTIONS: Record<DangerAction, DangerActionConfig> = {
 		icon: AlertCircle,
 		header: "Delete everything?",
 		message:
-			"Wipes your library, highlights, bookmarks, glossary entries, and reading stats from this device and from your cloud account. You stay signed in and your settings are kept. This cannot be undone.",
+			"Wipes your library, highlights, bookmarks, glossary entries, wishlist, and reading stats from this device and from your cloud account. You stay signed in and your settings are kept. This cannot be undone.",
 		successMessage: "All data deleted",
 	},
 };

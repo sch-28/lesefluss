@@ -16,9 +16,11 @@ vi.mock("../../../services/catalog/client", async (importActual) => ({
 	getSimilarBooks,
 }));
 vi.mock("../../../services/catalog/import", () => ({ importFromCatalog: vi.fn() }));
+const local = vi.hoisted(() => ({ book: null as { id: string } | null }));
 vi.mock("../../../services/db/queries", () => ({
-	queries: { getBookByCatalogId: async () => null },
+	queries: { getBookByCatalogId: async () => local.book },
 }));
+const wishlist = vi.hoisted(() => ({ entry: null as unknown, toggle: vi.fn() }));
 const reader = vi.hoisted(() => ({ rsvp: false }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
@@ -32,6 +34,8 @@ vi.mock("../../../services/db/hooks", () => ({
 		}),
 		useSettings: () => ({ data: { wpm: 400, defaultReaderMode: reader.rsvp ? "rsvp" : "scroll" } }),
 		useLibraryCatalogIds: () => ({ data: new Map() }),
+		useWishlistEntry: () => wishlist.entry,
+		useToggleWishlist: () => ({ mutate: wishlist.toggle, isPending: false }),
 	},
 }));
 vi.mock("../../../services/sync", () => ({ scheduleSyncPush: vi.fn() }));
@@ -83,6 +87,8 @@ beforeEach(() => {
 afterEach(() => {
 	view?.unmount();
 	view = undefined;
+	local.book = null;
+	wishlist.entry = null;
 	vi.clearAllMocks();
 });
 
@@ -194,5 +200,57 @@ describe("catalog book detail", () => {
 			"https://lesefluss.app/app/tabs/explore/book/gutenberg%3A84",
 		);
 		expect(toastSuccess).toHaveBeenCalledWith("Link copied");
+	});
+
+	it("saves the book to the wishlist with what the shelf card shows", async () => {
+		await renderDetail();
+		await click(view?.getButton("Add to wishlist") as HTMLButtonElement);
+		expect(wishlist.toggle).toHaveBeenCalledWith(
+			{
+				saved: true,
+				item: {
+					kind: "catalog",
+					ref: "gutenberg:84",
+					title: "Frankenstein",
+					author: "Mary Shelley",
+					coverUrl: null,
+				},
+			},
+			expect.anything(),
+		);
+	});
+
+	it("takes a saved book off the wishlist", async () => {
+		wishlist.entry = { id: "w1" };
+		await renderDetail();
+		await click(view?.getButton("Remove from wishlist") as HTMLButtonElement);
+		expect(wishlist.toggle).toHaveBeenCalledWith(
+			expect.objectContaining({ saved: false }),
+			expect.anything(),
+		);
+	});
+
+	it("offers no wishlist for a book already in the library or with nothing to import", async () => {
+		local.book = { id: "b1" };
+		await renderDetail();
+		expect(view?.queryButton(/wishlist/)).toBeNull();
+		view?.unmount();
+
+		local.book = null;
+		getCatalogBook.mockResolvedValue({ ...BOOK, epubUrl: null });
+		await renderDetail();
+		expect(view?.queryButton(/wishlist/)).toBeNull();
+	});
+
+	it("still takes a saved book off the wishlist once it is in the library", async () => {
+		local.book = { id: "b1" };
+		wishlist.entry = { id: "w1" };
+		await renderDetail();
+		expect(view?.queryButton("Add to wishlist")).toBeNull();
+		await click(view?.getButton("Remove from wishlist") as HTMLButtonElement);
+		expect(wishlist.toggle).toHaveBeenCalledWith(
+			expect.objectContaining({ saved: false }),
+			expect.anything(),
+		);
 	});
 });

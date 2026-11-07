@@ -17,6 +17,7 @@ import {
 	type SyncSeries,
 	type SyncSettings,
 	type SyncSmartShelf,
+	type SyncWishlistItem,
 } from "@lesefluss/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { and, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
@@ -34,6 +35,7 @@ import {
 	syncSeries,
 	syncSettings,
 	syncSmartShelves,
+	syncWishlist,
 } from "~/db/schema";
 import {
 	contentQuotaBytes,
@@ -54,6 +56,7 @@ import { upsertSyncCollectionBooks, upsertSyncCollections } from "~/lib/sync-col
 import { upsertSyncGoals } from "~/lib/sync-goal-upsert";
 import { upsertSyncSettings } from "~/lib/sync-settings-upsert";
 import { upsertSyncSmartShelves } from "~/lib/sync-smart-shelf-upsert";
+import { upsertSyncWishlist } from "~/lib/sync-wishlist-upsert";
 
 // Body size limits are enforced at the reverse proxy (Coolify/Traefik). The
 // Content-Length header is client-controlled, so enforcing it in Node here
@@ -198,6 +201,7 @@ async function getUserSyncData(
 		collectionBookRows,
 		smartShelfRows,
 		bookmarkRows,
+		wishlistRows,
 		usedBytes,
 	] = await Promise.all([
 		db.select(metadataCols).from(syncBooks).where(eq(syncBooks.userId, userId)),
@@ -229,6 +233,7 @@ async function getUserSyncData(
 		db.select().from(syncCollectionBooks).where(eq(syncCollectionBooks.userId, userId)),
 		db.select().from(syncSmartShelves).where(eq(syncSmartShelves.userId, userId)),
 		db.select().from(syncBookmarks).where(eq(syncBookmarks.userId, userId)),
+		db.select().from(syncWishlist).where(eq(syncWishlist.userId, userId)),
 		contentUsage(db, userId),
 	]);
 
@@ -452,6 +457,19 @@ async function getUserSyncData(
 				deleted: b.deleted,
 				createdAt: toMs(b.createdAt),
 				updatedAt: toMs(b.updatedAt),
+			}),
+		),
+		wishlist: wishlistRows.map(
+			(w): SyncWishlistItem => ({
+				itemId: w.itemId,
+				kind: w.kind,
+				ref: w.ref,
+				title: w.title,
+				author: w.author,
+				coverUrl: w.coverUrl,
+				deleted: w.deleted,
+				createdAt: toMs(w.createdAt),
+				updatedAt: toMs(w.updatedAt),
 			}),
 		),
 	};
@@ -795,6 +813,10 @@ export const Route = createFileRoute("/api/sync")({
 						payload.series.some((s) => s.deleted)
 					) {
 						await tombstoneBookmarksOfDeletedBooks(tx, userId);
+					}
+					// Absent from clients that pre-date the wishlist: nothing to merge.
+					if (payload.wishlist) {
+						await upsertSyncWishlist(tx, userId, payload.wishlist);
 					}
 					const stamps: SyncPushStamps = {
 						books: clampedBooks,

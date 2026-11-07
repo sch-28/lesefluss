@@ -33,6 +33,7 @@ import { Route as TabsReaderIdRouteImport } from './routes/tabs/reader.$id'
 import { Route as TabsLibraryStatsRouteImport } from './routes/tabs/library/stats'
 import { Route as TabsLibraryImportRouteImport } from './routes/tabs/library/import'
 import { Route as TabsLibraryAllSeriesRouteImport } from './routes/tabs/library/all-series'
+import { Route as TabsExploreWishlistRouteImport } from './routes/tabs/explore/wishlist'
 import { Route as TabsExploreWebNovelsRouteImport } from './routes/tabs/explore/web-novels'
 import { Route as TabsExploreWebNovelPreviewRouteImport } from './routes/tabs/explore/web-novel-preview'
 import { Route as TabsExploreTagsRouteImport } from './routes/tabs/explore/tags'
@@ -169,6 +170,11 @@ const TabsLibraryAllSeriesRoute = TabsLibraryAllSeriesRouteImport.update({
   path: '/tabs/library/all-series',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TabsExploreWishlistRoute = TabsExploreWishlistRouteImport.update({
+  id: '/tabs/explore/wishlist',
+  path: '/tabs/explore/wishlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TabsExploreWebNovelsRoute = TabsExploreWebNovelsRouteImport.update({
   id: '/tabs/explore/web-novels',
   path: '/tabs/explore/web-novels',
@@ -252,6 +258,7 @@ export interface FileRoutesByFullPath {
   '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
+  '/tabs/explore/wishlist': typeof TabsExploreWishlistRoute
   '/tabs/library/all-series': typeof TabsLibraryAllSeriesRoute
   '/tabs/library/import': typeof TabsLibraryImportRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
@@ -292,6 +299,7 @@ export interface FileRoutesByTo {
   '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
+  '/tabs/explore/wishlist': typeof TabsExploreWishlistRoute
   '/tabs/library/all-series': typeof TabsLibraryAllSeriesRoute
   '/tabs/library/import': typeof TabsLibraryImportRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
@@ -333,6 +341,7 @@ export interface FileRoutesById {
   '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
+  '/tabs/explore/wishlist': typeof TabsExploreWishlistRoute
   '/tabs/library/all-series': typeof TabsLibraryAllSeriesRoute
   '/tabs/library/import': typeof TabsLibraryImportRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
@@ -375,6 +384,7 @@ export interface FileRouteTypes {
     | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
+    | '/tabs/explore/wishlist'
     | '/tabs/library/all-series'
     | '/tabs/library/import'
     | '/tabs/library/stats'
@@ -415,6 +425,7 @@ export interface FileRouteTypes {
     | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
+    | '/tabs/explore/wishlist'
     | '/tabs/library/all-series'
     | '/tabs/library/import'
     | '/tabs/library/stats'
@@ -455,6 +466,7 @@ export interface FileRouteTypes {
     | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
+    | '/tabs/explore/wishlist'
     | '/tabs/library/all-series'
     | '/tabs/library/import'
     | '/tabs/library/stats'
@@ -496,6 +508,7 @@ export interface RootRouteChildren {
   TabsExploreTagsRoute: typeof TabsExploreTagsRoute
   TabsExploreWebNovelPreviewRoute: typeof TabsExploreWebNovelPreviewRoute
   TabsExploreWebNovelsRoute: typeof TabsExploreWebNovelsRoute
+  TabsExploreWishlistRoute: typeof TabsExploreWishlistRoute
   TabsLibraryAllSeriesRoute: typeof TabsLibraryAllSeriesRoute
   TabsLibraryImportRoute: typeof TabsLibraryImportRoute
   TabsLibraryStatsRoute: typeof TabsLibraryStatsRoute
@@ -701,6 +714,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabsLibraryAllSeriesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tabs/explore/wishlist': {
+      id: '/tabs/explore/wishlist'
+      path: '/tabs/explore/wishlist'
+      fullPath: '/tabs/explore/wishlist'
+      preLoaderRoute: typeof TabsExploreWishlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tabs/explore/web-novels': {
       id: '/tabs/explore/web-novels'
       path: '/tabs/explore/web-novels'
@@ -808,6 +828,7 @@ const rootRouteChildren: RootRouteChildren = {
   TabsExploreTagsRoute: TabsExploreTagsRoute,
   TabsExploreWebNovelPreviewRoute: TabsExploreWebNovelPreviewRoute,
   TabsExploreWebNovelsRoute: TabsExploreWebNovelsRoute,
+  TabsExploreWishlistRoute: TabsExploreWishlistRoute,
   TabsLibraryAllSeriesRoute: TabsLibraryAllSeriesRoute,
   TabsLibraryImportRoute: TabsLibraryImportRoute,
   TabsLibraryStatsRoute: TabsLibraryStatsRoute,

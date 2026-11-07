@@ -9,6 +9,7 @@ import { shareLink } from "./share-link";
 import { useReadingSpeed } from "./use-reading-speed";
 import { useSerialPreview } from "./use-serial-preview";
 import { useWebNovelImport } from "./use-web-novel-import";
+import { useWishlistAction } from "./use-wishlist-action";
 import { Ao3Meta, chapterFallback, webNovelFacts, webNovelLength } from "./web-novel-facts";
 
 /**
@@ -25,6 +26,18 @@ const WebNovelPreview: React.FC<Props> = ({ search }) => {
 	const preview = useSerialPreview(url);
 	const importer = useWebNovelImport(url ?? "");
 	const speed = useReadingSpeed();
+	const wishlistAction = useWishlistAction(
+		preview.result
+			? {
+					kind: "serial",
+					ref: preview.result.sourceUrl,
+					title: preview.result.title,
+					author: preview.result.author,
+					coverUrl: preview.result.coverImage,
+				}
+			: null,
+		importer.isMembershipKnown && !importer.existingSeriesId,
+	);
 
 	const result = preview.result;
 	const existingSeriesId = importer.existingSeriesId;
@@ -108,6 +121,7 @@ const WebNovelPreview: React.FC<Props> = ({ search }) => {
 			].filter(Boolean)}
 			subjects={result.details?.tags}
 			primaryAction={primaryAction}
+			secondaryActions={wishlistAction ? [wishlistAction] : undefined}
 			description={result.description ? { text: result.description } : undefined}
 			externalLink={{
 				href: result.sourceUrl,

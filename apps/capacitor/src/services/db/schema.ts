@@ -6,6 +6,7 @@ import {
 	type ReadingGoalStatus,
 	type ReadingMode,
 	type SpeedWindow,
+	type WishlistKind,
 	type WordPosition,
 	wordPos,
 } from "@lesefluss/core";
@@ -445,6 +446,25 @@ export const bookmarks = sqliteTable("bookmarks", {
 });
 
 export type Bookmark = typeof bookmarks.$inferSelect;
+
+/**
+ * A title saved from Explore without importing it. `ref` is what the import
+ * takes: a catalog id or a series URL. Tombstoned on delete (`deleted`) so the
+ * delete syncs; the pull hard-deletes the row once the server holds the tombstone.
+ */
+export const wishlist = sqliteTable("wishlist", {
+	id: text("id").primaryKey(),
+	kind: text("kind").$type<WishlistKind>().notNull(),
+	ref: text("ref").notNull(),
+	title: text("title").notNull(),
+	author: text("author"),
+	coverUrl: text("cover_url"),
+	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+	createdAt: integer("created_at").notNull(),
+	updatedAt: integer("updated_at").notNull(),
+});
+
+export type WishlistItem = typeof wishlist.$inferSelect;
 
 /**
  * Manual collections. Tombstoned on delete (`deleted`) so the delete syncs;

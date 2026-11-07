@@ -42,6 +42,7 @@ import {
 	syncReadingSessions,
 	syncSeries,
 	syncSettings,
+	syncWishlist,
 } from "~/db/schema";
 import { deleteUserAccount, purgeCloudData } from "./account-deletion";
 import { deleteAdminUser } from "./admin";
@@ -152,6 +153,15 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 			bookmarkId: "bm1",
 			bookId: "book1",
 			word: 3,
+			createdAt: now,
+			updatedAt: now,
+		});
+		await db.insert(syncWishlist).values({
+			userId,
+			itemId: "w1",
+			kind: "catalog",
+			ref: "gutenberg:84",
+			title: "Frankenstein",
 			createdAt: now,
 			updatedAt: now,
 		});
@@ -400,6 +410,9 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 		).toHaveLength(0);
 		expect(
 			await db.select().from(syncBookmarks).where(eq(syncBookmarks.userId, userId)),
+		).toHaveLength(0);
+		expect(
+			await db.select().from(syncWishlist).where(eq(syncWishlist.userId, userId)),
 		).toHaveLength(0);
 
 		// Social profile and avatar cascade from the user row.

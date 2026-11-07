@@ -8,6 +8,7 @@ import {
 	READING_GOAL_MODES,
 	READING_GOAL_STATUSES,
 	READING_MODES,
+	type WishlistKind,
 } from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import {
@@ -401,6 +402,26 @@ export const syncBookmarks = pgTable(
 );
 
 export type NewSyncBookmark = typeof syncBookmarks.$inferInsert;
+
+/** Wishlist items. `ref` is a catalog id or a series URL; see `SyncWishlistItemSchema`. */
+export const syncWishlist = pgTable(
+	"sync_wishlist",
+	{
+		userId: text("user_id").notNull(),
+		itemId: text("item_id").notNull(),
+		kind: text("kind").$type<WishlistKind>().notNull(),
+		ref: text("ref").notNull(),
+		title: text("title").notNull(),
+		author: text("author"),
+		coverUrl: text("cover_url"),
+		deleted: boolean("deleted").notNull().default(false),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.itemId] })],
+);
+
+export type NewSyncWishlistItem = typeof syncWishlist.$inferInsert;
 export type NewSyncCollection = typeof syncCollections.$inferInsert;
 export type NewSyncCollectionBook = typeof syncCollectionBooks.$inferInsert;
 

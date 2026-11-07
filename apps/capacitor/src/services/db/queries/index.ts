@@ -167,6 +167,15 @@ import {
 	getTopBooks,
 	getWpmTrend,
 } from "./stats";
+import {
+	addToWishlist,
+	deleteAllWishlist,
+	getAllWishlistForSync,
+	getWishlist,
+	hardDeleteWishlist,
+	removeFromWishlist,
+	upsertWishlist,
+} from "./wishlist";
 
 export const queries = {
 	// Settings
@@ -343,4 +352,13 @@ export const queries = {
 
 	// App launch
 	getLastReadBookId,
+
+	// Wishlist
+	getWishlist,
+	addToWishlist,
+	removeFromWishlist,
+	deleteAllWishlist,
+	getAllWishlistForSync,
+	upsertWishlist,
+	hardDeleteWishlist,
 };

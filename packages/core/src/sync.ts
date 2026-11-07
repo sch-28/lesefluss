@@ -388,6 +388,40 @@ export const SyncBookmarkSchema = z.object({
 	updatedAt: epochMs(),
 });
 
+export const WISHLIST_PUSH_MAX = 5000;
+export const WISHLIST_KINDS = ["catalog", "serial"] as const;
+export type WishlistKind = (typeof WISHLIST_KINDS)[number];
+
+// "gutenberg:1342", "se:mary-shelley/frankenstein"; never a URL, whose "//" follows the colon.
+const CATALOG_ID = /^[a-z][a-z0-9_-]*:(?!\/)\S+$/;
+const HTTP_URL = /^https?:\/\/\S+$/i;
+
+export const WISHLIST_TITLE_MAX = 500;
+export const WISHLIST_AUTHOR_MAX = 200;
+export const WISHLIST_URL_MAX = 2000;
+
+export function isWishlistCoverUrl(url: string): boolean {
+	return url.length <= WISHLIST_URL_MAX && HTTP_URL.test(url);
+}
+
+/** `ref` is what the import takes: a catalog id ("gutenberg:1342") or a series URL. */
+export const SyncWishlistItemSchema = z
+	.object({
+		itemId: z.string().min(1).max(64),
+		kind: z.enum(WISHLIST_KINDS),
+		ref: z.string().max(WISHLIST_URL_MAX),
+		title: z.string().max(WISHLIST_TITLE_MAX),
+		author: z.string().max(WISHLIST_AUTHOR_MAX).nullable(),
+		coverUrl: z.string().max(WISHLIST_URL_MAX).regex(HTTP_URL).nullable(),
+		deleted: z.boolean(),
+		createdAt: epochMs(),
+		updatedAt: epochMs(),
+	})
+	.refine((d) => (d.kind === "catalog" ? CATALOG_ID.test(d.ref) : HTTP_URL.test(d.ref)), {
+		message: "ref does not match its kind",
+		path: ["ref"],
+	});
+
 export const SyncPayloadSchema = z.object({
 	// Cap is generous because serial chapter rows (seriesId set) carry no body
 	// content/cover/TOC, so a 50k-row payload is still small in bytes. The real
@@ -409,6 +443,8 @@ export const SyncPayloadSchema = z.object({
 	smartShelves: z.array(SyncSmartShelfSchema).max(SMART_SHELVES_PUSH_MAX).optional(),
 	// No default, as with goals: an omitted array never means "no bookmarks".
 	bookmarks: z.array(SyncBookmarkSchema).max(BOOKMARKS_PUSH_MAX).optional(),
+	// No default, as with goals: an omitted array never means "an empty wishlist".
+	wishlist: z.array(SyncWishlistItemSchema).max(WISHLIST_PUSH_MAX).optional(),
 });
 
 /** The server's reading of a push. Clients build pushes against `SyncPayloadSchema`. */
@@ -462,6 +498,7 @@ export type SyncCollection = z.infer<typeof SyncCollectionSchema>;
 export type SyncCollectionBook = z.infer<typeof SyncCollectionBookSchema>;
 export type SyncSmartShelf = z.infer<typeof SyncSmartShelfSchema>;
 export type SyncBookmark = z.infer<typeof SyncBookmarkSchema>;
+export type SyncWishlistItem = z.infer<typeof SyncWishlistItemSchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 export type SyncPush = z.infer<typeof SyncPushSchema>;
 export type SyncPushStamps = z.infer<typeof SyncPushStampsSchema>;
@@ -500,6 +537,8 @@ export type SyncResponse = {
 	smartShelves?: SyncSmartShelf[];
 	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
 	bookmarks?: SyncBookmark[];
+	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
+	wishlist?: SyncWishlistItem[];
 	/**
 	 * Book ids the server currently holds body content for. Lets the client skip
 	 * re-uploading content it has already stored, which it cannot otherwise know:

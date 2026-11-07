@@ -19,6 +19,7 @@ import { shareCatalogBook } from "./share-link";
 import { rememberTagLabels } from "./tag-labels";
 import { useCatalogImport } from "./use-catalog-import";
 import { useReadingSpeed } from "./use-reading-speed";
+import { useWishlistAction } from "./use-wishlist-action";
 
 interface Props {
 	catalogId?: string;
@@ -59,6 +60,18 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 	});
 
 	const externalUrl = externalSourceUrl(catalogId);
+	const wishlistAction = useWishlistAction(
+		book
+			? {
+					kind: "catalog",
+					ref: catalogId,
+					title: book.title,
+					author: book.author,
+					coverUrl: book.coverUrl,
+				}
+			: null,
+		existing === null && !!book?.epubUrl,
+	);
 
 	if (isPending || isError || !book) {
 		return (
@@ -130,6 +143,8 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 			disabled: true,
 		};
 	}
+
+	if (wishlistAction) secondary = [...secondary, wishlistAction];
 
 	// The author shelf spans every language; the results must too.
 	const openAuthor = (author: string) =>

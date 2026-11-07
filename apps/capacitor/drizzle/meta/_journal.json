@@ -400,6 +400,13 @@
       "when": 1783555200000,
       "tag": "0056_show_session_summary",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "6",
+      "when": 1783641600000,
+      "tag": "0057_wishlist",
+      "breakpoints": true
     }
   ]
 }

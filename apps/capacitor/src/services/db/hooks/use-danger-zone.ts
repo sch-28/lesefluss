@@ -86,6 +86,7 @@ async function deleteEverything(): Promise<void> {
 	await wipeAllReadingStats();
 	await queries.deleteAllHighlights();
 	await queries.deleteAllEntries();
+	await queries.deleteAllWishlist();
 	await deleteLibrary();
 }
 

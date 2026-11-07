@@ -7,7 +7,13 @@ import { inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { db } from "~/db";
 import { user } from "~/db/auth-schema";
-import { type NewSyncBookmark, syncBookmarks, syncBooks } from "~/db/schema";
+import {
+	type NewSyncBookmark,
+	type NewSyncWishlistItem,
+	syncBookmarks,
+	syncBooks,
+	syncWishlist,
+} from "~/db/schema";
 import { purgeBookTombstones } from "~/lib/sync-tombstone-purge";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
@@ -20,6 +26,7 @@ describe.skipIf(!hasDb)("purgeBookTombstones (integration)", () => {
 
 	async function clear() {
 		await db.delete(syncBookmarks).where(inArray(syncBookmarks.userId, users));
+		await db.delete(syncWishlist).where(inArray(syncWishlist.userId, users));
 		await db.delete(syncBooks).where(inArray(syncBooks.userId, users));
 	}
 
@@ -86,7 +93,44 @@ describe.skipIf(!hasDb)("purgeBookTombstones (integration)", () => {
 
 		const result = await db.transaction((tx) => purgeBookTombstones(tx, bob));
 
-		expect(result).toEqual({ booksRemoved: 1, highlightsRemoved: 0, bookmarksRemoved: 1 });
+		expect(result).toEqual({
+			booksRemoved: 1,
+			highlightsRemoved: 0,
+			bookmarksRemoved: 1,
+			wishlistRemoved: 0,
+		});
 		expect(await bookmarkIds()).toEqual(["alice:gone", "alice:live"]);
+	});
+
+	function wish(userId: string, itemId: string, deleted: boolean): NewSyncWishlistItem {
+		const at = new Date(1_000);
+		return {
+			userId,
+			itemId,
+			kind: "catalog",
+			ref: "gutenberg:84",
+			title: "Frankenstein",
+			deleted,
+			createdAt: at,
+			updatedAt: at,
+		};
+	}
+
+	test("removes one user's wishlist tombstones and leaves live items and other users alone", async () => {
+		await db
+			.insert(syncWishlist)
+			.values([wish(alice, "live", false), wish(alice, "gone", true), wish(bob, "gone", true)]);
+
+		const result = await db.transaction((tx) => purgeBookTombstones(tx, alice));
+
+		expect(result.wishlistRemoved).toBe(1);
+		const rows = await db
+			.select({ userId: syncWishlist.userId, itemId: syncWishlist.itemId })
+			.from(syncWishlist)
+			.where(inArray(syncWishlist.userId, users));
+		expect(rows.map((r) => `${r.userId === alice ? "alice" : "bob"}:${r.itemId}`).sort()).toEqual([
+			"alice:live",
+			"bob:gone",
+		]);
 	});
 });

@@ -2,7 +2,7 @@ import { and, eq, isNull, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import type { Tx } from "~/db";
-import { syncBookmarks, syncBooks, syncHighlights } from "~/db/schema";
+import { syncBookmarks, syncBooks, syncHighlights, syncWishlist } from "~/db/schema";
 
 // An empty id must not widen a one-user purge to everyone.
 export const TombstoneScopeSchema = z.object({ userId: z.string().min(1).optional() });
@@ -13,9 +13,9 @@ function tombstonesOf(deleted: PgColumn, userIdColumn: PgColumn, userId?: string
 }
 
 /**
- * Hard-deletes tombstoned standalone books, highlights and bookmarks, for one
- * user or everyone. Live rows are never touched. Chapter tombstones belong to
- * their series and are purged with it.
+ * Hard-deletes tombstoned standalone books, highlights, bookmarks and wishlist
+ * items, for one user or everyone. Live rows are never touched. Chapter
+ * tombstones belong to their series and are purged with it.
  */
 export async function purgeBookTombstones(tx: Tx, userId?: string) {
 	const removedBooks = await tx
@@ -32,9 +32,14 @@ export async function purgeBookTombstones(tx: Tx, userId?: string) {
 		.delete(syncBookmarks)
 		.where(tombstonesOf(syncBookmarks.deleted, syncBookmarks.userId, userId))
 		.returning({ bookmarkId: syncBookmarks.bookmarkId });
+	const removedWishlist = await tx
+		.delete(syncWishlist)
+		.where(tombstonesOf(syncWishlist.deleted, syncWishlist.userId, userId))
+		.returning({ itemId: syncWishlist.itemId });
 	return {
 		booksRemoved: removedBooks.length,
 		highlightsRemoved: removedHighlights.length,
 		bookmarksRemoved: removedBookmarks.length,
+		wishlistRemoved: removedWishlist.length,
 	};
 }

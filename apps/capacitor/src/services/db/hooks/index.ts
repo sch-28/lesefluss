@@ -40,6 +40,7 @@ import { seriesHooks } from "./use-series";
 import { settingsHooks } from "./use-settings";
 import { smartShelfHooks } from "./use-smart-shelves";
 import { statsHooks } from "./use-stats";
+import { wishlistHooks } from "./use-wishlist";
 
 export {
 	bookKeys,
@@ -212,6 +213,11 @@ export const queryHooks = {
 	useToggleBookmark: bookmarkHooks.useToggleBookmark,
 	useRenameBookmark: bookmarkHooks.useRenameBookmark,
 	useDeleteBookmark: bookmarkHooks.useDeleteBookmark,
+
+	// ── Wishlist ──────────────────────────────────────────────────────────
+	useWishlist: wishlistHooks.useWishlist,
+	useWishlistEntry: wishlistHooks.useWishlistEntry,
+	useToggleWishlist: wishlistHooks.useToggleWishlist,
 
 	// ── Smart shelves ─────────────────────────────────────────────────────
 	useSmartShelfRows: smartShelfHooks.useSmartShelfRows,
