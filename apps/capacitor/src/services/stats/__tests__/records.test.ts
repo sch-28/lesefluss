@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { RecordBook, RecordSession } from "../records";
-import { summariseRecords } from "../records";
+import { fastestBook, summariseRecords } from "../records";
 
 const ORIGINAL_TZ = process.env.TZ;
 beforeAll(() => {
@@ -228,5 +228,28 @@ describe("summariseRecords", () => {
 		expect(records.fastestBook?.title).toBe("Real");
 		// The time was still spent, so the day total keeps it.
 		expect(records.bestDay?.durationMs).toBe(180 * MINUTE);
+	});
+});
+
+describe("fastestBook", () => {
+	const speed = (wpm: number, minutes: number, mode: "scroll" | "rsvp" = "scroll") => ({
+		wpm,
+		words: wpm * minutes,
+		activeMs: minutes * MINUTE,
+		mode,
+	});
+	const titleOf = (id: string) => (id === "ghost" ? undefined : id);
+
+	it("lets an RSVP book hold the record from 10 minutes on it", () => {
+		expect(fastestBook({ read: speed(250, 60), rsvp: speed(420, 10, "rsvp") }, titleOf)).toEqual({
+			wpm: 420,
+			title: "rsvp",
+		});
+	});
+
+	it("skips a book under 10 minutes and one without a title", () => {
+		expect(
+			fastestBook({ read: speed(250, 60), brief: speed(600, 9), ghost: speed(500, 60) }, titleOf),
+		).toEqual({ wpm: 250, title: "read" });
 	});
 });

@@ -8,7 +8,7 @@
  * speed record at all.
  */
 
-import { bookSpeeds, type ReadingMode } from "@lesefluss/core";
+import { type BookSpeed, bookSpeeds, type ReadingMode } from "@lesefluss/core";
 import { localDateKey, startOfLocalDay } from "../../utils/date-utils";
 import { sumDurationByLocalDay } from "./aggregate";
 
@@ -76,17 +76,7 @@ export function summariseRecords(sessions: RecordSession[], books: RecordBook[])
 		}
 	}
 
-	// The speed model's per-book speed, so the record matches the book's own
-	// page. Only plausible sittings count, or a position jump would crown a book
-	// the reader barely opened.
-	let fastestBook: ReadingRecords["fastestBook"] = null;
-	for (const [bookId, speed] of Object.entries(bookSpeeds(sessions))) {
-		const title = titleByBook.get(bookId);
-		if (title === undefined || speed.activeMs < MIN_TIME_FOR_SPEED_RECORD_MS) continue;
-		if (fastestBook === null || speed.wpm > fastestBook.wpm) {
-			fastestBook = { wpm: speed.wpm, title };
-		}
-	}
+	const fastest = fastestBook(bookSpeeds(sessions), (id) => titleByBook.get(id));
 
 	let longestBookFinished: ReadingRecords["longestBookFinished"] = null;
 	for (const book of books) {
@@ -98,5 +88,24 @@ export function summariseRecords(sessions: RecordSession[], books: RecordBook[])
 		}
 	}
 
-	return { longestSitting, bestDay, fastestBook, longestBookFinished };
+	return { longestSitting, bestDay, fastestBook: fastest, longestBookFinished };
+}
+
+/**
+ * The fastest book, the one rule the Overview and the Speed tab share: the speed
+ * model's per-book speed (plausible sittings only, RSVP included), from
+ * {@link MIN_TIME_FOR_SPEED_RECORD_MS} on the book. A book without a title is
+ * deleted and can't hold the record.
+ */
+export function fastestBook(
+	speeds: Readonly<Record<string, BookSpeed>>,
+	titleOf: (bookId: string) => string | undefined,
+): { wpm: number; title: string } | null {
+	let fastest: { wpm: number; title: string } | null = null;
+	for (const [bookId, speed] of Object.entries(speeds)) {
+		const title = titleOf(bookId);
+		if (title === undefined || speed.activeMs < MIN_TIME_FOR_SPEED_RECORD_MS) continue;
+		if (fastest === null || speed.wpm > fastest.wpm) fastest = { wpm: speed.wpm, title };
+	}
+	return fastest;
 }

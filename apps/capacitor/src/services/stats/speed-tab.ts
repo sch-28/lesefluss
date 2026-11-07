@@ -10,6 +10,7 @@ import {
 	wpmFrom,
 } from "@lesefluss/core";
 import type { WpmTrend } from "./aggregate";
+import { fastestBook } from "./records";
 
 export type SpeedView = "reading" | "rsvp";
 
@@ -156,8 +157,11 @@ export function buildSpeedTabData(
 		}
 	}
 
+	const speeds = bookSpeeds(sessions);
+	records.fastestBook = fastestBook(speeds, (id) => books.get(id)?.title);
+
 	const rows: SpeedBookRow[] = [];
-	for (const [bookId, speed] of Object.entries(bookSpeeds(sessions))) {
+	for (const [bookId, speed] of Object.entries(speeds)) {
 		const book = books.get(bookId);
 		const extra = extras.get(bookId);
 		if (!book || !extra || speed.activeMs < BOOK_SPEED_MIN_ACTIVE_MS) continue;
@@ -171,9 +175,6 @@ export function buildSpeedTabData(
 			dialWpm: extra.dialWords > 0 ? Math.round(extra.dialWeighted / extra.dialWords) : null,
 			lastAt: extra.lastAt,
 		});
-		if (speed.mode !== "rsvp" && (!records.fastestBook || speed.wpm > records.fastestBook.wpm)) {
-			records.fastestBook = { wpm: speed.wpm, title: book.title };
-		}
 	}
 
 	return { books: rows, records };

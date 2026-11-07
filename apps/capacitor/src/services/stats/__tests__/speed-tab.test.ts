@@ -1,5 +1,6 @@
 import { computeSpeedModel, type SpeedRow } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
+import { summariseRecords } from "../records";
 import {
 	buildSpeedTabData,
 	deltaLabel,
@@ -143,7 +144,30 @@ describe("buildSpeedTabData", () => {
 		expect(data.records.fastestSitting).toMatchObject({ wpm: 300, title: "Scrolled" });
 		expect(data.records.bestRsvpSitting).toMatchObject({ wpm: 420, title: "Flashed" });
 		expect(data.records.longestRsvpRun?.durationMs).toBe(2 * HOUR);
-		expect(data.records.fastestBook).toEqual({ wpm: 275, title: "Scrolled" });
+		// 70800 words in 3 h: an RSVP book holds the record too, as on the Overview.
+		expect(data.records.fastestBook).toEqual({ wpm: 393, title: "Flashed" });
+	});
+
+	it("crowns the same fastest book as the Overview", () => {
+		const sessions = [
+			sitting({ bookId: "b1" }),
+			sitting({ bookId: "b2", mode: "rsvp", durationMs: 15 * MIN, wordsRead: 400 * 15 }),
+			sitting({ bookId: "b3", durationMs: 5 * MIN, wordsRead: 600 * 5 }),
+		];
+		const overview = summariseRecords(
+			sessions,
+			[...titles].map(([id, { title }]) => ({
+				id,
+				title,
+				wordCount: 1,
+				finishedAt: null,
+				seriesId: null,
+			})),
+		);
+		const tab = buildSpeedTabData(sessions, titles);
+		// 15 min of RSVP is past the record's 10 min, short of the book list's 30.
+		expect(tab.records.fastestBook).toEqual({ wpm: 400, title: "Flashed" });
+		expect(tab.records.fastestBook).toEqual(overview.fastestBook);
 	});
 });
 
