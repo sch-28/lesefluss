@@ -1,10 +1,10 @@
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
-import { ActionSheet } from "../action-sheet";
+import { ActionSheet, type ActionSheetItem } from "../action-sheet";
 import { ConfirmDialog } from "../confirm-dialog";
 
 type Props = {
@@ -38,11 +38,22 @@ export const CollectionActions: React.FC<Props> = ({
 	const [deleting, setDeleting] = useState<CollectionWithCount | null>(null);
 	const move = queryHooks.useMoveCollection();
 	const remove = queryHooks.useDeleteCollection();
+	const setView = queryHooks.useSetCollectionView();
 	const navigate = useNavigate();
 	const location = useLocation();
 
 	const index = collection ? collections.findIndex((c) => c.id === collection.id) : -1;
 	const noun = (collection ?? deleting)?.seriesKey ? "series" : "collection";
+
+	const resetViewItems: ActionSheetItem[] = collection?.view
+		? [
+				{
+					label: "Reset view",
+					icon: RotateCcw,
+					onSelect: () => setView.mutate({ id: collection.id, view: null }),
+				},
+			]
+		: [];
 
 	const confirmDelete = () => {
 		if (!deleting) return;
@@ -76,6 +87,7 @@ export const CollectionActions: React.FC<Props> = ({
 							}
 						},
 					},
+					...resetViewItems,
 					{
 						label: "Move up",
 						icon: ArrowUp,

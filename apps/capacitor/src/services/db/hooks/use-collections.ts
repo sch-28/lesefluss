@@ -135,6 +135,12 @@ function useRenameCollection() {
 	);
 }
 
+function useSetCollectionView() {
+	return useCollectionMutation((vars: { id: string; view: string | null }) =>
+		queries.setCollectionView(vars.id, vars.view),
+	);
+}
+
 function useMoveCollection() {
 	return useCollectionMutation((vars: { id: string; toIndex: number }) =>
 		queries.moveCollection(vars.id, vars.toIndex),
@@ -197,6 +203,7 @@ export const collectionHooks = {
 	useCreateCollectionWithBooks,
 	useEditCollection,
 	useRenameCollection,
+	useSetCollectionView,
 	useMoveCollection,
 	useDeleteCollection,
 	useAddBooksToCollection,

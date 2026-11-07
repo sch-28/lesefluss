@@ -339,6 +339,11 @@ export const COLLECTION_NAME_MAX = 100;
 export const COLLECTIONS_PUSH_MAX = 1000;
 export const COLLECTION_BOOKS_PUSH_MAX = 50_000;
 
+/** A collection's or smart shelf's own view (group-by and columns) as JSON. */
+export const SHELF_VIEW_MAX = 2048;
+/** Optional on the wire like `ordered`: a push without it leaves the stored view alone. */
+const shelfView = () => z.string().min(2).max(SHELF_VIEW_MAX).nullable().optional();
+
 export const SyncCollectionSchema = z.object({
 	collectionId: z.string().min(1).max(64),
 	name: z.string().trim().min(1).max(COLLECTION_NAME_MAX),
@@ -346,6 +351,7 @@ export const SyncCollectionSchema = z.object({
 	/** Optional on the wire: a client from before series collections omits them, and the server keeps what it stores. */
 	ordered: z.boolean().optional(),
 	seriesKey: z.string().min(1).max(BOOK_SERIES_NAME_MAX).nullable().optional(),
+	view: shelfView(),
 	deleted: z.boolean(),
 	createdAt: epochMs(),
 	updatedAt: epochMs(),
@@ -373,6 +379,7 @@ export const SyncSmartShelfSchema = z.object({
 	conditions: z.string().min(2).max(SMART_SHELF_CONDITIONS_MAX),
 	pinned: z.boolean(),
 	sortOrder: z.number(),
+	view: shelfView(),
 	deleted: z.boolean(),
 	createdAt: epochMs(),
 	updatedAt: epochMs(),

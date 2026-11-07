@@ -5,8 +5,6 @@
  * press select, right-click and the … button open the per-book menu.
  */
 
-import { Progress } from "@lesefluss/ui/progress";
-import { RatingStars } from "@lesefluss/ui/rating-stars";
 import { Check } from "lucide-react";
 import type React from "react";
 import { useId } from "react";
@@ -14,6 +12,15 @@ import BookCover from "../../components/book-cover";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { DeviceBadge } from "../../components/device-sync";
 import type { Book } from "../../services/db/schema";
+import {
+	type CardFieldId,
+	CardFieldSlot,
+	type CardFieldValues,
+	DEFAULT_CARD_FIELDS,
+	ProgressField,
+	RatingField,
+	TextField,
+} from "./card-fields";
 import CardMoreButton from "./card-more-button";
 import { SyncExcludedBadge } from "./sync-excluded-badge";
 import { useLongPress } from "./use-long-press";
@@ -37,6 +44,9 @@ type BookCardProps = {
 	draggable?: boolean;
 	/** The book's #N in its series, from the series collection. */
 	seriesNumber?: number | null;
+	/** The card fields picked for the grid, and their text values. */
+	fields?: readonly CardFieldId[];
+	values?: CardFieldValues;
 };
 
 const BookCard: React.FC<BookCardProps> = ({
@@ -53,6 +63,8 @@ const BookCard: React.FC<BookCardProps> = ({
 	onLongPress,
 	draggable = false,
 	seriesNumber = null,
+	fields = DEFAULT_CARD_FIELDS.grid,
+	values,
 }) => {
 	const handlers = useLongPress({
 		onTap: (e) => {
@@ -84,7 +96,7 @@ const BookCard: React.FC<BookCardProps> = ({
 				aria-describedby={[
 					seriesNumber !== null && seriesId,
 					deviceId,
-					started && progressId,
+					started && fields.includes("progress") && progressId,
 					detailsId,
 				]
 					.filter(Boolean)
@@ -123,29 +135,31 @@ const BookCard: React.FC<BookCardProps> = ({
 					)}
 				</div>
 
-				{started && (
-					<div id={progressId} className="mt-1 flex items-center gap-1.5">
-						<Progress value={progress} className="h-1 flex-1" aria-label="Reading progress" />
-						<span className="font-medium text-[0.7rem] text-muted-foreground tabular-nums">
-							{progress}%
-						</span>
-					</div>
+				{fields.includes("progress") && (
+					<CardFieldSlot surface="grid" field="progress" className="mt-1">
+						{started && <ProgressField id={progressId} progress={progress} />}
+					</CardFieldSlot>
 				)}
 
 				<div className="px-0.5 pt-1">
-					<div className="line-clamp-2 overflow-hidden font-semibold text-[0.85rem] leading-[1.2]">
+					<div className="line-clamp-2 min-h-[2.4em] overflow-hidden font-semibold text-[0.85rem] leading-[1.2]">
 						{book.title}
 					</div>
 					<div id={detailsId}>
-						{book.author && (
-							<div className="mt-0.5 truncate text-[0.75rem] text-muted-foreground">
-								{book.author}
-							</div>
-						)}
-						{/* Sorting by rating is offered from the same screen, so the value has to
-					    be visible here or the reorder looks like nothing happened. */}
-						{book.rating !== null && (
-							<RatingStars rating={book.rating} className="mt-0.5" starClassName="size-3" />
+						{fields.map((field) =>
+							field === "progress" ? null : (
+								<CardFieldSlot key={field} surface="grid" field={field}>
+									{field === "rating" ? (
+										// Sorting by rating is offered from the same screen, so the value has
+										// to be visible here or the reorder looks like nothing happened.
+										<RatingField rating={book.rating} />
+									) : (
+										<TextField
+											text={values?.[field] ?? (field === "author" ? (book.author ?? "") : "")}
+										/>
+									)}
+								</CardFieldSlot>
+							),
 						)}
 						<SyncExcludedBadge book={book} className="mt-1" />
 					</div>

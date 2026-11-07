@@ -81,6 +81,7 @@ export function planSeriesReconcile(input: {
 				sortOrder: created,
 				ordered: true,
 				seriesKey: key,
+				view: null,
 				deleted: false,
 				createdAt: created,
 				updatedAt: tombstone ? tombstone.updatedAt + 1 : AUTO_STAMP,

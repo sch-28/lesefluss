@@ -1,5 +1,3 @@
-import { Progress } from "@lesefluss/ui/progress";
-import { RatingStars } from "@lesefluss/ui/rating-stars";
 import { Check } from "lucide-react";
 import type React from "react";
 import { useId } from "react";
@@ -7,6 +5,15 @@ import BookCover from "../../components/book-cover";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { DeviceBadge } from "../../components/device-sync";
 import type { Book } from "../../services/db/schema";
+import {
+	type CardFieldId,
+	CardFieldSlot,
+	type CardFieldValues,
+	DEFAULT_CARD_FIELDS,
+	ProgressField,
+	RatingField,
+	TextField,
+} from "./card-fields";
 import CardMoreButton from "./card-more-button";
 import { SyncExcludedBadge } from "./sync-excluded-badge";
 import { useLongPress } from "./use-long-press";
@@ -30,6 +37,9 @@ type BookListItemProps = {
 	draggable?: boolean;
 	/** The book's #N in its series, from the series collection. */
 	seriesNumber?: number | null;
+	/** The card fields picked for the list, and their text values. */
+	fields?: readonly CardFieldId[];
+	values?: CardFieldValues;
 };
 
 const BookListItem: React.FC<BookListItemProps> = ({
@@ -46,6 +56,8 @@ const BookListItem: React.FC<BookListItemProps> = ({
 	onLongPress,
 	draggable = false,
 	seriesNumber = null,
+	fields = DEFAULT_CARD_FIELDS.list,
+	values,
 }) => {
 	const handlers = useLongPress({
 		onTap: (e) => {
@@ -59,6 +71,13 @@ const BookListItem: React.FC<BookListItemProps> = ({
 		enabled: !!onLongPress || !selectable,
 	});
 	const detailsId = useId();
+	const showsAuthor = fields.includes("author");
+	const badge =
+		seriesNumber === null ? null : (
+			<span data-testid="series-number-badge" className="font-semibold tabular-nums">
+				{formatSeriesNumber(seriesNumber)}
+			</span>
+		);
 
 	return (
 		<div className="group relative flex items-center gap-2">
@@ -92,31 +111,38 @@ const BookListItem: React.FC<BookListItemProps> = ({
 				</div>
 
 				<div className="min-w-0 flex-1">
-					<div className="line-clamp-2 overflow-hidden font-semibold text-[0.9rem] leading-[1.2]">
+					<div className="line-clamp-2 min-h-[2.4em] overflow-hidden font-semibold text-[0.9rem] leading-[1.2]">
+						{badge && !showsAuthor && <>{badge} </>}
 						{book.title}
 					</div>
 					<div id={detailsId}>
-						{(book.author || seriesNumber !== null) && (
-							<div className="mt-0.5 truncate text-[0.8rem] text-muted-foreground">
-								{seriesNumber !== null && (
-									<span data-testid="series-number-badge" className="font-semibold tabular-nums">
-										{formatSeriesNumber(seriesNumber)}
-										{book.author && " · "}
-									</span>
-								)}
-								{book.author}
-							</div>
-						)}
-						{book.rating !== null && (
-							<RatingStars rating={book.rating} className="mt-0.5" starClassName="size-3" />
-						)}
-						{started && (
-							<div className="mt-1 flex items-center gap-1.5">
-								<Progress value={progress} className="h-1 flex-1" aria-label="Reading progress" />
-								<span className="font-medium text-[0.7rem] text-muted-foreground tabular-nums">
-									{progress}%
-								</span>
-							</div>
+						{fields.map((field) => {
+							if (field === "progress") return null;
+							if (field === "rating") {
+								return (
+									<CardFieldSlot key={field} surface="list" field={field}>
+										<RatingField rating={book.rating} />
+									</CardFieldSlot>
+								);
+							}
+							const text = values?.[field] ?? (field === "author" ? (book.author ?? "") : "");
+							return (
+								<CardFieldSlot key={field} surface="list" field={field}>
+									{field === "author" && badge ? (
+										<span className="truncate text-muted-foreground">
+											{badge}
+											{text && ` · ${text}`}
+										</span>
+									) : (
+										<TextField text={text} />
+									)}
+								</CardFieldSlot>
+							);
+						})}
+						{fields.includes("progress") && (
+							<CardFieldSlot surface="list" field="progress" className="mt-1">
+								{started && <ProgressField progress={progress} />}
+							</CardFieldSlot>
 						)}
 						<div className="mt-1 flex flex-wrap items-center gap-1.5">
 							<DeviceBadge bookId={book.id} style="block" />

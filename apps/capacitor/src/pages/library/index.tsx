@@ -32,6 +32,7 @@ import { setBooksDragData } from "../../components/collections/drag-data";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { canSaveAsShelf, SaveShelfDialog } from "../../components/smart-shelves/save-shelf-dialog";
 import { ShelfActions } from "../../components/smart-shelves/shelf-actions";
+import { toast } from "../../components/toast";
 import { ViewModeToggle } from "../../components/view-mode-toggle";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
@@ -42,6 +43,7 @@ import { useMediaQuery } from "../../hooks/use-media-query";
 import { usePersistentString } from "../../hooks/use-persistent-string";
 import { queryHooks } from "../../services/db/hooks";
 import { bookImportMutationKey, bookKeys, serialKeys } from "../../services/db/hooks/query-keys";
+import type { BulkAction } from "../../services/db/hooks/use-bulk-books";
 import type { Book, Series } from "../../services/db/schema";
 import { isFirstLoad } from "../../services/query-client";
 import { IS_WEB_BUILD } from "../../services/sync";
@@ -52,6 +54,8 @@ import BookCard from "./book-card";
 import BookListItem from "./book-list-item";
 import BulkActionBar from "./bulk-action-bar";
 import BulkSheets from "./bulk-sheets";
+import { type CardFieldId, type CardSurface, cardFieldValues, useCardFields } from "./card-fields";
+import CardFieldsPicker from "./card-fields-picker";
 import CollectionShelfRow from "./collection-shelf-row";
 import ColumnPicker from "./column-picker";
 import { libraryCommands } from "./commands";
@@ -59,13 +63,7 @@ import { filterToTree, matchesTree, serializeTree } from "./condition-tree";
 import FilterBar, { AddFilterButton } from "./filter-bar";
 import { activeFilterCount, type Facet, type LibraryFilter, pruneFilter } from "./filter-model";
 import { FilterPopover, FilterSheet, facetOptions } from "./filter-picker";
-import {
-	displayOrder,
-	groupLibrary,
-	isGroupBy,
-	type SeriesMemberships,
-	seriesBadge,
-} from "./group-by";
+import { displayOrder, groupLibrary, type SeriesMemberships, seriesBadge } from "./group-by";
 import { headerControls, type LibraryViewMode } from "./header-controls";
 import ImportSheet from "./import-sheet";
 import LibraryTable from "./library-table";
@@ -77,25 +75,9 @@ import SeriesCard from "./series-card";
 import SeriesChipRow from "./series-chip-row";
 import SeriesListItem from "./series-list-item";
 import { ShelfConditionEditor } from "./shelf-condition-editor";
-import {
-	applyLibraryView,
-	buildLibraryItems,
-	isSortBy,
-	type LibraryItem,
-	type SortBy,
-	tagsInUse,
-} from "./sort-filter";
-import SortPopover, { type ThenBy } from "./sort-popover";
-import {
-	type CellContext,
-	type ColumnId,
-	columnsOf,
-	DEFAULT_COLUMNS,
-	headerSort,
-	parseColumns,
-	serializeColumns,
-	toggleColumn,
-} from "./table-columns";
+import { applyLibraryView, buildLibraryItems, type LibraryItem, tagsInUse } from "./sort-filter";
+import SortPopover from "./sort-popover";
+import { type CellContext, headerSort } from "./table-columns";
 import TransferModal from "./transfer-modal";
 import { useCollapsedGroups } from "./use-collapsed-groups";
 import { useDragSelect } from "./use-drag-select";
@@ -103,25 +85,18 @@ import { useLeaveMissingShelf, useLibraryFilter } from "./use-library-filter";
 import { useLibraryImports } from "./use-library-imports";
 import { useLibraryItems } from "./use-library-items";
 import { useLibrarySelection } from "./use-library-selection";
+import { type ShelfViewTarget, useLibraryView } from "./use-library-view";
 import { type ShelfEntry, useSmartShelves } from "./use-smart-shelves";
 import VirtualBookGrid from "./virtual-book-grid";
 
 const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
-const SORT_BY_KEY = "lesefluss:library-sort";
-const THEN_BY_KEY = "lesefluss:library-sort-then";
-const GROUP_BY_KEY = "lesefluss:library-group";
 const VIEW_MODE_KEY = "lesefluss:library-view-mode";
-const SORT_REVERSED_KEY = "lesefluss:library-sort-reversed";
-const COLUMNS_KEY = "lesefluss:library-columns";
 /** Facets whose values come from the books; a value can vanish with its last book. */
 const LIBRARY_VALUE_FACETS: readonly Facet[] = ["tags", "author", "series", "collection"];
 
-const isThenBy = (value: string): value is ThenBy => value === "none" || isSortBy(value);
 const NO_SERIES_MEMBERSHIPS: SeriesMemberships = new Map();
 const isViewMode = (value: string): value is LibraryViewMode =>
 	value === "grid" || value === "list" || value === "table";
-const isFlag = (value: string): value is "0" | "1" => value === "0" || value === "1";
-const isAnyString = (value: string): value is string => typeof value === "string";
 const NEXT_VIEW: Record<LibraryViewMode, LibraryViewMode> = {
 	grid: "list",
 	list: "table",
@@ -186,9 +161,24 @@ const Library: React.FC = () => {
 	const [noticeDismissed, setNoticeDismissed] = useState(
 		() => localStorage.getItem(LOCAL_NOTICE_KEY) === "1",
 	);
-	const [sortBy, setSortBy] = usePersistentString(SORT_BY_KEY, isSortBy, "recent");
-	const [thenBy, setThenBy] = usePersistentString(THEN_BY_KEY, isThenBy, "none");
-	const [groupBy, setGroupBy] = usePersistentString(GROUP_BY_KEY, isGroupBy, "none");
+	const setCollectionView = queryHooks.useSetCollectionView();
+	const shelfViewTarget: ShelfViewTarget | null =
+		activeCollection && !isOrderedView
+			? {
+					id: activeCollection.id,
+					view: activeCollection.view,
+					save: (view) => setCollectionView.mutate({ id: activeCollection.id, view }),
+				}
+			: activeShelf && !activeShelf.isBuiltIn
+				? {
+						id: activeShelf.id,
+						view: activeShelf.view,
+						save: (view) => updateShelf.mutate({ id: activeShelf.id, view }),
+					}
+				: null;
+	const libraryView = useLibraryView(shelfViewTarget);
+	const { sort, setSort, groupBy, setGroupBy, columnIds, tableColumns } = libraryView;
+	const { sortBy } = sort;
 	const [collapsedGroups, toggleGroup] = useCollapsedGroups(groupBy);
 	const [filter, setFilter] = useLibraryFilter();
 	const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -208,25 +198,11 @@ const Library: React.FC = () => {
 			? "list"
 			: "grid";
 	const controls = headerControls({ isOrderedView, isDesktop, shownView });
-	const [reversedFlag, setReversedFlag] = usePersistentString(SORT_REVERSED_KEY, isFlag, "0");
-	const sortReversed = reversedFlag === "1";
-	const setSort = (next: { sortBy: SortBy; reversed: boolean }) => {
-		setSortBy(next.sortBy);
-		setReversedFlag(next.reversed ? "1" : "0");
-	};
-	const [columnsRaw, setColumnsRaw] = usePersistentString(
-		COLUMNS_KEY,
-		isAnyString,
-		serializeColumns(DEFAULT_COLUMNS),
-	);
-	const columnIds = useMemo(() => parseColumns(columnsRaw), [columnsRaw]);
-	const tableColumns = useMemo(() => columnsOf(columnIds), [columnIds]);
-	const onToggleColumn = (id: ColumnId) =>
-		setColumnsRaw((raw) => serializeColumns(toggleColumn(parseColumns(raw), id)));
+	const cardFields = useCardFields();
 	const highlightCountsQuery = queryHooks.useHighlightCounts(
 		(shownView === "table" && columnIds.includes("highlights")) ||
 			sortBy === "highlights" ||
-			thenBy === "highlights",
+			sort.thenBy === "highlights",
 	);
 
 	const [selectedBook, setSelectedBook] = useState<Book | null>(null);
@@ -365,6 +341,17 @@ const Library: React.FC = () => {
 	};
 
 	const availableTags = useMemo(() => tagsInUse(books), [books]);
+	const bulkActions = queryHooks.useBulkBookActions();
+	// One after another: each edit re-reads the book, so a quick second tag toggle
+	// must not read it before the first one is written.
+	const editQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+	const editBook = (book: Book, action: BulkAction) => {
+		editQueueRef.current = editQueueRef.current.then(async () => {
+			const outcome = await bulkActions.run(action, [book]);
+			const failure = outcome.failures[0];
+			if (failure) toast.error(failure.reason);
+		});
+	};
 	// Duplicate detection for a folder scan reads the library that is already
 	// loaded here rather than issuing its own query.
 	const existingTitles = useMemo(() => toExistingTitles(books), [books]);
@@ -437,11 +424,12 @@ const Library: React.FC = () => {
 			applyLibraryView(scopedItems, {
 				filter: activeFilter,
 				sortBy,
-				thenBy: thenBy === "none" ? null : thenBy,
-				reversed: sortReversed,
+				thenBy: sort.thenBy,
+				reversed: sort.reversed,
+				thenReversed: sort.thenReversed,
 				search: searchTextOf(search),
 			}),
-		[scopedItems, activeFilter, sortBy, thenBy, sortReversed, search],
+		[scopedItems, activeFilter, sortBy, sort.thenBy, sort.reversed, sort.thenReversed, search],
 	);
 	const seriesMemberships = seriesMembershipsQuery.data ?? NO_SERIES_MEMBERSHIPS;
 	const groups = useMemo(
@@ -493,10 +481,10 @@ const Library: React.FC = () => {
 		navigate({ to: "/tabs/reader/$id", params: { id: book.id } });
 	};
 
-	const renderItem = (item: LibraryItem) => {
+	const renderCard = (item: LibraryItem, surface: CardSurface, fields: readonly CardFieldId[]) => {
 		if (item.kind === "series") {
 			const s = item.series;
-			const Item = shownView === "grid" ? SeriesCard : SeriesListItem;
+			const Item = surface === "grid" ? SeriesCard : SeriesListItem;
 			return (
 				// Not selectable in v1, and a stray tap that navigated away
 				// would throw away a half-built selection.
@@ -510,13 +498,14 @@ const Library: React.FC = () => {
 						chapterLengths={seriesLengths.get(s.id)}
 						onOpen={() => handleOpenSeries(s)}
 						onMenu={() => setSelectedSeries(s)}
+						fields={fields}
 					/>
 				</div>
 			);
 		}
 		const { book } = item;
 		const progress = readingProgress(book);
-		const Item = shownView === "grid" ? BookCard : BookListItem;
+		const Item = surface === "grid" ? BookCard : BookListItem;
 		return (
 			<Item
 				book={book}
@@ -534,9 +523,21 @@ const Library: React.FC = () => {
 				onMenu={() => setSelectedBook(book)}
 				draggable={canDragBooks}
 				seriesNumber={seriesBadge(book.id, seriesMemberships)}
+				fields={fields}
+				values={cardFieldValues(item, cellContext, fields)}
 			/>
 		);
 	};
+
+	const cardSurface: CardSurface = shownView === "list" ? "list" : "grid";
+	const renderItem = (item: LibraryItem) =>
+		renderCard(item, cardSurface, cardFields.settings[cardSurface]);
+	const previewItem =
+		shownItems.find((i) => i.kind === "book" && i.sortKey.progress > 0) ??
+		shownItems.find((i) => i.kind === "book") ??
+		null;
+	const renderCardPreview = (surface: CardSurface, fields: readonly CardFieldId[]) =>
+		previewItem && renderCard(previewItem, surface, fields);
 
 	const handleBookDragStart = (e: React.DragEvent) => {
 		const bookId = (e.target as Element).closest<HTMLElement>("[data-book-id]")?.dataset.bookId;
@@ -595,10 +596,10 @@ const Library: React.FC = () => {
 								}
 								sortBy={sortBy}
 								onSort={(s) => setSort({ sortBy: s, reversed: false })}
-								reversed={sortReversed}
-								onReversed={(r) => setSort({ sortBy, reversed: r })}
-								thenBy={thenBy}
-								onThenBy={setThenBy}
+								reversed={sort.reversed}
+								onReversed={(r) => setSort({ reversed: r })}
+								thenBy={sort.thenBy ?? "none"}
+								onThenBy={(t) => setSort({ thenBy: t === "none" ? null : t, thenReversed: false })}
 								groupBy={groupBy}
 								onGroupBy={setGroupBy}
 							/>
@@ -623,7 +624,22 @@ const Library: React.FC = () => {
 								{isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
 							</Button>
 						)}
-						{controls.columns && <ColumnPicker columns={columnIds} onToggle={onToggleColumn} />}
+						{controls.columns && (
+							<ColumnPicker
+								columns={columnIds}
+								onToggle={libraryView.toggleColumn}
+								onMove={libraryView.moveColumn}
+							/>
+						)}
+						{controls.cardFields && (
+							<CardFieldsPicker
+								surface={cardSurface}
+								settings={cardFields.settings}
+								onToggle={cardFields.toggle}
+								isDesktop={isDesktop}
+								renderPreview={renderCardPreview}
+							/>
+						)}
 						{controls.viewToggle && (
 							<ViewModeToggle
 								viewMode={shownView}
@@ -885,9 +901,11 @@ const Library: React.FC = () => {
 					onToggleGroup={toggleGroup}
 					columns={tableColumns}
 					ctx={cellContext}
-					sortBy={sortBy}
-					reversed={sortReversed}
-					onHeaderSort={(key) => setSort(headerSort({ sortBy, reversed: sortReversed }, key))}
+					sort={sort}
+					onHeaderSort={(key, shift) => setSort(headerSort(sort, key, shift))}
+					onMoveColumn={libraryView.moveColumn}
+					onEditBook={editBook}
+					libraryTags={availableTags}
 					selection={selection}
 					onOpenBook={openBook}
 					onOpenSeries={handleOpenSeries}

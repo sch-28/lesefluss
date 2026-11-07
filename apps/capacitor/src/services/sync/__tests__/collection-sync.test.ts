@@ -10,6 +10,7 @@ function collection(overrides: Partial<Collection> = {}): Collection {
 		sortOrder: 1,
 		ordered: false,
 		seriesKey: null,
+		view: null,
 		deleted: false,
 		createdAt: 1_000,
 		updatedAt: 1_000,
@@ -148,6 +149,28 @@ describe("collection pull merge", () => {
 			member("aaaaaaaa", { seriesIndex: 2, position: 4, updatedAt: 2_000 }),
 			member("bbbbbbbb", { updatedAt: 2_000 }),
 		]);
+	});
+
+	it("a shelf view round-trips, and a server without views keeps the local one", () => {
+		const view = '{"v":1,"groupBy":"author","columns":["title","rating"]}';
+		const payload = SyncPayloadSchema.parse({
+			books: [],
+			settings: null,
+			highlights: [],
+			...pushableCollections({ collections: [collection({ view })], collectionBooks: [] }),
+		});
+		const pulled = buildCollectionMerge(
+			{ collections: [collection({ updatedAt: 1 })], collectionBooks: [] },
+			{ collections: payload.collections ?? [], collectionBooks: [] },
+		);
+		expect(pulled.collections).toEqual([collection({ view })]);
+
+		const withoutView = syncCollection(collection({ name: "Renamed", updatedAt: 2_000 }));
+		const merge = buildCollectionMerge(
+			{ collections: [collection({ view })], collectionBooks: [] },
+			{ collections: [withoutView], collectionBooks: [] },
+		);
+		expect(merge.collections).toEqual([collection({ name: "Renamed", view, updatedAt: 2_000 })]);
 	});
 
 	it("series fields round-trip through push and pull, nulls included", () => {

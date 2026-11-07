@@ -281,19 +281,27 @@ function compareItems(a: LibraryItem, b: LibraryItem, sortBy: SortBy, dir: SortD
 	}
 }
 
-/** The user's sort: `thenBy` orders what ties on `sortBy`; `reversed` flips the
- *  first key only. */
+/** The user's sort: `thenBy` orders what ties on `sortBy`; each key runs its natural
+ *  direction unless its own reversed flag is set. */
 export function compareByView(
 	a: LibraryItem,
 	b: LibraryItem,
 	sortBy: SortBy,
 	thenBy: SortBy | null = null,
 	reversed = false,
+	thenReversed = false,
 ): number {
 	const first = compareItems(a, b, sortBy, sortDirection(sortBy, reversed));
 	if (first !== 0 || !thenBy || thenBy === sortBy) return first;
-	return compareItems(a, b, thenBy, NATURAL_DIR[thenBy]);
+	return compareItems(a, b, thenBy, sortDirection(thenBy, thenReversed));
 }
+
+export type SortState = {
+	sortBy: SortBy;
+	reversed: boolean;
+	thenBy: SortBy | null;
+	thenReversed: boolean;
+};
 
 export type LibraryView = {
 	filter: LibraryFilter;
@@ -301,6 +309,7 @@ export type LibraryView = {
 	thenBy?: SortBy | null;
 	/** Runs `sortBy` against its natural direction. */
 	reversed?: boolean;
+	thenReversed?: boolean;
 	/** Free text over title and author. Empty matches everything. */
 	search?: string;
 };
@@ -389,11 +398,18 @@ export function buildLibraryItems(
 }
 
 export function applyLibraryView(items: readonly LibraryItem[], view: LibraryView): LibraryItem[] {
-	const { filter, sortBy, thenBy = null, reversed = false, search = "" } = view;
+	const {
+		filter,
+		sortBy,
+		thenBy = null,
+		reversed = false,
+		thenReversed = false,
+		search = "",
+	} = view;
 	const needle = search.trim().toLowerCase();
 	return items
 		.filter((it) => matchesFilter(it.facets, filter) && matchesSearch(it, needle))
-		.sort((a, b) => compareByView(a, b, sortBy, thenBy, reversed));
+		.sort((a, b) => compareByView(a, b, sortBy, thenBy, reversed, thenReversed));
 }
 
 export function filterAndSortLibrary(

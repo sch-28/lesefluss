@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { Pencil, Pin, PinOff, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Pencil, Pin, PinOff, RotateCcw, SlidersHorizontal, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { encodeFilterParam } from "../../pages/library/filter-model";
@@ -25,7 +25,7 @@ export function openShelf(navigate: ReturnType<typeof useNavigate>, shelf: Shelf
 	});
 }
 
-/** Built-ins only pin; a user shelf also renames, edits and deletes, and those changes sync. */
+/** Built-ins only pin; a user shelf also renames, edits, resets its view and deletes, and those changes sync. */
 export const ShelfActions: React.FC<Props> = ({ shelf, onClose, setBuiltInPinned }) => {
 	const [renaming, setRenaming] = useState<ShelfEntry | null>(null);
 	const [deleting, setDeleting] = useState<ShelfEntry | null>(null);
@@ -62,6 +62,15 @@ export const ShelfActions: React.FC<Props> = ({ shelf, onClose, setBuiltInPinned
 						setIsEditing(true);
 					},
 				},
+				...(shelf?.view
+					? [
+							{
+								label: "Reset view",
+								icon: RotateCcw,
+								onSelect: () => update.mutate({ id: shelf.id, view: null }),
+							},
+						]
+					: []),
 				pinItem,
 				{
 					label: "Delete shelf…",

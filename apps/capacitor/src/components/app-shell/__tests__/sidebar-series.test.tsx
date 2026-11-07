@@ -55,6 +55,7 @@ function series(id: string, bookCount = 2): CollectionWithCount {
 		sortOrder: 1,
 		ordered: true,
 		seriesKey: id,
+		view: null,
 		deleted: false,
 		createdAt: 1,
 		updatedAt: 1,

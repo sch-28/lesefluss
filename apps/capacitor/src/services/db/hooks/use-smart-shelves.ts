@@ -26,7 +26,13 @@ function useCreateSmartShelf() {
 
 function useUpdateSmartShelf() {
 	return useShelfMutation(
-		(vars: { id: string; name?: string; conditions?: string; pinned?: boolean }) => {
+		(vars: {
+			id: string;
+			name?: string;
+			conditions?: string;
+			pinned?: boolean;
+			view?: string | null;
+		}) => {
 			const { id, ...patch } = vars;
 			return queries.updateSmartShelf(id, patch);
 		},

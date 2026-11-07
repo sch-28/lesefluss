@@ -2,7 +2,7 @@ import { BOOK_STATUS_LABELS, ratingStars } from "@lesefluss/core";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { formatReadingTime } from "../../utils/reading-time";
 import type { SeriesMemberships } from "./group-by";
-import type { LibraryItem, SortBy } from "./sort-filter";
+import type { LibraryItem, SortBy, SortState } from "./sort-filter";
 
 export type ColumnId =
 	| "title"
@@ -195,11 +195,26 @@ export function columnsOf(ids: readonly ColumnId[]): TableColumn[] {
 	return ids.map((id) => BY_ID.get(id)).filter((c) => c !== undefined);
 }
 
-/** What a header click does: a new column sorts its natural way, the sorted one flips. */
-export function headerSort(
-	current: { sortBy: SortBy; reversed: boolean },
-	sortBy: SortBy,
-): { sortBy: SortBy; reversed: boolean } {
-	if (current.sortBy === sortBy) return { sortBy, reversed: !current.reversed };
-	return { sortBy, reversed: false };
+/** Moves a column to sit before index `before` of the current list; title stays first. */
+export function moveColumn(ids: readonly ColumnId[], id: ColumnId, before: number): ColumnId[] {
+	const from = ids.indexOf(id);
+	if (id === "title" || from < 0) return [...ids];
+	const rest = ids.filter((c) => c !== id);
+	const at = Math.max(1, Math.min(rest.length, from < before ? before - 1 : before));
+	return [...rest.slice(0, at), id, ...rest.slice(at)];
+}
+
+/**
+ * What a header click does. A plain click sorts by that one column, flipping it
+ * when it is already the first sort. Shift adds it as the second sort, flips the
+ * second when it already is one, and flips the first when Shift-clicked.
+ */
+export function headerSort(current: SortState, sortBy: SortBy, shift = false): SortState {
+	if (!shift) {
+		const reversed = current.sortBy === sortBy ? !current.reversed : false;
+		return { sortBy, reversed, thenBy: null, thenReversed: false };
+	}
+	if (current.sortBy === sortBy) return { ...current, reversed: !current.reversed };
+	if (current.thenBy === sortBy) return { ...current, thenReversed: !current.thenReversed };
+	return { ...current, thenBy: sortBy, thenReversed: false };
 }

@@ -540,6 +540,7 @@ describe("series emptied by their last book leaving", () => {
 			sortOrder: 9,
 			ordered: true,
 			seriesKey,
+			view: null,
 			deleted: false,
 			createdAt: 9,
 			updatedAt: 9,

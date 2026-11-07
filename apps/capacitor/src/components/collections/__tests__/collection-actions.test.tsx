@@ -6,6 +6,7 @@ import { click, type Rendered, render } from "../../../test/render";
 
 const removeCollection = vi.fn();
 const moveCollection = vi.fn();
+const setCollectionView = vi.fn();
 const navigate = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({
@@ -16,6 +17,7 @@ vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
 		useMoveCollection: () => ({ mutate: moveCollection }),
 		useDeleteCollection: () => ({ mutate: removeCollection }),
+		useSetCollectionView: () => ({ mutate: setCollectionView }),
 	},
 }));
 vi.mock(
@@ -45,6 +47,7 @@ const fantasy: CollectionWithCount = {
 	sortOrder: 1,
 	ordered: false,
 	seriesKey: null,
+	view: null,
 	deleted: false,
 	createdAt: 1,
 	updatedAt: 1,
@@ -101,6 +104,20 @@ describe("CollectionActions", () => {
 		);
 		await click(view.getButton("Move down"));
 		expect(moveCollection).toHaveBeenCalledWith({ id: "c1", toIndex: 2 });
+	});
+
+	it("offers Reset view only once the collection has its own view", async () => {
+		view = await render(
+			<CollectionActions collection={fantasy} collections={[fantasy]} onClose={vi.fn()} />,
+		);
+		expect(view.queryButton("Reset view")).toBeNull();
+		view.unmount();
+		const shaped = { ...fantasy, view: '{"v":1,"groupBy":"author"}' };
+		view = await render(
+			<CollectionActions collection={shaped} collections={[shaped]} onClose={vi.fn()} />,
+		);
+		await click(view.getButton("Reset view"));
+		expect(setCollectionView).toHaveBeenCalledWith({ id: "c1", view: null });
 	});
 
 	it("leaves the back press to the router while nothing is open", async () => {

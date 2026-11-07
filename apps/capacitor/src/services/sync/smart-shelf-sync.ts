@@ -8,19 +8,23 @@ export function smartShelfToSync(s: SmartShelf): SyncSmartShelf {
 		conditions: s.conditions,
 		pinned: s.pinned,
 		sortOrder: s.sortOrder,
+		view: s.view,
 		deleted: s.deleted,
 		createdAt: s.createdAt,
 		updatedAt: s.updatedAt,
 	};
 }
 
-/** Newest-wins per shelf, tombstones kept: the server rows that beat the local copy. */
+/**
+ * Newest-wins per shelf, tombstones kept: the server rows that beat the local copy.
+ * A server older than shelf views omits `view`; the local view is kept.
+ */
 export function buildSmartShelfMerge(
 	local: SmartShelf[],
 	server: unknown[],
 ): { shelves: SmartShelf[]; rejected: number } {
 	let rejected = 0;
-	const localStamps = new Map(local.map((s) => [s.id, s.updatedAt]));
+	const localShelves = new Map(local.map((s) => [s.id, s]));
 	const shelves: SmartShelf[] = [];
 	for (const raw of server) {
 		const parsed = SyncSmartShelfSchema.safeParse(raw);
@@ -29,14 +33,15 @@ export function buildSmartShelfMerge(
 			continue;
 		}
 		const s = parsed.data;
-		const mine = localStamps.get(s.shelfId);
-		if (mine !== undefined && s.updatedAt <= mine) continue;
+		const mine = localShelves.get(s.shelfId);
+		if (mine !== undefined && s.updatedAt <= mine.updatedAt) continue;
 		shelves.push({
 			id: s.shelfId,
 			name: s.name,
 			conditions: s.conditions,
 			pinned: s.pinned,
 			sortOrder: s.sortOrder,
+			view: s.view !== undefined ? s.view : (mine?.view ?? null),
 			deleted: s.deleted,
 			createdAt: s.createdAt,
 			updatedAt: s.updatedAt,

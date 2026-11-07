@@ -34,6 +34,7 @@ function row(overrides: Partial<SmartShelf> = {}): SmartShelf {
 		conditions: serializeTree(filterToTree({ tags: { in: ["short"], out: [] } })),
 		pinned: false,
 		sortOrder: 1,
+		view: null,
 		deleted: false,
 		createdAt: 1,
 		updatedAt: 1,

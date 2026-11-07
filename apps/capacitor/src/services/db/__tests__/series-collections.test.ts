@@ -67,6 +67,7 @@ describe("series reconcile against the database", () => {
 				name: "Dune",
 				ordered: true,
 				seriesKey: "dune",
+				view: null,
 				bookCount: 2,
 			}),
 		]);
@@ -105,6 +106,7 @@ describe("series reconcile against the database", () => {
 				sortOrder: 1,
 				ordered: true,
 				seriesKey: "dune",
+				view: null,
 				deleted: false,
 				createdAt: 5,
 				updatedAt: 500,

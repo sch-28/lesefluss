@@ -5,7 +5,7 @@ import { serverNow } from "../../sync/server-clock";
 import { db } from "../index";
 import { type SmartShelf, smartShelves } from "../schema";
 
-// 8 bound columns per row stays well under SQLite's 999 parameters.
+// 9 bound columns per row stays well under SQLite's 999 parameters.
 const CHUNK_SIZE = 100;
 
 export function normalizeShelfName(name: string): string {
@@ -38,6 +38,7 @@ export async function createSmartShelf(
 		conditions: input.conditions,
 		pinned: input.pinned,
 		sortOrder: (last?.sortOrder ?? 0) + 1,
+		view: null,
 		deleted: false,
 		createdAt: now,
 		updatedAt: now,
@@ -48,7 +49,7 @@ export async function createSmartShelf(
 
 export async function updateSmartShelf(
 	id: string,
-	patch: { name?: string; conditions?: string; pinned?: boolean },
+	patch: { name?: string; conditions?: string; pinned?: boolean; view?: string | null },
 	now = serverNow(),
 ): Promise<void> {
 	const next: Partial<SmartShelf> = { updatedAt: now };
@@ -59,6 +60,7 @@ export async function updateSmartShelf(
 	}
 	if (patch.conditions !== undefined) next.conditions = patch.conditions;
 	if (patch.pinned !== undefined) next.pinned = patch.pinned;
+	if (patch.view !== undefined) next.view = patch.view;
 	await db.update(smartShelves).set(next).where(eq(smartShelves.id, id));
 }
 
@@ -86,6 +88,7 @@ export async function upsertSmartShelves(rows: SmartShelf[]): Promise<void> {
 					conditions: sql`excluded.conditions`,
 					pinned: sql`excluded.pinned`,
 					sortOrder: sql`excluded.sort_order`,
+					view: sql`excluded.view`,
 					deleted: sql`excluded.deleted`,
 					createdAt: sql`excluded.created_at`,
 					updatedAt: sql`excluded.updated_at`,

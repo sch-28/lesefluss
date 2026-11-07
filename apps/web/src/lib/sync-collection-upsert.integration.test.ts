@@ -165,4 +165,19 @@ describe.skipIf(!hasDb)("sync collections upsert (integration)", () => {
 		await upsertSyncCollections(db, userId, [collection({ collectionId: "c9" })]);
 		expect(await readCollection("c9")).toMatchObject({ ordered: false, seriesKey: null });
 	});
+
+	test("a shelf view survives a push from a client without views, and a newer null clears it", async () => {
+		const view = '{"v":1,"groupBy":"author"}';
+		await upsertSyncCollections(db, userId, [
+			collection({ collectionId: "c10", view, updatedAt: 1_000 }),
+		]);
+		await upsertSyncCollections(db, userId, [
+			collection({ collectionId: "c10", name: "Renamed", updatedAt: 2_000 }),
+		]);
+		expect(await readCollection("c10")).toMatchObject({ name: "Renamed", view });
+		await upsertSyncCollections(db, userId, [
+			collection({ collectionId: "c10", view: null, updatedAt: 3_000 }),
+		]);
+		expect(await readCollection("c10")).toMatchObject({ view: null });
+	});
 });

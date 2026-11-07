@@ -499,6 +499,8 @@ export const collections = sqliteTable("collections", {
 	ordered: integer("ordered", { mode: "boolean" }).notNull().default(false),
 	/** Set on a series collection (normalizeSeriesKey); its id is derived from it. */
 	seriesKey: text("series_key"),
+	/** Its own group-by and columns as JSON (pages/library/shelf-view.ts); null follows the device. */
+	view: text("view"),
 	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
 	createdAt: integer("created_at").notNull(),
 	updatedAt: integer("updated_at").notNull(),
@@ -534,6 +536,8 @@ export const smartShelves = sqliteTable("smart_shelves", {
 	conditions: text("conditions").notNull(),
 	pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
 	sortOrder: real("sort_order").notNull(),
+	/** As on collections. */
+	view: text("view"),
 	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
 	createdAt: integer("created_at").notNull(),
 	updatedAt: integer("updated_at").notNull(),

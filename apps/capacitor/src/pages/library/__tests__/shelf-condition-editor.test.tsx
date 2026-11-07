@@ -96,6 +96,7 @@ const custom: ShelfEntry = {
 	filter: null,
 	pinned: true,
 	isBuiltIn: false,
+	view: null,
 	sortOrder: 1,
 };
 

@@ -7,6 +7,7 @@ export type HeaderControls = {
 	filter: boolean;
 	sort: boolean;
 	columns: boolean;
+	cardFields: boolean;
 	viewToggle: boolean;
 };
 
@@ -23,6 +24,7 @@ export function headerControls(view: {
 		filter: listed && !view.isDesktop,
 		sort: listed,
 		columns: listed && view.shownView === "table",
+		cardFields: listed && view.shownView !== "table",
 		viewToggle: listed,
 	};
 }

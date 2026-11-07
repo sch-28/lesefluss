@@ -15,6 +15,7 @@ export function collectionToSync(c: Collection): SyncCollection {
 		sortOrder: c.sortOrder,
 		ordered: c.ordered,
 		seriesKey: c.seriesKey,
+		view: c.view,
 		deleted: c.deleted,
 		createdAt: c.createdAt,
 		updatedAt: c.updatedAt,
@@ -35,8 +36,8 @@ export function collectionBookToSync(m: CollectionBook): SyncCollectionBook {
 /**
  * Newest-wins per row, tombstones kept: the server rows that beat the local
  * copy, ready to upsert. Pure so the merge rules can be tested without a database.
- * A field the server omits (a server older than series collections) keeps the
- * local value.
+ * A field the server omits (a server older than series collections or shelf
+ * views) keeps the local value.
  */
 export function buildCollectionMerge(
 	local: { collections: Collection[]; collectionBooks: CollectionBook[] },
@@ -60,6 +61,7 @@ export function buildCollectionMerge(
 			sortOrder: c.sortOrder,
 			ordered: c.ordered ?? mine?.ordered ?? false,
 			seriesKey: c.seriesKey !== undefined ? c.seriesKey : (mine?.seriesKey ?? null),
+			view: c.view !== undefined ? c.view : (mine?.view ?? null),
 			deleted: c.deleted,
 			createdAt: c.createdAt,
 			updatedAt: c.updatedAt,

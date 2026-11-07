@@ -66,6 +66,7 @@ const builtIn: ShelfEntry = {
 	pinned: false,
 	isBuiltIn: true,
 	sortOrder: -3,
+	view: null,
 };
 const userShelf: ShelfEntry = {
 	...builtIn,
@@ -113,6 +114,19 @@ describe("ShelfActions", () => {
 		expect(labels()).toEqual(["Rename", "Edit conditions…", "Unpin", "Delete shelf…"]);
 		await click(view.getButton("Unpin"));
 		expect(updateShelf).toHaveBeenCalledWith({ id: "s1", pinned: false });
+	});
+
+	it("offers Reset view once the shelf has its own view", async () => {
+		view = await render(
+			<ShelfActions
+				shelf={{ ...userShelf, view: '{"v":1,"groupBy":"author"}' }}
+				onClose={() => {}}
+				setBuiltInPinned={setBuiltInPinned}
+			/>,
+		);
+		expect(labels()).toEqual(["Rename", "Edit conditions…", "Reset view", "Pin", "Delete shelf…"]);
+		await click(view.getButton("Reset view"));
+		expect(updateShelf).toHaveBeenCalledWith({ id: "s1", view: null });
 	});
 
 	it("deletes only after the confirm and leaves the shelf when it is open", async () => {

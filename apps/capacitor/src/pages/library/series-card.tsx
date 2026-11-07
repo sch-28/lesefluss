@@ -15,6 +15,7 @@ import CoverImage from "../../components/cover-image";
 import type { Series } from "../../services/db/schema";
 import { chapterCountLabel } from "../../services/serial-scrapers";
 import type { SeriesChapterLength } from "../../services/stats/what-if";
+import { type CardFieldId, CardFieldSlot, DEFAULT_CARD_FIELDS } from "./card-fields";
 import { SeriesCardTime } from "./series-reading-time";
 import { useLongPress } from "./use-long-press";
 
@@ -24,6 +25,8 @@ interface SeriesCardProps {
 	chapterLengths: readonly SeriesChapterLength[] | undefined;
 	onOpen: () => void;
 	onMenu: () => void;
+	/** The book cards' fields; a serial fills author and time left, and keeps the others' lines empty. */
+	fields?: readonly CardFieldId[];
 }
 
 const SeriesCard: React.FC<SeriesCardProps> = ({
@@ -32,6 +35,7 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 	chapterLengths,
 	onOpen,
 	onMenu,
+	fields = DEFAULT_CARD_FIELDS.grid,
 }) => {
 	const handlers = useLongPress({ onTap: onOpen, onMenu });
 	const id = useId();
@@ -70,24 +74,31 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 				)}
 			</div>
 
-			{/* Title / author */}
+			{fields.includes("progress") && (
+				<CardFieldSlot surface="grid" field="progress" className="mt-1" />
+			)}
 			<div className="px-0.5 pt-1">
-				<div className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
+				<div className="line-clamp-2 min-h-[2.4em] overflow-hidden font-semibold text-[0.85rem] leading-[1.2]">
 					{series.title}
 				</div>
-				{series.author && (
-					<div
-						id={authorId}
-						className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[#888] text-[0.75rem]"
-					>
-						{series.author}
-					</div>
+				{fields.map((field) =>
+					field === "progress" ? null : (
+						<CardFieldSlot key={field} surface="grid" field={field}>
+							{field === "author" && (
+								<span id={authorId} className="truncate text-muted-foreground">
+									{series.author}
+								</span>
+							)}
+							{field === "timeLeft" && (
+								<SeriesCardTime
+									id={timeId}
+									chapters={chapterLengths}
+									className="truncate text-muted-foreground tabular-nums"
+								/>
+							)}
+						</CardFieldSlot>
+					),
 				)}
-				<SeriesCardTime
-					id={timeId}
-					chapters={chapterLengths}
-					className="mt-0.5 block text-[#888] text-[0.75rem] tabular-nums"
-				/>
 			</div>
 		</button>
 	);

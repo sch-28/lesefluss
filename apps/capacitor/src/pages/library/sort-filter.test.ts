@@ -205,6 +205,25 @@ describe("natural order and then-by", () => {
 		expect(ids(books, "author", "rating")).toEqual(["a", "b-high", "b-low"]);
 		expect(ids(books, "author", "author")).toEqual(ids(books, "author"));
 	});
+
+	it("flips the second key on its own", () => {
+		const books = [
+			makeBook({ id: "b-low", author: "Banks", rating: 4 }),
+			makeBook({ id: "a", author: "Asimov", rating: 2 }),
+			makeBook({ id: "b-high", author: "banks", rating: 9 }),
+		];
+		const sorted = filterAndSortLibrary(books, [], new Map(), {
+			filter: {},
+			sortBy: "author",
+			thenBy: "rating",
+			thenReversed: true,
+		});
+		expect(sorted.map((i) => (i.kind === "book" ? i.book.id : ""))).toEqual([
+			"a",
+			"b-low",
+			"b-high",
+		]);
+	});
 });
 
 describe("sorting by rating", () => {

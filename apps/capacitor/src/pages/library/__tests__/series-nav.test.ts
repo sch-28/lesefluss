@@ -20,6 +20,7 @@ function collection(over: Partial<CollectionWithCount>): CollectionWithCount {
 		sortOrder: 1,
 		ordered: true,
 		seriesKey: "c",
+		view: null,
 		deleted: false,
 		createdAt: 1,
 		updatedAt: 1,

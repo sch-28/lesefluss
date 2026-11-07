@@ -198,6 +198,7 @@ export const queryHooks = {
 	/** Mutation: the collection page's save (name, order, members). */
 	useEditCollection: collectionHooks.useEditCollection,
 	useRenameCollection: collectionHooks.useRenameCollection,
+	useSetCollectionView: collectionHooks.useSetCollectionView,
 	useMoveCollection: collectionHooks.useMoveCollection,
 	useDeleteCollection: collectionHooks.useDeleteCollection,
 	useAddBooksToCollection: collectionHooks.useAddBooksToCollection,

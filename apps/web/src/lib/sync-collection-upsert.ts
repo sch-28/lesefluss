@@ -11,8 +11,9 @@ const CHUNK = 1000;
  * for being absent from a push. Stamps are stored as sent, like goals: every
  * push resends every row, so a clamped fast clock would win on each push.
  *
- * A client from before series collections omits `ordered` and `seriesKey`;
- * its rows win by stamp but leave the stored values of those fields alone.
+ * A client from before series collections omits `ordered` and `seriesKey`, and
+ * one from before shelf views omits `view`; its rows win by stamp but leave the
+ * stored values of those fields alone.
  */
 export async function upsertSyncCollections(
 	exec: DbExecutor,
@@ -20,11 +21,12 @@ export async function upsertSyncCollections(
 	collections: SyncCollection[],
 ): Promise<void> {
 	const newest = newestPerKey(collections, (c) => c.collectionId);
-	const groups = groupByPresent(newest, ["ordered", "seriesKey"]);
+	const groups = groupByPresent(newest, ["ordered", "seriesKey", "view"]);
 	for (const [present, group] of groups) {
 		const optional: Record<string, SQL> = {};
 		if (present.has("ordered")) optional.ordered = sql`excluded.ordered`;
 		if (present.has("seriesKey")) optional.seriesKey = sql`excluded.series_key`;
+		if (present.has("view")) optional.view = sql`excluded.view`;
 		for (const rows of chunks(group)) await upsertCollectionRows(exec, userId, rows, optional);
 	}
 }
@@ -45,6 +47,7 @@ async function upsertCollectionRows(
 				sortOrder: c.sortOrder,
 				ordered: c.ordered,
 				seriesKey: c.seriesKey,
+				view: c.view,
 				deleted: c.deleted,
 				createdAt: new Date(c.createdAt),
 				updatedAt: new Date(c.updatedAt),

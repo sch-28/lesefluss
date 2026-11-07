@@ -16,7 +16,7 @@ import {
 	collections,
 } from "../schema";
 
-// 8 bound columns per collection row stays under SQLite's 999 parameters.
+// 9 bound columns per collection row stays under SQLite's 999 parameters.
 const CHUNK_SIZE = 100;
 // Below this gap a midpoint stops being distinct from its neighbours.
 const MIN_SORT_GAP = 1e-9;
@@ -48,6 +48,7 @@ export async function getCollections(): Promise<CollectionWithCount[]> {
 			sortOrder: collections.sortOrder,
 			ordered: collections.ordered,
 			seriesKey: collections.seriesKey,
+			view: collections.view,
 			deleted: collections.deleted,
 			createdAt: collections.createdAt,
 			updatedAt: collections.updatedAt,
@@ -74,6 +75,7 @@ export async function createCollection(name: string, now = serverNow()): Promise
 		sortOrder: (last?.sortOrder ?? 0) + 1,
 		ordered: false,
 		seriesKey: null,
+		view: null,
 		deleted: false,
 		createdAt: now,
 		updatedAt: now,
@@ -106,6 +108,7 @@ export async function createSeriesCollection(name: string, now = serverNow()): P
 		sortOrder: (last?.sortOrder ?? 0) + 1,
 		ordered: true,
 		seriesKey: key,
+		view: existing?.view ?? null,
 		deleted: false,
 		createdAt: existing?.createdAt ?? now,
 		updatedAt: now,
@@ -131,6 +134,14 @@ export async function renameCollection(id: string, name: string, now = serverNow
 	const trimmed = normalizeCollectionName(name);
 	if (!trimmed) throw new Error("Collection name is empty");
 	await db.update(collections).set({ name: trimmed, updatedAt: now }).where(eq(collections.id, id));
+}
+
+export async function setCollectionView(
+	id: string,
+	view: string | null,
+	now = serverNow(),
+): Promise<void> {
+	await db.update(collections).set({ view, updatedAt: now }).where(eq(collections.id, id));
 }
 
 export async function setCollectionOrdered(
@@ -736,6 +747,7 @@ export async function upsertCollections(rows: Collection[]): Promise<void> {
 					sortOrder: sql`excluded.sort_order`,
 					ordered: sql`excluded.ordered`,
 					seriesKey: sql`excluded.series_key`,
+					view: sql`excluded.view`,
 					deleted: sql`excluded.deleted`,
 					createdAt: sql`excluded.created_at`,
 					updatedAt: sql`excluded.updated_at`,

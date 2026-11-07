@@ -10,6 +10,7 @@ function shelf(overrides: Partial<SmartShelf> = {}): SmartShelf {
 		conditions: '{"v":1,"root":{"op":"and","items":[]}}',
 		pinned: true,
 		sortOrder: 1,
+		view: null,
 		deleted: false,
 		createdAt: 1_000,
 		updatedAt: 1_000,
@@ -41,6 +42,22 @@ describe("smart shelf sync", () => {
 		expect(buildSmartShelfMerge(local, [older]).shelves).toEqual([]);
 		expect(buildSmartShelfMerge(local, [deleted]).shelves).toEqual([
 			shelf({ deleted: true, updatedAt: 3_000 }),
+		]);
+	});
+
+	it("the newer shelf view wins, and a server without views keeps the local one", () => {
+		const local = [shelf({ view: '{"v":1,"groupBy":"tag"}', updatedAt: 2_000 })];
+		const newer = smartShelfToSync(shelf({ view: '{"v":1,"groupBy":"author"}', updatedAt: 3_000 }));
+		const older = smartShelfToSync(shelf({ view: null, updatedAt: 1_500 }));
+		expect(buildSmartShelfMerge(local, [newer]).shelves).toEqual([
+			shelf({ view: '{"v":1,"groupBy":"author"}', updatedAt: 3_000 }),
+		]);
+		expect(buildSmartShelfMerge(local, [older]).shelves).toEqual([]);
+		const { view: _omitted, ...withoutView } = smartShelfToSync(
+			shelf({ name: "Renamed", updatedAt: 3_000 }),
+		);
+		expect(buildSmartShelfMerge(local, [withoutView]).shelves).toEqual([
+			shelf({ name: "Renamed", view: '{"v":1,"groupBy":"tag"}', updatedAt: 3_000 }),
 		]);
 	});
 

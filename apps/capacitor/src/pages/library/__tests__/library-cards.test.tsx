@@ -163,6 +163,30 @@ describe.each([
 		expect(card().getAttribute("aria-pressed")).toBe("true");
 	});
 
+	it("shows exactly the picked fields, in their own fixed lines", async () => {
+		view = await render(<Card {...bookProps()} fields={["words"]} values={{ words: "1,234" }} />);
+		expect(view.text()).toContain("1,234");
+		expect(view.text()).not.toContain("George Eliot");
+		expect(view.text()).not.toContain("42%");
+	});
+
+	it("keeps an empty field's line, so an unrated book's card is as tall as a rated one", async () => {
+		const lines = async (over: Partial<typeof book>) => {
+			view?.unmount();
+			view = await render(
+				<Card {...bookProps({ book: { ...book, ...over } })} fields={["author", "rating"]} />,
+			);
+			return [...view.container.querySelectorAll("[data-card-field]")].map(
+				(el) => `${el.getAttribute("data-card-field")} ${el.className}`,
+			);
+		};
+		const rated = await lines({ rating: 8 });
+		const empty = await lines({ rating: null, author: null });
+		expect(empty).toEqual(rated);
+		expect(rated).toHaveLength(2);
+		expect(rated.every((line) => /\bh-/.test(line))).toBe(true);
+	});
+
 	describe("long press", () => {
 		afterEach(() => {
 			vi.useRealTimers();
@@ -242,6 +266,22 @@ describe.each([
 		expect(onOpen).toHaveBeenCalledOnce();
 		rightClick(card());
 		expect(onMenu).toHaveBeenCalledOnce();
+	});
+
+	it("follows the book cards' fields, keeping a line for each one a serial has no value for", async () => {
+		view = await render(
+			<Card
+				series={series}
+				chapterCount={3}
+				chapterLengths={[{ wordCount: 6000, wordPosition: 0, finishedAt: null }]}
+				onOpen={() => {}}
+				onMenu={() => {}}
+				fields={["rating", "words"]}
+			/>,
+		);
+		expect(view.text()).not.toContain("nobody103");
+		expect(view.container.querySelector('[data-testid="series-card-time"]')).toBeNull();
+		expect(view.container.querySelectorAll("[data-card-field]")).toHaveLength(2);
 	});
 
 	it("shows the series' total time, then the time left once a chapter is started", async () => {

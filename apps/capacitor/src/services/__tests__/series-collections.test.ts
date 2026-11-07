@@ -63,6 +63,7 @@ describe("planSeriesReconcile", () => {
 				sortOrder: 100,
 				ordered: true,
 				seriesKey: "the expanse",
+				view: null,
 				deleted: false,
 				createdAt: 100,
 				updatedAt: AUTO_STAMP,

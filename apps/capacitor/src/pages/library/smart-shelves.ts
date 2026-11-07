@@ -18,6 +18,8 @@ export type ShelfEntry = {
 	pinned: boolean;
 	isBuiltIn: boolean;
 	sortOrder: number;
+	/** The shelf's own group-by and columns (`shelf-view.ts`); null for built-ins. */
+	view: string | null;
 };
 
 const BUILT_IN_PREFIX = "builtin:";
@@ -53,6 +55,7 @@ export function builtInShelves(pinnedIds: ReadonlySet<string>): ShelfEntry[] {
 		isBuiltIn: true,
 		// Ahead of the user's shelves, whose sort orders start at 1.
 		sortOrder: i - BUILT_INS.length,
+		view: null,
 	}));
 }
 
@@ -66,6 +69,7 @@ export function shelfEntryOf(row: SmartShelf): ShelfEntry {
 		pinned: row.pinned,
 		isBuiltIn: false,
 		sortOrder: row.sortOrder,
+		view: row.view,
 	};
 }
 

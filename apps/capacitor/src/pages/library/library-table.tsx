@@ -3,15 +3,19 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronRight } from "lucide-react";
 import type React from "react";
 import { useMemo, useRef } from "react";
 import { Virtualizer } from "virtua";
+import type { BulkAction } from "../../services/db/hooks/use-bulk-books";
 import type { Book, Series } from "../../services/db/schema";
 import CardMoreButton from "./card-more-button";
+import { CellEditor, isEditableColumn } from "./cell-editors";
 import { itemKey, type LibraryGroup, layoutRows } from "./group-by";
-import { type LibraryItem, type SortBy, sortDirection } from "./sort-filter";
-import type { CellContext, TableColumn } from "./table-columns";
+import { type LibraryItem, type SortBy, type SortState, sortDirection } from "./sort-filter";
+import type { CellContext, ColumnId, TableColumn } from "./table-columns";
+import { useColumnDrag } from "./use-column-drag";
 import { useScroller } from "./virtual-book-grid";
 
 const ROW_PX = 44;
 const NONE_COLLAPSED: ReadonlySet<string> = new Set();
+const NO_TAGS: readonly string[] = [];
 
 type Selection = {
 	isSelecting: boolean;
@@ -27,9 +31,14 @@ type Props = {
 	onToggleGroup?: (groupKey: string) => void;
 	columns: readonly TableColumn[];
 	ctx: CellContext;
-	sortBy: SortBy;
-	reversed: boolean;
-	onHeaderSort: (sortBy: SortBy) => void;
+	sort: SortState;
+	/** Shift adds or flips the second sort. */
+	onHeaderSort: (sortBy: SortBy, shift: boolean) => void;
+	/** Unset: headers do not drag. */
+	onMoveColumn?: (id: ColumnId, before: number) => void;
+	/** Unset: rating, status and tags cells are read-only. */
+	onEditBook?: (book: Book, action: BulkAction) => void;
+	libraryTags?: readonly string[];
 	selection: Selection;
 	onOpenBook: (book: Book) => void;
 	onOpenSeries: (series: Series) => void;
@@ -51,9 +60,11 @@ const LibraryTable: React.FC<Props> = ({
 	onToggleGroup,
 	columns,
 	ctx,
-	sortBy,
-	reversed,
+	sort,
 	onHeaderSort,
+	onMoveColumn,
+	onEditBook,
+	libraryTags = NO_TAGS,
 	selection,
 	onOpenBook,
 	onOpenSeries,
@@ -67,7 +78,16 @@ const LibraryTable: React.FC<Props> = ({
 	const { scrollRef, startMargin } = useScroller(anchor);
 	const rows = useMemo(() => layoutRows(items, groups, 1, collapsed), [items, groups, collapsed]);
 	const template = `2.5rem ${columns.map((c) => c.width).join(" ")} 2.5rem`;
-	const dir = sortDirection(sortBy, reversed);
+	const isTwoLevel = sort.thenBy !== null && sort.thenBy !== sort.sortBy;
+	const rankOf = (key: SortBy | undefined): { rank: 1 | 2; dir: "asc" | "desc" } | null => {
+		if (key === undefined) return null;
+		if (key === sort.sortBy) return { rank: 1, dir: sortDirection(key, sort.reversed) };
+		if (isTwoLevel && key === sort.thenBy) {
+			return { rank: 2, dir: sortDirection(key, sort.thenReversed) };
+		}
+		return null;
+	};
+	const columnDrag = useColumnDrag("x", (id, before) => onMoveColumn?.(id, before));
 
 	const onRowClick = (item: LibraryItem, e: React.MouseEvent) => {
 		if (item.kind === "series") {
@@ -90,31 +110,56 @@ const LibraryTable: React.FC<Props> = ({
 				style={{ gridTemplateColumns: template }}
 			>
 				<span />
-				{columns.map((column) => {
-					const isSorted = column.sortBy === sortBy;
-					const Arrow = dir === "asc" ? ArrowUp : ArrowDown;
+				{columns.map((column, index) => {
+					const sorted = rankOf(column.sortBy);
+					const Arrow = sorted?.dir === "asc" ? ArrowUp : ArrowDown;
+					const dirLabel = sorted?.dir === "asc" ? "ascending" : "descending";
+					const isDropBefore = columnDrag.dropBefore === index;
+					const isDropAfter =
+						columnDrag.dropBefore === columns.length && index === columns.length - 1;
 					return (
 						<span
 							key={column.id}
 							data-column={column.id}
-							className={cn("min-w-0 px-2 py-2", column.align === "end" && "text-right")}
+							{...(onMoveColumn ? columnDrag.itemProps(column.id, index) : {})}
+							className={cn(
+								"relative min-w-0 px-2 py-2",
+								column.align === "end" && "text-right",
+								columnDrag.draggingId === column.id && "opacity-50",
+							)}
 						>
+							{(isDropBefore || isDropAfter) && (
+								<span
+									aria-hidden
+									data-testid="column-drop-marker"
+									className={cn(
+										"absolute inset-y-1 w-0.5 rounded-full bg-primary",
+										isDropBefore ? "-left-px" : "-right-px",
+									)}
+								/>
+							)}
 							{column.sortBy ? (
 								<button
 									type="button"
 									aria-label={
-										isSorted
-											? `${column.label}, sorted ${dir === "asc" ? "ascending" : "descending"}`
+										sorted
+											? `${column.label}, sorted ${dirLabel}${isTwoLevel ? `, sort ${sorted.rank}` : ""}`
 											: `Sort by ${column.label}`
 									}
-									onClick={() => column.sortBy && onHeaderSort(column.sortBy)}
+									title="Shift-click to sort by a second column"
+									onClick={(e) => column.sortBy && onHeaderSort(column.sortBy, e.shiftKey)}
 									className={cn(
 										"inline-flex max-w-full items-center gap-1 rounded-sm border-0 bg-transparent p-0 font-medium text-muted-foreground hover:text-foreground",
-										isSorted && "text-foreground",
+										sorted && "text-foreground",
 									)}
 								>
 									<span className="truncate">{column.label}</span>
-									{isSorted && <Arrow aria-hidden className="size-3 shrink-0" />}
+									{sorted && <Arrow aria-hidden className="size-3 shrink-0" />}
+									{sorted && isTwoLevel && (
+										<sup aria-hidden className="text-[0.625rem] tabular-nums">
+											{sorted.rank}
+										</sup>
+									)}
 								</button>
 							) : (
 								<span className="truncate font-medium">{column.label}</span>
@@ -159,6 +204,8 @@ const LibraryTable: React.FC<Props> = ({
 						const title = isBook ? item.book.title : item.series.title;
 						const selected = isBook && selection.isSelected(item.book.id);
 						const dimmed = !isBook && selection.isSelecting;
+						const isEditable = (id: ColumnId) =>
+							isBook && !!onEditBook && !selection.isSelecting && isEditableColumn(id);
 						return (
 							<div
 								key={row.key}
@@ -170,7 +217,7 @@ const LibraryTable: React.FC<Props> = ({
 								)}
 								style={{ gridTemplateColumns: template, minHeight: ROW_PX }}
 							>
-								<span className="flex justify-center">
+								<span className="flex justify-center" style={{ gridColumn: 1, gridRow: 1 }}>
 									{isBook && (
 										<input
 											type="checkbox"
@@ -202,7 +249,7 @@ const LibraryTable: React.FC<Props> = ({
 										onRowMenu(item);
 									}}
 									className="grid cursor-pointer select-none grid-cols-subgrid items-center self-stretch rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-									style={{ gridColumn: `2 / span ${columns.length}` }}
+									style={{ gridColumn: `2 / span ${columns.length}`, gridRow: 1 }}
 								>
 									{columns.map((column) => (
 										<span
@@ -213,11 +260,32 @@ const LibraryTable: React.FC<Props> = ({
 												column.align === "end" && "text-right tabular-nums",
 											)}
 										>
-											{column.text(item, ctx)}
+											{isEditable(column.id) ? null : column.text(item, ctx)}
 										</span>
 									))}
 								</button>
-								<span className="flex justify-center">
+								{/* Siblings over the row button, never inside it: a click edits and does not open. */}
+								{isBook &&
+									columns.map((column, index) =>
+										isEditable(column.id) && isEditableColumn(column.id) ? (
+											<span
+												key={column.id}
+												className="relative flex min-w-0 items-center self-stretch"
+												style={{ gridColumn: index + 2, gridRow: 1 }}
+											>
+												<CellEditor
+													columnId={column.id}
+													label={column.label}
+													book={item.book}
+													text={column.text(item, ctx)}
+													align={column.align}
+													libraryTags={libraryTags}
+													onEdit={(book, action) => onEditBook?.(book, action)}
+												/>
+											</span>
+										) : null,
+									)}
+								<span className="flex justify-center" style={{ gridColumn: -2, gridRow: 1 }}>
 									<CardMoreButton title={title} onMenu={() => onRowMenu(item)} />
 								</span>
 							</div>
