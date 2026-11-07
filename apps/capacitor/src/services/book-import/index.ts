@@ -18,14 +18,14 @@ import { commitBook } from "./commit";
 import { parse, parseAndCommit } from "./pipeline";
 import { readClipboardToRawInput } from "./sources/clipboard";
 import { pickFileFromPicker } from "./sources/file-picker";
-import type { ImportExtras, ImportOverrides, StagedImport } from "./types";
+import type { ImportExtras, ImportOverrides, ImportSeriesChoice, StagedImport } from "./types";
 
 export { attachOriginalToBook, findAttachCandidate } from "./attach-original";
 export { importScannedFile, probeScannedFile } from "./batch";
 export { removeBook } from "./commit";
 export type { FolderScan, ScannedFile, ScannedFileHandle } from "./sources/folder-scan";
 export { pickBookFolder, readScannedFile } from "./sources/folder-scan";
-export type { ImportExtras, ImportOverrides, StagedImport } from "./types";
+export type { ImportExtras, ImportOverrides, ImportSeriesChoice, StagedImport } from "./types";
 
 /**
  * Write a staged import, with the reader's corrections applied over whatever the
@@ -35,8 +35,10 @@ export type { ImportExtras, ImportOverrides, StagedImport } from "./types";
 export async function commitStagedImport(
 	staged: StagedImport,
 	overrides?: ImportOverrides,
+	/** Absent when the reader left the series row as the file has it. */
+	series?: ImportSeriesChoice,
 ): Promise<Book> {
-	return commitBook(staged.payload, staged.extras, overrides);
+	return commitBook(staged.payload, staged.extras, overrides, { series });
 }
 
 /**

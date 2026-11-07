@@ -12,6 +12,7 @@ import {
 	attachOriginalToBook,
 	commitStagedImport,
 	findAttachCandidate,
+	type ImportSeriesChoice,
 	type StagedImport,
 } from "../services/book-import";
 import { bookKeys, collectionKeys } from "../services/db/hooks/query-keys";
@@ -39,7 +40,8 @@ export type ImportQueue = {
 	isCommitting: boolean;
 	isAttaching: boolean;
 	isBusy: boolean;
-	commit: (values: BookEditValues) => void;
+	/** `series` only when the reader changed the series row. */
+	commit: (values: BookEditValues, series?: ImportSeriesChoice) => void;
 	attach: () => void;
 	/** Drops the head; a queued import still gets its turn. */
 	discard: () => void;
@@ -93,8 +95,16 @@ export const ImportStagingProvider: React.FC<{ children: React.ReactNode }> = ({
 	};
 
 	const commit = useMutation({
-		mutationFn: async ({ staged, values }: { staged: StagedImport; values: BookEditValues }) => {
-			const book = await commitStagedImport(staged, editValuesToPatch(values));
+		mutationFn: async ({
+			staged,
+			values,
+			series,
+		}: {
+			staged: StagedImport;
+			values: BookEditValues;
+			series?: ImportSeriesChoice;
+		}) => {
+			const book = await commitStagedImport(staged, editValuesToPatch(values), series);
 			return { book, joined: await joinTarget(staged, book) };
 		},
 		onSuccess: ({ book, joined }, { staged }) => {
@@ -244,8 +254,8 @@ export const ImportStagingProvider: React.FC<{ children: React.ReactNode }> = ({
 		isCommitting: commit.isPending,
 		isAttaching: attach.isPending,
 		isBusy,
-		commit: (values) => {
-			if (current) commit.mutate({ staged: current, values });
+		commit: (values, series) => {
+			if (current) commit.mutate({ staged: current, values, series });
 		},
 		attach: () => {
 			if (current && attachCandidate) attach.mutate({ staged: current, book: attachCandidate });

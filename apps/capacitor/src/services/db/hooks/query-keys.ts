@@ -24,6 +24,8 @@ export const collectionKeys = {
 	ofBook: (bookId: string) => ["books", "collections", "of-book", bookId] as const,
 	seriesOfBook: (bookId: string) => ["books", "collections", "series-of-book", bookId] as const,
 	memberships: ["books", "collections", "memberships"] as const,
+	importSeries: (seriesKey: string) =>
+		["books", "collections", "import-series", seriesKey] as const,
 };
 
 /** Under `["books"]` like collections, so a sync pull's book invalidation also refreshes shelves. */

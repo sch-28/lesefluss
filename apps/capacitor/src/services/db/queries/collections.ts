@@ -1,4 +1,9 @@
-import { COLLECTION_NAME_MAX, SERIES_ID_PREFIX } from "@lesefluss/core";
+import {
+	COLLECTION_NAME_MAX,
+	normalizeSeriesKey,
+	SERIES_ID_PREFIX,
+	seriesCollectionId,
+} from "@lesefluss/core";
 import { and, asc, eq, inArray, isNotNull, isNull, like, sql } from "drizzle-orm";
 import { randomHexId } from "../../../utils/random-id";
 import { serverNow } from "../../sync/server-clock";
@@ -397,6 +402,7 @@ export async function getSeriesHintBooks() {
 	return db
 		.select({
 			id: books.id,
+			title: books.title,
 			addedAt: books.addedAt,
 			seriesName: books.seriesName,
 			seriesIndex: books.seriesIndex,
@@ -418,6 +424,56 @@ export async function getSeriesReconcileRows(): Promise<{
 			.from(collectionBooks)
 			.where(like(collectionBooks.collectionId, `${SERIES_ID_PREFIX}%`)),
 	};
+}
+
+export type ImportSeriesState = {
+	/** The series collection the key derives, tombstoned or not; null before it formed. */
+	collection: { id: string; name: string; deleted: boolean; bookCount: number } | null;
+	/** Live books with the key that were not taken out of it, oldest first. */
+	others: { id: string; title: string }[];
+};
+
+/** What an import whose file names this series key would join. */
+export async function getImportSeriesState(seriesKey: string): Promise<ImportSeriesState> {
+	const id = seriesCollectionId(seriesKey);
+	const [row] = await db.select().from(collections).where(eq(collections.id, id));
+	const memberships = await db
+		.select({ bookId: collectionBooks.bookId, deleted: collectionBooks.deleted })
+		.from(collectionBooks)
+		.where(eq(collectionBooks.collectionId, id));
+	const dismissed = new Set(memberships.filter((m) => m.deleted).map((m) => m.bookId));
+	const others = (await getSeriesHintBooks())
+		.filter((b) => normalizeSeriesKey(b.seriesName) === seriesKey && !dismissed.has(b.id))
+		.sort((a, b) => a.addedAt - b.addedAt || a.id.localeCompare(b.id))
+		.map((b) => ({ id: b.id, title: b.title }));
+	if (!row) return { collection: null, others };
+	const [count] = await db
+		.select({ n: sql<number>`count(*)`.as("n") })
+		.from(collectionBooks)
+		.where(and(eq(collectionBooks.collectionId, id), liveMember));
+	return {
+		collection: { id, name: row.name, deleted: row.deleted, bookCount: Number(count?.n ?? 0) },
+		others,
+	};
+}
+
+/**
+ * Keeps a book out of a collection for good: a tombstoned membership, written
+ * even when the collection does not exist yet, which is what the series
+ * reconcile here and on every other device reads as a dismissal.
+ */
+export async function dismissBookFromCollection(
+	collectionId: string,
+	bookId: string,
+	now = serverNow(),
+): Promise<void> {
+	await db
+		.insert(collectionBooks)
+		.values({ collectionId, bookId, deleted: true, updatedAt: now })
+		.onConflictDoUpdate({
+			target: [collectionBooks.collectionId, collectionBooks.bookId],
+			set: { deleted: true, updatedAt: now },
+		});
 }
 
 /** Inserts rows that do not exist yet; an existing row (live or tombstoned) always wins. */

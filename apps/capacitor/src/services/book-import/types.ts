@@ -25,6 +25,17 @@ export type ImportOverrides = {
 };
 
 /**
+ * Where the reader put the book on the Add book page. `detected` keeps the
+ * series the file names, so the reconcile after commit joins or forms it; any
+ * other choice also keeps the book out of that series for good.
+ */
+export type ImportSeriesChoice =
+	| { kind: "detected"; index: number | null }
+	| { kind: "collection"; collectionId: string; index: number | null }
+	| { kind: "new"; name: string; index: number | null }
+	| { kind: "none" };
+
+/**
  * A parsed book that has not been written yet.
  *
  * Holds the full text and, for formats worth keeping, the original file bytes,

@@ -1,19 +1,29 @@
 import { BOOK_SERIES_INDEX_MAX } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
-import { Check, ChevronRight, Plus } from "lucide-react";
+import { Check, ChevronRight, Clock, Plus } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { EntryDialog } from "../../components/entry-dialog";
+import type { ImportSeriesChoice } from "../../services/book-import";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
+import type { DetectedSeries } from "../../services/series-collections";
 import { Field } from "./book-edit-fields";
-import type { SeriesChoice } from "./book-edit-form";
 
 type Props = {
-	choice: SeriesChoice;
-	onChange: (choice: SeriesChoice) => void;
+	choice: ImportSeriesChoice;
+	onChange: (choice: ImportSeriesChoice) => void;
 	collections: CollectionWithCount[];
+	/** The series the import's file names. Adds it to the picker, with a status line, and
+	 *  plain collections next to series, since the book can go anywhere instead. */
+	detected?: DetectedSeries | null;
 };
+
+type Pick =
+	| { kind: "detected" }
+	| { kind: "collection"; collectionId: string }
+	| { kind: "new"; name: string }
+	| { kind: "none" };
 
 /** "2.5" → 2.5, "" → null; anything else is not a series number. */
 export function parseSeriesIndex(text: string): number | null | undefined {
@@ -23,20 +33,48 @@ export function parseSeriesIndex(text: string): number | null | undefined {
 	return Number.isFinite(n) && n >= 0 && n <= BOOK_SERIES_INDEX_MAX ? n : undefined;
 }
 
-function indexTextOf(choice: SeriesChoice): string {
+function indexTextOf(choice: ImportSeriesChoice): string {
 	return choice.kind === "none" || choice.index === null ? "" : String(choice.index);
 }
 
-export const SeriesField: React.FC<Props> = ({ choice, onChange, collections }) => {
+function formatSeries(name: string, index: number | null): string {
+	return index === null ? name : `${name} #${index}`;
+}
+
+export const SeriesField: React.FC<Props> = ({ choice, onChange, collections, detected }) => {
 	const [isPicking, setIsPicking] = useState(false);
 	const [indexText, setIndexText] = useState(indexTextOf(choice));
+	const picked =
+		choice.kind === "collection" ? collections.find((c) => c.id === choice.collectionId) : null;
 	const name =
-		choice.kind === "new"
-			? choice.name
-			: choice.kind === "collection"
-				? (collections.find((c) => c.id === choice.collectionId)?.name ?? "Series")
-				: null;
-	const isInvalid = choice.kind !== "none" && parseSeriesIndex(indexText) === undefined;
+		choice.kind === "detected"
+			? (detected?.name ?? null)
+			: choice.kind === "new"
+				? choice.name
+				: choice.kind === "collection"
+					? (picked?.name ?? "Series")
+					: null;
+	// A plain collection has no reading order to number the book in.
+	const hasIndex =
+		choice.kind !== "none" && (choice.kind !== "collection" || picked?.ordered !== false);
+	const isInvalid = hasIndex && parseSeriesIndex(indexText) === undefined;
+
+	const pick = (next: Pick) => {
+		const index = choice.kind === "none" ? null : choice.index;
+		setIsPicking(false);
+		if (next.kind === "none") {
+			onChange({ kind: "none" });
+			setIndexText("");
+		} else if (next.kind === "detected") {
+			const fileIndex = detected?.index ?? null;
+			onChange({ kind: "detected", index: fileIndex });
+			setIndexText(fileIndex === null ? "" : String(fileIndex));
+		} else if (next.kind === "collection") {
+			onChange({ kind: "collection", collectionId: next.collectionId, index });
+		} else {
+			onChange({ kind: "new", name: next.name, index });
+		}
+	};
 
 	return (
 		<Field label="Series" htmlFor="book-series-index">
@@ -47,14 +85,19 @@ export const SeriesField: React.FC<Props> = ({ choice, onChange, collections }) 
 					className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-input px-2.5 text-left text-base md:text-sm dark:bg-input/30"
 				>
 					<span className={name ? "min-w-0 flex-1 truncate" : "flex-1 text-muted-foreground"}>
-						{name ?? "No series"}
+						{name ?? (detected ? "Not in a series" : "No series")}
 					</span>
+					{choice.kind === "detected" && (
+						<span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-muted-foreground text-xs">
+							from file
+						</span>
+					)}
 					<span className="flex items-center text-muted-foreground text-xs">
 						{name ? "Change" : "Add"}
 						<ChevronRight className="size-4" />
 					</span>
 				</button>
-				{choice.kind !== "none" && (
+				{hasIndex && (
 					<div className="flex items-center gap-1">
 						<span className="text-muted-foreground text-sm">#</span>
 						<Input
@@ -74,25 +117,68 @@ export const SeriesField: React.FC<Props> = ({ choice, onChange, collections }) 
 					</div>
 				)}
 			</div>
+			{detected && <SeriesStatusLine detected={detected} isKept={choice.kind === "detected"} />}
 			<SeriesPicker
 				open={isPicking}
 				onOpenChange={setIsPicking}
 				collections={collections}
 				choice={choice}
-				onPick={(next) => {
-					const index = choice.kind === "none" ? null : choice.index;
-					setIsPicking(false);
-					if (next === null) {
-						onChange({ kind: "none" });
-						setIndexText("");
-					} else if (typeof next === "string") {
-						onChange({ kind: "collection", collectionId: next, index });
-					} else {
-						onChange({ kind: "new", name: next.name, index });
-					}
-				}}
+				detected={detected ?? null}
+				onPick={pick}
 			/>
 		</Field>
+	);
+};
+
+const SeriesStatusLine: React.FC<{ detected: DetectedSeries; isKept: boolean }> = ({
+	detected,
+	isKept,
+}) => {
+	const { status } = detected;
+	const fileSays = <b className="font-medium">{formatSeries(detected.name, detected.index)}</b>;
+	if (status.kind === "dismissed") {
+		return (
+			<p className="m-0 mt-1.5 text-muted-foreground text-sm">
+				The file says {fileSays}, but you removed that series. It won't be added back.
+			</p>
+		);
+	}
+	if (!isKept) {
+		return (
+			<p className="m-0 mt-1.5 text-muted-foreground text-sm">
+				The file says {fileSays}. This book stays out of that series, here and on your other
+				devices.
+			</p>
+		);
+	}
+	if (status.kind === "waits") {
+		return (
+			<p className="m-0 mt-1.5 flex items-center gap-1.5 text-muted-foreground text-sm">
+				<Clock className="size-3.5 shrink-0" />
+				Becomes a series once a 2nd book of it is added
+			</p>
+		);
+	}
+	return (
+		<p className="m-0 mt-1.5 flex items-center gap-1.5 text-emerald-700 text-sm dark:text-emerald-500">
+			{status.kind === "joins" ? (
+				<>
+					<Check className="size-3.5 shrink-0" />
+					<span>
+						Joins your series <b className="font-medium">{status.name}</b> ({status.bookCount}{" "}
+						{status.bookCount === 1 ? "book" : "books"})
+					</span>
+				</>
+			) : (
+				<>
+					<Plus className="size-3.5 shrink-0" />
+					<span>
+						Starts the series <b className="font-medium">{detected.name}</b> with "
+						{status.withTitle}"
+					</span>
+				</>
+			)}
+		</p>
 	);
 };
 
@@ -100,20 +186,28 @@ const SeriesPicker: React.FC<{
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	collections: CollectionWithCount[];
-	choice: SeriesChoice;
-	onPick: (next: string | { name: string } | null) => void;
-}> = ({ open, onOpenChange, collections, choice, onPick }) => {
+	choice: ImportSeriesChoice;
+	detected: DetectedSeries | null;
+	onPick: (next: Pick) => void;
+}> = ({ open, onOpenChange, collections, choice, detected, onPick }) => {
 	const [newName, setNewName] = useState("");
+	// The file's series sits in its own group on top, so it is never offered twice.
+	const offersDetected = detected !== null && detected.status.kind !== "dismissed";
 	// Imported series before hand-made ordered collections, the order the
 	// membership query reads them back in.
 	const series = useMemo(
 		() =>
 			collections
-				.filter((c) => c.ordered)
+				.filter((c) => c.ordered && !(offersDetected && c.id === detected?.collectionId))
 				.sort((a, b) => Number(!a.seriesKey) - Number(!b.seriesKey) || a.sortOrder - b.sortOrder),
-		[collections],
+		[collections, offersDetected, detected],
+	);
+	const plain = useMemo(
+		() => (detected ? collections.filter((c) => !c.ordered) : []),
+		[collections, detected],
 	);
 	const selectedId = choice.kind === "collection" ? choice.collectionId : null;
+	const countHint = (n: number) => `${n} ${n === 1 ? "book" : "books"}`;
 
 	return (
 		<EntryDialog open={open} onOpenChange={onOpenChange} title="Series">
@@ -121,15 +215,39 @@ const SeriesPicker: React.FC<{
 				<PickRow
 					label="No series"
 					selected={choice.kind === "none"}
-					onSelect={() => onPick(null)}
+					onSelect={() => onPick({ kind: "none" })}
 				/>
+				{offersDetected && detected && (
+					<>
+						<GroupLabel>From the file</GroupLabel>
+						<PickRow
+							label={formatSeries(detected.name, detected.index)}
+							hint={
+								detected.status.kind === "joins" ? countHint(detected.status.bookCount) : "detected"
+							}
+							selected={choice.kind === "detected"}
+							onSelect={() => onPick({ kind: "detected" })}
+						/>
+					</>
+				)}
+				{detected && series.length > 0 && <GroupLabel>Your series</GroupLabel>}
 				{series.map((c) => (
 					<PickRow
 						key={c.id}
 						label={c.name}
-						hint={`${c.bookCount} ${c.bookCount === 1 ? "book" : "books"}`}
+						hint={countHint(c.bookCount)}
 						selected={c.id === selectedId}
-						onSelect={() => onPick(c.id)}
+						onSelect={() => onPick({ kind: "collection", collectionId: c.id })}
+					/>
+				))}
+				{plain.length > 0 && <GroupLabel>Collections</GroupLabel>}
+				{plain.map((c) => (
+					<PickRow
+						key={c.id}
+						label={c.name}
+						hint={countHint(c.bookCount)}
+						selected={c.id === selectedId}
+						onSelect={() => onPick({ kind: "collection", collectionId: c.id })}
 					/>
 				))}
 			</div>
@@ -139,7 +257,7 @@ const SeriesPicker: React.FC<{
 					e.preventDefault();
 					const name = newName.trim();
 					if (!name) return;
-					onPick({ name });
+					onPick({ kind: "new", name });
 					setNewName("");
 				}}
 			>
@@ -154,9 +272,21 @@ const SeriesPicker: React.FC<{
 					Create
 				</Button>
 			</form>
+			{offersDetected && detected && (
+				<p className="m-0 text-muted-foreground text-xs">
+					Picking another one or No series keeps this book out of {detected.name}, here and on your
+					other devices.
+				</p>
+			)}
 		</EntryDialog>
 	);
 };
+
+const GroupLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+	<p className="m-0 px-2 pt-3 pb-1 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+		{children}
+	</p>
+);
 
 const PickRow: React.FC<{
 	label: string;

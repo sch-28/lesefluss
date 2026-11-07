@@ -12,13 +12,16 @@ import { makeBook } from "../../test/book-fixture";
 import { flush, type Rendered, render } from "../../test/render";
 
 const written = makeBook({ id: "new-book", title: "Dune" });
-const commitStagedImport = vi.fn(async () => written);
+const commitStagedImport = vi.fn(
+	async (_staged: unknown, _patch: unknown, _series?: unknown) => written,
+);
 const addBooksToCollection = vi.fn(async (_id: string, _bookIds: string[]) => {});
 const toastError = vi.fn();
 const toastSuccess = vi.fn();
 
 vi.mock("../../services/book-import", () => ({
-	commitStagedImport: () => commitStagedImport(),
+	commitStagedImport: (staged: unknown, patch: unknown, series?: unknown) =>
+		commitStagedImport(staged, patch, series),
 	attachOriginalToBook: async () => ({ fileCopyFailed: false }),
 	findAttachCandidate: async () => null,
 }));
@@ -34,6 +37,7 @@ const { ImportStagingProvider, IMPORT_PATH, useImportQueue, useImportStaging } =
 	"../import-staging-context"
 );
 type Staging = ReturnType<typeof useImportStaging>;
+type ImportSeriesChoice = Parameters<Queue["commit"]>[1];
 type Queue = ReturnType<typeof useImportQueue>;
 
 let staging: Staging;
@@ -67,7 +71,7 @@ function makeRouter() {
 	});
 }
 
-async function stageAndCommit(targetCollectionId?: string) {
+async function stageAndCommit(targetCollectionId?: string, series?: ImportSeriesChoice) {
 	await act(async () => {
 		staging.stage({
 			payload: { title: "Dune", content: "x" } as never,
@@ -78,7 +82,7 @@ async function stageAndCommit(targetCollectionId?: string) {
 	await flush();
 	const values = queue.initial;
 	if (!values) throw new Error("nothing staged");
-	await act(async () => queue.commit(values));
+	await act(async () => queue.commit(values, series));
 	await flush();
 }
 
@@ -98,6 +102,14 @@ describe("import into a collection", () => {
 		expect(addBooksToCollection).toHaveBeenCalledWith("c1", ["new-book"]);
 		expect(toastSuccess).toHaveBeenCalledWith('Added "Dune"');
 		expect(queue.current).toBeNull();
+	});
+
+	it("joins the collection it was started from also when the series row moved the book", async () => {
+		await stageAndCommit("c1", { kind: "none" });
+		expect(commitStagedImport).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
+			kind: "none",
+		});
+		expect(addBooksToCollection).toHaveBeenCalledWith("c1", ["new-book"]);
 	});
 
 	it("leaves collections alone for an import without a target", async () => {

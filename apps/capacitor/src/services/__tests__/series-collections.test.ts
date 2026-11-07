@@ -6,9 +6,8 @@ vi.mock("../db/queries", () => ({ queries: {} }));
 vi.mock("../sync", () => ({ scheduleSyncPush: vi.fn() }));
 vi.mock("../query-client", () => ({ queryClient: { invalidateQueries: vi.fn() } }));
 
-const { AUTO_STAMP, planSeriesReconcile, scheduleSeriesReconcile } = await import(
-	"../series-collections"
-);
+const { AUTO_STAMP, describeImportSeries, planSeriesReconcile, scheduleSeriesReconcile } =
+	await import("../series-collections");
 const { queries } = await import("../db/queries");
 const { buildCollectionMerge } = await import("../sync/collection-sync");
 type HintBook = Parameters<typeof planSeriesReconcile>[0]["books"][number];
@@ -166,6 +165,17 @@ describe("dismissals", () => {
 		expect(synced.collections.find((c) => c.id === EXPANSE)?.deleted).toBe(true);
 	});
 
+	it("does not count a book kept out of a series that has not formed yet", () => {
+		const keptOut = created.memberships
+			.filter((m) => m.bookId === "bbbbbbbb")
+			.map((m) => ({ ...m, deleted: true, updatedAt: 5_000 }));
+		expect(plan([one, two], [], keptOut)).toEqual({ collections: [], memberships: [] });
+
+		const formed = plan([one, two, three], [], keptOut);
+		expect(formed.collections).toHaveLength(1);
+		expect(formed.memberships.map((m) => m.bookId)).toEqual(["aaaaaaaa", "cccccccc"]);
+	});
+
 	it("never dates an auto row after the clock, whatever a book's addedAt says", () => {
 		const future = [book("aaaaaaaa", 1e15, "Dune", 1), book("bbbbbbbb", 2e15, "Dune", 2)];
 		const [collection] = plan(future).collections;
@@ -174,6 +184,52 @@ describe("dismissals", () => {
 			sortOrder: 10_000,
 			updatedAt: AUTO_STAMP,
 		});
+	});
+});
+
+describe("describeImportSeries", () => {
+	const hint = { seriesName: " The Expanse ", seriesIndex: 2 };
+	const base = { id: EXPANSE, name: "Expanse (my)", deleted: false, bookCount: 3 };
+
+	it("is null for a file that names no usable series", () => {
+		const state = { collection: null, others: [] };
+		expect(describeImportSeries({ seriesName: null, seriesIndex: 1 }, state)).toBeNull();
+		expect(describeImportSeries({ seriesName: " !! ", seriesIndex: 1 }, state)).toBeNull();
+	});
+
+	it("joins an existing series, under the name the reader gave it", () => {
+		expect(describeImportSeries(hint, { collection: base, others: [] })).toEqual({
+			collectionId: EXPANSE,
+			name: "The Expanse",
+			index: 2,
+			status: { kind: "joins", name: "Expanse (my)", bookCount: 3 },
+		});
+	});
+
+	it("starts the series with the oldest book already in the library", () => {
+		const others = [
+			{ id: "aaaaaaaa", title: "Leviathan Wakes" },
+			{ id: "cccccccc", title: "Abaddon's Gate" },
+		];
+		expect(describeImportSeries(hint, { collection: null, others })?.status).toEqual({
+			kind: "starts",
+			withTitle: "Leviathan Wakes",
+		});
+	});
+
+	it("waits for a second book, and reports a deleted series as dismissed", () => {
+		expect(describeImportSeries(hint, { collection: null, others: [] })?.status).toEqual({
+			kind: "waits",
+		});
+		const deleted = { ...base, deleted: true };
+		expect(describeImportSeries(hint, { collection: deleted, others: [] })?.status).toEqual({
+			kind: "dismissed",
+		});
+	});
+
+	it("drops a number the wire would refuse", () => {
+		const state = { collection: null, others: [] };
+		expect(describeImportSeries({ ...hint, seriesIndex: -1 }, state)?.index).toBeNull();
 	});
 });
 

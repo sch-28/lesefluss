@@ -5,8 +5,10 @@ import {
 	seriesCollectionId,
 } from "@lesefluss/core";
 import { log } from "../utils/log";
+import type { ImportSeriesChoice } from "./book-import/types";
 import { collectionKeys } from "./db/hooks/query-keys";
 import { queries } from "./db/queries";
+import type { ImportSeriesState } from "./db/queries/collections";
 import type { Collection, CollectionBook } from "./db/schema";
 import { queryClient } from "./query-client";
 import { serverNow } from "./sync/server-clock";
@@ -31,7 +33,7 @@ export interface SeriesReconcilePlan {
  * hints. A key is created once two live books share it; an existing collection
  * is joined by any book with its key. Any row that already exists is left
  * alone, tombstones included: a deleted series collection or a removed book is
- * the user's dismissal and is never re-added.
+ * the user's dismissal and is never re-added, nor counted towards the two books.
  *
  * Auto rows carry `AUTO_STAMP` as their revision, so every user edit on any
  * device beats them, a dismissal included that this device has not pulled yet.
@@ -54,6 +56,9 @@ export function planSeriesReconcile(input: {
 	}
 	const existing = new Map(input.collections.map((c) => [c.id, c]));
 	const members = new Set(input.memberships.map((m) => memberKey(m.collectionId, m.bookId)));
+	const dismissed = new Set(
+		input.memberships.filter((m) => m.deleted).map((m) => memberKey(m.collectionId, m.bookId)),
+	);
 
 	const plan: SeriesReconcilePlan = { collections: [], memberships: [] };
 	for (const [key, group] of byKey) {
@@ -61,12 +66,14 @@ export function planSeriesReconcile(input: {
 		const collection = existing.get(id);
 		if (collection?.deleted) continue;
 		if (!collection) {
-			if (group.length < 2) continue;
-			group.sort((a, b) => a.addedAt - b.addedAt || a.id.localeCompare(b.id));
-			const created = Math.min(group[0].addedAt, input.now);
+			const founders = group
+				.filter((book) => !dismissed.has(memberKey(id, book.id)))
+				.sort((a, b) => a.addedAt - b.addedAt || a.id.localeCompare(b.id));
+			if (founders.length < 2) continue;
+			const created = Math.min(founders[0].addedAt, input.now);
 			plan.collections.push({
 				id,
-				name: (group[0].seriesName?.trim() || key).slice(0, COLLECTION_NAME_MAX),
+				name: (founders[0].seriesName?.trim() || key).slice(0, COLLECTION_NAME_MAX),
 				sortOrder: created,
 				ordered: true,
 				seriesKey: key,
@@ -97,6 +104,94 @@ function validSeriesIndex(index: number | null): number | null {
 
 function memberKey(collectionId: string, bookId: string): string {
 	return `${collectionId}\u0000${bookId}`;
+}
+
+export type ImportSeriesStatus =
+	| { kind: "joins"; name: string; bookCount: number }
+	| { kind: "starts"; withTitle: string }
+	| { kind: "waits" }
+	| { kind: "dismissed" };
+
+/** The series an import's file names, and what keeping it would do. */
+export type DetectedSeries = {
+	collectionId: string;
+	/** As the file spells it. */
+	name: string;
+	index: number | null;
+	status: ImportSeriesStatus;
+};
+
+export type SeriesHint = { seriesName: string | null; seriesIndex: number | null };
+
+/** Null when the file names no usable series. */
+export function describeImportSeries(
+	hint: SeriesHint,
+	state: ImportSeriesState,
+): DetectedSeries | null {
+	const key = normalizeSeriesKey(hint.seriesName);
+	if (!key || !hint.seriesName) return null;
+	const detected = {
+		collectionId: seriesCollectionId(key),
+		name: hint.seriesName.trim(),
+		index: validSeriesIndex(hint.seriesIndex),
+	};
+	const { collection, others } = state;
+	if (collection?.deleted) return { ...detected, status: { kind: "dismissed" } };
+	if (collection) {
+		return {
+			...detected,
+			status: { kind: "joins", name: collection.name, bookCount: collection.bookCount },
+		};
+	}
+	if (others.length > 0) {
+		return { ...detected, status: { kind: "starts", withTitle: others[0].title } };
+	}
+	return { ...detected, status: { kind: "waits" } };
+}
+
+/**
+ * Writes the Add book page's series choice for a just-inserted book. Runs
+ * before the reconcile, which then finds the choice: a membership it keeps, or
+ * the dismissal that keeps the book out of the file's series.
+ */
+export async function applyImportSeriesChoice(
+	bookId: string,
+	hint: SeriesHint,
+	choice: ImportSeriesChoice,
+	now = serverNow(),
+): Promise<void> {
+	const key = normalizeSeriesKey(hint.seriesName);
+	const detectedId = key ? seriesCollectionId(key) : null;
+	if (
+		choice.kind === "detected" ||
+		(choice.kind === "collection" && choice.collectionId === detectedId)
+	) {
+		const index = choice.index;
+		// Only a changed #N is written: the reconcile adds the book at the file's number.
+		if (detectedId && index !== validSeriesIndex(hint.seriesIndex)) {
+			await queries.addBooksToCollection(detectedId, [bookId], now, new Map([[bookId, index]]));
+		}
+		return;
+	}
+	if (detectedId) await queries.dismissBookFromCollection(detectedId, bookId, now);
+	if (choice.kind === "none") return;
+
+	let collectionId: string;
+	let ordered: boolean;
+	if (choice.kind === "new") {
+		collectionId = (await queries.createCollection(choice.name, now)).id;
+		await queries.setCollectionOrdered(collectionId, true, now);
+		ordered = true;
+	} else {
+		collectionId = choice.collectionId;
+		ordered = (await queries.getCollections()).some((c) => c.id === collectionId && c.ordered);
+	}
+	await queries.addBooksToCollection(
+		collectionId,
+		[bookId],
+		now,
+		ordered ? new Map([[bookId, choice.index]]) : undefined,
+	);
 }
 
 export async function reconcileSeriesCollections(): Promise<number> {

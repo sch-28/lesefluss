@@ -1,13 +1,18 @@
+import { normalizeSeriesKey } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { useOverlayBack } from "@lesefluss/ui/overlay-back";
 import { useBlocker, useRouter } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import type React from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type ImportQueue, useImportQueue } from "../../contexts/import-staging-context";
+import type { ImportSeriesChoice } from "../../services/book-import";
+import { queryHooks } from "../../services/db/hooks";
+import { type DetectedSeries, describeImportSeries } from "../../services/series-collections";
 import { BookEditFields } from "./book-edit-fields";
 import { finalizeEditValues } from "./book-edit-form";
 import { BookEditLayout, useEditForm, useIsWideLayout } from "./book-edit-layout";
+import { SeriesField } from "./series-field";
 
 /**
  * The import confirm: the edit page for a book that has no row yet. Leaves on
@@ -61,8 +66,19 @@ const ImportForm: React.FC<{
 	const isWide = useIsWideLayout();
 	const form = useEditForm(initial);
 	const staged = queue.current;
+	const hint = {
+		seriesName: staged?.payload.seriesName ?? null,
+		seriesIndex: staged?.payload.seriesIndex ?? null,
+	};
+	const seriesKey = normalizeSeriesKey(hint.seriesName) || null;
+	const { data: seriesState } = queryHooks.useImportSeriesState(seriesKey);
+	const { data: collections = [] } = queryHooks.useCollections();
+	// Null until the reader touches the row: the file's series then stands as detected.
+	const [seriesChoice, setSeriesChoice] = useState<ImportSeriesChoice | null>(null);
 	if (!staged) return null;
 	const { payload, extras } = staged;
+	const detected = seriesState ? describeImportSeries(hint, seriesState) : null;
+	const isSeriesLoading = seriesKey !== null && !seriesState;
 
 	return (
 		<BookEditLayout
@@ -74,7 +90,7 @@ const ImportForm: React.FC<{
 			onCancel={queue.discard}
 			onSave={() => {
 				const values = finalizeEditValues(form.values, form.tagDraft);
-				if (values.title) queue.commit(values);
+				if (values.title) queue.commit(values, seriesChoice ?? undefined);
 			}}
 			canSave={form.values.title.trim().length > 0 && !queue.isCheckingAttach}
 			isSaving={queue.isCommitting}
@@ -108,10 +124,25 @@ const ImportForm: React.FC<{
 					format={payload.fileFormat}
 					facts={["New"]}
 					fileLanguage={extras.language ?? payload.language ?? null}
+					series={
+						isSeriesLoading ? null : (
+							<SeriesField
+								choice={seriesChoice ?? defaultSeriesChoice(detected)}
+								onChange={setSeriesChoice}
+								collections={collections}
+								detected={detected}
+							/>
+						)
+					}
 				/>
 			</div>
 		</BookEditLayout>
 	);
 };
+
+function defaultSeriesChoice(detected: DetectedSeries | null): ImportSeriesChoice {
+	if (!detected || detected.status.kind === "dismissed") return { kind: "none" };
+	return { kind: "detected", index: detected.index };
+}
 
 export default BookImportPage;

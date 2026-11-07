@@ -151,7 +151,13 @@ const EditBookForm: React.FC<{
 				facts={facts}
 				progress={{ wordCount: book.wordCount, wordPosition: book.wordPosition }}
 				series={
-					<SeriesField choice={seriesChoice} onChange={setSeriesChoice} collections={collections} />
+					<SeriesField
+						choice={seriesChoice}
+						onChange={(next) => {
+							if (next.kind !== "detected") setSeriesChoice(next);
+						}}
+						collections={collections}
+					/>
 				}
 			/>
 			<AlertDialog

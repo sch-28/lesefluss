@@ -188,6 +188,7 @@ export const queryHooks = {
 	useRemoveBooksFromCollection: collectionHooks.useRemoveBooksFromCollection,
 	useSeriesMembershipForBook: collectionHooks.useSeriesMembershipForBook,
 	useSaveBookSeries: collectionHooks.useSaveBookSeries,
+	useImportSeriesState: collectionHooks.useImportSeriesState,
 
 	// ── Smart shelves ─────────────────────────────────────────────────────
 	useSmartShelfRows: smartShelfHooks.useSmartShelfRows,

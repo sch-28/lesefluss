@@ -43,6 +43,14 @@ function useSeriesMembershipForBook(bookId: string) {
 	});
 }
 
+function useImportSeriesState(seriesKey: string | null) {
+	return useQuery({
+		queryKey: collectionKeys.importSeries(seriesKey ?? ""),
+		queryFn: () => queries.getImportSeriesState(seriesKey ?? ""),
+		enabled: seriesKey !== null,
+	});
+}
+
 async function applySeriesPlan(bookId: string, plan: SeriesPlan): Promise<void> {
 	if (plan.remove) await queries.removeBooksFromCollection(plan.remove, [bookId]);
 	if (!plan.add) return;
@@ -149,4 +157,5 @@ export const collectionHooks = {
 	useRemoveBooksFromCollection,
 	useSeriesMembershipForBook,
 	useSaveBookSeries,
+	useImportSeriesState,
 };

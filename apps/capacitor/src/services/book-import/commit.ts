@@ -11,9 +11,10 @@ import { FIELD_LIMITS } from "../../pages/library/book-fields";
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
 import type { Book, NewBook } from "../db/schema";
-import { scheduleSeriesReconcile } from "../series-collections";
+import { applyImportSeriesChoice, scheduleSeriesReconcile } from "../series-collections";
+import { errorMessage, reportEvent } from "../telemetry";
 import { storeBookImages } from "./store-images";
-import type { ImportExtras, ImportOverrides } from "./types";
+import type { ImportExtras, ImportOverrides, ImportSeriesChoice } from "./types";
 
 /** Directory within app data where original book files (EPUB, …) are stored. */
 const BOOKS_DIR = "books";
@@ -97,7 +98,7 @@ export async function commitBook(
 	/** Reader's corrections from the confirm sheet, applied over what the parser
 	 *  guessed. Absent when an import commits without being shown. */
 	overrides?: ImportOverrides,
-	options: { awaitBackgroundWork?: boolean } = {},
+	options: { awaitBackgroundWork?: boolean; series?: ImportSeriesChoice } = {},
 ): Promise<Book> {
 	const id = generateBookId();
 	const addedAt = Date.now();
@@ -126,6 +127,19 @@ export async function commitBook(
 	const backgroundWork = finishImportInBackground(id, payload);
 	if (options.awaitBackgroundWork) await backgroundWork;
 
+	if (options.series) {
+		const hint = {
+			seriesName: payload.seriesName ?? null,
+			seriesIndex: payload.seriesIndex ?? null,
+		};
+		try {
+			await applyImportSeriesChoice(id, hint, options.series);
+		} catch (err) {
+			// The book is written: failing here would leave it staged, and a retry would add it twice.
+			log.warn("book-import", "series choice failed:", err);
+			reportEvent("collection_write_error", { message: errorMessage(err) });
+		}
+	}
 	if (payload.seriesName) await scheduleSeriesReconcile();
 
 	const stored = await queries.getBook(id);
