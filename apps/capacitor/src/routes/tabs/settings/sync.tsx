@@ -83,11 +83,11 @@ const DANGER_ACTIONS: Record<DangerAction, DangerActionConfig> = {
 	},
 	stats: {
 		label: "Delete reading stats",
-		subtitle: "Wipes every reading session and goal, keeps your library",
+		subtitle: "Wipes every reading session, goal and speed test, keeps your library",
 		icon: BarChart3,
 		header: "Delete reading stats?",
 		message:
-			"Every reading session and reading goal will be wiped from this device and your cloud account. Other devices drop the goals on their next sync, and the sessions too if they sync reading stats, but sessions a device recorded offline and hasn't synced yet still arrive afterwards. Your library, highlights and bookmarks are kept.",
+			"Every reading session, reading goal and speed test will be wiped from this device and your cloud account. Other devices drop the goals on their next sync, and the sessions and speed tests too if they sync reading stats, but sessions a device recorded offline and hasn't synced yet still arrive afterwards. Your library, highlights and bookmarks are kept.",
 		successMessage: "Reading stats deleted",
 	},
 	library: {

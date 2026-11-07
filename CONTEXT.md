@@ -86,6 +86,10 @@ How fast this reader reads, from one function (`computeSpeedModel` in `@leseflus
 
 Estimates render as plain values ("4h 10m", no "~"); that a value is estimated is said only in a popover or details.
 
+### Speed test
+
+A one-minute measurement in two rounds, offered in onboarding and from the Speed tab: the reader reads a short passage normally (reading wpm, from words over the time between tap-to-begin and Done), then sees the passage's next part in RSVP at a suggested dial (RSVP wpm, from the delays the engine would use for the words shown, not the wall clock). A reading result outside 120 to 900 wpm is offered for a retry. Each result is a row in `speed_tests`, synced with the stats setting like [sessions](#session) and wiped with them; the latest one is the [speed model](#speed-model)'s fallback before 10 minutes of measured reading, and every one shows as a marker on the speed trend. Applying the result sets the RSVP dial; nothing else changes the dial.
+
 ### Bookmark
 
 A named [word position](#word-position) in one book (`bookmarks`, label optional). It syncs with sync on, not behind the highlights or stats toggles. A delete is sticky: the server keeps the tombstone (until an admin purges tombstones, once every device has pulled) and no later push revives it, a server tombstone removes the local row whatever its stamp, and a local delete beats a live server row until it is pushed. Deleting a book or a serial takes its bookmarks along, on the server too for clients that send none. Delete reading stats keeps them.

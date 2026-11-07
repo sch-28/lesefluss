@@ -13,7 +13,7 @@ import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { db } from "~/db";
 import { user } from "~/db/auth-schema";
-import { syncReadingGoals, syncReadingSessions } from "~/db/schema";
+import { syncReadingGoals, syncReadingSessions, syncSpeedTests } from "~/db/schema";
 import { Route as SyncRoute } from "~/routes/api/sync";
 import { Route as DeleteSessionRoute } from "~/routes/api/sync/delete-session";
 import { Route as DeleteSessionsRoute } from "~/routes/api/sync/delete-sessions";
@@ -50,6 +50,7 @@ describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 	});
 
 	afterAll(async () => {
+		await db.delete(syncSpeedTests).where(eq(syncSpeedTests.userId, userId));
 		await db.delete(syncReadingGoals).where(eq(syncReadingGoals.userId, userId));
 		await db.delete(syncReadingSessions).where(eq(syncReadingSessions.userId, userId));
 		await db.delete(syncReadingSessions).where(eq(syncReadingSessions.userId, otherUserId));
@@ -199,6 +200,34 @@ describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 		const goals = (await get("?sessionTombstonesSince=0")).readingGoals ?? [];
 		expect(goals.map((g) => [g.goalId, g.deleted])).toEqual([["g1", true]]);
 		expect(goals[0]?.updatedAt).toBeGreaterThan(then.getTime());
+	});
+
+	test("the stats wipe tombstones speed tests, and pulls hand them out mapped", async () => {
+		const then = new Date(Date.now() - 60_000);
+		await db.insert(syncSpeedTests).values({
+			userId,
+			testId: "t1",
+			readingWpm: 260,
+			rsvpWpm: null,
+			passageId: "canal-1",
+			createdAt: then,
+			updatedAt: then,
+		});
+		expect((await get("?sessionTombstonesSince=0")).speedTests).toEqual([
+			{
+				testId: "t1",
+				readingWpm: 260,
+				rsvpWpm: null,
+				passageId: "canal-1",
+				deleted: false,
+				createdAt: then.getTime(),
+				updatedAt: then.getTime(),
+			},
+		]);
+		await wipe();
+		const tests = (await get("?sessionTombstonesSince=0")).speedTests ?? [];
+		expect(tests.map((t) => [t.testId, t.deleted])).toEqual([["t1", true]]);
+		expect(tests[0]?.updatedAt).toBeGreaterThan(then.getTime());
 	});
 
 	test("refuses an id longer than the push schema allows", async () => {

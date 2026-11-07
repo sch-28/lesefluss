@@ -190,6 +190,8 @@ export const statsKeys = {
 	/** The Speed tab's per-book rows and records, all time. */
 	speedTab: ["stats", "speed-tab"] as const,
 	milestones: ["stats", "milestones"] as const,
+	/** Under stats: a new test moves the speed model and the trend's markers. */
+	speedTests: ["stats", "speed-tests"] as const,
 
 	/** Per-book stats card on book detail. */
 	book: (bookId: string) => ["stats", "book", bookId] as const,

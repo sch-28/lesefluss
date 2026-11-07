@@ -1,11 +1,33 @@
 import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 import { Slider } from "@lesefluss/ui/slider";
 import type React from "react";
+import { useState } from "react";
 import { WpmPresetChips } from "../../../components/rsvp-pickers";
+import { SpeedTest } from "../../../components/speed-test/speed-test";
 import { useAutoSaveSettings } from "../../../hooks/use-auto-save-settings";
 import RsvpPreview from "../../settings/rsvp-preview";
+import { useOnboardingFooter } from "../footer-context";
 
+/** The speed test; skipping it leaves the dial to be picked by hand. */
 const SpeedStep: React.FC = () => {
+	const { next, setFooter } = useOnboardingFooter();
+	const [manual, setManual] = useState(false);
+	if (manual) return <ManualSpeed />;
+	return (
+		<SpeedTest
+			onActions={setFooter}
+			onSkip={() => {
+				setFooter(null);
+				setManual(true);
+			}}
+			onFinish={next}
+			skipLabel="Skip this step"
+			finishLabel="Continue"
+		/>
+	);
+};
+
+const ManualSpeed: React.FC = () => {
 	const { settings, updateSetting } = useAutoSaveSettings();
 	if (!settings) return null;
 

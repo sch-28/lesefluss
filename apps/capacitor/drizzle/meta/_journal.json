@@ -414,6 +414,13 @@
       "when": 1783728000000,
       "tag": "0058_session_font_segments",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "6",
+      "when": 1783814400000,
+      "tag": "0059_speed_tests",
+      "breakpoints": true
     }
   ]
 }

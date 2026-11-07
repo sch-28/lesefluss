@@ -471,6 +471,22 @@ export const wishlist = sqliteTable("wishlist", {
 export type WishlistItem = typeof wishlist.$inferSelect;
 
 /**
+ * One speed test result. `rsvpWpm` is null when the test ended after its read
+ * round. Never tombstoned locally: "Delete reading stats" tombstones them on the
+ * server and drops the local rows.
+ */
+export const speedTests = sqliteTable("speed_tests", {
+	id: text("id").primaryKey(),
+	readingWpm: integer("reading_wpm").notNull(),
+	rsvpWpm: integer("rsvp_wpm"),
+	passageId: text("passage_id").notNull(),
+	createdAt: integer("created_at").notNull(),
+	updatedAt: integer("updated_at").notNull(),
+});
+
+export type SpeedTestRow = typeof speedTests.$inferSelect;
+
+/**
  * Manual collections. Tombstoned on delete (`deleted`) so the delete syncs;
  * tombstones stay and are pushed with every sync. `sortOrder` is fractional so a
  * move writes one row.

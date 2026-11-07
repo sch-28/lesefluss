@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "~/db";
-import { syncReadingGoals, syncReadingSessions } from "~/db/schema";
+import { syncReadingGoals, syncReadingSessions, syncSpeedTests } from "~/db/schema";
 
 /**
  * Tombstones sessions in one statement, so a batch lands whole or not at all.
@@ -43,7 +43,7 @@ export function tombstoneSession(userId: string, sessionId: string): Promise<voi
 }
 
 /**
- * "Delete reading stats": sessions and reading goals.
+ * "Delete reading stats": sessions, reading goals and speed tests.
  * Buddies see a standing worked out from a goal, so one must not outlive it here.
  * Both are tombstoned rather than deleted so other devices drop their copies.
  */
@@ -57,5 +57,9 @@ export async function wipeReadingStats(userId: string): Promise<void> {
 			.update(syncReadingGoals)
 			.set({ deleted: true, updatedAt: new Date() })
 			.where(and(eq(syncReadingGoals.userId, userId), eq(syncReadingGoals.deleted, false)));
+		await tx
+			.update(syncSpeedTests)
+			.set({ deleted: true, updatedAt: new Date() })
+			.where(and(eq(syncSpeedTests.userId, userId), eq(syncSpeedTests.deleted, false)));
 	});
 }

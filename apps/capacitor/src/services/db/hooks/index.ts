@@ -39,6 +39,7 @@ import { serialHooks } from "./use-serials";
 import { seriesHooks } from "./use-series";
 import { settingsHooks } from "./use-settings";
 import { smartShelfHooks } from "./use-smart-shelves";
+import { speedTestHooks } from "./use-speed-tests";
 import { statsHooks } from "./use-stats";
 import { wishlistHooks } from "./use-wishlist";
 
@@ -237,6 +238,8 @@ export const queryHooks = {
 	useStatsSpeedModelWithout: statsHooks.useSpeedModelWithout,
 	useStatsSpeedInsights: statsHooks.useSpeedInsights,
 	useStatsMilestones: statsHooks.useMilestones,
+	useSpeedTests: speedTestHooks.useSpeedTests,
+	useSaveSpeedTest: speedTestHooks.useSaveSpeedTest,
 	useStatsSpeedTab: statsHooks.useSpeedTab,
 	useStatsBook: statsHooks.useBookStats,
 	useStatsCurrentlyReading: statsHooks.useCurrentlyReading,

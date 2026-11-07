@@ -23,6 +23,7 @@ import { MilestonesSection } from "./milestones-section";
 import { RsvpDial } from "./rsvp-dial";
 import { ShareSpeedButton } from "./share-speed-button";
 import { ReadingInsights, ReadingRecords, RsvpInsights, RsvpRecords } from "./speed-insights";
+import { SpeedTestCard } from "./speed-test-card";
 
 const VIEW_LABELS: Record<SpeedView, string> = { reading: "Reading", rsvp: "RSVP" };
 const VIEW_DOT: Record<SpeedView, string> = { reading: "bg-slate-500", rsvp: "bg-primary" };
@@ -101,6 +102,7 @@ function Hero({ model, view, now }: { model: SpeedModel; view: SpeedView; now: n
 	let sub: string | undefined;
 	if (view === "reading") {
 		if (model.reading.source === "default") sub = "Average reader";
+		else if (model.reading.source === "test") sub = "Speed test";
 		else if (scroll && page) sub = `Scroll ${scroll.wpm} · Page ${page.wpm}`;
 	}
 	return (
@@ -169,6 +171,7 @@ export function SpeedTab({ now }: { now: number }) {
 				windowLabel={WINDOW_LABELS[model.window]}
 				now={now}
 			/>
+			<SpeedTestCard />
 			{view === "rsvp" && model.rsvp ? (
 				<>
 					<RsvpDial model={model} />

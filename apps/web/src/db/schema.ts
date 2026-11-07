@@ -424,6 +424,25 @@ export const syncWishlist = pgTable(
 );
 
 export type NewSyncWishlistItem = typeof syncWishlist.$inferInsert;
+
+/** Speed test results; synced with reading stats. A tombstone is final. */
+export const syncSpeedTests = pgTable(
+	"sync_speed_tests",
+	{
+		userId: text("user_id").notNull(),
+		testId: text("test_id").notNull(),
+		readingWpm: integer("reading_wpm").notNull(),
+		rsvpWpm: integer("rsvp_wpm"),
+		passageId: text("passage_id").notNull(),
+		deleted: boolean("deleted").notNull().default(false),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.testId] })],
+);
+
+export type NewSyncSpeedTest = typeof syncSpeedTests.$inferInsert;
+
 export type NewSyncCollection = typeof syncCollections.$inferInsert;
 export type NewSyncCollectionBook = typeof syncCollectionBooks.$inferInsert;
 

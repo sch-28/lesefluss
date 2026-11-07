@@ -7,6 +7,7 @@ import type { SpeedTabData } from "../../../../../services/stats/speed-tab";
 import { click, type Rendered, render } from "../../../../../test/render";
 
 const mutate = vi.fn();
+const navigate = vi.fn();
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
@@ -16,12 +17,14 @@ const state: {
 	insights: SpeedInsights;
 	settings: { wpm: number; defaultReaderMode: string };
 	milestones: Milestones;
+	speedTests: { id: string; readingWpm: number; createdAt: number }[];
 } = {
 	model: undefined,
 	tab: { books: [], records: emptyRecords() },
 	insights: { reading: [], rsvp: [] },
 	settings: { wpm: 450, defaultReaderMode: "scroll" },
 	milestones: { reached: [], next: [] },
+	speedTests: [],
 };
 const sharedCards: ShareCardData[] = [];
 
@@ -37,6 +40,7 @@ vi.mock("../../../../../services/db/hooks", () => ({
 		useSettings: () => ({ data: state.settings }),
 		useSaveSettings: () => ({ mutate }),
 		useStatsMilestones: () => ({ data: state.milestones }),
+		useSpeedTests: () => ({ data: state.speedTests }),
 		useStatsPeriodTotals: () => ({ data: { minutes: 1260, words: 312_000, booksFinished: 7 } }),
 		useStatsWpmTrend: () => ({
 			data: {
@@ -52,6 +56,7 @@ vi.mock("../../../../../services/db/hooks", () => ({
 	},
 }));
 vi.mock("../../wpm-trend", () => ({ WpmTrend: () => null }));
+vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
 vi.mock("../../../../../components/share-card/share-card-sheet", () => ({
 	ShareCardSheet: ({ card }: { card: ShareCardData }) => {
 		sharedCards.push(card);
@@ -61,7 +66,9 @@ vi.mock("../../../../../components/share-card/share-card-sheet", () => ({
 
 const { SpeedTab } = await import("../speed-tab");
 
-function model(over: { rsvp?: boolean; reading?: boolean; source?: "measured" | "default" } = {}) {
+function model(
+	over: { rsvp?: boolean; reading?: boolean; source?: "measured" | "test" | "default" } = {},
+) {
 	const reading = over.reading ?? true;
 	const rsvp = over.rsvp ?? false;
 	return {
@@ -98,6 +105,8 @@ const bookRow = (i: number) => ({
 let view: Rendered | undefined;
 beforeEach(() => {
 	mutate.mockClear();
+	navigate.mockClear();
+	state.speedTests = [];
 	state.tab = { books: [], records: emptyRecords() };
 	state.insights = { reading: [], rsvp: [] };
 	state.settings = { wpm: 450, defaultReaderMode: "scroll" };
@@ -131,6 +140,18 @@ describe("SpeedTab", () => {
 		expect(q("rsvp-dial")).toBeNull();
 		expect(q("time-saved")).toBeNull();
 		expect(view.container.querySelector("[data-testid=speed-mode]")).toBeNull();
+	});
+
+	it("offers the speed test and names it as the source of an unmeasured speed", async () => {
+		state.model = model({ reading: false, source: "test" });
+		view = await render(<SpeedTab now={2 * DAY} />);
+		expect(q("speed-test-card")?.textContent).toContain("Not taken yet");
+		expect(q("speed-hero")?.textContent).toContain("Speed test");
+		state.speedTests = [{ id: "t1", readingWpm: 275, createdAt: DAY }];
+		await view.rerender(<SpeedTab now={2 * DAY + 1} />);
+		expect(q("speed-test-card")?.textContent).toContain("275 wpm");
+		await click(view.getButton("Test my speed"));
+		expect(navigate).toHaveBeenCalledWith({ to: "/speed-test" });
 	});
 
 	it("renders no insight grid while no insight has its data", async () => {

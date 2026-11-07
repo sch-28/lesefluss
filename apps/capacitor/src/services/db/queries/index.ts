@@ -154,6 +154,14 @@ import {
 	upsertSmartShelves,
 } from "./smart-shelves";
 import {
+	addSpeedTest,
+	deleteAllSpeedTests,
+	getLatestSpeedTest,
+	getSpeedTests,
+	hardDeleteSpeedTests,
+	upsertSpeedTests,
+} from "./speed-tests";
+import {
 	getBookStats,
 	getCurrentlyReading,
 	getDailyReading,
@@ -365,4 +373,12 @@ export const queries = {
 	getAllWishlistForSync,
 	upsertWishlist,
 	hardDeleteWishlist,
+
+	// Speed tests
+	addSpeedTest,
+	getSpeedTests,
+	getLatestSpeedTest,
+	upsertSpeedTests,
+	hardDeleteSpeedTests,
+	deleteAllSpeedTests,
 };

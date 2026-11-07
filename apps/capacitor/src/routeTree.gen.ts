@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SpeedTestRouteImport } from './routes/speed-test'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TabsSocialIndexRouteImport } from './routes/tabs/social/index'
@@ -49,6 +50,11 @@ import { Route as TabsLibraryCollectionsIdEditRouteImport } from './routes/tabs/
 import { Route as TabsLibraryCollectionsIdAddRouteImport } from './routes/tabs/library/collections.$id.add'
 import { Route as TabsLibraryBookIdEditRouteImport } from './routes/tabs/library/book.$id_.edit'
 
+const SpeedTestRoute = SpeedTestRouteImport.update({
+  id: '/speed-test',
+  path: '/speed-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -255,6 +261,7 @@ const TabsLibraryBookIdEditRoute = TabsLibraryBookIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
+  '/speed-test': typeof SpeedTestRoute
   '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
@@ -296,6 +303,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
+  '/speed-test': typeof SpeedTestRoute
   '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
@@ -338,6 +346,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
+  '/speed-test': typeof SpeedTestRoute
   '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
@@ -381,6 +390,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/onboarding'
+    | '/speed-test'
     | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
@@ -422,6 +432,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/onboarding'
+    | '/speed-test'
     | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
@@ -463,6 +474,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/onboarding'
+    | '/speed-test'
     | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
@@ -505,6 +517,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   OnboardingRoute: typeof OnboardingRoute
+  SpeedTestRoute: typeof SpeedTestRoute
   TabsExploreTagsRoute: typeof TabsExploreTagsRoute
   TabsExploreWebNovelPreviewRoute: typeof TabsExploreWebNovelPreviewRoute
   TabsExploreWebNovelsRoute: typeof TabsExploreWebNovelsRoute
@@ -546,6 +559,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/speed-test': {
+      id: '/speed-test'
+      path: '/speed-test'
+      fullPath: '/speed-test'
+      preLoaderRoute: typeof SpeedTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/onboarding': {
       id: '/onboarding'
       path: '/onboarding'
@@ -825,6 +845,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   OnboardingRoute: OnboardingRoute,
+  SpeedTestRoute: SpeedTestRoute,
   TabsExploreTagsRoute: TabsExploreTagsRoute,
   TabsExploreWebNovelPreviewRoute: TabsExploreWebNovelPreviewRoute,
   TabsExploreWebNovelsRoute: TabsExploreWebNovelsRoute,

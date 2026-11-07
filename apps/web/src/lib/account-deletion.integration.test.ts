@@ -42,6 +42,7 @@ import {
 	syncReadingSessions,
 	syncSeries,
 	syncSettings,
+	syncSpeedTests,
 	syncWishlist,
 } from "~/db/schema";
 import { deleteUserAccount, purgeCloudData } from "./account-deletion";
@@ -162,6 +163,15 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 			kind: "catalog",
 			ref: "gutenberg:84",
 			title: "Frankenstein",
+			createdAt: now,
+			updatedAt: now,
+		});
+		await db.insert(syncSpeedTests).values({
+			userId,
+			testId: "st1",
+			readingWpm: 250,
+			rsvpWpm: 400,
+			passageId: "canal-1",
 			createdAt: now,
 			updatedAt: now,
 		});
@@ -414,6 +424,9 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 		expect(
 			await db.select().from(syncWishlist).where(eq(syncWishlist.userId, userId)),
 		).toHaveLength(0);
+		expect(
+			await db.select().from(syncSpeedTests).where(eq(syncSpeedTests.userId, userId)),
+		).toHaveLength(0);
 
 		// Social profile and avatar cascade from the user row.
 		expect(
@@ -627,7 +640,17 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 		await db.insert(user).values({ id, name: "Keep", email: `${id}@example.test` });
 		await claimHandle(id, clearHandle, "Keep");
 		await db.insert(syncSettings).values({ userId: id, updatedAt: now });
+		await db.insert(syncSpeedTests).values({
+			userId: id,
+			testId: "st1",
+			readingWpm: 250,
+			rsvpWpm: null,
+			passageId: "canal-1",
+			createdAt: now,
+			updatedAt: now,
+		});
 		await db.transaction((tx) => purgeCloudData(tx, id));
+		expect(await db.select().from(syncSpeedTests).where(eq(syncSpeedTests.userId, id))).toEqual([]);
 		const [profile] = await db.select().from(socialProfile).where(eq(socialProfile.userId, id));
 		expect(profile?.handle).toBe(clearHandle);
 		await deleteUserAccount(id);

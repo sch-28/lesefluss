@@ -425,6 +425,20 @@ export const SyncWishlistItemSchema = z
 		path: ["ref"],
 	});
 
+export const SPEED_TESTS_PUSH_MAX = 1000;
+export const SPEED_TEST_WPM_MAX = 5000;
+
+/** `rsvpWpm` is null when the test ended after its read round. */
+export const SyncSpeedTestSchema = z.object({
+	testId: z.string().min(1).max(64),
+	readingWpm: z.number().int().min(1).max(SPEED_TEST_WPM_MAX),
+	rsvpWpm: z.number().int().min(1).max(SPEED_TEST_WPM_MAX).nullable(),
+	passageId: z.string().min(1).max(64),
+	deleted: z.boolean(),
+	createdAt: epochMs(),
+	updatedAt: epochMs(),
+});
+
 export const SyncPayloadSchema = z.object({
 	// Cap is generous because serial chapter rows (seriesId set) carry no body
 	// content/cover/TOC, so a 50k-row payload is still small in bytes. The real
@@ -448,6 +462,8 @@ export const SyncPayloadSchema = z.object({
 	bookmarks: z.array(SyncBookmarkSchema).max(BOOKMARKS_PUSH_MAX).optional(),
 	// No default, as with goals: an omitted array never means "an empty wishlist".
 	wishlist: z.array(SyncWishlistItemSchema).max(WISHLIST_PUSH_MAX).optional(),
+	// No default, as with goals: an omitted array never means "no speed tests".
+	speedTests: z.array(SyncSpeedTestSchema).max(SPEED_TESTS_PUSH_MAX).optional(),
 });
 
 /** The server's reading of a push. Clients build pushes against `SyncPayloadSchema`. */
@@ -502,6 +518,7 @@ export type SyncCollectionBook = z.infer<typeof SyncCollectionBookSchema>;
 export type SyncSmartShelf = z.infer<typeof SyncSmartShelfSchema>;
 export type SyncBookmark = z.infer<typeof SyncBookmarkSchema>;
 export type SyncWishlistItem = z.infer<typeof SyncWishlistItemSchema>;
+export type SyncSpeedTest = z.infer<typeof SyncSpeedTestSchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 export type SyncPush = z.infer<typeof SyncPushSchema>;
 export type SyncPushStamps = z.infer<typeof SyncPushStampsSchema>;
@@ -542,6 +559,8 @@ export type SyncResponse = {
 	bookmarks?: SyncBookmark[];
 	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
 	wishlist?: SyncWishlistItem[];
+	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
+	speedTests?: SyncSpeedTest[];
 	/**
 	 * Book ids the server currently holds body content for. Lets the client skip
 	 * re-uploading content it has already stored, which it cannot otherwise know:

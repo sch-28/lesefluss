@@ -26,7 +26,7 @@ export const Route = createRootRoute({
 	component: RootLayout,
 });
 
-const FULL_SCREEN_PREFIXES = ["/onboarding", "/tabs/reader"];
+const FULL_SCREEN_PREFIXES = ["/onboarding", "/speed-test", "/tabs/reader"];
 
 function RootLayout() {
 	const { pathname } = useLocation();

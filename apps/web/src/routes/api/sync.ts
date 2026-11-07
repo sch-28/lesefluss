@@ -17,6 +17,7 @@ import {
 	type SyncSeries,
 	type SyncSettings,
 	type SyncSmartShelf,
+	type SyncSpeedTest,
 	type SyncWishlistItem,
 } from "@lesefluss/core";
 import { createFileRoute } from "@tanstack/react-router";
@@ -35,6 +36,7 @@ import {
 	syncSeries,
 	syncSettings,
 	syncSmartShelves,
+	syncSpeedTests,
 	syncWishlist,
 } from "~/db/schema";
 import {
@@ -56,6 +58,7 @@ import { upsertSyncCollectionBooks, upsertSyncCollections } from "~/lib/sync-col
 import { upsertSyncGoals } from "~/lib/sync-goal-upsert";
 import { upsertSyncSettings } from "~/lib/sync-settings-upsert";
 import { upsertSyncSmartShelves } from "~/lib/sync-smart-shelf-upsert";
+import { upsertSyncSpeedTests } from "~/lib/sync-speed-test-upsert";
 import { upsertSyncWishlist } from "~/lib/sync-wishlist-upsert";
 
 // Body size limits are enforced at the reverse proxy (Coolify/Traefik). The
@@ -202,6 +205,7 @@ async function getUserSyncData(
 		smartShelfRows,
 		bookmarkRows,
 		wishlistRows,
+		speedTestRows,
 		usedBytes,
 	] = await Promise.all([
 		db.select(metadataCols).from(syncBooks).where(eq(syncBooks.userId, userId)),
@@ -234,6 +238,7 @@ async function getUserSyncData(
 		db.select().from(syncSmartShelves).where(eq(syncSmartShelves.userId, userId)),
 		db.select().from(syncBookmarks).where(eq(syncBookmarks.userId, userId)),
 		db.select().from(syncWishlist).where(eq(syncWishlist.userId, userId)),
+		db.select().from(syncSpeedTests).where(eq(syncSpeedTests.userId, userId)),
 		contentUsage(db, userId),
 	]);
 
@@ -472,6 +477,17 @@ async function getUserSyncData(
 				deleted: w.deleted,
 				createdAt: toMs(w.createdAt),
 				updatedAt: toMs(w.updatedAt),
+			}),
+		),
+		speedTests: speedTestRows.map(
+			(t): SyncSpeedTest => ({
+				testId: t.testId,
+				readingWpm: t.readingWpm,
+				rsvpWpm: t.rsvpWpm,
+				passageId: t.passageId,
+				deleted: t.deleted,
+				createdAt: toMs(t.createdAt),
+				updatedAt: toMs(t.updatedAt),
 			}),
 		),
 	};
@@ -823,6 +839,10 @@ export const Route = createFileRoute("/api/sync")({
 					// Absent from clients that pre-date the wishlist: nothing to merge.
 					if (payload.wishlist) {
 						await upsertSyncWishlist(tx, userId, payload.wishlist);
+					}
+					// Absent from older clients and with stats sync off: nothing to merge.
+					if (payload.speedTests) {
+						await upsertSyncSpeedTests(tx, userId, payload.speedTests);
 					}
 					const stamps: SyncPushStamps = {
 						books: clampedBooks,

@@ -11,6 +11,7 @@ import {
 	type SpeedModel,
 	type SpeedWindow,
 	speedWindowRows,
+	THIRTY_DAYS_MS,
 	wordPos,
 } from "@lesefluss/core";
 import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
@@ -23,6 +24,8 @@ import {
 	type StreakResult,
 	sumDurationByLocalDay,
 	summariseStreak,
+	type TrendTestMarker,
+	trendTestMarkers,
 	type WpmTrend,
 	windowTrendBuckets,
 } from "../../stats/aggregate";
@@ -32,6 +35,7 @@ import { type ReadingRecords, summariseRecords } from "../../stats/records";
 import { buildSpeedTabData, type SpeedTabData } from "../../stats/speed-tab";
 import { db } from "../index";
 import { bookContent, books, readingSessions, series } from "../schema";
+import { getLatestSpeedTest, getSpeedTests } from "./speed-tests";
 
 export interface PeriodTotals {
 	minutes: number;
@@ -390,31 +394,53 @@ export async function getSpeedTab(): Promise<SpeedTabData> {
 
 export type SpeedTrendMode = "reading" | "rsvp";
 
+export type SpeedTrend = WpmTrend & { tests: TrendTestMarker[] };
+
 /** One mode's speed over the sittings the speed model's window holds, so the
- *  line and the number above it come from the same rows. */
+ *  line and the number above it come from the same rows. Speed tests ride along
+ *  as markers; the 30-day and all-time charts stretch to hold them. */
 export async function getWpmTrend(opts: {
 	window: SpeedWindow;
 	mode: SpeedTrendMode;
 	now: number;
-}): Promise<WpmTrend> {
-	const rows = await db
-		.select({
-			startedAt: readingSessions.startedAt,
-			mode: readingSessions.mode,
-			wpmAvg: readingSessions.wpmAvg,
-			wordsRead: readingSessions.wordsRead,
-			durationMs: readingSessions.durationMs,
-		})
-		.from(readingSessions);
+}): Promise<SpeedTrend> {
+	const [rows, tests] = await Promise.all([
+		db
+			.select({
+				startedAt: readingSessions.startedAt,
+				mode: readingSessions.mode,
+				wpmAvg: readingSessions.wpmAvg,
+				wordsRead: readingSessions.wordsRead,
+				durationMs: readingSessions.durationMs,
+			})
+			.from(readingSessions),
+		getSpeedTests(),
+	]);
 	const inWindow = speedWindowRows(rows, opts.window, opts.now);
 	const ofMode = inWindow.filter((r) => (opts.mode === "rsvp") === (r.mode === "rsvp"));
 	let oldest: number | undefined;
 	for (const r of inWindow) if (oldest === undefined || r.startedAt < oldest) oldest = r.startedAt;
+	const testsFrom =
+		opts.window === "all"
+			? 0
+			: opts.window === "30d"
+				? opts.now - THIRTY_DAYS_MS
+				: Number.POSITIVE_INFINITY;
+	for (const t of tests) {
+		if (t.createdAt >= testsFrom && (oldest === undefined || t.createdAt < oldest)) {
+			oldest = t.createdAt;
+		}
+	}
 	const buckets = windowTrendBuckets(opts.window, oldest, opts.now);
-	return buildWpmTrend(
+	const trend = buildWpmTrend(
 		ofMode.map((r) => ({ ...r, words: r.wordsRead })),
 		buckets,
 	);
+	const testWpm = tests.map((t) => ({
+		takenAt: t.createdAt,
+		wpm: opts.mode === "rsvp" ? t.rsvpWpm : t.readingWpm,
+	}));
+	return { ...trend, tests: trendTestMarkers(testWpm, buckets.starts) };
 }
 
 /**
@@ -457,27 +483,32 @@ export interface BookStats {
 }
 
 /** Every session row: the window is chosen inside the model, and a book's own
- *  speed spans all of its history. No speed test exists yet (LESE-124.11). */
+ *  speed spans all of its history. The latest speed test stands in until the
+ *  window holds enough reading. */
 export async function getSpeedModel(opts: {
 	window: SpeedWindow;
 	now: number;
 	/** Sittings to leave out, for a speed as it stood before them. */
 	without?: readonly string[];
 }): Promise<SpeedModel> {
-	const all = await db
-		.select({
-			id: readingSessions.id,
-			bookId: readingSessions.bookId,
-			mode: readingSessions.mode,
-			startedAt: readingSessions.startedAt,
-			durationMs: readingSessions.durationMs,
-			wordsRead: readingSessions.wordsRead,
-			wpmAvg: readingSessions.wpmAvg,
-		})
-		.from(readingSessions);
+	const [all, test] = await Promise.all([
+		db
+			.select({
+				id: readingSessions.id,
+				bookId: readingSessions.bookId,
+				mode: readingSessions.mode,
+				startedAt: readingSessions.startedAt,
+				durationMs: readingSessions.durationMs,
+				wordsRead: readingSessions.wordsRead,
+				wpmAvg: readingSessions.wpmAvg,
+			})
+			.from(readingSessions),
+		getLatestSpeedTest(),
+	]);
 	const without = new Set(opts.without);
 	const rows = without.size > 0 ? all.filter((r) => !without.has(r.id)) : all;
-	return computeSpeedModel(rows, { window: opts.window, now: opts.now, speedTest: null });
+	const speedTest = test ? { wpm: test.readingWpm, takenAt: test.createdAt } : null;
+	return computeSpeedModel(rows, { window: opts.window, now: opts.now, speedTest });
 }
 
 export type SpeedInsights = { reading: Insight[]; rsvp: Insight[] };

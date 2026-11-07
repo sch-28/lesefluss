@@ -180,6 +180,28 @@ function addToBucket(map: Map<number, Bucket>, bucketStart: number, num: number,
 	map.set(bucketStart, bucket);
 }
 
+export interface TrendTestMarker {
+	bucketIndex: number;
+	wpm: number;
+	takenAt: number;
+}
+
+/** Each test in the bucket it was taken in; one before the first bucket, or
+ *  without a figure for this view, has no place on the chart. */
+export function trendTestMarkers(
+	tests: readonly { takenAt: number; wpm: number | null }[],
+	starts: readonly number[],
+): TrendTestMarker[] {
+	const markers: TrendTestMarker[] = [];
+	for (const test of tests) {
+		if (test.wpm == null) continue;
+		let bucketIndex = -1;
+		for (let i = 0; i < starts.length && starts[i] <= test.takenAt; i++) bucketIndex = i;
+		if (bucketIndex >= 0) markers.push({ bucketIndex, wpm: test.wpm, takenAt: test.takenAt });
+	}
+	return markers.sort((a, b) => a.takenAt - b.takenAt);
+}
+
 /**
  * WPM trend. `measured` is words over active time per bucket across every
  * reading mode, the speed model's definition, so the trend and the speed shown

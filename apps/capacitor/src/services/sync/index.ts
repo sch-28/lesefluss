@@ -87,6 +87,7 @@ import {
 	setSessionTombstoneWatermark,
 } from "./session";
 import { buildSmartShelfMerge, pushableSmartShelves } from "./smart-shelf-sync";
+import { buildSpeedTestMerge, pushableSpeedTests } from "./speed-test-sync";
 import { buildWishlistMerge, pushableWishlist } from "./wishlist-sync";
 
 export { openBrowserSignIn } from "./browser-sign-in";
@@ -335,7 +336,7 @@ export async function wipeServerSessions(): Promise<void> {
 }
 
 /**
- * "Delete reading stats": tombstones every session and goal on the server, then
+ * "Delete reading stats": tombstones every session, goal and speed test on the server, then
  * drops the local rows. Under the sync lock, so a pull already holding a response
  * from before the wipe cannot write the rows back. The push watermark stays:
  * nothing local is left to resend, and later sessions sort above it anyway.
@@ -345,6 +346,7 @@ export async function wipeAllReadingStats(): Promise<void> {
 		await wipeServerSessions();
 		await queries.deleteAllReadingSessions();
 		await queries.hardDeleteAllGoals();
+		await queries.deleteAllSpeedTests();
 	});
 	requestReminderSync();
 }
@@ -1171,6 +1173,16 @@ export async function pullSync(): Promise<Set<string>> {
 				if (deletedIds.length > 0) changed = true;
 				await setSessionTombstoneWatermark(data.deletedSessionIdsAsOf);
 			}
+			// Absent from an older server: leave local speed tests alone.
+			if (data.speedTests) {
+				const merge = buildSpeedTestMerge(await queries.getSpeedTests(), data.speedTests);
+				if (merge.rejected > 0) {
+					log("sync", `pull: skipped ${merge.rejected} malformed speed test(s)`);
+				}
+				if (merge.upserts.length > 0) await queries.upsertSpeedTests(merge.upserts);
+				if (merge.deletes.length > 0) await queries.hardDeleteSpeedTests(merge.deletes);
+				if (merge.upserts.length > 0 || merge.deletes.length > 0) changed = true;
+			}
 		}
 
 		const liveBookIds = new Set(
@@ -1418,6 +1430,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			smartShelfRows,
 			bookmarkRows,
 			wishlistRows,
+			speedTestRows,
 		] = await Promise.all([
 			queries.getBooksForSync(),
 			queries.getSettings(),
@@ -1431,6 +1444,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			queries.getAllSmartShelvesForSync(),
 			queries.getAllBookmarksForSync(),
 			queries.getAllWishlistForSync(),
+			queries.getSpeedTests(),
 		]);
 
 		// Pristine pending chapter rows carry zero user data and are excluded from the
@@ -1504,6 +1518,10 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			log("sync", `push: dropped ${bookmarksForPush.rejected} malformed bookmark(s)`);
 		}
 
+		const speedTestsForPush = pushableSpeedTests(speedTestRows);
+		if (speedTestsForPush.rejected > 0) {
+			log("sync", `push: dropped ${speedTestsForPush.rejected} malformed speed test(s)`);
+		}
 		const wishlistForPush = pushableWishlist(wishlistRows);
 		if (wishlistForPush.rejected > 0) {
 			log("sync", `push: dropped ${wishlistForPush.rejected} malformed wishlist item(s)`);
@@ -1528,6 +1546,8 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			smartShelves: shelvesForPush.shelves,
 			bookmarks: bookmarksForPush.bookmarks,
 			wishlist: wishlistForPush.wishlist,
+			// Omitted with stats sync off, so the server keeps what it holds.
+			speedTests: settings.syncStats ? speedTestsForPush.speedTests : undefined,
 		};
 
 		// Diagnostics for the >5000 books cap — log composition so we can see what's

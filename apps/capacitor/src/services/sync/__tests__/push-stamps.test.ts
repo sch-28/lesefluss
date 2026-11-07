@@ -66,6 +66,7 @@ vi.mock("../../db/queries", () => ({
 		getAllBookmarksForSync: vi.fn(async () => []),
 		getAllWishlistForSync: vi.fn(async () => []),
 		getReadingSessionsSince: vi.fn(async () => []),
+		getSpeedTests: vi.fn(async () => []),
 		adoptBookStamps,
 		adoptSettingsStamp,
 	},

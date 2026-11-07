@@ -1,12 +1,13 @@
 import { AVERAGE_READER_WPM, type SpeedWindow } from "@lesefluss/core";
-import { ResponsiveLine } from "@nivo/line";
+import { type LineCustomSvgLayerProps, type LineSvgLayer, ResponsiveLine } from "@nivo/line";
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 import { isDarkTheme, useTheme } from "../../../contexts/theme-context";
 import { queryHooks } from "../../../services/db/hooks";
 import type { SpeedTrendMode } from "../../../services/db/queries/stats";
-import type { TrendGranularity } from "../../../services/stats/aggregate";
+import type { TrendGranularity, TrendTestMarker } from "../../../services/stats/aggregate";
 import { summariseWpmTrend } from "../../../services/stats/summaries";
+import { formatShortDate, startOfLocalDay } from "../../../utils/date-utils";
 import { evenTickIndices, formatDayTick } from "./chart-axis";
 import { ChartTooltip } from "./chart-tooltip";
 import { buildNivoTheme } from "./nivo-theme";
@@ -17,6 +18,66 @@ const COLORS = {
 } as const;
 
 const MAX_AXIS_TICKS = 5;
+
+const NO_TESTS: TrendTestMarker[] = [];
+
+type TrendSeries = { id: string; color: string; data: { x: number; y: number | null }[] };
+
+function testLabel(takenAt: number, now: number): string {
+	return startOfLocalDay(takenAt) === startOfLocalDay(now)
+		? "Test today"
+		: `Test ${formatShortDate(takenAt)}`;
+}
+
+function testMarkersLayer(tests: readonly TrendTestMarker[], now: number, color: string) {
+	return function TestMarkers({
+		xScale,
+		yScale,
+		innerHeight,
+	}: LineCustomSvgLayerProps<TrendSeries>) {
+		return (
+			<g data-testid="wpm-trend-tests">
+				{tests.map((test) => {
+					const x = xScale(test.bucketIndex);
+					const y = yScale(test.wpm);
+					return (
+						<g key={test.takenAt} data-testid="wpm-trend-test">
+							<line
+								x1={x}
+								x2={x}
+								y1={y}
+								y2={innerHeight}
+								stroke={color}
+								strokeWidth={1}
+								strokeDasharray="3 3"
+								strokeOpacity={0.6}
+							/>
+							<rect
+								x={x - 5}
+								y={y - 5}
+								width={10}
+								height={10}
+								transform={`rotate(45 ${x} ${y})`}
+								fill={color}
+								stroke="var(--background)"
+								strokeWidth={1.5}
+							/>
+							<text
+								x={x}
+								y={y - 10}
+								textAnchor="middle"
+								fontSize={10}
+								fill="var(--muted-foreground)"
+							>
+								{testLabel(test.takenAt, now)} · {test.wpm}
+							</text>
+						</g>
+					);
+				})}
+			</g>
+		);
+	};
+}
 
 /**
  * The y-axis top, with room over the highest line: nivo draws a marker's legend
@@ -60,15 +121,33 @@ export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 		[trend.data],
 	);
 	const hasReading = points.some((p) => p.y !== null);
+	const tests = trend.data?.tests ?? NO_TESTS;
+	const testColor = isDarkTheme(theme) ? "#e2e8f0" : "#0f172a";
+	const layers = useMemo<LineSvgLayer<TrendSeries>[]>(
+		() => [
+			"grid",
+			"markers",
+			"axes",
+			"areas",
+			"crosshair",
+			"lines",
+			"points",
+			"slices",
+			testMarkersLayer(tests, now, testColor),
+			"mesh",
+			"legends",
+		],
+		[tests, now, testColor],
+	);
 	const lineColor = isDarkTheme(theme) ? COLORS.measured.dark : COLORS.measured.light;
-	const chartData = useMemo(
+	const chartData = useMemo<TrendSeries[]>(
 		() => [
 			{ id: mode === "rsvp" ? "RSVP speed" : "Reading speed", color: lineColor, data: points },
 		],
 		[lineColor, points, mode],
 	);
 
-	if (!trend.isLoading && !hasReading) {
+	if (!trend.isLoading && !hasReading && tests.length === 0) {
 		return (
 			<p className="mb-8 px-4 text-muted-foreground text-sm">
 				Not enough reading in this window for a trend.
@@ -85,6 +164,7 @@ export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 		AVERAGE_READER_WPM,
 		averages.rsvpTarget,
 		...points.map((p) => p.y ?? 0),
+		...tests.map((t) => t.wpm),
 	]);
 	// nivo already puts role="img" on the svg; this gives it a label, so the chart
 	// reads as one sentence rather than a pile of numbers.
@@ -109,6 +189,7 @@ export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 					<ResponsiveLine
 						role="presentation"
 						data={chartData}
+						layers={layers}
 						margin={{ top: 12, right: 12, bottom: 48, left: 56 }}
 						xScale={{ type: "linear" }}
 						// Markers never enter the scale, so the reference lines have to be
@@ -206,6 +287,14 @@ export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 						]}
 					/>
 				</div>
+			)}
+			{tests.length > 0 && (
+				<p className="mt-1 text-muted-foreground text-xs">
+					<span aria-hidden="true" style={{ color: testColor }}>
+						◆
+					</span>{" "}
+					Speed test
+				</p>
 			)}
 		</motion.section>
 	);
