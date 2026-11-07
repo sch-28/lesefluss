@@ -3,7 +3,8 @@ import { Pencil, Pin, PinOff, SlidersHorizontal, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { encodeFilterParam } from "../../pages/library/filter-model";
-import { editShelfConditionsRequest, type ShelfEntry } from "../../pages/library/use-smart-shelves";
+import { ShelfConditionEditor } from "../../pages/library/shelf-condition-editor";
+import type { ShelfEntry } from "../../pages/library/use-smart-shelves";
 import { queryHooks } from "../../services/db/hooks";
 import { ActionSheet, type ActionSheetItem } from "../action-sheet";
 import { ConfirmDialog } from "../confirm-dialog";
@@ -27,6 +28,9 @@ export function openShelf(navigate: ReturnType<typeof useNavigate>, shelf: Shelf
 export const ShelfActions: React.FC<Props> = ({ shelf, onClose, setBuiltInPinned }) => {
 	const [renaming, setRenaming] = useState<ShelfEntry | null>(null);
 	const [deleting, setDeleting] = useState<ShelfEntry | null>(null);
+	// Kept past close, so the editor does not change under its closing animation.
+	const [editing, setEditing] = useState<ShelfEntry | null>(null);
+	const [isEditing, setIsEditing] = useState(false);
 	const update = queryHooks.useUpdateSmartShelf();
 	const remove = queryHooks.useDeleteSmartShelf();
 	const navigate = useNavigate();
@@ -50,12 +54,11 @@ export const ShelfActions: React.FC<Props> = ({ shelf, onClose, setBuiltInPinned
 				{
 					label: "Edit conditions…",
 					icon: SlidersHorizontal,
-					// A shelf the chips cannot show has nothing to edit there.
-					disabled: !shelf?.filter,
+					// Conditions this version cannot read would be overwritten, not edited.
+					disabled: !shelf?.tree,
 					onSelect: () => {
-						if (!shelf) return;
-						editShelfConditionsRequest.raise();
-						openShelf(navigate, shelf);
+						setEditing(shelf);
+						setIsEditing(true);
 					},
 				},
 				pinItem,
@@ -100,6 +103,7 @@ export const ShelfActions: React.FC<Props> = ({ shelf, onClose, setBuiltInPinned
 					if (renaming) update.mutate({ id: renaming.id, name });
 				}}
 			/>
+			<ShelfConditionEditor open={isEditing} onOpenChange={setIsEditing} shelf={editing} />
 			<ConfirmDialog
 				open={!!deleting}
 				onOpenChange={(open) => {

@@ -37,6 +37,7 @@ import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
 import { useBookDeviceActions } from "../../hooks/use-book-device-actions";
+import { useLocalDayNow } from "../../hooks/use-local-day";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import { usePersistentString } from "../../hooks/use-persistent-string";
 import { queryHooks } from "../../services/db/hooks";
@@ -70,6 +71,7 @@ import { searchTextOf } from "./query-syntax";
 import { SearchAutocomplete } from "./search-autocomplete";
 import SeriesCard from "./series-card";
 import SeriesListItem from "./series-list-item";
+import { ShelfConditionEditor } from "./shelf-condition-editor";
 import {
 	applyLibraryView,
 	buildLibraryItems,
@@ -85,7 +87,7 @@ import { useLibraryFilter } from "./use-library-filter";
 import { useLibraryImports } from "./use-library-imports";
 import { useLibraryItems } from "./use-library-items";
 import { useLibrarySelection } from "./use-library-selection";
-import { editShelfConditionsRequest, type ShelfEntry, useSmartShelves } from "./use-smart-shelves";
+import { type ShelfEntry, useSmartShelves } from "./use-smart-shelves";
 import VirtualBookGrid from "./virtual-book-grid";
 
 const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
@@ -131,6 +133,8 @@ const Library: React.FC = () => {
 	const updateShelf = queryHooks.useUpdateSmartShelf();
 	const [shelfMenuFor, setShelfMenuFor] = useState<ShelfEntry | null>(null);
 	const [isSavingShelf, setIsSavingShelf] = useState(false);
+	const [isEditingShelf, setIsEditingShelf] = useState(false);
+	const shelfDay = useLocalDayNow();
 
 	const {
 		books,
@@ -224,8 +228,6 @@ const Library: React.FC = () => {
 			navigate({ to: "/tabs/library", search: {}, replace: true });
 		}
 	}, [shelfId, smart.isSettled, activeShelf, navigate]);
-
-	editShelfConditionsRequest.useHandler(() => setIsFilterOpen(true));
 
 	const dismissNotice = useCallback(() => {
 		localStorage.setItem(LOCAL_NOTICE_KEY, "1");
@@ -348,12 +350,12 @@ const Library: React.FC = () => {
 		// A shelf the chips cannot show narrows by its own tree.
 		if (activeShelf && !activeShelf.filter) {
 			const { tree } = activeShelf;
-			return tree ? allItems.filter((item) => matchesTree(item.facets, tree.root)) : [];
+			return tree ? allItems.filter((item) => matchesTree(item.facets, tree.root, shelfDay)) : [];
 		}
 		if (!collectionId) return allItems;
 		const members = new Set(membersQuery.data ?? []);
 		return allItems.filter((item) => item.kind === "book" && members.has(item.book.id));
-	}, [allItems, collectionId, membersQuery.data, activeShelf]);
+	}, [allItems, collectionId, membersQuery.data, activeShelf, shelfDay]);
 	const visibleItems = useMemo(
 		() =>
 			applyLibraryView(scopedItems, {
@@ -585,11 +587,6 @@ const Library: React.FC = () => {
 						<span className="ml-2 font-normal text-muted-foreground text-sm tabular-nums">
 							{smart.counts.get(activeShelf.id) ?? 0}
 						</span>
-						{!activeShelf.filter && (
-							<span className="ml-2 font-normal text-muted-foreground text-xs">
-								Custom conditions
-							</span>
-						)}
 					</h2>
 					{!activeShelf.isBuiltIn && shelfIsEdited && (
 						<Button
@@ -630,6 +627,15 @@ const Library: React.FC = () => {
 				setBuiltInPinned={smart.setBuiltInPinned}
 			/>
 			<SaveShelfDialog open={isSavingShelf} onOpenChange={setIsSavingShelf} filter={activeFilter} />
+			{activeShelf && !activeShelf.isBuiltIn && (
+				<ShelfConditionEditor
+					open={isEditingShelf}
+					onOpenChange={setIsEditingShelf}
+					shelf={activeShelf}
+					// A chip shelf opens on its chips as they stand, edits included.
+					initialTree={activeShelf.filter ? filterToTree(activeFilter) : undefined}
+				/>
+			)}
 
 			{(books.length > 0 || series.length > 0) && (
 				<FilterBar
@@ -639,6 +645,11 @@ const Library: React.FC = () => {
 					onSaveShelf={
 						canSaveFilter && (!activeShelf || shelfIsEdited)
 							? () => setIsSavingShelf(true)
+							: undefined
+					}
+					shelfConditions={
+						activeShelf && !activeShelf.isBuiltIn && activeShelf.tree
+							? { isCustom: !activeShelf.filter, onEdit: () => setIsEditingShelf(true) }
 							: undefined
 					}
 					addFilter={

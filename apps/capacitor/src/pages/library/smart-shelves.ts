@@ -83,11 +83,12 @@ export function orderShelves(shelves: ShelfEntry[]): ShelfEntry[] {
 export function shelfCounts(
 	shelves: readonly ShelfEntry[],
 	items: readonly { facets: FacetValues }[],
+	now = Date.now(),
 ): Map<string, number> {
 	const counts = new Map(shelves.map((s) => [s.id, 0]));
 	for (const { facets } of items) {
 		for (const shelf of shelves) {
-			if (shelf.tree && matchesTree(facets, shelf.tree.root)) {
+			if (shelf.tree && matchesTree(facets, shelf.tree.root, now)) {
 				counts.set(shelf.id, (counts.get(shelf.id) ?? 0) + 1);
 			}
 		}

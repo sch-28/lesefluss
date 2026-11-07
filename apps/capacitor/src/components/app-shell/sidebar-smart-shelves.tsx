@@ -2,7 +2,9 @@ import { cn } from "@lesefluss/ui/utils";
 import { Link, useLocation } from "@tanstack/react-router";
 import { MoreHorizontal, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { filterToTree } from "../../pages/library/condition-tree";
 import { decodeFilterParam, encodeFilterParam } from "../../pages/library/filter-model";
+import { ShelfConditionEditor } from "../../pages/library/shelf-condition-editor";
 import { type ShelfEntry, useSmartShelves } from "../../pages/library/use-smart-shelves";
 import { canSaveAsShelf, SaveShelfDialog } from "../smart-shelves/save-shelf-dialog";
 import { ShelfActions } from "../smart-shelves/shelf-actions";
@@ -17,6 +19,7 @@ export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
 	const location = useLocation();
 	const [menuFor, setMenuFor] = useState<ShelfEntry | null>(null);
 	const [saving, setSaving] = useState(false);
+	const [creating, setCreating] = useState(false);
 
 	const onLibrary = location.pathname === "/tabs/library";
 	const search = location.search as { shelf?: string; f?: string };
@@ -46,11 +49,10 @@ export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
 				</h2>
 				<button
 					type="button"
-					onClick={() => setSaving(true)}
-					disabled={!canSave}
-					aria-label="Save current filter as smart shelf"
-					title={canSave ? "Save current filter as smart shelf" : "Set a filter to save it"}
-					className="inline-flex size-6 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground disabled:opacity-40"
+					onClick={() => setCreating(true)}
+					aria-label="New smart shelf"
+					title="New smart shelf"
+					className="inline-flex size-6 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
 				>
 					<Plus className="size-4" />
 				</button>
@@ -115,6 +117,12 @@ export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
 				setBuiltInPinned={setBuiltInPinned}
 			/>
 			<SaveShelfDialog open={saving} onOpenChange={setSaving} filter={currentFilter} />
+			<ShelfConditionEditor
+				open={creating}
+				onOpenChange={setCreating}
+				shelf={null}
+				initialTree={filterToTree(currentFilter)}
+			/>
 		</section>
 	);
 }

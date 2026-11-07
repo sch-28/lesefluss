@@ -78,6 +78,7 @@ export const FIXED_FACET_VALUES: Partial<
 
 /** The fields of a library row the filter reads. */
 export type FilterFields = {
+	title: string;
 	status: string;
 	tags: readonly string[];
 	author: string;
@@ -94,9 +95,16 @@ export type FilterFields = {
 	lastRead: number | null;
 };
 
+/** The row's own values, for the shelf conditions that compare rather than pick a value. */
+export type RawFields = Pick<
+	FilterFields,
+	"title" | "author" | "rating" | "progress" | "addedAt" | "lastRead"
+>;
+
 export type FacetValues = Record<Facet, readonly string[]> & {
 	/** null when the row has no known word count. */
 	wordCount: number | null;
+	raw: RawFields;
 };
 
 function progressBucket(progress: number): string {
@@ -124,6 +132,14 @@ export function facetValuesOf(fields: FilterFields, now: number): FacetValues {
 		added: windowsContaining(fields.addedAt, now),
 		lastRead: fields.lastRead == null ? [NEVER_READ] : windowsContaining(fields.lastRead, now),
 		wordCount: fields.wordCount > 0 ? fields.wordCount : null,
+		raw: {
+			title: fields.title,
+			author: fields.author,
+			rating: fields.rating,
+			progress: fields.progress,
+			addedAt: fields.addedAt,
+			lastRead: fields.lastRead,
+		},
 	};
 }
 

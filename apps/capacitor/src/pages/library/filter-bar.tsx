@@ -1,5 +1,5 @@
 import { cn } from "@lesefluss/ui/utils";
-import { Plus, X } from "lucide-react";
+import { Plus, SlidersHorizontal, X } from "lucide-react";
 import type React from "react";
 import {
 	activeFilterCount,
@@ -20,6 +20,8 @@ type Props = {
 	addFilter?: React.ReactNode;
 	/** Shown when the current filter can be saved as a smart shelf. */
 	onSaveShelf?: () => void;
+	/** The open user shelf: one that is not chips shows as one chip, and either opens the editor. */
+	shelfConditions?: { isCustom: boolean; onEdit: () => void };
 };
 
 const Chip: React.FC<{
@@ -49,16 +51,35 @@ const Chip: React.FC<{
 );
 
 /** The active filter as removable chips, an excluded value marked with − and a red edge. */
-const FilterBar: React.FC<Props> = ({ filter, onChange, options, addFilter, onSaveShelf }) => {
+const FilterBar: React.FC<Props> = ({
+	filter,
+	onChange,
+	options,
+	addFilter,
+	onSaveShelf,
+	shelfConditions,
+}) => {
 	const chips = chipsOf(filter);
 	const count = activeFilterCount(filter);
-	if (count === 0 && !addFilter) return null;
+	if (count === 0 && !addFilter && !shelfConditions) return null;
 	const matchesAllTags = filter.tags?.mode === "all";
 	return (
 		<div
 			className="flex items-center gap-1.5 overflow-x-auto px-4 py-2 content-container"
 			data-testid="filter-bar"
 		>
+			{shelfConditions?.isCustom && (
+				<button
+					type="button"
+					onClick={shelfConditions.onEdit}
+					aria-label="Edit custom conditions"
+					className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-primary/70 border-dashed px-2.5 text-xs hover:bg-muted"
+				>
+					<SlidersHorizontal className="size-3 text-primary" />
+					Custom conditions
+					<span className="text-primary">· Edit</span>
+				</button>
+			)}
 			{chips.map(({ facet, value, isExcluded }) => {
 				const all = facet === "tags" && matchesAllTags && !isExcluded ? " (all)" : "";
 				const name = `${isExcluded ? "− " : ""}${FACET_LABELS[facet]}${all}:`;
@@ -89,14 +110,27 @@ const FilterBar: React.FC<Props> = ({ filter, onChange, options, addFilter, onSa
 					Clear
 				</button>
 			)}
-			{onSaveShelf && (
-				<button
-					type="button"
-					onClick={onSaveShelf}
-					className="ml-auto shrink-0 px-1 text-primary text-xs hover:underline"
-				>
-					Save as smart shelf
-				</button>
+			{(onSaveShelf || (shelfConditions && !shelfConditions.isCustom)) && (
+				<span className="ml-auto flex shrink-0 gap-2">
+					{shelfConditions && !shelfConditions.isCustom && (
+						<button
+							type="button"
+							onClick={shelfConditions.onEdit}
+							className="px-1 text-primary text-xs hover:underline"
+						>
+							Edit conditions
+						</button>
+					)}
+					{onSaveShelf && (
+						<button
+							type="button"
+							onClick={onSaveShelf}
+							className="px-1 text-primary text-xs hover:underline"
+						>
+							Save as smart shelf
+						</button>
+					)}
+				</span>
 			)}
 		</div>
 	);

@@ -56,7 +56,11 @@ function randomValues(rand: () => number): FacetValues {
 		Facet,
 		string[]
 	>;
-	return { ...values, wordCount: rand() < 0.2 ? null : Math.floor(rand() * 100_000) };
+	return {
+		...values,
+		wordCount: rand() < 0.2 ? null : Math.floor(rand() * 100_000),
+		raw: { title: "", author: "", rating: null, progress: 0, addedAt: 0, lastRead: null },
+	};
 }
 
 describe("condition tree", () => {

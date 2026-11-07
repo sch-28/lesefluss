@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
-import { createRequest } from "../../commands/signal";
+import { useLocalDayNow } from "../../hooks/use-local-day";
 import { queryHooks } from "../../services/db/hooks";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
@@ -17,9 +17,6 @@ import {
 } from "./smart-shelves";
 import { buildLibraryItems } from "./sort-filter";
 import { useLibraryItems } from "./use-library-items";
-
-/** Answered by the library page, which owns the filter picker. */
-export const editShelfConditionsRequest = createRequest();
 
 const pinListeners = new Set<() => void>();
 
@@ -96,12 +93,13 @@ export function useSmartShelves() {
 	const rows = queryHooks.useSmartShelfRows();
 	const pinsRaw = useSyncExternalStore(subscribePins, readPins);
 	const { items, isLoading } = useShelfLibrary();
+	const now = useLocalDayNow();
 
 	const shelves = useMemo(() => {
 		const pins = parseBuiltInPins(pinsRaw);
 		return orderShelves([...builtInShelves(pins), ...(rows.data ?? []).map(shelfEntryOf)]);
 	}, [pinsRaw, rows.data]);
-	const counts = useMemo(() => shelfCounts(shelves, items), [shelves, items]);
+	const counts = useMemo(() => shelfCounts(shelves, items, now), [shelves, items, now]);
 
 	const setBuiltInPinned = useCallback(
 		(id: string, pinned: boolean) => writePins(withBuiltInPin(pinsRaw, id, pinned)),

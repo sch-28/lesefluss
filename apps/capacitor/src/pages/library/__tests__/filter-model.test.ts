@@ -39,6 +39,7 @@ function values(overrides: Partial<FacetValues> = {}): FacetValues {
 		added: [],
 		lastRead: ["never"],
 		wordCount: null,
+		raw: { title: "", author: "", rating: null, progress: 0, addedAt: 0, lastRead: null },
 		...overrides,
 	};
 }
@@ -211,6 +212,7 @@ describe("facetValuesOf", () => {
 	it("puts dates into every window that contains them", () => {
 		const v = facetValuesOf(
 			{
+				title: "",
 				status: "reading",
 				tags: [],
 				author: "",
@@ -234,6 +236,7 @@ describe("facetValuesOf", () => {
 		const rating = (r: number | null) =>
 			facetValuesOf(
 				{
+					title: "",
 					status: "finished",
 					tags: [],
 					author: "",

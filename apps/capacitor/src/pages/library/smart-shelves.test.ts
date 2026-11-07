@@ -17,7 +17,14 @@ function book(values: Partial<Record<Facet, string[]>>): { facets: FacetValues }
 		Facet,
 		string[]
 	>;
-	return { facets: { ...empty, ...values, wordCount: 10_000 } };
+	return {
+		facets: {
+			...empty,
+			...values,
+			wordCount: 10_000,
+			raw: { title: "", author: "", rating: null, progress: 0, addedAt: 0, lastRead: null },
+		},
+	};
 }
 
 function row(overrides: Partial<SmartShelf> = {}): SmartShelf {

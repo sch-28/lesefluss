@@ -42,8 +42,13 @@ vi.mock("../../confirm-dialog", async () => {
 	};
 });
 vi.mock("../shelf-name-dialog", () => ({ ShelfNameDialog: () => null }));
+vi.mock("../../../pages/library/shelf-condition-editor", () => ({
+	ShelfConditionEditor: (p: { open: boolean; shelf: ShelfEntry | null }) =>
+		p.open ? <div data-testid="editor">{p.shelf?.name}</div> : null,
+}));
 
 const { ShelfActions } = await import("../shelf-actions");
+const { filterToTree } = await import("../../../pages/library/condition-tree");
 
 const filter = { status: { in: ["reading"], out: [] } };
 const builtIn: ShelfEntry = {
@@ -59,6 +64,7 @@ const userShelf: ShelfEntry = {
 	...builtIn,
 	id: "s1",
 	name: "Short",
+	tree: filterToTree(filter),
 	isBuiltIn: false,
 	sortOrder: 1,
 };
@@ -114,10 +120,24 @@ describe("ShelfActions", () => {
 		expect(navigate).toHaveBeenCalledWith({ to: "/tabs/library", search: {} });
 	});
 
-	it("cannot edit a shelf whose conditions the chips cannot show", async () => {
+	it("opens the editor on a shelf the chips cannot show", async () => {
 		view = await render(
 			<ShelfActions
 				shelf={{ ...userShelf, filter: null }}
+				onClose={() => {}}
+				setBuiltInPinned={setBuiltInPinned}
+			/>,
+		);
+		expect(view.container.querySelector("[data-testid=editor]")).toBeNull();
+		await click(view.getButton("Edit conditions…"));
+		expect(view.container.querySelector("[data-testid=editor]")?.textContent).toBe("Short");
+		expect(navigate).not.toHaveBeenCalled();
+	});
+
+	it("cannot edit a shelf whose conditions this version cannot read", async () => {
+		view = await render(
+			<ShelfActions
+				shelf={{ ...userShelf, tree: null, filter: null }}
 				onClose={() => {}}
 				setBuiltInPinned={setBuiltInPinned}
 			/>,

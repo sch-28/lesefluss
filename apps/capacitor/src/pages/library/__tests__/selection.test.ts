@@ -37,6 +37,7 @@ const FACETS: LibraryItem["facets"] = {
 	added: [],
 	lastRead: [],
 	wordCount: null,
+	raw: { title: "", author: "", rating: null, progress: 0, addedAt: 0, lastRead: null },
 };
 
 function bookItem(id: string): LibraryItem {

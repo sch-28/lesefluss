@@ -1,3 +1,4 @@
+import { HALF_STARS_PER_STAR } from "@lesefluss/core";
 import { FACETS, type Facet, type FacetValues, type LibraryFilter } from "./filter-model";
 
 /**
@@ -97,28 +98,128 @@ export function treeToFilter(tree: ConditionTree): LibraryFilter | null {
 	return filter;
 }
 
-function matchesCondition(values: FacetValues, cond: Condition): boolean {
-	if (cond.field === "words") {
-		const { wordCount } = values;
-		if (wordCount == null || typeof cond.value !== "number") return false;
-		if (cond.op === "gte") return wordCount >= cond.value;
-		if (cond.op === "lte") return wordCount <= cond.value;
-		return false;
+export type NumberRange = { min: number; max: number };
+
+const isNumber = (value: unknown): value is number =>
+	typeof value === "number" && Number.isFinite(value);
+
+export function isNumberRange(value: unknown): value is NumberRange {
+	if (typeof value !== "object" || value === null) return false;
+	const { min, max } = value as Record<string, unknown>;
+	return isNumber(min) && isNumber(max);
+}
+
+/** Local midnight of a `YYYY-MM-DD` day plus `days`; null for anything that is no real date. */
+export function localDayStart(value: unknown, days = 0): number | null {
+	if (typeof value !== "string") return null;
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+	if (!match) return null;
+	const [year, month, day] = [Number(match[1]), Number(match[2]) - 1, Number(match[3])];
+	const date = new Date(year, month, day);
+	if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) {
+		return null;
 	}
-	if (!isFacet(cond.field) || typeof cond.value !== "string") return false;
-	const carried = values[cond.field].includes(cond.value);
-	if (cond.op === "is") return carried;
-	if (cond.op === "not") return !carried;
+	date.setDate(day + days);
+	return date.getTime();
+}
+
+function compareNumber(n: number | null, op: string, value: unknown): boolean {
+	if (n == null) return false;
+	if (op === "gte") return isNumber(value) && n >= value;
+	if (op === "lte") return isNumber(value) && n <= value;
+	if (op === "between") {
+		if (!isNumberRange(value)) return false;
+		return n >= Math.min(value.min, value.max) && n <= Math.max(value.min, value.max);
+	}
 	return false;
 }
 
-export function matchesTree(values: FacetValues, group: ConditionGroup, depth = 0): boolean {
+// Whole local days, so a shelf holds the same books all day and the sidebar
+// count, taken at another moment, agrees with the page.
+function compareDate(at: number | null, op: string, value: unknown, now: number): boolean {
+	if (at == null) return false;
+	if (op === "within") {
+		if (!isNumber(value) || value < 0) return false;
+		const from = new Date(now);
+		from.setHours(0, 0, 0, 0);
+		from.setDate(from.getDate() - value);
+		return at >= from.getTime();
+	}
+	if (op === "before") {
+		const start = localDayStart(value);
+		return start != null && at < start;
+	}
+	if (op === "after") {
+		const end = localDayStart(value, 1);
+		return end != null && at >= end;
+	}
+	return false;
+}
+
+function compareText(text: string, op: string, value: unknown): boolean {
+	if (typeof value !== "string" || value.trim() === "") return false;
+	const found = text.toLocaleLowerCase().includes(value.trim().toLocaleLowerCase());
+	if (op === "contains") return found;
+	if (op === "notContains") return !found;
+	return false;
+}
+
+function isEmpty(values: FacetValues, field: string): boolean {
+	switch (field) {
+		case "tags":
+		case "author":
+		case "series":
+		case "collection":
+			return values[field].length === 0;
+		case "rating":
+			return !values.raw.rating;
+		case "lastRead":
+			return values.raw.lastRead == null;
+		case "words":
+			return values.wordCount == null;
+		default:
+			return false;
+	}
+}
+
+const NUMBER_OPS = new Set(["gte", "lte", "between"]);
+const DATE_OPS = new Set(["within", "before", "after"]);
+const TEXT_OPS = new Set(["contains", "notContains"]);
+
+function matchesCondition(values: FacetValues, cond: Condition, now: number): boolean {
+	const { field, op, value } = cond;
+	const { raw } = values;
+	if (op === "empty") return isEmpty(values, field);
+	if (field === "words") return compareNumber(values.wordCount, op, value);
+	if (field === "title") return compareText(raw.title, op, value);
+	if (field === "author" && TEXT_OPS.has(op)) return compareText(raw.author, op, value);
+	if (field === "rating" && NUMBER_OPS.has(op)) {
+		return compareNumber(raw.rating ? raw.rating / HALF_STARS_PER_STAR : null, op, value);
+	}
+	if (field === "progress" && NUMBER_OPS.has(op)) return compareNumber(raw.progress, op, value);
+	if (field === "added" && DATE_OPS.has(op)) return compareDate(raw.addedAt, op, value, now);
+	if (field === "lastRead" && DATE_OPS.has(op)) return compareDate(raw.lastRead, op, value, now);
+	if (!isFacet(field) || typeof value !== "string") return false;
+	const carried = values[field].includes(value);
+	if (op === "is") return carried;
+	if (op === "not") return !carried;
+	return false;
+}
+
+function matchesGroup(values: FacetValues, group: ConditionGroup, now: number, depth: number) {
 	if (depth > MAX_DEPTH) return false;
-	const matches = (node: ConditionNode) =>
-		isGroup(node) ? matchesTree(values, node, depth + 1) : matchesCondition(values, node);
+	const matches = (node: ConditionNode): boolean =>
+		isGroup(node)
+			? matchesGroup(values, node, now, depth + 1)
+			: matchesCondition(values, node, now);
 	if (group.op === "and") return group.items.every(matches);
 	if (group.op === "or") return group.items.some(matches);
 	return false;
+}
+
+/** `now` anchors the relative dates; a shelf evaluates them on the day it is shown. */
+export function matchesTree(values: FacetValues, group: ConditionGroup, now = Date.now()): boolean {
+	return matchesGroup(values, group, now, 0);
 }
 
 function parseNode(raw: unknown, depth: number): ConditionNode | null {
