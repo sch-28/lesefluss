@@ -4,6 +4,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 import { bootstrapCapacitor } from "./lib/bootstrap-capacitor";
 import { installStaleChunkReload } from "./lib/stale-chunk-reload";
+import { bootMiniPopup, isMiniPopupPath } from "./pages/mini/mini-popup";
 import { Providers } from "./providers";
 import { router } from "./router";
 import { bookKeys } from "./services/db/hooks/query-keys";
@@ -71,4 +72,10 @@ async function bootstrap() {
 
 // The inline engine check in index.html found an engine too old to render the
 // app and is showing its notice instead.
-if (!document.documentElement.classList.contains(ENGINE_UNSUPPORTED_CLASS)) bootstrap();
+if (!document.documentElement.classList.contains(ENGINE_UNSUPPORTED_CLASS)) {
+	const root = document.getElementById("root");
+	if (root && isMiniPopupPath(window.location.pathname, import.meta.env.BASE_URL)) {
+		registerReaderFonts();
+		bootMiniPopup(root);
+	} else bootstrap();
+}

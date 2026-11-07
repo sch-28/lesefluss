@@ -15,6 +15,7 @@ import WhatsNewModal from "@/components/whats-new-modal";
 import { ImportStagingProvider } from "@/contexts/import-staging-context";
 import { isDarkTheme, useTheme } from "@/contexts/theme-context";
 import { BurstHost } from "@/pages/burst/burst-host";
+import { MiniHost } from "@/pages/mini/mini-host";
 import { useDeepLinks } from "@/services/deep-links/use-deep-links";
 import { useEinkSuggestion } from "@/services/eink-suggestion/use-eink-suggestion";
 import { useGoalReminders } from "@/services/goal-reminders/use-goal-reminders";
@@ -57,6 +58,7 @@ function RootLayout() {
 			<CommandPalette />
 			<ShortcutSheet />
 			<BurstHost />
+			<MiniHost />
 			<SessionSummarySheet />
 			{isFullScreen ? (
 				<Outlet />

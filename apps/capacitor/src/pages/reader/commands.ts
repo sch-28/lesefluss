@@ -186,6 +186,8 @@ export type ReaderActionInput = {
 	openBookDetails: () => void;
 	/** Null where the platform has no fullscreen (the Android app). */
 	fullscreen: { isOn: boolean; toggle: () => void; exit: () => void } | null;
+	/** Null in the Android app and where no window can open. */
+	openMini: (() => void) | null;
 };
 
 /** Reader actions for the palette; most have no key of their own. */
@@ -273,6 +275,18 @@ export function readerActionCommands(input: ReaderActionInput): Command[] {
 				run: fullscreen.exit,
 			},
 		);
+	}
+	const openMini = input.openMini;
+	if (openMini) {
+		commands.push({
+			id: "reader.mini",
+			title: "Open mini RSVP window",
+			keywords: ["pop-up", "picture in picture", "rsvp", "always on top", "player"],
+			scope: "reader",
+			when: hasContent,
+			// Run from the palette's key press or click: the window needs one.
+			run: openMini,
+		});
 	}
 	const readAloud = input.readAloud;
 	if (readAloud) {

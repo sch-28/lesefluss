@@ -44,6 +44,7 @@ import {
 	MoreVertical,
 	NotebookText,
 	Pause,
+	PictureInPicture,
 	PictureInPicture2,
 	Search,
 	Type,
@@ -67,7 +68,7 @@ import { toast } from "../../components/toast";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
-import { useTheme } from "../../contexts/theme-context";
+import { focalLetterColorFor, useTheme } from "../../contexts/theme-context";
 import {
 	readerFontFamilyFor,
 	readerLayoutFor,
@@ -117,6 +118,8 @@ import { openLink } from "../../utils/open-link";
 import { formatReadingTime } from "../../utils/reading-time";
 import { isBurstAvailable, openBurst } from "../burst/open-burst";
 import { liveToday } from "../library/reading-goal/goal-model";
+import { closeMini, isMiniAvailable, openMini } from "../mini/open-mini";
+import { useMiniFollow } from "../mini/use-mini-follow";
 import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
 import type { BookmarkRow } from "./bookmark-list";
@@ -901,6 +904,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	);
 	const isRsvpPlayingRef = useRef(isRsvpPlaying);
 	isRsvpPlayingRef.current = isRsvpPlaying;
+	// Assigned once the mini window's follow is set up (further down).
+	const isMiniPlayingRef = useRef<() => boolean>(() => false);
 	/** Moves the view to a word the DB already holds, without saving. */
 	const showUnsavedMove = useCallback(
 		(word: number) => {
@@ -999,7 +1004,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				isOwnRevision: (rev) => isOwnRevision(id, rev),
 				ourWord: ours,
 				hasLocalMove: hasLocalMoveRef.current,
-				isRsvpPlaying: isRsvpPlayingRef.current,
+				isRsvpPlaying: isRsvpPlayingRef.current || isMiniPlayingRef.current(),
 				isReadAloudPlaying: readAloudRef.current?.isPlaying ?? false,
 				isSkippedForPlaybackSave: !isInDb && isPlaybackSaveNewestRef.current,
 			});
@@ -1945,6 +1950,86 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	isFollowingVoiceRef.current =
 		readAloud.isFollowing && (dbSettings?.ttsFollow ?? DEFAULT_SETTINGS.TTS_FOLLOW);
 
+	// While a mini window plays this book, the reader follows it and is still the
+	// only writer: the mini reports its words, the reader saves them.
+	const isMiniSaveRef = useRef(false);
+	const miniFocalColor = focalLetterColorFor(rsvpSettings.focalLetterColor, theme);
+	const mini = useMiniFollow({
+		bookId: id,
+		getStart: (host) =>
+			book && content
+				? {
+						bookId: id,
+						title: book.title,
+						content,
+						wordIndex: host === "pip" ? (wordIndex ?? null) : null,
+						startWord: lastWordRef.current ?? 0,
+						settings: rsvpSettings,
+						focalColor: miniFocalColor,
+						appearance:
+							host === "popup"
+								? {
+										htmlClass: document.documentElement.className,
+										htmlStyle: document.documentElement.getAttribute("style") ?? "",
+										bodyClass: document.body.className,
+									}
+								: null,
+					}
+				: null,
+		getStopWord: () => browse.anchor ?? lastWordRef.current ?? 0,
+		onShown: (word) => {
+			lastWordRef.current = word;
+			settledWordRef.current = word;
+			markPlaybackMove();
+		},
+		onSave: (word, isPlaying) => {
+			isMiniSaveRef.current = true;
+			try {
+				lastWordRef.current = word;
+				settledWordRef.current = word;
+				browse.readFromHere();
+				setActiveWord(word);
+				setProgressWord(word);
+				if (readerModeRef.current === "rsvp") rsvpViewRef.current?.showWord(word);
+				else if (scrollViewRef.current?.followWord?.(word)) stampJump();
+				if (isPlaying) markPlaybackMove();
+				else markLocalMove();
+				void savePosition(word, "rsvp", { scheduleSync: !isPlaying });
+				markActivityRef.current?.();
+			} finally {
+				isMiniSaveRef.current = false;
+			}
+		},
+		onWpm: (wpm) => updateSetting("wpm", wpm),
+		settings: rsvpSettings,
+		focalColor: miniFocalColor,
+	});
+	isMiniPlayingRef.current = mini.isPlayingNow;
+	useEffect(
+		() =>
+			navigateEmitter.subscribe((word, source) => {
+				if (isMiniSaveRef.current) return;
+				// The follow's own scroll reconciling, not the reader moving.
+				if (source === "settle" && isReconcilingJump()) return;
+				mini.takeover(word);
+			}),
+		[navigateEmitter, mini.takeover, isReconcilingJump],
+	);
+	// Entering browse needn't save (the anchor may already be the saved word), so it has no emit to take over on.
+	useEffect(() => {
+		if (browseAnchor !== null) mini.takeover(browseAnchor);
+	}, [browseAnchor, mini.takeover]);
+	const openMiniWindow = useCallback(() => {
+		if (!book) return;
+		if (readerModeRef.current === "rsvp") exitRsvpToStandard();
+		readAloud.stop();
+		browse.readFromHere();
+		void openMini(book.id).then((isOpen) => {
+			if (!isOpen)
+				toast.error("The browser didn't open the mini window. Allow pop-ups for this site.");
+		});
+	}, [book, exitRsvpToStandard, readAloud.stop, browse]);
+
 	useEffect(() => {
 		if (!isReadAloudActive) return;
 		return () => markSpokenWord(null);
@@ -2257,6 +2342,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			fullscreen: isFullscreenSupported()
 				? { isOn: fullscreen.isFullscreen, toggle: fullscreen.toggle, exit: fullscreen.exit }
 				: null,
+			openMini: isMiniAvailable() ? openMiniWindow : null,
 		}),
 	);
 
@@ -2706,6 +2792,20 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						>
 							{readerMode === "rsvp" ? <ZapOff /> : <Zap />}
 						</Button>
+						{isMiniAvailable() && (
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={openMiniWindow}
+								disabled={!content}
+								aria-label="Mini RSVP window"
+								title="Mini RSVP window"
+								aria-pressed={mini.isAttached}
+								className={mini.isAttached ? "text-primary" : undefined}
+							>
+								<PictureInPicture />
+							</Button>
+						)}
 						<BookmarkRibbon
 							isOnScreen={readerBookmarks.isOnScreen}
 							disabled={!content}
@@ -2847,6 +2947,26 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					data-testid="reader-view"
 				>
 					<ReaderAnnouncer />
+					{mini.isAttached && (
+						<div
+							className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2.5 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-lg"
+							data-testid="mini-banner"
+						>
+							{mini.isPlaying ? (
+								<span className="size-2 rounded-full bg-[var(--goal-met)]" />
+							) : (
+								<span className="size-2 rounded-[2px] bg-muted-foreground" />
+							)}
+							<span>
+								{mini.isPlaying
+									? `Playing in the mini window · ${rsvpSettings.wpm} wpm`
+									: "Paused in the mini window"}
+							</span>
+							<Button variant="outline" size="sm" onClick={closeMini}>
+								Bring back here
+							</Button>
+						</div>
+					)}
 					{isRulerShown && <ReadingRulerOverlay ruler={ruler} />}
 					{/* Screen readers can't drive RSVP or page turns; read-aloud is the way to listen. */}
 					{IS_READ_ALOUD_SUPPORTED && (readerMode === "rsvp" || paginationStyle === "page") && (

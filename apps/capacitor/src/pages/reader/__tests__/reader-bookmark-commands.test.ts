@@ -19,6 +19,7 @@ function setup(list: ReaderActionInput["bookmarks"]["list"] = []) {
 		bookmarks,
 		openBookDetails: vi.fn(),
 		fullscreen: null,
+		openMini: null,
 	};
 	const commands = readerActionCommands(input);
 	const press = (key: string, mods: Partial<KeyboardEventInit> = {}) =>
@@ -73,5 +74,24 @@ describe("reader bookmark commands", () => {
 		]);
 		go[1].run();
 		expect(input.goToWord).toHaveBeenCalledWith(80);
+	});
+});
+
+describe("reader mini window command", () => {
+	it("is in the palette without a key where the mini window can open", () => {
+		const { input } = setup();
+		const openMini = vi.fn();
+		const command = readerActionCommands({ ...input, openMini }).find(
+			(c) => c.id === "reader.mini",
+		);
+		expect(command?.title).toBe("Open mini RSVP window");
+		expect(command?.keys).toBeUndefined();
+		command?.run();
+		expect(openMini).toHaveBeenCalledOnce();
+	});
+
+	it("is absent where it cannot open", () => {
+		const { commands } = setup();
+		expect(commands.find((c) => c.id === "reader.mini")).toBeUndefined();
 	});
 });
