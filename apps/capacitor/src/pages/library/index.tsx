@@ -134,7 +134,7 @@ const Library: React.FC = () => {
 		isFirstLoad(membershipsQuery) ||
 		(!!shelfId && smart.isLoading);
 
-	const imports = useLibraryImports();
+	const imports = useLibraryImports(collectionId);
 	const deleteMutation = queryHooks.useDeleteBook();
 	const deleteSeriesMutation = queryHooks.useDeleteSeries();
 
@@ -250,6 +250,12 @@ const Library: React.FC = () => {
 		const book = pendingDeleteBook;
 		setPendingDeleteBook(null);
 		deleteMutation.mutate(book);
+	};
+
+	const openAddBooks = () => {
+		if (collectionId) {
+			navigate({ to: "/tabs/library/collections/$id/add", params: { id: collectionId } });
+		}
 	};
 
 	const handleOpenSeries = (s: Series) => {
@@ -681,21 +687,32 @@ const Library: React.FC = () => {
 				</div>
 			)}
 
-			{books.length === 0 && series.length === 0 ? (
+			{isCollectionEmpty ? (
+				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
+					<h2 className="m-0 mb-2 font-semibold text-foreground text-lg">
+						No books in this collection yet
+					</h2>
+					<p className="m-0">Pick books you already have, or import new ones straight into it.</p>
+					<div className="mt-5 flex flex-col items-center gap-2">
+						<Button onClick={openAddBooks}>
+							<Plus className="size-4" />
+							Add books
+						</Button>
+						<Button
+							variant="ghost"
+							onClick={() => setImportSheetOpen(true)}
+							disabled={imports.isImporting || isTransferring}
+						>
+							Import files
+						</Button>
+					</div>
+				</div>
+			) : books.length === 0 && series.length === 0 ? (
 				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
 					<BookOpen className="mb-4 size-16 opacity-40" />
 					<h2 className="m-0 mb-2 font-semibold text-foreground text-lg">No books yet</h2>
 					<p className="m-0">Tap the + button to import a file or paste text.</p>
 					{isGlobalImporting && <p className="m-0 mt-4">Importing...</p>}
-				</div>
-			) : isCollectionEmpty ? (
-				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
-					<h2 className="m-0 mb-2 font-semibold text-foreground text-lg">
-						No books in this collection yet
-					</h2>
-					<p className="m-0">
-						Add one from a book's menu{canDragBooks ? ", or drag books onto the collection" : ""}.
-					</p>
 				</div>
 			) : visibleItems.length === 0 ? (
 				collectionId && !membersQuery.isSuccess ? null : (
@@ -718,9 +735,9 @@ const Library: React.FC = () => {
 			<button
 				type="button"
 				hidden={selection.isSelecting}
-				onClick={() => setImportSheetOpen(true)}
+				onClick={collectionId ? openAddBooks : () => setImportSheetOpen(true)}
 				disabled={imports.isImporting || isTransferring}
-				aria-label="Add book"
+				aria-label={collectionId ? "Add books" : "Add book"}
 				className="fixed right-4 z-30 inline-flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
 				style={FAB_STYLE}
 			>
@@ -745,6 +762,7 @@ const Library: React.FC = () => {
 					isOpen
 					existingTitles={existingTitles}
 					onClose={() => setBatchImportOpen(false)}
+					targetCollectionId={collectionId}
 				/>
 			)}
 

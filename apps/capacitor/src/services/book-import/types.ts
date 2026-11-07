@@ -41,4 +41,6 @@ export type StagedImport = {
 	 * confirm sheet is open, and then neither the book nor the shared file exists.
 	 */
 	cleanup?: () => void;
+	/** The collection the import was started from; the book joins it on commit or attach. */
+	targetCollectionId?: string;
 };

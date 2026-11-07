@@ -246,6 +246,76 @@ export async function removeBooksFromCollection(
 	}
 }
 
+/** #1..#N in the order given, starting after `from`. */
+function numberInOrder(bookIds: readonly string[], from: number): Map<string, number> {
+	return new Map([...new Set(bookIds)].map((id, i) => [id, from + i + 1]));
+}
+
+async function highestSeriesIndex(collectionId: string): Promise<number> {
+	const [row] = await db
+		.select({ max: sql<number | null>`max(${collectionBooks.seriesIndex})`.as("max_index") })
+		.from(collectionBooks)
+		.where(and(eq(collectionBooks.collectionId, collectionId), liveMember));
+	return Number(row?.max ?? 0);
+}
+
+/**
+ * A new collection holding `bookIds`; an ordered one numbers them in the order
+ * given. The adapter commits each statement on its own, so a failure part way
+ * leaves the collection with the books written so far.
+ */
+export async function createCollectionWithBooks(
+	name: string,
+	bookIds: readonly string[],
+	options: { ordered?: boolean } = {},
+	now = serverNow(),
+): Promise<Collection> {
+	const ordered = options.ordered ?? false;
+	const row = await createCollection(name, now);
+	if (ordered) await setCollectionOrdered(row.id, true, now);
+	if (bookIds.length > 0) {
+		await addBooksToCollection(
+			row.id,
+			[...bookIds],
+			now,
+			ordered ? numberInOrder(bookIds, 0) : undefined,
+		);
+	}
+	return { ...row, ordered };
+}
+
+export type CollectionEdit = {
+	name?: string;
+	ordered?: boolean;
+	add?: readonly string[];
+	remove?: readonly string[];
+};
+
+/**
+ * One save of the collection page. Books added to an ordered collection are
+ * numbered after its last #N, in the order given; renaming leaves a series
+ * collection's `seriesKey` alone.
+ */
+export async function editCollection(
+	id: string,
+	edit: CollectionEdit,
+	now = serverNow(),
+): Promise<void> {
+	if (edit.name !== undefined) await renameCollection(id, edit.name, now);
+	if (edit.ordered !== undefined) await setCollectionOrdered(id, edit.ordered, now);
+	if (edit.remove?.length) await removeBooksFromCollection(id, [...edit.remove], now);
+	if (edit.add?.length) {
+		const [collection] = await db
+			.select({ ordered: collections.ordered })
+			.from(collections)
+			.where(eq(collections.id, id));
+		const numbered = collection?.ordered
+			? numberInOrder(edit.add, await highestSeriesIndex(id))
+			: undefined;
+		await addBooksToCollection(id, [...edit.add], now, numbered);
+	}
+}
+
 export async function getCollectionBookIds(collectionId: string): Promise<string[]> {
 	const rows = await db
 		.select({ bookId: collectionBooks.bookId })

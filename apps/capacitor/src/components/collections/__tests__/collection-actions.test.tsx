@@ -5,14 +5,14 @@ import type { CollectionWithCount } from "../../../services/db/queries/collectio
 import { click, type Rendered, render } from "../../../test/render";
 
 const removeCollection = vi.fn();
+const navigate = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({
-	useNavigate: () => vi.fn(),
+	useNavigate: () => navigate,
 	useLocation: () => ({ pathname: "/tabs/library", search: {} }),
 }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useRenameCollection: () => ({ mutate: vi.fn() }),
 		useMoveCollection: () => ({ mutate: vi.fn() }),
 		useDeleteCollection: () => ({ mutate: removeCollection }),
 	},
@@ -35,7 +35,6 @@ vi.mock("../../confirm-dialog", async () => {
 		),
 	};
 });
-vi.mock("../collection-name-dialog", () => ({ CollectionNameDialog: () => null }));
 
 const { CollectionActions } = await import("../collection-actions");
 
@@ -74,6 +73,18 @@ describe("CollectionActions", () => {
 		});
 		expect(view.text()).not.toContain("Its books stay in your library.");
 		expect(removeCollection).not.toHaveBeenCalled();
+	});
+
+	it("opens the collection page to edit, with no name sheet of its own", async () => {
+		view = await render(
+			<CollectionActions collection={fantasy} collections={[fantasy]} onClose={vi.fn()} />,
+		);
+		expect(view.queryButton("Rename")).toBeNull();
+		await click(view.getButton("Edit collection"));
+		expect(navigate).toHaveBeenCalledWith({
+			to: "/tabs/library/collections/$id/edit",
+			params: { id: "c1" },
+		});
 	});
 
 	it("leaves the back press to the router while nothing is open", async () => {

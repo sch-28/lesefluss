@@ -4,7 +4,6 @@ import { Plus } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { CollectionActions } from "../../components/collections/collection-actions";
-import { CollectionNameDialog } from "../../components/collections/collection-name-dialog";
 import { openShelf, ShelfActions } from "../../components/smart-shelves/shelf-actions";
 import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
@@ -81,10 +80,8 @@ const CollectionShelfRow: React.FC<{
 	const { data: collections = [] } = queryHooks.useCollections();
 	const smart = useSmartShelves();
 	const [shelfMenuFor, setShelfMenuFor] = useState<ShelfEntry | null>(null);
-	const create = queryHooks.useCreateCollection();
 	const navigate = useNavigate();
 	const [menuFor, setMenuFor] = useState<CollectionWithCount | null>(null);
-	const [creating, setCreating] = useState(false);
 
 	const open = (id: string | undefined) =>
 		navigate({ to: "/tabs/library", search: id ? { collection: id } : {} });
@@ -130,7 +127,7 @@ const CollectionShelfRow: React.FC<{
 				))}
 				<button
 					type="button"
-					onClick={() => setCreating(true)}
+					onClick={() => navigate({ to: "/tabs/library/collections/new" })}
 					aria-label="New collection"
 					className={cn(CHIP, "border-border border-dashed text-muted-foreground")}
 				>
@@ -147,13 +144,6 @@ const CollectionShelfRow: React.FC<{
 				shelf={shelfMenuFor}
 				onClose={() => setShelfMenuFor(null)}
 				setBuiltInPinned={smart.setBuiltInPinned}
-			/>
-			<CollectionNameDialog
-				open={creating}
-				onOpenChange={setCreating}
-				title="New collection"
-				confirmLabel="Create"
-				onSubmit={(name) => create.mutate(name, { onSuccess: (row) => open(row.id) })}
 			/>
 		</div>
 	);

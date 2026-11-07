@@ -7,7 +7,8 @@ import {
 	NO_PROGRESS,
 } from "../../../services/batch/run-sequential";
 import { importScannedFile, pickBookFolder, probeScannedFile } from "../../../services/book-import";
-import { bookKeys } from "../../../services/db/hooks/query-keys";
+import { bookKeys, collectionKeys } from "../../../services/db/hooks/query-keys";
+import { addBooksToCollection } from "../../../services/db/queries/collections";
 import { scheduleSyncPush } from "../../../services/sync";
 import { log } from "../../../utils/log";
 import { ALERT_SUPPRESSED, ERROR_TOASTS } from "../import-errors";
@@ -51,11 +52,13 @@ type UseFolderImport = {
  * Drives a folder import from picker to library.
  *
  * `existingTitles` comes from the caller's already-loaded library, so duplicate
- * detection costs no extra query.
+ * detection costs no extra query. Each book imported joins `targetCollectionId`
+ * as it is written, so a cancelled run leaves its books in the collection too.
  */
 export function useFolderImport(
 	existingTitles: ReadonlySet<string>,
 	onClose: () => void,
+	targetCollectionId?: string,
 ): UseFolderImport {
 	const qc = useQueryClient();
 	const [phase, setPhase] = useState<FolderImportPhase>("idle");
@@ -141,9 +144,21 @@ export function useFolderImport(
 		probesPausedRef.current = true;
 		setPendingProbes(0);
 		setPhase("importing");
+		let joinFailures = 0;
 		const batch = await runBatchImport({
 			files: selected,
-			importFile: importScannedFile,
+			importFile: async (file) => {
+				const book = await importScannedFile(file);
+				if (!targetCollectionId) return book;
+				// The book is written: a failed join must not count the file as failed.
+				try {
+					await addBooksToCollection(targetCollectionId, [book.id]);
+				} catch (err) {
+					joinFailures += 1;
+					log.warn("book-import", "joining the collection failed:", err);
+				}
+				return book;
+			},
 			onProgress: setProgress,
 			isCancelled: () => cancelImportRef.current || abortRef.current,
 		});
@@ -153,13 +168,19 @@ export function useFolderImport(
 		if (batch.imported > 0) {
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 			qc.invalidateQueries({ queryKey: bookKeys.covers });
+			if (targetCollectionId) qc.invalidateQueries({ queryKey: collectionKeys.all });
 			scheduleSyncPush();
+		}
+		if (joinFailures > 0) {
+			toast.error(
+				`${joinFailures} ${joinFailures === 1 ? "book" : "books"} couldn't be added to the collection`,
+			);
 		}
 
 		if (abortRef.current) return;
 		setResult(batch);
 		setPhase("done");
-	}, [candidates, qc]);
+	}, [candidates, qc, targetCollectionId]);
 
 	const cancelImport = useCallback(() => {
 		cancelImportRef.current = true;

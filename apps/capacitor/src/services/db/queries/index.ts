@@ -36,7 +36,9 @@ import {
 import {
 	addBooksToCollection,
 	createCollection,
+	createCollectionWithBooks,
 	deleteCollection,
+	editCollection,
 	getAllCollectionBooksForSync,
 	getAllCollectionsForSync,
 	getCollectionBookIds,
@@ -227,6 +229,8 @@ export const queries = {
 	// Collections
 	getCollections,
 	createCollection,
+	createCollectionWithBooks,
+	editCollection,
 	renameCollection,
 	moveCollection,
 	deleteCollection,

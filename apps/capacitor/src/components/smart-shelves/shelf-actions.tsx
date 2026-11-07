@@ -6,8 +6,8 @@ import { encodeFilterParam } from "../../pages/library/filter-model";
 import { editShelfConditionsRequest, type ShelfEntry } from "../../pages/library/use-smart-shelves";
 import { queryHooks } from "../../services/db/hooks";
 import { ActionSheet, type ActionSheetItem } from "../action-sheet";
-import { CollectionNameDialog } from "../collections/collection-name-dialog";
 import { ConfirmDialog } from "../confirm-dialog";
+import { ShelfNameDialog } from "./shelf-name-dialog";
 
 type Props = {
 	/** The shelf whose menu is open; null closes it. */
@@ -88,14 +88,13 @@ export const ShelfActions: React.FC<Props> = ({ shelf, onClose, setBuiltInPinned
 				title={shelf?.name}
 				items={items}
 			/>
-			<CollectionNameDialog
+			<ShelfNameDialog
 				open={!!renaming}
 				onOpenChange={(open) => {
 					if (!open) setRenaming(null);
 				}}
 				title="Rename shelf"
 				confirmLabel="Rename"
-				placeholder="Shelf name"
 				initialName={renaming?.name}
 				onSubmit={(name) => {
 					if (renaming) update.mutate({ id: renaming.id, name });

@@ -22,10 +22,16 @@ type Props = {
 	isOpen: boolean;
 	existingTitles: ReadonlySet<string>;
 	onClose: () => void;
+	targetCollectionId?: string;
 };
 
-const BatchImportSheet: React.FC<Props> = ({ isOpen, existingTitles, onClose }) => {
-	const folder = useFolderImport(existingTitles, onClose);
+const BatchImportSheet: React.FC<Props> = ({
+	isOpen,
+	existingTitles,
+	onClose,
+	targetCollectionId,
+}) => {
+	const folder = useFolderImport(existingTitles, onClose, targetCollectionId);
 	const { phase, start } = folder;
 
 	// The picker opens as soon as the sheet does: a scan is the only thing this

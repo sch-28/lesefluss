@@ -94,6 +94,80 @@ describe("collections", () => {
 		expect(await count(c.id)).toBe(2);
 	});
 
+	it("creates a collection with its picked books, numbered in pick order when ordered", async () => {
+		const plain = await collections.createCollectionWithBooks(
+			"Plain",
+			["bbbbbbbb", "aaaaaaaa"],
+			{},
+			1,
+		);
+		expect(plain.ordered).toBe(false);
+		expect((await collections.getCollectionBookIds(plain.id)).sort()).toEqual([
+			"aaaaaaaa",
+			"bbbbbbbb",
+		]);
+		expect((await collections.getCollectionMembers(plain.id)).map((m) => m.seriesIndex)).toEqual([
+			null,
+			null,
+		]);
+
+		const ordered = await collections.createCollectionWithBooks(
+			"Saga",
+			["cccccccc", "aaaaaaaa"],
+			{ ordered: true },
+			2,
+		);
+		expect((await collections.getCollections()).find((c) => c.id === ordered.id)?.ordered).toBe(
+			true,
+		);
+		const members = await collections.getCollectionMembers(ordered.id);
+		expect(members.map((m) => [m.bookId, m.seriesIndex])).toEqual([
+			["cccccccc", 1],
+			["aaaaaaaa", 2],
+		]);
+	});
+
+	it("creates an empty collection when nothing is picked", async () => {
+		const c = await collections.createCollectionWithBooks("Empty", [], {}, 1);
+		expect(await count(c.id)).toBe(0);
+		await expect(collections.createCollectionWithBooks(" ", ["aaaaaaaa"], {}, 2)).rejects.toThrow();
+		expect(await names()).toEqual(["Empty"]);
+	});
+
+	it("edits name, order and members in one save, numbering additions after the last #N", async () => {
+		const c = await collections.createCollectionWithBooks(
+			"Saga",
+			["aaaaaaaa", "bbbbbbbb"],
+			{ ordered: true },
+			1,
+		);
+		await collections.editCollection(
+			c.id,
+			{ name: " Saga II ", remove: ["aaaaaaaa"], add: ["cccccccc"] },
+			2,
+		);
+		expect(await names()).toEqual(["Saga II"]);
+		const members = await collections.getCollectionMembers(c.id);
+		expect(members.map((m) => [m.bookId, m.seriesIndex])).toEqual([
+			["bbbbbbbb", 2],
+			["cccccccc", 3],
+		]);
+
+		await collections.editCollection(c.id, { ordered: false, add: ["aaaaaaaa"] }, 3);
+		const after = await collections.getCollections();
+		expect(after[0]?.ordered).toBe(false);
+		expect(after[0]?.bookCount).toBe(3);
+	});
+
+	it("renaming a series collection keeps its series key", async () => {
+		const c = await collections.createCollection("Dune", 1);
+		raw.prepare("UPDATE collections SET series_key = ? WHERE id = ?").run("dune", c.id);
+		await collections.editCollection(c.id, { name: "Dune saga" }, 2);
+		const row = (await collections.getCollections()).find((x) => x.id === c.id);
+		expect(row?.name).toBe("Dune saga");
+		expect(row?.seriesKey).toBe("dune");
+	});
+
 	it("drops a deleted book from counts and members, tombstoned and then hard-deleted", async () => {
 		const c = await collections.createCollection("Shelf", 1);
 		await collections.addBooksToCollection(c.id, ["aaaaaaaa", "bbbbbbbb"], 2);

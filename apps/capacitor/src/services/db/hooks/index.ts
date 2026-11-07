@@ -177,6 +177,10 @@ export const queryHooks = {
 	useCollectionIdsForBook: collectionHooks.useCollectionIdsForBook,
 	useCollectionMemberships: collectionHooks.useCollectionMemberships,
 	useCreateCollection: collectionHooks.useCreateCollection,
+	/** Mutation: the collection page's create, with its picked books. */
+	useCreateCollectionWithBooks: collectionHooks.useCreateCollectionWithBooks,
+	/** Mutation: the collection page's save (name, order, members). */
+	useEditCollection: collectionHooks.useEditCollection,
 	useRenameCollection: collectionHooks.useRenameCollection,
 	useMoveCollection: collectionHooks.useMoveCollection,
 	useDeleteCollection: collectionHooks.useDeleteCollection,

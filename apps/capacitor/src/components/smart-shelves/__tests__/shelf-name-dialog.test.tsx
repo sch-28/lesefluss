@@ -31,7 +31,7 @@ vi.mock("../../modal", async () => {
 	};
 });
 
-const { CollectionNameDialog } = await import("../collection-name-dialog");
+const { ShelfNameDialog } = await import("../shelf-name-dialog");
 
 const onSubmit = vi.fn();
 const onOpenChange = vi.fn();
@@ -48,11 +48,11 @@ afterEach(() => {
 
 const renderDialog = async (open = true) => {
 	view = await render(
-		<CollectionNameDialog
+		<ShelfNameDialog
 			open={open}
 			onOpenChange={onOpenChange}
-			title="New collection"
-			confirmLabel="Create"
+			title="Rename shelf"
+			confirmLabel="Rename"
 			onSubmit={onSubmit}
 		/>,
 	);
@@ -69,28 +69,28 @@ function typeName(value: string) {
 	return input;
 }
 
-describe("CollectionNameDialog", () => {
-	it("creates on the keyboard's action key, which submits the form without an Enter keydown", async () => {
+describe("ShelfNameDialog", () => {
+	it("submits on the keyboard's action key, which submits the form without an Enter keydown", async () => {
 		await renderDialog();
-		const input = typeName("  Fantasy  ");
+		const input = typeName("  Long reads  ");
 		expect(input.getAttribute("enterkeyhint")).toBe("done");
 		const form = input.closest("form");
 		expect(form).not.toBeNull();
 		act(() => {
 			form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 		});
-		expect(onSubmit).toHaveBeenCalledWith("Fantasy");
+		expect(onSubmit).toHaveBeenCalledWith("Long reads");
 		expect(onOpenChange).toHaveBeenCalledWith(false);
 	});
 
-	it("creates on the Create button and ignores a blank name", async () => {
+	it("submits on the Rename button and ignores a blank name", async () => {
 		await renderDialog();
 		typeName("   ");
-		expect(view?.getButton("Create").disabled).toBe(true);
-		typeName("Sci-fi");
-		await click(view?.getButton("Create") as HTMLButtonElement);
+		expect(view?.getButton("Rename").disabled).toBe(true);
+		typeName("Short");
+		await click(view?.getButton("Rename") as HTMLButtonElement);
 		expect(onSubmit).toHaveBeenCalledTimes(1);
-		expect(onSubmit).toHaveBeenCalledWith("Sci-fi");
+		expect(onSubmit).toHaveBeenCalledWith("Short");
 	});
 
 	it("opens as a bottom sheet on phone and a narrow dialog on desktop", async () => {

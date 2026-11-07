@@ -35,7 +35,7 @@ function columnsFor(width: number): number {
 	return COLUMN_BREAKPOINTS.find(([min]) => width >= min)?.[1] ?? 3;
 }
 
-function useGridColumns(): number {
+export function useGridColumns(): number {
 	const [cols, setCols] = useState(() => columnsFor(window.innerWidth));
 	useLayoutEffect(() => {
 		const onResize = () => setCols(columnsFor(window.innerWidth));
@@ -46,7 +46,7 @@ function useGridColumns(): number {
 }
 
 /** The app's scroll container and how far below its top this list starts. */
-function useScroller(anchor: React.RefObject<HTMLDivElement | null>) {
+export function useScroller(anchor: React.RefObject<HTMLDivElement | null>) {
 	const scrollRef = useRef<HTMLElement | null>(null);
 	const [startMargin, setStartMargin] = useState(0);
 	useLayoutEffect(() => {

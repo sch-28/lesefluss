@@ -41,7 +41,7 @@ vi.mock("../../confirm-dialog", async () => {
 		),
 	};
 });
-vi.mock("../../collections/collection-name-dialog", () => ({ CollectionNameDialog: () => null }));
+vi.mock("../shelf-name-dialog", () => ({ ShelfNameDialog: () => null }));
 
 const { ShelfActions } = await import("../shelf-actions");
 

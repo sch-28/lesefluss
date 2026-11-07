@@ -14,7 +14,8 @@ import {
 	findAttachCandidate,
 	type StagedImport,
 } from "../services/book-import";
-import { bookKeys } from "../services/db/hooks/query-keys";
+import { bookKeys, collectionKeys } from "../services/db/hooks/query-keys";
+import { addBooksToCollection } from "../services/db/queries/collections";
 import type { Book } from "../services/db/schema";
 import { scheduleSyncPush } from "../services/sync";
 import { log } from "../utils/log";
@@ -76,16 +77,34 @@ export const ImportStagingProvider: React.FC<{ children: React.ReactNode }> = ({
 		staged.cleanup?.();
 	}, []);
 
+	// After the book is written, a failure here must not fail the import: the
+	// entry would stay queued and a retry would write the book a second time.
+	const joinTarget = async (staged: StagedImport, book: Book): Promise<boolean | null> => {
+		if (!staged.targetCollectionId) return null;
+		try {
+			await addBooksToCollection(staged.targetCollectionId, [book.id]);
+		} catch (error) {
+			log.warn("book-import", "joining the collection failed:", error);
+			return false;
+		}
+		qc.invalidateQueries({ queryKey: collectionKeys.all });
+		scheduleSyncPush();
+		return true;
+	};
+
 	const commit = useMutation({
-		mutationFn: ({ staged, values }: { staged: StagedImport; values: BookEditValues }) =>
-			commitStagedImport(staged, editValuesToPatch(values)),
-		onSuccess: (book, { staged }) => {
+		mutationFn: async ({ staged, values }: { staged: StagedImport; values: BookEditValues }) => {
+			const book = await commitStagedImport(staged, editValuesToPatch(values));
+			return { book, joined: await joinTarget(staged, book) };
+		},
+		onSuccess: ({ book, joined }, { staged }) => {
 			// The import only counts as done here, not when parsing finished.
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 			qc.invalidateQueries({ queryKey: bookKeys.covers });
 			scheduleSyncPush();
 			dropEntry(staged);
-			toast.success(`Added "${book.title}"`);
+			if (joined === false) toast.error(`Added "${book.title}", but not to the collection`);
+			else toast.success(`Added "${book.title}"`);
 		},
 		onError: (error) => {
 			log.warn("book-import", "commit failed:", error);
@@ -118,8 +137,13 @@ export const ImportStagingProvider: React.FC<{ children: React.ReactNode }> = ({
 	const attachCandidate = isCheckingAttach ? null : (lookup?.book ?? null);
 
 	const attach = useMutation({
-		mutationFn: ({ staged, book }: { staged: StagedImport; book: Book }) =>
-			attachOriginalToBook(book, staged.payload),
+		mutationFn: async ({ staged, book }: { staged: StagedImport; book: Book }) => {
+			const result = await attachOriginalToBook(book, staged.payload);
+			if ((await joinTarget(staged, book)) === false) {
+				toast.error(`"${book.title}" couldn't be added to the collection`);
+			}
+			return result;
+		},
 		onSuccess: ({ fileCopyFailed }, { staged, book }) => {
 			// Exact keys: the book's content is unchanged and its anchors are already
 			// patched, so the open reader must not re-read the whole text.

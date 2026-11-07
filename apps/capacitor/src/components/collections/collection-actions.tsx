@@ -6,7 +6,6 @@ import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
 import { ActionSheet } from "../action-sheet";
 import { ConfirmDialog } from "../confirm-dialog";
-import { CollectionNameDialog } from "./collection-name-dialog";
 
 type Props = {
 	/** The collection whose menu is open; null closes it. */
@@ -15,11 +14,9 @@ type Props = {
 	onClose: () => void;
 };
 
-/** Rename, reorder and delete for one collection, shared by the sidebar and the phone shelf row. */
+/** Edit, reorder and delete for one collection, shared by the sidebar and the phone shelf row. */
 export const CollectionActions: React.FC<Props> = ({ collection, collections, onClose }) => {
-	const [renaming, setRenaming] = useState<CollectionWithCount | null>(null);
 	const [deleting, setDeleting] = useState<CollectionWithCount | null>(null);
-	const rename = queryHooks.useRenameCollection();
 	const move = queryHooks.useMoveCollection();
 	const remove = queryHooks.useDeleteCollection();
 	const navigate = useNavigate();
@@ -48,9 +45,16 @@ export const CollectionActions: React.FC<Props> = ({ collection, collections, on
 				title={collection?.name}
 				items={[
 					{
-						label: "Rename",
+						label: "Edit collection",
 						icon: Pencil,
-						onSelect: () => setRenaming(collection),
+						onSelect: () => {
+							if (collection) {
+								navigate({
+									to: "/tabs/library/collections/$id/edit",
+									params: { id: collection.id },
+								});
+							}
+						},
 					},
 					{
 						label: "Move up",
@@ -75,18 +79,6 @@ export const CollectionActions: React.FC<Props> = ({ collection, collections, on
 						onSelect: () => setDeleting(collection),
 					},
 				]}
-			/>
-			<CollectionNameDialog
-				open={!!renaming}
-				onOpenChange={(open) => {
-					if (!open) setRenaming(null);
-				}}
-				title="Rename collection"
-				confirmLabel="Rename"
-				initialName={renaming?.name}
-				onSubmit={(name) => {
-					if (renaming) rename.mutate({ id: renaming.id, name });
-				}}
 			/>
 			<ConfirmDialog
 				open={!!deleting}

@@ -6,7 +6,6 @@ import { useState } from "react";
 import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
 import { CollectionActions } from "../collections/collection-actions";
-import { CollectionNameDialog } from "../collections/collection-name-dialog";
 import {
 	BOOKS_DRAG_TYPE,
 	COLLECTION_DRAG_TYPE,
@@ -24,15 +23,15 @@ type DropHint = { id: string; kind: "books" | "before" | "after" };
 
 export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 	const { data: collections = [] } = queryHooks.useCollections();
-	const create = queryHooks.useCreateCollection();
 	const move = queryHooks.useMoveCollection();
 	const addBooks = queryHooks.useAddBooksToCollection();
 	const navigate = useNavigate();
 	const location = useLocation();
 	const [menuFor, setMenuFor] = useState<CollectionWithCount | null>(null);
-	const [creating, setCreating] = useState(false);
 	const [dropHint, setDropHint] = useState<DropHint | null>(null);
 	const [draggingId, setDraggingId] = useState<string | null>(null);
+
+	const newCollection = () => navigate({ to: "/tabs/library/collections/new" });
 
 	const activeId =
 		location.pathname === "/tabs/library"
@@ -95,7 +94,7 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 				</h2>
 				<button
 					type="button"
-					onClick={() => setCreating(true)}
+					onClick={newCollection}
 					aria-label="New collection"
 					title="New collection"
 					className="inline-flex size-6 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
@@ -169,7 +168,7 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 				<li>
 					<button
 						type="button"
-						onClick={() => setCreating(true)}
+						onClick={newCollection}
 						className="flex w-full items-center gap-2 py-1.5 pl-5 text-left text-sidebar-foreground/50 text-sm hover:text-sidebar-foreground"
 					>
 						<Plus className="size-4" />
@@ -181,17 +180,6 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 				collection={menuFor}
 				collections={collections}
 				onClose={() => setMenuFor(null)}
-			/>
-			<CollectionNameDialog
-				open={creating}
-				onOpenChange={setCreating}
-				title="New collection"
-				confirmLabel="Create"
-				onSubmit={(name) =>
-					create.mutate(name, {
-						onSuccess: (row) => navigate({ to: "/tabs/library", search: { collection: row.id } }),
-					})
-				}
 			/>
 		</section>
 	);

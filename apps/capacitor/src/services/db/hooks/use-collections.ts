@@ -5,6 +5,7 @@ import { log } from "../../../utils/log";
 import { scheduleSyncPush } from "../../sync";
 import { errorMessage, reportEvent } from "../../telemetry";
 import { queries } from "../queries";
+import type { CollectionEdit } from "../queries/collections";
 import { collectionKeys } from "./query-keys";
 
 function useCollections() {
@@ -91,6 +92,19 @@ function useCreateCollection() {
 	return useCollectionMutation((name: string) => queries.createCollection(name));
 }
 
+function useCreateCollectionWithBooks() {
+	return useCollectionMutation(
+		(vars: { name: string; bookIds: readonly string[]; ordered?: boolean }) =>
+			queries.createCollectionWithBooks(vars.name, vars.bookIds, { ordered: vars.ordered }),
+	);
+}
+
+function useEditCollection() {
+	return useCollectionMutation((vars: { id: string; edit: CollectionEdit }) =>
+		queries.editCollection(vars.id, vars.edit),
+	);
+}
+
 function useRenameCollection() {
 	return useCollectionMutation((vars: { id: string; name: string }) =>
 		queries.renameCollection(vars.id, vars.name),
@@ -126,6 +140,8 @@ export const collectionHooks = {
 	useCollectionIdsForBook,
 	useCollectionMemberships,
 	useCreateCollection,
+	useCreateCollectionWithBooks,
+	useEditCollection,
 	useRenameCollection,
 	useMoveCollection,
 	useDeleteCollection,

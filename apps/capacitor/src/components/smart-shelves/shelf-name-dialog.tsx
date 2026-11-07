@@ -1,4 +1,4 @@
-import { COLLECTION_NAME_MAX } from "@lesefluss/core";
+import { SMART_SHELF_NAME_MAX } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
 import type React from "react";
@@ -11,17 +11,15 @@ type Props = {
 	title: string;
 	confirmLabel: string;
 	initialName?: string;
-	placeholder?: string;
 	onSubmit: (name: string) => void;
 };
 
-export const CollectionNameDialog: React.FC<Props> = ({
+export const ShelfNameDialog: React.FC<Props> = ({
 	open,
 	onOpenChange,
 	title,
 	confirmLabel,
 	initialName = "",
-	placeholder = "Collection name",
 	onSubmit,
 }) => {
 	const [name, setName] = useState(initialName);
@@ -52,9 +50,9 @@ export const CollectionNameDialog: React.FC<Props> = ({
 				<Input
 					autoFocus
 					value={name}
-					maxLength={COLLECTION_NAME_MAX}
-					placeholder={placeholder}
-					aria-label={placeholder}
+					maxLength={SMART_SHELF_NAME_MAX}
+					placeholder="Shelf name"
+					aria-label="Shelf name"
 					enterKeyHint="done"
 					onChange={(e) => setName(e.target.value)}
 				/>
