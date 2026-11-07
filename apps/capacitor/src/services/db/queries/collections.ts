@@ -189,6 +189,8 @@ export async function deleteCollection(id: string, now = serverNow()): Promise<v
 /**
  * Adds books, or brings back removed ones. `seriesIndex` (book id → #N) is
  * written only for the books it names; a re-added book keeps its old number otherwise.
+ * A book already a live member and given no #N is left as it is, so its
+ * `updatedAt` stays the time it joined.
  */
 export async function addBooksToCollection(
 	collectionId: string,
@@ -210,6 +212,7 @@ export async function addBooksToCollection(
 			.onConflictDoUpdate({
 				target: [collectionBooks.collectionId, collectionBooks.bookId],
 				set: { deleted: false, updatedAt: now },
+				setWhere: eq(collectionBooks.deleted, true),
 			});
 	}
 	for (let i = 0; i < numbered.length; i += CHUNK_SIZE) {
@@ -344,8 +347,8 @@ export type CollectionEdit = {
 
 /**
  * One save of the collection page. Turning Keep in order on numbers the
- * unnumbered members after the last #N, in reading order; books added to an
- * ordered collection follow them. Renaming leaves a series collection's
+ * unnumbered members after the last #N, in the order they joined; books added
+ * to an ordered collection follow them. Renaming leaves a series collection's
  * `seriesKey` alone.
  */
 export async function editCollection(
@@ -369,9 +372,21 @@ async function isCollectionOrdered(id: string): Promise<boolean> {
 	return row?.ordered ?? false;
 }
 
+/**
+ * A manual position comes first; otherwise a member's `updatedAt` is when it
+ * joined, since a plain collection writes a membership row only when a book
+ * joins or leaves. A #N cleared by a series write moves it too.
+ */
 async function numberUnnumberedMembers(collectionId: string, now: number): Promise<void> {
 	const members = await getCollectionMembers(collectionId);
-	const unnumbered = members.filter((m) => m.seriesIndex === null).map((m) => m.bookId);
+	const unnumbered = members
+		.filter((m) => m.seriesIndex === null)
+		.sort(
+			(a, b) =>
+				(a.position ?? Number.POSITIVE_INFINITY) - (b.position ?? Number.POSITIVE_INFINITY) ||
+				a.updatedAt - b.updatedAt,
+		)
+		.map((m) => m.bookId);
 	if (unnumbered.length === 0) return;
 	const numbers = numberInOrder(unnumbered, await highestSeriesIndex(collectionId));
 	for (const [bookId, seriesIndex] of numbers) {

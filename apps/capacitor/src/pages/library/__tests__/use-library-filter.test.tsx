@@ -18,7 +18,7 @@ vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => router.navigate,
 }));
 
-const { useLibraryFilter } = await import("../use-library-filter");
+const { useLeaveMissingShelf, useLibraryFilter } = await import("../use-library-filter");
 
 let result: [LibraryFilter, (filter: LibraryFilter) => void];
 function Probe() {
@@ -82,5 +82,38 @@ describe("useLibraryFilter", () => {
 		expect(localStorage.getItem(FILTER_STORAGE_KEY)).toBe(serializeFilter(tags));
 		result[1]({});
 		expect(navigatedTo()).toEqual({ collection: "c1", f: undefined });
+	});
+});
+
+describe("useLeaveMissingShelf", () => {
+	function Leave({ shelf, missing }: { shelf?: string; missing: boolean }) {
+		useLeaveMissingShelf(shelf, missing);
+		return null;
+	}
+
+	it("returns to all books, not this device's last filter, once the open shelf is gone", async () => {
+		localStorage.setItem(FILTER_STORAGE_KEY, serializeFilter(stored));
+		view = await render(<Leave shelf="s1" missing />);
+		expect(router.navigate).toHaveBeenCalledWith({
+			to: "/tabs/library",
+			search: {},
+			replace: true,
+		});
+		expect(localStorage.getItem(FILTER_STORAGE_KEY)).toBe(serializeFilter({}));
+
+		view.unmount();
+		router.navigate.mockReset();
+		router.search = {};
+		view = await render(<Probe />);
+		expect(result[0]).toEqual({});
+	});
+
+	it("keeps the device's filter while the shelf is there or none is open", async () => {
+		localStorage.setItem(FILTER_STORAGE_KEY, serializeFilter(stored));
+		view = await render(<Leave shelf="s1" missing={false} />);
+		view.unmount();
+		view = await render(<Leave missing />);
+		expect(router.navigate).not.toHaveBeenCalled();
+		expect(localStorage.getItem(FILTER_STORAGE_KEY)).toBe(serializeFilter(stored));
 	});
 });

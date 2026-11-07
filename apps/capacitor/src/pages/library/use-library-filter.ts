@@ -31,6 +31,17 @@ export function clearLibraryFilter(): void {
 	storeFilter({});
 }
 
+/** The open shelf is gone (deleted on another device and synced in, or a link
+ *  to a deleted shelf): back to all books, as after deleting it here. */
+export function useLeaveMissingShelf(shelfId: string | undefined, isMissing: boolean): void {
+	const navigate = useNavigate();
+	useEffect(() => {
+		if (!shelfId || !isMissing) return;
+		clearLibraryFilter();
+		navigate({ to: "/tabs/library", search: {}, replace: true });
+	}, [shelfId, isMissing, navigate]);
+}
+
 /**
  * The library filter. The URL's `f` param is the source of truth, so a view can
  * be bookmarked, reloaded or shared; this device's last filter fills the URL

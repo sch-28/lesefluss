@@ -83,7 +83,7 @@ import SortPopover, { type ThenBy } from "./sort-popover";
 import TransferModal from "./transfer-modal";
 import { useCollapsedGroups } from "./use-collapsed-groups";
 import { useDragSelect } from "./use-drag-select";
-import { useLibraryFilter } from "./use-library-filter";
+import { useLeaveMissingShelf, useLibraryFilter } from "./use-library-filter";
 import { useLibraryImports } from "./use-library-imports";
 import { useLibraryItems } from "./use-library-items";
 import { useLibrarySelection } from "./use-library-selection";
@@ -221,11 +221,7 @@ const Library: React.FC = () => {
 		navigate,
 	]);
 
-	useEffect(() => {
-		if (shelfId && smart.isSettled && !activeShelf) {
-			navigate({ to: "/tabs/library", search: {}, replace: true });
-		}
-	}, [shelfId, smart.isSettled, activeShelf, navigate]);
+	useLeaveMissingShelf(shelfId, smart.isSettled && !activeShelf);
 
 	const dismissNotice = useCallback(() => {
 		localStorage.setItem(LOCAL_NOTICE_KEY, "1");

@@ -160,7 +160,55 @@ describe("collections", () => {
 		expect(after[0]?.bookCount).toBe(3);
 	});
 
-	it("numbers the current members #1..N in reading order when Keep in order is switched on", async () => {
+	it("numbers a never-ordered collection by when each book joined it, oldest first", async () => {
+		const c = await collections.createCollectionWithBooks("Shelf", ["aaaaaaaa"], {}, 30);
+		await collections.addBooksToCollection(c.id, ["cccccccc"], 10);
+		await collections.addBooksToCollection(c.id, ["bbbbbbbb"], 20);
+		await collections.editCollection(c.id, { ordered: true }, 40);
+		const members = await collections.getCollectionMembers(c.id);
+		expect(members.map((m) => [m.bookId, m.seriesIndex])).toEqual([
+			["cccccccc", 1],
+			["bbbbbbbb", 2],
+			["aaaaaaaa", 3],
+		]);
+	});
+
+	it("numbers a member picked again by when it first joined, not by the repeat add", async () => {
+		const c = await collections.createCollectionWithBooks("Shelf", ["bbbbbbbb"], {}, 10);
+		await collections.addBooksToCollection(c.id, ["aaaaaaaa"], 20);
+		await collections.addBooksToCollection(c.id, ["bbbbbbbb", "cccccccc"], 30);
+		await collections.editCollection(c.id, { ordered: true }, 40);
+		const members = await collections.getCollectionMembers(c.id);
+		expect(members.map((m) => [m.bookId, m.seriesIndex])).toEqual([
+			["bbbbbbbb", 1],
+			["aaaaaaaa", 2],
+			["cccccccc", 3],
+		]);
+	});
+
+	it("keeps existing numbers and numbers the rest after them when Keep in order comes back on", async () => {
+		insertBook("dddddddd");
+		const c = await collections.createCollectionWithBooks(
+			"Saga",
+			["aaaaaaaa", "bbbbbbbb"],
+			{ ordered: true },
+			1,
+		);
+		await collections.addBooksToCollection(c.id, ["bbbbbbbb"], 2, new Map([["bbbbbbbb", 2.5]]));
+		await collections.editCollection(c.id, { ordered: false }, 3);
+		await collections.addBooksToCollection(c.id, ["dddddddd"], 4);
+		await collections.addBooksToCollection(c.id, ["cccccccc"], 5);
+		await collections.editCollection(c.id, { ordered: true }, 6);
+		const members = await collections.getCollectionMembers(c.id);
+		expect(members.map((m) => [m.bookId, m.seriesIndex])).toEqual([
+			["aaaaaaaa", 1],
+			["bbbbbbbb", 2.5],
+			["dddddddd", 3],
+			["cccccccc", 4],
+		]);
+	});
+
+	it("numbers books that joined together by title when Keep in order is switched on", async () => {
 		const c = await collections.createCollectionWithBooks(
 			"Shelf",
 			["cccccccc", "aaaaaaaa", "bbbbbbbb"],
