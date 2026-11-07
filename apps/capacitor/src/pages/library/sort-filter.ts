@@ -26,7 +26,8 @@ export type SortBy =
 	| "lastRead"
 	| "series"
 	| "tags"
-	| "collections";
+	| "collections"
+	| "highlights";
 
 export const SORT_LABELS: Record<SortBy, string> = {
 	title: "Title",
@@ -42,6 +43,7 @@ export const SORT_LABELS: Record<SortBy, string> = {
 	series: "Series",
 	tags: "Tags",
 	collections: "Collections",
+	highlights: "Highlights",
 };
 
 export const SORT_OPTIONS: SortBy[] = [
@@ -58,6 +60,7 @@ export const SORT_OPTIONS: SortBy[] = [
 	"series",
 	"tags",
 	"collections",
+	"highlights",
 ];
 
 export type SortDir = "asc" | "desc";
@@ -77,6 +80,7 @@ export const NATURAL_DIR: Record<SortBy, SortDir> = {
 	series: "asc",
 	tags: "asc",
 	collections: "asc",
+	highlights: "desc",
 };
 
 export function sortDirection(sortBy: SortBy, reversed: boolean): SortDir {
@@ -144,6 +148,8 @@ type SortKey = {
 	series: { name: string; index: number | null } | null;
 	/** The plain (non-series) collections, as the table's Collections column shows them. */
 	collections: string | null;
+	/** Null for a series, and while the counts are not loaded. */
+	highlights: number | null;
 };
 
 export type LibraryItem =
@@ -171,6 +177,7 @@ function bookSortKey(b: Book, model: SpeedModel | undefined): SortKey {
 		lastRead: b.lastRead,
 		series: null,
 		collections: null,
+		highlights: null,
 	};
 }
 
@@ -191,6 +198,7 @@ function seriesSortKey(s: Series, activity: SeriesActivity | undefined): SortKey
 		lastRead: activity?.latestRead ?? null,
 		series: null,
 		collections: null,
+		highlights: null,
 	};
 }
 
@@ -268,6 +276,8 @@ function compareItems(a: LibraryItem, b: LibraryItem, sortBy: SortBy, dir: SortD
 			return compareTexts(ka.tags.join(", ") || null, kb.tags.join(", ") || null, dir);
 		case "collections":
 			return compareTexts(ka.collections, kb.collections, dir);
+		case "highlights":
+			return compareNumbers(ka.highlights, kb.highlights, dir);
 	}
 }
 
@@ -327,7 +337,7 @@ function shelfSortFields(
 
 /** Every row of the library with its sort and filter fields, built once per library change.
  *  `collectionsOf` maps a book id to the live collections it is in; `speedModel`
- *  times what is left. */
+ *  times what is left; `highlightCounts`, once loaded, counts each book's highlights. */
 export function buildLibraryItems(
 	books: Book[],
 	series: Series[],
@@ -336,6 +346,7 @@ export function buildLibraryItems(
 	collectionsOf: ReadonlyMap<string, readonly string[]> = new Map(),
 	speedModel?: SpeedModel,
 	shelves: ShelfLookup = NO_SHELVES,
+	highlightCounts?: ReadonlyMap<string, number>,
 ): LibraryItem[] {
 	return [
 		...books.map<LibraryItem>((book) => {
@@ -343,6 +354,7 @@ export function buildLibraryItems(
 			const sortKey = {
 				...bookSortKey(book, speedModel),
 				...shelfSortFields(book.id, collectionIds, shelves),
+				highlights: highlightCounts ? (highlightCounts.get(book.id) ?? 0) : null,
 			};
 			const facets = facetValuesOf(
 				{

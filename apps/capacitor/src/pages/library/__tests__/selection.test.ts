@@ -28,6 +28,7 @@ const SORT_KEY: LibraryItem["sortKey"] = {
 	words: null,
 	series: null,
 	collections: null,
+	highlights: null,
 	added: 0,
 	lastRead: null,
 };

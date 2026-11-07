@@ -467,3 +467,96 @@ describe("series collections from the collection sheet", () => {
 		]);
 	});
 });
+
+describe("series emptied by their last book leaving", () => {
+	async function row(id: string) {
+		return raw
+			.prepare("SELECT deleted, series_key, updated_at FROM collections WHERE id = ?")
+			.get(id);
+	}
+
+	it("tombstones the series without its key when the last book is removed, and keeps the dismissals", async () => {
+		const dune = await collections.createSeriesCollection("Dune", 1);
+		await collections.addBooksToCollection(dune.id, ["aaaaaaaa", "bbbbbbbb"], 2);
+		await collections.removeBooksFromCollection(dune.id, ["aaaaaaaa"], 3);
+		expect(await row(dune.id)).toMatchObject({ deleted: 0, series_key: "dune" });
+		await collections.removeBooksFromCollection(dune.id, ["bbbbbbbb"], 4);
+		expect(await row(dune.id)).toEqual({ deleted: 1, series_key: null, updated_at: 4 });
+		const dismissed = raw
+			.prepare(
+				"SELECT book_id, deleted FROM collection_books WHERE collection_id = ? ORDER BY book_id",
+			)
+			.all(dune.id);
+		expect(dismissed).toEqual([
+			{ book_id: "aaaaaaaa", deleted: 1 },
+			{ book_id: "bbbbbbbb", deleted: 1 },
+		]);
+	});
+
+	it("leaves an emptied manual collection alone", async () => {
+		const shelf = await collections.createCollection("Shelf", 1);
+		await collections.addBooksToCollection(shelf.id, ["aaaaaaaa"], 2);
+		await collections.removeBooksFromCollection(shelf.id, ["aaaaaaaa"], 3);
+		expect(await names()).toEqual(["Shelf"]);
+	});
+
+	it("deletes the series a book moved out of when it was the last one", async () => {
+		const dune = await collections.createSeriesCollection("Dune", 1);
+		const expanse = await collections.createSeriesCollection("Expanse", 2);
+		await collections.addBooksToCollection(dune.id, ["aaaaaaaa"], 3);
+		await collections.appendBooksToCollection(expanse.id, ["aaaaaaaa"], 4);
+		expect(await row(dune.id)).toEqual({ deleted: 1, series_key: null, updated_at: 4 });
+		expect(await names()).toEqual(["Expanse"]);
+	});
+
+	it("deletes the series when its last book is deleted", async () => {
+		const dune = await collections.createSeriesCollection("Dune", 1);
+		await collections.addBooksToCollection(dune.id, ["aaaaaaaa", "bbbbbbbb"], 2);
+		await deleteBook("aaaaaaaa");
+		expect(await names()).toEqual(["Dune"]);
+		await deleteBook("bbbbbbbb");
+		expect(await names()).toEqual([]);
+		expect(await row(dune.id)).toMatchObject({ deleted: 1, series_key: null });
+	});
+
+	it("keeps the series when one save removes every book and adds others", async () => {
+		const dune = await collections.createSeriesCollection("Dune", 1);
+		await collections.addBooksToCollection(dune.id, ["aaaaaaaa"], 2);
+		await collections.editCollection(dune.id, { remove: ["aaaaaaaa"], add: ["bbbbbbbb"] }, 3);
+		expect(await row(dune.id)).toMatchObject({ deleted: 0, series_key: "dune" });
+		await collections.editCollection(dune.id, { remove: ["bbbbbbbb"] }, 4);
+		expect(await row(dune.id)).toMatchObject({ deleted: 1, series_key: null });
+	});
+
+	it("lets the reconcile form an emptied series again, but never one the reader deleted", async () => {
+		const dune = await collections.createSeriesCollection("Dune", 1);
+		const expanse = await collections.createSeriesCollection("Expanse", 2);
+		await collections.addBooksToCollection(dune.id, ["aaaaaaaa"], 3);
+		await collections.removeBooksFromCollection(dune.id, ["aaaaaaaa"], 4);
+		await collections.deleteCollection(expanse.id, 5);
+		const reformed = (id: string, seriesKey: string) => ({
+			id,
+			name: "Again",
+			sortOrder: 9,
+			ordered: true,
+			seriesKey,
+			deleted: false,
+			createdAt: 9,
+			updatedAt: 9,
+		});
+		await collections.insertMissingCollectionRows(
+			[reformed(dune.id, "dune"), reformed(expanse.id, "expanse")],
+			[],
+		);
+		expect(await row(dune.id)).toEqual({ deleted: 0, series_key: "dune", updated_at: 9 });
+		expect(await row(expanse.id)).toMatchObject({ deleted: 1, series_key: "expanse" });
+		expect((await collections.getImportSeriesState("expanse")).collection?.deleted).toBe(true);
+	});
+
+	it("reports an emptied series to the import as not formed", async () => {
+		const dune = await collections.createSeriesCollection("Dune", 1);
+		await collections.addBooksToCollection(dune.id, ["aaaaaaaa"], 2);
+		await collections.removeBooksFromCollection(dune.id, ["aaaaaaaa"], 3);
+		expect((await collections.getImportSeriesState("dune")).collection).toBeNull();
+	});
+});

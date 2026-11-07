@@ -8,7 +8,7 @@ import { log } from "../utils/log";
 import type { ImportSeriesChoice } from "./book-import/types";
 import { collectionKeys } from "./db/hooks/query-keys";
 import { queries } from "./db/queries";
-import type { ImportSeriesState } from "./db/queries/collections";
+import { type ImportSeriesState, isEmptiedSeries } from "./db/queries/collections";
 import type { Collection, CollectionBook } from "./db/schema";
 import { queryClient } from "./query-client";
 import { serverNow } from "./sync/server-clock";
@@ -34,11 +34,14 @@ export interface SeriesReconcilePlan {
  * is joined by any book with its key. Any row that already exists is left
  * alone, tombstones included: a deleted series collection or a removed book is
  * the user's dismissal and is never re-added, nor counted towards the two books.
+ * The one exception is a series deleted because its last book left
+ * (`isEmptiedSeries`): it forms again like a new one.
  *
  * Auto rows carry `AUTO_STAMP` as their revision, so every user edit on any
  * device beats them, a dismissal included that this device has not pulled yet.
  * Devices that plan the same series offline write rows with equal stamps; the
- * first one the server stores is kept.
+ * first one the server stores is kept. A re-formed series is stamped just past
+ * its tombstone, so it beats the deletion and loses to any later edit.
  */
 export function planSeriesReconcile(input: {
 	books: SeriesHintBook[];
@@ -63,7 +66,8 @@ export function planSeriesReconcile(input: {
 	const plan: SeriesReconcilePlan = { collections: [], memberships: [] };
 	for (const [key, group] of byKey) {
 		const id = seriesCollectionId(key);
-		const collection = existing.get(id);
+		const tombstone = existing.get(id);
+		const collection = tombstone && isEmptiedSeries(tombstone) ? undefined : tombstone;
 		if (collection?.deleted) continue;
 		if (!collection) {
 			const founders = group
@@ -79,7 +83,7 @@ export function planSeriesReconcile(input: {
 				seriesKey: key,
 				deleted: false,
 				createdAt: created,
-				updatedAt: AUTO_STAMP,
+				updatedAt: tombstone ? tombstone.updatedAt + 1 : AUTO_STAMP,
 			});
 		}
 		for (const book of group) {

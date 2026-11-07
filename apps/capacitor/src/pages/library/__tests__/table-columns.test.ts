@@ -32,6 +32,14 @@ describe("table columns", () => {
 		expect(toggleColumn(shown, "title")).toEqual(shown);
 	});
 
+	it("makes the Highlights header sort by highlight count", () => {
+		expect(columnsOf(["highlights"]).map((c) => c.sortBy)).toEqual(["highlights"]);
+		expect(headerSort({ sortBy: "title", reversed: false }, "highlights")).toEqual({
+			sortBy: "highlights",
+			reversed: false,
+		});
+	});
+
 	it("sorts a new header its natural way and flips the sorted one", () => {
 		expect(headerSort({ sortBy: "recent", reversed: true }, "title")).toEqual({
 			sortBy: "title",
@@ -70,8 +78,9 @@ describe("table columns", () => {
 			new Map([["b", ["s", "c"]]]),
 			undefined,
 			shelves,
+			new Map([["b", 3]]),
 		);
-		const ctx: CellContext = { ...shelves, highlightCounts: new Map([["b", 3]]) };
+		const ctx: CellContext = shelves;
 		const cells = Object.fromEntries(
 			columnsOf(TABLE_COLUMNS.map((c) => c.id)).map((c) => [c.id, c.text(item, ctx)]),
 		);

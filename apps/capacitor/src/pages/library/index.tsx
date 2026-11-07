@@ -32,7 +32,7 @@ import { setBooksDragData } from "../../components/collections/drag-data";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { canSaveAsShelf, SaveShelfDialog } from "../../components/smart-shelves/save-shelf-dialog";
 import { ShelfActions } from "../../components/smart-shelves/shelf-actions";
-import { type ViewMode, ViewModeToggle } from "../../components/view-mode-toggle";
+import { ViewModeToggle } from "../../components/view-mode-toggle";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
@@ -66,6 +66,7 @@ import {
 	type SeriesMemberships,
 	seriesBadge,
 } from "./group-by";
+import { headerControls, type LibraryViewMode } from "./header-controls";
 import ImportSheet from "./import-sheet";
 import LibraryTable from "./library-table";
 import OrderedCollectionView from "./ordered-collection-view";
@@ -117,7 +118,6 @@ const LIBRARY_VALUE_FACETS: readonly Facet[] = ["tags", "author", "series", "col
 
 const isThenBy = (value: string): value is ThenBy => value === "none" || isSortBy(value);
 const NO_SERIES_MEMBERSHIPS: SeriesMemberships = new Map();
-type LibraryViewMode = ViewMode | "table";
 const isViewMode = (value: string): value is LibraryViewMode =>
 	value === "grid" || value === "list" || value === "table";
 const isFlag = (value: string): value is "0" | "1" => value === "0" || value === "1";
@@ -207,6 +207,7 @@ const Library: React.FC = () => {
 		: shownView === "grid"
 			? "list"
 			: "grid";
+	const controls = headerControls({ isOrderedView, isDesktop, shownView });
 	const [reversedFlag, setReversedFlag] = usePersistentString(SORT_REVERSED_KEY, isFlag, "0");
 	const sortReversed = reversedFlag === "1";
 	const setSort = (next: { sortBy: SortBy; reversed: boolean }) => {
@@ -223,7 +224,9 @@ const Library: React.FC = () => {
 	const onToggleColumn = (id: ColumnId) =>
 		setColumnsRaw((raw) => serializeColumns(toggleColumn(parseColumns(raw), id)));
 	const highlightCountsQuery = queryHooks.useHighlightCounts(
-		shownView === "table" && columnIds.includes("highlights"),
+		(shownView === "table" && columnIds.includes("highlights")) ||
+			sortBy === "highlights" ||
+			thenBy === "highlights",
 	);
 
 	const [selectedBook, setSelectedBook] = useState<Book | null>(null);
@@ -382,6 +385,7 @@ const Library: React.FC = () => {
 					collections: collectionsById,
 					seriesMemberships: seriesMembershipsQuery.data ?? NO_SERIES_MEMBERSHIPS,
 				},
+				highlightCountsQuery.data,
 			),
 		[
 			books,
@@ -391,6 +395,7 @@ const Library: React.FC = () => {
 			speedModelQuery.data,
 			collectionsById,
 			seriesMembershipsQuery.data,
+			highlightCountsQuery.data,
 		],
 	);
 	const options = useMemo(
@@ -463,9 +468,8 @@ const Library: React.FC = () => {
 		() => ({
 			seriesMemberships,
 			collections: collectionsById,
-			highlightCounts: highlightCountsQuery.data,
 		}),
-		[seriesMemberships, collectionsById, highlightCountsQuery.data],
+		[seriesMemberships, collectionsById],
 	);
 	const gridRef = useRef<HTMLDivElement>(null);
 	useDragSelect(gridRef, {
@@ -550,18 +554,20 @@ const Library: React.FC = () => {
 				title="Lesefluss"
 				right={
 					<>
-						<Button
-							variant="ghost"
-							size="icon"
-							aria-label="Search library"
-							onClick={() => {
-								setIsSearchOpen((open) => !open);
-								setSearch("");
-							}}
-						>
-							<Search />
-						</Button>
-						{!isDesktop && (
+						{controls.search && (
+							<Button
+								variant="ghost"
+								size="icon"
+								aria-label="Search library"
+								onClick={() => {
+									setIsSearchOpen((open) => !open);
+									setSearch("");
+								}}
+							>
+								<Search />
+							</Button>
+						)}
+						{controls.filter && (
 							<Button
 								variant="ghost"
 								size="icon"
@@ -580,21 +586,23 @@ const Library: React.FC = () => {
 								)}
 							</Button>
 						)}
-						<SortPopover
-							trigger={
-								<Button variant="ghost" size="icon" aria-label="Sort">
-									<ArrowUpDown />
-								</Button>
-							}
-							sortBy={sortBy}
-							onSort={(s) => setSort({ sortBy: s, reversed: false })}
-							reversed={sortReversed}
-							onReversed={(r) => setSort({ sortBy, reversed: r })}
-							thenBy={thenBy}
-							onThenBy={setThenBy}
-							groupBy={groupBy}
-							onGroupBy={setGroupBy}
-						/>
+						{controls.sort && (
+							<SortPopover
+								trigger={
+									<Button variant="ghost" size="icon" aria-label="Sort">
+										<ArrowUpDown />
+									</Button>
+								}
+								sortBy={sortBy}
+								onSort={(s) => setSort({ sortBy: s, reversed: false })}
+								reversed={sortReversed}
+								onReversed={(r) => setSort({ sortBy, reversed: r })}
+								thenBy={thenBy}
+								onThenBy={setThenBy}
+								groupBy={groupBy}
+								onGroupBy={setGroupBy}
+							/>
+						)}
 						<Button
 							variant="ghost"
 							size="icon"
@@ -615,21 +623,21 @@ const Library: React.FC = () => {
 								{isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
 							</Button>
 						)}
-						{shownView === "table" && (
-							<ColumnPicker columns={columnIds} onToggle={onToggleColumn} />
+						{controls.columns && <ColumnPicker columns={columnIds} onToggle={onToggleColumn} />}
+						{controls.viewToggle && (
+							<ViewModeToggle
+								viewMode={shownView}
+								next={nextView}
+								onToggle={() => setViewMode(nextView)}
+							/>
 						)}
-						<ViewModeToggle
-							viewMode={shownView}
-							next={nextView}
-							onToggle={() => setViewMode(nextView)}
-						/>
 					</>
 				}
 			/>
 
 			{selection.isSelecting && <BulkActionBar selection={selection} />}
 
-			{isSearchOpen && (
+			{controls.search && isSearchOpen && (
 				<div className="border-border border-b px-4 py-2">
 					<SearchAutocomplete
 						value={search}

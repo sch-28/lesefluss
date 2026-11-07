@@ -187,6 +187,35 @@ describe("dismissals", () => {
 	});
 });
 
+describe("a series emptied by its last book leaving", () => {
+	const created = plan([one, two]);
+	const emptied = created.collections.map((c) => ({
+		...c,
+		seriesKey: null,
+		deleted: true,
+		updatedAt: 5_000,
+	}));
+	const removed = created.memberships.map((m) => ({ ...m, deleted: true, updatedAt: 5_000 }));
+
+	it("does not form again from one new book, nor from the books taken out of it", () => {
+		expect(plan([one, two, three], emptied, removed)).toEqual({ collections: [], memberships: [] });
+	});
+
+	it("forms again once two books of it are in, stamped past its tombstone, the removed ones kept out", () => {
+		const four = book("dddddddd", 400, "The Expanse", 4);
+		const result = plan([one, two, three, four], emptied, removed);
+		expect(result.collections).toEqual([
+			expect.objectContaining({
+				id: EXPANSE,
+				seriesKey: "the expanse",
+				deleted: false,
+				updatedAt: 5_001,
+			}),
+		]);
+		expect(result.memberships.map((m) => m.bookId)).toEqual(["cccccccc", "dddddddd"]);
+	});
+});
+
 describe("describeImportSeries", () => {
 	const hint = { seriesName: " The Expanse ", seriesIndex: 2 };
 	const base = { id: EXPANSE, name: "Expanse (my)", deleted: false, bookCount: 3 };

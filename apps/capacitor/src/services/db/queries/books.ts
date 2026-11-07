@@ -52,6 +52,7 @@ import {
 	readingGoals,
 	readingSessions,
 } from "../schema";
+import { deleteSeriesEmptiedByBook } from "./collections";
 
 /** Reader-editable columns, the ones `metadata_updated_at` is the revision of. */
 const METADATA_COLUMNS = [
@@ -918,6 +919,7 @@ export async function deleteBook(id: string): Promise<void> {
 		.update(books)
 		.set({ deleted: true, isActive: false, updatedAt: serverNow() })
 		.where(eq(books.id, id));
+	await deleteSeriesEmptiedByBook(id);
 	// Cascade book-scoped glossary entries; global ones (bookId IS NULL) survive
 	await db.delete(glossaryEntries).where(eq(glossaryEntries.bookId, id));
 	await db.delete(highlights).where(eq(highlights.bookId, id));

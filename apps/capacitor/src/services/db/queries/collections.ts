@@ -285,6 +285,15 @@ export async function removeBooksFromCollection(
 	bookIds: string[],
 	now = serverNow(),
 ): Promise<void> {
+	await tombstoneMemberships(collectionId, bookIds, now);
+	await deleteEmptiedSeries([collectionId], now);
+}
+
+async function tombstoneMemberships(
+	collectionId: string,
+	bookIds: readonly string[],
+	now: number,
+): Promise<void> {
 	for (let i = 0; i < bookIds.length; i += CHUNK_SIZE) {
 		await db
 			.update(collectionBooks)
@@ -297,6 +306,44 @@ export async function removeBooksFromCollection(
 				),
 			);
 	}
+}
+
+/**
+ * Tombstones each of these series collections that no live book is left in.
+ * The tombstone drops `seriesKey`, which tells it from the reader's Delete
+ * series: the reconcile forms the series again from later imports, and the
+ * members' own tombstones keep the books taken out of it out.
+ */
+export async function deleteEmptiedSeries(
+	collectionIds: readonly string[],
+	now = serverNow(),
+): Promise<void> {
+	const unique = [...new Set(collectionIds)];
+	for (let i = 0; i < unique.length; i += CHUNK_SIZE) {
+		await db
+			.update(collections)
+			.set({ deleted: true, seriesKey: null, updatedAt: now })
+			.where(
+				and(
+					inArray(collections.id, unique.slice(i, i + CHUNK_SIZE)),
+					eq(collections.deleted, false),
+					isNotNull(collections.seriesKey),
+					sql`NOT EXISTS (SELECT 1 FROM ${collectionBooks} WHERE ${collectionBooks.collectionId} = ${collections.id} AND ${liveMember})`,
+				),
+			);
+	}
+}
+
+/** After a book's delete: the series collections it leaves without a live book go too. */
+export async function deleteSeriesEmptiedByBook(bookId: string, now = serverNow()): Promise<void> {
+	const rows = await db
+		.select({ collectionId: collectionBooks.collectionId })
+		.from(collectionBooks)
+		.where(and(eq(collectionBooks.bookId, bookId), eq(collectionBooks.deleted, false)));
+	await deleteEmptiedSeries(
+		rows.map((r) => r.collectionId),
+		now,
+	);
 }
 
 /** #1..#N in the order given, starting after `from`. */
@@ -359,9 +406,11 @@ export async function editCollection(
 	const wasOrdered = await isCollectionOrdered(id);
 	if (edit.name !== undefined) await renameCollection(id, edit.name, now);
 	if (edit.ordered !== undefined) await setCollectionOrdered(id, edit.ordered, now);
-	if (edit.remove?.length) await removeBooksFromCollection(id, [...edit.remove], now);
+	if (edit.remove?.length) await tombstoneMemberships(id, edit.remove, now);
 	if (edit.ordered && !wasOrdered) await numberUnnumberedMembers(id, now);
 	if (edit.add?.length) await appendBooksToCollection(id, edit.add, now);
+	// After the add: a save that swaps every book keeps the series.
+	if (edit.remove?.length) await deleteEmptiedSeries([id], now);
 }
 
 async function isCollectionOrdered(id: string): Promise<boolean> {
@@ -410,18 +459,21 @@ async function leaveOtherSeries(
 		.select({ id: collections.id })
 		.from(collections)
 		.where(and(isNotNull(collections.seriesKey), ne(collections.id, seriesId)));
+	const left: string[] = [];
 	for (let i = 0; i < bookIds.length; i += CHUNK_SIZE) {
-		await db
-			.update(collectionBooks)
-			.set({ deleted: true, updatedAt: now })
-			.where(
-				and(
-					eq(collectionBooks.deleted, false),
-					inArray(collectionBooks.bookId, bookIds.slice(i, i + CHUNK_SIZE)),
-					inArray(collectionBooks.collectionId, otherSeries),
-				),
-			);
+		const inOtherSeries = and(
+			eq(collectionBooks.deleted, false),
+			inArray(collectionBooks.bookId, bookIds.slice(i, i + CHUNK_SIZE)),
+			inArray(collectionBooks.collectionId, otherSeries),
+		);
+		const rows = await db
+			.select({ collectionId: collectionBooks.collectionId })
+			.from(collectionBooks)
+			.where(inOtherSeries);
+		left.push(...rows.map((r) => r.collectionId));
+		await db.update(collectionBooks).set({ deleted: true, updatedAt: now }).where(inOtherSeries);
 	}
+	await deleteEmptiedSeries(left, now);
 }
 
 /**
@@ -586,6 +638,11 @@ export async function getSeriesReconcileRows(): Promise<{
 	};
 }
 
+/** A series collection deleted because its last book left, as opposed to one the reader deleted. */
+export function isEmptiedSeries(row: Pick<Collection, "deleted" | "seriesKey">): boolean {
+	return row.deleted && row.seriesKey === null;
+}
+
 export type ImportSeriesState = {
 	/** The series collection the key derives, tombstoned or not; null before it formed. */
 	collection: { id: string; name: string; deleted: boolean; bookCount: number } | null;
@@ -606,7 +663,7 @@ export async function getImportSeriesState(seriesKey: string): Promise<ImportSer
 		.filter((b) => normalizeSeriesKey(b.seriesName) === seriesKey && !dismissed.has(b.id))
 		.sort((a, b) => a.addedAt - b.addedAt || a.id.localeCompare(b.id))
 		.map((b) => ({ id: b.id, title: b.title }));
-	if (!row) return { collection: null, others };
+	if (!row || isEmptiedSeries(row)) return { collection: null, others };
 	const [count] = await db
 		.select({ n: sql<number>`count(*)`.as("n") })
 		.from(collectionBooks)
@@ -636,7 +693,8 @@ export async function dismissBookFromCollection(
 		});
 }
 
-/** Inserts rows that do not exist yet; an existing row (live or tombstoned) always wins. */
+/** Inserts rows that do not exist yet; an existing row (live or tombstoned) wins,
+ *  except an emptied series collection, which the reconcile forms again. */
 export async function insertMissingCollectionRows(
 	newCollections: Collection[],
 	newMemberships: CollectionBook[],
@@ -645,7 +703,18 @@ export async function insertMissingCollectionRows(
 		await db
 			.insert(collections)
 			.values(newCollections.slice(i, i + CHUNK_SIZE))
-			.onConflictDoNothing();
+			.onConflictDoUpdate({
+				target: collections.id,
+				set: {
+					name: sql`excluded.name`,
+					sortOrder: sql`excluded.sort_order`,
+					ordered: sql`excluded.ordered`,
+					seriesKey: sql`excluded.series_key`,
+					deleted: sql`excluded.deleted`,
+					updatedAt: sql`excluded.updated_at`,
+				},
+				setWhere: and(eq(collections.deleted, true), isNull(collections.seriesKey)),
+			});
 	}
 	for (let i = 0; i < newMemberships.length; i += CHUNK_SIZE) {
 		await db

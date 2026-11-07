@@ -23,8 +23,6 @@ export type CellContext = {
 	seriesMemberships: SeriesMemberships;
 	/** Live collections by id. */
 	collections: ReadonlyMap<string, { name: string; seriesKey: string | null }>;
-	/** Absent until loaded: the count query runs only while its column shows. */
-	highlightCounts: ReadonlyMap<string, number> | undefined;
 };
 
 export type TableColumn = {
@@ -136,10 +134,8 @@ export const TABLE_COLUMNS: readonly TableColumn[] = [
 		label: "Highlights",
 		width: "6rem",
 		align: "end",
-		text: bookOnly(({ book }, ctx) => {
-			if (!ctx.highlightCounts) return "";
-			return String(ctx.highlightCounts.get(book.id) ?? 0);
-		}),
+		sortBy: "highlights",
+		text: (item) => (item.sortKey.highlights === null ? "" : String(item.sortKey.highlights)),
 	},
 	{
 		id: "tags",

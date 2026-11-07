@@ -21,7 +21,6 @@ const books = [
 const ctx: CellContext = {
 	seriesMemberships: new Map(),
 	collections: new Map(),
-	highlightCounts: undefined,
 };
 
 let rendered: Rendered;

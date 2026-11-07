@@ -392,6 +392,22 @@ describe("sort direction and table sorts", () => {
 		expect(ids([a, b, c], "lastRead", true)[0]).toBe("c");
 	});
 
+	it("sorts by highlight count, most first, and the unloaded counts as missing", () => {
+		const counts = new Map([
+			["a", 2],
+			["c", 5],
+		]);
+		const byHighlights = (reversed: boolean) =>
+			applyLibraryView(
+				buildLibraryItems([a, b, c], [], new Map(), 0, undefined, undefined, undefined, counts),
+				{ filter: {}, sortBy: "highlights", reversed },
+			).map((item) => (item.kind === "book" ? item.book.id : ""));
+		expect(byHighlights(false)).toEqual(["c", "a", "b"]);
+		expect(byHighlights(true)).toEqual(["b", "a", "c"]);
+		const unloaded = buildLibraryItems([a], [], new Map());
+		expect(unloaded[0].sortKey.highlights).toBeNull();
+	});
+
 	it("reverses only the first key, never Then by", () => {
 		const x = makeBook({ id: "x", title: "Same", author: "A" });
 		const y = makeBook({ id: "y", title: "Same", author: "B" });
