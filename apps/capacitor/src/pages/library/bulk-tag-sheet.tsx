@@ -7,11 +7,20 @@ import { useEffect, useMemo, useState } from "react";
 import type { Book } from "../../services/db/schema";
 import { FIELD_LIMITS } from "./book-fields";
 import { bookCount } from "./bulk-summary";
-import { hasPendingIntent, nextIntent, type TagIntent, type TagRow, tagRows } from "./bulk-tags";
+import {
+	hasPendingIntent,
+	nextIntentFor,
+	rowsForMode,
+	type TagIntent,
+	type TagRow,
+	type TagSheetMode,
+	tagRows,
+} from "./bulk-tags";
 
 type Props = {
 	isOpen: boolean;
 	picked: Book[];
+	mode?: TagSheetMode;
 	/** Tags in use across the whole library, so one can be reused without typing. */
 	libraryTags: string[];
 	onClose: () => void;
@@ -27,7 +36,20 @@ function rowHint(row: TagRow, intent: TagIntent, total: number): string {
 	return "Not applied";
 }
 
-const BulkTagSheet: React.FC<Props> = ({ isOpen, picked, libraryTags, onClose, onApply }) => {
+const TITLES: Record<TagSheetMode, string> = {
+	edit: "Tags",
+	add: "Add tags",
+	remove: "Remove tags",
+};
+
+const BulkTagSheet: React.FC<Props> = ({
+	isOpen,
+	picked,
+	mode = "edit",
+	libraryTags,
+	onClose,
+	onApply,
+}) => {
 	const [intents, setIntents] = useState<Map<string, TagIntent>>(new Map());
 	const [draft, setDraft] = useState("");
 	const [minted, setMinted] = useState<string[]>([]);
@@ -35,8 +57,8 @@ const BulkTagSheet: React.FC<Props> = ({ isOpen, picked, libraryTags, onClose, o
 	// Only while open: this sheet never unmounts, and `tagRows` parses the tags
 	// JSON of every picked book.
 	const rows = useMemo(
-		() => (isOpen ? tagRows(picked, [...libraryTags, ...minted]) : []),
-		[isOpen, picked, libraryTags, minted],
+		() => (isOpen ? rowsForMode(tagRows(picked, [...libraryTags, ...minted]), mode) : []),
+		[isOpen, picked, libraryTags, minted, mode],
 	);
 
 	// Reset on close rather than in the close handlers: the sheet never unmounts,
@@ -52,7 +74,7 @@ const BulkTagSheet: React.FC<Props> = ({ isOpen, picked, libraryTags, onClose, o
 	const cycle = (row: TagRow) => {
 		setIntents((current) => {
 			const next = new Map(current);
-			next.set(row.tag, nextIntent(row.state, current.get(row.tag) ?? "leave"));
+			next.set(row.tag, nextIntentFor(mode, row.state, current.get(row.tag) ?? "leave"));
 			return next;
 		});
 	};
@@ -60,7 +82,7 @@ const BulkTagSheet: React.FC<Props> = ({ isOpen, picked, libraryTags, onClose, o
 	/** The intents plus whatever is still sitting in the input, so a typed tag is
 	 *  never silently dropped by Apply. */
 	const withDraft = (current: ReadonlyMap<string, TagIntent>): Map<string, TagIntent> => {
-		const tag = draft.trim();
+		const tag = mode === "remove" ? "" : draft.trim();
 		const next = new Map(current);
 		// A new tag arrives wanting to be applied; anything else would need a
 		// second tap to do the only thing typing it could have meant.
@@ -70,7 +92,7 @@ const BulkTagSheet: React.FC<Props> = ({ isOpen, picked, libraryTags, onClose, o
 
 	const addDraft = () => {
 		const tag = draft.trim();
-		if (!tag) return;
+		if (!tag || mode === "remove") return;
 		if (!rows.some((row) => row.tag === tag)) setMinted((current) => [...current, tag]);
 		setIntents(withDraft);
 		setDraft("");
@@ -85,28 +107,34 @@ const BulkTagSheet: React.FC<Props> = ({ isOpen, picked, libraryTags, onClose, o
 		>
 			<DrawerContent>
 				<DrawerHeader>
-					<DrawerTitle>Tags · {bookCount(picked.length)}</DrawerTitle>
+					<DrawerTitle>
+						{TITLES[mode]} · {bookCount(picked.length)}
+					</DrawerTitle>
 				</DrawerHeader>
 
-				<div className="flex items-center gap-2 px-4 pb-2">
-					<Input
-						value={draft}
-						placeholder="New tag"
-						maxLength={FIELD_LIMITS.tagsJson}
-						onChange={(e) => setDraft(e.target.value)}
-						onKeyDown={(e) => {
-							if (e.key === "Enter") addDraft();
-						}}
-					/>
-					<Button variant="outline" size="icon" aria-label="Add tag" onClick={addDraft}>
-						<Plus />
-					</Button>
-				</div>
+				{mode !== "remove" && (
+					<div className="flex items-center gap-2 px-4 pb-2">
+						<Input
+							value={draft}
+							placeholder="New tag"
+							maxLength={FIELD_LIMITS.tagsJson}
+							onChange={(e) => setDraft(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") addDraft();
+							}}
+						/>
+						<Button variant="outline" size="icon" aria-label="Add tag" onClick={addDraft}>
+							<Plus />
+						</Button>
+					</div>
+				)}
 
 				<div className="max-h-[50vh] overflow-y-auto px-2 pb-2">
 					{rows.length === 0 && (
 						<p className="m-0 px-2 py-6 text-center text-muted-foreground text-sm">
-							No tags yet. Type one above to put it on {bookCount(picked.length)}.
+							{mode === "remove"
+								? `No tags on ${bookCount(picked.length)}.`
+								: `No tags yet. Type one above to put it on ${bookCount(picked.length)}.`}
 						</p>
 					)}
 					{rows.map((row) => {

@@ -1,8 +1,10 @@
+import { cn } from "@lesefluss/ui/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type React from "react";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Virtualizer } from "virtua";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Virtualizer, type VirtualizerHandle } from "virtua";
 import { itemKey, type LibraryGroup, layoutRows } from "./group-by";
+import { rowTokens } from "./library-focus";
 import type { LibraryItem } from "./sort-filter";
 
 const SCROLL_CONTAINER = '[data-scroll-restoration-id="app-scroll"]';
@@ -70,6 +72,35 @@ export function useScroller(anchor: React.RefObject<HTMLDivElement | null>) {
 	return { scrollRef, startMargin };
 }
 
+/**
+ * Brings the keyboard-focused item's row into view when the focus moves.
+ * virtua renders the row first; the focused element's own scroll margin then
+ * keeps it clear of the sticky headers, which virtua does not know about.
+ */
+export function useScrollToFocused(
+	tokens: readonly (readonly string[] | null)[],
+	focusedKey: string | null | undefined,
+): React.RefObject<VirtualizerHandle | null> {
+	const handle = useRef<VirtualizerHandle>(null);
+	const tokensRef = useRef(tokens);
+	tokensRef.current = tokens;
+	useEffect(() => {
+		if (!focusedKey) return;
+		const index = tokensRef.current.findIndex((row) => row?.includes(focusedKey));
+		if (index < 0) return;
+		handle.current?.scrollToIndex(index, { align: "nearest" });
+		const frame = requestAnimationFrame(() => {
+			document.querySelector("[data-focused]")?.scrollIntoView({ block: "nearest" });
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [focusedKey]);
+	return handle;
+}
+
+/** The keyboard focus ring, drawn on the wrapper so cards need no prop for it. */
+export const FOCUS_RING =
+	"rounded-md ring-2 ring-primary ring-offset-2 ring-offset-background scroll-mt-[calc(var(--safe-top,0px)+4rem)] scroll-mb-24";
+
 type Props = {
 	items: readonly LibraryItem[];
 	viewMode: "grid" | "list";
@@ -82,6 +113,8 @@ type Props = {
 	/** A tap or click on the gaps between and around the cards, not on one; a
 	 *  scroll or drag that starts there is not a tap. */
 	onBackgroundTap?: () => void;
+	/** The item the library's arrow keys are on. */
+	focusedKey?: string | null;
 };
 
 const TAP_SLOP_PX = 10;
@@ -100,6 +133,7 @@ const VirtualBookGrid: React.FC<Props> = ({
 	groups = null,
 	collapsed = NONE_COLLAPSED,
 	onToggleGroup,
+	focusedKey = null,
 }) => {
 	const ownAnchor = useRef<HTMLDivElement>(null);
 	const anchor = containerRef ?? ownAnchor;
@@ -111,6 +145,8 @@ const VirtualBookGrid: React.FC<Props> = ({
 		[items, groups, cols, collapsed],
 	);
 	const pressAt = useRef<{ x: number; y: number } | null>(null);
+	const tokens = useMemo(() => rowTokens(rows), [rows]);
+	const virtualizer = useScrollToFocused(tokens, focusedKey);
 
 	return (
 		<div
@@ -129,12 +165,13 @@ const VirtualBookGrid: React.FC<Props> = ({
 			}}
 		>
 			<Virtualizer
+				ref={virtualizer}
 				scrollRef={scrollRef}
 				startMargin={startMargin + PADDING_PX}
 				bufferSize={600}
 				itemSize={estimateRowPx(viewMode, cols, window.innerWidth)}
 			>
-				{rows.map((row) => {
+				{rows.map((row, rowIndex) => {
 					if (row.type === "header") {
 						const Chevron = row.collapsed ? ChevronRight : ChevronDown;
 						return (
@@ -155,17 +192,26 @@ const VirtualBookGrid: React.FC<Props> = ({
 							</div>
 						);
 					}
+					const cell = (item: LibraryItem, column: number, className?: string) => {
+						const key = itemKey(item);
+						const isFocused = focusedKey !== null && tokens[rowIndex]?.[column] === focusedKey;
+						return (
+							<div
+								key={key}
+								data-focused={isFocused || undefined}
+								className={cn(className, isFocused && FOCUS_RING)}
+							>
+								{renderItem(item)}
+							</div>
+						);
+					};
 					return viewMode === "grid" ? (
 						<div key={row.key} className={GRID_CLASS}>
-							{row.items.map((item) => (
-								<div key={itemKey(item)} className="min-w-0">
-									{renderItem(item)}
-								</div>
-							))}
+							{row.items.map((item, column) => cell(item, column, "min-w-0"))}
 						</div>
 					) : (
 						<div key={row.key} className="[&:not(:last-child)]:pb-2">
-							{renderItem(row.items[0] as LibraryItem)}
+							{cell(row.items[0] as LibraryItem, 0)}
 						</div>
 					);
 				})}

@@ -20,7 +20,15 @@ import {
 import type { LibraryItem } from "./sort-filter";
 
 /** Which bulk overlay is open, if any. Only one can be at a time. */
-export type BulkSheet = null | "actions" | "status" | "rating" | "tags" | "collection";
+export type BulkSheet =
+	| null
+	| "actions"
+	| "status"
+	| "rating"
+	| "tags"
+	| "add-tags"
+	| "remove-tags"
+	| "collection";
 
 export type UseLibrarySelection = {
 	isSelecting: boolean;
@@ -28,6 +36,12 @@ export type UseLibrarySelection = {
 	picked: Book[];
 	/** `picked` in the view's order, hidden ones last: what Set #N numbers by. */
 	pickedInView: Book[];
+	/**
+	 * What a sheet or `run` acts on: `picked`, or with nothing picked the one book
+	 * a keyboard shortcut opened the sheet for.
+	 */
+	targets: Book[];
+	targetsInView: Book[];
 	isSelected: (bookId: string) => boolean;
 	allVisibleSelected: boolean;
 	/** Books in the current view, rendered or not: the N of "Select all N". */
@@ -47,13 +61,14 @@ export type UseLibrarySelection = {
 		end: () => void;
 	};
 	sheet: BulkSheet;
-	openSheet: (sheet: Exclude<BulkSheet, null>) => void;
+	/** `soloBookId` is the book to act on while nothing is picked. */
+	openSheet: (sheet: Exclude<BulkSheet, null>, soloBookId?: string) => void;
 	closeSheet: () => void;
 	isDeleteOpen: boolean;
 	setDeleteOpen: (open: boolean) => void;
 	failure: BulkSummary | null;
 	dismissFailure: () => void;
-	run: (action: BulkAction) => Promise<void>;
+	run: (action: BulkAction, soloBookId?: string) => Promise<void>;
 	isRunning: boolean;
 	progress: { done: number; total: number; current: string };
 };
@@ -75,6 +90,7 @@ export function useLibrarySelection(
 	const [sheet, setSheet] = useState<BulkSheet>(null);
 	const [isDeleteOpen, setDeleteOpen] = useState(false);
 	const [failure, setFailure] = useState<BulkSummary | null>(null);
+	const [soloId, setSoloId] = useState<string | null>(null);
 	const bulk = queryHooks.useBulkBookActions();
 
 	const isSelecting = selection !== null;
@@ -98,8 +114,19 @@ export function useLibrarySelection(
 		return [...picked].sort((a, b) => at(a) - at(b));
 	}, [picked, visibleItems]);
 
+	const soloBooks = useCallback(
+		(bookId: string | null | undefined) => books.filter((book) => book.id === bookId),
+		[books],
+	);
+	const targets = useMemo(
+		() => (picked.length > 0 ? picked : soloBooks(soloId)),
+		[picked, soloBooks, soloId],
+	);
+	const targetsInView = picked.length > 0 ? pickedInView : targets;
+
 	const exit = useCallback(() => {
 		anchorRef.current = null;
+		setSoloId(null);
 		setDragStart(null);
 		setSelection(null);
 		setSheet(null);
@@ -117,10 +144,13 @@ export function useLibrarySelection(
 	});
 
 	const run = useCallback(
-		async (action: BulkAction) => {
+		async (action: BulkAction, soloBookId?: string) => {
+			const books = picked.length > 0 ? picked : soloBooks(soloBookId ?? soloId);
 			setSheet(null);
+			setSoloId(null);
 			setDeleteOpen(false);
-			const outcome = await bulk.run(action, picked);
+			if (books.length === 0) return;
+			const outcome = await bulk.run(action, books);
 			const summary = bulkSummary(outcome);
 			// The headline always goes through the toast, which is module-level and
 			// survives this page unmounting: leaving for another tab mid-run would
@@ -135,13 +165,15 @@ export function useLibrarySelection(
 			// picked for the next one.
 			if (action.kind === "delete") exit();
 		},
-		[bulk, picked, exit],
+		[bulk, picked, soloBooks, soloId, exit],
 	);
 
 	return {
 		isSelecting,
 		picked,
 		pickedInView,
+		targets,
+		targetsInView,
 		isSelected: useCallback((bookId) => selection?.has(bookId) ?? false, [selection]),
 		allVisibleSelected: isAllVisibleSelected(selection ?? new Set(), visibleItems),
 		visibleCount: useMemo(() => selectableIds(visibleItems).length, [visibleItems]),
@@ -199,8 +231,14 @@ export function useLibrarySelection(
 			[visibleItems],
 		),
 		sheet,
-		openSheet: useCallback((next) => setSheet(next), []),
-		closeSheet: useCallback(() => setSheet(null), []),
+		openSheet: useCallback((next, soloBookId) => {
+			setSoloId(soloBookId ?? null);
+			setSheet(next);
+		}, []),
+		closeSheet: useCallback(() => {
+			setSoloId(null);
+			setSheet(null);
+		}, []),
 		isDeleteOpen,
 		setDeleteOpen,
 		failure,

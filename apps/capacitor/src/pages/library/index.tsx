@@ -84,6 +84,7 @@ import { useDragSelect } from "./use-drag-select";
 import { useLeaveMissingShelf, useLibraryFilter } from "./use-library-filter";
 import { useLibraryImports } from "./use-library-imports";
 import { useLibraryItems } from "./use-library-items";
+import { useLibraryKeyboard } from "./use-library-keyboard";
 import { useLibrarySelection } from "./use-library-selection";
 import { type ShelfViewTarget, useLibraryView } from "./use-library-view";
 import { type ShelfEntry, useSmartShelves } from "./use-smart-shelves";
@@ -466,6 +467,44 @@ const Library: React.FC = () => {
 		onEnd: selection.drag.end,
 	});
 
+	const searchInputRef = useRef<HTMLInputElement>(null);
+	const [isSortOpen, setSortOpen] = useState(false);
+	const [isGroupByKeyed, setGroupByKeyed] = useState(false);
+	const isGridShown =
+		!isOrderedView && !isCollectionEmpty && !(collectionId && !membersQuery.isSuccess);
+	const { focusedKey } = useLibraryKeyboard({
+		items: isGridShown ? visibleItems : null,
+		groups,
+		collapsed: collapsedGroups,
+		viewMode: shownView,
+		selection,
+		search: {
+			canSearch: controls.search,
+			isActive: controls.search && (isSearchOpen || search !== ""),
+			focus: () => {
+				setIsSearchOpen(true);
+				searchInputRef.current?.focus();
+			},
+			clear: () => {
+				setSearch("");
+				setIsSearchOpen(false);
+			},
+		},
+		canGroup: controls.sort,
+		openGroupBy: () => {
+			setGroupByKeyed(true);
+			setSortOpen(true);
+		},
+		openItem: (item) => {
+			if (item.kind === "series") {
+				handleOpenSeries(item.series);
+				return;
+			}
+			qc.setQueryData(bookKeys.detail(item.book.id), item.book);
+			navigate({ to: "/tabs/reader/$id", params: { id: item.book.id } });
+		},
+	});
+
 	if (isPending) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-background">
@@ -602,6 +641,12 @@ const Library: React.FC = () => {
 								onThenBy={(t) => setSort({ thenBy: t === "none" ? null : t, thenReversed: false })}
 								groupBy={groupBy}
 								onGroupBy={setGroupBy}
+								open={isSortOpen}
+								onOpenChange={(open) => {
+									setSortOpen(open);
+									if (!open) setGroupByKeyed(false);
+								}}
+								focusGroupBy={isGroupByKeyed}
 							/>
 						)}
 						<Button
@@ -661,6 +706,11 @@ const Library: React.FC = () => {
 						filter={activeFilter}
 						onFilterChange={setFilter}
 						options={options}
+						inputRef={searchInputRef}
+						onEscape={() => {
+							setSearch("");
+							setIsSearchOpen(false);
+						}}
 					/>
 				</div>
 			)}
@@ -913,6 +963,7 @@ const Library: React.FC = () => {
 					onSeriesMenu={setSelectedSeries}
 					draggable={canDragBooks}
 					containerRef={gridRef}
+					focusedKey={focusedKey}
 				/>
 			) : (
 				<VirtualBookGrid
@@ -924,6 +975,7 @@ const Library: React.FC = () => {
 					groups={groups}
 					collapsed={collapsedGroups}
 					onToggleGroup={toggleGroup}
+					focusedKey={focusedKey}
 				/>
 			)}
 

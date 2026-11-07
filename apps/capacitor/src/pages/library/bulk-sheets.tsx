@@ -1,14 +1,15 @@
 import { BOOK_STATUS_LABELS, BOOK_STATUSES } from "@lesefluss/core";
 import { BookOpen, FolderPlus, Star, Tag as TagIcon } from "lucide-react";
 import type React from "react";
+import { useRef } from "react";
 import { ActionSheet } from "../../components/action-sheet";
 import { CollectionPickerSheet } from "../../components/collections/collection-picker-sheet";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import BulkRatingSheet from "./bulk-rating-sheet";
 import { bookCount, titleList } from "./bulk-summary";
 import BulkTagSheet from "./bulk-tag-sheet";
-import { tagPatchFor } from "./bulk-tags";
-import type { UseLibrarySelection } from "./use-library-selection";
+import { type TagSheetMode, tagPatchFor } from "./bulk-tags";
+import type { BulkSheet, UseLibrarySelection } from "./use-library-selection";
 
 type Props = {
 	selection: UseLibrarySelection;
@@ -16,11 +17,32 @@ type Props = {
 	libraryTags: string[];
 };
 
+/** Held through the close animation, so the title does not flip back to "Tags". */
+function useLastTagMode(sheet: BulkSheet): TagSheetMode {
+	const last = useRef<TagSheetMode>("edit");
+	if (sheet === "tags") last.current = "edit";
+	if (sheet === "add-tags") last.current = "add";
+	if (sheet === "remove-tags") last.current = "remove";
+	return last.current;
+}
+
+/** Held through the close animation, so a lone book's sheet does not flip to "0 books". */
+function useHeldWhileClosed<T>(value: T, isOpen: boolean): T {
+	const last = useRef(value);
+	if (isOpen) last.current = value;
+	return last.current;
+}
+
 /** Every overlay a bulk action can open: the menu, its pickers, the delete
  *  confirm, and the summary shown when something failed. */
 const BulkSheets: React.FC<Props> = ({ selection, libraryTags }) => {
+	// The delete confirm stays on `picked`: no shortcut deletes a lone book.
 	const { picked } = selection;
-	const title = bookCount(picked.length);
+	const isSheetOpen = selection.sheet !== null;
+	const targets = useHeldWhileClosed(selection.targets, isSheetOpen);
+	const targetsInView = useHeldWhileClosed(selection.targetsInView, isSheetOpen);
+	const title = bookCount(targets.length);
+	const tagMode = useLastTagMode(selection.sheet);
 
 	return (
 		<>
@@ -80,20 +102,25 @@ const BulkSheets: React.FC<Props> = ({ selection, libraryTags }) => {
 
 			<BulkRatingSheet
 				isOpen={selection.sheet === "rating"}
-				count={picked.length}
+				count={targets.length}
 				onClose={selection.closeSheet}
 				onApply={(rating) => selection.run({ kind: "rating", rating })}
 			/>
 
 			<CollectionPickerSheet
-				books={selection.pickedInView}
+				books={targetsInView}
 				open={selection.sheet === "collection"}
 				onClose={selection.closeSheet}
 			/>
 
 			<BulkTagSheet
-				isOpen={selection.sheet === "tags"}
-				picked={picked}
+				isOpen={
+					selection.sheet === "tags" ||
+					selection.sheet === "add-tags" ||
+					selection.sheet === "remove-tags"
+				}
+				picked={targets}
+				mode={tagMode}
 				libraryTags={libraryTags}
 				onClose={selection.closeSheet}
 				onApply={(intents) =>
@@ -104,7 +131,7 @@ const BulkSheets: React.FC<Props> = ({ selection, libraryTags }) => {
 			<ConfirmDialog
 				open={selection.isDeleteOpen}
 				onOpenChange={selection.setDeleteOpen}
-				title={picked.length === 1 ? "Delete book?" : `Delete ${title}?`}
+				title={picked.length === 1 ? "Delete book?" : `Delete ${bookCount(picked.length)}?`}
 				// Named, not just counted. A selection survives a filter change, so
 				// some of these may not be on screen; listing them is what makes the
 				// confirm honest without a separate warning.

@@ -16,12 +16,16 @@ const CONTROL_SELECTOR = [
 	"[role=spinbutton]",
 ].join(",");
 
-/** radix dialogs, popovers and menus, and vaul drawers, which are radix dialogs too. */
+/**
+ * radix dialogs, popovers and menus, vaul drawers (radix dialogs too), and an
+ * inline editor that is not a text field, such as the library table's star row.
+ */
 const OPEN_OVERLAY_SELECTOR = [
 	"[role=dialog][data-state=open]",
 	"[role=alertdialog][data-state=open]",
 	"[role=menu][data-state=open]",
 	"[data-vaul-drawer][data-state=open]",
+	"[data-inline-editor]",
 ].join(",");
 
 function targetOf(e: Event): Element | null {

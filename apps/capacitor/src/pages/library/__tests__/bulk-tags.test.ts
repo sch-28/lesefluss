@@ -4,6 +4,8 @@ import {
 	applyTagIntents,
 	hasPendingIntent,
 	nextIntent,
+	nextIntentFor,
+	rowsForMode,
 	type TagIntent,
 	tagPatchFor,
 	tagRows,
@@ -76,6 +78,35 @@ describe("nextIntent", () => {
 		expect(nextIntent("none", "remove")).toBe("leave");
 		expect(nextIntent("all", "remove")).toBe("add");
 		expect(nextIntent("all", "add")).toBe("leave");
+	});
+});
+
+describe("nextIntentFor", () => {
+	it("cycles both ways in the edit sheet", () => {
+		expect(nextIntentFor("edit", "all", "leave")).toBe("remove");
+		expect(nextIntentFor("edit", "none", "add")).toBe("remove");
+	});
+
+	it("only toggles the sheet's own intent in the add and remove sheets", () => {
+		for (const state of ["all", "some", "none"] as const) {
+			expect(nextIntentFor("add", state, "leave")).toBe("add");
+			expect(nextIntentFor("add", state, "add")).toBe("leave");
+			expect(nextIntentFor("remove", state, "leave")).toBe("remove");
+			expect(nextIntentFor("remove", state, "remove")).toBe("leave");
+		}
+	});
+});
+
+describe("rowsForMode", () => {
+	const rows = tagRows([book(["a", "b"]), book(["a"])], ["c"]);
+
+	it("offers every tag in the edit sheet", () => {
+		expect(rowsForMode(rows, "edit").map((r) => r.tag)).toEqual(["a", "b", "c"]);
+	});
+
+	it("skips tags every book has when adding, and tags none has when removing", () => {
+		expect(rowsForMode(rows, "add").map((r) => r.tag)).toEqual(["b", "c"]);
+		expect(rowsForMode(rows, "remove").map((r) => r.tag)).toEqual(["a", "b"]);
 	});
 });
 

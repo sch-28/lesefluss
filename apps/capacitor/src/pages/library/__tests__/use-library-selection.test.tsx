@@ -69,4 +69,31 @@ describe("useLibrarySelection", () => {
 	it("lists the picked books in the view's order, hidden ones last", () => {
 		expect(selection.pickedInView.map((b) => b.id)).toEqual(["c", "a", "b"]);
 	});
+
+	it("acts on the one book a shortcut named while nothing is picked", async () => {
+		await act(async () => selection.exit());
+		await act(() => selection.run({ kind: "rating", rating: 6 }, "c"));
+		expect(bulkRun).toHaveBeenCalledWith({ kind: "rating", rating: 6 }, [c]);
+		expect(selection.isSelecting).toBe(false);
+	});
+
+	it("keeps acting on the picked books when a shortcut also names one", async () => {
+		await act(() => selection.run({ kind: "rating", rating: 6 }, "c"));
+		expect(bulkRun).toHaveBeenCalledWith({ kind: "rating", rating: 6 }, [a, b, c]);
+	});
+
+	it("aims a sheet opened for one book at that book until it closes", async () => {
+		await act(async () => selection.exit());
+		await act(async () => selection.openSheet("add-tags", "a"));
+		expect(selection.sheet).toBe("add-tags");
+		expect(selection.targets).toEqual([a]);
+		await act(async () => selection.closeSheet());
+		expect(selection.targets).toEqual([]);
+	});
+
+	it("does nothing with neither a pick nor a named book", async () => {
+		await act(async () => selection.exit());
+		await act(() => selection.run({ kind: "rating", rating: 6 }));
+		expect(bulkRun).not.toHaveBeenCalled();
+	});
 });

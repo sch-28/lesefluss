@@ -1,7 +1,7 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { Check } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export type PopoverSection<T extends string> = {
 	/** Rendered above the group; omit for the first, unlabelled one. */
@@ -16,6 +16,14 @@ type Props<T extends string> = {
 	trigger: React.ReactNode;
 	sections: readonly PopoverSection<T>[];
 	minWidth?: number;
+	/** Controlled open state; left out, the popover keeps its own. */
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	/**
+	 * Opened from the keyboard: focus lands on this section's selected row, and
+	 * closing leaves focus off the trigger so the page's arrow keys work again.
+	 */
+	focusSection?: string;
 };
 
 function Row({
@@ -30,6 +38,7 @@ function Row({
 	return (
 		<button
 			type="button"
+			data-selected={isSelected || undefined}
 			onClick={onSelect}
 			className="flex h-9 items-center justify-between gap-3 rounded-md px-2 text-left text-sm transition-colors hover:bg-muted"
 		>
@@ -50,19 +59,63 @@ function SelectionPopover<T extends string>({
 	trigger,
 	sections,
 	minWidth = 160,
+	open: controlledOpen,
+	onOpenChange,
+	focusSection,
 }: Props<T>): React.ReactElement {
-	const [open, setOpen] = useState(false);
+	const [ownOpen, setOwnOpen] = useState(false);
+	const open = controlledOpen ?? ownOpen;
+	const setOpen = (next: boolean) => {
+		setOwnOpen(next);
+		onOpenChange?.(next);
+	};
+	const contentRef = useRef<HTMLDivElement>(null);
+	// The open's focusSection, read at close: the owner may clear it in the same
+	// update that closes the popover.
+	const openedKeyedRef = useRef(false);
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>{trigger}</PopoverTrigger>
 			<PopoverContent
+				ref={contentRef}
 				align="end"
 				className="max-h-[70vh] w-auto overflow-y-auto p-1"
 				style={{ minWidth }}
+				onOpenAutoFocus={(e) => {
+					openedKeyedRef.current = !!focusSection;
+					if (!focusSection) return;
+					const section = contentRef.current?.querySelector(
+						`[data-section="${CSS.escape(focusSection)}"]`,
+					);
+					const row =
+						section?.querySelector<HTMLElement>("[data-selected]") ??
+						section?.querySelector<HTMLElement>("button");
+					if (!row) return;
+					e.preventDefault();
+					row.focus();
+				}}
+				onCloseAutoFocus={(e) => {
+					if (openedKeyedRef.current) e.preventDefault();
+					openedKeyedRef.current = false;
+				}}
+				onKeyDown={(e) => {
+					if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+					const rows = [...(contentRef.current?.querySelectorAll("button") ?? [])];
+					if (rows.length === 0) return;
+					e.preventDefault();
+					const at = rows.indexOf(e.target as HTMLButtonElement);
+					const step = e.key === "ArrowDown" ? 1 : -1;
+					const next = at < 0 ? 0 : (at + step + rows.length) % rows.length;
+					rows[next]?.focus();
+				}}
 			>
 				<div className="flex flex-col">
 					{sections.map((section, index) => (
-						<div key={section.heading ?? index} className="flex flex-col">
+						<div
+							key={section.heading ?? index}
+							data-section={section.heading ?? index}
+							className="flex flex-col"
+						>
 							{section.heading && (
 								<>
 									{index > 0 && <div className="my-1 border-border border-t" />}

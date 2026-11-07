@@ -53,6 +53,14 @@ describe("guard", () => {
 		expect(isShortcutAllowed(press("r", target))).toBe(true);
 	});
 
+	it("blocks keys while an inline editor that is no text field is open", () => {
+		const target = mount("<p>text</p>");
+		const editor = mount('<div role="group" data-inline-editor=""><button>1</button></div>');
+		expect(isShortcutAllowed(press("4", target), { inControls: true })).toBe(false);
+		editor.remove();
+		expect(isShortcutAllowed(press("4", target), { inControls: true })).toBe(true);
+	});
+
 	it("lets only commands that allow it run with a control focused", () => {
 		const button = mount("<button>Go</button>");
 		expect(isShortcutAllowed(press("r", button))).toBe(false);

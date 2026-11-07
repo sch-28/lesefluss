@@ -12,6 +12,9 @@ type Props = {
 	filter: LibraryFilter;
 	onFilterChange: (filter: LibraryFilter) => void;
 	options: FacetOptions;
+	/** Esc with no suggestions showing: the field is the focus, so the library's Esc cannot see it. */
+	onEscape?: () => void;
+	inputRef?: React.Ref<HTMLInputElement>;
 };
 
 /** The chip shown last: Length, else the last facet chip. */
@@ -28,6 +31,8 @@ export const SearchAutocomplete: React.FC<Props> = ({
 	filter,
 	onFilterChange,
 	options,
+	onEscape,
+	inputRef,
 }) => {
 	const listId = useId();
 	const [active, setActive] = useState(-1);
@@ -73,12 +78,16 @@ export const SearchAutocomplete: React.FC<Props> = ({
 		} else if (e.key === "Escape" && suggestions.length > 0) {
 			e.stopPropagation();
 			setDismissed(true);
+		} else if (e.key === "Escape" && onEscape) {
+			e.preventDefault();
+			onEscape();
 		}
 	};
 
 	return (
 		<div className="relative">
 			<Input
+				ref={inputRef}
 				autoFocus
 				value={value}
 				placeholder="Search, or tag: status: rating:>=4 in: words:<50k"

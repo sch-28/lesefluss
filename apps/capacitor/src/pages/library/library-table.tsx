@@ -8,10 +8,11 @@ import type { Book, Series } from "../../services/db/schema";
 import CardMoreButton from "./card-more-button";
 import { CellEditor, isEditableColumn } from "./cell-editors";
 import { itemKey, type LibraryGroup, layoutRows } from "./group-by";
+import { rowTokens } from "./library-focus";
 import { type LibraryItem, type SortBy, type SortState, sortDirection } from "./sort-filter";
 import type { CellContext, ColumnId, TableColumn } from "./table-columns";
 import { useColumnDrag } from "./use-column-drag";
-import { useScroller } from "./virtual-book-grid";
+import { useScroller, useScrollToFocused } from "./virtual-book-grid";
 
 const ROW_PX = 44;
 const NONE_COLLAPSED: ReadonlySet<string> = new Set();
@@ -47,6 +48,8 @@ type Props = {
 	/** Mouse drag onto a sidebar collection; the library's root sets the drag data. */
 	draggable: boolean;
 	containerRef?: React.RefObject<HTMLDivElement | null>;
+	/** The row the library's arrow keys are on. */
+	focusedKey?: string | null;
 };
 
 /**
@@ -72,11 +75,14 @@ const LibraryTable: React.FC<Props> = ({
 	onSeriesMenu,
 	draggable,
 	containerRef,
+	focusedKey = null,
 }) => {
 	const ownAnchor = useRef<HTMLDivElement>(null);
 	const anchor = containerRef ?? ownAnchor;
 	const { scrollRef, startMargin } = useScroller(anchor);
 	const rows = useMemo(() => layoutRows(items, groups, 1, collapsed), [items, groups, collapsed]);
+	const tokens = useMemo(() => rowTokens(rows), [rows]);
+	const virtualizer = useScrollToFocused(tokens, focusedKey);
 	const template = `2.5rem ${columns.map((c) => c.width).join(" ")} 2.5rem`;
 	const isTwoLevel = sort.thenBy !== null && sort.thenBy !== sort.sortBy;
 	const rankOf = (key: SortBy | undefined): { rank: 1 | 2; dir: "asc" | "desc" } | null => {
@@ -171,12 +177,13 @@ const LibraryTable: React.FC<Props> = ({
 			</div>
 			<div ref={anchor}>
 				<Virtualizer
+					ref={virtualizer}
 					scrollRef={scrollRef}
 					startMargin={startMargin}
 					bufferSize={600}
 					itemSize={ROW_PX}
 				>
-					{rows.map((row) => {
+					{rows.map((row, rowIndex) => {
 						if (row.type === "header") {
 							const Chevron = row.collapsed ? ChevronRight : ChevronDown;
 							return (
@@ -204,16 +211,20 @@ const LibraryTable: React.FC<Props> = ({
 						const title = isBook ? item.book.title : item.series.title;
 						const selected = isBook && selection.isSelected(item.book.id);
 						const dimmed = !isBook && selection.isSelecting;
+						const isFocused = focusedKey !== null && tokens[rowIndex]?.[0] === focusedKey;
 						const isEditable = (id: ColumnId) =>
 							isBook && !!onEditBook && !selection.isSelecting && isEditableColumn(id);
 						return (
 							<div
 								key={row.key}
 								data-table-row={itemKey(item)}
+								data-focused={isFocused || undefined}
 								className={cn(
 									"group grid items-center border-border border-b text-sm hover:bg-muted/50",
 									selected && "bg-primary/10 hover:bg-primary/15",
 									dimmed && "pointer-events-none opacity-40",
+									isFocused &&
+										"scroll-mt-[calc(var(--safe-top,0px)+6rem)] scroll-mb-24 rounded-sm ring-2 ring-primary ring-inset",
 								)}
 								style={{ gridTemplateColumns: template, minHeight: ROW_PX }}
 							>

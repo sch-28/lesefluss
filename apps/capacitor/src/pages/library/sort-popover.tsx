@@ -22,7 +22,13 @@ type Props = {
 	onThenBy: (s: ThenBy) => void;
 	groupBy: GroupBy;
 	onGroupBy: (g: GroupBy) => void;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	/** Set when G opened the menu, to land on the group-by rows. */
+	focusGroupBy?: boolean;
 };
+
+export const GROUP_BY_HEADING = "Group by";
 
 const THEN_LABELS: Record<ThenBy, string> = { none: "None", ...SORT_LABELS };
 const DIR_OPTIONS: SortDir[] = ["asc", "desc"];
@@ -38,6 +44,9 @@ const SortPopover: React.FC<Props> = ({
 	onThenBy,
 	groupBy,
 	onGroupBy,
+	open,
+	onOpenChange,
+	focusGroupBy = false,
 }) => {
 	const sections: PopoverSection<string>[] = [
 		{
@@ -62,14 +71,22 @@ const SortPopover: React.FC<Props> = ({
 			onSelect: (v) => onThenBy(v as ThenBy),
 		},
 		{
-			heading: "Group by",
+			heading: GROUP_BY_HEADING,
 			options: GROUP_OPTIONS,
 			labels: GROUP_LABELS,
 			selected: groupBy,
 			onSelect: (v) => onGroupBy(v as GroupBy),
 		},
 	];
-	return <SelectionPopover trigger={trigger} sections={sections} />;
+	return (
+		<SelectionPopover
+			trigger={trigger}
+			sections={sections}
+			open={open}
+			onOpenChange={onOpenChange}
+			focusSection={focusGroupBy ? GROUP_BY_HEADING : undefined}
+		/>
+	);
 };
 
 export default SortPopover;

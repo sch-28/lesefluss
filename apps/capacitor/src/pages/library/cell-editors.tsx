@@ -101,7 +101,10 @@ function useDismiss(ref: React.RefObject<HTMLElement | null>, onDismiss: () => v
 			if (!ref.current?.contains(e.target as Node)) dismiss.current();
 		};
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape") dismiss.current();
+			if (e.key !== "Escape") return;
+			// Taken, so the library's own Esc does not also clear the focus or selection.
+			e.preventDefault();
+			dismiss.current();
 		};
 		document.addEventListener("pointerdown", onPointerDown, true);
 		document.addEventListener("keydown", onKeyDown, true);
@@ -128,6 +131,7 @@ const RatingEditor: React.FC<{
 		<div
 			ref={ref}
 			role="group"
+			data-inline-editor=""
 			aria-label={`Rate ${title}`}
 			onKeyDown={(e) => {
 				if (e.key === "Delete" || e.key === "Backspace") onPick(null);
