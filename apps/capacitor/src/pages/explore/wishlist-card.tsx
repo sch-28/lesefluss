@@ -1,6 +1,8 @@
 import { useRouter } from "@tanstack/react-router";
+import { X } from "lucide-react";
 import type React from "react";
 import CoverImage from "../../components/cover-image";
+import { toast } from "../../components/toast";
 import { getCoverUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
 import type { WishlistItem } from "../../services/db/schema";
@@ -16,6 +18,26 @@ type FrameProps = {
 	/** Omitted while membership is unknown or the title is already in the library. */
 	onImport?: () => void;
 	isImporting: boolean;
+};
+
+const RemoveFromWishlistButton: React.FC<{ item: WishlistItem }> = ({ item }) => {
+	const toggle = queryHooks.useToggleWishlist();
+	return (
+		<button
+			type="button"
+			aria-label={`Remove ${item.title} from wishlist`}
+			disabled={toggle.isPending}
+			onClick={() =>
+				toggle.mutate(
+					{ saved: false, item },
+					{ onError: () => toast.error("Couldn't update your wishlist") },
+				)
+			}
+			className="pointer-events-auto absolute top-1.5 right-1.5 flex size-7 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-sm backdrop-blur active:opacity-70 disabled:opacity-70"
+		>
+			<X className="size-4" aria-hidden />
+		</button>
+	);
 };
 
 const WishlistCardFrame: React.FC<FrameProps> = ({
@@ -58,6 +80,9 @@ const WishlistCardFrame: React.FC<FrameProps> = ({
 				)}
 			</div>
 		</button>
+		<div className="pointer-events-none absolute inset-x-0 top-0 aspect-2/3">
+			<RemoveFromWishlistButton item={item} />
+		</div>
 		{onImport && <QuickAddOverlay title={item.title} isAdding={isImporting} onAdd={onImport} />}
 	</div>
 );
@@ -106,7 +131,7 @@ const SerialWishlistCard: React.FC<{ item: WishlistItem }> = ({ item }) => {
 	);
 };
 
-/** Opens the title's detail page; the corner button imports it, which takes it off the wishlist. */
+/** Opens the title's detail page; the corner buttons remove it, or import it, which also takes it off the wishlist. */
 const WishlistCard: React.FC<{ item: WishlistItem }> = ({ item }) =>
 	item.kind === "catalog" ? (
 		<CatalogWishlistCard item={item} />
