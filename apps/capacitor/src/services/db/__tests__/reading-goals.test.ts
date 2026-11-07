@@ -77,6 +77,19 @@ describe("createGoal", () => {
 		expect(await goals.getActiveGoal("aaaaaaaa")).toEqual(goal);
 	});
 
+	it("stores a minute goal's minutes and keeps them through a replan", async () => {
+		const goal = await goals.createGoal(
+			book("aaaaaaaa"),
+			{ mode: "pace", dailyPercent: 4.5, dailyMinutes: 20 },
+			NOW,
+		);
+		expect((await goals.getActiveGoal("aaaaaaaa"))?.dailyMinutes).toBe(20);
+		await goals.replanGoalById(goal.id, { dailyPercent: 6 }, NOW);
+		expect((await goals.getActiveGoal("aaaaaaaa"))?.dailyMinutes).toBe(20);
+		await goals.replanGoalById(goal.id, { mode: "deadline", targetDate: "2026-03-20" }, NOW);
+		expect((await goals.getActiveGoal("aaaaaaaa"))?.dailyMinutes).toBeNull();
+	});
+
 	it("keeps at most one active goal per book", async () => {
 		const first = await goals.createGoal(book("aaaaaaaa"), { mode: "pace", dailyPercent: 1 }, NOW);
 		const second = await goals.createGoal(

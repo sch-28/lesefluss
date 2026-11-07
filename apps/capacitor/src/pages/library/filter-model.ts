@@ -20,6 +20,7 @@ export const FACETS = [
 	"collection",
 	"rating",
 	"progress",
+	"timeLeft",
 	"added",
 	"lastRead",
 ] as const;
@@ -40,6 +41,7 @@ export const FACET_LABELS: Record<Facet, string> = {
 	collection: "Collection",
 	rating: "Rating",
 	progress: "Progress",
+	timeLeft: "Time left",
 	added: "Added",
 	lastRead: "Last read",
 };
@@ -53,6 +55,10 @@ const DATE_WINDOWS = [
 ] as const;
 const NEVER_READ = "never";
 const UNRATED = "none";
+
+/** Under an hour left at the reader's pace. */
+const QUICK_READ = "quick";
+export const QUICK_READ_MINUTES = 60;
 
 const PROGRESS_BUCKETS = [
 	{ value: "0", label: "Not started" },
@@ -72,6 +78,7 @@ export const FIXED_FACET_VALUES: Partial<
 		{ value: UNRATED, label: "Unrated" },
 	],
 	progress: PROGRESS_BUCKETS,
+	timeLeft: [{ value: QUICK_READ, label: "Quick reads (< 1h)" }],
 	added: DATE_WINDOWS,
 	lastRead: [...DATE_WINDOWS, { value: NEVER_READ, label: "Never" }],
 };
@@ -93,6 +100,8 @@ export type FilterFields = {
 	progress: number;
 	addedAt: number;
 	lastRead: number | null;
+	/** At the reader's pace; null when finished or of unknown length. */
+	minutesLeft?: number | null;
 };
 
 /** The row's own values, for the shelf conditions that compare rather than pick a value. */
@@ -113,6 +122,10 @@ function progressBucket(progress: number): string {
 	return progress < 50 ? "1-49" : "50-99";
 }
 
+function isQuickRead(minutesLeft: number | null): boolean {
+	return minutesLeft != null && minutesLeft > 0 && minutesLeft < QUICK_READ_MINUTES;
+}
+
 function windowsContaining(at: number, now: number): string[] {
 	const age = now - at;
 	return DATE_WINDOWS.filter((w) => age <= w.days * DAY_MS).map((w) => w.value);
@@ -129,6 +142,7 @@ export function facetValuesOf(fields: FilterFields, now: number): FacetValues {
 		// Ratings count half stars; a 3.5 rounds up into the 4-star value.
 		rating: [fields.rating ? String(Math.ceil(fields.rating / HALF_STARS_PER_STAR)) : UNRATED],
 		progress: [progressBucket(fields.progress)],
+		timeLeft: isQuickRead(fields.minutesLeft ?? null) ? [QUICK_READ] : [],
 		added: windowsContaining(fields.addedAt, now),
 		lastRead: fields.lastRead == null ? [NEVER_READ] : windowsContaining(fields.lastRead, now),
 		wordCount: fields.wordCount > 0 ? fields.wordCount : null,

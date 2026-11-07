@@ -9,6 +9,8 @@ import {
 	applyLibraryView,
 	buildLibraryItems,
 	filterAndSortLibrary,
+	isSortBy,
+	SORT_OPTIONS,
 	type SortBy,
 	tagsInUse,
 } from "./sort-filter";
@@ -307,5 +309,54 @@ describe("tag filtering", () => {
 			sortBy: "recent",
 		});
 		expect(items.every((item) => item.kind === "book")).toBe(true);
+	});
+});
+
+describe("time left", () => {
+	// No speed model: the 225 wpm stand-in, so 13,500 words are exactly an hour.
+	const HOUR_OF_WORDS = 13_500;
+	const books = [
+		makeBook({ id: "long0000", wordCount: 3 * HOUR_OF_WORDS }),
+		makeBook({ id: "unknown0", wordCount: 0 }),
+		makeBook({ id: "short000", wordCount: HOUR_OF_WORDS - 1 }),
+		makeBook({
+			id: "hour0000",
+			wordCount: 2 * HOUR_OF_WORDS,
+			wordPosition: wordPos(HOUR_OF_WORDS),
+		}),
+		makeBook({ id: "done0000", wordCount: 100, wordPosition: wordPos(100), finishedAt: 1 }),
+	];
+	const ids = (view: Parameters<typeof applyLibraryView>[1]) =>
+		applyLibraryView(buildLibraryItems(books, [makeSeries()], new Map()), view).map((item) =>
+			item.kind === "book" ? item.book.id : item.series.id,
+		);
+
+	it("sorts shortest left first, with unknown lengths, finished books and series last", () => {
+		expect(ids({ filter: {}, sortBy: "timeLeft" }).slice(0, 3)).toEqual([
+			"short000",
+			"hour0000",
+			"long0000",
+		]);
+	});
+
+	it("keeps quick reads to under an hour left", () => {
+		expect(ids({ filter: { timeLeft: { in: ["quick"], out: [] } }, sortBy: "timeLeft" })).toEqual([
+			"short000",
+		]);
+	});
+
+	it("times what is left at the speed model's pace", () => {
+		const model = { pace: { wpm: 450, source: "measured" }, books: {} } as never;
+		const [item] = buildLibraryItems([books[0]], [], new Map(), 0, new Map(), model);
+		expect(item.sortKey.minutesLeft).toBe(90);
+		expect(item.facets.timeLeft).toEqual([]);
+	});
+});
+
+describe("isSortBy", () => {
+	it("accepts every offered sort, so a stored choice survives a restart", () => {
+		expect(SORT_OPTIONS.filter((option) => !isSortBy(option))).toEqual([]);
+		expect(isSortBy("timeLeft")).toBe(true);
+		expect(isSortBy("bogus")).toBe(false);
 	});
 });

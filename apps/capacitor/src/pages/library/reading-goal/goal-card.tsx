@@ -17,6 +17,7 @@ import {
 	liveToday,
 	MISSED_DAY_LABEL,
 	signed,
+	todayFigure,
 } from "./goal-model";
 import { GoalSetupSheet } from "./goal-setup-sheet";
 import { DayCount, GoalStat } from "./goal-stat";
@@ -66,6 +67,7 @@ export function GoalCard({ book }: { book: Book }) {
 		: "Goal";
 	const tone = plan ? goalTone(plan) : "even";
 	const today = plan ? liveToday(plan, book.wordPosition, book.wordCount) : null;
+	const figure = today ? todayFigure(today) : null;
 	const canEdit = !isComplete && plan !== null;
 
 	return (
@@ -83,20 +85,18 @@ export function GoalCard({ book }: { book: Book }) {
 				)}
 			</div>
 
-			{plan && today && !isComplete && (
+			{plan && today && figure && !isComplete && (
 				<>
 					<div className="flex items-end justify-between gap-4">
 						<div>
 							<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
-								{percentLabel(today.progressPercent)}
-								<span className="font-normal text-xl opacity-60">
-									{" "}
-									/ {percentLabel(plan.dailyTarget.percent)}%
-								</span>
+								{figure.done}
+								<span className="font-normal text-xl opacity-60"> / {figure.target}</span>
 							</div>
 							<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
-								today · {Math.round(today.progressWords / plan.pace.wpm)} of{" "}
-								{minutesLabel(plan.dailyTarget.minutes)}
+								{today.targetMinutes != null
+									? `today · ${percentLabel(today.progressPercent)}%`
+									: `today · ${Math.round(today.progressWords / plan.pace.wpm)} of ${minutesLabel(plan.dailyTarget.minutes)}`}
 							</div>
 						</div>
 						<div className="text-right">

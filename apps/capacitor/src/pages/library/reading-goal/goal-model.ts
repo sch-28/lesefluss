@@ -7,6 +7,8 @@ import {
 	addDays,
 	inclusiveDays,
 	isFinishedPosition,
+	MAX_GOAL_DAILY_MINUTES,
+	MIN_GOAL_DAILY_MINUTES,
 	MIN_GOAL_DAILY_PERCENT,
 } from "@lesefluss/core";
 import type { ReadingGoal } from "../../../services/db/schema";
@@ -15,7 +17,8 @@ import {
 	type NewGoalSpec,
 	type ReadingGoalPlan,
 } from "../../../services/stats/reading-goal";
-import { localDateKey, localDateOfKey } from "../../../utils/date-utils";
+import { formatDayKey, localDateKey, localDateOfKey } from "../../../utils/date-utils";
+import { minutesLabel, percentLabel } from "../../../utils/reading-time";
 
 export const MIN_GOAL_DAYS = 7;
 export const MAX_GOAL_DAYS = 365;
@@ -77,15 +80,52 @@ export function presetDays(today: string, months: number): number {
 	return inclusiveDays(today, localDateKey(target.getTime())) - 1;
 }
 
-/** What the sheet edits: which side is locked, the duration, and a daily percent kept as stored. */
-export type GoalSetup = { lock: GoalLock; days: number; dailyPercent?: number };
+/**
+ * What the sheet edits: which side is locked, the duration, and a daily percent
+ * kept as stored. `dailyMinutes` makes a locked daily amount a minute goal.
+ */
+export type GoalSetup = {
+	lock: GoalLock;
+	days: number;
+	dailyPercent?: number;
+	dailyMinutes?: number | null;
+};
 
 export type SetupValues = {
 	days: number;
 	finishDate: string;
 	dailyPercent: number;
 	minutes: number;
+	/** Set for a minute goal only. */
+	dailyMinutes: number | null;
 };
+
+export const MINUTE_PRESETS = [10, 20, 30, 60] as const;
+
+export function isMinuteSetup(setup: GoalSetup): boolean {
+	return setup.lock === "daily" && setup.dailyMinutes != null;
+}
+
+/** Whole minutes a day that read the rest within `days`, rounded up so the finish is never later. */
+export function minutesForDays(
+	days: number,
+	book: { wordCount: number; wordPosition: number; wpm: number },
+): number {
+	const remaining = Math.max(0, book.wordCount - book.wordPosition);
+	const minutes = Math.ceil(remaining / Math.max(1, days) / book.wpm);
+	return Math.min(MAX_GOAL_DAILY_MINUTES, Math.max(MIN_GOAL_DAILY_MINUTES, minutes));
+}
+
+/** The day `minutes` a day at `wpm` finish the rest, the first day being `today`. */
+export function finishAtMinutes(
+	minutes: number,
+	wpm: number,
+	book: { today: string; wordCount: number; wordPosition: number },
+): string {
+	const remaining = Math.max(0, book.wordCount - book.wordPosition);
+	const perDay = Math.max(1, minutes * wpm);
+	return addDays(book.today, Math.max(1, Math.ceil(remaining / perDay)) - 1);
+}
 
 /**
  * Both sides of the setup cards: daily percent and minutes, and the finish
@@ -99,6 +139,21 @@ export function setupValues(
 ): SetupValues {
 	const remaining = Math.max(0, book.wordCount - book.wordPosition);
 	const remainingPercent = book.wordCount > 0 ? (remaining / book.wordCount) * 100 : 0;
+	if (isMinuteSetup(setup) && setup.dailyMinutes != null && book.wordCount > 0) {
+		const dailyMinutes = setup.dailyMinutes;
+		const dailyPercent = Math.max(
+			MIN_GOAL_DAILY_PERCENT,
+			((dailyMinutes * book.wpm) / book.wordCount) * 100,
+		);
+		const days = Math.max(1, Math.ceil(remainingPercent / dailyPercent));
+		return {
+			days,
+			finishDate: addDays(book.today, days - 1),
+			dailyPercent,
+			minutes: dailyMinutes,
+			dailyMinutes,
+		};
+	}
 	let days = Math.max(1, Math.round(setup.days));
 	let dailyPercent = remainingPercent / days;
 	if (setup.lock === "daily") {
@@ -113,6 +168,7 @@ export function setupValues(
 		finishDate: addDays(book.today, days - 1),
 		dailyPercent,
 		minutes: ((dailyPercent / 100) * book.wordCount) / book.wpm,
+		dailyMinutes: null,
 	};
 }
 
@@ -121,10 +177,33 @@ function storedDailyPercent(dailyPercent: number): number {
 	return Math.ceil(dailyPercent * 100) / 100;
 }
 
+/**
+ * The setup's RSVP hint at the dial: a minute goal's earlier finish at the same
+ * minutes, otherwise the minutes a day the same daily amount takes. Null when
+ * RSVP would not be faster than the reader's pace.
+ */
+export function rsvpComparison(
+	values: SetupValues,
+	book: { today: string; wordCount: number; wordPosition: number; wpm: number },
+	dial: number,
+	rsvpWpm: number,
+): { dial: number; value: string } | null {
+	if (book.wordCount <= 0 || rsvpWpm <= book.wpm) return null;
+	if (values.dailyMinutes != null) {
+		const finish = finishAtMinutes(values.dailyMinutes, rsvpWpm, book);
+		return finish < values.finishDate ? { dial, value: `Done ${formatDayKey(finish)}` } : null;
+	}
+	return { dial, value: `${minutesLabel((values.minutes * book.wpm) / rsvpWpm)} a day` };
+}
+
 export function goalSpec(lock: GoalLock, values: SetupValues): NewGoalSpec {
 	return lock === "date"
 		? { mode: "deadline", targetDate: values.finishDate }
-		: { mode: "pace", dailyPercent: storedDailyPercent(values.dailyPercent) };
+		: {
+				mode: "pace",
+				dailyPercent: storedDailyPercent(values.dailyPercent),
+				dailyMinutes: values.dailyMinutes,
+			};
 }
 
 export function newGoalSetup(today: string): GoalSetup {
@@ -140,6 +219,7 @@ export function seedFromGoal(goal: ReadingGoal, plan: ReadingGoalPlan): GoalSetu
 		lock: "daily",
 		days: Math.max(1, inclusiveDays(plan.today, plan.projectedFinishDate)),
 		dailyPercent: goal.dailyPercent,
+		dailyMinutes: goal.dailyMinutes,
 	};
 }
 
@@ -166,6 +246,9 @@ export type LiveToday = {
 	fraction: number;
 	isMet: boolean;
 	minutesToGo: number;
+	/** A minute goal's target and today's active minutes so far; targetMinutes is null otherwise. */
+	targetMinutes: number | null;
+	minutesRead: number;
 };
 
 /**
@@ -184,14 +267,44 @@ export function liveToday(
 	const target = plan.dailyTarget.words;
 	const furthest = Math.max(word, plan.furthestTodayWord, furthestRead ?? 0);
 	const progressWords = Math.max(0, furthest - plan.dayStartWord);
+	const progressPercent = wordCount > 0 ? (progressWords / wordCount) * 100 : 0;
+	const minutesRead = plan.progressToday.minutes;
+	if (plan.dailyMinutes != null) {
+		// Minutes come from saved sittings only, so they lag the live word by up to a heartbeat.
+		const isMet =
+			plan.isComplete || plan.isTodayMet || isDayMet(plan.dayStartWord, furthest, 0, wordCount);
+		return {
+			progressWords,
+			progressPercent,
+			targetPercent: plan.dailyTarget.percent,
+			fraction: isMet ? 1 : Math.min(1, minutesRead / plan.dailyMinutes),
+			isMet,
+			minutesToGo: isMet ? 0 : Math.max(0, plan.dailyMinutes - minutesRead),
+			targetMinutes: plan.dailyMinutes,
+			minutesRead,
+		};
+	}
 	const isMet = plan.isComplete || isDayMet(plan.dayStartWord, furthest, target, wordCount);
 	return {
 		progressWords,
-		progressPercent: wordCount > 0 ? (progressWords / wordCount) * 100 : 0,
+		progressPercent,
 		targetPercent: plan.dailyTarget.percent,
 		fraction: isMet ? 1 : target > 0 ? Math.min(1, progressWords / target) : 0,
 		isMet,
 		minutesToGo: isMet ? 0 : (target - progressWords) / plan.pace.wpm,
+		targetMinutes: null,
+		minutesRead: progressWords / plan.pace.wpm,
+	};
+}
+
+/** Today's figure against its target: minutes for a minute goal, else percent of the book. */
+export function todayFigure(today: LiveToday): { done: string; target: string } {
+	if (today.targetMinutes != null) {
+		return { done: String(Math.floor(today.minutesRead)), target: `${today.targetMinutes} min` };
+	}
+	return {
+		done: percentLabel(today.progressPercent),
+		target: `${percentLabel(today.targetPercent)}%`,
 	};
 }
 

@@ -43,7 +43,9 @@ export function useReaderGoal(
 	word: number,
 	findParagraphIndexForWord: (word: number) => number,
 ) {
-	const result = queryHooks.useReadingGoalPlan(book && canHaveGoal(book) ? book.id : null);
+	const result = queryHooks.useReadingGoalPlan(book && canHaveGoal(book) ? book.id : null, {
+		live: true,
+	});
 	const goalPlan =
 		result.data?.goal.status === "active" && result.data.plan.kind === "plan"
 			? result.data.plan
@@ -66,7 +68,9 @@ export function useReaderGoal(
 	);
 	const isMet = goalToday?.isMet ?? false;
 	const goalDivider = useMemo((): ReaderGoalDivider | undefined => {
-		if (!goalPlan || goalPlan.isComplete || goalPlan.dailyTarget.words <= 0) return undefined;
+		// A minute goal's words are only an estimate, so no line marks where today ends.
+		if (!goalPlan || goalPlan.isComplete || goalPlan.dailyMinutes != null) return undefined;
+		if (goalPlan.dailyTarget.words <= 0) return undefined;
 		const lastTargetWord = goalPlan.dayStartWord + goalPlan.dailyTarget.words - 1;
 		return {
 			paragraphIndex: findParagraphIndexForWord(lastTargetWord),

@@ -3,7 +3,9 @@ import { BOOK_STATUSES } from "./books";
 import { isDayKey } from "./day-key";
 import { READING_MODES } from "./reading-credit";
 import {
+	MAX_GOAL_DAILY_MINUTES,
 	MAX_GOAL_DAILY_PERCENT,
+	MIN_GOAL_DAILY_MINUTES,
 	MIN_GOAL_DAILY_PERCENT,
 	READING_GOAL_MODES,
 	READING_GOAL_STATUSES,
@@ -311,6 +313,14 @@ export const SyncReadingGoalSchema = z.object({
 	planStartWord: pgInt(),
 	targetDate: dayKey(),
 	dailyPercent: z.number().min(MIN_GOAL_DAILY_PERCENT).max(MAX_GOAL_DAILY_PERCENT),
+	/** A minute goal's minutes a day; null for a percent or date goal. Optional
+	 *  on the wire: a client from before minute goals omits it. */
+	dailyMinutes: z
+		.number()
+		.min(MIN_GOAL_DAILY_MINUTES)
+		.max(MAX_GOAL_DAILY_MINUTES)
+		.nullable()
+		.optional(),
 	carriedDaysMet: pgInt(),
 	completedAt: epochMs().nullable(),
 	reminderTime: z.string().regex(REMINDER_TIME_REGEX).nullable(),

@@ -528,6 +528,7 @@ export function goalToSync(g: ReadingGoal): SyncReadingGoal {
 		planStartWord: g.planStartWord,
 		targetDate: g.targetDate,
 		dailyPercent: g.dailyPercent,
+		dailyMinutes: g.dailyMinutes ?? null,
 		carriedDaysMet: g.carriedDaysMet,
 		completedAt: g.completedAt,
 		reminderTime: g.reminderTime,
@@ -549,6 +550,8 @@ function goalFromSync(g: SyncReadingGoal): ReadingGoal {
 		planStartWord: wordPos(g.planStartWord),
 		targetDate: g.targetDate,
 		dailyPercent: g.dailyPercent,
+		// A server row from before it dropped minutes on a legacy switch off pace can still carry them.
+		dailyMinutes: g.mode === "pace" ? (g.dailyMinutes ?? null) : null,
 		carriedDaysMet: g.carriedDaysMet,
 		completedAt: g.completedAt,
 		reminderTime: g.reminderTime,

@@ -34,6 +34,7 @@ const goal: ReadingGoal = {
 	planStartWord: wordPos(0),
 	targetDate: "2026-03-10",
 	dailyPercent: 10,
+	dailyMinutes: null,
 	carriedDaysMet: 0,
 	completedAt: null,
 	reminderTime: null,

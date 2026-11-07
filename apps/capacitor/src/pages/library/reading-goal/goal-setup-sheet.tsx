@@ -1,4 +1,4 @@
-import { inclusiveDays } from "@lesefluss/core";
+import { inclusiveDays, modeSpeed } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import {
 	Drawer,
@@ -23,10 +23,14 @@ import {
 	GOAL_PRESETS,
 	type GoalSetup,
 	goalSpec,
+	isMinuteSetup,
 	lockToMode,
+	MINUTE_PRESETS,
 	MISSED_DAY_LABEL,
+	minutesForDays,
 	newGoalSetup,
 	presetDays,
+	rsvpComparison,
 	seedFromGoal,
 	setupValues,
 	sliderToDays,
@@ -62,19 +66,26 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 		}
 	}
 
+	const { data: speedModel } = queryHooks.useStatsSpeedModel();
+	const { data: settings } = queryHooks.useSettings();
 	const create = queryHooks.useCreateReadingGoal();
 	const replan = queryHooks.useReplanReadingGoal();
 	const setReminder = queryHooks.useSetGoalReminder();
 	const remove = queryHooks.useDeleteReadingGoal();
 	const isBusy = create.isPending || replan.isPending || setReminder.isPending || remove.isPending;
 
-	const values = setupValues(setup, {
+	const setupBook = {
 		today,
 		wordCount: book.wordCount,
 		// A replan restarts from the start of today, so an edit measures from there too.
 		wordPosition: existing ? existing.plan.dayStartWord : book.wordPosition,
 		wpm,
-	});
+	};
+	const values = setupValues(setup, setupBook);
+	const isMinutes = isMinuteSetup(setup);
+	const rsvp = settings
+		? rsvpComparison(values, setupBook, settings.wpm, modeSpeed(speedModel, "rsvp", settings.wpm))
+		: null;
 	const presetMatch = GOAL_PRESETS.find((p) => presetDays(today, p.months) === values.days);
 	const isCustom = isCustomOpen || !presetMatch;
 	const dateLocked = setup.lock === "date";
@@ -82,9 +93,25 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 		existing !== null &&
 		setup.lock === seed.lock &&
 		setup.days === seed.days &&
-		setup.dailyPercent === seed.dailyPercent;
+		setup.dailyPercent === seed.dailyPercent &&
+		(setup.dailyMinutes ?? null) === (seed.dailyMinutes ?? null);
 
-	const setDays = (days: number) => setSetup((s) => ({ lock: s.lock, days }));
+	const setDays = (days: number) =>
+		setSetup((s) =>
+			isMinuteSetup(s)
+				? { lock: s.lock, days, dailyMinutes: minutesForDays(days, setupBook) }
+				: { lock: s.lock, days },
+		);
+	const setUnit = (unit: "percent" | "minutes") =>
+		setSetup(
+			unit === "minutes"
+				? {
+						lock: "daily",
+						days: values.days,
+						dailyMinutes: Math.max(1, Math.round(values.minutes)),
+					}
+				: { lock: "daily", days: values.days, dailyPercent: values.dailyPercent },
+		);
 
 	const save = async () => {
 		const spec = goalSpec(setup.lock, values);
@@ -122,8 +149,14 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 						<ValueCard
 							isLocked={!dateLocked}
 							onLock={() => setSetup((s) => ({ ...s, lock: "daily" }))}
-							value={`${percentLabel(values.dailyPercent)}%`}
-							label={`a day · ${minutesLabel(values.minutes)}`}
+							value={
+								isMinutes ? `${values.dailyMinutes} min` : `${percentLabel(values.dailyPercent)}%`
+							}
+							label={
+								isMinutes
+									? `a day · ${percentLabel(values.dailyPercent)}%`
+									: `a day · ${minutesLabel(values.minutes)}`
+							}
 							lockLabel="Keep daily amount"
 						/>
 						<ArrowLeftRight className="size-4 text-muted-foreground" aria-hidden />
@@ -135,6 +168,33 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 							lockLabel="Keep finish date"
 						/>
 					</div>
+
+					{!dateLocked && (
+						<div className="flex flex-wrap items-center gap-2" data-testid="goal-unit">
+							<Chip isOn={!isMinutes} aria-pressed={!isMinutes} onClick={() => setUnit("percent")}>
+								% a day
+							</Chip>
+							<Chip isOn={isMinutes} aria-pressed={isMinutes} onClick={() => setUnit("minutes")}>
+								Min a day
+							</Chip>
+							{isMinutes &&
+								MINUTE_PRESETS.map((minutes) => {
+									const isOn = values.dailyMinutes === minutes;
+									return (
+										<Chip
+											key={minutes}
+											isOn={isOn}
+											aria-pressed={isOn}
+											onClick={() =>
+												setSetup({ lock: "daily", days: values.days, dailyMinutes: minutes })
+											}
+										>
+											{minutes} min
+										</Chip>
+									);
+								})}
+						</div>
+					)}
 
 					<div className="flex flex-col gap-3">
 						<span
@@ -208,6 +268,16 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 								className="min-h-11 rounded-md border border-input bg-background px-3 text-base text-foreground"
 							/>
 						</label>
+					)}
+
+					{rsvp && (
+						<div
+							className="flex gap-3 rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-sm"
+							data-testid="goal-rsvp"
+						>
+							<span className="text-muted-foreground">RSVP {rsvp.dial}</span>
+							<span className="font-semibold tabular-nums">{rsvp.value}</span>
+						</div>
 					)}
 
 					<div className="flex gap-3 rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-sm">

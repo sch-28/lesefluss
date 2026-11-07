@@ -325,6 +325,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const hasPrev = book?.chapterIndex != null && book.chapterIndex > 0;
 	const hasNext =
 		book?.chapterIndex != null && seriesTotal != null && book.chapterIndex < seriesTotal - 1;
+	const { data: seriesChapters } = queryHooks.useSeriesChapters(book?.seriesId ?? undefined);
 
 	const { theme, isEinkMode } = useTheme();
 	const [annotationsOpen, setAnnotationsOpen] = useState(false);
@@ -2617,6 +2618,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			(chapterWordCounts[currentChapterIndex] * (1 - chapterProgress)) / estimateWpm;
 	}
 
+	const nextChapter = hasNext
+		? seriesChapters?.find((c) => c.chapterIndex === (book.chapterIndex ?? -1) + 1)
+		: undefined;
+	const nextChapterMinutes =
+		showReadingTime && nextChapter && nextChapter.wordCount > 0
+			? nextChapter.wordCount / estimateWpm
+			: null;
+
 	// Shared end-of-chapter footer for both views. Returns null inside
 	// `NextChapterFooter` for standalone books / last-chapter, so it's safe
 	// to drop in unconditionally.
@@ -2626,6 +2635,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			hasNext={hasNext}
 			onNext={handleNextChapter}
 			onPrev={() => void chapterAdvance.tryRetreat()}
+			nextMinutes={nextChapterMinutes}
 		/>
 	);
 

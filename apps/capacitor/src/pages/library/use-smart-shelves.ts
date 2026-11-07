@@ -1,3 +1,4 @@
+import type { SpeedModel } from "@lesefluss/core";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useLocalDayNow } from "../../hooks/use-local-day";
 import { queryHooks } from "../../services/db/hooks";
@@ -62,12 +63,20 @@ type LibraryInputs = [
 	seriesActivity: Map<string, SeriesActivity>,
 	memberships: ReadonlyMap<string, readonly string[]> | undefined,
 	collections: readonly { id: string; name: string }[] | undefined,
+	speedModel: SpeedModel | undefined,
 ];
 
 function deriveShelfLibrary(inputs: LibraryInputs): ShelfLibrary {
 	if (lastLibrary?.inputs.every((input, i) => input === inputs[i])) return lastLibrary.value;
-	const [books, series, seriesActivity, memberships, collections] = inputs;
-	const items = buildLibraryItems(books, series, seriesActivity, Date.now(), memberships);
+	const [books, series, seriesActivity, memberships, collections, speedModel] = inputs;
+	const items = buildLibraryItems(
+		books,
+		series,
+		seriesActivity,
+		Date.now(),
+		memberships,
+		speedModel,
+	);
 	const value = { items, options: facetOptions(items, collections) };
 	lastLibrary = { inputs, value };
 	return value;
@@ -79,12 +88,20 @@ export function useShelfLibrary(enabled = true) {
 	const { books, series, seriesActivity, isLoading } = useLibraryItems();
 	const memberships = queryHooks.useCollectionMemberships();
 	const collections = queryHooks.useCollections();
+	const speedModel = queryHooks.useStatsSpeedModel();
 	const library = useMemo(
 		() =>
 			enabled
-				? deriveShelfLibrary([books, series, seriesActivity, memberships.data, collections.data])
+				? deriveShelfLibrary([
+						books,
+						series,
+						seriesActivity,
+						memberships.data,
+						collections.data,
+						speedModel.data,
+					])
 				: EMPTY_LIBRARY,
-		[enabled, books, series, seriesActivity, memberships.data, collections.data],
+		[enabled, books, series, seriesActivity, memberships.data, collections.data, speedModel.data],
 	);
 	return { ...library, isLoading: isLoading || isFirstLoad(memberships) };
 }

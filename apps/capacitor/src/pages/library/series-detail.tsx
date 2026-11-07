@@ -21,6 +21,7 @@ import { chapterCountLabel, providerLabel } from "../../services/serial-scrapers
 import { IS_WEB } from "../../utils/platform";
 import { type DetailAction, DetailShell } from "../_shared/detail-shell";
 import { SeriesChapterList } from "./series-chapter-list";
+import { SeriesReadingTime } from "./series-reading-time";
 import { useChapterBatchDownload } from "./use-chapter-batch-download";
 
 interface Props {
@@ -107,7 +108,12 @@ const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 			? `Continue chapter ${(entryChapter.chapterIndex ?? 0) + 1}`
 			: "Start reading";
 
-	const statsLine = chapterCount !== undefined && <span>{chapterCountLabel(chapterCount)}</span>;
+	const statsLine = chapterCount !== undefined && (
+		<>
+			<span>{chapterCountLabel(chapterCount)}</span>
+			{chapters && <SeriesReadingTime chapters={chapters} />}
+		</>
+	);
 
 	const provider = providerLabel(series.provider);
 

@@ -90,6 +90,7 @@ Every goal is in one of two **modes**:
 
 - **Deadline**: the target date is fixed. Each day's target is the remaining part of the book divided by the days left, so a missed day raises the days after it.
 - **Pace**: the daily percent is fixed. A missed day moves the projected finish date instead.
+  - **Minute goal**: a pace goal whose daily amount is minutes (`dailyMinutes`), the one exception to measuring progress by position: a day is met by the active reading time of that day's [sessions](#session) on the book, every mode and listening included (or by finishing the book that day). The projected finish is the words left over the minutes at the [book's reading pace](#speed-model). `dailyPercent` still holds what the minutes read at that pace, so older clients and the server see a valid pace goal; it drifts as the pace changes and is refreshed on a replan. With stats sync off, sessions stay on each device, so each device counts only its own minutes. A switch to deadline drops the minutes.
 
 The mode can be switched at any time. A switch, or a new target date or daily percent, is a *replan*: the plan line restarts from today's start-of-day position, days already met carry over, and today's reading still counts for today. Deadline to pace keeps today's daily target as the pace; pace to deadline keeps the projected finish as the target date.
 

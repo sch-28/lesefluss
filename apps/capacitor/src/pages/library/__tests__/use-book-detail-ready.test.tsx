@@ -9,6 +9,7 @@ const loading = {
 	content: false,
 	speedModel: false,
 	settings: false,
+	dailyReading: false,
 };
 const goalPlanCalls: (string | null)[] = [];
 
@@ -23,6 +24,7 @@ vi.mock("../../../services/db/hooks", () => ({
 		useBookContent: () => ({ isPending: true, isLoading: loading.content }),
 		useStatsSpeedModel: () => ({ isPending: true, isLoading: loading.speedModel }),
 		useSettings: () => ({ isPending: true, isLoading: loading.settings }),
+		useStatsDailyReading: () => ({ isPending: true, isLoading: loading.dailyReading }),
 	},
 }));
 
@@ -41,6 +43,7 @@ beforeEach(() => {
 		content: false,
 		speedModel: false,
 		settings: false,
+		dailyReading: false,
 	});
 	goalPlanCalls.length = 0;
 });
@@ -57,6 +60,7 @@ describe("useBookDetailReady", () => {
 		"content",
 		"speedModel",
 		"settings",
+		"dailyReading",
 	] as const)("holds the page while %s is still loading", async (key) => {
 		loading[key] = true;
 		rendered = await render(<Probe book={makeBook({ id: "b1" })} />);

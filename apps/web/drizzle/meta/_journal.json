@@ -344,6 +344,13 @@
       "when": 1784073600000,
       "tag": "0048_series_collections",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1784160000000,
+      "tag": "0049_goal_daily_minutes",
+      "breakpoints": true
     }
   ]
 }

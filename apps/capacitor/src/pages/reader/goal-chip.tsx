@@ -9,6 +9,7 @@ import {
 	goalTone,
 	type LiveToday,
 	signed,
+	todayFigure,
 } from "../library/reading-goal/goal-model";
 import { DayCount, GoalStat } from "../library/reading-goal/goal-stat";
 
@@ -22,9 +23,13 @@ type Props = {
 };
 
 export function GoalChip({ plan, today, onOpenDetails }: Props) {
+	const figure = todayFigure(today);
+	const isMinutes = today.targetMinutes != null;
 	const label = today.isMet
-		? `Today's target met: ${percentLabel(today.targetPercent)}%`
-		: `Today's target: ${percentLabel(today.progressPercent)} of ${percentLabel(today.targetPercent)}%`;
+		? `Today's target met: ${figure.target}`
+		: `Today's target: ${figure.done} of ${figure.target}`;
+	// A met percent goal shows its target, so the chip reads "10.0 / 10.0%" rather than overshooting.
+	const done = today.isMet && !isMinutes ? percentLabel(today.targetPercent) : figure.done;
 	const daysMet = daysMetWithToday(plan, today);
 	return (
 		<Popover>
@@ -61,10 +66,8 @@ export function GoalChip({ plan, today, onOpenDetails }: Props) {
 							transform="rotate(-90 9 9)"
 						/>
 					</svg>
-					<span className="font-semibold">
-						{percentLabel(today.isMet ? today.targetPercent : today.progressPercent)}
-					</span>
-					<span className="text-muted-foreground">/ {percentLabel(today.targetPercent)}%</span>
+					<span className="font-semibold">{done}</span>
+					<span className="text-muted-foreground">/ {figure.target}</span>
 				</button>
 			</PopoverTrigger>
 			<PopoverContent align="end" className="flex w-64 flex-col gap-3">

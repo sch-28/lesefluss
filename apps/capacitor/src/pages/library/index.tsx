@@ -75,8 +75,8 @@ import { ShelfConditionEditor } from "./shelf-condition-editor";
 import {
 	applyLibraryView,
 	buildLibraryItems,
+	isSortBy,
 	type LibraryItem,
-	type SortBy,
 	tagsInUse,
 } from "./sort-filter";
 import SortPopover, { type ThenBy } from "./sort-popover";
@@ -98,9 +98,6 @@ const VIEW_MODE_KEY = "lesefluss:library-view-mode";
 /** Facets whose values come from the books; a value can vanish with its last book. */
 const LIBRARY_VALUE_FACETS: readonly Facet[] = ["tags", "author", "series", "collection"];
 
-const SORT_VALUES: readonly SortBy[] = ["title", "author", "recent", "progress", "rating"];
-const isSortBy = (value: string): value is SortBy =>
-	(SORT_VALUES as readonly string[]).includes(value);
 const isThenBy = (value: string): value is ThenBy => value === "none" || isSortBy(value);
 const NO_SERIES_MEMBERSHIPS: SeriesMemberships = new Map();
 const isViewMode = (value: string): value is ViewMode => value === "grid" || value === "list";
@@ -125,6 +122,7 @@ const Library: React.FC = () => {
 	const collectionsQuery = queryHooks.useCollections();
 	const membersQuery = queryHooks.useCollectionBookIds(collectionId ?? null);
 	const membershipsQuery = queryHooks.useCollectionMemberships();
+	const speedModelQuery = queryHooks.useStatsSpeedModel();
 	const seriesMembershipsQuery = queryHooks.useSeriesMemberships();
 	const activeCollection = collectionsQuery.data?.find((c) => c.id === collectionId);
 	const removeFromCollection = queryHooks.useRemoveBooksFromCollection();
@@ -319,8 +317,16 @@ const Library: React.FC = () => {
 	// loaded here rather than issuing its own query.
 	const existingTitles = useMemo(() => toExistingTitles(books), [books]);
 	const allItems = useMemo(
-		() => buildLibraryItems(books, series, seriesActivity, Date.now(), membershipsQuery.data),
-		[books, series, seriesActivity, membershipsQuery.data],
+		() =>
+			buildLibraryItems(
+				books,
+				series,
+				seriesActivity,
+				Date.now(),
+				membershipsQuery.data,
+				speedModelQuery.data,
+			),
+		[books, series, seriesActivity, membershipsQuery.data, speedModelQuery.data],
 	);
 	const options = useMemo(
 		() => facetOptions(allItems, collectionsQuery.data),

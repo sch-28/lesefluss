@@ -1,9 +1,17 @@
-import { type BookStatus, bookStatus, parseBookTags, readingProgress } from "@lesefluss/core";
+import {
+	type BookStatus,
+	bookPace,
+	bookStatus,
+	parseBookTags,
+	readingProgress,
+	type SpeedModel,
+} from "@lesefluss/core";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
+import { estimateMinutesLeft } from "../../utils/reading-time";
 import { type FacetValues, facetValuesOf, type LibraryFilter, matchesFilter } from "./filter-model";
 
-export type SortBy = "title" | "author" | "recent" | "progress" | "rating";
+export type SortBy = "title" | "author" | "recent" | "progress" | "rating" | "timeLeft";
 
 export const SORT_LABELS: Record<SortBy, string> = {
 	title: "Title",
@@ -11,9 +19,20 @@ export const SORT_LABELS: Record<SortBy, string> = {
 	recent: "Recent",
 	progress: "Progress",
 	rating: "Rating",
+	timeLeft: "Shortest left",
 };
 
-export const SORT_OPTIONS: SortBy[] = ["recent", "title", "author", "progress", "rating"];
+export const SORT_OPTIONS: SortBy[] = [
+	"recent",
+	"title",
+	"author",
+	"progress",
+	"rating",
+	"timeLeft",
+];
+
+export const isSortBy = (value: string): value is SortBy =>
+	(SORT_OPTIONS as readonly string[]).includes(value);
 
 const FINISHED_TAIL_WORDS = 5;
 
@@ -61,6 +80,8 @@ type SortKey = {
 	status: BookStatus;
 	rating: number | null;
 	tags: readonly string[];
+	/** Null when finished or of unknown length, and for a series. */
+	minutesLeft: number | null;
 };
 
 export type LibraryItem =
@@ -73,7 +94,7 @@ export type LibraryItem =
 			facets: FacetValues;
 	  };
 
-function bookSortKey(b: Book): SortKey {
+function bookSortKey(b: Book, model: SpeedModel | undefined): SortKey {
 	return {
 		title: b.title,
 		author: b.author ?? "",
@@ -82,6 +103,7 @@ function bookSortKey(b: Book): SortKey {
 		status: bookStatus(b),
 		rating: b.rating,
 		tags: parseBookTags(b.tags),
+		minutesLeft: estimateMinutesLeft(b, bookPace(model, b.id).wpm),
 	};
 }
 
@@ -96,6 +118,7 @@ function seriesSortKey(s: Series, activity: SeriesActivity | undefined): SortKey
 		// Series carry no tags of their own; a tag filter therefore hides them,
 		// which is right: they cannot match it.
 		tags: [],
+		minutesLeft: null,
 	};
 }
 
@@ -137,6 +160,11 @@ function compareItems(a: LibraryItem, b: LibraryItem, sortBy: SortBy): number {
 		// Unrated sorts below one star rather than above five.
 		case "rating":
 			return (b.sortKey.rating ?? -1) - (a.sortKey.rating ?? -1);
+		case "timeLeft":
+			return (
+				(a.sortKey.minutesLeft ?? Number.POSITIVE_INFINITY) -
+					(b.sortKey.minutesLeft ?? Number.POSITIVE_INFINITY) || 0
+			);
 	}
 }
 
@@ -163,17 +191,19 @@ export type LibraryView = {
 const NO_COLLECTIONS: readonly string[] = [];
 
 /** Every row of the library with its sort and filter fields, built once per library change.
- *  `collectionsOf` maps a book id to the live collections it is in. */
+ *  `collectionsOf` maps a book id to the live collections it is in; `speedModel`
+ *  times what is left. */
 export function buildLibraryItems(
 	books: Book[],
 	series: Series[],
 	activity: Map<string, SeriesActivity>,
 	now = Date.now(),
 	collectionsOf: ReadonlyMap<string, readonly string[]> = new Map(),
+	speedModel?: SpeedModel,
 ): LibraryItem[] {
 	return [
 		...books.map<LibraryItem>((book) => {
-			const sortKey = bookSortKey(book);
+			const sortKey = bookSortKey(book, speedModel);
 			const facets = facetValuesOf(
 				{
 					...sortKey,

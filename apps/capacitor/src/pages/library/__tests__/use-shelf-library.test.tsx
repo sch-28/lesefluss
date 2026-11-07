@@ -13,6 +13,7 @@ vi.mock("../../../services/db/hooks", () => ({
 		useSeriesActivity: () => map,
 		useCollectionMemberships: () => map,
 		useCollections: () => list,
+		useStatsSpeedModel: () => ({ data: undefined }),
 	},
 }));
 vi.mock("../sort-filter", async (importOriginal) => {

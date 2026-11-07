@@ -5,7 +5,7 @@ import { canHaveGoal } from "./reading-goal/goal-model";
 
 /**
  * Whether the local data behind the book page's late content (speed chip, goal,
- * reading stats, journey, chapter count and list) has arrived. The page keeps
+ * reading stats and time, journey, chapter count and list) has arrived. The page keeps
  * its loading state until then, so that content appears in its final layout
  * instead of pushing the rest of the page down one by one as each query lands.
  *
@@ -22,6 +22,7 @@ export function useBookDetailReady(book: Book | null | undefined): boolean {
 	const content = queryHooks.useBookContent(bookId);
 	const speedModel = queryHooks.useStatsSpeedModel();
 	const settings = queryHooks.useSettings();
+	const dailyReading = queryHooks.useStatsDailyReading();
 	const readyBookIdRef = useRef<string | null>(null);
 
 	if (!book) return false;
@@ -30,7 +31,8 @@ export function useBookDetailReady(book: Book | null | undefined): boolean {
 		stats.isLoading ||
 		content.isLoading ||
 		speedModel.isLoading ||
-		settings.isLoading;
+		settings.isLoading ||
+		dailyReading.isLoading;
 	if (!isLoading) readyBookIdRef.current = book.id;
 	return readyBookIdRef.current === book.id;
 }

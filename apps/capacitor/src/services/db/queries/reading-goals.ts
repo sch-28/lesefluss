@@ -191,6 +191,7 @@ const EXCLUDED_GOAL_COLUMNS = {
 	planStartWord: sql`excluded.plan_start_word`,
 	targetDate: sql`excluded.target_date`,
 	dailyPercent: sql`excluded.daily_percent`,
+	dailyMinutes: sql`excluded.daily_minutes`,
 	carriedDaysMet: sql`excluded.carried_days_met`,
 	completedAt: sql`excluded.completed_at`,
 	reminderTime: sql`excluded.reminder_time`,

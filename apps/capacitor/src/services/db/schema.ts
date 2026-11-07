@@ -407,6 +407,8 @@ export const readingGoals = sqliteTable(
 		planStartWord: integer("plan_start_word").$type<WordPosition>().notNull(),
 		targetDate: text("target_date").notNull(),
 		dailyPercent: real("daily_percent").notNull(),
+		/** A minute goal's minutes a day: a pace goal that counts active reading time. */
+		dailyMinutes: real("daily_minutes"),
 		carriedDaysMet: integer("carried_days_met").notNull().default(0),
 		completedAt: integer("completed_at"),
 		/** Local time of day for a daily reminder, "HH:MM"; null = no reminder. */

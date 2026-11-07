@@ -65,6 +65,7 @@ export const CONDITION_FIELDS: readonly FieldSpec[] = [
 		unit: "%",
 		ops: [AT_LEAST, AT_MOST, BETWEEN, IS, NOT],
 	},
+	{ field: "timeLeft", label: "Time left", facet: "timeLeft", ops: [IS, NOT] },
 	{ field: "words", label: "Length", unit: "words", ops: [AT_LEAST, AT_MOST, BETWEEN, EMPTY] },
 	{ field: "added", label: "Date added", facet: "added", ops: [...DATE_OPS, IS] },
 	{ field: "lastRead", label: "Last read", facet: "lastRead", ops: [...DATE_OPS, IS, EMPTY] },

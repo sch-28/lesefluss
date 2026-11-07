@@ -3,17 +3,21 @@ import {
 	canStartGoal,
 	daysMetWithToday,
 	daysToSlider,
+	finishAtMinutes,
 	goalSpec,
 	goalTone,
 	liveToday,
 	MAX_GOAL_DAYS,
 	MIN_GOAL_DAYS,
+	minutesForDays,
 	newGoalSetup,
 	presetDays,
+	rsvpComparison,
 	seedFromGoal,
 	setupValues,
 	signed,
 	sliderToDays,
+	todayFigure,
 } from "../goal-model";
 import { at, makeGoal, makePlan, session, WORDS } from "./goal-fixtures";
 
@@ -52,7 +56,11 @@ describe("setup conversions", () => {
 		const values = setupValues({ lock: "daily", days: 30 }, book(0, 225));
 		expect(goalSpec("date", values)).toEqual({ mode: "deadline", targetDate: "2026-03-30" });
 		// 3.333...% rounds up so the pace never lands after the date shown beside it.
-		expect(goalSpec("daily", values)).toEqual({ mode: "pace", dailyPercent: 3.34 });
+		expect(goalSpec("daily", values)).toEqual({
+			mode: "pace",
+			dailyPercent: 3.34,
+			dailyMinutes: null,
+		});
 	});
 
 	it("holds a locked daily amount to the smallest a goal can store and moves the date", () => {
@@ -72,7 +80,11 @@ describe("setup conversions", () => {
 		const values = setupValues(seed, { ...book(plan.dayStartWord), today: plan.today });
 		expect(values.dailyPercent).toBe(2);
 		expect(values.finishDate).toBe(plan.projectedFinishDate);
-		expect(goalSpec("daily", values)).toEqual({ mode: "pace", dailyPercent: 2 });
+		expect(goalSpec("daily", values)).toEqual({
+			mode: "pace",
+			dailyPercent: 2,
+			dailyMinutes: null,
+		});
 	});
 
 	it("reopens a deadline goal on its target date", () => {
@@ -145,5 +157,66 @@ describe("display states", () => {
 		});
 		expect(plan.isComplete).toBe(true);
 		expect(liveToday(plan, 960, WORDS)).toMatchObject({ isMet: true, fraction: 1 });
+	});
+});
+
+describe("minute goals", () => {
+	it("derives the daily percent and the finish from the minutes at the reader's pace", () => {
+		// 20 min × 10 wpm = 200 words = 20% a day: the 1,000 words take 5 days.
+		const values = setupValues({ lock: "daily", days: 30, dailyMinutes: 20 }, book(0, 10));
+		expect(values).toMatchObject({ dailyMinutes: 20, minutes: 20, days: 5 });
+		expect(values.dailyPercent).toBeCloseTo(20);
+		expect(values.finishDate).toBe("2026-03-05");
+		expect(goalSpec("daily", values)).toEqual({ mode: "pace", dailyPercent: 20, dailyMinutes: 20 });
+	});
+
+	it("turns a duration into whole minutes that never finish later", () => {
+		expect(minutesForDays(3, book(0, 10))).toBe(34);
+		expect(minutesForDays(1000, book(0, 200))).toBe(1);
+	});
+
+	it("reopens a minute goal on its minutes", () => {
+		const goal = makeGoal({ mode: "pace", dailyPercent: 20, dailyMinutes: 20 });
+		const plan = makePlan({ goal, position: 0 });
+		expect(seedFromGoal(goal, plan)).toMatchObject({ lock: "daily", dailyMinutes: 20 });
+	});
+
+	it("shows the RSVP finish at the same minutes only when it is earlier", () => {
+		const values = setupValues({ lock: "daily", days: 30, dailyMinutes: 20 }, book(0, 10));
+		expect(finishAtMinutes(20, 25, book(0))).toBe("2026-03-02");
+		expect(rsvpComparison(values, book(0, 10), 350, 25)?.value).toMatch(/^Done /);
+		expect(rsvpComparison(values, book(0, 10), 350, 10)).toBeNull();
+		// 11 wpm still needs 5 days: no earlier finish, no hint.
+		expect(rsvpComparison(values, book(0, 10), 350, 11)).toBeNull();
+	});
+
+	it("shows a percent goal's RSVP minutes a day, terse", () => {
+		const values = setupValues({ lock: "date", days: 10 }, book(0, 10));
+		// 100 words a day: 10 min at 10 wpm, 5 min at 20.
+		expect(rsvpComparison(values, book(0, 10), 350, 20)).toEqual({
+			dial: 350,
+			value: "5 min a day",
+		});
+	});
+
+	it("counts today's minutes on the card and chip, not the words", () => {
+		const goal = makeGoal({ mode: "pace", dailyPercent: 20, dailyMinutes: 20 });
+		const plan = makePlan({
+			goal,
+			position: 10,
+			sessions: [{ ...session(1, 0, 10), durationMs: 12 * 60_000 }],
+			now: at(1, 21),
+		});
+		const today = liveToday(plan, 10, WORDS);
+		expect(today).toMatchObject({ targetMinutes: 20, isMet: false });
+		expect(today.minutesRead).toBeCloseTo(12);
+		expect(today.minutesToGo).toBeCloseTo(8);
+		expect(today.fraction).toBeCloseTo(0.6);
+		expect(todayFigure(today)).toEqual({ done: "12", target: "20 min" });
+	});
+
+	it("keeps a percent goal's figure in percent", () => {
+		const plan = makePlan({ position: 50, sessions: [session(1, 0, 50)], now: at(1, 21) });
+		expect(todayFigure(liveToday(plan, 50, WORDS))).toEqual({ done: "5.0", target: "10.0%" });
 	});
 });

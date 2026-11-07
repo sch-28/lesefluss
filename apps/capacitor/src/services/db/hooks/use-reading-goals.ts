@@ -2,19 +2,30 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalDayNow } from "../../../hooks/use-local-day";
 import { localDateKey } from "../../../utils/date-utils";
 import { requestReminderSync } from "../../goal-reminders";
-import type { GoalChange, NewGoalSpec } from "../../stats/reading-goal";
+import { type GoalChange, minuteGoalOf, type NewGoalSpec } from "../../stats/reading-goal";
 import { scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
 import type { Book } from "../schema";
 import { statsKeys } from "./query-keys";
 
-/** `null` for a book that cannot have a goal. Keyed by local day, so the plan rolls over at midnight. */
-function useReadingGoalPlan(bookId: string | null) {
+// The reading tracker's heartbeat writes the open sitting this often.
+const SITTING_CHECKPOINT_MS = 30_000;
+
+/**
+ * `null` for a book that cannot have a goal. Keyed by local day, so the plan rolls over at midnight.
+ * `live` re-reads a minute goal while the reader is open: its minutes come from saved sittings,
+ * which only checkpoints update until the sitting ends.
+ */
+function useReadingGoalPlan(bookId: string | null, { live = false }: { live?: boolean } = {}) {
 	const now = useLocalDayNow();
 	return useQuery({
 		queryKey: statsKeys.goalPlan(bookId ?? "", localDateKey(now)),
 		queryFn: () => (bookId ? queries.getReadingGoalPlan(bookId, now) : null),
 		enabled: bookId !== null,
+		refetchInterval: (query) =>
+			live && query.state.data && minuteGoalOf(query.state.data.goal) !== null
+				? SITTING_CHECKPOINT_MS
+				: false,
 	});
 }
 

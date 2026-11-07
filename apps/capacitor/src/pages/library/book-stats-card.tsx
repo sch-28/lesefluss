@@ -1,21 +1,26 @@
-import { bookPace, type MeasuredReadingMode } from "@lesefluss/core";
+import { bookPace, type MeasuredReadingMode, modeSpeed, type Pace } from "@lesefluss/core";
 import { ResponsiveLine } from "@nivo/line";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useTheme } from "../../contexts/theme-context";
+import { useLocalDayNow } from "../../hooks/use-local-day";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
 import { bucketSpeedSeries, type SpeedBucket } from "../../services/stats/aggregate";
 import { summariseBookReading } from "../../services/stats/book-summary";
+import { minuteGoalOf } from "../../services/stats/reading-goal";
 import { summariseSpeedBuckets } from "../../services/stats/summaries";
-import { formatDuration, formatRelative } from "../../utils/date-utils";
+import { averageDailyMinutes } from "../../services/stats/what-if";
+import { formatDuration, formatRelative, localDateKey } from "../../utils/date-utils";
 import { formatReadingTime } from "../../utils/reading-time";
+import { canHaveGoal } from "./reading-goal/goal-model";
 
 import { AnimatedNumber } from "./stats/animated-number";
 import { evenTickIndices, formatDayTick } from "./stats/chart-axis";
 import { ChartTooltip } from "./stats/chart-tooltip";
 import { buildNivoTheme } from "./stats/nivo-theme";
+import { WhatIfSpeed } from "./what-if-speed";
 
 const LINE_COLOR = "#c94b2a";
 const LINE_COLORS = [LINE_COLOR];
@@ -62,6 +67,66 @@ interface Props {
 	book: Book;
 }
 
+function wordsLeftOf(book: Book): number | null {
+	if (book.finishedAt !== null || book.wordCount <= 0) return null;
+	const left = book.wordCount - book.wordPosition;
+	return left > 0 ? left : null;
+}
+
+/**
+ * The what-if slider and RSVP hint under a book's time left. The finish day
+ * uses a minute goal's daily minutes, else the reader's recent daily average.
+ */
+function BookTimeAhead({ book, pace, wordsLeft }: { book: Book; pace: Pace; wordsLeft: number }) {
+	const now = useLocalDayNow();
+	const { data: model } = queryHooks.useStatsSpeedModel();
+	const { data: settings } = queryHooks.useSettings();
+	const { data: plan } = queryHooks.useReadingGoalPlan(canHaveGoal(book) ? book.id : null);
+	const { data: daily } = queryHooks.useStatsDailyReading();
+	const today = localDateKey(now);
+	const minutesPerDay =
+		(plan ? minuteGoalOf(plan.goal) : null) ??
+		(daily ? averageDailyMinutes(daily.msByDay, today) : null);
+	const rsvpWpm = settings ? modeSpeed(model, "rsvp", settings.wpm) : 0;
+
+	return (
+		<WhatIfSpeed
+			key={book.id}
+			wordsLeft={wordsLeft}
+			paceWpm={pace.wpm}
+			minutesPerDay={minutesPerDay}
+			today={today}
+			rsvp={settings && rsvpWpm > pace.wpm ? { dial: settings.wpm, wpm: rsvpWpm } : null}
+		/>
+	);
+}
+
+/** Before the first sitting: the book's length in time, at the reader's pace. */
+function BookReadingTimeCard({ book }: Props) {
+	const { data: model } = queryHooks.useStatsSpeedModel();
+	const wordsLeft = wordsLeftOf(book);
+	if (wordsLeft === null) return null;
+	const pace = bookPace(model, book.id);
+	const isUnread = book.wordPosition <= 0;
+	const { minutesLeft, isPaceEstimated } = summariseBookReading(book, pace);
+
+	return (
+		<section className="book-detail-card mt-4" data-testid="book-reading-time">
+			<h2 className="book-detail-section-title">Reading time</h2>
+			<div className="mt-3">
+				<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
+					{formatReadingTime(minutesLeft ?? 0)}
+				</div>
+				<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
+					{isUnread ? "total" : "left"}
+					{isPaceEstimated ? " · estimated" : " · at your pace"}
+				</div>
+			</div>
+			<BookTimeAhead book={book} pace={pace} wordsLeft={wordsLeft} />
+		</section>
+	);
+}
+
 export function BookStatsCard({ book }: Props) {
 	const { theme, isEinkMode } = useTheme();
 	const stats = queryHooks.useStatsBook(book.id);
@@ -105,10 +170,12 @@ export function BookStatsCard({ book }: Props) {
 		[buckets],
 	);
 
-	if (!data || data.sessionCount === 0) return null;
+	if (!data || data.sessionCount === 0) return <BookReadingTimeCard book={book} />;
 
+	const pace = bookPace(speedModel.data, book.id);
+	const wordsLeft = wordsLeftOf(book);
 	const { totalPages, pagesIn, percent, isFinished, isPaceEstimated, minutesLeft } =
-		summariseBookReading(book, bookPace(speedModel.data, book.id));
+		summariseBookReading(book, pace);
 
 	const showSparkline = buckets.length >= 2;
 
@@ -179,6 +246,10 @@ export function BookStatsCard({ book }: Props) {
 						{percent}% read
 					</p>
 				</div>
+			)}
+
+			{!isFinished && wordsLeft !== null && (
+				<BookTimeAhead book={book} pace={pace} wordsLeft={wordsLeft} />
 			)}
 
 			<div className="mt-4 grid grid-cols-3 gap-3 border-current/10 border-t pt-3">

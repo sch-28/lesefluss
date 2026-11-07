@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isConditionComplete, withField, withOperator } from "../condition-fields";
+import {
+	CONDITION_FIELDS,
+	isConditionComplete,
+	withField,
+	withOperator,
+} from "../condition-fields";
 import {
 	type Condition,
 	type ConditionGroup,
@@ -9,7 +14,7 @@ import {
 	matchesTree,
 	treeToFilter,
 } from "../condition-tree";
-import { type FacetValues, type FilterFields, facetValuesOf } from "../filter-model";
+import { FACETS, type FacetValues, type FilterFields, facetValuesOf } from "../filter-model";
 
 // Local noon on 2026-11-07, so whole-day edges sit well away from `NOW`.
 const NOW = new Date(2026, 10, 7, 12).getTime();
@@ -160,5 +165,11 @@ describe("condition values", () => {
 		expect(withOperator(atLeast, "between").value).toBeNull();
 		expect(withOperator(c("author", "is", "Le Guin"), "contains").value).toBe("");
 		expect(withOperator(atLeast, "nonsense")).toBe(atLeast);
+	});
+});
+
+describe("condition fields", () => {
+	it("give every filter facet a field, so a shelf saved from the chips opens in the editor", () => {
+		expect(FACETS.filter((facet) => !CONDITION_FIELDS.some((f) => f.facet === facet))).toEqual([]);
 	});
 });

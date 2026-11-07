@@ -295,6 +295,7 @@ export const syncReadingGoals = pgTable(
 		planStartWord: integer("plan_start_word").notNull(),
 		targetDate: text("target_date").notNull(),
 		dailyPercent: doublePrecision("daily_percent").notNull(),
+		dailyMinutes: doublePrecision("daily_minutes"),
 		carriedDaysMet: integer("carried_days_met").notNull().default(0),
 		completedAt: timestamp("completed_at"),
 		reminderTime: text("reminder_time"),

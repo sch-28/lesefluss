@@ -36,6 +36,7 @@ function values(overrides: Partial<FacetValues> = {}): FacetValues {
 		collection: [],
 		rating: ["none"],
 		progress: ["1-49"],
+		timeLeft: [],
 		added: [],
 		lastRead: ["never"],
 		wordCount: null,

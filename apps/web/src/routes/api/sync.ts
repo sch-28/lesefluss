@@ -395,6 +395,7 @@ async function getUserSyncData(
 				planStartWord: g.planStartWord,
 				targetDate: g.targetDate,
 				dailyPercent: g.dailyPercent,
+				dailyMinutes: g.dailyMinutes,
 				carriedDaysMet: g.carriedDaysMet,
 				completedAt: g.completedAt ? toMs(g.completedAt) : null,
 				reminderTime: g.reminderTime,

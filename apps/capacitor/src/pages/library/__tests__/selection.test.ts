@@ -24,6 +24,7 @@ const SORT_KEY: LibraryItem["sortKey"] = {
 	status: "want",
 	rating: null,
 	tags: [],
+	minutesLeft: null,
 };
 
 const FACETS: LibraryItem["facets"] = {
@@ -34,6 +35,7 @@ const FACETS: LibraryItem["facets"] = {
 	collection: [],
 	rating: [],
 	progress: [],
+	timeLeft: [],
 	added: [],
 	lastRead: [],
 	wordCount: null,
