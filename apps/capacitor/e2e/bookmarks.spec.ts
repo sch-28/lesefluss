@@ -3,12 +3,6 @@ import { CHAPTER_NOVEL_TITLE, seedChapterNovel } from "./helpers/chapter-novel";
 import { openBookFromLibrary } from "./helpers/seed";
 import { reader } from "./page-objects/reader";
 
-/**
- * B bookmarks the screen without touching the reading position, the ribbon and
- * the progress bar show it, the Bookmarks tab lists it and a tap opens it at its
- * word, and Shift+B steps through the bookmarks, wrapping.
- */
-
 const ribbon = (page: Page) => page.getByRole("button", { name: "Bookmark", exact: true });
 const ticks = (page: Page) => page.locator(".reader-bookmark-tick");
 const rows = (page: Page) => page.locator("[data-bookmark-word]");
@@ -130,4 +124,37 @@ test("in page mode B bookmarks the page's first word, and the ribbon follows pag
 	await expect(ribbon(page)).toHaveAttribute("aria-pressed", "false");
 	await pressKey(page, "ArrowLeft");
 	await expect(ribbon(page)).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a row's delete button removes that bookmark, its tick and the ribbon fill", async ({
+	page,
+}) => {
+	await seedChapterNovel(page);
+	await openBookFromLibrary(page, CHAPTER_NOVEL_TITLE);
+	await reader.expectLoaded(page);
+	await reader.waitOpenSettled(page);
+
+	await moveAndSettle(page, 2400);
+	await pressKey(page, "b");
+	await expect(ticks(page)).toHaveCount(1);
+	await moveAndSettle(page, 6000);
+	await pressKey(page, "b");
+	await expect(ticks(page)).toHaveCount(2);
+	const [first, second] = await bookmarkWords(page);
+	await expect(ribbon(page)).toHaveAttribute("aria-pressed", "true");
+	const requests = await reader.saveRequestCount(page);
+
+	await openBookmarksTab(page);
+	await page
+		.locator(`[data-bookmark-word="${second}"]`)
+		.getByRole("button", { name: "Delete bookmark" })
+		.click();
+	await expect(rows(page)).toHaveCount(1);
+	await page.keyboard.press("Escape");
+	await expect(page.getByRole("dialog")).toHaveCount(0);
+
+	await expect(ticks(page)).toHaveCount(1);
+	await expect(ribbon(page)).toHaveAttribute("aria-pressed", "false");
+	expect(await bookmarkWords(page)).toEqual([first]);
+	expect(await reader.saveRequestCount(page)).toBe(requests);
 });

@@ -1839,6 +1839,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		!!content && !!wordIndex && (readerMode === "rsvp" || !!readerFont),
 	);
 	const { mutate: renameBookmark } = queryHooks.useRenameBookmark();
+	const { mutate: deleteBookmark } = queryHooks.useDeleteBookmark();
 
 	// Moving on to the next chapter means the browsed spot was read.
 	const handleNextChapter = useCallback(() => {
@@ -3134,6 +3135,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					onRenameBookmark={(bookmarkId, label) =>
 						renameBookmark({ id: bookmarkId, bookId: id, label })
 					}
+					onDeleteBookmark={(bookmarkId) => deleteBookmark({ id: bookmarkId, bookId: id })}
 					highlights={highlightRows}
 					onJumpHighlight={handleHighlightJump}
 					glossary={glossaryEntries}

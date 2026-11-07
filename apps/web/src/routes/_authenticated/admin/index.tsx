@@ -43,6 +43,12 @@ import {
 	triggerCatalogDictImport,
 	triggerCatalogSync,
 } from "~/lib/admin";
+import {
+	describeTombstoneCounts,
+	NO_TOMBSTONES,
+	tombstoneCountsInScope,
+	tombstoneTotal,
+} from "~/lib/tombstone-counts";
 import { seo } from "~/utils/seo";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -278,6 +284,8 @@ function TombstoneToolbar({
 	showTombstones,
 	onShowTombstonesChange,
 	tombstonesInScope,
+	cleanupCount,
+	confirmLabel,
 	cleanupLabel,
 	cleanup,
 }: {
@@ -287,6 +295,9 @@ function TombstoneToolbar({
 	showTombstones: boolean;
 	onShowTombstonesChange: (next: boolean) => void;
 	tombstonesInScope: number;
+	/** What the cleanup removes in scope. */
+	cleanupCount: number;
+	confirmLabel: string;
 	cleanupLabel: string;
 	cleanup: CleanupController;
 }) {
@@ -328,7 +339,7 @@ function TombstoneToolbar({
 							disabled={cleanup.isPending}
 							onClick={cleanup.onConfirm}
 						>
-							Confirm cleanup ({tombstonesInScope})
+							{confirmLabel}
 						</Button>
 						<Button
 							variant="outline"
@@ -343,7 +354,7 @@ function TombstoneToolbar({
 					<Button
 						variant="outline"
 						size="sm"
-						disabled={tombstonesInScope === 0}
+						disabled={cleanupCount === 0}
 						onClick={cleanup.onActivate}
 					>
 						{cleanupLabel}
@@ -637,11 +648,11 @@ function BooksTable() {
 		[books, filter, showTombstones],
 	);
 
-	const tombstonesInScope = React.useMemo(() => {
-		if (!stats) return 0;
-		if (filter === "all") return stats.bookTombstoneTotal;
-		return stats.bookTombstonesByUser.find((r) => r.userId === filter)?.count ?? 0;
-	}, [stats, filter]);
+	const purgeableInScope = React.useMemo(
+		() => (stats ? tombstoneCountsInScope(stats.purgeableTombstonesByUser, filter) : NO_TOMBSTONES),
+		[stats, filter],
+	);
+	const tombstonesInScope = purgeableInScope.books;
 
 	const del = useConfirmDelete<[userId: string, bookId: string]>({
 		mutate: async (userId, bookId) => {
@@ -765,6 +776,8 @@ function BooksTable() {
 			showTombstones={showTombstones}
 			onShowTombstonesChange={handleShowTombstonesChange}
 			tombstonesInScope={tombstonesInScope}
+			cleanupCount={tombstoneTotal(purgeableInScope)}
+			confirmLabel={`Confirm cleanup (${describeTombstoneCounts(purgeableInScope)})`}
 			cleanupLabel="Cleanup tombstones"
 			cleanup={cleanupController}
 		/>
@@ -1003,6 +1016,8 @@ function SeriesTable() {
 			showTombstones={showTombstones}
 			onShowTombstonesChange={handleShowTombstonesChange}
 			tombstonesInScope={tombstonesInScope}
+			cleanupCount={tombstonesInScope}
+			confirmLabel={`Confirm cleanup (${tombstonesInScope})`}
 			cleanupLabel="Cleanup series tombstones"
 			cleanup={cleanupController}
 		/>

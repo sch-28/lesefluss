@@ -1,7 +1,7 @@
 import { BOOKMARK_LABEL_MAX } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { formatShortDate } from "../../utils/date-utils";
@@ -22,9 +22,16 @@ interface BookmarkListProps {
 	currentId: string | null;
 	onJump: (word: number) => void;
 	onRename: (id: string, label: string) => void;
+	onDelete: (id: string) => void;
 }
 
-const BookmarkList: React.FC<BookmarkListProps> = ({ rows, currentId, onJump, onRename }) => {
+const BookmarkList: React.FC<BookmarkListProps> = ({
+	rows,
+	currentId,
+	onJump,
+	onRename,
+	onDelete,
+}) => {
 	const [editingId, setEditingId] = useState<string | null>(null);
 
 	if (rows.length === 0) {
@@ -76,15 +83,26 @@ const BookmarkList: React.FC<BookmarkListProps> = ({ rows, currentId, onJump, on
 							</button>
 						)}
 						{editingId !== row.id && (
-							<Button
-								variant="ghost"
-								size="icon"
-								className="mt-2 shrink-0 text-muted-foreground"
-								onClick={() => setEditingId(row.id)}
-								aria-label="Rename bookmark"
-							>
-								<Pencil />
-							</Button>
+							<>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="mt-2 shrink-0 text-muted-foreground"
+									onClick={() => setEditingId(row.id)}
+									aria-label="Rename bookmark"
+								>
+									<Pencil />
+								</Button>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="mt-2 shrink-0 text-muted-foreground"
+									onClick={() => onDelete(row.id)}
+									aria-label="Delete bookmark"
+								>
+									<Trash2 />
+								</Button>
+							</>
 						)}
 					</li>
 				);

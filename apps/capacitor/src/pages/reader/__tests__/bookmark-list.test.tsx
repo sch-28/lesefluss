@@ -31,7 +31,13 @@ function setInputValue(input: HTMLInputElement, value: string) {
 describe("BookmarkList", () => {
 	it("shows the empty state without bookmarks", async () => {
 		rendered = await render(
-			<BookmarkList rows={[]} currentId={null} onJump={vi.fn()} onRename={vi.fn()} />,
+			<BookmarkList
+				rows={[]}
+				currentId={null}
+				onJump={vi.fn()}
+				onRename={vi.fn()}
+				onDelete={vi.fn()}
+			/>,
 		);
 		expect(rendered.text()).toBe("No bookmarks yet. Press B or tap the ribbon to mark this page.");
 	});
@@ -47,6 +53,7 @@ describe("BookmarkList", () => {
 				currentId="a"
 				onJump={onJump}
 				onRename={vi.fn()}
+				onDelete={vi.fn()}
 			/>,
 		);
 		const items = [...rendered.container.querySelectorAll("li")].map((li) => li.textContent);
@@ -64,7 +71,13 @@ describe("BookmarkList", () => {
 	it("renames a bookmark from its pencil, and leaves an unchanged label alone", async () => {
 		const onRename = vi.fn();
 		rendered = await render(
-			<BookmarkList rows={[row()]} currentId={null} onJump={vi.fn()} onRename={onRename} />,
+			<BookmarkList
+				rows={[row()]}
+				currentId={null}
+				onJump={vi.fn()}
+				onRename={onRename}
+				onDelete={vi.fn()}
+			/>,
 		);
 		await click(rendered.getButton("Rename bookmark"));
 		let input = rendered.container.querySelector<HTMLInputElement>("input");
@@ -82,5 +95,40 @@ describe("BookmarkList", () => {
 		});
 		expect(onRename).toHaveBeenCalledWith("a", "Big reveal");
 		expect(rendered.container.querySelector("input")).toBeNull();
+	});
+
+	it("deletes the row's own bookmark from its delete button, without jumping", async () => {
+		const onDelete = vi.fn();
+		const onJump = vi.fn();
+		rendered = await render(
+			<BookmarkList
+				rows={[row(), row({ id: "b", word: 300 })]}
+				currentId={null}
+				onJump={onJump}
+				onRename={vi.fn()}
+				onDelete={onDelete}
+			/>,
+		);
+		const deletes = rendered.container.querySelectorAll<HTMLButtonElement>(
+			"button[aria-label='Delete bookmark']",
+		);
+		expect(deletes).toHaveLength(2);
+		await click(deletes[1]);
+		expect(onDelete).toHaveBeenCalledExactlyOnceWith("b");
+		expect(onJump).not.toHaveBeenCalled();
+	});
+
+	it("hides the delete button while the row's label is being edited", async () => {
+		rendered = await render(
+			<BookmarkList
+				rows={[row()]}
+				currentId={null}
+				onJump={vi.fn()}
+				onRename={vi.fn()}
+				onDelete={vi.fn()}
+			/>,
+		);
+		await click(rendered.getButton("Rename bookmark"));
+		expect(rendered.queryButton("Delete bookmark")).toBeNull();
 	});
 });

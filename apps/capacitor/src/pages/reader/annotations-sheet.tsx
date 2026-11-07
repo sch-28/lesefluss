@@ -41,6 +41,7 @@ interface AnnotationsSheetProps {
 	currentBookmarkId: string | null;
 	onJumpBookmark: (word: number) => void;
 	onRenameBookmark: (id: string, label: string) => void;
+	onDeleteBookmark: (id: string) => void;
 	highlights: Highlight[];
 	onJumpHighlight: (highlight: Highlight) => void;
 	glossary: GlossaryEntry[];
@@ -65,6 +66,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	currentBookmarkId,
 	onJumpBookmark,
 	onRenameBookmark,
+	onDeleteBookmark,
 	highlights,
 	onJumpHighlight,
 	glossary,
@@ -200,6 +202,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 								onClose();
 							}}
 							onRename={onRenameBookmark}
+							onDelete={onDeleteBookmark}
 						/>
 					)}
 

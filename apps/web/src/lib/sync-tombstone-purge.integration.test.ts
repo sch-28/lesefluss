@@ -12,9 +12,10 @@ import {
 	type NewSyncWishlistItem,
 	syncBookmarks,
 	syncBooks,
+	syncHighlights,
 	syncWishlist,
 } from "~/db/schema";
-import { purgeBookTombstones } from "~/lib/sync-tombstone-purge";
+import { countPurgeableTombstones, purgeBookTombstones } from "~/lib/sync-tombstone-purge";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 
@@ -27,6 +28,7 @@ describe.skipIf(!hasDb)("purgeBookTombstones (integration)", () => {
 	async function clear() {
 		await db.delete(syncBookmarks).where(inArray(syncBookmarks.userId, users));
 		await db.delete(syncWishlist).where(inArray(syncWishlist.userId, users));
+		await db.delete(syncHighlights).where(inArray(syncHighlights.userId, users));
 		await db.delete(syncBooks).where(inArray(syncBooks.userId, users));
 	}
 
@@ -132,5 +134,67 @@ describe.skipIf(!hasDb)("purgeBookTombstones (integration)", () => {
 			"alice:live",
 			"bob:gone",
 		]);
+	});
+
+	test("counts per kind exactly what the purge then removes, leaving chapters and other users out", async () => {
+		const at = new Date(1_000);
+		const book = (userId: string, bookId: string, deleted: boolean, seriesId?: string) => ({
+			userId,
+			bookId,
+			title: bookId,
+			originUserId: userId,
+			originBookId: bookId,
+			deleted,
+			seriesId: seriesId ?? null,
+			updatedAt: at,
+		});
+		const highlight = (userId: string, highlightId: string, deleted: boolean) => ({
+			userId,
+			highlightId,
+			bookId: "deadbeef",
+			startWord: 1,
+			endWord: 2,
+			deleted,
+			createdAt: at,
+			updatedAt: at,
+		});
+		await db
+			.insert(syncBooks)
+			.values([
+				book(alice, "gone0001", true),
+				book(alice, "live0001", false),
+				book(alice, "chap0001", true, "series01"),
+				book(bob, "gone0002", true),
+			]);
+		await db
+			.insert(syncHighlights)
+			.values([
+				highlight(alice, "gone-1", true),
+				highlight(alice, "gone-2", true),
+				highlight(alice, "live", false),
+			]);
+		await db.insert(syncBookmarks).values([mark(alice, "gone", true), mark(bob, "gone", true)]);
+		await db.insert(syncWishlist).values([wish(alice, "live", false), wish(alice, "gone", true)]);
+
+		expect(await countPurgeableTombstones(db, alice)).toEqual([
+			{ userId: alice, books: 1, highlights: 2, bookmarks: 1, wishlist: 1 },
+		]);
+		const everyone = await countPurgeableTombstones(db);
+		expect(
+			everyone
+				.filter((r) => users.includes(r.userId))
+				.sort((a, b) => a.userId.localeCompare(b.userId)),
+		).toEqual([
+			{ userId: alice, books: 1, highlights: 2, bookmarks: 1, wishlist: 1 },
+			{ userId: bob, books: 1, highlights: 0, bookmarks: 1, wishlist: 0 },
+		]);
+
+		expect(await db.transaction((tx) => purgeBookTombstones(tx, alice))).toEqual({
+			booksRemoved: 1,
+			highlightsRemoved: 2,
+			bookmarksRemoved: 1,
+			wishlistRemoved: 1,
+		});
+		expect(await countPurgeableTombstones(db, alice)).toEqual([]);
 	});
 });

@@ -9,7 +9,12 @@ import { auth } from "./auth";
 import { catalogFetch } from "./catalog";
 import { tombstoneBook } from "./moderation/takedown";
 import { tombstoneBookmarksOfDeletedBooks } from "./sync-bookmark-upsert";
-import { purgeBookTombstones, TombstoneScopeSchema } from "./sync-tombstone-purge";
+import {
+	countPurgeableTombstones,
+	purgeBookTombstones,
+	TombstoneScopeSchema,
+} from "./sync-tombstone-purge";
+import { tombstoneCountsInScope } from "./tombstone-counts";
 
 export const requireAdminSession = createServerOnlyFn(async () => {
 	const request = getRequest();
@@ -43,8 +48,7 @@ export const getAdminStats = createServerFn({ method: "GET" }).handler(async () 
 		usersWithBooksResult,
 		highlightsResult,
 		sessionsResult,
-		bookTombstonesResult,
-		bookTombstonesByUserResult,
+		purgeableTombstonesByUser,
 		seriesResult,
 		seriesTombstonesResult,
 		seriesTombstonesByUserResult,
@@ -66,15 +70,7 @@ export const getAdminStats = createServerFn({ method: "GET" }).handler(async () 
 			.where(eq(syncBooks.deleted, false)),
 		db.select({ count: count() }).from(syncHighlights).where(eq(syncHighlights.deleted, false)),
 		db.select({ count: count() }).from(session).where(gt(session.expiresAt, now)),
-		db
-			.select({ count: count() })
-			.from(syncBooks)
-			.where(and(eq(syncBooks.deleted, true), standaloneBookOnly)),
-		db
-			.select({ userId: syncBooks.userId, count: count() })
-			.from(syncBooks)
-			.where(and(eq(syncBooks.deleted, true), standaloneBookOnly))
-			.groupBy(syncBooks.userId),
+		countPurgeableTombstones(db),
 		db.select({ count: count() }).from(syncSeries).where(eq(syncSeries.deleted, false)),
 		db.select({ count: count() }).from(syncSeries).where(eq(syncSeries.deleted, true)),
 		db
@@ -90,11 +86,8 @@ export const getAdminStats = createServerFn({ method: "GET" }).handler(async () 
 		usersLast30d: usersLast30dResult[0]?.count ?? 0,
 		bookTotal: booksResult[0]?.count ?? 0,
 		seriesTotal: seriesResult[0]?.count ?? 0,
-		bookTombstoneTotal: bookTombstonesResult[0]?.count ?? 0,
-		bookTombstonesByUser: bookTombstonesByUserResult.map((r) => ({
-			userId: r.userId,
-			count: r.count,
-		})),
+		bookTombstoneTotal: tombstoneCountsInScope(purgeableTombstonesByUser, "all").books,
+		purgeableTombstonesByUser,
 		seriesTombstoneTotal: seriesTombstonesResult[0]?.count ?? 0,
 		seriesTombstonesByUser: seriesTombstonesByUserResult.map((r) => ({
 			userId: r.userId,
