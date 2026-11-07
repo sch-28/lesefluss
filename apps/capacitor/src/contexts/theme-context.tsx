@@ -48,6 +48,25 @@ export function storedThemeFor(raw: string | undefined): AppTheme {
 	return isAppTheme(raw) ? raw : "dark";
 }
 
+/** The page background per theme, as index.html paints it before React mounts. */
+const THEME_BACKGROUNDS: Record<AppTheme, string> = {
+	light: "#fdfcfb",
+	dark: "#0c0d0e",
+	sepia: "#c4b081",
+	"high-contrast": "#000000",
+};
+const EINK_BACKGROUND = "#ffffff";
+
+export function themeColorFor(theme: AppTheme, isEinkMode: boolean): string {
+	return isEinkMode ? EINK_BACKGROUND : THEME_BACKGROUNDS[theme];
+}
+
+/** The installed web app's title bar (and Android Chrome's toolbar) follows the theme. */
+export function applyThemeColor(color: string): void {
+	const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+	if (meta) meta.content = color;
+}
+
 function readCachedEinkMode(): boolean {
 	try {
 		return localStorage.getItem(EINK_CACHE_KEY) === "1";
@@ -56,7 +75,7 @@ function readCachedEinkMode(): boolean {
 	}
 }
 
-function applyAppearance(theme: AppTheme, appFontSize: number, isEinkMode: boolean) {
+export function applyAppearance(theme: AppTheme, appFontSize: number, isEinkMode: boolean) {
 	// Apply to both: <html> so shadcn portals inherit, <body> so legacy Ionic
 	// CSS (monochrome.css uses `body.dark` selectors) still fires during the
 	// migration. Drop the body class once Ionic is fully removed.
@@ -66,6 +85,7 @@ function applyAppearance(theme: AppTheme, appFontSize: number, isEinkMode: boole
 		el.classList.toggle(EINK_CLASS, isEinkMode);
 	}
 	document.documentElement.style.fontSize = `${appFontSize}px`;
+	applyThemeColor(themeColorFor(theme, isEinkMode));
 	// Cache so index.html's inline script can apply synchronously on next load,
 	// avoiding a flash of unstyled background before the DB hydrates.
 	try {

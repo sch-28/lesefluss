@@ -11,7 +11,7 @@ import {
 } from "@lesefluss/ui/alert-dialog";
 import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
 	Bluetooth,
 	BluetoothOff,
@@ -39,6 +39,7 @@ import { ble, SCAN_BLOCKER_MESSAGES, type ScanBlocker } from "@/services/ble";
 import type { StorageInfo } from "@/services/ble/characteristics/storage";
 import { MULTI_BOOK_DESCRIPTOR_ID } from "@/services/devices";
 import { log } from "@/utils/log";
+import { IS_WEB } from "@/utils/platform";
 
 const SCAN_BLOCKER_ACTIONS: Record<ScanBlocker, string> = {
 	"bluetooth-off": "Turn on Bluetooth",
@@ -47,6 +48,9 @@ const SCAN_BLOCKER_ACTIONS: Record<ScanBlocker, string> = {
 };
 
 export const Route = createFileRoute("/tabs/settings/device")({
+	beforeLoad: () => {
+		if (IS_WEB) throw redirect({ to: "/tabs/settings", replace: true });
+	},
 	component: DeviceSettings,
 });
 

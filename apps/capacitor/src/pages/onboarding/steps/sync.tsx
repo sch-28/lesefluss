@@ -5,7 +5,7 @@ import { HandleClaimStep } from "../../../components/social/handle-claim-step";
 import { SignInOptions } from "../../../components/sync/sign-in-options";
 import { useSyncContext } from "../../../contexts/sync-context";
 import { useOwnSocialProfile } from "../../../services/social/profile";
-import { IS_WEB_BUILD } from "../../../services/sync";
+import { IS_WEB_BUILD, webSignInHref } from "../../../services/sync";
 import { useOnboardingFooter } from "../footer-context";
 
 function SignInStep() {
@@ -13,8 +13,7 @@ function SignInStep() {
 
 	const signInOnWebsite = useCallback(async () => {
 		await finish();
-		// Back into the app after sign-in; without a redirect /login lands on the website profile.
-		window.location.href = `/login?redirect=${encodeURIComponent("/app/tabs/library")}`;
+		window.location.href = webSignInHref("/app/tabs/library");
 	}, [finish]);
 
 	useEffect(() => {

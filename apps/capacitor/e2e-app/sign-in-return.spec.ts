@@ -30,3 +30,12 @@ test("signing in from onboarding returns to the /app library, not the website pr
 	await page.goto("/app/");
 	await page.waitForURL(/\/app\/tabs\/library/);
 });
+
+test("signing in from sync settings returns to sync settings", async ({ page }) => {
+	await resetAppStorage(page);
+	await page.goto("/app/tabs/settings/sync");
+	await page.getByRole("link", { name: "Sign in", exact: true }).click();
+	await page.waitForURL(/\/login\?redirect=%2Fapp%2Ftabs%2Fsettings%2Fsync/);
+	await submitLogin(page, "fay");
+	await page.waitForURL(/\/app\/tabs\/settings\/sync$/);
+});

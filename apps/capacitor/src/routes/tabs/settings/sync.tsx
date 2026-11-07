@@ -37,7 +37,7 @@ import { SignInOptions } from "@/components/sync/sign-in-options";
 import { useToast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
 import { queryHooks } from "@/services/db/hooks";
-import { IS_WEB_BUILD } from "@/services/sync";
+import { IS_WEB_BUILD, webSignInHref } from "@/services/sync";
 
 export const Route = createFileRoute("/tabs/settings/sync")({
 	component: SyncSettings,
@@ -302,7 +302,11 @@ function SyncSettings() {
 						<div className="p-3">
 							{IS_WEB_BUILD ? (
 								<Button asChild className="w-full">
-									<a href="/login" target="_top" rel="noreferrer">
+									<a
+										href={webSignInHref(window.location.pathname + window.location.search)}
+										target="_top"
+										rel="noreferrer"
+									>
 										Sign in
 									</a>
 								</Button>

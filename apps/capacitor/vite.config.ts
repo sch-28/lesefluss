@@ -55,8 +55,73 @@ function engineCheck(): Plugin {
 	};
 }
 
+const IS_WEB_BUILD = Boolean(process.env.WEB_BUILD);
+const BASE = IS_WEB_BUILD ? "/app/" : "/";
+// The light theme's background (tokens.css), so the launch screen matches first paint.
+const MANIFEST_BACKGROUND = "#fdfcfb";
+
+/**
+ * Makes the web build installable: emits manifest.webmanifest and links it with
+ * the Home Screen meta tags. Scope "/" keeps the website's /login and /account in
+ * the app window (LESE-20.1). The Android build gets neither.
+ */
+function webAppManifest(): Plugin {
+	const manifest = {
+		id: BASE,
+		name: "Lesefluss",
+		short_name: "Lesefluss",
+		description: "Read your books faster: RSVP, scroll and page reader, synced across devices.",
+		lang: "en",
+		start_url: BASE,
+		scope: "/",
+		display: "standalone",
+		background_color: MANIFEST_BACKGROUND,
+		theme_color: MANIFEST_BACKGROUND,
+		icons: [
+			{ src: `${BASE}icons/icon-192.png`, sizes: "192x192", type: "image/png", purpose: "any" },
+			{ src: `${BASE}icons/icon-512.png`, sizes: "512x512", type: "image/png", purpose: "any" },
+			{
+				src: `${BASE}icons/icon-maskable-512.png`,
+				sizes: "512x512",
+				type: "image/png",
+				purpose: "maskable",
+			},
+		],
+	};
+	return {
+		name: "web-app-manifest",
+		apply: () => IS_WEB_BUILD,
+		configureServer(server) {
+			server.middlewares.use(`${BASE}manifest.webmanifest`, (_req, res) => {
+				res.setHeader("Content-Type", "application/manifest+json");
+				res.end(JSON.stringify(manifest));
+			});
+		},
+		generateBundle() {
+			this.emitFile({
+				type: "asset",
+				fileName: "manifest.webmanifest",
+				source: `${JSON.stringify(manifest, null, "\t")}\n`,
+			});
+		},
+		transformIndexHtml() {
+			const meta = (name: string, content: string) => ({ tag: "meta", attrs: { name, content } });
+			return [
+				{ tag: "link", attrs: { rel: "manifest", href: `${BASE}manifest.webmanifest` } },
+				meta("theme-color", MANIFEST_BACKGROUND),
+				meta("mobile-web-app-capable", "yes"),
+				meta("apple-mobile-web-app-capable", "yes"),
+				meta("apple-mobile-web-app-title", "Lesefluss"),
+				// Not black-translucent: its white text cannot change at runtime and vanishes
+				// on the light themes. With default, iOS paints the bar in theme-color.
+				meta("apple-mobile-web-app-status-bar-style", "default"),
+			].map((tag) => ({ ...tag, injectTo: "head" as const }));
+		},
+	};
+}
+
 export default defineConfig({
-	base: process.env.WEB_BUILD ? "/app/" : "/",
+	base: BASE,
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "src"),
@@ -72,6 +137,7 @@ export default defineConfig({
 		react(),
 		tailwindcss(),
 		engineCheck(),
+		webAppManifest(),
 		// Serve sql-wasm.wasm at any path ending in /sql-wasm.wasm during dev.
 		// jeep-sqlite resolves the path relative to its own script URL, which
 		// can vary, so we intercept all requests for this filename.

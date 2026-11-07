@@ -43,6 +43,7 @@ import {
 	setTelemetryEnabled,
 } from "@/services/telemetry";
 import { IS_READ_ALOUD_SUPPORTED } from "@/services/tts";
+import { openLink } from "@/utils/open-link";
 import { IS_WEB } from "@/utils/platform";
 
 export const Route = createFileRoute("/tabs/settings/")({
@@ -101,9 +102,9 @@ function SettingsLanding() {
 		if (diagnostics?.os) params.set("os", diagnostics.os);
 		if (diagnostics?.webview) params.set("wv", diagnostics.webview);
 		const base = IS_WEB ? "/feedback" : "https://lesefluss.app/feedback";
-		window.open(`${base}?${params.toString()}`, IS_WEB ? "_blank" : "_system");
+		openLink(`${base}?${params.toString()}`, { nativeTarget: "system" });
 	};
-	const openWebsite = () => window.open("https://lesefluss.app", "_system");
+	const openWebsite = () => openLink("https://lesefluss.app", { nativeTarget: "system" });
 	const replayOnboarding = () => navigate({ to: "/onboarding" });
 
 	const showDevicesAndSync = !IS_WEB || SYNC_ENABLED;

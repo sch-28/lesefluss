@@ -2,7 +2,7 @@ import { Button } from "@lesefluss/ui/button";
 import { Link } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
 import { useState } from "react";
-import { IS_WEB_BUILD, openBrowserSignIn, SYNC_ENABLED } from "@/services/sync";
+import { IS_WEB_BUILD, openBrowserSignIn, SYNC_ENABLED, webSignInHref } from "@/services/sync";
 import { TrailerCard } from "./first-run-hero";
 
 /** Shows what social reading looks like and starts the existing sign-in flow for the platform. */
@@ -12,7 +12,7 @@ export function SignedOutSocial({ returnTo }: { returnTo: string }) {
 	const signIn = async () => {
 		setIsStarting(true);
 		if (IS_WEB_BUILD) {
-			window.location.assign(`/login?redirect=${encodeURIComponent(`/app${returnTo}`)}`);
+			window.location.assign(webSignInHref(`/app${returnTo}`));
 			return;
 		}
 		try {

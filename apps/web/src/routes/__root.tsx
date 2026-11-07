@@ -38,7 +38,9 @@ export const Route = createRootRoute({
 				{ rel: "icon", href: "/favicon.png", type: "image/png" },
 				{ rel: "icon", href: "/favicon.ico", sizes: "any" },
 				{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-				{ rel: "manifest", href: "/site.webmanifest" },
+				// The app's manifest on every page: adding any page to the Home Screen installs
+				// the app at /app/, never a second copy of the website (LESE-20.1).
+				{ rel: "manifest", href: "/app/manifest.webmanifest" },
 			],
 			scripts: [
 				webSiteSchema,

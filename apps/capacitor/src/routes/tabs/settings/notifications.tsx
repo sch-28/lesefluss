@@ -25,6 +25,7 @@ function Spinner() {
 
 function DeviceSection() {
 	const permission = usePushPermission();
+	if (permission.data === "unsupported") return null;
 	let content: React.ReactNode;
 	if (permission.data === "granted") {
 		content = (

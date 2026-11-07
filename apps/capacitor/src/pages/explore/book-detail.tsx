@@ -1,4 +1,3 @@
-import { Browser } from "@capacitor/browser";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { BookOpen, ExternalLink, Library, Plus, Share2 } from "lucide-react";
@@ -11,6 +10,7 @@ import {
 } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { queries } from "../../services/db/queries";
+import { openLink } from "../../utils/open-link";
 import { type DetailAction, DetailShell } from "../_shared/detail-shell";
 import BookDetailShelves from "./book-detail-shelves";
 import { catalogFacts } from "./catalog-facts";
@@ -134,7 +134,7 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 		primary = {
 			label: `Read on ${sourceName}`,
 			icon: ExternalLink,
-			onClick: () => void Browser.open({ url: externalUrl }),
+			onClick: () => openLink(externalUrl),
 		};
 	} else {
 		primary = {

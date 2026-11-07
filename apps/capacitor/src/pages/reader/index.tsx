@@ -11,7 +11,6 @@
  */
 
 import { App as CapacitorApp } from "@capacitor/app";
-import { Browser } from "@capacitor/browser";
 import type { DiscussionItem, RsvpSettings } from "@lesefluss/core";
 import {
 	DEFAULT_SETTINGS,
@@ -114,6 +113,7 @@ import {
 	publishSettle,
 	type SaveSource,
 } from "../../test-hooks/reader";
+import { openLink } from "../../utils/open-link";
 import { formatReadingTime } from "../../utils/reading-time";
 import { isBurstAvailable, openBurst } from "../burst/open-burst";
 import { liveToday } from "../library/reading-goal/goal-model";
@@ -1175,7 +1175,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const handleLinkTap = useCallback((href: string) => {
 		if (import.meta.env.DEV) publishLinkOpen(href);
-		void Browser.open({ url: href });
+		openLink(href);
 	}, []);
 
 	// ── Progress-bar scrub gestures ───────────────────────────────────────
@@ -2813,7 +2813,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 									<DropdownMenuItem
 										className={MENU_ITEM_CLASS}
 										onSelect={() => {
-											void Browser.open({ url: overflowSourceUrl });
+											openLink(overflowSourceUrl);
 										}}
 									>
 										<ExternalLink />

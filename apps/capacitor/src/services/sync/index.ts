@@ -122,6 +122,7 @@ export {
 	SYNC_ENABLED,
 } from "./session";
 export { SIGN_IN_FAILED_MESSAGE } from "./sign-in-copy";
+export { webSignInHref } from "./web-sign-in";
 
 const PENDING_SIGN_OUT_KEY = "sync_pending_sign_out";
 
