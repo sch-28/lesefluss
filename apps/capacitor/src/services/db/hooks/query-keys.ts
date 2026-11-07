@@ -24,6 +24,9 @@ export const collectionKeys = {
 	ofBook: (bookId: string) => ["books", "collections", "of-book", bookId] as const,
 	seriesOfBook: (bookId: string) => ["books", "collections", "series-of-book", bookId] as const,
 	memberships: ["books", "collections", "memberships"] as const,
+	seriesMemberships: ["books", "collections", "series-memberships"] as const,
+	memberRows: (collectionId: string) =>
+		["books", "collections", "member-rows", collectionId] as const,
 	importSeries: (seriesKey: string) =>
 		["books", "collections", "import-series", seriesKey] as const,
 };

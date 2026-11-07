@@ -114,15 +114,22 @@ export function tagsInUse(books: Book[]): string[] {
 	for (const book of books) {
 		for (const tag of parseBookTags(book.tags)) seen.add(tag);
 	}
-	return [...seen].sort((a, b) => a.localeCompare(b));
+	return [...seen].sort(compareText);
+}
+
+/** Numbers inside strings compare as numbers, so "Book 2" sorts before "Book 10". */
+const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+
+export function compareText(a: string, b: string): number {
+	return collator.compare(a, b);
 }
 
 function compareItems(a: LibraryItem, b: LibraryItem, sortBy: SortBy): number {
 	switch (sortBy) {
 		case "title":
-			return a.sortKey.title.localeCompare(b.sortKey.title);
+			return collator.compare(a.sortKey.title, b.sortKey.title);
 		case "author":
-			return a.sortKey.author.localeCompare(b.sortKey.author);
+			return collator.compare(a.sortKey.author, b.sortKey.author);
 		case "recent":
 			return b.sortKey.recency - a.sortKey.recency;
 		case "progress":
@@ -133,9 +140,22 @@ function compareItems(a: LibraryItem, b: LibraryItem, sortBy: SortBy): number {
 	}
 }
 
+/** The user's sort: `thenBy` orders what ties on `sortBy`. */
+export function compareByView(
+	a: LibraryItem,
+	b: LibraryItem,
+	sortBy: SortBy,
+	thenBy: SortBy | null = null,
+): number {
+	const first = compareItems(a, b, sortBy);
+	if (first !== 0 || !thenBy || thenBy === sortBy) return first;
+	return compareItems(a, b, thenBy);
+}
+
 export type LibraryView = {
 	filter: LibraryFilter;
 	sortBy: SortBy;
+	thenBy?: SortBy | null;
 	/** Free text over title and author. Empty matches everything. */
 	search?: string;
 };
@@ -187,11 +207,11 @@ export function buildLibraryItems(
 }
 
 export function applyLibraryView(items: readonly LibraryItem[], view: LibraryView): LibraryItem[] {
-	const { filter, sortBy, search = "" } = view;
+	const { filter, sortBy, thenBy = null, search = "" } = view;
 	const needle = search.trim().toLowerCase();
 	return items
 		.filter((it) => matchesFilter(it.facets, filter) && matchesSearch(it, needle))
-		.sort((a, b) => compareItems(a, b, sortBy));
+		.sort((a, b) => compareByView(a, b, sortBy, thenBy));
 }
 
 export function filterAndSortLibrary(

@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import type React from "react";
 import { useId } from "react";
 import BookCover from "../../components/book-cover";
+import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { DeviceBadge } from "../../components/device-sync";
 import type { Book } from "../../services/db/schema";
 import CardMoreButton from "./card-more-button";
@@ -27,6 +28,8 @@ type BookListItemProps = {
 	onLongPress?: () => void;
 	/** Mouse drag onto a sidebar collection; the library's grid sets the drag data. */
 	draggable?: boolean;
+	/** The book's #N in its series, from the series collection. */
+	seriesNumber?: number | null;
 };
 
 const BookListItem: React.FC<BookListItemProps> = ({
@@ -42,6 +45,7 @@ const BookListItem: React.FC<BookListItemProps> = ({
 	onModifiedClick,
 	onLongPress,
 	draggable = false,
+	seriesNumber = null,
 }) => {
 	const handlers = useLongPress({
 		onTap: (e) => {
@@ -92,8 +96,14 @@ const BookListItem: React.FC<BookListItemProps> = ({
 						{book.title}
 					</div>
 					<div id={detailsId}>
-						{book.author && (
+						{(book.author || seriesNumber !== null) && (
 							<div className="mt-0.5 truncate text-[0.8rem] text-muted-foreground">
+								{seriesNumber !== null && (
+									<span data-testid="series-number-badge" className="font-semibold tabular-nums">
+										{formatSeriesNumber(seriesNumber)}
+										{book.author && " · "}
+									</span>
+								)}
 								{book.author}
 							</div>
 						)}

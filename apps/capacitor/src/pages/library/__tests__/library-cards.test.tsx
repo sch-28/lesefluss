@@ -110,6 +110,14 @@ describe.each([
 		expect(button.querySelector("a, input, select, textarea, [tabindex]")).toBeNull();
 	});
 
+	it("shows the book's #N in its series, and nothing without one", async () => {
+		view = await render(<Card {...bookProps()} seriesNumber={2.5} />);
+		expect(description(card())).toContain("#2.5");
+		view.unmount();
+		view = await render(<Card {...bookProps()} seriesNumber={null} />);
+		expect(view.container.querySelector('[data-testid="series-number-badge"]')).toBeNull();
+	});
+
 	it("opens on click and offers the menu on right-click", async () => {
 		const props = bookProps();
 		view = await render(<Card {...props} />);

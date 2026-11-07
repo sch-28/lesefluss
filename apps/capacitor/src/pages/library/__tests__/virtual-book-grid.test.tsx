@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeBook } from "../../../test/book-fixture";
+import { groupLibrary } from "../group-by";
 import { applyLibraryView, buildLibraryItems } from "../sort-filter";
 import VirtualBookGrid, { estimateRowPx } from "../virtual-book-grid";
 
@@ -74,6 +75,44 @@ describe("VirtualBookGrid", () => {
 		const rendered = scroller.querySelectorAll("[data-book-id]").length;
 		expect(rendered).toBeGreaterThan(0);
 		expect(rendered).toBeLessThan(100);
+		act(() => root.unmount());
+		scroller.remove();
+	});
+
+	it("heads each group with its name and count, and folds a collapsed one to its heading", async () => {
+		restore = stubLayout();
+		const scroller = document.createElement("div");
+		scroller.dataset.scrollRestorationId = "app-scroll";
+		Object.defineProperty(scroller, "clientHeight", { value: 800 });
+		document.body.append(scroller);
+		const few = items.slice(0, 4);
+		const groups = groupLibrary(few, "author", { collections: [], seriesMemberships: new Map() });
+		const onToggleGroup = vi.fn();
+		const root = createRoot(scroller);
+		await act(async () => {
+			root.render(
+				<VirtualBookGrid
+					items={few}
+					viewMode="list"
+					groups={groups}
+					collapsed={new Set(["bo lind"])}
+					onToggleGroup={onToggleGroup}
+					renderItem={(item) => (item.kind === "book" ? <div data-book-id={item.book.id} /> : null)}
+				/>,
+			);
+		});
+		const headers = [
+			...scroller.querySelectorAll<HTMLButtonElement>("[data-testid=library-group-header]"),
+		];
+		expect(headers.map((h) => [h.textContent, h.getAttribute("aria-expanded")])).toEqual([
+			["Ada Vance2", "true"],
+			["Bo Lind2", "false"],
+		]);
+		expect(
+			[...scroller.querySelectorAll("[data-book-id]")].map((e) => e.getAttribute("data-book-id")),
+		).toEqual(["b1", "b3"]);
+		await act(async () => headers[1]?.click());
+		expect(onToggleGroup).toHaveBeenCalledWith("bo lind");
 		act(() => root.unmount());
 		scroller.remove();
 	});

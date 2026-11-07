@@ -1,5 +1,6 @@
 // @vitest-environment node
 import type { SQLInputValue } from "node:sqlite";
+import { seriesCollectionId } from "@lesefluss/core";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDb } from "./test-db";
 
@@ -254,5 +255,61 @@ describe("collections", () => {
 			},
 		]);
 		expect(await collections.getCollectionBookIds(c.id)).toEqual(["bbbbbbbb"]);
+	});
+});
+
+describe("series collections from the collection sheet", () => {
+	it("creates a real series: the derived id, a series key, ordered, last in the sidebar", async () => {
+		await collections.createCollection("Shelf", 1);
+		const s = await collections.createSeriesCollection("  The Expanse ", 2);
+		expect(s).toMatchObject({
+			id: seriesCollectionId("the expanse"),
+			name: "The Expanse",
+			seriesKey: "the expanse",
+			ordered: true,
+		});
+		expect(await names()).toEqual(["Shelf", "The Expanse"]);
+		await expect(collections.createSeriesCollection("  !! ", 3)).rejects.toThrow();
+	});
+
+	it("returns a live series as it is instead of renaming it", async () => {
+		const first = await collections.createSeriesCollection("Dune", 1);
+		const again = await collections.createSeriesCollection("DUNE", 2);
+		expect(again).toMatchObject({ id: first.id, name: "Dune", updatedAt: 1 });
+	});
+
+	it("brings back a deleted series, its old members still dismissed", async () => {
+		const s = await collections.createSeriesCollection("Dune", 1);
+		await collections.addBooksToCollection(s.id, ["aaaaaaaa"], 2);
+		await collections.deleteCollection(s.id, 3);
+		const back = await collections.createSeriesCollection("Dune", 4);
+		expect(back.id).toBe(s.id);
+		expect(await names()).toEqual(["Dune"]);
+		expect(await collections.getCollectionBookIds(s.id)).toEqual([]);
+	});
+
+	it("maps books to their series collections with #N, in sidebar order, leaving plain ones out", async () => {
+		const plain = await collections.createCollection("Ordered by hand", 1);
+		raw.prepare("UPDATE collections SET ordered = 1 WHERE id = ?").run(plain.id);
+		const dune = await collections.createSeriesCollection("Dune", 2);
+		const expanse = await collections.createSeriesCollection("Expanse", 3);
+		await collections.addBooksToCollection(plain.id, ["aaaaaaaa"], 4, new Map([["aaaaaaaa", 7]]));
+		await collections.addBooksToCollection(expanse.id, ["aaaaaaaa"], 5);
+		await collections.addBooksToCollection(
+			dune.id,
+			["aaaaaaaa", "bbbbbbbb"],
+			6,
+			new Map([
+				["aaaaaaaa", 2.5],
+				["bbbbbbbb", 1],
+			]),
+		);
+		await deleteBook("bbbbbbbb");
+		const byBook = await collections.getSeriesMemberships();
+		expect(byBook.get("aaaaaaaa")).toEqual([
+			{ collectionId: dune.id, seriesIndex: 2.5 },
+			{ collectionId: expanse.id, seriesIndex: null },
+		]);
+		expect(byBook.has("bbbbbbbb")).toBe(false);
 	});
 });

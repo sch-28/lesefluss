@@ -20,12 +20,14 @@ import {
 import type { LibraryItem } from "./sort-filter";
 
 /** Which bulk overlay is open, if any. Only one can be at a time. */
-export type BulkSheet = null | "actions" | "status" | "tags";
+export type BulkSheet = null | "actions" | "status" | "rating" | "tags" | "collection";
 
 export type UseLibrarySelection = {
 	isSelecting: boolean;
 	/** The selected books that still exist, in library order. */
 	picked: Book[];
+	/** `picked` in the view's order, hidden ones last: what Set #N numbers by. */
+	pickedInView: Book[];
 	isSelected: (bookId: string) => boolean;
 	allVisibleSelected: boolean;
 	/** Books in the current view, rendered or not: the N of "Select all N". */
@@ -65,7 +67,7 @@ export type UseLibrarySelection = {
  */
 export function useLibrarySelection(
 	books: Book[],
-	visibleItems: LibraryItem[],
+	visibleItems: readonly LibraryItem[],
 ): UseLibrarySelection {
 	// null means not selecting. A set, possibly empty, means selection mode is on,
 	// so "mode on with no set" cannot be represented.
@@ -88,6 +90,13 @@ export function useLibrarySelection(
 		() => (selection ? selectedBooks(selection, books) : []),
 		[selection, books],
 	);
+
+	const pickedInView = useMemo(() => {
+		if (picked.length < 2) return picked;
+		const rank = new Map(selectableIds(visibleItems).map((id, i) => [id, i]));
+		const at = (book: Book) => rank.get(book.id) ?? Number.MAX_SAFE_INTEGER;
+		return [...picked].sort((a, b) => at(a) - at(b));
+	}, [picked, visibleItems]);
 
 	const exit = useCallback(() => {
 		anchorRef.current = null;
@@ -122,7 +131,9 @@ export function useLibrarySelection(
 			} else {
 				toast.success(summary.headline);
 			}
-			exit();
+			// Only a delete ends the selection: after an edit the same books stay
+			// picked for the next one.
+			if (action.kind === "delete") exit();
 		},
 		[bulk, picked, exit],
 	);
@@ -130,6 +141,7 @@ export function useLibrarySelection(
 	return {
 		isSelecting,
 		picked,
+		pickedInView,
 		isSelected: useCallback((bookId) => selection?.has(bookId) ?? false, [selection]),
 		allVisibleSelected: isAllVisibleSelected(selection ?? new Set(), visibleItems),
 		visibleCount: useMemo(() => selectableIds(visibleItems).length, [visibleItems]),

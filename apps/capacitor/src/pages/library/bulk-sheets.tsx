@@ -1,8 +1,10 @@
 import { BOOK_STATUS_LABELS, BOOK_STATUSES } from "@lesefluss/core";
-import { BookOpen, Tag as TagIcon } from "lucide-react";
+import { BookOpen, FolderPlus, Star, Tag as TagIcon } from "lucide-react";
 import type React from "react";
 import { ActionSheet } from "../../components/action-sheet";
+import { CollectionPickerSheet } from "../../components/collections/collection-picker-sheet";
 import { ConfirmDialog } from "../../components/confirm-dialog";
+import BulkRatingSheet from "./bulk-rating-sheet";
 import { bookCount, titleList } from "./bulk-summary";
 import BulkTagSheet from "./bulk-tag-sheet";
 import { tagPatchFor } from "./bulk-tags";
@@ -14,8 +16,8 @@ type Props = {
 	libraryTags: string[];
 };
 
-/** Every overlay a bulk action can open: the menu, the status picker, the
- *  delete confirm, and the summary shown when something failed. */
+/** Every overlay a bulk action can open: the menu, its pickers, the delete
+ *  confirm, and the summary shown when something failed. */
 const BulkSheets: React.FC<Props> = ({ selection, libraryTags }) => {
 	const { picked } = selection;
 	const title = bookCount(picked.length);
@@ -36,9 +38,19 @@ const BulkSheets: React.FC<Props> = ({ selection, libraryTags }) => {
 						onSelect: () => selection.openSheet("status"),
 					},
 					{
+						label: "Set rating",
+						icon: Star,
+						onSelect: () => selection.openSheet("rating"),
+					},
+					{
 						label: "Edit tags",
 						icon: TagIcon,
 						onSelect: () => selection.openSheet("tags"),
+					},
+					{
+						label: "Add to collection",
+						icon: FolderPlus,
+						onSelect: () => selection.openSheet("collection"),
 					},
 					{
 						label: "Delete",
@@ -64,6 +76,19 @@ const BulkSheets: React.FC<Props> = ({ selection, libraryTags }) => {
 						onSelect: () => selection.run({ kind: "status", status: null }),
 					},
 				]}
+			/>
+
+			<BulkRatingSheet
+				isOpen={selection.sheet === "rating"}
+				count={picked.length}
+				onClose={selection.closeSheet}
+				onApply={(rating) => selection.run({ kind: "rating", rating })}
+			/>
+
+			<CollectionPickerSheet
+				books={selection.pickedInView}
+				open={selection.sheet === "collection"}
+				onClose={selection.closeSheet}
 			/>
 
 			<BulkTagSheet

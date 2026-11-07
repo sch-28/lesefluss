@@ -176,6 +176,11 @@ export const queryHooks = {
 	useCollectionBookIds: collectionHooks.useCollectionBookIds,
 	useCollectionIdsForBook: collectionHooks.useCollectionIdsForBook,
 	useCollectionMemberships: collectionHooks.useCollectionMemberships,
+	/** Book id → its series collections with #N, in sidebar order. */
+	useSeriesMemberships: collectionHooks.useSeriesMemberships,
+	useCollectionMembers: collectionHooks.useCollectionMembers,
+	/** Mutation: books into a collection or a new series, with their #N. */
+	useAddNumberedBooks: collectionHooks.useAddNumberedBooks,
 	useCreateCollection: collectionHooks.useCreateCollection,
 	/** Mutation: the collection page's create, with its picked books. */
 	useCreateCollectionWithBooks: collectionHooks.useCreateCollectionWithBooks,

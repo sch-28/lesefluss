@@ -27,6 +27,7 @@ import { useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import BLEIndicator from "../../components/ble-indicator";
+import { CollectionPickerSheet } from "../../components/collections/collection-picker-sheet";
 import { setBooksDragData } from "../../components/collections/drag-data";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { canSaveAsShelf, SaveShelfDialog } from "../../components/smart-shelves/save-shelf-dialog";
@@ -50,13 +51,19 @@ import BookCard from "./book-card";
 import BookListItem from "./book-list-item";
 import BulkActionBar from "./bulk-action-bar";
 import BulkSheets from "./bulk-sheets";
-import CollectionPicker from "./collection-picker";
 import CollectionShelfRow from "./collection-shelf-row";
 import { libraryCommands } from "./commands";
 import { filterToTree, matchesTree, serializeTree } from "./condition-tree";
 import FilterBar, { AddFilterButton } from "./filter-bar";
 import { activeFilterCount, type Facet, type LibraryFilter, pruneFilter } from "./filter-model";
 import { FilterPopover, FilterSheet, facetOptions } from "./filter-picker";
+import {
+	displayOrder,
+	groupLibrary,
+	isGroupBy,
+	type SeriesMemberships,
+	seriesBadge,
+} from "./group-by";
 import ImportSheet from "./import-sheet";
 import PasteUrlModal from "./paste-url-modal";
 import { searchTextOf } from "./query-syntax";
@@ -70,8 +77,9 @@ import {
 	type SortBy,
 	tagsInUse,
 } from "./sort-filter";
-import SortPopover from "./sort-popover";
+import SortPopover, { type ThenBy } from "./sort-popover";
 import TransferModal from "./transfer-modal";
+import { useCollapsedGroups } from "./use-collapsed-groups";
 import { useDragSelect } from "./use-drag-select";
 import { useLibraryFilter } from "./use-library-filter";
 import { useLibraryImports } from "./use-library-imports";
@@ -82,6 +90,8 @@ import VirtualBookGrid from "./virtual-book-grid";
 
 const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
 const SORT_BY_KEY = "lesefluss:library-sort";
+const THEN_BY_KEY = "lesefluss:library-sort-then";
+const GROUP_BY_KEY = "lesefluss:library-group";
 const VIEW_MODE_KEY = "lesefluss:library-view-mode";
 /** Facets whose values come from the books; a value can vanish with its last book. */
 const LIBRARY_VALUE_FACETS: readonly Facet[] = ["tags", "author", "series", "collection"];
@@ -89,6 +99,8 @@ const LIBRARY_VALUE_FACETS: readonly Facet[] = ["tags", "author", "series", "col
 const SORT_VALUES: readonly SortBy[] = ["title", "author", "recent", "progress", "rating"];
 const isSortBy = (value: string): value is SortBy =>
 	(SORT_VALUES as readonly string[]).includes(value);
+const isThenBy = (value: string): value is ThenBy => value === "none" || isSortBy(value);
+const NO_SERIES_MEMBERSHIPS: SeriesMemberships = new Map();
 const isViewMode = (value: string): value is ViewMode => value === "grid" || value === "list";
 
 const FAB_STYLE: React.CSSProperties = {
@@ -111,6 +123,7 @@ const Library: React.FC = () => {
 	const collectionsQuery = queryHooks.useCollections();
 	const membersQuery = queryHooks.useCollectionBookIds(collectionId ?? null);
 	const membershipsQuery = queryHooks.useCollectionMemberships();
+	const seriesMembershipsQuery = queryHooks.useSeriesMemberships();
 	const activeCollection = collectionsQuery.data?.find((c) => c.id === collectionId);
 	const removeFromCollection = queryHooks.useRemoveBooksFromCollection();
 	const smart = useSmartShelves();
@@ -144,6 +157,9 @@ const Library: React.FC = () => {
 		() => localStorage.getItem(LOCAL_NOTICE_KEY) === "1",
 	);
 	const [sortBy, setSortBy] = usePersistentString(SORT_BY_KEY, isSortBy, "recent");
+	const [thenBy, setThenBy] = usePersistentString(THEN_BY_KEY, isThenBy, "none");
+	const [groupBy, setGroupBy] = usePersistentString(GROUP_BY_KEY, isGroupBy, "none");
+	const [collapsedGroups, toggleGroup] = useCollapsedGroups(groupBy);
 	const [filter, setFilter] = useLibraryFilter();
 	const [isFilterOpen, setIsFilterOpen] = useState(false);
 	const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -164,6 +180,7 @@ const Library: React.FC = () => {
 	const [pendingTransferBook, setPendingTransferBook] = useState<Book | null>(null);
 
 	const [pickerBook, setPickerBook] = useState<Book | null>(null);
+	const pickerBooks = useMemo(() => (pickerBook ? [pickerBook] : []), [pickerBook]);
 	const [pendingDeleteBook, setPendingDeleteBook] = useState<Book | null>(null);
 	const [pendingDeleteSeries, setPendingDeleteSeries] = useState<Series | null>(null);
 
@@ -339,8 +356,22 @@ const Library: React.FC = () => {
 	}, [allItems, collectionId, membersQuery.data, activeShelf]);
 	const visibleItems = useMemo(
 		() =>
-			applyLibraryView(scopedItems, { filter: activeFilter, sortBy, search: searchTextOf(search) }),
-		[scopedItems, activeFilter, sortBy, search],
+			applyLibraryView(scopedItems, {
+				filter: activeFilter,
+				sortBy,
+				thenBy: thenBy === "none" ? null : thenBy,
+				search: searchTextOf(search),
+			}),
+		[scopedItems, activeFilter, sortBy, thenBy, search],
+	);
+	const seriesMemberships = seriesMembershipsQuery.data ?? NO_SERIES_MEMBERSHIPS;
+	const groups = useMemo(
+		() =>
+			groupLibrary(visibleItems, groupBy, {
+				collections: collectionsQuery.data ?? [],
+				seriesMemberships,
+			}),
+		[visibleItems, groupBy, collectionsQuery.data, seriesMemberships],
 	);
 	const filterCount = activeFilterCount(activeFilter);
 	const canSaveFilter = canSaveAsShelf(activeFilter);
@@ -349,7 +380,11 @@ const Library: React.FC = () => {
 		serializeTree(filterToTree(activeFilter)) !== serializeTree(filterToTree(activeShelf.filter));
 	const isNarrowed = filterCount > 0 || searchTextOf(search).trim() !== "";
 	const isCollectionEmpty = !!collectionId && membersQuery.isSuccess && scopedItems.length === 0;
-	const selection = useLibrarySelection(books, visibleItems);
+	const shownItems = useMemo(
+		() => displayOrder(visibleItems, groups, collapsedGroups),
+		[visibleItems, groups, collapsedGroups],
+	);
+	const selection = useLibrarySelection(books, shownItems);
 	const gridRef = useRef<HTMLDivElement>(null);
 	useDragSelect(gridRef, {
 		isActive: selection.drag.isActive,
@@ -411,6 +446,7 @@ const Library: React.FC = () => {
 				onOpen={() => openBook(book)}
 				onMenu={() => setSelectedBook(book)}
 				draggable={canDragBooks}
+				seriesNumber={seriesBadge(book.id, seriesMemberships)}
 			/>
 		);
 	};
@@ -469,6 +505,10 @@ const Library: React.FC = () => {
 							}
 							sortBy={sortBy}
 							onSort={setSortBy}
+							thenBy={thenBy}
+							onThenBy={setThenBy}
+							groupBy={groupBy}
+							onGroupBy={setGroupBy}
 						/>
 						<Button
 							variant="ghost"
@@ -727,6 +767,9 @@ const Library: React.FC = () => {
 					renderItem={renderItem}
 					containerRef={gridRef}
 					onBackgroundTap={selection.isSelecting ? selection.exit : undefined}
+					groups={groups}
+					collapsed={collapsedGroups}
+					onToggleGroup={toggleGroup}
 				/>
 			)}
 
@@ -843,7 +886,11 @@ const Library: React.FC = () => {
 
 			<BulkSheets selection={selection} libraryTags={availableTags} />
 
-			<CollectionPicker book={pickerBook} onClose={() => setPickerBook(null)} />
+			<CollectionPickerSheet
+				books={pickerBooks}
+				open={pickerBook !== null}
+				onClose={() => setPickerBook(null)}
+			/>
 
 			{!IS_WEB && (
 				<TransferModal

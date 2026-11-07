@@ -111,7 +111,9 @@ test("tagging a selection puts the tag on every picked book", async ({ page }) =
 	await page.getByRole("button", { name: "Add tag" }).click();
 	await page.getByRole("button", { name: "Apply" }).click();
 
-	await expect(page.getByRole("button", { name: "Done", exact: true })).toHaveCount(0);
+	// An edit keeps the same books picked for the next one.
+	await expect(page.getByText("2 selected")).toBeVisible();
+	await page.getByRole("button", { name: "Done", exact: true }).click();
 
 	// The tag filter is the proof: it reads the committed rows, not the sheet.
 	await page.getByRole("button", { name: "Add filter" }).click();

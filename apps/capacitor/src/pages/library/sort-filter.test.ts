@@ -179,6 +179,32 @@ describe("sorting by recent and title", () => {
 	});
 });
 
+describe("natural order and then-by", () => {
+	const ids = (books: Book[], sortBy: SortBy, thenBy: SortBy | null = null) =>
+		filterAndSortLibrary(books, [], new Map(), { filter: {}, sortBy, thenBy }).map((item) =>
+			item.kind === "book" ? item.book.id : item.series.id,
+		);
+
+	it("puts Book 2 before Book 10, and ignores case", () => {
+		const books = [
+			makeBook({ id: "ten", title: "Book 10" }),
+			makeBook({ id: "two", title: "book 2" }),
+			makeBook({ id: "one", title: "Book 1" }),
+		];
+		expect(ids(books, "title")).toEqual(["one", "two", "ten"]);
+	});
+
+	it("breaks ties by the second key", () => {
+		const books = [
+			makeBook({ id: "b-low", author: "Banks", rating: 4 }),
+			makeBook({ id: "a", author: "Asimov", rating: 2 }),
+			makeBook({ id: "b-high", author: "banks", rating: 9 }),
+		];
+		expect(ids(books, "author", "rating")).toEqual(["a", "b-high", "b-low"]);
+		expect(ids(books, "author", "author")).toEqual(ids(books, "author"));
+	});
+});
+
 describe("sorting by rating", () => {
 	it("ranks higher ratings first and puts unrated last", () => {
 		const books = [

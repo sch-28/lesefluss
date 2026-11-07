@@ -90,6 +90,24 @@ describe("runFor reads the row before patching", () => {
 	});
 });
 
+describe("runFor rating", () => {
+	it("writes the new rating", async () => {
+		await runFor({ kind: "rating", rating: 7 })(book({ rating: 4 }));
+		expect(updateBook).toHaveBeenCalledWith("b1", { rating: 7 });
+	});
+
+	it("clears a rating", async () => {
+		await runFor({ kind: "rating", rating: null })(book({ rating: 4 }));
+		expect(updateBook).toHaveBeenCalledWith("b1", { rating: null });
+	});
+
+	it("skips a book already at that rating, as read fresh", async () => {
+		getBook.mockResolvedValue(book({ rating: 7 }));
+		await runFor({ kind: "rating", rating: 7 })(book({ rating: 4 }));
+		expect(updateBook).not.toHaveBeenCalled();
+	});
+});
+
 describe("runFor tags", () => {
 	it("writes the patched tags", async () => {
 		await runFor({ kind: "tags", patch: () => ({ kind: "write", tags: '["a"]' }) })(book());

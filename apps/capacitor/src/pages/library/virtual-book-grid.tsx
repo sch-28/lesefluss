@@ -1,6 +1,8 @@
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type React from "react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Virtualizer } from "virtua";
+import { itemKey, type LibraryGroup, layoutRows } from "./group-by";
 import type { LibraryItem } from "./sort-filter";
 
 const SCROLL_CONTAINER = '[data-scroll-restoration-id="app-scroll"]';
@@ -73,14 +75,17 @@ type Props = {
 	viewMode: "grid" | "list";
 	renderItem: (item: LibraryItem) => React.ReactNode;
 	containerRef?: React.RefObject<HTMLDivElement | null>;
+	/** Sections with a heading each; null shows the items as one run. */
+	groups?: readonly LibraryGroup[] | null;
+	collapsed?: ReadonlySet<string>;
+	onToggleGroup?: (groupKey: string) => void;
 	/** A tap or click on the gaps between and around the cards, not on one; a
 	 *  scroll or drag that starts there is not a tap. */
 	onBackgroundTap?: () => void;
 };
 
 const TAP_SLOP_PX = 10;
-
-const itemKey = (item: LibraryItem) => (item.kind === "book" ? item.book.id : item.series.id);
+const NONE_COLLAPSED: ReadonlySet<string> = new Set();
 
 /**
  * Grid and list, rendering only the rows near the viewport, so a library of
@@ -92,17 +97,19 @@ const VirtualBookGrid: React.FC<Props> = ({
 	renderItem,
 	containerRef,
 	onBackgroundTap,
+	groups = null,
+	collapsed = NONE_COLLAPSED,
+	onToggleGroup,
 }) => {
 	const ownAnchor = useRef<HTMLDivElement>(null);
 	const anchor = containerRef ?? ownAnchor;
 	const { scrollRef, startMargin } = useScroller(anchor);
 	const gridCols = useGridColumns();
 	const cols = viewMode === "grid" ? gridCols : 1;
-	const rows = useMemo(() => {
-		const out: LibraryItem[][] = [];
-		for (let i = 0; i < items.length; i += cols) out.push(items.slice(i, i + cols));
-		return out;
-	}, [items, cols]);
+	const rows = useMemo(
+		() => layoutRows(items, groups, cols, collapsed),
+		[items, groups, cols, collapsed],
+	);
 	const pressAt = useRef<{ x: number; y: number } | null>(null);
 
 	return (
@@ -127,21 +134,41 @@ const VirtualBookGrid: React.FC<Props> = ({
 				bufferSize={600}
 				itemSize={estimateRowPx(viewMode, cols, window.innerWidth)}
 			>
-				{rows.map((row) =>
-					viewMode === "grid" ? (
-						<div key={row.map(itemKey).join()} className={GRID_CLASS}>
-							{row.map((item) => (
+				{rows.map((row) => {
+					if (row.type === "header") {
+						const Chevron = row.collapsed ? ChevronRight : ChevronDown;
+						return (
+							<div key={`\u0001${row.group.key}`} className="pb-2">
+								<button
+									type="button"
+									aria-expanded={!row.collapsed}
+									data-testid="library-group-header"
+									onClick={() => onToggleGroup?.(row.group.key)}
+									className="flex w-full items-center gap-2 rounded-md border-0 bg-transparent px-1 py-2 text-left text-foreground hover:bg-muted"
+								>
+									<Chevron className="size-4 shrink-0 text-muted-foreground" />
+									<span className="min-w-0 truncate font-semibold text-sm">{row.group.label}</span>
+									<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
+										{row.group.items.length}
+									</span>
+								</button>
+							</div>
+						);
+					}
+					return viewMode === "grid" ? (
+						<div key={row.key} className={GRID_CLASS}>
+							{row.items.map((item) => (
 								<div key={itemKey(item)} className="min-w-0">
 									{renderItem(item)}
 								</div>
 							))}
 						</div>
 					) : (
-						<div key={itemKey(row[0] as LibraryItem)} className="[&:not(:last-child)]:pb-2">
-							{renderItem(row[0] as LibraryItem)}
+						<div key={row.key} className="[&:not(:last-child)]:pb-2">
+							{renderItem(row.items[0] as LibraryItem)}
 						</div>
-					),
-				)}
+					);
+				})}
 			</Virtualizer>
 		</div>
 	);

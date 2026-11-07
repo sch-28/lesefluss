@@ -41,6 +41,8 @@ export type TagPatch =
 export type BulkAction =
 	| { kind: "delete" }
 	| { kind: "status"; status: BookStatus | null }
+	/** Half-stars, 1..10; null clears it. */
+	| { kind: "rating"; rating: number | null }
 	/** `patch` decides per book; see `pages/library/bulk-tags.ts`. */
 	| { kind: "tags"; patch: (book: Book) => TagPatch };
 
@@ -82,6 +84,14 @@ export function runFor(action: BulkAction): (book: Book) => Promise<unknown> {
 			// rating or review another device edited more recently.
 			if (fresh.status === action.status) return;
 			await queries.updateBook(book.id, { status: action.status });
+		};
+	}
+	if (action.kind === "rating") {
+		return async (book) => {
+			// Same stamp reasoning as status.
+			const fresh = (await queries.getBook(book.id)) ?? book;
+			if (fresh.rating === action.rating) return;
+			await queries.updateBook(book.id, { rating: action.rating });
 		};
 	}
 	return async (book) => {

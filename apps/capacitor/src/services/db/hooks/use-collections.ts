@@ -27,6 +27,22 @@ function useCollectionMemberships() {
 	});
 }
 
+function useSeriesMemberships() {
+	return useQuery({
+		queryKey: collectionKeys.seriesMemberships,
+		queryFn: () => queries.getSeriesMemberships(),
+	});
+}
+
+/** Members with their #N, for the bulk sheet's numbering preview. */
+function useCollectionMembers(collectionId: string | null) {
+	return useQuery({
+		queryKey: collectionKeys.memberRows(collectionId ?? ""),
+		queryFn: () => queries.getCollectionMembers(collectionId ?? ""),
+		enabled: collectionId !== null,
+	});
+}
+
 function useCollectionIdsForBook(bookId: string | null) {
 	return useQuery({
 		queryKey: collectionKeys.ofBook(bookId ?? ""),
@@ -129,10 +145,31 @@ function useDeleteCollection() {
 	return useCollectionMutation((id: string) => queries.deleteCollection(id));
 }
 
-/** `addBooksToCollection` is also the write LESE-125.13's bulk sheet calls. */
 function useAddBooksToCollection() {
 	return useCollectionMutation((vars: { collectionId: string; bookIds: string[] }) =>
 		queries.addBooksToCollection(vars.collectionId, vars.bookIds),
+	);
+}
+
+export type NumberedTarget = { collectionId: string } | { newSeries: string };
+
+/** The bulk sheet's Set #N apply: membership and numbers in one write, into a
+ *  collection or a series created for it. */
+function useAddNumberedBooks() {
+	return useCollectionMutation(
+		async (vars: { target: NumberedTarget; numbers: ReadonlyMap<string, number | null> }) => {
+			const collectionId =
+				"collectionId" in vars.target
+					? vars.target.collectionId
+					: (await queries.createSeriesCollection(vars.target.newSeries)).id;
+			await queries.addBooksToCollection(
+				collectionId,
+				[...vars.numbers.keys()],
+				undefined,
+				vars.numbers,
+			);
+			return collectionId;
+		},
 	);
 }
 
@@ -147,6 +184,9 @@ export const collectionHooks = {
 	useCollectionBookIds,
 	useCollectionIdsForBook,
 	useCollectionMemberships,
+	useSeriesMemberships,
+	useCollectionMembers,
+	useAddNumberedBooks,
 	useCreateCollection,
 	useCreateCollectionWithBooks,
 	useEditCollection,

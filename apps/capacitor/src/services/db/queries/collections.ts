@@ -82,6 +82,51 @@ export async function createCollection(name: string, now = serverNow()): Promise
 	return row;
 }
 
+/**
+ * The series collection `name` derives, as a real series: later imports whose
+ * file names the same series join it. A live one is returned as it is; one the
+ * reader deleted comes back, since naming it again is their explicit choice.
+ */
+export async function createSeriesCollection(name: string, now = serverNow()): Promise<Collection> {
+	const trimmed = normalizeCollectionName(name);
+	const key = normalizeSeriesKey(trimmed);
+	if (!key) throw new Error("Series name is empty");
+	const id = seriesCollectionId(key);
+	const [existing] = await db.select().from(collections).where(eq(collections.id, id));
+	if (existing && !existing.deleted) return existing;
+	const [last] = await db
+		.select({ sortOrder: collections.sortOrder })
+		.from(collections)
+		.where(eq(collections.deleted, false))
+		.orderBy(sql`${collections.sortOrder} DESC`)
+		.limit(1);
+	const row: Collection = {
+		id,
+		name: trimmed,
+		sortOrder: (last?.sortOrder ?? 0) + 1,
+		ordered: true,
+		seriesKey: key,
+		deleted: false,
+		createdAt: existing?.createdAt ?? now,
+		updatedAt: now,
+	};
+	await db
+		.insert(collections)
+		.values(row)
+		.onConflictDoUpdate({
+			target: collections.id,
+			set: {
+				name: row.name,
+				sortOrder: row.sortOrder,
+				ordered: true,
+				seriesKey: key,
+				deleted: false,
+				updatedAt: now,
+			},
+		});
+	return row;
+}
+
 export async function renameCollection(id: string, name: string, now = serverNow()): Promise<void> {
 	const trimmed = normalizeCollectionName(name);
 	if (!trimmed) throw new Error("Collection name is empty");
@@ -341,6 +386,33 @@ export async function getCollectionMemberships(): Promise<Map<string, string[]>>
 		const ids = byBook.get(bookId);
 		if (ids) ids.push(collectionId);
 		else byBook.set(bookId, [collectionId]);
+	}
+	return byBook;
+}
+
+export type SeriesMembership = { collectionId: string; seriesIndex: number | null };
+
+/**
+ * Every live membership of a live series collection (one with a series key),
+ * as book id → memberships in sidebar order, which picks the book's #N badge.
+ */
+export async function getSeriesMemberships(): Promise<Map<string, SeriesMembership[]>> {
+	const rows = await db
+		.select({
+			bookId: collectionBooks.bookId,
+			collectionId: collectionBooks.collectionId,
+			seriesIndex: collectionBooks.seriesIndex,
+		})
+		.from(collectionBooks)
+		.innerJoin(collections, eq(collections.id, collectionBooks.collectionId))
+		.where(and(liveMember, eq(collections.deleted, false), isNotNull(collections.seriesKey)))
+		.orderBy(asc(collections.sortOrder), asc(collections.createdAt), asc(collections.id));
+	const byBook = new Map<string, SeriesMembership[]>();
+	for (const { bookId, collectionId, seriesIndex } of rows) {
+		const entry = { collectionId, seriesIndex };
+		const list = byBook.get(bookId);
+		if (list) list.push(entry);
+		else byBook.set(bookId, [entry]);
 	}
 	return byBook;
 }

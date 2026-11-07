@@ -11,6 +11,7 @@ import { Check } from "lucide-react";
 import type React from "react";
 import { useId } from "react";
 import BookCover from "../../components/book-cover";
+import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { DeviceBadge } from "../../components/device-sync";
 import type { Book } from "../../services/db/schema";
 import CardMoreButton from "./card-more-button";
@@ -34,6 +35,8 @@ type BookCardProps = {
 	onLongPress?: () => void;
 	/** Mouse drag onto a sidebar collection; the library's grid sets the drag data. */
 	draggable?: boolean;
+	/** The book's #N in its series, from the series collection. */
+	seriesNumber?: number | null;
 };
 
 const BookCard: React.FC<BookCardProps> = ({
@@ -49,6 +52,7 @@ const BookCard: React.FC<BookCardProps> = ({
 	onModifiedClick,
 	onLongPress,
 	draggable = false,
+	seriesNumber = null,
 }) => {
 	const handlers = useLongPress({
 		onTap: (e) => {
@@ -65,6 +69,7 @@ const BookCard: React.FC<BookCardProps> = ({
 	const progressId = `${id}-progress`;
 	const detailsId = `${id}-details`;
 	const deviceId = `${id}-device`;
+	const seriesId = `${id}-series`;
 
 	return (
 		<div className="group relative">
@@ -76,7 +81,14 @@ const BookCard: React.FC<BookCardProps> = ({
 				data-book-title={book.title}
 				data-selected={selectable && selected ? "true" : undefined}
 				aria-label={book.title}
-				aria-describedby={[deviceId, started && progressId, detailsId].filter(Boolean).join(" ")}
+				aria-describedby={[
+					seriesNumber !== null && seriesId,
+					deviceId,
+					started && progressId,
+					detailsId,
+				]
+					.filter(Boolean)
+					.join(" ")}
 				aria-pressed={selectable ? selected : undefined}
 				className="flex w-full cursor-pointer select-none flex-col rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none [-webkit-touch-callout:none] focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
 				{...handlers}
@@ -86,6 +98,15 @@ const BookCard: React.FC<BookCardProps> = ({
 					<span id={deviceId}>
 						<DeviceBadge bookId={book.id} />
 					</span>
+					{seriesNumber !== null && (
+						<span
+							id={seriesId}
+							data-testid="series-number-badge"
+							className="absolute bottom-1.5 left-1.5 rounded-sm bg-background/85 px-1 font-semibold text-[0.7rem] text-foreground tabular-nums"
+						>
+							{formatSeriesNumber(seriesNumber)}
+						</span>
+					)}
 					{selectable && (
 						<>
 							{!selected && <div className="absolute inset-0 bg-background/60" />}
