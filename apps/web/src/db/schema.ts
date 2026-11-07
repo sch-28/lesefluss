@@ -867,9 +867,9 @@ export const BUDDY_READ_MEMBER_STATES = ["active", "left", "removed"] as const;
 export const BUDDY_READ_INVITE_STATUSES = ["pending", "accepted", "declined", "cancelled"] as const;
 
 /**
- * A group reading one content origin. `host_id` is who created it; the
- * effective host is derived (this user while a current member, else the
- * earliest-joined current member), so account deletion needs no handover.
+ * A group reading one content origin. The effective host is derived (`host_id`
+ * while a current member, else the earliest-joined current member) and written
+ * back to `host_id`, so a host who leaves or deletes their account hands over.
  */
 export const buddyRead = pgTable(
 	"buddy_read",

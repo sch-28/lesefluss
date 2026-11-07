@@ -12,6 +12,7 @@ import { account, session, user } from "~/db/auth-schema";
 import {
 	buddyRead,
 	buddyReadComment,
+	buddyReadInvite,
 	buddyReadMember,
 	buddyReadReaction,
 	buddyReadSharedHighlight,
@@ -34,6 +35,7 @@ import {
 	socialShareConsent,
 	socialTakedown,
 	syncBookCopy,
+	syncBookmarks,
 	syncBooks,
 	syncGlossaryEntries,
 	syncHighlights,
@@ -142,6 +144,14 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 			entryId: "g1",
 			label: "L",
 			color: "yellow",
+			createdAt: now,
+			updatedAt: now,
+		});
+		await db.insert(syncBookmarks).values({
+			userId,
+			bookmarkId: "bm1",
+			bookId: "book1",
+			word: 3,
 			createdAt: now,
 			updatedAt: now,
 		});
@@ -373,7 +383,7 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 		// Cascade removed session + account (FK onDelete: "cascade").
 		expect(await db.select().from(session).where(eq(session.userId, userId))).toHaveLength(0);
 		expect(await db.select().from(account).where(eq(account.userId, userId))).toHaveLength(0);
-		// All six sync tables purged.
+		// Every user-scoped sync table purged.
 		expect(await db.select().from(syncBooks).where(eq(syncBooks.userId, userId))).toHaveLength(0);
 		expect(await db.select().from(syncSeries).where(eq(syncSeries.userId, userId))).toHaveLength(0);
 		expect(
@@ -387,6 +397,9 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 		).toHaveLength(0);
 		expect(
 			await db.select().from(syncReadingSessions).where(eq(syncReadingSessions.userId, userId)),
+		).toHaveLength(0);
+		expect(
+			await db.select().from(syncBookmarks).where(eq(syncBookmarks.userId, userId)),
 		).toHaveLength(0);
 
 		// Social profile and avatar cascade from the user row.
@@ -511,6 +524,88 @@ describe.skipIf(!hasDb)("deleteUserAccount (integration)", () => {
 
 		await db.delete(buddyRead).where(eq(buddyRead.id, buddyReadId));
 		await deleteUserAccount(stayer);
+	});
+
+	test("a deleted host's buddy reads keep the others, lose the host's invites and membership, and pass or drop the host", async () => {
+		const host = `test-del-host-${randomUUID()}`;
+		const stayer = `test-del-host-other-${randomUUID()}`;
+		const invitee = `test-del-host-inv-${randomUUID()}`;
+		const bystander = `test-del-host-by-${randomUUID()}`;
+		await db.insert(user).values([
+			{ id: host, name: "Host", email: `${host}@example.test` },
+			{ id: stayer, name: "Stayer", email: `${stayer}@example.test` },
+			{ id: invitee, name: "Invitee", email: `${invitee}@example.test` },
+			{ id: bystander, name: "Bystander", email: `${bystander}@example.test` },
+		]);
+		// Every member still has the book, so both reads outlive the host.
+		await db.insert(syncBooks).values(
+			[host, stayer].map((id) => ({
+				userId: id,
+				bookId: "book1",
+				originUserId: host,
+				originBookId: "book1",
+				title: "B",
+				updatedAt: now,
+			})),
+		);
+		const reads = await db
+			.insert(buddyRead)
+			.values([
+				{ originUserId: host, originBookId: "book1", hostId: host, title: "B" },
+				{ originUserId: host, originBookId: "book1", hostId: host, title: "B" },
+			])
+			.returning({ id: buddyRead.id });
+		const readIds = reads.map((r) => r.id);
+		// `active`: the host reads along. `stale`: the host row outlived their
+		// membership, so no handover runs and only the FK can clear it.
+		const [active = "", stale = ""] = readIds;
+		try {
+			await db.insert(buddyReadMember).values([
+				{ buddyReadId: active, userId: host, bookId: "book1" },
+				{ buddyReadId: active, userId: stayer, bookId: "book1" },
+				{ buddyReadId: stale, userId: host, bookId: "book1", state: "left", leftAt: now },
+				{ buddyReadId: stale, userId: stayer, bookId: "book1" },
+			]);
+			await db.insert(buddyReadInvite).values([
+				{ buddyReadId: active, inviterId: host, inviteeId: invitee },
+				{
+					buddyReadId: active,
+					inviterId: stayer,
+					inviteeId: host,
+					status: "declined",
+					resolvedAt: now,
+				},
+				{ buddyReadId: stale, inviterId: host, inviteeId: invitee },
+				{ buddyReadId: active, inviterId: stayer, inviteeId: bystander },
+			]);
+
+			await deleteUserAccount(host);
+
+			expect(
+				await db
+					.select()
+					.from(buddyReadInvite)
+					.where(inArray(buddyReadInvite.buddyReadId, readIds)),
+			).toMatchObject([{ inviterId: stayer, inviteeId: bystander }]);
+			for (const id of readIds) {
+				expect(
+					await db
+						.select({ userId: buddyReadMember.userId, state: buddyReadMember.state })
+						.from(buddyReadMember)
+						.where(eq(buddyReadMember.buddyReadId, id)),
+				).toEqual([{ userId: stayer, state: "active" }]);
+			}
+			expect(await db.select().from(buddyRead).where(eq(buddyRead.id, active))).toMatchObject([
+				{ hostId: stayer, status: "in_progress" },
+			]);
+			expect(await db.select().from(buddyRead).where(eq(buddyRead.id, stale))).toMatchObject([
+				{ hostId: null, status: "in_progress" },
+			]);
+		} finally {
+			await db.delete(buddyRead).where(inArray(buddyRead.id, readIds));
+			for (const id of [host, stayer, invitee, bystander])
+				await deleteUserAccount(id).catch(() => {});
+		}
 	});
 
 	test("clearing cloud data keeps the social profile", async () => {
