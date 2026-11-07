@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "../../../components/toast";
+import { log } from "../../../utils/log";
 import { scheduleSyncPush } from "../../sync";
+import { errorMessage, reportEvent } from "../../telemetry";
 import { queries } from "../queries";
 import { collectionKeys } from "./query-keys";
 
@@ -30,6 +33,14 @@ function useCollectionIdsForBook(bookId: string | null) {
 	});
 }
 
+// LESE-125.19 was a silent no-op on Android that never reproduced on web; the
+// telemetry event is how the next occurrence on a no-account device shows its cause.
+export function reportCollectionWriteError(err: unknown) {
+	log.warn("collections", "collection write failed:", err);
+	reportEvent("collection_write_error", { message: errorMessage(err) });
+	toast.error("Couldn't save the collection");
+}
+
 function useCollectionMutation<T, R>(mutationFn: (vars: T) => Promise<R>) {
 	const qc = useQueryClient();
 	return useMutation({
@@ -39,6 +50,7 @@ function useCollectionMutation<T, R>(mutationFn: (vars: T) => Promise<R>) {
 			scheduleSyncPush();
 			return qc.invalidateQueries({ queryKey: collectionKeys.all });
 		},
+		onError: reportCollectionWriteError,
 	});
 }
 

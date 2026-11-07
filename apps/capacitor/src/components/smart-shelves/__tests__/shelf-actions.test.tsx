@@ -1,6 +1,8 @@
 import type React from "react";
+import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ShelfEntry } from "../../../pages/library/smart-shelves";
+import { consumeBackPress } from "../../../services/overlay-back";
 import { click, type Rendered, render } from "../../../test/render";
 
 const navigate = vi.fn();
@@ -121,5 +123,22 @@ describe("ShelfActions", () => {
 			/>,
 		);
 		expect(view.getButton("Edit conditions…").disabled).toBe(true);
+	});
+
+	it("closes the menu, then the delete confirm, on the Android back press", async () => {
+		const onClose = vi.fn();
+		view = await render(
+			<ShelfActions shelf={userShelf} onClose={onClose} setBuiltInPinned={setBuiltInPinned} />,
+		);
+		expect(consumeBackPress()).toBe(true);
+		expect(onClose).toHaveBeenCalledTimes(1);
+
+		await click(view.getButton("Delete shelf…"));
+		expect(view.text()).toContain("Its books stay in your library.");
+		await act(async () => {
+			expect(consumeBackPress()).toBe(true);
+		});
+		expect(view.text()).not.toContain("Its books stay in your library.");
+		expect(deleteShelf).not.toHaveBeenCalled();
 	});
 });

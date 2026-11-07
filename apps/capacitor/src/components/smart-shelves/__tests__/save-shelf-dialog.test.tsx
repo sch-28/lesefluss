@@ -2,6 +2,7 @@ import type React from "react";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FACETS, type FacetValues, type LibraryFilter } from "../../../pages/library/filter-model";
+import { consumeBackPress } from "../../../services/overlay-back";
 import { click, type Rendered, render } from "../../../test/render";
 
 const navigate = vi.fn();
@@ -94,5 +95,12 @@ describe("SaveShelfDialog", () => {
 				search: expect.objectContaining({ shelf: "new" }),
 			}),
 		);
+	});
+
+	it("closes on the Android back press instead of navigating the page beneath", async () => {
+		const onOpenChange = vi.fn();
+		view = await render(<SaveShelfDialog open onOpenChange={onOpenChange} filter={reading} />);
+		expect(consumeBackPress()).toBe(true);
+		expect(onOpenChange).toHaveBeenCalledWith(false);
 	});
 });
