@@ -66,6 +66,7 @@ export const settings = sqliteTable("settings", {
 		.notNull()
 		.default(true),
 	showReadingTime: integer("show_reading_time", { mode: "boolean" }).notNull().default(true),
+	showLiveWpm: integer("show_live_wpm", { mode: "boolean" }).notNull().default(false),
 	// Local-only sync opt-outs. Never added to SYNCED_SETTING_KEYS; off-state is
 	// non-destructive (server keeps its copy, this device stops pushing/merging).
 	syncHighlights: integer("sync_highlights", { mode: "boolean" }).notNull().default(true),

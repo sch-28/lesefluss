@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "../../../components/toast";
-import { deleteServerSession, scheduleSyncPush } from "../../sync";
+import { deleteReadingSessionsEverywhere, deleteServerSession, scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
 import { readingSessionKeys, statsKeys } from "./query-keys";
 
@@ -11,6 +11,13 @@ function useReadingSessionsPage(limit: number, bookId?: string) {
 		// Growing the page changes the key; without this the list would be
 		// replaced by the loading state on every "show more".
 		placeholderData: (previous) => previous,
+	});
+}
+
+function useAllReadingSessions() {
+	return useQuery({
+		queryKey: readingSessionKeys.list,
+		queryFn: () => queries.getAllReadingSessions(),
 	});
 }
 
@@ -46,8 +53,24 @@ function useDeleteReadingSession() {
 	});
 }
 
+function useDeleteReadingSessions() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: deleteReadingSessionsEverywhere,
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: readingSessionKeys.all });
+			qc.invalidateQueries({ queryKey: statsKeys.all });
+		},
+		onError: () => {
+			toast.error("Couldn't delete sessions. Check your connection and try again.");
+		},
+	});
+}
+
 export const readingSessionHooks = {
 	useReadingSessionsPage,
+	useAllReadingSessions,
 	useReadingSessionCount,
 	useDeleteReadingSession,
+	useDeleteReadingSessions,
 };

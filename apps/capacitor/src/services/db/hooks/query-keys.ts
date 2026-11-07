@@ -92,6 +92,9 @@ export const readingSessionKeys = {
 
 	/** Row count, optionally scoped to one book. */
 	count: (bookId?: string) => ["reading-sessions", "count", bookId ?? "all"] as const,
+
+	/** Every session, newest first, for the Sessions tab. */
+	list: ["reading-sessions", "list"] as const,
 };
 
 export const serialKeys = {

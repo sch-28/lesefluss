@@ -177,6 +177,7 @@ export const syncSettings = pgTable(
 		readerWordSpacing: real("reader_word_spacing").notNull().default(0),
 		readerParagraphSpacing: real("reader_paragraph_spacing").notNull().default(1.1),
 		showReadingTime: boolean("show_reading_time").notNull().default(true),
+		showLiveWpm: boolean("show_live_wpm").notNull().default(false),
 		readerActiveWordUnderline: boolean("reader_active_word_underline").notNull().default(true),
 		readerGlossaryUnderline: boolean("reader_glossary_underline").notNull().default(true),
 		defaultReaderMode: text("default_reader_mode").notNull().default("scroll"),

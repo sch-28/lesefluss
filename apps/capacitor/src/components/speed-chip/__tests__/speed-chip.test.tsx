@@ -25,13 +25,15 @@ vi.mock("@tanstack/react-router", () => ({
 	Link: ({
 		children,
 		to,
+		search,
 		onClick,
 	}: {
 		children: React.ReactNode;
 		to: string;
+		search?: Record<string, string>;
 		onClick?: () => void;
 	}) => (
-		<a href={to} onClick={onClick}>
+		<a href={search ? `${to}?${new URLSearchParams(search)}` : to} onClick={onClick}>
 			{children}
 		</a>
 	),
@@ -132,9 +134,9 @@ describe("SpeedChip", () => {
 		expect(text).toContain("RSVP420 wpm");
 		expect(text).toContain("Dial 450");
 		expect(text).toContain("Reading 61% · RSVP 39%");
-		expect(document.querySelector("a[href='/tabs/library/stats']")?.textContent).toContain(
-			"Open Speed tab",
-		);
+		expect(
+			document.querySelector("a[href='/tabs/library/stats?tab=speed']")?.textContent,
+		).toContain("Open Speed tab");
 	});
 });
 

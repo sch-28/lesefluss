@@ -46,6 +46,10 @@ import { localDateKey, localDateOfKey, startOfLocalDay } from "../../utils/date-
 import { log } from "../../utils/log";
 import { randomSessionId } from "../../utils/random-id";
 
+/** Below these the live rate swings too far to show; the first page alone can read as 1000 wpm. */
+export const LIVE_RATE_MIN_ACTIVE_MS = 30_000;
+export const LIVE_RATE_MIN_WORDS = 20;
+
 /** The modes the reading tracker records; listening is recorded from the voice's own log. */
 export type ReadingSessionMode = MeasuredReadingMode;
 
@@ -575,6 +579,18 @@ export class SessionTracker {
 			reading: this.reading,
 			lastActivityAt: this.lastActivityAt,
 		};
+	}
+
+	/** The sitting's wpm so far, as its row would record it; null while too short to mean anything. */
+	getLiveRate(): number | null {
+		const s = this.session;
+		if (!s) return null;
+		const now = this.now();
+		const activeMs = s.accumulatedActiveMs + (s.activeSinceMs !== null ? now - s.activeSinceMs : 0);
+		const words = wordsReadIn(s);
+		if (activeMs < LIVE_RATE_MIN_ACTIVE_MS || words < LIVE_RATE_MIN_WORDS) return null;
+		const wpm = Math.round(words / (activeMs / 60_000));
+		return wpm > SANE_WPM_CEILING ? null : wpm;
 	}
 
 	/** Snapshot for the on-screen debug badge. Computes the *currently

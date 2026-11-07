@@ -493,6 +493,11 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	user-select: none;
 }
 
+.reader-progress-live-wpm {
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
 .reader-progress-chapter-time {
 	font-size: 0.62rem;
 	opacity: 0.65;

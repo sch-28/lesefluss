@@ -13,6 +13,33 @@ interface Props {
 	onPeriodChange: (period: Period) => void;
 }
 
+export function PeriodTabs({
+	period,
+	onPeriodChange,
+	className,
+}: {
+	period: Period;
+	onPeriodChange: (period: Period) => void;
+	className?: string;
+}) {
+	return (
+		<Tabs
+			value={period}
+			onValueChange={(v) => {
+				if (isPeriod(v)) onPeriodChange(v);
+			}}
+			className={className}
+		>
+			<TabsList className="w-full">
+				<TabsTrigger value="today">Today</TabsTrigger>
+				<TabsTrigger value="7d">7d</TabsTrigger>
+				<TabsTrigger value="30d">30d</TabsTrigger>
+				<TabsTrigger value="all">All</TabsTrigger>
+			</TabsList>
+		</Tabs>
+	);
+}
+
 export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props) {
 	const showPrev = period !== "all";
 
@@ -37,20 +64,7 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 
 	return (
 		<section className="mb-8 px-4">
-			<Tabs
-				value={period}
-				onValueChange={(v) => {
-					if (isPeriod(v)) onPeriodChange(v);
-				}}
-				className="mb-5"
-			>
-				<TabsList className="w-full">
-					<TabsTrigger value="today">Today</TabsTrigger>
-					<TabsTrigger value="7d">7d</TabsTrigger>
-					<TabsTrigger value="30d">30d</TabsTrigger>
-					<TabsTrigger value="all">All</TabsTrigger>
-				</TabsList>
-			</Tabs>
+			<PeriodTabs period={period} onPeriodChange={onPeriodChange} className="mb-5" />
 
 			<AnimatePresence mode="wait">
 				<motion.div

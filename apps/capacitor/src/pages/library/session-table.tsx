@@ -9,18 +9,15 @@ import {
 	AlertDialogTitle,
 } from "@lesefluss/ui/alert-dialog";
 import { Button } from "@lesefluss/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, ChevronUp, Clock, ExternalLink, Loader2, Trash2, Zap } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, Clock, Loader2, Trash2, Zap } from "lucide-react";
+import { useState } from "react";
 import { queryHooks } from "../../services/db/hooks";
-import { bookKeys } from "../../services/db/hooks/query-keys";
-import { queries } from "../../services/db/queries";
 import type { Book, ReadingSession } from "../../services/db/schema";
 import { formatDuration } from "../../utils/date-utils";
 
-type Props = { mode: "global" } | { mode: "book"; bookId: string };
+type Props = { bookId: string };
 
 const PAGE_SIZE = 20;
 
@@ -39,32 +36,14 @@ const MONTHS = [
 	"Dec",
 ] as const;
 
-export function SessionTable(props: Props) {
-	const isGlobal = props.mode === "global";
-
+/** A book's sessions; the Sessions tab on the stats page holds everyone's. */
+export function SessionTable({ bookId }: Props) {
 	const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 	// Fetch only what is rendered: the whole table used to cross the SQLite
-	// bridge on every stats and book-detail page view.
-	const bookId = isGlobal ? undefined : props.bookId;
+	// bridge on every book-detail page view.
 	const sessionsQuery = queryHooks.useReadingSessionsPage(visibleCount, bookId);
 	const totalQuery = queryHooks.useReadingSessionCount(bookId);
-
-	const allBooksQuery = useQuery({
-		queryKey: bookKeys.allIncludingChapters,
-		queryFn: () => queries.getAllBooks(),
-		enabled: isGlobal,
-	});
-	const singleBookQuery = queryHooks.useBook(isGlobal ? "" : props.bookId);
-
-	const bookMap = useMemo(() => {
-		const m = new Map<string, Book>();
-		if (isGlobal) {
-			for (const b of allBooksQuery.data ?? []) m.set(b.id, b);
-		} else if (singleBookQuery.data) {
-			m.set(singleBookQuery.data.id, singleBookQuery.data);
-		}
-		return m;
-	}, [isGlobal, allBooksQuery.data, singleBookQuery.data]);
+	const book = queryHooks.useBook(bookId).data ?? null;
 
 	const [expandedId, setExpandedId] = useState<string | null>(null);
 	const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -80,7 +59,7 @@ export function SessionTable(props: Props) {
 	if (sessionsQuery.isPending) {
 		return (
 			<section className="mt-6 rounded-lg border border-border bg-card p-4 text-card-foreground">
-				<h2 className="m-0 mb-3 font-semibold text-base">Recent sessions</h2>
+				<h2 className="m-0 mb-3 font-semibold text-base">Sessions</h2>
 				<div className="flex items-center justify-center py-6">
 					<Loader2 className="size-5 animate-spin text-muted-foreground" />
 				</div>
@@ -98,18 +77,25 @@ export function SessionTable(props: Props) {
 			transition={{ duration: 0.4 }}
 			className="mt-6 rounded-lg border border-border bg-card p-4 text-card-foreground"
 		>
-			<h2 className="m-0 mb-3 font-semibold text-base">
-				{isGlobal ? "Recent sessions" : "Sessions"}{" "}
-				{total != null && <span className="text-muted-foreground">· {total}</span>}
-			</h2>
+			<div className="mb-3 flex items-baseline justify-between gap-2">
+				<h2 className="m-0 font-semibold text-base">
+					Sessions {total != null && <span className="text-muted-foreground">· {total}</span>}
+				</h2>
+				<Link
+					to="/tabs/library/stats"
+					search={{ tab: "sessions", book: bookId }}
+					className="text-primary text-sm"
+				>
+					See all
+				</Link>
+			</div>
 
 			<ul className="m-0 list-none divide-y divide-border p-0">
 				{visible.map((s) => (
 					<SessionRow
 						key={s.id}
 						session={s}
-						book={bookMap.get(s.bookId) ?? null}
-						showBook={isGlobal}
+						book={book}
 						isExpanded={expandedId === s.id}
 						onToggle={() => setExpandedId((id) => (id === s.id ? null : s.id))}
 						onRequestDelete={() => setPendingDeleteId(s.id)}
@@ -160,14 +146,12 @@ export function SessionTable(props: Props) {
 type RowProps = {
 	session: ReadingSession;
 	book: Book | null;
-	showBook: boolean;
 	isExpanded: boolean;
 	onToggle: () => void;
 	onRequestDelete: () => void;
 };
 
-function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDelete }: RowProps) {
-	const router = useRouter();
+function SessionRow({ session, book, isExpanded, onToggle, onRequestDelete }: RowProps) {
 	const dateLabel = formatSessionDate(session.startedAt);
 
 	const wordCount = book?.wordCount ?? 0;
@@ -180,9 +164,6 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 	const startPct = hasRange ? (session.startWord / wordCount) * 100 : null;
 	const endPct = hasRange ? (session.endWord / wordCount) * 100 : null;
 
-	const openBook = () =>
-		router.navigate({ to: "/tabs/library/book/$id", params: { id: session.bookId } });
-
 	return (
 		<li>
 			<button
@@ -192,12 +173,7 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 				aria-expanded={isExpanded}
 			>
 				<div className="min-w-0 flex-1">
-					<div className="truncate text-sm">
-						{showBook ? (book?.title ?? "Unknown book") : dateLabel}
-					</div>
-					{showBook && (
-						<div className="mt-0.5 truncate text-muted-foreground text-xs">{dateLabel}</div>
-					)}
+					<div className="truncate text-sm">{dateLabel}</div>
 				</div>
 				<div className="shrink-0 text-right text-foreground/80 text-xs tabular-nums">
 					<div>
@@ -244,16 +220,6 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 									)}
 								</div>
 								<div className="flex shrink-0 items-center gap-1">
-									{showBook && (
-										<Button
-											variant="ghost"
-											size="icon-xs"
-											onClick={openBook}
-											aria-label="Open book"
-										>
-											<ExternalLink />
-										</Button>
-									)}
 									<Button
 										variant="ghost"
 										size="icon-xs"
@@ -281,14 +247,14 @@ function SessionRow({ session, book, showBook, isExpanded, onToggle, onRequestDe
 	);
 }
 
-const MODE_BADGE_LABELS: Record<ReadingSession["mode"], string> = {
+export const MODE_BADGE_LABELS: Record<ReadingSession["mode"], string> = {
 	rsvp: "RSVP",
 	scroll: "Scroll",
 	page: "Page",
 	listen: "Listen",
 };
 
-function ModeBadge({ mode }: { mode: ReadingSession["mode"] }) {
+export function ModeBadge({ mode }: { mode: ReadingSession["mode"] }) {
 	const label = MODE_BADGE_LABELS[mode];
 	return (
 		<span className="inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 font-semibold text-[0.65rem] text-muted-foreground uppercase tracking-wide">
@@ -297,7 +263,7 @@ function ModeBadge({ mode }: { mode: ReadingSession["mode"] }) {
 	);
 }
 
-function formatPercent(value: number): string {
+export function formatPercent(value: number): string {
 	if (value <= 0) return "0%";
 	if (value < 1) return "<1%";
 	return `${Math.round(value)}%`;
@@ -310,12 +276,11 @@ function formatSessionDate(epochMs: number): string {
 	return `${MONTHS[d.getMonth()]} ${d.getDate()} · ${hh}:${mm}`;
 }
 
-function formatTimeRange(start: number, end: number): string {
-	const fmt = (t: number) => {
-		const d = new Date(t);
-		const hh = String(d.getHours()).padStart(2, "0");
-		const mm = String(d.getMinutes()).padStart(2, "0");
-		return `${hh}:${mm}`;
-	};
-	return `${fmt(start)} → ${fmt(end)}`;
+export function formatClock(epochMs: number): string {
+	const d = new Date(epochMs);
+	return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+export function formatTimeRange(start: number, end: number): string {
+	return `${formatClock(start)} → ${formatClock(end)}`;
 }

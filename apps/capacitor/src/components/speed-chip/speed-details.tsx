@@ -190,6 +190,7 @@ export function SpeedDetails({ model, dialWpm, showDial, book, onNavigate }: Pro
 
 			<Link
 				to="/tabs/library/stats"
+				search={{ tab: "speed" }}
 				onClick={onNavigate}
 				className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border px-3 py-2 font-medium text-sm hover:bg-muted"
 			>

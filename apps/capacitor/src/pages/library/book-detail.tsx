@@ -352,7 +352,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					isResolved={areChaptersResolved}
 				/>
 				<BookHighlights highlights={highlights} />
-				<SessionTable mode="book" bookId={book.id} />
+				<SessionTable bookId={book.id} />
 			</DetailShell>
 
 			{!IS_WEB && (

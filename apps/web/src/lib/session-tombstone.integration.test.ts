@@ -3,7 +3,12 @@
 // Reading-session deletions through the sync endpoints against a real Postgres
 // database. Skipped when DATABASE_URL is unset.
 import { randomUUID } from "node:crypto";
-import type { SyncPayload, SyncReadingSession, SyncResponse } from "@lesefluss/core";
+import {
+	DELETE_SESSIONS_BATCH_MAX,
+	type SyncPayload,
+	type SyncReadingSession,
+	type SyncResponse,
+} from "@lesefluss/core";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { db } from "~/db";
@@ -11,6 +16,7 @@ import { user } from "~/db/auth-schema";
 import { syncReadingGoals, syncReadingSessions } from "~/db/schema";
 import { Route as SyncRoute } from "~/routes/api/sync";
 import { Route as DeleteSessionRoute } from "~/routes/api/sync/delete-session";
+import { Route as DeleteSessionsRoute } from "~/routes/api/sync/delete-sessions";
 import { Route as WipeSessionsRoute } from "~/routes/api/sync/wipe-sessions";
 
 vi.mock("~/lib/mailer", () => ({ sendMail: vi.fn(async () => {}) }));
@@ -24,14 +30,19 @@ const handlersOf = (route: { options: { server?: unknown } }) =>
 	(route.options.server as { handlers: Record<string, Handler> }).handlers;
 const syncHandlers = handlersOf(SyncRoute);
 const deleteHandlers = handlersOf(DeleteSessionRoute);
+const batchDeleteHandlers = handlersOf(DeleteSessionsRoute);
 const wipeHandlers = handlersOf(WipeSessionsRoute);
 
 describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 	const userId = `test-tombstone-${randomUUID().slice(0, 8)}`;
 	const context = { user: { id: userId } };
+	const otherUserId = `${userId}-other`;
 
 	beforeAll(async () => {
-		await db.insert(user).values({ id: userId, name: "Reader", email: `${userId}@example.test` });
+		await db.insert(user).values([
+			{ id: userId, name: "Reader", email: `${userId}@example.test` },
+			{ id: otherUserId, name: "Other", email: `${otherUserId}@example.test` },
+		]);
 	});
 
 	beforeEach(async () => {
@@ -41,7 +52,9 @@ describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 	afterAll(async () => {
 		await db.delete(syncReadingGoals).where(eq(syncReadingGoals.userId, userId));
 		await db.delete(syncReadingSessions).where(eq(syncReadingSessions.userId, userId));
+		await db.delete(syncReadingSessions).where(eq(syncReadingSessions.userId, otherUserId));
 		await db.delete(user).where(eq(user.id, userId));
+		await db.delete(user).where(eq(user.id, otherUserId));
 	});
 
 	function session(sessionId: string, updatedAt = 2_000): SyncReadingSession {
@@ -61,7 +74,7 @@ describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 		};
 	}
 
-	async function push(readingSessions: SyncReadingSession[]) {
+	async function push(readingSessions: SyncReadingSession[], as = context) {
 		const payload: SyncPayload = {
 			books: [],
 			settings: null,
@@ -76,7 +89,7 @@ describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(payload),
 			}),
-			context,
+			context: as,
 		});
 		expect(res.ok).toBe(true);
 	}
@@ -107,6 +120,17 @@ describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 			context,
 		});
 		expect(res.ok).toBe(true);
+	}
+
+	function deleteMany(body: unknown) {
+		return batchDeleteHandlers.POST({
+			request: new Request("https://lesefluss.test/api/sync/delete-sessions", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			}),
+			context,
+		});
 	}
 
 	async function wipe() {
@@ -220,5 +244,54 @@ describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 		const legacy = await get("");
 		expect(legacy.deletedSessionIds).toBeUndefined();
 		expect(legacy.deletedSessionIdsAsOf).toBeUndefined();
+	});
+
+	test("a batch delete tombstones every listed row and pulls list them", async () => {
+		await push([session("a"), session("b"), session("c")]);
+		const res = await deleteMany({ sessionIds: ["a", "c", "c"] });
+		expect(res.ok).toBe(true);
+		expect(await pull()).toEqual({ live: ["b"], deleted: ["a", "c"] });
+	});
+
+	test("a batch delete touches only the caller's rows", async () => {
+		const other = { user: { id: otherUserId } };
+		await push([session("shared-id")], other);
+		await push([session("shared-id")]);
+		expect((await deleteMany({ sessionIds: ["shared-id"] })).ok).toBe(true);
+		const [theirs] = await db
+			.select()
+			.from(syncReadingSessions)
+			.where(
+				and(
+					eq(syncReadingSessions.userId, otherUserId),
+					eq(syncReadingSessions.sessionId, "shared-id"),
+				),
+			);
+		expect(theirs?.deleted).toBe(false);
+		expect((await storedRow("shared-id"))?.deleted).toBe(true);
+	});
+
+	test("a batch delete that arrives before the rows leaves tombstones the push cannot get past", async () => {
+		expect((await deleteMany({ sessionIds: ["early-1", "early-2"] })).ok).toBe(true);
+		await push([session("early-1"), session("early-2")]);
+		expect(await pull()).toEqual({ live: [], deleted: ["early-1", "early-2"] });
+	});
+
+	test.each([
+		["no body", null],
+		["no ids", { sessionIds: [] }],
+		["an id longer than the push schema allows", { sessionIds: ["x".repeat(65)] }],
+		["a non-string id", { sessionIds: [42] }],
+		[
+			"more ids than one batch holds",
+			{ sessionIds: Array.from({ length: DELETE_SESSIONS_BATCH_MAX + 1 }, (_, i) => `s${i}`) },
+		],
+	])("a batch delete refuses %s and tombstones nothing", async (_, body) => {
+		expect((await deleteMany(body)).status).toBe(400);
+		const rows = await db
+			.select()
+			.from(syncReadingSessions)
+			.where(eq(syncReadingSessions.userId, userId));
+		expect(rows).toEqual([]);
 	});
 });

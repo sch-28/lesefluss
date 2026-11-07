@@ -351,6 +351,13 @@
       "when": 1784160000000,
       "tag": "0049_goal_daily_minutes",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1784246400000,
+      "tag": "0050_show_live_wpm",
+      "breakpoints": true
     }
   ]
 }

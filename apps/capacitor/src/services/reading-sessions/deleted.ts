@@ -2,7 +2,7 @@ type Listener = (ids: ReadonlySet<string>) => void;
 
 const listeners = new Set<Listener>();
 
-/** Called with the ids of sessions deleted on another device, before their rows go. */
+/** Called with the ids of deleted sessions, here or on another device, before their rows go. */
 export function onSessionsDeleted(listener: Listener): () => void {
 	listeners.add(listener);
 	return () => {

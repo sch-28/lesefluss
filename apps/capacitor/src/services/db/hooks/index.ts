@@ -222,6 +222,8 @@ export const queryHooks = {
 
 	/** Mutation: delete one reading session (server + local). */
 	useDeleteReadingSession: readingSessionHooks.useDeleteReadingSession,
+	useDeleteReadingSessions: readingSessionHooks.useDeleteReadingSessions,
+	useAllReadingSessions: readingSessionHooks.useAllReadingSessions,
 
 	// ── Danger Zone (bulk deletions) ───────────────────────────────────────
 	/** Mutation: hard-delete every highlight on this device + sync. */

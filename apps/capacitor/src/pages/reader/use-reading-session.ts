@@ -54,6 +54,8 @@ type Return = {
 	/** Snapshot reader for the on-screen debug badge. Returns null when no
 	 *  tracker is mounted (book hasn't loaded yet). */
 	getDebugSnapshot: () => DebugSnapshot | null;
+	/** See `SessionTracker.getLiveRate`; null when no tracker is mounted. */
+	getLiveRate: () => number | null;
 	/** Ends the current sitting; the next reading activity opens a new one at
 	 *  the then-current position. */
 	endSession: () => void;
@@ -170,6 +172,8 @@ export function useReadingSession({
 		return trackerRef.current?.getDebugSnapshot() ?? null;
 	}, []);
 
+	const getLiveRate = useCallback(() => trackerRef.current?.getLiveRate() ?? null, []);
+
 	const endSession = useCallback(() => {
 		trackerRef.current?.finalize();
 	}, []);
@@ -189,6 +193,7 @@ export function useReadingSession({
 	return {
 		markActivity,
 		getDebugSnapshot,
+		getLiveRate,
 		endSession,
 		rewindSession,
 		backfillSession,

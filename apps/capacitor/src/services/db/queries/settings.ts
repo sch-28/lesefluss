@@ -46,6 +46,7 @@ export async function getSettings(): Promise<Settings> {
 		readerActiveWordUnderline: DEFAULT_SETTINGS.READER_ACTIVE_WORD_UNDERLINE,
 		readerGlossaryUnderline: DEFAULT_SETTINGS.READER_GLOSSARY_UNDERLINE,
 		showReadingTime: DEFAULT_SETTINGS.SHOW_READING_TIME,
+		showLiveWpm: DEFAULT_SETTINGS.SHOW_LIVE_WPM,
 		defaultReaderMode: DEFAULT_SETTINGS.DEFAULT_READER_MODE,
 		paginationStyle: DEFAULT_SETTINGS.PAGINATION_STYLE,
 		onboardingCompleted: DEFAULT_SETTINGS.ONBOARDING_COMPLETED,

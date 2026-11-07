@@ -46,6 +46,7 @@ function ReaderSettings() {
 		paragraphSpacing,
 		paginationStyle,
 		showReadingTime,
+		showLiveWpm,
 		showActiveWordUnderline,
 		showGlossaryUnderline,
 		pageTurnAnimation,
@@ -66,6 +67,7 @@ function ReaderSettings() {
 		setReadingRulerLines,
 		setPaginationStyle,
 		setShowReadingTime,
+		setShowLiveWpm,
 		setShowActiveWordUnderline,
 		setShowGlossaryUnderline,
 		setPageTurnAnimation,
@@ -212,6 +214,13 @@ function ReaderSettings() {
 						title="Show time remaining"
 						checked={showReadingTime}
 						onCheckedChange={setShowReadingTime}
+					/>
+					<ToggleRow
+						id="show-live-wpm"
+						title="Show live speed"
+						subtitle="Words per minute of this sitting, in scroll and page mode."
+						checked={showLiveWpm}
+						onCheckedChange={setShowLiveWpm}
 					/>
 					<ToggleRow
 						id="show-active-word"

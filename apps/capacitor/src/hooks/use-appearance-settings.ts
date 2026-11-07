@@ -270,6 +270,7 @@ export function useAppearanceSettings() {
 	const textAlign = textAlignFor(settings?.readerTextAlign);
 	const readingRuler = readingRulerFor(settings);
 	const showReadingTime = settings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
+	const showLiveWpm = settings?.showLiveWpm ?? DEFAULT_SETTINGS.SHOW_LIVE_WPM;
 	// round1 applied on read so disabled comparisons are reliable despite floating-point drift
 	const lineSpacing = round1(settings?.readerLineSpacing ?? DEFAULT_SETTINGS.READER_LINE_SPACING);
 	const margin = settings?.readerMargin ?? DEFAULT_SETTINGS.READER_MARGIN;
@@ -403,6 +404,10 @@ export function useAppearanceSettings() {
 		mutate({ showReadingTime: v });
 	};
 
+	const setShowLiveWpm = (v: boolean) => {
+		mutate({ showLiveWpm: v });
+	};
+
 	const setShowActiveWordUnderline = (v: boolean) => {
 		mutate({ readerActiveWordUnderline: v });
 	};
@@ -441,6 +446,7 @@ export function useAppearanceSettings() {
 		paragraphSpacing,
 		paginationStyle,
 		showReadingTime,
+		showLiveWpm,
 		showActiveWordUnderline,
 		showGlossaryUnderline,
 		pageTurnAnimation,
@@ -463,6 +469,7 @@ export function useAppearanceSettings() {
 		setReadingRulerLines,
 		setPaginationStyle,
 		setShowReadingTime,
+		setShowLiveWpm,
 		setShowActiveWordUnderline,
 		setShowGlossaryUnderline,
 		setPageTurnAnimation,

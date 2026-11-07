@@ -1,6 +1,7 @@
 import { Preferences } from "@capacitor/preferences";
 import {
 	type ContentQuotaExceeded,
+	DELETE_SESSIONS_BATCH_MAX,
 	DeletedSessionIdsSchema,
 	isSyncEligible,
 	MAX_SYNCED_CONTENT_BYTES,
@@ -348,10 +349,61 @@ export async function wipeAllReadingStats(): Promise<void> {
 /** Tombstone a single reading session on the server. `wipeServerSessions` for one row. */
 export async function deleteServerSession(sessionId: string): Promise<void> {
 	if (!(await isSyncReady())) return;
+	await postDeleteSession(sessionId);
+}
+
+async function postDeleteSession(sessionId: string): Promise<void> {
 	await syncFetch("/api/sync/delete-session", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ sessionId }),
+	});
+}
+
+/**
+ * Tombstone many reading sessions on the server, in batches it accepts. A server
+ * older than the batch endpoint gets the ids one by one.
+ */
+export async function deleteServerSessions(sessionIds: readonly string[]): Promise<void> {
+	if (sessionIds.length === 0 || !(await isSyncReady())) return;
+	for (let i = 0; i < sessionIds.length; i += DELETE_SESSIONS_BATCH_MAX) {
+		const batch = sessionIds.slice(i, i + DELETE_SESSIONS_BATCH_MAX);
+		try {
+			await authedFetch("/api/sync/delete-sessions", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ sessionIds: batch }),
+			});
+		} catch (err) {
+			if (!mayBeMissingRoute(err)) throw toSyncError(err);
+			// No sync-ready check per id: a sign-out mid-loop must throw, not skip ids that then get deleted locally.
+			for (const id of sessionIds.slice(i)) await postDeleteSession(id);
+			return;
+		}
+	}
+}
+
+/**
+ * A route the server lacks answers 404, but without CORS headers, so the native
+ * app's cross-origin fetch sees only a TypeError. Offline looks the same; the
+ * one-by-one fallback then fails on its first call.
+ */
+function mayBeMissingRoute(err: unknown): boolean {
+	return (err instanceof AuthedFetchError && err.status === 404) || err instanceof TypeError;
+}
+
+/**
+ * Delete reading sessions here and on the server, server first: a local-only
+ * delete would come back on the next pull. Under the sync lock, so a pull that
+ * fetched before the tombstones existed cannot write the rows back.
+ */
+export async function deleteReadingSessionsEverywhere(ids: readonly string[]): Promise<void> {
+	if (ids.length === 0) return;
+	await withSyncLock(async () => {
+		await deleteServerSessions(ids);
+		// Before the delete, as on pull: an open sitting must move to a new id first.
+		notifySessionsDeleted(ids);
+		await queries.deleteReadingSessions([...ids]);
 	});
 }
 

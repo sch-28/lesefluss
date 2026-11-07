@@ -203,6 +203,7 @@ export const SyncSettingsSchema = z.object({
 		.min(SETTING_CONSTRAINTS.READER_PARAGRAPH_SPACING.min)
 		.max(SETTING_CONSTRAINTS.READER_PARAGRAPH_SPACING.max),
 	showReadingTime: z.boolean(),
+	showLiveWpm: z.boolean(),
 	readerActiveWordUnderline: z.boolean().optional().default(true),
 	readerGlossaryUnderline: z.boolean().optional().default(true),
 	defaultReaderMode: z.enum(["scroll", "rsvp"]),
@@ -429,6 +430,14 @@ export type SyncSettings = z.infer<typeof SyncSettingsSchema>;
 export type SyncHighlight = z.infer<typeof SyncHighlightSchema>;
 export type SyncGlossaryEntry = z.infer<typeof SyncGlossaryEntrySchema>;
 export type SyncReadingSession = z.infer<typeof SyncReadingSessionSchema>;
+/** Ids per `/api/sync/delete-sessions` call; a client chunks a larger delete. */
+export const DELETE_SESSIONS_BATCH_MAX = 500;
+
+/** The push schema's id cap: an unknown id leaves a permanent placeholder tombstone. */
+export const DeleteSessionsRequestSchema = z.object({
+	sessionIds: z.array(z.string().min(1).max(64)).min(1).max(DELETE_SESSIONS_BATCH_MAX),
+});
+
 /** A malformed tombstone list deletes nothing rather than failing the pull. */
 export const DeletedSessionIdsSchema = z.array(z.string()).catch([]);
 export type SyncReadingGoal = z.infer<typeof SyncReadingGoalSchema>;

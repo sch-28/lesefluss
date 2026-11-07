@@ -63,6 +63,7 @@ describe("SyncPushSchema settings", () => {
 		readerWordSpacing: 0.16,
 		readerParagraphSpacing: 1.6,
 		showReadingTime: true,
+		showLiveWpm: true,
 		readerActiveWordUnderline: false,
 		readerGlossaryUnderline: true,
 		defaultReaderMode: "scroll",
@@ -135,6 +136,11 @@ describe("SyncPushSchema settings", () => {
 	it("leaves bold text out of a push from a client that predates it", () => {
 		const { readerBold: _, ...older } = settings;
 		expect(push(older).data?.settings).not.toHaveProperty("readerBold");
+	});
+
+	it("leaves the live wpm toggle out of a push from a client that predates it", () => {
+		const { showLiveWpm: _, ...older } = settings;
+		expect(push(older).data?.settings).not.toHaveProperty("showLiveWpm");
 	});
 
 	it("drops an alignment it doesn't know, as a newer client might send", () => {

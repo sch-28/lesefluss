@@ -148,6 +148,7 @@ import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
 import { GoalChip } from "./goal-chip";
 import { hyphenationLang } from "./hyphenation-lang";
 import { useLiveReading } from "./live-board";
+import { LiveWpm } from "./live-wpm";
 import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
 import type { ParagraphWordEntry } from "./paragraph";
@@ -2337,6 +2338,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const {
 		markActivity: markReadingActivity,
 		getDebugSnapshot,
+		getLiveRate,
 		endSession,
 		rewindSession,
 		backfillSession,
@@ -3057,6 +3059,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 									{bookMinutesRemaining > 0 && (
 										<> · {formatReadingTime(bookMinutesRemaining)} left</>
 									)}
+									<LiveWpm
+										settings={dbSettings}
+										mode={sessionMode}
+										isListening={isReadAloudActive}
+										getRate={getLiveRate}
+									/>
 									{readingNowCount > 0 && (
 										<>
 											{" · "}

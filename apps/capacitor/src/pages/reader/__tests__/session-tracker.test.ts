@@ -6,7 +6,14 @@ import {
 	type SessionRow,
 } from "../../../services/reading-sessions/rules";
 import { log } from "../../../utils/log";
-import { HEARTBEAT_MS, POLL_MS, SessionTracker, SOFT_IDLE_MS } from "../session-tracker";
+import {
+	HEARTBEAT_MS,
+	LIVE_RATE_MIN_ACTIVE_MS,
+	LIVE_RATE_MIN_WORDS,
+	POLL_MS,
+	SessionTracker,
+	SOFT_IDLE_MS,
+} from "../session-tracker";
 
 function setup(opts?: {
 	mode?: "scroll" | "page" | "rsvp";
@@ -1088,5 +1095,59 @@ describe("SessionTracker when its row is deleted elsewhere", () => {
 		expect(state.sessionId).not.toBe(id);
 		expect(state.activeSinceMs).toBeNull();
 		expect(state.accumulatedActiveMs).toBe(0);
+	});
+});
+
+describe("SessionTracker live rate", () => {
+	function readFor(env: ReturnType<typeof setup>, ms: number, wordsPerPoll: number) {
+		for (let t = 0; t < ms; t += POLL_MS) {
+			env.advance(POLL_MS);
+			env.movePosition(wordsPerPoll);
+			env.tracker.tick();
+		}
+	}
+
+	it("is null without a sitting", () => {
+		expect(setup().tracker.getLiveRate()).toBeNull();
+	});
+
+	it("is null until the sitting has run long enough", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		readFor(env, LIVE_RATE_MIN_ACTIVE_MS - POLL_MS, 20);
+		expect(env.tracker.getLiveRate()).toBeNull();
+		readFor(env, POLL_MS, 20);
+		expect(env.tracker.getLiveRate()).toBe(240);
+	});
+
+	it("is null until enough words are read", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		env.advance(LIVE_RATE_MIN_ACTIVE_MS * 2);
+		env.movePosition(LIVE_RATE_MIN_WORDS - 1);
+		env.tracker.markActivity();
+		env.tracker.tick();
+		expect(env.tracker.getLiveRate()).toBeNull();
+	});
+
+	it("matches the wpm the sitting's row records", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		readFor(env, 95_000, 17);
+		env.advance(2_500);
+		const live = env.tracker.getLiveRate();
+		env.tracker.finalize();
+		expect(live).not.toBeNull();
+		expect(live).toBe(env.persisted.at(-1)!.row.wpmAvg);
+	});
+
+	it("stops counting while the sitting is paused", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		readFor(env, 60_000, 20);
+		const before = env.tracker.getLiveRate();
+		env.tracker.setForeground(false);
+		env.advance(10 * 60_000 - 1);
+		expect(env.tracker.getLiveRate()).toBe(before);
 	});
 });
