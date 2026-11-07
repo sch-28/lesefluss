@@ -10,6 +10,7 @@ import {
 	modeSpeed,
 	rsvpTimeSavedMs,
 	type SpeedRow,
+	speedWindowRows,
 	wpmFrom,
 } from "../speed-model";
 
@@ -90,6 +91,15 @@ describe("computeSpeedModel", () => {
 				wordsRead: (i < 2 ? 200 : 400) * 60,
 			}),
 		);
+
+		it("speedWindowRows holds the same sittings the model counts", () => {
+			const listen = row({ mode: "listen", startedAt: NOW - HOUR });
+			for (const window of ["recent", "30d", "all"] as const) {
+				const rows = speedWindowRows([...history, listen], window, NOW);
+				expect(rows).toHaveLength(computeSpeedModel(history, { now: NOW, window }).sittings);
+				expect(rows).not.toContain(listen);
+			}
+		});
 
 		it("recent stops once the newest sittings reach ten hours", () => {
 			const model = computeSpeedModel(history, { now: NOW, window: "recent" });

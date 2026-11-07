@@ -5,12 +5,19 @@ import {
 	type ProfileSpeeds,
 	type ProfileStats,
 	readingDayKeys,
+	SPEED_WINDOWS,
 	type SpeedModel,
+	type SpeedWindow,
 	streakFromDays,
 } from "@lesefluss/core";
 import { and, eq } from "drizzle-orm";
 import type { DbExecutor } from "~/db";
-import { syncBooks, syncReadingSessions } from "~/db/schema";
+import { syncBooks, syncReadingSessions, syncSettings } from "~/db/schema";
+
+/** The owner's synced speed window; recent for an owner who never synced settings. */
+export function ownerWindow(stored: string | undefined): SpeedWindow {
+	return SPEED_WINDOWS.find((w) => w === stored) ?? "recent";
+}
 
 /** Start of the current calendar year in the owner's zone, UTC when none is known. */
 export function startOfYear(now: Date, timeZone: string | undefined): Date {
@@ -138,10 +145,15 @@ export async function profileStatsFor(
 			.flatMap((s) => readingDaysOf(s.startedAt, options.timeZone)),
 	);
 	const openDays = readingDaysOf(now, options.timeZone);
-	// The app's default window, so a friend sees the number the owner's own chip shows.
+	// The owner's own window, so a friend sees the number the owner's chip shows.
+	const [owner] = await exec
+		.select({ speedWindow: syncSettings.speedWindow })
+		.from(syncSettings)
+		.where(eq(syncSettings.userId, userId))
+		.limit(1);
 	const model = computeSpeedModel(
 		sessions.map((s) => ({ ...s, startedAt: s.startedAt.getTime() })),
-		{ window: "recent", now: now.getTime() },
+		{ window: ownerWindow(owner?.speedWindow), now: now.getTime() },
 	);
 	const streak =
 		sessions.length > 0

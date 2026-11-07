@@ -5,6 +5,7 @@ import {
 	type ReadingGoalMode,
 	type ReadingGoalStatus,
 	type ReadingMode,
+	type SpeedWindow,
 	type WordPosition,
 	wordPos,
 } from "@lesefluss/core";
@@ -67,6 +68,7 @@ export const settings = sqliteTable("settings", {
 		.default(true),
 	showReadingTime: integer("show_reading_time", { mode: "boolean" }).notNull().default(true),
 	showLiveWpm: integer("show_live_wpm", { mode: "boolean" }).notNull().default(false),
+	speedWindow: text("speed_window").$type<SpeedWindow>().notNull().default("recent"),
 	// Local-only sync opt-outs. Never added to SYNCED_SETTING_KEYS; off-state is
 	// non-destructive (server keeps its copy, this device stops pushing/merging).
 	syncHighlights: integer("sync_highlights", { mode: "boolean" }).notNull().default(true),
@@ -84,6 +86,7 @@ export const settings = sqliteTable("settings", {
 	lastSeenChangelogDate: text("last_seen_changelog_date").notNull().default(""),
 	pageTurnAnimation: integer("page_turn_animation", { mode: "boolean" }).notNull().default(true),
 	autoOpenLastBook: integer("auto_open_last_book", { mode: "boolean" }).notNull().default(false),
+	showSessionSummary: integer("show_session_summary", { mode: "boolean" }).notNull().default(true),
 	einkMode: integer("eink_mode", { mode: "boolean" }).notNull().default(false),
 	// Null = never set; see volumeKeysFor.
 	volumeKeyPageTurn: integer("volume_key_page_turn", { mode: "boolean" }),

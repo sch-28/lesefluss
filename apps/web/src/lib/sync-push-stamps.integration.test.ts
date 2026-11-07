@@ -97,6 +97,7 @@ describe.skipIf(!hasDb)("sync push stamps (integration)", () => {
 			readerParagraphSpacing: 1.6,
 			showReadingTime: true,
 			showLiveWpm: true,
+			speedWindow: "30d",
 			readerActiveWordUnderline: false,
 			readerGlossaryUnderline: true,
 			defaultReaderMode: "scroll",

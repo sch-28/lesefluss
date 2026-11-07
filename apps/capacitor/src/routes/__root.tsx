@@ -7,6 +7,7 @@ import { AppShell } from "@/components/app-shell/AppShell";
 import { HardwareBack } from "@/components/app-shell/hardware-back";
 import CommandPalette from "@/components/command-palette";
 import { PushOfferDialog } from "@/components/push/push-offer-dialog";
+import { SessionSummarySheet } from "@/components/session-summary/session-summary-sheet";
 import ShareIntentHandler from "@/components/share-intent-handler";
 import ShortcutSheet from "@/components/shortcut-sheet";
 import { Toaster } from "@/components/toast";
@@ -56,6 +57,7 @@ function RootLayout() {
 			<CommandPalette />
 			<ShortcutSheet />
 			<BurstHost />
+			<SessionSummarySheet />
 			{isFullScreen ? (
 				<Outlet />
 			) : (

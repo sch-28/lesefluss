@@ -17,6 +17,7 @@ import {
 	SETTING_CONSTRAINTS,
 	SYNCED_SETTING_KEYS,
 } from "./settings";
+import { SPEED_WINDOWS } from "./speed-model";
 
 /**
  * Max plain-text content size (UTF-8 bytes) a book may have to be eligible for
@@ -204,6 +205,7 @@ export const SyncSettingsSchema = z.object({
 		.max(SETTING_CONSTRAINTS.READER_PARAGRAPH_SPACING.max),
 	showReadingTime: z.boolean(),
 	showLiveWpm: z.boolean(),
+	speedWindow: z.enum(SPEED_WINDOWS),
 	readerActiveWordUnderline: z.boolean().optional().default(true),
 	readerGlossaryUnderline: z.boolean().optional().default(true),
 	defaultReaderMode: z.enum(["scroll", "rsvp"]),

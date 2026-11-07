@@ -15,6 +15,7 @@ afterAll(close);
 
 const goals = await import("../queries/reading-goals");
 const { deleteBook, hardDeleteBook, updateBook } = await import("../queries/books");
+const { getSettings } = await import("../queries/settings");
 
 const NOW = new Date(2026, 2, 1, 12).getTime();
 
@@ -354,6 +355,58 @@ describe("getReadingGoalPlan", () => {
 		expect(result.plan.progressToday.words).toBe(200);
 		expect(result.plan.pace).toEqual({ wpm: 200, source: "book" });
 		expect(result.plan.dailyTarget.minutes).toBeCloseTo(0.5);
+	});
+
+	it("paces a book without its own speed by the window the reader picked", async () => {
+		insertBook("bbbbbbbb");
+		const insert = raw.prepare(
+			`INSERT INTO reading_sessions
+			 (id, book_id, mode, started_at, ended_at, duration_ms, words_read, start_word, end_word, wpm_avg, updated_at)
+			 VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+		);
+		const DAY = 86_400_000;
+		const HOUR = 3_600_000;
+		insert.run(
+			"old",
+			"bbbbbbbb",
+			"scroll",
+			NOW - 40 * DAY,
+			NOW - 40 * DAY + HOUR,
+			HOUR,
+			12_000,
+			0,
+			12_000,
+			null,
+			NOW,
+		);
+		insert.run(
+			"new",
+			"bbbbbbbb",
+			"scroll",
+			NOW - 3 * DAY,
+			NOW - 3 * DAY + HOUR,
+			HOUR,
+			18_000,
+			0,
+			18_000,
+			null,
+			NOW,
+		);
+		await goals.createGoal(book("aaaaaaaa"), { mode: "deadline", targetDate: "2026-03-10" }, NOW);
+		await getSettings();
+
+		const paceOf = async () => {
+			const result = await goals.getReadingGoalPlan("aaaaaaaa", NOW + 1);
+			if (result?.plan.kind !== "plan") throw new Error("expected a plan");
+			return result.plan.pace;
+		};
+		try {
+			expect(await paceOf()).toEqual({ wpm: 250, source: "measured" });
+			raw.exec("UPDATE settings SET speed_window = '30d'");
+			expect(await paceOf()).toEqual({ wpm: 300, source: "measured" });
+		} finally {
+			raw.exec("UPDATE settings SET speed_window = 'recent'");
+		}
 	});
 
 	it("switches mode through replanGoalById", async () => {

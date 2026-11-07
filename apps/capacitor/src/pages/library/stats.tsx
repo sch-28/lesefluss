@@ -12,12 +12,12 @@ import { EmptyState } from "./stats/empty-state";
 import { FinishedShelf } from "./stats/finished-shelf";
 import { Hero } from "./stats/hero";
 import { PERIOD_LABELS, type Period, periodWindow } from "./stats/period";
-import { PeriodTabs, PeriodTotals } from "./stats/period-totals";
+import { PeriodTotals } from "./stats/period-totals";
 import { RecordsCard } from "./stats/records-card";
 import { SessionsTab } from "./stats/sessions-tab";
+import { SpeedTab } from "./stats/speed-tab/speed-tab";
 import { isStatsTab, STATS_TAB_LABELS, STATS_TABS, type StatsSearch } from "./stats/stats-search";
 import { TopBooks } from "./stats/top-books";
-import { WpmTrend } from "./stats/wpm-trend";
 
 const Stats: React.FC = () => {
 	// Locked rather than live: query keys derive from it, and a ticking value
@@ -83,10 +83,7 @@ const Stats: React.FC = () => {
 							onBookChange={(book) => setSearch({ tab: "sessions", book })}
 						/>
 					) : tab === "speed" ? (
-						<div className="pt-2">
-							<PeriodTabs period={period} onPeriodChange={setPeriod} className="mb-5 px-4" />
-							<WpmTrend period={period} periodLabel={PERIOD_LABELS[period]} now={now} />
-						</div>
+						<SpeedTab now={now} />
 					) : (
 						<div className="pt-2">
 							<Hero

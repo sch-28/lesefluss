@@ -7,6 +7,7 @@ import {
 	rollUpWorks,
 	type SpeedModel,
 	type SpeedWindow,
+	speedWindowRows,
 	wordPos,
 } from "@lesefluss/core";
 import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
@@ -18,12 +19,12 @@ import {
 	type StreakResult,
 	sumDurationByLocalDay,
 	summariseStreak,
-	type TrendPeriod,
-	trendBucketsFor,
 	type WpmTrend,
+	windowTrendBuckets,
 } from "../../stats/aggregate";
 import type { DailyReading } from "../../stats/calendar";
 import { type ReadingRecords, summariseRecords } from "../../stats/records";
+import { buildSpeedTabData, type SpeedTabData } from "../../stats/speed-tab";
 import { db } from "../index";
 import { bookContent, books, readingSessions, series } from "../schema";
 
@@ -359,31 +360,56 @@ export async function getReadingRecords(): Promise<ReadingRecords> {
 	return summariseRecords(sessions, bookRows);
 }
 
-export async function getWpmTrend(opts: { period: TrendPeriod; now: number }): Promise<WpmTrend> {
-	const now = opts.now;
-	// All-time granularity depends on how far back the history goes, so ask the
-	// cheapest possible question first rather than fetching every row to find out.
-	const oldest =
-		opts.period === "all"
-			? await db
-					.select({ startedAt: sql<number>`MIN(${readingSessions.startedAt})`.as("started_at") })
-					.from(readingSessions)
-					.then((rows) => Number(rows[0]?.startedAt ?? now))
-			: undefined;
+export async function getSpeedTab(): Promise<SpeedTabData> {
+	const [sessions, bookRows] = await Promise.all([
+		db
+			.select({
+				bookId: readingSessions.bookId,
+				mode: readingSessions.mode,
+				startedAt: readingSessions.startedAt,
+				durationMs: readingSessions.durationMs,
+				wordsRead: readingSessions.wordsRead,
+				wpmAvg: readingSessions.wpmAvg,
+			})
+			.from(readingSessions)
+			// Ordered so a tied record goes to the earlier sitting on every render.
+			.orderBy(readingSessions.startedAt),
+		db.select({ id: books.id, title: books.title }).from(books).where(eq(books.deleted, false)),
+	]);
+	const covers = await coversFor(bookRows.map((b) => b.id));
+	const byId = new Map(
+		bookRows.map((b) => [b.id, { title: b.title, coverImage: covers.get(b.id) ?? null }]),
+	);
+	return buildSpeedTabData(sessions, byId);
+}
 
-	const buckets = trendBucketsFor(opts.period, now, oldest);
+export type SpeedTrendMode = "reading" | "rsvp";
+
+/** One mode's speed over the sittings the speed model's window holds, so the
+ *  line and the number above it come from the same rows. */
+export async function getWpmTrend(opts: {
+	window: SpeedWindow;
+	mode: SpeedTrendMode;
+	now: number;
+}): Promise<WpmTrend> {
 	const rows = await db
 		.select({
 			startedAt: readingSessions.startedAt,
 			mode: readingSessions.mode,
 			wpmAvg: readingSessions.wpmAvg,
-			words: readingSessions.wordsRead,
+			wordsRead: readingSessions.wordsRead,
 			durationMs: readingSessions.durationMs,
 		})
-		.from(readingSessions)
-		.where(gte(readingSessions.startedAt, buckets.starts[0] as number));
-
-	return buildWpmTrend(rows, buckets);
+		.from(readingSessions);
+	const inWindow = speedWindowRows(rows, opts.window, opts.now);
+	const ofMode = inWindow.filter((r) => (opts.mode === "rsvp") === (r.mode === "rsvp"));
+	let oldest: number | undefined;
+	for (const r of inWindow) if (oldest === undefined || r.startedAt < oldest) oldest = r.startedAt;
+	const buckets = windowTrendBuckets(opts.window, oldest, opts.now);
+	return buildWpmTrend(
+		ofMode.map((r) => ({ ...r, words: r.wordsRead })),
+		buckets,
+	);
 }
 
 /**
@@ -430,9 +456,12 @@ export interface BookStats {
 export async function getSpeedModel(opts: {
 	window: SpeedWindow;
 	now: number;
+	/** Sittings to leave out, for a speed as it stood before them. */
+	without?: readonly string[];
 }): Promise<SpeedModel> {
-	const rows = await db
+	const all = await db
 		.select({
+			id: readingSessions.id,
 			bookId: readingSessions.bookId,
 			mode: readingSessions.mode,
 			startedAt: readingSessions.startedAt,
@@ -441,6 +470,8 @@ export async function getSpeedModel(opts: {
 			wpmAvg: readingSessions.wpmAvg,
 		})
 		.from(readingSessions);
+	const without = new Set(opts.without);
+	const rows = without.size > 0 ? all.filter((r) => !without.has(r.id)) : all;
 	return computeSpeedModel(rows, { window: opts.window, now: opts.now, speedTest: null });
 }
 

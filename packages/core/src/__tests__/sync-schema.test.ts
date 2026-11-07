@@ -64,6 +64,7 @@ describe("SyncPushSchema settings", () => {
 		readerParagraphSpacing: 1.6,
 		showReadingTime: true,
 		showLiveWpm: true,
+		speedWindow: "30d",
 		readerActiveWordUnderline: false,
 		readerGlossaryUnderline: true,
 		defaultReaderMode: "scroll",
@@ -141,6 +142,18 @@ describe("SyncPushSchema settings", () => {
 	it("leaves the live wpm toggle out of a push from a client that predates it", () => {
 		const { showLiveWpm: _, ...older } = settings;
 		expect(push(older).data?.settings).not.toHaveProperty("showLiveWpm");
+	});
+
+	it("leaves the speed window out of a push from a client that predates it", () => {
+		const { speedWindow: _, ...older } = settings;
+		expect(push(older).data?.settings).not.toHaveProperty("speedWindow");
+	});
+
+	it("keeps a known speed window and drops one it doesn't know", () => {
+		expect(push(settings).data?.settings).toMatchObject({ speedWindow: "30d" });
+		expect(push({ ...settings, speedWindow: "90d" }).data?.settings).not.toHaveProperty(
+			"speedWindow",
+		);
 	});
 
 	it("drops an alignment it doesn't know, as a newer client might send", () => {

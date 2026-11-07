@@ -72,6 +72,16 @@ function GeneralSettings() {
 					/>
 				</SettingsSection>
 
+				<SettingsSection title="After reading">
+					<ToggleRow
+						id="show-session-summary"
+						title="Session summary"
+						subtitle="A sheet with the sitting's time, words and speed when you close a book after 2 minutes or more."
+						checked={settings?.showSessionSummary ?? DEFAULT_SETTINGS.SHOW_SESSION_SUMMARY}
+						onCheckedChange={(v) => saveSettings({ showSessionSummary: v })}
+					/>
+				</SettingsSection>
+
 				<SettingsSection title="Reading mode" hint="(when opening a book)">
 					<SettingsRow stacked>
 						<ModeCards

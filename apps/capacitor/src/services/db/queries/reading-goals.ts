@@ -14,6 +14,7 @@ import {
 import { db } from "../index";
 import { type Book, books, type ReadingGoal, readingGoals, readingSessions } from "../schema";
 import { getBook, isFinishedSql } from "./books";
+import { getSettings } from "./settings";
 import { getSpeedModel } from "./stats";
 
 const UPSERT_CHUNK_SIZE = 200;
@@ -231,10 +232,11 @@ async function getGoalSessions(bookId: string) {
 }
 
 async function loadPlanInput(goal: ReadingGoal, book: Book, now: number): Promise<GoalPlanInput> {
-	const [sessions, model] = await Promise.all([
+	const [sessions, { speedWindow }] = await Promise.all([
 		getGoalSessions(goal.bookId),
-		getSpeedModel({ window: "recent", now }),
+		getSettings(),
 	]);
+	const model = await getSpeedModel({ window: speedWindow, now });
 	return { goal, book, sessions, pace: bookPace(model, goal.bookId), now };
 }
 

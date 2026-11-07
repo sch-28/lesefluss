@@ -223,6 +223,8 @@ export const queryHooks = {
 	useStatsHourHistogram: statsHooks.useHourHistogram,
 	/** One speed model for every speed and time estimate (see @lesefluss/core speed-model). */
 	useStatsSpeedModel: statsHooks.useSpeedModel,
+	useStatsSpeedModelWithout: statsHooks.useSpeedModelWithout,
+	useStatsSpeedTab: statsHooks.useSpeedTab,
 	useStatsBook: statsHooks.useBookStats,
 	useStatsCurrentlyReading: statsHooks.useCurrentlyReading,
 	useStatsFinishedBooks: statsHooks.useFinishedBooks,

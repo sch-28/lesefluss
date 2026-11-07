@@ -67,6 +67,8 @@ export type TrackerOpts = {
 	/** A sitting's furthest credited word as it changes; null while it has read nothing (it
 	 *  may have opened at a jump's target) or once it is discarded. */
 	onFurthestRead?: (sessionId: string, word: number | null) => void;
+	/** A sitting's closing row, after it is handed to `persist`. */
+	onFinalized?: (row: SessionRow) => void;
 	now?: () => number;
 	newId?: () => string;
 };
@@ -524,6 +526,7 @@ export class SessionTracker {
 	private write(row: SessionRow, kind: "checkpoint" | "flush"): void {
 		if (this.session) this.session.hasPersisted = true;
 		this.opts.persist(row, kind);
+		if (kind === "flush") this.opts.onFinalized?.(row);
 	}
 
 	private buildRow(now: number, endedAt?: number): SessionRow | null {

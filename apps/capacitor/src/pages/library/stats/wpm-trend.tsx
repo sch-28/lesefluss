@@ -1,10 +1,11 @@
-import { AVERAGE_READER_WPM } from "@lesefluss/core";
+import { AVERAGE_READER_WPM, type SpeedWindow } from "@lesefluss/core";
 import { ResponsiveLine } from "@nivo/line";
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 import { isDarkTheme, useTheme } from "../../../contexts/theme-context";
 import { queryHooks } from "../../../services/db/hooks";
-import type { TrendGranularity, TrendPeriod } from "../../../services/stats/aggregate";
+import type { SpeedTrendMode } from "../../../services/db/queries/stats";
+import type { TrendGranularity } from "../../../services/stats/aggregate";
 import { summariseWpmTrend } from "../../../services/stats/summaries";
 import { evenTickIndices, formatDayTick } from "./chart-axis";
 import { ChartTooltip } from "./chart-tooltip";
@@ -40,45 +41,38 @@ function formatBucketTick(starts: number[], granularity: TrendGranularity, index
 }
 
 interface Props {
-	period: TrendPeriod;
-	periodLabel: string;
+	window: SpeedWindow;
+	mode: SpeedTrendMode;
+	windowLabel: string;
 	now: number;
 }
 
-export function WpmTrend({ period, periodLabel, now }: Props) {
+export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 	const { theme, isEinkMode } = useTheme();
-	const trend = queryHooks.useStatsWpmTrend(period, now);
+	const trend = queryHooks.useStatsWpmTrend(window, mode, now);
 	// The palette is read from CSS variables, which e-ink mode changes without changing `theme`.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: isEinkMode re-reads the variables
 	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme, isEinkMode]);
 
 	const points = useMemo(
-		() => (trend.data?.measured ?? []).map((p, i) => ({ x: i, y: p.avgWpm })),
+		// A bucket with no sitting is a gap, not a drop to zero.
+		() => (trend.data?.measured ?? []).map((p, i) => ({ x: i, y: p.avgWpm > 0 ? p.avgWpm : null })),
 		[trend.data],
 	);
-	const hasReading = points.some((p) => p.y > 0);
+	const hasReading = points.some((p) => p.y !== null);
 	const lineColor = isDarkTheme(theme) ? COLORS.measured.dark : COLORS.measured.light;
 	const chartData = useMemo(
-		() => [{ id: "Reading speed", color: lineColor, data: points }],
-		[lineColor, points],
+		() => [
+			{ id: mode === "rsvp" ? "RSVP speed" : "Reading speed", color: lineColor, data: points },
+		],
+		[lineColor, points, mode],
 	);
 
 	if (!trend.isLoading && !hasReading) {
 		return (
-			<motion.section
-				initial={{ opacity: 0, y: 12 }}
-				whileInView={{ opacity: 1, y: 0 }}
-				viewport={{ once: true, amount: 0.25 }}
-				transition={{ duration: 0.5 }}
-				className="mb-10 px-4"
-			>
-				<header className="mb-3">
-					<h2 className="font-semibold text-lg">Reading speed</h2>
-				</header>
-				<div className="rounded-xl border border-current/15 border-dashed p-6 text-center text-sm opacity-70">
-					Read in any mode to see your speed trend.
-				</div>
-			</motion.section>
+			<p className="mb-8 px-4 text-muted-foreground text-sm">
+				Not enough reading in this window for a trend.
+			</p>
 		);
 	}
 
@@ -87,11 +81,15 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 	const bucketStarts = (trend.data?.measured ?? []).map((p) => p.bucketStart);
 	const tickIndices = evenTickIndices(bucketStarts.length, MAX_AXIS_TICKS);
 	const hasRsvpTarget = averages.rsvpTarget > 0;
-	const yMax = wpmAxisMax([AVERAGE_READER_WPM, averages.rsvpTarget, ...points.map((p) => p.y)]);
+	const yMax = wpmAxisMax([
+		AVERAGE_READER_WPM,
+		averages.rsvpTarget,
+		...points.map((p) => p.y ?? 0),
+	]);
 	// nivo already puts role="img" on the svg; this gives it a label, so the chart
 	// reads as one sentence rather than a pile of numbers.
 	const chartSummary = trend.data
-		? summariseWpmTrend(trend.data, periodLabel)
+		? summariseWpmTrend(trend.data, windowLabel)
 		: "Reading speed chart";
 
 	return (
@@ -100,28 +98,8 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 			whileInView={{ opacity: 1, y: 0 }}
 			viewport={{ once: true, amount: 0.25 }}
 			transition={{ duration: 0.5 }}
-			className="mb-10 px-4"
+			className="mb-8 px-4"
 		>
-			<header className="mb-3 flex items-end justify-between">
-				<div>
-					<h2 className="font-semibold text-lg">Reading speed</h2>
-					<p className="mt-0.5 text-[11px] uppercase tracking-wider opacity-60">
-						{periodLabel} · words per minute
-					</p>
-				</div>
-				<div className="text-right">
-					<div className="font-bold text-3xl tabular-nums leading-none tracking-tight">
-						{averages.measured}
-					</div>
-					<div className="mt-1 text-[11px] uppercase tracking-wider opacity-60">
-						words per minute
-					</div>
-					{hasRsvpTarget && (
-						<div className="mt-0.5 text-[11px] opacity-60">RSVP set to {averages.rsvpTarget}</div>
-					)}
-				</div>
-			</header>
-
 			{/* An empty series has no path, so nivo writes d="null" and logs
 			    "Expected moveto path command" for every path, animated or not. */}
 			{points.length === 0 ? (
@@ -152,7 +130,7 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 							tickPadding: 8,
 							tickValues: tickIndices,
 							format: (v) => formatBucketTick(bucketStarts, granularity, Number(v)),
-							legend: periodLabel,
+							legend: windowLabel,
 							legendPosition: "middle",
 							legendOffset: 36,
 						}}
@@ -219,7 +197,7 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 												strokeDasharray: "4 4",
 												strokeOpacity: 0.7,
 											},
-											legend: `Target ${averages.rsvpTarget}`,
+											legend: `Dial ${averages.rsvpTarget}`,
 											legendPosition: "top-right" as const,
 											textStyle: { fontSize: 10, fill: "var(--muted-foreground)" },
 										},

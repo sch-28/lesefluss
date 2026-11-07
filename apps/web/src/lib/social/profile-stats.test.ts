@@ -1,6 +1,6 @@
 import { computeSpeedModel, type SpeedRow } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
-import { profileSpeeds, readingDaysOf } from "./profile-stats";
+import { ownerWindow, profileSpeeds, readingDaysOf } from "./profile-stats";
 
 const NOW = Date.UTC(2026, 10, 6);
 const MIN = 60_000;
@@ -37,11 +37,20 @@ describe("profileSpeeds", () => {
 		expect(speedsOf([])).toEqual({});
 	});
 
-	it("uses the recent window, like the owner's own chip", () => {
+	it("uses the recent window by default, like the owner's own chip", () => {
 		// 12h of old slow reading, then 10h of faster: the recent window sees only the newer.
 		const old = Array.from({ length: 12 }, (_, i) => sitting("scroll", 60, 200, 40 + i));
 		const recent = Array.from({ length: 10 }, (_, i) => sitting("scroll", 60, 300, 1 + i));
 		expect(speedsOf([...old, ...recent])).toEqual({ reading: 300 });
+	});
+});
+
+describe("ownerWindow", () => {
+	it("takes the owner's synced window, and recent without one", () => {
+		expect(ownerWindow("30d")).toBe("30d");
+		expect(ownerWindow("all")).toBe("all");
+		expect(ownerWindow(undefined)).toBe("recent");
+		expect(ownerWindow("90d")).toBe("recent");
 	});
 });
 

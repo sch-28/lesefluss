@@ -7,6 +7,7 @@ import {
 	isMeasurableSitting,
 	type ReadingMode,
 	readingDayKeys,
+	type SpeedWindow,
 	type StreakResult,
 	streakFromDays,
 	wpmFrom,
@@ -337,6 +338,40 @@ export function trendBucketsFor(
 		cursor = previousMonthStart(cursor);
 	}
 	return { granularity: "month", starts: starts.reverse() };
+}
+
+/**
+ * Buckets for a speed-model window, spanning just the sittings it holds. A
+ * recent window that reaches back nine days plots days, one that reaches back a
+ * year plots weeks or months, as all time would.
+ */
+export function windowTrendBuckets(
+	window: SpeedWindow,
+	oldestSittingAt: number | undefined,
+	now: number,
+): { granularity: TrendGranularity; starts: number[] } {
+	const oldest = oldestSittingAt ?? now;
+	// Counted in calendar days: a window cut at an hour (30d is now minus 30 days)
+	// can reach into a day the fixed 7 or 30 buckets would leave off.
+	if (window === "30d") return { granularity: "day", starts: localDayStarts(oldest, now, 30) };
+	if (window === "recent") {
+		const days = localDayStarts(oldest, now, 1).length;
+		if (days <= 7) return { granularity: "day", starts: localDayStarts(oldest, now, 7) };
+		if (days <= 31) return { granularity: "day", starts: localDayStarts(oldest, now, 30) };
+	}
+	return trendBucketsFor("all", now, oldest);
+}
+
+/** Day starts back from today to `from`'s day, at least `minDays` of them. */
+function localDayStarts(from: number, now: number, minDays: number): number[] {
+	const first = startOfLocalDay(from);
+	const starts: number[] = [];
+	let cursor = startOfLocalDay(now);
+	while (starts.length < minDays || cursor >= first) {
+		starts.push(cursor);
+		cursor = previousLocalDayStart(cursor);
+	}
+	return starts.reverse();
 }
 
 export interface SpeedSample {

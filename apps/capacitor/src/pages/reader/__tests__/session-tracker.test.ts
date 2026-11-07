@@ -27,6 +27,7 @@ function setup(opts?: {
 	const persisted: Array<{ row: SessionRow; kind: "checkpoint" | "flush" }> = [];
 	const furthest: Array<[id: string, word: number | null]> = [];
 	const removed: string[] = [];
+	const finalized: SessionRow[] = [];
 
 	const tracker = new SessionTracker({
 		bookId: "book1",
@@ -36,6 +37,7 @@ function setup(opts?: {
 		persist: (row, kind) => persisted.push({ row, kind }),
 		onFurthestRead: (id, word) => furthest.push([id, word]),
 		remove: (id) => removed.push(id),
+		onFinalized: (row) => finalized.push(row),
 		now: () => clock,
 		newId: () => `id${++idCounter}`,
 	});
@@ -45,6 +47,7 @@ function setup(opts?: {
 		persisted,
 		furthest,
 		removed,
+		finalized,
 		advance(ms: number) {
 			clock += ms;
 		},
@@ -84,6 +87,24 @@ describe("SessionTracker", () => {
 		expect(env.persisted[0]!.row.durationMs).toBe(30_000);
 		expect(env.persisted[0]!.row.wordsRead).toBe(20);
 		expect(env.persisted[0]!.row.bookId).toBe("book1");
+	});
+
+	it("hands only a sitting's closing row to onFinalized", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		env.advance(30_000);
+		env.movePosition(20);
+		env.tracker.tick();
+		env.tracker.setForeground(false);
+		env.tracker.setForeground(true);
+		expect(env.finalized).toHaveLength(0);
+		env.advance(10_000);
+		env.movePosition(20);
+		env.tracker.tick();
+		env.tracker.finalize();
+		env.tracker.finalize();
+		expect(env.finalized).toHaveLength(1);
+		expect(env.finalized[0]).toEqual(env.persisted.at(-1)!.row);
 	});
 
 	it("drops session below MIN_DURATION", () => {

@@ -25,7 +25,7 @@ vi.mock("../stats/records-card", () => ({ RecordsCard: () => null }));
 vi.mock("../stats/finished-shelf", () => ({ FinishedShelf: () => null }));
 vi.mock("../stats/top-books", () => ({ TopBooks: () => null }));
 vi.mock("../stats/activity", () => ({ Activity: () => null }));
-vi.mock("../stats/wpm-trend", () => ({ WpmTrend: marker("speed") }));
+vi.mock("../stats/speed-tab/speed-tab", () => ({ SpeedTab: marker("speed") }));
 vi.mock("../stats/sessions-tab", () => ({
 	SessionsTab: ({
 		bookId,

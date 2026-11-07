@@ -13,6 +13,7 @@ import {
 	trendBucketsFor,
 	type WpmSession,
 	weekStartsFor,
+	windowTrendBuckets,
 } from "../aggregate";
 
 const ORIGINAL_TZ = process.env.TZ;
@@ -371,6 +372,37 @@ describe.each(["Europe/Berlin", "America/New_York"])("trendBucketsFor in %s", (t
 			const starts = trendBucketsFor(period, at(2026, 5, 10), at(2020, 1, 1)).starts;
 			expect([...starts].sort((a, b) => a - b)).toEqual(starts);
 		}
+	});
+});
+
+describe("windowTrendBuckets", () => {
+	const now = at(2026, 5, 20);
+
+	it("plots a recent window as days while it reaches back under a month", () => {
+		expect(windowTrendBuckets("recent", at(2026, 5, 17), now).starts).toHaveLength(7);
+		expect(windowTrendBuckets("recent", at(2026, 5, 1), now).starts).toHaveLength(30);
+	});
+
+	it("plots a recent window that reaches back further like all time", () => {
+		const old = at(2025, 1, 10);
+		expect(windowTrendBuckets("recent", old, now)).toEqual(windowTrendBuckets("all", old, now));
+	});
+
+	it("keeps a sitting at an earlier hour on the window's first day", () => {
+		const morning = new Date(2026, 5, 20, 8).getTime();
+		const weekAgoLater = new Date(2026, 5, 13, 10).getTime();
+		expect(windowTrendBuckets("recent", weekAgoLater, morning).starts[0]).toBeLessThanOrEqual(
+			weekAgoLater,
+		);
+		const monthAgoLater = morning - 30 * 24 * 3_600_000 + 3_600_000;
+		expect(windowTrendBuckets("30d", monthAgoLater, morning).starts[0]).toBeLessThanOrEqual(
+			monthAgoLater,
+		);
+	});
+
+	it("gives 30 days one bucket per day, and copes with no sittings", () => {
+		expect(windowTrendBuckets("30d", undefined, now).starts).toHaveLength(30);
+		expect(windowTrendBuckets("all", undefined, now).starts.length).toBeGreaterThan(0);
 	});
 });
 

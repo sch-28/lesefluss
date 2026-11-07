@@ -165,22 +165,30 @@ export const statsKeys = {
 	/** Top-N books since a cutoff. */
 	topBooks: (since: number, limit: number) => ["stats", "top-books", since, limit] as const,
 
-	/** WPM trend, bucketed to the selected period. */
-	wpmTrend: (period: string, dayStart: number) => ["stats", "wpm-trend", period, dayStart] as const,
+	/** One mode's WPM trend over a speed window, as of one local day. */
+	wpmTrend: (window: string, mode: string, dayStart: number) =>
+		["stats", "wpm-trend", window, mode, dayStart] as const,
 
 	/** Hour-of-day histogram. */
 	hourHistogram: ["stats", "hour-histogram"] as const,
 
 	/** The speed model behind every speed and time estimate. */
 	speedModel: (window: string) => ["stats", "speed-model", window] as const,
+	/** The speed model without some sittings: the average a finished visit is compared with. */
+	speedModelWithout: (window: string, sessionIds: readonly string[]) =>
+		["stats", "speed-model", window, "without", ...sessionIds] as const,
+	/** The Speed tab's per-book rows and records, all time. */
+	speedTab: ["stats", "speed-tab"] as const,
 
 	/** Per-book stats card on book detail. */
 	book: (bookId: string) => ["stats", "book", bookId] as const,
 
 	/** A book's active reading goal and its plan. Under stats so new sessions refresh it. */
-	goalPlan: (bookId: string, dayKey: string) => ["stats", "goal-plan", bookId, dayKey] as const,
+	goalPlan: (bookId: string, dayKey: string, window: string) =>
+		["stats", "goal-plan", bookId, dayKey, window] as const,
 	/** Every active goal's plan, for the sidebar's total of today. */
-	activeGoalPlans: (dayKey: string) => ["stats", "goal-plan", "active", dayKey] as const,
+	activeGoalPlans: (dayKey: string, window: string) =>
+		["stats", "goal-plan", "active", dayKey, window] as const,
 	/** The book the sidebar continues. Under stats: every finished sitting can change it. */
 	lastReadBook: ["stats", "last-read-book"] as const,
 	/** Every plan of one book. Its position counts too, so a move without a session must refresh it. */

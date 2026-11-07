@@ -178,6 +178,7 @@ export const syncSettings = pgTable(
 		readerParagraphSpacing: real("reader_paragraph_spacing").notNull().default(1.1),
 		showReadingTime: boolean("show_reading_time").notNull().default(true),
 		showLiveWpm: boolean("show_live_wpm").notNull().default(false),
+		speedWindow: text("speed_window").notNull().default("recent"),
 		readerActiveWordUnderline: boolean("reader_active_word_underline").notNull().default(true),
 		readerGlossaryUnderline: boolean("reader_glossary_underline").notNull().default(true),
 		defaultReaderMode: text("default_reader_mode").notNull().default("scroll"),
@@ -196,6 +197,10 @@ export const syncSettings = pgTable(
 		check(
 			"sync_settings_pagination_style_check",
 			sql`${table.paginationStyle} IN ('scroll', 'page')`,
+		),
+		check(
+			"sync_settings_speed_window_check",
+			sql`${table.speedWindow} IN ('recent', '30d', 'all')`,
 		),
 	],
 );

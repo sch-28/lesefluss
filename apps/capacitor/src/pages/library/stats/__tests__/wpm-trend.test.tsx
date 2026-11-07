@@ -46,14 +46,14 @@ const loaded = {
 describe("WpmTrend", () => {
 	it("never mounts the chart with an empty series while the trend loads", async () => {
 		state.trend = { isLoading: true, data: undefined };
-		view = await render(<WpmTrend period="7d" periodLabel="Last 7 days" now={0} />);
+		view = await render(<WpmTrend window="30d" mode="reading" windowLabel="30 days" now={0} />);
 		expect(state.lines).toHaveLength(0);
 		expect(view.container.querySelector("[data-testid=wpm-trend-loading]")).not.toBeNull();
 	});
 
 	it("puts the axis top far enough over the target that its label stays on the plot", async () => {
 		state.trend = loaded;
-		view = await render(<WpmTrend period="7d" periodLabel="Last 7 days" now={0} />);
+		view = await render(<WpmTrend window="30d" mode="reading" windowLabel="30 days" now={0} />);
 		const last = state.lines.at(-1);
 		expect(last?.data[0]?.data).toHaveLength(2);
 		// 160px plot: the label's top sits about 19px over its line.

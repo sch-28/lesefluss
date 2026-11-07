@@ -56,6 +56,7 @@ export const DEFAULT_SETTINGS = {
 	READER_GLOSSARY_UNDERLINE: true, // underline words that match a glossary entry label
 	SHOW_READING_TIME: true, // show time remaining in progress bar
 	SHOW_LIVE_WPM: false, // show the sitting's live wpm in the progress bar (scroll and page)
+	SPEED_WINDOW: "recent", // 'recent' | '30d' | 'all' - sittings the speed model reads
 	DEFAULT_READER_MODE: "scroll", // 'scroll' | 'rsvp' - mode to open books in
 	PAGINATION_STYLE: "scroll", // 'scroll' | 'page' - layout for the standard (non-RSVP) reader
 	ONBOARDING_COMPLETED: false, // first-run onboarding completed on this device
@@ -63,6 +64,7 @@ export const DEFAULT_SETTINGS = {
 	LAST_SEEN_CHANGELOG_DATE: "", // ISO date of newest changelog entry user has seen ('' = never)
 	PAGE_TURN_ANIMATION: true, // slide between pages in page mode (off suits e-ink); device-local
 	AUTO_OPEN_LAST_BOOK: false, // open the most recently read book on app launch; device-local
+	SHOW_SESSION_SUMMARY: true, // summary sheet after a sitting of 2 min or more; device-local
 	EINK_MODE: false, // static, high-contrast UI with instant page turns for e-ink screens; device-local
 	VOLUME_KEY_INVERT: false, // volume up turns forward instead of down; device-local
 	// Read aloud (device-local: voices belong to the phone's speech engine)
@@ -130,6 +132,7 @@ export const SYNCED_SETTING_KEYS = [
 	"readerParagraphSpacing",
 	"showReadingTime",
 	"showLiveWpm",
+	"speedWindow",
 	"readerActiveWordUnderline",
 	"readerGlossaryUnderline",
 	"defaultReaderMode",

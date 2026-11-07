@@ -7,6 +7,13 @@ import { scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
 import type { Book } from "../schema";
 import { statsKeys } from "./query-keys";
+import { settingsHooks } from "./use-settings";
+
+// Plans are paced from the speed model, so a new window must replan them.
+function useSpeedWindowKey() {
+	const settings = settingsHooks.useSettings();
+	return { window: settings.data?.speedWindow ?? "", ready: settings.data !== undefined };
+}
 
 // The reading tracker's heartbeat writes the open sitting this often.
 const SITTING_CHECKPOINT_MS = 30_000;
@@ -18,10 +25,11 @@ const SITTING_CHECKPOINT_MS = 30_000;
  */
 function useReadingGoalPlan(bookId: string | null, { live = false }: { live?: boolean } = {}) {
 	const now = useLocalDayNow();
+	const speed = useSpeedWindowKey();
 	return useQuery({
-		queryKey: statsKeys.goalPlan(bookId ?? "", localDateKey(now)),
+		queryKey: statsKeys.goalPlan(bookId ?? "", localDateKey(now), speed.window),
 		queryFn: () => (bookId ? queries.getReadingGoalPlan(bookId, now) : null),
-		enabled: bookId !== null,
+		enabled: bookId !== null && speed.ready,
 		refetchInterval: (query) =>
 			live && query.state.data && minuteGoalOf(query.state.data.goal) !== null
 				? SITTING_CHECKPOINT_MS
@@ -32,9 +40,11 @@ function useReadingGoalPlan(bookId: string | null, { live = false }: { live?: bo
 /** Today's plan of every active goal; refreshed like a live plan, since an open sitting adds minutes. */
 function useActiveGoalPlans() {
 	const now = useLocalDayNow();
+	const speed = useSpeedWindowKey();
 	return useQuery({
-		queryKey: statsKeys.activeGoalPlans(localDateKey(now)),
+		queryKey: statsKeys.activeGoalPlans(localDateKey(now), speed.window),
 		queryFn: () => queries.getActiveGoalPlans(now),
+		enabled: speed.ready,
 		refetchInterval: SITTING_CHECKPOINT_MS,
 	});
 }

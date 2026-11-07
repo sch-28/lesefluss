@@ -16,6 +16,11 @@ import { queries } from "../../services/db/queries";
 import { queryClient } from "../../services/query-client";
 import { onSessionsDeleted } from "../../services/reading-sessions/deleted";
 import { persistRow } from "../../services/reading-sessions/persist";
+import {
+	closeVisit,
+	openVisit,
+	recordSitting,
+} from "../../services/reading-sessions/summary-store";
 import { deleteServerSession } from "../../services/sync";
 import { publishSessionTick } from "../../test-hooks/reader";
 import { log } from "../../utils/log";
@@ -114,12 +119,19 @@ export function useReadingSession({
 			persist: persistRow,
 			remove: removeRow,
 			onFurthestRead: (sessionId, word) => onFurthestReadRef.current?.(sessionId, word),
+			onFinalized: recordSitting,
 		});
 		return () => {
 			trackerRef.current?.finalize();
 			trackerRef.current = null;
 		};
 	}, [bookId, mode]);
+
+	// One visit per reader mount, not per (bookId, mode): switching modes keeps one summary.
+	useEffect(() => {
+		openVisit();
+		return closeVisit;
+	}, []);
 
 	// `isReading` && (RSVP not paused) → reading.
 	useEffect(() => {

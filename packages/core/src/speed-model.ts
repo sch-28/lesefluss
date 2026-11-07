@@ -7,9 +7,9 @@ import { isMeasurableSitting } from "./reading-rates";
  * on the same rows, so two surfaces can't show two numbers for one reader.
  */
 
-export type SpeedWindow = "recent" | "30d" | "all";
+export const SPEED_WINDOWS = ["recent", "30d", "all"] as const;
 
-export const SPEED_WINDOWS: readonly SpeedWindow[] = ["recent", "30d", "all"];
+export type SpeedWindow = (typeof SPEED_WINDOWS)[number];
 
 /** `recent` keeps the newest sittings until they add up to this much reading. A
  *  sliding date range would leave a reader back from a two-week break with no speed. */
@@ -188,6 +188,15 @@ export function bookSpeeds(rows: readonly SpeedRow[]): Record<string, BookSpeed>
 		books[bookId] = { wpm, words: t.words, activeMs: t.activeMs, mode };
 	}
 	return books;
+}
+
+/** The measurable sittings a window holds, so a chart over them matches the model's numbers. */
+export function speedWindowRows<T extends SpeedRow>(
+	rows: readonly T[],
+	window: SpeedWindow,
+	now: number,
+): (T & { mode: MeasuredReadingMode })[] {
+	return selectWindow(rows.filter(isMeasurableSitting) as Measurable<T>[], window, now);
 }
 
 export function computeSpeedModel(rows: readonly SpeedRow[], opts: SpeedModelOptions): SpeedModel {
