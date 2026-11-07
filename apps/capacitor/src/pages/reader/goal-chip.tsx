@@ -1,5 +1,6 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { cn } from "@lesefluss/ui/utils";
+import { GoalRing } from "../../components/goal-ring";
 import type { ReadingGoalPlan } from "../../services/stats/reading-goal";
 import { formatDayKey } from "../../utils/date-utils";
 import { minutesLabel, percentLabel } from "../../utils/reading-time";
@@ -12,9 +13,6 @@ import {
 	todayFigure,
 } from "../library/reading-goal/goal-model";
 import { DayCount, GoalStat } from "../library/reading-goal/goal-stat";
-
-const RING_RADIUS = 7;
-const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
 type Props = {
 	plan: ReadingGoalPlan;
@@ -45,27 +43,7 @@ export function GoalChip({ plan, today, onOpenDetails }: Props) {
 						today.isMet && "reader-goal-chip--met",
 					)}
 				>
-					<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" className="shrink-0">
-						<circle
-							cx="9"
-							cy="9"
-							r={RING_RADIUS}
-							fill="none"
-							className="reader-goal-ring-track"
-							strokeWidth="2.5"
-						/>
-						<circle
-							cx="9"
-							cy="9"
-							r={RING_RADIUS}
-							fill="none"
-							className="reader-goal-ring"
-							strokeWidth="2.5"
-							strokeLinecap="round"
-							strokeDasharray={`${today.fraction * RING_LENGTH} ${RING_LENGTH}`}
-							transform="rotate(-90 9 9)"
-						/>
-					</svg>
+					<GoalRing size={18} fraction={today.fraction} isMet={today.isMet} />
 					<span className="font-semibold">{done}</span>
 					<span className="text-muted-foreground">/ {figure.target}</span>
 				</button>

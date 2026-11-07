@@ -192,6 +192,7 @@ function BurstReading({
 		onWpmChange: (wpm) => updateSetting("wpm", wpm),
 		bookWordIndex: wordIndex,
 		visibilityDocument: host === "pip" ? win.document : undefined,
+		timerWindow: host === "pip" ? win : undefined,
 	});
 	const engineRef = useRef(engine);
 	engineRef.current = engine;

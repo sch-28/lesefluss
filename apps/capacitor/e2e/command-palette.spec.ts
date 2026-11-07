@@ -57,6 +57,10 @@ test("in the reader, the palette lists every reader action, shows its shortcut a
 	await seedChapterNovel(page);
 	await openBookFromLibrary(page, CHAPTER_NOVEL_TITLE);
 	await reader.waitOpenSettled(page);
+	// With a bookmark, so Next bookmark is offered too.
+	await reader.blurFocusedControl(page);
+	await page.keyboard.press("b");
+	await expect(page.getByRole("button", { name: "Bookmark", pressed: true })).toBeVisible();
 
 	await page.keyboard.press("Control+k");
 	await expect(palette(page)).toBeVisible();
@@ -72,6 +76,11 @@ test("in the reader, the palette lists every reader action, shows its shortcut a
 		/^Switch to (page|scroll) view/,
 		"Book details",
 		"Listen",
+		"Remove bookmark here",
+		"Next bookmark",
+		"Fullscreen",
+		"Open mini RSVP window",
+		"Burst read",
 	];
 	for (const name of readerActions) {
 		const row =

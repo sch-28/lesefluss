@@ -40,7 +40,7 @@ const paddingTop = (page: Page) =>
 
 const tabBarPaddingBottom = (page: Page) =>
 	page
-		.locator("nav > div")
+		.locator("nav:visible > div")
 		.first()
 		.evaluate((el) => getComputedStyle(el).paddingBottom);
 

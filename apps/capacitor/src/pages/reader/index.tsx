@@ -33,6 +33,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import {
+	Bookmark,
 	ChevronLeft,
 	ChevronRight,
 	ExternalLink,
@@ -79,6 +80,7 @@ import {
 } from "../../hooks/use-appearance-settings";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 import { useBookChapters } from "../../hooks/use-book-chapters";
+import { useElementWidth } from "../../hooks/use-element-width";
 import { useIsForeground } from "../../hooks/use-is-foreground";
 import { repairMissingImages } from "../../services/book-import/repair-images";
 import { needsImageUpgrade, upgradeBookImages } from "../../services/book-import/upgrade-images";
@@ -233,6 +235,7 @@ type ReadAloudHandle = Pick<
 };
 
 // Touch-sized rows: the shared menu item is ~28px tall, too small to hit reliably on a phone.
+const NARROW_HEADER_REM = 20;
 const MENU_ITEM_CLASS = "min-h-12 gap-3 px-3 text-base [&_svg:not([class*='size-'])]:size-5";
 // ─── Main page ───────────────────────────────────────────────────────────────
 
@@ -2251,6 +2254,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		},
 	});
 	const headerReveal = useRevealOnHover(fullscreen.isFullscreen, hasOpenOverlay);
+	const headerRef = useRef<HTMLElement>(null);
+	const headerWidth = useElementWidth(headerRef);
+	// In rem, so large system text on a phone moves Listen, Mini and Bookmark into the menu and the title stays readable.
+	const isHeaderNarrow =
+		headerWidth > 0 &&
+		headerWidth <
+			NARROW_HEADER_REM * Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
 
 	// ── Keyboard shortcuts ────────────────────────────────────────────────
 	useKeyboardShortcuts({
@@ -2709,6 +2719,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					onPointerEnter={fullscreen.isFullscreen ? headerReveal.reveal : undefined}
 					onPointerLeave={fullscreen.isFullscreen ? headerReveal.hideSoon : undefined}
 					data-testid="reader-bar"
+					ref={headerRef}
 				>
 					<div className="flex h-12 items-center gap-0.5 px-1">
 						<button
@@ -2752,6 +2763,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							/>
 						)}
 						{IS_READ_ALOUD_SUPPORTED &&
+							!isHeaderNarrow &&
 							(readerMode === "rsvp" ? (
 								<Button
 									variant="ghost"
@@ -2788,7 +2800,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						>
 							{readerMode === "rsvp" ? <ZapOff /> : <Zap />}
 						</Button>
-						{isMiniAvailable() && (
+						{isMiniAvailable() && !isHeaderNarrow && (
 							<Button
 								variant="ghost"
 								size="icon"
@@ -2802,11 +2814,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								<PictureInPicture />
 							</Button>
 						)}
-						<BookmarkRibbon
-							isOnScreen={readerBookmarks.isOnScreen}
-							disabled={!content}
-							onToggle={readerBookmarks.toggle}
-						/>
+						{!isHeaderNarrow && (
+							<BookmarkRibbon
+								isOnScreen={readerBookmarks.isOnScreen}
+								disabled={!content}
+								onToggle={readerBookmarks.toggle}
+							/>
+						)}
 						<Button
 							variant="ghost"
 							size="icon"
@@ -2864,6 +2878,46 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 									<Search />
 									<span>Search</span>
 								</DropdownMenuItem>
+								{isHeaderNarrow && (
+									<DropdownMenuItem
+										className={MENU_ITEM_CLASS}
+										onSelect={readerBookmarks.toggle}
+										disabled={!content}
+									>
+										<Bookmark />
+										<span>
+											{readerBookmarks.isOnScreen ? "Remove bookmark here" : "Bookmark here"}
+										</span>
+									</DropdownMenuItem>
+								)}
+								{isHeaderNarrow && isMiniAvailable() && (
+									<DropdownMenuItem
+										className={MENU_ITEM_CLASS}
+										onSelect={openMiniWindow}
+										disabled={!content}
+									>
+										<PictureInPicture />
+										<span>Mini RSVP window</span>
+									</DropdownMenuItem>
+								)}
+								{isHeaderNarrow && IS_READ_ALOUD_SUPPORTED && (
+									<DropdownMenuItem
+										className={MENU_ITEM_CLASS}
+										onSelect={readerMode === "rsvp" ? toggleRsvpAudio : readAloud.toggle}
+										disabled={!wordIndex}
+									>
+										<Headphones />
+										<span>
+											{readerMode === "rsvp"
+												? isRsvpAudioOn
+													? "Turn RSVP audio off"
+													: "Turn RSVP audio on"
+												: readAloud.status === "playing"
+													? "Pause listening"
+													: "Listen"}
+										</span>
+									</DropdownMenuItem>
+								)}
 								<DropdownMenuItem
 									className={MENU_ITEM_CLASS}
 									onSelect={() => {

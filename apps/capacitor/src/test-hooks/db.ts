@@ -41,3 +41,14 @@ export function exposeRemotePosition(apply: E2ERemotePosition): void {
 		window as unknown as { __lesefluss_e2e_remotePosition?: E2ERemotePosition }
 	).__lesefluss_e2e_remotePosition = apply;
 }
+
+export type E2EBookSession = { mode: string; durationMs: number; wordsRead: number };
+
+export type E2EReadBookSessions = (bookId: string) => Promise<E2EBookSession[]>;
+
+/** Lets a test check that a sitting reached stats. */
+export function exposeBookSessionsRead(read: E2EReadBookSessions): void {
+	(
+		window as unknown as { __lesefluss_e2e_readBookSessions?: E2EReadBookSessions }
+	).__lesefluss_e2e_readBookSessions = read;
+}

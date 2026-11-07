@@ -13,7 +13,12 @@ import { initWebSqlite } from "./services/db/web-setup";
 import { reportMissedPosition } from "./services/position-revisions";
 import { queryClient } from "./services/query-client";
 import { buildBookMergeUpdate } from "./services/sync/book-merge";
-import { exposeBookRowRead, exposeQueryInvalidate, exposeRemotePosition } from "./test-hooks/db";
+import {
+	exposeBookRowRead,
+	exposeBookSessionsRead,
+	exposeQueryInvalidate,
+	exposeRemotePosition,
+} from "./test-hooks/db";
 import { registerReaderFonts } from "./theme/reader-fonts";
 // Legacy CSS (Ionic core + monochrome) must load BEFORE Tailwind so its
 // @layer declarations register first; variables.css then re-declares the same
@@ -35,6 +40,13 @@ async function bootstrap() {
 				lastRead: book.lastRead,
 			};
 		});
+		exposeBookSessionsRead(async (id) =>
+			(await queries.getBookReadingSessions(id)).map(({ mode, durationMs, wordsRead }) => ({
+				mode,
+				durationMs,
+				wordsRead,
+			})),
+		);
 		exposeQueryInvalidate((queryKey) => queryClient.invalidateQueries({ queryKey: [...queryKey] }));
 		exposeRemotePosition(async (bookId, word, updatedAt, options = {}) => {
 			const local = await queries.getBook(bookId);
