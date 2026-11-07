@@ -1,8 +1,8 @@
 /**
- * AnnotationsSheet: single bottom drawer that merges three reader navigations:
- * Contents (chapter list), Highlights, and Glossary. Empty segments hide
- * automatically, so a TXT book without chapters opens straight on Highlights
- * or Glossary.
+ * AnnotationsSheet: single bottom drawer that merges the reader navigations:
+ * Contents (chapter list), Bookmarks, Highlights, and Glossary. Empty segments
+ * hide automatically, so a TXT book without chapters opens straight on
+ * Bookmarks, Highlights or Glossary.
  *
  * Snap points keep the iOS-like half-then-full sheet behavior.
  */
@@ -16,11 +16,12 @@ import type React from "react";
 import { memo, useCallback, useMemo, useState } from "react";
 import type { Chapter, GlossaryEntry, Highlight } from "../../services/db/schema";
 import { SeriesChapterList } from "../library/series-chapter-list";
+import BookmarkList, { type BookmarkRow } from "./bookmark-list";
 import ContentsList from "./contents-list";
 import GlossaryAvatar, { colorFromLabel } from "./glossary-avatar";
 import { HIGHLIGHT_COLOR_STYLE } from "./selection-toolbar";
 
-type Tab = "contents" | "chapters" | "highlights" | "glossary";
+type Tab = "contents" | "chapters" | "bookmarks" | "highlights" | "glossary";
 
 function snippetFromText(text: string | null): string {
 	if (!text) return "(no preview)";
@@ -36,6 +37,10 @@ interface AnnotationsSheetProps {
 	currentChapterIndex: number;
 	onJumpChapter: (startWord: number) => void;
 	seriesId?: string | null;
+	bookmarks: BookmarkRow[];
+	currentBookmarkId: string | null;
+	onJumpBookmark: (word: number) => void;
+	onRenameBookmark: (id: string, label: string) => void;
 	highlights: Highlight[];
 	onJumpHighlight: (highlight: Highlight) => void;
 	glossary: GlossaryEntry[];
@@ -56,6 +61,10 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	currentChapterIndex,
 	onJumpChapter,
 	seriesId,
+	bookmarks,
+	currentBookmarkId,
+	onJumpBookmark,
+	onRenameBookmark,
 	highlights,
 	onJumpHighlight,
 	glossary,
@@ -66,6 +75,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 }) => {
 	const hasContents = chapters.length > 0;
 	const hasChapters = seriesId != null;
+	const hasBookmarks = bookmarks.length > 0;
 	const hasHighlights = highlights.length > 0;
 
 	// Chapters wins over Contents when both apply (web-novel imports have both;
@@ -74,9 +84,11 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 		? "chapters"
 		: hasContents
 			? "contents"
-			: hasHighlights
-				? "highlights"
-				: "glossary";
+			: hasBookmarks
+				? "bookmarks"
+				: hasHighlights
+					? "highlights"
+					: "glossary";
 	const [tab, setTab] = useState<Tab>(initialTab);
 	const [snap, setSnap] = useState<number | string | null>(SNAP_POINTS[0]);
 
@@ -133,6 +145,12 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 					>
 						{hasContents && <ToggleGroupItem value="contents">Contents</ToggleGroupItem>}
 						{hasChapters && <ToggleGroupItem value="chapters">Chapters</ToggleGroupItem>}
+						<ToggleGroupItem value="bookmarks">
+							Bookmarks
+							{hasBookmarks && (
+								<span className="ml-1 text-muted-foreground tabular-nums">{bookmarks.length}</span>
+							)}
+						</ToggleGroupItem>
 						<ToggleGroupItem value="highlights">Highlights</ToggleGroupItem>
 						<ToggleGroupItem value="glossary">Glossary</ToggleGroupItem>
 					</ToggleGroup>
@@ -171,6 +189,18 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 
 					{tab === "chapters" && seriesId && (
 						<SeriesChapterList seriesId={seriesId} currentBookId={currentBookId} />
+					)}
+
+					{tab === "bookmarks" && (
+						<BookmarkList
+							rows={bookmarks}
+							currentId={currentBookmarkId}
+							onJump={(word) => {
+								onJumpBookmark(word);
+								onClose();
+							}}
+							onRename={onRenameBookmark}
+						/>
 					)}
 
 					{tab === "highlights" &&

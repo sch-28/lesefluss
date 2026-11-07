@@ -84,7 +84,7 @@ Estimates render as plain values ("4h 10m", no "~"); that a value is estimated i
 
 ### Bookmark
 
-A named [word position](#word-position) in one book (`bookmarks`, label optional). It syncs with sync on, not behind the highlights or stats toggles. A delete is sticky: the server keeps the tombstone and no later push revives it, a server tombstone removes the local row whatever its stamp, and a local delete beats a live server row until it is pushed. Deleting a book or a serial takes its bookmarks along, on the server too for clients that send none. Delete reading stats keeps them.
+A named [word position](#word-position) in one book (`bookmarks`, label optional). It syncs with sync on, not behind the highlights or stats toggles. A delete is sticky: the server keeps the tombstone (until an admin purges tombstones, once every device has pulled) and no later push revives it, a server tombstone removes the local row whatever its stamp, and a local delete beats a live server row until it is pushed. Deleting a book or a serial takes its bookmarks along, on the server too for clients that send none. Delete reading stats keeps them.
 
 ### Reading goal
 

@@ -772,8 +772,8 @@ function BooksTable() {
 
 	const cleanupNotice = lastCleanup && (
 		<p className="text-muted-foreground text-xs">
-			Removed {lastCleanup.booksRemoved} tombstoned books and {lastCleanup.highlightsRemoved}{" "}
-			tombstoned highlights.
+			Removed {lastCleanup.booksRemoved} tombstoned books, {lastCleanup.highlightsRemoved}{" "}
+			tombstoned highlights and {lastCleanup.bookmarksRemoved} tombstoned bookmarks.
 		</p>
 	);
 

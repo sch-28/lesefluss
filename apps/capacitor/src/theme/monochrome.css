@@ -2069,6 +2069,23 @@ body.dark .chapter-row:hover {
 	height: 7px;
 }
 
+.reader-bookmark-tick {
+	position: absolute;
+	top: 3px;
+	transform: translateX(-50%);
+	width: 2px;
+	height: 10px;
+	border-radius: 1px;
+	background: var(--reader-progress-fill, #000000);
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+.reader-progress-bar--collapsed .reader-bookmark-tick {
+	top: -4px;
+	height: 7px;
+}
+
 /* Sits above the expanded progress bar (content ~52px + safe area). */
 .reader-browse-bar {
 	position: absolute;

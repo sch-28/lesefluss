@@ -176,6 +176,13 @@ export type ReaderActionInput = {
 	} | null;
 	chapters: readonly Chapter[];
 	goToWord: (word: number) => void;
+	bookmarks: {
+		isOnScreen: boolean;
+		toggle: () => void;
+		goToNext: () => void;
+		/** In reading order; `name` is the label or the first words. */
+		list: readonly { id: string; word: number; name: string }[];
+	};
 	openBookDetails: () => void;
 	/** Null where the platform has no fullscreen (the Android app). */
 	fullscreen: { isOn: boolean; toggle: () => void; exit: () => void } | null;
@@ -204,10 +211,28 @@ export function readerActionCommands(input: ReaderActionInput): Command[] {
 		{
 			id: "reader.annotations",
 			title: "Contents and highlights",
-			keywords: ["annotations", "toc", "chapters", "glossary", "notes"],
+			keywords: ["annotations", "toc", "chapters", "bookmarks", "glossary", "notes"],
 			scope: "reader",
 			when: hasContent,
 			run: input.openAnnotations,
+		},
+		{
+			id: "reader.bookmark",
+			title: input.bookmarks.isOnScreen ? "Remove bookmark here" : "Bookmark here",
+			keywords: ["ribbon", "mark"],
+			scope: "reader",
+			keys: ["b"],
+			when: hasContent,
+			run: input.bookmarks.toggle,
+		},
+		{
+			id: "reader.bookmark.next",
+			title: "Next bookmark",
+			keywords: ["bookmarks", "jump"],
+			scope: "reader",
+			keys: ["Shift+B"],
+			when: () => hasContent() && input.bookmarks.list.length > 0,
+			run: input.bookmarks.goToNext,
 		},
 		{
 			id: "reader.layout",
@@ -284,5 +309,16 @@ export function readerActionCommands(input: ReaderActionInput): Command[] {
 			run: () => input.goToWord(chapter.startWord),
 		});
 	});
+	for (const bookmark of input.bookmarks.list) {
+		commands.push({
+			id: `reader.bookmark.go.${bookmark.id}`,
+			title: `Go to bookmark: ${bookmark.name}`,
+			keywords: ["bookmark"],
+			scope: "reader",
+			isSearchOnly: true,
+			when: hasContent,
+			run: () => input.goToWord(bookmark.word),
+		});
+	}
 	return commands;
 }

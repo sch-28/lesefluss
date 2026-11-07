@@ -34,7 +34,6 @@ import { cn } from "@lesefluss/ui/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import {
-	Bookmark,
 	ChevronLeft,
 	ChevronRight,
 	ExternalLink,
@@ -44,6 +43,7 @@ import {
 	Maximize,
 	Minimize,
 	MoreVertical,
+	NotebookText,
 	Pause,
 	PictureInPicture2,
 	Search,
@@ -119,6 +119,8 @@ import { isBurstAvailable, openBurst } from "../burst/open-burst";
 import { liveToday } from "../library/reading-goal/goal-model";
 import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
+import type { BookmarkRow } from "./bookmark-list";
+import BookmarkRibbon from "./bookmark-ribbon";
 import { BrowseBar } from "./browse-bar";
 import type { BrowseSession } from "./browse-controller";
 import {
@@ -185,6 +187,7 @@ import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import { useLinkDecorations } from "./use-link-decorations";
 import { useLoadedReaderFont } from "./use-loaded-reader-font";
 import { useReadAloud } from "./use-read-aloud";
+import { lastAtOrBefore, useReaderBookmarks } from "./use-reader-bookmarks";
 import { useReaderGoal } from "./use-reader-goal";
 import { useReadingRuler } from "./use-reading-ruler";
 import { type ReadingSessionMode, useReadingSession } from "./use-reading-session";
@@ -215,6 +218,7 @@ const NO_HIGHLIGHT = -1;
 const SLEEP_TIMER_MINUTES = [15, 30, 45, 60];
 const DETACH_DRAG_PX = 8;
 const JUMP_MARK_DELAY_MS = 300;
+const BOOKMARK_LINE_WORDS = 12;
 
 type ReadAloudHandle = Pick<
 	ReturnType<typeof useReadAloud>,
@@ -1829,6 +1833,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			}),
 		[readerApiMode, navigateEmitter, viewContainerEl],
 	);
+	const readerBookmarks = useReaderBookmarks(
+		id,
+		readerApi,
+		!!content && !!wordIndex && (readerMode === "rsvp" || !!readerFont),
+	);
+	const { mutate: renameBookmark } = queryHooks.useRenameBookmark();
 
 	// Moving on to the next chapter means the browsed spot was read.
 	const handleNextChapter = useCallback(() => {
@@ -2183,6 +2193,21 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		isReadingAloud: isReadAloudActive || (readerMode === "rsvp" && isRsvpAudioOn),
 	});
 
+	const bookmarkRows = useMemo(
+		(): BookmarkRow[] =>
+			readerBookmarks.bookmarks.map((b) => ({
+				id: b.id,
+				word: b.word,
+				label: b.label,
+				createdAt: b.createdAt,
+				chapterTitle: lastAtOrBefore(chapters, b.word, (ch) => ch.startWord)?.title ?? null,
+				percent:
+					totalWordCount > 0 ? Math.min(100, Math.round((b.word / totalWordCount) * 100)) : 0,
+				firstLine: sel.extractRangeText(b.word, b.word + BOOKMARK_LINE_WORDS - 1),
+			})),
+		[readerBookmarks.bookmarks, chapters, totalWordCount, sel.extractRangeText],
+	);
+
 	useRegisterCommands(
 		readerActionCommands({
 			hasContent: !!content,
@@ -2210,6 +2235,16 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				: null,
 			chapters,
 			goToWord: navigateToWord,
+			bookmarks: {
+				isOnScreen: readerBookmarks.isOnScreen,
+				toggle: readerBookmarks.toggle,
+				goToNext: readerBookmarks.goToNext,
+				list: bookmarkRows.map((row) => ({
+					id: row.id,
+					word: row.word,
+					name: row.label ?? row.firstLine,
+				})),
+			},
 			openBookDetails: () => {
 				if (!book) return;
 				history.push(
@@ -2490,11 +2525,24 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const progressPct = totalWordCount > 0 ? Math.min(100, (progressWord / totalWordCount) * 100) : 0;
 	const browseAnchorPct = browseAnchor !== null ? percentOfBook(browseAnchor) : 0;
-	const browseAnchorTick = browseAnchor !== null && (
+	// One zero-height row for all ticks: each extra flex row adds a bar gap and
+	// lifts the ticks off the track.
+	const progressTicks = (browseAnchor !== null || bookmarkRows.length > 0) && (
 		<div className="reader-browse-anchor-row" aria-hidden>
-			<div className="reader-browse-anchor" style={{ left: `${browseAnchorPct}%` }} />
+			{browseAnchor !== null && (
+				<div className="reader-browse-anchor" style={{ left: `${browseAnchorPct}%` }} />
+			)}
+			{bookmarkRows.map((row) => (
+				<div
+					key={row.id}
+					className="reader-bookmark-tick"
+					style={{ left: `${percentOfBook(row.word)}%` }}
+				/>
+			))}
 		</div>
 	);
+	const currentBookmarkId =
+		lastAtOrBefore(bookmarkRows, progressWord, (row) => row.word)?.id ?? null;
 	const isProgressCollapsed = !progressBarVisible && readerMode !== "rsvp";
 	const isShowingSkeleton =
 		chapterFetch.kind !== "locked" &&
@@ -2657,6 +2705,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						>
 							{readerMode === "rsvp" ? <ZapOff /> : <Zap />}
 						</Button>
+						<BookmarkRibbon
+							isOnScreen={readerBookmarks.isOnScreen}
+							disabled={!content}
+							onToggle={readerBookmarks.toggle}
+						/>
 						<Button
 							variant="ghost"
 							size="icon"
@@ -2664,7 +2717,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							disabled={!content}
 							aria-label="Annotations"
 						>
-							<Bookmark />
+							<NotebookText />
 						</Button>
 						{fullscreen.isFullscreen && (
 							<Button variant="outline" size="sm" onClick={fullscreen.exit} className="mx-1 gap-2">
@@ -2934,7 +2987,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 									approximate={buddy.approximate}
 									isCollapsed
 								/>
-								{browseAnchorTick}
+								{progressTicks}
 								<div className="reader-progress-fill-track">
 									<div className="reader-progress-fill" style={{ width: `${progressPct}%` }} />
 								</div>
@@ -2969,7 +3022,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								approximate={buddy.approximate}
 								isCollapsed={false}
 							/>
-							{browseAnchorTick}
+							{progressTicks}
 							{/* The slider role sits on the track, not the bar: a slider is a leaf, and
 						    assistive tech would not reach the marker buttons inside it. */}
 							{/* biome-ignore lint/a11y/useFocusableInteractive: scrubber */}
@@ -3075,6 +3128,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					currentChapterIndex={currentChapterIndex}
 					onJumpChapter={navigateToWord}
 					seriesId={book.seriesId ?? null}
+					bookmarks={bookmarkRows}
+					currentBookmarkId={currentBookmarkId}
+					onJumpBookmark={navigateToWord}
+					onRenameBookmark={(bookmarkId, label) =>
+						renameBookmark({ id: bookmarkId, bookId: id, label })
+					}
 					highlights={highlightRows}
 					onJumpHighlight={handleHighlightJump}
 					glossary={glossaryEntries}
