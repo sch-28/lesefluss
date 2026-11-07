@@ -65,6 +65,8 @@ interface Options {
 	 * `content`.
 	 */
 	bookWordIndex?: WordIndex | null;
+	/** The document whose hiding pauses playback: a pop-up's own, which stays visible over a hidden tab. */
+	visibilityDocument?: Document;
 }
 
 export function useRsvpEngine({
@@ -76,6 +78,7 @@ export function useRsvpEngine({
 	onLookup,
 	onWpmChange,
 	bookWordIndex,
+	visibilityDocument,
 }: Options) {
 	// ── Rendered state ───────────────────────────────────────────────────
 	const [words, setWords] = useState<WordEntry[]>([]);
@@ -428,12 +431,13 @@ export function useRsvpEngine({
 
 	// ── Auto-pause in background ─────────────────────────────────────────
 	useEffect(() => {
+		const doc = visibilityDocument ?? document;
 		const handleVisibility = () => {
-			if (document.hidden && isPlaying) pause();
+			if (doc.hidden && isPlaying) pause();
 		};
-		document.addEventListener("visibilitychange", handleVisibility);
-		return () => document.removeEventListener("visibilitychange", handleVisibility);
-	}, [isPlaying, pause]);
+		doc.addEventListener("visibilitychange", handleVisibility);
+		return () => doc.removeEventListener("visibilitychange", handleVisibility);
+	}, [isPlaying, pause, visibilityDocument]);
 
 	// ── Flush position on teardown ───────────────────────────────────────
 	// Saves are throttled to every POSITION_SAVE_THROTTLE_MS during playback,
@@ -484,6 +488,7 @@ export function useRsvpEngine({
 		context,
 		// actions
 		togglePlayPause,
+		play,
 		pause,
 		jumpToWord,
 		showWord,

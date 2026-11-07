@@ -45,6 +45,7 @@ import {
 	Minimize,
 	MoreVertical,
 	Pause,
+	PictureInPicture2,
 	Search,
 	Type,
 	Zap,
@@ -83,21 +84,15 @@ import { repairMissingImages } from "../../services/book-import/repair-images";
 import { needsImageUpgrade, upgradeBookImages } from "../../services/book-import/upgrade-images";
 import { externalSourceUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
-import { bookKeys, serialKeys, statsKeys } from "../../services/db/hooks/query-keys";
+import { bookKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
-import {
-	devicePositionWrite,
-	nextPositionRevision,
-	type PositionRow,
-} from "../../services/db/queries/books";
-import type { SeriesActivity } from "../../services/db/queries/series";
-import type { Book, GlossaryEntry, Highlight } from "../../services/db/schema";
+import { devicePositionWrite, type PositionRow } from "../../services/db/queries/books";
+import type { GlossaryEntry, Highlight } from "../../services/db/schema";
 import { requestReminderSync } from "../../services/goal-reminders";
 import {
 	isOwnRevision,
 	onLoweredRevision,
 	onMissedPosition,
-	recordOwnRevision,
 } from "../../services/position-revisions";
 import { providerLabel } from "../../services/serial-scrapers";
 import {
@@ -105,7 +100,7 @@ import {
 	useRefetchDiscussionAsYouRead,
 } from "../../services/social/buddy-read-discussion";
 import { useIsOnline } from "../../services/social/cache";
-import { pushSync, scheduleSyncPush } from "../../services/sync";
+import { pushSync } from "../../services/sync";
 import { reportEvent } from "../../services/telemetry";
 import { IS_READ_ALOUD_SUPPORTED } from "../../services/tts";
 import { languageName, parseVoiceChoices, speechFor, withVoice } from "../../services/tts/voices";
@@ -116,13 +111,11 @@ import {
 	publishPositionSave,
 	publishProgressWord,
 	publishSaveFinished,
-	publishSaveRequest,
 	publishSettle,
-	publishSyncPushRequest,
 	type SaveSource,
 } from "../../test-hooks/reader";
 import { formatReadingTime } from "../../utils/reading-time";
-import { setJustRead } from "../library/just-read-pin";
+import { isBurstAvailable, openBurst } from "../burst/open-burst";
 import { liveToday } from "../library/reading-goal/goal-model";
 import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
@@ -153,7 +146,6 @@ import { NextChapterFooter } from "./next-chapter-footer";
 import PageView from "./page-view";
 import type { ParagraphWordEntry } from "./paragraph";
 import {
-	clearOwnPendingPosition,
 	clearPendingPosition,
 	type PendingPosition,
 	readPendingPosition,
@@ -161,6 +153,7 @@ import {
 	writePendingPosition,
 } from "./pending-position";
 import { createPersistedWord } from "./persisted-word";
+import { requestSyncPush, writeBookPosition } from "./position-write";
 import { ReadAloudControls } from "./read-aloud-controls";
 import { ReaderAnnouncer } from "./reader-announcer";
 import { ReaderApiContext } from "./reader-api/context";
@@ -205,11 +198,6 @@ const IMAGE_UPGRADE_DELAY_MS = 3000;
 
 const _encoder = new TextEncoder();
 
-function requestSyncPush() {
-	scheduleSyncPush(5000);
-	if (import.meta.env.DEV) publishSyncPushRequest();
-}
-
 // Sentinel value: no word highlighted (while scrolling)
 
 const EXTERNAL_POSITION_TOAST = "external-position";
@@ -236,25 +224,8 @@ type ReadAloudHandle = Pick<
 	isPlaying: boolean;
 };
 
-// A position write that hasn't settled in this long is treated as wedged/stalled
-// and reported as diagnostics (see savePosition).
-const POSITION_WRITE_TIMEOUT_MS = 8000;
-
-// Throttle the user-facing "couldn't save" toast so a write that fails on every
-// attempt can't spam a toast on every scroll settle.
-const SAVE_ERROR_TOAST_THROTTLE_MS = 120_000;
 // Touch-sized rows: the shared menu item is ~28px tall, too small to hit reliably on a phone.
 const MENU_ITEM_CLASS = "min-h-12 gap-3 px-3 text-base [&_svg:not([class*='size-'])]:size-5";
-let lastSaveErrorToastAt = 0;
-function notifyLocalSaveFailure() {
-	const now = Date.now();
-	if (now - lastSaveErrorToastAt < SAVE_ERROR_TOAST_THROTTLE_MS) return;
-	lastSaveErrorToastAt = now;
-	toast.error("Couldn't save your reading progress on this device. Try restarting the app.", {
-		duration: 6000,
-	});
-}
-
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 const BookReader: React.FC<{ id: string }> = ({ id }) => {
@@ -854,89 +825,25 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 				return;
 			}
 			const writeToken = persistedWordRef.current.begin(word);
-			const now = Date.now();
-			const wordPosition = wordPos(word);
-
-			// Durable fallback: mirror the position to localStorage synchronously
-			// BEFORE the async DB write, stamped with the same `now` that becomes
-			// the row's lastRead. If a teardown abandons the write below, this
-			// survives and the next mount recovers it; if the write commits, we
-			// clear it just after so a stale entry never outlives a real save.
-			writePendingPosition(id, word, now);
-			if (import.meta.env.DEV) publishSaveRequest();
-
-			// Optimistic cache update so the library lands already-sorted when
-			// the user navigates back, instead of shifting under their finger
-			// after the async refetch finishes.
-			const seriesId = book?.seriesId ?? null;
-			qc.setQueryData<{ books: Book[]; covers: Map<string, string> } | undefined>(
-				bookKeys.all,
-				(prev) => {
-					if (!prev) return prev;
-					let changed = false;
-					const next = prev.books.map((b) => {
-						if (b.id !== id) return b;
-						changed = true;
-						return { ...b, wordPosition, lastRead: now };
-					});
-					return changed ? { ...prev, books: next } : prev;
-				},
-			);
-			if (seriesId) {
-				qc.setQueryData<Map<string, SeriesActivity> | undefined>(serialKeys.activity, (prev) => {
-					if (!prev) return prev;
-					const current = prev.get(seriesId);
-					if (!current) return prev;
-					const merged = new Map(prev);
-					merged.set(seriesId, {
-						...current,
-						latestRead: Math.max(current.latestRead ?? 0, now),
-					});
-					return merged;
-				});
-			}
-			setJustRead(seriesId ? `series:${seriesId}` : `book:${id}`);
-
-			// Watchdog: a wedged write queue or a stalled native bridge makes the
-			// write hang without ever rejecting, so the adapter's error path can't
-			// see it. If the write hasn't settled in time, report it as a likely
-			// cause of "progress never saves" and leave the durable fallback intact.
-			let settled = false;
-			const watchdog = setTimeout(() => {
-				if (!settled) {
-					reportEvent("position_write_timeout");
-					notifyLocalSaveFailure();
-				}
-			}, POSITION_WRITE_TIMEOUT_MS);
 			const baseRev = baseRevRef.current;
-			const stamp = nextPositionRevision(now, baseRev);
+			const { stamp, outcome } = writeBookPosition(qc, {
+				bookId: id,
+				seriesId: book?.seriesId ?? null,
+				word,
+				baseRev,
+			});
 			// A write issued after this one builds on it.
 			baseRevRef.current = stamp;
-			recordOwnRevision(id, stamp);
 			const movesAtWrite = localMoveCountRef.current;
 			try {
-				let result: Awaited<ReturnType<typeof queries.writeReaderPosition>>;
-				try {
-					result = await queries.writeReaderPosition(id, { wordPosition, lastRead: now, baseRev });
-				} catch {
-					// The adapter already reports the underlying db_write_error. Tell the
-					// user it didn't save so they know it's not intended, keep the
-					// synchronous fallback (do NOT clear it) so the next mount can recover,
-					// and skip the post-commit steps below.
-					notifyLocalSaveFailure();
+				const result = await outcome;
+				if (result.kind === "failed") {
 					persistedWordRef.current.fail(writeToken);
 					return;
-				} finally {
-					settled = true;
-					clearTimeout(watchdog);
 				}
-				// The row is no longer this write's to recover over, either way.
-				clearOwnPendingPosition(id, { word, at: now });
-				if (!result.isWritten) {
-					// A newer position was written meanwhile (a sync pull, a device).
+				if (result.kind === "stale") {
 					persistedWordRef.current.fail(writeToken);
 					baseRevRef.current = Math.max(result.row?.updatedAt ?? 0, lastLandedRevRef.current);
-					void qc.invalidateQueries({ queryKey: bookKeys.all });
 					onExternalPositionRef.current(result.row, baseRev, true);
 					return;
 				}
@@ -1591,6 +1498,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	};
 	const [appearanceOpen, setAppearanceOpen] = useState(false);
 	const openAppearanceOnMenuCloseRef = useRef(false);
+	// The in-tab burst strip took focus; the menu handing it back would steal its keys.
+	const burstOnMenuCloseRef = useRef(false);
 
 	const discussionTicks = useMemo((): DiscussionTick[] => {
 		if (!discussionItems?.length || totalWordCount <= 0) return [];
@@ -2786,6 +2695,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								// Opened once the menu has fully closed: earlier, the menu's own
 								// focus moves while closing read as the popover losing focus.
 								onCloseAutoFocus={(e) => {
+									if (burstOnMenuCloseRef.current) {
+										burstOnMenuCloseRef.current = false;
+										e.preventDefault();
+										return;
+									}
 									if (!openAppearanceOnMenuCloseRef.current) return;
 									openAppearanceOnMenuCloseRef.current = false;
 									e.preventDefault();
@@ -2813,6 +2727,23 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 									<DropdownMenuItem className={MENU_ITEM_CLASS} onSelect={fullscreen.toggle}>
 										{fullscreen.isFullscreen ? <Minimize /> : <Maximize />}
 										<span>{fullscreen.isFullscreen ? "Leave fullscreen" : "Fullscreen"}</span>
+									</DropdownMenuItem>
+								)}
+								{isBurstAvailable() && (
+									<DropdownMenuItem
+										className={MENU_ITEM_CLASS}
+										onSelect={() => {
+											burstOnMenuCloseRef.current = true;
+											void openBurst(book.id);
+										}}
+									>
+										<PictureInPicture2 />
+										<span className="flex flex-col">
+											<span>Burst read</span>
+											<span className="text-muted-foreground text-xs">
+												Short bursts on top of other apps; pauses when you look away
+											</span>
+										</span>
 									</DropdownMenuItem>
 								)}
 								{IS_READ_ALOUD_SUPPORTED && (

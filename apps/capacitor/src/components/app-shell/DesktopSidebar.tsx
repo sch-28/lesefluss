@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { NavBadge } from "./nav-badge";
 import { useActiveNavTo, useNavBadges, useNavItems } from "./nav-items";
 import { SidebarCollections } from "./sidebar-collections";
+import { SidebarGoalCard } from "./sidebar-goal-card";
 import { SidebarSmartShelves } from "./sidebar-smart-shelves";
 
 const STORAGE_KEY = "sidebar-collapsed";
@@ -45,31 +46,34 @@ export function DesktopSidebar() {
 						<span className="whitespace-nowrap font-semibold text-base">Lesefluss</span>
 					)}
 				</Link>
-				<ul className="m-0 flex list-none flex-col p-0">
-					{items.map((item) => {
-						const isActive = activeTo === item.to;
-						return (
-							<li key={item.to}>
-								<Link
-									to={item.to}
-									data-active={isActive}
-									title={isCollapsed ? item.label : undefined}
-									className="relative flex items-center justify-start py-2.5 text-left text-sidebar-foreground/70 text-sm no-underline transition-colors hover:text-sidebar-foreground data-[active=true]:text-primary data-[active=true]:before:absolute data-[active=true]:before:top-1.5 data-[active=true]:before:bottom-1.5 data-[active=true]:before:left-0 data-[active=true]:before:w-1 data-[active=true]:before:bg-primary"
-								>
-									<span className="relative flex w-16 shrink-0 items-center justify-center">
-										<span className="relative">
-											<item.icon className="size-5" />
-											<NavBadge value={badges[item.to]} />
+				<div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+					<ul className="m-0 flex list-none flex-col p-0">
+						{items.map((item) => {
+							const isActive = activeTo === item.to;
+							return (
+								<li key={item.to}>
+									<Link
+										to={item.to}
+										data-active={isActive}
+										title={isCollapsed ? item.label : undefined}
+										className="relative flex items-center justify-start py-2.5 text-left text-sidebar-foreground/70 text-sm no-underline transition-colors hover:text-sidebar-foreground data-[active=true]:text-primary data-[active=true]:before:absolute data-[active=true]:before:top-1.5 data-[active=true]:before:bottom-1.5 data-[active=true]:before:left-0 data-[active=true]:before:w-1 data-[active=true]:before:bg-primary"
+									>
+										<span className="relative flex w-16 shrink-0 items-center justify-center">
+											<span className="relative">
+												<item.icon className="size-5" />
+												<NavBadge value={badges[item.to]} />
+											</span>
 										</span>
-									</span>
-									{!isCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
-								</Link>
-							</li>
-						);
-					})}
-				</ul>
-				<SidebarSmartShelves isCollapsed={isCollapsed} onExpand={() => setIsCollapsed(false)} />
-				<SidebarCollections isCollapsed={isCollapsed} onExpand={() => setIsCollapsed(false)} />
+										{!isCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
+									</Link>
+								</li>
+							);
+						})}
+					</ul>
+					<SidebarSmartShelves isCollapsed={isCollapsed} onExpand={() => setIsCollapsed(false)} />
+					<SidebarCollections isCollapsed={isCollapsed} onExpand={() => setIsCollapsed(false)} />
+				</div>
+				<SidebarGoalCard isCollapsed={isCollapsed} />
 			</nav>
 			<button
 				type="button"

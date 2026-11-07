@@ -1,4 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
+import { useContinueReading } from "../hooks/use-continue-reading";
+import { isBurstAvailable, openBurst } from "../pages/burst/open-burst";
 import { type Command, useRegisterCommands } from "./registry";
 import { createFlag, createRequest } from "./signal";
 
@@ -11,6 +13,7 @@ export const importRequest = createRequest();
 export function useGlobalCommands(): void {
 	const router = useRouter();
 	const go = (to: string) => router.history.push(to);
+	const continueReading = useContinueReading();
 	const commands: Command[] = [
 		{
 			id: "global.palette",
@@ -43,6 +46,32 @@ export function useGlobalCommands(): void {
 				if (router.state.location.pathname !== "/tabs/library") go("/tabs/library");
 			},
 		},
+		{
+			id: "global.burst",
+			title: "Burst read",
+			keywords: ["pop-up", "picture in picture", "quick", "rsvp", "strip"],
+			scope: "global",
+			when: isBurstAvailable,
+			// Run from the palette's key press or click: the pop-up needs one.
+			run: () => {
+				const reading = router.state.location.pathname.match(/^\/tabs\/reader\/([^/]+)/);
+				void openBurst(reading ? decodeURIComponent(reading[1]) : null);
+			},
+		},
+		...(continueReading
+			? [
+					{
+						id: "global.continue",
+						title: `Continue ${continueReading.book.title}`,
+						keywords: ["resume", "last book", "read"],
+						scope: "global",
+						when: () =>
+							router.state.location.pathname !==
+							`/tabs/reader/${encodeURIComponent(continueReading.book.id)}`,
+						run: continueReading.open,
+					} satisfies Command,
+				]
+			: []),
 		{
 			id: "global.library",
 			title: "Go to library",

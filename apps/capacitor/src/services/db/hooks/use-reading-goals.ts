@@ -29,6 +29,23 @@ function useReadingGoalPlan(bookId: string | null, { live = false }: { live?: bo
 	});
 }
 
+/** Today's plan of every active goal; refreshed like a live plan, since an open sitting adds minutes. */
+function useActiveGoalPlans() {
+	const now = useLocalDayNow();
+	return useQuery({
+		queryKey: statsKeys.activeGoalPlans(localDateKey(now)),
+		queryFn: () => queries.getActiveGoalPlans(now),
+		refetchInterval: SITTING_CHECKPOINT_MS,
+	});
+}
+
+function useLastReadBookId() {
+	return useQuery({
+		queryKey: statsKeys.lastReadBook,
+		queryFn: () => queries.getLastReadBookId(),
+	});
+}
+
 function useGoalMutation<T>(mutationFn: (vars: T) => Promise<unknown>) {
 	const qc = useQueryClient();
 	return useMutation({
@@ -65,6 +82,8 @@ function useDeleteReadingGoal() {
 
 export const readingGoalHooks = {
 	useReadingGoalPlan,
+	useActiveGoalPlans,
+	useLastReadBookId,
 	useCreateReadingGoal,
 	useReplanReadingGoal,
 	useSetGoalReminder,

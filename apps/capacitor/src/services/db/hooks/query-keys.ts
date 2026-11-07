@@ -174,6 +174,10 @@ export const statsKeys = {
 
 	/** A book's active reading goal and its plan. Under stats so new sessions refresh it. */
 	goalPlan: (bookId: string, dayKey: string) => ["stats", "goal-plan", bookId, dayKey] as const,
+	/** Every active goal's plan, for the sidebar's total of today. */
+	activeGoalPlans: (dayKey: string) => ["stats", "goal-plan", "active", dayKey] as const,
+	/** The book the sidebar continues. Under stats: every finished sitting can change it. */
+	lastReadBook: ["stats", "last-read-book"] as const,
 	/** Every plan of one book. Its position counts too, so a move without a session must refresh it. */
 	goalPlansOf: (bookId: string) => ["stats", "goal-plan", bookId] as const,
 

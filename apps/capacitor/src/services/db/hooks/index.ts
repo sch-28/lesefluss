@@ -165,6 +165,8 @@ export const queryHooks = {
 
 	/** A book's active goal and its plan (see services/stats/reading-goal.ts). */
 	useReadingGoalPlan: readingGoalHooks.useReadingGoalPlan,
+	useActiveGoalPlans: readingGoalHooks.useActiveGoalPlans,
+	useLastReadBookId: readingGoalHooks.useLastReadBookId,
 	useCreateReadingGoal: readingGoalHooks.useCreateReadingGoal,
 	/** Mode switch or new target date / daily percent. */
 	useReplanReadingGoal: readingGoalHooks.useReplanReadingGoal,

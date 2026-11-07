@@ -271,6 +271,22 @@ export async function getReadingGoalPlan(
 	return { goal, plan: planReadingGoal(await loadPlanInput(goal, book, now)) };
 }
 
+/** Every active goal with its plan, for today's total across books. */
+export async function getActiveGoalPlans(
+	now: number = Date.now(),
+): Promise<{ goal: ReadingGoal; plan: ReadingGoalPlanResult }[]> {
+	await completeFinishedGoals(now);
+	const goals = await db.select().from(readingGoals).where(isLive);
+	const plans = await Promise.all(
+		goals.map(async (goal) => {
+			const book = await getBook(goal.bookId);
+			if (!book) return null;
+			return { goal, plan: planReadingGoal(await loadPlanInput(goal, book, now)) };
+		}),
+	);
+	return plans.filter((p) => p !== null);
+}
+
 /** Change mode, target date or daily percent; the plan restarts from today (see `replanGoal`). */
 export async function replanGoalById(
 	id: string,

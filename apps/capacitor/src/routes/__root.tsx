@@ -13,6 +13,7 @@ import { Toaster } from "@/components/toast";
 import WhatsNewModal from "@/components/whats-new-modal";
 import { ImportStagingProvider } from "@/contexts/import-staging-context";
 import { isDarkTheme, useTheme } from "@/contexts/theme-context";
+import { BurstHost } from "@/pages/burst/burst-host";
 import { useDeepLinks } from "@/services/deep-links/use-deep-links";
 import { useEinkSuggestion } from "@/services/eink-suggestion/use-eink-suggestion";
 import { useGoalReminders } from "@/services/goal-reminders/use-goal-reminders";
@@ -54,6 +55,7 @@ function RootLayout() {
 			<PushOfferDialog />
 			<CommandPalette />
 			<ShortcutSheet />
+			<BurstHost />
 			{isFullScreen ? (
 				<Outlet />
 			) : (
