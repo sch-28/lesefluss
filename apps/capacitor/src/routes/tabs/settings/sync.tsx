@@ -87,16 +87,16 @@ const DANGER_ACTIONS: Record<DangerAction, DangerActionConfig> = {
 		icon: BarChart3,
 		header: "Delete reading stats?",
 		message:
-			"Every reading session and reading goal will be wiped from this device and your cloud account. Other devices drop the goals on their next sync, and the sessions too if they sync reading stats, but sessions a device recorded offline and hasn't synced yet still arrive afterwards. Your library and highlights are kept.",
+			"Every reading session and reading goal will be wiped from this device and your cloud account. Other devices drop the goals on their next sync, and the sessions too if they sync reading stats, but sessions a device recorded offline and hasn't synced yet still arrive afterwards. Your library, highlights and bookmarks are kept.",
 		successMessage: "Reading stats deleted",
 	},
 	library: {
 		label: "Delete library",
-		subtitle: "All books and web-novels, plus their highlights",
+		subtitle: "All books and web-novels, plus their highlights and bookmarks",
 		icon: Library,
 		header: "Delete entire library?",
 		message:
-			"All books, web-novels, chapters, and their highlights and book-scoped glossary entries will be removed. Files are deleted from this device. Your reading stats are kept.",
+			"All books, web-novels, chapters, and their highlights, bookmarks and book-scoped glossary entries will be removed. Files are deleted from this device. Your reading stats are kept.",
 		successMessage: "Library deleted",
 	},
 	everything: {
@@ -105,7 +105,7 @@ const DANGER_ACTIONS: Record<DangerAction, DangerActionConfig> = {
 		icon: AlertCircle,
 		header: "Delete everything?",
 		message:
-			"Wipes your library, highlights, glossary entries, and reading stats from this device and from your cloud account. You stay signed in and your settings are kept. This cannot be undone.",
+			"Wipes your library, highlights, bookmarks, glossary entries, and reading stats from this device and from your cloud account. You stay signed in and your settings are kept. This cannot be undone.",
 		successMessage: "All data deleted",
 	},
 };

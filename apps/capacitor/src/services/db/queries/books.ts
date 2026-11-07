@@ -40,6 +40,7 @@ import {
 	type BookImage,
 	bookContent,
 	bookImages,
+	bookmarks,
 	books,
 	type Chapter,
 	glossaryEntries,
@@ -927,6 +928,10 @@ export async function deleteBook(id: string): Promise<void> {
 		.update(readingGoals)
 		.set({ deleted: true, updatedAt: Date.now() })
 		.where(and(eq(readingGoals.bookId, id), eq(readingGoals.deleted, false)));
+	await db
+		.update(bookmarks)
+		.set({ deleted: true, updatedAt: serverNow() })
+		.where(and(eq(bookmarks.bookId, id), eq(bookmarks.deleted, false)));
 }
 
 /**
@@ -940,5 +945,6 @@ export async function hardDeleteBook(id: string): Promise<void> {
 	await db.delete(bookContent).where(eq(bookContent.bookId, id));
 	await db.delete(bookImages).where(eq(bookImages.bookId, id));
 	await db.delete(readingGoals).where(eq(readingGoals.bookId, id));
+	await db.delete(bookmarks).where(eq(bookmarks.bookId, id));
 	await db.delete(books).where(eq(books.id, id));
 }

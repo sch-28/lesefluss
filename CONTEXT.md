@@ -25,7 +25,7 @@ The reader's location in a book. The canonical app-side unit is **word position*
 
 ### Word position
 
-A zero-based index into the book's tokenized word stream. The canonical position unit across the app: `books.wordPosition`, highlights, reading sessions, chapter starts, and all cross-device sync ship this unit. Convertible to a UTF-8 byte offset only via the book's `WordIndex`.
+A zero-based index into the book's tokenized word stream. The canonical position unit across the app: `books.wordPosition`, highlights, bookmarks, reading sessions, chapter starts, and all cross-device sync ship this unit. Convertible to a UTF-8 byte offset only via the book's `WordIndex`.
 
 ### Position unit
 
@@ -81,6 +81,10 @@ How fast this reader reads, from one function (`computeSpeedModel` in `@leseflus
 - **Fallback**: under 10 minutes of reading in the window, the speed comes from all measured sittings; under 10 minutes in those too, it is not measured yet: the latest speed test, else 225 wpm.
 
 Estimates render as plain values ("4h 10m", no "~"); that a value is estimated is said only in a popover or details.
+
+### Bookmark
+
+A named [word position](#word-position) in one book (`bookmarks`, label optional). It syncs with sync on, not behind the highlights or stats toggles. A delete is sticky: the server keeps the tombstone and no later push revives it, a server tombstone removes the local row whatever its stamp, and a local delete beats a live server row until it is pushed. Deleting a book or a serial takes its bookmarks along, on the server too for clients that send none. Delete reading stats keeps them.
 
 ### Reading goal
 

@@ -8,6 +8,7 @@ import { deleteUserAccount } from "./account-deletion";
 import { auth } from "./auth";
 import { catalogFetch } from "./catalog";
 import { tombstoneBook } from "./moderation/takedown";
+import { tombstoneBookmarksOfDeletedBooks } from "./sync-bookmark-upsert";
 
 export const requireAdminSession = createServerOnlyFn(async () => {
 	const request = getRequest();
@@ -279,6 +280,7 @@ export const deleteAdminSeries = createServerFn({ method: "POST" })
 						eq(syncBooks.deleted, false),
 					),
 				);
+			await tombstoneBookmarksOfDeletedBooks(tx, data.userId);
 			return updated;
 		});
 		if (result.length === 0) throw new Response("Series not found", { status: 404 });

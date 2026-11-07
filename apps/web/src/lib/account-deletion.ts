@@ -4,6 +4,7 @@ import { user as authUser } from "~/db/auth-schema";
 import {
 	socialNotice,
 	socialRestriction,
+	syncBookmarks,
 	syncBooks,
 	syncCollectionBooks,
 	syncCollections,
@@ -36,6 +37,7 @@ export async function purgeCloudData(tx: Tx, userId: string): Promise<void> {
 	await tx.delete(syncCollections).where(eq(syncCollections.userId, userId));
 	await tx.delete(syncCollectionBooks).where(eq(syncCollectionBooks.userId, userId));
 	await tx.delete(syncSmartShelves).where(eq(syncSmartShelves.userId, userId));
+	await tx.delete(syncBookmarks).where(eq(syncBookmarks.userId, userId));
 	await tx.delete(syncSettings).where(eq(syncSettings.userId, userId));
 }
 

@@ -379,6 +379,13 @@
       "when": 1783296000000,
       "tag": "0053_show_live_wpm",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "6",
+      "when": 1783382400000,
+      "tag": "0054_bookmarks",
+      "breakpoints": true
     }
   ]
 }

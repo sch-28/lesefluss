@@ -57,6 +57,7 @@ import { scheduleSeriesReconcile } from "../series-collections";
 import { reportEvent } from "../telemetry";
 import { SYNC_URL } from "./auth-client";
 import { buildBookMergeUpdate } from "./book-merge";
+import { buildBookmarkMerge, pushableBookmarks } from "./bookmark-sync";
 import { type NotBackedUpBook, reportBooksNotBackedUp } from "./cloud-storage";
 import { buildCollectionMerge, pushableCollections } from "./collection-sync";
 import {
@@ -1166,12 +1167,12 @@ export async function pullSync(): Promise<Set<string>> {
 			}
 		}
 
+		const liveBookIds = new Set(
+			[...localBookMap.values()].filter((b) => !b.deleted).map((b) => b.id),
+		);
 		// Goals are plans, not stats: they sync with stats sync off too.
 		// Absent from an older server: leave local goals alone.
 		if (data.readingGoals) {
-			const liveBookIds = new Set(
-				[...localBookMap.values()].filter((b) => !b.deleted).map((b) => b.id),
-			);
 			const merge = buildGoalMerge(
 				await queries.getAllGoalsForSync(),
 				data.readingGoals,
@@ -1184,6 +1185,20 @@ export async function pullSync(): Promise<Set<string>> {
 				await queries.resolveActiveGoalConflicts();
 				changed = true;
 			}
+		}
+		// Absent from an older server: leave local bookmarks alone.
+		if (data.bookmarks) {
+			const merge = buildBookmarkMerge(
+				await queries.getAllBookmarksForSync(),
+				data.bookmarks,
+				liveBookIds,
+			);
+			if (merge.rejected > 0) {
+				log("sync", `pull: skipped ${merge.rejected} malformed bookmark(s)`);
+			}
+			if (merge.upserts.length > 0) await queries.upsertBookmarks(merge.upserts);
+			if (merge.deletes.length > 0) await queries.hardDeleteBookmarks(merge.deletes);
+			if (merge.upserts.length > 0 || merge.deletes.length > 0) changed = true;
 		}
 		// Absent from an older server: leave local collections alone.
 		if (data.collections || data.collectionBooks) {
@@ -1227,11 +1242,7 @@ export async function pullSync(): Promise<Set<string>> {
 		// Persist so a debounced push that runs before the next pull still knows what
 		// the server holds. Without this every push re-uploads the whole library.
 		await setServerContentIds(serverHasContent);
-		await reconcileQuotaBlock(
-			data.contentQuota,
-			serverHasContent,
-			new Set([...localBookMap.values()].filter((b) => !b.deleted).map((b) => b.id)),
-		);
+		await reconcileQuotaBlock(data.contentQuota, serverHasContent, liveBookIds);
 		queryClient.invalidateQueries({ queryKey: syncKeys.all });
 
 		// Invalidate React Query cache so UI reflects pulled changes
@@ -1389,6 +1400,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			collectionRows,
 			collectionBookRows,
 			smartShelfRows,
+			bookmarkRows,
 		] = await Promise.all([
 			queries.getBooksForSync(),
 			queries.getSettings(),
@@ -1400,6 +1412,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			queries.getAllCollectionsForSync(),
 			queries.getAllCollectionBooksForSync(),
 			queries.getAllSmartShelvesForSync(),
+			queries.getAllBookmarksForSync(),
 		]);
 
 		// Pristine pending chapter rows carry zero user data and are excluded from the
@@ -1468,6 +1481,11 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			log("sync", `push: dropped ${shelvesForPush.rejected} malformed smart shelf row(s)`);
 		}
 
+		const bookmarksForPush = pushableBookmarks(bookmarkRows, pushedBookIds);
+		if (bookmarksForPush.rejected > 0) {
+			log("sync", `push: dropped ${bookmarksForPush.rejected} malformed bookmark(s)`);
+		}
+
 		const payload: SyncPayload = {
 			books: booksWithContent,
 			settings: hasAdoptedSettings ? settingsToSync(settings) : null,
@@ -1485,6 +1503,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 			collections: collectionsForPush.collections,
 			collectionBooks: collectionsForPush.collectionBooks,
 			smartShelves: shelvesForPush.shelves,
+			bookmarks: bookmarksForPush.bookmarks,
 		};
 
 		// Diagnostics for the >5000 books cap — log composition so we can see what's
@@ -1504,7 +1523,7 @@ async function push(serverHasContent?: Set<string>): Promise<NotBackedUpBook[]> 
 		const body = JSON.stringify(payload);
 		log(
 			"sync",
-			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} contentUploads=${uploadedContentIds.size} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} readingGoals=${goalsForPush.pushable.length} collections=${collectionsForPush.collections.length} collectionBooks=${collectionsForPush.collectionBooks.length} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
+			`push payload books=${booksWithContent.length} standalone=${standaloneCount} chapterRows=${chapterRowCount} contentUploads=${uploadedContentIds.size} highlights=${payload.highlights.length} glossaryEntries=${payload.glossaryEntries.length} series=${payload.series?.length ?? 0} readingSessions=${payload.readingSessions?.length ?? 0} readingGoals=${goalsForPush.pushable.length} collections=${collectionsForPush.collections.length} collectionBooks=${collectionsForPush.collectionBooks.length} bookmarks=${bookmarksForPush.bookmarks.length} bodyBytes=${body.length} topSeries=[${topSeries.join(",")}]`,
 		);
 
 		const { quotaRejection, stamps } = await postPush(body);

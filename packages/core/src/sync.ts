@@ -373,6 +373,19 @@ export const SyncSmartShelfSchema = z.object({
 	updatedAt: epochMs(),
 });
 
+export const BOOKMARK_LABEL_MAX = 200;
+export const BOOKMARKS_PUSH_MAX = 5000;
+
+export const SyncBookmarkSchema = z.object({
+	bookmarkId: z.string().min(1).max(64),
+	bookId: z.string().regex(/^[0-9a-f]{8}$/),
+	word: pgInt(),
+	label: z.string().max(BOOKMARK_LABEL_MAX).nullable(),
+	deleted: z.boolean(),
+	createdAt: epochMs(),
+	updatedAt: epochMs(),
+});
+
 export const SyncPayloadSchema = z.object({
 	// Cap is generous because serial chapter rows (seriesId set) carry no body
 	// content/cover/TOC, so a 50k-row payload is still small in bytes. The real
@@ -392,6 +405,8 @@ export const SyncPayloadSchema = z.object({
 	collections: z.array(SyncCollectionSchema).max(COLLECTIONS_PUSH_MAX).optional(),
 	collectionBooks: z.array(SyncCollectionBookSchema).max(COLLECTION_BOOKS_PUSH_MAX).optional(),
 	smartShelves: z.array(SyncSmartShelfSchema).max(SMART_SHELVES_PUSH_MAX).optional(),
+	// No default, as with goals: an omitted array never means "no bookmarks".
+	bookmarks: z.array(SyncBookmarkSchema).max(BOOKMARKS_PUSH_MAX).optional(),
 });
 
 /** The server's reading of a push. Clients build pushes against `SyncPayloadSchema`. */
@@ -444,6 +459,7 @@ export type SyncReadingGoal = z.infer<typeof SyncReadingGoalSchema>;
 export type SyncCollection = z.infer<typeof SyncCollectionSchema>;
 export type SyncCollectionBook = z.infer<typeof SyncCollectionBookSchema>;
 export type SyncSmartShelf = z.infer<typeof SyncSmartShelfSchema>;
+export type SyncBookmark = z.infer<typeof SyncBookmarkSchema>;
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 export type SyncPush = z.infer<typeof SyncPushSchema>;
 export type SyncPushStamps = z.infer<typeof SyncPushStampsSchema>;
@@ -480,6 +496,8 @@ export type SyncResponse = {
 	collectionBooks?: SyncCollectionBook[];
 	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
 	smartShelves?: SyncSmartShelf[];
+	/** Optional so a client pointed at an older server can do without it. Tombstones included. */
+	bookmarks?: SyncBookmark[];
 	/**
 	 * Book ids the server currently holds body content for. Lets the client skip
 	 * re-uploading content it has already stored, which it cannot otherwise know:

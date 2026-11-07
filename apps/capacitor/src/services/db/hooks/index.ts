@@ -26,6 +26,7 @@
  * Query keys are re-exported for callers that need manual invalidation.
  */
 
+import { bookmarkHooks } from "./use-bookmarks";
 import { bookHooks } from "./use-books";
 import { bulkBookHooks } from "./use-bulk-books";
 import { collectionHooks } from "./use-collections";
@@ -196,6 +197,13 @@ export const queryHooks = {
 	useSeriesMembershipForBook: collectionHooks.useSeriesMembershipForBook,
 	useSaveBookSeries: collectionHooks.useSaveBookSeries,
 	useImportSeriesState: collectionHooks.useImportSeriesState,
+
+	// ── Bookmarks ─────────────────────────────────────────────────────────
+	useBookmarks: bookmarkHooks.useBookmarks,
+	useAddBookmark: bookmarkHooks.useAddBookmark,
+	useToggleBookmark: bookmarkHooks.useToggleBookmark,
+	useRenameBookmark: bookmarkHooks.useRenameBookmark,
+	useDeleteBookmark: bookmarkHooks.useDeleteBookmark,
 
 	// ── Smart shelves ─────────────────────────────────────────────────────
 	useSmartShelfRows: smartShelfHooks.useSmartShelfRows,

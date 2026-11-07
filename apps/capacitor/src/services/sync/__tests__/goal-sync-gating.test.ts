@@ -76,6 +76,7 @@ vi.mock("../../db/queries", () => ({
 		getAllCollectionsForSync: vi.fn(async () => []),
 		getAllCollectionBooksForSync: vi.fn(async () => []),
 		getAllSmartShelvesForSync: vi.fn(async () => []),
+		getAllBookmarksForSync: vi.fn(async () => []),
 		upsertGoals: (rows: ReadingGoal[]) => upsertGoals(rows),
 		hardDeleteGoals: vi.fn(async () => {}),
 		resolveActiveGoalConflicts: vi.fn(async () => {}),

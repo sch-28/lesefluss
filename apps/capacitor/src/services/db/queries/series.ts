@@ -3,6 +3,7 @@ import { db } from "../index";
 import {
 	type Book,
 	bookContent,
+	bookmarks,
 	books,
 	glossaryEntries,
 	highlights,
@@ -91,6 +92,7 @@ async function cascadeDeleteBooks(ids: string[]): Promise<void> {
 	await db.delete(glossaryEntries).where(inArray(glossaryEntries.bookId, ids));
 	await db.delete(highlights).where(inArray(highlights.bookId, ids));
 	await db.delete(bookContent).where(inArray(bookContent.bookId, ids));
+	await db.delete(bookmarks).where(inArray(bookmarks.bookId, ids));
 	await db.delete(books).where(inArray(books.id, ids));
 }
 

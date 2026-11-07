@@ -428,6 +428,22 @@ export type ReadingGoal = typeof readingGoals.$inferSelect;
 export type NewReadingGoal = typeof readingGoals.$inferInsert;
 
 /**
+ * A bookmark marks one word. Tombstoned on delete (`deleted`) so the delete
+ * syncs; the pull hard-deletes the row once the server holds the tombstone.
+ */
+export const bookmarks = sqliteTable("bookmarks", {
+	id: text("id").primaryKey(),
+	bookId: text("book_id").notNull(),
+	word: integer("word").$type<WordPosition>().notNull(),
+	label: text("label"),
+	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+	createdAt: integer("created_at").notNull(),
+	updatedAt: integer("updated_at").notNull(),
+});
+
+export type Bookmark = typeof bookmarks.$inferSelect;
+
+/**
  * Manual collections. Tombstoned on delete (`deleted`) so the delete syncs;
  * tombstones stay and are pushed with every sync. `sortOrder` is fractional so a
  * move writes one row.

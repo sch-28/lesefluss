@@ -380,6 +380,22 @@ export const syncSmartShelves = pgTable(
 	(t) => [primaryKey({ columns: [t.userId, t.shelfId] })],
 );
 
+export const syncBookmarks = pgTable(
+	"sync_bookmarks",
+	{
+		userId: text("user_id").notNull(),
+		bookmarkId: text("bookmark_id").notNull(),
+		bookId: text("book_id").notNull(),
+		word: integer("word").notNull(),
+		label: text("label"),
+		deleted: boolean("deleted").notNull().default(false),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.bookmarkId] })],
+);
+
+export type NewSyncBookmark = typeof syncBookmarks.$inferInsert;
 export type NewSyncCollection = typeof syncCollections.$inferInsert;
 export type NewSyncCollectionBook = typeof syncCollectionBooks.$inferInsert;
 

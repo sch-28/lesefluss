@@ -3,6 +3,7 @@ import {
 	pick,
 	SYNCED_SETTING_KEYS,
 	type SyncBook,
+	type SyncBookmark,
 	type SyncCollection,
 	type SyncCollectionBook,
 	type SyncGlossaryEntry,
@@ -22,6 +23,7 @@ import { and, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
 import { type DbExecutor, db } from "~/db";
 import {
 	syncBookCopy,
+	syncBookmarks,
 	syncBooks,
 	syncCollectionBooks,
 	syncCollections,
@@ -47,6 +49,7 @@ import { checkLimit } from "~/lib/rate-limit";
 import { requireAuth } from "~/lib/session-middleware";
 import { settleBuddyReads } from "~/lib/social/buddy-reads";
 import { upsertSyncBooks } from "~/lib/sync-book-upsert";
+import { tombstoneBookmarksOfDeletedBooks, upsertSyncBookmarks } from "~/lib/sync-bookmark-upsert";
 import { upsertSyncCollectionBooks, upsertSyncCollections } from "~/lib/sync-collection-upsert";
 import { upsertSyncGoals } from "~/lib/sync-goal-upsert";
 import { upsertSyncSettings } from "~/lib/sync-settings-upsert";
@@ -194,6 +197,7 @@ async function getUserSyncData(
 		collectionRows,
 		collectionBookRows,
 		smartShelfRows,
+		bookmarkRows,
 		usedBytes,
 	] = await Promise.all([
 		db.select(metadataCols).from(syncBooks).where(eq(syncBooks.userId, userId)),
@@ -224,6 +228,7 @@ async function getUserSyncData(
 		db.select().from(syncCollections).where(eq(syncCollections.userId, userId)),
 		db.select().from(syncCollectionBooks).where(eq(syncCollectionBooks.userId, userId)),
 		db.select().from(syncSmartShelves).where(eq(syncSmartShelves.userId, userId)),
+		db.select().from(syncBookmarks).where(eq(syncBookmarks.userId, userId)),
 		contentUsage(db, userId),
 	]);
 
@@ -436,6 +441,17 @@ async function getUserSyncData(
 				deleted: s.deleted,
 				createdAt: toMs(s.createdAt),
 				updatedAt: toMs(s.updatedAt),
+			}),
+		),
+		bookmarks: bookmarkRows.map(
+			(b): SyncBookmark => ({
+				bookmarkId: b.bookmarkId,
+				bookId: b.bookId,
+				word: b.word,
+				label: b.label,
+				deleted: b.deleted,
+				createdAt: toMs(b.createdAt),
+				updatedAt: toMs(b.updatedAt),
 			}),
 		),
 	};
@@ -762,6 +778,23 @@ export const Route = createFileRoute("/api/sync")({
 					}
 					if (payload.smartShelves) {
 						await upsertSyncSmartShelves(tx, userId, payload.smartShelves);
+					}
+					// Absent from clients that pre-date bookmarks: nothing to merge.
+					if (payload.bookmarks) {
+						await upsertSyncBookmarks(
+							tx,
+							userId,
+							payload.bookmarks.filter((b) => !takenDown.has(b.bookId)),
+						);
+					}
+					// After the book and series upserts, so a book deleted in this push
+					// (by any client version) takes its bookmarks along.
+					if (
+						payload.bookmarks?.length ||
+						payload.books.some((b) => b.deleted) ||
+						payload.series.some((s) => s.deleted)
+					) {
+						await tombstoneBookmarksOfDeletedBooks(tx, userId);
 					}
 					const stamps: SyncPushStamps = {
 						books: clampedBooks,

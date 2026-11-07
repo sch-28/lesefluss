@@ -58,6 +58,9 @@ export const bookKeys = {
 	/** All highlights for a book, ordered by position. */
 	highlights: (id: string) => ["books", id, "highlights"] as const,
 
+	/** Bookmarks of a book, in reading order. */
+	bookmarks: (id: string) => ["books", id, "bookmarks"] as const,
+
 	/** Glossary entries visible inside a book (book-scoped + global). */
 	glossary: (id: string) => ["books", id, "glossary"] as const,
 

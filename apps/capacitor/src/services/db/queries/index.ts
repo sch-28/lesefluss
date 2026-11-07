@@ -3,6 +3,17 @@
  * Individual modules stay as pure functions for testability; this just re-exports them
  * under one namespace so callers have a single import.
  */
+
+import {
+	addBookmark,
+	deleteBookmark,
+	getAllBookmarksForSync,
+	getBookmarksByBook,
+	hardDeleteBookmarks,
+	renameBookmark,
+	toggleBookmarkOnScreen,
+	upsertBookmarks,
+} from "./bookmarks";
 import {
 	addBookImages,
 	addBookWithContent,
@@ -204,6 +215,16 @@ export const queries = {
 	deleteHighlight,
 	deleteHighlightsByBook,
 	deleteAllHighlights,
+
+	// Bookmarks
+	getBookmarksByBook,
+	addBookmark,
+	toggleBookmarkOnScreen,
+	renameBookmark,
+	deleteBookmark,
+	getAllBookmarksForSync,
+	upsertBookmarks,
+	hardDeleteBookmarks,
 
 	// Reading sessions
 	getAllReadingSessions,
