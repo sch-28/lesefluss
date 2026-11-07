@@ -17,6 +17,14 @@ function useHighlights(bookId: string) {
 	});
 }
 
+function useHighlightCounts(enabled: boolean) {
+	return useQuery({
+		queryKey: bookKeys.highlightCounts,
+		queryFn: queries.countHighlightsByBook,
+		enabled,
+	});
+}
+
 // ─── Mutations ───────────────────────────────────────────────────────────────
 // Each onSuccess returns the invalidation promise: react-query then awaits the
 // refetch before a caller's own onSuccess runs, so a "saved" or "removed" toast
@@ -63,6 +71,7 @@ function useDeleteHighlight() {
 
 export const highlightHooks = {
 	useHighlights,
+	useHighlightCounts,
 	useAddHighlight,
 	useUpdateHighlight,
 	useDeleteHighlight,

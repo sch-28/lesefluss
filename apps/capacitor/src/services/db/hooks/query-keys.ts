@@ -58,6 +58,9 @@ export const bookKeys = {
 	/** All highlights for a book, ordered by position. */
 	highlights: (id: string) => ["books", id, "highlights"] as const,
 
+	/** bookId → highlight count, for the library table. Under `all` so returning to the library refreshes it. */
+	highlightCounts: ["books", "highlight-counts"] as const,
+
 	/** Bookmarks of a book, in reading order. */
 	bookmarks: (id: string) => ["books", id, "bookmarks"] as const,
 

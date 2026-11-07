@@ -85,6 +85,7 @@ import {
 } from "./glossary";
 import {
 	addHighlight,
+	countHighlightsByBook,
 	deleteAllHighlights,
 	deleteHighlight,
 	deleteHighlightsByBook,
@@ -211,6 +212,7 @@ export const queries = {
 
 	// Highlights
 	getHighlightsByBook,
+	countHighlightsByBook,
 	getAllHighlights,
 	addHighlight,
 	updateHighlight,

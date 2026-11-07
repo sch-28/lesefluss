@@ -5,7 +5,7 @@ import { log } from "../../../utils/log";
 import { scheduleSyncPush } from "../../sync";
 import { errorMessage, reportEvent } from "../../telemetry";
 import { queries } from "../queries";
-import type { CollectionEdit } from "../queries/collections";
+import type { CollectionEdit, MembershipOrder } from "../queries/collections";
 import { collectionKeys } from "./query-keys";
 
 function useCollections() {
@@ -173,6 +173,12 @@ function useAddNumberedBooks() {
 	);
 }
 
+function useReorderCollection() {
+	return useCollectionMutation((vars: { collectionId: string; order: MembershipOrder[] }) =>
+		queries.setMembershipOrder(vars.collectionId, vars.order),
+	);
+}
+
 function useRemoveBooksFromCollection() {
 	return useCollectionMutation((vars: { collectionId: string; bookIds: string[] }) =>
 		queries.removeBooksFromCollection(vars.collectionId, vars.bookIds),
@@ -195,6 +201,7 @@ export const collectionHooks = {
 	useDeleteCollection,
 	useAddBooksToCollection,
 	useRemoveBooksFromCollection,
+	useReorderCollection,
 	useSeriesMembershipForBook,
 	useSaveBookSeries,
 	useImportSeriesState,

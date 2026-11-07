@@ -4,7 +4,7 @@ import {
 	SERIES_ID_PREFIX,
 	seriesCollectionId,
 } from "@lesefluss/core";
-import { and, asc, eq, inArray, isNotNull, isNull, like, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, like, ne, sql } from "drizzle-orm";
 import { randomHexId } from "../../../utils/random-id";
 import { serverNow } from "../../sync/server-clock";
 import { db } from "../index";
@@ -399,27 +399,59 @@ async function numberUnnumberedMembers(collectionId: string, now: number): Promi
 	}
 }
 
+/** A book sits in one series: joining one tombstones its other series memberships,
+ *  so auto-join does not put it back. */
+async function leaveOtherSeries(
+	seriesId: string,
+	bookIds: readonly string[],
+	now: number,
+): Promise<void> {
+	const otherSeries = db
+		.select({ id: collections.id })
+		.from(collections)
+		.where(and(isNotNull(collections.seriesKey), ne(collections.id, seriesId)));
+	for (let i = 0; i < bookIds.length; i += CHUNK_SIZE) {
+		await db
+			.update(collectionBooks)
+			.set({ deleted: true, updatedAt: now })
+			.where(
+				and(
+					eq(collectionBooks.deleted, false),
+					inArray(collectionBooks.bookId, bookIds.slice(i, i + CHUNK_SIZE)),
+					inArray(collectionBooks.collectionId, otherSeries),
+				),
+			);
+	}
+}
+
 /**
  * Adds books at the end: in an ordered collection each book not yet a live
  * member gets the next #N, in the order given; a live member keeps its number.
+ * Joining a series collection takes the book out of its other series.
  */
 export async function appendBooksToCollection(
 	collectionId: string,
 	bookIds: readonly string[],
 	now = serverNow(),
 ): Promise<void> {
-	if (!(await isCollectionOrdered(collectionId))) {
-		await addBooksToCollection(collectionId, [...bookIds], now);
-		return;
-	}
+	const [target] = await db
+		.select({ ordered: collections.ordered, seriesKey: collections.seriesKey })
+		.from(collections)
+		.where(eq(collections.id, collectionId));
 	const live = new Set(await getCollectionBookIds(collectionId));
 	const fresh = bookIds.filter((id) => !live.has(id));
-	await addBooksToCollection(
-		collectionId,
-		[...bookIds],
-		now,
-		numberInOrder(fresh, await highestSeriesIndex(collectionId)),
-	);
+	if (!target?.ordered) {
+		await addBooksToCollection(collectionId, [...bookIds], now);
+	} else {
+		await addBooksToCollection(
+			collectionId,
+			[...bookIds],
+			now,
+			numberInOrder(fresh, await highestSeriesIndex(collectionId)),
+		);
+	}
+	// After the add: a failed add leaves the book in its old series, not in none.
+	if (target?.seriesKey) await leaveOtherSeries(collectionId, fresh, now);
 }
 
 export async function getCollectionBookIds(collectionId: string): Promise<string[]> {

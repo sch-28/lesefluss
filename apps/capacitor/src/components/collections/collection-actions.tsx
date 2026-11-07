@@ -23,6 +23,7 @@ export const CollectionActions: React.FC<Props> = ({ collection, collections, on
 	const location = useLocation();
 
 	const index = collection ? collections.findIndex((c) => c.id === collection.id) : -1;
+	const noun = (collection ?? deleting)?.seriesKey ? "series" : "collection";
 
 	const confirmDelete = () => {
 		if (!deleting) return;
@@ -45,7 +46,7 @@ export const CollectionActions: React.FC<Props> = ({ collection, collections, on
 				title={collection?.name}
 				items={[
 					{
-						label: "Edit collection",
+						label: `Edit ${noun}`,
 						icon: Pencil,
 						onSelect: () => {
 							if (collection) {
@@ -73,7 +74,7 @@ export const CollectionActions: React.FC<Props> = ({ collection, collections, on
 						},
 					},
 					{
-						label: "Delete collection",
+						label: `Delete ${noun}`,
 						icon: Trash2,
 						destructive: true,
 						onSelect: () => setDeleting(collection),
@@ -85,10 +86,12 @@ export const CollectionActions: React.FC<Props> = ({ collection, collections, on
 				onOpenChange={(open) => {
 					if (!open) setDeleting(null);
 				}}
-				title="Delete collection?"
+				title={`Delete ${noun}?`}
 				description={
 					deleting
-						? `"${deleting.name}" will be deleted. Its books stay in your library.`
+						? deleting.seriesKey
+							? `"${deleting.name}" will be deleted, and new imports will not bring it back. Its books stay in your library.`
+							: `"${deleting.name}" will be deleted. Its books stay in your library.`
 						: undefined
 				}
 				confirmLabel="Delete"

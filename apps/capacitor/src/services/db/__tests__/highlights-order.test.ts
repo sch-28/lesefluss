@@ -11,9 +11,8 @@ vi.mock("../index", () => ({
 }));
 afterAll(close);
 
-const { addHighlight, getHighlightsByBook, getHighlightsByBooks } = await import(
-	"../queries/highlights"
-);
+const { addHighlight, countHighlightsByBook, getHighlightsByBook, getHighlightsByBooks } =
+	await import("../queries/highlights");
 
 function highlight(id: string, bookId: string, startWord: number) {
 	return {
@@ -57,5 +56,18 @@ describe("highlight order", () => {
 			"b2-early",
 			"b2-late",
 		]);
+	});
+
+	it("counts each book's highlights for the library table", async () => {
+		await addHighlight(highlight("a", "b1", 1));
+		await addHighlight(highlight("b", "b1", 9));
+		await addHighlight(highlight("c", "b2", 4));
+
+		expect(await countHighlightsByBook()).toEqual(
+			new Map([
+				["b1", 2],
+				["b2", 1],
+			]),
+		);
 	});
 });

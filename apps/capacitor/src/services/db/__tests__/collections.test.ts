@@ -431,4 +431,39 @@ describe("series collections from the collection sheet", () => {
 		]);
 		expect(byBook.has("bbbbbbbb")).toBe(false);
 	});
+
+	it("adding a book to a series takes it out of its other series, dismissed there", async () => {
+		const plain = await collections.createCollection("Shelf", 1);
+		const dune = await collections.createSeriesCollection("Dune", 2);
+		const expanse = await collections.createSeriesCollection("Expanse", 3);
+		await collections.addBooksToCollection(plain.id, ["aaaaaaaa"], 4);
+		await collections.addBooksToCollection(dune.id, ["aaaaaaaa", "bbbbbbbb"], 5);
+		await collections.appendBooksToCollection(expanse.id, ["aaaaaaaa"], 6);
+		expect(await collections.getCollectionBookIds(dune.id)).toEqual(["bbbbbbbb"]);
+		expect(await collections.getCollectionBookIds(expanse.id)).toEqual(["aaaaaaaa"]);
+		expect(await collections.getCollectionBookIds(plain.id)).toEqual(["aaaaaaaa"]);
+		const tomb = raw
+			.prepare(
+				"SELECT deleted, updated_at FROM collection_books WHERE collection_id = ? AND book_id = ?",
+			)
+			.get(dune.id, "aaaaaaaa");
+		expect(tomb).toEqual({ deleted: 1, updated_at: 6 });
+	});
+
+	it("reorders an ordered collection: each changed row gets its new #N", async () => {
+		const saga = await collections.createSeriesCollection("Saga", 1);
+		await collections.appendBooksToCollection(saga.id, ["aaaaaaaa", "bbbbbbbb", "cccccccc"], 2);
+		await collections.setMembershipOrder(saga.id, [
+			{ bookId: "cccccccc", seriesIndex: 1, position: null },
+			{ bookId: "aaaaaaaa", seriesIndex: 2, position: null },
+			{ bookId: "bbbbbbbb", seriesIndex: 3, position: null },
+		]);
+		expect(
+			(await collections.getCollectionMembers(saga.id)).map((m) => [m.bookId, m.seriesIndex]),
+		).toEqual([
+			["cccccccc", 1],
+			["aaaaaaaa", 2],
+			["bbbbbbbb", 3],
+		]);
+	});
 });

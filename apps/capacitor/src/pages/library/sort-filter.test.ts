@@ -360,3 +360,90 @@ describe("isSortBy", () => {
 		expect(isSortBy("bogus")).toBe(false);
 	});
 });
+
+describe("sort direction and table sorts", () => {
+	const ids = (books: Book[], sortBy: SortBy, reversed = false) =>
+		applyLibraryView(buildLibraryItems(books, [], new Map()), { filter: {}, sortBy, reversed }).map(
+			(item) => (item.kind === "book" ? item.book.id : item.series.id),
+		);
+	const a = makeBook({ id: "a", title: "Alpha", wordCount: 300, addedAt: 1, rating: 8 });
+	const b = makeBook({ id: "b", title: "Beta", wordCount: 100, addedAt: 3, rating: null });
+	const c = makeBook({
+		id: "c",
+		title: "Gamma",
+		wordCount: 200,
+		addedAt: 2,
+		rating: 4,
+		lastRead: 9,
+	});
+
+	it("runs each sort its natural way, and reversed the other way", () => {
+		expect(ids([b, c, a], "title")).toEqual(["a", "b", "c"]);
+		expect(ids([b, c, a], "title", true)).toEqual(["c", "b", "a"]);
+		expect(ids([a, b, c], "words")).toEqual(["a", "c", "b"]);
+		expect(ids([a, b, c], "added")).toEqual(["b", "c", "a"]);
+		expect(ids([a, b, c], "added", true)).toEqual(["a", "c", "b"]);
+	});
+
+	it("keeps missing values last in both directions", () => {
+		expect(ids([b, c, a], "rating")).toEqual(["a", "c", "b"]);
+		expect(ids([b, c, a], "rating", true)).toEqual(["c", "a", "b"]);
+		expect(ids([a, b, c], "lastRead")[0]).toBe("c");
+		expect(ids([a, b, c], "lastRead", true)[0]).toBe("c");
+	});
+
+	it("reverses only the first key, never Then by", () => {
+		const x = makeBook({ id: "x", title: "Same", author: "A" });
+		const y = makeBook({ id: "y", title: "Same", author: "B" });
+		const sorted = applyLibraryView(buildLibraryItems([y, x], [], new Map()), {
+			filter: {},
+			sortBy: "title",
+			thenBy: "author",
+			reversed: true,
+		});
+		expect(sorted.map((i) => (i.kind === "book" ? i.book.id : ""))).toEqual(["x", "y"]);
+	});
+});
+
+describe("series, tags and collections sorts", () => {
+	const shelves = {
+		collections: new Map([
+			["s1", { name: "Dune", seriesKey: "dune" }],
+			["s2", { name: "Expanse", seriesKey: "expanse" }],
+			["c1", { name: "Classics", seriesKey: null }],
+			["c2", { name: "Beach reads", seriesKey: null }],
+		]),
+		seriesMemberships: new Map([
+			["d2", [{ collectionId: "s1", seriesIndex: 2 }]],
+			["d1", [{ collectionId: "s1", seriesIndex: 1 }]],
+			["e1", [{ collectionId: "s2", seriesIndex: 1 }]],
+		]),
+	};
+	const collectionsOf = new Map([
+		["d1", ["s1", "c1"]],
+		["e1", ["s2", "c2"]],
+	]);
+	const books = [
+		makeBook({ id: "none", title: "Loose", tags: null }),
+		makeBook({ id: "e1", title: "Leviathan", tags: JSON.stringify(["space"]) }),
+		makeBook({ id: "d2", title: "Messiah", tags: JSON.stringify(["desert"]) }),
+		makeBook({ id: "d1", title: "Dune", tags: JSON.stringify(["classic"]) }),
+	];
+	const ids = (sortBy: SortBy, reversed = false) =>
+		applyLibraryView(
+			buildLibraryItems(books, [], new Map(), 0, collectionsOf, undefined, shelves),
+			{ filter: {}, sortBy, reversed },
+		).map((item) => (item.kind === "book" ? item.book.id : item.series.id));
+
+	it("sorts by series name, then by number within the series, books outside last", () => {
+		expect(ids("series")).toEqual(["d1", "d2", "e1", "none"]);
+		expect(ids("series", true)).toEqual(["e1", "d1", "d2", "none"]);
+	});
+
+	it("sorts by tags and by plain collections, the empty ones last either way", () => {
+		expect(ids("tags")).toEqual(["d1", "d2", "e1", "none"]);
+		expect(ids("tags", true)).toEqual(["e1", "d2", "d1", "none"]);
+		expect(ids("collections").slice(0, 2)).toEqual(["e1", "d1"]);
+		expect(ids("collections", true).slice(0, 2)).toEqual(["d1", "e1"]);
+	});
+});

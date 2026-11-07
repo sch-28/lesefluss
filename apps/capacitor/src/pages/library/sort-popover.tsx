@@ -1,7 +1,14 @@
 import type React from "react";
 import SelectionPopover, { type PopoverSection } from "../../components/selection-popover";
 import { GROUP_LABELS, GROUP_OPTIONS, type GroupBy } from "./group-by";
-import { SORT_LABELS, SORT_OPTIONS, type SortBy } from "./sort-filter";
+import {
+	NATURAL_DIR,
+	SORT_LABELS,
+	SORT_OPTIONS,
+	type SortBy,
+	type SortDir,
+	sortDirection,
+} from "./sort-filter";
 
 export type ThenBy = SortBy | "none";
 
@@ -9,6 +16,8 @@ type Props = {
 	trigger: React.ReactNode;
 	sortBy: SortBy;
 	onSort: (s: SortBy) => void;
+	reversed: boolean;
+	onReversed: (reversed: boolean) => void;
 	thenBy: ThenBy;
 	onThenBy: (s: ThenBy) => void;
 	groupBy: GroupBy;
@@ -16,11 +25,15 @@ type Props = {
 };
 
 const THEN_LABELS: Record<ThenBy, string> = { none: "None", ...SORT_LABELS };
+const DIR_OPTIONS: SortDir[] = ["asc", "desc"];
+const DIR_LABELS: Record<SortDir, string> = { asc: "Ascending", desc: "Descending" };
 
 const SortPopover: React.FC<Props> = ({
 	trigger,
 	sortBy,
 	onSort,
+	reversed,
+	onReversed,
 	thenBy,
 	onThenBy,
 	groupBy,
@@ -33,6 +46,13 @@ const SortPopover: React.FC<Props> = ({
 			labels: SORT_LABELS,
 			selected: sortBy,
 			onSelect: (v) => onSort(v as SortBy),
+		},
+		{
+			heading: "Order",
+			options: DIR_OPTIONS,
+			labels: DIR_LABELS,
+			selected: sortDirection(sortBy, reversed),
+			onSelect: (v) => onReversed(v !== NATURAL_DIR[sortBy]),
 		},
 		{
 			heading: "Then by",

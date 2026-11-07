@@ -25,6 +25,11 @@ const SORT_KEY: LibraryItem["sortKey"] = {
 	rating: null,
 	tags: [],
 	minutesLeft: null,
+	words: null,
+	series: null,
+	collections: null,
+	added: 0,
+	lastRead: null,
 };
 
 const FACETS: LibraryItem["facets"] = {

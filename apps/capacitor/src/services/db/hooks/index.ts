@@ -108,6 +108,9 @@ export const queryHooks = {
 	/** All highlights for a book, ordered by position. */
 	useHighlights: highlightHooks.useHighlights,
 
+	/** bookId → highlight count; load only while something shows it. */
+	useHighlightCounts: highlightHooks.useHighlightCounts,
+
 	/** Mutation: add a new highlight. */
 	useAddHighlight: highlightHooks.useAddHighlight,
 
@@ -197,6 +200,8 @@ export const queryHooks = {
 	useDeleteCollection: collectionHooks.useDeleteCollection,
 	useAddBooksToCollection: collectionHooks.useAddBooksToCollection,
 	useRemoveBooksFromCollection: collectionHooks.useRemoveBooksFromCollection,
+	/** Mutation: an ordered collection's new #N, one write per changed row. */
+	useReorderCollection: collectionHooks.useReorderCollection,
 	useSeriesMembershipForBook: collectionHooks.useSeriesMembershipForBook,
 	useSaveBookSeries: collectionHooks.useSaveBookSeries,
 	useImportSeriesState: collectionHooks.useImportSeriesState,

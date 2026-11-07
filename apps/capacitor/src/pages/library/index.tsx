@@ -53,6 +53,7 @@ import BookListItem from "./book-list-item";
 import BulkActionBar from "./bulk-action-bar";
 import BulkSheets from "./bulk-sheets";
 import CollectionShelfRow from "./collection-shelf-row";
+import ColumnPicker from "./column-picker";
 import { libraryCommands } from "./commands";
 import { filterToTree, matchesTree, serializeTree } from "./condition-tree";
 import FilterBar, { AddFilterButton } from "./filter-bar";
@@ -66,6 +67,8 @@ import {
 	seriesBadge,
 } from "./group-by";
 import ImportSheet from "./import-sheet";
+import LibraryTable from "./library-table";
+import OrderedCollectionView from "./ordered-collection-view";
 import PasteUrlModal from "./paste-url-modal";
 import { searchTextOf } from "./query-syntax";
 import { SearchAutocomplete } from "./search-autocomplete";
@@ -77,9 +80,20 @@ import {
 	buildLibraryItems,
 	isSortBy,
 	type LibraryItem,
+	type SortBy,
 	tagsInUse,
 } from "./sort-filter";
 import SortPopover, { type ThenBy } from "./sort-popover";
+import {
+	type CellContext,
+	type ColumnId,
+	columnsOf,
+	DEFAULT_COLUMNS,
+	headerSort,
+	parseColumns,
+	serializeColumns,
+	toggleColumn,
+} from "./table-columns";
 import TransferModal from "./transfer-modal";
 import { useCollapsedGroups } from "./use-collapsed-groups";
 import { useDragSelect } from "./use-drag-select";
@@ -95,12 +109,23 @@ const SORT_BY_KEY = "lesefluss:library-sort";
 const THEN_BY_KEY = "lesefluss:library-sort-then";
 const GROUP_BY_KEY = "lesefluss:library-group";
 const VIEW_MODE_KEY = "lesefluss:library-view-mode";
+const SORT_REVERSED_KEY = "lesefluss:library-sort-reversed";
+const COLUMNS_KEY = "lesefluss:library-columns";
 /** Facets whose values come from the books; a value can vanish with its last book. */
 const LIBRARY_VALUE_FACETS: readonly Facet[] = ["tags", "author", "series", "collection"];
 
 const isThenBy = (value: string): value is ThenBy => value === "none" || isSortBy(value);
 const NO_SERIES_MEMBERSHIPS: SeriesMemberships = new Map();
-const isViewMode = (value: string): value is ViewMode => value === "grid" || value === "list";
+type LibraryViewMode = ViewMode | "table";
+const isViewMode = (value: string): value is LibraryViewMode =>
+	value === "grid" || value === "list" || value === "table";
+const isFlag = (value: string): value is "0" | "1" => value === "0" || value === "1";
+const isAnyString = (value: string): value is string => typeof value === "string";
+const NEXT_VIEW: Record<LibraryViewMode, LibraryViewMode> = {
+	grid: "list",
+	list: "table",
+	table: "grid",
+};
 
 const FAB_STYLE: React.CSSProperties = {
 	bottom: "calc(var(--tab-bar-h,4rem) + var(--safe-bottom) + 1rem)",
@@ -125,6 +150,7 @@ const Library: React.FC = () => {
 	const speedModelQuery = queryHooks.useStatsSpeedModel();
 	const seriesMembershipsQuery = queryHooks.useSeriesMemberships();
 	const activeCollection = collectionsQuery.data?.find((c) => c.id === collectionId);
+	const isOrderedView = !!activeCollection?.ordered;
 	const removeFromCollection = queryHooks.useRemoveBooksFromCollection();
 	const smart = useSmartShelves();
 	const activeShelf = shelfId ? smart.shelves.find((s) => s.id === shelfId) : undefined;
@@ -173,6 +199,31 @@ const Library: React.FC = () => {
 	const [search, setSearch] = useState("");
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
 	const [viewMode, setViewMode] = usePersistentString(VIEW_MODE_KEY, isViewMode, "grid");
+	// The table needs the width; a narrow window shows a stored table as the list.
+	const shownView: LibraryViewMode = viewMode === "table" && !isDesktop ? "list" : viewMode;
+	const nextView: LibraryViewMode = isDesktop
+		? NEXT_VIEW[shownView]
+		: shownView === "grid"
+			? "list"
+			: "grid";
+	const [reversedFlag, setReversedFlag] = usePersistentString(SORT_REVERSED_KEY, isFlag, "0");
+	const sortReversed = reversedFlag === "1";
+	const setSort = (next: { sortBy: SortBy; reversed: boolean }) => {
+		setSortBy(next.sortBy);
+		setReversedFlag(next.reversed ? "1" : "0");
+	};
+	const [columnsRaw, setColumnsRaw] = usePersistentString(
+		COLUMNS_KEY,
+		isAnyString,
+		serializeColumns(DEFAULT_COLUMNS),
+	);
+	const columnIds = useMemo(() => parseColumns(columnsRaw), [columnsRaw]);
+	const tableColumns = useMemo(() => columnsOf(columnIds), [columnIds]);
+	const onToggleColumn = (id: ColumnId) =>
+		setColumnsRaw((raw) => serializeColumns(toggleColumn(parseColumns(raw), id)));
+	const highlightCountsQuery = queryHooks.useHighlightCounts(
+		shownView === "table" && columnIds.includes("highlights"),
+	);
 
 	const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 	const [selectedSeries, setSelectedSeries] = useState<Series | null>(null);
@@ -313,6 +364,10 @@ const Library: React.FC = () => {
 	// Duplicate detection for a folder scan reads the library that is already
 	// loaded here rather than issuing its own query.
 	const existingTitles = useMemo(() => toExistingTitles(books), [books]);
+	const collectionsById = useMemo(
+		() => new Map((collectionsQuery.data ?? []).map((c) => [c.id, c])),
+		[collectionsQuery.data],
+	);
 	const allItems = useMemo(
 		() =>
 			buildLibraryItems(
@@ -322,8 +377,20 @@ const Library: React.FC = () => {
 				Date.now(),
 				membershipsQuery.data,
 				speedModelQuery.data,
+				{
+					collections: collectionsById,
+					seriesMemberships: seriesMembershipsQuery.data ?? NO_SERIES_MEMBERSHIPS,
+				},
 			),
-		[books, series, seriesActivity, membershipsQuery.data, speedModelQuery.data],
+		[
+			books,
+			series,
+			seriesActivity,
+			membershipsQuery.data,
+			speedModelQuery.data,
+			collectionsById,
+			seriesMembershipsQuery.data,
+		],
 	);
 	const options = useMemo(
 		() => facetOptions(allItems, collectionsQuery.data),
@@ -365,9 +432,10 @@ const Library: React.FC = () => {
 				filter: activeFilter,
 				sortBy,
 				thenBy: thenBy === "none" ? null : thenBy,
+				reversed: sortReversed,
 				search: searchTextOf(search),
 			}),
-		[scopedItems, activeFilter, sortBy, thenBy, search],
+		[scopedItems, activeFilter, sortBy, thenBy, sortReversed, search],
 	);
 	const seriesMemberships = seriesMembershipsQuery.data ?? NO_SERIES_MEMBERSHIPS;
 	const groups = useMemo(
@@ -390,6 +458,14 @@ const Library: React.FC = () => {
 		[visibleItems, groups, collapsedGroups],
 	);
 	const selection = useLibrarySelection(books, shownItems);
+	const cellContext = useMemo<CellContext>(
+		() => ({
+			seriesMemberships,
+			collections: collectionsById,
+			highlightCounts: highlightCountsQuery.data,
+		}),
+		[seriesMemberships, collectionsById, highlightCountsQuery.data],
+	);
 	const gridRef = useRef<HTMLDivElement>(null);
 	useDragSelect(gridRef, {
 		isActive: selection.drag.isActive,
@@ -415,7 +491,7 @@ const Library: React.FC = () => {
 	const renderItem = (item: LibraryItem) => {
 		if (item.kind === "series") {
 			const s = item.series;
-			const Item = viewMode === "grid" ? SeriesCard : SeriesListItem;
+			const Item = shownView === "grid" ? SeriesCard : SeriesListItem;
 			return (
 				// Not selectable in v1, and a stray tap that navigated away
 				// would throw away a half-built selection.
@@ -435,7 +511,7 @@ const Library: React.FC = () => {
 		}
 		const { book } = item;
 		const progress = readingProgress(book);
-		const Item = viewMode === "grid" ? BookCard : BookListItem;
+		const Item = shownView === "grid" ? BookCard : BookListItem;
 		return (
 			<Item
 				book={book}
@@ -510,7 +586,9 @@ const Library: React.FC = () => {
 								</Button>
 							}
 							sortBy={sortBy}
-							onSort={setSortBy}
+							onSort={(s) => setSort({ sortBy: s, reversed: false })}
+							reversed={sortReversed}
+							onReversed={(r) => setSort({ sortBy, reversed: r })}
 							thenBy={thenBy}
 							onThenBy={setThenBy}
 							groupBy={groupBy}
@@ -536,9 +614,13 @@ const Library: React.FC = () => {
 								{isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
 							</Button>
 						)}
+						{shownView === "table" && (
+							<ColumnPicker columns={columnIds} onToggle={onToggleColumn} />
+						)}
 						<ViewModeToggle
-							viewMode={viewMode}
-							onToggle={() => setViewMode((m) => (m === "grid" ? "list" : "grid"))}
+							viewMode={shownView}
+							next={nextView}
+							onToggle={() => setViewMode(nextView)}
 						/>
 					</>
 				}
@@ -562,7 +644,7 @@ const Library: React.FC = () => {
 				<CollectionShelfRow activeId={collectionId} activeShelfId={shelfId} />
 			)}
 
-			{activeCollection && (
+			{activeCollection && !activeCollection.ordered && (
 				<div className="flex items-center gap-2 border-border border-b px-4 py-2">
 					<h2 className="m-0 min-w-0 flex-1 truncate font-semibold text-base">
 						{activeCollection.name}
@@ -641,7 +723,7 @@ const Library: React.FC = () => {
 				/>
 			)}
 
-			{(books.length > 0 || series.length > 0) && (
+			{!isOrderedView && (books.length > 0 || series.length > 0) && (
 				<FilterBar
 					filter={activeFilter}
 					onChange={setFilter}
@@ -742,7 +824,17 @@ const Library: React.FC = () => {
 				</div>
 			)}
 
-			{isCollectionEmpty ? (
+			{activeCollection?.ordered ? (
+				<OrderedCollectionView
+					collection={activeCollection}
+					collections={collectionsQuery.data ?? []}
+					books={books}
+					covers={covers}
+					onOpenBook={openBook}
+					onAddBooks={openAddBooks}
+					canDrag={canDragBooks}
+				/>
+			) : isCollectionEmpty ? (
 				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center text-muted-foreground">
 					<h2 className="m-0 mb-2 font-semibold text-foreground text-lg">
 						No books in this collection yet
@@ -775,10 +867,29 @@ const Library: React.FC = () => {
 						<p className="m-0">{isNarrowed ? "No books match." : "Nothing to show."}</p>
 					</div>
 				)
+			) : shownView === "table" ? (
+				<LibraryTable
+					items={visibleItems}
+					groups={groups}
+					collapsed={collapsedGroups}
+					onToggleGroup={toggleGroup}
+					columns={tableColumns}
+					ctx={cellContext}
+					sortBy={sortBy}
+					reversed={sortReversed}
+					onHeaderSort={(key) => setSort(headerSort({ sortBy, reversed: sortReversed }, key))}
+					selection={selection}
+					onOpenBook={openBook}
+					onOpenSeries={handleOpenSeries}
+					onBookMenu={setSelectedBook}
+					onSeriesMenu={setSelectedSeries}
+					draggable={canDragBooks}
+					containerRef={gridRef}
+				/>
 			) : (
 				<VirtualBookGrid
 					items={visibleItems}
-					viewMode={viewMode}
+					viewMode={shownView}
 					renderItem={renderItem}
 					containerRef={gridRef}
 					onBackgroundTap={selection.isSelecting ? selection.exit : undefined}
@@ -792,7 +903,7 @@ const Library: React.FC = () => {
 			    suppressing new imports mid-selection is a welcome side effect. */}
 			<button
 				type="button"
-				hidden={selection.isSelecting}
+				hidden={selection.isSelecting || isOrderedView}
 				onClick={collectionId ? openAddBooks : () => setImportSheetOpen(true)}
 				disabled={imports.isImporting || isTransferring}
 				aria-label={collectionId ? "Add books" : "Add book"}
