@@ -4,7 +4,6 @@ import { Input } from "@lesefluss/ui/input";
 import { useNavigate } from "@tanstack/react-router";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
-import { useBackHandler } from "../../hooks/use-back-handler";
 import { filterToTree, serializeTree } from "../../pages/library/condition-tree";
 import {
 	activeFilterCount,
@@ -34,7 +33,6 @@ export const SaveShelfDialog: React.FC<Props> = ({ open, onOpenChange, filter })
 	const { items, options } = useShelfLibrary(open);
 	const create = queryHooks.useCreateSmartShelf();
 	const navigate = useNavigate();
-	useBackHandler(open, () => onOpenChange(false));
 
 	useEffect(() => {
 		if (open) {

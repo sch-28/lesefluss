@@ -22,6 +22,7 @@ export const collectionKeys = {
 	all: ["books", "collections"] as const,
 	members: (collectionId: string) => ["books", "collections", "members", collectionId] as const,
 	ofBook: (bookId: string) => ["books", "collections", "of-book", bookId] as const,
+	seriesOfBook: (bookId: string) => ["books", "collections", "series-of-book", bookId] as const,
 	memberships: ["books", "collections", "memberships"] as const,
 };
 

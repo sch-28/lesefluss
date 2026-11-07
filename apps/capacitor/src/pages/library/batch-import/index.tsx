@@ -7,12 +7,12 @@
  */
 
 import { Button } from "@lesefluss/ui/button";
+import { pushBackHandler } from "@lesefluss/ui/overlay-back";
 import { Progress } from "@lesefluss/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@lesefluss/ui/sheet";
 import { AlertTriangle, CheckCircle2, CircleSlash, Loader2, X } from "lucide-react";
 import type React from "react";
 import { useEffect } from "react";
-import { pushBackHandler } from "../../../services/overlay-back";
 import { useWakeLock } from "../../reader/use-wake-lock";
 import CandidateCard from "./candidate-card";
 import { candidateKey } from "./candidates";

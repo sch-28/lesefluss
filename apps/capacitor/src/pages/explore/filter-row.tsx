@@ -17,8 +17,8 @@ import {
 	type CatalogSource,
 	type CatalogTagCount,
 } from "../../services/catalog/client";
+import { languageLabel } from "../../utils/language-label";
 import { canAddTag, type ExploreSearch, effectiveSort, parseTags } from "./explore-search";
-import { languageLabel } from "./language-label";
 import { LENGTH_BUCKETS, type LengthBucket, lengthLabel } from "./length";
 
 const SORT_LABELS: Record<CatalogSort, string> = {

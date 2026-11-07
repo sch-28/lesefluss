@@ -2,7 +2,6 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import { Pencil, Pin, PinOff, SlidersHorizontal, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { useBackHandler } from "../../hooks/use-back-handler";
 import { encodeFilterParam } from "../../pages/library/filter-model";
 import { editShelfConditionsRequest, type ShelfEntry } from "../../pages/library/use-smart-shelves";
 import { queryHooks } from "../../services/db/hooks";
@@ -32,8 +31,6 @@ export const ShelfActions: React.FC<Props> = ({ shelf, onClose, setBuiltInPinned
 	const remove = queryHooks.useDeleteSmartShelf();
 	const navigate = useNavigate();
 	const location = useLocation();
-	useBackHandler(!!shelf, onClose);
-	useBackHandler(!!deleting, () => setDeleting(null));
 
 	const togglePin = () => {
 		if (!shelf) return;

@@ -1,8 +1,7 @@
-import type React from "react";
+import { consumeBackPress } from "@lesefluss/ui/overlay-back";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CollectionWithCount } from "../../../services/db/queries/collections";
-import { consumeBackPress } from "../../../services/overlay-back";
 import { click, type Rendered, render } from "../../../test/render";
 
 const removeCollection = vi.fn();
@@ -18,20 +17,24 @@ vi.mock("../../../services/db/hooks", () => ({
 		useDeleteCollection: () => ({ mutate: removeCollection }),
 	},
 }));
-vi.mock("@lesefluss/ui/drawer", () => {
-	const Pass = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
+vi.mock(
+	"@lesefluss/ui/drawer",
+	async () => (await import("../../../test/overlay-mocks")).drawerModule,
+);
+vi.mock("../../confirm-dialog", async () => {
+	const { MockOverlay } = await import("../../../test/overlay-mocks");
 	return {
-		Drawer: ({ open, children }: { open: boolean; children?: React.ReactNode }) =>
-			open ? <div>{children}</div> : null,
-		DrawerContent: Pass,
-		DrawerHeader: Pass,
-		DrawerTitle: Pass,
+		ConfirmDialog: (p: {
+			open: boolean;
+			onOpenChange: (open: boolean) => void;
+			description?: string;
+		}) => (
+			<MockOverlay open={p.open} onOpenChange={p.onOpenChange}>
+				{p.description}
+			</MockOverlay>
+		),
 	};
 });
-vi.mock("../../confirm-dialog", () => ({
-	ConfirmDialog: (p: { open: boolean; description?: string }) =>
-		p.open ? <div>{p.description}</div> : null,
-}));
 vi.mock("../collection-name-dialog", () => ({ CollectionNameDialog: () => null }));
 
 const { CollectionActions } = await import("../collection-actions");

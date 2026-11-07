@@ -1,6 +1,7 @@
 import type * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 
+import { useOverlayBack, useOverlayOpen } from "../lib/overlay-back";
 import { cn } from "../lib/utils";
 
 declare global {
@@ -38,11 +39,21 @@ function drawerSnapPoints(visible: number[]): number[] {
 	return visible.map((v) => Math.min(1, v + 1 - DRAWER_MAX_HEIGHT));
 }
 
-function Drawer({ repositionInputs, ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
+function Drawer({
+	repositionInputs,
+	open,
+	defaultOpen,
+	onOpenChange,
+	...props
+}: React.ComponentProps<typeof DrawerPrimitive.Root>) {
+	const [isOpen, setOpen] = useOverlayOpen(open, defaultOpen, onOpenChange);
+	useOverlayBack(isOpen, () => setOpen(false), props.dismissible ?? true);
 	return (
 		<DrawerPrimitive.Root
 			data-slot="drawer"
 			repositionInputs={repositionInputs ?? !isNativeShell()}
+			open={isOpen}
+			onOpenChange={setOpen}
 			{...props}
 		/>
 	);

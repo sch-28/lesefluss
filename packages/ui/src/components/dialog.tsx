@@ -2,10 +2,24 @@ import { XIcon } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type * as React from "react";
 
+import { useOverlayBack, useOverlayOpen } from "../lib/overlay-back";
 import { cn } from "../lib/utils";
 
-function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-	return <DialogPrimitive.Root data-slot="dialog" {...props} />;
+function Dialog({
+	open,
+	defaultOpen,
+	onOpenChange,
+	dismissible = true,
+	...props
+}: React.ComponentProps<typeof DialogPrimitive.Root> & {
+	/** False while the dialog must stay open: Android back is then swallowed. */
+	dismissible?: boolean;
+}) {
+	const [isOpen, setOpen] = useOverlayOpen(open, defaultOpen, onOpenChange);
+	useOverlayBack(isOpen, () => setOpen(false), dismissible);
+	return (
+		<DialogPrimitive.Root data-slot="dialog" open={isOpen} onOpenChange={setOpen} {...props} />
+	);
 }
 
 function DialogTrigger({ ...props }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {

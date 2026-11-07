@@ -1,8 +1,7 @@
-import type React from "react";
+import { consumeBackPress } from "@lesefluss/ui/overlay-back";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FACETS, type FacetValues, type LibraryFilter } from "../../../pages/library/filter-model";
-import { consumeBackPress } from "../../../services/overlay-back";
 import { click, type Rendered, render } from "../../../test/render";
 
 const navigate = vi.fn();
@@ -12,9 +11,8 @@ vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: { useCreateSmartShelf: () => ({ mutate: create, isPending: false }) },
 }));
-vi.mock("../../entry-dialog", () => ({
-	EntryDialog: (p: { open: boolean; children?: React.ReactNode }) =>
-		p.open ? <div>{p.children}</div> : null,
+vi.mock("../../entry-dialog", async () => ({
+	EntryDialog: (await import("../../../test/overlay-mocks")).MockOverlay,
 }));
 vi.mock("../condition-chips", () => ({ ConditionChips: () => null }));
 

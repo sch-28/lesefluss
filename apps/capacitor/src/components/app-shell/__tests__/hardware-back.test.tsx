@@ -21,7 +21,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
 }));
 
 let isOverlayOpen = false;
-vi.mock("../../../services/overlay-back", () => ({ consumeBackPress: () => isOverlayOpen }));
+vi.mock("@lesefluss/ui/overlay-back", () => ({ consumeBackPress: () => isOverlayOpen }));
 
 const { HardwareBack } = await import("../hardware-back");
 

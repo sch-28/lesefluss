@@ -1,8 +1,7 @@
-import type React from "react";
+import { consumeBackPress } from "@lesefluss/ui/overlay-back";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ShelfEntry } from "../../../pages/library/smart-shelves";
-import { consumeBackPress } from "../../../services/overlay-back";
 import { click, type Rendered, render } from "../../../test/render";
 
 const navigate = vi.fn();
@@ -20,27 +19,28 @@ vi.mock("../../../services/db/hooks", () => ({
 		useDeleteSmartShelf: () => ({ mutate: deleteShelf }),
 	},
 }));
-vi.mock("@lesefluss/ui/drawer", () => {
-	const Pass = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
+vi.mock(
+	"@lesefluss/ui/drawer",
+	async () => (await import("../../../test/overlay-mocks")).drawerModule,
+);
+vi.mock("../../confirm-dialog", async () => {
+	const { MockOverlay } = await import("../../../test/overlay-mocks");
 	return {
-		Drawer: ({ open, children }: { open: boolean; children?: React.ReactNode }) =>
-			open ? <div>{children}</div> : null,
-		DrawerContent: Pass,
-		DrawerHeader: Pass,
-		DrawerTitle: Pass,
-	};
-});
-vi.mock("../../confirm-dialog", () => ({
-	ConfirmDialog: (p: { open: boolean; description?: string; onConfirm: () => void }) =>
-		p.open ? (
-			<div>
+		ConfirmDialog: (p: {
+			open: boolean;
+			onOpenChange: (open: boolean) => void;
+			description?: string;
+			onConfirm: () => void;
+		}) => (
+			<MockOverlay open={p.open} onOpenChange={p.onOpenChange}>
 				{p.description}
 				<button type="button" onClick={p.onConfirm}>
 					Confirm delete
 				</button>
-			</div>
-		) : null,
-}));
+			</MockOverlay>
+		),
+	};
+});
 vi.mock("../../collections/collection-name-dialog", () => ({ CollectionNameDialog: () => null }));
 
 const { ShelfActions } = await import("../shelf-actions");

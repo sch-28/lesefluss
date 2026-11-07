@@ -50,11 +50,6 @@ import {
 	useBookBuddyRead,
 } from "./book-buddy-read";
 import { BookChapters } from "./book-chapters";
-import BookEditSheet, {
-	type BookEditValues,
-	bookToEditValues,
-	editValuesToPatch,
-} from "./book-edit-sheet";
 import { bookSeriesLabel } from "./book-fields";
 import { BookFileCard } from "./book-file-card";
 import { BookHighlights } from "./book-highlights";
@@ -104,10 +99,8 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		};
 	}, []);
 	const deleteMutation = queryHooks.useDeleteBook();
-	const updateMutation = queryHooks.useUpdateBook();
 	const [isTransferOpen, setIsTransferOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-	const [isEditOpen, setIsEditOpen] = useState(false);
 	const [isShareOpen, setIsShareOpen] = useState(false);
 	const [isBuddyReadOpen, setIsBuddyReadOpen] = useState(false);
 	const canShare = isLoggedIn && SYNC_ENABLED;
@@ -134,7 +127,16 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	// would differ between renders.
 	const headerActions = useMemo(
 		() => [
-			{ label: "Edit", icon: Pencil, onClick: () => setIsEditOpen(true) },
+			{
+				label: "Edit",
+				icon: Pencil,
+				onClick: () =>
+					void router.navigate({
+						to: "/tabs/library/book/$id/edit",
+						params: { id },
+						search: { from: "detail" },
+					}),
+			},
 			...(canShare ? [{ label: "Share", icon: Share2, onClick: () => setIsShareOpen(true) }] : []),
 			// Shown signed out too: the sheet explains that reading together needs an account.
 			...(SYNC_ENABLED && !hasRunningBuddyRead
@@ -147,26 +149,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				onClick: () => setIsDeleteOpen(true),
 			},
 		],
-		[canShare, hasRunningBuddyRead],
-	);
-	// Memoised because the sheet reseeds its form whenever `initial` changes; a
-	// fresh object every render would discard what the reader is typing.
-	const editValues = useMemo<BookEditValues>(
-		() =>
-			bookToEditValues(
-				book ?? {
-					title: "",
-					author: null,
-					description: null,
-					language: null,
-					status: null,
-					rating: null,
-					review: null,
-					tags: null,
-					hideFromProfile: false,
-				},
-			),
-		[book],
+		[canShare, hasRunningBuddyRead, router, id],
 	);
 	const deviceState = useBookDeviceState(book?.id ?? null);
 	const deviceActions = useBookDeviceActions({
@@ -394,20 +377,6 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				bookTitle={book.title}
 				blocker={shareBlocker ? BUDDY_READ_BLOCKER_TEXT[shareBlocker] : null}
 			/>
-			<BookEditSheet
-				isOpen={isEditOpen}
-				onClose={() => setIsEditOpen(false)}
-				initial={editValues}
-				progress={{ wordCount: book.wordCount, wordPosition: book.wordPosition }}
-				isSaving={updateMutation.isPending}
-				onSave={(values) => {
-					updateMutation.mutate(
-						{ id: book.id, values: editValuesToPatch(values) },
-						{ onSuccess: () => setIsEditOpen(false) },
-					);
-				}}
-			/>
-
 			<AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>

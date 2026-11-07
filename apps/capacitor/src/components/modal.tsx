@@ -31,7 +31,7 @@ export const Modal: React.FC<ModalProps> = ({
 	contentClassName,
 }) => {
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog open={open} onOpenChange={onOpenChange} dismissible={dismissable}>
 			<DialogContent
 				showCloseButton={dismissable}
 				onInteractOutside={(e) => {

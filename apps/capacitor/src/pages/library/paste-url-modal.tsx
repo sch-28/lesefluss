@@ -5,7 +5,6 @@ import { Loader2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { EntryDialog } from "../../components/entry-dialog";
-import { useBackHandler } from "../../hooks/use-back-handler";
 
 interface PasteUrlModalProps {
 	isOpen: boolean;
@@ -21,9 +20,6 @@ const PasteUrlModal: React.FC<PasteUrlModalProps> = ({
 	onSubmit,
 }) => {
 	const [value, setValue] = useState("");
-	useBackHandler(isOpen, () => {
-		if (!isImporting) onClose();
-	});
 
 	useEffect(() => {
 		if (isOpen) setValue("");

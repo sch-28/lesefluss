@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type BookEditValues, editValuesToPatch } from "../book-edit-sheet";
+import { type BookEditValues, editValuesToPatch } from "../book-edit-form";
 import { bookSeriesLabel } from "../book-fields";
 
 const values: BookEditValues = {

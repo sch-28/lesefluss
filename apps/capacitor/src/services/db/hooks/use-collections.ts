@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "../../../components/toast";
+import type { SeriesPlan } from "../../../pages/library/book-edit-form";
 import { log } from "../../../utils/log";
 import { scheduleSyncPush } from "../../sync";
 import { errorMessage, reportEvent } from "../../telemetry";
@@ -31,6 +32,38 @@ function useCollectionIdsForBook(bookId: string | null) {
 		queryFn: () => queries.getCollectionIdsForBook(bookId ?? ""),
 		enabled: bookId !== null,
 	});
+}
+
+function useSeriesMembershipForBook(bookId: string) {
+	return useQuery({
+		queryKey: collectionKeys.seriesOfBook(bookId),
+		queryFn: () => queries.getSeriesMembershipForBook(bookId),
+		enabled: bookId !== "",
+	});
+}
+
+async function applySeriesPlan(bookId: string, plan: SeriesPlan): Promise<void> {
+	if (plan.remove) await queries.removeBooksFromCollection(plan.remove, [bookId]);
+	if (!plan.add) return;
+	let collectionId: string;
+	if (plan.add.kind === "new") {
+		collectionId = (await queries.createCollection(plan.add.name)).id;
+		await queries.setCollectionOrdered(collectionId, true);
+	} else {
+		collectionId = plan.add.collectionId;
+	}
+	await queries.addBooksToCollection(
+		collectionId,
+		[bookId],
+		undefined,
+		new Map([[bookId, plan.add.index]]),
+	);
+}
+
+function useSaveBookSeries() {
+	return useCollectionMutation((vars: { bookId: string; plan: SeriesPlan }) =>
+		applySeriesPlan(vars.bookId, vars.plan),
+	);
 }
 
 // LESE-125.19 was a silent no-op on Android that never reproduced on web; the
@@ -98,4 +131,6 @@ export const collectionHooks = {
 	useDeleteCollection,
 	useAddBooksToCollection,
 	useRemoveBooksFromCollection,
+	useSeriesMembershipForBook,
+	useSaveBookSeries,
 };

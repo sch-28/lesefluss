@@ -1,7 +1,6 @@
-import type React from "react";
+import { consumeBackPress } from "@lesefluss/ui/overlay-back";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Book } from "../../../services/db/schema";
-import { consumeBackPress } from "../../../services/overlay-back";
 import { type Rendered, render } from "../../../test/render";
 
 vi.mock("../../../services/db/hooks", () => ({
@@ -13,16 +12,10 @@ vi.mock("../../../services/db/hooks", () => ({
 		useCreateCollection: () => ({ mutate: vi.fn() }),
 	},
 }));
-vi.mock("@lesefluss/ui/drawer", () => {
-	const Pass = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
-	return {
-		Drawer: ({ open, children }: { open: boolean; children?: React.ReactNode }) =>
-			open ? <div>{children}</div> : null,
-		DrawerContent: Pass,
-		DrawerHeader: Pass,
-		DrawerTitle: Pass,
-	};
-});
+vi.mock(
+	"@lesefluss/ui/drawer",
+	async () => (await import("../../../test/overlay-mocks")).drawerModule,
+);
 
 const { default: CollectionPicker } = await import("../collection-picker");
 

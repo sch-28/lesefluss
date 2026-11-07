@@ -47,7 +47,6 @@ import { IS_WEB } from "../../utils/platform";
 import BatchImportSheet from "./batch-import";
 import { toExistingTitles } from "./batch-import/use-folder-import";
 import BookCard from "./book-card";
-import BookEditSheet, { bookToEditValues, editValuesToPatch } from "./book-edit-sheet";
 import BookListItem from "./book-list-item";
 import BulkActionBar from "./bulk-action-bar";
 import BulkSheets from "./bulk-sheets";
@@ -138,7 +137,6 @@ const Library: React.FC = () => {
 	const imports = useLibraryImports();
 	const deleteMutation = queryHooks.useDeleteBook();
 	const deleteSeriesMutation = queryHooks.useDeleteSeries();
-	const updateMutation = queryHooks.useUpdateBook();
 
 	const isGlobalImporting = useIsMutating({ mutationKey: bookImportMutationKey }) > 0;
 
@@ -165,11 +163,7 @@ const Library: React.FC = () => {
 
 	const [pendingTransferBook, setPendingTransferBook] = useState<Book | null>(null);
 
-	const [editBook, setEditBook] = useState<Book | null>(null);
 	const [pickerBook, setPickerBook] = useState<Book | null>(null);
-	// Memoised for the same reason as in book-detail: the sheet reseeds its form
-	// whenever `initial` changes, and `isSaving` guarantees a re-render on save.
-	const editValues = useMemo(() => (editBook ? bookToEditValues(editBook) : null), [editBook]);
 	const [pendingDeleteBook, setPendingDeleteBook] = useState<Book | null>(null);
 	const [pendingDeleteSeries, setPendingDeleteSeries] = useState<Series | null>(null);
 
@@ -780,7 +774,8 @@ const Library: React.FC = () => {
 						label: "Edit",
 						icon: Pencil,
 						onSelect: () => {
-							if (selectedBook) setEditBook(selectedBook);
+							if (selectedBook)
+								navigate({ to: "/tabs/library/book/$id/edit", params: { id: selectedBook.id } });
 						},
 					},
 					{
@@ -860,22 +855,6 @@ const Library: React.FC = () => {
 				title="Transfer Failed"
 				description={syncError ?? undefined}
 			/>
-
-			{editBook && editValues && (
-				<BookEditSheet
-					isOpen
-					onClose={() => setEditBook(null)}
-					initial={editValues}
-					progress={{ wordCount: editBook.wordCount, wordPosition: editBook.wordPosition }}
-					isSaving={updateMutation.isPending}
-					onSave={(values) => {
-						updateMutation.mutate(
-							{ id: editBook.id, values: editValuesToPatch(values) },
-							{ onSuccess: () => setEditBook(null) },
-						);
-					}}
-				/>
-			)}
 
 			<ConfirmDialog
 				open={!!pendingDeleteBook}

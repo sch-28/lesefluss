@@ -3,7 +3,6 @@ import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { useBackHandler } from "../../hooks/use-back-handler";
 import { EntryDialog } from "../entry-dialog";
 
 type Props = {
@@ -26,7 +25,6 @@ export const CollectionNameDialog: React.FC<Props> = ({
 	onSubmit,
 }) => {
 	const [name, setName] = useState(initialName);
-	useBackHandler(open, () => onOpenChange(false));
 
 	useEffect(() => {
 		if (open) setName(initialName);

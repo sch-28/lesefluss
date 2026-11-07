@@ -1,29 +1,35 @@
+import { consumeBackPress } from "@lesefluss/ui/overlay-back";
 import type React from "react";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { consumeBackPress } from "../../../services/overlay-back";
 import { click, type Rendered, render } from "../../../test/render";
 
 let isDesktop = false;
 vi.mock("../../../hooks/use-media-query", () => ({ useMediaQuery: () => isDesktop }));
-vi.mock("@lesefluss/ui/drawer", () => {
-	const Pass = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
+vi.mock(
+	"@lesefluss/ui/drawer",
+	async () => (await import("../../../test/overlay-mocks")).drawerModule,
+);
+vi.mock("../../modal", async () => {
+	const { MockOverlay } = await import("../../../test/overlay-mocks");
 	return {
-		Drawer: ({ open, children }: { open: boolean; children?: React.ReactNode }) =>
-			open ? <div data-testid="sheet">{children}</div> : null,
-		DrawerContent: Pass,
-		DrawerHeader: Pass,
-		DrawerTitle: Pass,
+		Modal: (p: {
+			open: boolean;
+			onOpenChange: (open: boolean) => void;
+			contentClassName?: string;
+			children?: React.ReactNode;
+		}) => (
+			<MockOverlay
+				testId="dialog"
+				className={p.contentClassName}
+				open={p.open}
+				onOpenChange={p.onOpenChange}
+			>
+				{p.children}
+			</MockOverlay>
+		),
 	};
 });
-vi.mock("../../modal", () => ({
-	Modal: (p: { open: boolean; contentClassName?: string; children?: React.ReactNode }) =>
-		p.open ? (
-			<div data-testid="dialog" className={p.contentClassName}>
-				{p.children}
-			</div>
-		) : null,
-}));
 
 const { CollectionNameDialog } = await import("../collection-name-dialog");
 

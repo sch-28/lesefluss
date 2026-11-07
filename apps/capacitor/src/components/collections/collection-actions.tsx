@@ -2,7 +2,6 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, Pencil, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { useBackHandler } from "../../hooks/use-back-handler";
 import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
 import { ActionSheet } from "../action-sheet";
@@ -25,8 +24,6 @@ export const CollectionActions: React.FC<Props> = ({ collection, collections, on
 	const remove = queryHooks.useDeleteCollection();
 	const navigate = useNavigate();
 	const location = useLocation();
-	useBackHandler(!!collection, onClose);
-	useBackHandler(!!deleting, () => setDeleting(null));
 
 	const index = collection ? collections.findIndex((c) => c.id === collection.id) : -1;
 

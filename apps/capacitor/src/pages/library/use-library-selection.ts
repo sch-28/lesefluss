@@ -97,18 +97,15 @@ export function useLibrarySelection(
 		setDeleteOpen(false);
 	}, []);
 
-	// Registered before the overlay handler, so the sheet closes first. Stays
-	// registered during a run and swallows the press: letting back through would
-	// navigate away, unmounting the page mid-delete so the failure summary lands
-	// on a dead component and the reader is told nothing.
+	// Registered when selection starts, so its sheets (which register their own
+	// back handling when they open) close first. Stays registered during a run
+	// and swallows the press: letting back through would navigate away,
+	// unmounting the page mid-delete so the failure summary lands on a dead
+	// component and the reader is told nothing.
 	useBackHandler(isSelecting, () => {
 		if (bulk.isRunning) return;
 		exit();
 	});
-	useBackHandler(sheet !== null, () => setSheet(null));
-	// Its own level, or back would fall through to the selection handler and wipe
-	// a selection the reader spent several filters building.
-	useBackHandler(isDeleteOpen, () => setDeleteOpen(false));
 
 	const run = useCallback(
 		async (action: BulkAction) => {
