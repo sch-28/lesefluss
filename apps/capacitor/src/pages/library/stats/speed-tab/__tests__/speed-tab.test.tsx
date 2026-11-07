@@ -106,7 +106,8 @@ describe("SpeedTab", () => {
 		expect(q("speed-hero")?.textContent).toContain("+20 since");
 		expect(q("speed-window")?.textContent).toContain("Recent 10h");
 		expect(q("book-speed-list")).not.toBeNull();
-		expect(q("speed-records")).not.toBeNull();
+		expect(q("speed-records")?.textContent).toContain("Fastest book");
+		expect(q("speed-records")?.textContent).toContain("241 wpm");
 		expect(text()).not.toMatch(/RSVP|dial/i);
 		expect(q("rsvp-dial")).toBeNull();
 		expect(q("time-saved")).toBeNull();
@@ -133,6 +134,19 @@ describe("SpeedTab", () => {
 		expect(q("rsvp-dial")).not.toBeNull();
 		expect(q("time-saved")).toBeNull();
 		expect(q("delivered-of-dial")).not.toBeNull();
+	});
+
+	it("shows the fastest book in the RSVP view too", async () => {
+		state.model = model({ rsvp: true, reading: false, source: "default" });
+		state.tab = {
+			books: [],
+			records: { ...emptyRecords(), fastestBook: { wpm: 393, title: "Fast RSVP Book" } },
+		};
+		view = await render(<SpeedTab now={2 * DAY} />);
+		expect(q("rsvp-dial")).not.toBeNull();
+		expect(q("speed-records")?.textContent).toContain("Fastest book");
+		expect(q("speed-records")?.textContent).toContain("393 wpm");
+		expect(q("speed-records")?.textContent).toContain("Fast RSVP Book");
 	});
 
 	it("steps the global dial", async () => {

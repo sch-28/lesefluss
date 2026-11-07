@@ -112,6 +112,19 @@ function RecordsSection({ children }: { children: React.ReactNode }) {
 	);
 }
 
+function FastestBookRow({ record }: { record: { wpm: number; title: string } | null }) {
+	if (!record) return null;
+	return (
+		<div className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
+			<span className="text-muted-foreground">Fastest book</span>
+			<span className="min-w-0 text-right">
+				<span className="font-semibold tabular-nums">{record.wpm} wpm</span>
+				<span className="block truncate text-[11px] text-muted-foreground">{record.title}</span>
+			</span>
+		</div>
+	);
+}
+
 export function ReadingRecords() {
 	const { data } = queryHooks.useStatsSpeedTab();
 	const records = data?.records;
@@ -119,17 +132,7 @@ export function ReadingRecords() {
 	return (
 		<RecordsSection>
 			<RecordRow label="Fastest sitting" record={records.fastestSitting} />
-			{records.fastestBook && (
-				<div className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
-					<span className="text-muted-foreground">Fastest book</span>
-					<span className="min-w-0 text-right">
-						<span className="font-semibold tabular-nums">{records.fastestBook.wpm} wpm</span>
-						<span className="block truncate text-[11px] text-muted-foreground">
-							{records.fastestBook.title}
-						</span>
-					</span>
-				</div>
-			)}
+			<FastestBookRow record={records.fastestBook} />
 		</RecordsSection>
 	);
 }
@@ -137,11 +140,12 @@ export function ReadingRecords() {
 export function RsvpRecords() {
 	const { data } = queryHooks.useStatsSpeedTab();
 	const records = data?.records;
-	if (!records?.bestRsvpSitting) return null;
+	if (!records || (!records.bestRsvpSitting && !records.fastestBook)) return null;
 	const longest = records.longestRsvpRun;
 	return (
 		<RecordsSection>
 			<RecordRow label="Best sitting" record={records.bestRsvpSitting} />
+			<FastestBookRow record={records.fastestBook} />
 			{longest && (
 				<div className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
 					<span className="text-muted-foreground">Longest run</span>
