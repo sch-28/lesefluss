@@ -5,23 +5,58 @@ import { queryHooks } from "../../services/db/hooks";
 import { type SeriesChapterLength, seriesReadingTime } from "../../services/stats/what-if";
 import { formatReadingTime } from "../../utils/reading-time";
 
-/** "Total 12h 5m · Left 8h" for a series' hero line, at the reader's global pace. */
-export function SeriesReadingTime({ chapters }: { chapters: readonly SeriesChapterLength[] }) {
+type SeriesTimes = { total: string; left: string | null; unknown: number; wpm: number };
+
+/** A series' times at the reader's global pace; `left` only once started and not yet done. */
+function useSeriesTimes(chapters: readonly SeriesChapterLength[] | undefined): SeriesTimes | null {
 	const { data: model } = queryHooks.useStatsSpeedModel();
-	if (!model) return null;
+	if (!model || !chapters) return null;
 	const { words, wordsLeft, unknown } = seriesReadingTime(chapters);
 	if (words <= 0) return null;
 	const wpm = bookPace(model, null).wpm;
+	return {
+		total: formatReadingTime(estimateMinutes(words, wpm)),
+		left:
+			wordsLeft > 0 && wordsLeft < words
+				? formatReadingTime(estimateMinutes(wordsLeft, wpm))
+				: null,
+		unknown,
+		wpm,
+	};
+}
+
+/** "Left 8h" once the series is started, else "Total 12h 5m": the library card's one line. */
+export function SeriesCardTime({
+	chapters,
+	id,
+	className,
+}: {
+	chapters: readonly SeriesChapterLength[] | undefined;
+	id?: string;
+	className?: string;
+}) {
+	const times = useSeriesTimes(chapters);
+	if (!times) return null;
+	return (
+		<span id={id} className={className} data-testid="series-card-time">
+			{times.left ? `Left ${times.left}` : `Total ${times.total}`}
+		</span>
+	);
+}
+
+/** "Total 12h 5m · Left 8h" for a series' hero line, at the reader's global pace. */
+export function SeriesReadingTime({ chapters }: { chapters: readonly SeriesChapterLength[] }) {
+	const times = useSeriesTimes(chapters);
+	if (!times) return null;
+	const { total, left, unknown, wpm } = times;
 
 	return (
 		<span
 			className="inline-flex items-center gap-1.5 tabular-nums"
 			data-testid="series-reading-time"
 		>
-			<span>· Total {formatReadingTime(estimateMinutes(words, wpm))}</span>
-			{wordsLeft > 0 && wordsLeft < words && (
-				<span>· Left {formatReadingTime(estimateMinutes(wordsLeft, wpm))}</span>
-			)}
+			<span>· Total {total}</span>
+			{left && <span>· Left {left}</span>}
 			{unknown > 0 && (
 				<Popover>
 					<PopoverTrigger asChild>

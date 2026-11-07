@@ -8,6 +8,11 @@ vi.mock("../../../components/book-cover", () => ({ default: () => null }));
 vi.mock("../../../components/cover-image", () => ({ default: () => null }));
 vi.mock("../../../components/device-sync", () => ({ DeviceBadge: () => <span>On device</span> }));
 vi.mock("../sync-excluded-badge", () => ({ SyncExcludedBadge: () => null }));
+vi.mock("../../../services/db/hooks", () => ({
+	queryHooks: {
+		useStatsSpeedModel: () => ({ data: { pace: { wpm: 200, source: "measured" }, books: {} } }),
+	},
+}));
 
 const { default: BookCard } = await import("../book-card");
 const { default: BookListItem } = await import("../book-list-item");
@@ -219,7 +224,15 @@ describe.each([
 	it("is a button named by the series title that opens on click and menus on right-click", async () => {
 		const onOpen = vi.fn();
 		const onMenu = vi.fn();
-		view = await render(<Card series={series} chapterCount={12} onOpen={onOpen} onMenu={onMenu} />);
+		view = await render(
+			<Card
+				series={series}
+				chapterCount={12}
+				chapterLengths={undefined}
+				onOpen={onOpen}
+				onMenu={onMenu}
+			/>,
+		);
 		const button = card();
 		expect(button.type).toBe("button");
 		expect(button.getAttribute("aria-label")).toBe("Mother of Learning");
@@ -229,5 +242,34 @@ describe.each([
 		expect(onOpen).toHaveBeenCalledOnce();
 		rightClick(card());
 		expect(onMenu).toHaveBeenCalledOnce();
+	});
+
+	it("shows the series' total time, then the time left once a chapter is started", async () => {
+		const chapters: { wordCount: number; wordPosition: number; finishedAt: number | null }[] = [
+			{ wordCount: 6000, wordPosition: 0, finishedAt: null },
+			{ wordCount: 12_000, wordPosition: 0, finishedAt: null },
+			{ wordCount: 0, wordPosition: 0, finishedAt: null },
+		];
+		const show = (chapterLengths: typeof chapters) =>
+			render(
+				<Card
+					series={series}
+					chapterCount={3}
+					chapterLengths={chapterLengths}
+					onOpen={() => {}}
+					onMenu={() => {}}
+				/>,
+			);
+		view = await show(chapters);
+		expect(view.text()).toContain("Total 1h 30m");
+		expect(description(card())).toContain("Total 1h 30m");
+
+		view.unmount();
+		view = await show([
+			{ ...chapters[0], wordPosition: 6000, finishedAt: 1 },
+			...chapters.slice(1),
+		]);
+		expect(view.text()).toContain("Left 1h");
+		expect(view.text()).not.toContain("Total");
 	});
 });

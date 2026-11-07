@@ -3,11 +3,14 @@ import { useId } from "react";
 import CoverImage from "../../components/cover-image";
 import type { Series } from "../../services/db/schema";
 import { chapterCountLabel } from "../../services/serial-scrapers";
+import type { SeriesChapterLength } from "../../services/stats/what-if";
+import { SeriesCardTime } from "./series-reading-time";
 import { useLongPress } from "./use-long-press";
 
 interface SeriesListItemProps {
 	series: Series;
 	chapterCount: number | undefined;
+	chapterLengths: readonly SeriesChapterLength[] | undefined;
 	onOpen: () => void;
 	onMenu: () => void;
 }
@@ -15,6 +18,7 @@ interface SeriesListItemProps {
 const SeriesListItem: React.FC<SeriesListItemProps> = ({
 	series,
 	chapterCount,
+	chapterLengths,
 	onOpen,
 	onMenu,
 }) => {
@@ -57,6 +61,10 @@ const SeriesListItem: React.FC<SeriesListItemProps> = ({
 							{chapterCountLabel(chapterCount)}
 						</div>
 					)}
+					<SeriesCardTime
+						chapters={chapterLengths}
+						className="mt-0.5 block text-[#888] text-[0.75rem] tabular-nums"
+					/>
 				</div>
 			</div>
 		</button>

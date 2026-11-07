@@ -89,9 +89,8 @@ export const readingSessionKeys = {
 	/** All reading sessions across all books. */
 	all: ["reading-sessions"] as const,
 
-	/** Newest-first page, optionally scoped to one book. */
-	page: (limit: number, bookId?: string) =>
-		["reading-sessions", "page", bookId ?? "all", limit] as const,
+	/** One book's sessions, newest first, for its detail page. */
+	book: (bookId: string) => ["reading-sessions", "book", bookId] as const,
 
 	/** Row count, optionally scoped to one book. */
 	count: (bookId?: string) => ["reading-sessions", "count", bookId ?? "all"] as const,
@@ -112,6 +111,9 @@ export const serialKeys = {
 
 	/** Map<seriesId, SeriesActivity>. Totals + read-state per series for library filter/sort. */
 	activity: ["serials", "activity"] as const,
+
+	/** Map<seriesId, SeriesChapterLength[]>: every chapter's length and progress, for the cards' time. */
+	lengths: ["serials", "lengths"] as const,
 
 	/** Single series row by id (used by SeriesDetail). */
 	detail: (seriesId: string) => ["serials", "detail", seriesId] as const,

@@ -11,6 +11,7 @@ vi.mock("../../../services/db/hooks", () => ({
 		useSeriesList: () => list,
 		useSeriesChapterCounts: () => map,
 		useSeriesActivity: () => map,
+		useSeriesChapterLengths: () => map,
 		useCollectionMemberships: () => map,
 		useCollections: () => list,
 		useStatsSpeedModel: () => ({ data: undefined }),

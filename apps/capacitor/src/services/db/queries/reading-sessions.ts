@@ -12,14 +12,13 @@ export async function getAllReadingSessions(): Promise<ReadingSession[]> {
 	return db.select().from(readingSessions).orderBy(desc(readingSessions.startedAt));
 }
 
-/** Newest-first page of sessions, optionally for one book. */
-export async function getReadingSessionsPage(opts: {
-	limit: number;
-	bookId?: string;
-}): Promise<ReadingSession[]> {
-	const base = db.select().from(readingSessions);
-	const scoped = opts.bookId ? base.where(eq(readingSessions.bookId, opts.bookId)) : base;
-	return scoped.orderBy(desc(readingSessions.startedAt)).limit(opts.limit);
+/** One book's sessions, newest first. */
+export async function getBookReadingSessions(bookId: string): Promise<ReadingSession[]> {
+	return db
+		.select()
+		.from(readingSessions)
+		.where(eq(readingSessions.bookId, bookId))
+		.orderBy(desc(readingSessions.startedAt));
 }
 
 export async function countReadingSessions(bookId?: string): Promise<number> {

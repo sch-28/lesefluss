@@ -152,6 +152,9 @@ export const queryHooks = {
 	/** Map<seriesId, SeriesActivity>. Drives library filter+sort for series cards. */
 	useSeriesActivity: seriesHooks.useSeriesActivity,
 
+	/** Map<seriesId, SeriesChapterLength[]> in one query: the series cards' reading time. */
+	useSeriesChapterLengths: seriesHooks.useSeriesChapterLengths,
+
 	/** Mutation: soft-delete a series + tombstone all its chapter rows. */
 	useDeleteSeries: seriesHooks.useDeleteSeries,
 
@@ -227,11 +230,8 @@ export const queryHooks = {
 	useStatsDailyReading: statsHooks.useDailyReading,
 
 	// ── Reading sessions ──────────────────────────────────────────────────
-	useReadingSessionsPage: readingSessionHooks.useReadingSessionsPage,
+	useBookReadingSessions: readingSessionHooks.useBookReadingSessions,
 	useReadingSessionCount: readingSessionHooks.useReadingSessionCount,
-
-	/** Mutation: delete one reading session (server + local). */
-	useDeleteReadingSession: readingSessionHooks.useDeleteReadingSession,
 	useDeleteReadingSessions: readingSessionHooks.useDeleteReadingSessions,
 	useAllReadingSessions: readingSessionHooks.useAllReadingSessions,
 

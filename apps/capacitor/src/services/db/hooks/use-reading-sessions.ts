@@ -1,16 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "../../../components/toast";
-import { deleteReadingSessionsEverywhere, deleteServerSession, scheduleSyncPush } from "../../sync";
+import { deleteReadingSessionsEverywhere } from "../../sync";
 import { queries } from "../queries";
 import { readingSessionKeys, statsKeys } from "./query-keys";
 
-function useReadingSessionsPage(limit: number, bookId?: string) {
+function useBookReadingSessions(bookId: string) {
 	return useQuery({
-		queryKey: readingSessionKeys.page(limit, bookId),
-		queryFn: () => queries.getReadingSessionsPage({ limit, bookId }),
-		// Growing the page changes the key; without this the list would be
-		// replaced by the loading state on every "show more".
-		placeholderData: (previous) => previous,
+		queryKey: readingSessionKeys.book(bookId),
+		queryFn: () => queries.getBookReadingSessions(bookId),
+		enabled: bookId !== "",
 	});
 }
 
@@ -25,31 +23,6 @@ function useReadingSessionCount(bookId?: string) {
 	return useQuery({
 		queryKey: readingSessionKeys.count(bookId),
 		queryFn: () => queries.countReadingSessions(bookId),
-	});
-}
-
-/**
- * Delete a single reading session locally + on the server. Session pushes are
- * incremental, so a plain `scheduleSyncPush` would not propagate the deletion;
- * the dedicated server endpoint tombstones the row before the local delete
- * runs, and other devices drop it on their next pull. If the server call fails
- * (offline, etc.) the local row stays and the user is shown a toast.
- */
-function useDeleteReadingSession() {
-	const qc = useQueryClient();
-	return useMutation({
-		mutationFn: async (id: string) => {
-			await deleteServerSession(id);
-			await queries.deleteReadingSession(id);
-		},
-		onSuccess: () => {
-			qc.invalidateQueries({ queryKey: readingSessionKeys.all });
-			qc.invalidateQueries({ queryKey: statsKeys.all });
-			scheduleSyncPush();
-		},
-		onError: () => {
-			toast.error("Couldn't delete session. Check your connection and try again.");
-		},
 	});
 }
 
@@ -68,9 +41,8 @@ function useDeleteReadingSessions() {
 }
 
 export const readingSessionHooks = {
-	useReadingSessionsPage,
+	useBookReadingSessions,
 	useAllReadingSessions,
 	useReadingSessionCount,
-	useDeleteReadingSession,
 	useDeleteReadingSessions,
 };

@@ -17,6 +17,14 @@ const COLORS = {
 
 const MAX_AXIS_TICKS = 5;
 
+/**
+ * The y-axis top, with room over the highest line: nivo draws a marker's legend
+ * 14px above its line, so a marker at the very top has its label clipped.
+ */
+export function wpmAxisMax(values: readonly number[]): number {
+	return Math.ceil((Math.max(1, ...values) * 1.2) / 50) * 50;
+}
+
 function formatBucketTick(starts: number[], granularity: TrendGranularity, index: number): string {
 	const start = starts[index];
 	if (start === undefined) return "";
@@ -79,7 +87,7 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 	const bucketStarts = (trend.data?.measured ?? []).map((p) => p.bucketStart);
 	const tickIndices = evenTickIndices(bucketStarts.length, MAX_AXIS_TICKS);
 	const hasRsvpTarget = averages.rsvpTarget > 0;
-	const yMax = Math.max(AVERAGE_READER_WPM, averages.rsvpTarget, ...points.map((point) => point.y));
+	const yMax = wpmAxisMax([AVERAGE_READER_WPM, averages.rsvpTarget, ...points.map((p) => p.y)]);
 	// nivo already puts role="img" on the svg; this gives it a label, so the chart
 	// reads as one sentence rather than a pile of numbers.
 	const chartSummary = trend.data
@@ -114,107 +122,113 @@ export function WpmTrend({ period, periodLabel, now }: Props) {
 				</div>
 			</header>
 
-			<div className="h-[220px]" role="img" aria-label={chartSummary}>
-				<ResponsiveLine
-					role="presentation"
-					data={chartData}
-					margin={{ top: 12, right: 12, bottom: 48, left: 56 }}
-					xScale={{ type: "linear" }}
-					// Markers never enter the scale, so the reference lines have to be
-					// folded in by hand or they render off-plot and get clipped.
-					yScale={{ type: "linear", min: 0, max: yMax, stacked: false }}
-					curve="monotoneX"
-					enableArea={true}
-					areaOpacity={0.18}
-					colors={chartData.map((d) => d.color)}
-					lineWidth={2.5}
-					enablePoints={true}
-					pointSize={5}
-					pointColor={{ from: "color" }}
-					pointBorderWidth={2}
-					pointBorderColor={{ from: "serieColor" }}
-					enableGridX={false}
-					axisBottom={{
-						tickSize: 0,
-						tickPadding: 8,
-						tickValues: tickIndices,
-						format: (v) => formatBucketTick(bucketStarts, granularity, Number(v)),
-						legend: periodLabel,
-						legendPosition: "middle",
-						legendOffset: 36,
-					}}
-					axisLeft={{
-						tickSize: 0,
-						tickPadding: 8,
-						tickValues: 4,
-						legend: "Words per minute",
-						legendPosition: "middle",
-						legendOffset: -44,
-					}}
-					theme={nivoTheme}
-					animate={!isEinkMode}
-					motionConfig="gentle"
-					useMesh={true}
-					tooltip={({ point }) => {
-						const x = Number(point.data.x);
-						const y = Number(point.data.y);
-						const when = formatBucketTick(bucketStarts, granularity, x);
-						return (
-							<ChartTooltip>
-								<div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-									<span
-										style={{
-											display: "inline-block",
-											width: 8,
-											height: 8,
-											borderRadius: 9999,
-											backgroundColor: point.seriesColor,
-										}}
-									/>
-									<span style={{ opacity: 0.85 }}>{point.seriesId}</span>
-								</div>
-								<div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-									<span style={{ fontSize: 18, fontWeight: 700 }}>{y}</span>
-									<span style={{ opacity: 0.6 }}>WPM</span>
-								</div>
-								<div style={{ marginTop: 2, fontSize: 11, opacity: 0.6 }}>{when}</div>
-							</ChartTooltip>
-						);
-					}}
-					markers={[
-						{
-							axis: "y",
-							value: AVERAGE_READER_WPM,
-							lineStyle: {
-								stroke: isDarkTheme(theme) ? "#94a3b8" : "#64748b",
-								strokeWidth: 1,
-								strokeDasharray: "4 4",
-								strokeOpacity: 0.6,
+			{/* An empty series has no path, so nivo writes d="null" and logs
+			    "Expected moveto path command" for every path, animated or not. */}
+			{points.length === 0 ? (
+				<div className="h-[220px]" data-testid="wpm-trend-loading" />
+			) : (
+				<div className="h-[220px]" role="img" aria-label={chartSummary}>
+					<ResponsiveLine
+						role="presentation"
+						data={chartData}
+						margin={{ top: 12, right: 12, bottom: 48, left: 56 }}
+						xScale={{ type: "linear" }}
+						// Markers never enter the scale, so the reference lines have to be
+						// folded in by hand or they render off-plot and get clipped.
+						yScale={{ type: "linear", min: 0, max: yMax, stacked: false }}
+						curve="monotoneX"
+						enableArea={true}
+						areaOpacity={0.18}
+						colors={chartData.map((d) => d.color)}
+						lineWidth={2.5}
+						enablePoints={true}
+						pointSize={5}
+						pointColor={{ from: "color" }}
+						pointBorderWidth={2}
+						pointBorderColor={{ from: "serieColor" }}
+						enableGridX={false}
+						axisBottom={{
+							tickSize: 0,
+							tickPadding: 8,
+							tickValues: tickIndices,
+							format: (v) => formatBucketTick(bucketStarts, granularity, Number(v)),
+							legend: periodLabel,
+							legendPosition: "middle",
+							legendOffset: 36,
+						}}
+						axisLeft={{
+							tickSize: 0,
+							tickPadding: 8,
+							tickValues: 4,
+							legend: "Words per minute",
+							legendPosition: "middle",
+							legendOffset: -44,
+						}}
+						theme={nivoTheme}
+						animate={!isEinkMode}
+						motionConfig="gentle"
+						useMesh={true}
+						tooltip={({ point }) => {
+							const x = Number(point.data.x);
+							const y = Number(point.data.y);
+							const when = formatBucketTick(bucketStarts, granularity, x);
+							return (
+								<ChartTooltip>
+									<div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+										<span
+											style={{
+												display: "inline-block",
+												width: 8,
+												height: 8,
+												borderRadius: 9999,
+												backgroundColor: point.seriesColor,
+											}}
+										/>
+										<span style={{ opacity: 0.85 }}>{point.seriesId}</span>
+									</div>
+									<div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+										<span style={{ fontSize: 18, fontWeight: 700 }}>{y}</span>
+										<span style={{ opacity: 0.6 }}>WPM</span>
+									</div>
+									<div style={{ marginTop: 2, fontSize: 11, opacity: 0.6 }}>{when}</div>
+								</ChartTooltip>
+							);
+						}}
+						markers={[
+							{
+								axis: "y",
+								value: AVERAGE_READER_WPM,
+								lineStyle: {
+									stroke: isDarkTheme(theme) ? "#94a3b8" : "#64748b",
+									strokeWidth: 1,
+									strokeDasharray: "4 4",
+									strokeOpacity: 0.6,
+								},
+								legend: `Avg reader ${AVERAGE_READER_WPM}`,
+								legendPosition: "top-left",
+								textStyle: { fontSize: 10, fill: "var(--muted-foreground)" },
 							},
-							legend: `Avg reader ${AVERAGE_READER_WPM}`,
-							legendPosition: "top-left",
-							textStyle: { fontSize: 10, fill: "var(--muted-foreground)" },
-						},
-						...(hasRsvpTarget
-							? [
-									{
-										axis: "y" as const,
-										value: averages.rsvpTarget,
-										lineStyle: {
-											stroke: COLORS.rsvpTarget,
-											strokeWidth: 1,
-											strokeDasharray: "4 4",
-											strokeOpacity: 0.7,
+							...(hasRsvpTarget
+								? [
+										{
+											axis: "y" as const,
+											value: averages.rsvpTarget,
+											lineStyle: {
+												stroke: COLORS.rsvpTarget,
+												strokeWidth: 1,
+												strokeDasharray: "4 4",
+												strokeOpacity: 0.7,
+											},
+											legend: `Target ${averages.rsvpTarget}`,
+											legendPosition: "top-right" as const,
+											textStyle: { fontSize: 10, fill: "var(--muted-foreground)" },
 										},
-										legend: `Target ${averages.rsvpTarget}`,
-										legendPosition: "top-right" as const,
-										textStyle: { fontSize: 10, fill: "var(--muted-foreground)" },
-									},
-								]
-							: []),
-					]}
-				/>
-			</div>
+									]
+								: []),
+						]}
+					/>
+				</div>
+			)}
 		</motion.section>
 	);
 }

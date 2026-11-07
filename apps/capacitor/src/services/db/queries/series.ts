@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
+import type { SeriesChapterLength } from "../../stats/what-if";
 import { db } from "../index";
 import {
 	type Book,
@@ -191,6 +192,28 @@ export async function getSeriesChapterCounts(): Promise<Map<string, number>> {
 	const map = new Map<string, number>();
 	for (const r of rows) {
 		if (r.seriesId) map.set(r.seriesId, Number(r.count));
+	}
+	return map;
+}
+
+/** Every series' chapter lengths in one query, for the library cards' reading time. */
+export async function getSeriesChapterLengths(): Promise<Map<string, SeriesChapterLength[]>> {
+	const rows = await db
+		.select({
+			seriesId: books.seriesId,
+			wordCount: books.wordCount,
+			wordPosition: books.wordPosition,
+			finishedAt: books.finishedAt,
+		})
+		.from(books)
+		.where(and(isNotNull(books.seriesId), eq(books.deleted, false)));
+
+	const map = new Map<string, SeriesChapterLength[]>();
+	for (const { seriesId, ...length } of rows) {
+		if (!seriesId) continue;
+		const lengths = map.get(seriesId);
+		if (lengths) lengths.push(length);
+		else map.set(seriesId, [length]);
 	}
 	return map;
 }

@@ -14,26 +14,36 @@ import { useId } from "react";
 import CoverImage from "../../components/cover-image";
 import type { Series } from "../../services/db/schema";
 import { chapterCountLabel } from "../../services/serial-scrapers";
+import type { SeriesChapterLength } from "../../services/stats/what-if";
+import { SeriesCardTime } from "./series-reading-time";
 import { useLongPress } from "./use-long-press";
 
 interface SeriesCardProps {
 	series: Series;
 	chapterCount: number | undefined;
+	chapterLengths: readonly SeriesChapterLength[] | undefined;
 	onOpen: () => void;
 	onMenu: () => void;
 }
 
-const SeriesCard: React.FC<SeriesCardProps> = ({ series, chapterCount, onOpen, onMenu }) => {
+const SeriesCard: React.FC<SeriesCardProps> = ({
+	series,
+	chapterCount,
+	chapterLengths,
+	onOpen,
+	onMenu,
+}) => {
 	const handlers = useLongPress({ onTap: onOpen, onMenu });
 	const id = useId();
 	const chaptersId = `${id}-chapters`;
 	const authorId = `${id}-author`;
+	const timeId = `${id}-time`;
 
 	return (
 		<button
 			type="button"
 			aria-label={series.title}
-			aria-describedby={`${chaptersId} ${authorId}`}
+			aria-describedby={`${chaptersId} ${authorId} ${timeId}`}
 			className="flex w-full select-none flex-col rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
 			style={{ WebkitTouchCallout: "none", cursor: "pointer" }}
 			{...handlers}
@@ -73,6 +83,11 @@ const SeriesCard: React.FC<SeriesCardProps> = ({ series, chapterCount, onOpen, o
 						{series.author}
 					</div>
 				)}
+				<SeriesCardTime
+					id={timeId}
+					chapters={chapterLengths}
+					className="mt-0.5 block text-[#888] text-[0.75rem] tabular-nums"
+				/>
 			</div>
 		</button>
 	);

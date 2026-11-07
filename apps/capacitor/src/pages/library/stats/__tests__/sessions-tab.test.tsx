@@ -157,6 +157,24 @@ describe("SessionsTab", () => {
 		expect(state.mutateAsync).toHaveBeenCalledWith(["s0", "s1", "s2", "s3", "s4"]);
 	});
 
+	it("opens a row's menu on a tap and selects on a long press, as in the library grid", async () => {
+		state.rows = [session("a", "mm", at(7, 9)), session("b", "mm", at(7, 10))];
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+		const v = await show();
+		const row = v.container.querySelector<HTMLElement>("li > button:first-child");
+		if (!row) throw new Error("no row");
+
+		await click(row);
+		expect(document.body.textContent).toContain("Delete session");
+		expect(v.text()).not.toContain("selected");
+
+		await act(async () => {
+			document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+		});
+		longPress(row);
+		expect(v.text()).toContain("1 selected");
+	});
+
 	it("selects rows by long press and taps, widens to the same book, and deletes the selection", async () => {
 		state.rows = [
 			session("e", "em", at(7, 11)),

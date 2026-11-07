@@ -54,10 +54,10 @@ import { bookSeriesLabel } from "./book-fields";
 import { BookFileCard } from "./book-file-card";
 import { BookHighlights } from "./book-highlights";
 import { BookJourney } from "./book-journey";
+import { BookSessions } from "./book-sessions";
 import { BookShares } from "./book-shares";
 import { BookStatsCard } from "./book-stats-card";
 import { GoalCard } from "./reading-goal/goal-card";
-import { SessionTable } from "./session-table";
 
 import TransferModal from "./transfer-modal";
 import { useBookDetailReady } from "./use-book-detail-ready";
@@ -352,7 +352,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					isResolved={areChaptersResolved}
 				/>
 				<BookHighlights highlights={highlights} />
-				<SessionTable bookId={book.id} />
+				<BookSessions book={book} />
 			</DetailShell>
 
 			{!IS_WEB && (

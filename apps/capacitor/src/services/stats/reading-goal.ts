@@ -260,10 +260,9 @@ export function planReadingGoal(input: GoalPlanInput): ReadingGoalPlanResult {
 	const pace = input.pace;
 	const minuteTarget = minuteGoalOf(goal);
 	const minutesOn = minutesByDay(relevant);
-	const dailyWords =
-		minuteTarget != null
-			? Math.max(1, Math.round(minuteTarget * pace.wpm))
-			: goalDailyWords(goal.dailyPercent, wordCount);
+	// A minute goal reads its stored percent (its minutes at the pace when it was set), not
+	// today's pace: the card, the chart's end and the stored target date then share one date.
+	const dailyWords = goalDailyWords(goal.dailyPercent, wordCount);
 	const dayWordTarget = (day: number, start: number) =>
 		minuteTarget != null
 			? Math.min(Math.max(0, wordCount - start), dailyWords)
@@ -407,6 +406,28 @@ function clampDailyMinutes(minutes: number | null | undefined): number | null {
 	return Math.min(MAX_GOAL_DAILY_MINUTES, Math.max(MIN_GOAL_DAILY_MINUTES, Math.round(minutes)));
 }
 
+/**
+ * A pace goal's last day, reading `dailyPercent` a day from `fromWord` at the
+ * start of `fromDate`: where its plan line ends, so the stored target date, the
+ * setup sheet and the goal card show the same day.
+ */
+export function paceTargetDate(
+	fromDate: string,
+	fromWord: number,
+	dailyPercent: number,
+	wordCount: number,
+): string {
+	if (wordCount <= 0) return addDays(fromDate, Math.max(1, Math.ceil(100 / dailyPercent)) - 1);
+	return dayKeyOf(
+		paceFinishDay(
+			requireDayNumber(fromDate),
+			fromWord,
+			goalDailyWords(dailyPercent, wordCount),
+			wordCount,
+		),
+	);
+}
+
 export type GoalPlanFields = Pick<
 	ReadingGoal,
 	| "mode"
@@ -448,12 +469,11 @@ export function newGoalPlanFields(
 		};
 	}
 	const dailyPercent = clampDailyPercent(spec.dailyPercent);
-	const days = Math.max(1, Math.ceil(remainingPercent / dailyPercent));
 	return {
 		mode: "pace",
 		planStartDate: today,
 		planStartWord: wordPos(startWord),
-		targetDate: addDays(today, days - 1),
+		targetDate: paceTargetDate(today, wordPos(startWord), dailyPercent, wordCount),
 		dailyPercent,
 		dailyMinutes: clampDailyMinutes(spec.dailyMinutes),
 		carriedDaysMet: 0,
@@ -513,10 +533,11 @@ export function replanGoal(input: GoalPlanInput, change: GoalChange): GoalPlanFi
 		targetDate = plan.projectedFinishDate;
 	}
 	if (mode === "pace" && change.targetDate === undefined) {
-		const remainingPercent = 100 - (plan.dayStartWord / input.book.wordCount) * 100;
-		targetDate = addDays(
+		targetDate = paceTargetDate(
 			plan.today,
-			Math.max(1, Math.ceil(remainingPercent / clampDailyPercent(dailyPercent))) - 1,
+			wordPos(plan.dayStartWord),
+			clampDailyPercent(dailyPercent),
+			input.book.wordCount,
 		);
 	}
 

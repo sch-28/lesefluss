@@ -2,6 +2,7 @@ import { queryHooks } from "../../services/db/hooks";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
 import { isFirstLoad } from "../../services/query-client";
+import type { SeriesChapterLength } from "../../services/stats/what-if";
 
 type UseLibraryItems = {
 	books: Book[];
@@ -11,6 +12,8 @@ type UseLibraryItems = {
 	chapterCounts: Map<string, number>;
 	/** Map<seriesId, SeriesActivity>. Drives library filter+sort for series cards. */
 	seriesActivity: Map<string, SeriesActivity>;
+	/** Map<seriesId, chapter lengths>: each series card's reading time. */
+	seriesLengths: Map<string, SeriesChapterLength[]>;
 	isLoading: boolean;
 };
 
@@ -30,6 +33,7 @@ export function useLibraryItems(): UseLibraryItems {
 	const series = queryHooks.useSeriesList();
 	const counts = queryHooks.useSeriesChapterCounts();
 	const activity = queryHooks.useSeriesActivity();
+	const lengths = queryHooks.useSeriesChapterLengths();
 
 	return {
 		books: books.data?.books ?? [],
@@ -37,6 +41,7 @@ export function useLibraryItems(): UseLibraryItems {
 		covers: books.data?.covers ?? new Map(),
 		chapterCounts: counts.data ?? new Map(),
 		seriesActivity: activity.data ?? new Map(),
+		seriesLengths: lengths.data ?? new Map(),
 		isLoading: isFirstLoad(books) || isFirstLoad(series),
 	};
 }

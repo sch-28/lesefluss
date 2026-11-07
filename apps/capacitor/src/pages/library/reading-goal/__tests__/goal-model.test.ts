@@ -1,4 +1,6 @@
+import { inclusiveDays } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
+import { newGoalPlanFields } from "../../../../services/stats/reading-goal";
 import {
 	canStartGoal,
 	daysMetWithToday,
@@ -170,6 +172,18 @@ describe("minute goals", () => {
 		expect(goalSpec("daily", values)).toEqual({ mode: "pace", dailyPercent: 20, dailyMinutes: 20 });
 	});
 
+	it("shows the setup's finish on the goal it saves, for a long book at a fractional pace", () => {
+		const long = { today: "2026-11-07", wordCount: 1_267_069, wordPosition: 1_000, wpm: 247.3 };
+		const values = setupValues({ lock: "daily", days: 30, dailyMinutes: 30 }, long);
+		const spec = goalSpec("daily", values);
+		expect(spec).toMatchObject({ dailyPercent: values.dailyPercent });
+		if (spec.mode !== "pace") throw new Error("expected a pace goal");
+		const created = new Date(2026, 10, 7, 10).getTime();
+		const fields = newGoalPlanFields(spec, long.wordPosition, long.wordCount, created);
+		expect(fields.targetDate).toBe(values.finishDate);
+		expect(inclusiveDays(long.today, values.finishDate)).toBe(values.days);
+	});
+
 	it("turns a duration into whole minutes that never finish later", () => {
 		expect(minutesForDays(3, book(0, 10))).toBe(34);
 		expect(minutesForDays(1000, book(0, 200))).toBe(1);
@@ -179,6 +193,15 @@ describe("minute goals", () => {
 		const goal = makeGoal({ mode: "pace", dailyPercent: 20, dailyMinutes: 20 });
 		const plan = makePlan({ goal, position: 0 });
 		expect(seedFromGoal(goal, plan)).toMatchObject({ lock: "daily", dailyMinutes: 20 });
+	});
+
+	it("reopens a minute goal on the finish its card shows, even after the pace has changed", () => {
+		const goal = makeGoal({ mode: "pace", dailyPercent: 20, dailyMinutes: 20 });
+		const seed = seedFromGoal(goal, makePlan({ goal, position: 0 }));
+		const faster = book(0, 20);
+		expect(setupValues(seed, faster)).toMatchObject({ dailyPercent: 20, days: 5 });
+		const edited = setupValues({ lock: "daily", days: 5, dailyMinutes: 20 }, faster);
+		expect(edited).toMatchObject({ dailyPercent: 40, days: 3 });
 	});
 
 	it("shows the RSVP finish at the same minutes only when it is earlier", () => {

@@ -140,6 +140,7 @@ const Library: React.FC = () => {
 		covers,
 		chapterCounts,
 		seriesActivity,
+		seriesLengths,
 		isLoading: isLibraryPending,
 	} = useLibraryItems();
 	// The Collection facet and its pruning need both; mid-load every collection looks deleted.
@@ -425,6 +426,7 @@ const Library: React.FC = () => {
 					<Item
 						series={s}
 						chapterCount={chapterCounts.get(s.id)}
+						chapterLengths={seriesLengths.get(s.id)}
 						onOpen={() => handleOpenSeries(s)}
 						onMenu={() => setSelectedSeries(s)}
 					/>

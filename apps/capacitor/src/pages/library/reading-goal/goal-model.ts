@@ -15,6 +15,7 @@ import type { ReadingGoal } from "../../../services/db/schema";
 import {
 	isDayMet,
 	type NewGoalSpec,
+	paceTargetDate,
 	type ReadingGoalPlan,
 } from "../../../services/stats/reading-goal";
 import { formatDayKey, localDateKey, localDateOfKey } from "../../../utils/date-utils";
@@ -141,14 +142,17 @@ export function setupValues(
 	const remainingPercent = book.wordCount > 0 ? (remaining / book.wordCount) * 100 : 0;
 	if (isMinuteSetup(setup) && setup.dailyMinutes != null && book.wordCount > 0) {
 		const dailyMinutes = setup.dailyMinutes;
-		const dailyPercent = Math.max(
-			MIN_GOAL_DAILY_PERCENT,
-			((dailyMinutes * book.wpm) / book.wordCount) * 100,
-		);
-		const days = Math.max(1, Math.ceil(remainingPercent / dailyPercent));
+		// A reopened goal keeps the percent it was set with, as its card and chart do; a pace
+		// change since then only moves the finish once the minutes are edited.
+		const dailyPercent =
+			setup.dailyPercent ??
+			storedDailyPercent(
+				Math.max(MIN_GOAL_DAILY_PERCENT, ((dailyMinutes * book.wpm) / book.wordCount) * 100),
+			);
+		const finishDate = paceTargetDate(book.today, book.wordPosition, dailyPercent, book.wordCount);
 		return {
-			days,
-			finishDate: addDays(book.today, days - 1),
+			days: inclusiveDays(book.today, finishDate),
+			finishDate,
 			dailyPercent,
 			minutes: dailyMinutes,
 			dailyMinutes,
@@ -172,9 +176,12 @@ export function setupValues(
 	};
 }
 
-/** Rounded up so a pace goal never finishes after the date shown beside it. */
+/**
+ * Rounded up so a pace goal never finishes after the date shown beside it.
+ * Idempotent: the rounding drops float noise first, so 1.1 stays 1.1.
+ */
 function storedDailyPercent(dailyPercent: number): number {
-	return Math.ceil(dailyPercent * 100) / 100;
+	return Math.ceil(Math.round(dailyPercent * 1e6) / 1e4) / 100;
 }
 
 /**

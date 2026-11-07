@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "../../../components/toast";
 import { pollChapterList, removeSerial } from "../../serial-scrapers";
+import type { SeriesChapterLength } from "../../stats/what-if";
 import { queries } from "../queries";
 import type { SeriesActivity } from "../queries/series";
 import type { Book, Series } from "../schema";
@@ -40,6 +41,13 @@ function useSeriesChapterCounts() {
 	return useQuery<Map<string, number>>({
 		queryKey: serialKeys.counts,
 		queryFn: () => queries.getSeriesChapterCounts(),
+	});
+}
+
+function useSeriesChapterLengths() {
+	return useQuery<Map<string, SeriesChapterLength[]>>({
+		queryKey: serialKeys.lengths,
+		queryFn: () => queries.getSeriesChapterLengths(),
 	});
 }
 
@@ -153,6 +161,7 @@ export const seriesHooks = {
 	useSeries,
 	useSeriesChapterCounts,
 	useSeriesActivity,
+	useSeriesChapterLengths,
 	useDeleteSeries,
 	useSeriesChapters,
 	useChapterListSync,
