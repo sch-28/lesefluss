@@ -3,11 +3,13 @@
 // Collections through the sync route, against a real Postgres database.
 // Skipped when DATABASE_URL is unset; point it at a throwaway database.
 import { randomUUID } from "node:crypto";
-import type {
-	SyncCollection,
-	SyncCollectionBook,
-	SyncPayload,
-	SyncResponse,
+import {
+	normalizeSeriesKey,
+	type SyncCollection,
+	type SyncCollectionBook,
+	type SyncPayload,
+	type SyncResponse,
+	seriesCollectionId,
 } from "@lesefluss/core";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
@@ -92,7 +94,7 @@ describe.skipIf(!hasDb)("sync route collections (integration)", () => {
 			(await push({ collections: [shelf], collectionBooks: [member("bbbbbbbb", 2_100)] })).ok,
 		).toBe(true);
 		const data = await pull();
-		expect(data.collections).toEqual([shelf]);
+		expect(data.collections).toEqual([{ ...shelf, ordered: false, seriesKey: null }]);
 		expect(data.collectionBooks?.map((m) => m.bookId).sort()).toEqual(["aaaaaaaa", "bbbbbbbb"]);
 	});
 
@@ -102,5 +104,34 @@ describe.skipIf(!hasDb)("sync route collections (integration)", () => {
 		const data = await pull();
 		expect(data.collections).toHaveLength(1);
 		expect(data.collectionBooks).toHaveLength(2);
+	});
+
+	test("a series collection round-trips its key, derived id, order and indexes", async () => {
+		const seriesKey = normalizeSeriesKey("The Expanse") as string;
+		const series: SyncCollection = {
+			collectionId: seriesCollectionId(seriesKey),
+			name: "The Expanse",
+			sortOrder: 2,
+			ordered: true,
+			seriesKey,
+			deleted: false,
+			createdAt: 3_000,
+			updatedAt: 3_000,
+		};
+		const volume = (bookId: string, seriesIndex: number, position: number) => ({
+			collectionId: series.collectionId,
+			bookId,
+			seriesIndex,
+			position,
+			deleted: false,
+			updatedAt: 3_000,
+		});
+		const volumes = [volume("cccccccc", 1, 1), volume("dddddddd", 2.5, 2)];
+		expect((await push({ collections: [series], collectionBooks: volumes })).ok).toBe(true);
+
+		const data = await pull();
+		expect(data.collections?.find((c) => c.collectionId === series.collectionId)).toEqual(series);
+		const pulled = data.collectionBooks?.filter((m) => m.collectionId === series.collectionId);
+		expect(pulled?.sort((a, b) => a.bookId.localeCompare(b.bookId))).toEqual(volumes);
 	});
 });
