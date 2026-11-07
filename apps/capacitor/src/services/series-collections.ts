@@ -1,0 +1,153 @@
+import {
+	BOOK_SERIES_INDEX_MAX,
+	COLLECTION_NAME_MAX,
+	normalizeSeriesKey,
+	seriesCollectionId,
+} from "@lesefluss/core";
+import { log } from "../utils/log";
+import { collectionKeys } from "./db/hooks/query-keys";
+import { queries } from "./db/queries";
+import type { Collection, CollectionBook } from "./db/schema";
+import { queryClient } from "./query-client";
+import { serverNow } from "./sync/server-clock";
+
+export interface SeriesHintBook {
+	id: string;
+	addedAt: number;
+	seriesName: string | null;
+	seriesIndex: number | null;
+}
+
+/** Older than any real write; nonzero so it reads as a stamp, not a missing one. */
+export const AUTO_STAMP = 1;
+
+export interface SeriesReconcilePlan {
+	collections: Collection[];
+	memberships: CollectionBook[];
+}
+
+/**
+ * Which series collections and memberships are missing for the books' series
+ * hints. A key is created once two live books share it; an existing collection
+ * is joined by any book with its key. Any row that already exists is left
+ * alone, tombstones included: a deleted series collection or a removed book is
+ * the user's dismissal and is never re-added.
+ *
+ * Auto rows carry `AUTO_STAMP` as their revision, so every user edit on any
+ * device beats them, a dismissal included that this device has not pulled yet.
+ * Devices that plan the same series offline write rows with equal stamps; the
+ * first one the server stores is kept.
+ */
+export function planSeriesReconcile(input: {
+	books: SeriesHintBook[];
+	collections: Collection[];
+	memberships: CollectionBook[];
+	now: number;
+}): SeriesReconcilePlan {
+	const byKey = new Map<string, SeriesHintBook[]>();
+	for (const book of input.books) {
+		const key = normalizeSeriesKey(book.seriesName);
+		if (!key) continue;
+		const group = byKey.get(key);
+		if (group) group.push(book);
+		else byKey.set(key, [book]);
+	}
+	const existing = new Map(input.collections.map((c) => [c.id, c]));
+	const members = new Set(input.memberships.map((m) => memberKey(m.collectionId, m.bookId)));
+
+	const plan: SeriesReconcilePlan = { collections: [], memberships: [] };
+	for (const [key, group] of byKey) {
+		const id = seriesCollectionId(key);
+		const collection = existing.get(id);
+		if (collection?.deleted) continue;
+		if (!collection) {
+			if (group.length < 2) continue;
+			group.sort((a, b) => a.addedAt - b.addedAt || a.id.localeCompare(b.id));
+			const created = Math.min(group[0].addedAt, input.now);
+			plan.collections.push({
+				id,
+				name: (group[0].seriesName?.trim() || key).slice(0, COLLECTION_NAME_MAX),
+				sortOrder: created,
+				ordered: true,
+				seriesKey: key,
+				deleted: false,
+				createdAt: created,
+				updatedAt: AUTO_STAMP,
+			});
+		}
+		for (const book of group) {
+			if (members.has(memberKey(id, book.id))) continue;
+			plan.memberships.push({
+				collectionId: id,
+				bookId: book.id,
+				seriesIndex: validSeriesIndex(book.seriesIndex),
+				position: null,
+				deleted: false,
+				updatedAt: AUTO_STAMP,
+			});
+		}
+	}
+	return plan;
+}
+
+function validSeriesIndex(index: number | null): number | null {
+	if (index === null || !Number.isFinite(index)) return null;
+	return index >= 0 && index <= BOOK_SERIES_INDEX_MAX ? index : null;
+}
+
+function memberKey(collectionId: string, bookId: string): string {
+	return `${collectionId}\u0000${bookId}`;
+}
+
+export async function reconcileSeriesCollections(): Promise<number> {
+	const [books, rows] = await Promise.all([
+		queries.getSeriesHintBooks(),
+		queries.getSeriesReconcileRows(),
+	]);
+	const plan = planSeriesReconcile({ books, ...rows, now: serverNow() });
+	const inserted = plan.collections.length + plan.memberships.length;
+	if (inserted === 0) return 0;
+	await queries.insertMissingCollectionRows(plan.collections, plan.memberships);
+	log(
+		"db",
+		`series reconcile: ${plan.collections.length} collection(s), ${plan.memberships.length} membership(s)`,
+	);
+	await queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+	// Lazy: sync imports this module, and the import path must not load sync's window hooks.
+	const { scheduleSyncPush } = await import("./sync");
+	scheduleSyncPush();
+	return inserted;
+}
+
+let running: Promise<void> | null = null;
+let again = false;
+
+/** Single-flight: a call during a run queues exactly one more run, so no change is missed. */
+export function scheduleSeriesReconcile(): Promise<void> {
+	if (running) {
+		again = true;
+		return running;
+	}
+	running = (async () => {
+		try {
+			do {
+				again = false;
+				await reconcileSeriesCollections().catch((err) =>
+					log.warn("db", "series reconcile failed:", err),
+				);
+			} while (again);
+		} finally {
+			running = null;
+		}
+	})();
+	return running;
+}
+
+let started = false;
+
+/** Once per app start: also turns hints synced or imported before series collections existed into collections. */
+export function startSeriesReconcile(): void {
+	if (started) return;
+	started = true;
+	void scheduleSeriesReconcile();
+}

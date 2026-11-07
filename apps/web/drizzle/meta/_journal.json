@@ -337,6 +337,13 @@
       "when": 1783987200000,
       "tag": "0047_smart_shelves",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1784073600000,
+      "tag": "0048_series_collections",
+      "breakpoints": true
     }
   ]
 }

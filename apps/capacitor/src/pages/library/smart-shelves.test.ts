@@ -9,6 +9,7 @@ import {
 	parseBuiltInPins,
 	shelfCounts,
 	shelfEntryOf,
+	withBuiltInPin,
 } from "./smart-shelves";
 
 function book(values: Partial<Record<Facet, string[]>>): { facets: FacetValues } {
@@ -80,13 +81,44 @@ describe("smart shelves", () => {
 		]);
 	});
 
-	it("reads only built-in ids from the device's pins", () => {
+	it("pins every built-in on a device with no stored choice", () => {
+		const all = ["builtin:reading", "builtin:finished", "builtin:unrated"];
+		expect([...parseBuiltInPins(null)]).toEqual(all);
+		expect([...parseBuiltInPins("nope")]).toEqual(all);
+		expect(builtInShelves(parseBuiltInPins(null)).every((s) => s.pinned)).toBe(true);
+	});
+
+	it("keeps an explicit unpin and defaults only the built-ins never chosen", () => {
+		const unpinned = withBuiltInPin(null, "builtin:finished", false);
+		expect([...parseBuiltInPins(unpinned)]).toEqual(["builtin:reading", "builtin:unrated"]);
+		const repinned = withBuiltInPin(unpinned, "builtin:finished", true);
+		expect(parseBuiltInPins(repinned).has("builtin:finished")).toBe(true);
+		expect(withBuiltInPin(null, "u1", false)).toBe("{}");
+		expect(parseBuiltInPins(JSON.stringify({ "builtin:reading": "no", u1: false })).size).toBe(3);
+	});
+
+	it("reads the first format's pinned-id list as a choice for every built-in", () => {
 		expect([...parseBuiltInPins(JSON.stringify(["builtin:reading", "u1", 3]))]).toEqual([
 			"builtin:reading",
 		]);
-		expect(parseBuiltInPins("nope").size).toBe(0);
-		expect(parseBuiltInPins(null).size).toBe(0);
+		expect(parseBuiltInPins("[]").size).toBe(0);
 		expect(isBuiltInShelfId("builtin:x")).toBe(true);
 		expect(isBuiltInShelfId("abc")).toBe(false);
+	});
+
+	it("lists every shelf with the pinned ones first, unpinned built-ins included", () => {
+		const pins = parseBuiltInPins(withBuiltInPin(null, "builtin:reading", false));
+		const shelves = orderShelves([
+			shelfEntryOf(row({ id: "u1", sortOrder: 1 })),
+			shelfEntryOf(row({ id: "u2", sortOrder: 2, pinned: true })),
+			...builtInShelves(pins),
+		]);
+		expect(shelves.map((s) => [s.id, s.pinned])).toEqual([
+			["builtin:finished", true],
+			["builtin:unrated", true],
+			["u2", true],
+			["builtin:reading", false],
+			["u1", false],
+		]);
 	});
 });

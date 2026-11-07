@@ -13,6 +13,8 @@ export function collectionToSync(c: Collection): SyncCollection {
 		collectionId: c.id,
 		name: c.name,
 		sortOrder: c.sortOrder,
+		ordered: c.ordered,
+		seriesKey: c.seriesKey,
 		deleted: c.deleted,
 		createdAt: c.createdAt,
 		updatedAt: c.updatedAt,
@@ -23,6 +25,8 @@ export function collectionBookToSync(m: CollectionBook): SyncCollectionBook {
 	return {
 		collectionId: m.collectionId,
 		bookId: m.bookId,
+		seriesIndex: m.seriesIndex,
+		position: m.position,
 		deleted: m.deleted,
 		updatedAt: m.updatedAt,
 	};
@@ -31,13 +35,15 @@ export function collectionBookToSync(m: CollectionBook): SyncCollectionBook {
 /**
  * Newest-wins per row, tombstones kept: the server rows that beat the local
  * copy, ready to upsert. Pure so the merge rules can be tested without a database.
+ * A field the server omits (a server older than series collections) keeps the
+ * local value.
  */
 export function buildCollectionMerge(
 	local: { collections: Collection[]; collectionBooks: CollectionBook[] },
 	server: { collections: unknown[]; collectionBooks: unknown[] },
 ): { collections: Collection[]; collectionBooks: CollectionBook[]; rejected: number } {
 	let rejected = 0;
-	const localCollections = new Map(local.collections.map((c) => [c.id, c.updatedAt]));
+	const localCollections = new Map(local.collections.map((c) => [c.id, c]));
 	const collections: Collection[] = [];
 	for (const raw of server.collections) {
 		const parsed = SyncCollectionSchema.safeParse(raw);
@@ -47,11 +53,13 @@ export function buildCollectionMerge(
 		}
 		const c = parsed.data;
 		const mine = localCollections.get(c.collectionId);
-		if (mine !== undefined && c.updatedAt <= mine) continue;
+		if (mine !== undefined && c.updatedAt <= mine.updatedAt) continue;
 		collections.push({
 			id: c.collectionId,
 			name: c.name,
 			sortOrder: c.sortOrder,
+			ordered: c.ordered ?? mine?.ordered ?? false,
+			seriesKey: c.seriesKey !== undefined ? c.seriesKey : (mine?.seriesKey ?? null),
 			deleted: c.deleted,
 			createdAt: c.createdAt,
 			updatedAt: c.updatedAt,
@@ -59,7 +67,7 @@ export function buildCollectionMerge(
 	}
 
 	const localMembers = new Map(
-		local.collectionBooks.map((m) => [memberKey(m.collectionId, m.bookId), m.updatedAt]),
+		local.collectionBooks.map((m) => [memberKey(m.collectionId, m.bookId), m]),
 	);
 	const collectionBooks: CollectionBook[] = [];
 	for (const raw of server.collectionBooks) {
@@ -70,8 +78,15 @@ export function buildCollectionMerge(
 		}
 		const m = parsed.data;
 		const mine = localMembers.get(memberKey(m.collectionId, m.bookId));
-		if (mine !== undefined && m.updatedAt <= mine) continue;
-		collectionBooks.push({ ...m });
+		if (mine !== undefined && m.updatedAt <= mine.updatedAt) continue;
+		collectionBooks.push({
+			collectionId: m.collectionId,
+			bookId: m.bookId,
+			seriesIndex: m.seriesIndex !== undefined ? m.seriesIndex : (mine?.seriesIndex ?? null),
+			position: m.position !== undefined ? m.position : (mine?.position ?? null),
+			deleted: m.deleted,
+			updatedAt: m.updatedAt,
+		});
 	}
 	return { collections, collectionBooks, rejected };
 }

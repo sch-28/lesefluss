@@ -7,6 +7,7 @@ import { readOriginalFile } from "./book-import/sources/read-file";
 import { bookKeys } from "./db/hooks/query-keys";
 import { queries } from "./db/queries";
 import { queryClient } from "./query-client";
+import { scheduleSeriesReconcile } from "./series-collections";
 import { scheduleSyncPush } from "./sync";
 import { reportEvent } from "./telemetry";
 
@@ -113,6 +114,7 @@ async function runAndReport(deps: SeriesBackfillDeps): Promise<void> {
 			log("db", `series backfill filled ${counts.filled} books`);
 			scheduleSyncPush();
 			await queryClient.invalidateQueries({ queryKey: bookKeys.all });
+			await scheduleSeriesReconcile();
 		})
 		.catch((err) => log.warn("db", "series backfill failed:", err));
 }

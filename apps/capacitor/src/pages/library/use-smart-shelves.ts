@@ -12,6 +12,7 @@ import {
 	type ShelfEntry,
 	shelfCounts,
 	shelfEntryOf,
+	withBuiltInPin,
 } from "./smart-shelves";
 import { buildLibraryItems } from "./sort-filter";
 import { useLibraryItems } from "./use-library-items";
@@ -36,9 +37,9 @@ function subscribePins(listener: () => void) {
 	};
 }
 
-function writePins(pins: ReadonlySet<string>) {
+function writePins(value: string) {
 	try {
-		localStorage.setItem(BUILT_IN_PINS_KEY, JSON.stringify([...pins]));
+		localStorage.setItem(BUILT_IN_PINS_KEY, value);
 	} catch {
 		// best-effort: private mode / quota / disabled storage
 	}
@@ -102,12 +103,7 @@ export function useSmartShelves() {
 	const counts = useMemo(() => shelfCounts(shelves, items), [shelves, items]);
 
 	const setBuiltInPinned = useCallback(
-		(id: string, pinned: boolean) => {
-			const pins = parseBuiltInPins(pinsRaw);
-			if (pinned) pins.add(id);
-			else pins.delete(id);
-			writePins(pins);
-		},
+		(id: string, pinned: boolean) => writePins(withBuiltInPin(pinsRaw, id, pinned)),
 		[pinsRaw],
 	);
 

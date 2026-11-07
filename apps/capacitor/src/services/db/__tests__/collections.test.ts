@@ -130,7 +130,14 @@ describe("collections", () => {
 		expect(bookRows).toHaveLength(3);
 		const synced = await collections.getAllCollectionBooksForSync();
 		expect(synced).toEqual([
-			{ collectionId: c.id, bookId: "aaaaaaaa", deleted: true, updatedAt: 3 },
+			{
+				collectionId: c.id,
+				bookId: "aaaaaaaa",
+				seriesIndex: null,
+				position: null,
+				deleted: true,
+				updatedAt: 3,
+			},
 		]);
 		expect((await collections.getAllCollectionsForSync())[0]).toMatchObject({ deleted: true });
 	});
@@ -144,12 +151,33 @@ describe("collections", () => {
 
 		await collections.addBooksToCollection(c.id, ["aaaaaaaa"], 10);
 		await collections.upsertCollectionBooks([
-			{ collectionId: c.id, bookId: "aaaaaaaa", deleted: true, updatedAt: 9 },
+			{
+				collectionId: c.id,
+				bookId: "aaaaaaaa",
+				seriesIndex: null,
+				position: null,
+				deleted: true,
+				updatedAt: 9,
+			},
 		]);
 		expect(await count(c.id)).toBe(1);
 		await collections.upsertCollectionBooks([
-			{ collectionId: c.id, bookId: "aaaaaaaa", deleted: true, updatedAt: 11 },
-			{ collectionId: c.id, bookId: "bbbbbbbb", deleted: false, updatedAt: 11 },
+			{
+				collectionId: c.id,
+				bookId: "aaaaaaaa",
+				seriesIndex: null,
+				position: null,
+				deleted: true,
+				updatedAt: 11,
+			},
+			{
+				collectionId: c.id,
+				bookId: "bbbbbbbb",
+				seriesIndex: null,
+				position: null,
+				deleted: false,
+				updatedAt: 11,
+			},
 		]);
 		expect(await collections.getCollectionBookIds(c.id)).toEqual(["bbbbbbbb"]);
 	});

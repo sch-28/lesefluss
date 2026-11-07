@@ -22,7 +22,7 @@ const options = {
 		opt("dropped", "Dropped"),
 	],
 	author: [opt("Ursula K. Le Guin")],
-	series: [opt("book:earthsea", "Earthsea")],
+	series: [opt("series-00000000000000e5", "Earthsea")],
 	rating: ["5", "4", "3", "2", "1", "none"].map((v) => opt(v)),
 	collection: [opt("c1", "Favourites"), opt("c2", "Sci Fi"), opt("c3", "Café")],
 } satisfies Record<Facet, unknown>;
@@ -52,7 +52,7 @@ describe("search syntax", () => {
 
 	it("matches author, series and collections by name, accents folded", () => {
 		expect(commit('author:"ursula k. le guin"')?.filter.author?.in).toEqual(["Ursula K. Le Guin"]);
-		expect(commit("series:earthsea")?.filter.series?.in).toEqual(["book:earthsea"]);
+		expect(commit("series:earthsea")?.filter.series?.in).toEqual(["series-00000000000000e5"]);
 		expect(commit("in:Favourites")?.filter.collection?.in).toEqual(["c1"]);
 		expect(commit('in:"sci fi"')?.filter.collection?.in).toEqual(["c2"]);
 		expect(commit("in:cafe")?.filter.collection?.in).toEqual(["c3"]);

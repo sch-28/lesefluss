@@ -8,6 +8,8 @@ function collection(overrides: Partial<Collection> = {}): Collection {
 		id: "c1",
 		name: "Shelf",
 		sortOrder: 1,
+		ordered: false,
+		seriesKey: null,
 		deleted: false,
 		createdAt: 1_000,
 		updatedAt: 1_000,
@@ -16,7 +18,15 @@ function collection(overrides: Partial<Collection> = {}): Collection {
 }
 
 function member(bookId: string, overrides: Partial<CollectionBook> = {}): CollectionBook {
-	return { collectionId: "c1", bookId, deleted: false, updatedAt: 1_000, ...overrides };
+	return {
+		collectionId: "c1",
+		bookId,
+		seriesIndex: null,
+		position: null,
+		deleted: false,
+		updatedAt: 1_000,
+		...overrides,
+	};
 }
 
 const syncCollection = (c: Collection) => ({
@@ -115,5 +125,55 @@ describe("collection pull merge", () => {
 			{ collections: [{ collectionId: "c1" }], collectionBooks: [null] },
 		);
 		expect(merge).toEqual({ collections: [], collectionBooks: [], rejected: 2 });
+	});
+
+	it("a row from the server without the series fields keeps the local values", () => {
+		const merge = buildCollectionMerge(
+			{
+				collections: [collection({ ordered: true, seriesKey: "dune" })],
+				collectionBooks: [member("aaaaaaaa", { seriesIndex: 2, position: 4 })],
+			},
+			{
+				collections: [syncCollection(collection({ name: "Renamed", updatedAt: 2_000 }))],
+				collectionBooks: [
+					{ collectionId: "c1", bookId: "aaaaaaaa", deleted: false, updatedAt: 2_000 },
+					{ collectionId: "c1", bookId: "bbbbbbbb", deleted: false, updatedAt: 2_000 },
+				],
+			},
+		);
+		expect(merge.collections).toEqual([
+			collection({ name: "Renamed", ordered: true, seriesKey: "dune", updatedAt: 2_000 }),
+		]);
+		expect(merge.collectionBooks).toEqual([
+			member("aaaaaaaa", { seriesIndex: 2, position: 4, updatedAt: 2_000 }),
+			member("bbbbbbbb", { updatedAt: 2_000 }),
+		]);
+	});
+
+	it("series fields round-trip through push and pull, nulls included", () => {
+		const local = {
+			collections: [
+				collection({ id: "series-0011223344556677", ordered: true, seriesKey: "dune" }),
+			],
+			collectionBooks: [
+				member("aaaaaaaa", { collectionId: "series-0011223344556677", seriesIndex: 2.5 }),
+				member("bbbbbbbb", { collectionId: "series-0011223344556677", position: -1 }),
+			],
+		};
+		const payload = SyncPayloadSchema.parse({
+			books: [],
+			settings: null,
+			highlights: [],
+			...pushableCollections(local),
+		});
+		const merge = buildCollectionMerge(
+			{
+				collections: [collection({ id: "series-0011223344556677", ordered: false, updatedAt: 1 })],
+				collectionBooks: [],
+			},
+			{ collections: payload.collections ?? [], collectionBooks: payload.collectionBooks ?? [] },
+		);
+		expect(merge.collections).toEqual(local.collections);
+		expect(merge.collectionBooks).toEqual(local.collectionBooks);
 	});
 });

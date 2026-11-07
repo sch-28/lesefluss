@@ -40,6 +40,8 @@ const fantasy: CollectionWithCount = {
 	id: "c1",
 	name: "Fantasy",
 	sortOrder: 1,
+	ordered: false,
+	seriesKey: null,
 	deleted: false,
 	createdAt: 1,
 	updatedAt: 1,

@@ -158,7 +158,6 @@ export function buildLibraryItems(
 				{
 					...sortKey,
 					seriesId: null,
-					bookSeriesName: book.seriesName,
 					collectionIds: collectionsOf.get(book.id) ?? NO_COLLECTIONS,
 					wordCount: book.wordCount,
 					addedAt: book.addedAt,
@@ -175,7 +174,6 @@ export function buildLibraryItems(
 				{
 					...sortKey,
 					seriesId: s.id,
-					bookSeriesName: null,
 					collectionIds: NO_COLLECTIONS,
 					wordCount: 0,
 					addedAt: s.createdAt,

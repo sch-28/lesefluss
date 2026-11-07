@@ -23,9 +23,8 @@ import { STAR_POSITIONS, StarGlyph } from "@lesefluss/ui/rating-stars";
 import { Switch } from "@lesefluss/ui/switch";
 import { Loader2, X } from "lucide-react";
 import type React from "react";
-import { useEffect, useId, useMemo, useState } from "react";
-import { queryHooks } from "../../services/db/hooks";
-import { bookSeriesNames, clampBookTags, FIELD_LIMITS, parseSeriesIndexInput } from "./book-fields";
+import { useEffect, useState } from "react";
+import { clampBookTags, FIELD_LIMITS } from "./book-fields";
 
 /**
  * The editable half of a book. Deliberately not a `Book`: the import confirm
@@ -42,8 +41,6 @@ export type BookEditValues = {
 	review: string | null;
 	tags: string[];
 	hideFromProfile: boolean;
-	seriesName: string | null;
-	seriesIndex: number | null;
 };
 
 type Props = {
@@ -73,7 +70,6 @@ export function clampToFieldLimits(values: BookEditValues): BookEditValues {
 		description: cap(values.description, FIELD_LIMITS.description),
 		review: cap(values.review, FIELD_LIMITS.review),
 		language: cap(values.language, FIELD_LIMITS.language),
-		seriesName: cap(values.seriesName?.trim() || null, FIELD_LIMITS.seriesName),
 		tags,
 	};
 }
@@ -89,8 +85,6 @@ export function bookToEditValues(book: {
 	review: string | null;
 	tags: string | null;
 	hideFromProfile: boolean;
-	seriesName: string | null;
-	seriesIndex: number | null;
 }): BookEditValues {
 	return {
 		title: book.title,
@@ -102,30 +96,16 @@ export function bookToEditValues(book: {
 		review: book.review,
 		tags: parseBookTags(book.tags),
 		hideFromProfile: book.hideFromProfile,
-		seriesName: book.seriesName,
-		seriesIndex: book.seriesIndex,
 	};
 }
 
 /**
- * The sheet's value shape as a `updateBook` patch. Given the values the sheet
- * opened with, an untouched series stays out of the patch: writing it would
- * bump the series revision and let this device's copy override a newer series
- * set elsewhere.
+ * The sheet's value shape as a `updateBook` patch. It never carries the series
+ * hint: a wrong series is fixed by moving the book between collections.
  */
-export function editValuesToPatch(values: BookEditValues, initial?: BookEditValues) {
-	const { seriesName, seriesIndex, ...clamped } = clampToFieldLimits(values);
-	const patch = { ...clamped, tags: serializeBookTags(clamped.tags) };
-	const isSeriesUntouched =
-		initial !== undefined &&
-		seriesName === initial.seriesName &&
-		(seriesName === null || seriesIndex === initial.seriesIndex);
-	if (isSeriesUntouched) return patch;
-	return { ...patch, seriesName, seriesIndex: seriesName === null ? null : seriesIndex };
-}
-
-function seriesIndexText(index: number | null): string {
-	return index === null ? "" : String(index);
+export function editValuesToPatch(values: BookEditValues) {
+	const clamped = clampToFieldLimits(values);
+	return { ...clamped, tags: serializeBookTags(clamped.tags) };
 }
 
 const textareaClass =
@@ -145,10 +125,6 @@ const BookEditSheet: React.FC<Props> = ({
 }) => {
 	const [values, setValues] = useState(initial);
 	const [tagDraft, setTagDraft] = useState("");
-	const [seriesIndexDraft, setSeriesIndexDraft] = useState(seriesIndexText(initial.seriesIndex));
-	const seriesListId = useId();
-	const { data: library } = queryHooks.useBooks();
-	const seriesNames = useMemo(() => bookSeriesNames(library?.books ?? []), [library]);
 
 	// Reopening on a different book has to start from that book, not from
 	// whatever the last edit left behind.
@@ -156,12 +132,8 @@ const BookEditSheet: React.FC<Props> = ({
 		if (isOpen) {
 			setValues(initial);
 			setTagDraft("");
-			setSeriesIndexDraft(seriesIndexText(initial.seriesIndex));
 		}
 	}, [isOpen, initial]);
-
-	const parsedSeriesIndex = parseSeriesIndexInput(seriesIndexDraft);
-	const isSeriesIndexInvalid = !!values.seriesName?.trim() && parsedSeriesIndex === undefined;
 
 	const set = <K extends keyof BookEditValues>(key: K, value: BookEditValues[K]) =>
 		setValues((v) => ({ ...v, [key]: value }));
@@ -228,40 +200,6 @@ const BookEditSheet: React.FC<Props> = ({
 							onChange={(e) => set("author", e.target.value || null)}
 						/>
 					</div>
-
-					<div className="flex gap-3">
-						<div className="flex min-w-0 flex-1 flex-col gap-1.5">
-							<Label htmlFor="book-series">Series</Label>
-							<Input
-								id="book-series"
-								list={seriesListId}
-								maxLength={FIELD_LIMITS.seriesName}
-								value={values.seriesName ?? ""}
-								placeholder="None"
-								onChange={(e) => set("seriesName", e.target.value || null)}
-							/>
-							<datalist id={seriesListId}>
-								{seriesNames.map((name) => (
-									<option key={name} value={name} />
-								))}
-							</datalist>
-						</div>
-						<div className="flex w-24 flex-col gap-1.5">
-							<Label htmlFor="book-series-index">Number</Label>
-							<Input
-								id="book-series-index"
-								inputMode="decimal"
-								value={seriesIndexDraft}
-								placeholder="2.5"
-								aria-invalid={isSeriesIndexInvalid}
-								disabled={!values.seriesName?.trim()}
-								onChange={(e) => setSeriesIndexDraft(e.target.value)}
-							/>
-						</div>
-					</div>
-					{isSeriesIndexInvalid && (
-						<p className="-mt-2 mb-0 text-destructive text-xs">The number must be like 3 or 2.5.</p>
-					)}
 
 					<div className="flex flex-col gap-1.5">
 						<Label htmlFor="book-status">Status</Label>
@@ -431,12 +369,7 @@ const BookEditSheet: React.FC<Props> = ({
 					</Button>
 					<Button
 						className="flex-1"
-						disabled={
-							isBusy ||
-							isCheckingAlternative ||
-							isSeriesIndexInvalid ||
-							values.title.trim().length === 0
-						}
+						disabled={isBusy || isCheckingAlternative || values.title.trim().length === 0}
 						onClick={() => {
 							// A pending tag the reader typed but never committed would
 							// otherwise be lost on save.
@@ -447,7 +380,6 @@ const BookEditSheet: React.FC<Props> = ({
 								...values,
 								title: values.title.trim(),
 								tags,
-								seriesIndex: parsedSeriesIndex ?? null,
 							});
 						}}
 					>

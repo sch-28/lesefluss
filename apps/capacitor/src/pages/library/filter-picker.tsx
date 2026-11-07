@@ -1,3 +1,4 @@
+import { isSeriesCollectionId } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import {
 	Drawer,
@@ -15,7 +16,6 @@ import type React from "react";
 import { useMemo, useState } from "react";
 import {
 	activeFilterCount,
-	bookSeriesFacetValue,
 	cycleValue,
 	FACET_LABELS,
 	FACETS,
@@ -37,7 +37,8 @@ export type FacetOptions = Record<Facet, FacetOption[]>;
 const SEARCHABLE_FROM = 8;
 
 /** Every value each facet can offer, with how many rows carry it. Collections
- *  are offered in their own order, empty ones included. */
+ *  are offered in their own order, empty ones included; a book series is named
+ *  after its series collection. */
 export function facetOptions(
 	items: readonly LibraryItem[],
 	collections: readonly { id: string; name: string }[] = [],
@@ -47,12 +48,9 @@ export function facetOptions(
 		Map<string, number>
 	>;
 	const seriesTitles = new Map<string, string>();
+	for (const c of collections) if (isSeriesCollectionId(c.id)) seriesTitles.set(c.id, c.name);
 	for (const item of items) {
 		if (item.kind === "series") seriesTitles.set(item.series.id, item.series.title);
-		else if (item.book.seriesName) {
-			const value = bookSeriesFacetValue(item.book.seriesName);
-			if (!seriesTitles.has(value)) seriesTitles.set(value, item.book.seriesName.trim());
-		}
 		for (const facet of FACETS) {
 			for (const value of item.facets[facet]) {
 				counts[facet].set(value, (counts[facet].get(value) ?? 0) + 1);

@@ -1,5 +1,5 @@
-import { COLLECTION_NAME_MAX } from "@lesefluss/core";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { COLLECTION_NAME_MAX, SERIES_ID_PREFIX } from "@lesefluss/core";
+import { and, asc, eq, inArray, isNotNull, isNull, like, sql } from "drizzle-orm";
 import { randomHexId } from "../../../utils/random-id";
 import { serverNow } from "../../sync/server-clock";
 import { db } from "../index";
@@ -11,8 +11,8 @@ import {
 	collections,
 } from "../schema";
 
-// 4 bound columns per row stays well under SQLite's 999 parameters.
-const CHUNK_SIZE = 200;
+// 8 bound columns per collection row stays under SQLite's 999 parameters.
+const CHUNK_SIZE = 100;
 // Below this gap a midpoint stops being distinct from its neighbours.
 const MIN_SORT_GAP = 1e-9;
 
@@ -32,12 +32,17 @@ export function normalizeCollectionName(name: string): string {
 }
 
 export async function getCollections(): Promise<CollectionWithCount[]> {
-	const bookCount = sql<number>`(SELECT count(*) FROM ${collectionBooks} WHERE ${collectionBooks.collectionId} = ${collections.id} AND ${liveMember})`;
+	const bookCount =
+		sql<number>`(SELECT count(*) FROM ${collectionBooks} WHERE ${collectionBooks.collectionId} = ${collections.id} AND ${liveMember})`.as(
+			"book_count",
+		);
 	const rows = await db
 		.select({
 			id: collections.id,
 			name: collections.name,
 			sortOrder: collections.sortOrder,
+			ordered: collections.ordered,
+			seriesKey: collections.seriesKey,
 			deleted: collections.deleted,
 			createdAt: collections.createdAt,
 			updatedAt: collections.updatedAt,
@@ -62,6 +67,8 @@ export async function createCollection(name: string, now = serverNow()): Promise
 		id: randomHexId(),
 		name: trimmed,
 		sortOrder: (last?.sortOrder ?? 0) + 1,
+		ordered: false,
+		seriesKey: null,
 		deleted: false,
 		createdAt: now,
 		updatedAt: now,
@@ -74,6 +81,14 @@ export async function renameCollection(id: string, name: string, now = serverNow
 	const trimmed = normalizeCollectionName(name);
 	if (!trimmed) throw new Error("Collection name is empty");
 	await db.update(collections).set({ name: trimmed, updatedAt: now }).where(eq(collections.id, id));
+}
+
+export async function setCollectionOrdered(
+	id: string,
+	ordered: boolean,
+	now = serverNow(),
+): Promise<void> {
+	await db.update(collections).set({ ordered, updatedAt: now }).where(eq(collections.id, id));
 }
 
 /** Moves a collection to `toIndex` in the visible order, writing one row (or all, once gaps run out). */
@@ -121,17 +136,24 @@ export async function deleteCollection(id: string, now = serverNow()): Promise<v
 		.where(and(eq(collectionBooks.collectionId, id), eq(collectionBooks.deleted, false)));
 }
 
+/**
+ * Adds books, or brings back removed ones. `seriesIndex` (book id → #N) is
+ * written only for the books it names; a re-added book keeps its old number otherwise.
+ */
 export async function addBooksToCollection(
 	collectionId: string,
 	bookIds: string[],
 	now = serverNow(),
+	seriesIndex?: ReadonlyMap<string, number | null>,
 ): Promise<void> {
 	const unique = [...new Set(bookIds)];
-	for (let i = 0; i < unique.length; i += CHUNK_SIZE) {
+	const numbered = unique.filter((id) => seriesIndex?.has(id));
+	const plain = unique.filter((id) => !seriesIndex?.has(id));
+	for (let i = 0; i < plain.length; i += CHUNK_SIZE) {
 		await db
 			.insert(collectionBooks)
 			.values(
-				unique
+				plain
 					.slice(i, i + CHUNK_SIZE)
 					.map((bookId) => ({ collectionId, bookId, deleted: false, updatedAt: now })),
 			)
@@ -140,6 +162,69 @@ export async function addBooksToCollection(
 				set: { deleted: false, updatedAt: now },
 			});
 	}
+	for (let i = 0; i < numbered.length; i += CHUNK_SIZE) {
+		await db
+			.insert(collectionBooks)
+			.values(
+				numbered.slice(i, i + CHUNK_SIZE).map((bookId) => ({
+					collectionId,
+					bookId,
+					seriesIndex: seriesIndex?.get(bookId) ?? null,
+					deleted: false,
+					updatedAt: now,
+				})),
+			)
+			.onConflictDoUpdate({
+				target: [collectionBooks.collectionId, collectionBooks.bookId],
+				set: { seriesIndex: sql`excluded.series_index`, deleted: false, updatedAt: now },
+			});
+	}
+}
+
+export interface MembershipOrder {
+	bookId: string;
+	seriesIndex: number | null;
+	position: number | null;
+}
+
+/** Writes #N and manual positions of a collection's members. */
+export async function setMembershipOrder(
+	collectionId: string,
+	order: MembershipOrder[],
+	now = serverNow(),
+): Promise<void> {
+	for (const { bookId, seriesIndex, position } of order) {
+		await db
+			.update(collectionBooks)
+			.set({ seriesIndex, position, updatedAt: now })
+			.where(
+				and(eq(collectionBooks.collectionId, collectionId), eq(collectionBooks.bookId, bookId)),
+			);
+	}
+}
+
+/** Live members in reading order: #N, then manual position, then title; unset values last. */
+export async function getCollectionMembers(collectionId: string): Promise<CollectionBook[]> {
+	return db
+		.select({
+			collectionId: collectionBooks.collectionId,
+			bookId: collectionBooks.bookId,
+			seriesIndex: collectionBooks.seriesIndex,
+			position: collectionBooks.position,
+			deleted: collectionBooks.deleted,
+			updatedAt: collectionBooks.updatedAt,
+		})
+		.from(collectionBooks)
+		.innerJoin(books, eq(books.id, collectionBooks.bookId))
+		.where(and(eq(collectionBooks.collectionId, collectionId), liveMember))
+		.orderBy(
+			sql`${collectionBooks.seriesIndex} IS NULL`,
+			asc(collectionBooks.seriesIndex),
+			sql`${collectionBooks.position} IS NULL`,
+			asc(collectionBooks.position),
+			asc(books.title),
+			asc(books.id),
+		);
 }
 
 export async function removeBooksFromCollection(
@@ -210,6 +295,53 @@ export async function getAllCollectionBooksForSync(): Promise<CollectionBook[]> 
 	return db.select().from(collectionBooks);
 }
 
+/** Live, non-chapter books that carry a series hint. */
+export async function getSeriesHintBooks() {
+	return db
+		.select({
+			id: books.id,
+			addedAt: books.addedAt,
+			seriesName: books.seriesName,
+			seriesIndex: books.seriesIndex,
+		})
+		.from(books)
+		.where(and(eq(books.deleted, false), isNull(books.seriesId), isNotNull(books.seriesName)));
+}
+
+/** Every series collection row and its memberships, tombstones included: they are the dismissals. */
+export async function getSeriesReconcileRows(): Promise<{
+	collections: Collection[];
+	memberships: CollectionBook[];
+}> {
+	const seriesRows = like(collections.id, `${SERIES_ID_PREFIX}%`);
+	return {
+		collections: await db.select().from(collections).where(seriesRows),
+		memberships: await db
+			.select()
+			.from(collectionBooks)
+			.where(like(collectionBooks.collectionId, `${SERIES_ID_PREFIX}%`)),
+	};
+}
+
+/** Inserts rows that do not exist yet; an existing row (live or tombstoned) always wins. */
+export async function insertMissingCollectionRows(
+	newCollections: Collection[],
+	newMemberships: CollectionBook[],
+): Promise<void> {
+	for (let i = 0; i < newCollections.length; i += CHUNK_SIZE) {
+		await db
+			.insert(collections)
+			.values(newCollections.slice(i, i + CHUNK_SIZE))
+			.onConflictDoNothing();
+	}
+	for (let i = 0; i < newMemberships.length; i += CHUNK_SIZE) {
+		await db
+			.insert(collectionBooks)
+			.values(newMemberships.slice(i, i + CHUNK_SIZE))
+			.onConflictDoNothing();
+	}
+}
+
 export async function upsertCollections(rows: Collection[]): Promise<void> {
 	for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
 		await db
@@ -220,6 +352,8 @@ export async function upsertCollections(rows: Collection[]): Promise<void> {
 				set: {
 					name: sql`excluded.name`,
 					sortOrder: sql`excluded.sort_order`,
+					ordered: sql`excluded.ordered`,
+					seriesKey: sql`excluded.series_key`,
 					deleted: sql`excluded.deleted`,
 					createdAt: sql`excluded.created_at`,
 					updatedAt: sql`excluded.updated_at`,
@@ -236,7 +370,12 @@ export async function upsertCollectionBooks(rows: CollectionBook[]): Promise<voi
 			.values(rows.slice(i, i + CHUNK_SIZE))
 			.onConflictDoUpdate({
 				target: [collectionBooks.collectionId, collectionBooks.bookId],
-				set: { deleted: sql`excluded.deleted`, updatedAt: sql`excluded.updated_at` },
+				set: {
+					seriesIndex: sql`excluded.series_index`,
+					position: sql`excluded.position`,
+					deleted: sql`excluded.deleted`,
+					updatedAt: sql`excluded.updated_at`,
+				},
 				where: sql`${collectionBooks.updatedAt} < excluded.updated_at`,
 			});
 	}

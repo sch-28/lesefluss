@@ -22,8 +22,6 @@ export type ImportOverrides = {
 	rating: number | null;
 	review: string | null;
 	tags: string | null;
-	seriesName?: string | null;
-	seriesIndex?: number | null;
 };
 
 /**

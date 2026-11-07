@@ -8,6 +8,7 @@ vi.mock("../sync", () => ({ scheduleSyncPush: vi.fn() }));
 vi.mock("../telemetry", () => ({ reportEvent: vi.fn() }));
 vi.mock("../query-client", () => ({ queryClient: { invalidateQueries: vi.fn() } }));
 vi.mock("../book-import/sources/read-file", () => ({ readOriginalFile: vi.fn() }));
+vi.mock("../series-collections", () => ({ scheduleSeriesReconcile: vi.fn(async () => {}) }));
 
 const { readEpubSeries, runSeriesBackfill, startSeriesBackfill } = await import(
 	"../book-series-backfill"
@@ -15,6 +16,7 @@ const { readEpubSeries, runSeriesBackfill, startSeriesBackfill } = await import(
 const { Capacitor } = await import("@capacitor/core");
 const { scheduleSyncPush } = await import("../sync");
 const { reportEvent } = await import("../telemetry");
+const { scheduleSeriesReconcile } = await import("../series-collections");
 type Deps = Parameters<typeof runSeriesBackfill>[0];
 
 type Book = { id: string; filePath: string; seriesName: string | null };
@@ -209,6 +211,7 @@ describe("startSeriesBackfill", () => {
 		expect(isDone).toHaveBeenCalledTimes(1);
 		expect(filled).toHaveLength(1);
 		expect(scheduleSyncPush).toHaveBeenCalledTimes(1);
+		expect(scheduleSeriesReconcile).toHaveBeenCalledTimes(1);
 		expect(reportEvent).toHaveBeenCalledWith("series_backfill", {
 			extra: { filled: 1, noSeries: 0, failed: 0 },
 		});

@@ -11,6 +11,7 @@ export * from "./push";
 export * from "./reading-credit";
 export * from "./reading-goal";
 export * from "./reading-rates";
+export * from "./series-key";
 export * from "./settings";
 export * from "./social";
 export * from "./speed-model";

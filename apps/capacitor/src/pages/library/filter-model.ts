@@ -3,6 +3,7 @@ import {
 	BOOK_STATUSES,
 	HALF_STARS_PER_STAR,
 	isBookStatus,
+	isSeriesCollectionId,
 } from "@lesefluss/core";
 
 /**
@@ -82,8 +83,7 @@ export type FilterFields = {
 	author: string;
 	/** A serial's own id. */
 	seriesId: string | null;
-	/** A book's own series, independent of serials. */
-	bookSeriesName: string | null;
+	/** Live collections the row is in; the series collections among them are its book series. */
 	collectionIds: readonly string[];
 	/** 0 when unknown. */
 	wordCount: number;
@@ -110,25 +110,13 @@ function windowsContaining(at: number, now: number): string[] {
 	return DATE_WINDOWS.filter((w) => age <= w.days * DAY_MS).map((w) => w.value);
 }
 
-const BOOK_SERIES_PREFIX = "book:";
-
-/** A book series' facet value, set apart from serial ids (which are bare ids)
- *  and matched case-insensitively, so "Dune" and "dune" are one series. */
-export function bookSeriesFacetValue(name: string): string {
-	return BOOK_SERIES_PREFIX + name.trim().toLocaleLowerCase();
-}
-
 /** Every facet value a row carries. Computed once per library change, not per filter. */
 export function facetValuesOf(fields: FilterFields, now: number): FacetValues {
 	return {
 		status: [fields.status],
 		tags: fields.tags,
 		author: fields.author ? [fields.author] : [],
-		series: fields.seriesId
-			? [fields.seriesId]
-			: fields.bookSeriesName
-				? [bookSeriesFacetValue(fields.bookSeriesName)]
-				: [],
+		series: fields.seriesId ? [fields.seriesId] : fields.collectionIds.filter(isSeriesCollectionId),
 		collection: fields.collectionIds,
 		// Ratings count half stars; a 3.5 rounds up into the 4-star value.
 		rating: [fields.rating ? String(Math.ceil(fields.rating / HALF_STARS_PER_STAR)) : UNRATED],

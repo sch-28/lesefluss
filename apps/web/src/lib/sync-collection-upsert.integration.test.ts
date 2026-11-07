@@ -108,4 +108,61 @@ describe.skipIf(!hasDb)("sync collections upsert (integration)", () => {
 		]);
 		expect(await members("c6")).toEqual({ dddddddd: true });
 	});
+
+	test("a push from a client that omits the series fields keeps the stored ones", async () => {
+		await upsertSyncCollections(db, userId, [
+			collection({ collectionId: "c7", ordered: true, seriesKey: "the expanse" }),
+		]);
+		await upsertSyncCollectionBooks(db, userId, [
+			member("eeeeeeee", { collectionId: "c7", seriesIndex: 2, position: 1.5 }),
+		]);
+		await upsertSyncCollections(db, userId, [
+			collection({ collectionId: "c7", name: "Renamed", updatedAt: 2_000_000 }),
+		]);
+		await upsertSyncCollectionBooks(db, userId, [
+			member("eeeeeeee", { collectionId: "c7", updatedAt: 2_000_000 }),
+		]);
+		const stored = await readCollection("c7");
+		expect(stored).toMatchObject({ name: "Renamed", ordered: true, seriesKey: "the expanse" });
+		const [membership] = await db
+			.select()
+			.from(syncCollectionBooks)
+			.where(
+				and(eq(syncCollectionBooks.userId, userId), eq(syncCollectionBooks.collectionId, "c7")),
+			);
+		expect(membership).toMatchObject({ seriesIndex: 2, position: 1.5 });
+	});
+
+	test("a newer push that carries the series fields clears them with null", async () => {
+		await upsertSyncCollections(db, userId, [
+			collection({ collectionId: "c8", ordered: true, seriesKey: "dune" }),
+		]);
+		await upsertSyncCollectionBooks(db, userId, [
+			member("ffffffff", { collectionId: "c8", seriesIndex: 1, position: 3 }),
+		]);
+		await upsertSyncCollections(db, userId, [
+			collection({ collectionId: "c8", ordered: false, seriesKey: null, updatedAt: 2_000_000 }),
+		]);
+		await upsertSyncCollectionBooks(db, userId, [
+			member("ffffffff", {
+				collectionId: "c8",
+				seriesIndex: null,
+				position: null,
+				updatedAt: 2_000_000,
+			}),
+		]);
+		expect(await readCollection("c8")).toMatchObject({ ordered: false, seriesKey: null });
+		const [membership] = await db
+			.select()
+			.from(syncCollectionBooks)
+			.where(
+				and(eq(syncCollectionBooks.userId, userId), eq(syncCollectionBooks.collectionId, "c8")),
+			);
+		expect(membership).toMatchObject({ seriesIndex: null, position: null });
+	});
+
+	test("a new row from an old client takes the defaults", async () => {
+		await upsertSyncCollections(db, userId, [collection({ collectionId: "c9" })]);
+		expect(await readCollection("c9")).toMatchObject({ ordered: false, seriesKey: null });
+	});
 });

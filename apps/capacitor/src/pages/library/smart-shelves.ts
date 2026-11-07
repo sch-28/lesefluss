@@ -97,16 +97,35 @@ export function shelfCounts(
 
 export const BUILT_IN_PINS_KEY = "lesefluss:builtin-shelf-pins";
 
+/** The pinned built-ins. One with no stored choice on this device starts pinned. */
 export function parseBuiltInPins(raw: string | null): Set<string> {
-	if (!raw) return new Set();
+	const choices = storedPinChoices(raw);
+	return new Set(BUILT_INS.map((b) => b.id).filter((id) => choices.get(id) ?? true));
+}
+
+/** The stored value after the user pins or unpins one built-in. */
+export function withBuiltInPin(raw: string | null, id: string, pinned: boolean): string {
+	const choices = storedPinChoices(raw);
+	if (isBuiltInShelfId(id)) choices.set(id, pinned);
+	return JSON.stringify(Object.fromEntries(choices));
+}
+
+function storedPinChoices(raw: string | null): Map<string, boolean> {
+	const choices = new Map<string, boolean>();
+	if (!raw) return choices;
+	let parsed: unknown;
 	try {
-		const parsed: unknown = JSON.parse(raw);
-		return new Set(
-			Array.isArray(parsed)
-				? parsed.filter((id): id is string => typeof id === "string" && isBuiltInShelfId(id))
-				: [],
-		);
+		parsed = JSON.parse(raw);
 	} catch {
-		return new Set();
+		return choices;
 	}
+	// The first format stored only the pinned ids, so every built-in had an explicit choice.
+	if (Array.isArray(parsed)) {
+		for (const b of BUILT_INS) choices.set(b.id, parsed.includes(b.id));
+	} else if (parsed && typeof parsed === "object") {
+		for (const [id, pinned] of Object.entries(parsed)) {
+			if (isBuiltInShelfId(id) && typeof pinned === "boolean") choices.set(id, pinned);
+		}
+	}
+	return choices;
 }

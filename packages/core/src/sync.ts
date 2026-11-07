@@ -327,6 +327,9 @@ export const SyncCollectionSchema = z.object({
 	collectionId: z.string().min(1).max(64),
 	name: z.string().trim().min(1).max(COLLECTION_NAME_MAX),
 	sortOrder: z.number(),
+	/** Optional on the wire: a client from before series collections omits them, and the server keeps what it stores. */
+	ordered: z.boolean().optional(),
+	seriesKey: z.string().min(1).max(BOOK_SERIES_NAME_MAX).nullable().optional(),
 	deleted: z.boolean(),
 	createdAt: epochMs(),
 	updatedAt: epochMs(),
@@ -336,6 +339,8 @@ export const SyncCollectionSchema = z.object({
 export const SyncCollectionBookSchema = z.object({
 	collectionId: z.string().min(1).max(64),
 	bookId: z.string().regex(/^[0-9a-f]{8}$/),
+	seriesIndex: z.number().nonnegative().max(BOOK_SERIES_INDEX_MAX).nullable().optional(),
+	position: z.number().finite().nullable().optional(),
 	deleted: z.boolean(),
 	updatedAt: epochMs(),
 });

@@ -1,11 +1,17 @@
-import { type BookStatus, wordPos } from "@lesefluss/core";
+import { type BookStatus, seriesCollectionId, wordPos } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
 import { makeBook } from "../../test/book-fixture";
-import { bookSeriesFacetValue, type LibraryFilter } from "./filter-model";
+import type { LibraryFilter } from "./filter-model";
 import { facetOptions } from "./filter-picker";
-import { buildLibraryItems, filterAndSortLibrary, type SortBy, tagsInUse } from "./sort-filter";
+import {
+	applyLibraryView,
+	buildLibraryItems,
+	filterAndSortLibrary,
+	type SortBy,
+	tagsInUse,
+} from "./sort-filter";
 
 type FilterBy = "all" | BookStatus;
 
@@ -116,23 +122,34 @@ describe("series shelves", () => {
 	});
 });
 
-describe("the series facet with book-level series", () => {
+describe("the series facet with series collections", () => {
+	const dune = seriesCollectionId("dune");
 	const dune1 = makeBook({ id: "aaaaaaaa", seriesName: "Dune", seriesIndex: 1 });
 	const dune2 = makeBook({ id: "bbbbbbbb", seriesName: "dune ", seriesIndex: 2 });
-	const loose = makeBook({ id: "cccccccc" });
+	const loose = makeBook({ id: "cccccccc", seriesName: "Dune" });
 	const serial = makeSeries({ id: "abc12345", title: "A Serial" });
+	const collectionsOf = new Map([
+		["aaaaaaaa", [dune, "f00dcafe"]],
+		["bbbbbbbb", [dune]],
+		["cccccccc", ["f00dcafe"]],
+	]);
+	const collections = [
+		{ id: dune, name: "Dune Saga" },
+		{ id: "f00dcafe", name: "Favourites" },
+	];
+	const items = () =>
+		buildLibraryItems([dune1, dune2, loose], [serial], new Map(), Date.now(), collectionsOf);
 
-	it("lists book series next to serials, one entry per name whatever its case", () => {
-		const options = facetOptions(buildLibraryItems([dune1, dune2, loose], [serial], new Map()));
-		expect(options.series).toEqual([
+	it("lists series collections next to serials, named after the collection", () => {
+		expect(facetOptions(items(), collections).series).toEqual([
 			{ value: "abc12345", label: "A Serial", count: 1 },
-			{ value: bookSeriesFacetValue("Dune"), label: "Dune", count: 2 },
+			{ value: dune, label: "Dune Saga", count: 2 },
 		]);
 	});
 
-	it("shows only that series' books when filtered by it", () => {
-		const shown = filterAndSortLibrary([dune1, dune2, loose], [serial], new Map(), {
-			filter: { series: { in: [bookSeriesFacetValue("DUNE")], out: [] } },
+	it("goes by membership, not by the book's series hint", () => {
+		const shown = applyLibraryView(items(), {
+			filter: { series: { in: [dune], out: [] } },
 			sortBy: "title",
 		}).map((item) => (item.kind === "book" ? item.book.id : item.series.id));
 		expect(shown.sort()).toEqual(["aaaaaaaa", "bbbbbbbb"]);

@@ -433,6 +433,10 @@ export const collections = sqliteTable("collections", {
 	id: text("id").primaryKey(),
 	name: text("name").notNull(),
 	sortOrder: real("sort_order").notNull(),
+	/** Members read in sequence: by `seriesIndex`, then `position`. */
+	ordered: integer("ordered", { mode: "boolean" }).notNull().default(false),
+	/** Set on a series collection (normalizeSeriesKey); its id is derived from it. */
+	seriesKey: text("series_key"),
 	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
 	createdAt: integer("created_at").notNull(),
 	updatedAt: integer("updated_at").notNull(),
@@ -448,6 +452,9 @@ export const collectionBooks = sqliteTable(
 	{
 		collectionId: text("collection_id").notNull(),
 		bookId: text("book_id").notNull(),
+		seriesIndex: real("series_index"),
+		/** Manual order among members with the same (or no) `seriesIndex`. */
+		position: real("position"),
 		deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
 		updatedAt: integer("updated_at").notNull(),
 	},

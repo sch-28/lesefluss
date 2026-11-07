@@ -1,4 +1,4 @@
-import { BOOK_SERIES_INDEX_MAX, BOOK_SERIES_NAME_MAX, serializeBookTags } from "@lesefluss/core";
+import { serializeBookTags } from "@lesefluss/core";
 
 /**
  * Field caps, mirroring `SyncBookSchema`. The server validates the whole push
@@ -14,7 +14,6 @@ export const FIELD_LIMITS = {
 	review: 20_000,
 	language: 35,
 	tagsJson: 2000,
-	seriesName: BOOK_SERIES_NAME_MAX,
 } as const;
 
 /**
@@ -37,19 +36,6 @@ export function clampBookTags(tags: readonly string[]): { tags: string[]; droppe
 	return { tags: kept, dropped: [] };
 }
 
-/**
- * A typed series number, or null when the field is empty. `undefined` marks
- * text that is no number the sync schema accepts, so the sheet can refuse it
- * instead of silently clearing the number. A comma counts as the decimal mark.
- */
-export function parseSeriesIndexInput(text: string): number | null | undefined {
-	const trimmed = text.trim().replace(",", ".");
-	if (trimmed === "") return null;
-	if (!/^\d+(\.\d+)?$/.test(trimmed)) return undefined;
-	const value = Number(trimmed);
-	return value <= BOOK_SERIES_INDEX_MAX ? value : undefined;
-}
-
 /** "Foundation #2.5", or the bare name when the book has no number. */
 export function bookSeriesLabel(book: {
 	seriesName: string | null;
@@ -57,15 +43,4 @@ export function bookSeriesLabel(book: {
 }): string | null {
 	if (!book.seriesName) return null;
 	return book.seriesIndex === null ? book.seriesName : `${book.seriesName} #${book.seriesIndex}`;
-}
-
-/** Every book series in the library, each name once (case-insensitive, first spelling wins), sorted. */
-export function bookSeriesNames(books: readonly { seriesName: string | null }[]): string[] {
-	const byKey = new Map<string, string>();
-	for (const { seriesName } of books) {
-		if (!seriesName) continue;
-		const key = seriesName.toLocaleLowerCase();
-		if (!byKey.has(key)) byKey.set(key, seriesName);
-	}
-	return [...byKey.values()].sort((a, b) => a.localeCompare(b));
 }

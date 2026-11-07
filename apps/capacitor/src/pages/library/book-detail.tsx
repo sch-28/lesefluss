@@ -164,8 +164,6 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					review: null,
 					tags: null,
 					hideFromProfile: false,
-					seriesName: null,
-					seriesIndex: null,
 				},
 			),
 		[book],
@@ -404,7 +402,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				isSaving={updateMutation.isPending}
 				onSave={(values) => {
 					updateMutation.mutate(
-						{ id: book.id, values: editValuesToPatch(values, editValues) },
+						{ id: book.id, values: editValuesToPatch(values) },
 						{ onSuccess: () => setIsEditOpen(false) },
 					);
 				}}

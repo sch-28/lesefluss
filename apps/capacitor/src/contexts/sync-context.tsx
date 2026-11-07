@@ -18,6 +18,7 @@ import {
 import { toast } from "../components/toast";
 import { startSeriesBackfill } from "../services/book-series-backfill";
 import { syncPushRegistration } from "../services/push";
+import { startSeriesReconcile } from "../services/series-collections";
 import { invalidateAfterSync } from "../services/social/cache";
 import {
 	adoptSyncIdentity,
@@ -361,7 +362,9 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 		setIsSessionResolved,
 	);
 	useEffect(() => {
-		if (isSessionResolved && !isSyncing) startSeriesBackfill();
+		if (!isSessionResolved || isSyncing) return;
+		startSeriesReconcile();
+		startSeriesBackfill();
 	}, [isSessionResolved, isSyncing]);
 	useResumeSync(setLastSynced);
 	useWebResumeSync(isLoggedIn, setLastSynced);

@@ -52,6 +52,7 @@ import { reportLoweredRevision, reportMissedPosition } from "../position-revisio
 import { clearDeliveredPushes, unregisterPush } from "../push";
 import { queryClient } from "../query-client";
 import { notifySessionsDeleted } from "../reading-sessions/deleted";
+import { scheduleSeriesReconcile } from "../series-collections";
 import { reportEvent } from "../telemetry";
 import { SYNC_URL } from "./auth-client";
 import { buildBookMergeUpdate } from "./book-merge";
@@ -1188,6 +1189,8 @@ export async function pullSync(): Promise<Set<string>> {
 			queryClient.invalidateQueries({ queryKey: statsKeys.all });
 			// Not left to the invalidation alone: a query nobody is watching emits nothing more.
 			requestReminderSync();
+			// Pulled hints or collections can complete a series this device had only one book of.
+			void scheduleSeriesReconcile();
 		}
 
 		log("sync", "pull complete");

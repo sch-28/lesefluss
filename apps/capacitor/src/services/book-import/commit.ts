@@ -11,6 +11,7 @@ import { FIELD_LIMITS } from "../../pages/library/book-fields";
 import { log } from "../../utils/log";
 import { queries } from "../db/queries";
 import type { Book, NewBook } from "../db/schema";
+import { scheduleSeriesReconcile } from "../series-collections";
 import { storeBookImages } from "./store-images";
 import type { ImportExtras, ImportOverrides } from "./types";
 
@@ -46,10 +47,8 @@ export function buildImportedBookRow(
 	stamps: { id: string; addedAt: number; size: number },
 ): NewBook {
 	const { id, addedAt, size } = stamps;
-	const series =
-		overrides?.seriesName !== undefined
-			? { name: overrides.seriesName, index: overrides.seriesIndex ?? null }
-			: { name: payload.seriesName ?? null, index: payload.seriesIndex ?? null };
+	// A read-only hint: a wrong series is fixed by moving the book between collections.
+	const series = { name: payload.seriesName ?? null, index: payload.seriesIndex ?? null };
 	return {
 		id,
 		title: overrides?.title ?? payload.title,
@@ -126,6 +125,8 @@ export async function commitBook(
 	// payload's bytes alive at a time.
 	const backgroundWork = finishImportInBackground(id, payload);
 	if (options.awaitBackgroundWork) await backgroundWork;
+
+	if (payload.seriesName) await scheduleSeriesReconcile();
 
 	const stored = await queries.getBook(id);
 	if (!stored) throw new Error(`commitBook: ${id} disappeared after insert`);

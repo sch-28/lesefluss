@@ -408,6 +408,8 @@ async function getUserSyncData(
 				collectionId: c.collectionId,
 				name: c.name,
 				sortOrder: c.sortOrder,
+				ordered: c.ordered,
+				seriesKey: c.seriesKey,
 				deleted: c.deleted,
 				createdAt: toMs(c.createdAt),
 				updatedAt: toMs(c.updatedAt),
@@ -417,6 +419,8 @@ async function getUserSyncData(
 			(m): SyncCollectionBook => ({
 				collectionId: m.collectionId,
 				bookId: m.bookId,
+				seriesIndex: m.seriesIndex,
+				position: m.position,
 				deleted: m.deleted,
 				updatedAt: toMs(m.updatedAt),
 			}),

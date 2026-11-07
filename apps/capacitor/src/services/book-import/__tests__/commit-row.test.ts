@@ -165,16 +165,9 @@ describe("buildImportedBookRow language precedence", () => {
 		expect(row).toMatchObject({ seriesName: null, seriesIndex: null, seriesUpdatedAt: 0 });
 	});
 
-	it("takes the series the reader corrected while confirming, a clear included", () => {
+	it("always stores the file's series as the hint, even when the confirm sheet was shown", () => {
 		const fromFile = { ...payload, seriesName: "Foundation", seriesIndex: 2 };
-		const renamed = buildImportedBookRow(
-			fromFile,
-			{},
-			makeOverrides({ seriesName: "Robots", seriesIndex: 4 }),
-			stamps,
-		);
-		expect(renamed).toMatchObject({ seriesName: "Robots", seriesIndex: 4 });
-		const cleared = buildImportedBookRow(fromFile, {}, makeOverrides({ seriesName: null }), stamps);
-		expect(cleared).toMatchObject({ seriesName: null, seriesIndex: null, seriesUpdatedAt: 0 });
+		const row = buildImportedBookRow(fromFile, {}, makeOverrides(), stamps);
+		expect(row).toMatchObject({ seriesName: "Foundation", seriesIndex: 2, seriesUpdatedAt: 1000 });
 	});
 });

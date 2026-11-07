@@ -869,7 +869,7 @@ const Library: React.FC = () => {
 					isSaving={updateMutation.isPending}
 					onSave={(values) => {
 						updateMutation.mutate(
-							{ id: editBook.id, values: editValuesToPatch(values, editValues ?? undefined) },
+							{ id: editBook.id, values: editValuesToPatch(values) },
 							{ onSuccess: () => setEditBook(null) },
 						);
 					}}
