@@ -120,6 +120,7 @@ import { isBurstAvailable, openBurst } from "../burst/open-burst";
 import { liveToday } from "../library/reading-goal/goal-model";
 import { closeMini, isMiniAvailable, openMini } from "../mini/open-mini";
 import { useMiniFollow } from "../mini/use-mini-follow";
+import { useMiniTakeover } from "../mini/use-mini-takeover";
 import AnnotationsSheet from "./annotations-sheet";
 import AppearancePopover from "./appearance-popover";
 import type { BookmarkRow } from "./bookmark-list";
@@ -1963,7 +1964,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						title: book.title,
 						content,
 						wordIndex: host === "pip" ? (wordIndex ?? null) : null,
-						startWord: lastWordRef.current ?? 0,
+						startWord: browse.anchor ?? lastWordRef.current ?? 0,
 						settings: rsvpSettings,
 						focalColor: miniFocalColor,
 						appearance:
@@ -2005,20 +2006,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		focalColor: miniFocalColor,
 	});
 	isMiniPlayingRef.current = mini.isPlayingNow;
-	useEffect(
-		() =>
-			navigateEmitter.subscribe((word, source) => {
-				if (isMiniSaveRef.current) return;
-				// The follow's own scroll reconciling, not the reader moving.
-				if (source === "settle" && isReconcilingJump()) return;
-				mini.takeover(word);
-			}),
-		[navigateEmitter, mini.takeover, isReconcilingJump],
-	);
-	// Entering browse needn't save (the anchor may already be the saved word), so it has no emit to take over on.
-	useEffect(() => {
-		if (browseAnchor !== null) mini.takeover(browseAnchor);
-	}, [browseAnchor, mini.takeover]);
+	const isMiniSave = useCallback(() => isMiniSaveRef.current, []);
+	useMiniTakeover({
+		takeover: mini.takeover,
+		navigateEmitter,
+		browseAnchor,
+		isMiniSave,
+		isReconcilingJump,
+	});
 	const openMiniWindow = useCallback(() => {
 		if (!book) return;
 		if (readerModeRef.current === "rsvp") exitRsvpToStandard();

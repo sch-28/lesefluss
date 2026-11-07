@@ -16,16 +16,53 @@ const PIP_SIZE = { width: 380, height: 150 };
 const POPUP_FEATURES = "popup,width=600,height=150";
 const POPUP_NAME = "lesefluss-mini";
 
-type Env = { isNative: boolean; hasPip: boolean; hasChannel: boolean };
+type Env = { isNative: boolean; isMobile: boolean; hasPip: boolean; hasChannel: boolean };
 
-export function isMiniAvailableIn({ isNative, hasPip, hasChannel }: Env): boolean {
-	return !isNative && (hasPip || hasChannel);
+export function isMiniAvailableIn({ isNative, isMobile, hasPip, hasChannel }: Env): boolean {
+	return !isNative && !isMobile && (hasPip || hasChannel);
 }
 
-/** Web only, with either an always-on-top pop-up or a popup window fed over a channel. */
+type MobileHints = {
+	userAgent: string;
+	platform: string;
+	maxTouchPoints: number;
+	uaDataMobile?: boolean;
+	isPrimaryPointerCoarse: boolean;
+};
+
+/** Phones and tablets, where a popup opens as a full tab. */
+export function isMobileBrowser({
+	userAgent,
+	platform,
+	maxTouchPoints,
+	uaDataMobile,
+	isPrimaryPointerCoarse,
+}: MobileHints): boolean {
+	// Tablets that request the desktop site send a desktop user agent; a touchscreen laptop's primary pointer is still fine.
+	if (uaDataMobile || isPrimaryPointerCoarse) return true;
+	if (/Android|iPhone|iPad|iPod|Mobi/i.test(userAgent)) return true;
+	// iPadOS Safari reports itself as a Mac.
+	return platform === "MacIntel" && maxTouchPoints > 1;
+}
+
+function isMobileNavigator(): boolean {
+	if (typeof navigator === "undefined") return false;
+	const nav = navigator as Navigator & { userAgentData?: { mobile?: boolean } };
+	return isMobileBrowser({
+		userAgent: nav.userAgent,
+		platform: nav.platform,
+		maxTouchPoints: nav.maxTouchPoints ?? 0,
+		uaDataMobile: nav.userAgentData?.mobile,
+		isPrimaryPointerCoarse:
+			typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches,
+	});
+}
+
+/** Desktop web only, with either an always-on-top pop-up or a popup window fed over a channel. */
 export function isMiniAvailable(): boolean {
 	return isMiniAvailableIn({
 		isNative: Capacitor.isNativePlatform(),
+		isMobile: isMobileNavigator(),
 		hasPip: isPipSupported(),
 		hasChannel: typeof BroadcastChannel !== "undefined",
 	});

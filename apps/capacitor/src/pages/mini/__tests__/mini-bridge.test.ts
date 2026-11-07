@@ -163,6 +163,35 @@ describe("mini bridge", () => {
 		expect(main.onSave).toHaveBeenCalledExactlyOnceWith(901, true);
 	});
 
+	it("a popup that boots after a takeover reports under that takeover's epoch", () => {
+		const link = createMemoryLink();
+		let isBooting = true;
+		const lossyMain = {
+			...link.main,
+			send: (message: ToMini) => {
+				if (!isBooting) link.main.send(message);
+			},
+		};
+		const onSave = vi.fn();
+		const follower = createFollower(lossyMain, {
+			getStart: () => START,
+			onShown: vi.fn(),
+			onSave,
+			onWpm: vi.fn(),
+			onClosed: vi.fn(),
+		});
+		// A channel drops what is sent before the popup listens.
+		follower.takeover(900);
+		isBooting = false;
+		const client = createClient(
+			link.mini,
+			{ onStart: vi.fn(), onPosition: vi.fn(), onSettings: vi.fn(), onStop: vi.fn() },
+			{ watchdog: false },
+		);
+		client.save(901, true);
+		expect(onSave).toHaveBeenCalledExactlyOnceWith(901, true);
+	});
+
 	it("stop reaches the mini once, with the reader's word, and silences it", () => {
 		const { main, mini, client, follower } = pair();
 		follower.stop(77);

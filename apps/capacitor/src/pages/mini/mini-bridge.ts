@@ -22,9 +22,10 @@ export type MiniStart = {
 /**
  * `epoch` counts the main tab's takeovers: a report the mini sent before it
  * learned of the latest one is about a word the reader has since moved away from.
+ * `start` carries it too: a popup still booting misses the takeovers before it.
  */
 export type ToMini =
-	| { type: "start"; start: MiniStart }
+	| { type: "start"; start: MiniStart; epoch: number }
 	| { type: "position"; word: number; epoch: number }
 	| { type: "settings"; settings: RsvpSettings; focalColor: string }
 	| { type: "stop"; word: number }
@@ -153,7 +154,7 @@ export function createFollower(port: MainPort, handlers: FollowerHandlers): Foll
 		switch (message.type) {
 			case "ready": {
 				const start = handlers.getStart();
-				if (start) port.send({ type: "start", start });
+				if (start) port.send({ type: "start", start, epoch });
 				return;
 			}
 			case "ping":
@@ -276,6 +277,7 @@ export function createClient(
 			case "start":
 				if (isStarted) return;
 				isStarted = true;
+				epoch = message.epoch;
 				handlers.onStart(message.start);
 				return;
 			case "position":
