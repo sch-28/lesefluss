@@ -60,6 +60,7 @@ import { GoalCard } from "./reading-goal/goal-card";
 import { SessionTable } from "./session-table";
 
 import TransferModal from "./transfer-modal";
+import { useBookDetailReady } from "./use-book-detail-ready";
 
 interface Props {
 	id?: string;
@@ -76,7 +77,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const { chapters, isResolved: areChaptersResolved } = useBookChapters(id);
 	const { data: allBooks } = queryHooks.useBooks();
 	const { data: speedModel } = queryHooks.useStatsSpeedModel();
-	const { data: highlights = [] } = useQuery({
+	const { data: highlights = [], isLoading: isHighlightsLoading } = useQuery({
 		queryKey: bookKeys.highlights(id),
 		queryFn: () => queries.getHighlightsByBook(id),
 		enabled: !!id,
@@ -157,8 +158,9 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		bookTitle: book?.title,
 		onUpload: () => setIsTransferOpen(true),
 	});
+	const areCardsReady = useBookDetailReady(book);
 
-	if (isPending) {
+	if (isPending || (book && (!areCardsReady || isHighlightsLoading))) {
 		return (
 			<DetailShell
 				cover={null}
