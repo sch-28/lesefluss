@@ -32,6 +32,7 @@ import { Route as TabsSettingsDeviceRouteImport } from './routes/tabs/settings/d
 import { Route as TabsReaderIdRouteImport } from './routes/tabs/reader.$id'
 import { Route as TabsLibraryStatsRouteImport } from './routes/tabs/library/stats'
 import { Route as TabsLibraryImportRouteImport } from './routes/tabs/library/import'
+import { Route as TabsLibraryAllSeriesRouteImport } from './routes/tabs/library/all-series'
 import { Route as TabsExploreWebNovelsRouteImport } from './routes/tabs/explore/web-novels'
 import { Route as TabsExploreWebNovelPreviewRouteImport } from './routes/tabs/explore/web-novel-preview'
 import { Route as TabsExploreTagsRouteImport } from './routes/tabs/explore/tags'
@@ -163,6 +164,11 @@ const TabsLibraryImportRoute = TabsLibraryImportRouteImport.update({
   path: '/tabs/library/import',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TabsLibraryAllSeriesRoute = TabsLibraryAllSeriesRouteImport.update({
+  id: '/tabs/library/all-series',
+  path: '/tabs/library/all-series',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TabsExploreWebNovelsRoute = TabsExploreWebNovelsRouteImport.update({
   id: '/tabs/explore/web-novels',
   path: '/tabs/explore/web-novels',
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
+  '/tabs/library/all-series': typeof TabsLibraryAllSeriesRoute
   '/tabs/library/import': typeof TabsLibraryImportRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
   '/tabs/reader/$id': typeof TabsReaderIdRoute
@@ -285,6 +292,7 @@ export interface FileRoutesByTo {
   '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
+  '/tabs/library/all-series': typeof TabsLibraryAllSeriesRoute
   '/tabs/library/import': typeof TabsLibraryImportRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
   '/tabs/reader/$id': typeof TabsReaderIdRoute
@@ -325,6 +333,7 @@ export interface FileRoutesById {
   '/tabs/explore/tags': typeof TabsExploreTagsRoute
   '/tabs/explore/web-novel-preview': typeof TabsExploreWebNovelPreviewRoute
   '/tabs/explore/web-novels': typeof TabsExploreWebNovelsRoute
+  '/tabs/library/all-series': typeof TabsLibraryAllSeriesRoute
   '/tabs/library/import': typeof TabsLibraryImportRoute
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
   '/tabs/reader/$id': typeof TabsReaderIdRoute
@@ -366,6 +375,7 @@ export interface FileRouteTypes {
     | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
+    | '/tabs/library/all-series'
     | '/tabs/library/import'
     | '/tabs/library/stats'
     | '/tabs/reader/$id'
@@ -405,6 +415,7 @@ export interface FileRouteTypes {
     | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
+    | '/tabs/library/all-series'
     | '/tabs/library/import'
     | '/tabs/library/stats'
     | '/tabs/reader/$id'
@@ -444,6 +455,7 @@ export interface FileRouteTypes {
     | '/tabs/explore/tags'
     | '/tabs/explore/web-novel-preview'
     | '/tabs/explore/web-novels'
+    | '/tabs/library/all-series'
     | '/tabs/library/import'
     | '/tabs/library/stats'
     | '/tabs/reader/$id'
@@ -484,6 +496,7 @@ export interface RootRouteChildren {
   TabsExploreTagsRoute: typeof TabsExploreTagsRoute
   TabsExploreWebNovelPreviewRoute: typeof TabsExploreWebNovelPreviewRoute
   TabsExploreWebNovelsRoute: typeof TabsExploreWebNovelsRoute
+  TabsLibraryAllSeriesRoute: typeof TabsLibraryAllSeriesRoute
   TabsLibraryImportRoute: typeof TabsLibraryImportRoute
   TabsLibraryStatsRoute: typeof TabsLibraryStatsRoute
   TabsReaderIdRoute: typeof TabsReaderIdRoute
@@ -681,6 +694,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabsLibraryImportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tabs/library/all-series': {
+      id: '/tabs/library/all-series'
+      path: '/tabs/library/all-series'
+      fullPath: '/tabs/library/all-series'
+      preLoaderRoute: typeof TabsLibraryAllSeriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tabs/explore/web-novels': {
       id: '/tabs/explore/web-novels'
       path: '/tabs/explore/web-novels'
@@ -788,6 +808,7 @@ const rootRouteChildren: RootRouteChildren = {
   TabsExploreTagsRoute: TabsExploreTagsRoute,
   TabsExploreWebNovelPreviewRoute: TabsExploreWebNovelPreviewRoute,
   TabsExploreWebNovelsRoute: TabsExploreWebNovelsRoute,
+  TabsLibraryAllSeriesRoute: TabsLibraryAllSeriesRoute,
   TabsLibraryImportRoute: TabsLibraryImportRoute,
   TabsLibraryStatsRoute: TabsLibraryStatsRoute,
   TabsReaderIdRoute: TabsReaderIdRoute,

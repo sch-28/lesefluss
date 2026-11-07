@@ -122,7 +122,13 @@ const OrderedCollectionView: React.FC<Props> = ({
 					<ChevronRight aria-hidden className="size-3" />
 					{isSeries && (
 						<>
-							<span>Series</span>
+							<button
+								type="button"
+								onClick={() => navigate({ to: "/tabs/library/all-series" })}
+								className="rounded-sm border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground"
+							>
+								Series
+							</button>
 							<ChevronRight aria-hidden className="size-3" />
 						</>
 					)}
@@ -256,7 +262,8 @@ const OrderedCollectionView: React.FC<Props> = ({
 			/>
 			<CollectionActions
 				collection={actionsOpen ? collection : null}
-				collections={collections}
+				collections={isSeries ? [collection] : collections.filter((c) => c.seriesKey === null)}
+				allCollections={collections}
 				onClose={() => setActionsOpen(false)}
 			/>
 		</div>

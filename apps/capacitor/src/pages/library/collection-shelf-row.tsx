@@ -10,7 +10,7 @@ import type { CollectionWithCount } from "../../services/db/queries/collections"
 import { useLongPress } from "./use-long-press";
 import { type ShelfEntry, useSmartShelves } from "./use-smart-shelves";
 
-const CHIP =
+export const CHIP =
 	"inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-sm whitespace-nowrap transition-colors";
 
 type ChipProps = {
@@ -77,7 +77,8 @@ const CollectionShelfRow: React.FC<{
 	activeId: string | undefined;
 	activeShelfId: string | undefined;
 }> = ({ activeId, activeShelfId }) => {
-	const { data: collections = [] } = queryHooks.useCollections();
+	const { data: allCollections = [] } = queryHooks.useCollections();
+	const collections = allCollections.filter((c) => c.seriesKey === null);
 	const smart = useSmartShelves();
 	const [shelfMenuFor, setShelfMenuFor] = useState<ShelfEntry | null>(null);
 	const navigate = useNavigate();
@@ -138,6 +139,7 @@ const CollectionShelfRow: React.FC<{
 			<CollectionActions
 				collection={menuFor}
 				collections={collections}
+				allCollections={allCollections}
 				onClose={() => setMenuFor(null)}
 			/>
 			<ShelfActions

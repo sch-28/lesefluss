@@ -73,6 +73,7 @@ import PasteUrlModal from "./paste-url-modal";
 import { searchTextOf } from "./query-syntax";
 import { SearchAutocomplete } from "./search-autocomplete";
 import SeriesCard from "./series-card";
+import SeriesChipRow from "./series-chip-row";
 import SeriesListItem from "./series-list-item";
 import { ShelfConditionEditor } from "./shelf-condition-editor";
 import {
@@ -643,6 +644,7 @@ const Library: React.FC = () => {
 			{(books.length > 0 || (collectionsQuery.data?.length ?? 0) > 0) && (
 				<CollectionShelfRow activeId={collectionId} activeShelfId={shelfId} />
 			)}
+			<SeriesChipRow />
 
 			{activeCollection && !activeCollection.ordered && (
 				<div className="flex items-center gap-2 border-border border-b px-4 py-2">

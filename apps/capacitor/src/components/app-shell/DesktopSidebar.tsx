@@ -5,6 +5,7 @@ import { NavBadge } from "./nav-badge";
 import { useActiveNavTo, useNavBadges, useNavItems } from "./nav-items";
 import { SidebarCollections } from "./sidebar-collections";
 import { SidebarGoalCard } from "./sidebar-goal-card";
+import { SidebarSeries } from "./sidebar-series";
 import { SidebarSmartShelves } from "./sidebar-smart-shelves";
 
 const STORAGE_KEY = "sidebar-collapsed";
@@ -72,6 +73,7 @@ export function DesktopSidebar() {
 					</ul>
 					<SidebarSmartShelves isCollapsed={isCollapsed} onExpand={() => setIsCollapsed(false)} />
 					<SidebarCollections isCollapsed={isCollapsed} onExpand={() => setIsCollapsed(false)} />
+					<SidebarSeries isCollapsed={isCollapsed} />
 				</div>
 				<SidebarGoalCard isCollapsed={isCollapsed} />
 			</nav>

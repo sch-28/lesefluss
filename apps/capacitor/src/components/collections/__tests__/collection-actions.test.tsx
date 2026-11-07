@@ -5,6 +5,7 @@ import type { CollectionWithCount } from "../../../services/db/queries/collectio
 import { click, type Rendered, render } from "../../../test/render";
 
 const removeCollection = vi.fn();
+const moveCollection = vi.fn();
 const navigate = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({
@@ -13,7 +14,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useMoveCollection: () => ({ mutate: vi.fn() }),
+		useMoveCollection: () => ({ mutate: moveCollection }),
 		useDeleteCollection: () => ({ mutate: removeCollection }),
 	},
 }));
@@ -85,6 +86,21 @@ describe("CollectionActions", () => {
 			to: "/tabs/library/collections/$id/edit",
 			params: { id: "c1" },
 		});
+	});
+
+	it("moves past the series the list hides, beside the next visible collection", async () => {
+		const series = { ...fantasy, id: "s1", seriesKey: "dune", ordered: true };
+		const scifi = { ...fantasy, id: "c2", name: "Sci-fi" };
+		view = await render(
+			<CollectionActions
+				collection={fantasy}
+				collections={[fantasy, scifi]}
+				allCollections={[fantasy, series, scifi]}
+				onClose={vi.fn()}
+			/>,
+		);
+		await click(view.getButton("Move down"));
+		expect(moveCollection).toHaveBeenCalledWith({ id: "c1", toIndex: 2 });
 	});
 
 	it("leaves the back press to the router while nothing is open", async () => {

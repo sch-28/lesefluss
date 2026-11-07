@@ -5,7 +5,7 @@ import type React from "react";
 import { useState } from "react";
 import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
-import { CollectionActions } from "../collections/collection-actions";
+import { CollectionActions, indexBeside } from "../collections/collection-actions";
 import {
 	BOOKS_DRAG_TYPE,
 	COLLECTION_DRAG_TYPE,
@@ -22,7 +22,8 @@ type Props = {
 type DropHint = { id: string; kind: "books" | "before" | "after" };
 
 export function SidebarCollections({ isCollapsed, onExpand }: Props) {
-	const { data: collections = [] } = queryHooks.useCollections();
+	const { data: allCollections = [] } = queryHooks.useCollections();
+	const collections = allCollections.filter((c) => c.seriesKey === null);
 	const move = queryHooks.useMoveCollection();
 	const addBooks = queryHooks.useAddBooksToCollection();
 	const navigate = useNavigate();
@@ -81,13 +82,14 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 			return;
 		}
 		if (!draggingId) return;
-		const others = collections.filter((o) => o.id !== draggingId);
-		const target = others.findIndex((o) => o.id === c.id);
-		move.mutate({ id: draggingId, toIndex: hint.kind === "before" ? target : target + 1 });
+		move.mutate({
+			id: draggingId,
+			toIndex: indexBeside(allCollections, draggingId, c.id, hint.kind),
+		});
 	};
 
 	return (
-		<section aria-label="Collections" className="mt-4 flex min-h-0 flex-1 flex-col">
+		<section aria-label="Collections" className="mt-4 flex shrink-0 flex-col">
 			<div className="flex items-center justify-between py-1 pr-3 pl-5">
 				<h2 className="m-0 font-semibold text-sidebar-foreground/60 text-xs uppercase tracking-wide">
 					Collections
@@ -102,7 +104,7 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 					<Plus className="size-4" />
 				</button>
 			</div>
-			<ul className="m-0 min-h-0 flex-1 list-none overflow-y-auto p-0">
+			<ul className="m-0 max-h-64 list-none overflow-y-auto p-0">
 				{collections.map((c) => {
 					const hint = dropHint?.id === c.id ? dropHint.kind : null;
 					return (
@@ -179,6 +181,7 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 			<CollectionActions
 				collection={menuFor}
 				collections={collections}
+				allCollections={allCollections}
 				onClose={() => setMenuFor(null)}
 			/>
 		</section>
