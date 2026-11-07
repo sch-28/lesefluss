@@ -8,7 +8,7 @@ import {
 } from "../../../services/batch/run-sequential";
 import { importScannedFile, pickBookFolder, probeScannedFile } from "../../../services/book-import";
 import { bookKeys, collectionKeys } from "../../../services/db/hooks/query-keys";
-import { addBooksToCollection } from "../../../services/db/queries/collections";
+import { appendBooksToCollection } from "../../../services/db/queries/collections";
 import { scheduleSyncPush } from "../../../services/sync";
 import { log } from "../../../utils/log";
 import { ALERT_SUPPRESSED, ERROR_TOASTS } from "../import-errors";
@@ -152,7 +152,7 @@ export function useFolderImport(
 				if (!targetCollectionId) return book;
 				// The book is written: a failed join must not count the file as failed.
 				try {
-					await addBooksToCollection(targetCollectionId, [book.id]);
+					await appendBooksToCollection(targetCollectionId, [book.id]);
 				} catch (err) {
 					joinFailures += 1;
 					log.warn("book-import", "joining the collection failed:", err);

@@ -207,6 +207,14 @@ describe("CollectionBooksPage", () => {
 		});
 	});
 
+	it("names the typed name in Import new files while a rename is unsaved", async () => {
+		await open("/tabs/library/collections/c1/edit");
+		expect(body()).toContain("They land in Classics");
+		await type("collection-name", "Old books");
+		expect(body()).toContain("They land in Old books");
+		expect(body()).not.toContain("They land in Classics");
+	});
+
 	it("leaves for the library's import sheet from Import new files", async () => {
 		await open("/tabs/library/collections/c2/add");
 		await click(button("Import new filesThey land in Empty"));

@@ -15,7 +15,7 @@ const written = makeBook({ id: "new-book", title: "Dune" });
 const commitStagedImport = vi.fn(
 	async (_staged: unknown, _patch: unknown, _series?: unknown) => written,
 );
-const addBooksToCollection = vi.fn(async (_id: string, _bookIds: string[]) => {});
+const appendBooksToCollection = vi.fn(async (_id: string, _bookIds: string[]) => {});
 const toastError = vi.fn();
 const toastSuccess = vi.fn();
 
@@ -26,7 +26,7 @@ vi.mock("../../services/book-import", () => ({
 	findAttachCandidate: async () => null,
 }));
 vi.mock("../../services/db/queries/collections", () => ({
-	addBooksToCollection: (id: string, bookIds: string[]) => addBooksToCollection(id, bookIds),
+	appendBooksToCollection: (id: string, bookIds: string[]) => appendBooksToCollection(id, bookIds),
 }));
 vi.mock("../../services/sync", () => ({ scheduleSyncPush: () => {} }));
 vi.mock("../../components/toast", () => ({
@@ -88,7 +88,7 @@ async function stageAndCommit(targetCollectionId?: string, series?: ImportSeries
 
 beforeEach(async () => {
 	commitStagedImport.mockClear();
-	addBooksToCollection.mockReset();
+	appendBooksToCollection.mockReset();
 	toastError.mockClear();
 	toastSuccess.mockClear();
 	rendered = await render(<RouterProvider router={makeRouter()} />);
@@ -99,7 +99,7 @@ afterEach(() => rendered.unmount());
 describe("import into a collection", () => {
 	it("adds the committed book to the collection it was started from", async () => {
 		await stageAndCommit("c1");
-		expect(addBooksToCollection).toHaveBeenCalledWith("c1", ["new-book"]);
+		expect(appendBooksToCollection).toHaveBeenCalledWith("c1", ["new-book"]);
 		expect(toastSuccess).toHaveBeenCalledWith('Added "Dune"');
 		expect(queue.current).toBeNull();
 	});
@@ -109,17 +109,17 @@ describe("import into a collection", () => {
 		expect(commitStagedImport).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
 			kind: "none",
 		});
-		expect(addBooksToCollection).toHaveBeenCalledWith("c1", ["new-book"]);
+		expect(appendBooksToCollection).toHaveBeenCalledWith("c1", ["new-book"]);
 	});
 
 	it("leaves collections alone for an import without a target", async () => {
 		await stageAndCommit();
 		expect(commitStagedImport).toHaveBeenCalledTimes(1);
-		expect(addBooksToCollection).not.toHaveBeenCalled();
+		expect(appendBooksToCollection).not.toHaveBeenCalled();
 	});
 
 	it("keeps the book and says so when joining fails", async () => {
-		addBooksToCollection.mockRejectedValueOnce(new Error("disk"));
+		appendBooksToCollection.mockRejectedValueOnce(new Error("disk"));
 		await stageAndCommit("c1");
 		expect(commitStagedImport).toHaveBeenCalledTimes(1);
 		expect(toastError).toHaveBeenCalledWith('Added "Dune", but not to the collection');

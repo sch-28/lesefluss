@@ -100,23 +100,56 @@ describe("CollectionPickerSheet", () => {
 		expect(consumeBackPress()).toBe(false);
 	});
 
-	it("adds the books to a plain collection at once, and takes them out when all are in", async () => {
-		collections = [
-			collection({ id: "c1", name: "Shelf" }),
-			collection({ id: "c2", name: "Faves" }),
-		];
-		memberships = new Map([
-			["a", ["c2"]],
-			["b", ["c2"]],
-		]);
+	it("adds the books to a plain collection at once", async () => {
+		collections = [collection({ id: "c1", name: "Shelf" })];
 		view = await render(
 			<CollectionPickerSheet books={[book("a"), book("b")]} open onClose={vi.fn()} />,
 		);
-		const [shelf, faves] = rows();
-		await click(shelf as HTMLElement);
+		await click(rows()[0] as HTMLElement);
 		expect(add).toHaveBeenCalledWith({ collectionId: "c1", bookIds: ["a", "b"] });
-		await click(faves as HTMLElement);
-		expect(remove).toHaveBeenCalledWith({ collectionId: "c2", bookIds: ["a", "b"] });
+		expect(document.querySelector('[data-testid="collection-remove-confirm"]')).toBeNull();
+	});
+
+	it("asks with the count before taking the books out of a plain collection they are all in", async () => {
+		collections = [collection({ id: "c2", name: "Faves" })];
+		memberships = new Map([
+			["a", ["c2"]],
+			["b", ["c2"]],
+			["c", ["c2"]],
+		]);
+		view = await render(
+			<CollectionPickerSheet books={[book("a"), book("b"), book("c")]} open onClose={vi.fn()} />,
+		);
+		await click(rows()[0] as HTMLElement);
+		expect(remove).not.toHaveBeenCalled();
+		expect(document.body.textContent).toContain("Remove from Faves?");
+		expect(document.body.textContent).toContain("All 3 books leave Faves.");
+
+		await click(view.getButton("Cancel"));
+		expect(remove).not.toHaveBeenCalled();
+		expect(rows()).toHaveLength(1);
+
+		await click(rows()[0] as HTMLElement);
+		await click(view.getButton("Remove 3 books"));
+		expect(remove).toHaveBeenCalledWith({ collectionId: "c2", bookIds: ["a", "b", "c"] });
+		expect(rows()).toHaveLength(1);
+	});
+
+	it("leaves the remove confirm on back, removing nothing", async () => {
+		const onClose = vi.fn();
+		collections = [collection({ id: "c2", name: "Faves" })];
+		memberships = new Map([["a", ["c2"]]]);
+		view = await render(
+			<CollectionPickerSheet books={[book("a", "Emma")]} open onClose={onClose} />,
+		);
+		await click(rows()[0] as HTMLElement);
+		expect(document.body.textContent).toContain('"Emma" leaves Faves.');
+		await act(async () => {
+			expect(consumeBackPress()).toBe(true);
+		});
+		expect(document.querySelector('[data-testid="collection-remove-confirm"]')).toBeNull();
+		expect(remove).not.toHaveBeenCalled();
+		expect(onClose).not.toHaveBeenCalled();
 	});
 
 	it("shows the #N each book gets in a series before Apply, after the highest number", async () => {

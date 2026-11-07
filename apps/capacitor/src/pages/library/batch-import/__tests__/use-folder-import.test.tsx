@@ -6,7 +6,7 @@ const files = [
 	{ id: "f1", name: "a.epub", path: "a.epub" },
 	{ id: "f2", name: "b.epub", path: "b.epub" },
 ];
-const addBooksToCollection = vi.fn(async (_id: string, _bookIds: string[]) => {});
+const appendBooksToCollection = vi.fn(async (_id: string, _bookIds: string[]) => {});
 const toastError = vi.fn();
 
 vi.mock("../../../../services/book-import", () => ({
@@ -15,7 +15,7 @@ vi.mock("../../../../services/book-import", () => ({
 	importScannedFile: async (file: { id: string }) => ({ id: `book-${file.id}` }),
 }));
 vi.mock("../../../../services/db/queries/collections", () => ({
-	addBooksToCollection: (id: string, bookIds: string[]) => addBooksToCollection(id, bookIds),
+	appendBooksToCollection: (id: string, bookIds: string[]) => appendBooksToCollection(id, bookIds),
 }));
 vi.mock("../../../../services/sync", () => ({ scheduleSyncPush: () => {} }));
 vi.mock("../../../../components/toast", () => ({
@@ -43,7 +43,7 @@ async function importFolder(target?: string) {
 }
 
 beforeEach(() => {
-	addBooksToCollection.mockReset();
+	appendBooksToCollection.mockReset();
 	toastError.mockClear();
 });
 afterEach(() => rendered.unmount());
@@ -51,7 +51,7 @@ afterEach(() => rendered.unmount());
 describe("useFolderImport into a collection", () => {
 	it("adds every imported book to the target collection", async () => {
 		await importFolder("c1");
-		expect(addBooksToCollection.mock.calls).toEqual([
+		expect(appendBooksToCollection.mock.calls).toEqual([
 			["c1", ["book-f1"]],
 			["c1", ["book-f2"]],
 		]);
@@ -59,7 +59,7 @@ describe("useFolderImport into a collection", () => {
 	});
 
 	it("still counts a book imported when it can't join", async () => {
-		addBooksToCollection.mockRejectedValueOnce(new Error("disk"));
+		appendBooksToCollection.mockRejectedValueOnce(new Error("disk"));
 		await importFolder("c1");
 		expect(hook.result).toMatchObject({ imported: 2, failures: [] });
 		expect(toastError).toHaveBeenCalledWith("1 book couldn't be added to the collection");
@@ -68,6 +68,6 @@ describe("useFolderImport into a collection", () => {
 	it("joins nothing without a target", async () => {
 		await importFolder();
 		expect(hook.result?.imported).toBe(2);
-		expect(addBooksToCollection).not.toHaveBeenCalled();
+		expect(appendBooksToCollection).not.toHaveBeenCalled();
 	});
 });

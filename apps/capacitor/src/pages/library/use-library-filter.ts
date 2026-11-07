@@ -25,6 +25,12 @@ function storeFilter(filter: LibraryFilter): void {
 	}
 }
 
+/** Leaves the library on all books: without this, an address with no filter
+ *  refills from this device's last one. */
+export function clearLibraryFilter(): void {
+	storeFilter({});
+}
+
 /**
  * The library filter. The URL's `f` param is the source of truth, so a view can
  * be bookmarked, reloaded or shared; this device's last filter fills the URL

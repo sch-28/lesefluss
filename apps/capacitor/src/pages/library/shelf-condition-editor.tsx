@@ -40,6 +40,7 @@ import {
 	type DraftGroup,
 	type DraftNode,
 	fromDraft,
+	hasEmptyGroup,
 	isDraftComplete,
 	isDraftGroup,
 	moveBy,
@@ -262,7 +263,12 @@ const NodeView: React.FC<{
 			<div
 				data-drag-node
 				data-testid="condition-group"
-				className="flex flex-col gap-2 rounded-r-lg border-primary/55 border-l-2 bg-gradient-to-r from-primary/5 to-transparent py-2 pr-1 pl-3"
+				data-incomplete={node.items.length === 0 || undefined}
+				className={cn(
+					"flex flex-col gap-2 rounded-r-lg border-primary/55 border-l-2 bg-gradient-to-r from-primary/5 to-transparent py-2 pr-1 pl-3",
+					node.items.length === 0 &&
+						"outline-dashed outline-1 outline-destructive/70 outline-offset-2",
+				)}
 				{...dropHandlers(editing, group.id, index)}
 			>
 				<div className="flex items-center gap-2">
@@ -422,11 +428,13 @@ const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: (
 	const countLabel = `${count} ${count === 1 ? "book matches" : "books match"}`;
 	const hint = isTooLarge
 		? "Too many conditions to save."
-		: !isComplete
-			? "Give every condition a value to save."
-			: trimmed === ""
-				? "Name the shelf to save it."
-				: null;
+		: hasEmptyGroup(root)
+			? "Add a condition to every group, or remove the empty group, to save."
+			: !isComplete
+				? "Give every condition a value to save."
+				: trimmed === ""
+					? "Name the shelf to save it."
+					: null;
 
 	const body = (
 		<div className="flex flex-col gap-3">

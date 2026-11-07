@@ -224,6 +224,29 @@ describe("ShelfConditionEditor", () => {
 		expect(view?.getButton("Save").disabled).toBe(false);
 	});
 
+	it("blocks Save and outlines a nested group once its last row is gone", async () => {
+		await open(custom);
+		const group = () => q<HTMLElement>("[data-testid=condition-group]");
+		expect(view?.getButton("Save").disabled).toBe(false);
+		expect(group().dataset.incomplete).toBeUndefined();
+
+		press("Remove condition", 2);
+		press("Remove condition", 1);
+		expect(group().querySelectorAll("[data-testid=condition-row]")).toHaveLength(0);
+		expect(group().dataset.incomplete).toBe("true");
+		expect(group().className).toContain("outline-dashed");
+		expect(view?.getButton("Save").disabled).toBe(true);
+		expect(view?.container.textContent).toContain("Add a condition to every group");
+
+		press("Condition", 0);
+		expect(group().querySelectorAll("[data-testid=condition-row]")).toHaveLength(1);
+		expect(group().dataset.incomplete).toBeUndefined();
+		expect(view?.container.textContent).not.toContain("Add a condition to every group");
+
+		press("Remove group");
+		expect(view?.getButton("Save").disabled).toBe(false);
+	});
+
 	it("saves an edited shelf in place, and Cancel writes nothing", async () => {
 		await open(custom);
 		setValue(q("input[placeholder='Shelf name']"), "Reading, short");

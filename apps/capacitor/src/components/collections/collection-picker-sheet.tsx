@@ -44,7 +44,8 @@ export function markOf(
  * A plain collection takes a tap at once. An ordered or series collection, and
  * a new series, go through Set #N first, so the numbers are seen before they
  * are written, and the step is where they come out again. A plain row every
- * book is in takes them all out. Out of a series, later imports leave them out.
+ * book is in asks, with the count, before it takes them all out. Out of a
+ * series, later imports leave them out.
  */
 export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, onClose }) => {
 	const { data: collections = [] } = queryHooks.useCollections();
@@ -55,6 +56,7 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 	const addNumbered = queryHooks.useAddNumberedBooks();
 	const [draft, setDraft] = useState("");
 	const [step, setStep] = useState<NumberStep | null>(null);
+	const [removing, setRemoving] = useState<CollectionWithCount | null>(null);
 	const stepCollectionId = step && "collectionId" in step.target ? step.target.collectionId : null;
 	const members = queryHooks.useCollectionMembers(stepCollectionId);
 	const ids = useMemo(() => (open ? placed.map((b) => b.id) : NO_IDS), [open, placed]);
@@ -63,10 +65,14 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 		if (open) return;
 		setDraft("");
 		setStep(null);
+		setRemoving(null);
 	}, [open]);
 
 	// Registered after the drawer's own handler, so back leaves the step first.
-	useBackHandler(open && step !== null, () => setStep(null));
+	useBackHandler(open && (step !== null || removing !== null), () => {
+		setStep(null);
+		setRemoving(null);
+	});
 
 	const memberNumbers = useMemo(
 		() =>
@@ -81,7 +87,7 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 		if (c.ordered) {
 			setStep({ target: { collectionId: c.id }, name: c.name });
 		} else if (markOf(c.id, ids, memberships).mark === "all") {
-			remove.mutate({ collectionId: c.id, bookIds: [...ids] });
+			setRemoving(c);
 		} else {
 			add.mutate({ collectionId: c.id, bookIds: [...ids] });
 		}
@@ -119,6 +125,11 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 		);
 	};
 
+	const confirmRemove = (c: CollectionWithCount) => {
+		remove.mutate({ collectionId: c.id, bookIds: [...ids] });
+		setRemoving(null);
+	};
+
 	const removeFromStep = () => {
 		if (stepCollectionId === null) return;
 		const inIt = ids.filter((id) => memberNumbers.has(id));
@@ -139,10 +150,29 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 		>
 			<DrawerContent>
 				<DrawerHeader>
-					<DrawerTitle className="truncate">{step ? `Set #N · ${step.name}` : title}</DrawerTitle>
+					<DrawerTitle className="truncate">
+						{step ? `Set #N · ${step.name}` : removing ? `Remove from ${removing.name}?` : title}
+					</DrawerTitle>
 				</DrawerHeader>
 
-				{step ? (
+				{removing ? (
+					<div data-testid="collection-remove-confirm" className="flex flex-col">
+						<p className="m-0 px-4 pb-2 text-muted-foreground text-sm">
+							{placed.length === 1
+								? `"${placed[0]?.title}" leaves ${removing.name}.`
+								: `All ${books(ids.length)} leave ${removing.name}.`}{" "}
+							{placed.length === 1 ? "It stays" : "They stay"} in your library.
+						</p>
+						<div className="flex justify-end gap-2 border-border border-t p-4">
+							<Button variant="outline" onClick={() => setRemoving(null)}>
+								Cancel
+							</Button>
+							<Button variant="destructive" onClick={() => confirmRemove(removing)}>
+								Remove {books(ids.length)}
+							</Button>
+						</div>
+					</div>
+				) : step ? (
 					<SeriesNumberStep
 						name={step.name}
 						books={placed}

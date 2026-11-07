@@ -1,6 +1,13 @@
 import { consumeBackPress } from "@lesefluss/ui/overlay-back";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	activeFilterCount,
+	FILTER_STORAGE_KEY,
+	type LibraryFilter,
+	loadFilter,
+	serializeFilter,
+} from "../../../pages/library/filter-model";
 import type { ShelfEntry } from "../../../pages/library/smart-shelves";
 import { click, type Rendered, render } from "../../../test/render";
 
@@ -73,6 +80,7 @@ let view: Rendered | undefined;
 const setBuiltInPinned = vi.fn();
 beforeEach(() => {
 	vi.clearAllMocks();
+	localStorage.clear();
 	location = { pathname: "/tabs/library", search: {} };
 });
 afterEach(() => {
@@ -118,6 +126,33 @@ describe("ShelfActions", () => {
 		await click(view.getButton("Confirm delete"));
 		expect(deleteShelf).toHaveBeenCalledWith("s1");
 		expect(navigate).toHaveBeenCalledWith({ to: "/tabs/library", search: {} });
+	});
+
+	it("leaves the library on all books, not the device's last filter, after deleting the open shelf", async () => {
+		const wantToRead: LibraryFilter = { status: { in: ["want"], out: [] } };
+		localStorage.setItem(FILTER_STORAGE_KEY, serializeFilter(wantToRead));
+		location = { pathname: "/tabs/library", search: { shelf: "s1" } };
+		view = await render(
+			<ShelfActions shelf={userShelf} onClose={() => {}} setBuiltInPinned={setBuiltInPinned} />,
+		);
+		await click(view.getButton("Delete shelf…"));
+		await click(view.getButton("Confirm delete"));
+		expect(navigate).toHaveBeenCalledWith({ to: "/tabs/library", search: {} });
+		expect(activeFilterCount(loadFilter(localStorage))).toBe(0);
+	});
+
+	it("keeps the device's filter when the deleted shelf is not the open one", async () => {
+		const wantToRead: LibraryFilter = { status: { in: ["want"], out: [] } };
+		localStorage.setItem(FILTER_STORAGE_KEY, serializeFilter(wantToRead));
+		location = { pathname: "/tabs/library", search: { shelf: "s2" } };
+		view = await render(
+			<ShelfActions shelf={userShelf} onClose={() => {}} setBuiltInPinned={setBuiltInPinned} />,
+		);
+		await click(view.getButton("Delete shelf…"));
+		await click(view.getButton("Confirm delete"));
+		expect(deleteShelf).toHaveBeenCalledWith("s1");
+		expect(navigate).not.toHaveBeenCalled();
+		expect(loadFilter(localStorage)).toEqual(wantToRead);
 	});
 
 	it("opens the editor on a shelf the chips cannot show", async () => {

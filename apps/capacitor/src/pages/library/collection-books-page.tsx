@@ -276,7 +276,7 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 						<span className="min-w-0 flex-1">
 							<span className="block font-medium text-sm">Import new files</span>
 							<span className="block text-muted-foreground text-xs">
-								They land in {collection.name}
+								They land in {mode.kind === "edit" && trimmed ? trimmed : collection.name}
 							</span>
 						</span>
 						<ChevronRight className="size-4 text-muted-foreground" />

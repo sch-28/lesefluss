@@ -4,6 +4,7 @@ import type React from "react";
 import { useState } from "react";
 import { encodeFilterParam } from "../../pages/library/filter-model";
 import { ShelfConditionEditor } from "../../pages/library/shelf-condition-editor";
+import { clearLibraryFilter } from "../../pages/library/use-library-filter";
 import type { ShelfEntry } from "../../pages/library/use-smart-shelves";
 import { queryHooks } from "../../services/db/hooks";
 import { ActionSheet, type ActionSheetItem } from "../action-sheet";
@@ -74,11 +75,11 @@ export const ShelfActions: React.FC<Props> = ({ shelf, onClose, setBuiltInPinned
 		if (!deleting) return;
 		const id = deleting.id;
 		setDeleting(null);
-		remove.mutate(id);
 		const open = (location.search as { shelf?: string }).shelf;
-		if (location.pathname === "/tabs/library" && open === id) {
-			navigate({ to: "/tabs/library", search: {} });
-		}
+		const isViewing = location.pathname === "/tabs/library" && open === id;
+		if (isViewing) clearLibraryFilter();
+		remove.mutate(id);
+		if (isViewing) navigate({ to: "/tabs/library", search: {} });
 	};
 
 	return (

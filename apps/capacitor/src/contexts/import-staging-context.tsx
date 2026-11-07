@@ -16,7 +16,7 @@ import {
 	type StagedImport,
 } from "../services/book-import";
 import { bookKeys, collectionKeys } from "../services/db/hooks/query-keys";
-import { addBooksToCollection } from "../services/db/queries/collections";
+import { appendBooksToCollection } from "../services/db/queries/collections";
 import type { Book } from "../services/db/schema";
 import { scheduleSyncPush } from "../services/sync";
 import { log } from "../utils/log";
@@ -84,7 +84,7 @@ export const ImportStagingProvider: React.FC<{ children: React.ReactNode }> = ({
 	const joinTarget = async (staged: StagedImport, book: Book): Promise<boolean | null> => {
 		if (!staged.targetCollectionId) return null;
 		try {
-			await addBooksToCollection(staged.targetCollectionId, [book.id]);
+			await appendBooksToCollection(staged.targetCollectionId, [book.id]);
 		} catch (error) {
 			log.warn("book-import", "joining the collection failed:", error);
 			return false;

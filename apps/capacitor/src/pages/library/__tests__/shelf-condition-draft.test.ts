@@ -6,6 +6,7 @@ import {
 	type DraftGroup,
 	type DraftNode,
 	fromDraft,
+	hasEmptyGroup,
 	isDraftComplete,
 	isDraftGroup,
 	moveBy,
@@ -114,5 +115,16 @@ describe("shelf condition draft", () => {
 		const root = toDraft(tree);
 		expect(isDraftComplete(root)).toBe(true);
 		expect(isDraftComplete(append(root, groupAt(root, 1).id, newCondition()))).toBe(false);
+	});
+
+	it("is not complete while a nested group is empty, though the shelf's own group may be", () => {
+		const root = toDraft(tree);
+		const group = groupAt(root, 1);
+		const emptied = group.items.reduce<DraftGroup>((r, n) => removeNode(r, n.id), root);
+		expect(hasEmptyGroup(emptied)).toBe(true);
+		expect(isDraftComplete(emptied)).toBe(false);
+		expect(isDraftComplete(removeNode(emptied, group.id))).toBe(true);
+		expect(hasEmptyGroup(root)).toBe(false);
+		expect(isDraftComplete(toDraft({ op: "and", items: [] }))).toBe(true);
 	});
 });

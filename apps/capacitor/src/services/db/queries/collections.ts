@@ -301,12 +301,13 @@ function numberInOrder(bookIds: readonly string[], from: number): Map<string, nu
 	return new Map([...new Set(bookIds)].map((id, i) => [id, from + i + 1]));
 }
 
+/** The whole part of the highest #N, so books after a #2.5 start at #3. */
 async function highestSeriesIndex(collectionId: string): Promise<number> {
 	const [row] = await db
 		.select({ max: sql<number | null>`max(${collectionBooks.seriesIndex})`.as("max_index") })
 		.from(collectionBooks)
 		.where(and(eq(collectionBooks.collectionId, collectionId), liveMember));
-	return Number(row?.max ?? 0);
+	return Math.floor(Number(row?.max ?? 0));
 }
 
 /**
@@ -342,28 +343,68 @@ export type CollectionEdit = {
 };
 
 /**
- * One save of the collection page. Books added to an ordered collection are
- * numbered after its last #N, in the order given; renaming leaves a series
- * collection's `seriesKey` alone.
+ * One save of the collection page. Turning Keep in order on numbers the
+ * unnumbered members after the last #N, in reading order; books added to an
+ * ordered collection follow them. Renaming leaves a series collection's
+ * `seriesKey` alone.
  */
 export async function editCollection(
 	id: string,
 	edit: CollectionEdit,
 	now = serverNow(),
 ): Promise<void> {
+	const wasOrdered = await isCollectionOrdered(id);
 	if (edit.name !== undefined) await renameCollection(id, edit.name, now);
 	if (edit.ordered !== undefined) await setCollectionOrdered(id, edit.ordered, now);
 	if (edit.remove?.length) await removeBooksFromCollection(id, [...edit.remove], now);
-	if (edit.add?.length) {
-		const [collection] = await db
-			.select({ ordered: collections.ordered })
-			.from(collections)
-			.where(eq(collections.id, id));
-		const numbered = collection?.ordered
-			? numberInOrder(edit.add, await highestSeriesIndex(id))
-			: undefined;
-		await addBooksToCollection(id, [...edit.add], now, numbered);
+	if (edit.ordered && !wasOrdered) await numberUnnumberedMembers(id, now);
+	if (edit.add?.length) await appendBooksToCollection(id, edit.add, now);
+}
+
+async function isCollectionOrdered(id: string): Promise<boolean> {
+	const [row] = await db
+		.select({ ordered: collections.ordered })
+		.from(collections)
+		.where(eq(collections.id, id));
+	return row?.ordered ?? false;
+}
+
+async function numberUnnumberedMembers(collectionId: string, now: number): Promise<void> {
+	const members = await getCollectionMembers(collectionId);
+	const unnumbered = members.filter((m) => m.seriesIndex === null).map((m) => m.bookId);
+	if (unnumbered.length === 0) return;
+	const numbers = numberInOrder(unnumbered, await highestSeriesIndex(collectionId));
+	for (const [bookId, seriesIndex] of numbers) {
+		await db
+			.update(collectionBooks)
+			.set({ seriesIndex, updatedAt: now })
+			.where(
+				and(eq(collectionBooks.collectionId, collectionId), eq(collectionBooks.bookId, bookId)),
+			);
 	}
+}
+
+/**
+ * Adds books at the end: in an ordered collection each book not yet a live
+ * member gets the next #N, in the order given; a live member keeps its number.
+ */
+export async function appendBooksToCollection(
+	collectionId: string,
+	bookIds: readonly string[],
+	now = serverNow(),
+): Promise<void> {
+	if (!(await isCollectionOrdered(collectionId))) {
+		await addBooksToCollection(collectionId, [...bookIds], now);
+		return;
+	}
+	const live = new Set(await getCollectionBookIds(collectionId));
+	const fresh = bookIds.filter((id) => !live.has(id));
+	await addBooksToCollection(
+		collectionId,
+		[...bookIds],
+		now,
+		numberInOrder(fresh, await highestSeriesIndex(collectionId)),
+	);
 }
 
 export async function getCollectionBookIds(collectionId: string): Promise<string[]> {

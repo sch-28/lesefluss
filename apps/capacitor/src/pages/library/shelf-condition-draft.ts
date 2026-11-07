@@ -183,6 +183,14 @@ export function moveIntoGroup(root: DraftGroup, id: string): DraftGroup {
 	return root;
 }
 
+/** Savable: every row has its value and every nested group a row. The shelf's
+ *  own group may be empty: that shelf holds every book. */
 export function isDraftComplete(group: DraftGroup): boolean {
-	return group.items.every((n) => (isDraftGroup(n) ? isDraftComplete(n) : isConditionComplete(n)));
+	return group.items.every((n) =>
+		isDraftGroup(n) ? n.items.length > 0 && isDraftComplete(n) : isConditionComplete(n),
+	);
+}
+
+export function hasEmptyGroup(group: DraftGroup): boolean {
+	return group.items.some((n) => isDraftGroup(n) && (n.items.length === 0 || hasEmptyGroup(n)));
 }

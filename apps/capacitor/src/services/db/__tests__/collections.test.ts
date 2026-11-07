@@ -160,6 +160,77 @@ describe("collections", () => {
 		expect(after[0]?.bookCount).toBe(3);
 	});
 
+	it("numbers the current members #1..N in reading order when Keep in order is switched on", async () => {
+		const c = await collections.createCollectionWithBooks(
+			"Shelf",
+			["cccccccc", "aaaaaaaa", "bbbbbbbb"],
+			{},
+			1,
+		);
+		await collections.editCollection(c.id, { ordered: true, add: [] }, 2);
+		const members = await collections.getCollectionMembers(c.id);
+		expect(members.map((m) => [m.bookId, m.seriesIndex])).toEqual([
+			["aaaaaaaa", 1],
+			["bbbbbbbb", 2],
+			["cccccccc", 3],
+		]);
+	});
+
+	it("numbers members first, then the books added in the same save", async () => {
+		insertBook("dddddddd");
+		const c = await collections.createCollectionWithBooks("Shelf", ["bbbbbbbb", "aaaaaaaa"], {}, 1);
+		await collections.editCollection(
+			c.id,
+			{ ordered: true, remove: ["bbbbbbbb"], add: ["dddddddd", "cccccccc"] },
+			2,
+		);
+		const members = await collections.getCollectionMembers(c.id);
+		expect(members.map((m) => [m.bookId, m.seriesIndex])).toEqual([
+			["aaaaaaaa", 1],
+			["dddddddd", 2],
+			["cccccccc", 3],
+		]);
+	});
+
+	it("keeps the numbers of an already ordered collection when its name changes", async () => {
+		const c = await collections.createCollectionWithBooks(
+			"Saga",
+			["bbbbbbbb", "aaaaaaaa"],
+			{ ordered: true },
+			1,
+		);
+		await collections.editCollection(c.id, { name: "Saga II", ordered: true }, 2);
+		const members = await collections.getCollectionMembers(c.id);
+		expect(members.map((m) => [m.bookId, m.seriesIndex])).toEqual([
+			["bbbbbbbb", 1],
+			["aaaaaaaa", 2],
+		]);
+	});
+
+	it("appends an import to an ordered collection with the next #N, and a member keeps its own", async () => {
+		const plain = await collections.createCollectionWithBooks("Plain", ["aaaaaaaa"], {}, 1);
+		await collections.appendBooksToCollection(plain.id, ["bbbbbbbb"], 2);
+		expect((await collections.getCollectionMembers(plain.id)).map((m) => m.seriesIndex)).toEqual([
+			null,
+			null,
+		]);
+
+		const saga = await collections.createCollectionWithBooks(
+			"Saga",
+			["aaaaaaaa"],
+			{ ordered: true },
+			3,
+		);
+		await collections.addBooksToCollection(saga.id, ["bbbbbbbb"], 4, new Map([["bbbbbbbb", 2.5]]));
+		await collections.appendBooksToCollection(saga.id, ["cccccccc", "bbbbbbbb"], 5);
+		const members = await collections.getCollectionMembers(saga.id);
+		expect(members.map((m) => [m.bookId, m.seriesIndex])).toEqual([
+			["aaaaaaaa", 1],
+			["bbbbbbbb", 2.5],
+			["cccccccc", 3],
+		]);
+	});
+
 	it("renaming a series collection keeps its series key", async () => {
 		const c = await collections.createCollection("Dune", 1);
 		raw.prepare("UPDATE collections SET series_key = ? WHERE id = ?").run("dune", c.id);
