@@ -1,6 +1,7 @@
 import { SPEED_TEST_WPM_MAX } from "@lesefluss/core";
-import { desc, inArray, sql } from "drizzle-orm";
+import { between, desc, inArray, sql } from "drizzle-orm";
 import { randomSessionId } from "../../../utils/random-id";
+import { PLAUSIBLE_WPM } from "../../stats/speed-test";
 import { serverNow } from "../../sync/server-clock";
 import { db } from "../index";
 import { type SpeedTestRow, speedTests } from "../schema";
@@ -40,10 +41,12 @@ export async function getSpeedTests(): Promise<SpeedTestRow[]> {
 	return db.select().from(speedTests).orderBy(desc(speedTests.createdAt), desc(speedTests.id));
 }
 
-export async function getLatestSpeedTest(): Promise<SpeedTestRow | null> {
+/** A kept implausible test stays on the trend but never seeds the speed model. */
+export async function getLatestPlausibleSpeedTest(): Promise<SpeedTestRow | null> {
 	const [row] = await db
 		.select()
 		.from(speedTests)
+		.where(between(speedTests.readingWpm, PLAUSIBLE_WPM.min, PLAUSIBLE_WPM.max))
 		.orderBy(desc(speedTests.createdAt), desc(speedTests.id))
 		.limit(1);
 	return row ?? null;

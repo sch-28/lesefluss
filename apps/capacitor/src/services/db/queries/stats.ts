@@ -35,7 +35,7 @@ import { type ReadingRecords, summariseRecords } from "../../stats/records";
 import { buildSpeedTabData, type SpeedTabData } from "../../stats/speed-tab";
 import { db } from "../index";
 import { bookContent, books, readingSessions, series } from "../schema";
-import { getLatestSpeedTest, getSpeedTests } from "./speed-tests";
+import { getLatestPlausibleSpeedTest, getSpeedTests } from "./speed-tests";
 
 export interface PeriodTotals {
 	minutes: number;
@@ -503,7 +503,7 @@ export async function getSpeedModel(opts: {
 				wpmAvg: readingSessions.wpmAvg,
 			})
 			.from(readingSessions),
-		getLatestSpeedTest(),
+		getLatestPlausibleSpeedTest(),
 	]);
 	const without = new Set(opts.without);
 	const rows = without.size > 0 ? all.filter((r) => !without.has(r.id)) : all;

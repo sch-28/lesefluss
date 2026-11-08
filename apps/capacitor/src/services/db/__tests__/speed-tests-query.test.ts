@@ -97,6 +97,35 @@ describe("getSpeedModel with a speed test", () => {
 		});
 	});
 
+	it("skips a kept implausible test for the last plausible one, else 225", async () => {
+		await addSpeedTest({ readingWpm: 1_400, rsvpWpm: null, passageId: "canal-1" }, NOW - DAY);
+		expect((await getSpeedModel({ window: "recent", now: NOW })).reading).toMatchObject({
+			wpm: 225,
+			source: "default",
+		});
+		await addSpeedTest({ readingWpm: 260, rsvpWpm: null, passageId: "orchard-1" }, NOW - 2 * DAY);
+		await addSpeedTest({ readingWpm: 90, rsvpWpm: null, passageId: "canal-1" }, NOW);
+		expect((await getSpeedModel({ window: "recent", now: NOW })).reading).toMatchObject({
+			wpm: 260,
+			source: "test",
+		});
+		const trend = await getWpmTrend({ window: "30d", mode: "reading", now: NOW });
+		expect(trend.tests.map((t) => t.wpm)).toEqual([260, 1_400, 90]);
+	});
+
+	it("counts 120 and 900 as plausible, 119 and 901 not, for reading and pace", async () => {
+		await addSpeedTest({ readingWpm: 900, rsvpWpm: null, passageId: "canal-1" }, NOW - 3 * DAY);
+		await addSpeedTest({ readingWpm: 901, rsvpWpm: null, passageId: "canal-1" }, NOW - 2 * DAY);
+		await addSpeedTest({ readingWpm: 119, rsvpWpm: null, passageId: "canal-1" }, NOW - DAY);
+		let model = await getSpeedModel({ window: "recent", now: NOW });
+		expect(model.reading).toMatchObject({ wpm: 900, source: "test" });
+		expect(model.pace).toMatchObject({ wpm: 900, source: "test" });
+		await addSpeedTest({ readingWpm: 120, rsvpWpm: null, passageId: "canal-1" }, NOW);
+		model = await getSpeedModel({ window: "recent", now: NOW });
+		expect(model.reading).toMatchObject({ wpm: 120, source: "test" });
+		expect(model.pace).toMatchObject({ wpm: 120, source: "test" });
+	});
+
 	it("gives way to measured reading", async () => {
 		await addSpeedTest({ readingWpm: 310, rsvpWpm: null, passageId: "canal-1" }, NOW - DAY);
 		addSession(NOW - 60 * MIN, 30, 6_000);

@@ -157,7 +157,7 @@ import {
 import {
 	addSpeedTest,
 	deleteAllSpeedTests,
-	getLatestSpeedTest,
+	getLatestPlausibleSpeedTest,
 	getSpeedTests,
 	hardDeleteSpeedTests,
 	upsertSpeedTests,
@@ -379,7 +379,7 @@ export const queries = {
 	// Speed tests
 	addSpeedTest,
 	getSpeedTests,
-	getLatestSpeedTest,
+	getLatestPlausibleSpeedTest,
 	upsertSpeedTests,
 	hardDeleteSpeedTests,
 	deleteAllSpeedTests,
