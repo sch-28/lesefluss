@@ -1,3 +1,4 @@
+import { isMeasurableSitting, wpmFrom } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import {
 	DropdownMenu,
@@ -291,6 +292,8 @@ function SessionItem({
 		enabled: !isSelecting,
 	});
 
+	// wpmAvg holds the dial on RSVP rows; show what the sitting delivered, as the speed model does.
+	const wpm = isMeasurableSitting(session) ? wpmFrom(session.wordsRead, session.durationMs) : null;
 	const wordCount = book?.wordCount ?? 0;
 	const title =
 		isBookView && wordCount > 0
@@ -326,9 +329,7 @@ function SessionItem({
 				</span>
 				<span className="shrink-0 text-right text-foreground/80 text-xs tabular-nums">
 					<span className="block">{formatDuration(session.durationMs)}</span>
-					{session.wpmAvg != null && (
-						<span className="block text-muted-foreground">{session.wpmAvg} wpm</span>
-					)}
+					{wpm != null && <span className="block text-muted-foreground">{wpm} wpm</span>}
 				</span>
 			</button>
 			{!isSelecting && (

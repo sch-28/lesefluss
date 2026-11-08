@@ -52,6 +52,7 @@ describe("BookStatsCard before the first sitting", () => {
 			"1h 40mtotal",
 		);
 		expect(view.text()).toContain("RSVP 400: 1h 27m");
+		expect(view.text()).not.toContain("estimated");
 	});
 
 	it("moves time left and the finish day with the what-if speed", async () => {

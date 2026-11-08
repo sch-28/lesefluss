@@ -101,6 +101,13 @@ describe("SessionsTab", () => {
 		expect(text).toMatch(/Today10m.*Middlemarch.*Yesterday10m.*Emma/);
 	});
 
+	it("shows an RSVP sitting's delivered speed, not its dial", async () => {
+		state.rows = [{ ...session("a", "mm", at(7, 9)), mode: "rsvp", wordsRead: 3_800, wpmAvg: 400 }];
+		const text = (await show()).text();
+		expect(text).toContain("380 wpm");
+		expect(text).not.toContain("400 wpm");
+	});
+
 	it("shows a book's card with the position range and deletes a few at once, with undo", async () => {
 		state.rows = [
 			session("a", "mm", at(7, 9)),

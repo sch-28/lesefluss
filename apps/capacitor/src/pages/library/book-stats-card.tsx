@@ -119,7 +119,7 @@ function BookReadingTimeCard({ book }: Props) {
 				</div>
 				<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
 					{isUnread ? "total" : "left"}
-					{isPaceEstimated ? " · estimated" : " · at your pace"}
+					{!isPaceEstimated && " · at your pace"}
 				</div>
 			</div>
 			<BookTimeAhead book={book} pace={pace} wordsLeft={wordsLeft} />
@@ -218,7 +218,7 @@ export function BookStatsCard({ book }: Props) {
 								{formatReadingTime(minutesLeft)}
 							</div>
 							<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
-								left{isPaceEstimated ? " · estimated" : " · at your pace"}
+								left{!isPaceEstimated && " · at your pace"}
 							</div>
 						</div>
 					)
