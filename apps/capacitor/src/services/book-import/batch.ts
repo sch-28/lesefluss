@@ -23,7 +23,7 @@ export async function probeScannedFile(file: ScannedFile): Promise<BookProbe> {
 }
 
 /**
- * Parse and write one scanned file. No confirm sheet: a batch commits what the
+ * Parse and write one scanned file. No Add book page: a batch commits what the
  * reader selected, and they can edit any of it from the book detail page after.
  */
 export async function importScannedFile(file: ScannedFile): Promise<Book> {

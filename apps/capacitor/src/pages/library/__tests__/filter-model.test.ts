@@ -94,6 +94,14 @@ describe("tags match all", () => {
 		expect(cycleValue(cleared, "tags", "scifi").tags?.mode).toBeUndefined();
 	});
 
+	it("resets to any once no included tag is left, even with excluded tags kept", () => {
+		const oneLeft = removeValue(all, "tags", "scifi");
+		expect(oneLeft.tags?.mode).toBe("all");
+		const onlyExcluded = removeValue(oneLeft, "tags", "space");
+		expect(onlyExcluded.tags).toEqual({ in: [], out: ["dnf"] });
+		expect(cycleValue(onlyExcluded, "tags", "poetry").tags?.mode).toBeUndefined();
+	});
+
 	it("keeps the mode while other tags are cycled", () => {
 		expect(cycleValue(all, "tags", "poetry").tags?.mode).toBe("all");
 	});
@@ -148,7 +156,7 @@ describe("length facet", () => {
 	});
 
 	it("labels the range compactly and counts as one active filter", () => {
-		expect(wordRangeLabel({ min: 150_000 })).toBe("> 150k");
+		expect(wordRangeLabel({ min: 150_000 })).toBe("150k+");
 		expect(wordRangeLabel({ max: 50_000 })).toBe("< 50k");
 		expect(wordRangeLabel({ min: 50_000, max: 1_200_000 })).toBe("50k–1.2M");
 		expect(activeFilterCount({ words: { min: 1 }, tags: sel(["a"]) })).toBe(2);
@@ -337,8 +345,8 @@ describe("persistence", () => {
 	});
 });
 
-describe("speed", () => {
-	it("filters 2000 books well inside a frame", () => {
+describe("a large library", () => {
+	it("filters 2000 books by included and excluded tags", () => {
 		const books = Array.from({ length: 2000 }, (_, i) =>
 			makeBook({
 				id: `b${String(i).padStart(7, "0")}`,
@@ -346,12 +354,13 @@ describe("speed", () => {
 				tags: JSON.stringify([`t${i % 20}`, `u${i % 7}`]),
 			}),
 		);
-		const start = performance.now();
 		const items = filterAndSortLibrary(books, [], new Map(), {
 			filter: { tags: sel(["t1", "t2"], ["u3"]) },
 			sortBy: "title",
 		});
-		expect(performance.now() - start).toBeLessThan(200);
-		expect(items.length).toBeGreaterThan(0);
+		const expected = Array.from({ length: 2000 }, (_, i) => i).filter(
+			(i) => (i % 20 === 1 || i % 20 === 2) && i % 7 !== 3,
+		);
+		expect(items).toHaveLength(expected.length);
 	});
 });

@@ -12,7 +12,7 @@ export type ImportExtras = {
 	language?: string | null;
 };
 
-/** Reader's corrections from the confirm sheet. */
+/** Reader's corrections from the Add book page. */
 export type ImportOverrides = {
 	title: string;
 	author: string | null;
@@ -49,7 +49,7 @@ export type StagedImport = {
 	 * Released when the entry leaves the queue, committed or discarded. A share
 	 * arrives as a copy in the OS cache directory, and deleting that copy when
 	 * the PARSE finished would strand the reader: the app can be killed while the
-	 * confirm sheet is open, and then neither the book nor the shared file exists.
+	 * Add book page is open, and then neither the book nor the shared file exists.
 	 */
 	cleanup?: () => void;
 	/** The collection the import was started from; the book joins it on commit or attach. */

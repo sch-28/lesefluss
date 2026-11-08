@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "../../../components/toast";
 import type { SeriesPlan } from "../../../pages/library/book-edit-form";
 import { log } from "../../../utils/log";
+import { applyBookSeriesPlan } from "../../series-collections";
 import { scheduleSyncPush } from "../../sync";
 import { errorMessage, reportEvent } from "../../telemetry";
 import { queries } from "../queries";
@@ -67,27 +68,9 @@ function useImportSeriesState(seriesKey: string | null) {
 	});
 }
 
-async function applySeriesPlan(bookId: string, plan: SeriesPlan): Promise<void> {
-	if (plan.remove) await queries.removeBooksFromCollection(plan.remove, [bookId]);
-	if (!plan.add) return;
-	let collectionId: string;
-	if (plan.add.kind === "new") {
-		collectionId = (await queries.createCollection(plan.add.name)).id;
-		await queries.setCollectionOrdered(collectionId, true);
-	} else {
-		collectionId = plan.add.collectionId;
-	}
-	await queries.addBooksToCollection(
-		collectionId,
-		[bookId],
-		undefined,
-		new Map([[bookId, plan.add.index]]),
-	);
-}
-
 function useSaveBookSeries() {
 	return useCollectionMutation((vars: { bookId: string; plan: SeriesPlan }) =>
-		applySeriesPlan(vars.bookId, vars.plan),
+		applyBookSeriesPlan(vars.bookId, vars.plan),
 	);
 }
 

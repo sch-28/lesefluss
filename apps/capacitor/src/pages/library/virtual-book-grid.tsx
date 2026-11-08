@@ -118,6 +118,17 @@ type Props = {
 };
 
 const TAP_SLOP_PX = 10;
+
+/** The tap's own click follows its pointerup; once the tap has left selection,
+ *  that click would land on whatever just became interactive (a series card, the FAB). */
+function swallowNextClick() {
+	const swallow = (e: MouseEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+	};
+	window.addEventListener("click", swallow, { capture: true, once: true });
+	setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 500);
+}
 const NONE_COLLAPSED: ReadonlySet<string> = new Set();
 
 /**
@@ -156,12 +167,16 @@ const VirtualBookGrid: React.FC<Props> = ({
 			onPointerDown={(e) => {
 				pressAt.current = { x: e.clientX, y: e.clientY };
 			}}
-			onClick={(e) => {
+			// Pointer, not onClick: React gives an onClick element a click handler, and
+			// TalkBack then offers a nameless "double-tap to activate" on the whole grid.
+			onPointerUp={(e) => {
 				const from = pressAt.current;
 				pressAt.current = null;
+				if (e.button !== 0) return;
 				if (!onBackgroundTap || (e.target as Element).closest("button, a, [data-book-id]")) return;
 				if (from && Math.hypot(e.clientX - from.x, e.clientY - from.y) > TAP_SLOP_PX) return;
 				onBackgroundTap();
+				swallowNextClick();
 			}}
 		>
 			<Virtualizer

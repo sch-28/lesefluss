@@ -16,7 +16,7 @@ vi.mock("../../query-client", () => ({ queryClient: { invalidateQueries: vi.fn()
 afterAll(close);
 
 const collections = await import("../queries/collections");
-const { applyImportSeriesChoice, reconcileSeriesCollections } = await import(
+const { applyBookSeriesPlan, applyImportSeriesChoice, reconcileSeriesCollections } = await import(
 	"../../series-collections"
 );
 const { scheduleSyncPush } = await import("../../sync");
@@ -258,7 +258,7 @@ describe("the Add book page's series choice", () => {
 		insertBook("bbbbbbbb", { series_name: "Dune", series_index: 2, added_at: 20 });
 		await applyImportSeriesChoice("bbbbbbbb", hint, { kind: "new", name: "Dune Saga", index: 7 });
 		const created = (await collections.getCollections()).find((c) => c.name === "Dune Saga");
-		expect(created).toMatchObject({ ordered: true, bookCount: 1 });
+		expect(created).toMatchObject({ ordered: true, seriesKey: "dune saga", bookCount: 1 });
 		expect(await members(created?.id ?? "")).toEqual([["bbbbbbbb", 7]]);
 		expect(await tombstoned("bbbbbbbb")).toBe(true);
 	});
@@ -272,5 +272,50 @@ describe("the Add book page's series choice", () => {
 			deleted: true,
 			bookCount: 0,
 		});
+	});
+});
+
+describe("the book edit page's series field", () => {
+	const DUNE_SAGA = seriesCollectionId("dune saga");
+	const inDune = async (bookId: string) =>
+		(await seriesRows()).memberships.find((m) => m.collectionId === DUNE && m.bookId === bookId);
+
+	it("a new series is a real series that later imports of that name join", async () => {
+		insertBook("aaaaaaaa", { added_at: 10 });
+		await applyBookSeriesPlan("aaaaaaaa", {
+			remove: null,
+			add: { kind: "new", name: "Dune Saga", index: 1 },
+		});
+		expect((await collections.getCollections()).find((c) => c.id === DUNE_SAGA)).toMatchObject({
+			seriesKey: "dune saga",
+			ordered: true,
+		});
+
+		insertBook("bbbbbbbb", { series_name: "Dune Saga", series_index: 2, added_at: 20 });
+		await reconcileSeriesCollections();
+		expect(await collections.getCollectionBookIds(DUNE_SAGA)).toEqual(["aaaaaaaa", "bbbbbbbb"]);
+	});
+
+	it("keeps the book out of its file series that has not formed yet", async () => {
+		insertBook("aaaaaaaa", { series_name: "Dune", series_index: 1, added_at: 10 });
+		await applyBookSeriesPlan("aaaaaaaa", {
+			remove: null,
+			add: { kind: "new", name: "Dune Saga", index: 1 },
+		});
+		insertBook("bbbbbbbb", { series_name: "Dune", series_index: 2, added_at: 20 });
+		insertBook("cccccccc", { series_name: "Dune", series_index: 3, added_at: 30 });
+		await reconcileSeriesCollections();
+		expect(await collections.getCollectionBookIds(DUNE)).toEqual(["bbbbbbbb", "cccccccc"]);
+		expect((await inDune("aaaaaaaa"))?.deleted).toBe(true);
+		expect(await collections.getCollectionBookIds(DUNE_SAGA)).toEqual(["aaaaaaaa"]);
+	});
+
+	it("choosing the file's own series does not dismiss the book from it", async () => {
+		insertBook("aaaaaaaa", { series_name: "Dune", series_index: 1, added_at: 10 });
+		await applyBookSeriesPlan("aaaaaaaa", {
+			remove: null,
+			add: { kind: "new", name: "dune", index: 1 },
+		});
+		expect(await inDune("aaaaaaaa")).toMatchObject({ deleted: false });
 	});
 });

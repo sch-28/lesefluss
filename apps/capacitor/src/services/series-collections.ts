@@ -4,6 +4,7 @@ import {
 	normalizeSeriesKey,
 	seriesCollectionId,
 } from "@lesefluss/core";
+import type { SeriesPlan } from "../pages/library/book-edit-form";
 import { log } from "../utils/log";
 import type { ImportSeriesChoice } from "./book-import/types";
 import { collectionKeys } from "./db/hooks/query-keys";
@@ -184,8 +185,7 @@ export async function applyImportSeriesChoice(
 	let collectionId: string;
 	let ordered: boolean;
 	if (choice.kind === "new") {
-		collectionId = (await queries.createCollection(choice.name, now)).id;
-		await queries.setCollectionOrdered(collectionId, true, now);
+		collectionId = (await queries.createSeriesCollection(choice.name, now)).id;
 		ordered = true;
 	} else {
 		collectionId = choice.collectionId;
@@ -196,6 +196,32 @@ export async function applyImportSeriesChoice(
 		[bookId],
 		now,
 		ordered ? new Map([[bookId, choice.index]]) : undefined,
+	);
+}
+
+export async function applyBookSeriesPlan(
+	bookId: string,
+	plan: SeriesPlan,
+	now = serverNow(),
+): Promise<void> {
+	if (plan.remove) await queries.removeBooksFromCollection(plan.remove, [bookId], now);
+	if (!plan.add) return;
+	const collectionId =
+		plan.add.kind === "new"
+			? (await queries.createSeriesCollection(plan.add.name, now)).id
+			: plan.add.collectionId;
+	// The book's file series may not have formed yet; without the dismissal the
+	// reconcile would add the book to it as well once a second book arrives.
+	const fileKey = normalizeSeriesKey((await queries.getBook(bookId))?.seriesName);
+	const fileSeriesId = fileKey ? seriesCollectionId(fileKey) : null;
+	if (fileSeriesId && fileSeriesId !== collectionId) {
+		await queries.dismissBookFromCollection(fileSeriesId, bookId, now);
+	}
+	await queries.addBooksToCollection(
+		collectionId,
+		[bookId],
+		now,
+		new Map([[bookId, plan.add.index]]),
 	);
 }
 

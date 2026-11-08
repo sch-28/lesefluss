@@ -37,7 +37,7 @@ export function isSavingOriginal(id: string): boolean {
  * The `books` row an import produces. Pure, so the precedence between what the
  * parser guessed and what the reader corrected is testable without a database.
  *
- * `overrides` come from the confirm sheet and win outright: the reader saw the
+ * `overrides` come from the Add book page and win outright: the reader saw the
  * parser's guess and changed it. An import that commits without being shown
  * (the catalog) passes none, and the parser's values stand.
  */
@@ -55,7 +55,7 @@ export function buildImportedBookRow(
 		title: overrides?.title ?? payload.title,
 		author: overrides ? overrides.author : (payload.author ?? null),
 		description: overrides?.description ?? null,
-		// Same shape as `author` above: when the confirm sheet was shown, its value
+		// Same shape as `author` above: when the Add book page was shown, its value
 		// wins outright, including a deliberate clearing to null. Only an import
 		// that skipped the sheet falls back to the service, then the file itself.
 		// Capped like sourceUrl below - one over-long field 400s the entire sync
@@ -95,7 +95,7 @@ export function buildImportedBookRow(
 export async function commitBook(
 	payload: BookPayload,
 	extras: ImportExtras,
-	/** Reader's corrections from the confirm sheet, applied over what the parser
+	/** Reader's corrections from the Add book page, applied over what the parser
 	 *  guessed. Absent when an import commits without being shown. */
 	overrides?: ImportOverrides,
 	options: { awaitBackgroundWork?: boolean; series?: ImportSeriesChoice } = {},
@@ -120,7 +120,7 @@ export async function commitBook(
 	);
 
 	// The book is readable now. The original file copy and the image rows are
-	// megabytes over the native bridge, so they land after the confirm sheet
+	// megabytes over the native bridge, so they land after the Add book page
 	// has closed rather than keeping the reader waiting on them. A caller with
 	// no sheet (folder scan, catalog) waits instead, which also keeps one
 	// payload's bytes alive at a time.

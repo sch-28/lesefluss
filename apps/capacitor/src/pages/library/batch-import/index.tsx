@@ -46,7 +46,7 @@ const BatchImportSheet: React.FC<Props> = ({
 	useWakeLock(phase === "importing", "batch-import");
 
 	// Back closes the sheet rather than navigating the library behind it, the
-	// same contract the import confirm sheet uses. A run in progress ignores it.
+	// same contract the Add book page uses. A run in progress ignores it.
 	useEffect(() => {
 		if (!isOpen) return;
 		return pushBackHandler(() => {

@@ -47,7 +47,7 @@ function RootLayout() {
 
 	return (
 		// Staging wraps the share handler: a share received while the app was
-		// closed parses before any page mounts, and its confirm sheet has to have
+		// closed parses before any page mounts, and its Add book page has to have
 		// somewhere to live.
 		<ImportStagingProvider>
 			<HardwareBack />

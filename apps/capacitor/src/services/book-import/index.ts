@@ -73,7 +73,7 @@ export async function parseBookFromBlob(blob: Blob, fileName: string): Promise<S
 }
 
 /**
- * Parse and write in one step, without a confirm sheet. Only the catalog uses
+ * Parse and write in one step, without the Add book page. Only the catalog uses
  * this: its metadata is curated, and onboarding imports several starter books
  * at once, which would otherwise queue up a sheet per book during first run.
  */

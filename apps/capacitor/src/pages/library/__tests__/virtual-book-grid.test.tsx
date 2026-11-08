@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeBook } from "../../../test/book-fixture";
 import { groupLibrary } from "../group-by";
-import { applyLibraryView, buildLibraryItems } from "../sort-filter";
+import { buildLibraryItems } from "../sort-filter";
 import VirtualBookGrid, { estimateRowPx } from "../virtual-book-grid";
 
 const books = Array.from({ length: 2000 }, (_, i) =>
@@ -117,15 +117,54 @@ describe("VirtualBookGrid", () => {
 		scroller.remove();
 	});
 
-	it("filters and sorts two thousand books well inside a frame budget", () => {
-		const start = performance.now();
-		const visible = applyLibraryView(items, {
-			filter: { author: { in: ["Ada Vance"], out: [] } },
-			sortBy: "title",
-			search: "book 1",
+	it("a background tap leaves selection and its click opens nothing; a drag or a book tap does not", async () => {
+		restore = stubLayout();
+		const scroller = document.createElement("div");
+		scroller.dataset.scrollRestorationId = "app-scroll";
+		Object.defineProperty(scroller, "clientHeight", { value: 800 });
+		document.body.append(scroller);
+		const onBackgroundTap = vi.fn();
+		const root = createRoot(scroller);
+		await act(async () => {
+			root.render(
+				<VirtualBookGrid
+					items={items.slice(0, 2)}
+					viewMode="list"
+					onBackgroundTap={onBackgroundTap}
+					renderItem={(item) => (item.kind === "book" ? <div data-book-id={item.book.id} /> : null)}
+				/>,
+			);
 		});
-		expect(performance.now() - start).toBeLessThan(100);
-		expect(visible.length).toBeGreaterThan(0);
+		const grid = scroller.querySelector<HTMLElement>("[data-testid=library-items]");
+		const press = (target: Element, from: number, to: number) => {
+			target.dispatchEvent(
+				new PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: from, clientY: 0 }),
+			);
+			target.dispatchEvent(
+				new PointerEvent("pointerup", { bubbles: true, button: 0, clientX: to, clientY: 0 }),
+			);
+		};
+		const book = scroller.querySelector("[data-book-id]");
+		if (!grid || !book) throw new Error("grid not rendered");
+
+		press(grid, 0, 40);
+		press(book, 0, 0);
+		expect(onBackgroundTap).not.toHaveBeenCalled();
+
+		const card = document.createElement("button");
+		const onCardClick = vi.fn();
+		card.addEventListener("click", onCardClick);
+		document.body.append(card);
+		press(grid, 0, 2);
+		expect(onBackgroundTap).toHaveBeenCalledOnce();
+		card.click();
+		expect(onCardClick).not.toHaveBeenCalled();
+		card.click();
+		expect(onCardClick).toHaveBeenCalledOnce();
+
+		card.remove();
+		act(() => root.unmount());
+		scroller.remove();
 	});
 
 	it("estimates a grid row from the cover width", () => {

@@ -197,10 +197,10 @@ function withState(
 	const next: FacetSelection = {
 		in: current.in.filter((v) => v !== value),
 		out: current.out.filter((v) => v !== value),
-		...(current.mode && { mode: current.mode }),
 	};
 	if (state === "in") next.in.push(value);
 	if (state === "out") next.out.push(value);
+	if (current.mode && next.in.length > 0) next.mode = current.mode;
 	const { [facet]: _, ...rest } = filter;
 	return next.in.length + next.out.length > 0 ? { ...rest, [facet]: next } : rest;
 }
@@ -243,7 +243,7 @@ export function formatWords(n: number): string {
 
 export function wordRangeLabel({ min, max }: WordRange): string {
 	if (min != null && max != null) return `${formatWords(min)}–${formatWords(max)}`;
-	if (min != null) return `> ${formatWords(min)}`;
+	if (min != null) return `${formatWords(min)}+`;
 	return `< ${formatWords(max ?? 0)}`;
 }
 
