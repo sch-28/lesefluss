@@ -56,6 +56,7 @@ describe("shelvesFromRows", () => {
 		status: null,
 		rating: null,
 		finishedAt: null,
+		firstSittingAt: new Date("2026-10-31T10:00:00Z") as Date | null,
 		catalogId: "gutenberg:1",
 		updatedAt: new Date("2026-11-01T10:00:00Z"),
 		hasCover: false,
@@ -82,6 +83,15 @@ describe("shelvesFromRows", () => {
 				row({ bookId: "want", wordPosition: 500, status: "want" }),
 			]),
 		).toEqual(["newer", "older"]);
+	});
+
+	it("keeps a book only glanced at, with a position but no real sitting, off the Reading shelf", () => {
+		expect(
+			reading([
+				row({ bookId: "glanced", wordPosition: 10, firstSittingAt: null }),
+				row({ bookId: "read", wordPosition: 10 }),
+			]),
+		).toEqual(["read"]);
 	});
 
 	it("keeps a series whose chapters were set aside off the Reading shelf", () => {

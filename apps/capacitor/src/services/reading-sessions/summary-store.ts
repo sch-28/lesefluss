@@ -5,6 +5,9 @@ import { MIN_DURATION_MS, type SessionRow } from "./rules";
 /** The summary follows any real sitting: the same bar a sitting needs to be written at all. */
 export const SUMMARY_MIN_ACTIVE_MS = MIN_DURATION_MS;
 
+const summaryMinMinutes = SUMMARY_MIN_ACTIVE_MS / 60_000;
+export const SUMMARY_SETTING_HINT = `A sheet with the sitting's time, words and speed when you close a book after ${summaryMinMinutes === 1 ? "a minute" : `${summaryMinMinutes} minutes`} or more.`;
+
 /** The router re-mounts the reader once while leaving it; a close re-opened this fast never happened. */
 export const CLOSE_SETTLE_MS = 400;
 

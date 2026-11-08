@@ -225,17 +225,15 @@ const SeriesPicker: React.FC<{
 	const [newName, setNewName] = useState("");
 	// The file's series sits in its own group on top, so it is never offered twice.
 	const offersDetected = detected !== null && detected.status.kind !== "dismissed";
-	// Imported series before hand-made ordered collections, the order the
-	// membership query reads them back in.
 	const series = useMemo(
 		() =>
 			collections
-				.filter((c) => c.ordered && !(offersDetected && c.id === detected?.collectionId))
-				.sort((a, b) => Number(!a.seriesKey) - Number(!b.seriesKey) || a.sortOrder - b.sortOrder),
+				.filter((c) => c.seriesKey !== null && !(offersDetected && c.id === detected?.collectionId))
+				.sort((a, b) => a.sortOrder - b.sortOrder),
 		[collections, offersDetected, detected],
 	);
 	const plain = useMemo(
-		() => (detected ? collections.filter((c) => !c.ordered) : []),
+		() => (detected ? collections.filter((c) => c.seriesKey === null) : []),
 		[collections, detected],
 	);
 	const selectedId = choice.kind === "collection" ? choice.collectionId : null;

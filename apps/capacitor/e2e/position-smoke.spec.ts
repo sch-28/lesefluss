@@ -81,7 +81,7 @@ test("scroll: a settled scroll saves, a reload resumes there, and so does a font
 	expect(await savedWord(page)).toBe(word);
 });
 
-test("page: a TOC jump commits, a turn saves, a reopen lands on it, and so does a font scale change", async ({
+test("page: a Contents jump commits, a turn saves, a reopen lands on it, and so does a font scale change", async ({
 	page,
 }) => {
 	await seedChapterNovel(page);
@@ -89,11 +89,9 @@ test("page: a TOC jump commits, a turn saves, a reopen lands on it, and so does 
 	await reader.waitOpenSettled(page);
 	await reader.setPaginationStyle(page, "page");
 
-	await reader.tocJumpToChapter(page, "Chapter 3");
-	await expect(reader.browseBar(page)).toBeVisible();
-	const committed = await reader.commitReadFromHere(page);
+	const committed = await reader.moveToChapter(page, "Chapter 3");
 	await reader.waitPositionQuiet(page);
-	expect(await savedWord(page), "Read from here saved the jump").toBe(committed);
+	expect(await savedWord(page), "the jump is saved").toBe(committed);
 
 	await reader.waitPastJumpGuard(page);
 	await reader.turnPages(page, 1);
@@ -200,7 +198,7 @@ test("reload race: a chapter commit survives a hard reload with no wait for its 
 		"Chapter 1 opening paragraph anchors the scene.",
 	);
 
-	await reader.moveToChapter(page, "2: Second");
+	await reader.tocJumpToChapter(page, "2: Second");
 	await expect(page.locator("h2", { hasText: "TITLE 2" })).toBeInViewport({ timeout: 5000 });
 	await page.reload();
 	await reader.expectLoaded(page);

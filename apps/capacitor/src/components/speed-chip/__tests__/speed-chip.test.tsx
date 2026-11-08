@@ -185,16 +185,17 @@ describe("SpeedDetails dial", () => {
 				onNavigate={() => {}}
 			/>,
 		);
-		const dial = () => rendered?.container.querySelector("[data-testid=speed-dial]")?.textContent;
+		const dial = () =>
+			rendered?.container.querySelector("[data-testid=rsvp-wpm-value]")?.textContent;
 		expect(rendered.text()).toContain("RSVP at dial360 wpm");
 
-		await click(rendered.getButton("Dial +25"));
-		await click(rendered.getButton("Dial +25"));
+		await click(rendered.getButton("Increase speed"));
+		await click(rendered.getButton("Increase speed"));
 		expect(dial()).toBe("450");
 		expect(mutate.mock.calls).toEqual([[{ wpm: 425 }], [{ wpm: 450 }]]);
 		expect(rendered.text()).toContain("RSVP at dial405 wpm");
 
-		await click(rendered.getButton("Dial −25"));
+		await click(rendered.getButton("Decrease speed"));
 		expect(mutate).toHaveBeenLastCalledWith({ wpm: 425 });
 	});
 
@@ -209,8 +210,8 @@ describe("SpeedDetails dial", () => {
 				onNavigate={() => {}}
 			/>,
 		);
-		expect(rendered.getButton("Dial +25").disabled).toBe(true);
-		await click(rendered.getButton("Dial +25"));
+		expect(rendered.getButton("Increase speed").getAttribute("aria-disabled")).toBe("true");
+		await click(rendered.getButton("Increase speed"));
 		expect(mutate).not.toHaveBeenCalled();
 	});
 

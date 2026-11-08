@@ -56,6 +56,9 @@ export const syncBooks = pgTable(
 		catalogId: text("catalog_id"), // e.g. 'gutenberg:1342'
 		sourceUrl: text("source_url"), // original URL for source='url' imports
 		finishedAt: timestamp("finished_at"), // first crossing of the finished threshold
+		// Start of the first real sitting, which is what puts a book on Reading
+		// (bookStatus() in @lesefluss/core). Earliest wins on merge.
+		firstSittingAt: timestamp("first_sitting_at"),
 		// When the book entered the library. Nullable: rows last written by a client
 		// that pre-dates the column have none, and a restoring client falls back to
 		// the row revision for those.

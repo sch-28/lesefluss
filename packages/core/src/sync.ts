@@ -76,6 +76,9 @@ export const SyncBookSchema = z.object({
 	// Optional for the same reason as `finishedAt`: absent means the client has
 	// no such field, not that the book has no add date.
 	addedAt: z.number().int().nonnegative().nullable().optional(),
+	// Start of the book's first real sitting (see bookStatus()). Earliest wins on
+	// merge; optional for the same reason as `finishedAt`.
+	firstSittingAt: z.number().int().nonnegative().nullable().optional(),
 	// Reader-editable metadata. All optional for the same reason as `finishedAt`:
 	// an older client omits them entirely, and absent must not read as "cleared".
 	description: z.string().max(20_000).nullable().optional(),
@@ -613,6 +616,32 @@ export type ContentQuotaExceeded = ContentQuota & {
 	stamps?: SyncPushStamps;
 };
 
-/** The body of `POST /api/account/delete`; the literal guards against an accidental call. */
-export const DeleteAccountRequestSchema = z.object({ confirm: z.literal("delete-account") });
+/**
+ * The body of `POST /api/account/delete`; the literal guards against an accidental call.
+ * `password` is required for an account that has one; an account that signs in only
+ * with Google or Discord sends none and needs a recent sign-in instead.
+ */
+export const DeleteAccountRequestSchema = z.object({
+	confirm: z.literal("delete-account"),
+	password: z.string().max(1024).optional(),
+});
 export type DeleteAccountRequest = z.infer<typeof DeleteAccountRequestSchema>;
+
+/** Why the server refused an account deletion (403 `reason`); nothing was deleted. */
+export type DeleteAccountRefusal =
+	| "password_required"
+	| "wrong_password"
+	| "reauth_required"
+	| "rate_limited";
+
+export const DELETE_ACCOUNT_REFUSAL_MESSAGES: Record<DeleteAccountRefusal, string> = {
+	password_required: "Enter your password to delete your account.",
+	wrong_password: "That password is not correct.",
+	reauth_required:
+		"For your security, sign out and sign in again, then delete your account within 10 minutes.",
+	rate_limited: "Too many attempts. Wait a minute, then try again.",
+};
+
+export function isDeleteAccountRefusal(value: unknown): value is DeleteAccountRefusal {
+	return typeof value === "string" && Object.keys(DELETE_ACCOUNT_REFUSAL_MESSAGES).includes(value);
+}

@@ -158,7 +158,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 							if (v) setTab(v as Tab);
 						}}
 						// Scrolls sideways rather than breaking a label mid-word at a large font scale.
-						className="min-w-0 flex-1 justify-start overflow-x-auto [scrollbar-width:none] [&>*]:h-auto [&>*]:min-h-9 [&>*]:shrink-0 [&>*]:whitespace-nowrap"
+						className="min-w-0 flex-1 justify-start overflow-x-auto [scrollbar-width:none] [&>*]:h-auto [&>*]:min-h-9 [&>*]:flex-none [&>*]:whitespace-nowrap"
 					>
 						{hasContents && <ToggleGroupItem value="contents">Contents</ToggleGroupItem>}
 						{hasChapters && <ToggleGroupItem value="chapters">Chapters</ToggleGroupItem>}

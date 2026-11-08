@@ -8,6 +8,7 @@ import { ModeCards, PAGINATION_STYLE_OPTIONS } from "../../components/rsvp-picke
 import { SettingsRow } from "../../components/settings/settings-row";
 import { SettingsSection } from "../../components/settings/settings-section";
 import { StepperRow } from "../../components/settings/stepper-row";
+import { TextSpacingRows } from "../../components/settings/text-spacing-rows";
 import { useTheme } from "../../contexts/theme-context";
 import { useAppearanceSettings } from "../../hooks/use-appearance-settings";
 
@@ -102,6 +103,7 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor, onOpen
 							step={READER_LINE_SPACING.step}
 							onChange={(v) => adjustLineSpacing(v - lineSpacing)}
 						/>
+						<TextSpacingRows />
 						<StepperRow
 							label="Margins"
 							value={margin}

@@ -65,7 +65,10 @@ describe("ordered collection", () => {
 	it("summarises the books, finished and reading", () => {
 		const rows: OrderedRow[] = [
 			{ ...row("a", 1), book: makeBook({ id: "a", wordPosition: 1000 as never }) },
-			{ ...row("b", 2), book: makeBook({ id: "b", wordPosition: 400 as never }) },
+			{
+				...row("b", 2),
+				book: makeBook({ id: "b", wordPosition: 400 as never, firstSittingAt: 1 }),
+			},
 			row("c", 3),
 		];
 		expect(summaryLabel(orderedSummary(rows))).toBe("3 books · 1 finished · 1 reading");

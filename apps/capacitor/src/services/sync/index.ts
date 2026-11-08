@@ -1,9 +1,12 @@
 import { Preferences } from "@capacitor/preferences";
 import {
 	type ContentQuotaExceeded,
+	DELETE_ACCOUNT_REFUSAL_MESSAGES,
 	DELETE_SESSIONS_BATCH_MAX,
+	type DeleteAccountRefusal,
 	type DeleteAccountRequest,
 	DeletedSessionIdsSchema,
+	isDeleteAccountRefusal,
 	isSyncEligible,
 	MAX_SYNCED_CONTENT_BYTES,
 	MAX_SYNCED_COVER_CHARS,
@@ -326,17 +329,42 @@ function toSyncError(err: unknown): unknown {
 		: err;
 }
 
+/** The server refused the deletion (wrong or missing password, stale sign-in); nothing was deleted. */
+export class AccountDeletionRefusedError extends Error {
+	constructor(readonly reason: DeleteAccountRefusal) {
+		super(DELETE_ACCOUNT_REFUSAL_MESSAGES[reason]);
+		this.name = "AccountDeletionRefusedError";
+	}
+}
+
 /**
  * Deletes the signed-in account and everything the server holds for it, then
  * drops the local session. Under the sync lock so no push runs with the dead
- * token and gets a 401 that reads as an expired session. Books on this device stay.
+ * token and gets a 401 that reads as an expired session.
+ * Throws AccountDeletionRefusedError when the server does not accept `password`.
  */
-export async function deleteAccount(): Promise<void> {
+export async function deleteAccount(password: string): Promise<void> {
 	await withSyncLock(async () => {
-		const body: DeleteAccountRequest = { confirm: "delete-account" };
-		await syncFetch("/api/account/delete", { method: "POST", body: JSON.stringify(body) });
+		const body: DeleteAccountRequest = {
+			confirm: "delete-account",
+			password: password || undefined,
+		};
+		try {
+			await authedFetch("/api/account/delete", { method: "POST", body: JSON.stringify(body) });
+		} catch (err) {
+			const reason =
+				err instanceof AuthedFetchError &&
+				(err.status === 429 ? "rate_limited" : err.status === 403 && refusalReason(err.body));
+			if (reason) throw new AccountDeletionRefusedError(reason);
+			throw toSyncError(err);
+		}
 		await clearToken();
 	});
+}
+
+function refusalReason(body: unknown): DeleteAccountRefusal | null {
+	const reason = (body as { reason?: unknown } | null)?.reason;
+	return isDeleteAccountRefusal(reason) ? reason : null;
 }
 
 /**
@@ -476,6 +504,7 @@ export function bookToSync(book: Book, contentData?: BookContent | null): SyncBo
 			: {}),
 		finishedAt: book.finishedAt,
 		addedAt: book.addedAt,
+		firstSittingAt: book.firstSittingAt,
 		// A tombstone carries no reader-written text, same rule as content above:
 		// a deleted book's private notes have no business outliving it on a server.
 		...(book.deleted
@@ -744,6 +773,7 @@ function buildBookRowFromServer(
 		metadataUpdatedAt: serverBook.metadataUpdatedAt ?? serverBook.updatedAt,
 		lastRead: seededLastRead(serverBook),
 		finishedAt: serverBook.finishedAt ?? null,
+		firstSittingAt: serverBook.firstSittingAt ?? null,
 		description: serverBook.description ?? null,
 		language: serverBook.language ?? null,
 		status: serverBook.status ?? null,
@@ -986,6 +1016,15 @@ export async function pullSync(): Promise<Set<string>> {
 					Date.now(),
 					{ isDeviceLocal: true },
 				);
+				changed = true;
+			}
+
+			// Same as the finish above: a fact, merged earliest-wins on its own.
+			if (
+				serverBook.firstSittingAt != null &&
+				(local.firstSittingAt == null || serverBook.firstSittingAt < local.firstSittingAt)
+			) {
+				await queries.markFirstSitting(serverBook.bookId, serverBook.firstSittingAt);
 				changed = true;
 			}
 

@@ -9,12 +9,19 @@ const appearance = vi.hoisted(() => ({
 	readingRuler: { isOn: false, lines: 1 },
 	lineSpacing: 1.5,
 	margin: 16,
+	letterSpacing: 0,
+	wordSpacing: 0,
+	paragraphSpacing: 1,
 	paginationStyle: "scroll",
 	isMotionReduced: false,
 	isEinkMode: false,
 	adjustFontSize: vi.fn(),
 	adjustLineSpacing: vi.fn(),
 	adjustMargin: vi.fn(),
+	adjustLetterSpacing: vi.fn(),
+	adjustWordSpacing: vi.fn(),
+	adjustParagraphSpacing: vi.fn(),
+	resetTextSpacing: vi.fn(),
 	setFontFamily: vi.fn(),
 	setBold: vi.fn(),
 	setTextAlign: vi.fn(),
@@ -59,6 +66,9 @@ describe("AppearancePopover", () => {
 		for (const label of [
 			"Text size",
 			"Line spacing",
+			"Letter spacing",
+			"Word spacing",
+			"Paragraph spacing",
 			"Margins",
 			"Bold text",
 			"Justify text",
@@ -72,6 +82,20 @@ describe("AppearancePopover", () => {
 		if (!all) throw new Error("no All settings");
 		await click(all);
 		expect(onOpenAllSettings).toHaveBeenCalledTimes(1);
+	});
+
+	it("changes and resets spacing through the Settings rows", async () => {
+		const body = await mount();
+		const inc = body.querySelector<HTMLElement>('[aria-label="Increase Word spacing"]');
+		if (!inc) throw new Error("no word spacing stepper");
+		await click(inc);
+		expect(appearance.adjustWordSpacing).toHaveBeenCalledTimes(1);
+		const reset = [...body.querySelectorAll<HTMLElement>("button")].find(
+			(b) => b.textContent === "Reset spacing",
+		);
+		if (!reset) throw new Error("no Reset spacing");
+		await click(reset);
+		expect(appearance.resetTextSpacing).toHaveBeenCalledTimes(1);
 	});
 
 	it("turns justify on through the same switch as Settings", async () => {

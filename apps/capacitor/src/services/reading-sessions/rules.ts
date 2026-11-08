@@ -1,13 +1,13 @@
-import type { ReadingMode, WordPosition } from "@lesefluss/core";
+import { REAL_SITTING_MS, type ReadingMode, type WordPosition } from "@lesefluss/core";
 
 /** A pause longer than this ends a sitting; the next activity opens a new one. */
 export const HARD_END_MS = 10 * 60_000;
 /**
  * A sitting shorter or smaller than this is not written. It is also the bar for
- * a "real sitting": a written row moves the book's status on, so opening a book
- * and glancing at it counts for nothing.
+ * a "real sitting": a written row moves the book's status on and records its
+ * first sitting, so opening a book and glancing at it counts for nothing.
  */
-export const MIN_DURATION_MS = 60_000;
+export const MIN_DURATION_MS = REAL_SITTING_MS;
 export const MIN_WORDS = 5;
 
 /** Active reading time behind each entry of a row's `segmentWpm`. */

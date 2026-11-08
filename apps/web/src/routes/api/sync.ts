@@ -52,7 +52,7 @@ import { type BookOrigin, originKey } from "~/lib/origin";
 import { checkLimit } from "~/lib/rate-limit";
 import { requireAuth } from "~/lib/session-middleware";
 import { settleBuddyReads } from "~/lib/social/buddy-reads";
-import { upsertSyncBooks } from "~/lib/sync-book-upsert";
+import { upsertSyncBooks, withFirstSittings } from "~/lib/sync-book-upsert";
 import { tombstoneBookmarksOfDeletedBooks, upsertSyncBookmarks } from "~/lib/sync-bookmark-upsert";
 import { upsertSyncCollectionBooks, upsertSyncCollections } from "~/lib/sync-collection-upsert";
 import { upsertSyncGoals } from "~/lib/sync-goal-upsert";
@@ -167,6 +167,7 @@ async function getUserSyncData(
 		catalogId: syncBooks.catalogId,
 		sourceUrl: syncBooks.sourceUrl,
 		finishedAt: syncBooks.finishedAt,
+		firstSittingAt: syncBooks.firstSittingAt,
 		addedAt: syncBooks.addedAt,
 		seriesId: syncBooks.seriesId,
 		chapterIndex: syncBooks.chapterIndex,
@@ -288,6 +289,7 @@ async function getUserSyncData(
 				catalogId: b.catalogId,
 				sourceUrl: b.sourceUrl,
 				finishedAt: b.finishedAt ? toMs(b.finishedAt) : null,
+				firstSittingAt: b.firstSittingAt ? toMs(b.firstSittingAt) : null,
 				addedAt: b.addedAt ? toMs(b.addedAt) : null,
 				seriesId: b.seriesId,
 				chapterIndex: b.chapterIndex,
@@ -570,7 +572,9 @@ export const Route = createFileRoute("/api/sync")({
 						userId,
 						await withoutDuplicateOrigins(tx, userId, pushedBooks, origins),
 					);
-					const books = fitted.books;
+					// Before the upsert, so a first sitting in this push is already a
+					// want-to-reading transition for the feed.
+					const books = withFirstSittings(fitted.books, payload.readingSessions);
 					const highlights = payload.highlights.filter((h) => !takenDown.has(h.bookId));
 					const glossaryEntries = payload.glossaryEntries.filter(
 						(e) => e.bookId === null || e.bookId === undefined || !takenDown.has(e.bookId),

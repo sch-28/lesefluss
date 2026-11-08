@@ -1,3 +1,4 @@
+import { bookStatus } from "@lesefluss/core";
 import { Progress } from "@lesefluss/ui/progress";
 import { RatingStars } from "@lesefluss/ui/rating-stars";
 import { cn } from "@lesefluss/ui/utils";
@@ -148,6 +149,11 @@ export const CardFieldSlot: React.FC<{
 		{children}
 	</div>
 );
+
+/** A Reading book shows its progress bar even while the percent still rounds to 0. */
+export function hasStarted(book: Parameters<typeof bookStatus>[0]): boolean {
+	return bookStatus(book) !== "want";
+}
 
 export const ProgressField: React.FC<{ progress: number; id?: string }> = ({ progress, id }) => (
 	<span id={id} className="flex flex-1 items-center gap-1.5">

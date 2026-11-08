@@ -9,6 +9,7 @@ const today = () => localDateKey(Date.now());
 const hooks = {
 	stats: { sessionCount: 0 } as unknown,
 	goal: null as unknown,
+	model: undefined as unknown,
 };
 
 vi.mock("../../../contexts/theme-context", async (importOriginal) => ({
@@ -18,8 +19,8 @@ vi.mock("../../../contexts/theme-context", async (importOriginal) => ({
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
 		useStatsBook: () => ({ data: hooks.stats }),
-		// No model: the 225 wpm stand-in, and RSVP at the dial times the default delivered ratio.
-		useStatsSpeedModel: () => ({ data: undefined }),
+		// No model by default: the 225 wpm stand-in pace, and RSVP falls back to the setting.
+		useStatsSpeedModel: () => ({ data: hooks.model }),
 		useSettings: () => ({ data: { wpm: 400 } }),
 		useReadingGoalPlan: () => ({ data: hooks.goal }),
 		useStatsDailyReading: () => ({ data: { msByDay: new Map([[today(), 25 * 60_000]]) } }),
@@ -33,6 +34,7 @@ afterEach(() => {
 	view?.unmount();
 	view = undefined;
 	hooks.goal = null;
+	hooks.model = undefined;
 });
 
 async function pressOnSlider(key: string) {
@@ -51,10 +53,32 @@ describe("BookStatsCard before the first sitting", () => {
 		expect(view.container.querySelector("[data-testid=book-reading-time]")?.textContent).toContain(
 			"1h 40mtotal",
 		);
-		expect(view.text()).toContain("RSVP at 260 wpm: 1h 27m");
+		expect(view.text()).toContain("RSVP at 400 wpm (your setting): 56 min");
 		// The headline is the only place the time left appears at the starting speed.
 		expect(view.text().match(/1h 40m/g)).toHaveLength(1);
 		expect(view.text()).not.toContain("estimated");
+	});
+
+	it("times RSVP at the measured RSVP speed, labelled with it", async () => {
+		hooks.model = {
+			pace: { wpm: 225, source: "default" },
+			books: {},
+			rsvp: { wpm: 450, words: 9000, activeMs: 20 * 60_000, dialWpm: 500, deliveredRatio: 0.9 },
+		};
+		view = await render(<BookStatsCard book={makeBook({ wordCount: 22_500 })} />);
+		expect(view.container.querySelector("[data-testid=rsvp-hint]")?.textContent).toBe(
+			"RSVP at 450 wpm (your speed): 50 min",
+		);
+	});
+
+	it("hides the RSVP line when it is not faster than the pace", async () => {
+		hooks.model = {
+			pace: { wpm: 500, source: "measured" },
+			books: {},
+			rsvp: { wpm: 450, words: 9000, activeMs: 20 * 60_000, dialWpm: 500, deliveredRatio: 0.9 },
+		};
+		view = await render(<BookStatsCard book={makeBook({ wordCount: 22_500 })} />);
+		expect(view.container.querySelector("[data-testid=rsvp-hint]")).toBeNull();
 	});
 
 	it("moves time left and the finish day with the what-if speed", async () => {

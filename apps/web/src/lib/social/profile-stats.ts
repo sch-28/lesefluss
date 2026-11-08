@@ -108,6 +108,7 @@ export async function profileStatsFor(
 			wordPosition: syncBooks.wordPosition,
 			status: syncBooks.status,
 			finishedAt: syncBooks.finishedAt,
+			firstSittingAt: syncBooks.firstSittingAt,
 		})
 		.from(syncBooks)
 		.where(visible);
@@ -123,6 +124,7 @@ export async function profileStatsFor(
 				wordPosition: b.wordPosition,
 				status: b.status,
 				finishedAt: b.finishedAt,
+				firstSittingAt: b.firstSittingAt,
 			}) === "finished";
 		if (isFinished && b.finishedAt && b.finishedAt >= yearStart) booksFinishedThisYear++;
 	}
@@ -199,6 +201,7 @@ export async function profileMilestonesFor(
 				wordPosition: syncBooks.wordPosition,
 				status: syncBooks.status,
 				finishedAt: syncBooks.finishedAt,
+				firstSittingAt: syncBooks.firstSittingAt,
 			})
 			.from(syncBooks)
 			// A serial chapter is a books row: counting each one would turn a web novel into dozens of books.
@@ -235,6 +238,7 @@ export async function profileMilestonesFor(
 					wordPosition: b.wordPosition,
 					status: b.status,
 					finishedAt: b.finishedAt,
+					firstSittingAt: b.firstSittingAt,
 				}) === "finished",
 		)
 		.map((b) => b.finishedAt?.getTime() ?? 0);

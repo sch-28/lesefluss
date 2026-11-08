@@ -1,4 +1,9 @@
-import type { SyncBook, SyncPushStamps } from "@lesefluss/core";
+import {
+	REAL_SITTING_MS,
+	type SyncBook,
+	type SyncPushStamps,
+	type SyncReadingSession,
+} from "@lesefluss/core";
 import { sql } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 import type { Tx } from "~/db";
@@ -34,6 +39,7 @@ export function bookInsertValues(userId: string, book: SyncBook, origin?: BookOr
 		catalogId: book.catalogId ?? null,
 		sourceUrl: book.sourceUrl ?? null,
 		finishedAt: book.finishedAt != null ? new Date(book.finishedAt) : null,
+		firstSittingAt: book.firstSittingAt != null ? new Date(book.firstSittingAt) : null,
 		addedAt: book.addedAt != null ? new Date(book.addedAt) : null,
 		seriesId: book.seriesId ?? null,
 		chapterIndex: book.chapterIndex ?? null,
@@ -237,6 +243,7 @@ export const bookUpsertSetPreservingMetadata: PgUpdateSetSource<typeof syncBooks
 	// Sticky: a finish already recorded is never unset by a client that
 	// does not know the field, or by one that has not backfilled yet.
 	finishedAt: sql`COALESCE(sync_books.finished_at, excluded.finished_at)`,
+	firstSittingAt: sql`LEAST(sync_books.first_sitting_at, excluded.first_sitting_at)`,
 	// Earliest wins rather than last-write-wins: an add date is a fact about the
 	// book, not a revision of it, so a device that restored the library (and
 	// stamped itself into the date) must not overwrite the original.
@@ -284,6 +291,31 @@ export const bookUpsertSet: PgUpdateSetSource<typeof syncBooks> = {
 	...bookUpsertSetPreservingMetadata,
 	...clearedOnDelete((column) => lastWriteWins(column)),
 };
+
+/**
+ * The pushed books with each one's first real sitting taken from the sessions
+ * in the same push, when that is earlier than what the book carries. Clients
+ * from before the marker send sessions but never the marker itself.
+ */
+export function withFirstSittings(
+	books: SyncBook[],
+	sessions: readonly Pick<SyncReadingSession, "bookId" | "startedAt" | "durationMs">[],
+): SyncBook[] {
+	const earliest = new Map<string, number>();
+	for (const s of sessions) {
+		if (s.durationMs < REAL_SITTING_MS) continue;
+		const known = earliest.get(s.bookId);
+		if (known === undefined || s.startedAt < known) earliest.set(s.bookId, s.startedAt);
+	}
+	if (earliest.size === 0) return books;
+	return books.map((book) => {
+		const sat = earliest.get(book.bookId);
+		if (sat === undefined || (book.firstSittingAt != null && book.firstSittingAt <= sat)) {
+			return book;
+		}
+		return { ...book, firstSittingAt: sat };
+	});
+}
 
 /**
  * Writes the pushed books under the merge rules and records the feed events

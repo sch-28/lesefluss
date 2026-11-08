@@ -66,6 +66,7 @@ function loadShelfRows(exec: DbExecutor, ownerIds: string[]) {
 			status: syncBooks.status,
 			rating: syncBooks.rating,
 			finishedAt: syncBooks.finishedAt,
+			firstSittingAt: syncBooks.firstSittingAt,
 			catalogId: syncBooks.catalogId,
 			updatedAt: syncBooks.updatedAt,
 			hasCover: isNotNull(syncBooks.coverImage),
@@ -113,6 +114,7 @@ export function shelvesFromRows(
 			wordPosition: row.wordPosition,
 			status: row.status,
 			finishedAt: row.finishedAt,
+			firstSittingAt: row.firstSittingAt,
 		});
 		if (row.seriesId) {
 			if (row.seriesTitle === null) continue;

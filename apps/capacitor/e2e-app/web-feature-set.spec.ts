@@ -41,7 +41,9 @@ test("the web app hides native-only features and keeps browser read aloud", asyn
 
 	await page.goto("/app/tabs/library");
 	await openBook(page, title);
-	await expect(page.getByRole("button", { name: "Listen" })).toBeVisible();
+	await page.getByRole("button", { name: "More actions" }).click();
+	await expect(page.getByRole("menuitem", { name: "Listen", exact: true })).toBeVisible();
+	await page.keyboard.press("Escape");
 
 	await page.goto("/app/tabs/social");
 	await expect(page.getByRole("button", { name: "Sign in to get started" })).toBeVisible();

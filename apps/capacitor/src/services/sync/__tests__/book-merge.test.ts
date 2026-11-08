@@ -23,6 +23,7 @@ function makeLocal(overrides: Partial<Book> = {}): Book {
 		seriesUpdatedAt: 0,
 		lastRead: null,
 		finishedAt: null,
+		firstSittingAt: null,
 		description: "Local description",
 		language: "en",
 		status: "reading",

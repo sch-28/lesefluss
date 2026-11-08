@@ -7,6 +7,7 @@ import {
 	cardFieldValues,
 	cardTimeLeft,
 	DEFAULT_CARD_FIELDS,
+	hasStarted,
 	parseCardFields,
 	toggleCardField,
 } from "../card-fields";
@@ -54,5 +55,31 @@ describe("card fields", () => {
 			words: (1234).toLocaleString(),
 			status: "Finished",
 		});
+	});
+});
+
+describe("hasStarted", () => {
+	it("is true for a book read so little that its percent rounds to 0", () => {
+		expect(
+			hasStarted({ wordCount: 100_000, wordPosition: 40, status: null, firstSittingAt: 1 }),
+		).toBe(true);
+		expect(
+			hasStarted({ wordCount: 100_000, wordPosition: 0, status: "reading", firstSittingAt: null }),
+		).toBe(true);
+	});
+
+	it("is false for a book not opened yet", () => {
+		expect(
+			hasStarted({ wordCount: 100_000, wordPosition: 0, status: null, firstSittingAt: null }),
+		).toBe(false);
+		expect(
+			hasStarted({ wordCount: 100_000, wordPosition: 40, status: "want", firstSittingAt: 1 }),
+		).toBe(false);
+	});
+
+	it("is false for a book only glanced at, with a position but no real sitting", () => {
+		expect(
+			hasStarted({ wordCount: 100_000, wordPosition: 40, status: null, firstSittingAt: null }),
+		).toBe(false);
 	});
 });

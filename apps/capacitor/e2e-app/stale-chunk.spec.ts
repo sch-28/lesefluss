@@ -69,10 +69,10 @@ test("a route whose chunk a deploy deleted recovers with one reload", async ({ p
 	await deleteChunk(page, STATS_CHUNK);
 	const loads = countLoads(page);
 
-	await page.getByRole("button", { name: "Reading stats" }).click();
+	await page.getByRole("link", { name: "Stats", exact: true }).click();
 
 	await expect(page.getByRole("heading", { name: "No stats yet" })).toBeVisible();
-	await expect(page).toHaveURL(/\/app\/tabs\/library\/stats$/);
+	await expect(page).toHaveURL(/\/app\/tabs\/stats$/);
 	expect(loads()).toBe(1);
 });
 
@@ -101,7 +101,7 @@ test("a chunk still missing after the reload does not reload again", async ({ pa
 	await deleteChunk(page, STATS_CHUNK, "still-missing");
 	const loads = countLoads(page);
 
-	await page.getByRole("button", { name: "Reading stats" }).click();
+	await page.getByRole("link", { name: "Stats", exact: true }).click();
 
 	await expect.poll(loads).toBe(1);
 	await expect(page.getByText("Something went wrong!")).toBeVisible();
@@ -134,7 +134,7 @@ test("an import whose parser chunk a deploy deleted reloads at the next navigati
 	expect(loads()).toBe(0);
 	await page.keyboard.press("Escape");
 
-	await page.getByRole("button", { name: "Reading stats" }).click();
+	await page.getByRole("link", { name: "Stats", exact: true }).click();
 	await expect(page.getByRole("heading", { name: "No stats yet" })).toBeVisible();
 	expect(loads()).toBe(1);
 

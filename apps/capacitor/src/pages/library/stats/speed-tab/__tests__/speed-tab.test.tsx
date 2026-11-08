@@ -242,7 +242,7 @@ describe("SpeedTab", () => {
 	it("steps the global dial", async () => {
 		state.model = model({ rsvp: true, reading: false });
 		view = await render(<SpeedTab now={2 * DAY} />);
-		await click(view.container.querySelector("[aria-label='Dial +25']") as HTMLElement);
+		await click(view.container.querySelector("[aria-label='Increase speed']") as HTMLElement);
 		expect(mutate).toHaveBeenCalledWith({ wpm: 475 });
 	});
 

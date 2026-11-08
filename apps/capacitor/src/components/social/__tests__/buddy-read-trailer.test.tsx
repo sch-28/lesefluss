@@ -18,6 +18,7 @@ const libraryBook = (over: Record<string, unknown>) => ({
 	wordPosition: 0,
 	status: null,
 	finishedAt: null,
+	firstSittingAt: 1,
 	seriesId: null,
 	hideFromProfile: false,
 	lastRead: 1,
@@ -99,11 +100,18 @@ describe("BuddyReadTrailer", () => {
 				lastRead: 7,
 			}),
 			libraryBook({ id: "o", title: "Only opened", wordPosition: 0, lastRead: 6 }),
+			libraryBook({
+				id: "g",
+				title: "Only glanced",
+				wordPosition: 40,
+				firstSittingAt: null,
+				lastRead: 5,
+			}),
 		];
 		view = await render(<BuddyReadTrailer self={{ name: "Ada", avatarUrl: null }} />);
 
 		expect(view.text()).toContain("Any book you like");
-		expect(view.text()).not.toMatch(/Dropped one|Wanted one|Hidden one|Only opened/);
+		expect(view.text()).not.toMatch(/Dropped one|Wanted one|Hidden one|Only opened|Only glanced/);
 	});
 
 	it("tells screen readers what the illustration shows in one sentence", async () => {

@@ -1,6 +1,6 @@
 import type { SpeedModel } from "@lesefluss/core";
-import { Minus, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { RsvpSpeedControl } from "../../../../components/rsvp-speed-control";
 import { queryHooks } from "../../../../services/db/hooks";
 import { clampToRange, RSVP_WPM_RANGE, steppedWpm } from "../../../reader/wpm";
 
@@ -184,25 +184,14 @@ export function RsvpDial({ model }: { model: SpeedModel }) {
 					</text>
 				</svg>
 			</div>
-			<div className="mt-1 flex items-center justify-center gap-3">
-				<button
-					type="button"
-					aria-label={`Dial −${RSVP_WPM_RANGE.step}`}
-					disabled={dial <= RSVP_WPM_RANGE.min}
-					onClick={() => step(-1)}
-					className="inline-flex size-9 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-40"
-				>
-					<Minus className="size-4" />
-				</button>
-				<button
-					type="button"
-					aria-label={`Dial +${RSVP_WPM_RANGE.step}`}
-					disabled={dial >= RSVP_WPM_RANGE.max}
-					onClick={() => step(1)}
-					className="inline-flex size-9 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-40"
-				>
-					<Plus className="size-4" />
-				</button>
+			<div className="mt-1 flex justify-center">
+				<RsvpSpeedControl
+					wpm={dial}
+					onChange={(next) => {
+						setDial(next);
+						commit(next);
+					}}
+				/>
 			</div>
 			<p
 				className="mt-2 text-center text-muted-foreground text-xs tabular-nums"

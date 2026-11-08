@@ -1,3 +1,4 @@
+import { hasRealProgress } from "@lesefluss/core";
 import type { CollectionWithCount, SeriesMembership } from "../../services/db/queries/collections";
 import type { SeriesActivity } from "../../services/db/queries/series";
 import type { Book, Series } from "../../services/db/schema";
@@ -84,7 +85,7 @@ export function buildSeriesEntries(src: SeriesSources): SeriesEntry[] {
 			name: c.name,
 			author: mostCommon(members.map((m) => m.book.author)),
 			count: c.bookCount,
-			started: members.filter((m) => m.book.wordPosition > 0).length,
+			started: members.filter((m) => hasRealProgress(m.book)).length,
 			finished: members.filter((m) => isBookFinished(m.book)).length,
 			lastRead,
 			coverBookIds: members.slice(0, 3).map((m) => m.book.id),

@@ -58,7 +58,7 @@ test("library to read-aloud: every control is named, nothing clickable is anonym
 	await page.keyboard.press("Escape");
 	await expect(page.locator('[data-slot="drawer-content"]')).toHaveCount(0);
 
-	await page.getByRole("button", { name: "Listen", exact: true }).click();
+	await reader.startListening(page);
 	await expect.poll(() => page.evaluate(() => window.__lesefluss_e2e_tts?.starts() ?? 0)).toBe(1);
 	await expectAccessible(page, "read-aloud controls");
 	await page.getByRole("button", { name: "Stop listening" }).click();
@@ -75,7 +75,7 @@ test("library to read-aloud: every control is named, nothing clickable is anonym
 
 	await page.getByRole("button", { name: "More actions" }).click();
 	await expectAccessible(page, "reader menu");
-	await page.getByRole("menuitem", { name: "View book" }).click();
+	await page.getByRole("menuitem", { name: "Details", exact: true }).click();
 	await page.waitForURL(/\/tabs\/library\/book\//);
 	await expectAccessible(page, "book page");
 });

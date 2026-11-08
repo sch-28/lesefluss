@@ -233,7 +233,7 @@ export function useBookActions({ surface, onSelect, onDeleted, extras }: Options
 				title="Reset progress?"
 				description={
 					resetBook
-						? `"${resetBook.title}" goes back to its first page and its status to Automatic. Your reading history stays.`
+						? `"${resetBook.title}" goes back to its first page${resetBook.finishedAt == null ? " and to Want to read" : ""}. Your reading history stays.`
 						: undefined
 				}
 				confirmLabel="Reset"

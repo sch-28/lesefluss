@@ -123,6 +123,10 @@ export const books = sqliteTable("books", {
 	/** When the book first crossed the finished threshold. Distinct from
 	 *  `lastRead`, which moves every time the book is reopened. */
 	finishedAt: integer("finished_at"),
+	/** Start of the first real sitting (`REAL_SITTING_MS`), which is what puts a
+	 *  book on Reading; a scroll that only saves a position leaves it null. Only
+	 *  ever set, earliest wins across devices. */
+	firstSittingAt: integer("first_sitting_at"),
 	source: text("source"), // 'gutenberg' | 'standard_ebooks' | 'url' | 'serial' | null (null = locally imported)
 	catalogId: text("catalog_id"), // e.g. 'gutenberg:1342', 'se:mary-shelley/frankenstein'
 	sourceUrl: text("source_url"), // original URL for source='url' imports

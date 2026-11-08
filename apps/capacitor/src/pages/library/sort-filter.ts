@@ -166,7 +166,9 @@ function bookSortKey(b: Book, model: SpeedModel | undefined): SortKey {
 	return {
 		title: b.title,
 		author: b.author ?? "",
-		recency: b.lastRead ?? b.addedAt,
+		// A glance saves lastRead too; only a book with a real sitting moves up,
+		// and not one put back on Want to read (Reset progress keeps the marker).
+		recency: (b.firstSittingAt != null && b.status !== "want" ? b.lastRead : null) ?? b.addedAt,
 		progress: readingProgress(b),
 		status: bookStatus(b),
 		rating: b.rating,

@@ -1,8 +1,6 @@
-import { SETTING_CONSTRAINTS } from "@lesefluss/core";
-import { Slider } from "@lesefluss/ui/slider";
 import type React from "react";
 import { useState } from "react";
-import { WpmPresetChips } from "../../../components/rsvp-pickers";
+import { RsvpSpeedControl } from "../../../components/rsvp-speed-control";
 import { SpeedTest } from "../../../components/speed-test/speed-test";
 import { useAutoSaveSettings } from "../../../hooks/use-auto-save-settings";
 import RsvpPreview from "../../settings/rsvp-preview";
@@ -42,23 +40,12 @@ const ManualSpeed: React.FC = () => {
 				<RsvpPreview settings={settings} />
 			</div>
 
-			<div className="mt-6">
-				<WpmPresetChips value={settings.wpm} onChange={(wpm) => updateSetting("wpm", wpm)} />
-			</div>
-
-			<div className="mt-6 space-y-3">
-				<div className="text-center font-semibold text-3xl tabular-nums">{settings.wpm} wpm</div>
-				<Slider
-					min={SETTING_CONSTRAINTS.WPM.min}
-					max={SETTING_CONSTRAINTS.WPM.max}
-					step={SETTING_CONSTRAINTS.WPM.step}
-					value={[settings.wpm]}
-					onValueChange={(v) => updateSetting("wpm", v[0] ?? settings.wpm)}
+			<div className="mt-6 flex justify-center">
+				<RsvpSpeedControl
+					wpm={settings.wpm}
+					onChange={(wpm) => updateSetting("wpm", wpm)}
+					className="text-2xl"
 				/>
-				<div className="flex justify-between text-muted-foreground text-xs">
-					<span>Beginner</span>
-					<span>Fast</span>
-				</div>
 			</div>
 		</div>
 	);

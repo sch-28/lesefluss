@@ -224,7 +224,7 @@ test("scrolling right after a font change saves the new top word", async ({ page
 
 /**
  * Chapter titles are paragraphs without word spans, and re-measure by more than
- * body text when the font changes. A TOC jump to chapter 2 commits the title's
+ * body text when the font changes. A Contents jump to chapter 2 commits the title's
  * first word.
  */
 test("a font change next to a chapter break keeps the reading line on top and saves nothing", async ({
@@ -232,13 +232,9 @@ test("a font change next to a chapter break keeps the reading line on top and sa
 }) => {
 	const title = await seedStrayAnchorBook(page);
 	await openBookFromLibrary(page, title);
-	await reader.tocJumpToChapter(page, "2: Second");
+	await reader.moveToChapter(page, "2: Second");
 	await expect(page.locator("h2", { hasText: "TITLE 2" })).toBeInViewport({ timeout: 5000 });
-	await reader.waitPastJumpGuard(page);
-	const savePending = reader.waitForNextSave(page);
-	await reader.readFromHere(page);
-	await savePending;
-	// Read from here's own settle may still be on its way.
+	// The jump's own settle may still be on its way.
 	await reader.waitPastJumpGuard(page);
 	const word = await reader.lastSavedWord(page);
 	const saves = await reader.saveRequestCount(page);

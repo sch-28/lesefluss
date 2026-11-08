@@ -64,7 +64,7 @@ export const DEFAULT_SETTINGS = {
 	LAST_SEEN_CHANGELOG_DATE: "", // ISO date of newest changelog entry user has seen ('' = never)
 	PAGE_TURN_ANIMATION: true, // slide between pages in page mode (off suits e-ink); device-local
 	AUTO_OPEN_LAST_BOOK: false, // open the most recently read book on app launch; device-local
-	SHOW_SESSION_SUMMARY: true, // summary sheet after a sitting of 2 min or more; device-local
+	SHOW_SESSION_SUMMARY: true, // summary sheet after a real sitting (1 min or more); device-local
 	EINK_MODE: false, // static, high-contrast UI with instant page turns for e-ink screens; device-local
 	VOLUME_KEY_INVERT: false, // volume up turns forward instead of down; device-local
 	// Read aloud (device-local: voices belong to the phone's speech engine)

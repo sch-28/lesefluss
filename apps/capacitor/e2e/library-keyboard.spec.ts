@@ -78,7 +78,11 @@ test("a digit rates the focused book and S sets its status", async ({ page }) =>
 	const title = await focusedTitle(page);
 
 	await page.keyboard.press("s");
-	await page.getByRole("button", { name: "Finished", exact: true }).click();
+	// A press within ANCHOR_MAX_AGE_MS (the setup's click) makes the short list a menu, else a sheet.
+	await page
+		.getByRole("menuitem", { name: "Finished", exact: true })
+		.or(page.getByRole("button", { name: "Finished", exact: true }))
+		.click();
 	await expect(shelves.getByRole("link", { name: "Finished Pinned 1" })).toBeVisible();
 	await expect(shelves.getByRole("link", { name: "Unrated Pinned 1" })).toBeVisible();
 

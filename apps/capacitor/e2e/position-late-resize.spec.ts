@@ -86,9 +86,8 @@ for (const frameMs of [1000]) {
 			});
 			await openBookFromLibrary(page, UNIFORM_NOVEL_TITLE);
 			framed.setFrameMs(frameMs);
-			await reader.tocJumpToChapter(page, DEEP_CHAPTER_LABEL);
+			await reader.moveToChapter(page, DEEP_CHAPTER_LABEL);
 			await reader.waitPastJumpGuard(page);
-			await reader.commitReadFromHere(page);
 			await page.waitForTimeout(IDLE_MS);
 			return framed;
 		}

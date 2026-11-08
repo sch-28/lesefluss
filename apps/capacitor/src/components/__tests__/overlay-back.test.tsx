@@ -13,6 +13,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@lesefluss/ui/select";
+import { Sheet, SheetContent, SheetTitle } from "@lesefluss/ui/sheet";
 import { act, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type Rendered, render } from "../../test/render";
@@ -106,6 +107,34 @@ describe("Android back on the shared overlays", () => {
 		expect(back()).toBe(true);
 		expect(onSelect).toHaveBeenCalledWith(false);
 		expect(onMenu).not.toHaveBeenCalled();
+	});
+
+	it("closes an open dropdown menu on back", async () => {
+		view = await render(
+			<DropdownMenu defaultOpen>
+				<DropdownMenuTrigger>Range</DropdownMenuTrigger>
+				<DropdownMenuContent>
+					<DropdownMenuItem>Week</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>,
+		);
+		expect(bodyText()).toContain("Week");
+		expect(back()).toBe(true);
+		expect(bodyText()).not.toContain("Week");
+		expect(back()).toBe(false);
+	});
+
+	it("closes an open sheet on back", async () => {
+		const onOpenChange = vi.fn();
+		view = await render(
+			<Sheet open onOpenChange={onOpenChange}>
+				<SheetContent>
+					<SheetTitle>View</SheetTitle>
+				</SheetContent>
+			</Sheet>,
+		);
+		expect(back()).toBe(true);
+		expect(onOpenChange).toHaveBeenCalledWith(false);
 	});
 
 	it("closes an uncontrolled popover on back", async () => {

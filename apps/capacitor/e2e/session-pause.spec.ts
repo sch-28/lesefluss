@@ -47,14 +47,18 @@ const sessionCount = (page: Page) =>
 	page.evaluate(() => window.__lesefluss_e2e_session?.count ?? 0);
 
 test("two-finger tap pauses the session, tap resumes, flush still works", async ({ page }) => {
+	// Fakes the clock so the noise floor's minute of reading costs no wall time.
+	await page.clock.install();
 	const title = await seedStrayAnchorBook(page);
 	await openBookFromLibrary(page, title);
 
-	// Accumulate past the noise floor (MIN_DURATION_MS=5s, MIN_WORDS=5) so the
-	// pause checkpoint has a row to write.
-	for (let i = 0; i < 7; i++) {
+	// Accumulate past the noise floor (MIN_DURATION_MS, MIN_WORDS) so the pause
+	// checkpoint has a row to write. Steps stay under the tracker's 15s poll
+	// throttle guard, which would take a longer gap for a suspended page.
+	for (let i = 0; i < 8; i++) {
 		await page.mouse.wheel(0, 120);
-		await page.waitForTimeout(900);
+		await page.waitForTimeout(300);
+		await page.clock.fastForward(10_000);
 	}
 	const baseline = await sessionCount(page);
 

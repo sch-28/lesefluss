@@ -47,19 +47,26 @@ export function assertNamedColumns(row: Record<string, unknown> | undefined, sql
 	}
 }
 
-export function createTestDb() {
+/** Runs one migration file the way the app's runner splits it. */
+export function applyMigration(raw: DatabaseSync, tag: string): void {
+	const sql = readFileSync(join(MIGRATIONS_DIR, `${tag}.sql`), "utf8");
+	// drizzle separates statements within one migration by this marker.
+	for (const statement of sql.split("--> statement-breakpoint")) {
+		const trimmed = statement.trim();
+		if (trimmed) raw.exec(trimmed);
+	}
+}
+
+/** `stopBefore` leaves that migration and every later one unapplied, for testing a backfill. */
+export function createTestDb(options: { stopBefore?: string } = {}) {
 	const raw = new DatabaseSync(":memory:");
 
 	const journal = JSON.parse(
 		readFileSync(join(MIGRATIONS_DIR, "meta/_journal.json"), "utf8"),
 	) as Journal;
 	for (const entry of journal.entries) {
-		const sql = readFileSync(join(MIGRATIONS_DIR, `${entry.tag}.sql`), "utf8");
-		// drizzle separates statements within one migration by this marker.
-		for (const statement of sql.split("--> statement-breakpoint")) {
-			const trimmed = statement.trim();
-			if (trimmed) raw.exec(trimmed);
-		}
+		if (entry.tag === options.stopBefore) break;
+		applyMigration(raw, entry.tag);
 	}
 
 	const db = drizzle<typeof schema>(

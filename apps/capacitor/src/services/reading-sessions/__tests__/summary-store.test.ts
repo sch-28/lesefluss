@@ -10,6 +10,7 @@ import {
 	recordSitting,
 	resetSummaryStore,
 	SUMMARY_MIN_ACTIVE_MS,
+	SUMMARY_SETTING_HINT,
 	useSessionSummary,
 } from "../summary-store";
 
@@ -130,5 +131,12 @@ describe("summary store", () => {
 		leave();
 		notifySessionsDeleted(["s1"]);
 		expect(current()).toBeNull();
+	});
+});
+
+describe("SUMMARY_SETTING_HINT", () => {
+	it("names the same bar the summary opens at", () => {
+		expect(SUMMARY_MIN_ACTIVE_MS).toBe(60_000);
+		expect(SUMMARY_SETTING_HINT).toContain("after a minute or more");
 	});
 });

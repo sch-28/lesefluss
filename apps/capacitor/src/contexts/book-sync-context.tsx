@@ -278,6 +278,8 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					`multibook: device ahead (deviceWord=${devicePosRaw} appWord=${devicePosAsApp} > ${appPos}), saved`,
 				);
 				notifyDevicePosition(matchedBook.id, devicePosAsApp, write.updatedAt);
+				// The device records no sessions, so its progress is the only sign of a real sitting.
+				await queries.markFirstSitting(matchedBook.id, write.lastRead);
 			} else if (appPos > devicePosAsApp + ECHO_TOLERANCE) {
 				const adapter = createBleAdapter(multiBookDescriptor, connectedDevice.deviceId);
 				const scaledOut = scale(matchedBook.wordCount, deviceHash, appPos, "toDevice");
@@ -398,6 +400,7 @@ export const BookSyncProvider: React.FC<Props> = ({ children }) => {
 					await queries.updateBook(confirmedBookId, write);
 					log("booksync", `device ahead (${devicePos} > ${appPos}), saved to DB`);
 					notifyDevicePosition(confirmedBookId, word, write.updatedAt);
+					await queries.markFirstSitting(confirmedBookId, write.lastRead);
 				}
 			}
 		}

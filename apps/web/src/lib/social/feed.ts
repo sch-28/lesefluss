@@ -32,6 +32,7 @@ export const feedBookColumns = {
 	wordPosition: syncBooks.wordPosition,
 	wordCount: syncBooks.wordCount,
 	finishedAt: syncBooks.finishedAt,
+	firstSittingAt: syncBooks.firstSittingAt,
 	deleted: syncBooks.deleted,
 	seriesId: syncBooks.seriesId,
 	source: syncBooks.source,

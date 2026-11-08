@@ -47,8 +47,9 @@ function visibleIds(books: Book[], filterBy: FilterBy, sortBy: SortBy = "recent"
 
 describe("filtering by derived status", () => {
 	const unstarted = makeBook({ id: "aaaaaaaa", wordPosition: wordPos(0) });
-	const partway = makeBook({ id: "bbbbbbbb", wordPosition: wordPos(500) });
+	const partway = makeBook({ id: "bbbbbbbb", wordPosition: wordPos(500), firstSittingAt: 1 });
 	const atTheEnd = makeBook({ id: "cccccccc", wordPosition: wordPos(990) });
+	const glanced = makeBook({ id: "dddddddd", wordPosition: wordPos(500), firstSittingAt: null });
 	const all = [unstarted, partway, atTheEnd];
 
 	it("puts an untouched book on the want shelf", () => {
@@ -57,6 +58,11 @@ describe("filtering by derived status", () => {
 
 	it("puts a partly read book on the reading shelf", () => {
 		expect(visibleIds(all, "reading")).toEqual(["bbbbbbbb"]);
+	});
+
+	it("keeps a book only glanced at, a position but no real sitting, on the want shelf", () => {
+		expect(visibleIds([glanced, partway], "want")).toEqual(["dddddddd"]);
+		expect(visibleIds([glanced, partway], "reading")).toEqual(["bbbbbbbb"]);
 	});
 
 	it("puts a book past the threshold on the finished shelf", () => {
@@ -88,7 +94,12 @@ describe("an explicit status outranks the reading position", () => {
 	});
 
 	it("falls back to derivation once the status is cleared", () => {
-		const cleared = makeBook({ id: "aaaaaaaa", wordPosition: wordPos(500), status: null });
+		const cleared = makeBook({
+			id: "aaaaaaaa",
+			wordPosition: wordPos(500),
+			status: null,
+			firstSittingAt: 1,
+		});
 		expect(visibleIds([cleared], "reading")).toEqual(["aaaaaaaa"]);
 	});
 });
@@ -190,7 +201,13 @@ describe("facet options", () => {
 describe("sorting by recent and title", () => {
 	const apple = makeBook({ id: "aaaaaaaa", title: "Apple Book", addedAt: 100 });
 	const zebra = makeBook({ id: "bbbbbbbb", title: "Zebra Book", addedAt: 200 });
-	const mango = makeBook({ id: "cccccccc", title: "Mango Book", addedAt: 50, lastRead: 300 });
+	const mango = makeBook({
+		id: "cccccccc",
+		title: "Mango Book",
+		addedAt: 50,
+		lastRead: 300,
+		firstSittingAt: 250,
+	});
 
 	it("puts the newest import first under recent, a recent read ahead of both", () => {
 		expect(visibleIds([apple, zebra], "all", "recent")).toEqual(["bbbbbbbb", "aaaaaaaa"]);
@@ -198,6 +215,24 @@ describe("sorting by recent and title", () => {
 			"cccccccc",
 			"bbbbbbbb",
 			"aaaaaaaa",
+		]);
+	});
+
+	it("leaves a book only glanced at where it was added under recent", () => {
+		const glanced = { ...mango, firstSittingAt: null };
+		expect(visibleIds([apple, zebra, glanced], "all", "recent")).toEqual([
+			"bbbbbbbb",
+			"aaaaaaaa",
+			"cccccccc",
+		]);
+	});
+
+	it("leaves a reset book (Want to read, marker kept) where it was added after a glance", () => {
+		const reset = { ...mango, status: "want" as const };
+		expect(visibleIds([apple, zebra, reset], "all", "recent")).toEqual([
+			"bbbbbbbb",
+			"aaaaaaaa",
+			"cccccccc",
 		]);
 	});
 

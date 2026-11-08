@@ -54,7 +54,13 @@ import BookCard from "./book-card";
 import BookListItem from "./book-list-item";
 import BulkActionBar from "./bulk-action-bar";
 import BulkSheets from "./bulk-sheets";
-import { type CardFieldId, type CardSurface, cardFieldValues, useCardFields } from "./card-fields";
+import {
+	type CardFieldId,
+	type CardSurface,
+	cardFieldValues,
+	hasStarted,
+	useCardFields,
+} from "./card-fields";
 import CollectionShelfRow from "./collection-shelf-row";
 import { libraryCommands } from "./commands";
 import { filterToTree, matchesTree, serializeTree } from "./condition-tree";
@@ -561,7 +567,7 @@ const Library: React.FC = () => {
 				book={book}
 				cover={covers.get(book.id)}
 				progress={progress}
-				started={progress > 0}
+				started={hasStarted(book)}
 				selectable={selection.isSelecting}
 				selected={selection.isSelected(book.id)}
 				onToggle={() => selection.toggle(book.id)}

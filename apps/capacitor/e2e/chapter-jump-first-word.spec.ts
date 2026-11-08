@@ -11,7 +11,7 @@ import { reader } from "./page-objects/reader";
 /**
  * A chapter jump lands on the chapter's first word, its heading's: from book
  * detail's chapter list (with no reader mounted, so the reopen proves it was
- * saved), from the TOC in scroll mode and in page mode. Not on the previous
+ * saved), from Contents in scroll mode and in page mode, where the pick is saved too. Not on the previous
  * chapter's last word, where a start on the heading's `# ` marker used to map.
  * Right-click stands in for the card's long press.
  */
@@ -67,8 +67,7 @@ test("a chapter jump from book detail opens on the heading's first word, a reope
 	expect(await expectHeadingOnTop(page, CHAPTER)).toBe(word);
 
 	await reader.waitOpenSettled(page);
-	await reader.tocJumpToChapter(page, `Chapter ${CHAPTER + 1}`);
-	await expect(reader.browseBar(page)).toBeVisible();
+	const committed = await reader.moveToChapter(page, `Chapter ${CHAPTER + 1}`);
 	await reader.waitPastJumpGuard(page);
 	const next = await expectHeadingOnTop(page, CHAPTER + 1);
 	const openingWord = await reader.firstWordPositionIn(
@@ -76,7 +75,8 @@ test("a chapter jump from book detail opens on the heading's first word, a reope
 	);
 	// "Chapter Heading N" is three words, right before the opening paragraph.
 	expect(next).toBe(openingWord - 3);
-	expect(await reader.commitReadFromHere(page)).toBe(next);
+	expect(committed).toBe(next);
+	expect(await reader.lastSavedWord(page)).toBe(next);
 });
 
 test("in page mode, a TOC jump to a heading on a later page than the previous chapter's last word lands on the heading's page, and a reopen returns there", async ({
@@ -93,11 +93,10 @@ test("in page mode, a TOC jump to a heading on a later page than the previous ch
 		hasText: `ending${CHAPTER - 1}x40.`,
 	});
 
-	await reader.tocJumpToChapter(page, `Chapter ${CHAPTER}`);
+	const committed = await reader.moveToChapter(page, `Chapter ${CHAPTER}`);
 	await expect(heading).toBeInViewport();
 	await expect(previousLastWord).not.toBeInViewport();
-	const word = Number(await heading.getAttribute("data-heading-word"));
-	expect(await reader.commitReadFromHere(page)).toBe(word);
+	expect(committed).toBe(Number(await heading.getAttribute("data-heading-word")));
 
 	await reader.leaveFlushed(page);
 	await openBookFromLibrary(page, CHAPTER_NOVEL_TITLE);
@@ -111,10 +110,8 @@ test("a scroll that comes to rest with a heading on the top edge saves the headi
 	await seedChapterNovel(page);
 	await openBookFromLibrary(page, CHAPTER_NOVEL_TITLE);
 	await reader.waitOpenSettled(page);
-	await reader.tocJumpToChapter(page, `Chapter ${CHAPTER}`);
-	await expect(reader.browseBar(page)).toBeVisible();
+	await reader.moveToChapter(page, `Chapter ${CHAPTER}`);
 	await reader.waitPastJumpGuard(page);
-	await reader.commitReadFromHere(page);
 	const heading = page.locator(".reader-heading", { hasText: chapterHeading(CHAPTER) });
 	let saves = await reader.saveCount(page);
 	await reader.wheel(page, -400);

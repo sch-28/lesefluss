@@ -9,15 +9,21 @@ import type { PersistKind, SessionRow } from "./rules";
 
 const sittingsApplied = new Set<string>();
 
-/** A written row is a real sitting (it cleared the noise floor), which moves the book's status on. */
+/**
+ * A written row is a real sitting (it cleared the noise floor): it records the
+ * book's first sitting, which puts an Automatic book on Reading, and moves a
+ * stored status on. The position save never waits for or depends on this.
+ */
 async function applyRealSitting(row: SessionRow): Promise<void> {
 	if (sittingsApplied.has(row.id)) return;
 	sittingsApplied.add(row.id);
 	const book = await queries.getBook(row.bookId);
 	if (!book) return;
+	const marks = book.firstSittingAt == null || book.firstSittingAt > row.startedAt;
 	const status = statusAfterRealSitting(book);
-	if (status === undefined) return;
-	await queries.updateBook(book.id, { status });
+	if (!marks && status === undefined) return;
+	if (marks) await queries.markFirstSitting(book.id, row.startedAt);
+	if (status !== undefined) await queries.updateBook(book.id, { status });
 	queryClient.invalidateQueries({ queryKey: bookKeys.all });
 	queryClient.invalidateQueries({ queryKey: statsKeys.all });
 	scheduleSyncPush(2000);

@@ -11,6 +11,7 @@ type LibraryBook = {
 	wordPosition: number;
 	status: string | null;
 	finishedAt?: number | null;
+	firstSittingAt: number | null;
 };
 
 const MAX_AUTHORS = 3;

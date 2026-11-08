@@ -18,13 +18,6 @@ async function openInPageMode(page: Page) {
 	await expect(page.locator(".page-view span[data-word]").first()).toBeAttached();
 }
 
-async function tocJump(page: Page, label: string) {
-	await page.getByRole("button", { name: "Contents and annotations" }).click();
-	const button = page.getByRole("button", { name: label });
-	await expect(button).toBeVisible();
-	await button.click();
-}
-
 /** Turns one page forward by key and returns the new page's first word. */
 async function turn(page: Page) {
 	await reader.blurFocusedControl(page);
@@ -47,13 +40,11 @@ async function expectSavedAndReopensOn(page: Page, word: number) {
 	await expect.poll(() => reader.pageModeFirstVisibleWord(page), { timeout: 10_000 }).toBe(word);
 }
 
-test("a TOC jump, Read from here and a quick turn save the turned page, and so does a later turn", async ({
+test("a Contents jump and a quick turn save the turned page, and so does a later turn", async ({
 	page,
 }) => {
 	await openInPageMode(page);
-	await tocJump(page, "Chapter 3");
-	await expect(reader.browseBar(page)).toBeVisible();
-	await reader.readFromHere(page);
+	await reader.moveToChapter(page, "Chapter 3");
 
 	const quick = await turn(page);
 	await reader.waitPositionQuiet(page);
@@ -65,15 +56,13 @@ test("a TOC jump, Read from here and a quick turn save the turned page, and so d
 	await expectSavedAndReopensOn(page, later);
 });
 
-test("a jump to another page of the open chunk saves nothing itself, and a quick turn after it is saved", async ({
+test("a Contents jump to another page of the open chunk settles nothing itself, and a quick turn after it is saved", async ({
 	page,
 }) => {
 	await openInPageMode(page);
 	const saves = await page.evaluate(() => window.__lesefluss_e2e_saveLog?.length ?? 0);
 	// Chapter 2 starts around word 1,200, inside the first 2,000-word chunk.
-	await tocJump(page, "Chapter 2");
-	await expect(reader.browseBar(page)).toBeVisible();
-	await reader.readFromHere(page);
+	await reader.moveToChapter(page, "Chapter 2");
 
 	const turned = await turn(page);
 
@@ -94,7 +83,7 @@ test("a turn while browsing after a jump, then Read from here, commits the page 
 	page,
 }) => {
 	await openInPageMode(page);
-	await tocJump(page, "Chapter 3");
+	await reader.browseToChapter(page, "Chapter 3");
 	await expect(reader.browseBar(page)).toBeVisible();
 
 	const turned = await turn(page);

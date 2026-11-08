@@ -22,11 +22,12 @@ function goalFixture(): EpubFixture {
 
 async function openBookPage(page: Page): Promise<void> {
 	await page.getByRole("button", { name: "More actions" }).click();
-	await page.getByRole("menuitem", { name: "View book" }).click();
+	await page.getByRole("menuitem", { name: "Details", exact: true }).click();
 	await page.waitForURL(/\/tabs\/library\/book\//);
 }
 
 test("a goal set on the book page shows in the reader and is met by reading", async ({ page }) => {
+	await page.clock.install();
 	await seedFixture(page, goalFixture(), "goal.epub");
 	await openBookFromLibrary(page, TITLE);
 	await reader.expectLoaded(page);
@@ -48,7 +49,7 @@ test("a goal set on the book page shows in the reader and is met by reading", as
 	await expect(card).toContainText("vs plan");
 	await expect(card).toContainText("Missed day: raise daily target");
 
-	await page.getByRole("button", { name: "Open reader" }).click();
+	await page.getByRole("button", { name: /^(Start reading|Continue|Open reader)/ }).click();
 	await reader.expectLoaded(page);
 	const chip = page.getByTestId("goal-chip");
 	await expect(chip).toBeVisible();
@@ -78,6 +79,8 @@ test("a goal set on the book page shows in the reader and is met by reading", as
 	await expect(page.getByText("to go")).toBeVisible();
 	await expect(page.getByText("0 min")).toBeVisible();
 	await page.keyboard.press("Escape");
+	// A sitting under MIN_DURATION_MS is not kept; steps stay under the poll throttle guard.
+	for (let i = 0; i < 7; i++) await page.clock.fastForward(10_000);
 
 	// Leaving the reader ends the sitting; the saved row, not the reader's memory, keeps today met.
 	await openBookPage(page);
@@ -127,7 +130,7 @@ test("in page mode the divider never adds a page, even when its paragraph ends a
 		.locator('input[type="date"]')
 		.fill(await page.evaluate(() => new Date().toLocaleDateString("sv-SE")));
 	await sheet.getByRole("button", { name: "Start goal" }).click();
-	await page.getByRole("button", { name: "Open reader" }).click();
+	await page.getByRole("button", { name: /^(Start reading|Continue|Open reader)/ }).click();
 	await reader.expectLoaded(page);
 	await reader.setPaginationStyle(page, "page");
 

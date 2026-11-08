@@ -6,13 +6,13 @@ import {
 	type SpeedModel,
 } from "@lesefluss/core";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Minus, Plus } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import { RSVP_WPM_RANGE, steppedWpm } from "../../pages/reader/wpm";
 import { queryHooks } from "../../services/db/hooks";
 import { deltaLabel, type SpeedView, speedViews, trendDelta } from "../../services/stats/speed-tab";
 import { formatDuration, formatShortDate } from "../../utils/date-utils";
 import { formatReadingTime } from "../../utils/reading-time";
+import { RsvpSpeedControl } from "../rsvp-speed-control";
 import { Sparkline } from "../sparkline";
 import { WINDOW_LABELS } from "./speed-chip-model";
 
@@ -79,39 +79,14 @@ function ModeRow({
 
 const SOURCE_SUB = { measured: undefined, test: "Speed test", default: "Default" } as const;
 
-function DialStepper({ dial, onStep }: { dial: number; onStep: (direction: 1 | -1) => void }) {
+function DialStepper({ dial, onChange }: { dial: number; onChange: (wpm: number) => void }) {
 	return (
 		<div className="flex items-center justify-between gap-3">
 			<div className="flex flex-col">
 				<span className="text-sm">Default dial</span>
 				<span className="text-[0.6875rem] text-muted-foreground">Global, all books</span>
 			</div>
-			<div className="flex items-center gap-1">
-				<button
-					type="button"
-					aria-label={`Dial −${RSVP_WPM_RANGE.step}`}
-					disabled={dial <= RSVP_WPM_RANGE.min}
-					onClick={() => onStep(-1)}
-					className="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-40"
-				>
-					<Minus className="size-4" />
-				</button>
-				<span
-					data-testid="speed-dial"
-					className="w-12 text-center font-semibold text-sm tabular-nums"
-				>
-					{dial}
-				</span>
-				<button
-					type="button"
-					aria-label={`Dial +${RSVP_WPM_RANGE.step}`}
-					disabled={dial >= RSVP_WPM_RANGE.max}
-					onClick={() => onStep(1)}
-					className="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-40"
-				>
-					<Plus className="size-4" />
-				</button>
-			</div>
+			<RsvpSpeedControl wpm={dial} onChange={onChange} />
 		</div>
 	);
 }
@@ -141,9 +116,7 @@ export function SpeedDetails({ model, dialWpm, showDial, primary, book, onNaviga
 	// once, not after the save has been re-read.
 	const [dial, setDial] = useState(dialWpm);
 	useEffect(() => setDial(dialWpm), [dialWpm]);
-	const stepDial = (direction: 1 | -1) => {
-		const next = steppedWpm(dial, RSVP_WPM_RANGE, direction);
-		if (next === dial) return;
+	const changeDial = (next: number) => {
 		setDial(next);
 		save.mutate({ wpm: next });
 	};
@@ -187,7 +160,7 @@ export function SpeedDetails({ model, dialWpm, showDial, primary, book, onNaviga
 				))}
 			</div>
 
-			{showDial && <DialStepper dial={dial} onStep={stepDial} />}
+			{showDial && <DialStepper dial={dial} onChange={changeDial} />}
 
 			<div className="flex flex-col gap-1.5 border-border border-t pt-3 empty:hidden">
 				{showDial && <Row label="RSVP at dial" value={`${rsvpAtDial} wpm`} />}

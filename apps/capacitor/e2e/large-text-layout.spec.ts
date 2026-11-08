@@ -154,7 +154,7 @@ for (const scale of SCALES) {
 			await expect(page.locator(".rsvp-display")).toBeHidden();
 
 			await page.getByRole("button", { name: "More actions" }).click();
-			await page.getByRole("menuitem", { name: "View book" }).click();
+			await page.getByRole("menuitem", { name: "Details", exact: true }).click();
 			await page.waitForURL(/\/tabs\/library\/book\//);
 			await expectFits(page, "book page");
 			await page.getByTestId("goal-entry").getByRole("button", { name: "Set goal" }).click();

@@ -116,6 +116,33 @@ describe("ViewSheet opened by G", () => {
 		expect(onOpenChange).not.toHaveBeenCalledWith(false);
 	});
 
+	function desktopSheet(open: boolean, focusGroupBy: boolean) {
+		return (
+			<ViewSheet
+				{...panelProps("grid")}
+				isDesktop
+				open={open}
+				onOpenChange={vi.fn()}
+				focusGroupBy={focusGroupBy}
+			/>
+		);
+	}
+
+	it("does not hand focus to the View button on close, though the keyed flag clears with it", async () => {
+		view = await render(desktopSheet(true, true));
+		expect(document.activeElement?.textContent).toBe("Author");
+		await view.rerender(desktopSheet(false, false));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.activeElement).not.toBe(view.getButton("View"));
+	});
+
+	it("returns focus to the View button after a pointer open", async () => {
+		view = await render(desktopSheet(true, false));
+		await view.rerender(desktopSheet(false, false));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.activeElement).toBe(view.getButton("View"));
+	});
+
 	it("names the trigger View", async () => {
 		view = await render(
 			<ViewSheet

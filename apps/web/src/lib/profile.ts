@@ -1,11 +1,17 @@
-import { isFinishedPercent, readingProgress } from "@lesefluss/core";
+import { bookStatus, type DeleteAccountRefusal, DeleteAccountRequestSchema } from "@lesefluss/core";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { and, count, desc, eq, isNotNull, max, or } from "drizzle-orm";
 import { db } from "~/db";
 import { syncBooks, syncGlossaryEntries, syncHighlights, syncSettings } from "~/db/schema";
 import { deleteUserAccount, purgeCloudData } from "./account-deletion";
+import {
+	ACCOUNT_DELETE_LIMIT,
+	accountDeleteLimitKey,
+	accountDeletionRefusal,
+} from "./account-reauth";
 import { auth } from "./auth";
+import { checkLimit } from "./rate-limit";
 
 async function requireSession() {
 	const request = getRequest();
@@ -53,6 +59,8 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 				fileSize: syncBooks.fileSize,
 				wordCount: syncBooks.wordCount,
 				status: syncBooks.status,
+				finishedAt: syncBooks.finishedAt,
+				firstSittingAt: syncBooks.firstSittingAt,
 				rating: syncBooks.rating,
 				tags: syncBooks.tags,
 				description: syncBooks.description,
@@ -122,8 +130,7 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 	let booksFinished = 0;
 	let wordsRead = 0;
 	for (const b of books) {
-		const percent = readingProgress({ wordCount: b.wordCount ?? 0, wordPosition: b.wordPosition });
-		if (isFinishedPercent(percent)) booksFinished++;
+		if (bookStatus({ ...b, wordCount: b.wordCount ?? 0 }) === "finished") booksFinished++;
 		if (b.wordCount) wordsRead += b.wordPosition;
 	}
 
@@ -134,7 +141,11 @@ export const getProfileStats = createServerFn({ method: "GET" }).handler(async (
 		lastSynced,
 		booksFinished,
 		wordsRead,
-		books,
+		books: books.map((b) => ({
+			...b,
+			finishedAt: b.finishedAt?.getTime() ?? null,
+			firstSittingAt: b.firstSittingAt?.getTime() ?? null,
+		})),
 		highlights: highlights.map((h) => ({
 			...h,
 			updatedAt: h.updatedAt.getTime(),
@@ -155,10 +166,18 @@ export const clearCloudData = createServerFn({ method: "POST" }).handler(async (
 	return { success: true };
 });
 
-// Authorized by the active session alone; see deleteUserAccount for why no
-// password is required and how the deletion cascades.
-export const deleteAccount = createServerFn({ method: "POST" }).handler(async () => {
-	const session = await requireSession();
-	await deleteUserAccount(session.user.id);
-	return { success: true };
-});
+type DeleteAccountResult = { success: true } | { success: false; reason: DeleteAccountRefusal };
+
+export const deleteAccount = createServerFn({ method: "POST" })
+	.inputValidator((data: unknown) => DeleteAccountRequestSchema.parse(data))
+	.handler(async ({ data }): Promise<DeleteAccountResult> => {
+		const session = await requireSession();
+		const userId = session.user.id;
+		if (!checkLimit(accountDeleteLimitKey(userId), ACCOUNT_DELETE_LIMIT).ok) {
+			return { success: false, reason: "rate_limited" };
+		}
+		const reason = await accountDeletionRefusal(userId, data.password);
+		if (reason) return { success: false, reason };
+		await deleteUserAccount(userId);
+		return { success: true };
+	});

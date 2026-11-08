@@ -57,6 +57,7 @@ beforeEach(() => {
 			wordPosition: 30_000,
 			status: null,
 			finishedAt: null,
+			firstSittingAt: 5,
 		},
 	];
 	state.owned = new Map([["gutenberg:84", "b1"]]);

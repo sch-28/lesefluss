@@ -158,6 +158,24 @@ describe("ordered collection queries", () => {
 		]);
 	});
 
+	it("a hand-made ordered collection is not the book's series", async () => {
+		insertBook("aaaaaaaa");
+		const c = await collections.createCollection("Reading order", 1);
+		await collections.addBooksToCollection(c.id, ["aaaaaaaa"], 2, new Map([["aaaaaaaa", 1]]));
+		await collections.setCollectionOrdered(c.id, true, 3);
+		expect(await collections.getSeriesMembershipForBook("aaaaaaaa")).toBeNull();
+
+		const dune = await collections.createSeriesCollection("Dune", 4);
+		await collections.addBooksToCollection(dune.id, ["aaaaaaaa"], 5, new Map([["aaaaaaaa", 2]]));
+		expect(await collections.getSeriesMembershipForBook("aaaaaaaa")).toEqual({
+			collectionId: dune.id,
+			seriesIndex: 2,
+		});
+		expect((await collections.getSeriesMemberships()).get("aaaaaaaa")).toEqual([
+			{ collectionId: dune.id, seriesIndex: 2 },
+		]);
+	});
+
 	it("keeps a re-added book's number unless the add names one", async () => {
 		insertBook("aaaaaaaa");
 		const c = await collections.createCollection("Shelf", 1);

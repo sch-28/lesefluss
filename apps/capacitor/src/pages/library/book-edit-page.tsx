@@ -171,6 +171,7 @@ const EditBookForm: React.FC<{
 					wordCount: book.wordCount,
 					wordPosition: book.wordPosition,
 					finishedAt: book.finishedAt,
+					firstSittingAt: book.firstSittingAt,
 				}}
 				series={
 					<SeriesField

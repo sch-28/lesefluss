@@ -25,6 +25,7 @@ import {
 	lt,
 	lte,
 	ne,
+	or,
 	type SQL,
 	type SQLWrapper,
 	sql,
@@ -490,6 +491,11 @@ export async function addServerBookWithContent(
 }
 
 /** The finished rule in SQL, for a book row at `position`. Same rule as `isFinishedPosition`. */
+/** Mirrors core `hasRealProgress`. */
+export function hasRealProgressSql(): SQL {
+	return sql`(${books.firstSittingAt} IS NOT NULL AND ${books.wordPosition} > 0)`;
+}
+
 export function isFinishedSql(position: SQLWrapper | number = books.wordPosition): SQL {
 	return sql`(${books.wordCount} > 0 AND ${position} * 100 >= ${books.wordCount} * ${FINISHED_PERCENT_THRESHOLD})`;
 }
@@ -559,10 +565,13 @@ export async function updateBook(
 }
 
 /**
- * Back to the first word with the status on Automatic. `finished_at` is kept:
- * it is never cleared, and the sync pull would restore it anyway. The
- * revision lands above the row's own, so an open reader adopts the start
- * instead of saving its old word over it.
+ * Back to the first word. `finished_at` is kept: it is never cleared, and the
+ * sync pull would restore it anyway, so a finished book goes to Automatic and
+ * stays Finished. Any other book goes to Want to read: its first-sitting marker
+ * cannot be cleared either (it merges earliest-wins), and on Automatic a mere
+ * glance would put it back on Reading. The next real sitting lifts Want to read
+ * (`statusAfterRealSitting`). The revision lands above the row's own, so an
+ * open reader adopts the start instead of saving its old word over it.
  */
 export async function resetBookProgress(id: string): Promise<void> {
 	const [row] = await db
@@ -575,12 +584,26 @@ export async function resetBookProgress(id: string): Promise<void> {
 		id,
 		{
 			wordPosition: wordPos(0),
-			status: null,
+			status: row.finishedAt == null ? "want" : null,
 			finishedAt: row.finishedAt,
 			updatedAt: Math.max(now, row.updatedAt + 1),
 		},
 		now,
 	);
+}
+
+/**
+ * Records a real sitting that started at `at`, keeping an earlier one. Claims
+ * no revision, like the `finishedAt` catch-up: the marker merges earliest-wins
+ * on its own, and every push carries it.
+ */
+export async function markFirstSitting(id: string, at: number): Promise<void> {
+	await db
+		.update(books)
+		.set({ firstSittingAt: at })
+		.where(
+			and(eq(books.id, id), or(isNull(books.firstSittingAt), sql`${books.firstSittingAt} > ${at}`)),
+		);
 }
 
 export type PositionRow = { wordPosition: number; updatedAt: number };

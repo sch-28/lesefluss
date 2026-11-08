@@ -137,9 +137,10 @@ async function openAtReadWord(page: Page) {
 test("L reads from the reader's word, the view follows, and L pauses at the spoken word, saved and counted", async ({
 	page,
 }) => {
+	// Fakes the clock so the noise floor's minute of listening costs no wall time.
+	await page.clock.install();
 	const read = await openAtReadWord(page);
 	const bookId = reader.bookIdFromUrl(page);
-	const startedAt = Date.now();
 
 	await pressKey(page, "l");
 	await expect.poll(() => utterances(page)).toBe(1);
@@ -160,8 +161,9 @@ test("L reads from the reader's word, the view follows, and L pauses at the spok
 		.poll(() => reader.scrollModeTopWord(page), "the view follows the voice")
 		.toBeGreaterThan(top + 200);
 
-	// A listen sitting reaches stats only after five seconds.
-	await page.waitForTimeout(Math.max(0, 5500 - (Date.now() - startedAt)));
+	// A listen sitting reaches stats only after MIN_DURATION_MS. Steps stay under
+	// the tracker's 15s poll throttle guard, which takes a longer gap for a suspended page.
+	for (let i = 0; i < 7; i++) await page.clock.fastForward(10_000);
 	await speak(page, 3);
 	const saves = await page.evaluate(() => window.__lesefluss_e2e_saveLog?.length ?? 0);
 	await pressKey(page, "l");

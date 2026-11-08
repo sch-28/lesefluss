@@ -225,6 +225,17 @@ describe.skipIf(!hasDb)("sync_books upsert (integration)", () => {
 		expect(row.wordPosition).toBe(4200);
 	});
 
+	test("the first sitting keeps the earliest value, and a push without it keeps what is stored", async () => {
+		const bookId = "f1757000";
+		await push(makeBook({ bookId, firstSittingAt: 5_000 }));
+		await push(makeBook({ bookId, firstSittingAt: 9_000, updatedAt: 2_000_000 }));
+		expect((await read(bookId)).firstSittingAt?.getTime()).toBe(5_000);
+		await push(makeLegacyBook({ bookId, wordPosition: 50, updatedAt: 3_000_000 }));
+		expect((await read(bookId)).firstSittingAt?.getTime()).toBe(5_000);
+		await push(makeBook({ bookId, firstSittingAt: 2_000, updatedAt: 4_000_000 }));
+		expect((await read(bookId)).firstSittingAt?.getTime()).toBe(2_000);
+	});
+
 	// The add date is a fact about the book, not a revision of it. A device that
 	// restored the library stamps itself into `added_at`, and a later push from it
 	// must not overwrite the original.

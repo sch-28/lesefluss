@@ -39,6 +39,7 @@ function insertBook(overrides: Partial<Record<string, unknown>> = {}) {
 		added_at: 0,
 		deleted: 0,
 		series_id: null,
+		first_sitting_at: 1,
 		...overrides,
 	};
 	const keys = Object.keys(row);
@@ -213,6 +214,13 @@ describe("getCurrentlyReading", () => {
 		insertBook({ id: "long", word_position: 200, word_count: 1_200_000, last_read: 1 });
 
 		expect((await getCurrentlyReading()).map((book) => book.id)).toEqual(["manual", "long"]);
+	});
+
+	it("leaves out a book only glanced at: a saved position but no real sitting", async () => {
+		insertBook({ id: "glanced", word_position: 900, last_read: 2, first_sitting_at: null });
+		insertBook({ id: "read", word_position: 900, last_read: 1 });
+
+		expect((await getCurrentlyReading()).map((book) => book.id)).toEqual(["read"]);
 	});
 
 	it("reports progress as a clamped percentage", async () => {

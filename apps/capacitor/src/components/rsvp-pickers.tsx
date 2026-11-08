@@ -1,20 +1,11 @@
 /**
- * Shared pickers: WPM presets and mode-card lists (default-reader-mode,
- * pagination-style). Used by the settings pages and the first-run onboarding
- * flow.
+ * Shared mode-card lists (default-reader-mode, pagination-style). Used by the
+ * settings pages and the first-run onboarding flow.
  */
 
 import type { PaginationStyle } from "@lesefluss/core";
-import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { ArrowUpDown, BookOpen, type LucideIcon, Zap } from "lucide-react";
-import type React from "react";
-
-export const WPM_PRESETS: Array<{ value: number; label: string }> = [
-	{ value: 250, label: "Slow" },
-	{ value: 350, label: "Normal" },
-	{ value: 500, label: "Fast" },
-];
 
 export interface ModeOption<T extends string> {
 	value: T;
@@ -52,29 +43,6 @@ export const PAGINATION_STYLE_OPTIONS: ReadonlyArray<ModeOption<PaginationStyle>
 		icon: BookOpen,
 	},
 ];
-
-interface WpmPresetChipsProps {
-	value: number;
-	onChange: (wpm: number) => void;
-}
-
-export const WpmPresetChips: React.FC<WpmPresetChipsProps> = ({ value, onChange }) => (
-	<div className="flex flex-wrap gap-2">
-		{WPM_PRESETS.map((p) => {
-			const isActive = value === p.value;
-			return (
-				<Button
-					key={p.value}
-					variant={isActive ? "default" : "outline"}
-					className="flex-1"
-					onClick={() => onChange(p.value)}
-				>
-					{p.label} {p.value}
-				</Button>
-			);
-		})}
-	</div>
-);
 
 interface ModeCardsProps<T extends string> {
 	options: ReadonlyArray<ModeOption<T>>;

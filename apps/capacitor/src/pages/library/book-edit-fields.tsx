@@ -41,7 +41,12 @@ type Props = {
 	facts: string[];
 	fileLanguage?: string | null;
 	/** Progress through the book, used to show what an unset status derives to. */
-	progress?: { wordCount: number; wordPosition: number; finishedAt: number | null };
+	progress?: {
+		wordCount: number;
+		wordPosition: number;
+		finishedAt: number | null;
+		firstSittingAt: number | null;
+	};
 	/** The series row, which the import page leaves to LESE-125.18. */
 	series?: React.ReactNode;
 	/** What the detail page's About shows while the book has no description of its own. */

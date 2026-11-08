@@ -28,7 +28,7 @@ async function openListening(page: Page, mode: Mode, { paragraphs }: { paragraph
 	await reader.expectLoaded(page);
 	await reader.waitOpenSettled(page);
 	if (mode === "page") await reader.setPaginationStyle(page, "page");
-	await page.getByRole("button", { name: "Listen", exact: true }).click();
+	await reader.startListening(page);
 	await expect.poll(() => page.evaluate(() => window.__lesefluss_e2e_tts?.starts() ?? 0)).toBe(1);
 }
 

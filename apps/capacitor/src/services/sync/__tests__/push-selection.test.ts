@@ -22,6 +22,7 @@ function makeBook(overrides: Partial<Book> = {}): Book {
 		addedAt: 0,
 		lastRead: null,
 		finishedAt: null,
+		firstSittingAt: null,
 		source: null,
 		catalogId: null,
 		sourceUrl: null,

@@ -11,6 +11,7 @@ const book = (
 		lastRead: number | null;
 		wordPosition: number;
 		status: string | null;
+		firstSittingAt: number | null;
 	}> = {},
 ) => ({
 	title,
@@ -20,6 +21,7 @@ const book = (
 	wordCount: 1000,
 	wordPosition: over.lastRead == null ? 0 : 100,
 	status: null,
+	firstSittingAt: over.lastRead == null ? null : over.lastRead,
 	...over,
 });
 
@@ -67,6 +69,15 @@ describe("pickSeedBook", () => {
 				book("Never opened", { catalogId: "gutenberg:5" }),
 			])?.title,
 		).toBe("Finished");
+	});
+
+	it("skips a book only glanced at, with a position but no real sitting", () => {
+		expect(
+			pickSeedBook([
+				book("Glanced", { catalogId: "gutenberg:1", lastRead: 200, firstSittingAt: null }),
+				book("Read", { catalogId: "gutenberg:2", lastRead: 100 }),
+			])?.title,
+		).toBe("Read");
 	});
 
 	it("is null for an empty or uncatalogued library", () => {

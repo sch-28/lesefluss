@@ -1,3 +1,4 @@
+import { wordPos } from "@lesefluss/core";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReadingSession } from "../../../services/db/schema";
@@ -101,6 +102,26 @@ const rowButtons = (v: Rendered) => [
 ];
 
 describe("BookSessions", () => {
+	it("judges skimming against every sitting, not only this book's", async () => {
+		const fast = {
+			...session("fast", at(7, 18)),
+			wordsRead: 4_500,
+			endWord: wordPos(5_500),
+			furthestWord: wordPos(5_500),
+		};
+		state.rows = [fast];
+		state.all = [
+			fast,
+			...Array.from({ length: 5 }, (_, i) => session(`o${i}`, at(6, 10 + i), "other")),
+		];
+		try {
+			const v = await show();
+			expect(v.text()).toContain("skimmed");
+		} finally {
+			state.all = [];
+		}
+	});
+
 	it("lists the book's latest sessions under their days, linking to all of them in Stats", async () => {
 		state.rows = Array.from({ length: 12 }, (_, i) =>
 			session(`s${i}`, at(7 - Math.floor(i / 4), 18 - i)),

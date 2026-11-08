@@ -101,6 +101,8 @@ type ProfileBook = {
 	fileSize: number | null;
 	wordCount: number | null;
 	status: string | null;
+	finishedAt: number | null;
+	firstSittingAt: number | null;
 	rating: number | null;
 	tags: string | null;
 	description: string | null;
@@ -113,6 +115,8 @@ function BookCard({ book }: { book: ProfileBook }) {
 		wordCount: book.wordCount ?? 0,
 		wordPosition: book.wordPosition,
 		status: book.status,
+		finishedAt: book.finishedAt,
+		firstSittingAt: book.firstSittingAt,
 	});
 	const tags = parseBookTags(book.tags);
 

@@ -64,8 +64,7 @@ export async function purgeUserSyncData(tx: Tx, userId: string): Promise<void> {
 
 // The only way an account is deleted: the purge and the user row go in one
 // transaction, and the user delete cascades to the session and account tables.
-// No password is required, so OAuth-only users (Google, Discord) can delete
-// their account too.
+// Callers re-authenticate the user first (accountDeletionRefusal).
 export async function deleteUserAccount(userId: string): Promise<void> {
 	await db.transaction(async (tx) => {
 		await purgeUserSyncData(tx, userId);

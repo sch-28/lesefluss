@@ -94,6 +94,23 @@ describe("buildSeriesEntries", () => {
 		expect(dune?.finished).toBe(1);
 		expect(entries[1]?.finished).toBe(1);
 	});
+
+	it("counts a book as started only after a real sitting, like a serial's chapters", () => {
+		const entries = buildSeriesEntries(
+			sources({
+				collections: [collection({ id: "dune", name: "Dune", bookCount: 2 })],
+				books: [
+					makeBook({ id: "glanced", wordPosition: wordPos(40), firstSittingAt: null }),
+					makeBook({ id: "read", wordPosition: wordPos(40), firstSittingAt: 5 }),
+				],
+				seriesMemberships: new Map([
+					["glanced", [{ collectionId: "dune", seriesIndex: 1 }]],
+					["read", [{ collectionId: "dune", seriesIndex: 2 }]],
+				]),
+			}),
+		);
+		expect(entries[0]?.started).toBe(1);
+	});
 });
 
 describe("filterSeriesEntries", () => {

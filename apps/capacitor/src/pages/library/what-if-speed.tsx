@@ -12,8 +12,25 @@ interface Props {
 	minutesPerDay: number | null;
 	today: string;
 	/** The RSVP speed the hint is timed at, when faster than the pace; null hides it. */
-	rsvpWpm: number | null;
+	rsvp: RsvpEstimateSpeed | null;
 }
+
+export type RsvpEstimateSpeed = { wpm: number; source: "measured" | "setting" };
+
+/** The reader's measured RSVP speed (the one the speed chip shows), else the RSVP speed setting. */
+export function rsvpEstimateSpeed(
+	measuredWpm: number | null,
+	settingWpm: number | null,
+): RsvpEstimateSpeed | null {
+	if (measuredWpm !== null && measuredWpm > 0) return { wpm: measuredWpm, source: "measured" };
+	if (settingWpm !== null && settingWpm > 0) return { wpm: settingWpm, source: "setting" };
+	return null;
+}
+
+const RSVP_SOURCE_LABELS: Record<RsvpEstimateSpeed["source"], string> = {
+	measured: "your speed",
+	setting: "your setting",
+};
 
 function whatIfLine(minutesLeft: number | null, finishDay: string | null): string {
 	const parts = [
@@ -24,7 +41,7 @@ function whatIfLine(minutesLeft: number | null, finishDay: string | null): strin
 }
 
 /** A look-ahead at another speed. Local state only: trying a speed never saves it. */
-export function WhatIfSpeed({ wordsLeft, paceWpm, minutesPerDay, today, rsvpWpm }: Props) {
+export function WhatIfSpeed({ wordsLeft, paceWpm, minutesPerDay, today, rsvp }: Props) {
 	const [start] = useState(() => whatIfStart(paceWpm));
 	const [wpm, setWpm] = useState(start);
 	const estimate = whatIfEstimate(wordsLeft, wpm, minutesPerDay, today);
@@ -53,9 +70,10 @@ export function WhatIfSpeed({ wordsLeft, paceWpm, minutesPerDay, today, rsvpWpm 
 					estimate.finishDay,
 				)}
 			</p>
-			{rsvpWpm !== null && (
+			{rsvp !== null && (
 				<p className="mt-1 mb-0 text-xs tabular-nums opacity-70" data-testid="rsvp-hint">
-					RSVP at {rsvpWpm} wpm: {formatReadingTime(estimateMinutes(wordsLeft, rsvpWpm))}
+					RSVP at {rsvp.wpm} wpm ({RSVP_SOURCE_LABELS[rsvp.source]}):{" "}
+					{formatReadingTime(estimateMinutes(wordsLeft, rsvp.wpm))}
 				</p>
 			)}
 		</div>

@@ -321,7 +321,7 @@ async function openListening(page: Page) {
 	await openBookFromLibrary(page, title);
 	await reader.expectLoaded(page);
 	await reader.waitOpenSettled(page);
-	await page.getByRole("button", { name: "Listen", exact: true }).click();
+	await reader.startListening(page);
 	await expect.poll(() => ttsStarts(page)).toBe(1);
 	await page.evaluate(() => window.__lesefluss_e2e_tts?.speak(30));
 	await reader.waitPositionQuiet(page);

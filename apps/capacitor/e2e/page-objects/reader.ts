@@ -237,6 +237,23 @@ export const reader = {
 		await expect(page.getByRole("dialog")).toHaveCount(0);
 	},
 
+	/** Below 28rem the header folds Listen into More actions. */
+	startListening: async (page: Page) => {
+		const isNarrow = await page.evaluate(
+			() =>
+				window.innerWidth <
+				28 * Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+		);
+		if (!isNarrow) {
+			await page.getByRole("button", { name: "Listen", exact: true }).click();
+			return;
+		}
+		await page.getByRole("button", { name: "More actions" }).click();
+		await page.getByRole("menuitem", { name: "Listen", exact: true }).click();
+		// The closing menu's scroll lock still swallows wheel events.
+		await expect(page.getByRole("menu")).toBeHidden();
+	},
+
 	tocJumpToChapter: async (page: Page, label: string) => {
 		await page.getByRole("button", { name: "Contents and annotations" }).click();
 		await page.getByRole("button", { name: label }).click();
@@ -355,11 +372,30 @@ export const reader = {
 		return (await committed.jsonValue()) as number;
 	},
 
-	/** A TOC jump only browses; committing it makes the chapter the saved position. */
-	moveToChapter: async (page: Page, label: string) => {
+	/**
+	 * A chapter picked from Contents becomes the reading position at once, without
+	 * browsing. Returns the word its save committed.
+	 */
+	moveToChapter: async (page: Page, label: string): Promise<number> => {
+		const from = await page.evaluate(() => window.__lesefluss_e2e_saveLog?.length ?? 0);
 		await reader.tocJumpToChapter(page, label);
-		await expect(reader.browseBar(page)).toBeVisible();
-		await reader.readFromHere(page);
+		const committed = await page.waitForFunction(
+			(from) => window.__lesefluss_e2e_saveLog?.slice(from).find((s) => s.source === "jump")?.word,
+			from,
+			{ timeout: 10_000 },
+		);
+		await expect(reader.browseBar(page)).toBeHidden();
+		return (await committed.jsonValue()) as number;
+	},
+
+	/** A chapter jump from the command palette browses, unlike a Contents pick. */
+	browseToChapter: async (page: Page, label: string) => {
+		const palette = page.getByTestId("command-palette");
+		await page.keyboard.press("Control+k");
+		await expect(palette).toBeVisible();
+		await palette.getByRole("combobox").fill(label);
+		await palette.getByRole("option", { name: `Go to: ${label}`, exact: true }).click();
+		await expect(palette).toBeHidden();
 	},
 
 	/** Mouse-drag select from startText to endText. Mouse path bypasses the

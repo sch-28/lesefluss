@@ -13,9 +13,8 @@ import {
 	speedSittings,
 	speedWindowRows,
 	THIRTY_DAYS_MS,
-	wordPos,
 } from "@lesefluss/core";
-import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { formatShortDate } from "../../../utils/date-utils";
 import {
 	bucketMinutesByHour,
@@ -36,6 +35,7 @@ import { type ReadingRecords, summariseRecords } from "../../stats/records";
 import { buildSpeedTabData, type SpeedTabData } from "../../stats/speed-tab";
 import { db } from "../index";
 import { bookContent, books, readingSessions, series } from "../schema";
+import { hasRealProgressSql } from "./books";
 import { getLatestPlausibleSpeedTest, getSpeedTests } from "./speed-tests";
 
 export interface PeriodTotals {
@@ -241,6 +241,7 @@ export async function getCurrentlyReading(): Promise<ShelfBook[]> {
 			wordPosition: books.wordPosition,
 			status: books.status,
 			finishedAt: books.finishedAt,
+			firstSittingAt: books.firstSittingAt,
 			lastRead: books.lastRead,
 		})
 		.from(books)
@@ -248,10 +249,7 @@ export async function getCurrentlyReading(): Promise<ShelfBook[]> {
 			and(
 				eq(books.deleted, false),
 				isNull(books.seriesId),
-				or(
-					eq(books.status, "reading"),
-					and(isNull(books.status), gt(books.wordPosition, wordPos(0))),
-				),
+				or(eq(books.status, "reading"), and(isNull(books.status), hasRealProgressSql())),
 			),
 		)
 		.orderBy(desc(books.lastRead));
@@ -642,6 +640,7 @@ export async function getMilestones(): Promise<Milestones> {
 				wordPosition: books.wordPosition,
 				status: books.status,
 				finishedAt: books.finishedAt,
+				firstSittingAt: books.firstSittingAt,
 			})
 			.from(books)
 			.where(and(eq(books.deleted, false), isNull(books.seriesId), isNotNull(books.finishedAt))),

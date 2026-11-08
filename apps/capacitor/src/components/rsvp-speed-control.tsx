@@ -5,7 +5,7 @@ import { RSVP_WPM_RANGE, steppedWpm, type WpmRange } from "../pages/reader/wpm";
 const STEP_BTN =
 	"relative inline-flex items-center justify-center rounded-md font-semibold leading-none transition-colors before:absolute before:-inset-1 before:content-[''] hover:bg-current/10 active:bg-current/15 aria-disabled:cursor-not-allowed aria-disabled:opacity-30 aria-disabled:hover:bg-transparent";
 
-/** The one RSVP speed control: Settings › RSVP, the reader's RSVP controls and Quick RSVP. */
+/** The one RSVP speed control, shared by every place that sets the RSVP speed. */
 export function RsvpSpeedControl({
 	wpm,
 	onChange,

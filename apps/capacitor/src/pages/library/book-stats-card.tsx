@@ -1,4 +1,4 @@
-import { bookPace, type MeasuredReadingMode, modeSpeed, type Pace } from "@lesefluss/core";
+import { bookPace, type MeasuredReadingMode, type Pace } from "@lesefluss/core";
 import { ResponsiveLine } from "@nivo/line";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
@@ -20,7 +20,7 @@ import { AnimatedNumber } from "./stats/animated-number";
 import { evenTickIndices, formatDayTick } from "./stats/chart-axis";
 import { ChartTooltip } from "./stats/chart-tooltip";
 import { buildNivoTheme } from "./stats/nivo-theme";
-import { WhatIfSpeed } from "./what-if-speed";
+import { rsvpEstimateSpeed, WhatIfSpeed } from "./what-if-speed";
 
 const LINE_COLOR = "#c94b2a";
 const LINE_COLORS = [LINE_COLOR];
@@ -87,7 +87,7 @@ function BookTimeAhead({ book, pace, wordsLeft }: { book: Book; pace: Pace; word
 	const minutesPerDay =
 		(plan ? minuteGoalOf(plan.goal) : null) ??
 		(daily ? averageDailyMinutes(daily.msByDay, today) : null);
-	const rsvpWpm = settings ? Math.round(modeSpeed(model, "rsvp", settings.wpm)) : 0;
+	const rsvp = rsvpEstimateSpeed(model?.rsvp?.wpm ?? null, settings?.wpm ?? null);
 
 	return (
 		<WhatIfSpeed
@@ -96,7 +96,7 @@ function BookTimeAhead({ book, pace, wordsLeft }: { book: Book; pace: Pace; word
 			paceWpm={pace.wpm}
 			minutesPerDay={minutesPerDay}
 			today={today}
-			rsvpWpm={settings && rsvpWpm > pace.wpm ? rsvpWpm : null}
+			rsvp={rsvp && rsvp.wpm > pace.wpm ? rsvp : null}
 		/>
 	);
 }

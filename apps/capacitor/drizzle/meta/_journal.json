@@ -428,6 +428,13 @@
       "when": 1783900800000,
       "tag": "0060_shelf_views",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "6",
+      "when": 1783987200000,
+      "tag": "0061_first_sitting_at",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,7 @@ type NowReadingCandidate = {
 	wordPosition: number;
 	status: string | null;
 	finishedAt: number | null;
+	firstSittingAt: number | null;
 	seriesId: string | null;
 	hideFromProfile: boolean;
 	lastRead: number | null;

@@ -85,10 +85,11 @@ test.describe("on desktop", () => {
 test.describe("on a phone", () => {
 	test.use({ viewport: { width: 390, height: 844 } });
 
-	test("the Series chip row opens a series", async ({ page }) => {
+	test("a series chip in the shelf row opens a series", async ({ page }) => {
 		await page
-			.getByRole("toolbar", { name: "Series" })
-			.getByRole("button", { name: "Tide 2" })
+			.getByRole("toolbar", { name: "Collections and shelves" })
+			.getByTestId("shelf-series")
+			.filter({ hasText: "Tide" })
 			.click();
 		await expect(page.getByRole("heading", { name: "Tide", level: 2 })).toBeVisible();
 		await expect(page.getByRole("button", { name: "Riverkeep", exact: true })).toHaveCount(0);

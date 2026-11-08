@@ -1,6 +1,11 @@
 import type { SyncBook } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
-import { claimsMetadata, claimsSeries, groupBooksByMergeRules } from "./sync-book-upsert";
+import {
+	claimsMetadata,
+	claimsSeries,
+	groupBooksByMergeRules,
+	withFirstSittings,
+} from "./sync-book-upsert";
 
 function makeBook(overrides: Partial<SyncBook> = {}): SyncBook {
 	return {
@@ -70,5 +75,36 @@ describe("claimsSeries", () => {
 			makeBook({ bookId: "c", seriesName: null, seriesUpdatedAt: 1 }),
 		]);
 		expect(groups.map((g) => g.map((b) => b.bookId))).toEqual([["a", "c"], ["b"]]);
+	});
+});
+
+describe("withFirstSittings", () => {
+	const session = (bookId: string, startedAt: number, durationMs: number) => ({
+		bookId,
+		startedAt,
+		durationMs,
+	});
+
+	it("marks a book from the earliest sitting of a minute or more in the push", () => {
+		const [book] = withFirstSittings(
+			[makeBook()],
+			[session("deadbeef", 300, 60_000), session("deadbeef", 200, 90_000)],
+		);
+		expect(book.firstSittingAt).toBe(200);
+	});
+
+	it("ignores a short sitting, and keeps an earlier marker the book carries", () => {
+		expect(
+			withFirstSittings([makeBook()], [session("deadbeef", 100, 59_999)])[0].firstSittingAt,
+		).toBeUndefined();
+		expect(
+			withFirstSittings([makeBook({ firstSittingAt: 50 })], [session("deadbeef", 100, 60_000)])[0]
+				.firstSittingAt,
+		).toBe(50);
+	});
+
+	it("leaves books without a sitting in the push alone", () => {
+		const [book] = withFirstSittings([makeBook()], [session("other000", 100, 60_000)]);
+		expect(book.firstSittingAt).toBeUndefined();
 	});
 });

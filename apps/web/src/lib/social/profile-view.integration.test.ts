@@ -26,6 +26,11 @@ import { mayViewCover, resolveProfileView } from "./profile-view";
 const hasDb = Boolean(process.env.DATABASE_URL);
 const DAY_MS = 86_400_000;
 
+/** Rows read past the start had a real sitting there, which is what puts them on Reading. */
+function sat<T extends { wordPosition: number; updatedAt: Date }>(rows: T[]) {
+	return rows.map((r) => ({ ...r, firstSittingAt: r.wordPosition > 0 ? r.updatedAt : null }));
+}
+
 async function expectNotFound(promise: Promise<unknown>) {
 	await expect(promise).rejects.toMatchObject({ code: "not_found" });
 }
@@ -53,131 +58,133 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 		await updateOwnProfile(owner, { bio: "Reads at night", visibility: "friends" });
 
 		const t = (ms: number) => new Date(now.getTime() - ms);
-		await db.insert(syncBooks).values([
-			// currently reading, uploaded cover
-			{
-				userId: owner,
-				bookId: "aaaa0001",
-				originUserId: owner,
-				originBookId: "aaaa0001",
-				title: "Reading One",
-				author: "A",
-				wordCount: 1000,
-				wordPosition: 400,
-				coverImage: "data:image/png;base64,AAAA",
-				updatedAt: now,
-				review: "secret review",
-				tags: '["private"]',
-			},
-			// finished this year, catalog cover
-			{
-				userId: owner,
-				bookId: "aaaa0002",
-				originUserId: owner,
-				originBookId: "aaaa0002",
-				title: "Done",
-				author: "B",
-				wordCount: 1000,
-				wordPosition: 990,
-				finishedAt: t(10 * DAY_MS),
-				rating: 7,
-				catalogId: "gutenberg:1342",
-				updatedAt: now,
-			},
-			// finished last year
-			{
-				userId: owner,
-				bookId: "aaaa0003",
-				originUserId: owner,
-				originBookId: "aaaa0003",
-				title: "Old",
-				author: "C",
-				wordCount: 1000,
-				wordPosition: 1000,
-				finishedAt: new Date("2025-03-01T00:00:00Z"),
-				status: "finished",
-				updatedAt: now,
-			},
-			// hidden from profile
-			{
-				userId: owner,
-				bookId: "aaaa0004",
-				originUserId: owner,
-				originBookId: "aaaa0004",
-				title: "Hidden",
-				author: "D",
-				wordCount: 1000,
-				wordPosition: 500,
-				hideFromProfile: true,
-				updatedAt: now,
-			},
-			// article
-			{
-				userId: owner,
-				bookId: "aaaa0005",
-				originUserId: owner,
-				originBookId: "aaaa0005",
-				title: "Article",
-				author: null,
-				wordCount: 500,
-				wordPosition: 250,
-				source: "url",
-				sourceUrl: "https://x.test/a",
-				updatedAt: now,
-			},
-			// deleted
-			{
-				userId: owner,
-				bookId: "aaaa0006",
-				originUserId: owner,
-				originBookId: "aaaa0006",
-				title: "Gone",
-				author: null,
-				wordCount: 100,
-				wordPosition: 50,
-				deleted: true,
-				updatedAt: now,
-			},
-			// want (untouched)
-			{
-				userId: owner,
-				bookId: "aaaa0007",
-				originUserId: owner,
-				originBookId: "aaaa0007",
-				title: "Later",
-				author: null,
-				wordCount: 100,
-				wordPosition: 0,
-				updatedAt: now,
-			},
-			// serial chapters
-			{
-				userId: owner,
-				bookId: "aaaa0008",
-				originUserId: owner,
-				originBookId: "aaaa0008",
-				title: "Ch 1",
-				author: null,
-				wordCount: 100,
-				wordPosition: 100,
-				seriesId: "5e51e501",
-				chapterIndex: 0,
-				updatedAt: now,
-			},
-			{
-				userId: owner,
-				bookId: "aaaa0009",
-				originUserId: owner,
-				originBookId: "aaaa0009",
-				title: "Ch 2",
-				author: null,
-				wordCount: 100,
-				wordPosition: 30,
-				seriesId: "5e51e501",
-				chapterIndex: 1,
-				updatedAt: now,
-			},
-		]);
+		await db.insert(syncBooks).values(
+			sat([
+				// currently reading, uploaded cover
+				{
+					userId: owner,
+					bookId: "aaaa0001",
+					originUserId: owner,
+					originBookId: "aaaa0001",
+					title: "Reading One",
+					author: "A",
+					wordCount: 1000,
+					wordPosition: 400,
+					coverImage: "data:image/png;base64,AAAA",
+					updatedAt: now,
+					review: "secret review",
+					tags: '["private"]',
+				},
+				// finished this year, catalog cover
+				{
+					userId: owner,
+					bookId: "aaaa0002",
+					originUserId: owner,
+					originBookId: "aaaa0002",
+					title: "Done",
+					author: "B",
+					wordCount: 1000,
+					wordPosition: 990,
+					finishedAt: t(10 * DAY_MS),
+					rating: 7,
+					catalogId: "gutenberg:1342",
+					updatedAt: now,
+				},
+				// finished last year
+				{
+					userId: owner,
+					bookId: "aaaa0003",
+					originUserId: owner,
+					originBookId: "aaaa0003",
+					title: "Old",
+					author: "C",
+					wordCount: 1000,
+					wordPosition: 1000,
+					finishedAt: new Date("2025-03-01T00:00:00Z"),
+					status: "finished",
+					updatedAt: now,
+				},
+				// hidden from profile
+				{
+					userId: owner,
+					bookId: "aaaa0004",
+					originUserId: owner,
+					originBookId: "aaaa0004",
+					title: "Hidden",
+					author: "D",
+					wordCount: 1000,
+					wordPosition: 500,
+					hideFromProfile: true,
+					updatedAt: now,
+				},
+				// article
+				{
+					userId: owner,
+					bookId: "aaaa0005",
+					originUserId: owner,
+					originBookId: "aaaa0005",
+					title: "Article",
+					author: null,
+					wordCount: 500,
+					wordPosition: 250,
+					source: "url",
+					sourceUrl: "https://x.test/a",
+					updatedAt: now,
+				},
+				// deleted
+				{
+					userId: owner,
+					bookId: "aaaa0006",
+					originUserId: owner,
+					originBookId: "aaaa0006",
+					title: "Gone",
+					author: null,
+					wordCount: 100,
+					wordPosition: 50,
+					deleted: true,
+					updatedAt: now,
+				},
+				// want (untouched)
+				{
+					userId: owner,
+					bookId: "aaaa0007",
+					originUserId: owner,
+					originBookId: "aaaa0007",
+					title: "Later",
+					author: null,
+					wordCount: 100,
+					wordPosition: 0,
+					updatedAt: now,
+				},
+				// serial chapters
+				{
+					userId: owner,
+					bookId: "aaaa0008",
+					originUserId: owner,
+					originBookId: "aaaa0008",
+					title: "Ch 1",
+					author: null,
+					wordCount: 100,
+					wordPosition: 100,
+					seriesId: "5e51e501",
+					chapterIndex: 0,
+					updatedAt: now,
+				},
+				{
+					userId: owner,
+					bookId: "aaaa0009",
+					originUserId: owner,
+					originBookId: "aaaa0009",
+					title: "Ch 2",
+					author: null,
+					wordCount: 100,
+					wordPosition: 30,
+					seriesId: "5e51e501",
+					chapterIndex: 1,
+					updatedAt: now,
+				},
+			]),
+		);
 		await db.insert(syncSeries).values({
 			userId: owner,
 			seriesId: "5e51e501",
@@ -494,6 +501,7 @@ describe.skipIf(!hasDb)("friends' now reading (integration)", () => {
 		wordCount: 1000,
 		wordPosition,
 		updatedAt,
+		firstSittingAt: wordPosition > 0 ? updatedAt : null,
 	});
 
 	beforeAll(async () => {
@@ -516,17 +524,19 @@ describe.skipIf(!hasDb)("friends' now reading (integration)", () => {
 		await db.insert(socialFriendRequest).values({ requesterId: requester, addresseeId: viewer });
 
 		const earlier = new Date(now.getTime() - DAY_MS);
-		await db
-			.insert(syncBooks)
-			.values([
-				book(reader, "bbbb0001", 200, earlier),
-				book(reader, "bbbb0002", 700, now),
-				{ ...book(reader, "bbbb0003", 1000, now), finishedAt: now },
-				book(hidesReading, "bbbb0004", 300, now),
-				book(privateProfile, "bbbb0005", 300, now),
-				{ ...book(onlyFinished, "bbbb0006", 1000, now), finishedAt: now },
-				book(requester, "bbbb0007", 300, now),
-			]);
+		await db.insert(syncBooks).values([
+			book(reader, "bbbb0001", 200, earlier),
+			book(reader, "bbbb0002", 700, now),
+			{
+				...book(reader, "bbbb0008", 100, new Date(now.getTime() + 1000)),
+				firstSittingAt: null,
+			},
+			{ ...book(reader, "bbbb0003", 1000, now), finishedAt: now },
+			book(hidesReading, "bbbb0004", 300, now),
+			book(privateProfile, "bbbb0005", 300, now),
+			{ ...book(onlyFinished, "bbbb0006", 1000, now), finishedAt: now },
+			book(requester, "bbbb0007", 300, now),
+		]);
 	});
 
 	afterAll(async () => {

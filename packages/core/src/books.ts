@@ -92,30 +92,48 @@ export function isBookStatus(value: unknown): value is BookStatus {
 }
 
 /**
+ * Active reading time that makes a sitting real: it is written as a session,
+ * and it is what first puts a book on the Reading shelf. Opening a book and
+ * glancing at it stays below it.
+ */
+export const REAL_SITTING_MS = 60_000;
+
+/**
  * Shelf a book belongs on, from its own `status` when the reader set one and
  * from reading progress otherwise.
  *
  * A stored status holds until the reader changes it or a real sitting moves it
  * on (see `statusAfterRealSitting`). Without one, a book that ever crossed the
  * finished threshold (`finishedAt`) stays finished, so a reread does not
- * un-finish it. Derived "reading" needs any saved position, not a rounded
- * percent: a long book stays at 0% for its first thousands of words.
+ * un-finish it. Derived "reading" needs a real sitting (`firstSittingAt`): a
+ * short scroll saves a position but leaves the book where it was. The position
+ * must still be past the start, so Reset progress takes a book off the shelf.
+ * `firstSittingAt` is a required key so no caller can forget to load it.
  */
 export function bookStatus(book: {
 	wordCount: number;
 	wordPosition: number;
 	status?: string | null;
 	finishedAt?: number | Date | null;
+	firstSittingAt: number | Date | null | undefined;
 }): BookStatus {
 	if (isBookStatus(book.status)) return book.status;
 	if (book.finishedAt != null || isFinishedPercent(readingProgress(book))) return "finished";
-	return book.wordPosition > 0 ? "reading" : "want";
+	return hasRealProgress(book) ? "reading" : "want";
+}
+
+/** Past the start with a real sitting behind it. Mirrors `hasRealProgressSql` in the app's queries. */
+export function hasRealProgress(book: {
+	wordPosition: number;
+	firstSittingAt: number | Date | null | undefined;
+}): boolean {
+	return book.firstSittingAt != null && book.wordPosition > 0;
 }
 
 /**
  * The stored status after a real sitting on the book, or undefined to leave it.
- * Want to read and Dropped go back to automatic (which a saved position makes
- * Reading), or to Reading itself on a book once finished, where automatic
+ * Want to read and Dropped go back to automatic (which the sitting's marker
+ * makes Reading), or to Reading itself on a book once finished, where automatic
  * would say Finished. Finished stays, so a reread does not un-finish a book.
  */
 export function statusAfterRealSitting(book: {

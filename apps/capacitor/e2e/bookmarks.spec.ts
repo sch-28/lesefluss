@@ -77,7 +77,7 @@ test("B bookmarks the screen without saving the position, and the Bookmarks tab 
 	await expect(page.getByRole("dialog")).toHaveCount(0);
 	await expectWordOnTop(page, word);
 	await expect(ribbon(page)).toHaveAttribute("aria-pressed", "true");
-	// A far jump browses, as a TOC jump does: the reader keeps its spot until Read from here.
+	// A far jump browses: the reader keeps its spot until Read from here.
 	await expect(reader.browseBar(page)).toBeVisible();
 	expect(await reader.commitReadFromHere(page)).toBe(word);
 });

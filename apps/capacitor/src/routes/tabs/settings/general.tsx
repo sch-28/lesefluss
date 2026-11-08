@@ -11,6 +11,7 @@ import { StepperRow } from "@/components/settings/stepper-row";
 import { useTheme } from "@/contexts/theme-context";
 import { useAppearanceSettings } from "@/hooks/use-appearance-settings";
 import { queryHooks } from "@/services/db/hooks";
+import { SUMMARY_SETTING_HINT } from "@/services/reading-sessions/summary-store";
 
 export const Route = createFileRoute("/tabs/settings/general")({
 	component: GeneralSettings,
@@ -76,7 +77,7 @@ function GeneralSettings() {
 					<ToggleRow
 						id="show-session-summary"
 						title="Session summary"
-						subtitle="A sheet with the sitting's time, words and speed when you close a book after 2 minutes or more."
+						subtitle={SUMMARY_SETTING_HINT}
 						checked={settings?.showSessionSummary ?? DEFAULT_SETTINGS.SHOW_SESSION_SUMMARY}
 						onCheckedChange={(v) => saveSettings({ showSessionSummary: v })}
 					/>

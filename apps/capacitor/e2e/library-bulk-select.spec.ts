@@ -83,7 +83,7 @@ test("deleting a selection names the books and removes exactly those", async ({ 
 	await card(page, "Northlight").click();
 
 	await page.getByRole("button", { name: "Bulk actions" }).click();
-	await page.getByRole("button", { name: "Delete", exact: true }).click();
+	await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
 
 	// Named, not just counted: some of a selection can be off screen.
 	const dialog = page.getByRole("alertdialog");
@@ -105,7 +105,7 @@ test("tagging a selection puts the tag on every picked book", async ({ page }) =
 	await card(page, "Northlight").click();
 
 	await page.getByRole("button", { name: "Bulk actions" }).click();
-	await page.getByRole("button", { name: "Edit tags" }).click();
+	await page.getByRole("menuitem", { name: "Edit tags" }).click();
 
 	await page.getByPlaceholder("New tag").fill("summer");
 	await page.getByRole("button", { name: "Add tag" }).click();

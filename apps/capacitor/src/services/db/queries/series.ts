@@ -13,7 +13,7 @@ import {
 	type Series,
 	series,
 } from "../schema";
-import { isFinishedSql } from "./books";
+import { hasRealProgressSql, isFinishedSql } from "./books";
 
 // Chunk bulk inserts to stay under SQLite's SQLITE_MAX_VARIABLE_NUMBER (32766) and avoid
 // blowing the JS call stack. 200 rows × ~16 cols ≈ 3200 params keeps both limits comfortable.
@@ -237,9 +237,7 @@ export async function getSeriesActivity(): Promise<Map<string, SeriesActivity>> 
 		.select({
 			seriesId: books.seriesId,
 			total: sql<number>`COUNT(*)`.as("total"),
-			started: sql<number>`SUM(CASE WHEN ${books.wordPosition} > 0 THEN 1 ELSE 0 END)`.as(
-				"started",
-			),
+			started: sql<number>`SUM(CASE WHEN ${hasRealProgressSql()} THEN 1 ELSE 0 END)`.as("started"),
 			finished: sql<number>`SUM(CASE WHEN ${isFinishedSql()} THEN 1 ELSE 0 END)`.as("finished"),
 			latestRead: sql<number | null>`MAX(${books.lastRead})`.as("latest_read"),
 		})

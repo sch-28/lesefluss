@@ -568,10 +568,7 @@ export async function getSeriesMemberships(): Promise<Map<string, SeriesMembersh
 	return byBook;
 }
 
-/**
- * The book's place in its series: the first live ordered collection holding it,
- * a series-imported one before a hand-made one.
- */
+/** The book's place in its first live series, the same series the cards and detail page show. */
 export async function getSeriesMembershipForBook(
 	bookId: string,
 ): Promise<{ collectionId: string; seriesIndex: number | null } | null> {
@@ -587,15 +584,10 @@ export async function getSeriesMembershipForBook(
 				eq(collectionBooks.bookId, bookId),
 				eq(collectionBooks.deleted, false),
 				eq(collections.deleted, false),
-				eq(collections.ordered, true),
+				isNotNull(collections.seriesKey),
 			),
 		)
-		.orderBy(
-			sql`${collections.seriesKey} IS NULL`,
-			asc(collections.sortOrder),
-			asc(collections.createdAt),
-			asc(collections.id),
-		)
+		.orderBy(asc(collections.sortOrder), asc(collections.createdAt), asc(collections.id))
 		.limit(1);
 	return row ?? null;
 }

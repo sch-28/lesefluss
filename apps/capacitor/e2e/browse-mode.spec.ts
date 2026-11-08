@@ -51,13 +51,43 @@ async function reopen(page: Page): Promise<void> {
  * nothing until it is committed, and the way back to the anchor.
  */
 
-test("a TOC jump browses without saving, Back returns to the anchor, and scrolling saves again", async ({
+test("a chapter picked from Contents is the new position: no browsing, saved on its first word, and a reopen lands there", async ({
+	page,
+}) => {
+	await openSeeded(page);
+
+	const committed = await reader.moveToChapter(page, "2: Second");
+	await expect(opening(page, 2)).toBeInViewport({ timeout: 5000 });
+	const heading = page.locator(".reader-heading", { hasText: "TITLE 2" });
+	expect(committed).toBe(Number(await heading.getAttribute("data-heading-word")));
+	await reader.waitPastJumpGuard(page);
+	await expect(reader.browseBar(page)).toBeHidden();
+	expect(await reader.lastSavedWord(page), "no settle moved it").toBe(committed);
+
+	await reopen(page);
+	await expect(opening(page, 2)).toBeInViewport({ timeout: 10_000 });
+	await expect(reader.browseBar(page)).toBeHidden();
+});
+
+test("a chapter picked from Contents in RSVP stays in RSVP and is saved", async ({ page }) => {
+	await openSeeded(page);
+	await reader.toggleRsvp(page);
+	await expect(page.locator(".rsvp-display")).toBeVisible({ timeout: 5000 });
+
+	const committed = await reader.moveToChapter(page, "2: Second");
+	await expect(page.locator(".rsvp-display")).toBeVisible();
+	await expect(reader.browseBar(page)).toBeHidden();
+	await expect.poll(() => reader.rsvpCurrentWord(page)).toBe("TITLE");
+	expect(committed).toBeGreaterThan(PARAGRAPHS_PER_CHAPTER);
+});
+
+test("a chapter jump from the palette browses without saving, Back returns to the anchor, and scrolling saves again", async ({
 	page,
 }) => {
 	await openSeeded(page);
 	const baseline = await reader.saveCount(page);
 
-	await reader.tocJumpToChapter(page, "2: Second");
+	await reader.browseToChapter(page, "2: Second");
 	await expect(opening(page, 2)).toBeInViewport({ timeout: 5000 });
 	await expect(reader.browseBar(page)).toBeVisible();
 	await reader.waitPastJumpGuard(page);
@@ -86,7 +116,7 @@ test("leaving the reader while browsing saves nothing, and a reopen lands on the
 	await openSeeded(page);
 	const baseline = await reader.saveCount(page);
 
-	await reader.tocJumpToChapter(page, "2: Second");
+	await reader.browseToChapter(page, "2: Second");
 	await expect(opening(page, 2)).toBeInViewport({ timeout: 5000 });
 	await expect(reader.browseBar(page)).toBeVisible();
 	await reader.waitPastJumpGuard(page);
@@ -102,7 +132,7 @@ test("Read from here commits a word tapped while browsing, and a reopen lands th
 }) => {
 	await openSeeded(page);
 
-	await reader.tocJumpToChapter(page, "2: Second");
+	await reader.browseToChapter(page, "2: Second");
 	await expect(opening(page, 2)).toBeInViewport({ timeout: 5000 });
 	await reader.waitPastJumpGuard(page);
 	const tapped = page
@@ -121,7 +151,7 @@ test("Read from here commits a word tapped while browsing, and a reopen lands th
 	await expect(tapped).toBeInViewport({ timeout: 10_000 });
 });
 
-test("a TOC jump from RSVP keeps the saved RSVP word, and Read from here commits the jump", async ({
+test("a palette chapter jump from RSVP keeps the saved RSVP word, and Read from here commits the jump", async ({
 	page,
 }) => {
 	await openSeeded(page);
@@ -134,7 +164,7 @@ test("a TOC jump from RSVP keeps the saved RSVP word, and Read from here commits
 	await expect.poll(() => reader.rsvpCurrentWord(page)).not.toBe(firstShown);
 
 	const savePending = reader.waitForNextSave(page);
-	await reader.tocJumpToChapter(page, "2: Second");
+	await reader.browseToChapter(page, "2: Second");
 	await savePending;
 	const rsvpWord = await reader.lastSavedWord(page);
 	expect(rsvpWord).toBeGreaterThan(0);
@@ -160,7 +190,7 @@ test("reading on at the browsed spot commits it, and Undo restores the anchor", 
 	await page.clock.install();
 	await openSeeded(page);
 
-	await reader.tocJumpToChapter(page, "2: Second");
+	await reader.browseToChapter(page, "2: Second");
 	await expect(opening(page, 2)).toBeInViewport({ timeout: 5000 });
 	await reader.waitPastJumpGuard(page);
 	const chapterTwoOpening = await reader.firstWordPositionIn(opening(page, 2));

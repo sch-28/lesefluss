@@ -20,6 +20,7 @@ export function makeBook(overrides: Partial<Book> = {}): Book {
 		seriesUpdatedAt: 0,
 		lastRead: null,
 		finishedAt: null,
+		firstSittingAt: null,
 		description: null,
 		language: null,
 		status: null,

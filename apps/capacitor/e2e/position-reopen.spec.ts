@@ -90,13 +90,10 @@ for (const book of books) {
 			await importEpubViaFilePicker(page, { buffer, fileName: "book.epub", title: book.title });
 			await openBookFromLibrary(page, book.title);
 			setFrameMs(frameMs);
-			await reader.tocJumpToChapter(page, DEEP_CHAPTER_LABEL);
+			const committed = await reader.moveToChapter(page, DEEP_CHAPTER_LABEL);
 			await reader.waitPastJumpGuard(page);
-			const committed = await reader.commitReadFromHere(page);
 			await page.waitForTimeout(IDLE_AFTER_OPEN_MS);
-			expect
-				.soft(await reader.lastSavedWord(page), "Read from here, then no input")
-				.toBe(committed);
+			expect.soft(await reader.lastSavedWord(page), "Contents jump, then no input").toBe(committed);
 
 			for (const how of ["back", "reload"] as const) {
 				for (let i = 0; i < REOPENS; i++) {
