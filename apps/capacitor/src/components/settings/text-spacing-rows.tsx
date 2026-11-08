@@ -21,6 +21,10 @@ export function TextSpacingRows() {
 		adjustParagraphSpacing,
 		resetTextSpacing,
 	} = useAppearanceSettings();
+	const isDefault =
+		letterSpacing === DEFAULT_TEXT_SPACING.letter &&
+		wordSpacing === DEFAULT_TEXT_SPACING.word &&
+		paragraphSpacing === DEFAULT_TEXT_SPACING.paragraph;
 
 	return (
 		<>
@@ -53,15 +57,17 @@ export function TextSpacingRows() {
 				step={READER_PARAGRAPH_SPACING.step}
 				onChange={(v) => adjustParagraphSpacing(v - paragraphSpacing)}
 			/>
-			<div className="mt-2 flex">
-				<button
-					type="button"
-					className="min-h-11 px-1 text-muted-foreground text-sm underline"
-					onClick={resetTextSpacing}
-				>
-					Reset spacing
-				</button>
-			</div>
+			{!isDefault && (
+				<div className="mt-2 flex">
+					<button
+						type="button"
+						className="min-h-11 px-1 text-muted-foreground text-sm underline"
+						onClick={resetTextSpacing}
+					>
+						Reset spacing
+					</button>
+				</div>
+			)}
 		</>
 	);
 }

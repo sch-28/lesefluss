@@ -89,8 +89,8 @@ function insertSession(opts: {
 
 /** 10 minutes, 3000 words: an ordinary 300 wpm sitting. */
 const HONEST = { durationMs: 10 * MINUTE, wordsRead: 3000 };
-/** 27 seconds, 22488 words: a position jump, taken from the real device DB. */
-const JUMP = { durationMs: 27_000, wordsRead: 22_488 };
+/** 22488 words in about a minute: a position jump, from the real device DB (stretched past the 1-min bar). */
+const JUMP = { durationMs: 70_000, wordsRead: 22_488 };
 
 beforeEach(() => {
 	raw.exec("DELETE FROM reading_sessions");
@@ -125,6 +125,16 @@ describe("getBookStats", () => {
 		expect(s.lastReadAt).toBe(9000);
 	});
 
+	it("leaves out sittings under a minute, as the book's session list does", async () => {
+		insertBook();
+		insertSession({ startedAt: 1000, ...HONEST });
+		insertSession({ startedAt: 2000, durationMs: 30_000, wordsRead: 150 });
+
+		const s = await getBookStats(BOOK_ID);
+		expect(s.totalDurationMs).toBe(HONEST.durationMs);
+		expect(s.sessionCount).toBe(1);
+	});
+
 	it("has no first sitting when the book was never read", async () => {
 		insertBook();
 		const s = await getBookStats(BOOK_ID);
@@ -155,6 +165,16 @@ describe("getPeriodTotals", () => {
 		expect(totals.words).toBe(HONEST.wordsRead + 22_488);
 		// 10min + 1.5min, rounded. Truncating would give 11.
 		expect(totals.minutes).toBe(12);
+	});
+
+	it("leaves out sittings under a minute, as Stats › Sessions does", async () => {
+		insertBook();
+		insertSession({ startedAt: 1000, ...HONEST });
+		insertSession({ startedAt: 2000, durationMs: 59_000, wordsRead: 200 });
+
+		const totals = await getPeriodTotals(0, 10_000);
+		expect(totals.words).toBe(HONEST.wordsRead);
+		expect(totals.minutes).toBe(10);
 	});
 
 	it("excludes sittings on either side of the window", async () => {

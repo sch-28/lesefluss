@@ -30,6 +30,8 @@ interface Props {
 	onFinish: () => void;
 	skipLabel: string;
 	finishLabel: string;
+	/** Finishing sets the RSVP wpm to the dial; without it only "Use RSVP …" does. */
+	applyDialOnFinish?: boolean;
 }
 
 const STEPS = ["Read", "RSVP", "Result"] as const;
@@ -40,7 +42,14 @@ function stepIndex(phase: Phase): number {
 	return 0;
 }
 
-export function SpeedTest({ onActions, onSkip, onFinish, skipLabel, finishLabel }: Props) {
+export function SpeedTest({
+	onActions,
+	onSkip,
+	onFinish,
+	skipLabel,
+	finishLabel,
+	applyDialOnFinish = false,
+}: Props) {
 	const { settings, updateSetting } = useAutoSaveSettings();
 	const lastPassageId = queryHooks.useSpeedTests().data?.[0]?.passageId;
 	const saveTest = queryHooks.useSaveSpeedTest();
@@ -102,7 +111,7 @@ export function SpeedTest({ onActions, onSkip, onFinish, skipLabel, finishLabel 
 		},
 		skipRound: () => showResult(null),
 		finish: () => {
-			if (appliedDial !== dial) updateSetting("wpm", dial);
+			if (applyDialOnFinish && appliedDial !== dial) updateSetting("wpm", dial);
 			onFinish();
 		},
 	};
@@ -248,7 +257,10 @@ function actionSpec(
 				secondary: { id: "skip", label: opts.skipLabel },
 			};
 		case "read":
-			return { primary: { id: "done", label: "Done", disabled: !opts.begun } };
+			return {
+				primary: { id: "done", label: "Done", disabled: !opts.begun },
+				secondary: { id: "skip", label: opts.skipLabel },
+			};
 		case "implausible":
 			return {
 				primary: { id: "retry", label: "Try again" },

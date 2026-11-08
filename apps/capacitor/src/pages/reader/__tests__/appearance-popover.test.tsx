@@ -98,6 +98,21 @@ describe("AppearancePopover", () => {
 		expect(appearance.resetTextSpacing).toHaveBeenCalledTimes(1);
 	});
 
+	it("at the default spacing, offers every '-' and no Reset spacing", async () => {
+		const saved = appearance.paragraphSpacing;
+		appearance.paragraphSpacing = 1.1;
+		try {
+			const body = await mount();
+			for (const label of ["Letter spacing", "Word spacing", "Paragraph spacing"]) {
+				const dec = body.querySelector(`[aria-label="Decrease ${label}"]`);
+				expect(dec?.getAttribute("aria-disabled")).toBe("false");
+			}
+			expect(body.textContent).not.toContain("Reset spacing");
+		} finally {
+			appearance.paragraphSpacing = saved;
+		}
+	});
+
 	it("turns justify on through the same switch as Settings", async () => {
 		const body = await mount();
 		const sw = body.querySelector<HTMLElement>("#ap-reader-justify");

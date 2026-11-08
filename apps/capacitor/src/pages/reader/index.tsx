@@ -2406,6 +2406,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// The voice owns the position while read aloud is on; listening is recorded from its own log.
 			!isReadAloudActive,
 		rsvpIsPlaying: isRsvpPlaying,
+		isPlayingElsewhere: mini.isPlaying,
 		getPosition: getReadingPosition,
 		wpmSetting: rsvpSettings.wpm,
 		fontSize: readerFontSize,

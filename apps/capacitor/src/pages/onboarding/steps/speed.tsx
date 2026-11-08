@@ -21,6 +21,7 @@ const SpeedStep: React.FC = () => {
 			onFinish={next}
 			skipLabel="Skip this step"
 			finishLabel="Continue"
+			applyDialOnFinish
 		/>
 	);
 };

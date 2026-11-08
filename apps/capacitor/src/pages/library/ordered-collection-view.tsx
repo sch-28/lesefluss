@@ -136,8 +136,8 @@ const OrderedCollectionView: React.FC<Props> = ({
 						{collection.name}
 					</span>
 				</nav>
-				<div className="mt-1 flex items-center gap-2">
-					<div className="min-w-0 flex-1">
+				<div className="mt-1 flex flex-wrap items-center gap-2">
+					<div className="min-w-0 basis-full sm:flex-1 sm:basis-0">
 						<h2 className="m-0 truncate font-semibold text-lg">{collection.name}</h2>
 						<p className="m-0 text-muted-foreground text-sm" data-testid="ordered-summary">
 							{summaryLabel(orderedSummary(rows))}
@@ -324,7 +324,7 @@ const OrderedBookRow: React.FC<RowProps> = ({
 			{showNumber && (
 				<span
 					data-testid="ordered-number"
-					className="w-10 shrink-0 text-right font-semibold text-muted-foreground text-sm tabular-nums"
+					className="w-8 shrink-0 text-right font-semibold text-muted-foreground text-sm tabular-nums"
 				>
 					{row.seriesIndex !== null ? formatSeriesNumber(row.seriesIndex) : ""}
 				</span>

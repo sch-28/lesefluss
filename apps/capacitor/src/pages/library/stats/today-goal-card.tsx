@@ -15,7 +15,7 @@ import { GoalEditSheet, GoalSheetFor } from "../reading-goal/goal-sheet-for";
 const RING_SIZE = 44;
 
 /**
- * Today's goal ring and the streak, the phone's stand-in for the sidebar card.
+ * Today's goal ring and the streak at the top of Stats.
  * One goal opens its editor, several open the goals page, none offers a goal
  * for the book read last.
  */
@@ -92,7 +92,7 @@ function CardButton({
 			aria-label={label}
 			onClick={onClick}
 			data-testid="stats-goal-card"
-			className="mx-4 mt-3 flex w-[calc(100%-2rem)] items-center gap-4 rounded-2xl border border-current/10 bg-card p-4 text-left text-card-foreground hover:bg-muted md:hidden"
+			className="mx-4 mt-3 flex w-[calc(100%-2rem)] items-center gap-4 rounded-2xl border border-current/10 bg-card p-4 text-left text-card-foreground hover:bg-muted"
 		>
 			{ring}
 			<span className="flex min-w-0 flex-col">

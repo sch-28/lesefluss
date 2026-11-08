@@ -1,5 +1,5 @@
 import type { MeasuredReadingMode, ReadingMode } from "./reading-credit";
-import { skimCutoffWpm, speedSittings } from "./reading-rates";
+import { type SkimCutoffs, skimCutoffs, speedSittings } from "./reading-rates";
 
 /**
  * The one speed model every surface reads: reading speed (scroll + page), RSVP
@@ -162,13 +162,13 @@ function fallback(speedTest: SpeedTest | null | undefined): { wpm: number; sourc
 /** Each book's own speed from its measurable, unskimmed sittings, over every row given. */
 export function bookSpeeds(
 	rows: readonly SpeedRow[],
-	cutoffWpm: number = skimCutoffWpm(rows),
+	cutoffs: SkimCutoffs = skimCutoffs(rows),
 ): Record<string, BookSpeed> {
 	const totals = new Map<
 		string,
 		{ words: number; activeMs: number; byMode: Map<MeasuredReadingMode, number> }
 	>();
-	for (const r of speedSittings(rows, cutoffWpm)) {
+	for (const r of speedSittings(rows, cutoffs)) {
 		if (!r.bookId) continue;
 		const t = totals.get(r.bookId) ?? { words: 0, activeMs: 0, byMode: new Map() };
 		t.words += r.wordsRead;

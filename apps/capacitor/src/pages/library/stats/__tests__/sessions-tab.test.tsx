@@ -149,6 +149,25 @@ describe("SessionsTab", () => {
 		expect(state.mutateAsync).toHaveBeenCalledWith(["a", "b"]);
 	});
 
+	it("deletes the book's hidden sittings under a minute with Delete all, counting only the listed ones", async () => {
+		state.rows = [
+			session("a", "mm", at(7, 9)),
+			{ ...session("short", "mm", at(6, 9)), durationMs: 30_000 },
+			{ ...session("other", "em", at(6, 10)), durationMs: 30_000 },
+		];
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+		const v = await show("mm");
+		await click(v.getButton("Delete all 1 session"));
+		expect(state.toast).toHaveBeenCalledWith(
+			expect.stringMatching(/^1 session deleted/),
+			expect.anything(),
+		);
+		await act(async () => {
+			vi.advanceTimersByTime(UNDO_WINDOW_MS);
+		});
+		expect(state.mutateAsync.mock.calls[0]?.[0].slice().sort()).toEqual(["a", "short"]);
+	});
+
 	it("warns that the streak may change when a deleted session was the day's only one", async () => {
 		state.rows = [session("a", "mm", at(7, 9)), session("b", "em", at(7, 10))];
 		await click((await show("mm")).getButton("Delete all 1 session"));

@@ -29,12 +29,25 @@ function testLabel(takenAt: number, now: number): string {
 		: `Test ${formatShortDate(takenAt)}`;
 }
 
+/** Keeps a label near either edge on the plot instead of centring it past the edge. */
+function labelAnchor(x: number, width: number): "start" | "middle" | "end" {
+	if (x < width * 0.25) return "start";
+	if (x > width * 0.75) return "end";
+	return "middle";
+}
+
 function testMarkersLayer(tests: readonly TrendTestMarker[], now: number, color: string) {
 	return function TestMarkers({
 		xScale,
 		yScale,
+		innerWidth,
 		innerHeight,
 	}: LineCustomSvgLayerProps<TrendSeries>) {
+		// Labels of tests close together overlap on a phone; the diamonds still mark each one.
+		const labelled = tests.reduce<TrendTestMarker | null>(
+			(latest, t) => (latest === null || t.takenAt > latest.takenAt ? t : latest),
+			null,
+		);
 		return (
 			<g data-testid="wpm-trend-tests">
 				{tests.map((test) => {
@@ -62,15 +75,17 @@ function testMarkersLayer(tests: readonly TrendTestMarker[], now: number, color:
 								stroke="var(--background)"
 								strokeWidth={1.5}
 							/>
-							<text
-								x={x}
-								y={y - 10}
-								textAnchor="middle"
-								fontSize={10}
-								fill="var(--muted-foreground)"
-							>
-								{testLabel(test.takenAt, now)} · {test.wpm}
-							</text>
+							{test === labelled && (
+								<text
+									x={x}
+									y={y - 10}
+									textAnchor={labelAnchor(x, innerWidth)}
+									fontSize={10}
+									fill="var(--muted-foreground)"
+								>
+									{testLabel(test.takenAt, now)} · {test.wpm}
+								</text>
+							)}
 						</g>
 					);
 				})}
@@ -93,7 +108,7 @@ function formatBucketTick(starts: number[], granularity: TrendGranularity, index
 	const d = new Date(start);
 	switch (granularity) {
 		case "hour":
-			return `${String(d.getHours()).padStart(2, "0")}:00`;
+			return d.toLocaleTimeString(undefined, { hour: "numeric" });
 		case "month":
 			return d.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
 		default:

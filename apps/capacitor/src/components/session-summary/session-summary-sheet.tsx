@@ -157,7 +157,7 @@ function SummaryDrawer({ summary, isOpen, onClose }: SummaryProps) {
 					</div>
 				)}
 
-				<DrawerFooter className="flex-row">
+				<DrawerFooter className="flex-row pb-6">
 					<Button
 						variant="outline"
 						className="h-11 flex-1"

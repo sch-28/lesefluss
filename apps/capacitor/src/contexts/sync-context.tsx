@@ -438,12 +438,17 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 	);
 	// A 401 anywhere drops the session; the signed-in flag must not outlive it,
 	// or screens behind it keep showing an error where the sign-in prompt belongs.
+	// A signed-out web user's background calls also answer 401; only a session
+	// the user had can expire.
+	const isLoggedInRef = useRef(isLoggedIn);
+	isLoggedInRef.current = isLoggedIn;
 	useEffect(
 		() =>
 			onSessionLost(() => {
+				const wasLoggedIn = isLoggedInRef.current;
 				setIsLoggedIn(false);
 				setUserEmail(null);
-				toast.error("Your session expired. Sign in again to keep syncing.");
+				if (wasLoggedIn) toast.error("Your session expired. Sign in again to keep syncing.");
 			}),
 		[],
 	);

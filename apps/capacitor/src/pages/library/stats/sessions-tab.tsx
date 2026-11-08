@@ -1,4 +1,4 @@
-import { isSkimmedSitting, READING_MODES, skimCutoffWpm } from "@lesefluss/core";
+import { isSkimmedSitting, READING_MODES, skimCutoffs } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -25,6 +25,7 @@ import {
 	filterSessions,
 	groupByDay,
 	type ModeFilter,
+	shortSessionsOf,
 	takeSessions,
 	totalsOf,
 } from "./sessions-model";
@@ -75,7 +76,7 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 		() => (bookId ? filterSessions(live, { bookId, mode: "all", hidden }) : []),
 		[live, bookId, hidden],
 	);
-	const skimCutoff = useMemo(() => skimCutoffWpm(live), [live]);
+	const skimCutoff = useMemo(() => skimCutoffs(live), [live]);
 	const totals = totalsOf(rows, skimCutoff);
 	const days = useMemo(
 		() => takeSessions(groupByDay(rows, now), visibleCount),
@@ -162,7 +163,9 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 							variant="destructive"
 							size="sm"
 							className="mt-3"
-							onClick={() => requestDelete(bookRows)}
+							onClick={() =>
+								requestDelete(bookRows, { alongside: shortSessionsOf(all, bookId, hidden) })
+							}
 						>
 							Delete all {bookTotals.count} {bookTotals.count === 1 ? "session" : "sessions"}
 						</Button>

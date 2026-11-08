@@ -4,7 +4,7 @@ import {
 	isSkimmedSitting,
 	rollUpWorks,
 	SKIM_MAX_READING_WPM,
-	skimCutoffWpm,
+	skimCutoffs,
 	speedSittings,
 } from "../reading-rates";
 
@@ -99,23 +99,41 @@ describe("skimmed sittings", () => {
 
 	it("caps scroll and page at 600 wpm while there is no median yet", () => {
 		const rows = [sitting("scroll", 250), sitting("page", 620)];
-		const cutoff = skimCutoffWpm(rows);
-		expect(cutoff).toBe(SKIM_MAX_READING_WPM);
+		const cutoff = skimCutoffs(rows);
+		expect(cutoff.reading).toBe(SKIM_MAX_READING_WPM);
 		expect(isSkimmedSitting(rows[1], cutoff)).toBe(true);
 		expect(isSkimmedSitting(rows[0], cutoff)).toBe(false);
 	});
 
 	it("skims a sitting over 1.6x the reader's own median", () => {
 		const rows = [200, 210, 220, 230, 240, 400].map((wpm) => sitting("scroll", wpm));
-		const cutoff = skimCutoffWpm(rows);
-		expect(cutoff).toBeCloseTo(225 * 1.6);
+		const cutoff = skimCutoffs(rows);
+		expect(cutoff.reading).toBeCloseTo(225 * 1.6);
 		expect(speedSittings(rows).map((r) => r.wordsRead / 10)).toEqual([200, 210, 220, 230, 240]);
 	});
 
-	it("never skims RSVP, which runs at its dial", () => {
-		const rows = [sitting("rsvp", 900)];
-		expect(isSkimmedSitting(rows[0], skimCutoffWpm(rows))).toBe(false);
-		expect(speedSittings(rows)).toHaveLength(1);
+	it("does not hold RSVP to the reading cap, nor skim it before it has a median", () => {
+		const rows = [sitting("scroll", 250), sitting("rsvp", 900)];
+		expect(isSkimmedSitting(rows[1], skimCutoffs(rows))).toBe(false);
+		expect(speedSittings(rows)).toHaveLength(2);
+	});
+
+	it("skims an RSVP sitting over 1.6x the reader's own RSVP median", () => {
+		const rows = [400, 420, 450, 480, 500, 1200].map((wpm) => sitting("rsvp", wpm));
+		const cutoff = skimCutoffs(rows);
+		expect(cutoff.rsvp).toBeCloseTo(465 * 1.6);
+		expect(isSkimmedSitting(rows[5], cutoff)).toBe(true);
+		expect(speedSittings(rows).map((r) => r.wordsRead / 10)).toEqual([400, 420, 450, 480, 500]);
+	});
+
+	it("judges scroll against reading sittings only, never against RSVP's faster pace", () => {
+		const rows = [
+			...[200, 210, 220, 230, 240].map((wpm) => sitting("scroll", wpm)),
+			...[500, 520, 540, 560, 580].map((wpm) => sitting("rsvp", wpm)),
+		];
+		const cutoff = skimCutoffs(rows);
+		expect(isSkimmedSitting(sitting("scroll", 400), cutoff)).toBe(true);
+		expect(isSkimmedSitting(sitting("rsvp", 600), cutoff)).toBe(false);
 	});
 
 	it("leaves listening and implausible rows out of speed as before", () => {

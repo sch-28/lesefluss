@@ -92,6 +92,7 @@ describe("WpmTrend", () => {
 				{layer?.({
 					xScale: (i: number) => i * 10,
 					yScale: (w: number) => 1000 - w,
+					innerWidth: 300,
 					innerHeight: 160,
 				})}
 			</svg>,
@@ -100,6 +101,46 @@ describe("WpmTrend", () => {
 		expect(markers.container.textContent).toContain("640");
 		markers.unmount();
 		expect(view.container.textContent).toContain("Speed test");
+	});
+
+	it("labels only the latest of several speed tests, so labels never overlap", async () => {
+		const DAY = 86_400_000;
+		state.trend = {
+			isLoading: false,
+			data: {
+				granularity: "day",
+				averages: { measured: 0, rsvpTarget: 0 },
+				measured: [
+					{ bucketStart: 0, avgWpm: 250 },
+					{ bucketStart: DAY, avgWpm: 260 },
+				],
+				tests: [
+					{ bucketIndex: 1, wpm: 410, takenAt: DAY + 1 },
+					{ bucketIndex: 1, wpm: 520, takenAt: DAY + 2 },
+				],
+			},
+		};
+		view = await render(
+			<WpmTrend window="30d" mode="reading" windowLabel="30 days" now={DAY * 5} />,
+		);
+		const layer = state.lines.at(-1)?.layers?.find((l) => typeof l === "function") as
+			| ((p: object) => React.ReactElement)
+			| undefined;
+		const markers = await render(
+			<svg role="img" aria-label="Test markers">
+				{layer?.({
+					xScale: (i: number) => i * 10,
+					yScale: (w: number) => 1000 - w,
+					innerWidth: 300,
+					innerHeight: 160,
+				})}
+			</svg>,
+		);
+		expect(markers.container.querySelectorAll("[data-testid=wpm-trend-test]")).toHaveLength(2);
+		const labels = [...markers.container.querySelectorAll("text")].map((t) => t.textContent);
+		expect(labels).toHaveLength(1);
+		expect(labels[0]).toContain("520");
+		markers.unmount();
 	});
 
 	it("rounds the axis top to 50 with a fifth of headroom", () => {

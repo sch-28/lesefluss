@@ -2,7 +2,8 @@ import {
 	isMeasurableSitting,
 	isSkimmedSitting,
 	type ReadingMode,
-	skimCutoffWpm,
+	type SkimCutoffs,
+	skimCutoffs,
 	wpmFrom,
 } from "@lesefluss/core";
 import type { Book, ReadingSession } from "../../../services/db/schema";
@@ -44,10 +45,21 @@ export function filterSessions(
 	);
 }
 
+/** A book's sittings under the one-minute bar: saved before the bar existed, and never listed. */
+export function shortSessionsOf(
+	rows: readonly ReadingSession[],
+	bookId: string,
+	hidden: ReadonlySet<string>,
+): ReadingSession[] {
+	return rows.filter(
+		(row) => row.bookId === bookId && row.durationMs < MIN_DURATION_MS && !hidden.has(row.id),
+	);
+}
+
 /** `skimCutoff` comes from every sitting the reader has, so a filter can't move what counts as a skim. */
 export function totalsOf(
 	rows: readonly ReadingSession[],
-	skimCutoff: number = skimCutoffWpm(rows),
+	skimCutoff: SkimCutoffs = skimCutoffs(rows),
 ): SessionTotals {
 	let totalMs = 0;
 	let measuredMs = 0;

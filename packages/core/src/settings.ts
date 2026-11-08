@@ -49,8 +49,8 @@ export const DEFAULT_SETTINGS = {
 	READER_RULER_LINES: 1, // lines the ruler band covers (1–3); kept while the ruler is off
 	READER_LINE_SPACING: 1.8, // line-height multiplier (1.2–2.4)
 	READER_MARGIN: 20, // horizontal padding px (8–48)
-	READER_LETTER_SPACING: 0, // em added between letters (0–0.2)
-	READER_WORD_SPACING: 0, // em added between words (0–0.48)
+	READER_LETTER_SPACING: 0, // em added between letters (-0.04–0.2)
+	READER_WORD_SPACING: 0, // em added between words (-0.04–0.48)
 	READER_PARAGRAPH_SPACING: 1.1, // em between paragraphs (0.5–2.9)
 	READER_ACTIVE_WORD_UNDERLINE: true, // underline the currently active word in the scroll reader
 	READER_GLOSSARY_UNDERLINE: true, // underline words that match a glossary entry label
@@ -94,8 +94,8 @@ export const SETTING_CONSTRAINTS = {
 	READER_LINE_SPACING: { min: 1.2, max: 2.4, step: 0.1 },
 	READER_MARGIN: { min: 8, max: 48, step: 4 },
 	// Grids put WCAG 1.4.12's text spacing (0.12 / 0.16 / 2 em) exactly on a step.
-	READER_LETTER_SPACING: { min: 0, max: 0.2, step: 0.04 },
-	READER_WORD_SPACING: { min: 0, max: 0.48, step: 0.04 },
+	READER_LETTER_SPACING: { min: -0.04, max: 0.2, step: 0.04 },
+	READER_WORD_SPACING: { min: -0.04, max: 0.48, step: 0.04 },
 	READER_PARAGRAPH_SPACING: { min: 0.5, max: 2.9, step: 0.3 },
 	READER_RULER_LINES: { min: 1, max: 3, step: 1 },
 	APP_FONT_SIZE: { min: 12, max: 22, step: 1 },

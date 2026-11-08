@@ -5,11 +5,12 @@ import {
 	deriveMilestones,
 	type MeasuredReadingMode,
 	type Milestones,
+	REAL_SITTING_MS,
 	readingProgress,
 	rollUpWorks,
 	type SpeedModel,
 	type SpeedWindow,
-	skimCutoffWpm,
+	skimCutoffs,
 	speedSittings,
 	speedWindowRows,
 	THIRTY_DAYS_MS,
@@ -60,7 +61,12 @@ export async function getPeriodTotals(
 		})
 		.from(readingSessions)
 		.where(
-			and(gte(readingSessions.startedAt, periodStart), lt(readingSessions.startedAt, periodEnd)),
+			and(
+				gte(readingSessions.startedAt, periodStart),
+				lt(readingSessions.startedAt, periodEnd),
+				// Sittings saved under the bar before it existed: Stats › Sessions never lists them.
+				gte(readingSessions.durationMs, REAL_SITTING_MS),
+			),
 		);
 
 	// Counted on when the book was first finished, not on when it was last
@@ -553,7 +559,9 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 			wordsRead: readingSessions.wordsRead,
 		})
 		.from(readingSessions)
-		.where(eq(readingSessions.bookId, bookId))
+		.where(
+			and(eq(readingSessions.bookId, bookId), gte(readingSessions.durationMs, REAL_SITTING_MS)),
+		)
 		.orderBy(readingSessions.startedAt);
 
 	if (rows.length === 0) {
@@ -578,7 +586,7 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 
 	// The skim cutoff comes from every sitting, as in Stats › Sessions and the speed model,
 	// so a sitting is skimmed or not wherever it is shown.
-	const cutoff = skimCutoffWpm(
+	const cutoff = skimCutoffs(
 		await db
 			.select({
 				mode: readingSessions.mode,

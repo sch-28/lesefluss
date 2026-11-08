@@ -35,6 +35,7 @@ import {
 	spendCredit,
 	wordPos,
 } from "@lesefluss/core";
+import type { CarryStore, SittingCarry } from "../../services/reading-sessions/carry";
 import {
 	HARD_END_MS,
 	MIN_DURATION_MS,
@@ -74,6 +75,8 @@ export type TrackerOpts = {
 	onFinalized?: (row: SessionRow) => void;
 	/** Active time below which a sitting is not written; `MIN_DURATION_MS` unless a test shortens it. */
 	minDurationMs?: number;
+	/** Where a sitting that ends below the floor waits for the book's next burst; without one it is dropped. */
+	carry?: CarryStore;
 	now?: () => number;
 	newId?: () => string;
 };
@@ -117,6 +120,8 @@ type SessionState = {
 	hasPersisted: boolean;
 	/** Words read when each full SEGMENT_MS of active time closed, ascending. */
 	segmentMarks: number[];
+	/** The earlier short bursts this sitting continues, as they were before it joined them. */
+	carried: SittingCarry | null;
 };
 
 /** An inclusive-start, exclusive-end range of word positions. */
@@ -237,6 +242,11 @@ export class SessionTracker {
 		} else if (this.session.activeSinceMs === null) {
 			this.session.activeSinceMs = now;
 		}
+	}
+
+	/** A tick driven by activity, for when the interval is throttled (a hidden tab following Quick RSVP). */
+	tickIfDue(): void {
+		if (this.now() - this.lastPollAt >= POLL_MS) this.tick();
 	}
 
 	/** Periodic tick from setInterval (POLL_MS). */
@@ -365,6 +375,7 @@ export class SessionTracker {
 			dayKey: localDateKey(now),
 			hasPersisted: false,
 			segmentMarks: [],
+			carried: null,
 		};
 		// As for discard: the deleted sitting's reading no longer counts anywhere.
 		if (this.lastFurthestRead) this.opts.onFurthestRead?.(this.lastFurthestRead.id, null);
@@ -376,6 +387,8 @@ export class SessionTracker {
 		const s = this.session;
 		this.session = null;
 		if (s?.hasPersisted) this.opts.remove?.(s.id);
+		// Only the burst being discarded was browsing; the bursts it had joined still wait.
+		else if (s?.carried) this.opts.carry?.stash(s.carried);
 		this.notifyFurthestRead();
 	}
 
@@ -410,7 +423,9 @@ export class SessionTracker {
 			dayKey: localDateKey(now),
 			hasPersisted: false,
 			segmentMarks,
+			carried: null,
 		};
+		this.adoptCarry(this.session);
 		this.lastActivityAt = now;
 		this.notifyFurthestRead();
 	}
@@ -426,6 +441,8 @@ export class SessionTracker {
 		const row = this.buildRow(now);
 		if (row) {
 			this.write(row, "flush");
+		} else if (this.opts.carry) {
+			this.stashCarry(this.session);
 		} else {
 			// Noise floor is deliberate: brief tab-switches, accidental opens,
 			// and < MIN_DURATION_MS skims would otherwise pollute stats. Promote
@@ -487,10 +504,39 @@ export class SessionTracker {
 			dayKey: localDateKey(now),
 			hasPersisted: false,
 			segmentMarks: [],
+			carried: null,
 		};
+		this.adoptCarry(this.session);
 		this.lastActivityAt = now;
 		this.lastPollAt = now;
 		this.notifyFurthestRead();
+	}
+
+	/** Joins the book's last short burst when it ended close enough before this one started. */
+	private adoptCarry(s: SessionState): void {
+		const carry = this.opts.carry?.take(this.opts.bookId, this.opts.mode, s.startedAt);
+		if (!carry) return;
+		s.id = carry.id;
+		s.startedAt = Math.min(carry.startedAt, s.startedAt);
+		s.startPos = carry.startPos;
+		for (const [start, end] of carry.readSpans) creditSpan(s.readSpans, start, end);
+		s.accumulatedActiveMs += carry.accumulatedActiveMs;
+		s.carried = carry;
+	}
+
+	private stashCarry(s: SessionState): void {
+		if (s.accumulatedActiveMs <= 0 && s.readSpans.length === 0) return;
+		this.opts.carry?.stash({
+			id: s.id,
+			bookId: this.opts.bookId,
+			mode: this.opts.mode,
+			dayKey: s.dayKey,
+			startedAt: s.startedAt,
+			startPos: s.startPos,
+			readSpans: s.readSpans.map(([start, end]): Span => [start, end]),
+			accumulatedActiveMs: s.accumulatedActiveMs,
+			lastActivityAt: this.lastActivityAt,
+		});
 	}
 
 	/** Adds the open active interval, up to `until`, to the sitting's time and pauses it. */
@@ -552,6 +598,7 @@ export class SessionTracker {
 			dayKey: today,
 			hasPersisted: false,
 			segmentMarks: [],
+			carried: null,
 		};
 		this.lastActivityAt = Math.min(this.lastActivityAt, now);
 	}

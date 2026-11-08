@@ -1,4 +1,4 @@
-import { isMeasurableSitting, isSkimmedSitting, wpmFrom } from "@lesefluss/core";
+import { isMeasurableSitting, isSkimmedSitting, type SkimCutoffs, wpmFrom } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import {
 	DropdownMenu,
@@ -41,15 +41,13 @@ export function ModeBadge({ mode }: { mode: ReadingSession["mode"] }) {
 	);
 }
 
+/** Rounds like `readingProgress`, so a session's range matches the book's card and detail page. */
 export function formatPercent(value: number): string {
-	if (value <= 0) return "0%";
-	if (value < 1) return "<1%";
-	return `${Math.round(value)}%`;
+	return `${Math.min(100, Math.max(0, Math.round(value)))}%`;
 }
 
 export function formatClock(epochMs: number): string {
-	const d = new Date(epochMs);
-	return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+	return new Date(epochMs).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
 type Confirm = { ids: string[]; title: string; description: string; confirmLabel: string };
@@ -79,19 +77,20 @@ export function useSessionDelete({
 		doomed: readonly ReadingSession[],
 		all: readonly ReadingSession[],
 		shouldConfirm: boolean,
+		alongside: readonly ReadingSession[],
 	) {
-		const doomedIds = new Set(doomed.map((row) => row.id));
+		const doomedIds = new Set([...doomed, ...alongside].map((row) => row.id));
 		const doomedBooks = new Set(doomed.map((row) => row.bookId));
 		const [onlyBook] = doomedBooks;
 		const bookTitle =
 			doomedBooks.size === 1 && onlyBook ? (books.get(onlyBook)?.title ?? null) : null;
 		const live = all.filter((row) => !hidden.has(row.id) || doomedIds.has(row.id));
 		const mayChangeStreak = lostReadingDays(doomedIds, live).length > 0;
-		const ids = doomed.map((row) => row.id);
-		if (!shouldConfirm && ids.length < CONFIRM_DELETE_FROM) {
+		const ids = [...doomedIds];
+		if (!shouldConfirm && doomed.length < CONFIRM_DELETE_FROM) {
 			onStart();
 			const undo = deleteLater(ids);
-			toast.success(deletedToastText(ids.length, mayChangeStreak), {
+			toast.success(deletedToastText(doomed.length, mayChangeStreak), {
 				action: { label: "Undo", onClick: undo },
 				duration: UNDO_WINDOW_MS,
 			});
@@ -103,21 +102,26 @@ export function useSessionDelete({
 	/**
 	 * `confirm` asks first and then deletes at once, with no undo window: the
 	 * pages around a delete-all count the sittings until they are really gone.
+	 * `alongside` rows go with `doomed` but stay out of the counts, as the
+	 * list never showed them (sittings under the one-minute bar).
 	 */
-	function requestDelete(doomed: readonly ReadingSession[], { confirm = false } = {}) {
+	function requestDelete(
+		doomed: readonly ReadingSession[],
+		{ confirm = false, alongside = [] as readonly ReadingSession[] } = {},
+	) {
 		if (doomed.length === 0 || deciding.current) return;
 		const all = streakRows();
 		if (Array.isArray(all)) {
-			proceed(doomed, all, confirm);
+			proceed(doomed, all, confirm, alongside);
 			return;
 		}
 		// The rows stay visible until the read settles; a second tap meanwhile would queue a second delete.
 		deciding.current = true;
 		void Promise.resolve(all)
 			.then(
-				(rows) => proceed(doomed, rows, confirm),
+				(rows) => proceed(doomed, rows, confirm, alongside),
 				// Without the other books' sessions every doomed day counts as lost: the warning errs on showing.
-				() => proceed(doomed, doomed, confirm),
+				() => proceed(doomed, doomed, confirm, alongside),
 			)
 			.finally(() => {
 				deciding.current = false;
@@ -233,8 +237,8 @@ export function SessionDays({
 	books: ReadonlyMap<string, Book>;
 	isBookView: boolean;
 	actions: SessionActions;
-	/** From `skimCutoffWpm` over the rows the speed figures come from. */
-	skimCutoff: number;
+	/** From `skimCutoffs` over the rows the speed figures come from. */
+	skimCutoff: SkimCutoffs;
 	listClassName?: string;
 	headingClassName?: string;
 }) {

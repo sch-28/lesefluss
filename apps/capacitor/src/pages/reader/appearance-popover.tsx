@@ -60,7 +60,7 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor, onOpen
 				align="end"
 				collisionPadding={8}
 				// The rows outgrow a small phone, landscape or a large app font.
-				className="max-h-(--radix-popover-content-available-height) w-80 max-w-(--radix-popover-content-available-width) overflow-y-auto overscroll-contain p-0"
+				className="max-h-[calc(var(--radix-popover-content-available-height)-var(--safe-bottom))] w-80 max-w-(--radix-popover-content-available-width) overflow-y-auto overscroll-contain p-0"
 			>
 				<div className="appearance-popover-content pb-1">
 					<SettingsSection title="Theme" hint={isEinkMode ? "(set by E-ink display)" : undefined}>

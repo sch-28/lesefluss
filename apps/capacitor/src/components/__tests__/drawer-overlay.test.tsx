@@ -25,7 +25,7 @@ describe("Drawer overlay", () => {
 		expect(overlay()?.getAttribute("data-vaul-snap-points-overlay")).toBe("true");
 	});
 
-	it("uses a light dim without blur", async () => {
+	it("uses a light dim without blur, stronger on a dark page", async () => {
 		view = await render(
 			<Drawer open>
 				<DrawerContent>
@@ -35,6 +35,7 @@ describe("Drawer overlay", () => {
 		);
 		await flush();
 		expect(overlay()?.className).toContain("bg-black/30");
+		expect(overlay()?.className).toContain("dark:bg-black/60");
 		expect(overlay()?.className).not.toContain("backdrop-blur");
 	});
 

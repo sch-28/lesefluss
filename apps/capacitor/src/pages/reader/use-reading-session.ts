@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { readingSessionKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { queryClient } from "../../services/query-client";
+import { sittingCarries } from "../../services/reading-sessions/carry";
 import { onSessionsDeleted } from "../../services/reading-sessions/deleted";
 import { persistRow } from "../../services/reading-sessions/persist";
 import {
@@ -52,6 +53,8 @@ type Args = {
 	fontSize?: number;
 	/** See `TrackerOpts.onFurthestRead`. */
 	onFurthestRead?: (sessionId: string, word: number | null) => void;
+	/** Reading goes on in another window (Quick RSVP): it counts while this tab is hidden. */
+	isPlayingElsewhere?: boolean;
 };
 
 type Return = {
@@ -100,6 +103,7 @@ export function useReadingSession({
 	wpmSetting,
 	fontSize,
 	onFurthestRead,
+	isPlayingElsewhere = false,
 }: Args): Return {
 	const trackerRef = useRef<SessionTracker | null>(null);
 	const getPositionRef = useRef(getPosition);
@@ -133,6 +137,7 @@ export function useReadingSession({
 			remove: removeRow,
 			onFurthestRead: (sessionId, word) => onFurthestReadRef.current?.(sessionId, word),
 			onFinalized: recordSitting,
+			carry: sittingCarries,
 		});
 		return () => {
 			trackerRef.current?.finalize();
@@ -152,11 +157,17 @@ export function useReadingSession({
 		trackerRef.current?.setReading(reading);
 	}, [isReading, rsvpIsPlaying, mode]);
 
+	const isPlayingElsewhereRef = useRef(isPlayingElsewhere);
+	isPlayingElsewhereRef.current = isPlayingElsewhere;
+	const applyForegroundRef = useRef<() => void>(() => {});
+
 	// Lifecycle union: document visibility AND Capacitor App active.
 	useEffect(() => {
 		let docVisible = document.visibilityState !== "hidden";
 		let appActive = true;
-		const apply = () => trackerRef.current?.setForeground(docVisible && appActive);
+		const apply = () =>
+			trackerRef.current?.setForeground((docVisible && appActive) || isPlayingElsewhereRef.current);
+		applyForegroundRef.current = apply;
 		apply();
 
 		const onVis = () => {
@@ -178,6 +189,11 @@ export function useReadingSession({
 		};
 	}, []);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: re-applies the foreground on its change
+	useEffect(() => {
+		applyForegroundRef.current();
+	}, [isPlayingElsewhere]);
+
 	useEffect(() => onSessionsDeleted((ids) => trackerRef.current?.forgetDeleted(ids)), []);
 
 	// Periodic tick. Wall-clock-guarded against suspension inside the tracker.
@@ -191,6 +207,7 @@ export function useReadingSession({
 
 	const markActivity = useCallback(() => {
 		trackerRef.current?.markActivity();
+		if (isPlayingElsewhereRef.current) trackerRef.current?.tickIfDue();
 	}, []);
 
 	const getDebugSnapshot = useCallback(() => {

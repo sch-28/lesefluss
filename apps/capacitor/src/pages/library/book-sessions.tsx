@@ -1,4 +1,4 @@
-import { isSkimmedSitting, skimCutoffWpm } from "@lesefluss/core";
+import { isSkimmedSitting, skimCutoffs } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -13,7 +13,7 @@ import {
 	useSessionDelete,
 	useSessionSelection,
 } from "./stats/session-list";
-import { filterSessions, groupByDay, takeSessions } from "./stats/sessions-model";
+import { filterSessions, groupByDay, shortSessionsOf, takeSessions } from "./stats/sessions-model";
 
 /** The latest sittings the book page lists; the rest are a link away in Stats › Sessions. */
 export const BOOK_SESSIONS_SHOWN = 10;
@@ -37,7 +37,7 @@ export function BookSessions({ book }: { book: Book }) {
 	);
 	// From every sitting, as Stats › Sessions does, so a row reads skimmed the same in both.
 	const skimCutoff = useMemo(
-		() => skimCutoffWpm(filterSessions(allQuery.data ?? [], { mode: "all", hidden })),
+		() => skimCutoffs(filterSessions(allQuery.data ?? [], { mode: "all", hidden })),
 		[allQuery.data, hidden],
 	);
 	const [openSession, setOpenSession] = useState<ReadingSession | null>(null);
@@ -94,7 +94,12 @@ export function BookSessions({ book }: { book: Book }) {
 					variant="outline"
 					size="lg"
 					className="mt-3 text-destructive hover:text-destructive"
-					onClick={() => requestDelete(rows, { confirm: true })}
+					onClick={() =>
+						requestDelete(rows, {
+							confirm: true,
+							alongside: shortSessionsOf(sessionsQuery.data ?? [], book.id, hidden),
+						})
+					}
 				>
 					Delete all {rows.length} {noun}
 				</Button>

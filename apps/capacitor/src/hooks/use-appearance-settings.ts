@@ -156,8 +156,8 @@ export function spacingLabel(value: number, fallback: number, format: (v: number
  */
 export function textSpacingVars(spacing: TextSpacing): React.CSSProperties {
 	return {
-		...(spacing.letter > 0 && { "--reader-letter-spacing": `${spacing.letter}em` }),
-		...(spacing.word > 0 && { "--reader-word-spacing": `${spacing.word}em` }),
+		...(spacing.letter !== 0 && { "--reader-letter-spacing": `${spacing.letter}em` }),
+		...(spacing.word !== 0 && { "--reader-word-spacing": `${spacing.word}em` }),
 		"--reader-paragraph-spacing": `${spacing.paragraph}em`,
 	} as React.CSSProperties;
 }
