@@ -15,10 +15,15 @@ import {
 	SOFT_IDLE_MS,
 } from "../session-tracker";
 
+// Most cases here are about tracking mechanics over short sittings; the real
+// one-minute floor has its own test.
+const TEST_FLOOR_MS = 5_000;
+
 function setup(opts?: {
 	mode?: "scroll" | "page" | "rsvp";
 	wpm?: number | null;
 	initialPos?: number;
+	minDurationMs?: number;
 }) {
 	let clock = 1_000_000; // arbitrary epoch ms
 	let position = opts?.initialPos ?? 0;
@@ -38,6 +43,7 @@ function setup(opts?: {
 		onFurthestRead: (id, word) => furthest.push([id, word]),
 		remove: (id) => removed.push(id),
 		onFinalized: (row) => finalized.push(row),
+		minDurationMs: opts?.minDurationMs ?? TEST_FLOOR_MS,
 		now: () => clock,
 		newId: () => `id${++idCounter}`,
 	});
@@ -110,10 +116,30 @@ describe("SessionTracker", () => {
 	it("drops session below MIN_DURATION", () => {
 		const env = setup();
 		env.tracker.setReading(true);
-		env.advance(MIN_DURATION_MS - 1);
+		env.advance(TEST_FLOOR_MS - 1);
 		env.movePosition(20);
 		env.tracker.finalize();
 		expect(env.persisted).toHaveLength(0);
+	});
+
+	// A real sitting is a minute of reading: opening a book and glancing at it records nothing.
+	it("writes nothing for a sitting under a minute at the real floor, and a row past it", () => {
+		const short = setup({ minDurationMs: MIN_DURATION_MS });
+		short.tracker.setReading(true);
+		short.advance(50_000);
+		short.movePosition(40);
+		short.tracker.tick();
+		short.tracker.finalize();
+		expect(MIN_DURATION_MS).toBe(60_000);
+		expect(short.persisted).toHaveLength(0);
+
+		const real = setup({ minDurationMs: MIN_DURATION_MS });
+		real.tracker.setReading(true);
+		real.advance(61_000);
+		real.movePosition(40);
+		real.tracker.tick();
+		real.tracker.finalize();
+		expect(real.persisted.at(-1)?.kind).toBe("flush");
 	});
 
 	it("drops session below MIN_WORDS", () => {

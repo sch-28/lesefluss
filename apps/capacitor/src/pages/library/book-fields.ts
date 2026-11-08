@@ -35,12 +35,3 @@ export function clampBookTags(tags: readonly string[]): { tags: string[]; droppe
 	}
 	return { tags: kept, dropped: [] };
 }
-
-/** "Foundation #2.5", or the bare name when the book has no number. */
-export function bookSeriesLabel(book: {
-	seriesName: string | null;
-	seriesIndex: number | null;
-}): string | null {
-	if (!book.seriesName) return null;
-	return book.seriesIndex === null ? book.seriesName : `${book.seriesName} #${book.seriesIndex}`;
-}

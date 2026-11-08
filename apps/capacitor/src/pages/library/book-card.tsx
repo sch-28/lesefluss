@@ -1,3 +1,4 @@
+import { displayAuthor } from "@lesefluss/core";
 /**
  * BookCard: individual book grid item.
  *
@@ -17,6 +18,7 @@ import {
 	CardFieldSlot,
 	type CardFieldValues,
 	DEFAULT_CARD_FIELDS,
+	NotStartedField,
 	ProgressField,
 	RatingField,
 	TextField,
@@ -137,12 +139,12 @@ const BookCard: React.FC<BookCardProps> = ({
 
 				{fields.includes("progress") && (
 					<CardFieldSlot surface="grid" field="progress" className="mt-1">
-						{started && <ProgressField id={progressId} progress={progress} />}
+						{started ? <ProgressField id={progressId} progress={progress} /> : <NotStartedField />}
 					</CardFieldSlot>
 				)}
 
 				<div className="px-0.5 pt-1">
-					<div className="line-clamp-2 min-h-[2.4em] overflow-hidden font-semibold text-[0.85rem] leading-[1.2]">
+					<div className="line-clamp-2 overflow-hidden font-semibold text-[0.85rem] leading-[1.2]">
 						{book.title}
 					</div>
 					<div id={detailsId}>
@@ -155,7 +157,10 @@ const BookCard: React.FC<BookCardProps> = ({
 										<RatingField rating={book.rating} />
 									) : (
 										<TextField
-											text={values?.[field] ?? (field === "author" ? (book.author ?? "") : "")}
+											text={
+												values?.[field] ??
+												(field === "author" ? displayAuthor(book.author ?? "") : "")
+											}
 										/>
 									)}
 								</CardFieldSlot>

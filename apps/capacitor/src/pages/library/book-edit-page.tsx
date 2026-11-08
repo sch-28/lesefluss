@@ -149,7 +149,11 @@ const EditBookForm: React.FC<{
 				cover={cover}
 				format={book.fileFormat}
 				facts={facts}
-				progress={{ wordCount: book.wordCount, wordPosition: book.wordPosition }}
+				progress={{
+					wordCount: book.wordCount,
+					wordPosition: book.wordPosition,
+					finishedAt: book.finishedAt,
+				}}
 				series={
 					<SeriesField
 						choice={seriesChoice}
@@ -157,6 +161,7 @@ const EditBookForm: React.FC<{
 							if (next.kind !== "detected") setSeriesChoice(next);
 						}}
 						collections={collections}
+						bookId={book.id}
 					/>
 				}
 			/>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import type { CollectionWithCount } from "../../../services/db/queries/collections";
 import { type BookEditValues, editValuesToPatch } from "../book-edit-form";
-import { bookSeriesLabel } from "../book-fields";
+import { bookSeriesOf } from "../use-book-series";
 
 const values: BookEditValues = {
 	title: "Dune Messiah",
@@ -14,11 +15,39 @@ const values: BookEditValues = {
 	hideFromProfile: false,
 };
 
-describe("bookSeriesLabel", () => {
-	it("shows the number after the name, or the name alone", () => {
-		expect(bookSeriesLabel({ seriesName: "Foundation", seriesIndex: 2.5 })).toBe("Foundation #2.5");
-		expect(bookSeriesLabel({ seriesName: "Foundation", seriesIndex: null })).toBe("Foundation");
-		expect(bookSeriesLabel({ seriesName: null, seriesIndex: 3 })).toBeNull();
+function collection(id: string): CollectionWithCount {
+	return {
+		id,
+		name: `Series ${id}`,
+		sortOrder: 1,
+		ordered: true,
+		seriesKey: id,
+		view: null,
+		deleted: false,
+		createdAt: 1,
+		updatedAt: 1,
+		bookCount: 1,
+	};
+}
+
+describe("bookSeriesOf", () => {
+	it("reads the series from membership, the first live one in sidebar order", () => {
+		const collections = [collection("a"), collection("b")];
+		expect(
+			bookSeriesOf(
+				[
+					{ collectionId: "gone", seriesIndex: 9 },
+					{ collectionId: "b", seriesIndex: 2.5 },
+					{ collectionId: "a", seriesIndex: 1 },
+				],
+				collections,
+			),
+		).toEqual({ collectionId: "b", name: "Series b", index: 2.5 });
+	});
+
+	it("is null for a book in no series, whatever its import hint said", () => {
+		expect(bookSeriesOf(undefined, [collection("a")])).toBeNull();
+		expect(bookSeriesOf([], [collection("a")])).toBeNull();
 	});
 });
 

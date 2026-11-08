@@ -8,10 +8,20 @@ const files = [
 ];
 const appendBooksToCollection = vi.fn(async (_id: string, _bookIds: string[]) => {});
 const toastError = vi.fn();
+let releaseProbes: () => void = () => {};
+let probesDone = Promise.resolve();
 
 vi.mock("../../../../services/book-import", () => ({
 	pickBookFolder: async () => ({ files, truncated: false }),
-	probeScannedFile: async () => new Promise(() => {}),
+	probeScannedFile: async (file: { name: string }) => {
+		await probesDone;
+		return {
+			title: file.name.replace(".epub", ""),
+			author: null,
+			coverImage: null,
+			format: "epub",
+		};
+	},
 	importScannedFile: async (file: { id: string }) => ({ id: `book-${file.id}` }),
 }));
 vi.mock("../../../../services/db/queries/collections", () => ({
@@ -29,8 +39,14 @@ let rendered: Rendered;
 const NO_TITLES: ReadonlySet<string> = new Set();
 const onClose = () => {};
 
-const Probe = ({ target }: { target?: string }) => {
-	hook = useFolderImport(NO_TITLES, onClose, target);
+const Probe = ({
+	target,
+	titles = NO_TITLES,
+}: {
+	target?: string;
+	titles?: ReadonlySet<string>;
+}) => {
+	hook = useFolderImport(titles, onClose, target);
 	return null;
 };
 
@@ -43,6 +59,7 @@ async function importFolder(target?: string) {
 }
 
 beforeEach(() => {
+	probesDone = Promise.resolve();
 	appendBooksToCollection.mockReset();
 	toastError.mockClear();
 });
@@ -69,5 +86,30 @@ describe("useFolderImport into a collection", () => {
 		await importFolder();
 		expect(hook.result?.imported).toBe(2);
 		expect(appendBooksToCollection).not.toHaveBeenCalled();
+	});
+});
+
+describe("useFolderImport while files are checked", () => {
+	it("imports nothing until every file is checked, and leaves duplicates unticked", async () => {
+		probesDone = new Promise((resolve) => {
+			releaseProbes = resolve;
+		});
+		rendered = await render(<Probe titles={new Set(["b"])} />);
+		await act(async () => hook.start());
+		await flush();
+		expect(hook.pendingProbes).toBe(2);
+		await act(async () => hook.beginImport());
+		expect(hook.phase).toBe("review");
+
+		act(() => hook.selectAll(true));
+		expect(hook.candidates.map((c) => c.selected)).toEqual([true, false]);
+
+		await act(async () => releaseProbes());
+		await flush();
+		expect(hook.pendingProbes).toBe(0);
+		expect(hook.candidates.map((c) => c.selected)).toEqual([true, false]);
+		await act(async () => hook.beginImport());
+		await flush();
+		expect(hook.result?.imported).toBe(1);
 	});
 });

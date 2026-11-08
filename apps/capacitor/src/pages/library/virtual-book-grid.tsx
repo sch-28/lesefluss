@@ -15,16 +15,15 @@ const COLUMN_BREAKPOINTS: readonly [minWidth: number, cols: number][] = [
 	[1024, 5],
 	[768, 4],
 ];
-const GRID_CLASS =
-	"grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 [&:not(:last-child)]:pb-4";
+const GRID_CLASS = "grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 pb-4";
 
 const CONTENT_MAX_PX = 900;
 const PADDING_PX = 16;
 const GAP_PX = 16;
 /** Cover (2:3) plus title and progress lines under it. */
 const CARD_TEXT_PX = 72;
-/** A 64px cover plus the row's bottom padding. */
-const LIST_ROW_PX = 72;
+/** A 64px cover plus the 12px gap under every row. */
+const LIST_ROW_PX = 76;
 
 /** A first guess at a row's height, so rows far from the viewport hold about
  *  their real space and a restored scroll offset lands near the same books. */
@@ -225,7 +224,7 @@ const VirtualBookGrid: React.FC<Props> = ({
 							{row.items.map((item, column) => cell(item, column, "min-w-0"))}
 						</div>
 					) : (
-						<div key={row.key} className="[&:not(:last-child)]:pb-2">
+						<div key={row.key} className="pb-3">
 							{cell(row.items[0] as LibraryItem, 0)}
 						</div>
 					);

@@ -63,10 +63,11 @@ export function visibleTitles(page: Page): Promise<string[]> {
 		.evaluateAll((els) => els.map((el) => el.getAttribute("data-book-title") ?? ""));
 }
 
-/** Desktop only: the view toggle steps grid, list, table. */
+/** Desktop only: the View popover offers the table. */
 export async function openTable(page: Page): Promise<void> {
-	await page.getByRole("button", { name: "Switch to list view" }).click();
-	await page.getByRole("button", { name: "Switch to table view" }).click();
+	await page.getByRole("button", { name: "View", exact: true }).click();
+	await page.getByRole("radio", { name: "Table" }).click();
+	await page.keyboard.press("Escape");
 	await expect(page.getByTestId("library-table")).toBeVisible();
 }
 
@@ -84,7 +85,7 @@ export function tableTitles(page: Page): Promise<string[]> {
 export async function tagInTable(page: Page, title: string, tags: string[]): Promise<void> {
 	const cell = page.getByRole("button", { name: `Edit tags of ${title}` });
 	if ((await cell.count()) === 0) {
-		await page.getByRole("button", { name: "Columns" }).click();
+		await page.getByRole("button", { name: "View", exact: true }).click();
 		await page.getByRole("dialog").getByRole("checkbox", { name: "Tags" }).click();
 		await page.keyboard.press("Escape");
 	}

@@ -158,6 +158,9 @@ async function openEpubBook(buffer: ArrayBuffer): Promise<EpubBook> {
 			book.ready,
 			new Promise<never>((_, reject) => {
 				timer = setTimeout(() => reject(new Error("EPUB_INVALID")), EPUB_READY_TIMEOUT_MS);
+				// A zip epubjs cannot open (truncated, no container.xml) never
+				// rejects `ready`; it only emits this.
+				book.on("openFailed", () => reject(new Error("EPUB_INVALID")));
 			}),
 		]);
 	} catch (err) {
@@ -194,7 +197,9 @@ async function readEpubSeries(book: EpubBook): Promise<OpfSeries> {
 		// epubjs sets `packagePath` at runtime but leaves it out of its typings.
 		const { packagePath } = book.container as { packagePath?: string };
 		if (!packagePath) return { seriesName: null, seriesIndex: null };
-		const opf = await book.archive.getText(book.resolve(packagePath));
+		// `packagePath` is relative to the zip root; `book.resolve` would put it
+		// under the package folder a second time (OEBPS/OEBPS/content.opf).
+		const opf = await book.archive.getText(`/${packagePath.replace(/^\/+/, "")}`);
 		if (opf) return readOpfSeries(opf);
 	} catch {}
 	return { seriesName: null, seriesIndex: null };

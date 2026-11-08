@@ -33,6 +33,8 @@ vi.mock("../../../components/toast", () => ({ toast: { success: () => {}, error:
 vi.mock("../../../services/catalog/client", () => ({ proxyImageUrl: (url: string) => url }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
+		useSeriesMemberships: () => ({ data: new Map() }),
+		useBooks: () => ({ data: { books: [], covers: new Map() } }),
 		useImportSeriesState: (key: string | null) => {
 			askedKey = key;
 			return { data: key ? seriesState : undefined };

@@ -7,25 +7,24 @@ import {
 	readingProgress,
 	wordPos,
 } from "@lesefluss/core";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "@lesefluss/ui/alert-dialog";
 import { RatingStars } from "@lesefluss/ui/rating-stars";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { BookOpen, Cpu, Image as ImageIcon, Pencil, Share2, Trash2, Users } from "lucide-react";
+import {
+	BookOpen,
+	Cpu,
+	Image as ImageIcon,
+	Layers,
+	MoreVertical,
+	Pencil,
+	Plus,
+	Users,
+} from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { DeviceBadge } from "../../components/device-sync";
 import { ShareCardSheet } from "../../components/share-card/share-card-sheet";
-import { ShareSheet } from "../../components/social/share-sheet";
 import { SpeedChip } from "../../components/speed-chip/speed-chip";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useBookDeviceState } from "../../contexts/device-library-context";
@@ -44,6 +43,7 @@ import { getServerContentIds } from "../../services/sync/server-content-cache";
 import { IS_WEB } from "../../utils/platform";
 import { bookPageCount } from "../../utils/reading-time";
 import { DetailShell } from "../_shared/detail-shell";
+import { useBookActions } from "./book-actions/use-book-actions";
 import {
 	BookBuddyRead,
 	BUDDY_READ_BLOCKER_TEXT,
@@ -52,7 +52,6 @@ import {
 	useBookBuddyRead,
 } from "./book-buddy-read";
 import { BookChapters } from "./book-chapters";
-import { bookSeriesLabel } from "./book-fields";
 import { BookFileCard } from "./book-file-card";
 import { BookHighlights } from "./book-highlights";
 import { BookJourney } from "./book-journey";
@@ -63,6 +62,7 @@ import { GoalCard } from "./reading-goal/goal-card";
 
 import TransferModal from "./transfer-modal";
 import { useBookDetailReady } from "./use-book-detail-ready";
+import { useAuthorSeriesSuggestion, useBookSeries } from "./use-book-series";
 
 interface Props {
 	id?: string;
@@ -101,10 +101,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 			isMountedRef.current = false;
 		};
 	}, []);
-	const deleteMutation = queryHooks.useDeleteBook();
 	const [isTransferOpen, setIsTransferOpen] = useState(false);
-	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-	const [isShareOpen, setIsShareOpen] = useState(false);
 	const [isBuddyReadOpen, setIsBuddyReadOpen] = useState(false);
 	const [isCardOpen, setIsCardOpen] = useState(false);
 	const isFinished = book ? bookStatus(book) === "finished" && book.finishedAt !== null : false;
@@ -124,10 +121,6 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		});
 	}, [isCardOpen, book, bookSessions, allBooks, speedModel]);
 	const canShare = isLoggedIn && SYNC_ENABLED;
-	// A session lost while the sheet is open would leave a friend list that can only fail.
-	useEffect(() => {
-		if (!canShare) setIsShareOpen(false);
-	}, [canShare]);
 	const buddyRead = useBookBuddyRead(book ?? { originKey: null }, canShare);
 	const hasRunningBuddyRead = buddyRead?.status === "in_progress";
 	const { data: cloudStorage } = useCloudStorage(isLoggedIn && SYNC_ENABLED);
@@ -136,7 +129,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const { data: serverContentIds } = useQuery({
 		queryKey: syncKeys.serverContentIds,
 		queryFn: getServerContentIds,
-		enabled: canShare && (isShareOpen || isBuddyReadOpen),
+		enabled: canShare && isBuddyReadOpen,
 		staleTime: 0,
 	});
 
@@ -145,6 +138,23 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	// (e.g. useBookDeviceState, useBookDeviceActions) trigger React error
 	// #310 on the first to second render transition because the hook count
 	// would differ between renders.
+	const series = useBookSeries(id);
+	const seriesSuggestion = useAuthorSeriesSuggestion(id, book?.author ?? null);
+	const addNumbered = queryHooks.useAddNumberedBooks();
+	const bookActions = useBookActions({
+		surface: "detail",
+		onDeleted: () => router.navigate({ to: "/tabs/library", replace: true }),
+		extras: () => [
+			...(isFinished
+				? [{ label: "Share card", icon: ImageIcon, onSelect: () => setIsCardOpen(true) }]
+				: []),
+			// Shown signed out too: the sheet explains that reading together needs an account.
+			...(SYNC_ENABLED && !hasRunningBuddyRead
+				? [{ label: "Start buddy read", icon: Users, onSelect: () => setIsBuddyReadOpen(true) }]
+				: []),
+		],
+	});
+	const openBookMenu = bookActions.open;
 	const headerActions = useMemo(
 		() => [
 			{
@@ -157,22 +167,15 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 						search: { from: "detail" },
 					}),
 			},
-			...(isFinished
-				? [{ label: "Share card", icon: ImageIcon, onClick: () => setIsCardOpen(true) }]
-				: []),
-			...(canShare ? [{ label: "Share", icon: Share2, onClick: () => setIsShareOpen(true) }] : []),
-			// Shown signed out too: the sheet explains that reading together needs an account.
-			...(SYNC_ENABLED && !hasRunningBuddyRead
-				? [{ label: "Start buddy read", icon: Users, onClick: () => setIsBuddyReadOpen(true) }]
-				: []),
 			{
-				label: "Delete",
-				icon: Trash2,
-				destructive: true,
-				onClick: () => setIsDeleteOpen(true),
+				label: "More actions",
+				icon: MoreVertical,
+				onClick: () => {
+					if (book) openBookMenu(book);
+				},
 			},
 		],
-		[canShare, hasRunningBuddyRead, router, id, isFinished],
+		[router, id, book, openBookMenu],
 	);
 	const deviceState = useBookDeviceState(book?.id ?? null);
 	const deviceActions = useBookDeviceActions({
@@ -267,7 +270,37 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	const facts = [
 		// The shelf leads: it is the one fact the reader chose rather than earned.
 		BOOK_STATUS_LABELS[bookStatus(book)],
-		bookSeriesLabel(book),
+		series ? (
+			<button
+				key="series"
+				type="button"
+				data-testid="book-series-chip"
+				onClick={() =>
+					router.navigate({ to: "/tabs/library", search: { collection: series.collectionId } })
+				}
+				className="inline-flex items-center gap-1 text-foreground underline-offset-2 hover:underline"
+			>
+				<Layers className="size-3" />
+				{series.index === null ? series.name : `${series.name} ${formatSeriesNumber(series.index)}`}
+			</button>
+		) : seriesSuggestion ? (
+			<button
+				key="series-suggestion"
+				type="button"
+				data-testid="book-series-suggestion"
+				disabled={addNumbered.isPending}
+				onClick={() =>
+					addNumbered.mutate({
+						target: { collectionId: seriesSuggestion.collectionId },
+						numbers: new Map([[book.id, seriesSuggestion.index]]),
+					})
+				}
+				className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
+			>
+				<Plus className="size-3" />
+				{`Add to ${seriesSuggestion.name} ${formatSeriesNumber(seriesSuggestion.index)}?`}
+			</button>
+		) : null,
 		book.rating !== null ? <RatingStars key="rating" rating={book.rating} /> : null,
 		pages !== null ? `${pages.toLocaleString()} pages` : null,
 		chapterCount > 0 ? `${chapterCount} chapters` : null,
@@ -393,13 +426,6 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					onClose={() => setIsCardOpen(false)}
 				/>
 			)}
-			<ShareSheet
-				isOpen={isShareOpen}
-				onClose={() => setIsShareOpen(false)}
-				bookId={book.id}
-				bookTitle={book.title}
-				blocker={shareBlocker}
-			/>
 			<StartBuddyReadSheet
 				isOpen={isBuddyReadOpen}
 				onClose={() => setIsBuddyReadOpen(false)}
@@ -408,29 +434,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				bookTitle={book.title}
 				blocker={shareBlocker ? BUDDY_READ_BLOCKER_TEXT[shareBlocker] : null}
 			/>
-			<AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Delete book?</AlertDialogTitle>
-						<AlertDialogDescription>
-							"{book.title}" will be removed from your library.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction
-							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-							onClick={() => {
-								deleteMutation.mutate(book, {
-									onSuccess: () => router.navigate({ to: "/tabs/library", replace: true }),
-								});
-							}}
-						>
-							Delete
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+			{bookActions.overlays}
 		</>
 	);
 };

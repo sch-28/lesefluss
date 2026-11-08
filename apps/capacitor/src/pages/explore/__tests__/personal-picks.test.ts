@@ -5,12 +5,21 @@ import { excludeOwned, friendsReading, pickAuthors, pickSeedBook } from "../pers
 
 const book = (
 	title: string,
-	over: Partial<{ author: string | null; catalogId: string | null; lastRead: number | null }> = {},
+	over: Partial<{
+		author: string | null;
+		catalogId: string | null;
+		lastRead: number | null;
+		wordPosition: number;
+		status: string | null;
+	}> = {},
 ) => ({
 	title,
 	author: null,
 	catalogId: null,
 	lastRead: null,
+	wordCount: 1000,
+	wordPosition: over.lastRead == null ? 0 : 100,
+	status: null,
 	...over,
 });
 
@@ -48,14 +57,16 @@ describe("pickSeedBook", () => {
 		).toBe("Newer catalog");
 	});
 
-	it("falls back to the most recently added catalog book before any has been read", () => {
+	it("skips a book only added or opened, and one set to Want to read or Dropped", () => {
 		expect(
 			pickSeedBook([
-				{ ...book("Older import", { catalogId: "gutenberg:1" }), addedAt: 100 },
-				{ ...book("Fresh import", { catalogId: "gutenberg:2" }), addedAt: 200 },
-				{ ...book("Local", { lastRead: 999 }), addedAt: 300 },
+				book("Opened at the start", { catalogId: "gutenberg:1", lastRead: 400, wordPosition: 0 }),
+				book("Dropped", { catalogId: "gutenberg:2", lastRead: 300, status: "dropped" }),
+				book("Want to read", { catalogId: "gutenberg:3", lastRead: 200, status: "want" }),
+				book("Finished", { catalogId: "gutenberg:4", lastRead: 100, status: "finished" }),
+				book("Never opened", { catalogId: "gutenberg:5" }),
 			])?.title,
-		).toBe("Fresh import");
+		).toBe("Finished");
 	});
 
 	it("is null for an empty or uncatalogued library", () => {

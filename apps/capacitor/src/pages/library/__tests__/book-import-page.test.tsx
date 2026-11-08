@@ -13,19 +13,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeBook } from "../../../test/book-fixture";
 import { click, flush, type Rendered, render } from "../../../test/render";
 
-const commitStagedImport = vi.fn(async (staged: { payload: { title: string } }, _patch: unknown) =>
-	makeBook({ title: staged.payload.title }),
+const commitStagedImport = vi.fn(
+	async (staged: { payload: { title: string } }, _patch: unknown, _series?: unknown) =>
+		makeBook({ title: staged.payload.title }),
 );
+let suggestion: { collectionId: string; name: string; index: number } | null = null;
 
 vi.mock("../../../services/book-import", () => ({
-	commitStagedImport: (staged: { payload: { title: string } }, patch: unknown) =>
-		commitStagedImport(staged, patch),
+	commitStagedImport: (staged: { payload: { title: string } }, patch: unknown, series?: unknown) =>
+		commitStagedImport(staged, patch, series),
 	attachOriginalToBook: vi.fn(),
 	findAttachCandidate: async () => null,
 }));
 vi.mock("../../../services/sync", () => ({ scheduleSyncPush: () => {} }));
 vi.mock("../../../components/toast", () => ({ toast: { success: () => {}, error: () => {} } }));
 vi.mock("../../../services/catalog/client", () => ({ proxyImageUrl: (url: string) => url }));
+vi.mock("../use-book-series", () => ({ useAuthorSeriesSuggestion: () => suggestion }));
 
 const { ImportStagingProvider, useImportStaging } = await import(
 	"../../../contexts/import-staging-context"
@@ -104,6 +107,7 @@ async function settle() {
 
 beforeEach(async () => {
 	commitStagedImport.mockClear();
+	suggestion = null;
 	isEditing = false;
 	router = makeRouter();
 	rendered = await render(<RouterProvider router={router} />);
@@ -150,6 +154,7 @@ describe("BookImportPage", () => {
 		expect(commitStagedImport).toHaveBeenCalledWith(
 			entry,
 			expect.objectContaining({ title: "Red Rising" }),
+			undefined,
 		);
 		expect(entry.cleanup).toHaveBeenCalledOnce();
 		expect(path()).toBe("/tabs/library");
@@ -179,5 +184,23 @@ describe("BookImportPage", () => {
 		await settle();
 		expect(path()).toBe("/tabs/library/import");
 		expect(titleValue()).toBe("Red Rising");
+	});
+
+	it("offers the author's series with its next number, and adds the book to it", async () => {
+		suggestion = { collectionId: "red", name: "Red Rising", index: 3 };
+		const entry = staged("Morning Star");
+		await act(async () => stage(entry));
+		await settle();
+
+		expect(body()).toContain("More by this author are in Red Rising");
+		await click(button("Add as #3"));
+		expect(body()).not.toContain("More by this author");
+		await click(button("Add to library"));
+		await settle();
+		expect(commitStagedImport).toHaveBeenCalledWith(entry, expect.anything(), {
+			kind: "collection",
+			collectionId: "red",
+			index: 3,
+		});
 	});
 });

@@ -1,6 +1,5 @@
 import type React from "react";
 import SelectionPopover, { type PopoverSection } from "../../components/selection-popover";
-import { GROUP_LABELS, GROUP_OPTIONS, type GroupBy } from "./group-by";
 import {
 	NATURAL_DIR,
 	SORT_LABELS,
@@ -20,15 +19,7 @@ type Props = {
 	onReversed: (reversed: boolean) => void;
 	thenBy: ThenBy;
 	onThenBy: (s: ThenBy) => void;
-	groupBy: GroupBy;
-	onGroupBy: (g: GroupBy) => void;
-	open?: boolean;
-	onOpenChange?: (open: boolean) => void;
-	/** Set when G opened the menu, to land on the group-by rows. */
-	focusGroupBy?: boolean;
 };
-
-export const GROUP_BY_HEADING = "Group by";
 
 const THEN_LABELS: Record<ThenBy, string> = { none: "None", ...SORT_LABELS };
 const DIR_OPTIONS: SortDir[] = ["asc", "desc"];
@@ -42,11 +33,6 @@ const SortPopover: React.FC<Props> = ({
 	onReversed,
 	thenBy,
 	onThenBy,
-	groupBy,
-	onGroupBy,
-	open,
-	onOpenChange,
-	focusGroupBy = false,
 }) => {
 	const sections: PopoverSection<string>[] = [
 		{
@@ -70,23 +56,8 @@ const SortPopover: React.FC<Props> = ({
 			selected: thenBy === sortBy ? "none" : thenBy,
 			onSelect: (v) => onThenBy(v as ThenBy),
 		},
-		{
-			heading: GROUP_BY_HEADING,
-			options: GROUP_OPTIONS,
-			labels: GROUP_LABELS,
-			selected: groupBy,
-			onSelect: (v) => onGroupBy(v as GroupBy),
-		},
 	];
-	return (
-		<SelectionPopover
-			trigger={trigger}
-			sections={sections}
-			open={open}
-			onOpenChange={onOpenChange}
-			focusSection={focusGroupBy ? GROUP_BY_HEADING : undefined}
-		/>
-	);
+	return <SelectionPopover trigger={trigger} sections={sections} />;
 };
 
 export default SortPopover;

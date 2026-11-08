@@ -1,5 +1,5 @@
 import { BOOK_STATUS_LABELS, BOOK_STATUSES } from "@lesefluss/core";
-import { BookOpen, FolderPlus, Star, Tag as TagIcon } from "lucide-react";
+import { BookOpen, FolderPlus, Layers, Star, Tag as TagIcon } from "lucide-react";
 import type React from "react";
 import { useRef } from "react";
 import { ActionSheet } from "../../components/action-sheet";
@@ -43,6 +43,10 @@ const BulkSheets: React.FC<Props> = ({ selection, libraryTags }) => {
 	const targetsInView = useHeldWhileClosed(selection.targetsInView, isSheetOpen);
 	const title = bookCount(targets.length);
 	const tagMode = useLastTagMode(selection.sheet);
+	const pickerKind = useHeldWhileClosed(
+		selection.sheet === "series" ? "series" : "collection",
+		selection.sheet === "series" || selection.sheet === "collection",
+	);
 
 	return (
 		<>
@@ -70,7 +74,12 @@ const BulkSheets: React.FC<Props> = ({ selection, libraryTags }) => {
 						onSelect: () => selection.openSheet("tags"),
 					},
 					{
-						label: "Add to collection",
+						label: "Add to series…",
+						icon: Layers,
+						onSelect: () => selection.openSheet("series"),
+					},
+					{
+						label: "Add to collection…",
 						icon: FolderPlus,
 						onSelect: () => selection.openSheet("collection"),
 					},
@@ -109,7 +118,8 @@ const BulkSheets: React.FC<Props> = ({ selection, libraryTags }) => {
 
 			<CollectionPickerSheet
 				books={targetsInView}
-				open={selection.sheet === "collection"}
+				kind={pickerKind}
+				open={selection.sheet === "collection" || selection.sheet === "series"}
 				onClose={selection.closeSheet}
 			/>
 

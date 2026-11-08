@@ -118,7 +118,12 @@ export async function profileStatsFor(
 		const wordCount = b.wordCount ?? 0;
 		wordsRead += Math.min(b.wordPosition, wordCount > 0 ? wordCount : b.wordPosition);
 		const isFinished =
-			bookStatus({ wordCount, wordPosition: b.wordPosition, status: b.status }) === "finished";
+			bookStatus({
+				wordCount,
+				wordPosition: b.wordPosition,
+				status: b.status,
+				finishedAt: b.finishedAt,
+			}) === "finished";
 		if (isFinished && b.finishedAt && b.finishedAt >= yearStart) booksFinishedThisYear++;
 	}
 
@@ -229,6 +234,7 @@ export async function profileMilestonesFor(
 					wordCount: b.wordCount ?? 0,
 					wordPosition: b.wordPosition,
 					status: b.status,
+					finishedAt: b.finishedAt,
 				}) === "finished",
 		)
 		.map((b) => b.finishedAt?.getTime() ?? 0);

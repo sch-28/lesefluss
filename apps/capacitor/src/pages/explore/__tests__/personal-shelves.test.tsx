@@ -53,6 +53,10 @@ beforeEach(() => {
 			author: "Mary Shelley",
 			catalogId: "gutenberg:84",
 			lastRead: 10,
+			wordCount: 75_000,
+			wordPosition: 30_000,
+			status: null,
+			finishedAt: null,
 		},
 	];
 	state.owned = new Map([["gutenberg:84", "b1"]]);

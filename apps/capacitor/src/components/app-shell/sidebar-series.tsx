@@ -1,11 +1,25 @@
+import { cn } from "@lesefluss/ui/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Hash } from "lucide-react";
-import { SIDEBAR_SERIES_LIMIT, seriesEntryKey } from "../../pages/library/series-nav";
+import type React from "react";
+import { useState } from "react";
+import {
+	type SeriesEntry,
+	SIDEBAR_SERIES_LIMIT,
+	seriesEntryKey,
+} from "../../pages/library/series-nav";
 import {
 	ALL_SERIES_PATH,
 	useActiveSeriesKey,
 	useSeriesEntries,
 } from "../../pages/library/use-series-nav";
+import { queryHooks } from "../../services/db/hooks";
+import { collectionKeys } from "../../services/db/hooks/query-keys";
+import { queries } from "../../services/db/queries";
+import { BOOKS_DRAG_TYPE, carries, readBooksDragData } from "../collections/drag-data";
+import { planSeriesNumbers } from "../collections/series-numbering";
+import { toast } from "../toast";
 
 const ROW =
 	"relative flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-3 pl-5 text-sidebar-foreground/70 text-sm no-underline hover:text-sidebar-foreground data-[active=true]:text-primary data-[active=true]:before:absolute data-[active=true]:before:top-1 data-[active=true]:before:bottom-1 data-[active=true]:before:left-0 data-[active=true]:before:w-1 data-[active=true]:before:bg-primary";
@@ -16,8 +30,35 @@ export function SidebarSeries({ isCollapsed }: { isCollapsed: boolean }) {
 	const { entries } = useSeriesEntries();
 	const activeKey = useActiveSeriesKey();
 	const navigate = useNavigate();
+	const qc = useQueryClient();
+	const addNumbered = queryHooks.useAddNumberedBooks();
+	const [dropId, setDropId] = useState<string | null>(null);
 
 	if (entries.length === 0) return null;
+
+	const takesBooks = (e: React.DragEvent, entry: SeriesEntry) =>
+		entry.kind === "book" && carries(e.dataTransfer, BOOKS_DRAG_TYPE);
+
+	// Dropped books join after the series' highest number; members keep theirs.
+	const dropBooks = async (bookIds: string[], entry: SeriesEntry) => {
+		const rows = await qc.fetchQuery({
+			queryKey: collectionKeys.memberRows(entry.id),
+			queryFn: () => queries.getCollectionMembers(entry.id),
+		});
+		const members = new Map(rows.map((r) => [r.bookId, r.seriesIndex]));
+		addNumbered.mutate(
+			{
+				target: { collectionId: entry.id },
+				numbers: planSeriesNumbers(bookIds, members, "append"),
+			},
+			{
+				onSuccess: () =>
+					toast.success(
+						`Added ${bookIds.length === 1 ? "1 book" : `${bookIds.length} books`} to ${entry.name}`,
+					),
+			},
+		);
+	};
 
 	if (isCollapsed) {
 		return (
@@ -50,7 +91,30 @@ export function SidebarSeries({ isCollapsed }: { isCollapsed: boolean }) {
 			</div>
 			<ul className="m-0 list-none p-0">
 				{shown.map((e) => (
-					<li key={seriesEntryKey(e)} data-testid="sidebar-series" className="flex">
+					<li
+						key={seriesEntryKey(e)}
+						data-testid="sidebar-series"
+						onDragOver={(ev) => {
+							if (!takesBooks(ev, e)) return;
+							ev.preventDefault();
+							ev.dataTransfer.dropEffect = "copy";
+							if (dropId !== e.id) setDropId(e.id);
+						}}
+						onDragLeave={(ev) => {
+							if (!ev.currentTarget.contains(ev.relatedTarget as Node | null)) setDropId(null);
+						}}
+						onDrop={(ev) => {
+							setDropId(null);
+							if (!takesBooks(ev, e)) return;
+							ev.preventDefault();
+							const bookIds = readBooksDragData(ev.dataTransfer);
+							if (bookIds.length > 0) void dropBooks(bookIds, e);
+						}}
+						className={cn(
+							"flex",
+							dropId === e.id && "bg-primary/10 ring-1 ring-primary ring-inset",
+						)}
+					>
 						<Link
 							{...(e.kind === "serial"
 								? { to: "/tabs/library/series/$id", params: { id: e.id } }

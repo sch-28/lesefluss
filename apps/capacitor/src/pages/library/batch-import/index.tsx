@@ -181,12 +181,14 @@ const BatchImportSheet: React.FC<Props> = ({
 						<div className="border-border border-t p-4">
 							<Button
 								className="w-full"
-								disabled={folder.selectedCount === 0}
+								disabled={folder.selectedCount === 0 || folder.pendingProbes > 0}
 								onClick={folder.beginImport}
 							>
-								{folder.selectedCount === 0
-									? "Nothing selected"
-									: `Import ${folder.selectedCount} ${folder.selectedCount === 1 ? "book" : "books"}`}
+								{folder.pendingProbes > 0
+									? "Checking files…"
+									: folder.selectedCount === 0
+										? "Nothing selected"
+										: `Import ${folder.selectedCount} ${folder.selectedCount === 1 ? "book" : "books"}`}
 							</Button>
 						</div>
 					</>

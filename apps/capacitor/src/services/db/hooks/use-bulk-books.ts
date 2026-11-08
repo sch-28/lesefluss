@@ -150,9 +150,9 @@ function useBulkBookActions(): UseBulkBookActions {
 						// A deleted book leaves the not-backed-up list.
 						qc.invalidateQueries({ queryKey: syncKeys.cloudStorage });
 					} else {
-						// Metadata only: covers are untouched, and the stats shelves read
-						// finishedAt and wordPosition rather than status.
 						qc.invalidateQueries({ queryKey: bookKeys.all });
+						// Currently reading is the Reading shelf.
+						if (action.kind === "status") qc.invalidateQueries({ queryKey: statsKeys.all });
 					}
 					scheduleSyncPush();
 				}

@@ -2,9 +2,10 @@ import { normalizeSeriesKey } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { useOverlayBack } from "@lesefluss/ui/overlay-back";
 import { useBlocker, useRouter } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Layers, Loader2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { type ImportQueue, useImportQueue } from "../../contexts/import-staging-context";
 import type { ImportSeriesChoice } from "../../services/book-import";
 import { queryHooks } from "../../services/db/hooks";
@@ -13,6 +14,7 @@ import { BookEditFields } from "./book-edit-fields";
 import { finalizeEditValues } from "./book-edit-form";
 import { BookEditLayout, useEditForm, useIsWideLayout } from "./book-edit-layout";
 import { SeriesField } from "./series-field";
+import { useAuthorSeriesSuggestion } from "./use-book-series";
 
 /**
  * The import confirm: the edit page for a book that has no row yet. Leaves on
@@ -75,10 +77,14 @@ const ImportForm: React.FC<{
 	const { data: collections = [] } = queryHooks.useCollections();
 	// Null until the reader touches the row: the file's series then stands as detected.
 	const [seriesChoice, setSeriesChoice] = useState<ImportSeriesChoice | null>(null);
+	const suggestion = useAuthorSeriesSuggestion("", form.values.author);
+	const [seriesFieldKey, setSeriesFieldKey] = useState(0);
 	if (!staged) return null;
 	const { payload, extras } = staged;
 	const detected = seriesState ? describeImportSeries(hint, seriesState) : null;
 	const isSeriesLoading = seriesKey !== null && !seriesState;
+	const choice = seriesChoice ?? defaultSeriesChoice(detected);
+	const offered = seriesKey === null && choice.kind === "none" ? suggestion : null;
 
 	return (
 		<BookEditLayout
@@ -117,6 +123,30 @@ const ImportForm: React.FC<{
 						</Button>
 					</div>
 				)}
+				{offered && (
+					<div
+						className="flex items-center gap-3 rounded-xl border border-border p-4"
+						data-testid="import-series-suggestion"
+					>
+						<Layers className="size-4 shrink-0 text-muted-foreground" />
+						<p className="m-0 min-w-0 flex-1 text-sm">
+							More by this author are in <span className="font-medium">{offered.name}</span>
+						</p>
+						<Button
+							variant="secondary"
+							onClick={() => {
+								setSeriesChoice({
+									kind: "collection",
+									collectionId: offered.collectionId,
+									index: offered.index,
+								});
+								setSeriesFieldKey((k) => k + 1);
+							}}
+						>
+							{`Add as ${formatSeriesNumber(offered.index)}`}
+						</Button>
+					</div>
+				)}
 				<BookEditFields
 					form={form}
 					isWide={isWide}
@@ -127,7 +157,9 @@ const ImportForm: React.FC<{
 					series={
 						isSeriesLoading ? null : (
 							<SeriesField
-								choice={seriesChoice ?? defaultSeriesChoice(detected)}
+								// Remounts when the suggestion picks for it, so its own # text follows.
+								key={seriesFieldKey}
+								choice={choice}
 								onChange={setSeriesChoice}
 								collections={collections}
 								detected={detected}

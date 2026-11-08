@@ -590,7 +590,12 @@ export async function getSeriesMembershipForBook(
 				eq(collections.ordered, true),
 			),
 		)
-		.orderBy(sql`${collections.seriesKey} IS NULL`, asc(collections.sortOrder))
+		.orderBy(
+			sql`${collections.seriesKey} IS NULL`,
+			asc(collections.sortOrder),
+			asc(collections.createdAt),
+			asc(collections.id),
+		)
 		.limit(1);
 	return row ?? null;
 }

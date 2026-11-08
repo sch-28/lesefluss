@@ -211,3 +211,31 @@ describe("epubParser", () => {
 		expect(r.title).toBe("Some File");
 	});
 });
+
+describe("epub series", () => {
+	const chapters = [{ id: "c1", href: "c1.xhtml", title: "One", body: "<p>Hi.</p>" }];
+	const extraMetadata =
+		'<meta name="calibre:series" content="Red Rising"/><meta name="calibre:series_index" content="3"/>';
+
+	for (const opfDir of [undefined, "OEBPS"]) {
+		it(`reads the series with the OPF ${opfDir ? `in ${opfDir}/` : "at the zip root"}`, async () => {
+			const r = await parse(await buildEpub({ chapters, extraMetadata, opfDir }));
+			expect(r.seriesName).toBe("Red Rising");
+			expect(r.seriesIndex).toBe(3);
+			expect(r.content).toContain("Hi.");
+		});
+	}
+});
+
+describe("epub broken files", () => {
+	// Under the default test timeout, so the 15s ready timeout cannot be what ends it.
+	it("rejects a truncated EPUB without waiting out the ready timeout", async () => {
+		const full = await buildEpub({
+			title: "Whole",
+			chapters: [{ id: "c1", href: "c1.xhtml", title: "One", body: "<p>Hi.</p>" }],
+		});
+		await expect(
+			epubParser.parse({ kind: "bytes", bytes: full.slice(0, 64), fileName: "cut.epub" }),
+		).rejects.toThrow("EPUB_INVALID");
+	});
+});

@@ -2,35 +2,29 @@ import { describe, expect, it } from "vitest";
 import { headerControls } from "../header-controls";
 
 describe("library header controls", () => {
-	it("hides search, filter, sort, columns, card fields and the view toggle on the series page", () => {
+	it("hides search, filter, sort and view on the series page", () => {
 		for (const isDesktop of [true, false]) {
-			expect(headerControls({ isOrderedView: true, isDesktop, shownView: "table" })).toEqual({
+			expect(headerControls({ isOrderedView: true, isDesktop })).toEqual({
 				search: false,
 				filter: false,
 				sort: false,
-				columns: false,
-				cardFields: false,
-				viewToggle: false,
+				view: false,
 			});
 		}
 	});
 
-	it("shows them in the library, Filter on the phone and Columns with the table only, card fields with grid and list", () => {
-		expect(headerControls({ isOrderedView: false, isDesktop: true, shownView: "table" })).toEqual({
+	it("shows them in the library, Filter on the phone only", () => {
+		expect(headerControls({ isOrderedView: false, isDesktop: true })).toEqual({
 			search: true,
 			filter: false,
 			sort: true,
-			columns: true,
-			cardFields: false,
-			viewToggle: true,
+			view: true,
 		});
-		expect(headerControls({ isOrderedView: false, isDesktop: false, shownView: "grid" })).toEqual({
+		expect(headerControls({ isOrderedView: false, isDesktop: false })).toEqual({
 			search: true,
 			filter: true,
 			sort: true,
-			columns: false,
-			cardFields: true,
-			viewToggle: true,
+			view: true,
 		});
 	});
 });

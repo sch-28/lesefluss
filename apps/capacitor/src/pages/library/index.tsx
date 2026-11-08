@@ -5,16 +5,14 @@ import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import {
 	ArrowUpDown,
-	BarChart3,
 	BookOpen,
 	BookText,
-	CheckSquare,
+	Cpu,
 	Filter as FilterIcon,
 	FolderMinus,
-	FolderPlus,
+	Library as LibraryIcon,
 	Loader2,
 	MoreHorizontal,
-	Pencil,
 	Plus,
 	RefreshCcw,
 	Search,
@@ -27,13 +25,11 @@ import { useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import BLEIndicator from "../../components/ble-indicator";
-import { CollectionPickerSheet } from "../../components/collections/collection-picker-sheet";
 import { setBooksDragData } from "../../components/collections/drag-data";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { canSaveAsShelf, SaveShelfDialog } from "../../components/smart-shelves/save-shelf-dialog";
 import { ShelfActions } from "../../components/smart-shelves/shelf-actions";
 import { toast } from "../../components/toast";
-import { ViewModeToggle } from "../../components/view-mode-toggle";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
@@ -50,14 +46,13 @@ import { IS_WEB_BUILD } from "../../services/sync";
 import { IS_WEB } from "../../utils/platform";
 import BatchImportSheet from "./batch-import";
 import { toExistingTitles } from "./batch-import/use-folder-import";
+import { useBookActions } from "./book-actions/use-book-actions";
 import BookCard from "./book-card";
 import BookListItem from "./book-list-item";
 import BulkActionBar from "./bulk-action-bar";
 import BulkSheets from "./bulk-sheets";
 import { type CardFieldId, type CardSurface, cardFieldValues, useCardFields } from "./card-fields";
-import CardFieldsPicker from "./card-fields-picker";
 import CollectionShelfRow from "./collection-shelf-row";
-import ColumnPicker from "./column-picker";
 import { libraryCommands } from "./commands";
 import { filterToTree, matchesTree, serializeTree } from "./condition-tree";
 import FilterBar, { AddFilterButton } from "./filter-bar";
@@ -72,7 +67,6 @@ import PasteUrlModal from "./paste-url-modal";
 import { searchTextOf } from "./query-syntax";
 import { SearchAutocomplete } from "./search-autocomplete";
 import SeriesCard from "./series-card";
-import SeriesChipRow from "./series-chip-row";
 import SeriesListItem from "./series-list-item";
 import { ShelfConditionEditor } from "./shelf-condition-editor";
 import { applyLibraryView, buildLibraryItems, type LibraryItem, tagsInUse } from "./sort-filter";
@@ -88,6 +82,7 @@ import { useLibraryKeyboard } from "./use-library-keyboard";
 import { useLibrarySelection } from "./use-library-selection";
 import { type ShelfViewTarget, useLibraryView } from "./use-library-view";
 import { type ShelfEntry, useSmartShelves } from "./use-smart-shelves";
+import { ViewSheet } from "./view-sheet";
 import VirtualBookGrid from "./virtual-book-grid";
 
 const LOCAL_NOTICE_KEY = "lesefluss:local-notice-dismissed";
@@ -98,11 +93,6 @@ const LIBRARY_VALUE_FACETS: readonly Facet[] = ["tags", "author", "series", "col
 const NO_SERIES_MEMBERSHIPS: SeriesMemberships = new Map();
 const isViewMode = (value: string): value is LibraryViewMode =>
 	value === "grid" || value === "list" || value === "table";
-const NEXT_VIEW: Record<LibraryViewMode, LibraryViewMode> = {
-	grid: "list",
-	list: "table",
-	table: "grid",
-};
 
 const FAB_STYLE: React.CSSProperties = {
 	bottom: "calc(var(--tab-bar-h,4rem) + var(--safe-bottom) + 1rem)",
@@ -154,7 +144,6 @@ const Library: React.FC = () => {
 		(!!shelfId && smart.isLoading);
 
 	const imports = useLibraryImports(collectionId);
-	const deleteMutation = queryHooks.useDeleteBook();
 	const deleteSeriesMutation = queryHooks.useDeleteSeries();
 
 	const isGlobalImporting = useIsMutating({ mutationKey: bookImportMutationKey }) > 0;
@@ -193,12 +182,7 @@ const Library: React.FC = () => {
 	const [viewMode, setViewMode] = usePersistentString(VIEW_MODE_KEY, isViewMode, "grid");
 	// The table needs the width; a narrow window shows a stored table as the list.
 	const shownView: LibraryViewMode = viewMode === "table" && !isDesktop ? "list" : viewMode;
-	const nextView: LibraryViewMode = isDesktop
-		? NEXT_VIEW[shownView]
-		: shownView === "grid"
-			? "list"
-			: "grid";
-	const controls = headerControls({ isOrderedView, isDesktop, shownView });
+	const controls = headerControls({ isOrderedView, isDesktop });
 	const cardFields = useCardFields();
 	const highlightCountsQuery = queryHooks.useHighlightCounts(
 		(shownView === "table" && columnIds.includes("highlights")) ||
@@ -214,9 +198,6 @@ const Library: React.FC = () => {
 
 	const [pendingTransferBook, setPendingTransferBook] = useState<Book | null>(null);
 
-	const [pickerBook, setPickerBook] = useState<Book | null>(null);
-	const pickerBooks = useMemo(() => (pickerBook ? [pickerBook] : []), [pickerBook]);
-	const [pendingDeleteBook, setPendingDeleteBook] = useState<Book | null>(null);
 	const [pendingDeleteSeries, setPendingDeleteSeries] = useState<Series | null>(null);
 
 	// Reload when route becomes active (back from reader) so progress bars update.
@@ -286,16 +267,36 @@ const Library: React.FC = () => {
 		},
 	});
 
-	const handleDelete = (book: Book) => {
-		setSelectedBook(null);
-		setPendingDeleteBook(book);
-	};
-
-	const handleDeleteConfirm = () => {
-		if (!pendingDeleteBook) return;
-		const book = pendingDeleteBook;
-		setPendingDeleteBook(null);
-		deleteMutation.mutate(book);
+	const bookActions = useBookActions({
+		surface: "card",
+		onSelect: (book) => selection.begin(book.id),
+		extras: (book) => [
+			...(activeCollection
+				? [
+						{
+							label: `Remove from ${activeCollection.name}`,
+							icon: FolderMinus,
+							onSelect: () =>
+								removeFromCollection.mutate({
+									collectionId: activeCollection.id,
+									bookIds: [book.id],
+								}),
+						},
+					]
+				: []),
+			...(!IS_WEB
+				? deviceActionsForSelectedBook.map((a) => ({
+						...a,
+						icon: a.icon ?? Cpu,
+						disabled: a.disabled || isTransferring,
+					}))
+				: []),
+		],
+	});
+	const openBookMenu = (book: Book) => {
+		// The device actions are a hook on this book, so it is kept here as well.
+		setSelectedBook(book);
+		bookActions.open(book);
 	};
 
 	const openAddBooks = () => {
@@ -468,7 +469,7 @@ const Library: React.FC = () => {
 	});
 
 	const searchInputRef = useRef<HTMLInputElement>(null);
-	const [isSortOpen, setSortOpen] = useState(false);
+	const [isViewOpen, setViewOpen] = useState(false);
 	const [isGroupByKeyed, setGroupByKeyed] = useState(false);
 	const isGridShown =
 		!isOrderedView && !isCollectionEmpty && !(collectionId && !membersQuery.isSuccess);
@@ -490,10 +491,10 @@ const Library: React.FC = () => {
 				setIsSearchOpen(false);
 			},
 		},
-		canGroup: controls.sort,
+		canGroup: controls.view,
 		openGroupBy: () => {
 			setGroupByKeyed(true);
-			setSortOpen(true);
+			setViewOpen(true);
 		},
 		openItem: (item) => {
 			if (item.kind === "series") {
@@ -559,7 +560,7 @@ const Library: React.FC = () => {
 				}
 				onLongPress={() => selection.drag.start(book.id)}
 				onOpen={() => openBook(book)}
-				onMenu={() => setSelectedBook(book)}
+				onMenu={() => openBookMenu(book)}
 				draggable={canDragBooks}
 				seriesNumber={seriesBadge(book.id, seriesMemberships)}
 				fields={fields}
@@ -590,8 +591,8 @@ const Library: React.FC = () => {
 		// drag handler lives here rather than on a wrapper around the grid.
 		<div className="bg-background" onDragStart={canDragBooks ? handleBookDragStart : undefined}>
 			<TabHeader
-				logo="/logo.png"
-				title="Lesefluss"
+				icon={LibraryIcon}
+				title="Library"
 				right={
 					<>
 						{controls.search && (
@@ -639,24 +640,34 @@ const Library: React.FC = () => {
 								onReversed={(r) => setSort({ reversed: r })}
 								thenBy={sort.thenBy ?? "none"}
 								onThenBy={(t) => setSort({ thenBy: t === "none" ? null : t, thenReversed: false })}
+							/>
+						)}
+						{controls.view && (
+							<ViewSheet
+								isDesktop={isDesktop}
+								view={shownView}
+								onView={setViewMode}
+								canTable={isDesktop}
+								cardFields={{
+									settings: cardFields.settings,
+									onToggle: cardFields.toggle,
+									renderPreview: renderCardPreview,
+								}}
+								columns={{
+									ids: columnIds,
+									onToggle: libraryView.toggleColumn,
+									onMove: libraryView.moveColumn,
+								}}
 								groupBy={groupBy}
 								onGroupBy={setGroupBy}
-								open={isSortOpen}
+								open={isViewOpen}
 								onOpenChange={(open) => {
-									setSortOpen(open);
+									setViewOpen(open);
 									if (!open) setGroupByKeyed(false);
 								}}
 								focusGroupBy={isGroupByKeyed}
 							/>
 						)}
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={() => navigate({ to: "/tabs/library/stats" })}
-							aria-label="Reading stats"
-						>
-							<BarChart3 />
-						</Button>
 						{!IS_WEB && <BLEIndicator />}
 						{showSync && (
 							<Button
@@ -668,29 +679,6 @@ const Library: React.FC = () => {
 							>
 								{isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
 							</Button>
-						)}
-						{controls.columns && (
-							<ColumnPicker
-								columns={columnIds}
-								onToggle={libraryView.toggleColumn}
-								onMove={libraryView.moveColumn}
-							/>
-						)}
-						{controls.cardFields && (
-							<CardFieldsPicker
-								surface={cardSurface}
-								settings={cardFields.settings}
-								onToggle={cardFields.toggle}
-								isDesktop={isDesktop}
-								renderPreview={renderCardPreview}
-							/>
-						)}
-						{controls.viewToggle && (
-							<ViewModeToggle
-								viewMode={shownView}
-								next={nextView}
-								onToggle={() => setViewMode(nextView)}
-							/>
 						)}
 					</>
 				}
@@ -718,7 +706,6 @@ const Library: React.FC = () => {
 			{(books.length > 0 || (collectionsQuery.data?.length ?? 0) > 0) && (
 				<CollectionShelfRow activeId={collectionId} activeShelfId={shelfId} />
 			)}
-			<SeriesChipRow />
 
 			{activeCollection && !activeCollection.ordered && (
 				<div className="flex items-center gap-2 border-border border-b px-4 py-2">
@@ -959,7 +946,7 @@ const Library: React.FC = () => {
 					selection={selection}
 					onOpenBook={openBook}
 					onOpenSeries={handleOpenSeries}
-					onBookMenu={setSelectedBook}
+					onBookMenu={openBookMenu}
 					onSeriesMenu={setSelectedSeries}
 					draggable={canDragBooks}
 					containerRef={gridRef}
@@ -1022,81 +1009,9 @@ const Library: React.FC = () => {
 				onSubmit={handleImportUrl}
 			/>
 
-			<ActionSheet
-				open={!!selectedBook}
-				onOpenChange={(open) => {
-					if (!open) setSelectedBook(null);
-				}}
-				title={selectedBook?.title}
-				items={[
-					{
-						label: "Details",
-						icon: BookText,
-						onSelect: () => {
-							if (selectedBook)
-								navigate({ to: "/tabs/library/book/$id", params: { id: selectedBook.id } });
-						},
-					},
-					{
-						label: "Edit",
-						icon: Pencil,
-						onSelect: () => {
-							if (selectedBook)
-								navigate({ to: "/tabs/library/book/$id/edit", params: { id: selectedBook.id } });
-						},
-					},
-					{
-						label: "Select",
-						icon: CheckSquare,
-						onSelect: () => {
-							if (selectedBook) selection.begin(selectedBook.id);
-						},
-					},
-					{
-						label: "Add to collection…",
-						icon: FolderPlus,
-						onSelect: () => {
-							if (selectedBook) setPickerBook(selectedBook);
-						},
-					},
-					...(activeCollection
-						? [
-								{
-									label: `Remove from ${activeCollection.name}`,
-									icon: FolderMinus,
-									onSelect: () => {
-										if (selectedBook)
-											removeFromCollection.mutate({
-												collectionId: activeCollection.id,
-												bookIds: [selectedBook.id],
-											});
-									},
-								},
-							]
-						: []),
-					...(!IS_WEB
-						? deviceActionsForSelectedBook.map((a) => ({
-								...a,
-								disabled: a.disabled || isTransferring,
-							}))
-						: []),
-					{
-						label: "Delete",
-						destructive: true,
-						onSelect: () => {
-							if (selectedBook) handleDelete(selectedBook);
-						},
-					},
-				]}
-			/>
+			{bookActions.overlays}
 
 			<BulkSheets selection={selection} libraryTags={availableTags} />
-
-			<CollectionPickerSheet
-				books={pickerBooks}
-				open={pickerBook !== null}
-				onClose={() => setPickerBook(null)}
-			/>
 
 			{!IS_WEB && (
 				<TransferModal
@@ -1125,22 +1040,6 @@ const Library: React.FC = () => {
 				variant="info"
 				title="Transfer Failed"
 				description={syncError ?? undefined}
-			/>
-
-			<ConfirmDialog
-				open={!!pendingDeleteBook}
-				onOpenChange={(open) => {
-					if (!open) setPendingDeleteBook(null);
-				}}
-				title="Delete book?"
-				description={
-					pendingDeleteBook
-						? `"${pendingDeleteBook.title}" will be removed from your library.`
-						: undefined
-				}
-				confirmLabel="Delete"
-				destructive
-				onConfirm={handleDeleteConfirm}
 			/>
 
 			<ActionSheet

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { formatSeriesNumber, highestNumber, planSeriesNumbers } from "../series-numbering";
+import {
+	duplicateNumbers,
+	formatSeriesNumber,
+	highestNumber,
+	nextSeriesNumber,
+	parseSeriesNumber,
+	planSeriesNumbers,
+} from "../series-numbering";
 
 const members = new Map<string, number | null>([
 	["x", 1],
@@ -30,11 +37,14 @@ describe("planSeriesNumbers", () => {
 		]);
 	});
 
-	it("renumbers 1..N, and clears every number while the books stay in", () => {
+	it("renumbers from 1 around the numbers other members hold, and clears every number while the books stay in", () => {
 		expect([...planSeriesNumbers(["y", "a"], members, "fromOne")]).toEqual([
-			["y", 1],
-			["a", 2],
+			["y", 2],
+			["a", 3],
 		]);
+		expect(duplicateNumbers(planSeriesNumbers(["y", "a"], members, "fromOne"), members)).toEqual(
+			new Set(),
+		);
 		expect([...planSeriesNumbers(["y", "a"], members, "clear")]).toEqual([
 			["y", null],
 			["a", null],
@@ -54,5 +64,61 @@ describe("highestNumber", () => {
 
 	it("formats as #N", () => {
 		expect(formatSeriesNumber(2.5)).toBe("#2.5");
+	});
+});
+
+describe("nextSeriesNumber", () => {
+	it("is the whole number after the highest, 1 for an empty series", () => {
+		expect(nextSeriesNumber(members)).toBe(3);
+		expect(nextSeriesNumber(new Map())).toBe(1);
+	});
+});
+
+describe("duplicateNumbers", () => {
+	it("finds a number two books in the plan share", () => {
+		const plan = new Map([
+			["a", 3],
+			["b", 3],
+		]);
+		expect(duplicateNumbers(plan, members)).toEqual(new Set([3]));
+	});
+
+	it("finds a number a member outside the plan already holds", () => {
+		expect(duplicateNumbers(new Map([["a", 1]]), members)).toEqual(new Set([1]));
+	});
+
+	it("lets a member in the plan give up its own number", () => {
+		expect(
+			duplicateNumbers(
+				new Map([
+					["x", 4],
+					["a", 1],
+				]),
+				members,
+			),
+		).toEqual(new Set());
+	});
+
+	it("leaves a number two members outside the plan already share alone", () => {
+		const editions = new Map<string, number | null>([
+			["x", 1],
+			["x2", 1],
+		]);
+		expect(duplicateNumbers(new Map([["a", 2]]), editions)).toEqual(new Set());
+		expect(duplicateNumbers(new Map([["a", 1]]), editions)).toEqual(new Set([1]));
+	});
+});
+
+describe("parseSeriesNumber", () => {
+	it("reads #N, decimals with a comma, and empty as no number", () => {
+		expect(parseSeriesNumber("#2")).toBe(2);
+		expect(parseSeriesNumber("2,5")).toBe(2.5);
+		expect(parseSeriesNumber(" ")).toBeNull();
+	});
+
+	it("refuses zero, negatives and text", () => {
+		expect(parseSeriesNumber("0")).toBeUndefined();
+		expect(parseSeriesNumber("-1")).toBeUndefined();
+		expect(parseSeriesNumber("two")).toBeUndefined();
 	});
 });

@@ -1,7 +1,9 @@
 import type React from "react";
+import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CollectionWithCount } from "../../../services/db/queries/collections";
 import { click, type Rendered, render } from "../../../test/render";
+import { BOOKS_DRAG_TYPE } from "../../collections/drag-data";
 
 const navigate = vi.fn();
 let location: { pathname: string; search: Record<string, string> } = {
@@ -11,6 +13,8 @@ let location: { pathname: string; search: Record<string, string> } = {
 let collections: CollectionWithCount[] = [];
 let serials: { id: string; title: string; author: null; coverImage: null }[] = [];
 let chapterCounts = new Map<string, number>();
+let memberRows: { bookId: string; seriesIndex: number | null }[] = [];
+const addNumbered = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => navigate,
@@ -43,8 +47,13 @@ vi.mock("../../../services/db/hooks", () => ({
 		useSeriesList: () => ({ data: serials }),
 		useSeriesChapterCounts: () => ({ data: chapterCounts }),
 		useSeriesActivity: () => ({ data: new Map() }),
+		useAddNumberedBooks: () => ({ mutate: addNumbered }),
 	},
 }));
+vi.mock("../../../services/db/queries", () => ({
+	queries: { getCollectionMembers: async () => memberRows },
+}));
+vi.mock("../../toast", () => ({ toast: { success: vi.fn() } }));
 
 const { SidebarSeries } = await import("../sidebar-series");
 
@@ -127,6 +136,34 @@ describe("SidebarSeries", () => {
 		rendered = await render(<SidebarSeries isCollapsed={false} />);
 		expect(rows().some((r) => r.dataset.active === "true")).toBe(false);
 		expect(allSeriesLink()?.dataset.active).toBe("true");
+	});
+
+	it("a book dropped on a book series joins after its highest number", async () => {
+		collections = [series("dune", 2)];
+		memberRows = [
+			{ bookId: "d1", seriesIndex: 1 },
+			{ bookId: "d2", seriesIndex: 2.5 },
+		];
+		rendered = await render(<SidebarSeries isCollapsed={false} />);
+		const row = rendered.container.querySelector("[data-testid=sidebar-series]");
+		const drop = new Event("drop", { bubbles: true, cancelable: true });
+		Object.defineProperty(drop, "dataTransfer", {
+			value: {
+				types: [BOOKS_DRAG_TYPE],
+				getData: () => JSON.stringify(["new", "d1"]),
+			},
+		});
+		await act(async () => {
+			row?.dispatchEvent(drop);
+		});
+		await vi.waitFor(() => expect(addNumbered).toHaveBeenCalled());
+		expect(addNumbered.mock.calls[0]?.[0]).toEqual({
+			target: { collectionId: "dune" },
+			numbers: new Map([
+				["new", 3],
+				["d1", 1],
+			]),
+		});
 	});
 
 	it("collapsed, one icon opens All series", async () => {

@@ -51,7 +51,7 @@ const SeriesListItem: React.FC<SeriesListItemProps> = ({
 			</div>
 
 			<div className="min-w-0 flex-1">
-				<div className="line-clamp-2 min-h-[2.4em] overflow-hidden font-semibold text-[0.9rem] leading-[1.2]">
+				<div className="line-clamp-2 overflow-hidden font-semibold text-[0.9rem] leading-[1.2]">
 					{series.title}
 				</div>
 				<div id={detailsId}>

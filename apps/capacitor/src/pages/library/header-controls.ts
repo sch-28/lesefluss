@@ -6,9 +6,7 @@ export type HeaderControls = {
 	search: boolean;
 	filter: boolean;
 	sort: boolean;
-	columns: boolean;
-	cardFields: boolean;
-	viewToggle: boolean;
+	view: boolean;
 };
 
 /** Which of the library header's view controls show. The ordered (series)
@@ -16,15 +14,12 @@ export type HeaderControls = {
 export function headerControls(view: {
 	isOrderedView: boolean;
 	isDesktop: boolean;
-	shownView: LibraryViewMode;
 }): HeaderControls {
 	const listed = !view.isOrderedView;
 	return {
 		search: listed,
 		filter: listed && !view.isDesktop,
 		sort: listed,
-		columns: listed && view.shownView === "table",
-		cardFields: listed && view.shownView !== "table",
-		viewToggle: listed,
+		view: listed,
 	};
 }

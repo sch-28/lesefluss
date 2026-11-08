@@ -1,3 +1,4 @@
+import { displayAuthor } from "@lesefluss/core";
 import { Check } from "lucide-react";
 import type React from "react";
 import { useId } from "react";
@@ -10,6 +11,7 @@ import {
 	CardFieldSlot,
 	type CardFieldValues,
 	DEFAULT_CARD_FIELDS,
+	NotStartedField,
 	ProgressField,
 	RatingField,
 	TextField,
@@ -111,7 +113,7 @@ const BookListItem: React.FC<BookListItemProps> = ({
 				</div>
 
 				<div className="min-w-0 flex-1">
-					<div className="line-clamp-2 min-h-[2.4em] overflow-hidden font-semibold text-[0.9rem] leading-[1.2]">
+					<div className="line-clamp-2 overflow-hidden font-semibold text-[0.9rem] leading-[1.2]">
 						{badge && !showsAuthor && <>{badge} </>}
 						{book.title}
 					</div>
@@ -125,7 +127,8 @@ const BookListItem: React.FC<BookListItemProps> = ({
 									</CardFieldSlot>
 								);
 							}
-							const text = values?.[field] ?? (field === "author" ? (book.author ?? "") : "");
+							const text =
+								values?.[field] ?? (field === "author" ? displayAuthor(book.author ?? "") : "");
 							return (
 								<CardFieldSlot key={field} surface="list" field={field}>
 									{field === "author" && badge ? (
@@ -141,7 +144,7 @@ const BookListItem: React.FC<BookListItemProps> = ({
 						})}
 						{fields.includes("progress") && (
 							<CardFieldSlot surface="list" field="progress" className="mt-1">
-								{started && <ProgressField progress={progress} />}
+								{started ? <ProgressField progress={progress} /> : <NotStartedField />}
 							</CardFieldSlot>
 						)}
 						<div className="mt-1 flex flex-wrap items-center gap-1.5">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSectionShown, milestonesForFriends } from "./profile-view";
+import { isSectionShown, milestonesForFriends, shelvesFromRows } from "./profile-view";
 
 describe("isSectionShown", () => {
 	it("hides milestones from friends once the owner turns them off", () => {
@@ -42,5 +42,60 @@ describe("milestonesForFriends", () => {
 		expect(berlin.reachedAt).toBe(Date.UTC(2026, 10, 3, 12));
 		const [la] = milestonesForFriends(owned, "America/Los_Angeles").reached;
 		expect(la.reachedAt).toBe(Date.UTC(2026, 10, 2, 12));
+	});
+});
+
+describe("shelvesFromRows", () => {
+	const row = (over: Partial<Parameters<typeof shelvesFromRows>[0][number]>) => ({
+		userId: "owner",
+		bookId: "b1",
+		title: "Book",
+		author: null,
+		wordCount: 1000,
+		wordPosition: 0,
+		status: null,
+		rating: null,
+		finishedAt: null,
+		catalogId: "gutenberg:1",
+		updatedAt: new Date("2026-11-01T10:00:00Z"),
+		hasCover: false,
+		seriesId: null,
+		seriesTitle: null,
+		seriesAuthor: null,
+		seriesHasCover: false,
+		...over,
+	});
+	const reading = (rows: Parameters<typeof shelvesFromRows>[0]) =>
+		shelvesFromRows(rows, "owner", "viewer", undefined).currentlyReading.map((b) => b.key);
+
+	it("lists only books on the Reading shelf, most recently moved first", () => {
+		expect(
+			reading([
+				row({ bookId: "unopened" }),
+				row({ bookId: "older", wordPosition: 10 }),
+				row({
+					bookId: "newer",
+					wordPosition: 10,
+					updatedAt: new Date("2026-11-02T10:00:00Z"),
+				}),
+				row({ bookId: "dropped", wordPosition: 500, status: "dropped" }),
+				row({ bookId: "want", wordPosition: 500, status: "want" }),
+			]),
+		).toEqual(["newer", "older"]);
+	});
+
+	it("keeps a series whose chapters were set aside off the Reading shelf", () => {
+		expect(
+			reading([
+				row({
+					bookId: "c1",
+					seriesId: "s1",
+					seriesTitle: "Serial",
+					wordPosition: 400,
+					status: "dropped",
+				}),
+				row({ bookId: "c2", seriesId: "s1", seriesTitle: "Serial" }),
+			]),
+		).toEqual([]);
 	});
 });

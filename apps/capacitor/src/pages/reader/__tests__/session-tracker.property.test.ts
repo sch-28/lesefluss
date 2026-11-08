@@ -72,6 +72,8 @@ function actualWordsRead(positions: number[]): number {
 		persist: (row) => persisted.push(row),
 		now: () => clock,
 		newId: () => "id1",
+		// Short sequences: the accounting, not the one-minute floor, is under test.
+		minDurationMs: 5_000,
 	});
 
 	tracker.setReading(true);

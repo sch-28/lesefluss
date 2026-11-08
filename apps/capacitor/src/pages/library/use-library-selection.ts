@@ -28,6 +28,7 @@ export type BulkSheet =
 	| "tags"
 	| "add-tags"
 	| "remove-tags"
+	| "series"
 	| "collection";
 
 export type UseLibrarySelection = {

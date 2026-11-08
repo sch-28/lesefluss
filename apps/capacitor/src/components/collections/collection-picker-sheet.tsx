@@ -18,7 +18,11 @@ type Props = {
 	books: readonly Book[];
 	open: boolean;
 	onClose: () => void;
+	/** Series only, or collections only; both when absent. */
+	kind?: PickerKind;
 };
+
+export type PickerKind = "series" | "collection";
 
 export type Mark = "all" | "some" | "none";
 
@@ -47,8 +51,15 @@ export function markOf(
  * book is in asks, with the count, before it takes them all out. Out of a
  * series, later imports leave them out.
  */
-export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, onClose }) => {
-	const { data: collections = [] } = queryHooks.useCollections();
+export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, onClose, kind }) => {
+	const { data: allCollections = [] } = queryHooks.useCollections();
+	const collections = useMemo(
+		() =>
+			kind === undefined
+				? allCollections
+				: allCollections.filter((c) => (c.seriesKey !== null) === (kind === "series")),
+		[allCollections, kind],
+	);
 	const { data: memberships } = queryHooks.useCollectionMemberships();
 	const add = queryHooks.useAddBooksToCollection();
 	const remove = queryHooks.useRemoveBooksFromCollection();
@@ -105,7 +116,7 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 		const key = normalizeSeriesKey(name);
 		if (!key || ids.length === 0) return;
 		setDraft("");
-		const live = collections.find((c) => c.id === seriesCollectionId(key));
+		const live = allCollections.find((c) => c.id === seriesCollectionId(key));
 		setStep(
 			live
 				? { target: { collectionId: live.id }, name: live.name }
@@ -138,8 +149,13 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 	};
 	const stepHasMembers = ids.some((id) => memberNumbers.has(id));
 
+	const noun = kind === "series" ? "Series" : "Collections";
 	const title =
-		placed.length === 1 ? `Collections · ${placed[0]?.title}` : `Add ${books(placed.length)}`;
+		placed.length === 1 ? `${noun} · ${placed[0]?.title}` : `Add ${books(placed.length)}`;
+	const offersCollection = kind !== "series";
+	const offersSeries = kind !== "collection";
+	const draftNoun =
+		kind === "series" ? "series" : kind === "collection" ? "collection" : "collection or series";
 
 	return (
 		<Drawer
@@ -187,8 +203,8 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 						<div className="max-h-[50vh] overflow-y-auto px-2 pb-2">
 							{collections.length === 0 && (
 								<p className="m-0 px-2 py-6 text-center text-muted-foreground text-sm">
-									No collections yet. Name one below to start it with{" "}
-									{placed.length === 1 ? "this book" : "these books"}.
+									{kind === "series" ? "No series yet." : "No collections yet."} Name one below to
+									start it with {placed.length === 1 ? "this book" : "these books"}.
 								</p>
 							)}
 							{collections.map((c) => (
@@ -205,31 +221,37 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 						<div className="flex flex-col gap-2 border-border border-t p-4">
 							<Input
 								value={draft}
-								placeholder="Name a new collection or series"
-								aria-label="New collection or series name"
+								placeholder={`Name a new ${draftNoun}`}
+								aria-label={`New ${draftNoun} name`}
 								maxLength={COLLECTION_NAME_MAX}
 								onChange={(e) => setDraft(e.target.value)}
 								onKeyDown={(e) => {
-									if (e.key === "Enter") createCollection();
+									if (e.key !== "Enter") return;
+									if (offersCollection) createCollection();
+									else createSeries();
 								}}
 							/>
 							<div className="flex gap-2">
-								<Button
-									variant="outline"
-									className="flex-1"
-									disabled={!draft.trim()}
-									onClick={createCollection}
-								>
-									<Plus /> New collection
-								</Button>
-								<Button
-									variant="outline"
-									className="flex-1"
-									disabled={!normalizeSeriesKey(draft)}
-									onClick={createSeries}
-								>
-									<Plus /> New series
-								</Button>
+								{offersCollection && (
+									<Button
+										variant="outline"
+										className="flex-1"
+										disabled={!draft.trim()}
+										onClick={createCollection}
+									>
+										<Plus /> New collection
+									</Button>
+								)}
+								{offersSeries && (
+									<Button
+										variant="outline"
+										className="flex-1"
+										disabled={!normalizeSeriesKey(draft)}
+										onClick={createSeries}
+									>
+										<Plus /> New series
+									</Button>
+								)}
 							</div>
 						</div>
 					</>

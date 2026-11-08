@@ -4,7 +4,6 @@ import type { Book, Series } from "../../services/db/schema";
 import { compareText, isBookFinished } from "./sort-filter";
 
 export const SIDEBAR_SERIES_LIMIT = 5;
-export const CHIP_SERIES_LIMIT = 8;
 
 export type SeriesKind = "book" | "serial";
 

@@ -94,7 +94,10 @@ test("a digit rates the focused book and S sets its status", async ({ page }) =>
 
 test("G opens the group-by choice, and a group folds to its heading", async ({ page }) => {
 	await page.keyboard.press("g");
-	await page.getByRole("button", { name: "Author", exact: true }).last().click();
+	await page
+		.getByRole("radiogroup", { name: "Group by" })
+		.getByRole("radio", { name: "Author" })
+		.click();
 	await page.keyboard.press("Escape");
 
 	const headers = page.getByTestId("library-group-header");

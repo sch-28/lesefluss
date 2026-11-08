@@ -78,7 +78,7 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 				<CardFieldSlot surface="grid" field="progress" className="mt-1" />
 			)}
 			<div className="px-0.5 pt-1">
-				<div className="line-clamp-2 min-h-[2.4em] overflow-hidden font-semibold text-[0.85rem] leading-[1.2]">
+				<div className="line-clamp-2 overflow-hidden font-semibold text-[0.85rem] leading-[1.2]">
 					{series.title}
 				</div>
 				{fields.map((field) =>

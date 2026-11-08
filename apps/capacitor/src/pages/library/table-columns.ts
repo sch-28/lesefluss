@@ -1,4 +1,4 @@
-import { BOOK_STATUS_LABELS, ratingStars } from "@lesefluss/core";
+import { BOOK_STATUS_LABELS, displayAuthor, ratingStars } from "@lesefluss/core";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { formatReadingTime } from "../../utils/reading-time";
 import type { SeriesMemberships } from "./group-by";
@@ -55,7 +55,7 @@ export const TABLE_COLUMNS: readonly TableColumn[] = [
 		label: "Author",
 		width: "minmax(8rem, 2fr)",
 		sortBy: "author",
-		text: (item) => item.sortKey.author,
+		text: (item) => displayAuthor(item.sortKey.author),
 	},
 	{
 		id: "series",

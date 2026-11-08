@@ -95,6 +95,7 @@ export const queryHooks = {
 
 	/** Mutation: delete a book (disk + DB). */
 	useDeleteBook: bookHooks.useDeleteBook,
+	useResetBookProgress: bookHooks.useResetBookProgress,
 
 	/** Delete, restatus, or retag many books, invalidating once at the end. */
 	useBulkBookActions: bulkBookHooks.useBulkBookActions,

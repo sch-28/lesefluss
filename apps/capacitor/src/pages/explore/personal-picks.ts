@@ -1,4 +1,4 @@
-import type { FeedItem } from "@lesefluss/core";
+import { bookStatus, type FeedItem } from "@lesefluss/core";
 import { type CatalogSearchResult, catalogSource } from "../../services/catalog/client";
 import { collapseEditions, editionKey } from "./editions";
 
@@ -7,27 +7,30 @@ type LibraryBook = {
 	author: string | null;
 	catalogId: string | null;
 	lastRead: number | null;
-	addedAt?: number;
+	wordCount: number;
+	wordPosition: number;
+	status: string | null;
+	finishedAt?: number | null;
 };
 
 const MAX_AUTHORS = 3;
 
 /**
- * The library book the catalog knows that the reader touched last: most
- * recently read, or, before any catalog book has been read, most recently
- * added (a fresh import has no `lastRead` yet).
+ * The library book the catalog knows that the reader really read last: on the
+ * Reading or Finished shelf (`bookStatus`), most recently read first. A book
+ * only added or opened is not one "you read".
  */
 export function pickSeedBook<T extends LibraryBook>(
 	books: readonly T[],
 ): (T & { catalogId: string }) | null {
-	const catalogued = books.flatMap((b) => (b.catalogId ? [{ ...b, catalogId: b.catalogId }] : []));
-	const latest = (key: (b: T) => number | null | undefined) =>
-		catalogued.reduce<(T & { catalogId: string }) | null>((best, b) => {
-			const v = key(b);
-			if (v == null) return best;
-			return !best || v > (key(best) ?? 0) ? b : best;
-		}, null);
-	return latest((b) => b.lastRead) ?? latest((b) => b.addedAt);
+	let best: (T & { catalogId: string }) | null = null;
+	for (const b of books) {
+		if (!b.catalogId || b.lastRead == null) continue;
+		const status = bookStatus(b);
+		if (status !== "reading" && status !== "finished") continue;
+		if (!best || b.lastRead > (best.lastRead ?? 0)) best = { ...b, catalogId: b.catalogId };
+	}
+	return best;
 }
 
 /** Up to three authors from the library, most recently read first, case-insensitively distinct. */

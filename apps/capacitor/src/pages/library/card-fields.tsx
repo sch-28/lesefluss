@@ -158,8 +158,27 @@ export const ProgressField: React.FC<{ progress: number; id?: string }> = ({ pro
 	</span>
 );
 
+/** An empty slot's quiet stand-in, so a card shows what is missing rather than a blank line. */
+const PLACEHOLDER = "truncate text-muted-foreground/50";
+
 export const RatingField: React.FC<{ rating: number | null }> = ({ rating }) =>
-	rating === null ? null : <RatingStars rating={rating} starClassName="size-3" />;
+	rating === null ? (
+		<span role="img" aria-label="Not rated" className="opacity-50">
+			<RatingStars rating={0} starClassName="size-3" aria-hidden />
+		</span>
+	) : (
+		<RatingStars rating={rating} starClassName="size-3" />
+	);
+
+export const NotStartedField: React.FC = () => (
+	<span className={cn(PLACEHOLDER, "text-[0.7rem]")}>Not started</span>
+);
 
 export const TextField: React.FC<{ text: string | undefined }> = ({ text }) =>
-	text ? <span className="truncate text-muted-foreground tabular-nums">{text}</span> : null;
+	text ? (
+		<span className="truncate text-muted-foreground tabular-nums">{text}</span>
+	) : (
+		<span aria-hidden className={PLACEHOLDER}>
+			–
+		</span>
+	);

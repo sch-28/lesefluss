@@ -49,6 +49,8 @@ export type EpubFixture = {
 	navHref?: string;
 	cover?: FixtureCoverKind;
 	images?: FixtureImage[];
+	/** The folder the OPF and its files sit in, e.g. "OEBPS"; the zip root when unset. */
+	opfDir?: string;
 };
 
 /** Solid 1200x100 PNG: a wide, short figure. Short on purpose: the reader specs
@@ -92,11 +94,12 @@ function navOlItems(points: FixtureNavPoint[]): string {
 function addCover(
 	zip: JSZip,
 	kind: FixtureCoverKind,
+	root: string,
 ): { items: string; meta: string; guide: string } {
 	if (kind === "xhtml-wrapper") {
-		zip.file("images/frontpic.png", TINY_PNG_BASE64, { base64: true });
+		zip.file(`${root}images/frontpic.png`, TINY_PNG_BASE64, { base64: true });
 		zip.file(
-			"cover.xhtml",
+			`${root}cover.xhtml`,
 			`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml"><head><title>Cover</title></head>
@@ -110,7 +113,7 @@ function addCover(
 		};
 	}
 
-	zip.file("images/cover.png", TINY_PNG_BASE64, { base64: true });
+	zip.file(`${root}images/cover.png`, TINY_PNG_BASE64, { base64: true });
 	const id = kind === "named-only" ? "coverimage" : "cover-img";
 	const properties = kind === "epub3-property" ? ' properties="cover-image"' : "";
 	const meta = kind === "epub2-meta" ? `<meta name="cover" content="${id}"/>` : "";
@@ -123,20 +126,21 @@ function addCover(
 
 function buildZip(fixture: EpubFixture): JSZip {
 	const zip = new JSZip();
+	const root = fixture.opfDir ? `${fixture.opfDir}/` : "";
 	zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
 	zip.file(
 		"META-INF/container.xml",
 		`<?xml version="1.0"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
-<rootfiles><rootfile full-path="content.opf" media-type="application/oebps-package+xml"/></rootfiles>
+<rootfiles><rootfile full-path="${root}content.opf" media-type="application/oebps-package+xml"/></rootfiles>
 </container>`,
 	);
 
 	for (const c of fixture.chapters) {
-		zip.file(c.href, xhtml(c.title ?? c.id, c.body));
+		zip.file(root + c.href, xhtml(c.title ?? c.id, c.body));
 	}
 	for (const img of fixture.images ?? []) {
-		zip.file(img.href, img.base64, { base64: true });
+		zip.file(root + img.href, img.base64, { base64: true });
 	}
 
 	const useNav = fixture.useEpub3Nav === true;
@@ -144,7 +148,9 @@ function buildZip(fixture: EpubFixture): JSZip {
 	const navPoints =
 		fixture.navPoints ?? fixture.chapters.map((c) => ({ label: c.title ?? c.id, href: c.href }));
 
-	const cover = fixture.cover ? addCover(zip, fixture.cover) : { items: "", meta: "", guide: "" };
+	const cover = fixture.cover
+		? addCover(zip, fixture.cover, root)
+		: { items: "", meta: "", guide: "" };
 
 	const manifest = [
 		...fixture.chapters.map(
@@ -168,7 +174,7 @@ function buildZip(fixture: EpubFixture): JSZip {
 	const spineAttr = useNav ? "" : ' toc="ncx"';
 
 	zip.file(
-		"content.opf",
+		`${root}content.opf`,
 		`<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="bookid" version="${useNav ? "3.0" : "2.0"}">
 <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
@@ -187,7 +193,7 @@ ${cover.guide}
 
 	if (useNav) {
 		zip.file(
-			navHref,
+			root + navHref,
 			`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
@@ -196,7 +202,7 @@ ${cover.guide}
 		);
 	} else {
 		zip.file(
-			"toc.ncx",
+			`${root}toc.ncx`,
 			`<?xml version="1.0" encoding="utf-8"?>
 <ncx version="2005-1" xmlns="http://www.daisy.org/z3986/2005/ncx/">
 <head><meta content="urn:test" name="dtb:uid"/></head>

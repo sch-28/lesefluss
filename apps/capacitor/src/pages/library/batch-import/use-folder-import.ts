@@ -72,10 +72,6 @@ export function useFolderImport(
 	// sheet goes away rather than keep reading files into a dead component.
 	const abortRef = useRef(false);
 	const cancelImportRef = useRef(false);
-	// Probing yields to the import run. Both read whole files, so letting them
-	// overlap would hold two books in memory at once, which is the peak the
-	// sequential runner exists to avoid.
-	const probesPausedRef = useRef(false);
 	useEffect(() => {
 		abortRef.current = false;
 		return () => {
@@ -90,11 +86,11 @@ export function useFolderImport(
 		let remaining = files.length;
 		setPendingProbes(remaining);
 		for (const candidate of files) {
-			if (abortRef.current || probesPausedRef.current) return;
+			if (abortRef.current) return;
 			const key = candidateKey(candidate);
 			try {
 				const probe = await probeScannedFile(candidate.file);
-				if (abortRef.current || probesPausedRef.current) return;
+				if (abortRef.current) return;
 				setCandidates((current) => applyProbe(current, key, probe, titlesRef.current));
 			} catch (err) {
 				// A probe failure only costs this card its cover and real title; the
@@ -119,7 +115,7 @@ export function useFolderImport(
 				setPhase("idle");
 				return;
 			}
-			const found = toCandidates(scan.files);
+			const found = toCandidates(scan.files, titlesRef.current);
 			setTruncated(scan.truncated);
 			setCandidates(found);
 			setPhase("review");
@@ -136,13 +132,11 @@ export function useFolderImport(
 
 	const beginImport = useCallback(async () => {
 		const selected = candidates.filter((candidate) => candidate.selected).map((c) => c.file);
-		if (selected.length === 0) return;
+		// Probes decide what is a duplicate, and both read whole files: importing
+		// during them would import duplicates and hold two books in memory.
+		if (selected.length === 0 || pendingProbes > 0) return;
 
 		cancelImportRef.current = false;
-		// Stop probing before the first file is read. Cards still waiting keep
-		// their filenames, which is the right trade against holding two books.
-		probesPausedRef.current = true;
-		setPendingProbes(0);
 		setPhase("importing");
 		let joinFailures = 0;
 		const batch = await runBatchImport({
@@ -180,7 +174,7 @@ export function useFolderImport(
 		if (abortRef.current) return;
 		setResult(batch);
 		setPhase("done");
-	}, [candidates, qc, targetCollectionId]);
+	}, [candidates, pendingProbes, qc, targetCollectionId]);
 
 	const cancelImport = useCallback(() => {
 		cancelImportRef.current = true;
@@ -213,7 +207,7 @@ export function useFolderImport(
 		toggle: useCallback((key: string) => setCandidates((c) => toggleCandidate(c, key)), []),
 		selectAll: useCallback(
 			(selected: boolean, format?: BookFileFormat) =>
-				setCandidates((c) => setSelection(c, selected, format)),
+				setCandidates((c) => setSelection(c, selected, titlesRef.current, format)),
 			[],
 		),
 		beginImport,

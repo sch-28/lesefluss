@@ -147,8 +147,8 @@ export const books = sqliteTable("books", {
 	language: text("language"),
 	/**
 	 * Explicit shelf. NULL means "derive from reading progress" (see
-	 * `bookStatus()` in @lesefluss/core); a value set by the reader is sticky and
-	 * survives further reading.
+	 * `bookStatus()` in @lesefluss/core); a value set by the reader holds until a
+	 * real sitting moves Want to read or Dropped back to NULL.
 	 *
 	 * Unlike `series.provider` this carries no SQL CHECK: the column is added to
 	 * an existing table, and SQLite can only gain a table constraint by rebuilding

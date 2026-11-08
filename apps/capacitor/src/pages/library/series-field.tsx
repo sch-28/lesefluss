@@ -1,11 +1,15 @@
 import { BOOK_SERIES_INDEX_MAX } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
+import { useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronRight, Clock, Plus } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { nextSeriesNumber } from "../../components/collections/series-numbering";
 import { EntryDialog } from "../../components/entry-dialog";
 import type { ImportSeriesChoice } from "../../services/book-import";
+import { collectionKeys } from "../../services/db/hooks/query-keys";
+import { queries } from "../../services/db/queries";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
 import type { DetectedSeries } from "../../services/series-collections";
 import { Field } from "./book-edit-fields";
@@ -17,6 +21,8 @@ type Props = {
 	/** The series the import's file names. Adds it to the picker, with a status line, and
 	 *  plain collections next to series, since the book can go anywhere instead. */
 	detected?: DetectedSeries | null;
+	/** The book being edited, left out of the numbers taken. */
+	bookId?: string;
 };
 
 type Pick =
@@ -41,9 +47,34 @@ function formatSeries(name: string, index: number | null): string {
 	return index === null ? name : `${name} #${index}`;
 }
 
-export const SeriesField: React.FC<Props> = ({ choice, onChange, collections, detected }) => {
+export const SeriesField: React.FC<Props> = ({
+	choice,
+	onChange,
+	collections,
+	detected,
+	bookId,
+}) => {
+	const qc = useQueryClient();
 	const [isPicking, setIsPicking] = useState(false);
 	const [indexText, setIndexText] = useState(indexTextOf(choice));
+	const latestChoice = useRef(choice);
+	latestChoice.current = choice;
+
+	// A series picked without a number gets the next free one, once its members are read.
+	const fillNextNumber = async (collectionId: string) => {
+		const members = await qc.fetchQuery({
+			queryKey: collectionKeys.memberRows(collectionId),
+			queryFn: () => queries.getCollectionMembers(collectionId),
+		});
+		const current = latestChoice.current;
+		if (current.kind !== "collection" || current.collectionId !== collectionId) return;
+		if (current.index !== null) return;
+		const next = nextSeriesNumber(
+			new Map(members.filter((m) => m.bookId !== bookId).map((m) => [m.bookId, m.seriesIndex])),
+		);
+		onChange({ ...current, index: next });
+		setIndexText(String(next));
+	};
 	const picked =
 		choice.kind === "collection" ? collections.find((c) => c.id === choice.collectionId) : null;
 	const name =
@@ -71,8 +102,12 @@ export const SeriesField: React.FC<Props> = ({ choice, onChange, collections, de
 			setIndexText(fileIndex === null ? "" : String(fileIndex));
 		} else if (next.kind === "collection") {
 			onChange({ kind: "collection", collectionId: next.collectionId, index });
+			const isOrdered = collections.find((c) => c.id === next.collectionId)?.ordered;
+			if (index === null && isOrdered) void fillNextNumber(next.collectionId);
 		} else {
-			onChange({ kind: "new", name: next.name, index });
+			const first = index ?? 1;
+			onChange({ kind: "new", name: next.name, index: first });
+			setIndexText(String(first));
 		}
 	};
 

@@ -55,7 +55,7 @@ export function libraryCommands(input: LibraryCommandInput): Command[] {
 	return commands;
 }
 
-export type LibraryKeySheet = "status" | "add-tags" | "remove-tags" | "collection";
+export type LibraryKeySheet = "status" | "add-tags" | "remove-tags" | "collection" | "series";
 
 export type LibraryKeyInput = {
 	canSearch: boolean;
@@ -194,6 +194,7 @@ export function libraryKeyCommands(input: LibraryKeyInput): Command[] {
 			"collection",
 			"shelf",
 		]),
+		sheet("library.add-to-series", "Add to series…", "Shift+C", "series", ["series", "number"]),
 		{
 			id: "library.group-by",
 			title: "Group by…",

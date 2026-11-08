@@ -46,21 +46,16 @@ describe("CardFieldsPanel", () => {
 		expect(onToggle).toHaveBeenCalledWith("grid", "timeLeft");
 	});
 
-	it("edits the list rows' own fields after switching to List", async () => {
+	it("edits the list rows' own fields when the list is on screen", async () => {
 		const onToggle = vi.fn();
 		view = await render(
 			<CardFieldsPanel
-				surface="grid"
+				surface="list"
 				settings={{ grid: ["author"], list: ["words"] }}
 				onToggle={onToggle}
 				renderPreview={preview}
 			/>,
 		);
-		const list = [...view.container.querySelectorAll("button")].find(
-			(b) => b.textContent === "List",
-		);
-		if (!list) throw new Error("no List toggle");
-		await click(list);
 		expect(view.text()).toContain("list: words");
 		expect(checkbox("Words").checked).toBe(true);
 		await click(checkbox("Rating"));

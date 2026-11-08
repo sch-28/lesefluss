@@ -14,7 +14,7 @@ import {
 	THIRTY_DAYS_MS,
 	wordPos,
 } from "@lesefluss/core";
-import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { formatShortDate } from "../../../utils/date-utils";
 import {
 	bucketMinutesByHour,
@@ -225,18 +225,21 @@ export interface ShelfBook {
 const CURRENTLY_READING_LIMIT = 10;
 
 /**
- * Books the reader is in the middle of: started, not finished, most recently
- * read first. Serial chapters are excluded because a chapter is not a book the
- * reader would say they are "currently reading".
+ * Books on the Reading shelf (`bookStatus`, the one definition the library,
+ * Social and Explore share), most recently read first. Serial chapters are
+ * excluded because a chapter is not a book the reader would say they are
+ * "currently reading".
  */
 export async function getCurrentlyReading(): Promise<ShelfBook[]> {
-	const rows = await db
+	const candidates = await db
 		.select({
 			id: books.id,
 			title: books.title,
 			author: books.author,
 			wordCount: books.wordCount,
 			wordPosition: books.wordPosition,
+			status: books.status,
+			finishedAt: books.finishedAt,
 			lastRead: books.lastRead,
 		})
 		.from(books)
@@ -244,12 +247,16 @@ export async function getCurrentlyReading(): Promise<ShelfBook[]> {
 			and(
 				eq(books.deleted, false),
 				isNull(books.seriesId),
-				isNull(books.finishedAt),
-				gt(books.wordPosition, wordPos(0)),
+				or(
+					eq(books.status, "reading"),
+					and(isNull(books.status), gt(books.wordPosition, wordPos(0))),
+				),
 			),
 		)
-		.orderBy(desc(books.lastRead))
-		.limit(CURRENTLY_READING_LIMIT);
+		.orderBy(desc(books.lastRead));
+	const rows = candidates
+		.filter((row) => bookStatus(row) === "reading")
+		.slice(0, CURRENTLY_READING_LIMIT);
 
 	const covers = await coversFor(rows.map((row) => row.id));
 	return rows.map((row) => {

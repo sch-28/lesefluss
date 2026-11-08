@@ -26,6 +26,7 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@lesefluss/ui/dropdown-menu";
 import { usePrefersReducedMotion } from "@lesefluss/ui/use-prefers-reduced-motion";
@@ -38,7 +39,6 @@ import {
 	ChevronRight,
 	ExternalLink,
 	Headphones,
-	Info,
 	Loader2,
 	Maximize,
 	Minimize,
@@ -119,6 +119,8 @@ import {
 import { openLink } from "../../utils/open-link";
 import { formatReadingTime } from "../../utils/reading-time";
 import { isBurstAvailable, openBurst } from "../burst/open-burst";
+import { BookActionsMenuItems } from "../library/book-actions/book-actions-menu-items";
+import { useBookActions } from "../library/book-actions/use-book-actions";
 import { liveToday } from "../library/reading-goal/goal-model";
 import { closeMini, isMiniAvailable, openMini } from "../mini/open-mini";
 import { useMiniFollow } from "../mini/use-mini-follow";
@@ -245,6 +247,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const { isSyncing, isLoggedIn, syncNow } = useSyncContext();
 	const qc = useQueryClient();
 	const history = useRouter().history;
+	const bookActions = useBookActions({
+		surface: "reader",
+		onDeleted: () => history.push("/tabs/library"),
+	});
 
 	// ── Data queries ──────────────────────────────────────────────────────
 	const { data: book, isPending: bookPending } = queryHooks.useBook(id);
@@ -2970,21 +2976,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 										<span>Open on {series ? providerLabel(series.provider) : "website"}</span>
 									</DropdownMenuItem>
 								)}
-								<DropdownMenuItem
-									className={MENU_ITEM_CLASS}
-									onSelect={() => {
-										history.push(
-											book.seriesId != null
-												? `/tabs/library/series/${book.seriesId}`
-												: `/tabs/library/book/${book.id}`,
-										);
-									}}
-								>
-									<Info />
-									<span>{book.seriesId != null ? "View series" : "View book"}</span>
-								</DropdownMenuItem>
+								<DropdownMenuSeparator />
+								<BookActionsMenuItems
+									entries={bookActions.entriesFor(book)}
+									itemClassName={MENU_ITEM_CLASS}
+								/>
 							</DropdownMenuContent>
 						</DropdownMenu>
+						{bookActions.overlays}
 					</div>
 				</header>
 

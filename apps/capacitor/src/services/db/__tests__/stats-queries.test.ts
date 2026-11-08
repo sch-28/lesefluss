@@ -205,6 +205,16 @@ describe("getCurrentlyReading", () => {
 		expect((await getCurrentlyReading()).map((book) => book.id)).toEqual(["reading"]);
 	});
 
+	// One definition of "reading": the shelf status, not "has any position".
+	it("lists the Reading shelf: no Want to read or Dropped book, a long book before 1%", async () => {
+		insertBook({ id: "dropped", word_position: 900, status: "dropped", last_read: 4 });
+		insertBook({ id: "want", word_position: 900, status: "want", last_read: 3 });
+		insertBook({ id: "manual", word_position: 0, status: "reading", last_read: 2 });
+		insertBook({ id: "long", word_position: 200, word_count: 1_200_000, last_read: 1 });
+
+		expect((await getCurrentlyReading()).map((book) => book.id)).toEqual(["manual", "long"]);
+	});
+
 	it("reports progress as a clamped percentage", async () => {
 		insertBook({ id: "a", word_position: 25_000, word_count: 100_000 });
 		expect((await getCurrentlyReading())[0]?.percent).toBe(25);

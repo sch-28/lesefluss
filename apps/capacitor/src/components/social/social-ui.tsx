@@ -1,4 +1,4 @@
-import type { ProfileCover } from "@lesefluss/core";
+import { type ProfileCover, readingProgress } from "@lesefluss/core";
 import { cn } from "@lesefluss/ui/utils";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
@@ -6,6 +6,7 @@ import type React from "react";
 import CoverImage from "@/components/cover-image";
 import { getCoverUrl } from "@/services/catalog/client";
 import { queryHooks } from "@/services/db/hooks";
+import { pickNowReading } from "./now-reading";
 
 /** A content section in the style of the stats page: large title, fade-in. */
 export function SocialSection({
@@ -149,13 +150,12 @@ export function progressRing(percent: number): string {
 
 type CurrentBook = { id: string; title: string; coverSrc: string | null; percent: number };
 
-/** The book the reader moved in most recently, if any is in progress. */
 export function useCurrentBook(): CurrentBook | null {
-	const reading = queryHooks.useStatsCurrentlyReading();
-	const first = reading.data?.[0];
-	const cover = useLocalCover(first?.id ?? "");
-	if (!first) return null;
-	return { id: first.id, title: first.title, coverSrc: cover, percent: first.percent ?? 0 };
+	const { data: library } = queryHooks.useBooks();
+	const book = pickNowReading(library?.books ?? []);
+	const cover = useLocalCover(book?.id ?? "");
+	if (!book) return null;
+	return { id: book.id, title: book.title, coverSrc: cover, percent: readingProgress(book) };
 }
 
 /** A local book's cover: the stored image, else the catalog cover the book came from. */

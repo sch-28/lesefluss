@@ -40,7 +40,7 @@ type Props = {
 	facts: string[];
 	fileLanguage?: string | null;
 	/** Progress through the book, used to show what an unset status derives to. */
-	progress?: { wordCount: number; wordPosition: number };
+	progress?: { wordCount: number; wordPosition: number; finishedAt: number | null };
 	/** The series row, which the import page leaves to LESE-125.18. */
 	series?: React.ReactNode;
 };

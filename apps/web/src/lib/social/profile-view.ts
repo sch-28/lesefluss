@@ -96,7 +96,7 @@ type ShelfRow = Awaited<ReturnType<typeof loadShelfRows>>[number];
  * rolled up per series. Articles, hidden and deleted books are out. Currently
  * reading comes most recently moved first.
  */
-function shelvesFromRows(
+export function shelvesFromRows(
 	rows: ShelfRow[],
 	ownerId: string,
 	viewerId: string,
@@ -108,7 +108,12 @@ function shelvesFromRows(
 
 	for (const row of rows) {
 		const wordCount = row.wordCount ?? 0;
-		const status = bookStatus({ wordCount, wordPosition: row.wordPosition, status: row.status });
+		const status = bookStatus({
+			wordCount,
+			wordPosition: row.wordPosition,
+			status: row.status,
+			finishedAt: row.finishedAt,
+		});
 		if (row.seriesId) {
 			if (row.seriesTitle === null) continue;
 			const entry = series.get(row.seriesId) ?? {
@@ -181,7 +186,7 @@ function shelvesFromRows(
 				rating: entry.rating,
 				cover,
 			});
-		} else if (entry.isAnyReading || entry.wordPosition > 0) {
+		} else if (entry.isAnyReading) {
 			reading.push({
 				book: {
 					key: seriesId,

@@ -227,12 +227,29 @@ function useUpdateBook() {
 	return useMutation({
 		mutationFn: ({ id, values }: { id: string; values: Partial<Omit<Book, "id">> }) =>
 			queries.updateBook(id, values),
-		onSuccess: (_data, { id }) => {
+		onSuccess: (_data, { id, values }) => {
 			qc.invalidateQueries({ queryKey: bookKeys.detail(id) });
 			qc.invalidateQueries({ queryKey: bookKeys.all });
+			// Currently reading is the Reading shelf.
+			if (values.status !== undefined) qc.invalidateQueries({ queryKey: statsKeys.all });
 			scheduleSyncPush();
 		},
 		onError: () => toast.error("Couldn't save your changes"),
+	});
+}
+
+/** Reset a book to its first word and Automatic status, off Currently reading. */
+function useResetBookProgress() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (id: string) => queries.resetBookProgress(id),
+		onSuccess: (_data, id) => {
+			qc.invalidateQueries({ queryKey: bookKeys.detail(id), exact: true });
+			qc.invalidateQueries({ queryKey: bookKeys.all });
+			qc.invalidateQueries({ queryKey: statsKeys.all });
+			scheduleSyncPush();
+		},
+		onError: () => toast.error("Couldn't reset your progress"),
 	});
 }
 
@@ -286,4 +303,5 @@ export const bookHooks = {
 	useImportBookFromBlob,
 	useUpdateBook,
 	useDeleteBook,
+	useResetBookProgress,
 };

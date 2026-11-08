@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { click, type Rendered, render } from "../../../test/render";
-import ColumnPicker from "../column-picker";
+import { ColumnList } from "../column-picker";
 import { moveColumn } from "../table-columns";
 
 let view: Rendered | undefined;
@@ -19,13 +19,12 @@ function button(label: string): HTMLButtonElement {
 
 async function openPicker(onMove = vi.fn(), onToggle = vi.fn()) {
 	view = await render(
-		<ColumnPicker columns={["title", "author", "rating"]} onToggle={onToggle} onMove={onMove} />,
+		<ColumnList columns={["title", "author", "rating"]} onToggle={onToggle} onMove={onMove} />,
 	);
-	await click(view.getButton("Columns"));
 	return { onMove, onToggle };
 }
 
-describe("ColumnPicker", () => {
+describe("ColumnList", () => {
 	it("moves a column up and down by one place", async () => {
 		const { onMove } = await openPicker();
 		await click(button("Move Rating up"));

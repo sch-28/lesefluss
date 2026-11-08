@@ -49,7 +49,9 @@ const rows = () => [
 ];
 const numberRows = () =>
 	[...document.querySelectorAll('[data-testid="series-number-row"]')].map((r) =>
-		[...r.children].map((c) => c.textContent).join(" "),
+		[...r.children]
+			.map((c) => (c instanceof HTMLInputElement ? `#${c.value}` : c.textContent))
+			.join(" "),
 	);
 
 async function typeName(text: string) {

@@ -2,16 +2,27 @@ import { BUDDY_TRAILER_MIN_GAP } from "@lesefluss/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type Rendered, render } from "../../../test/render";
 
-const reading = vi.hoisted(() => ({
-	current: [] as { id: string; title: string; percent: number }[],
-}));
+const reading = vi.hoisted(() => ({ current: [] as Record<string, unknown>[] }));
 
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useStatsCurrentlyReading: () => ({ data: reading.current }),
-		useBooks: () => ({ data: undefined }),
+		useBooks: () => ({ data: { books: reading.current, covers: new Map() } }),
 	},
 }));
+
+const libraryBook = (over: Record<string, unknown>) => ({
+	id: "b1",
+	title: "Book",
+	catalogId: null,
+	wordCount: 100,
+	wordPosition: 0,
+	status: null,
+	finishedAt: null,
+	seriesId: null,
+	hideFromProfile: false,
+	lastRead: 1,
+	...over,
+});
 
 const { BuddyReadTrailer } = await import("../buddy-read-trailer");
 
@@ -60,13 +71,39 @@ describe("BuddyReadTrailer", () => {
 
 	it("rides on the reader's current book and keeps the illustrated readers clear of them", async () => {
 		mockReducedMotion(true);
-		reading.current = [{ id: "b1", title: "Morning Star", percent: 47 }];
+		reading.current = [libraryBook({ title: "Morning Star", wordPosition: 47 })];
 		view = await render(<BuddyReadTrailer self={{ name: "Ada", avatarUrl: null }} />);
 
 		expect(view.text()).toContain("Morning Star");
 		expect(view.text()).toContain("You · 47%");
 		for (const percent of labels())
 			expect(Math.abs(percent - 47)).toBeGreaterThanOrEqual(BUDDY_TRAILER_MIN_GAP);
+	});
+
+	it("never rides on a book set aside or hidden from the profile", async () => {
+		mockReducedMotion(true);
+		reading.current = [
+			libraryBook({
+				id: "d",
+				title: "Dropped one",
+				wordPosition: 40,
+				status: "dropped",
+				lastRead: 9,
+			}),
+			libraryBook({ id: "w", title: "Wanted one", wordPosition: 40, status: "want", lastRead: 8 }),
+			libraryBook({
+				id: "h",
+				title: "Hidden one",
+				wordPosition: 40,
+				hideFromProfile: true,
+				lastRead: 7,
+			}),
+			libraryBook({ id: "o", title: "Only opened", wordPosition: 0, lastRead: 6 }),
+		];
+		view = await render(<BuddyReadTrailer self={{ name: "Ada", avatarUrl: null }} />);
+
+		expect(view.text()).toContain("Any book you like");
+		expect(view.text()).not.toMatch(/Dropped one|Wanted one|Hidden one|Only opened/);
 	});
 
 	it("tells screen readers what the illustration shows in one sentence", async () => {

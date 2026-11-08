@@ -72,6 +72,8 @@ export type TrackerOpts = {
 	onFurthestRead?: (sessionId: string, word: number | null) => void;
 	/** A sitting's closing row, after it is handed to `persist`. */
 	onFinalized?: (row: SessionRow) => void;
+	/** Active time below which a sitting is not written; `MIN_DURATION_MS` unless a test shortens it. */
+	minDurationMs?: number;
 	now?: () => number;
 	newId?: () => string;
 };
@@ -184,6 +186,9 @@ export function segmentRates(marks: readonly number[]): number[] | null {
 
 export class SessionTracker {
 	private readonly opts: TrackerOpts;
+	private get minDurationMs(): number {
+		return this.opts.minDurationMs ?? MIN_DURATION_MS;
+	}
 	private foreground = true;
 	private reading = false;
 	private session: SessionState | null = null;
@@ -428,7 +433,7 @@ export class SessionTracker {
 			// spot in the console without scanning routine info logs.
 			log.warn(
 				"reading-session",
-				`dropped (noise floor): duration=${this.session.accumulatedActiveMs}ms words=${wordsReadIn(this.session)} (thresholds: ${MIN_DURATION_MS}ms / ${MIN_WORDS} words)`,
+				`dropped (noise floor): duration=${this.session.accumulatedActiveMs}ms words=${wordsReadIn(this.session)} (thresholds: ${this.minDurationMs}ms / ${MIN_WORDS} words)`,
 			);
 		}
 		this.session = null;
@@ -577,7 +582,7 @@ export class SessionTracker {
 		const finalActiveMs = activeMsOf(s, now);
 		markSegments(s, this.lastActivityAt);
 		const wordsRead = wordsReadIn(s);
-		if (!s.hasPersisted && (finalActiveMs < MIN_DURATION_MS || wordsRead < MIN_WORDS)) {
+		if (!s.hasPersisted && (finalActiveMs < this.minDurationMs || wordsRead < MIN_WORDS)) {
 			return null;
 		}
 		// On an in-place book switch the reader clears its position ref before this

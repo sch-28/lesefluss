@@ -12,6 +12,7 @@ import {
 	type SerializedWordIndex,
 	WordIndex,
 	type WordPosition,
+	wordPos,
 } from "@lesefluss/core";
 import {
 	and,
@@ -554,6 +555,31 @@ export async function updateBook(
 		.update(books)
 		.set(patch)
 		.where(options.onlyIf ? and(eq(books.id, id), options.onlyIf) : eq(books.id, id));
+}
+
+/**
+ * Back to the first word with the status on Automatic. `finished_at` is kept:
+ * it is never cleared, and the sync pull would restore it anyway. The
+ * revision lands above the row's own, so an open reader adopts the start
+ * instead of saving its old word over it.
+ */
+export async function resetBookProgress(id: string): Promise<void> {
+	const [row] = await db
+		.select({ updatedAt: books.updatedAt, finishedAt: books.finishedAt })
+		.from(books)
+		.where(eq(books.id, id));
+	if (!row) return;
+	const now = serverNow();
+	await updateBook(
+		id,
+		{
+			wordPosition: wordPos(0),
+			status: null,
+			finishedAt: row.finishedAt,
+			updatedAt: Math.max(now, row.updatedAt + 1),
+		},
+		now,
+	);
 }
 
 export type PositionRow = { wordPosition: number; updatedAt: number };

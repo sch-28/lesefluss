@@ -95,17 +95,59 @@ export function isBookStatus(value: unknown): value is BookStatus {
  * Shelf a book belongs on, from its own `status` when the reader set one and
  * from reading progress otherwise.
  *
- * A stored status is sticky by design: it survives further reading, so a book
- * marked `dropped` stays dropped even if you later read it to the end. Clearing
- * the column (back to null) is the only way back to the derived answer.
+ * A stored status holds until the reader changes it or a real sitting moves it
+ * on (see `statusAfterRealSitting`). Without one, a book that ever crossed the
+ * finished threshold (`finishedAt`) stays finished, so a reread does not
+ * un-finish it. Derived "reading" needs any saved position, not a rounded
+ * percent: a long book stays at 0% for its first thousands of words.
  */
 export function bookStatus(book: {
 	wordCount: number;
 	wordPosition: number;
 	status?: string | null;
+	finishedAt?: number | Date | null;
 }): BookStatus {
 	if (isBookStatus(book.status)) return book.status;
-	const percent = readingProgress(book);
-	if (isFinishedPercent(percent)) return "finished";
-	return percent > 0 ? "reading" : "want";
+	if (book.finishedAt != null || isFinishedPercent(readingProgress(book))) return "finished";
+	return book.wordPosition > 0 ? "reading" : "want";
+}
+
+/**
+ * The stored status after a real sitting on the book, or undefined to leave it.
+ * Want to read and Dropped go back to automatic (which a saved position makes
+ * Reading), or to Reading itself on a book once finished, where automatic
+ * would say Finished. Finished stays, so a reread does not un-finish a book.
+ */
+export function statusAfterRealSitting(book: {
+	status?: string | null;
+	finishedAt?: number | Date | null;
+}): "reading" | null | undefined {
+	if (book.status !== "want" && book.status !== "dropped") return undefined;
+	return book.finishedAt != null ? "reading" : null;
+}
+
+const NAME_SUFFIX = /^(jr|sr|[ivx]+|ph\.?d|md)\.?$/i;
+const SURNAME_PARTICLE = /^(van|von|de|da|di|du|del|der|le|la|st\.?)\s/i;
+
+function firstLast(name: string): string {
+	const pieces = name.split(",").map((p) => p.trim());
+	if (pieces.length !== 2) return name;
+	const [last, first] = pieces as [string, string];
+	if (!last || !first || NAME_SUFFIX.test(first)) return name;
+	// "Jay Kristoff, Amie Kaufman" is two authors, not one turned around.
+	const isTwoNames = /\s/.test(last) && /\s/.test(first) && !SURNAME_PARTICLE.test(last);
+	return isTwoNames ? name : `${first} ${last}`;
+}
+
+/**
+ * An author as "First Last": a catalogue's "Last, First" is turned around, each
+ * name of a "; " or " & " list on its own. A suffix after the comma
+ * ("King, Jr.") or more than one comma leaves the name as written.
+ */
+export function displayAuthor(author: string): string {
+	return author
+		.split(/(\s*;\s*|\s+&\s+|\s+and\s+)/)
+		.map((part, i) => (i % 2 === 1 ? part : firstLast(part.trim())))
+		.join("")
+		.trim();
 }
