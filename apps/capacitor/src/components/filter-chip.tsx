@@ -18,6 +18,8 @@ type FilterChipProps<T extends string> = {
 	options: readonly { value: T; label: string; count?: number }[];
 	onSelect: (value: T) => void;
 	onClear?: () => void;
+	/** On the wrapper; `min-w-0 shrink` lets a long label truncate while × stays whole. */
+	className?: string;
 };
 
 /**
@@ -32,17 +34,18 @@ export function FilterChip<T extends string>({
 	options,
 	onSelect,
 	onClear,
+	className,
 }: FilterChipProps<T>) {
 	const [isOpen, setOpen] = useState(false);
 	const pointerTypeRef = useRef<string>("mouse");
 	return (
-		<div className="flex shrink-0 items-center">
+		<div className={cn("flex shrink-0 items-center", className)}>
 			<DropdownMenu open={isOpen} onOpenChange={setOpen}>
 				<DropdownMenuTrigger asChild>
 					<Button
 						variant={isActive ? "default" : "outline"}
 						size="sm"
-						className={cn("gap-1", isActive && onClear && "rounded-r-none pr-2")}
+						className={cn("min-w-0 gap-1", isActive && onClear && "rounded-r-none pr-2")}
 						onPointerDown={(e: React.PointerEvent<HTMLButtonElement>) => {
 							pointerTypeRef.current = e.pointerType;
 							if (e.pointerType !== "mouse") e.preventDefault();
@@ -51,7 +54,7 @@ export function FilterChip<T extends string>({
 							if (pointerTypeRef.current !== "mouse") setOpen((open) => !open);
 						}}
 					>
-						{label}
+						<span className="min-w-0 truncate">{label}</span>
 						<ChevronDown className="size-3.5" />
 					</Button>
 				</DropdownMenuTrigger>
@@ -65,7 +68,7 @@ export function FilterChip<T extends string>({
 					>
 						{options.map((o) => (
 							<DropdownMenuRadioItem key={o.value} value={o.value} className="gap-4">
-								<span className="flex-1 whitespace-nowrap">{o.label}</span>
+								<span className="min-w-0 flex-1 truncate">{o.label}</span>
 								{o.count !== undefined && (
 									<span className="whitespace-nowrap text-muted-foreground text-xs tabular-nums">
 										{o.count.toLocaleString()}

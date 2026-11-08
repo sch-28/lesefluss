@@ -2,6 +2,7 @@ import { useRouter } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import CoverImage from "../../../components/cover-image";
 import type { ShelfBook } from "../../../services/db/queries/stats";
+import { TitleCover } from "./title-cover";
 
 /**
  * Horizontal cover row shared by the stats shelves.
@@ -57,7 +58,11 @@ export function BookShelf({
 							className="relative w-[120px] flex-shrink-0 snap-start border-0 bg-transparent p-0 text-left"
 						>
 							<div className="relative aspect-[2/3] overflow-hidden rounded-xl">
-								<CoverImage src={book.coverImage} alt={book.title} />
+								<CoverImage
+									src={book.coverImage}
+									alt={book.title}
+									fallback={<TitleCover title={book.title} />}
+								/>
 								<div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent" />
 								{badgeFor?.(book, index)}
 								{book.percent !== undefined && book.percent > 0 && book.percent < 100 && (

@@ -193,13 +193,13 @@ describe("computeSpeedModel", () => {
 		});
 
 		it("does not let a few minutes of reading set the speed", () => {
-			const model = computeSpeedModel([row({ durationMs: 9 * MIN, wordsRead: 9000 })], {
+			const model = computeSpeedModel([row({ durationMs: 9 * MIN, wordsRead: 2700 })], {
 				now: NOW,
 			});
 			expect(model.reading.source).toBe("default");
 			expect(model.pace.source).toBe("default");
 			// The raw figure is still there for anything that wants to show it.
-			expect(model.reading.scroll?.wpm).toBe(1000);
+			expect(model.reading.scroll?.wpm).toBe(300);
 		});
 	});
 });
@@ -284,5 +284,19 @@ describe("helpers", () => {
 		expect(rsvpTimeSavedMs(6000, 200, 400)).toBe(15 * MIN);
 		expect(rsvpTimeSavedMs(6000, 400, 200)).toBe(0);
 		expect(rsvpTimeSavedMs(6000, 0, 400)).toBe(0);
+	});
+});
+
+describe("skimmed sittings in the speed model", () => {
+	it("leave the reading speed and the book speed, not the sittings' existence", () => {
+		const steady = [1, 2, 3, 4, 5].map((d) =>
+			row({ startedAt: NOW - d * DAY, wordsRead: 2500, durationMs: 10 * MIN }),
+		);
+		const skim = row({ startedAt: NOW - HOUR, wordsRead: 5000, durationMs: 10 * MIN });
+		const model = computeSpeedModel([...steady, skim], { now: NOW });
+		expect(model.reading.wpm).toBe(250);
+		expect(model.books.b1?.wpm).toBe(250);
+		expect(model.sittings).toBe(5);
+		expect(speedWindowRows([...steady, skim], "all", NOW)).toHaveLength(5);
 	});
 });

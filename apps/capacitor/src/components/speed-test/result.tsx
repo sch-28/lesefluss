@@ -46,10 +46,10 @@ export function SpeedTestResult({
 	onApply,
 }: Props) {
 	const book = useComparisonBook();
-	const rsvpSpeed = rsvpWpm ?? dial;
 	const readingMinutes = book.minutesAt(readingWpm);
-	const rsvpMinutes = book.minutesAt(rsvpSpeed);
-	const saved = readingMinutes - rsvpMinutes;
+	const rsvpMinutes = rsvpWpm === null ? null : book.minutesAt(rsvpWpm);
+	const saved = rsvpMinutes === null ? 0 : readingMinutes - rsvpMinutes;
+	const faster = rsvpWpm === null ? 0 : fasterPercent(readingWpm, rsvpWpm);
 	const applied = appliedDial === dial;
 
 	return (
@@ -58,10 +58,7 @@ export function SpeedTestResult({
 			<dl className="mt-4 grid grid-cols-3 gap-2 text-center">
 				<Stat label="Reading wpm" value={String(readingWpm)} />
 				<Stat label="RSVP wpm" value={rsvpWpm === null ? "–" : String(rsvpWpm)} />
-				<Stat
-					label="Faster"
-					value={rsvpWpm === null ? "–" : `${fasterPercent(readingWpm, rsvpWpm)}%`}
-				/>
+				<Stat label="Faster" value={faster > 0 ? `${faster}%` : "–"} />
 			</dl>
 
 			<div className="mt-4 rounded-lg border border-border p-3" data-testid="speed-test-book">
@@ -75,7 +72,9 @@ export function SpeedTestResult({
 					</div>
 					<div>
 						<dt className="text-muted-foreground text-xs">RSVP</dt>
-						<dd className="font-semibold tabular-nums">{minutesLabel(rsvpMinutes)}</dd>
+						<dd className="font-semibold tabular-nums">
+							{rsvpMinutes === null ? "–" : minutesLabel(rsvpMinutes)}
+						</dd>
 					</div>
 					<div>
 						<dt className="text-muted-foreground text-xs">Saved</dt>
@@ -96,7 +95,7 @@ export function SpeedTestResult({
 				</Button>
 				<Button
 					className="flex-1"
-					variant={applied ? "secondary" : "default"}
+					variant={applied ? "secondary" : "outline"}
 					onClick={onApply}
 					disabled={applied}
 				>

@@ -1,9 +1,11 @@
+import { isSkimmedSitting, skimCutoffWpm } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { queryHooks } from "../../services/db/hooks";
 import { queries } from "../../services/db/queries";
-import type { Book } from "../../services/db/schema";
+import type { Book, ReadingSession } from "../../services/db/schema";
+import { SessionDetailSheet } from "./stats/session-detail-sheet";
 import {
 	SelectionBar,
 	SelectionHeader,
@@ -19,6 +21,7 @@ export const BOOK_SESSIONS_SHOWN = 10;
 /** The book's sessions as Stats › Sessions shows them, scoped to this book. */
 export function BookSessions({ book }: { book: Book }) {
 	const sessionsQuery = queryHooks.useBookReadingSessions(book.id);
+	const allQuery = queryHooks.useAllReadingSessions();
 	const [now] = useState(Date.now);
 	const books = useMemo(() => new Map([[book.id, book]]), [book]);
 	const selection = useSessionSelection();
@@ -32,6 +35,12 @@ export function BookSessions({ book }: { book: Book }) {
 		() => filterSessions(sessionsQuery.data ?? [], { mode: "all", hidden }),
 		[sessionsQuery.data, hidden],
 	);
+	// From every sitting, as Stats › Sessions does, so a row reads skimmed the same in both.
+	const skimCutoff = useMemo(
+		() => skimCutoffWpm(filterSessions(allQuery.data ?? [], { mode: "all", hidden })),
+		[allQuery.data, hidden],
+	);
+	const [openSession, setOpenSession] = useState<ReadingSession | null>(null);
 	const days = useMemo(() => takeSessions(groupByDay(rows, now), BOOK_SESSIONS_SHOWN), [rows, now]);
 	const { selected } = selection;
 
@@ -57,7 +66,7 @@ export function BookSessions({ book }: { book: Book }) {
 						Sessions <span className="text-muted-foreground">· {rows.length}</span>
 					</h2>
 					<Link
-						to="/tabs/library/stats"
+						to="/tabs/stats"
 						search={{ tab: "sessions", book: book.id }}
 						className="text-primary text-sm"
 					>
@@ -70,11 +79,13 @@ export function BookSessions({ book }: { book: Book }) {
 				days={days}
 				books={books}
 				isBookView
+				skimCutoff={skimCutoff}
 				actions={{
 					selected,
 					onToggleSelect: (session) => selection.toggle(session.id),
 					onStartSelect: (session) => selection.start(session.id),
 					onDelete: (session) => requestDelete([session]),
+					onOpen: setOpenSession,
 				}}
 			/>
 
@@ -99,6 +110,13 @@ export function BookSessions({ book }: { book: Book }) {
 				</>
 			)}
 
+			<SessionDetailSheet
+				session={openSession}
+				book={book}
+				isSkimmed={openSession !== null && isSkimmedSitting(openSession, skimCutoff)}
+				onClose={() => setOpenSession(null)}
+				onDelete={(session) => requestDelete([session])}
+			/>
 			{dialog}
 		</section>
 	);

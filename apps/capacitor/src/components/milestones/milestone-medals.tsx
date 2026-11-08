@@ -69,7 +69,10 @@ export function MedalGrid({
 	className?: string;
 }) {
 	return (
-		<div className={cn("grid grid-cols-3 gap-x-2 gap-y-4", className)}>
+		// Wrapped and centred rather than a grid, so a short last row does not leave an orphan at the left.
+		<div
+			className={cn("flex flex-wrap justify-center gap-y-4 [&>*]:basis-1/3 [&>*]:px-1", className)}
+		>
 			{reached.map((m) => (
 				<ReachedMedal key={milestoneKey(m)} milestone={m} />
 			))}

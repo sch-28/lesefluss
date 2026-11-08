@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "../../../components/toast";
-import { deleteReadingSessionsEverywhere } from "../../sync";
+import { deleteReadingSessionsEverywhere, scheduleSyncPush } from "../../sync";
 import { queries } from "../queries";
+import type { ReadingSessionEdit } from "../queries/reading-sessions";
 import { readingSessionKeys, statsKeys } from "./query-keys";
 
 function useBookReadingSessions(bookId: string) {
@@ -40,9 +41,26 @@ function useDeleteReadingSessions() {
 	});
 }
 
+function useUpdateReadingSession() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, edit }: { id: string; edit: ReadingSessionEdit }) =>
+			queries.updateReadingSession(id, edit),
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: readingSessionKeys.all });
+			qc.invalidateQueries({ queryKey: statsKeys.all });
+			scheduleSyncPush(2000);
+		},
+		onError: () => {
+			toast.error("Couldn't save the session.");
+		},
+	});
+}
+
 export const readingSessionHooks = {
 	useBookReadingSessions,
 	useAllReadingSessions,
 	useReadingSessionCount,
 	useDeleteReadingSessions,
+	useUpdateReadingSession,
 };

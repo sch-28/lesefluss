@@ -10,7 +10,8 @@ export const GAUGE_MAX = 600;
 
 const SIZE = 220;
 const STROKE = 14;
-const R = (SIZE - STROKE) / 2;
+// Inset so the knob, wider than the ring, stays inside the view box.
+const R = SIZE / 2 - STROKE * 1.1;
 const CX = SIZE / 2;
 const CY = SIZE / 2;
 // A 240° arc open at the bottom, from the lower left round to the lower right.

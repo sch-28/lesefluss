@@ -1,5 +1,5 @@
 import type { MeasuredReadingMode, ReadingMode } from "./reading-credit";
-import { isMeasurableSitting } from "./reading-rates";
+import { skimCutoffWpm, speedSittings } from "./reading-rates";
 
 /**
  * The one speed model every surface reads: reading speed (scroll + page), RSVP
@@ -159,14 +159,17 @@ function fallback(speedTest: SpeedTest | null | undefined): { wpm: number; sourc
 		: { wpm: AVERAGE_READER_WPM, source: "default" };
 }
 
-/** Each book's own speed from its measurable sittings, over every row given. */
-export function bookSpeeds(rows: readonly SpeedRow[]): Record<string, BookSpeed> {
+/** Each book's own speed from its measurable, unskimmed sittings, over every row given. */
+export function bookSpeeds(
+	rows: readonly SpeedRow[],
+	cutoffWpm: number = skimCutoffWpm(rows),
+): Record<string, BookSpeed> {
 	const totals = new Map<
 		string,
 		{ words: number; activeMs: number; byMode: Map<MeasuredReadingMode, number> }
 	>();
-	for (const r of rows) {
-		if (!r.bookId || !isMeasurableSitting(r)) continue;
+	for (const r of speedSittings(rows, cutoffWpm)) {
+		if (!r.bookId) continue;
 		const t = totals.get(r.bookId) ?? { words: 0, activeMs: 0, byMode: new Map() };
 		t.words += r.wordsRead;
 		t.activeMs += r.durationMs;
@@ -190,18 +193,18 @@ export function bookSpeeds(rows: readonly SpeedRow[]): Record<string, BookSpeed>
 	return books;
 }
 
-/** The measurable sittings a window holds, so a chart over them matches the model's numbers. */
+/** The speed sittings a window holds, so a chart over them matches the model's numbers. */
 export function speedWindowRows<T extends SpeedRow>(
 	rows: readonly T[],
 	window: SpeedWindow,
 	now: number,
 ): (T & { mode: MeasuredReadingMode })[] {
-	return selectWindow(rows.filter(isMeasurableSitting) as Measurable<T>[], window, now);
+	return selectWindow(speedSittings(rows), window, now);
 }
 
 export function computeSpeedModel(rows: readonly SpeedRow[], opts: SpeedModelOptions): SpeedModel {
 	const window = opts.window ?? "recent";
-	const measurable = rows.filter(isMeasurableSitting) as Measurable<SpeedRow>[];
+	const measurable = speedSittings(rows);
 	const inWindow = selectWindow(measurable, window, opts.now);
 
 	const sums = {

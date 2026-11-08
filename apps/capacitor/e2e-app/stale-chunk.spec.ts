@@ -58,7 +58,7 @@ test("a missing /app/assets file is a 404, an app route still gets the shell", a
 	expect(missing.status()).toBe(404);
 	expect(missing.headers()["content-type"] ?? "").not.toContain("text/html");
 
-	const route = await request.get("/app/tabs/library/stats");
+	const route = await request.get("/app/tabs/stats");
 	expect(route.status()).toBe(200);
 	expect(route.headers()["content-type"]).toContain("text/html");
 	expect(await route.text()).toContain('<div id="root">');

@@ -12,12 +12,14 @@ const state = {
 	rows: [] as ReadingSession[],
 	mutateAsync: vi.fn(async (_ids: string[]) => {}),
 	toast: vi.fn(),
+	update: vi.fn(),
 };
 
 vi.mock("../../../../services/db/hooks", () => ({
 	queryHooks: {
 		useAllReadingSessions: () => ({ data: state.rows, isPending: false }),
 		useDeleteReadingSessions: () => ({ mutateAsync: state.mutateAsync }),
+		useUpdateReadingSession: () => ({ mutate: state.update, isPending: false }),
 	},
 }));
 vi.mock("../../../../services/db/queries", () => ({
@@ -80,6 +82,7 @@ afterEach(() => {
 	view = undefined;
 	state.mutateAsync.mockClear();
 	state.toast.mockClear();
+	state.update.mockClear();
 	vi.useRealTimers();
 });
 
@@ -97,7 +100,7 @@ describe("SessionsTab", () => {
 			session("c", "mm", at(3, 9)),
 		];
 		const text = (await show()).text();
-		expect(text).toContain("3 · 30m");
+		expect(text).toContain("3 sessions · 30m total");
 		expect(text).toMatch(/Today10m.*Middlemarch.*Yesterday10m.*Emma/);
 	});
 
@@ -106,6 +109,18 @@ describe("SessionsTab", () => {
 		const text = (await show()).text();
 		expect(text).toContain("380 wpm");
 		expect(text).not.toContain("400 wpm");
+	});
+
+	it("labels a skimmed sitting instead of showing its speed, and leaves it out of the average", async () => {
+		state.rows = [
+			{ ...session("fast", "mm", at(7, 9)), wordsRead: 5_500 },
+			...Array.from({ length: 5 }, (_, i) => session(`s${i}`, "mm", at(6, 12 - i))),
+		];
+		const v = await show("mm");
+		const first = v.container.querySelector("li")?.textContent ?? "";
+		expect(first).toContain("skimmed");
+		expect(first).not.toContain("550 wpm");
+		expect(v.text()).toContain("6 sessions · 1h · 250 wpm");
 	});
 
 	it("shows a book's card with the position range and deletes a few at once, with undo", async () => {
@@ -164,7 +179,7 @@ describe("SessionsTab", () => {
 		expect(state.mutateAsync).toHaveBeenCalledWith(["s0", "s1", "s2", "s3", "s4"]);
 	});
 
-	it("opens a row's menu on a tap and selects on a long press, as in the library grid", async () => {
+	it("opens a row's details on a tap and selects on a long press, as in the library grid", async () => {
 		state.rows = [session("a", "mm", at(7, 9)), session("b", "mm", at(7, 10))];
 		vi.useFakeTimers({ shouldAdvanceTime: true });
 		const v = await show();
@@ -172,14 +187,64 @@ describe("SessionsTab", () => {
 		if (!row) throw new Error("no row");
 
 		await click(row);
-		expect(document.body.textContent).toContain("Delete session");
+		expect(document.body.textContent).toContain("Duration (minutes)");
 		expect(v.text()).not.toContain("selected");
 
 		await act(async () => {
 			document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
 		});
+		await flush();
 		longPress(row);
 		expect(v.text()).toContain("1 selected");
+	});
+
+	it("edits a session's duration and mode in its details, and deletes from there", async () => {
+		state.rows = [session("a", "mm", at(7, 9))];
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+		const v = await show();
+		const row = v.container.querySelector<HTMLElement>("li > button:first-child");
+		if (!row) throw new Error("no row");
+		await click(row);
+		const body = () => document.body.textContent ?? "";
+		expect(body()).toContain("2,500");
+		expect(body()).toContain("250 wpm");
+		expect(body()).toContain("10% → 35%");
+
+		const input = document.body.querySelector<HTMLInputElement>("input[inputmode=numeric]");
+		if (!input) throw new Error("no duration input");
+		expect(input.value).toBe("10");
+		await act(async () => {
+			const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+			setter?.call(input, "12");
+			input.dispatchEvent(new Event("input", { bubbles: true }));
+		});
+		const button = (label: string) => {
+			const found = [...document.body.querySelectorAll("button")].find(
+				(b) => b.textContent === label,
+			);
+			if (!found) throw new Error(`no ${label}`);
+			return found;
+		};
+		await click(button("RSVP"));
+		await click(button("Save"));
+		expect(state.update).toHaveBeenCalledWith(
+			{ id: "a", edit: { durationMs: 720_000, mode: "rsvp" } },
+			expect.anything(),
+		);
+
+		await click(button("Delete"));
+		expect(state.toast).toHaveBeenCalledWith(
+			"1 session deleted · Streak may change",
+			expect.anything(),
+		);
+	});
+
+	it("has a visible Select button and offers All books in the book filter", async () => {
+		state.rows = [session("a", "mm", at(7, 9)), session("b", "em", at(7, 10))];
+		const v = await show("mm");
+		await click(v.getButton("Select"));
+		expect(v.text()).toContain("0 selected");
+		expect(v.getButton("Select all 1")).toBeTruthy();
 	});
 
 	it("selects rows by long press and taps, widens to the same book, and deletes the selection", async () => {

@@ -37,6 +37,8 @@ vi.mock("../../../components/rsvp-pickers", () => ({
 }));
 
 const SpeedStep = (await import("../steps/speed")).default;
+const { SpeedTestResult } = await import("../../../components/speed-test/result");
+const { SpeedGauge } = await import("../../../components/speed-test/gauge");
 const { SPEED_TEST_PASSAGES } = await import("../../../components/speed-test/passages");
 const { MIN_RSVP_WORDS, rsvpDelays, rsvpWpm, suggestDial } = await import(
 	"../../../services/stats/speed-test"
@@ -178,5 +180,58 @@ describe("onboarding speed step", () => {
 		await click(v.getButton("Try again"));
 		expect(v.getButton("Done").disabled).toBe(true);
 		expect(v.text(), "a fresh passage").not.toContain(first?.read[0]);
+	});
+
+	it("applies the suggested dial on Continue, without Use RSVP", async () => {
+		const v = await mount();
+		await click(v.getButton("Start"));
+		await click(v.getButton(/Tap to begin/));
+		const passage = SPEED_TEST_PASSAGES.find((p) => v.text().includes(p.read[0] ?? ""));
+		const words = passage?.read.join(" ").split(/\s+/).length ?? 0;
+		clock += 60_000;
+		await click(v.getButton("Done"));
+		await click(v.getButton("Skip round"));
+		expect(updateSetting).not.toHaveBeenCalled();
+		await click(v.getButton("Continue"));
+		expect(updateSetting).toHaveBeenCalledWith("wpm", suggestDial(words));
+		expect(next).toHaveBeenCalledTimes(1);
+	});
+
+	it("shows no saved time or speed-up for a skipped RSVP round", async () => {
+		const v = await mount();
+		await click(v.getButton("Start"));
+		await click(v.getButton(/Tap to begin/));
+		clock += 60_000;
+		await click(v.getButton("Done"));
+		await click(v.getButton("Skip round"));
+		const result = v.container.querySelector("[data-testid=speed-test-result]");
+		expect(result?.querySelector("dl")?.textContent).toMatch(/RSVP wpm–Faster–$/);
+		expect(v.container.querySelector("[data-testid=speed-test-book]")?.textContent).toMatch(
+			/RSVP–Saved–$/,
+		);
+	});
+
+	it("shows no negative speed-up for a reader faster than RSVP", async () => {
+		view = await render(
+			<SpeedTestResult
+				readingWpm={800}
+				rsvpWpm={440}
+				dial={700}
+				appliedDial={null}
+				onDialChange={() => {}}
+				onApply={() => {}}
+			/>,
+		);
+		expect(view.text()).not.toMatch(/-\d/);
+		expect(view.container.querySelector("[data-testid=speed-test-book]")?.textContent).toMatch(
+			/Saved–$/,
+		);
+	});
+
+	it("fits a reading above 800 on the gauge", async () => {
+		view = await render(<SpeedGauge reading={850} value="850" label="wpm" animate={false} />);
+		const arc = view.container.querySelector("[data-testid=gauge-reading]");
+		expect(arc?.getAttribute("stroke-dasharray")).toBe("850 900");
+		expect(arc?.getAttribute("pathLength")).toBe("900");
 	});
 });

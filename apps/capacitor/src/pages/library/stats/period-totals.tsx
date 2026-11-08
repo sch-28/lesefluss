@@ -1,9 +1,16 @@
-import { Tabs, TabsList, TabsTrigger } from "@lesefluss/ui/tabs";
+import { cn } from "@lesefluss/ui/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { queryHooks } from "../../../services/db/hooks";
 import { formatDuration } from "../../../utils/date-utils";
 import { AnimatedNumber } from "./animated-number";
-import { isPeriod, type Period, type PeriodWindow } from "./period";
+import { PERIODS, type Period, type PeriodWindow } from "./period";
+
+const PERIOD_CHIP_LABELS: Record<Period, string> = {
+	today: "Today",
+	"7d": "7 days",
+	"30d": "30 days",
+	all: "All time",
+};
 
 interface Props {
 	/** Page-level locked "now" so query keys stay stable across renders. */
@@ -22,21 +29,35 @@ export function PeriodTabs({
 	onPeriodChange: (period: Period) => void;
 	className?: string;
 }) {
+	// Chips, not tabs: the page's tabs switch views, this only scopes the totals under it.
 	return (
-		<Tabs
-			value={period}
-			onValueChange={(v) => {
-				if (isPeriod(v)) onPeriodChange(v);
-			}}
-			className={className}
+		<fieldset
+			className={cn("m-0 flex items-center gap-2 border-0 p-0", className)}
+			data-testid="period-control"
 		>
-			<TabsList className="w-full">
-				<TabsTrigger value="today">Today</TabsTrigger>
-				<TabsTrigger value="7d">7d</TabsTrigger>
-				<TabsTrigger value="30d">30d</TabsTrigger>
-				<TabsTrigger value="all">All</TabsTrigger>
-			</TabsList>
-		</Tabs>
+			<legend className="sr-only">Totals for</legend>
+			<span className="text-muted-foreground text-xs" aria-hidden="true">
+				Totals for
+			</span>
+			<div className="flex flex-wrap gap-1.5">
+				{PERIODS.map((p) => (
+					<button
+						key={p}
+						type="button"
+						aria-pressed={p === period}
+						onClick={() => onPeriodChange(p)}
+						className={cn(
+							"rounded-full border px-3 py-1 text-xs",
+							p === period
+								? "border-foreground/40 bg-foreground text-background"
+								: "border-border text-muted-foreground hover:bg-muted",
+						)}
+					>
+						{PERIOD_CHIP_LABELS[p]}
+					</button>
+				))}
+			</div>
+		</fieldset>
 	);
 }
 
@@ -115,11 +136,7 @@ function Stat({
 			</div>
 			<div className="mt-1 text-[11px] text-muted-foreground uppercase tracking-wider">{label}</div>
 			{period !== "all" && delta != null && (
-				<div
-					className={`mt-1 font-medium text-[10px] ${
-						delta >= 0 ? "text-emerald-500" : "text-rose-500"
-					}`}
-				>
+				<div className="mt-1 font-medium text-[10px] text-muted-foreground">
 					{delta >= 0 ? "▲" : "▼"} {Math.abs(delta)}%
 				</div>
 			)}

@@ -17,6 +17,7 @@ import {
 	Scale,
 	SlidersHorizontal,
 	Sparkles,
+	Target,
 	Users,
 	Zap,
 } from "lucide-react";
@@ -129,6 +130,12 @@ function SettingsLanding() {
 						to="/tabs/settings/reader"
 					/>
 					<NavRow icon={Zap} title="RSVP" subtitle={rsvpSubtitle} to="/tabs/settings/rsvp" />
+					<NavRow
+						icon={Target}
+						title="Goals"
+						subtitle="Daily goals · Reminders"
+						to="/tabs/settings/goals"
+					/>
 					{IS_READ_ALOUD_SUPPORTED && (
 						<NavRow
 							icon={Headphones}

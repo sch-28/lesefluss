@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ReadingSession } from "../../../../services/db/schema";
+import { makeBook } from "../../../../test/book-fixture";
 import {
+	bookFilterOptions,
 	dayLabel,
 	deleteConfirmCopy,
 	deletedToastText,
@@ -53,6 +55,32 @@ describe("filterSessions", () => {
 			"b",
 			"c",
 		]);
+	});
+
+	it("hides sittings under a minute, which the recorder no longer keeps", () => {
+		const short = [
+			session({ id: "s", durationMs: 59_000 }),
+			session({ id: "m", durationMs: 60_000 }),
+		];
+		expect(filterSessions(short, { mode: "all", hidden: new Set() }).map((r) => r.id)).toEqual([
+			"m",
+		]);
+	});
+});
+
+describe("bookFilterOptions", () => {
+	it("leads with All books, so the list is never empty, then the books by title", () => {
+		const books = new Map([
+			["b1", makeBook({ id: "b1", title: "Middlemarch" })],
+			["b2", makeBook({ id: "b2", title: "Emma" })],
+		]);
+		const rows = [session({ id: "a" }), session({ id: "b", bookId: "b2" }), session({ id: "c" })];
+		expect(bookFilterOptions(rows, books)).toEqual([
+			{ value: "", label: "All books", count: 3 },
+			{ value: "b2", label: "Emma", count: 1 },
+			{ value: "b1", label: "Middlemarch", count: 2 },
+		]);
+		expect(bookFilterOptions([], books)).toEqual([{ value: "", label: "All books", count: 0 }]);
 	});
 });
 

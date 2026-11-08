@@ -8,16 +8,24 @@ import {
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { click, flush, type Rendered, render } from "../../../test/render";
-import { parseStatsSearch } from "../stats/stats-search";
+import { parseStatsSearch, redirectToStatsTab } from "../stats/stats-search";
 
 const sessions = vi.hoisted(() => ({ count: 3 }));
+vi.mock("../stats/today-goal-card", () => ({ TodayGoalCard: () => null }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
 		useReadingSessionCount: () => ({ data: sessions.count, isLoading: false }),
 		useStatsStreak: () => ({ data: { current: 1, longest: 2, freezesBanked: 0 } }),
+		useActiveGoalPlans: () => ({ data: [] }),
 	},
 }));
-vi.mock("../../../components/speed-chip/speed-chip", () => ({ SpeedChip: () => null }));
+vi.mock("../../../components/speed-chip/speed-chip", () => ({
+	SpeedChip: ({ onOpen }: { onOpen?: () => void }) => (
+		<button type="button" onClick={onOpen}>
+			Speed chip
+		</button>
+	),
+}));
 const marker = (name: string) => () => <div data-testid={name} />;
 vi.mock("../stats/hero", () => ({ Hero: marker("overview") }));
 vi.mock("../stats/period-totals", () => ({ PeriodTotals: () => null, PeriodTabs: () => null }));
@@ -61,12 +69,18 @@ async function open(url: string) {
 	const root = createRootRoute();
 	const stats = createRoute({
 		getParentRoute: () => root,
-		path: "/tabs/library/stats",
+		path: "/tabs/stats",
 		validateSearch: parseStatsSearch,
 		component: Stats,
 	});
+	const legacy = createRoute({
+		getParentRoute: () => root,
+		path: "/tabs/library/stats",
+		validateSearch: parseStatsSearch,
+		beforeLoad: redirectToStatsTab,
+	});
 	const router = createRouter({
-		routeTree: root.addChildren([stats]),
+		routeTree: root.addChildren([stats, legacy]),
 		history: createMemoryHistory({ initialEntries: [url] }),
 	});
 	view = await render(<RouterProvider router={router} />);
@@ -89,18 +103,18 @@ async function tap(label: string) {
 
 describe("Stats tabs", () => {
 	it("opens on Overview at the bare address", async () => {
-		await open("/tabs/library/stats");
+		await open("/tabs/stats");
 		expect(shown()).toBe("overview");
 	});
 
 	it("opens the tab and book filter the address names", async () => {
-		await open("/tabs/library/stats?tab=sessions&book=f0f0f0f0");
+		await open("/tabs/stats?tab=sessions&book=f0f0f0f0");
 		expect(shown()).toBe("sessions");
 		expect(view?.text()).toContain("f0f0f0f0");
 	});
 
 	it("puts a tapped tab in the address, and Overview back to the bare one", async () => {
-		const router = await open("/tabs/library/stats");
+		const router = await open("/tabs/stats");
 		await tap("Speed");
 		expect(shown()).toBe("speed");
 		expect(router.state.location.search).toEqual({ tab: "speed" });
@@ -113,7 +127,7 @@ describe("Stats tabs", () => {
 	});
 
 	it("keeps the Sessions tab in the address while the book filter changes", async () => {
-		const router = await open("/tabs/library/stats?tab=sessions");
+		const router = await open("/tabs/stats?tab=sessions");
 		await click(view?.getButton("Pick") as HTMLButtonElement);
 		expect(router.state.location.search).toEqual({ tab: "sessions", book: "e1e1e1e1" });
 		expect(view?.text()).toContain("e1e1e1e1");
@@ -122,9 +136,27 @@ describe("Stats tabs", () => {
 		expect(shown()).toBe("sessions");
 	});
 
+	it("opens the Speed tab from the speed chip instead of a popover", async () => {
+		const router = await open("/tabs/stats");
+		await click(view?.getButton("Speed chip") as HTMLButtonElement);
+		expect(shown()).toBe("speed");
+		expect(router.state.location.search).toEqual({ tab: "speed" });
+	});
+
+	it("sends the old library address to the same tab of the Stats tab", async () => {
+		const router = await open("/tabs/library/stats?tab=sessions&book=f0f0f0f0");
+		expect(router.state.location.pathname).toBe("/tabs/stats");
+		expect(router.state.location.search).toEqual({ tab: "sessions", book: "f0f0f0f0" });
+		expect(shown()).toBe("sessions");
+		view?.unmount();
+		const bare = await open("/tabs/library/stats?tab=speed");
+		expect(bare.state.location.pathname).toBe("/tabs/stats");
+		expect(bare.state.location.search).toEqual({ tab: "speed" });
+	});
+
 	it("keeps the Speed tab reachable before the first sitting", async () => {
 		sessions.count = 0;
-		const router = await open("/tabs/library/stats");
+		const router = await open("/tabs/stats");
 		expect(shown()).toBe("empty");
 		await tap("Speed");
 		expect(shown()).toBe("speed");

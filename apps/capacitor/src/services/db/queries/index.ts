@@ -121,6 +121,7 @@ import {
 	getAllReadingSessions,
 	getBookReadingSessions,
 	getReadingSessionsSince,
+	updateReadingSession,
 	upsertReadingSession,
 	upsertReadingSessions,
 } from "./reading-sessions";
@@ -260,6 +261,7 @@ export const queries = {
 	addReadingSession,
 	upsertReadingSession,
 	upsertReadingSessions,
+	updateReadingSession,
 	deleteAllReadingSessions,
 	deleteReadingSession,
 	deleteReadingSessions,

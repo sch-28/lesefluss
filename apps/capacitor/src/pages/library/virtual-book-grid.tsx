@@ -224,7 +224,7 @@ const VirtualBookGrid: React.FC<Props> = ({
 							{row.items.map((item, column) => cell(item, column, "min-w-0"))}
 						</div>
 					) : (
-						<div key={row.key} className="pb-3">
+						<div key={row.key} className="pb-4">
 							{cell(row.items[0] as LibraryItem, 0)}
 						</div>
 					);

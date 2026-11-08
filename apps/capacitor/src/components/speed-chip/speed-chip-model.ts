@@ -35,7 +35,7 @@ export function modeMix(model: SpeedModel): { reading: number; rsvp: number } | 
 }
 
 export const WINDOW_LABELS: Record<SpeedWindow, string> = {
-	recent: "Recent 10h",
+	recent: "Last 10h",
 	"30d": "30 days",
 	all: "All time",
 };

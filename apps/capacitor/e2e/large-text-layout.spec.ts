@@ -100,7 +100,7 @@ for (const scale of SCALES) {
 		test("the library, stats, explore and every settings page fit", async ({ page }) => {
 			await mockCatalog(page);
 			await seedBigBook(page);
-			for (const route of ["/tabs/library", "/tabs/library/stats"]) {
+			for (const route of ["/tabs/library", "/tabs/stats"]) {
 				await page.goto(route);
 				await expect(page.locator("nav").last()).toBeVisible();
 				expect((await zoomedSizes(page)).root, "the zoom took").toBe(`${16 * scale.factor}px`);

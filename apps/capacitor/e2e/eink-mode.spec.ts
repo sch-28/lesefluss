@@ -167,13 +167,13 @@ test.describe("e-ink mode on a small reader", () => {
 		page,
 	}) => {
 		await freshInstallAtLibrary(page);
-		await page.goto("/tabs/library/stats");
+		await page.goto("/tabs/stats");
 		await expect(page.getByRole("heading", { name: "No stats yet" })).toBeVisible();
 		// The control: without the mode this screen really does move, so the check can fail.
 		expect(await isPageStill(page)).toBe(false);
 
 		await turnOnEinkMode(page);
-		await page.goto("/tabs/library/stats");
+		await page.goto("/tabs/stats");
 		await expect(page.getByRole("heading", { name: "No stats yet" })).toBeVisible();
 		expect(await isPageStill(page)).toBe(true);
 	});

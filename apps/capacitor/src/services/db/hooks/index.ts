@@ -253,6 +253,7 @@ export const queryHooks = {
 	useBookReadingSessions: readingSessionHooks.useBookReadingSessions,
 	useReadingSessionCount: readingSessionHooks.useReadingSessionCount,
 	useDeleteReadingSessions: readingSessionHooks.useDeleteReadingSessions,
+	useUpdateReadingSession: readingSessionHooks.useUpdateReadingSession,
 	useAllReadingSessions: readingSessionHooks.useAllReadingSessions,
 
 	// ── Danger Zone (bulk deletions) ───────────────────────────────────────

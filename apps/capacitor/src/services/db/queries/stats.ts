@@ -3,13 +3,14 @@ import {
 	bookStatus,
 	computeSpeedModel,
 	deriveMilestones,
-	isMeasurableSitting,
 	type MeasuredReadingMode,
 	type Milestones,
 	readingProgress,
 	rollUpWorks,
 	type SpeedModel,
 	type SpeedWindow,
+	skimCutoffWpm,
+	speedSittings,
 	speedWindowRows,
 	THIRTY_DAYS_MS,
 	wordPos,
@@ -577,6 +578,18 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 	let longestSessionAt: number | null = null;
 	const speedSeries: SpeedPoint[] = [];
 
+	// The skim cutoff comes from every sitting, as in Stats › Sessions and the speed model,
+	// so a sitting is skimmed or not wherever it is shown.
+	const cutoff = skimCutoffWpm(
+		await db
+			.select({
+				mode: readingSessions.mode,
+				durationMs: readingSessions.durationMs,
+				wordsRead: readingSessions.wordsRead,
+			})
+			.from(readingSessions),
+	);
+	const measured = new Set<(typeof rows)[number]>(speedSittings(rows, cutoff));
 	for (const r of rows) {
 		totalDurationMs += r.durationMs;
 		if (r.startedAt > lastReadAt) lastReadAt = r.startedAt;
@@ -585,8 +598,8 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 			longestSessionAt = r.startedAt;
 		}
 		// Totals above are unconditional; only the derived rate is gated, so a
-		// position jump still counts as time spent and words covered.
-		if (isMeasurableSitting(r)) {
+		// position jump or a skim still counts as time spent and words covered.
+		if (measured.has(r) && r.mode !== "listen") {
 			speedSeries.push({
 				startedAt: r.startedAt,
 				mode: r.mode,
@@ -596,7 +609,7 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 		}
 	}
 
-	const speed = bookSpeeds(rows)[bookId];
+	const speed = bookSpeeds(rows, cutoff)[bookId];
 
 	return {
 		totalDurationMs,

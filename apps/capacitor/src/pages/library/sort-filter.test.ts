@@ -158,6 +158,35 @@ describe("the series facet with series collections", () => {
 	});
 });
 
+describe("facet options", () => {
+	it("sorts names with numbers naturally", () => {
+		const books = ["Saga 107", "Saga 22", "Saga 1"].map((author, i) =>
+			makeBook({ id: `0000000${i}`, author }),
+		);
+		const items = buildLibraryItems(books, [], new Map(), Date.now());
+		expect(facetOptions(items).author.map((o) => o.label)).toEqual([
+			"Saga 1",
+			"Saga 22",
+			"Saga 107",
+		]);
+	});
+
+	it("counts each facet's values among the books the other facets let through", () => {
+		const books = [
+			makeBook({ id: "aaaaaaaa", author: "Le Guin", status: "finished" }),
+			makeBook({ id: "bbbbbbbb", author: "Le Guin", status: "want" }),
+			makeBook({ id: "cccccccc", author: "Herbert", status: "want" }),
+		];
+		const items = buildLibraryItems(books, [], new Map(), Date.now());
+		const options = facetOptions(items, [], { author: { in: ["Le Guin"], out: [] } });
+		const authors = Object.fromEntries(options.author.map((o) => [o.value, o.count]));
+		expect(authors).toEqual({ "Le Guin": 2, Herbert: 1 });
+		const finished = options.status.find((o) => o.value === "finished")?.count;
+		expect(finished).toBe(1);
+		expect(options.status.reduce((n, o) => n + o.count, 0)).toBe(2);
+	});
+});
+
 describe("sorting by recent and title", () => {
 	const apple = makeBook({ id: "aaaaaaaa", title: "Apple Book", addedAt: 100 });
 	const zebra = makeBook({ id: "bbbbbbbb", title: "Zebra Book", addedAt: 200 });

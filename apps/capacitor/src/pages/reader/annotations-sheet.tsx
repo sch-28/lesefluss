@@ -8,7 +8,13 @@
  */
 
 import { Button } from "@lesefluss/ui/button";
-import { Drawer, DrawerContent, DrawerHeader, drawerSnapPoints } from "@lesefluss/ui/drawer";
+import {
+	Drawer,
+	DrawerContent,
+	DrawerHeader,
+	DrawerTitle,
+	drawerSnapPoints,
+} from "@lesefluss/ui/drawer";
 import { ToggleGroup, ToggleGroupItem } from "@lesefluss/ui/toggle-group";
 import { cn } from "@lesefluss/ui/utils";
 import { Compass, Plus } from "lucide-react";
@@ -131,9 +137,10 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 			setActiveSnapPoint={setSnap}
 		>
 			<DrawerContent
-				aria-label="Annotations"
+				aria-describedby={undefined}
 				className={cn("h-full", theme ? `reader-theme-${theme}` : undefined)}
 			>
+				<DrawerTitle className="sr-only">Annotations</DrawerTitle>
 				<DrawerHeader className="flex-row items-center gap-2 px-3">
 					<ToggleGroup
 						type="single"

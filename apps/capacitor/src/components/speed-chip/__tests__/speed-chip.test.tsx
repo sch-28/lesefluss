@@ -18,9 +18,24 @@ vi.mock("../../../services/db/hooks", () => ({
 		useStatsSpeedModel: () => ({ data: state.model }),
 		useSettings: () => ({ data: state.settings }),
 		useSaveSettings: () => ({ mutate }),
+		useStatsWpmTrend: (_window: string, mode: string) => ({
+			data: {
+				granularity: "day",
+				measured:
+					mode === "rsvp"
+						? [
+								{ bucketStart: new Date(2026, 9, 1).getTime(), avgWpm: 400 },
+								{ bucketStart: new Date(2026, 9, 8).getTime(), avgWpm: 420 },
+							]
+						: [
+								{ bucketStart: new Date(2026, 9, 1).getTime(), avgWpm: 280 },
+								{ bucketStart: new Date(2026, 9, 8).getTime(), avgWpm: 260 },
+							],
+				target: [],
+			},
+		}),
 	},
 }));
-vi.mock("../../../hooks/use-media-query", () => ({ useMediaQuery: () => true }));
 vi.mock("@tanstack/react-router", () => ({
 	Link: ({
 		children,
@@ -125,18 +140,35 @@ describe("SpeedChip", () => {
 		expect(chipText(rendered)).toBe("RSVP 420 wpm·Reading 260");
 	});
 
-	it("opens the details with both tiles, the mix and the Speed tab link", async () => {
+	it("opens a popover: the big number, a row per mode with its trend, the window, the details link", async () => {
 		state.model = model({ rsvp: true });
 		rendered = await render(<SpeedChip />);
 		await click(rendered.getButton(/260/));
-		const text = (details()?.textContent ?? "").replace(/\s+/g, " ");
-		expect(text).toContain("Reading260 wpm");
-		expect(text).toContain("RSVP420 wpm");
-		expect(text).toContain("Dial 450");
-		expect(text).toContain("Reading 61% · RSVP 39%");
+		const q = (id: string) => document.querySelector(`[data-testid=${id}]`)?.textContent ?? "";
+		expect(q("speed-big")).toBe("260wpm Reading");
+		expect(q("speed-row-reading")).toContain("260 wpm");
+		expect(q("speed-row-reading")).toContain("−20 since");
+		expect(q("speed-row-rsvp")).toContain("420 wpm");
+		expect(q("speed-row-rsvp")).toContain("+20 since");
+		expect(q("speed-row-rsvp")).toContain("Avg dial 450");
+		expect(document.querySelectorAll("[data-testid^=speed-row-] svg")).toHaveLength(2);
+		expect(details()?.textContent).toContain("Last 10h");
+		expect(details()?.textContent).not.toContain("Pace");
 		expect(
-			document.querySelector("a[href='/tabs/library/stats?tab=speed']")?.textContent,
-		).toContain("Open Speed tab");
+			document.querySelector("[role=dialog]")?.closest("[data-slot=popover-content]"),
+		).not.toBeNull();
+		expect(document.querySelector("a[href='/tabs/stats?tab=speed']")?.textContent).toContain(
+			"Speed details",
+		);
+	});
+
+	it("hands the tap to onOpen instead of opening the popover", async () => {
+		state.model = model();
+		const onOpen = vi.fn();
+		rendered = await render(<SpeedChip onOpen={onOpen} />);
+		await click(rendered.getButton(/260/));
+		expect(onOpen).toHaveBeenCalledOnce();
+		expect(details()).toBeNull();
 	});
 });
 
@@ -148,6 +180,7 @@ describe("SpeedDetails dial", () => {
 				model={state.model}
 				dialWpm={400}
 				showDial
+				primary="reading"
 				book={{ id: "b1", wordsLeft: 36_000 }}
 				onNavigate={() => {}}
 			/>,
@@ -168,7 +201,13 @@ describe("SpeedDetails dial", () => {
 	it("stops at the dial's limits without saving", async () => {
 		state.model = model({ rsvp: true });
 		rendered = await render(
-			<SpeedDetails model={state.model} dialWpm={1000} showDial onNavigate={() => {}} />,
+			<SpeedDetails
+				model={state.model}
+				dialWpm={1000}
+				showDial
+				primary="reading"
+				onNavigate={() => {}}
+			/>,
 		);
 		expect(rendered.getButton("Dial +25").disabled).toBe(true);
 		await click(rendered.getButton("Dial +25"));
@@ -182,6 +221,7 @@ describe("SpeedDetails dial", () => {
 				model={state.model}
 				dialWpm={400}
 				showDial
+				primary="reading"
 				book={{ id: "b1", wordsLeft: 36_000 }}
 				onNavigate={() => {}}
 			/>,

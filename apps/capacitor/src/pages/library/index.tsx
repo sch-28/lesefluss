@@ -23,10 +23,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { importRequest } from "../../commands/global";
 import { useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
+import { tabBarHidden } from "../../components/app-shell/tab-bar-visibility";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import BLEIndicator from "../../components/ble-indicator";
 import { setBooksDragData } from "../../components/collections/drag-data";
 import { ConfirmDialog } from "../../components/confirm-dialog";
+import { HeaderGoalRing } from "../../components/header-goal-ring";
 import { canSaveAsShelf, SaveShelfDialog } from "../../components/smart-shelves/save-shelf-dialog";
 import { ShelfActions } from "../../components/smart-shelves/shelf-actions";
 import { toast } from "../../components/toast";
@@ -179,6 +181,7 @@ const Library: React.FC = () => {
 	// search bar would look like an empty library with no visible cause.
 	const [search, setSearch] = useState("");
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
+	const [isSearchFocused, setSearchFocused] = useState(false);
 	const [viewMode, setViewMode] = usePersistentString(VIEW_MODE_KEY, isViewMode, "grid");
 	// The table needs the width; a narrow window shows a stored table as the list.
 	const shownView: LibraryViewMode = viewMode === "table" && !isDesktop ? "list" : viewMode;
@@ -388,8 +391,8 @@ const Library: React.FC = () => {
 		],
 	);
 	const options = useMemo(
-		() => facetOptions(allItems, collectionsQuery.data),
-		[allItems, collectionsQuery.data],
+		() => facetOptions(allItems, collectionsQuery.data, filter),
+		[allItems, collectionsQuery.data, filter],
 	);
 	// A value can vanish while it is filtered on (a tag's last book edited or
 	// deleted), which would leave an empty library with no visible cause.
@@ -469,6 +472,14 @@ const Library: React.FC = () => {
 	});
 
 	const searchInputRef = useRef<HTMLInputElement>(null);
+	// The phone keyboard is up while the search has focus; the tab bar would ride on it.
+	// Selection owns the flag while its bar is shown.
+	const isTypingSearch = isSearchOpen && isSearchFocused && !selection.isSelecting;
+	useEffect(() => {
+		if (!isTypingSearch) return;
+		tabBarHidden.set(true);
+		return () => tabBarHidden.set(false);
+	}, [isTypingSearch]);
 	const [isViewOpen, setViewOpen] = useState(false);
 	const [isGroupByKeyed, setGroupByKeyed] = useState(false);
 	const isGridShown =
@@ -595,6 +606,7 @@ const Library: React.FC = () => {
 				title="Library"
 				right={
 					<>
+						<HeaderGoalRing />
 						{controls.search && (
 							<Button
 								variant="ghost"
@@ -687,7 +699,11 @@ const Library: React.FC = () => {
 			{selection.isSelecting && <BulkActionBar selection={selection} />}
 
 			{controls.search && isSearchOpen && (
-				<div className="border-border border-b px-4 py-2">
+				<div
+					className="border-border border-b px-4 py-2"
+					onFocus={() => setSearchFocused(true)}
+					onBlur={() => setSearchFocused(false)}
+				>
 					<SearchAutocomplete
 						value={search}
 						onValueChange={setSearch}

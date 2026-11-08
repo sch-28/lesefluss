@@ -101,7 +101,10 @@ export function SpeedTest({ onActions, onSkip, onFinish, skipLabel, finishLabel 
 			showResult(rsvpWpmOf(delays, progress.shown));
 		},
 		skipRound: () => showResult(null),
-		finish: onFinish,
+		finish: () => {
+			if (appliedDial !== dial) updateSetting("wpm", dial);
+			onFinish();
+		},
 	};
 
 	const spec = actionSpec(phase, {
@@ -129,7 +132,7 @@ export function SpeedTest({ onActions, onSkip, onFinish, skipLabel, finishLabel 
 	return (
 		<div className="flex flex-col" data-testid="speed-test">
 			{phase !== "intro" && (
-				<div className="mb-4 flex items-center justify-between">
+				<div className="mb-4">
 					<ol className="flex items-center gap-3 text-xs" aria-label="Speed test steps">
 						{STEPS.map((step, i) => (
 							<li
@@ -145,11 +148,6 @@ export function SpeedTest({ onActions, onSkip, onFinish, skipLabel, finishLabel 
 							</li>
 						))}
 					</ol>
-					{phase !== "result" && (
-						<Button variant="ghost" size="sm" onClick={onSkip}>
-							Skip test
-						</Button>
-					)}
 				</div>
 			)}
 

@@ -1,4 +1,4 @@
-import { isMeasurableSitting, wpmFrom } from "@lesefluss/core";
+import { isMeasurableSitting, isSkimmedSitting, wpmFrom } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import {
 	DropdownMenu,
@@ -208,6 +208,7 @@ export type SessionActions = {
 	/** Left out where the list already shows one book. */
 	onOnlyBook?: (session: ReadingSession) => void;
 	onDelete: (session: ReadingSession) => void;
+	onOpen: (session: ReadingSession) => void;
 };
 
 /** Sessions under their day headings; `isBookView` titles each row with its position range. */
@@ -216,6 +217,7 @@ export function SessionDays({
 	books,
 	isBookView,
 	actions,
+	skimCutoff,
 	listClassName,
 	headingClassName,
 }: {
@@ -223,6 +225,8 @@ export function SessionDays({
 	books: ReadonlyMap<string, Book>;
 	isBookView: boolean;
 	actions: SessionActions;
+	/** From `skimCutoffWpm` over the rows the speed figures come from. */
+	skimCutoff: number;
 	listClassName?: string;
 	headingClassName?: string;
 }) {
@@ -245,6 +249,7 @@ export function SessionDays({
 						session={session}
 						book={books.get(session.bookId) ?? null}
 						isBookView={isBookView}
+						isSkimmed={isSkimmedSitting(session, skimCutoff)}
 						isSelecting={isSelecting}
 						isSelected={actions.selected?.has(session.id) ?? false}
 						onToggleSelect={() => actions.onToggleSelect(session)}
@@ -252,6 +257,7 @@ export function SessionDays({
 						onOpenBook={actions.onOpenBook && (() => actions.onOpenBook?.(session))}
 						onOnlyBook={actions.onOnlyBook && (() => actions.onOnlyBook?.(session))}
 						onDelete={() => actions.onDelete(session)}
+						onOpen={() => actions.onOpen(session)}
 					/>
 				))}
 			</ul>
@@ -263,6 +269,7 @@ type ItemProps = {
 	session: ReadingSession;
 	book: Book | null;
 	isBookView: boolean;
+	isSkimmed: boolean;
 	isSelecting: boolean;
 	isSelected: boolean;
 	onToggleSelect: () => void;
@@ -270,12 +277,14 @@ type ItemProps = {
 	onOpenBook?: () => void;
 	onOnlyBook?: () => void;
 	onDelete: () => void;
+	onOpen: () => void;
 };
 
 function SessionItem({
 	session,
 	book,
 	isBookView,
+	isSkimmed,
 	isSelecting,
 	isSelected,
 	onToggleSelect,
@@ -283,17 +292,21 @@ function SessionItem({
 	onOpenBook,
 	onOnlyBook,
 	onDelete,
+	onOpen,
 }: ItemProps) {
 	const [isMenuOpen, setMenuOpen] = useState(false);
 	const press = useLongPress({
-		onTap: () => (isSelecting ? onToggleSelect() : setMenuOpen(true)),
+		onTap: () => (isSelecting ? onToggleSelect() : onOpen()),
 		onMenu: () => setMenuOpen(true),
 		onLongPress: onStartSelect,
 		enabled: !isSelecting,
 	});
 
 	// wpmAvg holds the dial on RSVP rows; show what the sitting delivered, as the speed model does.
-	const wpm = isMeasurableSitting(session) ? wpmFrom(session.wordsRead, session.durationMs) : null;
+	const wpm =
+		isMeasurableSitting(session) && !isSkimmed
+			? wpmFrom(session.wordsRead, session.durationMs)
+			: null;
 	const wordCount = book?.wordCount ?? 0;
 	const title =
 		isBookView && wordCount > 0
@@ -319,17 +332,15 @@ function SessionItem({
 					</span>
 				)}
 				<span className="min-w-0 flex-1">
-					<span className="flex items-center gap-2">
-						<span className="truncate text-sm">{title}</span>
-						{session.mode === "rsvp" && <ModeBadge mode="rsvp" />}
-					</span>
+					<span className="block truncate text-sm">{title}</span>
 					<span className="mt-0.5 block truncate text-muted-foreground text-xs">
 						{formatClock(session.startedAt)} · {MODE_BADGE_LABELS[session.mode]}
 					</span>
 				</span>
 				<span className="shrink-0 text-right text-foreground/80 text-xs tabular-nums">
-					<span className="block">{formatDuration(session.durationMs)}</span>
+					<span className="block whitespace-nowrap">{formatDuration(session.durationMs)}</span>
 					{wpm != null && <span className="block text-muted-foreground">{wpm} wpm</span>}
+					{isSkimmed && <span className="block text-muted-foreground">skimmed</span>}
 				</span>
 			</button>
 			{!isSelecting && (
@@ -340,6 +351,7 @@ function SessionItem({
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
+						<DropdownMenuItem onSelect={onOpen}>Details</DropdownMenuItem>
 						{onOpenBook && <DropdownMenuItem onSelect={onOpenBook}>Open book</DropdownMenuItem>}
 						<DropdownMenuItem onSelect={onStartSelect}>Select</DropdownMenuItem>
 						{onOnlyBook && (

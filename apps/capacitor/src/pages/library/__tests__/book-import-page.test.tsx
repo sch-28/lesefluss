@@ -78,7 +78,7 @@ function makeRouter() {
 	});
 	const edit = createRoute({
 		getParentRoute: () => root,
-		path: "/tabs/library/stats",
+		path: "/tabs/stats",
 		component: UnsavedEdit,
 	});
 	window.history.replaceState(null, "", "/tabs/library");
@@ -172,12 +172,12 @@ describe("BookImportPage", () => {
 	});
 
 	it("still opens a staged import once a page with unsaved edits is left", async () => {
-		await act(async () => router.navigate({ to: "/tabs/library/stats" }));
+		await act(async () => router.navigate({ to: "/tabs/stats" }));
 		await settle();
 		isEditing = true;
 		await act(async () => stage(staged("Red Rising")));
 		await settle();
-		expect(path()).toBe("/tabs/library/stats");
+		expect(path()).toBe("/tabs/stats");
 
 		isEditing = false;
 		await act(async () => router.navigate({ to: "/tabs/library" }));

@@ -10,6 +10,7 @@ import {
 	sortBookRows,
 } from "../../../../services/stats/speed-tab";
 import { formatDuration } from "../../../../utils/date-utils";
+import { TitleCover } from "../title-cover";
 
 export const BOOK_LIST_PREVIEW = 7;
 
@@ -33,17 +34,12 @@ function DeltaBar({ percent }: { percent: number }) {
 				<span
 					className={cn(
 						"absolute top-0 h-full",
-						percent >= 0 ? "left-1/2 bg-emerald-500" : "right-1/2 bg-red-500",
+						percent >= 0 ? "left-1/2 bg-foreground/50" : "right-1/2 bg-foreground/50",
 					)}
 					style={{ width: `${width}%` }}
 				/>
 			</span>
-			<span
-				className={cn(
-					"w-9 text-right text-[11px] tabular-nums",
-					percent > 0 ? "text-emerald-600" : percent < 0 ? "text-red-600" : "text-muted-foreground",
-				)}
-			>
+			<span className={cn("w-9 text-right text-[11px] text-muted-foreground tabular-nums")}>
 				{percent > 0 ? `+${percent}` : percent < 0 ? `−${Math.abs(percent)}` : "±0"}%
 			</span>
 		</span>
@@ -89,7 +85,11 @@ export function BookSpeedList({ model }: { model: SpeedModel }) {
 							data-testid="book-speed-row"
 						>
 							<div className="h-12 w-8 flex-shrink-0 overflow-hidden rounded-sm bg-muted">
-								<CoverImage src={row.coverImage} alt={row.title} />
+								<CoverImage
+									src={row.coverImage}
+									alt={row.title}
+									fallback={<TitleCover title={row.title} />}
+								/>
 							</div>
 							<div className="min-w-0 flex-1">
 								<div className="flex items-center gap-1.5">
@@ -100,7 +100,7 @@ export function BookSpeedList({ model }: { model: SpeedModel }) {
 								</div>
 								<div className="text-[11px] text-muted-foreground tabular-nums">
 									{formatDuration(row.activeMs)}
-									{row.mode === "rsvp" && row.dialWpm !== null ? ` · dial ${row.dialWpm}` : ""}
+									{row.mode === "rsvp" && row.dialWpm !== null ? ` · avg dial ${row.dialWpm}` : ""}
 								</div>
 							</div>
 							<div className="flex flex-col items-end gap-0.5">

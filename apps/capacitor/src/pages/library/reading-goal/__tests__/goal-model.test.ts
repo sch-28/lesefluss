@@ -6,6 +6,7 @@ import {
 	daysMetWithToday,
 	daysToSlider,
 	finishAtMinutes,
+	goalAmountLabel,
 	goalSpec,
 	goalTone,
 	liveToday,
@@ -19,6 +20,7 @@ import {
 	setupValues,
 	signed,
 	sliderToDays,
+	switchGoalUnit,
 	todayFigure,
 } from "../goal-model";
 import { at, makeGoal, makePlan, session, WORDS } from "./goal-fixtures";
@@ -213,6 +215,11 @@ describe("minute goals", () => {
 		expect(rsvpComparison(values, book(0, 10), 350, 11)).toBeNull();
 	});
 
+	it("hides a percent goal's RSVP row when it rounds to the normal minutes", () => {
+		const values = setupValues({ lock: "date", days: 10 }, book(0, 200));
+		expect(rsvpComparison(values, book(0, 200), 350, 201)).toBeNull();
+	});
+
 	it("shows a percent goal's RSVP minutes a day, terse", () => {
 		const values = setupValues({ lock: "date", days: 10 }, book(0, 10));
 		// 100 words a day: 10 min at 10 wpm, 5 min at 20.
@@ -241,5 +248,44 @@ describe("minute goals", () => {
 	it("keeps a percent goal's figure in percent", () => {
 		const plan = makePlan({ position: 50, sessions: [session(1, 0, 50)], now: at(1, 21) });
 		expect(todayFigure(liveToday(plan, 50, WORDS))).toEqual({ done: "5.0", target: "10.0%" });
+	});
+});
+
+describe("switchGoalUnit", () => {
+	const b = book(0, 250);
+
+	it("restores the preset and duration when switching straight back", () => {
+		const start = { lock: "date" as const, days: presetDays(b.today, 1) };
+		const toMinutes = switchGoalUnit(start, "minutes", setupValues(start, b), null);
+		expect(toMinutes.setup).toMatchObject({ lock: "daily" });
+		const back = switchGoalUnit(
+			toMinutes.setup,
+			"percent",
+			setupValues(toMinutes.setup, b),
+			toMinutes.last,
+		);
+		expect(back.setup).toBe(start);
+		expect(back.last).toBeNull();
+	});
+
+	it("builds a fresh setup once the user edited after switching", () => {
+		const start = { lock: "date" as const, days: 30 };
+		const toMinutes = switchGoalUnit(start, "minutes", setupValues(start, b), null);
+		const edited = { lock: "daily" as const, days: 20, dailyMinutes: 15 };
+		const back = switchGoalUnit(edited, "percent", setupValues(edited, b), toMinutes.last);
+		expect(back.setup).not.toBe(start);
+		expect(back.setup).toMatchObject({ lock: "daily", dailyPercent: expect.any(Number) });
+	});
+});
+
+describe("goalAmountLabel", () => {
+	it("leads a minute goal with its minutes and a percent goal with its percent", () => {
+		const minuteGoal = makeGoal({ mode: "pace", dailyMinutes: 20, dailyPercent: 5 });
+		const minutePlan = { ...makePlan({ position: 0 }), dailyMinutes: 20 };
+		expect(goalAmountLabel(minuteGoal, minutePlan)).toMatch(/^20 min a day · /);
+		const percentGoal = makeGoal({ mode: "pace", dailyPercent: 5, dailyMinutes: null });
+		const percentPlan = { ...makePlan({ position: 0 }), dailyMinutes: null };
+		expect(goalAmountLabel(percentGoal, percentPlan)).toMatch(/^5(\.0)?% a day · /);
+		expect(goalAmountLabel(makeGoal(), makePlan({ position: 0 }))).toMatch(/^By .+ a day$/);
 	});
 });

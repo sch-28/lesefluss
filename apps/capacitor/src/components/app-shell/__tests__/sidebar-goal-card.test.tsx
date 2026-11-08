@@ -77,7 +77,7 @@ describe("SidebarGoalCard", () => {
 		continueReading = { book: book(), open: vi.fn() };
 		rendered = await render(<SidebarGoalCard isCollapsed={false} />);
 		expect(rendered.getButton("Set a reading goal for Dune").textContent).toBe(
-			"Set a goal12-day streak",
+			"Set a goalfor Dune",
 		);
 	});
 

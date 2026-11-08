@@ -1,5 +1,12 @@
-import { isMeasurableSitting, type ReadingMode, wpmFrom } from "@lesefluss/core";
-import type { ReadingSession } from "../../../services/db/schema";
+import {
+	isMeasurableSitting,
+	isSkimmedSitting,
+	type ReadingMode,
+	skimCutoffWpm,
+	wpmFrom,
+} from "@lesefluss/core";
+import type { Book, ReadingSession } from "../../../services/db/schema";
+import { MIN_DURATION_MS } from "../../../services/reading-sessions/rules";
 import {
 	formatDayKey,
 	formatDuration,
@@ -13,7 +20,7 @@ export type ModeFilter = ReadingMode | "all";
 export interface SessionTotals {
 	count: number;
 	totalMs: number;
-	/** Over the sittings that measure the reader's own speed; null when none do. */
+	/** Over the sittings that measure the reader's own speed, skims left out; null when none do. */
 	wpm: number | null;
 }
 
@@ -30,24 +37,42 @@ export function filterSessions(
 ): ReadingSession[] {
 	return rows.filter(
 		(row) =>
+			row.durationMs >= MIN_DURATION_MS &&
 			!filter.hidden.has(row.id) &&
 			(filter.bookId === undefined || row.bookId === filter.bookId) &&
 			(filter.mode === "all" || row.mode === filter.mode),
 	);
 }
 
-export function totalsOf(rows: readonly ReadingSession[]): SessionTotals {
+/** `skimCutoff` comes from every sitting the reader has, so a filter can't move what counts as a skim. */
+export function totalsOf(
+	rows: readonly ReadingSession[],
+	skimCutoff: number = skimCutoffWpm(rows),
+): SessionTotals {
 	let totalMs = 0;
 	let measuredMs = 0;
 	let measuredWords = 0;
 	for (const row of rows) {
 		totalMs += row.durationMs;
-		if (isMeasurableSitting(row)) {
+		if (isMeasurableSitting(row) && !isSkimmedSitting(row, skimCutoff)) {
 			measuredMs += row.durationMs;
 			measuredWords += row.wordsRead;
 		}
 	}
 	return { count: rows.length, totalMs, wpm: wpmFrom(measuredWords, measuredMs) };
+}
+
+/** The book filter's choices: All books first (value ""), then each book with sessions by title. */
+export function bookFilterOptions(
+	rows: readonly ReadingSession[],
+	books: ReadonlyMap<string, Book>,
+): { value: string; label: string; count: number }[] {
+	const counts = new Map<string, number>();
+	for (const row of rows) counts.set(row.bookId, (counts.get(row.bookId) ?? 0) + 1);
+	const options = [...counts]
+		.map(([id, count]) => ({ value: id, label: books.get(id)?.title ?? "Unknown book", count }))
+		.sort((a, b) => a.label.localeCompare(b.label));
+	return [{ value: "", label: "All books", count: rows.length }, ...options];
 }
 
 export function dayLabel(key: string, now: number): string {

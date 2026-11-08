@@ -124,7 +124,7 @@ export function RsvpInsights({ model }: { model: SpeedModel }) {
 					testId="delivered-of-dial"
 					label="Delivered of dial"
 					value={`${deliveredPercent(ratio)}%`}
-					sub={model.rsvp?.dialWpm != null ? `Dial ${model.rsvp.dialWpm}` : undefined}
+					sub={model.rsvp?.dialWpm != null ? `Avg dial ${model.rsvp.dialWpm}` : undefined}
 					info="Words your RSVP sittings delivered per minute, as a share of the dial they ran at. Punctuation and long words hold some words longer."
 				/>
 			)}

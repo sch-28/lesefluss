@@ -1,7 +1,7 @@
 import { wordPos } from "@lesefluss/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { notifySessionsDeleted } from "../deleted";
-import type { SessionRow } from "../rules";
+import { MIN_DURATION_MS, type SessionRow } from "../rules";
 import {
 	CLOSE_SETTLE_MS,
 	closeVisit,
@@ -56,7 +56,7 @@ afterEach(() => {
 });
 
 describe("summary store", () => {
-	it("publishes a visit of 2 minutes or more when the reader closes", () => {
+	it("publishes a visit of 1 minute or more when the reader closes", () => {
 		openVisit();
 		recordSitting(row());
 		closeVisit();
@@ -65,7 +65,15 @@ describe("summary store", () => {
 		expect(current()).toMatchObject({ bookId: "b1", sittings: [{ id: "s1" }] });
 	});
 
-	it("publishes nothing under 2 minutes", () => {
+	it("shows the summary from the same 1 minute a sitting needs to be written", () => {
+		expect(SUMMARY_MIN_ACTIVE_MS).toBe(MIN_DURATION_MS);
+		openVisit();
+		recordSitting(row({ durationMs: MIN }));
+		leave();
+		expect(current()).toMatchObject({ bookId: "b1" });
+	});
+
+	it("publishes nothing under 1 minute", () => {
 		openVisit();
 		recordSitting(row({ durationMs: SUMMARY_MIN_ACTIVE_MS - 1 }));
 		leave();
@@ -74,8 +82,8 @@ describe("summary store", () => {
 
 	it("counts a sitting written twice once", () => {
 		openVisit();
-		recordSitting(row({ durationMs: MIN }));
-		recordSitting(row({ durationMs: 90_000 }));
+		recordSitting(row({ durationMs: 30_000 }));
+		recordSitting(row({ durationMs: 45_000 }));
 		leave();
 		expect(current()).toBeNull();
 	});
@@ -90,12 +98,12 @@ describe("summary store", () => {
 
 	it("keeps the visit when the reader re-mounts while closing", () => {
 		openVisit();
-		recordSitting(row({ durationMs: MIN }));
+		recordSitting(row({ durationMs: 30_000 }));
 		closeVisit();
 		openVisit();
 		vi.advanceTimersByTime(CLOSE_SETTLE_MS);
 		expect(current()).toBeNull();
-		recordSitting(row({ id: "s2", durationMs: MIN }));
+		recordSitting(row({ id: "s2", durationMs: 30_000 }));
 		leave();
 		expect(current()?.sittings).toHaveLength(2);
 	});

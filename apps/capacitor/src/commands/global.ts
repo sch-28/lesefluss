@@ -89,7 +89,7 @@ export function useGlobalCommands(): void {
 			title: "Go to reading stats",
 			keywords: ["statistics"],
 			scope: "global",
-			run: () => go("/tabs/library/stats"),
+			run: () => go("/tabs/stats"),
 		},
 		{
 			id: "global.settings",

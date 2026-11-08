@@ -1,4 +1,4 @@
-import type { ReadingGoalPlanResult } from "./reading-goal";
+import type { ReadingGoalPlan, ReadingGoalPlanResult } from "./reading-goal";
 
 export type TodayGoalSummary =
 	| { kind: "none" }
@@ -42,4 +42,13 @@ export function todayGoalLabel(summary: {
 	const needed = Math.ceil(summary.minutesNeeded);
 	const read = summary.isMet ? needed : Math.min(needed, Math.floor(summary.minutesRead));
 	return `${read} of ${needed} min`;
+}
+
+/** The goals that can still be edited: a known length and not yet finished. */
+export function editableGoals<G>(
+	plans: readonly { goal: G; plan: ReadingGoalPlanResult }[],
+): { goal: G; plan: ReadingGoalPlan }[] {
+	return plans.flatMap(({ goal, plan }) =>
+		plan.kind === "plan" && !plan.isComplete ? [{ goal, plan }] : [],
+	);
 }

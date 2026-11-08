@@ -1,10 +1,13 @@
 import { cn } from "@lesefluss/ui/utils";
-import { BookOpen, Clock, Gauge, Hourglass, Type, Zap } from "lucide-react";
+import { BookOpen, Check, Clock, Gauge, Hourglass, Target, Type, Zap } from "lucide-react";
 import type { ReactNode } from "react";
+import { goalTone } from "../../pages/library/reading-goal/goal-model";
+import type { ReadingGoalPlan } from "../../services/stats/reading-goal";
 import type { SummaryStats } from "../../services/stats/session-summary";
-import { formatDuration } from "../../utils/date-utils";
-import { estimatePages } from "../../utils/reading-time";
+import { formatDayKey, formatDuration } from "../../utils/date-utils";
+import { estimatePages, percentLabel } from "../../utils/reading-time";
 import { GoalRing } from "../goal-ring";
+import { Sparkline } from "../sparkline";
 
 function Tile({
 	icon,
@@ -12,26 +15,40 @@ function Tile({
 	children,
 	className,
 	testId,
+	onClick,
 }: {
 	icon: ReactNode;
 	label: string;
 	children: ReactNode;
 	className?: string;
 	testId?: string;
+	onClick?: () => void;
 }) {
-	return (
-		<div
-			className={cn(
-				"flex flex-col gap-1 rounded-xl border border-border bg-muted/40 p-3",
-				className,
-			)}
-			data-testid={testId}
-		>
+	const body = (
+		<>
 			<span className="flex items-center gap-1.5 font-medium text-[10px] text-muted-foreground uppercase tracking-wider">
 				{icon}
 				{label}
 			</span>
 			{children}
+		</>
+	);
+	const tileClass = cn(
+		"flex flex-col gap-1 rounded-xl border border-border bg-muted/40 p-3",
+		className,
+	);
+	return onClick ? (
+		<button
+			type="button"
+			onClick={onClick}
+			className={cn(tileClass, "text-left hover:bg-muted")}
+			data-testid={testId}
+		>
+			{body}
+		</button>
+	) : (
+		<div className={tileClass} data-testid={testId}>
+			{body}
 		</div>
 	);
 }
@@ -44,48 +61,40 @@ const Caption = ({ children }: { children: ReactNode }) => (
 	<span className="text-[11px] text-muted-foreground tabular-nums">{children}</span>
 );
 
-export function TimeTile({
-	activeMs,
-	earlierMinutes,
-	todayMinutes,
-	goalMinutes,
-}: {
-	activeMs: number;
-	earlierMinutes: number;
-	todayMinutes: number;
-	goalMinutes: number | null;
-}) {
-	const scale = Math.max(todayMinutes, goalMinutes ?? 0, 1);
-	const sittingMinutes = todayMinutes - earlierMinutes;
-	const isMet = goalMinutes !== null && todayMinutes >= goalMinutes;
+export function TimeTile({ activeMs, todayMinutes }: { activeMs: number; todayMinutes: number }) {
 	return (
 		<Tile icon={<Clock className="size-3" />} label="Time" testId="summary-time">
 			<Value>{Math.max(1, Math.round(activeMs / 60_000))} min</Value>
-			<span
-				className="relative flex h-1.5 overflow-visible rounded-full bg-current/10"
-				aria-hidden="true"
-			>
-				<span
-					className="h-full rounded-l-full bg-primary/40"
-					style={{ width: `${(earlierMinutes / scale) * 100}%` }}
-				/>
-				<span
-					className={cn("h-full bg-primary", earlierMinutes === 0 && "rounded-l-full")}
-					style={{ width: `${(sittingMinutes / scale) * 100}%` }}
-				/>
-				{goalMinutes !== null && (
-					<span
-						className="absolute -top-0.5 h-2.5 w-0.5 rounded-full bg-foreground"
-						style={{ left: `${(goalMinutes / scale) * 100}%` }}
-					/>
-				)}
-			</span>
-			<Caption>
-				{goalMinutes !== null
-					? `Today ${todayMinutes} / ${goalMinutes}m${isMet ? " ✓" : ""}`
-					: `Today ${todayMinutes} min`}
-			</Caption>
+			<Caption>Today {todayMinutes} min</Caption>
 		</Tile>
+	);
+}
+
+/** "Today 15 / 11 min" for a minute goal, "3.3% / 3.3% today · on track 12 Dec" for a percent goal. */
+export function summaryGoalLine(plan: ReadingGoalPlan): string {
+	if (plan.dailyMinutes !== null) {
+		return `Today ${Math.floor(plan.progressToday.minutes)} / ${plan.dailyMinutes} min`;
+	}
+	const pace = goalTone(plan) === "behind" ? "behind, finish" : "on track";
+	return `${percentLabel(plan.progressToday.percent)}% / ${percentLabel(plan.dailyTarget.percent)}% today · ${pace} ${formatDayKey(plan.projectedFinishDate)}`;
+}
+
+export function GoalRow({ plan }: { plan: ReadingGoalPlan }) {
+	return (
+		<div
+			className="col-span-2 flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm tabular-nums"
+			data-testid="summary-goal"
+			data-met={plan.isTodayMet}
+		>
+			<Target className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+			<span className="min-w-0 flex-1 truncate">{summaryGoalLine(plan)}</span>
+			{plan.isTodayMet && (
+				<span className="flex shrink-0 items-center gap-1 font-medium text-[var(--goal-met)] text-xs">
+					<Check className="size-3.5" aria-hidden />
+					Met
+				</span>
+			)}
+		</div>
 	);
 }
 
@@ -101,30 +110,19 @@ export function WordsTile({ words }: { words: number }) {
 	);
 }
 
-function Sparkline({ points }: { points: number[] }) {
-	if (points.length < 2) return null;
-	const min = Math.min(...points);
-	const span = Math.max(1, Math.max(...points) - min);
-	const step = 100 / (points.length - 1);
-	const d = points.map((p, i) => `${i * step},${20 - ((p - min) / span) * 18 - 1}`).join(" ");
-	return (
-		<svg viewBox="0 0 100 20" preserveAspectRatio="none" className="h-4 w-full" aria-hidden="true">
-			<polyline
-				points={d}
-				fill="none"
-				stroke="currentColor"
-				strokeWidth={1.5}
-				vectorEffect="non-scaling-stroke"
-				className="text-primary"
-			/>
-		</svg>
-	);
-}
-
-export function SpeedTile({ stats, trend }: { stats: SummaryStats; trend: number[] }) {
+export function SpeedTile({
+	stats,
+	trend,
+	onOpen,
+}: {
+	stats: SummaryStats;
+	trend: number[];
+	onOpen: () => void;
+}) {
 	const delta = stats.deltaWpm;
 	return (
 		<Tile
+			onClick={onOpen}
 			icon={stats.isRsvp ? <Zap className="size-3" /> : <Gauge className="size-3" />}
 			label={stats.isRsvp ? "RSVP speed" : "Speed"}
 			testId="summary-speed"

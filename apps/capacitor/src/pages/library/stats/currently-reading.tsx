@@ -5,6 +5,7 @@ import { MoreHorizontal } from "lucide-react";
 import CoverImage from "../../../components/cover-image";
 import { queryHooks } from "../../../services/db/hooks";
 import { useBookActions } from "../book-actions/use-book-actions";
+import { TitleCover } from "./title-cover";
 
 /**
  * What the reader is in the middle of, as full-width rows rather than a cover
@@ -56,7 +57,11 @@ export function CurrentlyReading() {
 								)}
 							>
 								<div className="relative aspect-[2/3] w-12 flex-shrink-0 overflow-hidden rounded-md">
-									<CoverImage src={book.coverImage} alt={book.title} />
+									<CoverImage
+										src={book.coverImage}
+										alt={book.title}
+										fallback={<TitleCover title={book.title} />}
+									/>
 								</div>
 								<div className="min-w-0 flex-1">
 									<div className="line-clamp-1 font-medium text-sm">{book.title}</div>

@@ -16,6 +16,8 @@ import SyncStep from "./steps/sync";
 import ThemeStep from "./steps/theme";
 import WelcomeStep from "./steps/welcome";
 
+const SPEED_STEP = 2;
+
 const Onboarding: React.FC = () => {
 	const router = useRouter();
 	const { settings, updateSetting, flush } = useAutoSaveSettings();
@@ -84,7 +86,10 @@ const Onboarding: React.FC = () => {
 				</div>
 
 				<main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6">
-					<div className="mx-auto my-auto w-full max-w-md">{stepNodes[step]}</div>
+					{/* The speed test changes height between its rounds; centred, it would jump. */}
+					<div className={cn("mx-auto w-full max-w-md", step === SPEED_STEP ? "pt-2" : "my-auto")}>
+						{stepNodes[step]}
+					</div>
 				</main>
 
 				<div className="border-border border-t bg-background/95 px-6 py-4 backdrop-blur">

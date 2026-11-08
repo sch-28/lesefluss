@@ -101,6 +101,16 @@ function formatBucketTick(starts: number[], granularity: TrendGranularity, index
 	}
 }
 
+/** The x-axis legend names the window and the dates it covers, so "Last 10h" over two weeks of ticks reads right. */
+export function trendAxisLegend(windowLabel: string, bucketStarts: readonly number[]): string {
+	const first = bucketStarts[0];
+	const last = bucketStarts.at(-1);
+	if (first === undefined || last === undefined) return windowLabel;
+	const from = formatShortDate(first);
+	const to = formatShortDate(last);
+	return from === to ? `${windowLabel} · ${from}` : `${windowLabel} · ${from} – ${to}`;
+}
+
 interface Props {
 	window: SpeedWindow;
 	mode: SpeedTrendMode;
@@ -190,7 +200,8 @@ export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 						role="presentation"
 						data={chartData}
 						layers={layers}
-						margin={{ top: 12, right: 12, bottom: 48, left: 56 }}
+						// The right margin fits half of the last date tick, which centres on the edge.
+						margin={{ top: 12, right: 28, bottom: 48, left: 56 }}
 						xScale={{ type: "linear" }}
 						// Markers never enter the scale, so the reference lines have to be
 						// folded in by hand or they render off-plot and get clipped.
@@ -211,7 +222,7 @@ export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 							tickPadding: 8,
 							tickValues: tickIndices,
 							format: (v) => formatBucketTick(bucketStarts, granularity, Number(v)),
-							legend: windowLabel,
+							legend: trendAxisLegend(windowLabel, bucketStarts),
 							legendPosition: "middle",
 							legendOffset: 36,
 						}}
@@ -278,7 +289,7 @@ export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 												strokeDasharray: "4 4",
 												strokeOpacity: 0.7,
 											},
-											legend: `Dial ${averages.rsvpTarget}`,
+											legend: `Avg dial ${averages.rsvpTarget}`,
 											legendPosition: "top-right" as const,
 											textStyle: { fontSize: 10, fill: "var(--muted-foreground)" },
 										},

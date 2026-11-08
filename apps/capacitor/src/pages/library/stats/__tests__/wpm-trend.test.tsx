@@ -26,7 +26,7 @@ vi.mock("@nivo/line", () => ({
 	},
 }));
 
-const { WpmTrend, wpmAxisMax } = await import("../wpm-trend");
+const { WpmTrend, trendAxisLegend, wpmAxisMax } = await import("../wpm-trend");
 
 let view: Rendered | undefined;
 afterEach(() => {
@@ -106,5 +106,17 @@ describe("WpmTrend", () => {
 		expect(wpmAxisMax([225, 400, 310])).toBe(500);
 		expect(wpmAxisMax([225, 0])).toBe(300);
 		expect(wpmAxisMax([])).toBe(50);
+	});
+});
+
+describe("trendAxisLegend", () => {
+	it("names the window and the dates the chart spans", () => {
+		const oct20 = new Date(2026, 9, 20).getTime();
+		const nov2 = new Date(2026, 10, 2).getTime();
+		expect(trendAxisLegend("Last 10h", [oct20, nov2])).toMatch(
+			/^Last 10h · 20 Oct – 2 Nov$|^Last 10h · Oct 20 – Nov 2$/,
+		);
+		expect(trendAxisLegend("Last 10h", [nov2])).toMatch(/^Last 10h · (2 Nov|Nov 2)$/);
+		expect(trendAxisLegend("All time", [])).toBe("All time");
 	});
 });

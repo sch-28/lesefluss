@@ -200,7 +200,33 @@ export function rsvpComparison(
 		const finish = finishAtMinutes(values.dailyMinutes, rsvpWpm, book);
 		return finish < values.finishDate ? { dial, value: `Done ${formatDayKey(finish)}` } : null;
 	}
-	return { dial, value: `${minutesLabel((values.minutes * book.wpm) / rsvpWpm)} a day` };
+	const rsvpMinutes = minutesLabel((values.minutes * book.wpm) / rsvpWpm);
+	return rsvpMinutes === minutesLabel(values.minutes)
+		? null
+		: { dial, value: `${rsvpMinutes} a day` };
+}
+
+export type GoalUnit = "percent" | "minutes";
+
+/** The setup before a unit switch and the one it produced, so switching straight back restores it. */
+export type UnitSwitch = { from: GoalSetup; to: GoalSetup };
+
+/**
+ * A minute goal rounds to whole minutes, which moves the finish by a day or so;
+ * switching straight back returns the setup as it was, duration and preset included.
+ */
+export function switchGoalUnit(
+	setup: GoalSetup,
+	unit: GoalUnit,
+	values: SetupValues,
+	last: UnitSwitch | null,
+): { setup: GoalSetup; last: UnitSwitch | null } {
+	if (last && last.to === setup) return { setup: last.from, last: null };
+	const next: GoalSetup =
+		unit === "minutes"
+			? { lock: "daily", days: values.days, dailyMinutes: Math.max(1, Math.round(values.minutes)) }
+			: { lock: "daily", days: values.days, dailyPercent: values.dailyPercent };
+	return { setup: next, last: { from: setup, to: next } };
 }
 
 export function goalSpec(lock: GoalLock, values: SetupValues): NewGoalSpec {
@@ -327,4 +353,15 @@ export function signed(value: number, unit: string): string {
 	const rounded = Math.round(value * 10) / 10;
 	if (rounded === 0) return `0.0${unit}`;
 	return `${rounded > 0 ? "+" : MINUS}${Math.abs(rounded).toFixed(1)}${unit}`;
+}
+
+/** A minute goal names its minutes and a percent goal its percent, each with the other figure. */
+export function goalAmountLabel(goal: ReadingGoal, plan: ReadingGoalPlan): string {
+	if (plan.dailyMinutes != null) {
+		return `${Math.round(plan.dailyMinutes)} min a day · ${percentLabel(plan.dailyTarget.percent)}%`;
+	}
+	if (goal.mode === "pace") {
+		return `${percentLabel(goal.dailyPercent)}% a day · ${minutesLabel(plan.dailyTarget.minutes)}`;
+	}
+	return `By ${formatDayKey(goal.targetDate)} · ${minutesLabel(plan.dailyTarget.minutes)} a day`;
 }

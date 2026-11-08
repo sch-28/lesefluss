@@ -1,8 +1,9 @@
 import { useSyncExternalStore } from "react";
 import { onSessionsDeleted } from "./deleted";
-import type { SessionRow } from "./rules";
+import { MIN_DURATION_MS, type SessionRow } from "./rules";
 
-export const SUMMARY_MIN_ACTIVE_MS = 2 * 60_000;
+/** The summary follows any real sitting: the same bar a sitting needs to be written at all. */
+export const SUMMARY_MIN_ACTIVE_MS = MIN_DURATION_MS;
 
 /** The router re-mounts the reader once while leaving it; a close re-opened this fast never happened. */
 export const CLOSE_SETTLE_MS = 400;

@@ -10,6 +10,7 @@ import {
 	resetSummaryStore,
 } from "../../../services/reading-sessions/summary-store";
 import type { ShareCardData } from "../../../services/share-card/render";
+import type { ReadingGoalPlan } from "../../../services/stats/reading-goal";
 import { click, type Rendered, render } from "../../../test/render";
 
 const saveSettings = vi.fn();
@@ -17,6 +18,9 @@ const modelWithout = vi.fn();
 let model: SpeedModel | undefined;
 let milestones: Milestones = { reached: [], next: [] };
 const sharedCards: ShareCardData[] = [];
+let goalPlan: { plan: Partial<ReadingGoalPlan> } | null = null;
+let isTrendPending = false;
+let isMilestonesFetching = false;
 const MIN = 60_000;
 const settings = { showSessionSummary: true, speedWindow: "recent" };
 
@@ -30,9 +34,9 @@ vi.mock("../../../services/db/hooks", () => ({
 		useSettings: () => ({ data: settings }),
 		useSaveSettings: () => ({ mutate: saveSettings }),
 		useStatsPeriodTotals: () => ({ data: { minutes: 52, words: 0, booksFinished: 0 } }),
-		useReadingGoalPlan: () => ({ data: null }),
-		useStatsWpmTrend: () => ({ data: undefined }),
-		useStatsMilestones: () => ({ data: milestones }),
+		useReadingGoalPlan: () => ({ data: goalPlan }),
+		useStatsWpmTrend: () => ({ data: undefined, isPending: isTrendPending }),
+		useStatsMilestones: () => ({ data: milestones, isFetching: isMilestonesFetching }),
 		useBooks: () => ({
 			data: { books: [], covers: new Map([["b1", "data:image/png;base64,AA"]]) },
 		}),
@@ -56,9 +60,27 @@ vi.mock("@lesefluss/ui/drawer", async () => {
 		DrawerFooter: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 	};
 });
-vi.mock("@tanstack/react-router", () => ({
-	Link: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
-}));
+const navigate = vi.fn();
+vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
+vi.mock("@lesefluss/ui/dropdown-menu", () => {
+	const Pass = ({ children }: { children?: React.ReactNode }) => <>{children}</>;
+	return {
+		DropdownMenu: Pass,
+		DropdownMenuTrigger: Pass,
+		DropdownMenuContent: Pass,
+		DropdownMenuItem: ({
+			children,
+			onSelect,
+		}: {
+			children?: React.ReactNode;
+			onSelect: () => void;
+		}) => (
+			<button type="button" onClick={onSelect}>
+				{children}
+			</button>
+		),
+	};
+});
 vi.mock("../../book-cover", () => ({ default: () => null }));
 
 const { SessionSummarySheet } = await import("../session-summary-sheet");
@@ -103,14 +125,34 @@ beforeEach(() => {
 	milestones = { reached: [], next: [] };
 	sharedCards.length = 0;
 	settings.showSessionSummary = true;
+	goalPlan = null;
+	isTrendPending = false;
+	isMilestonesFetching = false;
+	navigate.mockClear();
 });
+
+function plan(over: Partial<ReadingGoalPlan>): { plan: Partial<ReadingGoalPlan> } {
+	return {
+		plan: {
+			kind: "plan",
+			isComplete: false,
+			dailyMinutes: null,
+			isTodayMet: false,
+			projectedFinishDate: "2026-12-12",
+			aheadBehind: { words: 0, percent: 0, days: 0 },
+			progressToday: { words: 0, percent: 0, minutes: 0 },
+			dailyTarget: { words: 0, percent: 0, minutes: 0 },
+			...over,
+		},
+	};
+}
 afterEach(() => {
 	view?.unmount();
 	view = undefined;
 });
 
 describe("SessionSummarySheet", () => {
-	it("opens with the sitting's stats after 2 minutes or more", async () => {
+	it("opens with the sitting's stats after a minute or more", async () => {
 		view = await render(<SessionSummarySheet />);
 		await readAndClose(34 * MIN);
 		expect(sheet()?.textContent).toContain("Morning Star");
@@ -164,9 +206,9 @@ describe("SessionSummarySheet", () => {
 		}
 	});
 
-	it("stays closed under 2 minutes", async () => {
+	it("stays closed under a minute", async () => {
 		view = await render(<SessionSummarySheet />);
-		await readAndClose(MIN + 59_000);
+		await readAndClose(59_000);
 		expect(sheet()).toBeNull();
 	});
 
@@ -237,5 +279,75 @@ describe("SessionSummarySheet", () => {
 			["Book", "+8.5%"],
 			["words", "1M"],
 		]);
+	});
+
+	it("waits for every figure before it opens", async () => {
+		isTrendPending = true;
+		view = await render(<SessionSummarySheet />);
+		await readAndClose(10 * MIN);
+		expect(sheet()).toBeNull();
+		isTrendPending = false;
+		await view.rerender(<SessionSummarySheet />);
+		expect(document.querySelector("[data-testid=summary-time]")?.textContent).toContain("10 min");
+	});
+
+	it("waits for a stale figure to refetch, then stays open through later refetches", async () => {
+		isMilestonesFetching = true;
+		view = await render(<SessionSummarySheet />);
+		await readAndClose(10 * MIN);
+		expect(sheet()).toBeNull();
+		isMilestonesFetching = false;
+		await view.rerender(<SessionSummarySheet />);
+		expect(sheet()).not.toBeNull();
+		isMilestonesFetching = true;
+		await view.rerender(<SessionSummarySheet />);
+		expect(sheet()).not.toBeNull();
+	});
+
+	it("shows a minute goal as a met goal row, and the Time tile without a goal bar", async () => {
+		goalPlan = plan({
+			dailyMinutes: 11,
+			isTodayMet: true,
+			progressToday: { words: 0, percent: 0, minutes: 15.4 },
+		});
+		view = await render(<SessionSummarySheet />);
+		await readAndClose(15 * MIN);
+		const row = document.querySelector("[data-testid=summary-goal]");
+		expect(row?.textContent).toBe("Today 15 / 11 minMet");
+		expect(row?.getAttribute("data-met")).toBe("true");
+		expect(document.querySelector("[data-testid=summary-time]")?.textContent).toBe(
+			"Time15 minToday 52 min",
+		);
+	});
+
+	it("shows a percent goal's progress and its pace", async () => {
+		goalPlan = plan({
+			isTodayMet: true,
+			progressToday: { words: 0, percent: 3.3, minutes: 0 },
+			dailyTarget: { words: 0, percent: 3.3, minutes: 0 },
+		});
+		view = await render(<SessionSummarySheet />);
+		await readAndClose(10 * MIN);
+		expect(document.querySelector("[data-testid=summary-goal]")?.textContent).toMatch(
+			/^3\.3% \/ 3\.3% today · on track .+Met$/,
+		);
+	});
+
+	it("opens the Speed tab from the speed tile", async () => {
+		view = await render(<SessionSummarySheet />);
+		await readAndClose(10 * MIN);
+		const tile = document.querySelector("[data-testid=summary-speed]");
+		if (!(tile instanceof HTMLButtonElement)) throw new Error("speed tile is no button");
+		await click(tile);
+		expect(navigate).toHaveBeenCalledWith({ to: "/tabs/stats", search: { tab: "speed" } });
+		expect(sheet()).toBeNull();
+	});
+
+	it("keeps only Share card and Done in the footer", async () => {
+		view = await render(<SessionSummarySheet />);
+		await readAndClose(10 * MIN);
+		expect(view.getButton("Share card")).toBeTruthy();
+		expect(view.getButton("Done")).toBeTruthy();
+		expect(sheet()?.textContent).not.toContain("Speed tab");
 	});
 });

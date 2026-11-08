@@ -83,7 +83,7 @@ describe("useReadingSession and the session summary", () => {
 	it("publishes nothing when the reader closes sooner", async () => {
 		views.push(await render(<Summary />));
 		const reader = await render(<Reader bookId="b1" />);
-		read(1);
+		read(0.5);
 		reader.unmount();
 		await settle();
 		expect(summary).toBeNull();

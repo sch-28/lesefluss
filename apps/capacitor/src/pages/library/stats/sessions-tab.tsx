@@ -1,4 +1,4 @@
-import { READING_MODES } from "@lesefluss/core";
+import { isSkimmedSitting, READING_MODES, skimCutoffWpm } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -9,8 +9,9 @@ import { FilterChip } from "../../../components/filter-chip";
 import { queryHooks } from "../../../services/db/hooks";
 import { bookKeys } from "../../../services/db/hooks/query-keys";
 import { queries } from "../../../services/db/queries";
-import type { Book } from "../../../services/db/schema";
+import type { Book, ReadingSession } from "../../../services/db/schema";
 import { formatDuration } from "../../../utils/date-utils";
+import { SessionDetailSheet } from "./session-detail-sheet";
 import {
 	MODE_BADGE_LABELS,
 	SelectionBar,
@@ -20,6 +21,7 @@ import {
 	useSessionSelection,
 } from "./session-list";
 import {
+	bookFilterOptions,
 	filterSessions,
 	groupByDay,
 	type ModeFilter,
@@ -46,6 +48,7 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 
 	const [mode, setMode] = useState<ModeFilter>("all");
 	const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+	const [openSession, setOpenSession] = useState<ReadingSession | null>(null);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a new filter starts at the first page
 	useEffect(() => setVisibleCount(PAGE_SIZE), [bookId, mode]);
@@ -72,18 +75,13 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 		() => (bookId ? filterSessions(live, { bookId, mode: "all", hidden }) : []),
 		[live, bookId, hidden],
 	);
-	const totals = totalsOf(rows);
+	const skimCutoff = useMemo(() => skimCutoffWpm(live), [live]);
+	const totals = totalsOf(rows, skimCutoff);
 	const days = useMemo(
 		() => takeSessions(groupByDay(rows, now), visibleCount),
 		[rows, now, visibleCount],
 	);
-	const bookOptions = useMemo(() => {
-		const counts = new Map<string, number>();
-		for (const row of live) counts.set(row.bookId, (counts.get(row.bookId) ?? 0) + 1);
-		return [...counts]
-			.map(([id, count]) => ({ value: id, label: books.get(id)?.title ?? "Unknown book", count }))
-			.sort((a, b) => a.label.localeCompare(b.label));
-	}, [live, books]);
+	const bookOptions = useMemo(() => bookFilterOptions(live, books), [live, books]);
 
 	const titleOf = (id: string) => books.get(id)?.title ?? "Unknown book";
 	const { selected } = selection;
@@ -97,7 +95,7 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 		);
 	}
 
-	const bookTotals = totalsOf(bookRows);
+	const bookTotals = totalsOf(bookRows, skimCutoff);
 
 	return (
 		<div
@@ -112,29 +110,42 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 					className="px-2 py-2"
 				/>
 			) : (
-				<div className="flex items-center gap-2 px-4 py-3">
-					<FilterChip
-						label={bookId ? titleOf(bookId) : "All books"}
-						isActive={bookId !== undefined}
-						value={bookId ?? ""}
-						options={bookOptions}
-						onSelect={(id) => onBookChange(id)}
-						onClear={() => onBookChange(undefined)}
-					/>
-					<FilterChip<ModeFilter>
-						label={mode === "all" ? "All modes" : MODE_BADGE_LABELS[mode]}
-						isActive={mode !== "all"}
-						value={mode}
-						options={[
-							{ value: "all", label: "All modes" },
-							...READING_MODES.map((m) => ({ value: m, label: MODE_BADGE_LABELS[m] })),
-						]}
-						onSelect={setMode}
-						onClear={() => setMode("all")}
-					/>
-					<span className="ml-auto shrink-0 text-muted-foreground text-xs tabular-nums">
-						{totals.count} · {formatDuration(totals.totalMs)}
-					</span>
+				<div className="px-4 py-3">
+					<div className="flex items-center gap-2">
+						<FilterChip
+							label={bookId ? titleOf(bookId) : "All books"}
+							isActive={bookId !== undefined}
+							value={bookId ?? ""}
+							options={bookOptions}
+							onSelect={(id) => onBookChange(id || undefined)}
+							onClear={() => onBookChange(undefined)}
+							className="min-w-0 shrink"
+						/>
+						<FilterChip<ModeFilter>
+							label={mode === "all" ? "All modes" : MODE_BADGE_LABELS[mode]}
+							isActive={mode !== "all"}
+							value={mode}
+							options={[
+								{ value: "all", label: "All modes" },
+								...READING_MODES.map((m) => ({ value: m, label: MODE_BADGE_LABELS[m] })),
+							]}
+							onSelect={setMode}
+							onClear={() => setMode("all")}
+						/>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="ml-auto"
+							disabled={rows.length === 0}
+							onClick={() => selection.setSelected(new Set())}
+						>
+							Select
+						</Button>
+					</div>
+					<p className="m-0 mt-2 text-muted-foreground text-xs tabular-nums">
+						{totals.count} {totals.count === 1 ? "session" : "sessions"} ·{" "}
+						{formatDuration(totals.totalMs)} total
+					</p>
 				</div>
 			)}
 
@@ -166,6 +177,7 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 					days={days}
 					books={books}
 					isBookView={bookId !== undefined}
+					skimCutoff={skimCutoff}
 					headingClassName="px-4"
 					listClassName="px-4"
 					actions={{
@@ -177,6 +189,7 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 						onOnlyBook:
 							bookId === undefined ? (session) => onBookChange(session.bookId) : undefined,
 						onDelete: (session) => requestDelete([session]),
+						onOpen: setOpenSession,
 					}}
 				/>
 			)}
@@ -197,6 +210,13 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 				/>
 			)}
 
+			<SessionDetailSheet
+				session={openSession}
+				book={openSession ? (books.get(openSession.bookId) ?? null) : null}
+				isSkimmed={openSession !== null && isSkimmedSitting(openSession, skimCutoff)}
+				onClose={() => setOpenSession(null)}
+				onDelete={(session) => requestDelete([session])}
+			/>
 			{dialog}
 		</div>
 	);

@@ -42,6 +42,62 @@ export function isMeasurableSitting<
 	return row.mode !== "listen" && isPlausibleRate(row.wordsRead, row.durationMs);
 }
 
+/** A scroll or page sitting above this is skimming, whatever the reader's own pace. */
+export const SKIM_MAX_READING_WPM = 600;
+
+/** A scroll or page sitting this far above the reader's own median sitting is skimming. */
+export const SKIM_MEDIAN_FACTOR = 1.6;
+
+/** Fewer sittings than this give no median worth comparing against. */
+export const SKIM_MEDIAN_MIN_SITTINGS = 5;
+
+type RateRow = { mode: ReadingMode; wordsRead: number; durationMs: number };
+
+function sittingWpm(row: RateRow): number {
+	return row.wordsRead / (row.durationMs / 60_000);
+}
+
+/**
+ * The speed above which a scroll or page sitting counts as skimmed, from these
+ * rows: the hard cap, or 1.6x the median sitting when there are enough sittings
+ * under the cap. RSVP runs at its dial and is never skimmed.
+ */
+export function skimCutoffWpm(rows: readonly RateRow[]): number {
+	const rates: number[] = [];
+	for (const r of rows) {
+		if (r.mode !== "scroll" && r.mode !== "page") continue;
+		if (!isPlausibleRate(r.wordsRead, r.durationMs)) continue;
+		const wpm = sittingWpm(r);
+		if (wpm <= SKIM_MAX_READING_WPM) rates.push(wpm);
+	}
+	if (rates.length < SKIM_MEDIAN_MIN_SITTINGS) return SKIM_MAX_READING_WPM;
+	rates.sort((a, b) => a - b);
+	const mid = rates.length >> 1;
+	const median = rates.length % 2 ? rates[mid] : (rates[mid - 1] + rates[mid]) / 2;
+	return Math.min(SKIM_MAX_READING_WPM, median * SKIM_MEDIAN_FACTOR);
+}
+
+/**
+ * Whether a sitting was skimmed: its time, words and streak still count, but it
+ * never feeds a speed or an average.
+ */
+export function isSkimmedSitting(row: RateRow, cutoffWpm: number): boolean {
+	if (row.mode !== "scroll" && row.mode !== "page") return false;
+	if (!isPlausibleRate(row.wordsRead, row.durationMs)) return false;
+	return sittingWpm(row) > cutoffWpm;
+}
+
+/** The sittings a speed is computed from: measurable and not skimmed, judged against these rows. */
+export function speedSittings<T extends RateRow>(
+	rows: readonly T[],
+	cutoffWpm: number = skimCutoffWpm(rows),
+): (T & { mode: MeasuredReadingMode })[] {
+	return rows.filter(
+		(r): r is T & { mode: MeasuredReadingMode } =>
+			isMeasurableSitting(r) && !isSkimmedSitting(r, cutoffWpm),
+	);
+}
+
 export interface BookTotals {
 	bookId: string;
 	seriesId: string | null;

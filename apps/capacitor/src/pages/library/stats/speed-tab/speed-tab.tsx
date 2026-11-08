@@ -1,4 +1,5 @@
 import { SPEED_WINDOWS, type SpeedModel, type SpeedWindow } from "@lesefluss/core";
+import { Button } from "@lesefluss/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -114,12 +115,7 @@ function Hero({ model, view, now }: { model: SpeedModel; view: SpeedView; now: n
 				<span className="font-bold text-2xl tabular-nums leading-none">{viewWpm(model, view)}</span>
 				<span className="text-muted-foreground text-sm">wpm</span>
 				{delta && (
-					<span
-						className={cn(
-							"ml-auto text-sm tabular-nums",
-							delta.wpm > 0 ? "text-emerald-600" : delta.wpm < 0 ? "text-red-600" : "",
-						)}
-					>
+					<span className="ml-auto text-muted-foreground text-sm tabular-nums">
 						{deltaLabel(model.window, delta.wpm, formatShortDate(delta.since))}
 					</span>
 				)}
@@ -134,6 +130,26 @@ export function SpeedTab({ now }: { now: number }) {
 	const settings = queryHooks.useSettings();
 	const [picked, setPicked] = useState<SpeedView | null>(null);
 	const model = modelQuery.data;
+
+	if (!model && modelQuery.isError) {
+		return (
+			<div
+				className="flex min-h-[40vh] flex-col items-center justify-center gap-3 px-4 text-center"
+				role="alert"
+				data-testid="speed-error"
+			>
+				<p className="m-0 text-muted-foreground text-sm">Your speed couldn't be worked out.</p>
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={modelQuery.isFetching}
+					onClick={() => void modelQuery.refetch()}
+				>
+					Try again
+				</Button>
+			</div>
+		);
+	}
 
 	if (!model) {
 		return (

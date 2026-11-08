@@ -1,3 +1,5 @@
+import { redirect } from "@tanstack/react-router";
+
 export const STATS_TABS = ["overview", "speed", "sessions"] as const;
 export type StatsTab = (typeof STATS_TABS)[number];
 
@@ -22,4 +24,9 @@ export function parseStatsSearch(search: Record<string, unknown>): StatsSearch {
 	return typeof book === "string" && book.length > 0 && book.length <= 64
 		? { tab: "sessions", book }
 		: { tab: "sessions" };
+}
+
+/** Stats moved out of the library to its own tab; old links land on the same tab there. */
+export function redirectToStatsTab({ search }: { search: StatsSearch }): never {
+	throw redirect({ to: "/tabs/stats", search, replace: true });
 }

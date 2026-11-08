@@ -17,7 +17,9 @@ const state = {
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
 		useBookReadingSessions: () => ({ data: state.rows, isLoading: false }),
+		useAllReadingSessions: () => ({ data: state.all, isLoading: false }),
 		useDeleteReadingSessions: () => ({ mutateAsync: state.mutateAsync }),
+		useUpdateReadingSession: () => ({ mutate: vi.fn(), isPending: false }),
 	},
 }));
 vi.mock("../../../services/db/queries", () => ({
@@ -169,7 +171,7 @@ describe("BookSessions", () => {
 		expect(state.mutateAsync).toHaveBeenCalledWith(["s0", "s1", "s2", "s3", "s4", "s5"]);
 	});
 
-	it("opens a row's menu on a tap and selects on a long press, then deletes the selection", async () => {
+	it("opens a row's detail on a tap and selects on a long press, then deletes the selection", async () => {
 		state.rows = [session("a", at(7, 10)), session("b", at(7, 9)), session("c", at(6, 9))];
 		state.all = state.rows;
 		vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -178,7 +180,7 @@ describe("BookSessions", () => {
 		if (!first || !second || !third) throw new Error("no rows");
 
 		await click(first);
-		expect(document.body.textContent).toContain("Delete session");
+		expect(document.body.textContent).toContain("Duration (minutes)");
 		expect(document.body.textContent).not.toContain("Open book");
 		expect(document.body.textContent).not.toContain("Only this book");
 		await act(async () => {

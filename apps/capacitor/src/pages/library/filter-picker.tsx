@@ -22,6 +22,7 @@ import {
 	type Facet,
 	FIXED_FACET_VALUES,
 	type LibraryFilter,
+	matchesFilter,
 	setTagsMode,
 	setWordRange,
 	valueState,
@@ -36,12 +37,13 @@ export type FacetOptions = Record<Facet, FacetOption[]>;
 
 const SEARCHABLE_FROM = 8;
 
-/** Every value each facet can offer, with how many rows carry it. Collections
- *  are offered in their own order, empty ones included; a book series is named
- *  after its series collection. */
+/** Every value each facet can offer, with how many rows carry it among those the
+ *  other facets' filters let through. Collections are offered in their own order,
+ *  empty ones included; a book series is named after its series collection. */
 export function facetOptions(
 	items: readonly LibraryItem[],
 	collections: readonly { id: string; name: string }[] = [],
+	filter: LibraryFilter = {},
 ): FacetOptions {
 	const counts = Object.fromEntries(FACETS.map((f) => [f, new Map<string, number>()])) as Record<
 		Facet,
@@ -49,11 +51,18 @@ export function facetOptions(
 	>;
 	const seriesTitles = new Map<string, string>();
 	for (const c of collections) if (isSeriesCollectionId(c.id)) seriesTitles.set(c.id, c.name);
+	const othersOf = Object.fromEntries(
+		FACETS.map((f) => {
+			const { [f]: _, ...others } = filter;
+			return [f, others];
+		}),
+	) as Record<Facet, LibraryFilter>;
 	for (const item of items) {
 		if (item.kind === "series") seriesTitles.set(item.series.id, item.series.title);
 		for (const facet of FACETS) {
+			const isCounted = matchesFilter(item.facets, othersOf[facet]);
 			for (const value of item.facets[facet]) {
-				counts[facet].set(value, (counts[facet].get(value) ?? 0) + 1);
+				counts[facet].set(value, (counts[facet].get(value) ?? 0) + (isCounted ? 1 : 0));
 			}
 		}
 	}
@@ -78,7 +87,7 @@ export function facetOptions(
 				label: facet === "series" ? (seriesTitles.get(value) ?? value) : value,
 				count,
 			}))
-			.sort((a, b) => a.label.localeCompare(b.label));
+			.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
 	}
 	return options;
 }

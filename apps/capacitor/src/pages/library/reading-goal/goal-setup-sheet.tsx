@@ -22,6 +22,7 @@ import {
 	daysToSlider,
 	GOAL_PRESETS,
 	type GoalSetup,
+	type GoalUnit,
 	goalSpec,
 	isMinuteSetup,
 	lockToMode,
@@ -34,6 +35,8 @@ import {
 	seedFromGoal,
 	setupValues,
 	sliderToDays,
+	switchGoalUnit,
+	type UnitSwitch,
 } from "./goal-model";
 import { GoalReminderRow } from "./goal-reminder-row";
 
@@ -53,6 +56,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 	const seed = existing ? seedFromGoal(existing.goal, existing.plan) : newGoalSetup(today);
 	const [setup, setSetup] = useState<GoalSetup>(seed);
 	const [isCustomOpen, setCustomOpen] = useState(false);
+	const [unitSwitch, setUnitSwitch] = useState<UnitSwitch | null>(null);
 	const seedReminder = existing?.goal.reminderTime ?? null;
 	const [reminderTime, setReminderTime] = useState<string | null>(seedReminder);
 	const [wasOpen, setWasOpen] = useState(isOpen);
@@ -61,6 +65,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 		setWasOpen(isOpen);
 		if (isOpen) {
 			setSetup(seed);
+			setUnitSwitch(null);
 			setCustomOpen(false);
 			setReminderTime(seedReminder);
 		}
@@ -102,16 +107,12 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 				? { lock: s.lock, days, dailyMinutes: minutesForDays(days, setupBook) }
 				: { lock: s.lock, days },
 		);
-	const setUnit = (unit: "percent" | "minutes") =>
-		setSetup(
-			unit === "minutes"
-				? {
-						lock: "daily",
-						days: values.days,
-						dailyMinutes: Math.max(1, Math.round(values.minutes)),
-					}
-				: { lock: "daily", days: values.days, dailyPercent: values.dailyPercent },
-		);
+	const setUnit = (unit: GoalUnit) => {
+		if (!dateLocked && (unit === "minutes") === isMinutes) return;
+		const switched = switchGoalUnit(setup, unit, values, unitSwitch);
+		setSetup(switched.setup);
+		setUnitSwitch(switched.last);
+	};
 
 	const save = async () => {
 		const spec = goalSpec(setup.lock, values);
@@ -135,7 +136,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 			}}
 			snapPoints={SNAP_POINTS}
 		>
-			<DrawerContent>
+			<DrawerContent className="sm:mx-auto sm:max-w-lg">
 				<DrawerHeader className="flex-row items-baseline justify-between gap-3 text-left">
 					<DrawerTitle>Reading goal</DrawerTitle>
 					<span className="truncate text-muted-foreground text-xs">
@@ -169,32 +170,34 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 						/>
 					</div>
 
-					{!dateLocked && (
-						<div className="flex flex-wrap items-center gap-2" data-testid="goal-unit">
-							<Chip isOn={!isMinutes} aria-pressed={!isMinutes} onClick={() => setUnit("percent")}>
-								% a day
-							</Chip>
-							<Chip isOn={isMinutes} aria-pressed={isMinutes} onClick={() => setUnit("minutes")}>
-								Min a day
-							</Chip>
-							{isMinutes &&
-								MINUTE_PRESETS.map((minutes) => {
-									const isOn = values.dailyMinutes === minutes;
-									return (
-										<Chip
-											key={minutes}
-											isOn={isOn}
-											aria-pressed={isOn}
-											onClick={() =>
-												setSetup({ lock: "daily", days: values.days, dailyMinutes: minutes })
-											}
-										>
-											{minutes} min
-										</Chip>
-									);
-								})}
-						</div>
-					)}
+					<div className="flex flex-wrap items-center gap-2" data-testid="goal-unit">
+						<Chip
+							isOn={!dateLocked && !isMinutes}
+							aria-pressed={!dateLocked && !isMinutes}
+							onClick={() => setUnit("percent")}
+						>
+							% a day
+						</Chip>
+						<Chip isOn={isMinutes} aria-pressed={isMinutes} onClick={() => setUnit("minutes")}>
+							Min a day
+						</Chip>
+						{isMinutes &&
+							MINUTE_PRESETS.map((minutes) => {
+								const isOn = values.dailyMinutes === minutes;
+								return (
+									<Chip
+										key={minutes}
+										isOn={isOn}
+										aria-pressed={isOn}
+										onClick={() =>
+											setSetup({ lock: "daily", days: values.days, dailyMinutes: minutes })
+										}
+									>
+										{minutes} min
+									</Chip>
+								);
+							})}
+					</div>
 
 					<div className="flex flex-col gap-3">
 						<span

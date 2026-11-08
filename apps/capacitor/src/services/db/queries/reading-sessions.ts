@@ -110,6 +110,16 @@ const EXCLUDED_SESSION_COLUMNS = {
 	updatedAt: sql`excluded.updated_at`,
 };
 
+export type ReadingSessionEdit = Partial<Pick<ReadingSession, "durationMs" | "mode">>;
+
+/** A hand edit from the session detail; it bumps `updatedAt` so the next push carries it. */
+export async function updateReadingSession(id: string, edit: ReadingSessionEdit): Promise<void> {
+	await db
+		.update(readingSessions)
+		.set({ ...edit, updatedAt: Date.now() })
+		.where(eq(readingSessions.id, id));
+}
+
 /**
  * Hard-delete every reading session row locally. Tombstones live on the server
  * only, so the danger-zone flow pairs this with the server wipe call.

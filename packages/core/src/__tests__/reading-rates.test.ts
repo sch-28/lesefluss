@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { isMeasurableSitting, rollUpWorks } from "../reading-rates";
+import {
+	isMeasurableSitting,
+	isSkimmedSitting,
+	rollUpWorks,
+	SKIM_MAX_READING_WPM,
+	skimCutoffWpm,
+	speedSittings,
+} from "../reading-rates";
 
 const minutes = (n: number) => n * 60_000;
 
@@ -79,5 +86,39 @@ describe("isMeasurableSitting", () => {
 		expect(isMeasurableSitting({ ...sitting, mode: "scroll" })).toBe(true);
 		expect(isMeasurableSitting({ ...sitting, mode: "rsvp" })).toBe(true);
 		expect(isMeasurableSitting({ ...sitting, mode: "listen" })).toBe(false);
+	});
+});
+
+describe("skimmed sittings", () => {
+	const MIN = 60_000;
+	const sitting = (mode: "scroll" | "page" | "rsvp" | "listen", wpm: number) => ({
+		mode,
+		wordsRead: wpm * 10,
+		durationMs: 10 * MIN,
+	});
+
+	it("caps scroll and page at 600 wpm while there is no median yet", () => {
+		const rows = [sitting("scroll", 250), sitting("page", 620)];
+		const cutoff = skimCutoffWpm(rows);
+		expect(cutoff).toBe(SKIM_MAX_READING_WPM);
+		expect(isSkimmedSitting(rows[1], cutoff)).toBe(true);
+		expect(isSkimmedSitting(rows[0], cutoff)).toBe(false);
+	});
+
+	it("skims a sitting over 1.6x the reader's own median", () => {
+		const rows = [200, 210, 220, 230, 240, 400].map((wpm) => sitting("scroll", wpm));
+		const cutoff = skimCutoffWpm(rows);
+		expect(cutoff).toBeCloseTo(225 * 1.6);
+		expect(speedSittings(rows).map((r) => r.wordsRead / 10)).toEqual([200, 210, 220, 230, 240]);
+	});
+
+	it("never skims RSVP, which runs at its dial", () => {
+		const rows = [sitting("rsvp", 900)];
+		expect(isSkimmedSitting(rows[0], skimCutoffWpm(rows))).toBe(false);
+		expect(speedSittings(rows)).toHaveLength(1);
+	});
+
+	it("leaves listening and implausible rows out of speed as before", () => {
+		expect(speedSittings([sitting("listen", 200), sitting("scroll", 3000)])).toEqual([]);
 	});
 });

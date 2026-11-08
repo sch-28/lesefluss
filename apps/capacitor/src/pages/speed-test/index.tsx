@@ -11,7 +11,7 @@ const SpeedTestPage: React.FC = () => {
 	const close = () =>
 		router.history.canGoBack()
 			? router.history.back()
-			: void navigate({ to: "/tabs/library/stats", search: { tab: "speed" }, replace: true });
+			: void navigate({ to: "/tabs/stats", search: { tab: "speed" }, replace: true });
 
 	return (
 		<div
@@ -24,7 +24,7 @@ const SpeedTestPage: React.FC = () => {
 				</Button>
 			</div>
 			<main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6">
-				<div className="mx-auto my-auto w-full max-w-md">
+				<div className="mx-auto w-full max-w-md pt-2">
 					<SpeedTest onSkip={close} onFinish={close} skipLabel="Not now" finishLabel="Done" />
 				</div>
 			</main>

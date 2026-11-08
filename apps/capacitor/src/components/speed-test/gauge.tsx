@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { PLAUSIBLE_WPM } from "../../services/stats/speed-test";
 
-const SCALE_MAX = 800;
+const SCALE_MAX = PLAUSIBLE_WPM.max;
 const CX = 150;
 const CY = 160;
 const R = 120;
@@ -26,7 +27,7 @@ interface Props {
 	animate?: boolean;
 }
 
-/** A 0–800 wpm half dial: reading speed in the text colour, the RSVP dial past it. */
+/** A 0–900 wpm half dial: reading speed in the text colour, the RSVP dial past it. */
 export function SpeedGauge({ reading, dial, value, label, animate = true }: Props) {
 	const [drawn, setDrawn] = useState(!animate);
 	useEffect(() => {
@@ -73,7 +74,7 @@ export function SpeedGauge({ reading, dial, value, label, animate = true }: Prop
 				/>
 			)}
 			{TICKS.map((tick) => {
-				const major = tick % 200 === 0;
+				const major = tick % 300 === 0;
 				const [x1, y1] = point(tick, R - 12);
 				const [x2, y2] = point(tick, R - (major ? 22 : 17));
 				const [lx, ly] = point(tick, R - 34);

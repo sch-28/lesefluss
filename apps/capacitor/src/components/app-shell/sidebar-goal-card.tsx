@@ -1,11 +1,9 @@
-import { bookPace } from "@lesefluss/core";
-import { Minus } from "lucide-react";
+import { Minus, Target } from "lucide-react";
 import { useState } from "react";
 import { useContinueReading } from "../../hooks/use-continue-reading";
 import { canStartGoal } from "../../pages/library/reading-goal/goal-model";
-import { GoalSetupSheet } from "../../pages/library/reading-goal/goal-setup-sheet";
+import { GoalSheetFor } from "../../pages/library/reading-goal/goal-sheet-for";
 import { queryHooks } from "../../services/db/hooks";
-import type { Book } from "../../services/db/schema";
 import { summarizeTodayGoals, todayGoalLabel } from "../../services/stats/today-goal-summary";
 import { GoalRing } from "../goal-ring";
 
@@ -57,12 +55,21 @@ export function SidebarGoalCard({ isCollapsed }: { isCollapsed: boolean }) {
 					isCollapsed={isCollapsed}
 					title={`Set a reading goal for ${book.title}`}
 					onClick={() => setSetupOpen(true)}
-					ring={emptyRing}
+					ring={
+						<GoalRing size={RING_SIZE} fraction={0}>
+							<Target className="size-3.5 text-muted-foreground" />
+						</GoalRing>
+					}
 					primary="Set a goal"
-					secondary={streakText}
+					secondary={`for ${book.title}`}
 					testId="sidebar-goal-card-empty"
 				/>
-				<GoalSetupFor book={book} isOpen={isSetupOpen} onClose={() => setSetupOpen(false)} />
+				<GoalSheetFor
+					book={book}
+					existing={null}
+					isOpen={isSetupOpen}
+					onClose={() => setSetupOpen(false)}
+				/>
 			</>
 		);
 	}
@@ -131,26 +138,5 @@ function CardButton({
 		>
 			{content}
 		</button>
-	);
-}
-
-function GoalSetupFor({
-	book,
-	isOpen,
-	onClose,
-}: {
-	book: Book;
-	isOpen: boolean;
-	onClose: () => void;
-}) {
-	const speedModel = queryHooks.useStatsSpeedModel();
-	return (
-		<GoalSetupSheet
-			isOpen={isOpen}
-			onClose={onClose}
-			book={book}
-			wpm={bookPace(speedModel.data, book.id).wpm}
-			existing={null}
-		/>
 	);
 }

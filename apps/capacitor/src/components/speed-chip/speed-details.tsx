@@ -10,9 +10,11 @@ import { ArrowRight, Minus, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RSVP_WPM_RANGE, steppedWpm } from "../../pages/reader/wpm";
 import { queryHooks } from "../../services/db/hooks";
-import { formatDuration } from "../../utils/date-utils";
+import { deltaLabel, type SpeedView, speedViews, trendDelta } from "../../services/stats/speed-tab";
+import { formatDuration, formatShortDate } from "../../utils/date-utils";
 import { formatReadingTime } from "../../utils/reading-time";
-import { modeMix, WINDOW_LABELS } from "./speed-chip-model";
+import { Sparkline } from "../sparkline";
+import { WINDOW_LABELS } from "./speed-chip-model";
 
 export type SpeedChipBook = { id: string; wordsLeft: number | null };
 
@@ -20,6 +22,8 @@ type Props = {
 	model: SpeedModel;
 	dialWpm: number;
 	showDial: boolean;
+	/** The mode the big number shows, from the default reader mode. */
+	primary: SpeedView;
 	book?: SpeedChipBook;
 	onNavigate: () => void;
 };
@@ -33,14 +37,42 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 	);
 }
 
-function Tile({ label, wpm, sub }: { label: string; wpm: number; sub?: string }) {
+const VIEW_LABELS: Record<SpeedView, string> = { reading: "Reading", rsvp: "RSVP" };
+
+/** One mode's speed with its trend over the window; the delta is neutral, slower isn't a failure. */
+function ModeRow({
+	model,
+	view,
+	sub,
+	now,
+}: {
+	model: SpeedModel;
+	view: SpeedView;
+	sub?: string;
+	now: number;
+}) {
+	const trend = queryHooks.useStatsWpmTrend(model.window, view, now);
+	const points = trend.data?.measured.filter((p) => p.avgWpm > 0).map((p) => p.avgWpm) ?? [];
+	const delta = trend.data ? trendDelta(trend.data) : null;
+	const wpm = view === "rsvp" ? (model.rsvp?.wpm ?? 0) : model.reading.wpm;
 	return (
-		<div className="flex flex-col gap-0.5 rounded-lg border border-border bg-muted/40 px-3 py-2">
-			<span className="text-[11px] text-muted-foreground">{label}</span>
-			<span className="font-semibold text-lg tabular-nums leading-tight">
-				{wpm} <span className="font-normal text-muted-foreground text-xs">wpm</span>
+		<div
+			className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-x-3"
+			data-testid={`speed-row-${view}`}
+		>
+			<span className="flex flex-col">
+				<span className="text-sm">{VIEW_LABELS[view]}</span>
+				{sub && <span className="text-[11px] text-muted-foreground tabular-nums">{sub}</span>}
 			</span>
-			{sub && <span className="text-[11px] text-muted-foreground tabular-nums">{sub}</span>}
+			<Sparkline points={points} />
+			<span className="flex flex-col items-end">
+				<span className="font-semibold text-sm tabular-nums">{wpm} wpm</span>
+				{delta && (
+					<span className="text-[11px] text-muted-foreground tabular-nums">
+						{deltaLabel(model.window, delta.wpm, formatShortDate(delta.since))}
+					</span>
+				)}
+			</span>
 		</div>
 	);
 }
@@ -97,11 +129,13 @@ function footnote(model: SpeedModel, showDial: boolean): string {
 	return "An average reader's speed until you have read for 10 minutes.";
 }
 
-export function SpeedDetails({ model, dialWpm, showDial, book, onNavigate }: Props) {
-	const showReading = model.modesUsed.reading || !model.modesUsed.rsvp;
+export function SpeedDetails({ model, dialWpm, showDial, primary, book, onNavigate }: Props) {
+	const [now] = useState(Date.now);
+	const views = speedViews(model);
 	const { scroll, page } = model.reading;
 	const split = scroll && page ? `Scroll ${scroll.wpm} · Page ${page.wpm}` : undefined;
-	const mix = modeMix(model);
+	const lead = views.includes(primary) ? primary : (views[0] ?? "reading");
+	const leadWpm = lead === "rsvp" ? (model.rsvp?.wpm ?? 0) : model.reading.wpm;
 	const save = queryHooks.useSaveSettings();
 	// Local so quick taps step from the last tap and the estimates follow at
 	// once, not after the save has been re-read.
@@ -126,41 +160,34 @@ export function SpeedDetails({ model, dialWpm, showDial, book, onNavigate }: Pro
 				<span className="text-[11px] text-muted-foreground">{WINDOW_LABELS[model.window]}</span>
 			</div>
 
-			<div className="grid grid-cols-2 gap-2">
-				{showReading && (
-					<Tile
-						label="Reading"
-						wpm={model.reading.wpm}
-						sub={SOURCE_SUB[model.reading.source] ?? split}
+			<div className="flex items-baseline gap-1.5" data-testid="speed-big">
+				<span className="font-bold text-3xl tabular-nums leading-none">{leadWpm}</span>
+				<span className="text-muted-foreground text-sm">
+					wpm{views.length > 1 ? ` ${VIEW_LABELS[lead]}` : ""}
+				</span>
+			</div>
+
+			<div className="flex flex-col gap-2">
+				{views.map((view) => (
+					<ModeRow
+						key={view}
+						model={model}
+						view={view}
+						now={now}
+						sub={
+							view === "reading"
+								? (SOURCE_SUB[model.reading.source] ?? split)
+								: model.rsvp?.dialWpm != null
+									? `Avg dial ${model.rsvp.dialWpm}`
+									: undefined
+						}
 					/>
-				)}
-				{model.rsvp && (
-					<Tile
-						label="RSVP"
-						wpm={model.rsvp.wpm}
-						sub={model.rsvp.dialWpm !== null ? `Dial ${model.rsvp.dialWpm}` : undefined}
-					/>
-				)}
+				))}
 			</div>
 
 			{showDial && <DialStepper dial={dial} onStep={stepDial} />}
 
-			<div className="flex flex-col gap-1.5 border-border border-t pt-3">
-				<Row label="Pace" value={`${model.pace.wpm} wpm`} />
-				{mix && (
-					<>
-						<div
-							className="flex h-1.5 overflow-hidden rounded-full bg-current/10"
-							aria-hidden="true"
-						>
-							<div className="h-full bg-primary" style={{ width: `${mix.reading}%` }} />
-							<div className="h-full bg-primary/40" style={{ width: `${mix.rsvp}%` }} />
-						</div>
-						<span className="text-[11px] text-muted-foreground tabular-nums">
-							Reading {mix.reading}% · RSVP {mix.rsvp}%
-						</span>
-					</>
-				)}
+			<div className="flex flex-col gap-1.5 border-border border-t pt-3 empty:hidden">
 				{showDial && <Row label="RSVP at dial" value={`${rsvpAtDial} wpm`} />}
 				{ownBook && ownBook.activeMs >= BOOK_SPEED_MIN_ACTIVE_MS && (
 					<Row
@@ -189,12 +216,12 @@ export function SpeedDetails({ model, dialWpm, showDial, book, onNavigate }: Pro
 			</p>
 
 			<Link
-				to="/tabs/library/stats"
+				to="/tabs/stats"
 				search={{ tab: "speed" }}
 				onClick={onNavigate}
 				className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border px-3 py-2 font-medium text-sm hover:bg-muted"
 			>
-				Open Speed tab <ArrowRight className="size-4" />
+				Speed details <ArrowRight className="size-4" />
 			</Link>
 		</div>
 	);

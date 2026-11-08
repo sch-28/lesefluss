@@ -1,12 +1,12 @@
 import {
 	BOOK_SPEED_MIN_ACTIVE_MS,
 	bookSpeeds,
-	isMeasurableSitting,
 	type MeasuredReadingMode,
 	type ReadingMode,
 	rsvpTimeSavedMs,
 	type SpeedModel,
 	type SpeedWindow,
+	speedSittings,
 	wpmFrom,
 } from "@lesefluss/core";
 import type { WpmTrend } from "./aggregate";
@@ -129,8 +129,7 @@ export function buildSpeedTabData(
 		longestRsvpRun: null,
 	};
 
-	for (const s of sessions) {
-		if (!isMeasurableSitting(s)) continue;
+	for (const s of speedSittings(sessions)) {
 		const book = books.get(s.bookId);
 		if (!book) continue;
 

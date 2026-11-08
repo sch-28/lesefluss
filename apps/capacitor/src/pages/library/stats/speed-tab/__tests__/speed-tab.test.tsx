@@ -8,6 +8,8 @@ import { click, type Rendered, render } from "../../../../../test/render";
 
 const mutate = vi.fn();
 const navigate = vi.fn();
+const refetch = vi.fn();
+let modelError = false;
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
@@ -34,7 +36,12 @@ function emptyRecords(): SpeedTabData["records"] {
 
 vi.mock("../../../../../services/db/hooks", () => ({
 	queryHooks: {
-		useStatsSpeedModel: () => ({ data: state.model }),
+		useStatsSpeedModel: () => ({
+			data: state.model,
+			isError: modelError,
+			isFetching: false,
+			refetch,
+		}),
 		useStatsSpeedTab: () => ({ data: state.tab }),
 		useStatsSpeedInsights: () => ({ data: state.insights }),
 		useSettings: () => ({ data: state.settings }),
@@ -106,6 +113,8 @@ let view: Rendered | undefined;
 beforeEach(() => {
 	mutate.mockClear();
 	navigate.mockClear();
+	refetch.mockClear();
+	modelError = false;
 	state.speedTests = [];
 	state.tab = { books: [], records: emptyRecords() };
 	state.insights = { reading: [], rsvp: [] };
@@ -132,7 +141,8 @@ describe("SpeedTab", () => {
 		expect(q("speed-hero")?.textContent).toContain("260");
 		expect(q("speed-hero")?.textContent).toContain("Scroll 250 · Page 300");
 		expect(q("speed-hero")?.textContent).toContain("+20 since");
-		expect(q("speed-window")?.textContent).toContain("Recent 10h");
+		expect(q("speed-hero")?.innerHTML).not.toMatch(/emerald|red-/);
+		expect(q("speed-window")?.textContent).toContain("Last 10h");
 		expect(q("book-speed-list")).not.toBeNull();
 		expect(q("speed-records")?.textContent).toContain("Fastest book");
 		expect(q("speed-records")?.textContent).toContain("241 wpm");
@@ -140,6 +150,15 @@ describe("SpeedTab", () => {
 		expect(q("rsvp-dial")).toBeNull();
 		expect(q("time-saved")).toBeNull();
 		expect(view.container.querySelector("[data-testid=speed-mode]")).toBeNull();
+	});
+
+	it("shows an error with a retry when the speed model fails", async () => {
+		state.model = undefined;
+		modelError = true;
+		view = await render(<SpeedTab now={2 * DAY} />);
+		expect(q("speed-error")?.textContent).toContain("couldn't be worked out");
+		await click(view.getButton("Try again"));
+		expect(refetch).toHaveBeenCalledOnce();
 	});
 
 	it("offers the speed test and names it as the source of an unmeasured speed", async () => {
