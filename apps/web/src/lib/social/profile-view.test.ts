@@ -8,6 +8,12 @@ describe("isSectionShown", () => {
 		expect(isSectionShown(profile, "stats", false)).toBe(true);
 	});
 
+	it("hides milestones from friends while reading stats are off, whatever their own toggle", () => {
+		const profile = { showStats: false, showMilestones: true };
+		expect(isSectionShown(profile, "milestones", false)).toBe(false);
+		expect(isSectionShown(profile, "milestones", true)).toBe(true);
+	});
+
 	it("always shows the owner their own milestones", () => {
 		expect(isSectionShown({ showMilestones: false }, "milestones", true)).toBe(true);
 	});

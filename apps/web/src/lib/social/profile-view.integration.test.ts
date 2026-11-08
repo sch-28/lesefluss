@@ -363,6 +363,16 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 		await updateOwnProfile(owner, { showStats: true, showFinished: true, showMilestones: true });
 	});
 
+	test("reading stats off hides the milestones from friends, with their own toggle still on", async () => {
+		await updateOwnProfile(owner, { showStats: false, showMilestones: true });
+		const asFriend = await resolveProfileView(friend, owner, { now });
+		expect(asFriend.sections.stats).toBeUndefined();
+		expect(asFriend.sections.milestones).toBeUndefined();
+		const self = await resolveProfileView(owner, owner, { now });
+		expect(self.sections.milestones).toBeDefined();
+		await updateOwnProfile(owner, { showStats: true });
+	});
+
 	test("strangers, blocks, banned or handle-less owners and unknown users are all not found", async () => {
 		await expectNotFound(resolveProfileView(stranger, owner, { now }));
 		await expectNotFound(resolveProfileView(friend, "nobody", { now }));

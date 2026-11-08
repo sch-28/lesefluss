@@ -263,13 +263,18 @@ export type ProfileViewOptions = {
 	now?: Date;
 };
 
-/** Whether a section reaches this viewer: the owner always sees all, others what the owner's toggle allows. */
+/**
+ * Whether a section reaches this viewer: the owner always sees all, others what the owner's toggle allows.
+ * Milestones are reading stats too, so turning stats off hides them whatever their own toggle says.
+ */
 export function isSectionShown(
 	profile: Partial<Record<(typeof PROFILE_SECTIONS)[ProfileSection], boolean>> | undefined,
 	section: ProfileSection,
 	isShowingAll: boolean,
 ): boolean {
-	return isShowingAll || (profile?.[PROFILE_SECTIONS[section]] ?? true);
+	if (isShowingAll) return true;
+	const isOn = (s: ProfileSection) => profile?.[PROFILE_SECTIONS[s]] ?? true;
+	return isOn(section) && (section !== "milestones" || isOn("stats"));
 }
 
 /**

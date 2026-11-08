@@ -272,6 +272,7 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 					title="Milestones"
 					subtitle="Words, hours, books, streaks and RSVP speed reached"
 					checked={profile.showMilestones}
+					disabled={!profile.showStats}
 					onCheckedChange={(v) => save({ showMilestones: v })}
 				/>
 				<ToggleRow

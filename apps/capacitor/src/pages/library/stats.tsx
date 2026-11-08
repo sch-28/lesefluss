@@ -57,8 +57,6 @@ const Stats: React.FC = () => {
 				<div className="flex min-h-[60vh] items-center justify-center">
 					<Loader2 className="size-6 animate-spin text-muted-foreground" />
 				</div>
-			) : !hasSessions ? (
-				<EmptyState />
 			) : (
 				<>
 					<Tabs
@@ -84,6 +82,8 @@ const Stats: React.FC = () => {
 						/>
 					) : tab === "speed" ? (
 						<SpeedTab now={now} />
+					) : !hasSessions ? (
+						<EmptyState />
 					) : (
 						<div className="pt-2">
 							<Hero

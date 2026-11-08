@@ -10,9 +10,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { click, flush, type Rendered, render } from "../../../test/render";
 import { parseStatsSearch } from "../stats/stats-search";
 
+const sessions = vi.hoisted(() => ({ count: 3 }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useReadingSessionCount: () => ({ data: 3, isLoading: false }),
+		useReadingSessionCount: () => ({ data: sessions.count, isLoading: false }),
 		useStatsStreak: () => ({ data: { current: 1, longest: 2, freezesBanked: 0 } }),
 	},
 }));
@@ -26,6 +27,7 @@ vi.mock("../stats/finished-shelf", () => ({ FinishedShelf: () => null }));
 vi.mock("../stats/top-books", () => ({ TopBooks: () => null }));
 vi.mock("../stats/activity", () => ({ Activity: () => null }));
 vi.mock("../stats/speed-tab/speed-tab", () => ({ SpeedTab: marker("speed") }));
+vi.mock("../stats/empty-state", () => ({ EmptyState: marker("empty") }));
 vi.mock("../stats/sessions-tab", () => ({
 	SessionsTab: ({
 		bookId,
@@ -52,6 +54,7 @@ let view: Rendered | undefined;
 afterEach(() => {
 	view?.unmount();
 	view = undefined;
+	sessions.count = 3;
 });
 
 async function open(url: string) {
@@ -117,5 +120,14 @@ describe("Stats tabs", () => {
 		await click(view?.getButton("Clear") as HTMLButtonElement);
 		expect(router.state.location.search).toEqual({ tab: "sessions" });
 		expect(shown()).toBe("sessions");
+	});
+
+	it("keeps the Speed tab reachable before the first sitting", async () => {
+		sessions.count = 0;
+		const router = await open("/tabs/library/stats");
+		expect(shown()).toBe("empty");
+		await tap("Speed");
+		expect(shown()).toBe("speed");
+		expect(router.state.location.search).toEqual({ tab: "speed" });
 	});
 });

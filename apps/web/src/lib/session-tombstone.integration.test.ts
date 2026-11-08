@@ -8,6 +8,7 @@ import {
 	type SyncPayload,
 	type SyncReadingSession,
 	type SyncResponse,
+	SyncSpeedTestSchema,
 } from "@lesefluss/core";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
@@ -178,6 +179,20 @@ describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 		expect(await pull()).toEqual({ live: ["fresh"], deleted: ["a", "b", "c"] });
 	});
 
+	test("the stats wipe clears the speeds and font size of every wiped row", async () => {
+		const withSpeeds = (id: string) => ({ ...session(id), fontSize: 18, segmentWpm: [240, 260] });
+		await push([withSpeeds("a"), withSpeeds("b")]);
+		await deleteOne("a");
+		await wipe();
+		for (const id of ["a", "b"]) {
+			expect(await storedRow(id)).toMatchObject({
+				deleted: true,
+				fontSize: null,
+				segmentWpm: null,
+			});
+		}
+	});
+
 	test("the stats wipe tombstones goals, so pulls hand other devices the deletion", async () => {
 		const then = new Date(Date.now() - 60_000);
 		await db.insert(syncReadingGoals).values({
@@ -228,6 +243,43 @@ describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 		const tests = (await get("?sessionTombstonesSince=0")).speedTests ?? [];
 		expect(tests.map((t) => [t.testId, t.deleted])).toEqual([["t1", true]]);
 		expect(tests[0]?.updatedAt).toBeGreaterThan(then.getTime());
+	});
+
+	test("the stats wipe leaves no speed-test wpm behind, and its tombstones still parse on devices", async () => {
+		const then = new Date(Date.now() - 60_000);
+		await db.delete(syncSpeedTests).where(eq(syncSpeedTests.userId, userId));
+		await db.insert(syncSpeedTests).values([
+			{
+				userId,
+				testId: "live",
+				readingWpm: 260,
+				rsvpWpm: 410,
+				passageId: "canal-1",
+				createdAt: then,
+				updatedAt: then,
+			},
+			{
+				userId,
+				testId: "earlier",
+				readingWpm: 240,
+				rsvpWpm: 380,
+				passageId: "canal-1",
+				deleted: true,
+				createdAt: then,
+				updatedAt: then,
+			},
+		]);
+		await wipe();
+		const stored = await db.select().from(syncSpeedTests).where(eq(syncSpeedTests.userId, userId));
+		expect(stored.map((t) => [t.testId, t.readingWpm, t.rsvpWpm, t.deleted]).sort()).toEqual([
+			["earlier", 1, null, true],
+			["live", 1, null, true],
+		]);
+		const earlier = stored.find((t) => t.testId === "earlier");
+		expect(earlier?.updatedAt).toEqual(then);
+		const pulled = (await get("?sessionTombstonesSince=0")).speedTests ?? [];
+		expect(pulled).toHaveLength(2);
+		for (const t of pulled) expect(SyncSpeedTestSchema.safeParse(t).success).toBe(true);
 	});
 
 	test("refuses an id longer than the push schema allows", async () => {

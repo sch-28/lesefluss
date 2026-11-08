@@ -92,7 +92,7 @@ Estimates render as plain values ("4h 10m", no "~"); that a value is estimated i
 
 ### Speed test
 
-A one-minute measurement in two rounds, offered in onboarding and from the Speed tab: the reader reads a short passage normally (reading wpm, from words over the time between tap-to-begin and Done), then sees the passage's next part in RSVP at a suggested dial (RSVP wpm, from the delays the engine would use for the words shown, not the wall clock). A reading result outside 120 to 900 wpm is offered for a retry. Each result is a row in `speed_tests`, synced with the stats setting like [sessions](#session) and wiped with them; the latest one is the [speed model](#speed-model)'s fallback before 10 minutes of measured reading, and every one shows as a marker on the speed trend. Applying the result sets the RSVP dial; nothing else changes the dial.
+A one-minute measurement in two rounds, offered in onboarding and from the Speed tab: the reader reads a short passage normally (reading wpm, from words over the time between tap-to-begin and Done), then sees the passage's next part in RSVP at a suggested dial (RSVP wpm, from the delays the engine would use for the words shown, not the wall clock). A reading result outside 120 to 900 wpm is offered for a retry. Each result is a row in `speed_tests`, synced with the stats setting like [sessions](#session) and wiped with them, its wpm values cleared on the server too; the latest one is the [speed model](#speed-model)'s fallback before 10 minutes of measured reading, and every one shows as a marker on the speed trend. Applying the result sets the RSVP dial; nothing else changes the dial.
 
 ### Bookmark
 
@@ -142,7 +142,7 @@ A user's server-side setting for everything beyond the [identity card](#identity
 (default: bio and profile sections visible only to the owner) or `friends` (accepted friends see the
 bio and the sections whose per-section toggle is on: currently reading, finished books, reading
 stats, shared highlights, [milestones](#milestone)). There is no public level. A section is shown only if both the visibility
-and its toggle allow it.
+and its toggle allow it; milestones also need the reading stats toggle.
 
 ### Friend
 
@@ -215,7 +215,7 @@ or downloaded on the web. Not a [Share](#share): nothing is offered to a friend.
 A tier a reader has reached in words read, hours read, books finished, day streak or best RSVP
 sitting wpm. Derived from sessions and finished books (`deriveMilestones` in core), never stored,
 so the app and the server agree. Shown on the Speed tab, in the session summary and, unless
-`show_milestones` is off, on the profile, where friends see only the reached tiers by day.
+`show_milestones` or `show_stats` is off, on the profile, where friends see only the reached tiers by day.
 
 ### Buddy read
 
