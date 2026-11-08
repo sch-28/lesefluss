@@ -1,4 +1,4 @@
-import { BOOK_STATUS_LABELS, BOOK_STATUSES } from "@lesefluss/core";
+import { BOOK_STATUS_LABELS, BOOK_STATUSES, isSeriesCollectionId } from "@lesefluss/core";
 import type { SeriesMembership } from "../../services/db/queries/collections";
 import { compareText, type LibraryItem } from "./sort-filter";
 
@@ -77,7 +77,8 @@ function keysOf(
 		case "tag":
 			return item.sortKey.tags.length > 0 ? item.sortKey.tags : [OTHERS];
 		case "collection": {
-			const ids = item.facets.collection.filter((id) => known.has(id));
+			// Series collections have Group by Series; the Collection filter still matches them.
+			const ids = item.facets.collection.filter((id) => known.has(id) && !isSeriesCollectionId(id));
 			return ids.length > 0 ? ids : [OTHERS];
 		}
 		case "series": {

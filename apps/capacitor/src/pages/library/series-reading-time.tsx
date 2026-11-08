@@ -25,7 +25,7 @@ function useSeriesTimes(chapters: readonly SeriesChapterLength[] | undefined): S
 	};
 }
 
-/** "Left 8h" once the series is started, else "Total 12h 5m": the library card's one line. */
+/** "Left 8h" while the series is under way; nothing when unstarted or finished, as on book cards. */
 export function SeriesCardTime({
 	chapters,
 	id,
@@ -35,11 +35,11 @@ export function SeriesCardTime({
 	id?: string;
 	className?: string;
 }) {
-	const times = useSeriesTimes(chapters);
-	if (!times) return null;
+	const left = useSeriesTimes(chapters)?.left;
+	if (!left) return null;
 	return (
 		<span id={id} className={className} data-testid="series-card-time">
-			{times.left ? `Left ${times.left}` : `Total ${times.total}`}
+			Left {left}
 		</span>
 	);
 }

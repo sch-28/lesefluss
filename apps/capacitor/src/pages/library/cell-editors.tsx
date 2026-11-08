@@ -32,6 +32,8 @@ export type CellEditorProps = {
 	align?: "end";
 	libraryTags: readonly string[];
 	onEdit: (book: Book, action: BulkAction) => void;
+	/** A Ctrl, Cmd or Shift click goes here instead of opening the editor, so it selects the row. */
+	onModifiedClick: (e: React.MouseEvent) => void;
 };
 
 const CELL_CLASS = "min-w-0 truncate px-2 py-2 text-left text-muted-foreground";
@@ -45,7 +47,13 @@ export const CellEditor: React.FC<CellEditorProps> = (props) => {
 		<button
 			type="button"
 			aria-label={triggerLabel}
-			onClick={() => setIsOpen(true)}
+			onClick={(e) => {
+				if (e.ctrlKey || e.metaKey || e.shiftKey) {
+					// Radix's trigger skips its own toggle on a prevented click.
+					e.preventDefault();
+					props.onModifiedClick(e);
+				} else setIsOpen(true);
+			}}
 			className={cn(
 				CELL_CLASS,
 				"h-full w-full cursor-text rounded-sm border-0 bg-transparent hover:bg-muted",

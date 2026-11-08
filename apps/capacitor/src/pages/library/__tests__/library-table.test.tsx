@@ -169,6 +169,30 @@ describe("LibraryTable", () => {
 		expect(calls.open).not.toHaveBeenCalled();
 	});
 
+	it("selects the row on a Ctrl, Cmd or Shift click on an editable cell, without editing", async () => {
+		const calls = await mount({ columns: ["title", "rating", "status", "tags"] });
+		const modifiedClick = (label: string, init: MouseEventInit) =>
+			act(() => {
+				rendered
+					.getButton(label)
+					.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, ...init }));
+			});
+		modifiedClick("Edit rating of Alpha", { ctrlKey: true });
+		modifiedClick("Edit status of Gamma", { metaKey: true });
+		modifiedClick("Edit tags of Delta", { shiftKey: true });
+		await flush();
+		expect(calls.toggle.mock.calls).toEqual([["a"], ["c"]]);
+		expect(calls.selectRange).toHaveBeenCalledWith("d");
+		expect(rendered.queryButton("Rate 4 stars")).toBeNull();
+		const statusOption = [...document.body.querySelectorAll("button")].find(
+			(b) => b.textContent?.trim() === "Finished",
+		);
+		expect(statusOption).toBeUndefined();
+		expect(document.body.querySelector('[role="dialog"]')).toBeNull();
+		expect(calls.edit).not.toHaveBeenCalled();
+		expect(calls.open).not.toHaveBeenCalled();
+	});
+
 	it("does not edit cells while selecting", async () => {
 		await mount({ columns: ["title", "rating"], isSelecting: true });
 		expect(rendered.queryButton("Edit rating of Alpha")).toBeNull();

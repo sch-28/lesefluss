@@ -82,12 +82,38 @@ describe("groupLibrary", () => {
 		expect(groups.map((g) => g.key)).not.toContain(plain);
 	});
 
-	it("orders collections as the sidebar does, the books outside last", () => {
+	it("groups by the plain collections only, a book only in a series counting as outside", () => {
 		expect(shape(groupLibrary(library, "collection", ctx))).toEqual([
 			["Favourites", ["dune1"]],
-			["The Expanse", ["crossover"]],
-			["Dune", ["loose", "dune1", "messiah", "crossover"]],
-			["Not in a collection", ["solo"]],
+			["Not in a collection", ["loose", "messiah", "solo", "crossover"]],
+		]);
+	});
+
+	it("still filters by a series collection, so only the grouping leaves it out", () => {
+		const inDune = applyLibraryView(library, {
+			filter: { collection: { in: [dune], out: [] } },
+			sortBy: "title",
+		});
+		expect(ids(inDune)).toEqual(["loose", "dune1", "messiah", "crossover"]);
+	});
+
+	it("orders collections as the sidebar does, the books outside last", () => {
+		const second = "c-second";
+		const withSecond = items([
+			makeBook({ id: "dune1", title: "Dune" }),
+			makeBook({ id: "solo", title: "Middle" }),
+		]).map((item) =>
+			item.kind === "book" && item.book.id === "solo"
+				? { ...item, facets: { ...item.facets, collection: [second] } }
+				: item,
+		);
+		const sidebar: GroupContext = {
+			...ctx,
+			collections: [{ id: second, name: "Beach reads" }, ...ctx.collections],
+		};
+		expect(shape(groupLibrary(withSecond, "collection", sidebar))).toEqual([
+			["Beach reads", ["solo"]],
+			["Favourites", ["dune1"]],
 		]);
 	});
 

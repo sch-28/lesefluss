@@ -292,6 +292,7 @@ const LibraryTable: React.FC<Props> = ({
 													align={column.align}
 													libraryTags={libraryTags}
 													onEdit={(book, action) => onEditBook?.(book, action)}
+													onModifiedClick={(e) => onRowClick(item, e)}
 												/>
 											</span>
 										) : null,

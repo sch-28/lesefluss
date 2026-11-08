@@ -284,7 +284,7 @@ describe.each([
 		expect(view.container.querySelectorAll("[data-card-field]")).toHaveLength(2);
 	});
 
-	it("shows the series' total time, then the time left once a chapter is started", async () => {
+	it("shows time left only while the serial is under way, keeping the slot otherwise", async () => {
 		const chapters: { wordCount: number; wordPosition: number; finishedAt: number | null }[] = [
 			{ wordCount: 6000, wordPosition: 0, finishedAt: null },
 			{ wordCount: 12_000, wordPosition: 0, finishedAt: null },
@@ -298,11 +298,15 @@ describe.each([
 					chapterLengths={chapterLengths}
 					onOpen={() => {}}
 					onMenu={() => {}}
+					fields={["timeLeft"]}
 				/>,
 			);
+		const timeSlot = () => view?.container.querySelector('[data-card-field="timeLeft"]');
+
 		view = await show(chapters);
-		expect(view.text()).toContain("Total 1h 30m");
-		expect(description(card())).toContain("Total 1h 30m");
+		expect(view.container.querySelector('[data-testid="series-card-time"]')).toBeNull();
+		expect(view.text()).not.toContain("Total");
+		expect(timeSlot()).not.toBeNull();
 
 		view.unmount();
 		view = await show([
@@ -310,6 +314,16 @@ describe.each([
 			...chapters.slice(1),
 		]);
 		expect(view.text()).toContain("Left 1h");
+		expect(description(card())).toContain("Left 1h");
+
+		view.unmount();
+		view = await show([
+			{ ...chapters[0], wordPosition: 6000, finishedAt: 1 },
+			{ ...chapters[1], wordPosition: 12_000, finishedAt: 1 },
+			chapters[2],
+		]);
+		expect(view.container.querySelector('[data-testid="series-card-time"]')).toBeNull();
 		expect(view.text()).not.toContain("Total");
+		expect(timeSlot()).not.toBeNull();
 	});
 });
