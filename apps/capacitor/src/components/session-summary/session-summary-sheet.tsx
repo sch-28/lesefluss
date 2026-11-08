@@ -6,7 +6,6 @@ import {
 	DrawerDescription,
 	DrawerFooter,
 	DrawerTitle,
-	drawerSnapPoints,
 } from "@lesefluss/ui/drawer";
 import { Link } from "@tanstack/react-router";
 import { EyeOff, Share2 } from "lucide-react";
@@ -26,7 +25,6 @@ import { MedalGrid } from "../milestones/milestone-medals";
 import { ShareCardSheet } from "../share-card/share-card-sheet";
 import { BookTile, SpeedTile, TimeSavedTile, TimeTile, WordsTile } from "./summary-tiles";
 
-const SNAP_POINTS = drawerSnapPoints([0.62, 1]);
 const DAY_MS = 86_400_000;
 
 function SummaryBody({ summary, onClose }: { summary: SessionSummary; onClose: () => void }) {
@@ -163,7 +161,6 @@ export function SessionSummarySheet() {
 	const summary = useSessionSummary();
 	const { data: settings } = queryHooks.useSettings();
 	const isOff = settings?.showSessionSummary === false;
-	const [snap, setSnap] = useState<number | string | null>(SNAP_POINTS[0]);
 	// Kept through the close animation, after the store has let it go.
 	const shownRef = useRef<SessionSummary | null>(null);
 	if (summary) shownRef.current = summary;
@@ -173,20 +170,15 @@ export function SessionSummarySheet() {
 		if (summary && isOff) dismissSummary();
 	}, [summary, isOff]);
 
-	useEffect(() => {
-		if (summary) setSnap(SNAP_POINTS[0]);
-	}, [summary]);
-
 	const isOpen = summary !== null && settings !== undefined && !isOff;
 	return (
+		// No snap points: vaul places snaps as if the sheet filled the screen, so any
+		// snap below 1 on this content-height sheet pushes its tiles and Done off screen.
 		<Drawer
 			open={isOpen}
 			onOpenChange={(open) => {
 				if (!open) dismissSummary();
 			}}
-			snapPoints={SNAP_POINTS}
-			activeSnapPoint={snap}
-			setActiveSnapPoint={setSnap}
 		>
 			<DrawerContent>
 				{shown && (

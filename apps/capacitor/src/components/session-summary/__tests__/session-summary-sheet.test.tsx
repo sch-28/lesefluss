@@ -44,12 +44,16 @@ vi.mock("../../share-card/share-card-sheet", () => ({
 		return <div data-testid="share-card-sheet" />;
 	},
 }));
+const drawerProps: Record<string, unknown>[] = [];
 vi.mock("@lesefluss/ui/drawer", async () => {
 	const { drawerModule } = await import("../../../test/overlay-mocks");
 	return {
 		...drawerModule,
+		Drawer: (p: Parameters<typeof drawerModule.Drawer>[0]) => {
+			drawerProps.push(p);
+			return drawerModule.Drawer(p);
+		},
 		DrawerFooter: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-		drawerSnapPoints: (v: number[]) => v,
 	};
 });
 vi.mock("@tanstack/react-router", () => ({
@@ -92,6 +96,7 @@ const sheet = () => document.querySelector("[data-testid=sheet]");
 let view: Rendered | undefined;
 beforeEach(() => {
 	resetSummaryStore();
+	drawerProps.length = 0;
 	saveSettings.mockClear();
 	modelWithout.mockClear();
 	model = undefined;
@@ -146,6 +151,17 @@ describe("SessionSummarySheet", () => {
 		const saved = document.querySelector("[data-testid=summary-time-saved]")?.textContent;
 		expect(saved).toContain("Reading (200 wpm)");
 		expect(saved).toContain("20m");
+	});
+
+	it("opens at its full height, with no partial snap", async () => {
+		view = await render(<SessionSummarySheet />);
+		await readAndClose(10 * MIN);
+		const opened = drawerProps.filter((p) => p.open);
+		expect(opened.length).toBeGreaterThan(0);
+		for (const p of opened) {
+			expect(p.snapPoints).toBeUndefined();
+			expect(p.activeSnapPoint).toBeUndefined();
+		}
 	});
 
 	it("stays closed under 2 minutes", async () => {
