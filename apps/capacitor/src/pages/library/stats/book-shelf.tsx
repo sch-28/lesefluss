@@ -39,7 +39,7 @@ export function BookShelf({
 		>
 			<header className="mb-3 px-4">
 				<h2 className="font-semibold text-lg">{title}</h2>
-				<p className="mt-0.5 text-[11px] uppercase tracking-wider opacity-60">{subtitle}</p>
+				<p className="mt-0.5 text-[0.6875rem] uppercase tracking-wider opacity-60">{subtitle}</p>
 			</header>
 			{books.length === 0 ? (
 				<p className="px-4 text-muted-foreground text-sm">{emptyMessage}</p>
@@ -74,9 +74,11 @@ export function BookShelf({
 							<div className="mt-2 px-0.5 text-foreground">
 								<div className="line-clamp-1 font-medium text-sm">{book.title}</div>
 								{book.author && (
-									<div className="mt-0.5 line-clamp-1 text-[11px] opacity-60">{book.author}</div>
+									<div className="mt-0.5 line-clamp-1 text-[0.6875rem] opacity-60">
+										{book.author}
+									</div>
 								)}
-								<div className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground tabular-nums">
+								<div className="mt-0.5 line-clamp-1 text-[0.6875rem] text-muted-foreground tabular-nums">
 									{book.detail}
 								</div>
 							</div>

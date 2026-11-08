@@ -45,7 +45,7 @@ export function GoalRing({ size, fraction, isMet = false, children, className }:
 				)}
 			</svg>
 			{children != null && (
-				<span className="absolute inset-0 flex items-center justify-center font-semibold text-[9px] tabular-nums">
+				<span className="absolute inset-0 flex items-center justify-center font-semibold text-[0.5625rem] tabular-nums">
 					{children}
 				</span>
 			)}

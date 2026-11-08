@@ -6,6 +6,7 @@ const signInWithPassword = vi.hoisted(() =>
 	vi.fn<(email: string, password: string) => Promise<void>>(),
 );
 const openBrowserSignIn = vi.hoisted(() => vi.fn(async () => {}));
+const requestPasswordReset = vi.hoisted(() => vi.fn<(email: string) => Promise<void>>());
 
 const theme = vi.hoisted(() => ({ isEinkMode: false }));
 
@@ -20,6 +21,7 @@ vi.mock("@/services/sync", async (importOriginal) => {
 		...actual,
 		NATIVE_SYNC_ENABLED: true,
 		openBrowserSignIn,
+		requestPasswordReset,
 	};
 });
 
@@ -33,6 +35,8 @@ afterEach(() => {
 	signInWithPassword.mockReset();
 	theme.isEinkMode = false;
 	openBrowserSignIn.mockClear();
+	requestPasswordReset.mockReset();
+	vi.unstubAllGlobals();
 });
 
 function input(label: string): HTMLInputElement {
@@ -168,5 +172,58 @@ describe("SignInOptions", () => {
 		await flush();
 
 		expect(calls).toEqual(["before", "open"]);
+	});
+
+	it("sends a reset link for the typed email from Forgot password", async () => {
+		requestPasswordReset.mockResolvedValue();
+		view = await render(<SignInOptions />);
+		await openEmailForm();
+		await act(async () => {
+			view?.getButton("Forgot password?").click();
+		});
+		expect(view.container.querySelector("input[type='password']")).toBeNull();
+
+		await type(input("Email"), " reader@example.com ");
+		await submit();
+
+		expect(requestPasswordReset).toHaveBeenCalledWith("reader@example.com");
+		expect(signInWithPassword).not.toHaveBeenCalled();
+		expect(view.text()).toContain("If reader@example.com has an account");
+
+		await act(async () => {
+			view?.getButton("Back to sign in").click();
+		});
+		expect(input("Password")).toBeTruthy();
+	});
+
+	it("shows why a reset link could not be sent", async () => {
+		const { PasswordResetError } = await import("@/services/sync");
+		requestPasswordReset.mockRejectedValueOnce(new PasswordResetError("rate-limited"));
+		view = await render(<SignInOptions />);
+		await openEmailForm();
+		await act(async () => {
+			view?.getButton("Forgot password?").click();
+		});
+		await type(input("Email"), "reader@example.com");
+		await submit();
+
+		expect(view.text()).toContain("Too many attempts");
+		expect(view.getButton("Send reset link").disabled).toBe(false);
+	});
+
+	it("does not offer phone sign-in on a phone", async () => {
+		vi.stubGlobal("screen", { width: 412, height: 915 });
+		const matchMedia = window.matchMedia;
+		window.matchMedia = ((query: string) => ({
+			...matchMedia(query),
+			matches: query === "(pointer: coarse)",
+		})) as typeof window.matchMedia;
+		try {
+			view = await render(<SignInOptions />);
+			expect(view.text()).toContain("Continue in your browser");
+			expect(view.text()).not.toContain("Sign in with your phone");
+		} finally {
+			window.matchMedia = matchMedia;
+		}
 	});
 });

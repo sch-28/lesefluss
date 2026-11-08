@@ -26,7 +26,7 @@ function Tile({
 }) {
 	const body = (
 		<>
-			<span className="flex items-center gap-1.5 font-medium text-[10px] text-muted-foreground uppercase tracking-wider">
+			<span className="flex items-center gap-1.5 font-medium text-[0.625rem] text-muted-foreground uppercase tracking-wider">
 				{icon}
 				{label}
 			</span>
@@ -58,7 +58,7 @@ const Value = ({ children }: { children: ReactNode }) => (
 );
 
 const Caption = ({ children }: { children: ReactNode }) => (
-	<span className="text-[11px] text-muted-foreground tabular-nums">{children}</span>
+	<span className="text-[0.6875rem] text-muted-foreground tabular-nums">{children}</span>
 );
 
 export function TimeTile({ activeMs, todayMinutes }: { activeMs: number; todayMinutes: number }) {
@@ -129,11 +129,11 @@ export function SpeedTile({
 		>
 			<span className="flex items-baseline gap-1.5">
 				<Value>{stats.wpm ?? "–"}</Value>
-				<span className="text-[11px] text-muted-foreground">wpm</span>
+				<span className="text-[0.6875rem] text-muted-foreground">wpm</span>
 				{delta !== null && (
 					<span
 						className={cn(
-							"ml-auto rounded-full px-1.5 text-[10px] tabular-nums",
+							"ml-auto rounded-full px-1.5 text-[0.625rem] tabular-nums",
 							delta >= 0 ? "bg-emerald-500/15 text-emerald-700" : "bg-muted text-muted-foreground",
 						)}
 						data-testid="summary-speed-delta"
@@ -180,7 +180,7 @@ export function TimeSavedTile({ rsvp }: { rsvp: NonNullable<SummaryStats["rsvp"]
 				{bars.map((bar) => (
 					<div
 						key={bar.label}
-						className="flex items-center gap-2 text-[11px] text-muted-foreground"
+						className="flex items-center gap-2 text-[0.6875rem] text-muted-foreground"
 					>
 						<span className="w-28 truncate">{bar.label}</span>
 						<span className="h-1.5 flex-1 rounded-full bg-current/10">

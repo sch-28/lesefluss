@@ -53,12 +53,12 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 			{...handlers}
 		>
 			{/* Cover */}
-			<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-[#d9d9d9] bg-[#f0f0f0]">
+			<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-border bg-muted">
 				<CoverImage
 					src={series.coverImage}
 					alt={series.title}
 					fallback={
-						<span className="font-semibold text-[#bbb] text-[0.6rem] uppercase tracking-wide">
+						<span className="font-semibold text-[0.6rem] text-muted-foreground uppercase tracking-wide">
 							{series.provider}
 						</span>
 					}

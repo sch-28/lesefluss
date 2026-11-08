@@ -91,7 +91,9 @@ function SettingsLanding() {
 		: isTransitioning
 			? "Connecting..."
 			: "No device";
-	const syncSubtitle = isLoggedIn ? (userEmail ?? "Connected") : "Not signed in";
+	const syncSubtitle = isLoggedIn
+		? (userEmail ?? "Connected")
+		: "Not signed in · Delete local data";
 
 	const showWhatsNew = () => window.dispatchEvent(new Event(SHOW_WHATS_NEW_EVENT));
 	const openFeedback = () => {
@@ -193,12 +195,14 @@ function SettingsLanding() {
 					</SettingsSection>
 				)}
 
-				{SYNC_ENABLED && isLoggedIn && (
+				{SYNC_ENABLED && (
 					<SettingsSection title="Social">
 						<NavRow
 							icon={Users}
 							title="Social profile"
-							subtitle="Handle, avatar and who sees what"
+							subtitle={
+								isLoggedIn ? "Handle, avatar and who sees what" : "Sign in to read with friends"
+							}
 							to="/tabs/settings/social"
 						/>
 						{isPushSupported() && (

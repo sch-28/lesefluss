@@ -30,7 +30,7 @@ export function ReachedMedal({ milestone }: { milestone: ReachedMilestone }) {
 				{face.rsvp && <RsvpBadge />}
 			</div>
 			<span className="mt-1.5 font-medium text-xs leading-tight">{face.caption}</span>
-			<span className="text-[11px] text-muted-foreground tabular-nums">
+			<span className="text-[0.6875rem] text-muted-foreground tabular-nums">
 				{formatShortDate(milestone.reachedAt)}
 			</span>
 		</div>
@@ -44,7 +44,9 @@ export function NextMedal({ milestone }: { milestone: NextMilestone }) {
 		<div className="flex flex-col items-center text-center" data-testid="milestone-next">
 			<div
 				className="relative flex size-16 items-center justify-center rounded-full"
-				style={{ background: `conic-gradient(#c94b2a ${share * 360}deg, #e8e2df 0)` }}
+				style={{
+					background: `conic-gradient(var(--primary) ${share * 360}deg, color-mix(in oklab, var(--muted-foreground) 25%, transparent) 0)`,
+				}}
 			>
 				<div className="flex size-[52px] items-center justify-center rounded-full bg-background font-bold text-muted-foreground text-sm">
 					{face.value}
@@ -52,7 +54,7 @@ export function NextMedal({ milestone }: { milestone: NextMilestone }) {
 				{face.rsvp && <RsvpBadge />}
 			</div>
 			<span className="mt-1.5 font-medium text-xs leading-tight">{face.caption}</span>
-			<span className="text-[11px] text-muted-foreground tabular-nums">
+			<span className="text-[0.6875rem] text-muted-foreground tabular-nums">
 				{milestoneProgress(milestone)}
 			</span>
 		</div>

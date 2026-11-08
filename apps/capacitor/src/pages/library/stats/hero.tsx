@@ -33,7 +33,7 @@ export function Hero({ currentStreak, longestStreak, freezesBanked }: Props) {
 		>
 			<div className="flex items-center justify-between gap-4">
 				<div>
-					<p className="text-[11px] uppercase tracking-[0.18em] opacity-60">Reading streak</p>
+					<p className="text-[0.6875rem] uppercase tracking-[0.18em] opacity-60">Reading streak</p>
 					<div className="mt-1.5 flex items-baseline gap-2">
 						<AnimatedNumber
 							value={currentStreak}

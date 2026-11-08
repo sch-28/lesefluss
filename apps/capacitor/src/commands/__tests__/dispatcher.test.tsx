@@ -66,6 +66,51 @@ describe("guard", () => {
 		expect(isShortcutAllowed(press("r", button))).toBe(false);
 		expect(isShortcutAllowed(press("Escape", button), { inControls: true })).toBe(true);
 	});
+
+	it("lets keys through a button the mouse focused, not one the keyboard focused (LESE-185.22)", () => {
+		const button = mount("<button>Bookmark</button>");
+		window.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab" }));
+		button.focus();
+		expect(isShortcutAllowed(press("r", button))).toBe(false);
+
+		button.blur();
+		button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+		button.focus();
+		expect(isShortcutAllowed(press("r", button))).toBe(true);
+		expect(isShortcutAllowed(press(" ", button))).toBe(true);
+	});
+
+	it("keeps a button's focus origin when focus comes back without Tab or a press", () => {
+		const clicked = mount("<button>More actions</button>");
+		clicked.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+		clicked.focus();
+		clicked.blur();
+		window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+		clicked.focus();
+		expect(isShortcutAllowed(press("ArrowRight", clicked))).toBe(true);
+
+		const tabbed = mount("<button>Listen</button>");
+		window.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab" }));
+		tabbed.focus();
+		tabbed.blur();
+		tabbed.focus();
+		expect(isShortcutAllowed(press("ArrowRight", tabbed))).toBe(false);
+	});
+
+	it("treats a Tab after a stray press as keyboard focus", () => {
+		const button = mount("<button>Search</button>");
+		document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+		window.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab" }));
+		button.focus();
+		expect(isShortcutAllowed(press("r", button))).toBe(false);
+	});
+
+	it("keeps blocking keys on a slider focused by a click", () => {
+		const slider = mount('<div role="slider" tabindex="0"></div>');
+		slider.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+		slider.focus();
+		expect(isShortcutAllowed(press("ArrowRight", slider))).toBe(false);
+	});
 });
 
 describe("dispatchCommandKey", () => {

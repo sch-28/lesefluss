@@ -48,12 +48,12 @@ function InsightTile({
 			className="flex flex-col gap-0.5 rounded-lg border border-border bg-muted/40 px-3 py-2"
 			data-testid={testId}
 		>
-			<span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+			<span className="flex items-center gap-1 text-[0.6875rem] text-muted-foreground">
 				{label}
 				{info && <InfoPopover label={label}>{info}</InfoPopover>}
 			</span>
 			<span className="font-semibold text-lg tabular-nums leading-tight">{value}</span>
-			{sub && <span className="text-[11px] text-muted-foreground tabular-nums">{sub}</span>}
+			{sub && <span className="text-[0.6875rem] text-muted-foreground tabular-nums">{sub}</span>}
 		</div>
 	);
 }
@@ -140,7 +140,7 @@ function RecordRow({ label, record }: { label: string; record: SittingRecord | n
 			<span className="text-muted-foreground">{label}</span>
 			<span className="min-w-0 text-right">
 				<span className="font-semibold tabular-nums">{record.wpm} wpm</span>
-				<span className="block truncate text-[11px] text-muted-foreground">
+				<span className="block truncate text-[0.6875rem] text-muted-foreground">
 					{record.title} · {formatShortDate(record.at)}
 				</span>
 			</span>
@@ -153,7 +153,9 @@ function RecordsSection({ children }: { children: React.ReactNode }) {
 		<section className="mb-8 px-4" data-testid="speed-records">
 			<header className="mb-2 flex items-baseline justify-between">
 				<h3 className="font-semibold text-base">Records</h3>
-				<span className="text-[11px] text-muted-foreground uppercase tracking-wider">All time</span>
+				<span className="text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
+					All time
+				</span>
 			</header>
 			<div className="divide-y divide-border">{children}</div>
 		</section>
@@ -167,7 +169,9 @@ function FastestBookRow({ record }: { record: { wpm: number; title: string } | n
 			<span className="text-muted-foreground">Fastest book</span>
 			<span className="min-w-0 text-right">
 				<span className="font-semibold tabular-nums">{record.wpm} wpm</span>
-				<span className="block truncate text-[11px] text-muted-foreground">{record.title}</span>
+				<span className="block truncate text-[0.6875rem] text-muted-foreground">
+					{record.title}
+				</span>
 			</span>
 		</div>
 	);
@@ -199,7 +203,7 @@ export function RsvpRecords() {
 					<span className="text-muted-foreground">Longest run</span>
 					<span className="min-w-0 text-right">
 						<span className="font-semibold tabular-nums">{formatDuration(longest.durationMs)}</span>
-						<span className="block truncate text-[11px] text-muted-foreground">
+						<span className="block truncate text-[0.6875rem] text-muted-foreground">
 							{longest.title} · {formatShortDate(longest.at)}
 						</span>
 					</span>

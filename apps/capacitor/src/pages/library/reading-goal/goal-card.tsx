@@ -93,7 +93,7 @@ export function GoalCard({ book }: { book: Book }) {
 								{figure.done}
 								<span className="font-normal text-xl opacity-60"> / {figure.target}</span>
 							</div>
-							<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
+							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
 								{today.targetMinutes != null
 									? `today · ${percentLabel(today.progressPercent)}%`
 									: `today · ${Math.round(today.progressWords / plan.pace.wpm)} of ${minutesLabel(plan.dailyTarget.minutes)}`}
@@ -108,7 +108,7 @@ export function GoalCard({ book }: { book: Book }) {
 							>
 								{signed(plan.aheadBehind.percent, "%")}
 							</div>
-							<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
+							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
 								vs plan · {signed(plan.aheadBehind.days, " d")}
 							</div>
 						</div>

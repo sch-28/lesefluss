@@ -2,6 +2,7 @@ import { Preferences } from "@capacitor/preferences";
 import {
 	type ContentQuotaExceeded,
 	DELETE_SESSIONS_BATCH_MAX,
+	type DeleteAccountRequest,
 	DeletedSessionIdsSchema,
 	isSyncEligible,
 	MAX_SYNCED_CONTENT_BYTES,
@@ -106,6 +107,7 @@ export {
 	pollDeviceToken,
 	requestDeviceCode,
 } from "./device-sign-in";
+export { PasswordResetError, requestPasswordReset } from "./password-reset";
 export { PasswordSignInError, signInWithPassword } from "./password-sign-in";
 export { loadServerClockOffset } from "./server-clock";
 export {
@@ -322,6 +324,19 @@ function toSyncError(err: unknown): unknown {
 	return err instanceof AuthedFetchError
 		? new Error(`Sync failed (${err.status}): ${err.text}`)
 		: err;
+}
+
+/**
+ * Deletes the signed-in account and everything the server holds for it, then
+ * drops the local session. Under the sync lock so no push runs with the dead
+ * token and gets a 401 that reads as an expired session. Books on this device stay.
+ */
+export async function deleteAccount(): Promise<void> {
+	await withSyncLock(async () => {
+		const body: DeleteAccountRequest = { confirm: "delete-account" };
+		await syncFetch("/api/account/delete", { method: "POST", body: JSON.stringify(body) });
+		await clearToken();
+	});
 }
 
 /**

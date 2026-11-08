@@ -55,9 +55,10 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { hasOpenOverlay, isShortcutAllowed } from "../../commands/guard";
-import { useRegisterCommands } from "../../commands/registry";
+import { withKey } from "../../commands/keys";
+import { useCommandKey, useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
-import { KeyChips } from "../../components/command-palette";
+import { KeyChips, MenuKey } from "../../components/command-palette";
 import { VoiceSheet } from "../../components/read-aloud/voice-sheet";
 import {
 	CommentComposerSheet,
@@ -2312,6 +2313,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		[readerBookmarks.bookmarks, chapters, totalWordCount, sel.extractRangeText],
 	);
 
+	const listenKey = useCommandKey("listen.toggle");
+	const rsvpKey = useCommandKey("reader.rsvp-toggle");
 	useRegisterCommands(
 		readerActionCommands({
 			hasContent: !!content,
@@ -2740,6 +2743,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							type="button"
 							onClick={() => history.back()}
 							aria-label="Back"
+							title="Back"
 							className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
 						>
 							<ChevronLeft className="size-5" />
@@ -2752,6 +2756,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 									onClick={() => void chapterAdvance.tryRetreat()}
 									disabled={!hasPrev}
 									aria-label="Previous chapter"
+									title="Previous chapter"
 								>
 									<ChevronLeft />
 								</Button>
@@ -2761,6 +2766,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 									onClick={handleNextChapter}
 									disabled={!hasNext}
 									aria-label="Next chapter"
+									title="Next chapter"
 								>
 									<ChevronRight />
 								</Button>
@@ -2784,7 +2790,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								onClick={readAloud.toggle}
 								disabled={!wordIndex}
 								aria-label={readAloud.status === "playing" ? "Pause listening" : "Listen"}
-								title={readAloud.status === "playing" ? "Pause listening" : "Listen"}
+								title={withKey(
+									readAloud.status === "playing" ? "Pause listening" : "Listen",
+									listenKey,
+								)}
 								className={isReadAloudActive ? "text-primary" : undefined}
 							>
 								{readAloud.status === "playing" ? <Pause /> : <Headphones />}
@@ -2798,7 +2807,10 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							aria-label={
 								readerMode === "rsvp" ? "Switch to standard reader" : "Switch to RSVP reader"
 							}
-							title={readerMode === "rsvp" ? "Switch to standard reader" : "Switch to RSVP reader"}
+							title={withKey(
+								readerMode === "rsvp" ? "Switch to standard reader" : "Switch to RSVP reader",
+								rsvpKey,
+							)}
 							className={readerMode === "rsvp" ? "text-primary" : undefined}
 						>
 							{readerMode === "rsvp" ? <ZapOff /> : <Zap />}
@@ -2836,7 +2848,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						</Button>
 						{fullscreen.isFullscreen && (
 							<Button variant="outline" size="sm" onClick={fullscreen.exit} className="mx-1 gap-2">
-								Exit fullscreen
+								Leave fullscreen
 								<KeyChips spec="f" />
 							</Button>
 						)}
@@ -2879,7 +2891,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 									disabled={!content}
 								>
 									<Search />
-									<span>Search</span>
+									<span>Search in book</span>
 								</DropdownMenuItem>
 								{chapters.length > 0 && (
 									<DropdownMenuItem
@@ -2888,7 +2900,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 										disabled={!content}
 									>
 										<ListTree />
-										<span>Contents</span>
+										<span>Contents and annotations</span>
 									</DropdownMenuItem>
 								)}
 								{isHeaderNarrow && (
@@ -2901,6 +2913,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 										<span>
 											{readerBookmarks.isOnScreen ? "Remove bookmark here" : "Bookmark here"}
 										</span>
+										<MenuKey commandId="reader.bookmark" />
 									</DropdownMenuItem>
 								)}
 								{isHeaderNarrow && isMiniAvailable() && (
@@ -2921,6 +2934,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 									>
 										<Headphones />
 										<span>{readAloud.status === "playing" ? "Pause listening" : "Listen"}</span>
+										<MenuKey commandId="listen.toggle" />
 									</DropdownMenuItem>
 								)}
 								<DropdownMenuItem
@@ -2936,6 +2950,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 									<DropdownMenuItem className={MENU_ITEM_CLASS} onSelect={fullscreen.toggle}>
 										{fullscreen.isFullscreen ? <Minimize /> : <Maximize />}
 										<span>{fullscreen.isFullscreen ? "Leave fullscreen" : "Fullscreen"}</span>
+										<MenuKey commandId="reader.fullscreen" />
 									</DropdownMenuItem>
 								)}
 								{IS_READ_ALOUD_SUPPORTED && (

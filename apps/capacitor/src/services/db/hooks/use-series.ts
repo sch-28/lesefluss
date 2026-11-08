@@ -21,11 +21,11 @@ function useSeriesList() {
 
 /** Single series row by id. Used when the reader needs provider metadata for a chapter. */
 function useSeries(seriesId: string | undefined | null) {
-	return useQuery<Series | undefined>({
+	return useQuery<Series | null>({
 		queryKey: serialKeys.detail(seriesId ?? ""),
 		// `enabled` gates the call when seriesId is nullish, so the empty-string
-		// fallback below is never executed in practice.
-		queryFn: () => queries.getSeries(seriesId ?? ""),
+		// fallback below is never executed in practice. React Query rejects undefined data.
+		queryFn: async () => (await queries.getSeries(seriesId ?? "")) ?? null,
 		enabled: !!seriesId,
 	});
 }

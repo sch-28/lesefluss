@@ -6,7 +6,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { paletteOpen } from "../commands/global";
 import { formatKey } from "../commands/keys";
 import { paletteGroups } from "../commands/palette-results";
-import { type Command, useCommands } from "../commands/registry";
+import { type Command, useCommandKey, useCommands } from "../commands/registry";
 
 const CommandPalette: React.FC = () => {
 	const isOpen = paletteOpen.useValue();
@@ -159,5 +159,16 @@ export const KeyChips: React.FC<{ spec: string }> = ({ spec }) => (
 		))}
 	</span>
 );
+
+/** A menu row's key, pushed to the row's end; a touch screen has no keys to show. */
+export const MenuKey: React.FC<{ commandId: string }> = ({ commandId }) => {
+	const spec = useCommandKey(commandId);
+	if (!spec) return null;
+	return (
+		<span aria-hidden className="ml-auto pointer-coarse:hidden pl-3">
+			<KeyChips spec={spec} />
+		</span>
+	);
+};
 
 export default CommandPalette;

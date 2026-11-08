@@ -59,7 +59,7 @@ test("F goes fullscreen with the bar hidden until the pointer reaches the top ed
 
 	await page.getByTestId("fullscreen-reveal-zone").hover();
 	await expect(bar(page)).toBeInViewport();
-	await expect(page.getByRole("button", { name: "Exit fullscreen" })).toBeVisible();
+	await expect(page.getByRole("button", { name: "Leave fullscreen" })).toBeVisible();
 
 	const viewport = page.viewportSize();
 	await page.mouse.move((viewport?.width ?? 800) / 2, (viewport?.height ?? 600) / 2);

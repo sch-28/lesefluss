@@ -7,8 +7,19 @@ import type React from "react";
 import { useId, useState } from "react";
 import { useSyncContext } from "@/contexts/sync-context";
 import { useTheme } from "@/contexts/theme-context";
-import { NATIVE_SYNC_ENABLED, openBrowserSignIn, SIGN_IN_FAILED_MESSAGE } from "@/services/sync";
+import {
+	NATIVE_SYNC_ENABLED,
+	openBrowserSignIn,
+	requestPasswordReset,
+	SIGN_IN_FAILED_MESSAGE,
+} from "@/services/sync";
 import { PhoneSignInDialog } from "./phone-sign-in-dialog";
+
+/** A phone has nothing to scan its own screen with; tablets and e-ink readers keep the option. */
+function isPhone(): boolean {
+	const shortSide = Math.min(window.screen.width, window.screen.height);
+	return shortSide < 600 && window.matchMedia("(pointer: coarse)").matches;
+}
 
 type SignInOption = {
 	icon: LucideIcon;
@@ -101,10 +112,12 @@ export function SignInOptions({
 	const [isEmailFormOpen, setIsEmailFormOpen] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [browserError, setBrowserError] = useState<string | null>(null);
+	const [isResetMode, setIsResetMode] = useState(false);
+	const [resetSentTo, setResetSentTo] = useState<string | null>(null);
 
 	if (!NATIVE_SYNC_ENABLED) return null;
 
-	const canSubmit = email.trim() !== "" && password !== "" && !isPending;
+	const canSubmit = email.trim() !== "" && (isResetMode || password !== "") && !isPending;
 
 	const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -112,13 +125,32 @@ export function SignInOptions({
 		setIsPending(true);
 		setError(null);
 		try {
-			await signInWithPassword(email.trim(), password);
-			setPassword("");
+			if (isResetMode) {
+				await requestPasswordReset(email.trim());
+				setResetSentTo(email.trim());
+			} else {
+				await signInWithPassword(email.trim(), password);
+				setPassword("");
+			}
 		} catch (err) {
 			setError(err instanceof Error ? err.message : SIGN_IN_FAILED_MESSAGE);
 		} finally {
 			setIsPending(false);
 		}
+	};
+
+	const submitLabel = isResetMode
+		? isPending
+			? "Sending…"
+			: "Send reset link"
+		: isPending
+			? "Signing in…"
+			: "Sign in";
+
+	const switchResetMode = (on: boolean) => {
+		setIsResetMode(on);
+		setResetSentTo(null);
+		setError(null);
 	};
 
 	const handleBrowserSignIn = async () => {
@@ -153,12 +185,12 @@ export function SignInOptions({
 	// Typing on e-ink is slow and its browser often can't render the site; the phone does the work.
 	const [primary, secondary] = isEinkMode
 		? [phoneOption, browserOption]
-		: [browserOption, phoneOption];
+		: [browserOption, isPhone() ? null : phoneOption];
 
 	return (
 		<div className={cn("flex flex-col gap-4", className)}>
 			<PrimaryOption {...primary} />
-			<SecondaryOption {...secondary} />
+			{secondary && <SecondaryOption {...secondary} />}
 
 			<div className="mt-2 flex flex-col items-center gap-1">
 				<p className="m-0 text-muted-foreground text-xs">No browser or phone at hand?</p>
@@ -205,24 +237,42 @@ export function SignInOptions({
 							disabled={isPending}
 						/>
 					</Field>
-					<Field>
-						<FieldLabel htmlFor={`${id}-password`}>Password</FieldLabel>
-						<Input
-							id={`${id}-password`}
-							type="password"
-							autoComplete="current-password"
-							placeholder="••••••••"
-							value={password}
-							onChange={(e) => {
-								setPassword(e.target.value);
-								setError(null);
-							}}
-							disabled={isPending}
-						/>
-					</Field>
+					{!isResetMode && (
+						<Field>
+							<FieldLabel htmlFor={`${id}-password`}>Password</FieldLabel>
+							<Input
+								id={`${id}-password`}
+								type="password"
+								autoComplete="current-password"
+								placeholder="••••••••"
+								value={password}
+								onChange={(e) => {
+									setPassword(e.target.value);
+									setError(null);
+								}}
+								disabled={isPending}
+							/>
+						</Field>
+					)}
 					{error && <FieldError>{error}</FieldError>}
-					<Button type="submit" variant="outline" className="w-full" disabled={!canSubmit}>
-						{isPending ? "Signing in…" : "Sign in"}
+					{resetSentTo ? (
+						<p role="status" className="m-0 text-muted-foreground text-sm">
+							If {resetSentTo} has an account, a link to set a new password is on its way. Open it,
+							then sign in here with the new password.
+						</p>
+					) : (
+						<Button type="submit" variant="outline" className="w-full" disabled={!canSubmit}>
+							{submitLabel}
+						</Button>
+					)}
+					<Button
+						type="button"
+						variant="ghost"
+						className="self-center"
+						disabled={isPending}
+						onClick={() => switchResetMode(!isResetMode)}
+					>
+						{isResetMode ? "Back to sign in" : "Forgot password?"}
 					</Button>
 				</form>
 			)}

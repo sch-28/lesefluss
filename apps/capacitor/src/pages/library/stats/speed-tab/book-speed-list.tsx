@@ -39,7 +39,7 @@ function DeltaBar({ percent }: { percent: number }) {
 					style={{ width: `${width}%` }}
 				/>
 			</span>
-			<span className={cn("w-9 text-right text-[11px] text-muted-foreground tabular-nums")}>
+			<span className={cn("w-9 text-right text-[0.6875rem] text-muted-foreground tabular-nums")}>
 				{percent > 0 ? `+${percent}` : percent < 0 ? `−${Math.abs(percent)}` : "±0"}%
 			</span>
 		</span>
@@ -93,12 +93,12 @@ export function BookSpeedList({ model }: { model: SpeedModel }) {
 							</div>
 							<div className="min-w-0 flex-1">
 								<div className="flex items-center gap-1.5">
-									<span className="rounded-sm bg-muted px-1 font-semibold text-[9px] text-muted-foreground tracking-wide">
+									<span className="rounded-sm bg-muted px-1 font-semibold text-[0.5625rem] text-muted-foreground tracking-wide">
 										{MODE_BADGE[row.mode]}
 									</span>
 									<span className="truncate text-sm">{row.title}</span>
 								</div>
-								<div className="text-[11px] text-muted-foreground tabular-nums">
+								<div className="text-[0.6875rem] text-muted-foreground tabular-nums">
 									{formatDuration(row.activeMs)}
 									{row.mode === "rsvp" && row.dialWpm !== null ? ` · avg dial ${row.dialWpm}` : ""}
 								</div>

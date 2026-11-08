@@ -66,7 +66,9 @@ export function CurrentlyReading() {
 								<div className="min-w-0 flex-1">
 									<div className="line-clamp-1 font-medium text-sm">{book.title}</div>
 									{book.author && (
-										<div className="mt-0.5 line-clamp-1 text-[11px] opacity-60">{book.author}</div>
+										<div className="mt-0.5 line-clamp-1 text-[0.6875rem] opacity-60">
+											{book.author}
+										</div>
 									)}
 									<div className="mt-2 h-1 overflow-hidden rounded-full bg-current/10">
 										<div
@@ -74,7 +76,7 @@ export function CurrentlyReading() {
 											style={{ width: `${book.percent ?? 0}%` }}
 										/>
 									</div>
-									<div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
+									<div className="mt-1 text-[0.6875rem] text-muted-foreground tabular-nums">
 										{book.detail}
 									</div>
 								</div>

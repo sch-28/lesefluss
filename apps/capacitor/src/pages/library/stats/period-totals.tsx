@@ -134,9 +134,11 @@ function Stat({
 			<div className="font-bold text-3xl tabular-nums tracking-tight">
 				<AnimatedNumber value={value} format={format} />
 			</div>
-			<div className="mt-1 text-[11px] text-muted-foreground uppercase tracking-wider">{label}</div>
+			<div className="mt-1 text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
+				{label}
+			</div>
 			{period !== "all" && delta != null && (
-				<div className="mt-1 font-medium text-[10px] text-muted-foreground">
+				<div className="mt-1 font-medium text-[0.625rem] text-muted-foreground">
 					{delta >= 0 ? "▲" : "▼"} {Math.abs(delta)}%
 				</div>
 			)}

@@ -50,7 +50,7 @@ export function GoalChip({ plan, today, onOpenDetails }: Props) {
 			</PopoverTrigger>
 			<PopoverContent align="end" className="flex w-64 flex-col gap-3">
 				<div className="flex items-center justify-between">
-					<span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">
+					<span className="font-semibold text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
 						Goal · by {formatDayKey(plan.projectedFinishDate)}
 					</span>
 					<button

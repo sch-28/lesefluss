@@ -47,7 +47,7 @@ function SpeedTooltip({ bucket }: { bucket: SpeedBucket }) {
 	return (
 		<ChartTooltip>
 			<strong>{bucket.wpm}</strong> wpm
-			<div style={{ opacity: 0.6, fontSize: 11, marginTop: 2 }}>
+			<div style={{ opacity: 0.6, fontSize: "0.6875rem", marginTop: 2 }}>
 				{bucket.sessions === 1 ? "1 sitting" : `${bucket.sessions} sittings`} ·{" "}
 				{bucket.startedAt === bucket.endedAt
 					? formatDayTick(bucket.startedAt)
@@ -117,7 +117,7 @@ function BookReadingTimeCard({ book }: Props) {
 				<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
 					{formatReadingTime(minutesLeft ?? 0)}
 				</div>
-				<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
+				<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
 					{isUnread ? "total" : "left"}
 					{!isPaceEstimated && " · at your pace"}
 				</div>
@@ -194,7 +194,7 @@ export function BookStatsCard({ book }: Props) {
 					<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
 						<AnimatedNumber value={data.totalDurationMs} format={formatDuration} />
 					</div>
-					<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
+					<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
 						time read · {data.sessionCount} {data.sessionCount === 1 ? "sitting" : "sittings"}
 					</div>
 				</div>
@@ -205,7 +205,7 @@ export function BookStatsCard({ book }: Props) {
 							Finished
 						</div>
 						{book.finishedAt != null && (
-							<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
+							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
 								{formatRelative(book.finishedAt)}
 							</div>
 						)}
@@ -217,7 +217,7 @@ export function BookStatsCard({ book }: Props) {
 							<div className="font-semibold text-xl tabular-nums leading-none">
 								{formatReadingTime(minutesLeft)}
 							</div>
-							<div className="mt-1.5 text-[11px] uppercase tracking-wider opacity-60">
+							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
 								left{!isPaceEstimated && " · at your pace"}
 							</div>
 						</div>
@@ -313,7 +313,7 @@ function Stat({ value, label }: { value: React.ReactNode; label: string }) {
 	return (
 		<div>
 			<div className="font-semibold text-lg tabular-nums tracking-tight">{value}</div>
-			<div className="mt-0.5 text-[10px] uppercase tracking-wider opacity-60">{label}</div>
+			<div className="mt-0.5 text-[0.625rem] uppercase tracking-wider opacity-60">{label}</div>
 		</div>
 	);
 }

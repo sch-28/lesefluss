@@ -221,7 +221,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 								"aria-valuetext": `${values.days} days, finish ${formatDayKey(values.finishDate)}`,
 							}}
 						/>
-						<div className="flex justify-between text-[11px] text-muted-foreground">
+						<div className="flex justify-between text-[0.6875rem] text-muted-foreground">
 							<span>1 week</span>
 							<span>1 month</span>
 							<span>3 months</span>
@@ -341,7 +341,7 @@ function ValueCard({
 			)}
 		>
 			<span className="flex items-center justify-between gap-2">
-				<span className="font-bold text-[22px] tabular-nums leading-none">{value}</span>
+				<span className="font-bold text-[1.375rem] tabular-nums leading-none">{value}</span>
 				<LockIcon
 					className={cn(
 						"size-3.5 shrink-0",
@@ -350,7 +350,7 @@ function ValueCard({
 					aria-hidden
 				/>
 			</span>
-			<span className="mt-1 block text-[10px] text-muted-foreground uppercase tracking-wider">
+			<span className="mt-1 block text-[0.625rem] text-muted-foreground uppercase tracking-wider">
 				{label}
 			</span>
 		</button>

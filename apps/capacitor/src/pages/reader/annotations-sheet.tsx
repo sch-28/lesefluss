@@ -20,6 +20,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { Compass, Plus } from "lucide-react";
 import type React from "react";
 import { memo, useCallback, useMemo, useState } from "react";
+import { useMediaQuery } from "../../hooks/use-media-query";
 import type { Chapter, GlossaryEntry, Highlight } from "../../services/db/schema";
 import { SeriesChapterList } from "../library/series-chapter-list";
 import BookmarkList, { type BookmarkRow } from "./bookmark-list";
@@ -118,6 +119,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	}
 
 	const expandSheet = useCallback(() => setSnap(SNAP_POINTS[1]), []);
+	const isSidePanel = useMediaQuery("(min-width: 768px)");
 
 	const { bookEntries, globalEntries } = useMemo(() => {
 		const book: GlossaryEntry[] = [];
@@ -135,13 +137,16 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 			onOpenChange={(open) => {
 				if (!open) onClose();
 			}}
-			snapPoints={SNAP_POINTS}
-			activeSnapPoint={snap}
-			setActiveSnapPoint={setSnap}
+			{...(isSidePanel
+				? { direction: "right" as const }
+				: { snapPoints: SNAP_POINTS, activeSnapPoint: snap, setActiveSnapPoint: setSnap })}
 		>
 			<DrawerContent
 				aria-describedby={undefined}
-				className={cn("h-full", theme ? `reader-theme-${theme}` : undefined)}
+				className={cn(
+					"h-full md:data-[vaul-drawer-direction=right]:max-w-md",
+					theme ? `reader-theme-${theme}` : undefined,
+				)}
 			>
 				<DrawerTitle className="sr-only">Annotations</DrawerTitle>
 				<DrawerHeader className="flex-row items-center gap-2 px-3">
@@ -195,7 +200,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 								onJumpChapter(startWord);
 								onClose();
 							}}
-							obscuredHeight={window.innerHeight * (1 - SNAP_POINTS[0])}
+							obscuredHeight={isSidePanel ? 0 : window.innerHeight * (1 - SNAP_POINTS[0])}
 							onNeedsFullHeight={expandSheet}
 						/>
 					)}

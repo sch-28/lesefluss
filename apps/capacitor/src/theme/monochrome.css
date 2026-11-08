@@ -1799,7 +1799,7 @@ body.dark .explore-hero-arrow:hover {
 	font-weight: 600;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
-	color: #888;
+	color: var(--muted-foreground);
 }
 
 body.dark .book-detail-cover {
@@ -1816,8 +1816,7 @@ body.dark .book-detail-stat-active {
 	color: #e4e4e4;
 }
 
-body.dark .book-detail-eyebrow,
-body.dark .book-detail-section-title {
+body.dark .book-detail-eyebrow {
 	color: #888;
 }
 
@@ -1826,8 +1825,10 @@ body.dark .book-detail-card {
 	border-color: #2a2a2a;
 }
 
-/* The dark greys above fall under AAA on high contrast's black. */
-body.high-contrast .book-detail-card {
+/* The dark greys above fall under AAA on high contrast's black; the light card is a white
+   patch on sepia's paper. */
+body.high-contrast .book-detail-card,
+body.sepia .book-detail-card {
 	background: var(--card);
 	border-color: var(--border);
 }
@@ -2157,6 +2158,16 @@ body.dark .chapter-row:hover {
 	content: "";
 	position: absolute;
 	inset: -10px;
+}
+
+/* Their own hit areas: drop the coarse-pointer box from tokens.css, whose size and
+   translate would otherwise combine with the inset and shift the area off the dot. */
+.ap-step-btn::before,
+.reader-buddy-marker::before,
+.reader-discussion-tick::before {
+	width: auto;
+	height: auto;
+	transform: none;
 }
 
 .reader-discussion-marker {

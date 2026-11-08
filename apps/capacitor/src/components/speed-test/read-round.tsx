@@ -14,7 +14,7 @@ export function ReadRound({ paragraphs, words, begun, onBegin }: Props) {
 			<div className="relative">
 				<div
 					className={cn(
-						"space-y-4 font-serif text-[18px] leading-relaxed",
+						"space-y-4 font-serif text-[1.125rem] leading-relaxed",
 						!begun && "select-none blur-sm",
 					)}
 					aria-hidden={!begun}
@@ -30,7 +30,7 @@ export function ReadRound({ paragraphs, words, begun, onBegin }: Props) {
 						onClick={onBegin}
 						className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-lg bg-background/60 text-center"
 					>
-						<span className="text-[11px] text-muted-foreground uppercase tracking-wider">
+						<span className="text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
 							Round 1
 						</span>
 						<span className="font-semibold text-lg">Read normally</span>

@@ -87,7 +87,7 @@ function Hero({ model, view, now }: { model: SpeedModel; view: SpeedView; now: n
 	}
 	return (
 		<div className="mb-4 px-4" data-testid="speed-hero">
-			<div className="text-[11px] text-muted-foreground uppercase tracking-wider">
+			<div className="text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
 				{view === "rsvp" ? "RSVP speed" : "Reading speed"}
 			</div>
 			<div className="mt-1 flex items-baseline gap-2">

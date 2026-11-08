@@ -21,7 +21,8 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { importRequest } from "../../commands/global";
-import { useRegisterCommands } from "../../commands/registry";
+import { withKey } from "../../commands/keys";
+import { useCommandKey, useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
 import { tabBarHidden } from "../../components/app-shell/tab-bar-visibility";
 import { TabHeader } from "../../components/app-shell/tab-header";
@@ -81,6 +82,7 @@ import { useLeaveMissingShelf, useLibraryFilter } from "./use-library-filter";
 import { useLibraryImports } from "./use-library-imports";
 import { useLibraryItems } from "./use-library-items";
 import { useLibraryKeyboard } from "./use-library-keyboard";
+import { useLibrarySearch } from "./use-library-search";
 import { useLibrarySelection } from "./use-library-selection";
 import { type ShelfViewTarget, useLibraryView } from "./use-library-view";
 import { type ShelfEntry, useSmartShelves } from "./use-smart-shelves";
@@ -177,10 +179,8 @@ const Library: React.FC = () => {
 	const isDesktop = useMediaQuery("(min-width: 768px)");
 	// Native drag needs a mouse; on touch a held card starts drag-select instead.
 	const canDragBooks = useMediaQuery("(hover: hover) and (pointer: fine)");
-	// Search is deliberately not persisted: a query restored into a collapsed
-	// search bar would look like an empty library with no visible cause.
-	const [search, setSearch] = useState("");
-	const [isSearchOpen, setIsSearchOpen] = useState(false);
+	const { search, setSearch, isSearchOpen, setIsSearchOpen, closeSearch, toggleSearch } =
+		useLibrarySearch();
 	const [isSearchFocused, setSearchFocused] = useState(false);
 	const [viewMode, setViewMode] = usePersistentString(VIEW_MODE_KEY, isViewMode, "grid");
 	// The table needs the width; a narrow window shows a stored table as the list.
@@ -313,6 +313,8 @@ const Library: React.FC = () => {
 	};
 
 	importRequest.useHandler(() => setImportSheetOpen(true));
+	const searchKey = useCommandKey("library.search");
+	const importKey = useCommandKey("global.import");
 	useRegisterCommands(
 		libraryCommands({
 			books,
@@ -497,10 +499,7 @@ const Library: React.FC = () => {
 				setIsSearchOpen(true);
 				searchInputRef.current?.focus();
 			},
-			clear: () => {
-				setSearch("");
-				setIsSearchOpen(false);
-			},
+			clear: closeSearch,
 		},
 		canGroup: controls.view,
 		openGroupBy: () => {
@@ -612,10 +611,8 @@ const Library: React.FC = () => {
 								variant="ghost"
 								size="icon"
 								aria-label="Search library"
-								onClick={() => {
-									setIsSearchOpen((open) => !open);
-									setSearch("");
-								}}
+								title={withKey("Search library", searchKey)}
+								onClick={toggleSearch}
 							>
 								<Search />
 							</Button>
@@ -625,6 +622,7 @@ const Library: React.FC = () => {
 								variant="ghost"
 								size="icon"
 								aria-label={filterCount > 0 ? `Filter, ${filterCount} active` : "Filter"}
+								title="Filter"
 								className="relative"
 								onClick={() => setIsFilterOpen(true)}
 							>
@@ -642,7 +640,7 @@ const Library: React.FC = () => {
 						{controls.sort && (
 							<SortPopover
 								trigger={
-									<Button variant="ghost" size="icon" aria-label="Sort">
+									<Button variant="ghost" size="icon" aria-label="Sort" title="Sort">
 										<ArrowUpDown />
 									</Button>
 								}
@@ -688,6 +686,7 @@ const Library: React.FC = () => {
 								disabled={isSyncing || isTransferring}
 								onClick={handleRefresh}
 								aria-label="Sync"
+								title="Sync"
 							>
 								{isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
 							</Button>
@@ -711,10 +710,7 @@ const Library: React.FC = () => {
 						onFilterChange={setFilter}
 						options={options}
 						inputRef={searchInputRef}
-						onEscape={() => {
-							setSearch("");
-							setIsSearchOpen(false);
-						}}
+						onEscape={closeSearch}
 					/>
 				</div>
 			)}
@@ -990,6 +986,7 @@ const Library: React.FC = () => {
 				onClick={collectionId ? openAddBooks : () => setImportSheetOpen(true)}
 				disabled={imports.isImporting || isTransferring}
 				aria-label={collectionId ? "Add books" : "Add book"}
+				title={collectionId ? "Add books" : withKey("Add book", importKey)}
 				className="fixed right-4 z-30 inline-flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
 				style={FAB_STYLE}
 			>

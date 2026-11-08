@@ -64,6 +64,7 @@ export const ViewSheet: React.FC<Props> = ({
 			variant="ghost"
 			size="icon"
 			aria-label="View"
+			title="View"
 			onClick={isDesktop ? undefined : () => onOpenChange(true)}
 		>
 			<Icon />

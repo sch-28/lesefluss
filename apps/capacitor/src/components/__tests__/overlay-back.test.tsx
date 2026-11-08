@@ -1,4 +1,18 @@
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@lesefluss/ui/dropdown-menu";
 import { consumeBackPress } from "@lesefluss/ui/overlay-back";
+import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@lesefluss/ui/select";
 import { act, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type Rendered, render } from "../../test/render";
@@ -60,6 +74,65 @@ describe("Android back on the shared overlays", () => {
 
 	it("registers nothing while every overlay is closed", async () => {
 		view = await render(<ConfirmDialog open={false} onOpenChange={vi.fn()} title="Delete it?" />);
+		expect(back()).toBe(false);
+	});
+
+	it("closes an open popover, menu or select and nothing more (LESE-185.11)", async () => {
+		const onPopover = vi.fn();
+		const onMenu = vi.fn();
+		const onSelect = vi.fn();
+		view = await render(
+			<>
+				<Popover open onOpenChange={onPopover}>
+					<PopoverTrigger>Sort</PopoverTrigger>
+					<PopoverContent>Sort by title</PopoverContent>
+				</Popover>
+				<DropdownMenu open onOpenChange={onMenu}>
+					<DropdownMenuTrigger>Range</DropdownMenuTrigger>
+					<DropdownMenuContent>
+						<DropdownMenuItem>Week</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+				<Select open onOpenChange={onSelect} value="a">
+					<SelectTrigger>
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="a">A</SelectItem>
+					</SelectContent>
+				</Select>
+			</>,
+		);
+		expect(back()).toBe(true);
+		expect(onSelect).toHaveBeenCalledWith(false);
+		expect(onMenu).not.toHaveBeenCalled();
+	});
+
+	it("closes an uncontrolled popover on back", async () => {
+		view = await render(
+			<Popover defaultOpen>
+				<PopoverTrigger>Info</PopoverTrigger>
+				<PopoverContent>Speed details</PopoverContent>
+			</Popover>,
+		);
+		expect(bodyText()).toContain("Speed details");
+		expect(back()).toBe(true);
+		expect(bodyText()).not.toContain("Speed details");
+		expect(back()).toBe(false);
+	});
+
+	it("leaves back to the router while every popover and menu is closed", async () => {
+		view = await render(
+			<>
+				<Popover>
+					<PopoverTrigger>Sort</PopoverTrigger>
+					<PopoverContent>Sort by title</PopoverContent>
+				</Popover>
+				<DropdownMenu>
+					<DropdownMenuTrigger>Range</DropdownMenuTrigger>
+				</DropdownMenu>
+			</>,
+		);
 		expect(back()).toBe(false);
 	});
 });

@@ -134,7 +134,7 @@
 	--secondary: #b29f6f;
 	--secondary-foreground: #3a2e1e;
 	--muted: #b29f6f;
-	--muted-foreground: #5a4a32;
+	--muted-foreground: #433521;
 	--accent: #b29f6f;
 	--accent-foreground: #3a2e1e;
 	--destructive: #a03a2a;
@@ -154,4 +154,40 @@
 	--sidebar-accent-foreground: #3a2e1e;
 	--sidebar-border: #8a7760;
 	--sidebar-ring: #3a2e1e;
+}
+
+/* Coarse pointers get a 44px hit area at the drawn size (LESE-185.31). Elements that already
+   draw a ::before are skipped; menu rows grow instead, so no hit area overhangs the row above. */
+@layer base {
+	@media (pointer: coarse) {
+		:where(
+				button,
+				[role="button"],
+				[role="switch"],
+				[role="checkbox"],
+				[role="radio"],
+				[role="tab"]
+			):not([class*="before:"]) {
+			position: relative;
+		}
+		:where(
+				button,
+				[role="button"],
+				[role="switch"],
+				[role="checkbox"],
+				[role="radio"],
+				[role="tab"]
+			):not([class*="before:"])::before {
+			content: "";
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			width: max(100%, 44px);
+			height: max(100%, 44px);
+			transform: translate(-50%, -50%);
+		}
+		:where([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"]) {
+			min-height: 44px;
+		}
+	}
 }

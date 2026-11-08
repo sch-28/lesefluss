@@ -116,7 +116,7 @@ function DotGrid({ days, ariaLabel }: { days: CalendarDay[]; ariaLabel: string }
 					// Weekday initials repeat (T, T and S, S), so the index is the key.
 					// biome-ignore lint/suspicious/noArrayIndexKey: fixed-length static row
 					key={i}
-					className="pb-1 text-center text-[10px] opacity-40"
+					className="pb-1 text-center text-[0.625rem] opacity-40"
 				>
 					{initial}
 				</span>

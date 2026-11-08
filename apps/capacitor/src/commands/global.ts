@@ -34,8 +34,8 @@ export function useGlobalCommands(): void {
 		},
 		{
 			id: "global.import",
-			title: "Import a book",
-			keywords: ["add", "file", "epub", "open"],
+			title: "Add book",
+			keywords: ["import", "file", "epub", "open"],
 			scope: "global",
 			keys: ["Mod+O"],
 			inControls: true,
@@ -52,6 +52,7 @@ export function useGlobalCommands(): void {
 						title: `Continue ${continueReading.book.title}`,
 						keywords: ["resume", "last book", "read"],
 						scope: "global",
+						isDestination: true,
 						when: () =>
 							router.state.location.pathname !==
 							`/tabs/reader/${encodeURIComponent(continueReading.book.id)}`,
@@ -62,18 +63,21 @@ export function useGlobalCommands(): void {
 		{
 			id: "global.library",
 			title: "Go to library",
+			isDestination: true,
 			scope: "global",
 			run: () => go("/tabs/library"),
 		},
 		{
 			id: "global.explore",
 			title: "Go to explore",
+			isDestination: true,
 			scope: "global",
 			run: () => go("/tabs/explore"),
 		},
 		{
 			id: "global.stats",
 			title: "Go to reading stats",
+			isDestination: true,
 			keywords: ["statistics"],
 			scope: "global",
 			run: () => go("/tabs/stats"),
@@ -81,6 +85,7 @@ export function useGlobalCommands(): void {
 		{
 			id: "global.settings",
 			title: "Open settings",
+			isDestination: true,
 			keywords: ["preferences"],
 			scope: "global",
 			run: () => go("/tabs/settings"),

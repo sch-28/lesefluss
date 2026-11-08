@@ -1,13 +1,13 @@
 const TYPING_SELECTOR = "input, textarea, select, [contenteditable=true], [contenteditable='']";
 
+/** Focused controls whose only keys are Enter and Space. */
+const BUTTON_SELECTOR = ["a", "button", "[role=button]", "[role=switch]", "[role=checkbox]"].join(
+	",",
+);
+
 /** Focused widgets that handle their own keys: a reader key would take theirs. */
-const CONTROL_SELECTOR = [
-	"a",
-	"button",
-	"[role=button]",
+const WIDGET_SELECTOR = [
 	"[role=slider]",
-	"[role=switch]",
-	"[role=checkbox]",
 	"[role=radio]",
 	"[role=tab]",
 	"[role=menuitem]",
@@ -40,8 +40,53 @@ export function isTypingTarget(target: Element | null): boolean {
 	return target?.closest(TYPING_SELECTOR) != null;
 }
 
+/**
+ * A button the mouse just clicked keeps focus without a focus ring; the user is
+ * not driving it from the keyboard, so it must not swallow the page's keys
+ * (LESE-185.22). Chromium turns `:focus-visible` on with the first key press,
+ * before any keydown listener runs, so the origin is recorded at focus time:
+ * a press marks an element, Tab clears it, and any other focus (a menu handing
+ * focus back, the window coming back) keeps what it was.
+ */
+const pointerFocused = new WeakSet<Element>();
+let lastTabAt = Number.NEGATIVE_INFINITY;
+let lastPointerDownAt = Number.NEGATIVE_INFINITY;
+const FOCUS_CAUSE_WINDOW_MS = 1000;
+
+if (typeof window !== "undefined") {
+	window.addEventListener("pointerdown", () => (lastPointerDownAt = performance.now()), true);
+	window.addEventListener(
+		"keydown",
+		(e) => {
+			if (e.key === "Tab") lastTabAt = performance.now();
+		},
+		true,
+	);
+	window.addEventListener(
+		"focusin",
+		(e) => {
+			const target = targetOf(e);
+			const now = performance.now();
+			const isFromTab = now - lastTabAt < FOCUS_CAUSE_WINDOW_MS && lastTabAt > lastPointerDownAt;
+			const isFromPointer = !isFromTab && now - lastPointerDownAt < FOCUS_CAUSE_WINDOW_MS;
+			lastTabAt = lastPointerDownAt = Number.NEGATIVE_INFINITY;
+			if (!target) return;
+			if (isFromTab) pointerFocused.delete(target);
+			else if (isFromPointer) pointerFocused.add(target);
+		},
+		true,
+	);
+}
+
+function isPointerFocused(el: Element): boolean {
+	return el === document.activeElement && pointerFocused.has(el);
+}
+
 export function isControlTarget(target: Element | null): boolean {
-	return target?.closest(CONTROL_SELECTOR) != null;
+	if (!target) return false;
+	if (target.closest(WIDGET_SELECTOR)) return true;
+	const button = target.closest(BUTTON_SELECTOR);
+	return button != null && !isPointerFocused(button);
 }
 
 /**

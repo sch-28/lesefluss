@@ -22,7 +22,7 @@ export function MilestonesSection() {
 			{data.reached.length > 0 && <MedalGrid reached={data.reached} />}
 			{data.next.length > 0 && (
 				<>
-					<div className="mt-5 mb-3 text-[11px] text-muted-foreground uppercase tracking-wider">
+					<div className="mt-5 mb-3 text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
 						Next
 					</div>
 					<MedalGrid next={data.next} />

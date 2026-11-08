@@ -25,6 +25,8 @@ export const auth = betterAuth({
 	emailAndPassword: {
 		enabled: true,
 		requireEmailVerification: true,
+		// A reset is what a user does after a suspected takeover; the attacker's sessions must end with it.
+		revokeSessionsOnPasswordReset: true,
 		sendResetPassword: async ({ user, url }) => {
 			await sendMail({ to: user.email, ...passwordResetEmail(url) });
 		},

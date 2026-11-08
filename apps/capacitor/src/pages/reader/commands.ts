@@ -46,7 +46,7 @@ export function readerKeyCommands(input: ReaderKeyInput): Command[] {
 		},
 		{
 			id: "reader.rsvp-toggle",
-			title: readerMode === "rsvp" ? "Leave RSVP" : "Read with RSVP",
+			title: readerMode === "rsvp" ? "Switch to standard reader" : "Switch to RSVP reader",
 			keywords: ["speed reading", "mode"],
 			scope: "reader",
 			keys: ["r"],
@@ -212,7 +212,7 @@ export function readerActionCommands(input: ReaderActionInput): Command[] {
 		},
 		{
 			id: "reader.annotations",
-			title: "Contents and highlights",
+			title: "Contents and annotations",
 			keywords: ["annotations", "toc", "chapters", "bookmarks", "glossary", "notes"],
 			scope: "reader",
 			when: hasContent,

@@ -2,10 +2,20 @@ import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { Select as SelectPrimitive } from "radix-ui";
 import type * as React from "react";
 
+import { useOverlayBack, useOverlayOpen } from "../lib/overlay-back";
 import { cn } from "../lib/utils";
 
-function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-	return <SelectPrimitive.Root data-slot="select" {...props} />;
+function Select({
+	open,
+	defaultOpen,
+	onOpenChange,
+	...props
+}: React.ComponentProps<typeof SelectPrimitive.Root>) {
+	const [isOpen, setOpen] = useOverlayOpen(open, defaultOpen, onOpenChange);
+	useOverlayBack(isOpen, () => setOpen(false));
+	return (
+		<SelectPrimitive.Root data-slot="select" open={isOpen} onOpenChange={setOpen} {...props} />
+	);
 }
 
 function SelectGroup({ ...props }: React.ComponentProps<typeof SelectPrimitive.Group>) {

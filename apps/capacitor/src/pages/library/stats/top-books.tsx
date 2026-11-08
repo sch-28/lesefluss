@@ -47,10 +47,10 @@ export function TopBooks({ since, periodLabel }: Props) {
 			badgeFor={(_book, index) => (
 				<>
 					<div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_top_left,rgba(0,0,0,0.7),transparent_70%)]" />
-					<span className="absolute top-1 left-2 font-black text-[56px] text-white leading-none mix-blend-overlay drop-shadow-md">
+					<span className="absolute top-1 left-2 font-black text-[3.5rem] text-white leading-none mix-blend-overlay drop-shadow-md">
 						{index + 1}
 					</span>
-					<div className="absolute right-2 bottom-1.5 rounded-full bg-black/60 px-2 py-0.5 font-medium text-[10px] text-white tabular-nums backdrop-blur">
+					<div className="absolute right-2 bottom-1.5 rounded-full bg-black/60 px-2 py-0.5 font-medium text-[0.625rem] text-white tabular-nums backdrop-blur">
 						{formatDuration(top.data?.[index]?.durationMs ?? 0)}
 					</div>
 				</>

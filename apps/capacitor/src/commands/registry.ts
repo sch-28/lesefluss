@@ -17,6 +17,8 @@ export type Command = {
 	claimsKeys?: boolean;
 	/** Keys only, e.g. a contextual Escape. */
 	isHiddenInPalette?: boolean;
+	/** Leads the empty palette: the book to continue and the main screens. */
+	isDestination?: boolean;
 	/** Listed only once the user types: one per chapter or book would bury the rest. */
 	isSearchOnly?: boolean;
 	run: () => void;
@@ -112,6 +114,11 @@ export function useRegisterCommands(commands: readonly Command[]): void {
 	const signature = signatureOf(commands);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the signature stands for the list's shape
 	useEffect(changed, [signature]);
+}
+
+/** The key the palette shows for `id`, so a hint follows a rebind; undefined while it is not registered. */
+export function useCommandKey(id: string): string | undefined {
+	return useCommands().find((c) => c.id === id)?.keys?.[0];
 }
 
 /** Every registered command, re-read whenever a registration changes shape. */

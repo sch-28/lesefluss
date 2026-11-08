@@ -1,43 +1,16 @@
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from "@lesefluss/ui/accordion";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "@lesefluss/ui/alert-dialog";
 import { Button } from "@lesefluss/ui/button";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-	AlertCircle,
-	BarChart3,
-	BookmarkIcon,
-	BookOpen,
-	Cloud,
-	CloudCheck,
-	Library,
-	LogOut,
-	RefreshCw,
-	TriangleAlert,
-} from "lucide-react";
-import { useState } from "react";
+import { Cloud, CloudCheck, LogOut, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { CloudStorageSection } from "@/components/sync/cloud-storage";
-import { SignInOptions } from "@/components/sync/sign-in-options";
-import { useToast } from "@/components/toast";
+import { DangerZone } from "@/components/sync/danger-zone";
+import { DeleteAccountRow } from "@/components/sync/delete-account";
+import { SignInPanel } from "@/components/sync/sign-in-panel";
 import { useSyncContext } from "@/contexts/sync-context";
 import { queryHooks } from "@/services/db/hooks";
-import { IS_WEB_BUILD, webSignInHref } from "@/services/sync";
+import { IS_WEB_BUILD } from "@/services/sync";
 
 export const Route = createFileRoute("/tabs/settings/sync")({
 	component: SyncSettings,
@@ -51,104 +24,11 @@ function formatLastSynced(ms: number | null): string {
 	return new Date(ms).toLocaleString();
 }
 
-type DangerAction = "highlights" | "glossary" | "stats" | "library" | "everything";
-
-type DangerActionConfig = {
-	label: string;
-	subtitle: string;
-	icon: typeof BookmarkIcon;
-	header: string;
-	message: string;
-	successMessage: string;
-};
-
-const DANGER_ACTIONS: Record<DangerAction, DangerActionConfig> = {
-	highlights: {
-		label: "Delete all highlights",
-		subtitle: "Every highlight and note across all books",
-		icon: BookmarkIcon,
-		header: "Delete all highlights?",
-		message:
-			"Every highlight and note across all books will be permanently removed from this device and from your cloud account.",
-		successMessage: "Highlights deleted",
-	},
-	glossary: {
-		label: "Delete glossary entries",
-		subtitle: "Includes global entries not tied to a book",
-		icon: BookOpen,
-		header: "Delete glossary entries?",
-		message:
-			"Every glossary entry (including global ones not tied to a specific book) will be permanently removed from this device and from your cloud account.",
-		successMessage: "Glossary deleted",
-	},
-	stats: {
-		label: "Delete reading stats",
-		subtitle: "Wipes every reading session, goal and speed test, keeps your library",
-		icon: BarChart3,
-		header: "Delete reading stats?",
-		message:
-			"Every reading session, reading goal and speed test will be wiped from this device and your cloud account. Other devices drop the goals on their next sync, and the sessions and speed tests too if they sync reading stats, but sessions a device recorded offline and hasn't synced yet still arrive afterwards. Your library, highlights and bookmarks are kept.",
-		successMessage: "Reading stats deleted",
-	},
-	library: {
-		label: "Delete library",
-		subtitle: "All books and web-novels, plus their highlights and bookmarks",
-		icon: Library,
-		header: "Delete entire library?",
-		message:
-			"All books, web-novels, chapters, and their highlights, bookmarks and book-scoped glossary entries will be removed. Files are deleted from this device. Your reading stats are kept.",
-		successMessage: "Library deleted",
-	},
-	everything: {
-		label: "Delete everything",
-		subtitle: "Wipes all content. Settings and sign-in are kept.",
-		icon: AlertCircle,
-		header: "Delete everything?",
-		message:
-			"Wipes your library, highlights, bookmarks, glossary entries, wishlist, and reading stats from this device and from your cloud account. You stay signed in and your settings are kept. This cannot be undone.",
-		successMessage: "All data deleted",
-	},
-};
-
 function SyncSettings() {
 	const { isLoggedIn, userEmail, isSyncing, lastSynced, syncError, logout, syncNow } =
 		useSyncContext();
 	const { data: settings } = queryHooks.useSettings();
 	const saveSettings = queryHooks.useSaveSettings();
-	const { showToast } = useToast();
-
-	const deleteAllHighlights = queryHooks.useDeleteAllHighlights();
-	const deleteAllGlossary = queryHooks.useDeleteAllGlossary();
-	const deleteAllReadingSessions = queryHooks.useDeleteAllReadingSessions();
-	const deleteLibrary = queryHooks.useDeleteLibrary();
-	const deleteEverything = queryHooks.useDeleteEverything();
-
-	const [pendingAction, setPendingAction] = useState<DangerAction | null>(null);
-
-	const runDangerAction = (action: DangerAction) => {
-		const cfg = DANGER_ACTIONS[action];
-		const onSuccess = () => showToast(cfg.successMessage, "success");
-		const onError = () => showToast("Failed to delete data", "danger");
-		switch (action) {
-			case "highlights":
-				deleteAllHighlights.mutate(undefined, { onSuccess, onError });
-				break;
-			case "glossary":
-				deleteAllGlossary.mutate(undefined, { onSuccess, onError });
-				break;
-			case "stats":
-				deleteAllReadingSessions.mutate(undefined, { onSuccess, onError });
-				break;
-			case "library":
-				deleteLibrary.mutate(undefined, { onSuccess, onError });
-				break;
-			case "everything":
-				deleteEverything.mutate(undefined, { onSuccess, onError });
-				break;
-		}
-	};
-
-	const pendingCfg = pendingAction ? DANGER_ACTIONS[pendingAction] : null;
 
 	return (
 		<div className="bg-background">
@@ -202,55 +82,9 @@ function SyncSettings() {
 							/>
 						</SettingsSection>
 
-						<section className="mt-5">
-							<div className="overflow-hidden rounded-lg border border-border bg-card">
-								<Accordion type="single" collapsible>
-									<AccordionItem value="danger-zone" className="border-b-0">
-										<AccordionTrigger className="bg-destructive/10 px-4 text-destructive">
-											<span className="flex items-center gap-2">
-												<TriangleAlert className="size-4" />
-												Danger zone
-											</span>
-										</AccordionTrigger>
-										<AccordionContent className="p-0">
-											<p className="px-4 py-3 text-muted-foreground text-xs">
-												Permanently delete data on this device. Changes sync to your cloud account
-												and other devices on next sync. This cannot be undone.
-											</p>
-											<div className="divide-y divide-border">
-												{(
-													["highlights", "glossary", "stats", "library", "everything"] as const
-												).map((action) => {
-													const cfg = DANGER_ACTIONS[action];
-													return (
-														<button
-															key={action}
-															type="button"
-															onClick={() => setPendingAction(action)}
-															className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60"
-														>
-															<cfg.icon className="size-5 text-destructive" />
-															<div className="flex-1">
-																<div
-																	className={
-																		action === "everything"
-																			? "font-semibold text-destructive text-sm"
-																			: "font-medium text-foreground text-sm"
-																	}
-																>
-																	{cfg.label}
-																</div>
-																<div className="text-muted-foreground text-xs">{cfg.subtitle}</div>
-															</div>
-														</button>
-													);
-												})}
-											</div>
-										</AccordionContent>
-									</AccordionItem>
-								</Accordion>
-							</div>
-						</section>
+						<DangerZone isSynced>
+							<DeleteAccountRow />
+						</DangerZone>
 
 						{!IS_WEB_BUILD && (
 							<SettingsSection>
@@ -264,57 +98,18 @@ function SyncSettings() {
 								</button>
 							</SettingsSection>
 						)}
-
-						<AlertDialog
-							open={pendingAction !== null}
-							onOpenChange={(open) => !open && setPendingAction(null)}
-						>
-							<AlertDialogContent>
-								<AlertDialogHeader>
-									<AlertDialogTitle>{pendingCfg?.header}</AlertDialogTitle>
-									<AlertDialogDescription>{pendingCfg?.message}</AlertDialogDescription>
-								</AlertDialogHeader>
-								<AlertDialogFooter>
-									<AlertDialogCancel>Cancel</AlertDialogCancel>
-									<AlertDialogAction
-										className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-										onClick={() => {
-											if (pendingAction) runDangerAction(pendingAction);
-										}}
-									>
-										Delete
-									</AlertDialogAction>
-								</AlertDialogFooter>
-							</AlertDialogContent>
-						</AlertDialog>
 					</>
 				) : (
-					<SettingsSection title="Not signed in">
-						<div className="flex items-center gap-3 px-4 py-3">
-							<Cloud className="size-5 shrink-0 text-muted-foreground" />
-							<p className="text-muted-foreground text-sm">
-								{IS_WEB_BUILD
+					<>
+						<SignInPanel
+							benefit={
+								IS_WEB_BUILD
 									? "Sign in on the main website to sync your library, reading progress, and highlights, and to read books together with friends."
-									: "Sign in to sync your library, reading progress, and highlights across devices, and to read books together with friends."}
-							</p>
-						</div>
-						{syncError && <div className="px-4 py-2 text-destructive text-sm">{syncError}</div>}
-						<div className="p-3">
-							{IS_WEB_BUILD ? (
-								<Button asChild className="w-full">
-									<a
-										href={webSignInHref(window.location.pathname + window.location.search)}
-										target="_top"
-										rel="noreferrer"
-									>
-										Sign in
-									</a>
-								</Button>
-							) : (
-								<SignInOptions />
-							)}
-						</div>
-					</SettingsSection>
+									: "Sign in to sync your library, reading progress, and highlights across devices, and to read books together with friends."
+							}
+						/>
+						<DangerZone isSynced={false} />
+					</>
 				)}
 			</div>
 		</div>

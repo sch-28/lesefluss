@@ -612,3 +612,7 @@ export type ContentQuotaExceeded = ContentQuota & {
 	/** As a 2xx push answer carries them: absent when nothing was clamped, or from a server that pre-dates stamps. */
 	stamps?: SyncPushStamps;
 };
+
+/** The body of `POST /api/account/delete`; the literal guards against an accidental call. */
+export const DeleteAccountRequestSchema = z.object({ confirm: z.literal("delete-account") });
+export type DeleteAccountRequest = z.infer<typeof DeleteAccountRequestSchema>;

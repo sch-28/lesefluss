@@ -1,10 +1,25 @@
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import type * as React from "react";
+import { useOverlayBack, useOverlayOpen } from "../lib/overlay-back";
 import { cn } from "../lib/utils";
 
-function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-	return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
+function DropdownMenu({
+	open,
+	defaultOpen,
+	onOpenChange,
+	...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+	const [isOpen, setOpen] = useOverlayOpen(open, defaultOpen, onOpenChange);
+	useOverlayBack(isOpen, () => setOpen(false));
+	return (
+		<DropdownMenuPrimitive.Root
+			data-slot="dropdown-menu"
+			open={isOpen}
+			onOpenChange={setOpen}
+			{...props}
+		/>
+	);
 }
 
 function DropdownMenuPortal({

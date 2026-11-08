@@ -4,7 +4,7 @@ import { Input } from "@lesefluss/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@lesefluss/ui/tabs";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import * as React from "react";
 import { z } from "zod";
 import { DiscordIcon } from "~/components/icons/discord";
@@ -289,6 +289,17 @@ function AuthForm({
 				{serverError && (
 					<p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-destructive text-sm">
 						{serverError}
+					</p>
+				)}
+
+				{mode === "signin" && (
+					<p className="mt-3 text-right text-sm">
+						<Link
+							to="/reset-password"
+							className="text-muted-foreground underline underline-offset-4"
+						>
+							Forgot password?
+						</Link>
 					</p>
 				)}
 

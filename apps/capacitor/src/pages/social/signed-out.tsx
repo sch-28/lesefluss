@@ -45,7 +45,7 @@ export function SignedOutSocial({ returnTo }: { returnTo: string }) {
 						<p className="m-0 mt-3 text-center text-muted-foreground text-xs">
 							Browser not working on this device?{" "}
 							<Link to="/tabs/settings/sync" className="text-primary underline">
-								Sign in with email or your phone in Settings
+								More ways to sign in are in Settings
 							</Link>
 						</p>
 					)}

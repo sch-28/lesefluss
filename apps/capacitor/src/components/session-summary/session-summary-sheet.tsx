@@ -150,7 +150,7 @@ function SummaryDrawer({ summary, isOpen, onClose }: SummaryProps) {
 
 				{earned.length > 0 && (
 					<div className="mt-3 px-4" data-testid="summary-milestones">
-						<div className="mb-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+						<div className="mb-2 text-[0.625rem] text-muted-foreground uppercase tracking-wider">
 							Milestones
 						</div>
 						<MedalGrid reached={earned} />

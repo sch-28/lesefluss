@@ -257,10 +257,10 @@ export function WpmTrend({ window, mode, windowLabel, now }: Props) {
 										<span style={{ opacity: 0.85 }}>{point.seriesId}</span>
 									</div>
 									<div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-										<span style={{ fontSize: 18, fontWeight: 700 }}>{y}</span>
+										<span style={{ fontSize: "1.125rem", fontWeight: 700 }}>{y}</span>
 										<span style={{ opacity: 0.6 }}>wpm</span>
 									</div>
-									<div style={{ marginTop: 2, fontSize: 11, opacity: 0.6 }}>{when}</div>
+									<div style={{ marginTop: 2, fontSize: "0.6875rem", opacity: 0.6 }}>{when}</div>
 								</ChartTooltip>
 							);
 						}}

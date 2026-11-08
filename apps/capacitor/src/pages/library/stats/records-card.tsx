@@ -58,7 +58,7 @@ export function RecordsCard() {
 		>
 			<header className="mb-3">
 				<h2 className="font-semibold text-lg">Records</h2>
-				<p className="mt-0.5 text-[11px] uppercase tracking-wider opacity-60">all time</p>
+				<p className="mt-0.5 text-[0.6875rem] uppercase tracking-wider opacity-60">all time</p>
 			</header>
 			<div className="grid grid-cols-2 gap-2.5">
 				{items.map((record) => (
@@ -69,10 +69,10 @@ export function RecordsCard() {
 						<div className="font-semibold text-xl tabular-nums leading-none tracking-tight">
 							{record.value}
 						</div>
-						<div className="mt-1.5 text-[10px] uppercase tracking-wider opacity-60">
+						<div className="mt-1.5 text-[0.625rem] uppercase tracking-wider opacity-60">
 							{record.label}
 						</div>
-						<div className="mt-1 line-clamp-1 text-[11px] opacity-50">{record.detail}</div>
+						<div className="mt-1 line-clamp-1 text-[0.6875rem] opacity-50">{record.detail}</div>
 					</div>
 				))}
 			</div>

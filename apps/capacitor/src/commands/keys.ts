@@ -61,3 +61,8 @@ export function formatKey(spec: string, isMac = isMacPlatform()): string[] {
 	chips.push(KEY_LABELS[chord.key] ?? (chord.isLetter ? chord.key.toUpperCase() : chord.key));
 	return chips;
 }
+
+/** A tooltip that names the action and its key, e.g. `Search library (/)`. */
+export function withKey(label: string, spec: string | undefined, isMac = isMacPlatform()): string {
+	return spec ? `${label} (${formatKey(spec, isMac).join("+")})` : label;
+}

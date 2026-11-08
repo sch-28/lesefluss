@@ -17,13 +17,13 @@ export function GoalStat({
 			<div
 				className={cn(
 					"truncate font-semibold tabular-nums",
-					size === "md" ? "text-[17px]" : "text-base",
+					size === "md" ? "text-[1.0625rem]" : "text-base",
 					className,
 				)}
 			>
 				{value}
 			</div>
-			<div className="mt-0.5 text-[10px] uppercase tracking-wider opacity-60">{label}</div>
+			<div className="mt-0.5 text-[0.625rem] uppercase tracking-wider opacity-60">{label}</div>
 		</div>
 	);
 }

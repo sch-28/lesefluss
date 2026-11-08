@@ -86,7 +86,7 @@ export function GoalReminderRow({
 					onClick={async () => {
 						if ((await ask()) && value === null) onChange(lastTime);
 					}}
-					className="self-start text-left text-[11px] text-muted-foreground underline underline-offset-2"
+					className="self-start text-left text-[0.6875rem] text-muted-foreground underline underline-offset-2"
 				>
 					{permission === "denied"
 						? "notifications blocked · system settings"

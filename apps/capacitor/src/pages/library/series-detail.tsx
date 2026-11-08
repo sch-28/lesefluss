@@ -35,7 +35,8 @@ const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 
 	const { data: series, isPending: seriesPending } = useQuery({
 		queryKey: serialKeys.detail(id),
-		queryFn: () => queries.getSeries(id),
+		// An unknown id resolves to null; React Query rejects undefined data.
+		queryFn: async () => (await queries.getSeries(id)) ?? null,
 		enabled: !!id,
 	});
 
@@ -43,7 +44,7 @@ const SeriesDetail: React.FC<Props> = ({ id: propId }) => {
 	// action so the button label can name the actual chapter.
 	const { data: entryChapter } = useQuery({
 		queryKey: serialKeys.entry(id),
-		queryFn: () => queries.getSeriesEntryChapter(id),
+		queryFn: async () => (await queries.getSeriesEntryChapter(id)) ?? null,
 		enabled: !!id,
 	});
 

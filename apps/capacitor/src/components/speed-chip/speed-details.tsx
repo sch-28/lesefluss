@@ -62,13 +62,13 @@ function ModeRow({
 		>
 			<span className="flex flex-col">
 				<span className="text-sm">{VIEW_LABELS[view]}</span>
-				{sub && <span className="text-[11px] text-muted-foreground tabular-nums">{sub}</span>}
+				{sub && <span className="text-[0.6875rem] text-muted-foreground tabular-nums">{sub}</span>}
 			</span>
 			<Sparkline points={points} />
 			<span className="flex flex-col items-end">
 				<span className="font-semibold text-sm tabular-nums">{wpm} wpm</span>
 				{delta && (
-					<span className="text-[11px] text-muted-foreground tabular-nums">
+					<span className="text-[0.6875rem] text-muted-foreground tabular-nums">
 						{deltaLabel(model.window, delta.wpm, formatShortDate(delta.since))}
 					</span>
 				)}
@@ -84,7 +84,7 @@ function DialStepper({ dial, onStep }: { dial: number; onStep: (direction: 1 | -
 		<div className="flex items-center justify-between gap-3">
 			<div className="flex flex-col">
 				<span className="text-sm">Default dial</span>
-				<span className="text-[11px] text-muted-foreground">Global, all books</span>
+				<span className="text-[0.6875rem] text-muted-foreground">Global, all books</span>
 			</div>
 			<div className="flex items-center gap-1">
 				<button
@@ -154,10 +154,12 @@ export function SpeedDetails({ model, dialWpm, showDial, primary, book, onNaviga
 	return (
 		<div className="flex flex-col gap-3" data-testid="speed-details">
 			<div className="flex items-baseline justify-between">
-				<span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">
+				<span className="font-semibold text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
 					Your speed
 				</span>
-				<span className="text-[11px] text-muted-foreground">{WINDOW_LABELS[model.window]}</span>
+				<span className="text-[0.6875rem] text-muted-foreground">
+					{WINDOW_LABELS[model.window]}
+				</span>
 			</div>
 
 			<div className="flex items-baseline gap-1.5" data-testid="speed-big">
@@ -211,7 +213,7 @@ export function SpeedDetails({ model, dialWpm, showDial, primary, book, onNaviga
 				)}
 			</div>
 
-			<p className="m-0 text-[11px] text-muted-foreground leading-snug">
+			<p className="m-0 text-[0.6875rem] text-muted-foreground leading-snug">
 				{footnote(model, showDial)}
 			</p>
 

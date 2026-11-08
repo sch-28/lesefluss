@@ -35,8 +35,8 @@ test("in the library, Ctrl+K filters and runs import, and Ctrl+O opens the impor
 	await expect(palette(page)).toBeVisible();
 	await expect(palette(page).getByRole("group", { name: "Everywhere" })).toBeVisible();
 	await palette(page).getByRole("combobox").fill("imp");
-	await expect(palette(page).getByRole("option").first()).toContainText("Import");
-	await palette(page).getByRole("combobox").fill("import a book");
+	await expect(palette(page).getByRole("option", { name: /^Add book/ })).toBeVisible();
+	await palette(page).getByRole("combobox").fill("add book");
 	await page.keyboard.press("Enter");
 	await expect(palette(page)).toBeHidden();
 	await expect(importSheet(page)).toBeVisible();
@@ -65,14 +65,15 @@ test("in the reader, the palette lists every reader action, shows its shortcut a
 	await page.keyboard.press("Control+k");
 	await expect(palette(page)).toBeVisible();
 	const groups = palette(page).getByRole("group");
-	await expect(groups.first()).toHaveAttribute("aria-label", "Reader");
+	await expect(groups.first()).toHaveAttribute("aria-label", "Go to");
+	await expect(groups.nth(1)).toHaveAttribute("aria-label", "Reader");
 	await expect(palette(page).getByRole("group", { name: "Everywhere" })).toBeVisible();
 
 	const readerActions = [
-		"Read with RSVP",
+		"Switch to RSVP reader",
 		"Search in book",
 		"Appearance",
-		"Contents and highlights",
+		"Contents and annotations",
 		/^Switch to (page|scroll) view/,
 		"Book details",
 		"Listen",
@@ -88,7 +89,7 @@ test("in the reader, the palette lists every reader action, shows its shortcut a
 				: palette(page).getByRole("option", { name });
 		await expect(row, String(name)).toHaveCount(1);
 	}
-	const rsvp = palette(page).getByRole("option", { name: /Read with RSVP/ });
+	const rsvp = palette(page).getByRole("option", { name: /Switch to RSVP reader/ });
 	await expect(rsvp.locator("kbd")).toHaveText("R");
 
 	await palette(page).getByRole("combobox").fill("chapter 4");
@@ -99,4 +100,17 @@ test("in the reader, the palette lists every reader action, shows its shortcut a
 	expect(await pressPrevented(page, "Control+o")).toBe(true);
 	await page.waitForURL(/\/tabs\/library/);
 	await expect(importSheet(page)).toBeVisible();
+});
+
+test("a header button clicked with the mouse leaves the reader's keys working (LESE-185.22)", async ({
+	page,
+}) => {
+	await seedChapterNovel(page);
+	await openBookFromLibrary(page, CHAPTER_NOVEL_TITLE);
+	await reader.waitOpenSettled(page);
+	const ribbon = page.getByRole("button", { name: "Bookmark", exact: true });
+	await ribbon.click();
+	await expect(ribbon).toBeFocused();
+	await page.keyboard.press("r");
+	await expect(page.locator(".rsvp-display")).toBeVisible();
 });

@@ -54,7 +54,7 @@ export function BookJourney({ book }: { book: Book }) {
 								)}
 								<span className={`h-px flex-1 ${isLast ? "bg-transparent" : "bg-current/20"}`} />
 							</div>
-							<span className="text-[10px] uppercase tracking-wide opacity-55">
+							<span className="text-[0.625rem] uppercase tracking-wide opacity-55">
 								{milestone.label}
 							</span>
 							<span className="text-xs tabular-nums">{formatShortDate(milestone.at)}</span>

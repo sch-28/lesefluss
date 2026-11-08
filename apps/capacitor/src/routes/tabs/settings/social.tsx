@@ -22,6 +22,7 @@ import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { HandleClaimStep } from "@/components/social/handle-claim-step";
+import { SignInPanel } from "@/components/sync/sign-in-panel";
 import { toast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
 import { socialKeys } from "@/services/db/hooks/query-keys";
@@ -334,11 +335,7 @@ function SocialSettings() {
 		);
 	} else if (!isLoggedIn) {
 		body = (
-			<SettingsSection title="Not signed in">
-				<p className="px-4 py-3 text-muted-foreground text-sm">
-					Sign in under Cloud sync to set up your social profile.
-				</p>
-			</SettingsSection>
+			<SignInPanel benefit="Sign in to pick a handle and an avatar, add friends through your invite link, read books together and choose what friends see." />
 		);
 	} else if (profileQuery.isPending) {
 		body = (
