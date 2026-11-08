@@ -2,11 +2,12 @@ import { BOOK_SERIES_INDEX_MAX } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronRight, Clock, Plus } from "lucide-react";
+import { Check, Clock, Plus } from "lucide-react";
 import type React from "react";
 import { useMemo, useRef, useState } from "react";
 import { nextSeriesNumber } from "../../components/collections/series-numbering";
 import { EntryDialog } from "../../components/entry-dialog";
+import { PickerTrigger } from "../../components/picker-trigger";
 import type { ImportSeriesChoice } from "../../services/book-import";
 import { collectionKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
@@ -114,24 +115,20 @@ export const SeriesField: React.FC<Props> = ({
 	return (
 		<Field label="Series" htmlFor="book-series-index">
 			<div className="flex items-center gap-2">
-				<button
-					type="button"
+				<PickerTrigger
+					data-testid="series-picker"
 					onClick={() => setIsPicking(true)}
-					className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-input px-2.5 text-left text-base md:text-sm dark:bg-input/30"
-				>
-					<span className={name ? "min-w-0 flex-1 truncate" : "flex-1 text-muted-foreground"}>
-						{name ?? (detected ? "Not in a series" : "No series")}
-					</span>
-					{choice.kind === "detected" && (
-						<span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-muted-foreground text-xs">
-							from file
-						</span>
-					)}
-					<span className="flex items-center text-muted-foreground text-xs">
-						{name ? "Change" : "Add"}
-						<ChevronRight className="size-4" />
-					</span>
-				</button>
+					className="flex-1"
+					value={name}
+					placeholder={detected ? "Not in a series" : "No series"}
+					trailing={
+						choice.kind === "detected" && (
+							<span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-muted-foreground text-xs">
+								from file
+							</span>
+						)
+					}
+				/>
 				{hasIndex && (
 					<div className="flex items-center gap-1">
 						<span className="text-muted-foreground text-sm">#</span>

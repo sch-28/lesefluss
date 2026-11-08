@@ -86,7 +86,7 @@ test.describe("page mode", () => {
 		const saves = await reader.saveRequestCount(page);
 
 		await reader.openAppearance(page);
-		await page.getByRole("radio", { name: "Justify" }).click();
+		await page.getByRole("switch", { name: "Justify text" }).click();
 		await page.keyboard.press("Escape");
 		await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
 

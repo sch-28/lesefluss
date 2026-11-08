@@ -25,8 +25,9 @@ import { useEffect, useState } from "react";
 import { TabHeader } from "@/components/app-shell/tab-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
 import BLEIndicator from "@/components/ble-indicator";
-import { NavRow } from "@/components/settings/settings-row";
+import { NavRow, RowLabel, SettingsRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { SpeedWindowSelect } from "@/components/speed-window-select";
 import { SHOW_WHATS_NEW_EVENT } from "@/components/whats-new-modal";
 import { useBLE } from "@/contexts/ble-context";
 import { useSyncContext } from "@/contexts/sync-context";
@@ -79,7 +80,7 @@ function SettingsLanding() {
 		connectionState === BLEConnectionState.DISCONNECTING;
 
 	const rsvpSubtitle = settings
-		? `${settings.wpm} WPM · Comma ${settings.delayComma.toFixed(1)}x · Period ${settings.delayPeriod.toFixed(1)}x`
+		? `${settings.wpm} wpm · Comma ${settings.delayComma.toFixed(1)}× · Period ${settings.delayPeriod.toFixed(1)}×`
 		: "Loading...";
 	const themeLabel = THEMES.find((t) => t.value === theme)?.label ?? theme;
 	const readerSubtitle = settings
@@ -144,6 +145,13 @@ function SettingsLanding() {
 							to="/tabs/settings/read-aloud"
 						/>
 					)}
+					<SettingsRow>
+						<RowLabel
+							title="Speed window"
+							hint="Your speed and every time estimate use the sittings from this span."
+						/>
+						<SpeedWindowSelect window={settings?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW} />
+					</SettingsRow>
 					<NavRow
 						icon={Download}
 						title="Export highlights"

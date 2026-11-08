@@ -11,14 +11,10 @@ const SETTLE_MS = 2000;
 const ruler = (page: Page) => page.locator(".reading-ruler");
 const band = (page: Page) => page.locator(".reading-ruler-band");
 
-/** An Off/On row of the appearance popover, queried like the popover's other rows. */
 async function setPopoverSwitch(page: Page, row: string, on: boolean) {
 	await reader.openAppearance(page);
-	await page
-		.locator(".ap-row")
-		.filter({ hasText: row })
-		.getByRole("radio", { name: on ? "On" : "Off" })
-		.click();
+	const toggle = page.getByRole("switch", { name: row });
+	if ((await toggle.getAttribute("aria-checked")) !== String(on)) await toggle.click();
 	await page.keyboard.press("Escape");
 	await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
 }

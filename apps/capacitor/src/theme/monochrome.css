@@ -487,7 +487,8 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	flex-direction: column;
 	align-items: center;
 	gap: 1px;
-	font-size: 0.72rem;
+	max-width: 100%;
+	font-size: 0.78rem;
 	color: var(--reader-progress-label, #555555);
 	text-align: center;
 	user-select: none;
@@ -499,9 +500,8 @@ body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 }
 
 .reader-progress-chapter-time {
-	font-size: 0.62rem;
-	opacity: 0.65;
-	max-width: 160px;
+	font-size: 0.72rem;
+	max-width: min(100%, 22rem);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

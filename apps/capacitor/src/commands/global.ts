@@ -1,6 +1,5 @@
 import { useRouter } from "@tanstack/react-router";
 import { useContinueReading } from "../hooks/use-continue-reading";
-import { isBurstAvailable, openBurst } from "../pages/burst/open-burst";
 import { type Command, useRegisterCommands } from "./registry";
 import { createFlag, createRequest } from "./signal";
 
@@ -44,18 +43,6 @@ export function useGlobalCommands(): void {
 			run: () => {
 				importRequest.raise();
 				if (router.state.location.pathname !== "/tabs/library") go("/tabs/library");
-			},
-		},
-		{
-			id: "global.burst",
-			title: "Burst read",
-			keywords: ["pop-up", "picture in picture", "quick", "rsvp", "strip"],
-			scope: "global",
-			when: isBurstAvailable,
-			// Run from the palette's key press or click: the pop-up needs one.
-			run: () => {
-				const reading = router.state.location.pathname.match(/^\/tabs\/reader\/([^/]+)/);
-				void openBurst(reading ? decodeURIComponent(reading[1]) : null);
 			},
 		},
 		...(continueReading

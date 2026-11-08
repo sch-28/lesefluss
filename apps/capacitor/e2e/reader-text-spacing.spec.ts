@@ -3,7 +3,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { PLAIN_BOOK_TITLE, plainBookFixture } from "./helpers/plain-book";
 import { applyRemoteSettings } from "./helpers/remote-settings";
 import { openBookFromLibrary, seedFixture, seedStrayAnchorBook } from "./helpers/seed";
-import { reader } from "./page-objects/reader";
+import { reader, stepperValue } from "./page-objects/reader";
 
 /**
  * Letter and word spacing widen the text without touching the word spans, so
@@ -101,18 +101,19 @@ test("Reset spacing puts all three back to their defaults in one go", async ({ p
 	await seedFixture(page, plainBookFixture(), "plain.epub");
 	await openBookFromLibrary(page, PLAIN_BOOK_TITLE);
 	await reader.expectLoaded(page);
+	await page.goto("/tabs/settings/reader");
 	for (const label of ["Letter spacing", "Word spacing", "Paragraph spacing"]) {
-		await reader.stepUpAppearance(page, label);
+		const before = await stepperValue(page, label).textContent();
+		await page.getByRole("button", { name: `Increase ${label}`, exact: true }).click();
+		await expect(stepperValue(page, label)).not.toHaveText(before ?? "");
 	}
-
-	await reader.openAppearance(page);
 	await page.getByRole("button", { name: "Reset spacing" }).click();
-
 	for (const label of ["Letter spacing", "Word spacing", "Paragraph spacing"]) {
-		await expect(
-			page.locator(".ap-row").filter({ hasText: label }).locator(".ap-row-value"),
-		).toHaveText("Default");
+		await expect(stepperValue(page, label)).toHaveText("Default");
 	}
+	await page.goto("/tabs/library");
+	await openBookFromLibrary(page, PLAIN_BOOK_TITLE);
+	await reader.expectLoaded(page);
 	expect(
 		await page.evaluate(() => {
 			const p = document.querySelector(".reader-paragraph");

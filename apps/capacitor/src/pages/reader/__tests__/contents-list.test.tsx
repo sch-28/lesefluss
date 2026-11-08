@@ -128,6 +128,25 @@ describe("ContentsList", () => {
 		expect(scrollTop()).toBe(11 * ROW_HEIGHT);
 	});
 
+	it("indents a chapter by its nesting in the book's contents", async () => {
+		view = await render(
+			<div data-testid="scroller">
+				<ContentsList
+					chapters={[
+						{ title: "Part I", startWord: 0 },
+						{ title: "1: Alpha", startWord: 10, level: 1 },
+					]}
+					currentIndex={0}
+					onJump={vi.fn()}
+					obscuredHeight={0}
+					onNeedsFullHeight={vi.fn()}
+				/>
+			</div>,
+		);
+		expect(view.getButton("Part I").style.paddingLeft).toBe("");
+		expect(view.getButton("1: Alpha").style.paddingLeft).toBe("2.25rem");
+	});
+
 	it("jumps to the tapped chapter's start word", async () => {
 		const onJump = vi.fn();
 		const { view } = await renderList(0, vi.fn(), onJump);

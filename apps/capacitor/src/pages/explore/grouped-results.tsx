@@ -2,19 +2,25 @@ import { Button } from "@lesefluss/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { CloudflareChallenge } from "../../components/cloudflare-challenge";
+import { useMediaQuery } from "../../hooks/use-media-query";
 import { type CatalogSearchResult, searchCatalog } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { queryHooks } from "../../services/db/hooks";
 import { type ProviderId, providerLabel, type SearchResult } from "../../services/serial-scrapers";
-import { EmptyState, ErrorState } from "../_shared/load-states";
+import { useIsOnline } from "../../services/social/cache";
+import { describeLoadError, EmptyState, ErrorState } from "../_shared/load-states";
+import CatalogListItem from "./catalog-list-item";
 import Shelf from "./shelf";
 import ShelfFrame, { SHELF_ITEM_STYLE } from "./shelf-frame";
-import { ShelfSkeleton } from "./skeletons";
+import { EXPLORE_GRID_CLASS, ShelfSkeleton } from "./skeletons";
 import { WebNovelCard } from "./web-novel-card";
 
 const CATALOG_PREVIEW_SIZE = 8;
 const PROVIDER_PREVIEW_SIZE = 8;
 const PREVIEW_STALE_TIME_MS = 5 * 60 * 1000;
+/** A phone shows results as rows and a grid; a strip there holds three covers at most. */
+const PHONE_CATALOG_ROWS = 5;
+const PHONE_PROVIDER_CARDS = 6;
 
 type Props = {
 	q: string;
@@ -67,6 +73,32 @@ const GroupedResults: React.FC<Props> = ({
 	const isEverythingEmpty =
 		catalog.isSuccess && catalogResults.length === 0 && serials.isSuccess && groups.length === 0;
 
+	const isWide = useMediaQuery("(min-width: 768px)");
+	const isOnline = useIsOnline();
+	const isUnreachable =
+		!isOnline ||
+		(catalog.isError &&
+			describeLoadError(catalog.error, isOnline) !== "server" &&
+			!isSerialsLoading &&
+			groups.length === 0);
+
+	if (isUnreachable) {
+		return (
+			<div className="mx-auto max-w-5xl px-4 pt-4 pb-20">
+				<ErrorState
+					error={catalog.error}
+					onRetry={() => {
+						void catalog.refetch();
+						void serials.refetch();
+					}}
+					className="min-h-[50vh]"
+				/>
+			</div>
+		);
+	}
+
+	const catalogTitle = `Public domain (${catalog.data?.total.toLocaleString() ?? 0})`;
+
 	return (
 		<div className="mx-auto max-w-5xl px-4 pt-4 pb-20">
 			{catalog.isPending ? (
@@ -76,14 +108,27 @@ const GroupedResults: React.FC<Props> = ({
 					<h2 className="m-0 mb-2 font-semibold text-[0.95rem]">Public domain</h2>
 					<ErrorState error={catalog.error} onRetry={() => catalog.refetch()} className="p-4" />
 				</section>
-			) : catalogResults.length > 0 ? (
+			) : catalogResults.length === 0 ? null : isWide ? (
 				<Shelf
-					title={`Public domain (${catalog.data.total.toLocaleString()})`}
+					title={catalogTitle}
 					books={catalogResults}
 					onOpen={onOpenBook}
 					onSeeAll={onSeeAllCatalog}
 				/>
-			) : null}
+			) : (
+				<ShelfFrame
+					title={catalogTitle}
+					onSeeAll={onSeeAllCatalog}
+					testId="catalog-group"
+					body={
+						<div className="flex flex-col divide-y divide-border">
+							{catalogResults.slice(0, PHONE_CATALOG_ROWS).map((r) => (
+								<CatalogListItem key={r.id} result={r} onOpen={() => onOpenBook(r)} />
+							))}
+						</div>
+					}
+				/>
+			)}
 
 			{challenged.length > 0 && (
 				<div className="mb-4">
@@ -91,20 +136,41 @@ const GroupedResults: React.FC<Props> = ({
 				</div>
 			)}
 
-			{groups.map(([provider, results]) => (
-				<ShelfFrame
-					key={provider}
-					title={providerLabel(provider)}
-					onSeeAll={() => onSeeAllProvider(provider)}
-					testId={`provider-group-${provider}`}
-				>
-					{results.slice(0, PROVIDER_PREVIEW_SIZE).map((r) => (
-						<li key={r.sourceUrl} className="shrink-0" style={SHELF_ITEM_STYLE}>
-							<WebNovelCard result={r} onPick={onOpenWebNovel} showProvider={false} />
-						</li>
-					))}
-				</ShelfFrame>
-			))}
+			{groups.map(([provider, results]) =>
+				isWide ? (
+					<ShelfFrame
+						key={provider}
+						title={providerLabel(provider)}
+						onSeeAll={() => onSeeAllProvider(provider)}
+						testId={`provider-group-${provider}`}
+					>
+						{results.slice(0, PROVIDER_PREVIEW_SIZE).map((r) => (
+							<li key={r.sourceUrl} className="shrink-0" style={SHELF_ITEM_STYLE}>
+								<WebNovelCard result={r} onPick={onOpenWebNovel} showProvider={false} />
+							</li>
+						))}
+					</ShelfFrame>
+				) : (
+					<ShelfFrame
+						key={provider}
+						title={providerLabel(provider)}
+						onSeeAll={() => onSeeAllProvider(provider)}
+						testId={`provider-group-${provider}`}
+						body={
+							<div className={EXPLORE_GRID_CLASS}>
+								{results.slice(0, PHONE_PROVIDER_CARDS).map((r) => (
+									<WebNovelCard
+										key={r.sourceUrl}
+										result={r}
+										onPick={onOpenWebNovel}
+										showProvider={false}
+									/>
+								))}
+							</div>
+						}
+					/>
+				),
+			)}
 
 			{isSerialsLoading && <ShelfSkeleton />}
 

@@ -53,7 +53,7 @@ const CHANGES: Change[] = [
 		name: "justify",
 		viewport: WIDE,
 		apply: (page) =>
-			clickInAppearance(page, (p) => p.getByRole("radio", { name: "Justify" }).click()),
+			clickInAppearance(page, (p) => p.getByRole("switch", { name: "Justify text" }).click()),
 	},
 	{
 		name: "letter, word and paragraph spacing pulled in by sync",
@@ -206,7 +206,7 @@ test("scrolling right after a font change saves the new top word", async ({ page
 	const word = await openMidChapter(page, PHONE);
 	let clickedAt = 0;
 	await clickInAppearance(page, async (p) => {
-		await p.getByRole("button", { name: "Increase Size" }).click();
+		await p.getByRole("button", { name: "Increase Text size" }).click();
 		clickedAt = Date.now();
 	});
 	// The case's own timing: a scroll 200ms after the change, while it still reflows.
@@ -298,7 +298,9 @@ test("a font size step down after a mid-paragraph settle on a phone keeps that w
 	const word = await settleMidParagraph(page);
 	const saves = await reader.saveRequestCount(page);
 
-	await clickInAppearance(page, (p) => p.getByRole("button", { name: "Decrease Size" }).click());
+	await clickInAppearance(page, (p) =>
+		p.getByRole("button", { name: "Decrease Text size" }).click(),
+	);
 
 	await expectAnchoredWithoutSave(page, word, saves);
 	await expectReopensAt(page, LONG_TITLE, word, saves);
@@ -327,7 +329,9 @@ test("after a fresh load with custom reader settings, a step down keeps the sett
 	const word = await settleMidParagraph(page);
 	const saves = await reader.saveRequestCount(page);
 
-	await clickInAppearance(page, (p) => p.getByRole("button", { name: "Decrease Size" }).click());
+	await clickInAppearance(page, (p) =>
+		p.getByRole("button", { name: "Decrease Text size" }).click(),
+	);
 
 	await expectAnchoredWithoutSave(page, word, saves);
 });

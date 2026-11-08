@@ -55,12 +55,6 @@ export type PositionWriteInput = {
 	word: number;
 	/** The newest row revision the writer has seen; the write lands only while the row is no newer. */
 	baseRev: number;
-	/**
-	 * Whether the open reader on this device should treat the stamp as its own.
-	 * A writer outside the reader (burst read) passes false, so a reader open on
-	 * the same book follows the write as an external position.
-	 */
-	isReaderOwn?: boolean;
 };
 
 /**
@@ -71,7 +65,7 @@ export type PositionWriteInput = {
  */
 export function writeBookPosition(
 	qc: QueryClient,
-	{ bookId, seriesId, word, baseRev, isReaderOwn = true }: PositionWriteInput,
+	{ bookId, seriesId, word, baseRev }: PositionWriteInput,
 ): PositionWrite {
 	const now = Date.now();
 	const wordPosition = wordPos(word);
@@ -107,7 +101,7 @@ export function writeBookPosition(
 	setJustRead(seriesId ? `series:${seriesId}` : `book:${bookId}`);
 
 	const stamp = nextPositionRevision(now, baseRev);
-	if (isReaderOwn) recordOwnRevision(bookId, stamp);
+	recordOwnRevision(bookId, stamp);
 
 	const outcome = (async (): Promise<PositionWriteOutcome> => {
 		// A wedged write queue or a stalled native bridge hangs without rejecting,

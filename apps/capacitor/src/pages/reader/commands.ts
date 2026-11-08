@@ -280,8 +280,16 @@ export function readerActionCommands(input: ReaderActionInput): Command[] {
 	if (openMini) {
 		commands.push({
 			id: "reader.mini",
-			title: "Open mini RSVP window",
-			keywords: ["pop-up", "picture in picture", "rsvp", "always on top", "player"],
+			title: "Quick RSVP",
+			keywords: [
+				"pop-up",
+				"picture in picture",
+				"rsvp",
+				"always on top",
+				"player",
+				"mini",
+				"burst",
+			],
 			scope: "reader",
 			when: hasContent,
 			// Run from the palette's key press or click: the window needs one.

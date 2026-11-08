@@ -1,12 +1,18 @@
 import type { WordPosition } from "@lesefluss/core";
-import { useLayoutEffect, useRef } from "react";
+import { useState } from "react";
 import type { Chapter } from "../../services/db/schema";
 import { currentChapterIndex, hasWordAlignedChapters } from "../../utils/chapters";
 
-/** Roughly six rows. Tall enough to show context around the current chapter,
- *  short enough that a 130-chapter book does not push the page away. */
-const LIST_MAX_HEIGHT = 240;
+/** Rows shown before "Show all": context around the current chapter, in the
+ *  page's own scroll, since a list scrolling inside the page traps the thumb. */
+export const COLLAPSED_CHAPTERS = 6;
 
+/** The window of rows shown collapsed: one before the current chapter, the rest after. */
+export function collapsedRange(count: number, currentIndex: number): [number, number] {
+	if (count <= COLLAPSED_CHAPTERS) return [0, count];
+	const start = Math.min(Math.max(0, currentIndex - 1), count - COLLAPSED_CHAPTERS);
+	return [start, start + COLLAPSED_CHAPTERS];
+}
 /**
  * Chapter list with the reader's current chapter marked, and tap to jump.
  *
@@ -30,8 +36,7 @@ export function BookChapters({
 	/** False while the chapter starts may still be one word early (see useBookChapters). */
 	isResolved: boolean;
 }) {
-	const listRef = useRef<HTMLOListElement>(null);
-	const currentRef = useRef<HTMLLIElement>(null);
+	const [isExpanded, setIsExpanded] = useState(false);
 
 	// Titles are still worth showing when the offsets are legacy byte positions,
 	// but jumping on them would write a nonsense reading position, and the
@@ -40,50 +45,22 @@ export function BookChapters({
 	const canJump = isWordAligned && isResolved;
 	const currentIndex = isWordAligned ? currentChapterIndex(chapters, wordPosition) : -1;
 
-	// Centre the current chapter by setting scrollTop directly. `scrollIntoView`
-	// walks up and scrolls ancestors too, which would drag the whole detail page
-	// down to this section every time the book opens.
-	//
-	// Measured from bounding rects rather than `offsetTop`, which is relative to
-	// the nearest positioned ancestor and not to the list. Re-runs when the
-	// content query resolves: on first mount there are no chapters and no row to
-	// scroll to yet. Layout effect so the list is centred before paint, otherwise
-	// a long book flashes at chapter 1 first.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: re-centre triggers, the rows are read through refs
-	useLayoutEffect(() => {
-		const list = listRef.current;
-		const item = currentRef.current;
-		if (!list || !item) return;
-		const offset = item.getBoundingClientRect().top - list.getBoundingClientRect().top;
-		// Already on screen: leave it alone. Otherwise the list yanks itself back
-		// to centre after the reader saves a new position, fighting the scroll the
-		// reader just performed.
-		if (offset >= 0 && offset + item.clientHeight <= list.clientHeight) return;
-		list.scrollTop = Math.max(
-			0,
-			list.scrollTop + offset - (list.clientHeight - item.clientHeight) / 2,
-		);
-	}, [currentIndex, chapters.length]);
-
 	if (chapters.length === 0) return null;
+	const [from, to] = isExpanded
+		? [0, chapters.length]
+		: collapsedRange(chapters.length, Math.max(0, currentIndex));
 
 	return (
 		<section className="book-detail-card mt-4">
 			<h2 className="book-detail-section-title">
 				Chapters <span className="font-normal opacity-50">· {chapters.length}</span>
 			</h2>
-			<ol
-				ref={listRef}
-				className="mt-3 space-y-0.5 overflow-y-auto overscroll-contain"
-				style={{ maxHeight: LIST_MAX_HEIGHT }}
-			>
-				{chapters.map((chapter, index) => {
+			<ol className="mt-3 space-y-0.5">
+				{chapters.slice(from, to).map((chapter, offset) => {
+					const index = from + offset;
 					const isCurrent = index === currentIndex;
 					return (
-						<li
-							key={`${chapter.startWord}-${chapter.title}`}
-							ref={isCurrent ? currentRef : undefined}
-						>
+						<li key={`${chapter.startWord}-${chapter.title}`}>
 							<button
 								type="button"
 								disabled={!canJump}
@@ -106,6 +83,15 @@ export function BookChapters({
 					);
 				})}
 			</ol>
+			{chapters.length > COLLAPSED_CHAPTERS && (
+				<button
+					type="button"
+					onClick={() => setIsExpanded((v) => !v)}
+					className="mt-2 h-9 rounded-md px-1 text-primary text-sm"
+				>
+					{isExpanded ? "Show fewer" : `Show all ${chapters.length} chapters`}
+				</button>
+			)}
 		</section>
 	);
 }

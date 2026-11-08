@@ -8,6 +8,8 @@ const importMutate = vi.hoisted(() => vi.fn());
 const removeFromWishlist = vi.hoisted(() => vi.fn());
 const scheduleSyncPush = vi.hoisted(() => vi.fn());
 const toastError = vi.hoisted(() => vi.fn());
+const toastSuccess = vi.hoisted(() => vi.fn());
+const addToWishlist = vi.hoisted(() => vi.fn());
 const state = vi.hoisted(() => ({
 	items: undefined as WishlistItem[] | undefined,
 	libraryIds: new Map<string, string>(),
@@ -16,7 +18,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock("../../../services/catalog/import", () => ({ importFromCatalog }));
 vi.mock("../../../services/sync", () => ({ scheduleSyncPush }));
-vi.mock("../../../services/db/queries", () => ({ queries: { removeFromWishlist } }));
+vi.mock("../../../services/db/queries", () => ({ queries: { removeFromWishlist, addToWishlist } }));
 const { wishlistHooks } = await vi.importActual<
 	typeof import("../../../services/db/hooks/use-wishlist")
 >("../../../services/db/hooks/use-wishlist");
@@ -30,7 +32,7 @@ vi.mock("../../../services/db/hooks", () => ({
 	},
 }));
 vi.mock("../../../components/toast", () => ({
-	toast: { success: vi.fn(), error: toastError, info: vi.fn() },
+	toast: { success: toastSuccess, error: toastError, info: vi.fn() },
 }));
 vi.mock("../../../components/app-shell/page-header", () => ({
 	PageHeader: ({ title }: { title: string }) => <header>{title}</header>,
@@ -137,6 +139,29 @@ describe("wishlist shelf", () => {
 		expect(navigate).not.toHaveBeenCalled();
 		await click(view.getButton("Remove Mother of Learning from wishlist"));
 		expect(removeFromWishlist).toHaveBeenCalledWith("serial", SERIES);
+	});
+
+	it("offers Undo after a removal, which saves the title again once its card is gone", async () => {
+		addToWishlist.mockResolvedValue(BOOK);
+		view = await render(<WishlistShelf />);
+		await click(view.getButton("Remove Frankenstein from wishlist"));
+		await flush();
+		expect(toastSuccess).toHaveBeenCalledWith(
+			"Removed Frankenstein from your wishlist",
+			expect.objectContaining({ action: expect.objectContaining({ label: "Undo" }) }),
+		);
+		view.unmount();
+		view = undefined;
+		const [, { action }] = toastSuccess.mock.calls[0] as [
+			string,
+			{ action: { onClick: () => void } },
+		];
+		action.onClick();
+		await flush();
+		expect(addToWishlist).toHaveBeenCalledWith(
+			expect.objectContaining({ kind: "catalog", ref: "gutenberg:84", title: "Frankenstein" }),
+		);
+		expect(scheduleSyncPush).toHaveBeenCalledTimes(2);
 	});
 
 	it("still offers Remove on the card of a title already in the library", async () => {

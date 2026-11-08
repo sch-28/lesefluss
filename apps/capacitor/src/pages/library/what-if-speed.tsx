@@ -11,13 +11,22 @@ interface Props {
 	/** Daily reading time the finish day is projected with; null shows no day. */
 	minutesPerDay: number | null;
 	today: string;
-	/** Faster RSVP speed at the dial, for the contextual hint; null hides it. */
-	rsvp: { dial: number; wpm: number } | null;
+	/** The RSVP speed the hint is timed at, when faster than the pace; null hides it. */
+	rsvpWpm: number | null;
+}
+
+function whatIfLine(minutesLeft: number | null, finishDay: string | null): string {
+	const parts = [
+		minutesLeft === null ? null : `Left ${formatReadingTime(minutesLeft)}`,
+		finishDay === null ? null : `Done ${formatDayKey(finishDay)}`,
+	].filter((part) => part !== null);
+	return parts.length > 0 ? parts.join(" · ") : "Drag to try another speed";
 }
 
 /** A look-ahead at another speed. Local state only: trying a speed never saves it. */
-export function WhatIfSpeed({ wordsLeft, paceWpm, minutesPerDay, today, rsvp }: Props) {
-	const [wpm, setWpm] = useState(() => whatIfStart(paceWpm));
+export function WhatIfSpeed({ wordsLeft, paceWpm, minutesPerDay, today, rsvpWpm }: Props) {
+	const [start] = useState(() => whatIfStart(paceWpm));
+	const [wpm, setWpm] = useState(start);
 	const estimate = whatIfEstimate(wordsLeft, wpm, minutesPerDay, today);
 
 	return (
@@ -38,12 +47,15 @@ export function WhatIfSpeed({ wordsLeft, paceWpm, minutesPerDay, today, rsvp }: 
 				thumbProps={{ "aria-label": "Reading speed", "aria-valuetext": `${wpm} words per minute` }}
 			/>
 			<p className="mt-2 mb-0 text-sm tabular-nums" data-testid="what-if-result">
-				Left {formatReadingTime(estimate.minutesLeft)}
-				{estimate.finishDay !== null && ` · Done ${formatDayKey(estimate.finishDay)}`}
+				{whatIfLine(
+					// At the starting speed the card's headline already shows the time left.
+					wpm === start ? null : estimate.minutesLeft,
+					estimate.finishDay,
+				)}
 			</p>
-			{rsvp && (
+			{rsvpWpm !== null && (
 				<p className="mt-1 mb-0 text-xs tabular-nums opacity-70" data-testid="rsvp-hint">
-					RSVP {rsvp.dial}: {formatReadingTime(estimateMinutes(wordsLeft, rsvp.wpm))}
+					RSVP at {rsvpWpm} wpm: {formatReadingTime(estimateMinutes(wordsLeft, rsvpWpm))}
 				</p>
 			)}
 		</div>

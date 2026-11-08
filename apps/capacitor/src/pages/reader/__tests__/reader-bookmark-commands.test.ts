@@ -84,7 +84,7 @@ describe("reader mini window command", () => {
 		const command = readerActionCommands({ ...input, openMini }).find(
 			(c) => c.id === "reader.mini",
 		);
-		expect(command?.title).toBe("Open mini RSVP window");
+		expect(command?.title).toBe("Quick RSVP");
 		expect(command?.keys).toBeUndefined();
 		command?.run();
 		expect(openMini).toHaveBeenCalledOnce();

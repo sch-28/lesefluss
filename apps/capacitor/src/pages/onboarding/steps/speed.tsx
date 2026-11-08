@@ -47,7 +47,7 @@ const ManualSpeed: React.FC = () => {
 			</div>
 
 			<div className="mt-6 space-y-3">
-				<div className="text-center font-semibold text-3xl tabular-nums">{settings.wpm} WPM</div>
+				<div className="text-center font-semibold text-3xl tabular-nums">{settings.wpm} wpm</div>
 				<Slider
 					min={SETTING_CONSTRAINTS.WPM.min}
 					max={SETTING_CONSTRAINTS.WPM.max}

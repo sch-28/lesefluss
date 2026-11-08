@@ -81,6 +81,8 @@ interface ModeCardsProps<T extends string> {
 	value: T;
 	onChange: (v: T) => void;
 	disabled?: boolean;
+	/** The reader's Appearance popover: icon and label in one line, no description. */
+	compact?: boolean;
 }
 
 export function ModeCards<T extends string>({
@@ -88,9 +90,10 @@ export function ModeCards<T extends string>({
 	value,
 	onChange,
 	disabled = false,
+	compact = false,
 }: ModeCardsProps<T>) {
 	return (
-		<div className="grid w-full grid-cols-2 gap-3">
+		<div className={cn("grid w-full grid-cols-2", compact ? "gap-1.5" : "gap-3")}>
 			{options.map((m) => {
 				const isActive = value === m.value;
 				const Icon = m.icon;
@@ -102,7 +105,8 @@ export function ModeCards<T extends string>({
 						aria-pressed={isActive}
 						disabled={disabled}
 						className={cn(
-							"flex flex-col items-center gap-1.5 rounded-lg border-2 p-3.5 text-center transition-colors",
+							"flex items-center rounded-lg border-2 text-center transition-colors",
+							compact ? "justify-center gap-2 p-2" : "flex-col gap-1.5 p-3.5",
 							disabled && "opacity-50",
 							isActive
 								? "border-primary bg-primary/5"
@@ -111,7 +115,9 @@ export function ModeCards<T extends string>({
 					>
 						<Icon className={cn("size-5", isActive ? "text-primary" : "text-muted-foreground")} />
 						<span className="font-semibold text-foreground text-sm">{m.label}</span>
-						<span className="text-muted-foreground text-xs leading-tight">{m.description}</span>
+						{!compact && (
+							<span className="text-muted-foreground text-xs leading-tight">{m.description}</span>
+						)}
 					</button>
 				);
 			})}

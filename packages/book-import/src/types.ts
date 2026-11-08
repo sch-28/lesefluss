@@ -15,6 +15,8 @@ export type RawInput =
 export type Chapter = {
 	title: string;
 	startByte: number;
+	/** Depth in the source's table of contents (a chapter under a part is 1); absent at the top. */
+	level?: number;
 };
 
 /**

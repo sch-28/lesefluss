@@ -10,14 +10,15 @@ import {
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
 import { Input } from "@lesefluss/ui/input";
 import { Label } from "@lesefluss/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { STAR_POSITIONS, StarGlyph } from "@lesefluss/ui/rating-stars";
 import { Switch } from "@lesefluss/ui/switch";
-import { cn } from "@lesefluss/ui/utils";
-import { Check, ChevronRight, Plus, X } from "lucide-react";
+import { Check, Plus, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import CoverImage from "../../components/cover-image";
 import { LanguagePicker } from "../../components/language-picker";
+import { PickerTrigger } from "../../components/picker-trigger";
 import type { BookEditValues } from "./book-edit-form";
 import { FIELD_LIMITS } from "./book-fields";
 
@@ -43,6 +44,8 @@ type Props = {
 	progress?: { wordCount: number; wordPosition: number; finishedAt: number | null };
 	/** The series row, which the import page leaves to LESE-125.18. */
 	series?: React.ReactNode;
+	/** What the detail page's About shows while the book has no description of its own. */
+	catalogDescription?: string | null;
 };
 
 const Card: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -77,39 +80,37 @@ export const BookEditFields: React.FC<Props> = ({
 	fileLanguage,
 	progress,
 	series,
+	catalogDescription,
 }) => {
 	const { values, set } = form;
 	return (
 		<div className="flex flex-col gap-4">
 			<Card title="Basics">
-				<div className="flex gap-4 md:grid md:grid-cols-[150px_1fr] md:gap-6">
-					<div className="flex shrink-0 flex-col gap-2">
-						<div className="aspect-[2/3] w-[78px] overflow-hidden rounded-md border border-border bg-muted md:w-[150px]">
-							<CoverImage
-								src={cover}
-								alt={values.title}
-								className="flex size-full items-center justify-center"
-								fallback={
-									<span className="font-semibold text-muted-foreground text-xs tracking-wide">
-										{format.toUpperCase()}
-									</span>
-								}
-							/>
-						</div>
-						{isWide && <Facts format={format} facts={facts} />}
+				{/* Cover beside the facts, fields below at full width: the labels then
+				    line up with every other card's. */}
+				<div className="flex gap-4">
+					<div className="aspect-[2/3] w-[78px] shrink-0 overflow-hidden rounded-md border border-border bg-muted md:w-[96px]">
+						<CoverImage
+							src={cover}
+							alt={values.title}
+							className="flex size-full items-center justify-center"
+							fallback={
+								<span className="font-semibold text-muted-foreground text-xs tracking-wide">
+									{format.toUpperCase()}
+								</span>
+							}
+						/>
 					</div>
-					{!isWide && (
-						<div className="flex min-w-0 flex-col justify-center gap-2">
-							<Facts format={format} facts={facts} />
-						</div>
-					)}
-					{isWide && (
-						<div className="flex min-w-0 flex-col gap-4">
-							<BasicsFields form={form} fileLanguage={fileLanguage} series={series} />
-						</div>
-					)}
+					<div className="flex min-w-0 flex-col justify-center gap-2">
+						<Facts format={format} facts={facts} />
+					</div>
 				</div>
-				{!isWide && <BasicsFields form={form} fileLanguage={fileLanguage} series={series} />}
+				<BasicsFields
+					form={form}
+					fileLanguage={fileLanguage}
+					series={series}
+					catalogDescription={catalogDescription}
+				/>
 			</Card>
 
 			<Card title="Your reading">
@@ -151,8 +152,8 @@ export const BookEditFields: React.FC<Props> = ({
 				<TagsField form={form} />
 			</Card>
 
-			<Card title="About">
-				<Field label="Your notes" htmlFor="book-review">
+			<Card title="Notes">
+				<Field label="Private notes" htmlFor="book-review">
 					<textarea
 						id="book-review"
 						rows={4}
@@ -196,7 +197,8 @@ const BasicsFields: React.FC<{
 	form: EditForm;
 	fileLanguage?: string | null;
 	series?: React.ReactNode;
-}> = ({ form: { values, set }, fileLanguage, series }) => (
+	catalogDescription?: string | null;
+}> = ({ form: { values, set }, fileLanguage, series, catalogDescription }) => (
 	<>
 		<Field label="Title" htmlFor="book-title">
 			<Input
@@ -230,8 +232,14 @@ const BasicsFields: React.FC<{
 				maxLength={FIELD_LIMITS.description}
 				className={textareaClass}
 				value={values.description ?? ""}
+				placeholder={catalogDescription ?? undefined}
 				onChange={(e) => set("description", e.target.value || null)}
 			/>
+			{catalogDescription && !values.description && (
+				<p className="m-0 mt-1 text-muted-foreground text-xs">
+					From the catalog. Write your own to replace it.
+				</p>
+			)}
 		</Field>
 	</>
 );
@@ -247,77 +255,59 @@ const StatusField: React.FC<{
 		? `Automatic (${BOOK_STATUS_LABELS[derived].toLowerCase()})`
 		: "Automatic (from progress)";
 	const choices: { status: BookStatus | null; label: string }[] = [
-		{ status: null, label: isWide ? "Automatic" : automatic },
+		{ status: null, label: automatic },
 		...BOOK_STATUSES.map((s) => ({ status: s, label: BOOK_STATUS_LABELS[s] })),
 	];
-
-	if (isWide) {
-		return (
-			<Field label="Status">
-				<div className="flex flex-wrap gap-2">
-					{choices.map((c) => (
-						<button
-							key={c.label}
-							type="button"
-							aria-pressed={value === c.status}
-							onClick={() => onChange(c.status)}
-							className={cn(
-								"rounded-full border px-3 py-1 text-sm transition-colors",
-								value === c.status
-									? "border-primary bg-primary text-primary-foreground"
-									: "border-input text-muted-foreground hover:bg-muted",
-							)}
-						>
-							{c.label}
-						</button>
-					))}
-				</div>
-				{value === null && derived && (
-					<p className="m-0 mt-1.5 text-muted-foreground text-xs">
-						Following your reading: {BOOK_STATUS_LABELS[derived]}.
-					</p>
-				)}
-			</Field>
-		);
-	}
+	const list = (
+		<div className="flex flex-col p-2 pb-4 md:pb-2">
+			{choices.map((c) => (
+				<button
+					key={c.label}
+					type="button"
+					onClick={() => {
+						onChange(c.status);
+						setOpen(false);
+					}}
+					className="flex h-12 items-center gap-3 rounded-md px-3 text-left text-base hover:bg-muted md:h-9 md:text-sm"
+				>
+					<span className="flex-1">{c.label}</span>
+					{value === c.status && <Check className="size-4 text-primary" />}
+				</button>
+			))}
+		</div>
+	);
+	const trigger = (
+		<PickerTrigger
+			id="book-status"
+			onClick={isWide ? undefined : () => setOpen(true)}
+			value={value ? BOOK_STATUS_LABELS[value] : automatic}
+			placeholder={automatic}
+		/>
+	);
 
 	return (
-		<>
-			<button
-				type="button"
-				onClick={() => setOpen(true)}
-				className="flex items-center justify-between gap-3 text-left"
-			>
-				<span className="font-medium text-sm">Status</span>
-				<span className="flex items-center gap-1 text-muted-foreground text-sm">
-					{value ? BOOK_STATUS_LABELS[value] : automatic}
-					<ChevronRight className="size-4" />
-				</span>
-			</button>
-			<Drawer open={open} onOpenChange={setOpen}>
-				<DrawerContent>
-					<DrawerHeader>
-						<DrawerTitle>Status</DrawerTitle>
-					</DrawerHeader>
-					<div className="flex flex-col p-2 pb-4">
-						{choices.map((c) => (
-							<button
-								key={c.label}
-								type="button"
-								onClick={() => {
-									onChange(c.status);
-									setOpen(false);
-								}}
-								className="flex h-12 items-center gap-3 rounded-md px-3 text-left text-base hover:bg-muted"
-							>
-								<span className="flex-1">{c.label}</span>
-								{value === c.status && <Check className="size-4 text-primary" />}
-							</button>
-						))}
-					</div>
-				</DrawerContent>
-			</Drawer>
-		</>
+		<Field label="Status" htmlFor="book-status">
+			{isWide ? (
+				<Popover open={open} onOpenChange={setOpen}>
+					<PopoverTrigger asChild>{trigger}</PopoverTrigger>
+					<PopoverContent align="start" className="w-64 p-0">
+						{list}
+					</PopoverContent>
+				</Popover>
+			) : (
+				<>
+					{trigger}
+					<Drawer open={open} onOpenChange={setOpen}>
+						<DrawerContent>
+							<DrawerHeader>
+								<DrawerTitle>Status</DrawerTitle>
+							</DrawerHeader>
+							{list}
+						</DrawerContent>
+					</Drawer>
+				</>
+			)}
+		</Field>
 	);
 };
 
@@ -352,10 +342,11 @@ const TagsField: React.FC<{ form: EditForm }> = ({
 						</button>
 					</span>
 				))}
-				<div className="flex min-w-32 flex-1 items-center gap-1">
-					<Plus className="size-4 shrink-0 text-muted-foreground" />
+				<div className="relative min-w-32 flex-1">
+					<Plus className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
 					<Input
 						id="book-tags"
+						className="pl-8"
 						value={tagDraft}
 						placeholder="Add tag"
 						onChange={(e) => setTagDraft(e.target.value)}

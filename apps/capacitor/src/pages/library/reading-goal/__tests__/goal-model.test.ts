@@ -209,22 +209,22 @@ describe("minute goals", () => {
 	it("shows the RSVP finish at the same minutes only when it is earlier", () => {
 		const values = setupValues({ lock: "daily", days: 30, dailyMinutes: 20 }, book(0, 10));
 		expect(finishAtMinutes(20, 25, book(0))).toBe("2026-03-02");
-		expect(rsvpComparison(values, book(0, 10), 350, 25)?.value).toMatch(/^Done /);
-		expect(rsvpComparison(values, book(0, 10), 350, 10)).toBeNull();
+		expect(rsvpComparison(values, book(0, 10), 25)?.value).toMatch(/^Done /);
+		expect(rsvpComparison(values, book(0, 10), 10)).toBeNull();
 		// 11 wpm still needs 5 days: no earlier finish, no hint.
-		expect(rsvpComparison(values, book(0, 10), 350, 11)).toBeNull();
+		expect(rsvpComparison(values, book(0, 10), 11)).toBeNull();
 	});
 
 	it("hides a percent goal's RSVP row when it rounds to the normal minutes", () => {
 		const values = setupValues({ lock: "date", days: 10 }, book(0, 200));
-		expect(rsvpComparison(values, book(0, 200), 350, 201)).toBeNull();
+		expect(rsvpComparison(values, book(0, 200), 201)).toBeNull();
 	});
 
 	it("shows a percent goal's RSVP minutes a day, terse", () => {
 		const values = setupValues({ lock: "date", days: 10 }, book(0, 10));
 		// 100 words a day: 10 min at 10 wpm, 5 min at 20.
-		expect(rsvpComparison(values, book(0, 10), 350, 20)).toEqual({
-			dial: 350,
+		expect(rsvpComparison(values, book(0, 10), 20)).toEqual({
+			wpm: 20,
 			value: "5 min a day",
 		});
 	});

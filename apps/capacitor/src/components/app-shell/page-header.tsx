@@ -31,7 +31,7 @@ export function PageHeader({
 					<ChevronLeft className="size-5" />
 				</button>
 				{Icon && <Icon className="size-5 shrink-0 text-muted-foreground" />}
-				<h1 className="m-0 flex-1 font-semibold text-base leading-5">{title}</h1>
+				<h1 className="m-0 min-w-0 flex-1 truncate font-semibold text-base leading-5">{title}</h1>
 				{right}
 			</div>
 		</header>

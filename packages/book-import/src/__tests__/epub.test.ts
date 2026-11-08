@@ -120,6 +120,7 @@ describe("epubParser", () => {
 			"Part II",
 			"3: Gamma",
 		]);
+		expect(r.chapters?.map((c) => c.level)).toEqual([undefined, 1, 1, undefined, 1]);
 	});
 
 	it("ignores fragment identifiers in TOC href", async () => {

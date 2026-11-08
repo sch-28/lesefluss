@@ -1,5 +1,4 @@
 import type { Milestones, SpeedModel } from "@lesefluss/core";
-import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SpeedInsights } from "../../../../../services/db/queries/stats";
 import type { ShareCardData } from "../../../../../services/share-card/render";
@@ -63,7 +62,14 @@ vi.mock("../../../../../services/db/hooks", () => ({
 	},
 }));
 vi.mock("../../wpm-trend", () => ({ WpmTrend: () => null }));
-vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
+vi.mock("@tanstack/react-router", () => ({
+	useNavigate: () => navigate,
+	Link: ({ to, children, ...props }: { to: string; children: React.ReactNode }) => (
+		<a href={to} {...props}>
+			{children}
+		</a>
+	),
+}));
 vi.mock("../../../../../components/share-card/share-card-sheet", () => ({
 	ShareCardSheet: ({ card }: { card: ShareCardData }) => {
 		sharedCards.push(card);
@@ -240,18 +246,12 @@ describe("SpeedTab", () => {
 		expect(mutate).toHaveBeenCalledWith({ wpm: 475 });
 	});
 
-	it("saves the window the reader picks", async () => {
+	it("shows the window read-only, linking to where it is set", async () => {
 		state.model = model();
 		view = await render(<SpeedTab now={2 * DAY} />);
-		const trigger = q("speed-window") as HTMLElement;
-		await act(async () => {
-			trigger.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
-		});
-		const item = [...document.querySelectorAll("[role=menuitem]")].find(
-			(el) => el.textContent === "30 days",
-		) as HTMLElement;
-		await click(item);
-		expect(mutate).toHaveBeenCalledWith({ speedWindow: "30d" });
+		const label = q("speed-window") as HTMLAnchorElement;
+		expect(label.tagName).toBe("A");
+		expect(label.getAttribute("href")).toBe("/tabs/settings");
 	});
 
 	it("shows seven books, then all of them on request", async () => {

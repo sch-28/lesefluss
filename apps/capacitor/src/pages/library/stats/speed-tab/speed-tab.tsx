@@ -1,13 +1,8 @@
-import { SPEED_WINDOWS, type SpeedModel, type SpeedWindow } from "@lesefluss/core";
+import type { SpeedModel, SpeedWindow } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@lesefluss/ui/dropdown-menu";
 import { cn } from "@lesefluss/ui/utils";
-import { Check, ChevronDown, Loader2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { WINDOW_LABELS } from "../../../../components/speed-chip/speed-chip-model";
 import { queryHooks } from "../../../../services/db/hooks";
@@ -29,33 +24,17 @@ import { SpeedTestCard } from "./speed-test-card";
 const VIEW_LABELS: Record<SpeedView, string> = { reading: "Reading", rsvp: "RSVP" };
 const VIEW_DOT: Record<SpeedView, string> = { reading: "bg-slate-500", rsvp: "bg-primary" };
 
-function WindowControl({ window }: { window: SpeedWindow }) {
-	const save = queryHooks.useSaveSettings();
+/** Read-only here: the window is a setting (Settings › Reading), since every estimate uses it. */
+function WindowLabel({ window }: { window: SpeedWindow }) {
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<button
-					type="button"
-					data-testid="speed-window"
-					className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-sm hover:bg-muted"
-				>
-					{WINDOW_LABELS[window]} <ChevronDown className="size-3.5" />
-				</button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end">
-				{SPEED_WINDOWS.map((w) => (
-					<DropdownMenuItem
-						key={w}
-						onSelect={() => {
-							if (w !== window) save.mutate({ speedWindow: w });
-						}}
-					>
-						<Check className={cn("size-4", w === window ? "opacity-100" : "opacity-0")} />
-						{WINDOW_LABELS[w]}
-					</DropdownMenuItem>
-				))}
-			</DropdownMenuContent>
-		</DropdownMenu>
+		<Link
+			to="/tabs/settings"
+			data-testid="speed-window"
+			title="Change in Settings › Reading"
+			className="rounded-md px-2 py-1 text-muted-foreground text-sm no-underline hover:bg-muted"
+		>
+			{WINDOW_LABELS[window]}
+		</Link>
 	);
 }
 
@@ -174,7 +153,7 @@ export function SpeedTab({ now }: { now: number }) {
 				<h2 className="font-semibold text-lg">Speed</h2>
 				<div className="flex items-center gap-1">
 					<ShareSpeedButton model={model} view={view} now={now} />
-					<WindowControl window={model.window} />
+					<WindowLabel window={model.window} />
 				</div>
 			</div>
 			{views.length > 1 && (

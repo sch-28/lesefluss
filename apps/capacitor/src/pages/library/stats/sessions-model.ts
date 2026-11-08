@@ -125,13 +125,14 @@ export function deleteConfirmCopy(
 	mayChangeStreak: boolean,
 ): { title: string; description: string; confirmLabel: string } {
 	const count = doomed.length;
+	const noun = count === 1 ? "session" : "sessions";
 	const { totalMs } = totalsOf(doomed);
 	const recalculated = bookTitle ? `${bookTitle}'s speed, time` : "Speed, time";
 	const kept = bookTitle
 		? "The book, your position and highlights stay."
 		: "The books, your positions and highlights stay.";
 	return {
-		title: bookTitle ? `Delete ${count} sessions of ${bookTitle}?` : `Delete ${count} sessions?`,
+		title: bookTitle ? `Delete ${count} ${noun} of ${bookTitle}?` : `Delete ${count} ${noun}?`,
 		description: [
 			`${formatDuration(totalMs)} of reading is removed here and on your other devices after sync. ${recalculated} and the totals on Overview recalculate.${mayChangeStreak ? " Streak may change." : ""}`,
 			kept,

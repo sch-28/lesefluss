@@ -91,10 +91,10 @@ export function BookSessions({ book }: { book: Book }) {
 
 			{!selected && (
 				<Button
-					variant="ghost"
-					size="sm"
-					className="mt-2 text-destructive hover:text-destructive"
-					onClick={() => requestDelete(rows)}
+					variant="outline"
+					size="lg"
+					className="mt-3 text-destructive hover:text-destructive"
+					onClick={() => requestDelete(rows, { confirm: true })}
 				>
 					Delete all {rows.length} {noun}
 				</Button>

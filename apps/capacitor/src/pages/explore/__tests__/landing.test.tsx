@@ -153,6 +153,52 @@ describe("Explore landing", () => {
 		expect(view.text()).toContain("Providers");
 	});
 
+	it("shows one connection message with Retry when the catalog can't be reached", async () => {
+		getLanding.mockRejectedValue(new TypeError("Failed to fetch"));
+		getRandomShelf.mockRejectedValue(new TypeError("Failed to fetch"));
+		popular.current = { isError: true, error: new TypeError("Failed to fetch"), refetch: vi.fn() };
+		view = await render(
+			<ExploreLanding
+				lang="en"
+				onOpen={vi.fn()}
+				onOpenWebNovel={vi.fn()}
+				onBrowse={vi.fn()}
+				onBrowseTags={vi.fn()}
+				personalShelves={<div>Personal shelves</div>}
+			/>,
+		);
+		await flush();
+		expect(view.container.querySelectorAll('[role="alert"]')).toHaveLength(1);
+		expect(view.text()).toContain("Couldn't connect");
+		expect(view.text()).toContain("Personal shelves");
+		expect(view.text()).not.toContain("Providers");
+
+		getLanding.mockResolvedValue(LANDING);
+		getRandomShelf.mockResolvedValue({ results: [] });
+		popular.current = { isSuccess: true, data: { results: [] }, refetch: vi.fn() };
+		const retry = [...view.container.querySelectorAll("button")].find(
+			(b) => b.textContent === "Retry",
+		);
+		await click(retry as HTMLButtonElement);
+		await flush();
+		expect(view.container.querySelector('[role="alert"]')).toBeNull();
+		expect(view.text()).toContain("Fresh Arrival");
+	});
+
+	it("shows only the offline message while the device is offline", async () => {
+		getLanding.mockResolvedValue(LANDING);
+		const onLine = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+		try {
+			view = await renderLanding();
+			await flush();
+			expect(view.container.querySelectorAll('[role="alert"]')).toHaveLength(1);
+			expect(view.text()).toContain("You're offline");
+			expect(view.text()).not.toContain("Fresh Arrival");
+		} finally {
+			onLine.mockRestore();
+		}
+	});
+
 	it("puts web novels right under the hero and personal shelves, before catalog shelves", async () => {
 		getLanding.mockResolvedValue(LANDING);
 		view = await render(

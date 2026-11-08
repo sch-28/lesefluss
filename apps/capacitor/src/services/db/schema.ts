@@ -315,7 +315,12 @@ export type NewBookContent = typeof bookContent.$inferInsert;
 /**
  * Chapter entry as stored in bookContent.chapters JSON column.
  */
-export type Chapter = { title: string; startWord: number };
+export type Chapter = {
+	title: string;
+	startWord: number;
+	/** Nesting in the book's table of contents; absent at the top and in books imported before it was kept. */
+	level?: number;
+};
 
 /**
  * External hyperlink as stored in bookContent.linkRanges JSON column.

@@ -18,6 +18,7 @@ import CoverImage from "../../components/cover-image";
 import SanitizedDescription from "../../components/sanitized-description";
 import { CollapsibleProse } from "./collapsible-prose";
 import { ErrorState } from "./load-states";
+import { readableSubjects } from "./readable-subjects";
 
 export interface DetailAction {
 	label: string;
@@ -248,14 +249,16 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 						subjects &&
 						subjects.length > 0 && (
 							<div className="mt-4 flex flex-wrap gap-1.5">
-								{subjects.slice(0, COLLAPSED_TAG_COUNT).map((s) => (
-									<span
-										key={s}
-										className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-muted-foreground text-xs"
-									>
-										{s}
-									</span>
-								))}
+								{readableSubjects(subjects)
+									.slice(0, COLLAPSED_TAG_COUNT)
+									.map((s) => (
+										<span
+											key={s}
+											className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-muted-foreground text-xs"
+										>
+											{s}
+										</span>
+									))}
 							</div>
 						)
 					)}
@@ -337,7 +340,7 @@ const ActionButton: React.FC<{ action: DetailAction; primary: boolean }> = ({
 			)}
 		>
 			{action.loading ? <Loader2 className="animate-spin" /> : Icon && <Icon />}
-			{action.label}
+			<span className="min-w-0 truncate">{action.label}</span>
 		</Button>
 	);
 };

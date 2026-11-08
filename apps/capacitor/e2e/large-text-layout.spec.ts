@@ -135,7 +135,7 @@ for (const scale of SCALES) {
 			await page.keyboard.press("Escape");
 			await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
 
-			await page.getByRole("button", { name: "Annotations" }).click();
+			await page.getByRole("button", { name: "Contents and annotations" }).click();
 			const sheet = '[data-slot="drawer-content"]';
 			await expect(page.locator(sheet)).toBeVisible();
 			await expectFits(page, "annotations", sheet);

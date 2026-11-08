@@ -176,11 +176,7 @@ export function useBookActions({ surface, onSelect, onDeleted, extras }: Options
 						),
 					];
 				case "edit":
-					return [
-						item(id, "Edit", Pencil, () =>
-							go(`/tabs/library/book/${book.id}/edit${surface === "detail" ? "?from=detail" : ""}`),
-						),
-					];
+					return [item(id, "Edit", Pencil, () => go(`/tabs/library/book/${book.id}/edit`))];
 				case "share":
 					return [item(id, "Share", Share2, () => setShareBook(book))];
 				case "reset":

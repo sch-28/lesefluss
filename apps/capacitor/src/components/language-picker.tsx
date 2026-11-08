@@ -8,12 +8,12 @@ import {
 } from "@lesefluss/ui/drawer";
 import { Input } from "@lesefluss/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
-import { cn } from "@lesefluss/ui/utils";
-import { Check, ChevronDown } from "lucide-react";
+import { Check } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { useMediaQuery } from "../hooks/use-media-query";
 import { type LanguageOption, languageOption, searchLanguages } from "../utils/language-label";
+import { PickerTrigger } from "./picker-trigger";
 
 const COMMON = ["en", "de", "fr", "es", "it"];
 
@@ -40,18 +40,13 @@ export const LanguagePicker: React.FC<Props> = ({ id, value, onChange, fileLangu
 	};
 
 	const trigger = (
-		<button
+		<PickerTrigger
 			id={id}
-			type="button"
 			onClick={isWideWeb ? undefined : () => setOpen(true)}
-			className="flex h-9 w-full min-w-0 items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 text-left text-base md:text-sm dark:bg-input/30"
-		>
-			<span className={cn("flex-1 truncate", !value && "text-muted-foreground")}>
-				{value ? languageOption(value).name : "Not set"}
-			</span>
-			{value && <span className="text-muted-foreground text-xs">{value}</span>}
-			<ChevronDown className="size-4 text-muted-foreground" />
-		</button>
+			value={value ? languageOption(value).name : null}
+			placeholder="Not set"
+			trailing={value && <span className="text-muted-foreground text-xs">{value}</span>}
+		/>
 	);
 
 	const list = <LanguageList value={value} fileLanguage={fileLanguage ?? null} onSelect={select} />;

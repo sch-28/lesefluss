@@ -13,13 +13,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeBook } from "../../../test/book-fixture";
 import { click, flush, type Rendered, render } from "../../../test/render";
 
-const book = makeBook({ id: "b1", title: "Red Rising", tags: serializeBookTags(["scifi"]) });
+const book = makeBook({
+	id: "b1",
+	title: "Red Rising",
+	tags: serializeBookTags(["scifi"]),
+	catalogId: "se:red-rising",
+});
 const updateBook = vi.fn(async (_vars: unknown) => {});
 const saveSeries = vi.fn(async (_vars: unknown) => {});
 
 vi.mock("../../../services/catalog/client", () => ({
 	getCoverUrl: () => null,
 	proxyImageUrl: (url: string) => url,
+	getCatalogBook: async () => ({
+		description: "<p>Darrow is a <i>Red</i>.</p>",
+		summary: "Darrow is a Red.",
+		subjects: null,
+	}),
 }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
@@ -59,8 +69,18 @@ const { default: BookEditPage } = await import("../book-edit-page");
 let rendered: Rendered;
 let router: ReturnType<typeof makeRouter>;
 
-function makeRouter() {
+function makeRouter(origin: string | null = "/tabs/library/book/b1") {
 	const root = createRootRoute({ component: () => <Outlet /> });
+	const library = createRoute({
+		getParentRoute: () => root,
+		path: "/tabs/library",
+		component: () => <p>Library</p>,
+	});
+	const reader = createRoute({
+		getParentRoute: () => root,
+		path: "/tabs/reader/$id",
+		component: () => <p>Reader</p>,
+	});
 	const detail = createRoute({
 		getParentRoute: () => root,
 		path: "/tabs/library/book/$id",
@@ -69,15 +89,18 @@ function makeRouter() {
 	const edit = createRoute({
 		getParentRoute: () => root,
 		path: "/tabs/library/book/$id/edit",
-		component: () => <BookEditPage id="b1" fromDetail />,
+		component: () => <BookEditPage id="b1" />,
 	});
 	// Browser history, not memory history: only the browser one runs blockers on
 	// back, which is the path Cancel and Android back take.
-	window.history.replaceState(null, "", "/tabs/library/book/b1");
-	window.history.pushState(null, "", "/tabs/library/book/b1/edit");
+	// Pushed through the router's history so canGoBack sees a real entry to
+	// return to, as an in-app tap would leave.
+	window.history.replaceState(null, "", origin ?? "/tabs/library/book/b1/edit");
+	const history = createBrowserHistory();
+	if (origin) history.push("/tabs/library/book/b1/edit");
 	return createRouter({
-		routeTree: root.addChildren([detail, edit]),
-		history: createBrowserHistory(),
+		routeTree: root.addChildren([library, reader, detail, edit]),
+		history,
 	});
 }
 
@@ -170,12 +193,60 @@ describe("BookEditPage", () => {
 	});
 
 	it("removes the book from its series on Save", async () => {
-		await click(button("Red RisingChange"));
+		await click(button("Red Rising"));
 		await click(button("No series"));
 		await click(button("Save"));
 		expect(saveSeries).toHaveBeenCalledWith({
 			bookId: "b1",
 			plan: { remove: "series-red-rising", add: null },
+		});
+	});
+
+	it.each([
+		["the library", "/tabs/library"],
+		["the reader", "/tabs/reader/b1"],
+	])("returns to %s it was opened from, on Cancel and on Save", async (_name, origin) => {
+		for (const action of ["Cancel", "Save"]) {
+			rendered.unmount();
+			router = makeRouter(origin);
+			rendered = await render(<RouterProvider router={router} />);
+			await flush();
+			if (action === "Save") await type("book-title", "Golden Son");
+			await click(button(action));
+			expect(path()).toBe(origin);
+		}
+	});
+
+	it("falls back to the book's page when opened by a deep link", async () => {
+		rendered.unmount();
+		router = makeRouter(null);
+		rendered = await render(<RouterProvider router={router} />);
+		await flush();
+		await click(button("Cancel"));
+		expect(path()).toBe("/tabs/library/book/b1");
+	});
+
+	it("shows the detail page's catalog description in Description, and notes under Notes", async () => {
+		await flush();
+		const description = document.getElementById("book-description") as HTMLTextAreaElement;
+		expect(description.value).toBe("");
+		expect(description.placeholder).toBe("Darrow is a Red.");
+		expect(body()).toContain("From the catalog.");
+		const headings = [...document.querySelectorAll("h2")].map((h) => h.textContent);
+		expect(headings).toContain("Notes");
+		expect(headings).not.toContain("About");
+	});
+
+	it("picks the status from the same field-style picker as Language and Series", async () => {
+		const status = document.getElementById("book-status") as HTMLButtonElement;
+		const language = document.getElementById("book-language") as HTMLButtonElement;
+		expect(status.className).toBe(language.className);
+		await click(status);
+		await click(button("Want to read"));
+		await click(button("Save"));
+		expect(updateBook).toHaveBeenCalledWith({
+			id: "b1",
+			values: expect.objectContaining({ status: "want" }),
 		});
 	});
 });

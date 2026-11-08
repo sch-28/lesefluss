@@ -120,13 +120,12 @@ test.describe("e-ink mode on a small reader", () => {
 		expect(await elementsWithEffects(page)).toEqual([]);
 
 		await reader.openAppearance(page);
-		const pagination = page.locator(".ap-section").filter({ hasText: "Pagination" });
-		await expect(pagination.getByRole("radio", { name: "Page" })).toHaveAttribute(
-			"data-state",
-			"on",
+		const popover = page.locator(".appearance-popover-content");
+		await expect(popover.getByRole("button", { name: "Page", exact: true })).toHaveAttribute(
+			"aria-pressed",
+			"true",
 		);
-		await expect(pagination.getByRole("radio", { name: "Scroll" })).toBeDisabled();
-		await expect(page.locator(".ap-row").filter({ hasText: "Page animation" })).toHaveCount(0);
+		await expect(popover.getByRole("button", { name: "Scroll", exact: true })).toBeDisabled();
 		await page.keyboard.press("Escape");
 		await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
 

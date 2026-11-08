@@ -1,6 +1,7 @@
 import { calcOrpIndex, type RsvpSettings } from "@lesefluss/core";
 import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { RsvpSpeedControl } from "../../components/rsvp-speed-control";
 import { writePendingPosition } from "../reader/pending-position";
 import { useRsvpEngine } from "../reader/use-rsvp-engine";
 import { RSVP_WPM_RANGE, steppedWpm } from "../reader/wpm";
@@ -24,7 +25,7 @@ function Frame({ children }: { children: React.ReactNode }) {
 	);
 }
 
-/** The mini RSVP window, in a Picture-in-Picture window or a popup. It never saves: it reports. */
+/** The Quick RSVP window, in a Picture-in-Picture window or a popup. It never saves: it reports. */
 export function MiniWindow({ port, win, host }: Props) {
 	const [start, setStart] = useState<MiniStart | null>(null);
 	const [isMainGone, setMainGone] = useState(false);
@@ -64,7 +65,7 @@ export function MiniWindow({ port, win, host }: Props) {
 		win.document.documentElement.className = htmlClass;
 		win.document.documentElement.setAttribute("style", htmlStyle);
 		win.document.body.className = bodyClass;
-		win.document.title = `Lesefluss mini · ${start.title}`;
+		win.document.title = `Quick RSVP · ${start.title}`;
 	}, [host, start, win]);
 
 	if (!start || !client) {
@@ -251,7 +252,7 @@ function MiniReading({
 					<button type="button" aria-label="Next word" onClick={() => engine.forwardWord()}>
 						<SkipForward className="size-3.5" />
 					</button>
-					<span className="tabular-nums">{settings.wpm} wpm</span>
+					<RsvpSpeedControl wpm={settings.wpm} onChange={engine.changeWpm} compact />
 				</div>
 				<div className="h-[2px] w-full bg-muted">
 					<div className="h-full bg-primary" style={{ width: `${progress * 100}%` }} />

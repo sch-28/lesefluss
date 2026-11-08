@@ -9,9 +9,10 @@ const SWATCH_BG: Record<AppTheme, string> = {
 	"high-contrast": "bg-black text-white border-[#ffd60a]",
 };
 
-const cardClass = (isActive: boolean) =>
+const cardClass = (isActive: boolean, compact = false) =>
 	cn(
-		"flex flex-col items-center rounded-lg border-2 p-3 transition-colors",
+		"flex flex-col items-center rounded-lg border-2 transition-colors",
+		compact ? "p-1.5" : "p-3",
 		isActive
 			? "border-primary bg-primary/5"
 			: "border-border bg-card hover:border-muted-foreground/30",
@@ -21,34 +22,55 @@ export function ThemeCards({
 	value,
 	onChange,
 	disabled = false,
+	compact = false,
 }: {
 	value: AppTheme;
 	onChange: (theme: AppTheme) => void;
 	disabled?: boolean;
+	/** The reader's Appearance popover: smaller cards, four across in its width. */
+	compact?: boolean;
 }) {
 	return (
 		// Four across, two by two where four would be too narrow, or one column once a large
 		// font scale leaves a card too narrow for its swatch: never a ragged last row.
 		<div className="@container w-full">
-			<div className="grid @max-[12rem]:grid-cols-1 @max-[28rem]:grid-cols-2 grid-cols-4 gap-3">
+			<div
+				className={cn(
+					"grid @max-[12rem]:grid-cols-1 grid-cols-4",
+					compact ? "@max-[16rem]:grid-cols-2 gap-1.5" : "@max-[28rem]:grid-cols-2 gap-3",
+				)}
+			>
 				{THEMES.map((t) => (
 					<button
 						key={t.value}
 						type="button"
 						onClick={() => onChange(t.value)}
 						aria-pressed={value === t.value}
+						aria-label={t.label}
 						disabled={disabled}
-						className={cn(cardClass(value === t.value), "gap-2", disabled && "opacity-50")}
+						className={cn(
+							cardClass(value === t.value, compact),
+							compact ? "min-w-0 gap-1" : "gap-2",
+							disabled && "opacity-50",
+						)}
 					>
 						<span
 							className={cn(
-								"flex size-12 items-center justify-center rounded-md border font-semibold text-xl",
+								"flex items-center justify-center rounded-md border font-semibold",
+								compact ? "size-8 text-sm" : "size-12 text-xl",
 								SWATCH_BG[t.value],
 							)}
 						>
 							Aa
 						</span>
-						<span className="font-medium text-foreground text-sm">{t.label}</span>
+						<span
+							className={cn(
+								"wrap-anywhere max-w-full font-medium text-foreground",
+								compact ? "text-xs" : "text-sm",
+							)}
+						>
+							{compact ? (t.short ?? t.label) : t.label}
+						</span>
 					</button>
 				))}
 			</div>
@@ -59,12 +81,14 @@ export function ThemeCards({
 export function FontCards({
 	value,
 	onChange,
+	compact = false,
 }: {
 	value: string;
 	onChange: (font: string) => void;
+	compact?: boolean;
 }) {
 	return (
-		<div className="grid w-full grid-cols-2 gap-3">
+		<div className={cn("grid w-full grid-cols-2", compact ? "gap-1.5" : "gap-3")}>
 			{FONT_FAMILIES.map((f) => (
 				<button
 					key={f.value}
@@ -73,14 +97,23 @@ export function FontCards({
 					aria-pressed={value === f.value}
 					aria-label={f.name}
 					className={cn(
-						cardClass(value === f.value),
-						"min-w-0 gap-1 [&:last-child:nth-child(odd)]:col-span-2",
+						cardClass(value === f.value, compact),
+						"min-w-0 [&:last-child:nth-child(odd)]:col-span-2",
+						compact ? "flex-row justify-center gap-2" : "gap-1",
 					)}
 				>
-					<span className="font-semibold text-2xl text-foreground" style={{ fontFamily: f.stack }}>
+					<span
+						className={cn("font-semibold text-foreground", compact ? "text-base" : "text-2xl")}
+						style={{ fontFamily: f.stack }}
+					>
 						Aa
 					</span>
-					<span className="wrap-anywhere max-w-full font-medium text-foreground text-sm">
+					<span
+						className={cn(
+							"wrap-anywhere max-w-full font-medium text-foreground",
+							compact ? "text-xs" : "text-sm",
+						)}
+					>
 						{f.label}
 					</span>
 				</button>

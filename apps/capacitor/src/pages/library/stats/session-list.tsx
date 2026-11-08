@@ -75,7 +75,11 @@ export function useSessionDelete({
 	const [confirm, setConfirm] = useState<Confirm | null>(null);
 	const deciding = useRef(false);
 
-	function proceed(doomed: readonly ReadingSession[], all: readonly ReadingSession[]) {
+	function proceed(
+		doomed: readonly ReadingSession[],
+		all: readonly ReadingSession[],
+		shouldConfirm: boolean,
+	) {
 		const doomedIds = new Set(doomed.map((row) => row.id));
 		const doomedBooks = new Set(doomed.map((row) => row.bookId));
 		const [onlyBook] = doomedBooks;
@@ -84,7 +88,7 @@ export function useSessionDelete({
 		const live = all.filter((row) => !hidden.has(row.id) || doomedIds.has(row.id));
 		const mayChangeStreak = lostReadingDays(doomedIds, live).length > 0;
 		const ids = doomed.map((row) => row.id);
-		if (ids.length < CONFIRM_DELETE_FROM) {
+		if (!shouldConfirm && ids.length < CONFIRM_DELETE_FROM) {
 			onStart();
 			const undo = deleteLater(ids);
 			toast.success(deletedToastText(ids.length, mayChangeStreak), {
@@ -96,20 +100,24 @@ export function useSessionDelete({
 		setConfirm({ ids, ...deleteConfirmCopy(doomed, bookTitle, mayChangeStreak) });
 	}
 
-	function requestDelete(doomed: readonly ReadingSession[]) {
+	/**
+	 * `confirm` asks first and then deletes at once, with no undo window: the
+	 * pages around a delete-all count the sittings until they are really gone.
+	 */
+	function requestDelete(doomed: readonly ReadingSession[], { confirm = false } = {}) {
 		if (doomed.length === 0 || deciding.current) return;
 		const all = streakRows();
 		if (Array.isArray(all)) {
-			proceed(doomed, all);
+			proceed(doomed, all, confirm);
 			return;
 		}
 		// The rows stay visible until the read settles; a second tap meanwhile would queue a second delete.
 		deciding.current = true;
 		void Promise.resolve(all)
 			.then(
-				(rows) => proceed(doomed, rows),
+				(rows) => proceed(doomed, rows, confirm),
 				// Without the other books' sessions every doomed day counts as lost: the warning errs on showing.
-				() => proceed(doomed, doomed),
+				() => proceed(doomed, doomed, confirm),
 			)
 			.finally(() => {
 				deciding.current = false;
@@ -346,7 +354,7 @@ function SessionItem({
 			{!isSelecting && (
 				<DropdownMenu open={isMenuOpen} onOpenChange={setMenuOpen}>
 					<DropdownMenuTrigger asChild>
-						<Button variant="ghost" size="icon-xs" aria-label="Session actions">
+						<Button variant="ghost" size="icon-lg" aria-label="Session actions">
 							<MoreHorizontal />
 						</Button>
 					</DropdownMenuTrigger>

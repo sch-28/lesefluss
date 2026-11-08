@@ -1,6 +1,7 @@
 import { displayHostname } from "@lesefluss/book-import";
 import {
 	BOOK_STATUS_LABELS,
+	bookPace,
 	bookStatus,
 	isSyncEligible,
 	parseBookTags,
@@ -38,6 +39,7 @@ import { bookKeys, syncKeys } from "../../services/db/hooks/query-keys";
 import { useCloudStorage } from "../../services/db/hooks/use-cloud-storage";
 import { queries } from "../../services/db/queries";
 import { finishedCardData } from "../../services/share-card/card-data";
+import { summariseBookReading } from "../../services/stats/book-summary";
 import { SYNC_ENABLED } from "../../services/sync";
 import { getServerContentIds } from "../../services/sync/server-content-cache";
 import { IS_WEB } from "../../utils/platform";
@@ -58,6 +60,7 @@ import { BookJourney } from "./book-journey";
 import { BookSessions } from "./book-sessions";
 import { BookShares } from "./book-shares";
 import { BookStatsCard } from "./book-stats-card";
+import { openReaderLabel } from "./open-reader-label";
 import { GoalCard } from "./reading-goal/goal-card";
 
 import TransferModal from "./transfer-modal";
@@ -164,7 +167,6 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					void router.navigate({
 						to: "/tabs/library/book/$id/edit",
 						params: { id },
-						search: { from: "detail" },
 					}),
 			},
 			{
@@ -327,6 +329,9 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		) : null,
 	].filter((fact) => fact !== null);
 
+	const { minutesLeft } = summariseBookReading(book, bookPace(speedModel, book.id));
+	const openLabel = openReaderLabel(book, chapters, minutesLeft);
+
 	const secondaryActions = !IS_WEB
 		? deviceActions.map((a) => ({
 				label: a.label,
@@ -346,7 +351,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				facts={facts}
 				subjects={catalogMeta?.subjects ?? undefined}
 				primaryAction={{
-					label: "Open reader",
+					label: openLabel,
 					icon: BookOpen,
 					onClick: () => router.navigate({ to: "/tabs/reader/$id", params: { id: book.id } }),
 				}}

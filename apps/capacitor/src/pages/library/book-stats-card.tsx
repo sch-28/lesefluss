@@ -87,7 +87,7 @@ function BookTimeAhead({ book, pace, wordsLeft }: { book: Book; pace: Pace; word
 	const minutesPerDay =
 		(plan ? minuteGoalOf(plan.goal) : null) ??
 		(daily ? averageDailyMinutes(daily.msByDay, today) : null);
-	const rsvpWpm = settings ? modeSpeed(model, "rsvp", settings.wpm) : 0;
+	const rsvpWpm = settings ? Math.round(modeSpeed(model, "rsvp", settings.wpm)) : 0;
 
 	return (
 		<WhatIfSpeed
@@ -96,7 +96,7 @@ function BookTimeAhead({ book, pace, wordsLeft }: { book: Book; pace: Pace; word
 			paceWpm={pace.wpm}
 			minutesPerDay={minutesPerDay}
 			today={today}
-			rsvp={settings && rsvpWpm > pace.wpm ? { dial: settings.wpm, wpm: rsvpWpm } : null}
+			rsvpWpm={settings && rsvpWpm > pace.wpm ? rsvpWpm : null}
 		/>
 	);
 }

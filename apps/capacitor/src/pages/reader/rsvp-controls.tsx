@@ -8,7 +8,8 @@ import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { ChevronsLeft, ChevronsRight, Headphones, Play, Redo2, Undo2 } from "lucide-react";
 import type React from "react";
-import { RSVP_WPM_RANGE, steppedWpm, type WpmRange } from "./wpm";
+import { RsvpSpeedControl } from "../../components/rsvp-speed-control";
+import { RSVP_WPM_RANGE, type WpmRange } from "./wpm";
 
 // Controls only render while paused, so the play/pause button always shows
 // the play glyph. No isPlaying prop needed.
@@ -83,24 +84,12 @@ const RsvpControls: React.FC<Props> = ({
 						<Headphones />
 					</Button>
 				)}
-				<button
-					type="button"
-					className="rsvp-wpm-btn"
-					onClick={() => onWpmChange(steppedWpm(wpm, wpmRange, -1))}
-					aria-label="Decrease WPM"
-				>
-					−
-				</button>
-				<span className="rsvp-wpm-value">{wpm}</span>
-				<button
-					type="button"
-					className="rsvp-wpm-btn"
-					onClick={() => onWpmChange(steppedWpm(wpm, wpmRange, 1))}
-					aria-label="Increase WPM"
-				>
-					+
-				</button>
-				<span className="rsvp-wpm-label">wpm</span>
+				<RsvpSpeedControl
+					wpm={wpm}
+					range={wpmRange}
+					onChange={onWpmChange}
+					className="text-[var(--reader-text)]"
+				/>
 			</div>
 		</div>
 	);

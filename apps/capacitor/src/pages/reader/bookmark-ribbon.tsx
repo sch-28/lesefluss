@@ -15,11 +15,12 @@ const BookmarkRibbon: React.FC<BookmarkRibbonProps> = ({ isOnScreen, disabled, o
 		size="icon"
 		onClick={onToggle}
 		disabled={disabled}
-		aria-label="Bookmark"
+		title="Bookmark"
 		aria-pressed={isOnScreen}
 		className={isOnScreen ? "text-primary" : undefined}
 	>
 		<Bookmark className={isOnScreen ? "fill-current" : undefined} />
+		<span className="sr-only">Bookmark</span>
 	</Button>
 );
 

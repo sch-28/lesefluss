@@ -37,6 +37,8 @@ function snippetFromText(text: string | null): string {
 
 interface AnnotationsSheetProps {
 	isOpen: boolean;
+	/** Opens on Contents (the ⋮ entry) instead of the default tab, when the book has one. */
+	opensOnContents?: boolean;
 	onClose: () => void;
 	theme?: string;
 	chapters: Chapter[];
@@ -62,6 +64,7 @@ const SNAP_POINTS = drawerSnapPoints([0.5, 1]);
 
 const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	isOpen,
+	opensOnContents = false,
 	onClose,
 	theme,
 	chapters,
@@ -109,7 +112,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 	if (isOpen !== wasOpen) {
 		setWasOpen(isOpen);
 		if (isOpen) {
-			setTab(initialTab);
+			setTab(opensOnContents && hasContents ? "contents" : initialTab);
 			setSnap(SNAP_POINTS[0]);
 		}
 	}
@@ -149,8 +152,8 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 						onValueChange={(v) => {
 							if (v) setTab(v as Tab);
 						}}
-						// Labels wrap rather than run into each other at a large font scale.
-						className="[&>*]:wrap-anywhere min-w-0 flex-1 [&>*]:h-auto [&>*]:min-h-9 [&>*]:whitespace-normal"
+						// Scrolls sideways rather than breaking a label mid-word at a large font scale.
+						className="min-w-0 flex-1 justify-start overflow-x-auto [scrollbar-width:none] [&>*]:h-auto [&>*]:min-h-9 [&>*]:shrink-0 [&>*]:whitespace-nowrap"
 					>
 						{hasContents && <ToggleGroupItem value="contents">Contents</ToggleGroupItem>}
 						{hasChapters && <ToggleGroupItem value="chapters">Chapters</ToggleGroupItem>}
@@ -171,12 +174,13 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 								browse.onToggle();
 								onClose();
 							}}
-							aria-label="Browse mode"
+							title="Browse mode"
 							aria-pressed={browse.isBrowsing}
 							data-testid="browse-toggle"
 							className={cn("shrink-0", browse.isBrowsing && "text-primary")}
 						>
 							<Compass />
+							<span className="sr-only">Browse mode</span>
 						</Button>
 					)}
 				</DrawerHeader>

@@ -89,7 +89,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 	const values = setupValues(setup, setupBook);
 	const isMinutes = isMinuteSetup(setup);
 	const rsvp = settings
-		? rsvpComparison(values, setupBook, settings.wpm, modeSpeed(speedModel, "rsvp", settings.wpm))
+		? rsvpComparison(values, setupBook, modeSpeed(speedModel, "rsvp", settings.wpm))
 		: null;
 	const presetMatch = GOAL_PRESETS.find((p) => presetDays(today, p.months) === values.days);
 	const isCustom = isCustomOpen || !presetMatch;
@@ -278,7 +278,7 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 							className="flex gap-3 rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-sm"
 							data-testid="goal-rsvp"
 						>
-							<span className="text-muted-foreground">RSVP {rsvp.dial}</span>
+							<span className="text-muted-foreground">RSVP at {rsvp.wpm} wpm</span>
 							<span className="font-semibold tabular-nums">{rsvp.value}</span>
 						</div>
 					)}

@@ -9,10 +9,12 @@ import {
 	AlertDialogTitle,
 } from "@lesefluss/ui/alert-dialog";
 import { useOverlayBack } from "@lesefluss/ui/overlay-back";
+import { useQuery } from "@tanstack/react-query";
 import { useBlocker, useRouter } from "@tanstack/react-router";
 import type React from "react";
-import { useRef, useState } from "react";
-import { getCoverUrl } from "../../services/catalog/client";
+import { useMemo, useRef, useState } from "react";
+import { getCatalogBook, getCoverUrl } from "../../services/catalog/client";
+import { catalogKeys } from "../../services/catalog/query-keys";
 import { queryHooks } from "../../services/db/hooks";
 import type { Book } from "../../services/db/schema";
 import { formatShortDate } from "../../utils/date-utils";
@@ -34,18 +36,20 @@ import { SeriesField } from "./series-field";
 
 type Props = {
 	id: string;
-	/** Opened from the book's page, so leaving goes back instead of replacing. */
-	fromDetail: boolean;
 };
 
 const noop = () => {};
+
+function plainText(html: string): string {
+	return new DOMParser().parseFromString(html, "text/html").body.textContent?.trim() ?? "";
+}
 
 export function wordCountFact(words: number): string | null {
 	if (words <= 0) return null;
 	return words >= 1000 ? `${Math.round(words / 1000)}k words` : `${words} words`;
 }
 
-const BookEditPage: React.FC<Props> = ({ id, fromDetail }) => {
+const BookEditPage: React.FC<Props> = ({ id }) => {
 	const { data: book, isPending } = queryHooks.useBook(id);
 	const membership = queryHooks.useSeriesMembershipForBook(id);
 
@@ -62,7 +66,6 @@ const BookEditPage: React.FC<Props> = ({ id, fromDetail }) => {
 			key={book.id}
 			book={book}
 			membership={membership.data ?? null}
-			fromDetail={fromDetail}
 		/>
 	);
 };
@@ -70,8 +73,7 @@ const BookEditPage: React.FC<Props> = ({ id, fromDetail }) => {
 const EditBookForm: React.FC<{
 	book: Book;
 	membership: SeriesMembership | null;
-	fromDetail: boolean;
-}> = ({ book, membership, fromDetail }) => {
+}> = ({ book, membership }) => {
 	const router = useRouter();
 	const isWide = useIsWideLayout();
 	const [initial] = useState<BookEditValues>(() => bookToEditValues(book));
@@ -81,6 +83,19 @@ const EditBookForm: React.FC<{
 	const { data: library } = queryHooks.useBooks();
 	const updateBook = queryHooks.useUpdateBook();
 	const saveSeries = queryHooks.useSaveBookSeries();
+	// Same query as the detail page, so its About text is usually cached already.
+	const { data: catalogMeta } = useQuery({
+		queryKey: book.catalogId ? catalogKeys.book(book.catalogId) : ["catalog", "book", "noop"],
+		queryFn: ({ signal }) =>
+			book.catalogId ? getCatalogBook(book.catalogId, signal) : Promise.resolve(null),
+		enabled: !!book.catalogId,
+	});
+	const catalogDescription = useMemo(
+		() =>
+			(catalogMeta?.description ? plainText(catalogMeta.description) : catalogMeta?.summary) ||
+			null,
+		[catalogMeta],
+	);
 
 	const isDirty =
 		isEditDirty(initial, form.values, form.tagDraft) || isSeriesDirty(membership, seriesChoice);
@@ -97,8 +112,10 @@ const EditBookForm: React.FC<{
 		withResolver: true,
 	});
 
+	// Back, not a navigation: Edit opens from the library, the detail page and
+	// the reader, and back returns to whichever it was with its scroll restored.
 	const leave = () => {
-		if (fromDetail && router.history.canGoBack()) {
+		if (router.history.canGoBack()) {
 			router.history.back();
 		} else {
 			void router.navigate({
@@ -149,6 +166,7 @@ const EditBookForm: React.FC<{
 				cover={cover}
 				format={book.fileFormat}
 				facts={facts}
+				catalogDescription={catalogDescription}
 				progress={{
 					wordCount: book.wordCount,
 					wordPosition: book.wordPosition,

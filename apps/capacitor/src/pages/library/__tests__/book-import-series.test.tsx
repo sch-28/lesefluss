@@ -124,12 +124,14 @@ function makeRouter() {
 const body = () => document.body.textContent ?? "";
 const buttons = () => [...document.body.querySelectorAll("button")];
 const button = (name: string) => {
-	const found = buttons().find((b) => (b.textContent ?? "").trim() === name);
+	const found = buttons().find(
+		(b) => b.dataset.testid !== "series-picker" && (b.textContent ?? "").trim() === name,
+	);
 	if (!found) throw new Error(`No button named ${name}`);
 	return found;
 };
 const seriesButton = () => {
-	const found = buttons().find((b) => /(Change|Add)$/.test((b.textContent ?? "").trim()));
+	const found = document.body.querySelector<HTMLButtonElement>("[data-testid=series-picker]");
 	if (!found) throw new Error("No series button");
 	return found;
 };

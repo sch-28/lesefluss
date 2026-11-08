@@ -68,18 +68,6 @@ describe("writeBookPosition", () => {
 		expect(isOwnRevision("b1", write.stamp)).toBe(true);
 	});
 
-	it("leaves the stamp unrecorded for a writer outside the reader", async () => {
-		const write = writeBookPosition(new QueryClient(), {
-			bookId: "b1",
-			seriesId: null,
-			word: 160,
-			baseRev: 1000,
-			isReaderOwn: false,
-		});
-		expect(await write.outcome).toEqual({ kind: "written" });
-		expect(isOwnRevision("b1", write.stamp)).toBe(false);
-	});
-
 	it("reports a newer row instead of replacing it", async () => {
 		raw.exec("UPDATE books SET word_position = 400, updated_at = 5000 WHERE id = 'b1'");
 		const write = writeBookPosition(new QueryClient(), {

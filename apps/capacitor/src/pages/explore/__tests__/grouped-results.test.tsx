@@ -75,7 +75,19 @@ afterEach(() => {
 	view?.unmount();
 	view = undefined;
 	vi.clearAllMocks();
+	vi.unstubAllGlobals();
 });
+
+function stubPhone() {
+	vi.stubGlobal(
+		"matchMedia",
+		vi.fn((query: string) => ({
+			matches: !query.includes("min-width"),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+		})),
+	);
+}
 
 const handlers = () => ({
 	onOpenBook: vi.fn(),
@@ -121,6 +133,55 @@ describe("GroupedResults", () => {
 		expect(h.onSeeAllCatalog).toHaveBeenCalled();
 		await click(seeAll[1] as HTMLButtonElement);
 		expect(h.onSeeAllProvider).toHaveBeenCalledWith("royalroad");
+	});
+
+	it("lists catalog rows and grids web novels on a phone, never a sideways strip", async () => {
+		stubPhone();
+		searchCatalog.mockResolvedValue(
+			catalogPage(["One", "Two", "Three", "Four", "Five", "Six", "Seven"]),
+		);
+		serials.current = {
+			data: {
+				results: Array.from({ length: 8 }, (_, i) => novel("royalroad", `Novel ${i}`)),
+				failedProviders: [],
+				challengeProviders: [],
+			},
+			isSuccess: true,
+			refetch: vi.fn(),
+		};
+		view = await render(<GroupedResults q="cradle" lang="en" {...handlers()} />);
+		await flush();
+
+		const catalog = view.container.querySelector('[data-testid="catalog-group"]');
+		expect(catalog?.querySelectorAll('[data-testid="catalog-list-item"]')).toHaveLength(5);
+		const rr = view.container.querySelector('[data-testid="provider-group-royalroad"]');
+		expect(rr?.querySelector(".grid")).not.toBeNull();
+		expect(rr?.querySelectorAll('[data-testid="web-novel-card"]')).toHaveLength(6);
+		expect(view.container.querySelector("ul.overflow-x-auto")).toBeNull();
+	});
+
+	it("shows one connection message with Retry when nothing can be reached", async () => {
+		searchCatalog.mockRejectedValue(new TypeError("Failed to fetch"));
+		const refetch = vi.fn();
+		serials.current = {
+			data: { results: [], failedProviders: ["royalroad", "ao3"], challengeProviders: [] },
+			isSuccess: true,
+			refetch,
+		};
+		view = await render(<GroupedResults q="cradle" lang="en" {...handlers()} />);
+		await flush();
+
+		expect(view.container.querySelectorAll('[role="alert"]')).toHaveLength(1);
+		expect(view.text()).toContain("Couldn't connect");
+		expect(view.text()).not.toContain("didn't respond");
+		searchCatalog.mockResolvedValue(catalogPage(["Cradle Song"]));
+		const retry = [...view.container.querySelectorAll("button")].find(
+			(b) => b.textContent === "Retry",
+		);
+		await click(retry as HTMLButtonElement);
+		await flush();
+		expect(refetch).toHaveBeenCalled();
+		expect(view.text()).toContain("Cradle Song");
 	});
 
 	it("shows catalog results while providers are still searching", async () => {

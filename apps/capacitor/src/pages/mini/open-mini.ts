@@ -11,7 +11,7 @@ import {
 } from "./mini-bridge";
 
 /** What a tiling window manager's rule matches the window on. */
-export const MINI_WINDOW_TITLE = "Lesefluss mini RSVP";
+export const MINI_WINDOW_TITLE = "Lesefluss Quick RSVP";
 const PIP_SIZE = { width: 380, height: 150 };
 const POPUP_FEATURES = "popup,width=600,height=150";
 const POPUP_NAME = "lesefluss-mini";

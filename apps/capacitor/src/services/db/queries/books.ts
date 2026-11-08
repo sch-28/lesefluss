@@ -442,6 +442,7 @@ export async function addBookWithContent(
 	const dbChapters: Chapter[] = (importChapters ?? []).map((ch) => ({
 		title: ch.title,
 		startWord: wi.firstShownWord(ch.startByte),
+		...(ch.level && { level: ch.level }),
 	}));
 	const dbLinks: LinkRange[] = (importLinks ?? []).map((l) => ({
 		href: l.href,

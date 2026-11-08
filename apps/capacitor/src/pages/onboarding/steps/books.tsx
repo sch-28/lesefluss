@@ -8,6 +8,7 @@ import { CATALOG_ENABLED, getCoverUrl, getLanding } from "../../../services/cata
 import { importFromCatalog } from "../../../services/catalog/import";
 import { catalogKeys } from "../../../services/catalog/query-keys";
 import { log } from "../../../utils/log";
+import { ErrorState } from "../../_shared/load-states";
 import { useOnboardingFooter } from "../footer-context";
 
 const LANG_STORAGE_KEY = "explore-lang";
@@ -113,10 +114,14 @@ const BooksStep: React.FC = () => {
 						</div>
 					))}
 				</div>
-			) : landingQuery.isError || classics.length === 0 ? (
-				<p className="mt-8 text-muted-foreground/70 text-sm">
-					{landingQuery.isError ? "Couldn't reach the catalog." : "No classics available."}
-				</p>
+			) : landingQuery.isError ? (
+				<ErrorState
+					error={landingQuery.error}
+					onRetry={() => landingQuery.refetch()}
+					className="mt-6"
+				/>
+			) : classics.length === 0 ? (
+				<p className="mt-8 text-muted-foreground/70 text-sm">No classics available.</p>
 			) : (
 				<div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
 					{classics.map((b) => {

@@ -19,7 +19,7 @@ async function openInPageMode(page: Page) {
 }
 
 async function tocJump(page: Page, label: string) {
-	await page.getByRole("button", { name: "Annotations" }).click();
+	await page.getByRole("button", { name: "Contents and annotations" }).click();
 	const button = page.getByRole("button", { name: label });
 	await expect(button).toBeVisible();
 	await button.click();

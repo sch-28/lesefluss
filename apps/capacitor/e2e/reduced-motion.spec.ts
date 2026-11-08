@@ -63,7 +63,7 @@ test.describe("prefers-reduced-motion: reduce", () => {
 		await page.keyboard.press("Escape");
 		await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
 
-		await page.getByRole("button", { name: "Annotations" }).click();
+		await page.getByRole("button", { name: "Contents and annotations" }).click();
 		await expect(page.locator('[data-slot="drawer-content"]')).toBeVisible();
 		expect(await elementsInMotion(page, { allowSpinners: true }), "drawer").toEqual([]);
 	});

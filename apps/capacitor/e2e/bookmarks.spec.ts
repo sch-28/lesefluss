@@ -13,7 +13,7 @@ async function pressKey(page: Page, key: string) {
 }
 
 async function openBookmarksTab(page: Page) {
-	await page.getByRole("button", { name: "Annotations" }).click();
+	await page.getByRole("button", { name: "Contents and annotations" }).click();
 	await page.getByRole("radio", { name: /^Bookmarks/ }).click();
 }
 

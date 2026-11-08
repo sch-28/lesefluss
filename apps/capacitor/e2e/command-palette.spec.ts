@@ -79,8 +79,7 @@ test("in the reader, the palette lists every reader action, shows its shortcut a
 		"Remove bookmark here",
 		"Next bookmark",
 		"Fullscreen",
-		"Open mini RSVP window",
-		"Burst read",
+		"Quick RSVP",
 	];
 	for (const name of readerActions) {
 		const row =

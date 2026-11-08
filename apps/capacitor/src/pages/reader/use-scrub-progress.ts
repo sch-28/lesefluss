@@ -1,26 +1,37 @@
 /**
- * useScrubProgress - owns the progress-bar pointer gestures (tap + horizontal drag).
+ * useScrubProgress - owns the progress-bar pointer gestures.
  *
- * Returns a ref + three pointer handlers to spread onto the progress bar div,
- * plus `isScrubbingRef` which the reader's scroll handler reads to decide
- * whether the progress bar should auto-hide on scroll.
+ * Drag-only scrubber: a horizontal drag previews its target (`previewWord`)
+ * and jumps there on release; a tap never moves the position, it only shows
+ * where the reader is (`isShowingInfo`). `isScrubbingRef` tells the reader's
+ * scroll handler not to auto-hide the bar mid-drag.
  *
- * Horizontal-intent gating: pointerdown records origin; scrubbing commits only
- * when movement passes MIN_SCRUB_PX and is more horizontal than vertical. This
- * prevents iOS swipe-up home gesture from jumping the reading position.
+ * Horizontal-intent gating: a drag counts only once movement passes
+ * MIN_SCRUB_PX and is more horizontal than vertical, so the iOS swipe-up home
+ * gesture is never a scrub.
  */
 
 import type React from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Book } from "../../services/db/schema";
 import type { SaveSource } from "../../test-hooks/reader";
 
 const MIN_SCRUB_PX = 8;
+const TAP_INFO_MS = 2500;
 
 function isHorizontalScrub(origin: { x: number; y: number }, clientX: number, clientY: number) {
 	const dx = Math.abs(clientX - origin.x);
 	const dy = Math.abs(clientY - origin.y);
 	return dx >= MIN_SCRUB_PX && dx > dy;
+}
+
+/** The chapter holding `word`: -1 without chapters, 0 before the first one starts. */
+export function chapterIndexAt(chapters: readonly { startWord: number }[], word: number): number {
+	if (!chapters.length) return -1;
+	for (let i = chapters.length - 1; i >= 0; i--) {
+		if (word >= chapters[i].startWord) return i;
+	}
+	return 0;
 }
 
 interface Params {
@@ -59,13 +70,30 @@ export function useScrubProgress({
 	const isScrubbingRef = useRef(false);
 	// State twin of isScrubbingRef for rendering the drag bubble.
 	const [isDragging, setIsDragging] = useState(false);
+	const [previewWord, setPreviewWord] = useState<number | null>(null);
+	const [isShowingInfo, setIsShowingInfo] = useState(false);
+	const infoTimerRef = useRef<number | null>(null);
+
+	const clearInfoTimer = useCallback(() => {
+		if (infoTimerRef.current !== null) window.clearTimeout(infoTimerRef.current);
+		infoTimerRef.current = null;
+	}, []);
+	useEffect(() => clearInfoTimer, [clearInfoTimer]);
+
+	const wordAtX = useCallback(
+		(clientX: number): number | null => {
+			if (!progressBarRef.current || !book || totalWords === 0) return null;
+			const rect = progressBarRef.current.getBoundingClientRect();
+			const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+			return Math.min(totalWords - 1, Math.round(ratio * totalWords));
+		},
+		[book, totalWords],
+	);
 
 	const scrubToX = useCallback(
 		(clientX: number) => {
-			if (!progressBarRef.current || !book || totalWords === 0) return;
-			const rect = progressBarRef.current.getBoundingClientRect();
-			const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-			const targetWord = Math.min(totalWords - 1, Math.round(ratio * totalWords));
+			const targetWord = wordAtX(clientX);
+			if (targetWord === null) return;
 
 			if (readerMode === "rsvp" && isReadingAloud()) {
 				setProgressWord(targetWord);
@@ -86,9 +114,8 @@ export function useScrubProgress({
 			}
 		},
 		[
-			book,
+			wordAtX,
 			readerMode,
-			totalWords,
 			paragraphStartWords,
 			findParagraphIndexForWord,
 			jumpToWord,
@@ -102,49 +129,59 @@ export function useScrubProgress({
 
 	const handleProgressPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
 		e.currentTarget.setPointerCapture(e.pointerId);
-		// Record origin - scrubbing is committed only once horizontal intent is
-		// confirmed (pointermove/pointerup). This prevents the iOS swipe-up home
-		// gesture from accidentally jumping the reading position.
 		pointerDownRef.current = { x: e.clientX, y: e.clientY };
 	}, []);
 
 	const handleProgressPointerMove = useCallback(
 		(e: React.PointerEvent<HTMLDivElement>) => {
 			if (e.buttons === 0 || !pointerDownRef.current) return;
-			if (!isHorizontalScrub(pointerDownRef.current, e.clientX, e.clientY)) return;
+			if (
+				!isScrubbingRef.current &&
+				!isHorizontalScrub(pointerDownRef.current, e.clientX, e.clientY)
+			)
+				return;
 			isScrubbingRef.current = true;
 			setIsDragging(true);
-			scrubToX(e.clientX);
+			clearInfoTimer();
+			setIsShowingInfo(false);
+			setPreviewWord(wordAtX(e.clientX));
 		},
-		[scrubToX],
+		[wordAtX, clearInfoTimer],
 	);
+
+	const endDrag = useCallback(() => {
+		pointerDownRef.current = null;
+		isScrubbingRef.current = false;
+		setIsDragging(false);
+		setPreviewWord(null);
+	}, []);
 
 	const handleProgressPointerUp = useCallback(
 		(e: React.PointerEvent<HTMLDivElement>) => {
 			const origin = pointerDownRef.current;
-			pointerDownRef.current = null;
-			isScrubbingRef.current = false;
-			setIsDragging(false);
+			const wasDragging = isScrubbingRef.current;
+			endDrag();
 			if (!origin) return;
-			// Plain tap (no meaningful horizontal drag) - scrub to the tap position.
-			if (!isHorizontalScrub(origin, e.clientX, e.clientY)) {
-				setProgressBarVisible(true);
+			if (wasDragging) {
 				scrubToX(e.clientX);
+				return;
 			}
+			setProgressBarVisible(true);
+			setIsShowingInfo(true);
+			clearInfoTimer();
+			infoTimerRef.current = window.setTimeout(() => setIsShowingInfo(false), TAP_INFO_MS);
 		},
-		[scrubToX, setProgressBarVisible],
+		[endDrag, scrubToX, setProgressBarVisible, clearInfoTimer],
 	);
 
 	// The system can take the gesture over (a call, an edge swipe) without a
-	// pointerup; end the drag so the reader does not stay in scrub mode.
-	const handleProgressPointerCancel = useCallback(() => {
-		pointerDownRef.current = null;
-		isScrubbingRef.current = false;
-		setIsDragging(false);
-	}, []);
+	// pointerup; the drag ends where it was, without a jump.
+	const handleProgressPointerCancel = endDrag;
 
 	return {
 		progressBarRef,
+		previewWord,
+		isShowingInfo,
 		handleProgressPointerCancel,
 		isScrubbingRef,
 		isDragging,

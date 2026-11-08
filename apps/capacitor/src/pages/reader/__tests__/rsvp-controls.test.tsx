@@ -45,16 +45,16 @@ describe("RsvpControls", () => {
 		view = await render(
 			controls({ wpm: TTS_WPM_RANGE.max - 5, wpmRange: TTS_WPM_RANGE, onWpmChange }),
 		);
-		act(() => view?.getButton("Increase WPM").click());
+		act(() => view?.getButton("Increase speed").click());
 		expect(onWpmChange).toHaveBeenLastCalledWith(SETTING_CONSTRAINTS.TTS_WPM.max);
-		act(() => view?.getButton("Decrease WPM").click());
+		act(() => view?.getButton("Decrease speed").click());
 		expect(onWpmChange).toHaveBeenLastCalledWith(TTS_WPM_RANGE.max - 5 - TTS_WPM_RANGE.step);
 	});
 
 	it("steps the RSVP speed by 25 within the RSVP limits by default", async () => {
 		const onWpmChange = vi.fn();
 		view = await render(controls({ wpm: 300, onWpmChange }));
-		act(() => view?.getButton("Increase WPM").click());
+		act(() => view?.getButton("Increase speed").click());
 		expect(onWpmChange).toHaveBeenLastCalledWith(325);
 	});
 });

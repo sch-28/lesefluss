@@ -7,7 +7,7 @@ const PHONE = { width: 420, height: 900 };
 
 async function chooseHighContrast(page: Page) {
 	await reader.openAppearance(page);
-	await page.getByRole("radio", { name: "High contrast" }).click();
+	await page.getByRole("button", { name: "High contrast", exact: true }).click();
 	await page.keyboard.press("Escape");
 	await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
 	await expect(page.locator("html")).toHaveClass(/\bhigh-contrast\b/);

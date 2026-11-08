@@ -57,15 +57,11 @@ async function inScrollContainer<R, A>(
 	}
 }
 
-/**
- * A stepper row in the appearance popover, scoped by its label. The rows share
- * button glyphs ("+" appears under both Spacing and Margins), so the label is
- * what disambiguates them.
- */
-function stepperRow(page: Page, label: string): Locator {
+/** The value a stepper row shows, found from its labelled increase button. */
+export function stepperValue(page: Page, label: string): Locator {
 	return page
-		.locator(".ap-row")
-		.filter({ has: page.locator(".ap-row-label").getByText(label, { exact: true }) });
+		.getByRole("button", { name: `Increase ${label}`, exact: true })
+		.locator("xpath=../../span[@aria-live]");
 }
 
 /**
@@ -88,10 +84,9 @@ async function closeAppearancePopover(page: Page): Promise<void> {
  */
 async function stepUpAppearance(page: Page, label: string): Promise<void> {
 	await reader.openAppearance(page);
-	const row = stepperRow(page, label);
-	const value = row.locator(".ap-row-value");
+	const value = stepperValue(page, label);
 	const before = await value.textContent();
-	await row.getByRole("button", { name: `Increase ${label}`, exact: true }).click();
+	await page.getByRole("button", { name: `Increase ${label}`, exact: true }).click();
 	await expect(value).not.toHaveText(before ?? "");
 	await closeAppearancePopover(page);
 }
@@ -237,13 +232,13 @@ export const reader = {
 
 	/** Browse mode starts from the annotations sheet, which closes on the way. */
 	startBrowse: async (page: Page) => {
-		await page.getByRole("button", { name: "Annotations" }).click();
+		await page.getByRole("button", { name: "Contents and annotations" }).click();
 		await page.getByTestId("browse-toggle").click();
 		await expect(page.getByRole("dialog")).toHaveCount(0);
 	},
 
 	tocJumpToChapter: async (page: Page, label: string) => {
-		await page.getByRole("button", { name: "Annotations" }).click();
+		await page.getByRole("button", { name: "Contents and annotations" }).click();
 		await page.getByRole("button", { name: label }).click();
 	},
 
@@ -550,7 +545,7 @@ export const reader = {
 	},
 
 	setPaginationStyle: async (page: Page, style: "scroll" | "page") => {
-		const radio = page.getByRole("radio", {
+		const radio = page.locator(".appearance-popover-content").getByRole("button", {
 			name: style === "scroll" ? "Scroll" : "Page",
 			exact: true,
 		});
@@ -565,7 +560,7 @@ export const reader = {
 				await expect(page.locator(".appearance-popover-content")).toBeVisible({ timeout: 3000 });
 			}
 			await radio.click({ timeout: 3000 });
-			await expect(radio).toBeChecked({ timeout: 2000 });
+			await expect(radio).toHaveAttribute("aria-pressed", "true", { timeout: 2000 });
 		}).toPass({ timeout: 30_000 });
 		await closeAppearancePopover(page);
 		// Wait for the new view's word spans to re-mount; the prior ad-hoc 300ms
@@ -862,7 +857,7 @@ export const reader = {
 
 	/** Bump the reader font size one step up, via the appearance popover. */
 	increaseFontSize: async (page: Page) => {
-		await stepUpAppearance(page, "Size");
+		await stepUpAppearance(page, "Text size");
 	},
 
 	/** Bump the reader line spacing one step up, via the appearance popover. */

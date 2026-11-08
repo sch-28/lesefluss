@@ -96,6 +96,14 @@ export class BrowseController {
 		if (word !== anchor) this.opts.writePosition(word);
 	};
 
+	/** Drops the anchor without writing it back: the caller is about to set a new position. */
+	leave = (): void => {
+		if (this.anchorWord === null) return;
+		this.opts.getSession()?.end();
+		this.setAnchor(null);
+		this.longMove.reset();
+	};
+
 	/** Feeds a scroll/page settle. Returns true when reading has resumed at the
 	 *  browsed spot: call `autoCommit` once the settle is applied. */
 	recordSettle = (from: number, to: number): boolean => {

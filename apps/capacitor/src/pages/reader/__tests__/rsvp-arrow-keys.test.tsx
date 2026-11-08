@@ -82,7 +82,9 @@ const press = (key: string) =>
 		window.dispatchEvent(new KeyboardEvent("keydown", { key, cancelable: true }));
 	});
 const stepperValue = (view: Rendered) =>
-	Number(view.container.querySelector(".rsvp-wpm-value")?.textContent);
+	Number(
+		view.container.querySelector("[data-testid=rsvp-wpm-value], .rsvp-wpm-value")?.textContent,
+	);
 
 let view: Rendered | undefined;
 afterEach(() => {

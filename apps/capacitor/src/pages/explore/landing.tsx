@@ -8,7 +8,8 @@ import {
 } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import type { SearchResult } from "../../services/serial-scrapers";
-import { ErrorState } from "../_shared/load-states";
+import { useIsOnline } from "../../services/social/cache";
+import { describeLoadError, ErrorState } from "../_shared/load-states";
 import BrowseRow from "./browse-row";
 import type { ExploreSearch } from "./explore-search";
 import Hero from "./hero";
@@ -55,6 +56,12 @@ const ExploreLanding: React.FC<Props> = ({
 	});
 
 	const data = landingQuery.data;
+	const isOnline = useIsOnline();
+	// Every section below needs the network; without it each would stack its own
+	// error, so one message stands in for all of them until a retry gets through.
+	const isUnreachable =
+		!isOnline ||
+		(landingQuery.isError && !data && describeLoadError(landingQuery.error, isOnline) !== "server");
 	const failed = new Set(data?.failed ?? []);
 	const retryLanding = () => landingQuery.refetch();
 	const catalogShelf = (
@@ -80,6 +87,22 @@ const ExploreLanding: React.FC<Props> = ({
 			data ? (data.classics.length > 0 ? data.classics : data.featured_se).slice(0, HERO_SIZE) : [],
 		[data],
 	);
+
+	if (isUnreachable) {
+		return (
+			<div className="mx-auto max-w-5xl px-4 pt-4 pb-20">
+				<ErrorState
+					error={landingQuery.error}
+					onRetry={() => {
+						void landingQuery.refetch();
+						void randomQuery.refetch();
+					}}
+					className="mb-6"
+				/>
+				{personalShelves}
+			</div>
+		);
+	}
 
 	return (
 		<div className="mx-auto max-w-5xl px-4 pt-4 pb-20">

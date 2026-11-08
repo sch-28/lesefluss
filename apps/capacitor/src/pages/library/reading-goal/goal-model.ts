@@ -185,25 +185,26 @@ function storedDailyPercent(dailyPercent: number): number {
 }
 
 /**
- * The setup's RSVP hint at the dial: a minute goal's earlier finish at the same
- * minutes, otherwise the minutes a day the same daily amount takes. Null when
- * RSVP would not be faster than the reader's pace.
+ * The setup's RSVP hint at the reader's RSVP speed: a minute goal's earlier
+ * finish at the same minutes, otherwise the minutes a day the same daily amount
+ * takes. `wpm` is the speed the estimate used, so the label never shows another.
+ * Null when RSVP would not be faster than the reader's pace.
  */
 export function rsvpComparison(
 	values: SetupValues,
 	book: { today: string; wordCount: number; wordPosition: number; wpm: number },
-	dial: number,
 	rsvpWpm: number,
-): { dial: number; value: string } | null {
+): { wpm: number; value: string } | null {
 	if (book.wordCount <= 0 || rsvpWpm <= book.wpm) return null;
+	const wpm = Math.round(rsvpWpm);
 	if (values.dailyMinutes != null) {
 		const finish = finishAtMinutes(values.dailyMinutes, rsvpWpm, book);
-		return finish < values.finishDate ? { dial, value: `Done ${formatDayKey(finish)}` } : null;
+		return finish < values.finishDate ? { wpm, value: `Done ${formatDayKey(finish)}` } : null;
 	}
 	const rsvpMinutes = minutesLabel((values.minutes * book.wpm) / rsvpWpm);
 	return rsvpMinutes === minutesLabel(values.minutes)
 		? null
-		: { dial, value: `${rsvpMinutes} a day` };
+		: { wpm, value: `${rsvpMinutes} a day` };
 }
 
 export type GoalUnit = "percent" | "minutes";

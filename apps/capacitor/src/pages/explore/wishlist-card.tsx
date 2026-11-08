@@ -2,13 +2,13 @@ import { useRouter } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import type React from "react";
 import CoverImage from "../../components/cover-image";
-import { toast } from "../../components/toast";
 import { getCoverUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
 import type { WishlistItem } from "../../services/db/schema";
 import { InLibraryBadge, QuickAddOverlay } from "./card-badges";
 import { useCatalogImport } from "./use-catalog-import";
 import { useWebNovelImport } from "./use-web-novel-import";
+import { useRemoveFromWishlist } from "./use-wishlist-action";
 
 type FrameProps = {
 	item: WishlistItem;
@@ -21,18 +21,13 @@ type FrameProps = {
 };
 
 const RemoveFromWishlistButton: React.FC<{ item: WishlistItem }> = ({ item }) => {
-	const toggle = queryHooks.useToggleWishlist();
+	const removal = useRemoveFromWishlist();
 	return (
 		<button
 			type="button"
 			aria-label={`Remove ${item.title} from wishlist`}
-			disabled={toggle.isPending}
-			onClick={() =>
-				toggle.mutate(
-					{ saved: false, item },
-					{ onError: () => toast.error("Couldn't update your wishlist") },
-				)
-			}
+			disabled={removal.isPending}
+			onClick={() => removal.remove(item)}
 			className="pointer-events-auto absolute top-1.5 right-1.5 flex size-7 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-sm backdrop-blur active:opacity-70 disabled:opacity-70"
 		>
 			<X className="size-4" aria-hidden />

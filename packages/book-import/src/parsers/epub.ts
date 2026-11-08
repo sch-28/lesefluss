@@ -248,7 +248,8 @@ async function parseEpub(
 	// NCX/nav docs nest chapters under parts via `subitems`, so walk the tree.
 	const toc = await book.loaded.navigation;
 	const tocMap = new Map<string, string>();
-	const walkToc = (items: NavItem[]) => {
+	const tocLevel = new Map<string, number>();
+	const walkToc = (items: NavItem[], level: number) => {
 		for (const item of items) {
 			const href = item.href?.split("#")[0];
 			if (href && item.label) {
@@ -256,14 +257,15 @@ async function parseEpub(
 				// can't break the single-line `# ` heading invariant the reader and
 				// injectTocHeading rely on (a `\n\n` would split it into two paragraphs).
 				tocMap.set(href, item.label.replace(/\s+/g, " ").trim());
+				tocLevel.set(href, level);
 			}
 			if (item.subitems?.length) {
-				walkToc(item.subitems);
+				walkToc(item.subitems, level + 1);
 			}
 		}
 	};
 	if (toc?.toc) {
-		walkToc(toc.toc);
+		walkToc(toc.toc, 0);
 	}
 
 	// spine.length is not typed but exists at runtime; fall back to counting via
@@ -334,7 +336,8 @@ async function parseEpub(
 
 		const chapterTitle = tocMap.get(sections[i].href);
 		if (chapterTitle) {
-			chapters.push({ title: chapterTitle, startByte: byteOffset });
+			const level = tocLevel.get(sections[i].href) ?? 0;
+			chapters.push({ title: chapterTitle, startByte: byteOffset, ...(level > 0 && { level }) });
 		}
 
 		for (const link of sections[i].links) {

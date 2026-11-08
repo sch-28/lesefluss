@@ -51,13 +51,15 @@ describe("BookStatsCard before the first sitting", () => {
 		expect(view.container.querySelector("[data-testid=book-reading-time]")?.textContent).toContain(
 			"1h 40mtotal",
 		);
-		expect(view.text()).toContain("RSVP 400: 1h 27m");
+		expect(view.text()).toContain("RSVP at 260 wpm: 1h 27m");
+		// The headline is the only place the time left appears at the starting speed.
+		expect(view.text().match(/1h 40m/g)).toHaveLength(1);
 		expect(view.text()).not.toContain("estimated");
 	});
 
 	it("moves time left and the finish day with the what-if speed", async () => {
 		view = await render(<BookStatsCard book={makeBook({ wordCount: 22_500 })} />);
-		expect(result()).toBe(`Left 1h 40m · Done ${formatDayKey(addDays(today(), 3))}`);
+		expect(result()).toBe(`Done ${formatDayKey(addDays(today(), 3))}`);
 		await pressOnSlider("End");
 		expect(view.container.querySelector("[data-testid=what-if-wpm]")?.textContent).toBe("1000 wpm");
 		expect(result()).toBe(`Left 23 min · Done ${formatDayKey(today())}`);
@@ -66,13 +68,13 @@ describe("BookStatsCard before the first sitting", () => {
 	it("projects the finish with a minute goal's daily minutes", async () => {
 		hooks.goal = { goal: { mode: "pace", dailyMinutes: 10 } };
 		view = await render(<BookStatsCard book={makeBook({ wordCount: 22_500 })} />);
-		expect(result()).toBe(`Left 1h 40m · Done ${formatDayKey(addDays(today(), 9))}`);
+		expect(result()).toBe(`Done ${formatDayKey(addDays(today(), 9))}`);
 	});
 
 	it("ignores minutes left on a goal that is no longer a pace goal", async () => {
 		hooks.goal = { goal: { mode: "deadline", dailyMinutes: 10 } };
 		view = await render(<BookStatsCard book={makeBook({ wordCount: 22_500 })} />);
-		expect(result()).toBe(`Left 1h 40m · Done ${formatDayKey(addDays(today(), 3))}`);
+		expect(result()).toBe(`Done ${formatDayKey(addDays(today(), 3))}`);
 	});
 
 	it("shows nothing for a book of unknown length", async () => {

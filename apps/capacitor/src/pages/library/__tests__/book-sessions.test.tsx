@@ -90,6 +90,12 @@ async function show() {
 	return view;
 }
 
+function confirmButton(label: string): HTMLElement {
+	const found = [...document.body.querySelectorAll("button")].find((b) => b.textContent === label);
+	if (!found) throw new Error(`no ${label} button`);
+	return found;
+}
+
 const rowButtons = (v: Rendered) => [
 	...v.container.querySelectorAll<HTMLElement>("li > button:first-child"),
 ];
@@ -117,22 +123,18 @@ describe("BookSessions", () => {
 		expect((await show()).text()).toBe("");
 	});
 
-	it("deletes a few with undo, warning about the streak only when no other book was read that day", async () => {
+	it("asks before Delete all even for a few, warning about the streak only when no other book was read that day, and deletes at once", async () => {
 		state.rows = [session("a", at(7, 9)), session("b", at(6, 9))];
 		state.all = [...state.rows, session("x", at(7, 12), "em")];
-		vi.useFakeTimers({ shouldAdvanceTime: true });
 		const v = await show();
 
 		await click(v.getButton("Delete all 2 sessions"));
 		await flush();
-		expect(state.toast).toHaveBeenCalledWith("2 sessions deleted · Streak may change", {
-			action: { label: "Undo", onClick: expect.any(Function) },
-			duration: UNDO_WINDOW_MS,
-		});
-		expect(v.text()).toBe("");
-		await act(async () => {
-			vi.advanceTimersByTime(UNDO_WINDOW_MS);
-		});
+		expect(state.toast).not.toHaveBeenCalled();
+		expect(document.body.textContent).toContain("Delete 2 sessions of Middlemarch?");
+		expect(document.body.textContent).toContain("Streak may change.");
+		await click(confirmButton("Delete 2"));
+		// No undo window: the stats and journey cards recount as soon as the rows are gone.
 		expect(state.mutateAsync).toHaveBeenCalledWith(["a", "b"]);
 
 		view?.unmount();
@@ -140,10 +142,11 @@ describe("BookSessions", () => {
 		state.all = [...state.rows, session("x", at(7, 12), "em")];
 		await click((await show()).getButton("Delete all 1 session"));
 		await flush();
-		expect(state.toast).toHaveBeenLastCalledWith("1 session deleted", expect.anything());
+		expect(document.body.textContent).toContain("Delete 1 session of Middlemarch?");
+		expect(document.body.textContent).not.toContain("Streak may change.");
 	});
 
-	it("queues one delete when tapped again while the streak check is still loading", async () => {
+	it("asks once when Delete all is tapped again while the streak check is still loading", async () => {
 		state.rows = [session("a", at(7, 9))];
 		state.all = state.rows;
 		const v = await show();
@@ -153,7 +156,8 @@ describe("BookSessions", () => {
 			button.click();
 		});
 		await flush();
-		expect(state.toast).toHaveBeenCalledTimes(1);
+		await click(confirmButton("Delete 1"));
+		expect(state.mutateAsync).toHaveBeenCalledTimes(1);
 	});
 
 	it("asks before deleting five or more, and deletes on confirm", async () => {
@@ -163,11 +167,7 @@ describe("BookSessions", () => {
 		await flush();
 		expect(state.toast).not.toHaveBeenCalled();
 		expect(document.body.textContent).toContain("Delete 6 sessions of Middlemarch?");
-		const confirm = [...document.body.querySelectorAll("button")].find(
-			(b) => b.textContent === "Delete 6",
-		);
-		if (!confirm) throw new Error("no confirm button");
-		await click(confirm);
+		await click(confirmButton("Delete 6"));
 		expect(state.mutateAsync).toHaveBeenCalledWith(["s0", "s1", "s2", "s3", "s4", "s5"]);
 	});
 

@@ -19,10 +19,9 @@ import { ChevronDown, Loader2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import { WpmPresetChips } from "../../components/rsvp-pickers";
+import { RsvpSpeedControl } from "../../components/rsvp-speed-control";
 import { RowLabel, SettingsRow } from "../../components/settings/settings-row";
 import { SettingsSection } from "../../components/settings/settings-section";
-import { SliderRow } from "../../components/settings/slider-row";
 import { StepperRow } from "../../components/settings/stepper-row";
 import { focalLetterColorFor, useTheme } from "../../contexts/theme-context";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
@@ -65,18 +64,14 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 	return (
 		<>
 			<SettingsSection title="Speed">
-				<SettingsRow stacked>
-					<WpmPresetChips value={settings.wpm} onChange={(wpm) => updateSetting("wpm", wpm)} />
+				<SettingsRow>
+					<RowLabel title="RSVP speed" />
+					<RsvpSpeedControl
+						wpm={settings.wpm}
+						onChange={(wpm) => updateSetting("wpm", wpm)}
+						className="ml-auto"
+					/>
 				</SettingsRow>
-				<SliderRow
-					label="Words per minute"
-					value={settings.wpm}
-					display={`${settings.wpm}`}
-					min={SETTING_CONSTRAINTS.WPM.min}
-					max={SETTING_CONSTRAINTS.WPM.max}
-					step={SETTING_CONSTRAINTS.WPM.step}
-					onChange={(wpm) => updateSetting("wpm", wpm)}
-				/>
 			</SettingsSection>
 
 			<SettingsSection title="Punctuation">
