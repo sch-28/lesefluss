@@ -11,22 +11,16 @@ import { DiscordIcon } from "~/components/icons/discord";
 import { GoogleIcon } from "~/components/icons/google";
 import { OldBrowserNotice, oldBrowserCheckScript } from "~/components/old-browser-notice";
 import { sendVerificationEmail, signIn, signUp } from "~/lib/auth-client";
+import { safeRedirectPath } from "~/lib/safe-redirect";
 import { useAuthSession } from "~/lib/session-context";
 import { seo } from "~/utils/seo";
 
-function isSafeRedirect(value: unknown): value is string {
-	if (typeof value !== "string") return false;
-	if (!value.startsWith("/") || value.startsWith("//")) return false;
-	// Avoid bouncing back to login (reload loop) or exposing auth endpoints as redirect targets.
-	if (value === "/login" || value.startsWith("/login/") || value.startsWith("/login?"))
-		return false;
-	if (value.startsWith("/api/")) return false;
-	return true;
-}
-
 export const Route = createFileRoute("/login/")({
-	validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
-		isSafeRedirect(search.redirect) ? { redirect: search.redirect } : {},
+	// The router merges the raw parent search under this result, so a rejected value must be
+	// overwritten with an explicit undefined rather than left out.
+	validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
+		redirect: safeRedirectPath(search.redirect),
+	}),
 	component: LoginPage,
 	head: () => ({
 		...seo({
