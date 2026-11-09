@@ -7,11 +7,11 @@ const appearance = vi.hoisted(() => ({
 	isBold: false,
 	textAlign: "left",
 	readingRuler: { isOn: false, lines: 1 },
-	lineSpacing: 1.5,
+	lineSpacing: 1.8,
 	margin: 16,
 	letterSpacing: 0,
 	wordSpacing: 0,
-	paragraphSpacing: 1,
+	paragraphSpacing: 1.1,
 	paginationStyle: "scroll",
 	isMotionReduced: false,
 	isEinkMode: false,
@@ -22,6 +22,7 @@ const appearance = vi.hoisted(() => ({
 	adjustWordSpacing: vi.fn(),
 	adjustParagraphSpacing: vi.fn(),
 	resetTextSpacing: vi.fn(),
+	applySpacingPreset: vi.fn(),
 	setFontFamily: vi.fn(),
 	setBold: vi.fn(),
 	setTextAlign: vi.fn(),
@@ -60,64 +61,77 @@ async function mount() {
 	return document.body;
 }
 
+function buttonByText(body: HTMLElement, text: string) {
+	const button = [...body.querySelectorAll<HTMLElement>("button")].find(
+		(b) => b.textContent === text,
+	);
+	if (!button) throw new Error(`no ${text} button`);
+	return button;
+}
+
 describe("AppearancePopover", () => {
-	it("uses the Settings › Reader labels and links to all settings", async () => {
+	it("holds five rows: theme, font and size, spacing, layout, more settings", async () => {
 		const body = await mount();
-		for (const label of [
-			"Text size",
-			"Line spacing",
-			"Letter spacing",
-			"Word spacing",
-			"Paragraph spacing",
-			"Margins",
-			"Bold text",
-			"Justify text",
-			"Reading ruler",
-		]) {
-			expect(body.textContent).toContain(label);
-		}
-		const all = [...body.querySelectorAll<HTMLElement>("button")].find(
-			(b) => b.textContent === "All settings",
+		const rows = [...body.querySelectorAll("[data-appearance-row]")].map((r) =>
+			r.getAttribute("data-appearance-row"),
 		);
-		if (!all) throw new Error("no All settings");
-		await click(all);
+		expect(rows).toEqual(["theme", "text", "spacing", "layout", "more"]);
+		expect(body.textContent).toContain("applies to the whole app");
+		for (const gone of ["Margins", "Bold text", "Justify text", "Reading ruler", "Word spacing"]) {
+			expect(body.textContent).not.toContain(gone);
+		}
+		await click(buttonByText(body, "More settings"));
 		expect(onOpenAllSettings).toHaveBeenCalledTimes(1);
 	});
 
-	it("changes and resets spacing through the Settings rows", async () => {
+	it("steps the text size by the setting's step", async () => {
 		const body = await mount();
-		const inc = body.querySelector<HTMLElement>('[aria-label="Increase Word spacing"]');
-		if (!inc) throw new Error("no word spacing stepper");
+		const inc = body.querySelector<HTMLElement>('[aria-label="Increase text size"]');
+		if (!inc) throw new Error("no text size stepper");
 		await click(inc);
-		expect(appearance.adjustWordSpacing).toHaveBeenCalledTimes(1);
-		const reset = [...body.querySelectorAll<HTMLElement>("button")].find(
-			(b) => b.textContent === "Reset spacing",
-		);
-		if (!reset) throw new Error("no Reset spacing");
-		await click(reset);
-		expect(appearance.resetTextSpacing).toHaveBeenCalledTimes(1);
+		expect(appearance.adjustFontSize).toHaveBeenCalledWith(expect.any(Number));
+		expect(appearance.adjustFontSize.mock.calls[0]?.[0]).toBeGreaterThan(0);
 	});
 
-	it("at the default spacing, offers every '-' and no Reset spacing", async () => {
-		const saved = appearance.paragraphSpacing;
-		appearance.paragraphSpacing = 1.1;
+	it("shows the matching spacing preset and applies another in one save", async () => {
+		const body = await mount();
+		expect(buttonByText(body, "Normal").getAttribute("data-state")).toBe("on");
+		await click(buttonByText(body, "Airy"));
+		expect(appearance.applySpacingPreset).toHaveBeenCalledWith("airy");
+	});
+
+	it("selects no preset once spacing was fine-tuned in Settings", async () => {
+		const saved = appearance.wordSpacing;
+		appearance.wordSpacing = 0.2;
 		try {
 			const body = await mount();
-			for (const label of ["Letter spacing", "Word spacing", "Paragraph spacing"]) {
-				const dec = body.querySelector(`[aria-label="Decrease ${label}"]`);
-				expect(dec?.getAttribute("aria-disabled")).toBe("false");
+			for (const label of ["Compact", "Normal", "Airy"]) {
+				expect(buttonByText(body, label).getAttribute("data-state")).toBe("off");
 			}
-			expect(body.textContent).not.toContain("Reset spacing");
+			expect(body.textContent).toContain("custom");
 		} finally {
-			appearance.paragraphSpacing = saved;
+			appearance.wordSpacing = saved;
 		}
 	});
 
-	it("turns justify on through the same switch as Settings", async () => {
+	it("switches between scroll and page", async () => {
 		const body = await mount();
-		const sw = body.querySelector<HTMLElement>("#ap-reader-justify");
-		if (!sw) throw new Error("no switch");
-		await click(sw);
-		expect(appearance.setTextAlign).toHaveBeenCalledWith("justify");
+		expect(buttonByText(body, "Scroll").getAttribute("data-state")).toBe("on");
+		await click(buttonByText(body, "Page"));
+		expect(appearance.setPaginationStyle).toHaveBeenCalledWith("page");
+	});
+
+	it("picks a font from the font list and returns to the rows", async () => {
+		const body = await mount();
+		const fontButton = body.querySelector<HTMLElement>('[aria-label^="Font: "]');
+		if (!fontButton) throw new Error("no font button");
+		await click(fontButton);
+		const list = body.querySelector('[data-testid="appearance-fonts"]');
+		expect(list).not.toBeNull();
+		const serif = list?.querySelectorAll<HTMLElement>("button[aria-pressed]")[1];
+		if (!serif) throw new Error("no second font");
+		await click(serif);
+		expect(appearance.setFontFamily).toHaveBeenCalledTimes(1);
+		expect(body.querySelector('[data-testid="appearance-rows"]')).not.toBeNull();
 	});
 });

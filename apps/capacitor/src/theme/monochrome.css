@@ -695,10 +695,12 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 
 /* ── RSVP controls (visible when paused) ── */
 
+/* Above the labelled corner pills, which are too wide to sit beside it on a phone. */
 .rsvp-controls {
 	position: absolute;
 	left: 50%;
-	bottom: 24px;
+	bottom: 80px;
+	max-width: calc(100% - 32px);
 	transform: translateX(-50%);
 	display: flex;
 	flex-direction: column;
@@ -711,6 +713,10 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
 	color: var(--reader-text);
 	z-index: 10;
+}
+
+.rsvp-controls:has(~ .rsvp-voice-button) {
+	bottom: 136px;
 }
 
 .rsvp-controls-row {
@@ -745,6 +751,7 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 
 .rsvp-wpm-stepper {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 6px;
 	padding-top: 4px;
@@ -937,7 +944,7 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	color: var(--reader-text);
 }
 
-/* ── RSVP dictionary button (paused, bottom-right) ── */
+/* ── RSVP corner buttons (paused): icon and label ── */
 
 .rsvp-dict-button,
 .rsvp-settings-button,
@@ -945,16 +952,18 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 .rsvp-sleep-button {
 	position: absolute;
 	bottom: 24px;
-	width: 44px;
+	min-width: 44px;
 	height: 44px;
-	border-radius: 50%;
+	padding: 0 14px 0 12px;
+	gap: 6px;
+	border-radius: 22px;
 	background: var(--reader-bg);
 	border: 1px solid var(--reader-progress-track, rgba(128, 128, 128, 0.25));
 	color: var(--reader-text);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 1.25rem;
+	font-size: 0.8125rem;
 	cursor: pointer;
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
 	z-index: 10;
@@ -1325,13 +1334,6 @@ html.eink .reading-ruler-band {
 
 /* ─── Appearance Popover ─────────────────────────────────────────────────── */
 
-.appearance-popover-content {
-	padding: 14px 12px;
-	display: flex;
-	flex-direction: column;
-	gap: 14px;
-}
-
 .ap-section {
 	display: flex;
 	flex-direction: column;
@@ -1388,23 +1390,6 @@ html.eink .reading-ruler-band {
 	color: var(--muted-foreground);
 	min-width: 36px;
 	text-align: right;
-}
-
-/* 44px targets; a selected item reads at a glance (bg-accent alone is under
- * 3:1 against its neighbours in the light and dark themes). */
-.appearance-popover-content [data-slot="toggle-group-item"] {
-	min-height: 44px;
-	/* Labels wrap rather than spill out of their button at a large font scale.
-	 * !important: the item's own utilities sit in a higher layer. */
-	height: auto !important;
-	white-space: normal !important;
-}
-
-/* !important: this file is in the legacy layer, under the item's own
- * shadow-none utility, and an important declaration reverses that order. */
-.appearance-popover-content [data-slot="toggle-group-item"][data-state="on"] {
-	box-shadow: inset 0 0 0 2px var(--primary) !important;
-	font-weight: 600 !important;
 }
 
 .ap-row-buttons {
@@ -2282,10 +2267,6 @@ body.dark .chapter-row:hover {
 	transition:
 		stroke-dasharray 700ms ease-out,
 		stroke 700ms ease-out;
-}
-
-.reader-goal-chip--met .reader-goal-ring {
-	stroke: var(--goal-met);
 }
 
 .rsvp-speed-chip--flash {

@@ -3,6 +3,7 @@ import { ToggleRow } from "../../../components/app-shell/toggle-row";
 import { ThemeCards } from "../../../components/appearance-pickers";
 import { useTheme } from "../../../contexts/theme-context";
 import { useAppearanceSettings } from "../../../hooks/use-appearance-settings";
+import { StepHeader } from "../step-header";
 
 const ThemeStep: React.FC = () => {
 	const { storedTheme, isEinkMode, setTheme } = useTheme();
@@ -10,10 +11,12 @@ const ThemeStep: React.FC = () => {
 
 	return (
 		<div>
-			<h2 className="font-semibold text-2xl tracking-tight">Pick a theme</h2>
-			<p className="mt-2 text-muted-foreground">Tap to preview — change any time in Settings.</p>
+			<StepHeader
+				title="Pick a theme"
+				description="Tap to preview. Change it any time in Settings."
+			/>
 
-			<div className="mt-8">
+			<div className="mt-6">
 				<ThemeCards value={storedTheme} onChange={setTheme} disabled={isEinkMode} />
 			</div>
 

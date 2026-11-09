@@ -140,6 +140,12 @@ describe("BookEditPage", () => {
 		expect(updateBook).not.toHaveBeenCalled();
 	});
 
+	it("keeps Save disabled until something changes", async () => {
+		expect(button("Save").hasAttribute("disabled")).toBe(true);
+		await type("book-title", "Golden Son");
+		expect(button("Save").hasAttribute("disabled")).toBe(false);
+	});
+
 	it("asks before discarding, and Keep editing stays on the page", async () => {
 		await type("book-title", "Golden Son");
 		expect(body()).toContain("Unsaved");

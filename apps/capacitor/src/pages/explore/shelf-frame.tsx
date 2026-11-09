@@ -26,6 +26,8 @@ type Props = {
 	onSeeAll?: () => void;
 	/** Extra header buttons, left of See all (e.g. shuffle). */
 	actions?: React.ReactNode;
+	/** Wraps the items into a grid in place of the strip; See all then reads Show less. */
+	isExpanded?: boolean;
 	/** Replaces the strip, e.g. a skeleton or an error. */
 	body?: React.ReactNode;
 	/** `<li>` items: the strip is a list. */
@@ -34,7 +36,15 @@ type Props = {
 };
 
 /** Titled horizontal strip with See all; arrows appear for pointer devices. */
-const ShelfFrame: React.FC<Props> = ({ title, onSeeAll, actions, body, children, testId }) => {
+const ShelfFrame: React.FC<Props> = ({
+	title,
+	onSeeAll,
+	isExpanded,
+	actions,
+	body,
+	children,
+	testId,
+}) => {
 	const stripRef = useRef<HTMLUListElement>(null);
 	const titleId = useId();
 	const hasFinePointer = useHasFinePointer();
@@ -59,7 +69,7 @@ const ShelfFrame: React.FC<Props> = ({ title, onSeeAll, actions, body, children,
 				</h2>
 				<div className="ml-auto flex shrink-0 items-center gap-1">
 					{actions}
-					{hasFinePointer && !body && (
+					{hasFinePointer && !body && !isExpanded && (
 						<>
 							<Button
 								variant="ghost"
@@ -80,9 +90,14 @@ const ShelfFrame: React.FC<Props> = ({ title, onSeeAll, actions, body, children,
 						</>
 					)}
 					{onSeeAll && (
-						<Button variant="ghost" size="sm" onClick={onSeeAll}>
-							See all
-							<ChevronRight />
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={onSeeAll}
+							aria-expanded={isExpanded === undefined ? undefined : isExpanded}
+						>
+							{isExpanded ? "Show less" : "See all"}
+							{!isExpanded && <ChevronRight />}
 						</Button>
 					)}
 				</div>
@@ -91,8 +106,12 @@ const ShelfFrame: React.FC<Props> = ({ title, onSeeAll, actions, body, children,
 				<ul
 					ref={stripRef}
 					aria-labelledby={titleId}
-					className="m-0 flex list-none gap-3 overflow-x-auto p-0 pb-2"
-					style={{ scrollSnapType: "x mandatory" }}
+					className={
+						isExpanded
+							? "m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-3 p-0 pb-2"
+							: "m-0 flex list-none gap-3 overflow-x-auto p-0 pb-2"
+					}
+					style={isExpanded ? undefined : { scrollSnapType: "x mandatory" }}
 				>
 					{children}
 				</ul>

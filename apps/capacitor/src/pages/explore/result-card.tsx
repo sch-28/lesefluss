@@ -2,7 +2,7 @@ import type React from "react";
 import CoverImage from "../../components/cover-image";
 import type { CatalogSearchResult } from "../../services/catalog/client";
 import { getCoverUrl } from "../../services/catalog/client";
-import { CoverLengthBadge, InLibraryBadge, QuickAddOverlay } from "./card-badges";
+import { CardMeta, QUICK_ADD_CLEARANCE, QuickAddBesideTitle } from "./card-badges";
 import type { LengthLabels } from "./length";
 
 type Props = {
@@ -12,7 +12,7 @@ type Props = {
 	/** Omit to hide quick add (in library, no EPUB, or not offered here). */
 	onQuickAdd?: () => void;
 	isAdding?: boolean;
-	/** From `describeLength`; its reading time sits in the cover's top-right corner. */
+	/** From `describeLength`; its reading time sits under the title. */
 	lengthLabels?: LengthLabels | null;
 };
 
@@ -39,10 +39,8 @@ const ResultCard: React.FC<Props> = ({
 			>
 				<div className="relative aspect-2/3 w-full overflow-hidden rounded-sm border border-border bg-muted">
 					<CoverImage src={cover} alt={result.title} />
-					{lengthLabels && <CoverLengthBadge labels={lengthLabels} />}
-					{isInLibrary && <InLibraryBadge className="absolute bottom-1.5 left-1.5" />}
 				</div>
-				<div className="px-0.5 pt-1">
+				<div className={`px-0.5 pt-1 ${onQuickAdd ? QUICK_ADD_CLEARANCE : ""}`}>
 					{/* A teaser under the cover: the full title is on the book page and in the name. */}
 					<div
 						data-clips-text
@@ -55,10 +53,11 @@ const ResultCard: React.FC<Props> = ({
 							{result.author}
 						</div>
 					)}
+					<CardMeta labels={lengthLabels} isInLibrary={isInLibrary} />
 				</div>
 			</button>
 			{onQuickAdd && (
-				<QuickAddOverlay title={result.title} isAdding={!!isAdding} onAdd={onQuickAdd} />
+				<QuickAddBesideTitle title={result.title} isAdding={!!isAdding} onAdd={onQuickAdd} />
 			)}
 		</div>
 	);

@@ -156,7 +156,7 @@ const EditBookForm: React.FC<{
 			saveLabel="Save"
 			onCancel={leave}
 			onSave={() => void save()}
-			canSave={form.values.title.trim().length > 0}
+			canSave={isDirty && form.values.title.trim().length > 0}
 			isSaving={isSaving}
 			isBusy={isSaving}
 		>

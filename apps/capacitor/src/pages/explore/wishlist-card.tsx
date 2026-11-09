@@ -5,7 +5,7 @@ import CoverImage from "../../components/cover-image";
 import { getCoverUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
 import type { WishlistItem } from "../../services/db/schema";
-import { InLibraryBadge, QuickAddOverlay } from "./card-badges";
+import { CardMeta, QUICK_ADD_CLEARANCE, QuickAddBesideTitle } from "./card-badges";
 import { useCatalogImport } from "./use-catalog-import";
 import { useWebNovelImport } from "./use-web-novel-import";
 import { useRemoveFromWishlist } from "./use-wishlist-action";
@@ -59,9 +59,8 @@ const WishlistCardFrame: React.FC<FrameProps> = ({
 						</div>
 					}
 				/>
-				{isInLibrary && <InLibraryBadge className="absolute bottom-1.5 left-1.5" />}
 			</div>
-			<div className="px-0.5 pt-1">
+			<div className={`px-0.5 pt-1 ${onImport ? QUICK_ADD_CLEARANCE : ""}`}>
 				<div
 					data-clips-text
 					className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
@@ -73,12 +72,13 @@ const WishlistCardFrame: React.FC<FrameProps> = ({
 						{item.author}
 					</div>
 				)}
+				<CardMeta isInLibrary={isInLibrary} />
 			</div>
 		</button>
 		<div className="pointer-events-none absolute inset-x-0 top-0 aspect-2/3">
 			<RemoveFromWishlistButton item={item} />
 		</div>
-		{onImport && <QuickAddOverlay title={item.title} isAdding={isImporting} onAdd={onImport} />}
+		{onImport && <QuickAddBesideTitle title={item.title} isAdding={isImporting} onAdd={onImport} />}
 	</div>
 );
 

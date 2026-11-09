@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { flush, type Rendered, render } from "../../../test/render";
+import { click, flush, type Rendered, render } from "../../../test/render";
 
 const getSimilarBooks = vi.hoisted(() => vi.fn());
 const searchCatalog = vi.hoisted(() => vi.fn());
@@ -91,6 +91,20 @@ describe("PersonalShelves", () => {
 		expect(view?.text()).toContain("More by authors you read");
 		expect(view?.text()).toContain("The Last Man");
 		expect(view?.container.querySelectorAll('[data-testid="catalog-card"]')).toHaveLength(2);
+	});
+
+	it("unrolls Because you read in place from its See all", async () => {
+		await renderShelves();
+		const shelf = view?.container.querySelector("section");
+		const seeAll = [...(shelf?.querySelectorAll("button") ?? [])].find((b) =>
+			b.textContent?.includes("See all"),
+		);
+		if (!shelf || !seeAll) throw new Error("no See all on the first shelf");
+		expect(shelf.textContent).toContain("Because you read Frankenstein");
+		await click(seeAll);
+		expect(shelf.querySelector("ul")?.className).toContain("grid");
+		expect(seeAll.textContent).toBe("Show less");
+		expect(seeAll.getAttribute("aria-expanded")).toBe("true");
 	});
 
 	it("works without an account and never asks for the feed", async () => {

@@ -345,10 +345,18 @@ export function liveToday(
 	};
 }
 
-/** Today's minutes against the need, as formatGoalProgress shows them on every other screen. */
+/**
+ * A minute goal's figure in minutes, as formatGoalProgress shows them on every
+ * other screen; a percent goal's in percent of the book. A met percent goal
+ * shows its target rather than overshooting it.
+ */
 export function todayFigure(today: LiveToday): { done: string; target: string } {
-	const { read, needed } = goalProgressMinutes(today);
-	return { done: String(read), target: `${needed} min` };
+	if (today.targetMinutes != null) {
+		const { read, needed } = goalProgressMinutes(today);
+		return { done: String(read), target: `${needed} min` };
+	}
+	const done = today.isMet ? today.targetPercent : today.progressPercent;
+	return { done: percentLabel(done), target: `${percentLabel(today.targetPercent)}%` };
 }
 
 /** Days met, today included once the live view sees it met, before the plan does. */

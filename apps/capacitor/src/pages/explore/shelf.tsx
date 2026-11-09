@@ -1,6 +1,7 @@
 import { Button } from "@lesefluss/ui/button";
 import { Shuffle } from "lucide-react";
 import type React from "react";
+import { useState } from "react";
 import type { CatalogSearchResult } from "../../services/catalog/client";
 import { ErrorState } from "../_shared/load-states";
 import CatalogResultCard from "./catalog-result-card";
@@ -11,6 +12,7 @@ type Props = {
 	title: string;
 	books: CatalogSearchResult[];
 	onOpen: (result: CatalogSearchResult) => void;
+	/** Opens the full list elsewhere; without it See all unrolls the shelf in place. */
 	onSeeAll?: () => void;
 	onShuffle?: () => void;
 	isShuffling?: boolean;
@@ -32,6 +34,7 @@ const Shelf: React.FC<Props> = ({
 	onRetry,
 	emptyLabel,
 }) => {
+	const [isExpanded, setExpanded] = useState(false);
 	const body = isLoading ? (
 		<ShelfStripSkeleton />
 	) : error ? (
@@ -43,7 +46,8 @@ const Shelf: React.FC<Props> = ({
 	return (
 		<ShelfFrame
 			title={title}
-			onSeeAll={onSeeAll}
+			onSeeAll={onSeeAll ?? (body ? undefined : () => setExpanded(!isExpanded))}
+			isExpanded={onSeeAll ? undefined : isExpanded}
 			body={body}
 			actions={
 				onShuffle && (
@@ -60,7 +64,7 @@ const Shelf: React.FC<Props> = ({
 			}
 		>
 			{books.map((b) => (
-				<li key={b.id} className="shrink-0" style={SHELF_ITEM_STYLE}>
+				<li key={b.id} className="shrink-0" style={isExpanded ? undefined : SHELF_ITEM_STYLE}>
 					<CatalogResultCard result={b} onOpen={() => onOpen(b)} />
 				</li>
 			))}

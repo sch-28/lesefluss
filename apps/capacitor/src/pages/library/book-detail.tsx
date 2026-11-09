@@ -5,7 +5,6 @@ import {
 	bookStatus,
 	isSyncEligible,
 	parseBookTags,
-	readingProgress,
 	wordPos,
 } from "@lesefluss/core";
 import { RatingStars } from "@lesefluss/ui/rating-stars";
@@ -27,7 +26,6 @@ import { formatSeriesNumber } from "../../components/collections/series-numberin
 import { DeviceBadge } from "../../components/device-sync";
 import { ReservedCard } from "../../components/reserved-card";
 import { ShareCardSheet } from "../../components/share-card/share-card-sheet";
-import { SpeedChip } from "../../components/speed-chip/speed-chip";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useBookDeviceState } from "../../contexts/device-library-context";
 import { useSyncContext } from "../../contexts/sync-context";
@@ -55,6 +53,7 @@ import {
 	useBookBuddyRead,
 } from "./book-buddy-read";
 import { BookChapters } from "./book-chapters";
+import { BookDangerZone } from "./book-danger-zone";
 import { BookFileCard } from "./book-file-card";
 import { BookHighlights } from "./book-highlights";
 import { BookJourney } from "./book-journey";
@@ -218,7 +217,6 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		: book.catalogId
 			? getCoverUrl(book.catalogId)
 			: null;
-	const progress = readingProgress(book);
 	const externalUrl = book.sourceUrl
 		? book.sourceUrl
 		: book.catalogId
@@ -299,7 +297,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				onClick={() =>
 					router.navigate({ to: "/tabs/library", search: { collection: series.collectionId } })
 				}
-				className="inline-flex items-center gap-1 text-foreground underline-offset-2 hover:underline"
+				className="inline-flex items-center gap-1 text-primary underline underline-offset-2"
 			>
 				<Layers className="size-3" />
 				{series.index === null ? series.name : `${series.name} ${formatSeriesNumber(series.index)}`}
@@ -324,25 +322,6 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 		) : null,
 		book.rating !== null ? <RatingStars key="rating" rating={book.rating} /> : null,
 		pages !== null ? `${pages.toLocaleString()} pages` : null,
-		chapterCount > 0 ? `${chapterCount} chapters` : null,
-		`${progress}% read`,
-		speedModel ? (
-			<SpeedChip
-				key="speed"
-				bare
-				book={{
-					id: book.id,
-					wordsLeft:
-						book.finishedAt === null && book.wordCount > 0
-							? book.wordCount - book.wordPosition
-							: null,
-				}}
-			/>
-		) : null,
-		book.fileFormat.toUpperCase(),
-		highlights.length > 0
-			? `${highlights.length} highlight${highlights.length === 1 ? "" : "s"}`
-			: null,
 		deviceState.isReachable && deviceState.isOnDevice ? (
 			<DeviceBadge key="device" bookId={book.id} style="text" />
 		) : null,
@@ -410,8 +389,8 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					</div>
 				)}
 				{book.review && (
-					<section className="rounded-lg border border-border bg-card p-4 text-card-foreground">
-						<h2 className="m-0 mb-2 font-semibold text-base">Your notes</h2>
+					<section className="book-detail-card">
+						<h2 className="book-detail-section-title">Your notes</h2>
 						<p className="m-0 whitespace-pre-wrap text-foreground/80 text-sm leading-relaxed">
 							{book.review}
 						</p>
@@ -432,6 +411,11 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				/>
 				<BookHighlights highlights={highlights} />
 				<BookSessions book={book} />
+				<BookDangerZone
+					book={book}
+					onResetProgress={() => bookActions.requestReset(book)}
+					onDeleteBook={() => bookActions.requestDelete(book)}
+				/>
 			</DetailShell>
 
 			{!IS_WEB && (

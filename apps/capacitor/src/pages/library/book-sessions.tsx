@@ -1,5 +1,4 @@
 import { isSkimmedSitting, skimCutoffs } from "@lesefluss/core";
-import { Button } from "@lesefluss/ui/button";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { queryHooks } from "../../services/db/hooks";
@@ -13,7 +12,7 @@ import {
 	useSessionDelete,
 	useSessionSelection,
 } from "./stats/session-list";
-import { filterSessions, groupByDay, shortSessionsOf, takeSessions } from "./stats/sessions-model";
+import { filterSessions, groupByDay, takeSessions } from "./stats/sessions-model";
 
 /** The latest sittings the book page lists; the rest are a link away in Stats › Sessions. */
 export const BOOK_SESSIONS_SHOWN = 10;
@@ -46,12 +45,8 @@ export function BookSessions({ book }: { book: Book }) {
 
 	if (rows.length === 0) return dialog;
 
-	const noun = rows.length === 1 ? "session" : "sessions";
 	return (
-		<section
-			aria-label="Sessions"
-			className="mt-6 rounded-lg border border-border bg-card p-4 text-card-foreground"
-		>
+		<section aria-label="Sessions" className="book-detail-card mt-4">
 			{selected ? (
 				<SelectionHeader
 					selected={selected}
@@ -61,18 +56,9 @@ export function BookSessions({ book }: { book: Book }) {
 					className="-mx-2 -my-1"
 				/>
 			) : (
-				<div className="flex items-baseline justify-between gap-2">
-					<h2 className="m-0 font-semibold text-base">
-						Sessions <span className="text-muted-foreground">· {rows.length}</span>
-					</h2>
-					<Link
-						to="/tabs/stats"
-						search={{ tab: "sessions", book: book.id }}
-						className="text-primary text-sm"
-					>
-						{rows.length > BOOK_SESSIONS_SHOWN ? `See all ${rows.length}` : "In Stats"}
-					</Link>
-				</div>
+				<h2 className="book-detail-section-title">
+					Sessions <span className="font-normal opacity-50">· {rows.length}</span>
+				</h2>
 			)}
 
 			<SessionDays
@@ -89,20 +75,14 @@ export function BookSessions({ book }: { book: Book }) {
 				}}
 			/>
 
-			{!selected && (
-				<Button
-					variant="outline"
-					size="lg"
-					className="mt-3 text-destructive hover:text-destructive"
-					onClick={() =>
-						requestDelete(rows, {
-							confirm: true,
-							alongside: shortSessionsOf(sessionsQuery.data ?? [], book.id, hidden),
-						})
-					}
+			{!selected && rows.length > BOOK_SESSIONS_SHOWN && (
+				<Link
+					to="/tabs/stats"
+					search={{ tab: "sessions", book: book.id, from: "book" }}
+					className="self-start text-primary text-sm underline underline-offset-4"
 				>
-					Delete all {rows.length} {noun}
-				</Button>
+					All {rows.length} sessions in Stats
+				</Link>
 			)}
 
 			{selected && (

@@ -94,7 +94,9 @@ export function GoalCard({ book }: { book: Book }) {
 								<span className="font-normal text-xl opacity-60"> / {figure.target}</span>
 							</div>
 							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
-								{`today · ${percentLabel(today.progressPercent)} of ${percentLabel(today.targetPercent)}%`}
+								{today.targetMinutes != null
+									? `today · ${percentLabel(today.progressPercent)}%`
+									: "today"}
 							</div>
 						</div>
 						<div className="text-right">

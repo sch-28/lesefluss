@@ -1,9 +1,7 @@
-import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type Rendered, render } from "../../../test/render";
 import RsvpControls from "../rsvp-controls";
-import { TTS_WPM_RANGE } from "../wpm";
 
 let view: Rendered | undefined;
 afterEach(() => {
@@ -33,22 +31,34 @@ describe("RsvpControls", () => {
 
 	it("shows the audio state and turns it on or off", async () => {
 		const onToggle = vi.fn();
-		view = await render(controls({ audio: { isOn: true, onToggle } }));
+		view = await render(controls({ audio: { isOn: true, onToggle, voiceWpm: 240 } }));
 		const toggle = view.getButton("Listen");
 		expect(toggle.getAttribute("aria-pressed")).toBe("true");
 		act(() => toggle.click());
 		expect(onToggle).toHaveBeenCalledOnce();
 	});
 
-	it("steps the read-aloud speed within its own limits", async () => {
-		const onWpmChange = vi.fn();
+	it("shows the RSVP speed with Listen on, the voice speed beside Listen", async () => {
 		view = await render(
-			controls({ wpm: TTS_WPM_RANGE.max - 5, wpmRange: TTS_WPM_RANGE, onWpmChange }),
+			controls({ wpm: 300, audio: { isOn: true, onToggle: noop, voiceWpm: 240 } }),
 		);
-		act(() => view?.getButton("Increase speed").click());
-		expect(onWpmChange).toHaveBeenLastCalledWith(SETTING_CONSTRAINTS.TTS_WPM.max);
-		act(() => view?.getButton("Decrease speed").click());
-		expect(onWpmChange).toHaveBeenLastCalledWith(TTS_WPM_RANGE.max - 5 - TTS_WPM_RANGE.step);
+		expect(view.container.querySelector('[data-testid="rsvp-wpm-value"]')?.textContent).toBe("300");
+		expect(view.container.querySelector('[data-testid="rsvp-voice-wpm"]')?.textContent).toBe(
+			"Voice 240 wpm",
+		);
+	});
+
+	it("gives every button a 44px target", async () => {
+		view = await render(controls({ audio: { isOn: false, onToggle: noop, voiceWpm: 240 } }));
+		for (const name of [
+			"Back to sentence start",
+			"Back one word",
+			"Forward one word",
+			"Forward to next sentence",
+		]) {
+			expect(view.getButton(name).className).toContain("size-11");
+		}
+		expect(view.getButton("Listen").className).toContain("min-h-11");
 	});
 
 	it("steps the RSVP speed by 25 within the RSVP limits by default", async () => {

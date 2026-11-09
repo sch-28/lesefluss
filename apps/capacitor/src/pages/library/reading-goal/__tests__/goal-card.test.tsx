@@ -2,7 +2,6 @@ import { wordPos } from "@lesefluss/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReadingGoal } from "../../../../services/db/schema";
 import type { ReadingGoalPlan } from "../../../../services/stats/reading-goal";
-import { formatGoalProgress } from "../../../../services/stats/today-goal-summary";
 import { makeBook } from "../../../../test/book-fixture";
 import { type Rendered, render } from "../../../../test/render";
 import { at, makeGoal, makePlan, session } from "./goal-fixtures";
@@ -58,8 +57,9 @@ describe("GoalCard", () => {
 		view = await render(<GoalCard book={makeBook({ wordPosition: wordPos(150) })} />);
 		const text = view.text();
 		expect(text).toContain("Goal · by");
-		expect(text).toMatch(/\d+ \/ \d+ min/);
-		expect(text).toContain("today · 5.0 of 11.3%");
+		expect(text).toMatch(/5\.0 \/ 11\.3%/);
+		expect(text).toContain("today");
+		expect(text).not.toMatch(/\d+ of \d+ min/);
 		expect(text).toContain("−5.0%");
 		expect(text).toContain("vs plan · −0.5 d");
 		expect(text).toContain("1 d daydays met");
@@ -105,13 +105,13 @@ describe("GoalChip", () => {
 		);
 		const chip = view.container.querySelector('[data-testid="goal-chip"]');
 		expect(chip?.getAttribute("data-met")).toBe("false");
-		const today = liveToday(plan, 40, 1000);
-		expect(chip?.textContent).toBe(formatGoalProgress(today).replace(" of ", "/ "));
+		expect(chip?.textContent).toBe("Today 4.0 of 10.0%");
 
 		await view.rerender(
 			<GoalChip plan={plan} today={liveToday(plan, 120, 1000)} onOpenDetails={() => {}} />,
 		);
 		expect(chip?.getAttribute("data-met")).toBe("true");
-		expect(chip?.getAttribute("aria-label")).toMatch(/^Today's target met: \d+ min$/);
+		expect(chip?.getAttribute("aria-label")).toBe("Today's target met: 10.0%");
+		expect(chip?.textContent).toBe("Today 10.0 of 10.0%");
 	});
 });

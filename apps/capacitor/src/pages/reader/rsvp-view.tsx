@@ -544,31 +544,32 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 						{!isShowingPlayback && (
 							<>
 								<RsvpControls
-									wpm={speed.wpm}
-									wpmRange={speed.range}
-									audio={audio && { isOn: audio.isOn, onToggle: audio.onToggleAudio }}
+									wpm={settings.wpm}
+									audio={
+										audio && {
+											isOn: audio.isOn,
+											onToggle: audio.onToggleAudio,
+											voiceWpm: audio.wpm,
+										}
+									}
 									onBackSentence={backSentence}
 									onBackWord={backWord}
 									onPlayPause={voice ? voice.onTogglePlay : togglePlayPause}
 									onForwardWord={forwardWord}
 									onForwardSentence={forwardSentence}
-									onWpmChange={speed.onChange}
+									onWpmChange={changeWpm}
 								/>
-								<button
-									type="button"
-									className="rsvp-dict-button"
-									onClick={handleDictClick}
-									aria-label="Dictionary lookup"
-								>
+								<button type="button" className="rsvp-dict-button" onClick={handleDictClick}>
 									<BookOpen className="size-5" />
+									<span>Look up</span>
 								</button>
 								<button
 									type="button"
 									className="rsvp-settings-button"
 									onClick={handleSettingsClick}
-									aria-label="RSVP settings"
 								>
 									<Settings className="size-5" />
+									<span>RSVP settings</span>
 								</button>
 								{voice && (
 									<>
@@ -579,9 +580,9 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 												e.stopPropagation();
 												voice.onOpenVoice();
 											}}
-											aria-label="Voice"
 										>
 											<AudioLines className="size-5" />
+											<span>Voice</span>
 										</button>
 										<button
 											type="button"
@@ -594,10 +595,10 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 												e.stopPropagation();
 												voice.onOpenSleepTimer();
 											}}
-											aria-label="Sleep timer"
 											aria-pressed={voice.isSleepTimerOn}
 										>
 											<Moon className="size-5" />
+											<span>Sleep timer</span>
 										</button>
 									</>
 								)}

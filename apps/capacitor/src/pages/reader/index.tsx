@@ -29,12 +29,15 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@lesefluss/ui/dropdown-menu";
+import { IconButton } from "@lesefluss/ui/icon-button";
 import { usePrefersReducedMotion } from "@lesefluss/ui/use-prefers-reduced-motion";
 import { cn } from "@lesefluss/ui/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import {
 	Bookmark,
+	BookOpenText,
+	BookText,
 	ChevronLeft,
 	ChevronRight,
 	ExternalLink,
@@ -44,13 +47,11 @@ import {
 	Maximize,
 	Minimize,
 	MoreVertical,
-	NotebookText,
 	Pause,
 	PictureInPicture,
 	Search,
-	Type,
+	Settings2,
 	Zap,
-	ZapOff,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -119,7 +120,6 @@ import {
 } from "../../test-hooks/reader";
 import { openLink } from "../../utils/open-link";
 import { formatReadingTime } from "../../utils/reading-time";
-import { BookActionsMenuItems } from "../library/book-actions/book-actions-menu-items";
 import { useBookActions } from "../library/book-actions/use-book-actions";
 import { liveToday } from "../library/reading-goal/goal-model";
 import { closeMini, isMiniAvailable, openMini } from "../mini/open-mini";
@@ -149,6 +149,7 @@ import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
 import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
 import { GoalChip } from "./goal-chip";
+import { isReaderHeaderNarrow } from "./header-width";
 import { hyphenationLang } from "./hyphenation-lang";
 import { useLiveReading } from "./live-board";
 import { LiveWpm } from "./live-wpm";
@@ -238,7 +239,6 @@ type ReadAloudHandle = Pick<
 };
 
 // Touch-sized rows: the shared menu item is ~28px tall, too small to hit reliably on a phone.
-const NARROW_HEADER_REM = 28;
 const MENU_ITEM_CLASS = "min-h-12 gap-3 px-3 text-base [&_svg:not([class*='size-'])]:size-5";
 // ─── Main page ───────────────────────────────────────────────────────────────
 
@@ -248,10 +248,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const { isSyncing, isLoggedIn, syncNow } = useSyncContext();
 	const qc = useQueryClient();
 	const history = useRouter().history;
-	const bookActions = useBookActions({
-		surface: "reader",
-		onDeleted: () => history.push("/tabs/library"),
-	});
+	const bookActions = useBookActions({ surface: "reader" });
 
 	// ── Data queries ──────────────────────────────────────────────────────
 	const { data: book, isPending: bookPending } = queryHooks.useBook(id);
@@ -1519,7 +1516,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		}
 	};
 	const [appearanceOpen, setAppearanceOpen] = useState(false);
-	const openAppearanceOnMenuCloseRef = useRef(false);
 
 	const discussionTicks = useMemo((): DiscussionTick[] => {
 		if (!discussionItems?.length || totalWordCount <= 0) return [];
@@ -2271,10 +2267,11 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const headerRef = useRef<HTMLElement>(null);
 	const headerWidth = useElementWidth(headerRef);
 	// In rem, so large system text on a phone moves Listen, Mini and Bookmark into the menu and the title stays readable.
-	const isHeaderNarrow =
-		headerWidth > 0 &&
-		headerWidth <
-			NARROW_HEADER_REM * Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+	const isHeaderNarrow = isReaderHeaderNarrow({
+		widthPx: headerWidth,
+		remPx: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+		hasSeriesNav: book?.seriesId != null,
+	});
 
 	// ── Keyboard shortcuts ────────────────────────────────────────────────
 	useKeyboardShortcuts({
@@ -2741,15 +2738,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					ref={headerRef}
 				>
 					<div className="flex h-12 items-center gap-0.5 px-1">
-						<button
-							type="button"
-							onClick={() => history.back()}
-							aria-label="Back"
-							title="Back"
-							className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-						>
-							<ChevronLeft className="size-5" />
-						</button>
+						<IconButton aria-label="Back" title="Back" onClick={() => history.back()}>
+							<ChevronLeft />
+						</IconButton>
 						{book.seriesId != null && (
 							<>
 								<Button
@@ -2777,18 +2768,29 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						<h1 className="m-0 flex-1 truncate px-1 font-semibold text-base leading-none">
 							{book.title}
 						</h1>
-						{goalPlan && goalToday && (
-							<GoalChip
-								plan={goalPlan}
-								today={goalToday}
-								onOpenDetails={() => history.push(`/tabs/library/book/${book.id}`)}
-							/>
-						)}
+						<AppearancePopover
+							open={appearanceOpen}
+							onOpenChange={setAppearanceOpen}
+							onOpenAllSettings={() => {
+								setAppearanceOpen(false);
+								history.push("/tabs/settings/reader");
+							}}
+							anchor={
+								<IconButton
+									aria-label="Appearance"
+									title="Appearance"
+									aria-expanded={appearanceOpen}
+									onClick={() => setAppearanceOpen((o) => !o)}
+								>
+									<span aria-hidden className="font-semibold text-base leading-none">
+										Aa
+									</span>
+								</IconButton>
+							}
+						/>
 						{/* RSVP has its own Listen in its controls. */}
 						{IS_READ_ALOUD_SUPPORTED && !isHeaderNarrow && readerMode !== "rsvp" && (
-							<Button
-								variant="ghost"
-								size="icon"
+							<IconButton
 								onClick={readAloud.toggle}
 								disabled={!wordIndex}
 								aria-label={readAloud.status === "playing" ? "Pause listening" : "Listen"}
@@ -2799,11 +2801,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								className={isReadAloudActive ? "text-primary" : undefined}
 							>
 								{readAloud.status === "playing" ? <Pause /> : <Headphones />}
-							</Button>
+							</IconButton>
 						)}
-						<Button
-							variant="ghost"
-							size="icon"
+						<IconButton
 							onClick={handleRsvpToggle}
 							disabled={!content}
 							aria-label={
@@ -2815,22 +2815,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							)}
 							className={readerMode === "rsvp" ? "text-primary" : undefined}
 						>
-							{readerMode === "rsvp" ? <ZapOff /> : <Zap />}
-						</Button>
-						{isMiniAvailable() && !isHeaderNarrow && (
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={openMiniWindow}
-								disabled={!content}
-								aria-label="Quick RSVP"
-								title="Quick RSVP"
-								aria-pressed={mini.isAttached}
-								className={mini.isAttached ? "text-primary" : undefined}
-							>
-								<PictureInPicture />
-							</Button>
-						)}
+							{readerMode === "rsvp" ? <BookOpenText /> : <Zap />}
+						</IconButton>
 						{!isHeaderNarrow && (
 							<BookmarkRibbon
 								isOnScreen={readerBookmarks.isOnScreen}
@@ -2838,16 +2824,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								onToggle={readerBookmarks.toggle}
 							/>
 						)}
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={() => openAnnotations()}
-							disabled={!content}
-							aria-label="Contents and annotations"
-							title="Contents and annotations"
-						>
-							<NotebookText />
-						</Button>
 						{fullscreen.isFullscreen && (
 							<Button variant="outline" size="sm" onClick={fullscreen.exit} className="mx-1 gap-2">
 								Leave fullscreen
@@ -2855,38 +2831,23 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							</Button>
 						)}
 						<DropdownMenu>
-							<AppearancePopover
-								open={appearanceOpen}
-								onOpenChange={setAppearanceOpen}
-								onOpenAllSettings={() => {
-									setAppearanceOpen(false);
-									history.push("/tabs/settings/reader");
-								}}
-								anchor={
-									<span className="inline-flex">
-										<DropdownMenuTrigger asChild>
-											<Button variant="ghost" size="icon">
-												<MoreVertical />
-												{/* Text, not aria-label: Android reads a menu button's text and drops its
-											    aria-label, so TalkBack found it unnamed (TASK-205.13). */}
-												<span className="sr-only">More actions</span>
-											</Button>
-										</DropdownMenuTrigger>
-									</span>
-								}
-							/>
-							<DropdownMenuContent
-								align="end"
-								className="w-64 p-1.5"
-								// Opened once the menu has fully closed: earlier, the menu's own
-								// focus moves while closing read as the popover losing focus.
-								onCloseAutoFocus={(e) => {
-									if (!openAppearanceOnMenuCloseRef.current) return;
-									openAppearanceOnMenuCloseRef.current = false;
-									e.preventDefault();
-									setAppearanceOpen(true);
-								}}
-							>
+							<DropdownMenuTrigger asChild>
+								<IconButton aria-label="More actions" title="More actions">
+									<MoreVertical />
+									{/* Text, not aria-label alone: Android reads a menu button's text and drops its
+									    aria-label, so TalkBack found it unnamed (TASK-205.13). */}
+									<span className="sr-only">More actions</span>
+								</IconButton>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-64 p-1.5">
+								<DropdownMenuItem
+									className={MENU_ITEM_CLASS}
+									onSelect={() => openAnnotations(chapters.length > 0)}
+									disabled={!content}
+								>
+									<ListTree />
+									<span>Contents and bookmarks</span>
+								</DropdownMenuItem>
 								<DropdownMenuItem
 									className={MENU_ITEM_CLASS}
 									onSelect={() => setSearchOpen(true)}
@@ -2895,16 +2856,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 									<Search />
 									<span>Search in book</span>
 								</DropdownMenuItem>
-								{chapters.length > 0 && (
-									<DropdownMenuItem
-										className={MENU_ITEM_CLASS}
-										onSelect={() => openAnnotations(true)}
-										disabled={!content}
-									>
-										<ListTree />
-										<span>Contents and annotations</span>
-									</DropdownMenuItem>
-								)}
 								{isHeaderNarrow && (
 									<DropdownMenuItem
 										className={MENU_ITEM_CLASS}
@@ -2918,16 +2869,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 										<MenuKey commandId="reader.bookmark" />
 									</DropdownMenuItem>
 								)}
-								{isHeaderNarrow && isMiniAvailable() && (
-									<DropdownMenuItem
-										className={MENU_ITEM_CLASS}
-										onSelect={openMiniWindow}
-										disabled={!content}
-									>
-										<PictureInPicture />
-										<span>Quick RSVP</span>
-									</DropdownMenuItem>
-								)}
 								{isHeaderNarrow && IS_READ_ALOUD_SUPPORTED && readerMode !== "rsvp" && (
 									<DropdownMenuItem
 										className={MENU_ITEM_CLASS}
@@ -2939,15 +2880,16 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 										<MenuKey commandId="listen.toggle" />
 									</DropdownMenuItem>
 								)}
-								<DropdownMenuItem
-									className={MENU_ITEM_CLASS}
-									onSelect={() => {
-										openAppearanceOnMenuCloseRef.current = true;
-									}}
-								>
-									<Type />
-									<span>Appearance</span>
-								</DropdownMenuItem>
+								{isMiniAvailable() && (
+									<DropdownMenuItem
+										className={MENU_ITEM_CLASS}
+										onSelect={openMiniWindow}
+										disabled={!content}
+									>
+										<PictureInPicture />
+										<span>{mini.isAttached ? "Quick RSVP · on" : "Quick RSVP"}</span>
+									</DropdownMenuItem>
+								)}
 								{isFullscreenSupported() && (
 									<DropdownMenuItem className={MENU_ITEM_CLASS} onSelect={fullscreen.toggle}>
 										{fullscreen.isFullscreen ? <Minimize /> : <Maximize />}
@@ -2975,11 +2917,21 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 										<span>Open on {series ? providerLabel(series.provider) : "website"}</span>
 									</DropdownMenuItem>
 								)}
+								<DropdownMenuItem
+									className={MENU_ITEM_CLASS}
+									onSelect={() => history.push(`/tabs/library/book/${book.id}`)}
+								>
+									<BookText />
+									<span>Book details</span>
+								</DropdownMenuItem>
 								<DropdownMenuSeparator />
-								<BookActionsMenuItems
-									entries={bookActions.entriesFor(book)}
-									itemClassName={MENU_ITEM_CLASS}
-								/>
+								<DropdownMenuItem
+									className={MENU_ITEM_CLASS}
+									onSelect={() => bookActions.open(book)}
+								>
+									<Settings2 />
+									<span>Manage book…</span>
+								</DropdownMenuItem>
 							</DropdownMenuContent>
 						</DropdownMenu>
 						{bookActions.overlays}
@@ -3214,6 +3166,16 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 										<>
 											{" · "}
 											<span className="reader-buddy-live-dot" /> {readingNowCount} reading
+										</>
+									)}
+									{goalPlan && goalToday && (
+										<>
+											{" · "}
+											<GoalChip
+												plan={goalPlan}
+												today={goalToday}
+												onOpenDetails={() => history.push(`/tabs/library/book/${book.id}`)}
+											/>
 										</>
 									)}
 								</span>

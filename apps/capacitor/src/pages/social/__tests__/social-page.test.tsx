@@ -185,6 +185,10 @@ describe("SocialPage", () => {
 		).not.toBeNull();
 		expect(view.text()).toContain("@dee");
 		expect(view.container.querySelector('a[aria-label="Inbox, 3 unread"]')).not.toBeNull();
+		// One way to invite, and progress as a bar rather than a ring that reads as a spinner.
+		expect(view.container.querySelectorAll('a[href="/tabs/social/invite-link"]')).toHaveLength(1);
+		expect(view.text()).toContain("Invite a friend");
+		expect(view.container.querySelector('[style*="conic-gradient"]')).toBeNull();
 	});
 
 	it("shows the trailer before the handle form to someone without a handle", async () => {

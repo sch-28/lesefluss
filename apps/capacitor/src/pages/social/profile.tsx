@@ -166,7 +166,7 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 			{view.sections.currentlyReading && (
 				<SocialSection title="Currently reading">
 					{view.sections.currentlyReading.length === 0 ? (
-						<p className="m-0 px-1 text-muted-foreground text-sm">Nothing in progress right now.</p>
+						<p className="m-0 text-muted-foreground text-sm">Nothing in progress right now.</p>
 					) : (
 						<CoverShelf
 							items={view.sections.currentlyReading.map((book) => ({
@@ -185,7 +185,7 @@ function ProfileContent({ view, isPreview }: { view: ProfileView; isPreview: boo
 			{view.sections.finished && (
 				<SocialSection title="Finished">
 					{view.sections.finished.length === 0 ? (
-						<p className="m-0 px-1 text-muted-foreground text-sm">No finished books yet.</p>
+						<p className="m-0 text-muted-foreground text-sm">No finished books yet.</p>
 					) : (
 						<CoverShelf
 							items={view.sections.finished.map((book) => ({

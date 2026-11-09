@@ -22,6 +22,7 @@ export function SegmentedControl<T extends string>({
 	options,
 	className,
 	itemClassName,
+	disabled = false,
 	"aria-label": ariaLabel,
 	...rest
 }: {
@@ -31,6 +32,7 @@ export function SegmentedControl<T extends string>({
 	"aria-label": string;
 	className?: string;
 	itemClassName?: string;
+	disabled?: boolean;
 	"data-testid"?: string;
 }) {
 	return (
@@ -42,6 +44,7 @@ export function SegmentedControl<T extends string>({
 				if (option) onValueChange(option.value);
 			}}
 			aria-label={ariaLabel}
+			disabled={disabled}
 			data-slot="segmented-control"
 			className={cn("flex w-full items-stretch gap-0.5 rounded-[10px] bg-muted p-[3px]", className)}
 			{...rest}

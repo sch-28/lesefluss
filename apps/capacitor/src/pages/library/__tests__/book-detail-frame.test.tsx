@@ -4,6 +4,7 @@ import { flush, type Rendered, render } from "../../../test/render";
 
 const state = vi.hoisted(() => ({ isReady: false }));
 const book = vi.hoisted(() => ({ current: null as unknown }));
+const series = vi.hoisted(() => ({ current: null as unknown }));
 
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: new Proxy(
@@ -23,7 +24,7 @@ vi.mock("../../../contexts/theme-context", async (importActual) => ({
 }));
 vi.mock("../use-book-detail-ready", () => ({ useBookDetailReady: () => state.isReady }));
 vi.mock("../use-book-series", () => ({
-	useBookSeries: () => null,
+	useBookSeries: () => series.current,
 	useAuthorSeriesSuggestion: () => null,
 }));
 vi.mock("../book-actions/use-book-actions", () => ({
@@ -87,5 +88,18 @@ describe("BookDetail loading frame", () => {
 		await flush();
 		expect(view.container.querySelector("h1")?.textContent).toBe("Middlemarch");
 		expect(view.container.querySelector('[data-testid="reserved-card"]')).toBeNull();
+	});
+
+	it("shows the series fact as a link, not as plain text", async () => {
+		state.isReady = true;
+		book.current = makeBook({ id: "b1", title: "Middlemarch" });
+		series.current = { collectionId: "c1", name: "Provincial Life", index: 2 };
+		view = await render(<BookDetail id="b1" />);
+		await flush();
+		const chip = view.container.querySelector('[data-testid="book-series-chip"]');
+		expect(chip?.textContent).toContain("Provincial Life");
+		expect(chip?.className).toContain("text-primary");
+		expect(chip?.className).toMatch(/(^| )underline( |$)/);
+		series.current = null;
 	});
 });

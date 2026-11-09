@@ -91,12 +91,6 @@ async function show() {
 	return view;
 }
 
-function confirmButton(label: string): HTMLElement {
-	const found = [...document.body.querySelectorAll("button")].find((b) => b.textContent === label);
-	if (!found) throw new Error(`no ${label} button`);
-	return found;
-}
-
 const rowButtons = (v: Rendered) => [
 	...v.container.querySelectorAll<HTMLElement>("li > button:first-child"),
 ];
@@ -122,7 +116,7 @@ describe("BookSessions", () => {
 		}
 	});
 
-	it("lists the book's latest sessions under their days, linking to all of them in Stats", async () => {
+	it("lists the book's latest sessions under their days, linking to all of them in Stats, with no Delete all", async () => {
 		state.rows = Array.from({ length: 12 }, (_, i) =>
 			session(`s${i}`, at(7 - Math.floor(i / 4), 18 - i)),
 		);
@@ -132,64 +126,24 @@ describe("BookSessions", () => {
 		expect(v.container.querySelectorAll("section[aria-label] section")).toHaveLength(3);
 		expect(v.text()).toContain("10% → 35%");
 		const link = v.container.querySelector("a");
-		expect(link?.textContent).toBe("See all 12");
+		expect(link?.textContent).toBe("All 12 sessions in Stats");
 		expect(JSON.parse(link?.getAttribute("data-search") ?? "")).toEqual({
 			tab: "sessions",
 			book: "mm",
+			from: "book",
 		});
+		expect(v.queryButton(/^Delete all/)).toBeNull();
+	});
+
+	it("has no Stats link when every session is listed", async () => {
+		state.rows = [session("a", at(7, 9))];
+		const v = await show();
+		expect(v.container.querySelector("a")).toBeNull();
 	});
 
 	it("shows nothing for a book without sessions", async () => {
 		state.rows = [];
 		expect((await show()).text()).toBe("");
-	});
-
-	it("asks before Delete all even for a few, warning about the streak only when no other book was read that day, and deletes at once", async () => {
-		state.rows = [session("a", at(7, 9)), session("b", at(6, 9))];
-		state.all = [...state.rows, session("x", at(7, 12), "em")];
-		const v = await show();
-
-		await click(v.getButton("Delete all 2 sessions"));
-		await flush();
-		expect(state.toast).not.toHaveBeenCalled();
-		expect(document.body.textContent).toContain("Delete 2 sessions of Middlemarch?");
-		expect(document.body.textContent).toContain("Streak may change.");
-		await click(confirmButton("Delete 2"));
-		// No undo window: the stats and journey cards recount as soon as the rows are gone.
-		expect(state.mutateAsync).toHaveBeenCalledWith(["a", "b"]);
-
-		view?.unmount();
-		state.rows = [session("a", at(7, 9))];
-		state.all = [...state.rows, session("x", at(7, 12), "em")];
-		await click((await show()).getButton("Delete all 1 session"));
-		await flush();
-		expect(document.body.textContent).toContain("Delete 1 session of Middlemarch?");
-		expect(document.body.textContent).not.toContain("Streak may change.");
-	});
-
-	it("asks once when Delete all is tapped again while the streak check is still loading", async () => {
-		state.rows = [session("a", at(7, 9))];
-		state.all = state.rows;
-		const v = await show();
-		const button = v.getButton("Delete all 1 session");
-		act(() => {
-			button.click();
-			button.click();
-		});
-		await flush();
-		await click(confirmButton("Delete 1"));
-		expect(state.mutateAsync).toHaveBeenCalledTimes(1);
-	});
-
-	it("asks before deleting five or more, and deletes on confirm", async () => {
-		state.rows = Array.from({ length: 6 }, (_, i) => session(`s${i}`, at(7, 8 + i)));
-		state.all = state.rows;
-		await click((await show()).getButton("Delete all 6 sessions"));
-		await flush();
-		expect(state.toast).not.toHaveBeenCalled();
-		expect(document.body.textContent).toContain("Delete 6 sessions of Middlemarch?");
-		await click(confirmButton("Delete 6"));
-		expect(state.mutateAsync).toHaveBeenCalledWith(["s0", "s1", "s2", "s3", "s4", "s5"]);
 	});
 
 	it("opens a row's detail on a tap and selects on a long press, then deletes the selection", async () => {

@@ -1,4 +1,4 @@
-import { Button } from "@lesefluss/ui/button";
+import { IconButton } from "@lesefluss/ui/icon-button";
 import { Bookmark } from "lucide-react";
 import type React from "react";
 import { withKey } from "../../commands/keys";
@@ -15,9 +15,8 @@ const BookmarkRibbon: React.FC<BookmarkRibbonProps> = ({ isOnScreen, disabled, o
 	const label = isOnScreen ? "Remove bookmark here" : "Bookmark here";
 	const key = useCommandKey("reader.bookmark");
 	return (
-		<Button
-			variant="ghost"
-			size="icon"
+		<IconButton
+			aria-label="Bookmark"
 			onClick={onToggle}
 			disabled={disabled}
 			title={withKey(label, key)}
@@ -25,8 +24,7 @@ const BookmarkRibbon: React.FC<BookmarkRibbonProps> = ({ isOnScreen, disabled, o
 			className={isOnScreen ? "text-primary" : undefined}
 		>
 			<Bookmark className={isOnScreen ? "fill-current" : undefined} />
-			<span className="sr-only">Bookmark</span>
-		</Button>
+		</IconButton>
 	);
 };
 

@@ -52,7 +52,7 @@ test("library to read-aloud: every control is named, nothing clickable is anonym
 	await page.keyboard.press("Escape");
 	await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
 
-	await page.getByRole("button", { name: "Contents and annotations" }).click();
+	await reader.openContents(page);
 	await expect(page.locator('[data-slot="drawer-content"]')).toBeVisible();
 	await expectAccessible(page, "annotations sheet");
 	await page.keyboard.press("Escape");
@@ -75,7 +75,7 @@ test("library to read-aloud: every control is named, nothing clickable is anonym
 
 	await page.getByRole("button", { name: "More actions" }).click();
 	await expectAccessible(page, "reader menu");
-	await page.getByRole("menuitem", { name: "Details", exact: true }).click();
+	await page.getByRole("menuitem", { name: "Book details", exact: true }).click();
 	await page.waitForURL(/\/tabs\/library\/book\//);
 	await expectAccessible(page, "book page");
 });

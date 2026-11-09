@@ -52,7 +52,7 @@ function BuddyReadsPreview() {
 	if (reads.isError && !reads.data) {
 		return (
 			<SocialSection title="Buddy reads">
-				<p className="m-0 px-1 text-muted-foreground text-sm">
+				<p className="m-0 text-muted-foreground text-sm">
 					Couldn't load your buddy reads. They show again once you're back online.
 				</p>
 			</SocialSection>

@@ -5,8 +5,8 @@ const ROOT_TABS = new Set(["/tabs/stats", "/tabs/explore", "/tabs/social", "/tab
 
 /**
  * What Android Back does once no overlay or mode took the press: a sub-page goes
- * to the page that opened it, a Stats sub-tab to Overview, any other root tab to
- * the Library, and the Library exits. Root tabs never walk router history: tab
+ * to the page that opened it, Sessions opened from a book to that book, a Stats
+ * sub-tab to Overview, any other root tab to the Library, and the Library exits. Root tabs never walk router history: tab
  * switches pile it up, and Back used to replay pages from minutes earlier.
  */
 export function resolveBack(pathname: string, search: string, canGoBack: boolean): BackAction {
@@ -15,8 +15,15 @@ export function resolveBack(pathname: string, search: string, canGoBack: boolean
 		return canGoBack ? { kind: "back" } : { kind: "replace", to: LIBRARY };
 	}
 	if (path === "/" || path === LIBRARY) return { kind: "exit" };
-	if (path === "/tabs/stats" && new URLSearchParams(search).has("tab")) {
-		return { kind: "replace", to: "/tabs/stats" };
+	if (path === "/tabs/stats") {
+		const params = new URLSearchParams(search);
+		const book = params.get("book");
+		if (params.get("from") === "book" && book) {
+			return canGoBack
+				? { kind: "back" }
+				: { kind: "replace", to: `/tabs/library/book/${encodeURIComponent(book)}` };
+		}
+		if (params.has("tab")) return { kind: "replace", to: "/tabs/stats" };
 	}
 	if (ROOT_TABS.has(path)) return { kind: "replace", to: LIBRARY };
 	if (canGoBack) return { kind: "back" };

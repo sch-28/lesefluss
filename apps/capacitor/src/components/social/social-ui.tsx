@@ -31,7 +31,7 @@ export function SocialSection({
 			className={cn("mt-8 first:mt-4", className)}
 		>
 			{(title || action) && (
-				<header className="mb-3 flex items-end justify-between gap-3 px-1">
+				<header className="mb-3 flex items-end justify-between gap-3">
 					<div className="min-w-0">
 						{title && <h2 className="m-0 font-semibold text-foreground text-lg">{title}</h2>}
 						{subtitle && (
@@ -141,11 +141,6 @@ export function ListCard({ children }: { children: React.ReactNode }) {
 			{children}
 		</div>
 	);
-}
-
-/** A ring around the avatar, filled as far as the reader is in their current book. */
-export function progressRing(percent: number): string {
-	return `conic-gradient(var(--primary) ${percent}%, color-mix(in oklch, currentColor 12%, transparent) 0)`;
 }
 
 type CurrentBook = { id: string; title: string; coverSrc: string | null; percent: number };

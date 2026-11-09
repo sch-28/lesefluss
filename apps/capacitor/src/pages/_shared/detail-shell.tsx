@@ -46,9 +46,7 @@ export interface DetailShellProps {
 
 	// Stats / subjects
 	statsLine?: React.ReactNode;
-	/** Hero facts as badges. Preferred over `statsLine`: a badge row fills the
-	 *  column beside the cover, where a single line of small grey text left a
-	 *  hole on every book that carries no catalog metadata. */
+	/** Hero facts as plain text; a fact that is a link styles itself as one. */
 	facts?: readonly React.ReactNode[];
 	subjects?: readonly string[];
 	/** Tappable tags; shown instead of `subjects` when given. */
@@ -207,14 +205,15 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 									<p className="mt-1 text-muted-foreground text-sm">{author}</p>
 								))}
 							{facts && facts.length > 0 && (
-								<div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+								<div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
 									{facts.map((fact, i) => (
 										<span
 											// Index key safe: array rebuilt each render, never reordered.
 											// biome-ignore lint/suspicious/noArrayIndexKey: see comment above
 											key={i}
-											className="rounded-md border border-border bg-muted/60 px-2 py-1 text-[11px] text-muted-foreground leading-none"
+											className="inline-flex items-center gap-2"
 										>
+											{i > 0 && <span aria-hidden>·</span>}
 											{fact}
 										</span>
 									))}
@@ -264,8 +263,8 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 					)}
 
 					{(description?.html || description?.text) && (
-						<section className="mt-6 rounded-lg border border-border bg-card p-4 text-card-foreground">
-							<h2 className="m-0 mb-3 font-semibold text-base">About</h2>
+						<section className="book-detail-card mt-6">
+							<h2 className="book-detail-section-title">About</h2>
 							<CollapsibleProse>
 								{description.html ? (
 									<SanitizedDescription

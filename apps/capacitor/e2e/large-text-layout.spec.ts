@@ -135,7 +135,7 @@ for (const scale of SCALES) {
 			await page.keyboard.press("Escape");
 			await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
 
-			await page.getByRole("button", { name: "Contents and annotations" }).click();
+			await reader.openContents(page);
 			const sheet = '[data-slot="drawer-content"]';
 			await expect(page.locator(sheet)).toBeVisible();
 			await expectFits(page, "annotations", sheet);
@@ -154,7 +154,7 @@ for (const scale of SCALES) {
 			await expect(page.locator(".rsvp-display")).toBeHidden();
 
 			await page.getByRole("button", { name: "More actions" }).click();
-			await page.getByRole("menuitem", { name: "Details", exact: true }).click();
+			await page.getByRole("menuitem", { name: "Book details", exact: true }).click();
 			await page.waitForURL(/\/tabs\/library\/book\//);
 			await expectFits(page, "book page");
 			await page.getByTestId("goal-entry").getByRole("button", { name: "Set goal" }).click();

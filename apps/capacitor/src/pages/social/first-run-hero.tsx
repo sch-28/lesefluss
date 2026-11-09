@@ -120,7 +120,7 @@ export function FirstRunHero({
 
 export function HowItWorks() {
 	return (
-		<section className="mt-9 px-1">
+		<section className="mt-9">
 			<h3 className="m-0 font-bold text-[11px] text-muted-foreground uppercase tracking-widest">
 				How it works
 			</h3>

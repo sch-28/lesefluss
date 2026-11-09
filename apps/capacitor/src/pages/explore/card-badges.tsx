@@ -39,7 +39,7 @@ export const QuickAddButton: React.FC<QuickAddButtonProps> = ({
 		disabled={isAdding}
 		onClick={onAdd}
 		className={cn(
-			"flex size-8 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-sm backdrop-blur active:opacity-70 disabled:opacity-70",
+			"relative flex size-8 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-sm backdrop-blur before:absolute before:-inset-1.5 before:content-[''] active:opacity-70 disabled:opacity-70",
 			className,
 		)}
 	>
@@ -47,22 +47,37 @@ export const QuickAddButton: React.FC<QuickAddButtonProps> = ({
 	</button>
 );
 
-/** QuickAddButton pinned to the bottom-right of a 2:3 cover that starts at the card's top. */
-export const QuickAddOverlay: React.FC<Omit<QuickAddButtonProps, "className">> = (props) => (
+/**
+ * QuickAddButton just below a 2:3 cover that starts at the card's top, beside
+ * the title: on the cover it hid titles printed into the art. The card's title
+ * block keeps `QUICK_ADD_CLEARANCE` free for it.
+ */
+export const QuickAddBesideTitle: React.FC<Omit<QuickAddButtonProps, "className">> = (props) => (
 	<div className="pointer-events-none absolute inset-x-0 top-0 aspect-2/3">
-		<QuickAddButton {...props} className="pointer-events-auto absolute right-1.5 bottom-1.5" />
+		<QuickAddButton {...props} className="pointer-events-auto absolute top-full right-0 mt-1" />
 	</div>
 );
 
-/** Reading time in a cover's top-right corner; the visible "4h" is hidden from screen readers in favour of a sentence. */
-export const CoverLengthBadge: React.FC<{ labels: LengthLabels }> = ({ labels }) => (
-	<span
-		data-testid="cover-length-badge"
-		className="absolute top-1.5 right-1.5 rounded-sm bg-black/50 px-1.5 py-0.5 font-medium text-[0.6rem] text-white/90 tabular-nums backdrop-blur-sm"
-	>
-		<LengthText labels={labels} variant="time" />
-	</span>
-);
+export const QUICK_ADD_CLEARANCE = "pr-9";
+
+/** Under a card's title, off the cover, where corner badges hid titles printed into the art. */
+export const CardMeta: React.FC<{ labels?: LengthLabels | null; isInLibrary?: boolean }> = ({
+	labels,
+	isInLibrary,
+}) =>
+	labels || isInLibrary ? (
+		<div className="mt-1 flex flex-wrap items-center gap-1">
+			{isInLibrary && <InLibraryBadge />}
+			{labels && (
+				<span
+					data-testid="card-length"
+					className="text-[0.7rem] text-muted-foreground tabular-nums"
+				>
+					<LengthText labels={labels} variant="time" />
+				</span>
+			)}
+		</div>
+	) : null;
 
 /** Length as text, read out as a sentence rather than "tilde … middle dot". */
 export const LengthText: React.FC<{ labels: LengthLabels; variant?: "text" | "time" }> = ({

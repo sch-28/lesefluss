@@ -373,7 +373,7 @@ test("paused while looking away, browse's Back makes play read from where it wen
 	await reader.waitPositionQuiet(page);
 
 	// The player covers the browse bar; the sheet's toggle is the way back.
-	await page.getByRole("button", { name: "Contents and annotations" }).click();
+	await reader.openContents(page);
 	await page.getByTestId("browse-toggle").click();
 	await expect(page.getByRole("dialog")).toHaveCount(0);
 	await expect(reader.browseBar(page)).toBeHidden();

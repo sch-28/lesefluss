@@ -195,7 +195,7 @@ export function BookStatsCard({ book }: Props) {
 						<AnimatedNumber value={data.totalDurationMs} format={formatDuration} />
 					</div>
 					<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
-						time read · {data.sessionCount} {data.sessionCount === 1 ? "sitting" : "sittings"}
+						time read
 					</div>
 				</div>
 				{isFinished ? (
@@ -229,7 +229,7 @@ export function BookStatsCard({ book }: Props) {
 				<div className="mt-4">
 					<div className="h-1.5 overflow-hidden rounded-full bg-current/10">
 						<motion.div
-							className={`h-full rounded-full ${isFinished ? "bg-emerald-500" : "bg-current/50"}`}
+							className={`h-full rounded-full ${isFinished ? "bg-emerald-500" : "bg-primary"}`}
 							initial={{ width: 0 }}
 							animate={{ width: `${percent}%` }}
 							transition={{ duration: 0.6, ease: "easeOut" }}
@@ -252,20 +252,12 @@ export function BookStatsCard({ book }: Props) {
 				<BookTimeAhead book={book} pace={pace} wordsLeft={wordsLeft} />
 			)}
 
-			<div className="mt-4 grid grid-cols-3 gap-3 border-current/10 border-t pt-3">
+			<div className="mt-4 border-current/10 border-t pt-3">
 				<Stat
 					value={
 						data.measuredWpm != null ? <AnimatedNumber value={data.measuredWpm} /> : <span>—</span>
 					}
 					label={data.dominantMode ? `wpm · ${MODE_LABELS[data.dominantMode]}` : "words per minute"}
-				/>
-				<Stat
-					value={<span>{formatRelative(data.lastReadAt ?? Date.now())}</span>}
-					label="Last read"
-				/>
-				<Stat
-					value={<span>{data.firstReadAt != null ? formatRelative(data.firstReadAt) : "—"}</span>}
-					label="Started"
 				/>
 			</div>
 

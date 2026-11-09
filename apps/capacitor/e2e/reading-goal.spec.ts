@@ -22,7 +22,7 @@ function goalFixture(): EpubFixture {
 
 async function openBookPage(page: Page): Promise<void> {
 	await page.getByRole("button", { name: "More actions" }).click();
-	await page.getByRole("menuitem", { name: "Details", exact: true }).click();
+	await page.getByRole("menuitem", { name: "Book details", exact: true }).click();
 	await page.waitForURL(/\/tabs\/library\/book\//);
 }
 

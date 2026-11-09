@@ -232,14 +232,14 @@ describe("catalog card membership and quick add", () => {
 });
 
 describe("catalog length", () => {
-	it("puts the reading time in the grid card's corner badge instead of the source", async () => {
+	it("puts the reading time under the grid card's title instead of the source", async () => {
 		const estimated = book({
 			source: "standard_ebooks",
 			wordCount: 78_000,
 			wordCountEstimated: true,
 		});
 		view = await render(<CatalogResultCard result={estimated} onOpen={vi.fn()} />);
-		const badge = view.container.querySelector('[data-testid="cover-length-badge"]');
+		const badge = view.container.querySelector('[data-testid="card-length"]');
 		expect(badge?.querySelector('[aria-hidden="true"]')?.textContent).toBe("4h 20m");
 		expect(badge?.querySelector(".sr-only")?.textContent).toBe("About 4 hours 20 minutes to read");
 		expect(view.text()).not.toContain("SE");
@@ -254,8 +254,18 @@ describe("catalog length", () => {
 		);
 	});
 
+	it("keeps the length off the cover, where it hid printed titles", async () => {
+		view = await render(
+			<CatalogResultCard result={book({ wordCount: 75_000 })} onOpen={vi.fn()} />,
+		);
+		const cover = view.container.querySelector(".aspect-2\\/3");
+		expect(cover).not.toBeNull();
+		expect(cover?.querySelector('[data-testid="card-length"]')).toBeNull();
+		expect(view.container.querySelector('[data-testid="card-length"]')).not.toBeNull();
+	});
+
 	it("shows no badge when the length is unknown", async () => {
 		view = await render(<CatalogResultCard result={book({ wordCount: null })} onOpen={vi.fn()} />);
-		expect(view.container.querySelector('[data-testid="cover-length-badge"]')).toBeNull();
+		expect(view.container.querySelector('[data-testid="card-length"]')).toBeNull();
 	});
 });

@@ -10,6 +10,7 @@ import { catalogKeys } from "../../../services/catalog/query-keys";
 import { log } from "../../../utils/log";
 import { ErrorState } from "../../_shared/load-states";
 import { useOnboardingFooter } from "../footer-context";
+import { StepHeader } from "../step-header";
 
 const LANG_STORAGE_KEY = "explore-lang";
 
@@ -95,10 +96,10 @@ const BooksStep: React.FC = () => {
 
 	return (
 		<div>
-			<h2 className="font-semibold text-2xl tracking-tight">Start with a classic</h2>
-			<p className="mt-2 text-muted-foreground">
-				Tap any that catch your eye — we'll add them to your library. Optional.
-			</p>
+			<StepHeader
+				title="Start with a classic"
+				description="Tap any that catch your eye and we'll add them to your library. Optional."
+			/>
 
 			{landingQuery.isPending ? (
 				<div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3" aria-hidden>
@@ -121,7 +122,7 @@ const BooksStep: React.FC = () => {
 					className="mt-6"
 				/>
 			) : classics.length === 0 ? (
-				<p className="mt-8 text-muted-foreground/70 text-sm">No classics available.</p>
+				<p className="mt-6 text-center text-muted-foreground text-sm">No classics available.</p>
 			) : (
 				<div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
 					{classics.map((b) => {

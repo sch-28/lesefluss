@@ -218,10 +218,8 @@ export const reader = {
 		await page.waitForTimeout(JUMP_SETTLE_GUARD_MS + 300);
 	},
 
-	/** Appearance lives in the More menu; the popover opens anchored to it. */
 	openAppearance: async (page: Page) => {
-		await page.getByRole("button", { name: "More actions" }).click();
-		await page.getByRole("menuitem", { name: "Appearance" }).click();
+		await page.getByRole("button", { name: "Appearance", exact: true }).click();
 		await expect(page.locator(".appearance-popover-content")).toBeVisible();
 	},
 
@@ -230,19 +228,29 @@ export const reader = {
 		await page.getByRole("menuitem", { name: "Search" }).click();
 	},
 
+	/** Contents is the first entry of the More menu. */
+	openContents: async (page: Page) => {
+		await page.getByRole("button", { name: "More actions" }).click();
+		await page.getByRole("menuitem", { name: "Contents and bookmarks" }).click();
+	},
+
 	/** Browse mode starts from the annotations sheet, which closes on the way. */
 	startBrowse: async (page: Page) => {
-		await page.getByRole("button", { name: "Contents and annotations" }).click();
+		await reader.openContents(page);
 		await page.getByTestId("browse-toggle").click();
 		await expect(page.getByRole("dialog")).toHaveCount(0);
 	},
 
-	/** Below 28rem the header folds Listen into More actions. */
+	/** Below 22rem (27rem with series chapter buttons) the header folds Listen into More actions. */
 	startListening: async (page: Page) => {
+		const hasSeriesNav = await page
+			.getByRole("button", { name: "Previous chapter", exact: true })
+			.isVisible();
 		const isNarrow = await page.evaluate(
-			() =>
+			(rem) =>
 				window.innerWidth <
-				28 * Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+				rem * Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+			hasSeriesNav ? 27 : 22,
 		);
 		if (!isNarrow) {
 			await page.getByRole("button", { name: "Listen", exact: true }).click();
@@ -255,7 +263,7 @@ export const reader = {
 	},
 
 	tocJumpToChapter: async (page: Page, label: string) => {
-		await page.getByRole("button", { name: "Contents and annotations" }).click();
+		await reader.openContents(page);
 		await page.getByRole("button", { name: label }).click();
 	},
 
@@ -591,8 +599,9 @@ export const reader = {
 		await expect(async () => {
 			if (!(await page.locator(".appearance-popover-content").isVisible())) {
 				if (attempt++ > 0) await page.keyboard.press("Escape");
-				await page.getByRole("button", { name: "More actions" }).click({ timeout: 5000 });
-				await page.getByRole("menuitem", { name: "Appearance" }).click({ timeout: 3000 });
+				await page
+					.getByRole("button", { name: "Appearance", exact: true })
+					.click({ timeout: 5000 });
 				await expect(page.locator(".appearance-popover-content")).toBeVisible({ timeout: 3000 });
 			}
 			await radio.click({ timeout: 3000 });

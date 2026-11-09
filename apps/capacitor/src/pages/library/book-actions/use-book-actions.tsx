@@ -35,6 +35,7 @@ import {
 	type BookActionId,
 	type BookActionSurface,
 	bookActionIds,
+	omitsDestructive,
 	opensReader,
 } from "./book-action-items";
 import { BookActionsSheet } from "./book-actions-sheet";
@@ -139,7 +140,11 @@ export function useBookActions({ surface, onSelect, onDeleted, extras }: Options
 			canShare,
 			canSelect: onSelect !== undefined,
 			hasExtras: surfaceExtras.length > 0,
+			omitsDestructive: omitsDestructive(surface),
 		});
+		// The reader's ⋮ has its own Book details, so its sheet keeps "open" only as View series.
+		const shownIds =
+			surface === "reader" && book.seriesId == null ? ids.filter((id) => id !== "open") : ids;
 		const entriesOf = (id: BookActionId): BookActionEntry[] => {
 			switch (id) {
 				case "open":
@@ -194,7 +199,7 @@ export function useBookActions({ surface, onSelect, onDeleted, extras }: Options
 					];
 			}
 		};
-		return ids.flatMap(entriesOf);
+		return shownIds.flatMap(entriesOf);
 	};
 
 	const overlays: React.ReactNode = (
@@ -263,7 +268,13 @@ export function useBookActions({ surface, onSelect, onDeleted, extras }: Options
 		</>
 	);
 
-	return { entriesFor, open: setMenuBook, overlays };
+	return {
+		entriesFor,
+		open: setMenuBook,
+		overlays,
+		requestReset: setResetBook,
+		requestDelete: setDeleteBook,
+	};
 }
 
 function item(id: string, label: string, icon: LucideIcon, onSelect: () => void): BookActionItem {

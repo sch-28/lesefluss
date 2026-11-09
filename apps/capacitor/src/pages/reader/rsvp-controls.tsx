@@ -4,20 +4,19 @@
  * a button press.
  */
 
-import { Button } from "@lesefluss/ui/button";
+import { IconButton } from "@lesefluss/ui/icon-button";
 import { cn } from "@lesefluss/ui/utils";
 import { ChevronsLeft, ChevronsRight, Headphones, Play, Redo2, Undo2 } from "lucide-react";
 import type React from "react";
 import { RsvpSpeedControl } from "../../components/rsvp-speed-control";
-import { RSVP_WPM_RANGE, type WpmRange } from "./wpm";
 
 // Controls only render while paused, so the play/pause button always shows
 // the play glyph. No isPlaying prop needed.
 interface Props {
+	/** The RSVP speed, shown and stepped even while the voice paces the words. */
 	wpm: number;
-	wpmRange?: WpmRange;
 	/** Absent where the device can't read aloud. */
-	audio?: { isOn: boolean; onToggle: () => void } | null;
+	audio?: { isOn: boolean; onToggle: () => void; voiceWpm: number } | null;
 	onBackSentence: () => void;
 	onBackWord: () => void;
 	onPlayPause: () => void;
@@ -30,7 +29,6 @@ const stop = (e: React.PointerEvent) => e.stopPropagation();
 
 const RsvpControls: React.FC<Props> = ({
 	wpm,
-	wpmRange = RSVP_WPM_RANGE,
 	audio = null,
 	onBackSentence,
 	onBackWord,
@@ -44,52 +42,44 @@ const RsvpControls: React.FC<Props> = ({
 		// clickable node for screen readers. The display ignores clicks from inside.
 		<div className="rsvp-controls" onPointerDown={stop}>
 			<div className="rsvp-controls-row">
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={onBackSentence}
-					aria-label="Back to sentence start"
-				>
+				<IconButton onClick={onBackSentence} aria-label="Back to sentence start">
 					<ChevronsLeft />
-				</Button>
-				<Button variant="ghost" size="icon" onClick={onBackWord} aria-label="Back one word">
+				</IconButton>
+				<IconButton onClick={onBackWord} aria-label="Back one word">
 					<Undo2 />
-				</Button>
+				</IconButton>
 				<button type="button" className="rsvp-playpause" onClick={onPlayPause} aria-label="Play">
 					<Play className="size-6" />
 				</button>
-				<Button variant="ghost" size="icon" onClick={onForwardWord} aria-label="Forward one word">
+				<IconButton onClick={onForwardWord} aria-label="Forward one word">
 					<Redo2 />
-				</Button>
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={onForwardSentence}
-					aria-label="Forward to next sentence"
-				>
+				</IconButton>
+				<IconButton onClick={onForwardSentence} aria-label="Forward to next sentence">
 					<ChevronsRight />
-				</Button>
+				</IconButton>
 			</div>
 
 			<div className="rsvp-wpm-stepper">
 				{audio && (
-					<Button
-						variant="ghost"
-						size="icon"
+					<button
+						type="button"
 						onClick={audio.onToggle}
-						aria-label="Listen"
 						aria-pressed={audio.isOn}
-						className={cn(audio.isOn && "text-primary")}
+						className={cn(
+							"inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-sm hover:bg-muted",
+							audio.isOn && "text-primary",
+						)}
 					>
-						<Headphones />
-					</Button>
+						<Headphones className="size-5" />
+						Listen
+					</button>
 				)}
-				<RsvpSpeedControl
-					wpm={wpm}
-					range={wpmRange}
-					onChange={onWpmChange}
-					className="text-[var(--reader-text)]"
-				/>
+				{audio?.isOn && (
+					<span className="text-xs opacity-80" data-testid="rsvp-voice-wpm">
+						Voice {audio.voiceWpm} wpm
+					</span>
+				)}
+				<RsvpSpeedControl wpm={wpm} onChange={onWpmChange} className="text-[var(--reader-text)]" />
 			</div>
 		</div>
 	);

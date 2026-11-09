@@ -36,13 +36,21 @@ export function bookActionIds(options: {
 	canShare: boolean;
 	canSelect: boolean;
 	hasExtras: boolean;
+	/** Where Reset progress and Delete live in the book page's danger zone instead. */
+	omitsDestructive?: boolean;
 }): BookActionId[] {
 	return ORDER.filter((id) => {
+		if (id === "reset" || id === "delete") return !options.omitsDestructive;
 		if (id === "share") return options.canShare;
 		if (id === "select") return options.canSelect;
 		if (id === "extras") return options.hasExtras;
 		return true;
 	});
+}
+
+/** The reader's menu leads to the book page, whose danger zone holds the destructive actions. */
+export function omitsDestructive(surface: BookActionSurface): boolean {
+	return surface === "detail" || surface === "reader";
 }
 
 export function opensReader(surface: BookActionSurface): boolean {

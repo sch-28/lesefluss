@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookActionIds, opensReader, statusChoices } from "../book-action-items";
+import { bookActionIds, omitsDestructive, opensReader, statusChoices } from "../book-action-items";
 
 describe("bookActionIds", () => {
 	it("lists every action in the one order, Delete last", () => {
@@ -29,6 +29,23 @@ describe("bookActionIds", () => {
 			"extras",
 			"delete",
 		]);
+	});
+});
+
+describe("destructive actions", () => {
+	it("leave the reader and book page menus for the book page's danger zone", () => {
+		expect(omitsDestructive("reader")).toBe(true);
+		expect(omitsDestructive("detail")).toBe(true);
+		expect(omitsDestructive("card")).toBe(false);
+		const ids = bookActionIds({
+			canShare: true,
+			canSelect: false,
+			hasExtras: false,
+			omitsDestructive: true,
+		});
+		expect(ids).not.toContain("reset");
+		expect(ids).not.toContain("delete");
+		expect(ids).toContain("edit");
 	});
 });
 

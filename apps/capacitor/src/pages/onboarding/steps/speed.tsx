@@ -5,6 +5,7 @@ import { SpeedTest } from "../../../components/speed-test/speed-test";
 import { useAutoSaveSettings } from "../../../hooks/use-auto-save-settings";
 import RsvpPreview from "../../settings/rsvp-preview";
 import { useOnboardingFooter } from "../footer-context";
+import { StepHeader } from "../step-header";
 
 /** The speed test; skipping it leaves the dial to be picked by hand. */
 const SpeedStep: React.FC = () => {
@@ -32,10 +33,10 @@ const ManualSpeed: React.FC = () => {
 
 	return (
 		<div>
-			<h2 className="font-semibold text-2xl tracking-tight">Reading speed</h2>
-			<p className="mt-2 text-muted-foreground">
-				Words flash one at a time. Find a pace that feels brisk but readable.
-			</p>
+			<StepHeader
+				title="Reading speed"
+				description="In RSVP mode words flash one at a time. Find a pace that feels brisk but readable."
+			/>
 
 			<div className="mt-6">
 				<RsvpPreview settings={settings} />

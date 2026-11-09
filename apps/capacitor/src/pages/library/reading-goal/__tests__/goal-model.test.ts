@@ -1,7 +1,6 @@
 import { inclusiveDays } from "@lesefluss/core";
 import { describe, expect, it } from "vitest";
 import { newGoalPlanFields } from "../../../../services/stats/reading-goal";
-import { formatGoalProgress } from "../../../../services/stats/today-goal-summary";
 import {
 	canStartGoal,
 	daysMetWithToday,
@@ -246,17 +245,10 @@ describe("minute goals", () => {
 		expect(todayFigure(today)).toEqual({ done: "12", target: "20 min" });
 	});
 
-	it("shows a percent goal's figure in minutes at the reader's pace, like every other screen", () => {
+	it("keeps a percent goal's figure in percent, clamped at the target once met", () => {
 		const plan = makePlan({ position: 50, sessions: [session(1, 0, 50)], now: at(1, 21) });
-		const today = liveToday(plan, 50, WORDS);
-		const { read, needed } = {
-			read: Math.floor(today.minutesRead),
-			needed: Math.ceil(plan.dailyTarget.minutes),
-		};
-		expect(todayFigure(today)).toEqual({ done: String(read), target: `${needed} min` });
-		expect(`${todayFigure(today).done} of ${todayFigure(today).target}`).toBe(
-			formatGoalProgress(today),
-		);
+		expect(todayFigure(liveToday(plan, 50, WORDS))).toEqual({ done: "5.0", target: "10.0%" });
+		expect(todayFigure(liveToday(plan, 130, WORDS))).toEqual({ done: "10.0", target: "10.0%" });
 	});
 });
 

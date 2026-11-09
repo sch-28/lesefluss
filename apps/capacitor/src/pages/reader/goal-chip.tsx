@@ -1,6 +1,5 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { cn } from "@lesefluss/ui/utils";
-import { GoalRing } from "../../components/goal-ring";
 import type { ReadingGoalPlan } from "../../services/stats/reading-goal";
 import { formatDayKey } from "../../utils/date-utils";
 import { minutesLabel } from "../../utils/reading-time";
@@ -34,15 +33,14 @@ export function GoalChip({ plan, today, onOpenDetails }: Props) {
 					aria-label={label}
 					data-testid="goal-chip"
 					data-met={today.isMet}
+					// The footer bar scrubs on pointerdown; a tap here opens the goal instead.
+					onPointerDown={(e) => e.stopPropagation()}
 					className={cn(
-						// 32px tall on screen, 44px to a finger.
-						"reader-goal-chip relative mr-0.5 inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted/40 pr-2.5 pl-1.5 text-xs tabular-nums before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-['']",
-						today.isMet && "reader-goal-chip--met",
+						"relative inline-flex shrink-0 items-center tabular-nums underline-offset-4 before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:underline",
+						today.isMet && "text-[var(--goal-met)]",
 					)}
 				>
-					<GoalRing size={18} fraction={today.fraction} isMet={today.isMet} />
-					<span className="font-semibold">{figure.done}</span>
-					<span className="text-muted-foreground">/ {figure.target}</span>
+					Today {figure.done} of {figure.target}
 				</button>
 			</PopoverTrigger>
 			<PopoverContent align="end" className="flex w-64 flex-col gap-3">

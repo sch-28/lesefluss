@@ -144,6 +144,40 @@ export function textSpacingFor(
 	};
 }
 
+export type SpacingPreset = "compact" | "normal" | "airy";
+
+type SpacingValues = TextSpacing & { line: number };
+
+/** Normal is the defaults; every value sits on its setting's step grid. */
+export const SPACING_PRESETS: Record<SpacingPreset, SpacingValues> = {
+	compact: { line: 1.5, letter: 0, word: 0, paragraph: 0.8 },
+	normal: {
+		line: DEFAULT_SETTINGS.READER_LINE_SPACING,
+		letter: DEFAULT_TEXT_SPACING.letter,
+		word: DEFAULT_TEXT_SPACING.word,
+		paragraph: DEFAULT_TEXT_SPACING.paragraph,
+	},
+	airy: { line: 2.1, letter: 0.04, word: 0.08, paragraph: 1.4 },
+};
+
+/** The preset the current spacing matches, or null once any value was fine-tuned in Settings. */
+export function spacingPresetOf(current: SpacingValues): SpacingPreset | null {
+	for (const [name, preset] of Object.entries(SPACING_PRESETS) as [
+		SpacingPreset,
+		SpacingValues,
+	][]) {
+		if (
+			preset.line === current.line &&
+			preset.letter === current.letter &&
+			preset.word === current.word &&
+			preset.paragraph === current.paragraph
+		) {
+			return name;
+		}
+	}
+	return null;
+}
+
 /** A spacing's value column: "Default" when it renders as without the setting. */
 export function spacingLabel(value: number, fallback: number, format: (v: number) => string) {
 	return value === fallback ? "Default" : format(value);
@@ -376,6 +410,17 @@ export function useAppearanceSettings() {
 		});
 	};
 
+	// One save, so sync and the reflow see one change.
+	const applySpacingPreset = (preset: SpacingPreset) => {
+		const v = SPACING_PRESETS[preset];
+		mutate({
+			readerLineSpacing: v.line,
+			readerLetterSpacing: v.letter,
+			readerWordSpacing: v.word,
+			readerParagraphSpacing: v.paragraph,
+		});
+	};
+
 	const setFontFamily = (v: string) => {
 		if (v !== settings?.readerFontFamily) mutate({ readerFontFamily: v });
 	};
@@ -462,6 +507,7 @@ export function useAppearanceSettings() {
 		adjustWordSpacing,
 		adjustParagraphSpacing,
 		resetTextSpacing,
+		applySpacingPreset,
 		setFontFamily,
 		setBold,
 		setTextAlign,

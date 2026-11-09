@@ -42,7 +42,7 @@ test("a glossary entry's avatar, rename and delete persist across reloads", asyn
 
 	await reopen(page, title);
 	await expect(avatars(page).first()).toBeVisible({ timeout: 5000 });
-	await page.getByRole("button", { name: "Contents and annotations" }).click();
+	await reader.openContents(page);
 	await page.getByRole("radio", { name: "Glossary" }).click();
 	await expect(page.getByText(newLabel)).toBeVisible({ timeout: 5000 });
 });

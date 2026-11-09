@@ -1,7 +1,7 @@
 import type React from "react";
 import CoverImage from "../../components/cover-image";
 import { providerLabel, type SearchResult } from "../../services/serial-scrapers";
-import { CoverLengthBadge, InLibraryBadge, QuickAddOverlay } from "./card-badges";
+import { CardMeta, QUICK_ADD_CLEARANCE, QuickAddBesideTitle } from "./card-badges";
 import { describeLength } from "./length";
 import TextCover from "./text-cover";
 import { useReadingSpeed } from "./use-reading-speed";
@@ -40,10 +40,8 @@ export const WebNovelCard: React.FC<{
 						alt={result.title}
 						fallback={<TextCover result={result} />}
 					/>
-					{lengthLabels && <CoverLengthBadge labels={lengthLabels} />}
-					{quickAdd.isInLibrary && <InLibraryBadge className="absolute bottom-1.5 left-1.5" />}
 				</div>
-				<div className="px-0.5 pt-1">
+				<div className={`px-0.5 pt-1 ${canQuickAdd ? QUICK_ADD_CLEARANCE : ""}`}>
 					{/* A teaser under the cover: the full title is on the book page and in the name. */}
 					<div
 						data-clips-text
@@ -62,10 +60,11 @@ export const WebNovelCard: React.FC<{
 						</div>
 					)}
 					{chapters && <div className="mt-0.5 text-[0.7rem] text-muted-foreground">{chapters}</div>}
+					<CardMeta labels={lengthLabels} isInLibrary={quickAdd.isInLibrary} />
 				</div>
 			</button>
 			{canQuickAdd && (
-				<QuickAddOverlay
+				<QuickAddBesideTitle
 					title={result.title}
 					isAdding={quickAdd.isImporting}
 					onAdd={() => quickAdd.start(result.title)}

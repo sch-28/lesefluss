@@ -21,6 +21,19 @@ describe("parseStatsSearch", () => {
 		});
 	});
 
+	it("keeps the from-book marker only with a book filter", () => {
+		expect(parseStatsSearch({ tab: "sessions", book: "a1b2c3d4", from: "book" })).toEqual({
+			tab: "sessions",
+			book: "a1b2c3d4",
+			from: "book",
+		});
+		expect(parseStatsSearch({ tab: "sessions", from: "book" })).toEqual({ tab: "sessions" });
+		expect(parseStatsSearch({ tab: "sessions", book: "a1b2c3d4", from: "x" })).toEqual({
+			tab: "sessions",
+			book: "a1b2c3d4",
+		});
+	});
+
 	it("drops a book filter outside Sessions", () => {
 		expect(parseStatsSearch({ tab: "speed", book: "a1b2c3d4" })).toEqual({ tab: "speed" });
 	});
