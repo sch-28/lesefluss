@@ -1,11 +1,11 @@
 import { SegmentedControl } from "@lesefluss/ui/segmented-control";
-import { cn } from "@lesefluss/ui/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { queryHooks } from "../../../services/db/hooks";
 import { formatDuration } from "../../../utils/date-utils";
 import { AnimatedNumber } from "./animated-number";
 import { PERIODS, type Period, type PeriodWindow } from "./period";
+import { StatsSection } from "./section-header";
 
 const PERIOD_CHIP_LABELS: Record<Period, string> = {
 	today: "Today",
@@ -32,18 +32,14 @@ export function PeriodTabs({
 	className?: string;
 }) {
 	return (
-		<div className={cn("flex items-center gap-3", className)}>
-			<span className="shrink-0 text-muted-foreground text-xs" aria-hidden="true">
-				Totals for
-			</span>
-			<SegmentedControl
-				aria-label="Totals for"
-				data-testid="period-control"
-				value={period}
-				onValueChange={onPeriodChange}
-				options={PERIODS.map((p) => ({ value: p, label: PERIOD_CHIP_LABELS[p] }))}
-			/>
-		</div>
+		<SegmentedControl
+			aria-label="Totals for"
+			data-testid="period-control"
+			className={className}
+			value={period}
+			onValueChange={onPeriodChange}
+			options={PERIODS.map((p) => ({ value: p, label: PERIOD_CHIP_LABELS[p] }))}
+		/>
 	);
 }
 
@@ -71,8 +67,8 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 		: { minutes: null, words: null, booksFinished: null };
 
 	return (
-		<section className="mb-8 px-4">
-			<PeriodTabs period={period} onPeriodChange={onPeriodChange} className="mb-5" />
+		<StatsSection title="Totals" data-testid="stats-totals">
+			<PeriodTabs period={period} onPeriodChange={onPeriodChange} className="mb-3" />
 
 			<AnimatePresence mode="wait">
 				<motion.div
@@ -81,7 +77,7 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 					animate={{ opacity: 1, y: 0 }}
 					exit={{ opacity: 0, y: -8 }}
 					transition={{ duration: 0.25 }}
-					className="grid grid-cols-3 gap-3"
+					className="grid grid-cols-3 gap-3 rounded-[14px] border border-border bg-card p-4 text-card-foreground"
 				>
 					<Stat
 						label="Time"
@@ -107,7 +103,7 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 					/>
 				</motion.div>
 			</AnimatePresence>
-		</section>
+		</StatsSection>
 	);
 }
 
@@ -128,16 +124,14 @@ function Stat({
 }) {
 	return (
 		<div className="text-center">
-			<div className="flex h-9 items-center justify-center font-bold text-3xl tabular-nums tracking-tight">
+			<div className="flex h-7 items-center justify-center font-semibold text-[1.375rem] tabular-nums">
 				{isPending ? (
 					<Loader2 aria-label="Loading" className="size-5 animate-spin text-muted-foreground" />
 				) : (
 					<AnimatedNumber value={value} format={format} />
 				)}
 			</div>
-			<div className="mt-1 text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
-				{label}
-			</div>
+			<div className="mt-1 text-[0.8125rem] text-muted-foreground">{label}</div>
 			{/* The line stays while the previous period loads, so the grid keeps its height. */}
 			{period !== "all" && (
 				<div className="mt-1 h-[15px] font-medium text-[0.625rem] text-muted-foreground">

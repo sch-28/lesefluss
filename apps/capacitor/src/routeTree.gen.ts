@@ -22,6 +22,7 @@ import { Route as TabsSocialInboxRouteImport } from './routes/tabs/social/inbox'
 import { Route as TabsSocialBuddyReadsRouteImport } from './routes/tabs/social/buddy-reads'
 import { Route as TabsSocialBlockedRouteImport } from './routes/tabs/social/blocked'
 import { Route as TabsSettingsSyncRouteImport } from './routes/tabs/settings/sync'
+import { Route as TabsSettingsSpeedRouteImport } from './routes/tabs/settings/speed'
 import { Route as TabsSettingsSocialRouteImport } from './routes/tabs/settings/social'
 import { Route as TabsSettingsRsvpRouteImport } from './routes/tabs/settings/rsvp'
 import { Route as TabsSettingsReaderRouteImport } from './routes/tabs/settings/reader'
@@ -31,6 +32,7 @@ import { Route as TabsSettingsLicensesRouteImport } from './routes/tabs/settings
 import { Route as TabsSettingsGoalsRouteImport } from './routes/tabs/settings/goals'
 import { Route as TabsSettingsGeneralRouteImport } from './routes/tabs/settings/general'
 import { Route as TabsSettingsExportRouteImport } from './routes/tabs/settings/export'
+import { Route as TabsSettingsDiagnosticsRouteImport } from './routes/tabs/settings/diagnostics'
 import { Route as TabsSettingsDeviceRouteImport } from './routes/tabs/settings/device'
 import { Route as TabsReaderIdRouteImport } from './routes/tabs/reader.$id'
 import { Route as TabsLibraryStatsRouteImport } from './routes/tabs/library/stats'
@@ -117,6 +119,11 @@ const TabsSettingsSyncRoute = TabsSettingsSyncRouteImport.update({
   path: '/tabs/settings/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TabsSettingsSpeedRoute = TabsSettingsSpeedRouteImport.update({
+  id: '/tabs/settings/speed',
+  path: '/tabs/settings/speed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TabsSettingsSocialRoute = TabsSettingsSocialRouteImport.update({
   id: '/tabs/settings/social',
   path: '/tabs/settings/social',
@@ -161,6 +168,11 @@ const TabsSettingsGeneralRoute = TabsSettingsGeneralRouteImport.update({
 const TabsSettingsExportRoute = TabsSettingsExportRouteImport.update({
   id: '/tabs/settings/export',
   path: '/tabs/settings/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TabsSettingsDiagnosticsRoute = TabsSettingsDiagnosticsRouteImport.update({
+  id: '/tabs/settings/diagnostics',
+  path: '/tabs/settings/diagnostics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TabsSettingsDeviceRoute = TabsSettingsDeviceRouteImport.update({
@@ -284,6 +296,7 @@ export interface FileRoutesByFullPath {
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
   '/tabs/reader/$id': typeof TabsReaderIdRoute
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
+  '/tabs/settings/diagnostics': typeof TabsSettingsDiagnosticsRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
   '/tabs/settings/goals': typeof TabsSettingsGoalsRoute
@@ -293,6 +306,7 @@ export interface FileRoutesByFullPath {
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
+  '/tabs/settings/speed': typeof TabsSettingsSpeedRoute
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
   '/tabs/social/blocked': typeof TabsSocialBlockedRoute
   '/tabs/social/buddy-reads': typeof TabsSocialBuddyReadsRoute
@@ -328,6 +342,7 @@ export interface FileRoutesByTo {
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
   '/tabs/reader/$id': typeof TabsReaderIdRoute
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
+  '/tabs/settings/diagnostics': typeof TabsSettingsDiagnosticsRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
   '/tabs/settings/goals': typeof TabsSettingsGoalsRoute
@@ -337,6 +352,7 @@ export interface FileRoutesByTo {
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
+  '/tabs/settings/speed': typeof TabsSettingsSpeedRoute
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
   '/tabs/social/blocked': typeof TabsSocialBlockedRoute
   '/tabs/social/buddy-reads': typeof TabsSocialBuddyReadsRoute
@@ -373,6 +389,7 @@ export interface FileRoutesById {
   '/tabs/library/stats': typeof TabsLibraryStatsRoute
   '/tabs/reader/$id': typeof TabsReaderIdRoute
   '/tabs/settings/device': typeof TabsSettingsDeviceRoute
+  '/tabs/settings/diagnostics': typeof TabsSettingsDiagnosticsRoute
   '/tabs/settings/export': typeof TabsSettingsExportRoute
   '/tabs/settings/general': typeof TabsSettingsGeneralRoute
   '/tabs/settings/goals': typeof TabsSettingsGoalsRoute
@@ -382,6 +399,7 @@ export interface FileRoutesById {
   '/tabs/settings/reader': typeof TabsSettingsReaderRoute
   '/tabs/settings/rsvp': typeof TabsSettingsRsvpRoute
   '/tabs/settings/social': typeof TabsSettingsSocialRoute
+  '/tabs/settings/speed': typeof TabsSettingsSpeedRoute
   '/tabs/settings/sync': typeof TabsSettingsSyncRoute
   '/tabs/social/blocked': typeof TabsSocialBlockedRoute
   '/tabs/social/buddy-reads': typeof TabsSocialBuddyReadsRoute
@@ -419,6 +437,7 @@ export interface FileRouteTypes {
     | '/tabs/library/stats'
     | '/tabs/reader/$id'
     | '/tabs/settings/device'
+    | '/tabs/settings/diagnostics'
     | '/tabs/settings/export'
     | '/tabs/settings/general'
     | '/tabs/settings/goals'
@@ -428,6 +447,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
+    | '/tabs/settings/speed'
     | '/tabs/settings/sync'
     | '/tabs/social/blocked'
     | '/tabs/social/buddy-reads'
@@ -463,6 +483,7 @@ export interface FileRouteTypes {
     | '/tabs/library/stats'
     | '/tabs/reader/$id'
     | '/tabs/settings/device'
+    | '/tabs/settings/diagnostics'
     | '/tabs/settings/export'
     | '/tabs/settings/general'
     | '/tabs/settings/goals'
@@ -472,6 +493,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
+    | '/tabs/settings/speed'
     | '/tabs/settings/sync'
     | '/tabs/social/blocked'
     | '/tabs/social/buddy-reads'
@@ -507,6 +529,7 @@ export interface FileRouteTypes {
     | '/tabs/library/stats'
     | '/tabs/reader/$id'
     | '/tabs/settings/device'
+    | '/tabs/settings/diagnostics'
     | '/tabs/settings/export'
     | '/tabs/settings/general'
     | '/tabs/settings/goals'
@@ -516,6 +539,7 @@ export interface FileRouteTypes {
     | '/tabs/settings/reader'
     | '/tabs/settings/rsvp'
     | '/tabs/settings/social'
+    | '/tabs/settings/speed'
     | '/tabs/settings/sync'
     | '/tabs/social/blocked'
     | '/tabs/social/buddy-reads'
@@ -552,6 +576,7 @@ export interface RootRouteChildren {
   TabsLibraryStatsRoute: typeof TabsLibraryStatsRoute
   TabsReaderIdRoute: typeof TabsReaderIdRoute
   TabsSettingsDeviceRoute: typeof TabsSettingsDeviceRoute
+  TabsSettingsDiagnosticsRoute: typeof TabsSettingsDiagnosticsRoute
   TabsSettingsExportRoute: typeof TabsSettingsExportRoute
   TabsSettingsGeneralRoute: typeof TabsSettingsGeneralRoute
   TabsSettingsGoalsRoute: typeof TabsSettingsGoalsRoute
@@ -561,6 +586,7 @@ export interface RootRouteChildren {
   TabsSettingsReaderRoute: typeof TabsSettingsReaderRoute
   TabsSettingsRsvpRoute: typeof TabsSettingsRsvpRoute
   TabsSettingsSocialRoute: typeof TabsSettingsSocialRoute
+  TabsSettingsSpeedRoute: typeof TabsSettingsSpeedRoute
   TabsSettingsSyncRoute: typeof TabsSettingsSyncRoute
   TabsSocialBlockedRoute: typeof TabsSocialBlockedRoute
   TabsSocialBuddyReadsRoute: typeof TabsSocialBuddyReadsRoute
@@ -676,6 +702,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TabsSettingsSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tabs/settings/speed': {
+      id: '/tabs/settings/speed'
+      path: '/tabs/settings/speed'
+      fullPath: '/tabs/settings/speed'
+      preLoaderRoute: typeof TabsSettingsSpeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tabs/settings/social': {
       id: '/tabs/settings/social'
       path: '/tabs/settings/social'
@@ -737,6 +770,13 @@ declare module '@tanstack/react-router' {
       path: '/tabs/settings/export'
       fullPath: '/tabs/settings/export'
       preLoaderRoute: typeof TabsSettingsExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabs/settings/diagnostics': {
+      id: '/tabs/settings/diagnostics'
+      path: '/tabs/settings/diagnostics'
+      fullPath: '/tabs/settings/diagnostics'
+      preLoaderRoute: typeof TabsSettingsDiagnosticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tabs/settings/device': {
@@ -896,6 +936,7 @@ const rootRouteChildren: RootRouteChildren = {
   TabsLibraryStatsRoute: TabsLibraryStatsRoute,
   TabsReaderIdRoute: TabsReaderIdRoute,
   TabsSettingsDeviceRoute: TabsSettingsDeviceRoute,
+  TabsSettingsDiagnosticsRoute: TabsSettingsDiagnosticsRoute,
   TabsSettingsExportRoute: TabsSettingsExportRoute,
   TabsSettingsGeneralRoute: TabsSettingsGeneralRoute,
   TabsSettingsGoalsRoute: TabsSettingsGoalsRoute,
@@ -905,6 +946,7 @@ const rootRouteChildren: RootRouteChildren = {
   TabsSettingsReaderRoute: TabsSettingsReaderRoute,
   TabsSettingsRsvpRoute: TabsSettingsRsvpRoute,
   TabsSettingsSocialRoute: TabsSettingsSocialRoute,
+  TabsSettingsSpeedRoute: TabsSettingsSpeedRoute,
   TabsSettingsSyncRoute: TabsSettingsSyncRoute,
   TabsSocialBlockedRoute: TabsSocialBlockedRoute,
   TabsSocialBuddyReadsRoute: TabsSocialBuddyReadsRoute,

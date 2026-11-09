@@ -1,4 +1,3 @@
-import { displayAuthor } from "@lesefluss/core";
 /**
  * BookCard: individual book grid item.
  *
@@ -14,14 +13,11 @@ import { formatSeriesNumber } from "../../components/collections/series-numberin
 import { DeviceBadge } from "../../components/device-sync";
 import type { Book } from "../../services/db/schema";
 import {
+	BookFieldLines,
 	type CardFieldId,
-	CardFieldSlot,
 	type CardFieldValues,
+	type CardStatus,
 	DEFAULT_CARD_FIELDS,
-	NotStartedField,
-	ProgressField,
-	RatingField,
-	TextField,
 } from "./card-fields";
 import CardMoreButton from "./card-more-button";
 import { SyncExcludedBadge } from "./sync-excluded-badge";
@@ -30,8 +26,7 @@ import { useLongPress } from "./use-long-press";
 type BookCardProps = {
 	book: Book;
 	cover: string | undefined;
-	progress: number;
-	started: boolean;
+	status: CardStatus;
 	onOpen: () => void;
 	onMenu: () => void;
 	/** Selection mode is active: a tap picks this book instead of opening it. */
@@ -54,8 +49,7 @@ type BookCardProps = {
 const BookCard: React.FC<BookCardProps> = ({
 	book,
 	cover,
-	progress,
-	started,
+	status,
 	onOpen,
 	onMenu,
 	selectable = false,
@@ -80,7 +74,6 @@ const BookCard: React.FC<BookCardProps> = ({
 		enabled: !!onLongPress || !selectable,
 	});
 	const id = useId();
-	const progressId = `${id}-progress`;
 	const detailsId = `${id}-details`;
 	const deviceId = `${id}-device`;
 	const seriesId = `${id}-series`;
@@ -95,12 +88,7 @@ const BookCard: React.FC<BookCardProps> = ({
 				data-book-title={book.title}
 				data-selected={selectable && selected ? "true" : undefined}
 				aria-label={book.title}
-				aria-describedby={[
-					seriesNumber !== null && seriesId,
-					deviceId,
-					started && fields.includes("progress") && progressId,
-					detailsId,
-				]
+				aria-describedby={[seriesNumber !== null && seriesId, deviceId, detailsId]
 					.filter(Boolean)
 					.join(" ")}
 				aria-pressed={selectable ? selected : undefined}
@@ -137,35 +125,18 @@ const BookCard: React.FC<BookCardProps> = ({
 					)}
 				</div>
 
-				{fields.includes("progress") && (
-					<CardFieldSlot surface="grid" field="progress" className="mt-1">
-						{started ? <ProgressField id={progressId} progress={progress} /> : <NotStartedField />}
-					</CardFieldSlot>
-				)}
-
-				<div className="px-0.5 pt-1">
-					<div className="line-clamp-2 overflow-hidden font-semibold text-[0.85rem] leading-[1.2]">
+				<div className="px-0.5 pt-2">
+					<div className="line-clamp-2 overflow-hidden font-medium text-[0.875rem] leading-[1.25]">
 						{book.title}
 					</div>
 					<div id={detailsId}>
-						{fields.map((field) =>
-							field === "progress" ? null : (
-								<CardFieldSlot key={field} surface="grid" field={field}>
-									{field === "rating" ? (
-										// Sorting by rating is offered from the same screen, so the value has
-										// to be visible here or the reorder looks like nothing happened.
-										<RatingField rating={book.rating} />
-									) : (
-										<TextField
-											text={
-												values?.[field] ??
-												(field === "author" ? displayAuthor(book.author ?? "") : "")
-											}
-										/>
-									)}
-								</CardFieldSlot>
-							),
-						)}
+						<BookFieldLines
+							surface="grid"
+							fields={fields}
+							book={book}
+							status={status}
+							values={values}
+						/>
 						<SyncExcludedBadge book={book} className="mt-1" />
 					</div>
 				</div>

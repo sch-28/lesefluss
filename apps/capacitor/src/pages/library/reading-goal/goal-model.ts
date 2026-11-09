@@ -55,6 +55,15 @@ export function canStartGoal(book: {
 	);
 }
 
+/** Books a goal can start on that have none yet, in the order given (the library's: most recently read first). */
+export function goalCandidates<B extends { id: string } & Parameters<typeof canStartGoal>[0]>(
+	books: readonly B[],
+	goalBookIds: readonly string[],
+): B[] {
+	const taken = new Set(goalBookIds);
+	return books.filter((book) => canStartGoal(book) && !taken.has(book.id));
+}
+
 /** Slider position 0..100 on a log scale from one week to one year. */
 export function sliderToDays(position: number): number {
 	const ratio = MAX_GOAL_DAYS / MIN_GOAL_DAYS;

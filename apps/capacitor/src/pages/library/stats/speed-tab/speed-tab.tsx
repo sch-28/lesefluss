@@ -10,97 +10,97 @@ import { queryHooks } from "../../../../services/db/hooks";
 import {
 	deltaLabel,
 	type SpeedView,
+	speedDelta,
 	speedViews,
-	trendDelta,
+	viewWpm,
 } from "../../../../services/stats/speed-tab";
-import { formatShortDate } from "../../../../utils/date-utils";
 import { WpmTrend } from "../wpm-trend";
 import { BookSpeedList } from "./book-speed-list";
 import { MilestonesSection } from "./milestones-section";
 import { RsvpDial } from "./rsvp-dial";
 import { ShareSpeedButton } from "./share-speed-button";
-import { ReadingInsights, ReadingRecords, RsvpInsights, RsvpRecords } from "./speed-insights";
-import { SpeedTestCard } from "./speed-test-card";
+import { PersonalBests, SpeedInsights } from "./speed-insights";
 
 const VIEW_LABELS: Record<SpeedView, string> = { reading: "Reading", rsvp: "RSVP" };
-const VIEW_DOT: Record<SpeedView, string> = { reading: "bg-slate-500", rsvp: "bg-primary" };
 
-/** Read-only here: the window is a setting (Settings › Reading), since every estimate uses it. */
-function WindowLabel({ window }: { window: SpeedWindow }) {
-	return (
-		<Link
-			to="/tabs/settings"
-			data-testid="speed-window"
-			title="Change in Settings › Reading"
-			className="rounded-md px-2 py-1 text-muted-foreground text-sm no-underline hover:bg-muted"
-		>
-			{WINDOW_LABELS[window]}
-		</Link>
-	);
+const WINDOW_PHRASES: Record<SpeedWindow, string> = {
+	recent: "your last 10 hours",
+	"30d": "the last 30 days",
+	all: "all your reading",
+};
+
+/** Whether the view has a speed of its own yet; the reading default is the average reader's. */
+export function hasOwnSpeed(model: SpeedModel, view: SpeedView): boolean {
+	return view === "rsvp" ? model.rsvp !== null : model.reading.source !== "default";
 }
 
-function viewWpm(model: SpeedModel, view: SpeedView): number {
-	return view === "rsvp" ? (model.rsvp?.wpm ?? 0) : model.reading.wpm;
-}
-
-function ModeSwitch({
-	model,
-	views,
-	value,
-	onChange,
-}: {
-	model: SpeedModel;
-	views: SpeedView[];
-	value: SpeedView;
-	onChange: (view: SpeedView) => void;
-}) {
+function Headline({ model, view }: { model: SpeedModel; view: SpeedView }) {
+	const wpm = viewWpm(model, view);
+	const earlier = queryHooks.useStatsSpeedModelEarlier();
+	const delta = speedDelta(model, earlier.data, view);
+	const basis =
+		view === "reading" && model.reading.source === "test"
+			? "From your speed test"
+			: `Based on ${WINDOW_PHRASES[model.window]}`;
 	return (
-		<div className="mb-5 px-4">
-			<SegmentedControl
-				aria-label="Speed mode"
-				data-testid="speed-mode"
-				value={value}
-				onValueChange={onChange}
-				options={views.map((view) => ({
-					value: view,
-					label: (
-						<>
-							<span className={cn("size-2 rounded-full", VIEW_DOT[view])} aria-hidden="true" />
-							{VIEW_LABELS[view]}
-							<span className="font-semibold tabular-nums">{viewWpm(model, view)}</span>
-						</>
-					),
-				}))}
-			/>
+		<div data-testid="speed-hero">
+			<div className="flex items-baseline gap-2">
+				<span className="font-bold text-[2.25rem] tabular-nums leading-none tracking-tight">
+					{wpm}
+				</span>
+				<span className="text-muted-foreground">wpm</span>
+				{delta !== null && (
+					<span className="ml-auto text-[0.8125rem] tabular-nums">
+						{/* A rise is good news; a drop stays neutral, slower isn't a failure. */}
+						<span className={cn(delta > 0 ? "text-[var(--goal-met)]" : "text-muted-foreground")}>
+							{deltaLabel(delta)}
+						</span>
+					</span>
+				)}
+			</div>
+			<div className="mt-1 text-[0.8125rem] text-muted-foreground">
+				{basis} ·{" "}
+				<Link
+					to="/tabs/settings/speed"
+					data-testid="speed-window"
+					aria-label={`Change the speed window, now ${WINDOW_LABELS[model.window]}`}
+					className="font-medium text-primary no-underline"
+				>
+					change
+				</Link>
+			</div>
 		</div>
 	);
 }
 
-function Hero({ model, view, now }: { model: SpeedModel; view: SpeedView; now: number }) {
-	const trend = queryHooks.useStatsWpmTrend(model.window, view, now);
-	const delta = trend.data ? trendDelta(trend.data) : null;
-	const { scroll, page } = model.reading;
-	let sub: string | undefined;
-	if (view === "reading") {
-		if (model.reading.source === "default") sub = "Average reader";
-		else if (model.reading.source === "test") sub = "Speed test";
-		else if (scroll && page) sub = `Scroll ${scroll.wpm} · Page ${page.wpm}`;
-	}
+function ViewRow({
+	model,
+	views,
+	view,
+	onChange,
+	now,
+}: {
+	model: SpeedModel;
+	views: SpeedView[];
+	view: SpeedView;
+	onChange: (view: SpeedView) => void;
+	now: number;
+}) {
+	const canShare = views.some((v) => hasOwnSpeed(model, v));
+	if (views.length < 2 && !canShare) return null;
 	return (
-		<div className="mb-4 px-4" data-testid="speed-hero">
-			<div className="text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
-				{view === "rsvp" ? "RSVP speed" : "Reading speed"}
-			</div>
-			<div className="mt-1 flex items-baseline gap-2">
-				<span className="font-bold text-2xl tabular-nums leading-none">{viewWpm(model, view)}</span>
-				<span className="text-muted-foreground text-sm">wpm</span>
-				{delta && (
-					<span className="ml-auto text-muted-foreground text-sm tabular-nums">
-						{deltaLabel(model.window, delta.wpm, formatShortDate(delta.since))}
-					</span>
-				)}
-			</div>
-			{sub && <div className="mt-1 text-muted-foreground text-xs tabular-nums">{sub}</div>}
+		<div className="mt-2 flex items-center gap-2">
+			{views.length > 1 && (
+				<SegmentedControl
+					aria-label="Speed mode"
+					data-testid="speed-mode"
+					className="flex-1"
+					value={view}
+					onValueChange={onChange}
+					options={views.map((v) => ({ value: v, label: VIEW_LABELS[v] }))}
+				/>
+			)}
+			{canShare && <ShareSpeedButton model={model} view={view} now={now} />}
 		</div>
 	);
 }
@@ -147,39 +147,29 @@ export function SpeedTab({ now }: { now: number }) {
 			: views.includes(preferred)
 				? preferred
 				: (views[0] ?? "reading");
+	const hasSpeed = hasOwnSpeed(model, view);
 
 	return (
-		<div className="pt-2 pb-6" data-testid="speed-tab">
-			<div className="mb-4 flex items-center justify-between px-4">
-				<h2 className="font-semibold text-lg">Speed</h2>
-				<div className="flex items-center gap-1">
-					<ShareSpeedButton model={model} view={view} now={now} />
-					<WindowLabel window={model.window} />
-				</div>
-			</div>
-			{views.length > 1 && (
-				<ModeSwitch model={model} views={views} value={view} onChange={setPicked} />
-			)}
-			<Hero model={model} view={view} now={now} />
-			<WpmTrend
-				window={model.window}
-				mode={view}
-				windowLabel={WINDOW_LABELS[model.window]}
-				now={now}
-			/>
-			<SpeedTestCard />
-			{view === "rsvp" && model.rsvp ? (
-				<>
-					<RsvpDial model={model} />
-					<RsvpInsights model={model} />
-					<RsvpRecords />
-				</>
-			) : (
-				<>
-					<ReadingInsights />
-					<ReadingRecords />
-				</>
-			)}
+		<div className="pb-6" data-testid="speed-tab">
+			<section className="mt-4 px-4">
+				{hasSpeed && (
+					<>
+						<Headline model={model} view={view} />
+						<div className="mt-4">
+							<WpmTrend
+								window={model.window}
+								mode={view}
+								windowLabel={WINDOW_LABELS[model.window]}
+								now={now}
+							/>
+						</div>
+					</>
+				)}
+				<ViewRow model={model} views={views} view={view} onChange={setPicked} now={now} />
+			</section>
+			{view === "rsvp" && model.rsvp && <RsvpDial model={model} />}
+			<SpeedInsights model={model} view={view} />
+			<PersonalBests />
 			<MilestonesSection />
 			<BookSpeedList model={model} />
 		</div>

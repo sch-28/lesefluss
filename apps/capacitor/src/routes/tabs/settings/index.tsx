@@ -9,12 +9,14 @@ import {
 	Cog,
 	Cpu,
 	Download,
+	Gauge,
 	Globe,
 	Headphones,
 	Loader2,
 	Megaphone,
 	MessageCircle,
 	Scale,
+	ShieldCheck,
 	SlidersHorizontal,
 	Sparkles,
 	Target,
@@ -23,17 +25,15 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { TabHeader } from "@/components/app-shell/tab-header";
-import { ToggleRow } from "@/components/app-shell/toggle-row";
 import BLEIndicator from "@/components/ble-indicator";
-import { NavRow, RowLabel, SettingsRow } from "@/components/settings/settings-row";
+import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
-import { SpeedWindowSelect } from "@/components/speed-window-select";
+import { WINDOW_LABELS } from "@/components/speed-chip/speed-chip-model";
 import { SHOW_WHATS_NEW_EVENT } from "@/components/whats-new-modal";
 import { useBLE } from "@/contexts/ble-context";
 import { useSyncContext } from "@/contexts/sync-context";
 import { useTheme } from "@/contexts/theme-context";
 import { FONT_FAMILIES, THEMES, useAppearanceSettings } from "@/hooks/use-appearance-settings";
-import { DiagnosticsRow } from "@/pages/settings/diagnostics-row";
 import { BLEConnectionState } from "@/services/ble";
 import { queryHooks } from "@/services/db/hooks";
 import { isPushSupported } from "@/services/push";
@@ -42,7 +42,6 @@ import {
 	type DeviceDiagnostics,
 	getDeviceDiagnostics,
 	isTelemetryEnabled,
-	setTelemetryEnabled,
 } from "@/services/telemetry";
 import { IS_READ_ALOUD_SUPPORTED } from "@/services/tts";
 import { openLink } from "@/utils/open-link";
@@ -58,7 +57,6 @@ function SettingsLanding() {
 	const { connectionState, connectedDevice } = useBLE();
 	const { theme } = useTheme();
 	const { isLoggedIn, userEmail } = useSyncContext();
-	const [telemetry, setTelemetry] = useState(isTelemetryEnabled());
 	const [diagnostics, setDiagnostics] = useState<DeviceDiagnostics | null>(null);
 
 	useEffect(() => {
@@ -68,11 +66,6 @@ function SettingsLanding() {
 	}, []);
 
 	const { paginationStyle } = useAppearanceSettings();
-
-	const toggleTelemetry = (value: boolean) => {
-		setTelemetryEnabled(value);
-		setTelemetry(value);
-	};
 
 	const isConnected = connectionState === BLEConnectionState.CONNECTED;
 	const isTransitioning =
@@ -147,13 +140,15 @@ function SettingsLanding() {
 							to="/tabs/settings/read-aloud"
 						/>
 					)}
-					<SettingsRow>
-						<RowLabel
-							title="Speed window"
-							hint="Your speed and every time estimate use the sittings from this span."
-						/>
-						<SpeedWindowSelect window={settings?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW} />
-					</SettingsRow>
+					<NavRow
+						icon={Gauge}
+						title="Speed & estimates"
+						subtitle={WINDOW_LABELS[settings?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW]}
+						to="/tabs/settings/speed"
+					/>
+				</SettingsSection>
+
+				<SettingsSection title="Data">
 					<NavRow
 						icon={Download}
 						title="Export highlights"
@@ -216,6 +211,15 @@ function SettingsLanding() {
 					</SettingsSection>
 				)}
 
+				<SettingsSection title="Privacy">
+					<NavRow
+						icon={ShieldCheck}
+						title="Anonymous diagnostics"
+						subtitle={isTelemetryEnabled() ? "On" : "Off"}
+						to="/tabs/settings/diagnostics"
+					/>
+				</SettingsSection>
+
 				<SettingsSection title="About">
 					{!IS_WEB && (
 						<NavRow icon={Globe} title="Website" subtitle="lesefluss.app" onClick={openWebsite} />
@@ -243,17 +247,6 @@ function SettingsLanding() {
 						title="Open source licenses"
 						subtitle="Fonts bundled with the reader"
 						to="/tabs/settings/licenses"
-					/>
-					<DiagnosticsRow />
-				</SettingsSection>
-
-				<SettingsSection title="Privacy">
-					<ToggleRow
-						id="telemetry"
-						title="Anonymous diagnostics"
-						subtitle="Send anonymized error reports to help fix bugs. No account or personal data."
-						checked={telemetry}
-						onCheckedChange={toggleTelemetry}
 					/>
 				</SettingsSection>
 			</div>

@@ -92,7 +92,7 @@ export function StreakCalendar({ monthAnchor }: { monthAnchor: number }) {
 	return <DotGrid days={grid} ariaLabel={summariseDays(grid, monthLabelOf(monthAnchor, today))} />;
 }
 
-/** Collapsed hero view: the current week as one dot row. */
+/** Collapsed goal-card view: the current week as one row, today tinted. */
 export function StreakWeekStrip() {
 	const daily = queryHooks.useStatsDailyReading();
 	const frozenDays = useFrozenDays();
@@ -103,7 +103,44 @@ export function StreakWeekStrip() {
 		[daily.data, today, frozenDays],
 	);
 
-	return <DotGrid days={week} ariaLabel={summariseDays(week, "This week")} />;
+	return (
+		<div
+			className="mt-4 grid grid-cols-7"
+			role="img"
+			aria-label={summariseDays(week, "This week")}
+			data-testid="streak-week"
+		>
+			{week.map((day, i) => {
+				const isToday = day.dayStart === today;
+				return (
+					<div key={day.dateKey} className="flex flex-col items-center gap-2">
+						<span
+							className={
+								isToday ? "font-semibold text-foreground text-xs" : "text-muted-foreground text-xs"
+							}
+						>
+							{WEEKDAY_INITIALS[i]}
+						</span>
+						<span
+							className={`flex h-6 w-9 items-center justify-center rounded-full ${
+								isToday ? "bg-[color-mix(in_oklab,var(--goal-pending)_18%,transparent)]" : ""
+							}`}
+						>
+							<WeekMark day={day} isToday={isToday} />
+						</span>
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
+function WeekMark({ day, isToday }: { day: CalendarDay; isToday: boolean }) {
+	if (day.isFrozen) return <Snowflake aria-hidden="true" className="size-3 text-sky-500" />;
+	if (day.intensity > 0) return <span className="size-3 rounded-full bg-[var(--goal-met)]" />;
+	if (isToday)
+		return <span className="size-3 rounded-full border-2 border-[var(--goal-pending)]" />;
+	return <span className="size-3 rounded-full bg-muted" />;
 }
 
 function DotGrid({ days, ariaLabel }: { days: CalendarDay[]; ariaLabel: string }) {

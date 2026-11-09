@@ -6,6 +6,7 @@ import CoverImage from "../../../components/cover-image";
 import { ReservedCard } from "../../../components/reserved-card";
 import { queryHooks } from "../../../services/db/hooks";
 import { useBookActions } from "../book-actions/use-book-actions";
+import { SectionHeader } from "./section-header";
 import { TitleCover } from "./title-cover";
 
 /** One row: a 72px cover inside the card's padding and border. */
@@ -33,11 +34,9 @@ export function CurrentlyReading() {
 			whileInView={{ opacity: 1, y: 0 }}
 			viewport={{ once: true, amount: 0.25 }}
 			transition={{ duration: 0.5 }}
-			className="mb-10 px-4"
+			className="mt-6 px-4"
 		>
-			<header className="mb-3">
-				<h2 className="font-semibold text-lg">Currently reading</h2>
-			</header>
+			<SectionHeader title="Currently reading" />
 			<ReservedCard isPending={books.isPending} height={BOOK_ROW_HEIGHT}>
 				<div className="flex flex-col gap-2.5">
 					{rows.map((book, index) => {

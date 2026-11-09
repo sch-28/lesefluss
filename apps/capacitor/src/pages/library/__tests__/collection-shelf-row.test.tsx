@@ -98,9 +98,20 @@ const sheet = () => rendered?.container.querySelector("[data-testid=sheet]");
 describe("splitChips", () => {
 	it("keeps the first ones in the row and pulls an open overflow chip in", () => {
 		const chips = "abcd".split("").map((id) => ({ id, active: id === "d" }));
-		const { inline, more } = splitChips(chips, 2);
+		const { inline, more } = splitChips(chips, () => 1, 2);
 		expect(inline.map((c) => c.id)).toEqual(["a", "b", "d"]);
 		expect(more.map((c) => c.id)).toEqual(["c"]);
+	});
+
+	it("sends an empty chip to the sheet unless it is the open one", () => {
+		const chips = [
+			{ id: "unrated", n: 0, active: false },
+			{ id: "reading", n: 3, active: false },
+			{ id: "empty-open", n: 0, active: true },
+		];
+		const { inline, more } = splitChips(chips, (c) => c.n);
+		expect(inline.map((c) => c.id)).toEqual(["reading", "empty-open"]);
+		expect(more.map((c) => c.id)).toEqual(["unrated"]);
 	});
 });
 
@@ -139,6 +150,16 @@ describe("CollectionShelfRow", () => {
 			dune.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
 		});
 		expect(menuFor).toHaveBeenLastCalledWith("dune", ["dune", "earth"]);
+	});
+
+	it("shows no 0 chip in the row and hides the row's scrollbar", async () => {
+		collections = [{ ...collection("empty"), bookCount: 0 }, collection("full")];
+		rendered = await render(<CollectionShelfRow activeId={undefined} activeShelfId={undefined} />);
+		expect(row().map((b) => b.textContent)).toEqual(["All", "C full2", "1"]);
+		const toolbar = rendered.container.querySelector("[role=toolbar]");
+		expect(toolbar?.className).toContain("[&::-webkit-scrollbar]:hidden");
+		await click(rendered.getButton("More, 1 more"));
+		expect(sheet()?.textContent).toContain("C empty");
 	});
 
 	it("puts chips past the limit in the More sheet and opens them from there", async () => {

@@ -14,6 +14,7 @@ const DAY = 24 * HOUR;
 
 const state: {
 	model: SpeedModel | undefined;
+	earlier: SpeedModel | undefined;
 	tab: SpeedTabData;
 	insights: SpeedInsights;
 	settings: { wpm: number; defaultReaderMode: string };
@@ -21,8 +22,9 @@ const state: {
 	speedTests: { id: string; readingWpm: number; createdAt: number }[];
 } = {
 	model: undefined,
+	earlier: undefined,
 	tab: { books: [], records: emptyRecords() },
-	insights: { reading: [], rsvp: [] },
+	insights: { reading: [], rsvp: [], locked: { reading: [], rsvp: [] } },
 	settings: { wpm: 450, defaultReaderMode: "scroll" },
 	milestones: { reached: [], next: [] },
 	speedTests: [],
@@ -41,6 +43,7 @@ vi.mock("../../../../../services/db/hooks", () => ({
 			isFetching: false,
 			refetch,
 		}),
+		useStatsSpeedModelEarlier: () => ({ data: state.earlier }),
 		useStatsSpeedTab: () => ({ data: state.tab }),
 		useStatsSpeedInsights: () => ({ data: state.insights }),
 		useSettings: () => ({ data: state.settings }),
@@ -107,6 +110,7 @@ function model(
 const bookRow = (i: number) => ({
 	bookId: `b${i}`,
 	title: `Book ${i}`,
+	author: null,
 	coverImage: null,
 	mode: "scroll" as const,
 	wpm: 240 + i,
@@ -121,9 +125,10 @@ beforeEach(() => {
 	navigate.mockClear();
 	refetch.mockClear();
 	modelError = false;
+	state.earlier = { ...model(), reading: { ...model().reading, wpm: 240 } };
 	state.speedTests = [];
 	state.tab = { books: [], records: emptyRecords() };
-	state.insights = { reading: [], rsvp: [] };
+	state.insights = { reading: [], rsvp: [], locked: { reading: [], rsvp: [] } };
 	state.settings = { wpm: 450, defaultReaderMode: "scroll" };
 	state.milestones = { reached: [], next: [] };
 	sharedCards.length = 0;
@@ -145,10 +150,9 @@ describe("SpeedTab", () => {
 		};
 		view = await render(<SpeedTab now={2 * DAY} />);
 		expect(q("speed-hero")?.textContent).toContain("260");
-		expect(q("speed-hero")?.textContent).toContain("Scroll 250 · Page 300");
-		expect(q("speed-hero")?.textContent).toContain("+20 since");
+		expect(q("speed-hero")?.textContent).toContain("+20 in 4 weeks");
 		expect(q("speed-hero")?.innerHTML).not.toMatch(/emerald|red-/);
-		expect(q("speed-window")?.textContent).toContain("Last 10h");
+		expect(q("speed-window")?.getAttribute("aria-label")).toContain("Last 10h");
 		expect(q("book-speed-list")).not.toBeNull();
 		expect(q("speed-records")?.textContent).toContain("Fastest book");
 		expect(q("speed-records")?.textContent).toContain("241 wpm");
@@ -171,7 +175,7 @@ describe("SpeedTab", () => {
 		state.model = model({ reading: false, source: "test" });
 		view = await render(<SpeedTab now={2 * DAY} />);
 		expect(q("speed-test-card")?.textContent).toContain("Not taken yet");
-		expect(q("speed-hero")?.textContent).toContain("Speed test");
+		expect(q("speed-hero")?.textContent).toContain("From your speed test");
 		state.speedTests = [{ id: "t1", readingWpm: 275, createdAt: DAY }];
 		await view.rerender(<SpeedTab now={2 * DAY + 1} />);
 		expect(q("speed-test-card")?.textContent).toContain("275 wpm");
@@ -179,10 +183,31 @@ describe("SpeedTab", () => {
 		expect(navigate).toHaveBeenCalledWith({ to: "/speed-test" });
 	});
 
-	it("renders no insight grid while no insight has its data", async () => {
+	it("lists the insights still locked, with what each needs and how far the reader is", async () => {
 		state.model = model();
+		state.insights.locked.reading = [
+			{
+				id: "fatigue",
+				title: "When you slow down",
+				need: "3 sittings of 30+ min",
+				progress: 1 / 3,
+				progressLabel: "1 of 3",
+			},
+		];
 		view = await render(<SpeedTab now={2 * DAY} />);
-		expect(q("speed-insights")).toBeNull();
+		expect(q("speed-insights")?.textContent).toContain("Unlock as you read");
+		expect(q("insight-locked-fatigue")?.textContent).toContain("3 sittings of 30+ min · 1 of 3");
+	});
+
+	it("asks a reader without a speed to read on, instead of showing the average reader's", async () => {
+		state.model = {
+			...model({ reading: false, source: "default" }),
+			reading: { ...model().reading, source: "default", activeMs: 4 * 60_000 },
+		};
+		view = await render(<SpeedTab now={2 * DAY} />);
+		expect(q("speed-hero")).toBeNull();
+		expect(q("speed-locked")?.textContent).toContain("Read 6 more minutes");
+		expect(q("speed-locked")?.textContent).toContain("4 of 10 min");
 	});
 
 	it("shows each view's own insight tiles", async () => {
@@ -192,6 +217,7 @@ describe("SpeedTab", () => {
 				{ id: "time-of-day", label: "Fastest time", value: "Evening", sub: "+8% · 262 wpm" },
 			],
 			rsvp: [{ id: "fatigue", label: "Slows after", value: "40m", sub: "−9%" }],
+			locked: { reading: [], rsvp: [] },
 		};
 		view = await render(<SpeedTab now={2 * DAY} />);
 		expect(q("insight-time-of-day")?.textContent).toContain("Evening");
@@ -251,16 +277,22 @@ describe("SpeedTab", () => {
 		view = await render(<SpeedTab now={2 * DAY} />);
 		const label = q("speed-window") as HTMLAnchorElement;
 		expect(label.tagName).toBe("A");
-		expect(label.getAttribute("href")).toBe("/tabs/settings");
+		expect(label.getAttribute("href")).toBe("/tabs/settings/speed");
 	});
 
-	it("shows seven books, then all of them on request", async () => {
+	it("shows four books, then all of them on request", async () => {
 		state.model = model();
 		state.tab = { books: Array.from({ length: 9 }, (_, i) => bookRow(i)), records: emptyRecords() };
 		view = await render(<SpeedTab now={2 * DAY} />);
-		expect(view.container.querySelectorAll("[data-testid=book-speed-row]")).toHaveLength(7);
+		expect(view.container.querySelectorAll("[data-testid=book-speed-row]")).toHaveLength(4);
+		const sortItems = [...(q("book-sort")?.querySelectorAll("button") ?? [])];
+		expect(sortItems).toHaveLength(2);
+		for (const item of sortItems) {
+			expect(item.className).toContain("min-h-[38px]");
+			expect(item.className).not.toMatch(/\bmin-h-8\b/);
+		}
 		const more = [...view.container.querySelectorAll("button")].find(
-			(b) => b.textContent === "Show all 9",
+			(b) => b.textContent === "Show all 9 books",
 		) as HTMLElement;
 		await click(more);
 		expect(view.container.querySelectorAll("[data-testid=book-speed-row]")).toHaveLength(9);
@@ -280,11 +312,12 @@ describe("SpeedTab", () => {
 		// 1M is the third words tier and 500 the third RSVP tier: six of the 32 tiers.
 		expect(section?.textContent).toContain("6 of 32");
 		const medals = section?.querySelectorAll("[data-testid=milestone-medal]") ?? [];
-		expect(
-			[...medals].map((m) => (m.querySelector("[aria-label=RSVP]") ? "rsvp" : "plain")),
-		).toEqual(["plain", "rsvp"]);
+		expect([...medals].map((m) => m.textContent)).toEqual([
+			expect.stringContaining("1 million words"),
+			expect.stringContaining("500 wpm RSVP sitting"),
+		]);
 		expect(section?.querySelector("[data-testid=milestone-next]")?.textContent).toContain(
-			"1.2M / 2M",
+			"1.2M of 2M",
 		);
 	});
 

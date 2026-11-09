@@ -7,10 +7,19 @@ type Props = {
 	isMet?: boolean;
 	children?: ReactNode;
 	className?: string;
+	/** Replaces the reader's track colour where the ring sits on app chrome. */
+	trackClassName?: string;
 };
 
 /** The goal chip's ring at any size, with an optional label in its middle. */
-export function GoalRing({ size, fraction, isMet = false, children, className }: Props) {
+export function GoalRing({
+	size,
+	fraction,
+	isMet = false,
+	children,
+	className,
+	trackClassName = "reader-goal-ring-track",
+}: Props) {
 	const stroke = Math.max(2, size / 10);
 	const radius = (size - stroke) / 2;
 	const length = 2 * Math.PI * radius;
@@ -26,7 +35,7 @@ export function GoalRing({ size, fraction, isMet = false, children, className }:
 					cy={center}
 					r={radius}
 					fill="none"
-					className="reader-goal-ring-track"
+					className={trackClassName}
 					strokeWidth={stroke}
 				/>
 				{fraction > 0 && (

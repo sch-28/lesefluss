@@ -6,11 +6,12 @@ import {
 	deltaLabel,
 	modeAverage,
 	percentVsAverage,
+	SPEED_DELTA_SPAN_MS,
 	type SpeedTabSession,
 	sortBookRows,
+	speedDelta,
 	speedViews,
 	timeSavedMs,
-	trendDelta,
 } from "../speed-tab";
 
 const MIN = 60_000;
@@ -75,26 +76,42 @@ describe("timeSavedMs", () => {
 	});
 });
 
-describe("trendDelta", () => {
-	const trend = (wpms: number[]) => ({
-		granularity: "day" as const,
-		measured: wpms.map((avgWpm, i) => ({ bucketStart: i * DAY, avgWpm })),
-		rsvpTarget: [],
-		averages: { measured: 0, rsvpTarget: 0 },
+describe("speedDelta", () => {
+	const recent = (wpm: number, at: number, mode: SpeedTabSession["mode"] = "scroll") =>
+		sitting({ startedAt: at, wordsRead: wpm * 60, mode });
+	const asOf = NOW - SPEED_DELTA_SPAN_MS;
+	const recentModel = (rows: SpeedRow[], now: number) =>
+		computeSpeedModel(
+			rows.filter((r) => r.startedAt < now),
+			{ now, window: "recent" },
+		);
+
+	it("compares the headline with the same window's speed four weeks earlier", () => {
+		const rows = [recent(200, asOf - 2 * DAY), recent(260, NOW - DAY)];
+		const current = recentModel(rows, NOW);
+		const earlier = recentModel(rows, asOf);
+		expect(current.reading.wpm).toBe(230);
+		expect(earlier.reading.wpm).toBe(200);
+		expect(speedDelta(current, earlier, "reading")).toBe(30);
 	});
 
-	it("compares the last point with the first, skipping empty buckets", () => {
-		expect(trendDelta(trend([0, 240, 0, 260, 0]))).toEqual({ wpm: 20, since: DAY });
+	it("is absent when either side is not measured reading", () => {
+		const current = recentModel([recent(260, NOW - DAY)], NOW);
+		expect(speedDelta(current, recentModel([], asOf), "reading")).toBeNull();
+		expect(speedDelta(current, undefined, "reading")).toBeNull();
+		const tested = computeSpeedModel([], {
+			now: NOW,
+			window: "recent",
+			speedTest: { wpm: 300, takenAt: NOW - DAY },
+		});
+		expect(speedDelta(tested, current, "reading")).toBeNull();
+		expect(speedDelta(current, current, "rsvp")).toBeNull();
 	});
 
-	it("is absent with fewer than two points", () => {
-		expect(trendDelta(trend([0, 240, 0]))).toBeNull();
-	});
-
-	it("labels each window the way it reads", () => {
-		expect(deltaLabel("recent", 12, "Oct 3")).toBe("+12 since Oct 3");
-		expect(deltaLabel("30d", -5, "Oct 3")).toBe("−5 in 30 days");
-		expect(deltaLabel("all", 0, "Jan 2")).toBe("±0 since Jan 2");
+	it("labels the span it covers", () => {
+		expect(deltaLabel(12)).toBe("+12 in 4 weeks");
+		expect(deltaLabel(-5)).toBe("−5 in 4 weeks");
+		expect(deltaLabel(0)).toBe("±0 in 4 weeks");
 	});
 });
 
@@ -194,6 +211,7 @@ describe("book comparison", () => {
 		const row = (bookId: string, mode: "scroll" | "rsvp", wpm: number, lastAt: number) => ({
 			bookId,
 			title: bookId,
+			author: null,
 			coverImage: null,
 			mode,
 			wpm,

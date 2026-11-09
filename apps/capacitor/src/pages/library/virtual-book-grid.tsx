@@ -2,7 +2,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Virtualizer, type VirtualizerHandle } from "virtua";
+import { type CacheSnapshot, Virtualizer, type VirtualizerHandle } from "virtua";
 import { itemKey, type LibraryGroup, layoutRows } from "./group-by";
 import { rowTokens } from "./library-focus";
 import type { LibraryItem } from "./sort-filter";
@@ -20,10 +20,10 @@ const GRID_CLASS = "grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid
 const CONTENT_MAX_PX = 900;
 const PADDING_PX = 16;
 const GAP_PX = 16;
-/** Cover (2:3) plus title and progress lines under it. */
+/** Cover (2:3) plus title, author and status lines under it. */
 const CARD_TEXT_PX = 72;
-/** A 64px cover plus the 12px gap under every row. */
-const LIST_ROW_PX = 76;
+/** A 64px row; its border is its only separator. */
+const LIST_ROW_PX = 64;
 
 /** A first guess at a row's height, so rows far from the viewport hold about
  *  their real space and a restored scroll offset lands near the same books. */
@@ -131,6 +131,25 @@ function swallowNextClick() {
 const NONE_COLLAPSED: ReadonlySet<string> = new Set();
 
 /**
+ * The measured row sizes of the last library this layout showed. Restored on
+ * mount, so the router's restored scroll offset lands on the same books after a
+ * trip to the reader instead of on rows virtua only estimated.
+ */
+const sizeCaches = new Map<string, CacheSnapshot>();
+
+export function sizeCacheKey(
+	viewMode: "grid" | "list",
+	cols: number,
+	rowKeys: readonly string[],
+): string {
+	return `${viewMode}:${cols}:${rowKeys.length}:${rowKeys[0] ?? ""}:${rowKeys.at(-1) ?? ""}`;
+}
+
+export function clearSizeCaches() {
+	sizeCaches.clear();
+}
+
+/**
  * Grid and list, rendering only the rows near the viewport, so a library of
  * thousands of books filters and scrolls like a small one.
  */
@@ -157,6 +176,23 @@ const VirtualBookGrid: React.FC<Props> = ({
 	const pressAt = useRef<{ x: number; y: number } | null>(null);
 	const tokens = useMemo(() => rowTokens(rows), [rows]);
 	const virtualizer = useScrollToFocused(tokens, focusedKey);
+	const cacheKey = sizeCacheKey(
+		viewMode,
+		cols,
+		rows.map((row) => (row.type === "header" ? `\u0001${row.group.key}` : row.key)),
+	);
+	// The snapshot is read once per mount; virtua ignores a later change of the prop.
+	const [initialCache] = useState(() => sizeCaches.get(cacheKey));
+	const cacheKeyRef = useRef(cacheKey);
+	cacheKeyRef.current = cacheKey;
+	// Layout cleanup: it runs before virtua's own handle is detached.
+	useLayoutEffect(
+		() => () => {
+			const cache = virtualizer.current?.cache;
+			if (cache) sizeCaches.set(cacheKeyRef.current, cache);
+		},
+		[virtualizer],
+	);
 
 	return (
 		<div
@@ -184,6 +220,7 @@ const VirtualBookGrid: React.FC<Props> = ({
 				startMargin={startMargin + PADDING_PX}
 				bufferSize={600}
 				itemSize={estimateRowPx(viewMode, cols, window.innerWidth)}
+				cache={initialCache}
 			>
 				{rows.map((row, rowIndex) => {
 					if (row.type === "header") {
@@ -224,9 +261,7 @@ const VirtualBookGrid: React.FC<Props> = ({
 							{row.items.map((item, column) => cell(item, column, "min-w-0"))}
 						</div>
 					) : (
-						<div key={row.key} className="pb-4">
-							{cell(row.items[0] as LibraryItem, 0)}
-						</div>
+						<div key={row.key}>{cell(row.items[0] as LibraryItem, 0)}</div>
 					);
 				})}
 			</Virtualizer>

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { makeBook } from "../../../test/book-fixture";
 import { type Rendered, render } from "../../../test/render";
-import { NotStartedField, RatingField, TextField } from "../card-fields";
+import { cardStatus, StatusField } from "../card-fields";
 
 let rendered: Rendered | undefined;
 afterEach(() => {
@@ -8,23 +9,25 @@ afterEach(() => {
 	rendered = undefined;
 });
 
-describe("card field placeholders", () => {
-	it("an unrated book shows faint empty stars labelled Not rated", async () => {
-		rendered = await render(<RatingField rating={null} />);
-		const label = rendered.container.querySelector("[aria-label='Not rated']");
-		expect(label).not.toBeNull();
-		expect(label?.querySelectorAll("svg.fill-primary")).toHaveLength(0);
+describe("card status line", () => {
+	it("an unread book shows its time to read, or New without an estimate", async () => {
+		rendered = await render(<StatusField status={{ kind: "unread", minutes: 300 }} />);
+		expect(rendered.text()).toBe("5h read");
+		await rendered.rerender(<StatusField status={{ kind: "unread", minutes: null }} />);
+		expect(rendered.text()).toBe("New");
 	});
 
-	it("an empty text field shows a dash, a filled one its text", async () => {
-		rendered = await render(<TextField text="" />);
-		expect(rendered.text()).toBe("–");
-		await rendered.rerender(<TextField text="Jay Kristoff" />);
-		expect(rendered.text()).toBe("Jay Kristoff");
+	it("a book in progress shows its percent, a finished one Finished", async () => {
+		rendered = await render(<StatusField status={{ kind: "reading", progress: 42 }} />);
+		expect(rendered.text()).toBe("42%");
+		await rendered.rerender(<StatusField status={{ kind: "finished" }} />);
+		expect(rendered.text()).toBe("Finished");
 	});
 
-	it("an unstarted book says so in the progress slot", async () => {
-		rendered = await render(<NotStartedField />);
-		expect(rendered.text()).toBe("Not started");
+	it("derives the status from the book", () => {
+		const fresh = makeBook({ wordCount: 1000 });
+		expect(cardStatus(fresh, 120)).toEqual({ kind: "unread", minutes: 120 });
+		expect(cardStatus(fresh, 0)).toEqual({ kind: "unread", minutes: null });
+		expect(cardStatus(makeBook({ finishedAt: 1 }), 0)).toEqual({ kind: "finished" });
 	});
 });

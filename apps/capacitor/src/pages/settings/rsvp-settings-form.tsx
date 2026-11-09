@@ -19,9 +19,9 @@ import { ChevronDown, Loader2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import { RsvpSpeedControl } from "../../components/rsvp-speed-control";
 import { RowLabel, SettingsRow } from "../../components/settings/settings-row";
 import { SettingsSection } from "../../components/settings/settings-section";
+import { SpeedRow } from "../../components/settings/speed-row";
 import { StepperRow } from "../../components/settings/stepper-row";
 import { focalLetterColorFor, useTheme } from "../../contexts/theme-context";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
@@ -64,14 +64,11 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 	return (
 		<>
 			<SettingsSection title="Speed">
-				<SettingsRow>
-					<RowLabel title="RSVP speed" />
-					<RsvpSpeedControl
-						wpm={settings.wpm}
-						onChange={(wpm) => updateSetting("wpm", wpm)}
-						className="ml-auto"
-					/>
-				</SettingsRow>
+				<SpeedRow
+					label="RSVP speed"
+					wpm={settings.wpm}
+					onChange={(wpm) => updateSetting("wpm", wpm)}
+				/>
 			</SettingsSection>
 
 			<SettingsSection title="Punctuation">

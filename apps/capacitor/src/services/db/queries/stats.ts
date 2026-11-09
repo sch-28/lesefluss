@@ -31,7 +31,12 @@ import {
 	windowTrendBuckets,
 } from "../../stats/aggregate";
 import type { DailyReading } from "../../stats/calendar";
-import { type Insight, speedInsights } from "../../stats/insights";
+import {
+	type Insight,
+	type LockedInsight,
+	lockedInsights,
+	speedInsights,
+} from "../../stats/insights";
 import { type ReadingRecords, summariseRecords } from "../../stats/records";
 import { buildSpeedTabData, type SpeedTabData } from "../../stats/speed-tab";
 import { db } from "../index";
@@ -405,11 +410,17 @@ export async function getSpeedTab(): Promise<SpeedTabData> {
 			.from(readingSessions)
 			// Ordered so a tied record goes to the earlier sitting on every render.
 			.orderBy(readingSessions.startedAt),
-		db.select({ id: books.id, title: books.title }).from(books).where(eq(books.deleted, false)),
+		db
+			.select({ id: books.id, title: books.title, author: books.author })
+			.from(books)
+			.where(eq(books.deleted, false)),
 	]);
 	const covers = await coversFor(bookRows.map((b) => b.id));
 	const byId = new Map(
-		bookRows.map((b) => [b.id, { title: b.title, coverImage: covers.get(b.id) ?? null }]),
+		bookRows.map((b) => [
+			b.id,
+			{ title: b.title, author: b.author, coverImage: covers.get(b.id) ?? null },
+		]),
 	);
 	return buildSpeedTabData(sessions, byId);
 }
@@ -513,6 +524,8 @@ export async function getSpeedModel(opts: {
 	now: number;
 	/** Sittings to leave out, for a speed as it stood before them. */
 	without?: readonly string[];
+	/** The model as it stood at this time: later sittings and tests are left out. */
+	asOf?: number;
 }): Promise<SpeedModel> {
 	const [all, test] = await Promise.all([
 		db
@@ -529,12 +542,20 @@ export async function getSpeedModel(opts: {
 		getLatestPlausibleSpeedTest(),
 	]);
 	const without = new Set(opts.without);
-	const rows = without.size > 0 ? all.filter((r) => !without.has(r.id)) : all;
-	const speedTest = test ? { wpm: test.readingWpm, takenAt: test.createdAt } : null;
-	return computeSpeedModel(rows, { window: opts.window, now: opts.now, speedTest });
+	const asOf = opts.asOf;
+	const rows = all.filter((r) => !without.has(r.id) && (asOf === undefined || r.startedAt < asOf));
+	const speedTest =
+		test && (asOf === undefined || test.createdAt < asOf)
+			? { wpm: test.readingWpm, takenAt: test.createdAt }
+			: null;
+	return computeSpeedModel(rows, { window: opts.window, now: asOf ?? opts.now, speedTest });
 }
 
-export type SpeedInsights = { reading: Insight[]; rsvp: Insight[] };
+export type SpeedInsights = {
+	reading: Insight[];
+	rsvp: Insight[];
+	locked: { reading: LockedInsight[]; rsvp: LockedInsight[] };
+};
 
 /** The Speed tab's insight tiles for both views, over the sittings in the window. */
 export async function getSpeedInsights(opts: {
@@ -553,7 +574,16 @@ export async function getSpeedInsights(opts: {
 		})
 		.from(readingSessions);
 	const rows = speedWindowRows(all, opts.window, opts.now);
-	return { reading: speedInsights(rows, "reading"), rsvp: speedInsights(rows, "rsvp") };
+	const reading = speedInsights(rows, "reading");
+	const rsvp = speedInsights(rows, "rsvp");
+	return {
+		reading,
+		rsvp,
+		locked: {
+			reading: lockedInsights(rows, "reading", reading),
+			rsvp: lockedInsights(rows, "rsvp", rsvp),
+		},
+	};
 }
 
 /**

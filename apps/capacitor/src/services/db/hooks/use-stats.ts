@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS, type SpeedWindow } from "@lesefluss/core";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { startOfLocalDay } from "../../../utils/date-utils";
+import { SPEED_DELTA_SPAN_MS } from "../../stats/speed-tab";
 import { queries } from "../queries";
 import type { SpeedTrendMode } from "../queries/stats";
 import { statsKeys } from "./query-keys";
@@ -64,6 +65,18 @@ function useSpeedModelWithout(sessionIds: readonly string[]) {
 	return useQuery({
 		queryKey: statsKeys.speedModelWithout(window, sessionIds),
 		queryFn: () => queries.getSpeedModel({ window, now: Date.now(), without: sessionIds }),
+		enabled: settings.data !== undefined,
+	});
+}
+
+/** The speed model as it stood `SPEED_DELTA_SPAN_MS` ago, so the delta compares one measure with itself. */
+function useSpeedModelEarlier() {
+	const settings = settingsHooks.useSettings();
+	const window: SpeedWindow = settings.data?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW;
+	const asOf = startOfLocalDay(Date.now()) - SPEED_DELTA_SPAN_MS;
+	return useQuery({
+		queryKey: statsKeys.speedModelAsOf(window, asOf),
+		queryFn: () => queries.getSpeedModel({ window, now: asOf, asOf }),
 		enabled: settings.data !== undefined,
 	});
 }
@@ -143,6 +156,7 @@ export const statsHooks = {
 	useHourHistogram,
 	useSpeedModel,
 	useSpeedModelWithout,
+	useSpeedModelEarlier,
 	useSpeedInsights,
 	useMilestones,
 	useSpeedTab,

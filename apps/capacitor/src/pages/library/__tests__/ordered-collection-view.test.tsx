@@ -11,9 +11,6 @@ vi.mock("../../../components/book-cover", () => ({ default: () => null }));
 vi.mock("../../../components/collections/collection-actions", () => ({
 	CollectionActions: () => null,
 }));
-vi.mock("../../../components/collections/rename-collection-dialog", () => ({
-	RenameCollectionDialog: () => null,
-}));
 vi.mock("../../../components/action-sheet", () => ({
 	ActionSheet: ({
 		open,
@@ -53,6 +50,7 @@ vi.mock("../../../services/db/hooks", () => ({
 		useCollectionMembers: () => ({ isSuccess: true, data: members }),
 		useReorderCollection: () => ({ mutate: reorder }),
 		useRemoveBooksFromCollection: () => ({ mutate: remove }),
+		useStatsSpeedModel: () => ({ data: undefined }),
 	},
 }));
 
@@ -109,14 +107,20 @@ describe("OrderedCollectionView", () => {
 	});
 	afterEach(() => rendered.unmount());
 
-	it("lists the books in #N order with the series summary", async () => {
+	it("lists the books in #N order, the number inline with the title, the name once", async () => {
 		await mount();
 		expect(order()).toEqual(["a", "b", "c"]);
 		const numbers = [...rendered.container.querySelectorAll('[data-testid="ordered-number"]')];
-		expect(numbers.map((n) => n.textContent)).toEqual(["#1", "#2", "#3"]);
+		expect(numbers.map((n) => n.textContent?.trim())).toEqual(["#1", "#2", "#3"]);
+		expect(numbers.every((n) => !/\bw-\d/.test(n.className))).toBe(true);
+		expect(rows()[0]?.querySelector("button")?.textContent).toContain("#1 Dune");
+		expect(rendered.container.querySelector("nav[aria-label=Breadcrumb]")).toBeNull();
+		expect(rendered.container.querySelector("h2")?.textContent).toBe("Dune");
 		expect(rendered.text()).toContain("3 books");
-		expect(rendered.text()).toContain("Library");
-		expect(rendered.text()).toContain("Series");
+		expect(rendered.getButton("Back to Library")).toBeTruthy();
+		expect(rendered.container.querySelector('[data-testid="ordered-next"]')?.textContent).toBe(
+			"Start #1",
+		);
 	});
 
 	it("drops a dragged row after another and writes 1..N for the rows that moved", async () => {

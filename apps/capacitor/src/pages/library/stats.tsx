@@ -3,14 +3,12 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BarChart3, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { TabHeader } from "../../components/app-shell/tab-header";
-import { SpeedChip } from "../../components/speed-chip/speed-chip";
 import { useLocalDayNow } from "../../hooks/use-local-day";
 import { queryHooks } from "../../services/db/hooks";
 import { Activity } from "./stats/activity";
 import { CurrentlyReading } from "./stats/currently-reading";
 import { EmptyState } from "./stats/empty-state";
 import { FinishedShelf } from "./stats/finished-shelf";
-import { Hero } from "./stats/hero";
 import { PERIOD_LABELS, type Period, periodWindow } from "./stats/period";
 import { PeriodTotals } from "./stats/period-totals";
 import { RecordsCard } from "./stats/records-card";
@@ -38,22 +36,12 @@ const Stats: React.FC = () => {
 
 	const sessionCount = queryHooks.useReadingSessionCount();
 
-	const streak = queryHooks.useStatsStreak();
-
 	const hasSessions = (sessionCount.data ?? 0) > 0;
 	const isInitialLoading = sessionCount.isLoading;
 
-	const currentStreak = streak.data?.current ?? 0;
-	const longestStreak = streak.data?.longest ?? 0;
-	const freezesBanked = streak.data?.freezesBanked ?? 0;
-
 	return (
 		<div className="bg-background text-foreground">
-			<TabHeader
-				title="Stats"
-				icon={BarChart3}
-				right={hasSessions ? <SpeedChip onOpen={() => setSearch({ tab: "speed" })} /> : undefined}
-			/>
+			<TabHeader title="Stats" icon={BarChart3} />
 			<div className="mx-auto w-full max-w-3xl">
 				{isInitialLoading ? (
 					<div className="flex min-h-[60vh] items-center justify-center">
@@ -88,24 +76,9 @@ const Stats: React.FC = () => {
 							<EmptyState />
 						) : (
 							<div className="pt-2">
-								<TodayGoalCard streak={currentStreak} />
-								<Hero
-									isPending={streak.isPending}
-									currentStreak={currentStreak}
-									longestStreak={longestStreak}
-									freezesBanked={freezesBanked}
-								/>
+								<TodayGoalCard />
 
-								{/* Period control sits with the sections it drives. */}
 								<PeriodTotals now={now} period={period} range={range} onPeriodChange={setPeriod} />
-
-								<CurrentlyReading />
-
-								{/* All-time, but placed here rather than with Activity: records are
-							   the shareable centerpiece, and they belong in the first screen. */}
-								<RecordsCard />
-
-								<FinishedShelf />
 
 								{/* At all time this is the finished shelf re-sorted: on real data the
 							   top five by time read were the same five books. It only says
@@ -117,7 +90,13 @@ const Stats: React.FC = () => {
 
 								<Activity />
 
-								<p className="mt-4 px-4 pb-6 text-[0.6875rem] text-muted-foreground">
+								<CurrentlyReading />
+
+								<RecordsCard />
+
+								<FinishedShelf />
+
+								<p className="px-4 py-6 text-muted-foreground text-xs">
 									Only reading in this app is tracked. Time spent on a book you uploaded to a device
 									isn't counted here.
 								</p>

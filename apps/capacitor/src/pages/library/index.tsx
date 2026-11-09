@@ -1,4 +1,3 @@
-import { readingProgress } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Progress } from "@lesefluss/ui/progress";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
@@ -58,7 +57,7 @@ import {
 	type CardFieldId,
 	type CardSurface,
 	cardFieldValues,
-	hasStarted,
+	cardStatus,
 	useCardFields,
 } from "./card-fields";
 import CollectionShelfRow from "./collection-shelf-row";
@@ -560,14 +559,12 @@ const Library: React.FC = () => {
 			);
 		}
 		const { book } = item;
-		const progress = readingProgress(book);
 		const Item = surface === "grid" ? BookCard : BookListItem;
 		return (
 			<Item
 				book={book}
 				cover={covers.get(book.id)}
-				progress={progress}
-				started={hasStarted(book)}
+				status={cardStatus(book, item.sortKey.minutesLeft)}
 				selectable={selection.isSelecting}
 				selected={selection.isSelected(book.id)}
 				onToggle={() => selection.toggle(book.id)}

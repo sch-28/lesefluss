@@ -25,7 +25,7 @@ interface SeriesCardProps {
 	chapterLengths: readonly SeriesChapterLength[] | undefined;
 	onOpen: () => void;
 	onMenu: () => void;
-	/** The book cards' fields; a serial fills author and time left, and keeps the others' lines empty. */
+	/** The book cards' fields; a serial fills author and time left, the others take no line. */
 	fields?: readonly CardFieldId[];
 }
 
@@ -74,17 +74,14 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 				)}
 			</div>
 
-			{fields.includes("progress") && (
-				<CardFieldSlot surface="grid" field="progress" className="mt-1" />
-			)}
-			<div className="px-0.5 pt-1">
-				<div className="line-clamp-2 overflow-hidden font-semibold text-[0.85rem] leading-[1.2]">
+			<div className="px-0.5 pt-2">
+				<div className="line-clamp-2 overflow-hidden font-medium text-[0.875rem] leading-[1.25]">
 					{series.title}
 				</div>
 				{fields.map((field) =>
 					field === "progress" ? null : (
 						<CardFieldSlot key={field} surface="grid" field={field}>
-							{field === "author" && (
+							{field === "author" && series.author && (
 								<span id={authorId} className="truncate text-muted-foreground">
 									{series.author}
 								</span>

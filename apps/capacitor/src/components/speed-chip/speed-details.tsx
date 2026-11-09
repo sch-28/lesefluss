@@ -9,8 +9,14 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { queryHooks } from "../../services/db/hooks";
-import { deltaLabel, type SpeedView, speedViews, trendDelta } from "../../services/stats/speed-tab";
-import { formatDuration, formatShortDate } from "../../utils/date-utils";
+import {
+	deltaLabel,
+	type SpeedView,
+	speedDelta,
+	speedViews,
+	viewWpm,
+} from "../../services/stats/speed-tab";
+import { formatDuration } from "../../utils/date-utils";
 import { formatReadingTime } from "../../utils/reading-time";
 import { RsvpSpeedControl } from "../rsvp-speed-control";
 import { Sparkline } from "../sparkline";
@@ -53,8 +59,9 @@ function ModeRow({
 }) {
 	const trend = queryHooks.useStatsWpmTrend(model.window, view, now);
 	const points = trend.data?.measured.filter((p) => p.avgWpm > 0).map((p) => p.avgWpm) ?? [];
-	const delta = trend.data ? trendDelta(trend.data) : null;
-	const wpm = view === "rsvp" ? (model.rsvp?.wpm ?? 0) : model.reading.wpm;
+	const wpm = viewWpm(model, view);
+	const earlier = queryHooks.useStatsSpeedModelEarlier();
+	const delta = speedDelta(model, earlier.data, view);
 	return (
 		<div
 			className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-x-3"
@@ -67,9 +74,9 @@ function ModeRow({
 			<Sparkline points={points} />
 			<span className="flex flex-col items-end">
 				<span className="font-semibold text-sm tabular-nums">{wpm} wpm</span>
-				{delta && (
+				{delta !== null && (
 					<span className="text-[0.6875rem] text-muted-foreground tabular-nums">
-						{deltaLabel(model.window, delta.wpm, formatShortDate(delta.since))}
+						{deltaLabel(delta)}
 					</span>
 				)}
 			</span>

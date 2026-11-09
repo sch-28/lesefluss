@@ -1,4 +1,3 @@
-import { displayAuthor } from "@lesefluss/core";
 import { Check } from "lucide-react";
 import type React from "react";
 import { useId } from "react";
@@ -7,14 +6,11 @@ import { formatSeriesNumber } from "../../components/collections/series-numberin
 import { DeviceBadge } from "../../components/device-sync";
 import type { Book } from "../../services/db/schema";
 import {
+	BookFieldLines,
 	type CardFieldId,
-	CardFieldSlot,
 	type CardFieldValues,
+	type CardStatus,
 	DEFAULT_CARD_FIELDS,
-	NotStartedField,
-	ProgressField,
-	RatingField,
-	TextField,
 } from "./card-fields";
 import CardMoreButton from "./card-more-button";
 import { SyncExcludedBadge } from "./sync-excluded-badge";
@@ -23,8 +19,7 @@ import { useLongPress } from "./use-long-press";
 type BookListItemProps = {
 	book: Book;
 	cover: string | undefined;
-	progress: number;
-	started: boolean;
+	status: CardStatus;
 	onOpen: () => void;
 	onMenu: () => void;
 	/** Selection mode is active: a tap picks this book instead of opening it. */
@@ -47,8 +42,7 @@ type BookListItemProps = {
 const BookListItem: React.FC<BookListItemProps> = ({
 	book,
 	cover,
-	progress,
-	started,
+	status,
 	onOpen,
 	onMenu,
 	selectable = false,
@@ -82,7 +76,7 @@ const BookListItem: React.FC<BookListItemProps> = ({
 		);
 
 	return (
-		<div className="group relative flex items-center gap-2">
+		<div className="group relative flex min-h-16 items-center gap-1 border-border border-b py-1">
 			<button
 				type="button"
 				data-book-id={book.id}
@@ -108,46 +102,25 @@ const BookListItem: React.FC<BookListItemProps> = ({
 						{selected && <Check className="size-3.5" />}
 					</span>
 				)}
-				<div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-sm">
+				<div className="relative h-15 w-10 shrink-0 overflow-hidden rounded-sm">
 					<BookCover book={book} cover={cover} size="full" />
 				</div>
 
 				<div className="min-w-0 flex-1">
-					<div className="line-clamp-2 overflow-hidden font-semibold text-[0.9rem] leading-[1.2]">
+					<div className="truncate font-medium text-[0.875rem] leading-5">
 						{badge && !showsAuthor && <>{badge} </>}
 						{book.title}
 					</div>
 					<div id={detailsId}>
-						{fields.map((field) => {
-							if (field === "progress") return null;
-							if (field === "rating") {
-								return (
-									<CardFieldSlot key={field} surface="list" field={field}>
-										<RatingField rating={book.rating} />
-									</CardFieldSlot>
-								);
-							}
-							const text =
-								values?.[field] ?? (field === "author" ? displayAuthor(book.author ?? "") : "");
-							return (
-								<CardFieldSlot key={field} surface="list" field={field}>
-									{field === "author" && badge ? (
-										<span className="truncate text-muted-foreground">
-											{badge}
-											{text && ` · ${text}`}
-										</span>
-									) : (
-										<TextField text={text} />
-									)}
-								</CardFieldSlot>
-							);
-						})}
-						{fields.includes("progress") && (
-							<CardFieldSlot surface="list" field="progress" className="mt-1">
-								{started ? <ProgressField progress={progress} /> : <NotStartedField />}
-							</CardFieldSlot>
-						)}
-						<div className="mt-1 flex flex-wrap items-center gap-1.5">
+						<BookFieldLines
+							surface="list"
+							fields={fields}
+							book={book}
+							status={status}
+							values={values}
+							seriesBadge={badge}
+						/>
+						<div className="mt-1 flex flex-wrap items-center gap-1.5 empty:hidden">
 							<DeviceBadge bookId={book.id} style="block" />
 							<SyncExcludedBadge book={book} />
 						</div>

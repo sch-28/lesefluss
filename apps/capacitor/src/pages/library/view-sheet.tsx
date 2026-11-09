@@ -113,7 +113,11 @@ export const ViewSheet: React.FC<Props> = ({
 					<DrawerHeader>
 						<DrawerTitle>View</DrawerTitle>
 					</DrawerHeader>
-					<div className="overflow-y-auto px-4 pb-6">
+					{/* One height for every layout, so switching layout never resizes the sheet. */}
+					<div
+						className="h-[min(70vh,560px)] overflow-y-auto px-4 pb-6"
+						data-testid="view-sheet-body"
+					>
 						<ViewPanel {...panel} onGroupBy={pickGroup} />
 					</div>
 				</DrawerContent>

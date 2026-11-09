@@ -8,8 +8,10 @@ import { VoiceSheet } from "@/components/read-aloud/voice-sheet";
 import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { SliderRow } from "@/components/settings/slider-row";
+import { SpeedRow } from "@/components/settings/speed-row";
 import { StepperRow } from "@/components/settings/stepper-row";
 import { useAutoSaveSettings } from "@/hooks/use-auto-save-settings";
+import { TTS_WPM_RANGE } from "@/pages/reader/wpm";
 import { queryHooks } from "@/services/db/hooks";
 import { HAS_SYSTEM_VOICE_SETTINGS, ttsEngine } from "@/services/tts";
 import { useTtsVoices } from "@/services/tts/use-voices";
@@ -28,7 +30,7 @@ export const Route = createFileRoute("/tabs/settings/read-aloud")({
 	component: ReadAloudSettings,
 });
 
-const { TTS_WPM, TTS_PITCH, TTS_REWIND_WORDS } = SETTING_CONSTRAINTS;
+const { TTS_PITCH, TTS_REWIND_WORDS } = SETTING_CONSTRAINTS;
 
 function ReadAloudSettings() {
 	const { settings, updateSetting } = useAutoSaveSettings();
@@ -61,13 +63,10 @@ function ReadAloudSettings() {
 			<PageHeader title="Listen" icon={Headphones} />
 			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
 				<SettingsSection title="Voice">
-					<StepperRow
+					<SpeedRow
 						label="Speed"
-						value={speech.wpm}
-						display={`${speech.wpm} wpm`}
-						min={TTS_WPM.min}
-						max={TTS_WPM.max}
-						step={TTS_WPM.step}
+						wpm={speech.wpm}
+						range={TTS_WPM_RANGE}
 						onChange={(wpm) => updateSetting("ttsWpm", wpm)}
 					/>
 					<SliderRow

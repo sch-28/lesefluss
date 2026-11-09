@@ -114,6 +114,20 @@ describe("getSpeedModel without", () => {
 	});
 });
 
+describe("getSpeedModel asOf", () => {
+	it("is the model as it stood then: later sittings are left out", async () => {
+		const asOf = NOW - 28 * DAY;
+		const earlier = await getSpeedModel({ window: "all", now: NOW, asOf });
+		expect(earlier).toEqual(
+			computeSpeedModel(
+				rows.filter((r) => r.startedAt < asOf),
+				{ window: "all", now: asOf },
+			),
+		);
+		expect(earlier.reading.wpm).toBe(200);
+	});
+});
+
 describe("getWpmTrend", () => {
 	const speeds = (trend: Awaited<ReturnType<typeof getWpmTrend>>) =>
 		trend.measured.filter((p) => p.avgWpm > 0).map((p) => p.avgWpm);

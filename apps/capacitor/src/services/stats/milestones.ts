@@ -58,3 +58,34 @@ export const milestoneKey = (m: ReachedMilestone | NextMilestone) => `${m.kind}-
 export function knownMilestones(reached: readonly ReachedMilestone[] = []): ReachedMilestone[] {
 	return reached.filter((m) => (MILESTONE_KINDS as readonly string[]).includes(m.kind));
 }
+
+/** "1 million words", "50 hours read", "100-day streak": a milestone as a list row names it. */
+export function milestoneTitle(kind: MilestoneKind, threshold: number): string {
+	switch (kind) {
+		case "words":
+			return threshold >= 1_000_000 && threshold % 1_000_000 === 0
+				? `${threshold / 1_000_000} million words`
+				: `${threshold.toLocaleString("en-US")} words`;
+		case "hours":
+			return `${threshold} ${threshold === 1 ? "hour" : "hours"} read`;
+		case "books":
+			return `${threshold} ${threshold === 1 ? "book" : "books"} finished`;
+		case "streak":
+			return `${threshold}-day streak`;
+		case "rsvpWpm":
+			return `${threshold} wpm RSVP sitting`;
+	}
+}
+
+const PROGRESS_UNITS: Record<MilestoneKind, string> = {
+	words: "",
+	hours: " h",
+	books: "",
+	streak: " days",
+	rsvpWpm: " wpm",
+};
+
+/** "88 of 100 h", "1.4M of 2M", "193 of 365 days". */
+export function milestoneProgressLine(next: NextMilestone): string {
+	return `${compactNumber(next.current)} of ${compactNumber(next.threshold)}${PROGRESS_UNITS[next.kind]}`;
+}

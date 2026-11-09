@@ -11,7 +11,6 @@ import { click, flush, type Rendered, render } from "../../../test/render";
 import { parseStatsSearch, redirectToStatsTab } from "../stats/stats-search";
 
 const sessions = vi.hoisted(() => ({ count: 3 }));
-vi.mock("../stats/today-goal-card", () => ({ TodayGoalCard: () => null }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
 		useReadingSessionCount: () => ({ data: sessions.count, isLoading: false }),
@@ -19,15 +18,8 @@ vi.mock("../../../services/db/hooks", () => ({
 		useActiveGoalPlans: () => ({ data: [] }),
 	},
 }));
-vi.mock("../../../components/speed-chip/speed-chip", () => ({
-	SpeedChip: ({ onOpen }: { onOpen?: () => void }) => (
-		<button type="button" onClick={onOpen}>
-			Speed chip
-		</button>
-	),
-}));
 const marker = (name: string) => () => <div data-testid={name} />;
-vi.mock("../stats/hero", () => ({ Hero: marker("overview") }));
+vi.mock("../stats/today-goal-card", () => ({ TodayGoalCard: marker("overview") }));
 vi.mock("../stats/period-totals", () => ({ PeriodTotals: () => null, PeriodTabs: () => null }));
 vi.mock("../stats/currently-reading", () => ({ CurrentlyReading: () => null }));
 vi.mock("../stats/records-card", () => ({ RecordsCard: () => null }));
@@ -134,13 +126,6 @@ describe("Stats tabs", () => {
 		await click(view?.getButton("Clear") as HTMLButtonElement);
 		expect(router.state.location.search).toEqual({ tab: "sessions" });
 		expect(shown()).toBe("sessions");
-	});
-
-	it("opens the Speed tab from the speed chip instead of a popover", async () => {
-		const router = await open("/tabs/stats");
-		await click(view?.getButton("Speed chip") as HTMLButtonElement);
-		expect(shown()).toBe("speed");
-		expect(router.state.location.search).toEqual({ tab: "speed" });
 	});
 
 	it("sends the old library address to the same tab of the Stats tab", async () => {

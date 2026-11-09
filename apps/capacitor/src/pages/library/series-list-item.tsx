@@ -14,7 +14,7 @@ interface SeriesListItemProps {
 	chapterLengths: readonly SeriesChapterLength[] | undefined;
 	onOpen: () => void;
 	onMenu: () => void;
-	/** The book cards' fields; a serial fills author and time left, and keeps the others' lines empty. */
+	/** The book cards' fields; a serial fills author and time left, the others take no line. */
 	fields?: readonly CardFieldId[];
 }
 
@@ -34,11 +34,11 @@ const SeriesListItem: React.FC<SeriesListItemProps> = ({
 			type="button"
 			aria-label={series.title}
 			aria-describedby={detailsId}
-			className="flex w-full cursor-pointer select-none items-center gap-3 rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
+			className="flex min-h-16 w-full cursor-pointer select-none items-center gap-3 rounded-sm border-0 border-border border-b bg-transparent py-1 text-left text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
 			style={{ WebkitTouchCallout: "none" }}
 			{...handlers}
 		>
-			<div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-sm border border-border bg-muted">
+			<div className="relative h-15 w-10 shrink-0 overflow-hidden rounded-sm border border-border bg-muted">
 				<CoverImage
 					src={series.coverImage}
 					alt={series.title}
@@ -51,14 +51,12 @@ const SeriesListItem: React.FC<SeriesListItemProps> = ({
 			</div>
 
 			<div className="min-w-0 flex-1">
-				<div className="line-clamp-2 overflow-hidden font-semibold text-[0.9rem] leading-[1.2]">
-					{series.title}
-				</div>
+				<div className="truncate font-medium text-[0.875rem] leading-5">{series.title}</div>
 				<div id={detailsId}>
 					{fields.map((field) =>
 						field === "progress" ? null : (
 							<CardFieldSlot key={field} surface="list" field={field}>
-								{field === "author" && <TextField text={series.author ?? ""} />}
+								{field === "author" && series.author && <TextField text={series.author} />}
 								{field === "timeLeft" && (
 									<SeriesCardTime
 										chapters={chapterLengths}
@@ -72,9 +70,6 @@ const SeriesListItem: React.FC<SeriesListItemProps> = ({
 						<div className="mt-0.5 text-[0.75rem] text-muted-foreground">
 							{chapterCountLabel(chapterCount)}
 						</div>
-					)}
-					{fields.includes("progress") && (
-						<CardFieldSlot surface="list" field="progress" className="mt-1" />
 					)}
 				</div>
 			</div>

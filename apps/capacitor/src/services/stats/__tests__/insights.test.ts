@@ -5,6 +5,7 @@ import {
 	fatiguePoint,
 	INSIGHT_MIN_ACTIVE_MS,
 	type InsightRow,
+	lockedInsights,
 	scrollVsPage,
 	speedByFontSize,
 	speedInsights,
@@ -149,5 +150,56 @@ describe("speedInsights", () => {
 		];
 		expect(speedInsights(rows, "reading").map((i) => i.id)).toEqual(["scroll-vs-page"]);
 		expect(speedInsights(rows, "rsvp")).toEqual([]);
+	});
+});
+
+describe("lockedInsights", () => {
+	const ids = (rows: InsightRow[]) => {
+		const unlocked = speedInsights(rows, "reading");
+		return lockedInsights(rows, "reading", unlocked);
+	};
+
+	it("lists every reading insight at zero progress with no reading", () => {
+		const locked = ids([]);
+		expect(locked.map((l) => l.id)).toEqual([
+			"time-of-day",
+			"scroll-vs-page",
+			"fatigue",
+			"font-size",
+		]);
+		for (const l of locked) expect(l.progress).toBe(0);
+		expect(locked[0].progressLabel).toBe("0 of 60 min");
+	});
+
+	it("counts partial minutes toward the 30-minute groups", () => {
+		const locked = ids([row({ durationMs: 18 * MIN })]);
+		const timeOfDay = locked.find((l) => l.id === "time-of-day");
+		expect(timeOfDay?.progressLabel).toBe("18 of 60 min");
+		expect(timeOfDay?.progress).toBeCloseTo(18 / 60);
+		expect(timeOfDay?.need).toBe("30 min at two times of day, 3 sittings");
+		expect(locked.find((l) => l.id === "scroll-vs-page")?.progressLabel).toBe(
+			"scroll 18, page 0 of 30 min",
+		);
+	});
+
+	it("caps a group at 30 minutes, so one long group is half way", () => {
+		const fontSize = ids([row({ durationMs: 90 * MIN })]).find((l) => l.id === "font-size");
+		expect(fontSize?.progress).toBe(0.5);
+	});
+
+	it("drops an insight once it unlocks", () => {
+		const two = [row({ startedAt: at(9) }), row({ startedAt: at(19), wpm: 300 })];
+		const waiting = ids(two).find((l) => l.id === "time-of-day");
+		expect(waiting?.progressLabel).toBe("60 of 60 min · 2 of 3 sittings");
+		expect(waiting?.progress).toBeCloseTo(2 / 3);
+		const three = [...two, row({ startedAt: at(10) })];
+		expect(ids(three).map((l) => l.id)).not.toContain("time-of-day");
+	});
+
+	it("counts long sittings toward fatigue and leaves out scroll-vs-page for RSVP", () => {
+		const rows = [row({ mode: "rsvp", segmentWpm: [300, 300, 300] })];
+		const locked = lockedInsights(rows, "rsvp", speedInsights(rows, "rsvp"));
+		expect(locked.map((l) => l.id)).not.toContain("scroll-vs-page");
+		expect(locked.find((l) => l.id === "fatigue")?.progressLabel).toBe("1 of 3");
 	});
 });

@@ -185,6 +185,9 @@ export const statsKeys = {
 	/** The speed model without some sittings: the average a finished visit is compared with. */
 	speedModelWithout: (window: string, sessionIds: readonly string[]) =>
 		["stats", "speed-model", window, "without", ...sessionIds] as const,
+	/** The speed model as it stood at an earlier time: the base of the speed delta. */
+	speedModelAsOf: (window: string, asOf: number) =>
+		["stats", "speed-model", window, "as-of", asOf] as const,
 	/** The Speed tab's insight tiles over a speed window. */
 	speedInsights: (window: string) => ["stats", "speed-insights", window] as const,
 	/** The Speed tab's per-book rows and records, all time. */

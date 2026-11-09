@@ -7,15 +7,18 @@ import { chipParts, modeMix } from "../speed-chip-model";
 const mutate = vi.fn();
 const state: {
 	model: SpeedModel | undefined;
+	earlier: SpeedModel | undefined;
 	settings: { wpm: number; defaultReaderMode: string };
 } = {
 	model: undefined,
+	earlier: undefined,
 	settings: { wpm: 400, defaultReaderMode: "scroll" },
 };
 
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
 		useStatsSpeedModel: () => ({ data: state.model }),
+		useStatsSpeedModelEarlier: () => ({ data: state.earlier }),
 		useSettings: () => ({ data: state.settings }),
 		useSaveSettings: () => ({ mutate }),
 		useStatsWpmTrend: (_window: string, mode: string) => ({
@@ -89,6 +92,7 @@ const details = () => document.querySelector("[data-testid=speed-details]");
 let rendered: Rendered | undefined;
 beforeEach(() => {
 	mutate.mockClear();
+	state.earlier = undefined;
 	state.settings = { wpm: 400, defaultReaderMode: "scroll" };
 });
 afterEach(() => {
@@ -142,14 +146,20 @@ describe("SpeedChip", () => {
 
 	it("opens a popover: the big number, a row per mode with its trend, the window, the details link", async () => {
 		state.model = model({ rsvp: true });
+		const then = model({ rsvp: true });
+		state.earlier = {
+			...then,
+			reading: { ...then.reading, wpm: 280 },
+			rsvp: then.rsvp && { ...then.rsvp, wpm: 400 },
+		};
 		rendered = await render(<SpeedChip />);
 		await click(rendered.getButton(/260/));
 		const q = (id: string) => document.querySelector(`[data-testid=${id}]`)?.textContent ?? "";
 		expect(q("speed-big")).toBe("260wpm Reading");
 		expect(q("speed-row-reading")).toContain("260 wpm");
-		expect(q("speed-row-reading")).toContain("−20 since");
+		expect(q("speed-row-reading")).toContain("−20 in 4 weeks");
 		expect(q("speed-row-rsvp")).toContain("420 wpm");
-		expect(q("speed-row-rsvp")).toContain("+20 since");
+		expect(q("speed-row-rsvp")).toContain("+20 in 4 weeks");
 		expect(q("speed-row-rsvp")).toContain("Avg dial 450");
 		expect(document.querySelectorAll("[data-testid^=speed-row-] svg")).toHaveLength(2);
 		expect(details()?.textContent).toContain("Last 10h");

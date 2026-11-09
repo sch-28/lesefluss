@@ -92,8 +92,7 @@ function longPress(el: HTMLElement) {
 const bookProps = (over: Partial<React.ComponentProps<typeof BookCard>> = {}) => ({
 	book,
 	cover: undefined,
-	progress: 42,
-	started: true,
+	status: { kind: "reading", progress: 42 } as const,
 	onOpen: vi.fn(),
 	onMenu: vi.fn(),
 	...over,
@@ -170,21 +169,32 @@ describe.each([
 		expect(view.text()).not.toContain("42%");
 	});
 
-	it("keeps an empty field's line, so an unrated book's card is as tall as a rated one", async () => {
+	it("gives an empty field no line, so an unrated book without an author shows only its title and status", async () => {
 		const lines = async (over: Partial<typeof book>) => {
 			view?.unmount();
 			view = await render(
-				<Card {...bookProps({ book: { ...book, ...over } })} fields={["author", "rating"]} />,
+				<Card
+					{...bookProps({ book: { ...book, ...over } })}
+					fields={["author", "rating", "progress"]}
+				/>,
 			);
-			return [...view.container.querySelectorAll("[data-card-field]")].map(
-				(el) => `${el.getAttribute("data-card-field")} ${el.className}`,
+			return [...view.container.querySelectorAll("[data-card-field]")].map((el) =>
+				el.getAttribute("data-card-field"),
 			);
 		};
-		const rated = await lines({ rating: 8 });
-		const empty = await lines({ rating: null, author: null });
-		expect(empty).toEqual(rated);
-		expect(rated).toHaveLength(2);
-		expect(rated.every((line) => /\bh-/.test(line))).toBe(true);
+		expect(await lines({ rating: 8 })).toEqual(["author", "rating", "progress"]);
+		expect(await lines({ rating: null, author: null })).toEqual(["progress"]);
+		expect(view?.text()).not.toContain("Not rated");
+		expect(view?.text()).not.toContain("–");
+	});
+
+	it("shows an unread book's time to read, a finished one as finished", async () => {
+		view = await render(<Card {...bookProps({ status: { kind: "unread", minutes: 552 } })} />);
+		expect(description(card())).toContain("9h 12m read");
+		expect(description(card())).not.toContain("%");
+		view.unmount();
+		view = await render(<Card {...bookProps({ status: { kind: "finished" } })} />);
+		expect(description(card())).toContain("Finished");
 	});
 
 	describe("long press", () => {
@@ -268,7 +278,7 @@ describe.each([
 		expect(onMenu).toHaveBeenCalledOnce();
 	});
 
-	it("follows the book cards' fields, keeping a line for each one a serial has no value for", async () => {
+	it("follows the book cards' fields, leaving each one a serial has no value for empty", async () => {
 		view = await render(
 			<Card
 				series={series}
@@ -281,10 +291,15 @@ describe.each([
 		);
 		expect(view.text()).not.toContain("nobody103");
 		expect(view.container.querySelector('[data-testid="series-card-time"]')).toBeNull();
-		expect(view.container.querySelectorAll("[data-card-field]")).toHaveLength(2);
+		const slots = [...view.container.querySelectorAll("[data-card-field]")];
+		expect(
+			slots.every(
+				(slot) => slot.childNodes.length === 0 && /\bempty:hidden\b/.test(slot.className),
+			),
+		).toBe(true);
 	});
 
-	it("shows time left only while the serial is under way, keeping the slot otherwise", async () => {
+	it("shows time left only while the serial is under way, an empty hidden slot otherwise", async () => {
 		const chapters: { wordCount: number; wordPosition: number; finishedAt: number | null }[] = [
 			{ wordCount: 6000, wordPosition: 0, finishedAt: null },
 			{ wordCount: 12_000, wordPosition: 0, finishedAt: null },
@@ -306,7 +321,7 @@ describe.each([
 		view = await show(chapters);
 		expect(view.container.querySelector('[data-testid="series-card-time"]')).toBeNull();
 		expect(view.text()).not.toContain("Total");
-		expect(timeSlot()).not.toBeNull();
+		expect(timeSlot()?.childNodes.length ?? 0).toBe(0);
 
 		view.unmount();
 		view = await show([
@@ -324,6 +339,6 @@ describe.each([
 		]);
 		expect(view.container.querySelector('[data-testid="series-card-time"]')).toBeNull();
 		expect(view.text()).not.toContain("Total");
-		expect(timeSlot()).not.toBeNull();
+		expect(timeSlot()?.childNodes.length ?? 0).toBe(0);
 	});
 });

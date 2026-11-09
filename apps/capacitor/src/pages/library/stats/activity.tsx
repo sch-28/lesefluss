@@ -1,74 +1,102 @@
-import { ResponsiveBar } from "@nivo/bar";
-import { motion } from "framer-motion";
 import { useMemo } from "react";
-import { useTheme } from "../../../contexts/theme-context";
+import { useLocalDayNow } from "../../../hooks/use-local-day";
 import { queryHooks } from "../../../services/db/hooks";
-import { summariseHours } from "../../../services/stats/summaries";
-import { buildNivoTheme, getAccentStops } from "./nivo-theme";
+import { NO_READING, weeklyHours } from "../../../services/stats/calendar";
+import { StatsSection } from "./section-header";
 
+const WEEKS = 12;
+const WIDTH = 358;
+const HEIGHT = 170;
+const PLOT_LEFT = 36;
+const PLOT_TOP = 8;
+const PLOT_BOTTOM = 148;
+
+function axisStep(maxHours: number): number {
+	for (const step of [1, 2, 5, 10, 20, 50]) {
+		if (maxHours <= step * 3) return step;
+	}
+	return 100;
+}
+
+/** Hours read per week over the last twelve weeks; the current week is faded as it is not over. */
 export function Activity() {
-	const { theme, isEinkMode } = useTheme();
-	const hours = queryHooks.useStatsHourHistogram();
+	const now = useLocalDayNow();
+	const daily = queryHooks.useStatsDailyReading();
+	// While loading the axes draw with empty weeks, so the card already has its loaded height.
+	const weeks = useMemo(() => weeklyHours(daily.data ?? NO_READING, now, WEEKS), [daily.data, now]);
 
-	// The palette is read from CSS variables, which e-ink mode changes without changing `theme`.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: isEinkMode re-reads the variables
-	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme, isEinkMode]);
-	const accent = useMemo(() => getAccentStops(theme, isEinkMode), [theme, isEinkMode]);
-
-	const hourData = (hours.data ?? new Array<number>(24).fill(0)).map((minutes, hour) => ({
-		hour: hour.toString().padStart(2, "0"),
-		minutes,
-	}));
-
-	// Charts render as SVG, which a screen reader reads as loose numbers or skips
-	// entirely. nivo already puts role="img" on the svg; these give it a label.
-	const hoursSummary = useMemo(() => summariseHours(hours.data ?? []), [hours.data]);
+	const step = axisStep(Math.max(0, ...weeks.map((w) => w.hours)));
+	const top = step * 3;
+	const y = (hours: number) => PLOT_BOTTOM - (hours / top) * (PLOT_BOTTOM - PLOT_TOP);
+	const slot = (WIDTH - PLOT_LEFT) / WEEKS;
+	const barWidth = slot * 0.6;
+	const total = weeks.reduce((sum, w) => sum + w.hours, 0);
 
 	return (
-		<motion.section
-			initial={{ opacity: 0, y: 12 }}
-			whileInView={{ opacity: 1, y: 0 }}
-			viewport={{ once: true, amount: 0.25 }}
-			transition={{ duration: 0.5 }}
-			className="mb-10 px-4"
+		<StatsSection
+			title="Reading hours"
+			aside={`per week · last ${WEEKS} weeks`}
+			data-testid="stats-reading-hours"
 		>
-			<header className="mb-3">
-				<h2 className="font-semibold text-lg">Reading hours</h2>
-			</header>
-			<div className="mt-3 h-[180px]" role="img" aria-label={hoursSummary}>
-				<ResponsiveBar
-					role="presentation"
-					data={hourData}
-					keys={["minutes"]}
-					indexBy="hour"
-					margin={{ top: 8, right: 8, bottom: 44, left: 44 }}
-					padding={0.35}
-					colors={[accent.from]}
-					borderRadius={3}
-					axisBottom={{
-						tickSize: 0,
-						tickPadding: 6,
-						tickValues: ["00", "06", "12", "18"],
-						format: (v) => `${v}:00`,
-						legend: "Hour of day · all time",
-						legendPosition: "middle",
-						legendOffset: 34,
-					}}
-					axisLeft={{
-						tickSize: 0,
-						tickPadding: 6,
-						tickValues: 3,
-						legend: "Minutes",
-						legendPosition: "middle",
-						legendOffset: -34,
-					}}
-					enableLabel={false}
-					enableGridY={false}
-					theme={nivoTheme}
-					animate={!isEinkMode}
-					motionConfig="gentle"
-				/>
+			<div className="rounded-[14px] border border-border bg-card p-4">
+				<svg
+					viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+					className="block h-auto w-full"
+					role="img"
+					aria-label={`${Math.round(total)} hours read in the last ${WEEKS} weeks`}
+				>
+					{[0, 1, 2, 3].map((i) => (
+						<g key={i}>
+							<line
+								x1={PLOT_LEFT}
+								x2={WIDTH}
+								y1={y(i * step)}
+								y2={y(i * step)}
+								className="stroke-border"
+							/>
+							<text
+								x={PLOT_LEFT - 6}
+								y={y(i * step) + 4}
+								textAnchor="end"
+								className="fill-muted-foreground text-[11px]"
+							>
+								{i * step} h
+							</text>
+						</g>
+					))}
+					{weeks.map((week, i) => {
+						const x = PLOT_LEFT + i * slot + (slot - barWidth) / 2;
+						return (
+							<g key={week.weekStart}>
+								{week.hours > 0 && (
+									<rect
+										x={x}
+										y={y(week.hours)}
+										width={barWidth}
+										height={PLOT_BOTTOM - y(week.hours)}
+										rx={3}
+										className="fill-primary"
+										opacity={week.isCurrent ? 0.45 : 1}
+									/>
+								)}
+								{(WEEKS - 1 - i) % 3 === 0 && (
+									<text
+										x={x + barWidth / 2}
+										y={HEIGHT - 6}
+										textAnchor="middle"
+										className="fill-muted-foreground text-[11px]"
+									>
+										{new Date(week.weekStart).toLocaleDateString(undefined, {
+											month: "short",
+											day: "numeric",
+										})}
+									</text>
+								)}
+							</g>
+						);
+					})}
+				</svg>
 			</div>
-		</motion.section>
+		</StatsSection>
 	);
 }

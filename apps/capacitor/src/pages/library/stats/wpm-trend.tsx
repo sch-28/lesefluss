@@ -1,27 +1,23 @@
 import { AVERAGE_READER_WPM, type SpeedWindow } from "@lesefluss/core";
-import { type LineCustomSvgLayerProps, type LineSvgLayer, ResponsiveLine } from "@nivo/line";
-import { motion } from "framer-motion";
-import { useMemo } from "react";
-import { isDarkTheme, useTheme } from "../../../contexts/theme-context";
 import { queryHooks } from "../../../services/db/hooks";
 import type { SpeedTrendMode } from "../../../services/db/queries/stats";
 import type { TrendGranularity, TrendTestMarker } from "../../../services/stats/aggregate";
 import { summariseWpmTrend } from "../../../services/stats/summaries";
 import { formatShortDate, startOfLocalDay } from "../../../utils/date-utils";
-import { evenTickIndices, formatDayTick } from "./chart-axis";
-import { ChartTooltip } from "./chart-tooltip";
-import { buildNivoTheme } from "./nivo-theme";
+import { evenTickIndices } from "./chart-axis";
 
-const COLORS = {
-	rsvpTarget: "#c94b2a", // brand orange
-	measured: { dark: "#94a3b8", light: "#475569" }, // slate
-} as const;
-
-const MAX_AXIS_TICKS = 5;
+const WIDTH = 358;
+const HEIGHT = 150;
+const PLOT_LEFT = 30;
+// Room right of the plot for the reference line labels, so they never sit on the line.
+const PLOT_RIGHT = 308;
+const PLOT_TOP = 10;
+const PLOT_BOTTOM = 120;
+const GRID_LINES = 4;
+const MAX_X_LABELS = 4;
+const AXIS_STEPS = [10, 20, 25, 50, 100, 200, 500];
 
 const NO_TESTS: TrendTestMarker[] = [];
-
-type TrendSeries = { id: string; color: string; data: { x: number; y: number | null }[] };
 
 function testLabel(takenAt: number, now: number): string {
 	return startOfLocalDay(takenAt) === startOfLocalDay(now)
@@ -29,82 +25,43 @@ function testLabel(takenAt: number, now: number): string {
 		: `Test ${formatShortDate(takenAt)}`;
 }
 
-/** Keeps a label near either edge on the plot instead of centring it past the edge. */
-function labelAnchor(x: number, width: number): "start" | "middle" | "end" {
-	if (x < width * 0.25) return "start";
-	if (x > width * 0.75) return "end";
-	return "middle";
-}
-
-function testMarkersLayer(tests: readonly TrendTestMarker[], now: number, color: string) {
-	return function TestMarkers({
-		xScale,
-		yScale,
-		innerWidth,
-		innerHeight,
-	}: LineCustomSvgLayerProps<TrendSeries>) {
-		// Labels of tests close together overlap on a phone; the diamonds still mark each one.
-		const labelled = tests.reduce<TrendTestMarker | null>(
-			(latest, t) => (latest === null || t.takenAt > latest.takenAt ? t : latest),
-			null,
-		);
-		return (
-			<g data-testid="wpm-trend-tests">
-				{tests.map((test) => {
-					const x = xScale(test.bucketIndex);
-					const y = yScale(test.wpm);
-					return (
-						<g key={test.takenAt} data-testid="wpm-trend-test">
-							<line
-								x1={x}
-								x2={x}
-								y1={y}
-								y2={innerHeight}
-								stroke={color}
-								strokeWidth={1}
-								strokeDasharray="3 3"
-								strokeOpacity={0.6}
-							/>
-							<rect
-								x={x - 5}
-								y={y - 5}
-								width={10}
-								height={10}
-								transform={`rotate(45 ${x} ${y})`}
-								fill={color}
-								stroke="var(--background)"
-								strokeWidth={1.5}
-							/>
-							{test === labelled && (
-								<text
-									x={x}
-									y={y - 10}
-									textAnchor={labelAnchor(x, innerWidth)}
-									fontSize={10}
-									fill="var(--muted-foreground)"
-								>
-									{testLabel(test.takenAt, now)} · {test.wpm}
-								</text>
-							)}
-						</g>
-					);
-				})}
-			</g>
-		);
-	};
-}
-
 /**
- * The y-axis top, with room over the highest line: nivo draws a marker's legend
- * 14px above its line, so a marker at the very top has its label clipped.
+ * The y-axis around the data, not from zero: three steps that cover the lowest and
+ * highest value, so a 20 wpm change reads as a change and not as a flat line.
  */
-export function wpmAxisMax(values: readonly number[]): number {
-	return Math.ceil((Math.max(1, ...values) * 1.2) / 50) * 50;
+export function wpmAxisDomain(values: readonly number[]): {
+	min: number;
+	max: number;
+	step: number;
+} {
+	const shown = values.filter((v) => v > 0);
+	if (shown.length === 0) return { min: 0, max: 300, step: 100 };
+	const low = Math.min(...shown);
+	const high = Math.max(...shown);
+	for (const step of AXIS_STEPS) {
+		const min = Math.floor(low / step) * step;
+		if (min + step * (GRID_LINES - 1) >= high)
+			return { min, max: min + step * (GRID_LINES - 1), step };
+	}
+	const step = AXIS_STEPS.at(-1) ?? 500;
+	const min = Math.floor(low / step) * step;
+	return { min, max: min + step * Math.ceil((high - min) / step), step };
 }
 
-function formatBucketTick(starts: number[], granularity: TrendGranularity, index: number): string {
-	const start = starts[index];
-	if (start === undefined) return "";
+/** The x-axis starts at the first bucket with data, so a window's empty start isn't drawn. */
+export function firstShownBucket(
+	measured: readonly { avgWpm: number }[],
+	tests: readonly TrendTestMarker[],
+): number {
+	const firstReading = measured.findIndex((p) => p.avgWpm > 0);
+	const candidates = [
+		...(firstReading >= 0 ? [firstReading] : []),
+		...tests.map((t) => t.bucketIndex),
+	];
+	return candidates.length > 0 ? Math.max(0, Math.min(...candidates)) : 0;
+}
+
+function formatBucketTick(start: number, granularity: TrendGranularity): string {
 	const d = new Date(start);
 	switch (granularity) {
 		case "hour":
@@ -112,7 +69,7 @@ function formatBucketTick(starts: number[], granularity: TrendGranularity, index
 		case "month":
 			return d.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
 		default:
-			return formatDayTick(start);
+			return formatShortDate(start);
 	}
 }
 
@@ -126,6 +83,19 @@ export function trendAxisLegend(windowLabel: string, bucketStarts: readonly numb
 	return from === to ? `${windowLabel} · ${from}` : `${windowLabel} · ${from} – ${to}`;
 }
 
+function ChartFrame({ label, children }: { label: string; children?: React.ReactNode }) {
+	return (
+		<svg
+			viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+			className="block h-auto w-full"
+			role="img"
+			aria-label={label}
+		>
+			{children}
+		</svg>
+	);
+}
+
 interface Props {
 	window: SpeedWindow;
 	mode: SpeedTrendMode;
@@ -134,194 +104,189 @@ interface Props {
 }
 
 export function WpmTrend({ window, mode, windowLabel, now }: Props) {
-	const { theme, isEinkMode } = useTheme();
 	const trend = queryHooks.useStatsWpmTrend(window, mode, now);
-	// The palette is read from CSS variables, which e-ink mode changes without changing `theme`.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: isEinkMode re-reads the variables
-	const nivoTheme = useMemo(() => buildNivoTheme(theme), [theme, isEinkMode]);
+	const data = trend.data;
+	const tests = data?.tests ?? NO_TESTS;
 
-	const points = useMemo(
-		// A bucket with no sitting is a gap, not a drop to zero.
-		() => (trend.data?.measured ?? []).map((p, i) => ({ x: i, y: p.avgWpm > 0 ? p.avgWpm : null })),
-		[trend.data],
-	);
-	const hasReading = points.some((p) => p.y !== null);
-	const tests = trend.data?.tests ?? NO_TESTS;
-	const testColor = isDarkTheme(theme) ? "#e2e8f0" : "#0f172a";
-	const layers = useMemo<LineSvgLayer<TrendSeries>[]>(
-		() => [
-			"grid",
-			"markers",
-			"axes",
-			"areas",
-			"crosshair",
-			"lines",
-			"points",
-			"slices",
-			testMarkersLayer(tests, now, testColor),
-			"mesh",
-			"legends",
-		],
-		[tests, now, testColor],
-	);
-	const lineColor = isDarkTheme(theme) ? COLORS.measured.dark : COLORS.measured.light;
-	const chartData = useMemo<TrendSeries[]>(
-		() => [
-			{ id: mode === "rsvp" ? "RSVP speed" : "Reading speed", color: lineColor, data: points },
-		],
-		[lineColor, points, mode],
-	);
-
-	if (!trend.isLoading && !hasReading && tests.length === 0) {
+	if (!data) {
 		return (
-			<p className="mb-8 px-4 text-muted-foreground text-sm">
+			<div data-testid="wpm-trend-loading">
+				<ChartFrame label="Reading speed chart" />
+			</div>
+		);
+	}
+
+	const measured = data.measured;
+	const hasReading = measured.some((p) => p.avgWpm > 0);
+	if (!hasReading && tests.length === 0) {
+		return (
+			<p className="m-0 text-muted-foreground text-sm">
 				Not enough reading in this window for a trend.
 			</p>
 		);
 	}
 
-	const averages = trend.data?.averages ?? { measured: 0, rsvpTarget: 0 };
-	const granularity = trend.data?.granularity ?? "week";
-	const bucketStarts = (trend.data?.measured ?? []).map((p) => p.bucketStart);
-	const tickIndices = evenTickIndices(bucketStarts.length, MAX_AXIS_TICKS);
-	const hasRsvpTarget = averages.rsvpTarget > 0;
-	const yMax = wpmAxisMax([
-		AVERAGE_READER_WPM,
-		averages.rsvpTarget,
-		...points.map((p) => p.y ?? 0),
-		...tests.map((t) => t.wpm),
-	]);
-	// nivo already puts role="img" on the svg; this gives it a label, so the chart
-	// reads as one sentence rather than a pile of numbers.
-	const chartSummary = trend.data
-		? summariseWpmTrend(trend.data, windowLabel)
-		: "Reading speed chart";
+	const start = firstShownBucket(measured, tests);
+	const end = Math.max(start, measured.length - 1);
+	const x = (i: number) =>
+		end === start
+			? PLOT_RIGHT
+			: PLOT_LEFT + ((i - start) / (end - start)) * (PLOT_RIGHT - PLOT_LEFT);
+	const domain = wpmAxisDomain([...measured.map((p) => p.avgWpm), ...tests.map((t) => t.wpm)]);
+	const y = (wpm: number) =>
+		PLOT_BOTTOM - ((wpm - domain.min) / (domain.max - domain.min)) * (PLOT_BOTTOM - PLOT_TOP);
+	const inRange = (wpm: number) => wpm >= domain.min && wpm <= domain.max;
+
+	const points = measured.flatMap((p, i) =>
+		p.avgWpm > 0 && i >= start ? [{ x: x(i), y: y(p.avgWpm) }] : [],
+	);
+	const line = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+	const first = points[0];
+	const last = points.at(-1);
+	const area =
+		first && last
+			? `M${first.x.toFixed(1)},${PLOT_BOTTOM} L${line.split(" ").join(" L")} L${last.x.toFixed(1)},${PLOT_BOTTOM} Z`
+			: null;
+
+	const shownStarts = measured.slice(start, end + 1).map((p) => p.bucketStart);
+	const ticks = evenTickIndices(shownStarts.length, MAX_X_LABELS);
+	const dial = data.averages.rsvpTarget;
+	const latestTest = tests.reduce<TrendTestMarker | null>(
+		(latest, t) => (latest === null || t.takenAt > latest.takenAt ? t : latest),
+		null,
+	);
 
 	return (
-		<motion.section
-			initial={{ opacity: 0, y: 12 }}
-			whileInView={{ opacity: 1, y: 0 }}
-			viewport={{ once: true, amount: 0.25 }}
-			transition={{ duration: 0.5 }}
-			className="mb-8 px-4"
-		>
-			{/* An empty series has no path, so nivo writes d="null" and logs
-			    "Expected moveto path command" for every path, animated or not. */}
-			{points.length === 0 ? (
-				<div className="h-[220px]" data-testid="wpm-trend-loading" />
-			) : (
-				<div className="h-[220px]" role="img" aria-label={chartSummary}>
-					<ResponsiveLine
-						role="presentation"
-						data={chartData}
-						layers={layers}
-						// The right margin fits half of the last date tick, which centres on the edge.
-						margin={{ top: 12, right: 28, bottom: 48, left: 56 }}
-						xScale={{ type: "linear" }}
-						// Markers never enter the scale, so the reference lines have to be
-						// folded in by hand or they render off-plot and get clipped.
-						yScale={{ type: "linear", min: 0, max: yMax, stacked: false }}
-						curve="monotoneX"
-						enableArea={true}
-						areaOpacity={0.18}
-						colors={chartData.map((d) => d.color)}
-						lineWidth={2.5}
-						enablePoints={true}
-						pointSize={5}
-						pointColor={{ from: "color" }}
-						pointBorderWidth={2}
-						pointBorderColor={{ from: "serieColor" }}
-						enableGridX={false}
-						axisBottom={{
-							tickSize: 0,
-							tickPadding: 8,
-							tickValues: tickIndices,
-							format: (v) => formatBucketTick(bucketStarts, granularity, Number(v)),
-							legend: trendAxisLegend(windowLabel, bucketStarts),
-							legendPosition: "middle",
-							legendOffset: 36,
-						}}
-						axisLeft={{
-							tickSize: 0,
-							tickPadding: 8,
-							tickValues: 4,
-							legend: "Words per minute",
-							legendPosition: "middle",
-							legendOffset: -44,
-						}}
-						theme={nivoTheme}
-						animate={!isEinkMode}
-						motionConfig="gentle"
-						useMesh={true}
-						tooltip={({ point }) => {
-							const x = Number(point.data.x);
-							const y = Number(point.data.y);
-							const when = formatBucketTick(bucketStarts, granularity, x);
-							return (
-								<ChartTooltip>
-									<div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-										<span
-											style={{
-												display: "inline-block",
-												width: 8,
-												height: 8,
-												borderRadius: 9999,
-												backgroundColor: point.seriesColor,
-											}}
-										/>
-										<span style={{ opacity: 0.85 }}>{point.seriesId}</span>
-									</div>
-									<div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-										<span style={{ fontSize: "1.125rem", fontWeight: 700 }}>{y}</span>
-										<span style={{ opacity: 0.6 }}>wpm</span>
-									</div>
-									<div style={{ marginTop: 2, fontSize: "0.6875rem", opacity: 0.6 }}>{when}</div>
-								</ChartTooltip>
-							);
-						}}
-						markers={[
-							{
-								axis: "y",
-								value: AVERAGE_READER_WPM,
-								lineStyle: {
-									stroke: isDarkTheme(theme) ? "#94a3b8" : "#64748b",
-									strokeWidth: 1,
-									strokeDasharray: "4 4",
-									strokeOpacity: 0.6,
-								},
-								legend: `Avg reader ${AVERAGE_READER_WPM}`,
-								legendPosition: "top-left",
-								textStyle: { fontSize: 10, fill: "var(--muted-foreground)" },
-							},
-							...(hasRsvpTarget
-								? [
-										{
-											axis: "y" as const,
-											value: averages.rsvpTarget,
-											lineStyle: {
-												stroke: COLORS.rsvpTarget,
-												strokeWidth: 1,
-												strokeDasharray: "4 4",
-												strokeOpacity: 0.7,
-											},
-											legend: `Avg dial ${averages.rsvpTarget}`,
-											legendPosition: "top-right" as const,
-											textStyle: { fontSize: 10, fill: "var(--muted-foreground)" },
-										},
-									]
-								: []),
-						]}
+		<div data-testid="wpm-trend">
+			<ChartFrame label={summariseWpmTrend(data, trendAxisLegend(windowLabel, shownStarts))}>
+				{Array.from({ length: GRID_LINES }, (_, i) => {
+					const wpm = domain.min + i * domain.step;
+					return (
+						<g key={wpm}>
+							<line
+								x1={PLOT_LEFT}
+								x2={PLOT_RIGHT}
+								y1={y(wpm)}
+								y2={y(wpm)}
+								className="stroke-border"
+							/>
+							<text
+								x={PLOT_LEFT - 6}
+								y={y(wpm) + 4}
+								textAnchor="end"
+								className="fill-muted-foreground text-[10px]"
+							>
+								{wpm}
+							</text>
+						</g>
+					);
+				})}
+				{area && <path d={area} className="fill-primary" opacity={0.12} />}
+				{inRange(AVERAGE_READER_WPM) && (
+					<ReferenceLine
+						y={y(AVERAGE_READER_WPM)}
+						lines={["Avg", "reader"]}
+						testId="wpm-trend-avg"
 					/>
-				</div>
-			)}
+				)}
+				{dial > 0 && inRange(dial) && (
+					<ReferenceLine y={y(dial)} lines={["Dial"]} testId="wpm-trend-dial" />
+				)}
+				{points.length > 1 && (
+					<polyline
+						points={line}
+						className="fill-none stroke-primary"
+						strokeWidth={2}
+						strokeLinejoin="round"
+					/>
+				)}
+				{points.map((p) => (
+					<circle key={p.x} cx={p.x} cy={p.y} r={2.5} className="fill-primary" />
+				))}
+				{last && (
+					<circle
+						cx={last.x}
+						cy={last.y}
+						r={4.5}
+						className="fill-primary stroke-card"
+						strokeWidth={2}
+					/>
+				)}
+				{tests.map((test) => {
+					const tx = x(Math.max(start, test.bucketIndex));
+					const ty = y(test.wpm);
+					return (
+						<g key={test.takenAt} data-testid="wpm-trend-test">
+							<rect
+								x={tx - 4}
+								y={ty - 4}
+								width={8}
+								height={8}
+								transform={`rotate(45 ${tx} ${ty})`}
+								className="fill-foreground stroke-card"
+								strokeWidth={1.5}
+							/>
+							{test === latestTest && (
+								<text
+									x={tx}
+									y={ty - 9}
+									textAnchor={tx > (PLOT_LEFT + PLOT_RIGHT) / 2 ? "end" : "start"}
+									className="fill-muted-foreground text-[10px]"
+								>
+									{testLabel(test.takenAt, now)} · {test.wpm}
+								</text>
+							)}
+						</g>
+					);
+				})}
+				{ticks.map((i, n) => {
+					const bucketStart = shownStarts[i];
+					if (bucketStart === undefined) return null;
+					const anchor = n === 0 ? "start" : n === ticks.length - 1 ? "end" : "middle";
+					return (
+						<text
+							key={bucketStart}
+							x={x(start + i)}
+							y={HEIGHT - 10}
+							textAnchor={ticks.length === 1 ? "end" : anchor}
+							className="fill-muted-foreground text-[10px]"
+							data-testid="wpm-trend-tick"
+						>
+							{formatBucketTick(bucketStart, data.granularity)}
+						</text>
+					);
+				})}
+			</ChartFrame>
 			{tests.length > 0 && (
-				<p className="mt-1 text-muted-foreground text-xs">
-					<span aria-hidden="true" style={{ color: testColor }}>
-						◆
-					</span>{" "}
-					Speed test
+				<p className="m-0 mt-1 text-muted-foreground text-xs">
+					<span aria-hidden="true">◆</span> Speed test
 				</p>
 			)}
-		</motion.section>
+		</div>
+	);
+}
+
+function ReferenceLine({ y, lines, testId }: { y: number; lines: string[]; testId: string }) {
+	return (
+		<g data-testid={testId}>
+			<line
+				x1={PLOT_LEFT}
+				x2={PLOT_RIGHT}
+				y1={y}
+				y2={y}
+				className="stroke-muted-foreground"
+				strokeDasharray="3 3"
+			/>
+			{lines.map((text, i) => (
+				<text
+					key={text}
+					x={PLOT_RIGHT + 6}
+					y={y - 2 + i * 13}
+					className="fill-muted-foreground text-[10px]"
+				>
+					{text}
+				</text>
+			))}
+		</g>
 	);
 }

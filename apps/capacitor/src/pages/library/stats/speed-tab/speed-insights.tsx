@@ -1,11 +1,23 @@
-import type { SpeedModel } from "@lesefluss/core";
-import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
-import { Info } from "lucide-react";
+import { MIN_MODEL_ACTIVE_MS, type SpeedModel } from "@lesefluss/core";
+import { Button } from "@lesefluss/ui/button";
+import { cn } from "@lesefluss/ui/utils";
+import { useNavigate } from "@tanstack/react-router";
+import {
+	BookOpen,
+	Gauge,
+	Lock,
+	type LucideIcon,
+	Moon,
+	Timer,
+	TrendingDown,
+	Type,
+} from "lucide-react";
 import { ReservedCard } from "../../../../components/reserved-card";
 import { queryHooks } from "../../../../services/db/hooks";
-import type { Insight, InsightId } from "../../../../services/stats/insights";
-import { type SittingRecord, timeSavedMs } from "../../../../services/stats/speed-tab";
+import type { Insight, InsightId, LockedInsight } from "../../../../services/stats/insights";
+import { type SpeedView, timeSavedMs } from "../../../../services/stats/speed-tab";
 import { formatDuration, formatShortDate } from "../../../../utils/date-utils";
+import { STAT_ROW_HEIGHT, StatCard, StatRow, StatsSection } from "../section-header";
 import { deliveredPercent } from "./rsvp-dial";
 
 function formatWords(words: number): string {
@@ -14,219 +26,275 @@ function formatWords(words: number): string {
 	return `${words} words`;
 }
 
-function InfoPopover({ label, children }: { label: string; children: React.ReactNode }) {
+const INSIGHT_ICONS: Record<InsightId, LucideIcon> = {
+	"time-of-day": Moon,
+	"scroll-vs-page": BookOpen,
+	fatigue: TrendingDown,
+	"font-size": Type,
+};
+
+/** Every insight of a view shows, open or locked, so the loaded list has a known length. */
+const INSIGHT_ROWS: Record<SpeedView, number> = { reading: 4, rsvp: 5 };
+
+function IconCircle({ icon: Icon, isLocked }: { icon: LucideIcon; isLocked?: boolean }) {
 	return (
-		<Popover>
-			<PopoverTrigger asChild>
-				<button
-					type="button"
-					aria-label={`About ${label}`}
-					className="inline-flex text-muted-foreground hover:text-foreground"
-				>
-					<Info className="size-3.5" />
-				</button>
-			</PopoverTrigger>
-			<PopoverContent className="w-64 text-xs leading-snug">{children}</PopoverContent>
-		</Popover>
+		<span
+			aria-hidden="true"
+			className={cn(
+				"flex size-10 shrink-0 items-center justify-center rounded-full",
+				isLocked
+					? "border border-border border-dashed text-muted-foreground"
+					: "bg-muted text-primary",
+			)}
+		>
+			<Icon className="size-5" />
+		</span>
 	);
 }
 
-function InsightTile({
+function ProgressBar({ fraction }: { fraction: number }) {
+	return (
+		<div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+			<div
+				className="h-full bg-primary"
+				style={{ width: `${Math.round(Math.min(1, Math.max(0, fraction)) * 100)}%` }}
+			/>
+		</div>
+	);
+}
+
+function InsightRow({
+	icon,
 	label,
 	value,
 	sub,
-	info,
 	testId,
 }: {
+	icon: LucideIcon;
 	label: string;
 	value: string;
 	sub?: string;
-	info?: React.ReactNode;
-	testId?: string;
+	testId: string;
 }) {
 	return (
-		<div
-			className="flex flex-col gap-0.5 rounded-lg border border-border bg-muted/40 px-3 py-2"
+		<StatRow
 			data-testid={testId}
-		>
-			<span className="flex items-center gap-1 text-[0.6875rem] text-muted-foreground">
-				{label}
-				{info && <InfoPopover label={label}>{info}</InfoPopover>}
-			</span>
-			<span className="font-semibold text-lg tabular-nums leading-tight">{value}</span>
-			{sub && <span className="text-[0.6875rem] text-muted-foreground tabular-nums">{sub}</span>}
-		</div>
-	);
-}
-
-type View = "reading" | "rsvp";
-
-function insightInfo(id: InsightId, view: View): string {
-	switch (id) {
-		case "scroll-vs-page":
-			return "Scroll and page speed in this window. Each needs 30 minutes of reading.";
-		case "time-of-day":
-			return "Speed by when a sitting started (morning 5-12, afternoon 12-17, evening 17-22, night 22-5), against your speed across them. Each needs 30 minutes.";
-		case "font-size":
-			return view === "rsvp"
-				? "Delivered speed at each RSVP word size, against your speed across them. Each size needs 30 minutes."
-				: "Speed at each reader font size, against your speed across them. Each size needs 30 minutes.";
-		case "fatigue":
-			return "The first 10 minutes where your pace drops 8% or more below the opening 20 minutes of a sitting, over sittings of 30 minutes or more. Counts sittings read since this tile arrived.";
-	}
-}
-
-/** One row of tiles. */
-const TILE_ROW_HEIGHT = 78;
-/** Records header plus two rows. */
-const RECORDS_HEIGHT = 130;
-
-function useViewInsights(view: View): { insights: Insight[]; isPending: boolean } {
-	const { data, isPending } = queryHooks.useStatsSpeedInsights();
-	return { insights: data?.[view] ?? [], isPending };
-}
-
-function PendingTiles() {
-	return <ReservedCard isPending height={TILE_ROW_HEIGHT} className="mb-8 px-4" />;
-}
-
-function InsightTiles({ insights, view }: { insights: Insight[]; view: View }) {
-	return insights.map((insight) => (
-		<InsightTile
-			key={insight.id}
-			testId={`insight-${insight.id}`}
-			label={insight.label}
-			value={insight.value}
-			sub={insight.sub}
-			info={insightInfo(insight.id, view)}
+			icon={<IconCircle icon={icon} />}
+			label={
+				<span className="text-[0.9375rem]">
+					{label}: <b className="font-semibold">{value}</b>
+				</span>
+			}
+			sub={sub}
 		/>
-	));
-}
-
-export function ReadingInsights() {
-	const { insights, isPending } = useViewInsights("reading");
-	if (isPending) return <PendingTiles />;
-	if (insights.length === 0) return null;
-	return (
-		<section className="mb-8 grid grid-cols-2 gap-2 px-4" data-testid="speed-insights">
-			<InsightTiles insights={insights} view="reading" />
-		</section>
 	);
 }
 
-export function RsvpInsights({ model }: { model: SpeedModel }) {
+function LockedRow({ locked }: { locked: LockedInsight }) {
+	return (
+		<StatRow
+			data-testid={`insight-locked-${locked.id}`}
+			icon={<IconCircle icon={Lock} isLocked />}
+			label={<span className="text-[0.9375rem] text-muted-foreground">{locked.title}</span>}
+			sub={`${locked.need} · ${locked.progressLabel}`}
+		/>
+	);
+}
+
+/** Until the reader has ten minutes, the speed itself is the first thing to unlock. */
+function SpeedLockedRow({ activeMs }: { activeMs: number }) {
+	const doneMin = Math.floor(activeMs / 60_000);
+	const needMin = MIN_MODEL_ACTIVE_MS / 60_000;
+	const left = Math.max(1, needMin - doneMin);
+	return (
+		<StatRow
+			data-testid="speed-locked"
+			icon={<IconCircle icon={Gauge} isLocked />}
+			label={
+				<span className="text-[0.9375rem]">
+					Read{" "}
+					<b className="font-semibold">
+						{left} more {left === 1 ? "minute" : "minutes"}
+					</b>{" "}
+					to see your speed
+				</span>
+			}
+			sub={
+				<>
+					<ProgressBar fraction={activeMs / MIN_MODEL_ACTIVE_MS} />
+					<span className="mt-1 block tabular-nums">
+						{Math.min(doneMin, needMin)} of {needMin} min · the trend follows
+					</span>
+				</>
+			}
+		/>
+	);
+}
+
+function RsvpRows({ model }: { model: SpeedModel }) {
 	const saved = timeSavedMs(model);
 	const ratio = model.rsvp?.deliveredRatio ?? null;
-	const { insights, isPending } = useViewInsights("rsvp");
-	if (isPending) return <PendingTiles />;
-	if (saved <= 0 && ratio === null && insights.length === 0) return null;
 	return (
-		<section className="mb-8 grid grid-cols-2 gap-2 px-4" data-testid="speed-insights">
+		<>
 			{saved > 0 && model.rsvp && (
-				<InsightTile
+				<InsightRow
 					testId="time-saved"
+					icon={Timer}
 					label="Time saved"
 					value={formatDuration(saved)}
-					sub={formatWords(model.rsvp.words)}
-					info={`Your RSVP words at your reading speed of ${model.reading.wpm} wpm, against the time they took at ${model.rsvp.wpm} wpm.`}
+					sub={`${formatWords(model.rsvp.words)} at ${model.rsvp.wpm} instead of ${model.reading.wpm} wpm`}
 				/>
 			)}
 			{ratio !== null && (
-				<InsightTile
+				<InsightRow
 					testId="delivered-of-dial"
+					icon={Gauge}
 					label="Delivered of dial"
 					value={`${deliveredPercent(ratio)}%`}
 					sub={model.rsvp?.dialWpm != null ? `Avg dial ${model.rsvp.dialWpm}` : undefined}
-					info="Words your RSVP sittings delivered per minute, as a share of the dial they ran at. Punctuation and long words hold some words longer."
 				/>
 			)}
-			<InsightTiles insights={insights} view="rsvp" />
-		</section>
+		</>
 	);
 }
 
-function RecordRow({ label, record }: { label: string; record: SittingRecord | null }) {
-	if (!record) return null;
+export function SpeedInsights({ model, view }: { model: SpeedModel; view: SpeedView }) {
+	const { data, isPending } = queryHooks.useStatsSpeedInsights();
+	const insights: Insight[] = data?.[view] ?? [];
+	const locked: LockedInsight[] = data?.locked[view] ?? [];
+	const speedLocked = view === "reading" && model.reading.source === "default";
 	return (
-		<div className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
-			<span className="text-muted-foreground">{label}</span>
-			<span className="min-w-0 text-right">
-				<span className="font-semibold tabular-nums">{record.wpm} wpm</span>
-				<span className="block truncate text-[0.6875rem] text-muted-foreground">
-					{record.title} · {formatShortDate(record.at)}
-				</span>
-			</span>
-		</div>
-	);
-}
-
-function RecordsSection({ children }: { children: React.ReactNode }) {
-	return (
-		<section className="mb-8 px-4" data-testid="speed-records">
-			<header className="mb-2 flex items-baseline justify-between">
-				<h3 className="font-semibold text-base">Records</h3>
-				<span className="text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
-					All time
-				</span>
-			</header>
-			<div className="divide-y divide-border">{children}</div>
-		</section>
-	);
-}
-
-function FastestBookRow({ record }: { record: { wpm: number; title: string } | null }) {
-	if (!record) return null;
-	return (
-		<div className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
-			<span className="text-muted-foreground">Fastest book</span>
-			<span className="min-w-0 text-right">
-				<span className="font-semibold tabular-nums">{record.wpm} wpm</span>
-				<span className="block truncate text-[0.6875rem] text-muted-foreground">
-					{record.title}
-				</span>
-			</span>
-		</div>
-	);
-}
-
-function PendingRecords() {
-	return <ReservedCard isPending height={RECORDS_HEIGHT} className="mb-8 px-4" />;
-}
-
-export function ReadingRecords() {
-	const { data, isPending } = queryHooks.useStatsSpeedTab();
-	if (isPending) return <PendingRecords />;
-	const records = data?.records;
-	if (!records || (!records.fastestSitting && !records.fastestBook)) return null;
-	return (
-		<RecordsSection>
-			<RecordRow label="Fastest sitting" record={records.fastestSitting} />
-			<FastestBookRow record={records.fastestBook} />
-		</RecordsSection>
-	);
-}
-
-export function RsvpRecords() {
-	const { data, isPending } = queryHooks.useStatsSpeedTab();
-	if (isPending) return <PendingRecords />;
-	const records = data?.records;
-	if (!records || (!records.bestRsvpSitting && !records.fastestBook)) return null;
-	const longest = records.longestRsvpRun;
-	return (
-		<RecordsSection>
-			<RecordRow label="Best sitting" record={records.bestRsvpSitting} />
-			<FastestBookRow record={records.fastestBook} />
-			{longest && (
-				<div className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
-					<span className="text-muted-foreground">Longest run</span>
-					<span className="min-w-0 text-right">
-						<span className="font-semibold tabular-nums">{formatDuration(longest.durationMs)}</span>
-						<span className="block truncate text-[0.6875rem] text-muted-foreground">
-							{longest.title} · {formatShortDate(longest.at)}
-						</span>
-					</span>
+		<StatsSection
+			title="Insights"
+			aside={locked.length > 0 || speedLocked ? "Unlock as you read" : undefined}
+			data-testid="speed-insights"
+		>
+			<ReservedCard isPending={isPending} height={INSIGHT_ROWS[view] * STAT_ROW_HEIGHT}>
+				<div className="[&>*:last-child]:border-b-0">
+					{speedLocked && <SpeedLockedRow activeMs={model.reading.activeMs} />}
+					{view === "rsvp" && <RsvpRows model={model} />}
+					{insights.map((insight) => (
+						<InsightRow
+							key={insight.id}
+							testId={`insight-${insight.id}`}
+							icon={INSIGHT_ICONS[insight.id]}
+							label={insight.label}
+							value={insight.value}
+							sub={insight.sub}
+						/>
+					))}
+					{locked.map((l) => (
+						<LockedRow key={l.id} locked={l} />
+					))}
 				</div>
-			)}
-		</RecordsSection>
+			</ReservedCard>
+		</StatsSection>
+	);
+}
+
+/** Two rows in their card: one best and the speed test. */
+const PERSONAL_BESTS_HEIGHT = 2 * STAT_ROW_HEIGHT + 2;
+
+function SpeedTestRow() {
+	const navigate = useNavigate();
+	const latest = queryHooks.useSpeedTests().data?.[0];
+	return (
+		<StatRow
+			data-testid="speed-test-card"
+			label="Speed test"
+			sub={
+				latest
+					? `${formatShortDate(latest.createdAt)} · ${latest.readingWpm} wpm`
+					: "Not taken yet · 1 minute"
+			}
+			action={
+				<Button
+					variant="outline"
+					className="h-11"
+					aria-label="Test my speed"
+					onClick={() => void navigate({ to: "/speed-test" })}
+				>
+					<Gauge />
+					Test
+				</Button>
+			}
+		/>
+	);
+}
+
+function BestRow({
+	label,
+	value,
+	detail,
+}: {
+	label: string;
+	value: React.ReactNode;
+	detail: string;
+}) {
+	return <StatRow label={label} value={value} detail={detail} />;
+}
+
+function Wpm({ wpm }: { wpm: number }) {
+	return (
+		<>
+			{wpm} <small className="font-normal text-muted-foreground text-xs">wpm</small>
+		</>
+	);
+}
+
+/** All-time records of both modes, with the speed test as the last row. */
+export function PersonalBests() {
+	const { data, isPending } = queryHooks.useStatsSpeedTab();
+	const records = data?.records;
+	const hasBest =
+		!!records &&
+		!!(
+			records.fastestSitting ||
+			records.bestRsvpSitting ||
+			records.fastestBook ||
+			records.longestRsvpRun
+		);
+	return (
+		<StatsSection title="Personal bests" aside="All time" data-testid="speed-records">
+			<ReservedCard isPending={isPending} height={PERSONAL_BESTS_HEIGHT}>
+				<StatCard>
+					{records?.fastestSitting && (
+						<BestRow
+							label="Fastest sitting"
+							value={<Wpm wpm={records.fastestSitting.wpm} />}
+							detail={`${records.fastestSitting.title} · ${formatShortDate(records.fastestSitting.at)}`}
+						/>
+					)}
+					{records?.bestRsvpSitting && (
+						<BestRow
+							label="Fastest RSVP sitting"
+							value={<Wpm wpm={records.bestRsvpSitting.wpm} />}
+							detail={`${records.bestRsvpSitting.title} · ${formatShortDate(records.bestRsvpSitting.at)}`}
+						/>
+					)}
+					{records?.fastestBook && (
+						<BestRow
+							label="Fastest book"
+							value={<Wpm wpm={records.fastestBook.wpm} />}
+							detail={records.fastestBook.title}
+						/>
+					)}
+					{records?.longestRsvpRun && (
+						<BestRow
+							label="Longest RSVP run"
+							value={formatDuration(records.longestRsvpRun.durationMs)}
+							detail={`${records.longestRsvpRun.title} · ${formatShortDate(records.longestRsvpRun.at)}`}
+						/>
+					)}
+					{!hasBest && (
+						<StatRow
+							label={<span className="text-muted-foreground">Your best sittings show here</span>}
+							sub="Once your speed appears"
+						/>
+					)}
+					<SpeedTestRow />
+				</StatCard>
+			</ReservedCard>
+		</StatsSection>
 	);
 }

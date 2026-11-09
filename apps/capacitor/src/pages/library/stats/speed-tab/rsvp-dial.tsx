@@ -93,7 +93,7 @@ export function RsvpDial({ model }: { model: SpeedModel }) {
 
 	const knob = pointAt(fractionOf(dial));
 	return (
-		<section className="mb-8 px-4" data-testid="rsvp-dial">
+		<section className="mt-6 px-4" data-testid="rsvp-dial">
 			<div className="mx-auto w-full max-w-[240px]">
 				<svg
 					ref={svgRef}

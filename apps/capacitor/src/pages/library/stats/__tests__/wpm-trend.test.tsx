@@ -1,152 +1,107 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type Rendered, render } from "../../../../test/render";
 
-type LineProps = {
-	data: { data: unknown[] }[];
-	yScale: { max: number };
-	layers?: unknown[];
-};
-
 const state = {
-	trend: { isLoading: true, data: undefined } as { isLoading: boolean; data: unknown },
-	lines: [] as LineProps[],
+	trend: { data: undefined } as { data: unknown },
 };
 
-vi.mock("../../../../contexts/theme-context", async (importOriginal) => ({
-	...(await importOriginal<typeof import("../../../../contexts/theme-context")>()),
-	useTheme: () => ({ theme: "light", isEinkMode: false }),
-}));
 vi.mock("../../../../services/db/hooks", () => ({
 	queryHooks: { useStatsWpmTrend: () => state.trend },
 }));
-vi.mock("@nivo/line", () => ({
-	ResponsiveLine: (props: LineProps) => {
-		state.lines.push(props);
-		return null;
-	},
-}));
 
-const { WpmTrend, trendAxisLegend, wpmAxisMax } = await import("../wpm-trend");
+const { WpmTrend, firstShownBucket, trendAxisLegend, wpmAxisDomain } = await import("../wpm-trend");
+
+const DAY = 86_400_000;
 
 let view: Rendered | undefined;
 afterEach(() => {
 	view?.unmount();
 	view = undefined;
-	state.lines = [];
 });
 
-const loaded = {
-	isLoading: false,
-	data: {
-		granularity: "day",
-		averages: { measured: 300, rsvpTarget: 400 },
-		measured: [
-			{ bucketStart: 0, avgWpm: 280 },
-			{ bucketStart: 86_400_000, avgWpm: 320 },
-		],
-	},
-};
+function trend(wpms: number[], tests: unknown[] = [], rsvpTarget = 0) {
+	return {
+		data: {
+			granularity: "day",
+			averages: { measured: 0, rsvpTarget },
+			measured: wpms.map((avgWpm, i) => ({ bucketStart: i * DAY, avgWpm })),
+			tests,
+		},
+	};
+}
+
+async function show(now = DAY * 30) {
+	view = await render(<WpmTrend window="30d" mode="reading" windowLabel="30 days" now={now} />);
+	return view.container;
+}
 
 describe("WpmTrend", () => {
-	it("never mounts the chart with an empty series while the trend loads", async () => {
-		state.trend = { isLoading: true, data: undefined };
-		view = await render(<WpmTrend window="30d" mode="reading" windowLabel="30 days" now={0} />);
-		expect(state.lines).toHaveLength(0);
-		expect(view.container.querySelector("[data-testid=wpm-trend-loading]")).not.toBeNull();
+	it("reserves the chart's height while the trend loads", async () => {
+		state.trend = { data: undefined };
+		const container = await show();
+		expect(container.querySelector("[data-testid=wpm-trend-loading] svg")).not.toBeNull();
 	});
 
-	it("puts the axis top far enough over the target that its label stays on the plot", async () => {
-		state.trend = loaded;
-		view = await render(<WpmTrend window="30d" mode="reading" windowLabel="30 days" now={0} />);
-		const last = state.lines.at(-1);
-		expect(last?.data[0]?.data).toHaveLength(2);
-		// 160px plot: the label's top sits about 19px over its line.
-		expect(160 * (1 - 400 / (last?.yScale.max ?? 0))).toBeGreaterThan(20);
+	it("says there is no trend yet with no reading and no test", async () => {
+		state.trend = trend([0, 0]);
+		expect((await show()).textContent).toContain("Not enough reading");
 	});
 
-	it("marks a speed test even with no reading, and lifts the axis over it", async () => {
-		const DAY = 86_400_000;
-		state.trend = {
-			isLoading: false,
-			data: {
-				granularity: "day",
-				averages: { measured: 0, rsvpTarget: 0 },
-				measured: [
-					{ bucketStart: 0, avgWpm: 0 },
-					{ bucketStart: DAY, avgWpm: 0 },
-				],
-				tests: [{ bucketIndex: 1, wpm: 640, takenAt: DAY + 1 }],
-			},
-		};
-		view = await render(
-			<WpmTrend window="30d" mode="reading" windowLabel="30 days" now={DAY * 2} />,
-		);
-		const last = state.lines.at(-1);
-		expect(last?.yScale.max).toBeGreaterThan(640);
-		const layer = last?.layers?.find((l) => typeof l === "function") as
-			| ((p: object) => React.ReactElement)
-			| undefined;
-		expect(layer).toBeDefined();
-		const markers = await render(
-			<svg role="img" aria-label="Test markers">
-				{layer?.({
-					xScale: (i: number) => i * 10,
-					yScale: (w: number) => 1000 - w,
-					innerWidth: 300,
-					innerHeight: 160,
-				})}
-			</svg>,
-		);
-		expect(markers.container.querySelectorAll("[data-testid=wpm-trend-test]")).toHaveLength(1);
-		expect(markers.container.textContent).toContain("640");
-		markers.unmount();
-		expect(view.container.textContent).toContain("Speed test");
+	it("starts the x-axis at the first bucket with reading", async () => {
+		state.trend = trend([0, 0, 0, 220, 240]);
+		const container = await show();
+		const ticks = [...container.querySelectorAll("[data-testid=wpm-trend-tick]")];
+		expect(ticks[0]?.getAttribute("x")).toBe("30");
+		expect(ticks[0]?.getAttribute("text-anchor")).toBe("start");
+		expect(ticks.at(-1)?.getAttribute("text-anchor")).toBe("end");
+		expect(container.querySelectorAll("circle.fill-primary").length).toBe(3);
 	});
 
-	it("labels only the latest of several speed tests, so labels never overlap", async () => {
-		const DAY = 86_400_000;
-		state.trend = {
-			isLoading: false,
-			data: {
-				granularity: "day",
-				averages: { measured: 0, rsvpTarget: 0 },
-				measured: [
-					{ bucketStart: 0, avgWpm: 250 },
-					{ bucketStart: DAY, avgWpm: 260 },
-				],
-				tests: [
-					{ bucketIndex: 1, wpm: 410, takenAt: DAY + 1 },
-					{ bucketIndex: 1, wpm: 520, takenAt: DAY + 2 },
-				],
-			},
-		};
-		view = await render(
-			<WpmTrend window="30d" mode="reading" windowLabel="30 days" now={DAY * 5} />,
+	it("draws the average reader only when it falls inside the data's axis", async () => {
+		state.trend = trend([220, 240]);
+		expect((await show()).querySelector("[data-testid=wpm-trend-avg]")).not.toBeNull();
+		view?.unmount();
+		state.trend = trend([400, 420]);
+		expect((await show()).querySelector("[data-testid=wpm-trend-avg]")).toBeNull();
+	});
+
+	it("marks a speed test even with no reading and labels only the latest", async () => {
+		state.trend = trend(
+			[0, 250, 260],
+			[
+				{ bucketIndex: 2, wpm: 410, takenAt: DAY * 2 + 1 },
+				{ bucketIndex: 2, wpm: 520, takenAt: DAY * 2 + 2 },
+			],
 		);
-		const layer = state.lines.at(-1)?.layers?.find((l) => typeof l === "function") as
-			| ((p: object) => React.ReactElement)
-			| undefined;
-		const markers = await render(
-			<svg role="img" aria-label="Test markers">
-				{layer?.({
-					xScale: (i: number) => i * 10,
-					yScale: (w: number) => 1000 - w,
-					innerWidth: 300,
-					innerHeight: 160,
-				})}
-			</svg>,
-		);
-		expect(markers.container.querySelectorAll("[data-testid=wpm-trend-test]")).toHaveLength(2);
-		const labels = [...markers.container.querySelectorAll("text")].map((t) => t.textContent);
+		const container = await show(DAY * 5);
+		expect(container.querySelectorAll("[data-testid=wpm-trend-test]")).toHaveLength(2);
+		const labels = [...container.querySelectorAll("[data-testid=wpm-trend-test] text")];
 		expect(labels).toHaveLength(1);
-		expect(labels[0]).toContain("520");
-		markers.unmount();
+		expect(labels[0]?.textContent).toContain("520");
+		expect(container.textContent).toContain("Speed test");
+	});
+});
+
+describe("wpmAxisDomain", () => {
+	it("starts at the data, not at zero, in three even steps", () => {
+		expect(wpmAxisDomain([218, 0, 252])).toEqual({ min: 200, max: 260, step: 20 });
+		expect(wpmAxisDomain([225, 400, 310])).toEqual({ min: 200, max: 500, step: 100 });
 	});
 
-	it("rounds the axis top to 50 with a fifth of headroom", () => {
-		expect(wpmAxisMax([225, 400, 310])).toBe(500);
-		expect(wpmAxisMax([225, 0])).toBe(300);
-		expect(wpmAxisMax([])).toBe(50);
+	it("covers a single value and an empty trend", () => {
+		const one = wpmAxisDomain([250]);
+		expect(one.min).toBeLessThanOrEqual(250);
+		expect(one.max).toBeGreaterThan(one.min);
+		expect(wpmAxisDomain([])).toEqual({ min: 0, max: 300, step: 100 });
+	});
+});
+
+describe("firstShownBucket", () => {
+	it("is the first bucket with reading or a test", () => {
+		const points = [0, 0, 240, 250].map((avgWpm) => ({ avgWpm }));
+		expect(firstShownBucket(points, [])).toBe(2);
+		expect(firstShownBucket(points, [{ bucketIndex: 1, wpm: 300, takenAt: 0 }])).toBe(1);
+		expect(firstShownBucket([{ avgWpm: 0 }], [])).toBe(0);
 	});
 });
 

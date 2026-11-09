@@ -1,10 +1,10 @@
-import { motion } from "framer-motion";
 import { ReservedCard } from "../../../components/reserved-card";
 import { queryHooks } from "../../../services/db/hooks";
 import { formatDuration, formatRelative } from "../../../utils/date-utils";
+import { STAT_ROW_HEIGHT, StatCard, StatRow, StatsSection } from "./section-header";
 
-/** Two rows of record tiles, the usual loaded state. */
-const RECORDS_GRID_HEIGHT = 181;
+/** Three record rows in their card, the usual loaded state. */
+const RECORDS_HEIGHT = 3 * STAT_ROW_HEIGHT + 2;
 
 /** Rename avoids shadowing the global `Record` type in this file. */
 interface PersonalBest {
@@ -14,7 +14,7 @@ interface PersonalBest {
 }
 
 /** All-time personal bests. Nothing here is period-scoped: a record that reset
- *  every week would not be a record. */
+ *  every week would not be a record. Speed records live on the Speed tab only. */
 export function RecordsCard() {
 	const records = queryHooks.useStatsRecords();
 	const data = records.data;
@@ -34,13 +34,6 @@ export function RecordsCard() {
 			detail: formatRelative(data.bestDay.dayStart),
 		});
 	}
-	if (data?.fastestBook) {
-		items.push({
-			label: "Fastest read",
-			value: `${data.fastestBook.wpm} wpm`,
-			detail: data.fastestBook.title,
-		});
-	}
 	if (data?.longestBookFinished) {
 		items.push({
 			label: "Longest finished",
@@ -52,36 +45,20 @@ export function RecordsCard() {
 	if (data && items.length === 0) return null;
 
 	return (
-		<motion.section
-			initial={{ opacity: 0, y: 12 }}
-			whileInView={{ opacity: 1, y: 0 }}
-			viewport={{ once: true, amount: 0.25 }}
-			transition={{ duration: 0.5 }}
-			className="mb-10 px-4"
-		>
-			<header className="mb-3">
-				<h2 className="font-semibold text-lg">Records</h2>
-				<p className="mt-0.5 text-[0.6875rem] uppercase tracking-wider opacity-60">all time</p>
-			</header>
-			<ReservedCard isPending={!data} height={RECORDS_GRID_HEIGHT}>
-				<div className="grid grid-cols-2 gap-2.5">
+		<StatsSection title="Records" aside="All time" data-testid="stats-records">
+			<ReservedCard isPending={!data} height={RECORDS_HEIGHT}>
+				<StatCard>
 					{items.map((record) => (
-						<div
+						<StatRow
 							key={record.label}
-							className="rounded-xl border border-current/10 bg-card p-3 text-card-foreground"
-						>
-							<div className="font-semibold text-xl tabular-nums leading-none tracking-tight">
-								{record.value}
-							</div>
-							<div className="mt-1.5 text-[0.625rem] uppercase tracking-wider opacity-60">
-								{record.label}
-							</div>
-							<div className="mt-1 line-clamp-1 text-[0.6875rem] opacity-50">{record.detail}</div>
-						</div>
+							label={record.label}
+							value={record.value}
+							detail={record.detail}
+						/>
 					))}
-				</div>
+				</StatCard>
 			</ReservedCard>
-		</motion.section>
+		</StatsSection>
 	);
 }
 

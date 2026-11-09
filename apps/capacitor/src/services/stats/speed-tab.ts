@@ -5,11 +5,9 @@ import {
 	type ReadingMode,
 	rsvpTimeSavedMs,
 	type SpeedModel,
-	type SpeedWindow,
 	speedSittings,
 	wpmFrom,
 } from "@lesefluss/core";
-import type { WpmTrend } from "./aggregate";
 import { fastestBook } from "./records";
 
 export type SpeedView = "reading" | "rsvp";
@@ -29,6 +27,7 @@ export interface SpeedTabSession {
 export interface SpeedBookRow {
 	bookId: string;
 	title: string;
+	author: string | null;
 	coverImage: string | null;
 	mode: MeasuredReadingMode;
 	wpm: number;
@@ -70,18 +69,33 @@ export function timeSavedMs(model: SpeedModel): number {
 	return rsvpTimeSavedMs(model.rsvp.words, model.reading.wpm, model.rsvp.wpm);
 }
 
-/** How far the window's last point is from its first; null with fewer than two points. */
-export function trendDelta(trend: WpmTrend): { wpm: number; since: number } | null {
-	const points = trend.measured.filter((p) => p.avgWpm > 0);
-	const first = points[0];
-	const last = points.at(-1);
-	if (!first || !last || points.length < 2) return null;
-	return { wpm: last.avgWpm - first.avgWpm, since: first.bucketStart };
+export const SPEED_DELTA_SPAN_MS = 28 * 24 * 60 * 60_000;
+
+/**
+ * The headline speed now against the same window's speed four weeks earlier, so the
+ * delta compares one measure with itself. Null unless both are measured: a speed
+ * test or the average reader can't move.
+ */
+export function speedDelta(
+	current: SpeedModel,
+	earlier: SpeedModel | undefined,
+	view: SpeedView,
+): number | null {
+	if (!earlier || !isMeasured(current, view) || !isMeasured(earlier, view)) return null;
+	return viewWpm(current, view) - viewWpm(earlier, view);
 }
 
-export function deltaLabel(window: SpeedWindow, wpm: number, sinceLabel: string): string {
+function isMeasured(model: SpeedModel, view: SpeedView): boolean {
+	return view === "rsvp" ? model.rsvp !== null : model.reading.source === "measured";
+}
+
+export function viewWpm(model: SpeedModel, view: SpeedView): number {
+	return view === "rsvp" ? (model.rsvp?.wpm ?? 0) : model.reading.wpm;
+}
+
+export function deltaLabel(wpm: number): string {
 	const signed = wpm > 0 ? `+${wpm}` : wpm < 0 ? `−${Math.abs(wpm)}` : "±0";
-	return window === "30d" ? `${signed} in 30 days` : `${signed} since ${sinceLabel}`;
+	return `${signed} in 4 weeks`;
 }
 
 /** The mode average a book is compared with, so an RSVP book isn't measured against scrolling. */
@@ -119,7 +133,7 @@ export function sortBookRows(
  */
 export function buildSpeedTabData(
 	sessions: readonly SpeedTabSession[],
-	books: ReadonlyMap<string, { title: string; coverImage: string | null }>,
+	books: ReadonlyMap<string, { title: string; author?: string | null; coverImage: string | null }>,
 ): SpeedTabData {
 	const extras = new Map<string, { dialWords: number; dialWeighted: number; lastAt: number }>();
 	const records: SpeedRecords = {
@@ -167,6 +181,7 @@ export function buildSpeedTabData(
 		rows.push({
 			bookId,
 			title: book.title,
+			author: book.author ?? null,
 			coverImage: book.coverImage,
 			mode: speed.mode,
 			wpm: speed.wpm,

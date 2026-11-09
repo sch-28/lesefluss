@@ -78,16 +78,22 @@ type RowChip =
 			active: boolean;
 	  };
 
-/** The chips the row shows and the ones the More sheet takes, the open chip kept in the row. */
+/**
+ * The chips the row shows and the ones the More sheet takes, the open chip kept
+ * in the row. An empty chip moves to the sheet, so the row never shows a 0.
+ */
 export function splitChips<T extends { active: boolean }>(
 	chips: readonly T[],
+	countOf: (chip: T) => number,
 	limit = INLINE_CHIP_LIMIT,
 ): { inline: T[]; more: T[] } {
-	const inline = chips.slice(0, limit);
-	const more = chips.slice(limit);
+	const shown = chips.filter((c) => c.active || countOf(c) > 0);
+	const empty = chips.filter((c) => !c.active && countOf(c) <= 0);
+	const inline = shown.slice(0, limit);
+	const more = shown.slice(limit);
 	const activeIndex = more.findIndex((c) => c.active);
 	if (activeIndex >= 0) inline.push(...more.splice(activeIndex, 1));
-	return { inline, more };
+	return { inline, more: [...more, ...empty] };
 }
 
 const chipName = (c: RowChip) =>
@@ -165,9 +171,9 @@ const CollectionShelfRow: React.FC<{
 			}),
 		),
 	];
-	const { inline, more } = splitChips(chips);
 	const countOf = (c: RowChip) =>
 		c.kind === "shelf" ? c.count : c.kind === "collection" ? c.collection.bookCount : c.entry.count;
+	const { inline, more } = splitChips(chips, countOf);
 
 	const openChip = (c: RowChip) => {
 		setIsMoreOpen(false);
@@ -189,7 +195,8 @@ const CollectionShelfRow: React.FC<{
 			<div
 				role="toolbar"
 				aria-label="Collections and shelves"
-				className="flex gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none]"
+				// The fade tells the row scrolls on; the right padding lets the last chip clear it.
+				className="flex gap-2 overflow-x-auto py-2 pr-8 pl-4 [mask-image:linear-gradient(90deg,#000_calc(100%-40px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 			>
 				<FilterChip selected={!activeId && !activeShelfId} onClick={() => open(undefined)}>
 					All
@@ -230,7 +237,7 @@ const CollectionShelfRow: React.FC<{
 			<Drawer open={isMoreOpen} onOpenChange={setIsMoreOpen}>
 				<DrawerContent data-testid="shelf-more-sheet">
 					<DrawerHeader>
-						<DrawerTitle>Shelves</DrawerTitle>
+						<DrawerTitle>More shelves</DrawerTitle>
 					</DrawerHeader>
 					<div className="flex max-h-[60vh] flex-col overflow-y-auto p-2">
 						{more.map((c) => {

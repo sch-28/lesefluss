@@ -139,3 +139,29 @@ export function shiftMonth(epochMs: number, delta: number): number {
 	const date = new Date(epochMs);
 	return new Date(date.getFullYear(), date.getMonth() + delta, 1).getTime();
 }
+
+export interface WeekTotal {
+	/** Local midnight of the week's Monday. */
+	weekStart: number;
+	hours: number;
+	isCurrent: boolean;
+}
+
+/** Hours read per Monday-first week, oldest first, ending with the week holding `todayMs`. */
+export function weeklyHours(daily: DailyReading, todayMs: number, weeks: number): WeekTotal[] {
+	const today = new Date(todayMs);
+	const mondayDate = today.getDate() - ((today.getDay() + 6) % 7);
+	return Array.from({ length: weeks }, (_, i) => {
+		const firstDay = mondayDate - (weeks - 1 - i) * WEEK_LENGTH;
+		let ms = 0;
+		for (let d = 0; d < WEEK_LENGTH; d++) {
+			const day = new Date(today.getFullYear(), today.getMonth(), firstDay + d);
+			ms += daily.msByDay.get(localDateKey(day.getTime())) ?? 0;
+		}
+		return {
+			weekStart: new Date(today.getFullYear(), today.getMonth(), firstDay).getTime(),
+			hours: ms / 3_600_000,
+			isCurrent: i === weeks - 1,
+		};
+	});
+}

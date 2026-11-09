@@ -1,16 +1,16 @@
-import { readingProgress } from "@lesefluss/core";
+import { bookPace } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { Progress } from "@lesefluss/ui/progress";
+import { IconButton } from "@lesefluss/ui/icon-button";
 import { cn } from "@lesefluss/ui/utils";
 import { useNavigate } from "@tanstack/react-router";
 import {
 	ArrowDown,
+	ArrowLeft,
 	ArrowUp,
 	BookOpen,
-	ChevronRight,
 	GripVertical,
 	MoreHorizontal,
-	Pencil,
+	Play,
 	Plus,
 	Trash2,
 } from "lucide-react";
@@ -19,22 +19,24 @@ import { useEffect, useMemo, useState } from "react";
 import { ActionSheet } from "../../components/action-sheet";
 import BookCover from "../../components/book-cover";
 import { CollectionActions } from "../../components/collections/collection-actions";
-import { RenameCollectionDialog } from "../../components/collections/rename-collection-dialog";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
 import type { Book } from "../../services/db/schema";
+import { estimateMinutesLeft } from "../../utils/reading-time";
+import { cardStatus, StatusField } from "./card-fields";
 import CardMoreButton from "./card-more-button";
 import {
 	dropIndex,
 	moveItem,
+	nextInSeries,
 	type OrderedRow,
 	orderedRows,
 	orderedSummary,
 	renumber,
+	seriesAuthor,
 	summaryLabel,
 } from "./ordered-collection";
-import { isBookFinished } from "./sort-filter";
 
 type Props = {
 	collection: CollectionWithCount;
@@ -71,8 +73,8 @@ const OrderedCollectionView: React.FC<Props> = ({
 
 	const booksById = useMemo(() => new Map(books.map((b) => [b.id, b])), [books]);
 	const stored = useMemo(
-		() => orderedRows(members.data ?? [], booksById),
-		[members.data, booksById],
+		() => orderedRows(members.data ?? [], booksById, isSeries),
+		[members.data, booksById, isSeries],
 	);
 	// The dropped order shows at once; the refetch after the write replaces it.
 	const [optimistic, setOptimistic] = useState<OrderedRow[] | null>(null);
@@ -83,13 +85,12 @@ const OrderedCollectionView: React.FC<Props> = ({
 	const [dragFrom, setDragFrom] = useState<number | null>(null);
 	const [dropAt, setDropAt] = useState<DropTarget | null>(null);
 	const [menuFor, setMenuFor] = useState<number | null>(null);
-	const [isRenaming, setIsRenaming] = useState(false);
 	const [actionsOpen, setActionsOpen] = useState(false);
 
 	const commit = (next: OrderedRow[]) => {
 		const order = renumber(next);
 		if (order.length === 0) return;
-		setOptimistic(next.map((row, i) => ({ ...row, seriesIndex: i + 1 })));
+		setOptimistic(next.map((row, i) => ({ ...row, seriesIndex: i + 1, shownIndex: i + 1 })));
 		reorder.mutate({ collectionId: collection.id, order }, { onError: () => setOptimistic(null) });
 	};
 
@@ -104,62 +105,46 @@ const OrderedCollectionView: React.FC<Props> = ({
 	};
 
 	const menuRow = menuFor !== null ? rows[menuFor] : undefined;
+	const next = isSeries ? nextInSeries(rows) : null;
+	const speedModel = queryHooks.useStatsSpeedModel().data;
+	const minutesToRead = (book: Book) =>
+		speedModel ? estimateMinutesLeft(book, bookPace(speedModel, book.id).wpm) : null;
 
 	return (
 		<div data-testid="ordered-collection">
-			<div className="border-border border-b px-4 py-3">
-				<nav
-					aria-label="Breadcrumb"
-					className="flex items-center gap-1 text-muted-foreground text-xs"
-				>
-					<button
-						type="button"
+			<div className="px-4 pt-1 pb-4">
+				<div className="-mx-3 flex items-center">
+					<IconButton
+						aria-label="Back to Library"
 						onClick={() => navigate({ to: "/tabs/library", search: {} })}
-						className="rounded-sm border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground"
 					>
-						Library
-					</button>
-					<ChevronRight aria-hidden className="size-3" />
-					{isSeries && (
-						<>
-							<button
-								type="button"
-								onClick={() => navigate({ to: "/tabs/library/all-series" })}
-								className="rounded-sm border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground"
-							>
-								Series
-							</button>
-							<ChevronRight aria-hidden className="size-3" />
-						</>
-					)}
-					<span aria-current="page" className="min-w-0 truncate text-foreground">
-						{collection.name}
-					</span>
-				</nav>
-				<div className="mt-1 flex flex-wrap items-center gap-2">
-					<div className="min-w-0 basis-full sm:flex-1 sm:basis-0">
-						<h2 className="m-0 truncate font-semibold text-lg">{collection.name}</h2>
-						<p className="m-0 text-muted-foreground text-sm" data-testid="ordered-summary">
-							{summaryLabel(orderedSummary(rows))}
-						</p>
-					</div>
-					<Button variant="outline" size="sm" onClick={() => setIsRenaming(true)}>
-						<Pencil className="size-4" />
-						Rename
-					</Button>
-					<Button size="sm" onClick={onAddBooks}>
-						<Plus className="size-4" />
-						Add books
-					</Button>
-					<Button
-						variant="ghost"
-						size="icon"
+						<ArrowLeft />
+					</IconButton>
+					<span className="flex-1" />
+					<IconButton aria-label="Add books" onClick={onAddBooks}>
+						<Plus />
+					</IconButton>
+					<IconButton
 						aria-label={`${collection.name} options`}
 						onClick={() => setActionsOpen(true)}
 					>
 						<MoreHorizontal />
-					</Button>
+					</IconButton>
 				</div>
+				<h2 className="m-0 mt-1 truncate font-semibold text-2xl">{collection.name}</h2>
+				<p className="m-0 mt-1 text-muted-foreground text-sm" data-testid="ordered-summary">
+					{[seriesAuthor(rows), summaryLabel(orderedSummary(rows))].filter(Boolean).join(" · ")}
+				</p>
+				{next && (
+					<Button
+						className="mt-3 h-11 w-full"
+						data-testid="ordered-next"
+						onClick={() => onOpenBook(next.row.book)}
+					>
+						<Play className="size-4" />
+						{next.label}
+					</Button>
+				)}
 			</div>
 
 			{members.isSuccess && rows.length === 0 ? (
@@ -183,6 +168,7 @@ const OrderedCollectionView: React.FC<Props> = ({
 							row={row}
 							cover={covers.get(row.book.id)}
 							showNumber={isSeries}
+							minutesToRead={minutesToRead(row.book)}
 							canDrag={canDrag}
 							isDragging={dragFrom === index}
 							dropEdge={dropAt?.index === index ? (dropAt.after ? "after" : "before") : null}
@@ -255,11 +241,6 @@ const OrderedCollectionView: React.FC<Props> = ({
 					},
 				]}
 			/>
-			<RenameCollectionDialog
-				open={isRenaming}
-				onOpenChange={setIsRenaming}
-				collection={collection}
-			/>
 			<CollectionActions
 				collection={actionsOpen ? collection : null}
 				collections={isSeries ? [collection] : collections.filter((c) => c.seriesKey === null)}
@@ -274,6 +255,8 @@ type RowProps = {
 	row: OrderedRow;
 	cover: string | undefined;
 	showNumber: boolean;
+	/** The whole book at the reader's pace; null before the pace is known. */
+	minutesToRead: number | null;
 	canDrag: boolean;
 	isDragging: boolean;
 	dropEdge: "before" | "after" | null;
@@ -289,6 +272,7 @@ const OrderedBookRow: React.FC<RowProps> = ({
 	row,
 	cover,
 	showNumber,
+	minutesToRead,
 	canDrag,
 	isDragging,
 	dropEdge,
@@ -300,8 +284,6 @@ const OrderedBookRow: React.FC<RowProps> = ({
 	onDragEnd,
 }) => {
 	const { book } = row;
-	const progress = readingProgress(book);
-	const finished = isBookFinished(book) || book.finishedAt !== null;
 	return (
 		<li
 			data-testid="ordered-row"
@@ -312,7 +294,7 @@ const OrderedBookRow: React.FC<RowProps> = ({
 			onDrop={canDrag ? onDrop : undefined}
 			onDragEnd={canDrag ? onDragEnd : undefined}
 			className={cn(
-				"group relative flex items-center gap-3 border-border border-b py-2",
+				"group relative flex min-h-16 items-center gap-3 border-border border-b py-1",
 				isDragging && "opacity-40",
 				dropEdge === "before" && "shadow-[inset_0_2px_0_0_var(--color-primary)]",
 				dropEdge === "after" && "shadow-[inset_0_-2px_0_0_var(--color-primary)]",
@@ -321,40 +303,37 @@ const OrderedBookRow: React.FC<RowProps> = ({
 			{canDrag && (
 				<GripVertical aria-hidden className="size-4 shrink-0 cursor-grab text-muted-foreground" />
 			)}
-			{showNumber && (
-				<span
-					data-testid="ordered-number"
-					className="w-8 shrink-0 text-right font-semibold text-muted-foreground text-sm tabular-nums"
-				>
-					{row.seriesIndex !== null ? formatSeriesNumber(row.seriesIndex) : ""}
-				</span>
-			)}
 			<button
 				type="button"
 				onClick={onOpen}
 				aria-label={book.title}
 				className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
 			>
-				<div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-sm">
+				<div className="relative h-15 w-10 shrink-0 overflow-hidden rounded-sm">
 					<BookCover book={book} cover={cover} size="full" />
 				</div>
 				<div className="min-w-0 flex-1">
-					<div className="line-clamp-2 font-semibold text-[0.9rem] leading-[1.2]">{book.title}</div>
-					{book.author && (
-						<div className="mt-0.5 truncate text-[0.8rem] text-muted-foreground">{book.author}</div>
+					<div className="truncate font-medium text-[0.875rem] leading-5">
+						{showNumber && row.shownIndex !== null && (
+							<span
+								data-testid="ordered-number"
+								className="font-normal text-muted-foreground tabular-nums"
+							>
+								{formatSeriesNumber(row.shownIndex)}{" "}
+							</span>
+						)}
+						{book.title}
+					</div>
+					{book.author && !showNumber && (
+						<div className="truncate text-[0.75rem] text-muted-foreground leading-4">
+							{book.author}
+						</div>
 					)}
-					{progress > 0 && !finished && (
-						<Progress
-							value={progress}
-							className="mt-1.5 h-1 max-w-48"
-							aria-label="Reading progress"
-						/>
-					)}
+					<div className="mt-1 flex h-4 items-center text-[0.75rem] leading-4">
+						<StatusField status={cardStatus(book, minutesToRead)} />
+					</div>
 				</div>
 			</button>
-			<span className="w-16 shrink-0 text-right text-muted-foreground text-xs tabular-nums">
-				{finished ? "Finished" : progress > 0 ? `${progress}%` : "New"}
-			</span>
 			<CardMoreButton title={book.title} onMenu={onMenu} className="shrink-0" />
 		</li>
 	);

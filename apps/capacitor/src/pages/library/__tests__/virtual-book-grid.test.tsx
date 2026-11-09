@@ -168,7 +168,7 @@ describe("VirtualBookGrid", () => {
 	});
 
 	it("estimates a grid row from the cover width", () => {
-		expect(estimateRowPx("list", 1, 390)).toBe(76);
+		expect(estimateRowPx("list", 1, 390)).toBe(64);
 		// 390px: three 109px covers, 163px tall, plus text and gap.
 		expect(estimateRowPx("grid", 3, 390)).toBe(251);
 		// Wide screens cap the content at 900px.

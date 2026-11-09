@@ -180,3 +180,103 @@ export function speedInsights(rows: readonly InsightRow[], view: "reading" | "rs
 	];
 	return insights.filter((i): i is Insight => i !== null);
 }
+
+/** An insight still waiting for data: what it needs and how far along the reader is. */
+export type LockedInsight = {
+	id: InsightId;
+	/** What the insight will answer once it unlocks. */
+	title: string;
+	need: string;
+	/** 0 to 1. */
+	progress: number;
+	progressLabel: string;
+};
+
+function capped(ms: number): number {
+	return Math.min(ms, INSIGHT_MIN_ACTIVE_MS);
+}
+
+function minutes(ms: number): number {
+	return Math.floor(ms / 60_000);
+}
+
+/** Progress toward two groups of 30 minutes each: the two furthest groups count. */
+function twoGroupProgress<K>(groups: Map<K, Group>): { done: number; of: number } {
+	const [a = 0, b = 0] = [...groups.values()].map((g) => capped(g.activeMs)).sort((x, y) => y - x);
+	return { done: a + b, of: 2 * INSIGHT_MIN_ACTIVE_MS };
+}
+
+function lockedFor(
+	id: InsightId,
+	rows: readonly InsightRow[],
+	view: "reading" | "rsvp",
+): LockedInsight {
+	const need = minutes(INSIGHT_MIN_ACTIVE_MS);
+	switch (id) {
+		case "scroll-vs-page": {
+			const groups = groupBy(rows, (r) => (r.mode === "rsvp" ? null : r.mode));
+			const scroll = capped(groups.get("scroll")?.activeMs ?? 0);
+			const page = capped(groups.get("page")?.activeMs ?? 0);
+			return {
+				id,
+				title: "Page view or scroll, which is faster",
+				need: `${need} min in each view`,
+				progress: (scroll + page) / (2 * INSIGHT_MIN_ACTIVE_MS),
+				progressLabel: `scroll ${minutes(scroll)}, page ${minutes(page)} of ${need} min`,
+			};
+		}
+		case "time-of-day": {
+			const { done, of } = twoGroupProgress(groupBy(rows, (r) => dayBandOf(r.startedAt)));
+			const sittings = Math.min(rows.length, TIME_OF_DAY_MIN_SITTINGS);
+			const minutesLabel = `${minutes(done)} of ${minutes(of)} min`;
+			return {
+				id,
+				title: "When you read fastest",
+				need: `${need} min at two times of day, ${TIME_OF_DAY_MIN_SITTINGS} sittings`,
+				progress: Math.min(done / of, sittings / TIME_OF_DAY_MIN_SITTINGS),
+				progressLabel:
+					done === of
+						? `${minutesLabel} · ${sittings} of ${TIME_OF_DAY_MIN_SITTINGS} sittings`
+						: minutesLabel,
+			};
+		}
+		case "font-size": {
+			const { done, of } = twoGroupProgress(groupBy(rows, (r) => r.fontSize));
+			return {
+				id,
+				title: view === "rsvp" ? "Your fastest word size" : "Your fastest font size",
+				need: `${need} min at two ${view === "rsvp" ? "word" : "font"} sizes`,
+				progress: done / of,
+				progressLabel: `${minutes(done)} of ${minutes(of)} min`,
+			};
+		}
+		case "fatigue": {
+			const long = rows.filter(
+				(r) => r.segmentWpm !== null && r.segmentWpm.length >= FATIGUE_MIN_SEGMENTS,
+			).length;
+			const done = Math.min(long, FATIGUE_MIN_SITTINGS);
+			return {
+				id,
+				title: "When you start to slow down",
+				need: `${FATIGUE_MIN_SITTINGS} sittings of ${minutes(FATIGUE_MIN_SEGMENTS * SEGMENT_MS)}+ min`,
+				progress: done / FATIGUE_MIN_SITTINGS,
+				progressLabel: `${done} of ${FATIGUE_MIN_SITTINGS}`,
+			};
+		}
+	}
+}
+
+/** The insights a view leaves out for now, each with what it still needs. */
+export function lockedInsights(
+	rows: readonly InsightRow[],
+	view: "reading" | "rsvp",
+	unlocked: readonly Insight[],
+): LockedInsight[] {
+	const viewRows = rows.filter((r) => (view === "rsvp" ? r.mode === "rsvp" : r.mode !== "rsvp"));
+	const ids: InsightId[] =
+		view === "reading"
+			? ["time-of-day", "scroll-vs-page", "fatigue", "font-size"]
+			: ["time-of-day", "fatigue", "font-size"];
+	const have = new Set(unlocked.map((i) => i.id));
+	return ids.filter((id) => !have.has(id)).map((id) => lockedFor(id, viewRows, view));
+}

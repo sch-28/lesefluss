@@ -1,7 +1,8 @@
-import { bookStatus } from "@lesefluss/core";
+import { bookStatus, displayAuthor, readingProgress } from "@lesefluss/core";
 import { Progress } from "@lesefluss/ui/progress";
 import { RatingStars } from "@lesefluss/ui/rating-stars";
 import { cn } from "@lesefluss/ui/utils";
+import { Check, Clock } from "lucide-react";
 import type React from "react";
 import { useMemo } from "react";
 import { usePersistentString } from "../../hooks/use-persistent-string";
@@ -26,8 +27,8 @@ export type CardFieldId = Extract<
 export type CardSurface = "grid" | "list";
 export type CardFieldSettings = Record<CardSurface, CardFieldId[]>;
 
+/** Also the order a card shows them in: the status line comes last, under the text. */
 const CARD_FIELD_IDS: readonly CardFieldId[] = [
-	"progress",
 	"author",
 	"series",
 	"rating",
@@ -36,6 +37,7 @@ const CARD_FIELD_IDS: readonly CardFieldId[] = [
 	"tags",
 	"words",
 	"lastRead",
+	"progress",
 ];
 
 const COLUMN_LABELS = new Map(TABLE_COLUMNS.map((c) => [c.id, c.label]));
@@ -43,10 +45,10 @@ export const CARD_FIELDS: readonly { id: CardFieldId; label: string }[] = CARD_F
 	(id) => ({ id, label: COLUMN_LABELS.get(id) ?? id }),
 );
 
-/** What the cards showed before fields could be picked, plus time left (serial cards had it). */
+/** Title, author and the status line (decision 183c96c2 on LESE-190.6); the rest is opt-in. */
 export const DEFAULT_CARD_FIELDS: CardFieldSettings = {
-	grid: ["progress", "author", "rating", "timeLeft"],
-	list: ["progress", "author", "rating", "timeLeft"],
+	grid: ["author", "progress"],
+	list: ["author", "progress"],
 };
 
 export const CARD_FIELDS_KEY = "lesefluss:library-card-fields";
@@ -128,14 +130,11 @@ export function cardFieldValues(
 }
 
 const SLOT = {
-	grid: "h-4 text-[0.75rem] leading-4",
-	list: "h-[1.125rem] text-[0.8rem] leading-[1.125rem]",
+	grid: "mt-0.5 h-4 text-[0.75rem] leading-4",
+	list: "mt-0.5 h-4 text-[0.75rem] leading-4",
 };
 
-/**
- * One fixed-height line per field, an empty one too, so cards with and without a
- * value stay the same height and the virtualized rows stay aligned.
- */
+/** One line per field that has a value; an empty one (a child that renders nothing) takes no line. */
 export const CardFieldSlot: React.FC<{
 	surface: CardSurface;
 	field: CardFieldId;
@@ -144,7 +143,7 @@ export const CardFieldSlot: React.FC<{
 }> = ({ surface, field, children, className }) => (
 	<div
 		data-card-field={field}
-		className={cn("mt-0.5 flex min-w-0 items-center", SLOT[surface], className)}
+		className={cn("flex min-w-0 items-center empty:hidden", SLOT[surface], className)}
 	>
 		{children}
 	</div>
@@ -155,36 +154,106 @@ export function hasStarted(book: Parameters<typeof bookStatus>[0]): boolean {
 	return bookStatus(book) !== "want";
 }
 
-export const ProgressField: React.FC<{ progress: number; id?: string }> = ({ progress, id }) => (
-	<span id={id} className="flex flex-1 items-center gap-1.5">
-		<Progress value={progress} className="h-1 flex-1" aria-label="Reading progress" />
-		<span className="font-medium text-[0.7rem] text-muted-foreground tabular-nums">
-			{progress}%
+/** What a card's status line says: progress, finished, or how long the book takes to read. */
+export type CardStatus =
+	| { kind: "reading"; progress: number }
+	| { kind: "finished" }
+	| { kind: "unread"; minutes: number | null };
+
+export function cardStatus(
+	book: Parameters<typeof bookStatus>[0],
+	minutesToRead: number | null,
+): CardStatus {
+	const status = bookStatus(book);
+	if (status === "finished") return { kind: "finished" };
+	if (status === "want") {
+		return {
+			kind: "unread",
+			minutes: minutesToRead !== null && minutesToRead > 0 ? minutesToRead : null,
+		};
+	}
+	return { kind: "reading", progress: readingProgress(book) };
+}
+
+export const StatusField: React.FC<{ status: CardStatus; id?: string }> = ({ status, id }) => {
+	if (status.kind === "reading") {
+		return (
+			<span id={id} className="flex flex-1 items-center gap-1.5">
+				<Progress value={status.progress} className="h-1 flex-1" aria-label="Reading progress" />
+				<span className="text-[0.6875rem] text-muted-foreground tabular-nums">
+					{status.progress}%
+				</span>
+			</span>
+		);
+	}
+	if (status.kind === "finished") {
+		return (
+			<span id={id} className="flex items-center gap-1 text-[var(--goal-met)]">
+				<Check aria-hidden className="size-3 shrink-0" strokeWidth={2.5} />
+				Finished
+			</span>
+		);
+	}
+	// A book without a word count has no reading time; it is simply new.
+	return (
+		<span id={id} className="flex min-w-0 items-center gap-1 text-muted-foreground">
+			{status.minutes !== null && <Clock aria-hidden className="size-3 shrink-0" />}
+			<span className="truncate tabular-nums">
+				{status.minutes !== null ? `${formatReadingTime(status.minutes)} read` : "New"}
+			</span>
 		</span>
-	</span>
+	);
+};
+
+export const RatingField: React.FC<{ rating: number }> = ({ rating }) => (
+	<RatingStars rating={rating} starClassName="size-3" />
 );
 
-/** An empty slot's quiet stand-in, so a card shows what is missing rather than a blank line. */
-const PLACEHOLDER = "truncate text-muted-foreground/50";
-
-export const RatingField: React.FC<{ rating: number | null }> = ({ rating }) =>
-	rating === null ? (
-		<span role="img" aria-label="Not rated" className="opacity-50">
-			<RatingStars rating={0} starClassName="size-3" aria-hidden />
-		</span>
-	) : (
-		<RatingStars rating={rating} starClassName="size-3" />
-	);
-
-export const NotStartedField: React.FC = () => (
-	<span className={cn(PLACEHOLDER, "text-[0.7rem]")}>Not started</span>
+export const TextField: React.FC<{ text: string }> = ({ text }) => (
+	<span className="truncate text-muted-foreground tabular-nums">{text}</span>
 );
 
-export const TextField: React.FC<{ text: string | undefined }> = ({ text }) =>
-	text ? (
-		<span className="truncate text-muted-foreground tabular-nums">{text}</span>
-	) : (
-		<span aria-hidden className={PLACEHOLDER}>
-			–
-		</span>
-	);
+/** A book's field lines under its title, the same order on every surface. */
+export const BookFieldLines: React.FC<{
+	surface: CardSurface;
+	fields: readonly CardFieldId[];
+	book: { author: string | null; rating: number | null };
+	status: CardStatus;
+	values?: CardFieldValues;
+	statusId?: string;
+	/** The #N in its series, led into the author line. */
+	seriesBadge?: React.ReactNode;
+}> = ({ surface, fields, book, status, values, statusId, seriesBadge }) =>
+	fields.map((field) => {
+		if (field === "progress") {
+			return (
+				<CardFieldSlot key={field} surface={surface} field={field} className="mt-1">
+					<StatusField status={status} id={statusId} />
+				</CardFieldSlot>
+			);
+		}
+		if (field === "rating") {
+			// Sorting by rating is offered from the same screen, so a rating has to be visible here.
+			return book.rating === null ? null : (
+				<CardFieldSlot key={field} surface={surface} field={field}>
+					<RatingField rating={book.rating} />
+				</CardFieldSlot>
+			);
+		}
+		const text = values?.[field] ?? (field === "author" ? displayAuthor(book.author ?? "") : "");
+		if (field === "author" && seriesBadge) {
+			return (
+				<CardFieldSlot key={field} surface={surface} field={field}>
+					<span className="truncate text-muted-foreground">
+						{seriesBadge}
+						{text && ` · ${text}`}
+					</span>
+				</CardFieldSlot>
+			);
+		}
+		return text ? (
+			<CardFieldSlot key={field} surface={surface} field={field}>
+				<TextField text={text} />
+			</CardFieldSlot>
+		) : null;
+	});

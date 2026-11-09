@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import CoverImage from "../../../components/cover-image";
 import { ReservedCard } from "../../../components/reserved-card";
 import type { ShelfBook } from "../../../services/db/queries/stats";
+import { SectionHeader } from "./section-header";
 import { TitleCover } from "./title-cover";
 
 /** A 120px cover row with its title, author and detail lines, as it renders loaded. */
@@ -38,12 +39,9 @@ export function BookShelf({
 			whileInView={{ opacity: 1, y: 0 }}
 			viewport={{ once: true, amount: 0.25 }}
 			transition={{ duration: 0.5 }}
-			className="mb-10"
+			className="mt-6"
 		>
-			<header className="mb-3 px-4">
-				<h2 className="font-semibold text-lg">{title}</h2>
-				<p className="mt-0.5 text-[0.6875rem] uppercase tracking-wider opacity-60">{subtitle}</p>
-			</header>
+			<SectionHeader title={title} aside={subtitle} className="px-4" />
 			<ReservedCard isPending={isPending} height={SHELF_ROW_HEIGHT}>
 				{books.length === 0 ? (
 					<p className="px-4 text-muted-foreground text-sm">{emptyMessage}</p>

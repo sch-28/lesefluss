@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { compactNumber, milestoneFace, milestoneProgress } from "../milestones";
+import {
+	compactNumber,
+	milestoneFace,
+	milestoneProgress,
+	milestoneProgressLine,
+	milestoneTitle,
+} from "../milestones";
 
 describe("milestone formatting", () => {
 	it("keeps numbers short enough for a medal", () => {
@@ -30,5 +36,28 @@ describe("milestone formatting", () => {
 		);
 		expect(milestoneProgress({ kind: "hours", threshold: 100, current: 87 })).toBe("87h / 100h");
 		expect(milestoneProgress({ kind: "books", threshold: 5, current: 4 })).toBe("4 / 5");
+	});
+});
+
+describe("milestone rows", () => {
+	it("names each milestone as a short phrase", () => {
+		expect(milestoneTitle("words", 1_000_000)).toBe("1 million words");
+		expect(milestoneTitle("words", 500_000)).toBe("500,000 words");
+		expect(milestoneTitle("hours", 50)).toBe("50 hours read");
+		expect(milestoneTitle("books", 1)).toBe("1 book finished");
+		expect(milestoneTitle("streak", 100)).toBe("100-day streak");
+		expect(milestoneTitle("rsvpWpm", 500)).toBe("500 wpm RSVP sitting");
+	});
+
+	it("states the progress toward the next one with its unit", () => {
+		expect(milestoneProgressLine({ kind: "hours", threshold: 100, current: 88 })).toBe(
+			"88 of 100 h",
+		);
+		expect(milestoneProgressLine({ kind: "streak", threshold: 365, current: 193 })).toBe(
+			"193 of 365 days",
+		);
+		expect(milestoneProgressLine({ kind: "words", threshold: 2_000_000, current: 1_400_000 })).toBe(
+			"1.4M of 2M",
+		);
 	});
 });
