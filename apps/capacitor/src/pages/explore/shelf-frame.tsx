@@ -59,8 +59,9 @@ const ShelfFrame: React.FC<Props> = ({
 
 	return (
 		<section className="mb-6" data-testid={testId}>
-			{/* Wraps: at a large font scale the title takes its own line rather than truncate. */}
-			<header className="mb-2 flex flex-wrap items-center justify-between gap-2">
+			{/* Wraps: at a large font scale the title takes its own line rather than truncate.
+			    min-h-7 is See all's height: it appears only once the books are in. */}
+			<header className="mb-2 flex min-h-7 flex-wrap items-center justify-between gap-2">
 				<h2
 					id={titleId}
 					className="m-0 min-w-0 flex-[1_1_8rem] break-words font-semibold text-[0.95rem]"
@@ -109,7 +110,7 @@ const ShelfFrame: React.FC<Props> = ({
 					className={
 						isExpanded
 							? "m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-3 p-0 pb-2"
-							: "m-0 flex list-none gap-3 overflow-x-auto p-0 pb-2"
+							: `m-0 flex list-none gap-3 p-0 pb-2 ${HIDDEN_SCROLLBAR_X}`
 					}
 					style={isExpanded ? undefined : { scrollSnapType: "x mandatory" }}
 				>
@@ -119,6 +120,13 @@ const ShelfFrame: React.FC<Props> = ({
 		</section>
 	);
 };
+
+/**
+ * A horizontal scroller without a scrollbar. The app-wide 8px scrollbar appears
+ * only once content overflows, so a strip grew by 8px when its items loaded.
+ */
+export const HIDDEN_SCROLLBAR_X =
+	"overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
 export const SHELF_ITEM_STYLE = { width: "7.5rem", scrollSnapAlign: "start" } as const;
 

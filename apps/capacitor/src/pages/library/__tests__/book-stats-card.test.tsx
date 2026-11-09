@@ -1,4 +1,4 @@
-import { addDays } from "@lesefluss/core";
+import { addDays, wordPos } from "@lesefluss/core";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeBook } from "../../../test/book-fixture";
@@ -35,6 +35,7 @@ afterEach(() => {
 	view = undefined;
 	hooks.goal = null;
 	hooks.model = undefined;
+	hooks.stats = { sessionCount: 0 };
 });
 
 async function pressOnSlider(key: string) {
@@ -104,5 +105,31 @@ describe("BookStatsCard before the first sitting", () => {
 	it("shows nothing for a book of unknown length", async () => {
 		view = await render(<BookStatsCard book={makeBook({ wordCount: 0 })} />);
 		expect(view.text()).toBe("");
+	});
+});
+
+// 22,500 words at the 225 wpm stand-in pace: 1h 40m in all, 50 min left halfway.
+describe("BookStatsCard on a started book", () => {
+	const halfway = () => makeBook({ wordCount: 22_500, wordPosition: wordPos(11_250) });
+
+	it("leaves the time left to the Continue button before the first sitting", async () => {
+		view = await render(<BookStatsCard book={halfway()} />);
+		expect(view.container.querySelector("[data-testid=book-reading-time]")).not.toBeNull();
+		expect(view.text()).not.toContain("50 min");
+		expect(view.text()).not.toMatch(/\bleft\b/i);
+	});
+
+	it("leaves the time left to the Continue button after sittings", async () => {
+		hooks.stats = {
+			sessionCount: 3,
+			totalDurationMs: 30 * 60_000,
+			measuredWpm: null,
+			dominantMode: null,
+			speedSeries: [],
+		};
+		view = await render(<BookStatsCard book={halfway()} />);
+		expect(view.text()).toContain("time read");
+		expect(view.text()).not.toContain("50 min");
+		expect(view.text()).not.toMatch(/\bleft\b/i);
 	});
 });

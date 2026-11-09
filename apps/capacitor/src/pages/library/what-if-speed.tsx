@@ -65,7 +65,8 @@ export function WhatIfSpeed({ wordsLeft, paceWpm, minutesPerDay, today, rsvp }: 
 			/>
 			<p className="mt-2 mb-0 text-sm tabular-nums" data-testid="what-if-result">
 				{whatIfLine(
-					// At the starting speed the card's headline already shows the time left.
+					// At the starting speed the page already shows the time left: an unread
+					// book's total, a started book's Continue button.
 					wpm === start ? null : estimate.minutesLeft,
 					estimate.finishDay,
 				)}

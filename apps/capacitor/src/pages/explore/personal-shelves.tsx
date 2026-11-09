@@ -4,6 +4,7 @@ import { useSyncContext } from "../../contexts/sync-context";
 import { type CatalogSearchResult, getSimilarBooks } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { queryHooks } from "../../services/db/hooks";
+import { isFirstLoad } from "../../services/query-client";
 import { useFeed } from "../../services/social/feed";
 import { editionKey } from "./editions";
 import type { ExploreSearch } from "./explore-search";
@@ -17,6 +18,16 @@ type Props = {
 	onOpen: (result: CatalogSearchResult) => void;
 	onBrowse: (search: ExploreSearch) => void;
 };
+
+/**
+ * True until the library and wishlist are first read. A failed read ends it too:
+ * the landing then shows its shelves without the personal ones, never a blank area.
+ */
+export function usePersonalShelvesPending(): boolean {
+	const books = queryHooks.useBooks();
+	const wishlist = queryHooks.useWishlist();
+	return isFirstLoad(books) || isFirstLoad(wishlist);
+}
 
 /**
  * Shelves built from the reader's own library (works without an account) and,

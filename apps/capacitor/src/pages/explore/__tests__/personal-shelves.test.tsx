@@ -8,7 +8,17 @@ const state = vi.hoisted(() => ({
 	books: [] as unknown[],
 	owned: new Map<string, string>(),
 	isLoggedIn: false,
+	booksRead: "done" as ReadState,
+	wishlistRead: "done" as ReadState,
 }));
+
+type ReadState = "pending" | "failed" | "done";
+const readQuery = (read: ReadState, data: unknown) => ({
+	data: read === "done" ? data : undefined,
+	isPending: read !== "done",
+	// A failed read refetches on mount, which puts it back to pending.
+	errorUpdateCount: read === "failed" ? 1 : 0,
+});
 
 vi.mock("../../../services/catalog/client", async (importActual) => ({
 	...(await importActual<typeof import("../../../services/catalog/client")>()),
@@ -18,7 +28,8 @@ vi.mock("../../../services/catalog/client", async (importActual) => ({
 vi.mock("../../../services/catalog/import", () => ({ importFromCatalog: vi.fn() }));
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useBooks: () => ({ data: { books: state.books, covers: new Map() } }),
+		useBooks: () => readQuery(state.booksRead, { books: state.books, covers: new Map() }),
+		useWishlist: () => readQuery(state.wishlistRead, []),
 		useLibraryCatalogIds: () => ({ data: state.owned }),
 		useStatsSpeedModel: () => ({ data: { pace: { wpm: 300, source: "measured" }, sittings: 12 } }),
 	},
@@ -31,7 +42,7 @@ vi.mock("../../../services/sync", () => ({ scheduleSyncPush: vi.fn() }));
 vi.mock("../../../components/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate: vi.fn() }) }));
 
-const { default: PersonalShelves } = await import("../personal-shelves");
+const { default: PersonalShelves, usePersonalShelvesPending } = await import("../personal-shelves");
 
 const result = (id: string, title: string) => ({
 	id,
@@ -62,6 +73,8 @@ beforeEach(() => {
 	];
 	state.owned = new Map([["gutenberg:84", "b1"]]);
 	state.isLoggedIn = false;
+	state.booksRead = "done";
+	state.wishlistRead = "done";
 	getSimilarBooks.mockResolvedValue({
 		results: [result("gutenberg:345", "Dracula"), result("gutenberg:84", "Frankenstein")],
 	});
@@ -173,5 +186,23 @@ describe("PersonalShelves", () => {
 		expect(view?.text()).toBe("");
 		expect(getSimilarBooks).not.toHaveBeenCalled();
 		expect(searchCatalog).not.toHaveBeenCalled();
+	});
+});
+
+describe("usePersonalShelvesPending", () => {
+	const Probe = () => <div>{usePersonalShelvesPending() ? "pending" : "ready"}</div>;
+
+	it.each([
+		["pending", "done", "pending"],
+		["done", "pending", "pending"],
+		["done", "done", "ready"],
+		// A failed read must not hold the landing below the hero blank forever.
+		["failed", "done", "ready"],
+		["done", "failed", "ready"],
+	] as const)("books %s, wishlist %s: %s", async (books, wishlist, expected) => {
+		state.booksRead = books;
+		state.wishlistRead = wishlist;
+		view = await render(<Probe />);
+		expect(view.text()).toBe(expected);
 	});
 });

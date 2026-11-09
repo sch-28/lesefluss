@@ -74,7 +74,7 @@ function wordsLeftOf(book: Book): number | null {
 }
 
 /**
- * The what-if slider and RSVP hint under a book's time left. The finish day
+ * The what-if slider and RSVP hint of a book's reading-time card. The finish day
  * uses a minute goal's daily minutes, else the reader's recent daily average.
  */
 function BookTimeAhead({ book, pace, wordsLeft }: { book: Book; pace: Pace; wordsLeft: number }) {
@@ -101,7 +101,10 @@ function BookTimeAhead({ book, pace, wordsLeft }: { book: Book; pace: Pace; word
 	);
 }
 
-/** Before the first sitting: the book's length in time, at the reader's pace. */
+/**
+ * Before the first sitting: an unread book's length in time, at the reader's pace.
+ * A started book's time left shows in the Continue button only.
+ */
 function BookReadingTimeCard({ book }: Props) {
 	const { data: model } = queryHooks.useStatsSpeedModel();
 	const wordsLeft = wordsLeftOf(book);
@@ -113,15 +116,16 @@ function BookReadingTimeCard({ book }: Props) {
 	return (
 		<section className="book-detail-card mt-4" data-testid="book-reading-time">
 			<h2 className="book-detail-section-title">Reading time</h2>
-			<div className="mt-3">
-				<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
-					{formatReadingTime(minutesLeft ?? 0)}
+			{isUnread && (
+				<div className="mt-3">
+					<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
+						{formatReadingTime(minutesLeft ?? 0)}
+					</div>
+					<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
+						total{!isPaceEstimated && " · at your pace"}
+					</div>
 				</div>
-				<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
-					{isUnread ? "total" : "left"}
-					{!isPaceEstimated && " · at your pace"}
-				</div>
-			</div>
+			)}
 			<BookTimeAhead book={book} pace={pace} wordsLeft={wordsLeft} />
 		</section>
 	);
@@ -174,8 +178,7 @@ export function BookStatsCard({ book }: Props) {
 
 	const pace = bookPace(speedModel.data, book.id);
 	const wordsLeft = wordsLeftOf(book);
-	const { totalPages, pagesIn, percent, isFinished, isPaceEstimated, minutesLeft } =
-		summariseBookReading(book, pace);
+	const { totalPages, pagesIn, percent, isFinished } = summariseBookReading(book, pace);
 
 	const showSparkline = buckets.length >= 2;
 
@@ -198,7 +201,7 @@ export function BookStatsCard({ book }: Props) {
 						time read
 					</div>
 				</div>
-				{isFinished ? (
+				{isFinished && (
 					<div className="text-right">
 						<div className="flex items-center justify-end gap-1.5 font-semibold text-emerald-500 text-xl leading-none">
 							<CheckCircle2 className="size-5 shrink-0" aria-hidden="true" />
@@ -210,18 +213,6 @@ export function BookStatsCard({ book }: Props) {
 							</div>
 						)}
 					</div>
-				) : (
-					minutesLeft != null &&
-					minutesLeft > 0 && (
-						<div className="text-right">
-							<div className="font-semibold text-xl tabular-nums leading-none">
-								{formatReadingTime(minutesLeft)}
-							</div>
-							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
-								left{!isPaceEstimated && " · at your pace"}
-							</div>
-						</div>
-					)
 				)}
 			</div>
 

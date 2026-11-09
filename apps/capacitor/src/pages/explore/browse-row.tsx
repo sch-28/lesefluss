@@ -4,6 +4,7 @@ import { Tag } from "lucide-react";
 import type React from "react";
 import { getGenres } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
+import { HIDDEN_SCROLLBAR_X } from "./shelf-frame";
 
 const GENRES_STALE_TIME_MS = 60 * 60 * 1000;
 
@@ -23,7 +24,7 @@ const BrowseRow: React.FC<Props> = ({ lang, onGenreTap, onBrowseTags }) => {
 	const withBooks = (genres.data?.genres ?? []).filter((g) => g.count > 0);
 
 	return (
-		<nav aria-label="Browse" className="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1">
+		<nav aria-label="Browse" className={`-mx-4 mb-5 flex gap-2 px-4 pb-1 ${HIDDEN_SCROLLBAR_X}`}>
 			<Button variant="secondary" size="sm" className="shrink-0 gap-1" onClick={onBrowseTags}>
 				<Tag className="size-3.5" />
 				Browse by tag

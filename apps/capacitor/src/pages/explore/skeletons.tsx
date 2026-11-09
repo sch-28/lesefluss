@@ -75,7 +75,9 @@ export const ShelfStripSkeleton: React.FC<{ count?: number; isSpacer?: boolean }
 /** Mirrors `Shelf`: title row, then a horizontal strip of fixed-width cards. */
 export const ShelfSkeleton: React.FC = () => (
 	<section className="mb-6">
-		<div className={cn(SKELETON_BLOCK, "mb-3 h-4 w-32")} />
+		<div className="mb-2 flex min-h-7 items-center">
+			<div className={cn(SKELETON_BLOCK, "h-4 w-32")} />
+		</div>
 		<ShelfStripSkeleton />
 	</section>
 );

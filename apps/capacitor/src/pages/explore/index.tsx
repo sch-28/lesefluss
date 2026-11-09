@@ -11,7 +11,6 @@ import {
 	getGenres,
 } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
-import { queryHooks } from "../../services/db/hooks";
 import type { ProviderId, SearchResult } from "../../services/serial-scrapers";
 import CatalogResults from "./catalog-results";
 import {
@@ -28,7 +27,7 @@ import {
 import FilterRow from "./filter-row";
 import GroupedResults from "./grouped-results";
 import ExploreLanding from "./landing";
-import PersonalShelves from "./personal-shelves";
+import PersonalShelves, { usePersonalShelvesPending } from "./personal-shelves";
 import { previewCache } from "./preview-cache";
 import { recordRecentSearch } from "./recent-searches";
 import SearchField from "./search-field";
@@ -49,9 +48,7 @@ const Explore: React.FC<Props> = ({ search }) => {
 	const lang = useExploreLang(search.lang);
 	const speed = useReadingSpeed();
 	const mode = exploreMode(search);
-	const { data: library } = queryHooks.useBooks();
-	const { data: wishlist } = queryHooks.useWishlist();
-	const isPersonalPending = !library || !wishlist;
+	const isPersonalPending = usePersonalShelvesPending();
 	const view = search.view ?? "grid";
 
 	/**
