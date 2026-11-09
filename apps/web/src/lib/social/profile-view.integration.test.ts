@@ -225,7 +225,7 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 				endWord: 9000,
 				updatedAt: now,
 			},
-			// position jump: counts for time, not for speed
+			// position jump under a minute: counts for neither time nor speed
 			{
 				userId: owner,
 				sessionId: "s3",
@@ -298,7 +298,8 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 			booksFinishedThisYear: 1,
 			// 400 + 990 + 1000 + 0 + 250 (article counts) + 100 + 30; hidden and deleted excluded
 			wordsRead: 2770,
-			readingTimeMs: 627_000,
+			// s3, under a minute, adds no time
+			readingTimeMs: 600_000,
 			readingSpeedWpm: 300,
 			speeds: { reading: 300 },
 			// Read yesterday only: the streak is still current until today ends.
@@ -336,7 +337,7 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 		for (const m of reached) expect(new Date(m.reachedAt).getUTCHours()).toBe(12);
 	});
 
-	test("a sitting under a minute adds no streak day, as on the owner's own Stats", async () => {
+	test("a sitting under a minute adds no streak day or reading time, as on the owner's own Stats", async () => {
 		await db.insert(syncReadingSessions).values({
 			userId: owner,
 			sessionId: "s5",
@@ -352,7 +353,11 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 		});
 		try {
 			const view = await resolveProfileView(friend, owner, { now });
-			expect(view.sections.stats).toMatchObject({ currentStreakDays: 1, longestStreakDays: 1 });
+			expect(view.sections.stats).toMatchObject({
+				readingTimeMs: 600_000,
+				currentStreakDays: 1,
+				longestStreakDays: 1,
+			});
 			const self = await resolveProfileView(owner, owner, { now });
 			expect(self.sections.milestones?.next.find((m) => m.kind === "streak")?.current).toBe(1);
 		} finally {

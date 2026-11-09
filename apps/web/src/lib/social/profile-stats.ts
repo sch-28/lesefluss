@@ -149,10 +149,9 @@ export async function profileStatsFor(
 			and(eq(syncReadingSessions.userId, userId), eq(syncReadingSessions.deleted, false), visible),
 		);
 
+	const realSittings = sessions.filter((s) => s.durationMs >= REAL_SITTING_MS);
 	const readDays = new Set(
-		sessions
-			.filter((s) => s.durationMs >= REAL_SITTING_MS)
-			.flatMap((s) => readingDaysOf(s.startedAt, options.timeZone)),
+		realSittings.flatMap((s) => readingDaysOf(s.startedAt, options.timeZone)),
 	);
 	const openDays = readingDaysOf(now, options.timeZone);
 	// The owner's own window, so a friend sees the number the owner's chip shows.
@@ -173,7 +172,8 @@ export async function profileStatsFor(
 	return {
 		booksFinishedThisYear,
 		wordsRead,
-		readingTimeMs: sessions.length > 0 ? sessions.reduce((sum, s) => sum + s.durationMs, 0) : null,
+		readingTimeMs:
+			sessions.length > 0 ? realSittings.reduce((sum, s) => sum + s.durationMs, 0) : null,
 		readingSpeedWpm: model.pace.source === "measured" ? model.pace.wpm : null,
 		speeds: profileSpeeds(model),
 		currentStreakDays: streak?.current ?? null,
