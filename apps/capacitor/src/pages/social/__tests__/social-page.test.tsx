@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
 	relationships: undefined as SocialRelationships | undefined,
 	unread: 0,
 	buddyReads: [] as unknown[],
+	buddyReadsStatus: "done" as "done" | "pending" | "failed",
 	handle: "ada" as string | null,
 }));
 
@@ -71,7 +72,15 @@ vi.mock("../../../services/social/friends", () => ({
 	useCancelRequest: () => idle,
 }));
 vi.mock("../../../services/social/buddy-reads", () => ({
-	useBuddyReads: () => ({ data: state.buddyReads, isPending: false, isError: false }),
+	useBuddyReads: () =>
+		state.buddyReadsStatus === "done"
+			? { data: state.buddyReads, isPending: false, isError: false, errorUpdateCount: 0 }
+			: {
+					data: undefined,
+					isPending: state.buddyReadsStatus === "pending",
+					isError: state.buddyReadsStatus === "failed",
+					errorUpdateCount: state.buddyReadsStatus === "failed" ? 1 : 0,
+				},
 	paceText: () => "",
 	formatDeadline: () => "",
 	buddyReadExists: async () => true,
@@ -110,6 +119,7 @@ afterEach(() => {
 	view?.unmount();
 	view = undefined;
 	state.buddyReads = [];
+	state.buddyReadsStatus = "done";
 	state.handle = "ada";
 });
 
@@ -189,6 +199,20 @@ describe("SocialPage", () => {
 		expect(view.container.querySelectorAll('a[href="/tabs/social/invite-link"]')).toHaveLength(1);
 		expect(view.text()).toContain("Invite a friend");
 		expect(view.container.querySelector('[style*="conic-gradient"]')).toBeNull();
+	});
+
+	it("waits for the buddy reads with the friends, so their section never pushes the page down", async () => {
+		state.relationships = relationships({
+			friends: [{ ...person("b", "Bea"), since: 0, nowReading: null }],
+		});
+		state.buddyReadsStatus = "pending";
+		view = await render(<SocialPage />);
+		expect(headings()).toEqual([]);
+
+		view.unmount();
+		state.buddyReadsStatus = "failed";
+		view = await render(<SocialPage />);
+		expect(headings()).toEqual(expect.arrayContaining(["Buddy reads", "Friends"]));
 	});
 
 	it("shows the trailer before the handle form to someone without a handle", async () => {

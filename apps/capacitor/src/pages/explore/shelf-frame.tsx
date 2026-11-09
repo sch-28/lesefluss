@@ -60,7 +60,7 @@ const ShelfFrame: React.FC<Props> = ({
 	return (
 		<section className="mb-6" data-testid={testId}>
 			{/* Wraps: at a large font scale the title takes its own line rather than truncate.
-			    min-h-7 is See all's height: it appears only once the books are in. */}
+			    min-h-7 is See all's height, so the header keeps one height with or without it. */}
 			<header className="mb-2 flex min-h-7 flex-wrap items-center justify-between gap-2">
 				<h2
 					id={titleId}

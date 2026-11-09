@@ -24,7 +24,12 @@ const BrowseRow: React.FC<Props> = ({ lang, onGenreTap, onBrowseTags }) => {
 	const withBooks = (genres.data?.genres ?? []).filter((g) => g.count > 0);
 
 	return (
-		<nav aria-label="Browse" className={`-mx-4 mb-5 flex gap-2 px-4 pb-1 ${HIDDEN_SCROLLBAR_X}`}>
+		// A mouse has no swipe, so it gets a thin scrollbar; overflow-x-scroll keeps it there
+		// before the genres load, so the row never grows.
+		<nav
+			aria-label="Browse"
+			className={`-mx-4 mb-5 flex gap-2 px-4 pb-1 ${HIDDEN_SCROLLBAR_X} pointer-fine:overflow-x-scroll pointer-fine:[scrollbar-width:thin]`}
+		>
 			<Button variant="secondary" size="sm" className="shrink-0 gap-1" onClick={onBrowseTags}>
 				<Tag className="size-3.5" />
 				Browse by tag

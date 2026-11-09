@@ -102,30 +102,27 @@ function BookTimeAhead({ book, pace, wordsLeft }: { book: Book; pace: Pace; word
 }
 
 /**
- * Before the first sitting: an unread book's length in time, at the reader's pace.
- * A started book's time left shows in the Continue button only.
+ * An unread book's length in time, at the reader's pace. A started book without
+ * sittings shows no card: its time left is in the Continue button only.
  */
 function BookReadingTimeCard({ book }: Props) {
 	const { data: model } = queryHooks.useStatsSpeedModel();
 	const wordsLeft = wordsLeftOf(book);
-	if (wordsLeft === null) return null;
+	if (wordsLeft === null || book.wordPosition > 0) return null;
 	const pace = bookPace(model, book.id);
-	const isUnread = book.wordPosition <= 0;
 	const { minutesLeft, isPaceEstimated } = summariseBookReading(book, pace);
 
 	return (
 		<section className="book-detail-card mt-4" data-testid="book-reading-time">
 			<h2 className="book-detail-section-title">Reading time</h2>
-			{isUnread && (
-				<div className="mt-3">
-					<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
-						{formatReadingTime(minutesLeft ?? 0)}
-					</div>
-					<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
-						total{!isPaceEstimated && " · at your pace"}
-					</div>
+			<div className="mt-3">
+				<div className="font-bold text-4xl tabular-nums leading-none tracking-tight">
+					{formatReadingTime(minutesLeft ?? 0)}
 				</div>
-			)}
+				<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
+					total{!isPaceEstimated && " · at your pace"}
+				</div>
+			</div>
 			<BookTimeAhead book={book} pace={pace} wordsLeft={wordsLeft} />
 		</section>
 	);
@@ -178,7 +175,12 @@ export function BookStatsCard({ book }: Props) {
 
 	const pace = bookPace(speedModel.data, book.id);
 	const wordsLeft = wordsLeftOf(book);
-	const { totalPages, pagesIn, percent, isFinished } = summariseBookReading(book, pace);
+	const { totalPages, pagesIn, percent, isFinished, minutesLeft } = summariseBookReading(
+		book,
+		pace,
+	);
+	// A reset book keeps its sittings, and its Start reading button carries no time.
+	const restartMinutes = !isFinished && book.wordPosition <= 0 ? minutesLeft : null;
 
 	const showSparkline = buckets.length >= 2;
 
@@ -201,6 +203,14 @@ export function BookStatsCard({ book }: Props) {
 						time read
 					</div>
 				</div>
+				{restartMinutes !== null && (
+					<div className="text-right">
+						<div className="font-semibold text-xl tabular-nums leading-none">
+							{formatReadingTime(restartMinutes)}
+						</div>
+						<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">total</div>
+					</div>
+				)}
 				{isFinished && (
 					<div className="text-right">
 						<div className="flex items-center justify-end gap-1.5 font-semibold text-emerald-500 text-xl leading-none">

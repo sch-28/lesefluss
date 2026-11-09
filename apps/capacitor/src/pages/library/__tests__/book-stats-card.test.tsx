@@ -112,11 +112,9 @@ describe("BookStatsCard before the first sitting", () => {
 describe("BookStatsCard on a started book", () => {
 	const halfway = () => makeBook({ wordCount: 22_500, wordPosition: wordPos(11_250) });
 
-	it("leaves the time left to the Continue button before the first sitting", async () => {
+	it("shows no card before the first sitting", async () => {
 		view = await render(<BookStatsCard book={halfway()} />);
-		expect(view.container.querySelector("[data-testid=book-reading-time]")).not.toBeNull();
-		expect(view.text()).not.toContain("50 min");
-		expect(view.text()).not.toMatch(/\bleft\b/i);
+		expect(view.text()).toBe("");
 	});
 
 	it("leaves the time left to the Continue button after sittings", async () => {
@@ -131,5 +129,21 @@ describe("BookStatsCard on a started book", () => {
 		expect(view.text()).toContain("time read");
 		expect(view.text()).not.toContain("50 min");
 		expect(view.text()).not.toMatch(/\bleft\b/i);
+	});
+});
+
+describe("BookStatsCard on a reset book", () => {
+	it("shows the total next to the kept sittings, since Start reading carries no time", async () => {
+		hooks.stats = {
+			sessionCount: 3,
+			totalDurationMs: 30 * 60_000,
+			measuredWpm: null,
+			dominantMode: null,
+			speedSeries: [],
+		};
+		view = await render(<BookStatsCard book={makeBook({ wordCount: 22_500 })} />);
+		expect(view.text()).toContain("time read");
+		expect(view.text().match(/1h 40m/g)).toHaveLength(1);
+		expect(view.text()).toContain("1h 40mtotal");
 	});
 });

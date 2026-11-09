@@ -16,6 +16,7 @@ import { StartBuddyReadPicker } from "@/components/social/start-buddy-read-picke
 import { toast } from "@/components/toast";
 import { useSyncContext } from "@/contexts/sync-context";
 import { replayPendingLink } from "@/services/deep-links/use-deep-links";
+import { isFirstLoad } from "@/services/query-client";
 import { buddyReadExists, useBuddyReads } from "@/services/social/buddy-reads";
 import { useIsOnline } from "@/services/social/cache";
 import {
@@ -286,6 +287,8 @@ function SocialContent() {
 	const router = useRouter();
 	const isOnline = useIsOnline();
 	const relationships = useRelationships();
+	// Fetched alongside the friends, so the buddy reads section never pops in above them.
+	const buddyReads = useBuddyReads();
 	const me = useOwnSocialProfile();
 
 	// A link opened before sign-in or the handle claim lands here afterwards.
@@ -293,7 +296,7 @@ function SocialContent() {
 		void replayPendingLink(router, buddyReadExists);
 	}, [router]);
 
-	if (relationships.isPending) return <Spinner />;
+	if (relationships.isPending || isFirstLoad(buddyReads)) return <Spinner />;
 	if (relationships.isError && !relationships.data) {
 		return (
 			<OfflineNotice onRetry={() => void relationships.refetch()}>

@@ -10,10 +10,10 @@ const chapters = [
 ];
 
 describe("openReaderLabel", () => {
-	it("names the chapter and the time left once the book is started", () => {
+	it("puts the time left before the chapter, which a phone may truncate", () => {
 		expect(
 			openReaderLabel({ wordPosition: 1_500, wordCount: 3_000, finishedAt: null }, chapters, 84),
-		).toBe("Continue · Two · 1h 24m left");
+		).toBe("Continue · 1h 24m left · Two");
 	});
 
 	it("leaves out what it does not know", () => {
