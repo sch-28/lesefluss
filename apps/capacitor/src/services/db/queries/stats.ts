@@ -475,7 +475,8 @@ export async function getHourHistogram(): Promise<number[]> {
 			endedAt: readingSessions.endedAt,
 			durationMs: readingSessions.durationMs,
 		})
-		.from(readingSessions);
+		.from(readingSessions)
+		.where(isRealSittingSql());
 
 	return bucketMinutesByHour(rows);
 }
@@ -638,7 +639,7 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 	};
 }
 
-/** Milestones over every sitting and every finished book; serial chapters don't count as books. */
+/** Milestones over every real sitting and every finished book; serial chapters don't count as books. */
 export async function getMilestones(): Promise<Milestones> {
 	const [sessions, finished] = await Promise.all([
 		db
@@ -648,7 +649,8 @@ export async function getMilestones(): Promise<Milestones> {
 				durationMs: readingSessions.durationMs,
 				wordsRead: readingSessions.wordsRead,
 			})
-			.from(readingSessions),
+			.from(readingSessions)
+			.where(isRealSittingSql()),
 		db
 			.select({
 				wordCount: books.wordCount,

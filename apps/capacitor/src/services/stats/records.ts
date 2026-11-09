@@ -8,7 +8,7 @@
  * speed record at all.
  */
 
-import { type BookSpeed, bookSpeeds, type ReadingMode } from "@lesefluss/core";
+import { type BookSpeed, bookSpeeds, REAL_SITTING_MS, type ReadingMode } from "@lesefluss/core";
 import { localDateKey, startOfLocalDay } from "../../utils/date-utils";
 import { sumDurationByLocalDay } from "./aggregate";
 
@@ -44,13 +44,16 @@ export interface ReadingRecords {
 export function summariseRecords(sessions: RecordSession[], books: RecordBook[]): ReadingRecords {
 	const titleByBook = new Map(books.map((book) => [book.id, book.title]));
 
+	// Time records follow the streak and calendar; the fastest book takes every
+	// sitting, as the Speed tab does.
+	const realSittings = sessions.filter((s) => s.durationMs >= REAL_SITTING_MS);
 	let longestSitting: ReadingRecords["longestSitting"] = null;
-	const msByDay = sumDurationByLocalDay(sessions);
+	const msByDay = sumDurationByLocalDay(realSittings);
 	// `sumDurationByLocalDay` keys by date string; the record needs the epoch of
 	// that local midnight to render it.
 	const dayStartOf = new Map<string, number>();
 
-	for (const session of sessions) {
+	for (const session of realSittings) {
 		// Sessions outlive the books they belong to: deleting a book leaves its
 		// rows behind. Time still counts toward the day totals, but a record that
 		// names a book the reader can no longer open is not a record.

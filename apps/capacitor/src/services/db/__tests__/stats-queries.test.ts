@@ -25,7 +25,11 @@ const {
 	getCurrentlyReading,
 	getDailyReading,
 	getFinishedBooks,
+	getHourHistogram,
+	getMilestones,
 	getPeriodTotals,
+	getReadingRecords,
+	getSpeedTab,
 	getStreak,
 	getTopBooks,
 } = await import("../queries/stats");
@@ -357,5 +361,47 @@ describe("sittings under a minute", () => {
 		const { msByDay, readDays } = await getDailyReading();
 		expect([...msByDay]).toEqual([["2026-05-10", HONEST.durationMs]]);
 		expect(readDays).toEqual(new Set(["2026-05-10"]));
+	});
+	it("do not count toward milestones", async () => {
+		insertBook();
+		const day = new Date(2026, 4, 10, 12).getTime();
+		insertSession({ startedAt: day, ...HONEST });
+		insertSession({ startedAt: day + 60 * MINUTE, ...SHORT });
+		insertSession({ startedAt: day - 24 * 60 * MINUTE, ...SHORT });
+
+		const { next } = await getMilestones();
+		expect(next.find((m) => m.kind === "words")?.current).toBe(HONEST.wordsRead);
+		expect(next.find((m) => m.kind === "streak")?.current).toBe(1);
+	});
+
+	it("do not set the best day", async () => {
+		insertBook();
+		const day = new Date(2026, 4, 10, 12).getTime();
+		insertSession({ startedAt: day, ...HONEST });
+		insertSession({ startedAt: day + 60 * MINUTE, ...SHORT });
+
+		const { bestDay } = await getReadingRecords();
+		expect(bestDay?.durationMs).toBe(HONEST.durationMs);
+	});
+
+	it("still count toward the fastest book, so the Overview and the Speed tab agree", async () => {
+		insertBook();
+		const day = new Date(2026, 4, 10, 12).getTime();
+		insertSession({ startedAt: day, ...HONEST });
+		insertSession({ startedAt: day + 60 * MINUTE, durationMs: 30_000, wordsRead: 200 });
+
+		const { fastestBook } = await getReadingRecords();
+		expect(fastestBook).not.toBeNull();
+		expect(fastestBook).toEqual((await getSpeedTab()).records.fastestBook);
+	});
+
+	it("do not show in the reading hours", async () => {
+		insertBook();
+		insertSession({ startedAt: new Date(2026, 4, 10, 9).getTime(), ...HONEST });
+		insertSession({ startedAt: new Date(2026, 4, 10, 15).getTime(), ...SHORT });
+
+		const hours = await getHourHistogram();
+		expect(hours[9]).toBe(10);
+		expect(hours[15]).toBe(0);
 	});
 });

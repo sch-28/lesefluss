@@ -6,6 +6,7 @@ import {
 	type Milestones,
 	type ProfileSpeeds,
 	type ProfileStats,
+	REAL_SITTING_MS,
 	readingDayKeys,
 	SPEED_WINDOWS,
 	type SpeedModel,
@@ -150,7 +151,7 @@ export async function profileStatsFor(
 
 	const readDays = new Set(
 		sessions
-			.filter((s) => s.durationMs > 0)
+			.filter((s) => s.durationMs >= REAL_SITTING_MS)
 			.flatMap((s) => readingDaysOf(s.startedAt, options.timeZone)),
 	);
 	const openDays = readingDaysOf(now, options.timeZone);
@@ -243,7 +244,9 @@ export async function profileMilestonesFor(
 		)
 		.map((b) => b.finishedAt?.getTime() ?? 0);
 	return deriveMilestones({
-		sessions: sessions.map((s) => ({ ...s, startedAt: s.startedAt.getTime() })),
+		sessions: sessions
+			.filter((s) => s.durationMs >= REAL_SITTING_MS)
+			.map((s) => ({ ...s, startedAt: s.startedAt.getTime() })),
 		finishedAt,
 		dayKeysOf: (at) => readingDaysOf(new Date(at), options.timeZone),
 	});

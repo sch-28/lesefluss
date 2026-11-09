@@ -3,7 +3,7 @@
 // Profile view resolver against a real Postgres database. Skipped when
 // DATABASE_URL is unset.
 import { randomUUID } from "node:crypto";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { db } from "~/db";
 import { user } from "~/db/auth-schema";
@@ -325,8 +325,8 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 	test("milestones count visible books only and reach friends without the owner's totals", async () => {
 		const self = await resolveProfileView(owner, owner, { now });
 		const words = self.sections.milestones?.next.find((m) => m.kind === "words");
-		// s1 and s3 only: the hidden book's s2 and the deleted s4 earn nothing.
-		expect(words?.current).toBe(3000 + 22_488);
+		// s1 only: the hidden book's s2, the deleted s4 and s3, under a minute, earn nothing.
+		expect(words?.current).toBe(3000);
 		const books = self.sections.milestones?.reached.find((m) => m.kind === "books");
 		expect(books?.threshold).toBe(1);
 		const asFriend = await resolveProfileView(friend, owner, { now });
@@ -334,6 +334,32 @@ describe.skipIf(!hasDb)("profile view (integration)", () => {
 		const reached = asFriend.sections.milestones?.reached ?? [];
 		expect(reached.length).toBeGreaterThan(0);
 		for (const m of reached) expect(new Date(m.reachedAt).getUTCHours()).toBe(12);
+	});
+
+	test("a sitting under a minute adds no streak day, as on the owner's own Stats", async () => {
+		await db.insert(syncReadingSessions).values({
+			userId: owner,
+			sessionId: "s5",
+			bookId: "aaaa0001",
+			mode: "scroll",
+			startedAt: new Date(now.getTime() - 2 * DAY_MS),
+			endedAt: new Date(now.getTime() - 2 * DAY_MS + 30_000),
+			durationMs: 30_000,
+			wordsRead: 150,
+			startWord: 0,
+			endWord: 150,
+			updatedAt: now,
+		});
+		try {
+			const view = await resolveProfileView(friend, owner, { now });
+			expect(view.sections.stats).toMatchObject({ currentStreakDays: 1, longestStreakDays: 1 });
+			const self = await resolveProfileView(owner, owner, { now });
+			expect(self.sections.milestones?.next.find((m) => m.kind === "streak")?.current).toBe(1);
+		} finally {
+			await db
+				.delete(syncReadingSessions)
+				.where(and(eq(syncReadingSessions.userId, owner), eq(syncReadingSessions.sessionId, "s5")));
+		}
 	});
 
 	test("a private profile shows a friend the header only", async () => {

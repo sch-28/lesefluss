@@ -30,6 +30,16 @@ describe("lostReadingDays", () => {
 		expect(lostReadingDays(new Set(["empty"]), all)).toEqual([]);
 	});
 
+	it("names the day when a sitting under a minute is all that stays on it, as the streak skips it", () => {
+		const all = [row("real", at(3, 9)), row("short", at(3, 18), 30_000)];
+		expect(lostReadingDays(new Set(["real"]), all)).toEqual(["2026-11-03"]);
+	});
+
+	it("ignores a deleted sitting under a minute, which never counted", () => {
+		const all = [row("short", at(3), 30_000)];
+		expect(lostReadingDays(new Set(["short"]), all)).toEqual([]);
+	});
+
 	it("is empty when nothing listed exists", () => {
 		expect(lostReadingDays(new Set(["gone"]), [row("a", at(3))])).toEqual([]);
 	});
