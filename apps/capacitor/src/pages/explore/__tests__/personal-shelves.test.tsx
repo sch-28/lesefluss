@@ -123,6 +123,25 @@ describe("PersonalShelves", () => {
 		expect(view?.text()).toContain("Middlemarch");
 	});
 
+	it("holds every shelf's slot, in order, while it loads", async () => {
+		getSimilarBooks.mockImplementation(() => new Promise(() => undefined));
+		searchCatalog.mockImplementation(() => new Promise(() => undefined));
+		view = await render(<PersonalShelves onOpen={vi.fn()} onBrowse={vi.fn()} />);
+		const text = view.text();
+		expect(text.indexOf("Because you read Frankenstein")).toBeGreaterThanOrEqual(0);
+		expect(text.indexOf("More by authors you read")).toBeGreaterThan(
+			text.indexOf("Because you read Frankenstein"),
+		);
+		expect(view.container.querySelectorAll('[role="status"]')).toHaveLength(2);
+	});
+
+	it("collapses a shelf only once it loaded empty", async () => {
+		getSimilarBooks.mockResolvedValue({ results: [result("gutenberg:84", "Frankenstein")] });
+		await renderShelves();
+		expect(view?.text()).not.toContain("Because you read");
+		expect(view?.text()).toContain("More by authors you read");
+	});
+
 	it("shows nothing for an empty library and no friends", async () => {
 		state.books = [];
 		state.owned = new Map();

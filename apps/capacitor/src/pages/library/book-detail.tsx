@@ -25,6 +25,7 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatSeriesNumber } from "../../components/collections/series-numbering";
 import { DeviceBadge } from "../../components/device-sync";
+import { ReservedCard } from "../../components/reserved-card";
 import { ShareCardSheet } from "../../components/share-card/share-card-sheet";
 import { SpeedChip } from "../../components/speed-chip/speed-chip";
 import { useBookSync } from "../../contexts/book-sync-context";
@@ -187,7 +188,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	});
 	const areCardsReady = useBookDetailReady(book);
 
-	if (isPending || (book && (!areCardsReady || isHighlightsLoading))) {
+	if (isPending) {
 		return (
 			<DetailShell
 				cover={null}
@@ -232,6 +233,24 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				: book.source === "url" && book.sourceUrl
 					? displayHostname(book.sourceUrl)
 					: null;
+
+	// The book row is local and lands first: show the page's frame from it while
+	// the late cards load, so the page never flashes blank or shifts its hero.
+	if (!areCardsReady || isHighlightsLoading) {
+		return (
+			<DetailShell
+				cover={cover}
+				eyebrow={eyebrow}
+				title={book.title}
+				author={book.author}
+				primaryAction={{ label: "Loading", onClick: () => undefined, disabled: true }}
+				externalLink={externalUrl ? { href: externalUrl } : undefined}
+				headerActions={headerActions}
+			>
+				<ReservedCard isPending height="60vh" />
+			</DetailShell>
+		);
+	}
 
 	// Pages, not time: time measures the reader, so two books at nine and four
 	// hours say nothing comparable about the books.

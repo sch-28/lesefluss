@@ -6,7 +6,7 @@ import { useState } from "react";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book } from "../../../services/db/schema";
 import { formatDayKey, localDateKey } from "../../../utils/date-utils";
-import { minutesLabel, percentLabel } from "../../../utils/reading-time";
+import { percentLabel } from "../../../utils/reading-time";
 import { GoalChart } from "./goal-chart";
 import {
 	canHaveGoal,
@@ -94,9 +94,7 @@ export function GoalCard({ book }: { book: Book }) {
 								<span className="font-normal text-xl opacity-60"> / {figure.target}</span>
 							</div>
 							<div className="mt-1.5 text-[0.6875rem] uppercase tracking-wider opacity-60">
-								{today.targetMinutes != null
-									? `today · ${percentLabel(today.progressPercent)}%`
-									: `today · ${Math.round(today.progressWords / plan.pace.wpm)} of ${minutesLabel(plan.dailyTarget.minutes)}`}
+								{`today · ${percentLabel(today.progressPercent)} of ${percentLabel(today.targetPercent)}%`}
 							</div>
 						</div>
 						<div className="text-right">

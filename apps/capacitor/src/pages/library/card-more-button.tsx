@@ -7,7 +7,8 @@ type Props = { title: string; onMenu: () => void; className?: string };
 /**
  * The per-book menu's own button, since a long press now selects. A sibling of
  * the card's button, not inside it: a button cannot hold another. Always shown
- * on touch screens, on hover or focus where there is a mouse.
+ * on touch screens, on hover or focus where there is a mouse. The ::before makes
+ * the 28px dot a 44px target.
  */
 const CardMoreButton: React.FC<Props> = ({ title, onMenu, className }) => (
 	<button
@@ -15,7 +16,7 @@ const CardMoreButton: React.FC<Props> = ({ title, onMenu, className }) => (
 		aria-label={`More for ${title}`}
 		onClick={onMenu}
 		className={cn(
-			"flex size-7 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm outline-none backdrop-blur-sm focus-visible:ring-3 focus-visible:ring-ring/50 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:focus-visible:opacity-100 [@media(hover:hover)]:group-hover:opacity-100",
+			"relative flex size-7 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm outline-none backdrop-blur-sm before:absolute before:-inset-2 before:content-[''] focus-visible:ring-3 focus-visible:ring-ring/50 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:focus-visible:opacity-100 [@media(hover:hover)]:group-hover:opacity-100",
 			className,
 		)}
 	>

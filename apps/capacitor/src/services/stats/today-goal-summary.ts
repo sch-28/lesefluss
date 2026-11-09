@@ -33,14 +33,18 @@ export function summarizeTodayGoals(
 	};
 }
 
-/** "19 of 30 min": read rounds down and the need up, so a day only looks done once it is. */
-export function todayGoalLabel(summary: {
-	minutesRead: number;
-	minutesNeeded: number;
-	isMet: boolean;
-}): string {
-	const needed = Math.ceil(summary.minutesNeeded);
-	const read = summary.isMet ? needed : Math.min(needed, Math.floor(summary.minutesRead));
+type GoalProgress = { minutesRead: number; minutesNeeded: number; isMet: boolean };
+
+/** Read rounds down and the need up, so a day only looks done once it is. */
+export function goalProgressMinutes(progress: GoalProgress): { read: number; needed: number } {
+	const needed = Math.ceil(progress.minutesNeeded);
+	const read = progress.isMet ? needed : Math.min(needed, Math.floor(progress.minutesRead));
+	return { read, needed };
+}
+
+/** "19 of 30 min": the one way every screen shows a goal's progress today. */
+export function formatGoalProgress(progress: GoalProgress): string {
+	const { read, needed } = goalProgressMinutes(progress);
 	return `${read} of ${needed} min`;
 }
 

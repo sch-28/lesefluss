@@ -291,6 +291,19 @@ export function modeSpeed(
 	return model?.reading.wpm ?? AVERAGE_READER_WPM;
 }
 
+/**
+ * The pace a book's time left is estimated at, so the reader footer and book
+ * detail agree: the book's own pace, except RSVP, whose time follows the dial.
+ */
+export function timeLeftWpm(
+	model: SpeedModel | undefined,
+	bookId: string | null | undefined,
+	mode: MeasuredReadingMode,
+	dialWpm: number,
+): number {
+	return mode === "rsvp" ? modeSpeed(model, "rsvp", dialWpm) : bookPace(model, bookId).wpm;
+}
+
 export function estimateMinutes(words: number, wpm: number): number {
 	return Math.max(0, words) / Math.max(1, wpm);
 }

@@ -1,5 +1,6 @@
 import type { SpeedModel, SpeedWindow } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
+import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
 import { Link } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
@@ -54,23 +55,23 @@ function ModeSwitch({
 	onChange: (view: SpeedView) => void;
 }) {
 	return (
-		<div className="mb-5 grid grid-cols-2 gap-2 px-4" data-testid="speed-mode">
-			{views.map((view) => (
-				<button
-					key={view}
-					type="button"
-					aria-pressed={view === value}
-					onClick={() => onChange(view)}
-					className={cn(
-						"flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm",
-						view === value ? "border-foreground/40 bg-muted" : "border-border",
-					)}
-				>
-					<span className={cn("size-2 rounded-full", VIEW_DOT[view])} aria-hidden="true" />
-					<span className="flex-1">{VIEW_LABELS[view]}</span>
-					<span className="font-semibold tabular-nums">{viewWpm(model, view)}</span>
-				</button>
-			))}
+		<div className="mb-5 px-4">
+			<SegmentedControl
+				aria-label="Speed mode"
+				data-testid="speed-mode"
+				value={value}
+				onValueChange={onChange}
+				options={views.map((view) => ({
+					value: view,
+					label: (
+						<>
+							<span className={cn("size-2 rounded-full", VIEW_DOT[view])} aria-hidden="true" />
+							{VIEW_LABELS[view]}
+							<span className="font-semibold tabular-nums">{viewWpm(model, view)}</span>
+						</>
+					),
+				}))}
+			/>
 		</div>
 	);
 }

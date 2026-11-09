@@ -1,3 +1,4 @@
+import { consumeBackPress } from "@lesefluss/ui/overlay-back";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReadingSession } from "../../../../services/db/schema";
@@ -264,6 +265,20 @@ describe("SessionsTab", () => {
 		await click(v.getButton("Select"));
 		expect(v.text()).toContain("0 selected");
 		expect(v.getButton("Select all 1")).toBeTruthy();
+	});
+
+	it("ends Select mode on Android back and stays on the tab", async () => {
+		state.rows = [session("a", "mm", at(7, 9))];
+		const v = await show();
+		await click(v.getButton("Select"));
+		expect(v.text()).toContain("0 selected");
+		let consumed = false;
+		act(() => {
+			consumed = consumeBackPress();
+		});
+		expect(consumed).toBe(true);
+		expect(v.text()).not.toContain("selected");
+		expect(consumeBackPress()).toBe(false);
 	});
 
 	it("selects rows by long press and taps, widens to the same book, and deletes the selection", async () => {

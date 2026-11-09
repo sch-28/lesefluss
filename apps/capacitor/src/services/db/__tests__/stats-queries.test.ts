@@ -10,6 +10,7 @@
  */
 import type { SQLInputValue } from "node:sqlite";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { formatDuration } from "../../../utils/date-utils";
 import { createTestDb } from "./test-db";
 
 const { db, raw, close } = createTestDb();
@@ -174,8 +175,11 @@ describe("getPeriodTotals", () => {
 
 		const totals = await getPeriodTotals(0, 10_000);
 		expect(totals.words).toBe(HONEST.wordsRead + 22_488);
-		// 10min + 1.5min, rounded. Truncating would give 11.
-		expect(totals.minutes).toBe(12);
+		// 10min + 1.5min, floored as Stats › Sessions floors its total; rounding gave 12.
+		expect(totals.minutes).toBe(11);
+		expect(formatDuration(totals.minutes * MINUTE)).toBe(
+			formatDuration(HONEST.durationMs + 90_000),
+		);
 	});
 
 	it("leaves out sittings under a minute, as Stats › Sessions does", async () => {

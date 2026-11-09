@@ -1,7 +1,7 @@
 import { Button } from "@lesefluss/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
-import { cn } from "@lesefluss/ui/utils";
+import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { Check, LayoutGrid, List, type LucideIcon, Table2 } from "lucide-react";
 import type React from "react";
 import { useRef } from "react";
@@ -110,10 +110,10 @@ export const ViewSheet: React.FC<Props> = ({
 			{trigger}
 			<Drawer open={open} onOpenChange={onOpenChange}>
 				<DrawerContent data-testid="view-sheet">
-					<DrawerHeader className="text-left">
+					<DrawerHeader>
 						<DrawerTitle>View</DrawerTitle>
 					</DrawerHeader>
-					<div className="overflow-y-auto px-5 pb-6">
+					<div className="overflow-y-auto px-4 pb-6">
 						<ViewPanel {...panel} onGroupBy={pickGroup} />
 					</div>
 				</DrawerContent>
@@ -136,27 +136,20 @@ export const ViewPanel: React.FC<ViewPanelProps> = ({
 		<div className="flex flex-col gap-4">
 			<section>
 				<h3 className={HEADING}>Layout</h3>
-				<div role="radiogroup" aria-label="Layout" className="flex gap-2">
-					{layouts.map(({ id, label, icon: Icon }) => (
-						// biome-ignore lint/a11y/useSemanticElements: a styled choice row; a native radio input cannot hold the icon and check layout
-						<button
-							key={id}
-							type="button"
-							role="radio"
-							aria-checked={view === id}
-							onClick={() => onView(id)}
-							className={cn(
-								"flex h-11 flex-1 items-center justify-center gap-2 rounded-md border text-sm transition-colors",
-								view === id
-									? "border-primary bg-primary/10 font-medium text-foreground"
-									: "border-border text-muted-foreground hover:bg-muted",
-							)}
-						>
-							<Icon className="size-4" />
-							{label}
-						</button>
-					))}
-				</div>
+				<SegmentedControl
+					aria-label="Layout"
+					value={view}
+					onValueChange={onView}
+					options={layouts.map(({ id, label, icon: Icon }) => ({
+						value: id,
+						label: (
+							<>
+								<Icon className="size-4" />
+								{label}
+							</>
+						),
+					}))}
+				/>
 			</section>
 			<section>
 				<h3 className={HEADING}>{view === "table" ? "Columns" : "Card fields"}</h3>

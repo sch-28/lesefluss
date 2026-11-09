@@ -3,6 +3,7 @@ import { Drawer as DrawerPrimitive } from "vaul";
 
 import { useOverlayBack, useOverlayOpen } from "../lib/overlay-back";
 import { cn } from "../lib/utils";
+import { SHEET_HEADER_CLASS, SHEET_SUBTITLE_CLASS, SHEET_TITLE_CLASS } from "./sheet-header";
 
 declare global {
 	interface Window {
@@ -128,13 +129,7 @@ function DrawerContent({
 }
 
 function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
-	return (
-		<div
-			data-slot="drawer-header"
-			className={cn("flex flex-col gap-1 px-5 pt-2 pb-3", className)}
-			{...props}
-		/>
-	);
+	return <div data-slot="drawer-header" className={cn(SHEET_HEADER_CLASS, className)} {...props} />;
 }
 
 function DrawerFooter({ className, ...props }: React.ComponentProps<"div">) {
@@ -151,7 +146,7 @@ function DrawerTitle({ className, ...props }: React.ComponentProps<typeof Drawer
 	return (
 		<DrawerPrimitive.Title
 			data-slot="drawer-title"
-			className={cn("font-semibold text-base text-foreground", className)}
+			className={cn(SHEET_TITLE_CLASS, className)}
 			{...props}
 		/>
 	);
@@ -164,7 +159,7 @@ function DrawerDescription({
 	return (
 		<DrawerPrimitive.Description
 			data-slot="drawer-description"
-			className={cn("text-muted-foreground text-sm", className)}
+			className={cn(SHEET_SUBTITLE_CLASS, className)}
 			{...props}
 		/>
 	);

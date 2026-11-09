@@ -1,4 +1,5 @@
 import { Input } from "@lesefluss/ui/input";
+import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
 import { useMemo, useRef, useState } from "react";
@@ -38,27 +39,13 @@ function Segment<T extends string>({
 	onChange: (value: T) => void;
 }) {
 	return (
-		<fieldset
+		<SegmentedControl
 			aria-label={label}
-			className="m-0 inline-flex min-w-0 shrink-0 overflow-hidden rounded-lg border border-border p-0"
-		>
-			{options.map((o) => (
-				<button
-					key={o.value}
-					type="button"
-					aria-pressed={value === o.value}
-					onClick={() => onChange(o.value)}
-					className={cn(
-						"whitespace-nowrap px-3 py-1 text-sm transition-colors",
-						value === o.value
-							? "bg-muted text-foreground"
-							: "text-muted-foreground hover:text-foreground",
-					)}
-				>
-					{o.label}
-				</button>
-			))}
-		</fieldset>
+			className="w-auto shrink-0"
+			value={value}
+			onValueChange={onChange}
+			options={options}
+		/>
 	);
 }
 

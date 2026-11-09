@@ -8,14 +8,9 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@lesefluss/ui/dialog";
-import {
-	Drawer,
-	DrawerContent,
-	DrawerDescription,
-	DrawerHeader,
-	DrawerTitle,
-} from "@lesefluss/ui/drawer";
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@lesefluss/ui/drawer";
 import { Input } from "@lesefluss/ui/input";
+import { SheetDoneButton, SheetHeaderBar } from "@lesefluss/ui/sheet-header";
 import { cn } from "@lesefluss/ui/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, GripVertical, MoreHorizontal, Plus, X } from "lucide-react";
@@ -476,18 +471,23 @@ const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: (
 	if (isStacked) {
 		return (
 			<div className="flex min-h-0 flex-1 flex-col" onKeyDown={keyboard}>
-				<DrawerHeader className="flex-row items-center gap-2">
-					<Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-						Cancel
-					</Button>
-					<div className="min-w-0 flex-1 text-center">
-						<DrawerTitle className="truncate">{trimmed || "New smart shelf"}</DrawerTitle>
-						<DrawerDescription className="text-xs">Edit conditions</DrawerDescription>
-					</div>
-					<Button type="button" size="sm" disabled={!canSave} onClick={save}>
-						Save
-					</Button>
-				</DrawerHeader>
+				<SheetHeaderBar
+					title={<DrawerTitle className="truncate">{trimmed || "New smart shelf"}</DrawerTitle>}
+					subtitle={<DrawerDescription>Edit conditions</DrawerDescription>}
+					action={
+						<>
+							<SheetDoneButton
+								className="font-medium text-muted-foreground"
+								onClick={() => onOpenChange(false)}
+							>
+								Cancel
+							</SheetDoneButton>
+							<SheetDoneButton disabled={!canSave} onClick={save}>
+								Save
+							</SheetDoneButton>
+						</>
+					}
+				/>
 				<div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3" data-vaul-no-drag>
 					{body}
 				</div>

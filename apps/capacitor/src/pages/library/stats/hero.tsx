@@ -1,23 +1,28 @@
+import { cn } from "@lesefluss/ui/utils";
 import { motion } from "framer-motion";
 import { CalendarDays, ChevronUp } from "lucide-react";
 import { useState } from "react";
+import { useBackHandler } from "../../../hooks/use-back-handler";
 import { shiftMonth } from "../../../services/stats/calendar";
 import { AnimatedNumber } from "./animated-number";
 import { MonthPager, StreakCalendar, StreakWeekStrip } from "./streak-calendar";
 
 interface Props {
+	/** Holds the streak figures hidden until the streak query lands, so 0 never shows first. */
+	isPending: boolean;
 	currentStreak: number;
 	longestStreak: number;
 	freezesBanked: number;
 }
 
-export function Hero({ currentStreak, longestStreak, freezesBanked }: Props) {
+export function Hero({ isPending, currentStreak, longestStreak, freezesBanked }: Props) {
 	// Collapsed by default: the current week answers "is my streak alive" in one
 	// row, and the month grid is a browsing view rather than a landing view.
 	const [isExpanded, setIsExpanded] = useState(false);
 	// The month lives here rather than in the calendar because the pager sits in
 	// the headline row while the grid it drives is a sibling below it.
 	const [monthAnchor, setMonthAnchor] = useState(() => shiftMonth(Date.now(), 0));
+	useBackHandler(isExpanded, () => setIsExpanded(false));
 
 	const expand = () => {
 		setMonthAnchor(shiftMonth(Date.now(), 0));
@@ -34,14 +39,15 @@ export function Hero({ currentStreak, longestStreak, freezesBanked }: Props) {
 			<div className="flex items-center justify-between gap-4">
 				<div>
 					<p className="text-[0.6875rem] uppercase tracking-[0.18em] opacity-60">Reading streak</p>
-					<div className="mt-1.5 flex items-baseline gap-2">
+					<div className={cn("mt-1.5 flex items-baseline gap-2", isPending && "invisible")}>
 						<AnimatedNumber
+							key={isPending ? "pending" : "loaded"}
 							value={currentStreak}
 							className="font-bold text-5xl tabular-nums leading-none tracking-tight"
 						/>
 						<span className="text-base opacity-70">{currentStreak === 1 ? "day" : "days"}</span>
 					</div>
-					<p className="mt-1.5 text-xs opacity-50">
+					<p className={cn("mt-1.5 text-xs opacity-50", isPending && "invisible")}>
 						🔥 Best {longestStreak} {longestStreak === 1 ? "day" : "days"}
 						{freezesBanked > 0 && (
 							<>

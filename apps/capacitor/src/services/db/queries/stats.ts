@@ -95,7 +95,8 @@ export async function getPeriodTotals(
 
 	const dur = Number(sessionsRow[0]?.durationMs ?? 0);
 	return {
-		minutes: Math.round(dur / 60_000),
+		// Floored like formatDuration, so Overview and Sessions show the same total.
+		minutes: Math.floor(dur / 60_000),
 		words: Number(sessionsRow[0]?.words ?? 0),
 		booksFinished: Number(finishedRow[0]?.count ?? 0),
 	};

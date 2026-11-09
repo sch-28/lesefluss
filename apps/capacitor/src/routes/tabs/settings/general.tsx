@@ -51,8 +51,6 @@ function GeneralSettings() {
 						max={APP_FONT_SIZE.max}
 						step={APP_FONT_SIZE.step}
 						onChange={(v) => adjustAppFontSize(v - appFontSize)}
-						decLabel="A−"
-						incLabel="A+"
 					/>
 					<ToggleRow
 						id="eink-mode"

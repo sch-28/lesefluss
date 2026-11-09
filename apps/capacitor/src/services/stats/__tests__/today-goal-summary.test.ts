@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReadingGoalPlan, ReadingGoalPlanResult } from "../reading-goal";
-import { summarizeTodayGoals, todayGoalLabel } from "../today-goal-summary";
+import { formatGoalProgress, summarizeTodayGoals } from "../today-goal-summary";
 
 function plan(fields: {
 	dailyMinutes?: number | null;
@@ -43,7 +43,7 @@ describe("summarizeTodayGoals", () => {
 			fraction: 0.65,
 			isMet: false,
 		});
-		if (summary.kind === "goals") expect(todayGoalLabel(summary)).toBe("19 of 30 min");
+		if (summary.kind === "goals") expect(formatGoalProgress(summary)).toBe("19 of 30 min");
 	});
 
 	it("caps each goal at its own need, and a met goal counts in full", () => {
@@ -60,6 +60,6 @@ describe("summarizeTodayGoals", () => {
 			plan({ targetMinutes: 8.2, readMinutes: 3, isTodayMet: true }),
 		]);
 		expect(summary).toMatchObject({ fraction: 1, isMet: true });
-		if (summary.kind === "goals") expect(todayGoalLabel(summary)).toBe("29 of 29 min");
+		if (summary.kind === "goals") expect(formatGoalProgress(summary)).toBe("29 of 29 min");
 	});
 });

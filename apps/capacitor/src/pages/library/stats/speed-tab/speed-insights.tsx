@@ -1,6 +1,7 @@
 import type { SpeedModel } from "@lesefluss/core";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { Info } from "lucide-react";
+import { ReservedCard } from "../../../../components/reserved-card";
 import { queryHooks } from "../../../../services/db/hooks";
 import type { Insight, InsightId } from "../../../../services/stats/insights";
 import { type SittingRecord, timeSavedMs } from "../../../../services/stats/speed-tab";
@@ -75,9 +76,18 @@ function insightInfo(id: InsightId, view: View): string {
 	}
 }
 
-function useViewInsights(view: View): Insight[] {
-	const { data } = queryHooks.useStatsSpeedInsights();
-	return data?.[view] ?? [];
+/** One row of tiles. */
+const TILE_ROW_HEIGHT = 78;
+/** Records header plus two rows. */
+const RECORDS_HEIGHT = 130;
+
+function useViewInsights(view: View): { insights: Insight[]; isPending: boolean } {
+	const { data, isPending } = queryHooks.useStatsSpeedInsights();
+	return { insights: data?.[view] ?? [], isPending };
+}
+
+function PendingTiles() {
+	return <ReservedCard isPending height={TILE_ROW_HEIGHT} className="mb-8 px-4" />;
 }
 
 function InsightTiles({ insights, view }: { insights: Insight[]; view: View }) {
@@ -94,7 +104,8 @@ function InsightTiles({ insights, view }: { insights: Insight[]; view: View }) {
 }
 
 export function ReadingInsights() {
-	const insights = useViewInsights("reading");
+	const { insights, isPending } = useViewInsights("reading");
+	if (isPending) return <PendingTiles />;
 	if (insights.length === 0) return null;
 	return (
 		<section className="mb-8 grid grid-cols-2 gap-2 px-4" data-testid="speed-insights">
@@ -106,7 +117,8 @@ export function ReadingInsights() {
 export function RsvpInsights({ model }: { model: SpeedModel }) {
 	const saved = timeSavedMs(model);
 	const ratio = model.rsvp?.deliveredRatio ?? null;
-	const insights = useViewInsights("rsvp");
+	const { insights, isPending } = useViewInsights("rsvp");
+	if (isPending) return <PendingTiles />;
 	if (saved <= 0 && ratio === null && insights.length === 0) return null;
 	return (
 		<section className="mb-8 grid grid-cols-2 gap-2 px-4" data-testid="speed-insights">
@@ -177,8 +189,13 @@ function FastestBookRow({ record }: { record: { wpm: number; title: string } | n
 	);
 }
 
+function PendingRecords() {
+	return <ReservedCard isPending height={RECORDS_HEIGHT} className="mb-8 px-4" />;
+}
+
 export function ReadingRecords() {
-	const { data } = queryHooks.useStatsSpeedTab();
+	const { data, isPending } = queryHooks.useStatsSpeedTab();
+	if (isPending) return <PendingRecords />;
 	const records = data?.records;
 	if (!records || (!records.fastestSitting && !records.fastestBook)) return null;
 	return (
@@ -190,7 +207,8 @@ export function ReadingRecords() {
 }
 
 export function RsvpRecords() {
-	const { data } = queryHooks.useStatsSpeedTab();
+	const { data, isPending } = queryHooks.useStatsSpeedTab();
+	if (isPending) return <PendingRecords />;
 	const records = data?.records;
 	if (!records || (!records.bestRsvpSitting && !records.fastestBook)) return null;
 	const longest = records.longestRsvpRun;

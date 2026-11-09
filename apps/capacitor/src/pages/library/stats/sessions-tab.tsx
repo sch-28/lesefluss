@@ -3,9 +3,9 @@ import { Button } from "@lesefluss/ui/button";
 import { cn } from "@lesefluss/ui/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { FilterChip } from "../../../components/filter-chip";
+import { ReservedCard } from "../../../components/reserved-card";
 import { queryHooks } from "../../../services/db/hooks";
 import { bookKeys } from "../../../services/db/hooks/query-keys";
 import { queries } from "../../../services/db/queries";
@@ -88,12 +88,10 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 	const { selected } = selection;
 	const isSelecting = selected !== null;
 
-	if (sessionsQuery.isPending) {
-		return (
-			<div className="flex justify-center py-10">
-				<Loader2 className="size-5 animate-spin text-muted-foreground" />
-			</div>
-		);
+	// Book titles drive the filter chip and the day rows; waiting for them too
+	// keeps "Unknown book" from flashing in before the names land.
+	if (sessionsQuery.isPending || booksQuery.isPending) {
+		return <ReservedCard isPending height="60vh" />;
 	}
 
 	const bookTotals = totalsOf(bookRows, skimCutoff);
@@ -156,7 +154,7 @@ export function SessionsTab({ now, bookId, onBookChange }: Props) {
 					<div className="mt-1 text-muted-foreground text-xs tabular-nums">
 						{bookTotals.count} {bookTotals.count === 1 ? "session" : "sessions"} ·{" "}
 						{formatDuration(bookTotals.totalMs)}
-						{bookTotals.wpm !== null && ` · ${bookTotals.wpm} wpm`}
+						{bookTotals.wpm !== null && ` · ${bookTotals.wpm} wpm avg`}
 					</div>
 					{bookTotals.count > 0 && (
 						<Button

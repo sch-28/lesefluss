@@ -48,13 +48,13 @@ describe("LiveWpm", () => {
 		await act(async () => {
 			vi.advanceTimersByTime(POLL_MS);
 		});
-		expect(view.text()).toBe("· 248 wpm");
+		expect(view.text()).toBe("· 248 wpm now");
 
 		rate = 251;
 		await act(async () => {
 			vi.advanceTimersByTime(POLL_MS);
 		});
-		expect(view.text()).toBe("· 251 wpm");
+		expect(view.text()).toBe("· 251 wpm now");
 	});
 
 	it.each([

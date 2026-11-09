@@ -91,8 +91,6 @@ const AppearancePopover: React.FC<Props> = ({ open, onOpenChange, anchor, onOpen
 							max={READER_FONT_SIZE.max}
 							step={READER_FONT_SIZE.step}
 							onChange={(v) => adjustFontSize(v - fontSize)}
-							decLabel="A−"
-							incLabel="A+"
 						/>
 						<StepperRow
 							label="Line spacing"

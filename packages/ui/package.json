@@ -36,6 +36,11 @@
 		"./sonner": "./src/components/sonner.tsx",
 		"./toggle": "./src/components/toggle.tsx",
 		"./toggle-group": "./src/components/toggle-group.tsx",
+		"./segmented-control": "./src/components/segmented-control.tsx",
+		"./filter-chip": "./src/components/filter-chip.tsx",
+		"./stepper": "./src/components/stepper.tsx",
+		"./sheet-header": "./src/components/sheet-header.tsx",
+		"./icon-button": "./src/components/icon-button.tsx",
 		"./rating-stars": "./src/components/rating-stars.tsx",
 		"./social-avatar": "./src/components/social-avatar.tsx"
 	},

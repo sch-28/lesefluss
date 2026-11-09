@@ -127,8 +127,8 @@ const ActionDrawer: React.FC<ActionSheetProps> = ({ open, onOpenChange, title, i
 		<Drawer open={open} onOpenChange={onOpenChange}>
 			<DrawerContent>
 				{title && (
-					<DrawerHeader className="border-border border-b">
-						<DrawerTitle className="truncate text-center">{title}</DrawerTitle>
+					<DrawerHeader>
+						<DrawerTitle className="truncate">{title}</DrawerTitle>
 					</DrawerHeader>
 				)}
 				<div className="flex flex-col p-2">

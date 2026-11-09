@@ -4,7 +4,7 @@ import { useContinueReading } from "../../hooks/use-continue-reading";
 import { canStartGoal } from "../../pages/library/reading-goal/goal-model";
 import { GoalSheetFor } from "../../pages/library/reading-goal/goal-sheet-for";
 import { queryHooks } from "../../services/db/hooks";
-import { summarizeTodayGoals, todayGoalLabel } from "../../services/stats/today-goal-summary";
+import { formatGoalProgress, summarizeTodayGoals } from "../../services/stats/today-goal-summary";
 import { GoalRing } from "../goal-ring";
 
 const RING_SIZE = 32;
@@ -35,7 +35,7 @@ export function SidebarGoalCard({ isCollapsed }: { isCollapsed: boolean }) {
 				title={book ? `Continue ${book.title}` : "Today's reading goals"}
 				onClick={continueReading?.open}
 				ring={<GoalRing size={RING_SIZE} fraction={summary.fraction} isMet={summary.isMet} />}
-				primary={todayGoalLabel(summary)}
+				primary={formatGoalProgress(summary)}
 				secondary={streakText}
 				testId="sidebar-goal-card"
 			/>

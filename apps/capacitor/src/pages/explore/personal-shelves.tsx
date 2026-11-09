@@ -20,8 +20,8 @@ type Props = {
 
 /**
  * Shelves built from the reader's own library (works without an account) and,
- * when signed in, from friends' activity. Each hides itself when it has
- * nothing to show.
+ * when signed in, from friends' activity. Each holds its slot with a skeleton
+ * while it loads and hides only once it loaded with nothing to show.
  */
 const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 	const { data: library } = queryHooks.useBooks();
@@ -56,20 +56,38 @@ const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 		? friendsReading(feed.data?.pages.flatMap((p) => p.items) ?? [], ownedIds, ownedEditions)
 		: [];
 
+	// isLoading, not isPending: a disabled query (no second author) stays pending forever.
+	const isSimilarLoading = similar.isLoading;
+	const isAuthorsLoading = byAuthors.some((q) => q.isLoading);
+	const isFeedLoading = isLoggedIn && !!feed.isLoading;
+
 	return (
 		<>
-			{seed && becauseYouRead.length > 0 && (
-				<Shelf title={`Because you read ${seed.title}`} books={becauseYouRead} onOpen={onOpen} />
+			{seed && (isSimilarLoading || becauseYouRead.length > 0) && (
+				<Shelf
+					title={`Because you read ${seed.title}`}
+					books={becauseYouRead}
+					onOpen={onOpen}
+					isLoading={isSimilarLoading}
+				/>
 			)}
-			{authorBooks.length > 0 && (
+			{(isAuthorsLoading || authorBooks.length > 0) && (
 				<Shelf
 					title="More by authors you read"
 					books={authorBooks}
 					onOpen={onOpen}
 					onSeeAll={authors[0] ? () => onBrowse({ author: authors[0], lang: "all" }) : undefined}
+					isLoading={isAuthorsLoading}
 				/>
 			)}
-			{friends.length > 0 && <Shelf title="Friends are reading" books={friends} onOpen={onOpen} />}
+			{(isFeedLoading || friends.length > 0) && (
+				<Shelf
+					title="Friends are reading"
+					books={friends}
+					onOpen={onOpen}
+					isLoading={isFeedLoading}
+				/>
+			)}
 		</>
 	);
 };

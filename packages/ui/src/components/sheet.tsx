@@ -4,6 +4,7 @@ import type * as React from "react";
 
 import { useOverlayBack, useOverlayOpen } from "../lib/overlay-back";
 import { cn } from "../lib/utils";
+import { SHEET_HEADER_CLASS, SHEET_SUBTITLE_CLASS, SHEET_TITLE_CLASS } from "./sheet-header";
 
 function Sheet({
 	open,
@@ -91,8 +92,8 @@ function SheetContent({
 				)}
 				{children}
 				{showCloseButton && (
-					<SheetPrimitive.Close className="absolute top-3 right-3 inline-flex size-8 items-center justify-center rounded-full text-muted-foreground opacity-70 transition-opacity hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring/50">
-						<XIcon className="size-4" />
+					<SheetPrimitive.Close className="absolute top-1 right-1 inline-flex size-11 items-center justify-center rounded-full text-muted-foreground opacity-70 transition-opacity hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring/50">
+						<XIcon className="size-5" />
 						<span className="sr-only">Close</span>
 					</SheetPrimitive.Close>
 				)}
@@ -105,7 +106,7 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
 	return (
 		<div
 			data-slot="sheet-header"
-			className={cn("flex flex-col gap-1 px-5 pt-3 pb-2", className)}
+			className={cn(SHEET_HEADER_CLASS, "pt-3", className)}
 			{...props}
 		/>
 	);
@@ -125,7 +126,7 @@ function SheetTitle({ className, ...props }: React.ComponentProps<typeof SheetPr
 	return (
 		<SheetPrimitive.Title
 			data-slot="sheet-title"
-			className={cn("font-semibold text-base text-foreground", className)}
+			className={cn(SHEET_TITLE_CLASS, className)}
 			{...props}
 		/>
 	);
@@ -138,7 +139,7 @@ function SheetDescription({
 	return (
 		<SheetPrimitive.Description
 			data-slot="sheet-description"
-			className={cn("text-muted-foreground text-sm", className)}
+			className={cn(SHEET_SUBTITLE_CLASS, className)}
 			{...props}
 		/>
 	);

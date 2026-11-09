@@ -20,6 +20,11 @@ export function pushBackHandler(handler: BackHandler): () => void {
 	};
 }
 
+/** Whether any overlay (or other back-consuming state) is open right now. */
+export function hasOpenOverlay(): boolean {
+	return handlers.length > 0;
+}
+
 /** True when an overlay handled the press and the router should not. */
 export function consumeBackPress(): boolean {
 	for (let i = handlers.length - 1; i >= 0; i--) {

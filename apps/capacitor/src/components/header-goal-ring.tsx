@@ -1,7 +1,7 @@
 import { Button } from "@lesefluss/ui/button";
 import { Link } from "@tanstack/react-router";
 import { queryHooks } from "../services/db/hooks";
-import { summarizeTodayGoals, todayGoalLabel } from "../services/stats/today-goal-summary";
+import { formatGoalProgress, summarizeTodayGoals } from "../services/stats/today-goal-summary";
 import { GoalRing } from "./goal-ring";
 
 /** Today's goal ring for the library header. */
@@ -14,7 +14,7 @@ export function HeaderGoalRing() {
 		<Button asChild variant="ghost" size="icon">
 			<Link
 				to="/tabs/stats"
-				aria-label={`Today's goal, ${todayGoalLabel(summary)}`}
+				aria-label={`Today's goal, ${formatGoalProgress(summary)}`}
 				data-testid="header-goal-ring"
 			>
 				<GoalRing size={22} fraction={summary.fraction} isMet={summary.isMet} />

@@ -1,5 +1,7 @@
+import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
 import { AnimatePresence, motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 import { queryHooks } from "../../../services/db/hooks";
 import { formatDuration } from "../../../utils/date-utils";
 import { AnimatedNumber } from "./animated-number";
@@ -29,35 +31,19 @@ export function PeriodTabs({
 	onPeriodChange: (period: Period) => void;
 	className?: string;
 }) {
-	// Chips, not tabs: the page's tabs switch views, this only scopes the totals under it.
 	return (
-		<fieldset
-			className={cn("m-0 flex items-center gap-2 border-0 p-0", className)}
-			data-testid="period-control"
-		>
-			<legend className="sr-only">Totals for</legend>
-			<span className="text-muted-foreground text-xs" aria-hidden="true">
+		<div className={cn("flex items-center gap-3", className)}>
+			<span className="shrink-0 text-muted-foreground text-xs" aria-hidden="true">
 				Totals for
 			</span>
-			<div className="flex flex-wrap gap-1.5">
-				{PERIODS.map((p) => (
-					<button
-						key={p}
-						type="button"
-						aria-pressed={p === period}
-						onClick={() => onPeriodChange(p)}
-						className={cn(
-							"rounded-full border px-3 py-1 text-xs",
-							p === period
-								? "border-foreground/40 bg-foreground text-background"
-								: "border-border text-muted-foreground hover:bg-muted",
-						)}
-					>
-						{PERIOD_CHIP_LABELS[p]}
-					</button>
-				))}
-			</div>
-		</fieldset>
+			<SegmentedControl
+				aria-label="Totals for"
+				data-testid="period-control"
+				value={period}
+				onValueChange={onPeriodChange}
+				options={PERIODS.map((p) => ({ value: p, label: PERIOD_CHIP_LABELS[p] }))}
+			/>
+		</div>
 	);
 }
 
@@ -67,6 +53,7 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 	const totals = queryHooks.useStatsPeriodTotals(win.start, now);
 	const prev = queryHooks.useStatsClosedPeriodTotals(win.prevStart, win.prevEnd, showPrev);
 
+	const isPending = totals.isPending;
 	const data = totals.data ?? { minutes: 0, words: 0, booksFinished: 0 };
 	const prevData = showPrev ? prev.data : undefined;
 
@@ -102,13 +89,21 @@ export function PeriodTotals({ now, period, range: win, onPeriodChange }: Props)
 						format={(v) => formatDuration(v * 60_000)}
 						delta={deltas.minutes}
 						period={period}
+						isPending={isPending}
 					/>
-					<Stat label="Words" value={data.words} delta={deltas.words} period={period} />
+					<Stat
+						label="Words"
+						value={data.words}
+						delta={deltas.words}
+						period={period}
+						isPending={isPending}
+					/>
 					<Stat
 						label="Finished"
 						value={data.booksFinished}
 						delta={deltas.booksFinished}
 						period={period}
+						isPending={isPending}
 					/>
 				</motion.div>
 			</AnimatePresence>
@@ -122,24 +117,31 @@ function Stat({
 	format,
 	delta,
 	period,
+	isPending,
 }: {
 	label: string;
 	value: number;
 	format?: (value: number) => string;
 	delta: number | null;
 	period: Period;
+	isPending: boolean;
 }) {
 	return (
 		<div className="text-center">
-			<div className="font-bold text-3xl tabular-nums tracking-tight">
-				<AnimatedNumber value={value} format={format} />
+			<div className="flex h-9 items-center justify-center font-bold text-3xl tabular-nums tracking-tight">
+				{isPending ? (
+					<Loader2 aria-label="Loading" className="size-5 animate-spin text-muted-foreground" />
+				) : (
+					<AnimatedNumber value={value} format={format} />
+				)}
 			</div>
 			<div className="mt-1 text-[0.6875rem] text-muted-foreground uppercase tracking-wider">
 				{label}
 			</div>
-			{period !== "all" && delta != null && (
-				<div className="mt-1 font-medium text-[0.625rem] text-muted-foreground">
-					{delta >= 0 ? "▲" : "▼"} {Math.abs(delta)}%
+			{/* The line stays while the previous period loads, so the grid keeps its height. */}
+			{period !== "all" && (
+				<div className="mt-1 h-[15px] font-medium text-[0.625rem] text-muted-foreground">
+					{delta != null && `${delta >= 0 ? "▲" : "▼"} ${Math.abs(delta)}%`}
 				</div>
 			)}
 		</div>

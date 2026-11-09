@@ -3,7 +3,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { GoalRing } from "../../components/goal-ring";
 import type { ReadingGoalPlan } from "../../services/stats/reading-goal";
 import { formatDayKey } from "../../utils/date-utils";
-import { minutesLabel, percentLabel } from "../../utils/reading-time";
+import { minutesLabel } from "../../utils/reading-time";
 import {
 	daysMetWithToday,
 	GOAL_TONE_CLASS,
@@ -22,12 +22,9 @@ type Props = {
 
 export function GoalChip({ plan, today, onOpenDetails }: Props) {
 	const figure = todayFigure(today);
-	const isMinutes = today.targetMinutes != null;
 	const label = today.isMet
 		? `Today's target met: ${figure.target}`
 		: `Today's target: ${figure.done} of ${figure.target}`;
-	// A met percent goal shows its target, so the chip reads "10.0 / 10.0%" rather than overshooting.
-	const done = today.isMet && !isMinutes ? percentLabel(today.targetPercent) : figure.done;
 	const daysMet = daysMetWithToday(plan, today);
 	return (
 		<Popover>
@@ -44,7 +41,7 @@ export function GoalChip({ plan, today, onOpenDetails }: Props) {
 					)}
 				>
 					<GoalRing size={18} fraction={today.fraction} isMet={today.isMet} />
-					<span className="font-semibold">{done}</span>
+					<span className="font-semibold">{figure.done}</span>
 					<span className="text-muted-foreground">/ {figure.target}</span>
 				</button>
 			</PopoverTrigger>

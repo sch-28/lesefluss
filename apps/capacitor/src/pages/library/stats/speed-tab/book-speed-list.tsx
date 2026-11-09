@@ -1,4 +1,5 @@
 import type { MeasuredReadingMode, SpeedModel } from "@lesefluss/core";
+import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
 import { useState } from "react";
 import CoverImage from "../../../../components/cover-image";
@@ -58,22 +59,17 @@ export function BookSpeedList({ model }: { model: SpeedModel }) {
 		<section className="mb-8 px-4" data-testid="book-speed-list">
 			<header className="mb-2 flex items-center justify-between gap-2">
 				<h3 className="font-semibold text-base">Books</h3>
-				<div className="flex gap-1" data-testid="book-sort">
-					{(Object.keys(SORT_LABELS) as BookSort[]).map((s) => (
-						<button
-							key={s}
-							type="button"
-							aria-pressed={s === sort}
-							onClick={() => setSort(s)}
-							className={cn(
-								"rounded-md px-2 py-0.5 text-xs",
-								s === sort ? "bg-muted font-medium" : "text-muted-foreground",
-							)}
-						>
-							{SORT_LABELS[s]}
-						</button>
-					))}
-				</div>
+				<SegmentedControl
+					aria-label="Sort books"
+					data-testid="book-sort"
+					className="w-auto"
+					value={sort}
+					onValueChange={setSort}
+					options={(Object.keys(SORT_LABELS) as BookSort[]).map((s) => ({
+						value: s,
+						label: SORT_LABELS[s],
+					}))}
+				/>
 			</header>
 			<ul className="divide-y divide-border">
 				{visible.map((row) => {

@@ -122,7 +122,7 @@ describe("SpeedChip", () => {
 	it("shows one number and no RSVP for a scroll-only reader", async () => {
 		state.model = model();
 		rendered = await render(<SpeedChip />);
-		expect(chipText(rendered)).toBe("260 wpm");
+		expect(chipText(rendered)).toBe("Reading 260 wpm");
 
 		await click(rendered.getButton(/260/));
 		expect(details()?.textContent).toContain("Reading");
@@ -132,7 +132,7 @@ describe("SpeedChip", () => {
 	it("orders both speeds by the default reader mode", async () => {
 		state.model = model({ rsvp: true });
 		rendered = await render(<SpeedChip />);
-		expect(chipText(rendered)).toBe("260 wpm·RSVP 420");
+		expect(chipText(rendered)).toBe("Reading 260 wpm·RSVP 420");
 		rendered.unmount();
 
 		state.settings = { wpm: 400, defaultReaderMode: "rsvp" };

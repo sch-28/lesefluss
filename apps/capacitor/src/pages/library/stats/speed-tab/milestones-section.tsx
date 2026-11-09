@@ -1,11 +1,16 @@
 import { MILESTONE_KINDS, MILESTONE_TIERS } from "@lesefluss/core";
 import { MedalGrid } from "../../../../components/milestones/milestone-medals";
+import { ReservedCard } from "../../../../components/reserved-card";
 import { queryHooks } from "../../../../services/db/hooks";
 
 const TOTAL_TIERS = MILESTONE_KINDS.reduce((sum, kind) => sum + MILESTONE_TIERS[kind].length, 0);
 
+/** Header, one medal row, the Next label and one more row. */
+const SECTION_HEIGHT = 283;
+
 export function MilestonesSection() {
-	const { data } = queryHooks.useStatsMilestones();
+	const { data, isPending } = queryHooks.useStatsMilestones();
+	if (isPending) return <ReservedCard isPending height={SECTION_HEIGHT} className="mt-6 px-4" />;
 	if (!data || (data.reached.length === 0 && data.next.length === 0)) return null;
 	const reachedTiers = data.reached.reduce(
 		(sum, m) => sum + MILESTONE_TIERS[m.kind].indexOf(m.threshold) + 1,

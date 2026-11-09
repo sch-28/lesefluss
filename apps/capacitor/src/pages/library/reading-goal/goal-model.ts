@@ -18,6 +18,7 @@ import {
 	paceTargetDate,
 	type ReadingGoalPlan,
 } from "../../../services/stats/reading-goal";
+import { goalProgressMinutes } from "../../../services/stats/today-goal-summary";
 import { formatDayKey, localDateKey, localDateOfKey } from "../../../utils/date-utils";
 import { minutesLabel, percentLabel } from "../../../utils/reading-time";
 
@@ -283,6 +284,8 @@ export type LiveToday = {
 	/** A minute goal's target and today's active minutes so far; targetMinutes is null otherwise. */
 	targetMinutes: number | null;
 	minutesRead: number;
+	/** Today's need in minutes, a percent goal's at the reader's pace. */
+	minutesNeeded: number;
 };
 
 /**
@@ -316,6 +319,7 @@ export function liveToday(
 			minutesToGo: isMet ? 0 : Math.max(0, plan.dailyMinutes - minutesRead),
 			targetMinutes: plan.dailyMinutes,
 			minutesRead,
+			minutesNeeded: plan.dailyMinutes,
 		};
 	}
 	const isMet = plan.isComplete || isDayMet(plan.dayStartWord, furthest, target, wordCount);
@@ -328,18 +332,14 @@ export function liveToday(
 		minutesToGo: isMet ? 0 : (target - progressWords) / plan.pace.wpm,
 		targetMinutes: null,
 		minutesRead: progressWords / plan.pace.wpm,
+		minutesNeeded: plan.dailyTarget.minutes,
 	};
 }
 
-/** Today's figure against its target: minutes for a minute goal, else percent of the book. */
+/** Today's minutes against the need, as formatGoalProgress shows them on every other screen. */
 export function todayFigure(today: LiveToday): { done: string; target: string } {
-	if (today.targetMinutes != null) {
-		return { done: String(Math.floor(today.minutesRead)), target: `${today.targetMinutes} min` };
-	}
-	return {
-		done: percentLabel(today.progressPercent),
-		target: `${percentLabel(today.targetPercent)}%`,
-	};
+	const { read, needed } = goalProgressMinutes(today);
+	return { done: String(read), target: `${needed} min` };
 }
 
 /** Days met, today included once the live view sees it met, before the plan does. */

@@ -90,6 +90,7 @@ const Stats: React.FC = () => {
 							<div className="pt-2">
 								<TodayGoalCard streak={currentStreak} />
 								<Hero
+									isPending={streak.isPending}
 									currentStreak={currentStreak}
 									longestStreak={longestStreak}
 									freezesBanked={freezesBanked}

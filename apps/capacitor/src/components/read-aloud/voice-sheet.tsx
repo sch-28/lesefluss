@@ -80,8 +80,8 @@ export const VoiceSheet: React.FC<Props> = ({
 	return (
 		<Drawer open={open} onOpenChange={onOpenChange}>
 			<DrawerContent className={className}>
-				<DrawerHeader className="border-border border-b">
-					<DrawerTitle className="text-center">Voice · {languageLabel}</DrawerTitle>
+				<DrawerHeader>
+					<DrawerTitle>Voice · {languageLabel}</DrawerTitle>
 				</DrawerHeader>
 				<div className="max-h-[60vh] overflow-y-auto">
 					<ul className="flex flex-col">

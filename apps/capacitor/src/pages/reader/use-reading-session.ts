@@ -10,6 +10,7 @@
  * alone — long-paragraph reading no longer triggers spurious idle flush.
  */
 import { App as CapacitorApp } from "@capacitor/app";
+import { hasOpenOverlay } from "@lesefluss/ui/overlay-back";
 import { useCallback, useEffect, useRef } from "react";
 import { readingSessionKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
@@ -138,6 +139,8 @@ export function useReadingSession({
 			onFurthestRead: (sessionId, word) => onFurthestReadRef.current?.(sessionId, word),
 			onFinalized: recordSitting,
 			carry: sittingCarries,
+			// RSVP keeps playing under its speed popover; its sittings follow playback instead.
+			isOverlayOpen: mode === "rsvp" ? undefined : hasOpenOverlay,
 		});
 		return () => {
 			trackerRef.current?.finalize();

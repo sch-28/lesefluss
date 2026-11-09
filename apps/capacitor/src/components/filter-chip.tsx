@@ -1,4 +1,3 @@
-import { Button } from "@lesefluss/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -6,6 +5,7 @@ import {
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from "@lesefluss/ui/dropdown-menu";
+import { CHIP_BASE, CHIP_SELECTED } from "@lesefluss/ui/filter-chip";
 import { cn } from "@lesefluss/ui/utils";
 import { ChevronDown, X } from "lucide-react";
 import type React from "react";
@@ -42,10 +42,14 @@ export function FilterChip<T extends string>({
 		<div className={cn("flex shrink-0 items-center", className)}>
 			<DropdownMenu open={isOpen} onOpenChange={setOpen}>
 				<DropdownMenuTrigger asChild>
-					<Button
-						variant={isActive ? "default" : "outline"}
-						size="sm"
-						className={cn("min-w-0 gap-1", isActive && onClear && "rounded-r-none pr-2")}
+					<button
+						type="button"
+						className={cn(
+							CHIP_BASE,
+							"min-w-0 gap-1",
+							isActive && CHIP_SELECTED,
+							isActive && onClear && "rounded-r-none pr-2",
+						)}
 						onPointerDown={(e: React.PointerEvent<HTMLButtonElement>) => {
 							pointerTypeRef.current = e.pointerType;
 							if (e.pointerType !== "mouse") e.preventDefault();
@@ -56,7 +60,7 @@ export function FilterChip<T extends string>({
 					>
 						<span className="min-w-0 truncate">{label}</span>
 						<ChevronDown className="size-3.5" />
-					</Button>
+					</button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="start" className="max-h-80 min-w-48 overflow-y-auto">
 					<DropdownMenuRadioGroup
@@ -80,15 +84,14 @@ export function FilterChip<T extends string>({
 				</DropdownMenuContent>
 			</DropdownMenu>
 			{isActive && onClear && (
-				<Button
-					variant="default"
-					size="sm"
-					className="rounded-l-none border-primary-foreground/20 border-l px-2"
+				<button
+					type="button"
+					className={cn(CHIP_BASE, CHIP_SELECTED, "rounded-l-none border-primary/20 border-l px-3")}
 					onClick={onClear}
 					aria-label={`Remove ${label} filter`}
 				>
 					<X className="size-3.5" />
-				</Button>
+				</button>
 			)}
 		</div>
 	);

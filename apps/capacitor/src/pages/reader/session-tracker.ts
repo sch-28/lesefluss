@@ -73,6 +73,9 @@ export type TrackerOpts = {
 	onFurthestRead?: (sessionId: string, word: number | null) => void;
 	/** A sitting's closing row, after it is handed to `persist`. */
 	onFinalized?: (row: SessionRow) => void;
+	/** True while a menu, popover or sheet covers the text: that time, and the reflow an
+	 *  Appearance change causes, is not reading. */
+	isOverlayOpen?: () => boolean;
 	/** Active time below which a sitting is not written; `MIN_DURATION_MS` unless a test shortens it. */
 	minDurationMs?: number;
 	/** Where a sitting that ends below the floor waits for the book's next burst; without one it is dropped. */
@@ -199,6 +202,7 @@ export class SessionTracker {
 	private session: SessionState | null = null;
 	private lastFurthestRead: { id: string; word: number } | null = null;
 	private lastActivityAt: number;
+	private overlayWasOpen = false;
 	private lastPollAt: number;
 
 	constructor(opts: TrackerOpts) {
@@ -233,7 +237,7 @@ export class SessionTracker {
 	}
 
 	markActivity(): void {
-		if (!this.shouldBeActive) return;
+		if (!this.shouldBeActive || this.opts.isOverlayOpen?.()) return;
 		const now = this.now();
 		this.splitAtMidnight(now);
 		this.lastActivityAt = now;
@@ -258,6 +262,21 @@ export class SessionTracker {
 		this.splitAtMidnight(now, pollDelta > POLL_THROTTLE_GUARD_MS);
 		if (!this.session) return;
 		if (!this.shouldBeActive) return;
+
+		if (this.opts.isOverlayOpen?.()) {
+			// Moves under a menu are reflow, never credited; reading resumes from where it leaves the text.
+			this.session.lastPos = this.opts.getPosition();
+			this.settleActive(this.lastActivityAt);
+			this.overlayWasOpen = true;
+			return;
+		}
+		if (this.overlayWasOpen) {
+			// Closed within the last poll: reading the page it uncovered starts then, not at the next move.
+			this.overlayWasOpen = false;
+			const closedAt = now - Math.min(pollDelta, POLL_MS);
+			this.session.activeSinceMs ??= closedAt;
+			this.lastActivityAt = Math.max(this.lastActivityAt, closedAt);
+		}
 
 		// A gap above the guard is a suspended timer, not reading time, so it must
 		// not refill the budget: returning after ten minutes would otherwise buy

@@ -14,8 +14,8 @@ import { App as CapacitorApp } from "@capacitor/app";
 import type { DiscussionItem, RsvpSettings } from "@lesefluss/core";
 import {
 	DEFAULT_SETTINGS,
-	modeSpeed,
 	paragraphIndexForWord,
+	timeLeftWpm,
 	utf8ByteLength,
 	utf8ByteLengthOfCodePoint,
 	wordPos,
@@ -2667,8 +2667,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			chapterFetch.kind === "loading");
 
 	const showReadingTime = dbSettings?.showReadingTime ?? DEFAULT_SETTINGS.SHOW_READING_TIME;
-	const estimateWpm = modeSpeed(
+	const estimateWpm = timeLeftWpm(
 		speedModel.data,
+		id,
 		readerMode === "rsvp" ? "rsvp" : paginationStyle,
 		rsvpSettings.wpm,
 	);

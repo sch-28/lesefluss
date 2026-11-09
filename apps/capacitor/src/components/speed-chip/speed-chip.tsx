@@ -14,10 +14,7 @@ function ChipText({ parts }: { parts: ChipPart[] }) {
 		<Fragment key={part.mode}>
 			{i > 0 && <span className="text-muted-foreground">·</span>}
 			<span>
-				{part.mode === "rsvp" && <span className="text-muted-foreground">RSVP </span>}
-				{part.mode === "reading" && i > 0 && (
-					<span className="text-muted-foreground">Reading </span>
-				)}
+				<span className="text-muted-foreground">{part.mode === "rsvp" ? "RSVP" : "Reading"} </span>
 				<b className="font-semibold">{part.wpm}</b>
 				{i === 0 && <span className="text-muted-foreground"> wpm</span>}
 			</span>

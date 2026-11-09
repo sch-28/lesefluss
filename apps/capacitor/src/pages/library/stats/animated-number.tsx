@@ -10,11 +10,12 @@ interface Props {
 }
 
 /**
- * Animated count-up. Eases from previous render to current `value` over
- * `durationMs`. Snaps instantly under reduced motion or e-ink mode.
+ * Eases from the previous `value` to the current one over `durationMs`.
+ * Starts at the first value, not 0: a total that counts up on load reads as a
+ * wrong number first. Snaps instantly under reduced motion or e-ink mode.
  */
 export function AnimatedNumber({ value, durationMs = 800, format, className }: Props) {
-	const mv = useMotionValue(0);
+	const mv = useMotionValue(value);
 	const display = useTransform(mv, (v) => (format ? format(v) : Math.round(v).toLocaleString()));
 
 	const isReducedMotion = usePrefersReducedMotion();

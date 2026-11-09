@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import { tabBarHidden } from "../../../components/app-shell/tab-bar-visibility";
 import { ConfirmDialog } from "../../../components/confirm-dialog";
 import { toast } from "../../../components/toast";
+import { useBackHandler } from "../../../hooks/use-back-handler";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book, ReadingSession } from "../../../services/db/schema";
 import { lostReadingDays } from "../../../services/stats/session-delete-impact";
@@ -149,6 +150,7 @@ export function useSessionDelete({
 
 export function useSessionSelection() {
 	const [selected, setSelected] = useState<ReadonlySet<string> | null>(null);
+	useBackHandler(selected !== null, () => setSelected(null));
 
 	function toggle(id: string) {
 		setSelected((prev) => {

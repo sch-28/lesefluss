@@ -234,6 +234,26 @@ describe("Explore landing", () => {
 		expect(view.text()).toContain("Fresh Arrival");
 	});
 
+	it("keeps the catalog shelf skeletons below the personal shelves, in their own slot", async () => {
+		getLanding.mockImplementation(() => new Promise(() => undefined));
+		view = await render(
+			<ExploreLanding
+				lang="en"
+				onOpen={vi.fn()}
+				onOpenWebNovel={vi.fn()}
+				onBrowse={vi.fn()}
+				onBrowseTags={vi.fn()}
+				personalShelves={<div data-testid="personal">Personal shelves</div>}
+			/>,
+		);
+		const personal = view.container.querySelector('[data-testid="personal"]');
+		const statuses = [...view.container.querySelectorAll('[role="status"]')];
+		const before = statuses.filter(
+			(el) => personal && el.compareDocumentPosition(personal) & Node.DOCUMENT_POSITION_FOLLOWING,
+		);
+		expect(before).toHaveLength(1);
+	});
+
 	it("shows skeletons, not a spinner, while loading", async () => {
 		getLanding.mockImplementation(() => new Promise(() => undefined));
 		view = await renderLanding();

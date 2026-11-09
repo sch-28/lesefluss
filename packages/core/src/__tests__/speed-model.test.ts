@@ -11,6 +11,7 @@ import {
 	rsvpTimeSavedMs,
 	type SpeedRow,
 	speedWindowRows,
+	timeLeftWpm,
 	wpmFrom,
 } from "../speed-model";
 
@@ -265,6 +266,20 @@ describe("modeSpeed", () => {
 		expect(modeSpeed(model, "scroll", 400)).toBe(300);
 		expect(modeSpeed(model, "page", 400)).toBe(model.reading.wpm);
 		expect(modeSpeed(undefined, "page", 400)).toBe(AVERAGE_READER_WPM);
+	});
+
+	it("estimates time left at the book's pace in scroll and page, as book detail does", () => {
+		const model = computeSpeedModel(
+			[
+				row({ mode: "scroll", durationMs: 40 * MIN, wordsRead: 12_000 }),
+				row({ mode: "page", durationMs: 20 * MIN, wordsRead: 3000 }),
+			],
+			{ now: NOW },
+		);
+		const book = row({}).bookId;
+		expect(timeLeftWpm(model, book, "scroll", 400)).toBe(bookPace(model, book).wpm);
+		expect(timeLeftWpm(model, book, "page", 400)).toBe(bookPace(model, book).wpm);
+		expect(timeLeftWpm(model, book, "rsvp", 400)).toBe(modeSpeed(model, "rsvp", 400));
 	});
 });
 

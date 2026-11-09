@@ -1,4 +1,5 @@
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
+import { CHIP_BASE, FilterChip } from "@lesefluss/ui/filter-chip";
 import { cn } from "@lesefluss/ui/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { Layers, type LucideIcon, MoreHorizontal, Plus, ScrollText } from "lucide-react";
@@ -13,16 +14,8 @@ import { useLongPress } from "./use-long-press";
 import { useActiveSeriesKey, useOpenSeries, useSeriesEntries } from "./use-series-nav";
 import { type ShelfEntry, useSmartShelves } from "./use-smart-shelves";
 
-export const CHIP =
-	"inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-sm whitespace-nowrap transition-colors";
-
 /** Chips shown in the row before the rest goes to the More sheet; the open one always shows. */
 export const INLINE_CHIP_LIMIT = 10;
-
-const chipTone = (active: boolean) =>
-	active
-		? "border-primary bg-primary text-primary-foreground"
-		: "border-border bg-card text-foreground";
 
 type ChipProps = {
 	name: string;
@@ -46,19 +39,10 @@ const CollectionChip: React.FC<ChipProps> = ({
 }) => {
 	const handlers = useLongPress({ onTap: onOpen, onMenu: onMenu ?? (() => {}), enabled: !!onMenu });
 	return (
-		<button
-			type="button"
-			{...handlers}
-			aria-pressed={active}
-			data-testid={testId}
-			className={cn(CHIP, chipTone(active))}
-		>
+		<FilterChip {...handlers} selected={active} count={count} data-testid={testId}>
 			{Icon && <Icon aria-hidden className="size-3.5 shrink-0 opacity-70" />}
 			<span className="max-w-[12rem] truncate">{name}</span>
-			<span className={cn("text-xs tabular-nums", active ? "opacity-80" : "text-muted-foreground")}>
-				{count}
-			</span>
-		</button>
+		</FilterChip>
 	);
 };
 
@@ -71,23 +55,15 @@ const SmartShelfChip: React.FC<{
 }> = ({ shelf, count, active, onOpen, onMenu }) => {
 	const handlers = useLongPress({ onTap: onOpen, onMenu });
 	return (
-		<button
-			type="button"
+		<FilterChip
 			{...handlers}
-			aria-pressed={active}
+			selected={active}
+			count={count}
 			data-testid="shelf-smart"
-			className={cn(
-				CHIP,
-				active
-					? "border-primary bg-primary text-primary-foreground"
-					: "border-border border-dashed bg-card text-foreground",
-			)}
+			className={cn(!active && "border border-muted-foreground/40 border-dashed")}
 		>
 			<span className="max-w-[12rem] truncate">{shelf.name}</span>
-			<span className={cn("text-xs tabular-nums", active ? "opacity-80" : "text-muted-foreground")}>
-				{count}
-			</span>
-		</button>
+		</FilterChip>
 	);
 };
 
@@ -215,14 +191,9 @@ const CollectionShelfRow: React.FC<{
 				aria-label="Collections and shelves"
 				className="flex gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none]"
 			>
-				<button
-					type="button"
-					aria-pressed={!activeId && !activeShelfId}
-					onClick={() => open(undefined)}
-					className={cn(CHIP, chipTone(!activeId && !activeShelfId))}
-				>
+				<FilterChip selected={!activeId && !activeShelfId} onClick={() => open(undefined)}>
 					All
-				</button>
+				</FilterChip>
 				{inline.map((c) =>
 					c.kind === "shelf" ? (
 						<SmartShelfChip
@@ -250,7 +221,7 @@ const CollectionShelfRow: React.FC<{
 					type="button"
 					onClick={() => setIsMoreOpen(true)}
 					aria-label={more.length > 0 ? `More, ${more.length} more` : "More"}
-					className={cn(CHIP, "border-border bg-card text-muted-foreground")}
+					className={cn(CHIP_BASE, "text-muted-foreground")}
 				>
 					<MoreHorizontal aria-hidden className="size-4" />
 					{more.length > 0 && <span className="text-xs tabular-nums">{more.length}</span>}
@@ -258,8 +229,8 @@ const CollectionShelfRow: React.FC<{
 			</div>
 			<Drawer open={isMoreOpen} onOpenChange={setIsMoreOpen}>
 				<DrawerContent data-testid="shelf-more-sheet">
-					<DrawerHeader className="border-border border-b">
-						<DrawerTitle className="text-center">Shelves</DrawerTitle>
+					<DrawerHeader>
+						<DrawerTitle>Shelves</DrawerTitle>
 					</DrawerHeader>
 					<div className="flex max-h-[60vh] flex-col overflow-y-auto p-2">
 						{more.map((c) => {

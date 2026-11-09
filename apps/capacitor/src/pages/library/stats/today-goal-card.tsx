@@ -2,17 +2,20 @@ import { useNavigate } from "@tanstack/react-router";
 import { Target } from "lucide-react";
 import { useState } from "react";
 import { GoalRing } from "../../../components/goal-ring";
+import { ReservedCard } from "../../../components/reserved-card";
 import { useContinueReading } from "../../../hooks/use-continue-reading";
 import { queryHooks } from "../../../services/db/hooks";
 import {
 	editableGoals,
+	formatGoalProgress,
 	summarizeTodayGoals,
-	todayGoalLabel,
 } from "../../../services/stats/today-goal-summary";
 import { canStartGoal } from "../reading-goal/goal-model";
 import { GoalEditSheet, GoalSheetFor } from "../reading-goal/goal-sheet-for";
 
 const RING_SIZE = 44;
+/** The ring inside the card's padding and border. */
+const CARD_HEIGHT = RING_SIZE + 34;
 
 /**
  * Today's goal ring and the streak at the top of Stats.
@@ -25,7 +28,9 @@ export function TodayGoalCard({ streak }: { streak: number }) {
 	const continueReading = useContinueReading();
 	const [isSheetOpen, setSheetOpen] = useState(false);
 
-	if (!plans.data) return null;
+	if (!plans.data) {
+		return <ReservedCard isPending height={CARD_HEIGHT} className="mx-4 mt-3" />;
+	}
 	const summary = summarizeTodayGoals(plans.data);
 	const editable = editableGoals(plans.data);
 	const streakText = streak > 0 ? `${streak}-day streak` : "No streak yet";
@@ -39,7 +44,7 @@ export function TodayGoalCard({ streak }: { streak: number }) {
 					label={only ? "Edit today's goal" : "Reading goals"}
 					onClick={() => (only ? setSheetOpen(true) : navigate({ to: "/tabs/settings/goals" }))}
 					ring={<GoalRing size={RING_SIZE} fraction={summary.fraction} isMet={summary.isMet} />}
-					primary={`Today ${todayGoalLabel(summary)}`}
+					primary={`Today ${formatGoalProgress(summary)}`}
 					secondary={streakText}
 				/>
 				{only && (

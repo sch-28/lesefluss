@@ -113,11 +113,7 @@ const ExploreLanding: React.FC<Props> = ({
 			/>
 
 			{landingQuery.isPending ? (
-				<>
-					<HeroSkeleton />
-					<ShelfSkeleton />
-					<ShelfSkeleton />
-				</>
+				<HeroSkeleton />
 			) : landingQuery.isError && !data ? (
 				<ErrorState error={landingQuery.error} onRetry={retryLanding} className="mb-6" />
 			) : (
@@ -130,6 +126,15 @@ const ExploreLanding: React.FC<Props> = ({
 			<TrendingWebNovels onOpen={onOpenWebNovel} />
 			<WebNovelsSection />
 
+			{/* Held in the catalog shelves' own slot: skeletons above the personal
+			    shelves pushed those down, then let them jump up on load. */}
+			{landingQuery.isPending && (
+				<>
+					<ShelfSkeleton />
+					<ShelfSkeleton />
+					<ShelfSkeleton />
+				</>
+			)}
 			{data && (
 				<>
 					{data.recently_added &&

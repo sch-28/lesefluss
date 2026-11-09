@@ -1,3 +1,4 @@
+import { FilterChip } from "@lesefluss/ui/filter-chip";
 import { Input } from "@lesefluss/ui/input";
 import { cn } from "@lesefluss/ui/utils";
 import { Check, Search } from "lucide-react";
@@ -31,9 +32,6 @@ const ALL = "all";
 const PICKED = "picked";
 const NONE: ReadonlySet<string> = new Set();
 const NO_FILTERS: readonly QuickFilter[] = [];
-
-const CHIP =
-	"inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-sm whitespace-nowrap transition-colors";
 
 /**
  * Search and pick books from the library. Controlled: it owns only its search
@@ -189,20 +187,9 @@ export const BookSelection: React.FC<Props> = ({
 				className="flex gap-2 overflow-x-auto [scrollbar-width:none]"
 			>
 				{chips.map((c) => (
-					<button
-						key={c.id}
-						type="button"
-						aria-pressed={chip === c.id}
-						onClick={() => setChip(c.id)}
-						className={cn(
-							CHIP,
-							chip === c.id
-								? "border-primary bg-primary text-primary-foreground"
-								: "border-border bg-card text-foreground",
-						)}
-					>
+					<FilterChip key={c.id} selected={chip === c.id} onClick={() => setChip(c.id)}>
 						{c.label}
-					</button>
+					</FilterChip>
 				))}
 			</div>
 			<div ref={listRef} data-testid="book-selection">

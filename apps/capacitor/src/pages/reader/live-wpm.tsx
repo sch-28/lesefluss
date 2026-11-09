@@ -46,7 +46,7 @@ function LiveRate({ getRate }: { getRate: () => number | null }): React.ReactEle
 	return (
 		<>
 			{" · "}
-			<span className="reader-progress-live-wpm">{rate} wpm</span>
+			<span className="reader-progress-live-wpm">{rate} wpm now</span>
 		</>
 	);
 }

@@ -25,6 +25,7 @@ function setup(opts?: {
 	initialPos?: number;
 	minDurationMs?: number;
 }) {
+	let isOverlayOpen = false;
 	let clock = 1_000_000; // arbitrary epoch ms
 	let position = opts?.initialPos ?? 0;
 	let wpm: number | null = opts?.wpm === undefined ? 250 : opts.wpm;
@@ -44,6 +45,7 @@ function setup(opts?: {
 		remove: (id) => removed.push(id),
 		onFinalized: (row) => finalized.push(row),
 		minDurationMs: opts?.minDurationMs ?? TEST_FLOOR_MS,
+		isOverlayOpen: () => isOverlayOpen,
 		now: () => clock,
 		newId: () => `id${++idCounter}`,
 	});
@@ -69,6 +71,9 @@ function setup(opts?: {
 		setWpm(value: number | null) {
 			wpm = value;
 		},
+		setOverlayOpen(value: boolean) {
+			isOverlayOpen = value;
+		},
 		get clock() {
 			return clock;
 		},
@@ -93,6 +98,44 @@ describe("SessionTracker", () => {
 		expect(env.persisted[0]!.row.durationMs).toBe(30_000);
 		expect(env.persisted[0]!.row.wordsRead).toBe(20);
 		expect(env.persisted[0]!.row.bookId).toBe("book1");
+	});
+
+	it("records nothing for a visit spent in menus, reflow moves and taps included", () => {
+		const env = setup({ minDurationMs: MIN_DURATION_MS });
+		env.tracker.setReading(true);
+		env.setOverlayOpen(true);
+		for (let t = 0; t < 90_000; t += POLL_MS) {
+			env.advance(POLL_MS);
+			// An Appearance change reflows the page and nudges the reading word.
+			env.movePosition(t % 2 === 0 ? 33 : -30);
+			env.tracker.markActivity();
+			env.tracker.tick();
+		}
+		env.setOverlayOpen(false);
+		env.tracker.finalize();
+		expect(env.persisted).toHaveLength(0);
+	});
+
+	it("leaves menu time and reflow out of a sitting read around it", () => {
+		const env = setup();
+		env.tracker.setReading(true);
+		env.advance(POLL_MS);
+		env.movePosition(20);
+		env.tracker.tick();
+		env.setOverlayOpen(true);
+		for (let t = 0; t < 60_000; t += POLL_MS) {
+			env.advance(POLL_MS);
+			env.movePosition(30);
+			env.tracker.markActivity();
+			env.tracker.tick();
+		}
+		env.setOverlayOpen(false);
+		env.advance(POLL_MS);
+		env.movePosition(20);
+		env.tracker.tick();
+		env.tracker.finalize();
+		expect(env.persisted.at(-1)!.row.wordsRead).toBe(40);
+		expect(env.persisted.at(-1)!.row.durationMs).toBe(2 * POLL_MS);
 	});
 
 	it("hands only a sitting's closing row to onFinalized", () => {

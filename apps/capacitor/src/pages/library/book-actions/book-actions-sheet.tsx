@@ -48,14 +48,14 @@ export const BookActionsSheet: React.FC<Props> = ({ book, entries, onClose }) =>
 			}}
 		>
 			<DrawerContent data-testid="book-actions-sheet">
-				<DrawerHeader className="border-border border-b">
-					<DrawerTitle className="flex items-center justify-center gap-2 truncate text-center">
+				<DrawerHeader>
+					<DrawerTitle className="flex items-center gap-2 truncate">
 						{page !== "main" && (
 							<button
 								type="button"
 								aria-label="Back"
 								onClick={() => setPage("main")}
-								className="-ml-1 rounded-md p-1 hover:bg-muted"
+								className="-my-2 -ml-3 inline-flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-muted"
 							>
 								<ChevronLeft className="size-5" />
 							</button>

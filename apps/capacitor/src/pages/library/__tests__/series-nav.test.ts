@@ -4,11 +4,13 @@ import { indexBeside } from "../../../components/collections/collection-actions"
 import type { CollectionWithCount } from "../../../services/db/queries/collections";
 import type { Series } from "../../../services/db/schema";
 import { makeBook } from "../../../test/book-fixture";
+import { orderedSummary } from "../ordered-collection";
 import {
 	buildSeriesEntries,
 	countLabel,
 	filterSeriesEntries,
 	progressLabel,
+	type SeriesEntry,
 	type SeriesSources,
 	seriesSummary,
 } from "../series-nav";
@@ -110,6 +112,28 @@ describe("buildSeriesEntries", () => {
 			}),
 		);
 		expect(entries[0]?.started).toBe(1);
+	});
+
+	it("counts finished books as the series page does, marked or stamped ones included", () => {
+		const books = [
+			makeBook({ id: "marked", wordPosition: wordPos(400), firstSittingAt: 5, status: "finished" }),
+			makeBook({ id: "stamped", wordPosition: wordPos(400), firstSittingAt: 5, finishedAt: 9 }),
+			makeBook({ id: "reading", wordPosition: wordPos(400), firstSittingAt: 5 }),
+		];
+		const entries = buildSeriesEntries(
+			sources({
+				collections: [collection({ id: "mist", name: "Mistborn", bookCount: 3 })],
+				books,
+				seriesMemberships: new Map(
+					books.map((b, i) => [b.id, [{ collectionId: "mist", seriesIndex: i + 1 }]]),
+				),
+			}),
+		);
+		const page = orderedSummary(
+			books.map((book, i) => ({ book, seriesIndex: i + 1, position: i })),
+		);
+		expect(entries[0]?.finished).toBe(page.finished);
+		expect(progressLabel(entries[0] as SeriesEntry)).toBe("2 finished");
 	});
 });
 
