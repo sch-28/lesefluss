@@ -2,9 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@capacitor/core", () => ({ Capacitor: { isNativePlatform: () => false } }));
 
-const { isMiniAvailable, isMiniAvailableIn, isMobileBrowser, miniPopupUrl } = await import(
-	"../open-mini"
-);
+const { isMiniAvailable, isMiniAvailableIn, miniPopupUrl } = await import("../open-mini");
+const { isMobileBrowser } = await import("../../../utils/mobile-browser");
 const { isMiniPopupPath } = await import("../mini-popup");
 
 const desktop = { isNative: false, isMobile: false };

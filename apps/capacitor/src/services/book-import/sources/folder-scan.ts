@@ -1,6 +1,12 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { FilePicker } from "@capawesome/capacitor-file-picker";
-import { type BookFileFormat, bookFormatForFileName, type RawInput } from "@lesefluss/book-import";
+import {
+	BOOK_FILE_EXTENSIONS,
+	type BookFileFormat,
+	bookFormatForFileName,
+	type RawInput,
+} from "@lesefluss/book-import";
+import { isMobileNavigator } from "../../../utils/mobile-browser";
 import { openWebFilePicker, pickOrCancel } from "./pick-dialog";
 import { MAX_IMPORT_BYTES, readNativeFile, readWebFile } from "./read-file";
 
@@ -53,6 +59,17 @@ export type FolderScan = {
 };
 
 /**
+ * What the batch picker opens here. Phone and tablet browsers ignore
+ * `webkitdirectory` and fall back to selecting several files, so the UI has to
+ * say "files" there.
+ */
+export type BatchPickerKind = "folder" | "files";
+
+export function batchPickerKind(): BatchPickerKind {
+	return Capacitor.isNativePlatform() || !isMobileNavigator() ? "folder" : "files";
+}
+
+/**
  * Let the reader pick a folder and return every importable book inside it,
  * subfolders included. Nothing is read: each entry carries a handle instead.
  *
@@ -78,14 +95,14 @@ export async function pickBookFolder(): Promise<FolderScan> {
 
 	const picked = await openWebFilePicker((input) => {
 		input.multiple = true;
-		input.webkitdirectory = true;
+		if (batchPickerKind() === "folder") input.webkitdirectory = true;
+		else input.accept = BOOK_FILE_EXTENSIONS.map((ext) => `.${ext}`).join(",");
 	});
 	return {
 		files: toScannedFiles(
 			picked.map((file) => ({
 				name: file.name,
-				// Browsers that ignore `webkitdirectory` (mobile) leave this empty, in
-				// which case the flat selection is the whole "folder".
+				// Empty for a multi-file selection, which is then the whole "folder".
 				relativePath: file.webkitRelativePath || file.name,
 				size: file.size,
 				handle: { kind: "file", file, mimeType: file.type || undefined } as const,

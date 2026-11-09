@@ -6,13 +6,21 @@ const files = [
 	{ id: "f1", name: "a.epub", path: "a.epub" },
 	{ id: "f2", name: "b.epub", path: "b.epub" },
 ];
+let scanFiles: typeof files = files;
+let pickerKind: "folder" | "files" = "folder";
+let scanError: Error | null = null;
+const toastWarning = vi.fn();
 const appendBooksToCollection = vi.fn(async (_id: string, _bookIds: string[]) => {});
 const toastError = vi.fn();
 let releaseProbes: () => void = () => {};
 let probesDone = Promise.resolve();
 
 vi.mock("../../../../services/book-import", () => ({
-	pickBookFolder: async () => ({ files, truncated: false }),
+	batchPickerKind: () => pickerKind,
+	pickBookFolder: async () => {
+		if (scanError) throw scanError;
+		return { files: scanFiles, truncated: false };
+	},
 	probeScannedFile: async (file: { name: string }) => {
 		await probesDone;
 		return {
@@ -29,7 +37,7 @@ vi.mock("../../../../services/db/queries/collections", () => ({
 }));
 vi.mock("../../../../services/sync", () => ({ scheduleSyncPush: () => {} }));
 vi.mock("../../../../components/toast", () => ({
-	toast: { error: (m: string) => toastError(m), warning: () => {} },
+	toast: { error: (m: string) => toastError(m), warning: (m: string) => toastWarning(m) },
 }));
 
 const { useFolderImport } = await import("../use-folder-import");
@@ -60,8 +68,12 @@ async function importFolder(target?: string) {
 
 beforeEach(() => {
 	probesDone = Promise.resolve();
+	scanFiles = files;
+	pickerKind = "folder";
+	scanError = null;
 	appendBooksToCollection.mockReset();
 	toastError.mockClear();
+	toastWarning.mockClear();
 });
 afterEach(() => rendered.unmount());
 
@@ -111,5 +123,32 @@ describe("useFolderImport while files are checked", () => {
 		await act(async () => hook.beginImport());
 		await flush();
 		expect(hook.result?.imported).toBe(1);
+	});
+});
+
+describe("useFolderImport wording", () => {
+	it("talks about a folder where the picker opens one", async () => {
+		scanFiles = [];
+		rendered = await render(<Probe />);
+		expect(hook.copy.scanning).toBe("Scanning folder…");
+		await act(async () => hook.start());
+		expect(toastWarning).toHaveBeenCalledWith("No books found in that folder");
+	});
+
+	it("talks about files where the picker selects several files", async () => {
+		pickerKind = "files";
+		scanFiles = [];
+		rendered = await render(<Probe />);
+		expect(hook.copy.scanning).toBe("Reading files…");
+		await act(async () => hook.start());
+		expect(toastWarning).toHaveBeenCalledWith("None of those files is a book");
+	});
+
+	it("says the files could not be read when the multi-file scan fails", async () => {
+		pickerKind = "files";
+		scanError = new Error("disk gone");
+		rendered = await render(<Probe />);
+		await act(async () => hook.start());
+		expect(toastError).toHaveBeenCalledWith("Couldn't read those files");
 	});
 });

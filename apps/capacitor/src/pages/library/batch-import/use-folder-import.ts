@@ -6,7 +6,12 @@ import {
 	type SequentialProgress as BatchProgress,
 	NO_PROGRESS,
 } from "../../../services/batch/run-sequential";
-import { importScannedFile, pickBookFolder, probeScannedFile } from "../../../services/book-import";
+import {
+	batchPickerKind,
+	importScannedFile,
+	pickBookFolder,
+	probeScannedFile,
+} from "../../../services/book-import";
 import { bookKeys, collectionKeys } from "../../../services/db/hooks/query-keys";
 import { appendBooksToCollection } from "../../../services/db/queries/collections";
 import { scheduleSyncPush } from "../../../services/sync";
@@ -24,12 +29,14 @@ import {
 	toCandidates,
 	toggleCandidate,
 } from "./candidates";
+import { BATCH_IMPORT_COPY, type BatchImportCopy } from "./copy";
 import { type BatchResult, runBatchImport } from "./run-import";
 
 export type FolderImportPhase = "idle" | "scanning" | "review" | "importing" | "done";
 
 type UseFolderImport = {
 	phase: FolderImportPhase;
+	copy: BatchImportCopy;
 	candidates: Candidate[];
 	formats: FormatCount[];
 	selectedCount: number;
@@ -61,6 +68,7 @@ export function useFolderImport(
 	targetCollectionId?: string,
 ): UseFolderImport {
 	const qc = useQueryClient();
+	const [copy] = useState(() => BATCH_IMPORT_COPY[batchPickerKind()]);
 	const [phase, setPhase] = useState<FolderImportPhase>("idle");
 	const [candidates, setCandidates] = useState<Candidate[]>([]);
 	const [pendingProbes, setPendingProbes] = useState(0);
@@ -110,7 +118,7 @@ export function useFolderImport(
 			const scan = await pickBookFolder();
 			if (abortRef.current) return;
 			if (scan.files.length === 0) {
-				toast.warning("No books found in that folder");
+				toast.warning(copy.nothingFound);
 				onClose();
 				setPhase("idle");
 				return;
@@ -126,9 +134,9 @@ export function useFolderImport(
 			if (!(err instanceof Error)) return;
 			const entry = ERROR_TOASTS[err.message];
 			if (entry) toast.warning(entry.msg);
-			else if (!ALERT_SUPPRESSED.has(err.message)) toast.error("Couldn't scan that folder");
+			else if (!ALERT_SUPPRESSED.has(err.message)) toast.error(copy.scanFailed);
 		}
-	}, [onClose, probeAll]);
+	}, [copy, onClose, probeAll]);
 
 	const beginImport = useCallback(async () => {
 		const selected = candidates.filter((candidate) => candidate.selected).map((c) => c.file);
@@ -195,6 +203,7 @@ export function useFolderImport(
 
 	return {
 		phase,
+		copy,
 		candidates,
 		formats: useMemo(() => formatCounts(candidates), [candidates]),
 		selectedCount: candidates.filter((candidate) => candidate.selected).length,

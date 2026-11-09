@@ -1,6 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 import { useSyncExternalStore } from "react";
 import { isPipSupported, openPipWindow } from "../../services/pip/open-pip-window";
+import { isMobileNavigator } from "../../utils/mobile-browser";
 import {
 	createChannelPort,
 	createMemoryLink,
@@ -20,42 +21,6 @@ type Env = { isNative: boolean; isMobile: boolean; hasPip: boolean; hasChannel: 
 
 export function isMiniAvailableIn({ isNative, isMobile, hasPip, hasChannel }: Env): boolean {
 	return !isNative && !isMobile && (hasPip || hasChannel);
-}
-
-type MobileHints = {
-	userAgent: string;
-	platform: string;
-	maxTouchPoints: number;
-	uaDataMobile?: boolean;
-	isPrimaryPointerCoarse: boolean;
-};
-
-/** Phones and tablets, where a popup opens as a full tab. */
-export function isMobileBrowser({
-	userAgent,
-	platform,
-	maxTouchPoints,
-	uaDataMobile,
-	isPrimaryPointerCoarse,
-}: MobileHints): boolean {
-	// Tablets that request the desktop site send a desktop user agent; a touchscreen laptop's primary pointer is still fine.
-	if (uaDataMobile || isPrimaryPointerCoarse) return true;
-	if (/Android|iPhone|iPad|iPod|Mobi/i.test(userAgent)) return true;
-	// iPadOS Safari reports itself as a Mac.
-	return platform === "MacIntel" && maxTouchPoints > 1;
-}
-
-function isMobileNavigator(): boolean {
-	if (typeof navigator === "undefined") return false;
-	const nav = navigator as Navigator & { userAgentData?: { mobile?: boolean } };
-	return isMobileBrowser({
-		userAgent: nav.userAgent,
-		platform: nav.platform,
-		maxTouchPoints: nav.maxTouchPoints ?? 0,
-		uaDataMobile: nav.userAgentData?.mobile,
-		isPrimaryPointerCoarse:
-			typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches,
-	});
 }
 
 /** Desktop web only, with either an always-on-top pop-up or a popup window fed over a channel. */

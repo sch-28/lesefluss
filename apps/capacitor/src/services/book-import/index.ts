@@ -23,8 +23,13 @@ import type { ImportExtras, ImportOverrides, ImportSeriesChoice, StagedImport } 
 export { attachOriginalToBook, findAttachCandidate } from "./attach-original";
 export { importScannedFile, probeScannedFile } from "./batch";
 export { removeBook } from "./commit";
-export type { FolderScan, ScannedFile, ScannedFileHandle } from "./sources/folder-scan";
-export { pickBookFolder, readScannedFile } from "./sources/folder-scan";
+export type {
+	BatchPickerKind,
+	FolderScan,
+	ScannedFile,
+	ScannedFileHandle,
+} from "./sources/folder-scan";
+export { batchPickerKind, pickBookFolder, readScannedFile } from "./sources/folder-scan";
 export type { ImportExtras, ImportOverrides, ImportSeriesChoice, StagedImport } from "./types";
 
 /**

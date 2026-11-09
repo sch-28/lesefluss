@@ -49,7 +49,7 @@ test("the web app hides native-only features and keeps browser read aloud", asyn
 	await expect(page.getByRole("button", { name: "Sign in to get started" })).toBeVisible();
 	await page.goto("/app/tabs/library");
 	await page.getByRole("button", { name: "Add book" }).click();
-	await expect(page.getByText("Import multiple files")).toBeVisible();
+	await expect(page.getByText("Import folder")).toBeVisible();
 
 	expect(errors).toEqual([]);
 });

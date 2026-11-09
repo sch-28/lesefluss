@@ -82,11 +82,11 @@ const BatchImportSheet: React.FC<Props> = ({
 				<SheetHeader className="border-border border-b">
 					<div className="flex items-center justify-between">
 						<SheetTitle>
-							{phase === "scanning" && "Scanning folder…"}
+							{phase === "scanning" && folder.copy.scanning}
 							{phase === "review" && `${folder.candidates.length} books found`}
 							{phase === "importing" && "Importing…"}
 							{phase === "done" && "Import finished"}
-							{phase === "idle" && "Import folder"}
+							{phase === "idle" && folder.copy.sheetTitle}
 						</SheetTitle>
 						{/* Hidden mid-run: leaving would strand a partially written batch. */}
 						{!isBusy && (

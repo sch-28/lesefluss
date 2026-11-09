@@ -6,9 +6,8 @@ import { expect, type Page, test } from "@playwright/test";
 import { resetStorage } from "./helpers/seed";
 
 /**
- * The web half of folder import. On this build `Capacitor.isNativePlatform()` is
- * false, so the source opens an `<input webkitdirectory multiple>` rather than
- * the Android SAF picker, and the entry point is labelled accordingly.
+ * The desktop web half of folder import: an `<input webkitdirectory multiple>`
+ * rather than the Android SAF picker.
  */
 
 async function writeLibrary(
@@ -31,7 +30,7 @@ async function writeLibrary(
 async function openFolderPicker(page: Page) {
 	await page.getByRole("button", { name: "Add book" }).click();
 	const chooserPromise = page.waitForEvent("filechooser");
-	await page.getByRole("button", { name: "Import multiple files" }).click();
+	await page.getByRole("button", { name: "Import folder" }).click();
 	return { chooser: await chooserPromise };
 }
 
