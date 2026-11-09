@@ -178,6 +178,9 @@ describe("ShelfConditionEditor", () => {
 		settle();
 		expect(view?.container.querySelectorAll("[data-testid=condition-group]")).toHaveLength(1);
 		expect(count()).toBe("Show 2 books");
+		expect(
+			view?.container.querySelectorAll('[data-slot="segmented-control"][aria-label="Match"]'),
+		).toHaveLength(2);
 
 		// The nested group to all: short and long, no book.
 		press("All", 1);

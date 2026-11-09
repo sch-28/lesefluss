@@ -40,7 +40,15 @@ const Shelf: React.FC<Props> = ({
 	) : error ? (
 		<ErrorState error={error} onRetry={onRetry} className="p-4" />
 	) : books.length === 0 ? (
-		<p className="m-0 text-[0.8rem] text-muted-foreground">{emptyLabel ?? "Nothing here yet."}</p>
+		// Holds the strip's height: a shelf that loads empty must not pull the page up.
+		<div className="grid">
+			<div className="[grid-area:1/1]">
+				<ShelfStripSkeleton isSpacer />
+			</div>
+			<p className="m-0 self-center text-[0.8rem] text-muted-foreground [grid-area:1/1]">
+				{emptyLabel ?? "Nothing here yet."}
+			</p>
+		</div>
 	) : undefined;
 
 	return (

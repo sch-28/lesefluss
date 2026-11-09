@@ -20,8 +20,7 @@ type Props = {
 
 /**
  * Shelves built from the reader's own library (works without an account) and,
- * when signed in, from friends' activity. Each holds its slot with a skeleton
- * while it loads and hides only once it loaded with nothing to show.
+ * when signed in, from friends' activity.
  */
 const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 	const { data: library } = queryHooks.useBooks();
@@ -61,31 +60,36 @@ const PersonalShelves: React.FC<Props> = ({ onOpen, onBrowse }) => {
 	const isAuthorsLoading = byAuthors.some((q) => q.isLoading);
 	const isFeedLoading = isLoggedIn && !!feed.isLoading;
 
+	// A shelf's slot follows local facts only (the library, being signed in), never
+	// what the catalog sends back: a shelf that loads empty keeps its height.
 	return (
 		<>
-			{seed && (isSimilarLoading || becauseYouRead.length > 0) && (
+			{seed && (
 				<Shelf
 					title={`Because you read ${seed.title}`}
 					books={becauseYouRead}
 					onOpen={onOpen}
 					isLoading={isSimilarLoading}
+					emptyLabel="No close matches in the catalog yet."
 				/>
 			)}
-			{(isAuthorsLoading || authorBooks.length > 0) && (
+			{authors.length > 0 && (
 				<Shelf
 					title="More by authors you read"
 					books={authorBooks}
 					onOpen={onOpen}
-					onSeeAll={authors[0] ? () => onBrowse({ author: authors[0], lang: "all" }) : undefined}
+					onSeeAll={() => onBrowse({ author: authors[0], lang: "all" })}
 					isLoading={isAuthorsLoading}
+					emptyLabel="Nothing else by your authors in the catalog yet."
 				/>
 			)}
-			{(isFeedLoading || friends.length > 0) && (
+			{isLoggedIn && (
 				<Shelf
 					title="Friends are reading"
 					books={friends}
 					onOpen={onOpen}
 					isLoading={isFeedLoading}
+					emptyLabel="Books your friends read show up here."
 				/>
 			)}
 		</>

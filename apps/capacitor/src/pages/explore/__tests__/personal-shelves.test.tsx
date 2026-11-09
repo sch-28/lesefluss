@@ -149,11 +149,21 @@ describe("PersonalShelves", () => {
 		expect(view.container.querySelectorAll('[role="status"]')).toHaveLength(2);
 	});
 
-	it("collapses a shelf only once it loaded empty", async () => {
+	it("keeps a shelf that loaded empty at the strip's height, with a line", async () => {
 		getSimilarBooks.mockResolvedValue({ results: [result("gutenberg:84", "Frankenstein")] });
 		await renderShelves();
-		expect(view?.text()).not.toContain("Because you read");
+		const shelf = view?.container.querySelector("section");
+		expect(shelf?.textContent).toContain("Because you read Frankenstein");
+		expect(shelf?.textContent).toContain("No close matches in the catalog yet.");
+		expect(shelf?.querySelector('[aria-hidden="true"].invisible')).not.toBeNull();
 		expect(view?.text()).toContain("More by authors you read");
+	});
+
+	it("gives a signed-in reader the friends shelf even before friends read", async () => {
+		state.isLoggedIn = true;
+		useFeed.mockReturnValue({ data: { pages: [{ items: [], nextCursor: null }] } });
+		await renderShelves();
+		expect(view?.text()).toContain("Friends are reading");
 	});
 
 	it("shows nothing for an empty library and no friends", async () => {

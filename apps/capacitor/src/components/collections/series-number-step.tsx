@@ -1,5 +1,6 @@
 import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
+import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
 import { useMemo, useState } from "react";
@@ -69,27 +70,17 @@ export const SeriesNumberStep: React.FC<Props> = ({
 
 	return (
 		<div className="flex min-h-0 flex-col" data-testid="series-number-step">
-			<fieldset className="m-0 flex flex-wrap gap-2 border-0 px-4 pt-0 pb-3" aria-label="Numbering">
-				{MODES.map((m) => (
-					<button
-						key={m}
-						type="button"
-						aria-pressed={mode === m}
-						onClick={() => {
-							setMode(m);
-							setTyped(new Map());
-						}}
-						className={cn(
-							"rounded-full border px-3 py-1 text-sm transition-colors",
-							mode === m
-								? "border-primary bg-primary text-primary-foreground"
-								: "border-border hover:bg-muted",
-						)}
-					>
-						{labels[m]}
-					</button>
-				))}
-			</fieldset>
+			<div className="px-4 pt-0 pb-3">
+				<SegmentedControl
+					aria-label="Numbering"
+					value={mode}
+					onValueChange={(m) => {
+						setMode(m);
+						setTyped(new Map());
+					}}
+					options={MODES.map((m) => ({ value: m, label: labels[m] }))}
+				/>
+			</div>
 			<ol className="m-0 max-h-[45vh] list-none overflow-y-auto px-4 pb-2" aria-label={name}>
 				{books.map((book) => {
 					const index = numbers.get(book.id) ?? null;

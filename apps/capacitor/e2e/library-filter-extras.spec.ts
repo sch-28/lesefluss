@@ -64,10 +64,10 @@ test("tags match any by default and all after the toggle", async ({ page }) => {
 	await picker(page).getByRole("button", { name: "Tag salt, off" }).click();
 	await expect.poll(() => tableTitles(page)).toHaveLength(3);
 
-	await picker(page).getByRole("button", { name: "all", exact: true }).click();
+	await picker(page).getByRole("radio", { name: "all", exact: true }).click();
 	await expect.poll(() => tableTitles(page)).toEqual(["Tidewater"]);
-	await expect(picker(page).getByRole("button", { name: "all", exact: true })).toHaveAttribute(
-		"aria-pressed",
+	await expect(picker(page).getByRole("radio", { name: "all", exact: true })).toHaveAttribute(
+		"aria-checked",
 		"true",
 	);
 });

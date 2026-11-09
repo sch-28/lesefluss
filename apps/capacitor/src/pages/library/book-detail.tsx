@@ -246,6 +246,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				headerActions={headerActions}
 			>
 				<ReservedCard isPending height="60vh" />
+				{bookActions.overlays}
 			</DetailShell>
 		);
 	}

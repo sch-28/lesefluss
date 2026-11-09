@@ -10,6 +10,7 @@ import {
 } from "@lesefluss/ui/drawer";
 import { Input } from "@lesefluss/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
+import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
 import { Check, ChevronDown, ChevronRight, Minus } from "lucide-react";
 import type React from "react";
@@ -223,26 +224,17 @@ const TagsModeToggle: React.FC<Pick<PanelProps, "filter" | "onChange">> = ({
 	const mode = filter.tags?.mode === "all" ? "all" : "any";
 	return (
 		<div className="flex items-center gap-2 px-1 pt-2 text-muted-foreground text-xs">
-			<span id="tags-match-label">Tags match</span>
-			<fieldset
-				aria-labelledby="tags-match-label"
-				className="m-0 inline-flex min-w-0 rounded-md border border-border p-0.5"
-			>
-				{(["any", "all"] as const).map((m) => (
-					<button
-						key={m}
-						type="button"
-						aria-pressed={mode === m}
-						onClick={() => onChange(setTagsMode(filter, m))}
-						className={cn(
-							"rounded px-2 py-0.5",
-							mode === m ? "bg-primary text-primary-foreground" : "hover:text-foreground",
-						)}
-					>
-						{m}
-					</button>
-				))}
-			</fieldset>
+			<span aria-hidden>Tags match</span>
+			<SegmentedControl
+				aria-label="Tags match"
+				value={mode}
+				onValueChange={(m) => onChange(setTagsMode(filter, m))}
+				options={[
+					{ value: "any", label: "any" },
+					{ value: "all", label: "all" },
+				]}
+				className="w-auto"
+			/>
 		</div>
 	);
 };

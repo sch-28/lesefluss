@@ -44,7 +44,7 @@ const ResultCard: React.FC<Props> = ({
 					{/* A teaser under the cover: the full title is on the book page and in the name. */}
 					<div
 						data-clips-text
-						className="overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
+						className="min-h-[2lh] overflow-hidden text-ellipsis font-semibold text-[0.85rem] leading-[1.2] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]"
 					>
 						{result.title}
 					</div>

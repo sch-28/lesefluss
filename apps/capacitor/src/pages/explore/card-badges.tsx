@@ -60,24 +60,23 @@ export const QuickAddBesideTitle: React.FC<Omit<QuickAddButtonProps, "className"
 
 export const QUICK_ADD_CLEARANCE = "pr-9";
 
-/** Under a card's title, off the cover, where corner badges hid titles printed into the art. */
+/**
+ * Under a card's title, off the cover, where corner badges hid titles printed into the art.
+ * Holds its line when empty, so every card in a row, and the skeleton, keeps one height.
+ */
 export const CardMeta: React.FC<{ labels?: LengthLabels | null; isInLibrary?: boolean }> = ({
 	labels,
 	isInLibrary,
-}) =>
-	labels || isInLibrary ? (
-		<div className="mt-1 flex flex-wrap items-center gap-1">
-			{isInLibrary && <InLibraryBadge />}
-			{labels && (
-				<span
-					data-testid="card-length"
-					className="text-[0.7rem] text-muted-foreground tabular-nums"
-				>
-					<LengthText labels={labels} variant="time" />
-				</span>
-			)}
-		</div>
-	) : null;
+}) => (
+	<div className="mt-1 flex min-h-[1lh] flex-wrap items-center gap-1 text-[0.7rem]">
+		{isInLibrary && <InLibraryBadge />}
+		{labels && (
+			<span data-testid="card-length" className="text-muted-foreground tabular-nums">
+				<LengthText labels={labels} variant="time" />
+			</span>
+		)}
+	</div>
+);
 
 /** Length as text, read out as a sentence rather than "tilde … middle dot". */
 export const LengthText: React.FC<{ labels: LengthLabels; variant?: "text" | "time" }> = ({

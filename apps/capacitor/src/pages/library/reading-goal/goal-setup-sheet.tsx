@@ -7,6 +7,7 @@ import {
 	DrawerTitle,
 	drawerSnapPoints,
 } from "@lesefluss/ui/drawer";
+import { FilterChip } from "@lesefluss/ui/filter-chip";
 import { Slider } from "@lesefluss/ui/slider";
 import { cn } from "@lesefluss/ui/utils";
 import { ArrowLeftRight, CalendarDays, Lock, LockOpen } from "lucide-react";
@@ -171,30 +172,25 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 					</div>
 
 					<div className="flex flex-wrap items-center gap-2" data-testid="goal-unit">
-						<Chip
-							isOn={!dateLocked && !isMinutes}
-							aria-pressed={!dateLocked && !isMinutes}
-							onClick={() => setUnit("percent")}
-						>
+						<FilterChip selected={!isMinutes} onClick={() => setUnit("percent")}>
 							% a day
-						</Chip>
-						<Chip isOn={isMinutes} aria-pressed={isMinutes} onClick={() => setUnit("minutes")}>
+						</FilterChip>
+						<FilterChip selected={isMinutes} onClick={() => setUnit("minutes")}>
 							Min a day
-						</Chip>
+						</FilterChip>
 						{isMinutes &&
 							MINUTE_PRESETS.map((minutes) => {
 								const isOn = values.dailyMinutes === minutes;
 								return (
-									<Chip
+									<FilterChip
 										key={minutes}
-										isOn={isOn}
-										aria-pressed={isOn}
+										selected={isOn}
 										onClick={() =>
 											setSetup({ lock: "daily", days: values.days, dailyMinutes: minutes })
 										}
 									>
 										{minutes} min
-									</Chip>
+									</FilterChip>
 								);
 							})}
 					</div>
@@ -233,27 +229,26 @@ export function GoalSetupSheet({ isOpen, onClose, book, wpm, existing }: Props) 
 						{GOAL_PRESETS.map((p) => {
 							const isOn = !isCustom && presetMatch === p;
 							return (
-								<Chip
+								<FilterChip
 									key={p.label}
-									isOn={isOn}
-									aria-pressed={isOn}
+									selected={isOn}
 									onClick={() => {
 										setDays(presetDays(today, p.months));
 										setCustomOpen(false);
 									}}
 								>
 									{p.label}
-								</Chip>
+								</FilterChip>
 							);
 						})}
-						<Chip
-							isOn={isCustom}
+						<FilterChip
+							selected={isCustom}
 							aria-expanded={isCustomOpen}
 							onClick={() => setCustomOpen((open) => !open)}
 						>
 							<CalendarDays className="size-3.5" aria-hidden />
 							{isCustom ? formatDayKey(values.finishDate) : "Custom date"}
-						</Chip>
+						</FilterChip>
 					</div>
 
 					{isCustomOpen && (
@@ -333,7 +328,6 @@ function ValueCard({
 		<button
 			type="button"
 			onClick={onLock}
-			aria-pressed={isLocked}
 			aria-label={`${value}, ${label}. ${lockLabel}`}
 			className={cn(
 				"rounded-lg bg-muted/40 px-2.5 py-2 text-left",
@@ -353,21 +347,6 @@ function ValueCard({
 			<span className="mt-1 block text-[0.625rem] text-muted-foreground uppercase tracking-wider">
 				{label}
 			</span>
-		</button>
-	);
-}
-
-function Chip({ isOn, children, ...props }: React.ComponentProps<"button"> & { isOn: boolean }) {
-	return (
-		<button
-			type="button"
-			className={cn(
-				"inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3.5 text-sm",
-				isOn ? "border-foreground bg-foreground text-background" : "border-input",
-			)}
-			{...props}
-		>
-			{children}
 		</button>
 	);
 }

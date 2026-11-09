@@ -3,10 +3,10 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/
 import { cn } from "@lesefluss/ui/utils";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import type { Book } from "../../../services/db/schema";
-import { statusChoices } from "./book-action-items";
+import { isDangerAction, statusChoices } from "./book-action-items";
 import { RatingInput } from "./rating-input";
 import type { BookActionEntry } from "./use-book-actions";
 
@@ -113,34 +113,38 @@ export const BookActionsSheet: React.FC<Props> = ({ book, entries, onClose }) =>
 					</div>
 				) : (
 					<div className="flex flex-col p-2">
-						{shown?.entries.map((entry) => {
+						{shown?.entries.map((entry, i, entries) => {
 							const Icon = entry.icon;
 							const isPage = entry.kind !== "item";
+							const startsDanger =
+								i > 0 && isDangerAction(entry.id) && !isDangerAction(entries[i - 1]?.id ?? "");
 							return (
-								<button
-									key={entry.id}
-									type="button"
-									disabled={entry.kind === "item" && entry.disabled}
-									onClick={() => {
-										if (entry.kind === "status") return setPage("status");
-										if (entry.kind === "rate") {
-											setRating(entry.rating);
-											return setPage("rate");
-										}
-										onClose();
-										entry.onSelect();
-									}}
-									className={cn(
-										ROW,
-										entry.kind === "item" && entry.destructive
-											? "text-destructive"
-											: "text-foreground",
-									)}
-								>
-									<Icon className="size-5 shrink-0" />
-									<span className="flex-1 truncate">{entry.label}</span>
-									{isPage && <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
-								</button>
+								<Fragment key={entry.id}>
+									{startsDanger && <hr className="my-1 border-border" />}
+									<button
+										type="button"
+										disabled={entry.kind === "item" && entry.disabled}
+										onClick={() => {
+											if (entry.kind === "status") return setPage("status");
+											if (entry.kind === "rate") {
+												setRating(entry.rating);
+												return setPage("rate");
+											}
+											onClose();
+											entry.onSelect();
+										}}
+										className={cn(
+											ROW,
+											entry.kind === "item" && entry.destructive
+												? "text-destructive"
+												: "text-foreground",
+										)}
+									>
+										<Icon className="size-5 shrink-0" />
+										<span className="flex-1 truncate">{entry.label}</span>
+										{isPage && <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
+									</button>
+								</Fragment>
 							);
 						})}
 					</div>

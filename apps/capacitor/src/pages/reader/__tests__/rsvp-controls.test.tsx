@@ -31,25 +31,30 @@ describe("RsvpControls", () => {
 
 	it("shows the audio state and turns it on or off", async () => {
 		const onToggle = vi.fn();
-		view = await render(controls({ audio: { isOn: true, onToggle, voiceWpm: 240 } }));
+		view = await render(controls({ audio: { isOn: true, onToggle } }));
 		const toggle = view.getButton("Listen");
 		expect(toggle.getAttribute("aria-pressed")).toBe("true");
 		act(() => toggle.click());
 		expect(onToggle).toHaveBeenCalledOnce();
 	});
 
-	it("shows the RSVP speed with Listen on, the voice speed beside Listen", async () => {
+	it("names the stepper the voice speed with Listen on and steps it within the given range", async () => {
+		const onWpmChange = vi.fn();
 		view = await render(
-			controls({ wpm: 300, audio: { isOn: true, onToggle: noop, voiceWpm: 240 } }),
+			controls({
+				wpm: 240,
+				range: { min: 100, max: 250, step: 20 },
+				onWpmChange,
+				audio: { isOn: true, onToggle: noop },
+			}),
 		);
-		expect(view.container.querySelector('[data-testid="rsvp-wpm-value"]')?.textContent).toBe("300");
-		expect(view.container.querySelector('[data-testid="rsvp-voice-wpm"]')?.textContent).toBe(
-			"Voice 240 wpm",
-		);
+		expect(view.container.querySelector('[data-testid="rsvp-wpm-value"]')?.textContent).toBe("240");
+		act(() => view?.getButton("Increase voice speed").click());
+		expect(onWpmChange).toHaveBeenLastCalledWith(250);
 	});
 
 	it("gives every button a 44px target", async () => {
-		view = await render(controls({ audio: { isOn: false, onToggle: noop, voiceWpm: 240 } }));
+		view = await render(controls({ audio: { isOn: false, onToggle: noop } }));
 		for (const name of [
 			"Back to sentence start",
 			"Back one word",

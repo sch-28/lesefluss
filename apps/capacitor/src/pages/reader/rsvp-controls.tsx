@@ -9,14 +9,16 @@ import { cn } from "@lesefluss/ui/utils";
 import { ChevronsLeft, ChevronsRight, Headphones, Play, Redo2, Undo2 } from "lucide-react";
 import type React from "react";
 import { RsvpSpeedControl } from "../../components/rsvp-speed-control";
+import type { WpmRange } from "./wpm";
 
 // Controls only render while paused, so the play/pause button always shows
 // the play glyph. No isPlaying prop needed.
 interface Props {
-	/** The RSVP speed, shown and stepped even while the voice paces the words. */
+	/** The speed that paces the words: the voice's while read-aloud is on, else the RSVP wpm. */
 	wpm: number;
+	range?: WpmRange;
 	/** Absent where the device can't read aloud. */
-	audio?: { isOn: boolean; onToggle: () => void; voiceWpm: number } | null;
+	audio?: { isOn: boolean; onToggle: () => void } | null;
 	onBackSentence: () => void;
 	onBackWord: () => void;
 	onPlayPause: () => void;
@@ -29,6 +31,7 @@ const stop = (e: React.PointerEvent) => e.stopPropagation();
 
 const RsvpControls: React.FC<Props> = ({
 	wpm,
+	range,
 	audio = null,
 	onBackSentence,
 	onBackWord,
@@ -74,12 +77,13 @@ const RsvpControls: React.FC<Props> = ({
 						Listen
 					</button>
 				)}
-				{audio?.isOn && (
-					<span className="text-xs opacity-80" data-testid="rsvp-voice-wpm">
-						Voice {audio.voiceWpm} wpm
-					</span>
-				)}
-				<RsvpSpeedControl wpm={wpm} onChange={onWpmChange} className="text-[var(--reader-text)]" />
+				<RsvpSpeedControl
+					wpm={wpm}
+					range={range}
+					label={audio?.isOn ? "Voice speed" : "Speed"}
+					onChange={onWpmChange}
+					className="text-[var(--reader-text)]"
+				/>
 			</div>
 		</div>
 	);

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { bookActionIds, omitsDestructive, opensReader, statusChoices } from "../book-action-items";
 
 describe("bookActionIds", () => {
-	it("lists every action in the one order, Delete last", () => {
+	it("lists every action in the one order, Reset progress and Delete last", () => {
 		expect(bookActionIds({ canShare: true, canSelect: true, hasExtras: false })).toEqual([
 			"open",
 			"status",
@@ -11,8 +11,8 @@ describe("bookActionIds", () => {
 			"collection",
 			"edit",
 			"share",
-			"reset",
 			"select",
+			"reset",
 			"delete",
 		]);
 	});
@@ -25,8 +25,8 @@ describe("bookActionIds", () => {
 			"series",
 			"collection",
 			"edit",
-			"reset",
 			"extras",
+			"reset",
 			"delete",
 		]);
 	});

@@ -760,24 +760,6 @@ body.dark .rsvp-alert .alert-button.alert-button-role-destructive {
 	justify-content: center;
 }
 
-.rsvp-wpm-btn {
-	background: transparent;
-	border: none;
-	color: var(--reader-text);
-	font-size: 1.25rem;
-	font-weight: 600;
-	width: 40px;
-	height: 40px;
-	border-radius: 8px;
-	cursor: pointer;
-	line-height: 1;
-	padding: 0;
-}
-
-.rsvp-wpm-btn:active {
-	background: var(--reader-progress-track, rgba(128, 128, 128, 0.2));
-}
-
 .rsvp-wpm-value {
 	font-variant-numeric: tabular-nums;
 	font-weight: 600;

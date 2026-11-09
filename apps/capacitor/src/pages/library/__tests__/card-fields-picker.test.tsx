@@ -40,6 +40,7 @@ describe("CardFieldsPanel", () => {
 			/>,
 		);
 		expect(checkbox("Author").checked).toBe(true);
+		expect(checkbox("Author").closest("label")?.className).toContain("min-h-11");
 		expect(checkbox("Words").checked).toBe(false);
 		expect(view.text()).toContain("grid: author,rating");
 		await click(checkbox("Time left"));

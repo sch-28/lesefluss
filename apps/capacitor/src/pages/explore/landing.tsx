@@ -33,6 +33,11 @@ type Props = {
 	onBrowseTags: () => void;
 	/** Shelves that know the reader, placed right under the hero. */
 	personalShelves?: React.ReactNode;
+	/**
+	 * Until the local data that decides the personal shelves is read, nothing goes
+	 * below them: shelves added above loaded content would push it down.
+	 */
+	isPersonalPending?: boolean;
 };
 
 const ExploreLanding: React.FC<Props> = ({
@@ -42,6 +47,7 @@ const ExploreLanding: React.FC<Props> = ({
 	onBrowse,
 	onBrowseTags,
 	personalShelves,
+	isPersonalPending = false,
 }) => {
 	const [shuffleNonce, setShuffleNonce] = useState(0);
 
@@ -120,51 +126,57 @@ const ExploreLanding: React.FC<Props> = ({
 				heroBooks.length > 0 && <Hero books={heroBooks} onOpen={onOpen} />
 			)}
 
-			{personalShelves}
+			{!isPersonalPending && (
+				<>
+					{personalShelves}
 
-			{/* Web novels stay together and high; each half loads and fails on its own. */}
-			<TrendingWebNovels onOpen={onOpenWebNovel} />
-			<WebNovelsSection />
+					{/* Web novels stay together and high; each half loads and fails on its own. */}
+					<TrendingWebNovels onOpen={onOpenWebNovel} />
+					<WebNovelsSection />
 
-			{/* Held in the catalog shelves' own slot: skeletons above the personal
+					{/* Held in the catalog shelves' own slot: skeletons above the personal
 			    shelves pushed those down, then let them jump up on load. */}
-			{landingQuery.isPending && (
-				<>
-					<ShelfSkeleton />
-					<ShelfSkeleton />
-					<ShelfSkeleton />
-				</>
-			)}
-			{data && (
-				<>
-					{data.recently_added &&
-						catalogShelf("recently_added", "Recently added", data.recently_added, {
-							scope: "catalog",
-							sort: "recent",
-						})}
-					{catalogShelf("most_read", "Most read", data.most_read, {
-						scope: "catalog",
-						sort: "popular",
-					})}
-					{catalogShelf("featured_se", "New from Standard Ebooks", data.featured_se, {
-						source: "standard_ebooks",
-						sort: "recent",
-					})}
-					{data.genres.map((g) => catalogShelf(`genre:${g.id}`, g.label, g.books, { genre: g.id }))}
-				</>
-			)}
+					{landingQuery.isPending && (
+						<>
+							<ShelfSkeleton />
+							<ShelfSkeleton />
+							<ShelfSkeleton />
+						</>
+					)}
+					{data && (
+						<>
+							{data.recently_added &&
+								catalogShelf("recently_added", "Recently added", data.recently_added, {
+									scope: "catalog",
+									sort: "recent",
+								})}
+							{catalogShelf("most_read", "Most read", data.most_read, {
+								scope: "catalog",
+								sort: "popular",
+							})}
+							{catalogShelf("featured_se", "New from Standard Ebooks", data.featured_se, {
+								source: "standard_ebooks",
+								sort: "recent",
+							})}
+							{data.genres.map((g) =>
+								catalogShelf(`genre:${g.id}`, g.label, g.books, { genre: g.id }),
+							)}
+						</>
+					)}
 
-			<Shelf
-				title="Random picks"
-				books={randomQuery.data?.results ?? []}
-				onOpen={onOpen}
-				onSeeAll={() => onBrowse({ source: "standard_ebooks" })}
-				onShuffle={() => setShuffleNonce((n) => n + 1)}
-				isShuffling={randomQuery.isFetching}
-				isLoading={randomQuery.isPending}
-				error={randomQuery.isError ? randomQuery.error : undefined}
-				onRetry={() => randomQuery.refetch()}
-			/>
+					<Shelf
+						title="Random picks"
+						books={randomQuery.data?.results ?? []}
+						onOpen={onOpen}
+						onSeeAll={() => onBrowse({ source: "standard_ebooks" })}
+						onShuffle={() => setShuffleNonce((n) => n + 1)}
+						isShuffling={randomQuery.isFetching}
+						isLoading={randomQuery.isPending}
+						error={randomQuery.isError ? randomQuery.error : undefined}
+						onRetry={() => randomQuery.refetch()}
+					/>
+				</>
+			)}
 		</div>
 	);
 };

@@ -85,8 +85,6 @@ const stepperValue = (view: Rendered) =>
 	Number(
 		view.container.querySelector("[data-testid=rsvp-wpm-value], .rsvp-wpm-value")?.textContent,
 	);
-const voiceWpm = (view: Rendered) =>
-	view.container.querySelector("[data-testid=rsvp-voice-wpm]")?.textContent;
 
 let view: Rendered | undefined;
 afterEach(() => {
@@ -94,23 +92,23 @@ afterEach(() => {
 	view = undefined;
 });
 
-describe("ArrowUp/ArrowDown in RSVP", () => {
-	it("steps the read-aloud speed within its limits while audio is on, the stepper keeping the RSVP speed", async () => {
+describe("RSVP speed: ArrowUp/ArrowDown and the stepper", () => {
+	it("steps the voice speed that paces the words while audio is on, the stepper showing that same speed", async () => {
 		const { max, step } = SETTING_CONSTRAINTS.TTS_WPM;
 		view = await render(<Reader isAudioOn ttsWpm={max - step - 5} />);
+		expect(view.getButton("Increase voice speed")).toBeTruthy();
 
 		press("ArrowUp");
 		expect(speeds).toEqual({ wpm: SETTINGS.wpm, ttsWpm: max - 5 });
-		expect(voiceWpm(view)).toBe(`Voice ${max - 5} wpm`);
-		expect(stepperValue(view)).toBe(SETTINGS.wpm);
+		expect(stepperValue(view)).toBe(max - 5);
 
 		press("ArrowUp");
 		expect(speeds.ttsWpm).toBe(max);
-		expect(voiceWpm(view)).toBe(`Voice ${max} wpm`);
+		expect(stepperValue(view)).toBe(max);
 
-		press("ArrowDown");
+		act(() => view?.getButton("Decrease voice speed").click());
 		expect(speeds).toEqual({ wpm: SETTINGS.wpm, ttsWpm: max - step });
-		expect(voiceWpm(view)).toBe(`Voice ${max - step} wpm`);
+		expect(stepperValue(view)).toBe(max - step);
 	});
 
 	it("steps the RSVP wpm while audio is off", async () => {

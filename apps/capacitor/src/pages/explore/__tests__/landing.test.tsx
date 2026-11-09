@@ -254,6 +254,26 @@ describe("Explore landing", () => {
 		expect(before).toHaveLength(1);
 	});
 
+	it("shows the personal shelves and everything below them only once the library is read", async () => {
+		getLanding.mockResolvedValue(LANDING);
+		view = await render(
+			<ExploreLanding
+				lang="en"
+				onOpen={vi.fn()}
+				onOpenWebNovel={vi.fn()}
+				onBrowse={vi.fn()}
+				onBrowseTags={vi.fn()}
+				personalShelves={<div data-testid="personal">Personal shelves</div>}
+				isPersonalPending
+			/>,
+		);
+		await flush();
+		expect(view.container.querySelector('[data-testid="personal"]')).toBeNull();
+		expect(view.text()).toContain("Pride and Prejudice");
+		expect(view.text()).not.toContain("Fresh Arrival");
+		expect(sectionTitled("Trending web novels")).toBeUndefined();
+	});
+
 	it("shows skeletons, not a spinner, while loading", async () => {
 		getLanding.mockImplementation(() => new Promise(() => undefined));
 		view = await renderLanding();

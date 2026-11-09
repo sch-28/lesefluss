@@ -15,7 +15,7 @@ import {
 	DrawerTitle,
 	drawerSnapPoints,
 } from "@lesefluss/ui/drawer";
-import { ToggleGroup, ToggleGroupItem } from "@lesefluss/ui/toggle-group";
+import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
 import { Compass, Plus } from "lucide-react";
 import type React from "react";
@@ -150,27 +150,33 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 			>
 				<DrawerTitle className="sr-only">Annotations</DrawerTitle>
 				<DrawerHeader className="flex-row items-center gap-2 px-3">
-					<ToggleGroup
-						type="single"
-						variant="outline"
+					<SegmentedControl
+						aria-label="Annotations"
 						value={tab}
-						onValueChange={(v) => {
-							if (v) setTab(v as Tab);
-						}}
-						// Scrolls sideways rather than breaking a label mid-word at a large font scale.
-						className="min-w-0 flex-1 justify-start overflow-x-auto [scrollbar-width:none] [&>*]:h-auto [&>*]:min-h-9 [&>*]:flex-none [&>*]:whitespace-nowrap"
-					>
-						{hasContents && <ToggleGroupItem value="contents">Contents</ToggleGroupItem>}
-						{hasChapters && <ToggleGroupItem value="chapters">Chapters</ToggleGroupItem>}
-						<ToggleGroupItem value="bookmarks">
-							Bookmarks
-							{hasBookmarks && (
-								<span className="ml-1 text-muted-foreground tabular-nums">{bookmarks.length}</span>
-							)}
-						</ToggleGroupItem>
-						<ToggleGroupItem value="highlights">Highlights</ToggleGroupItem>
-						<ToggleGroupItem value="glossary">Glossary</ToggleGroupItem>
-					</ToggleGroup>
+						onValueChange={setTab}
+						options={[
+							...(hasContents ? [{ value: "contents" as const, label: "Contents" }] : []),
+							...(hasChapters ? [{ value: "chapters" as const, label: "Chapters" }] : []),
+							{
+								value: "bookmarks",
+								ariaLabel: "Bookmarks",
+								label: (
+									<>
+										Bookmarks
+										{hasBookmarks && (
+											<span className="text-muted-foreground tabular-nums">{bookmarks.length}</span>
+										)}
+									</>
+								),
+							},
+							{ value: "highlights", label: "Highlights" },
+							{ value: "glossary", label: "Glossary" },
+						]}
+						// Tight items fit four tabs beside the browse toggle at 390px; a fifth tab or a
+						// large font scale scrolls sideways rather than breaking a label mid-word.
+						className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none]"
+						itemClassName="flex-[1_0_auto] gap-1 whitespace-nowrap px-1 text-[0.8125rem]"
+					/>
 					{browse && (
 						<Button
 							variant="outline"

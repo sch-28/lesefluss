@@ -1,5 +1,5 @@
-import { SETTING_CONSTRAINTS } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
+import { Stepper } from "@lesefluss/ui/stepper";
 import { cn } from "@lesefluss/ui/utils";
 import {
 	AudioLines,
@@ -16,8 +16,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import type { SleepTimer } from "../../services/tts";
 import type { ReadAloudStatus } from "./use-read-aloud";
-
-const { min: MIN_WPM, max: MAX_WPM, step: WPM_STEP } = SETTING_CONSTRAINTS.TTS_WPM;
+import { steppedWpm, TTS_WPM_RANGE } from "./wpm";
 
 interface Props {
 	status: ReadAloudStatus;
@@ -103,30 +102,25 @@ export function ReadAloudControls({
 					<Moon />
 					{sleepLabel && <span className="text-xs tabular-nums">{sleepLabel}</span>}
 				</Button>
-				<button
-					type="button"
-					className="rsvp-wpm-btn"
-					onClick={() => onWpmChange(Math.max(MIN_WPM, wpm - WPM_STEP))}
-					aria-label="Slower"
-				>
-					−
-				</button>
-				<span className="read-aloud-wpm" aria-live="polite">
-					<span className="rsvp-wpm-value">{wpm}</span>
-					<span className="rsvp-wpm-label">
-						{measuredWpm !== null && Math.abs(measuredWpm - wpm) >= WPM_STEP
-							? `now ${measuredWpm}`
-							: "wpm"}
-					</span>
-				</span>
-				<button
-					type="button"
-					className="rsvp-wpm-btn"
-					onClick={() => onWpmChange(Math.min(MAX_WPM, wpm + WPM_STEP))}
-					aria-label="Faster"
-				>
-					+
-				</button>
+				<Stepper
+					label="Voice speed"
+					className="border-0 text-[var(--reader-text)]"
+					valueClassName="min-w-[6ch] font-normal"
+					canDecrement={wpm > TTS_WPM_RANGE.min}
+					canIncrement={wpm < TTS_WPM_RANGE.max}
+					onDecrement={() => onWpmChange(steppedWpm(wpm, TTS_WPM_RANGE, -1))}
+					onIncrement={() => onWpmChange(steppedWpm(wpm, TTS_WPM_RANGE, 1))}
+					value={
+						<span className="read-aloud-wpm">
+							<span className="rsvp-wpm-value">{wpm}</span>
+							<span className="rsvp-wpm-label">
+								{measuredWpm !== null && Math.abs(measuredWpm - wpm) >= TTS_WPM_RANGE.step
+									? `now ${measuredWpm}`
+									: "wpm"}
+							</span>
+						</span>
+					}
+				/>
 				<Button variant="ghost" size="icon" onClick={onOpenVoice} aria-label="Voice">
 					<AudioLines />
 				</Button>

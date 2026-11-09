@@ -26,11 +26,16 @@ const ORDER: readonly BookActionId[] = [
 	"collection",
 	"edit",
 	"share",
-	"reset",
 	"extras",
 	"select",
+	"reset",
 	"delete",
 ];
+
+/** Reset progress and Delete close the menu as their own group, set apart from the rest. */
+export function isDangerAction(id: string): boolean {
+	return id === "reset" || id === "delete";
+}
 
 export function bookActionIds(options: {
 	canShare: boolean;
@@ -40,7 +45,7 @@ export function bookActionIds(options: {
 	omitsDestructive?: boolean;
 }): BookActionId[] {
 	return ORDER.filter((id) => {
-		if (id === "reset" || id === "delete") return !options.omitsDestructive;
+		if (isDangerAction(id)) return !options.omitsDestructive;
 		if (id === "share") return options.canShare;
 		if (id === "select") return options.canSelect;
 		if (id === "extras") return options.hasExtras;

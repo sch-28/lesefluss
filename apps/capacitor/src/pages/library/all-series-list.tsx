@@ -41,7 +41,8 @@ function Segment<T extends string>({
 	return (
 		<SegmentedControl
 			aria-label={label}
-			className="w-auto shrink-0"
+			className="sm:flex-1"
+			itemClassName="whitespace-nowrap"
 			value={value}
 			onValueChange={onChange}
 			options={options}
@@ -144,7 +145,7 @@ export function AllSeriesList({ entries, covers, onPick, onExit, autoFocus, comp
 
 	return (
 		<div data-all-series className={cn("flex min-h-0 flex-col", compact && "h-full")}>
-			<div className={cn("flex flex-wrap items-center gap-2", compact ? "px-4" : "mb-3")}>
+			<div className={cn("flex flex-col gap-2 sm:flex-row", compact ? "px-4" : "mb-3")}>
 				<Segment label="Kind" options={KIND_OPTIONS} value={kind} onChange={setKind} />
 				<Segment label="Sort" options={SORT_OPTIONS} value={sort} onChange={setSort} />
 			</div>

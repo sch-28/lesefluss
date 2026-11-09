@@ -30,7 +30,7 @@ export const CardFieldsPanel: React.FC<Props> = ({
 				<ul className="m-0 flex flex-1 list-none flex-col p-0">
 					{CARD_FIELDS.map(({ id, label }) => (
 						<li key={id}>
-							<label className="flex h-8 items-center gap-2 text-sm">
+							<label className="flex min-h-11 items-center gap-2 text-sm">
 								<input
 									type="checkbox"
 									checked={fields.includes(id)}

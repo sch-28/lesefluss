@@ -7,10 +7,13 @@ import {
 } from "../services/stats/today-goal-summary";
 import { GoalRing } from "./goal-ring";
 
-/** Today's goal ring for the library header: a full track with the minutes read inside, so it reads as a gauge and never as a spinner. */
+/**
+ * Today's goal ring for the library header: a full track with the minutes read inside, so it
+ * reads as a gauge and never as a spinner. Phone only: from md up the sidebar's goal card carries it.
+ */
 export function HeaderGoalRing() {
 	const plans = queryHooks.useActiveGoalPlans();
-	if (!plans.data) return <span aria-hidden="true" className="size-11 shrink-0" />;
+	if (!plans.data) return <span aria-hidden="true" className="size-11 shrink-0 md:hidden" />;
 	const summary = summarizeTodayGoals(plans.data);
 	if (summary.kind !== "goals") return null;
 	return (
@@ -19,7 +22,7 @@ export function HeaderGoalRing() {
 			to="/tabs/stats"
 			aria-label={`Today's goal, ${formatGoalProgress(summary)}`}
 			data-testid="header-goal-ring"
-			className="inline-flex size-11 shrink-0 items-center justify-center rounded-full outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+			className="inline-flex size-11 shrink-0 items-center justify-center rounded-full outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 md:hidden"
 		>
 			<GoalRing
 				size={36}

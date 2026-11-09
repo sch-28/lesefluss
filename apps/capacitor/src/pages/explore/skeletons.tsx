@@ -9,9 +9,16 @@ const SKELETON_BLOCK = "animate-pulse rounded bg-muted";
 export const CardSkeleton: React.FC = () => (
 	<div className="flex w-full flex-col" data-testid="card-skeleton">
 		<div className="aspect-2/3 w-full animate-pulse rounded-sm border border-border bg-muted" />
+		{/* The line boxes of ResultCard's title (two lines), author and length, so a
+		    loaded shelf or grid row keeps the skeleton's height. */}
 		<div className="px-0.5 pt-1">
-			<div className={cn(SKELETON_BLOCK, "h-3.5 w-11/12")} />
-			<div className={cn(SKELETON_BLOCK, "mt-1.5 h-3 w-2/3")} />
+			<div className="h-[2lh] text-[0.85rem] leading-[1.2]">
+				<div className={cn(SKELETON_BLOCK, "h-[0.9lh] w-11/12")} />
+			</div>
+			<div className="mt-0.5 flex h-[1lh] items-center text-[0.75rem]">
+				<div className={cn(SKELETON_BLOCK, "h-3 w-2/3")} />
+			</div>
+			<div className="mt-1 h-[1lh] text-[0.7rem]" />
 		</div>
 	</div>
 );
@@ -46,12 +53,16 @@ export const CardGridSkeleton: React.FC<{
 	</div>
 );
 
-export const ShelfStripSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) => (
+/** `isSpacer`: an invisible copy that only holds the strip's height. */
+export const ShelfStripSkeleton: React.FC<{ count?: number; isSpacer?: boolean }> = ({
+	count = 6,
+	isSpacer = false,
+}) => (
 	<div
-		className="flex gap-3 overflow-hidden pb-2"
-		role="status"
-		aria-busy="true"
-		aria-label="Loading"
+		className={cn("flex gap-3 overflow-hidden pb-2", isSpacer && "invisible")}
+		{...(isSpacer
+			? { "aria-hidden": true }
+			: { role: "status", "aria-busy": true, "aria-label": "Loading" })}
 	>
 		{skeletonKeys(count).map((key) => (
 			<div key={key} className="shrink-0" style={{ width: "7.5rem" }}>

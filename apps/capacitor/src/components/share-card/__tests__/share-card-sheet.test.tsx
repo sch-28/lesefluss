@@ -87,6 +87,7 @@ describe("ShareCardSheet", () => {
 
 	it("redraws as a square and without the handle once toggled off", async () => {
 		const v = await open();
+		expect(v.getButton("Square").closest('[data-slot="segmented-control"]')).not.toBeNull();
 		await click(v.getButton("Square"));
 		expect(lastRender()[1]).toEqual({ format: "square", showHandle: true });
 		const toggle = v.container.querySelector<HTMLElement>("[aria-labelledby=share-card-handle]");

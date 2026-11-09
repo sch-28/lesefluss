@@ -10,6 +10,7 @@ import {
 } from "@lesefluss/ui/dialog";
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@lesefluss/ui/drawer";
 import { Input } from "@lesefluss/ui/input";
+import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { SheetDoneButton, SheetHeaderBar } from "@lesefluss/ui/sheet-header";
 import { cn } from "@lesefluss/ui/utils";
 import { useNavigate } from "@tanstack/react-router";
@@ -86,22 +87,16 @@ const MatchSwitch: React.FC<{
 	op: string;
 	onChange: (op: "and" | "or") => void;
 }> = ({ op, onChange }) => (
-	<fieldset aria-label="Match" className="m-0 inline-flex rounded-md border border-border p-0.5">
-		{(["and", "or"] as const).map((value) => (
-			<button
-				key={value}
-				type="button"
-				aria-pressed={op === value}
-				onClick={() => onChange(value)}
-				className={cn(
-					"rounded px-2 py-0.5 font-medium text-xs uppercase tracking-wide",
-					op === value ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-				)}
-			>
-				{value === "and" ? "All" : "Any"}
-			</button>
-		))}
-	</fieldset>
+	<SegmentedControl
+		aria-label="Match"
+		value={op === "or" ? "or" : "and"}
+		onValueChange={onChange}
+		options={[
+			{ value: "and", label: "All" },
+			{ value: "or", label: "Any" },
+		]}
+		className="w-auto"
+	/>
 );
 
 /** Up, down and into a group: how a row moves without a drag, and on the phone. */

@@ -1,6 +1,7 @@
 import { isMeasurableSitting, READING_MODES, type ReadingMode, wpmFrom } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
+import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { useId, useState } from "react";
 import { EntryDialog } from "../../../components/entry-dialog";
 import { queryHooks } from "../../../services/db/hooks";
@@ -115,20 +116,12 @@ function SessionDetailForm({
 
 			<fieldset className="m-0 flex flex-col gap-1 border-0 p-0 text-sm">
 				<legend className="mb-1 font-medium">Mode</legend>
-				<div className="flex flex-wrap gap-1.5">
-					{READING_MODES.map((m) => (
-						<Button
-							key={m}
-							type="button"
-							size="sm"
-							variant={m === mode ? "default" : "outline"}
-							aria-pressed={m === mode}
-							onClick={() => setMode(m)}
-						>
-							{MODE_BADGE_LABELS[m]}
-						</Button>
-					))}
-				</div>
+				<SegmentedControl
+					aria-label="Mode"
+					value={mode}
+					onValueChange={setMode}
+					options={READING_MODES.map((m) => ({ value: m, label: MODE_BADGE_LABELS[m] }))}
+				/>
 			</fieldset>
 
 			<div className="flex gap-2 pt-1">

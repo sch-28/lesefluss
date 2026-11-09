@@ -6,6 +6,7 @@ import {
 	DrawerFooter,
 	DrawerTitle,
 } from "@lesefluss/ui/drawer";
+import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { Switch } from "@lesefluss/ui/switch";
 import { cn } from "@lesefluss/ui/utils";
 import { Loader2, Share2 } from "lucide-react";
@@ -94,22 +95,13 @@ export function ShareCardSheet({
 					<DrawerDescription className="sr-only">
 						An image of these stats to share.
 					</DrawerDescription>
-					<div className="flex rounded-lg bg-muted p-0.5">
-						{FORMATS.map((f) => (
-							<button
-								key={f.id}
-								type="button"
-								aria-pressed={format === f.id}
-								onClick={() => setFormat(f.id)}
-								className={cn(
-									"rounded-md px-3 py-1 font-medium text-sm",
-									format === f.id ? "bg-background shadow-sm" : "text-muted-foreground",
-								)}
-							>
-								{f.label}
-							</button>
-						))}
-					</div>
+					<SegmentedControl
+						aria-label="Format"
+						value={format}
+						onValueChange={setFormat}
+						options={FORMATS.map((f) => ({ value: f.id, label: f.label }))}
+						className="w-auto"
+					/>
 				</div>
 				<div className="flex min-h-0 flex-1 justify-center px-5">
 					<div

@@ -56,7 +56,7 @@ export type RsvpViewHandle = {
 	forwardWord(): void;
 	backSentence(): void;
 	forwardSentence(): void;
-	/** Steps the speed the stepper shows: the read-aloud speed while audio is on. */
+	/** Steps the speed that paces the words: the voice's while read-aloud is on. */
 	stepWpm(direction: 1 | -1): void;
 	/** Shows a word without playback or a position report. */
 	showWord(word: number): void;
@@ -544,20 +544,15 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 						{!isShowingPlayback && (
 							<>
 								<RsvpControls
-									wpm={settings.wpm}
-									audio={
-										audio && {
-											isOn: audio.isOn,
-											onToggle: audio.onToggleAudio,
-											voiceWpm: audio.wpm,
-										}
-									}
+									wpm={speed.wpm}
+									range={speed.range}
+									audio={audio && { isOn: audio.isOn, onToggle: audio.onToggleAudio }}
 									onBackSentence={backSentence}
 									onBackWord={backWord}
 									onPlayPause={voice ? voice.onTogglePlay : togglePlayPause}
 									onForwardWord={forwardWord}
 									onForwardSentence={forwardSentence}
-									onWpmChange={changeWpm}
+									onWpmChange={speed.onChange}
 								/>
 								<button type="button" className="rsvp-dict-button" onClick={handleDictClick}>
 									<BookOpen className="size-5" />

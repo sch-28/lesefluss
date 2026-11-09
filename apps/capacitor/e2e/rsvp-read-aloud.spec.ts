@@ -210,7 +210,7 @@ test("the speed stepper sets the voice speed while audio is on", async ({ page }
 	await controlsToggle(page).click();
 	await expect(value).not.toHaveText(String(rsvpWpm + 25));
 	const voiceWpm = Number(await value.textContent());
-	await page.getByRole("button", { name: "Increase speed" }).click();
+	await page.getByRole("button", { name: "Increase voice speed" }).click();
 	await expect(value).toHaveText(String(voiceWpm + 10));
 
 	await controlsToggle(page).click();
