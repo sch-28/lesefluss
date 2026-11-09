@@ -1,0 +1,55 @@
+solutions:
+  ui_rules:
+    status: addition
+    title: Lesefluss main tasks, placement, loading and themes
+    body: |-
+      **Main tasks** the UI check walks, on the phone first (390 px), each in the fewest taps the
+      rules allow:
+      1. Continue reading the current book from the Library.
+      2. Start a new book from the Library.
+      3. Change font size and theme while reading: at most 2 taps, through an Aa control in the
+         reader header.
+      4. Set a daily goal and check today's progress.
+      5. Find your reading speed.
+      6. Find and fix a wrong reading session.
+      7. Add a book to a series.
+      8. Import a book.
+      9. Find a setting, such as the speed window or the RSVP speed.
+      10. Get back with Android back: close the overlay, then leave the collapse or mode, then the
+          sub-page to its parent, then a root tab to the Library, then exit; never into old
+          cross-tab history.
+
+      **Placement**
+      - Every setting lives on a Settings sub-page with an icon, never loose in the Settings root.
+      - Appearance is reached from the reader header (Aa), not from the ⋮ menu; the ⋮ menu holds
+        rare reading actions only.
+      - Destructive actions (Delete, Reset progress, Delete all sessions) sit in a separate danger
+        group, never last in a reading menu or a list.
+      - The default Library card shows title and author only; series, rating and other fields are
+        opt-in in the View sheet (LESE-190.6).
+      - A sheet has a left-aligned title, keeps the page gutter and clears the gesture bar.
+
+      **Loading** (the user's rule, 2026-11-09): a data card reserves its loaded height. A skeleton
+      only when its height matches the loaded height exactly, else a spinner in a box of that
+      height. Never merge queries just to avoid a shift: it costs load time and navigation delay.
+
+      **Themes:** dark (default), sepia, light and high contrast (`dark high-contrast`, white on
+      black with yellow accents), plus e-ink mode, which renders light with a grey-safe palette
+      (`apps/capacitor/src/theme/`). Every screen works in all of them. The reader theme is the
+      app theme: picking one in the reader changes the whole app (LESE-190.7). The four themes
+      change colours only, never font size, weight or spacing; e-ink mode may add borders, bold
+      and underline cues.
+
+      **Gap scale:** the fluss standard as Tailwind steps `1`, `2`, `3`, `4`, `6`, `8` (4, 8, 12,
+      16, 24, 32 px at the default 16 px App font size; spacing scales with it, as it is in rem);
+      `packages/ui` defines no spacing tokens of its own.
+
+      **Beyond the standard**
+      - Every screen is reviewed in its empty, few-data and full states, in dark and light.
+      - Facts with one source and formatter here: goal progress, reading time totals, wpm, time
+        left, series counts; sittings under a minute count nowhere.
+    codePaths:
+      - apps/capacitor/src/theme/
+      - apps/capacitor/src/contexts/theme-context.tsx
+      - packages/ui/src/
+    decisionTicket: LESE-190
