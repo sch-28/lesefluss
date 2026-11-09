@@ -46,7 +46,7 @@ describe.each([
 ])("summariseStreak in %s", (tz) => {
 	useTimezone(tz);
 
-	it("counts a day with a single short sitting", () => {
+	it("counts a day from any positive-duration row it is given", () => {
 		const day = at(2026, 5, 10);
 		const result = summariseStreak([{ startedAt: day, durationMs: 20_000 }], day + minutes(60));
 		expect(result.current).toBe(1);
@@ -67,6 +67,17 @@ describe.each([
 		// At 03:00 on the 11th a sitting would still count for the 10th.
 		expect(summariseStreak(rows, at(2026, 5, 11, 3)).current).toBe(1);
 		expect(summariseStreak(rows, at(2026, 5, 11, 5)).current).toBe(0);
+	});
+
+	// Day keys and hours taken in UTC would split this one local day into two
+	// reading days in Auckland and New York (and in Berlin via the 04:00 cutoff).
+	it("counts two sittings on one local day near both ends as one day", () => {
+		const rows = [at(2026, 5, 10, 4) + minutes(30), at(2026, 5, 10, 23) + minutes(30)].map(
+			(startedAt) => ({ startedAt, durationMs: minutes(20) }),
+		);
+		const result = summariseStreak(rows, at(2026, 5, 10, 23) + minutes(55));
+		expect(result.current).toBe(1);
+		expect(result.longest).toBe(1);
 	});
 
 	it("counts consecutive local days as one streak", () => {

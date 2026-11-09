@@ -20,8 +20,15 @@ vi.mock("../index", () => ({
 }));
 afterAll(close);
 
-const { getBookStats, getCurrentlyReading, getFinishedBooks, getPeriodTotals, getTopBooks } =
-	await import("../queries/stats");
+const {
+	getBookStats,
+	getCurrentlyReading,
+	getDailyReading,
+	getFinishedBooks,
+	getPeriodTotals,
+	getStreak,
+	getTopBooks,
+} = await import("../queries/stats");
 
 const BOOK_ID = "b1";
 const MINUTE = 60_000;
@@ -306,5 +313,49 @@ describe("getTopBooks", () => {
 		insertSession({ startedAt: 1000, ...HONEST });
 
 		expect(await getTopBooks({ since: 0 })).toEqual([]);
+	});
+
+	it("leaves out sittings under a minute, as Stats › Sessions does", async () => {
+		insertBook();
+		insertBook({ id: "glanced" });
+		insertSession({ startedAt: 1000, ...HONEST });
+		insertSession({ startedAt: 2000, durationMs: 30_000, wordsRead: 150 });
+		insertSession({ startedAt: 3000, bookId: "glanced", durationMs: 30_000, wordsRead: 150 });
+
+		const works = await getTopBooks({ since: 0 });
+		expect(works.map((w) => w.workId)).toEqual([BOOK_ID]);
+		expect(works[0]?.durationMs).toBe(HONEST.durationMs);
+	});
+});
+
+describe("sittings under a minute", () => {
+	const SHORT = { durationMs: 30_000, wordsRead: 150 };
+
+	it("do not count toward the streak", async () => {
+		// Midday, so the late-night rule cannot count the sitting toward yesterday too.
+		const now = new Date(2026, 4, 10, 12).getTime();
+		vi.useFakeTimers({ toFake: ["Date"], now });
+		try {
+			insertBook();
+			insertSession({ startedAt: now - 5 * MINUTE, ...SHORT });
+			expect((await getStreak()).current).toBe(0);
+
+			insertSession({ startedAt: now - 20 * MINUTE, ...HONEST });
+			expect((await getStreak()).current).toBe(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("do not show on the streak calendar", async () => {
+		insertBook();
+		const day = new Date(2026, 4, 10, 12).getTime();
+		insertSession({ startedAt: day, ...HONEST });
+		insertSession({ startedAt: day + 60 * MINUTE, ...SHORT });
+		insertSession({ startedAt: day - 2 * 24 * 60 * MINUTE, ...SHORT });
+
+		const { msByDay, readDays } = await getDailyReading();
+		expect([...msByDay]).toEqual([["2026-05-10", HONEST.durationMs]]);
+		expect(readDays).toEqual(new Set(["2026-05-10"]));
 	});
 });

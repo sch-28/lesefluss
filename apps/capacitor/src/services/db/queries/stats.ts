@@ -15,7 +15,7 @@ import {
 	speedWindowRows,
 	THIRTY_DAYS_MS,
 } from "@lesefluss/core";
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, or, type SQL, sql } from "drizzle-orm";
 import { formatShortDate } from "../../../utils/date-utils";
 import {
 	bucketMinutesByHour,
@@ -38,6 +38,12 @@ import { db } from "../index";
 import { bookContent, books, readingSessions, series } from "../schema";
 import { hasRealProgressSql } from "./books";
 import { getLatestPlausibleSpeedTest, getSpeedTests } from "./speed-tests";
+
+/** Sittings saved under the one-minute bar before it existed stay out of every
+ *  total, list and streak, as Stats › Sessions never lists them. */
+function isRealSittingSql(): SQL {
+	return gte(readingSessions.durationMs, REAL_SITTING_MS);
+}
 
 export interface PeriodTotals {
 	minutes: number;
@@ -64,8 +70,7 @@ export async function getPeriodTotals(
 			and(
 				gte(readingSessions.startedAt, periodStart),
 				lt(readingSessions.startedAt, periodEnd),
-				// Sittings saved under the bar before it existed: Stats › Sessions never lists them.
-				gte(readingSessions.durationMs, REAL_SITTING_MS),
+				isRealSittingSql(),
 			),
 		);
 
@@ -110,6 +115,7 @@ export async function getStreak(): Promise<StreakResult> {
 			durationMs: readingSessions.durationMs,
 		})
 		.from(readingSessions)
+		.where(isRealSittingSql())
 		.orderBy(readingSessions.startedAt);
 
 	return summariseStreak(rows, Date.now());
@@ -146,7 +152,9 @@ export async function getTopBooks(opts: { since: number; limit?: number }): Prom
 		})
 		.from(readingSessions)
 		.innerJoin(books, eq(books.id, readingSessions.bookId))
-		.where(and(gte(readingSessions.startedAt, opts.since), eq(books.deleted, false)))
+		.where(
+			and(gte(readingSessions.startedAt, opts.since), eq(books.deleted, false), isRealSittingSql()),
+		)
 		.groupBy(
 			readingSessions.bookId,
 			books.seriesId,
@@ -338,7 +346,8 @@ async function coversFor(ids: string[]): Promise<Map<string, string | null>> {
 export async function getDailyReading(): Promise<DailyReading> {
 	const rows = await db
 		.select({ startedAt: readingSessions.startedAt, durationMs: readingSessions.durationMs })
-		.from(readingSessions);
+		.from(readingSessions)
+		.where(isRealSittingSql());
 	return { msByDay: sumDurationByLocalDay(rows), readDays: readDaysOf(rows) };
 }
 
@@ -559,9 +568,7 @@ export async function getBookStats(bookId: string): Promise<BookStats> {
 			wordsRead: readingSessions.wordsRead,
 		})
 		.from(readingSessions)
-		.where(
-			and(eq(readingSessions.bookId, bookId), gte(readingSessions.durationMs, REAL_SITTING_MS)),
-		)
+		.where(and(eq(readingSessions.bookId, bookId), isRealSittingSql()))
 		.orderBy(readingSessions.startedAt);
 
 	if (rows.length === 0) {
