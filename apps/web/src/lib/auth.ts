@@ -6,6 +6,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { db } from "~/db";
 import * as authSchema from "~/db/auth-schema";
 import { getTrustedAuthOrigins } from "./allowed-origins";
+import { DISABLED_AUTH_PATHS } from "./auth-disabled-paths";
 import { generateDeviceLinkUserCode } from "./device-link-code";
 import { passwordResetEmail, sendMail, verificationEmail } from "./mailer";
 
@@ -86,19 +87,7 @@ export const auth = betterAuth({
 			verificationUri: `${requireEnv("BETTER_AUTH_URL")}/link`,
 		}),
 	],
-	// Accounts are deleted only through deleteUserAccount, which purges and
-	// deletes in one transaction. better-auth's own routes delete the user row
-	// separately from any purge (or skip it), so they are switched off. Linking,
-	// unlinking and token refresh are off because they let a session alone write
-	// account rows, which accountDeletionRefusal reads as proof of a fresh sign-in.
-	disabledPaths: [
-		"/delete-user",
-		"/admin/remove-user",
-		"/link-social",
-		"/unlink-account",
-		"/get-access-token",
-		"/refresh-token",
-	],
+	disabledPaths: DISABLED_AUTH_PATHS,
 });
 
 export type Session = typeof auth.$Infer.Session;

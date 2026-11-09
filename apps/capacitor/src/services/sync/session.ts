@@ -8,6 +8,7 @@ import {
 import { syncKeys } from "../db/hooks/query-keys";
 import { clearPendingLink } from "../deep-links/pending-link";
 import { queryClient } from "../query-client";
+import { sittingCarries } from "../reading-sessions/carry";
 import { clearSocialQueries } from "../social/cache";
 import { SYNC_URL } from "./auth-client";
 import { clearContentQuota, clearQuotaBlock } from "./content-quota";
@@ -97,6 +98,7 @@ export async function clearAccountScopedState(): Promise<void> {
 	// Usage and not-backed-up books describe the previous account until a pull lands.
 	queryClient.removeQueries({ queryKey: syncKeys.all });
 	await clearPendingLink();
+	sittingCarries.clear();
 }
 
 /**

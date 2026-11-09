@@ -55,6 +55,8 @@ The position pair identifying a highlight in a book. Shape: `{ startWord, startC
 
 A continuous reading session: start, end, words read, target book. Lives in the local database. Syncs to the server.
 
+*Real sitting*: a session of at least one minute (`REAL_SITTING_MS`) with at least 5 words read. A shorter *burst* is not written; it waits in memory as a *carry*, and the next burst on the same book joins it if it starts within a sitting's longest pause (10 minutes) on the same day, in any mode: closing and reopening, switching modes and Quick RSVP windows add up to one sitting, saved once it reaches the minute. A sitting joined across modes is recorded as the mode it spent the most active time in; an RSVP-majority row keeps the RSVP dial. Carries are lost when the app restarts and dropped on sign-out, account change and a stats wipe.
+
 *Words read* (`reading_sessions.wordsRead`) is the total length of the [read spans](#read-span), not the distance between start and end position.
 
 *Furthest word* (`reading_sessions.furthestWord`) is the end of the highest read span: how far reading got in the sitting, where the end position is wherever a jump or moving back left it. Null on rows recorded before it existed. A sitting never spans local midnight: reading straight through midnight closes it and goes on in a new one from the same spot; a sitting paused, idle or suspended over midnight closes at its last activity and the next activity opens a new one. Each day keeps its own reading, at the cost of one more session for a sitting that crosses midnight. Discarding a sitting whose row was already written (undoing an auto-committed browse) deletes that row locally and on the server. A deleted session is tombstoned on the server and dropped by every other device on its next pull; a sitting still open on a device when its row is deleted goes on under a new id.
@@ -79,7 +81,7 @@ Spans are merged, so a passage re-read in the same sitting counts once, while a 
 
 ### Speed model
 
-How fast this reader reads, from one function (`computeSpeedModel` in `@lesefluss/core`) that the app and the server both run on [session](#session) rows, so every surface shows the same number. Only measurable sittings count (`isMeasurableSitting`: no listening, no position jumps).
+How fast this reader reads, from one function (`computeSpeedModel` in `@lesefluss/core`) that the app and the server both run on [session](#session) rows, so every surface shows the same number. Only measurable sittings count (`isMeasurableSitting`: no listening, no position jumps), and no *skimmed* ones: a scroll or page sitting above 600 wpm or 1.6x the reader's median sitting, or an RSVP sitting above 1.6x the RSVP median (`speedSittings`). A skimmed sitting's time and words still count toward totals, streaks and goals.
 
 - **Reading speed**: words over active time in scroll and page together; the split per mode is kept for the reader.
 - **RSVP speed**: words over active time in RSVP, which is what the engine delivered, shown next to the *dial* (the RSVP wpm setting, stored as `wpmAvg` on RSVP rows). Delivered runs under the dial because of punctuation pauses and the ramp.

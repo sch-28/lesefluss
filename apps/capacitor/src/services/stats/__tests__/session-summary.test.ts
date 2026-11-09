@@ -110,6 +110,10 @@ describe("summarize", () => {
 });
 
 describe("todayMinutes", () => {
+	it("counts whole minutes down, as Sessions shows them", () => {
+		expect(todayMinutes(106_000, 106_000)).toEqual({ earlier: 0, total: 1 });
+	});
+
 	it("splits today into earlier reading and this sitting", () => {
 		expect(todayMinutes(52 * MIN, 34 * MIN)).toEqual({ earlier: 18, total: 52 });
 	});

@@ -89,5 +89,6 @@ export function todayMinutes(
 ): { earlier: number; total: number } {
 	// The sitting's last write may not have landed in today's totals yet.
 	const total = Math.max(todayMs, sittingMs);
-	return { earlier: Math.round((total - sittingMs) / 60_000), total: Math.round(total / 60_000) };
+	// Whole minutes down, as Stats and Sessions show them, so the same day reads the same.
+	return { earlier: Math.floor((total - sittingMs) / 60_000), total: Math.floor(total / 60_000) };
 }

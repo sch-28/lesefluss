@@ -64,7 +64,7 @@ const Caption = ({ children }: { children: ReactNode }) => (
 export function TimeTile({ activeMs, todayMinutes }: { activeMs: number; todayMinutes: number }) {
 	return (
 		<Tile icon={<Clock className="size-3" />} label="Time" testId="summary-time">
-			<Value>{Math.max(1, Math.round(activeMs / 60_000))} min</Value>
+			<Value>{Math.max(1, Math.floor(activeMs / 60_000))} min</Value>
 			<Caption>Today {todayMinutes} min</Caption>
 		</Tile>
 	);

@@ -341,6 +341,8 @@ export class SessionTracker {
 		s.readSpans = s.readSpans
 			.filter(([start]) => start < pos)
 			.map(([start, end]): Span => [start, Math.min(end, pos)]);
+		// The earlier bursts this sitting joined were read, not browsed.
+		for (const [start, end] of s.carried?.readSpans ?? []) creditSpan(s.readSpans, start, end);
 		const words = wordsReadIn(s);
 		s.segmentMarks = s.segmentMarks.map((mark) => Math.min(mark, words));
 		this.notifyFurthestRead();
@@ -387,8 +389,11 @@ export class SessionTracker {
 		const s = this.session;
 		this.session = null;
 		if (s?.hasPersisted) this.opts.remove?.(s.id);
-		// Only the burst being discarded was browsing; the bursts it had joined still wait.
-		else if (s?.carried) this.opts.carry?.stash(s.carried);
+		// Only the burst being discarded was browsing; the bursts it had joined still wait,
+		// under a new id once the joined row is deleted, since the server refuses a deleted id.
+		if (s?.carried) {
+			this.opts.carry?.stash(s.hasPersisted ? { ...s.carried, id: this.newId() } : s.carried);
+		}
 		this.notifyFurthestRead();
 	}
 
@@ -514,7 +519,7 @@ export class SessionTracker {
 
 	/** Joins the book's last short burst when it ended close enough before this one started. */
 	private adoptCarry(s: SessionState): void {
-		const carry = this.opts.carry?.take(this.opts.bookId, this.opts.mode, s.startedAt);
+		const carry = this.opts.carry?.take(this.opts.bookId, s.startedAt);
 		if (!carry) return;
 		s.id = carry.id;
 		s.startedAt = Math.min(carry.startedAt, s.startedAt);
@@ -524,17 +529,44 @@ export class SessionTracker {
 		s.carried = carry;
 	}
 
+	/** Active time per mode: the carried bursts' plus this burst's, as of `activeMs` in all. */
+	private modeActiveMs(s: SessionState, activeMs: number): SittingCarry["modeActiveMs"] {
+		const byMode = { ...s.carried?.modeActiveMs };
+		const own = activeMs - (s.carried?.accumulatedActiveMs ?? 0);
+		byMode[this.opts.mode] = (byMode[this.opts.mode] ?? 0) + Math.max(0, own);
+		return byMode;
+	}
+
+	/**
+	 * A sitting joined across modes is recorded as the mode it spent the most time in;
+	 * this burst's mode wins a tie.
+	 */
+	private rowMode(s: SessionState, activeMs: number): ReadingSessionMode {
+		const byMode = this.modeActiveMs(s, activeMs);
+		let best = this.opts.mode;
+		for (const mode of Object.keys(byMode) as ReadingSessionMode[]) {
+			if ((byMode[mode] ?? 0) > (byMode[best] ?? 0)) best = mode;
+		}
+		return best;
+	}
+
+	/** The dial of the sitting's RSVP reading, this burst's or a carried one's. */
+	private rsvpDialWpm(s: SessionState): number | null {
+		return this.opts.mode === "rsvp" ? this.opts.getWpmSetting() : (s.carried?.rsvpDialWpm ?? null);
+	}
+
 	private stashCarry(s: SessionState): void {
 		if (s.accumulatedActiveMs <= 0 && s.readSpans.length === 0) return;
 		this.opts.carry?.stash({
 			id: s.id,
 			bookId: this.opts.bookId,
-			mode: this.opts.mode,
 			dayKey: s.dayKey,
 			startedAt: s.startedAt,
 			startPos: s.startPos,
 			readSpans: s.readSpans.map(([start, end]): Span => [start, end]),
 			accumulatedActiveMs: s.accumulatedActiveMs,
+			modeActiveMs: this.modeActiveMs(s, s.accumulatedActiveMs),
+			rsvpDialWpm: this.rsvpDialWpm(s),
 			lastActivityAt: this.lastActivityAt,
 		});
 	}
@@ -638,14 +670,13 @@ export class SessionTracker {
 		const furthestRead = furthestReadIn(s);
 		const computedWpm =
 			finalActiveMs > 1000 ? Math.round(wordsRead / (finalActiveMs / 60_000)) : null;
-		const wasCapped =
-			this.opts.mode !== "rsvp" && computedWpm !== null && computedWpm > SANE_WPM_CEILING;
-		const wpmAvg =
-			this.opts.mode === "rsvp" ? this.opts.getWpmSetting() : wasCapped ? null : computedWpm;
+		const mode = this.rowMode(s, finalActiveMs);
+		const wasCapped = mode !== "rsvp" && computedWpm !== null && computedWpm > SANE_WPM_CEILING;
+		const wpmAvg = mode === "rsvp" ? this.rsvpDialWpm(s) : wasCapped ? null : computedWpm;
 		return {
 			id: s.id,
 			bookId: this.opts.bookId,
-			mode: this.opts.mode,
+			mode,
 			startedAt: s.startedAt,
 			// While paused, reading stopped at the last activity, not at the moment
 			// the sitting happens to be written. Backgrounding overnight and

@@ -56,6 +56,7 @@ import { requestReminderSync } from "../goal-reminders";
 import { reportLoweredRevision, reportMissedPosition } from "../position-revisions";
 import { clearDeliveredPushes, unregisterPush } from "../push";
 import { queryClient } from "../query-client";
+import { sittingCarries } from "../reading-sessions/carry";
 import { notifySessionsDeleted } from "../reading-sessions/deleted";
 import { scheduleSeriesReconcile } from "../series-collections";
 import { reportEvent } from "../telemetry";
@@ -388,6 +389,7 @@ export async function wipeAllReadingStats(): Promise<void> {
 	await withSyncLock(async () => {
 		await wipeServerSessions();
 		await queries.deleteAllReadingSessions();
+		sittingCarries.clear();
 		await queries.hardDeleteAllGoals();
 		await queries.deleteAllSpeedTests();
 	});

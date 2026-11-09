@@ -111,6 +111,8 @@ vi.mock("../../authed-fetch", async (importOriginal) => ({
 }));
 
 const { pullSync, wipeAllReadingStats } = await import("../index");
+const { sittingCarries } = await import("../../reading-sessions/carry");
+const { localDateKey } = await import("../../../utils/date-utils");
 const { onSessionsDeleted } = await import("../../reading-sessions/deleted");
 const { getSessionTombstoneWatermark } = await import("../session");
 
@@ -207,11 +209,29 @@ describe("pulling speed tests", () => {
 	});
 });
 
+function stashBurst(bookId: string) {
+	const now = Date.now();
+	sittingCarries.stash({
+		id: "carry",
+		bookId,
+		dayKey: localDateKey(now),
+		startedAt: now - 30_000,
+		startPos: 0,
+		readSpans: [[0, 100]],
+		accumulatedActiveMs: 30_000,
+		modeActiveMs: { scroll: 30_000 },
+		rsvpDialWpm: null,
+		lastActivityAt: now,
+	});
+}
+
 describe("danger-zone stats wipe", () => {
 	it("tombstones on the server, then deletes local sessions and goals", async () => {
+		stashBurst("b1");
 		await wipeAllReadingStats();
 		expect(posted).toEqual(["/api/sync/wipe-sessions"]);
 		expect(deleteAllReadingSessions).toHaveBeenCalledOnce();
+		expect(sittingCarries.take("b1", Date.now())).toBeNull();
 		expect(hardDeleteAllGoals).toHaveBeenCalledOnce();
 		expect(deleteAllSpeedTests).toHaveBeenCalledOnce();
 	});
