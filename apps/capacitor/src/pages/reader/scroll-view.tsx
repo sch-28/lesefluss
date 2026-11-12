@@ -466,8 +466,8 @@ const ScrollView = forwardRef<ReaderViewHandle, ScrollViewProps>(function Scroll
 			jumpCleanupRef.current?.();
 			jumpCleanupRef.current = null;
 		},
-		// The open's or a jump's suppressed scroll end may still be due; the reader's
-		// scroll would take its place and go unsaved.
+		// The open's, a jump's or a follow's suppressed scroll end may still be due; the
+		// reader's scroll would take its place and go unsaved.
 		onReaderInput: () => {
 			suppressNextScrollEndRef.current = false;
 			suppressScrollHighlightClearRef.current = false;

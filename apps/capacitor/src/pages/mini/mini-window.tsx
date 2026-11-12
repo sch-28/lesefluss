@@ -13,6 +13,8 @@ type Props = {
 	host: "pip" | "popup";
 };
 
+const controlClass = "grid size-8 place-items-center rounded-md hover:bg-muted";
+
 function percentOf(word: number, total: number): number {
 	return total > 0 ? Math.min(100, Math.floor((word / total) * 100)) : 0;
 }
@@ -219,7 +221,7 @@ function MiniReading({
 					</span>
 					<span className="shrink-0">
 						{status === "playing"
-							? `${engine.effectiveWpm || settings.wpm} wpm`
+							? "Playing · Space"
 							: status === "taken-over"
 								? "Paused · you moved in the reader"
 								: "Paused · Space"}
@@ -237,19 +239,29 @@ function MiniReading({
 					<span className="text-[var(--mini-focal)]">{word[orp] ?? ""}</span>
 					<span className="whitespace-pre text-left">{word.slice(orp + 1)}</span>
 				</button>
-				<div className="flex items-center justify-center gap-4 pb-2 text-muted-foreground text-xs">
-					<button type="button" aria-label="Previous word" onClick={() => engine.backWord()}>
+				<div className="flex items-center justify-center gap-1 pb-1 text-muted-foreground text-xs">
+					<button
+						type="button"
+						aria-label="Previous word"
+						onClick={() => engine.backWord()}
+						className={controlClass}
+					>
 						<SkipBack className="size-3.5" />
 					</button>
 					<button
 						type="button"
 						aria-label={engine.isPlaying ? "Pause" : "Play"}
 						onClick={() => engine.togglePlayPause()}
-						className="text-foreground"
+						className={`${controlClass} text-foreground`}
 					>
 						{engine.isPlaying ? <Pause className="size-4" /> : <Play className="size-4" />}
 					</button>
-					<button type="button" aria-label="Next word" onClick={() => engine.forwardWord()}>
+					<button
+						type="button"
+						aria-label="Next word"
+						onClick={() => engine.forwardWord()}
+						className={controlClass}
+					>
 						<SkipForward className="size-3.5" />
 					</button>
 					<RsvpSpeedControl wpm={settings.wpm} onChange={engine.changeWpm} compact />

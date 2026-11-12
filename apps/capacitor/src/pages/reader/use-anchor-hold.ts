@@ -207,12 +207,11 @@ export function useAnchorHold(options: Options) {
 		};
 
 		const release = (reason: HoldEnd) => {
-			const wasPending = phaseRef.current !== "idle";
 			stopQuiet();
 			wordRef.current = null;
 			setPhase("idle");
 			deferredRef.current = false;
-			if (wasPending && reason === "reader") optionsRef.current.onReaderInput?.();
+			if (reason === "reader") optionsRef.current.onReaderInput?.();
 		};
 
 		const begin = (phase: "settling" | "holding", word: number) => {
@@ -372,8 +371,10 @@ export function useAnchorHold(options: Options) {
 			autoscrolling = false;
 			trailOff();
 		};
+		// A wheel lasts until its scroll ends, so a follow scroll waits for its settle.
 		const onWheel = () => {
 			endAutoscroll();
+			trailingInputUntilRef.current = performance.now() + KEY_SCROLL_WINDOW_MS;
 			handBack();
 		};
 		let touchStartY = 0;

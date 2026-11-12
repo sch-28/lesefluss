@@ -9,7 +9,7 @@ function pipApi(win: Window): DocumentPictureInPicture | null {
 	return api ?? null;
 }
 
-/** Document Picture-in-Picture: Chromium only; elsewhere the caller floats its UI in the tab. */
+/** Document Picture-in-Picture: Chromium only; elsewhere the caller opens a popup window. */
 export function isPipSupported(win: Window = window): boolean {
 	return pipApi(win) !== null;
 }

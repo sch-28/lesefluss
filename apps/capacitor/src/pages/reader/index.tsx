@@ -569,6 +569,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		persistedWordRef.current.set(seedWord);
 	}, [seedWord, seedLastRead, id, seedRev]);
 
+	// Assigned once the mini window's follow is set up (further down).
+	const miniTakeoverRef = useRef<(word: number) => void>(() => {});
 	// Live-seek when the device pushes a new position for this book over BLE.
 	// book-sync-context applies the conflict-resolution tolerance gate first,
 	// so we only see notifies the user should visibly follow. Gated on
@@ -587,6 +589,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			baseRevRef.current = Math.max(baseRevRef.current, updatedAt);
 			decidedRevRef.current = Math.max(decidedRevRef.current, updatedAt);
 			persistedWordRef.current.set(newWordPosition);
+			miniTakeoverRef.current(newWordPosition);
 			if (browse.onDevicePosition(newWordPosition)) return;
 			setActiveWord(newWordPosition);
 			setProgressWord(newWordPosition);
@@ -1041,7 +1044,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			hasLocalMoveRef.current = false;
 			isPlaybackSaveNewestRef.current = false;
 			seededWordRef.current = word;
-			if (!isInDb) void writePosition(word, "adopted");
+			// writePosition's navigate emit takes the mini over; a row already in the DB has no write.
+			if (isInDb) miniTakeoverRef.current(word);
+			else void writePosition(word, "adopted");
 			if (!isMountedRef.current) return;
 			const undoWord = undoAdoptRef.current?.word ?? ours;
 			if (undoAdoptRef.current) clearTimeout(undoAdoptRef.current.timer);
@@ -1783,6 +1788,15 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	 *  based on paginationStyle. */
 	const exitRsvpToStandard = useCallback(
 		(word?: number) => {
+			if (word === undefined && isMiniPlayingRef.current()) {
+				// The mini plays on: only the view changes. The idle RsvpView shows the
+				// mini's last saved word, older than lastWordRef, so its pause report
+				// (and a save) would take the mini over and rewind it.
+				readerModeRef.current = "standard";
+				setProgressWord(lastWordRef.current ?? 0);
+				setReaderMode("standard");
+				return;
+			}
 			// Playback saves are throttled; pausing reports the displayed word while RSVP
 			// reports are still accepted. With a voice session the engine never plays, so
 			// its pause would read as a move away; the voice's pause saves the spoken word.
@@ -2016,6 +2030,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 		focalColor: miniFocalColor,
 	});
 	isMiniPlayingRef.current = mini.isPlayingNow;
+	miniTakeoverRef.current = mini.takeover;
 	const isMiniSave = useCallback(() => isMiniSaveRef.current, []);
 	useMiniTakeover({
 		takeover: mini.takeover,
@@ -2262,7 +2277,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const headerReveal = useRevealOnHover(fullscreen.isFullscreen, hasOpenOverlay);
 	const headerRef = useRef<HTMLElement>(null);
 	const headerWidth = useElementWidth(headerRef);
-	// In rem, so large system text on a phone moves Listen, Mini and Bookmark into the menu and the title stays readable.
+	// In rem, so large system text on a phone moves Listen and Bookmark into the menu and the title stays readable.
 	const headerSize = {
 		widthPx: headerWidth,
 		remPx: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),

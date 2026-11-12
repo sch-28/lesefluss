@@ -16,6 +16,7 @@ export const MINI_WINDOW_TITLE = "Lesefluss Quick RSVP";
 const PIP_SIZE = { width: 380, height: 150 };
 const POPUP_FEATURES = "popup,width=600,height=150";
 const POPUP_NAME = "lesefluss-mini";
+const POPUP_CLOSED_POLL_MS = 1000;
 
 type Env = { isNative: boolean; isMobile: boolean; hasPip: boolean; hasChannel: boolean };
 
@@ -115,7 +116,19 @@ export async function openMini(bookId: string): Promise<boolean> {
 	if (!win) return false;
 	const main: MainPort = createChannelPort<FromMini, ToMini>(id, "main");
 	setSession({ id, bookId, host: "popup", window: win, main, isStopped: false });
+	watchPopupClosed(id, win);
 	return true;
+}
+
+/** A popup killed or crashed sends no "closed": the reader would wait on it until "Bring back here". */
+function watchPopupClosed(id: string, win: Window): void {
+	const interval = window.setInterval(() => {
+		if (session?.id !== id) window.clearInterval(interval);
+		else if (win.closed) {
+			window.clearInterval(interval);
+			setSession(null);
+		}
+	}, POPUP_CLOSED_POLL_MS);
 }
 
 export function closeMini(): void {

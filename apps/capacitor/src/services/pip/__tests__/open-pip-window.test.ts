@@ -32,11 +32,11 @@ describe("openPipWindow", () => {
 		const { api, pip, pipDoc } = fakePip();
 
 		expect(isPipSupported()).toBe(true);
-		const opened = await openPipWindow({ width: 600, height: 120, title: "Lesefluss burst read" });
+		const opened = await openPipWindow({ width: 600, height: 120, title: "Lesefluss Quick RSVP" });
 
 		expect(opened).toBe(pip);
 		expect(api.requestWindow).toHaveBeenCalledWith({ width: 600, height: 120 });
-		expect(pipDoc.title).toBe("Lesefluss burst read");
+		expect(pipDoc.title).toBe("Lesefluss Quick RSVP");
 		expect(pipDoc.head.textContent).toContain(".strip");
 		expect(pipDoc.documentElement.className).toBe("dark");
 		expect(pipDoc.documentElement.getAttribute("style")).toContain("18px");
