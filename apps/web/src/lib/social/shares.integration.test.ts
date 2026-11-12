@@ -502,18 +502,13 @@ describe.skipIf(!hasDb)("book sharing (integration)", () => {
 		expect(stale).toBeDefined();
 	});
 
-	test("a copy survives unfriending, blocking and the sender's account deletion", async () => {
+	test("a copy survives unfriending and blocking", async () => {
 		const [carolCopy] = await booksOf(carol);
 		if (!carolCopy) throw new Error("expected carol's copy");
 		await removeFriend(bob, carol);
 		await blockUser(carol, bob);
 		expect((await book(carol, carolCopy.bookId))?.deleted).toBe(false);
 		await unblockUser(carol, bob);
-
-		await deleteUserAccount(dave);
-		const [bobCopy] = await booksOf(bob);
-		expect(bobCopy?.deleted).toBe(false);
-		expect(await db.select().from(user).where(eq(user.id, dave))).toHaveLength(0);
 	});
 
 	test("an in-app report of a received share needs the share; origin-scope takedown removes every copy but the origin", async () => {
@@ -590,7 +585,7 @@ describe.skipIf(!hasDb)("book sharing (integration)", () => {
 		).rejects.toMatchObject({ code: "not_shareable" });
 	});
 
-	test("origin scope still finds the copies after the sender's account is gone", async () => {
+	test("a copy survives the sender's account deletion, and origin scope still finds it", async () => {
 		const [eve] = [`test-share-e-${run}`];
 		await db.insert(user).values({ id: eve, name: "Eve", email: `${eve}@example.test` });
 		await claimHandle(eve, `eve_${run}`, "eve");
@@ -615,6 +610,11 @@ describe.skipIf(!hasDb)("book sharing (integration)", () => {
 		});
 		// The share record is the notifier's; deleting Eve removes it, but the copy's origin columns remain.
 		await deleteUserAccount(eve);
+		expect(await book(bob, bookId ?? "")).toMatchObject({
+			deleted: false,
+			originUserId: eve,
+			originBookId: "eeee1111",
+		});
 		await decideNotice(
 			{ noticeId: id, adminId: "admin", action: "take_down_book", scope: "origin" },
 			{ ban },
