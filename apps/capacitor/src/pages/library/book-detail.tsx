@@ -410,7 +410,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 					onJump={handleChapterJump}
 					isResolved={areChaptersResolved}
 				/>
-				<BookHighlights highlights={highlights} />
+				<BookHighlights bookId={book.id} highlights={highlights} />
 				<BookSessions book={book} />
 				<BookDangerZone
 					book={book}

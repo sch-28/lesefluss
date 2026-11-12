@@ -40,7 +40,9 @@ function ExportSettings() {
 
 	const exportMutation = useMutation({
 		mutationFn: () => exportHighlights({ format, scope: parseScope(selectValue) }),
-		onSuccess: () => showToast("Highlights exported", "success"),
+		onSuccess: (completed) => {
+			if (completed) showToast("Highlights exported", "success");
+		},
 		onError: (err: Error) => showToast(err.message || "Export failed", "danger"),
 	});
 

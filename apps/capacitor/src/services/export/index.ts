@@ -9,6 +9,7 @@ import {
 } from "../db/queries/highlights";
 import { getSeriesChapters, getSeriesList } from "../db/queries/series";
 import type { Book, Highlight, Series } from "../db/schema";
+import { type ExportFile, exportBookAuthor, exportBookTitle, formatMarkdown } from "./markdown";
 
 export type ExportFormat = "markdown" | "csv";
 
@@ -22,7 +23,8 @@ export type ExportOptions = {
 	scope: ExportScope;
 };
 
-export async function exportHighlights(options: ExportOptions): Promise<void> {
+/** Resolves false when the user dismissed the share sheet without sharing. */
+export async function exportHighlights(options: ExportOptions): Promise<boolean> {
 	const { format, scope } = options;
 
 	const [rawHighlights, allBooks, allSeries] = await Promise.all([
@@ -40,14 +42,21 @@ export async function exportHighlights(options: ExportOptions): Promise<void> {
 
 	const { content, filename } =
 		format === "markdown"
-			? formatMarkdown(rawHighlights, bookMap, seriesMap)
+			? formatMarkdown(rawHighlights, bookMap, seriesMap, {
+					collectionTitle: collectionTitle(scope, seriesMap),
+				})
 			: formatCsv(rawHighlights, bookMap, seriesMap);
 
 	if (IS_WEB) {
 		downloadBlob(content, filename, format === "markdown" ? "text/markdown" : "text/csv");
-	} else {
-		await shareFile(content, filename);
+		return true;
 	}
+	return shareFile(content, filename);
+}
+
+function collectionTitle(scope: ExportScope, seriesMap: Map<string, Series>): string {
+	if (scope.type === "series") return seriesMap.get(scope.id)?.title ?? "Highlights";
+	return "Lesefluss highlights";
 }
 
 async function fetchHighlightsByScope(scope: ExportScope): Promise<Highlight[]> {
@@ -55,23 +64,6 @@ async function fetchHighlightsByScope(scope: ExportScope): Promise<Highlight[]> 
 	if (scope.type === "book") return getHighlightsByBook(scope.id);
 	const chapters = await getSeriesChapters(scope.id);
 	return getHighlightsByBooks(chapters.map((c) => c.id));
-}
-
-function getDisplayTitle(book: Book | undefined, seriesMap: Map<string, Series>): string {
-	if (!book) return "Unknown Book";
-	if (!book.seriesId) return book.title;
-	const s = seriesMap.get(book.seriesId);
-	return `${s?.title ?? "Unknown Series"} · Ch. ${(book.chapterIndex ?? 0) + 1}`;
-}
-
-function getDisplayAuthor(book: Book | undefined, seriesMap: Map<string, Series>): string {
-	if (!book) return "";
-	if (!book.seriesId) return book.author ?? "";
-	return seriesMap.get(book.seriesId)?.author ?? "";
-}
-
-function formatDate(timestamp: number): string {
-	return new Date(timestamp).toISOString().slice(0, 10);
 }
 
 function csvEscape(value: string): string {
@@ -82,84 +74,23 @@ function csvEscape(value: string): string {
 	return safeValue;
 }
 
-function markdownInline(value: string): string {
-	return value.replace(/[\\`*_{}[\]()#+\-.!<>|]/g, "\\$&");
-}
-
-function markdownBlockquote(value: string): string {
-	return value
-		.replace(/<\/?[a-z][^>]*>/gi, "")
-		.split("\n")
-		.map((line) => `> ${markdownInline(line)}`)
-		.join("\n");
-}
-
-function groupByBook(
-	highlights: Highlight[],
-	bookMap: Map<string, Book>,
-): Array<{ book: Book | undefined; highlights: Highlight[] }> {
-	const order: string[] = [];
-	const groups = new Map<string, { book: Book | undefined; highlights: Highlight[] }>();
-
-	for (const h of highlights) {
-		let group = groups.get(h.bookId);
-		if (!group) {
-			order.push(h.bookId);
-			group = { book: bookMap.get(h.bookId), highlights: [] };
-			groups.set(h.bookId, group);
-		}
-		group.highlights.push(h);
-	}
-
-	return order
-		.map((id) => groups.get(id))
-		.filter((g): g is { book: Book | undefined; highlights: Highlight[] } => !!g);
-}
-
-function formatMarkdown(
-	highlights: Highlight[],
-	bookMap: Map<string, Book>,
-	seriesMap: Map<string, Series>,
-): { content: string; filename: string } {
-	const groups = groupByBook(highlights, bookMap);
-	const sections: string[] = [];
-
-	for (const { book, highlights: hl } of groups) {
-		const title = getDisplayTitle(book, seriesMap);
-		const author = getDisplayAuthor(book, seriesMap);
-
-		let section = `# ${markdownInline(title)}\n`;
-		if (author) section += `*${markdownInline(author)}*\n`;
-		section += "\n";
-
-		for (const h of hl) {
-			section += `${markdownBlockquote(h.text ?? "[Highlight text unavailable]")}\n\n`;
-			if (h.note) section += `Note: ${markdownInline(h.note)}\n\n`;
-			section += `*${formatDate(h.createdAt)}*\n\n---\n\n`;
-		}
-
-		sections.push(section.trimEnd());
-	}
-
-	return {
-		content: sections.join("\n\n"),
-		filename: "highlights.md",
-	};
+function formatDate(timestamp: number): string {
+	return new Date(timestamp).toISOString().slice(0, 10);
 }
 
 function formatCsv(
 	highlights: Highlight[],
 	bookMap: Map<string, Book>,
 	seriesMap: Map<string, Series>,
-): { content: string; filename: string } {
+): ExportFile {
 	const rows: string[] = ["Title,Author,Highlight,Note,Color,Date"];
 
 	for (const h of highlights) {
 		const book = bookMap.get(h.bookId);
 		rows.push(
 			[
-				csvEscape(getDisplayTitle(book, seriesMap)),
-				csvEscape(getDisplayAuthor(book, seriesMap)),
+				csvEscape(exportBookTitle(book, seriesMap)),
+				csvEscape(exportBookAuthor(book, seriesMap)),
 				csvEscape(h.text ?? ""),
 				csvEscape(h.note ?? ""),
 				h.color,
@@ -186,7 +117,7 @@ function downloadBlob(content: string, filename: string, mimeType: string): void
 	window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-async function shareFile(content: string, filename: string): Promise<void> {
+async function shareFile(content: string, filename: string): Promise<boolean> {
 	await Filesystem.writeFile({
 		path: filename,
 		data: content,
@@ -194,5 +125,11 @@ async function shareFile(content: string, filename: string): Promise<void> {
 		encoding: Encoding.UTF8,
 	});
 	const { uri } = await Filesystem.getUri({ path: filename, directory: Directory.Cache });
-	await Share.share({ files: [uri], dialogTitle: "Export Highlights" });
+	try {
+		await Share.share({ files: [uri], dialogTitle: "Export Highlights" });
+		return true;
+	} catch (err) {
+		if (err instanceof Error && /cancel/i.test(err.message)) return false;
+		throw err;
+	}
 }
