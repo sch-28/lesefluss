@@ -11,8 +11,9 @@ function Toaster({ ...props }: ToasterProps) {
 			theme="system"
 			className="toaster group"
 			position="top-center"
-			offset="calc(var(--safe-top) + 16px)"
-			mobileOffset="calc(var(--safe-top) + 16px)"
+			// Below the 3rem page and reader header rows, so a toast never covers their buttons.
+			offset="calc(var(--safe-top) + 3.5rem)"
+			mobileOffset="calc(var(--safe-top) + 3.5rem)"
 			style={
 				{
 					"--width": "min(92vw, 380px)",

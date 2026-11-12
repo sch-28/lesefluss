@@ -350,7 +350,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				facts={facts}
 				subjects={catalogMeta?.subjects ?? undefined}
 				primaryAction={{
-					label: openLabel,
+					...openLabel,
 					icon: BookOpen,
 					onClick: () => router.navigate({ to: "/tabs/reader/$id", params: { id: book.id } }),
 				}}

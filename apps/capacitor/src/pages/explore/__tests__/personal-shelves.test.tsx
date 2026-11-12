@@ -172,6 +172,25 @@ describe("PersonalShelves", () => {
 		expect(view?.text()).toContain("More by authors you read");
 	});
 
+	it("drops See all from a shelf that loaded empty, and keeps it on a full one", async () => {
+		const seeAllOf = (title: string) => {
+			const shelf = [...(view?.container.querySelectorAll("section") ?? [])].find(
+				(s) => s.querySelector("h2")?.textContent === title,
+			);
+			return [...(shelf?.querySelectorAll("button") ?? [])].find((b) =>
+				b.textContent?.includes("See all"),
+			);
+		};
+		await renderShelves();
+		expect(seeAllOf("More by authors you read")).toBeDefined();
+
+		view?.unmount();
+		searchCatalog.mockResolvedValue({ results: [result("gutenberg:84", "Frankenstein")] });
+		await renderShelves();
+		expect(view?.text()).toContain("Nothing else by your authors in the catalog yet.");
+		expect(seeAllOf("More by authors you read")).toBeUndefined();
+	});
+
 	it("gives a signed-in reader the friends shelf even before friends read", async () => {
 		state.isLoggedIn = true;
 		useFeed.mockReturnValue({ data: { pages: [{ items: [], nextCursor: null }] } });

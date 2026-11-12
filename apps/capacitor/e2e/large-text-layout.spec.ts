@@ -74,25 +74,11 @@ async function mockCatalog(page: Page) {
 	});
 }
 
-/**
- * LESE-195: known problems at 200 %, let through so the rest of each test still
- * guards its screens. Once none shows, the test fails: drop the list then.
- */
-const KNOWN_AT_200 = [
-	/^truncated to \d+%: "9 min read" in span$/,
-	/^truncated to \d+%: "Big Book" in h1$/,
-	/^overlap: "Added "Big Book"" in div \/ "Aa" in span$/,
-	/^off screen: "(Overview|Sessions)" in button /,
-	/^off screen: "Nothing else by your aut" in p /,
-];
-
-async function expectFits(page: Page, what: string, root?: string, known: RegExp[] = []) {
+async function expectFits(page: Page, what: string, root?: string) {
 	const problems = root
 		? await textLayoutProblems(page, root)
 		: await textLayoutProblemsWhileScrolling(page);
-	const unknown = problems.filter((p) => !known.some((k) => k.test(p)));
-	expect(unknown, what).toEqual([]);
-	return problems.length - unknown.length;
+	expect(problems, what).toEqual([]);
 }
 
 for (const scale of SCALES) {
@@ -112,34 +98,42 @@ for (const scale of SCALES) {
 		});
 
 		test("the library, stats, explore and every settings page fit", async ({ page }) => {
-			const known = scale.factor === 2 ? KNOWN_AT_200 : [];
-			let knownSeen = 0;
 			await mockCatalog(page);
 			await seedBigBook(page);
 			for (const route of ["/tabs/library", "/tabs/stats"]) {
 				await page.goto(route);
 				await expect(page.locator("nav").last()).toBeVisible();
 				expect((await zoomedSizes(page)).root, "the zoom took").toBe(`${16 * scale.factor}px`);
-				knownSeen += await expectFits(page, route, undefined, known);
+				await expectFits(page, route, undefined);
 			}
 			await page.goto("/tabs/explore");
 			await expect(page.getByText("Mock Author").first()).toBeVisible();
-			knownSeen += await expectFits(page, "/tabs/explore", undefined, known);
+			await expectFits(page, "/tabs/explore", undefined);
 			for (const sub of SETTINGS_PAGES) {
 				const route = `/tabs/settings/${sub}`;
 				await page.goto(route);
 				await expect(page.locator("header h1").first()).toBeVisible();
-				knownSeen += await expectFits(page, route, undefined, known);
+				await expectFits(page, route, undefined);
 			}
-			if (known.length) expect(knownSeen, "LESE-195 still shows").toBeGreaterThan(0);
+		});
+
+		test("a toast sits below the page header's buttons", async ({ page }) => {
+			await seedBigBook(page);
+			const toast = page.locator("[data-sonner-toast]").first();
+			await expect(toast).toBeVisible();
+			const toastBox = await toast.boundingBox();
+			const headerBox = await page.locator("header").first().boundingBox();
+			expect(toastBox && headerBox, "toast and header on screen").toBeTruthy();
+			if (!toastBox || !headerBox) return;
+			expect(toastBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
 		});
 
 		test("the reader, its popover, sheets, selection toolbar, RSVP and the book page fit", async ({
 			page,
 		}) => {
-			const known = scale.factor === 2 ? KNOWN_AT_200 : [];
-			let knownSeen = 0;
 			await seedBigBook(page);
+			// The import's toast is for the library; over the reader text it would read as an overlap.
+			await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
 			await openBookFromLibrary(page, BIG_BOOK_TITLE);
 			await reader.expectLoaded(page);
 			await reader.waitOpenSettled(page);
@@ -147,39 +141,38 @@ for (const scale of SCALES) {
 				root: `${16 * scale.factor}px`,
 				readingText: `${16 * scale.factor}px`,
 			});
-			knownSeen += await expectFits(page, "reader", "body", known);
+			await expectFits(page, "reader", "body");
 
 			await reader.openAppearance(page);
-			knownSeen += await expectFits(page, "appearance", ".appearance-popover-content", known);
+			await expectFits(page, "appearance", ".appearance-popover-content");
 			await page.keyboard.press("Escape");
 			await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
 
 			await reader.openContents(page);
 			const sheet = '[data-slot="drawer-content"]';
 			await expect(page.locator(sheet)).toBeVisible();
-			knownSeen += await expectFits(page, "annotations", sheet, known);
+			await expectFits(page, "annotations", sheet);
 			await page.keyboard.press("Escape");
 			await expect(page.locator(sheet)).toHaveCount(0);
 
 			await reader.selectWords(page, "contains", "enough");
 			await expect(page.locator(".selection-toolbar")).toBeVisible();
-			knownSeen += await expectFits(page, "selection toolbar", ".selection-toolbar", known);
+			await expectFits(page, "selection toolbar", ".selection-toolbar");
 			await reader.dismissSelection(page);
 
 			await reader.toggleRsvp(page);
 			await expect(page.locator(".rsvp-display")).toBeVisible();
-			knownSeen += await expectFits(page, "rsvp", "body", known);
+			await expectFits(page, "rsvp", "body");
 			await reader.toggleRsvp(page);
 			await expect(page.locator(".rsvp-display")).toBeHidden();
 
 			await page.getByRole("button", { name: "More actions" }).click();
 			await page.getByRole("menuitem", { name: "Book details", exact: true }).click();
 			await page.waitForURL(/\/tabs\/library\/book\//);
-			knownSeen += await expectFits(page, "book page", undefined, known);
+			await expectFits(page, "book page", undefined);
 			await page.getByTestId("goal-entry").getByRole("button", { name: "Set goal" }).click();
 			await expect(page.getByRole("dialog")).toBeVisible();
-			knownSeen += await expectFits(page, "goal sheet", '[role="dialog"]', known);
-			if (known.length) expect(knownSeen, "LESE-195 still shows").toBeGreaterThan(0);
+			await expectFits(page, "goal sheet", '[role="dialog"]');
 		});
 	});
 }

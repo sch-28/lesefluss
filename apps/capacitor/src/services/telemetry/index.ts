@@ -9,17 +9,18 @@ import { SYNC_URL } from "../sync/auth-client";
  * persists) that no-account users hit and that otherwise reach us through no
  * channel at all. Sends no PII: an ephemeral per-launch session id, app version,
  * platform, a coarse OS version, and an error message. Reported as Diagnostics
- * under the Play Data Safety declaration.
+ * (optional) under the Play Data Safety declaration.
  */
 
-// Opt-out preference. Stored locally (not synced, it is a per-device choice) and
-// mirrored in memory so reportEvent can check it synchronously. Defaults on.
+// Opt-in preference. Stored locally (not synced, it is a per-device choice) and
+// mirrored in memory so reportEvent can check it synchronously. Only the Diagnostics
+// toggle ever writes "true", so an install or update that never touched it stays off.
 const TELEMETRY_PREF_KEY = "lesefluss:telemetry-enabled";
 let enabled = ((): boolean => {
 	try {
-		return localStorage.getItem(TELEMETRY_PREF_KEY) !== "false";
+		return localStorage.getItem(TELEMETRY_PREF_KEY) === "true";
 	} catch {
-		return true;
+		return false;
 	}
 })();
 

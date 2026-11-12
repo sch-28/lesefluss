@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SearchAllResult, SearchResult } from "../../../services/serial-scrapers";
+import { expectListsHoldOnlyItems } from "../../../test/list-items";
 import { click, flush, type Rendered, render } from "../../../test/render";
 
 const searchCatalog = vi.hoisted(() => vi.fn());
@@ -124,6 +125,7 @@ describe("GroupedResults", () => {
 		expect(rr?.textContent).toContain("Royal Road");
 		expect(rr?.querySelectorAll('[data-testid="web-novel-card"]')).toHaveLength(2);
 		expect(view.container.querySelector('[data-testid="provider-group-ao3"]')).not.toBeNull();
+		expectListsHoldOnlyItems(view.container, 3);
 
 		const seeAll = [...view.container.querySelectorAll("button")].filter((b) =>
 			b.textContent?.includes("See all"),

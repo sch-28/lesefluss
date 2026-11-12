@@ -1,25 +1,8 @@
 import { Button } from "@lesefluss/ui/button";
-import { usePrefersReducedMotion } from "@lesefluss/ui/use-prefers-reduced-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type React from "react";
-import { useId, useRef, useSyncExternalStore } from "react";
-
-const FINE_POINTER = "(pointer: fine)";
-
-function subscribePointer(onChange: () => void) {
-	const mq = window.matchMedia?.(FINE_POINTER);
-	mq?.addEventListener("change", onChange);
-	return () => mq?.removeEventListener("change", onChange);
-}
-
-/** True with a mouse or trackpad, where a horizontal strip has no swipe to scroll it. */
-function useHasFinePointer(): boolean {
-	return useSyncExternalStore(
-		subscribePointer,
-		() => window.matchMedia?.(FINE_POINTER).matches ?? false,
-		() => false,
-	);
-}
+import { useId, useRef } from "react";
+import { useHasFinePointer, useStripScroll } from "./strip-scroll";
 
 type Props = {
 	title: string;
@@ -48,14 +31,7 @@ const ShelfFrame: React.FC<Props> = ({
 	const stripRef = useRef<HTMLUListElement>(null);
 	const titleId = useId();
 	const hasFinePointer = useHasFinePointer();
-	const isReducedMotion = usePrefersReducedMotion();
-	const scroll = (direction: 1 | -1) => {
-		const el = stripRef.current;
-		el?.scrollBy({
-			left: direction * el.clientWidth * 0.8,
-			behavior: isReducedMotion ? "auto" : "smooth",
-		});
-	};
+	const scroll = useStripScroll(stripRef);
 
 	return (
 		<section className="mb-6" data-testid={testId}>
@@ -106,6 +82,9 @@ const ShelfFrame: React.FC<Props> = ({
 			{body ?? (
 				<ul
 					ref={stripRef}
+					// Safari drops the list role of a list-style:none list without it.
+					// biome-ignore lint/a11y/noRedundantRoles: see comment above
+					role="list"
 					aria-labelledby={titleId}
 					className={
 						isExpanded

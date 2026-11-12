@@ -56,9 +56,10 @@ const Stats: React.FC = () => {
 							}}
 							className="sticky top-[calc(var(--safe-top)+3rem+1px)] z-10 bg-background px-4 py-2"
 						>
-							<TabsList className="w-full">
+							{/* Wraps: at a large system font the three labels are wider than a phone. */}
+							<TabsList className="min-h-11 w-full flex-wrap group-data-[orientation=horizontal]/tabs:h-auto">
 								{STATS_TABS.map((t) => (
-									<TabsTrigger key={t} value={t}>
+									<TabsTrigger key={t} value={t} className="min-h-[calc(2.75rem-7px)]">
 										{STATS_TAB_LABELS[t]}
 									</TabsTrigger>
 								))}

@@ -80,6 +80,28 @@ test("library to read-aloud: every control is named, nothing clickable is anonym
 	await expectAccessible(page, "book page");
 });
 
+test("Tab reaches a library card, and both Enter and Space open it", async ({ page }) => {
+	const title = await seedFixture(page, bigBookFixture(), "big.epub");
+	const card = page.locator(`[data-book-title="${title}"]`).first();
+	const tabToCard = async () => {
+		await expect(card).toBeVisible();
+		for (let i = 0; i < 40; i++) {
+			await page.keyboard.press("Tab");
+			if (await card.evaluate((el) => el === document.activeElement)) return;
+		}
+		throw new Error("Tab never reached the library card");
+	};
+
+	for (const key of ["Enter", "Space"]) {
+		await tabToCard();
+		await page.keyboard.press(key);
+		await page.waitForURL(/\/tabs\/reader\//);
+		await reader.expectLoaded(page);
+		await page.goBack();
+		await page.waitForURL(/\/tabs\/library/);
+	}
+});
+
 // The control: an icon-only menu button with an aria-label passes desktop
 // Chrome's tree, yet TalkBack on Android finds it unnamed; the audit says so.
 test("the audit reports a menu button whose name is only an aria-label", async ({ page }) => {

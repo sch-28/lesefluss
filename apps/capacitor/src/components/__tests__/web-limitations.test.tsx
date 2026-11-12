@@ -7,6 +7,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
 	useNavigate: () => navigate,
 }));
 vi.mock("@/services/tts", () => ({ IS_READ_ALOUD_SUPPORTED: true }));
+const openLink = vi.hoisted(() => vi.fn());
+vi.mock("@/utils/open-link", () => ({ openLink }));
 
 const { OnTheWebCard, WebLimitsLine } = await import("../web-limitations");
 
@@ -31,6 +33,15 @@ describe("On the web card", () => {
 		]);
 		expect(rendered.text()).toContain("Read aloud works while the app is open.");
 		expect(rendered.container.querySelector("#on-the-web")).not.toBeNull();
+	});
+
+	it("sends Get the Android app to the Play Store listing", async () => {
+		rendered = await render(<OnTheWebCard />);
+		await click(rendered.getButton("Get the Android app"));
+		expect(openLink).toHaveBeenCalledWith(
+			"https://play.google.com/store/apps/details?id=app.lesefluss",
+			{ nativeTarget: "system" },
+		);
 	});
 });
 

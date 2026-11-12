@@ -5,6 +5,7 @@ import { click, type Rendered, render } from "../../../test/render";
 
 const HOUR = 3_600_000;
 const mutate = vi.fn();
+const setTelemetryEnabled = vi.hoisted(() => vi.fn());
 const state: {
 	settings: Record<string, unknown>;
 	saving: { isPending: boolean; variables?: { speedWindow?: string } };
@@ -69,8 +70,8 @@ vi.mock("@/hooks/use-appearance-settings", async (importOriginal) => ({
 }));
 vi.mock("@/services/telemetry", () => ({
 	getDeviceDiagnostics: () => Promise.resolve(null),
-	isTelemetryEnabled: () => true,
-	setTelemetryEnabled: vi.fn(),
+	isTelemetryEnabled: () => false,
+	setTelemetryEnabled,
 }));
 vi.mock("@/hooks/use-continue-reading", () => ({
 	useContinueReading: () => (state.books[0] ? { book: state.books[0], open: vi.fn() } : null),
@@ -101,6 +102,8 @@ vi.mock("@/services/db/hooks", () => ({
 const settingsRoot = (await import("../../../routes/tabs/settings/index")).Route as unknown as Page;
 const speedPage = (await import("../../../routes/tabs/settings/speed")).Route as unknown as Page;
 const goalsPage = (await import("../../../routes/tabs/settings/goals")).Route as unknown as Page;
+const diagnosticsPage = (await import("../../../routes/tabs/settings/diagnostics"))
+	.Route as unknown as Page;
 const listenPage = (await import("../../../routes/tabs/settings/read-aloud"))
 	.Route as unknown as Page;
 const { default: RsvpSettingsForm } = await import("../rsvp-settings-form");
@@ -168,7 +171,7 @@ describe("Settings root", () => {
 		expect(speed?.querySelector("svg")).not.toBeNull();
 		const diagnostics = link("/tabs/settings/diagnostics");
 		expect(diagnostics?.textContent).toContain("Anonymous diagnostics");
-		expect(diagnostics?.textContent).toContain("On");
+		expect(diagnostics?.textContent).toContain("Off");
 		expect(diagnostics?.querySelector("svg")).not.toBeNull();
 		expect(view.container.querySelector("[role=switch]")).toBeNull();
 		expect(view.container.querySelector("[data-testid=speed-window-select]")).toBeNull();
@@ -182,6 +185,19 @@ describe("Settings root", () => {
 		expect(diagnostics?.textContent).toContain("Nothing is sent from the web app");
 		const card = view.container.querySelector("#on-the-web");
 		expect(card?.textContent).toContain("These need the Android app");
+	});
+});
+
+describe("Diagnostics page", () => {
+	it("starts off, says so and what a report holds, and turns on only from the switch", async () => {
+		view = await renderPage(diagnosticsPage);
+		const toggle = view.container.querySelector<HTMLElement>("[role=switch]");
+		expect(toggle?.getAttribute("aria-checked")).toBe("false");
+		expect(view.text()).toContain("Off unless you turn it on.");
+		expect(view.text()).toContain("Never your account, books or notes.");
+		expect(setTelemetryEnabled).not.toHaveBeenCalled();
+		await click(toggle as HTMLElement);
+		expect(setTelemetryEnabled).toHaveBeenCalledWith(true);
 	});
 });
 

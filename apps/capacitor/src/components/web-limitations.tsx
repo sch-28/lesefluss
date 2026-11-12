@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Info, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { PLAY_STORE_URL } from "@/services/store-links";
 import { IS_READ_ALOUD_SUPPORTED } from "@/services/tts";
 import { openLink } from "@/utils/open-link";
 
@@ -98,7 +99,7 @@ export function OnTheWebCard() {
 						{IS_READ_ALOUD_SUPPORTED && "Read aloud works while the app is open. "}
 						<button
 							type="button"
-							onClick={() => openLink("https://lesefluss.app/download", { nativeTarget: "system" })}
+							onClick={() => openLink(PLAY_STORE_URL, { nativeTarget: "system" })}
 							className="cursor-pointer font-medium text-primary underline-offset-4 hover:underline"
 						>
 							Get the Android app

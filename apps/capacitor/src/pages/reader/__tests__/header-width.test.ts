@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isReaderHeaderNarrow } from "../header-width";
+import { isReaderHeaderNarrow, isReaderTitleHidden } from "../header-width";
 
 const at = (widthPx: number, hasSeriesNav: boolean, remPx = 16) =>
 	isReaderHeaderNarrow({ widthPx, remPx, hasSeriesNav });
@@ -21,5 +21,23 @@ describe("isReaderHeaderNarrow", () => {
 
 	it("waits for a measured width", () => {
 		expect(at(0, true)).toBe(false);
+	});
+});
+
+describe("isReaderTitleHidden", () => {
+	const hidden = (widthPx: number, hasSeriesNav: boolean, remPx = 16) =>
+		isReaderTitleHidden({ widthPx, remPx, hasSeriesNav });
+
+	it("shows the title on a 360px phone at the default font, series or not", () => {
+		expect(hidden(360, false)).toBe(false);
+		expect(hidden(390, true)).toBe(false);
+	});
+
+	it("hides it on a phone at Android's 200 % font scale", () => {
+		expect(hidden(412, false, 32)).toBe(true);
+	});
+
+	it("waits for a measured width", () => {
+		expect(hidden(0, false, 32)).toBe(false);
 	});
 });

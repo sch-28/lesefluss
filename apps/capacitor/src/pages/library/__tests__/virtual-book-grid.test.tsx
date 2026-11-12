@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeBook } from "../../../test/book-fixture";
 import { groupLibrary } from "../group-by";
 import { buildLibraryItems } from "../sort-filter";
-import VirtualBookGrid, { estimateRowPx } from "../virtual-book-grid";
+import VirtualBookGrid, { columnsFor, estimateRowPx } from "../virtual-book-grid";
 
 const books = Array.from({ length: 2000 }, (_, i) =>
 	makeBook({ id: `b${i}`, title: `Book ${i}`, author: i % 2 ? "Ada Vance" : "Bo Lind" }),
@@ -173,5 +173,13 @@ describe("VirtualBookGrid", () => {
 		expect(estimateRowPx("grid", 3, 390)).toBe(251);
 		// Wide screens cap the content at 900px.
 		expect(estimateRowPx("grid", 6, 1400)).toBe(estimateRowPx("grid", 6, 2400));
+	});
+
+	it("drops to two columns on a phone under a large system font", () => {
+		expect(columnsFor(360, 16)).toBe(3);
+		expect(columnsFor(412, 16)).toBe(3);
+		// Android's 200 % font scale: 32px rem.
+		expect(columnsFor(412, 32)).toBe(2);
+		expect(columnsFor(1280, 32)).toBe(6);
 	});
 });

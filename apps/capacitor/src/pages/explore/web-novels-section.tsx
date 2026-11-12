@@ -3,7 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import type React from "react";
 import type { CSSProperties } from "react";
-import { useCallback } from "react";
+import { useCallback, useId } from "react";
 import { type ProviderId, providerLabel } from "../../services/serial-scrapers";
 import { type ProviderCover, providerCovers } from "./provider-covers";
 import {
@@ -34,10 +34,14 @@ const WebNovelsSection: React.FC = () => {
 		[router],
 	);
 
+	const titleId = useId();
+
 	return (
 		<section className="mb-6">
 			<header className="mb-2 flex items-center justify-between">
-				<h2 className="m-0 font-semibold text-[0.95rem]">Web novels</h2>
+				<h2 id={titleId} className="m-0 font-semibold text-[0.95rem]">
+					Web novels
+				</h2>
 				<Button
 					variant="ghost"
 					size="sm"
@@ -48,19 +52,26 @@ const WebNovelsSection: React.FC = () => {
 					<ChevronRight />
 				</Button>
 			</header>
-			<div className="-mx-1 flex gap-3 overflow-x-auto px-1 pt-2 pb-5">
+			<ul
+				// Safari drops the list role of a list-style:none list without it.
+				// biome-ignore lint/a11y/noRedundantRoles: see comment above
+				role="list"
+				aria-labelledby={titleId}
+				className="m-0 -mx-1 flex list-none gap-3 overflow-x-auto px-1 pt-2 pb-5"
+			>
 				{VISIBLE_PROVIDERS.map((id) => (
-					<ProviderCard
-						key={id}
-						id={id}
-						label={PROVIDER_CARD_LABEL[id] ?? providerLabel(id)}
-						subtitle={PROVIDER_SUBTITLE[id] ?? "Web fiction"}
-						color={PROVIDER_BRAND_COLOR[id] ?? "#444"}
-						covers={providerCovers[id] ?? []}
-						onTap={handleProviderTap}
-					/>
+					<li key={id} className="flex shrink-0">
+						<ProviderCard
+							id={id}
+							label={PROVIDER_CARD_LABEL[id] ?? providerLabel(id)}
+							subtitle={PROVIDER_SUBTITLE[id] ?? "Web fiction"}
+							color={PROVIDER_BRAND_COLOR[id] ?? "#444"}
+							covers={providerCovers[id] ?? []}
+							onTap={handleProviderTap}
+						/>
+					</li>
 				))}
-			</div>
+			</ul>
 		</section>
 	);
 };

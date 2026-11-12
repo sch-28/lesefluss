@@ -10,28 +10,28 @@ const chapters = [
 ];
 
 describe("openReaderLabel", () => {
-	it("puts the time left before the chapter, which a phone may truncate", () => {
+	it("names the time left, with the chapter apart so a narrow button can drop it", () => {
 		expect(
 			openReaderLabel({ wordPosition: 1_500, wordCount: 3_000, finishedAt: null }, chapters, 84),
-		).toBe("Continue · 1h 24m left · Two");
+		).toEqual({ label: "Continue · 1h 24m left", detail: "Two" });
 	});
 
 	it("leaves out what it does not know", () => {
 		const book = { wordPosition: 1_500, wordCount: 3_000, finishedAt: null };
-		expect(openReaderLabel(book, [], null)).toBe("Continue");
+		expect(openReaderLabel(book, [], null)).toEqual({ label: "Continue" });
 		// Legacy byte offsets past the end: no chapter to name.
-		expect(openReaderLabel(book, [{ title: "X", startWord: 9_000 }], 5)).toBe(
-			"Continue · 5 min left",
-		);
+		expect(openReaderLabel(book, [{ title: "X", startWord: 9_000 }], 5)).toEqual({
+			label: "Continue · 5 min left",
+		});
 	});
 
 	it("starts an unread book and opens a finished one", () => {
 		expect(
 			openReaderLabel({ wordPosition: 0, wordCount: 3_000, finishedAt: null }, chapters, 9),
-		).toBe("Start reading");
+		).toEqual({ label: "Start reading" });
 		expect(
 			openReaderLabel({ wordPosition: 3_000, wordCount: 3_000, finishedAt: 1 }, chapters, 0),
-		).toBe("Open reader");
+		).toEqual({ label: "Open reader" });
 	});
 });
 

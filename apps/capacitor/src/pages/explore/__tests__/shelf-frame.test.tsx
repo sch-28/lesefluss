@@ -42,6 +42,7 @@ describe("ShelfFrame", () => {
 		const list = view.container.querySelector("ul");
 		const labelId = list?.getAttribute("aria-labelledby") ?? "";
 		expect(document.getElementById(labelId)?.textContent).toBe("Most read");
+		expect(list?.getAttribute("role")).toBe("list");
 		expect(list?.querySelectorAll(":scope > li")).toHaveLength(2);
 	});
 });

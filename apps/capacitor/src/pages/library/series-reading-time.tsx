@@ -28,17 +28,15 @@ function useSeriesTimes(chapters: readonly SeriesChapterLength[] | undefined): S
 /** "Left 8h" while the series is under way; nothing when unstarted or finished, as on book cards. */
 export function SeriesCardTime({
 	chapters,
-	id,
 	className,
 }: {
 	chapters: readonly SeriesChapterLength[] | undefined;
-	id?: string;
 	className?: string;
 }) {
 	const left = useSeriesTimes(chapters)?.left;
 	if (!left) return null;
 	return (
-		<span id={id} className={className} data-testid="series-card-time">
+		<span className={className} data-testid="series-card-time">
 			Left {left}
 		</span>
 	);

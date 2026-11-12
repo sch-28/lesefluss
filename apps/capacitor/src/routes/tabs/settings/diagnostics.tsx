@@ -32,7 +32,7 @@ function DiagnosticsSettings() {
 						<ToggleRow
 							id="telemetry"
 							title="Anonymous diagnostics"
-							subtitle="Send anonymized error reports to help fix bugs. No account or personal data."
+							subtitle="Off unless you turn it on. Error reports carry the error and its technical details, the platform, the app, OS and WebView version and a random id new each launch. Never your account, books or notes."
 							checked={telemetry}
 							onCheckedChange={toggle}
 						/>

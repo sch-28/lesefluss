@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@capacitor/app", () => ({ App: { getInfo: async () => ({ version: "1.6.0" }) } }));
 let platform = "android";
@@ -11,7 +11,12 @@ vi.mock("../../sync/auth-client", () => ({
 const BOOX_UA =
 	"Mozilla/5.0 (Linux; Android 11; NovaAir2 Build/RKQ1.210614.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/149.0.7827.159 Safari/537.36";
 
+beforeEach(() => {
+	localStorage.setItem("lesefluss:telemetry-enabled", "true");
+});
+
 afterEach(() => {
+	localStorage.clear();
 	platform = "android";
 	vi.unstubAllGlobals();
 	// The module throttles repeat events of a type; each test needs a fresh copy.
@@ -60,5 +65,38 @@ describe("telemetry payload", () => {
 		// One macrotask lets every queued microtask of send() run first.
 		await new Promise((resolve) => setTimeout(resolve));
 		expect(fetchMock).not.toHaveBeenCalled();
+	});
+});
+
+describe("telemetry consent", () => {
+	async function load() {
+		vi.stubGlobal("navigator", { userAgent: BOOX_UA });
+		const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+		vi.stubGlobal("fetch", fetchMock);
+		const telemetry = await import("../index");
+		const settle = () => new Promise((resolve) => setTimeout(resolve));
+		return { ...telemetry, fetchMock, settle };
+	}
+
+	it("sends nothing on an install or update that never touched the setting", async () => {
+		localStorage.clear();
+		const { reportEvent, isTelemetryEnabled, fetchMock, settle } = await load();
+		expect(isTelemetryEnabled()).toBe(false);
+		reportEvent("db_write_error", { message: "disk full" });
+		await settle();
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it("starts sending once turned on, and stops at once when turned off", async () => {
+		localStorage.clear();
+		const { reportEvent, setTelemetryEnabled, fetchMock, settle } = await load();
+		setTelemetryEnabled(true);
+		reportEvent("db_write_error");
+		await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		setTelemetryEnabled(false);
+		reportEvent("position_save_failed");
+		await settle();
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(localStorage.getItem("lesefluss:telemetry-enabled")).toBe("false");
 	});
 });

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WishlistItem } from "../../../services/db/schema";
+import { expectListsHoldOnlyItems } from "../../../test/list-items";
 import { click, flush, type Rendered, render } from "../../../test/render";
 
 const navigate = vi.hoisted(() => vi.fn());
@@ -100,6 +101,7 @@ describe("wishlist shelf", () => {
 	it("opens each title's detail page from its card", async () => {
 		view = await render(<WishlistShelf />);
 		expect(view.text()).toContain("Wishlist");
+		expectListsHoldOnlyItems(view.container);
 		await click(view.getButton(/Frankenstein/));
 		expect(navigate).toHaveBeenCalledWith({
 			to: "/tabs/explore/book/$catalogId",

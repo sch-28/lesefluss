@@ -22,6 +22,8 @@ import { readableSubjects } from "./readable-subjects";
 
 export interface DetailAction {
 	label: string;
+	/** Trails the label only on a wide button (28rem and up); a long one ends in an ellipsis. */
+	detail?: string;
 	icon?: LucideIcon;
 	onClick: () => void;
 	disabled?: boolean;
@@ -331,7 +333,7 @@ const ActionButton: React.FC<{ action: DetailAction; primary: boolean }> = ({
 			disabled={action.disabled || action.loading}
 			onClick={action.onClick}
 			className={cn(
-				"w-full",
+				"@container w-full",
 				action.destructive &&
 					(primary
 						? "bg-destructive hover:bg-destructive/90"
@@ -339,7 +341,10 @@ const ActionButton: React.FC<{ action: DetailAction; primary: boolean }> = ({
 			)}
 		>
 			{action.loading ? <Loader2 className="animate-spin" /> : Icon && <Icon />}
-			<span className="min-w-0 truncate">{action.label}</span>
+			<span className="min-w-0 truncate">
+				{action.label}
+				{action.detail && <span className="@md:inline hidden"> · {action.detail}</span>}
+			</span>
 		</Button>
 	);
 };

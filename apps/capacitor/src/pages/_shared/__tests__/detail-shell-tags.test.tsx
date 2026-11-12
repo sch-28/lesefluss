@@ -45,3 +45,22 @@ describe("DetailShell tags", () => {
 		expect(view.text()).not.toContain("Raw subject");
 	});
 });
+
+describe("DetailShell primary action", () => {
+	it("keeps the detail apart from the label, hidden until the button has room", async () => {
+		view = await render(
+			<DetailShell
+				cover={null}
+				title="Book"
+				primaryAction={{ label: "Continue · 5 min left", detail: "Chapter Two", onClick: vi.fn() }}
+			/>,
+		);
+		const button = view.getButton(/Continue · 5 min left/);
+		expect(button.className).toMatch(/(^|\s)@container(\s|$)/);
+		const detail = [...button.querySelectorAll("span")].find(
+			(span) => span.textContent === " · Chapter Two",
+		);
+		expect(detail?.className).toMatch(/(^|\s)hidden(\s|$)/);
+		expect(detail?.className).toMatch(/@md:inline/);
+	});
+});

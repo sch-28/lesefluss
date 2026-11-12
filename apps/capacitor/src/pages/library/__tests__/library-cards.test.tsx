@@ -278,6 +278,21 @@ describe.each([
 		expect(onMenu).toHaveBeenCalledOnce();
 	});
 
+	it("is described only by elements on the page, before the chapter count and without author or time", async () => {
+		view = await render(
+			<Card
+				series={{ ...series, author: null }}
+				chapterCount={undefined}
+				chapterLengths={undefined}
+				onOpen={() => {}}
+				onMenu={() => {}}
+			/>,
+		);
+		const ids = (card().getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean);
+		expect(ids.length).toBeGreaterThan(0);
+		for (const id of ids) expect(document.getElementById(id)).not.toBeNull();
+	});
+
 	it("follows the book cards' fields, leaving each one a serial has no value for empty", async () => {
 		view = await render(
 			<Card

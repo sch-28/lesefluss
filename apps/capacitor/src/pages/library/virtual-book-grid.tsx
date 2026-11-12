@@ -9,13 +9,15 @@ import type { LibraryItem } from "./sort-filter";
 
 const SCROLL_CONTAINER = '[data-scroll-restoration-id="app-scroll"]';
 
-/** Tailwind's md / lg / xl breakpoints, matching GRID_CLASS's column counts. */
+/** Tailwind's md / lg / xl breakpoints. */
 const COLUMN_BREAKPOINTS: readonly [minWidth: number, cols: number][] = [
 	[1280, 6],
 	[1024, 5],
 	[768, 4],
 ];
-const GRID_CLASS = "grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 pb-4";
+/** In rem, so a large system font on a phone gets two wider cards rather than three cut ones. */
+const TWO_COLUMNS_BELOW_REM = 20;
+const GRID_CLASS = "grid gap-4 pb-4";
 
 const CONTENT_MAX_PX = 900;
 const PADDING_PX = 16;
@@ -34,14 +36,20 @@ export function estimateRowPx(viewMode: "grid" | "list", cols: number, viewportP
 	return Math.round(coverWidth * 1.5 + CARD_TEXT_PX + GAP_PX);
 }
 
-function columnsFor(width: number): number {
-	return COLUMN_BREAKPOINTS.find(([min]) => width >= min)?.[1] ?? 3;
+export function columnsFor(widthPx: number, remPx: number): number {
+	const cols = COLUMN_BREAKPOINTS.find(([min]) => widthPx >= min)?.[1] ?? 3;
+	return cols === 3 && widthPx < TWO_COLUMNS_BELOW_REM * remPx ? 2 : cols;
+}
+
+function viewportColumns(): number {
+	const remPx = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+	return columnsFor(window.innerWidth, remPx);
 }
 
 export function useGridColumns(): number {
-	const [cols, setCols] = useState(() => columnsFor(window.innerWidth));
+	const [cols, setCols] = useState(viewportColumns);
 	useLayoutEffect(() => {
-		const onResize = () => setCols(columnsFor(window.innerWidth));
+		const onResize = () => setCols(viewportColumns());
 		window.addEventListener("resize", onResize);
 		return () => window.removeEventListener("resize", onResize);
 	}, []);
@@ -257,7 +265,11 @@ const VirtualBookGrid: React.FC<Props> = ({
 						);
 					};
 					return viewMode === "grid" ? (
-						<div key={row.key} className={GRID_CLASS}>
+						<div
+							key={row.key}
+							className={GRID_CLASS}
+							style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+						>
 							{row.items.map((item, column) => cell(item, column, "min-w-0"))}
 						</div>
 					) : (

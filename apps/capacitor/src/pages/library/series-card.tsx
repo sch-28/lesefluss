@@ -40,14 +40,15 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 	const handlers = useLongPress({ onTap: onOpen, onMenu });
 	const id = useId();
 	const chaptersId = `${id}-chapters`;
-	const authorId = `${id}-author`;
-	const timeId = `${id}-time`;
+	const detailsId = `${id}-details`;
+	const hasChapterBadge = chapterCount !== undefined;
 
 	return (
 		<button
 			type="button"
 			aria-label={series.title}
-			aria-describedby={`${chaptersId} ${authorId} ${timeId}`}
+			// The details wrapper always renders; its lines come and go with the data.
+			aria-describedby={hasChapterBadge ? `${chaptersId} ${detailsId}` : detailsId}
 			className="flex w-full select-none flex-col rounded-sm border-0 bg-transparent p-0 text-left text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:opacity-70"
 			style={{ WebkitTouchCallout: "none", cursor: "pointer" }}
 			{...handlers}
@@ -64,7 +65,7 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 					}
 				/>
 				{/* Chapter-count badge */}
-				{chapterCount !== undefined && (
+				{hasChapterBadge && (
 					<span
 						id={chaptersId}
 						className="absolute right-1.5 bottom-1.5 rounded-sm bg-black px-1.5 py-0.5 font-semibold text-[0.6rem] text-white"
@@ -78,24 +79,23 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 				<div className="line-clamp-2 overflow-hidden font-medium text-[0.875rem] leading-[1.25]">
 					{series.title}
 				</div>
-				{fields.map((field) =>
-					field === "progress" ? null : (
-						<CardFieldSlot key={field} surface="grid" field={field}>
-							{field === "author" && series.author && (
-								<span id={authorId} className="truncate text-muted-foreground">
-									{series.author}
-								</span>
-							)}
-							{field === "timeLeft" && (
-								<SeriesCardTime
-									id={timeId}
-									chapters={chapterLengths}
-									className="truncate text-muted-foreground tabular-nums"
-								/>
-							)}
-						</CardFieldSlot>
-					),
-				)}
+				<div id={detailsId}>
+					{fields.map((field) =>
+						field === "progress" ? null : (
+							<CardFieldSlot key={field} surface="grid" field={field}>
+								{field === "author" && series.author && (
+									<span className="truncate text-muted-foreground">{series.author}</span>
+								)}
+								{field === "timeLeft" && (
+									<SeriesCardTime
+										chapters={chapterLengths}
+										className="truncate text-muted-foreground tabular-nums"
+									/>
+								)}
+							</CardFieldSlot>
+						),
+					)}
+				</div>
 			</div>
 		</button>
 	);

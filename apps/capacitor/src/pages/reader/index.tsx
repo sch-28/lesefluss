@@ -147,7 +147,7 @@ import { colorFromLabel } from "./glossary-avatar";
 import GlossaryEntryModal from "./glossary-entry-modal";
 import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
 import { GoalChip } from "./goal-chip";
-import { isReaderHeaderNarrow } from "./header-width";
+import { isReaderHeaderNarrow, isReaderTitleHidden } from "./header-width";
 import { hyphenationLang } from "./hyphenation-lang";
 import { useLiveReading } from "./live-board";
 import { LiveWpm } from "./live-wpm";
@@ -2263,11 +2263,13 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const headerRef = useRef<HTMLElement>(null);
 	const headerWidth = useElementWidth(headerRef);
 	// In rem, so large system text on a phone moves Listen, Mini and Bookmark into the menu and the title stays readable.
-	const isHeaderNarrow = isReaderHeaderNarrow({
+	const headerSize = {
 		widthPx: headerWidth,
 		remPx: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
 		hasSeriesNav: book?.seriesId != null,
-	});
+	};
+	const isHeaderNarrow = isReaderHeaderNarrow(headerSize);
+	const isTitleHidden = isReaderTitleHidden(headerSize);
 
 	// ── Keyboard shortcuts ────────────────────────────────────────────────
 	useKeyboardShortcuts({
@@ -2761,9 +2763,15 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								</Button>
 							</>
 						)}
-						<h1 className="m-0 flex-1 truncate px-1 font-semibold text-base leading-none">
+						<h1
+							className={cn(
+								"m-0 flex-1 truncate px-1 font-semibold text-base leading-none",
+								isTitleHidden && "sr-only",
+							)}
+						>
 							{book.title}
 						</h1>
+						{isTitleHidden && <span aria-hidden className="flex-1" />}
 						<AppearancePopover
 							open={appearanceOpen}
 							onOpenChange={setAppearanceOpen}

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CatalogLandingResponse, CatalogSearchResult } from "../../../services/catalog/client";
+import { expectListsHoldOnlyItems } from "../../../test/list-items";
 import { click, flush, type Rendered, render } from "../../../test/render";
 
 const getLanding = vi.hoisted(() => vi.fn());
@@ -112,6 +113,7 @@ describe("Explore landing", () => {
 
 	it("shows recently added, trending web novels and every shelf with See all", async () => {
 		getLanding.mockResolvedValue(LANDING);
+		getRandomShelf.mockResolvedValue({ results: LANDING.most_read });
 		const onBrowse = vi.fn();
 		view = await renderLanding(onBrowse);
 		await flush();
@@ -132,6 +134,8 @@ describe("Explore landing", () => {
 			expect(onBrowse).toHaveBeenLastCalledWith(search);
 		}
 		expect(sectionTitled("Trending web novels")).toBeDefined();
+		// Trending web novels and the five catalog shelves
+		expectListsHoldOnlyItems(view.container, 6);
 	});
 
 	it("keeps the rest of the landing when one shelf failed on the server", async () => {

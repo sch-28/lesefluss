@@ -35,13 +35,14 @@ const Shelf: React.FC<Props> = ({
 	emptyLabel,
 }) => {
 	const [isExpanded, setExpanded] = useState(false);
+	const isEmpty = !isLoading && !error && books.length === 0;
 	const body = isLoading ? (
 		<ShelfStripSkeleton />
 	) : error ? (
 		<ErrorState error={error} onRetry={onRetry} className="p-4" />
-	) : books.length === 0 ? (
+	) : isEmpty ? (
 		// Holds the strip's height: a shelf that loads empty must not pull the page up.
-		<div className="grid">
+		<div className="grid grid-cols-[minmax(0,1fr)]">
 			<div className="[grid-area:1/1]">
 				<ShelfStripSkeleton isSpacer />
 			</div>
@@ -54,7 +55,9 @@ const Shelf: React.FC<Props> = ({
 	return (
 		<ShelfFrame
 			title={title}
-			onSeeAll={onSeeAll ?? (body ? undefined : () => setExpanded(!isExpanded))}
+			onSeeAll={
+				isEmpty ? undefined : (onSeeAll ?? (body ? undefined : () => setExpanded(!isExpanded)))
+			}
 			isExpanded={onSeeAll ? undefined : isExpanded}
 			body={body}
 			actions={
