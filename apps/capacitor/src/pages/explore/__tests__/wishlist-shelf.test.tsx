@@ -149,7 +149,7 @@ describe("wishlist shelf", () => {
 		await click(view.getButton("Remove Frankenstein from wishlist"));
 		await flush();
 		expect(toastSuccess).toHaveBeenCalledWith(
-			"Removed Frankenstein from your wishlist",
+			'Removed "Frankenstein" from your wishlist',
 			expect.objectContaining({ action: expect.objectContaining({ label: "Undo" }) }),
 		);
 		view.unmount();

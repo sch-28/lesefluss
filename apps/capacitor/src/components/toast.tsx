@@ -13,6 +13,7 @@ export interface ToastOptions {
 	/** A toast with the same id replaces the one showing. */
 	id?: string;
 	action?: { label: string; onClick: () => void };
+	position?: "top-center" | "bottom-center";
 }
 
 const DEFAULT_DURATION = 2500;
@@ -25,6 +26,7 @@ function emit(message: string, kind: ToastKind, opts: ToastOptions = {}) {
 		duration: opts.duration ?? (opts.action ? ACTION_DURATION : DEFAULT_DURATION),
 		action: opts.action,
 		id: opts.id,
+		position: opts.position,
 	};
 	switch (kind) {
 		case "success":

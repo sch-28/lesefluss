@@ -4,6 +4,11 @@ import { Toaster as SonnerToaster, toast } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof SonnerToaster>;
 
+const TOAST_OFFSET = {
+	top: "calc(var(--safe-top) + 3.5rem)",
+	bottom: "calc(var(--tab-bar-h, 0px) + var(--safe-bottom, 0px) + 0.5rem)",
+};
+
 function Toaster({ ...props }: ToasterProps) {
 	return (
 		<SonnerToaster
@@ -11,9 +16,9 @@ function Toaster({ ...props }: ToasterProps) {
 			theme="system"
 			className="toaster group"
 			position="top-center"
-			// Below the 3rem page and reader header rows, so a toast never covers their buttons.
-			offset="calc(var(--safe-top) + 3.5rem)"
-			mobileOffset="calc(var(--safe-top) + 3.5rem)"
+			// Below the 3rem page and reader header rows (above the tab bar for a bottom toast), so a toast never covers their buttons.
+			offset={TOAST_OFFSET}
+			mobileOffset={TOAST_OFFSET}
 			style={
 				{
 					"--width": "min(92vw, 380px)",

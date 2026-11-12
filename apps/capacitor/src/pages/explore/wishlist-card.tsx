@@ -126,7 +126,7 @@ const SerialWishlistCard: React.FC<{ item: WishlistItem }> = ({ item }) => {
 	);
 };
 
-/** Opens the title's detail page; the corner buttons remove it, or import it, which also takes it off the wishlist. */
+/** Importing from the card also takes the title off the wishlist. */
 const WishlistCard: React.FC<{ item: WishlistItem }> = ({ item }) =>
 	item.kind === "catalog" ? (
 		<CatalogWishlistCard item={item} />
