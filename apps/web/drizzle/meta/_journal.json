@@ -414,6 +414,13 @@
       "when": 1784937600000,
       "tag": "0058_first_sitting_at",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1785024000000,
+      "tag": "0059_clear_session_tombstones",
+      "breakpoints": true
     }
   ]
 }

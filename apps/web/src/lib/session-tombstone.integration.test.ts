@@ -153,11 +153,65 @@ describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 		return row;
 	}
 
+	const clearedTombstone = {
+		bookId: "",
+		mode: "scroll",
+		startedAt: new Date(0),
+		endedAt: new Date(0),
+		durationMs: 0,
+		wordsRead: 0,
+		startWord: 0,
+		endWord: 0,
+		furthestWord: null,
+		wpmAvg: null,
+		fontSize: null,
+		segmentWpm: null,
+		deleted: true,
+	};
+
+	const withSpeeds = (id: string) => ({ ...session(id), fontSize: 18, segmentWpm: [240, 260] });
+
 	test("a single delete tombstones the row and pulls list it as an id only", async () => {
 		await push([session("a"), session("b")]);
 		await deleteOne("a");
 		expect(await pull()).toEqual({ live: ["b"], deleted: ["a"] });
 		expect((await storedRow("a"))?.deleted).toBe(true);
+	});
+
+	test("a single delete keeps nothing of the session's reading, as the stats wipe does", async () => {
+		await push([withSpeeds("a")]);
+		await deleteOne("a");
+		expect(await storedRow("a")).toMatchObject(clearedTombstone);
+	});
+
+	test("a batch delete keeps nothing of the sessions' reading", async () => {
+		await push([withSpeeds("a"), withSpeeds("b")]);
+		expect((await deleteMany({ sessionIds: ["a", "b"] })).ok).toBe(true);
+		for (const id of ["a", "b"]) expect(await storedRow(id)).toMatchObject(clearedTombstone);
+	});
+
+	test("deleting an earlier tombstone again clears it without listing it again", async () => {
+		const then = new Date(Date.now() - 60_000);
+		await db.insert(syncReadingSessions).values({
+			userId,
+			sessionId: "old-style",
+			bookId: "f0f0f0f0",
+			mode: "rsvp",
+			startedAt: then,
+			endedAt: then,
+			durationMs: 60_000,
+			wordsRead: 300,
+			startWord: 10,
+			endWord: 310,
+			furthestWord: 310,
+			wpmAvg: 300,
+			fontSize: 18,
+			segmentWpm: [300],
+			deleted: true,
+			updatedAt: then,
+		});
+		await deleteOne("old-style");
+		expect(await storedRow("old-style")).toMatchObject({ ...clearedTombstone, updatedAt: then });
 	});
 
 	test("a later push from a device still holding the row does not revive it, in either payload shape", async () => {
@@ -179,18 +233,35 @@ describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 		expect(await pull()).toEqual({ live: ["fresh"], deleted: ["a", "b", "c"] });
 	});
 
-	test("the stats wipe clears the speeds and font size of every wiped row", async () => {
-		const withSpeeds = (id: string) => ({ ...session(id), fontSize: 18, segmentWpm: [240, 260] });
+	test("the stats wipe keeps nothing of any wiped session's reading, earlier tombstones included", async () => {
+		const then = new Date(Date.now() - 60_000);
 		await push([withSpeeds("a"), withSpeeds("b")]);
+		await db.insert(syncReadingSessions).values({
+			userId,
+			sessionId: "old-style",
+			bookId: "f0f0f0f0",
+			mode: "page",
+			startedAt: then,
+			endedAt: then,
+			durationMs: 60_000,
+			wordsRead: 250,
+			startWord: 5,
+			endWord: 255,
+			furthestWord: 255,
+			wpmAvg: 250,
+			fontSize: 20,
+			segmentWpm: [250],
+			deleted: true,
+			updatedAt: then,
+		});
 		await deleteOne("a");
+		const firstTombstone = (await storedRow("a"))?.updatedAt;
 		await wipe();
-		for (const id of ["a", "b"]) {
-			expect(await storedRow(id)).toMatchObject({
-				deleted: true,
-				fontSize: null,
-				segmentWpm: null,
-			});
+		for (const id of ["a", "b", "old-style"]) {
+			expect(await storedRow(id)).toMatchObject(clearedTombstone);
 		}
+		expect((await storedRow("a"))?.updatedAt).toEqual(firstTombstone);
+		expect((await storedRow("old-style"))?.updatedAt).toEqual(then);
 	});
 
 	test("the stats wipe tombstones goals, so pulls hand other devices the deletion", async () => {
@@ -245,7 +316,7 @@ describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 		expect(tests[0]?.updatedAt).toBeGreaterThan(then.getTime());
 	});
 
-	test("the stats wipe leaves no speed-test wpm behind, and its tombstones still parse on devices", async () => {
+	test("the stats wipe leaves nothing of a speed test behind, and its tombstones still parse on devices", async () => {
 		const then = new Date(Date.now() - 60_000);
 		await db.delete(syncSpeedTests).where(eq(syncSpeedTests.userId, userId));
 		await db.insert(syncSpeedTests).values([
@@ -271,9 +342,13 @@ describe.skipIf(!hasDb)("reading session tombstones (integration)", () => {
 		]);
 		await wipe();
 		const stored = await db.select().from(syncSpeedTests).where(eq(syncSpeedTests.userId, userId));
-		expect(stored.map((t) => [t.testId, t.readingWpm, t.rsvpWpm, t.deleted]).sort()).toEqual([
-			["earlier", 1, null, true],
-			["live", 1, null, true],
+		expect(
+			stored
+				.map((t) => [t.testId, t.readingWpm, t.rsvpWpm, t.passageId, t.createdAt, t.deleted])
+				.sort(),
+		).toEqual([
+			["earlier", 1, null, "wiped", new Date(0), true],
+			["live", 1, null, "wiped", new Date(0), true],
 		]);
 		const earlier = stored.find((t) => t.testId === "earlier");
 		expect(earlier?.updatedAt).toEqual(then);
