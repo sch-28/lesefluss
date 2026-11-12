@@ -16,6 +16,18 @@ function workersFromEnv(value: string | undefined): number | string | undefined 
 	throw new Error(`E2E_WORKERS must be a count like "2" or a share like "50%", not "${value}"`);
 }
 
+/**
+ * Lanes that take minutes per test run only on their own: `pnpm e2e:lowfps` (1 fps
+ * BeginFrameControl) and `pnpm e2e:dbscale` (a ~200 MB library, LESE-121.6).
+ */
+function optInLanesOff(): RegExp | undefined {
+	const off = [
+		process.env.E2E_LOWFPS ? null : "@lowfps",
+		process.env.E2E_DBSCALE ? null : "@dbscale",
+	].filter(Boolean);
+	return off.length ? new RegExp(off.join("|")) : undefined;
+}
+
 export default defineConfig({
 	testDir: "./e2e",
 	timeout: 60_000,
@@ -23,8 +35,7 @@ export default defineConfig({
 	// parallel; E2E_WORKERS overrides the count ("1" to debug one at a time, or "50%").
 	fullyParallel: true,
 	workers: workersFromEnv(process.env.E2E_WORKERS) ?? 4,
-	// The 1 fps lane (BeginFrameControl, minutes per test) runs on its own: `pnpm e2e:lowfps`.
-	grepInvert: process.env.E2E_LOWFPS ? undefined : /@lowfps/,
+	grepInvert: optInLanesOff(),
 	reporter: process.env.CI ? "line" : "list",
 	use: {
 		baseURL: `http://localhost:${PORT}`,

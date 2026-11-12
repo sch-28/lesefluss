@@ -1,3 +1,5 @@
+import type { DbDriverKind, DbRow } from "../services/db/driver";
+
 /**
  * Dev-only window hooks over the local database for Playwright e2e tests. The
  * callsite is wrapped in `if (import.meta.env.DEV)`, so this tree-shakes out of
@@ -43,4 +45,17 @@ export function exposeBookSessionsRead(read: E2EReadBookSessions): void {
 	(
 		window as unknown as { __lesefluss_e2e_readBookSessions?: E2EReadBookSessions }
 	).__lesefluss_e2e_readBookSessions = read;
+}
+
+export type E2EDbProbe = {
+	kind: () => DbDriverKind | null;
+	execute: (sql: string) => Promise<void>;
+	query: (sql: string) => Promise<DbRow[]>;
+	/** One reader position write through the reader's own path; resolves to its duration in ms. */
+	timePositionSave: (bookId: string, word: number) => Promise<number>;
+};
+
+/** Raw access to the active driver, for seeding a large library and timing saves on it. */
+export function exposeDbProbe(probe: E2EDbProbe): void {
+	(window as unknown as { __lesefluss_e2e_db?: E2EDbProbe }).__lesefluss_e2e_db = probe;
 }

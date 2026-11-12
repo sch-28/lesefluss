@@ -106,6 +106,11 @@ export async function initDb(options: InitDbOptions = {}): Promise<void> {
 	}
 }
 
+/** The driver the app runs on once migrations ran, else null. */
+export function activeDriver(): DbDriver | null {
+	return _ready;
+}
+
 /** Drizzle ORM over the active driver, via the sqlite-proxy adapter. */
 export const db = createDrizzleAdapter(() => _ready);
 

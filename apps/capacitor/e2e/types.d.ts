@@ -1,5 +1,10 @@
 import type { SyncSettings } from "@lesefluss/core";
-import type { E2EBookRow, E2EBookSession, E2ERemotePosition } from "../src/test-hooks/db";
+import type {
+	E2EBookRow,
+	E2EBookSession,
+	E2EDbProbe,
+	E2ERemotePosition,
+} from "../src/test-hooks/db";
 import type { E2ESaveEntry } from "../src/test-hooks/reader";
 import type { E2ETtsDriver } from "../src/test-hooks/tts";
 
@@ -27,6 +32,7 @@ declare global {
 		__lesefluss_e2e_hold?: "idle" | "settling" | "holding";
 		/** The word a book's row holds, read from the database. */
 		__lesefluss_e2e_readBookRow?: (bookId: string) => Promise<E2EBookRow | null>;
+		__lesefluss_e2e_db?: E2EDbProbe;
 		/** A book's reading sessions, read from the database. */
 		__lesefluss_e2e_readBookSessions?: (bookId: string) => Promise<E2EBookSession[]>;
 		__lesefluss_e2e_session?: {

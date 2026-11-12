@@ -1,4 +1,4 @@
-import type { SyncBook } from "@lesefluss/core";
+import type { SyncBook, WordPosition } from "@lesefluss/core";
 import { ENGINE_UNSUPPORTED_CLASS } from "@lesefluss/core/engine-support";
 import { RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
@@ -8,6 +8,7 @@ import { bootMiniPopup, isMiniPopupPath } from "./pages/mini/mini-popup";
 import { Providers } from "./providers";
 import { router } from "./router";
 import { registerAppServiceWorker } from "./services/app-update";
+import { activeDriver } from "./services/db";
 import { bookKeys } from "./services/db/hooks/query-keys";
 import { queries } from "./services/db/queries";
 import { reportMissedPosition } from "./services/position-revisions";
@@ -15,7 +16,12 @@ import { queryClient } from "./services/query-client";
 import { requestPersistentStorage } from "./services/storage-persistence";
 import { buildBookMergeUpdate } from "./services/sync/book-merge";
 import { IS_WEB_BUILD } from "./services/sync/session";
-import { exposeBookRowRead, exposeBookSessionsRead, exposeRemotePosition } from "./test-hooks/db";
+import {
+	exposeBookRowRead,
+	exposeBookSessionsRead,
+	exposeDbProbe,
+	exposeRemotePosition,
+} from "./test-hooks/db";
 import { registerReaderFonts } from "./theme/reader-fonts";
 // Legacy CSS (Ionic core + monochrome) must load BEFORE Tailwind so its
 // @layer declarations register first; variables.css then re-declares the same
@@ -44,6 +50,29 @@ async function bootstrap() {
 				wordsRead,
 			})),
 		);
+		const driver = () => {
+			const active = activeDriver();
+			if (!active) throw new Error("Database not open");
+			return active;
+		};
+		exposeDbProbe({
+			kind: () => activeDriver()?.kind ?? null,
+			execute: (sql) => driver().execute(sql),
+			query: (sql) => driver().query(sql),
+			timePositionSave: async (bookId, word) => {
+				const book = await queries.getBook(bookId);
+				if (!book) throw new Error(`No book ${bookId}`);
+				const start = performance.now();
+				const result = await queries.writeReaderPosition(bookId, {
+					wordPosition: word as WordPosition,
+					lastRead: Date.now(),
+					baseRev: book.updatedAt,
+				});
+				const ms = performance.now() - start;
+				if (!result.isWritten) throw new Error(`Position save for ${bookId} did not land`);
+				return ms;
+			},
+		});
 		exposeRemotePosition(async (bookId, word, updatedAt, options = {}) => {
 			const local = await queries.getBook(bookId);
 			if (!local) throw new Error(`No book ${bookId}`);

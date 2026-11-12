@@ -59,8 +59,13 @@ On the web, the SQLite database lives on OPFS: SQLite WASM with the `opfs-sahpoo
     - the website's activity toggles;
     - `/app` assets loading without 404s;
     - the local database surviving an unload mid-save;
-    - a tab on the previous build recovering from a deleted chunk with one reload (`stale-chunk.spec.ts`).
-  - Not wired into CI. That would need a Postgres service container and `E2E_APP_PG_URL` pointing at it, plus `pnpm exec playwright install chromium`.
+    - a tab on the previous build recovering from a deleted chunk with one reload (`stale-chunk.spec.ts`);
+    - the local database on every engine (`db-browsers.spec.ts`): it opens, saves and reads back after a reload, on the store each engine must use.
+  - **Browser matrix:** `db-browsers.spec.ts` also runs in the `firefox` project (`pnpm exec playwright install firefox` once) and, on request, in `webkit`.
+    - Playwright's WebKit build has no `navigator.storage`, so it covers the no-OPFS fallback (the legacy store); OPFS on Safari is checked on a real iPhone (LESE-20.6).
+    - **`pnpm e2e:app:webkit`** (`scripts/e2e-app-webkit.sh`) runs the `webkit` project where the host can't launch WebKit (missing Ubuntu libraries): it starts Playwright's run-server in the official image matching `@playwright/test`, with the repo mounted read-only and `--network host`, and points the project at it through `E2E_WEBKIT_WS`. The image is pulled once: `docker pull mcr.microsoft.com/playwright:v1.60.0-noble` (keep the tag in step with `@playwright/test`). Extra arguments go to `playwright test`, e.g. `pnpm e2e:app:webkit db-browsers`. `E2E_WEBKIT=1` instead launches a locally installed WebKit.
+  - Not wired into CI. That would need a Postgres service container and `E2E_APP_PG_URL` pointing at it, plus `pnpm exec playwright install chromium firefox`.
+- **`pnpm e2e:dbscale`** (`e2e/db-scale.spec.ts`, tag `@dbscale`, skipped by `pnpm e2e`): renderer memory and position-save time with one book and with ~200 MB of stored images, on the OPFS store and on the legacy store. It prints one `db-scale {...}` line per store and asserts no timings; the numbers from LESE-121.6 are on that ticket.
 
 ## File Structure
 

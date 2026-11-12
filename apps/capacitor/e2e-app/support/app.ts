@@ -59,8 +59,9 @@ export async function resetAppStorage(page: Page) {
 					}),
 			),
 		);
-		const opfs = await navigator.storage.getDirectory();
-		await opfs.removeEntry("lesefluss", { recursive: true }).catch(() => {});
+		// Playwright's WebKit has no navigator.storage at all; the app runs on the legacy store there.
+		const opfs = await navigator.storage?.getDirectory().catch(() => null);
+		await opfs?.removeEntry("lesefluss", { recursive: true }).catch(() => {});
 		localStorage.clear();
 		sessionStorage.clear();
 		const workers = (await navigator.serviceWorker?.getRegistrations()) ?? [];
