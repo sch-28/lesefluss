@@ -81,6 +81,12 @@ vi.mock("@/pages/library/reading-goal/goal-sheet-for", () => ({
 	),
 	GoalEditSheet: () => null,
 }));
+const platform = vi.hoisted(() => ({ web: false }));
+vi.mock("@/utils/platform", () => ({
+	get IS_WEB() {
+		return platform.web;
+	},
+}));
 vi.mock("@/services/db/hooks", () => ({
 	queryHooks: {
 		useSettings: () => ({ data: state.settings, isPending: false }),
@@ -143,6 +149,7 @@ beforeEach(() => {
 	state.model = undefined;
 	state.books = [];
 	state.plans = [];
+	platform.web = false;
 });
 afterEach(() => {
 	view?.unmount();
@@ -165,6 +172,16 @@ describe("Settings root", () => {
 		expect(diagnostics?.querySelector("svg")).not.toBeNull();
 		expect(view.container.querySelector("[role=switch]")).toBeNull();
 		expect(view.container.querySelector("[data-testid=speed-window-select]")).toBeNull();
+		expect(view.container.querySelector("#on-the-web")).toBeNull();
+	});
+
+	it("on the web, shows the On the web card and says diagnostics send nothing", async () => {
+		platform.web = true;
+		view = await renderPage(settingsRoot);
+		const diagnostics = link("/tabs/settings/diagnostics");
+		expect(diagnostics?.textContent).toContain("Nothing is sent from the web app");
+		const card = view.container.querySelector("#on-the-web");
+		expect(card?.textContent).toContain("These need the Android app");
 	});
 });
 

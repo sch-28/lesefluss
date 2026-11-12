@@ -6,6 +6,7 @@ import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { DiagnosticsRow } from "@/pages/settings/diagnostics-row";
 import { isTelemetryEnabled, setTelemetryEnabled } from "@/services/telemetry";
+import { IS_WEB } from "@/utils/platform";
 
 export const Route = createFileRoute("/tabs/settings/diagnostics")({
 	component: DiagnosticsSettings,
@@ -22,13 +23,20 @@ function DiagnosticsSettings() {
 			<PageHeader title="Diagnostics" icon={ShieldCheck} />
 			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
 				<SettingsSection title="Privacy">
-					<ToggleRow
-						id="telemetry"
-						title="Anonymous diagnostics"
-						subtitle="Send anonymized error reports to help fix bugs. No account or personal data."
-						checked={telemetry}
-						onCheckedChange={toggle}
-					/>
+					{IS_WEB ? (
+						<p className="m-0 px-4 py-3 text-muted-foreground text-sm">
+							The web app sends no diagnostics. Copy the device details below into a bug report if
+							you want to share them.
+						</p>
+					) : (
+						<ToggleRow
+							id="telemetry"
+							title="Anonymous diagnostics"
+							subtitle="Send anonymized error reports to help fix bugs. No account or personal data."
+							checked={telemetry}
+							onCheckedChange={toggle}
+						/>
+					)}
 				</SettingsSection>
 				<SettingsSection title="This device">
 					<DiagnosticsRow />

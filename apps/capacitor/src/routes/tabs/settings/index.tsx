@@ -29,6 +29,7 @@ import BLEIndicator from "@/components/ble-indicator";
 import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { WINDOW_LABELS } from "@/components/speed-chip/speed-chip-model";
+import { OnTheWebCard } from "@/components/web-limitations";
 import { SHOW_WHATS_NEW_EVENT } from "@/components/whats-new-modal";
 import { useBLE } from "@/contexts/ble-context";
 import { useSyncContext } from "@/contexts/sync-context";
@@ -212,12 +213,21 @@ function SettingsLanding() {
 				)}
 
 				<SettingsSection title="Privacy">
-					<NavRow
-						icon={ShieldCheck}
-						title="Anonymous diagnostics"
-						subtitle={isTelemetryEnabled() ? "On" : "Off"}
-						to="/tabs/settings/diagnostics"
-					/>
+					{IS_WEB ? (
+						<NavRow
+							icon={ShieldCheck}
+							title="Diagnostics"
+							subtitle="Nothing is sent from the web app"
+							to="/tabs/settings/diagnostics"
+						/>
+					) : (
+						<NavRow
+							icon={ShieldCheck}
+							title="Anonymous diagnostics"
+							subtitle={isTelemetryEnabled() ? "On" : "Off"}
+							to="/tabs/settings/diagnostics"
+						/>
+					)}
 				</SettingsSection>
 
 				<SettingsSection title="About">
@@ -249,6 +259,8 @@ function SettingsLanding() {
 						to="/tabs/settings/licenses"
 					/>
 				</SettingsSection>
+
+				{IS_WEB && <OnTheWebCard />}
 			</div>
 		</div>
 	);

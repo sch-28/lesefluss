@@ -106,6 +106,8 @@ function shouldSend(type: string): boolean {
 export type TelemetryOptions = { message?: string; extra?: Record<string, unknown> };
 
 export function reportEvent(type: string, opts: TelemetryOptions = {}): void {
+	// The web app sends no telemetry at all, even with a SYNC_URL set.
+	if (Capacitor.getPlatform() === "web") return;
 	if (!enabled) return;
 	if (!SYNC_URL) return;
 	if (!shouldSend(type)) return;

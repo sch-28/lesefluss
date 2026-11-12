@@ -33,7 +33,7 @@ function engineCheck(): Plugin {
 		name: "engine-check",
 		configResolved(config) {
 			const syncUrl = loadEnv(config.mode, __dirname, "VITE_").VITE_SYNC_URL?.trim();
-			telemetryUrl = syncUrl ? `${syncUrl}/api/telemetry` : "";
+			telemetryUrl = syncUrl && platform !== "web" ? `${syncUrl}/api/telemetry` : "";
 		},
 		transformIndexHtml: {
 			order: "pre",

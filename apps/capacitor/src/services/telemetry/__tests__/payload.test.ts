@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@capacitor/app", () => ({ App: { getInfo: async () => ({ version: "1.6.0" }) } }));
-vi.mock("@capacitor/core", () => ({ Capacitor: { getPlatform: () => "android" } }));
+let platform = "android";
+vi.mock("@capacitor/core", () => ({ Capacitor: { getPlatform: () => platform } }));
 vi.mock("../../sync/auth-client", () => ({
 	SYNC_URL: "https://lesefluss.app",
 	syncAuthClient: null,
@@ -11,6 +12,7 @@ const BOOX_UA =
 	"Mozilla/5.0 (Linux; Android 11; NovaAir2 Build/RKQ1.210614.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/149.0.7827.159 Safari/537.36";
 
 afterEach(() => {
+	platform = "android";
 	vi.unstubAllGlobals();
 	// The module throttles repeat events of a type; each test needs a fresh copy.
 	vi.resetModules();
@@ -46,5 +48,17 @@ describe("telemetry payload", () => {
 			"Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
 		);
 		expect(body).not.toHaveProperty("webview");
+	});
+
+	it("sends nothing from the web app, even with a sync URL configured", async () => {
+		platform = "web";
+		vi.stubGlobal("navigator", { userAgent: BOOX_UA });
+		const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+		vi.stubGlobal("fetch", fetchMock);
+		const { reportEvent } = await import("../index");
+		reportEvent("db_write_error", { message: "disk full" });
+		// One macrotask lets every queued microtask of send() run first.
+		await new Promise((resolve) => setTimeout(resolve));
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 });

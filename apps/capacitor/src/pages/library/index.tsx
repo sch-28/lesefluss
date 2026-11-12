@@ -32,6 +32,7 @@ import { HeaderGoalRing } from "../../components/header-goal-ring";
 import { canSaveAsShelf, SaveShelfDialog } from "../../components/smart-shelves/save-shelf-dialog";
 import { ShelfActions } from "../../components/smart-shelves/shelf-actions";
 import { toast } from "../../components/toast";
+import { WebLimitsLine } from "../../components/web-limitations";
 import { useBLE } from "../../contexts/ble-context";
 import { useBookSync } from "../../contexts/book-sync-context";
 import { useSyncContext } from "../../contexts/sync-context";
@@ -901,6 +902,8 @@ const Library: React.FC = () => {
 					</button>
 				</div>
 			)}
+
+			{IS_WEB && <WebLimitsLine />}
 
 			{activeCollection?.ordered ? (
 				<OrderedCollectionView
