@@ -75,6 +75,8 @@ export default defineConfig(({ mode }) => {
 				routeRules: {
 					"/**": { headers: securityHeaders },
 					"/app/**": { headers: appSecurityHeaders },
+					// The browser checks the worker for a new deploy; a cached copy would hide it.
+					"/app/sw.js": { headers: { ...appSecurityHeaders, "cache-control": "no-cache" } },
 				},
 			}),
 		],

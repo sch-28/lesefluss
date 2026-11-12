@@ -35,6 +35,15 @@ const SETTLE_QUIET_MS = 150;
 const SETTLE_MAX_MS = 3000;
 
 /**
+ * Sends the reader's position flushes (a synthetic `pagehide`) and waits for the
+ * database to go quiet, for a reload the app starts itself.
+ */
+export async function flushPendingSaves(): Promise<void> {
+	window.dispatchEvent(new Event("pagehide"));
+	await _tracked?.settled(SETTLE_QUIET_MS, SETTLE_MAX_MS);
+}
+
+/**
  * Another tab claimed the library. The reader's position flushes listen for
  * `pagehide`, so one is sent before the app unmounts (its unmount saves run
  * too); once the statements have settled the database closes and the lock goes.

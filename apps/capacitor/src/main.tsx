@@ -7,11 +7,14 @@ import { installStaleChunkReload } from "./lib/stale-chunk-reload";
 import { bootMiniPopup, isMiniPopupPath } from "./pages/mini/mini-popup";
 import { Providers } from "./providers";
 import { router } from "./router";
+import { registerAppServiceWorker } from "./services/app-update";
 import { bookKeys } from "./services/db/hooks/query-keys";
 import { queries } from "./services/db/queries";
 import { reportMissedPosition } from "./services/position-revisions";
 import { queryClient } from "./services/query-client";
+import { requestPersistentStorage } from "./services/storage-persistence";
 import { buildBookMergeUpdate } from "./services/sync/book-merge";
+import { IS_WEB_BUILD } from "./services/sync/session";
 import { exposeBookRowRead, exposeBookSessionsRead, exposeRemotePosition } from "./test-hooks/db";
 import { registerReaderFonts } from "./theme/reader-fonts";
 // Legacy CSS (Ionic core + monochrome) must load BEFORE Tailwind so its
@@ -73,6 +76,11 @@ async function bootstrap() {
 			<RouterProvider router={router} />
 		</Providers>,
 	);
+
+	if (IS_WEB_BUILD) {
+		void requestPersistentStorage();
+		if (import.meta.env.PROD) void registerAppServiceWorker();
+	}
 }
 
 // The inline engine check in index.html found an engine too old to render the

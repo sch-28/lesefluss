@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
@@ -120,6 +121,43 @@ function webAppManifest(): Plugin {
 	};
 }
 
+/**
+ * Writes the web build's service worker (LESE-20.7): the template in
+ * src/service-worker/sw.js, preceded by every file of the build with a content
+ * revision, so a deploy re-downloads only what changed. Runs after the public
+ * dir is copied, which the bundle hooks don't see.
+ */
+function serviceWorker(): Plugin {
+	let outDir = "";
+	return {
+		name: "service-worker",
+		apply: (_config, env) => IS_WEB_BUILD && env.command === "build",
+		configResolved(config) {
+			outDir = path.resolve(config.root, config.build.outDir);
+		},
+		closeBundle() {
+			const files = fs
+				.readdirSync(outDir, { recursive: true, withFileTypes: true })
+				.filter((entry) => entry.isFile())
+				.map((entry) => path.join(entry.parentPath, entry.name))
+				.filter((file) => file !== path.join(outDir, "sw.js"))
+				.sort()
+				.map((file) => {
+					const rev = createHash("sha256").update(fs.readFileSync(file)).digest("hex").slice(0, 16);
+					const url = BASE + path.relative(outDir, file).split(path.sep).join("/");
+					return [url, rev] as const;
+				});
+			const version = createHash("sha256").update(JSON.stringify(files)).digest("hex").slice(0, 16);
+			const precache = JSON.stringify({ version, base: BASE, files });
+			const template = fs.readFileSync(path.resolve(__dirname, "src/service-worker/sw.js"), "utf8");
+			fs.writeFileSync(
+				path.join(outDir, "sw.js"),
+				`self.__LESEFLUSS_PRECACHE = ${precache};\n${template}`,
+			);
+		},
+	};
+}
+
 export default defineConfig({
 	base: BASE,
 	resolve: {
@@ -138,6 +176,7 @@ export default defineConfig({
 		tailwindcss(),
 		engineCheck(),
 		webAppManifest(),
+		serviceWorker(),
 		// Serve sql-wasm.wasm at any path ending in /sql-wasm.wasm during dev.
 		// jeep-sqlite resolves the path relative to its own script URL, which
 		// can vary, so we intercept all requests for this filename.

@@ -21,6 +21,8 @@ export default defineConfig({
 	use: {
 		baseURL: `http://localhost:${PORT}`,
 		trace: "retain-on-failure",
+		// page.route never sees what a service worker answers; offline-shell.spec.ts allows them.
+		serviceWorkers: "block",
 	},
 	webServer: {
 		command: "node e2e-app/support/serve.mjs",
