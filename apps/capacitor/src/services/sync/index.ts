@@ -32,6 +32,7 @@ import {
 import { exposeRemoteSettingsApply } from "../../test-hooks/sync";
 import { log } from "../../utils/log";
 import { AuthedFetchError, type AuthedFetchOptions, authedFetch } from "../authed-fetch";
+import { normalizeIncomingCover } from "../covers/shrink-legacy-covers";
 import {
 	bookKeys,
 	glossaryKeys,
@@ -880,11 +881,12 @@ export async function pullSync(): Promise<Set<string>> {
 			}
 
 			if (!local) {
+				const coverImage = await normalizeIncomingCover(serverSeries.coverImage);
 				await queries.addSeries({
 					id: serverSeries.seriesId,
 					title: serverSeries.title,
 					author: serverSeries.author,
-					coverImage: serverSeries.coverImage ?? null,
+					coverImage,
 					description: serverSeries.description,
 					sourceUrl: serverSeries.sourceUrl,
 					tocUrl: serverSeries.tocUrl,
@@ -898,7 +900,7 @@ export async function pullSync(): Promise<Set<string>> {
 					id: serverSeries.seriesId,
 					title: serverSeries.title,
 					author: serverSeries.author,
-					coverImage: serverSeries.coverImage ?? null,
+					coverImage,
 					description: serverSeries.description,
 					sourceUrl: serverSeries.sourceUrl,
 					tocUrl: serverSeries.tocUrl,
@@ -919,7 +921,7 @@ export async function pullSync(): Promise<Set<string>> {
 				await queries.updateSeries(serverSeries.seriesId, {
 					title: serverSeries.title,
 					author: serverSeries.author,
-					coverImage: serverSeries.coverImage ?? null,
+					coverImage: await normalizeIncomingCover(serverSeries.coverImage),
 					description: serverSeries.description,
 					tocUrl: serverSeries.tocUrl,
 					lastCheckedAt: serverSeries.lastCheckedAt,
@@ -989,7 +991,7 @@ export async function pullSync(): Promise<Set<string>> {
 						await queries.addServerBookWithContent(
 							row,
 							serverBook.content ?? "",
-							serverBook.coverImage,
+							await normalizeIncomingCover(serverBook.coverImage),
 							serverBook.chapters ?? null,
 							serverBook.linkRanges ?? null,
 						);

@@ -2,6 +2,7 @@ import { Button } from "@lesefluss/ui/button";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { type DbScreenState, DbStateScreen } from "../components/db-state-screen";
+import { startCoverShrink } from "../services/covers/shrink-legacy-covers";
 import { initDb, onDbMoved, resetAppData } from "../services/db";
 import {
 	DB_IN_USE_ERROR,
@@ -124,6 +125,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 					setIsBusy(false);
 					setPhase("ready");
 					void healWordCounts();
+					startCoverShrink();
 				})
 				.catch((err) => {
 					if (current !== attempt.current) return;

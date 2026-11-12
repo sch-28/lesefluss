@@ -77,6 +77,7 @@ import {
 	upsertCollectionBooks,
 	upsertCollections,
 } from "./collections";
+import { getOversizedCovers, getStoredCover, replaceStoredCover } from "./covers";
 import { clearAllDevices, forgetDevice, getPairedDevices, saveDevice } from "./devices";
 import {
 	addEntry,
@@ -236,6 +237,11 @@ export const queries = {
 	deleteBook,
 	hardDeleteBook,
 	deleteOrphanedContentRows,
+
+	// Covers
+	getOversizedCovers,
+	getStoredCover,
+	replaceStoredCover,
 
 	// Highlights
 	getHighlightsByBook,
