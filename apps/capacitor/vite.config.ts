@@ -163,9 +163,14 @@ export default defineConfig({
 	// The e2e run's server (E2E_SERVER, set by playwright.config.ts) bundles every
 	// dependency up front and doesn't hot-reload: a dependency found mid-run, or a
 	// file saved during one, would reload every open page and fail its test.
-	optimizeDeps: process.env.E2E_SERVER
-		? { entries: ["**/*.{ts,tsx}", "!**/__tests__/**", "!**/*.test.*"] }
-		: undefined,
+	optimizeDeps: {
+		// Pre-bundling moves the package away from its sqlite3.wasm, which it finds by its own URL.
+		exclude: ["@sqlite.org/sqlite-wasm"],
+		...(process.env.E2E_SERVER
+			? { entries: ["**/*.{ts,tsx}", "!**/__tests__/**", "!**/*.test.*"] }
+			: {}),
+	},
+	worker: { format: "es" },
 	server: {
 		port: 3001,
 		open: true,

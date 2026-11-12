@@ -2,6 +2,7 @@ import { Button } from "@lesefluss/ui/button";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { initDb, resetAppData } from "../services/db";
+import { STORAGE_BUSY_ERROR } from "../services/db/driver";
 import { bookKeys, statsKeys } from "../services/db/hooks/query-keys";
 import { queries } from "../services/db/queries";
 import { queryClient } from "../services/query-client";
@@ -102,13 +103,20 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 				<div className="flex max-w-sm flex-col items-center gap-4 text-center">
 					<h2 className="m-0 font-semibold text-lg">Lesefluss can't start</h2>
 					<p className="m-0 text-sm opacity-80">{error.message}</p>
-					<p className="m-0 text-xs opacity-60">
-						Resetting clears local books, settings and highlights on this device. If you're signed
-						in to cloud sync, they'll restore on next sign-in.
-					</p>
-					<Button onClick={handleReset} disabled={isResetting}>
-						{isResetting ? "Resetting…" : "Reset app data"}
-					</Button>
+					{error.name === STORAGE_BUSY_ERROR ? (
+						// The library is intact, only locked; a reset here would wipe it.
+						<Button onClick={() => window.location.reload()}>Reload</Button>
+					) : (
+						<>
+							<p className="m-0 text-xs opacity-60">
+								Resetting clears local books, settings and highlights on this device. If you're
+								signed in to cloud sync, they'll restore on next sign-in.
+							</p>
+							<Button onClick={handleReset} disabled={isResetting}>
+								{isResetting ? "Resetting…" : "Reset app data"}
+							</Button>
+						</>
+					)}
 				</div>
 			</div>
 		);

@@ -36,6 +36,13 @@ test("leaving the page while the database is being saved keeps it in the store",
 	page,
 }) => {
 	await resetAppStorage(page);
+	// The legacy store is still the fallback where OPFS is missing or the move to it failed.
+	await page.addInitScript(() => {
+		Object.defineProperty(StorageManager.prototype, "getDirectory", {
+			value: undefined,
+			configurable: true,
+		});
+	});
 	await page.goto("/app/tabs/library");
 	await expect(page.getByText("No books yet")).toBeVisible();
 

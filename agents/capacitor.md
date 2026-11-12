@@ -35,12 +35,12 @@ WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true pnpm build
 - Vite `base: "/app/"` - all asset paths prefixed
 - React Router basename `/app` - client routes become `/app/tabs/library` etc.
 - Cookie-based auth instead of Bearer token (same-domain session)
-- WASM path set to `/app/assets` for jeep-sqlite
+- WASM path set to `/app/assets` for the jeep-sqlite fallback
 - BLE/device UI hidden, file import uses HTML5 File API
 
 Platform detection: `Capacitor.getPlatform() === "web"` (used throughout for BLE guards, UI hiding). Web build detection: `import.meta.env.VITE_WEB_BUILD === "true"` (used for auth and sync differences).
 
-On the web, the SQLite database lives in IndexedDB through jeep-sqlite, which rewrites the whole entry after every write. `patches/jeep-sqlite@2.8.0.patch` makes that rewrite a single put: unpatched, it deleted the entry first, so leaving the page mid-save lost the whole local database (TASK-175.6). Keep the patch until upstream saves with one put; `e2e-app/local-store-unload.spec.ts` guards it.
+On the web, the SQLite database lives on OPFS: SQLite WASM with the `opfs-sahpool` VFS in a module worker (`services/db/driver/web/`), pool directory `/lesefluss/sahpool`. The first start moves an old jeep-sqlite store from IndexedDB over (confirm-then-delete; the `opfs-active` marker under `/lesefluss` says OPFS is the store), and a browser without OPFS or a failed move runs on the legacy store: jeep-sqlite in IndexedDB, which rewrites the whole entry after every write. `patches/jeep-sqlite@2.8.0.patch` makes that rewrite a single put: unpatched, it deleted the entry first, so leaving the page mid-save lost the whole local database (TASK-175.6). Keep the patch while the legacy store exists; `e2e-app/local-store-unload.spec.ts` guards it.
 
 ## E2E tests
 
@@ -119,10 +119,10 @@ src/
       auth-client.ts          # Better Auth client configured with VITE_SYNC_URL
       index.ts                # pullSync, pushSync, scheduleSyncPush, signIn/signUp/signOut, token mgmt
     db/
-      index.ts              # Barrel - initDb(), db, sqliteConnection
+      index.ts              # Barrel - initDb(), db, resetAppData()
       adapter.ts            # Drizzle sqlite-proxy adapter + sanitizeParams
       migrations.ts         # Migration runner (reads drizzle/ journal + SQL files)
-      web-setup.ts          # jeep-sqlite web bootstrap (no-op on native)
+      driver/               # DbDriver: native plugin, OPFS worker (web), legacy jeep-sqlite fallback
       schema.ts             # Drizzle table definitions
       queries/              # Raw async query functions (import as `queries` object)
         highlights.ts       # getHighlightsByBook, getAllHighlights, addHighlight, updateHighlight, deleteHighlight, deleteHighlightsByBook

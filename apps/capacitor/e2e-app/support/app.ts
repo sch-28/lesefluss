@@ -42,7 +42,7 @@ export async function getJson<T = unknown>(api: APIRequestContext, path: string)
 }
 
 /**
- * Wipes the app's local data (IndexedDB, storage). Runs from a plain page on the
+ * Wipes the app's local data (IndexedDB, OPFS, storage). Runs from a plain page on the
  * same origin, so the app never boots and holds no open database handle.
  */
 export async function resetAppStorage(page: Page) {
@@ -59,6 +59,8 @@ export async function resetAppStorage(page: Page) {
 					}),
 			),
 		);
+		const opfs = await navigator.storage.getDirectory();
+		await opfs.removeEntry("lesefluss", { recursive: true }).catch(() => {});
 		localStorage.clear();
 		sessionStorage.clear();
 	});

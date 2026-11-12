@@ -20,10 +20,11 @@ export default defineConfig(({ mode }) => {
 	// BETTER_AUTH_URL is same-origin in prod (covered by 'self') but differs in dev
 	// (e.g. http://localhost:3000 while the page is loaded from another host) - listing
 	// it keeps auth calls allowed in both environments.
-	// /app/* needs wasm-unsafe-eval + unsafe-eval for sql.js; kept separate to stay
+	// /app/* needs wasm-unsafe-eval for SQLite WASM (its database worker gets the
+	// same header) and unsafe-eval for the sql.js fallback; kept separate to stay
 	// strict on main site. Reader word lookups go to the catalog origin, which is
 	// already in connect-src below.
-	function buildCsp(scriptExtra = "", connectExtra = "") {
+	function buildCsp(scriptExtra = "", connectExtra = "", extraDirectives: string[] = []) {
 		return [
 			"default-src 'self'",
 			`script-src 'self' 'unsafe-inline'${scriptExtra}${UMAMI_URL ? ` ${UMAMI_URL}` : ""}`,
@@ -35,11 +36,12 @@ export default defineConfig(({ mode }) => {
 			"frame-ancestors 'none'",
 			"base-uri 'self'",
 			"form-action 'self'",
+			...extraDirectives,
 		].join("; ");
 	}
 
 	const csp = buildCsp();
-	const appCsp = buildCsp(" 'wasm-unsafe-eval' 'unsafe-eval'");
+	const appCsp = buildCsp(" 'wasm-unsafe-eval' 'unsafe-eval'", "", ["worker-src 'self'"]);
 
 	const securityHeaders = {
 		"strict-transport-security": "max-age=31536000; includeSubDomains",

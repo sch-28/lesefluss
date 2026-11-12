@@ -1,43 +1,31 @@
 import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Preferences } from "@capacitor/preferences";
-import {
-	CapacitorSQLite,
-	SQLiteConnection,
-	type SQLiteDBConnection,
-} from "@capacitor-community/sqlite";
 import { log } from "../../utils/log";
 import { createDrizzleAdapter } from "./adapter";
+import { createDriver, type DbDriver, deleteStoreWithoutDriver } from "./driver";
 import { runMigrations } from "./migrations";
 import { backfillAddedAt, backfillFinishedAt } from "./queries/books";
 
-const DB_NAME = "lesefluss.db";
-
-let _conn: SQLiteDBConnection | null = null;
+let _driver: DbDriver | null = null;
+/** Set only after migrations ran; the Drizzle instance refuses queries until then. */
+let _ready: DbDriver | null = null;
 let _initPromise: Promise<void> | null = null;
 
 /**
- * Module-level SQLiteConnection singleton.
- * Exported so web-setup.ts can call initWebStore() during web bootstrap.
- */
-export const sqliteConnection = new SQLiteConnection(CapacitorSQLite);
-
-/**
- * Initialise the SQLite connection and run any pending migrations.
- * Call once at app startup (from DatabaseProvider).
- * Safe to call multiple times (React strict mode, hot reload) - reuses existing connection.
- * Uses a promise guard so concurrent calls (React Strict Mode double-effect) share one init.
+ * Open the database and run any pending migrations. Call once at app startup
+ * (from DatabaseProvider). Concurrent calls (React Strict Mode double-effect)
+ * share one init; a failed init is retried by the next call.
  */
 export async function initDb(): Promise<void> {
 	if (_initPromise) return _initPromise;
 
 	_initPromise = (async () => {
-		// A page reload keeps the native connection while this side starts empty;
-		// createConnection would then fail with "already exists".
-		await sqliteConnection.checkConnectionsConsistency().catch(() => {});
-		_conn = await sqliteConnection.createConnection(DB_NAME, false, "no-encryption", 1, false);
-		await _conn.open();
-		await runMigrations(_conn);
+		const driver = await createDriver();
+		_driver = driver;
+		await driver.open();
+		await runMigrations(driver);
+		_ready = driver;
 		// Idempotent, and only touches rows that are wrong, so both are cheap on
 		// every start after the first. Books finished before `finished_at` existed
 		// would otherwise never appear in a period's finished count.
@@ -48,22 +36,16 @@ export async function initDb(): Promise<void> {
 	try {
 		return await _initPromise;
 	} catch (err) {
-		// Reset so the next call retries instead of returning a cached rejection
 		_initPromise = null;
-		_conn = null;
+		_ready = null;
+		await _driver?.close().catch(() => {});
+		_driver = null;
 		throw err;
 	}
 }
 
-/**
- * Drizzle ORM instance backed by @capacitor-community/sqlite via the proxy adapter.
- *
- * The sqlite-proxy adapter wraps any async SQLite driver with typed glue:
- *   - Drizzle builds the SQL + params from typed queries (db.select().from(books)...)
- *   - The adapter callback forwards them to the Capacitor native plugin
- *   - Results come back as rows which Drizzle maps to typed objects
- */
-export const db = createDrizzleAdapter(() => _conn);
+/** Drizzle ORM over the active driver, via the sqlite-proxy adapter. */
+export const db = createDrizzleAdapter(() => _ready);
 
 // Recovery wipe — each step is independent so a partial failure still leaves the app launchable.
 export async function resetAppData(): Promise<void> {
@@ -76,21 +58,15 @@ export async function resetAppData(): Promise<void> {
 		}
 	}
 
-	try {
-		if (_conn) {
-			await sqliteConnection.closeConnection(DB_NAME, false);
-			_conn = null;
-		}
-	} catch (err) {
-		log.warn("db", "closeConnection during reset failed:", err);
-	}
 	_initPromise = null;
-
+	_ready = null;
+	const driver = _driver;
+	_driver = null;
 	try {
-		const dbExists = (await sqliteConnection.isDatabase(DB_NAME)).result;
-		if (dbExists) await CapacitorSQLite.deleteDatabase({ database: DB_NAME });
+		if (driver) await driver.deleteDatabase();
+		else await deleteStoreWithoutDriver();
 	} catch (err) {
-		log.warn("db", "deleteDatabase failed:", err);
+		log.warn("db", "deleting the database failed:", err);
 	}
 
 	try {

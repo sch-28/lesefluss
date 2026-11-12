@@ -9,7 +9,6 @@ import { Providers } from "./providers";
 import { router } from "./router";
 import { bookKeys } from "./services/db/hooks/query-keys";
 import { queries } from "./services/db/queries";
-import { initWebSqlite } from "./services/db/web-setup";
 import { reportMissedPosition } from "./services/position-revisions";
 import { queryClient } from "./services/query-client";
 import { buildBookMergeUpdate } from "./services/sync/book-merge";
@@ -29,7 +28,7 @@ import "./theme/variables.css";
 async function bootstrap() {
 	installStaleChunkReload(router);
 	registerReaderFonts();
-	await Promise.all([initWebSqlite(), bootstrapCapacitor()]);
+	await bootstrapCapacitor();
 	if (import.meta.env.DEV) {
 		exposeBookRowRead(async (id) => {
 			const book = await queries.getBook(id);
