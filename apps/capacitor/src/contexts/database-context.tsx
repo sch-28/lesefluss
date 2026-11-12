@@ -8,7 +8,7 @@ import {
 	DB_IN_USE_ERROR,
 	STORAGE_BUSY_ERROR,
 	STORAGE_UNAVAILABLE_ERROR,
-} from "../services/db/driver/types";
+} from "../services/db/driver";
 import { bookKeys, statsKeys } from "../services/db/hooks/query-keys";
 import { queries } from "../services/db/queries";
 import { queryClient } from "../services/query-client";
@@ -87,6 +87,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 	const [phase, setPhase] = useState<Phase>("starting");
 	const [error, setError] = useState<Error | null>(null);
 	const [isBusy, setIsBusy] = useState(false);
+	const [askedAgainFailed, setAskedAgainFailed] = useState(false);
 	const [isResetting, setIsResetting] = useState(false);
 	const attempt = useRef(0);
 	const openingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -97,7 +98,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 	}, []);
 
 	const start = useCallback(
-		(claim: boolean) => {
+		(claim: boolean, askedByUser = false) => {
 			const current = ++attempt.current;
 			const onWaiting = () => {
 				if (openingTimer.current) return;
@@ -123,6 +124,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 					if (current !== attempt.current) return;
 					clearOpeningTimer();
 					setIsBusy(false);
+					setAskedAgainFailed(false);
 					setPhase("ready");
 					void healWordCounts();
 					startCoverShrink();
@@ -131,6 +133,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 					if (current !== attempt.current) return;
 					clearOpeningTimer();
 					setIsBusy(false);
+					setAskedAgainFailed(askedByUser);
 					log.error("db", "Database initialisation failed:", err);
 					setError(err as Error);
 					setPhase(phaseFor(err as Error));
@@ -147,6 +150,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 			attempt.current++;
 			clearOpeningTimer();
 			setIsBusy(false);
+			setAskedAgainFailed(false);
 			setPhase("moved");
 		});
 		return () => {
@@ -158,7 +162,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 	const claimHere = useCallback(() => {
 		setIsBusy(true);
-		start(true);
+		start(true, true);
 	}, [start]);
 
 	// Caches and in-memory state still describe the library as it was before the
@@ -176,7 +180,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 	const retry = useCallback(() => {
 		setIsBusy(true);
-		start(false);
+		start(false, true);
 	}, [start]);
 
 	const handleReset = useCallback(async () => {
@@ -192,12 +196,26 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 	if (phase === "opening") return <DbStateScreen state="opening" />;
 	if (phase === "in-use")
-		return <DbStateScreen state="in-use" onAction={claimHere} busy={isBusy} />;
+		return (
+			<DbStateScreen
+				state="in-use"
+				onAction={claimHere}
+				busy={isBusy}
+				failedAgain={askedAgainFailed}
+			/>
+		);
 	if (phase === "moved") {
 		return <DbStateScreen state="moved" onAction={reclaimAfterMove} busy={isBusy} />;
 	}
 	if (phase === "unavailable") {
-		return <DbStateScreen state="unavailable" onAction={retry} busy={isBusy} />;
+		return (
+			<DbStateScreen
+				state="unavailable"
+				onAction={retry}
+				busy={isBusy}
+				failedAgain={askedAgainFailed}
+			/>
+		);
 	}
 
 	if (phase === "error" && error) {

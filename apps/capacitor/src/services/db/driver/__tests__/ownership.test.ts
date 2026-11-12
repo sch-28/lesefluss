@@ -158,23 +158,28 @@ describe("acquireOwnership", () => {
 		expect(await outcome).toBeInstanceOf(DbInUseError);
 	});
 
-	it("on a claim, the holder lets go first and the claiming tab then holds the lock", async () => {
+	it("on a claim, the lock stays with the holder until its saves settled", async () => {
 		const { env, isHeld } = tabs();
-		const steps: string[] = [];
-		await acquireOwnership(
-			{
-				claim: false,
-				onReleaseRequested: async () => {
-					steps.push("holder let go");
-				},
+		let finishSaves = () => {};
+		const holderSaves = new Promise<void>((resolve) => {
+			finishSaves = resolve;
+		});
+		await acquireOwnership({ claim: false, onReleaseRequested: () => holderSaves }, env);
+
+		let claimed = false;
+		const claim = acquireOwnership({ claim: true, onReleaseRequested: noRelease }, env).then(
+			(handle) => {
+				claimed = true;
+				return handle;
 			},
-			env,
 		);
+		for (let i = 0; i < 10; i++) await Promise.resolve();
+		expect(claimed).toBe(false);
+		expect(isHeld()).toBe(true);
 
-		await acquireOwnership({ claim: true, onReleaseRequested: noRelease }, env);
-		steps.push("claimed");
-
-		expect(steps).toEqual(["holder let go", "claimed"]);
+		finishSaves();
+		await claim;
+		expect(claimed).toBe(true);
 		expect(isHeld()).toBe(true);
 	});
 

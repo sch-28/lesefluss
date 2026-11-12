@@ -59,7 +59,7 @@ function storageLog(page: Page): string[] {
 	return lines;
 }
 
-/** Imports a book while the app runs on the legacy IndexedDB store, as a pre-3.0 web user would have. */
+/** Imports a book while the app runs on the legacy IndexedDB store, as a pre-2.2 web user would have. */
 async function seedLegacyLibrary(page: Page) {
 	await resetStorage(page);
 	await page.addInitScript((flag) => {

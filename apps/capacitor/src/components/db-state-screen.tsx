@@ -27,11 +27,18 @@ interface Props {
 	state: DbScreenState;
 	onAction?: () => void;
 	busy?: boolean;
+	/** The user's last try failed the same way; the note says so in place of its usual text. */
+	failedAgain?: boolean;
 }
 
 /** The full page shown instead of the app while the library can't be used in this tab. */
-export const DbStateScreen: React.FC<Props> = ({ state, onAction, busy = false }) => (
-	<main className="flex min-h-dvh flex-col bg-background px-6 py-5 text-foreground">
+export const DbStateScreen: React.FC<Props> = ({
+	state,
+	onAction,
+	busy = false,
+	failedAgain = false,
+}) => (
+	<main className="flex min-h-dvh flex-col bg-background px-6 py-6 text-foreground">
 		<div className="flex items-center gap-2">
 			<img
 				src={`${import.meta.env.BASE_URL}logo.svg`}
@@ -42,7 +49,7 @@ export const DbStateScreen: React.FC<Props> = ({ state, onAction, busy = false }
 			/>
 			<span className="font-semibold text-base">Lesefluss</span>
 		</div>
-		<div className="flex flex-1 items-center justify-center py-10">
+		<div className="flex flex-1 items-center justify-center py-8">
 			<div className="flex w-full max-w-md flex-col items-center gap-4 text-center">
 				{state === "opening" && <Opening />}
 				{state === "in-use" && (
@@ -51,7 +58,9 @@ export const DbStateScreen: React.FC<Props> = ({ state, onAction, busy = false }
 						title="Lesefluss is open in another tab"
 						body="Your library can be open in one tab at a time. Use it here and the other tab pauses, with your reading position saved."
 						action="Use it here"
-						note="Or switch back to the other tab."
+						note={
+							failedAgain ? "Still in use in the other tab." : "Or switch back to the other tab."
+						}
 						onAction={onAction}
 						busy={busy}
 					/>
@@ -67,7 +76,9 @@ export const DbStateScreen: React.FC<Props> = ({ state, onAction, busy = false }
 						busy={busy}
 					/>
 				)}
-				{state === "unavailable" && <Unavailable onAction={onAction} busy={busy} />}
+				{state === "unavailable" && (
+					<Unavailable onAction={onAction} busy={busy} failedAgain={failedAgain} />
+				)}
 			</div>
 		</div>
 	</main>
@@ -90,12 +101,14 @@ const Message: React.FC<{
 }> = ({ icon, title, body, action, note, onAction, busy }) => (
 	<>
 		<Glyph>{icon}</Glyph>
-		<h1 className="m-0 font-semibold text-xl">{title}</h1>
+		<h1 className="m-0 text-balance font-semibold text-xl">{title}</h1>
 		<p className="m-0 text-foreground/80 leading-relaxed">{body}</p>
 		<Button className="mt-2 min-h-11 min-w-44" onClick={onAction} disabled={busy}>
 			{busy ? "One moment…" : action}
 		</Button>
-		<p className="m-0 text-muted-foreground text-sm">{note}</p>
+		<p className="m-0 text-muted-foreground text-sm" role="status">
+			{note}
+		</p>
 	</>
 );
 
@@ -113,13 +126,13 @@ const Opening: React.FC = () => {
 			<Glyph>
 				<LoaderCircle aria-hidden="true" className="size-7 motion-safe:animate-spin" />
 			</Glyph>
-			<h1 className="m-0 font-semibold text-xl" role="status">
+			<h1 className="m-0 text-balance font-semibold text-xl" role="status">
 				Opening your library…
 			</h1>
 			<p className="m-0 text-foreground/80 leading-relaxed">
 				The page you just left is still closing. This takes a moment.
 			</p>
-			<div className="flex gap-1.5" aria-hidden="true">
+			<div className="flex gap-2" aria-hidden="true">
 				{Array.from({ length: OPENING_DOTS }, (_, i) => (
 					<span
 						// biome-ignore lint/suspicious/noArrayIndexKey: a fixed row of dots
@@ -132,12 +145,16 @@ const Opening: React.FC = () => {
 	);
 };
 
-const Unavailable: React.FC<{ onAction?: () => void; busy: boolean }> = ({ onAction, busy }) => (
+const Unavailable: React.FC<{ onAction?: () => void; busy: boolean; failedAgain: boolean }> = ({
+	onAction,
+	busy,
+	failedAgain,
+}) => (
 	<>
 		<Glyph>
 			<CircleAlert aria-hidden="true" className="size-7" />
 		</Glyph>
-		<h1 className="m-0 font-semibold text-xl">This window can't keep your library</h1>
+		<h1 className="m-0 text-balance font-semibold text-xl">This window can't keep your library</h1>
 		<p className="m-0 text-foreground/80 leading-relaxed">
 			Lesefluss stores your books on this device, and this browser window doesn't allow that.
 		</p>
@@ -147,7 +164,7 @@ const Unavailable: React.FC<{ onAction?: () => void; busy: boolean }> = ({ onAct
 					<span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted font-semibold text-sm">
 						{i + 1}
 					</span>
-					<span className="flex flex-col gap-0.5">
+					<span className="flex flex-col gap-1">
 						<span className="font-medium">{step.title}</span>
 						<span className="text-muted-foreground text-sm">{step.detail}</span>
 					</span>
@@ -157,8 +174,10 @@ const Unavailable: React.FC<{ onAction?: () => void; busy: boolean }> = ({ onAct
 		<Button className="mt-2 min-h-11 min-w-44" onClick={onAction} disabled={busy}>
 			{busy ? "Trying…" : "Try again"}
 		</Button>
-		<p className="m-0 text-muted-foreground text-sm">
-			Signed in? Your library is safe on the server.
+		<p className="m-0 text-muted-foreground text-sm" role="status">
+			{failedAgain
+				? "Still not possible in this window."
+				: "Signed in? Your library is safe on the server."}
 		</p>
 	</>
 );

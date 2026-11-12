@@ -1002,7 +1002,13 @@ export async function deleteOrphanedContentRows(): Promise<number> {
 		.from(bookContent)
 		.where(noBook(bookContent.bookId));
 	if (orphans.length > 0) await db.delete(bookContent).where(noBook(bookContent.bookId));
-	await db.delete(bookImages).where(noBook(bookImages.bookId));
+	// Each write rewrites the whole legacy web store, so a clean start must write nothing.
+	const orphanImage = await db
+		.select({ bookId: bookImages.bookId })
+		.from(bookImages)
+		.where(noBook(bookImages.bookId))
+		.limit(1);
+	if (orphanImage.length > 0) await db.delete(bookImages).where(noBook(bookImages.bookId));
 	return orphans.length;
 }
 

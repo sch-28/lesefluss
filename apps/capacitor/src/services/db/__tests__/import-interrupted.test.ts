@@ -11,12 +11,13 @@ import * as schema from "../schema";
 import { createTestDb } from "./test-db";
 
 const { raw, close } = createTestDb();
-const page = { statementsLeft: Number.POSITIVE_INFINITY };
+const page = { statementsLeft: Number.POSITIVE_INFINITY, sql: [] as string[] };
 
 /** test-db's proxy, with a page that stops answering after `statementsLeft` statements. */
 const db = drizzle<typeof schema>(
 	async (sql, params, method) => {
 		if (page.statementsLeft-- <= 0) throw new Error("page closed");
+		page.sql.push(sql);
 		const values = params.map((p) => (typeof p === "boolean" ? (p ? 1 : 0) : p)) as never[];
 		const statement = raw.prepare(sql);
 		if (method === "run") {
@@ -61,6 +62,7 @@ function count(table: string): number {
 
 beforeEach(() => {
 	page.statementsLeft = Number.POSITIVE_INFINITY;
+	page.sql = [];
 	raw.exec("DELETE FROM book_images; DELETE FROM book_content; DELETE FROM books;");
 });
 
@@ -74,6 +76,13 @@ describe("an import cut off by a closing page", () => {
 			page.statementsLeft = Number.POSITIVE_INFINITY;
 			expect((await getBooks()).map((b) => b.id)).toEqual(["old"]);
 		}
+	});
+
+	it("a start with nothing to clear writes nothing", async () => {
+		await addBookWithContent(book("old", "Kept."), "Kept.");
+		page.sql = [];
+		expect(await deleteOrphanedContentRows()).toBe(0);
+		expect(page.sql.filter((s) => !/^\s*select/i.test(s))).toEqual([]);
 	});
 
 	it("leaves content rows the next start clears, without touching complete books", async () => {

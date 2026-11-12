@@ -5,7 +5,7 @@ import { type DbDriver, STORAGE_UNAVAILABLE_ERROR } from "./types";
 import { hasOpfsApi } from "./web/opfs-layout";
 
 export type { DbDriver, DbDriverKind, DbRow } from "./types";
-export { STORAGE_BUSY_ERROR, STORAGE_UNAVAILABLE_ERROR } from "./types";
+export { DB_IN_USE_ERROR, STORAGE_BUSY_ERROR, STORAGE_UNAVAILABLE_ERROR } from "./types";
 
 /** Neither OPFS nor IndexedDB can be used in this window (blocked site data, a full disk). */
 export class StorageUnavailableError extends Error {

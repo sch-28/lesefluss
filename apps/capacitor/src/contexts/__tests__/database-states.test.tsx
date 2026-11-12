@@ -133,6 +133,26 @@ describe("DatabaseProvider", () => {
 		expect(lastStart().options.claim).toBe(false);
 	});
 
+	it("says so when trying again fails the same way", async () => {
+		const { text, getButton } = await renderApp();
+		await settle(() => lastStart().reject(failure("StorageUnavailableError")));
+		expect(text()).not.toContain("Still not possible");
+
+		await settle(() => getButton("Try again").click());
+		await settle(() => lastStart().reject(failure("StorageUnavailableError")));
+		expect(text()).toContain("Still not possible in this window.");
+	});
+
+	it("says so when the other tab keeps the library after Use it here", async () => {
+		const { text, getButton } = await renderApp();
+		await settle(() => lastStart().reject(failure("DbInUseError")));
+		expect(text()).toContain("Or switch back to the other tab.");
+
+		await settle(() => getButton("Use it here").click());
+		await settle(() => lastStart().reject(failure("DbInUseError")));
+		expect(text()).toContain("Still in use in the other tab.");
+	});
+
 	it("keeps the reset screen for other failures", async () => {
 		const { getButton } = await renderApp();
 		await settle(() => lastStart().reject(new Error("migration failed")));
