@@ -174,10 +174,33 @@ describe("DatabaseProvider", () => {
 		});
 		expect(text()).toContain("Lesefluss is now open in another tab");
 		expect(text()).not.toContain("Library");
+		expect(document.title).toBe("Paused – Lesefluss");
 
 		await settle(() => getButton("Use it here again").click());
 		expect(reload).toHaveBeenCalled();
 		expect(sessionStorage.getItem("lesefluss:claim-db")).toBe("1");
+	});
+
+	it("names the paused tab, and drops the name once it takes the library back", async () => {
+		document.title = "Lesefluss";
+		vi.spyOn(window, "location", "get").mockReturnValue({
+			...window.location,
+			reload: () => {
+				throw new Error("reload blocked");
+			},
+		} as Location);
+		const { text, getButton } = await renderApp();
+		await settle(() => lastStart().resolve());
+		await settle(() => {
+			for (const listener of db.moved) listener();
+		});
+		expect(document.title).toBe("Paused – Lesefluss");
+
+		await settle(() => getButton("Use it here again").click());
+		expect(lastStart().options.claim).toBe(true);
+		await settle(() => lastStart().resolve());
+		await vi.waitFor(() => expect(text()).toContain("Library"));
+		expect(document.title).toBe("Lesefluss");
 	});
 
 	it("stays paused when another tab takes the library before this tab finished starting", async () => {

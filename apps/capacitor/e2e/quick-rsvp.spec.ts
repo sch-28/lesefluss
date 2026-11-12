@@ -88,6 +88,21 @@ test("opens at the reader's word, both windows follow each other, and the last w
 	await expect(page.getByText(/another device/i)).toHaveCount(0);
 });
 
+test("the menu's Quick RSVP · on closes the window", async ({ page }) => {
+	await openReaderAtLaterWord(page);
+	const { popup } = await openQuickRsvp(page);
+	await expect(page.getByTestId("mini-banner")).toBeVisible();
+
+	const closed = popup.waitForEvent("close");
+	await page.bringToFront();
+	await page.getByRole("button", { name: "More actions" }).click();
+	await page.getByRole("menuitem", { name: "Quick RSVP · on" }).click();
+	await closed;
+	await expect(page.getByTestId("mini-banner")).toHaveCount(0);
+	await page.getByRole("button", { name: "More actions" }).click();
+	await expect(page.getByRole("menuitem", { name: "Quick RSVP", exact: true })).toBeVisible();
+});
+
 test("a reader mode switch leaves it playing, and a device move reaches it while paused", async ({
 	page,
 }) => {

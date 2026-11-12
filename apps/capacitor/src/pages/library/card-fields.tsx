@@ -196,10 +196,21 @@ export const StatusField: React.FC<{ status: CardStatus; id?: string }> = ({ sta
 	}
 	// A book without a word count has no reading time; it is simply new.
 	return (
-		<span id={id} className="flex min-w-0 items-center gap-1 text-muted-foreground">
+		<span
+			id={id}
+			className="@container flex min-w-0 flex-1 items-center gap-1 text-muted-foreground"
+		>
 			{status.minutes !== null && <Clock aria-hidden className="size-3 shrink-0" />}
 			<span className="truncate tabular-nums">
-				{status.minutes !== null ? `${formatReadingTime(status.minutes)} read` : "New"}
+				{status.minutes !== null ? (
+					<>
+						{formatReadingTime(status.minutes)}
+						{/* "12h 30m read" with its clock is about 7.75em: a card too narrow for it drops "read", not the time. */}
+						<span className="@max-[7.75em]:sr-only"> read</span>
+					</>
+				) : (
+					"New"
+				)}
 			</span>
 		</span>
 	);

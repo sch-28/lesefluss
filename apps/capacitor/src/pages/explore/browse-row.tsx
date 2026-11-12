@@ -57,26 +57,28 @@ const BrowseRow: React.FC<Props> = ({ lang, onGenreTap, onBrowseTags }) => {
 	);
 	if (!hasFinePointer) return row;
 
-	// A mouse has no swipe, so it gets the shelves' arrows instead.
+	// A mouse has no swipe, so it gets the shelves' arrows, together at the right like theirs.
 	return (
-		<div className="mb-5 flex items-start gap-1">
-			<Button
-				variant="ghost"
-				size="icon-sm"
-				onClick={() => scroll(-1)}
-				aria-label="Scroll genres left"
-			>
-				<ChevronLeft />
-			</Button>
+		<div className="mb-5 flex items-start gap-2">
 			{row}
-			<Button
-				variant="ghost"
-				size="icon-sm"
-				onClick={() => scroll(1)}
-				aria-label="Scroll genres right"
-			>
-				<ChevronRight />
-			</Button>
+			<div className="flex shrink-0 items-center gap-1">
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					onClick={() => scroll(-1)}
+					aria-label="Scroll genres left"
+				>
+					<ChevronLeft />
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					onClick={() => scroll(1)}
+					aria-label="Scroll genres right"
+				>
+					<ChevronRight />
+				</Button>
+			</div>
 		</div>
 	);
 };

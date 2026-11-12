@@ -37,7 +37,10 @@ describe("On the web card", () => {
 
 	it("sends Get the Android app to the Play Store listing", async () => {
 		rendered = await render(<OnTheWebCard />);
-		await click(rendered.getButton("Get the Android app"));
+		const button = rendered.getButton("Get the Android app");
+		expect(button.dataset.slot, "the kit's button, not a text link").toBe("button");
+		expect(button.className).toContain("h-11");
+		await click(button);
 		expect(openLink).toHaveBeenCalledWith(
 			"https://play.google.com/store/apps/details?id=app.lesefluss",
 			{ nativeTarget: "system" },

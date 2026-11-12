@@ -21,6 +21,7 @@ type QuickAddButtonProps = {
 	isAdding: boolean;
 	onAdd: () => void;
 	className?: string;
+	icon?: React.ComponentType<{ className?: string }>;
 };
 
 /**
@@ -32,6 +33,7 @@ export const QuickAddButton: React.FC<QuickAddButtonProps> = ({
 	isAdding,
 	onAdd,
 	className,
+	icon: Icon = Plus,
 }) => (
 	<button
 		type="button"
@@ -43,7 +45,7 @@ export const QuickAddButton: React.FC<QuickAddButtonProps> = ({
 			className,
 		)}
 	>
-		{isAdding ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+		{isAdding ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}
 	</button>
 );
 

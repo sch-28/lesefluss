@@ -116,6 +116,10 @@ describe("wishlist shelf", () => {
 
 	it("imports from the card through the existing imports", async () => {
 		view = await render(<WishlistShelf />);
+		expect(
+			view.getButton("Add Frankenstein to library").querySelector("svg")?.classList,
+			"a library icon, not a bare plus",
+		).toContain("lucide-library");
 		await click(view.getButton("Add Frankenstein to library"));
 		await flush();
 		expect(importFromCatalog).toHaveBeenCalledWith("gutenberg:84", undefined);
@@ -216,5 +220,8 @@ describe("wishlist page", () => {
 		state.items = [];
 		view = await render(<ExploreWishlist />);
 		expect(view.text()).toContain("Nothing on your wishlist yet");
+		expect(view.container.querySelector("svg")?.classList).toContain("lucide-heart");
+		await click(view.getButton("Browse Explore"));
+		expect(navigate).toHaveBeenCalledWith({ to: "/tabs/explore" });
 	});
 });

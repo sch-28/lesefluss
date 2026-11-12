@@ -49,9 +49,16 @@ function viewportColumns(): number {
 export function useGridColumns(): number {
 	const [cols, setCols] = useState(viewportColumns);
 	useLayoutEffect(() => {
-		const onResize = () => setCols(viewportColumns());
-		window.addEventListener("resize", onResize);
-		return () => window.removeEventListener("resize", onResize);
+		const update = () => setCols(viewportColumns());
+		update();
+		window.addEventListener("resize", update);
+		// The app font size lands on the root's inline style after the grid mounts on a cold start.
+		const rootStyle = new MutationObserver(update);
+		rootStyle.observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
+		return () => {
+			window.removeEventListener("resize", update);
+			rootStyle.disconnect();
+		};
 	}, []);
 	return cols;
 }

@@ -25,10 +25,14 @@ test("the library moves between tabs and each tab keeps it intact", async ({ pag
 	await expect(second.locator(book)).toHaveCount(1, { timeout: 20_000 });
 	await expect(page.getByText(MOVED)).toBeVisible();
 	await expect(page.locator(book)).toHaveCount(0);
+	await expect(page).toHaveTitle("Paused – Lesefluss");
+	await expect(second).toHaveTitle("Lesefluss");
 
 	await page.getByRole("button", { name: "Use it here again" }).click();
 	await expect(page.locator(book)).toHaveCount(1, { timeout: 20_000 });
 	await expect(second.getByText(MOVED)).toBeVisible();
+	await expect(page).toHaveTitle("Lesefluss");
+	await expect(second).toHaveTitle("Paused – Lesefluss");
 });
 
 test("the tab that lets go leaves its reading position saved for the tab that takes over", async ({

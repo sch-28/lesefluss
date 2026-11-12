@@ -1,5 +1,6 @@
+import { Button } from "@lesefluss/ui/button";
 import { useNavigate } from "@tanstack/react-router";
-import { Info, X } from "lucide-react";
+import { Info, Smartphone, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { PLAY_STORE_URL } from "@/services/store-links";
@@ -99,16 +100,19 @@ export function OnTheWebCard() {
 							<li key={item}>{item}</li>
 						))}
 					</ul>
-					<p className="m-0 mt-3 text-muted-foreground text-xs">
-						{IS_READ_ALOUD_SUPPORTED && "Listen works while the app is open. "}
-						<button
-							type="button"
-							onClick={() => openLink(PLAY_STORE_URL, { nativeTarget: "system" })}
-							className="cursor-pointer font-medium text-primary underline-offset-4 hover:underline"
-						>
-							Get the Android app
-						</button>
-					</p>
+					{IS_READ_ALOUD_SUPPORTED && (
+						<p className="m-0 mt-3 text-muted-foreground text-xs">
+							Listen works while the app is open.
+						</p>
+					)}
+					<Button
+						variant="outline"
+						className="mt-3 h-11 px-4"
+						onClick={() => openLink(PLAY_STORE_URL, { nativeTarget: "system" })}
+					>
+						<Smartphone />
+						Get the Android app
+					</Button>
 				</div>
 			</SettingsSection>
 		</div>

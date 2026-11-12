@@ -65,6 +65,7 @@ type Phase = "starting" | DbScreenState | "error" | "ready";
 
 const OPENING_SCREEN_DELAY_MS = 300;
 const CLAIM_FLAG = "lesefluss:claim-db";
+const PAUSED_TITLE = "Paused – Lesefluss";
 
 function phaseFor(err: Error): Phase {
 	if (err.name === DB_IN_USE_ERROR || err.name === STORAGE_BUSY_ERROR) return "in-use";
@@ -159,6 +160,16 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 			unsubscribe();
 		};
 	}, [start, clearOpeningTimer]);
+
+	// The tab strip shows which tab let the library go.
+	useEffect(() => {
+		if (phase !== "moved") return;
+		const title = document.title;
+		document.title = PAUSED_TITLE;
+		return () => {
+			document.title = title;
+		};
+	}, [phase]);
 
 	const claimHere = useCallback(() => {
 		setIsBusy(true);

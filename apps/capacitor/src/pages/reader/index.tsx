@@ -2902,7 +2902,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								{isMiniAvailable() && (
 									<DropdownMenuItem
 										className={MENU_ITEM_CLASS}
-										onSelect={openMiniWindow}
+										onSelect={mini.isAttached ? closeMini : openMiniWindow}
 										disabled={!content}
 									>
 										<PictureInPicture />

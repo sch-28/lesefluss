@@ -1,5 +1,5 @@
 import { useRouter } from "@tanstack/react-router";
-import { X } from "lucide-react";
+import { Library, X } from "lucide-react";
 import type React from "react";
 import CoverImage from "../../components/cover-image";
 import { getCoverUrl } from "../../services/catalog/client";
@@ -78,7 +78,14 @@ const WishlistCardFrame: React.FC<FrameProps> = ({
 		<div className="pointer-events-none absolute inset-x-0 top-0 aspect-2/3">
 			<RemoveFromWishlistButton item={item} />
 		</div>
-		{onImport && <QuickAddBesideTitle title={item.title} isAdding={isImporting} onAdd={onImport} />}
+		{onImport && (
+			<QuickAddBesideTitle
+				title={item.title}
+				isAdding={isImporting}
+				onAdd={onImport}
+				icon={Library}
+			/>
+		)}
 	</div>
 );
 

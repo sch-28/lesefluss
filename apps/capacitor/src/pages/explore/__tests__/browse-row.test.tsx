@@ -42,6 +42,16 @@ describe("BrowseRow", () => {
 		expect(scrollBy).toHaveBeenLastCalledWith(expect.objectContaining({ left: -400 }));
 	});
 
+	it("puts both arrows together after the row, like a shelf's", async () => {
+		mockPointer(true);
+		const row = await renderRow();
+		const nav = row.container.querySelector('nav[aria-label="Browse"]');
+		const arrows = nav?.nextElementSibling;
+		expect(nav?.previousElementSibling).toBeNull();
+		expect(arrows?.contains(row.getButton("Scroll genres left"))).toBe(true);
+		expect(arrows?.contains(row.getButton("Scroll genres right"))).toBe(true);
+	});
+
 	it("leaves the arrows out on touch, where the row bleeds to the edges to swipe", async () => {
 		mockPointer(false);
 		const row = await renderRow();

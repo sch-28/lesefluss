@@ -1,4 +1,6 @@
-import { Heart } from "lucide-react";
+import { Button } from "@lesefluss/ui/button";
+import { useRouter } from "@tanstack/react-router";
+import { Compass, Heart } from "lucide-react";
 import type React from "react";
 import { PageHeader } from "../../components/app-shell/page-header";
 import { queryHooks } from "../../services/db/hooks";
@@ -7,6 +9,7 @@ import { CardGridSkeleton, EXPLORE_GRID_CLASS } from "./skeletons";
 import WishlistCard from "./wishlist-card";
 
 const ExploreWishlist: React.FC = () => {
+	const router = useRouter();
 	const { data: items } = queryHooks.useWishlist();
 	return (
 		<div className="bg-background">
@@ -15,7 +18,19 @@ const ExploreWishlist: React.FC = () => {
 				{items === undefined ? (
 					<CardGridSkeleton count={6} />
 				) : items.length === 0 ? (
-					<EmptyState>
+					<EmptyState
+						icon={Heart}
+						action={
+							<Button
+								variant="outline"
+								className="h-11 px-4"
+								onClick={() => router.navigate({ to: "/tabs/explore" })}
+							>
+								<Compass />
+								Browse Explore
+							</Button>
+						}
+					>
 						Nothing on your wishlist yet. Save a title from its page in Explore to find it here.
 					</EmptyState>
 				) : (

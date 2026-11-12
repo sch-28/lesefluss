@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeBook } from "../../../test/book-fixture";
 import { groupLibrary } from "../group-by";
 import { buildLibraryItems } from "../sort-filter";
-import VirtualBookGrid, { columnsFor, estimateRowPx } from "../virtual-book-grid";
+import VirtualBookGrid, { columnsFor, estimateRowPx, useGridColumns } from "../virtual-book-grid";
 
 const books = Array.from({ length: 2000 }, (_, i) =>
 	makeBook({ id: `b${i}`, title: `Book ${i}`, author: i % 2 ? "Ada Vance" : "Bo Lind" }),
@@ -181,5 +181,29 @@ describe("VirtualBookGrid", () => {
 		// Android's 200 % font scale: 32px rem.
 		expect(columnsFor(412, 32)).toBe(2);
 		expect(columnsFor(1280, 32)).toBe(6);
+	});
+
+	it("drops to two columns when the app font grows after the grid mounted", async () => {
+		vi.stubGlobal("innerWidth", 412);
+		const root = document.documentElement;
+		const Columns = () => <p>{useGridColumns()}</p>;
+		const host = document.createElement("div");
+		document.body.append(host);
+		const reactRoot = createRoot(host);
+		try {
+			root.style.fontSize = "16px";
+			await act(async () => reactRoot.render(<Columns />));
+			expect(host.textContent).toBe("3");
+			await act(async () => {
+				root.style.fontSize = "22px";
+				await new Promise((resolve) => setTimeout(resolve, 0));
+			});
+			expect(host.textContent).toBe("2");
+		} finally {
+			act(() => reactRoot.unmount());
+			host.remove();
+			root.style.fontSize = "";
+			vi.unstubAllGlobals();
+		}
 	});
 });
