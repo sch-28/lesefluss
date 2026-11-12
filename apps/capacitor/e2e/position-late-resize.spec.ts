@@ -69,71 +69,67 @@ async function expectHeld(page: Page, word: number, at: number, savesBefore: num
 
 // The 60 fps pair is proven at the hook level (use-anchor-hold.test.tsx); only a frame a
 // second needs the real list.
-for (const frameMs of [1000]) {
-	const fps = Math.round(1000 / frameMs);
+const FRAME_MS = 1000;
 
-	test.describe(`at ${fps} fps`, { tag: ["@lowfps"] }, () => {
-		test.setTimeout(300_000);
+test.describe("at 1 fps", { tag: ["@lowfps"] }, () => {
+	test.setTimeout(300_000);
 
-		async function openDeep(framedPage: (o: { viewport: typeof VIEWPORT }) => Promise<FramedPage>) {
-			const framed = await framedPage({ viewport: VIEWPORT });
-			const { page } = framed;
-			await resetStorage(page);
-			await importEpubViaFilePicker(page, {
-				buffer: await buildEpubBuffer(novelFixture({ uniform: true })),
-				fileName: "novel.epub",
-				title: UNIFORM_NOVEL_TITLE,
-			});
-			await openBookFromLibrary(page, UNIFORM_NOVEL_TITLE);
-			framed.setFrameMs(frameMs);
-			await reader.moveToChapter(page, DEEP_CHAPTER_LABEL);
-			await reader.waitPastJumpGuard(page);
-			await page.waitForTimeout(IDLE_MS);
-			return framed;
-		}
-
-		test("the paragraph at the top edge growing after a reopen saves nothing and keeps the line on top", async ({
-			framedPage,
-		}) => {
-			const { page } = await openDeep(framedPage);
-			const word = await reader.lastSavedWord(page);
-			await reader.leaveFlushed(page);
-			await openBookFromLibrary(page, UNIFORM_NOVEL_TITLE);
-			await reader.waitRevealed(page);
-			await page.waitForTimeout(IDLE_MS);
-			const before = await reader.saveRequestCount(page);
-			const at = await reader.wordLineOffsetFromTop(page, word);
-			expect(isOnTopEdge(at), `a reopen lands the saved word's line on top, not ${at}px`).toBe(
-				true,
-			);
-
-			await growParagraph(page, "cut", GROW_PX);
-			await page.waitForTimeout(IDLE_MS);
-
-			await expectHeld(page, word, at, before);
+	async function openDeep(framedPage: (o: { viewport: typeof VIEWPORT }) => Promise<FramedPage>) {
+		const framed = await framedPage({ viewport: VIEWPORT });
+		const { page } = framed;
+		await resetStorage(page);
+		await importEpubViaFilePicker(page, {
+			buffer: await buildEpubBuffer(novelFixture({ uniform: true })),
+			fileName: "novel.epub",
+			title: UNIFORM_NOVEL_TITLE,
 		});
+		await openBookFromLibrary(page, UNIFORM_NOVEL_TITLE);
+		framed.setFrameMs(FRAME_MS);
+		await reader.moveToChapter(page, DEEP_CHAPTER_LABEL);
+		await reader.waitPastJumpGuard(page);
+		await page.waitForTimeout(IDLE_MS);
+		return framed;
+	}
 
-		// A guard, not a red-to-green case: VList keeps the text still for a paragraph
-		// wholly above, so this only fails if that or the settle rule regresses.
-		test("a paragraph above growing after the reader's own scroll saves nothing and moves nothing", async ({
-			framedPage,
-		}) => {
-			const { page } = await openDeep(framedPage);
-			// Down, then back up: VList only mounts paragraphs ahead in the scroll direction.
-			for (const deltaY of [900, -300]) {
-				const savePending = reader.waitForNextSave(page);
-				await reader.wheel(page, deltaY);
-				await savePending;
-				await page.waitForTimeout(IDLE_MS);
-			}
-			const word = await reader.lastSavedWord(page);
-			const before = await reader.saveRequestCount(page);
-			const at = await reader.wordLineOffsetFromTop(page, word);
+	test("the paragraph at the top edge growing after a reopen saves nothing and keeps the line on top", async ({
+		framedPage,
+	}) => {
+		const { page } = await openDeep(framedPage);
+		const word = await reader.lastSavedWord(page);
+		await reader.leaveFlushed(page);
+		await openBookFromLibrary(page, UNIFORM_NOVEL_TITLE);
+		await reader.waitRevealed(page);
+		await page.waitForTimeout(IDLE_MS);
+		const before = await reader.saveRequestCount(page);
+		const at = await reader.wordLineOffsetFromTop(page, word);
+		expect(isOnTopEdge(at), `a reopen lands the saved word's line on top, not ${at}px`).toBe(true);
 
-			await growParagraph(page, "above", GROW_PX);
-			await page.waitForTimeout(IDLE_MS);
+		await growParagraph(page, "cut", GROW_PX);
+		await page.waitForTimeout(IDLE_MS);
 
-			await expectHeld(page, word, at, before);
-		});
+		await expectHeld(page, word, at, before);
 	});
-}
+
+	// A guard, not a red-to-green case: VList keeps the text still for a paragraph
+	// wholly above, so this only fails if that or the settle rule regresses.
+	test("a paragraph above growing after the reader's own scroll saves nothing and moves nothing", async ({
+		framedPage,
+	}) => {
+		const { page } = await openDeep(framedPage);
+		// Down, then back up: VList only mounts paragraphs ahead in the scroll direction.
+		for (const deltaY of [900, -300]) {
+			const savePending = reader.waitForNextSave(page);
+			await reader.wheel(page, deltaY);
+			await savePending;
+			await page.waitForTimeout(IDLE_MS);
+		}
+		const word = await reader.lastSavedWord(page);
+		const before = await reader.saveRequestCount(page);
+		const at = await reader.wordLineOffsetFromTop(page, word);
+
+		await growParagraph(page, "above", GROW_PX);
+		await page.waitForTimeout(IDLE_MS);
+
+		await expectHeld(page, word, at, before);
+	});
+});

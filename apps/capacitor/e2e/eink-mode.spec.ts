@@ -121,11 +121,11 @@ test.describe("e-ink mode on a small reader", () => {
 
 		await reader.openAppearance(page);
 		const popover = page.locator(".appearance-popover-content");
-		await expect(popover.getByRole("button", { name: "Page", exact: true })).toHaveAttribute(
-			"aria-pressed",
+		await expect(popover.getByRole("radio", { name: "Page", exact: true })).toHaveAttribute(
+			"aria-checked",
 			"true",
 		);
-		await expect(popover.getByRole("button", { name: "Scroll", exact: true })).toBeDisabled();
+		await expect(popover.getByRole("radio", { name: "Scroll", exact: true })).toBeDisabled();
 		await page.keyboard.press("Escape");
 		await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
 

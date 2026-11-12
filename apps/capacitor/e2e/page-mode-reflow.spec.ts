@@ -17,6 +17,8 @@ import { reader } from "./page-objects/reader";
 const PORTRAIT = { width: 420, height: 900 };
 // A phone in landscape stays below the 900px spread breakpoint: one page.
 const LANDSCAPE = { width: 860, height: 420 };
+// The narrowest window that shows a two-page spread.
+const SPREAD_LANDSCAPE = { width: 900, height: 420 };
 const FIGURE_ALT = `Figure ${FULL_PAGE_FIGURE_BEFORE}`;
 
 async function openFivePagesIn(page: Page) {
@@ -125,7 +127,7 @@ test("on a page-sized figure, a rotation and a font step never land on an earlie
 	const afterFigure = await openOnFigurePage(page);
 
 	await reader.expectNoSaveDuring(page, async () => {
-		await page.setViewportSize({ width: 900, height: 420 });
+		await page.setViewportSize(SPREAD_LANDSCAPE);
 		await expectNotBefore(page, afterFigure);
 		await page.setViewportSize(PORTRAIT);
 		await expectNotBefore(page, afterFigure);

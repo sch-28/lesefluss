@@ -45,14 +45,11 @@ export type E2ELinkOpenHook = {
 };
 
 type E2EWindow = {
-	__lesefluss_e2e_progress_word?: number;
 	__lesefluss_e2e_save?: E2ESaveHook;
 	__lesefluss_e2e_saveLog?: E2ESaveEntry[];
 	__lesefluss_e2e_saveRequests?: number;
 	__lesefluss_e2e_saveFinished?: number;
 	__lesefluss_e2e_settles?: number;
-	__lesefluss_e2e_settleLog?: { word: number; at: number }[];
-	__lesefluss_e2e_lastJumpAt?: number;
 	__lesefluss_e2e_syncPushRequests?: number;
 	__lesefluss_e2e_hold?: E2EHoldPhase;
 	__lesefluss_e2e_session?: E2ESessionHook;
@@ -62,10 +59,6 @@ type E2EWindow = {
 
 function w(): E2EWindow {
 	return window as unknown as E2EWindow;
-}
-
-export function publishProgressWord(word: number): void {
-	w().__lesefluss_e2e_progress_word = word;
 }
 
 export function publishPositionSave(bookId: string, word: number, source: SaveSource): void {
@@ -98,16 +91,9 @@ export function publishSyncPushRequest(): void {
 }
 
 /** The view reported a settle (a scroll come to rest), whether or not it saves. */
-export function publishSettle(word: number): void {
+export function publishSettle(): void {
 	const e = w();
 	e.__lesefluss_e2e_settles = (e.__lesefluss_e2e_settles ?? 0) + 1;
-	e.__lesefluss_e2e_settleLog ??= [];
-	e.__lesefluss_e2e_settleLog.push({ word, at: Date.now() });
-}
-
-/** When the reader last jumped (what the scroll reader's jump guard counts from). */
-export function publishJump(at: number): void {
-	w().__lesefluss_e2e_lastJumpAt = at;
 }
 
 export type E2EHoldPhase = "idle" | "settling" | "holding";

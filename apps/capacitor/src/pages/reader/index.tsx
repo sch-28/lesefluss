@@ -110,10 +110,8 @@ import { IS_READ_ALOUD_SUPPORTED } from "../../services/tts";
 import { languageName, parseVoiceChoices, speechFor, withVoice } from "../../services/tts/voices";
 import {
 	exposeDevicePosition,
-	publishJump,
 	publishLinkOpen,
 	publishPositionSave,
-	publishProgressWord,
 	publishSaveFinished,
 	publishSettle,
 	type SaveSource,
@@ -377,7 +375,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	useEffect(() => {
 		progressWordRef.current = progressWord;
 		shownProgressRef.current = progressWord;
-		if (import.meta.env.DEV) publishProgressWord(progressWord);
 	}, [progressWord]);
 
 	const scrollViewRef = useRef<ReaderViewHandle>(null);
@@ -422,7 +419,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const lastJumpAtRef = useRef(0);
 	const stampJump = useCallback(() => {
 		lastJumpAtRef.current = Date.now();
-		if (import.meta.env.DEV) publishJump(lastJumpAtRef.current);
 	}, []);
 	const JUMP_SETTLE_GUARD_MS = 1500;
 	const persistedWordRef = useRef(createPersistedWord());
@@ -1230,7 +1226,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	const handleScrollPositionSettle = useCallback(
 		(word: number, isAtEnd = false, hasMoved = true) => {
-			if (import.meta.env.DEV) publishSettle(word);
+			if (import.meta.env.DEV) publishSettle();
 			const readAloud = readAloudRef.current;
 			if (readAloud?.isActive) {
 				// In scroll mode, a settle while following that no reader input caused is the

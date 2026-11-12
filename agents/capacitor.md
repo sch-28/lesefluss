@@ -44,7 +44,7 @@ On the web, the SQLite database lives on OPFS: SQLite WASM with the `opfs-sahpoo
 
 ## E2E tests
 
-- **`pnpm e2e`** (`playwright.config.ts`, `e2e/`): the dev server at `/`, no backend.
+- **`pnpm e2e`** (`playwright.config.ts`, `e2e/`): the dev server at `/`, no backend. It and `pnpm e2e:lowfps` run in their own network namespace with no way out (`scripts/e2e-isolated.sh`; it says so on stderr when it falls back to the host), so a host network change cannot abort module loads and no test can reach the internet. `pnpm exec playwright test` and `pnpm e2e:ui` run on the host, where `E2E_PORT` and `E2E_REUSE` matter.
 - **`pnpm e2e:app`** (`playwright.app.config.ts`, `e2e-app/`): the web build as users get it at `/app`, against the production `apps/web` server on port 3417.
 - **`pnpm e2e:perf`** (`playwright.perf.config.ts`, `e2e/perf/`): reader render cost, a baseline production build against `dist/`, both served by `vite preview` (ports 3511/3512) and alternated. `scripts/perf-baseline.sh [ref]` builds the baseline into `.perf/` (the working tree with the reader's render-path files taken from `ref`); `node e2e/perf/compare.mjs` prints the medians.
   - `e2e-app/support/serve.mjs` does the setup. It creates a throwaway Postgres database (`lesefluss_e2e_app_<timestamp>`), runs `drizzle-kit migrate` and seeds verified test accounts (`e2e-app/support/users.mjs`). It then builds the embed and the website the way the Dockerfile does and runs `.output/server/index.mjs`. The database is dropped once the server stops, and leftovers from killed runs are dropped at the next start.

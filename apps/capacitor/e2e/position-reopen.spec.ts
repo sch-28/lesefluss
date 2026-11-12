@@ -70,6 +70,8 @@ async function reopenAndIdle(page: Page, title: string, how: "back" | "reload"):
 	return { saves, dbWord: dbWord ?? null, line };
 }
 
+const FRAME_MS = 1000;
+
 const books = [
 	{ name: "novel", title: NOVEL_TITLE, uniform: false },
 	{ name: "uniform", title: UNIFORM_NOVEL_TITLE, uniform: true },
@@ -77,38 +79,35 @@ const books = [
 
 for (const book of books) {
 	// At 60 fps position-smoke.spec.ts covers the reopen; the drift only shows at a frame a second.
-	for (const frameMs of [1000]) {
-		const fps = Math.round(1000 / frameMs);
-		test(`reopening ${book.name} at ${fps} fps, read deep into it, saves nothing new`, {
-			tag: ["@lowfps"],
-		}, async ({ framedPage }) => {
-			test.setTimeout(600_000);
-			const { page, setFrameMs } = await framedPage({ viewport: VIEWPORT });
-			await page.addInitScript(addStyleOnLoad, FRACTIONAL_METRICS);
-			await resetStorage(page);
-			const buffer = await buildEpubBuffer(novelFixture({ uniform: book.uniform }));
-			await importEpubViaFilePicker(page, { buffer, fileName: "book.epub", title: book.title });
-			await openBookFromLibrary(page, book.title);
-			setFrameMs(frameMs);
-			const committed = await reader.moveToChapter(page, DEEP_CHAPTER_LABEL);
-			await reader.waitPastJumpGuard(page);
-			await page.waitForTimeout(IDLE_AFTER_OPEN_MS);
-			expect.soft(await reader.lastSavedWord(page), "Contents jump, then no input").toBe(committed);
+	test(`reopening ${book.name} at 1 fps, read deep into it, saves nothing new`, {
+		tag: ["@lowfps"],
+	}, async ({ framedPage }) => {
+		test.setTimeout(600_000);
+		const { page, setFrameMs } = await framedPage({ viewport: VIEWPORT });
+		await page.addInitScript(addStyleOnLoad, FRACTIONAL_METRICS);
+		await resetStorage(page);
+		const buffer = await buildEpubBuffer(novelFixture({ uniform: book.uniform }));
+		await importEpubViaFilePicker(page, { buffer, fileName: "book.epub", title: book.title });
+		await openBookFromLibrary(page, book.title);
+		setFrameMs(FRAME_MS);
+		const committed = await reader.moveToChapter(page, DEEP_CHAPTER_LABEL);
+		await reader.waitPastJumpGuard(page);
+		await page.waitForTimeout(IDLE_AFTER_OPEN_MS);
+		expect.soft(await reader.lastSavedWord(page), "Contents jump, then no input").toBe(committed);
 
-			for (const how of ["back", "reload"] as const) {
-				for (let i = 0; i < REOPENS; i++) {
-					const r = await reopenAndIdle(page, book.title, how);
-					expect.soft(r.dbWord, `${how} ${i}: the database row`).toBe(committed);
-					expect
-						.soft(
-							r.saves.filter((s) => s.word !== committed),
-							`${how} ${i}: saves of another word`,
-						)
-						.toEqual([]);
-					// The saved word can sit mid-line; its line is the one on the top edge.
-					expect.soft(isOnTopEdge(r.line), `${how} ${i}: line at ${r.line}px`).toBe(true);
-				}
+		for (const how of ["back", "reload"] as const) {
+			for (let i = 0; i < REOPENS; i++) {
+				const r = await reopenAndIdle(page, book.title, how);
+				expect.soft(r.dbWord, `${how} ${i}: the database row`).toBe(committed);
+				expect
+					.soft(
+						r.saves.filter((s) => s.word !== committed),
+						`${how} ${i}: saves of another word`,
+					)
+					.toEqual([]);
+				// The saved word can sit mid-line; its line is the one on the top edge.
+				expect.soft(isOnTopEdge(r.line), `${how} ${i}: line at ${r.line}px`).toBe(true);
 			}
-		});
-	}
+		}
+	});
 }

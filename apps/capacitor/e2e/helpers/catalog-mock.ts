@@ -4,16 +4,10 @@ type RouteHandler = (route: Route) => unknown;
 
 const CATALOG_HOST = "https://catalog.lesefluss.app";
 
-export type CatalogMockOpts = {
+type CatalogMockOpts = {
 	catalogId: string;
 	title: string;
-	author?: string;
-	source?: "gutenberg" | "standard_ebooks";
 	epubBytes: Buffer;
-	/** False mocks a book with no free EPUB. */
-	hasEpub?: boolean;
-	/** Status for each EPUB request in turn; once exhausted, every request succeeds. */
-	epubFailures?: number[];
 };
 
 /**
@@ -35,31 +29,25 @@ export async function mockCatalogBook(page: Page, opts: CatalogMockOpts) {
 			contentType: "application/json",
 			body: JSON.stringify({
 				id: opts.catalogId,
-				source: opts.source ?? "gutenberg",
+				source: "gutenberg",
 				title: opts.title,
-				author: opts.author ?? "Mock Author",
+				author: "Mock Author",
 				language: "en",
 				subjects: [],
 				summary: null,
 				description: null,
-				epubUrl: opts.hasEpub === false ? null : epubUrl,
+				epubUrl,
 				coverUrl: null,
 			}),
 		});
 
-	const failures = [...(opts.epubFailures ?? [])];
-	const epubHandler: RouteHandler = (route) => {
-		const failStatus = failures.shift();
-		if (failStatus !== undefined) {
-			return route.fulfill({ status: failStatus, contentType: "application/json", body: "{}" });
-		}
-		return route.fulfill({
+	const epubHandler: RouteHandler = (route) =>
+		route.fulfill({
 			status: 200,
 			contentType: "application/epub+zip",
 			headers: { "content-length": String(opts.epubBytes.length) },
 			body: opts.epubBytes,
 		});
-	};
 
 	await page.route(detailUrl, detailHandler);
 	await page.route(epubUrl, epubHandler);

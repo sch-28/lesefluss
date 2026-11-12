@@ -78,17 +78,14 @@ test.describe("page mode", () => {
 		await reader.turnPages(page, 5);
 	});
 
-	test("justify from the popover keeps the current word on screen, saves nothing, and reopens there", async ({
+	test("justify pulled in by sync keeps the current word on screen, saves nothing, and reopens there", async ({
 		page,
 	}) => {
 		const word = await reader.pageModeFirstVisibleWord(page);
 		await reader.waitPositionQuiet(page);
 		const saves = await reader.saveRequestCount(page);
 
-		await reader.openAppearance(page);
-		await page.getByRole("switch", { name: "Justify text" }).click();
-		await page.keyboard.press("Escape");
-		await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
+		await applyRemoteSettings(page, { readerTextAlign: "justify" });
 
 		await expect.poll(() => paragraphAlign(page)).toBe("justify");
 		await reader.expectWordVisibleInPage(page, word);

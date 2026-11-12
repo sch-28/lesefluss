@@ -15,7 +15,8 @@ test("signing in from onboarding returns to the /app library, not the website pr
 	await page.getByRole("button", { name: "Get started" }).click();
 	const syncStep = page.getByRole("heading", { name: "Sync across devices?" });
 	for (let i = 0; i < 8 && !(await syncStep.isVisible()); i++) {
-		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		// The reading speed step has no Continue until its test is done.
+		await page.getByRole("button", { name: /^(Continue|Skip this step)$/ }).click();
 	}
 	await expect(syncStep).toBeVisible();
 

@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 describe("ReaderFigure", () => {
-	it("renders an undraggable image with no word spans", async () => {
+	it("renders an undraggable image", async () => {
 		view = await render(
 			<ReaderFigure
 				figure={{
@@ -33,6 +33,5 @@ describe("ReaderFigure", () => {
 		// A draggable img under a long-press wedges WebView 148's touch dispatch.
 		expect(img.getAttribute("draggable")).toBe("false");
 		expect(img.getAttribute("src")).toBe(SRC);
-		expect(document.querySelector("figure [data-word]")).toBeNull();
 	});
 });

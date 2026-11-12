@@ -18,6 +18,20 @@ async function openInPageMode(page: Page) {
 	await expect(page.locator(".page-view span[data-word]").first()).toBeAttached();
 }
 
+/** Past the reader's 1500ms `JUMP_SETTLE_GUARD_MS`. */
+const PAST_JUMP_GUARD_MS = 2000;
+
+/**
+ * Freezes the page's clock so every turn that follows is still inside the
+ * reader's jump guard (`JUMP_SETTLE_GUARD_MS`), however slow the run.
+ * Timers keep running. Returns the frozen time.
+ */
+async function freezeClock(page: Page): Promise<number> {
+	const now = await page.evaluate(() => Date.now());
+	await page.clock.setFixedTime(now);
+	return now;
+}
+
 /** Turns one page forward by key and returns the new page's first word. */
 async function turn(page: Page) {
 	await reader.blurFocusedControl(page);
@@ -44,13 +58,14 @@ test("a Contents jump and a quick turn save the turned page, and so does a later
 	page,
 }) => {
 	await openInPageMode(page);
+	const jumpedAt = await freezeClock(page);
 	await reader.moveToChapter(page, "Chapter 3");
 
 	const quick = await turn(page);
 	await reader.waitPositionQuiet(page);
 	expect((await reader.savedRow(page, reader.bookIdFromUrl(page)))?.wordPosition).toBe(quick);
 
-	await reader.waitPastJumpGuard(page);
+	await page.clock.setFixedTime(jumpedAt + PAST_JUMP_GUARD_MS);
 	const later = await turn(page);
 
 	await expectSavedAndReopensOn(page, later);
@@ -61,6 +76,7 @@ test("a Contents jump to another page of the open chunk settles nothing itself, 
 }) => {
 	await openInPageMode(page);
 	const saves = await page.evaluate(() => window.__lesefluss_e2e_saveLog?.length ?? 0);
+	await freezeClock(page);
 	// Chapter 2 starts around word 1,200, inside the first 2,000-word chunk.
 	await reader.moveToChapter(page, "Chapter 2");
 

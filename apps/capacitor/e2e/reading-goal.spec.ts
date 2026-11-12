@@ -51,12 +51,14 @@ test("a goal set on the book page shows in the reader and is met by reading", as
 
 	await page.getByRole("button", { name: /^(Start reading|Continue|Open reader)/ }).click();
 	await reader.expectLoaded(page);
+	await reader.waitOpenSettled(page);
 	const chip = page.getByTestId("goal-chip");
+	// The chip sits in the expanded progress bar, which a scroll collapses again.
+	await reader.showProgressBar(page);
 	await expect(chip).toBeVisible();
 	await expect(chip).toHaveAttribute("data-met", "false");
 	await expect(page.getByTestId("goal-divider")).toHaveAttribute("data-passed", "false");
 
-	await reader.waitOpenSettled(page);
 	// At reading pace: the session tracker only credits what it sees travelled slowly
 	// enough between its polls, and only credited reading meets the target for good.
 	for (let i = 0; i < 2; i++) {
@@ -66,6 +68,7 @@ test("a goal set on the book page shows in the reader and is met by reading", as
 		await reader.waitForTrackerTick(page);
 	}
 
+	await reader.showProgressBar(page);
 	await expect(chip).toHaveAttribute("data-met", "true", { timeout: 10_000 });
 	const back = reader.waitForNextSave(page);
 	await reader.wheel(page, -3_000);
@@ -73,6 +76,7 @@ test("a goal set on the book page shows in the reader and is met by reading", as
 	// Back at the start of the book, short of today's target of a paragraph and a half.
 	expect(await reader.lastSavedWord(page)).toBeLessThan(10);
 	// Met stays met for the day once reached, wherever the position goes after.
+	await reader.showProgressBar(page);
 	await expect(chip).toHaveAttribute("data-met", "true");
 	await expect(page.getByTestId("goal-divider")).toHaveAttribute("data-passed", "true");
 	await chip.click();

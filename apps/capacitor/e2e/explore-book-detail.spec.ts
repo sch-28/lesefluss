@@ -3,7 +3,7 @@ import {
 	strayAnchorFixture,
 } from "@lesefluss/book-import/test-fixtures/build-epub";
 import { expect, type Page, test } from "@playwright/test";
-import { type CatalogMockOpts, mockCatalogBook } from "./helpers/catalog-mock";
+import { mockCatalogBook } from "./helpers/catalog-mock";
 import { resetStorage } from "./helpers/seed";
 
 const CATALOG_ID = "gutenberg:99998";
@@ -14,12 +14,11 @@ const DETAIL_PATH = `/tabs/explore/book/${encodeURIComponent(CATALOG_ID)}`;
 
 let cleanup: (() => Promise<void>) | undefined;
 
-async function openDetail(page: Page, opts: Partial<CatalogMockOpts> = {}) {
+async function openDetail(page: Page) {
 	const mock = await mockCatalogBook(page, {
 		catalogId: CATALOG_ID,
 		title: TITLE,
 		epubBytes: await buildEpubBuffer(fixture),
-		...opts,
 	});
 	cleanup = mock.cleanup;
 	await page.goto(DETAIL_PATH);

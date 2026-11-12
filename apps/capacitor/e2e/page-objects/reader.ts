@@ -57,11 +57,22 @@ async function inScrollContainer<R, A>(
 	}
 }
 
-/** The value a stepper row shows, found from its labelled increase button. */
+/** The stepper group named `label`, in the appearance popover or on a settings page. */
+function stepper(page: Page, label: string): Locator {
+	return page.getByRole("group", { name: label, exact: true });
+}
+
+/** The value a stepper shows. */
 export function stepperValue(page: Page, label: string): Locator {
-	return page
-		.getByRole("button", { name: `Increase ${label}`, exact: true })
-		.locator("xpath=../../span[@aria-live]");
+	return stepper(page, label).locator("span[aria-live]");
+}
+
+export function stepperIncrease(page: Page, label: string): Locator {
+	return stepper(page, label).getByRole("button", { name: /^Increase /i });
+}
+
+export function stepperDecrease(page: Page, label: string): Locator {
+	return stepper(page, label).getByRole("button", { name: /^Decrease /i });
 }
 
 /**
@@ -86,7 +97,7 @@ async function stepUpAppearance(page: Page, label: string): Promise<void> {
 	await reader.openAppearance(page);
 	const value = stepperValue(page, label);
 	const before = await value.textContent();
-	await page.getByRole("button", { name: `Increase ${label}`, exact: true }).click();
+	await stepperIncrease(page, label).click();
 	await expect(value).not.toHaveText(before ?? "");
 	await closeAppearancePopover(page);
 }
@@ -507,23 +518,6 @@ export const reader = {
 		await page.getByRole("button", { name: "Delete", exact: true }).click();
 	},
 
-	/**
-	 * Click the inline avatar's parent word to reopen the glossary editor.
-	 * Reader's `handleWordTap` routes glossary-decorated words straight to
-	 * `setEditingGlossaryEntry`. Pass the WordPosition of the avatar word.
-	 */
-	openGlossaryEditor: async (page: Page, wordPosition: number) => {
-		const span = page.locator(`span[data-word="${wordPosition}"]`).first();
-		// A real press: a click with no pointerdown before it is an accessibility
-		// activation, which the reader ignores (word-gestures.ts). force skips
-		// Playwright's actionability wait, not the pointer events.
-		await span.click({ force: true });
-		// Wait for the drawer to mount.
-		await page
-			.getByRole("heading", { name: "Glossary entry" })
-			.waitFor({ state: "visible", timeout: 5000 });
-	},
-
 	setGlossaryLabelFromEditor: async (page: Page, label: string) => {
 		const drawer = page.getByRole("dialog").filter({ hasText: "Glossary entry" });
 		const labelBtn = drawer.locator("button.flex-1.truncate");
@@ -589,10 +583,10 @@ export const reader = {
 	},
 
 	setPaginationStyle: async (page: Page, style: "scroll" | "page") => {
-		const radio = page.locator(".appearance-popover-content").getByRole("button", {
-			name: style === "scroll" ? "Scroll" : "Page",
-			exact: true,
-		});
+		const radio = page
+			.locator(".appearance-popover-content")
+			.getByRole("group", { name: "Layout", exact: true })
+			.getByRole("radio", { name: style === "scroll" ? "Scroll" : "Page", exact: true });
 		// Under full-suite load the menu or popover can miss the first click (LESE-147): retry the
 		// whole open-and-pick instead of waiting out the test timeout on one click.
 		let attempt = 0;
@@ -605,7 +599,7 @@ export const reader = {
 				await expect(page.locator(".appearance-popover-content")).toBeVisible({ timeout: 3000 });
 			}
 			await radio.click({ timeout: 3000 });
-			await expect(radio).toHaveAttribute("aria-pressed", "true", { timeout: 2000 });
+			await expect(radio).toHaveAttribute("aria-checked", "true", { timeout: 2000 });
 		}).toPass({ timeout: 30_000 });
 		await closeAppearancePopover(page);
 		// Wait for the new view's word spans to re-mount; the prior ad-hoc 300ms
@@ -625,12 +619,6 @@ export const reader = {
 		return word;
 	},
 
-	/**
-	 * Wait for the next position save to commit. Reader sets a dev-only window
-	 * hook (`__lesefluss_e2e_save`) at the tail of every `savePosition()` call,
-	 * after `queries.updateBook(...)` has resolved. Polling this beats wall-
-	 * clock sleeps because it observes the actual write rather than guessing.
-	 */
 	/** Waits for the session tracker's next poll, which credits (or not) the moves before it. */
 	waitForTrackerTick: async (page: Page) => {
 		const baseline = await page.evaluate(() => window.__lesefluss_e2e_session_ticks ?? 0);
@@ -641,6 +629,12 @@ export const reader = {
 		);
 	},
 
+	/**
+	 * Wait for the next position save to commit. Reader sets a dev-only window
+	 * hook (`__lesefluss_e2e_save`) at the tail of every `savePosition()` call,
+	 * after `queries.updateBook(...)` has resolved. Polling this beats wall-
+	 * clock sleeps because it observes the actual write rather than guessing.
+	 */
 	waitForNextSave: async (page: Page) => {
 		const baseline = await page.evaluate(() => window.__lesefluss_e2e_save?.count ?? 0);
 		await page.waitForFunction(
@@ -691,12 +685,12 @@ export const reader = {
 
 	/**
 	 * Runs `change` (a resize, a relayout: nothing that settles) and checks no
-	 * position write is requested within `quietMs` after it.
+	 * position write is requested until settles have stayed quiet for `quietMs`.
 	 */
 	expectNoSaveDuring: async (page: Page, change: () => Promise<void>, quietMs = 1000) => {
 		const requests = await reader.saveRequestCount(page);
 		await change();
-		await page.waitForTimeout(quietMs);
+		await reader.waitPositionQuiet(page, quietMs);
 		expect(await reader.saveRequestCount(page)).toBe(requests);
 	},
 
@@ -880,41 +874,25 @@ export const reader = {
 			.toContain(word);
 	},
 
-	/**
-	 * Tap the centre zone of the page. `routeTap` splits the column into
-	 * thirds by `clientX - rect.left - margin`, so the element centre always
-	 * lands in the middle third (the zone that does not turn a page). A mouse
-	 * click emits pointer events but no touch events, so the two-finger pause
-	 * detector stays disarmed.
-	 */
-	tapPageCentre: async (page: Page) => {
-		await page.locator(".page-view").click();
-	},
-
 	/** Locator for the expanded progress scrubber; the collapsed resting line is always shown. */
 	progressBar: (page: Page): Locator =>
 		page.locator(".reader-progress-bar:not(.reader-progress-bar--collapsed)"),
 
-	// ── Appearance popover steppers ──────────────────────────────────────
+	/** Scroll mode: a tap on blank reader space expands the bar; a word tap would move the position. */
+	showProgressBar: async (page: Page) => {
+		const box = await page.locator(".reader-scroll-content").boundingBox();
+		if (!box) throw new Error("no scroll reader");
+		await page.mouse.click(box.x + 4, box.y + box.height / 2);
+		await expect(reader.progressBar(page)).toBeVisible();
+	},
 
-	/** Click one stepper button (e.g. "Margins", "+") in the appearance popover. */
-	stepUpAppearance,
+	// ── Appearance popover steppers ──────────────────────────────────────
 
 	/** Bump the reader font size one step up, via the appearance popover. */
 	increaseFontSize: async (page: Page) => {
 		await stepUpAppearance(page, "Text size");
 	},
 
-	/** Bump the reader line spacing one step up, via the appearance popover. */
-	increaseLineSpacing: async (page: Page) => {
-		await stepUpAppearance(page, "Line spacing");
-	},
-
-	/**
-	 * Turn `count` pages forward with the keyboard, waiting for each turn's
-	 * position save so the next keypress isn't swallowed by the in-flight page
-	 * transition.
-	 */
 	/** The window keydown handler ignores events whose target is interactive,
 	 *  and the appearance popover restores focus to its trigger button. */
 	blurFocusedControl: async (page: Page) => {
@@ -933,6 +911,11 @@ export const reader = {
 			return Math.ceil((chunk.scrollWidth + gap) / (chunk.clientWidth + gap));
 		}),
 
+	/**
+	 * Turn `count` pages forward with the keyboard, waiting for each turn's
+	 * position save so the next keypress isn't swallowed by the in-flight page
+	 * transition.
+	 */
 	turnPages: async (page: Page, count: number) => {
 		await reader.blurFocusedControl(page);
 		for (let i = 0; i < count; i++) {

@@ -1,25 +1,18 @@
 import { expect, type Page, test } from "@playwright/test";
 import { BIG_BOOK_TITLE, openBigBookInPageMode, seedBigBook } from "./helpers/big-book";
+import { applyRemoteSettings } from "./helpers/remote-settings";
 import { openBookFromLibrary } from "./helpers/seed";
 import { reader } from "./page-objects/reader";
 
 const PHONE = { width: 420, height: 900 };
 /** A two-page spread, as in page-mode-spread.spec. */
 const SPREAD = { width: 1280, height: 800 };
-const SETTLE_MS = 2000;
 
 const ruler = (page: Page) => page.locator(".reading-ruler");
 const band = (page: Page) => page.locator(".reading-ruler-band");
 
-async function setPopoverSwitch(page: Page, row: string, on: boolean) {
-	await reader.openAppearance(page);
-	const toggle = page.getByRole("switch", { name: row });
-	if ((await toggle.getAttribute("aria-checked")) !== String(on)) await toggle.click();
-	await page.keyboard.press("Escape");
-	await expect(page.locator(".appearance-popover-content")).toHaveCount(0);
-}
-
-const setRuler = (page: Page, on: boolean) => setPopoverSwitch(page, "Reading ruler", on);
+/** The ruler switch lives in Settings › Reader; a pull from another device flips it while the book is open. */
+const setRuler = (page: Page, on: boolean) => applyRemoteSettings(page, { readerRuler: on });
 
 /** Every rendered word's box: identical before and after means nothing reflowed or moved. */
 async function wordBoxes(page: Page): Promise<string> {
@@ -88,10 +81,10 @@ test("toggling the ruler mid-chapter in scroll mode moves nothing and saves noth
 
 	await setRuler(page, true);
 	await expect(band(page)).toBeVisible();
-	await page.waitForTimeout(SETTLE_MS);
+	await reader.waitPositionQuiet(page);
 	await setRuler(page, false);
 	await expect(ruler(page)).toHaveCount(0);
-	await page.waitForTimeout(SETTLE_MS);
+	await reader.waitPositionQuiet(page);
 
 	expect(await wordBoxes(page)).toBe(before);
 	expect(await reader.lastSavedWord(page)).toBe(word);
@@ -112,9 +105,9 @@ test("toggling the ruler mid-chapter in page mode keeps the page and saves nothi
 
 	await setRuler(page, true);
 	await expect(band(page)).toBeVisible();
-	await page.waitForTimeout(SETTLE_MS);
+	await reader.waitPositionQuiet(page);
 	await setRuler(page, false);
-	await page.waitForTimeout(SETTLE_MS);
+	await reader.waitPositionQuiet(page);
 
 	expect(await reader.pageModeFirstVisibleWord(page)).toBe(word);
 	expect(await wordBoxes(page)).toBe(before);
@@ -151,8 +144,6 @@ test("in page mode the ruler hides while the page slides and returns on the sett
 	await expect(ruler(page)).toHaveAttribute("data-visible", "true");
 	const before = await reader.pageModeFirstVisibleWord(page);
 
-	// The popover hands focus back to its trigger, which swallows arrow keys.
-	await reader.blurFocusedControl(page);
 	await recordRulerHidden(page);
 	await page.keyboard.press("ArrowRight");
 	await reader.waitPositionQuiet(page);
@@ -185,7 +176,7 @@ test("reopening after using the ruler in page mode restores the same first word"
 	const word = await reader.pageModeFirstVisibleWord(page);
 
 	await setRuler(page, true);
-	await reader.stepUpAppearance(page, "Ruler lines");
+	await applyRemoteSettings(page, { readerRulerLines: 2 });
 	await expect(band(page)).toBeVisible();
 
 	await reader.leaveFlushed(page);

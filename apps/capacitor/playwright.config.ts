@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-/** E2E_PORT when something else already serves 3001. */
+/** E2E_PORT when something else already serves 3001 (on the host; `pnpm e2e` runs in its own network namespace). */
 function portFromEnv(value: string | undefined): number {
 	if (!value) return 3001;
 	if (/^[1-9]\d{3,4}$/.test(value) && Number(value) <= 65535) return Number(value);

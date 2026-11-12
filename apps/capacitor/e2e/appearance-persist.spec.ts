@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { openBookFromLibrary, seedStrayAnchorBook } from "./helpers/seed";
-import { reader, stepperValue } from "./page-objects/reader";
+import { reader, stepperIncrease, stepperValue } from "./page-objects/reader";
 
 /**
  * Reader appearance settings live in the `settings` table; the reader reads
@@ -16,14 +16,14 @@ test("font-size adjustment persists across a reload", async ({ page }) => {
 	const sizeLabel = stepperValue(page, "Text size");
 	await expect(sizeLabel).toBeVisible();
 	const startText = await sizeLabel.textContent();
-	const startSize = Number.parseInt((startText ?? "0").replace("px", ""), 10);
+	const startSize = Number.parseInt(startText ?? "0", 10);
 	expect(startSize).toBeGreaterThan(0);
 
-	const plus = page.getByRole("button", { name: "Increase Text size" });
+	const plus = stepperIncrease(page, "Text size");
 	await plus.click();
-	await expect(sizeLabel).toHaveText(`${startSize + 2}px`);
+	await expect(sizeLabel).toHaveText(`${startSize + 2}`);
 	await plus.click();
-	await expect(sizeLabel).toHaveText(`${startSize + 4}px`);
+	await expect(sizeLabel).toHaveText(`${startSize + 4}`);
 	const afterSize = startSize + 4;
 
 	await page.keyboard.press("Escape");
@@ -33,10 +33,10 @@ test("font-size adjustment persists across a reload", async ({ page }) => {
 	await openBookFromLibrary(page, title);
 
 	await reader.openAppearance(page);
-	await expect(stepperValue(page, "Text size")).toHaveText(`${afterSize}px`);
+	await expect(stepperValue(page, "Text size")).toHaveText(`${afterSize}`);
 });
 
-test("the appearance popover still closes after changing pagination or a switch", async ({
+test("the appearance popover still closes after changing the layout or the spacing", async ({
 	page,
 }) => {
 	const title = await seedStrayAnchorBook(page);
@@ -45,12 +45,12 @@ test("the appearance popover still closes after changing pagination or a switch"
 	const popover = page.locator(".appearance-popover-content");
 
 	await reader.openAppearance(page);
-	await popover.getByRole("button", { name: "Page", exact: true }).click();
+	await popover.getByRole("radio", { name: "Page", exact: true }).click();
 	await page.keyboard.press("Escape");
 	await expect(popover).toHaveCount(0);
 
 	await reader.openAppearance(page);
-	await page.getByRole("switch", { name: "Bold text" }).click();
+	await popover.getByRole("radio", { name: "Airy", exact: true }).click();
 	await page.mouse.click(10, 400);
 	await expect(popover).toHaveCount(0);
 });

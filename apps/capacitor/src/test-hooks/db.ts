@@ -15,14 +15,6 @@ export function exposeBookRowRead(read: E2EReadBookRow): void {
 	).__lesefluss_e2e_readBookRow = read;
 }
 
-export type E2EInvalidate = (queryKey: readonly unknown[]) => Promise<void>;
-
-/** Lets a test refetch queries the way a sync pull or a chapter fetch does. */
-export function exposeQueryInvalidate(invalidate: E2EInvalidate): void {
-	(window as unknown as { __lesefluss_e2e_invalidate?: E2EInvalidate }).__lesefluss_e2e_invalidate =
-		invalidate;
-}
-
 export type E2ERemotePosition = (
 	bookId: string,
 	word: number,

@@ -42,9 +42,14 @@ test("a touch long-press on a figure in page mode turns no page", async ({ page 
 	await reader.setPaginationStyle(page, "page");
 	const before = await reader.pageModeFirstVisibleWord(page);
 
-	await reader.touchLongPressOn(page, page.locator('.reader-figure img[alt="Plate 1"]'));
-	// A turn or a selection, had the press started one, would be showing by now.
-	await page.waitForTimeout(500);
+	// Pressed inside the next-page third, where a tap would turn the page.
+	const box = await page.locator('.reader-figure img[alt="Plate 1"]').boundingBox();
+	if (!box) throw new Error("Plate 1 is not on the page");
+	const point = { x: box.x + box.width - 8, y: box.y + box.height / 2 };
+	const width = page.viewportSize()?.width ?? 0;
+	expect(point.x).toBeGreaterThan(width * 0.67);
+	expect(point.x).toBeLessThan(width);
+	await reader.expectNoSaveDuring(page, () => reader.touchLongPressBetween(page, point, point));
 	await expect(reader.selectionToolbar(page)).toHaveCount(0);
 	expect(await reader.pageModeFirstVisibleWord(page)).toBe(before);
 });

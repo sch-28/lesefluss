@@ -3,7 +3,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { BIG_BOOK_TITLE, seedBigBook } from "./helpers/big-book";
 import { applyRemoteSettings } from "./helpers/remote-settings";
 import { openBookFromLibrary, seedFixture, seedStrayAnchorBook } from "./helpers/seed";
-import { reader } from "./page-objects/reader";
+import { reader, stepperDecrease, stepperIncrease } from "./page-objects/reader";
 
 /**
  * Layout settings reflow the scroll reader's paragraphs, and the virtual list
@@ -43,17 +43,15 @@ const CHANGES: Change[] = [
 		},
 	},
 	{
-		name: "line spacing",
+		name: "the airy spacing preset",
 		viewport: PHONE,
-		apply: async (page) => {
-			for (let i = 0; i < 5; i++) await reader.increaseLineSpacing(page);
-		},
+		apply: (page) =>
+			clickInAppearance(page, (p) => p.getByRole("radio", { name: "Airy", exact: true }).click()),
 	},
 	{
-		name: "justify",
+		name: "justify pulled in by sync",
 		viewport: WIDE,
-		apply: (page) =>
-			clickInAppearance(page, (p) => p.getByRole("switch", { name: "Justify text" }).click()),
+		apply: (page) => applyRemoteSettings(page, { readerTextAlign: "justify" }),
 	},
 	{
 		name: "letter, word and paragraph spacing pulled in by sync",
@@ -206,7 +204,7 @@ test("scrolling right after a font change saves the new top word", async ({ page
 	const word = await openMidChapter(page, PHONE);
 	let clickedAt = 0;
 	await clickInAppearance(page, async (p) => {
-		await p.getByRole("button", { name: "Increase Text size" }).click();
+		await stepperIncrease(p, "Text size").click();
 		clickedAt = Date.now();
 	});
 	// The case's own timing: a scroll 200ms after the change, while it still reflows.
@@ -294,9 +292,7 @@ test("a font size step down after a mid-paragraph settle on a phone keeps that w
 	const word = await settleMidParagraph(page);
 	const saves = await reader.saveRequestCount(page);
 
-	await clickInAppearance(page, (p) =>
-		p.getByRole("button", { name: "Decrease Text size" }).click(),
-	);
+	await clickInAppearance(page, (p) => stepperDecrease(p, "Text size").click());
 
 	await expectAnchoredWithoutSave(page, word, saves);
 	await expectReopensAt(page, LONG_TITLE, word, saves);
@@ -325,9 +321,7 @@ test("after a fresh load with custom reader settings, a step down keeps the sett
 	const word = await settleMidParagraph(page);
 	const saves = await reader.saveRequestCount(page);
 
-	await clickInAppearance(page, (p) =>
-		p.getByRole("button", { name: "Decrease Text size" }).click(),
-	);
+	await clickInAppearance(page, (p) => stepperDecrease(p, "Text size").click());
 
 	await expectAnchoredWithoutSave(page, word, saves);
 });

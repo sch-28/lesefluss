@@ -76,14 +76,14 @@ test("the toggle turns the voice on and off with no read-aloud bar", async ({ pa
 
 	await controlsToggle(page).click();
 	await expect(controlsToggle(page)).toHaveAttribute("aria-pressed", "true");
-	await expect(page.getByRole("button", { name: "Voice" })).toBeVisible();
+	await expect(page.getByRole("button", { name: "Voice", exact: true })).toBeVisible();
 	await expect(page.getByRole("button", { name: "Sleep timer" })).toBeVisible();
 	expect(await reader.rsvpCurrentWord(page), "the toggle leaves the view alone").toBe(shown);
 	expect(await starts(page), "the toggle doesn't play").toBe(0);
 
 	await play(page);
 	expect(await starts(page)).toBe(1);
-	await expect(page.getByRole("button", { name: "Voice" })).toHaveCount(0);
+	await expect(page.getByRole("button", { name: "Voice", exact: true })).toHaveCount(0);
 	await expect(page.getByRole("button", { name: "Stop listening" })).toHaveCount(0);
 	await speak(page, 3);
 
@@ -169,7 +169,7 @@ test("the audio setting survives a reload", async ({ page }) => {
 	await reader.waitOpenSettled(page);
 	await reader.toggleRsvp(page);
 	await expect(controlsToggle(page)).toHaveAttribute("aria-pressed", "true");
-	await expect(page.getByRole("button", { name: "Voice" })).toBeVisible();
+	await expect(page.getByRole("button", { name: "Voice", exact: true })).toBeVisible();
 });
 
 test("the floating buttons open the voice and sleep timer sheets", async ({ page }) => {
@@ -179,7 +179,7 @@ test("the floating buttons open the voice and sleep timer sheets", async ({ page
 	await expect(page.getByText("Stop listening after")).toBeVisible();
 	await page.keyboard.press("Escape");
 	await expect(page.getByText("Stop listening after")).toHaveCount(0);
-	await page.getByRole("button", { name: "Voice" }).click();
+	await page.getByRole("button", { name: "Voice", exact: true }).click();
 	await expect(page.getByText(/^Voice · /)).toBeVisible();
 });
 

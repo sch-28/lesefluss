@@ -5,7 +5,7 @@ import {
 import type { Page } from "@playwright/test";
 import { seedFixture } from "./seed";
 
-/** Five chapters, each opening with a heading (h1 or h2) and 40 paragraphs. */
+/** Five chapters, each opening with an h2 heading and 40 paragraphs. */
 export const CHAPTER_NOVEL_TITLE = "Chapter Novel";
 export const CHAPTERS = 5;
 export const PARAS_PER_CHAPTER = 40;
@@ -19,18 +19,14 @@ export function openingPhrase(n: number): string {
 }
 
 type NovelOptions = {
-	headingTag?: "h1" | "h2";
 	/** Ends every chapter with a tall figure, which in page mode pushes the next heading a page on. */
 	endFigure?: boolean;
 };
 
-export function chapterNovelFixture({
-	headingTag = "h2",
-	endFigure = false,
-}: NovelOptions = {}): EpubFixture {
+export function chapterNovelFixture({ endFigure = false }: NovelOptions = {}): EpubFixture {
 	const chapters = [];
 	for (let c = 1; c <= CHAPTERS; c++) {
-		const paras: string[] = [`<${headingTag}>${chapterHeading(c)}</${headingTag}>`];
+		const paras: string[] = [`<h2>${chapterHeading(c)}</h2>`];
 		for (let p = 1; p <= PARAS_PER_CHAPTER; p++) {
 			const lead = p === 1 ? `${openingPhrase(c)}.` : `Marker${c}x${p} in chapter ${c}.`;
 			paras.push(

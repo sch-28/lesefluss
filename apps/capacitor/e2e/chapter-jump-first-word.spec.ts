@@ -121,7 +121,5 @@ test("a scroll that comes to rest with a heading on the top edge saves the headi
 	await reader.wheelTargetTo(page, heading, "top");
 
 	await reader.waitForSaveAbove(page, saves, 5000);
-	expect(await reader.lastSavedWord(page)).toBe(
-		Number(await heading.getAttribute("data-heading-word")),
-	);
+	expect(await reader.lastSavedWord(page)).toBe(await headingWord(page, CHAPTER));
 });
