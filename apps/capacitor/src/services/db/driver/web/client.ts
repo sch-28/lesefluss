@@ -164,12 +164,19 @@ function createOpfsDriver(channel: WorkerChannel): DbDriver {
  * Opens the OPFS database in a worker, moving the legacy store over on the first
  * start. Throws `OpfsUnavailableError` when the legacy store should be used
  * instead, `StorageBusyError` when the library is on OPFS but can't be opened.
+ * `onWaiting` fires before each retry, while a previous page may still hold the files.
  */
-export async function openOpfsDriver(spawn: () => WorkerLike = spawnWorker): Promise<DbDriver> {
+export async function openOpfsDriver(
+	spawn: () => WorkerLike = spawnWorker,
+	onWaiting?: () => void,
+): Promise<DbDriver> {
 	const delays = [0, ...BUSY_RETRY_DELAYS_MS];
 	let lastError: unknown;
 	for (const delay of delays) {
-		if (delay) await new Promise((r) => setTimeout(r, delay));
+		if (delay) {
+			onWaiting?.();
+			await new Promise((r) => setTimeout(r, delay));
+		}
 		let channel: WorkerChannel | undefined;
 		try {
 			// Inside the try: a browser without module workers throws right here.

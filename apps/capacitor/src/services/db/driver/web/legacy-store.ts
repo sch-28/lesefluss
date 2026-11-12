@@ -89,3 +89,17 @@ export function deleteLegacyIdb(): Promise<void> {
 		req.onblocked = () => resolve();
 	});
 }
+
+const PROBE_IDB_NAME = "lesefluss-storage-probe";
+
+/** Whether this window lets the site keep IndexedDB data at all (blocked site data refuses it). */
+export async function canOpenIndexedDb(): Promise<boolean> {
+	try {
+		const db = await request(indexedDB.open(PROBE_IDB_NAME));
+		db.close();
+		indexedDB.deleteDatabase(PROBE_IDB_NAME);
+		return true;
+	} catch {
+		return false;
+	}
+}

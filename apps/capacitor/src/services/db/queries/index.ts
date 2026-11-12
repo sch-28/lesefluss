@@ -22,6 +22,7 @@ import {
 	applyBookMerge,
 	backfillWordCounts,
 	deleteBook,
+	deleteOrphanedContentRows,
 	fillEmptyBookSeries,
 	getAllBooks,
 	getBook,
@@ -234,6 +235,7 @@ export const queries = {
 	setActiveBook,
 	deleteBook,
 	hardDeleteBook,
+	deleteOrphanedContentRows,
 
 	// Highlights
 	getHighlightsByBook,

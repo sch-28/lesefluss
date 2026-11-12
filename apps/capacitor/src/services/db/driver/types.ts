@@ -25,3 +25,9 @@ export interface DbDriver {
 
 /** `Error.name` of the failure where the library is on OPFS but can't be opened right now. */
 export const STORAGE_BUSY_ERROR = "StorageBusyError";
+
+/** `Error.name` of the failure where another tab holds the library. */
+export const DB_IN_USE_ERROR = "DbInUseError";
+
+/** `Error.name` of the failure where this browser window allows no storage at all. */
+export const STORAGE_UNAVAILABLE_ERROR = "StorageUnavailableError";

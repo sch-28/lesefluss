@@ -6,6 +6,9 @@ const state = vi.hoisted(() => ({
 	drivers: [] as DbDriver[],
 	migrate: async (_driver: DbDriver) => {},
 	deleteWithoutDriver: vi.fn(async () => {}),
+	letGo: null as (() => Promise<void>) | null,
+	released: 0,
+	claims: [] as boolean[],
 }));
 
 vi.mock("@capacitor/core", () => ({ Capacitor: { isNativePlatform: () => false } }));
@@ -19,13 +22,27 @@ vi.mock("../driver", () => ({
 	},
 	deleteStoreWithoutDriver: state.deleteWithoutDriver,
 }));
+vi.mock("../driver/web/ownership", () => ({
+	acquireOwnership: async (options: {
+		claim: boolean;
+		onReleaseRequested: () => Promise<void>;
+	}) => {
+		state.claims.push(options.claim);
+		state.letGo = options.onReleaseRequested;
+		return {
+			release: () => {
+				state.released++;
+			},
+		};
+	},
+}));
 vi.mock("../migrations", () => ({ runMigrations: (d: DbDriver) => state.migrate(d) }));
 vi.mock("../queries/books", () => ({
 	backfillAddedAt: async () => {},
 	backfillFinishedAt: async () => {},
 }));
 
-const { db, initDb, resetAppData } = await import("../index");
+const { db, initDb, onDbMoved, resetAppData } = await import("../index");
 
 function fakeDriver(): DbDriver & { closed: boolean; deleted: boolean } {
 	const driver = {
@@ -54,17 +71,21 @@ describe("initDb and resetAppData", () => {
 		state.drivers = [];
 		state.migrate = async () => {};
 		state.deleteWithoutDriver.mockClear();
+		state.letGo = null;
+		state.claims = [];
 		// Leaves the module with no driver between tests.
 		await resetAppData();
 		state.deleteWithoutDriver.mockClear();
+		state.released = 0;
 	});
 
 	it("closes the driver of a failed start and opens a fresh one on retry", async () => {
 		const first = fakeDriver();
 		const second = fakeDriver();
 		state.drivers = [first, second];
-		state.migrate = async (d) => {
-			if (d === first) throw new Error("migration failed");
+		let starts = 0;
+		state.migrate = async () => {
+			if (starts++ === 0) throw new Error("migration failed");
 		};
 
 		await expect(initDb()).rejects.toThrow("migration failed");
@@ -108,5 +129,44 @@ describe("initDb and resetAppData", () => {
 		await resetAppData();
 
 		expect(state.deleteWithoutDriver).toHaveBeenCalledTimes(1);
+	});
+
+	it("lets go of a failed start's tab lock so another tab or a retry can take it", async () => {
+		state.drivers = [fakeDriver()];
+		state.migrate = async () => {
+			throw new Error("migration failed");
+		};
+		await expect(initDb()).rejects.toThrow("migration failed");
+		expect(state.released).toBe(1);
+	});
+
+	it("passes a claim on to the tab lock", async () => {
+		state.drivers = [fakeDriver()];
+		await initDb({ claim: true });
+		expect(state.claims).toEqual([true]);
+	});
+
+	it("on a claim from another tab: flushes, tells the app, waits for its saves, then closes", async () => {
+		const driver = fakeDriver();
+		state.drivers = [driver];
+		await initDb();
+
+		const steps: string[] = [];
+		const onPageHide = () => steps.push("pagehide");
+		window.addEventListener("pagehide", onPageHide);
+		const unsubscribe = onDbMoved(() => {
+			steps.push("moved");
+			// The unmounting app's last save, queued after the move was announced.
+			void db.run(sql`UPDATE books SET word_position = 1`).then(() => steps.push("saved"));
+		});
+		const letGo = state.letGo;
+		if (!letGo) throw new Error("no ownership taken");
+		await letGo();
+		window.removeEventListener("pagehide", onPageHide);
+		unsubscribe();
+
+		expect(steps).toEqual(["pagehide", "moved", "saved"]);
+		expect(driver.closed).toBe(true);
+		await expect(db.all(sql`SELECT 1`)).rejects.toBeDefined();
 	});
 });

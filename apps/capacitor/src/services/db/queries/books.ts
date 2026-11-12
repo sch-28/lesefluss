@@ -283,8 +283,12 @@ type BookContentColumns = {
  * `content` and `wordIndex` can each be tens of MB; writing them in one insert
  * OOMs the Capacitor bridge (see long-text.ts). When everything fits one bridge
  * chunk we keep the plain single insert (the common path, unchanged). Otherwise
- * we seed the row with the small columns and append the large ones in chunks. On
- * any failure both rows are deleted so a partial write doesn't orphan content.
+ * we seed the row with the small columns and append the large ones in chunks.
+ *
+ * The `books` row goes in last: a page closed mid-import leaves only a content
+ * row no book points to, never a book with half its text, and
+ * `deleteOrphanedContentRows` clears it on the next start. On a failure both
+ * rows are deleted here.
  */
 async function commitBookContent(
 	book: NewBook,
@@ -296,7 +300,6 @@ async function commitBookContent(
 		content.length <= LONG_TEXT_CHUNK && (wordIndexJson?.length ?? 0) <= LONG_TEXT_CHUNK;
 
 	try {
-		await db.insert(books).values(book);
 		if (fitsOneChunk) {
 			await db.insert(bookContent).values({
 				bookId: book.id,
@@ -336,6 +339,7 @@ async function commitBookContent(
 				);
 			}
 		}
+		await db.insert(books).values(book);
 	} catch (err) {
 		await db
 			.delete(bookContent)
@@ -984,6 +988,22 @@ export async function deleteBook(id: string): Promise<void> {
 		.update(bookmarks)
 		.set({ deleted: true, updatedAt: serverNow() })
 		.where(and(eq(bookmarks.bookId, id), eq(bookmarks.deleted, false)));
+}
+
+/**
+ * Deletes content and image rows no book points to, left behind by a page that
+ * closed mid-import (see `commitBookContent`). Run at start, before anything
+ * can be importing. Returns how many content rows went.
+ */
+export async function deleteOrphanedContentRows(): Promise<number> {
+	const noBook = (bookId: SQLWrapper) => sql`${bookId} NOT IN (SELECT ${books.id} FROM ${books})`;
+	const orphans = await db
+		.select({ bookId: bookContent.bookId })
+		.from(bookContent)
+		.where(noBook(bookContent.bookId));
+	if (orphans.length > 0) await db.delete(bookContent).where(noBook(bookContent.bookId));
+	await db.delete(bookImages).where(noBook(bookImages.bookId));
+	return orphans.length;
 }
 
 /**

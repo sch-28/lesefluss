@@ -122,6 +122,20 @@ describe("openOpfsDriver", () => {
 		expect(workers[0].terminated).toBe(true);
 	});
 
+	it("says it is waiting before each retry, and not when the store opens at once", async () => {
+		vi.useFakeTimers();
+		const onWaiting = vi.fn();
+		await openOpfsDriver(() => fakeWorker(() => opened).worker, onWaiting);
+		expect(onWaiting).not.toHaveBeenCalled();
+
+		const workers = [failedOpen(true), opened].map((reply) => fakeWorker(() => reply).worker);
+		const spawn = vi.fn(() => workers[spawn.mock.calls.length - 1]);
+		const pending = openOpfsDriver(spawn, onWaiting);
+		await vi.runAllTimersAsync();
+		await pending;
+		expect(onWaiting).toHaveBeenCalledTimes(1);
+	});
+
 	it("never falls back to the legacy store while the OPFS store stays busy", async () => {
 		vi.useFakeTimers();
 		const spawn = vi.fn(() => fakeWorker(() => failedOpen(true)).worker);
