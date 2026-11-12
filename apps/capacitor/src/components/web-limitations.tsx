@@ -8,7 +8,7 @@ import { openLink } from "@/utils/open-link";
 
 export const WEB_LIMITATIONS = [
 	"rsvpnano device",
-	"Read aloud in the background and on the lock screen",
+	"Listening in the background and on the lock screen",
 	"Reading reminders and notifications",
 	"Turning pages with the volume keys",
 	"Scanning a folder for books",
@@ -63,7 +63,7 @@ export function WebLimitsLine() {
 				type="button"
 				onClick={dismiss}
 				aria-label="Dismiss"
-				className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+				className="-my-2 -mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
 			>
 				<X className="size-4" />
 			</button>
@@ -75,12 +75,16 @@ export function OnTheWebCard() {
 	const ref = useRef<HTMLDivElement>(null);
 
 	// The Settings root renders a spinner first, so the router's own hash scroll
-	// can run before this card exists.
+	// can run before this card exists, and its scroll-to-top runs after this
+	// effect. A frame later both are done.
 	useEffect(() => {
 		if (window.location.hash !== `#${ON_THE_WEB_HASH}`) return;
-		ref.current?.scrollIntoView();
-		// Dropped so a later return to Settings keeps its restored scroll position.
-		history.replaceState(history.state, "", window.location.pathname + window.location.search);
+		const frame = requestAnimationFrame(() => {
+			ref.current?.scrollIntoView();
+			// Dropped so a later return to Settings keeps its restored scroll position.
+			history.replaceState(history.state, "", window.location.pathname + window.location.search);
+		});
+		return () => cancelAnimationFrame(frame);
 	}, []);
 
 	return (
@@ -96,7 +100,7 @@ export function OnTheWebCard() {
 						))}
 					</ul>
 					<p className="m-0 mt-3 text-muted-foreground text-xs">
-						{IS_READ_ALOUD_SUPPORTED && "Read aloud works while the app is open. "}
+						{IS_READ_ALOUD_SUPPORTED && "Listen works while the app is open. "}
 						<button
 							type="button"
 							onClick={() => openLink(PLAY_STORE_URL, { nativeTarget: "system" })}

@@ -104,7 +104,7 @@ function SyncSettings() {
 						<SignInPanel
 							benefit={
 								IS_WEB_BUILD
-									? "Sign in on the main website to sync your library, reading progress, and highlights, and to read books together with friends."
+									? "Sign in to sync your library, reading progress, and highlights, and to read books together with friends."
 									: "Sign in to sync your library, reading progress, and highlights across devices, and to read books together with friends."
 							}
 						/>

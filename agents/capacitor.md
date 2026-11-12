@@ -37,6 +37,7 @@ WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true pnpm build
 - Cookie-based auth instead of Bearer token (same-domain session)
 - WASM path set to `/app/assets` for the jeep-sqlite fallback
 - BLE/device UI hidden, file import uses HTML5 File API
+- With `WEB_BUILD`, two vite plugins in `vite.config.ts` emit the app manifest and `sw.js` (the template `src/service-worker/sw.js` plus the precache list of every built file with its sha256 revision); `services/app-update` registers the worker and drives the update bar. The Android build has neither.
 
 Platform detection: `Capacitor.getPlatform() === "web"` (used throughout for BLE guards, UI hiding). Web build detection: `import.meta.env.VITE_WEB_BUILD === "true"` (used for auth and sync differences).
 

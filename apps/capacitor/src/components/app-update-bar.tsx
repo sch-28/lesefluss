@@ -33,7 +33,7 @@ export function AppUpdateBar() {
 					disabled={reloading}
 					onClick={() => {
 						setReloading(true);
-						void applyUpdate();
+						applyUpdate().catch(() => setReloading(false));
 					}}
 					className="h-11 shrink-0 rounded-lg bg-background px-4 font-semibold text-foreground text-sm transition-opacity hover:opacity-90 disabled:opacity-60"
 				>

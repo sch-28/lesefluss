@@ -45,6 +45,14 @@ describe("AppUpdateBar", () => {
 		expect(button("Reloading…")?.disabled).toBe(true);
 	});
 
+	it("offers Reload again when saving before the reload fails", async () => {
+		applyUpdate.mockRejectedValueOnce(new Error("disk full"));
+		appUpdateReady.set(true);
+		view = await render(<AppUpdateBar />);
+		await act(async () => button("Reload")?.click());
+		expect(button("Reload")?.disabled).toBe(false);
+	});
+
 	it("gives the bottom to a screen's own bar and comes back after", async () => {
 		appUpdateReady.set(true);
 		view = await render(<AppUpdateBar />);

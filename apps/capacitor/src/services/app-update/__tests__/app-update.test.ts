@@ -78,6 +78,15 @@ describe("registerAppServiceWorker", () => {
 		expect(appUpdateReady.get()).toBe(true);
 	});
 
+	it("watches an install that started before registration resolved", async () => {
+		const container = new FakeContainer();
+		const worker = new FakeWorker();
+		container.registration.installing = worker;
+		await registered(container);
+		worker.become("installed");
+		expect(appUpdateReady.get()).toBe(true);
+	});
+
 	it("offers nothing on the first install", async () => {
 		const container = new FakeContainer();
 		container.controller = null;
@@ -100,6 +109,32 @@ describe("registerAppServiceWorker", () => {
 		container.register.mockRejectedValue(new Error("insecure"));
 		vi.spyOn(console, "warn").mockImplementation(() => {});
 		await expect(registered(container)).resolves.toBe(container);
+	});
+
+	it("checks for a new build on return to the app, at most every 10 minutes", async () => {
+		let now = 1_000_000;
+		vi.spyOn(Date, "now").mockImplementation(() => now);
+		let visibility: DocumentVisibilityState = "visible";
+		vi.spyOn(document, "visibilityState", "get").mockImplementation(() => visibility);
+		const returnToApp = () => {
+			visibility = "hidden";
+			document.dispatchEvent(new Event("visibilitychange"));
+			visibility = "visible";
+			document.dispatchEvent(new Event("visibilitychange"));
+		};
+		const { registration } = await registered();
+
+		now += 9 * 60_000;
+		returnToApp();
+		expect(registration.update).not.toHaveBeenCalled();
+
+		now += 2 * 60_000;
+		returnToApp();
+		expect(registration.update).toHaveBeenCalledOnce();
+
+		now += 60_000;
+		returnToApp();
+		expect(registration.update).toHaveBeenCalledOnce();
 	});
 
 	it("offers the reload when another tab moved to the new build", async () => {

@@ -20,7 +20,7 @@ export function SignInPanel({ benefit }: { benefit: string }) {
 			{SYNC_ENABLED && (
 				<div className="p-3">
 					{IS_WEB_BUILD ? (
-						<Button asChild className="w-full">
+						<Button asChild className="h-11 w-full">
 							<a
 								href={webSignInHref(window.location.pathname + window.location.search)}
 								target="_top"

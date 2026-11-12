@@ -26,12 +26,12 @@ describe("On the web card", () => {
 		const items = [...rendered.container.querySelectorAll("li")].map((li) => li.textContent);
 		expect(items).toEqual([
 			"rsvpnano device",
-			"Read aloud in the background and on the lock screen",
+			"Listening in the background and on the lock screen",
 			"Reading reminders and notifications",
 			"Turning pages with the volume keys",
 			"Scanning a folder for books",
 		]);
-		expect(rendered.text()).toContain("Read aloud works while the app is open.");
+		expect(rendered.text()).toContain("Listen works while the app is open.");
 		expect(rendered.container.querySelector("#on-the-web")).not.toBeNull();
 	});
 

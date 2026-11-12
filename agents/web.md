@@ -102,7 +102,9 @@ The capacitor app is built as a static SPA and served under `/app/*`. This gives
 
 **Build:** `pnpm build:app` (runs `scripts/build-capacitor-embed.sh`) - builds capacitor with `WEB_BUILD=1 VITE_SYNC_URL="" VITE_WEB_BUILD=true`, copies output to `public/app/`.
 
-**SPA fallback:** `src/routes/app/$.ts` and `src/routes/app/index.ts` serve the capacitor `index.html` for all `/app/*` paths. Static assets (JS, CSS, WASM) in `public/app/assets/` are served directly by Nitro. A missing `/app/assets/*` file is a 404, never the shell: a tab still on the previous build must see the import fail, so `src/lib/stale-chunk-reload.ts` in the capacitor app can reload it.
+**SPA fallback:** `src/routes/app/$.ts` and `src/routes/app/index.ts` serve the capacitor `index.html` for all `/app/*` paths. Static assets (JS, CSS, WASM) in `public/app/assets/` are served directly by Nitro. Any missing file path under `/app/` (`src/lib/app-file-path.ts`) is a 404, never the shell: a tab still on the previous build must see the import fail, so `src/lib/stale-chunk-reload.ts` in the capacitor app can reload it, and the service worker must never cache HTML under a file name.
+
+**Installable app (PWA):** the web build emits `/app/manifest.webmanifest` (scope `/`, start `/app/`), which every website page links, and `/app/sw.js`, served `cache-control: no-cache` (`vite.config.ts` route rule). The worker keeps the built shell in the browser for offline starts and never answers `/api` or other server calls. A new deploy waits in the worker until the user taps Reload on the app's update bar, so a deploy is not live for an open tab right away. To roll back a broken worker, deploy a `sw.js` that unregisters itself.
 
 **Auth:** Same-domain cookie auth - user logs in on `/login`, the capacitor app detects the session via `/api/auth/get-session` and syncs automatically. No second login needed.
 

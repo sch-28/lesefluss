@@ -138,6 +138,14 @@ describe("service worker install", () => {
 		await next.dispatch("install", {});
 		expect(next.server).toHaveBeenCalledTimes(1);
 		expect(next.server.mock.calls[0][0]).toBe(`${ORIGIN}/app/index.html`);
+
+		await next.dispatch("activate", {});
+		expect([...first.caches.stores.keys()]).toEqual(["lesefluss-shell-v2"]);
+		const shell = first.caches.stores.get("lesefluss-shell-v2");
+		expect([...(shell?.entries.keys() ?? [])].sort()).toEqual([
+			`${ORIGIN}/app/assets/index-abc.js?__rev=r-js`,
+			`${ORIGIN}/app/index.html?__rev=r-index-2`,
+		]);
 	});
 });
 

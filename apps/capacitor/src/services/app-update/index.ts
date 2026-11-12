@@ -49,6 +49,8 @@ export async function registerAppServiceWorker(
 		lastCheck = Date.now();
 		if (reg.waiting && sw.controller) appUpdateReady.set(true);
 		reg.addEventListener("updatefound", () => watchInstalling(reg, sw));
+		// An install the browser started before register() resolved fires no updatefound.
+		if (reg.installing) watchInstalling(reg, sw);
 		sw.addEventListener("controllerchange", () => {
 			// Another tab reloaded into the new build; this one still runs the old code.
 			if (reloadRequested) reloadPage();

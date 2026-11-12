@@ -76,3 +76,11 @@ test("the app manifest is installable and the website links it", async ({ page, 
 		"/app/manifest.webmanifest",
 	);
 });
+
+test("See what's different scrolls the On the web card into view", async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.goto("/app/tabs/library");
+	await page.getByRole("button", { name: "See what's different" }).click();
+	await page.waitForURL(/\/app\/tabs\/settings$/);
+	await expect(page.getByRole("button", { name: "Get the Android app" })).toBeInViewport();
+});
