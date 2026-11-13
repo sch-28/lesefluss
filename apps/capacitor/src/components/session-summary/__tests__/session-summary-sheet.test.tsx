@@ -5,6 +5,7 @@ import type { SessionRow } from "../../../services/reading-sessions/rules";
 import {
 	CLOSE_SETTLE_MS,
 	closeVisit,
+	holdSummaryUntil,
 	openVisit,
 	recordSitting,
 	resetSummaryStore,
@@ -21,12 +22,16 @@ const sharedCards: ShareCardData[] = [];
 let goalPlan: { plan: Partial<ReadingGoalPlan> } | null = null;
 let isTrendPending = false;
 let isMilestonesFetching = false;
+let isBookFetching = false;
 const MIN = 60_000;
 const settings = { showSessionSummary: true, speedWindow: "recent" };
 
 vi.mock("../../../services/db/hooks", () => ({
 	queryHooks: {
-		useBook: () => ({ data: { id: "b1", title: "Morning Star", wordCount: 100_000 } }),
+		useBook: () => ({
+			data: { id: "b1", title: "Morning Star", wordCount: 100_000 },
+			isFetching: isBookFetching,
+		}),
 		useStatsSpeedModelWithout: (ids: string[]) => {
 			modelWithout(ids);
 			return { data: model };
@@ -61,7 +66,12 @@ vi.mock("@lesefluss/ui/drawer", async () => {
 	};
 });
 const navigate = vi.fn();
-vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
+let pathname = "/tabs/library";
+vi.mock("@tanstack/react-router", () => ({
+	useNavigate: () => navigate,
+	useRouterState: ({ select }: { select: (s: { location: { pathname: string } }) => string }) =>
+		select({ location: { pathname } }),
+}));
 vi.mock("@lesefluss/ui/dropdown-menu", () => {
 	const Pass = ({ children }: { children?: React.ReactNode }) => <>{children}</>;
 	return {
@@ -128,7 +138,9 @@ beforeEach(() => {
 	goalPlan = null;
 	isTrendPending = false;
 	isMilestonesFetching = false;
+	isBookFetching = false;
 	navigate.mockClear();
+	pathname = "/tabs/library";
 });
 
 function plan(over: Partial<ReadingGoalPlan>): { plan: Partial<ReadingGoalPlan> } {
@@ -302,6 +314,57 @@ describe("SessionSummarySheet", () => {
 		isMilestonesFetching = true;
 		await view.rerender(<SessionSummarySheet />);
 		expect(sheet()).not.toBeNull();
+	});
+
+	it("never opens later on a screen the user moved on to", async () => {
+		isTrendPending = true;
+		view = await render(<SessionSummarySheet />);
+		await readAndClose(10 * MIN);
+		pathname = "/tabs/stats";
+		await view.rerender(<SessionSummarySheet />);
+		isTrendPending = false;
+		await view.rerender(<SessionSummarySheet />);
+		expect(sheet()).toBeNull();
+		pathname = "/tabs/library";
+		await view.rerender(<SessionSummarySheet />);
+		expect(sheet()).toBeNull();
+		expect(drawerProps.some((p) => p.open)).toBe(false);
+	});
+
+	it("never opens when the user moved on while the sitting's writes were landing", async () => {
+		pathname = "/tabs/reader/b1";
+		view = await render(<SessionSummarySheet />);
+		let land = () => {};
+		holdSummaryUntil(new Promise<void>((resolve) => (land = resolve)));
+		pathname = "/tabs/library";
+		await view.rerender(<SessionSummarySheet />);
+		await readAndClose(10 * MIN);
+		pathname = "/tabs/stats";
+		await view.rerender(<SessionSummarySheet />);
+		await act(async () => land());
+		await view.rerender(<SessionSummarySheet />);
+		expect(sheet()).toBeNull();
+		pathname = "/tabs/library";
+		await view.rerender(<SessionSummarySheet />);
+		expect(sheet()).toBeNull();
+		expect(drawerProps.some((p) => p.open)).toBe(false);
+	});
+
+	it("opens on the screen the reader closed to, though the route arrives after the sitting", async () => {
+		pathname = "/tabs/reader/b1";
+		view = await render(<SessionSummarySheet />);
+		await readAndClose(10 * MIN);
+		expect(sheet()).toBeNull();
+		pathname = "/tabs/library";
+		await view.rerender(<SessionSummarySheet />);
+		expect(document.querySelector("[data-testid=summary-time]")?.textContent).toContain("10 min");
+	});
+
+	it("opens while the book's own row refetches: its title and cover stay", async () => {
+		isBookFetching = true;
+		view = await render(<SessionSummarySheet />);
+		await readAndClose(10 * MIN);
+		expect(sheet()?.textContent).toContain("Morning Star");
 	});
 
 	it("shows a minute goal as a met goal row, and the Time tile without a goal bar", async () => {

@@ -26,6 +26,8 @@ vi.mock("../../db/queries", () => ({
 }));
 vi.mock("../../query-client", () => ({ queryClient: { invalidateQueries: vi.fn() } }));
 vi.mock("../../sync", () => ({ scheduleSyncPush: vi.fn() }));
+const holdSummaryUntil = vi.hoisted(() => vi.fn());
+vi.mock("../summary-store", () => ({ holdSummaryUntil }));
 
 const { persistRow } = await import("../persist");
 
@@ -106,5 +108,49 @@ describe("persistRow and the first sitting", () => {
 		db.firstSittingAt = 1_000;
 		await persistAt(5_000);
 		expect(db.markFirstSitting).not.toHaveBeenCalled();
+	});
+});
+
+describe("persistRow and the session summary", () => {
+	beforeEach(() => holdSummaryUntil.mockClear());
+
+	it("holds the summary until a sitting's final write has landed", async () => {
+		let land = () => {};
+		db.upsertReadingSession.mockImplementationOnce(
+			() => new Promise<void>((resolve) => (land = resolve)),
+		);
+		persistRow(row(), "flush");
+		expect(holdSummaryUntil).toHaveBeenCalledTimes(1);
+		const held = holdSummaryUntil.mock.calls[0]?.[0] as Promise<unknown>;
+		let isLanded = false;
+		void held.then(() => (isLanded = true));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(isLanded).toBe(false);
+		land();
+		await held;
+		expect(isLanded).toBe(true);
+	});
+
+	it("holds the summary through the book's first-sitting mark too", async () => {
+		db.firstSittingAt = null;
+		let mark = () => {};
+		db.markFirstSitting.mockImplementationOnce(
+			() => new Promise<void>((resolve) => (mark = resolve)),
+		);
+		persistRow(row(), "flush");
+		const held = holdSummaryUntil.mock.calls[0]?.[0] as Promise<unknown>;
+		let isLanded = false;
+		void held.then(() => (isLanded = true));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(db.markFirstSitting).toHaveBeenCalled();
+		expect(isLanded).toBe(false);
+		mark();
+		await held;
+		expect(isLanded).toBe(true);
+	});
+
+	it("holds nothing for a checkpoint", () => {
+		persistRow(row(), "checkpoint");
+		expect(holdSummaryUntil).not.toHaveBeenCalled();
 	});
 });

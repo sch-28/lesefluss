@@ -88,7 +88,6 @@ import { repairMissingImages } from "../../services/book-import/repair-images";
 import { needsImageUpgrade, upgradeBookImages } from "../../services/book-import/upgrade-images";
 import { externalSourceUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
-import { bookKeys, statsKeys } from "../../services/db/hooks/query-keys";
 import { queries } from "../../services/db/queries";
 import { devicePositionWrite, type PositionRow } from "../../services/db/queries/books";
 import type { GlossaryEntry, Highlight } from "../../services/db/schema";
@@ -149,6 +148,7 @@ import { generateGlossaryId, normalizeGlossaryLabel } from "./glossary-utils";
 import { GoalChip } from "./goal-chip";
 import { isReaderHeaderNarrow, isReaderTitleHidden } from "./header-width";
 import { hyphenationLang } from "./hyphenation-lang";
+import { refreshAfterLeaving } from "./leave-invalidation";
 import { useLiveReading } from "./live-board";
 import { LiveWpm } from "./live-wpm";
 import { NextChapterFooter } from "./next-chapter-footer";
@@ -824,6 +824,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	);
 
 	// ── Save position to DB + BLE ─────────────────────────────────────────
+	/** The latest DB write, so leaving waits for the commit and not for the BLE push. */
+	const positionCommitRef = useRef<Promise<unknown>>(Promise.resolve());
 	const writePositionRow = useCallback(
 		async (
 			word: number,
@@ -850,6 +852,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			});
 			// A write issued after this one builds on it.
 			baseRevRef.current = stamp;
+			positionCommitRef.current = outcome;
 			const movesAtWrite = localMoveCountRef.current;
 			try {
 				const result = await outcome;
@@ -2533,13 +2536,14 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			// the (possibly-stale) `book.wordPosition` query cache; flushing
 			// that would clobber the real value the prior unmount just wrote.
 			const word = lastWordRef.current;
-			let flushed: Promise<unknown> = Promise.resolve();
+			let isSaving = false;
 			if (browse.isBrowsing) {
 				// The DB already holds the anchor; the browsed spot must not leak into
 				// the durable fallback below either. Still flush earlier saves.
 				if (userMovedRef.current) pushSync().catch(() => {});
 			} else if (word !== null && userMovedRef.current) {
-				flushed = savePositionRef.current(word, "unmount", { scheduleSync: false });
+				savePositionRef.current(word, "unmount", { scheduleSync: false });
+				isSaving = true;
 				pushSync().catch(() => {});
 			} else if (
 				word !== null &&
@@ -2558,13 +2562,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					extra: { origin: "unmount", word, seed: seededWordRef.current },
 				});
 			}
-			// Invalidate the books list so the library grid picks up the new position
-			// when the user navigates back.
-			qcRef.current.invalidateQueries({ queryKey: bookKeys.all });
-			// The goal plan also counts the position, and a jump writes no session that would
-			// refresh it. After the flush commits, or the refetch reads the old position.
-			const goalPlans = statsKeys.goalPlansOf(id);
-			flushed.catch(() => {}).then(() => qcRef.current.invalidateQueries({ queryKey: goalPlans }));
+			refreshAfterLeaving(qcRef.current, id, positionCommitRef.current, { isSaving });
 		};
 	}, [browse]);
 

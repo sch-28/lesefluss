@@ -6,6 +6,8 @@ import {
 	CLOSE_SETTLE_MS,
 	closeVisit,
 	dismissSummary,
+	HOLD_MAX_MS,
+	holdSummaryUntil,
 	openVisit,
 	recordSitting,
 	resetSummaryStore,
@@ -43,9 +45,9 @@ function row(overrides: Partial<SessionRow> = {}): SessionRow {
 
 const current = () => useSessionSummary();
 
-function leave() {
+async function leave() {
 	closeVisit();
-	vi.advanceTimersByTime(CLOSE_SETTLE_MS);
+	await vi.advanceTimersByTimeAsync(CLOSE_SETTLE_MS);
 }
 
 beforeEach(() => {
@@ -57,78 +59,146 @@ afterEach(() => {
 });
 
 describe("summary store", () => {
-	it("publishes a visit of 1 minute or more when the reader closes", () => {
+	it("publishes a visit of 1 minute or more when the reader closes", async () => {
 		openVisit();
 		recordSitting(row());
 		closeVisit();
 		expect(current()).toBeNull();
-		vi.advanceTimersByTime(CLOSE_SETTLE_MS);
+		await vi.advanceTimersByTimeAsync(CLOSE_SETTLE_MS);
 		expect(current()).toMatchObject({ bookId: "b1", sittings: [{ id: "s1" }] });
 	});
 
-	it("shows the summary from the same 1 minute a sitting needs to be written", () => {
+	it("shows the summary from the same 1 minute a sitting needs to be written", async () => {
 		expect(SUMMARY_MIN_ACTIVE_MS).toBe(MIN_DURATION_MS);
 		openVisit();
 		recordSitting(row({ durationMs: MIN }));
-		leave();
+		await leave();
 		expect(current()).toMatchObject({ bookId: "b1" });
 	});
 
-	it("publishes nothing under 1 minute", () => {
+	it("publishes nothing under 1 minute", async () => {
 		openVisit();
 		recordSitting(row({ durationMs: SUMMARY_MIN_ACTIVE_MS - 1 }));
-		leave();
+		await leave();
 		expect(current()).toBeNull();
 	});
 
-	it("counts a sitting written twice once", () => {
+	it("counts a sitting written twice once", async () => {
 		openVisit();
 		recordSitting(row({ durationMs: 30_000 }));
 		recordSitting(row({ durationMs: 45_000 }));
-		leave();
+		await leave();
 		expect(current()).toBeNull();
 	});
 
-	it("merges the modes read in one visit", () => {
+	it("merges the modes read in one visit", async () => {
 		openVisit();
 		recordSitting(row({ durationMs: MIN }));
 		recordSitting(row({ id: "s2", mode: "rsvp", startedAt: 5000, durationMs: MIN }));
-		leave();
+		await leave();
 		expect(current()?.sittings.map((s) => s.mode)).toEqual(["scroll", "rsvp"]);
 	});
 
-	it("keeps the visit when the reader re-mounts while closing", () => {
+	it("keeps the visit when the reader re-mounts while closing", async () => {
 		openVisit();
 		recordSitting(row({ durationMs: 30_000 }));
 		closeVisit();
 		openVisit();
-		vi.advanceTimersByTime(CLOSE_SETTLE_MS);
+		await vi.advanceTimersByTimeAsync(CLOSE_SETTLE_MS);
 		expect(current()).toBeNull();
 		recordSitting(row({ id: "s2", durationMs: 30_000 }));
-		leave();
+		await leave();
 		expect(current()?.sittings).toHaveLength(2);
 	});
 
-	it("summarises only the last book of a visit", () => {
+	it("waits for the sitting's last writes, so its figures read them", async () => {
+		let commit = () => {};
+		holdSummaryUntil(new Promise<void>((resolve) => (commit = resolve)));
+		openVisit();
+		recordSitting(row());
+		await leave();
+		expect(current()).toBeNull();
+		commit();
+		await vi.runAllTimersAsync();
+		expect(current()).toMatchObject({ bookId: "b1" });
+	});
+
+	it("publishes after a failed write too", async () => {
+		holdSummaryUntil(Promise.reject(new Error("disk full")));
+		openVisit();
+		recordSitting(row());
+		await leave();
+		expect(current()).toMatchObject({ bookId: "b1" });
+	});
+
+	it("stops waiting for a write that never settles", async () => {
+		holdSummaryUntil(new Promise(() => {}));
+		openVisit();
+		recordSitting(row());
+		await leave();
+		expect(current()).toBeNull();
+		await vi.advanceTimersByTimeAsync(HOLD_MAX_MS);
+		expect(current()).toMatchObject({ bookId: "b1" });
+	});
+
+	it("publishes only for the latest close, once its own writes settle", async () => {
+		let commitFirst = () => {};
+		holdSummaryUntil(new Promise<void>((resolve) => (commitFirst = resolve)));
+		openVisit();
+		recordSitting(row());
+		await leave();
+		openVisit();
+		let commitSecond = () => {};
+		holdSummaryUntil(new Promise<void>((resolve) => (commitSecond = resolve)));
+		await leave();
+
+		commitFirst();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(current()).toBeNull();
+
+		commitSecond();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(current()).toMatchObject({ bookId: "b1" });
+		dismissSummary();
+		await vi.runAllTimersAsync();
+		expect(current()).toBeNull();
+	});
+
+	it("keeps the visit when the reader re-mounts while its writes settle", async () => {
+		let commit = () => {};
+		holdSummaryUntil(new Promise<void>((resolve) => (commit = resolve)));
+		openVisit();
+		recordSitting(row({ durationMs: 30_000 }));
+		await leave();
+		openVisit();
+		commit();
+		await vi.runAllTimersAsync();
+		expect(current()).toBeNull();
+		recordSitting(row({ id: "s2", durationMs: 30_000 }));
+		await leave();
+		expect(current()?.sittings).toHaveLength(2);
+	});
+
+	it("summarises only the last book of a visit", async () => {
 		openVisit();
 		recordSitting(row());
 		recordSitting(row({ id: "s2", bookId: "b2" }));
-		leave();
+		await leave();
 		expect(current()).toMatchObject({ bookId: "b2", sittings: [{ id: "s2" }] });
 	});
 
-	it("lets a dismissed summary go", () => {
+	it("lets a dismissed summary go", async () => {
 		openVisit();
 		recordSitting(row());
-		leave();
+		await leave();
 		dismissSummary();
 		expect(current()).toBeNull();
 	});
 
-	it("drops a deleted sitting", () => {
+	it("drops a deleted sitting", async () => {
 		openVisit();
 		recordSitting(row());
-		leave();
+		await leave();
 		notifySessionsDeleted(["s1"]);
 		expect(current()).toBeNull();
 	});

@@ -13,7 +13,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@lesefluss/ui/dropdown-menu";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { MoreHorizontal, Share2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { queryHooks } from "../../services/db/hooks";
@@ -33,10 +33,17 @@ import { BookTile, GoalRow, SpeedTile, TimeSavedTile, TimeTile, WordsTile } from
 
 const DAY_MS = 86_400_000;
 
-type SummaryProps = { summary: SessionSummary; isOpen: boolean; onClose: () => void };
+const isReaderPath = (pathname: string) => pathname.startsWith("/tabs/reader/");
+
+type SummaryProps = {
+	summary: SessionSummary;
+	isOpen: boolean;
+	landedOn: string | null;
+	onClose: () => void;
+};
 
 /** Opens only once every query it shows has settled, so no tile changes after the first frame. */
-function SummaryDrawer({ summary, isOpen, onClose }: SummaryProps) {
+function SummaryDrawer({ summary, isOpen, landedOn, onClose }: SummaryProps) {
 	const navigate = useNavigate();
 	const book = queryHooks.useBook(summary.bookId);
 	const sittingIds = useMemo(() => summary.sittings.map((s) => s.id), [summary]);
@@ -57,12 +64,23 @@ function SummaryDrawer({ summary, isOpen, onClose }: SummaryProps) {
 		now,
 	);
 	// isFetching too: the sitting's flush invalidates stats, so a warm cache entry is stale
-	// but not pending. Latched, so a later refetch never closes the open sheet.
-	const isSettled = ![book, model, today, goal, milestones, trend].some(
-		(q) => q.isPending || q.isFetching,
-	);
-	const [isReady, setIsReady] = useState(isSettled);
-	if (isSettled && !isReady) setIsReady(true);
+	// but not pending. The book's own refetch is left out: a position save never changes
+	// its title or cover. Latched, so a later refetch never closes the open sheet.
+	const isSettled =
+		!book.isPending &&
+		![model, today, goal, milestones, trend].some((q) => q.isPending || q.isFetching);
+	// The summary is about leaving the book, so once the user has moved on from the screen
+	// the reader closed to, it would land on a screen it has nothing to do with.
+	const pathname = useRouterState({ select: (s) => s.location.pathname });
+	const [closedTo, setClosedTo] = useState(landedOn);
+	if (closedTo === null && !isReaderPath(pathname)) setClosedTo(pathname);
+	const isLeft = closedTo !== null && pathname !== closedTo;
+	const canOpen = isSettled && closedTo !== null && !isLeft;
+	const [isReady, setIsReady] = useState(canOpen);
+	if (canOpen && !isReady) setIsReady(true);
+	useEffect(() => {
+		if (isLeft && !isReady) onClose();
+	}, [isLeft, isReady, onClose]);
 
 	const plan =
 		goal.data?.plan.kind === "plan" && !goal.data.plan.isComplete ? goal.data.plan : null;
@@ -185,6 +203,12 @@ export function SessionSummarySheet() {
 	const summary = useSessionSummary();
 	const { data: settings } = queryHooks.useSettings();
 	const isOff = settings?.showSessionSummary === false;
+	// Tracked here, always mounted: the summary publishes only after the sitting's writes,
+	// and the user may have moved on by then.
+	const pathname = useRouterState({ select: (s) => s.location.pathname });
+	const landedOnRef = useRef<string | null>(null);
+	if (isReaderPath(pathname)) landedOnRef.current = null;
+	else landedOnRef.current ??= pathname;
 	// Kept through the close animation, after the store has let it go.
 	const shownRef = useRef<SessionSummary | null>(null);
 	if (summary) shownRef.current = summary;
@@ -200,6 +224,7 @@ export function SessionSummarySheet() {
 			key={shown.sittings[0]?.id}
 			summary={shown}
 			isOpen={summary !== null && settings !== undefined && !isOff}
+			landedOn={landedOnRef.current}
 			onClose={dismissSummary}
 		/>
 	);

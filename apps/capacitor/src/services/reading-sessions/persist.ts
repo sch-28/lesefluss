@@ -6,6 +6,7 @@ import { queries } from "../db/queries";
 import { queryClient } from "../query-client";
 import { scheduleSyncPush } from "../sync";
 import type { PersistKind, SessionRow } from "./rules";
+import { holdSummaryUntil } from "./summary-store";
 
 const sittingsApplied = new Set<string>();
 
@@ -30,7 +31,7 @@ async function applyRealSitting(row: SessionRow): Promise<void> {
 }
 
 export function persistRow(row: SessionRow, kind: PersistKind): void {
-	queries
+	const written = queries
 		.upsertReadingSession(row)
 		.then(() => {
 			// Heartbeat checkpoints fire every 30s while reading. The write
@@ -46,4 +47,5 @@ export function persistRow(row: SessionRow, kind: PersistKind): void {
 			return applyRealSitting(row);
 		})
 		.catch((err) => log.error("reading-session", `${kind} failed:`, err));
+	if (kind === "flush") holdSummaryUntil(written);
 }

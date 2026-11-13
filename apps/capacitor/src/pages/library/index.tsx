@@ -47,6 +47,7 @@ import type { Book, Series } from "../../services/db/schema";
 import { isFirstLoad } from "../../services/query-client";
 import { IS_WEB_BUILD } from "../../services/sync";
 import { IS_WEB } from "../../utils/platform";
+import { isLeavingReader } from "../reader/leave-invalidation";
 import BatchImportSheet from "./batch-import";
 import { toExistingTitles } from "./batch-import/use-folder-import";
 import { useBookActions } from "./book-actions/use-book-actions";
@@ -215,15 +216,18 @@ const Library: React.FC = () => {
 	const location = useLocation();
 	useEffect(() => {
 		if (location.pathname === "/tabs/library") {
-			qc.invalidateQueries({ queryKey: bookKeys.all });
+			if (!isLeavingReader()) qc.invalidateQueries({ queryKey: bookKeys.all });
 			qc.invalidateQueries({ queryKey: serialKeys.all });
 		}
 	}, [location.pathname, qc]);
 
+	// A finished transfer writes the active book without refreshing the list itself.
+	const wasTransferringRef = useRef(isTransferring);
 	useEffect(() => {
-		if (!isTransferring) {
+		if (wasTransferringRef.current && !isTransferring) {
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 		}
+		wasTransferringRef.current = isTransferring;
 	}, [isTransferring, qc]);
 
 	// A collection deleted here or on another device leaves a stale id in the URL.

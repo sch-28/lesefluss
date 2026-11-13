@@ -36,6 +36,11 @@ export const smartShelfKeys = {
 	all: ["books", "smart-shelves"] as const,
 };
 
+/** A book's text or word index: big, and a position save never changes them. */
+export function isBookPayloadKey(key: readonly unknown[]): boolean {
+	return key[0] === "books" && (key[2] === "content" || key[2] === "word-index");
+}
+
 /** Under `["books"]`, so a sync pull and every import refresh it. */
 export const wishlistKeys = {
 	all: ["books", "wishlist"] as const,
