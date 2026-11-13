@@ -44,7 +44,13 @@ vi.mock("../../../services/deep-links/parse", () => ({
 }));
 vi.mock("../../../utils/clipboard", () => ({ copyToClipboard }));
 vi.mock("../../../components/toast", () => ({
-	toast: { success: toastSuccess, error: vi.fn(), info: vi.fn() },
+	toast: {
+		loading: vi.fn(),
+		dismiss: vi.fn(),
+		success: toastSuccess,
+		error: vi.fn(),
+		info: vi.fn(),
+	},
 }));
 vi.mock("../../../components/app-shell/page-header", () => ({
 	PageHeader: ({ right }: { right?: React.ReactNode }) => <header>{right}</header>,
@@ -218,6 +224,9 @@ describe("catalog book detail", () => {
 			},
 			expect.anything(),
 		);
+		const callbacks = wishlist.toggle.mock.calls[0]?.[1] as { onSuccess: () => void };
+		callbacks.onSuccess();
+		expect(toastSuccess).toHaveBeenCalledWith("Added to your wishlist", { icon: "wishlist" });
 	});
 
 	it("takes a saved book off the wishlist", async () => {

@@ -1,0 +1,254 @@
+/* The toast card (components/toast-card.tsx) inside sonner's list items.
+ * Unlayered, like sonner's own injected styles, so these win by specificity. */
+:root {
+	--toast-ok: #047857;
+	--toast-warn: #b45309;
+	--toast-spring: linear(
+		0,
+		0.18 4%,
+		0.55 10%,
+		0.86 16%,
+		1.04 22%,
+		1.1 27%,
+		1.08 33%,
+		1.02 42%,
+		0.99 52%,
+		1 70%,
+		1
+	);
+}
+.dark {
+	--toast-ok: #34d399;
+	--toast-warn: #fbbf24;
+}
+.sepia {
+	--toast-ok: #064e3b;
+	--toast-warn: #92400e;
+}
+.dark.high-contrast {
+	--toast-ok: #4ade80;
+	--toast-warn: #ffd60a;
+}
+html.eink {
+	--toast-ok: #000000;
+	--toast-warn: #000000;
+}
+
+[data-sonner-toaster][data-y-position="bottom"] {
+	transition:
+		transform 400ms ease,
+		bottom 200ms ease;
+}
+
+[data-sonner-toast][data-styled="false"] {
+	display: flex;
+	justify-content: center;
+	pointer-events: none;
+	transition:
+		transform 520ms var(--toast-spring),
+		opacity 200ms,
+		height 400ms;
+}
+
+[data-sonner-toast][data-styled="false"] > * {
+	max-width: 380px;
+}
+
+[data-sonner-toast][data-styled="false"][data-swiping="true"] {
+	transition: none;
+}
+
+[data-sonner-toast][data-styled="false"][data-removed="true"] {
+	transition:
+		transform 200ms ease-in,
+		opacity 200ms;
+}
+
+.toast-pill {
+	pointer-events: auto;
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	max-width: 100%;
+	min-height: 48px;
+	padding: 8px;
+	border: 1px solid var(--border);
+	border-radius: 9999px;
+	background: var(--popover);
+	color: var(--popover-foreground);
+	box-shadow:
+		0 10px 30px -8px rgb(0 0 0 / 0.28),
+		0 2px 6px rgb(0 0 0 / 0.08);
+	font-size: 14px;
+	line-height: 1.35;
+	animation: toast-pop 520ms var(--toast-spring);
+}
+
+.toast-pill[data-kind="loading"] {
+	padding-left: 16px;
+}
+
+.toast-pill:not(:has(.toast-action)) {
+	padding-right: 16px;
+}
+
+@keyframes toast-pop {
+	from {
+		transform: scale(0.82);
+	}
+	to {
+		transform: none;
+	}
+}
+
+.toast-message {
+	min-width: 0;
+	flex: 1;
+	margin: 0;
+	font-weight: 500;
+}
+
+.toast-icon {
+	position: relative;
+	display: inline-flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 9999px;
+	background: color-mix(in srgb, var(--c) 18%, transparent);
+	color: var(--c);
+}
+
+.toast-stroke {
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 2.6;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.toast-heart {
+	fill: currentColor;
+}
+
+.toast-spark-arm {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.toast-spark {
+	position: absolute;
+	top: 3px;
+	left: calc(50% - 2px);
+	width: 4px;
+	height: 4px;
+	border-radius: 9999px;
+	background: currentColor;
+	opacity: 0;
+}
+
+.toast-ring {
+	background: none;
+	color: var(--primary);
+}
+
+.toast-ring-track,
+.toast-ring-fill {
+	fill: none;
+	stroke-width: 2.5;
+}
+
+.toast-ring-track {
+	stroke: color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+.toast-ring-fill {
+	stroke: currentColor;
+	stroke-linecap: round;
+	transition: stroke-dashoffset 100ms linear;
+}
+
+.toast-ring-seconds {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 12px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	color: var(--foreground);
+}
+
+.toast-action {
+	position: relative;
+	flex-shrink: 0;
+	min-height: 34px;
+	padding: 0 12px;
+	border-radius: 9999px;
+	background: color-mix(in srgb, var(--primary) 16%, transparent);
+	color: var(--primary);
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+/* The 34px pill keeps the card compact; the hit area still reaches 44px. */
+.toast-action::after {
+	content: "";
+	position: absolute;
+	inset: -5px;
+}
+
+.toast-action:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
+.high-contrast .toast-action,
+html.eink .toast-action {
+	background: var(--primary);
+	color: var(--primary-foreground);
+}
+
+.toast-bar {
+	position: absolute;
+	right: 16px;
+	bottom: 0;
+	left: 16px;
+	height: 2px;
+	overflow: hidden;
+	border-radius: 9999px;
+	background: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.toast-bar-fill {
+	display: block;
+	width: 30%;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--primary);
+}
+
+.toast-bar-fill--done {
+	animation: toast-bar-done 320ms ease-out forwards;
+}
+
+@keyframes toast-bar-done {
+	0% {
+		width: 30%;
+		opacity: 1;
+	}
+	70% {
+		width: 100%;
+		opacity: 1;
+	}
+	100% {
+		width: 100%;
+		opacity: 0;
+	}
+}

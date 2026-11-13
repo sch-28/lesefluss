@@ -35,7 +35,13 @@ vi.mock("../../../services/db/hooks", async () => {
 vi.mock("../../../services/sync", () => ({ scheduleSyncPush: vi.fn() }));
 vi.mock("../../../services/serial-scrapers", () => ({ providerLabel: (id: string) => id }));
 vi.mock("../../../components/toast", () => ({
-	toast: { success: toastSuccess, error: toastError, info: vi.fn() },
+	toast: {
+		loading: vi.fn(),
+		dismiss: vi.fn(),
+		success: toastSuccess,
+		error: toastError,
+		info: vi.fn(),
+	},
 }));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate }) }));
 

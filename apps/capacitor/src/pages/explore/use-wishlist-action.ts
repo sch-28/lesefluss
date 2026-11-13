@@ -18,8 +18,6 @@ export function useRemoveFromWishlist() {
 			{
 				onSuccess: () =>
 					toast.success(`Removed "${item.title}" from your wishlist`, {
-						// At the top it covers the first row's remove buttons for its 6 seconds.
-						position: "bottom-center",
 						action: {
 							label: "Undo",
 							onClick: () =>
@@ -58,6 +56,12 @@ export function useWishlistAction(
 		onClick: () =>
 			saved
 				? removal.remove(item)
-				: toggle.mutate({ saved: true, item }, { onError: () => toast.error(WISHLIST_ERROR) }),
+				: toggle.mutate(
+						{ saved: true, item },
+						{
+							onSuccess: () => toast.success("Added to your wishlist", { icon: "wishlist" }),
+							onError: () => toast.error(WISHLIST_ERROR),
+						},
+					),
 	};
 }

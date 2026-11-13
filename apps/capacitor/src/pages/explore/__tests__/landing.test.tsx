@@ -30,7 +30,9 @@ vi.mock("../../../services/serial-scrapers", () => ({
 	chapterCountLabel: (n: number) => `${n} chapters`,
 	normalizeSeriesUrl: (u: string) => u,
 }));
-vi.mock("../../../components/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("../../../components/toast", () => ({
+	toast: { loading: vi.fn(), dismiss: vi.fn(), success: vi.fn(), error: vi.fn() },
+}));
 vi.mock("../web-novels-section", () => ({ default: () => <div>Providers</div> }));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate: vi.fn() }) }));
 

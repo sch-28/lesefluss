@@ -412,3 +412,4 @@ className={isActive ? "sidebar-item active" : "sidebar-item"}
 - **Library:** book grid (3 cols), cover art, progress bar, "On device" badge; empty state; FAB to import; sync button in header (triggers cloud sync); short tap → reader; long press → action sheet; transfer progress modal
 - **Settings:** hub page linking to RSVP, Appearance, Device, Cloud Sync sub-pages, export, changelog, onboarding, and the website feedback form
 - **BookReader:** full-screen virtualized reader, word highlight, back button, dark/light theme toggle, progress bar, TOC navigation, dictionary lookup; position syncs bidirectionally with ESP32
+- **Toasts:** only through `components/toast.tsx`, shown bottom-center above every visible `[data-toast-clear]` element (`components/toast-offset.ts`); mark any new fixed bottom bar or button with `data-toast-clear`

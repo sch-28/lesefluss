@@ -36,7 +36,7 @@ vi.mock("../../../services/db/hooks", () => ({
 	},
 }));
 vi.mock("../../../components/toast", () => ({
-	toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
+	toast: { loading: vi.fn(), dismiss: vi.fn(), success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 vi.mock("@tanstack/react-router", () => ({
 	useRouter: () => ({ navigate, history: { back: vi.fn() } }),

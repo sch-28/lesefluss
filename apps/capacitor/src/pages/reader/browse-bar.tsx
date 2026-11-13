@@ -10,6 +10,7 @@ export function BrowseBar({ anchorPct, onBack, onReadFromHere }: Props) {
 	return (
 		<fieldset
 			className="reader-browse-bar"
+			data-toast-clear
 			aria-label="Browsing, position not saved"
 			data-testid="browse-bar"
 		>

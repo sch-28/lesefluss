@@ -39,7 +39,9 @@ vi.mock("../../../contexts/sync-context", () => ({
 	useSyncContext: () => ({ isLoggedIn: state.isLoggedIn }),
 }));
 vi.mock("../../../services/sync", () => ({ scheduleSyncPush: vi.fn() }));
-vi.mock("../../../components/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("../../../components/toast", () => ({
+	toast: { loading: vi.fn(), dismiss: vi.fn(), success: vi.fn(), error: vi.fn() },
+}));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate: vi.fn() }) }));
 
 const { default: PersonalShelves, usePersonalShelvesPending } = await import("../personal-shelves");

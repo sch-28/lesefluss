@@ -5,7 +5,7 @@ import { queryHooks } from "../../services/db/hooks";
 import { serialImportMutationKey } from "../../services/db/hooks/query-keys";
 import type { Series } from "../../services/db/schema";
 import { normalizeSeriesUrl } from "../../services/serial-scrapers";
-import { toastAdded, toastImportFailed } from "./import-toasts";
+import { importToastId, toastAdded, toastImportFailed, toastImporting } from "./import-toasts";
 import { useLibrarySeriesByUrl } from "./use-library-membership";
 
 /**
@@ -31,15 +31,17 @@ export function useWebNovelImport(sourceUrl: string) {
 	const existingSeriesId = seriesByUrl?.get(normalizedUrl);
 
 	const start = (title: string, onDone?: (series: Series) => void) => {
+		const toastId = importToastId(`serial:${normalizedUrl}`);
+		toastImporting(toastId, title);
 		mutation
 			.mutateAsync({ url: sourceUrl })
 			.then((series) => {
 				const openSeries = () =>
 					router.navigate({ to: "/tabs/library/series/$id", params: { id: series.id } });
+				toastAdded(toastId, title, openSeries);
 				if (onDone && isMountedRef.current) onDone(series);
-				else toastAdded(title, openSeries);
 			})
-			.catch(() => toastImportFailed(title, () => start(title, onDone)));
+			.catch(() => toastImportFailed(toastId, title, () => start(title, onDone)));
 	};
 
 	return {

@@ -1,6 +1,7 @@
 import { Button } from "@lesefluss/ui/button";
 import { toast as sonnerToast } from "@lesefluss/ui/sonner";
 import type { ComponentType } from "react";
+import { updateToastBottom } from "./toast-offset";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -18,9 +19,10 @@ type PromptToastOptions = {
 /** A toast that stays until the user picks one of its two actions. */
 export function showPromptToast(opts: PromptToastOptions): void {
 	const { icon: Icon, primaryIcon: PrimaryIcon } = opts;
+	updateToastBottom();
 	sonnerToast.custom(
 		(id) => (
-			<div className="flex w-full items-start gap-3 rounded-lg border border-border bg-popover p-4 shadow-lg">
+			<div className="pointer-events-auto flex w-full items-start gap-3 rounded-3xl border border-border bg-popover p-4 shadow-[0_10px_30px_-8px_rgb(0_0_0/0.28),0_2px_6px_rgb(0_0_0/0.08)]">
 				<div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
 					<Icon className="size-5" />
 				</div>

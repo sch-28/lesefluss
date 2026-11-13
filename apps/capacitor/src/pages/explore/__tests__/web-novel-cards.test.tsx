@@ -45,7 +45,13 @@ vi.mock("../../../services/db/hooks", () => ({
 	},
 }));
 vi.mock("../../../components/toast", () => ({
-	toast: { success: toastSuccess, error: vi.fn(), info: vi.fn() },
+	toast: {
+		loading: vi.fn(),
+		dismiss: vi.fn(),
+		success: toastSuccess,
+		error: vi.fn(),
+		info: vi.fn(),
+	},
 }));
 vi.mock("../../../components/cloudflare-challenge", () => ({ CloudflareChallenge: () => null }));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate: vi.fn() }) }));

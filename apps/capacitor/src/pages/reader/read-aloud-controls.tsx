@@ -56,7 +56,7 @@ export function ReadAloudControls({
 	const sleepLabel = useSleepLabel(sleepTimer);
 	return (
 		// No onClick: React would give the div a native onclick, a fake clickable node.
-		<div className="read-aloud-controls" onPointerDown={stopPropagation}>
+		<div className="read-aloud-controls" data-toast-clear onPointerDown={stopPropagation}>
 			{!isFollowing && (
 				<fieldset className="read-aloud-detached" aria-label="Not following the voice">
 					<button type="button" onClick={onBackToVoice}>

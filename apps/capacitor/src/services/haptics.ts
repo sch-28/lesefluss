@@ -14,6 +14,12 @@ export function tick(): void {
 	Haptics.impact({ style: ImpactStyle.Light }).catch(ignore);
 }
 
+/** A toast's confirmation tick; native only, like drag steps, for the same reason. */
+export function confirmTick(): void {
+	if (!isNative) return;
+	Haptics.impact({ style: ImpactStyle.Light }).catch(ignore);
+}
+
 export function dragStep(): void {
 	if (!isNative) return;
 	if (!hasSelectionStarted) {

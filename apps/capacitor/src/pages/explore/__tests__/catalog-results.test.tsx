@@ -17,7 +17,9 @@ vi.mock("../../../services/db/hooks", () => ({
 	},
 }));
 vi.mock("../../../services/sync", () => ({ scheduleSyncPush: vi.fn() }));
-vi.mock("../../../components/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("../../../components/toast", () => ({
+	toast: { loading: vi.fn(), dismiss: vi.fn(), success: vi.fn(), error: vi.fn() },
+}));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ navigate: vi.fn() }) }));
 
 const { default: CatalogResults } = await import("../catalog-results");

@@ -3137,6 +3137,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 						<div
 							ref={scrub.progressBarRef}
 							className="reader-progress-bar"
+							data-toast-clear
 							onPointerDown={scrub.handleProgressPointerDown}
 							onPointerMove={scrub.handleProgressPointerMove}
 							onPointerUp={scrub.handleProgressPointerUp}

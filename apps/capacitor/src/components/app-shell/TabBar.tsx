@@ -9,7 +9,10 @@ export function TabBar() {
 	const items = useNavItems();
 	if (tabBarHidden.useValue()) return null;
 	return (
-		<nav className="fixed inset-x-0 bottom-0 z-40 border-border border-t bg-card md:hidden">
+		<nav
+			data-toast-clear
+			className="fixed inset-x-0 bottom-0 z-40 border-border border-t bg-card md:hidden"
+		>
 			<div className="pb-[var(--safe-bottom)]">
 				<ul className="m-0 flex h-[var(--tab-bar-h)] list-none p-0">
 					{items.map((tab) => {

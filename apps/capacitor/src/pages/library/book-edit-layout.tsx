@@ -148,7 +148,10 @@ export const BookEditLayout: React.FC<Props> = ({
 				)}
 			</main>
 			{!isWide && (
-				<div className="fixed inset-x-0 bottom-0 z-40 border-border border-t bg-card pb-[var(--safe-bottom)]">
+				<div
+					data-toast-clear
+					className="fixed inset-x-0 bottom-0 z-40 border-border border-t bg-card pb-[var(--safe-bottom)]"
+				>
 					<div className="flex h-[var(--tab-bar-h)] items-center gap-2 px-4">{actions}</div>
 				</div>
 			)}

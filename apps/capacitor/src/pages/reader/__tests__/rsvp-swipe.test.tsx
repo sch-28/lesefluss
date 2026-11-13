@@ -6,7 +6,7 @@ import RsvpView from "../rsvp-view";
 import { RSVP_WPM_RANGE } from "../wpm";
 
 const { dragStep } = vi.hoisted(() => ({ dragStep: vi.fn() }));
-vi.mock("../../../services/haptics", () => ({ dragStep, tick: vi.fn() }));
+vi.mock("../../../services/haptics", () => ({ dragStep, tick: vi.fn(), confirmTick: vi.fn() }));
 vi.mock("@tanstack/react-router", () => ({
 	useRouter: () => ({ history: { push: vi.fn() }, navigate: vi.fn() }),
 }));

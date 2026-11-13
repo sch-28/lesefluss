@@ -992,6 +992,7 @@ const Library: React.FC = () => {
 				onClick={collectionId ? openAddBooks : () => setImportSheetOpen(true)}
 				disabled={imports.isImporting || isTransferring}
 				aria-label={collectionId ? "Add books" : "Add book"}
+				data-toast-clear
 				title={collectionId ? "Add books" : withKey("Add book", importKey)}
 				className="fixed right-4 z-30 inline-flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
 				style={FAB_STYLE}

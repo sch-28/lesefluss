@@ -33,7 +33,13 @@ vi.mock("../../../services/db/hooks", () => ({
 	},
 }));
 vi.mock("../../../components/toast", () => ({
-	toast: { success: toastSuccess, error: toastError, info: vi.fn() },
+	toast: {
+		loading: vi.fn(),
+		dismiss: vi.fn(),
+		success: toastSuccess,
+		error: toastError,
+		info: vi.fn(),
+	},
 }));
 vi.mock("../../../components/app-shell/page-header", () => ({
 	PageHeader: ({ title }: { title: string }) => <header>{title}</header>,

@@ -306,6 +306,7 @@ const AnnotationsSheet: React.FC<AnnotationsSheetProps> = ({
 								type="button"
 								onClick={onAddEntry}
 								aria-label="Add glossary entry"
+								data-toast-clear
 								className="fixed right-4 bottom-4 inline-flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
 								style={{ marginBottom: "var(--safe-bottom)" }}
 							>

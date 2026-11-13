@@ -107,7 +107,9 @@ test("the card's remove takes the title off, Undo puts it back, and an empty wis
 	await remove.click();
 	await expect(page.getByText(/Nothing on your wishlist yet/)).toBeVisible();
 	// A top toast would sit over the first row's remove buttons for its whole 6 seconds.
-	const toastBox = await page.locator("[data-sonner-toast]").boundingBox();
+	const toastBox = await page
+		.locator('[data-testid="toast-card"]', { hasText: "from your wishlist" })
+		.boundingBox();
 	const viewport = page.viewportSize();
 	expect(toastBox && viewport && toastBox.y > viewport.height / 2).toBe(true);
 });

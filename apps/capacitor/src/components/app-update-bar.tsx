@@ -23,7 +23,10 @@ export function AppUpdateBar() {
 			// 5rem clears the library's add button (size-14 at the tab bar + 1rem) on phones.
 			className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--tab-bar-h)+var(--safe-bottom)+5rem)] z-40 flex justify-center px-3 md:bottom-4 md:pl-[calc(var(--side-nav-w)+0.75rem)]"
 		>
-			<div className="pointer-events-auto flex w-full max-w-md items-center gap-2 rounded-xl bg-foreground py-1.5 pr-1.5 pl-4 text-background shadow-lg">
+			<div
+				data-toast-clear
+				className="pointer-events-auto flex w-full max-w-md items-center gap-2 rounded-xl bg-foreground py-1.5 pr-1.5 pl-4 text-background shadow-lg"
+			>
 				<div className="min-w-0 flex-1">
 					<p className="font-semibold text-sm">A new version is ready</p>
 					<p className="text-xs opacity-75">Your place is saved.</p>

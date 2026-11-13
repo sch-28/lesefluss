@@ -1,11 +1,12 @@
 import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "../../components/toast";
 import { importFromCatalog } from "../../services/catalog/import";
 import { catalogImportMutationKey, catalogKeys } from "../../services/catalog/query-keys";
 import { bookKeys } from "../../services/db/hooks/query-keys";
 import { scheduleSyncPush } from "../../services/sync";
-import { toastAdded, toastImportFailed } from "./import-toasts";
+import { importToastId, toastAdded, toastImportFailed, toastImporting } from "./import-toasts";
 
 export type ImportIntent = "read" | "add";
 type ImportVars = { title: string; intent: ImportIntent };
@@ -28,12 +29,14 @@ export function useCatalogImport(catalogId: string, opts: { withProgress?: boole
 	}, []);
 
 	const mutationKey = catalogImportMutationKey(catalogId);
+	const toastId = importToastId(`catalog:${catalogId}`);
 	const isImporting = useIsMutating({ mutationKey }) > 0;
 
 	const mutation = useMutation({
 		mutationKey,
 		mutationFn: (_vars: ImportVars) =>
 			importFromCatalog(catalogId, opts.withProgress ? setProgress : undefined),
+		onMutate: ({ title }) => toastImporting(toastId, title),
 		onSuccess: ({ book, existed }, { title, intent }) => {
 			qc.invalidateQueries({ queryKey: bookKeys.all });
 			qc.invalidateQueries({ queryKey: bookKeys.covers });
@@ -43,10 +46,12 @@ export function useCatalogImport(catalogId: string, opts: { withProgress?: boole
 			if (!existed) scheduleSyncPush();
 			const openReader = () => router.navigate({ to: "/tabs/reader/$id", params: { id: book.id } });
 			// Someone who backed out while it downloaded gets a toast, not a page jump.
-			if (intent === "read" && isMountedRef.current) openReader();
-			else toastAdded(title, openReader);
+			if (intent === "read" && isMountedRef.current) {
+				toast.dismiss(toastId);
+				openReader();
+			} else toastAdded(toastId, title, openReader);
 		},
-		onError: (_err, vars) => toastImportFailed(vars.title, () => mutation.mutate(vars)),
+		onError: (_err, vars) => toastImportFailed(toastId, vars.title, () => mutation.mutate(vars)),
 		onSettled: () => setProgress(0),
 	});
 

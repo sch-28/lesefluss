@@ -1,7 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { Library, Plus, Share2 } from "lucide-react";
 import type React from "react";
-import { toast } from "../../components/toast";
 import { isSerialUrl, providerLabel } from "../../services/serial-scrapers";
 import { DetailShell } from "../_shared/detail-shell";
 import LengthFact from "./length-fact";
@@ -75,7 +74,6 @@ const WebNovelPreview: React.FC<Props> = ({ search }) => {
 	const provider = providerLabel(result.provider);
 
 	const handleImport = () => {
-		toast.info(`Importing "${result.title}"...`);
 		importer.start(result.title, () => router.navigate({ to: "/tabs/library" }));
 	};
 

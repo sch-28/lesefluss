@@ -117,15 +117,21 @@ for (const scale of SCALES) {
 			}
 		});
 
-		test("a toast sits below the page header's buttons", async ({ page }) => {
+		test("a toast sits above the tab bar's buttons, centred inside the screen", async ({
+			page,
+		}) => {
 			await seedBigBook(page);
-			const toast = page.locator("[data-sonner-toast]").first();
+			const toast = page.locator('[data-testid="toast-card"]').first();
 			await expect(toast).toBeVisible();
 			const toastBox = await toast.boundingBox();
-			const headerBox = await page.locator("header").first().boundingBox();
-			expect(toastBox && headerBox, "toast and header on screen").toBeTruthy();
-			if (!toastBox || !headerBox) return;
-			expect(toastBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
+			const tabBarBox = await page.locator("nav[data-toast-clear]").boundingBox();
+			expect(toastBox && tabBarBox, "toast and tab bar on screen").toBeTruthy();
+			if (!toastBox || !tabBarBox) return;
+			expect(toastBox.y + toastBox.height).toBeLessThanOrEqual(tabBarBox.y);
+			const width = page.viewportSize()?.width ?? 0;
+			expect(toastBox.x).toBeGreaterThanOrEqual(0);
+			expect(toastBox.x + toastBox.width).toBeLessThanOrEqual(width);
+			expect(Math.abs(toastBox.x + toastBox.width / 2 - width / 2)).toBeLessThanOrEqual(1);
 		});
 
 		test("the reader, its popover, sheets, selection toolbar, RSVP and the book page fit", async ({
