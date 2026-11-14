@@ -56,7 +56,7 @@ export async function previewSerial(url: string): Promise<SearchResult> {
 		author: meta.author,
 		description: meta.description,
 		coverImage: meta.coverImage,
-		chapterCount: null,
+		chapterCount: meta.chapterCount ?? null,
 		sourceUrl: meta.sourceUrl,
 		provider: meta.provider,
 		details: meta.details,

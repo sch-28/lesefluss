@@ -4,6 +4,7 @@ import { cn } from "@lesefluss/ui/utils";
 import { Pencil, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { useMediaQuery } from "../../hooks/use-media-query";
 import { formatShortDate } from "../../utils/date-utils";
 
 export type BookmarkRow = {
@@ -33,11 +34,14 @@ const BookmarkList: React.FC<BookmarkListProps> = ({
 	onDelete,
 }) => {
 	const [editingId, setEditingId] = useState<string | null>(null);
+	const hasMouse = useMediaQuery("(pointer: fine)");
 
 	if (rows.length === 0) {
 		return (
 			<p className="m-0 px-5 py-8 text-center text-muted-foreground text-sm">
-				No bookmarks yet. Press B or tap the ribbon to mark this page.
+				{hasMouse
+					? "No bookmarks yet. Press B or click the ribbon to mark this page."
+					: "No bookmarks yet. Tap the ribbon to mark this page."}
 			</p>
 		);
 	}

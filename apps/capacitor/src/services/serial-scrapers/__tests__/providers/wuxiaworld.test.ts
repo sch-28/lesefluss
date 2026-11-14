@@ -74,12 +74,50 @@ describe("wuxiaworld.fetchSeriesMetadata", () => {
 			coverImage: "https://cdn.wuxiaworld.com/covers/a-test-novel.jpg",
 			// `synopsis.value` is HTML in the JSON blob; stripTags removes the <p>.
 			description: "A short description of the test novel.",
+			chapterCount: 3,
 			// Novel root is the user-visible link (browser-friendly); `/chapters`
 			// is the internal scraping endpoint where the React Query state lives.
 			sourceUrl: "https://www.wuxiaworld.com/novel/a-test-novel",
 			tocUrl: "https://www.wuxiaworld.com/novel/a-test-novel/chapters",
 			provider: "wuxiaworld",
 		});
+	});
+
+	it("counts the chapters an import creates, not WW's count with its teasers", async () => {
+		const reactState = {
+			queries: [
+				{
+					queryKey: ["novel", "teasers"],
+					state: {
+						data: {
+							item: {
+								name: "Teasers",
+								slug: "teasers",
+								chapterInfo: {
+									chapterCount: { value: 6 },
+									firstChapter: { slug: "t-chapter-1", number: { units: 1 } },
+									latestChapter: { slug: "t-chapter-3", number: { units: 3 } },
+									chapterGroups: [
+										{ fromChapterNumber: { units: 0 }, toChapterNumber: { units: 9999 } },
+									],
+								},
+							},
+						},
+					},
+				},
+			],
+		};
+		mockedFetchHtml.mockResolvedValue(
+			`<html><body><script>window.__REACT_QUERY_STATE__ = ${JSON.stringify(reactState)};</script></body></html>`,
+		);
+
+		const meta = await wuxiaworldScraper.fetchSeriesMetadata(
+			"https://www.wuxiaworld.com/novel/teasers",
+		);
+		const refs = await wuxiaworldScraper.fetchChapterList(meta.tocUrl);
+
+		expect(meta.chapterCount).toBe(3);
+		expect(refs).toHaveLength(3);
 	});
 
 	it("normalizes a chapter URL to the novel root", async () => {

@@ -11,7 +11,7 @@ import { queryHooks } from "@/services/db/hooks";
 import type { Book, ReadingGoal } from "@/services/db/schema";
 import { areRemindersSupported } from "@/services/goal-reminders";
 import type { ReadingGoalPlan } from "@/services/stats/reading-goal";
-import { editableGoals } from "@/services/stats/today-goal-summary";
+import { editableGoals, formatGoalProgress } from "@/services/stats/today-goal-summary";
 
 export const Route = createFileRoute("/tabs/settings/goals")({
 	component: Goals,
@@ -108,6 +108,9 @@ function GoalRow({ entry }: { entry: { goal: ReadingGoal; plan: ReadingGoalPlan 
 				<div className="text-muted-foreground text-xs tabular-nums">
 					{goalAmountLabel(entry.goal, entry.plan)}
 				</div>
+				<div className="text-muted-foreground text-xs tabular-nums" data-testid="goal-row-today">
+					Today {formatGoalProgress(todayProgress(entry.plan))}
+				</div>
 				{areRemindersSupported() && (
 					<div className="mt-0.5 flex items-center gap-1 text-muted-foreground text-xs">
 						{reminder ? (
@@ -130,4 +133,12 @@ function GoalRow({ entry }: { entry: { goal: ReadingGoal; plan: ReadingGoalPlan 
 			<GoalEditSheet existing={entry} isOpen={isOpen} onClose={() => setOpen(false)} />
 		</div>
 	);
+}
+
+function todayProgress(plan: ReadingGoalPlan) {
+	return {
+		minutesRead: plan.progressToday.minutes,
+		minutesNeeded: plan.dailyMinutes ?? plan.dailyTarget.minutes,
+		isMet: plan.isTodayMet,
+	};
 }

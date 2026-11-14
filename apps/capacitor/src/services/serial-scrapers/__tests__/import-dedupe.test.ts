@@ -13,7 +13,7 @@ vi.mock("../commit", () => ({ commitSeries, commitChapter: vi.fn(), syncChapterL
 vi.mock("../../db/queries", () => ({ queries: {} }));
 vi.mock("../../wishlist", () => ({ clearImportedFromWishlist }));
 
-const { runSerialImport } = await import("../pipeline");
+const { previewSerial, runSerialImport } = await import("../pipeline");
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -50,5 +50,17 @@ describe("runSerialImport", () => {
 		fetchChapterList.mockResolvedValue([]);
 		await expect(runSerialImport("https://royalroad.com/fiction/1/x")).rejects.toThrow();
 		expect(clearImportedFromWishlist).not.toHaveBeenCalled();
+	});
+});
+
+describe("previewSerial", () => {
+	it("passes on the scraper's chapter count, so a cold preview shows it", async () => {
+		fetchSeriesMetadata.mockResolvedValue({ title: "X", chapterCount: 356 });
+		expect((await previewSerial("https://royalroad.com/fiction/1/x")).chapterCount).toBe(356);
+	});
+
+	it("has no count when the scraper gives none", async () => {
+		fetchSeriesMetadata.mockResolvedValue({ title: "X" });
+		expect((await previewSerial("https://royalroad.com/fiction/1/x")).chapterCount).toBeNull();
 	});
 });

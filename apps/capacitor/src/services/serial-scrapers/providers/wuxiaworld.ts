@@ -229,6 +229,41 @@ function synthesizeChapterRefs(
 	return refs;
 }
 
+/**
+ * The chapters an import creates, and so the one chapter count every screen shows: WW's own
+ * `chapterCount` also counts sub-numbered teasers the import cannot reach.
+ *
+ * Null when there are no groups, no derivable slug pattern or no published bounds. Bounds are
+ * required because some novels use sentinel group ranges (`from: 0, to: 9999`) that would
+ * otherwise generate thousands of ghost chapters (see `synthesizeChapterRefs`).
+ */
+function publishedChapterRefs(
+	novelSlug: string,
+	info: WwNovelItem["chapterInfo"],
+): ChapterRef[] | null {
+	const groups = info?.chapterGroups ?? [];
+	const prefix = deriveChapterSlugPrefix(info?.firstChapter?.slug);
+	const min = info?.firstChapter?.number?.units;
+	const max = info?.latestChapter?.number?.units;
+	if (groups.length === 0 || !prefix || typeof min !== "number" || typeof max !== "number") {
+		return null;
+	}
+	return synthesizeChapterRefs(
+		novelSlug,
+		prefix,
+		groups,
+		{ min, max },
+		{ firstSlug: info?.firstChapter?.slug ?? null, lastSlug: info?.latestChapter?.slug ?? null },
+	);
+}
+
+function publishedChapterCount(novelSlug: string, info: WwNovelItem["chapterInfo"]): number | null {
+	const refs = publishedChapterRefs(novelSlug, info);
+	if (refs) return refs.length;
+	const listed = info?.chapterCount?.value;
+	return typeof listed === "number" ? listed : null;
+}
+
 export const wuxiaworldScraper: SerialScraper = {
 	id: PROVIDER_ID,
 
@@ -263,6 +298,7 @@ export const wuxiaworldScraper: SerialScraper = {
 			// `synopsis.value` is HTML in the JSON blob (`<p>…</p>`) — strip to
 			// plain text so the preview UI doesn't render raw markup.
 			description: stripTags(item?.synopsis?.value),
+			chapterCount: publishedChapterCount(slug, item?.chapterInfo),
 			sourceUrl,
 			tocUrl,
 			provider: PROVIDER_ID,
@@ -284,35 +320,10 @@ export const wuxiaworldScraper: SerialScraper = {
 			"novel",
 		);
 
-		const groups = item?.chapterInfo?.chapterGroups ?? [];
-		const prefix = deriveChapterSlugPrefix(item?.chapterInfo?.firstChapter?.slug);
-		const minUnits = item?.chapterInfo?.firstChapter?.number?.units;
-		const maxUnits = item?.chapterInfo?.latestChapter?.number?.units;
-
-		// No groups OR no derivable slug pattern OR no published bounds:
-		// synthesize a single placeholder ref pointing at the novel root so
-		// the importer doesn't blow up on an empty list (mirrors ScribbleHub
-		// + AO3). Bounds are required because some novels use sentinel group
-		// ranges (`from: 0, to: 9999`) that would otherwise generate
-		// thousands of ghost chapters — see `synthesizeChapterRefs`.
-		if (
-			groups.length === 0 ||
-			!prefix ||
-			typeof minUnits !== "number" ||
-			typeof maxUnits !== "number"
-		) {
-			return [{ index: 0, title: "Chapter 1", sourceUrl: tocUrl }];
-		}
-
-		return synthesizeChapterRefs(
-			slug,
-			prefix,
-			groups,
-			{ min: minUnits, max: maxUnits },
-			{
-				firstSlug: item?.chapterInfo?.firstChapter?.slug ?? null,
-				lastSlug: item?.chapterInfo?.latestChapter?.slug ?? null,
-			},
+		return (
+			publishedChapterRefs(slug, item?.chapterInfo) ?? [
+				{ index: 0, title: "Chapter 1", sourceUrl: tocUrl },
+			]
 		);
 	},
 
@@ -370,10 +381,7 @@ export const wuxiaworldScraper: SerialScraper = {
 				author: item.authorName?.value?.trim() || null,
 				description: stripTags(item.synopsis?.value),
 				coverImage: item.coverUrl?.value ?? null,
-				chapterCount:
-					typeof item.chapterInfo?.chapterCount?.value === "number"
-						? item.chapterInfo.chapterCount.value
-						: null,
+				chapterCount: publishedChapterCount(item.slug, item.chapterInfo),
 				sourceUrl: `${ORIGIN}/novel/${item.slug}`,
 				provider: PROVIDER_ID,
 			});

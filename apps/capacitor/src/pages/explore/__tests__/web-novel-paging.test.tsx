@@ -169,4 +169,16 @@ describe("web-novel search paging and filters", () => {
 		);
 		expect(view.container.querySelector('[role="status"]')).not.toBeNull();
 	});
+
+	it("names the providers missing from the 'All' popular shelf by label", async () => {
+		caps.current = {};
+		usePopularSerials.mockReturnValue({
+			data: page(["Top"], ["royalroad"]),
+			isLoading: false,
+			isFetching: false,
+		});
+		view = await render(<WebNovelSearchPanel query="" viewMode="grid" onPick={vi.fn()} />);
+		expect(view.container.querySelectorAll('[data-testid="web-novel-card"]')).toHaveLength(1);
+		expect(view.text()).toContain("Some providers unavailable: Royal Road");
+	});
 });

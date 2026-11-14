@@ -1,4 +1,4 @@
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
 import { useId, useMemo, useState } from "react";
@@ -85,29 +85,31 @@ export const SearchAutocomplete: React.FC<Props> = ({
 	};
 
 	return (
-		<div className="relative">
-			<Input
-				ref={inputRef}
-				autoFocus
-				value={value}
-				placeholder="Search, or tag: status: rating:>=4 in: words:<50k"
-				aria-label="Search library"
-				role="combobox"
-				aria-expanded={suggestions.length > 0}
-				aria-controls={listId}
-				aria-autocomplete="list"
-				aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-				onChange={(e) => {
-					setActive(-1);
-					setDismissed(false);
-					const next = e.target.value;
-					if (/\s$/.test(next)) commit(next, false);
-					else onValueChange(next);
-				}}
-				onKeyDown={handleKeyDown}
-				onBlur={() => setDismissed(true)}
-				onFocus={() => setDismissed(false)}
-			/>
+		<div className="relative flow-root">
+			<InputHitArea>
+				<Input
+					ref={inputRef}
+					autoFocus
+					value={value}
+					placeholder="Search, or tag: status: rating:>=4 in: words:<50k"
+					aria-label="Search library"
+					role="combobox"
+					aria-expanded={suggestions.length > 0}
+					aria-controls={listId}
+					aria-autocomplete="list"
+					aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
+					onChange={(e) => {
+						setActive(-1);
+						setDismissed(false);
+						const next = e.target.value;
+						if (/\s$/.test(next)) commit(next, false);
+						else onValueChange(next);
+					}}
+					onKeyDown={handleKeyDown}
+					onBlur={() => setDismissed(true)}
+					onFocus={() => setDismissed(false)}
+				/>
+			</InputHitArea>
 			{suggestions.length > 0 && (
 				<div
 					id={listId}

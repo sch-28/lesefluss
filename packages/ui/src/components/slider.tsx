@@ -15,7 +15,8 @@ function Slider({
 		<SliderPrimitive.Root
 			data-slot="slider"
 			className={cn(
-				"relative flex w-full touch-none select-none items-center data-[disabled]:opacity-50",
+				// On touch, a 44px band takes taps on the 6px track; the thumb gets its own in tokens.css.
+				"relative flex w-full touch-none select-none items-center pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:top-1/2 pointer-coarse:before:h-11 pointer-coarse:before:-translate-y-1/2 pointer-coarse:before:content-[''] data-[disabled]:opacity-50",
 				className,
 			)}
 			{...props}

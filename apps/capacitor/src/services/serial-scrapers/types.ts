@@ -101,6 +101,8 @@ export type SeriesMetadata = {
 	author?: string | null;
 	coverImage?: string | null;
 	description?: string | null;
+	/** Same meaning as `SearchResult.chapterCount`, for a provider whose series page has one. */
+	chapterCount?: number | null;
 	sourceUrl: string;
 	tocUrl: string;
 	provider: ProviderId;

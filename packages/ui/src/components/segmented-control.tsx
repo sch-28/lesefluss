@@ -3,7 +3,9 @@ import type * as React from "react";
 
 import { cn } from "../lib/utils";
 
-export const SELECTED_TINT = "bg-[color-mix(in_oklab,var(--primary)_15%,transparent)] text-primary";
+/** `selected-tint` is a hook for e-ink, where a 15% tint of black barely shows. */
+export const SELECTED_TINT =
+	"selected-tint bg-[color-mix(in_oklab,var(--primary)_15%,transparent)] text-primary";
 
 export type SegmentedOption<T extends string> = {
 	value: T;

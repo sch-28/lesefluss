@@ -172,6 +172,21 @@ describe("WebNovelPreview", () => {
 		expect(view.queryButton(/Add to library/)).not.toBeNull();
 	});
 
+	it("shows a description's paragraphs apart, and a cold link's chapter count", async () => {
+		previewSerial.mockResolvedValueOnce({
+			...RESULT,
+			description: "First paragraph.\n\nSecond paragraph.",
+			chapterCount: 356,
+		});
+		view = await render(<WebNovelPreview search={search.current} />);
+		await flush();
+
+		const paragraphs = [...view.container.querySelectorAll("section p")].map((p) => p.textContent);
+		expect(paragraphs).toContain("First paragraph.");
+		expect(paragraphs).toContain("Second paragraph.");
+		expect(view.text()).toContain("356 chapters");
+	});
+
 	it("shows loading on a cold link until the provider answers", async () => {
 		previewSerial.mockImplementation(() => new Promise(() => undefined));
 		view = await render(<WebNovelPreview search={search.current} />);

@@ -1,5 +1,5 @@
 import { FilterChip } from "@lesefluss/ui/filter-chip";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { cn } from "@lesefluss/ui/utils";
 import { Check, Search } from "lucide-react";
 import type React from "react";
@@ -172,14 +172,16 @@ export const BookSelection: React.FC<Props> = ({
 		<div className="flex flex-col gap-3">
 			<div className="relative">
 				<Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-				<Input
-					type="search"
-					value={search}
-					onChange={(e) => setSearch(e.target.value)}
-					placeholder="Search title or author"
-					aria-label="Search books"
-					className="h-9 pl-8"
-				/>
+				<InputHitArea>
+					<Input
+						type="search"
+						value={search}
+						onChange={(e) => setSearch(e.target.value)}
+						placeholder="Search title or author"
+						aria-label="Search books"
+						className="h-9 pl-8"
+					/>
+				</InputHitArea>
 			</div>
 			<div
 				role="toolbar"

@@ -31,6 +31,21 @@ describe("resolveBack", () => {
 		["/tabs/reader/b1", "", true, { kind: "back" }],
 		["/tabs/reader/b1", "", false, { kind: "replace", to: "/tabs/library" }],
 		["/onboarding", "", false, { kind: "exit" }],
+		["/tabs/explore", "?q=dune", true, { kind: "back" }],
+		["/tabs/explore", "?q=dune", false, { kind: "replace", to: "/tabs/explore" }],
+		["/tabs/explore", "?genre=fantasy", false, { kind: "replace", to: "/tabs/explore" }],
+		["/tabs/explore", "?tags=sea,war", true, { kind: "back" }],
+		["/tabs/explore", "?view=list", true, { kind: "replace", to: "/tabs/library" }],
+		["/tabs/explore/tags", "", false, { kind: "replace", to: "/tabs/explore" }],
+		["/tabs/social/buddy-read/r1", "", false, { kind: "replace", to: "/tabs/social/buddy-reads" }],
+		["/speed-test", "", false, { kind: "replace", to: "/tabs/stats?tab=speed" }],
+		[
+			"/tabs/library/collections/c1/add",
+			"",
+			false,
+			{ kind: "replace", to: "/tabs/library?collection=c1" },
+		],
+		["/tabs/library/book/b1/edit", "", false, { kind: "replace", to: "/tabs/library/book/b1" }],
 	] as const)("%s%s (history: %s)", (pathname, search, canGoBack, expected) => {
 		expect(resolveBack(pathname, search, canGoBack)).toEqual(expected);
 	});

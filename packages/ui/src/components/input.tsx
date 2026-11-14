@@ -16,4 +16,24 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
 	);
 }
 
-export { Input };
+/**
+ * An <input> can't draw a ::before, so on touch this wrapper adds 6px above and
+ * below a 32px input (negative margins keep the layout) and focuses the input on
+ * a tap there. Taller wrappers that already pad the input pass their own padding.
+ */
+function InputHitArea({ className, children }: { className?: string; children: React.ReactNode }) {
+	return (
+		<div
+			data-slot="input-hit-area"
+			className={cn("pointer-coarse:-my-1.5 pointer-coarse:py-1.5", className)}
+			onClick={(e) => {
+				if (e.target !== e.currentTarget) return;
+				e.currentTarget.querySelector<HTMLElement>("input, textarea")?.focus();
+			}}
+		>
+			{children}
+		</div>
+	);
+}
+
+export { Input, InputHitArea };

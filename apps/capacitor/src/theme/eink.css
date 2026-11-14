@@ -169,3 +169,20 @@ html.eink ::highlight(tts-word) {
 	background-color: transparent;
 	text-decoration: underline 3px #000000;
 }
+
+/* Primary is black here, the same as the text beside it, so a tint or a primary
+ * colour alone does not mark the selected item. */
+html.eink .selected-tint,
+html.eink [data-slot="tabs-list"][data-variant="default"] [data-state="active"] {
+	background-color: #000000;
+	color: #ffffff;
+}
+html.eink .selected-tint *,
+html.eink [data-slot="tabs-list"][data-variant="default"] [data-state="active"] * {
+	color: inherit;
+}
+html.eink [data-slot="tab-bar"] [data-active="true"] {
+	font-weight: 700;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}

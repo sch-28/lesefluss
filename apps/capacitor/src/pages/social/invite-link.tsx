@@ -91,7 +91,7 @@ function InviteLinkContent() {
 							<p className="text-muted-foreground text-xs">
 								Expires on {formatExpiry(current.expiresAt)}.
 							</p>
-							<div className="flex flex-wrap gap-2">
+							<div className="flex flex-wrap gap-x-2 gap-y-4">
 								<Button size="sm" onClick={() => share(current.url)}>
 									<Share2 /> Share
 								</Button>

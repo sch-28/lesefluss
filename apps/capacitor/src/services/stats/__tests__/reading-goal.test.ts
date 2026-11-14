@@ -434,7 +434,7 @@ describe("counters", () => {
 		expect(p.daysTargetMet).toBe(1);
 	});
 
-	it("ignores reading earlier on the day the goal was created", () => {
+	it("counts reading earlier on the day the goal was created, once", () => {
 		const created = at("2026-03-01", "15:00");
 		const goal = deadlineGoal("2026-03-10", created, 200);
 		const p = plan(
@@ -444,11 +444,27 @@ describe("counters", () => {
 				book: { wordCount: WORDS, wordPosition: 200 },
 			}),
 		);
+		expect(p.dayStartWord).toBe(0);
+		expect(p.progressToday.words).toBe(200);
+		expect(p.daysRead).toBe(1);
+		// The whole book over 10 days, from the morning's start: the morning is not a head start.
+		expect(p.dailyTarget.words).toBe(100);
+		expect(p.aheadBehind.words).toBe(100);
+	});
+
+	it("leaves reading from before the goal's day out", () => {
+		const created = at("2026-03-02", "15:00");
+		const goal = deadlineGoal("2026-03-11", created, 200);
+		const p = plan(
+			input(goal, {
+				now: at("2026-03-02", "16:00"),
+				sessions: [session("2026-03-01", "21:00", 0, 200)],
+				book: { wordCount: WORDS, wordPosition: 200 },
+			}),
+		);
 		expect(p.dayStartWord).toBe(200);
 		expect(p.progressToday.words).toBe(0);
 		expect(p.daysRead).toBe(0);
-		// 800 left over 10 days.
-		expect(p.dailyTarget.words).toBe(80);
 	});
 });
 
@@ -724,6 +740,20 @@ describe("replanGoal", () => {
 		expect(after.aheadBehind.words).toBe(0);
 	});
 
+	it("keeps the morning's reading when the plan restarts on the goal's first day", () => {
+		const goal = deadlineGoal("2026-03-10", at("2026-03-01", "15:00"), 200);
+		const day = {
+			now: at("2026-03-01", "16:00"),
+			sessions: [session("2026-03-01", "09:00", 0, 200)],
+			book: { wordCount: WORDS, wordPosition: wordPos(200) },
+		};
+		const fields = replanGoal(input(goal, day), { targetDate: "2026-03-20" });
+		expect(fields.planStartWord).toBe(0);
+		const after = plan(input({ ...goal, ...fields }, day));
+		expect(after.dayStartWord).toBe(0);
+		expect(after.progressToday.words).toBe(200);
+	});
+
 	it("restarts the plan line, so earlier misses no longer count as behind", () => {
 		const goal = deadlineGoal("2026-03-10");
 		const book = { wordCount: WORDS, wordPosition: wordPos(140) };
@@ -822,12 +852,24 @@ describe("minute goals", () => {
 		expect(p.daysTargetMet).toBe(1);
 	});
 
-	it("does not count reading from before the goal began", () => {
+	it("counts minutes read earlier on the day the goal began", () => {
 		const goal = minuteGoal(20, at("2026-03-01", "12:00"));
 		const p = plan(
 			minuteInput(goal, {
 				sessions: [timed("2026-03-01", "11:00", 0, 10, 30)],
 				now: at("2026-03-01", "13:00"),
+			}),
+		);
+		expect(p.progressToday.minutes).toBe(30);
+		expect(p.isTodayMet).toBe(true);
+	});
+
+	it("does not count minutes read the day before the goal began", () => {
+		const goal = minuteGoal(20, at("2026-03-02", "12:00"));
+		const p = plan(
+			minuteInput(goal, {
+				sessions: [timed("2026-03-01", "11:00", 0, 10, 30)],
+				now: at("2026-03-02", "13:00"),
 			}),
 		);
 		expect(p.progressToday.minutes).toBe(0);
@@ -849,6 +891,30 @@ describe("minute goals", () => {
 			}),
 		);
 		expect(readFar.projectedFinishDate).toBe("2026-03-04");
+	});
+
+	it("keeps a pace goal's stored target date when the day's earlier reading counts", () => {
+		const created = at("2026-05-01", "15:00");
+		const fields = newGoalPlanFields({ mode: "pace", dailyPercent: 1 }, 200, WORDS, created);
+		const goal = {
+			...fields,
+			status: "active",
+			startedAt: created,
+			startWord: wordPos(200),
+			completedAt: null,
+		} satisfies GoalParams;
+		const p = plan(
+			input(goal, {
+				now: at("2026-05-01", "16:00"),
+				sessions: [session("2026-05-01", "09:00", 0, 200)],
+				book: { wordCount: WORDS, wordPosition: 200 },
+			}),
+		);
+		expect(p.progressToday.words).toBe(200);
+		expect(p.targetDate).toBe(fields.targetDate);
+		expect(p.projectedFinishDate).toBe(fields.targetDate);
+		expect(p.planSeries.at(-1)?.date).toBe(fields.targetDate);
+		expect(p.aheadBehind.words).toBe(0);
 	});
 
 	it("shows one finish date on the card, the chart's end and the stored target date", () => {

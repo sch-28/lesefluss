@@ -24,11 +24,11 @@ function Licenses() {
 			<div className="mx-auto max-w-2xl px-4 pt-4 pb-10">
 				<SettingsSection title="Reader fonts">
 					{NOTICES.map(({ title, license }) => (
-						<details key={title} className="border-border border-b px-4 py-3 last:border-b-0">
-							<summary className="cursor-pointer font-medium text-foreground text-sm">
+						<details key={title} className="border-border border-b last:border-b-0">
+							<summary className="cursor-pointer px-4 py-3 font-medium text-foreground text-sm">
 								{title}
 							</summary>
-							<pre className="mt-3 whitespace-pre-wrap break-words font-mono text-muted-foreground text-xs">
+							<pre className="mx-4 mt-0 mb-3 whitespace-pre-wrap break-words font-mono text-muted-foreground text-xs">
 								{license}
 							</pre>
 						</details>

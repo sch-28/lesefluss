@@ -1,5 +1,5 @@
 import { Capacitor } from "@capacitor/core";
-import { DEFAULT_SETTINGS } from "@lesefluss/core";
+import { DEFAULT_SETTINGS, type SpeedWindow } from "@lesefluss/core";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
 	Bell,
@@ -28,7 +28,6 @@ import { TabHeader } from "@/components/app-shell/tab-header";
 import BLEIndicator from "@/components/ble-indicator";
 import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
-import { WINDOW_LABELS } from "@/components/speed-chip/speed-chip-model";
 import { OnTheWebCard } from "@/components/web-limitations";
 import { SHOW_WHATS_NEW_EVENT } from "@/components/whats-new-modal";
 import { useBLE } from "@/contexts/ble-context";
@@ -51,6 +50,12 @@ import { IS_WEB } from "@/utils/platform";
 export const Route = createFileRoute("/tabs/settings/")({
 	component: SettingsLanding,
 });
+
+const SPEED_SUBTITLES: Record<SpeedWindow, string> = {
+	recent: "Speed from your last 10h",
+	"30d": "Speed from the last 30 days",
+	all: "Speed from all your reading",
+};
 
 function SettingsLanding() {
 	const navigate = useNavigate();
@@ -85,9 +90,7 @@ function SettingsLanding() {
 		: isTransitioning
 			? "Connecting..."
 			: "No device";
-	const syncSubtitle = isLoggedIn
-		? (userEmail ?? "Connected")
-		: "Not signed in · Delete local data";
+	const syncSubtitle = isLoggedIn ? (userEmail ?? "Connected") : "Not signed in";
 
 	const showWhatsNew = () => window.dispatchEvent(new Event(SHOW_WHATS_NEW_EVENT));
 	const openFeedback = () => {
@@ -144,7 +147,7 @@ function SettingsLanding() {
 					<NavRow
 						icon={Gauge}
 						title="Speed & estimates"
-						subtitle={WINDOW_LABELS[settings?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW]}
+						subtitle={SPEED_SUBTITLES[settings?.speedWindow ?? DEFAULT_SETTINGS.SPEED_WINDOW]}
 						to="/tabs/settings/speed"
 					/>
 				</SettingsSection>

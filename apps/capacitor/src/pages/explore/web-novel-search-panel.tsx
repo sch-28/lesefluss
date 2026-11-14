@@ -83,7 +83,7 @@ export const WebNovelSearchPanel: React.FC<Props> = ({
 	if (results.length === 0 && failedProviders.length > 0 && challengeProviders.length === 0) {
 		return (
 			<ErrorState
-				message={`No results. Some providers were unavailable (${failedProviders.join(", ")}).`}
+				message={`No results. Some providers were unavailable (${providerLabels(failedProviders)}).`}
 				onRetry={refetch}
 			/>
 		);
@@ -98,11 +98,7 @@ export const WebNovelSearchPanel: React.FC<Props> = ({
 			{challengeProviders.length > 0 && (
 				<CloudflareChallenge providers={challengeProviders} onResolved={refetch} />
 			)}
-			{failedProviders.length > 0 && (
-				<div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-amber-700 text-xs dark:text-amber-300">
-					Some providers unavailable: {failedProviders.join(", ")}
-				</div>
-			)}
+			<UnavailableProviders providers={failedProviders} />
 			{results.length > 0 && (
 				<ResultsLayout results={results} viewMode={viewMode} provider={provider} onPick={onPick} />
 			)}
@@ -201,7 +197,7 @@ const PopularShelf: React.FC<{
 	) {
 		return (
 			<ErrorState
-				message={`Failed to load popular series (${data.failedProviders.join(", ")}).`}
+				message={`Failed to load popular series (${providerLabels(data.failedProviders)}).`}
 				onRetry={refetch}
 			/>
 		);
@@ -214,6 +210,7 @@ const PopularShelf: React.FC<{
 			{data.challengeProviders.length > 0 && (
 				<CloudflareChallenge providers={data.challengeProviders} onResolved={refetch} />
 			)}
+			<UnavailableProviders providers={data.failedProviders} />
 			{data.results.length > 0 && (
 				<ResultsLayout
 					results={data.results}
@@ -225,6 +222,15 @@ const PopularShelf: React.FC<{
 		</div>
 	);
 };
+
+const providerLabels = (providers: ProviderId[]) => providers.map(providerLabel).join(", ");
+
+const UnavailableProviders: React.FC<{ providers: ProviderId[] }> = ({ providers }) =>
+	providers.length > 0 ? (
+		<div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-amber-700 text-xs dark:text-amber-300">
+			Some providers unavailable: {providerLabels(providers)}
+		</div>
+	) : null;
 
 const ResultsLayout: React.FC<{
 	results: SearchResult[];

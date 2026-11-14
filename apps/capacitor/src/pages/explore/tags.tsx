@@ -1,4 +1,4 @@
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { Tag } from "lucide-react";
@@ -52,13 +52,15 @@ const ExploreTags: React.FC<Props> = ({ from }) => {
 		<div className="bg-background">
 			<PageHeader title="Browse by tag" icon={Tag} />
 			<div className="mx-auto max-w-3xl px-4 pt-4 pb-20">
-				<Input
-					type="search"
-					aria-label="Filter tags"
-					placeholder="Filter tags, e.g. ghost stories"
-					value={filter}
-					onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilter(e.target.value)}
-				/>
+				<InputHitArea>
+					<Input
+						type="search"
+						aria-label="Filter tags"
+						placeholder="Filter tags, e.g. ghost stories"
+						value={filter}
+						onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilter(e.target.value)}
+					/>
+				</InputHitArea>
 				{tags.isPending ? (
 					<div
 						className="mt-4 flex flex-col gap-2"

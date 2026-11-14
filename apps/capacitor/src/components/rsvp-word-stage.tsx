@@ -1,4 +1,5 @@
 import { calcOrpIndex, type RsvpSettings } from "@lesefluss/core";
+import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
 import { focalLetterColorFor, useTheme } from "../contexts/theme-context";
 
@@ -29,7 +30,7 @@ export function RsvpWordStage({
 	return (
 		<button
 			type="button"
-			className={className ? `rsvp-preview-card ${className}` : "rsvp-preview-card"}
+			className={cn("rsvp-preview-card", `reader-theme-${theme}`, className)}
 			style={
 				{
 					"--rsvp-focal-color": focalLetterColorFor(settings.focalLetterColor, theme),

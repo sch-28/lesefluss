@@ -42,7 +42,7 @@ export function CollapsibleProse({ children }: { children: React.ReactNode }) {
 			>
 				{children}
 				{!isExpanded && isOverflowing && (
-					<div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent" />
+					<div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[var(--detail-card-bg,var(--card))] to-transparent" />
 				)}
 			</div>
 			{isOverflowing && (

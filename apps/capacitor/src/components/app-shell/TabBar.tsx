@@ -11,6 +11,7 @@ export function TabBar() {
 	return (
 		<nav
 			data-toast-clear
+			data-slot="tab-bar"
 			className="fixed inset-x-0 bottom-0 z-40 border-border border-t bg-card md:hidden"
 		>
 			<div className="pb-[var(--safe-bottom)]">

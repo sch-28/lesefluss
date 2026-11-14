@@ -1,10 +1,28 @@
-import { changelog, DEFAULT_SETTINGS, SYNCED_SETTING_KEYS } from "@lesefluss/core";
+import {
+	changelog,
+	DEFAULT_SETTINGS,
+	type ReaderTheme,
+	SYNCED_SETTING_KEYS,
+} from "@lesefluss/core";
 import { and, eq } from "drizzle-orm";
 import { serverNow } from "../../sync/server-clock";
 import { db } from "../index";
 import { type Settings, settings } from "../schema";
 
 const SETTINGS_ID = 1;
+
+/**
+ * A fresh install takes the system's dark or light scheme, which index.html
+ * already painted. A seeded default rather than a save, so it never counts as
+ * an edit that could outrank the account's synced theme.
+ */
+function systemReaderTheme(): ReaderTheme {
+	try {
+		return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+	} catch {
+		return DEFAULT_SETTINGS.READER_THEME;
+	}
+}
 
 /**
  * Fetch the single settings row (id=1), inserting defaults if it doesn't exist yet.
@@ -31,7 +49,7 @@ export async function getSettings(): Promise<Settings> {
 		displayOffTimeout: DEFAULT_SETTINGS.DISPLAY_OFF_TIMEOUT,
 		deepSleepTimeout: DEFAULT_SETTINGS.DEEP_SLEEP_TIMEOUT,
 		brightness: DEFAULT_SETTINGS.BRIGHTNESS,
-		readerTheme: DEFAULT_SETTINGS.READER_THEME,
+		readerTheme: systemReaderTheme(),
 		readerFontSize: DEFAULT_SETTINGS.READER_FONT_SIZE,
 		readerFontFamily: DEFAULT_SETTINGS.READER_FONT_FAMILY,
 		readerBold: DEFAULT_SETTINGS.READER_BOLD,

@@ -1,5 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { Clock, Search, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -38,34 +38,36 @@ const SearchField: React.FC<Props> = ({ value, onChange, onSubmit }) => {
 	return (
 		<div className="relative">
 			<Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-			<Input
-				ref={inputRef}
-				type="search"
-				inputMode="search"
-				maxLength={MAX_QUERY_LENGTH}
-				enterKeyHint="search"
-				aria-label="Search books and web novels"
-				placeholder="Search books and web novels"
-				value={value}
-				onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-				onFocus={() => {
-					// A blur just before (pressing Clear) must not hide the list after this focus.
-					clearTimeout(blurTimerRef.current);
-					setRecent(readRecentSearches());
-					setFocused(true);
-				}}
-				// Delay so a tap on a recent entry lands before the list unmounts.
-				onBlur={() => {
-					blurTimerRef.current = setTimeout(() => setFocused(false), 150);
-				}}
-				onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-					if (e.key === "Enter" && value.trim()) {
-						e.preventDefault();
-						submit(value);
-					}
-				}}
-				className="pr-9 pl-9 [&::-webkit-search-cancel-button]:appearance-none"
-			/>
+			<InputHitArea>
+				<Input
+					ref={inputRef}
+					type="search"
+					inputMode="search"
+					maxLength={MAX_QUERY_LENGTH}
+					enterKeyHint="search"
+					aria-label="Search books and web novels"
+					placeholder="Search books and web novels"
+					value={value}
+					onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
+					onFocus={() => {
+						// A blur just before (pressing Clear) must not hide the list after this focus.
+						clearTimeout(blurTimerRef.current);
+						setRecent(readRecentSearches());
+						setFocused(true);
+					}}
+					// Delay so a tap on a recent entry lands before the list unmounts.
+					onBlur={() => {
+						blurTimerRef.current = setTimeout(() => setFocused(false), 150);
+					}}
+					onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+						if (e.key === "Enter" && value.trim()) {
+							e.preventDefault();
+							submit(value);
+						}
+					}}
+					className="pr-9 pl-9 [&::-webkit-search-cancel-button]:appearance-none"
+				/>
+			</InputHitArea>
 			{value && (
 				<Button
 					variant="ghost"

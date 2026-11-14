@@ -1,7 +1,7 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
-@custom-variant sepia (&:is(.sepia *));
+@custom-variant sepia (&:is(.theme-sepia *));
 
 @theme inline {
 	--font-heading: var(--font-sans);
@@ -122,14 +122,14 @@
 	--sidebar-ring: oklch(0.55 0.14 35);
 }
 
-.sepia {
+.theme-sepia {
 	--background: #c4b081;
 	--foreground: #3a2e1e;
 	--card: #c4b081;
 	--card-foreground: #3a2e1e;
 	--popover: #b29f6f;
 	--popover-foreground: #3a2e1e;
-	--primary: #3a2e1e;
+	--primary: #6e2410;
 	--primary-foreground: #c4b081;
 	--secondary: #b29f6f;
 	--secondary-foreground: #3a2e1e;
@@ -140,7 +140,7 @@
 	--destructive: #a03a2a;
 	--border: #8a7760;
 	--input: #8a7760;
-	--ring: #3a2e1e;
+	--ring: #6e2410;
 	--chart-1: #3a2e1e;
 	--chart-2: #5a4a32;
 	--chart-3: #8a7760;
@@ -148,16 +148,18 @@
 	--chart-5: #c4b081;
 	--sidebar: #b29f6f;
 	--sidebar-foreground: #3a2e1e;
-	--sidebar-primary: #3a2e1e;
+	--sidebar-primary: #6e2410;
 	--sidebar-primary-foreground: #c4b081;
 	--sidebar-accent: #b29f6f;
 	--sidebar-accent-foreground: #3a2e1e;
 	--sidebar-border: #8a7760;
-	--sidebar-ring: #3a2e1e;
+	--sidebar-ring: #6e2410;
 }
 
 /* Coarse pointers get a 44px hit area at the drawn size (LESE-185.31). Elements that already
-   draw a ::before are skipped; menu rows grow instead, so no hit area overhangs the row above. */
+   draw a ::before are skipped; menu rows grow instead, so no hit area overhangs the row above.
+   Links are opted in one by one (`.touch-hit`, or a Button asChild): position: relative on every
+   <a> would move the absolute children of link cards. */
 @layer base {
 	@media (pointer: coarse) {
 		:where(
@@ -166,7 +168,10 @@
 				[role="switch"],
 				[role="checkbox"],
 				[role="radio"],
-				[role="tab"]
+				[role="tab"],
+				[role="slider"],
+				a[data-slot="button"],
+				.touch-hit
 			):not([class*="before:"]) {
 			position: relative;
 		}
@@ -176,7 +181,10 @@
 				[role="switch"],
 				[role="checkbox"],
 				[role="radio"],
-				[role="tab"]
+				[role="tab"],
+				[role="slider"],
+				a[data-slot="button"],
+				.touch-hit
 			):not([class*="before:"])::before {
 			content: "";
 			position: absolute;

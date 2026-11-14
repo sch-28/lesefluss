@@ -37,11 +37,18 @@ export function focalLetterColorFor(color: string, theme: AppTheme): string {
 /**
  * The classes a theme puts on <html> and <body>; index.html mirrors this for
  * first paint. High contrast counts as dark, so it carries `dark` too and every
- * dark: variant, body.dark rule and chart branch applies to it.
+ * dark: variant, body.dark rule and chart branch applies to it. Sepia's class is
+ * not its stored value: Tailwind's `sepia` utility is a filter that would tone
+ * the whole page.
  */
 export function themeClasses(theme: AppTheme): string[] {
-	return theme === "high-contrast" ? ["dark", "high-contrast"] : [theme];
+	if (theme === "high-contrast") return ["dark", "high-contrast"];
+	if (theme === "sepia") return ["theme-sepia"];
+	return [theme];
 }
+
+/** Every class a theme can set, plus the bare `sepia` an older build left behind. */
+const ALL_THEME_CLASSES = [...new Set([...READER_THEMES, ...READER_THEMES.flatMap(themeClasses)])];
 
 /** A theme synced from a newer app version that this build doesn't know falls back to dark. */
 export function storedThemeFor(raw: string | undefined): AppTheme {
@@ -80,7 +87,7 @@ export function applyAppearance(theme: AppTheme, appFontSize: number, isEinkMode
 	// CSS (monochrome.css uses `body.dark` selectors) still fires during the
 	// migration. Drop the body class once Ionic is fully removed.
 	for (const el of [document.documentElement, document.body]) {
-		el.classList.remove(...READER_THEMES);
+		el.classList.remove(...ALL_THEME_CLASSES);
 		el.classList.add(...themeClasses(theme));
 		el.classList.toggle(EINK_CLASS, isEinkMode);
 	}

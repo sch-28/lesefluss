@@ -18,7 +18,7 @@ export const READER_MODE_OPTIONS: ReadonlyArray<ModeOption<"scroll" | "rsvp">> =
 	{
 		value: "scroll",
 		label: "Reader",
-		description: "Scroll through pages",
+		description: "Read the full text at your own pace",
 		icon: BookOpen,
 	},
 	{

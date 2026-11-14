@@ -167,7 +167,7 @@ describe("Settings root", () => {
 		view = await renderPage(settingsRoot);
 		const speed = link("/tabs/settings/speed");
 		expect(speed?.textContent).toContain("Speed & estimates");
-		expect(speed?.textContent).toContain("30 days");
+		expect(speed?.textContent).toContain("Speed from the last 30 days");
 		expect(speed?.querySelector("svg")).not.toBeNull();
 		const diagnostics = link("/tabs/settings/diagnostics");
 		expect(diagnostics?.textContent).toContain("Anonymous diagnostics");
@@ -257,6 +257,36 @@ describe("Goals page", () => {
 		expect(candidates.map((c) => c.textContent)).toEqual(["Book a"]);
 		await click(candidates[0] as HTMLElement);
 		expect(view.container.querySelector("[data-testid=goal-sheet]")?.textContent).toBe("Book a");
+	});
+
+	it("shows each goal's progress today", async () => {
+		const plan = (over: Record<string, unknown>) => ({
+			kind: "plan",
+			isComplete: false,
+			dailyMinutes: null,
+			dailyTarget: { words: 900, percent: 1, minutes: 30 },
+			progressToday: { words: 0, percent: 0, minutes: 0 },
+			isTodayMet: false,
+			...over,
+		});
+		const goal = (id: string) => ({
+			id,
+			bookId: id,
+			mode: "pace",
+			dailyPercent: 1,
+			targetDate: "2026-12-01",
+			reminderTime: null,
+		});
+		state.plans = [
+			{
+				goal: goal("g1"),
+				plan: plan({ progressToday: { words: 570, percent: 0.6, minutes: 19.4 } }),
+			},
+			{ goal: goal("g2"), plan: plan({ dailyMinutes: 20, isTodayMet: true }) },
+		];
+		view = await renderPage(goalsPage);
+		const today = [...view.container.querySelectorAll("[data-testid=goal-row-today]")];
+		expect(today.map((t) => t.textContent)).toEqual(["Today 19 of 30 min", "Today 20 of 20 min"]);
 	});
 
 	it("offers Add goal with no goal set yet", async () => {

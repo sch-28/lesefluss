@@ -1,4 +1,4 @@
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
@@ -150,16 +150,18 @@ export function AllSeriesList({ entries, covers, onPick, onExit, autoFocus, comp
 				<Segment label="Sort" options={SORT_OPTIONS} value={sort} onChange={setSort} />
 			</div>
 			<div className={cn("relative", compact ? "px-4 py-3" : "mb-3")}>
-				<Input
-					type="search"
-					value={query}
-					onChange={(e) => setQuery(e.target.value)}
-					onKeyDown={onSearchKey}
-					placeholder="Search series"
-					aria-label="Search series"
-					autoFocus={autoFocus}
-					className="pr-20"
-				/>
+				<InputHitArea>
+					<Input
+						type="search"
+						value={query}
+						onChange={(e) => setQuery(e.target.value)}
+						onKeyDown={onSearchKey}
+						placeholder="Search series"
+						aria-label="Search series"
+						autoFocus={autoFocus}
+						className="pr-20"
+					/>
+				</InputHitArea>
 				<span
 					className={cn(
 						"pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground text-xs tabular-nums",

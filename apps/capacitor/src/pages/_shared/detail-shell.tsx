@@ -274,9 +274,14 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 										html={description.html}
 									/>
 								) : (
-									<p className="m-0 text-foreground/80 text-sm leading-relaxed">
-										{description.text}
-									</p>
+									<div className="flex flex-col gap-3 text-foreground/80 text-sm leading-relaxed">
+										{(description.text ?? "").split(/\n\s*\n/).map((paragraph, i) => (
+											// biome-ignore lint/suspicious/noArrayIndexKey: paragraphs of one fixed text
+											<p key={i} className="m-0">
+												{paragraph}
+											</p>
+										))}
+									</div>
 								)}
 							</CollapsibleProse>
 						</section>

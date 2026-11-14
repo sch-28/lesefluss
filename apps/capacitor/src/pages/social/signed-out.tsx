@@ -5,8 +5,19 @@ import { useState } from "react";
 import { IS_WEB_BUILD, openBrowserSignIn, SYNC_ENABLED, webSignInHref } from "@/services/sync";
 import { TrailerCard } from "./first-run-hero";
 
-/** Shows what social reading looks like and starts the existing sign-in flow for the platform. */
-export function SignedOutSocial({ returnTo }: { returnTo: string }) {
+/**
+ * Shows what social reading looks like and starts the existing sign-in flow for the platform.
+ * A deep link passes `title` and `message` to say what waits behind the sign-in.
+ */
+export function SignedOutSocial({
+	returnTo,
+	title = "Reading is better with company.",
+	message = "Read the same book with friends, see where everyone is and talk about each chapter as you go.",
+}: {
+	returnTo: string;
+	title?: string;
+	message?: string;
+}) {
 	const [isStarting, setIsStarting] = useState(false);
 
 	const signIn = async () => {
@@ -25,12 +36,9 @@ export function SignedOutSocial({ returnTo }: { returnTo: string }) {
 	return (
 		<TrailerCard>
 			<h2 className="m-0 mt-6 font-bold text-[30px] text-foreground leading-[1.08] tracking-tight">
-				Reading is better with company.
+				{title}
 			</h2>
-			<p className="m-0 mt-3 text-[15px] text-muted-foreground leading-relaxed">
-				Read the same book with friends, see where everyone is and talk about each chapter as you
-				go.
-			</p>
+			<p className="m-0 mt-3 text-[15px] text-muted-foreground leading-relaxed">{message}</p>
 			{SYNC_ENABLED ? (
 				<>
 					<Button
@@ -44,7 +52,7 @@ export function SignedOutSocial({ returnTo }: { returnTo: string }) {
 					{!IS_WEB_BUILD && (
 						<p className="m-0 mt-3 text-center text-muted-foreground text-xs">
 							Browser not working on this device?{" "}
-							<Link to="/tabs/settings/sync" className="text-primary underline">
+							<Link to="/tabs/settings/sync" className="touch-hit text-primary underline">
 								More ways to sign in are in Settings
 							</Link>
 						</p>

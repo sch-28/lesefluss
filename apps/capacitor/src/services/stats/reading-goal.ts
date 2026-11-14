@@ -125,9 +125,9 @@ function localMidnightOf(dayNumber: number): number {
 }
 
 /**
- * Sessions that count toward the plan: those ending after the goal began, so
- * reading earlier on the day a goal is created never becomes that goal's
- * progress, and on or after the day the plan starts. Sorted so a tie between
+ * Sessions that count toward the plan: those ending after the goal began (moved
+ * back to the start day's first sitting by `withStartDayReading`) and on or
+ * after the day the plan starts. Sorted so a tie between
  * equal end times always resolves the same way.
  */
 function planSessions(sessions: GoalSession[], goal: GoalParams, planStartDay: number) {
@@ -145,10 +145,15 @@ function planSessions(sessions: GoalSession[], goal: GoalParams, planStartDay: n
  * with every checkpoint, and today's target must not. Rows written since
  * sittings split at midnight never do; older ones may.
  */
-function makeStartOfDay(relevant: GoalSession[], goal: GoalParams, planStartDay: number) {
+function makeStartOfDay(
+	relevant: GoalSession[],
+	goal: GoalParams,
+	planStartDay: number,
+	firstDayStart: number,
+) {
 	const known = new Map<number, number>();
 	return (dayNumber: number): number => {
-		if (dayNumber <= planStartDay) return goal.planStartWord;
+		if (dayNumber <= planStartDay) return firstDayStart;
 		const cached = known.get(dayNumber);
 		if (cached !== undefined) return cached;
 		const midnight = localMidnightOf(dayNumber);
@@ -235,8 +240,35 @@ function dayTargetWords(
 	return daysLeft <= 1 ? remaining : Math.ceil(remaining / daysLeft);
 }
 
+/**
+ * Reading done earlier on the day a goal starts counts toward that day: the day
+ * then starts at its first sitting, so no word counts twice. A deadline goal's
+ * line starts there too; a pace goal's line keeps its stored start, because its
+ * stored target date is where that line ends. Only while the plan still starts
+ * on that day; a later replan stands.
+ */
+function withStartDayReading(
+	goal: GoalParams,
+	sessions: GoalSession[],
+): { goal: GoalParams; firstDayStart: number } {
+	const unchanged = { goal, firstDayStart: goal.planStartWord };
+	const startDate = localDateKey(goal.startedAt);
+	if (goal.planStartDate !== startDate) return unchanged;
+	const midnight = localMidnightOf(requireDayNumber(startDate));
+	let first: GoalSession | null = null;
+	for (const s of sessions) {
+		if (s.startedAt < midnight || s.startedAt >= goal.startedAt) continue;
+		if (!first || s.startedAt < first.startedAt) first = s;
+	}
+	if (!first) return unchanged;
+	const firstDayStart = wordPos(Math.min(goal.planStartWord, first.startWord));
+	const planStartWord = goal.mode === "deadline" ? firstDayStart : goal.planStartWord;
+	return { goal: { ...goal, startedAt: first.startedAt, planStartWord }, firstDayStart };
+}
+
 export function planReadingGoal(input: GoalPlanInput): ReadingGoalPlanResult {
-	const { goal, book, now } = input;
+	const { book, now } = input;
+	const { goal, firstDayStart } = withStartDayReading(input.goal, input.sessions);
 	const wordCount = book.wordCount;
 	const position = book.wordPosition;
 	const reachedEnd = isFinishedPosition(position, wordCount);
@@ -255,7 +287,7 @@ export function planReadingGoal(input: GoalPlanInput): ReadingGoalPlanResult {
 	// A clock set back past the plan start would otherwise evaluate a day before the plan exists.
 	const today = Math.max(requireDayNumber(localDateKey(now)), planStartDay, startedDay);
 	const relevant = planSessions(input.sessions, goal, planStartDay);
-	const startOfDay = makeStartOfDay(relevant, goal, planStartDay);
+	const startOfDay = makeStartOfDay(relevant, goal, planStartDay, firstDayStart);
 	const furthestOn = makeFurthestOn(relevant);
 	const pace = input.pace;
 	const minuteTarget = minuteGoalOf(goal);
@@ -312,8 +344,11 @@ export function planReadingGoal(input: GoalPlanInput): ReadingGoalPlanResult {
 	} else if (goal.mode === "deadline") {
 		projectedFinishDay = Math.max(targetDay, today);
 	} else if (isTodayMet) {
+		// A first day met by reading before the goal began still leaves the line's day-one words
+		// as done, as the stored target date assumed.
+		const from = today === planStartDay ? Math.max(position, line.at(today)) : position;
 		projectedFinishDay =
-			position < wordCount ? paceFinishDay(today + 1, position, dailyWords, wordCount) : today;
+			from < wordCount ? paceFinishDay(today + 1, from, dailyWords, wordCount) : today;
 	} else {
 		projectedFinishDay = paceFinishDay(today, dayStartWord, dailyWords, wordCount);
 	}

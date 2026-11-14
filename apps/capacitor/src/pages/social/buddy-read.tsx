@@ -535,7 +535,13 @@ export default function BuddyReadPage({ id, tab }: { id: string; tab: BuddyReadT
 		<div className="bg-background">
 			<PageHeader title="Buddy read" icon={Users} backTo="/tabs/social/buddy-reads" />
 			<div className="mx-auto max-w-2xl px-4 pb-10">
-				<SocialGate returnTo={`/tabs/social/buddy-read/${id}`}>
+				<SocialGate
+					returnTo={`/tabs/social/buddy-read/${id}`}
+					signedOut={{
+						title: "Sign in to open this buddy read.",
+						message: "It belongs to your Lesefluss account, so it shows once you are signed in.",
+					}}
+				>
 					<BuddyReadContent id={id} tab={tab} />
 				</SocialGate>
 			</div>

@@ -146,7 +146,13 @@ function InviteContent({ token }: { token: string }) {
 
 	if (!isSessionResolved) return <Spinner />;
 	if (!isLoggedIn) {
-		return <SignedOutSocial returnTo={`/tabs/social/invite/${encodeURIComponent(token)}`} />;
+		return (
+			<SignedOutSocial
+				returnTo={`/tabs/social/invite/${encodeURIComponent(token)}`}
+				title="A friend invited you."
+				message="Sign in and the invitation is waiting for you: you'll see who sent it and can read with them."
+			/>
+		);
 	}
 	if (profile.isPending || preview.isPending) return <Spinner />;
 	if (profile.isError || preview.isError) {

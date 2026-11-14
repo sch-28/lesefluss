@@ -1,7 +1,8 @@
 import { IconButton } from "@lesefluss/ui/icon-button";
-import { type NavigateOptions, useRouter } from "@tanstack/react-router";
+import { type AnyRouter, type NavigateOptions, useRouter } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
+import { resolveBack } from "./resolve-back";
 
 export function PageHeader({
 	title,
@@ -20,11 +21,7 @@ export function PageHeader({
 		<header className="sticky top-0 z-20 flex flex-col border-border border-b bg-background/95 pt-[var(--safe-top)] backdrop-blur">
 			<div className="flex h-12 items-center gap-2 px-2">
 				<IconButton
-					onClick={() =>
-						backTo && !router.history.canGoBack()
-							? void router.navigate({ to: backTo, replace: true })
-							: router.history.back()
-					}
+					onClick={() => goBack(router, backTo)}
 					aria-label="Back"
 					className="-my-1 text-muted-foreground hover:text-foreground"
 				>
@@ -36,4 +33,22 @@ export function PageHeader({
 			</div>
 		</header>
 	);
+}
+
+/**
+ * Without history (a deep link, a reload) Back goes where Android back goes. Through
+ * router.navigate, which keeps the web build's /app basepath (LESE-20).
+ */
+function goBack(router: AnyRouter, backTo: NavigateOptions["to"] | undefined) {
+	if (router.history.canGoBack()) {
+		router.history.back();
+		return;
+	}
+	if (backTo) {
+		void router.navigate({ to: backTo, replace: true });
+		return;
+	}
+	const { pathname, searchStr } = router.state.location;
+	const action = resolveBack(pathname, searchStr, false);
+	if (action.kind === "replace") void router.navigate({ href: action.to, replace: true });
 }

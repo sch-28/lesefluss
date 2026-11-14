@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
+import { useBackHandler } from "../../hooks/use-back-handler";
 import { replayPendingLink } from "../../services/deep-links/use-deep-links";
 import { buddyReadExists } from "../../services/social/buddy-reads";
 import { type OnboardingFooter, OnboardingFooterContext } from "./footer-context";
@@ -62,6 +63,10 @@ const Onboarding: React.FC = () => {
 	const secondary = footer?.secondary;
 	const anyDisabled = primary?.disabled || secondary?.disabled;
 
+	useBackHandler(step > 0, () => {
+		if (!anyDisabled) back();
+	});
+
 	return (
 		<OnboardingFooterContext.Provider value={ctxValue}>
 			<div className="flex h-[100dvh] flex-col bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)] text-foreground">
@@ -110,6 +115,7 @@ const Onboarding: React.FC = () => {
 						)}
 						<Button
 							size="lg"
+							variant={primary?.outline ? "outline" : "default"}
 							className="w-full"
 							onClick={primary?.onClick ?? next}
 							disabled={primary?.disabled}

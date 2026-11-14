@@ -195,6 +195,7 @@ import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import { useLinkDecorations } from "./use-link-decorations";
 import { useLoadedReaderFont } from "./use-loaded-reader-font";
 import { useReadAloud } from "./use-read-aloud";
+import { useReaderBack } from "./use-reader-back";
 import { lastAtOrBefore, useReaderBookmarks } from "./use-reader-bookmarks";
 import { useReaderGoal } from "./use-reader-goal";
 import { useReadingRuler } from "./use-reading-ruler";
@@ -2219,6 +2220,15 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			exitRsvpToStandard();
 		}
 	}, [readerMode, exitRsvpToStandard, browse, isRsvpAudioOn, readAloud.stop]);
+
+	useReaderBack({
+		isSelecting,
+		isRsvp: readerMode === "rsvp",
+		isBrowsing: browseAnchor !== null && readerMode !== "rsvp",
+		cancelSelection,
+		leaveRsvp: handleRsvpToggle,
+		browseBack: browse.back,
+	});
 
 	const handleRsvpFinished = useCallback(() => {
 		exitRsvpToStandard();

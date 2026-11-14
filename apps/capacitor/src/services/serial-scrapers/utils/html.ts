@@ -20,18 +20,27 @@ export function textOrNull(el: Element | null): string | null {
 }
 
 /**
- * Strip HTML tags from a fragment string and collapse whitespace. Used by
- * adapters that consume JSON APIs which embed raw HTML in text fields
- * (e.g. Wuxiaworld's `synopsis`). Parses through `DOMParser` rather than a
- * regex so entities (`&amp;`, `&#x2014;`, …) are decoded correctly.
+ * Strip HTML tags from a fragment string. Used by adapters that consume JSON APIs which embed
+ * raw HTML in text fields (e.g. Wuxiaworld's `synopsis`). Parses through `DOMParser` rather than
+ * a regex so entities (`&amp;`, `&#x2014;`, …) are decoded correctly.
  *
- * Returns `null` if the result is empty after trimming.
+ * Block elements and double `<br>`s become paragraphs joined by a blank line; whitespace inside
+ * a paragraph collapses. Returns `null` if nothing but whitespace is left.
  */
 export function stripTags(fragment: string | null | undefined): string | null {
 	if (!fragment) return null;
-	const text = parseHtml(fragment).body.textContent?.replace(/\s+/g, " ").trim();
-	return text && text.length > 0 ? text : null;
+	const body = parseHtml(fragment).body;
+	const doc = body.ownerDocument;
+	for (const br of body.querySelectorAll("br")) br.replaceWith(doc.createTextNode("\n"));
+	for (const block of body.querySelectorAll(TEXT_BLOCKS)) block.append(doc.createTextNode("\n\n"));
+	const paragraphs = (body.textContent ?? "")
+		.split(/\n\s*\n/)
+		.map((p) => p.replace(/\s+/g, " ").trim())
+		.filter((p) => p.length > 0);
+	return paragraphs.length > 0 ? paragraphs.join("\n\n") : null;
 }
+
+const TEXT_BLOCKS = "p, div, li, blockquote, h1, h2, h3, h4, h5, h6";
 
 // Anchor the value end with `(;|$)` (and optional trailing whitespace) so
 // `display:none-on-scroll` doesn't false-positive — `\b` alone matches the

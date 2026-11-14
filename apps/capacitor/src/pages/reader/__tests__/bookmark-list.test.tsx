@@ -28,8 +28,20 @@ function setInputValue(input: HTMLInputElement, value: string) {
 	input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+function pointer(kind: "fine" | "coarse") {
+	return vi.spyOn(window, "matchMedia").mockImplementation(
+		(query) =>
+			({
+				matches: query === `(pointer: ${kind})`,
+				addEventListener() {},
+				removeEventListener() {},
+			}) as unknown as MediaQueryList,
+	);
+}
+
 describe("BookmarkList", () => {
 	it("shows the empty state without bookmarks", async () => {
+		const matchMedia = pointer("coarse");
 		rendered = await render(
 			<BookmarkList
 				rows={[]}
@@ -39,7 +51,25 @@ describe("BookmarkList", () => {
 				onDelete={vi.fn()}
 			/>,
 		);
-		expect(rendered.text()).toBe("No bookmarks yet. Press B or tap the ribbon to mark this page.");
+		expect(rendered.text()).toBe("No bookmarks yet. Tap the ribbon to mark this page.");
+		matchMedia.mockRestore();
+	});
+
+	it("names the B key only where there is a mouse, and so likely a keyboard", async () => {
+		const matchMedia = pointer("fine");
+		rendered = await render(
+			<BookmarkList
+				rows={[]}
+				currentId={null}
+				onJump={vi.fn()}
+				onRename={vi.fn()}
+				onDelete={vi.fn()}
+			/>,
+		);
+		expect(rendered.text()).toBe(
+			"No bookmarks yet. Press B or click the ribbon to mark this page.",
+		);
+		matchMedia.mockRestore();
 	});
 
 	it("shows chapter, percent, date, label and first line, and jumps to the word on tap", async () => {

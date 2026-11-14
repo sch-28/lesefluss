@@ -24,7 +24,7 @@ function SignInStep() {
 						primary: { label: "Sign in", onClick: signInOnWebsite },
 						secondary: { label: "Not now", onClick: finish },
 					}
-				: { primary: { label: "Not now", onClick: finish } },
+				: { primary: { label: "Not now", onClick: finish, outline: true } },
 		);
 	}, [signInOnWebsite, finish, setFooter]);
 
@@ -47,7 +47,7 @@ function HandleStep() {
 	const profile = useOwnSocialProfile();
 
 	useEffect(() => {
-		setFooter({ primary: { label: "Not now", onClick: finish } });
+		setFooter({ primary: { label: "Not now", onClick: finish, outline: true } });
 	}, [finish, setFooter]);
 
 	return (

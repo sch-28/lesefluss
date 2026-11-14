@@ -65,35 +65,35 @@ body.dark .rsvp-action-sheet .action-sheet-button[disabled] {
 
 /* ── Sepia theme: mirror of dark overrides ── */
 
-body.sepia .rsvp-action-sheet .action-sheet-container .action-sheet-group {
+body.theme-sepia .rsvp-action-sheet .action-sheet-container .action-sheet-group {
 	background: #b29f6f;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-container .action-sheet-group-cancel {
+body.theme-sepia .rsvp-action-sheet .action-sheet-container .action-sheet-group-cancel {
 	background: transparent;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-cancel {
+body.theme-sepia .rsvp-action-sheet .action-sheet-cancel {
 	--button-background: #b29f6f;
 	color: #3a2e1e;
 	background: #b29f6f;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-title {
+body.theme-sepia .rsvp-action-sheet .action-sheet-title {
 	color: #8a7a63;
 	border-bottom-color: #8a7760;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-button {
+body.theme-sepia .rsvp-action-sheet .action-sheet-button {
 	color: #3a2e1e;
 	border-bottom-color: #8a7760;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-destructive {
+body.theme-sepia .rsvp-action-sheet .action-sheet-destructive {
 	color: #b04030;
 }
 
-body.sepia .rsvp-action-sheet .action-sheet-button[disabled] {
+body.theme-sepia .rsvp-action-sheet .action-sheet-button[disabled] {
 	color: #a89878;
 }
 
@@ -1502,20 +1502,20 @@ body.dark .local-storage-notice__dismiss {
 	color: #666666;
 }
 
-body.sepia .local-storage-notice {
+body.theme-sepia .local-storage-notice {
 	background: #b29f6f;
 	border-bottom-color: #8a7760;
 }
 
-body.sepia .local-storage-notice__text {
+body.theme-sepia .local-storage-notice__text {
 	color: #3a2e1e;
 }
 
-body.sepia .local-storage-notice__link {
+body.theme-sepia .local-storage-notice__link {
 	color: #3a2e1e;
 }
 
-body.sepia .local-storage-notice__dismiss {
+body.theme-sepia .local-storage-notice__dismiss {
 	color: #8a7a63;
 }
 
@@ -1586,21 +1586,21 @@ body.sepia .local-storage-notice__dismiss {
 		color: var(--foreground);
 	}
 
-	body.sepia .desktop-sidebar {
+	body.theme-sepia .desktop-sidebar {
 		background: var(--background);
 		border-right-color: var(--border);
 	}
 
-	body.sepia .desktop-sidebar-item:hover {
+	body.theme-sepia .desktop-sidebar-item:hover {
 		background: #b29f6f;
 	}
 
-	body.sepia .desktop-sidebar-toggle {
+	body.theme-sepia .desktop-sidebar-toggle {
 		background: var(--background);
 		border-color: var(--border);
 	}
 
-	body.sepia .desktop-sidebar-toggle:hover {
+	body.theme-sepia .desktop-sidebar-toggle:hover {
 		background: #b29f6f;
 		color: var(--foreground);
 	}
@@ -1656,7 +1656,7 @@ body.dark .cover-image-shimmer {
 	background-size: 200% 100%;
 }
 
-body.sepia .cover-image-shimmer {
+body.theme-sepia .cover-image-shimmer {
 	background: linear-gradient(100deg, #b29f6f 10%, #e3d6ba 40%, #b29f6f 70%);
 	background-size: 200% 100%;
 }
@@ -1683,23 +1683,23 @@ body.dark .pagination-ellipsis {
 	color: #666;
 }
 
-body.sepia .pagination-btn {
+body.theme-sepia .pagination-btn {
 	background: #b29f6f;
 	border-color: #8a7760;
 }
 
-body.sepia .pagination-btn:hover:not(:disabled):not(.active) {
+body.theme-sepia .pagination-btn:hover:not(:disabled):not(.active) {
 	background: #a08d5f;
 	border-color: #b8a785;
 }
 
-body.sepia .pagination-btn.active {
+body.theme-sepia .pagination-btn.active {
 	background: #3a2e1e;
 	border-color: #3a2e1e;
 	color: #c4b081;
 }
 
-body.sepia .pagination-ellipsis {
+body.theme-sepia .pagination-ellipsis {
 	color: #8a7a63;
 }
 
@@ -1755,7 +1755,9 @@ body.dark .explore-hero-arrow:hover {
 	flex-direction: column;
 	gap: 0.75rem;
 	padding: 1rem 1.15rem;
-	background: #fafafa;
+	/* A variable so CollapsibleProse's fade inside the card matches it. */
+	--detail-card-bg: #fafafa;
+	background: var(--detail-card-bg);
 	border: 1px solid #e8e8e8;
 	border-radius: 10px;
 }
@@ -1788,15 +1790,15 @@ body.dark .book-detail-eyebrow {
 }
 
 body.dark .book-detail-card {
-	background: #1a1a1a;
+	--detail-card-bg: #1a1a1a;
 	border-color: #2a2a2a;
 }
 
 /* The dark greys above fall under AAA on high contrast's black; the light card is a white
    patch on sepia's paper. */
 body.high-contrast .book-detail-card,
-body.sepia .book-detail-card {
-	background: var(--card);
+body.theme-sepia .book-detail-card {
+	--detail-card-bg: var(--card);
 	border-color: var(--border);
 }
 body.high-contrast .book-detail-eyebrow,

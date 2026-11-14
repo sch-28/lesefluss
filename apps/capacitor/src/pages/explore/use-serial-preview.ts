@@ -7,7 +7,7 @@ const PREVIEW_STALE_TIME_MS = 10 * 60 * 1000;
 
 /**
  * The fetched series page wins, except where it says less than the listing did:
- * the series page has no chapter count, and its word count may be missing (a
+ * most series pages have no chapter count, and the word count may be missing (a
  * markup change), in which case the listing's estimate is still better than nothing.
  */
 export function mergePreview(

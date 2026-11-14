@@ -117,7 +117,8 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 									key={color}
 									type="button"
 									className={cn(
-										"size-6 rounded-full border-2 transition-transform",
+										// Hit area split at the 6 px gap, so a tap never lands on the neighbour.
+										"relative size-6 rounded-full border-2 transition-transform before:absolute before:-inset-x-[3px] before:-inset-y-2.5 before:content-['']",
 										isActive ? "scale-110 border-foreground" : "border-border",
 									)}
 									// What the reader shows: high contrast lightens some presets.

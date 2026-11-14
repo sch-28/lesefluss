@@ -9,7 +9,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@lesefluss/ui/alert-dialog";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { Label } from "@lesefluss/ui/label";
 import { useOverlayBack } from "@lesefluss/ui/overlay-back";
 import { Switch } from "@lesefluss/ui/switch";
@@ -242,15 +242,17 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 					>
 						<div className="flex flex-col gap-1.5">
 							<Label htmlFor="collection-name">Name</Label>
-							<Input
-								id="collection-name"
-								autoFocus={mode.kind === "create"}
-								value={name}
-								maxLength={COLLECTION_NAME_MAX}
-								placeholder="Collection name"
-								enterKeyHint="done"
-								onChange={(e) => setName(e.target.value)}
-							/>
+							<InputHitArea>
+								<Input
+									id="collection-name"
+									autoFocus={mode.kind === "create"}
+									value={name}
+									maxLength={COLLECTION_NAME_MAX}
+									placeholder="Collection name"
+									enterKeyHint="done"
+									onChange={(e) => setName(e.target.value)}
+								/>
+							</InputHitArea>
 						</div>
 						<div className="flex items-center justify-between gap-3">
 							<div className="min-w-0">

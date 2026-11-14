@@ -23,7 +23,16 @@ describe("storedThemeFor", () => {
 describe("high contrast counts as dark", () => {
 	it("puts the dark class next to its own", () => {
 		expect(themeClasses("high-contrast")).toEqual(["dark", "high-contrast"]);
-		expect(themeClasses("sepia")).toEqual(["sepia"]);
+		expect(themeClasses("sepia")).toEqual(["theme-sepia"]);
+	});
+
+	it("never puts the bare sepia class on the page, which Tailwind turns into a filter", () => {
+		document.documentElement.classList.add("sepia");
+		applyAppearance("sepia", 16, false);
+		expect(document.documentElement.classList.contains("sepia")).toBe(false);
+		expect(document.body.classList.contains("theme-sepia")).toBe(true);
+		applyAppearance("light", 16, false);
+		expect(document.body.classList.contains("theme-sepia")).toBe(false);
 	});
 
 	it("is dark for charts", () => {

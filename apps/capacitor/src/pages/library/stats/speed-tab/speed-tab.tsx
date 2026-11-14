@@ -64,7 +64,7 @@ function Headline({ model, view }: { model: SpeedModel; view: SpeedView }) {
 					to="/tabs/settings/speed"
 					data-testid="speed-window"
 					aria-label={`Change the speed window, now ${WINDOW_LABELS[model.window]}`}
-					className="font-medium text-primary no-underline"
+					className="touch-hit font-medium text-primary no-underline"
 				>
 					change
 				</Link>
