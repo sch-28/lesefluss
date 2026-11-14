@@ -111,7 +111,7 @@ export function useBookActions({ surface, onSelect, onDeleted, extras }: Options
 	});
 
 	const entriesFor = (book: Book): BookActionEntry[] => {
-		const go = (path: string) => router.history.push(path);
+		const go = (path: string) => router.navigate({ href: path });
 		const open: BookActionItem = opensReader(surface)
 			? {
 					kind: "item",

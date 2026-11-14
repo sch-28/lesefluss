@@ -31,7 +31,7 @@ export function BookShelf({
 	/** Optional overlay on the cover, e.g. rank or time read. */
 	badgeFor?: (book: ShelfBook, index: number) => React.ReactNode;
 }) {
-	const history = useRouter().history;
+	const router = useRouter();
 
 	return (
 		<motion.section
@@ -51,7 +51,7 @@ export function BookShelf({
 							<motion.button
 								key={book.id}
 								type="button"
-								onClick={() => history.push(book.href)}
+								onClick={() => router.navigate({ href: book.href })}
 								initial={{ opacity: 0, x: 16 }}
 								whileInView={{ opacity: 1, x: 0 }}
 								viewport={{ once: true }}

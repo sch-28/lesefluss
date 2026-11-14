@@ -245,7 +245,8 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const { isConnected: isBleConnected } = useBLE();
 	const { isSyncing, isLoggedIn, syncNow } = useSyncContext();
 	const qc = useQueryClient();
-	const history = useRouter().history;
+	const router = useRouter();
+	const history = router.history;
 	const bookActions = useBookActions({ surface: "reader" });
 
 	// ── Data queries ──────────────────────────────────────────────────────
@@ -2367,11 +2368,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 			},
 			openBookDetails: () => {
 				if (!book) return;
-				history.push(
-					book.seriesId != null
-						? `/tabs/library/series/${book.seriesId}`
-						: `/tabs/library/book/${book.id}`,
-				);
+				router.navigate({
+					href:
+						book.seriesId != null
+							? `/tabs/library/series/${book.seriesId}`
+							: `/tabs/library/book/${book.id}`,
+				});
 			},
 			fullscreen: isFullscreenSupported()
 				? { isOn: fullscreen.isFullscreen, toggle: fullscreen.toggle, exit: fullscreen.exit }
@@ -2790,7 +2792,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 							onOpenChange={setAppearanceOpen}
 							onOpenAllSettings={() => {
 								setAppearanceOpen(false);
-								history.push("/tabs/settings/reader");
+								router.navigate({ href: "/tabs/settings/reader" });
 							}}
 							anchor={
 								<IconButton
@@ -2917,7 +2919,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								{IS_READ_ALOUD_SUPPORTED && (
 									<DropdownMenuItem
 										className={MENU_ITEM_CLASS}
-										onSelect={() => history.push("/tabs/settings/read-aloud")}
+										onSelect={() => router.navigate({ href: "/tabs/settings/read-aloud" })}
 									>
 										<Headphones />
 										<span>Listen settings</span>
@@ -2936,7 +2938,7 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 								)}
 								<DropdownMenuItem
 									className={MENU_ITEM_CLASS}
-									onSelect={() => history.push(`/tabs/library/book/${book.id}`)}
+									onSelect={() => router.navigate({ href: `/tabs/library/book/${book.id}` })}
 								>
 									<BookText />
 									<span>Book details</span>
@@ -3192,7 +3194,9 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 											<GoalChip
 												plan={goalPlan}
 												today={goalToday}
-												onOpenDetails={() => history.push(`/tabs/library/book/${book.id}`)}
+												onOpenDetails={() =>
+													router.navigate({ href: `/tabs/library/book/${book.id}` })
+												}
 											/>
 										</>
 									)}

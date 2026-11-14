@@ -6,7 +6,7 @@ const pending = { data: undefined, isPending: true, isLoading: true };
 
 vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => vi.fn(),
-	useRouter: () => ({ history: { push: vi.fn() } }),
+	useRouter: () => ({ navigate: vi.fn() }),
 }));
 vi.mock("../../../../hooks/use-continue-reading", () => ({ useContinueReading: () => null }));
 vi.mock("../../book-actions/use-book-actions", () => ({

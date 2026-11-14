@@ -267,7 +267,7 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		},
 		[pause],
 	);
-	const history = useRouter().history;
+	const router = useRouter();
 	const navigateAfterDismissRef = useRef<string | null>(null);
 	const closeSettings = useCallback(() => setSettingsOpen(false), []);
 	const handleSettingsDismiss = useCallback(() => {
@@ -275,9 +275,9 @@ const RsvpView = forwardRef<RsvpViewHandle, RsvpViewProps>(function RsvpView(
 		const pending = navigateAfterDismissRef.current;
 		if (pending) {
 			navigateAfterDismissRef.current = null;
-			history.push(pending);
+			router.navigate({ href: pending });
 		}
-	}, [history]);
+	}, [router]);
 	const openFullSettings = useCallback(() => {
 		navigateAfterDismissRef.current = "/tabs/settings/rsvp";
 		setSettingsOpen(false);

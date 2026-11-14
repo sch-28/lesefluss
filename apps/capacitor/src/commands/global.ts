@@ -11,7 +11,7 @@ export const importRequest = createRequest();
 
 export function useGlobalCommands(): void {
 	const router = useRouter();
-	const go = (to: string) => router.history.push(to);
+	const go = (to: string) => router.navigate({ href: to });
 	const continueReading = useContinueReading();
 	const commands: Command[] = [
 		{

@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { resetAppStorage } from "./support/app";
+import { importFixtureBook } from "./support/library";
 
 // The catalog is a separate service; nothing here should depend on the real one.
 test.beforeEach(async ({ page }) => {
@@ -43,4 +44,18 @@ test("the /app bundle loads under /app/ with nothing missing", async ({ page }) 
 	expect(scripts.length).toBeGreaterThan(0);
 	for (const src of scripts) expect(src).toMatch(/^\/app\/assets\//);
 	expect(problems).toEqual([]);
+});
+
+// router.history.push skips the basepath: the URL lost /app and a reload hit the website's 404.
+test("in-app navigation keeps the /app prefix", async ({ page }) => {
+	const title = await importFixtureBook(page);
+	await page.locator(`[data-book-title="${title}"]`).first().click({ button: "right" });
+	await page.getByRole("button", { name: "Details" }).click();
+	await expect(page).toHaveURL(/\/app\/tabs\/library\/book\//);
+	await page.reload();
+	await expect(page.getByRole("banner").getByRole("heading", { name: title })).toBeVisible();
+
+	await page.keyboard.press("ControlOrMeta+k");
+	await page.getByRole("option", { name: "Open settings" }).click();
+	await expect(page).toHaveURL(/\/app\/tabs\/settings$/);
 });

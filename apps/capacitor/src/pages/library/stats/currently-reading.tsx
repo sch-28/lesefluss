@@ -22,7 +22,7 @@ const BOOK_ROW_HEIGHT = 98;
  */
 export function CurrentlyReading() {
 	const books = queryHooks.useStatsCurrentlyReading();
-	const history = useRouter().history;
+	const router = useRouter();
 	const { data: library } = queryHooks.useBooks();
 	const bookActions = useBookActions({ surface: "stats" });
 	const rows = books.data ?? [];
@@ -53,7 +53,7 @@ export function CurrentlyReading() {
 							>
 								<motion.button
 									type="button"
-									onClick={() => history.push(book.href)}
+									onClick={() => router.navigate({ href: book.href })}
 									whileTap={{ scale: 0.98 }}
 									className={cn(
 										"flex w-full items-center gap-3 rounded-xl border border-current/10 bg-card p-3 text-left text-card-foreground",
