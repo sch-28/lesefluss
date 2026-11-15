@@ -10,7 +10,7 @@ import {
 	validateDisplayName,
 } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { RadioGroup, RadioGroupItem } from "@lesefluss/ui/radio-group";
 import { IdentityCard, SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { useQueryClient } from "@tanstack/react-query";
@@ -130,13 +130,15 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 					<label htmlFor="social-display-name" className="font-medium text-foreground text-sm">
 						Display name
 					</label>
-					<Input
-						id="social-display-name"
-						value={name}
-						onChange={(e) => setName(e.target.value)}
-						onBlur={commitName}
-						maxLength={DISPLAY_NAME_MAX_LENGTH}
-					/>
+					<InputHitArea>
+						<Input
+							id="social-display-name"
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+							onBlur={commitName}
+							maxLength={DISPLAY_NAME_MAX_LENGTH}
+						/>
+					</InputHitArea>
 					{nameError && <p className="text-destructive text-xs">{nameError}</p>}
 				</div>
 				<div className="flex flex-col gap-1.5 px-4 py-3">

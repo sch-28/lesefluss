@@ -1,6 +1,6 @@
 import { SMART_SHELF_NAME_MAX } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { EntryDialog } from "../entry-dialog";
@@ -47,15 +47,17 @@ export const ShelfNameDialog: React.FC<Props> = ({
 					onOpenChange(false);
 				}}
 			>
-				<Input
-					autoFocus
-					value={name}
-					maxLength={SMART_SHELF_NAME_MAX}
-					placeholder="Shelf name"
-					aria-label="Shelf name"
-					enterKeyHint="done"
-					onChange={(e) => setName(e.target.value)}
-				/>
+				<InputHitArea>
+					<Input
+						autoFocus
+						value={name}
+						maxLength={SMART_SHELF_NAME_MAX}
+						placeholder="Shelf name"
+						aria-label="Shelf name"
+						enterKeyHint="done"
+						onChange={(e) => setName(e.target.value)}
+					/>
+				</InputHitArea>
 				<div className="flex gap-2 md:justify-end">
 					<Button
 						type="button"

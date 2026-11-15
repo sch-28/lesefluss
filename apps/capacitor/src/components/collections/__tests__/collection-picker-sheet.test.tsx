@@ -61,7 +61,10 @@ const rows = () => [
 const numberRows = () =>
 	[...document.querySelectorAll('[data-testid="series-number-row"]')].map((r) =>
 		[...r.children]
-			.map((c) => (c instanceof HTMLInputElement ? `#${c.value}` : c.textContent))
+			.map((c) => {
+				const input = c instanceof HTMLInputElement ? c : c.querySelector("input");
+				return input ? `#${input.value}` : c.textContent;
+			})
 			.join(" "),
 	);
 

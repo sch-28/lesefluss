@@ -5,6 +5,7 @@ import { db } from "~/db";
 import { auth } from "./auth";
 import { checkLimit, getClientKey } from "./rate-limit";
 import { previewInvite } from "./social/invite";
+import { previewForViewer } from "./social/signed-out-invite-preview";
 
 /**
  * Server-rendered, signed-in or not, and never redeems: link previews from
@@ -21,5 +22,6 @@ export const previewInviteForPage = createServerFn({ method: "GET" })
 		});
 		if (!ok) return { state: "invalid" as const };
 		const session = await auth.api.getSession({ headers: request.headers });
-		return previewInvite(db, session?.user.id ?? null, data.token);
+		const viewerId = session?.user.id ?? null;
+		return previewForViewer(viewerId, await previewInvite(db, viewerId, data.token));
 	});

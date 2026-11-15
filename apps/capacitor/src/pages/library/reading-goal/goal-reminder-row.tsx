@@ -1,3 +1,4 @@
+import { InputHitArea } from "@lesefluss/ui/input";
 import { Switch } from "@lesefluss/ui/switch";
 import { useEffect, useState } from "react";
 import { getReminderPermission, requestReminderPermission } from "../../../services/goal-reminders";
@@ -58,17 +59,19 @@ export function GoalReminderRow({
 					Reminder
 				</label>
 				{value !== null && (
-					<input
-						type="time"
-						aria-label="Reminder time"
-						value={value}
-						onChange={(e) => {
-							if (!e.target.value) return;
-							setLastTime(e.target.value);
-							onChange(e.target.value);
-						}}
-						className="min-h-9 rounded-md border border-input bg-background px-2 text-foreground tabular-nums"
-					/>
+					<InputHitArea>
+						<input
+							type="time"
+							aria-label="Reminder time"
+							value={value}
+							onChange={(e) => {
+								if (!e.target.value) return;
+								setLastTime(e.target.value);
+								onChange(e.target.value);
+							}}
+							className="min-h-9 rounded-md border border-input bg-background px-2 text-foreground tabular-nums"
+						/>
+					</InputHitArea>
 				)}
 				<Switch
 					id="goal-reminder"

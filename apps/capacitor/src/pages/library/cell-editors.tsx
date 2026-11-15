@@ -6,6 +6,7 @@ import {
 	parseBookTags,
 	starFill,
 } from "@lesefluss/core";
+import { InputHitArea } from "@lesefluss/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { STAR_POSITIONS, StarGlyph } from "@lesefluss/ui/rating-stars";
 import { cn } from "@lesefluss/ui/utils";
@@ -219,23 +220,25 @@ const TagPicker: React.FC<{
 
 	return (
 		<div className="flex flex-col gap-1">
-			<input
-				// biome-ignore lint/a11y/noAutofocus: the picker opened to type a tag.
-				autoFocus
-				aria-label="Find or add a tag"
-				placeholder="Find or add a tag"
-				value={query}
-				maxLength={FIELD_LIMITS.tagsJson}
-				onChange={(e) => setQuery(e.target.value)}
-				onKeyDown={(e) => {
-					if (e.key !== "Enter") return;
-					e.preventDefault();
-					const tag = enterTag(draft, options);
-					if (tag) toggle(tag);
-					setQuery("");
-				}}
-				className="h-8 rounded-md border border-border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-			/>
+			<InputHitArea>
+				<input
+					// biome-ignore lint/a11y/noAutofocus: the picker opened to type a tag.
+					autoFocus
+					aria-label="Find or add a tag"
+					placeholder="Find or add a tag"
+					value={query}
+					maxLength={FIELD_LIMITS.tagsJson}
+					onChange={(e) => setQuery(e.target.value)}
+					onKeyDown={(e) => {
+						if (e.key !== "Enter") return;
+						e.preventDefault();
+						const tag = enterTag(draft, options);
+						if (tag) toggle(tag);
+						setQuery("");
+					}}
+					className="h-8 w-full rounded-md border border-border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+				/>
+			</InputHitArea>
 			<div className="flex max-h-60 flex-col overflow-y-auto">
 				{options.map((tag) => (
 					<button

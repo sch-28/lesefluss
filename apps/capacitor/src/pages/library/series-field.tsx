@@ -1,5 +1,5 @@
 import { BOOK_SERIES_INDEX_MAX } from "@lesefluss/core";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Clock, Plus } from "lucide-react";
 import type React from "react";
@@ -133,20 +133,22 @@ export const SeriesField: React.FC<Props> = ({
 				{hasIndex && (
 					<div className="flex items-center gap-1">
 						<span className="text-muted-foreground text-sm">#</span>
-						<Input
-							id="book-series-index"
-							aria-label="Number in series"
-							aria-invalid={isInvalid || undefined}
-							inputMode="decimal"
-							className="w-16"
-							value={indexText}
-							onBlur={() => setIndexText(indexTextOf(choice))}
-							onChange={(e) => {
-								setIndexText(e.target.value);
-								const index = parseSeriesIndex(e.target.value);
-								if (index !== undefined) onChange({ ...choice, index });
-							}}
-						/>
+						<InputHitArea>
+							<Input
+								id="book-series-index"
+								aria-label="Number in series"
+								aria-invalid={isInvalid || undefined}
+								inputMode="decimal"
+								className="w-16"
+								value={indexText}
+								onBlur={() => setIndexText(indexTextOf(choice))}
+								onChange={(e) => {
+									setIndexText(e.target.value);
+									const index = parseSeriesIndex(e.target.value);
+									if (index !== undefined) onChange({ ...choice, index });
+								}}
+							/>
+						</InputHitArea>
 					</div>
 				)}
 			</div>

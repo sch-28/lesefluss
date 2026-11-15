@@ -23,6 +23,14 @@ export function signedOutInvitePreview(preview: (token: string) => Promise<Invit
 	};
 }
 
+/** A visitor without a session gets the signed-out fields only, wherever the preview is served. */
+export function previewForViewer(
+	viewerId: string | null,
+	preview: InvitePreview,
+): InvitePreview | SignedOutInvitePreview {
+	return viewerId === null ? toSignedOut(preview) : preview;
+}
+
 function toSignedOut({ state, owner }: InvitePreview): SignedOutInvitePreview {
 	if (!owner) return { state };
 	return { state, owner: { handle: owner.handle, name: owner.name, avatarUrl: owner.avatarUrl } };

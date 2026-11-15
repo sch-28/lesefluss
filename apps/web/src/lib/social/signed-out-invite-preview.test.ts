@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { InvitePreview } from "@lesefluss/core";
 import { describe, expect, test, vi } from "vitest";
-import { signedOutInvitePreview } from "./signed-out-invite-preview";
+import { previewForViewer, signedOutInvitePreview } from "./signed-out-invite-preview";
 
 const OWNER = { userId: "u-owner", handle: "ada", name: "Ada", avatarUrl: null };
 
@@ -59,5 +59,21 @@ describe("signed-out invite preview", () => {
 
 		expect((await handler({ request: post({ token: "t" }, ip) })).status).toBe(429);
 		expect((await handler({ request: post({ token: "t" }) })).status).toBe(200);
+	});
+});
+
+describe("invite page preview for a viewer", () => {
+	test("gives a signed-out visitor only the owner's handle, name and avatar", () => {
+		const body = previewForViewer(null, { state: "signed_out", owner: OWNER });
+		expect(body).toEqual({
+			state: "signed_out",
+			owner: { handle: "ada", name: "Ada", avatarUrl: null },
+		});
+		expect(JSON.stringify(body)).not.toContain("u-owner");
+	});
+
+	test("leaves a signed-in viewer's preview whole", () => {
+		const preview: InvitePreview = { state: "valid", owner: OWNER };
+		expect(previewForViewer("u-viewer", preview)).toBe(preview);
 	});
 });

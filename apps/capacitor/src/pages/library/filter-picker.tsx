@@ -8,7 +8,7 @@ import {
 	DrawerHeader,
 	DrawerTitle,
 } from "@lesefluss/ui/drawer";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
@@ -171,13 +171,15 @@ const FacetSection: React.FC<PanelProps & { facet: Facet }> = ({
 			{isOpen && (
 				<div id={sectionId} className="pb-2">
 					{all.length >= SEARCHABLE_FROM && (
-						<Input
-							value={query}
-							onChange={(e) => setQuery(e.target.value)}
-							placeholder={`Find ${FACET_LABELS[facet].toLowerCase()}…`}
-							aria-label={`Find ${FACET_LABELS[facet].toLowerCase()}`}
-							className="mb-1 h-8"
-						/>
+						<InputHitArea className="pointer-coarse:mt-0.5 pointer-coarse:mb-1">
+							<Input
+								value={query}
+								onChange={(e) => setQuery(e.target.value)}
+								placeholder={`Find ${FACET_LABELS[facet].toLowerCase()}…`}
+								aria-label={`Find ${FACET_LABELS[facet].toLowerCase()}`}
+								className="mb-1 pointer-coarse:mb-0 h-8"
+							/>
+						</InputHitArea>
 					)}
 					<ul className="m-0 flex list-none flex-col p-0">
 						{shown.map((option) => {
@@ -305,36 +307,40 @@ const LengthSection: React.FC<Pick<PanelProps, "filter" | "onChange">> = ({ filt
 							);
 						})}
 					</div>
-					<div className="flex items-center gap-2 text-muted-foreground text-xs">
-						<Input
-							key={`min-${range?.min ?? ""}`}
-							type="number"
-							inputMode="numeric"
-							min={0}
-							defaultValue={range?.min != null ? range.min / 1000 : ""}
-							onBlur={(e) => setBound("min", e.target.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") setBound("min", e.currentTarget.value);
-							}}
-							placeholder="Min"
-							aria-label="Minimum length in thousands of words"
-							className="h-8 w-20"
-						/>
+					<div className="pointer-coarse:mt-1.5 flex items-center gap-2 text-muted-foreground text-xs">
+						<InputHitArea>
+							<Input
+								key={`min-${range?.min ?? ""}`}
+								type="number"
+								inputMode="numeric"
+								min={0}
+								defaultValue={range?.min != null ? range.min / 1000 : ""}
+								onBlur={(e) => setBound("min", e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") setBound("min", e.currentTarget.value);
+								}}
+								placeholder="Min"
+								aria-label="Minimum length in thousands of words"
+								className="h-8 w-20"
+							/>
+						</InputHitArea>
 						<span>–</span>
-						<Input
-							key={`max-${range?.max ?? ""}`}
-							type="number"
-							inputMode="numeric"
-							min={0}
-							defaultValue={range?.max != null ? range.max / 1000 : ""}
-							onBlur={(e) => setBound("max", e.target.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") setBound("max", e.currentTarget.value);
-							}}
-							placeholder="Max"
-							aria-label="Maximum length in thousands of words"
-							className="h-8 w-20"
-						/>
+						<InputHitArea>
+							<Input
+								key={`max-${range?.max ?? ""}`}
+								type="number"
+								inputMode="numeric"
+								min={0}
+								defaultValue={range?.max != null ? range.max / 1000 : ""}
+								onBlur={(e) => setBound("max", e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") setBound("max", e.currentTarget.value);
+								}}
+								placeholder="Max"
+								aria-label="Maximum length in thousands of words"
+								className="h-8 w-20"
+							/>
+						</InputHitArea>
 						<span>thousand words</span>
 					</div>
 				</div>

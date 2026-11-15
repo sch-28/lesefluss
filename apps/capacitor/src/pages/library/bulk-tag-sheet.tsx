@@ -1,6 +1,6 @@
 import { Button } from "@lesefluss/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { Check, Minus, Plus, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -114,15 +114,17 @@ const BulkTagSheet: React.FC<Props> = ({
 
 				{mode !== "remove" && (
 					<div className="flex items-center gap-2 px-4 pb-2">
-						<Input
-							value={draft}
-							placeholder="New tag"
-							maxLength={FIELD_LIMITS.tagsJson}
-							onChange={(e) => setDraft(e.target.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") addDraft();
-							}}
-						/>
+						<InputHitArea className="min-w-0 flex-1">
+							<Input
+								value={draft}
+								placeholder="New tag"
+								maxLength={FIELD_LIMITS.tagsJson}
+								onChange={(e) => setDraft(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") addDraft();
+								}}
+							/>
+						</InputHitArea>
 						<Button variant="outline" size="icon" aria-label="Add tag" onClick={addDraft}>
 							<Plus />
 						</Button>

@@ -1,6 +1,6 @@
 import { SMART_SHELF_NAME_MAX } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { useNavigate } from "@tanstack/react-router";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -74,15 +74,17 @@ export const SaveShelfDialog: React.FC<Props> = ({ open, onOpenChange, filter })
 					save();
 				}}
 			>
-				<Input
-					autoFocus
-					value={name}
-					maxLength={SMART_SHELF_NAME_MAX}
-					placeholder="Shelf name"
-					aria-label="Shelf name"
-					enterKeyHint="done"
-					onChange={(e) => setName(e.target.value)}
-				/>
+				<InputHitArea>
+					<Input
+						autoFocus
+						value={name}
+						maxLength={SMART_SHELF_NAME_MAX}
+						placeholder="Shelf name"
+						aria-label="Shelf name"
+						enterKeyHint="done"
+						onChange={(e) => setName(e.target.value)}
+					/>
+				</InputHitArea>
 				<div className="flex flex-col gap-1.5">
 					<span className="text-muted-foreground text-xs">Books that match</span>
 					<ConditionChips filter={filter} options={options} />

@@ -119,7 +119,7 @@ function BackToSocial() {
 	return (
 		<Button
 			variant="outline"
-			className="w-full"
+			className="relative w-full before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-['']"
 			onClick={() => navigate({ to: "/tabs/social", replace: true })}
 		>
 			Back to Social

@@ -1,6 +1,6 @@
 import { Button } from "@lesefluss/ui/button";
 import { Field, FieldError, FieldLabel } from "@lesefluss/ui/field";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { cn } from "@lesefluss/ui/utils";
 import { ArrowRight, ChevronDown, Globe, type LucideIcon, Smartphone } from "lucide-react";
 import type React from "react";
@@ -220,38 +220,42 @@ export function SignInOptions({
 				>
 					<Field>
 						<FieldLabel htmlFor={`${id}-email`}>Email</FieldLabel>
-						<Input
-							id={`${id}-email`}
-							type="email"
-							inputMode="email"
-							autoComplete="email"
-							autoCapitalize="none"
-							autoCorrect="off"
-							spellCheck={false}
-							placeholder="you@example.com"
-							value={email}
-							onChange={(e) => {
-								setEmail(e.target.value);
-								setError(null);
-							}}
-							disabled={isPending}
-						/>
-					</Field>
-					{!isResetMode && (
-						<Field>
-							<FieldLabel htmlFor={`${id}-password`}>Password</FieldLabel>
+						<InputHitArea>
 							<Input
-								id={`${id}-password`}
-								type="password"
-								autoComplete="current-password"
-								placeholder="••••••••"
-								value={password}
+								id={`${id}-email`}
+								type="email"
+								inputMode="email"
+								autoComplete="email"
+								autoCapitalize="none"
+								autoCorrect="off"
+								spellCheck={false}
+								placeholder="you@example.com"
+								value={email}
 								onChange={(e) => {
-									setPassword(e.target.value);
+									setEmail(e.target.value);
 									setError(null);
 								}}
 								disabled={isPending}
 							/>
+						</InputHitArea>
+					</Field>
+					{!isResetMode && (
+						<Field>
+							<FieldLabel htmlFor={`${id}-password`}>Password</FieldLabel>
+							<InputHitArea>
+								<Input
+									id={`${id}-password`}
+									type="password"
+									autoComplete="current-password"
+									placeholder="••••••••"
+									value={password}
+									onChange={(e) => {
+										setPassword(e.target.value);
+										setError(null);
+									}}
+									disabled={isPending}
+								/>
+							</InputHitArea>
 						</Field>
 					)}
 					{error && <FieldError>{error}</FieldError>}

@@ -39,14 +39,17 @@ describe("ToggleRow", () => {
 });
 
 describe("InputHitArea", () => {
-	it("focuses its input on a tap beside it", async () => {
+	it("focuses its input on a tap on the pad beside it, through the pad's own listener", async () => {
 		view = await render(
 			<InputHitArea>
 				<Input aria-label="Search" />
 			</InputHitArea>,
 		);
-		const area = view.container.querySelector('[data-slot="input-hit-area"]');
-		click(area as HTMLElement);
+		const pad = view.container.querySelector('[data-slot="input-hit-area"] > span[aria-hidden]');
+		// Not bubbling, so React's root-delegated handlers can't be what answers it.
+		act(() => {
+			pad?.dispatchEvent(new MouseEvent("click", { bubbles: false }));
+		});
 		expect(document.activeElement).toBe(view.container.querySelector("input"));
 	});
 

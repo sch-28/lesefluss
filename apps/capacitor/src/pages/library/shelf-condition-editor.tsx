@@ -9,7 +9,7 @@ import {
 	DialogTitle,
 } from "@lesefluss/ui/dialog";
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@lesefluss/ui/drawer";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { SheetDoneButton, SheetHeaderBar } from "@lesefluss/ui/sheet-header";
 import { cn } from "@lesefluss/ui/utils";
@@ -433,14 +433,16 @@ const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: (
 				<label htmlFor={nameId} className="text-muted-foreground text-xs">
 					Shelf name
 				</label>
-				<Input
-					id={nameId}
-					autoFocus={!shelf}
-					value={name}
-					maxLength={SMART_SHELF_NAME_MAX}
-					placeholder="Shelf name"
-					onChange={(e) => setName(e.target.value)}
-				/>
+				<InputHitArea>
+					<Input
+						id={nameId}
+						autoFocus={!shelf}
+						value={name}
+						maxLength={SMART_SHELF_NAME_MAX}
+						placeholder="Shelf name"
+						onChange={(e) => setName(e.target.value)}
+					/>
+				</InputHitArea>
 			</div>
 			<div className="flex items-center gap-2 text-sm">
 				<span className="text-muted-foreground">Match</span>

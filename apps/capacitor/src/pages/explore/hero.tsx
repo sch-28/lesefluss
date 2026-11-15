@@ -127,7 +127,7 @@ const Hero: React.FC<Props> = ({ books, onOpen, intervalMs = 6000 }) => {
 				<div className="mt-auto pt-3">
 					<Button
 						size="sm"
-						className="relative before:absolute before:inset-x-0 before:-inset-y-2 before:content-['']"
+						className="relative before:absolute before:inset-x-0 before:-top-3 before:-bottom-1 before:content-['']"
 						onClick={() => onOpen(book)}
 					>
 						View book

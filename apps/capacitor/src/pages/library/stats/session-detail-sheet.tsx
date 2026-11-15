@@ -1,6 +1,6 @@
 import { isMeasurableSitting, READING_MODES, type ReadingMode, wpmFrom } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { useId, useState } from "react";
 import { EntryDialog } from "../../../components/entry-dialog";
@@ -103,13 +103,15 @@ function SessionDetailForm({
 				<label htmlFor={durationId} className="font-medium">
 					Duration (minutes)
 				</label>
-				<Input
-					id={durationId}
-					inputMode="numeric"
-					value={minutesText}
-					onChange={(e) => setMinutesText(e.target.value)}
-					aria-invalid={minutes === null}
-				/>
+				<InputHitArea>
+					<Input
+						id={durationId}
+						inputMode="numeric"
+						value={minutesText}
+						onChange={(e) => setMinutesText(e.target.value)}
+						aria-invalid={minutes === null}
+					/>
+				</InputHitArea>
 			</div>
 
 			<fieldset className="m-0 flex flex-col gap-1 border-0 p-0 text-sm">

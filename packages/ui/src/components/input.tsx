@@ -16,21 +16,41 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
 	);
 }
 
+function focusInputOnPadTap(e: MouseEvent) {
+	(e.currentTarget as HTMLElement).parentElement
+		?.querySelector<HTMLElement>("input, textarea")
+		?.focus();
+}
+
+function listenForPadTaps(el: HTMLSpanElement | null) {
+	el?.addEventListener("click", focusInputOnPadTap);
+	return () => el?.removeEventListener("click", focusInputOnPadTap);
+}
+
 /**
  * An <input> can't draw a ::before, so on touch this wrapper adds 6px above and
  * below a 32px input (negative margins keep the layout) and focuses the input on
  * a tap there. Taller wrappers that already pad the input pass their own padding.
+ * Where a tap target sits closer than 6px, the caller adds that space on touch.
+ *
+ * The pad is its own leaf element with a native click listener: Chromium's touch
+ * adjustment only lands on such a node, and otherwise snaps a tap on the pad to a
+ * nearby button (React's root-delegated onClick does not count).
  */
 function InputHitArea({ className, children }: { className?: string; children: React.ReactNode }) {
 	return (
 		<div
 			data-slot="input-hit-area"
-			className={cn("pointer-coarse:-my-1.5 pointer-coarse:py-1.5", className)}
-			onClick={(e) => {
-				if (e.target !== e.currentTarget) return;
-				e.currentTarget.querySelector<HTMLElement>("input, textarea")?.focus();
-			}}
+			className={cn(
+				"pointer-coarse:relative pointer-coarse:isolate pointer-coarse:-my-1.5 pointer-coarse:py-1.5",
+				className,
+			)}
 		>
+			<span
+				ref={listenForPadTaps}
+				aria-hidden="true"
+				className="pointer-coarse:absolute pointer-coarse:inset-0 pointer-coarse:-z-10 pointer-coarse:block hidden"
+			/>
 			{children}
 		</div>
 	);

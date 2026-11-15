@@ -1,5 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { cn } from "@lesefluss/ui/utils";
 import { Check, Plus } from "lucide-react";
 import type React from "react";
@@ -75,12 +75,14 @@ export const SeriesPickList: React.FC<Props> = ({
 					setNewName("");
 				}}
 			>
-				<Input
-					aria-label="New series name"
-					placeholder="New series…"
-					value={newName}
-					onChange={(e) => setNewName(e.target.value)}
-				/>
+				<InputHitArea className="min-w-0 flex-1">
+					<Input
+						aria-label="New series name"
+						placeholder="New series…"
+						value={newName}
+						onChange={(e) => setNewName(e.target.value)}
+					/>
+				</InputHitArea>
 				<Button type="submit" variant="secondary" disabled={!newName.trim()}>
 					<Plus />
 					Create

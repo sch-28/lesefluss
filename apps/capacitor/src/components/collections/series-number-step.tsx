@@ -1,5 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { SegmentedControl } from "@lesefluss/ui/segmented-control";
 import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
@@ -94,22 +94,24 @@ export const SeriesNumberStep: React.FC<Props> = ({
 							data-testid="series-number-row"
 							className="flex items-center gap-3 border-border border-b py-2 last:border-b-0"
 						>
-							<Input
-								value={text ?? (index === null ? "" : String(index))}
-								placeholder="–"
-								inputMode="decimal"
-								aria-label={`Number of ${book.title}`}
-								aria-invalid={isBad}
-								onChange={(e) => {
-									const next = new Map(typed);
-									next.set(book.id, e.target.value);
-									setTyped(next);
-								}}
-								className={cn(
-									"h-8 w-16 shrink-0 px-2 font-medium text-sm tabular-nums",
-									isBad && "border-destructive text-destructive",
-								)}
-							/>
+							<InputHitArea className="shrink-0">
+								<Input
+									value={text ?? (index === null ? "" : String(index))}
+									placeholder="–"
+									inputMode="decimal"
+									aria-label={`Number of ${book.title}`}
+									aria-invalid={isBad}
+									onChange={(e) => {
+										const next = new Map(typed);
+										next.set(book.id, e.target.value);
+										setTyped(next);
+									}}
+									className={cn(
+										"h-8 w-16 shrink-0 px-2 font-medium text-sm tabular-nums",
+										isBad && "border-destructive text-destructive",
+									)}
+								/>
+							</InputHitArea>
 							<span className="min-w-0 flex-1 truncate text-sm">{book.title}</span>
 							{members.has(book.id) && (
 								<span className="shrink-0 text-muted-foreground text-xs">Already in</span>

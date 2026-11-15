@@ -8,7 +8,7 @@ import {
 	starFill,
 } from "@lesefluss/core";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { Label } from "@lesefluss/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { STAR_POSITIONS, StarGlyph } from "@lesefluss/ui/rating-stars";
@@ -198,20 +198,24 @@ const BasicsFields: React.FC<{
 }> = ({ form: { values, set }, fileLanguage, series, catalogDescription }) => (
 	<>
 		<Field label="Title" htmlFor="book-title">
-			<Input
-				id="book-title"
-				maxLength={FIELD_LIMITS.title}
-				value={values.title}
-				onChange={(e) => set("title", e.target.value)}
-			/>
+			<InputHitArea>
+				<Input
+					id="book-title"
+					maxLength={FIELD_LIMITS.title}
+					value={values.title}
+					onChange={(e) => set("title", e.target.value)}
+				/>
+			</InputHitArea>
 		</Field>
 		<Field label="Author" htmlFor="book-author">
-			<Input
-				id="book-author"
-				maxLength={FIELD_LIMITS.author}
-				value={values.author ?? ""}
-				onChange={(e) => set("author", e.target.value || null)}
-			/>
+			<InputHitArea>
+				<Input
+					id="book-author"
+					maxLength={FIELD_LIMITS.author}
+					value={values.author ?? ""}
+					onChange={(e) => set("author", e.target.value || null)}
+				/>
+			</InputHitArea>
 		</Field>
 		<Field label="Language" htmlFor="book-language">
 			<LanguagePicker
@@ -341,20 +345,22 @@ const TagsField: React.FC<{ form: EditForm }> = ({
 				))}
 				<div className="relative min-w-32 flex-1">
 					<Plus className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-					<Input
-						id="book-tags"
-						className="pl-8"
-						value={tagDraft}
-						placeholder="Add tag"
-						onChange={(e) => setTagDraft(e.target.value)}
-						onBlur={commitTag}
-						onKeyDown={(e) => {
-							if (e.key === "Enter" || e.key === ",") {
-								e.preventDefault();
-								commitTag();
-							}
-						}}
-					/>
+					<InputHitArea>
+						<Input
+							id="book-tags"
+							className="pl-8"
+							value={tagDraft}
+							placeholder="Add tag"
+							onChange={(e) => setTagDraft(e.target.value)}
+							onBlur={commitTag}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" || e.key === ",") {
+									e.preventDefault();
+									commitTag();
+								}
+							}}
+						/>
+					</InputHitArea>
 				</div>
 			</div>
 		</Field>

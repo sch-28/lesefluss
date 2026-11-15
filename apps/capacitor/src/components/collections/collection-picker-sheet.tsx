@@ -1,7 +1,7 @@
 import { COLLECTION_NAME_MAX, normalizeSeriesKey, seriesCollectionId } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { Check, Minus, Plus } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -289,18 +289,20 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 						</div>
 
 						<div className="flex flex-col gap-2 border-border border-t p-4">
-							<Input
-								value={draft}
-								placeholder={`Name a new ${draftNoun}`}
-								aria-label={`New ${draftNoun} name`}
-								maxLength={COLLECTION_NAME_MAX}
-								onChange={(e) => setDraft(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key !== "Enter") return;
-									if (offersCollection) createCollection();
-									else createSeries();
-								}}
-							/>
+							<InputHitArea>
+								<Input
+									value={draft}
+									placeholder={`Name a new ${draftNoun}`}
+									aria-label={`New ${draftNoun} name`}
+									maxLength={COLLECTION_NAME_MAX}
+									onChange={(e) => setDraft(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key !== "Enter") return;
+										if (offersCollection) createCollection();
+										else createSeries();
+									}}
+								/>
+							</InputHitArea>
 							<div className="flex gap-2">
 								{offersCollection && (
 									<Button

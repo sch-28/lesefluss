@@ -1,4 +1,5 @@
 import { Button } from "@lesefluss/ui/button";
+import { InputHitArea } from "@lesefluss/ui/input";
 import { CalendarClock, Check, Target } from "lucide-react";
 import { ListCard, SocialSection } from "@/components/social/social-ui";
 import { useLocalDayNow } from "@/hooks/use-local-day";
@@ -110,15 +111,17 @@ export function BuddyReadDeadline({
 					<CalendarClock className="size-5 shrink-0 text-muted-foreground" />
 					<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 						{isHost ? (
-							<input
-								type="date"
-								aria-label="Finish by"
-								className="min-w-0 rounded-md border border-border bg-background px-2 py-1.5 text-foreground text-sm"
-								value={toDateInput(targetDate)}
-								min={toDateInput(Date.now())}
-								disabled={isOffline || isSettingTarget}
-								onChange={(e) => onSetTarget(fromDateInput(e.target.value))}
-							/>
+							<InputHitArea>
+								<input
+									type="date"
+									aria-label="Finish by"
+									className="w-full min-w-0 rounded-md border border-border bg-background px-2 py-1.5 text-foreground text-sm"
+									value={toDateInput(targetDate)}
+									min={toDateInput(Date.now())}
+									disabled={isOffline || isSettingTarget}
+									onChange={(e) => onSetTarget(fromDateInput(e.target.value))}
+								/>
+							</InputHitArea>
 						) : (
 							<span className="text-foreground text-sm tabular-nums">
 								by {targetDate === null ? "" : formatDeadline(targetDate)}

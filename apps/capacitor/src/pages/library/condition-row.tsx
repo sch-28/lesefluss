@@ -1,4 +1,4 @@
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { STAR_POSITIONS, StarGlyph } from "@lesefluss/ui/rating-stars";
 import { cn } from "@lesefluss/ui/utils";
 import type React from "react";
@@ -30,14 +30,16 @@ const NumberInput: React.FC<{
 	unit?: string;
 }> = ({ value, onChange, label, unit }) => (
 	<span className="flex min-w-0 flex-1 items-center gap-1.5">
-		<Input
-			type="number"
-			inputMode="numeric"
-			min={0}
-			aria-label={label}
-			value={typeof value === "number" ? value : ""}
-			onChange={(e) => onChange(numberOrNull(e.target.value))}
-		/>
+		<InputHitArea className="min-w-0 flex-1">
+			<Input
+				type="number"
+				inputMode="numeric"
+				min={0}
+				aria-label={label}
+				value={typeof value === "number" ? value : ""}
+				onChange={(e) => onChange(numberOrNull(e.target.value))}
+			/>
+		</InputHitArea>
 		{unit && <span className="shrink-0 text-muted-foreground text-xs">{unit}</span>}
 	</span>
 );
@@ -106,12 +108,14 @@ const ValueInput: React.FC<{
 			return <PickValue spec={spec} value={cond.value} options={options} onChange={onChange} />;
 		case "text":
 			return (
-				<Input
-					aria-label={label}
-					placeholder="Text"
-					value={typeof cond.value === "string" ? cond.value : ""}
-					onChange={(e) => onChange(e.target.value)}
-				/>
+				<InputHitArea className="min-w-0">
+					<Input
+						aria-label={label}
+						placeholder="Text"
+						value={typeof cond.value === "string" ? cond.value : ""}
+						onChange={(e) => onChange(e.target.value)}
+					/>
+				</InputHitArea>
 			);
 		case "number":
 			return <NumberInput value={cond.value} onChange={onChange} label={label} unit={spec.unit} />;
@@ -121,12 +125,14 @@ const ValueInput: React.FC<{
 			return <NumberInput value={cond.value} onChange={onChange} label={label} unit="days" />;
 		case "date":
 			return (
-				<Input
-					type="date"
-					aria-label={label}
-					value={typeof cond.value === "string" ? cond.value : ""}
-					onChange={(e) => onChange(e.target.value)}
-				/>
+				<InputHitArea className="min-w-0">
+					<Input
+						type="date"
+						aria-label={label}
+						value={typeof cond.value === "string" ? cond.value : ""}
+						onChange={(e) => onChange(e.target.value)}
+					/>
+				</InputHitArea>
 			);
 		case "range": {
 			const range = (cond.value ?? {}) as { min?: unknown; max?: unknown };

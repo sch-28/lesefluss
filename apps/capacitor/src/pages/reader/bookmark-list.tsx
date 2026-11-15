@@ -1,5 +1,6 @@
 import { BOOKMARK_LABEL_MAX } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
+import { InputHitArea } from "@lesefluss/ui/input";
 import { cn } from "@lesefluss/ui/utils";
 import { Pencil, Trash2 } from "lucide-react";
 import type React from "react";
@@ -119,22 +120,24 @@ const BookmarkList: React.FC<BookmarkListProps> = ({
 function LabelInput({ initial, onDone }: { initial: string; onDone: (label: string) => void }) {
 	const [value, setValue] = useState(initial);
 	return (
-		<input
-			// biome-ignore lint/a11y/noAutofocus: opened by the rename button, the field is what the user asked for
-			autoFocus
-			aria-label="Bookmark label"
-			value={value}
-			maxLength={BOOKMARK_LABEL_MAX}
-			onChange={(e) => setValue(e.target.value)}
-			onBlur={() => onDone(value)}
-			onKeyDown={(e) => {
-				if (e.key === "Enter") {
-					e.preventDefault();
-					e.currentTarget.blur();
-				}
-			}}
-			className="mx-5 my-2 min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-		/>
+		<InputHitArea className="min-w-0 flex-1 px-5">
+			<input
+				// biome-ignore lint/a11y/noAutofocus: opened by the rename button, the field is what the user asked for
+				autoFocus
+				aria-label="Bookmark label"
+				value={value}
+				maxLength={BOOKMARK_LABEL_MAX}
+				onChange={(e) => setValue(e.target.value)}
+				onBlur={() => onDone(value)}
+				onKeyDown={(e) => {
+					if (e.key === "Enter") {
+						e.preventDefault();
+						e.currentTarget.blur();
+					}
+				}}
+				className="my-2 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+			/>
+		</InputHitArea>
 	);
 }
 

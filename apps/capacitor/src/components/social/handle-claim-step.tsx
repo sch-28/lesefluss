@@ -11,7 +11,7 @@ import {
 	validateHandle,
 } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import { IdentityCard } from "@lesefluss/ui/social-avatar";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -131,18 +131,20 @@ export function HandleClaimStep({
 					<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-sm">
 						@
 					</span>
-					<Input
-						ref={handleInputRef}
-						id="social-handle"
-						value={handle}
-						onChange={(e) => setHandle(e.target.value.replace(/\s/g, ""))}
-						maxLength={HANDLE_MAX_LENGTH}
-						autoCapitalize="none"
-						autoCorrect="off"
-						spellCheck={false}
-						className="pl-7"
-						placeholder="yourname"
-					/>
+					<InputHitArea>
+						<Input
+							ref={handleInputRef}
+							id="social-handle"
+							value={handle}
+							onChange={(e) => setHandle(e.target.value.replace(/\s/g, ""))}
+							maxLength={HANDLE_MAX_LENGTH}
+							autoCapitalize="none"
+							autoCorrect="off"
+							spellCheck={false}
+							className="pl-7"
+							placeholder="yourname"
+						/>
+					</InputHitArea>
 					{availability?.state === "checking" && (
 						<Loader2 className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
 					)}
@@ -166,13 +168,15 @@ export function HandleClaimStep({
 				<label htmlFor="social-name" className="font-medium text-foreground text-sm">
 					Display name
 				</label>
-				<Input
-					id="social-name"
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					onBlur={() => setIsNameTouched(true)}
-					maxLength={DISPLAY_NAME_MAX_LENGTH}
-				/>
+				<InputHitArea>
+					<Input
+						id="social-name"
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+						onBlur={() => setIsNameTouched(true)}
+						maxLength={DISPLAY_NAME_MAX_LENGTH}
+					/>
+				</InputHitArea>
 				{nameError && <p className="text-destructive text-xs">{nameError}</p>}
 			</div>
 

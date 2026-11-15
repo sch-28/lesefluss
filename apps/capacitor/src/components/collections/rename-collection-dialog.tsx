@@ -1,6 +1,6 @@
 import { COLLECTION_NAME_MAX } from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
-import { Input } from "@lesefluss/ui/input";
+import { Input, InputHitArea } from "@lesefluss/ui/input";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { queryHooks } from "../../services/db/hooks";
@@ -39,14 +39,16 @@ export const RenameCollectionDialog: React.FC<Props> = ({ open, onOpenChange, co
 					save();
 				}}
 			>
-				<Input
-					autoFocus
-					value={name}
-					maxLength={COLLECTION_NAME_MAX}
-					aria-label={`${noun[0]?.toUpperCase()}${noun.slice(1)} name`}
-					enterKeyHint="done"
-					onChange={(e) => setName(e.target.value)}
-				/>
+				<InputHitArea>
+					<Input
+						autoFocus
+						value={name}
+						maxLength={COLLECTION_NAME_MAX}
+						aria-label={`${noun[0]?.toUpperCase()}${noun.slice(1)} name`}
+						enterKeyHint="done"
+						onChange={(e) => setName(e.target.value)}
+					/>
+				</InputHitArea>
 				<div className="flex gap-2 pt-1 md:justify-end">
 					<Button
 						type="button"

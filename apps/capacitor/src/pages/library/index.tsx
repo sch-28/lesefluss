@@ -620,7 +620,8 @@ const Library: React.FC = () => {
 				icon={LibraryIcon}
 				title="Library"
 				right={
-					<>
+					// 12px apart, so each icon's 44px hit area stays whole between its neighbours.
+					<div className="flex items-center gap-3">
 						<HeaderGoalRing />
 						{controls.search && (
 							<Button
@@ -707,7 +708,7 @@ const Library: React.FC = () => {
 								{isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
 							</Button>
 						)}
-					</>
+					</div>
 				}
 			/>
 

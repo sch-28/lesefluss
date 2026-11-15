@@ -8,6 +8,7 @@
 
 import { Button } from "@lesefluss/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/drawer";
+import { InputHitArea } from "@lesefluss/ui/input";
 import { Switch } from "@lesefluss/ui/switch";
 import { cn } from "@lesefluss/ui/utils";
 import { Trash2 } from "lucide-react";
@@ -144,15 +145,17 @@ const GlossaryEntryModal: React.FC<GlossaryEntryModalProps> = ({
 					<div className="flex items-center gap-3">
 						<GlossaryAvatar label={effectiveLabel} color={effectiveColor} size={48} />
 						{isEditingLabel ? (
-							<input
-								ref={labelInputRef}
-								type="text"
-								value={label}
-								onChange={(e) => setLabel(e.target.value)}
-								onBlur={commitLabel}
-								placeholder="Name"
-								className="flex-1 border-border border-b bg-transparent py-1 text-foreground text-lg outline-none focus:border-foreground"
-							/>
+							<InputHitArea className="min-w-0 flex-1">
+								<input
+									ref={labelInputRef}
+									type="text"
+									value={label}
+									onChange={(e) => setLabel(e.target.value)}
+									onBlur={commitLabel}
+									placeholder="Name"
+									className="w-full border-border border-b bg-transparent py-1 text-foreground text-lg outline-none focus:border-foreground"
+								/>
+							</InputHitArea>
 						) : (
 							<button
 								type="button"
