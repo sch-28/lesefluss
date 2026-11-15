@@ -8,6 +8,7 @@ import { click, type Rendered, render } from "../../../test/render";
 
 const add = vi.fn();
 const remove = vi.fn();
+const removeAsync = vi.fn();
 const createWithBooks = vi.fn();
 const addNumbered = vi.fn();
 let collections: Partial<CollectionWithCount>[] = [];
@@ -23,12 +24,13 @@ vi.mock("../../../services/db/hooks", () => ({
 			isPending: false,
 		}),
 		useAddBooksToCollection: () => ({ mutate: add }),
-		useRemoveBooksFromCollection: () => ({ mutate: remove }),
+		useRemoveBooksFromCollection: () => ({ mutate: remove, mutateAsync: removeAsync }),
 		useCreateCollectionWithBooks: () => ({ mutate: createWithBooks }),
 		useAddNumberedBooks: () => ({ mutate: addNumbered, isPending: false }),
 	},
 }));
-vi.mock("../../toast", () => ({ toast: { success: () => {}, error: () => {} } }));
+const toastSuccess = vi.fn();
+vi.mock("../../toast", () => ({ toast: { success: toastSuccess, error: () => {} } }));
 vi.mock(
 	"@lesefluss/ui/drawer",
 	async () => (await import("../../../test/overlay-mocks")).drawerModule,
@@ -69,7 +71,8 @@ async function typeName(text: string) {
 
 let view: Rendered | undefined;
 beforeEach(() => {
-	for (const fn of [add, remove, createWithBooks, addNumbered]) fn.mockClear();
+	for (const fn of [add, remove, createWithBooks, addNumbered, toastSuccess]) fn.mockClear();
+	removeAsync.mockReset().mockResolvedValue(undefined);
 	collections = [];
 	memberships = new Map();
 	members = [];
@@ -355,9 +358,43 @@ describe("CollectionPickerSheet", () => {
 				/>,
 			);
 			await click(pickRows()[0] as HTMLElement);
-			expect(remove).toHaveBeenCalledWith({ collectionId: "series-dune", bookIds: ["a"] });
-			expect(remove).toHaveBeenCalledWith({ collectionId: "series-exp", bookIds: ["b"] });
+			expect(removeAsync).toHaveBeenCalledWith({ collectionId: "series-dune", bookIds: ["a"] });
+			expect(removeAsync).toHaveBeenCalledWith({ collectionId: "series-exp", bookIds: ["b"] });
 			expect(onClose).toHaveBeenCalled();
+			await vi.waitFor(() => expect(toastSuccess).toHaveBeenCalledTimes(1));
+			expect(toastSuccess).toHaveBeenCalledWith("Removed from 2 series");
+		});
+
+		it("confirms No series with a toast naming the series the book left", async () => {
+			collections = [dune(), expanse()];
+			memberships = new Map([["a", ["series-dune"]]]);
+			view = await render(
+				<CollectionPickerSheet books={[book("a")]} kind="series" open onClose={vi.fn()} />,
+			);
+			await click(pickRows()[0] as HTMLElement);
+			await vi.waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Removed from Dune"));
+			expect(toastSuccess).toHaveBeenCalledTimes(1);
+		});
+
+		it("shows no toast when leaving a series fails", async () => {
+			collections = [dune(), expanse()];
+			memberships = new Map([
+				["a", ["series-dune"]],
+				["b", ["series-exp"]],
+			]);
+			removeAsync.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("db"));
+			view = await render(
+				<CollectionPickerSheet
+					books={[book("a"), book("b")]}
+					kind="series"
+					open
+					onClose={vi.fn()}
+				/>,
+			);
+			await click(pickRows()[0] as HTMLElement);
+			await vi.waitFor(() => expect(removeAsync).toHaveBeenCalledTimes(2));
+			await act(async () => {});
+			expect(toastSuccess).not.toHaveBeenCalled();
 		});
 
 		it("checks a series only when every book is in it", () => {

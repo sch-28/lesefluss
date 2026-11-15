@@ -51,15 +51,16 @@ export const WebNovelCard: React.FC<{
 					</div>
 					{/* Every line holds its height when empty, so cards in a row and their
 					    skeleton (`webNovelCardExtraLines`) keep one height. */}
-					<div className={canQuickAdd ? QUICK_ADD_CLEARANCE : undefined}>
-						<div className="mt-0.5 min-h-[1lh] overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
-							{result.author}
+					<div className="mt-0.5 min-h-[1lh] overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-muted-foreground">
+						{result.author}
+					</div>
+					{showProvider && (
+						<div className="mt-0.5 min-h-[1lh] text-[0.7rem] text-muted-foreground">
+							{providerLabel(result.provider)}
 						</div>
-						{showProvider && (
-							<div className="mt-0.5 min-h-[1lh] text-[0.7rem] text-muted-foreground">
-								{providerLabel(result.provider)}
-							</div>
-						)}
+					)}
+					{/* The quick-add button spans only the two bottom lines, so the author keeps the full width. */}
+					<div className={canQuickAdd ? QUICK_ADD_CLEARANCE : undefined}>
 						<div className="mt-0.5 min-h-[1lh] text-[0.7rem] text-muted-foreground">{chapters}</div>
 						<CardMeta labels={lengthLabels} isInLibrary={quickAdd.isInLibrary} />
 					</div>

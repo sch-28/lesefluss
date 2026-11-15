@@ -106,5 +106,6 @@ describe("streakLine", () => {
 			"No streak yet · best 5 · 1 freeze",
 		);
 		expect(streakLine(undefined)).toBe("");
+		expect(streakLine({ current: 0, longest: 0, freezesBanked: 0 })).toBe("No streak yet");
 	});
 });

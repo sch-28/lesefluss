@@ -77,10 +77,10 @@ export function TodayGoalCard() {
 									)}
 								</GoalRing>
 								<span className={cn("flex min-w-0 flex-col", isPending && "invisible")}>
-									<span className="truncate font-semibold text-[1.0625rem] tabular-nums">
+									<span className="break-words font-semibold text-[1.0625rem] tabular-nums">
 										{primary}
 									</span>
-									<span className="truncate text-[0.8125rem] text-muted-foreground">
+									<span className="break-words text-[0.8125rem] text-muted-foreground">
 										{streakLine(streak.data)}
 									</span>
 								</span>
@@ -111,8 +111,8 @@ export function streakLine(
 	if (!streak) return "";
 	const parts = [
 		streak.current > 0 ? `${streak.current}-day streak` : "No streak yet",
-		`best ${streak.longest}`,
-	];
+		streak.longest > 0 && `best ${streak.longest}`,
+	].filter((p): p is string => Boolean(p));
 	if (streak.freezesBanked > 0) {
 		parts.push(`${streak.freezesBanked} ${streak.freezesBanked === 1 ? "freeze" : "freezes"}`);
 	}

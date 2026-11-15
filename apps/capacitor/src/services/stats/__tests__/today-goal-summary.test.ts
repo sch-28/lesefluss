@@ -46,6 +46,12 @@ describe("summarizeTodayGoals", () => {
 		if (summary.kind === "goals") expect(formatGoalProgress(summary)).toBe("19 of 30 min");
 	});
 
+	it("rounds the minutes needed the way a goal row names its daily minutes", () => {
+		const summary = summarizeTodayGoals([plan({ targetMinutes: 25.4, readMinutes: 1 })]);
+		if (summary.kind === "goals") expect(formatGoalProgress(summary)).toBe("1 of 25 min");
+		expect(summary.kind).toBe("goals");
+	});
+
 	it("caps each goal at its own need, and a met goal counts in full", () => {
 		const summary = summarizeTodayGoals([
 			plan({ dailyMinutes: 20, readMinutes: 45, isTodayMet: true }),
@@ -60,6 +66,6 @@ describe("summarizeTodayGoals", () => {
 			plan({ targetMinutes: 8.2, readMinutes: 3, isTodayMet: true }),
 		]);
 		expect(summary).toMatchObject({ fraction: 1, isMet: true });
-		if (summary.kind === "goals") expect(formatGoalProgress(summary)).toBe("29 of 29 min");
+		if (summary.kind === "goals") expect(formatGoalProgress(summary)).toBe("28 of 28 min");
 	});
 });

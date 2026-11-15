@@ -36,7 +36,7 @@ describe("HeaderGoalRing", () => {
 		plans.data = [];
 		view = await render(<HeaderGoalRing />);
 		const link = view.container.querySelector('[data-testid="header-goal-ring"]');
-		expect(link?.getAttribute("aria-label")).toBe("Today's goal, 5 of 11 min");
+		expect(link?.getAttribute("aria-label")).toBe("Today's goal, 5 of 10 min");
 		expect(link?.className).toContain("size-11");
 		// The desktop sidebar's goal card carries today's goal from md up: one value per fact.
 		expect(link?.className).toContain("md:hidden");

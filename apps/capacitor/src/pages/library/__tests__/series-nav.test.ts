@@ -176,8 +176,9 @@ describe("labels", () => {
 		expect(progressLabel({ started: 2, finished: 0 })).toBe("2 started");
 		expect(progressLabel({ started: 3, finished: 3 })).toBe("3 finished");
 		expect(seriesSummary([{ kind: "book" }, { kind: "book" }, { kind: "serial" }])).toBe(
-			"3 · 2 book series, 1 serial",
+			"2 book series, 1 serial",
 		);
+		expect(seriesSummary([{ kind: "book" }])).toBe("1 book series");
 		expect(seriesSummary([])).toBe("No series yet");
 	});
 });

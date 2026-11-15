@@ -255,7 +255,6 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 	// Pages, not time: time measures the reader, so two books at nine and four
 	// hours say nothing comparable about the books.
 	const pages = bookPageCount(book);
-	const chapterCount = chapters.length;
 	const notBackedUpIds = new Set(cloudStorage?.notBackedUp.map((b) => b.id));
 	const isNotBackedUp = notBackedUpIds.has(book.id);
 	const shareBlocker = shareBlockerFor(book, serverContentIds, notBackedUpIds);
@@ -403,7 +402,7 @@ const LibraryBookDetail: React.FC<Props> = ({ id: propId }) => {
 				{canShare && <BookShares bookId={book.id} enabled={!book.seriesId} />}
 				{canShare && buddyRead && <BookBuddyRead read={buddyRead} book={book} />}
 				<BookJourney book={book} />
-				<BookFileCard book={book} chapterCount={chapterCount} />
+				<BookFileCard book={book} />
 				<BookChapters
 					chapters={chapters}
 					wordCount={book.wordCount}

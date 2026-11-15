@@ -248,7 +248,6 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 	const { isSyncing, isLoggedIn, syncNow } = useSyncContext();
 	const qc = useQueryClient();
 	const router = useRouter();
-	const history = router.history;
 	const bookActions = useBookActions({ surface: "reader" });
 
 	// ── Data queries ──────────────────────────────────────────────────────
@@ -2753,7 +2752,16 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 					ref={headerRef}
 				>
 					<div className="flex h-12 items-center gap-0.5 px-1">
-						<IconButton aria-label="Back" title="Back" onClick={() => history.back()}>
+						<IconButton
+							aria-label="Back"
+							title="Back"
+							onClick={() =>
+								// A cold deep link has no history to go back to; Android back lands on the Library too.
+								router.history.canGoBack()
+									? router.history.back()
+									: void router.navigate({ to: "/tabs/library", replace: true })
+							}
+						>
 							<ChevronLeft />
 						</IconButton>
 						{book.seriesId != null && (

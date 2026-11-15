@@ -35,6 +35,8 @@ describe("resolveBack", () => {
 		["/tabs/explore", "?q=dune", false, { kind: "replace", to: "/tabs/explore" }],
 		["/tabs/explore", "?genre=fantasy", false, { kind: "replace", to: "/tabs/explore" }],
 		["/tabs/explore", "?tags=sea,war", true, { kind: "back" }],
+		["/tabs/explore", "?source=standard_ebooks", false, { kind: "replace", to: "/tabs/explore" }],
+		["/tabs/explore", "?scope=catalog", true, { kind: "back" }],
 		["/tabs/explore", "?view=list", true, { kind: "replace", to: "/tabs/library" }],
 		["/tabs/explore/tags", "", false, { kind: "replace", to: "/tabs/explore" }],
 		["/tabs/social/buddy-read/r1", "", false, { kind: "replace", to: "/tabs/social/buddy-reads" }],

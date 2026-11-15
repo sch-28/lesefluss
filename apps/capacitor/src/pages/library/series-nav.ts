@@ -165,5 +165,5 @@ export function seriesSummary(entries: readonly Pick<SeriesEntry, "kind">[]): st
 		books > 0 && `${books} book series`,
 		serials > 0 && `${serials} ${serials === 1 ? "serial" : "serials"}`,
 	].filter(Boolean);
-	return parts.length > 0 ? `${entries.length} · ${parts.join(", ")}` : "No series yet";
+	return parts.length > 0 ? parts.join(", ") : "No series yet";
 }

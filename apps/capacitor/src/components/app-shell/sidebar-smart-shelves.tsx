@@ -82,9 +82,11 @@ export function SidebarSmartShelves({ isCollapsed, onExpand }: Props) {
 									className="size-1.5 shrink-0 rounded-full bg-primary"
 								/>
 							)}
-							<span className="shrink-0 text-sidebar-foreground/50 text-xs tabular-nums group-hover:hidden">
-								{counts.get(s.id) ?? 0}
-							</span>
+							{(counts.get(s.id) ?? 0) > 0 && (
+								<span className="shrink-0 text-sidebar-foreground/50 text-xs tabular-nums group-hover:hidden">
+									{counts.get(s.id)}
+								</span>
+							)}
 						</Link>
 						<button
 							type="button"

@@ -147,10 +147,21 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 			const c = collections.find((s) => s.id === next.collectionId);
 			if (c) setStep({ target: { collectionId: c.id }, name: c.name, isSeries: true });
 		} else if (next.kind === "none") {
-			for (const c of collections) {
-				const inIt = ids.filter((id) => memberships?.get(id)?.includes(c.id));
-				if (inIt.length > 0) remove.mutate({ collectionId: c.id, bookIds: inIt });
-			}
+			const left = collections
+				.map((c) => ({ c, inIt: ids.filter((id) => memberships?.get(id)?.includes(c.id)) }))
+				.filter(({ inIt }) => inIt.length > 0);
+			const message =
+				left.length === 1
+					? `Removed from ${left[0]?.c.name}`
+					: `Removed from ${left.length} series`;
+			// mutateAsync, not per-call onSuccess: useMutation fires only the last call's callbacks,
+			// and none after the sheet unmounts. The hook's onError already reports a failure.
+			Promise.all(
+				left.map(({ c, inIt }) => remove.mutateAsync({ collectionId: c.id, bookIds: inIt })),
+			).then(
+				() => toast.success(message),
+				() => {},
+			);
 			onClose();
 		}
 	};

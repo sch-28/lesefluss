@@ -54,7 +54,7 @@ test("rating and status edit in place and feed the built-in shelves", async ({ p
 		.getByRole("group", { name: "Rate Riverkeep" })
 		.getByRole("button", { name: "Rate 4 stars" })
 		.click();
-	await expect(shelves.getByRole("link", { name: "Unrated Pinned 0" })).toBeVisible();
+	await expect(shelves.getByRole("link", { name: "Unrated Pinned", exact: true })).toBeVisible();
 
 	// The table keeps the view across a reload: the edit is in the database, not the cell.
 	await page.reload();

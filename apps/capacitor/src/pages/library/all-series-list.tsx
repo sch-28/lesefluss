@@ -180,11 +180,10 @@ export function AllSeriesList({
 					)}
 					data-testid="all-series-count"
 				>
-					{isPending
+					{/* The page summary already gives the total; this counts only a filtered list. */}
+					{isPending || shown.length === entries.length
 						? null
-						: shown.length === entries.length
-							? entries.length
-							: `${shown.length} of ${entries.length}`}
+						: `${shown.length} of ${entries.length}`}
 				</span>
 			</div>
 			{isPending ? (
@@ -211,7 +210,7 @@ export function AllSeriesList({
 							>
 								<CoverStack entry={entry} covers={covers} />
 								<span className="min-w-0 flex-1">
-									<span className="block truncate font-medium">
+									<span className="block break-words font-medium">
 										{entry.kind === "serial" && (
 											<span aria-hidden className="mr-1 text-muted-foreground">
 												≋

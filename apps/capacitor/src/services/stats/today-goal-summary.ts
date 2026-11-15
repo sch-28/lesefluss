@@ -37,7 +37,8 @@ type GoalProgress = { minutesRead: number; minutesNeeded: number; isMet: boolean
 
 /** Read rounds down and the need up, so a day only looks done once it is. */
 export function goalProgressMinutes(progress: GoalProgress): { read: number; needed: number } {
-	const needed = Math.ceil(progress.minutesNeeded);
+	// Rounded like the goal rows' "25 min a day", so one goal never reads as two targets.
+	const needed = Math.max(1, Math.round(progress.minutesNeeded));
 	const read = progress.isMet ? needed : Math.min(needed, Math.floor(progress.minutesRead));
 	return { read, needed };
 }

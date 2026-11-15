@@ -1,3 +1,5 @@
+import { exploreMode, parseExploreSearch } from "../../pages/explore/explore-search";
+
 export type BackAction = { kind: "back" } | { kind: "replace"; to: string } | { kind: "exit" };
 
 const LIBRARY = "/tabs/library";
@@ -41,10 +43,10 @@ function isLibrarySubView(search: string): boolean {
 	return params.has("collection") || params.has("shelf");
 }
 
-/** Search, a genre, an author, tags or a length filter: results views on top of the Explore landing. */
+/** Any results view on top of the Explore landing: search, a filter, a source or the catalog scope. */
 function isExploreSubView(search: string): boolean {
-	const params = new URLSearchParams(search);
-	return ["q", "genre", "author", "tags", "length", "fits", "scope"].some((key) => params.has(key));
+	const params = Object.fromEntries(new URLSearchParams(search));
+	return exploreMode(parseExploreSearch(params)) !== "landing";
 }
 
 /**

@@ -25,7 +25,7 @@ const labels = () =>
 describe("BookFileCard", () => {
 	it("leaves the dates to the journey once the book has one", async () => {
 		stats = { firstReadAt: added + DAY, lastReadAt: added + 19 * DAY };
-		view = await render(<BookFileCard book={book} chapterCount={0} />);
+		view = await render(<BookFileCard book={book} />);
 		expect(labels()).not.toContain("Added");
 		expect(labels()).not.toContain("Finished");
 		expect(view.text()).toContain("312,000 words");
@@ -33,7 +33,7 @@ describe("BookFileCard", () => {
 
 	it("shows the dates itself while the book has no journey", async () => {
 		stats = { firstReadAt: null, lastReadAt: null };
-		view = await render(<BookFileCard book={{ ...book, finishedAt: null }} chapterCount={0} />);
+		view = await render(<BookFileCard book={{ ...book, finishedAt: null }} />);
 		expect(labels()).toContain("Added");
 		expect(labels()).not.toContain("Finished");
 	});

@@ -93,7 +93,11 @@ const CollectionBooksLoading: React.FC<{ mode: CollectionPageMode }> = ({ mode }
 			saveLabel={
 				mode.kind === "create" ? "Create collection" : mode.kind === "add" ? "Add books" : "Save"
 			}
-			onCancel={() => router.history.back()}
+			onCancel={() =>
+				router.history.canGoBack()
+					? router.history.back()
+					: void router.navigate({ to: "/tabs/library", search: {}, replace: true })
+			}
 			onSave={noop}
 			canSave={false}
 			isSaving={false}

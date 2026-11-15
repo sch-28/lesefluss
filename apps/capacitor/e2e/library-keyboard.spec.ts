@@ -88,7 +88,7 @@ test("a digit rates the focused book and S sets its status", async ({ page }) =>
 
 	await page.locator("body").click({ position: { x: 700, y: 880 } });
 	await page.keyboard.press("4");
-	await expect(shelves.getByRole("link", { name: "Unrated Pinned 0" })).toBeVisible();
+	await expect(shelves.getByRole("link", { name: "Unrated Pinned", exact: true })).toBeVisible();
 
 	await page.keyboard.press("/");
 	await page.keyboard.type("rating:>=4");

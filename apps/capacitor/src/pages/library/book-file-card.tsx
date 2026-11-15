@@ -11,14 +11,13 @@ import { formatBytes } from "./transfer-modal/utils";
  * nothing, which is most of a real library. This fills that gap with what the
  * import already recorded.
  */
-export function BookFileCard({ book, chapterCount }: { book: Book; chapterCount: number }) {
-	// The journey above shows the dates once the book has one.
+export function BookFileCard({ book }: { book: Book }) {
+	// The journey above shows the dates once the book has one, the chapter list below the chapter count.
 	const { journey } = useBookJourney(book);
 	const rows: Array<[string, string]> = [
 		["Format", book.fileFormat.toUpperCase()],
 		["Length", `${book.wordCount.toLocaleString()} words`],
 	];
-	if (chapterCount > 0) rows.push(["Chapters", String(chapterCount)]);
 	if (book.size > 0) rows.push(["Size", formatBytes(book.size)]);
 	if (!journey) {
 		rows.push(["Added", formatShortDate(book.addedAt)]);
