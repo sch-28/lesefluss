@@ -13,7 +13,7 @@ import { Label } from "@lesefluss/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@lesefluss/ui/popover";
 import { STAR_POSITIONS, StarGlyph } from "@lesefluss/ui/rating-stars";
 import { Switch } from "@lesefluss/ui/switch";
-import { Check, Plus, X } from "lucide-react";
+import { BookOpen, Check, Plus, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import CoverImage from "../../components/cover-image";
@@ -99,11 +99,7 @@ export const BookEditFields: React.FC<Props> = ({
 							src={cover}
 							alt={values.title}
 							className="flex size-full items-center justify-center"
-							fallback={
-								<span className="font-semibold text-muted-foreground text-xs tracking-wide">
-									{format.toUpperCase()}
-								</span>
-							}
+							fallback={<BookOpen className="size-6 text-muted-foreground" />}
 						/>
 					</div>
 					<div className="flex min-w-0 flex-col justify-center gap-2">
@@ -189,13 +185,9 @@ export const BookEditFields: React.FC<Props> = ({
 };
 
 const Facts: React.FC<{ format: string; facts: string[] }> = ({ format, facts }) => (
-	<div className="flex flex-wrap gap-1.5">
-		{[format.toUpperCase(), ...facts].map((fact) => (
-			<span key={fact} className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground text-xs">
-				{fact}
-			</span>
-		))}
-	</div>
+	<p className="m-0 text-muted-foreground text-xs">
+		{[format.toUpperCase(), ...facts].join(" · ")}
+	</p>
 );
 
 const BasicsFields: React.FC<{

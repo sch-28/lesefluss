@@ -401,6 +401,8 @@ describe("SessionSummarySheet", () => {
 		await readAndClose(10 * MIN);
 		const tile = document.querySelector("[data-testid=summary-speed]");
 		if (!(tile instanceof HTMLButtonElement)) throw new Error("speed tile is no button");
+		expect(tile.querySelector(".lucide-chevron-right")).not.toBeNull();
+		expect(document.querySelector("[data-testid=summary-time] .lucide-chevron-right")).toBeNull();
 		await click(tile);
 		expect(navigate).toHaveBeenCalledWith({ to: "/tabs/stats", search: { tab: "speed" } });
 		expect(sheet()).toBeNull();

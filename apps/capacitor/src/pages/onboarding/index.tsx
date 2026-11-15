@@ -85,9 +85,12 @@ const Onboarding: React.FC = () => {
 					) : (
 						<div />
 					)}
-					<Button variant="ghost" size="sm" onClick={finish} aria-label="Skip onboarding">
-						Skip
-					</Button>
+					{/* The last step's own "Not now" already finishes. */}
+					{step < totalSteps - 1 && (
+						<Button variant="ghost" size="sm" onClick={finish}>
+							Skip setup
+						</Button>
+					)}
 				</div>
 
 				<main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6">

@@ -10,10 +10,23 @@ function viewportLine(): string | null {
 	return `viewport ${window.innerWidth}x${window.innerHeight} · screen ${window.screen.width}x${window.screen.height} · dpr ${window.devicePixelRatio}`;
 }
 
+// Display only: telemetry keeps sending the raw values. App.getInfo has no version on web.
+function engineLabel(device: DeviceDiagnostics): string | null {
+	if (!device.webview) return null;
+	return `${device.platform === "web" ? "Browser" : "WebView"} ${device.webview}`;
+}
+
+function versionLabel(device: DeviceDiagnostics): string | null {
+	return device.version === "unknown" ? null : `v${device.version}`;
+}
+
 function buildReport(device: DeviceDiagnostics | null, safeArea: SafeAreaProbe | null): string {
+	const version = device && versionLabel(device);
 	const lines = [
-		`Lesefluss ${device?.version ?? "unknown"}`,
-		`platform ${device?.platform ?? "unknown"} · ${device?.os ?? "unknown OS"} · WebView ${device?.webview ?? "unknown"}`,
+		version ? `Lesefluss ${version}` : "Lesefluss",
+		[device?.platform ?? "unknown", device?.os, device && engineLabel(device)]
+			.filter(Boolean)
+			.join(" · "),
 	];
 	if (safeArea) {
 		lines.push(
@@ -46,7 +59,7 @@ export function DiagnosticsRow() {
 
 	const report = buildReport(device, safeArea);
 	const subtitle = device
-		? `v${device.version}${device.webview ? ` · WebView ${device.webview}` : ""}`
+		? [versionLabel(device), engineLabel(device)].filter(Boolean).join(" · ") || device.platform
 		: "Loading...";
 
 	const copy = async () => {

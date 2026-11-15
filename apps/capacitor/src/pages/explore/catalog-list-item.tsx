@@ -4,6 +4,7 @@ import CoverImage from "../../components/cover-image";
 import { type CatalogSearchResult, getCoverUrl } from "../../services/catalog/client";
 import { queryHooks } from "../../services/db/hooks";
 import { languageLabel } from "../../utils/language-label";
+import { readableSubjects } from "../_shared/readable-subjects";
 import { InLibraryBadge, LengthText, QuickAddButton } from "./card-badges";
 import { describeLength } from "./length";
 import { LIST_ROW_TEXT_HEIGHT } from "./skeletons";
@@ -24,7 +25,7 @@ const CatalogListItem: React.FC<Props> = ({ result, onOpen }) => {
 	const { wpm } = useReadingSpeed();
 	const isInLibrary = libraryIds?.has(result.id) ?? false;
 	const canQuickAdd = libraryIds !== undefined && !isInLibrary && result.hasEpub !== false;
-	const subjects = (result.subjects ?? []).slice(0, MAX_SUBJECTS);
+	const subjects = readableSubjects(result.subjects ?? []).slice(0, MAX_SUBJECTS);
 	const lengthLabels = describeLength(result, wpm);
 
 	return (
@@ -55,14 +56,11 @@ const CatalogListItem: React.FC<Props> = ({ result, onOpen }) => {
 					{(subjects.length > 0 || isInLibrary) && (
 						<div className="mt-1 flex items-center gap-1 overflow-hidden">
 							{isInLibrary && <InLibraryBadge />}
-							{subjects.map((s) => (
-								<span
-									key={s}
-									className="max-w-full truncate rounded-full border border-border bg-muted px-2 py-0.5 text-[0.7rem] text-muted-foreground"
-								>
-									{s}
+							{subjects.length > 0 && (
+								<span className="min-w-0 truncate text-[0.75rem] text-muted-foreground">
+									{subjects.join(" · ")}
 								</span>
-							))}
+							)}
 						</div>
 					)}
 				</div>

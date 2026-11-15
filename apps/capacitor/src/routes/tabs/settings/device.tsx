@@ -348,18 +348,20 @@ function DeviceSettings() {
 											Scan
 										</Button>
 									)}
-									<Button
-										variant="outline"
-										className="flex-1"
-										onClick={async () => {
-											await stopScan();
-											await new Promise((r) => setTimeout(r, 300));
-											await startScan();
-										}}
-									>
-										<RefreshCw />
-										Restart scan
-									</Button>
+									{isScanning && (
+										<Button
+											variant="outline"
+											className="flex-1"
+											onClick={async () => {
+												await stopScan();
+												await new Promise((r) => setTimeout(r, 300));
+												await startScan();
+											}}
+										>
+											<RefreshCw />
+											Restart scan
+										</Button>
+									)}
 								</div>
 							)}
 							{bleError && <div className="px-4 py-2 text-destructive text-sm">{bleError}</div>}

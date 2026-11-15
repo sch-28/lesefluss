@@ -4,6 +4,20 @@ import type { Book } from "../../services/db/schema";
 import { buildJourney } from "../../services/stats/journey";
 import { formatDuration, formatShortDate } from "../../utils/date-utils";
 
+/** The journey once the book has one: null while it was only added, or while stats load. */
+export function useBookJourney(book: Book) {
+	// Same query key as the stats card above it, so this shares one fetch.
+	const { data } = queryHooks.useStatsBook(book.id);
+	if (!data) return { journey: null, data };
+	const journey = buildJourney({
+		addedAt: book.addedAt,
+		finishedAt: book.finishedAt,
+		firstReadAt: data.firstReadAt,
+		lastReadAt: data.lastReadAt,
+	});
+	return { journey: journey.milestones.length < 2 ? null : journey, data };
+}
+
 /**
  * How this book went: when it arrived, when it was started, how long it took.
  *
@@ -12,18 +26,8 @@ import { formatDuration, formatShortDate } from "../../utils/date-utils";
  * is not a journey.
  */
 export function BookJourney({ book }: { book: Book }) {
-	// Same query key as the stats card above it, so this shares one fetch.
-	const stats = queryHooks.useStatsBook(book.id);
-	const data = stats.data;
-	if (!data) return null;
-
-	const journey = buildJourney({
-		addedAt: book.addedAt,
-		finishedAt: book.finishedAt,
-		firstReadAt: data.firstReadAt,
-		lastReadAt: data.lastReadAt,
-	});
-	if (journey.milestones.length < 2) return null;
+	const { journey, data } = useBookJourney(book);
+	if (!journey || !data) return null;
 
 	const { sessionCount, longestSessionMs, longestSessionAt } = data;
 

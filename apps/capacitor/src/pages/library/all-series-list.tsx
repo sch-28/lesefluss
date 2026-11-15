@@ -223,8 +223,9 @@ export function AllSeriesList({
 										{[
 											entry.author,
 											entry.kind === "serial" && "serial",
+											// Outside compact, the progress label already says "New".
 											entry.lastRead === null
-												? "not started"
+												? compact && "not started"
 												: `read ${formatRelative(entry.lastRead, now)}`,
 										]
 											.filter(Boolean)

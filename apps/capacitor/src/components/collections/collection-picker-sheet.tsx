@@ -12,6 +12,7 @@ import type { CollectionWithCount } from "../../services/db/queries/collections"
 import type { Book } from "../../services/db/schema";
 import { toast } from "../toast";
 import { SeriesNumberStep } from "./series-number-step";
+import { type SeriesPick, SeriesPickList, type SeriesPickSelection } from "./series-pick-list";
 
 type Props = {
 	/** The books to place, in view order: Set #N numbers them in this order. */
@@ -26,7 +27,7 @@ export type PickerKind = "series" | "collection";
 
 export type Mark = "all" | "some" | "none";
 
-type NumberStep = { target: NumberedTarget; name: string };
+type NumberStep = { target: NumberedTarget; name: string; isSeries: boolean };
 
 const NO_IDS: readonly string[] = [];
 const NO_MEMBERS = new Map<string, number | null>();
@@ -42,6 +43,18 @@ export function markOf(
 	return { mark: count === 0 ? "none" : count === bookIds.length ? "all" : "some", count };
 }
 
+/** One series all the books are in, or No series when none is in any. */
+export function seriesSelection(
+	series: readonly CollectionWithCount[],
+	bookIds: readonly string[],
+	memberships: ReadonlyMap<string, readonly string[]> | undefined,
+): SeriesPickSelection {
+	const full = series.filter((c) => markOf(c.id, bookIds, memberships).mark === "all");
+	if (full.length === 1 && full[0]) return { kind: "collection", collectionId: full[0].id };
+	const inAny = series.some((c) => markOf(c.id, bookIds, memberships).mark !== "none");
+	return inAny ? null : { kind: "none" };
+}
+
 /**
  * Puts books into collections: one book from its menu, or a selection.
  *
@@ -49,7 +62,8 @@ export function markOf(
  * a new series, go through Set #N first, so the numbers are seen before they
  * are written, and the step is where they come out again. A plain row every
  * book is in asks, with the count, before it takes them all out. Out of a
- * series, later imports leave them out.
+ * series, later imports leave them out. A book is in one series: picking one
+ * moves it there.
  */
 export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, onClose, kind }) => {
 	const { data: allCollections = [] } = queryHooks.useCollections();
@@ -96,7 +110,7 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 	const pick = (c: CollectionWithCount) => {
 		if (ids.length === 0) return;
 		if (c.ordered) {
-			setStep({ target: { collectionId: c.id }, name: c.name });
+			setStep({ target: { collectionId: c.id }, name: c.name, isSeries: c.seriesKey !== null });
 		} else if (markOf(c.id, ids, memberships).mark === "all") {
 			setRemoving(c);
 		} else {
@@ -111,22 +125,39 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 		createWithBooks.mutate({ name, bookIds: ids });
 	};
 
-	const createSeries = () => {
-		const name = draft.trim();
+	const startSeries = (raw: string) => {
+		const name = raw.trim();
 		const key = normalizeSeriesKey(name);
 		if (!key || ids.length === 0) return;
 		setDraft("");
 		const live = allCollections.find((c) => c.id === seriesCollectionId(key));
 		setStep(
 			live
-				? { target: { collectionId: live.id }, name: live.name }
-				: { target: { newSeries: name }, name },
+				? { target: { collectionId: live.id }, name: live.name, isSeries: true }
+				: { target: { newSeries: name }, name, isSeries: true },
 		);
+	};
+	const createSeries = () => startSeries(draft);
+
+	const pickSeries = (next: SeriesPick) => {
+		if (ids.length === 0) return;
+		if (next.kind === "new") {
+			startSeries(next.name);
+		} else if (next.kind === "collection") {
+			const c = collections.find((s) => s.id === next.collectionId);
+			if (c) setStep({ target: { collectionId: c.id }, name: c.name, isSeries: true });
+		} else if (next.kind === "none") {
+			for (const c of collections) {
+				const inIt = ids.filter((id) => memberships?.get(id)?.includes(c.id));
+				if (inIt.length > 0) remove.mutate({ collectionId: c.id, bookIds: inIt });
+			}
+			onClose();
+		}
 	};
 
 	const apply = (current: NumberStep, numbers: Map<string, number | null>) => {
 		addNumbered.mutate(
-			{ target: current.target, numbers },
+			{ target: current.target, numbers, isSeries: current.isSeries },
 			{
 				onSuccess: () => {
 					toast.success(`${books(numbers.size)} in ${current.name}`);
@@ -198,13 +229,24 @@ export const CollectionPickerSheet: React.FC<Props> = ({ books: placed, open, on
 						onRemove={stepHasMembers ? removeFromStep : undefined}
 						onApply={(numbers) => apply(step, numbers)}
 					/>
+				) : kind === "series" ? (
+					<SeriesPickList
+						className="px-4 pb-4"
+						series={collections}
+						selected={seriesSelection(collections, ids, memberships)}
+						onPick={pickSeries}
+						hintOf={(c) => {
+							const { mark, count } = markOf(c.id, ids, memberships);
+							return mark === "some" ? `On ${count} of ${ids.length}` : books(c.bookCount);
+						}}
+					/>
 				) : (
 					<>
 						<div className="max-h-[50vh] overflow-y-auto px-2 pb-2">
 							{collections.length === 0 && (
 								<p className="m-0 px-2 py-6 text-center text-muted-foreground text-sm">
-									{kind === "series" ? "No series yet." : "No collections yet."} Name one below to
-									start it with {placed.length === 1 ? "this book" : "these books"}.
+									No collections yet. Name one below to start it with{" "}
+									{placed.length === 1 ? "this book" : "these books"}.
 								</p>
 							)}
 							{collections.map((c) => (

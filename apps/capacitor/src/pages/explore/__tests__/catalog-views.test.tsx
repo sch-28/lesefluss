@@ -260,6 +260,17 @@ describe("catalog length", () => {
 		);
 	});
 
+	it("shows list row subjects cleaned like the detail tags, as plain text", async () => {
+		view = await render(
+			<CatalogListItem
+				result={book({ subjects: ["England -- Fiction", "Love stories", "Fiction"] })}
+				onOpen={vi.fn()}
+			/>,
+		);
+		expect(view.text()).toContain("England · Fiction · Love stories");
+		expect(view.text()).not.toContain("--");
+	});
+
 	it("keeps the length off the cover, where it hid printed titles", async () => {
 		view = await render(
 			<CatalogResultCard result={book({ wordCount: 75_000 })} onOpen={vi.fn()} />,

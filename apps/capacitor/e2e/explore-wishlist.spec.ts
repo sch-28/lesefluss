@@ -175,7 +175,7 @@ async function signInWithServerWishlist(page: Page) {
 
 	await page.goto("/");
 	await page.waitForURL(/\/onboarding/, { timeout: 10_000 });
-	await page.getByRole("button", { name: "Skip onboarding" }).click();
+	await page.getByRole("button", { name: "Skip setup" }).click();
 	await page.waitForURL(/\/tabs\/library/, { timeout: 10_000 });
 	await page.goto("/tabs/settings/sync");
 	await page.getByRole("button", { name: "Sign in with email and password" }).click();

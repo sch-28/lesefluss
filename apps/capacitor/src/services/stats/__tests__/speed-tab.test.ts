@@ -172,7 +172,7 @@ describe("buildSpeedTabData", () => {
 			sitting({ bookId: "b3", durationMs: 5 * MIN, wordsRead: 600 * 5 }),
 		];
 		const overview = summariseRecords(
-			sessions,
+			sessions.map((s, i) => ({ ...s, id: `s${i}` })),
 			[...titles].map(([id, { title }]) => ({
 				id,
 				title,

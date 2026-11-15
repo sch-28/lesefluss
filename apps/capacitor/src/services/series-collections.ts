@@ -210,19 +210,41 @@ export async function applyBookSeriesPlan(
 		plan.add.kind === "new"
 			? (await queries.createSeriesCollection(plan.add.name, now)).id
 			: plan.add.collectionId;
-	// The book's file series may not have formed yet; without the dismissal the
-	// reconcile would add the book to it as well once a second book arrives.
-	const fileKey = normalizeSeriesKey((await queries.getBook(bookId))?.seriesName);
-	const fileSeriesId = fileKey ? seriesCollectionId(fileKey) : null;
-	if (fileSeriesId && fileSeriesId !== collectionId) {
-		await queries.dismissBookFromCollection(fileSeriesId, bookId, now);
-	}
+	await keepOutOfFileSeries(bookId, collectionId, now);
 	await queries.addBooksToCollection(
 		collectionId,
 		[bookId],
 		now,
 		new Map([[bookId, plan.add.index]]),
 	);
+}
+
+// The book's file series may not have formed yet; without the dismissal the
+// reconcile would add the book to it as well once a second book arrives.
+async function keepOutOfFileSeries(bookId: string, collectionId: string, now: number) {
+	const fileKey = normalizeSeriesKey((await queries.getBook(bookId))?.seriesName);
+	const fileSeriesId = fileKey ? seriesCollectionId(fileKey) : null;
+	if (fileSeriesId && fileSeriesId !== collectionId) {
+		await queries.dismissBookFromCollection(fileSeriesId, bookId, now);
+	}
+}
+
+/** A book is in one series: these books join this one and leave any other, as Edit's series field does. */
+export async function moveBooksToSeries(
+	collectionId: string,
+	numbers: ReadonlyMap<string, number | null>,
+	now = serverNow(),
+): Promise<void> {
+	const memberships = await queries.getSeriesMemberships();
+	for (const bookId of numbers.keys()) {
+		for (const m of memberships.get(bookId) ?? []) {
+			if (m.collectionId !== collectionId) {
+				await queries.removeBooksFromCollection(m.collectionId, [bookId], now);
+			}
+		}
+		await keepOutOfFileSeries(bookId, collectionId, now);
+	}
+	await queries.addBooksToCollection(collectionId, [...numbers.keys()], now, numbers);
 }
 
 export async function reconcileSeriesCollections(): Promise<number> {

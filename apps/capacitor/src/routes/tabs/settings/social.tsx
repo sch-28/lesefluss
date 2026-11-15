@@ -14,12 +14,13 @@ import { Input } from "@lesefluss/ui/input";
 import { RadioGroup, RadioGroupItem } from "@lesefluss/ui/radio-group";
 import { IdentityCard, SocialAvatar } from "@lesefluss/ui/social-avatar";
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { CloudOff, Loader2, Users } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { AtSign, CloudOff, Eye, Loader2, Users } from "lucide-react";
 import { useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ToggleRow } from "@/components/app-shell/toggle-row";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { NavRow } from "@/components/settings/settings-row";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { HandleClaimStep } from "@/components/social/handle-claim-step";
 import { SignInPanel } from "@/components/sync/sign-in-panel";
@@ -91,19 +92,14 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 						profile visibility.
 					</p>
 				</div>
-				<Link
+				<NavRow
+					icon={Eye}
+					title="Preview as a friend"
+					subtitle="See exactly what your friends see with the settings below."
 					to="/tabs/social/profile/$userId"
 					params={{ userId: profile.userId }}
 					search={{ as: "friend" }}
-					className="flex w-full items-center gap-3 px-4 py-3 text-left text-foreground no-underline transition-colors hover:bg-muted/60"
-				>
-					<div className="min-w-0 flex-1">
-						<div className="font-medium text-foreground text-sm">Preview as a friend</div>
-						<div className="text-muted-foreground text-xs">
-							See exactly what your friends see with the settings below.
-						</div>
-					</div>
-				</Link>
+				/>
 				{isChangingHandle ? (
 					<div className="px-4 py-4">
 						<HandleClaimStep
@@ -119,18 +115,13 @@ function ProfileForm({ profile }: { profile: OwnSocialProfile }) {
 						/>
 					</div>
 				) : (
-					<button
-						type="button"
+					<NavRow
+						icon={AtSign}
+						title="Change handle"
+						subtitle="Once every 30 days. The old handle stays reserved for you for 90 days."
 						onClick={() => setIsChangingHandle(true)}
-						className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60"
-					>
-						<div className="min-w-0 flex-1">
-							<div className="font-medium text-foreground text-sm">Change handle</div>
-							<div className="text-muted-foreground text-xs">
-								Once every 30 days. The old handle stays reserved for you for 90 days.
-							</div>
-						</div>
-					</button>
+						inPlace
+					/>
 				)}
 			</SettingsSection>
 

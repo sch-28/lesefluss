@@ -176,4 +176,24 @@ describe("CollectionShelfRow", () => {
 		expect(navigate).toHaveBeenCalledWith({ to: "/tabs/library", search: { collection: "c11" } });
 		expect(sheet()).toBeNull();
 	});
+
+	it("opens All series from the More sheet once there is a series", async () => {
+		collections = [collection("plain"), collection("dune", "dune")];
+		rendered = await render(<CollectionShelfRow activeId={undefined} activeShelfId={undefined} />);
+		await click(rendered.getButton("More"));
+		const all = [...(sheet()?.querySelectorAll("button") ?? [])].find((b) =>
+			b.textContent?.startsWith("All series"),
+		) as HTMLElement;
+		expect(all.textContent).toBe("All series1");
+		await click(all);
+		expect(navigate).toHaveBeenCalledWith({ to: "/tabs/library/all-series" });
+		expect(sheet()).toBeNull();
+	});
+
+	it("leaves All series out of the More sheet without a series", async () => {
+		collections = [collection("plain")];
+		rendered = await render(<CollectionShelfRow activeId={undefined} activeShelfId={undefined} />);
+		await click(rendered.getButton("More"));
+		expect(sheet()?.textContent).not.toContain("All series");
+	});
 });

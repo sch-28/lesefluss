@@ -102,7 +102,6 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 	const isReading = isImporting && importer.intent === "read";
 	// An import started from a card elsewhere shows up as "adding".
 	const isAdding = isImporting && importer.intent !== "read";
-	const isStandardEbooks = book.source === "standard_ebooks";
 	const sourceName = CATALOG_SOURCE_LABELS[book.source];
 
 	let primary: DetailAction;
@@ -159,7 +158,6 @@ const ExploreBookDetail: React.FC<Props> = ({ catalogId: propCatalogId }) => {
 		<DetailShell
 			backHref="/tabs/explore"
 			cover={getCoverUrl(book.id, book.coverUrl)}
-			eyebrow={isStandardEbooks ? sourceName : undefined}
 			title={book.title}
 			author={book.author}
 			onAuthorTap={book.author ? () => openAuthor(book.author ?? "") : undefined}

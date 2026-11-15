@@ -247,6 +247,22 @@ describe("Speed & estimates page", () => {
 		// 81,000 words left at 300 wpm.
 		expect(preview?.textContent).toContain("Book a4h 30m left");
 		expect(preview?.textContent).toContain("5h of reading");
+		expect(view.container.querySelector("[data-testid=speed-test-link]")).toBeNull();
+	});
+
+	it("links the average-reader note to the speed test", async () => {
+		state.model = {
+			window: "30d",
+			reading: { wpm: 238, source: "default", activeMs: 0 },
+			rsvp: null,
+			pace: { wpm: 238, source: "default" },
+			books: {},
+		};
+		view = await renderPage(speedPage);
+		const preview = view.container.querySelector("[data-testid=speed-preview]");
+		expect(preview?.textContent).toContain("Based on the average reader");
+		const link = view.container.querySelector("[data-testid=speed-test-link]");
+		expect(link?.getAttribute("href")).toBe("/speed-test");
 	});
 
 	it("holds the preview's place while the speed loads", async () => {
@@ -270,6 +286,17 @@ describe("Goals page", () => {
 		expect(candidates.map((c) => c.textContent)).toEqual(["Book a"]);
 		await click(candidates[0] as HTMLElement);
 		expect(view.container.querySelector("[data-testid=goal-sheet]")?.textContent).toBe("Book a");
+	});
+
+	it("disables Add goal and says why once every book being read has a goal", async () => {
+		state.books = [book("a"), book("b", { wordPosition: 90_000 })];
+		state.plans = [{ goal: { id: "g1", bookId: "a" }, plan: { kind: "plan", isComplete: true } }];
+		view = await renderPage(goalsPage);
+		const add = view.container.querySelector<HTMLButtonElement>("[data-testid=add-goal]");
+		expect(add?.disabled).toBe(true);
+		expect(view.container.querySelector("[data-testid=add-goal-none-left]")?.textContent).toContain(
+			"No unfinished book is left without a goal",
+		);
 	});
 
 	it("shows each goal's progress today", async () => {

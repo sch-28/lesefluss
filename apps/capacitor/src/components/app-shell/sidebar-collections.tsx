@@ -152,7 +152,12 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 								className="relative flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-1 pl-5 text-sidebar-foreground/70 text-sm no-underline hover:text-sidebar-foreground data-[active=true]:text-primary data-[active=true]:before:absolute data-[active=true]:before:top-1 data-[active=true]:before:bottom-1 data-[active=true]:before:left-0 data-[active=true]:before:w-1 data-[active=true]:before:bg-primary"
 							>
 								<span className="min-w-0 flex-1 truncate">{c.name}</span>
-								<span className="shrink-0 text-sidebar-foreground/50 text-xs tabular-nums group-hover:hidden">
+								<span
+									className={cn(
+										"shrink-0 text-sidebar-foreground/50 text-xs tabular-nums group-hover:hidden",
+										activeId === c.id && "hidden",
+									)}
+								>
 									{c.bookCount}
 								</span>
 							</Link>
@@ -160,7 +165,11 @@ export function SidebarCollections({ isCollapsed, onExpand }: Props) {
 								type="button"
 								onClick={() => setMenuFor(c)}
 								aria-label={`${c.name} options`}
-								className="mr-2 hidden size-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:inline-flex group-hover:inline-flex"
+								// Shown on the open collection, so its options never need a hover.
+								className={cn(
+									"mr-2 size-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:inline-flex group-hover:inline-flex",
+									activeId === c.id ? "inline-flex" : "hidden",
+								)}
 							>
 								<MoreHorizontal className="size-4" />
 							</button>

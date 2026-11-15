@@ -84,6 +84,7 @@ function ReadAloudSettings() {
 						icon={Volume2}
 						title="Play a sample"
 						subtitle="Hear the current speed and pitch"
+						inPlace
 						onClick={() =>
 							void ttsEngine.speakSample("This is how your books will sound.", null, speech)
 						}

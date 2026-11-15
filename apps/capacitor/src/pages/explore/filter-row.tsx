@@ -1,4 +1,4 @@
-import { Button } from "@lesefluss/ui/button";
+import { FilterChip as ToggleChip } from "@lesefluss/ui/filter-chip";
 import { Moon, Plus, Tag, X } from "lucide-react";
 import type React from "react";
 import { FilterChip } from "../../components/filter-chip";
@@ -61,7 +61,7 @@ const FilterRow: React.FC<Props> = ({
 }) => {
 	const sort = effectiveSort(search);
 	const activeTags = parseTags(search.tags);
-	const genreLabel = genres?.find((g) => g.id === search.genre)?.label ?? search.genre;
+	const genreLabel = genres?.find((g) => g.id === search.genre)?.label;
 	const visibleFacets = canAddTag(search) ? facets : undefined;
 
 	const sortOptions = SORTS.filter((s) => s !== "relevance" || search.q).map((value) => ({
@@ -115,18 +115,15 @@ const FilterRow: React.FC<Props> = ({
 					onSelect={(v) => onChange({ length: v === ANY ? undefined : v, fits: undefined })}
 					onClear={() => onChange({ length: undefined })}
 				/>
-				<Button
-					variant={search.fits ? "default" : "outline"}
-					size="sm"
-					className="shrink-0 gap-1"
-					aria-pressed={!!search.fits}
+				<ToggleChip
+					selected={!!search.fits}
 					onClick={() =>
 						onChange(search.fits ? { fits: undefined } : { fits: "tonight", length: undefined })
 					}
 				>
 					<Moon className="size-3.5" />
 					Fits tonight
-				</Button>
+				</ToggleChip>
 				<FilterChip
 					label={languageLabel(lang)}
 					isActive={false}
@@ -143,50 +140,47 @@ const FilterRow: React.FC<Props> = ({
 					onClear={() => onChange({ source: undefined })}
 				/>
 				{search.author && (
-					<Button
-						variant="default"
-						size="sm"
-						className="shrink-0 gap-1"
+					<ToggleChip
+						selected
+						action
 						onClick={() => onChange({ author: undefined })}
 						aria-label={`Remove author filter ${search.author}`}
 					>
 						By {search.author}
 						<X className="size-3.5" />
-					</Button>
+					</ToggleChip>
 				)}
-				<Button variant="outline" size="sm" className="shrink-0 gap-1" onClick={onBrowseTags}>
+				<ToggleChip selected={false} action onClick={onBrowseTags}>
 					<Tag className="size-3.5" />
 					Tags
-				</Button>
+				</ToggleChip>
 			</div>
 			{(activeTags.length > 0 || (visibleFacets && visibleFacets.length > 0)) && (
 				<div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" data-testid="tag-row">
 					{activeTags.map((id) => (
-						<Button
+						<ToggleChip
 							key={id}
-							variant="secondary"
-							size="sm"
-							className="shrink-0 gap-1"
+							selected
+							action
 							onClick={() => onRemoveTag(id)}
 							aria-label={`Remove tag ${tagLabels.get(id) ?? id}`}
 						>
 							{tagLabels.get(id) ?? id}
 							<X className="size-3.5" />
-						</Button>
+						</ToggleChip>
 					))}
 					{visibleFacets?.map((f) => (
-						<Button
+						<ToggleChip
 							key={f.id}
-							variant="ghost"
-							size="sm"
-							className="shrink-0 gap-1 border border-border border-dashed"
+							selected={false}
+							action
+							count={f.count}
 							onClick={() => onAddTag(f.id)}
 							aria-label={`Add tag ${f.label}`}
 						>
 							<Plus className="size-3.5" />
 							{f.label}
-							<span className="text-muted-foreground">{f.count}</span>
-						</Button>
+						</ToggleChip>
 					))}
 				</div>
 			)}

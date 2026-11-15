@@ -6,7 +6,6 @@ import { useId, useState } from "react";
 import { EntryDialog } from "../../../components/entry-dialog";
 import { queryHooks } from "../../../services/db/hooks";
 import type { Book, ReadingSession } from "../../../services/db/schema";
-import { formatDuration } from "../../../utils/date-utils";
 import { formatClock, formatPercent, MODE_BADGE_LABELS } from "./session-list";
 
 const MAX_EDIT_MINUTES = 24 * 60;
@@ -95,7 +94,6 @@ function SessionDetailForm({
 		<>
 			<dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
 				<Fact label="Time" value={`${date}, ${formatClock(session.startedAt)}`} />
-				<Fact label="Duration" value={formatDuration(session.durationMs)} />
 				<Fact label="Words" value={session.wordsRead.toLocaleString()} />
 				<Fact label="Speed" value={sessionSpeedText(session, isSkimmed)} />
 				{range && <Fact label="Position" value={range} />}

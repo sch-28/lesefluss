@@ -18,6 +18,7 @@ import { ChevronRight, FileUp } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { importRequest } from "../../commands/global";
+import { NotFound } from "../../components/app-shell/not-found";
 import { BookSelection, type QuickFilter } from "../../components/collections/book-selection";
 import { ReservedCard } from "../../components/reserved-card";
 import { queryHooks } from "../../services/db/hooks";
@@ -53,7 +54,14 @@ const CollectionBooksPage: React.FC<{ mode: CollectionPageMode }> = ({ mode }) =
 	}
 	const collection = collections.data?.find((c) => c.id === collectionId) ?? null;
 	if (collectionId !== null && !collection) {
-		return <p className="p-6 text-center text-muted-foreground text-sm">Collection not found.</p>;
+		return (
+			<NotFound
+				title="Collection not found"
+				message="This collection was deleted, maybe on another device."
+				backLabel="Back to library"
+				backTo="/tabs/library"
+			/>
+		);
 	}
 	return (
 		// Seeded once: a sync pull refreshing members mid-edit must not drop the picks.
@@ -231,7 +239,9 @@ export const CollectionBooksForm: React.FC<FormProps> = ({
 			? "New collection"
 			: mode.kind === "add"
 				? `Add to ${collection?.name}`
-				: "Edit collection";
+				: collection?.seriesKey
+					? "Edit series"
+					: "Edit collection";
 	const saveLabel =
 		mode.kind === "create"
 			? selected.size > 0

@@ -17,6 +17,7 @@ import { sumDurationByLocalDay } from "./aggregate";
 const MIN_TIME_FOR_SPEED_RECORD_MS = 10 * 60_000;
 
 export interface RecordSession {
+	id: string;
 	bookId: string;
 	mode: ReadingMode;
 	startedAt: number;
@@ -35,7 +36,7 @@ export interface RecordBook {
 }
 
 export interface ReadingRecords {
-	longestSitting: { durationMs: number; at: number; title: string } | null;
+	longestSitting: { sessionId: string; durationMs: number; at: number; title: string } | null;
 	bestDay: { durationMs: number; dayStart: number } | null;
 	fastestBook: { wpm: number; title: string } | null;
 	longestBookFinished: { words: number; title: string } | null;
@@ -64,7 +65,12 @@ export function summariseRecords(sessions: RecordSession[], books: RecordBook[])
 			session.durationMs > 0 &&
 			(longestSitting === null || session.durationMs > longestSitting.durationMs)
 		) {
-			longestSitting = { durationMs: session.durationMs, at: session.startedAt, title };
+			longestSitting = {
+				sessionId: session.id,
+				durationMs: session.durationMs,
+				at: session.startedAt,
+				title,
+			};
 		}
 
 		dayStartOf.set(localDateKey(session.startedAt), startOfLocalDay(session.startedAt));

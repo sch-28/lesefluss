@@ -3,11 +3,13 @@ import { ChevronLeft, Loader2, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { hasOpenOverlay } from "../../commands/guard";
-import { matchesKey } from "../../commands/keys";
+import { formatKey, matchesKey } from "../../commands/keys";
 import { tabBarHidden } from "../../components/app-shell/tab-bar-visibility";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import type { EditForm } from "./book-edit-fields";
 import type { BookEditValues } from "./book-edit-form";
+
+const SAVE_KEY = "Mod+s";
 
 export function useIsWideLayout(): boolean {
 	return useMediaQuery("(min-width: 768px)");
@@ -40,7 +42,7 @@ function useSaveCancelKeys(onSave: () => void, onCancel: () => void) {
 	latest.current = { onSave, onCancel };
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (matchesKey(e, "Mod+s")) {
+			if (matchesKey(e, SAVE_KEY)) {
 				e.preventDefault();
 				if (!hasOpenOverlay()) latest.current.onSave();
 			} else if (e.key === "Escape" && !e.defaultPrevented && !hasOpenOverlay()) {
@@ -143,7 +145,7 @@ export const BookEditLayout: React.FC<Props> = ({
 				{children}
 				{isWide && (
 					<p className="m-0 mt-4 text-center text-muted-foreground text-xs">
-						⌘S save · Esc cancel (asks when unsaved)
+						{formatKey(SAVE_KEY).join("+")} save · Esc cancel (asks when unsaved)
 					</p>
 				)}
 			</main>

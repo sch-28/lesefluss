@@ -6,6 +6,7 @@ import {
 	useAppearanceSettings,
 } from "../../hooks/use-appearance-settings";
 import { StepperRow } from "./stepper-row";
+import { TextAction } from "./text-action";
 
 const { READER_LETTER_SPACING, READER_WORD_SPACING, READER_PARAGRAPH_SPACING } =
 	SETTING_CONSTRAINTS;
@@ -59,13 +60,7 @@ export function TextSpacingRows() {
 			/>
 			{!isDefault && (
 				<div className="mt-2 flex">
-					<button
-						type="button"
-						className="min-h-11 px-1 text-muted-foreground text-sm underline"
-						onClick={resetTextSpacing}
-					>
-						Reset spacing
-					</button>
+					<TextAction onClick={resetTextSpacing}>Reset spacing</TextAction>
 				</div>
 			)}
 		</>

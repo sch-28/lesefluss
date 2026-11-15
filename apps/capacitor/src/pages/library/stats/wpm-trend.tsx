@@ -5,7 +5,7 @@ import { queryHooks } from "../../../services/db/hooks";
 import type { SpeedTrendMode } from "../../../services/db/queries/stats";
 import type { TrendGranularity, TrendTestMarker } from "../../../services/stats/aggregate";
 import { summariseWpmTrend } from "../../../services/stats/summaries";
-import { formatShortDate, startOfLocalDay } from "../../../utils/date-utils";
+import { formatShortDate } from "../../../utils/date-utils";
 import { evenTickIndices } from "./chart-axis";
 
 /** Until the card is measured; the chart then draws at its real width so text never scales. */
@@ -21,12 +21,6 @@ const MAX_X_LABELS = 4;
 const AXIS_STEPS = [10, 20, 25, 50, 100, 200, 500];
 
 const NO_TESTS: TrendTestMarker[] = [];
-
-function testLabel(takenAt: number, now: number): string {
-	return startOfLocalDay(takenAt) === startOfLocalDay(now)
-		? "Test today"
-		: `Test ${formatShortDate(takenAt)}`;
-}
 
 /**
  * The y-axis around the data, not from zero: three steps that cover the lowest and
@@ -173,10 +167,6 @@ function WpmTrendChart({ window, mode, windowLabel, now, width }: Props & { widt
 	const shownStarts = measured.slice(start, end + 1).map((p) => p.bucketStart);
 	const ticks = evenTickIndices(shownStarts.length, MAX_X_LABELS);
 	const dial = data.averages.rsvpTarget;
-	const latestTest = tests.reduce<TrendTestMarker | null>(
-		(latest, t) => (latest === null || t.takenAt > latest.takenAt ? t : latest),
-		null,
-	);
 
 	return (
 		<div data-testid="wpm-trend">
@@ -257,16 +247,6 @@ function WpmTrendChart({ window, mode, windowLabel, now, width }: Props & { widt
 								className="fill-foreground stroke-card"
 								strokeWidth={1.5}
 							/>
-							{test === latestTest && (
-								<text
-									x={tx}
-									y={ty - 9}
-									textAnchor={tx > (PLOT_LEFT + plotRight) / 2 ? "end" : "start"}
-									className="fill-muted-foreground text-[10px]"
-								>
-									{testLabel(test.takenAt, now)} · {test.wpm}
-								</text>
-							)}
 						</g>
 					);
 				})}

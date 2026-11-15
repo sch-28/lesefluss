@@ -55,8 +55,7 @@ export function SpeedTestResult({
 	return (
 		<div data-testid="speed-test-result">
 			<SpeedGauge reading={readingWpm} dial={dial} value={String(readingWpm)} label="wpm read" />
-			<dl className="mt-4 grid grid-cols-3 gap-2 text-center">
-				<Stat label="Reading wpm" value={String(readingWpm)} />
+			<dl className="mt-4 grid grid-cols-2 gap-2 text-center">
 				<Stat label="RSVP wpm" value={rsvpWpm === null ? "–" : String(rsvpWpm)} />
 				<Stat label="Faster" value={faster > 0 ? `${faster}%` : "–"} />
 			</dl>

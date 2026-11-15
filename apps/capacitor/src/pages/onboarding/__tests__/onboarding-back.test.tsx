@@ -52,4 +52,15 @@ describe("onboarding Android back", () => {
 		expect(view.text()).toContain("Welcome step");
 		expect(pressBack()).toBe(false);
 	});
+
+	it("offers Skip setup on every step but the last, whose Not now already finishes", async () => {
+		view = await render(<Onboarding />);
+		const seen: boolean[] = [];
+		for (let i = 0; i < 7; i++) {
+			seen.push(view.queryButton("Skip setup") !== null);
+			if (i < 6) await click(view.getButton("Continue"));
+		}
+		expect(view.text()).toContain("Sync step");
+		expect(seen).toEqual([true, true, true, true, true, true, false]);
+	});
 });

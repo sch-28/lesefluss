@@ -34,7 +34,9 @@ vi.mock(
 	async () => (await import("../../../test/overlay-mocks")).drawerModule,
 );
 
-const { CollectionPickerSheet, markOf } = await import("../collection-picker-sheet");
+const { CollectionPickerSheet, markOf, seriesSelection } = await import(
+	"../collection-picker-sheet"
+);
 
 const book = (id: string, title = id) => ({ id, title }) as Book;
 const collection = (over: Partial<CollectionWithCount>): Partial<CollectionWithCount> => ({
@@ -182,6 +184,7 @@ describe("CollectionPickerSheet", () => {
 				["b", 5],
 				["c", 6],
 			]),
+			isSeries: true,
 		});
 	});
 
@@ -238,6 +241,17 @@ describe("CollectionPickerSheet", () => {
 		expect(onClose).not.toHaveBeenCalled();
 	});
 
+	it("numbers books into a reading order without treating it as a series", async () => {
+		collections = [collection({ id: "o1", name: "Reading order", ordered: true })];
+		view = await render(<CollectionPickerSheet books={[book("a")]} open onClose={vi.fn()} />);
+		await click(rows()[0] as HTMLElement);
+		await click(view.getButton("Apply"));
+		expect(addNumbered.mock.calls[0]?.[0]).toMatchObject({
+			target: { collectionId: "o1" },
+			isSeries: false,
+		});
+	});
+
 	it("starts a real series from the typed name, numbered from 1", async () => {
 		view = await render(
 			<CollectionPickerSheet books={[book("a", "One"), book("b", "Two")]} open onClose={vi.fn()} />,
@@ -253,6 +267,7 @@ describe("CollectionPickerSheet", () => {
 				["a", 1],
 				["b", 2],
 			]),
+			isSeries: true,
 		});
 	});
 
@@ -273,5 +288,90 @@ describe("CollectionPickerSheet", () => {
 		await typeName("Beach reads");
 		await click(view.getButton(/New collection/));
 		expect(createWithBooks).toHaveBeenCalledWith({ name: "Beach reads", bookIds: ["a"] });
+	});
+
+	describe("Add to series… from the card menu", () => {
+		const pickRows = () => [
+			...document.querySelectorAll<HTMLElement>('[data-testid="series-pick-row"]'),
+		];
+		const dune = () =>
+			collection({
+				id: "series-dune",
+				name: "Dune",
+				ordered: true,
+				seriesKey: "dune",
+				bookCount: 2,
+			});
+		const expanse = () =>
+			collection({ id: "series-exp", name: "Expanse", ordered: true, seriesKey: "exp" });
+
+		it("shows Edit's single-select series list, with the book's series checked", async () => {
+			collections = [dune(), expanse(), collection({ id: "c1", name: "Favourites" })];
+			memberships = new Map([["a", ["series-dune", "c1"]]]);
+			view = await render(
+				<CollectionPickerSheet books={[book("a")]} kind="series" open onClose={vi.fn()} />,
+			);
+			expect(rows()).toHaveLength(0);
+			expect(document.querySelector('[data-testid="series-pick-list"]')).not.toBeNull();
+			expect(pickRows().map((r) => r.textContent)).toEqual([
+				"No series",
+				"Dune2 books",
+				"Expanse0 books",
+			]);
+			expect(pickRows().map((r) => r.getAttribute("aria-pressed"))).toEqual([
+				"false",
+				"true",
+				"false",
+			]);
+		});
+
+		it("moves the book into the picked series through Set #N", async () => {
+			collections = [dune(), expanse()];
+			memberships = new Map([["a", ["series-dune"]]]);
+			view = await render(
+				<CollectionPickerSheet books={[book("a")]} kind="series" open onClose={vi.fn()} />,
+			);
+			await click(pickRows()[2] as HTMLElement);
+			await click(view.getButton("Apply"));
+			expect(addNumbered.mock.calls[0]?.[0]).toMatchObject({
+				target: { collectionId: "series-exp" },
+				isSeries: true,
+			});
+		});
+
+		it("takes the books out of every series on No series", async () => {
+			const onClose = vi.fn();
+			collections = [dune(), expanse()];
+			memberships = new Map([
+				["a", ["series-dune"]],
+				["b", ["series-exp"]],
+			]);
+			view = await render(
+				<CollectionPickerSheet
+					books={[book("a"), book("b")]}
+					kind="series"
+					open
+					onClose={onClose}
+				/>,
+			);
+			await click(pickRows()[0] as HTMLElement);
+			expect(remove).toHaveBeenCalledWith({ collectionId: "series-dune", bookIds: ["a"] });
+			expect(remove).toHaveBeenCalledWith({ collectionId: "series-exp", bookIds: ["b"] });
+			expect(onClose).toHaveBeenCalled();
+		});
+
+		it("checks a series only when every book is in it", () => {
+			const series = [dune(), expanse()] as CollectionWithCount[];
+			const m = new Map([
+				["a", ["series-dune"]],
+				["b", ["series-dune"]],
+			]);
+			expect(seriesSelection(series, ["a", "b"], m)).toEqual({
+				kind: "collection",
+				collectionId: "series-dune",
+			});
+			expect(seriesSelection(series, ["a", "c"], m)).toBeNull();
+			expect(seriesSelection(series, ["c"], m)).toEqual({ kind: "none" });
+		});
 	});
 });

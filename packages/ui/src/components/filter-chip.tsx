@@ -8,21 +8,26 @@ export const CHIP_BASE =
 
 export const CHIP_SELECTED = `${SELECTED_TINT} hover:bg-[color-mix(in_oklab,var(--primary)_22%,transparent)]`;
 
-/** The one chip: a 44px pill, tinted when selected. A 0 count is never shown. */
+/**
+ * The one chip: a 44px pill, tinted when selected. A 0 count is never shown.
+ * `action` chips (remove a filter, add a tag) do something on tap instead of toggling, so they carry no pressed state.
+ */
 export function FilterChip({
 	selected,
 	count,
+	action = false,
 	className,
 	children,
 	...props
 }: Omit<React.ComponentProps<"button">, "type"> & {
 	selected: boolean;
 	count?: number;
+	action?: boolean;
 }) {
 	return (
 		<button
 			type="button"
-			aria-pressed={selected}
+			aria-pressed={action ? undefined : selected}
 			data-slot="filter-chip"
 			className={cn(CHIP_BASE, selected && CHIP_SELECTED, className)}
 			{...props}

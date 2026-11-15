@@ -1,6 +1,6 @@
 import { cn } from "@lesefluss/ui/utils";
 import { Link, type LinkProps } from "@tanstack/react-router";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type React from "react";
 
 export function SettingsRow({
@@ -38,36 +38,77 @@ export function RowLabel({ title, hint }: { title: string; hint?: React.ReactNod
 }
 
 type NavRowProps = {
-	icon: React.ComponentType<{ className?: string }>;
+	icon?: React.ComponentType<{ className?: string }>;
 	title: string;
 	subtitle: string;
 	iconClassName?: string;
-} & ({ to: LinkProps["to"]; onClick?: never } | { to?: never; onClick: () => void });
+} & (
+	| {
+			to: LinkProps["to"];
+			params?: LinkProps["params"];
+			search?: LinkProps["search"];
+			onClick?: never;
+	  }
+	| {
+			to?: never;
+			params?: never;
+			search?: never;
+			onClick: () => void;
+			/** Acts in place (plays, opens an editor) instead of going to a page, so no chevron. */
+			inPlace?: boolean;
+	  }
+);
 
-export function NavRow({ icon: Icon, title, subtitle, iconClassName, to, onClick }: NavRowProps) {
+export function NavRow(props: NavRowProps) {
+	const { icon: Icon, title, subtitle, iconClassName } = props;
+	const inPlace = !props.to && "inPlace" in props && props.inPlace;
 	const content = (
 		<>
-			<Icon className={iconClassName ?? "size-5 text-muted-foreground"} />
+			{Icon && <Icon className={iconClassName ?? "size-5 text-muted-foreground"} />}
 			<div className="min-w-0 flex-1">
 				<div className="text-foreground text-sm">{title}</div>
 				{/* Two lines, not one: a large font scale would leave a single line a few words. */}
 				<div className="line-clamp-2 text-muted-foreground text-xs">{subtitle}</div>
 			</div>
-			<ChevronRight className="size-4 text-muted-foreground" />
+			{!inPlace && <ChevronRight className="size-4 text-muted-foreground" />}
 		</>
 	);
 	const cls =
 		"flex min-h-12 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left no-underline transition-colors hover:bg-muted/60";
-	if (to) {
+	if (props.to) {
 		return (
-			<Link to={to} className={cls}>
+			<Link to={props.to} params={props.params} search={props.search} className={cls}>
 				{content}
 			</Link>
 		);
 	}
 	return (
-		<button type="button" onClick={onClick} className={cls}>
+		<button type="button" onClick={props.onClick} className={cls}>
 			{content}
+		</button>
+	);
+}
+
+export function ExpanderRow({
+	title,
+	open,
+	onToggle,
+}: {
+	title: string;
+	open: boolean;
+	onToggle: () => void;
+}) {
+	return (
+		<button
+			type="button"
+			className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60"
+			onClick={onToggle}
+			aria-expanded={open}
+		>
+			<span className="text-foreground text-sm">{title}</span>
+			<ChevronDown
+				className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")}
+			/>
 		</button>
 	);
 }

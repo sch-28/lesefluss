@@ -16,8 +16,10 @@ function at(y: number, m: number, d: number, h = 12): number {
 	return new Date(y, m - 1, d, h).getTime();
 }
 
+let sessionSeq = 0;
 function session(overrides: Partial<RecordSession> = {}): RecordSession {
 	return {
+		id: `s${++sessionSeq}`,
 		bookId: "a",
 		mode: "scroll",
 		startedAt: at(2026, 5, 10),
@@ -52,12 +54,13 @@ describe("summariseRecords", () => {
 		const records = summariseRecords(
 			[
 				session({ durationMs: 20 * MINUTE }),
-				session({ bookId: "b", durationMs: 90 * MINUTE, startedAt: at(2026, 5, 12) }),
+				session({ id: "long", bookId: "b", durationMs: 90 * MINUTE, startedAt: at(2026, 5, 12) }),
 				session({ durationMs: 45 * MINUTE }),
 			],
 			[book(), book({ id: "b", title: "The Long One" })],
 		);
 		expect(records.longestSitting).toEqual({
+			sessionId: "long",
 			durationMs: 90 * MINUTE,
 			at: at(2026, 5, 12),
 			title: "The Long One",

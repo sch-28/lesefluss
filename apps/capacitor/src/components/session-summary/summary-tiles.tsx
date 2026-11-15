@@ -1,5 +1,15 @@
 import { cn } from "@lesefluss/ui/utils";
-import { BookOpen, Check, Clock, Gauge, Hourglass, Target, Type, Zap } from "lucide-react";
+import {
+	BookOpen,
+	Check,
+	ChevronRight,
+	Clock,
+	Gauge,
+	Hourglass,
+	Target,
+	Type,
+	Zap,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { goalTone } from "../../pages/library/reading-goal/goal-model";
 import type { ReadingGoalPlan } from "../../services/stats/reading-goal";
@@ -29,6 +39,7 @@ function Tile({
 			<span className="flex items-center gap-1.5 font-medium text-[0.625rem] text-muted-foreground uppercase tracking-wider">
 				{icon}
 				{label}
+				{onClick && <ChevronRight className="ml-auto size-3.5" aria-hidden />}
 			</span>
 			{children}
 		</>

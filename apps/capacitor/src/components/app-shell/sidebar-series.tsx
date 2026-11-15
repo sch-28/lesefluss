@@ -75,7 +75,6 @@ export function SidebarSeries({ isCollapsed }: { isCollapsed: boolean }) {
 	}
 
 	const shown = entries.slice(0, SIDEBAR_SERIES_LIMIT);
-	const hasMore = entries.length > SIDEBAR_SERIES_LIMIT;
 	const activeHidden =
 		activeKey !== undefined &&
 		activeKey !== "all" &&
@@ -130,18 +129,17 @@ export function SidebarSeries({ isCollapsed }: { isCollapsed: boolean }) {
 						</Link>
 					</li>
 				))}
-				{hasMore && (
-					<li className="flex">
-						<Link
-							to={ALL_SERIES_PATH}
-							data-active={activeKey === "all" || activeHidden}
-							className={ROW}
-						>
-							<span className="min-w-0 flex-1 truncate">All series</span>
-							<span className={COUNT}>{entries.length}</span>
-						</Link>
-					</li>
-				)}
+				{/* Always, not only past the limit: All series is where search and sort live. */}
+				<li className="flex">
+					<Link
+						to={ALL_SERIES_PATH}
+						data-active={activeKey === "all" || activeHidden}
+						className={ROW}
+					>
+						<span className="min-w-0 flex-1 truncate">All series</span>
+						<span className={COUNT}>{entries.length}</span>
+					</Link>
+				</li>
 			</ul>
 		</section>
 	);

@@ -65,7 +65,7 @@ describe("WpmTrend", () => {
 		expect((await show()).querySelector("[data-testid=wpm-trend-avg]")).toBeNull();
 	});
 
-	it("marks a speed test even with no reading and labels only the latest", async () => {
+	it("marks every speed test even with no reading, without repeating its wpm as a label", async () => {
 		state.trend = trend(
 			[0, 250, 260],
 			[
@@ -75,9 +75,7 @@ describe("WpmTrend", () => {
 		);
 		const container = await show(DAY * 5);
 		expect(container.querySelectorAll("[data-testid=wpm-trend-test]")).toHaveLength(2);
-		const labels = [...container.querySelectorAll("[data-testid=wpm-trend-test] text")];
-		expect(labels).toHaveLength(1);
-		expect(labels[0]?.textContent).toContain("520");
+		expect(container.querySelectorAll("[data-testid=wpm-trend-test] text")).toHaveLength(0);
 		expect(container.textContent).toContain("Speed test");
 	});
 });

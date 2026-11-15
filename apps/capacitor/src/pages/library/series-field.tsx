@@ -1,11 +1,18 @@
 import { BOOK_SERIES_INDEX_MAX } from "@lesefluss/core";
-import { Button } from "@lesefluss/ui/button";
 import { Input } from "@lesefluss/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Clock, Plus } from "lucide-react";
 import type React from "react";
 import { useMemo, useRef, useState } from "react";
 import { nextSeriesNumber } from "../../components/collections/series-numbering";
+import {
+	PickGroupLabel,
+	PickRow,
+	type SeriesPick,
+	SeriesPickList,
+	type SeriesPickSelection,
+	seriesCountHint,
+} from "../../components/collections/series-pick-list";
 import { EntryDialog } from "../../components/entry-dialog";
 import { PickerTrigger } from "../../components/picker-trigger";
 import type { ImportSeriesChoice } from "../../services/book-import";
@@ -25,12 +32,6 @@ type Props = {
 	/** The book being edited, left out of the numbers taken. */
 	bookId?: string;
 };
-
-type Pick =
-	| { kind: "detected" }
-	| { kind: "collection"; collectionId: string }
-	| { kind: "new"; name: string }
-	| { kind: "none" };
 
 /** "2.5" → 2.5, "" → null; anything else is not a series number. */
 export function parseSeriesIndex(text: string): number | null | undefined {
@@ -91,7 +92,7 @@ export const SeriesField: React.FC<Props> = ({
 		choice.kind !== "none" && (choice.kind !== "collection" || picked?.ordered !== false);
 	const isInvalid = hasIndex && parseSeriesIndex(indexText) === undefined;
 
-	const pick = (next: Pick) => {
+	const pick = (next: SeriesPick) => {
 		const index = choice.kind === "none" ? null : choice.index;
 		setIsPicking(false);
 		if (next.kind === "none") {
@@ -220,9 +221,8 @@ const SeriesPicker: React.FC<{
 	collections: CollectionWithCount[];
 	choice: ImportSeriesChoice;
 	detected: DetectedSeries | null;
-	onPick: (next: Pick) => void;
+	onPick: (next: SeriesPick) => void;
 }> = ({ open, onOpenChange, collections, choice, detected, onPick }) => {
-	const [newName, setNewName] = useState("");
 	// The file's series sits in its own group on top, so it is never offered twice.
 	const offersDetected = detected !== null && detected.status.kind !== "dismissed";
 	const series = useMemo(
@@ -237,71 +237,56 @@ const SeriesPicker: React.FC<{
 		[collections, detected],
 	);
 	const selectedId = choice.kind === "collection" ? choice.collectionId : null;
-	const countHint = (n: number) => `${n} ${n === 1 ? "book" : "books"}`;
+	const selected: SeriesPickSelection =
+		choice.kind === "collection"
+			? { kind: "collection", collectionId: choice.collectionId }
+			: choice.kind === "new"
+				? null
+				: { kind: choice.kind };
 
 	return (
 		<EntryDialog open={open} onOpenChange={onOpenChange} title="Series">
-			<div className="-mx-2 flex max-h-[45vh] flex-col overflow-y-auto">
-				<PickRow
-					label="No series"
-					selected={choice.kind === "none"}
-					onSelect={() => onPick({ kind: "none" })}
-				/>
-				{offersDetected && detected && (
+			<SeriesPickList
+				series={series}
+				selected={selected}
+				onPick={onPick}
+				top={
 					<>
-						<GroupLabel>From the file</GroupLabel>
-						<PickRow
-							label={formatSeries(detected.name, detected.index)}
-							hint={
-								detected.status.kind === "joins" ? countHint(detected.status.bookCount) : "detected"
-							}
-							selected={choice.kind === "detected"}
-							onSelect={() => onPick({ kind: "detected" })}
-						/>
+						{offersDetected && detected && (
+							<>
+								<PickGroupLabel>From the file</PickGroupLabel>
+								<PickRow
+									label={formatSeries(detected.name, detected.index)}
+									hint={
+										detected.status.kind === "joins"
+											? seriesCountHint(detected.status.bookCount)
+											: "detected"
+									}
+									selected={choice.kind === "detected"}
+									onSelect={() => onPick({ kind: "detected" })}
+								/>
+							</>
+						)}
+						{detected && series.length > 0 && <PickGroupLabel>Your series</PickGroupLabel>}
 					</>
-				)}
-				{detected && series.length > 0 && <GroupLabel>Your series</GroupLabel>}
-				{series.map((c) => (
-					<PickRow
-						key={c.id}
-						label={c.name}
-						hint={countHint(c.bookCount)}
-						selected={c.id === selectedId}
-						onSelect={() => onPick({ kind: "collection", collectionId: c.id })}
-					/>
-				))}
-				{plain.length > 0 && <GroupLabel>Collections</GroupLabel>}
-				{plain.map((c) => (
-					<PickRow
-						key={c.id}
-						label={c.name}
-						hint={countHint(c.bookCount)}
-						selected={c.id === selectedId}
-						onSelect={() => onPick({ kind: "collection", collectionId: c.id })}
-					/>
-				))}
-			</div>
-			<form
-				className="flex items-center gap-2"
-				onSubmit={(e) => {
-					e.preventDefault();
-					const name = newName.trim();
-					if (!name) return;
-					onPick({ kind: "new", name });
-					setNewName("");
-				}}
-			>
-				<Input
-					aria-label="New series name"
-					placeholder="New series…"
-					value={newName}
-					onChange={(e) => setNewName(e.target.value)}
-				/>
-				<Button type="submit" variant="secondary" disabled={!newName.trim()}>
-					<Plus />
-					Create
-				</Button>
-			</form>
+				}
+				bottom={
+					plain.length > 0 && (
+						<>
+							<PickGroupLabel>Collections</PickGroupLabel>
+							{plain.map((c) => (
+								<PickRow
+									key={c.id}
+									label={c.name}
+									hint={seriesCountHint(c.bookCount)}
+									selected={c.id === selectedId}
+									onSelect={() => onPick({ kind: "collection", collectionId: c.id })}
+								/>
+							))}
+						</>
+					)
+				}
+			/>
 			{offersDetected && detected && (
 				<p className="m-0 text-muted-foreground text-xs">
 					Picking another one or No series keeps this book out of {detected.name}, here and on your
@@ -311,27 +296,3 @@ const SeriesPicker: React.FC<{
 		</EntryDialog>
 	);
 };
-
-const GroupLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-	<p className="m-0 px-2 pt-3 pb-1 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
-		{children}
-	</p>
-);
-
-const PickRow: React.FC<{
-	label: string;
-	hint?: string;
-	selected: boolean;
-	onSelect: () => void;
-}> = ({ label, hint, selected, onSelect }) => (
-	<button
-		type="button"
-		onClick={onSelect}
-		aria-pressed={selected}
-		className="flex h-11 items-center gap-3 rounded-md px-2 text-left text-sm hover:bg-muted"
-	>
-		<span className="min-w-0 flex-1 truncate">{label}</span>
-		{hint && <span className="text-muted-foreground text-xs">{hint}</span>}
-		{selected && <Check className="size-4 text-primary" />}
-	</button>
-);

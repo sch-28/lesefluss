@@ -1,5 +1,6 @@
 import type { Book } from "../../services/db/schema";
-import { formatRelative } from "../../utils/date-utils";
+import { formatShortDate } from "../../utils/date-utils";
+import { useBookJourney } from "./book-journey";
 import { formatBytes } from "./transfer-modal/utils";
 
 /**
@@ -11,14 +12,18 @@ import { formatBytes } from "./transfer-modal/utils";
  * import already recorded.
  */
 export function BookFileCard({ book, chapterCount }: { book: Book; chapterCount: number }) {
+	// The journey above shows the dates once the book has one.
+	const { journey } = useBookJourney(book);
 	const rows: Array<[string, string]> = [
 		["Format", book.fileFormat.toUpperCase()],
 		["Length", `${book.wordCount.toLocaleString()} words`],
 	];
 	if (chapterCount > 0) rows.push(["Chapters", String(chapterCount)]);
 	if (book.size > 0) rows.push(["Size", formatBytes(book.size)]);
-	rows.push(["Added", formatRelative(book.addedAt)]);
-	if (book.finishedAt != null) rows.push(["Finished", formatRelative(book.finishedAt)]);
+	if (!journey) {
+		rows.push(["Added", formatShortDate(book.addedAt)]);
+		if (book.finishedAt != null) rows.push(["Finished", formatShortDate(book.finishedAt)]);
+	}
 	rows.push(["Source", describeSource(book)]);
 
 	return (

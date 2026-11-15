@@ -15,14 +15,15 @@ import {
 	SETTING_CONSTRAINTS,
 } from "@lesefluss/core";
 import { cn } from "@lesefluss/ui/utils";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import { RowLabel, SettingsRow } from "../../components/settings/settings-row";
+import { ExpanderRow, RowLabel, SettingsRow } from "../../components/settings/settings-row";
 import { SettingsSection } from "../../components/settings/settings-section";
 import { SpeedRow } from "../../components/settings/speed-row";
 import { StepperRow } from "../../components/settings/stepper-row";
+import { TextAction } from "../../components/settings/text-action";
 import { focalLetterColorFor, useTheme } from "../../contexts/theme-context";
 import { useAutoSaveSettings } from "../../hooks/use-auto-save-settings";
 
@@ -133,22 +134,11 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 			</SettingsSection>
 
 			<SettingsSection>
-				<button
-					type="button"
-					className="flex min-h-12 items-center justify-between px-4 py-3 text-left transition-colors hover:bg-muted"
-					onClick={() => setAdvancedOpen((o) => !o)}
-					aria-expanded={advancedOpen}
-				>
-					<span className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">
-						Advanced
-					</span>
-					<ChevronDown
-						className={cn(
-							"size-4 text-muted-foreground transition-transform",
-							advancedOpen && "rotate-180",
-						)}
-					/>
-				</button>
+				<ExpanderRow
+					title="Advanced"
+					open={advancedOpen}
+					onToggle={() => setAdvancedOpen((o) => !o)}
+				/>
 
 				{advancedOpen && (
 					<>
@@ -190,22 +180,12 @@ const RsvpSettingsForm: React.FC<RsvpSettingsFormProps> = ({
 
 			<div className="flex justify-center px-4 pt-6 pb-2">
 				{!minimal && (
-					<button
-						type="button"
-						className="text-destructive text-sm transition-opacity hover:opacity-70"
-						onClick={() => setResetOpen(true)}
-					>
-						Reset RSVP settings
-					</button>
+					<TextAction onClick={() => setResetOpen(true)}>Reset RSVP settings</TextAction>
 				)}
 				{minimal && onOpenFullSettings && (
-					<button
-						type="button"
-						className="text-primary text-sm underline-offset-4 hover:underline"
-						onClick={onOpenFullSettings}
-					>
+					<TextAction tone="link" onClick={onOpenFullSettings}>
 						Open full RSVP settings
-					</button>
+					</TextAction>
 				)}
 			</div>
 

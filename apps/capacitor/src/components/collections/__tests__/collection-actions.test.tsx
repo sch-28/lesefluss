@@ -39,7 +39,7 @@ vi.mock("../../confirm-dialog", async () => {
 	};
 });
 
-const { CollectionActions } = await import("../collection-actions");
+const { CollectionActions, CollectionMenuButton } = await import("../collection-actions");
 
 const fantasy: CollectionWithCount = {
 	id: "c1",
@@ -123,5 +123,30 @@ describe("CollectionActions", () => {
 	it("leaves the back press to the router while nothing is open", async () => {
 		view = await render(<CollectionActions collection={null} collections={[]} onClose={vi.fn()} />);
 		expect(consumeBackPress()).toBe(false);
+	});
+});
+
+describe("CollectionMenuButton", () => {
+	it("opens the open collection's menu in one tap and its edit page in a second", async () => {
+		const scifi = { ...fantasy, id: "c2", name: "Sci-fi" };
+		const series = { ...fantasy, id: "s1", name: "Dune", seriesKey: "dune", ordered: true };
+		view = await render(
+			<CollectionMenuButton collection={fantasy} allCollections={[fantasy, series, scifi]} />,
+		);
+		expect(view.queryButton("Edit collection")).toBeNull();
+		await click(view.getButton("Fantasy options"));
+		await click(view.getButton("Move down"));
+		expect(moveCollection).toHaveBeenCalledWith({ id: "c1", toIndex: 2 });
+		view.unmount();
+
+		view = await render(
+			<CollectionMenuButton collection={series} allCollections={[fantasy, series]} />,
+		);
+		await click(view.getButton("Dune options"));
+		await click(view.getButton("Edit series"));
+		expect(navigate).toHaveBeenCalledWith({
+			to: "/tabs/library/collections/$id/edit",
+			params: { id: "s1" },
+		});
 	});
 });

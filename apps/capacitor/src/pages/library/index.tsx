@@ -26,6 +26,7 @@ import { ActionSheet } from "../../components/action-sheet";
 import { tabBarHidden } from "../../components/app-shell/tab-bar-visibility";
 import { TabHeader } from "../../components/app-shell/tab-header";
 import BLEIndicator from "../../components/ble-indicator";
+import { CollectionMenuButton } from "../../components/collections/collection-actions";
 import { setBooksDragData } from "../../components/collections/drag-data";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { HeaderGoalRing } from "../../components/header-goal-ring";
@@ -736,6 +737,10 @@ const Library: React.FC = () => {
 							{activeCollection.bookCount}
 						</span>
 					</h2>
+					<CollectionMenuButton
+						collection={activeCollection}
+						allCollections={collectionsQuery.data ?? []}
+					/>
 					<Button
 						variant="ghost"
 						size="icon"

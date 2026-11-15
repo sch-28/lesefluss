@@ -16,9 +16,12 @@ vi.mock("../../query-client", () => ({ queryClient: { invalidateQueries: vi.fn()
 afterAll(close);
 
 const collections = await import("../queries/collections");
-const { applyBookSeriesPlan, applyImportSeriesChoice, reconcileSeriesCollections } = await import(
-	"../../series-collections"
-);
+const {
+	applyBookSeriesPlan,
+	applyImportSeriesChoice,
+	moveBooksToSeries,
+	reconcileSeriesCollections,
+} = await import("../../series-collections");
 const { scheduleSyncPush } = await import("../../sync");
 
 const DUNE = seriesCollectionId("dune");
@@ -335,5 +338,27 @@ describe("the book edit page's series field", () => {
 			add: { kind: "new", name: "dune", index: 1 },
 		});
 		expect(await inDune("aaaaaaaa")).toMatchObject({ deleted: false });
+	});
+});
+
+describe("moveBooksToSeries", () => {
+	it("puts the books in the picked series and takes them out of their other one", async () => {
+		insertBook("aaaaaaaa");
+		insertBook("bbbbbbbb");
+		const dune = await collections.createSeriesCollection("Dune", 1);
+		const expanse = await collections.createSeriesCollection("Expanse", 1);
+		await collections.addBooksToCollection(dune.id, ["aaaaaaaa"], 2, new Map([["aaaaaaaa", 1]]));
+
+		await moveBooksToSeries(
+			expanse.id,
+			new Map([
+				["aaaaaaaa", 1],
+				["bbbbbbbb", 2],
+			]),
+			3,
+		);
+		const memberships = await collections.getSeriesMemberships();
+		expect(memberships.get("aaaaaaaa")).toEqual([{ collectionId: expanse.id, seriesIndex: 1 }]);
+		expect(memberships.get("bbbbbbbb")).toEqual([{ collectionId: expanse.id, seriesIndex: 2 }]);
 	});
 });

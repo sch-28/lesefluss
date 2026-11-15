@@ -93,7 +93,7 @@ for (const scale of SCALES) {
 			await resetStorage(page);
 			await page.goto("/");
 			await page.waitForURL(/\/onboarding/);
-			await expect(page.getByRole("button", { name: "Skip onboarding" })).toBeVisible();
+			await expect(page.getByRole("button", { name: "Skip setup" })).toBeVisible();
 			await expectFits(page, "onboarding");
 		});
 

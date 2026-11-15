@@ -13,7 +13,7 @@ import type React from "react";
 import { useId } from "react";
 import CoverImage from "../../components/cover-image";
 import type { Series } from "../../services/db/schema";
-import { chapterCountLabel } from "../../services/serial-scrapers";
+import { chapterCountLabel, providerLabel } from "../../services/serial-scrapers";
 import type { SeriesChapterLength } from "../../services/stats/what-if";
 import { type CardFieldId, CardFieldSlot, DEFAULT_CARD_FIELDS } from "./card-fields";
 import { SeriesCardTime } from "./series-reading-time";
@@ -59,8 +59,8 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 					src={series.coverImage}
 					alt={series.title}
 					fallback={
-						<span className="font-semibold text-[0.6rem] text-muted-foreground uppercase tracking-wide">
-							{series.provider}
+						<span className="px-1 text-center font-semibold text-[0.6rem] text-muted-foreground">
+							{providerLabel(series.provider)}
 						</span>
 					}
 				/>
@@ -70,7 +70,7 @@ const SeriesCard: React.FC<SeriesCardProps> = ({
 						id={chaptersId}
 						className="absolute right-1.5 bottom-1.5 rounded-sm bg-black px-1.5 py-0.5 font-semibold text-[0.6rem] text-white"
 					>
-						{chapterCountLabel(chapterCount, { short: true })}
+						{chapterCountLabel(chapterCount)}
 					</span>
 				)}
 			</div>

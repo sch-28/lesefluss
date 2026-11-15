@@ -1814,14 +1814,6 @@ body.dark .book-detail-subject {
 	color: #ccc;
 }
 
-body.dark .book-detail-description {
-	color: #e4e4e4;
-}
-
-body.dark .book-detail-description a {
-	color: #e4e4e4;
-}
-
 body.dark .book-detail-summary {
 	color: #bbb;
 }

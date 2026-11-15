@@ -34,7 +34,6 @@ vi.mock("../../../contexts/theme-context", async (importOriginal) => ({
 vi.mock("../../settings/rsvp-preview", () => ({ default: () => <div>rsvp preview</div> }));
 
 const SpeedStep = (await import("../steps/speed")).default;
-const { RSVP_WPM_RANGE, steppedWpm } = await import("../../reader/wpm");
 const { SpeedTestResult } = await import("../../../components/speed-test/result");
 const { SpeedGauge } = await import("../../../components/speed-test/gauge");
 const { SPEED_TEST_PASSAGES } = await import("../../../components/speed-test/passages");
@@ -89,13 +88,11 @@ async function mount() {
 }
 
 describe("onboarding speed step", () => {
-	it("skips to the shared RSVP speed control and saves its value", async () => {
+	it("skips the step in one tap and leaves the dial alone", async () => {
 		const v = await mount();
 		await click(v.getButton("Skip this step"));
-		expect(v.queryButton("Start")).toBeNull();
-		expect(v.container.querySelector("[data-testid=rsvp-wpm-value]")?.textContent).toBe("350");
-		await click(v.getButton("Increase speed"));
-		expect(updateSetting).toHaveBeenCalledWith("wpm", steppedWpm(350, RSVP_WPM_RANGE, 1));
+		expect(next).toHaveBeenCalledTimes(1);
+		expect(updateSetting).not.toHaveBeenCalled();
 	});
 
 	it("measures both rounds, saves the test and applies the suggested dial", async () => {
@@ -205,7 +202,7 @@ describe("onboarding speed step", () => {
 		await click(v.getButton("Done"));
 		await click(v.getButton("Skip round"));
 		const result = v.container.querySelector("[data-testid=speed-test-result]");
-		expect(result?.querySelector("dl")?.textContent).toMatch(/RSVP wpm–Faster–$/);
+		expect(result?.querySelector("dl")?.textContent).toMatch(/^RSVP wpm–Faster–$/);
 		expect(v.container.querySelector("[data-testid=speed-test-book]")?.textContent).toMatch(
 			/RSVP–Saved–$/,
 		);

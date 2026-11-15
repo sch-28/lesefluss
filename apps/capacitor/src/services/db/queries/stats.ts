@@ -368,6 +368,7 @@ export async function getReadingRecords(): Promise<ReadingRecords> {
 	const [sessions, bookRows] = await Promise.all([
 		db
 			.select({
+				id: readingSessions.id,
 				bookId: readingSessions.bookId,
 				mode: readingSessions.mode,
 				startedAt: readingSessions.startedAt,

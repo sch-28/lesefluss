@@ -1,5 +1,6 @@
+import { Button } from "@lesefluss/ui/button";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, MoreHorizontal, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { queryHooks } from "../../services/db/hooks";
@@ -140,6 +141,35 @@ export const CollectionActions: React.FC<Props> = ({
 				confirmLabel="Delete"
 				destructive
 				onConfirm={confirmDelete}
+			/>
+		</>
+	);
+};
+
+/** The open collection's own menu button, for screens with no sidebar or shelf row menu at hand. */
+export const CollectionMenuButton: React.FC<{
+	collection: CollectionWithCount;
+	allCollections: CollectionWithCount[];
+}> = ({ collection, allCollections }) => {
+	const [open, setOpen] = useState(false);
+	const siblings = collection.seriesKey
+		? [collection]
+		: allCollections.filter((c) => c.seriesKey === null);
+	return (
+		<>
+			<Button
+				variant="ghost"
+				size="icon"
+				aria-label={`${collection.name} options`}
+				onClick={() => setOpen(true)}
+			>
+				<MoreHorizontal />
+			</Button>
+			<CollectionActions
+				collection={open ? collection : null}
+				collections={siblings}
+				allCollections={allCollections}
+				onClose={() => setOpen(false)}
 			/>
 		</>
 	);

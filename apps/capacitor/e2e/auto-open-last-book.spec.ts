@@ -6,7 +6,7 @@ test("auto-opened last book: back leaves the reader for the library", async ({ p
 	const title = await seedStrayAnchorBook(page);
 	await page.goto("/");
 	await page.waitForURL(/\/onboarding/, { timeout: 10_000 });
-	await page.getByRole("button", { name: "Skip onboarding" }).click();
+	await page.getByRole("button", { name: "Skip setup" }).click();
 	await page.waitForURL(/\/tabs\/library/, { timeout: 10_000 });
 
 	// lastRead is only stamped by a real position save.

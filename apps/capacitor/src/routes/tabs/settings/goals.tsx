@@ -52,30 +52,34 @@ function AddGoal({ goalBookIds, isDisabled }: { goalBookIds: string[]; isDisable
 	const [isPickerOpen, setPickerOpen] = useState(false);
 	const [picked, setPicked] = useState<Book | null>(null);
 	const candidates = goalCandidates(library?.books ?? [], goalBookIds);
+	const isNoneLeft = !isDisabled && library !== undefined && candidates.length === 0;
 
 	return (
 		<div className="mt-3 px-4">
 			<Button
 				variant="outline"
 				className="h-11 w-full"
-				disabled={isDisabled}
+				disabled={isDisabled || isNoneLeft}
 				onClick={() => setPickerOpen(true)}
 				data-testid="add-goal"
 			>
 				<Plus aria-hidden />
 				Add goal
 			</Button>
+			{isNoneLeft && (
+				<p
+					className="m-0 mt-2 text-center text-muted-foreground text-xs"
+					data-testid="add-goal-none-left"
+				>
+					No unfinished book is left without a goal. Add a book to your library to set one more.
+				</p>
+			)}
 			<Drawer open={isPickerOpen} onOpenChange={setPickerOpen}>
 				<DrawerContent className="sm:mx-auto sm:max-w-lg">
 					<DrawerHeader>
 						<DrawerTitle>Set a goal for</DrawerTitle>
 					</DrawerHeader>
 					<div className="flex flex-col divide-y divide-border overflow-y-auto px-4 pb-4">
-						{candidates.length === 0 && (
-							<p className="m-0 py-3 text-muted-foreground text-sm">
-								Every book you're reading has a goal. Add a book to your library to set one more.
-							</p>
-						)}
 						{candidates.map((book) => (
 							<button
 								key={book.id}

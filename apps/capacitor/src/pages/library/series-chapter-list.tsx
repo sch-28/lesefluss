@@ -3,7 +3,7 @@
  * DetailShell `children` slot.
  *
  * Per-chapter state: unread / in-progress (with %) / finished / pending-fetch /
- * locked / error. Same icon vocabulary as <ChapterStateOverlay> in the reader.
+ * locked / error.
  *
  * Virtualization via `virtua`'s `<VList>` (same dep as scroll reader).
  * Height-constrained (max 30vh) so the list scrolls independently within the
@@ -13,7 +13,7 @@
 import { readingProgress } from "@lesefluss/core";
 import { cn } from "@lesefluss/ui/utils";
 import { useRouter } from "@tanstack/react-router";
-import { AlertCircle, CheckCircle2, Circle, CloudDownload, Loader2, Lock } from "lucide-react";
+import { AlertCircle, CheckCircle2, Circle, CircleDashed, Loader2, Lock } from "lucide-react";
 import type React from "react";
 import { memo, useCallback, useLayoutEffect, useRef } from "react";
 import { VList, type VListHandle } from "virtua";
@@ -98,8 +98,8 @@ const StateGlyph: React.FC<{ state: RowState }> = ({ state }) => {
 			return <CheckCircle2 className="size-4 shrink-0 text-emerald-500" aria-label="Finished" />;
 		case "pending":
 			return (
-				<CloudDownload
-					className="size-4 shrink-0 text-muted-foreground"
+				<CircleDashed
+					className="size-4 shrink-0 text-muted-foreground/60"
 					aria-label="Pending download"
 				/>
 			);

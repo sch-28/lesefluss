@@ -2,7 +2,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@lesefluss/ui/
 import { CHIP_BASE, FilterChip } from "@lesefluss/ui/filter-chip";
 import { cn } from "@lesefluss/ui/utils";
 import { useNavigate } from "@tanstack/react-router";
-import { Layers, type LucideIcon, MoreHorizontal, Plus, ScrollText } from "lucide-react";
+import { Hash, Layers, type LucideIcon, MoreHorizontal, Plus, ScrollText } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { CollectionActions } from "../../components/collections/collection-actions";
@@ -11,7 +11,12 @@ import { queryHooks } from "../../services/db/hooks";
 import type { CollectionWithCount } from "../../services/db/queries/collections";
 import { type SeriesEntry, seriesEntryKey } from "./series-nav";
 import { useLongPress } from "./use-long-press";
-import { useActiveSeriesKey, useOpenSeries, useSeriesEntries } from "./use-series-nav";
+import {
+	ALL_SERIES_PATH,
+	useActiveSeriesKey,
+	useOpenSeries,
+	useSeriesEntries,
+} from "./use-series-nav";
 import { type ShelfEntry, useSmartShelves } from "./use-smart-shelves";
 
 /** Chips shown in the row before the rest goes to the More sheet; the open one always shows. */
@@ -257,6 +262,20 @@ const CollectionShelfRow: React.FC<{
 								</button>
 							);
 						})}
+						{series.length > 0 && (
+							<button
+								type="button"
+								onClick={() => {
+									setIsMoreOpen(false);
+									navigate({ to: ALL_SERIES_PATH });
+								}}
+								className="flex h-12 w-full items-center gap-3 rounded-md px-3 text-left text-base hover:bg-muted"
+							>
+								<Hash aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+								<span className="min-w-0 flex-1 truncate">All series</span>
+								<span className="text-muted-foreground text-sm tabular-nums">{series.length}</span>
+							</button>
+						)}
 						<button
 							type="button"
 							onClick={() => {

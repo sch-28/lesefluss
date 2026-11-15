@@ -1,6 +1,6 @@
 import { bookPace, DEFAULT_SETTINGS, SPEED_WINDOWS, type SpeedWindow } from "@lesefluss/core";
 import { RadioGroup, RadioGroupItem } from "@lesefluss/ui/radio-group";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Gauge } from "lucide-react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ReservedCard } from "@/components/reserved-card";
@@ -105,16 +105,27 @@ function SpeedPreview() {
 							</b>
 						</div>
 					)}
-					<div className="flex justify-between gap-3 text-muted-foreground text-sm">
-						<span>Based on</span>
-						<b className="font-medium tabular-nums">
-							{data.reading.source === "default"
-								? "the average reader"
-								: data.reading.source === "test"
+					{data.reading.source === "default" ? (
+						<div className="flex justify-between gap-3 text-muted-foreground text-sm">
+							<span>Based on the average reader</span>
+							<Link
+								to="/speed-test"
+								className="font-medium text-primary underline underline-offset-4"
+								data-testid="speed-test-link"
+							>
+								Test my speed
+							</Link>
+						</div>
+					) : (
+						<div className="flex justify-between gap-3 text-muted-foreground text-sm">
+							<span>Based on</span>
+							<b className="font-medium tabular-nums">
+								{data.reading.source === "test"
 									? "your speed test"
 									: `${formatDuration(data.reading.activeMs)} of reading`}
-						</b>
-					</div>
+							</b>
+						</div>
+					)}
 				</div>
 			)}
 		</ReservedCard>

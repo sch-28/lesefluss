@@ -8,11 +8,12 @@
  */
 
 import { Button } from "@lesefluss/ui/button";
+import { FilterChip } from "@lesefluss/ui/filter-chip";
 import { Progress } from "@lesefluss/ui/progress";
 import { cn } from "@lesefluss/ui/utils";
 import { BookOpen, ExternalLink, Loader2, type LucideIcon } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "../../components/app-shell/page-header";
 import CoverImage from "../../components/cover-image";
 import SanitizedDescription from "../../components/sanitized-description";
@@ -85,6 +86,32 @@ export interface DetailShellProps {
 }
 
 const COLLAPSED_TAG_COUNT = 8;
+/** The app's chip at hero size; a coarse pointer still gets the 44px hit area. */
+const SMALL_CHIP = "h-8 px-3 text-xs";
+
+/**
+ * The page header echoes the title only once the hero's h1 has scrolled under it, so the
+ * title never shows twice on screen.
+ */
+function useHeroTitleInView(showsHero: boolean) {
+	const headerRef = useRef<HTMLElement>(null);
+	const heroTitleRef = useRef<HTMLHeadingElement>(null);
+	const [isHeroTitleInView, setHeroTitleInView] = useState(true);
+	useEffect(() => {
+		const heroTitle = heroTitleRef.current;
+		if (!showsHero || !heroTitle || typeof IntersectionObserver === "undefined") return;
+		const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (entry) setHeroTitleInView(entry.isIntersecting);
+			},
+			{ rootMargin: `-${Math.round(headerHeight)}px 0px 0px 0px` },
+		);
+		observer.observe(heroTitle);
+		return () => observer.disconnect();
+	}, [showsHero]);
+	return { headerRef, heroTitleRef, isHeroTitleInView };
+}
 
 export const DetailShell: React.FC<DetailShellProps> = ({
 	cover,
@@ -110,10 +137,14 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 	onRetry,
 	errorSourceLink,
 }) => {
+	const showsHero = !isLoading && error === undefined && !errorMessage;
+	const { headerRef, heroTitleRef, isHeroTitleInView } = useHeroTitleInView(showsHero);
 	return (
 		<>
 			<PageHeader
+				ref={headerRef}
 				title={title}
+				titleShown={showsHero ? !isHeroTitleInView : undefined}
 				right={
 					<div className="flex items-center gap-1">
 						{externalLink && (
@@ -172,8 +203,15 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 					sourceLink={errorSourceLink}
 				/>
 			) : errorMessage ? (
-				<div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center">
+				<div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 p-8 text-center">
 					<p className="m-0 text-muted-foreground">{errorMessage}</p>
+					<Button
+						variant="outline"
+						onClick={primaryAction.onClick}
+						disabled={primaryAction.disabled}
+					>
+						{primaryAction.label}
+					</Button>
 				</div>
 			) : (
 				<DetailFrame>
@@ -199,13 +237,18 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 									{eyebrow}
 								</span>
 							)}
-							<h1 className="mt-1 break-words font-semibold text-xl leading-tight">{title}</h1>
+							<h1
+								ref={heroTitleRef}
+								className="mt-1 break-words font-semibold text-xl leading-tight"
+							>
+								{title}
+							</h1>
 							{author &&
 								(onAuthorTap ? (
 									<button
 										type="button"
 										onClick={onAuthorTap}
-										className="mt-1 self-start border-0 bg-transparent p-0 text-left text-muted-foreground text-sm underline-offset-4 hover:text-foreground hover:underline"
+										className="mt-1 self-start border-0 bg-transparent p-0 text-left text-primary text-sm underline underline-offset-4"
 									>
 										{author}
 									</button>
@@ -258,18 +301,9 @@ export const DetailShell: React.FC<DetailShellProps> = ({
 					) : (
 						subjects &&
 						subjects.length > 0 && (
-							<div className="mt-4 flex flex-wrap gap-2">
-								{readableSubjects(subjects)
-									.slice(0, COLLAPSED_TAG_COUNT)
-									.map((s) => (
-										<span
-											key={s}
-											className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-muted-foreground text-xs"
-										>
-											{s}
-										</span>
-									))}
-							</div>
+							<p className="m-0 mt-4 text-muted-foreground text-xs">
+								{readableSubjects(subjects).slice(0, COLLAPSED_TAG_COUNT).join(" · ")}
+							</p>
 						)
 					)}
 
@@ -317,23 +351,25 @@ const TagList: React.FC<{
 	return (
 		<div className="mt-4 flex flex-wrap gap-2" data-testid="detail-tags">
 			{visible.map((t) => (
-				<button
-					type="button"
+				<FilterChip
 					key={t.id}
+					selected={false}
+					action
 					onClick={() => onTagTap(t.id)}
-					className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-muted-foreground text-xs transition-colors hover:bg-accent hover:text-foreground"
+					className={SMALL_CHIP}
 				>
 					{t.label}
-				</button>
+				</FilterChip>
 			))}
 			{hiddenCount > 0 && (
-				<button
-					type="button"
+				<FilterChip
+					selected={false}
+					action
 					onClick={() => setExpanded(true)}
-					className="rounded-full border border-border border-dashed bg-transparent px-2.5 py-0.5 text-muted-foreground text-xs"
+					className={cn(SMALL_CHIP, "text-muted-foreground")}
 				>
 					{hiddenCount} more
-				</button>
+				</FilterChip>
 			)}
 		</div>
 	);

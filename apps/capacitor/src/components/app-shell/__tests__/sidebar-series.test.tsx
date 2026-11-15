@@ -87,7 +87,9 @@ afterEach(() => {
 
 const rows = () =>
 	[
-		...(rendered?.container.querySelectorAll("[data-testid=sidebar-series] a") ?? []),
+		...(rendered?.container.querySelectorAll(
+			"[data-testid=sidebar-series] a:not([href='/tabs/library/all-series'])",
+		) ?? []),
 	] as HTMLElement[];
 const allSeriesLink = () =>
 	rendered?.container.querySelector<HTMLAnchorElement>("a[href='/tabs/library/all-series']");
@@ -108,10 +110,10 @@ describe("SidebarSeries", () => {
 			["/tabs/library?collection=dune", "#Series dune6"],
 			["/tabs/library/series/wn", "≋Worm304"],
 		]);
-		expect(allSeriesLink()).toBeNull();
+		expect(allSeriesLink()?.textContent).toBe("All series2");
 	});
 
-	it("shows the first five and All series when there are more", async () => {
+	it("shows the first five, then All series", async () => {
 		collections = ["a", "b", "c", "d", "e", "f"].map((id) => series(id));
 		rendered = await render(<SidebarSeries isCollapsed={false} />);
 		expect(rows()).toHaveLength(5);

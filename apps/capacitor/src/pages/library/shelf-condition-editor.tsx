@@ -17,6 +17,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, GripVertical, MoreHorizontal, Plus, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useId, useMemo, useState } from "react";
+import { formatKey } from "../../commands/keys";
 import { useLocalDayNow } from "../../hooks/use-local-day";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import { queryHooks } from "../../services/db/hooks";
@@ -522,7 +523,9 @@ const EditorForm: React.FC<Omit<Props, "open"> & { isStacked: boolean; onDone: (
 				</Button>
 				<Button type="button" disabled={!canSave} onClick={save}>
 					Save
-					<kbd className="ml-1 font-sans text-[0.7rem] opacity-70">Ctrl Enter</kbd>
+					<kbd className="ml-1 font-sans text-[0.7rem] opacity-70">
+						{formatKey("Mod+Enter").join(" ")}
+					</kbd>
 				</Button>
 			</div>
 		</div>

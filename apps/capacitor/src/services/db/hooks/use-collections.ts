@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "../../../components/toast";
 import type { SeriesPlan } from "../../../pages/library/book-edit-form";
 import { log } from "../../../utils/log";
-import { applyBookSeriesPlan } from "../../series-collections";
+import { applyBookSeriesPlan, moveBooksToSeries } from "../../series-collections";
 import { scheduleSyncPush } from "../../sync";
 import { errorMessage, reportEvent } from "../../telemetry";
 import { queries } from "../queries";
@@ -146,17 +146,26 @@ export type NumberedTarget = { collectionId: string } | { newSeries: string };
  *  collection or a series created for it. */
 function useAddNumberedBooks() {
 	return useCollectionMutation(
-		async (vars: { target: NumberedTarget; numbers: ReadonlyMap<string, number | null> }) => {
+		async (vars: {
+			target: NumberedTarget;
+			numbers: ReadonlyMap<string, number | null>;
+			/** A series target: the books leave every other series. */
+			isSeries?: boolean;
+		}) => {
 			const collectionId =
 				"collectionId" in vars.target
 					? vars.target.collectionId
 					: (await queries.createSeriesCollection(vars.target.newSeries)).id;
-			await queries.addBooksToCollection(
-				collectionId,
-				[...vars.numbers.keys()],
-				undefined,
-				vars.numbers,
-			);
+			if (vars.isSeries) {
+				await moveBooksToSeries(collectionId, vars.numbers);
+			} else {
+				await queries.addBooksToCollection(
+					collectionId,
+					[...vars.numbers.keys()],
+					undefined,
+					vars.numbers,
+				);
+			}
 			return collectionId;
 		},
 	);

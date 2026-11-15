@@ -59,6 +59,7 @@ import { hasOpenOverlay, isShortcutAllowed } from "../../commands/guard";
 import { withKey } from "../../commands/keys";
 import { useCommandKey, useRegisterCommands } from "../../commands/registry";
 import { ActionSheet } from "../../components/action-sheet";
+import { NotFound } from "../../components/app-shell/not-found";
 import { KeyChips, MenuKey } from "../../components/command-palette";
 import { VoiceSheet } from "../../components/read-aloud/voice-sheet";
 import {
@@ -2635,21 +2636,12 @@ const BookReader: React.FC<{ id: string }> = ({ id }) => {
 
 	if (!book) {
 		return (
-			<div className="flex h-screen flex-col bg-background">
-				<header className="flex h-12 items-center border-border border-b px-2">
-					<button
-						type="button"
-						onClick={() => history.back()}
-						aria-label="Back"
-						className="-ml-1 inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-					>
-						<ChevronLeft className="size-5" />
-					</button>
-				</header>
-				<div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
-					<p className="m-0">Book not found.</p>
-				</div>
-			</div>
+			<NotFound
+				title="Book not found"
+				message="This book is no longer in your library."
+				backLabel="Back to library"
+				backTo="/tabs/library"
+			/>
 		);
 	}
 

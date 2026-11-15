@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useBlocker, useRouter } from "@tanstack/react-router";
 import type React from "react";
 import { useMemo, useRef, useState } from "react";
+import { NotFound } from "../../components/app-shell/not-found";
 import { getCatalogBook, getCoverUrl } from "../../services/catalog/client";
 import { catalogKeys } from "../../services/catalog/query-keys";
 import { queryHooks } from "../../services/db/hooks";
@@ -46,7 +47,7 @@ function plainText(html: string): string {
 
 export function wordCountFact(words: number): string | null {
 	if (words <= 0) return null;
-	return words >= 1000 ? `${Math.round(words / 1000)}k words` : `${words} words`;
+	return `${words.toLocaleString()} words`;
 }
 
 const BookEditPage: React.FC<Props> = ({ id }) => {
@@ -57,7 +58,14 @@ const BookEditPage: React.FC<Props> = ({ id }) => {
 		return <p className="p-6 text-center text-muted-foreground text-sm">Loading…</p>;
 	}
 	if (!book) {
-		return <p className="p-6 text-center text-muted-foreground text-sm">Book not found.</p>;
+		return (
+			<NotFound
+				title="Book not found"
+				message="This book is no longer in your library."
+				backLabel="Back to library"
+				backTo="/tabs/library"
+			/>
+		);
 	}
 	return (
 		<EditBookForm
