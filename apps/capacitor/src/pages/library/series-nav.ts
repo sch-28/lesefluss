@@ -25,7 +25,6 @@ export type SeriesEntry = {
 };
 
 export type SeriesSort = "last-read" | "name" | "size";
-export type SeriesKindFilter = "all" | SeriesKind;
 
 export type SeriesSources = {
 	collections: readonly CollectionWithCount[];
@@ -133,15 +132,26 @@ export function sortSeriesEntries(
 
 export function filterSeriesEntries(
 	entries: readonly SeriesEntry[],
-	opts: { query: string; kind: SeriesKindFilter; sort: SeriesSort },
+	opts: { query: string; sort: SeriesSort },
 ): SeriesEntry[] {
 	const q = opts.query.trim().toLocaleLowerCase();
-	const kept = entries.filter(
-		(e) =>
-			(opts.kind === "all" || e.kind === opts.kind) &&
-			(q === "" || e.name.toLocaleLowerCase().includes(q)),
-	);
+	const kept = q === "" ? entries : entries.filter((e) => e.name.toLocaleLowerCase().includes(q));
 	return sortSeriesEntries(kept, opts.sort);
+}
+
+export type SeriesGroup = { kind: SeriesKind; label: string; entries: SeriesEntry[] };
+
+const GROUP_LABELS: Record<SeriesKind, string> = { book: "Book series", serial: "Serials" };
+
+/** Book series first, then serials, each keeping the given order; an empty group is left out. */
+export function groupSeriesEntries(entries: readonly SeriesEntry[]): SeriesGroup[] {
+	return (["book", "serial"] as const)
+		.map((kind) => ({
+			kind,
+			label: GROUP_LABELS[kind],
+			entries: entries.filter((e) => e.kind === kind),
+		}))
+		.filter((g) => g.entries.length > 0);
 }
 
 export function seriesEntryKey(e: Pick<SeriesEntry, "kind" | "id">): string {

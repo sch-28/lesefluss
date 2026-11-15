@@ -9,6 +9,7 @@ import {
 	buildSeriesEntries,
 	countLabel,
 	filterSeriesEntries,
+	groupSeriesEntries,
 	progressLabel,
 	type SeriesEntry,
 	type SeriesSources,
@@ -151,20 +152,48 @@ describe("filterSeriesEntries", () => {
 
 	it("matches the name case-insensitively", () => {
 		expect(
-			filterSeriesEntries(entries, { query: " EARTH", kind: "all", sort: "name" }).map((e) => e.id),
+			filterSeriesEntries(entries, { query: " EARTH", sort: "name" }).map((e) => e.id),
 		).toEqual(["earth"]);
 	});
 
-	it("filters by kind and sorts by size or name", () => {
-		expect(
-			filterSeriesEntries(entries, { query: "", kind: "book", sort: "size" }).map((e) => e.id),
-		).toEqual(["dune", "earth"]);
-		expect(
-			filterSeriesEntries(entries, { query: "", kind: "all", sort: "name" }).map((e) => e.id),
-		).toEqual(["dune", "earth", "wn"]);
-		expect(
-			filterSeriesEntries(entries, { query: "", kind: "serial", sort: "name" }).map((e) => e.id),
-		).toEqual(["wn"]);
+	it("sorts by size or name", () => {
+		expect(filterSeriesEntries(entries, { query: "", sort: "size" }).map((e) => e.id)).toEqual([
+			"wn",
+			"dune",
+			"earth",
+		]);
+		expect(filterSeriesEntries(entries, { query: "", sort: "name" }).map((e) => e.id)).toEqual([
+			"dune",
+			"earth",
+			"wn",
+		]);
+	});
+});
+
+describe("groupSeriesEntries", () => {
+	const entries = buildSeriesEntries(
+		sources({
+			collections: [
+				collection({ id: "dune", name: "Dune", bookCount: 6 }),
+				collection({ id: "earth", name: "Earthsea", bookCount: 2 }),
+			],
+			serials: [serial({ id: "wn", title: "Wandering Inn" })],
+			chapterCounts: new Map([["wn", 40]]),
+		}),
+	);
+
+	it("puts book series before serials and keeps the sort inside each group", () => {
+		const sorted = filterSeriesEntries(entries, { query: "", sort: "size" });
+		expect(groupSeriesEntries(sorted).map((g) => [g.label, g.entries.map((e) => e.id)])).toEqual([
+			["Book series", ["dune", "earth"]],
+			["Serials", ["wn"]],
+		]);
+	});
+
+	it("leaves out a group with no entries", () => {
+		const books = filterSeriesEntries(entries, { query: "earth", sort: "name" });
+		expect(groupSeriesEntries(books).map((g) => g.kind)).toEqual(["book"]);
+		expect(groupSeriesEntries([])).toEqual([]);
 	});
 });
 
