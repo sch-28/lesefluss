@@ -12,7 +12,12 @@
  * won't re-fire until the next changelog entry ships.
  */
 
-import { type ChangelogEntry, type ChangelogTag, changelog } from "@lesefluss/core";
+import {
+	type ChangelogEntry,
+	type ChangelogTag,
+	changelog,
+	changelogEntryKey,
+} from "@lesefluss/core";
 import { Button } from "@lesefluss/ui/button";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -85,7 +90,7 @@ const WhatsNewModal: React.FC = () => {
 			</p>
 			<div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">
 				{entries.map((entry) => (
-					<section key={entry.date} className="flex flex-col gap-2">
+					<section key={changelogEntryKey(entry)} className="flex flex-col gap-2">
 						<header className="flex items-baseline justify-between gap-3">
 							<h3 className="font-semibold text-base">{entry.title}</h3>
 							<span className="text-muted-foreground text-xs">{formatDate(entry.date)}</span>

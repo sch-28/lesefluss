@@ -7,10 +7,71 @@ export type ChangelogEntry = {
 	changes: string[];
 };
 
+/** A React key for an entry: one release adds several entries with the same date. */
+export const changelogEntryKey = (entry: ChangelogEntry) => `${entry.date} ${entry.title}`;
+
 export const changelog: ChangelogEntry[] = [
 	{
+		date: "2026-11-15",
+		title: "Organize your library",
+		tags: ["App"],
+		changes: [
+			"Put books into your own collections, or make smart shelves that fill themselves from rules you set",
+			"Books from the same series are grouped, each series with its own page in reading order",
+			"Filter, search and sort from one bar. On a computer you can also switch to a table and edit books right there",
+		],
+	},
+	{
+		date: "2026-11-15",
+		title: "Your reading speed",
+		tags: ["App"],
+		changes: [
+			"Stats has a new Speed tab with your speed over time and a short speed test",
+			"Books show how long they'll take you, and a goal can be a number of minutes a day",
+		],
+	},
+	{
+		date: "2026-11-15",
+		title: "RSVP with sound",
+		tags: ["App"],
+		changes: [
+			"RSVP has an audio switch. Turn it on and the words are read aloud, without leaving the RSVP view",
+		],
+	},
+	{
+		date: "2026-11-15",
+		title: "Reading on a computer",
+		tags: ["App"],
+		changes: [
+			"Press Ctrl+K (Cmd+K on a Mac) to find any action, and ? to see every keyboard shortcut",
+			"Quick RSVP opens a small window that reads along with the book you have open",
+			"Install the web app from your browser and use it like any other app, also offline",
+		],
+	},
+	{
+		date: "2026-11-15",
+		title: "Bookmarks, Wishlist and export",
+		tags: ["App"],
+		changes: [
+			"Bookmark any spot in a book. Bookmarks sync to your other devices",
+			"Save books and web novels from Explore to your Wishlist and import them when you're ready",
+			"Export a book's highlights and notes as a Markdown file for Obsidian",
+		],
+	},
+	{
+		date: "2026-11-15",
+		title: "Fixes",
+		tags: ["App"],
+		changes: [
+			"Streaks and stats no longer count sittings shorter than a minute",
+			"Books imported before version 1.4.0 show progress and time left again",
+			"A phone with its clock set ahead no longer overwrites newer progress from your other devices",
+			"Diagnostics are off unless you turn them on",
+		],
+	},
+	{
 		date: "2026-10-29",
-		title: "Accessibility and Reader Options",
+		title: "Accessibility and reader options",
 		tags: ["App"],
 		changes: [
 			"New reader fonts: Atkinson Hyperlegible, OpenDyslexic and Literata, plus bold text and adjustable letter, word and paragraph spacing",
@@ -28,7 +89,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-10-21",
-		title: "Listen to Your Books",
+		title: "Listen to your books",
 		tags: ["App"],
 		changes: [
 			"Tap the headphones in the reader to listen to your book on Android, also with the screen off. Works offline with your phone's voices",
@@ -39,7 +100,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-10-20",
-		title: "Turn Pages with Volume Buttons",
+		title: "Turn pages with volume buttons",
 		tags: ["App"],
 		changes: [
 			"New setting to turn pages with your phone's volume buttons in page mode, and change speed with them in RSVP",
@@ -48,7 +109,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-10-19",
-		title: "Reading Goals",
+		title: "Reading goals",
 		tags: ["App"],
 		changes: [
 			"Set a goal for a book: finish by a date or read a fixed amount each day",
@@ -61,7 +122,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-10-04",
-		title: "E-Reader Support",
+		title: "E-Reader support",
 		tags: ["App", "Website"],
 		changes: [
 			"Sign in without a browser: the app shows a code and a QR code, and you confirm it from your phone or any signed-in browser at lesefluss.app/link",
@@ -76,7 +137,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-10-03",
-		title: "Social Tab and Settings Redesign",
+		title: "Social tab and settings redesign",
 		tags: ["App"],
 		changes: [
 			"The Social tab got a new look. Your friends now show up with the book they're reading and how far they are",
@@ -86,7 +147,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-10-02",
-		title: "Images in Books and a New Explore",
+		title: "Images in books and a new Explore",
 		tags: ["App"],
 		changes: [
 			"EPUB images now show up in the reader, in both scroll and page mode",
@@ -105,7 +166,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-09-28",
-		title: "Friends and Buddy Reads",
+		title: "Friends and buddy reads",
 		tags: ["App", "Website"],
 		changes: [
 			"New Social tab. Pick a handle and add friends with an invite link",
@@ -124,7 +185,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-08-28",
-		title: "Word Lookup Rebuilt",
+		title: "Word lookup rebuilt",
 		tags: ["App"],
 		changes: [
 			"Word lookup works again - the dictionary service it used had gone offline",
@@ -134,13 +195,13 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-08-27",
-		title: "App Shell Overflow",
+		title: "App shell overflow",
 		tags: ["App"],
 		changes: ["Fixed missing safety inset on some devices"],
 	},
 	{
 		date: "2026-08-20",
-		title: "Page Mode Fixes",
+		title: "Page mode fixes",
 		tags: ["App"],
 		changes: [
 			"The progress bar in page mode can be hidden again: tap the middle of the page to show or hide it, and turning a page hides it",
@@ -149,7 +210,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-08-14",
-		title: "Book Management",
+		title: "Book management",
 		tags: ["App", "Website"],
 		changes: [
 			"Edit a book's title, author, description, language, and notes from the detail page or a long press in the library",
@@ -165,7 +226,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-07-30",
-		title: "Reading Stats, Rebuilt",
+		title: "Reading stats, rebuilt",
 		tags: ["App"],
 		changes: [
 			"The streak heatmap is now a month calendar you can page through, with connected days so a streak reads as one run",
@@ -175,7 +236,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-07-28",
-		title: "Much Lighter Syncing",
+		title: "Much lighter syncing",
 		tags: ["App", "Website"],
 		changes: [
 			"Syncing while you read now uses up to 500x less mobile data. The bigger your library, the bigger the difference",
@@ -185,13 +246,13 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-06-25",
-		title: "Chapter Title Fallback",
+		title: "Chapter title fallback",
 		tags: ["App"],
 		changes: ["Fixed an issue where the chapter titles where not shown"],
 	},
 	{
 		date: "2026-06-08",
-		title: "Library Layout Memory and Save Warnings",
+		title: "Library layout memory and save warnings",
 		tags: ["App"],
 		changes: [
 			"The library now remembers your chosen layout (grid or list) and sort order between sessions",
@@ -202,7 +263,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-06-07",
-		title: "Large Book Imports and Cover Fixes",
+		title: "Large book imports and cover fixes",
 		tags: ["App"],
 		changes: [
 			"Large EPUBs (over 50 MB) now import reliably instead of freezing or crashing the app",
@@ -212,7 +273,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-06-02",
-		title: "Reader Links and Resume Reliability",
+		title: "Reader links and resume reliability",
 		tags: ["App"],
 		changes: [
 			"Hyperlinks in imported articles and EPUBs are now shown and tappable, opening in your browser",
@@ -222,7 +283,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-05-29",
-		title: "RSVP Wake Lock and Sync Fixes",
+		title: "RSVP wake lock and sync fixes",
 		tags: ["App"],
 		changes: [
 			"The screen now stays awake while you're reading in RSVP mode",
@@ -233,7 +294,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-05-23",
-		title: "Redesign, Live Sync, and rsvpnano Firmware",
+		title: "Redesign, live sync, and rsvpnano firmware",
 		tags: ["App", "ESP32"],
 		changes: [
 			"Refreshed app and reader design",
@@ -248,7 +309,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-05-08",
-		title: "Play Store Launch",
+		title: "Play Store launch",
 		tags: ["App"],
 		changes: [
 			"First public Play Store release",
@@ -259,7 +320,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-05-03",
-		title: "Stats Polish",
+		title: "Stats polish",
 		tags: ["App"],
 		changes: [
 			"Browse and delete individual reading sessions from the stats page and book detail",
@@ -268,7 +329,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-05-01",
-		title: "Reading Statistics",
+		title: "Reading statistics",
 		tags: ["App", "Website"],
 		changes: [
 			"New reading stats page in the library with totals, streak heatmap, top books, and reading personality",
@@ -283,7 +344,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-04-30",
-		title: "Feedback, Error Tracking, and Reader Polish",
+		title: "Feedback, error tracking, and reader polish",
 		tags: ["App", "Website"],
 		changes: [
 			"You can now change the color of the focal letter",
@@ -298,7 +359,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-04-29",
-		title: "Web Novels",
+		title: "Web novels",
 		tags: ["App"],
 		changes: [
 			"Find and read serials from AO3, ScribbleHub, Royal Road, and Wuxiaworld right inside the app",
@@ -335,7 +396,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-04-27",
-		title: "Page Reader and a few rough edges",
+		title: "Page reader and a few rough edges",
 		tags: ["App"],
 		changes: [
 			"You can now read in pages instead of one long scroll",
@@ -350,7 +411,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-04-23",
-		title: "More Ways to Import: URLs, PDFs, Share Intent",
+		title: "More ways to import: URLs, PDFs, share intent",
 		tags: ["App"],
 		changes: [
 			"Paste any article URL to import it as a cleanly-extracted book",
@@ -363,7 +424,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-04-22",
-		title: "Reader Redesign & Onboarding",
+		title: "Reader redesign and onboarding",
 		tags: ["App"],
 		changes: [
 			"Guided onboarding flow: welcome, speed, theme, reader mode, and sync steps",
@@ -378,7 +439,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-04-21",
-		title: "Play Store Beta & Polish",
+		title: "Play Store beta and polish",
 		tags: ["App", "Website"],
 		changes: [
 			"Google Play Store listing link on the download page",
@@ -389,7 +450,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-04-20",
-		title: "OAuth, Mobile Login & APK Releases",
+		title: "OAuth, mobile login and APK releases",
 		tags: ["App", "Website"],
 		changes: [
 			"Google and Discord OAuth sign-in",
@@ -402,7 +463,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-04-19",
-		title: "Explore Tab: Discover Public-Domain Books",
+		title: "Explore tab: discover public-domain books",
 		tags: ["App", "Website"],
 		changes: [
 			"Browse thousands of free books from Project Gutenberg and Standard Ebooks",
@@ -418,7 +479,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-04-18",
-		title: "Profile, Admin & Analytics",
+		title: "Profile, admin and analytics",
 		tags: ["Website"],
 		changes: [
 			"Public profile page with reading stats, library, and highlights",
@@ -431,7 +492,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-04-15",
-		title: "Web App & Cloud Sync",
+		title: "Web app and cloud sync",
 		tags: ["App", "Website"],
 		changes: [
 			"Web app live at lesefluss.app/app - full reader in the browser",
@@ -442,7 +503,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-04-13",
-		title: "In-App RSVP Reader, Highlights & Library",
+		title: "In-app RSVP reader, highlights and library",
 		tags: ["App"],
 		changes: [
 			"Full RSVP reader in the mobile app (software parity with ESP32)",
@@ -456,7 +517,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-04-08",
-		title: "AMOLED Display & Device Polish",
+		title: "AMOLED display and device polish",
 		tags: ["ESP32", "App"],
 		changes: [
 			"AMOLED (RM67162) display support alongside ST7789",
@@ -468,7 +529,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-04-03",
-		title: "ESP32 Deep Sleep & Brightness",
+		title: "ESP32 deep sleep and brightness",
 		tags: ["ESP32"],
 		changes: [
 			"Deep sleep with configurable idle timeout - weeks of battery life",
@@ -480,7 +541,7 @@ export const changelog: ChangelogEntry[] = [
 	},
 	{
 		date: "2026-03-26",
-		title: "Initial Release",
+		title: "Initial release",
 		tags: ["App", "ESP32"],
 		changes: [
 			"Core RSVP reader on ESP32 with focal letter (ORP) positioning",
